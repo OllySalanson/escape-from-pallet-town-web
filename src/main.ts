@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
+import { BattleScene } from './game/scenes/BattleScene';
 import { BootScene } from './game/scenes/BootScene';
 import { TitleScene } from './game/scenes/TitleScene';
 import { WorldScene } from './game/scenes/WorldScene';
@@ -24,7 +25,7 @@ const gameConfig: Phaser.Types.Core.GameConfig = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: GAME_ZOOM,
   },
-  scene: [BootScene, TitleScene, WorldScene],
+  scene: [TitleScene, BootScene, WorldScene, BattleScene],
 };
 
 new Phaser.Game(gameConfig);
