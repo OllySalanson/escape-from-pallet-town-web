@@ -24,7 +24,7 @@ export class BootScene extends Phaser.Scene {
 
   public create(): void {
     this.createPlayerAnimations();
-    this.scene.start('world');
+    this.scene.start('title');
   }
 
   private createPlayerAnimations(): void {
