@@ -15,16 +15,16 @@ describe('playerFrames', () => {
 
   it('maps each direction to the selected player character rows', () => {
     expect(getIdleFrame('down')).toBe(0);
-    expect(getIdleFrame('left')).toBe(17);
+    expect(getIdleFrame('left')).toBe(51);
     expect(getIdleFrame('up')).toBe(34);
-    expect(getIdleFrame('right')).toBe(51);
+    expect(getIdleFrame('right')).toBe(17);
   });
 
   it('uses the intended walk cycle frames for each direction', () => {
     expect(getWalkFrames('down')).toEqual([1, 0, 3, 0]);
-    expect(getWalkFrames('left')).toEqual([18, 17, 20, 17]);
+    expect(getWalkFrames('left')).toEqual([52, 51, 54, 51]);
     expect(getWalkFrames('up')).toEqual([35, 34, 37, 34]);
-    expect(getWalkFrames('right')).toEqual([52, 51, 54, 51]);
+    expect(getWalkFrames('right')).toEqual([18, 17, 20, 17]);
   });
 
   it('builds stable animation keys per direction', () => {

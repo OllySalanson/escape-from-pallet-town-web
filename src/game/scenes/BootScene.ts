@@ -19,7 +19,6 @@ export class BootScene extends Phaser.Scene {
       frameWidth: CHARACTER_FRAME_WIDTH,
       frameHeight: CHARACTER_FRAME_HEIGHT,
     });
-    this.load.image('overworldTiles', 'assets/Overworld.png');
     this.load.image('classicTiles', 'assets/tileset.png');
   }
 

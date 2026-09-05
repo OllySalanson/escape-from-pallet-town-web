@@ -12,9 +12,9 @@ const PLAYER_WALK_FRAME_COLUMN_OFFSETS = [1, 0, 3, 0] as const;
 
 const PLAYER_DIRECTION_ROW_OFFSETS: Record<Direction, number> = {
   down: 0,
-  left: 1,
+  left: 3,
   up: 2,
-  right: 3,
+  right: 1,
 };
 
 function toFrameIndex(column: number, row: number): number {
@@ -32,10 +32,7 @@ export function getWalkFrames(direction: Direction): number[] {
 export function getIdleFrame(direction: Direction): number {
   const row = PLAYER_SHEET_ROW_START + PLAYER_DIRECTION_ROW_OFFSETS[direction];
 
-  return toFrameIndex(
-    PLAYER_SHEET_COLUMN_START + PLAYER_IDLE_FRAME_COLUMN_OFFSET,
-    row,
-  );
+  return toFrameIndex(PLAYER_SHEET_COLUMN_START + PLAYER_IDLE_FRAME_COLUMN_OFFSET, row);
 }
 
 export function getWalkAnimationKey(direction: Direction): string {
