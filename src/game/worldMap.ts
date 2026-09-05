@@ -24,6 +24,23 @@ export const CLASSIC_TILE = {
   FENCE_RIGHT: 74,
 } as const;
 
+export const SOLID_CLASSIC_TILES: ReadonlySet<number> = new Set([
+  CLASSIC_TILE.TREE_RED,
+  CLASSIC_TILE.TREE_LEAFY,
+  CLASSIC_TILE.POND_WATER,
+  CLASSIC_TILE.POND_BANK_NORTH_WEST,
+  CLASSIC_TILE.POND_BANK_NORTH,
+  CLASSIC_TILE.POND_BANK_NORTH_EAST,
+  CLASSIC_TILE.POND_BANK_WEST,
+  CLASSIC_TILE.POND_BANK_EAST,
+  CLASSIC_TILE.POND_BANK_SOUTH_WEST,
+  CLASSIC_TILE.POND_BANK_SOUTH,
+  CLASSIC_TILE.POND_BANK_SOUTH_EAST,
+  CLASSIC_TILE.FENCE_LEFT,
+  CLASSIC_TILE.FENCE_MIDDLE,
+  CLASSIC_TILE.FENCE_RIGHT,
+]);
+
 const POND_LEFT = 12;
 const POND_TOP = 2;
 const POND_WIDTH = 7;
@@ -90,6 +107,15 @@ export function buildDetailLayerData(): number[][] {
   );
 
   return data;
+}
+
+export function buildCollisionData(): boolean[][] {
+  const ground = buildGroundLayerData();
+  const details = buildDetailLayerData();
+
+  return ground.map((row, y) =>
+    row.map((groundTile, x) => SOLID_CLASSIC_TILES.has(groundTile) || SOLID_CLASSIC_TILES.has(details[y][x])),
+  );
 }
 
 function createLayer(fillTile: number): number[][] {

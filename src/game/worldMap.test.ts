@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildCollisionData,
   buildDetailLayerData,
   buildGroundLayerData,
   CLASSIC_TILE,
@@ -74,5 +75,15 @@ describe('worldMap', () => {
       CLASSIC_TILE.FENCE_MIDDLE,
       CLASSIC_TILE.FENCE_RIGHT,
     ]);
+  });
+
+  it('marks trees, pond tiles, and fences as solid while leaving flowers walkable', () => {
+    const collision = buildCollisionData();
+
+    expect(collision[1][1]).toBe(true);
+    expect(collision[2][12]).toBe(true);
+    expect(collision[4][15]).toBe(true);
+    expect(collision[9][14]).toBe(true);
+    expect(collision[3][5]).toBe(false);
   });
 });
