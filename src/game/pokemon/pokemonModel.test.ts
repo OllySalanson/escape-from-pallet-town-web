@@ -1,0 +1,207 @@
+import { describe, expect, it } from 'vitest';
+import { Move } from './Move';
+import { MoveBase, MoveCategory } from './MoveBase';
+import { Pokemon } from './Pokemon';
+import { PokemonBase } from './PokemonBase';
+import { PokemonParty } from './PokemonParty';
+import { PokemonType } from './PokemonType';
+import { TACKLE } from './moves';
+import { BULBASAUR, CHARMANDER, SQUIRTLE } from './species';
+
+const expectedHp = (baseHp: number, level: number): number =>
+  Math.floor((2 * baseHp * level) / 100) + level + 10;
+const expectedBattleStat = (baseStat: number, level: number): number =>
+  Math.floor((2 * baseStat * level) / 100) + 5;
+
+describe('Pokemon stat computation', () => {
+  it('matches the documented formulas at low and mid levels', () => {
+    const lowLevelBulbasaur = new Pokemon(BULBASAUR, 5);
+    const midLevelBulbasaur = new Pokemon(BULBASAUR, 50);
+
+    expect(lowLevelBulbasaur.stats.hp).toBe(expectedHp(BULBASAUR.baseStats.hp, 5));
+    expect(lowLevelBulbasaur.stats.attack).toBe(expectedBattleStat(BULBASAUR.baseStats.attack, 5));
+    expect(lowLevelBulbasaur.stats.speed).toBe(expectedBattleStat(BULBASAUR.baseStats.speed, 5));
+
+    expect(midLevelBulbasaur.stats.hp).toBe(expectedHp(BULBASAUR.baseStats.hp, 50));
+    expect(midLevelBulbasaur.stats.spAttack).toBe(
+      expectedBattleStat(BULBASAUR.baseStats.spAttack, 50),
+    );
+  });
+
+  it('keeps HP scaling distinct from non-HP stats', () => {
+    const bulbasaur = new Pokemon(BULBASAUR, 12);
+
+    expect(bulbasaur.stats.hp).toBe(expectedHp(BULBASAUR.baseStats.hp, 12));
+    expect(bulbasaur.stats.hp).not.toBe(expectedBattleStat(BULBASAUR.baseStats.hp, 12));
+  });
+});
+
+describe('Pokemon damage, fainting, and healing', () => {
+  it('clamps damage and updates fainted state', () => {
+    const squirtle = new Pokemon(SQUIRTLE, 8);
+    const maxHp = squirtle.maxHp;
+
+    expect(squirtle.takeDamage(6)).toBe(6);
+    expect(squirtle.currentHp).toBe(maxHp - 6);
+    expect(squirtle.isFainted).toBe(false);
+
+    expect(squirtle.takeDamage(999)).toBe(maxHp - 6);
+    expect(squirtle.currentHp).toBe(0);
+    expect(squirtle.isFainted).toBe(true);
+  });
+
+  it('supports partial and full healing with proper clamping', () => {
+    const charmander = new Pokemon(CHARMANDER, 9);
+    const maxHp = charmander.maxHp;
+
+    charmander.takeDamage(maxHp);
+    expect(charmander.isFainted).toBe(true);
+
+    expect(charmander.heal(4)).toBe(4);
+    expect(charmander.currentHp).toBe(4);
+    expect(charmander.isFainted).toBe(false);
+
+    expect(charmander.heal(500)).toBe(maxHp - 4);
+    expect(charmander.currentHp).toBe(maxHp);
+
+    charmander.takeDamage(1);
+    expect(charmander.heal()).toBe(1);
+    expect(charmander.currentHp).toBe(maxHp);
+  });
+});
+
+describe('Move runtime PP handling', () => {
+  it('consumes PP until exhausted and cannot go below zero', () => {
+    const move = new Move(TACKLE);
+
+    for (let index = 0; index < TACKLE.pp; index += 1) {
+      expect(move.use()).toBe(true);
+    }
+
+    expect(move.pp).toBe(0);
+    expect(move.canUse()).toBe(false);
+    expect(move.use()).toBe(false);
+    expect(move.pp).toBe(0);
+  });
+
+  it('restores PP partially, fully, and with max clamping', () => {
+    const move = new Move(TACKLE);
+
+    move.use();
+    move.use();
+    expect(move.pp).toBe(TACKLE.pp - 2);
+
+    move.restorePp(1);
+    expect(move.pp).toBe(TACKLE.pp - 1);
+
+    move.restorePp(99);
+    expect(move.pp).toBe(TACKLE.pp);
+
+    move.use();
+    move.restorePp();
+    expect(move.pp).toBe(TACKLE.pp);
+  });
+});
+
+describe('Pokemon move learnset behavior', () => {
+  it('caps known moves at four and keeps the latest learned moves', () => {
+    const moves = [
+      new MoveBase({
+        name: 'Move A',
+        type: PokemonType.Normal,
+        power: 40,
+        accuracy: 100,
+        pp: 10,
+        category: MoveCategory.Physical,
+      }),
+      new MoveBase({
+        name: 'Move B',
+        type: PokemonType.Normal,
+        power: 40,
+        accuracy: 100,
+        pp: 10,
+        category: MoveCategory.Physical,
+      }),
+      new MoveBase({
+        name: 'Move C',
+        type: PokemonType.Normal,
+        power: 40,
+        accuracy: 100,
+        pp: 10,
+        category: MoveCategory.Physical,
+      }),
+      new MoveBase({
+        name: 'Move D',
+        type: PokemonType.Normal,
+        power: 40,
+        accuracy: 100,
+        pp: 10,
+        category: MoveCategory.Physical,
+      }),
+      new MoveBase({
+        name: 'Move E',
+        type: PokemonType.Normal,
+        power: 40,
+        accuracy: 100,
+        pp: 10,
+        category: MoveCategory.Physical,
+      }),
+    ];
+
+    const trainingDummy = new PokemonBase({
+      name: 'Training Dummy',
+      primaryType: PokemonType.Normal,
+      baseStats: {
+        hp: 50,
+        attack: 50,
+        defense: 50,
+        spAttack: 50,
+        spDefense: 50,
+        speed: 50,
+      },
+      learnset: [
+        { level: 1, move: moves[0] },
+        { level: 2, move: moves[1] },
+        { level: 3, move: moves[2] },
+        { level: 4, move: moves[3] },
+        { level: 5, move: moves[4] },
+      ],
+      frontSprite: 'sprites/pokemon/training_dummy_front.png',
+      backSprite: 'sprites/pokemon/training_dummy_back.png',
+    });
+    const pokemon = new Pokemon(trainingDummy, 10);
+
+    expect(pokemon.moves).toHaveLength(4);
+    expect(pokemon.moves.map((move) => move.base.name)).toEqual(['Move B', 'Move C', 'Move D', 'Move E']);
+  });
+});
+
+describe('PokemonParty', () => {
+  it('returns the first healthy Pokemon and detects all-fainted parties', () => {
+    const bulbasaur = new Pokemon(BULBASAUR, 6);
+    const squirtle = new Pokemon(SQUIRTLE, 6);
+    const party = new PokemonParty([bulbasaur, squirtle]);
+
+    expect(party.getHealthyPokemon()).toBe(bulbasaur);
+    expect(party.isAllFainted()).toBe(false);
+
+    bulbasaur.takeDamage(999);
+    expect(party.getHealthyPokemon()).toBe(squirtle);
+    expect(party.isAllFainted()).toBe(false);
+
+    squirtle.takeDamage(999);
+    expect(party.getHealthyPokemon()).toBeNull();
+    expect(party.isAllFainted()).toBe(true);
+  });
+
+  it('supports adding and removing party members', () => {
+    const party = new PokemonParty();
+    const charmander = new Pokemon(CHARMANDER, 5);
+
+    party.addPokemon(charmander);
+    expect(party.pokemon).toHaveLength(1);
+    expect(party.removePokemon(charmander)).toBe(true);
+    expect(party.pokemon).toHaveLength(0);
+    expect(party.removePokemon(charmander)).toBe(false);
+  });
+});
