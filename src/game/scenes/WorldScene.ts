@@ -13,6 +13,8 @@ const MAP_WIDTH = 26;
 const MAP_HEIGHT = 20;
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 3;
+const PLAYER_FEET_PIXEL_Y = 27;
+const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - PLAYER_FEET_PIXEL_Y;
 
 const GRASS_BASE_TILE: number = 200;
 const GRASS_VARIANT_A_TILE: number = 201;
@@ -109,10 +111,13 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createPlayer(): void {
+    const spawnX = this.currentTile.x * TILE_SIZE;
+    const spawnY = this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET;
+
     this.player = this.add
       .sprite(
-        this.currentTile.x * TILE_SIZE,
-        this.currentTile.y * TILE_SIZE,
+        spawnX,
+        spawnY,
         'character',
         getIdleFrame(this.facing),
       )
@@ -166,8 +171,14 @@ export class WorldScene extends Phaser.Scene {
     this.targetTile = targetTile;
     this.stepProgress = 0;
 
-    this.stepStart.set(this.currentTile.x * TILE_SIZE, this.currentTile.y * TILE_SIZE);
-    this.stepEnd.set(targetTile.x * TILE_SIZE, targetTile.y * TILE_SIZE);
+    this.stepStart.set(
+      this.currentTile.x * TILE_SIZE,
+      this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+    );
+    this.stepEnd.set(
+      targetTile.x * TILE_SIZE,
+      targetTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+    );
 
     this.player.play(getWalkAnimationKey(this.facing), true);
   }
