@@ -21,6 +21,7 @@ import { type WorldEntity } from '../world/npcs';
 import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { DialogBox } from '../ui/DialogBox';
 import { rollEncounter } from '../world/wildEncounters';
+import { audioManager } from '../audio/AudioManager';
 
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
@@ -71,6 +72,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   public create(): void {
+    void audioManager.startTheme('overworld');
     this.createMap();
     this.createEntities();
     this.createPlayer();
@@ -234,6 +236,7 @@ export class WorldScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.ENTER,
       Phaser.Input.Keyboard.KeyCodes.P,
     ]);
+    this.input.keyboard.on?.('keydown-M', () => audioManager.toggleMute());
 
     this.controls = {
       up: cursors.up,
@@ -364,6 +367,7 @@ export class WorldScene extends Phaser.Scene {
     if (isTallGrassInMap(this.currentMap, this.currentTile) && this.currentMap.encounters) {
       const wild = rollEncounter(this.currentMap.encounters);
       if (wild) {
+        audioManager.playEncounter();
         this.scene.start('battle', { wild, party: this.party });
       }
     }
