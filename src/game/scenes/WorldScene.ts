@@ -23,6 +23,7 @@ import { DialogBox } from '../ui/DialogBox';
 import { rollEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
+import { Bag } from '../items';
 
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
@@ -39,6 +40,7 @@ interface ControlKeys {
   s: Phaser.Input.Keyboard.Key;
   d: Phaser.Input.Keyboard.Key;
   party: Phaser.Input.Keyboard.Key;
+  bag: Phaser.Input.Keyboard.Key;
   save: Phaser.Input.Keyboard.Key;
   interact: Phaser.Input.Keyboard.Key[];
 }
@@ -70,9 +72,9 @@ export class WorldScene extends Phaser.Scene {
   private mapObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly npcSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
-  // Temporary run inventory seam until the bag and extraction stash systems own these values.
   private pokeBalls = 5;
   private caughtPokemonStash: Pokemon[] = [];
+  private bag = new Bag({ potion: 3, antidote: 1, 'poke-ball': 5, 'great-ball': 1 });
   private currentTile: GridPosition = { x: 6, y: 8 };
   private targetTile: GridPosition | null = null;
   private facing: Direction = 'down';
@@ -91,6 +93,7 @@ export class WorldScene extends Phaser.Scene {
     }
     if (data.pokeBalls !== undefined) {
       this.pokeBalls = data.pokeBalls;
+      this.syncPokeBallsToBag();
     }
     if (data.caughtPokemonStash) {
       this.caughtPokemonStash = data.caughtPokemonStash;
@@ -117,6 +120,11 @@ export class WorldScene extends Phaser.Scene {
 
     if (Phaser.Input.Keyboard.JustDown(this.controls.party)) {
       this.openParty();
+      return;
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.controls.bag)) {
+      this.openBag();
       return;
     }
 
@@ -262,6 +270,7 @@ export class WorldScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.SPACE,
       Phaser.Input.Keyboard.KeyCodes.ENTER,
       Phaser.Input.Keyboard.KeyCodes.P,
+      Phaser.Input.Keyboard.KeyCodes.B,
       Phaser.Input.Keyboard.KeyCodes.K,
     ]);
     this.input.keyboard.on?.('keydown-M', () => audioManager.toggleMute());
@@ -276,6 +285,7 @@ export class WorldScene extends Phaser.Scene {
       s: wasdKeys.S,
       d: wasdKeys.D,
       party: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P),
+      bag: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B),
       save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
       interact: [
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
@@ -348,6 +358,15 @@ export class WorldScene extends Phaser.Scene {
     this.scene.launch('party', { party: this.party });
   }
 
+  private openBag(): void {
+    this.scene.pause();
+    this.scene.launch('bag', {
+      bag: this.bag,
+      party: this.party,
+      onItemUsed: () => this.saveGame(),
+    });
+  }
+
   private isBlocked(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
@@ -401,7 +420,7 @@ export class WorldScene extends Phaser.Scene {
         this.scene.start('battle', {
           wild,
           party: this.party,
-          pokeBalls: this.pokeBalls,
+          pokeBalls: this.bag.count('poke-ball'),
           caughtPokemonStash: this.caughtPokemonStash,
         });
       }
@@ -451,8 +470,17 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.party = savedGame.party;
+    this.bag = savedGame.bag;
     this.currentMap = getWorldMap(savedGame.mapId);
     this.currentTile = { ...savedGame.position };
+  }
+
+  private syncPokeBallsToBag(): void {
+    const existingPokeBalls = this.bag.count('poke-ball');
+    if (existingPokeBalls > 0) {
+      this.bag.remove('poke-ball', existingPokeBalls);
+    }
+    this.bag.add('poke-ball', this.pokeBalls);
   }
 
   private saveGame(): void {
@@ -460,6 +488,7 @@ export class WorldScene extends Phaser.Scene {
       party: this.party,
       mapId: this.currentMap.id,
       position: this.currentTile,
+      bag: this.bag,
     });
   }
 }

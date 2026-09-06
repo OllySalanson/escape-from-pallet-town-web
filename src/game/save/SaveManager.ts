@@ -1,4 +1,5 @@
 import { Move, Pokemon, PokemonParty, getSpeciesById } from '../pokemon';
+import { Bag, type BagContents } from '../items/Bag';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 import type { GridPosition } from '../movement/gridMovement';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
@@ -37,6 +38,7 @@ export interface SaveData {
   readonly mapId: WorldMapId;
   readonly position: GridPosition;
   readonly items: readonly string[];
+  readonly bag: BagContents;
   readonly stash: SavedStash;
 }
 
@@ -45,6 +47,7 @@ export interface RestoredGame {
   readonly mapId: WorldMapId;
   readonly position: GridPosition;
   readonly items: readonly string[];
+  readonly bag: Bag;
   readonly stash: SavedStash;
 }
 
@@ -53,6 +56,7 @@ export interface SaveGameState {
   readonly mapId: WorldMapId;
   readonly position: GridPosition;
   readonly items?: readonly string[];
+  readonly bag?: Bag;
   readonly stash?: Partial<SavedStash>;
 }
 
@@ -119,6 +123,7 @@ export function serializeGame(state: SaveGameState): SaveData {
     mapId: state.mapId,
     position: { ...state.position },
     items: [...(state.items ?? [])],
+    bag: state.bag?.toJSON() ?? {},
     stash: {
       pokemon: [...(state.stash?.pokemon ?? [])],
       items: [...(state.stash?.items ?? [])],
@@ -158,6 +163,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     mapId,
     position: { ...position },
     items: stringArray(value.items),
+    bag: new Bag(bagContents(value.bag)),
     stash: deserializeStash(value.stash),
   };
 }
@@ -283,4 +289,18 @@ function clampInteger(value: unknown, minimum: number, maximum: number, fallback
 
 function stringArray(value: unknown): readonly string[] {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+}
+
+function bagContents(value: unknown): BagContents {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const contents: Record<string, number> = {};
+  for (const [itemId, quantity] of Object.entries(value)) {
+    if (typeof quantity === 'number' && Number.isInteger(quantity) && quantity > 0) {
+      contents[itemId] = quantity;
+    }
+  }
+  return contents;
 }

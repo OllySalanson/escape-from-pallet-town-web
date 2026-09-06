@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Pokemon, PokemonParty, CHARMANDER, PIDGEY } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
+import { Bag } from '../items';
 import { SAVE_KEY, SaveManager } from './SaveManager';
 
 class MemoryStorage {
@@ -27,6 +28,7 @@ describe('SaveManager', () => {
     const pidgey = new Pokemon(PIDGEY, 8);
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
+    const bag = new Bag({ potion: 2, antidote: 1, 'poke-ball': 5 });
 
     expect(
       saves.save({
@@ -34,6 +36,7 @@ describe('SaveManager', () => {
         mapId: 'route-1',
         position: { x: 7, y: 21 },
         items: ['potion'],
+        bag,
         stash: { items: ['poke-ball'] },
       }),
     ).toBe(true);
@@ -44,6 +47,7 @@ describe('SaveManager', () => {
     expect(restored?.mapId).toBe('route-1');
     expect(restored?.position).toEqual({ x: 7, y: 21 });
     expect(restored?.items).toEqual(['potion']);
+    expect(restored?.bag.toJSON()).toEqual({ potion: 2, antidote: 1, 'poke-ball': 5 });
     expect(restored?.stash.items).toEqual(['poke-ball']);
     expect(restored?.party.pokemon).toHaveLength(2);
     expect(restored?.party.pokemon[0]).toMatchObject({
