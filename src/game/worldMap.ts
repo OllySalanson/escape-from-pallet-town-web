@@ -8,6 +8,7 @@ export const CLASSIC_TILE = {
   DIRT_PATH: 44,
   TREE_RED: 40,
   TREE_LEAFY: 41,
+  TALL_GRASS_TUFT: 41,
   FLOWER_RED: 7,
   FLOWER_BLUE: 31,
   FLOWER_YELLOW: 55,
@@ -46,6 +47,10 @@ const POND_LEFT = 12;
 const POND_TOP = 2;
 const POND_WIDTH = 7;
 const POND_HEIGHT = 6;
+const TALL_GRASS_LEFT = 3;
+const TALL_GRASS_TOP = 22;
+const TALL_GRASS_WIDTH = MAP_WIDTH - 6;
+const TALL_GRASS_HEIGHT = 12;
 
 export function buildGroundLayerData(): number[][] {
   const data = createLayer(CLASSIC_TILE.GRASS);
@@ -54,8 +59,32 @@ export function buildGroundLayerData(): number[][] {
   paintRectangle(data, 7, 0, 2, 22, CLASSIC_TILE.DIRT_PATH);
   paintRectangle(data, 7, 10, MAP_WIDTH - 7, 2, CLASSIC_TILE.DIRT_PATH);
   paintRectangle(data, 7, 34, 2, MAP_HEIGHT - 34, CLASSIC_TILE.DIRT_PATH);
-  paintRectangle(data, 3, 22, MAP_WIDTH - 6, 12, CLASSIC_TILE.TALL_GRASS);
+  paintRectangle(
+    data,
+    TALL_GRASS_LEFT,
+    TALL_GRASS_TOP,
+    TALL_GRASS_WIDTH,
+    TALL_GRASS_HEIGHT,
+    CLASSIC_TILE.TALL_GRASS,
+  );
   paintPond(data);
+
+  return data;
+}
+
+export function buildTallGrassLayerData(): number[][] {
+  const data = createLayer(-1);
+
+  // Tile 41 is the classic tileset's dark-green leafy tuft. Rendering it over
+  // the normal grass base gives the encounter zone a clear tall-grass texture.
+  paintRectangle(
+    data,
+    TALL_GRASS_LEFT,
+    TALL_GRASS_TOP,
+    TALL_GRASS_WIDTH,
+    TALL_GRASS_HEIGHT,
+    CLASSIC_TILE.TALL_GRASS_TUFT,
+  );
 
   return data;
 }

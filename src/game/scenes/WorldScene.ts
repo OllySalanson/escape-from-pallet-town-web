@@ -12,6 +12,8 @@ import {
   buildCollisionData,
   buildDetailLayerData,
   buildGroundLayerData,
+  buildTallGrassLayerData,
+  CLASSIC_TILE,
   isTallGrassTile,
   MAP_HEIGHT,
   MAP_WIDTH,
@@ -128,12 +130,23 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const groundLayer = map.createBlankLayer('ground', tileset);
+    const tallGrassLayer = map.createBlankLayer('tall-grass', tileset);
     const detailLayer = map.createBlankLayer('detail', tileset);
-    if (!groundLayer || !detailLayer) {
+    if (!groundLayer || !tallGrassLayer || !detailLayer) {
       throw new Error('Tilemap layers failed to initialize.');
     }
 
-    groundLayer.putTilesAt(buildGroundLayerData(), 0, 0);
+    groundLayer.putTilesAt(
+      buildGroundLayerData().map((row) =>
+        row.map((tile) =>
+          tile === CLASSIC_TILE.TALL_GRASS ? CLASSIC_TILE.GRASS : tile,
+        ),
+      ),
+      0,
+      0,
+    );
+    tallGrassLayer.putTilesAt(buildTallGrassLayerData(), 0, 0);
+    tallGrassLayer.setDepth(1);
     detailLayer.putTilesAt(buildDetailLayerData(), 0, 0);
     detailLayer.setDepth(1);
   }
