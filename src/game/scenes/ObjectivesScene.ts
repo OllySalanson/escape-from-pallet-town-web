@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { buildObjectiveGuide } from '../objectives/ObjectiveGuide';
+import type { GridPosition } from '../movement/gridMovement';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { WorldMapId } from '../worldMap';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -7,6 +8,7 @@ import { MenuOverlay } from '../ui/MenuOverlay';
 export interface ObjectivesSceneData {
   readonly runSession: ActiveRunSession;
   readonly currentMapId: WorldMapId;
+  readonly currentPosition: GridPosition;
   readonly activatedPoiIds: readonly string[];
   /** Only resume WorldScene when this overlay paused it. */
   readonly pausedWorld: boolean;
@@ -28,6 +30,7 @@ export class ObjectivesScene extends Phaser.Scene {
     this.pausedWorld = data.pausedWorld;
     const guide = buildObjectiveGuide(data.runSession, {
       currentMapId: data.currentMapId,
+      currentPosition: data.currentPosition,
       activatedPoiIds: new Set(data.activatedPoiIds),
     });
     this.createOverlay(guide);

@@ -9,4 +9,17 @@ describe('in-run objective HUD layout', () => {
     expect(sceneSource).toContain('.setSize(164, objectivesHeight)');
     expect(sceneSource).toContain('.setY(24 + objectivesHeight / 2)');
   });
+
+  it('keeps the active first-contract destination visible and direction-aware', () => {
+    expect(sceneSource).toContain('SOUTH: ROUTE 1');
+    expect(sceneSource).toContain('LOST KIT: ${directionTo(this.currentTile, contract.position)}');
+    expect(sceneSource).toContain('firstContractNavigationCue');
+  });
+
+  it('labels the first route transition and Oak’s Field Station without exposing the forest gate', () => {
+    expect(sceneSource).toContain('createRouteTransitionLabels');
+    expect(sceneSource).toContain("destinationName = warp.destinationMapId === 'route-1' ? 'ROUTE 1' : 'PALLET TOWN'");
+    expect(sceneSource).toContain('poi.label');
+    expect(sceneSource).not.toContain("'VIRIDIAN FOREST'");
+  });
 });
