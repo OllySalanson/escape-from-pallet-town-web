@@ -951,6 +951,7 @@ export class BattleScene extends Phaser.Scene {
 
   private completeReturnToWorld(): void {
     if (this.returnScene && this.scene.manager.keys[this.returnScene]) {
+      this.persistActivePokemonHp();
       this.scene.start(this.returnScene);
       return;
     }
