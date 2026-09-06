@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { ITEM_DEFINITIONS, type ItemCategory, type ItemDefinition, type ItemId } from '../items';
+import { Bag, ITEM_DEFINITIONS, type ItemCategory, type ItemDefinition, type ItemId } from '../items';
 import { PokemonParty } from '../pokemon';
 import { activeRunManager, type ItemStack, type SecureSlot } from '../run';
+import { createActiveRunSession } from '../run/RunSession';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { type SecureSlot as StashSecureSlot, type Stash, type StashedPokemon } from '../stash';
 
@@ -14,14 +15,6 @@ type HubTab = (typeof TABS)[number];
 
 export interface HubSceneData {
   readonly savedGame?: RestoredGame;
-}
-
-export interface RunHandoff {
-  readonly savedGame: RestoredGame;
-  readonly party: PokemonParty;
-  readonly runManager: typeof activeRunManager;
-  readonly broughtPokemonIds: readonly string[];
-  readonly stashSecureSlot: StashSecureSlot;
 }
 
 export class HubScene extends Phaser.Scene {
@@ -258,14 +251,19 @@ export class HubScene extends Phaser.Scene {
       { mapId: 'pallet-town', durationMs: RUN_DURATION_MS },
       secureSlot,
     );
-    const handoff: RunHandoff = {
+    const runSession = createActiveRunSession(
+      activeRunManager,
+      secureSlot,
+      this.stashSecureSlot(),
+      this.selectedPokemonIds,
+      this.loadoutItems,
+    );
+    this.scene.start('world', {
       savedGame: this.savedGame,
       party: new PokemonParty(party.map((stored) => stored.pokemon)),
-      runManager: activeRunManager,
-      broughtPokemonIds: [...this.selectedPokemonIds],
-      stashSecureSlot: this.stashSecureSlot(),
-    };
-    this.scene.start('world', handoff);
+      bag: new Bag(Object.fromEntries(this.loadoutItems.map(({ itemId, quantity }) => [itemId, quantity]))),
+      runSession,
+    });
   }
 
   private runSecureSlot(party: readonly StashedPokemon[]): SecureSlot {
