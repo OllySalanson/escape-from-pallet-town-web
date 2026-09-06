@@ -5,12 +5,16 @@ import { PokemonType } from '../PokemonType';
 import { EMBER, GROWL, POISON_POWDER, SING, SUPER_SONIC, TACKLE, THUNDER_WAVE } from '../moves';
 import { BULBASAUR, BUTTERFREE, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU } from '../species';
 import {
+  attemptCatch,
   chooseEnemyMove,
   createBattleState,
+  getCatchChance,
   replacePlayerPokemon,
+  resolveCatchAttempt,
   resolveEnemyTurn,
   resolveTurn,
 } from './battleEngine';
+import { PrimaryStatus } from './status';
 import { calculateDamage } from './damage';
 import { applyStatBoost, createStatStages, getStagedStat } from './statStages';
 import { getTypeEffectiveness } from './typeChart';
@@ -280,6 +284,50 @@ describe('battle turn resolution', () => {
 
     expect(result.events).toContainEqual({ type: 'missed', user: 'player' });
     expect(result.state.enemy.currentHp).toBe(state.enemy.currentHp);
+  });
+});
+
+describe('catching', () => {
+  it('raises catch chance as HP falls and for qualifying status and ball modifiers', () => {
+    expect(getCatchChance(100, 100, null)).toBe(0.15);
+    expect(getCatchChance(1, 100, null)).toBeCloseTo(0.744);
+    expect(getCatchChance(100, 100, PrimaryStatus.Paralysis)).toBeCloseTo(0.3);
+    expect(getCatchChance(100, 100, PrimaryStatus.Sleep)).toBeCloseTo(0.4);
+    expect(getCatchChance(100, 100, PrimaryStatus.Sleep, 2)).toBeCloseTo(0.8);
+    expect(getCatchChance(0, 100, PrimaryStatus.Sleep, 2)).toBe(0.95);
+  });
+
+  it('uses pinned boundary rolls and produces classic shake counts', () => {
+    const state = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
+    const fullHealthEnemy = state.enemy;
+
+    expect(attemptCatch(fullHealthEnemy, () => 0.149999)).toMatchObject({ caught: true, shakes: 3 });
+    expect(attemptCatch(fullHealthEnemy, () => 0.15)).toMatchObject({ caught: false, shakes: 2 });
+    expect(attemptCatch(fullHealthEnemy, () => 1)).toMatchObject({ caught: false, shakes: 0 });
+  });
+
+  it('marks a successful catch as a battle-ending outcome', () => {
+    const state = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
+    const result = resolveCatchAttempt(state, () => 0);
+
+    expect(result.state.outcome).toBe('caught');
+    expect(result.events).toEqual([
+      { type: 'ball-thrown', name: 'Bulbasaur' },
+      { type: 'catch-shake', count: 1 },
+      { type: 'catch-shake', count: 2 },
+      { type: 'catch-shake', count: 3 },
+      { type: 'caught', name: 'Bulbasaur' },
+    ]);
+  });
+
+  it('lets the enemy act after a failed catch', () => {
+    const state = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
+    const failedCatch = resolveCatchAttempt(state, () => 1);
+    const enemyTurn = resolveEnemyTurn(failedCatch.state, maximumRandom);
+
+    expect(failedCatch.state.outcome).toBe('active');
+    expect(failedCatch.events.at(-1)).toEqual({ type: 'broke-free', name: 'Bulbasaur' });
+    expect(enemyTurn.events.some((event) => event.type === 'used-move' && event.user === 'enemy')).toBe(true);
   });
 });
 

@@ -46,6 +46,8 @@ interface ControlKeys {
 export interface WorldSceneData {
   readonly savedGame?: RestoredGame;
   readonly party?: PokemonParty;
+  readonly pokeBalls?: number;
+  readonly caughtPokemonStash?: Pokemon[];
 }
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
@@ -68,6 +70,9 @@ export class WorldScene extends Phaser.Scene {
   private mapObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly npcSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
+  // Temporary run inventory seam until the bag and extraction stash systems own these values.
+  private pokeBalls = 5;
+  private caughtPokemonStash: Pokemon[] = [];
   private currentTile: GridPosition = { x: 6, y: 8 };
   private targetTile: GridPosition | null = null;
   private facing: Direction = 'down';
@@ -83,6 +88,12 @@ export class WorldScene extends Phaser.Scene {
     void audioManager.startTheme('overworld');
     if (data.party) {
       this.party = data.party;
+    }
+    if (data.pokeBalls !== undefined) {
+      this.pokeBalls = data.pokeBalls;
+    }
+    if (data.caughtPokemonStash) {
+      this.caughtPokemonStash = data.caughtPokemonStash;
     }
     this.createMap();
     this.createEntities();
@@ -387,7 +398,12 @@ export class WorldScene extends Phaser.Scene {
       const wild = rollEncounter(this.currentMap.encounters);
       if (wild) {
         audioManager.playEncounter();
-        this.scene.start('battle', { wild, party: this.party });
+        this.scene.start('battle', {
+          wild,
+          party: this.party,
+          pokeBalls: this.pokeBalls,
+          caughtPokemonStash: this.caughtPokemonStash,
+        });
       }
     }
   }

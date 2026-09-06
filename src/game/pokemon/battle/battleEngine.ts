@@ -32,7 +32,7 @@ export interface BattleState {
   readonly player: BattleCombatant;
   readonly enemy: BattleCombatant;
   readonly playerStatStages: ReadonlyMap<Pokemon, StatStages>;
-  readonly outcome: 'active' | 'victory' | 'defeat';
+  readonly outcome: 'active' | 'victory' | 'defeat' | 'caught';
 }
 
 export type BattleEvent =
@@ -48,7 +48,11 @@ export type BattleEvent =
   | { readonly type: 'status-damage'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: PrimaryStatusType; readonly damage: number }
   | { readonly type: 'status-cured'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: 'sleep' | 'freeze' | 'confusion' }
   | { readonly type: 'confusion-self-hit'; readonly user: 'player' | 'enemy'; readonly name: string; readonly damage: number }
-  | { readonly type: 'stat-stage-changed'; readonly user: 'player' | 'enemy'; readonly name: string; readonly stat: BattleStat; readonly stages: number };
+  | { readonly type: 'stat-stage-changed'; readonly user: 'player' | 'enemy'; readonly name: string; readonly stat: BattleStat; readonly stages: number }
+  | { readonly type: 'ball-thrown'; readonly name: string }
+  | { readonly type: 'catch-shake'; readonly count: number }
+  | { readonly type: 'caught'; readonly name: string }
+  | { readonly type: 'broke-free'; readonly name: string };
 
 export type StatusName = PrimaryStatusType | 'confusion';
 
@@ -56,6 +60,48 @@ export interface TurnResult {
   readonly state: BattleState;
   readonly events: readonly BattleEvent[];
 }
+
+export interface CatchAttempt {
+  readonly chance: number;
+  readonly caught: boolean;
+  readonly shakes: number;
+}
+
+/**
+ * Catch chance is a deliberately simple, visible rule for the extraction loop:
+ * 15% at full HP, rising linearly by up to 60% as HP falls, plus a 25% bonus
+ * for sleep/freeze or 15% for paralysis/poison/burn, then the ball modifier.
+ * The result is capped at 95%, so every throw retains a small amount of risk.
+ */
+export const getCatchChance = (
+  currentHp: number,
+  maxHp: number,
+  primaryStatus: PrimaryStatusType | null,
+  ballModifier = 1,
+): number => {
+  const hpFraction = maxHp > 0 ? Math.min(1, Math.max(0, currentHp / maxHp)) : 1;
+  const statusBonus =
+    primaryStatus === PrimaryStatus.Sleep || primaryStatus === PrimaryStatus.Freeze
+      ? 0.25
+      : primaryStatus
+        ? 0.15
+        : 0;
+  return Math.min(0.95, Math.max(0, (0.15 + (1 - hpFraction) * 0.6 + statusBonus) * ballModifier));
+};
+
+export const attemptCatch = (
+  combatant: BattleCombatant,
+  random: RandomSource,
+  ballModifier = 1,
+): CatchAttempt => {
+  const chance = getCatchChance(combatant.currentHp, combatant.pokemon.maxHp, combatant.primaryStatus, ballModifier);
+  const roll = clampRandom(random());
+  const caught = roll < chance;
+  // Failed throws can still wobble up to twice. A successful throw always
+  // shows the classic three shakes before the capture message.
+  const shakes = caught ? 3 : Math.min(2, Math.floor((chance / Math.max(roll, 0.000001)) * 3));
+  return { chance, caught, shakes };
+};
 
 const toCombatant = (pokemon: Pokemon): BattleCombatant => ({
   pokemon,
@@ -147,6 +193,30 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
 
   const enemyMoveIndex = chooseEnemyMove(state.enemy, random);
   return enemyMoveIndex === null ? { state, events: [] } : applyMove(state, 'enemy', enemyMoveIndex, random);
+};
+
+export const resolveCatchAttempt = (
+  state: BattleState,
+  random: RandomSource,
+  ballModifier = 1,
+): TurnResult => {
+  if (state.outcome !== 'active') {
+    return { state, events: [] };
+  }
+
+  const attempt = attemptCatch(state.enemy, random, ballModifier);
+  const name = state.enemy.pokemon.base.name;
+  const events: BattleEvent[] = [
+    { type: 'ball-thrown', name },
+    ...Array.from({ length: attempt.shakes }, (_, index) => ({ type: 'catch-shake' as const, count: index + 1 })),
+  ];
+  if (attempt.caught) {
+    return {
+      state: { ...state, outcome: 'caught' },
+      events: [...events, { type: 'caught', name }],
+    };
+  }
+  return { state, events: [...events, { type: 'broke-free', name }] };
 };
 
 const applyMove = (
