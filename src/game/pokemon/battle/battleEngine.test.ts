@@ -4,7 +4,13 @@ import { Pokemon } from '../Pokemon';
 import { PokemonType } from '../PokemonType';
 import { EMBER, TACKLE } from '../moves';
 import { BULBASAUR, CHARMANDER, PIDGEY, PIKACHU } from '../species';
-import { chooseEnemyMove, createBattleState, resolveTurn } from './battleEngine';
+import {
+  chooseEnemyMove,
+  createBattleState,
+  replacePlayerPokemon,
+  resolveEnemyTurn,
+  resolveTurn,
+} from './battleEngine';
 import { calculateDamage } from './damage';
 import { getTypeEffectiveness } from './typeChart';
 
@@ -165,6 +171,21 @@ describe('battle turn resolution', () => {
       { type: 'used-move', user: 'enemy', move: TACKLE.name },
       { type: 'fainted', user: 'player', name: 'Pidgey' },
     ]);
+  });
+
+  it('allows a healthy replacement and gives the enemy the next move', () => {
+    const charmander = new Pokemon(CHARMANDER, 10);
+    const pidgey = new Pokemon(PIDGEY, 10);
+    const enemy = new Pokemon(BULBASAUR, 10);
+    const state = createBattleState(charmander, enemy);
+
+    const switchedState = replacePlayerPokemon(state, pidgey);
+    const result = resolveEnemyTurn(switchedState, maximumRandom);
+
+    expect(result.state.player.pokemon).toBe(pidgey);
+    expect(result.events[0]).toMatchObject({ type: 'used-move', user: 'enemy' });
+    expect(result.state.player.currentHp).toBeLessThan(pidgey.maxHp);
+    expect(result.state.enemy.currentHp).toBe(enemy.maxHp);
   });
 
   it('selects only legal enemy moves and decrements PP for each combatant', () => {

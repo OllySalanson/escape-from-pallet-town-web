@@ -98,6 +98,21 @@ export const resolveTurn = (
   return { state: nextState, events };
 };
 
+export const replacePlayerPokemon = (state: BattleState, pokemon: Pokemon): BattleState => ({
+  ...state,
+  player: toCombatant(pokemon),
+  outcome: pokemon.isFainted ? 'defeat' : state.enemy.currentHp === 0 ? 'victory' : 'active',
+});
+
+export const resolveEnemyTurn = (state: BattleState, random: RandomSource): TurnResult => {
+  if (state.outcome !== 'active') {
+    return { state, events: [] };
+  }
+
+  const enemyMoveIndex = chooseEnemyMove(state.enemy, random);
+  return enemyMoveIndex === null ? { state, events: [] } : applyMove(state, 'enemy', enemyMoveIndex, random);
+};
+
 const applyMove = (
   state: BattleState,
   user: 'player' | 'enemy',
