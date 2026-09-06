@@ -9,6 +9,8 @@ export interface WorldPoi {
   readonly label: string;
   readonly description: string;
   readonly reward: readonly { readonly itemId: ItemId; readonly quantity: number }[];
+  /** A landmark can change the route state even when it has no item reward. */
+  readonly effect?: 'activate-radio';
 }
 
 export type PoiActivationResult = 'activated' | 'unavailable' | 'bag-full';
@@ -46,6 +48,26 @@ export const WORLD_POIS: readonly WorldPoi[] = [
       { itemId: 'poke-ball', quantity: 2 },
       { itemId: 'potion', quantity: 1 },
     ],
+  },
+  {
+    id: 'floodplain-supply-vault',
+    mapId: 'floodplain-relay',
+    position: { x: 27, y: 15 },
+    label: 'FLOODED SUPPLY VAULT',
+    description: 'High-value cache. The only return crosses the exposed flooded causeway. Extract to bank it.',
+    reward: [
+      { itemId: 'great-ball', quantity: 2 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    id: 'floodplain-ranger-radio',
+    mapId: 'floodplain-relay',
+    position: { x: 18, y: 7 },
+    label: 'RANGER STATION',
+    description: 'Hunter forecast: the road is exposed, reeds break sightlines, and the Radio Exit opens here.',
+    reward: [],
+    effect: 'activate-radio',
   },
 ];
 

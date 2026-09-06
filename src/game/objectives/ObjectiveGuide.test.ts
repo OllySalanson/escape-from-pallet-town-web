@@ -116,4 +116,32 @@ describe('objective field guide', () => {
     expect(routeGuide.hints[0]).toContain('south-east');
     expect(townGuide.hints.join(' ')).not.toContain('Viridian');
   });
+
+  it('explains Floodplain route and Radio Exit trade-offs before and after Ranger activation', () => {
+    const firstSession = createFirstContractSession();
+    const session = createActiveRunSession(
+      firstSession.manager,
+      {},
+      {},
+      [],
+      [],
+      [],
+      generateRunPlan(42, undefined, 'floodplain-relay', false),
+    );
+    const before = buildObjectiveGuide(session, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 15, y: 3 },
+      activatedPoiIds: new Set(),
+    });
+    const after = buildObjectiveGuide(session, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 18, y: 8 },
+      activatedPoiIds: new Set(['floodplain-ranger-radio']),
+    });
+
+    expect(before.hints.join(' ')).toContain('Maya');
+    expect(before.hints.join(' ')).toContain('Flooded Supply Vault');
+    expect(before.hints.join(' ')).toContain('activates the Radio Exit');
+    expect(after.hints.join(' ')).toContain('Radio Exit is active');
+  });
 });
