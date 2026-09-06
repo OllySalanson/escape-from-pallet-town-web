@@ -23,12 +23,37 @@ import { DialogBox } from '../ui/DialogBox';
 import { rollEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
-import { Bag } from '../items';
+import { Bag, type ItemId } from '../items';
+import { RunPhase } from '../run/RunManager';
+import type { ActiveRunSession } from '../run/RunSession';
 
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
 const PLAYER_FEET_PIXEL_Y = 27;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - PLAYER_FEET_PIXEL_Y;
+const EXTRACTION_UNLOCK_DELAY_MS = 30_000;
+
+interface ExtractionPoint {
+  readonly mapId: WorldMapDefinition['id'];
+  readonly position: GridPosition;
+  readonly label: string;
+  readonly unlockAtMs: number;
+}
+
+const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
+  {
+    mapId: 'pallet-town',
+    position: { x: 8, y: 42 },
+    label: 'SOUTH GATE',
+    unlockAtMs: 0,
+  },
+  {
+    mapId: 'route-1',
+    position: { x: 8, y: 30 },
+    label: 'ROUTE OUTPOST',
+    unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
+  },
+];
 
 interface ControlKeys {
   up: Phaser.Input.Keyboard.Key;
@@ -50,6 +75,8 @@ export interface WorldSceneData {
   readonly party?: PokemonParty;
   readonly pokeBalls?: number;
   readonly caughtPokemonStash?: Pokemon[];
+  /** Present only while playing an extraction raid launched by the hub. */
+  readonly runSession?: ActiveRunSession;
 }
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
@@ -80,6 +107,13 @@ export class WorldScene extends Phaser.Scene {
   private facing: Direction = 'down';
   private stepProgress = 0;
   private isWarping = false;
+  private extractionMarkers: Array<{
+    readonly point: ExtractionPoint;
+    readonly marker: Phaser.GameObjects.Rectangle;
+    readonly label: Phaser.GameObjects.Text;
+  }> = [];
+  private runSession: ActiveRunSession | undefined;
+  private pendingHubTransition = false;
 
   public constructor() {
     super('world');
@@ -87,6 +121,7 @@ export class WorldScene extends Phaser.Scene {
 
   public create(data: WorldSceneData = {}): void {
     this.restoreSavedGame(data.savedGame);
+    this.extractionMarkers = [];
     void audioManager.startTheme('overworld');
     if (data.party) {
       this.party = data.party;
@@ -98,6 +133,7 @@ export class WorldScene extends Phaser.Scene {
     if (data.caughtPokemonStash) {
       this.caughtPokemonStash = data.caughtPokemonStash;
     }
+    this.runSession = data.runSession;
     this.createMap();
     this.createEntities();
     this.createPlayer();
@@ -108,6 +144,12 @@ export class WorldScene extends Phaser.Scene {
 
   public update(_time: number, deltaMs: number): void {
     this.dialogBox.update(deltaMs);
+
+    this.advanceRunClock(deltaMs);
+    if (this.pendingHubTransition) {
+      this.handleDialogInput();
+      return;
+    }
 
     if (this.isWarping) {
       return;
@@ -161,6 +203,19 @@ export class WorldScene extends Phaser.Scene {
     this.showIdlePose();
   }
 
+  /**
+   * The single entry point for future world-item pickups. Keeping registration
+   * beside the inventory mutation prevents found loot from being lost at
+   * extraction.
+   */
+  public collectRunItem(itemId: ItemId, quantity = 1): boolean {
+    if (!this.bag.add(itemId, quantity)) {
+      return false;
+    }
+    this.runSession?.manager.registerFoundItem(itemId, quantity);
+    return true;
+  }
+
   private createMap(): void {
     this.collisionData = this.currentMap.collision.map((row) => [...row]);
     this.bounds = { width: this.currentMap.width, height: this.currentMap.height };
@@ -198,6 +253,34 @@ export class WorldScene extends Phaser.Scene {
     detailLayer.putTilesAt(this.currentMap.detailLayer.map((row) => [...row]), 0, 0);
     detailLayer.setDepth(1);
     this.mapObjects.push(groundLayer, tallGrassLayer, detailLayer);
+    this.createExtractionPoints();
+  }
+
+  private createExtractionPoints(): void {
+    if (!this.runSession) {
+      return;
+    }
+
+    for (const point of this.extractionPointsForCurrentMap()) {
+      const isOpen = this.isExtractionOpen(point);
+      const x = point.position.x * TILE_SIZE + TILE_SIZE / 2;
+      const y = point.position.y * TILE_SIZE + TILE_SIZE / 2;
+      const marker = this.add
+        .rectangle(x, y, 14, 14, isOpen ? 0x16a34a : 0x991b1b, 0.8)
+        .setStrokeStyle(2, isOpen ? 0xdcfce7 : 0xfecaca)
+        .setDepth(3 + point.position.y / 1000);
+      const label = this.add
+        .text(x, y - 13, `EXTRACT ${isOpen ? 'OPEN' : 'LOCKED'}`, {
+          fontFamily: 'monospace',
+          fontSize: '7px',
+          color: isOpen ? '#dcfce7' : '#fecaca',
+          backgroundColor: '#111827',
+        })
+        .setOrigin(0.5, 1)
+        .setDepth(4 + point.position.y / 1000);
+      this.mapObjects.push(marker, label);
+      this.extractionMarkers.push({ point, marker, label });
+    }
   }
 
   private createEntities(): void {
@@ -253,6 +336,7 @@ export class WorldScene extends Phaser.Scene {
       height: 80,
       padding: 10,
       textStyle: { fontSize: '14px' },
+      onComplete: () => this.handleRunResolutionComplete(),
     }).setScrollFactor(0, 0, true);
   }
 
@@ -422,9 +506,12 @@ export class WorldScene extends Phaser.Scene {
           party: this.party,
           pokeBalls: this.bag.count('poke-ball'),
           caughtPokemonStash: this.caughtPokemonStash,
+          runSession: this.runSession,
         });
       }
     }
+
+    this.tryExtract();
   }
 
   private showIdlePose(): void {
@@ -439,6 +526,7 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.clearMap();
       this.currentMap = getWorldMap(warp.destinationMapId);
+      this.runSession?.manager.setMap(this.currentMap.id);
       this.currentTile = { ...warp.destination };
       this.facing = warp.facing;
       this.targetTile = null;
@@ -462,6 +550,7 @@ export class WorldScene extends Phaser.Scene {
     this.mapObjects.forEach((object) => object.destroy());
     this.mapObjects = [];
     this.npcSprites.clear();
+    this.extractionMarkers = [];
   }
 
   private restoreSavedGame(savedGame: RestoredGame | undefined): void {
@@ -491,4 +580,112 @@ export class WorldScene extends Phaser.Scene {
       bag: this.bag,
     });
   }
+
+  private extractionPointsForCurrentMap(): readonly ExtractionPoint[] {
+    return EXTRACTION_POINTS.filter((point) => point.mapId === this.currentMap.id);
+  }
+
+  private isExtractionOpen(point: ExtractionPoint): boolean {
+    return (this.runSession?.manager.snapshot().elapsedMs ?? 0) >= point.unlockAtMs;
+  }
+
+  private tryExtract(): void {
+    if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun) {
+      return;
+    }
+
+    const point = this.extractionPointsForCurrentMap().find(
+      (candidate) =>
+        candidate.position.x === this.currentTile.x && candidate.position.y === this.currentTile.y,
+    );
+    if (!point) {
+      return;
+    }
+
+    if (!this.isExtractionOpen(point)) {
+      const seconds = Math.ceil((point.unlockAtMs - this.runSession.manager.snapshot().elapsedMs) / 1_000);
+      this.dialogBox.showMessage(`${point.label} is LOCKED. Open in ${seconds}s.`);
+      return;
+    }
+
+    const result = this.runSession.manager.resolveEscape();
+    const saved = new SaveManager().bankRun({
+      pokemon: result.bankedPokemon,
+      items: result.bankedItems,
+    });
+    this.pendingHubTransition = true;
+    this.dialogBox.showMessages([
+      'EXTRACTED!',
+      formatRunSummary('Banked', result.bankedPokemon, result.bankedItems),
+      saved ? 'Stash secured. Returning to hub.' : 'Stash save unavailable. Returning to hub.',
+    ]);
+  }
+
+  private advanceRunClock(deltaMs: number): void {
+    if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun) {
+      return;
+    }
+
+    const snapshot = this.runSession.manager.tick(deltaMs);
+    this.refreshExtractionMarkers();
+    if (snapshot.remainingMs === 0) {
+      this.resolveExpiredRun();
+    }
+  }
+
+  private refreshExtractionMarkers(): void {
+    for (const { point, marker, label } of this.extractionMarkers) {
+      const isOpen = this.isExtractionOpen(point);
+      marker
+        .setFillStyle(isOpen ? 0x16a34a : 0x991b1b, 0.8)
+        .setStrokeStyle(2, isOpen ? 0xdcfce7 : 0xfecaca);
+      label
+        .setText(`EXTRACT ${isOpen ? 'OPEN' : 'LOCKED'}`)
+        .setColor(isOpen ? '#dcfce7' : '#fecaca');
+    }
+  }
+
+  private resolveExpiredRun(): void {
+    if (!this.runSession || this.pendingHubTransition) {
+      return;
+    }
+
+    const result = this.runSession.manager.resolveWipe(this.runSession.secureSlot);
+    const saved = new SaveManager().applyWipeLoss(
+      this.runSession.broughtPokemonIds,
+      this.runSession.broughtItems,
+      this.runSession.stashSecureSlot,
+    );
+    this.pendingHubTransition = true;
+    this.dialogBox.showMessages([
+      'TIME EXPIRED - YOU WERE WIPED.',
+      formatRunSummary('Lost', result.lostPokemon, result.lostItems),
+      saved ? 'Secure slot preserved. Returning to hub.' : 'Stash save unavailable. Returning to hub.',
+    ]);
+  }
+
+  private handleRunResolutionComplete(): void {
+    if (!this.pendingHubTransition) {
+      return;
+    }
+
+    if (this.scene.manager.keys.hub) {
+      this.scene.start('hub');
+      return;
+    }
+    this.scene.start('title');
+  }
+}
+
+function formatRunSummary(
+  heading: string,
+  pokemon: readonly Pokemon[],
+  items: readonly { readonly itemId: string; readonly quantity: number }[],
+): string {
+  const pokemonSummary = pokemon.length === 0 ? 'no Pokemon' : `${pokemon.length} Pokemon`;
+  const itemSummary =
+    items.length === 0
+      ? 'no items'
+      : items.map((item) => `${item.quantity} ${item.itemId}`).join(', ');
+  return `${heading}: ${pokemonSummary}; ${itemSummary}.`;
 }
