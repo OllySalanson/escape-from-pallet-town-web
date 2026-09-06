@@ -25,6 +25,22 @@ export class PokemonParty {
     return true;
   }
 
+  public movePokemon(fromIndex: number, toIndex: number): boolean {
+    if (
+      fromIndex < 0 ||
+      fromIndex >= this.members.length ||
+      toIndex < 0 ||
+      toIndex >= this.members.length ||
+      fromIndex === toIndex
+    ) {
+      return false;
+    }
+
+    const [pokemon] = this.members.splice(fromIndex, 1);
+    this.members.splice(toIndex, 0, pokemon);
+    return true;
+  }
+
   public getHealthyPokemon(): Pokemon | null {
     return this.members.find((pokemon) => !pokemon.isFainted) ?? null;
   }

@@ -231,4 +231,17 @@ describe('PokemonParty', () => {
     expect(party.pokemon).toHaveLength(0);
     expect(party.removePokemon(charmander)).toBe(false);
   });
+
+  it('moves a member to a valid party position', () => {
+    const bulbasaur = new Pokemon(BULBASAUR, 6);
+    const charmander = new Pokemon(CHARMANDER, 5);
+    const pidgey = new Pokemon(PIDGEY, 6);
+    const party = new PokemonParty([bulbasaur, charmander, pidgey]);
+
+    expect(party.movePokemon(1, 0)).toBe(true);
+    expect(party.pokemon).toEqual([charmander, bulbasaur, pidgey]);
+    expect(party.movePokemon(0, 0)).toBe(false);
+    expect(party.movePokemon(-1, 1)).toBe(false);
+    expect(party.movePokemon(0, 3)).toBe(false);
+  });
 });

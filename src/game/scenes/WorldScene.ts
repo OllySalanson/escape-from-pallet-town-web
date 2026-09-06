@@ -39,6 +39,7 @@ interface ControlKeys {
   a: Phaser.Input.Keyboard.Key;
   s: Phaser.Input.Keyboard.Key;
   d: Phaser.Input.Keyboard.Key;
+  party: Phaser.Input.Keyboard.Key;
   interact: Phaser.Input.Keyboard.Key[];
 }
 
@@ -83,6 +84,11 @@ export class WorldScene extends Phaser.Scene {
 
     if (this.dialogBox.visible) {
       this.handleDialogInput();
+      return;
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.controls.party)) {
+      this.openParty();
       return;
     }
 
@@ -218,6 +224,7 @@ export class WorldScene extends Phaser.Scene {
     this.input.keyboard.addCapture([
       Phaser.Input.Keyboard.KeyCodes.SPACE,
       Phaser.Input.Keyboard.KeyCodes.ENTER,
+      Phaser.Input.Keyboard.KeyCodes.P,
     ]);
 
     this.controls = {
@@ -229,6 +236,7 @@ export class WorldScene extends Phaser.Scene {
       a: wasdKeys.A,
       s: wasdKeys.S,
       d: wasdKeys.D,
+      party: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P),
       interact: [
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
@@ -284,6 +292,11 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.dialogBox.showMessages([...entity.dialogLines]);
+  }
+
+  private openParty(): void {
+    this.scene.pause();
+    this.scene.launch('party', { party: this.party });
   }
 
   private isBlocked(tile: GridPosition): boolean {
