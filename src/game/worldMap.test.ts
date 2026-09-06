@@ -3,6 +3,7 @@ import {
   buildCollisionData,
   buildDetailLayerData,
   buildGroundLayerData,
+  buildTallGrassLayerData,
   CLASSIC_TILE,
   isTallGrassTile,
   MAP_HEIGHT,
@@ -49,6 +50,15 @@ describe('worldMap', () => {
         CLASSIC_TILE.POND_BANK_SOUTH_EAST,
       ],
     ]);
+  });
+
+  it('overlays dark-green grass tufts on the encounter zone', () => {
+    const tallGrass = buildTallGrassLayerData();
+
+    expect(tallGrass[22][3]).toBe(CLASSIC_TILE.TALL_GRASS_TUFT);
+    expect(tallGrass[33][28]).toBe(CLASSIC_TILE.TALL_GRASS_TUFT);
+    expect(tallGrass[21][3]).toBe(-1);
+    expect(tallGrass[34][28]).toBe(-1);
   });
 
   it('builds a route that requires walking through tall grass south of town', () => {
