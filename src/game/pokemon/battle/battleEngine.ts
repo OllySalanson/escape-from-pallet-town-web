@@ -3,6 +3,7 @@ import { MoveCategory } from '../MoveBase';
 import type { Pokemon } from '../Pokemon';
 import type { PokemonType } from '../PokemonType';
 import { calculateDamage, type RandomSource } from './damage';
+import { PrimaryStatus, type PrimaryStatus as PrimaryStatusType } from './status';
 
 export interface BattleMove {
   readonly base: MoveBase;
@@ -13,6 +14,9 @@ export interface BattleCombatant {
   readonly pokemon: Pokemon;
   readonly currentHp: number;
   readonly moves: readonly BattleMove[];
+  readonly primaryStatus: PrimaryStatusType | null;
+  readonly sleepTurns: number;
+  readonly confusionTurns: number;
 }
 
 export interface BattleState {
@@ -27,7 +31,15 @@ export type BattleEvent =
   | { readonly type: 'critical-hit' }
   | { readonly type: 'effectiveness'; readonly multiplier: number }
   | { readonly type: 'fainted'; readonly user: 'player' | 'enemy'; readonly name: string }
-  | { readonly type: 'no-pp'; readonly user: 'player' | 'enemy'; readonly move: string };
+  | { readonly type: 'no-pp'; readonly user: 'player' | 'enemy'; readonly move: string }
+  | { readonly type: 'status-applied'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: StatusName }
+  | { readonly type: 'status-already'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: StatusName }
+  | { readonly type: 'status-prevented'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: PrimaryStatusType }
+  | { readonly type: 'status-damage'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: PrimaryStatusType; readonly damage: number }
+  | { readonly type: 'status-cured'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: 'sleep' | 'freeze' | 'confusion' }
+  | { readonly type: 'confusion-self-hit'; readonly user: 'player' | 'enemy'; readonly name: string; readonly damage: number };
+
+export type StatusName = PrimaryStatusType | 'confusion';
 
 export interface TurnResult {
   readonly state: BattleState;
@@ -38,6 +50,9 @@ const toCombatant = (pokemon: Pokemon): BattleCombatant => ({
   pokemon,
   currentHp: pokemon.currentHp,
   moves: pokemon.moves.map((move) => ({ base: move.base, pp: move.pp })),
+  primaryStatus: pokemon.primaryStatus,
+  sleepTurns: 0,
+  confusionTurns: 0,
 });
 
 export const createBattleState = (player: Pokemon, enemy: Pokemon): BattleState => ({
@@ -120,35 +135,41 @@ const applyMove = (
   random: RandomSource,
 ): TurnResult => {
   const attacker = user === 'player' ? state.player : state.enemy;
-  const defender = user === 'player' ? state.enemy : state.player;
   const move = attacker.moves[moveIndex];
   if (!move || move.pp <= 0) {
     return { state, events: move ? [{ type: 'no-pp', user, move: move.base.name }] : [] };
   }
 
+  const attempted = resolveStatusBeforeMove(state, user, random);
+  if (!attempted.canAct) {
+    return applyEndOfAction(attempted.state, user, attempted.events);
+  }
+
+  let statusState = attempted.state;
+  const attackerAfterStatus = user === 'player' ? statusState.player : statusState.enemy;
+  const defenderAfterStatus = user === 'player' ? statusState.enemy : statusState.player;
   const updatedAttacker = {
-    ...attacker,
-    moves: attacker.moves.map((knownMove, index) =>
+    ...attackerAfterStatus,
+    moves: attackerAfterStatus.moves.map((knownMove, index) =>
       index === moveIndex ? { ...knownMove, pp: knownMove.pp - 1 } : knownMove,
     ),
   };
   const eventPrefix: BattleEvent[] = [
-    { type: 'used-move', user, name: attacker.pokemon.base.name, move: move.base.name },
+    ...attempted.events,
+    { type: 'used-move', user, name: attackerAfterStatus.pokemon.base.name, move: move.base.name },
   ];
 
   if (clampRandom(random()) * 100 >= move.base.accuracy) {
-    return {
-      state: withCombatants(state, user, updatedAttacker, defender),
-      events: [...eventPrefix, { type: 'missed', user }],
-    };
+    statusState = withCombatants(statusState, user, updatedAttacker, defenderAfterStatus);
+    return applyEndOfAction(statusState, user, [...eventPrefix, { type: 'missed', user }]);
   }
 
-  const damage = calculateDamage(attacker.pokemon, defender.pokemon, move.base, random);
+  const damage = calculateDamage(attackerAfterStatus.pokemon, defenderAfterStatus.pokemon, move.base, random);
   const updatedDefender = {
-    ...defender,
-    currentHp: Math.max(0, defender.currentHp - damage.damage),
+    ...defenderAfterStatus,
+    currentHp: Math.max(0, defenderAfterStatus.currentHp - damage.damage),
   };
-  let nextState = withCombatants(state, user, updatedAttacker, updatedDefender);
+  let nextState = withCombatants(statusState, user, updatedAttacker, updatedDefender);
   const events: BattleEvent[] = [
     ...eventPrefix,
     ...(damage.isCritical ? [{ type: 'critical-hit' } as const] : []),
@@ -161,11 +182,145 @@ const applyMove = (
       ...nextState,
       outcome: defenderUser === 'enemy' ? 'victory' : 'defeat',
     };
-    events.push({ type: 'fainted', user: defenderUser, name: defender.pokemon.base.name });
+    events.push({ type: 'fainted', user: defenderUser, name: defenderAfterStatus.pokemon.base.name });
   }
 
-  return { state: nextState, events };
+  const status = statusEffectForMove(move.base.name);
+  if (status && nextState.outcome === 'active') {
+    const applied = applyStatus(nextState, user === 'player' ? 'enemy' : 'player', status, random);
+    nextState = applied.state;
+    events.push(...applied.events);
+  }
+
+  return applyEndOfAction(nextState, user, events);
 };
+
+const resolveStatusBeforeMove = (
+  state: BattleState,
+  user: 'player' | 'enemy',
+  random: RandomSource,
+): { readonly state: BattleState; readonly events: readonly BattleEvent[]; readonly canAct: boolean } => {
+  const combatant = user === 'player' ? state.player : state.enemy;
+  const name = combatant.pokemon.base.name;
+  const primary = combatant.primaryStatus;
+
+  if (primary === PrimaryStatus.Paralysis && clampRandom(random()) < 0.25) {
+    return { state, events: [{ type: 'status-prevented', user, name, status: primary }], canAct: false };
+  }
+  if (primary === PrimaryStatus.Freeze) {
+    if (clampRandom(random()) >= 0.25) {
+      return { state, events: [{ type: 'status-prevented', user, name, status: primary }], canAct: false };
+    }
+    state = updateCombatant(state, user, { ...combatant, primaryStatus: null });
+    return { state, events: [{ type: 'status-cured', user, name, status: 'freeze' }], canAct: true };
+  }
+  if (primary === PrimaryStatus.Sleep) {
+    if (combatant.sleepTurns > 0) {
+      const asleep = { ...combatant, sleepTurns: combatant.sleepTurns - 1 };
+      return {
+        state: updateCombatant(state, user, asleep),
+        events: [{ type: 'status-prevented', user, name, status: primary }],
+        canAct: false,
+      };
+    }
+    state = updateCombatant(state, user, { ...combatant, primaryStatus: null });
+    return { state, events: [{ type: 'status-cured', user, name, status: 'sleep' }], canAct: true };
+  }
+  if (combatant.confusionTurns > 0) {
+    const confused = { ...combatant, confusionTurns: combatant.confusionTurns - 1 };
+    state = updateCombatant(state, user, confused);
+    const events: BattleEvent[] = [];
+    if (clampRandom(random()) >= 0.5) {
+      const damage = Math.floor(combatant.pokemon.maxHp / 8);
+      const hurt = { ...confused, currentHp: Math.max(0, confused.currentHp - damage) };
+      state = updateCombatant(state, user, hurt);
+      events.push({ type: 'confusion-self-hit', user, name, damage });
+      if (hurt.currentHp === 0) {
+        state = { ...state, outcome: user === 'player' ? 'defeat' : 'victory' };
+        events.push({ type: 'fainted', user, name });
+      }
+      if (confused.confusionTurns === 0) {
+        state = updateCombatant(state, user, { ...hurt, confusionTurns: 0 });
+        events.push({ type: 'status-cured', user, name, status: 'confusion' });
+      }
+      return { state, events, canAct: false };
+    }
+    if (confused.confusionTurns === 0) {
+      events.push({ type: 'status-cured', user, name, status: 'confusion' });
+    }
+    return { state, events, canAct: true };
+  }
+  return { state, events: [], canAct: true };
+};
+
+const applyEndOfAction = (
+  state: BattleState,
+  user: 'player' | 'enemy',
+  events: readonly BattleEvent[],
+): TurnResult => {
+  const combatant = user === 'player' ? state.player : state.enemy;
+  if (state.outcome !== 'active' || !combatant.primaryStatus || combatant.currentHp === 0) {
+    return { state, events };
+  }
+  const divisor = combatant.primaryStatus === PrimaryStatus.Poison ? 8 : combatant.primaryStatus === PrimaryStatus.Burn ? 16 : 0;
+  if (divisor === 0) {
+    return { state, events };
+  }
+  const damage = Math.floor(combatant.pokemon.maxHp / divisor);
+  const updated = { ...combatant, currentHp: Math.max(0, combatant.currentHp - damage) };
+  let nextState = updateCombatant(state, user, updated);
+  const nextEvents: BattleEvent[] = [
+    ...events,
+    { type: 'status-damage', user, name: combatant.pokemon.base.name, status: combatant.primaryStatus, damage },
+  ];
+  if (updated.currentHp === 0) {
+    nextState = { ...nextState, outcome: user === 'player' ? 'defeat' : 'victory' };
+    nextEvents.push({ type: 'fainted', user, name: combatant.pokemon.base.name });
+  }
+  return { state: nextState, events: nextEvents };
+};
+
+const applyStatus = (
+  state: BattleState,
+  user: 'player' | 'enemy',
+  status: StatusName,
+  random: RandomSource,
+): TurnResult => {
+  const combatant = user === 'player' ? state.player : state.enemy;
+  const name = combatant.pokemon.base.name;
+  if (status === 'confusion') {
+    if (combatant.confusionTurns > 0) {
+      return { state, events: [{ type: 'status-already', user, name, status }] };
+    }
+    const updated = { ...combatant, confusionTurns: randomTurnCount(random, 4) };
+    return { state: updateCombatant(state, user, updated), events: [{ type: 'status-applied', user, name, status }] };
+  }
+  if (combatant.primaryStatus) {
+    return { state, events: [{ type: 'status-already', user, name, status }] };
+  }
+  const updated = {
+    ...combatant,
+    primaryStatus: status,
+    sleepTurns: status === PrimaryStatus.Sleep ? randomTurnCount(random, 3) : 0,
+  };
+  return { state: updateCombatant(state, user, updated), events: [{ type: 'status-applied', user, name, status }] };
+};
+
+const updateCombatant = (state: BattleState, user: 'player' | 'enemy', combatant: BattleCombatant): BattleState =>
+  user === 'player' ? { ...state, player: combatant } : { ...state, enemy: combatant };
+
+const randomTurnCount = (random: RandomSource, maximum: number): number =>
+  Math.floor(clampRandom(random()) * maximum) + 1;
+
+const statusEffects: Readonly<Record<string, StatusName>> = {
+  'Poision Powder': PrimaryStatus.Poison,
+  'Poison Powder': PrimaryStatus.Poison,
+  Sing: PrimaryStatus.Sleep,
+  'Thunder Wave': PrimaryStatus.Paralysis,
+  'Super Sonic': 'confusion',
+};
+
+const statusEffectForMove = (name: string): StatusName | null => statusEffects[name] ?? null;
 
 const withCombatants = (
   state: BattleState,

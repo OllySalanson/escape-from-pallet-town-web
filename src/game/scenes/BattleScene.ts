@@ -10,6 +10,7 @@ import {
   type BattleEvent,
   type BattleState,
 } from '../pokemon/battle/battleEngine';
+import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import type { WildEncounter } from '../world/wildEncounters';
 
@@ -45,6 +46,8 @@ export class BattleScene extends Phaser.Scene {
   private playerHpBar!: Phaser.GameObjects.Graphics;
   private enemyHpBar!: Phaser.GameObjects.Graphics;
   private playerHpText!: Phaser.GameObjects.Text;
+  private playerStatusText!: Phaser.GameObjects.Text;
+  private enemyStatusText!: Phaser.GameObjects.Text;
   private playerSprite!: Phaser.GameObjects.Image;
   private enemySprite!: Phaser.GameObjects.Image;
   private playerStatusBox!: Phaser.GameObjects.Container;
@@ -173,6 +176,17 @@ export class BattleScene extends Phaser.Scene {
       fontSize: '13px',
       color: '#202020',
     }).setDepth(6));
+    const statusText = this.add.text(x + 82, y + 8, statusAbbreviation(combatant.primaryStatus, combatant.confusionTurns) ?? '', {
+      fontFamily: BATTLE_FONT,
+      fontSize: '10px',
+      color: '#9b1c1c',
+    }).setDepth(6);
+    container.add(statusText);
+    if (showNumbers) {
+      this.playerStatusText = statusText;
+    } else {
+      this.enemyStatusText = statusText;
+    }
     container.add(this.add.text(x + 15, y + 25, 'HP:', {
       fontFamily: BATTLE_FONT,
       fontSize: '12px',
@@ -410,6 +424,7 @@ export class BattleScene extends Phaser.Scene {
     const previousState = this.state;
     this.state = result.state;
     this.persistActivePokemonHp();
+    this.refreshStatusLabels();
     this.prepareForcedReplacement();
     this.animateHp(previousState);
     this.animateCombatEvents(result.events);
@@ -450,6 +465,7 @@ export class BattleScene extends Phaser.Scene {
     const result = resolveEnemyTurn(switchedState, () => Math.random());
     this.state = result.state;
     this.persistActivePokemonHp();
+    this.refreshStatusLabels();
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
@@ -469,6 +485,12 @@ export class BattleScene extends Phaser.Scene {
 
   private persistActivePokemonHp(): void {
     this.state.player.pokemon.currentHp = this.state.player.currentHp;
+    this.state.player.pokemon.primaryStatus = this.state.player.primaryStatus;
+  }
+
+  private refreshStatusLabels(): void {
+    this.playerStatusText.setText(statusAbbreviation(this.state.player.primaryStatus, this.state.player.confusionTurns) ?? '');
+    this.enemyStatusText.setText(statusAbbreviation(this.state.enemy.primaryStatus, this.state.enemy.confusionTurns) ?? '');
   }
 
   private prepareForcedReplacement(): void {
@@ -482,6 +504,7 @@ export class BattleScene extends Phaser.Scene {
   private refreshPlayerCombatant(): void {
     this.playerStatusBox.destroy();
     this.playerStatusBox = this.createStatusBox(150, 104, this.state.player, true);
+    this.refreshStatusLabels();
     this.playerSprite
       .setTexture(`pokemon-back-${this.state.player.pokemon.base.dexId}`)
       .setPosition(75, 137)
@@ -600,5 +623,27 @@ const eventToMessage = (event: BattleEvent): string => {
       return `${event.name} fainted!`;
     case 'no-pp':
       return `No PP left for ${event.move}!`;
+    case 'status-applied':
+      return `${event.name} is ${statusLabel(event.status)}!`;
+    case 'status-already':
+      return `${event.name} already has a status condition!`;
+    case 'status-prevented':
+      return `${event.name} is ${statusLabel(event.status)} and can't move!`;
+    case 'status-damage':
+      return `${event.name} is hurt by ${statusLabel(event.status)}!`;
+    case 'status-cured':
+      return event.status === 'sleep' ? `${event.name} woke up!` : event.status === 'freeze' ? `${event.name} thawed out!` : `${event.name} snapped out of confusion!`;
+    case 'confusion-self-hit':
+      return `${event.name} hurt itself in its confusion!`;
   }
 };
+
+const statusLabel = (status: string): string =>
+  ({
+    poison: 'poison',
+    burn: 'a burn',
+    paralysis: 'paralysis',
+    sleep: 'asleep',
+    freeze: 'frozen',
+    confusion: 'confused',
+  })[status] ?? status;

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { MoveBase, MoveCategory } from '../MoveBase';
 import { Pokemon } from '../Pokemon';
 import { PokemonType } from '../PokemonType';
-import { EMBER, TACKLE } from '../moves';
-import { BULBASAUR, CHARMANDER, PIDGEY, PIKACHU } from '../species';
+import { EMBER, POISON_POWDER, SING, SUPER_SONIC, TACKLE, THUNDER_WAVE } from '../moves';
+import { BULBASAUR, BUTTERFREE, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU } from '../species';
 import {
   chooseEnemyMove,
   createBattleState,
@@ -235,5 +235,120 @@ describe('battle turn resolution', () => {
 
     expect(result.events).toContainEqual({ type: 'missed', user: 'player' });
     expect(result.state.enemy.currentHp).toBe(state.enemy.currentHp);
+  });
+});
+
+describe('status conditions', () => {
+  const enemyAction = (
+    primaryStatus: 'poison' | 'burn' | 'paralysis' | 'sleep' | 'freeze' | null,
+    random: () => number,
+    overrides: Partial<ReturnType<typeof createBattleState>['enemy']> = {},
+  ) => {
+    const state = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
+    return resolveEnemyTurn(
+      {
+        ...state,
+        enemy: { ...state.enemy, primaryStatus, moves: [state.enemy.moves[0]], ...overrides },
+      },
+      random,
+    );
+  };
+
+  it('applies all wired status moves and refuses duplicate primary or volatile conditions', () => {
+    const player = new Pokemon(CHARMANDER, 10);
+    const statusMoves = [
+      [new Pokemon(BUTTERFREE, 10), POISON_POWDER, 'poison'],
+      [new Pokemon(JIGGLYPUFF, 10), SING, 'sleep'],
+      [new Pokemon(PIKACHU, 10), THUNDER_WAVE, 'paralysis'],
+      [new Pokemon(BULBASAUR, 10), SUPER_SONIC, 'confusion'],
+    ] as const;
+
+    for (const [enemy, move, status] of statusMoves) {
+      const initial = createBattleState(player, enemy);
+      const state = { ...initial, enemy: { ...initial.enemy, moves: [{ base: move, pp: move.pp }] } };
+      const applied = resolveEnemyTurn(state, maximumRandom);
+      expect(applied.events).toContainEqual({ type: 'status-applied', user: 'player', name: 'Charmander', status });
+
+      const duplicate = resolveEnemyTurn({ ...applied.state, enemy: state.enemy }, maximumRandom);
+      expect(duplicate.events).toContainEqual({ type: 'status-already', user: 'player', name: 'Charmander', status });
+    }
+  });
+
+  it('deals floor(max HP / 8) poison damage after the afflicted Pokemon acts', () => {
+    const result = enemyAction('poison', maximumRandom);
+    const maxHp = result.state.enemy.pokemon.maxHp;
+
+    expect(result.state.enemy.currentHp).toBe(maxHp - Math.floor(maxHp / 8));
+    expect(result.events).toContainEqual({
+      type: 'status-damage',
+      user: 'enemy',
+      name: 'Bulbasaur',
+      status: 'poison',
+      damage: Math.floor(maxHp / 8),
+    });
+  });
+
+  it('deals floor(max HP / 16) burn damage without changing attack', () => {
+    const result = enemyAction('burn', maximumRandom);
+    const maxHp = result.state.enemy.pokemon.maxHp;
+
+    expect(result.state.enemy.currentHp).toBe(maxHp - Math.floor(maxHp / 16));
+    expect(result.state.enemy.pokemon.stats.attack).toBe(new Pokemon(BULBASAUR, 10).stats.attack);
+  });
+
+  it('uses the pinned 25 percent paralysis roll to prevent an action', () => {
+    const result = enemyAction('paralysis', () => 0);
+
+    expect(result.events).toContainEqual({
+      type: 'status-prevented',
+      user: 'enemy',
+      name: 'Bulbasaur',
+      status: 'paralysis',
+    });
+    expect(result.events.some((event) => event.type === 'used-move')).toBe(false);
+  });
+
+  it('thaws at 25 percent and otherwise prevents frozen actions', () => {
+    const thawed = enemyAction('freeze', (() => {
+      const rolls = [0, 0.24, 0, 1, 1];
+      return () => rolls.shift() ?? 1;
+    })());
+    const frozen = enemyAction('freeze', (() => {
+      const rolls = [0, 0.25];
+      return () => rolls.shift() ?? 1;
+    })());
+
+    expect(thawed.events).toContainEqual({ type: 'status-cured', user: 'enemy', name: 'Bulbasaur', status: 'freeze' });
+    expect(thawed.events.some((event) => event.type === 'used-move')).toBe(true);
+    expect(frozen.events).toContainEqual({ type: 'status-prevented', user: 'enemy', name: 'Bulbasaur', status: 'freeze' });
+  });
+
+  it('sleeps for its rolled duration then wakes before acting', () => {
+    const sleeping = enemyAction('sleep', maximumRandom, { sleepTurns: 1 });
+    const awake = resolveEnemyTurn(sleeping.state, maximumRandom);
+
+    expect(sleeping.state.enemy.sleepTurns).toBe(0);
+    expect(sleeping.events).toContainEqual({ type: 'status-prevented', user: 'enemy', name: 'Bulbasaur', status: 'sleep' });
+    expect(awake.state.enemy.primaryStatus).toBeNull();
+    expect(awake.events).toContainEqual({ type: 'status-cured', user: 'enemy', name: 'Bulbasaur', status: 'sleep' });
+    expect(awake.events.some((event) => event.type === 'used-move')).toBe(true);
+  });
+
+  it('uses the pinned 50 percent confusion roll for self-damage and clears on expiry', () => {
+    const result = enemyAction(null, (() => {
+      const rolls = [0, 0.5];
+      return () => rolls.shift() ?? 1;
+    })(), { confusionTurns: 1 });
+    const maxHp = result.state.enemy.pokemon.maxHp;
+
+    expect(result.state.enemy.currentHp).toBe(maxHp - Math.floor(maxHp / 8));
+    expect(result.state.enemy.confusionTurns).toBe(0);
+    expect(result.events).toContainEqual({
+      type: 'confusion-self-hit',
+      user: 'enemy',
+      name: 'Bulbasaur',
+      damage: Math.floor(maxHp / 8),
+    });
+    expect(result.events).toContainEqual({ type: 'status-cured', user: 'enemy', name: 'Bulbasaur', status: 'confusion' });
   });
 });
