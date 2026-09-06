@@ -5,9 +5,13 @@ import {
   buildGroundLayerData,
   buildTallGrassLayerData,
   CLASSIC_TILE,
+  getWarpAt,
+  getWorldMap,
   isTallGrassTile,
+  isTallGrassInMap,
   MAP_HEIGHT,
   MAP_WIDTH,
+  WORLD_MAPS,
 } from './worldMap';
 
 describe('worldMap', () => {
@@ -104,5 +108,35 @@ describe('worldMap', () => {
     expect(collision[9][14]).toBe(true);
     expect(collision[3][5]).toBe(false);
     expect(collision[22][7]).toBe(false);
+  });
+
+  it('registers Pallet Town and Route 1 with their own map data', () => {
+    const palletTown = getWorldMap('pallet-town');
+    const route1 = getWorldMap('route-1');
+
+    expect(Object.keys(WORLD_MAPS)).toEqual(['pallet-town', 'route-1']);
+    expect(palletTown.width).toBe(MAP_WIDTH);
+    expect(route1.height).toBe(32);
+    expect(route1.groundLayer).toHaveLength(route1.height);
+    expect(route1.groundLayer.every((row) => row.length === route1.width)).toBe(true);
+    expect(isTallGrassInMap(route1, { x: 3, y: 8 })).toBe(true);
+    expect(isTallGrassInMap(route1, { x: 7, y: 1 })).toBe(false);
+    expect(route1.encounters).toBeDefined();
+  });
+
+  it('connects the maps with reciprocal edge warps', () => {
+    const palletExit = getWarpAt(getWorldMap('pallet-town'), { x: 7, y: MAP_HEIGHT - 1 }, 'step');
+    const routeReturn = getWarpAt(getWorldMap('route-1'), { x: 7, y: 0 }, 'step');
+
+    expect(palletExit).toMatchObject({
+      destinationMapId: 'route-1',
+      destination: { x: 7, y: 1 },
+      facing: 'down',
+    });
+    expect(routeReturn).toMatchObject({
+      destinationMapId: 'pallet-town',
+      destination: { x: 7, y: 42 },
+      facing: 'up',
+    });
   });
 });

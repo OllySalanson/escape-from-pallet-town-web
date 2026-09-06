@@ -9,19 +9,16 @@ import {
 } from '../movement/gridMovement';
 import { getIdleFrame, getWalkAnimationKey } from '../playerFrames';
 import {
-  buildCollisionData,
-  buildDetailLayerData,
-  buildGroundLayerData,
-  buildTallGrassLayerData,
   CLASSIC_TILE,
-  isTallGrassTile,
-  MAP_HEIGHT,
-  MAP_WIDTH,
+  getWarpAt,
+  getWorldMap,
+  isTallGrassInMap,
   TILE_SIZE,
+  type MapWarp,
+  type WorldMapDefinition,
 } from '../worldMap';
-import { getWorldEntityAt, WORLD_ENTITIES, type WorldEntity } from '../world/npcs';
+import { type WorldEntity } from '../world/npcs';
 import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
-import { PALLET_TALL_GRASS } from '../pokemon/encounters';
 import { DialogBox } from '../ui/DialogBox';
 import { rollEncounter } from '../world/wildEncounters';
 
@@ -51,7 +48,7 @@ const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
 };
 
 export class WorldScene extends Phaser.Scene {
-  private readonly bounds: GridBounds = { width: MAP_WIDTH, height: MAP_HEIGHT };
+  private bounds: GridBounds = { width: 0, height: 0 };
   private readonly stepStart = new Phaser.Math.Vector2();
   private readonly stepEnd = new Phaser.Math.Vector2();
 
@@ -59,12 +56,15 @@ export class WorldScene extends Phaser.Scene {
   private dialogBox!: DialogBox;
   private controls!: ControlKeys;
   private collisionData!: boolean[][];
+  private currentMap: WorldMapDefinition = getWorldMap('pallet-town');
+  private mapObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly npcSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private readonly party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
   private currentTile: GridPosition = { x: 6, y: 8 };
   private targetTile: GridPosition | null = null;
   private facing: Direction = 'down';
   private stepProgress = 0;
+  private isWarping = false;
 
   public constructor() {
     super('world');
@@ -81,6 +81,10 @@ export class WorldScene extends Phaser.Scene {
 
   public update(_time: number, deltaMs: number): void {
     this.dialogBox.update(deltaMs);
+
+    if (this.isWarping) {
+      return;
+    }
 
     if (this.dialogBox.visible) {
       this.handleDialogInput();
@@ -121,11 +125,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createMap(): void {
-    this.collisionData = buildCollisionData();
+    this.collisionData = this.currentMap.collision.map((row) => [...row]);
+    this.bounds = { width: this.currentMap.width, height: this.currentMap.height };
 
     const map = this.make.tilemap({
-      width: MAP_WIDTH,
-      height: MAP_HEIGHT,
+      width: this.currentMap.width,
+      height: this.currentMap.height,
       tileWidth: TILE_SIZE,
       tileHeight: TILE_SIZE,
     });
@@ -143,7 +148,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     groundLayer.putTilesAt(
-      buildGroundLayerData().map((row) =>
+      this.currentMap.groundLayer.map((row) =>
         row.map((tile) =>
           tile === CLASSIC_TILE.TALL_GRASS ? CLASSIC_TILE.GRASS : tile,
         ),
@@ -151,14 +156,15 @@ export class WorldScene extends Phaser.Scene {
       0,
       0,
     );
-    tallGrassLayer.putTilesAt(buildTallGrassLayerData(), 0, 0);
+    tallGrassLayer.putTilesAt(this.currentMap.tallGrassLayer.map((row) => [...row]), 0, 0);
     tallGrassLayer.setDepth(1);
-    detailLayer.putTilesAt(buildDetailLayerData(), 0, 0);
+    detailLayer.putTilesAt(this.currentMap.detailLayer.map((row) => [...row]), 0, 0);
     detailLayer.setDepth(1);
+    this.mapObjects.push(groundLayer, tallGrassLayer, detailLayer);
   }
 
   private createEntities(): void {
-    for (const entity of WORLD_ENTITIES) {
+    for (const entity of this.currentMap.entities) {
       if (entity.kind === 'sign') {
         this.createSign(entity);
         continue;
@@ -174,11 +180,12 @@ export class WorldScene extends Phaser.Scene {
         .setOrigin(0, 0)
         .setDepth(2 + entity.position.y / 1000);
       this.npcSprites.set(entity.id, sprite);
+      this.mapObjects.push(sprite);
     }
   }
 
   private createSign(entity: WorldEntity): void {
-    this.add
+    const sign = this.add
       .rectangle(
         entity.position.x * TILE_SIZE + TILE_SIZE / 2,
         entity.position.y * TILE_SIZE + TILE_SIZE / 2,
@@ -188,6 +195,7 @@ export class WorldScene extends Phaser.Scene {
       )
       .setStrokeStyle(1, 0x4d2c16)
       .setDepth(2 + entity.position.y / 1000);
+    this.mapObjects.push(sign);
   }
 
   private createPlayer(): void {
@@ -245,8 +253,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private configureCamera(): void {
-    const worldWidth = MAP_WIDTH * TILE_SIZE;
-    const worldHeight = MAP_HEIGHT * TILE_SIZE;
+    const worldWidth = this.currentMap.width * TILE_SIZE;
+    const worldHeight = this.currentMap.height * TILE_SIZE;
 
     this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
     this.cameras.main.setZoom(CAMERA_ZOOM);
@@ -282,7 +290,16 @@ export class WorldScene extends Phaser.Scene {
 
   private tryInteract(): void {
     const targetTile = nextTileFromDirection(this.currentTile, this.facing);
-    const entity = getWorldEntityAt(targetTile);
+    const warp = getWarpAt(this.currentMap, targetTile, 'interact');
+    if (warp) {
+      this.warp(warp);
+      return;
+    }
+
+    const entity = this.currentMap.entities.find(
+      (candidate) =>
+        candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
+    );
     if (!entity) {
       return;
     }
@@ -302,7 +319,7 @@ export class WorldScene extends Phaser.Scene {
   private isBlocked(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
-      WORLD_ENTITIES.some(
+      this.currentMap.entities.some(
         (entity) => entity.position.x === tile.x && entity.position.y === tile.y,
       )
     );
@@ -338,8 +355,14 @@ export class WorldScene extends Phaser.Scene {
     this.player.setPosition(this.stepEnd.x, this.stepEnd.y);
     this.showIdlePose();
 
-    if (isTallGrassTile(this.currentTile)) {
-      const wild = rollEncounter(PALLET_TALL_GRASS);
+    const warp = getWarpAt(this.currentMap, this.currentTile, 'step');
+    if (warp) {
+      this.warp(warp);
+      return;
+    }
+
+    if (isTallGrassInMap(this.currentMap, this.currentTile) && this.currentMap.encounters) {
+      const wild = rollEncounter(this.currentMap.encounters);
       if (wild) {
         this.scene.start('battle', { wild, party: this.party });
       }
@@ -349,5 +372,36 @@ export class WorldScene extends Phaser.Scene {
   private showIdlePose(): void {
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
+  }
+
+  private warp(warp: MapWarp): void {
+    this.isWarping = true;
+    this.player.stop();
+    this.cameras.main.fadeOut(180, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.clearMap();
+      this.currentMap = getWorldMap(warp.destinationMapId);
+      this.currentTile = { ...warp.destination };
+      this.facing = warp.facing;
+      this.targetTile = null;
+      this.createMap();
+      this.createEntities();
+      this.player.setPosition(
+        this.currentTile.x * TILE_SIZE,
+        this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+      );
+      this.showIdlePose();
+      this.configureCamera();
+      this.cameras.main.fadeIn(180, 0, 0, 0);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_IN_COMPLETE, () => {
+        this.isWarping = false;
+      });
+    });
+  }
+
+  private clearMap(): void {
+    this.mapObjects.forEach((object) => object.destroy());
+    this.mapObjects = [];
+    this.npcSprites.clear();
   }
 }

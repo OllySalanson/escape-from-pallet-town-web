@@ -1,6 +1,43 @@
+import type { Direction, GridPosition } from './movement/gridMovement';
+import { PALLET_TALL_GRASS, type WildEncounterTable } from './pokemon/encounters';
+import { WORLD_ENTITIES, type WorldEntity } from './world/npcs';
+
 export const TILE_SIZE = 16;
 export const MAP_WIDTH = 32;
 export const MAP_HEIGHT = 44;
+
+export type WarpActivation = 'step' | 'interact';
+
+export interface MapWarp {
+  readonly source: GridPosition;
+  readonly destinationMapId: WorldMapId;
+  readonly destination: GridPosition;
+  readonly facing: Direction;
+  readonly activation: WarpActivation;
+}
+
+export interface TallGrassZone {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface WorldMapDefinition {
+  readonly id: WorldMapId;
+  readonly width: number;
+  readonly height: number;
+  readonly groundLayer: readonly number[][];
+  readonly tallGrassLayer: readonly number[][];
+  readonly detailLayer: readonly number[][];
+  readonly collision: readonly boolean[][];
+  readonly tallGrassZones: readonly TallGrassZone[];
+  readonly encounters?: WildEncounterTable;
+  readonly warps: readonly MapWarp[];
+  readonly entities: readonly WorldEntity[];
+}
+
+export type WorldMapId = 'pallet-town' | 'route-1';
 
 export const CLASSIC_TILE = {
   GRASS: 46,
@@ -177,9 +214,7 @@ export function buildCollisionData(): boolean[][] {
   const ground = buildGroundLayerData();
   const details = buildDetailLayerData();
 
-  return ground.map((row, y) =>
-    row.map((groundTile, x) => SOLID_CLASSIC_TILES.has(groundTile) || SOLID_CLASSIC_TILES.has(details[y][x])),
-  );
+  return buildCollisionLayer(ground, details);
 }
 
 export function isTallGrassTile(position: { x: number; y: number }): boolean {
@@ -232,4 +267,134 @@ function placeTiles(data: number[][], tile: number, positions: readonly number[]
   for (const [x, y] of positions) {
     data[y][x] = tile;
   }
+}
+
+function buildCollisionLayer(ground: readonly number[][], details: readonly number[][]): boolean[][] {
+  return ground.map((row, y) =>
+    row.map((groundTile, x) => SOLID_CLASSIC_TILES.has(groundTile) || SOLID_CLASSIC_TILES.has(details[y][x])),
+  );
+}
+
+const PALLET_TALL_GRASS_ZONE: TallGrassZone = {
+  x: TALL_GRASS_LEFT,
+  y: TALL_GRASS_TOP,
+  width: TALL_GRASS_WIDTH,
+  height: TALL_GRASS_HEIGHT,
+};
+
+function createRoute1Map(): WorldMapDefinition {
+  const width = 32;
+  const height = 32;
+  const tallGrassZones: readonly TallGrassZone[] = [{ x: 3, y: 8, width: 26, height: 15 }];
+  const groundLayer = Array.from({ length: height }, () => Array<number>(width).fill(CLASSIC_TILE.GRASS));
+  const tallGrassLayer = Array.from({ length: height }, () => Array<number>(width).fill(-1));
+  const detailLayer = Array.from({ length: height }, () => Array<number>(width).fill(-1));
+
+  paintRectangle(groundLayer, 7, 0, 2, height, CLASSIC_TILE.DIRT_PATH);
+  for (const zone of tallGrassZones) {
+    paintRectangle(groundLayer, zone.x, zone.y, zone.width, zone.height, CLASSIC_TILE.TALL_GRASS);
+    paintRectangle(
+      tallGrassLayer,
+      zone.x,
+      zone.y,
+      zone.width,
+      zone.height,
+      CLASSIC_TILE.TALL_GRASS_TUFT,
+    );
+  }
+  placeTiles(detailLayer, CLASSIC_TILE.TREE_RED, [
+    [1, 3],
+    [30, 4],
+    [1, 12],
+    [30, 16],
+    [2, 26],
+    [29, 28],
+  ]);
+  placeTiles(detailLayer, CLASSIC_TILE.TREE_LEAFY, [
+    [2, 3],
+    [29, 4],
+    [2, 12],
+    [29, 16],
+    [3, 26],
+    [28, 28],
+  ]);
+  placeTiles(detailLayer, CLASSIC_TILE.FLOWER_YELLOW, [
+    [5, 5],
+    [25, 6],
+    [5, 25],
+  ]);
+
+  return {
+    id: 'route-1',
+    width,
+    height,
+    groundLayer,
+    tallGrassLayer,
+    detailLayer,
+    collision: buildCollisionLayer(groundLayer, detailLayer),
+    tallGrassZones,
+    encounters: PALLET_TALL_GRASS,
+    warps: [
+      {
+        source: { x: 7, y: 0 },
+        destinationMapId: 'pallet-town',
+        destination: { x: 7, y: 42 },
+        facing: 'up',
+        activation: 'step',
+      },
+    ],
+    entities: [],
+  };
+}
+
+export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = {
+  'pallet-town': {
+    id: 'pallet-town',
+    width: MAP_WIDTH,
+    height: MAP_HEIGHT,
+    groundLayer: buildGroundLayerData(),
+    tallGrassLayer: buildTallGrassLayerData(),
+    detailLayer: buildDetailLayerData(),
+    collision: buildCollisionData(),
+    tallGrassZones: [PALLET_TALL_GRASS_ZONE],
+    encounters: PALLET_TALL_GRASS,
+    warps: [
+      {
+        source: { x: 7, y: MAP_HEIGHT - 1 },
+        destinationMapId: 'route-1',
+        destination: { x: 7, y: 1 },
+        facing: 'down',
+        activation: 'step',
+      },
+    ],
+    entities: WORLD_ENTITIES,
+  },
+  'route-1': createRoute1Map(),
+};
+
+export function getWorldMap(id: WorldMapId): WorldMapDefinition {
+  return WORLD_MAPS[id];
+}
+
+export function getWarpAt(
+  map: WorldMapDefinition,
+  position: GridPosition,
+  activation: WarpActivation,
+): MapWarp | undefined {
+  return map.warps.find(
+    (warp) =>
+      warp.activation === activation &&
+      warp.source.x === position.x &&
+      warp.source.y === position.y,
+  );
+}
+
+export function isTallGrassInMap(map: WorldMapDefinition, position: GridPosition): boolean {
+  return map.tallGrassZones.some(
+    (zone) =>
+      position.x >= zone.x &&
+      position.x < zone.x + zone.width &&
+      position.y >= zone.y &&
+      position.y < zone.y + zone.height,
+  );
 }
