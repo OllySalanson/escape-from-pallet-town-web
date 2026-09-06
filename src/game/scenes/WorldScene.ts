@@ -12,12 +12,15 @@ import {
   buildCollisionData,
   buildDetailLayerData,
   buildGroundLayerData,
+  isTallGrassTile,
   MAP_HEIGHT,
   MAP_WIDTH,
   TILE_SIZE,
 } from '../worldMap';
-import { WORLD_ENTITIES, type WorldEntity } from '../world/npcs';
+import { getWorldEntityAt, WORLD_ENTITIES, type WorldEntity } from '../world/npcs';
+import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { DialogBox } from '../ui/DialogBox';
+import { DEFAULT_ENCOUNTERS, rollEncounter } from '../world/wildEncounters';
 
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
@@ -53,6 +56,7 @@ export class WorldScene extends Phaser.Scene {
   private controls!: ControlKeys;
   private collisionData!: boolean[][];
   private readonly npcSprites = new Map<string, Phaser.GameObjects.Sprite>();
+  private readonly party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
   private currentTile: GridPosition = { x: 6, y: 8 };
   private targetTile: GridPosition | null = null;
   private facing: Direction = 'down';
@@ -184,7 +188,7 @@ export class WorldScene extends Phaser.Scene {
       height: 80,
       padding: 10,
       textStyle: { fontSize: '14px' },
-    }).setScrollFactor(0);
+    }).setScrollFactor(0, 0, true);
   }
 
   private bindControls(): void {
@@ -197,6 +201,10 @@ export class WorldScene extends Phaser.Scene {
       'W' | 'A' | 'S' | 'D',
       Phaser.Input.Keyboard.Key
     >;
+    this.input.keyboard.addCapture([
+      Phaser.Input.Keyboard.KeyCodes.SPACE,
+      Phaser.Input.Keyboard.KeyCodes.ENTER,
+    ]);
 
     this.controls = {
       up: cursors.up,
@@ -252,10 +260,7 @@ export class WorldScene extends Phaser.Scene {
 
   private tryInteract(): void {
     const targetTile = nextTileFromDirection(this.currentTile, this.facing);
-    const entity = WORLD_ENTITIES.find(
-      (candidate) =>
-        candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
-    );
+    const entity = getWorldEntityAt(targetTile);
     if (!entity) {
       return;
     }
@@ -305,6 +310,13 @@ export class WorldScene extends Phaser.Scene {
     this.targetTile = null;
     this.player.setPosition(this.stepEnd.x, this.stepEnd.y);
     this.showIdlePose();
+
+    if (isTallGrassTile(this.currentTile)) {
+      const wild = rollEncounter(DEFAULT_ENCOUNTERS);
+      if (wild) {
+        this.scene.start('battle', { wild, party: this.party });
+      }
+    }
   }
 
   private showIdlePose(): void {

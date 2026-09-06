@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { Pokemon, type Pokemon as PokemonInstance } from '../pokemon';
-import { BULBASAUR, CHARMANDER } from '../pokemon/species';
+import { Pokemon, type Pokemon as PokemonInstance, type PokemonParty } from '../pokemon';
+import { BULBASAUR, CHARMANDER, PIKACHU, SQUIRTLE } from '../pokemon/species';
 import {
   createBattleState,
   resolveTurn,
@@ -9,10 +9,23 @@ import {
   type BattleState,
 } from '../pokemon/battle/battleEngine';
 import { DialogBox } from '../ui/DialogBox';
+import type { WildEncounter } from '../world/wildEncounters';
 
 type CommandMode = 'main' | 'moves' | 'events' | 'finished';
 
 const COMMAND_Y = 168;
+
+export interface BattleSceneData {
+  wild?: WildEncounter;
+  party?: PokemonParty;
+}
+
+const SPECIES_BY_ID = {
+  bulbasaur: BULBASAUR,
+  charmander: CHARMANDER,
+  pikachu: PIKACHU,
+  squirtle: SQUIRTLE,
+} as const;
 
 export class BattleScene extends Phaser.Scene {
   private state!: BattleState;
@@ -27,13 +40,18 @@ export class BattleScene extends Phaser.Scene {
   private confirmKey!: Phaser.Input.Keyboard.Key;
   private upKey!: Phaser.Input.Keyboard.Key;
   private downKey!: Phaser.Input.Keyboard.Key;
+  private launchedFromWorld = false;
 
   public constructor() {
     super('battle');
   }
 
-  public create(): void {
-    this.state = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
+  public create(data: BattleSceneData = {}): void {
+    const playerPokemon = data.party?.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
+    const wildBase = data.wild ? SPECIES_BY_ID[data.wild.speciesId as keyof typeof SPECIES_BY_ID] : BULBASAUR;
+    const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
+    this.launchedFromWorld = Boolean(data.wild && data.party);
+    this.state = createBattleState(playerPokemon, wildPokemon);
     this.cameras.main.setBackgroundColor('#9bd8e8');
     this.drawBackdrop();
     this.drawCombatants();
@@ -209,6 +227,9 @@ export class BattleScene extends Phaser.Scene {
         this.dialog.skip();
       } else {
         this.dialog.advance();
+        if (this.mode === 'finished') {
+          this.returnToWorld();
+        }
       }
       return;
     }
@@ -291,6 +312,12 @@ export class BattleScene extends Phaser.Scene {
 
     this.mode = 'finished';
     this.dialog.showMessage(this.state.outcome === 'victory' ? 'You won the battle!' : 'You blacked out!');
+  }
+
+  private returnToWorld(): void {
+    if (this.launchedFromWorld) {
+      this.scene.start('world');
+    }
   }
 }
 

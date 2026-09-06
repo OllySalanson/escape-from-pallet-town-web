@@ -39,3 +39,9 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     dialogLines: ['PALLET TOWN', 'A town of new beginnings.'],
   },
 ];
+
+export function getWorldEntityAt(position: GridPosition): WorldEntity | undefined {
+  return WORLD_ENTITIES.find(
+    (entity) => entity.position.x === position.x && entity.position.y === position.y,
+  );
+}
