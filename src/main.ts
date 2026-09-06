@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
 import './style.css';
-import { gameConfig } from './game/gameConfig';
+import { createGameConfig } from './game/gameConfig';
+import { isTestLabRequested } from './game/dev/testLabAccess';
 
-new Phaser.Game(gameConfig);
+const developmentScenes = import.meta.env.DEV && isTestLabRequested()
+  ? [(await import('./game/scenes/TestLabScene')).TestLabScene]
+  : [];
+
+new Phaser.Game(createGameConfig(developmentScenes));

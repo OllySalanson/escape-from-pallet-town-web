@@ -7,6 +7,7 @@ import {
   getWalkFrames,
 } from '../playerFrames';
 import { SPECIES_BY_ID } from '../pokemon/species';
+import { isTestLabRequested } from '../dev/testLabAccess';
 
 const DIRECTIONS: readonly Direction[] = ['down', 'left', 'up', 'right'];
 
@@ -26,14 +27,17 @@ export class BootScene extends Phaser.Scene {
     this.load.image('battle-dialog', 'assets/battle/dialog-plain.png');
 
     for (const species of Object.values(SPECIES_BY_ID)) {
-      this.load.image(`pokemon-front-${species.dexId}`, `assets/pokemon/front/${species.dexId}.png`);
+      this.load.image(
+        `pokemon-front-${species.dexId}`,
+        `assets/pokemon/front/${species.dexId}.png`,
+      );
       this.load.image(`pokemon-back-${species.dexId}`, `assets/pokemon/back/${species.dexId}.png`);
     }
   }
 
   public create(): void {
     this.createPlayerAnimations();
-    this.scene.start('title');
+    this.scene.start(isTestLabRequested() ? 'test-lab' : 'title');
   }
 
   private createPlayerAnimations(): void {
