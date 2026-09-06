@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { PALLET_TALL_GRASS } from '../pokemon/encounters';
+import { getSpeciesById } from '../pokemon/species';
 import { rollEncounter, type WildEncounterTable } from './wildEncounters';
 
 const TABLE: WildEncounterTable = {
@@ -10,6 +12,14 @@ const TABLE: WildEncounterTable = {
 };
 
 describe('rollEncounter', () => {
+  it('uses the canonical Pallet table with registered species', () => {
+    expect(PALLET_TALL_GRASS.entries).toEqual([
+      { speciesId: 'bulbasaur', minLevel: 5, maxLevel: 5, weight: 2 },
+      { speciesId: 'bulbasaur', minLevel: 7, maxLevel: 7, weight: 3 },
+    ]);
+    expect(PALLET_TALL_GRASS.entries.every((entry) => getSpeciesById(entry.speciesId))).toBe(true);
+  });
+
   it('does not encounter when the step roll misses', () => {
     expect(rollEncounter(TABLE, () => 0.25)).toBeNull();
   });

@@ -19,8 +19,9 @@ import {
 } from '../worldMap';
 import { getWorldEntityAt, WORLD_ENTITIES, type WorldEntity } from '../world/npcs';
 import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
+import { PALLET_TALL_GRASS } from '../pokemon/encounters';
 import { DialogBox } from '../ui/DialogBox';
-import { DEFAULT_ENCOUNTERS, rollEncounter } from '../world/wildEncounters';
+import { rollEncounter } from '../world/wildEncounters';
 
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
@@ -312,7 +313,7 @@ export class WorldScene extends Phaser.Scene {
     this.showIdlePose();
 
     if (isTallGrassTile(this.currentTile)) {
-      const wild = rollEncounter(DEFAULT_ENCOUNTERS);
+      const wild = rollEncounter(PALLET_TALL_GRASS);
       if (wild) {
         this.scene.start('battle', { wild, party: this.party });
       }

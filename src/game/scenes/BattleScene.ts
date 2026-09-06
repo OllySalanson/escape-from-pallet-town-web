@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Pokemon, type Pokemon as PokemonInstance, type PokemonParty } from '../pokemon';
-import { BULBASAUR, CHARMANDER, PIKACHU, SQUIRTLE } from '../pokemon/species';
+import { BULBASAUR, CHARMANDER, getSpeciesById } from '../pokemon/species';
 import {
   createBattleState,
   resolveTurn,
@@ -19,13 +19,6 @@ export interface BattleSceneData {
   wild?: WildEncounter;
   party?: PokemonParty;
 }
-
-const SPECIES_BY_ID = {
-  bulbasaur: BULBASAUR,
-  charmander: CHARMANDER,
-  pikachu: PIKACHU,
-  squirtle: SQUIRTLE,
-} as const;
 
 export class BattleScene extends Phaser.Scene {
   private state!: BattleState;
@@ -48,7 +41,7 @@ export class BattleScene extends Phaser.Scene {
 
   public create(data: BattleSceneData = {}): void {
     const playerPokemon = data.party?.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
-    const wildBase = data.wild ? SPECIES_BY_ID[data.wild.speciesId as keyof typeof SPECIES_BY_ID] : BULBASAUR;
+    const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
     this.launchedFromWorld = Boolean(data.wild && data.party);
     this.state = createBattleState(playerPokemon, wildPokemon);

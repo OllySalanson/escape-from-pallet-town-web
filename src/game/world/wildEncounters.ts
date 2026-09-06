@@ -1,14 +1,6 @@
-export interface WildEncounterEntry {
-  speciesId: string;
-  minLevel: number;
-  maxLevel: number;
-  weight: number;
-}
+import type { WildEncounterTable } from '../pokemon/encounters';
 
-export interface WildEncounterTable {
-  stepEncounterRate: number;
-  entries: readonly WildEncounterEntry[];
-}
+export type { WildEncounterEntry, WildEncounterTable } from '../pokemon/encounters';
 
 export interface WildEncounter {
   speciesId: string;
@@ -16,16 +8,6 @@ export interface WildEncounter {
 }
 
 export type EncounterRng = () => number;
-
-// PLACEHOLDER: the real table lives in src/game/pokemon/encounters.ts (data worker); wire it in once that lands.
-export const DEFAULT_ENCOUNTERS: WildEncounterTable = {
-  stepEncounterRate: 0.18,
-  entries: [
-    { speciesId: 'bulbasaur', minLevel: 2, maxLevel: 4, weight: 55 },
-    { speciesId: 'squirtle', minLevel: 2, maxLevel: 4, weight: 35 },
-    { speciesId: 'pikachu', minLevel: 3, maxLevel: 3, weight: 10 },
-  ],
-};
 
 export function rollEncounter(
   table: WildEncounterTable,

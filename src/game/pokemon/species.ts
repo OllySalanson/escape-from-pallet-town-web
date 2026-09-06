@@ -144,3 +144,6 @@ export const SPECIES_BY_ID: Readonly<Record<string, PokemonBase>> = {
   [PIDGEY.id]: PIDGEY,
   [PIKACHU.id]: PIKACHU,
 };
+
+export const getSpeciesById = (speciesId: string): PokemonBase | undefined =>
+  SPECIES_BY_ID[speciesId];

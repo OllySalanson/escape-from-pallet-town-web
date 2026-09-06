@@ -22,6 +22,7 @@ export {
   JIGGLYPUFF,
   PIDGEY,
   PIKACHU,
+  getSpeciesById,
   SPECIES_BY_ID,
 } from './species';
 export {
