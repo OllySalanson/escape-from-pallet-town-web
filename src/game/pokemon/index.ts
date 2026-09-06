@@ -1,6 +1,12 @@
 export { Move } from './Move';
 export { MoveBase, MoveCategory } from './MoveBase';
-export { Pokemon } from './Pokemon';
+export {
+  experienceAwardForDefeat,
+  experienceForLevel,
+  computePokemonStats,
+  type ExperienceResult,
+  Pokemon,
+} from './Pokemon';
 export { type LearnableMove, PokemonBase, type PokemonBaseInit, type PokemonStats } from './PokemonBase';
 export { PokemonParty } from './PokemonParty';
 export { PokemonType } from './PokemonType';

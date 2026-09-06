@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
-import { Pokemon, PokemonParty, type Pokemon as PokemonInstance } from '../pokemon';
+import {
+  Pokemon,
+  PokemonParty,
+  experienceAwardForDefeat,
+  type Pokemon as PokemonInstance,
+} from '../pokemon';
 import { BULBASAUR, CHARMANDER, getSpeciesById } from '../pokemon/species';
 import {
   createBattleState,
@@ -66,6 +71,8 @@ export class BattleScene extends Phaser.Scene {
   private party!: PokemonParty;
   private forcedReplacement = false;
   private partyMessage = '';
+  private readonly participatingPokemon = new Set<PokemonInstance>();
+  private victoryRewardsGranted = false;
 
   public constructor() {
     super('battle');
@@ -74,12 +81,15 @@ export class BattleScene extends Phaser.Scene {
   public create(data: BattleSceneData = {}): void {
     void audioManager.startTheme('battle');
     audioManager.playEncounter();
+    this.participatingPokemon.clear();
+    this.victoryRewardsGranted = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
     this.launchedFromWorld = Boolean(data.wild && data.party);
     this.state = createBattleState(playerPokemon, wildPokemon);
+    this.participatingPokemon.add(playerPokemon);
     this.cameras.main.setBackgroundColor('#111827');
     this.drawBackdrop();
     this.drawCombatants();
@@ -468,6 +478,7 @@ export class BattleScene extends Phaser.Scene {
     this.persistActivePokemonHp();
     const switchedState = replacePlayerPokemon(this.state, pokemon);
     this.state = switchedState;
+    this.participatingPokemon.add(pokemon);
     this.forcedReplacement = false;
     this.refreshPlayerCombatant();
     const result = resolveEnemyTurn(switchedState, () => Math.random());
@@ -580,8 +591,29 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.state.outcome === 'victory' && !this.victoryRewardsGranted) {
+      this.victoryRewardsGranted = true;
+      this.mode = 'events';
+      this.dialog.showMessages(this.awardVictoryExperience());
+      return;
+    }
+
     this.mode = 'finished';
     this.dialog.showMessage(this.state.outcome === 'victory' ? 'You won the battle!' : 'You blacked out!');
+  }
+
+  private awardVictoryExperience(): string[] {
+    const experience = experienceAwardForDefeat(this.state.enemy.pokemon.level);
+    const messages: string[] = [];
+
+    for (const pokemon of this.participatingPokemon) {
+      const result = pokemon.gainExperience(experience);
+      messages.push(`${pokemon.base.name.toUpperCase()} gained ${result.awarded} XP!`);
+      messages.push(...result.levelsGained.map((level) => `${pokemon.base.name.toUpperCase()} grew to Lv ${level}!`));
+      messages.push(...result.learnedMoves.map((move) => `${pokemon.base.name.toUpperCase()} learned ${move.name.toUpperCase()}!`));
+    }
+
+    return messages;
   }
 
   private animateCombatEvents(events: readonly BattleEvent[]): void {
@@ -635,7 +667,10 @@ export class BattleScene extends Phaser.Scene {
 
   private returnToWorld(): void {
     if (this.launchedFromWorld) {
-      this.scene.start('world');
+      // HP and primary status live on party Pokemon. Battle-only stages and confusion
+      // live exclusively in BattleState and are discarded with this scene.
+      this.persistActivePokemonHp();
+      this.scene.start('world', { party: this.party });
     }
   }
 }

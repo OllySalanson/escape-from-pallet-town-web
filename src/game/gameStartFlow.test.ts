@@ -37,6 +37,8 @@ vi.mock('./ui/DialogBox', () => ({
 
 import { gameConfig } from './gameConfig';
 import { getWalkAnimationKey } from './playerFrames';
+import { CHARMANDER, Pokemon, PokemonParty } from './pokemon';
+import { PrimaryStatus } from './pokemon/battle/status';
 import { BootScene } from './scenes/BootScene';
 import { TitleScene } from './scenes/TitleScene';
 import { WorldScene } from './scenes/WorldScene';
@@ -124,7 +126,13 @@ describe('game start flow', () => {
       },
     });
 
-    expect(() => world.create()).not.toThrow();
+    const carriedParty = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
+    carriedParty.pokemon[0].takeDamage(4);
+    carriedParty.pokemon[0].primaryStatus = PrimaryStatus.Poison;
+    expect(() => world.create({ party: carriedParty })).not.toThrow();
+    expect((world as unknown as { party: PokemonParty }).party).toBe(carriedParty);
+    expect(carriedParty.pokemon[0].currentHp).toBe(carriedParty.pokemon[0].maxHp - 4);
+    expect(carriedParty.pokemon[0].primaryStatus).toBe(PrimaryStatus.Poison);
 
     const dialog = {
       visible: false,
