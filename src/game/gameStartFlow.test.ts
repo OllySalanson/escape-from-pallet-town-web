@@ -104,6 +104,7 @@ describe('game start flow', () => {
       },
       input: {
         keyboard: {
+          addCapture: vi.fn(),
           addKey: vi.fn(),
           addKeys: vi.fn(() => ({})),
           createCursorKeys: vi.fn(() => ({})),
@@ -124,5 +125,26 @@ describe('game start flow', () => {
     });
 
     expect(() => world.create()).not.toThrow();
+
+    const dialog = {
+      visible: false,
+      showMessages: vi.fn(() => {
+        dialog.visible = true;
+      }),
+    };
+    Object.assign(world as unknown as Record<string, unknown>, {
+      currentTile: { x: 6, y: 8 },
+      facing: 'left',
+      dialogBox: dialog,
+      npcSprites: new Map(),
+    });
+
+    (world as unknown as { tryInteract(): void }).tryInteract();
+
+    expect(dialog.showMessages).toHaveBeenCalledWith([
+      'Pallet Town is small, but every great journey starts somewhere.',
+      'The tall grass is waiting just beyond town!',
+    ]);
+    expect(dialog.visible).toBe(true);
   });
 });

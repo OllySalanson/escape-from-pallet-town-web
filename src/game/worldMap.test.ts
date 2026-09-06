@@ -4,6 +4,7 @@ import {
   buildDetailLayerData,
   buildGroundLayerData,
   CLASSIC_TILE,
+  isTallGrassTile,
   MAP_HEIGHT,
   MAP_WIDTH,
 } from './worldMap';
@@ -50,13 +51,18 @@ describe('worldMap', () => {
     ]);
   });
 
-  it('builds a readable two-tile-wide path through the map', () => {
+  it('builds a route that requires walking through tall grass south of town', () => {
     const ground = buildGroundLayerData();
 
-    expect(ground.every((row) => row[7] === CLASSIC_TILE.DIRT_PATH)).toBe(true);
-    expect(ground.every((row) => row[8] === CLASSIC_TILE.DIRT_PATH)).toBe(true);
+    expect(ground.slice(0, 22).every((row) => row[7] === CLASSIC_TILE.DIRT_PATH)).toBe(true);
+    expect(ground.slice(0, 22).every((row) => row[8] === CLASSIC_TILE.DIRT_PATH)).toBe(true);
     expect(ground[10].slice(7).every((tile) => tile === CLASSIC_TILE.DIRT_PATH)).toBe(true);
     expect(ground[11].slice(7).every((tile) => tile === CLASSIC_TILE.DIRT_PATH)).toBe(true);
+    expect(ground[22][7]).toBe(CLASSIC_TILE.TALL_GRASS);
+    expect(ground[33][8]).toBe(CLASSIC_TILE.TALL_GRASS);
+    expect(ground[34][7]).toBe(CLASSIC_TILE.DIRT_PATH);
+    expect(isTallGrassTile({ x: 7, y: 22 })).toBe(true);
+    expect(isTallGrassTile({ x: 7, y: 21 })).toBe(false);
   });
 
   it('places trees, flowers, and a joined fence line on the detail layer', () => {
@@ -75,6 +81,8 @@ describe('worldMap', () => {
       CLASSIC_TILE.FENCE_MIDDLE,
       CLASSIC_TILE.FENCE_RIGHT,
     ]);
+    expect(details[21][7]).toBe(-1);
+    expect(details[21][8]).toBe(-1);
   });
 
   it('marks trees, pond tiles, and fences as solid while leaving flowers walkable', () => {
@@ -85,5 +93,6 @@ describe('worldMap', () => {
     expect(collision[4][15]).toBe(true);
     expect(collision[9][14]).toBe(true);
     expect(collision[3][5]).toBe(false);
+    expect(collision[22][7]).toBe(false);
   });
 });
