@@ -8,6 +8,7 @@ import {
 import { BULBASAUR, CHARMANDER, getSpeciesById } from '../pokemon/species';
 import {
   createBattleState,
+  createTrainerBattleState,
   replacePlayerPokemon,
   resolveCatchAttempt,
   resolveEnemyTurn,
@@ -15,6 +16,7 @@ import {
   type BattleCombatant,
   type BattleEvent,
   type BattleState,
+  type TrainerBattle,
 } from '../pokemon/battle/battleEngine';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
@@ -40,20 +42,15 @@ const STARTING_POKE_BALLS = 5;
 const PARTY_LIMIT = 6;
 const BATTLEFIELD_WIDTH = 320;
 const GRASS_BACKDROP_WIDTH = 257;
-const MAIN_COMMAND_ACTIONS = [
-  { type: 'choose-fight' },
-  { type: 'throw-ball' },
-  { type: 'choose-pokemon' },
-  { type: 'choose-run' },
-] as const satisfies readonly BattleAction[];
-
 export interface BattleSceneData {
   wild?: WildEncounter;
+  trainer?: TrainerBattle;
   party?: PokemonParty;
   pokeBalls?: number;
   caughtPokemonStash?: PokemonInstance[];
   /** The active raid context, passed through from WorldScene. */
   runSession?: ActiveRunSession;
+  defeatedTrainerIds?: readonly string[];
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -67,6 +64,7 @@ export class BattleScene extends Phaser.Scene {
   private playerSprite!: Phaser.GameObjects.Image;
   private enemySprite!: Phaser.GameObjects.Image;
   private playerStatusBox!: Phaser.GameObjects.Container;
+  private enemyStatusBox!: Phaser.GameObjects.Container;
   private commandTexts: Phaser.GameObjects.Text[] = [];
   private mode: CommandMode = 'main';
   private selectedCommand = 0;
@@ -88,6 +86,9 @@ export class BattleScene extends Phaser.Scene {
   private caughtPokemonStash: PokemonInstance[] = [];
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
+  private trainer: TrainerBattle | undefined;
+  private readonly defeatedTrainerIds = new Set<string>();
+  private displayedEnemy: PokemonInstance | undefined;
 
   public constructor() {
     super('battle');
@@ -102,12 +103,17 @@ export class BattleScene extends Phaser.Scene {
     this.pokeBalls = data.pokeBalls ?? STARTING_POKE_BALLS;
     this.caughtPokemonStash = data.caughtPokemonStash ?? [];
     this.runSession = data.runSession;
+    this.trainer = data.trainer;
+    this.defeatedTrainerIds.clear();
+    data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.pendingHubTransition = false;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
-    this.launchedFromWorld = Boolean(data.wild && data.party);
-    this.state = createBattleState(playerPokemon, wildPokemon);
+    this.launchedFromWorld = Boolean((data.wild || data.trainer) && data.party);
+    this.state = data.trainer
+      ? createTrainerBattleState(playerPokemon, data.trainer)
+      : createBattleState(playerPokemon, wildPokemon);
     this.participatingPokemon.add(playerPokemon);
     this.cameras.main.setBackgroundColor('#111827');
     this.drawBackdrop();
@@ -141,7 +147,11 @@ export class BattleScene extends Phaser.Scene {
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.goBack());
     this.input.keyboard!.on?.('keydown-M', () => audioManager.toggleMute());
     this.mode = 'events';
-    this.dialog.showMessage(`A wild ${wildPokemon.base.name.toUpperCase()} appeared!`);
+    this.dialog.showMessage(
+      data.trainer
+        ? `${data.trainer.name} wants to battle! Go, ${this.state.enemy.pokemon.base.name.toUpperCase()}!`
+        : `A wild ${wildPokemon.base.name.toUpperCase()} appeared!`,
+    );
   }
 
   public update(_time: number, delta: number): void {
@@ -188,7 +198,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private drawStatusBoxes(): void {
-    this.createStatusBox(16, 16, this.state.enemy, false);
+    this.enemyStatusBox = this.createStatusBox(16, 16, this.state.enemy, false);
+    this.displayedEnemy = this.state.enemy.pokemon;
     this.playerStatusBox = this.createStatusBox(150, 104, this.state.player, true);
   }
 
@@ -266,7 +277,9 @@ export class BattleScene extends Phaser.Scene {
 
     const labels =
       this.mode === 'main'
-        ? ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', 'RUN']
+        ? this.trainer
+          ? ['FIGHT', 'POKéMON']
+          : ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', 'RUN']
         : this.state.player.moves.map(
             (move) => `${move.base.name.toUpperCase()} ${move.base.type.toUpperCase()} ${move.pp}/${move.base.pp}`,
           );
@@ -285,7 +298,7 @@ export class BattleScene extends Phaser.Scene {
       const text = this.add.text(18 + column * 148, 11 + row * 25, label, {
         fontFamily: BATTLE_FONT,
         fontSize: this.mode === 'moves' ? '13px' : '16px',
-        color: this.mode === 'main' && index === 1 && this.pokeBalls === 0 ? '#7a3c3c' : '#202020',
+        color: this.mode === 'main' && !this.trainer && index === 1 && this.pokeBalls === 0 ? '#7a3c3c' : '#202020',
       });
       container.add(text);
       return text;
@@ -370,7 +383,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.mode === 'main') {
-      this.dispatchAction(MAIN_COMMAND_ACTIONS[this.selectedCommand]);
+      this.dispatchAction(this.mainActions()[this.selectedCommand]);
       return;
     }
 
@@ -408,6 +421,17 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  private mainActions(): readonly BattleAction[] {
+    return this.trainer
+      ? [{ type: 'choose-fight' }, { type: 'choose-pokemon' }]
+      : [
+          { type: 'choose-fight' },
+          { type: 'throw-ball' },
+          { type: 'choose-pokemon' },
+          { type: 'choose-run' },
+        ];
+  }
+
   private goBack(): void {
     if (this.mode === 'party' && this.forcedReplacement) {
       return;
@@ -437,16 +461,23 @@ export class BattleScene extends Phaser.Scene {
     this.state = result.state;
     this.persistActivePokemonHp();
     this.refreshStatusLabels();
+    const rewardMessages = this.awardTrainerDefeatExperience(previousState, result.events);
     this.prepareForcedReplacement();
     this.animateHp(previousState);
     this.animateCombatEvents(result.events);
     this.playCombatEffects(result.events, previousState);
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.dialog.showMessages(result.events.map(eventToMessage));
+    this.dialog.showMessages([...result.events.map(eventToMessage), ...rewardMessages]);
   }
 
   private throwBall(): void {
+    if (this.trainer) {
+      this.mode = 'events';
+      this.commandContainer.setVisible(false);
+      this.dialog.showMessage("You can't catch a trainer's POKéMON!");
+      return;
+    }
     if (this.pokeBalls === 0) {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
@@ -569,6 +600,17 @@ export class BattleScene extends Phaser.Scene {
       .setAlpha(1);
   }
 
+  private refreshEnemyCombatant(): void {
+    this.enemyStatusBox.destroy();
+    this.enemyStatusBox = this.createStatusBox(16, 16, this.state.enemy, false);
+    this.enemySprite
+      .setTexture(`pokemon-front-${this.state.enemy.pokemon.base.dexId}`)
+      .setPosition(245, 68)
+      .setAlpha(1);
+    this.displayedEnemy = this.state.enemy.pokemon;
+    this.refreshStatusLabels();
+  }
+
   private animateHp(previousState: BattleState): void {
     this.animateHpBar(
       this.playerHpBar,
@@ -629,6 +671,9 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.state.outcome === 'active') {
+      if (this.displayedEnemy !== this.state.enemy.pokemon) {
+        this.refreshEnemyCombatant();
+      }
       this.mode = 'main';
       this.selectedCommand = 0;
       this.showCommands();
@@ -638,7 +683,11 @@ export class BattleScene extends Phaser.Scene {
     if (this.state.outcome === 'victory' && !this.victoryRewardsGranted) {
       this.victoryRewardsGranted = true;
       this.mode = 'events';
-      this.dialog.showMessages(this.awardVictoryExperience());
+      this.dialog.showMessages(
+        this.trainer
+          ? [this.trainer.defeatText ?? `${this.trainer.name} was defeated!`]
+          : this.awardVictoryExperience(this.state.enemy.pokemon),
+      );
       return;
     }
 
@@ -651,8 +700,8 @@ export class BattleScene extends Phaser.Scene {
     this.dialog.showMessage(this.state.outcome === 'victory' ? 'You won the battle!' : 'You blacked out!');
   }
 
-  private awardVictoryExperience(): string[] {
-    const experience = experienceAwardForDefeat(this.state.enemy.pokemon.level);
+  private awardVictoryExperience(defeatedPokemon: PokemonInstance): string[] {
+    const experience = experienceAwardForDefeat(defeatedPokemon.level);
     const messages: string[] = [];
 
     for (const pokemon of this.participatingPokemon) {
@@ -663,6 +712,13 @@ export class BattleScene extends Phaser.Scene {
     }
 
     return messages;
+  }
+
+  private awardTrainerDefeatExperience(previousState: BattleState, events: readonly BattleEvent[]): string[] {
+    if (!this.trainer || !events.some((event) => event.type === 'fainted' && event.user === 'enemy')) {
+      return [];
+    }
+    return this.awardVictoryExperience(previousState.enemy.pokemon);
   }
 
   private animateCombatEvents(events: readonly BattleEvent[]): void {
@@ -727,12 +783,16 @@ export class BattleScene extends Phaser.Scene {
     if (this.launchedFromWorld) {
       // HP and primary status live on party Pokemon. Battle-only stages and confusion
       // live exclusively in BattleState and are discarded with this scene.
+      if (this.trainer && this.state.outcome === 'victory') {
+        this.defeatedTrainerIds.add(this.trainer.id);
+      }
       this.persistActivePokemonHp();
       this.scene.start('world', {
         party: this.party,
         pokeBalls: this.pokeBalls,
         caughtPokemonStash: this.caughtPokemonStash,
         runSession: this.runSession,
+        defeatedTrainerIds: [...this.defeatedTrainerIds],
       });
     }
   }
@@ -810,6 +870,10 @@ const eventToMessage = (event: BattleEvent): string => {
       return `Gotcha! ${event.name.toUpperCase()} was caught!`;
     case 'broke-free':
       return `${event.name.toUpperCase()} broke free!`;
+    case 'catch-disabled':
+      return "You can't catch a trainer's POKéMON!";
+    case 'enemy-sent-out':
+      return `Go, ${event.name.toUpperCase()}!`;
   }
 };
 

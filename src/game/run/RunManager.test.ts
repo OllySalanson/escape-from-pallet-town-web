@@ -200,6 +200,25 @@ describe('RunManager lifecycle', () => {
     });
   });
 
+  it('resolves a trainer-battle party wipe through the standard secure-slot path', () => {
+    const manager = new RunManager();
+    const activePokemon = makePokemon(CHARMANDER);
+    const securedPokemon = makePokemon(BULBASAUR);
+    manager.startRun(
+      { party: [activePokemon, securedPokemon], items: [{ itemId: 'poke-ball', quantity: 2 }] },
+      { mapId: 'route-1', durationMs: 60_000 },
+      { pokemon: securedPokemon },
+    );
+
+    // BattleScene delegates any in-run all-party faint, trainer or wild, here.
+    expect(manager.resolveWipe()).toMatchObject({
+      outcome: 'WIPED',
+      bankedPokemon: [securedPokemon],
+      lostPokemon: [activePokemon],
+    });
+    expect(manager.phase).toBe(RunPhase.Wiped);
+  });
+
   it('rejects secure-slot selections that do not belong to the run', () => {
     const manager = new RunManager();
     startRun(manager);

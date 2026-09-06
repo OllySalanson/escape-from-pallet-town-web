@@ -26,6 +26,7 @@ import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { Bag, type ItemId } from '../items';
 import { RunPhase } from '../run/RunManager';
 import type { ActiveRunSession } from '../run/RunSession';
+import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
 
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
@@ -85,6 +86,8 @@ export interface WorldSceneData {
   readonly caughtPokemonStash?: Pokemon[];
   /** Present only while playing an extraction raid launched by the hub. */
   readonly runSession?: ActiveRunSession;
+  /** Trainer victories persist only for the active raid. */
+  readonly defeatedTrainerIds?: readonly string[];
 }
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
@@ -123,6 +126,9 @@ export class WorldScene extends Phaser.Scene {
   private runTimerHud: RunTimerHud | undefined;
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
+  private trainerEncounters: readonly RunTrainerEncounter[] = [];
+  private readonly defeatedTrainerIds = new Set<string>();
+  private pendingTrainerBattle: RunTrainerEncounter | undefined;
 
   public constructor() {
     super('world');
@@ -146,6 +152,10 @@ export class WorldScene extends Phaser.Scene {
       this.caughtPokemonStash = data.caughtPokemonStash;
     }
     this.runSession = data.runSession;
+    this.defeatedTrainerIds.clear();
+    data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
+    this.trainerEncounters = this.runSession ? createRunTrainerEncounters() : [];
+    this.pendingTrainerBattle = undefined;
     this.createMap();
     this.createEntities();
     this.createPlayer();
@@ -316,6 +326,21 @@ export class WorldScene extends Phaser.Scene {
         .setOrigin(0, 0)
         .setDepth(2 + entity.position.y / 1000);
       this.npcSprites.set(entity.id, sprite);
+      this.mapObjects.push(sprite);
+    }
+
+    for (const encounter of this.trainersForCurrentMap()) {
+      const sprite = this.add
+        .sprite(
+          encounter.position.x * TILE_SIZE,
+          encounter.position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+          'character',
+          getIdleFrame(encounter.facing),
+        )
+        .setOrigin(0, 0)
+        .setTint(0xfbbf24)
+        .setDepth(2 + encounter.position.y / 1000);
+      this.npcSprites.set(encounter.trainer.id, sprite);
       this.mapObjects.push(sprite);
     }
   }
@@ -498,15 +523,26 @@ export class WorldScene extends Phaser.Scene {
       (candidate) =>
         candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
     );
-    if (!entity) {
+    const trainer = this.trainersForCurrentMap().find(
+      (candidate) =>
+        candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
+    );
+    if (!entity && !trainer) {
       return;
     }
 
-    if (entity.kind === 'npc') {
+    if (trainer) {
+      this.npcSprites.get(trainer.trainer.id)?.setFrame(getIdleFrame(OPPOSITE_DIRECTION[this.facing]));
+      this.pendingTrainerBattle = trainer;
+      this.dialogBox.showMessages([...trainer.introLines]);
+      return;
+    }
+
+    if (entity?.kind === 'npc') {
       this.npcSprites.get(entity.id)?.setFrame(getIdleFrame(OPPOSITE_DIRECTION[this.facing]));
     }
 
-    this.dialogBox.showMessages([...entity.dialogLines]);
+    this.dialogBox.showMessages([...entity!.dialogLines]);
   }
 
   private openParty(): void {
@@ -528,6 +564,9 @@ export class WorldScene extends Phaser.Scene {
       this.collisionData[tile.y][tile.x] ||
       this.currentMap.entities.some(
         (entity) => entity.position.x === tile.x && entity.position.y === tile.y,
+      ) ||
+      this.trainersForCurrentMap().some(
+        (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
       )
     );
   }
@@ -660,6 +699,14 @@ export class WorldScene extends Phaser.Scene {
     return EXTRACTION_POINTS.filter((point) => point.mapId === this.currentMap.id);
   }
 
+  private trainersForCurrentMap(): readonly RunTrainerEncounter[] {
+    return this.trainerEncounters.filter(
+      (trainer) =>
+        trainer.mapId === this.currentMap.id &&
+        !this.defeatedTrainerIds.has(trainer.trainer.id),
+    );
+  }
+
   private isExtractionOpen(point: ExtractionPoint): boolean {
     return (this.runSession?.manager.snapshot().elapsedMs ?? 0) >= point.unlockAtMs;
   }
@@ -744,6 +791,20 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private handleRunResolutionComplete(): void {
+    if (this.pendingTrainerBattle) {
+      const trainer = this.pendingTrainerBattle;
+      this.pendingTrainerBattle = undefined;
+      this.scene.start('battle', {
+        trainer: trainer.trainer,
+        party: this.party,
+        pokeBalls: this.bag.count('poke-ball'),
+        caughtPokemonStash: this.caughtPokemonStash,
+        runSession: this.runSession,
+        defeatedTrainerIds: [...this.defeatedTrainerIds],
+      });
+      return;
+    }
+
     if (!this.pendingHubTransition) {
       return;
     }
