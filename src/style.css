@@ -587,9 +587,122 @@ button {
 .reset-button {
   color: var(--menu-danger);
 }
+.objectives-menu {
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 4px),
+    #07151b;
+  font-family: "Orange Kid", monospace;
+  letter-spacing: 0.025em;
+}
+.field-guide-shell {
+  width: min(800px, calc(100% - 28px));
+  min-height: min(530px, calc(100% - 28px));
+  margin: 14px auto;
+  padding: clamp(18px, 3vw, 34px);
+  border: 4px solid #b7e7d0;
+  outline: 3px solid #1c5260;
+  outline-offset: -10px;
+  background:
+    linear-gradient(90deg, rgb(87 214 190 / 0.08) 1px, transparent 1px) 0 0 / 12px 12px,
+    linear-gradient(#102a33, #091a22);
+  box-shadow: 0 0 0 6px #061016, 12px 12px 0 rgb(0 0 0 / 45%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.field-guide-header,
+.field-guide-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.field-guide-header h1 {
+  margin: 2px 0 0;
+  color: #f4f0cb;
+  font-size: clamp(30px, 5vw, 48px);
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+.field-guide-close {
+  border: 2px solid #83cdbb;
+  background: #153b43;
+  padding: 8px 10px;
+  font-weight: bold;
+}
+.field-guide-close:hover {
+  background: #1d5660;
+}
+.objectives-menu kbd {
+  border: 1px solid #b7e7d0;
+  background: #07151b;
+  padding: 1px 4px;
+  color: #f4f0cb;
+  font: inherit;
+}
+.field-guide-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.field-guide-panel {
+  border: 2px solid #376b70;
+  background: rgb(3 16 23 / 78%);
+  padding: var(--space-3);
+}
+.field-guide-heading h2 {
+  margin: 2px 0 0;
+  color: #d9f4dc;
+  font-size: 1.5em;
+  text-transform: uppercase;
+}
+.field-guide-objectives {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.field-guide-objective {
+  display: flex;
+  gap: 10px;
+  padding: 9px;
+  border-left: 4px solid #f1bf63;
+  background: #142e39;
+}
+.field-guide-objective.complete {
+  border-color: #72d895;
+  color: #bdf7ca;
+}
+.field-guide-objective > span {
+  color: #f1bf63;
+  font-size: 1.35em;
+}
+.field-guide-objective.complete > span {
+  color: #72d895;
+}
+.field-guide-objective small {
+  display: block;
+  margin-top: 3px;
+}
+.field-guide-notes ol {
+  display: grid;
+  gap: 11px;
+  margin: 12px 0 0;
+  padding-left: 23px;
+  color: #d9f4dc;
+}
+.field-guide-empty {
+  color: var(--menu-muted);
+}
+.field-guide-shell footer {
+  margin-top: auto;
+  color: #9ddac9;
+  text-align: center;
+  font-size: 0.9em;
+}
 @media (max-width: 650px) {
   .party-layout,
-  .bag-layout {
+  .bag-layout,
+  .field-guide-layout {
     grid-template-columns: 1fr;
   }
   .stats-grid {
