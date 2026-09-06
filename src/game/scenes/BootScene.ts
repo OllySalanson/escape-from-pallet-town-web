@@ -6,6 +6,7 @@ import {
   getWalkAnimationKey,
   getWalkFrames,
 } from '../playerFrames';
+import { SPECIES_BY_ID } from '../pokemon/species';
 
 const DIRECTIONS: readonly Direction[] = ['down', 'left', 'up', 'right'];
 
@@ -20,6 +21,14 @@ export class BootScene extends Phaser.Scene {
       frameHeight: CHARACTER_FRAME_HEIGHT,
     });
     this.load.image('classicTiles', 'assets/tileset.png');
+    this.load.image('battle-background', 'assets/battle/background.png');
+    this.load.image('battle-hud', 'assets/battle/hud-box.png');
+    this.load.image('battle-dialog', 'assets/battle/dialog-plain.png');
+
+    for (const species of Object.values(SPECIES_BY_ID)) {
+      this.load.image(`pokemon-front-${species.dexId}`, `assets/pokemon/front/${species.dexId}.png`);
+      this.load.image(`pokemon-back-${species.dexId}`, `assets/pokemon/back/${species.dexId}.png`);
+    }
   }
 
   public create(): void {

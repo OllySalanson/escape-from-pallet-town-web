@@ -8,6 +8,7 @@ export type RandomSource = () => number;
 export interface DamageResult {
   readonly damage: number;
   readonly isStab: boolean;
+  readonly isCritical: boolean;
   readonly typeEffectiveness: number;
 }
 
@@ -28,7 +29,7 @@ export const calculateDamage = (
   const isStab = attacker.base.primaryType === move.type || attacker.base.secondaryType === move.type;
 
   if (move.category === MoveCategory.Status || move.power <= 0 || typeEffectiveness === 0) {
-    return { damage: 0, isStab, typeEffectiveness };
+    return { damage: 0, isStab, isCritical: false, typeEffectiveness };
   }
 
   const attack = move.category === MoveCategory.Physical ? attacker.stats.attack : attacker.stats.spAttack;
@@ -37,5 +38,5 @@ export const calculateDamage = (
   const baseDamage = ((2 * attacker.level + 10) / 250) * move.power * (attack / defense) + 2;
   const damage = Math.floor(baseDamage * randomModifier(random) * typeEffectiveness * criticalMultiplier);
 
-  return { damage, isStab, typeEffectiveness };
+  return { damage, isStab, isCritical: criticalMultiplier === 2, typeEffectiveness };
 };

@@ -14,6 +14,7 @@ import {
 
 export const BULBASAUR = new PokemonBase({
   id: 'bulbasaur',
+  dexId: 1,
   name: 'Bulbasaur',
   primaryType: PokemonType.Grass,
   secondaryType: PokemonType.Poison,
@@ -36,6 +37,7 @@ export const BULBASAUR = new PokemonBase({
 
 export const CHARMANDER = new PokemonBase({
   id: 'charmander',
+  dexId: 4,
   name: 'Charmander',
   primaryType: PokemonType.Fire,
   baseStats: {
@@ -57,6 +59,7 @@ export const CHARMANDER = new PokemonBase({
 
 export const BUTTERFREE = new PokemonBase({
   id: 'butterfree',
+  dexId: 12,
   name: 'Butterfree',
   primaryType: PokemonType.Bug,
   secondaryType: PokemonType.Flying,
@@ -78,6 +81,7 @@ export const BUTTERFREE = new PokemonBase({
 
 export const PIKACHU = new PokemonBase({
   id: 'pikachu',
+  dexId: 25,
   name: 'Pikachu',
   primaryType: PokemonType.Electric,
   baseStats: {
@@ -99,6 +103,7 @@ export const PIKACHU = new PokemonBase({
 
 export const JIGGLYPUFF = new PokemonBase({
   id: 'jigglypuff',
+  dexId: 39,
   name: 'Jigglypuff',
   primaryType: PokemonType.Normal,
   baseStats: {
@@ -120,6 +125,7 @@ export const JIGGLYPUFF = new PokemonBase({
 
 export const PIDGEY = new PokemonBase({
   id: 'pidgey',
+  dexId: 16,
   name: 'Pidgey',
   primaryType: PokemonType.Normal,
   secondaryType: PokemonType.Flying,

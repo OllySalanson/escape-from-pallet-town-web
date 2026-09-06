@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MoveCategory } from '../MoveBase';
+import { MoveBase, MoveCategory } from '../MoveBase';
 import { Pokemon } from '../Pokemon';
 import { PokemonType } from '../PokemonType';
 import { EMBER, TACKLE, VINE_WHIP } from '../moves';
@@ -28,8 +28,18 @@ describe('damage calculation', () => {
     const emberDamage = calculateDamage(charmander, bulbasaur, EMBER, maximumRandom);
     const vineWhipDamage = calculateDamage(bulbasaur, charmander, VINE_WHIP, maximumRandom);
 
-    expect(emberDamage).toEqual({ damage: 13, isStab: true, typeEffectiveness: 2 });
-    expect(vineWhipDamage).toEqual({ damage: 3, isStab: true, typeEffectiveness: 0.5 });
+    expect(emberDamage).toEqual({
+      damage: 13,
+      isStab: true,
+      isCritical: false,
+      typeEffectiveness: 2,
+    });
+    expect(vineWhipDamage).toEqual({
+      damage: 3,
+      isStab: true,
+      isCritical: false,
+      typeEffectiveness: 0.5,
+    });
   });
 
   it('does not damage with status moves', () => {
@@ -39,6 +49,15 @@ describe('damage calculation', () => {
 
     expect(growl).toBeDefined();
     expect(calculateDamage(attacker, defender, growl!.base, maximumRandom).damage).toBe(0);
+  });
+
+  it('uses Pokemon.cs critical chance and 2x multiplier', () => {
+    const attacker = new Pokemon(CHARMANDER, 10);
+    const defender = new Pokemon(BULBASAUR, 10);
+    const rolls = [0.0625, 1];
+    const criticalDamage = calculateDamage(attacker, defender, EMBER, () => rolls.shift() ?? 1);
+
+    expect(criticalDamage).toMatchObject({ isCritical: true, damage: 27, typeEffectiveness: 2 });
   });
 });
 
@@ -80,5 +99,22 @@ describe('battle turn resolution', () => {
       { type: 'used-move', user: 'enemy', move: TACKLE.name },
       { type: 'fainted', user: 'player', name: 'Pidgey' },
     ]);
+  });
+
+  it('reports a miss when the accuracy roll fails', () => {
+    const inaccurateMove = new MoveBase({
+      name: 'Risky Strike',
+      type: PokemonType.Normal,
+      power: 40,
+      accuracy: 50,
+      pp: 10,
+      category: MoveCategory.Physical,
+    });
+    const initial = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
+    const state = { ...initial, player: { ...initial.player, moves: [{ base: inaccurateMove, pp: 10 }] } };
+    const result = resolveTurn(state, 0, () => 0.999999);
+
+    expect(result.events).toContainEqual({ type: 'missed', user: 'player' });
+    expect(result.state.enemy.currentHp).toBe(state.enemy.currentHp);
   });
 });
