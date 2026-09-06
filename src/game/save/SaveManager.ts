@@ -146,6 +146,7 @@ export class SaveManager {
     }
 
     game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot);
+    game.stash.ensurePlayable();
     return this.save(game);
   }
 }

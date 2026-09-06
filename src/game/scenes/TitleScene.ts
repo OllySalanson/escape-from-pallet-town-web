@@ -106,6 +106,9 @@ export class TitleScene extends Phaser.Scene {
   private loadOrCreateGame() {
     const savedGame = this.saveManager.load();
     if (savedGame) {
+      if (savedGame.stash.ensurePlayable()) {
+        this.saveManager.save(savedGame);
+      }
       return savedGame;
     }
 
@@ -118,6 +121,7 @@ export class TitleScene extends Phaser.Scene {
       bag: new Bag(),
       stash,
     };
+    stash.ensurePlayable();
     this.saveManager.save(newGame);
     return this.saveManager.load() ?? newGame;
   }

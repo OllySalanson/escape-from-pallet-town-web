@@ -36,6 +36,32 @@ describe('Stash', () => {
     expect(stash.listItems()).toEqual({ 'poke-ball': 1 });
   });
 
+  it('grants a starter and supplies to an empty stash', () => {
+    const stash = new Stash();
+
+    expect(stash.ensurePlayable()).toBe(true);
+    expect(stash.listPokemon()).toMatchObject([{ pokemon: { base: { id: 'bulbasaur' }, level: 5 } }]);
+    expect(stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
+  });
+
+  it('leaves existing Pokemon and supplies completely unchanged', () => {
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+    stash.addItem('potion', 2);
+    const contents = stash.toJSON();
+
+    expect(stash.ensurePlayable()).toBe(false);
+    expect(stash.toJSON()).toEqual(contents);
+  });
+
+  it('restores only a Pokemon when supplies remain', () => {
+    const stash = new Stash({ items: { potion: 2, 'poke-ball': 1 } });
+
+    expect(stash.ensurePlayable()).toBe(true);
+    expect(stash.listPokemon()).toMatchObject([{ pokemon: { base: { id: 'bulbasaur' }, level: 5 } }]);
+    expect(stash.listItems()).toEqual({ potion: 2, 'poke-ball': 1 });
+  });
+
   it('persists the stash and banks extraction rewards', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
