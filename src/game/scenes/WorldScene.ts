@@ -27,6 +27,15 @@ import { Bag, type ItemId } from '../items';
 import { RunPhase } from '../run/RunManager';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
+import {
+  chooseHunterPursuitStep,
+  createHunterState,
+  createHunterTrainer,
+  HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP,
+  HUNTER_SPAWN_MS,
+  isHunterContactingPlayer,
+  type HunterState,
+} from '../world/hunter';
 
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
@@ -88,6 +97,8 @@ export interface WorldSceneData {
   readonly runSession?: ActiveRunSession;
   /** Trainer victories persist only for the active raid. */
   readonly defeatedTrainerIds?: readonly string[];
+  /** The hunter persists across battle returns during the active raid. */
+  readonly hunterState?: HunterState;
 }
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
@@ -128,7 +139,10 @@ export class WorldScene extends Phaser.Scene {
   private pendingHubTransition = false;
   private trainerEncounters: readonly RunTrainerEncounter[] = [];
   private readonly defeatedTrainerIds = new Set<string>();
-  private pendingTrainerBattle: RunTrainerEncounter | undefined;
+  private pendingTrainerBattle:
+    | { readonly trainer: RunTrainerEncounter['trainer']; readonly introLines: readonly string[]; readonly isHunter: boolean }
+    | undefined;
+  private hunterState: HunterState = createHunterState();
 
   public constructor() {
     super('world');
@@ -156,6 +170,7 @@ export class WorldScene extends Phaser.Scene {
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.trainerEncounters = this.runSession ? createRunTrainerEncounters() : [];
     this.pendingTrainerBattle = undefined;
+    this.hunterState = data.hunterState ?? createHunterState();
     this.createMap();
     this.createEntities();
     this.createPlayer();
@@ -166,6 +181,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.runTimerHud) {
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyRunTimerHud());
     }
+    this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => this.clearMap());
   }
 
   public update(_time: number, deltaMs: number): void {
@@ -343,6 +359,27 @@ export class WorldScene extends Phaser.Scene {
       this.npcSprites.set(encounter.trainer.id, sprite);
       this.mapObjects.push(sprite);
     }
+
+    this.createHunterSprite();
+  }
+
+  private createHunterSprite(): void {
+    if (!this.isHunterOnCurrentMap()) {
+      return;
+    }
+    const position = this.hunterState.position!;
+    const sprite = this.add
+      .sprite(
+        position.x * TILE_SIZE,
+        position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+        'character',
+        getIdleFrame('down'),
+      )
+      .setOrigin(0, 0)
+      .setTint(0xef4444)
+      .setDepth(2 + position.y / 1000);
+    this.npcSprites.set('rival-hunter', sprite);
+    this.mapObjects.push(sprite);
   }
 
   private createSign(entity: WorldEntity): void {
@@ -533,7 +570,7 @@ export class WorldScene extends Phaser.Scene {
 
     if (trainer) {
       this.npcSprites.get(trainer.trainer.id)?.setFrame(getIdleFrame(OPPOSITE_DIRECTION[this.facing]));
-      this.pendingTrainerBattle = trainer;
+      this.pendingTrainerBattle = { trainer: trainer.trainer, introLines: trainer.introLines, isHunter: false };
       this.dialogBox.showMessages([...trainer.introLines]);
       return;
     }
@@ -567,7 +604,10 @@ export class WorldScene extends Phaser.Scene {
       ) ||
       this.trainersForCurrentMap().some(
         (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
-      )
+      ) ||
+      (this.isHunterOnCurrentMap() &&
+        this.hunterState.position!.x === tile.x &&
+        this.hunterState.position!.y === tile.y)
     );
   }
 
@@ -608,6 +648,14 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    if (this.tryStartHunterBattle()) {
+      return;
+    }
+    this.advanceHunterPursuit();
+    if (this.tryStartHunterBattle()) {
+      return;
+    }
+
     if (isTallGrassInMap(this.currentMap, this.currentTile) && this.currentMap.encounters) {
       const wild = rollEncounter(this.currentMap.encounters);
       if (wild) {
@@ -639,6 +687,7 @@ export class WorldScene extends Phaser.Scene {
       this.currentMap = getWorldMap(warp.destinationMapId);
       this.runSession?.manager.setMap(this.currentMap.id);
       this.currentTile = { ...warp.destination };
+      this.moveHunterToCurrentMap();
       this.facing = warp.facing;
       this.targetTile = null;
       this.createMap();
@@ -751,6 +800,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const snapshot = this.runSession.manager.tick(deltaMs);
+    this.spawnHunterIfDue(snapshot.elapsedMs);
     this.refreshExtractionMarkers();
     this.refreshRunTimerHud();
     if (snapshot.isEnraged && this.runSession.manager.isEnrageGraceExpired) {
@@ -792,15 +842,17 @@ export class WorldScene extends Phaser.Scene {
 
   private handleRunResolutionComplete(): void {
     if (this.pendingTrainerBattle) {
-      const trainer = this.pendingTrainerBattle;
+      const battle = this.pendingTrainerBattle;
       this.pendingTrainerBattle = undefined;
       this.scene.start('battle', {
-        trainer: trainer.trainer,
+        trainer: battle.trainer,
         party: this.party,
         pokeBalls: this.bag.count('poke-ball'),
         caughtPokemonStash: this.caughtPokemonStash,
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],
+        hunterBattle: battle.isHunter,
+        hunterState: this.hunterState,
       });
       return;
     }
@@ -814,6 +866,106 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     this.scene.start('title');
+  }
+
+  private spawnHunterIfDue(elapsedMs: number): void {
+    if (
+      !this.runSession ||
+      this.runSession.manager.phase !== RunPhase.InRun ||
+      this.hunterState.spawned ||
+      this.hunterState.defeated ||
+      elapsedMs < HUNTER_SPAWN_MS
+    ) {
+      return;
+    }
+    this.hunterState = {
+      spawned: true,
+      defeated: false,
+      mapId: this.currentMap.id,
+      position: this.findHunterSpawnTile(),
+    };
+    this.createHunterSprite();
+    this.dialogBox.showMessage('A RIVAL HUNTER is on your trail!');
+  }
+
+  private findHunterSpawnTile(): GridPosition {
+    const candidates = [
+      { x: this.currentTile.x - 5, y: this.currentTile.y },
+      { x: this.currentTile.x + 5, y: this.currentTile.y },
+      { x: this.currentTile.x, y: this.currentTile.y - 5 },
+      { x: this.currentTile.x, y: this.currentTile.y + 5 },
+    ];
+    return candidates.find((tile) =>
+      tile.x >= 0 && tile.y >= 0 && tile.x < this.bounds.width && tile.y < this.bounds.height && !this.isBlocked(tile),
+    ) ?? { ...this.currentTile };
+  }
+
+  private moveHunterToCurrentMap(): void {
+    if (!this.hunterState.spawned || this.hunterState.defeated) {
+      return;
+    }
+    this.hunterState = {
+      ...this.hunterState,
+      mapId: this.currentMap.id,
+      position: this.findHunterSpawnTile(),
+    };
+  }
+
+  private isHunterOnCurrentMap(): boolean {
+    return (
+      this.runSession?.manager.phase === RunPhase.InRun &&
+      this.hunterState.spawned &&
+      !this.hunterState.defeated &&
+      this.hunterState.mapId === this.currentMap.id &&
+      this.hunterState.position !== undefined
+    );
+  }
+
+  private advanceHunterPursuit(): void {
+    if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
+      return;
+    }
+    const steps = this.runSession?.manager.isEnraged ? HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP : 1;
+    let position = this.hunterState.position;
+    for (let index = 0; index < steps; index += 1) {
+      const target = chooseHunterPursuitStep(position, this.currentTile, this.bounds, (tile) =>
+        this.isBlockedForHunter(tile),
+      );
+      if (!target) {
+        break;
+      }
+      position = target;
+      if (isHunterContactingPlayer(position, this.currentTile)) {
+        break;
+      }
+    }
+    this.hunterState = { ...this.hunterState, position };
+    const sprite = this.npcSprites.get('rival-hunter');
+    sprite?.setPosition(position.x * TILE_SIZE, position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET).setDepth(2 + position.y / 1000);
+  }
+
+  private isBlockedForHunter(tile: GridPosition): boolean {
+    return (
+      this.collisionData[tile.y][tile.x] ||
+      this.currentMap.entities.some((entity) => entity.position.x === tile.x && entity.position.y === tile.y) ||
+      this.trainersForCurrentMap().some((trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y)
+    );
+  }
+
+  private tryStartHunterBattle(): boolean {
+    if (!this.isHunterOnCurrentMap() || !this.hunterState.position || !isHunterContactingPlayer(this.hunterState.position, this.currentTile)) {
+      return false;
+    }
+    this.pendingTrainerBattle = {
+      trainer: createHunterTrainer(
+        this.runSession!.manager.snapshot().elapsedMs,
+        this.runSession!.manager.isEnraged,
+      ),
+      introLines: ['FOUND YOU.', 'There is nowhere left to run!'],
+      isHunter: true,
+    };
+    this.dialogBox.showMessages([...this.pendingTrainerBattle.introLines]);
+    return true;
   }
 }
 
