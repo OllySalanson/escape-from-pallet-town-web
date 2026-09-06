@@ -4,6 +4,14 @@ import type { Pokemon } from '../Pokemon';
 import type { PokemonType } from '../PokemonType';
 import { calculateDamage, type RandomSource } from './damage';
 import { PrimaryStatus, type PrimaryStatus as PrimaryStatusType } from './status';
+import {
+  applyStatBoost,
+  createStatStages,
+  getStagedStat,
+  type BattleStat,
+  type StatBoost,
+  type StatStages,
+} from './statStages';
 
 export interface BattleMove {
   readonly base: MoveBase;
@@ -17,11 +25,13 @@ export interface BattleCombatant {
   readonly primaryStatus: PrimaryStatusType | null;
   readonly sleepTurns: number;
   readonly confusionTurns: number;
+  readonly statStages: StatStages;
 }
 
 export interface BattleState {
   readonly player: BattleCombatant;
   readonly enemy: BattleCombatant;
+  readonly playerStatStages: ReadonlyMap<Pokemon, StatStages>;
   readonly outcome: 'active' | 'victory' | 'defeat';
 }
 
@@ -37,7 +47,8 @@ export type BattleEvent =
   | { readonly type: 'status-prevented'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: PrimaryStatusType }
   | { readonly type: 'status-damage'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: PrimaryStatusType; readonly damage: number }
   | { readonly type: 'status-cured'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: 'sleep' | 'freeze' | 'confusion' }
-  | { readonly type: 'confusion-self-hit'; readonly user: 'player' | 'enemy'; readonly name: string; readonly damage: number };
+  | { readonly type: 'confusion-self-hit'; readonly user: 'player' | 'enemy'; readonly name: string; readonly damage: number }
+  | { readonly type: 'stat-stage-changed'; readonly user: 'player' | 'enemy'; readonly name: string; readonly stat: BattleStat; readonly stages: number };
 
 export type StatusName = PrimaryStatusType | 'confusion';
 
@@ -53,13 +64,18 @@ const toCombatant = (pokemon: Pokemon): BattleCombatant => ({
   primaryStatus: pokemon.primaryStatus,
   sleepTurns: 0,
   confusionTurns: 0,
+  statStages: createStatStages(),
 });
 
-export const createBattleState = (player: Pokemon, enemy: Pokemon): BattleState => ({
-  player: toCombatant(player),
-  enemy: toCombatant(enemy),
-  outcome: player.isFainted ? 'defeat' : enemy.isFainted ? 'victory' : 'active',
-});
+export const createBattleState = (player: Pokemon, enemy: Pokemon): BattleState => {
+  const playerCombatant = toCombatant(player);
+  return {
+    player: playerCombatant,
+    enemy: toCombatant(enemy),
+    playerStatStages: new Map([[player, playerCombatant.statStages]]),
+    outcome: player.isFainted ? 'defeat' : enemy.isFainted ? 'victory' : 'active',
+  };
+};
 
 export const chooseEnemyMove = (combatant: BattleCombatant, random: RandomSource): number | null => {
   const usableMoves = combatant.moves
@@ -93,10 +109,10 @@ export const resolveTurn = (
 
   const enemyMoveIndex = chooseEnemyMove(state.enemy, random);
   const actions = [
-    { user: 'player' as const, moveIndex: playerMoveIndex, speed: state.player.pokemon.stats.speed },
+    { user: 'player' as const, moveIndex: playerMoveIndex, speed: getStagedStat(state.player.pokemon.stats.speed, state.player.statStages.speed) },
     ...(enemyMoveIndex === null
       ? []
-      : [{ user: 'enemy' as const, moveIndex: enemyMoveIndex, speed: state.enemy.pokemon.stats.speed }]),
+      : [{ user: 'enemy' as const, moveIndex: enemyMoveIndex, speed: getStagedStat(state.enemy.pokemon.stats.speed, state.enemy.statStages.speed) }]),
   ].sort((left, right) => right.speed - left.speed || (left.user === 'player' ? -1 : 1));
 
   let nextState = state;
@@ -113,11 +129,16 @@ export const resolveTurn = (
   return { state: nextState, events };
 };
 
-export const replacePlayerPokemon = (state: BattleState, pokemon: Pokemon): BattleState => ({
-  ...state,
-  player: toCombatant(pokemon),
-  outcome: pokemon.isFainted ? 'defeat' : state.enemy.currentHp === 0 ? 'victory' : 'active',
-});
+export const replacePlayerPokemon = (state: BattleState, pokemon: Pokemon): BattleState => {
+  const statStages = state.playerStatStages.get(pokemon) ?? createStatStages();
+  const player = { ...toCombatant(pokemon), statStages };
+  return {
+    ...state,
+    player,
+    playerStatStages: new Map(state.playerStatStages).set(pokemon, statStages),
+    outcome: pokemon.isFainted ? 'defeat' : state.enemy.currentHp === 0 ? 'victory' : 'active',
+  };
+};
 
 export const resolveEnemyTurn = (state: BattleState, random: RandomSource): TurnResult => {
   if (state.outcome !== 'active') {
@@ -164,7 +185,14 @@ const applyMove = (
     return applyEndOfAction(statusState, user, [...eventPrefix, { type: 'missed', user }]);
   }
 
-  const damage = calculateDamage(attackerAfterStatus.pokemon, defenderAfterStatus.pokemon, move.base, random);
+  const damage = calculateDamage(
+    attackerAfterStatus.pokemon,
+    defenderAfterStatus.pokemon,
+    move.base,
+    random,
+    attackerAfterStatus.statStages,
+    defenderAfterStatus.statStages,
+  );
   const updatedDefender = {
     ...defenderAfterStatus,
     currentHp: Math.max(0, defenderAfterStatus.currentHp - damage.damage),
@@ -190,6 +218,11 @@ const applyMove = (
     const applied = applyStatus(nextState, user === 'player' ? 'enemy' : 'player', status, random);
     nextState = applied.state;
     events.push(...applied.events);
+  }
+  if (move.base.boosts.length > 0 && nextState.outcome === 'active') {
+    const boosted = applyStatBoosts(nextState, user === 'player' ? 'enemy' : 'player', move.base.boosts);
+    nextState = boosted.state;
+    events.push(...boosted.events);
   }
 
   return applyEndOfAction(nextState, user, events);
@@ -307,7 +340,9 @@ const applyStatus = (
 };
 
 const updateCombatant = (state: BattleState, user: 'player' | 'enemy', combatant: BattleCombatant): BattleState =>
-  user === 'player' ? { ...state, player: combatant } : { ...state, enemy: combatant };
+  user === 'player'
+    ? { ...state, player: combatant, playerStatStages: new Map(state.playerStatStages).set(combatant.pokemon, combatant.statStages) }
+    : { ...state, enemy: combatant };
 
 const randomTurnCount = (random: RandomSource, maximum: number): number =>
   Math.floor(clampRandom(random()) * maximum) + 1;
@@ -329,8 +364,44 @@ const withCombatants = (
   defender: BattleCombatant,
 ): BattleState =>
   attackerUser === 'player'
-    ? { ...state, player: attacker, enemy: defender }
-    : { ...state, player: defender, enemy: attacker };
+    ? {
+        ...state,
+        player: attacker,
+        enemy: defender,
+        playerStatStages: new Map(state.playerStatStages).set(attacker.pokemon, attacker.statStages),
+      }
+    : {
+        ...state,
+        player: defender,
+        enemy: attacker,
+        playerStatStages: new Map(state.playerStatStages).set(defender.pokemon, defender.statStages),
+      };
+
+const applyStatBoosts = (
+  state: BattleState,
+  user: 'player' | 'enemy',
+  boosts: readonly StatBoost[],
+): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
+  let nextState = state;
+  const events: BattleEvent[] = [];
+  for (const boost of boosts) {
+    const combatant = user === 'player' ? nextState.player : nextState.enemy;
+    const updatedStages = applyStatBoost(combatant.statStages, boost);
+    const change = updatedStages[boost.stat] - combatant.statStages[boost.stat];
+    if (change === 0) {
+      continue;
+    }
+    nextState = updateCombatant(nextState, user, { ...combatant, statStages: updatedStages });
+    events.push({
+      type: 'stat-stage-changed',
+      user,
+      name: combatant.pokemon.base.name,
+      stat: boost.stat,
+      stages: change,
+    });
+  }
+  return { state: nextState, events };
+};
 
 const effectivenessEvents = (multiplier: number): BattleEvent[] => {
   if (multiplier === 0) {

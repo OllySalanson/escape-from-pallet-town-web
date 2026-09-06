@@ -1,4 +1,5 @@
 import type { PokemonType } from './PokemonType';
+import type { StatBoost } from './battle/statStages';
 
 export const MoveCategory = {
   Physical: 'Physical',
@@ -15,6 +16,7 @@ export interface MoveBaseInit {
   readonly accuracy: number;
   readonly pp: number;
   readonly category: MoveCategory;
+  readonly boosts?: readonly StatBoost[];
 }
 
 export class MoveBase {
@@ -24,6 +26,7 @@ export class MoveBase {
   public readonly accuracy: number;
   public readonly pp: number;
   public readonly category: MoveCategory;
+  public readonly boosts: readonly StatBoost[];
 
   public constructor(init: MoveBaseInit) {
     this.name = init.name;
@@ -32,5 +35,6 @@ export class MoveBase {
     this.accuracy = init.accuracy;
     this.pp = init.pp;
     this.category = init.category;
+    this.boosts = init.boosts ?? [];
   }
 }
