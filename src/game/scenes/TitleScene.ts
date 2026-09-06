@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
+import { SaveManager } from '../save/SaveManager';
 
 const SCREEN_WIDTH = 320;
 const SCREEN_HEIGHT = 240;
@@ -7,6 +8,7 @@ const SCREEN_HEIGHT = 240;
 export class TitleScene extends Phaser.Scene {
   private hasStarted = false;
   private prompt!: Phaser.GameObjects.Text;
+  private readonly saveManager = new SaveManager();
 
   public constructor() {
     super('title');
@@ -15,7 +17,7 @@ export class TitleScene extends Phaser.Scene {
   public create(): void {
     this.drawBackdrop();
     this.createTitle();
-    this.createPrompt();
+    this.createPrompt(this.saveManager.hasSave());
 
     this.input.keyboard?.once('keydown-ENTER', () => this.startGame());
     this.input.keyboard?.once('keydown-SPACE', () => this.startGame());
@@ -74,9 +76,9 @@ export class TitleScene extends Phaser.Scene {
       .setOrigin(0.5);
   }
 
-  private createPrompt(): void {
+  private createPrompt(hasSave: boolean): void {
     this.prompt = this.add
-      .text(SCREEN_WIDTH / 2, 204, 'PRESS ENTER OR TAP', {
+      .text(SCREEN_WIDTH / 2, 204, hasSave ? 'PRESS ENTER TO CONTINUE' : 'PRESS ENTER OR TAP', {
         align: 'center',
         color: '#f8f5d7',
         fontFamily: 'monospace',
@@ -92,9 +94,10 @@ export class TitleScene extends Phaser.Scene {
     }
 
     this.hasStarted = true;
+    const savedGame = this.saveManager.load();
     void this.playStartAudio();
     this.prompt.setText('READY!');
-    this.time.delayedCall(180, () => this.scene.start('world'));
+    this.time.delayedCall(180, () => this.scene.start('world', { savedGame: savedGame ?? undefined }));
   }
 
   private async playStartAudio(): Promise<void> {
