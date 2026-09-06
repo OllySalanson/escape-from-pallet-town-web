@@ -13,6 +13,7 @@ import {
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import type { WildEncounter } from '../world/wildEncounters';
+import { audioManager } from '../audio/AudioManager';
 
 type CommandMode = 'main' | 'moves' | 'placeholder' | 'party' | 'events' | 'finished';
 
@@ -71,6 +72,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   public create(data: BattleSceneData = {}): void {
+    void audioManager.startTheme('battle');
+    audioManager.playEncounter();
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
@@ -107,6 +110,7 @@ export class BattleScene extends Phaser.Scene {
     this.downKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
     this.backKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.BACKSPACE);
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.goBack());
+    this.input.keyboard!.on?.('keydown-M', () => audioManager.toggleMute());
     this.mode = 'events';
     this.dialog.showMessage(`A wild ${wildPokemon.base.name.toUpperCase()} appeared!`);
   }
@@ -331,6 +335,7 @@ export class BattleScene extends Phaser.Scene {
           : column;
     this.selectedCommand = Math.min(nextRow * columns + nextColumn, count - 1);
     this.updateSelection();
+    audioManager.playSelect();
   }
 
   private updateSelection(): void {
@@ -340,6 +345,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private confirm(): void {
+    audioManager.playConfirm();
     if (this.mode === 'events' || this.mode === 'finished') {
       if (!this.dialog.isCurrentMessageComplete) {
         this.dialog.skip();
@@ -407,6 +413,7 @@ export class BattleScene extends Phaser.Scene {
     this.mode = 'main';
     this.selectedCommand = 0;
     this.showCommands();
+    audioManager.playCancel();
   }
 
   private flee(): void {
@@ -428,6 +435,7 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.animateHp(previousState);
     this.animateCombatEvents(result.events);
+    this.playCombatEffects(result.events, previousState);
     this.mode = 'events';
     this.commandContainer.setVisible(false);
     this.dialog.showMessages(result.events.map(eventToMessage));
@@ -471,6 +479,7 @@ export class BattleScene extends Phaser.Scene {
     this.commandContainer.setVisible(false);
     this.animateHp(switchedState);
     this.animateCombatEvents(result.events);
+    this.playCombatEffects(result.events, switchedState);
     this.dialog.showMessages([
       ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
       `Go, ${pokemon.base.name.toUpperCase()}!`,
@@ -596,6 +605,31 @@ export class BattleScene extends Phaser.Scene {
         repeat: 1,
         onComplete: () => this.tweens.add({ targets: target, alpha: 0.35, yoyo: true, duration: 90, repeat: 1 }),
       });
+    }
+  }
+
+  private playCombatEffects(events: readonly BattleEvent[], previousState: BattleState): void {
+    const hasStrongHit = events.some(
+      (event) =>
+        event.type === 'critical-hit' ||
+        (event.type === 'effectiveness' && event.multiplier > 1),
+    );
+    if (hasStrongHit) {
+      audioManager.playStrongHit();
+    } else if (events.some((event) => event.type === 'used-move')) {
+      audioManager.playAttackHit();
+    }
+
+    if (events.some((event) => event.type === 'fainted')) {
+      audioManager.playFaint();
+    }
+
+    const crossedLowHpThreshold =
+      previousState.player.currentHp > previousState.player.pokemon.maxHp * 0.2 &&
+      this.state.player.currentHp > 0 &&
+      this.state.player.currentHp <= this.state.player.pokemon.maxHp * 0.2;
+    if (crossedLowHpThreshold) {
+      audioManager.playLowHpWarning();
     }
   }
 

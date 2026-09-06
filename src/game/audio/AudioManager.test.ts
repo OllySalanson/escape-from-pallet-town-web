@@ -22,4 +22,16 @@ describe('AudioManager', () => {
 
     await expect(audio.activate()).resolves.toBe(false);
   });
+
+  it('selects themes and clamps volume without Web Audio', async () => {
+    const audio = new AudioManager(() => null);
+
+    await audio.startTheme('battle');
+    audio.setVolume(2);
+    expect(audio.currentTheme).toBe('battle');
+    expect(audio.currentVolume).toBe(1);
+
+    audio.setVolume(-1);
+    expect(audio.currentVolume).toBe(0);
+  });
 });

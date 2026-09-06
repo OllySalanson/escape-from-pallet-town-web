@@ -19,6 +19,7 @@ export class TitleScene extends Phaser.Scene {
 
     this.input.keyboard?.once('keydown-ENTER', () => this.startGame());
     this.input.keyboard?.once('keydown-SPACE', () => this.startGame());
+    this.input.keyboard?.on('keydown-M', () => audioManager.toggleMute());
     this.input.once(Phaser.Input.Events.POINTER_DOWN, () => this.startGame());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => audioManager.stopTheme());
   }
@@ -98,7 +99,7 @@ export class TitleScene extends Phaser.Scene {
 
   private async playStartAudio(): Promise<void> {
     await audioManager.activate();
-    void audioManager.startTheme();
+    void audioManager.startTheme('title');
     audioManager.playConfirm();
   }
 }
