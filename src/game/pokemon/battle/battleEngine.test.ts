@@ -262,11 +262,11 @@ describe('battle turn resolution', () => {
       player: { ...state.player, moves: [state.player.moves[0]] },
       enemy: {
         ...state.enemy,
-        moves: state.enemy.moves.map((move, index) => ({ ...move, pp: index === 1 ? 1 : 0 })),
+        moves: state.enemy.moves.map((move, index) => ({ ...move, pp: index === 2 ? 1 : 0 })),
       },
     };
 
-    expect(chooseEnemyMove(constrainedState.enemy, maximumRandom)).toBe(1);
+    expect(chooseEnemyMove(constrainedState.enemy, maximumRandom)).toBe(2);
 
     const result = resolveTurn(constrainedState, 0, maximumRandom);
     expect(result.events).toMatchObject([
@@ -433,6 +433,24 @@ describe('trainer battles', () => {
     };
 
     expect(resolveEnemyTurn(state, maximumRandom).state.outcome).toBe('defeat');
+  });
+});
+
+describe('first-starter battle fairness', () => {
+  it('gives a fresh Bulbasaur a damaging, neutral route through an early wild battle', () => {
+    const player = new Pokemon(BULBASAUR, 5);
+    const opponent = new Pokemon(BULBASAUR, 5);
+    const tackleIndex = player.moves.findIndex((move) => move.base === TACKLE);
+
+    expect(tackleIndex).toBeGreaterThanOrEqual(0);
+
+    let state = createBattleState(player, opponent);
+    for (let turn = 0; turn < 20 && state.outcome === 'active'; turn += 1) {
+      state = resolveTurn(state, tackleIndex, maximumRandom).state;
+    }
+
+    expect(state.outcome).toBe('victory');
+    expect(state.player.currentHp).toBeGreaterThan(0);
   });
 });
 

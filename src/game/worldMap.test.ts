@@ -166,6 +166,29 @@ describe('worldMap', () => {
     });
   });
 
+  it('closes every map edge that is not a real route and keeps extraction away from routes', () => {
+    for (const map of Object.values(WORLD_MAPS)) {
+      for (let y = 0; y < map.height; y += 1) {
+        for (let x = 0; x < map.width; x += 1) {
+          if (x !== 0 && x !== map.width - 1 && y !== 0 && y !== map.height - 1) {
+            continue;
+          }
+          const warp = getWarpAt(map, { x, y }, 'step');
+          expect(map.collision[y][x]).toBe(warp === undefined);
+        }
+      }
+    }
+
+    for (const extraction of EXTRACTION_POINTS) {
+      const map = getWorldMap(extraction.mapId);
+      expect(map.warps.some((warp) => warp.source.x === extraction.position.x && warp.source.y === extraction.position.y)).toBe(false);
+      expect(extraction.position.x).toBeGreaterThan(0);
+      expect(extraction.position.x).toBeLessThan(map.width - 1);
+      expect(extraction.position.y).toBeGreaterThan(0);
+      expect(extraction.position.y).toBeLessThan(map.height - 1);
+    }
+  });
+
   it('keeps every placed run interaction on a walkable tile', () => {
     for (const map of Object.values(WORLD_MAPS)) {
       for (const warp of map.warps) {

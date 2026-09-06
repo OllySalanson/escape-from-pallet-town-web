@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { POISON_POWDER, SUPER_SONIC, THUNDER_WAVE } from '../pokemon/moves';
 import {
@@ -7,6 +8,8 @@ import {
   formatMoveCommand,
   moveCommandLayout,
 } from './battlePresentation';
+
+const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
 
 describe('battle presentation', () => {
   it('keeps every move field inside the two-column command grid', () => {
@@ -20,6 +23,13 @@ describe('battle presentation', () => {
       expect(layout.y).toBeGreaterThanOrEqual(0);
       expect(layout.y + layout.height).toBeLessThanOrEqual(MOVE_COMMAND_HEIGHT);
     }
+  });
+
+  it('uses an opaque high-contrast command panel with mouse and keyboard selection', () => {
+    expect(battleSceneSource).toContain('panel.fillStyle(0x111827, 1);');
+    expect(battleSceneSource).toContain("text.setBackgroundColor(index === this.selectedCommand ? '#155e75' : '#111827');");
+    expect(battleSceneSource).toContain(".setInteractive({ useHandCursor: true })");
+    expect(battleSceneSource).toContain(".on('pointerdown'");
   });
 
   it('keeps same-species two-sided damage events in actor and target order', () => {

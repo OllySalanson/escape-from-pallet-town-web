@@ -215,6 +215,15 @@ export function buildDetailLayerData(): number[][] {
   // Leave the road open so the route's grass is the only way south.
   data[21][7] = -1;
   data[21][8] = -1;
+  sealUnlinkedMapEdges(data, [
+    {
+      source: { x: 7, y: MAP_HEIGHT - 1 },
+      destinationMapId: 'route-1',
+      destination: { x: 7, y: 1 },
+      facing: 'down',
+      activation: 'step',
+    },
+  ]);
 
   return data;
 }
@@ -340,6 +349,23 @@ function createRoute1Map(): WorldMapDefinition {
     [25, 6],
     [5, 25],
   ]);
+  const warps: readonly MapWarp[] = [
+    {
+      source: { x: 7, y: 0 },
+      destinationMapId: 'pallet-town',
+      destination: { x: 7, y: 42 },
+      facing: 'up',
+      activation: 'step',
+    },
+    {
+      source: { x: 7, y: height - 1 },
+      destinationMapId: 'viridian-forest',
+      destination: { x: 7, y: 1 },
+      facing: 'down',
+      activation: 'step',
+    },
+  ];
+  sealUnlinkedMapEdges(detailLayer, warps);
 
   return {
     id: 'route-1',
@@ -351,22 +377,7 @@ function createRoute1Map(): WorldMapDefinition {
     collision: buildCollisionLayer(groundLayer, detailLayer),
     tallGrassZones,
     encounters: PALLET_TALL_GRASS,
-    warps: [
-      {
-        source: { x: 7, y: 0 },
-        destinationMapId: 'pallet-town',
-        destination: { x: 7, y: 42 },
-        facing: 'up',
-        activation: 'step',
-      },
-      {
-        source: { x: 7, y: height - 1 },
-        destinationMapId: 'viridian-forest',
-        destination: { x: 7, y: 1 },
-        facing: 'down',
-        activation: 'step',
-      },
-    ],
+    warps,
     entities: [],
     pois: poisForMap('route-1'),
     loot: [
@@ -430,6 +441,16 @@ function createViridianForestMap(): WorldMapDefinition {
   placeTiles(detailLayer, CLASSIC_TILE.FLOWER_BLUE, [[10, 6], [20, 12], [25, 27]]);
   placeTiles(detailLayer, CLASSIC_TILE.FLOWER_RED, [[6, 14], [15, 28], [26, 29]]);
   placeTiles(detailLayer, CLASSIC_TILE.FLOWER_YELLOW, [[3, 27], [21, 7], [26, 14]]);
+  const warps: readonly MapWarp[] = [
+    {
+      source: { x: 7, y: 0 },
+      destinationMapId: 'route-1',
+      destination: { x: 7, y: 30 },
+      facing: 'up',
+      activation: 'step',
+    },
+  ];
+  sealUnlinkedMapEdges(detailLayer, warps);
 
   return {
     id: 'viridian-forest',
@@ -441,15 +462,7 @@ function createViridianForestMap(): WorldMapDefinition {
     collision: buildCollisionLayer(groundLayer, detailLayer),
     tallGrassZones,
     encounters: VIRIDIAN_FOREST_TALL_GRASS,
-    warps: [
-      {
-        source: { x: 7, y: 0 },
-        destinationMapId: 'route-1',
-        destination: { x: 7, y: 30 },
-        facing: 'up',
-        activation: 'step',
-      },
-    ],
+    warps,
     entities: [],
     pois: poisForMap('viridian-forest'),
     loot: [
@@ -518,4 +531,22 @@ export function isTallGrassInMap(map: WorldMapDefinition, position: GridPosition
       position.y >= zone.y &&
       position.y < zone.y + zone.height,
   );
+}
+
+/**
+ * An open boundary is a promise that the player can travel somewhere. Keep
+ * only authored warp tiles open and close every other map edge with fencing.
+ */
+function sealUnlinkedMapEdges(details: number[][], warps: readonly MapWarp[]): void {
+  const openTiles = new Set(warps.map((warp) => `${warp.source.x},${warp.source.y}`));
+  const height = details.length;
+  const width = details[0]?.length ?? 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if ((x !== 0 && x !== width - 1 && y !== 0 && y !== height - 1) || openTiles.has(`${x},${y}`)) {
+        continue;
+      }
+      details[y][x] = CLASSIC_TILE.FENCE_MIDDLE;
+    }
+  }
 }

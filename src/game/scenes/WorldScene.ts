@@ -154,6 +154,11 @@ export class WorldScene extends Phaser.Scene {
   }
 
   public create(data: WorldSceneData = {}): void {
+    // WorldScene is restarted after a battle. The previous instance set this
+    // while fading to battle, so it must not carry over and discard movement.
+    this.isWarping = false;
+    this.targetTile = null;
+    this.stepProgress = 0;
     this.runSession = data.runSession;
     if (!this.runSession) {
       this.restoreSavedGame(data.savedGame);

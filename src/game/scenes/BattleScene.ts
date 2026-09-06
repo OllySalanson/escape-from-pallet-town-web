@@ -385,8 +385,12 @@ export class BattleScene extends Phaser.Scene {
 
   private createCommandBox(labels: readonly string[]): Phaser.GameObjects.Container {
     const container = this.add.container(0, COMMAND_Y);
-    const frame = this.add.image(160, 32, 'battle-dialog').setDisplaySize(320, 64);
-    container.add(frame);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x111827, 1);
+    panel.fillRect(0, 0, BATTLEFIELD_WIDTH, 64);
+    panel.lineStyle(2, 0x93c5fd, 1);
+    panel.strokeRect(1, 1, BATTLEFIELD_WIDTH - 2, 62);
+    container.add(panel);
     this.commandTexts = labels.map((label, index) => {
       const column = index % 2;
       const row = Math.floor(index / 2);
@@ -396,12 +400,23 @@ export class BattleScene extends Phaser.Scene {
         fontSize: this.mode === 'moves' ? '11px' : '16px',
         color:
           this.mode === 'main' && !this.trainer && index === 1 && this.pokeBalls === 0
-            ? '#7a3c3c'
-            : '#202020',
+            ? '#fca5a5'
+            : '#f8fafc',
         fixedWidth: layout?.width,
         fixedHeight: layout?.height,
         wordWrap: layout ? { width: layout.width } : undefined,
       });
+      text
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+          this.selectedCommand = index;
+          this.updateSelection();
+        })
+        .on('pointerdown', () => {
+          this.selectedCommand = index;
+          this.updateSelection();
+          this.confirm();
+        });
       container.add(text);
       return text;
     });
@@ -410,7 +425,12 @@ export class BattleScene extends Phaser.Scene {
 
   private createPartyBox(): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
-    container.add(this.add.image(160, 172, 'battle-dialog').setDisplaySize(320, 136));
+    const panel = this.add.graphics();
+    panel.fillStyle(0x111827, 1);
+    panel.fillRect(0, 104, BATTLEFIELD_WIDTH, 136);
+    panel.lineStyle(2, 0x93c5fd, 1);
+    panel.strokeRect(1, 105, BATTLEFIELD_WIDTH - 2, 134);
+    container.add(panel);
     container.add(
       this.add.text(
         16,
@@ -419,7 +439,7 @@ export class BattleScene extends Phaser.Scene {
         {
           fontFamily: BATTLE_FONT,
           fontSize: '12px',
-          color: '#202020',
+          color: '#f8fafc',
         },
       ),
     );
@@ -429,8 +449,19 @@ export class BattleScene extends Phaser.Scene {
       const text = this.add.text(16, 126 + index * 16, label, {
         fontFamily: BATTLE_FONT,
         fontSize: '11px',
-        color: pokemon.isFainted ? '#7a3c3c' : '#202020',
+        color: pokemon.isFainted ? '#fca5a5' : '#f8fafc',
       });
+      text
+        .setInteractive({ useHandCursor: !pokemon.isFainted })
+        .on('pointerover', () => {
+          this.selectedCommand = index;
+          this.updateSelection();
+        })
+        .on('pointerdown', () => {
+          this.selectedCommand = index;
+          this.updateSelection();
+          this.confirm();
+        });
       container.add(text);
       return text;
     });
@@ -438,7 +469,7 @@ export class BattleScene extends Phaser.Scene {
       this.add.text(16, 224, this.partyMessage, {
         fontFamily: BATTLE_FONT,
         fontSize: '11px',
-        color: '#7a3c3c',
+        color: '#fca5a5',
       }),
     );
     this.selectedCommand = Math.min(this.selectedCommand, this.commandTexts.length - 1);
@@ -473,6 +504,14 @@ export class BattleScene extends Phaser.Scene {
     this.commandTexts.forEach((text, index) => {
       text.setText(
         `${index === this.selectedCommand ? '▶ ' : '  '}${text.text.replace(/^[▶ ]{2}/, '')}`,
+      );
+      text.setBackgroundColor(index === this.selectedCommand ? '#155e75' : '#111827');
+      text.setColor(
+        index === this.selectedCommand
+          ? '#ffffff'
+          : text.text.includes('FNT') || text.text.includes('BALL x0')
+            ? '#fca5a5'
+            : '#f8fafc',
       );
     });
   }

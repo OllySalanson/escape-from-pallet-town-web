@@ -14,19 +14,19 @@ export interface ExtractionPoint {
 export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   {
     mapId: 'pallet-town',
-    position: { x: 8, y: 42 },
+    position: { x: 13, y: 39 },
     label: 'SOUTH GATE',
     unlockAtMs: 0,
   },
   {
     mapId: 'route-1',
-    position: { x: 8, y: 30 },
+    position: { x: 14, y: 25 },
     label: 'ROUTE OUTPOST',
     unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
   },
   {
     mapId: 'viridian-forest',
-    position: { x: 23, y: 32 },
+    position: { x: 20, y: 30 },
     label: 'FOREST CLEARING',
     unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS * 2,
   },

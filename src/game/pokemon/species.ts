@@ -28,6 +28,7 @@ export const BULBASAUR = new PokemonBase({
     speed: 45,
   },
   learnset: [
+    { level: 1, move: TACKLE },
     { level: 1, move: SUPER_SONIC },
     { level: 4, move: GROWL },
     { level: 7, move: VINE_WHIP },

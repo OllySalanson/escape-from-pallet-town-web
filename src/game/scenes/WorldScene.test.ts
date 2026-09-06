@@ -23,3 +23,11 @@ describe('in-run objective HUD layout', () => {
     expect(sceneSource).not.toContain("'VIRIDIAN FOREST'");
   });
 });
+
+describe('battle return recovery', () => {
+  it('clears the battle-transition lock before rebuilding the returned world', () => {
+    expect(sceneSource).toContain('this.isWarping = false;');
+    expect(sceneSource).toContain('this.targetTile = null;');
+    expect(sceneSource).toContain('this.stepProgress = 0;');
+  });
+});
