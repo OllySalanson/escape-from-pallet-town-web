@@ -30,6 +30,10 @@ import type { ActiveRunSession } from '../run/RunSession';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import {
+  EXTRACTION_POINTS,
+  type ExtractionPoint,
+} from '../world/extractionPoints';
+import {
   chooseHunterPursuitStep,
   createHunterState,
   createHunterTrainer,
@@ -43,15 +47,7 @@ const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
 const PLAYER_FEET_PIXEL_Y = 27;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - PLAYER_FEET_PIXEL_Y;
-const EXTRACTION_UNLOCK_DELAY_MS = 30_000;
 const RAID_TIMER_URGENT_MS = 30_000;
-
-interface ExtractionPoint {
-  readonly mapId: WorldMapDefinition['id'];
-  readonly position: GridPosition;
-  readonly label: string;
-  readonly unlockAtMs: number;
-}
 
 interface RunTimerHud {
   readonly backing: Phaser.GameObjects.Rectangle;
@@ -59,21 +55,6 @@ interface RunTimerHud {
   readonly objectivesBacking: Phaser.GameObjects.Rectangle;
   readonly objectivesText: Phaser.GameObjects.Text;
 }
-
-const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
-  {
-    mapId: 'pallet-town',
-    position: { x: 8, y: 42 },
-    label: 'SOUTH GATE',
-    unlockAtMs: 0,
-  },
-  {
-    mapId: 'route-1',
-    position: { x: 8, y: 30 },
-    label: 'ROUTE OUTPOST',
-    unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
-  },
-];
 
 interface ControlKeys {
   up: Phaser.Input.Keyboard.Key;

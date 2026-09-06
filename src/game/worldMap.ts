@@ -1,5 +1,9 @@
 import type { Direction, GridPosition } from './movement/gridMovement';
-import { PALLET_TALL_GRASS, type WildEncounterTable } from './pokemon/encounters';
+import {
+  PALLET_TALL_GRASS,
+  VIRIDIAN_FOREST_TALL_GRASS,
+  type WildEncounterTable,
+} from './pokemon/encounters';
 import type { WorldLoot } from './world/loot';
 import { WORLD_ENTITIES, type WorldEntity } from './world/npcs';
 
@@ -39,7 +43,7 @@ export interface WorldMapDefinition {
   readonly loot: readonly WorldLoot[];
 }
 
-export type WorldMapId = 'pallet-town' | 'route-1';
+export type WorldMapId = 'pallet-town' | 'route-1' | 'viridian-forest';
 
 export const CLASSIC_TILE = {
   GRASS: 46,
@@ -352,12 +356,102 @@ function createRoute1Map(): WorldMapDefinition {
         facing: 'up',
         activation: 'step',
       },
+      {
+        source: { x: 7, y: height - 1 },
+        destinationMapId: 'viridian-forest',
+        destination: { x: 7, y: 1 },
+        facing: 'down',
+        activation: 'step',
+      },
     ],
     entities: [],
     loot: [
       { id: 'route-1-poke-ball', position: { x: 5, y: 9 }, itemId: 'poke-ball', quantity: 2 },
       { id: 'route-1-potion', position: { x: 11, y: 15 }, itemId: 'potion', quantity: 1 },
       { id: 'route-1-great-ball', position: { x: 24, y: 20 }, itemId: 'great-ball', quantity: 1 },
+    ],
+  };
+}
+
+function createViridianForestMap(): WorldMapDefinition {
+  const width = 32;
+  const height = 36;
+  const tallGrassZones: readonly TallGrassZone[] = [
+    { x: 3, y: 8, width: 4, height: 16 },
+    { x: 10, y: 12, width: 9, height: 14 },
+    { x: 26, y: 5, width: 3, height: 22 },
+  ];
+  const groundLayer = Array.from({ length: height }, () =>
+    Array<number>(width).fill(CLASSIC_TILE.GRASS),
+  );
+  const tallGrassLayer = Array.from({ length: height }, () => Array<number>(width).fill(-1));
+  const detailLayer = Array.from({ length: height }, () => Array<number>(width).fill(-1));
+
+  // A narrow north entrance opens into a fork, then bends east toward a
+  // secluded southern clearing that serves as the forest's extraction point.
+  paintRectangle(groundLayer, 7, 0, 2, 10, CLASSIC_TILE.DIRT_PATH);
+  paintRectangle(groundLayer, 7, 9, 18, 2, CLASSIC_TILE.DIRT_PATH);
+  paintRectangle(groundLayer, 23, 9, 2, height - 9, CLASSIC_TILE.DIRT_PATH);
+  paintRectangle(groundLayer, 20, 31, 5, 2, CLASSIC_TILE.DIRT_PATH);
+  for (const zone of tallGrassZones) {
+    paintRectangle(groundLayer, zone.x, zone.y, zone.width, zone.height, CLASSIC_TILE.TALL_GRASS);
+    paintRectangle(
+      tallGrassLayer,
+      zone.x,
+      zone.y,
+      zone.width,
+      zone.height,
+      CLASSIC_TILE.TALL_GRASS_TUFT,
+    );
+  }
+
+  placeTiles(detailLayer, CLASSIC_TILE.TREE_RED, [
+    [1, 1], [3, 1], [5, 1], [10, 1], [12, 1], [15, 1], [18, 1], [21, 1], [25, 1], [28, 1], [30, 1],
+    [1, 5], [4, 5], [11, 5], [14, 5], [17, 5], [21, 5], [30, 6],
+    [1, 10], [4, 11], [12, 8], [15, 8], [28, 10], [30, 12],
+    [1, 16], [7, 15], [9, 17], [20, 15], [27, 17], [30, 18],
+    [1, 22], [5, 25], [8, 24], [20, 23], [27, 24], [30, 25],
+    [1, 29], [4, 31], [9, 30], [15, 31], [18, 33], [27, 31], [30, 32],
+    [2, 34], [6, 34], [11, 34], [15, 34], [27, 34], [30, 34],
+  ]);
+  placeTiles(detailLayer, CLASSIC_TILE.TREE_LEAFY, [
+    [2, 1], [4, 1], [6, 1], [11, 1], [13, 1], [16, 1], [19, 1], [22, 1], [26, 1], [29, 1],
+    [2, 5], [5, 5], [12, 5], [15, 5], [18, 5], [22, 5], [29, 6],
+    [2, 10], [5, 11], [13, 8], [16, 8], [29, 10], [29, 12],
+    [2, 16], [6, 25], [9, 24], [19, 15], [28, 17], [29, 18],
+    [2, 22], [6, 26], [7, 24], [21, 23], [28, 24], [29, 25],
+    [2, 29], [5, 31], [10, 30], [16, 31], [19, 33], [28, 31], [29, 32],
+    [3, 34], [7, 34], [12, 34], [16, 34], [28, 34], [29, 34],
+  ]);
+  placeTiles(detailLayer, CLASSIC_TILE.FLOWER_BLUE, [[10, 6], [20, 12], [25, 27]]);
+  placeTiles(detailLayer, CLASSIC_TILE.FLOWER_RED, [[6, 14], [15, 28], [26, 29]]);
+  placeTiles(detailLayer, CLASSIC_TILE.FLOWER_YELLOW, [[3, 27], [21, 7], [26, 14]]);
+
+  return {
+    id: 'viridian-forest',
+    width,
+    height,
+    groundLayer,
+    tallGrassLayer,
+    detailLayer,
+    collision: buildCollisionLayer(groundLayer, detailLayer),
+    tallGrassZones,
+    encounters: VIRIDIAN_FOREST_TALL_GRASS,
+    warps: [
+      {
+        source: { x: 7, y: 0 },
+        destinationMapId: 'route-1',
+        destination: { x: 7, y: 30 },
+        facing: 'up',
+        activation: 'step',
+      },
+    ],
+    entities: [],
+    loot: [
+      { id: 'forest-poke-ball', position: { x: 4, y: 18 }, itemId: 'poke-ball', quantity: 2 },
+      { id: 'forest-super-potion', position: { x: 14, y: 22 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'forest-great-ball', position: { x: 27, y: 21 }, itemId: 'great-ball', quantity: 1 },
+      { id: 'forest-antidote', position: { x: 21, y: 30 }, itemId: 'antidote', quantity: 1 },
     ],
   };
 }
@@ -390,6 +484,7 @@ export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = {
     ],
   },
   'route-1': createRoute1Map(),
+  'viridian-forest': createViridianForestMap(),
 };
 
 export function getWorldMap(id: WorldMapId): WorldMapDefinition {
