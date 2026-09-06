@@ -32,12 +32,18 @@ const CAMERA_ZOOM = 1;
 const PLAYER_FEET_PIXEL_Y = 27;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - PLAYER_FEET_PIXEL_Y;
 const EXTRACTION_UNLOCK_DELAY_MS = 30_000;
+const RAID_TIMER_URGENT_MS = 30_000;
 
 interface ExtractionPoint {
   readonly mapId: WorldMapDefinition['id'];
   readonly position: GridPosition;
   readonly label: string;
   readonly unlockAtMs: number;
+}
+
+interface RunTimerHud {
+  readonly backing: Phaser.GameObjects.Rectangle;
+  readonly text: Phaser.GameObjects.Text;
 }
 
 const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
@@ -114,6 +120,7 @@ export class WorldScene extends Phaser.Scene {
     readonly marker: Phaser.GameObjects.Rectangle;
     readonly label: Phaser.GameObjects.Text;
   }> = [];
+  private runTimerHud: RunTimerHud | undefined;
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
 
@@ -145,6 +152,10 @@ export class WorldScene extends Phaser.Scene {
     this.createDialogBox();
     this.bindControls();
     this.configureCamera();
+    this.createRunTimerHud();
+    if (this.runTimerHud) {
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyRunTimerHud());
+    }
   }
 
   public update(_time: number, deltaMs: number): void {
@@ -343,6 +354,62 @@ export class WorldScene extends Phaser.Scene {
       textStyle: { fontSize: '14px' },
       onComplete: () => this.handleRunResolutionComplete(),
     }).setScrollFactor(0, 0, true);
+  }
+
+  private createRunTimerHud(): void {
+    if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun) {
+      return;
+    }
+
+    const backing = this.add
+      .rectangle(160, 10, 154, 22, 0x111827, 0.9)
+      .setStrokeStyle(2, 0xdbeafe)
+      .setScrollFactor(0)
+      .setDepth(100);
+    const text = this.add
+      .text(160, 10, '', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#f8fafc',
+      })
+      .setOrigin(0.5)
+      .setStroke('#020617', 2)
+      .setScrollFactor(0)
+      .setDepth(101);
+    this.runTimerHud = { backing, text };
+    this.refreshRunTimerHud();
+  }
+
+  private refreshRunTimerHud(): void {
+    const hud = this.runTimerHud;
+    const manager = this.runSession?.manager;
+    if (!hud || !manager || manager.phase !== RunPhase.InRun) {
+      return;
+    }
+
+    if (manager.isEnraged) {
+      hud.backing.setFillStyle(0x7f1d1d, 0.95).setStrokeStyle(2, 0xfca5a5);
+      hud.text.setText('ENRAGED - EXTRACT NOW').setColor('#fee2e2');
+      const pulse = 0.7 + (Math.sin(this.time.now / 100) + 1) * 0.15;
+      hud.backing.setAlpha(pulse);
+      hud.text.setAlpha(pulse);
+      return;
+    }
+
+    const remainingMs = manager.remainingMs();
+    const isUrgent = remainingMs <= RAID_TIMER_URGENT_MS;
+    hud.text.setText(`RAID ${formatRaidTimer(remainingMs)}`);
+    hud.backing
+      .setFillStyle(isUrgent ? 0x78350f : 0x111827, 0.9)
+      .setStrokeStyle(2, isUrgent ? 0xfbbf24 : 0xdbeafe)
+      .setAlpha(1);
+    hud.text.setColor(isUrgent ? '#fef3c7' : '#f8fafc').setAlpha(1);
+  }
+
+  private destroyRunTimerHud(): void {
+    this.runTimerHud?.backing.destroy();
+    this.runTimerHud?.text.destroy();
+    this.runTimerHud = undefined;
   }
 
   private bindControls(): void {
@@ -617,6 +684,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.runSession.manager.resolveEscape();
+    this.destroyRunTimerHud();
     const snapshot = this.runSession.manager.snapshot();
     const saved = new SaveManager().bankRun({
       pokemon: snapshot.caughtPokemon,
@@ -637,7 +705,8 @@ export class WorldScene extends Phaser.Scene {
 
     const snapshot = this.runSession.manager.tick(deltaMs);
     this.refreshExtractionMarkers();
-    if (snapshot.remainingMs === 0) {
+    this.refreshRunTimerHud();
+    if (snapshot.isEnraged && this.runSession.manager.isEnrageGraceExpired) {
       this.resolveExpiredRun();
     }
   }
@@ -660,6 +729,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const result = this.runSession.manager.resolveWipe(this.runSession.secureSlot);
+    this.destroyRunTimerHud();
     const saved = new SaveManager().applyWipeLoss(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
@@ -697,4 +767,11 @@ function formatRunSummary(
       ? 'no items'
       : items.map((item) => `${item.quantity} ${item.itemId}`).join(', ');
   return `${heading}: ${pokemonSummary}; ${itemSummary}.`;
+}
+
+function formatRaidTimer(remainingMs: number): string {
+  const totalSeconds = Math.ceil(remainingMs / 1_000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }

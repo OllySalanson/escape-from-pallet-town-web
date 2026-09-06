@@ -1,6 +1,9 @@
 import type { ItemId } from '../items';
 import type { Pokemon } from '../pokemon';
 
+/** Time the player has to extract after the raid timer reaches zero. */
+export const ENRAGE_GRACE_MS = 15_000;
+
 export const RunPhase = {
   InHub: 'IN_HUB',
   InRun: 'IN_RUN',
@@ -40,6 +43,7 @@ export interface RunSnapshot {
   readonly mapId: string | null;
   readonly elapsedMs: number;
   readonly remainingMs: number;
+  readonly isEnraged: boolean;
 }
 
 export interface RunResult {
@@ -52,6 +56,9 @@ export interface RunResult {
 }
 
 export interface RunManagerOptions {
+  /** Fires once when the raid timer reaches zero. */
+  readonly onEnrage?: (snapshot: RunSnapshot) => void;
+  /** Fires once when the enrage grace period ends without an extraction. */
   readonly onExpire?: (snapshot: RunSnapshot) => void;
 }
 
@@ -71,6 +78,9 @@ export class RunManager {
   private mapIdValue: string | null = null;
   private durationMs = 0;
   private elapsedMsValue = 0;
+  private enrageElapsedMs = 0;
+  private isEnragedValue = false;
+  private enrageNotified = false;
   private expiryNotified = false;
   private readonly options: RunManagerOptions;
 
@@ -80,6 +90,15 @@ export class RunManager {
 
   public get phase(): RunPhase {
     return this.phaseValue;
+  }
+
+  /** Lets world systems escalate threats without coupling to raid resolution. */
+  public get isEnraged(): boolean {
+    return this.isEnragedValue;
+  }
+
+  public get isEnrageGraceExpired(): boolean {
+    return this.isEnragedValue && this.enrageElapsedMs >= ENRAGE_GRACE_MS;
   }
 
   public startRun(
@@ -99,6 +118,9 @@ export class RunManager {
     this.mapIdValue = config.mapId;
     this.durationMs = config.durationMs;
     this.elapsedMsValue = 0;
+    this.enrageElapsedMs = 0;
+    this.isEnragedValue = false;
+    this.enrageNotified = false;
     this.expiryNotified = false;
     this.phaseValue = RunPhase.InRun;
     return this.snapshot();
@@ -133,9 +155,23 @@ export class RunManager {
       throw new Error('Run clock ticks must be finite, non-negative numbers.');
     }
 
-    this.elapsedMsValue = Math.min(this.durationMs, this.elapsedMsValue + elapsedMs);
+    if (!this.isEnragedValue) {
+      const totalElapsedMs = this.elapsedMsValue + elapsedMs;
+      this.elapsedMsValue = Math.min(this.durationMs, totalElapsedMs);
+      if (this.elapsedMsValue === this.durationMs) {
+        this.isEnragedValue = true;
+        this.enrageElapsedMs = totalElapsedMs - this.durationMs;
+      }
+    } else {
+      this.enrageElapsedMs += elapsedMs;
+    }
+
     const snapshot = this.snapshot();
-    if (this.elapsedMsValue === this.durationMs && !this.expiryNotified) {
+    if (this.isEnragedValue && !this.enrageNotified) {
+      this.enrageNotified = true;
+      this.options.onEnrage?.(snapshot);
+    }
+    if (this.isEnrageGraceExpired && !this.expiryNotified) {
       this.expiryNotified = true;
       this.options.onExpire?.(snapshot);
     }
@@ -203,6 +239,7 @@ export class RunManager {
       mapId: this.mapIdValue,
       elapsedMs: this.elapsedMsValue,
       remainingMs: this.remainingMs(),
+      isEnraged: this.isEnragedValue,
     };
   }
 
