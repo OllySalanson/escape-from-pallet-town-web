@@ -3,6 +3,7 @@ import { BattleScene } from './scenes/BattleScene';
 import { BagScene } from './scenes/BagScene';
 import { BootScene } from './scenes/BootScene';
 import { HubScene } from './scenes/HubScene';
+import { ObjectivesScene } from './scenes/ObjectivesScene';
 import { PartyScene } from './scenes/PartyScene';
 import { StarterScene } from './scenes/StarterScene';
 import { TitleScene } from './scenes/TitleScene';
@@ -20,6 +21,7 @@ const BASE_SCENES = [
   BattleScene,
   PartyScene,
   BagScene,
+  ObjectivesScene,
 ];
 
 export function createGameConfig(

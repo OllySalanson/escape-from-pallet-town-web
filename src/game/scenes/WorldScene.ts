@@ -70,6 +70,7 @@ interface ControlKeys {
   party: Phaser.Input.Keyboard.Key;
   bag: Phaser.Input.Keyboard.Key;
   save: Phaser.Input.Keyboard.Key;
+  objectives: Phaser.Input.Keyboard.Key;
   interact: Phaser.Input.Keyboard.Key[];
 }
 
@@ -205,6 +206,11 @@ export class WorldScene extends Phaser.Scene {
   }
 
   public update(_time: number, deltaMs: number): void {
+    if (Phaser.Input.Keyboard.JustDown(this.controls.objectives)) {
+      this.openObjectives();
+      return;
+    }
+
     this.dialogBox.update(deltaMs);
 
     this.advanceRunClock(deltaMs);
@@ -568,12 +574,15 @@ export class WorldScene extends Phaser.Scene {
 
     const snapshot = manager.snapshot();
     hud.objectivesText.setText(
-      session.objectives.map((objective) => {
-        const objectiveProgress = objective.progress(snapshot);
-        return `${objectiveProgress.complete ? '✓' : '○'} ${objective.description} ${objectiveProgress.current}/${objectiveProgress.target}`;
-      }).join('\n'),
+      [
+        ...session.objectives.map((objective) => {
+          const objectiveProgress = objective.progress(snapshot);
+          return `${objectiveProgress.complete ? '✓' : '○'} ${objective.description} ${objectiveProgress.current}/${objectiveProgress.target}`;
+        }),
+        'O: FIELD GUIDE',
+      ].join('\n'),
     );
-    const hasObjectives = session.objectives.length > 0;
+    const hasObjectives = true;
     const objectivesHeight = Math.max(22, hud.objectivesText.height + 10);
     hud.objectivesText.setVisible(hasObjectives);
     hud.objectivesBacking
@@ -652,6 +661,7 @@ export class WorldScene extends Phaser.Scene {
       party: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P),
       bag: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B),
       save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
+      objectives: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O),
       interact: [
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
@@ -751,6 +761,20 @@ export class WorldScene extends Phaser.Scene {
       bag: this.bag,
       party: this.party,
       onItemUsed: () => this.saveGame(),
+    });
+  }
+
+  private openObjectives(): void {
+    if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun || this.pendingHubTransition) {
+      return;
+    }
+
+    this.scene.pause();
+    this.scene.launch('objectives', {
+      runSession: this.runSession,
+      currentMapId: this.currentMap.id,
+      activatedPoiIds: [...this.activatedPoiIds],
+      pausedWorld: true,
     });
   }
 

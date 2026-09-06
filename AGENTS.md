@@ -8,6 +8,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 
 - The overworld's tile collision is built by `buildCollisionData()` in `src/game/worldMap.ts`; interactive NPC and sign definitions live in `src/game/world/npcs.ts`.
 - Active raid scene data is defined by `ActiveRunSession` in `src/game/run/RunSession.ts` and must pass unchanged between `WorldScene` and `BattleScene`.
+- The raid field guide is `ObjectivesScene`; derive its objective text from `buildObjectiveGuide()` and have it resume only the `WorldScene` instance it paused.
 
 ## Maintaining this file
 
