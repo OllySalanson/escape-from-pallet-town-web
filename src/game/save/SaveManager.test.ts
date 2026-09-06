@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Pokemon, PokemonParty, CHARMANDER, PIDGEY } from '../pokemon';
+import { Pokemon, PokemonParty, CHARMANDER, PIDGEY, SQUIRTLE } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { Bag } from '../items';
 import { SAVE_KEY, SaveManager } from './SaveManager';
@@ -98,6 +98,50 @@ describe('SaveManager', () => {
     expect(saves.load()?.stash.toJSON()).toEqual({ pokemon: [], items: {} });
   });
 
+  it('persists a selected starter and restores it as the playable fallback after a wipe', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(SQUIRTLE, 5), 'squirtle-1');
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'squirtle',
+    });
+
+    expect(saves.load()?.starterSpeciesId).toBe('squirtle');
+    expect(saves.applyWipeLoss(['squirtle-1'], [])).toBe(true);
+    expect(saves.load()?.stash.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'squirtle' }, level: 5 } },
+    ]);
+  });
+
+  it('infers an existing profile starter without changing its established party or stash', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 3,
+        party: [{ speciesId: 'charmander', level: 5, currentHp: 12, xp: 125, moves: ['Scratch'], primaryStatus: null }],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: [],
+        bag: {},
+        stash: { pokemon: [{ id: 'charmander-1', pokemon: { speciesId: 'charmander', level: 5, currentHp: 12, xp: 125, moves: ['Scratch'], primaryStatus: null } }], items: {} },
+      }),
+    );
+    const saves = new SaveManager(storage);
+
+    const restored = saves.load();
+
+    expect(restored?.starterSpeciesId).toBe('charmander');
+    expect(restored?.party.pokemon).toMatchObject([{ base: { id: 'charmander' }, currentHp: 12 }]);
+    expect(restored?.stash.listPokemon()).toMatchObject([{ id: 'charmander-1', pokemon: { base: { id: 'charmander' } } }]);
+  });
+
   it('restores a starter after a wipe removes the last stashed Pokemon', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
@@ -115,9 +159,9 @@ describe('SaveManager', () => {
 
     const restored = saves.load();
     expect(restored?.stash.listPokemon()).toMatchObject([
-      { pokemon: { base: { id: 'bulbasaur' }, level: 5 } },
+      { pokemon: { base: { id: 'charmander' }, level: 5 } },
     ]);
-    expect(restored?.stash.listPokemon().map(({ pokemon }) => pokemon.base.id)).not.toContain('charmander');
+    expect(restored?.stash.listPokemon()).toHaveLength(1);
     expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
   });
 });

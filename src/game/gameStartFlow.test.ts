@@ -42,6 +42,7 @@ import { CHARMANDER, Pokemon, PokemonParty } from './pokemon';
 import { PrimaryStatus } from './pokemon/battle/status';
 import { BootScene } from './scenes/BootScene';
 import { HubScene } from './scenes/HubScene';
+import { StarterScene } from './scenes/StarterScene';
 import { TitleScene } from './scenes/TitleScene';
 import { SaveManager } from './save/SaveManager';
 import { createStartingStash, Stash } from './stash';
@@ -51,7 +52,7 @@ describe('game start flow', () => {
   it('auto-starts Boot so World prerequisites are ready before Title can start it', () => {
     const scenes = gameConfig.scene as unknown[];
 
-    expect(scenes).toEqual(expect.arrayContaining([BootScene, TitleScene, HubScene, WorldScene]));
+    expect(scenes).toEqual(expect.arrayContaining([BootScene, TitleScene, StarterScene, HubScene, WorldScene]));
     expect(scenes[0]).toBe(BootScene);
 
     const textures = new Set<string>();
@@ -184,6 +185,33 @@ describe('game start flow', () => {
     ]);
     expect(saves.load()?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
   });
+
+  it.each(['bulbasaur', 'charmander', 'squirtle'] as const)(
+    'commits the selected %s starter to a fresh profile before opening the hub',
+    (starterSpeciesId) => {
+      const values = new Map<string, string>();
+      const saves = new SaveManager({
+        getItem: (key) => values.get(key) ?? null,
+        setItem: (key, value) => values.set(key, value),
+        removeItem: (key) => values.delete(key),
+      });
+      const start = vi.fn();
+      const starter = Object.create(StarterScene.prototype) as StarterScene;
+      Object.assign(starter as unknown as Record<string, unknown>, {
+        saveManager: saves,
+        selectedStarterId: starterSpeciesId,
+        scene: { start },
+      });
+
+      (starter as unknown as { confirmStarter(): void }).confirmStarter();
+
+      expect(saves.load()?.starterSpeciesId).toBe(starterSpeciesId);
+      expect(saves.load()?.stash.listPokemon()).toMatchObject([
+        { pokemon: { base: { id: starterSpeciesId }, level: 5 } },
+      ]);
+      expect(start).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('returns a browser reload to the hub instead of resuming an active raid location', () => {
     const values = new Map<string, string>();

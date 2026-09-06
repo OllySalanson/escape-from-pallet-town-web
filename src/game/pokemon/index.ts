@@ -20,6 +20,7 @@ export {
   TACKLE,
   THUNDER_WAVE,
   VINE_WHIP,
+  WATER_GUN,
 } from './moves';
 export {
   BULBASAUR,
@@ -28,6 +29,7 @@ export {
   JIGGLYPUFF,
   PIDGEY,
   PIKACHU,
+  SQUIRTLE,
   getSpeciesById,
   SPECIES_BY_ID,
 } from './species';

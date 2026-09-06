@@ -35,7 +35,8 @@ export class MenuOverlay {
 }
 
 export function pokemonAvatar(dexId: number, name: string): string {
-  return `<span class="pokemon-avatar"><img src="/assets/pokemon/front/${dexId}.png" alt="" /><span>${name.slice(0, 1)}</span></span>`;
+  const extension = dexId === 7 ? 'svg' : 'png';
+  return `<span class="pokemon-avatar"><img src="/assets/pokemon/front/${dexId}.${extension}" alt="" /><span>${name.slice(0, 1)}</span></span>`;
 }
 
 export function hpBar(current: number, max: number): string {

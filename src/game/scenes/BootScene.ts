@@ -27,11 +27,9 @@ export class BootScene extends Phaser.Scene {
     this.load.image('battle-dialog', 'assets/battle/dialog-plain.png');
 
     for (const species of Object.values(SPECIES_BY_ID)) {
-      this.load.image(
-        `pokemon-front-${species.dexId}`,
-        `assets/pokemon/front/${species.dexId}.png`,
-      );
-      this.load.image(`pokemon-back-${species.dexId}`, `assets/pokemon/back/${species.dexId}.png`);
+      const extension = species.dexId === 7 ? 'svg' : 'png';
+      this.load.image(`pokemon-front-${species.dexId}`, `assets/pokemon/front/${species.dexId}.${extension}`);
+      this.load.image(`pokemon-back-${species.dexId}`, `assets/pokemon/back/${species.dexId}.${extension}`);
     }
   }
 

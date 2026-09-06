@@ -1,5 +1,12 @@
 import { Bag, type BagContents } from '../items';
-import { BULBASAUR, Pokemon } from '../pokemon';
+import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE, type PokemonBase } from '../pokemon';
+
+export const STARTER_SPECIES = [BULBASAUR, CHARMANDER, SQUIRTLE] as const;
+export type StarterSpeciesId = (typeof STARTER_SPECIES)[number]['id'];
+
+export function getStarterSpecies(starterId: StarterSpeciesId): PokemonBase {
+  return STARTER_SPECIES.find((species) => species.id === starterId) ?? BULBASAUR;
+}
 
 export interface StashedPokemon {
   readonly id: string;
@@ -87,12 +94,12 @@ export class Stash {
    *
    * @returns Whether a starter was granted.
    */
-  public ensurePlayable(): boolean {
+  public ensurePlayable(starter = BULBASAUR): boolean {
     if (this.storedPokemon.length > 0) {
       return false;
     }
 
-    this.addPokemon(new Pokemon(BULBASAUR, 5));
+    this.addPokemon(new Pokemon(starter, 5));
     if (Object.keys(this.listItems()).length === 0) {
       this.addItem('poke-ball', 5);
       this.addItem('potion', 3);
@@ -161,9 +168,9 @@ export class Stash {
 }
 
 /** Provides a playable first vault for a player with no existing save. */
-export function createStartingStash(): Stash {
+export function createStartingStash(starter = BULBASAUR): Stash {
   const stash = new Stash();
-  stash.ensurePlayable();
+  stash.ensurePlayable(starter);
   return stash;
 }
 

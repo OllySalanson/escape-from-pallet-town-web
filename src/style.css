@@ -596,6 +596,7 @@ button {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+.starter-shell { display: grid; align-content: center; gap: var(--space-3); }.starter-header { max-width: 640px; }.starter-header h1 { margin: 4px 0 8px; font-size: clamp(31px, 5vw, 50px); letter-spacing: -.05em; }.starter-header > p:last-child { color: var(--menu-muted); }.starter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }.starter-card { position: relative; min-height: 210px; display: flex; flex-direction: column; align-items: flex-start; gap: 13px; padding: 18px; text-align: left; color: var(--menu-text); background: var(--menu-surface); border: 1px solid var(--menu-border); border-radius: var(--radius); box-shadow: var(--shadow); transition: transform .15s ease, border-color .15s ease, background .15s ease; }.starter-card:hover, .starter-card.selected { transform: translateY(-3px); border-color: var(--menu-accent); background: #1d3950; }.starter-card .pokemon-avatar { width: 64px; height: 64px; flex-basis: 64px; }.starter-card h2 { font-size: 1.6em; }.starter-card p { color: var(--menu-muted); margin: 4px 0 8px; }.starter-card b { color: var(--menu-accent); margin-top: auto; }.starter-confirm { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); border: 1px solid #416a70; border-radius: var(--radius); background: linear-gradient(110deg, #153d45, #142438); }.starter-confirm strong, .starter-confirm small { display: block; }.starter-confirm strong { font-size: 1.3em; }.starter-confirm .button { margin: 0; white-space: nowrap; }
 @media (max-width: 650px) {
   .menu-header {
     align-items: flex-start;
@@ -606,11 +607,19 @@ button {
   .stash-layout,
   .loadout-layout,
   .secure-layout,
-  .test-lab-layout {
+  .test-lab-layout,
+  .starter-grid {
     grid-template-columns: 1fr;
   }
   .action-card {
     min-height: 140px;
+  }
+  .starter-card {
+    min-height: 0;
+  }
+  .starter-confirm {
+    align-items: stretch;
+    flex-direction: column;
   }
   .stash-count {
     width: 100%;
