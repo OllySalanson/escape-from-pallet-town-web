@@ -3,6 +3,7 @@ import { Pokemon, PokemonParty, CHARMANDER, PIDGEY } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { Bag } from '../items';
 import { SAVE_KEY, SaveManager } from './SaveManager';
+import { Stash } from '../stash';
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -29,6 +30,9 @@ describe('SaveManager', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
     const bag = new Bag({ potion: 2, antidote: 1, 'poke-ball': 5 });
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(PIDGEY, 6), 'stash-pidgey');
+    stash.addItem('poke-ball', 3);
 
     expect(
       saves.save({
@@ -37,7 +41,7 @@ describe('SaveManager', () => {
         position: { x: 7, y: 21 },
         items: ['potion'],
         bag,
-        stash: { items: ['poke-ball'] },
+        stash,
       }),
     ).toBe(true);
 
@@ -48,7 +52,10 @@ describe('SaveManager', () => {
     expect(restored?.position).toEqual({ x: 7, y: 21 });
     expect(restored?.items).toEqual(['potion']);
     expect(restored?.bag.toJSON()).toEqual({ potion: 2, antidote: 1, 'poke-ball': 5 });
-    expect(restored?.stash.items).toEqual(['poke-ball']);
+    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 3 });
+    expect(restored?.stash.listPokemon()).toMatchObject([
+      { id: 'stash-pidgey', pokemon: { base: { id: 'pidgey' }, level: 6 } },
+    ]);
     expect(restored?.party.pokemon).toHaveLength(2);
     expect(restored?.party.pokemon[0]).toMatchObject({
       base: { id: 'charmander' },
@@ -71,5 +78,23 @@ describe('SaveManager', () => {
 
     storage.setItem(SAVE_KEY, JSON.stringify({ version: 99 }));
     expect(saves.load()).toBeNull();
+  });
+
+  it('migrates version 1 saves with no stash to an empty vault', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 1,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: [],
+        bag: {},
+      }),
+    );
+
+    expect(saves.load()?.stash.toJSON()).toEqual({ pokemon: [], items: {} });
   });
 });

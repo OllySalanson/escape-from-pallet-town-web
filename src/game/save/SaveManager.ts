@@ -2,10 +2,11 @@ import { Move, Pokemon, PokemonParty, getSpeciesById } from '../pokemon';
 import { Bag, type BagContents } from '../items/Bag';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 import type { GridPosition } from '../movement/gridMovement';
+import { Stash, type RunResult, type SecureSlot } from '../stash/Stash';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 const PRIMARY_STATUSES = new Set<PrimaryStatus>([
   'poison',
   'burn',
@@ -23,13 +24,14 @@ export interface SavedPokemon {
   readonly primaryStatus: PrimaryStatus | null;
 }
 
+export interface SavedStashedPokemon {
+  readonly id: string;
+  readonly pokemon: SavedPokemon;
+}
+
 export interface SavedStash {
-  /**
-   * Persistent extraction rewards. Active-run Pokemon and items stay outside this
-   * object until a later meta-layer banks them here.
-   */
-  readonly pokemon: readonly SavedPokemon[];
-  readonly items: readonly string[];
+  readonly pokemon: readonly SavedStashedPokemon[];
+  readonly items: BagContents;
 }
 
 export interface SaveData {
@@ -48,7 +50,7 @@ export interface RestoredGame {
   readonly position: GridPosition;
   readonly items: readonly string[];
   readonly bag: Bag;
-  readonly stash: SavedStash;
+  readonly stash: Stash;
 }
 
 export interface SaveGameState {
@@ -57,7 +59,7 @@ export interface SaveGameState {
   readonly position: GridPosition;
   readonly items?: readonly string[];
   readonly bag?: Bag;
-  readonly stash?: Partial<SavedStash>;
+  readonly stash?: Stash;
 }
 
 export interface StorageLike {
@@ -114,6 +116,38 @@ export class SaveManager {
       // Browser storage can be unavailable or full. A failed clear must not break play.
     }
   }
+
+  /**
+   * Adds successful extraction rewards to the persisted vault. The active save
+   * must exist because its world state is retained while only the stash changes.
+   */
+  public bankRun(result: RunResult): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+
+    game.stash.bankRun(result);
+    return this.save(game);
+  }
+
+  /**
+   * Persists a wipe after permanently deleting deployed assets outside the
+   * secure slot. SecureSlot allows one Pokemon ID and at most two item stacks.
+   */
+  public applyWipeLoss(
+    broughtPokemonIds: readonly string[],
+    broughtItems: readonly { readonly itemId: string; readonly quantity: number }[],
+    secureSlot: SecureSlot = {},
+  ): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+
+    game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot);
+    return this.save(game);
+  }
 }
 
 export function serializeGame(state: SaveGameState): SaveData {
@@ -124,15 +158,12 @@ export function serializeGame(state: SaveGameState): SaveData {
     position: { ...state.position },
     items: [...(state.items ?? [])],
     bag: state.bag?.toJSON() ?? {},
-    stash: {
-      pokemon: [...(state.stash?.pokemon ?? [])],
-      items: [...(state.stash?.items ?? [])],
-    },
+    stash: serializeStash(state.stash ?? new Stash()),
   };
 }
 
 export function deserializeGame(value: unknown): RestoredGame | null {
-  if (!isRecord(value) || value.version !== SAVE_VERSION) {
+  if (!isRecord(value) || (value.version !== 1 && value.version !== SAVE_VERSION)) {
     return null;
   }
 
@@ -164,7 +195,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     position: { ...position },
     items: stringArray(value.items),
     bag: new Bag(bagContents(value.bag)),
-    stash: deserializeStash(value.stash),
+    stash: deserializeStash(value.stash, value.version),
   };
 }
 
@@ -211,36 +242,53 @@ function deserializePokemon(value: unknown): Pokemon | null {
   return pokemon;
 }
 
-function deserializeStash(value: unknown): SavedStash {
-  if (!isRecord(value)) {
-    return { pokemon: [], items: [] };
-  }
-
+function serializeStash(stash: Stash): SavedStash {
   return {
-    pokemon: Array.isArray(value.pokemon)
-      ? value.pokemon
-          .map((entry) => serializePokemonIfValid(entry))
-          .filter((entry): entry is SavedPokemon => entry !== null)
-      : [],
-    items: stringArray(value.items),
+    pokemon: stash.listPokemon().map(({ id, pokemon }) => ({ id, pokemon: serializePokemon(pokemon) })),
+    items: stash.listItems(),
   };
 }
 
-function serializePokemonIfValid(value: unknown): SavedPokemon | null {
-  const pokemon = deserializePokemon(value);
-  return pokemon ? serializePokemon(pokemon) : null;
+function deserializeStash(value: unknown, saveVersion: number): Stash {
+  if (!isRecord(value)) {
+    return new Stash();
+  }
+
+  if (saveVersion === 1) {
+    const pokemon = Array.isArray(value.pokemon)
+      ? value.pokemon
+          .map((entry, index) => {
+            const restored = deserializePokemon(entry);
+            return restored ? { id: `legacy-${index + 1}`, pokemon: restored } : null;
+          })
+          .filter((entry): entry is { id: string; pokemon: Pokemon } => entry !== null)
+      : [];
+    return new Stash({ pokemon, items: stringArrayToBagContents(value.items) });
+  }
+
+  const pokemon = Array.isArray(value.pokemon)
+    ? value.pokemon
+        .map((entry) => deserializeStashedPokemon(entry))
+        .filter((entry): entry is { id: string; pokemon: Pokemon } => entry !== null)
+    : [];
+  return new Stash({ pokemon, items: bagContents(value.items) });
+}
+
+function deserializeStashedPokemon(value: unknown): { id: string; pokemon: Pokemon } | null {
+  if (!isRecord(value) || typeof value.id !== 'string' || value.id.length === 0) {
+    return null;
+  }
+  const pokemon = deserializePokemon(value.pokemon);
+  return pokemon ? { id: value.id, pokemon } : null;
 }
 
 function getPokemonXp(pokemon: Pokemon): number {
-  const value = (pokemon as unknown as { xp?: unknown }).xp;
+  const value = pokemon.experience;
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
 }
 
 function setPokemonXp(pokemon: Pokemon, xp: number): void {
-  const experiencePokemon = pokemon as unknown as { xp?: number };
-  if ('xp' in experiencePokemon) {
-    experiencePokemon.xp = xp;
-  }
+  pokemon.experience = xp;
 }
 
 function getBrowserStorage(): StorageLike | null {
@@ -301,6 +349,14 @@ function bagContents(value: unknown): BagContents {
     if (typeof quantity === 'number' && Number.isInteger(quantity) && quantity > 0) {
       contents[itemId] = quantity;
     }
+  }
+  return contents;
+}
+
+function stringArrayToBagContents(value: unknown): BagContents {
+  const contents: Record<string, number> = {};
+  for (const itemId of stringArray(value)) {
+    contents[itemId] = (contents[itemId] ?? 0) + 1;
   }
   return contents;
 }
