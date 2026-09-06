@@ -40,7 +40,9 @@ export interface RunSnapshot {
   readonly secureSlot: SecureSlot;
   readonly caughtPokemon: readonly Pokemon[];
   readonly foundItems: readonly ItemStack[];
+  readonly defeatedTrainers: number;
   readonly mapId: string | null;
+  readonly visitedMapIds: readonly string[];
   readonly elapsedMs: number;
   readonly remainingMs: number;
   readonly isEnraged: boolean;
@@ -75,7 +77,9 @@ export class RunManager {
   private secureSlotValue: SecureSlot = {};
   private caughtPokemonValue: Pokemon[] = [];
   private foundItemsValue: ItemStack[] = [];
+  private defeatedTrainersValue = 0;
   private mapIdValue: string | null = null;
+  private visitedMapIdsValue: string[] = [];
   private durationMs = 0;
   private elapsedMsValue = 0;
   private enrageElapsedMs = 0;
@@ -115,7 +119,9 @@ export class RunManager {
     this.secureSlotValue = copySecureSlot(secureSlot);
     this.caughtPokemonValue = [];
     this.foundItemsValue = [];
+    this.defeatedTrainersValue = 0;
     this.mapIdValue = config.mapId;
+    this.visitedMapIdsValue = [config.mapId];
     this.durationMs = config.durationMs;
     this.elapsedMsValue = 0;
     this.enrageElapsedMs = 0;
@@ -133,6 +139,9 @@ export class RunManager {
     }
 
     this.mapIdValue = mapId;
+    if (!this.visitedMapIdsValue.includes(mapId)) {
+      this.visitedMapIdsValue.push(mapId);
+    }
     return this.snapshot();
   }
 
@@ -146,6 +155,12 @@ export class RunManager {
     this.requirePhase('register a found item', RunPhase.InRun);
     validateItemStack({ itemId, quantity });
     this.foundItemsValue = combineItems([...this.foundItemsValue, { itemId, quantity }]);
+    return this.snapshot();
+  }
+
+  public registerTrainerDefeat(): RunSnapshot {
+    this.requirePhase('register a trainer defeat', RunPhase.InRun);
+    this.defeatedTrainersValue += 1;
     return this.snapshot();
   }
 
@@ -236,7 +251,9 @@ export class RunManager {
       secureSlot: copySecureSlot(this.secureSlotValue),
       caughtPokemon: [...this.caughtPokemonValue],
       foundItems: [...this.foundItemsValue],
+      defeatedTrainers: this.defeatedTrainersValue,
       mapId: this.mapIdValue,
+      visitedMapIds: [...this.visitedMapIdsValue],
       elapsedMs: this.elapsedMsValue,
       remainingMs: this.remainingMs(),
       isEnraged: this.isEnragedValue,

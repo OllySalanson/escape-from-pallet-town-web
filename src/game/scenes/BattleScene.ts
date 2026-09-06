@@ -876,6 +876,7 @@ export class BattleScene extends Phaser.Scene {
       // live exclusively in BattleState and are discarded with this scene.
       if (this.trainer && this.state.outcome === 'victory') {
         this.defeatedTrainerIds.add(this.trainer.id);
+        this.runSession?.manager.registerTrainerDefeat();
       }
       this.persistActivePokemonHp();
       this.scene.start('world', {

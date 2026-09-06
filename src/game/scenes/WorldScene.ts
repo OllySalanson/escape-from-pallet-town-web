@@ -24,6 +24,7 @@ import { rollEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { Bag, ITEMS, type ItemId } from '../items';
+import { completedObjectiveRewards } from '../objectives';
 import { RunPhase } from '../run/RunManager';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
@@ -55,6 +56,8 @@ interface ExtractionPoint {
 interface RunTimerHud {
   readonly backing: Phaser.GameObjects.Rectangle;
   readonly text: Phaser.GameObjects.Text;
+  readonly objectivesBacking: Phaser.GameObjects.Rectangle;
+  readonly objectivesText: Phaser.GameObjects.Text;
 }
 
 const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
@@ -478,16 +481,40 @@ export class WorldScene extends Phaser.Scene {
       .setStroke('#020617', 2)
       .setScrollFactor(0)
       .setDepth(101);
-    this.runTimerHud = { backing, text };
+    const objectivesBacking = this.add
+      .rectangle(85, 56, 164, 64, 0x111827, 0.88)
+      .setStrokeStyle(1, 0x2b3e59)
+      .setScrollFactor(0)
+      .setDepth(100);
+    const objectivesText = this.add
+      .text(8, 29, '', {
+        fontFamily: 'monospace',
+        fontSize: '8px',
+        color: '#dbeafe',
+        lineSpacing: 3,
+      })
+      .setStroke('#020617', 2)
+      .setScrollFactor(0)
+      .setDepth(101);
+    this.runTimerHud = { backing, text, objectivesBacking, objectivesText };
     this.refreshRunTimerHud();
   }
 
   private refreshRunTimerHud(): void {
     const hud = this.runTimerHud;
-    const manager = this.runSession?.manager;
-    if (!hud || !manager || manager.phase !== RunPhase.InRun) {
+    const session = this.runSession;
+    const manager = session?.manager;
+    if (!hud || !session || !manager || manager.phase !== RunPhase.InRun) {
       return;
     }
+
+    const snapshot = manager.snapshot();
+    hud.objectivesText.setText(
+      session.objectives.map((objective) => {
+        const objectiveProgress = objective.progress(snapshot);
+        return `${objectiveProgress.complete ? '✓' : '○'} ${objective.description} ${objectiveProgress.current}/${objectiveProgress.target}`;
+      }).join('\n'),
+    );
 
     if (manager.isEnraged) {
       hud.backing.setFillStyle(0x7f1d1d, 0.95).setStrokeStyle(2, 0xfca5a5);
@@ -511,6 +538,8 @@ export class WorldScene extends Phaser.Scene {
   private destroyRunTimerHud(): void {
     this.runTimerHud?.backing.destroy();
     this.runTimerHud?.text.destroy();
+    this.runTimerHud?.objectivesBacking.destroy();
+    this.runTimerHud?.objectivesText.destroy();
     this.runTimerHud = undefined;
   }
 
@@ -867,14 +896,16 @@ export class WorldScene extends Phaser.Scene {
     this.runSession.manager.resolveEscape();
     this.destroyRunTimerHud();
     const snapshot = this.runSession.manager.snapshot();
+    const objectiveRewards = completedObjectiveRewards(this.runSession.objectives, snapshot);
     const saved = new SaveManager().bankRun({
       pokemon: snapshot.caughtPokemon,
-      items: snapshot.foundItems,
+      items: [...snapshot.foundItems, ...objectiveRewards],
     });
     this.pendingHubTransition = true;
     this.dialogBox.showMessages([
       'EXTRACTED!',
       formatRunSummary('Banked', snapshot.caughtPokemon, snapshot.foundItems),
+      objectiveRewards.length ? `Objective rewards secured: ${objectiveRewards.map(({ itemId, quantity }) => `${quantity}× ${itemId}`).join(', ')}.` : 'No objectives completed this run.',
       saved ? 'Stash secured. Returning to hub.' : 'Stash save unavailable. Returning to hub.',
     ]);
   }
