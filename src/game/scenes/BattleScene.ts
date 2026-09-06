@@ -19,6 +19,7 @@ import {
   type BattleState,
   type TrainerBattle,
 } from '../pokemon/battle/battleEngine';
+import { battleOpeningMessages } from '../pokemon/battle/battleFlow';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import type { WildEncounter } from '../world/wildEncounters';
@@ -66,6 +67,8 @@ export interface BattleSceneData {
   hunterState?: HunterState;
   /** Location to restore when this battle returns to the overworld. */
   returnLocation?: RaidLocation;
+  /** A development route can return to its launcher after a complete battle. */
+  returnScene?: string;
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -108,6 +111,7 @@ export class BattleScene extends Phaser.Scene {
   private readonly collectedLootIds = new Set<string>();
   private readonly activatedPoiIds = new Set<string>();
   private returnLocation: BattleSceneData['returnLocation'];
+  private returnScene: BattleSceneData['returnScene'];
   private displayedEnemy: PokemonInstance | undefined;
   private isTransitioning = false;
   private displayedHp = { player: 0, enemy: 0 };
@@ -131,6 +135,7 @@ export class BattleScene extends Phaser.Scene {
     this.hunterBattle = data.hunterBattle ?? false;
     this.hunterState = data.hunterState;
     this.returnLocation = data.returnLocation;
+    this.returnScene = data.returnScene;
     this.defeatedTrainerIds.clear();
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.collectedLootIds.clear();
@@ -185,10 +190,12 @@ export class BattleScene extends Phaser.Scene {
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.goBack());
     this.input.keyboard!.on?.('keydown-M', () => audioManager.toggleMute());
     this.mode = 'events';
-    this.dialog.showMessage(
-      data.trainer
-        ? `${data.trainer.name} wants to battle! Go, ${this.state.enemy.pokemon.base.name.toUpperCase()}!`
-        : `A wild ${wildPokemon.base.name.toUpperCase()} appeared!`,
+    this.dialog.showMessages(
+      battleOpeningMessages(
+        data.trainer?.name,
+        this.state.player.pokemon.base.name,
+        this.state.enemy.pokemon.base.name,
+      ),
     );
   }
 
@@ -246,6 +253,20 @@ export class BattleScene extends Phaser.Scene {
     this.enemyStatusBox = this.createStatusBox(16, 16, this.state.enemy, false);
     this.displayedEnemy = this.state.enemy.pokemon;
     this.playerStatusBox = this.createStatusBox(150, 104, this.state.player, true);
+    this.add
+      .text(16, 4, this.trainer ? 'RIVAL' : 'WILD', {
+        fontFamily: BATTLE_FONT,
+        fontSize: '8px',
+        color: '#f8fafc',
+      })
+      .setDepth(7);
+    this.add
+      .text(150, 96, 'YOUR POKéMON', {
+        fontFamily: BATTLE_FONT,
+        fontSize: '8px',
+        color: '#f8fafc',
+      })
+      .setDepth(7);
   }
 
   private createStatusBox(
@@ -929,6 +950,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private completeReturnToWorld(): void {
+    if (this.returnScene && this.scene.manager.keys[this.returnScene]) {
+      this.scene.start(this.returnScene);
+      return;
+    }
+
     if (this.pendingHubTransition) {
       if (this.scene.manager.keys.hub) {
         this.scene.start('hub');

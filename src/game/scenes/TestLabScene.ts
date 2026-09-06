@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Bag } from '../items';
-import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
-import { BULBASAUR } from '../pokemon/species';
+import { PokemonParty } from '../pokemon';
+import { createTestLabBattleScenario } from '../dev/testLabRoutes';
 import { activeRunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, type RunInsertionId } from '../run/runGeneration';
@@ -106,10 +106,7 @@ export class TestLabScene extends Phaser.Scene {
   private routeScenario(): void {
     const route = TEST_LAB_SCENARIOS[this.selectedIndex].route;
     if (route === 'battle') {
-      this.scene.start('battle', {
-        party: new PokemonParty([new Pokemon(CHARMANDER, 12)]),
-        wild: { speciesId: BULBASAUR.id, level: 10 },
-      });
+      this.scene.start('battle', createTestLabBattleScenario());
       return;
     }
     const game = this.createFreshProfile(route === 'run-south');
