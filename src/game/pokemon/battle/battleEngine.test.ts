@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MoveBase, MoveCategory } from '../MoveBase';
 import { Pokemon } from '../Pokemon';
 import { PokemonType } from '../PokemonType';
-import { EMBER, POISON_POWDER, SING, SUPER_SONIC, TACKLE, THUNDER_WAVE } from '../moves';
+import { EMBER, GROWL, POISON_POWDER, SING, SUPER_SONIC, TACKLE, THUNDER_WAVE } from '../moves';
 import { BULBASAUR, BUTTERFREE, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU } from '../species';
 import {
   chooseEnemyMove,
@@ -12,6 +12,7 @@ import {
   resolveTurn,
 } from './battleEngine';
 import { calculateDamage } from './damage';
+import { applyStatBoost, createStatStages, getStagedStat } from './statStages';
 import { getTypeEffectiveness } from './typeChart';
 
 const maximumRandom = (): number => 1;
@@ -131,6 +132,49 @@ describe('damage calculation', () => {
     expect(calculateDamage(new Pokemon(CHARMANDER, 5), defender, TACKLE, maximumRandom).damage).toBe(4);
     expect(calculateDamage(new Pokemon(CHARMANDER, 20), defender, TACKLE, maximumRandom).damage).toBe(15);
   });
+
+  it('uses a landed stat-lowering move when calculating subsequent damage', () => {
+    const state = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
+    const growlState = {
+      ...state,
+      enemy: { ...state.enemy, moves: [{ base: GROWL, pp: GROWL.pp }] },
+    };
+    const lowered = resolveEnemyTurn(growlState, maximumRandom);
+
+    expect(lowered.events).toContainEqual({
+      type: 'stat-stage-changed',
+      user: 'player',
+      name: 'Charmander',
+      stat: 'attack',
+      stages: -1,
+    });
+    expect(lowered.state.player.statStages.attack).toBe(-1);
+    expect(
+      calculateDamage(
+        lowered.state.player.pokemon,
+        lowered.state.enemy.pokemon,
+        TACKLE,
+        maximumRandom,
+        lowered.state.player.statStages,
+        lowered.state.enemy.statStages,
+      ).damage,
+    ).toBeLessThan(calculateDamage(state.player.pokemon, state.enemy.pokemon, TACKLE, maximumRandom).damage);
+  });
+});
+
+describe('stat stages', () => {
+  it('uses Unity stage multipliers and floors negative-stage results', () => {
+    expect([0, 1, 2, 3, 4, 5, 6].map((stage) => getStagedStat(10, stage))).toEqual([10, 15, 20, 25, 30, 35, 40]);
+    expect([0, -1, -2, -3, -4, -5, -6].map((stage) => getStagedStat(10, stage))).toEqual([10, 6, 5, 4, 3, 2, 2]);
+  });
+
+  it('clamps stat boosts between negative and positive six stages', () => {
+    const raised = applyStatBoost(createStatStages(), { stat: 'speed', stages: 9 });
+    const lowered = applyStatBoost(raised, { stat: 'speed', stages: -20 });
+
+    expect(raised.speed).toBe(6);
+    expect(lowered.speed).toBe(-6);
+  });
 });
 
 describe('battle turn resolution', () => {
@@ -205,6 +249,7 @@ describe('battle turn resolution', () => {
     expect(result.events).toMatchObject([
       { type: 'used-move', user: 'player' },
       { type: 'used-move', user: 'enemy', move: 'Growl' },
+      { type: 'stat-stage-changed', user: 'player', stat: 'attack', stages: -1 },
     ]);
     expect(result.state.player.moves[0]?.pp).toBe(state.player.moves[0].pp - 1);
     expect(result.state.enemy.moves[1]?.pp).toBe(0);

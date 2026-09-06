@@ -635,6 +635,8 @@ const eventToMessage = (event: BattleEvent): string => {
       return event.status === 'sleep' ? `${event.name} woke up!` : event.status === 'freeze' ? `${event.name} thawed out!` : `${event.name} snapped out of confusion!`;
     case 'confusion-self-hit':
       return `${event.name} hurt itself in its confusion!`;
+    case 'stat-stage-changed':
+      return `${event.name}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
   }
 };
 
@@ -647,3 +649,12 @@ const statusLabel = (status: string): string =>
     freeze: 'frozen',
     confusion: 'confused',
   })[status] ?? status;
+
+const statLabel = (stat: string): string =>
+  ({
+    attack: 'Attack',
+    defense: 'Defense',
+    spAttack: 'Sp. Attack',
+    spDefense: 'Sp. Defense',
+    speed: 'Speed',
+  })[stat] ?? stat;

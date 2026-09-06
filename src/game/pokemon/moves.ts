@@ -17,6 +17,7 @@ export const GROWL = new MoveBase({
   accuracy: 100,
   pp: 30,
   category: MoveCategory.Status,
+  boosts: [{ stat: 'attack', stages: -1 }],
 });
 
 export const SCRATCH = new MoveBase({
