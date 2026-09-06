@@ -9,6 +9,7 @@ import { BULBASAUR, CHARMANDER, getSpeciesById } from '../pokemon/species';
 import {
   createBattleState,
   replacePlayerPokemon,
+  resolveCatchAttempt,
   resolveEnemyTurn,
   resolveTurn,
   type BattleCombatant,
@@ -20,23 +21,23 @@ import { DialogBox } from '../ui/DialogBox';
 import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 
-type CommandMode = 'main' | 'moves' | 'placeholder' | 'party' | 'events' | 'finished';
+type CommandMode = 'main' | 'moves' | 'party' | 'events' | 'finished';
 
 type BattleAction =
   | { readonly type: 'choose-fight' }
-  | { readonly type: 'choose-bag' }
+  | { readonly type: 'throw-ball' }
   | { readonly type: 'choose-pokemon' }
   | { readonly type: 'choose-run' }
   | { readonly type: 'use-move'; readonly moveIndex: number }
   | { readonly type: 'switch-pokemon'; readonly partyIndex: number };
 
-type PlaceholderCommand = Extract<BattleAction, { type: 'choose-bag' | 'choose-pokemon' }>;
-
 const COMMAND_Y = 174;
 const BATTLE_FONT = '"Orange Kid", monospace';
+const STARTING_POKE_BALLS = 5;
+const PARTY_LIMIT = 6;
 const MAIN_COMMAND_ACTIONS = [
   { type: 'choose-fight' },
-  { type: 'choose-bag' },
+  { type: 'throw-ball' },
   { type: 'choose-pokemon' },
   { type: 'choose-run' },
 ] as const satisfies readonly BattleAction[];
@@ -44,6 +45,8 @@ const MAIN_COMMAND_ACTIONS = [
 export interface BattleSceneData {
   wild?: WildEncounter;
   party?: PokemonParty;
+  pokeBalls?: number;
+  caughtPokemonStash?: PokemonInstance[];
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -73,6 +76,9 @@ export class BattleScene extends Phaser.Scene {
   private partyMessage = '';
   private readonly participatingPokemon = new Set<PokemonInstance>();
   private victoryRewardsGranted = false;
+  // This seam is intentionally plain data until the run-level bag and stash systems own it.
+  private pokeBalls = STARTING_POKE_BALLS;
+  private caughtPokemonStash: PokemonInstance[] = [];
 
   public constructor() {
     super('battle');
@@ -84,6 +90,8 @@ export class BattleScene extends Phaser.Scene {
     this.participatingPokemon.clear();
     this.victoryRewardsGranted = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
+    this.pokeBalls = data.pokeBalls ?? STARTING_POKE_BALLS;
+    this.caughtPokemonStash = data.caughtPokemonStash ?? [];
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
@@ -238,11 +246,6 @@ export class BattleScene extends Phaser.Scene {
   private showCommands(): void {
     this.commandContainer.removeAll(true);
     this.commandContainer.setVisible(true);
-    if (this.mode === 'placeholder') {
-      this.commandTexts = [];
-      this.commandContainer.add(this.createPlaceholderBox());
-      return;
-    }
     if (this.mode === 'party') {
       this.commandContainer.add(this.createPartyBox());
       return;
@@ -250,7 +253,7 @@ export class BattleScene extends Phaser.Scene {
 
     const labels =
       this.mode === 'main'
-        ? ['FIGHT', 'BAG', 'POKéMON', 'RUN']
+        ? ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', 'RUN']
         : this.state.player.moves.map(
             (move) => `${move.base.name.toUpperCase()} ${move.base.type.toUpperCase()} ${move.pp}/${move.base.pp}`,
           );
@@ -269,26 +272,11 @@ export class BattleScene extends Phaser.Scene {
       const text = this.add.text(18 + column * 148, 11 + row * 25, label, {
         fontFamily: BATTLE_FONT,
         fontSize: this.mode === 'moves' ? '13px' : '16px',
-        color: '#202020',
+        color: this.mode === 'main' && index === 1 && this.pokeBalls === 0 ? '#7a3c3c' : '#202020',
       });
       container.add(text);
       return text;
     });
-    return container;
-  }
-
-  private createPlaceholderBox(): Phaser.GameObjects.Container {
-    const container = this.add.container(0, COMMAND_Y);
-    container.add(this.add.image(160, 32, 'battle-dialog').setDisplaySize(320, 64));
-    const command = this.selectedCommand === 1 ? 'BAG' : 'POKéMON';
-    container.add(
-      this.add.text(18, 10, `${command}\nComing soon!  BACK: return`, {
-        fontFamily: BATTLE_FONT,
-        fontSize: '16px',
-        color: '#202020',
-        lineSpacing: 7,
-      }),
-    );
     return container;
   }
 
@@ -390,8 +378,8 @@ export class BattleScene extends Phaser.Scene {
         this.selectedCommand = 0;
         this.showCommands();
         return;
-      case 'choose-bag':
-        this.showPlaceholder(action);
+      case 'throw-ball':
+        this.throwBall();
         return;
       case 'choose-pokemon':
         this.showPartySelection(false);
@@ -407,17 +395,11 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  private showPlaceholder(action: PlaceholderCommand): void {
-    this.mode = 'placeholder';
-    this.selectedCommand = action.type === 'choose-bag' ? 1 : 2;
-    this.showCommands();
-  }
-
   private goBack(): void {
     if (this.mode === 'party' && this.forcedReplacement) {
       return;
     }
-    if (this.mode !== 'moves' && this.mode !== 'placeholder' && this.mode !== 'party') {
+    if (this.mode !== 'moves' && this.mode !== 'party') {
       return;
     }
     this.mode = 'main';
@@ -449,6 +431,48 @@ export class BattleScene extends Phaser.Scene {
     this.mode = 'events';
     this.commandContainer.setVisible(false);
     this.dialog.showMessages(result.events.map(eventToMessage));
+  }
+
+  private throwBall(): void {
+    if (this.pokeBalls === 0) {
+      this.mode = 'events';
+      this.commandContainer.setVisible(false);
+      this.dialog.showMessage('No POKé BALLS left!');
+      return;
+    }
+
+    this.pokeBalls -= 1;
+    const previousState = this.state;
+    const result = resolveCatchAttempt(this.state, () => Math.random());
+    this.state = result.state;
+    let events = result.events;
+    if (this.state.outcome === 'caught') {
+      this.storeCaughtPokemon();
+    } else {
+      const enemyResult = resolveEnemyTurn(this.state, () => Math.random());
+      this.state = enemyResult.state;
+      events = [...events, ...enemyResult.events];
+    }
+    this.persistActivePokemonHp();
+    this.refreshStatusLabels();
+    this.prepareForcedReplacement();
+    this.animateHp(previousState);
+    this.animateCombatEvents(events);
+    this.playCombatEffects(events, previousState);
+    this.mode = 'events';
+    this.commandContainer.setVisible(false);
+    this.dialog.showMessages(events.map(eventToMessage));
+  }
+
+  private storeCaughtPokemon(): void {
+    const caughtPokemon = this.state.enemy.pokemon;
+    caughtPokemon.currentHp = this.state.enemy.currentHp;
+    caughtPokemon.primaryStatus = this.state.enemy.primaryStatus;
+    if (this.party.pokemon.length < PARTY_LIMIT) {
+      this.party.addPokemon(caughtPokemon);
+      return;
+    }
+    this.caughtPokemonStash.push(caughtPokemon);
   }
 
   private showPartySelection(forcedReplacement: boolean): void {
@@ -584,6 +608,12 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.state.outcome === 'caught') {
+      this.mode = 'finished';
+      this.returnToWorld();
+      return;
+    }
+
     if (this.state.outcome === 'active') {
       this.mode = 'main';
       this.selectedCommand = 0;
@@ -670,7 +700,11 @@ export class BattleScene extends Phaser.Scene {
       // HP and primary status live on party Pokemon. Battle-only stages and confusion
       // live exclusively in BattleState and are discarded with this scene.
       this.persistActivePokemonHp();
-      this.scene.start('world', { party: this.party });
+      this.scene.start('world', {
+        party: this.party,
+        pokeBalls: this.pokeBalls,
+        caughtPokemonStash: this.caughtPokemonStash,
+      });
     }
   }
 }
@@ -706,6 +740,14 @@ const eventToMessage = (event: BattleEvent): string => {
       return `${event.name} hurt itself in its confusion!`;
     case 'stat-stage-changed':
       return `${event.name}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
+    case 'ball-thrown':
+      return `Threw a POKé BALL at ${event.name.toUpperCase()}!`;
+    case 'catch-shake':
+      return `${event.count}...`;
+    case 'caught':
+      return `Gotcha! ${event.name.toUpperCase()} was caught!`;
+    case 'broke-free':
+      return `${event.name.toUpperCase()} broke free!`;
   }
 };
 
