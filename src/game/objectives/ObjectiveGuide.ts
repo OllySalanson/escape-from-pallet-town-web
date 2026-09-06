@@ -1,10 +1,12 @@
 import { formatObjectiveReward, type RunObjective } from './RunObjectives';
 import type { ActiveRunSession } from '../run/RunSession';
+import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import { WORLD_POIS } from '../world/pois';
 
 export interface ObjectiveGuideContext {
   readonly currentMapId: WorldMapId;
+  readonly currentPosition: GridPosition;
   readonly activatedPoiIds: ReadonlySet<string>;
 }
 
@@ -68,7 +70,6 @@ function firstContractHints(
   safeExit: string | undefined,
   currentExit: string | undefined,
 ): readonly string[] {
-  const insertion = session.plan?.insertion.label ?? 'your insertion point';
   const fieldStation = WORLD_POIS.find((poi) => poi.mapId === 'route-1');
   const stationVisited = fieldStation !== undefined && context.activatedPoiIds.has(fieldStation.id);
   const extractionHint = knownExitHint(safeExit, currentExit);
@@ -80,14 +81,34 @@ function firstContractHints(
     ];
   }
 
+  const locationHint = firstContractLocationHint(session, context);
   return [
-    `1. Deploy from ${insertion}, then follow the map route to Route 1.`,
+    `1. You are in ${locationHint}.`,
     stationVisited
       ? '2. The Field Station cache is secured. Continue searching Route 1 for the lost field kit.'
       : '2. On Route 1, look for Oak’s Field Station. Its cache is optional, but it confirms you are on the right route.',
     '3. Step onto the lost field kit marker to retrieve it.',
     `4. ${extractionHint}`,
   ];
+}
+
+function firstContractLocationHint(
+  session: ActiveRunSession,
+  context: ObjectiveGuideContext,
+): string {
+  const contract = session.plan?.contract;
+  if (!contract || context.currentMapId !== contract.mapId) {
+    return 'Pallet Town. Follow the road south through the Route 1 gate';
+  }
+
+  return `Route 1. The lost field kit is ${directionTo(context.currentPosition, contract.position)}`;
+}
+
+function directionTo(from: GridPosition, to: GridPosition): string {
+  const horizontal = to.x === from.x ? '' : to.x > from.x ? 'east' : 'west';
+  const vertical = to.y === from.y ? '' : to.y > from.y ? 'south' : 'north';
+  const direction = [vertical, horizontal].filter(Boolean).join('-');
+  return direction ? `to the ${direction}` : 'right here';
 }
 
 function laterRunHints(context: ObjectiveGuideContext, currentExit: string | undefined): readonly string[] {

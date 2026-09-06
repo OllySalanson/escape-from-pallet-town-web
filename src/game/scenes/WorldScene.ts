@@ -328,6 +328,7 @@ export class WorldScene extends Phaser.Scene {
     detailLayer.setDepth(1);
     this.mapObjects.push(groundLayer, tallGrassLayer, detailLayer);
     this.createExtractionPoints();
+    this.createRouteTransitionLabels();
   }
 
   private createExtractionPoints(): void {
@@ -464,8 +465,49 @@ export class WorldScene extends Phaser.Scene {
         this.add.rectangle(-4, 2, 2, 3, 0xfacc15),
         this.add.rectangle(4, 2, 2, 3, 0xfacc15),
       ]);
+      const label = this.add
+        .text(0, -16, poi.label, {
+          fontFamily: 'monospace',
+          fontSize: '7px',
+          color: '#e0f2fe',
+          backgroundColor: '#0f172a',
+          padding: { x: 2, y: 1 },
+        })
+        .setOrigin(0.5, 1);
+      station.add(label);
       this.poiSprites.set(poi.id, station);
       this.mapObjects.push(station);
+    }
+  }
+
+  private createRouteTransitionLabels(): void {
+    const contract = this.runSession?.plan?.contract;
+    if (!contract || this.runSession?.manager.snapshot().recoveredFieldKit) {
+      return;
+    }
+
+    for (const warp of this.currentMap.warps) {
+      if (warp.destinationMapId !== contract.mapId && warp.destinationMapId !== 'pallet-town') {
+        continue;
+      }
+      const destinationName = warp.destinationMapId === 'route-1' ? 'ROUTE 1' : 'PALLET TOWN';
+      const direction = warp.destinationMapId === 'route-1' ? 'SOUTH' : 'NORTH';
+      const label = this.add
+        .text(
+          warp.source.x * TILE_SIZE + TILE_SIZE,
+          warp.source.y * TILE_SIZE - 3,
+          `${destinationName} ${direction === 'SOUTH' ? '↓' : '↑'}`,
+          {
+            fontFamily: 'monospace',
+            fontSize: '8px',
+            color: '#fef3c7',
+            backgroundColor: '#422006',
+            padding: { x: 2, y: 1 },
+          },
+        )
+        .setOrigin(0.5, 1)
+        .setDepth(5 + warp.source.y / 1000);
+      this.mapObjects.push(label);
     }
   }
 
@@ -573,12 +615,14 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const snapshot = manager.snapshot();
+    const navigationCue = this.firstContractNavigationCue(snapshot.recoveredFieldKit);
     hud.objectivesText.setText(
       [
         ...session.objectives.map((objective) => {
           const objectiveProgress = objective.progress(snapshot);
           return `${objectiveProgress.complete ? '✓' : '○'} ${objective.description} ${objectiveProgress.current}/${objectiveProgress.target}`;
         }),
+        ...(navigationCue ? [`► ${navigationCue}`] : []),
         'O: FIELD GUIDE',
       ].join('\n'),
     );
@@ -773,9 +817,21 @@ export class WorldScene extends Phaser.Scene {
     this.scene.launch('objectives', {
       runSession: this.runSession,
       currentMapId: this.currentMap.id,
+      currentPosition: this.currentTile,
       activatedPoiIds: [...this.activatedPoiIds],
       pausedWorld: true,
     });
+  }
+
+  private firstContractNavigationCue(recoveredFieldKit: boolean): string | undefined {
+    const contract = this.runSession?.plan?.contract;
+    if (!contract || recoveredFieldKit) {
+      return undefined;
+    }
+    if (this.currentMap.id !== contract.mapId) {
+      return 'SOUTH: ROUTE 1';
+    }
+    return `LOST KIT: ${directionTo(this.currentTile, contract.position)}`;
   }
 
   private isBlocked(tile: GridPosition): boolean {
@@ -1349,4 +1405,11 @@ function formatRaidTimer(remainingMs: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function directionTo(from: GridPosition, to: GridPosition): string {
+  const horizontal = to.x === from.x ? '' : to.x > from.x ? 'E' : 'W';
+  const vertical = to.y === from.y ? '' : to.y > from.y ? 'S' : 'N';
+  const direction = `${vertical}${horizontal}`;
+  return direction || 'HERE';
 }

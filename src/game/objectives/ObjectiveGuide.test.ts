@@ -24,7 +24,11 @@ describe('objective field guide', () => {
   it('binds objective completion and rewards to the live run snapshot', () => {
     const session = createFirstContractSession();
 
-    expect(buildObjectiveGuide(session, { currentMapId: 'pallet-town', activatedPoiIds: new Set() }).objectives).toEqual([
+    expect(buildObjectiveGuide(session, {
+      currentMapId: 'pallet-town',
+      currentPosition: { x: 6, y: 8 },
+      activatedPoiIds: new Set(),
+    }).objectives).toEqual([
       expect.objectContaining({
         description: 'Recover the lost field kit on Route 1',
         progress: '0/1',
@@ -34,7 +38,11 @@ describe('objective field guide', () => {
     ]);
 
     session.manager.recoverFieldKit();
-    expect(buildObjectiveGuide(session, { currentMapId: 'route-1', activatedPoiIds: new Set() }).objectives[0]).toMatchObject({
+    expect(buildObjectiveGuide(session, {
+      currentMapId: 'route-1',
+      currentPosition: { x: 8, y: 15 },
+      activatedPoiIds: new Set(),
+    }).objectives[0]).toMatchObject({
       progress: '1/1',
       complete: true,
     });
@@ -42,7 +50,11 @@ describe('objective field guide', () => {
 
   it('gives the first contract a sequenced briefing, then shortens later runs', () => {
     const firstSession = createFirstContractSession();
-    const firstGuide = buildObjectiveGuide(firstSession, { currentMapId: 'pallet-town', activatedPoiIds: new Set() });
+    const firstGuide = buildObjectiveGuide(firstSession, {
+      currentMapId: 'pallet-town',
+      currentPosition: { x: 6, y: 8 },
+      activatedPoiIds: new Set(),
+    });
     const laterSession = createActiveRunSession(
       firstSession.manager,
       {},
@@ -52,7 +64,11 @@ describe('objective field guide', () => {
       [],
       generateRunPlan(42, undefined, 'town-square', false),
     );
-    const laterGuide = buildObjectiveGuide(laterSession, { currentMapId: 'pallet-town', activatedPoiIds: new Set() });
+    const laterGuide = buildObjectiveGuide(laterSession, {
+      currentMapId: 'pallet-town',
+      currentPosition: { x: 6, y: 8 },
+      activatedPoiIds: new Set(),
+    });
 
     expect(firstGuide.hints.join(' ')).toContain('Route 1');
     expect(firstGuide.hints.join(' ')).toContain('Field Station');
@@ -65,13 +81,39 @@ describe('objective field guide', () => {
 
   it('only calls the field station secured after its actual activation', () => {
     const session = createFirstContractSession();
-    const before = buildObjectiveGuide(session, { currentMapId: 'route-1', activatedPoiIds: new Set() });
+    const before = buildObjectiveGuide(session, {
+      currentMapId: 'route-1',
+      currentPosition: { x: 7, y: 1 },
+      activatedPoiIds: new Set(),
+    });
     const after = buildObjectiveGuide(session, {
       currentMapId: 'route-1',
+      currentPosition: { x: 7, y: 1 },
       activatedPoiIds: new Set(['oak-field-station-relay']),
     });
 
     expect(before.hints.join(' ')).not.toContain('cache is secured');
     expect(after.hints.join(' ')).toContain('cache is secured');
+  });
+
+  it('names the current area and updates the first-contract direction without revealing the forest', () => {
+    const session = createFirstContractSession();
+
+    const townGuide = buildObjectiveGuide(session, {
+      currentMapId: 'pallet-town',
+      currentPosition: { x: 6, y: 8 },
+      activatedPoiIds: new Set(),
+    });
+    const routeGuide = buildObjectiveGuide(session, {
+      currentMapId: 'route-1',
+      currentPosition: { x: 7, y: 1 },
+      activatedPoiIds: new Set(),
+    });
+
+    expect(townGuide.hints[0]).toContain('Pallet Town');
+    expect(townGuide.hints[0]).toContain('south');
+    expect(routeGuide.hints[0]).toContain('Route 1');
+    expect(routeGuide.hints[0]).toContain('south-east');
+    expect(townGuide.hints.join(' ')).not.toContain('Viridian');
   });
 });
