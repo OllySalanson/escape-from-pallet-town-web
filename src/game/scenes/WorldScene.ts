@@ -37,6 +37,7 @@ import {
   chooseHunterPursuitStep,
   createHunterState,
   createHunterTrainer,
+  DEFAULT_HUNTER_TUNING,
   HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP,
   HUNTER_SPAWN_MS,
   isHunterContactingPlayer,
@@ -163,7 +164,9 @@ export class WorldScene extends Phaser.Scene {
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.collectedLootIds.clear();
     data.collectedLootIds?.forEach((id) => this.collectedLootIds.add(id));
-    this.trainerEncounters = this.runSession ? createRunTrainerEncounters() : [];
+    this.trainerEncounters = this.runSession
+      ? (this.runSession.plan?.trainers ?? createRunTrainerEncounters())
+      : [];
     this.pendingTrainerBattle = undefined;
     this.hunterState = data.hunterState ?? createHunterState();
     this.createMap();
@@ -368,7 +371,7 @@ export class WorldScene extends Phaser.Scene {
 
   private createLoot(): void {
     for (const loot of getVisibleLoot(
-      this.currentMap.loot,
+      this.lootForCurrentMap(),
       this.isLootAvailable(),
       this.collectedLootIds,
     )) {
@@ -718,8 +721,10 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    if (isTallGrassInMap(this.currentMap, this.currentTile) && this.currentMap.encounters) {
-      const wild = rollEncounter(this.currentMap.encounters);
+    const encounters = this.encountersForCurrentMap();
+    if (isTallGrassInMap(this.currentMap, this.currentTile) && encounters) {
+      const rng = this.runSession?.rng;
+      const wild = rollEncounter(encounters, rng === undefined ? undefined : () => rng.next());
       if (wild) {
         audioManager.playEncounter();
         this.scene.start('battle', {
@@ -782,7 +787,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private tryCollectLootAt(position: GridPosition): boolean {
-    const loot = this.currentMap.loot.find(
+    const loot = this.lootForCurrentMap().find(
       (candidate) => candidate.position.x === position.x && candidate.position.y === position.y,
     );
     const result = tryCollectLoot(
@@ -839,7 +844,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private extractionPointsForCurrentMap(): readonly ExtractionPoint[] {
-    return EXTRACTION_POINTS.filter((point) => point.mapId === this.currentMap.id);
+    return (this.runSession?.plan?.extractionPoints ?? EXTRACTION_POINTS).filter(
+      (point) => point.mapId === this.currentMap.id,
+    );
   }
 
   private trainersForCurrentMap(): readonly RunTrainerEncounter[] {
@@ -847,6 +854,14 @@ export class WorldScene extends Phaser.Scene {
       (trainer) =>
         trainer.mapId === this.currentMap.id && !this.defeatedTrainerIds.has(trainer.trainer.id),
     );
+  }
+
+  private lootForCurrentMap() {
+    return this.runSession?.plan?.loot[this.currentMap.id] ?? this.currentMap.loot;
+  }
+
+  private encountersForCurrentMap() {
+    return this.runSession?.plan?.encounters[this.currentMap.id] ?? this.currentMap.encounters;
   }
 
   private isExtractionOpen(point: ExtractionPoint): boolean {
@@ -974,7 +989,7 @@ export class WorldScene extends Phaser.Scene {
       this.runSession.manager.phase !== RunPhase.InRun ||
       this.hunterState.spawned ||
       this.hunterState.defeated ||
-      elapsedMs < HUNTER_SPAWN_MS
+      elapsedMs < (this.runSession.plan?.hunter.spawnDelayMs ?? HUNTER_SPAWN_MS)
     ) {
       return;
     }
@@ -995,16 +1010,18 @@ export class WorldScene extends Phaser.Scene {
       { x: this.currentTile.x, y: this.currentTile.y - 5 },
       { x: this.currentTile.x, y: this.currentTile.y + 5 },
     ];
-    return (
-      candidates.find(
-        (tile) =>
-          tile.x >= 0 &&
-          tile.y >= 0 &&
-          tile.x < this.bounds.width &&
-          tile.y < this.bounds.height &&
-          !this.isBlocked(tile),
-      ) ?? { ...this.currentTile }
+    const legalCandidates = candidates.filter(
+      (tile) =>
+        tile.x >= 0 &&
+        tile.y >= 0 &&
+        tile.x < this.bounds.width &&
+        tile.y < this.bounds.height &&
+        !this.isBlocked(tile),
     );
+    if (legalCandidates.length === 0) {
+      return { ...this.currentTile };
+    }
+    return this.runSession?.rng?.pick(legalCandidates) ?? legalCandidates[0];
   }
 
   private moveHunterToCurrentMap(): void {
@@ -1032,7 +1049,11 @@ export class WorldScene extends Phaser.Scene {
     if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
       return;
     }
-    const steps = this.runSession?.manager.isEnraged ? HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP : 1;
+    const aggression = this.runSession?.plan?.hunter.aggressionStepsPerPlayerStep
+      ?? DEFAULT_HUNTER_TUNING.aggressionStepsPerPlayerStep;
+    const steps = this.runSession?.manager.isEnraged
+      ? Math.max(aggression, HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP)
+      : aggression;
     let position = this.hunterState.position;
     for (let index = 0; index < steps; index += 1) {
       const target = chooseHunterPursuitStep(position, this.currentTile, this.bounds, (tile) =>
@@ -1077,6 +1098,7 @@ export class WorldScene extends Phaser.Scene {
       trainer: createHunterTrainer(
         this.runSession!.manager.snapshot().elapsedMs,
         this.runSession!.manager.isEnraged,
+        this.runSession!.plan?.hunter,
       ),
       introLines: ['FOUND YOU.', 'There is nowhere left to run!'],
       isHunter: true,

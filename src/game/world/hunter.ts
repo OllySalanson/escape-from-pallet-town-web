@@ -5,11 +5,17 @@ import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import type { GridBounds, GridPosition } from '../movement/gridMovement';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { RunResult } from '../run/RunManager';
+import type { HunterTuning } from '../run/runGeneration';
 import type { WorldMapId } from '../worldMap';
 
 export const HUNTER_ID = 'rival-hunter';
 export const HUNTER_SPAWN_MS = 45_000;
 export const HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP = 2;
+export const DEFAULT_HUNTER_TUNING: HunterTuning = {
+  spawnDelayMs: HUNTER_SPAWN_MS,
+  aggressionStepsPerPlayerStep: 1,
+  teamTierOffset: 0,
+};
 
 const HUNTER_TIERS = [
   { startsAtMs: 0, level: 7, party: [PIDGEY] },
@@ -32,15 +38,31 @@ export interface HunterTier {
 
 export const createHunterState = (): HunterState => ({ spawned: false, defeated: false });
 
-export const hunterTierFor = (elapsedMs: number, isEnraged: boolean): HunterTier => {
+export const hunterTierFor = (
+  elapsedMs: number,
+  isEnraged: boolean,
+  tuning: HunterTuning = DEFAULT_HUNTER_TUNING,
+): HunterTier => {
   if (isEnraged) {
     return HUNTER_ENRAGED_TIER;
   }
-  return [...HUNTER_TIERS].reverse().find((tier) => elapsedMs >= tier.startsAtMs) ?? HUNTER_TIERS[0];
+  const baseTierIndex = HUNTER_TIERS.reduce(
+    (selected, tier, index) => (elapsedMs >= tier.startsAtMs ? index : selected),
+    0,
+  );
+  const tierIndex = Math.max(
+    0,
+    Math.min(HUNTER_TIERS.length - 1, baseTierIndex + tuning.teamTierOffset),
+  );
+  return HUNTER_TIERS[tierIndex];
 };
 
-export const createHunterTrainer = (elapsedMs: number, isEnraged: boolean): TrainerBattle => {
-  const tier = hunterTierFor(elapsedMs, isEnraged);
+export const createHunterTrainer = (
+  elapsedMs: number,
+  isEnraged: boolean,
+  tuning: HunterTuning = DEFAULT_HUNTER_TUNING,
+): TrainerBattle => {
+  const tier = hunterTierFor(elapsedMs, isEnraged, tuning);
   return {
     id: HUNTER_ID,
     name: 'RIVAL HUNTER',
