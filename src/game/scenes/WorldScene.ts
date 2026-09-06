@@ -23,10 +23,11 @@ import { DialogBox } from '../ui/DialogBox';
 import { rollEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
-import { Bag, type ItemId } from '../items';
+import { Bag, ITEMS, type ItemId } from '../items';
 import { RunPhase } from '../run/RunManager';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
+import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import {
   chooseHunterPursuitStep,
   createHunterState,
@@ -97,6 +98,8 @@ export interface WorldSceneData {
   readonly runSession?: ActiveRunSession;
   /** Trainer victories persist only for the active raid. */
   readonly defeatedTrainerIds?: readonly string[];
+  /** Loot pickups persist only for the active raid. */
+  readonly collectedLootIds?: readonly string[];
   /** The hunter persists across battle returns during the active raid. */
   readonly hunterState?: HunterState;
 }
@@ -139,8 +142,14 @@ export class WorldScene extends Phaser.Scene {
   private pendingHubTransition = false;
   private trainerEncounters: readonly RunTrainerEncounter[] = [];
   private readonly defeatedTrainerIds = new Set<string>();
+  private readonly collectedLootIds = new Set<string>();
+  private readonly lootSprites = new Map<string, Phaser.GameObjects.Rectangle>();
   private pendingTrainerBattle:
-    | { readonly trainer: RunTrainerEncounter['trainer']; readonly introLines: readonly string[]; readonly isHunter: boolean }
+    | {
+        readonly trainer: RunTrainerEncounter['trainer'];
+        readonly introLines: readonly string[];
+        readonly isHunter: boolean;
+      }
     | undefined;
   private hunterState: HunterState = createHunterState();
 
@@ -168,6 +177,8 @@ export class WorldScene extends Phaser.Scene {
     this.runSession = data.runSession;
     this.defeatedTrainerIds.clear();
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
+    this.collectedLootIds.clear();
+    data.collectedLootIds?.forEach((id) => this.collectedLootIds.add(id));
     this.trainerEncounters = this.runSession ? createRunTrainerEncounters() : [];
     this.pendingTrainerBattle = undefined;
     this.hunterState = data.hunterState ?? createHunterState();
@@ -283,16 +294,22 @@ export class WorldScene extends Phaser.Scene {
 
     groundLayer.putTilesAt(
       this.currentMap.groundLayer.map((row) =>
-        row.map((tile) =>
-          tile === CLASSIC_TILE.TALL_GRASS ? CLASSIC_TILE.GRASS : tile,
-        ),
+        row.map((tile) => (tile === CLASSIC_TILE.TALL_GRASS ? CLASSIC_TILE.GRASS : tile)),
       ),
       0,
       0,
     );
-    tallGrassLayer.putTilesAt(this.currentMap.tallGrassLayer.map((row) => [...row]), 0, 0);
+    tallGrassLayer.putTilesAt(
+      this.currentMap.tallGrassLayer.map((row) => [...row]),
+      0,
+      0,
+    );
     tallGrassLayer.setDepth(1);
-    detailLayer.putTilesAt(this.currentMap.detailLayer.map((row) => [...row]), 0, 0);
+    detailLayer.putTilesAt(
+      this.currentMap.detailLayer.map((row) => [...row]),
+      0,
+      0,
+    );
     detailLayer.setDepth(1);
     this.mapObjects.push(groundLayer, tallGrassLayer, detailLayer);
     this.createExtractionPoints();
@@ -326,6 +343,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createEntities(): void {
+    this.createLoot();
+
     for (const entity of this.currentMap.entities) {
       if (entity.kind === 'sign') {
         this.createSign(entity);
@@ -361,6 +380,27 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.createHunterSprite();
+  }
+
+  private createLoot(): void {
+    for (const loot of getVisibleLoot(
+      this.currentMap.loot,
+      this.isLootAvailable(),
+      this.collectedLootIds,
+    )) {
+      const marker = this.add
+        .rectangle(
+          loot.position.x * TILE_SIZE + TILE_SIZE / 2,
+          loot.position.y * TILE_SIZE + TILE_SIZE / 2,
+          9,
+          9,
+          0xfacc15,
+        )
+        .setStrokeStyle(2, 0x92400e)
+        .setDepth(3 + loot.position.y / 1000);
+      this.lootSprites.set(loot.id, marker);
+      this.mapObjects.push(marker);
+    }
   }
 
   private createHunterSprite(): void {
@@ -556,21 +596,29 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    if (this.tryCollectLootAt(targetTile)) {
+      return;
+    }
+
     const entity = this.currentMap.entities.find(
-      (candidate) =>
-        candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
+      (candidate) => candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
     );
     const trainer = this.trainersForCurrentMap().find(
-      (candidate) =>
-        candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
+      (candidate) => candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
     );
     if (!entity && !trainer) {
       return;
     }
 
     if (trainer) {
-      this.npcSprites.get(trainer.trainer.id)?.setFrame(getIdleFrame(OPPOSITE_DIRECTION[this.facing]));
-      this.pendingTrainerBattle = { trainer: trainer.trainer, introLines: trainer.introLines, isHunter: false };
+      this.npcSprites
+        .get(trainer.trainer.id)
+        ?.setFrame(getIdleFrame(OPPOSITE_DIRECTION[this.facing]));
+      this.pendingTrainerBattle = {
+        trainer: trainer.trainer,
+        introLines: trainer.introLines,
+        isHunter: false,
+      };
       this.dialogBox.showMessages([...trainer.introLines]);
       return;
     }
@@ -648,6 +696,10 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    if (this.tryCollectLootAt(this.currentTile)) {
+      return;
+    }
+
     if (this.tryStartHunterBattle()) {
       return;
     }
@@ -666,6 +718,7 @@ export class WorldScene extends Phaser.Scene {
           pokeBalls: this.bag.count('poke-ball'),
           caughtPokemonStash: this.caughtPokemonStash,
           runSession: this.runSession,
+          collectedLootIds: [...this.collectedLootIds],
         });
       }
     }
@@ -710,7 +763,38 @@ export class WorldScene extends Phaser.Scene {
     this.mapObjects.forEach((object) => object.destroy());
     this.mapObjects = [];
     this.npcSprites.clear();
+    this.lootSprites.clear();
     this.extractionMarkers = [];
+  }
+
+  private isLootAvailable(): boolean {
+    return this.runSession?.manager.phase === RunPhase.InRun;
+  }
+
+  private tryCollectLootAt(position: GridPosition): boolean {
+    const loot = this.currentMap.loot.find(
+      (candidate) => candidate.position.x === position.x && candidate.position.y === position.y,
+    );
+    const result = tryCollectLoot(
+      loot,
+      this.isLootAvailable(),
+      this.collectedLootIds,
+      (itemId, quantity) => this.collectRunItem(itemId, quantity),
+    );
+    if (result === 'unavailable') {
+      return false;
+    }
+    if (result === 'bag-full') {
+      this.dialogBox.showMessage('Bag is full!');
+      return true;
+    }
+
+    this.lootSprites.get(loot!.id)?.destroy();
+    this.lootSprites.delete(loot!.id);
+    const item = ITEMS[loot!.itemId];
+    const quantity = loot!.quantity > 1 ? ` x${loot!.quantity}` : '';
+    this.dialogBox.showMessage(`Found ${item.displayName}${quantity}!`);
+    return true;
   }
 
   private restoreSavedGame(savedGame: RestoredGame | undefined): void {
@@ -751,8 +835,7 @@ export class WorldScene extends Phaser.Scene {
   private trainersForCurrentMap(): readonly RunTrainerEncounter[] {
     return this.trainerEncounters.filter(
       (trainer) =>
-        trainer.mapId === this.currentMap.id &&
-        !this.defeatedTrainerIds.has(trainer.trainer.id),
+        trainer.mapId === this.currentMap.id && !this.defeatedTrainerIds.has(trainer.trainer.id),
     );
   }
 
@@ -774,7 +857,9 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (!this.isExtractionOpen(point)) {
-      const seconds = Math.ceil((point.unlockAtMs - this.runSession.manager.snapshot().elapsedMs) / 1_000);
+      const seconds = Math.ceil(
+        (point.unlockAtMs - this.runSession.manager.snapshot().elapsedMs) / 1_000,
+      );
       this.dialogBox.showMessage(`${point.label} is LOCKED. Open in ${seconds}s.`);
       return;
     }
@@ -836,7 +921,9 @@ export class WorldScene extends Phaser.Scene {
     this.dialogBox.showMessages([
       'TIME EXPIRED - YOU WERE WIPED.',
       formatRunSummary('Lost', result.lostPokemon, result.lostItems),
-      saved ? 'Secure slot preserved. Returning to hub.' : 'Stash save unavailable. Returning to hub.',
+      saved
+        ? 'Secure slot preserved. Returning to hub.'
+        : 'Stash save unavailable. Returning to hub.',
     ]);
   }
 
@@ -851,6 +938,7 @@ export class WorldScene extends Phaser.Scene {
         caughtPokemonStash: this.caughtPokemonStash,
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],
+        collectedLootIds: [...this.collectedLootIds],
         hunterBattle: battle.isHunter,
         hunterState: this.hunterState,
       });
@@ -895,9 +983,16 @@ export class WorldScene extends Phaser.Scene {
       { x: this.currentTile.x, y: this.currentTile.y - 5 },
       { x: this.currentTile.x, y: this.currentTile.y + 5 },
     ];
-    return candidates.find((tile) =>
-      tile.x >= 0 && tile.y >= 0 && tile.x < this.bounds.width && tile.y < this.bounds.height && !this.isBlocked(tile),
-    ) ?? { ...this.currentTile };
+    return (
+      candidates.find(
+        (tile) =>
+          tile.x >= 0 &&
+          tile.y >= 0 &&
+          tile.x < this.bounds.width &&
+          tile.y < this.bounds.height &&
+          !this.isBlocked(tile),
+      ) ?? { ...this.currentTile }
+    );
   }
 
   private moveHunterToCurrentMap(): void {
@@ -941,19 +1036,29 @@ export class WorldScene extends Phaser.Scene {
     }
     this.hunterState = { ...this.hunterState, position };
     const sprite = this.npcSprites.get('rival-hunter');
-    sprite?.setPosition(position.x * TILE_SIZE, position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET).setDepth(2 + position.y / 1000);
+    sprite
+      ?.setPosition(position.x * TILE_SIZE, position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
+      .setDepth(2 + position.y / 1000);
   }
 
   private isBlockedForHunter(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
-      this.currentMap.entities.some((entity) => entity.position.x === tile.x && entity.position.y === tile.y) ||
-      this.trainersForCurrentMap().some((trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y)
+      this.currentMap.entities.some(
+        (entity) => entity.position.x === tile.x && entity.position.y === tile.y,
+      ) ||
+      this.trainersForCurrentMap().some(
+        (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
+      )
     );
   }
 
   private tryStartHunterBattle(): boolean {
-    if (!this.isHunterOnCurrentMap() || !this.hunterState.position || !isHunterContactingPlayer(this.hunterState.position, this.currentTile)) {
+    if (
+      !this.isHunterOnCurrentMap() ||
+      !this.hunterState.position ||
+      !isHunterContactingPlayer(this.hunterState.position, this.currentTile)
+    ) {
       return false;
     }
     this.pendingTrainerBattle = {

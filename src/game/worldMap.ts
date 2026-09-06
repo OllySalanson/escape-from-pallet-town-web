@@ -1,5 +1,6 @@
 import type { Direction, GridPosition } from './movement/gridMovement';
 import { PALLET_TALL_GRASS, type WildEncounterTable } from './pokemon/encounters';
+import type { WorldLoot } from './world/loot';
 import { WORLD_ENTITIES, type WorldEntity } from './world/npcs';
 
 export const TILE_SIZE = 16;
@@ -35,6 +36,7 @@ export interface WorldMapDefinition {
   readonly encounters?: WildEncounterTable;
   readonly warps: readonly MapWarp[];
   readonly entities: readonly WorldEntity[];
+  readonly loot: readonly WorldLoot[];
 }
 
 export type WorldMapId = 'pallet-town' | 'route-1';
@@ -269,9 +271,15 @@ function placeTiles(data: number[][], tile: number, positions: readonly number[]
   }
 }
 
-function buildCollisionLayer(ground: readonly number[][], details: readonly number[][]): boolean[][] {
+function buildCollisionLayer(
+  ground: readonly number[][],
+  details: readonly number[][],
+): boolean[][] {
   return ground.map((row, y) =>
-    row.map((groundTile, x) => SOLID_CLASSIC_TILES.has(groundTile) || SOLID_CLASSIC_TILES.has(details[y][x])),
+    row.map(
+      (groundTile, x) =>
+        SOLID_CLASSIC_TILES.has(groundTile) || SOLID_CLASSIC_TILES.has(details[y][x]),
+    ),
   );
 }
 
@@ -286,7 +294,9 @@ function createRoute1Map(): WorldMapDefinition {
   const width = 32;
   const height = 32;
   const tallGrassZones: readonly TallGrassZone[] = [{ x: 3, y: 8, width: 26, height: 15 }];
-  const groundLayer = Array.from({ length: height }, () => Array<number>(width).fill(CLASSIC_TILE.GRASS));
+  const groundLayer = Array.from({ length: height }, () =>
+    Array<number>(width).fill(CLASSIC_TILE.GRASS),
+  );
   const tallGrassLayer = Array.from({ length: height }, () => Array<number>(width).fill(-1));
   const detailLayer = Array.from({ length: height }, () => Array<number>(width).fill(-1));
 
@@ -344,6 +354,11 @@ function createRoute1Map(): WorldMapDefinition {
       },
     ],
     entities: [],
+    loot: [
+      { id: 'route-1-poke-ball', position: { x: 5, y: 9 }, itemId: 'poke-ball', quantity: 2 },
+      { id: 'route-1-potion', position: { x: 11, y: 15 }, itemId: 'potion', quantity: 1 },
+      { id: 'route-1-great-ball', position: { x: 24, y: 20 }, itemId: 'great-ball', quantity: 1 },
+    ],
   };
 }
 
@@ -368,6 +383,11 @@ export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = {
       },
     ],
     entities: WORLD_ENTITIES,
+    loot: [
+      { id: 'pallet-town-poke-ball', position: { x: 10, y: 8 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'pallet-town-potion', position: { x: 20, y: 14 }, itemId: 'potion', quantity: 1 },
+      { id: 'pallet-town-antidote', position: { x: 26, y: 28 }, itemId: 'antidote', quantity: 1 },
+    ],
   },
   'route-1': createRoute1Map(),
 };

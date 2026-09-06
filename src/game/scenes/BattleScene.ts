@@ -52,6 +52,7 @@ export interface BattleSceneData {
   /** The active raid context, passed through from WorldScene. */
   runSession?: ActiveRunSession;
   defeatedTrainerIds?: readonly string[];
+  collectedLootIds?: readonly string[];
   /** Hunters are trainer battles that can be fled from and resume pursuit. */
   hunterBattle?: boolean;
   hunterState?: HunterState;
@@ -94,6 +95,7 @@ export class BattleScene extends Phaser.Scene {
   private hunterBattle = false;
   private hunterState: HunterState | undefined;
   private readonly defeatedTrainerIds = new Set<string>();
+  private readonly collectedLootIds = new Set<string>();
   private displayedEnemy: PokemonInstance | undefined;
 
   public constructor() {
@@ -114,6 +116,8 @@ export class BattleScene extends Phaser.Scene {
     this.hunterState = data.hunterState;
     this.defeatedTrainerIds.clear();
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
+    this.collectedLootIds.clear();
+    data.collectedLootIds?.forEach((id) => this.collectedLootIds.add(id));
     this.pendingHubTransition = false;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
@@ -146,7 +150,9 @@ export class BattleScene extends Phaser.Scene {
     });
 
     this.confirmKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER).on('down', () => this.confirm());
+    this.input
+      .keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
+      .on('down', () => this.confirm());
     this.leftKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
     this.rightKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
     this.upKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
@@ -187,9 +193,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private drawBackdrop(): void {
-    this.add.image(BATTLEFIELD_WIDTH / 2, 0, 'battle-background-grass').setOrigin(0.5, 0).setScale(
-      BATTLEFIELD_WIDTH / GRASS_BACKDROP_WIDTH,
-    );
+    this.add
+      .image(BATTLEFIELD_WIDTH / 2, 0, 'battle-background-grass')
+      .setOrigin(0.5, 0)
+      .setScale(BATTLEFIELD_WIDTH / GRASS_BACKDROP_WIDTH);
   }
 
   private drawCombatants(): void {
@@ -202,7 +209,13 @@ export class BattleScene extends Phaser.Scene {
       .setScale(1.55)
       .setDepth(2);
     this.tweens.add({ targets: this.enemySprite, x: 245, duration: 650, ease: 'Quad.out' });
-    this.tweens.add({ targets: this.playerSprite, x: 75, duration: 650, ease: 'Quad.out', delay: 180 });
+    this.tweens.add({
+      targets: this.playerSprite,
+      x: 75,
+      duration: 650,
+      ease: 'Quad.out',
+      delay: 180,
+    });
   }
 
   private drawStatusBoxes(): void {
@@ -219,33 +232,57 @@ export class BattleScene extends Phaser.Scene {
   ): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
     const height = showNumbers ? 58 : 47;
-    container.add(this.add.image(x + 72, y + height / 2, 'battle-hud').setDisplaySize(144, height).setDepth(5));
-    container.add(this.add.text(x + 9, y + 7, combatant.pokemon.base.name.toUpperCase(), {
-      fontFamily: BATTLE_FONT,
-      fontSize: '14px',
-      color: '#202020',
-    }).setDepth(6));
-    container.add(this.add.text(x + 111, y + 8, `:L${combatant.pokemon.level}`, {
-      fontFamily: BATTLE_FONT,
-      fontSize: '13px',
-      color: '#202020',
-    }).setDepth(6));
-    const statusText = this.add.text(x + 82, y + 8, statusAbbreviation(combatant.primaryStatus, combatant.confusionTurns) ?? '', {
-      fontFamily: BATTLE_FONT,
-      fontSize: '10px',
-      color: '#9b1c1c',
-    }).setDepth(6);
+    container.add(
+      this.add
+        .image(x + 72, y + height / 2, 'battle-hud')
+        .setDisplaySize(144, height)
+        .setDepth(5),
+    );
+    container.add(
+      this.add
+        .text(x + 9, y + 7, combatant.pokemon.base.name.toUpperCase(), {
+          fontFamily: BATTLE_FONT,
+          fontSize: '14px',
+          color: '#202020',
+        })
+        .setDepth(6),
+    );
+    container.add(
+      this.add
+        .text(x + 111, y + 8, `:L${combatant.pokemon.level}`, {
+          fontFamily: BATTLE_FONT,
+          fontSize: '13px',
+          color: '#202020',
+        })
+        .setDepth(6),
+    );
+    const statusText = this.add
+      .text(
+        x + 82,
+        y + 8,
+        statusAbbreviation(combatant.primaryStatus, combatant.confusionTurns) ?? '',
+        {
+          fontFamily: BATTLE_FONT,
+          fontSize: '10px',
+          color: '#9b1c1c',
+        },
+      )
+      .setDepth(6);
     container.add(statusText);
     if (showNumbers) {
       this.playerStatusText = statusText;
     } else {
       this.enemyStatusText = statusText;
     }
-    container.add(this.add.text(x + 15, y + 25, 'HP:', {
-      fontFamily: BATTLE_FONT,
-      fontSize: '12px',
-      color: '#202020',
-    }).setDepth(6));
+    container.add(
+      this.add
+        .text(x + 15, y + 25, 'HP:', {
+          fontFamily: BATTLE_FONT,
+          fontSize: '12px',
+          color: '#202020',
+        })
+        .setDepth(6),
+    );
     const hpBar = this.add.graphics();
     hpBar.setDepth(6);
     container.add(hpBar);
@@ -266,7 +303,12 @@ export class BattleScene extends Phaser.Scene {
     return container;
   }
 
-  private drawHpBar(graphics: Phaser.GameObjects.Graphics, x: number, y: number, ratio: number): void {
+  private drawHpBar(
+    graphics: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    ratio: number,
+  ): void {
     graphics.clear();
     graphics.fillStyle(0x303030, 1);
     graphics.fillRect(x, y, 88, 8);
@@ -291,7 +333,8 @@ export class BattleScene extends Phaser.Scene {
             : ['FIGHT', 'POKéMON']
           : ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', 'RUN']
         : this.state.player.moves.map(
-            (move) => `${move.base.name.toUpperCase()} ${move.base.type.toUpperCase()} ${move.pp}/${move.base.pp}`,
+            (move) =>
+              `${move.base.name.toUpperCase()} ${move.base.type.toUpperCase()} ${move.pp}/${move.base.pp}`,
           );
     this.commandContainer.add(this.createCommandBox(labels));
     this.selectedCommand = Math.min(this.selectedCommand, labels.length - 1);
@@ -308,7 +351,10 @@ export class BattleScene extends Phaser.Scene {
       const text = this.add.text(18 + column * 148, 11 + row * 25, label, {
         fontFamily: BATTLE_FONT,
         fontSize: this.mode === 'moves' ? '13px' : '16px',
-        color: this.mode === 'main' && !this.trainer && index === 1 && this.pokeBalls === 0 ? '#7a3c3c' : '#202020',
+        color:
+          this.mode === 'main' && !this.trainer && index === 1 && this.pokeBalls === 0
+            ? '#7a3c3c'
+            : '#202020',
       });
       container.add(text);
       return text;
@@ -320,11 +366,16 @@ export class BattleScene extends Phaser.Scene {
     const container = this.add.container(0, 0);
     container.add(this.add.image(160, 172, 'battle-dialog').setDisplaySize(320, 136));
     container.add(
-      this.add.text(16, 108, this.forcedReplacement ? 'Choose a POKéMON!' : 'Choose a POKéMON  BACK: cancel', {
-        fontFamily: BATTLE_FONT,
-        fontSize: '12px',
-        color: '#202020',
-      }),
+      this.add.text(
+        16,
+        108,
+        this.forcedReplacement ? 'Choose a POKéMON!' : 'Choose a POKéMON  BACK: cancel',
+        {
+          fontFamily: BATTLE_FONT,
+          fontSize: '12px',
+          color: '#202020',
+        },
+      ),
     );
     this.commandTexts = this.party.pokemon.map((pokemon, index) => {
       const hp = `${pokemon.currentHp}/${pokemon.maxHp}`;
@@ -374,7 +425,9 @@ export class BattleScene extends Phaser.Scene {
 
   private updateSelection(): void {
     this.commandTexts.forEach((text, index) => {
-      text.setText(`${index === this.selectedCommand ? '▶ ' : '  '}${text.text.replace(/^[▶ ]{2}/, '')}`);
+      text.setText(
+        `${index === this.selectedCommand ? '▶ ' : '  '}${text.text.replace(/^[▶ ]{2}/, '')}`,
+      );
     });
   }
 
@@ -590,8 +643,12 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private refreshStatusLabels(): void {
-    this.playerStatusText.setText(statusAbbreviation(this.state.player.primaryStatus, this.state.player.confusionTurns) ?? '');
-    this.enemyStatusText.setText(statusAbbreviation(this.state.enemy.primaryStatus, this.state.enemy.confusionTurns) ?? '');
+    this.playerStatusText.setText(
+      statusAbbreviation(this.state.player.primaryStatus, this.state.player.confusionTurns) ?? '',
+    );
+    this.enemyStatusText.setText(
+      statusAbbreviation(this.state.enemy.primaryStatus, this.state.enemy.confusionTurns) ?? '',
+    );
   }
 
   private prepareForcedReplacement(): void {
@@ -709,7 +766,9 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.mode = 'finished';
-    this.dialog.showMessage(this.state.outcome === 'victory' ? 'You won the battle!' : 'You blacked out!');
+    this.dialog.showMessage(
+      this.state.outcome === 'victory' ? 'You won the battle!' : 'You blacked out!',
+    );
   }
 
   private awardVictoryExperience(defeatedPokemon: PokemonInstance): string[] {
@@ -719,15 +778,29 @@ export class BattleScene extends Phaser.Scene {
     for (const pokemon of this.participatingPokemon) {
       const result = pokemon.gainExperience(experience);
       messages.push(`${pokemon.base.name.toUpperCase()} gained ${result.awarded} XP!`);
-      messages.push(...result.levelsGained.map((level) => `${pokemon.base.name.toUpperCase()} grew to Lv ${level}!`));
-      messages.push(...result.learnedMoves.map((move) => `${pokemon.base.name.toUpperCase()} learned ${move.name.toUpperCase()}!`));
+      messages.push(
+        ...result.levelsGained.map(
+          (level) => `${pokemon.base.name.toUpperCase()} grew to Lv ${level}!`,
+        ),
+      );
+      messages.push(
+        ...result.learnedMoves.map(
+          (move) => `${pokemon.base.name.toUpperCase()} learned ${move.name.toUpperCase()}!`,
+        ),
+      );
     }
 
     return messages;
   }
 
-  private awardTrainerDefeatExperience(previousState: BattleState, events: readonly BattleEvent[]): string[] {
-    if (!this.trainer || !events.some((event) => event.type === 'fainted' && event.user === 'enemy')) {
+  private awardTrainerDefeatExperience(
+    previousState: BattleState,
+    events: readonly BattleEvent[],
+  ): string[] {
+    if (
+      !this.trainer ||
+      !events.some((event) => event.type === 'fainted' && event.user === 'enemy')
+    ) {
       return [];
     }
     return this.awardVictoryExperience(previousState.enemy.pokemon);
@@ -737,7 +810,13 @@ export class BattleScene extends Phaser.Scene {
     const fainted = events.find((event) => event.type === 'fainted');
     if (fainted?.type === 'fainted') {
       const sprite = fainted.user === 'player' ? this.playerSprite : this.enemySprite;
-      this.tweens.add({ targets: sprite, y: sprite.y + 34, alpha: 0, duration: 500, ease: 'Quad.in' });
+      this.tweens.add({
+        targets: sprite,
+        y: sprite.y + 34,
+        alpha: 0,
+        duration: 500,
+        ease: 'Quad.in',
+      });
       return;
     }
 
@@ -752,7 +831,8 @@ export class BattleScene extends Phaser.Scene {
         yoyo: true,
         duration: 140,
         repeat: 1,
-        onComplete: () => this.tweens.add({ targets: target, alpha: 0.35, yoyo: true, duration: 90, repeat: 1 }),
+        onComplete: () =>
+          this.tweens.add({ targets: target, alpha: 0.35, yoyo: true, duration: 90, repeat: 1 }),
       });
     }
   }
@@ -760,8 +840,7 @@ export class BattleScene extends Phaser.Scene {
   private playCombatEffects(events: readonly BattleEvent[], previousState: BattleState): void {
     const hasStrongHit = events.some(
       (event) =>
-        event.type === 'critical-hit' ||
-        (event.type === 'effectiveness' && event.multiplier > 1),
+        event.type === 'critical-hit' || (event.type === 'effectiveness' && event.multiplier > 1),
     );
     if (hasStrongHit) {
       audioManager.playStrongHit();
@@ -805,6 +884,7 @@ export class BattleScene extends Phaser.Scene {
         caughtPokemonStash: this.caughtPokemonStash,
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],
+        collectedLootIds: [...this.collectedLootIds],
         hunterState:
           this.trainer && this.state.outcome === 'victory' && this.hunterBattle && this.hunterState
             ? { ...this.hunterState, defeated: true }
@@ -832,7 +912,9 @@ export class BattleScene extends Phaser.Scene {
     this.dialog.showMessages([
       'YOU WERE WIPED.',
       formatWipeSummary(result.lostPokemon, result.lostItems),
-      saved ? 'Secure slot preserved. Returning to hub.' : 'Stash save unavailable. Returning to hub.',
+      saved
+        ? 'Secure slot preserved. Returning to hub.'
+        : 'Stash save unavailable. Returning to hub.',
     ]);
   }
 }
@@ -875,7 +957,11 @@ const eventToMessage = (event: BattleEvent): string => {
     case 'status-damage':
       return `${event.name} is hurt by ${statusLabel(event.status)}!`;
     case 'status-cured':
-      return event.status === 'sleep' ? `${event.name} woke up!` : event.status === 'freeze' ? `${event.name} thawed out!` : `${event.name} snapped out of confusion!`;
+      return event.status === 'sleep'
+        ? `${event.name} woke up!`
+        : event.status === 'freeze'
+          ? `${event.name} thawed out!`
+          : `${event.name} snapped out of confusion!`;
     case 'confusion-self-hit':
       return `${event.name} hurt itself in its confusion!`;
     case 'stat-stage-changed':
