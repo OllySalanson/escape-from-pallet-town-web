@@ -22,6 +22,7 @@ import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { DialogBox } from '../ui/DialogBox';
 import { rollEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
+import { SaveManager, type RestoredGame } from '../save/SaveManager';
 
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
@@ -38,7 +39,12 @@ interface ControlKeys {
   s: Phaser.Input.Keyboard.Key;
   d: Phaser.Input.Keyboard.Key;
   party: Phaser.Input.Keyboard.Key;
+  save: Phaser.Input.Keyboard.Key;
   interact: Phaser.Input.Keyboard.Key[];
+}
+
+export interface WorldSceneData {
+  readonly savedGame?: RestoredGame;
 }
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
@@ -60,7 +66,7 @@ export class WorldScene extends Phaser.Scene {
   private currentMap: WorldMapDefinition = getWorldMap('pallet-town');
   private mapObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly npcSprites = new Map<string, Phaser.GameObjects.Sprite>();
-  private readonly party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
+  private party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
   private currentTile: GridPosition = { x: 6, y: 8 };
   private targetTile: GridPosition | null = null;
   private facing: Direction = 'down';
@@ -71,7 +77,8 @@ export class WorldScene extends Phaser.Scene {
     super('world');
   }
 
-  public create(): void {
+  public create(data: WorldSceneData = {}): void {
+    this.restoreSavedGame(data.savedGame);
     void audioManager.startTheme('overworld');
     this.createMap();
     this.createEntities();
@@ -95,6 +102,11 @@ export class WorldScene extends Phaser.Scene {
 
     if (Phaser.Input.Keyboard.JustDown(this.controls.party)) {
       this.openParty();
+      return;
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.controls.save)) {
+      this.saveGame();
       return;
     }
 
@@ -235,6 +247,7 @@ export class WorldScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.SPACE,
       Phaser.Input.Keyboard.KeyCodes.ENTER,
       Phaser.Input.Keyboard.KeyCodes.P,
+      Phaser.Input.Keyboard.KeyCodes.K,
     ]);
     this.input.keyboard.on?.('keydown-M', () => audioManager.toggleMute());
 
@@ -248,6 +261,7 @@ export class WorldScene extends Phaser.Scene {
       s: wasdKeys.S,
       d: wasdKeys.D,
       party: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P),
+      save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
       interact: [
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
@@ -357,6 +371,7 @@ export class WorldScene extends Phaser.Scene {
     this.targetTile = null;
     this.player.setPosition(this.stepEnd.x, this.stepEnd.y);
     this.showIdlePose();
+    this.saveGame();
 
     const warp = getWarpAt(this.currentMap, this.currentTile, 'step');
     if (warp) {
@@ -396,6 +411,7 @@ export class WorldScene extends Phaser.Scene {
       );
       this.showIdlePose();
       this.configureCamera();
+      this.saveGame();
       this.cameras.main.fadeIn(180, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_IN_COMPLETE, () => {
         this.isWarping = false;
@@ -407,5 +423,23 @@ export class WorldScene extends Phaser.Scene {
     this.mapObjects.forEach((object) => object.destroy());
     this.mapObjects = [];
     this.npcSprites.clear();
+  }
+
+  private restoreSavedGame(savedGame: RestoredGame | undefined): void {
+    if (!savedGame) {
+      return;
+    }
+
+    this.party = savedGame.party;
+    this.currentMap = getWorldMap(savedGame.mapId);
+    this.currentTile = { ...savedGame.position };
+  }
+
+  private saveGame(): void {
+    new SaveManager().save({
+      party: this.party,
+      mapId: this.currentMap.id,
+      position: this.currentTile,
+    });
   }
 }
