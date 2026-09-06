@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Pokemon } from '../pokemon';
 import { BULBASAUR, CHARMANDER, PIDGEY } from '../pokemon/species';
-import { RunManager, RunPhase, RunTransitionError } from './RunManager';
+import { ENRAGE_GRACE_MS, RunManager, RunPhase, RunTransitionError } from './RunManager';
 
 const makePokemon = (species = BULBASAUR): Pokemon => new Pokemon(species, 5);
 
@@ -52,9 +52,10 @@ describe('RunManager lifecycle', () => {
     });
   });
 
-  it('owns the clock and notifies expiry once', () => {
+  it('enrages once at zero without immediately wiping the run', () => {
+    const onEnrage = vi.fn();
     const onExpire = vi.fn();
-    const manager = new RunManager({ onExpire });
+    const manager = new RunManager({ onEnrage, onExpire });
     startRun(manager);
 
     expect(manager.tick(15_000).remainingMs).toBe(45_000);
@@ -62,10 +63,51 @@ describe('RunManager lifecycle', () => {
     manager.tick(1_000);
 
     expect(manager.remainingMs()).toBe(0);
-    expect(onExpire).toHaveBeenCalledTimes(1);
-    expect(onExpire).toHaveBeenCalledWith(
-      expect.objectContaining({ phase: RunPhase.InRun, elapsedMs: 60_000, remainingMs: 0 }),
+    expect(manager.isEnraged).toBe(true);
+    expect(manager.phase).toBe(RunPhase.InRun);
+    expect(onEnrage).toHaveBeenCalledTimes(1);
+    expect(onEnrage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phase: RunPhase.InRun,
+        elapsedMs: 60_000,
+        remainingMs: 0,
+        isEnraged: true,
+      }),
     );
+    expect(onExpire).not.toHaveBeenCalled();
+  });
+
+  it('allows extraction after enrage before the grace period ends', () => {
+    const manager = new RunManager();
+    startRun(manager);
+
+    manager.tick(60_000);
+    expect(manager.beginExtraction().phase).toBe(RunPhase.Extracting);
+    expect(manager.resolveEscape().outcome).toBe('ESCAPED');
+  });
+
+  it('notifies expiry after the enrage grace window for secure-slot wiping', () => {
+    const onExpire = vi.fn();
+    const manager = new RunManager({ onExpire });
+    const partyMember = makePokemon(BULBASAUR);
+    manager.startRun(
+      { party: [partyMember], items: [{ itemId: 'potion', quantity: 2 }] },
+      { mapId: 'pallet-town', durationMs: 60_000 },
+      { pokemon: partyMember, items: [{ itemId: 'potion', quantity: 1 }] },
+    );
+
+    manager.tick(60_000 + ENRAGE_GRACE_MS - 1);
+    expect(manager.isEnrageGraceExpired).toBe(false);
+    expect(onExpire).not.toHaveBeenCalled();
+
+    manager.tick(1);
+    expect(manager.isEnrageGraceExpired).toBe(true);
+    expect(onExpire).toHaveBeenCalledTimes(1);
+    expect(manager.resolveWipe()).toMatchObject({
+      bankedPokemon: [partyMember],
+      bankedItems: [{ itemId: 'potion', quantity: 1 }],
+    });
+    expect(manager.phase).toBe(RunPhase.Wiped);
   });
 
   it('banks the full loadout and found loot after a successful extraction', () => {
