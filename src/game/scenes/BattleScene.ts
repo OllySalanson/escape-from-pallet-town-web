@@ -25,6 +25,7 @@ import { audioManager } from '../audio/AudioManager';
 import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import type { ActiveRunSession } from '../run/RunSession';
+import { resolveHunterBattleLoss, type HunterState } from '../world/hunter';
 
 type CommandMode = 'main' | 'moves' | 'party' | 'events' | 'finished';
 
@@ -51,6 +52,9 @@ export interface BattleSceneData {
   /** The active raid context, passed through from WorldScene. */
   runSession?: ActiveRunSession;
   defeatedTrainerIds?: readonly string[];
+  /** Hunters are trainer battles that can be fled from and resume pursuit. */
+  hunterBattle?: boolean;
+  hunterState?: HunterState;
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -87,6 +91,8 @@ export class BattleScene extends Phaser.Scene {
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
   private trainer: TrainerBattle | undefined;
+  private hunterBattle = false;
+  private hunterState: HunterState | undefined;
   private readonly defeatedTrainerIds = new Set<string>();
   private displayedEnemy: PokemonInstance | undefined;
 
@@ -104,6 +110,8 @@ export class BattleScene extends Phaser.Scene {
     this.caughtPokemonStash = data.caughtPokemonStash ?? [];
     this.runSession = data.runSession;
     this.trainer = data.trainer;
+    this.hunterBattle = data.hunterBattle ?? false;
+    this.hunterState = data.hunterState;
     this.defeatedTrainerIds.clear();
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.pendingHubTransition = false;
@@ -278,7 +286,9 @@ export class BattleScene extends Phaser.Scene {
     const labels =
       this.mode === 'main'
         ? this.trainer
-          ? ['FIGHT', 'POKéMON']
+          ? this.hunterBattle
+            ? ['FIGHT', 'FLEE', 'POKéMON']
+            : ['FIGHT', 'POKéMON']
           : ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', 'RUN']
         : this.state.player.moves.map(
             (move) => `${move.base.name.toUpperCase()} ${move.base.type.toUpperCase()} ${move.pp}/${move.base.pp}`,
@@ -423,7 +433,9 @@ export class BattleScene extends Phaser.Scene {
 
   private mainActions(): readonly BattleAction[] {
     return this.trainer
-      ? [{ type: 'choose-fight' }, { type: 'choose-pokemon' }]
+      ? this.hunterBattle
+        ? [{ type: 'choose-fight' }, { type: 'choose-run' }, { type: 'choose-pokemon' }]
+        : [{ type: 'choose-fight' }, { type: 'choose-pokemon' }]
       : [
           { type: 'choose-fight' },
           { type: 'throw-ball' },
@@ -446,7 +458,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private flee(): void {
-    // Battles currently only support wild encounters, so fleeing always succeeds.
+    // Hunter pursuit battles are deliberately escapable, unlike ordinary trainers.
     this.mode = 'finished';
     this.commandContainer.setVisible(false);
     this.dialog.showMessage('Got away safely!');
@@ -793,6 +805,10 @@ export class BattleScene extends Phaser.Scene {
         caughtPokemonStash: this.caughtPokemonStash,
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],
+        hunterState:
+          this.trainer && this.state.outcome === 'victory' && this.hunterBattle && this.hunterState
+            ? { ...this.hunterState, defeated: true }
+            : this.hunterState,
       });
     }
   }
@@ -802,7 +818,9 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const result = this.runSession.manager.resolveWipe(this.runSession.secureSlot);
+    const result = this.hunterBattle
+      ? resolveHunterBattleLoss(this.runSession)
+      : this.runSession.manager.resolveWipe(this.runSession.secureSlot);
     const saved = new SaveManager().applyWipeLoss(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
