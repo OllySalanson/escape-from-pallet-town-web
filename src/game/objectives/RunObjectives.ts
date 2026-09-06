@@ -18,10 +18,6 @@ export interface ObjectiveProgress {
   readonly complete: boolean;
 }
 
-function countItems(items: readonly ItemStack[]): number {
-  return items.reduce((total, item) => total + item.quantity, 0);
-}
-
 function progress(current: number, target: number): ObjectiveProgress {
   return { current: Math.min(current, target), target, complete: current >= target };
 }
@@ -32,28 +28,10 @@ function itemReward(itemId: ItemId, quantity: number): ObjectiveReward {
 
 export const RUN_OBJECTIVES: readonly RunObjective[] = [
   {
-    id: 'catch-two-pokemon',
-    description: 'Catch 2 Pokémon',
-    reward: itemReward('great-ball', 2),
-    progress: (snapshot) => progress(snapshot.caughtPokemon.length, 2),
-  },
-  {
-    id: 'defeat-a-trainer',
-    description: 'Defeat a trainer',
-    reward: itemReward('potion', 2),
-    progress: (snapshot) => progress(snapshot.defeatedTrainers, 1),
-  },
-  {
-    id: 'reach-route-1',
-    description: 'Reach Route 1',
-    reward: itemReward('antidote', 1),
-    progress: (snapshot) => progress(snapshot.visitedMapIds.includes('route-1') ? 1 : 0, 1),
-  },
-  {
-    id: 'extract-three-items',
-    description: 'Find 3 items',
-    reward: itemReward('poke-ball', 2),
-    progress: (snapshot) => progress(countItems(snapshot.foundItems), 3),
+    id: 'recover-lost-field-kit',
+    description: 'Recover the lost field kit on Route 1',
+    reward: itemReward('super-potion', 1),
+    progress: (snapshot) => progress(snapshot.recoveredFieldKit ? 1 : 0, 1),
   },
 ];
 

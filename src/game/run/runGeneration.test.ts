@@ -42,11 +42,19 @@ describe('run generation', () => {
   it('keeps generated loot, trainers, and extraction points on valid tiles', () => {
     for (const seed of seeds) {
       const plan = generateRunPlan(seed);
+      expectValidTile(plan.insertion.mapId, plan.insertion.position);
+      expectValidTile(plan.contract!.mapId, plan.contract!.position);
       for (const [mapId, loot] of Object.entries(plan.loot) as [WorldMapId, typeof plan.loot[WorldMapId]][]) {
         loot.forEach((item) => expectValidTile(mapId, item.position));
       }
       plan.trainers.forEach((trainer) => expectValidTile(trainer.mapId, trainer.position));
       plan.extractionPoints.forEach((point) => expectValidTile(point.mapId, point.position));
+      expect(plan.trainers.map((trainer) => `${trainer.mapId}:${tileKey(trainer.position)}`)).not.toContain(
+        `${plan.insertion.mapId}:${tileKey(plan.insertion.position)}`,
+      );
+      expect(plan.loot[plan.insertion.mapId].map((loot) => tileKey(loot.position))).not.toContain(
+        tileKey(plan.insertion.position),
+      );
     }
   });
 

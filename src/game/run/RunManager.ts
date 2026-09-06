@@ -40,6 +40,7 @@ export interface RunSnapshot {
   readonly secureSlot: SecureSlot;
   readonly caughtPokemon: readonly Pokemon[];
   readonly foundItems: readonly ItemStack[];
+  readonly recoveredFieldKit: boolean;
   readonly defeatedTrainers: number;
   readonly mapId: string | null;
   readonly visitedMapIds: readonly string[];
@@ -77,6 +78,7 @@ export class RunManager {
   private secureSlotValue: SecureSlot = {};
   private caughtPokemonValue: Pokemon[] = [];
   private foundItemsValue: ItemStack[] = [];
+  private recoveredFieldKitValue = false;
   private defeatedTrainersValue = 0;
   private mapIdValue: string | null = null;
   private visitedMapIdsValue: string[] = [];
@@ -119,6 +121,7 @@ export class RunManager {
     this.secureSlotValue = copySecureSlot(secureSlot);
     this.caughtPokemonValue = [];
     this.foundItemsValue = [];
+    this.recoveredFieldKitValue = false;
     this.defeatedTrainersValue = 0;
     this.mapIdValue = config.mapId;
     this.visitedMapIdsValue = [config.mapId];
@@ -155,6 +158,12 @@ export class RunManager {
     this.requirePhase('register a found item', RunPhase.InRun);
     validateItemStack({ itemId, quantity });
     this.foundItemsValue = combineItems([...this.foundItemsValue, { itemId, quantity }]);
+    return this.snapshot();
+  }
+
+  public recoverFieldKit(): RunSnapshot {
+    this.requirePhase('recover the field kit', RunPhase.InRun);
+    this.recoveredFieldKitValue = true;
     return this.snapshot();
   }
 
@@ -251,6 +260,7 @@ export class RunManager {
       secureSlot: copySecureSlot(this.secureSlotValue),
       caughtPokemon: [...this.caughtPokemonValue],
       foundItems: [...this.foundItemsValue],
+      recoveredFieldKit: this.recoveredFieldKitValue,
       defeatedTrainers: this.defeatedTrainersValue,
       mapId: this.mapIdValue,
       visitedMapIds: [...this.visitedMapIdsValue],

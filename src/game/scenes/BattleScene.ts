@@ -24,7 +24,7 @@ import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
-import type { ActiveRunSession } from '../run/RunSession';
+import type { ActiveRunSession, RaidLocation } from '../run/RunSession';
 import { resolveHunterBattleLoss, type HunterState } from '../world/hunter';
 
 type CommandMode = 'main' | 'moves' | 'party' | 'events' | 'finished';
@@ -56,6 +56,8 @@ export interface BattleSceneData {
   /** Hunters are trainer battles that can be fled from and resume pursuit. */
   hunterBattle?: boolean;
   hunterState?: HunterState;
+  /** Location to restore when this battle returns to the overworld. */
+  returnLocation?: RaidLocation;
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -96,6 +98,7 @@ export class BattleScene extends Phaser.Scene {
   private hunterState: HunterState | undefined;
   private readonly defeatedTrainerIds = new Set<string>();
   private readonly collectedLootIds = new Set<string>();
+  private returnLocation: BattleSceneData['returnLocation'];
   private displayedEnemy: PokemonInstance | undefined;
   private isTransitioning = false;
 
@@ -115,6 +118,7 @@ export class BattleScene extends Phaser.Scene {
     this.trainer = data.trainer;
     this.hunterBattle = data.hunterBattle ?? false;
     this.hunterState = data.hunterState;
+    this.returnLocation = data.returnLocation;
     this.defeatedTrainerIds.clear();
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.collectedLootIds.clear();
@@ -923,6 +927,7 @@ export class BattleScene extends Phaser.Scene {
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],
         collectedLootIds: [...this.collectedLootIds],
+        returnLocation: this.returnLocation,
         hunterState:
           this.trainer && this.state.outcome === 'victory' && this.hunterBattle && this.hunterState
             ? { ...this.hunterState, defeated: true }

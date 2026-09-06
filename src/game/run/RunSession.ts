@@ -5,6 +5,23 @@ import type { Pokemon } from '../pokemon';
 import type { RunManager } from './RunManager';
 import type { RunPlan } from './runGeneration';
 import { createSeededRng, type SeededRng } from './rng';
+import type { Direction, GridPosition } from '../movement/gridMovement';
+import type { WorldMapId } from '../worldMap';
+
+export interface RaidLocation {
+  readonly mapId: WorldMapId;
+  readonly position: GridPosition;
+  readonly facing: Direction;
+}
+
+/** Copies a scene location so battle transitions cannot fall back to a spawn. */
+export function createBattleReturnLocation(location: RaidLocation): RaidLocation {
+  return {
+    mapId: location.mapId,
+    position: { ...location.position },
+    facing: location.facing,
+  };
+}
 
 /**
  * Scene data for an active raid. The hub creates this after starting the
