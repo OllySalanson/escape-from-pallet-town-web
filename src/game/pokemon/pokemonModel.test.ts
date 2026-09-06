@@ -5,13 +5,39 @@ import { Pokemon } from './Pokemon';
 import { PokemonBase } from './PokemonBase';
 import { PokemonParty } from './PokemonParty';
 import { PokemonType } from './PokemonType';
-import { TACKLE } from './moves';
-import { BULBASAUR, CHARMANDER, SQUIRTLE } from './species';
+import { POISON_POWDER, TACKLE, VINE_WHIP } from './moves';
+import { BULBASAUR, BUTTERFREE, CHARMANDER, PIDGEY } from './species';
 
 const expectedHp = (baseHp: number, level: number): number =>
-  Math.floor((2 * baseHp * level) / 100) + level + 10;
+  Math.floor((baseHp * level) / 100) + level + 10;
 const expectedBattleStat = (baseStat: number, level: number): number =>
-  Math.floor((2 * baseStat * level) / 100) + 5;
+  Math.floor((baseStat * level) / 100) + 5;
+
+describe('Unity Pokemon data port', () => {
+  it('preserves the authored species stats and learnsets', () => {
+    expect(BULBASAUR.baseStats).toEqual({
+      hp: 45,
+      attack: 49,
+      defense: 49,
+      spAttack: 65,
+      spDefense: 65,
+      speed: 45,
+    });
+    expect(BUTTERFREE.primaryType).toBe(PokemonType.Bug);
+    expect(BUTTERFREE.secondaryType).toBe(PokemonType.Flying);
+    expect(BUTTERFREE.learnset).toContainEqual({ level: 10, move: POISON_POWDER });
+  });
+
+  it('preserves the authored move values', () => {
+    expect(VINE_WHIP).toMatchObject({
+      type: PokemonType.Grass,
+      power: 45,
+      accuracy: 100,
+      pp: 20,
+      category: MoveCategory.Special,
+    });
+  });
+});
 
 describe('Pokemon stat computation', () => {
   it('matches the documented formulas at low and mid levels', () => {
@@ -38,16 +64,16 @@ describe('Pokemon stat computation', () => {
 
 describe('Pokemon damage, fainting, and healing', () => {
   it('clamps damage and updates fainted state', () => {
-    const squirtle = new Pokemon(SQUIRTLE, 8);
-    const maxHp = squirtle.maxHp;
+    const pidgey = new Pokemon(PIDGEY, 8);
+    const maxHp = pidgey.maxHp;
 
-    expect(squirtle.takeDamage(6)).toBe(6);
-    expect(squirtle.currentHp).toBe(maxHp - 6);
-    expect(squirtle.isFainted).toBe(false);
+    expect(pidgey.takeDamage(6)).toBe(6);
+    expect(pidgey.currentHp).toBe(maxHp - 6);
+    expect(pidgey.isFainted).toBe(false);
 
-    expect(squirtle.takeDamage(999)).toBe(maxHp - 6);
-    expect(squirtle.currentHp).toBe(0);
-    expect(squirtle.isFainted).toBe(true);
+    expect(pidgey.takeDamage(999)).toBe(maxHp - 6);
+    expect(pidgey.currentHp).toBe(0);
+    expect(pidgey.isFainted).toBe(true);
   });
 
   it('supports partial and full healing with proper clamping', () => {
@@ -149,6 +175,7 @@ describe('Pokemon move learnset behavior', () => {
     ];
 
     const trainingDummy = new PokemonBase({
+      id: 'training-dummy',
       name: 'Training Dummy',
       primaryType: PokemonType.Normal,
       baseStats: {
@@ -179,17 +206,17 @@ describe('Pokemon move learnset behavior', () => {
 describe('PokemonParty', () => {
   it('returns the first healthy Pokemon and detects all-fainted parties', () => {
     const bulbasaur = new Pokemon(BULBASAUR, 6);
-    const squirtle = new Pokemon(SQUIRTLE, 6);
-    const party = new PokemonParty([bulbasaur, squirtle]);
+    const pidgey = new Pokemon(PIDGEY, 6);
+    const party = new PokemonParty([bulbasaur, pidgey]);
 
     expect(party.getHealthyPokemon()).toBe(bulbasaur);
     expect(party.isAllFainted()).toBe(false);
 
     bulbasaur.takeDamage(999);
-    expect(party.getHealthyPokemon()).toBe(squirtle);
+    expect(party.getHealthyPokemon()).toBe(pidgey);
     expect(party.isAllFainted()).toBe(false);
 
-    squirtle.takeDamage(999);
+    pidgey.takeDamage(999);
     expect(party.getHealthyPokemon()).toBeNull();
     expect(party.isAllFainted()).toBe(true);
   });

@@ -11,10 +11,9 @@ export interface DamageResult {
   readonly typeEffectiveness: number;
 }
 
-const randomModifier = (random: RandomSource): number => {
-  const roll = Math.floor(Math.min(0.999999, Math.max(0, random())) * 39) + 217;
-  return roll / 255;
-};
+const clampRandom = (random: RandomSource): number => Math.min(1, Math.max(0, random()));
+
+const randomModifier = (random: RandomSource): number => 0.85 + clampRandom(random) * 0.15;
 
 export const calculateDamage = (
   attacker: Pokemon,
@@ -34,13 +33,9 @@ export const calculateDamage = (
 
   const attack = move.category === MoveCategory.Physical ? attacker.stats.attack : attacker.stats.spAttack;
   const defense = move.category === MoveCategory.Physical ? defender.stats.defense : defender.stats.spDefense;
-  const baseDamage = Math.floor(
-    Math.floor(Math.floor(((2 * attacker.level) / 5 + 2) * move.power * attack / defense) / 50) + 2,
-  );
-  const damage = Math.max(
-    1,
-    Math.floor(baseDamage * (isStab ? 1.5 : 1) * typeEffectiveness * randomModifier(random)),
-  );
+  const criticalMultiplier = clampRandom(random) * 100 <= 6.25 ? 2 : 1;
+  const baseDamage = ((2 * attacker.level + 10) / 250) * move.power * (attack / defense) + 2;
+  const damage = Math.floor(baseDamage * randomModifier(random) * typeEffectiveness * criticalMultiplier);
 
   return { damage, isStab, typeEffectiveness };
 };
