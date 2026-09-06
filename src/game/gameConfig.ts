@@ -4,6 +4,7 @@ import { BagScene } from './scenes/BagScene';
 import { BootScene } from './scenes/BootScene';
 import { HubScene } from './scenes/HubScene';
 import { PartyScene } from './scenes/PartyScene';
+import { StarterScene } from './scenes/StarterScene';
 import { TitleScene } from './scenes/TitleScene';
 import { WorldScene } from './scenes/WorldScene';
 
@@ -13,6 +14,7 @@ const GAME_ZOOM = 3;
 const BASE_SCENES = [
   BootScene,
   TitleScene,
+  StarterScene,
   HubScene,
   WorldScene,
   BattleScene,

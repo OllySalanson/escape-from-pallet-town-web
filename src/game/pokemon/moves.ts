@@ -38,6 +38,15 @@ export const EMBER = new MoveBase({
   category: MoveCategory.Special,
 });
 
+export const WATER_GUN = new MoveBase({
+  name: 'Water Gun',
+  type: PokemonType.Water,
+  power: 40,
+  accuracy: 100,
+  pp: 25,
+  category: MoveCategory.Special,
+});
+
 export const VINE_WHIP = new MoveBase({
   name: 'Vine Whip',
   type: PokemonType.Grass,

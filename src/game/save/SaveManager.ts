@@ -2,11 +2,17 @@ import { Move, Pokemon, PokemonParty, getSpeciesById } from '../pokemon';
 import { Bag, type BagContents } from '../items/Bag';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 import type { GridPosition } from '../movement/gridMovement';
-import { Stash, type RunResult, type SecureSlot } from '../stash/Stash';
+import {
+  getStarterSpecies,
+  Stash,
+  type RunResult,
+  type SecureSlot,
+  type StarterSpeciesId,
+} from '../stash/Stash';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 const PRIMARY_STATUSES = new Set<PrimaryStatus>([
   'poison',
   'burn',
@@ -53,6 +59,7 @@ export interface SaveData {
   readonly bag: BagContents;
   readonly stash: SavedStash;
   readonly raidProgress: RaidProgress;
+  readonly starterSpeciesId: StarterSpeciesId | null;
 }
 
 export interface RestoredGame {
@@ -63,6 +70,7 @@ export interface RestoredGame {
   readonly bag: Bag;
   readonly stash: Stash;
   readonly raidProgress: RaidProgress;
+  readonly starterSpeciesId: StarterSpeciesId | null;
 }
 
 export interface SaveGameState {
@@ -73,6 +81,7 @@ export interface SaveGameState {
   readonly bag?: Bag;
   readonly stash?: Stash;
   readonly raidProgress?: RaidProgress;
+  readonly starterSpeciesId?: StarterSpeciesId | null;
 }
 
 export interface StorageLike {
@@ -185,7 +194,7 @@ export class SaveManager {
     }
 
     game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot);
-    game.stash.ensurePlayable();
+    game.stash.ensurePlayable(game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined);
     return this.save(game);
   }
 }
@@ -200,11 +209,16 @@ export function serializeGame(state: SaveGameState): SaveData {
     bag: state.bag?.toJSON() ?? {},
     stash: serializeStash(state.stash ?? new Stash()),
     raidProgress: state.raidProgress ?? DEFAULT_RAID_PROGRESS,
+    starterSpeciesId: state.starterSpeciesId ?? inferStarterSpeciesId(state.stash),
   };
 }
 
 export function deserializeGame(value: unknown): RestoredGame | null {
-  if (!isRecord(value) || (value.version !== 1 && value.version !== 2 && value.version !== SAVE_VERSION)) {
+  if (
+    !isRecord(value) ||
+    typeof value.version !== 'number' ||
+    ![1, 2, 3, SAVE_VERSION].includes(value.version)
+  ) {
     return null;
   }
 
@@ -230,14 +244,16 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     pokemon.push(restoredPokemon);
   }
 
+  const stash = deserializeStash(value.stash, value.version);
   return {
     party: new PokemonParty(pokemon),
     mapId,
     position: { ...position },
     items: stringArray(value.items),
     bag: new Bag(bagContents(value.bag)),
-    stash: deserializeStash(value.stash, value.version),
+    stash,
     raidProgress: deserializeRaidProgress(value.raidProgress),
+    starterSpeciesId: deserializeStarterSpeciesId(value.starterSpeciesId) ?? inferStarterSpeciesId(stash),
   };
 }
 
@@ -338,6 +354,22 @@ function deserializeStashedPokemon(value: unknown): { id: string; pokemon: Pokem
   }
   const pokemon = deserializePokemon(value.pokemon);
   return pokemon ? { id: value.id, pokemon } : null;
+}
+
+function deserializeStarterSpeciesId(value: unknown): StarterSpeciesId | null {
+  if (value === null) {
+    return null;
+  }
+  return typeof value === 'string' && isStarterSpeciesId(value) ? value : null;
+}
+
+function inferStarterSpeciesId(stash: Stash | undefined): StarterSpeciesId | null {
+  const speciesId = stash?.listPokemon().find(({ pokemon }) => isStarterSpeciesId(pokemon.base.id))?.pokemon.base.id;
+  return speciesId && isStarterSpeciesId(speciesId) ? speciesId : null;
+}
+
+function isStarterSpeciesId(value: string): value is StarterSpeciesId {
+  return value === 'bulbasaur' || value === 'charmander' || value === 'squirtle';
 }
 
 function getPokemonXp(pokemon: Pokemon): number {

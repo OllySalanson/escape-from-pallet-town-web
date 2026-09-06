@@ -10,6 +10,7 @@ import {
   TACKLE,
   THUNDER_WAVE,
   VINE_WHIP,
+  WATER_GUN,
 } from './moves';
 
 export const BULBASAUR = new PokemonBase({
@@ -55,6 +56,28 @@ export const CHARMANDER = new PokemonBase({
   ],
   frontSprite: 'sprites/pokemon/charmander_front.png',
   backSprite: 'sprites/pokemon/charmander_back.png',
+});
+
+export const SQUIRTLE = new PokemonBase({
+  id: 'squirtle',
+  dexId: 7,
+  name: 'Squirtle',
+  primaryType: PokemonType.Water,
+  baseStats: {
+    hp: 44,
+    attack: 48,
+    defense: 65,
+    spAttack: 50,
+    spDefense: 64,
+    speed: 43,
+  },
+  learnset: [
+    { level: 1, move: TACKLE },
+    { level: 4, move: GROWL },
+    { level: 7, move: WATER_GUN },
+  ],
+  frontSprite: 'sprites/pokemon/squirtle_front.png',
+  backSprite: 'sprites/pokemon/squirtle_back.png',
 });
 
 export const BUTTERFREE = new PokemonBase({
@@ -149,6 +172,7 @@ export const SPECIES_BY_ID: Readonly<Record<string, PokemonBase>> = {
   [JIGGLYPUFF.id]: JIGGLYPUFF,
   [PIDGEY.id]: PIDGEY,
   [PIKACHU.id]: PIKACHU,
+  [SQUIRTLE.id]: SQUIRTLE,
 };
 
 export const getSpeciesById = (speciesId: string): PokemonBase | undefined =>

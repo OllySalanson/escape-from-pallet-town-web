@@ -5,8 +5,9 @@ import { experienceAwardForDefeat, experienceForLevel, Pokemon } from './Pokemon
 import { PokemonBase } from './PokemonBase';
 import { PokemonParty } from './PokemonParty';
 import { PokemonType } from './PokemonType';
-import { POISON_POWDER, TACKLE, VINE_WHIP } from './moves';
-import { BULBASAUR, BUTTERFREE, CHARMANDER, PIDGEY } from './species';
+import { POISON_POWDER, TACKLE, VINE_WHIP, WATER_GUN } from './moves';
+import { BULBASAUR, BUTTERFREE, CHARMANDER, PIDGEY, SQUIRTLE } from './species';
+import { createBattleState } from './battle/battleEngine';
 
 const expectedHp = (baseHp: number, level: number): number =>
   Math.floor((baseHp * level) / 100) + level + 10;
@@ -36,6 +37,30 @@ describe('Unity Pokemon data port', () => {
       pp: 20,
       category: MoveCategory.Special,
     });
+    expect(WATER_GUN).toMatchObject({
+      type: PokemonType.Water,
+      power: 40,
+      accuracy: 100,
+      pp: 25,
+      category: MoveCategory.Special,
+    });
+  });
+
+  it.each([BULBASAUR, CHARMANDER, SQUIRTLE])(
+    'creates a battle-ready level 5 %s starter',
+    (starter) => {
+      const pokemon = new Pokemon(starter, 5);
+      const battle = createBattleState(pokemon, new Pokemon(PIDGEY, 4));
+
+      expect(pokemon.moves.length).toBeGreaterThan(0);
+      expect(pokemon.moves.every((move) => move.base.pp > 0)).toBe(true);
+      expect(battle.player.pokemon).toBe(pokemon);
+      expect(battle.outcome).toBe('active');
+    },
+  );
+
+  it('teaches Squirtle Water Gun at level 7', () => {
+    expect(new Pokemon(SQUIRTLE, 7).moves.map((move) => move.base.name)).toContain('Water Gun');
   });
 });
 

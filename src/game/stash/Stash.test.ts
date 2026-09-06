@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Bag } from '../items';
-import { CHARMANDER, PIDGEY, Pokemon, PokemonParty } from '../pokemon';
+import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
 import { Stash } from './Stash';
 
@@ -36,11 +36,12 @@ describe('Stash', () => {
     expect(stash.listItems()).toEqual({ 'poke-ball': 1 });
   });
 
-  it('grants a starter and supplies to an empty stash', () => {
+  it.each([BULBASAUR, CHARMANDER, SQUIRTLE])('grants the selected %s starter and supplies only once', (starter) => {
     const stash = new Stash();
 
-    expect(stash.ensurePlayable()).toBe(true);
-    expect(stash.listPokemon()).toMatchObject([{ pokemon: { base: { id: 'bulbasaur' }, level: 5 } }]);
+    expect(stash.ensurePlayable(starter)).toBe(true);
+    expect(stash.ensurePlayable(starter)).toBe(false);
+    expect(stash.listPokemon()).toMatchObject([{ pokemon: { base: { id: starter.id }, level: 5 } }]);
     expect(stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
   });
 
