@@ -74,6 +74,7 @@ button { font: inherit; }
 .hub-home { display: grid; gap: var(--space-3); }
 .objectives-panel { padding: var(--space-3); }
 .objective-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.objective-copy { min-width: 0; overflow-wrap: anywhere; }
 .action-card { text-align: left; border: 1px solid var(--menu-border); border-radius: var(--radius); background: var(--menu-surface); padding: var(--space-3); box-shadow: var(--shadow); min-height: 225px; display: flex; flex-direction: column; transition: transform .15s ease, border-color .15s ease, background .15s ease; }
 .action-card:hover { transform: translateY(-3px); border-color: var(--menu-accent); background: var(--menu-raised); }
 .action-card.primary { background: linear-gradient(135deg, #17665f, #16354a); border-color: var(--menu-accent); }
