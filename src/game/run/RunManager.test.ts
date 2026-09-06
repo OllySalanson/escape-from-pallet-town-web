@@ -139,6 +139,25 @@ describe('RunManager lifecycle', () => {
     expect(manager.phase).toBe(RunPhase.Wiped);
   });
 
+  it('retains the secure slot selected when the run starts', () => {
+    const manager = new RunManager();
+    const partyMember = makePokemon(BULBASAUR);
+    manager.startRun(
+      { party: [partyMember], items: [{ itemId: 'potion', quantity: 2 }] },
+      { mapId: 'pallet-town', durationMs: 60_000 },
+      { pokemon: partyMember, items: [{ itemId: 'potion', quantity: 1 }] },
+    );
+
+    expect(manager.snapshot().secureSlot).toEqual({
+      pokemon: partyMember,
+      items: [{ itemId: 'potion', quantity: 1 }],
+    });
+    expect(manager.resolveWipe()).toMatchObject({
+      bankedPokemon: [partyMember],
+      bankedItems: [{ itemId: 'potion', quantity: 1 }],
+    });
+  });
+
   it('rejects secure-slot selections that do not belong to the run', () => {
     const manager = new RunManager();
     startRun(manager);

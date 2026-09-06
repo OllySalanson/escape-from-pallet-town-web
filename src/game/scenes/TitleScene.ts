@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
+import { Bag } from '../items';
+import { PokemonParty } from '../pokemon';
 import { SaveManager } from '../save/SaveManager';
+import { createStartingStash } from '../stash';
 
 const SCREEN_WIDTH = 320;
 const SCREEN_HEIGHT = 240;
@@ -94,10 +97,29 @@ export class TitleScene extends Phaser.Scene {
     }
 
     this.hasStarted = true;
-    const savedGame = this.saveManager.load();
+    const savedGame = this.loadOrCreateGame();
     void this.playStartAudio();
     this.prompt.setText('READY!');
-    this.time.delayedCall(180, () => this.scene.start('world', { savedGame: savedGame ?? undefined }));
+    this.time.delayedCall(180, () => this.scene.start('hub', { savedGame }));
+  }
+
+  private loadOrCreateGame() {
+    const savedGame = this.saveManager.load();
+    if (savedGame) {
+      return savedGame;
+    }
+
+    const stash = createStartingStash();
+    const newGame = {
+      party: new PokemonParty([]),
+      mapId: 'pallet-town' as const,
+      position: { x: 6, y: 8 },
+      items: [],
+      bag: new Bag(),
+      stash,
+    };
+    this.saveManager.save(newGame);
+    return this.saveManager.load() ?? newGame;
   }
 
   private async playStartAudio(): Promise<void> {

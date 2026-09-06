@@ -34,6 +34,7 @@ export interface SecureSlot {
 export interface RunSnapshot {
   readonly phase: RunPhase;
   readonly loadout: RunLoadout | null;
+  readonly secureSlot: SecureSlot;
   readonly caughtPokemon: readonly Pokemon[];
   readonly foundItems: readonly ItemStack[];
   readonly mapId: string | null;
@@ -64,6 +65,7 @@ export interface RunManagerOptions {
 export class RunManager {
   private phaseValue: RunPhase = RunPhase.InHub;
   private loadoutValue: RunLoadout | null = null;
+  private secureSlotValue: SecureSlot = {};
   private caughtPokemonValue: Pokemon[] = [];
   private foundItemsValue: ItemStack[] = [];
   private mapIdValue: string | null = null;
@@ -80,12 +82,18 @@ export class RunManager {
     return this.phaseValue;
   }
 
-  public startRun(loadout: RunLoadout, config: RunConfig): RunSnapshot {
+  public startRun(
+    loadout: RunLoadout,
+    config: RunConfig,
+    secureSlot: SecureSlot = {},
+  ): RunSnapshot {
     this.requirePhase('start a run', RunPhase.InHub, RunPhase.Escaped, RunPhase.Wiped);
     validateRunConfig(config);
     validateItemStacks(loadout.items);
+    validateSecureSlot(secureSlot, loadout.party, loadout.items);
 
     this.loadoutValue = copyLoadout(loadout);
+    this.secureSlotValue = copySecureSlot(secureSlot);
     this.caughtPokemonValue = [];
     this.foundItemsValue = [];
     this.mapIdValue = config.mapId;
@@ -160,15 +168,17 @@ export class RunManager {
     return result;
   }
 
-  public resolveWipe(secureSlot: SecureSlot = {}): RunResult {
+  public resolveWipe(secureSlot?: SecureSlot): RunResult {
     this.requirePhase('resolve a run', RunPhase.InRun, RunPhase.Extracting);
     const allPokemon = this.allPokemon();
     const allItems = this.allItems();
-    validateSecureSlot(secureSlot, allPokemon, allItems);
+    const resolvedSecureSlot = secureSlot ?? this.secureSlotValue;
+    validateSecureSlot(resolvedSecureSlot, allPokemon, allItems);
     this.beginResolution();
 
-    const bankedPokemon = secureSlot.pokemon === undefined ? [] : [secureSlot.pokemon];
-    const bankedItems = combineItems(secureSlot.items ?? []);
+    const bankedPokemon =
+      resolvedSecureSlot.pokemon === undefined ? [] : [resolvedSecureSlot.pokemon];
+    const bankedItems = combineItems(resolvedSecureSlot.items ?? []);
     const lostPokemon = removePokemon(allPokemon, bankedPokemon);
     const lostItems = subtractItems(allItems, bankedItems);
     const result: RunResult = {
@@ -187,6 +197,7 @@ export class RunManager {
     return {
       phase: this.phaseValue,
       loadout: this.loadoutValue === null ? null : copyLoadout(this.loadoutValue),
+      secureSlot: copySecureSlot(this.secureSlotValue),
       caughtPokemon: [...this.caughtPokemonValue],
       foundItems: [...this.foundItemsValue],
       mapId: this.mapIdValue,
@@ -238,6 +249,13 @@ function copyLoadout(loadout: RunLoadout): RunLoadout {
   return {
     party: [...loadout.party],
     items: combineItems(loadout.items),
+  };
+}
+
+function copySecureSlot(secureSlot: SecureSlot): SecureSlot {
+  return {
+    ...(secureSlot.pokemon === undefined ? {} : { pokemon: secureSlot.pokemon }),
+    ...(secureSlot.items === undefined ? {} : { items: combineItems(secureSlot.items) }),
   };
 }
 
