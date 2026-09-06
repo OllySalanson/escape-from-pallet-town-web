@@ -3,6 +3,7 @@ import { RUN_OBJECTIVES, type RunObjective } from '../objectives';
 import type { SecureSlot, ItemStack } from './RunManager';
 import type { Pokemon } from '../pokemon';
 import type { RunManager } from './RunManager';
+import type { RunPlan } from './runGeneration';
 
 /**
  * Scene data for an active raid. The hub creates this after starting the
@@ -18,6 +19,8 @@ export interface ActiveRunSession {
   readonly broughtPokemonIds: readonly string[];
   readonly broughtItems: readonly ItemStack[];
   readonly objectives: readonly RunObjective[];
+  /** The deterministic world configuration generated when this raid begins. */
+  readonly plan?: RunPlan;
 }
 
 export function createActiveRunSession(
@@ -27,6 +30,7 @@ export function createActiveRunSession(
   broughtPokemonIds: readonly string[],
   broughtItems: readonly ItemStack[],
   objectives: readonly RunObjective[] = RUN_OBJECTIVES,
+  plan?: RunPlan,
 ): ActiveRunSession {
   return {
     manager,
@@ -35,6 +39,7 @@ export function createActiveRunSession(
     broughtPokemonIds: [...broughtPokemonIds],
     broughtItems: [...broughtItems],
     objectives: [...objectives],
+    ...(plan === undefined ? {} : { plan }),
   };
 }
 

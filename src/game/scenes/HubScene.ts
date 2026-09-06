@@ -3,6 +3,7 @@ import { Bag, ITEM_DEFINITIONS, type ItemDefinition, type ItemId } from '../item
 import { PokemonParty } from '../pokemon';
 import { activeRunManager, type ItemStack, type SecureSlot } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
+import { generateRunPlan } from '../run/runGeneration';
 import { formatObjectiveReward, RUN_OBJECTIVES } from '../objectives';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { type SecureSlot as StashSecureSlot, type Stash, type StashedPokemon } from '../stash';
@@ -107,12 +108,16 @@ export class HubScene extends Phaser.Scene {
       { mapId: 'pallet-town', durationMs: RUN_DURATION_MS },
       secureSlot,
     );
+    const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+    const plan = generateRunPlan(seed);
     const runSession = createActiveRunSession(
       activeRunManager,
       secureSlot,
       this.stashSecureSlot(),
       this.selectedPokemonIds,
       this.loadoutItems,
+      undefined,
+      plan,
     );
     this.scene.start('world', {
       savedGame: this.savedGame,
