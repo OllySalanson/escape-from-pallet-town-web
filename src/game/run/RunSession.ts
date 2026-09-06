@@ -4,6 +4,7 @@ import type { SecureSlot, ItemStack } from './RunManager';
 import type { Pokemon } from '../pokemon';
 import type { RunManager } from './RunManager';
 import type { RunPlan } from './runGeneration';
+import { createSeededRng, type SeededRng } from './rng';
 
 /**
  * Scene data for an active raid. The hub creates this after starting the
@@ -21,6 +22,9 @@ export interface ActiveRunSession {
   readonly objectives: readonly RunObjective[];
   /** The deterministic world configuration generated when this raid begins. */
   readonly plan?: RunPlan;
+  /** The seed and runtime stream keep world events reproducible after generation. */
+  readonly seed?: number;
+  readonly rng?: SeededRng;
 }
 
 export function createActiveRunSession(
@@ -39,7 +43,13 @@ export function createActiveRunSession(
     broughtPokemonIds: [...broughtPokemonIds],
     broughtItems: [...broughtItems],
     objectives: [...objectives],
-    ...(plan === undefined ? {} : { plan }),
+    ...(plan === undefined
+      ? {}
+      : {
+        plan,
+        seed: plan.seed,
+        rng: createSeededRng(plan.seed ^ 0x9e3779b9),
+      }),
   };
 }
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
+import { RunManager } from './RunManager';
+import { createActiveRunSession } from './RunSession';
 import {
   generateRunPlan,
   RUN_GENERATION_BOUNDS,
@@ -26,6 +28,15 @@ describe('run generation', () => {
   it('is deterministic for a seed and varies across seeds', () => {
     expect(generateRunPlan(12345)).toEqual(generateRunPlan(12345));
     expect(generateRunPlan(12345)).not.toEqual(generateRunPlan(54321));
+  });
+
+  it('gives sessions a reproducible runtime stream derived from the plan seed', () => {
+    const plan = generateRunPlan(12345);
+    const first = createActiveRunSession(new RunManager(), {}, {}, [], [], undefined, plan);
+    const second = createActiveRunSession(new RunManager(), {}, {}, [], [], undefined, plan);
+
+    expect(first.seed).toBe(plan.seed);
+    expect([first.rng!.next(), first.rng!.next()]).toEqual([second.rng!.next(), second.rng!.next()]);
   });
 
   it('keeps generated loot, trainers, and extraction points on valid tiles', () => {

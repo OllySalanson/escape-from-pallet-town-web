@@ -723,7 +723,8 @@ export class WorldScene extends Phaser.Scene {
 
     const encounters = this.encountersForCurrentMap();
     if (isTallGrassInMap(this.currentMap, this.currentTile) && encounters) {
-      const wild = rollEncounter(encounters);
+      const rng = this.runSession?.rng;
+      const wild = rollEncounter(encounters, rng === undefined ? undefined : () => rng.next());
       if (wild) {
         audioManager.playEncounter();
         this.scene.start('battle', {
@@ -1009,16 +1010,18 @@ export class WorldScene extends Phaser.Scene {
       { x: this.currentTile.x, y: this.currentTile.y - 5 },
       { x: this.currentTile.x, y: this.currentTile.y + 5 },
     ];
-    return (
-      candidates.find(
-        (tile) =>
-          tile.x >= 0 &&
-          tile.y >= 0 &&
-          tile.x < this.bounds.width &&
-          tile.y < this.bounds.height &&
-          !this.isBlocked(tile),
-      ) ?? { ...this.currentTile }
+    const legalCandidates = candidates.filter(
+      (tile) =>
+        tile.x >= 0 &&
+        tile.y >= 0 &&
+        tile.x < this.bounds.width &&
+        tile.y < this.bounds.height &&
+        !this.isBlocked(tile),
     );
+    if (legalCandidates.length === 0) {
+      return { ...this.currentTile };
+    }
+    return this.runSession?.rng?.pick(legalCandidates) ?? legalCandidates[0];
   }
 
   private moveHunterToCurrentMap(): void {
