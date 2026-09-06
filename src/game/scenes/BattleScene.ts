@@ -20,6 +20,9 @@ import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
+import { SaveManager } from '../save/SaveManager';
+import { RunPhase } from '../run/RunManager';
+import type { ActiveRunSession } from '../run/RunSession';
 
 type CommandMode = 'main' | 'moves' | 'party' | 'events' | 'finished';
 
@@ -47,6 +50,8 @@ export interface BattleSceneData {
   party?: PokemonParty;
   pokeBalls?: number;
   caughtPokemonStash?: PokemonInstance[];
+  /** The active raid context, passed through from WorldScene. */
+  runSession?: ActiveRunSession;
 }
 
 export class BattleScene extends Phaser.Scene {
@@ -79,6 +84,8 @@ export class BattleScene extends Phaser.Scene {
   // This seam is intentionally plain data until the run-level bag and stash systems own it.
   private pokeBalls = STARTING_POKE_BALLS;
   private caughtPokemonStash: PokemonInstance[] = [];
+  private runSession: ActiveRunSession | undefined;
+  private pendingHubTransition = false;
 
   public constructor() {
     super('battle');
@@ -92,6 +99,8 @@ export class BattleScene extends Phaser.Scene {
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
     this.pokeBalls = data.pokeBalls ?? STARTING_POKE_BALLS;
     this.caughtPokemonStash = data.caughtPokemonStash ?? [];
+    this.runSession = data.runSession;
+    this.pendingHubTransition = false;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
@@ -468,6 +477,7 @@ export class BattleScene extends Phaser.Scene {
     const caughtPokemon = this.state.enemy.pokemon;
     caughtPokemon.currentHp = this.state.enemy.currentHp;
     caughtPokemon.primaryStatus = this.state.enemy.primaryStatus;
+    this.runSession?.manager.registerCaughtPokemon(caughtPokemon);
     if (this.party.pokemon.length < PARTY_LIMIT) {
       this.party.addPokemon(caughtPokemon);
       return;
@@ -628,6 +638,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.party.isAllFainted() && this.runSession?.manager.phase === RunPhase.InRun) {
+      this.resolveRunWipe();
+      return;
+    }
+
     this.mode = 'finished';
     this.dialog.showMessage(this.state.outcome === 'victory' ? 'You won the battle!' : 'You blacked out!');
   }
@@ -696,6 +711,15 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private returnToWorld(): void {
+    if (this.pendingHubTransition) {
+      if (this.scene.manager.keys.hub) {
+        this.scene.start('hub');
+      } else {
+        this.scene.start('title');
+      }
+      return;
+    }
+
     if (this.launchedFromWorld) {
       // HP and primary status live on party Pokemon. Battle-only stages and confusion
       // live exclusively in BattleState and are discarded with this scene.
@@ -704,9 +728,43 @@ export class BattleScene extends Phaser.Scene {
         party: this.party,
         pokeBalls: this.pokeBalls,
         caughtPokemonStash: this.caughtPokemonStash,
+        runSession: this.runSession,
       });
     }
   }
+
+  private resolveRunWipe(): void {
+    if (!this.runSession || this.pendingHubTransition) {
+      return;
+    }
+
+    const result = this.runSession.manager.resolveWipe(this.runSession.secureSlot);
+    const saved = new SaveManager().applyWipeLoss(
+      this.runSession.broughtPokemonIds,
+      this.runSession.broughtItems,
+      this.runSession.stashSecureSlot,
+    );
+    this.pendingHubTransition = true;
+    this.mode = 'finished';
+    this.commandContainer.setVisible(false);
+    this.dialog.showMessages([
+      'YOU WERE WIPED.',
+      formatWipeSummary(result.lostPokemon, result.lostItems),
+      saved ? 'Secure slot preserved. Returning to hub.' : 'Stash save unavailable. Returning to hub.',
+    ]);
+  }
+}
+
+function formatWipeSummary(
+  pokemon: readonly PokemonInstance[],
+  items: readonly { readonly itemId: string; readonly quantity: number }[],
+): string {
+  const pokemonSummary = pokemon.length === 0 ? 'no Pokemon' : `${pokemon.length} Pokemon`;
+  const itemSummary =
+    items.length === 0
+      ? 'no items'
+      : items.map((item) => `${item.quantity} ${item.itemId}`).join(', ');
+  return `Lost: ${pokemonSummary}; ${itemSummary}.`;
 }
 
 const eventToMessage = (event: BattleEvent): string => {
