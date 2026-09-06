@@ -21,7 +21,7 @@ export class BootScene extends Phaser.Scene {
       frameHeight: CHARACTER_FRAME_HEIGHT,
     });
     this.load.image('classicTiles', 'assets/tileset.png');
-    this.load.image('battle-background', 'assets/battle/background.png');
+    this.load.image('battle-background-grass', 'assets/battle/background-grass.png');
     this.load.image('battle-hud', 'assets/battle/hud-box.png');
     this.load.image('battle-dialog', 'assets/battle/dialog-plain.png');
 

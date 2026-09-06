@@ -38,6 +38,8 @@ const COMMAND_Y = 174;
 const BATTLE_FONT = '"Orange Kid", monospace';
 const STARTING_POKE_BALLS = 5;
 const PARTY_LIMIT = 6;
+const BATTLEFIELD_WIDTH = 320;
+const GRASS_BACKDROP_WIDTH = 257;
 const MAIN_COMMAND_ACTIONS = [
   { type: 'choose-fight' },
   { type: 'throw-ball' },
@@ -167,7 +169,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private drawBackdrop(): void {
-    this.add.image(160, 87, 'battle-background').setDisplaySize(320, 241);
+    this.add.image(BATTLEFIELD_WIDTH / 2, 0, 'battle-background-grass').setOrigin(0.5, 0).setScale(
+      BATTLEFIELD_WIDTH / GRASS_BACKDROP_WIDTH,
+    );
   }
 
   private drawCombatants(): void {
