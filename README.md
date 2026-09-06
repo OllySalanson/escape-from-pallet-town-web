@@ -4,6 +4,9 @@ This is a browser rebuild of **Escape from Pallet Town**, using TypeScript, Phas
 The current milestone is a thin playable overworld slice: load into a small map and walk a player
 character one tile at a time with directional animations.
 
+The settled game vision and player-research findings are in
+[Product direction](docs/product-direction.md).
+
 ## Run locally
 
 ```bash
