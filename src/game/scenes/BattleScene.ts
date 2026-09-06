@@ -53,6 +53,7 @@ export interface BattleSceneData {
   runSession?: ActiveRunSession;
   defeatedTrainerIds?: readonly string[];
   collectedLootIds?: readonly string[];
+  activatedPoiIds?: readonly string[];
   /** Hunters are trainer battles that can be fled from and resume pursuit. */
   hunterBattle?: boolean;
   hunterState?: HunterState;
@@ -98,6 +99,7 @@ export class BattleScene extends Phaser.Scene {
   private hunterState: HunterState | undefined;
   private readonly defeatedTrainerIds = new Set<string>();
   private readonly collectedLootIds = new Set<string>();
+  private readonly activatedPoiIds = new Set<string>();
   private returnLocation: BattleSceneData['returnLocation'];
   private displayedEnemy: PokemonInstance | undefined;
   private isTransitioning = false;
@@ -123,6 +125,8 @@ export class BattleScene extends Phaser.Scene {
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.collectedLootIds.clear();
     data.collectedLootIds?.forEach((id) => this.collectedLootIds.add(id));
+    this.activatedPoiIds.clear();
+    data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
     this.pendingHubTransition = false;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
@@ -927,6 +931,7 @@ export class BattleScene extends Phaser.Scene {
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],
         collectedLootIds: [...this.collectedLootIds],
+        activatedPoiIds: [...this.activatedPoiIds],
         returnLocation: this.returnLocation,
         hunterState:
           this.trainer && this.state.outcome === 'victory' && this.hunterBattle && this.hunterState

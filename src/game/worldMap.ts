@@ -6,6 +6,7 @@ import {
 } from './pokemon/encounters';
 import type { WorldLoot } from './world/loot';
 import { WORLD_ENTITIES, type WorldEntity } from './world/npcs';
+import { poisForMap, type WorldPoi } from './world/pois';
 
 export const TILE_SIZE = 16;
 export const MAP_WIDTH = 32;
@@ -41,6 +42,8 @@ export interface WorldMapDefinition {
   readonly warps: readonly MapWarp[];
   readonly entities: readonly WorldEntity[];
   readonly loot: readonly WorldLoot[];
+  /** Fixed landmarks are authored separately from randomised run loot. */
+  readonly pois: readonly WorldPoi[];
 }
 
 export type WorldMapId = 'pallet-town' | 'route-1' | 'viridian-forest';
@@ -365,6 +368,7 @@ function createRoute1Map(): WorldMapDefinition {
       },
     ],
     entities: [],
+    pois: poisForMap('route-1'),
     loot: [
       { id: 'route-1-poke-ball', position: { x: 5, y: 9 }, itemId: 'poke-ball', quantity: 2 },
       { id: 'route-1-potion', position: { x: 11, y: 15 }, itemId: 'potion', quantity: 1 },
@@ -447,6 +451,7 @@ function createViridianForestMap(): WorldMapDefinition {
       },
     ],
     entities: [],
+    pois: poisForMap('viridian-forest'),
     loot: [
       { id: 'forest-poke-ball', position: { x: 4, y: 18 }, itemId: 'poke-ball', quantity: 2 },
       { id: 'forest-super-potion', position: { x: 14, y: 22 }, itemId: 'super-potion', quantity: 1 },
@@ -477,6 +482,7 @@ export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = {
       },
     ],
     entities: WORLD_ENTITIES,
+    pois: poisForMap('pallet-town'),
     loot: [
       { id: 'pallet-town-poke-ball', position: { x: 10, y: 8 }, itemId: 'poke-ball', quantity: 1 },
       { id: 'pallet-town-potion', position: { x: 20, y: 14 }, itemId: 'potion', quantity: 1 },

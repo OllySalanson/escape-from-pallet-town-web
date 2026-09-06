@@ -131,6 +131,11 @@ describe('worldMap', () => {
       true,
     );
     expect(viridianForest.loot).toHaveLength(4);
+    expect(route1.pois).toHaveLength(1);
+    expect(route1.pois[0]).toMatchObject({
+      id: 'oak-field-station-relay',
+      position: { x: 12, y: 5 },
+    });
   });
 
   it('connects the maps with reciprocal edge warps', () => {
@@ -172,6 +177,14 @@ describe('worldMap', () => {
       for (const loot of map.loot) {
         expect(map.collision[loot.position.y][loot.position.x]).toBe(false);
       }
+
+      for (const poi of map.pois) {
+        expect(map.collision[poi.position.y][poi.position.x]).toBe(false);
+      }
+
+      for (const entity of map.entities) {
+        expect(map.collision[entity.position.y][entity.position.x]).toBe(false);
+      }
     }
 
     for (const trainer of createRunTrainerEncounters()) {
@@ -205,5 +218,17 @@ describe('worldMap', () => {
     for (const mapId of mapIds) {
       expect([...reachableFrom(mapId)].sort()).toEqual([...mapIds].sort());
     }
+  });
+
+  it('keeps deeper extraction markers undisclosed on Oak’s route board', () => {
+    const board = getWorldMap('pallet-town').entities.find(
+      (entity) => entity.id === 'oak-route-board',
+    );
+    const message = board?.dialogLines.join(' ') ?? '';
+
+    expect(message).toContain('SOUTH GATE');
+    expect(message).toContain('Route 1 and the forest');
+    expect(message).not.toContain('ROUTE OUTPOST');
+    expect(message).not.toContain('FOREST CLEARING');
   });
 });
