@@ -24,6 +24,7 @@ export interface BattleState {
 export type BattleEvent =
   | { readonly type: 'used-move'; readonly user: 'player' | 'enemy'; readonly name: string; readonly move: string }
   | { readonly type: 'missed'; readonly user: 'player' | 'enemy' }
+  | { readonly type: 'critical-hit' }
   | { readonly type: 'effectiveness'; readonly multiplier: number }
   | { readonly type: 'fainted'; readonly user: 'player' | 'enemy'; readonly name: string }
   | { readonly type: 'no-pp'; readonly user: 'player' | 'enemy'; readonly move: string };
@@ -133,7 +134,11 @@ const applyMove = (
     currentHp: Math.max(0, defender.currentHp - damage.damage),
   };
   let nextState = withCombatants(state, user, updatedAttacker, updatedDefender);
-  const events = [...eventPrefix, ...effectivenessEvents(damage.typeEffectiveness)];
+  const events: BattleEvent[] = [
+    ...eventPrefix,
+    ...(damage.isCritical ? [{ type: 'critical-hit' } as const] : []),
+    ...effectivenessEvents(damage.typeEffectiveness),
+  ];
 
   if (updatedDefender.currentHp === 0) {
     const defenderUser = user === 'player' ? 'enemy' : 'player';

@@ -14,6 +14,7 @@ export interface DialogBoxOptions {
   charsPerSecond?: number;
   indicatorText?: string;
   indicatorBlinkMs?: number;
+  backgroundTexture?: string;
   textStyle?: Phaser.Types.GameObjects.Text.TextStyle;
   onComplete?: () => void;
 }
@@ -62,6 +63,13 @@ export class DialogBox extends Phaser.GameObjects.Container {
 
     this.backgroundGraphics = scene.add.graphics();
     this.drawBackground(options);
+    if (options.backgroundTexture) {
+      this.add(
+        scene.add
+          .image(widthPx / 2, heightPx / 2, options.backgroundTexture)
+          .setDisplaySize(widthPx, heightPx),
+      );
+    }
 
     this.textObject = scene.add.text(this.paddingPx, this.paddingPx, '', {
       fontFamily: 'monospace',
@@ -191,13 +199,16 @@ export class DialogBox extends Phaser.GameObjects.Container {
     const cornerRadius = options.cornerRadius ?? DEFAULT_CORNER_RADIUS;
     const borderWidth = options.borderWidth ?? DEFAULT_BORDER_WIDTH;
     const borderColor = options.borderColor ?? DEFAULT_BORDER_COLOR;
-    const backgroundColor = options.backgroundColor ?? DEFAULT_BACKGROUND_COLOR;
+    const backgroundColor = options.backgroundTexture
+      ? 0x000000
+      : (options.backgroundColor ?? DEFAULT_BACKGROUND_COLOR);
+    const alpha = options.backgroundTexture ? 0 : 1;
 
     this.backgroundGraphics.clear();
-    this.backgroundGraphics.fillStyle(backgroundColor, 1);
+    this.backgroundGraphics.fillStyle(backgroundColor, alpha);
     this.backgroundGraphics.fillRoundedRect(0, 0, this.widthPx, this.heightPx, cornerRadius);
 
-    if (borderWidth > 0) {
+    if (borderWidth > 0 && !options.backgroundTexture) {
       this.backgroundGraphics.lineStyle(borderWidth, borderColor, 1);
       this.backgroundGraphics.strokeRoundedRect(
         borderWidth / 2,
