@@ -1,5 +1,5 @@
 import { Pokemon } from '../pokemon';
-import { BULBASAUR, PIDGEY, PIKACHU } from '../pokemon/species';
+import { BULBASAUR, BUTTERFREE, PIDGEY, PIKACHU } from '../pokemon/species';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
@@ -46,6 +46,18 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       'RAIDER MAYA',
       [new Pokemon(PIKACHU, 7), new Pokemon(PIDGEY, 7)],
       'You earned your way past me. Keep moving!',
+    ),
+  },
+  {
+    mapId: 'viridian-forest',
+    position: { x: 18, y: 18 },
+    facing: 'down',
+    introLines: ['THE FOREST KEEPS WHAT IT TAKES.', 'Turn back or face my bugs!'],
+    trainer: createTrainer(
+      'forest-warden-ivy',
+      'WARDEN IVY',
+      [new Pokemon(PIDGEY, 9), new Pokemon(BUTTERFREE, 10)],
+      'The coastal trail is clear. Do not waste your second chance.',
     ),
   },
 ];

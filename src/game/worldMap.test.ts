@@ -13,6 +13,8 @@ import {
   MAP_WIDTH,
   WORLD_MAPS,
 } from './worldMap';
+import { EXTRACTION_POINTS } from './world/extractionPoints';
+import { createRunTrainerEncounters } from './world/trainers';
 
 describe('worldMap', () => {
   it('builds complete ground and detail layers', () => {
@@ -110,11 +112,12 @@ describe('worldMap', () => {
     expect(collision[22][7]).toBe(false);
   });
 
-  it('registers Pallet Town and Route 1 with their own map data', () => {
+  it('registers Pallet Town, Route 1, and Viridian Forest with their own map data', () => {
     const palletTown = getWorldMap('pallet-town');
     const route1 = getWorldMap('route-1');
+    const viridianForest = getWorldMap('viridian-forest');
 
-    expect(Object.keys(WORLD_MAPS)).toEqual(['pallet-town', 'route-1']);
+    expect(Object.keys(WORLD_MAPS)).toEqual(['pallet-town', 'route-1', 'viridian-forest']);
     expect(palletTown.width).toBe(MAP_WIDTH);
     expect(route1.height).toBe(32);
     expect(route1.groundLayer).toHaveLength(route1.height);
@@ -122,11 +125,19 @@ describe('worldMap', () => {
     expect(isTallGrassInMap(route1, { x: 3, y: 8 })).toBe(true);
     expect(isTallGrassInMap(route1, { x: 7, y: 1 })).toBe(false);
     expect(route1.encounters).toBeDefined();
+    expect(viridianForest.height).toBe(36);
+    expect(viridianForest.tallGrassZones).toHaveLength(3);
+    expect(viridianForest.encounters?.entries.some((entry) => entry.speciesId === 'pikachu')).toBe(
+      true,
+    );
+    expect(viridianForest.loot).toHaveLength(4);
   });
 
   it('connects the maps with reciprocal edge warps', () => {
     const palletExit = getWarpAt(getWorldMap('pallet-town'), { x: 7, y: MAP_HEIGHT - 1 }, 'step');
     const routeReturn = getWarpAt(getWorldMap('route-1'), { x: 7, y: 0 }, 'step');
+    const routeExit = getWarpAt(getWorldMap('route-1'), { x: 7, y: 31 }, 'step');
+    const forestReturn = getWarpAt(getWorldMap('viridian-forest'), { x: 7, y: 0 }, 'step');
 
     expect(palletExit).toMatchObject({
       destinationMapId: 'route-1',
@@ -138,5 +149,61 @@ describe('worldMap', () => {
       destination: { x: 7, y: 42 },
       facing: 'up',
     });
+    expect(routeExit).toMatchObject({
+      destinationMapId: 'viridian-forest',
+      destination: { x: 7, y: 1 },
+      facing: 'down',
+    });
+    expect(forestReturn).toMatchObject({
+      destinationMapId: 'route-1',
+      destination: { x: 7, y: 30 },
+      facing: 'up',
+    });
+  });
+
+  it('keeps every placed run interaction on a walkable tile', () => {
+    for (const map of Object.values(WORLD_MAPS)) {
+      for (const warp of map.warps) {
+        const destinationMap = getWorldMap(warp.destinationMapId);
+        expect(map.collision[warp.source.y][warp.source.x]).toBe(false);
+        expect(destinationMap.collision[warp.destination.y][warp.destination.x]).toBe(false);
+      }
+
+      for (const loot of map.loot) {
+        expect(map.collision[loot.position.y][loot.position.x]).toBe(false);
+      }
+    }
+
+    for (const trainer of createRunTrainerEncounters()) {
+      const map = getWorldMap(trainer.mapId);
+      expect(map.collision[trainer.position.y][trainer.position.x]).toBe(false);
+    }
+
+    for (const extraction of EXTRACTION_POINTS) {
+      const map = getWorldMap(extraction.mapId);
+      expect(map.collision[extraction.position.y][extraction.position.x]).toBe(false);
+    }
+  });
+
+  it('has a fully connected map graph with a route back to every area', () => {
+    const mapIds = Object.keys(WORLD_MAPS);
+    const reachableFrom = (start: string): Set<string> => {
+      const visited = new Set<string>([start]);
+      const pending = [start];
+      while (pending.length > 0) {
+        const current = pending.shift()!;
+        for (const warp of WORLD_MAPS[current as keyof typeof WORLD_MAPS].warps) {
+          if (!visited.has(warp.destinationMapId)) {
+            visited.add(warp.destinationMapId);
+            pending.push(warp.destinationMapId);
+          }
+        }
+      }
+      return visited;
+    };
+
+    for (const mapId of mapIds) {
+      expect([...reachableFrom(mapId)].sort()).toEqual([...mapIds].sort());
+    }
   });
 });
