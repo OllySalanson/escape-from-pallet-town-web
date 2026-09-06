@@ -549,6 +549,7 @@ export class WorldScene extends Phaser.Scene {
         fontSize: '8px',
         color: '#dbeafe',
         lineSpacing: 3,
+        wordWrap: { width: 148, useAdvancedWrap: true },
       })
       .setStroke('#020617', 2)
       .setScrollFactor(0)
@@ -572,6 +573,13 @@ export class WorldScene extends Phaser.Scene {
         return `${objectiveProgress.complete ? '✓' : '○'} ${objective.description} ${objectiveProgress.current}/${objectiveProgress.target}`;
       }).join('\n'),
     );
+    const hasObjectives = session.objectives.length > 0;
+    const objectivesHeight = Math.max(22, hud.objectivesText.height + 10);
+    hud.objectivesText.setVisible(hasObjectives);
+    hud.objectivesBacking
+      .setVisible(hasObjectives)
+      .setSize(164, objectivesHeight)
+      .setY(24 + objectivesHeight / 2);
 
     if (manager.isEnraged) {
       if (this.timerThreat !== 'enraged') {
