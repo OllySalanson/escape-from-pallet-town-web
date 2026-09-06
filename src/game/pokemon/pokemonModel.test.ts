@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Move } from './Move';
 import { MoveBase, MoveCategory } from './MoveBase';
-import { Pokemon } from './Pokemon';
+import { experienceAwardForDefeat, experienceForLevel, Pokemon } from './Pokemon';
 import { PokemonBase } from './PokemonBase';
 import { PokemonParty } from './PokemonParty';
 import { PokemonType } from './PokemonType';
@@ -59,6 +59,46 @@ describe('Pokemon stat computation', () => {
 
     expect(bulbasaur.stats.hp).toBe(expectedHp(BULBASAUR.baseStats.hp, 12));
     expect(bulbasaur.stats.hp).not.toBe(expectedBattleStat(BULBASAUR.baseStats.hp, 12));
+  });
+});
+
+describe('Pokemon experience and leveling', () => {
+  it('uses an N cubed total experience curve and awards defeated level cubed XP', () => {
+    expect(experienceForLevel(1)).toBe(1);
+    expect(experienceForLevel(5)).toBe(125);
+    expect(experienceForLevel(10)).toBe(1000);
+    expect(experienceAwardForDefeat(10)).toBe(1000);
+  });
+
+  it('levels up by recomputing stats and preserving the gained maximum HP', () => {
+    const charmander = new Pokemon(CHARMANDER, 5);
+    const initialMaxHp = charmander.maxHp;
+    charmander.takeDamage(3);
+
+    const result = charmander.gainExperience(experienceForLevel(6) - charmander.experience);
+
+    expect(result.levelsGained).toEqual([6]);
+    expect(charmander.level).toBe(6);
+    expect(charmander.stats).toEqual({
+      hp: expectedHp(CHARMANDER.baseStats.hp, 6),
+      attack: expectedBattleStat(CHARMANDER.baseStats.attack, 6),
+      defense: expectedBattleStat(CHARMANDER.baseStats.defense, 6),
+      spAttack: expectedBattleStat(CHARMANDER.baseStats.spAttack, 6),
+      spDefense: expectedBattleStat(CHARMANDER.baseStats.spDefense, 6),
+      speed: expectedBattleStat(CHARMANDER.baseStats.speed, 6),
+    });
+    expect(charmander.currentHp).toBe(charmander.maxHp - 3);
+    expect(charmander.maxHp).toBeGreaterThan(initialMaxHp);
+  });
+
+  it('learns moves that unlock during a level-up', () => {
+    const charmander = new Pokemon(CHARMANDER, 6);
+
+    const result = charmander.gainExperience(experienceForLevel(7) - charmander.experience);
+
+    expect(result.levelsGained).toEqual([7]);
+    expect(result.learnedMoves.map((move) => move.name)).toEqual(['Ember']);
+    expect(charmander.moves.map((move) => move.base.name)).toEqual(['Scratch', 'Growl', 'Ember']);
   });
 });
 

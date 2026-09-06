@@ -45,6 +45,7 @@ interface ControlKeys {
 
 export interface WorldSceneData {
   readonly savedGame?: RestoredGame;
+  readonly party?: PokemonParty;
 }
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
@@ -80,6 +81,9 @@ export class WorldScene extends Phaser.Scene {
   public create(data: WorldSceneData = {}): void {
     this.restoreSavedGame(data.savedGame);
     void audioManager.startTheme('overworld');
+    if (data.party) {
+      this.party = data.party;
+    }
     this.createMap();
     this.createEntities();
     this.createPlayer();
