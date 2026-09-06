@@ -47,7 +47,14 @@ export interface BattleState {
 }
 
 export type BattleEvent =
-  | { readonly type: 'used-move'; readonly user: 'player' | 'enemy'; readonly name: string; readonly move: string }
+  | {
+      readonly type: 'used-move';
+      readonly user: 'player' | 'enemy';
+      readonly target?: 'player' | 'enemy';
+      readonly name: string;
+      readonly move: string;
+      readonly damage?: number;
+    }
   | { readonly type: 'missed'; readonly user: 'player' | 'enemy' }
   | { readonly type: 'critical-hit' }
   | { readonly type: 'effectiveness'; readonly multiplier: number }
@@ -213,6 +220,19 @@ export const replacePlayerPokemon = (state: BattleState, pokemon: Pokemon): Batt
   };
 };
 
+/** Writes bounded, battle-owned state back to the matching party Pokemon. */
+export const persistCombatantToPokemon = (combatant: BattleCombatant): void => {
+  combatant.pokemon.currentHp = combatant.currentHp;
+  combatant.pokemon.primaryStatus = combatant.primaryStatus;
+  combatant.pokemon.moves.forEach((move, index) => {
+    const battleMove =
+      combatant.moves.find((candidate) => candidate.base === move.base) ?? combatant.moves[index];
+    if (battleMove) {
+      move.setPp(battleMove.pp);
+    }
+  });
+};
+
 export const resolveEnemyTurn = (state: BattleState, random: RandomSource): TurnResult => {
   if (state.outcome !== 'active') {
     return { state, events: [] };
@@ -299,7 +319,15 @@ const applyMove = (
   };
   let nextState = withCombatants(statusState, user, updatedAttacker, updatedDefender);
   const events: BattleEvent[] = [
-    ...eventPrefix,
+    ...attempted.events,
+    {
+      type: 'used-move',
+      user,
+      target: user === 'player' ? 'enemy' : 'player',
+      name: attackerAfterStatus.pokemon.base.name,
+      move: move.base.name,
+      damage: damage.damage,
+    },
     ...(damage.isCritical ? [{ type: 'critical-hit' } as const] : []),
     ...effectivenessEvents(damage.typeEffectiveness),
   ];

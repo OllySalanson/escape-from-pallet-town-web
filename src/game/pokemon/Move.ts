@@ -26,6 +26,11 @@ export class Move {
     return true;
   }
 
+  /** Synchronizes battle-state PP without allowing invalid values into the party model. */
+  public setPp(value: number): void {
+    this.currentPp = Math.min(this.base.pp, Math.max(0, Math.floor(value)));
+  }
+
   public restorePp(amount?: number): void {
     if (amount === undefined) {
       this.currentPp = this.base.pp;

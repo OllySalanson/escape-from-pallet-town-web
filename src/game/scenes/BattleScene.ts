@@ -9,6 +9,7 @@ import { BULBASAUR, CHARMANDER, getSpeciesById } from '../pokemon/species';
 import {
   createBattleState,
   createTrainerBattleState,
+  persistCombatantToPokemon,
   replacePlayerPokemon,
   resolveCatchAttempt,
   resolveEnemyTurn,
@@ -26,6 +27,12 @@ import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import type { ActiveRunSession, RaidLocation } from '../run/RunSession';
 import { resolveHunterBattleLoss, type HunterState } from '../world/hunter';
+import {
+  combatantLabel,
+  combatPresentationSteps,
+  formatMoveCommand,
+  moveCommandLayout,
+} from './battlePresentation';
 
 type CommandMode = 'main' | 'moves' | 'party' | 'events' | 'finished';
 
@@ -103,6 +110,9 @@ export class BattleScene extends Phaser.Scene {
   private returnLocation: BattleSceneData['returnLocation'];
   private displayedEnemy: PokemonInstance | undefined;
   private isTransitioning = false;
+  private displayedHp = { player: 0, enemy: 0 };
+  private pendingCombatMessages: { readonly event?: BattleEvent; readonly message: string }[] = [];
+  private isPresentingCombatEvents = false;
 
   public constructor() {
     super('battle');
@@ -141,6 +151,10 @@ export class BattleScene extends Phaser.Scene {
     this.drawBackdrop();
     this.drawCombatants();
     this.drawStatusBoxes();
+    this.displayedHp = {
+      player: this.state.player.currentHp,
+      enemy: this.state.enemy.currentHp,
+    };
     this.commandContainer = this.add.container(0, 0).setDepth(10);
     this.dialog = new DialogBox(this, {
       x: 8,
@@ -342,10 +356,7 @@ export class BattleScene extends Phaser.Scene {
             ? ['FIGHT', 'FLEE', 'POKéMON']
             : ['FIGHT', 'POKéMON']
           : ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', 'RUN']
-        : this.state.player.moves.map(
-            (move) =>
-              `${move.base.name.toUpperCase()} ${move.base.type.toUpperCase()} ${move.pp}/${move.base.pp}`,
-          );
+        : this.state.player.moves.map(formatMoveCommand);
     this.commandContainer.add(this.createCommandBox(labels));
     this.selectedCommand = Math.min(this.selectedCommand, labels.length - 1);
     this.updateSelection();
@@ -358,13 +369,17 @@ export class BattleScene extends Phaser.Scene {
     this.commandTexts = labels.map((label, index) => {
       const column = index % 2;
       const row = Math.floor(index / 2);
-      const text = this.add.text(18 + column * 148, 11 + row * 25, label, {
+      const layout = this.mode === 'moves' ? moveCommandLayout(index) : undefined;
+      const text = this.add.text(layout?.x ?? 18 + column * 148, layout?.y ?? 11 + row * 25, label, {
         fontFamily: BATTLE_FONT,
-        fontSize: this.mode === 'moves' ? '13px' : '16px',
+        fontSize: this.mode === 'moves' ? '11px' : '16px',
         color:
           this.mode === 'main' && !this.trainer && index === 1 && this.pokeBalls === 0
             ? '#7a3c3c'
             : '#202020',
+        fixedWidth: layout?.width,
+        fixedHeight: layout?.height,
+        wordWrap: layout ? { width: layout.width } : undefined,
       });
       container.add(text);
       return text;
@@ -538,12 +553,9 @@ export class BattleScene extends Phaser.Scene {
     this.refreshStatusLabels();
     const rewardMessages = this.awardTrainerDefeatExperience(previousState, result.events);
     this.prepareForcedReplacement();
-    this.animateHp(previousState);
-    this.animateCombatEvents(result.events);
-    this.playCombatEffects(result.events, previousState);
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.dialog.showMessages([...result.events.map(eventToMessage), ...rewardMessages]);
+    this.showCombatEvents(result.events, [], rewardMessages);
   }
 
   private throwBall(): void {
@@ -561,7 +573,6 @@ export class BattleScene extends Phaser.Scene {
     }
 
     this.pokeBalls -= 1;
-    const previousState = this.state;
     const result = resolveCatchAttempt(this.state, () => Math.random());
     this.state = result.state;
     let events = result.events;
@@ -575,12 +586,9 @@ export class BattleScene extends Phaser.Scene {
     this.persistActivePokemonHp();
     this.refreshStatusLabels();
     this.prepareForcedReplacement();
-    this.animateHp(previousState);
-    this.animateCombatEvents(events);
-    this.playCombatEffects(events, previousState);
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.dialog.showMessages(events.map(eventToMessage));
+    this.showCombatEvents(events);
   }
 
   private storeCaughtPokemon(): void {
@@ -632,13 +640,9 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.animateHp(switchedState);
-    this.animateCombatEvents(result.events);
-    this.playCombatEffects(result.events, switchedState);
-    this.dialog.showMessages([
+    this.showCombatEvents(result.events, [
       ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
       `Go, ${pokemon.base.name.toUpperCase()}!`,
-      ...result.events.map(eventToMessage),
     ]);
   }
 
@@ -648,8 +652,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private persistActivePokemonHp(): void {
-    this.state.player.pokemon.currentHp = this.state.player.currentHp;
-    this.state.player.pokemon.primaryStatus = this.state.player.primaryStatus;
+    persistCombatantToPokemon(this.state.player);
   }
 
   private refreshStatusLabels(): void {
@@ -677,6 +680,7 @@ export class BattleScene extends Phaser.Scene {
       .setTexture(`pokemon-back-${this.state.player.pokemon.base.dexId}`)
       .setPosition(75, 137)
       .setAlpha(1);
+    this.displayedHp.player = this.state.player.currentHp;
   }
 
   private refreshEnemyCombatant(): void {
@@ -687,33 +691,24 @@ export class BattleScene extends Phaser.Scene {
       .setPosition(245, 68)
       .setAlpha(1);
     this.displayedEnemy = this.state.enemy.pokemon;
+    this.displayedHp.enemy = this.state.enemy.currentHp;
     this.refreshStatusLabels();
   }
 
-  private animateHp(previousState: BattleState): void {
-    this.animateHpBar(
-      this.playerHpBar,
-      previousState.player.currentHp,
-      this.state.player.currentHp,
-      this.state.player.pokemon,
-      true,
-    );
-    this.animateHpBar(
-      this.enemyHpBar,
-      previousState.enemy.currentHp,
-      this.state.enemy.currentHp,
-      this.state.enemy.pokemon,
-      false,
-    );
-  }
-
-  private animateHpBar(
-    bar: Phaser.GameObjects.Graphics,
-    from: number,
-    to: number,
-    pokemon: PokemonInstance,
-    showNumbers: boolean,
-  ): void {
+  private animateHpDelta(user: 'player' | 'enemy', damage: number): void {
+    if (damage <= 0) {
+      return;
+    }
+    const from = this.displayedHp[user];
+    const to = Math.max(0, from - damage);
+    this.displayedHp[user] = to;
+    const pokemon =
+      user === 'player' ? this.state.player.pokemon : (this.displayedEnemy ?? this.state.enemy.pokemon);
+    if (user === 'player' && from > pokemon.maxHp * 0.2 && to > 0 && to <= pokemon.maxHp * 0.2) {
+      audioManager.playLowHpWarning();
+    }
+    const bar = user === 'player' ? this.playerHpBar : this.enemyHpBar;
+    const showNumbers = user === 'player';
     if (from === to) {
       return;
     }
@@ -736,6 +731,14 @@ export class BattleScene extends Phaser.Scene {
   private onMessagesComplete(): void {
     if (this.mode === 'finished') {
       return;
+    }
+
+    if (this.isPresentingCombatEvents) {
+      if (this.pendingCombatMessages.length > 0) {
+        this.showNextCombatMessage();
+        return;
+      }
+      this.isPresentingCombatEvents = false;
     }
 
     if (this.forcedReplacement) {
@@ -816,8 +819,37 @@ export class BattleScene extends Phaser.Scene {
     return this.awardVictoryExperience(previousState.enemy.pokemon);
   }
 
-  private animateCombatEvents(events: readonly BattleEvent[]): void {
-    if (events.some((event) => event.type === 'caught')) {
+  private showCombatEvents(
+    events: readonly BattleEvent[],
+    leadingMessages: readonly string[] = [],
+    trailingMessages: readonly string[] = [],
+  ): void {
+    this.pendingCombatMessages = [
+      ...leadingMessages.map((message) => ({ message })),
+      ...events.map((event) => ({ event, message: eventToMessage(event) })),
+      ...trailingMessages.map((message) => ({ message })),
+    ];
+    this.isPresentingCombatEvents = true;
+    this.showNextCombatMessage();
+  }
+
+  private showNextCombatMessage(): void {
+    const next = this.pendingCombatMessages.shift();
+    if (!next) {
+      return;
+    }
+    if (next.event) {
+      this.presentCombatEvent(next.event);
+    }
+    this.dialog.showMessage(next.message);
+  }
+
+  private presentCombatEvent(event: BattleEvent): void {
+    const step = combatPresentationSteps([event])[0];
+    if (!step) {
+      return;
+    }
+    if (event.type === 'caught') {
       this.cameras.main.flash(180, 255, 255, 255, false);
       this.tweens.add({
         targets: this.enemySprite,
@@ -830,9 +862,9 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const fainted = events.find((event) => event.type === 'fainted');
-    if (fainted?.type === 'fainted') {
-      const sprite = fainted.user === 'player' ? this.playerSprite : this.enemySprite;
+    if (event.type === 'fainted') {
+      const sprite = event.user === 'player' ? this.playerSprite : this.enemySprite;
+      audioManager.playFaint();
       this.tweens.add({
         targets: sprite,
         y: sprite.y + 34,
@@ -843,11 +875,15 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const attack = events.find((event) => event.type === 'used-move');
-    if (attack?.type === 'used-move') {
-      const attacker = attack.user === 'player' ? this.playerSprite : this.enemySprite;
-      const target = attack.user === 'player' ? this.enemySprite : this.playerSprite;
-      const direction = attack.user === 'player' ? 16 : -16;
+    if (event.type === 'enemy-sent-out') {
+      this.refreshEnemyCombatant();
+      return;
+    }
+
+    if (event.type === 'used-move') {
+      const attacker = event.user === 'player' ? this.playerSprite : this.enemySprite;
+      const target = event.user === 'player' ? this.enemySprite : this.playerSprite;
+      const direction = event.user === 'player' ? 16 : -16;
       this.tweens.add({
         targets: attacker,
         x: attacker.x + direction,
@@ -864,36 +900,22 @@ export class BattleScene extends Phaser.Scene {
             repeat: 1,
             onComplete: () => target.clearTint(),
           });
-          this.cameras.main.shake(
-            events.some((event) => event.type === 'critical-hit') ? 120 : 60,
-            events.some((event) => event.type === 'critical-hit') ? 0.008 : 0.003,
-          );
+          this.cameras.main.shake(60, 0.003);
+          if (step.target) {
+            this.animateHpDelta(step.target, step.hpDelta);
+          }
         },
       });
-    }
-  }
-
-  private playCombatEffects(events: readonly BattleEvent[], previousState: BattleState): void {
-    const hasStrongHit = events.some(
-      (event) =>
-        event.type === 'critical-hit' || (event.type === 'effectiveness' && event.multiplier > 1),
-    );
-    if (hasStrongHit) {
-      audioManager.playStrongHit();
-    } else if (events.some((event) => event.type === 'used-move')) {
       audioManager.playAttackHit();
+      return;
     }
 
-    if (events.some((event) => event.type === 'fainted')) {
-      audioManager.playFaint();
+    if (event.type === 'critical-hit') {
+      audioManager.playStrongHit();
     }
 
-    const crossedLowHpThreshold =
-      previousState.player.currentHp > previousState.player.pokemon.maxHp * 0.2 &&
-      this.state.player.currentHp > 0 &&
-      this.state.player.currentHp <= this.state.player.pokemon.maxHp * 0.2;
-    if (crossedLowHpThreshold) {
-      audioManager.playLowHpWarning();
+    if (step.target) {
+      this.animateHpDelta(step.target, step.hpDelta);
     }
   }
 
@@ -985,7 +1007,7 @@ function formatWipeSummary(
 const eventToMessage = (event: BattleEvent): string => {
   switch (event.type) {
     case 'used-move':
-      return `${event.name} used ${event.move}!`;
+      return `${combatantLabel(event.user)} ${event.name.toUpperCase()} used ${event.move.toUpperCase()}!`;
     case 'missed':
       return 'The attack missed!';
     case 'critical-hit':
@@ -1014,7 +1036,7 @@ const eventToMessage = (event: BattleEvent): string => {
           ? `${event.name} thawed out!`
           : `${event.name} snapped out of confusion!`;
     case 'confusion-self-hit':
-      return `${event.name} hurt itself in its confusion!`;
+      return `${combatantLabel(event.user)} ${event.name.toUpperCase()} hurt itself in confusion!`;
     case 'stat-stage-changed':
       return `${event.name}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
     case 'ball-thrown':

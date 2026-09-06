@@ -10,6 +10,7 @@ import {
   createBattleState,
   createTrainerBattleState,
   getCatchChance,
+  persistCombatantToPokemon,
   replacePlayerPokemon,
   resolveCatchAttempt,
   resolveEnemyTurn,
@@ -202,6 +203,23 @@ describe('battle turn resolution', () => {
     expect(charmander.moves[2]?.pp).toBe(EMBER.pp);
   });
 
+  it('identifies same-species attack targets and preserves their independent HP deltas', () => {
+    const player = new Pokemon(BULBASAUR, 10);
+    const enemy = new Pokemon(BULBASAUR, 10);
+    const result = resolveTurn(createBattleState(player, enemy), 2, maximumRandom);
+    const attacks = result.events.filter((event) => event.type === 'used-move');
+
+    expect(attacks).toHaveLength(2);
+    const [playerAttack, enemyAttack] = attacks;
+    if (!playerAttack || !enemyAttack || playerAttack.damage === undefined || enemyAttack.damage === undefined) {
+      throw new Error('Expected both Bulbasaur attacks to have damage metadata.');
+    }
+    expect(playerAttack).toMatchObject({ user: 'player', target: 'enemy', name: 'Bulbasaur' });
+    expect(enemyAttack).toMatchObject({ user: 'enemy', target: 'player', name: 'Bulbasaur' });
+    expect(result.state.enemy.currentHp).toBe(enemy.maxHp - playerAttack.damage);
+    expect(result.state.player.currentHp).toBe(player.maxHp - enemyAttack.damage);
+  });
+
   it('ends the battle immediately when the faster enemy causes a faint', () => {
     const pidgey = new Pokemon(PIDGEY, 10);
     const pikachu = new Pokemon(PIKACHU, 10);
@@ -285,6 +303,42 @@ describe('battle turn resolution', () => {
 
     expect(result.events).toContainEqual({ type: 'missed', user: 'player' });
     expect(result.state.enemy.currentHp).toBe(state.enemy.currentHp);
+    expect(result.state.player.moves[0]?.pp).toBe(9);
+  });
+
+  it('does not spend PP when a status prevents an action', () => {
+    const initial = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
+    const state = { ...initial, player: { ...initial.player, primaryStatus: PrimaryStatus.Paralysis } };
+    const result = resolveTurn(state, 0, () => 0);
+
+    expect(result.events).toContainEqual({
+      type: 'status-prevented',
+      user: 'player',
+      name: 'Charmander',
+      status: PrimaryStatus.Paralysis,
+    });
+    expect(result.state.player.moves[0]?.pp).toBe(state.player.moves[0]?.pp);
+  });
+
+  it('persists bounded PP for the active party member across a switch or battle return', () => {
+    const player = new Pokemon(CHARMANDER, 10);
+    const initial = createBattleState(player, new Pokemon(BULBASAUR, 10));
+    const afterTurn = resolveTurn(initial, 0, maximumRandom).state;
+    const initialPp = initial.player.moves[0]?.pp;
+    if (initialPp === undefined) {
+      throw new Error('Charmander should have a first move.');
+    }
+
+    persistCombatantToPokemon(afterTurn.player);
+    expect(player.moves[0]?.pp).toBe(afterTurn.player.moves[0]?.pp);
+
+    const pidgey = new Pokemon(PIDGEY, 10);
+    const switched = replacePlayerPokemon(afterTurn, pidgey);
+    const afterSwitch = resolveEnemyTurn(switched, maximumRandom).state;
+    persistCombatantToPokemon(afterSwitch.player);
+    persistCombatantToPokemon(afterTurn.player);
+    expect(player.moves[0]?.pp).toBe(initialPp - 1);
+    expect(pidgey.moves[0]?.pp).toBe(afterSwitch.player.moves[0]?.pp);
   });
 });
 
