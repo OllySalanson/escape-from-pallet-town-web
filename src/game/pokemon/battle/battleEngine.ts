@@ -82,7 +82,7 @@ export interface CatchAttempt {
 
 /**
  * Catch chance is a deliberately simple, visible rule for the extraction loop:
- * 15% at full HP, rising linearly by up to 60% as HP falls, plus a 25% bonus
+ * 20% at full HP, rising linearly by up to 60% as HP falls, plus a 25% bonus
  * for sleep/freeze or 15% for paralysis/poison/burn, then the ball modifier.
  * The result is capped at 95%, so every throw retains a small amount of risk.
  */
@@ -99,7 +99,7 @@ export const getCatchChance = (
       : primaryStatus
         ? 0.15
         : 0;
-  return Math.min(0.95, Math.max(0, (0.15 + (1 - hpFraction) * 0.6 + statusBonus) * ballModifier));
+  return Math.min(0.95, Math.max(0, (0.2 + (1 - hpFraction) * 0.6 + statusBonus) * ballModifier));
 };
 
 export const attemptCatch = (

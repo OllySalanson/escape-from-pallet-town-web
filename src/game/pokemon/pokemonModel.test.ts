@@ -63,11 +63,11 @@ describe('Pokemon stat computation', () => {
 });
 
 describe('Pokemon experience and leveling', () => {
-  it('uses an N cubed total experience curve and awards defeated level cubed XP', () => {
+  it('uses an N cubed total experience curve and awards half the defeated level-cubed XP', () => {
     expect(experienceForLevel(1)).toBe(1);
     expect(experienceForLevel(5)).toBe(125);
     expect(experienceForLevel(10)).toBe(1000);
-    expect(experienceAwardForDefeat(10)).toBe(1000);
+    expect(experienceAwardForDefeat(10)).toBe(500);
   });
 
   it('levels up by recomputing stats and preserving the gained maximum HP', () => {

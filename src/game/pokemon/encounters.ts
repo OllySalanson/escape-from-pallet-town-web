@@ -16,7 +16,7 @@ export interface WildEncounterTable {
  * clearly flagged Gen-1-style fallback.
  */
 export const PALLET_TALL_GRASS: WildEncounterTable = {
-  stepEncounterRate: 0.1,
+  stepEncounterRate: 0.08,
   entries: [
     { speciesId: 'bulbasaur', minLevel: 5, maxLevel: 5, weight: 2 },
     { speciesId: 'bulbasaur', minLevel: 7, maxLevel: 7, weight: 3 },
@@ -25,7 +25,7 @@ export const PALLET_TALL_GRASS: WildEncounterTable = {
 
 /** Denser, more varied encounters reward reaching Viridian Forest. */
 export const VIRIDIAN_FOREST_TALL_GRASS: WildEncounterTable = {
-  stepEncounterRate: 0.13,
+  stepEncounterRate: 0.1,
   entries: [
     { speciesId: 'pidgey', minLevel: 7, maxLevel: 9, weight: 4 },
     { speciesId: 'bulbasaur', minLevel: 8, maxLevel: 10, weight: 3 },

@@ -15,16 +15,16 @@ import { createSeededRng } from './rng';
 
 export const RUN_GENERATION_BOUNDS = {
   encounterLevelVariance: 1,
-  encounterRateMinimum: 0.06,
-  encounterRateMaximum: 0.18,
+  encounterRateMinimum: 0.05,
+  encounterRateMaximum: 0.14,
   extractionUnlockMinimumMs: 0,
-  extractionUnlockMaximumMs: 90_000,
-  hunterSpawnDelayMinimumMs: 30_000,
-  hunterSpawnDelayMaximumMs: 60_000,
+  extractionUnlockMaximumMs: 75_000,
+  hunterSpawnDelayMinimumMs: 55_000,
+  hunterSpawnDelayMaximumMs: 75_000,
   hunterAggressionMinimum: 1,
-  hunterAggressionMaximum: 2,
-  hunterTeamTierMinimum: -1,
-  hunterTeamTierMaximum: 1,
+  hunterAggressionMaximum: 1,
+  hunterTeamTierMinimum: 0,
+  hunterTeamTierMaximum: 0,
 } as const;
 
 export interface HunterTuning {
@@ -180,7 +180,8 @@ function generateLoot(
 ): Record<WorldMapId, readonly WorldLoot[]> {
   const generatedByMap = {} as Record<WorldMapId, readonly WorldLoot[]>;
   for (const map of Object.values(maps)) {
-    const count = rng.int(1, map.loot.length);
+    // At least half a map's loot is present, so exploring is reliably worth the risk.
+    const count = rng.int(Math.ceil(map.loot.length / 2), map.loot.length);
     const items = rng.shuffle(map.loot).slice(0, count);
     const candidates = rng.shuffle(validTiles(map, reservedTiles.get(map.id)));
     const generated = items.map((item, index) => {

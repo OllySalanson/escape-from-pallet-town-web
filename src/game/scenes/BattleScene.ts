@@ -97,6 +97,7 @@ export class BattleScene extends Phaser.Scene {
   private readonly defeatedTrainerIds = new Set<string>();
   private readonly collectedLootIds = new Set<string>();
   private displayedEnemy: PokemonInstance | undefined;
+  private isTransitioning = false;
 
   public constructor() {
     super('battle');
@@ -128,6 +129,7 @@ export class BattleScene extends Phaser.Scene {
       : createBattleState(playerPokemon, wildPokemon);
     this.participatingPokemon.add(playerPokemon);
     this.cameras.main.setBackgroundColor('#111827');
+    this.cameras.main.fadeIn(180, 0, 0, 0);
     this.drawBackdrop();
     this.drawCombatants();
     this.drawStatusBoxes();
@@ -807,6 +809,19 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private animateCombatEvents(events: readonly BattleEvent[]): void {
+    if (events.some((event) => event.type === 'caught')) {
+      this.cameras.main.flash(180, 255, 255, 255, false);
+      this.tweens.add({
+        targets: this.enemySprite,
+        scaleX: this.enemySprite.scaleX * 0.7,
+        scaleY: this.enemySprite.scaleY * 0.7,
+        alpha: 0,
+        duration: 320,
+        ease: 'Quad.in',
+      });
+      return;
+    }
+
     const fainted = events.find((event) => event.type === 'fainted');
     if (fainted?.type === 'fainted') {
       const sprite = fainted.user === 'player' ? this.playerSprite : this.enemySprite;
@@ -831,8 +846,21 @@ export class BattleScene extends Phaser.Scene {
         yoyo: true,
         duration: 140,
         repeat: 1,
-        onComplete: () =>
-          this.tweens.add({ targets: target, alpha: 0.35, yoyo: true, duration: 90, repeat: 1 }),
+        onComplete: () => {
+          target.setTintFill(0xffffff);
+          this.tweens.add({
+            targets: target,
+            alpha: 0.35,
+            yoyo: true,
+            duration: 90,
+            repeat: 1,
+            onComplete: () => target.clearTint(),
+          });
+          this.cameras.main.shake(
+            events.some((event) => event.type === 'critical-hit') ? 120 : 60,
+            events.some((event) => event.type === 'critical-hit') ? 0.008 : 0.003,
+          );
+        },
       });
     }
   }
@@ -862,6 +890,15 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private returnToWorld(): void {
+    if (this.isTransitioning) {
+      return;
+    }
+    this.isTransitioning = true;
+    this.cameras.main.fadeOut(180, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.completeReturnToWorld());
+  }
+
+  private completeReturnToWorld(): void {
     if (this.pendingHubTransition) {
       if (this.scene.manager.keys.hub) {
         this.scene.start('hub');
@@ -907,6 +944,9 @@ export class BattleScene extends Phaser.Scene {
       this.runSession.broughtItems,
       this.runSession.stashSecureSlot,
     );
+    this.cameras.main.flash(220, 239, 68, 68, false);
+    this.cameras.main.shake(180, 0.009);
+    audioManager.playWipe();
     this.pendingHubTransition = true;
     this.mode = 'finished';
     this.commandContainer.setVisible(false);

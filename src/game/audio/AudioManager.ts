@@ -192,6 +192,24 @@ export class AudioManager {
     );
   }
 
+  public playLootPickup(): void {
+    [523, 659, 784].forEach((frequency, index) =>
+      this.playTone(frequency, 0.06, 'square', 0.06, index * 0.045),
+    );
+  }
+
+  public playExtract(): void {
+    [392, 523, 659, 784, 1047].forEach((frequency, index) =>
+      this.playTone(frequency, 0.1, 'square', 0.075, index * 0.055),
+    );
+  }
+
+  public playWipe(): void {
+    [330, 262, 196].forEach((frequency, index) =>
+      this.playTone(frequency, 0.14, 'sawtooth', 0.08, index * 0.09),
+    );
+  }
+
   private scheduleThemeMeasure(): void {
     if (!this.isThemePlaying || this.muted || this.context === null) {
       return;

@@ -9,7 +9,7 @@ import type { HunterTuning } from '../run/runGeneration';
 import type { WorldMapId } from '../worldMap';
 
 export const HUNTER_ID = 'rival-hunter';
-export const HUNTER_SPAWN_MS = 45_000;
+export const HUNTER_SPAWN_MS = 60_000;
 export const HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP = 2;
 export const DEFAULT_HUNTER_TUNING: HunterTuning = {
   spawnDelayMs: HUNTER_SPAWN_MS,
@@ -18,11 +18,11 @@ export const DEFAULT_HUNTER_TUNING: HunterTuning = {
 };
 
 const HUNTER_TIERS = [
-  { startsAtMs: 0, level: 7, party: [PIDGEY] },
-  { startsAtMs: 90_000, level: 10, party: [PIDGEY, BULBASAUR] },
-  { startsAtMs: 180_000, level: 13, party: [PIDGEY, BULBASAUR, PIKACHU] },
+  { startsAtMs: 0, level: 6, party: [PIDGEY] },
+  { startsAtMs: 120_000, level: 9, party: [PIDGEY, BULBASAUR] },
+  { startsAtMs: 240_000, level: 12, party: [PIDGEY, BULBASAUR, PIKACHU] },
 ] as const;
-const HUNTER_ENRAGED_TIER = { level: 16, party: [PIDGEY, BULBASAUR, PIKACHU] } as const;
+const HUNTER_ENRAGED_TIER = { level: 15, party: [PIDGEY, BULBASAUR, PIKACHU] } as const;
 
 export interface HunterState {
   readonly spawned: boolean;
