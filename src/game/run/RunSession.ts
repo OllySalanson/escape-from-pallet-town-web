@@ -42,6 +42,8 @@ export interface ActiveRunSession {
   /** The seed and runtime stream keep world events reproducible after generation. */
   readonly seed?: number;
   readonly rng?: SeededRng;
+  /** Kept in the live session so battle returns do not replay onboarding. */
+  firstDeploymentBriefingShown?: boolean;
 }
 
 export function createActiveRunSession(

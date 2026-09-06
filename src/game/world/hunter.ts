@@ -101,6 +101,13 @@ export const chooseHunterPursuitStep = (
 export const isHunterContactingPlayer = (hunter: GridPosition, player: GridPosition): boolean =>
   Math.abs(hunter.x - player.x) + Math.abs(hunter.y - player.y) <= 1;
 
+/** First-contract players must make a navigation choice before pursuit starts. */
+export const isHunterEligibleForFirstContract = (
+  mapId: WorldMapId,
+  hasFirstContract: boolean,
+  hasVisitedFieldStation: boolean,
+): boolean => !hasFirstContract || mapId === 'route-1' || hasVisitedFieldStation;
+
 /** Keeps hunter defeats on the exact secure-slot run-resolution path. */
 export const resolveHunterBattleLoss = (session: ActiveRunSession): RunResult =>
   session.manager.resolveWipe(session.secureSlot);

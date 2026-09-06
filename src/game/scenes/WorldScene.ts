@@ -41,6 +41,7 @@ import {
   DEFAULT_HUNTER_TUNING,
   HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP,
   HUNTER_SPAWN_MS,
+  isHunterEligibleForFirstContract,
   isHunterContactingPlayer,
   type HunterState,
 } from '../world/hunter';
@@ -203,6 +204,7 @@ export class WorldScene extends Phaser.Scene {
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyRunTimerHud());
     }
     this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => this.clearMap());
+    this.showFirstDeploymentBriefing();
   }
 
   public update(_time: number, deltaMs: number): void {
@@ -466,7 +468,7 @@ export class WorldScene extends Phaser.Scene {
         this.add.rectangle(4, 2, 2, 3, 0xfacc15),
       ]);
       const label = this.add
-        .text(0, -16, poi.label, {
+        .text(0, -16, `${poi.label}\nCACHE: ${formatPoiReward(poi)}`, {
           fontFamily: 'monospace',
           fontSize: '7px',
           color: '#e0f2fe',
@@ -615,17 +617,10 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const snapshot = manager.snapshot();
-    const navigationCue = this.firstContractNavigationCue(snapshot.recoveredFieldKit);
-    hud.objectivesText.setText(
-      [
-        ...session.objectives.map((objective) => {
-          const objectiveProgress = objective.progress(snapshot);
-          return `${objectiveProgress.complete ? '✓' : '○'} ${objective.description} ${objectiveProgress.current}/${objectiveProgress.target}`;
-        }),
-        ...(navigationCue ? [`► ${navigationCue}`] : []),
-        'O: FIELD GUIDE',
-      ].join('\n'),
-    );
+    const navigationCue = this.firstContractNavigationCue(snapshot.recoveredFieldKit)
+      ?? session.objectives.find((objective) => !objective.progress(snapshot).complete)?.description
+      ?? 'EXTRACT WITH YOUR HAUL';
+    hud.objectivesText.setText(`► ${navigationCue}\nO: FIELD GUIDE`);
     const hasObjectives = true;
     const objectivesHeight = Math.max(22, hud.objectivesText.height + 10);
     hud.objectivesText.setVisible(hasObjectives);
@@ -834,6 +829,17 @@ export class WorldScene extends Phaser.Scene {
     return `LOST KIT: ${directionTo(this.currentTile, contract.position)}`;
   }
 
+  private showFirstDeploymentBriefing(): void {
+    const session = this.runSession;
+    if (!session?.plan?.contract || session.firstDeploymentBriefingShown) {
+      return;
+    }
+    session.firstDeploymentBriefingShown = true;
+    this.dialogBox.showMessage(
+      'ARROW KEYS / WASD: move. Head SOUTH to Route 1. Press O for the FIELD GUIDE.',
+    );
+  }
+
   private isBlocked(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
@@ -1030,7 +1036,12 @@ export class WorldScene extends Phaser.Scene {
     this.poiSprites.delete(poi!.id);
     this.cameras.main.flash(140, 56, 189, 248, false);
     audioManager.playLootPickup();
-    this.dialogBox.showMessage(`${poi!.label}: supply cache secured. Extract to keep it.`);
+    const reward = poi!.reward
+      .map(({ itemId, quantity }) => `${quantity}× ${ITEMS[itemId].displayName}`)
+      .join(' + ');
+    this.dialogBox.showMessage(
+      `${poi!.label}: ${reward} secured. Detour reward is LOST ON WIPE - extract to bank it.`,
+    );
     return true;
   }
 
@@ -1167,12 +1178,13 @@ export class WorldScene extends Phaser.Scene {
     this.pendingHubTransition = true;
     this.dialogBox.showMessages([
       'EXTRACTED!',
-      formatRunSummary('Banked', snapshot.caughtPokemon, snapshot.foundItems),
+      formatRunSummary('Carried out and banked', snapshot.caughtPokemon, snapshot.foundItems),
       contractResult.granted
-        ? 'Contract complete: South Verge unlocked and 1× super potion secured.'
+        ? 'CONTRACT COMPLETE: South Verge is permanently unlocked. 1× Super Potion is now in your Base stash.'
         : objectiveRewards.length
           ? `Objective rewards secured: ${objectiveRewards.map(({ itemId, quantity }) => `${quantity}× ${itemId}`).join(', ')}.`
           : 'No objectives completed this run.',
+      'Nothing carried was left behind. A wipe would have lost unsecured supplies.',
       saved ? 'Stash secured. Returning to hub.' : 'Stash save unavailable. Returning to hub.',
     ]);
   }
@@ -1268,6 +1280,7 @@ export class WorldScene extends Phaser.Scene {
       this.runSession.manager.phase !== RunPhase.InRun ||
       this.hunterState.spawned ||
       this.hunterState.defeated ||
+      !this.isHunterEligible() ||
       elapsedMs < (this.runSession.plan?.hunter.spawnDelayMs ?? HUNTER_SPAWN_MS)
     ) {
       return;
@@ -1280,6 +1293,14 @@ export class WorldScene extends Phaser.Scene {
     };
     this.createHunterSprite();
     this.dialogBox.showMessage('A RIVAL HUNTER is on your trail!');
+  }
+
+  private isHunterEligible(): boolean {
+    return isHunterEligibleForFirstContract(
+      this.currentMap.id,
+      this.runSession?.plan?.contract !== undefined,
+      this.activatedPoiIds.size > 0,
+    );
   }
 
   private findHunterSpawnTile(): GridPosition {
@@ -1412,4 +1433,10 @@ function directionTo(from: GridPosition, to: GridPosition): string {
   const vertical = to.y === from.y ? '' : to.y > from.y ? 'S' : 'N';
   const direction = `${vertical}${horizontal}`;
   return direction || 'HERE';
+}
+
+function formatPoiReward(poi: { readonly reward: readonly { readonly itemId: ItemId; readonly quantity: number }[] }): string {
+  return poi.reward
+    .map(({ itemId, quantity }) => `${quantity}× ${ITEMS[itemId].displayName.toUpperCase()}`)
+    .join(' + ');
 }
