@@ -8,6 +8,7 @@ import {
   attemptCatch,
   chooseEnemyMove,
   createBattleState,
+  createTrainerBattleState,
   getCatchChance,
   replacePlayerPokemon,
   resolveCatchAttempt,
@@ -328,6 +329,56 @@ describe('catching', () => {
     expect(failedCatch.state.outcome).toBe('active');
     expect(failedCatch.events.at(-1)).toEqual({ type: 'broke-free', name: 'Bulbasaur' });
     expect(enemyTurn.events.some((event) => event.type === 'used-move' && event.user === 'enemy')).toBe(true);
+  });
+});
+
+describe('trainer battles', () => {
+  const trainer = () => ({
+    id: 'test-trainer',
+    name: 'TESTER',
+    party: [new Pokemon(BULBASAUR, 5), new Pokemon(PIDGEY, 5)],
+    defeatText: 'Not bad!',
+  });
+
+  it('sends out the next trainer Pokemon after a faint', () => {
+    const state = createTrainerBattleState(new Pokemon(CHARMANDER, 10), trainer());
+    const weakened = { ...state, enemy: { ...state.enemy, currentHp: 1 } };
+
+    const result = resolveTurn(weakened, 2, maximumRandom);
+
+    expect(result.state.outcome).toBe('active');
+    expect(result.state.enemy.pokemon.base.name).toBe('Pidgey');
+    expect(result.state.enemyPartyIndex).toBe(1);
+    expect(result.events).toContainEqual({ type: 'enemy-sent-out', name: 'Pidgey' });
+  });
+
+  it('wins only after the trainer party is exhausted', () => {
+    const initial = createTrainerBattleState(new Pokemon(CHARMANDER, 10), trainer());
+    const first = resolveTurn({ ...initial, enemy: { ...initial.enemy, currentHp: 1 } }, 2, maximumRandom);
+    const final = resolveTurn({ ...first.state, enemy: { ...first.state.enemy, currentHp: 1 } }, 2, maximumRandom);
+
+    expect(final.state.outcome).toBe('victory');
+    expect(final.events.some((event) => event.type === 'enemy-sent-out')).toBe(false);
+  });
+
+  it('rejects capture attempts against trainer Pokemon', () => {
+    const state = createTrainerBattleState(new Pokemon(CHARMANDER, 10), trainer());
+
+    expect(resolveCatchAttempt(state, () => 0)).toEqual({
+      state,
+      events: [{ type: 'catch-disabled' }],
+    });
+  });
+
+  it('reports defeat when a trainer Pokemon wipes the active player', () => {
+    const initial = createTrainerBattleState(new Pokemon(PIDGEY, 5), trainer());
+    const state = {
+      ...initial,
+      player: { ...initial.player, currentHp: 1 },
+      enemy: { ...initial.enemy, moves: [{ base: TACKLE, pp: TACKLE.pp }] },
+    };
+
+    expect(resolveEnemyTurn(state, maximumRandom).state.outcome).toBe('defeat');
   });
 });
 

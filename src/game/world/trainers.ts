@@ -1,0 +1,51 @@
+import { Pokemon } from '../pokemon';
+import { BULBASAUR, PIDGEY, PIKACHU } from '../pokemon/species';
+import type { TrainerBattle } from '../pokemon/battle/battleEngine';
+import type { Direction, GridPosition } from '../movement/gridMovement';
+import type { WorldMapId } from '../worldMap';
+
+export interface RunTrainerEncounter {
+  readonly mapId: WorldMapId;
+  readonly position: GridPosition;
+  readonly facing: Direction;
+  readonly introLines: readonly string[];
+  readonly trainer: TrainerBattle;
+}
+
+const createTrainer = (
+  id: string,
+  name: string,
+  party: readonly Pokemon[],
+  defeatText: string,
+): TrainerBattle => ({ id, name, party, defeatText });
+
+/**
+ * These encounters are created for each WorldScene so defeated trainers and
+ * battle-only Pokemon state never leak between raids.
+ */
+export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => [
+  {
+    mapId: 'pallet-town',
+    position: { x: 14, y: 26 },
+    facing: 'left',
+    introLines: ['HEY, RUNNER!', 'The grass belongs to the bold!', 'Let me see your team!'],
+    trainer: createTrainer(
+      'grass-scout-lee',
+      'SCOUT LEE',
+      [new Pokemon(PIDGEY, 5), new Pokemon(BULBASAUR, 6)],
+      'Nice footwork. The route is yours... for now.',
+    ),
+  },
+  {
+    mapId: 'route-1',
+    position: { x: 13, y: 18 },
+    facing: 'down',
+    introLines: ['NO ONE loots Route 1 for free!', 'My partner is ready!'],
+    trainer: createTrainer(
+      'route-raider-maya',
+      'RAIDER MAYA',
+      [new Pokemon(PIKACHU, 7), new Pokemon(PIDGEY, 7)],
+      'You earned your way past me. Keep moving!',
+    ),
+  },
+];

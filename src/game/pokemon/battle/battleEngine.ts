@@ -28,10 +28,21 @@ export interface BattleCombatant {
   readonly statStages: StatStages;
 }
 
+export interface TrainerBattle {
+  readonly id: string;
+  readonly name: string;
+  readonly party: readonly Pokemon[];
+  readonly sprite?: string;
+  readonly defeatText?: string;
+  readonly prize?: string;
+}
+
 export interface BattleState {
   readonly player: BattleCombatant;
   readonly enemy: BattleCombatant;
   readonly playerStatStages: ReadonlyMap<Pokemon, StatStages>;
+  readonly trainer?: TrainerBattle;
+  readonly enemyPartyIndex: number;
   readonly outcome: 'active' | 'victory' | 'defeat' | 'caught';
 }
 
@@ -52,7 +63,9 @@ export type BattleEvent =
   | { readonly type: 'ball-thrown'; readonly name: string }
   | { readonly type: 'catch-shake'; readonly count: number }
   | { readonly type: 'caught'; readonly name: string }
-  | { readonly type: 'broke-free'; readonly name: string };
+  | { readonly type: 'broke-free'; readonly name: string }
+  | { readonly type: 'catch-disabled' }
+  | { readonly type: 'enemy-sent-out'; readonly name: string };
 
 export type StatusName = PrimaryStatusType | 'confusion';
 
@@ -119,9 +132,23 @@ export const createBattleState = (player: Pokemon, enemy: Pokemon): BattleState 
     player: playerCombatant,
     enemy: toCombatant(enemy),
     playerStatStages: new Map([[player, playerCombatant.statStages]]),
+    enemyPartyIndex: 0,
     outcome: player.isFainted ? 'defeat' : enemy.isFainted ? 'victory' : 'active',
   };
 };
+
+export const createTrainerBattleState = (player: Pokemon, trainer: TrainerBattle): BattleState => {
+  const firstEnemy = trainer.party[0];
+  if (!firstEnemy) {
+    throw new Error('A trainer battle requires at least one Pokemon.');
+  }
+  return {
+    ...createBattleState(player, firstEnemy),
+    trainer,
+  };
+};
+
+export const canCatchEnemy = (state: BattleState): boolean => state.trainer === undefined;
 
 export const chooseEnemyMove = (combatant: BattleCombatant, random: RandomSource): number | null => {
   const usableMoves = combatant.moves
@@ -203,6 +230,9 @@ export const resolveCatchAttempt = (
   if (state.outcome !== 'active') {
     return { state, events: [] };
   }
+  if (!canCatchEnemy(state)) {
+    return { state, events: [{ type: 'catch-disabled' }] };
+  }
 
   const attempt = attemptCatch(state.enemy, random, ballModifier);
   const name = state.enemy.pokemon.base.name;
@@ -274,22 +304,23 @@ const applyMove = (
     ...effectivenessEvents(damage.typeEffectiveness),
   ];
 
-  if (updatedDefender.currentHp === 0) {
+  const defenderFainted = updatedDefender.currentHp === 0;
+  if (defenderFainted) {
     const defenderUser = user === 'player' ? 'enemy' : 'player';
-    nextState = {
-      ...nextState,
-      outcome: defenderUser === 'enemy' ? 'victory' : 'defeat',
-    };
+    nextState = resolveFaint(nextState, defenderUser);
     events.push({ type: 'fainted', user: defenderUser, name: defenderAfterStatus.pokemon.base.name });
+    if (defenderUser === 'enemy' && nextState.outcome === 'active') {
+      events.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
+    }
   }
 
   const status = statusEffectForMove(move.base.name);
-  if (status && nextState.outcome === 'active') {
+  if (status && !defenderFainted && nextState.outcome === 'active') {
     const applied = applyStatus(nextState, user === 'player' ? 'enemy' : 'player', status, random);
     nextState = applied.state;
     events.push(...applied.events);
   }
-  if (move.base.boosts.length > 0 && nextState.outcome === 'active') {
+  if (move.base.boosts.length > 0 && !defenderFainted && nextState.outcome === 'active') {
     const boosted = applyStatBoosts(nextState, user === 'player' ? 'enemy' : 'player', move.base.boosts);
     nextState = boosted.state;
     events.push(...boosted.events);
@@ -339,8 +370,11 @@ const resolveStatusBeforeMove = (
       state = updateCombatant(state, user, hurt);
       events.push({ type: 'confusion-self-hit', user, name, damage });
       if (hurt.currentHp === 0) {
-        state = { ...state, outcome: user === 'player' ? 'defeat' : 'victory' };
+        state = resolveFaint(state, user);
         events.push({ type: 'fainted', user, name });
+        if (user === 'enemy' && state.outcome === 'active') {
+          events.push({ type: 'enemy-sent-out', name: state.enemy.pokemon.base.name });
+        }
       }
       if (confused.confusionTurns === 0) {
         state = updateCombatant(state, user, { ...hurt, confusionTurns: 0 });
@@ -377,8 +411,11 @@ const applyEndOfAction = (
     { type: 'status-damage', user, name: combatant.pokemon.base.name, status: combatant.primaryStatus, damage },
   ];
   if (updated.currentHp === 0) {
-    nextState = { ...nextState, outcome: user === 'player' ? 'defeat' : 'victory' };
+    nextState = resolveFaint(nextState, user);
     nextEvents.push({ type: 'fainted', user, name: combatant.pokemon.base.name });
+    if (user === 'enemy' && nextState.outcome === 'active') {
+      nextEvents.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
+    }
   }
   return { state: nextState, events: nextEvents };
 };
@@ -413,6 +450,25 @@ const updateCombatant = (state: BattleState, user: 'player' | 'enemy', combatant
   user === 'player'
     ? { ...state, player: combatant, playerStatStages: new Map(state.playerStatStages).set(combatant.pokemon, combatant.statStages) }
     : { ...state, enemy: combatant };
+
+const resolveFaint = (state: BattleState, faintedUser: 'player' | 'enemy'): BattleState => {
+  if (faintedUser !== 'enemy' || !state.trainer) {
+    return { ...state, outcome: faintedUser === 'enemy' ? 'victory' : 'defeat' };
+  }
+
+  const nextPartyIndex = state.enemyPartyIndex + 1;
+  const nextPokemon = state.trainer.party[nextPartyIndex];
+  if (!nextPokemon) {
+    return { ...state, outcome: 'victory' };
+  }
+
+  return {
+    ...state,
+    enemy: toCombatant(nextPokemon),
+    enemyPartyIndex: nextPartyIndex,
+    outcome: 'active',
+  };
+};
 
 const randomTurnCount = (random: RandomSource, maximum: number): number =>
   Math.floor(clampRandom(random()) * maximum) + 1;
