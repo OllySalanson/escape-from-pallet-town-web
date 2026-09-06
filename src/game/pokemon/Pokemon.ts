@@ -1,5 +1,6 @@
 import { Move } from './Move';
 import type { PokemonBase, PokemonStats } from './PokemonBase';
+import type { PrimaryStatus } from './battle/status';
 
 export type CombatStats = PokemonStats;
 
@@ -12,6 +13,7 @@ export class Pokemon {
   public readonly moves: Move[];
 
   public currentHp: number;
+  public primaryStatus: PrimaryStatus | null = null;
 
   public constructor(base: PokemonBase, level: number) {
     if (level < 1) {

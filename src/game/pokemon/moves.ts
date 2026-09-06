@@ -47,7 +47,7 @@ export const VINE_WHIP = new MoveBase({
 });
 
 export const POISON_POWDER = new MoveBase({
-  name: 'Poision Powder',
+  name: 'Poison Powder',
   type: PokemonType.Poison,
   power: 0,
   accuracy: 100,
