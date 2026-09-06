@@ -40,6 +40,7 @@ import { getWalkAnimationKey } from './playerFrames';
 import { CHARMANDER, Pokemon, PokemonParty } from './pokemon';
 import { PrimaryStatus } from './pokemon/battle/status';
 import { BootScene } from './scenes/BootScene';
+import { HubScene } from './scenes/HubScene';
 import { TitleScene } from './scenes/TitleScene';
 import { WorldScene } from './scenes/WorldScene';
 
@@ -47,7 +48,7 @@ describe('game start flow', () => {
   it('auto-starts Boot so World prerequisites are ready before Title can start it', () => {
     const scenes = gameConfig.scene as unknown[];
 
-    expect(scenes).toEqual(expect.arrayContaining([BootScene, TitleScene, WorldScene]));
+    expect(scenes).toEqual(expect.arrayContaining([BootScene, TitleScene, HubScene, WorldScene]));
     expect(scenes[0]).toBe(BootScene);
 
     const textures = new Set<string>();

@@ -73,6 +73,8 @@ interface ControlKeys {
 export interface WorldSceneData {
   readonly savedGame?: RestoredGame;
   readonly party?: PokemonParty;
+  /** The consumable items deployed from the hub for an extraction raid. */
+  readonly bag?: Bag;
   readonly pokeBalls?: number;
   readonly caughtPokemonStash?: Pokemon[];
   /** Present only while playing an extraction raid launched by the hub. */
@@ -125,6 +127,9 @@ export class WorldScene extends Phaser.Scene {
     void audioManager.startTheme('overworld');
     if (data.party) {
       this.party = data.party;
+    }
+    if (data.bag) {
+      this.bag = data.bag;
     }
     if (data.pokeBalls !== undefined) {
       this.pokeBalls = data.pokeBalls;
@@ -573,11 +578,14 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private saveGame(): void {
-    new SaveManager().save({
+    const saveManager = new SaveManager();
+    const existingGame = saveManager.load();
+    saveManager.save({
       party: this.party,
       mapId: this.currentMap.id,
       position: this.currentTile,
       bag: this.bag,
+      stash: existingGame?.stash,
     });
   }
 
@@ -608,15 +616,16 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    const result = this.runSession.manager.resolveEscape();
+    this.runSession.manager.resolveEscape();
+    const snapshot = this.runSession.manager.snapshot();
     const saved = new SaveManager().bankRun({
-      pokemon: result.bankedPokemon,
-      items: result.bankedItems,
+      pokemon: snapshot.caughtPokemon,
+      items: snapshot.foundItems,
     });
     this.pendingHubTransition = true;
     this.dialogBox.showMessages([
       'EXTRACTED!',
-      formatRunSummary('Banked', result.bankedPokemon, result.bankedItems),
+      formatRunSummary('Banked', snapshot.caughtPokemon, snapshot.foundItems),
       saved ? 'Stash secured. Returning to hub.' : 'Stash save unavailable. Returning to hub.',
     ]);
   }
