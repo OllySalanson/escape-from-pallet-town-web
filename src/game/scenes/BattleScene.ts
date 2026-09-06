@@ -11,10 +11,25 @@ import {
 import { DialogBox } from '../ui/DialogBox';
 import type { WildEncounter } from '../world/wildEncounters';
 
-type CommandMode = 'main' | 'moves' | 'events' | 'finished';
+type CommandMode = 'main' | 'moves' | 'placeholder' | 'events' | 'finished';
+
+type BattleAction =
+  | { readonly type: 'choose-fight' }
+  | { readonly type: 'choose-bag' }
+  | { readonly type: 'choose-pokemon' }
+  | { readonly type: 'choose-run' }
+  | { readonly type: 'use-move'; readonly moveIndex: number };
+
+type PlaceholderCommand = Extract<BattleAction, { type: 'choose-bag' | 'choose-pokemon' }>;
 
 const COMMAND_Y = 174;
 const BATTLE_FONT = '"Orange Kid", monospace';
+const MAIN_COMMAND_ACTIONS = [
+  { type: 'choose-fight' },
+  { type: 'choose-bag' },
+  { type: 'choose-pokemon' },
+  { type: 'choose-run' },
+] as const satisfies readonly BattleAction[];
 
 export interface BattleSceneData {
   wild?: WildEncounter;
@@ -34,8 +49,11 @@ export class BattleScene extends Phaser.Scene {
   private selectedCommand = 0;
   private commandContainer!: Phaser.GameObjects.Container;
   private confirmKey!: Phaser.Input.Keyboard.Key;
+  private leftKey!: Phaser.Input.Keyboard.Key;
+  private rightKey!: Phaser.Input.Keyboard.Key;
   private upKey!: Phaser.Input.Keyboard.Key;
   private downKey!: Phaser.Input.Keyboard.Key;
+  private backKey!: Phaser.Input.Keyboard.Key;
   private launchedFromWorld = false;
 
   public constructor() {
@@ -72,8 +90,13 @@ export class BattleScene extends Phaser.Scene {
 
     this.confirmKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER).on('down', () => this.confirm());
+    this.leftKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
+    this.rightKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
     this.upKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
     this.downKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
+    this.backKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.BACKSPACE);
+    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.goBack());
+    this.mode = 'events';
     this.dialog.showMessage(`A wild ${wildPokemon.base.name.toUpperCase()} appeared!`);
   }
 
@@ -86,10 +109,16 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.upKey)) {
-      this.moveSelection(-1);
+    if (Phaser.Input.Keyboard.JustDown(this.backKey)) {
+      this.goBack();
+    } else if (Phaser.Input.Keyboard.JustDown(this.leftKey)) {
+      this.moveSelection('left');
+    } else if (Phaser.Input.Keyboard.JustDown(this.rightKey)) {
+      this.moveSelection('right');
+    } else if (Phaser.Input.Keyboard.JustDown(this.upKey)) {
+      this.moveSelection('up');
     } else if (Phaser.Input.Keyboard.JustDown(this.downKey)) {
-      this.moveSelection(1);
+      this.moveSelection('down');
     } else if (Phaser.Input.Keyboard.JustDown(this.confirmKey)) {
       this.confirm();
     }
@@ -169,10 +198,18 @@ export class BattleScene extends Phaser.Scene {
   private showCommands(): void {
     this.commandContainer.removeAll(true);
     this.commandContainer.setVisible(true);
-    const isMain = this.mode === 'main';
-    const labels = isMain
-      ? ['FIGHT', 'BAG', 'POKéMON', 'RUN']
-      : this.state.player.moves.map((move) => `${move.base.name}  ${move.pp}/${move.base.pp}`);
+    if (this.mode === 'placeholder') {
+      this.commandTexts = [];
+      this.commandContainer.add(this.createPlaceholderBox());
+      return;
+    }
+
+    const labels =
+      this.mode === 'main'
+        ? ['FIGHT', 'BAG', 'POKéMON', 'RUN']
+        : this.state.player.moves.map(
+            (move) => `${move.base.name.toUpperCase()} ${move.base.type.toUpperCase()} ${move.pp}/${move.base.pp}`,
+          );
     this.commandContainer.add(this.createCommandBox(labels));
     this.selectedCommand = Math.min(this.selectedCommand, labels.length - 1);
     this.updateSelection();
@@ -187,7 +224,7 @@ export class BattleScene extends Phaser.Scene {
       const row = Math.floor(index / 2);
       const text = this.add.text(18 + column * 148, 11 + row * 25, label, {
         fontFamily: BATTLE_FONT,
-        fontSize: '16px',
+        fontSize: this.mode === 'moves' ? '13px' : '16px',
         color: '#202020',
       });
       container.add(text);
@@ -196,9 +233,40 @@ export class BattleScene extends Phaser.Scene {
     return container;
   }
 
-  private moveSelection(direction: number): void {
+  private createPlaceholderBox(): Phaser.GameObjects.Container {
+    const container = this.add.container(0, COMMAND_Y);
+    container.add(this.add.image(160, 32, 'battle-dialog').setDisplaySize(320, 64));
+    const command = this.selectedCommand === 1 ? 'BAG' : 'POKéMON';
+    container.add(
+      this.add.text(18, 10, `${command}\nComing soon!  BACK: return`, {
+        fontFamily: BATTLE_FONT,
+        fontSize: '16px',
+        color: '#202020',
+        lineSpacing: 7,
+      }),
+    );
+    return container;
+  }
+
+  private moveSelection(direction: 'left' | 'right' | 'up' | 'down'): void {
     const count = this.commandTexts.length;
-    this.selectedCommand = (this.selectedCommand + direction + count) % count;
+    if (count === 0) {
+      return;
+    }
+
+    const columns = 2;
+    const row = Math.floor(this.selectedCommand / columns);
+    const column = this.selectedCommand % columns;
+    const rows = Math.ceil(count / columns);
+    const nextRow =
+      direction === 'up' ? (row + rows - 1) % rows : direction === 'down' ? (row + 1) % rows : row;
+    const nextColumn =
+      direction === 'left'
+        ? (column + columns - 1) % columns
+        : direction === 'right'
+          ? (column + 1) % columns
+          : column;
+    this.selectedCommand = Math.min(nextRow * columns + nextColumn, count - 1);
     this.updateSelection();
   }
 
@@ -222,15 +290,58 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.mode === 'main') {
-      if (this.selectedCommand === 0) {
-        this.mode = 'moves';
-        this.selectedCommand = 0;
-        this.showCommands();
-      }
+      this.dispatchAction(MAIN_COMMAND_ACTIONS[this.selectedCommand]);
       return;
     }
 
-    const result = resolveTurn(this.state, this.selectedCommand, () => Math.random());
+    if (this.mode === 'moves') {
+      this.dispatchAction({ type: 'use-move', moveIndex: this.selectedCommand });
+    }
+  }
+
+  private dispatchAction(action: BattleAction): void {
+    switch (action.type) {
+      case 'choose-fight':
+        this.mode = 'moves';
+        this.selectedCommand = 0;
+        this.showCommands();
+        return;
+      case 'choose-bag':
+      case 'choose-pokemon':
+        this.showPlaceholder(action);
+        return;
+      case 'choose-run':
+        this.flee();
+        return;
+      case 'use-move':
+        this.useMove(action.moveIndex);
+    }
+  }
+
+  private showPlaceholder(action: PlaceholderCommand): void {
+    this.mode = 'placeholder';
+    this.selectedCommand = action.type === 'choose-bag' ? 1 : 2;
+    this.showCommands();
+  }
+
+  private goBack(): void {
+    if (this.mode !== 'moves' && this.mode !== 'placeholder') {
+      return;
+    }
+    this.mode = 'main';
+    this.selectedCommand = 0;
+    this.showCommands();
+  }
+
+  private flee(): void {
+    // Battles currently only support wild encounters, so fleeing always succeeds.
+    this.mode = 'finished';
+    this.commandContainer.setVisible(false);
+    this.dialog.showMessage('Got away safely!');
+  }
+
+  private useMove(moveIndex: number): void {
+    const result = resolveTurn(this.state, moveIndex, () => Math.random());
     if (result.events.length === 0) {
       return;
     }
