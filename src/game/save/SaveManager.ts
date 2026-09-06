@@ -6,7 +6,7 @@ import { Stash, type RunResult, type SecureSlot } from '../stash/Stash';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 const PRIMARY_STATUSES = new Set<PrimaryStatus>([
   'poison',
   'burn',
@@ -34,6 +34,16 @@ export interface SavedStash {
   readonly items: BagContents;
 }
 
+export interface RaidProgress {
+  readonly firstContractExtracted: boolean;
+  readonly unlockedInsertions: readonly string[];
+}
+
+export const DEFAULT_RAID_PROGRESS: RaidProgress = {
+  firstContractExtracted: false,
+  unlockedInsertions: ['town-square'],
+};
+
 export interface SaveData {
   readonly version: typeof SAVE_VERSION;
   readonly party: readonly SavedPokemon[];
@@ -42,6 +52,7 @@ export interface SaveData {
   readonly items: readonly string[];
   readonly bag: BagContents;
   readonly stash: SavedStash;
+  readonly raidProgress: RaidProgress;
 }
 
 export interface RestoredGame {
@@ -51,6 +62,7 @@ export interface RestoredGame {
   readonly items: readonly string[];
   readonly bag: Bag;
   readonly stash: Stash;
+  readonly raidProgress: RaidProgress;
 }
 
 export interface SaveGameState {
@@ -60,6 +72,7 @@ export interface SaveGameState {
   readonly items?: readonly string[];
   readonly bag?: Bag;
   readonly stash?: Stash;
+  readonly raidProgress?: RaidProgress;
 }
 
 export interface StorageLike {
@@ -132,6 +145,32 @@ export class SaveManager {
   }
 
   /**
+   * Banks the recovered field kit's raid and applies its permanent reward once.
+   * The persisted completion flag makes repeated extraction handling idempotent.
+   */
+  public bankFirstContractRun(result: RunResult): { readonly saved: boolean; readonly granted: boolean } {
+    const game = this.load();
+    if (!game) {
+      return { saved: false, granted: false };
+    }
+
+    game.stash.bankRun(result);
+    if (game.raidProgress.firstContractExtracted) {
+      return { saved: this.save(game), granted: false };
+    }
+
+    const raidProgress: RaidProgress = {
+      firstContractExtracted: true,
+      unlockedInsertions: [...new Set([...game.raidProgress.unlockedInsertions, 'south-verge'])],
+    };
+    game.stash.addItem('super-potion', 1);
+    return {
+      saved: this.save({ ...game, raidProgress }),
+      granted: true,
+    };
+  }
+
+  /**
    * Persists a wipe after permanently deleting deployed assets outside the
    * secure slot. SecureSlot allows one Pokemon ID and at most two item stacks.
    */
@@ -160,11 +199,12 @@ export function serializeGame(state: SaveGameState): SaveData {
     items: [...(state.items ?? [])],
     bag: state.bag?.toJSON() ?? {},
     stash: serializeStash(state.stash ?? new Stash()),
+    raidProgress: state.raidProgress ?? DEFAULT_RAID_PROGRESS,
   };
 }
 
 export function deserializeGame(value: unknown): RestoredGame | null {
-  if (!isRecord(value) || (value.version !== 1 && value.version !== SAVE_VERSION)) {
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2 && value.version !== SAVE_VERSION)) {
     return null;
   }
 
@@ -197,6 +237,23 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     items: stringArray(value.items),
     bag: new Bag(bagContents(value.bag)),
     stash: deserializeStash(value.stash, value.version),
+    raidProgress: deserializeRaidProgress(value.raidProgress),
+  };
+}
+
+function deserializeRaidProgress(value: unknown): RaidProgress {
+  if (!isRecord(value)) {
+    return DEFAULT_RAID_PROGRESS;
+  }
+
+  const unlockedInsertions = Array.isArray(value.unlockedInsertions)
+    ? value.unlockedInsertions.filter((insertion): insertion is string => typeof insertion === 'string')
+    : DEFAULT_RAID_PROGRESS.unlockedInsertions;
+  return {
+    firstContractExtracted: value.firstContractExtracted === true,
+    unlockedInsertions: unlockedInsertions.includes('town-square')
+      ? [...new Set(unlockedInsertions)]
+      : ['town-square', ...unlockedInsertions],
   };
 }
 

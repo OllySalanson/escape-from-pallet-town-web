@@ -3,7 +3,6 @@ import { Bag } from '../items';
 import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash } from '../stash';
-import { completedObjectiveRewards } from '../objectives';
 import { createActiveRunSession } from './RunSession';
 import { RunManager } from './RunManager';
 
@@ -129,42 +128,25 @@ describe('extraction loop integration', () => {
     expect(wipedStash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
   });
 
-  it('banks completed objective rewards on extraction', () => {
+  it('unlocks South Verge and grants one supply exactly once after extracting the recovered field kit', () => {
     const saves = seedNewPlayer(new MemoryStorage());
     const starter = saves.load()!.stash.listPokemon()[0];
     const loadout = { party: [starter.pokemon], items: [] };
     const manager = new RunManager();
     manager.startRun(loadout, RUN_CONFIG);
-    const session = createActiveRunSession(manager, {}, {}, [starter.id], []);
-
-    manager.registerCaughtPokemon(new Pokemon(CHARMANDER, 4));
-    manager.registerCaughtPokemon(new Pokemon(CHARMANDER, 4));
+    manager.recoverFieldKit();
     manager.resolveEscape();
     const snapshot = manager.snapshot();
-    const rewards = completedObjectiveRewards(session.objectives, snapshot);
 
-    expect(saves.bankRun({ pokemon: snapshot.caughtPokemon, items: rewards })).toBe(true);
-    expect(saves.load()!.stash.itemCount('great-ball')).toBe(2);
-  });
-
-  it('does not pay completed objective rewards when a run wipes', () => {
-    const saves = seedNewPlayer(new MemoryStorage());
-    const starter = saves.load()!.stash.listPokemon()[0];
-    const loadout = { party: [starter.pokemon], items: [] };
-    const manager = new RunManager();
-    manager.startRun(loadout, RUN_CONFIG, { pokemon: starter.pokemon });
-    const session = createActiveRunSession(manager, { pokemon: starter.pokemon }, { pokemonId: starter.id }, [starter.id], []);
-
-    manager.registerCaughtPokemon(new Pokemon(CHARMANDER, 4));
-    manager.registerCaughtPokemon(new Pokemon(CHARMANDER, 4));
-    const snapshot = manager.snapshot();
-    expect(completedObjectiveRewards(session.objectives, snapshot)).toContainEqual({
-      itemId: 'great-ball',
-      quantity: 2,
+    const result = { pokemon: snapshot.caughtPokemon, items: snapshot.foundItems };
+    expect(saves.bankFirstContractRun(result)).toEqual({ saved: true, granted: true });
+    expect(saves.load()!.raidProgress).toEqual({
+      firstContractExtracted: true,
+      unlockedInsertions: ['town-square', 'south-verge'],
     });
+    expect(saves.load()!.stash.itemCount('super-potion')).toBe(1);
 
-    manager.resolveWipe(session.secureSlot);
-    expect(saves.applyWipeLoss(session.broughtPokemonIds, session.broughtItems, session.stashSecureSlot)).toBe(true);
-    expect(saves.load()!.stash.itemCount('great-ball')).toBe(0);
+    expect(saves.bankFirstContractRun(result)).toEqual({ saved: true, granted: false });
+    expect(saves.load()!.stash.itemCount('super-potion')).toBe(1);
   });
 });

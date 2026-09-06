@@ -20,7 +20,7 @@ export class TitleScene extends Phaser.Scene {
   public create(): void {
     this.drawBackdrop();
     this.createTitle();
-    this.createPrompt(this.saveManager.hasSave());
+    this.createPrompt();
 
     this.input.keyboard?.once('keydown-ENTER', () => this.startGame());
     this.input.keyboard?.once('keydown-SPACE', () => this.startGame());
@@ -79,9 +79,9 @@ export class TitleScene extends Phaser.Scene {
       .setOrigin(0.5);
   }
 
-  private createPrompt(hasSave: boolean): void {
+  private createPrompt(): void {
     this.prompt = this.add
-      .text(SCREEN_WIDTH / 2, 204, hasSave ? 'PRESS ENTER TO CONTINUE' : 'PRESS ENTER OR TAP', {
+      .text(SCREEN_WIDTH / 2, 204, 'PRESS ENTER OR TAP', {
         align: 'center',
         color: '#f8f5d7',
         fontFamily: 'monospace',

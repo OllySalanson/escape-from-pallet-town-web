@@ -26,7 +26,7 @@ import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { Bag, ITEMS, type ItemId } from '../items';
 import { completedObjectiveRewards } from '../objectives';
 import { RunPhase } from '../run/RunManager';
-import type { ActiveRunSession } from '../run/RunSession';
+import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import {
@@ -87,6 +87,8 @@ export interface WorldSceneData {
   readonly collectedLootIds?: readonly string[];
   /** The hunter persists across battle returns during the active raid. */
   readonly hunterState?: HunterState;
+  /** Exact overworld location to restore after a battle scene. */
+  readonly returnLocation?: RaidLocation;
 }
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
@@ -129,6 +131,7 @@ export class WorldScene extends Phaser.Scene {
   private readonly defeatedTrainerIds = new Set<string>();
   private readonly collectedLootIds = new Set<string>();
   private readonly lootSprites = new Map<string, Phaser.GameObjects.Rectangle>();
+  private fieldKitMarker: Phaser.GameObjects.Rectangle | undefined;
   private pendingTrainerBattle:
     | {
         readonly trainer: RunTrainerEncounter['trainer'];
@@ -144,7 +147,17 @@ export class WorldScene extends Phaser.Scene {
   }
 
   public create(data: WorldSceneData = {}): void {
-    this.restoreSavedGame(data.savedGame);
+    this.runSession = data.runSession;
+    if (!this.runSession) {
+      this.restoreSavedGame(data.savedGame);
+    } else if (data.returnLocation) {
+      this.currentMap = getWorldMap(data.returnLocation.mapId);
+      this.currentTile = { ...data.returnLocation.position };
+      this.facing = data.returnLocation.facing;
+    } else if (this.runSession.plan) {
+      this.currentMap = getWorldMap(this.runSession.plan.insertion.mapId);
+      this.currentTile = { ...this.runSession.plan.insertion.position };
+    }
     this.extractionMarkers = [];
     this.timerThreat = 'normal';
     this.cameras.main.fadeIn?.(180, 0, 0, 0);
@@ -162,7 +175,6 @@ export class WorldScene extends Phaser.Scene {
     if (data.caughtPokemonStash) {
       this.caughtPokemonStash = data.caughtPokemonStash;
     }
-    this.runSession = data.runSession;
     this.defeatedTrainerIds.clear();
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.collectedLootIds.clear();
@@ -334,6 +346,7 @@ export class WorldScene extends Phaser.Scene {
 
   private createEntities(): void {
     this.createLoot();
+    this.createFieldKit();
 
     for (const entity of this.currentMap.entities) {
       if (entity.kind === 'sign') {
@@ -370,6 +383,31 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.createHunterSprite();
+  }
+
+  private createFieldKit(): void {
+    const session = this.runSession;
+    const contract = session?.plan?.contract;
+    if (
+      !contract ||
+      session.manager.snapshot().recoveredFieldKit ||
+      contract.mapId !== this.currentMap.id
+    ) {
+      return;
+    }
+
+    const marker = this.add
+      .rectangle(
+        contract.position.x * TILE_SIZE + TILE_SIZE / 2,
+        contract.position.y * TILE_SIZE + TILE_SIZE / 2,
+        12,
+        10,
+        0x60a5fa,
+      )
+      .setStrokeStyle(2, 0xdbeafe)
+      .setDepth(3 + contract.position.y / 1000);
+    this.fieldKitMarker = marker;
+    this.mapObjects.push(marker);
   }
 
   private createLoot(): void {
@@ -728,6 +766,9 @@ export class WorldScene extends Phaser.Scene {
     if (this.tryCollectLootAt(this.currentTile)) {
       return;
     }
+    if (this.tryRecoverFieldKitAt(this.currentTile)) {
+      return;
+    }
 
     if (this.tryStartHunterBattle()) {
       return;
@@ -750,6 +791,7 @@ export class WorldScene extends Phaser.Scene {
           caughtPokemonStash: this.caughtPokemonStash,
           runSession: this.runSession,
           collectedLootIds: [...this.collectedLootIds],
+          returnLocation: this.returnLocation(),
         });
       }
     }
@@ -804,6 +846,7 @@ export class WorldScene extends Phaser.Scene {
     this.mapObjects = [];
     this.npcSprites.clear();
     this.lootSprites.clear();
+    this.fieldKitMarker = undefined;
     this.extractionMarkers = [];
   }
 
@@ -860,6 +903,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private saveGame(): void {
+    if (this.runSession) {
+      return;
+    }
     const saveManager = new SaveManager();
     const existingGame = saveManager.load();
     saveManager.save({
@@ -868,6 +914,37 @@ export class WorldScene extends Phaser.Scene {
       position: this.currentTile,
       bag: this.bag,
       stash: existingGame?.stash,
+    });
+  }
+
+  private tryRecoverFieldKitAt(position: GridPosition): boolean {
+    const session = this.runSession;
+    const contract = session?.plan?.contract;
+    if (
+      !contract ||
+      session.manager.snapshot().recoveredFieldKit ||
+      contract.mapId !== this.currentMap.id ||
+      contract.position.x !== position.x ||
+      contract.position.y !== position.y
+    ) {
+      return false;
+    }
+
+    session.manager.recoverFieldKit();
+    this.fieldKitMarker?.destroy();
+    this.fieldKitMarker = undefined;
+    this.cameras.main.flash(120, 96, 165, 250, false);
+    audioManager.playLootPickup();
+    this.dialogBox.showMessage('Recovered the lost field kit! Extract to secure it.');
+    this.refreshRunTimerHud();
+    return true;
+  }
+
+  private returnLocation(): RaidLocation {
+    return createBattleReturnLocation({
+      mapId: this.currentMap.id,
+      position: { ...this.currentTile },
+      facing: this.facing,
     });
   }
 
@@ -923,16 +1000,28 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.shake(120, 0.004);
     audioManager.playExtract();
     const snapshot = this.runSession.manager.snapshot();
-    const objectiveRewards = completedObjectiveRewards(this.runSession.objectives, snapshot);
-    const saved = new SaveManager().bankRun({
+    // The first contract's permanent reward is granted atomically below, rather
+    // than as a repeatable per-run objective item.
+    const objectiveRewards = snapshot.recoveredFieldKit
+      ? []
+      : completedObjectiveRewards(this.runSession.objectives, snapshot);
+    const runResult = {
       pokemon: snapshot.caughtPokemon,
       items: [...snapshot.foundItems, ...objectiveRewards],
-    });
+    };
+    const contractResult = snapshot.recoveredFieldKit
+      ? new SaveManager().bankFirstContractRun(runResult)
+      : { saved: new SaveManager().bankRun(runResult), granted: false };
+    const saved = contractResult.saved;
     this.pendingHubTransition = true;
     this.dialogBox.showMessages([
       'EXTRACTED!',
       formatRunSummary('Banked', snapshot.caughtPokemon, snapshot.foundItems),
-      objectiveRewards.length ? `Objective rewards secured: ${objectiveRewards.map(({ itemId, quantity }) => `${quantity}× ${itemId}`).join(', ')}.` : 'No objectives completed this run.',
+      contractResult.granted
+        ? 'Contract complete: South Verge unlocked and 1× super potion secured.'
+        : objectiveRewards.length
+          ? `Objective rewards secured: ${objectiveRewards.map(({ itemId, quantity }) => `${quantity}× ${itemId}`).join(', ')}.`
+          : 'No objectives completed this run.',
       saved ? 'Stash secured. Returning to hub.' : 'Stash save unavailable. Returning to hub.',
     ]);
   }
@@ -1000,6 +1089,7 @@ export class WorldScene extends Phaser.Scene {
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],
         collectedLootIds: [...this.collectedLootIds],
+        returnLocation: this.returnLocation(),
         hunterBattle: battle.isHunter,
         hunterState: this.hunterState,
       });

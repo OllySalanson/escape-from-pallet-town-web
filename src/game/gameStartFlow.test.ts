@@ -44,7 +44,7 @@ import { BootScene } from './scenes/BootScene';
 import { HubScene } from './scenes/HubScene';
 import { TitleScene } from './scenes/TitleScene';
 import { SaveManager } from './save/SaveManager';
-import { Stash } from './stash';
+import { createStartingStash, Stash } from './stash';
 import { WorldScene } from './scenes/WorldScene';
 
 describe('game start flow', () => {
@@ -60,7 +60,7 @@ describe('game start flow', () => {
     const image = vi.fn((key: string) => textures.add(key));
     const create = vi.fn(({ key }: { key: string }) => animations.add(key));
     const generateFrameNumbers = vi.fn().mockReturnValue([]);
-    const start = vi.fn();
+    const start = vi.fn<(scene: string, data?: { savedGame?: unknown }) => void>();
     const boot = Object.create(BootScene.prototype) as BootScene;
 
     Object.assign(boot as unknown as Record<string, unknown>, {
@@ -183,5 +183,35 @@ describe('game start flow', () => {
       { pokemon: { base: { id: 'bulbasaur' }, level: 5 } },
     ]);
     expect(saves.load()?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
+  });
+
+  it('returns a browser reload to the hub instead of resuming an active raid location', () => {
+    const values = new Map<string, string>();
+    const saves = new SaveManager({
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+      removeItem: (key) => values.delete(key),
+    });
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'viridian-forest',
+      position: { x: 23, y: 32 },
+      bag: new Bag(),
+      stash: createStartingStash(),
+    });
+    const start = vi.fn();
+    const title = Object.create(TitleScene.prototype) as TitleScene;
+    Object.assign(title as unknown as Record<string, unknown>, {
+      saveManager: saves,
+      prompt: { setText: vi.fn() },
+      scene: { start },
+      time: { delayedCall: (_delay: number, callback: () => void) => callback() },
+      playStartAudio: vi.fn(),
+    });
+
+    (title as unknown as { startGame(): void }).startGame();
+
+    expect(start.mock.calls).toHaveLength(1);
+    expect(start.mock.calls[0]?.[0]).toBe('hub');
   });
 });
