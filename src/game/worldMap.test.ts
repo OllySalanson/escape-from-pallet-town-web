@@ -112,12 +112,18 @@ describe('worldMap', () => {
     expect(collision[22][7]).toBe(false);
   });
 
-  it('registers Pallet Town, Route 1, and Viridian Forest with their own map data', () => {
+  it('registers the connected overworld and standalone Floodplain Relay map data', () => {
     const palletTown = getWorldMap('pallet-town');
     const route1 = getWorldMap('route-1');
     const viridianForest = getWorldMap('viridian-forest');
+    const floodplain = getWorldMap('floodplain-relay');
 
-    expect(Object.keys(WORLD_MAPS)).toEqual(['pallet-town', 'route-1', 'viridian-forest']);
+    expect(Object.keys(WORLD_MAPS)).toEqual([
+      'pallet-town',
+      'route-1',
+      'viridian-forest',
+      'floodplain-relay',
+    ]);
     expect(palletTown.width).toBe(MAP_WIDTH);
     expect(route1.height).toBe(32);
     expect(route1.groundLayer).toHaveLength(route1.height);
@@ -136,6 +142,10 @@ describe('worldMap', () => {
       id: 'oak-field-station-relay',
       position: { x: 12, y: 5 },
     });
+    expect(floodplain.entities.map((entity) => entity.id)).toEqual([
+      'floodplain-route-board',
+      'vault-warning',
+    ]);
   });
 
   it('connects the maps with reciprocal edge warps', () => {
@@ -221,8 +231,8 @@ describe('worldMap', () => {
     }
   });
 
-  it('has a fully connected map graph with a route back to every area', () => {
-    const mapIds = Object.keys(WORLD_MAPS);
+  it('has a fully connected overworld graph and a self-contained Floodplain insertion', () => {
+    const mapIds = Object.keys(WORLD_MAPS).filter((mapId) => mapId !== 'floodplain-relay');
     const reachableFrom = (start: string): Set<string> => {
       const visited = new Set<string>([start]);
       const pending = [start];
@@ -241,6 +251,45 @@ describe('worldMap', () => {
     for (const mapId of mapIds) {
       expect([...reachableFrom(mapId)].sort()).toEqual([...mapIds].sort());
     }
+    expect(getWorldMap('floodplain-relay').warps).toEqual([]);
+  });
+
+  it('connects Floodplain Relay insertion to all exits through direct and reed routes', () => {
+    const map = getWorldMap('floodplain-relay');
+    const reachableFrom = (start: { x: number; y: number }): Set<string> => {
+      const visited = new Set([`${start.x},${start.y}`]);
+      const pending = [start];
+      while (pending.length > 0) {
+        const current = pending.shift()!;
+        for (const next of [
+          { x: current.x + 1, y: current.y },
+          { x: current.x - 1, y: current.y },
+          { x: current.x, y: current.y + 1 },
+          { x: current.x, y: current.y - 1 },
+        ]) {
+          const key = `${next.x},${next.y}`;
+          if (
+            next.x >= 0 &&
+            next.y >= 0 &&
+            next.x < map.width &&
+            next.y < map.height &&
+            !map.collision[next.y][next.x] &&
+            !visited.has(key)
+          ) {
+            visited.add(key);
+            pending.push(next);
+          }
+        }
+      }
+      return visited;
+    };
+    const reachable = reachableFrom({ x: 15, y: 3 });
+    const exits = EXTRACTION_POINTS.filter((point) => point.mapId === map.id);
+
+    expect(exits.map((exit) => exit.label)).toEqual(['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT']);
+    expect(exits.every((exit) => reachable.has(`${exit.position.x},${exit.position.y}`))).toBe(true);
+    expect(reachable.has('7,12')).toBe(true);
+    expect(reachable.has('27,15')).toBe(true);
   });
 
   it('keeps deeper extraction markers undisclosed on Oak’s route board', () => {

@@ -112,6 +112,16 @@ function directionTo(from: GridPosition, to: GridPosition): string {
 }
 
 function laterRunHints(context: ObjectiveGuideContext, currentExit: string | undefined): readonly string[] {
+  if (context.currentMapId === 'floodplain-relay') {
+    const radioActive = context.activatedPoiIds.has('floodplain-ranger-radio');
+    return [
+      'Floodplain Relay: Maya watches the fast central road. The west reeds reconnect above and below her checkpoint.',
+      'Flooded Supply Vault: 2 Great Balls + 1 Super Potion. Its causeway is exposed, and the haul banks only on extraction.',
+      radioActive
+        ? 'Radio Exit is active at Ranger Station. South Gate is always open; Ferry Dock opens on its signal.'
+        : 'Ranger Station gives a hunter forecast and activates the Radio Exit. South Gate is always open; Ferry Dock opens on its signal.',
+    ];
+  }
   const fieldStation = WORLD_POIS.find((poi) => poi.mapId === context.currentMapId);
   const stationHint =
     fieldStation && !context.activatedPoiIds.has(fieldStation.id)

@@ -46,7 +46,7 @@ export interface WorldMapDefinition {
   readonly pois: readonly WorldPoi[];
 }
 
-export type WorldMapId = 'pallet-town' | 'route-1' | 'viridian-forest';
+export type WorldMapId = 'pallet-town' | 'route-1' | 'viridian-forest' | 'floodplain-relay';
 
 export const CLASSIC_TILE = {
   GRASS: 46,
@@ -474,6 +474,87 @@ function createViridianForestMap(): WorldMapDefinition {
   };
 }
 
+function createFloodplainRelayMap(): WorldMapDefinition {
+  const width = 32;
+  const height = 32;
+  const groundLayer = Array.from({ length: height }, () =>
+    Array<number>(width).fill(CLASSIC_TILE.POND_WATER),
+  );
+  const tallGrassLayer = Array.from({ length: height }, () => Array<number>(width).fill(-1));
+  const detailLayer = Array.from({ length: height }, () => Array<number>(width).fill(-1));
+
+  // The centre road and west reed lane join twice, creating two deliberate
+  // loops. The floodwater and fencing seal every apparent route that is not playable.
+  paintRectangle(groundLayer, 14, 2, 3, 27, CLASSIC_TILE.DIRT_PATH);
+  paintRectangle(groundLayer, 7, 8, 10, 2, CLASSIC_TILE.DIRT_PATH);
+  paintRectangle(groundLayer, 7, 22, 10, 2, CLASSIC_TILE.DIRT_PATH);
+  paintRectangle(groundLayer, 13, 4, 1, 1, CLASSIC_TILE.GRASS);
+  paintRectangle(groundLayer, 6, 9, 3, 14, CLASSIC_TILE.TALL_GRASS);
+  paintRectangle(tallGrassLayer, 6, 9, 3, 14, CLASSIC_TILE.TALL_GRASS_TUFT);
+  paintRectangle(groundLayer, 9, 14, 6, 3, CLASSIC_TILE.TALL_GRASS);
+  paintRectangle(tallGrassLayer, 9, 14, 6, 3, CLASSIC_TILE.TALL_GRASS_TUFT);
+
+  // Floodwater makes the vault a committed east-side detour with one return.
+  paintRectangle(groundLayer, 17, 7, 3, 2, CLASSIC_TILE.GRASS);
+  paintRectangle(groundLayer, 17, 15, 12, 1, CLASSIC_TILE.DIRT_PATH);
+  paintRectangle(groundLayer, 26, 14, 3, 3, CLASSIC_TILE.DIRT_PATH);
+  paintRectangle(groundLayer, 19, 14, 1, 1, CLASSIC_TILE.GRASS);
+  placeTiles(detailLayer, CLASSIC_TILE.TREE_RED, [
+    [2, 3], [5, 4], [9, 3], [22, 3], [27, 5], [3, 14], [3, 25], [11, 27], [25, 25], [29, 27],
+  ]);
+  placeTiles(detailLayer, CLASSIC_TILE.TREE_LEAFY, [
+    [3, 3], [6, 4], [10, 3], [23, 3], [28, 5], [2, 14], [4, 25], [12, 27], [24, 25], [28, 27],
+  ]);
+  placeTiles(detailLayer, CLASSIC_TILE.FLOWER_BLUE, [[11, 11], [18, 8], [23, 21]]);
+  placeTiles(detailLayer, CLASSIC_TILE.FLOWER_YELLOW, [[4, 20], [18, 24], [27, 9]]);
+  sealUnlinkedMapEdges(detailLayer, []);
+
+  return {
+    id: 'floodplain-relay',
+    width,
+    height,
+    groundLayer,
+    tallGrassLayer,
+    detailLayer,
+    collision: buildCollisionLayer(groundLayer, detailLayer),
+    tallGrassZones: [
+      { x: 6, y: 9, width: 3, height: 14 },
+      { x: 9, y: 14, width: 6, height: 3 },
+    ],
+    encounters: PALLET_TALL_GRASS,
+    warps: [],
+    entities: [
+      {
+        id: 'floodplain-route-board',
+        kind: 'sign',
+        position: { x: 13, y: 4 },
+        facing: 'down',
+        dialogLines: [
+          'FLOODPLAIN RELAY',
+          'SOUTH GATE: dependable and open now.',
+          'FERRY DOCK: departs on the next signal. RANGER RADIO: activate at the station.',
+        ],
+      },
+      {
+        id: 'vault-warning',
+        kind: 'sign',
+        position: { x: 19, y: 14 },
+        facing: 'left',
+        dialogLines: [
+          'FLOODED SUPPLY VAULT',
+          'High-value supplies inside. One narrow return through exposed water.',
+          'Anything carried out banks only after extraction.',
+        ],
+      },
+    ],
+    pois: poisForMap('floodplain-relay'),
+    loot: [
+      { id: 'floodplain-potion', position: { x: 7, y: 12 }, itemId: 'potion', quantity: 1 },
+      { id: 'floodplain-antidote', position: { x: 11, y: 15 }, itemId: 'antidote', quantity: 1 },
+    ],
+  };
+}
+
 export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = {
   'pallet-town': {
     id: 'pallet-town',
@@ -504,6 +585,7 @@ export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = {
   },
   'route-1': createRoute1Map(),
   'viridian-forest': createViridianForestMap(),
+  'floodplain-relay': createFloodplainRelayMap(),
 };
 
 export function getWorldMap(id: WorldMapId): WorldMapDefinition {

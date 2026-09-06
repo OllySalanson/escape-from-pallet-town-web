@@ -32,6 +32,8 @@ import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { tryActivatePoi } from '../world/pois';
 import {
   EXTRACTION_POINTS,
+  extractionRequirementText,
+  isExtractionAvailable,
   type ExtractionPoint,
 } from '../world/extractionPoints';
 import {
@@ -352,7 +354,7 @@ export class WorldScene extends Phaser.Scene {
         .setStrokeStyle(2, isOpen ? 0xdcfce7 : 0xfecaca)
         .setDepth(3 + point.position.y / 1000);
       const label = this.add
-        .text(x, y - 13, `EXTRACT ${isOpen ? 'OPEN' : 'LOCKED'}`, {
+        .text(x, y - 13, `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}`, {
           fontFamily: 'monospace',
           fontSize: '7px',
           color: isOpen ? '#dcfce7' : '#fecaca',
@@ -473,13 +475,18 @@ export class WorldScene extends Phaser.Scene {
         this.add.rectangle(4, 2, 2, 3, 0xfacc15),
       ]);
       const label = this.add
-        .text(0, -16, `${poi.label}\nCACHE: ${formatPoiReward(poi)}`, {
+        .text(
+          0,
+          -16,
+          `${poi.label}\n${poi.effect === 'activate-radio' ? 'RADIO: EXIT OFFLINE' : `CACHE: ${formatPoiReward(poi)}`}`,
+          {
           fontFamily: 'monospace',
           fontSize: '7px',
           color: '#e0f2fe',
           backgroundColor: '#0f172a',
           padding: { x: 2, y: 1 },
-        })
+          },
+        )
         .setOrigin(0.5, 1);
       station.add(label);
       this.poiSprites.set(poi.id, station);
@@ -1044,6 +1051,15 @@ export class WorldScene extends Phaser.Scene {
     const reward = poi!.reward
       .map(({ itemId, quantity }) => `${quantity}× ${ITEMS[itemId].displayName}`)
       .join(' + ');
+    if (poi!.effect === 'activate-radio') {
+      this.dialogBox.showMessages([
+        'RANGER STATION: Radio Exit activated.',
+        this.rangerForecast(),
+        'Road: fastest, but Maya watches it. Reeds: longer cover. South Gate stays dependable.',
+      ]);
+      this.refreshExtractionMarkers();
+      return true;
+    }
     this.dialogBox.showMessage(
       `${poi!.label}: ${reward} secured. Detour reward is LOST ON WIPE - extract to bank it.`,
     );
@@ -1137,7 +1153,21 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private isExtractionOpen(point: ExtractionPoint): boolean {
-    return (this.runSession?.manager.snapshot().elapsedMs ?? 0) >= point.unlockAtMs;
+    return isExtractionAvailable(
+      point,
+      this.runSession?.manager.snapshot().elapsedMs ?? 0,
+      this.activatedPoiIds,
+    );
+  }
+
+  private rangerForecast(): string {
+    const elapsedMs = this.runSession?.manager.snapshot().elapsedMs ?? 0;
+    const spawnDelayMs = this.runSession?.plan?.hunter.spawnDelayMs ?? HUNTER_SPAWN_MS;
+    if (this.hunterState.spawned && !this.hunterState.defeated) {
+      return 'HUNTER FORECAST: active in this area. Use reeds to break the straight road approach.';
+    }
+    const seconds = Math.max(0, Math.ceil((spawnDelayMs - elapsedMs) / 1_000));
+    return `HUNTER FORECAST: trail enters this area in about ${seconds}s. Ferry timing may be costly.`;
   }
 
   private tryExtract(): void {
@@ -1154,10 +1184,9 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (!this.isExtractionOpen(point)) {
-      const seconds = Math.ceil(
-        (point.unlockAtMs - this.runSession.manager.snapshot().elapsedMs) / 1_000,
+      this.dialogBox.showMessage(
+        `${point.label} is LOCKED: ${extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}.`,
       );
-      this.dialogBox.showMessage(`${point.label} is LOCKED. Open in ${seconds}s.`);
       return;
     }
 
@@ -1215,7 +1244,7 @@ export class WorldScene extends Phaser.Scene {
         .setFillStyle(isOpen ? 0x16a34a : 0x991b1b, 0.8)
         .setStrokeStyle(2, isOpen ? 0xdcfce7 : 0xfecaca);
       label
-        .setText(`EXTRACT ${isOpen ? 'OPEN' : 'LOCKED'}`)
+        .setText(`EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession?.manager.snapshot().elapsedMs ?? 0)}`)
         .setColor(isOpen ? '#dcfce7' : '#fecaca');
     }
   }

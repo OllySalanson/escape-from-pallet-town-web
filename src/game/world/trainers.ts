@@ -8,6 +8,8 @@ export interface RunTrainerEncounter {
   readonly mapId: WorldMapId;
   readonly position: GridPosition;
   readonly facing: Direction;
+  /** Authored checkpoints retain their readable position across seeded runs. */
+  readonly fixedPosition?: boolean;
   readonly introLines: readonly string[];
   readonly trainer: TrainerBattle;
 }
@@ -24,6 +26,22 @@ const createTrainer = (
  * battle-only Pokemon state never leak between raids.
  */
 export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => [
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 15, y: 16 },
+    facing: 'down',
+    fixedPosition: true,
+    introLines: [
+      'MAYA HOLDS THE ROAD.',
+      'The reeds go around. The road goes through me.',
+    ],
+    trainer: createTrainer(
+      'floodplain-checkpoint-maya',
+      'RAIDER MAYA',
+      [new Pokemon(PIKACHU, 7), new Pokemon(PIDGEY, 7)],
+      'The checkpoint is open. Move before the hunter closes in.',
+    ),
+  },
   {
     mapId: 'pallet-town',
     position: { x: 14, y: 26 },

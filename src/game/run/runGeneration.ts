@@ -28,6 +28,13 @@ export const RUN_INSERTIONS = {
     position: { x: 7, y: 36 },
     description: 'A faster, rougher route toward Route 1.',
   },
+  'floodplain-relay': {
+    id: 'floodplain-relay',
+    label: 'Floodplain Relay',
+    mapId: 'floodplain-relay',
+    position: { x: 15, y: 3 },
+    description: 'A compact relay with a road checkpoint, reed bypass, and three extraction choices.',
+  },
 } as const;
 
 export type RunInsertionId = keyof typeof RUN_INSERTIONS;
@@ -104,7 +111,7 @@ export function generateRunPlan(
       .map((map) => [map.id, varyEncounterTable(map.encounters, rng)]),
   ) as Partial<Record<WorldMapId, WildEncounterTable>>;
 
-  const extractionPoints = generateExtractionPoints(content.extractionPoints, rng);
+  const extractionPoints = generateExtractionPoints(content.extractionPoints, rng, insertion.mapId);
   const reservedTiles = new Map<WorldMapId, Set<string>>();
   reserve(reservedTiles, insertion.mapId, insertion.position);
   if (includeFirstContract) {
@@ -174,13 +181,16 @@ function varyEncounterTable(
 function generateExtractionPoints(
   points: readonly ExtractionPoint[],
   rng: ReturnType<typeof createSeededRng>,
+  insertionMapId: WorldMapId,
 ): ExtractionPoint[] {
-  const guaranteed = points.find((point) => point.mapId === 'pallet-town') ?? points[0];
-  const selected = points.filter((point) => point === guaranteed || rng.chance(0.6));
+  const floodplainPoints = points.filter((point) => point.mapId === 'floodplain-relay');
+  const standardPoints = points.filter((point) => point.mapId !== 'floodplain-relay');
+  const guaranteed = standardPoints.find((point) => point.mapId === 'pallet-town') ?? standardPoints[0];
+  const selected = standardPoints.filter((point) => point === guaranteed || rng.chance(0.6));
   if (guaranteed && !selected.includes(guaranteed)) {
     selected.unshift(guaranteed);
   }
-  return selected.map((point) => ({
+  const generatedStandard = selected.map((point) => ({
     ...point,
     // The guaranteed starting-area exit is immediately reachable every run.
     unlockAtMs: point === guaranteed
@@ -190,6 +200,7 @@ function generateExtractionPoints(
         RUN_GENERATION_BOUNDS.extractionUnlockMaximumMs,
       ),
   }));
+  return insertionMapId === 'floodplain-relay' ? floodplainPoints : generatedStandard;
 }
 
 function generateTrainers(
@@ -199,6 +210,16 @@ function generateTrainers(
   rng: ReturnType<typeof createSeededRng>,
 ): RunTrainerEncounter[] {
   return trainers.map((trainer) => {
+    if (trainer.fixedPosition) {
+      reserve(reservedTiles, trainer.mapId, trainer.position);
+      return {
+        ...trainer,
+        trainer: {
+          ...trainer.trainer,
+          party: trainer.trainer.party.map((pokemon) => new Pokemon(pokemon.base, pokemon.level)),
+        },
+      };
+    }
     const candidates = validTiles(maps[trainer.mapId], reservedTiles.get(trainer.mapId));
     const position = candidates.length > 0 ? rng.pick(candidates) : trainer.position;
     reserve(reservedTiles, trainer.mapId, position);
