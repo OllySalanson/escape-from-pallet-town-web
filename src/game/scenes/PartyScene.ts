@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { Pokemon, PokemonParty } from '../pokemon';
 import type { PokemonType } from '../pokemon/PokemonType';
+import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
 
 const SCREEN_WIDTH = 320;
 const SCREEN_HEIGHT = 240;
@@ -37,6 +38,7 @@ export class PartyScene extends Phaser.Scene {
   private readonly cardHpBars: Phaser.GameObjects.Rectangle[] = [];
   private detailContent!: Phaser.GameObjects.Container;
   private footerText!: Phaser.GameObjects.Text;
+  private menuOverlay?: MenuOverlay;
 
   public constructor() {
     super('party');
@@ -49,6 +51,8 @@ export class PartyScene extends Phaser.Scene {
   }
 
   public create(): void {
+    this.createModernMenu();
+    return;
     this.cardBackgrounds.length = 0;
     this.cardSprites.length = 0;
     this.cardTexts.length = 0;
@@ -65,6 +69,34 @@ export class PartyScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.bindInput();
     this.refresh();
+  }
+
+  private createModernMenu(): void {
+    this.menuOverlay = new MenuOverlay(this, 'party-menu', (event) => {
+      if (event.key === 'Escape' || event.key === 'Backspace') {
+        event.preventDefault();
+        this.close();
+        return;
+      }
+      const buttons = [...this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('button')];
+      const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key) && buttons.length) {
+        event.preventDefault();
+        buttons[(current + (event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1) + buttons.length) % buttons.length]?.focus();
+      }
+    });
+    this.renderModernMenu();
+  }
+
+  private renderModernMenu(): void {
+    const selected = this.party.pokemon[this.selectedIndex];
+    const detail = selected
+      ? `<section class="party-detail"><div class="detail-hero">${pokemonAvatar(selected.base.dexId, selected.base.name)}<div><p class="eyebrow">Party member</p><h2>${selected.base.name}</h2><p>Level ${selected.level} · ${selected.currentHp}/${selected.maxHp} HP</p>${hpBar(selected.currentHp, selected.maxHp)}<div>${typeBadge(selected.base.primaryType)}${selected.base.secondaryType ? typeBadge(selected.base.secondaryType) : ''}</div></div></div><div class="stats-grid"><span><small>HP</small><b>${selected.stats.hp}</b></span><span><small>Attack</small><b>${selected.stats.attack}</b></span><span><small>Defense</small><b>${selected.stats.defense}</b></span><span><small>Speed</small><b>${selected.stats.speed}</b></span></div><h3>Moves</h3><div class="move-list">${selected.moves.map((move) => `<div><strong>${move.base.name}</strong>${typeBadge(move.base.type)}<small>${move.pp}/${move.base.pp} PP</small></div>`).join('') || '<p class="empty-state">No known moves.</p>'}</div></section>`
+      : '<section class="party-detail"><p class="empty-state">No Pokémon in your party.</p></section>';
+    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run team</p><h1>Party</h1></div><p class="stash-count">Select a member to inspect</p></header><main class="party-layout"><section class="party-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable ${index === this.selectedIndex ? 'selected' : ''}" data-member="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>Level ${pokemon.level} · ${pokemon.currentHp}/${pokemon.maxHp} HP</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('') || '<p class="empty-state">No Pokémon in your party.</p>'}</section>${detail}</main></div>`;
+    this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
+    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-member]').forEach((button) => button.onclick = () => { this.selectedIndex = Number(button.dataset.member); this.renderModernMenu(); });
+    this.menuOverlay!.focus('[data-member], [data-close]');
   }
 
   private drawBackground(): void {
