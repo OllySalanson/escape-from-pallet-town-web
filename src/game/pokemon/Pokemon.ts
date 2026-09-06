@@ -62,18 +62,14 @@ export class Pokemon {
   }
 
   private computeStats(baseStats: PokemonStats, level: number): CombatStats {
-    /**
-     * Simplified Gen-style formulas:
-     * HP has a unique additive term so it scales differently from battle stats.
-     * Other stats share one formula and are intentionally lower at matching levels.
-     */
+    // Ported from Pokemon.cs in the Unity project.
     return {
-      hp: Math.floor((2 * baseStats.hp * level) / 100) + level + 10,
-      attack: Math.floor((2 * baseStats.attack * level) / 100) + 5,
-      defense: Math.floor((2 * baseStats.defense * level) / 100) + 5,
-      spAttack: Math.floor((2 * baseStats.spAttack * level) / 100) + 5,
-      spDefense: Math.floor((2 * baseStats.spDefense * level) / 100) + 5,
-      speed: Math.floor((2 * baseStats.speed * level) / 100) + 5,
+      hp: Math.floor((baseStats.hp * level) / 100) + level + 10,
+      attack: Math.floor((baseStats.attack * level) / 100) + 5,
+      defense: Math.floor((baseStats.defense * level) / 100) + 5,
+      spAttack: Math.floor((baseStats.spAttack * level) / 100) + 5,
+      spDefense: Math.floor((baseStats.spDefense * level) / 100) + 5,
+      speed: Math.floor((baseStats.speed * level) / 100) + 5,
     };
   }
 }

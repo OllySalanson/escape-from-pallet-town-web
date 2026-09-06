@@ -16,6 +16,7 @@ export interface LearnableMove {
 }
 
 export interface PokemonBaseInit {
+  readonly id: string;
   readonly name: string;
   readonly primaryType: PokemonType;
   readonly secondaryType?: PokemonType;
@@ -26,6 +27,7 @@ export interface PokemonBaseInit {
 }
 
 export class PokemonBase {
+  public readonly id: string;
   public readonly name: string;
   public readonly primaryType: PokemonType;
   public readonly secondaryType?: PokemonType;
@@ -35,6 +37,7 @@ export class PokemonBase {
   public readonly backSprite: string;
 
   public constructor(init: PokemonBaseInit) {
+    this.id = init.id;
     this.name = init.name;
     this.primaryType = init.primaryType;
     this.secondaryType = init.secondaryType;
