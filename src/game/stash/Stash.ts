@@ -81,6 +81,25 @@ export class Stash {
     return this.bag.remove(itemId, quantity);
   }
 
+  /**
+   * Restores the minimum resources needed to begin a run when no Pokemon
+   * remain. Existing Pokemon or supplies are never changed.
+   *
+   * @returns Whether a starter was granted.
+   */
+  public ensurePlayable(): boolean {
+    if (this.storedPokemon.length > 0) {
+      return false;
+    }
+
+    this.addPokemon(new Pokemon(BULBASAUR, 5));
+    if (Object.keys(this.listItems()).length === 0) {
+      this.addItem('poke-ball', 5);
+      this.addItem('potion', 3);
+    }
+    return true;
+  }
+
   public bankRun(result: RunResult): void {
     for (const pokemon of result.pokemon) {
       this.addPokemon(pokemon);
@@ -144,9 +163,7 @@ export class Stash {
 /** Provides a playable first vault for a player with no existing save. */
 export function createStartingStash(): Stash {
   const stash = new Stash();
-  stash.addPokemon(new Pokemon(BULBASAUR, 5));
-  stash.addItem('poke-ball', 5);
-  stash.addItem('potion', 3);
+  stash.ensurePlayable();
   return stash;
 }
 

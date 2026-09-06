@@ -37,11 +37,14 @@ vi.mock('./ui/DialogBox', () => ({
 
 import { gameConfig } from './gameConfig';
 import { getWalkAnimationKey } from './playerFrames';
+import { Bag } from './items';
 import { CHARMANDER, Pokemon, PokemonParty } from './pokemon';
 import { PrimaryStatus } from './pokemon/battle/status';
 import { BootScene } from './scenes/BootScene';
 import { HubScene } from './scenes/HubScene';
 import { TitleScene } from './scenes/TitleScene';
+import { SaveManager } from './save/SaveManager';
+import { Stash } from './stash';
 import { WorldScene } from './scenes/WorldScene';
 
 describe('game start flow', () => {
@@ -155,5 +158,30 @@ describe('game start flow', () => {
       'The tall grass is waiting just beyond town!',
     ]);
     expect(dialog.visible).toBe(true);
+  });
+
+  it('repairs an empty stash when continuing a saved game', () => {
+    const values = new Map<string, string>();
+    const saves = new SaveManager({
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+      removeItem: (key) => values.delete(key),
+    });
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash: new Stash(),
+    });
+    const title = Object.create(TitleScene.prototype) as TitleScene;
+    Object.assign(title as unknown as Record<string, unknown>, { saveManager: saves });
+
+    const game = (title as unknown as { loadOrCreateGame(): ReturnType<SaveManager['load']> }).loadOrCreateGame();
+
+    expect(game?.stash.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'bulbasaur' }, level: 5 } },
+    ]);
+    expect(saves.load()?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
   });
 });

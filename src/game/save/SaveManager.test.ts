@@ -97,4 +97,27 @@ describe('SaveManager', () => {
 
     expect(saves.load()?.stash.toJSON()).toEqual({ pokemon: [], items: {} });
   });
+
+  it('restores a starter after a wipe removes the last stashed Pokemon', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 5), 'lost');
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      bag: new Bag(),
+      stash,
+    });
+
+    expect(saves.applyWipeLoss(['lost'], [])).toBe(true);
+
+    const restored = saves.load();
+    expect(restored?.stash.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'bulbasaur' }, level: 5 } },
+    ]);
+    expect(restored?.stash.listPokemon().map(({ pokemon }) => pokemon.base.id)).not.toContain('charmander');
+    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
+  });
 });
