@@ -38,6 +38,17 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     facing: 'down',
     dialogLines: ['PALLET TOWN', 'A town of new beginnings.'],
   },
+  {
+    id: 'oak-route-board',
+    kind: 'sign',
+    position: { x: 10, y: 40 },
+    facing: 'down',
+    dialogLines: [
+      "OAK'S FIELD STATION ROUTE BOARD",
+      'SOUTH GATE: safe extraction, open now.',
+      'Route 1 and the forest hold deeper ways out. Find their signals in the field.',
+    ],
+  },
 ];
 
 export function getWorldEntityAt(position: GridPosition): WorldEntity | undefined {

@@ -29,6 +29,7 @@ import { RunPhase } from '../run/RunManager';
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
+import { tryActivatePoi } from '../world/pois';
 import {
   EXTRACTION_POINTS,
   type ExtractionPoint,
@@ -85,6 +86,8 @@ export interface WorldSceneData {
   readonly defeatedTrainerIds?: readonly string[];
   /** Loot pickups persist only for the active raid. */
   readonly collectedLootIds?: readonly string[];
+  /** Fixed landmark activations persist only for the active raid. */
+  readonly activatedPoiIds?: readonly string[];
   /** The hunter persists across battle returns during the active raid. */
   readonly hunterState?: HunterState;
   /** Exact overworld location to restore after a battle scene. */
@@ -131,6 +134,8 @@ export class WorldScene extends Phaser.Scene {
   private readonly defeatedTrainerIds = new Set<string>();
   private readonly collectedLootIds = new Set<string>();
   private readonly lootSprites = new Map<string, Phaser.GameObjects.Rectangle>();
+  private readonly activatedPoiIds = new Set<string>();
+  private readonly poiSprites = new Map<string, Phaser.GameObjects.Container>();
   private fieldKitMarker: Phaser.GameObjects.Rectangle | undefined;
   private pendingTrainerBattle:
     | {
@@ -179,6 +184,8 @@ export class WorldScene extends Phaser.Scene {
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.collectedLootIds.clear();
     data.collectedLootIds?.forEach((id) => this.collectedLootIds.add(id));
+    this.activatedPoiIds.clear();
+    data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
     this.trainerEncounters = this.runSession
       ? (this.runSession.plan?.trainers ?? createRunTrainerEncounters())
       : [];
@@ -346,6 +353,7 @@ export class WorldScene extends Phaser.Scene {
 
   private createEntities(): void {
     this.createLoot();
+    this.createPois();
     this.createFieldKit();
 
     for (const entity of this.currentMap.entities) {
@@ -428,6 +436,30 @@ export class WorldScene extends Phaser.Scene {
         .setDepth(3 + loot.position.y / 1000);
       this.lootSprites.set(loot.id, marker);
       this.mapObjects.push(marker);
+    }
+  }
+
+  private createPois(): void {
+    if (!this.isLootAvailable()) {
+      return;
+    }
+
+    for (const poi of this.currentMap.pois) {
+      if (this.activatedPoiIds.has(poi.id)) {
+        continue;
+      }
+      const x = poi.position.x * TILE_SIZE + TILE_SIZE / 2;
+      const y = poi.position.y * TILE_SIZE + TILE_SIZE / 2;
+      const station = this.add.container(x, y).setDepth(3 + poi.position.y / 1000);
+      station.add([
+        this.add.rectangle(0, 2, 14, 10, 0x334155).setStrokeStyle(2, 0x93c5fd),
+        this.add.rectangle(0, -5, 3, 9, 0xe2e8f0),
+        this.add.rectangle(0, -10, 8, 2, 0x38bdf8),
+        this.add.rectangle(-4, 2, 2, 3, 0xfacc15),
+        this.add.rectangle(4, 2, 2, 3, 0xfacc15),
+      ]);
+      this.poiSprites.set(poi.id, station);
+      this.mapObjects.push(station);
     }
   }
 
@@ -666,6 +698,9 @@ export class WorldScene extends Phaser.Scene {
     if (this.tryCollectLootAt(targetTile)) {
       return;
     }
+    if (this.tryActivatePoiAt(targetTile)) {
+      return;
+    }
 
     const entity = this.currentMap.entities.find(
       (candidate) => candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
@@ -791,6 +826,7 @@ export class WorldScene extends Phaser.Scene {
           caughtPokemonStash: this.caughtPokemonStash,
           runSession: this.runSession,
           collectedLootIds: [...this.collectedLootIds],
+          activatedPoiIds: [...this.activatedPoiIds],
           returnLocation: this.returnLocation(),
         });
       }
@@ -846,6 +882,7 @@ export class WorldScene extends Phaser.Scene {
     this.mapObjects = [];
     this.npcSprites.clear();
     this.lootSprites.clear();
+    this.poiSprites.clear();
     this.fieldKitMarker = undefined;
     this.extractionMarkers = [];
   }
@@ -880,6 +917,32 @@ export class WorldScene extends Phaser.Scene {
     const item = ITEMS[loot!.itemId];
     const quantity = loot!.quantity > 1 ? ` x${loot!.quantity}` : '';
     this.dialogBox.showMessage(`Found ${item.displayName}${quantity}!`);
+    return true;
+  }
+
+  private tryActivatePoiAt(position: GridPosition): boolean {
+    const poi = this.currentMap.pois.find(
+      (candidate) => candidate.position.x === position.x && candidate.position.y === position.y,
+    );
+    const result = tryActivatePoi(
+      poi,
+      this.isLootAvailable(),
+      this.activatedPoiIds,
+      (itemId, quantity) => this.collectRunItem(itemId, quantity),
+    );
+    if (result === 'unavailable') {
+      return false;
+    }
+    if (result === 'bag-full') {
+      this.dialogBox.showMessage('Bag is full. The marked cache remains sealed.');
+      return true;
+    }
+
+    this.poiSprites.get(poi!.id)?.destroy();
+    this.poiSprites.delete(poi!.id);
+    this.cameras.main.flash(140, 56, 189, 248, false);
+    audioManager.playLootPickup();
+    this.dialogBox.showMessage(`${poi!.label}: supply cache secured. Extract to keep it.`);
     return true;
   }
 
@@ -1089,6 +1152,7 @@ export class WorldScene extends Phaser.Scene {
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],
         collectedLootIds: [...this.collectedLootIds],
+        activatedPoiIds: [...this.activatedPoiIds],
         returnLocation: this.returnLocation(),
         hunterBattle: battle.isHunter,
         hunterState: this.hunterState,

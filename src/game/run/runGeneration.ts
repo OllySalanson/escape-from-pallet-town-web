@@ -113,6 +113,11 @@ export function generateRunPlan(
   for (const point of extractionPoints) {
     reserve(reservedTiles, point.mapId, point.position);
   }
+  for (const map of Object.values(content.maps)) {
+    for (const poi of map.pois) {
+      reserve(reservedTiles, poi.mapId, poi.position);
+    }
+  }
   const trainers = generateTrainers(content.trainers, content.maps, reservedTiles, rng);
   const loot = generateLoot(content.maps, reservedTiles, rng);
 
