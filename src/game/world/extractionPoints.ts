@@ -1,7 +1,8 @@
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 
-export const EXTRACTION_UNLOCK_DELAY_MS = 30_000;
+// Outer exits invite committed routes without making players wait out the opening.
+export const EXTRACTION_UNLOCK_DELAY_MS = 25_000;
 
 export interface ExtractionPoint {
   readonly mapId: WorldMapId;

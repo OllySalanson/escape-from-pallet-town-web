@@ -137,6 +137,7 @@ export class WorldScene extends Phaser.Scene {
       }
     | undefined;
   private hunterState: HunterState = createHunterState();
+  private timerThreat: 'normal' | 'urgent' | 'enraged' = 'normal';
 
   public constructor() {
     super('world');
@@ -145,6 +146,8 @@ export class WorldScene extends Phaser.Scene {
   public create(data: WorldSceneData = {}): void {
     this.restoreSavedGame(data.savedGame);
     this.extractionMarkers = [];
+    this.timerThreat = 'normal';
+    this.cameras.main.fadeIn?.(180, 0, 0, 0);
     void audioManager.startTheme('overworld');
     if (data.party) {
       this.party = data.party;
@@ -501,6 +504,11 @@ export class WorldScene extends Phaser.Scene {
     );
 
     if (manager.isEnraged) {
+      if (this.timerThreat !== 'enraged') {
+        this.timerThreat = 'enraged';
+        this.cameras.main.flash(160, 239, 68, 68, false);
+        audioManager.playLowHpWarning();
+      }
       hud.backing.setFillStyle(0x7f1d1d, 0.95).setStrokeStyle(2, 0xfca5a5);
       hud.text.setText('ENRAGED - EXTRACT NOW').setColor('#fee2e2');
       const pulse = 0.7 + (Math.sin(this.time.now / 100) + 1) * 0.15;
@@ -511,12 +519,20 @@ export class WorldScene extends Phaser.Scene {
 
     const remainingMs = manager.remainingMs();
     const isUrgent = remainingMs <= RAID_TIMER_URGENT_MS;
+    const threat = isUrgent ? 'urgent' : 'normal';
+    if (threat !== this.timerThreat) {
+      this.timerThreat = threat;
+      this.cameras.main.flash(120, 251, 191, 36, false);
+      audioManager.playLowHpWarning();
+    }
     hud.text.setText(`RAID ${formatRaidTimer(remainingMs)}`);
     hud.backing
       .setFillStyle(isUrgent ? 0x78350f : 0x111827, 0.9)
       .setStrokeStyle(2, isUrgent ? 0xfbbf24 : 0xdbeafe)
       .setAlpha(1);
-    hud.text.setColor(isUrgent ? '#fef3c7' : '#f8fafc').setAlpha(1);
+    hud.text
+      .setColor(isUrgent ? '#fef3c7' : '#f8fafc')
+      .setAlpha(isUrgent ? 0.75 + (Math.sin(this.time.now / 140) + 1) * 0.125 : 1);
   }
 
   private destroyRunTimerHud(): void {
@@ -727,7 +743,7 @@ export class WorldScene extends Phaser.Scene {
       const wild = rollEncounter(encounters, rng === undefined ? undefined : () => rng.next());
       if (wild) {
         audioManager.playEncounter();
-        this.scene.start('battle', {
+        this.transitionToBattle({
           wild,
           party: this.party,
           pokeBalls: this.bag.count('poke-ball'),
@@ -774,6 +790,15 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
+  private transitionToBattle(data: object): void {
+    this.isWarping = true;
+    this.player.stop();
+    this.cameras.main.fadeOut(180, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('battle', data);
+    });
+  }
+
   private clearMap(): void {
     this.mapObjects.forEach((object) => object.destroy());
     this.mapObjects = [];
@@ -804,7 +829,10 @@ export class WorldScene extends Phaser.Scene {
       return true;
     }
 
-    this.lootSprites.get(loot!.id)?.destroy();
+    const marker = this.lootSprites.get(loot!.id);
+    this.cameras.main.flash(100, 250, 204, 21, false);
+    audioManager.playLootPickup();
+    marker?.destroy();
     this.lootSprites.delete(loot!.id);
     const item = ITEMS[loot!.itemId];
     const quantity = loot!.quantity > 1 ? ` x${loot!.quantity}` : '';
@@ -891,6 +919,9 @@ export class WorldScene extends Phaser.Scene {
 
     this.runSession.manager.resolveEscape();
     this.destroyRunTimerHud();
+    this.cameras.main.flash(240, 134, 239, 172, false);
+    this.cameras.main.shake(120, 0.004);
+    audioManager.playExtract();
     const snapshot = this.runSession.manager.snapshot();
     const objectiveRewards = completedObjectiveRewards(this.runSession.objectives, snapshot);
     const saved = new SaveManager().bankRun({
@@ -939,6 +970,9 @@ export class WorldScene extends Phaser.Scene {
 
     const result = this.runSession.manager.resolveWipe(this.runSession.secureSlot);
     this.destroyRunTimerHud();
+    this.cameras.main.flash(220, 239, 68, 68, false);
+    this.cameras.main.shake(180, 0.009);
+    audioManager.playWipe();
     const saved = new SaveManager().applyWipeLoss(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
@@ -958,7 +992,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.pendingTrainerBattle) {
       const battle = this.pendingTrainerBattle;
       this.pendingTrainerBattle = undefined;
-      this.scene.start('battle', {
+      this.transitionToBattle({
         trainer: battle.trainer,
         party: this.party,
         pokeBalls: this.bag.count('poke-ball'),
@@ -977,7 +1011,10 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (this.scene.manager.keys.hub) {
-      this.scene.start('hub');
+      this.cameras.main.fadeOut(180, 0, 0, 0);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        this.scene.start('hub');
+      });
       return;
     }
     this.scene.start('title');

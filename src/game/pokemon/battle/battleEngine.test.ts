@@ -78,14 +78,14 @@ describe('Unity type-chart regression', () => {
 });
 
 describe('damage calculation', () => {
-  it('reports STAB while retaining the current unmultiplied damage result', () => {
+  it('applies the standard 1.5x STAB multiplier', () => {
     const charmander = new Pokemon(CHARMANDER, 10);
     const bulbasaur = new Pokemon(BULBASAUR, 10);
 
     const emberDamage = calculateDamage(charmander, bulbasaur, EMBER, maximumRandom);
 
     expect(emberDamage).toEqual({
-      damage: 13,
+      damage: 20,
       isStab: true,
       isCritical: false,
       typeEffectiveness: 2,
@@ -109,8 +109,8 @@ describe('damage calculation', () => {
     const charmander = new Pokemon(CHARMANDER, 10);
     const bulbasaur = new Pokemon(BULBASAUR, 10);
 
-    expect(calculateDamage(charmander, bulbasaur, physicalFireMove, maximumRandom).damage).toBe(14);
-    expect(calculateDamage(charmander, bulbasaur, EMBER, maximumRandom).damage).toBe(13);
+    expect(calculateDamage(charmander, bulbasaur, physicalFireMove, maximumRandom).damage).toBe(22);
+    expect(calculateDamage(charmander, bulbasaur, EMBER, maximumRandom).damage).toBe(20);
   });
 
   it('does not damage with status moves', () => {
@@ -128,7 +128,7 @@ describe('damage calculation', () => {
     const rolls = [0.0625, 1];
     const criticalDamage = calculateDamage(attacker, defender, EMBER, () => rolls.shift() ?? 1);
 
-    expect(criticalDamage).toMatchObject({ isCritical: true, damage: 27, typeEffectiveness: 2 });
+    expect(criticalDamage).toMatchObject({ isCritical: true, damage: 40, typeEffectiveness: 2 });
   });
 
   it('scales damage with attacker level', () => {
@@ -195,8 +195,8 @@ describe('battle turn resolution', () => {
       { type: 'effectiveness', multiplier: 2 },
       { type: 'used-move', user: 'enemy' },
     ]);
-    expect(result.state.enemy.currentHp).toBe(bulbasaur.maxHp - 13);
-    expect(result.state.player.currentHp).toBe(charmander.maxHp - 3);
+    expect(result.state.enemy.currentHp).toBe(bulbasaur.maxHp - 20);
+    expect(result.state.player.currentHp).toBe(charmander.maxHp - 5);
     expect(result.state.player.moves[2]?.pp).toBe(EMBER.pp - 1);
     expect(charmander.currentHp).toBe(charmander.maxHp);
     expect(charmander.moves[2]?.pp).toBe(EMBER.pp);
@@ -290,11 +290,11 @@ describe('battle turn resolution', () => {
 
 describe('catching', () => {
   it('raises catch chance as HP falls and for qualifying status and ball modifiers', () => {
-    expect(getCatchChance(100, 100, null)).toBe(0.15);
-    expect(getCatchChance(1, 100, null)).toBeCloseTo(0.744);
-    expect(getCatchChance(100, 100, PrimaryStatus.Paralysis)).toBeCloseTo(0.3);
-    expect(getCatchChance(100, 100, PrimaryStatus.Sleep)).toBeCloseTo(0.4);
-    expect(getCatchChance(100, 100, PrimaryStatus.Sleep, 2)).toBeCloseTo(0.8);
+    expect(getCatchChance(100, 100, null)).toBe(0.2);
+    expect(getCatchChance(1, 100, null)).toBeCloseTo(0.794);
+    expect(getCatchChance(100, 100, PrimaryStatus.Paralysis)).toBeCloseTo(0.35);
+    expect(getCatchChance(100, 100, PrimaryStatus.Sleep)).toBeCloseTo(0.45);
+    expect(getCatchChance(100, 100, PrimaryStatus.Sleep, 2)).toBeCloseTo(0.9);
     expect(getCatchChance(0, 100, PrimaryStatus.Sleep, 2)).toBe(0.95);
   });
 
@@ -302,8 +302,8 @@ describe('catching', () => {
     const state = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
     const fullHealthEnemy = state.enemy;
 
-    expect(attemptCatch(fullHealthEnemy, () => 0.149999)).toMatchObject({ caught: true, shakes: 3 });
-    expect(attemptCatch(fullHealthEnemy, () => 0.15)).toMatchObject({ caught: false, shakes: 2 });
+    expect(attemptCatch(fullHealthEnemy, () => 0.199999)).toMatchObject({ caught: true, shakes: 3 });
+    expect(attemptCatch(fullHealthEnemy, () => 0.2)).toMatchObject({ caught: false, shakes: 2 });
     expect(attemptCatch(fullHealthEnemy, () => 1)).toMatchObject({ caught: false, shakes: 0 });
   });
 

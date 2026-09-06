@@ -6,6 +6,8 @@ import type { PrimaryStatus } from './battle/status';
 export type CombatStats = PokemonStats;
 
 const MAX_LEVEL = 100;
+/** Two comparable wins should normally earn an early level without a single win skipping several. */
+export const DEFEAT_EXPERIENCE_MULTIPLIER = 0.5;
 
 /**
  * Medium-slow-free total experience curve. A Pokemon at level N has N³ XP.
@@ -16,10 +18,10 @@ export const experienceForLevel = (level: number): number => {
 };
 
 /**
- * A defeated Pokemon awards its level cubed in experience.
+ * A defeated Pokemon awards half of its level-cubed total experience.
  */
 export const experienceAwardForDefeat = (defeatedLevel: number): number =>
-  experienceForLevel(defeatedLevel);
+  Math.floor(experienceForLevel(defeatedLevel) * DEFEAT_EXPERIENCE_MULTIPLIER);
 
 export const computePokemonStats = (baseStats: PokemonStats, level: number): CombatStats => ({
   // Ported from Pokemon.cs in the Unity project.

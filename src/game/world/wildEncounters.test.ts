@@ -13,7 +13,7 @@ const TABLE: WildEncounterTable = {
 
 describe('rollEncounter', () => {
   it('uses the canonical Pallet table with registered species', () => {
-    expect(PALLET_TALL_GRASS.stepEncounterRate).toBe(0.1);
+    expect(PALLET_TALL_GRASS.stepEncounterRate).toBe(0.08);
     expect(PALLET_TALL_GRASS.entries).toEqual([
       { speciesId: 'bulbasaur', minLevel: 5, maxLevel: 5, weight: 2 },
       { speciesId: 'bulbasaur', minLevel: 7, maxLevel: 7, weight: 3 },
@@ -21,9 +21,9 @@ describe('rollEncounter', () => {
     expect(PALLET_TALL_GRASS.entries.every((entry) => getSpeciesById(entry.speciesId))).toBe(true);
   });
 
-  it('uses a strict 10 percent step-roll boundary', () => {
-    expect(rollEncounter(PALLET_TALL_GRASS, () => 0.099999)).not.toBeNull();
-    expect(rollEncounter(PALLET_TALL_GRASS, () => 0.1)).toBeNull();
+  it('uses a strict 8 percent step-roll boundary', () => {
+    expect(rollEncounter(PALLET_TALL_GRASS, () => 0.079999)).not.toBeNull();
+    expect(rollEncounter(PALLET_TALL_GRASS, () => 0.08)).toBeNull();
   });
 
   it('selects an entry by weight and rolls an inclusive level', () => {

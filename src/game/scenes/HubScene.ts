@@ -9,7 +9,8 @@ import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { type SecureSlot as StashSecureSlot, type Stash, type StashedPokemon } from '../stash';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
 
-const RUN_DURATION_MS = 15 * 60 * 1000;
+// Leaves enough time to visit an outer area and return, while still punishing detours.
+const RUN_DURATION_MS = 18 * 60 * 1000;
 
 export interface HubSceneData {
   readonly savedGame?: RestoredGame;
@@ -46,6 +47,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   public create(): void {
+    this.cameras.main.fadeIn?.(180, 0, 0, 0);
     this.overlay = new MenuOverlay(this, 'hub-menu', (event) => this.handleKey(event));
     this.render();
   }
@@ -119,11 +121,14 @@ export class HubScene extends Phaser.Scene {
       undefined,
       plan,
     );
-    this.scene.start('world', {
-      savedGame: this.savedGame,
-      party: new PokemonParty(party.map((stored) => stored.pokemon)),
-      bag: new Bag(Object.fromEntries(this.loadoutItems.map(({ itemId, quantity }) => [itemId, quantity]))),
-      runSession,
+    this.cameras.main.fadeOut(180, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('world', {
+        savedGame: this.savedGame,
+        party: new PokemonParty(party.map((stored) => stored.pokemon)),
+        bag: new Bag(Object.fromEntries(this.loadoutItems.map(({ itemId, quantity }) => [itemId, quantity]))),
+        runSession,
+      });
     });
   }
 

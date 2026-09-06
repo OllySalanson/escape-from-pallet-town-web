@@ -20,10 +20,10 @@ describe('chooseHunterPursuitStep', () => {
 
 describe('hunterTierFor', () => {
   it('escalates with elapsed raid time and reaches its strongest team while enraged', () => {
-    expect(hunterTierFor(0, false)).toMatchObject({ level: 7, party: [{ id: 'pidgey' }] });
-    expect(hunterTierFor(90_000, false)).toMatchObject({ level: 10, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }] });
-    expect(hunterTierFor(180_000, false)).toMatchObject({ level: 13, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }] });
-    expect(hunterTierFor(10_000, true)).toMatchObject({ level: 16, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }] });
+    expect(hunterTierFor(0, false)).toMatchObject({ level: 6, party: [{ id: 'pidgey' }] });
+    expect(hunterTierFor(120_000, false)).toMatchObject({ level: 9, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }] });
+    expect(hunterTierFor(240_000, false)).toMatchObject({ level: 12, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }] });
+    expect(hunterTierFor(10_000, true)).toMatchObject({ level: 15, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }] });
   });
 });
 
