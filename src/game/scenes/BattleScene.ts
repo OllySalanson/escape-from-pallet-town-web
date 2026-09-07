@@ -410,9 +410,13 @@ export class BattleScene extends Phaser.Scene {
             this.mode === 'main' && !this.trainer && index === 1 && this.pokeBalls === 0
               ? '#fca5a5'
               : '#f8fafc',
-          fixedWidth: layout?.width,
-          fixedHeight: layout?.height,
-          wordWrap: layout ? { width: layout.width } : undefined,
+          ...(layout
+            ? {
+                fixedWidth: layout.width,
+                fixedHeight: layout.height,
+                wordWrap: { width: layout.width },
+              }
+            : {}),
         },
       );
       text
