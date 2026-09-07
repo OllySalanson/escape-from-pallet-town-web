@@ -17,6 +17,7 @@ import { BattleScene } from './BattleScene';
 interface RenderedText {
   readonly x: number;
   readonly y: number;
+  readonly style: Record<string, unknown>;
   text: string;
   readonly handlers: Record<string, () => void>;
   setInteractive: ReturnType<typeof vi.fn>;
@@ -51,10 +52,11 @@ function createBattleSceneHarness(): {
         lineStyle: vi.fn().mockReturnThis(),
         strokeRect: vi.fn().mockReturnThis(),
       })),
-      text: vi.fn((x: number, y: number, text: string) => {
+      text: vi.fn((x: number, y: number, text: string, style: Record<string, unknown>) => {
         const rendered = {
           x,
           y,
+          style,
           text,
           handlers: {},
           setInteractive: vi.fn().mockReturnThis(),
@@ -90,7 +92,7 @@ function createBattleSceneHarness(): {
 }
 
 describe('BattleScene command presentation', () => {
-  it('removes the opaque dialogue overlay before rendering Fight/Run, then renders selectable moves', () => {
+  it('renders the opening main commands, then restores them after move selection', () => {
     const { scene, renderedTexts, dialog } = createBattleSceneHarness();
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
@@ -106,6 +108,7 @@ describe('BattleScene command presentation', () => {
       { text: '  RUN', x: 166, y: 210 },
     ]);
     expect(renderedTexts.every(({ y }) => y >= 174 && y < 238)).toBe(true);
+    expect(renderedTexts.every(({ style }) => !('fixedWidth' in style))).toBe(true);
 
     renderedTexts[0].handlers.pointerdown();
 
@@ -113,5 +116,17 @@ describe('BattleScene command presentation', () => {
     expect(moveTexts).not.toHaveLength(0);
     expect(moveTexts.every(({ y }) => y >= 174 && y < 238)).toBe(true);
     expect(moveTexts[0].text).toMatch(/^▶ .+\n.+ \d+\/\d+$/);
+    expect(moveTexts.every(({ style }) => style.fixedWidth === 136 && style.fixedHeight === 28)).toBe(
+      true,
+    );
+
+    (scene as unknown as { goBack(): void }).goBack();
+
+    expect(renderedTexts.slice(7).map(({ text }) => text)).toEqual([
+      '▶ FIGHT',
+      '  BALL x5',
+      '  POKéMON',
+      '  RUN',
+    ]);
   });
 });
