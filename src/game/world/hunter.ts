@@ -11,6 +11,22 @@ import type { WorldMapId } from '../worldMap';
 export const HUNTER_ID = 'rival-hunter';
 export const HUNTER_SPAWN_MS = 60_000;
 export const HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP = 2;
+/**
+ * How far a successful escape throws the hunter back, in walkable tiles.
+ *
+ * Distance alone is not an escape: the hunter takes one tile per player step, so a
+ * pushback only buys room while the player runs in a straight line, and an enraged
+ * hunter (two tiles per player step) eats it in exactly this many steps. The gap is
+ * what the player has to work with once HUNTER_SEARCH_MS runs out, not the escape.
+ */
+export const HUNTER_BREAKAWAY_DISTANCE = 6;
+/**
+ * How long a hunter that lost the trail holds position and cannot engage.
+ *
+ * Measured in raid time rather than player steps so standing still burns it too:
+ * an escape buys a window to reposition or extract, never a safe place to idle.
+ */
+export const HUNTER_SEARCH_MS = 10_000;
 export const DEFAULT_HUNTER_TUNING: HunterTuning = {
   spawnDelayMs: HUNTER_SPAWN_MS,
   aggressionStepsPerPlayerStep: 1,
@@ -29,6 +45,13 @@ export interface HunterState {
   readonly defeated: boolean;
   readonly mapId?: WorldMapId;
   readonly position?: GridPosition;
+  /** Raid time left before a hunter that lost the trail picks it back up. */
+  readonly searchRemainingMs?: number;
+  /**
+   * Set by an escape in BattleScene and cleared by WorldScene, which is the only
+   * place that knows the map well enough to choose where the hunter falls back to.
+   */
+  readonly pendingBreakaway?: boolean;
 }
 
 export interface HunterTier {
@@ -268,6 +291,94 @@ export const chooseHunterPursuitStep = (
   bounds: GridBounds,
   isBlocked: (tile: GridPosition) => boolean,
 ): GridPosition | null => findHunterPursuitPath(hunter, player, bounds, isBlocked)[0] ?? null;
+
+/** A hunter that lost the trail holds position and cannot start a battle. */
+export const isHunterSearching = (state: HunterState): boolean =>
+  (state.searchRemainingMs ?? 0) > 0;
+
+/**
+ * Marks a hunter the player just escaped from. The search window starts immediately,
+ * so the escape covers the return to the overworld; the fallback tile is chosen there.
+ */
+export const beginHunterDisengage = (
+  state: HunterState,
+  searchMs: number = HUNTER_SEARCH_MS,
+): HunterState => ({
+  ...state,
+  searchRemainingMs: Math.max(0, searchMs),
+  pendingBreakaway: true,
+});
+
+/** Burns raid time off the search window; at zero the hunter resumes pursuit. */
+export const tickHunterSearch = (state: HunterState, deltaMs: number): HunterState => {
+  if (!isHunterSearching(state)) {
+    return state;
+  }
+  const remaining = Math.max(0, (state.searchRemainingMs ?? 0) - Math.max(0, deltaMs));
+  return { ...state, searchRemainingMs: remaining };
+};
+
+/**
+ * Where a hunter falls back to when the player breaks contact.
+ *
+ * It picks the tile that puts HUNTER_BREAKAWAY_DISTANCE walkable tiles between hunter
+ * and player, and among the tiles that manage that, the one the hunter can reach
+ * soonest - so it backs off along the route it arrived by instead of teleporting
+ * across the map. A cramped or enclosed area yields the best separation available
+ * rather than failing, and the player's own tile is never chosen.
+ */
+export const findHunterBreakawayTile = (
+  hunter: GridPosition,
+  player: GridPosition,
+  bounds: GridBounds,
+  isBlocked: (tile: GridPosition) => boolean,
+  breakawayDistance: number = HUNTER_BREAKAWAY_DISTANCE,
+): GridPosition => {
+  if (!isInsideBounds(hunter, bounds)) {
+    return hunter;
+  }
+  const fromPlayer = buildDistanceField([player], bounds, isBlocked);
+  const separation = (tile: GridPosition): number => {
+    const distance = fromPlayer[tileIndex(tile, bounds)];
+    return distance === UNREACHED ? 0 : Math.min(distance, breakawayDistance);
+  };
+
+  const visited = new Uint8Array(bounds.width * bounds.height);
+  visited[tileIndex(hunter, bounds)] = 1;
+  // Breadth-first, so the first tile reaching a given separation is also the one the
+  // hunter reaches soonest, and the N/S/W/E order settles the remaining ties.
+  const reached = [hunter];
+  let best = hunter;
+  let bestSeparation = separation(hunter);
+
+  for (let head = 0; head < reached.length; head += 1) {
+    const tile = reached[head];
+    const tileSeparation = separation(tile);
+    if (tileSeparation > bestSeparation) {
+      best = tile;
+      bestSeparation = tileSeparation;
+      if (bestSeparation === breakawayDistance) {
+        return best;
+      }
+    }
+    for (const neighbour of walkableNeighbours(tile, bounds, isBlocked)) {
+      const index = tileIndex(neighbour, bounds);
+      if (visited[index] === 1) {
+        continue;
+      }
+      visited[index] = 1;
+      reached.push(neighbour);
+    }
+  }
+
+  return best;
+};
+
+/** Places a disengaged hunter on its fallback tile and clears the pending marker. */
+export const applyHunterBreakaway = (
+  state: HunterState,
+  position: GridPosition,
+): HunterState => ({ ...state, position: { ...position }, pendingBreakaway: false });
 
 /** First-contract players must make a navigation choice before pursuit starts. */
 export const isHunterEligibleForFirstContract = (

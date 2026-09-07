@@ -39,6 +39,10 @@ import {
 } from '../world/extractionPoints';
 import {
   findHunterPursuitPath,
+  findHunterBreakawayTile,
+  applyHunterBreakaway,
+  isHunterSearching,
+  tickHunterSearch,
   createHunterState,
   createHunterTrainer,
   DEFAULT_HUNTER_TUNING,
@@ -60,6 +64,9 @@ interface RunTimerHud {
   readonly text: Phaser.GameObjects.Text;
   readonly objectivesBacking: Phaser.GameObjects.Rectangle;
   readonly objectivesText: Phaser.GameObjects.Text;
+  /** Shown only while an escape is still holding the hunter off. */
+  readonly hunterBacking: Phaser.GameObjects.Rectangle;
+  readonly hunterText: Phaser.GameObjects.Text;
 }
 
 interface ControlKeys {
@@ -202,6 +209,7 @@ export class WorldScene extends Phaser.Scene {
     this.pendingTrainerBattle = undefined;
     this.hunterState = data.hunterState ?? createHunterState();
     this.createMap();
+    this.applyPendingHunterBreakaway();
     this.createEntities();
     this.createPlayer();
     this.createDialogBox();
@@ -617,7 +625,33 @@ export class WorldScene extends Phaser.Scene {
       .setStroke('#020617', 2)
       .setScrollFactor(0)
       .setDepth(101);
-    this.runTimerHud = { backing, text, objectivesBacking, objectivesText };
+    // Right of the objectives panel, so an escape's remaining room is readable at a
+    // glance without covering the raid timer or the objective cue.
+    const hunterBacking = this.add
+      .rectangle(245, 32, 146, 18, 0x064e3b, 0.9)
+      .setStrokeStyle(1, 0x6ee7b7)
+      .setScrollFactor(0)
+      .setDepth(100)
+      .setVisible(false);
+    const hunterText = this.add
+      .text(245, 32, '', {
+        fontFamily: 'monospace',
+        fontSize: '8px',
+        color: '#d1fae5',
+      })
+      .setOrigin(0.5)
+      .setStroke('#020617', 2)
+      .setScrollFactor(0)
+      .setDepth(101)
+      .setVisible(false);
+    this.runTimerHud = {
+      backing,
+      text,
+      objectivesBacking,
+      objectivesText,
+      hunterBacking,
+      hunterText,
+    };
     this.refreshRunTimerHud();
   }
 
@@ -641,6 +675,16 @@ export class WorldScene extends Phaser.Scene {
       .setVisible(hasObjectives)
       .setSize(164, objectivesHeight)
       .setY(24 + objectivesHeight / 2);
+
+    const searching = isHunterSearching(this.hunterState);
+    hud.hunterBacking.setVisible(searching);
+    hud.hunterText
+      .setVisible(searching)
+      .setText(
+        searching
+          ? `HUNTER OFF TRAIL ${Math.ceil((this.hunterState.searchRemainingMs ?? 0) / 1_000)}s`
+          : '',
+      );
 
     if (manager.isEnraged) {
       if (this.timerThreat !== 'enraged') {
@@ -679,6 +723,8 @@ export class WorldScene extends Phaser.Scene {
     this.runTimerHud?.text.destroy();
     this.runTimerHud?.objectivesBacking.destroy();
     this.runTimerHud?.objectivesText.destroy();
+    this.runTimerHud?.hunterBacking.destroy();
+    this.runTimerHud?.hunterText.destroy();
     this.runTimerHud = undefined;
   }
 
@@ -1235,6 +1281,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const snapshot = this.runSession.manager.tick(deltaMs);
+    this.advanceHunterSearch(deltaMs);
     this.spawnHunterIfDue(snapshot.elapsedMs);
     this.refreshExtractionMarkers();
     this.refreshRunTimerHud();
@@ -1389,6 +1436,10 @@ export class WorldScene extends Phaser.Scene {
     if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
       return;
     }
+    // A hunter that lost the trail holds where the player slipped away from it.
+    if (isHunterSearching(this.hunterState)) {
+      return;
+    }
     const aggression = this.runSession?.plan?.hunter.aggressionStepsPerPlayerStep
       ?? DEFAULT_HUNTER_TUNING.aggressionStepsPerPlayerStep;
     const steps = this.runSession?.manager.isEnraged
@@ -1412,6 +1463,43 @@ export class WorldScene extends Phaser.Scene {
       .setDepth(2 + position.y / 1000);
   }
 
+  /**
+   * Moves a hunter the player just escaped from onto its fallback tile.
+   *
+   * BattleScene marks the escape but cannot choose the tile: only the rebuilt world
+   * knows the map's collision. Running before createEntities() means the sprite is
+   * built where the hunter now stands, never where the battle left it.
+   */
+  private applyPendingHunterBreakaway(): void {
+    if (!this.hunterState.pendingBreakaway || !this.hunterState.position) {
+      return;
+    }
+    if (this.hunterState.mapId !== this.currentMap.id) {
+      this.hunterState = { ...this.hunterState, pendingBreakaway: false };
+      return;
+    }
+    this.hunterState = applyHunterBreakaway(
+      this.hunterState,
+      findHunterBreakawayTile(this.hunterState.position, this.currentTile, this.bounds, (tile) =>
+        this.isBlockedForHunter(tile),
+      ),
+    );
+  }
+
+  private advanceHunterSearch(deltaMs: number): void {
+    if (!isHunterSearching(this.hunterState)) {
+      return;
+    }
+    this.hunterState = tickHunterSearch(this.hunterState, deltaMs);
+    if (isHunterSearching(this.hunterState)) {
+      return;
+    }
+    // The same flash-and-warning language the raid timer uses for a threat change,
+    // rather than a dialogue box that would freeze the player exactly as pursuit resumes.
+    this.cameras.main.flash(120, 251, 191, 36, false);
+    audioManager.playLowHpWarning();
+  }
+
   private isBlockedForHunter(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
@@ -1428,6 +1516,7 @@ export class WorldScene extends Phaser.Scene {
     if (
       !this.isHunterOnCurrentMap() ||
       !this.hunterState.position ||
+      isHunterSearching(this.hunterState) ||
       !isHunterContactingPlayer(this.hunterState.position, this.currentTile)
     ) {
       return false;

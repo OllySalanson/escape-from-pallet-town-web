@@ -1,5 +1,6 @@
 import type { ItemId } from '../items';
 import type { Pokemon } from '../pokemon';
+import { hunterFleePenaltyMs } from './fleePenalty';
 
 /** Time the player has to extract after the raid timer reaches zero. */
 export const ENRAGE_GRACE_MS = 15_000;
@@ -42,6 +43,8 @@ export interface RunSnapshot {
   readonly foundItems: readonly ItemStack[];
   readonly recoveredFieldKit: boolean;
   readonly defeatedTrainers: number;
+  /** Escapes from the hunter so far; the next one costs more raid time. */
+  readonly hunterFlees: number;
   readonly mapId: string | null;
   readonly visitedMapIds: readonly string[];
   readonly elapsedMs: number;
@@ -80,6 +83,7 @@ export class RunManager {
   private foundItemsValue: ItemStack[] = [];
   private recoveredFieldKitValue = false;
   private defeatedTrainersValue = 0;
+  private hunterFleesValue = 0;
   private mapIdValue: string | null = null;
   private visitedMapIdsValue: string[] = [];
   private durationMs = 0;
@@ -123,6 +127,7 @@ export class RunManager {
     this.foundItemsValue = [];
     this.recoveredFieldKitValue = false;
     this.defeatedTrainersValue = 0;
+    this.hunterFleesValue = 0;
     this.mapIdValue = config.mapId;
     this.visitedMapIdsValue = [config.mapId];
     this.durationMs = config.durationMs;
@@ -171,6 +176,28 @@ export class RunManager {
     this.requirePhase('register a trainer defeat', RunPhase.InRun);
     this.defeatedTrainersValue += 1;
     return this.snapshot();
+  }
+
+  /**
+   * What the next escape from the hunter will cost, so the battle screen can print
+   * the price on the command before the player commits to it.
+   */
+  public nextHunterFleePenaltyMs(): number {
+    return hunterFleePenaltyMs(this.hunterFleesValue);
+  }
+
+  /**
+   * Charges an escape from the hunter to the raid clock.
+   *
+   * The penalty goes through tick(), so an escape that runs the clock out enrages
+   * the raid on exactly the path the timer already uses. It never fails: fleeing is
+   * a priced choice, not a roll, and the price is shown before the player takes it.
+   */
+  public registerHunterFlee(): { readonly penaltyMs: number; readonly snapshot: RunSnapshot } {
+    this.requirePhase('flee the hunter', RunPhase.InRun);
+    const penaltyMs = this.nextHunterFleePenaltyMs();
+    this.hunterFleesValue += 1;
+    return { penaltyMs, snapshot: this.tick(penaltyMs) };
   }
 
   public tick(elapsedMs: number): RunSnapshot {
@@ -262,6 +289,7 @@ export class RunManager {
       foundItems: [...this.foundItemsValue],
       recoveredFieldKit: this.recoveredFieldKitValue,
       defeatedTrainers: this.defeatedTrainersValue,
+      hunterFlees: this.hunterFleesValue,
       mapId: this.mapIdValue,
       visitedMapIds: [...this.visitedMapIdsValue],
       elapsedMs: this.elapsedMsValue,
