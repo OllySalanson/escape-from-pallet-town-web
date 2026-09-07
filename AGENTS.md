@@ -11,6 +11,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - The raid field guide is `ObjectivesScene` in `src/game/scenes/ObjectivesScene.ts`; derive its objective text from `buildObjectiveGuide()` in `src/game/objectives/ObjectiveGuide.ts`, and have it resume only the `WorldScene` instance it paused.
 - Scenes are registered in `src/game/gameConfig.ts`, not `main.ts`.
 - Both starter selection surfaces (`StarterScene` and `HubScene`'s `reselect` view) share their markup through `src/game/ui/starterPicker.ts`; the reselection rule itself is `Stash.swapStarter()`, and `SaveManager.reselectStarter()` also rewrites `starterSpeciesId` so later wipe re-grants follow the new choice.
+- Background music is intentionally off for playtesting: `SILENCE_BACKGROUND_THEMES` in `src/game/audio/AudioManager.ts` makes `startTheme()` a no-op while sound effects keep playing. Flip it to `false` to restore the music; leave the scene `startTheme` calls alone.
 - `Pokemon` has no `cureStatus()` method; clear a status by setting `primaryStatus` to null directly, which `SaveManager` saves and restores.
 
 ## Maintaining this file
