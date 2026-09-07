@@ -166,12 +166,30 @@ export class WorldScene extends Phaser.Scene {
     super('world');
   }
 
-  public create(data: WorldSceneData = {}): void {
-    // WorldScene is restarted after a battle. The previous instance set this
-    // while fading to battle, so it must not carry over and discard movement.
+  /**
+   * Clears everything the previous raid left on this instance.
+   *
+   * Phaser reuses one WorldScene object for every `scene.start('world')`, so a field
+   * describing the raid in progress outlives that raid unless it is cleared here.
+   * `pendingHubTransition` is the one that ends the game: an extraction or an expired
+   * run sets it, and while it is set `update()` returns before the player can take a
+   * step - so the next raid builds a world that renders and never responds. Anything
+   * scoped to a single raid belongs in this list, not in a guard at the point it is read.
+   */
+  private resetStateFromPreviousRaid(): void {
+    this.pendingHubTransition = false;
+    this.pendingTrainerBattle = undefined;
     this.isWarping = false;
     this.targetTile = null;
     this.stepProgress = 0;
+    this.facing = 'down';
+    this.caughtPokemonStash = [];
+    this.extractionMarkers = [];
+    this.timerThreat = 'normal';
+  }
+
+  public create(data: WorldSceneData = {}): void {
+    this.resetStateFromPreviousRaid();
     this.runSession = data.runSession;
     if (!this.runSession) {
       this.restoreSavedGame(data.savedGame);
@@ -183,8 +201,6 @@ export class WorldScene extends Phaser.Scene {
       this.currentMap = getWorldMap(this.runSession.plan.insertion.mapId);
       this.currentTile = { ...this.runSession.plan.insertion.position };
     }
-    this.extractionMarkers = [];
-    this.timerThreat = 'normal';
     this.cameras.main.fadeIn?.(180, 0, 0, 0);
     void audioManager.startTheme('overworld');
     if (data.party) {
@@ -209,7 +225,6 @@ export class WorldScene extends Phaser.Scene {
     this.trainerEncounters = this.runSession
       ? (this.runSession.plan?.trainers ?? createRunTrainerEncounters())
       : [];
-    this.pendingTrainerBattle = undefined;
     this.hunterState = data.hunterState ?? createHunterState();
     this.createMap();
     this.applyPendingHunterBreakaway();

@@ -188,6 +188,10 @@ export class BattleScene extends Phaser.Scene {
     // A completed first battle must not leave the return guard armed for the
     // next encounter, or its completed escape dialogue cannot hand back control.
     this.isTransitioning = false;
+    // A battle that ended mid-narration - a wipe lands there - would otherwise
+    // replay the last fight's leftover lines over the opening of this one.
+    this.isPresentingCombatEvents = false;
+    this.pendingCombatMessages = [];
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
