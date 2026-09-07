@@ -185,9 +185,11 @@ describe('BattleScene command presentation', () => {
     expect(dialog.visibleText).toBe('Got away safely!');
     expect(dialog.showMessage).toHaveBeenCalledWith('Got away safely!');
     expect(commandContainer.setVisible).toHaveBeenLastCalledWith(false);
+    expect((scene as unknown as { mode: string }).mode).toBe('events');
 
     dialog.isCurrentMessageComplete = true;
     (scene as unknown as { confirm(): void }).confirm();
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
     expect(dialog.advance).toHaveBeenCalledOnce();
     expect(fadeOut).toHaveBeenCalledWith(180, 0, 0, 0);
