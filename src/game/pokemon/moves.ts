@@ -22,6 +22,25 @@ export const GROWL = new MoveBase({
   boosts: [{ stat: 'attack', stages: -1 }],
 });
 
+/**
+ * Squirtle's opening move in the source material, and the one thing that turns
+ * its defensive stat line into a win condition: at level 5 every starter's
+ * stats sit within a point of each other, so bulk only pays off in a fight long
+ * enough to spend a turn setting up. Unity has no Squirtle and no Tail Whip;
+ * this is authored here, and uses nothing but the stat-stage boost Growl
+ * already runs through.
+ */
+export const TAIL_WHIP = new MoveBase({
+  name: 'Tail Whip',
+  description: "Lowers the target's Defense by one stage.",
+  type: PokemonType.Normal,
+  power: 0,
+  accuracy: 100,
+  pp: 30,
+  category: MoveCategory.Status,
+  boosts: [{ stat: 'defense', stages: -1 }],
+});
+
 export const SCRATCH = new MoveBase({
   name: 'Scratch',
   description: 'A plain raking blow. No side effect.',

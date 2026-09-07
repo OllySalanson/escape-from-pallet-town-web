@@ -18,6 +18,7 @@ export {
   SING,
   SUPER_SONIC,
   TACKLE,
+  TAIL_WHIP,
   THUNDER_WAVE,
   VINE_WHIP,
   WATER_GUN,

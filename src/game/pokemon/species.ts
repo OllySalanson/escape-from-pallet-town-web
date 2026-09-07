@@ -8,6 +8,7 @@ import {
   SING,
   SUPER_SONIC,
   TACKLE,
+  TAIL_WHIP,
   THUNDER_WAVE,
   VINE_WHIP,
   WATER_GUN,
@@ -72,8 +73,13 @@ export const SQUIRTLE = new PokemonBase({
     spDefense: 64,
     speed: 43,
   },
+  // Bulbasaur has carried Super Sonic since Unity, so it alone had a level-5
+  // line other than "attack". Tail Whip gives the bulkiest starter its own, and
+  // one that suits it: it pays for itself in a long fight and loses tempo in a
+  // short one.
   learnset: [
     { level: 1, move: TACKLE },
+    { level: 1, move: TAIL_WHIP },
     { level: 4, move: GROWL },
     { level: 7, move: WATER_GUN },
   ],

@@ -20,6 +20,7 @@ describe('rollEncounter', () => {
       { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 3 },
       { speciesId: 'bulbasaur', minLevel: 4, maxLevel: 6, weight: 3 },
       { speciesId: 'squirtle', minLevel: 4, maxLevel: 6, weight: 2 },
+      { speciesId: 'charmander', minLevel: 4, maxLevel: 6, weight: 2 },
       { speciesId: 'bulbasaur', minLevel: 7, maxLevel: 7, weight: 1 },
     ]);
     expect(PALLET_TALL_GRASS.entries.every((entry) => getSpeciesById(entry.speciesId))).toBe(true);
@@ -42,17 +43,24 @@ describe('rollEncounter', () => {
     expect(meanLevel).toBeLessThanOrEqual(5);
   });
 
-  it('offers a Grass-vulnerable species, so no starter is left with a dead move', () => {
+  // Every starter's own move is gated to level 7, so the only thing the choice
+  // of starter can express before then is typing. A starter whose type has no
+  // target here reaches level 7 and finds its new move worse than its Tackle,
+  // which is what Water did until a wild Charmander joined the table.
+  it('gives every starter type a super-effective target, so no signature move is dead', () => {
     const species = PALLET_TALL_GRASS.entries.map((entry) => getSpeciesById(entry.speciesId)!);
 
-    expect(
-      species.some((base) =>
-        getTypeEffectiveness(PokemonType.Grass, [
-          base.primaryType,
-          ...(base.secondaryType ? [base.secondaryType] : []),
-        ]) > 1,
-      ),
-    ).toBe(true);
+    for (const attackingType of [PokemonType.Grass, PokemonType.Fire, PokemonType.Water]) {
+      expect(
+        species.some(
+          (base) =>
+            getTypeEffectiveness(attackingType, [
+              base.primaryType,
+              ...(base.secondaryType ? [base.secondaryType] : []),
+            ]) > 1,
+        ),
+      ).toBe(true);
+    }
   });
 
   it('uses a strict 8 percent step-roll boundary', () => {
@@ -70,7 +78,7 @@ describe('rollEncounter', () => {
 
   it('selects the expected shared-table entry at each side of its weight boundary', () => {
     expect(rollEncounter(PALLET_TALL_GRASS, () => 0)).toEqual({ speciesId: 'pidgey', level: 3 });
-    // Weights are 3/3/2/1 out of 9, so the last entry needs a roll past 8/9.
+    // Weights are 3/3/2/2/1 out of 11, so the last entry needs a roll past 10/11.
     const levelSevenRolls = [0, 0.95, 0];
     expect(rollEncounter(PALLET_TALL_GRASS, () => levelSevenRolls.shift() ?? 0)).toEqual({
       speciesId: 'bulbasaur',

@@ -22,10 +22,13 @@ export interface WildEncounterTable {
  * one starter and survivable for another.
  *
  * This table keeps that level-7 Bulbasaur as the rare hard roll it should be
- * and puts rungs below it: Pidgey as neutral filler for every starter, and a
- * wild Squirtle so a Grass starter finally has something to be effective
- * against. It has no step encounter rate in Unity, so 8% is a Gen-1-style
- * fallback that `varyEncounterTable` then shifts per raid.
+ * and puts rungs below it: Pidgey as neutral filler for every starter, and one
+ * of each starter species so all three type advantages have somewhere to land.
+ * The wild Squirtle was added for the Grass starter; the wild Charmander closes
+ * the same gap for the Water one, which was otherwise the only starter whose
+ * own move was never super effective against anything in the early game. It has
+ * no step encounter rate in Unity, so 8% is a Gen-1-style fallback that
+ * `varyEncounterTable` then shifts per raid.
  */
 export const PALLET_TALL_GRASS: WildEncounterTable = {
   stepEncounterRate: 0.08,
@@ -33,6 +36,7 @@ export const PALLET_TALL_GRASS: WildEncounterTable = {
     { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 3 },
     { speciesId: 'bulbasaur', minLevel: 4, maxLevel: 6, weight: 3 },
     { speciesId: 'squirtle', minLevel: 4, maxLevel: 6, weight: 2 },
+    { speciesId: 'charmander', minLevel: 4, maxLevel: 6, weight: 2 },
     { speciesId: 'bulbasaur', minLevel: 7, maxLevel: 7, weight: 1 },
   ],
 };
