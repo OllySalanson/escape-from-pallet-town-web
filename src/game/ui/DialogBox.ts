@@ -7,6 +7,11 @@ export interface DialogBoxOptions {
   width?: number;
   height?: number;
   padding?: number;
+  /**
+   * Horizontal inset, when a textured frame is wider than the vertical inset.
+   * Defaults to `padding`.
+   */
+  paddingHorizontal?: number;
   cornerRadius?: number;
   borderWidth?: number;
   borderColor?: number;
@@ -34,6 +39,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
   private readonly widthPx: number;
   private readonly heightPx: number;
   private readonly paddingPx: number;
+  private readonly paddingHorizontalPx: number;
   private readonly indicatorBlinkMs: number;
   private readonly charsPerSecond: number;
   private readonly onComplete?: () => void;
@@ -57,6 +63,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.widthPx = widthPx;
     this.heightPx = heightPx;
     this.paddingPx = options.padding ?? DEFAULT_PADDING;
+    this.paddingHorizontalPx = options.paddingHorizontal ?? this.paddingPx;
     this.indicatorBlinkMs = Math.max(1, options.indicatorBlinkMs ?? DEFAULT_INDICATOR_BLINK_MS);
     this.charsPerSecond = options.charsPerSecond ?? DEFAULT_CHARS_PER_SECOND;
     this.onComplete = options.onComplete;
@@ -71,19 +78,19 @@ export class DialogBox extends Phaser.GameObjects.Container {
       );
     }
 
-    this.textObject = scene.add.text(this.paddingPx, this.paddingPx, '', {
+    this.textObject = scene.add.text(this.paddingHorizontalPx, this.paddingPx, '', {
       fontFamily: 'monospace',
       fontSize: '16px',
       color: '#ffffff',
       wordWrap: {
-        width: Math.max(0, this.widthPx - this.paddingPx * 2),
+        width: Math.max(0, this.widthPx - this.paddingHorizontalPx * 2),
       },
       ...(options.textStyle ?? {}),
     });
 
     this.indicatorObject = scene.add
       .text(
-        this.widthPx - this.paddingPx,
+        this.widthPx - this.paddingHorizontalPx,
         this.heightPx - this.paddingPx,
         options.indicatorText ?? DEFAULT_INDICATOR_TEXT,
         {

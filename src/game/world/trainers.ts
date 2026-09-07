@@ -1,5 +1,5 @@
 import { Pokemon } from '../pokemon';
-import { BULBASAUR, BUTTERFREE, PIDGEY, PIKACHU } from '../pokemon/species';
+import { BUTTERFREE, PIDGEY, PIKACHU, SQUIRTLE } from '../pokemon/species';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
@@ -47,10 +47,14 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     position: { x: 14, y: 26 },
     facing: 'left',
     introLines: ['HEY, RUNNER!', 'The grass belongs to the bold!', 'Let me see your team!'],
+    // Lee is the first authored trainer a new player meets. A Bulbasaur here
+    // made the fight a starter lottery at level 7 - 9% for Bulbasaur against
+    // 95% for Charmander - because Grass is resisted by the whole early roster.
+    // A Squirtle gives every starter a real matchup to read.
     trainer: createTrainer(
       'grass-scout-lee',
       'SCOUT LEE',
-      [new Pokemon(PIDGEY, 5), new Pokemon(BULBASAUR, 6)],
+      [new Pokemon(PIDGEY, 5), new Pokemon(SQUIRTLE, 6)],
       'Nice footwork. The route is yours... for now.',
     ),
   },

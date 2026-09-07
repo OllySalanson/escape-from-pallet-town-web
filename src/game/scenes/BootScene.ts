@@ -26,10 +26,13 @@ export class BootScene extends Phaser.Scene {
     this.load.image('battle-hud', 'assets/battle/hud-box.png');
     this.load.image('battle-dialog', 'assets/battle/dialog-plain.png');
 
+    // Every species sprite is a PNG. A per-species file-format exception is how
+    // Squirtle shipped as a dimensionless SVG that rasterised to a 150x150
+    // block and covered the battle screen, so there is deliberately no escape
+    // hatch here: new art must match, and `spriteAssets.test.ts` enforces it.
     for (const species of Object.values(SPECIES_BY_ID)) {
-      const extension = species.dexId === 7 ? 'svg' : 'png';
-      this.load.image(`pokemon-front-${species.dexId}`, `assets/pokemon/front/${species.dexId}.${extension}`);
-      this.load.image(`pokemon-back-${species.dexId}`, `assets/pokemon/back/${species.dexId}.${extension}`);
+      this.load.image(`pokemon-front-${species.dexId}`, `assets/pokemon/front/${species.dexId}.png`);
+      this.load.image(`pokemon-back-${species.dexId}`, `assets/pokemon/back/${species.dexId}.png`);
     }
   }
 

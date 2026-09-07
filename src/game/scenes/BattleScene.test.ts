@@ -141,22 +141,42 @@ describe('BattleScene command presentation', () => {
 
     renderedTexts[0].handlers.pointerdown();
 
-    const moveTexts = renderedTexts.slice(4);
-    expect(moveTexts).not.toHaveLength(0);
-    expect(moveTexts.every(({ y }) => y >= 174 && y < 238)).toBe(true);
-    expect(moveTexts[0].text).toMatch(/^▶ .+\n.+ \d+\/\d+$/);
-    expect(moveTexts.every(({ style }) => style.fixedWidth === 136 && style.fixedHeight === 28)).toBe(
+    // Two guidance lines are laid out first, then one row per known move.
+    const [summaryLine, matchupLine, ...moveTexts] = renderedTexts.slice(4);
+    expect(moveTexts).toHaveLength(3);
+    expect([summaryLine, matchupLine, ...moveTexts].every(({ y }) => y >= 174 && y < 238)).toBe(
       true,
     );
+    expect(moveTexts.map(({ text }) => text)).toEqual(['▶ SCRATCH', '  GROWL', '  EMBER']);
+    expect(moveTexts.every(({ style }) => style.fixedWidth === 136 && style.fixedHeight === 16)).toBe(
+      true,
+    );
+    // Charmander's Scratch is highlighted, so the panel describes that move.
+    expect(summaryLine.text).toBe('NORMAL · PHYSICAL · POWER 40 · PP 35/35');
+    expect(matchupLine.text).toBe('vs BULBASAUR: NORMAL DAMAGE x1');
 
     (scene as unknown as { goBack(): void }).goBack();
 
-    expect(renderedTexts.slice(7).map(({ text }) => text)).toEqual([
+    expect(renderedTexts.slice(9).map(({ text }) => text)).toEqual([
       '▶ FIGHT',
       '  BALL x5',
       '  POKéMON',
       '  RUN',
     ]);
+  });
+
+  it('rewrites the guidance lines when the highlighted move changes', () => {
+    const { scene, renderedTexts } = createBattleSceneHarness();
+
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    renderedTexts[0].handlers.pointerdown();
+
+    const [summaryLine, matchupLine, , , emberRow] = renderedTexts.slice(4);
+    emberRow.handlers.pointerover();
+
+    expect(summaryLine.text).toBe('FIRE · SPECIAL · POWER 40 · PP 25/25 · SAME-TYPE x1.5');
+    expect(matchupLine.text).toBe('vs BULBASAUR: SUPER EFFECTIVE x2');
+    expect(matchupLine.setColor).toHaveBeenLastCalledWith('#86efac');
   });
 
   it('shows the Run outcome as visible dialogue and returns map control after it advances', () => {

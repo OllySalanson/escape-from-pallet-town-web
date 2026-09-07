@@ -54,6 +54,8 @@ export type BattleEvent =
       readonly name: string;
       readonly move: string;
       readonly damage?: number;
+      /** The web game's same-type bonus, reported so its 1.5x is not hidden. */
+      readonly isStab?: boolean;
     }
   | { readonly type: 'missed'; readonly user: 'player' | 'enemy' }
   | { readonly type: 'critical-hit' }
@@ -327,9 +329,12 @@ const applyMove = (
       name: attackerAfterStatus.pokemon.base.name,
       move: move.base.name,
       damage: damage.damage,
+      isStab: damage.isStab,
     },
     ...(damage.isCritical ? [{ type: 'critical-hit' } as const] : []),
-    ...effectivenessEvents(damage.typeEffectiveness),
+    // A status move deals no damage, so its type effectiveness is not feedback
+    // about anything the player just saw happen.
+    ...(isDamagingMove(move) ? effectivenessEvents(damage.typeEffectiveness) : []),
   ];
 
   const defenderFainted = updatedDefender.currentHp === 0;

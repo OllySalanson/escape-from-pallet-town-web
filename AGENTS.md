@@ -14,6 +14,10 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - Background music is intentionally off for playtesting: `SILENCE_BACKGROUND_THEMES` in `src/game/audio/AudioManager.ts` makes `startTheme()` a no-op while sound effects keep playing. Flip it to `false` to restore the music; leave the scene `startTheme` calls alone.
 - Every path back into play after a wipe must leave the player able to attempt a run: `MINIMUM_SUPPLIES` and `Stash.restockMinimumSupplies()` in `src/game/stash/Stash.ts` own that guarantee, and `Stash.ensurePlayable()`, `Stash.swapStarter()` and `SaveManager.applyWipeLoss()` all route through it. It only ever tops up the shortfall, so it never removes anything and cannot be farmed.
 - `Pokemon` has no `cureStatus()` method; clear a status by setting `primaryStatus` to null directly, which `SaveManager` saves and restores.
+- Battle data is ported from the public Unity original, `OllySalanson/escapeFromPalletTown` (readable through `gh-axi api`), but the web game adds a 1.5x same-type bonus that Unity's `Pokemon.TakeDamage` has no equivalent of, and Unity fought its encounter tables with a level-10 five-strong party rather than one level-5 starter. Check that repo before treating any stat, learnset or encounter table as intentional - and re-measure early balance rather than porting a number across.
+- Every species sprite is `public/assets/pokemon/{front,back}/<dexId>.png`; `spriteAssets.test.ts` enforces the format and a size bound, because a dimensionless SVG once rasterised to 150x150 and covered the battle screen.
+- Battle text lives in `src/game/scenes/battlePresentation.ts` as pure functions, so message wording, move guidance and layout are testable without Phaser.
+- `PALLET_TALL_GRASS` in `src/game/pokemon/encounters.ts` is shared by Pallet Town, Route 1 and the Floodplain Relay; changing it changes all three.
 
 ## Maintaining this file
 
