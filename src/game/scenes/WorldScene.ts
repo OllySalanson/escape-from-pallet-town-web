@@ -13,7 +13,10 @@ import {
   getWarpAt,
   getWorldMap,
   isTallGrassInMap,
+  POND_TILES,
   TILE_SIZE,
+  WATER_TINT,
+  WORLD_MAP_NAMES,
   type MapWarp,
   type WorldMapDefinition,
 } from '../worldMap';
@@ -344,6 +347,13 @@ export class WorldScene extends Phaser.Scene {
       0,
     );
     detailLayer.setDepth(1);
+    // Water has to look like water: without this the Floodplain Relay's flood,
+    // and Pallet Town's pond, render as green fields with invisible walls.
+    groundLayer.forEachTile((tile) => {
+      if (POND_TILES.has(tile.index)) {
+        tile.tint = WATER_TINT;
+      }
+    });
     this.mapObjects.push(groundLayer, tallGrassLayer, detailLayer);
     this.createExtractionPoints();
     this.createRouteTransitionLabels();
@@ -503,23 +513,29 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  /** Every raid boundary names where it leads, so no route has to be guessed. */
   private createRouteTransitionLabels(): void {
-    const contract = this.runSession?.plan?.contract;
-    if (!contract || this.runSession?.manager.snapshot().recoveredFieldKit) {
+    const session = this.runSession;
+    if (!session) {
       return;
     }
+    const contract = session.plan?.contract;
 
     for (const warp of this.currentMap.warps) {
-      if (warp.destinationMapId !== contract.mapId && warp.destinationMapId !== 'pallet-town') {
+      // While a first contract is running, only the areas it needs are named,
+      // so a new player is never invited deeper than their objective.
+      if (
+        contract &&
+        warp.destinationMapId !== contract.mapId &&
+        warp.destinationMapId !== session.plan?.insertion.mapId
+      ) {
         continue;
       }
-      const destinationName = warp.destinationMapId === 'route-1' ? 'ROUTE 1' : 'PALLET TOWN';
-      const direction = warp.destinationMapId === 'route-1' ? 'SOUTH' : 'NORTH';
       const label = this.add
         .text(
           warp.source.x * TILE_SIZE + TILE_SIZE,
           warp.source.y * TILE_SIZE - 3,
-          `${destinationName} ${direction === 'SOUTH' ? '↓' : '↑'}`,
+          `${WORLD_MAP_NAMES[warp.destinationMapId].toUpperCase()} ${this.warpArrow(warp)}`,
           {
             fontFamily: 'monospace',
             fontSize: '8px',
@@ -532,6 +548,12 @@ export class WorldScene extends Phaser.Scene {
         .setDepth(5 + warp.source.y / 1000);
       this.mapObjects.push(label);
     }
+  }
+
+  private warpArrow(warp: MapWarp): string {
+    if (warp.source.y === 0) return '↑';
+    if (warp.source.y === this.currentMap.height - 1) return '↓';
+    return warp.source.x === 0 ? '←' : '→';
   }
 
   private createHunterSprite(): void {
@@ -883,7 +905,7 @@ export class WorldScene extends Phaser.Scene {
       return undefined;
     }
     if (this.currentMap.id !== contract.mapId) {
-      return 'SOUTH: ROUTE 1';
+      return `TRAVEL TO ${WORLD_MAP_NAMES[contract.mapId].toUpperCase()}`;
     }
     return `LOST KIT: ${directionTo(this.currentTile, contract.position)}`;
   }
@@ -895,7 +917,7 @@ export class WorldScene extends Phaser.Scene {
     }
     session.firstDeploymentBriefingShown = true;
     this.dialogBox.showMessage(
-      'ARROW KEYS / WASD: move. Head SOUTH to Route 1. Press O for the FIELD GUIDE.',
+      'ARROW KEYS / WASD: move. The field kit is SOUTH - fast road or west reeds. Press O for the FIELD GUIDE.',
     );
   }
 
@@ -1266,7 +1288,7 @@ export class WorldScene extends Phaser.Scene {
       'EXTRACTED!',
       formatRunSummary('Carried out and banked', snapshot.caughtPokemon, snapshot.foundItems),
       contractResult.granted
-        ? 'CONTRACT COMPLETE: South Verge is permanently unlocked. 1× Super Potion is now in your Base stash.'
+        ? 'CONTRACT COMPLETE: the Pallet Town insertions are permanently unlocked. 1× Super Potion is now in your Base stash.'
         : objectiveRewards.length
           ? `Objective rewards secured: ${objectiveRewards.map(({ itemId, quantity }) => `${quantity}× ${itemId}`).join(', ')}.`
           : 'No objectives completed this run.',
@@ -1385,7 +1407,7 @@ export class WorldScene extends Phaser.Scene {
   private isHunterEligible(): boolean {
     return isHunterEligibleForFirstContract(
       this.currentMap.id,
-      this.runSession?.plan?.contract !== undefined,
+      this.runSession?.plan?.contract?.mapId,
       this.activatedPoiIds.size > 0,
     );
   }

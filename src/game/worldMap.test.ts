@@ -285,11 +285,18 @@ describe('worldMap', () => {
     };
     const reachable = reachableFrom({ x: 15, y: 3 });
     const exits = EXTRACTION_POINTS.filter((point) => point.mapId === map.id);
+    const walkableTiles = map.collision.flat().filter((blocked) => !blocked).length;
 
     expect(exits.map((exit) => exit.label)).toEqual(['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT']);
     expect(exits.every((exit) => reachable.has(`${exit.position.x},${exit.position.y}`))).toBe(true);
     expect(reachable.has('7,12')).toBe(true);
     expect(reachable.has('27,15')).toBe(true);
+    // The first contract's field kit sits on the southern junction both routes reach.
+    expect(reachable.has('11,23')).toBe(true);
+    // No walkable tile is stranded behind the floodwater: a pocket with no path
+    // to it reads as a route the player can see and never take, and would
+    // silently swallow generated loot or a future landmark.
+    expect(reachable.size).toBe(walkableTiles);
   });
 
   it('keeps deeper extraction markers undisclosed on Oak’s route board', () => {

@@ -45,9 +45,13 @@ export interface RaidProgress {
   readonly unlockedInsertions: readonly string[];
 }
 
+/**
+ * Floodplain Relay is the area every save starts with: it is where the first
+ * contract lives. The Pallet Town insertions are the first contract's reward.
+ */
 export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   firstContractExtracted: false,
-  unlockedInsertions: ['town-square'],
+  unlockedInsertions: ['floodplain-relay'],
 };
 
 export interface SaveData {
@@ -170,7 +174,9 @@ export class SaveManager {
 
     const raidProgress: RaidProgress = {
       firstContractExtracted: true,
-      unlockedInsertions: [...new Set([...game.raidProgress.unlockedInsertions, 'south-verge'])],
+      unlockedInsertions: [
+        ...new Set([...game.raidProgress.unlockedInsertions, 'town-square', 'south-verge']),
+      ],
     };
     game.stash.addItem('super-potion', 1);
     return {
@@ -287,9 +293,9 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     : DEFAULT_RAID_PROGRESS.unlockedInsertions;
   return {
     firstContractExtracted: value.firstContractExtracted === true,
-    unlockedInsertions: unlockedInsertions.includes('town-square')
-      ? [...new Set(unlockedInsertions)]
-      : ['town-square', ...unlockedInsertions],
+    // The starting area is never lost, so a save written before Floodplain Relay
+    // became the first raid still opens on an insertion the player can use.
+    unlockedInsertions: [...new Set(['floodplain-relay', ...unlockedInsertions])],
   };
 }
 

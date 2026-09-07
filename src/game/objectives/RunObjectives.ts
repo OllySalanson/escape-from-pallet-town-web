@@ -29,7 +29,7 @@ function itemReward(itemId: ItemId, quantity: number): ObjectiveReward {
 export const RUN_OBJECTIVES: readonly RunObjective[] = [
   {
     id: 'recover-lost-field-kit',
-    description: 'Recover the lost field kit on Route 1',
+    description: 'Recover the lost field kit at the Floodplain Relay',
     reward: itemReward('super-potion', 1),
     progress: (snapshot) => progress(snapshot.recoveredFieldKit ? 1 : 0, 1),
   },

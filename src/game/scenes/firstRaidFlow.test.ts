@@ -46,10 +46,10 @@ describe('first raid flow regressions', () => {
     expect(worldSceneSource).toContain('teachingBattle: teaching !== null,');
   });
 
-  it('delays the first hunter until the player reaches Route 1 or the field station', () => {
-    expect(isHunterEligibleForFirstContract('pallet-town', true, false)).toBe(false);
-    expect(isHunterEligibleForFirstContract('route-1', true, false)).toBe(true);
-    expect(isHunterEligibleForFirstContract('pallet-town', true, true)).toBe(true);
-    expect(isHunterEligibleForFirstContract('pallet-town', false, false)).toBe(true);
+  it("delays the first hunter until the player reaches the contract's area or a landmark", () => {
+    expect(isHunterEligibleForFirstContract('pallet-town', 'floodplain-relay', false)).toBe(false);
+    expect(isHunterEligibleForFirstContract('floodplain-relay', 'floodplain-relay', false)).toBe(true);
+    expect(isHunterEligibleForFirstContract('pallet-town', 'floodplain-relay', true)).toBe(true);
+    expect(isHunterEligibleForFirstContract('pallet-town', undefined, false)).toBe(true);
   });
 });

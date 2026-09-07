@@ -33,7 +33,7 @@ export class DeploymentFlow {
   private currentStep: DeploymentStep = 'loadout';
   private secureReturn: Exclude<DeploymentStep, 'secure'> = 'loadout';
 
-  public constructor(stash: Stash, insertionId: RunInsertionId = 'town-square') {
+  public constructor(stash: Stash, insertionId: RunInsertionId = 'floodplain-relay') {
     this.stash = stash;
     this.insertion = insertionId;
   }

@@ -126,6 +126,7 @@ describe('game start flow', () => {
           createBlankLayer: vi.fn(() => ({
             putTilesAt: vi.fn(),
             setDepth: vi.fn(),
+            forEachTile: vi.fn(),
           })),
         })),
       },

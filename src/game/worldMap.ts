@@ -48,6 +48,14 @@ export interface WorldMapDefinition {
 
 export type WorldMapId = 'pallet-town' | 'route-1' | 'viridian-forest' | 'floodplain-relay';
 
+/** One place for the player-facing name of an area, so signage cannot drift. */
+export const WORLD_MAP_NAMES: Readonly<Record<WorldMapId, string>> = {
+  'pallet-town': 'Pallet Town',
+  'route-1': 'Route 1',
+  'viridian-forest': 'Viridian Forest',
+  'floodplain-relay': 'Floodplain Relay',
+};
+
 export const CLASSIC_TILE = {
   GRASS: 46,
   TALL_GRASS: 47,
@@ -87,6 +95,26 @@ export const SOLID_CLASSIC_TILES: ReadonlySet<number> = new Set([
   CLASSIC_TILE.FENCE_LEFT,
   CLASSIC_TILE.FENCE_MIDDLE,
   CLASSIC_TILE.FENCE_RIGHT,
+]);
+
+/**
+ * The classic tileset ships no water art - its pond tiles are the same green as
+ * grass - so open water reads as a lawn the player mysteriously cannot cross.
+ * Multiplying the pond palette by this tint turns that green into deep water and
+ * keeps the lighter bank tiles as a readable shoreline.
+ */
+export const WATER_TINT = 0x8073ff;
+
+export const POND_TILES: ReadonlySet<number> = new Set([
+  CLASSIC_TILE.POND_WATER,
+  CLASSIC_TILE.POND_BANK_NORTH_WEST,
+  CLASSIC_TILE.POND_BANK_NORTH,
+  CLASSIC_TILE.POND_BANK_NORTH_EAST,
+  CLASSIC_TILE.POND_BANK_WEST,
+  CLASSIC_TILE.POND_BANK_EAST,
+  CLASSIC_TILE.POND_BANK_SOUTH_WEST,
+  CLASSIC_TILE.POND_BANK_SOUTH,
+  CLASSIC_TILE.POND_BANK_SOUTH_EAST,
 ]);
 
 const POND_LEFT = 12;
@@ -505,8 +533,11 @@ function createFloodplainRelayMap(): WorldMapDefinition {
   placeTiles(detailLayer, CLASSIC_TILE.TREE_LEAFY, [
     [3, 3], [6, 4], [10, 3], [23, 3], [28, 5], [2, 14], [4, 25], [12, 27], [24, 25], [28, 27],
   ]);
-  placeTiles(detailLayer, CLASSIC_TILE.FLOWER_BLUE, [[11, 11], [18, 8], [23, 21]]);
-  placeTiles(detailLayer, CLASSIC_TILE.FLOWER_YELLOW, [[4, 20], [18, 24], [27, 9]]);
+  // Flowers only grow on the ranger station's dry shelf. A flower painted over
+  // floodwater renders as a one-tile lawn in open water and promises ground the
+  // player cannot stand on; the trees above are deliberate flooded woodland.
+  placeTiles(detailLayer, CLASSIC_TILE.FLOWER_BLUE, [[18, 8]]);
+  placeTiles(detailLayer, CLASSIC_TILE.FLOWER_YELLOW, [[19, 7]]);
   sealUnlinkedMapEdges(detailLayer, []);
 
   return {

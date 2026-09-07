@@ -4,7 +4,7 @@ import { PokemonParty } from '../pokemon';
 import { createTestLabBattleScenario } from '../dev/testLabRoutes';
 import { activeRunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
-import { generateRunPlan, type RunInsertionId } from '../run/runGeneration';
+import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
 import { createStartingStash } from '../stash';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -141,7 +141,7 @@ export class TestLabScene extends Phaser.Scene {
     const party = [stored.pokemon];
     activeRunManager.startRun(
       { party, items: [] },
-      { mapId: 'pallet-town', durationMs: 18 * 60 * 1000 },
+      { mapId: RUN_INSERTIONS[insertion].mapId, durationMs: 18 * 60 * 1000 },
       {},
     );
     const plan = generateRunPlan(

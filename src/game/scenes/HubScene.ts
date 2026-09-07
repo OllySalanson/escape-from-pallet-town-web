@@ -4,7 +4,12 @@ import { Bag, ITEM_DEFINITIONS, type ItemDefinition, type ItemId } from '../item
 import { PokemonParty, type PokemonBase } from '../pokemon';
 import { activeRunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
-import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
+import {
+  FIRST_CONTRACT,
+  generateRunPlan,
+  RUN_INSERTIONS,
+  type RunInsertionId,
+} from '../run/runGeneration';
 import { formatObjectiveReward, RUN_OBJECTIVES } from '../objectives';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import {
@@ -42,8 +47,15 @@ export class HubScene extends Phaser.Scene {
     super('hub');
   }
 
+  /**
+   * The stored save wins over any handed-in snapshot. Phaser reuses a scene's
+   * previous start payload when a later `scene.start('hub')` passes none, so a
+   * raid that banked a contract used to return to a hub still rendering the
+   * snapshot captured at game start. Storage is written before every hand-off,
+   * so the passed game is only a fallback for storage-less browsers.
+   */
   public init(data: HubSceneData = {}): void {
-    const loaded = data.savedGame ?? this.saveManager.load();
+    const loaded = this.saveManager.load() ?? data.savedGame;
     if (!loaded) {
       throw new Error('HubScene requires a saved game.');
     }
@@ -55,7 +67,7 @@ export class HubScene extends Phaser.Scene {
     this.savedGame = loaded;
     this.stash = loaded.stash;
     // Nothing is pre-selected: the raid party is always something the player picked.
-    this.flow = new DeploymentFlow(this.stash);
+    this.flow = new DeploymentFlow(this.stash, this.unlockedInsertions[0]?.[0]);
     this.view = 'home';
     this.reselectStarterId = this.startingStarterId();
     this.swapArmed = false;
@@ -76,15 +88,24 @@ export class HubScene extends Phaser.Scene {
     return ITEM_DEFINITIONS.filter((item) => this.stash.itemCount(item.id) > 0);
   }
 
+  private get firstContractActive(): boolean {
+    return !this.savedGame.raidProgress.firstContractExtracted;
+  }
+
+  /**
+   * Unlocked entries, narrowed to the active contract's own area while one is
+   * running, so a first raid can never be deployed somewhere its objective is
+   * unreachable. Every unlocked insertion returns the moment it is banked.
+   */
   private get unlockedInsertions(): readonly [RunInsertionId, (typeof RUN_INSERTIONS)[RunInsertionId]][] {
     const entries = Object.entries(RUN_INSERTIONS) as [
       RunInsertionId,
       (typeof RUN_INSERTIONS)[RunInsertionId],
     ][];
     return entries.filter(
-      ([id]) =>
-        this.savedGame.raidProgress.unlockedInsertions.includes(id) ||
-        (id === 'floodplain-relay' && this.savedGame.raidProgress.firstContractExtracted),
+      ([id, insertion]) =>
+        this.savedGame.raidProgress.unlockedInsertions.includes(id) &&
+        (!this.firstContractActive || insertion.mapId === FIRST_CONTRACT.mapId),
     );
   }
 
@@ -158,15 +179,14 @@ export class HubScene extends Phaser.Scene {
       deployment.secureSlot,
     );
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
-    const firstContractActive = !this.savedGame.raidProgress.firstContractExtracted;
-    const plan = generateRunPlan(seed, undefined, deployment.insertionId, firstContractActive);
+    const plan = generateRunPlan(seed, undefined, deployment.insertionId, this.firstContractActive);
     const runSession = createActiveRunSession(
       activeRunManager,
       deployment.secureSlot,
       deployment.stashSecureSlot,
       deployment.party.map((stored) => stored.id),
       items,
-      firstContractActive ? RUN_OBJECTIVES : [],
+      plan.contract ? RUN_OBJECTIVES : [],
       plan,
     );
     this.cameras.main.fadeOut(180, 0, 0, 0);
@@ -263,7 +283,7 @@ export class HubScene extends Phaser.Scene {
 
   private homeView(): string {
     const unlocked = this.savedGame.raidProgress.firstContractExtracted;
-    return `<main class="hub-home">${unlocked ? '<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">New permanent unlock</p><h2>South Verge + Super Potion</h2></div><small>Now available in your stash and insertion list</small></div></section>' : ''}<section class="hub-actions"><button class="action-card primary" data-deploy-flow><span>DEPLOY</span><h2>Start a raid</h2><p>${unlocked ? 'Pick the Pokémon and supplies you are willing to risk, choose where you drop in, then confirm.' : 'Pick the Pokémon and supplies you are willing to risk, then confirm before you drop in. Recover the lost field kit on Route 1 and escape through the South Gate.'}</p><b>Prepare loadout →</b></button><button class="action-card" data-view="stash"><span>STASH</span><h2>Review supplies</h2><p>Check the Pokémon and supplies secured at base.</p><b>Open stash →</b></button></section>${this.swapPanel()}${unlocked ? '' : `<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">Active contract</p><h2>Lost field kit</h2></div><small>Reward requires extraction</small></div><div class="objective-list">${RUN_OBJECTIVES.map((objective) => `<article class="entity-row"><span class="item-icon">✦</span><div class="objective-copy"><strong>${objective.description}</strong><small>Reward: unlock South Verge + ${formatObjectiveReward(objective.reward)}</small></div></article>`).join('')}</div></section>`}</main>`;
+    return `<main class="hub-home">${unlocked ? '<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">New permanent unlock</p><h2>Pallet Town insertions + Super Potion</h2></div><small>Town Square and South Verge are now in your insertion list</small></div></section>' : ''}<section class="hub-actions"><button class="action-card primary" data-deploy-flow><span>DEPLOY</span><h2>Start a raid</h2><p>${unlocked ? 'Pick the Pokémon and supplies you are willing to risk, choose where you drop in, then confirm.' : 'Pick the Pokémon and supplies you are willing to risk, then confirm before you drop in. Recover the lost field kit at the Floodplain Relay, then pick an exit and get out.'}</p><b>Prepare loadout →</b></button><button class="action-card" data-view="stash"><span>STASH</span><h2>Review supplies</h2><p>Check the Pokémon and supplies secured at base.</p><b>Open stash →</b></button></section>${this.swapPanel()}${unlocked ? '' : `<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">Active contract</p><h2>Lost field kit</h2></div><small>Reward requires extraction</small></div><div class="objective-list">${RUN_OBJECTIVES.map((objective) => `<article class="entity-row"><span class="item-icon">✦</span><div class="objective-copy"><strong>${objective.description}</strong><small>Reward: unlock the Pallet Town insertions + ${formatObjectiveReward(objective.reward)}</small></div></article>`).join('')}</div></section>`}</main>`;
   }
 
   private stashView(): string {
@@ -274,7 +294,7 @@ export class HubScene extends Phaser.Scene {
     const party = this.flow.party;
     const securedCount = (this.flow.securedPokemon ? 1 : 0) + this.flow.securedItems.length;
     const single = this.stashPokemon.length === 1;
-    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<button class="entity-row selectable ${this.flow.includesPokemon(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div><strong>${stored.pokemon.base.name}</strong><small>Level ${stored.pokemon.level} · ${stored.pokemon.currentHp}/${stored.pokemon.maxHp} HP${single ? ' · your only Pokémon' : ''}</small></div><span>${this.flow.includesPokemon(stored.id) ? 'Added ✓' : 'Add +'}</span></button>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.flow.itemQuantity(item.id as ItemId)}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>Choose your entry</h2></div></div>${this.unlockedInsertions.map(([id, insertion]) => `<button class="entity-row selectable ${this.flow.insertionId === id ? 'selected' : ''}" data-insertion="${id}"><div><strong>${insertion.label}</strong><small>${insertion.description}</small></div></button>`).join('')}<div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Run loadout</h2></div><b>${party.length}/6</b></div>${party.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong></article>`).join('') || '<p class="empty-state">Nothing selected yet. Add a Pokémon from your stash to continue.</p>'}<div class="risk-note">Everything here is lost on a wipe unless it is in the secure slot.</div><button class="button" data-secure-slot>Secure slot${securedCount ? ` · ${securedCount} protected` : ''} →</button><button class="button primary-button" data-advance ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy →</button></section></main>`;
+    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<button class="entity-row selectable ${this.flow.includesPokemon(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div><strong>${stored.pokemon.base.name}</strong><small>Level ${stored.pokemon.level} · ${stored.pokemon.currentHp}/${stored.pokemon.maxHp} HP${single ? ' · your only Pokémon' : ''}</small></div><span>${this.flow.includesPokemon(stored.id) ? 'Added ✓' : 'Add +'}</span></button>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.flow.itemQuantity(item.id as ItemId)}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${this.firstContractActive ? 'Contract area' : 'Choose your entry'}</h2></div></div>${this.unlockedInsertions.map(([id, insertion]) => `<button class="entity-row selectable ${this.flow.insertionId === id ? 'selected' : ''}" data-insertion="${id}"><div><strong>${insertion.label}</strong><small>${insertion.description}</small></div></button>`).join('')}${this.firstContractActive ? '<p class="confirm-note">Your active contract is here. The Pallet Town insertions unlock when you extract it.</p>' : ''}<div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Run loadout</h2></div><b>${party.length}/6</b></div>${party.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong></article>`).join('') || '<p class="empty-state">Nothing selected yet. Add a Pokémon from your stash to continue.</p>'}<div class="risk-note">Everything here is lost on a wipe unless it is in the secure slot.</div><button class="button" data-secure-slot>Secure slot${securedCount ? ` · ${securedCount} protected` : ''} →</button><button class="button primary-button" data-advance ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy →</button></section></main>`;
   }
 
   private secureView(): string {

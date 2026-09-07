@@ -14,6 +14,12 @@ import { activeRunManager, RunPhase } from '../run';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash } from '../stash';
 import type { DeploymentFlow } from '../hub';
+import {
+  DEFAULT_RAID_PROGRESS,
+  SaveManager,
+  type RaidProgress,
+  type StorageLike,
+} from '../save/SaveManager';
 import { HubScene, type HubSceneData } from './HubScene';
 
 interface WorldSceneData {
@@ -29,7 +35,26 @@ interface HubInternals {
   readonly flow: DeploymentFlow;
 }
 
-function createHub(): { hub: HubInternals; start: ReturnType<typeof vi.fn> } {
+class MemoryStorage implements StorageLike {
+  private readonly values = new Map<string, string>();
+
+  public getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  public setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+
+  public removeItem(key: string): void {
+    this.values.delete(key);
+  }
+}
+
+function createHub(
+  raidProgress: RaidProgress = DEFAULT_RAID_PROGRESS,
+  storage: StorageLike | null = null,
+): { hub: HubInternals; start: ReturnType<typeof vi.fn> } {
   const stash = createStartingStash();
   stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
   const start = vi.fn<(scene: string, data: WorldSceneData) => void>();
@@ -45,6 +70,7 @@ function createHub(): { hub: HubInternals; start: ReturnType<typeof vi.fn> } {
       },
     },
     scene: { start },
+    saveManager: new SaveManager(storage),
     time: { delayedCall: vi.fn() },
     overlay: {
       root: {
@@ -63,7 +89,7 @@ function createHub(): { hub: HubInternals; start: ReturnType<typeof vi.fn> } {
       items: [],
       bag: new Bag(),
       stash,
-      raidProgress: { firstContractExtracted: false, unlockedInsertions: ['town-square'] },
+      raidProgress,
       starterSpeciesId: 'bulbasaur',
     },
   });
@@ -117,6 +143,65 @@ describe('hub deployment route', () => {
     deploy(hub, start);
     expect(start).toHaveBeenCalledTimes(1);
     expect(start.mock.calls[0][0]).toBe('world');
+  });
+
+  it('sends a brand new save into Floodplain Relay carrying a contract that lives there', () => {
+    const { hub, start } = createHub();
+
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.advance();
+    deploy(hub, start);
+
+    const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+    expect(runSession.plan?.insertion.id).toBe('floodplain-relay');
+    expect(runSession.plan?.contract?.mapId).toBe('floodplain-relay');
+    expect(runSession.objectives.map((objective) => objective.id)).toEqual([
+      'recover-lost-field-kit',
+    ]);
+    expect(activeRunManager.snapshot().mapId).toBe('floodplain-relay');
+  });
+
+  it('reopens the legacy insertions only once the first contract has been banked', () => {
+    const { hub, start } = createHub({
+      firstContractExtracted: true,
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'south-verge'],
+    });
+
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.chooseInsertion('town-square');
+    hub.flow.advance();
+    deploy(hub, start);
+
+    const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+    expect(runSession.plan?.insertion.id).toBe('town-square');
+    // The banked contract is not re-issued, so its reward cannot be farmed.
+    expect(runSession.plan?.contract).toBeUndefined();
+    expect(runSession.objectives).toEqual([]);
+  });
+
+  it('re-reads the stored save, so a banked contract is not hidden by a stale start payload', () => {
+    // Phaser hands a restarted scene its previous start payload, so returning
+    // from a raid without one used to re-render the pre-raid snapshot.
+    const storage = new MemoryStorage();
+    const stored = new SaveManager(storage);
+    stored.save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash: createStartingStash(),
+      raidProgress: {
+        firstContractExtracted: true,
+        unlockedInsertions: ['floodplain-relay', 'town-square', 'south-verge'],
+      },
+    });
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
+
+    expect((hub as unknown as { savedGame: { raidProgress: RaidProgress } }).savedGame.raidProgress)
+      .toEqual({
+        firstContractExtracted: true,
+        unlockedInsertions: ['floodplain-relay', 'town-square', 'south-verge'],
+      });
   });
 
   it('enters the raid with exactly the party, supplies and secure slot that were confirmed', () => {
