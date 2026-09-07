@@ -1186,6 +1186,12 @@ export class WorldScene extends Phaser.Scene {
       position: this.currentTile,
       bag: this.bag,
       stash: existingGame?.stash,
+      // A free-roam save only owns the party, position and bag. Everything else
+      // has to be carried through verbatim or it is silently reset: contract
+      // progress, the chosen starter, and recovery time already booked.
+      raidProgress: existingGame?.raidProgress,
+      starterSpeciesId: existingGame?.starterSpeciesId,
+      pendingRecoveryMs: existingGame?.pendingRecoveryMs,
     });
   }
 

@@ -98,6 +98,27 @@ export class Stash {
     return this.storedPokemon.splice(index, 1)[0].pokemon;
   }
 
+  /**
+   * Restores one stashed Pokemon to full HP and clears its status, reviving it
+   * when it came home fainted. This is the only way HP returns outside a Potion,
+   * and it is deliberately not free: the price is raid time, charged by
+   * `applyRecovery()` in `../hub/recovery`. Nothing is created or consumed here,
+   * so a recovery can never move an item or a Pokemon in or out of the vault.
+   *
+   * @returns Whether anything actually changed.
+   */
+  public recoverPokemon(id: string): boolean {
+    const stored = this.storedPokemon.find((entry) => entry.id === id);
+    if (!stored) {
+      return false;
+    }
+
+    const healedHp = stored.pokemon.heal();
+    const curedStatus = stored.pokemon.primaryStatus !== null;
+    stored.pokemon.primaryStatus = null;
+    return healedHp > 0 || curedStatus;
+  }
+
   public addItem(itemId: string, quantity = 1): boolean {
     return this.bag.add(itemId, quantity);
   }
