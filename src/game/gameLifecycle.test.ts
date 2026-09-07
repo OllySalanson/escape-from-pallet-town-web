@@ -21,4 +21,41 @@ describe('game lifecycle', () => {
     expect(game.destroy).toHaveBeenCalledWith(true);
     expect(host).not.toHaveProperty('__escapeFromPalletTownGame__');
   });
+
+  it('leaves exactly one game canvas after a replacement mount', () => {
+    const elements: { readonly kind: string; removed: boolean; remove(): void }[] = [];
+    const app = {
+      querySelectorAll: vi.fn(() => elements.filter((element) => !element.removed)),
+    };
+    const originalDocument = globalThis.document;
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: { getElementById: vi.fn(() => app) },
+    });
+    const host = {};
+    const createGame = () => {
+      const canvas = {
+        kind: 'canvas',
+        removed: false,
+        remove() {
+          this.removed = true;
+        },
+      };
+      elements.push(canvas);
+      return { destroy: vi.fn() };
+    };
+
+    try {
+      mountGame(createGame, host);
+      mountGame(createGame, host);
+
+      expect(elements.filter((element) => !element.removed && element.kind === 'canvas')).toHaveLength(1);
+      expect(app.querySelectorAll).toHaveBeenCalledWith('canvas, .menu-overlay');
+    } finally {
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: originalDocument,
+      });
+    }
+  });
 });

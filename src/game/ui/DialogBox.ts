@@ -162,6 +162,11 @@ export class DialogBox extends Phaser.GameObjects.Container {
     }
 
     const hasNextMessage = this.typewriter.advance();
+    if (hasNextMessage) {
+      // Advancing a multi-message sequence resets visibleText to empty. Prime the
+      // new line before the next frame so the panel never flashes blank.
+      this.typewriter.update(1000 / this.charsPerSecond);
+    }
     this.textObject.setText(this.typewriter.visibleText);
     this.indicatorElapsedMs = 0;
     this.indicatorObject.setVisible(false);
