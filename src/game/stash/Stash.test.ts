@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Bag } from '../items';
 import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
-import { Stash } from './Stash';
+import { MINIMUM_SUPPLIES, Stash } from './Stash';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -55,15 +55,33 @@ describe('Stash', () => {
     expect(stash.toJSON()).toEqual(contents);
   });
 
-  it('restores only a Pokemon when supplies remain', () => {
+  it('tops partial supplies back up to the minimum when it re-grants a starter', () => {
     const stash = new Stash({ items: { potion: 2, 'poke-ball': 1 } });
 
     expect(stash.ensurePlayable()).toBe(true);
     expect(stash.listPokemon()).toMatchObject([{ pokemon: { base: { id: 'bulbasaur' }, level: 5 } }]);
-    expect(stash.listItems()).toEqual({ potion: 2, 'poke-ball': 1 });
+    expect(stash.listItems()).toEqual(MINIMUM_SUPPLIES);
   });
 
-  it.each([BULBASAUR, CHARMANDER, SQUIRTLE])('swaps a sole Pokemon for a fresh level 5 %s', (starter) => {
+  it('re-grants a full supply alongside a starter when only an unrelated item survived', () => {
+    const stash = new Stash({ items: { antidote: 1 } });
+
+    expect(stash.ensurePlayable()).toBe(true);
+    expect(stash.listItems()).toEqual({ antidote: 1, ...MINIMUM_SUPPLIES });
+  });
+
+  it('tops up to the minimum without ever reducing a larger hoard', () => {
+    const stash = new Stash({ items: { 'poke-ball': 12, potion: 1, 'super-potion': 4 } });
+
+    expect(stash.restockMinimumSupplies()).toBe(true);
+    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3, 'super-potion': 4 });
+
+    // Repeating it adds nothing, so the restock cannot be farmed.
+    expect(stash.restockMinimumSupplies()).toBe(false);
+    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3, 'super-potion': 4 });
+  });
+
+  it.each([BULBASAUR, CHARMANDER, SQUIRTLE])('swaps a sole Pokemon for a fresh level 5 %s, with a usable supply', (starter) => {
     const stash = new Stash({ items: { potion: 2 } });
     stash.addPokemon(new Pokemon(PIDGEY, 21), 'survivor');
 
@@ -72,7 +90,7 @@ describe('Stash', () => {
     expect(stash.listPokemon()).toMatchObject([
       { id: `${starter.id}-1`, pokemon: { base: { id: starter.id }, level: 5 } },
     ]);
-    expect(stash.listItems()).toEqual({ potion: 2 });
+    expect(stash.listItems()).toEqual(MINIMUM_SUPPLIES);
   });
 
   it('refuses to swap a starter while more than one Pokemon remains', () => {
@@ -156,6 +174,8 @@ describe('Stash', () => {
 
     const restored = saves.load();
     expect(restored?.stash.listPokemon().map(({ id }) => id)).toEqual(['secured', 'home']);
-    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 2, potion: 3 });
+    // Three unsecured Poke Balls are gone for good, then the wipe tops the
+    // survivor back up to the minimum needed to attempt another run.
+    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
   });
 });

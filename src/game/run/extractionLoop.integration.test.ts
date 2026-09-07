@@ -133,6 +133,80 @@ describe('extraction loop integration', () => {
     expect(wipedStash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
   });
 
+  it('returns a player who wiped holding an unrelated leftover item with a usable supply of balls and potions', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const stash = saves.load()!.stash;
+    const starter = stash.listPokemon()[0];
+    // One odd end banked from an earlier raid is enough to suppress the restock.
+    stash.addItem('antidote', 1);
+    saves.save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash,
+    });
+
+    const loadout = {
+      party: [starter.pokemon],
+      items: [
+        { itemId: 'poke-ball', quantity: 5 },
+        { itemId: 'potion', quantity: 3 },
+      ],
+    } as const;
+    const manager = new RunManager();
+    manager.startRun(loadout, RUN_CONFIG);
+    const session = createActiveRunSession(manager, {}, {}, [starter.id], loadout.items);
+    session.manager.resolveWipe(session.secureSlot);
+
+    expect(
+      saves.applyWipeLoss(session.broughtPokemonIds, session.broughtItems, session.stashSecureSlot),
+    ).toBe(true);
+
+    const recovered = saves.load()!.stash;
+    expect(recovered.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'bulbasaur' }, level: 5 } },
+    ]);
+    // The kept antidote is never taken away, and the balls and potions come back.
+    expect(recovered.listItems()).toEqual({ antidote: 1, 'poke-ball': 5, potion: 3 });
+  });
+
+  it('restocks a wiped player whose secure slot saved a Pokemon but no supplies', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const stash = saves.load()!.stash;
+    const starter = stash.listPokemon()[0];
+
+    const loadout = {
+      party: [starter.pokemon],
+      items: [
+        { itemId: 'poke-ball', quantity: 5 },
+        { itemId: 'potion', quantity: 3 },
+      ],
+    } as const;
+    const secureSlot = { pokemon: starter.pokemon };
+    const stashSecureSlot = { pokemonId: starter.id };
+    const manager = new RunManager();
+    manager.startRun(loadout, RUN_CONFIG, secureSlot);
+    const session = createActiveRunSession(
+      manager,
+      secureSlot,
+      stashSecureSlot,
+      [starter.id],
+      loadout.items,
+    );
+    session.manager.resolveWipe(session.secureSlot);
+
+    expect(
+      saves.applyWipeLoss(session.broughtPokemonIds, session.broughtItems, session.stashSecureSlot),
+    ).toBe(true);
+
+    // No starter is re-granted - the secured one survived - but the supplies it
+    // needs to attempt another run still come back.
+    const recovered = saves.load()!.stash;
+    expect(recovered.listPokemon().map(({ id }) => id)).toEqual([starter.id]);
+    expect(recovered.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
+  });
+
   it('lets a wiped player re-specialise, and re-grants the newly chosen starter on the next wipe', () => {
     const storage = new MemoryStorage();
     const saves = seedNewPlayer(storage);
@@ -151,6 +225,7 @@ describe('extraction loop integration', () => {
     expect(saves.load()!.stash.listPokemon()).toMatchObject([
       { pokemon: { base: { id: 'bulbasaur' }, level: 5 } },
     ]);
+    expect(saves.load()!.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
     expect(persistedStarterSpeciesId(storage)).toBe('bulbasaur');
     expect(saves.load()!.stash.canSwapStarter()).toBe(true);
 
@@ -160,6 +235,8 @@ describe('extraction loop integration', () => {
     expect(saves.load()!.stash.listPokemon()).toMatchObject([
       { id: 'squirtle-1', pokemon: { base: { id: 'squirtle' }, level: 5 } },
     ]);
+    // Re-specialising hands over a usable kit too, not just a new species.
+    expect(saves.load()!.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
 
     // Reload the page, then wipe again: the re-grant follows the new choice.
     const afterReload = new SaveManager(storage);
