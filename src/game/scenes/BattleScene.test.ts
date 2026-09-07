@@ -6,6 +6,13 @@ vi.mock('phaser', () => ({
     GameObjects: {
       Container: class {},
     },
+    Cameras: {
+      Scene2D: {
+        Events: {
+          FADE_OUT_COMPLETE: 'fade-out-complete',
+        },
+      },
+    },
   },
 }));
 
@@ -30,10 +37,29 @@ interface RenderedText {
 function createBattleSceneHarness(): {
   scene: BattleScene;
   renderedTexts: RenderedText[];
-  dialog: { setVisible: ReturnType<typeof vi.fn> };
+  dialog: {
+    setVisible: ReturnType<typeof vi.fn>;
+    showMessage: ReturnType<typeof vi.fn>;
+    advance: ReturnType<typeof vi.fn>;
+    isCurrentMessageComplete: boolean;
+    visibleText: string;
+  };
+  commandContainer: {
+    add: ReturnType<typeof vi.fn>;
+    removeAll: ReturnType<typeof vi.fn>;
+    setVisible: ReturnType<typeof vi.fn>;
+  };
 } {
   const renderedTexts: RenderedText[] = [];
-  const dialog = { setVisible: vi.fn() };
+  const dialog = {
+    setVisible: vi.fn(),
+    showMessage: vi.fn((message: string) => {
+      dialog.visibleText = message;
+    }),
+    advance: vi.fn(),
+    isCurrentMessageComplete: false,
+    visibleText: '',
+  };
   const commandContainer = {
     add: vi.fn(),
     removeAll: vi.fn(),
@@ -78,6 +104,9 @@ function createBattleSceneHarness(): {
     commandContainer,
     dialog,
     displayedEnemy: enemy,
+    defeatedTrainerIds: new Set(),
+    collectedLootIds: new Set(),
+    activatedPoiIds: new Set(),
     forcedReplacement: false,
     isPresentingCombatEvents: false,
     mode: 'events',
@@ -88,7 +117,7 @@ function createBattleSceneHarness(): {
     trainer: undefined,
   });
 
-  return { scene, renderedTexts, dialog };
+  return { scene, renderedTexts, dialog, commandContainer };
 }
 
 describe('BattleScene command presentation', () => {
@@ -128,5 +157,41 @@ describe('BattleScene command presentation', () => {
       '  POKéMON',
       '  RUN',
     ]);
+  });
+
+  it('shows the Run outcome as visible dialogue and returns map control after it advances', () => {
+    const { scene, renderedTexts, dialog, commandContainer } = createBattleSceneHarness();
+    let returnedParty: PokemonParty | undefined;
+    const start = vi.fn((sceneKey: string, data: { party: PokemonParty }) => {
+      expect(sceneKey).toBe('world');
+      returnedParty = data.party;
+    });
+    const fadeOut = vi.fn();
+
+    Object.assign(scene as object, {
+      launchedFromWorld: true,
+      cameras: {
+        main: {
+          fadeOut,
+          once: vi.fn((_event: unknown, callback: () => void) => callback()),
+        },
+      },
+      scene: { manager: { keys: { world: {} } }, start },
+    });
+
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    renderedTexts[3].handlers.pointerdown();
+
+    expect(dialog.visibleText).toBe('Got away safely!');
+    expect(dialog.showMessage).toHaveBeenCalledWith('Got away safely!');
+    expect(commandContainer.setVisible).toHaveBeenLastCalledWith(false);
+
+    dialog.isCurrentMessageComplete = true;
+    (scene as unknown as { confirm(): void }).confirm();
+
+    expect(dialog.advance).toHaveBeenCalledOnce();
+    expect(fadeOut).toHaveBeenCalledWith(180, 0, 0, 0);
+    expect(start).toHaveBeenCalledOnce();
+    expect(returnedParty).toBeInstanceOf(PokemonParty);
   });
 });

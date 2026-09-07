@@ -143,6 +143,10 @@ export class BattleScene extends Phaser.Scene {
     this.activatedPoiIds.clear();
     data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
     this.pendingHubTransition = false;
+    // Phaser reuses this scene instance after it returns to the overworld.
+    // A completed first battle must not leave the return guard armed for the
+    // next encounter, or its completed escape dialogue cannot hand back control.
+    this.isTransitioning = false;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
