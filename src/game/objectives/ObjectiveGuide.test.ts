@@ -8,7 +8,10 @@ import { buildObjectiveGuide } from './ObjectiveGuide';
 
 function createFirstContractSession() {
   const manager = new RunManager();
-  manager.startRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] }, { mapId: 'pallet-town', durationMs: 60_000 });
+  manager.startRun(
+    { party: [new Pokemon(BULBASAUR, 5)], items: [] },
+    { mapId: 'floodplain-relay', durationMs: 60_000 },
+  );
   return createActiveRunSession(
     manager,
     {},
@@ -16,7 +19,7 @@ function createFirstContractSession() {
     [],
     [],
     RUN_OBJECTIVES,
-    generateRunPlan(42, undefined, 'town-square', true),
+    generateRunPlan(42, undefined, 'floodplain-relay', true),
   );
 }
 
@@ -25,12 +28,12 @@ describe('objective field guide', () => {
     const session = createFirstContractSession();
 
     expect(buildObjectiveGuide(session, {
-      currentMapId: 'pallet-town',
-      currentPosition: { x: 6, y: 8 },
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 15, y: 3 },
       activatedPoiIds: new Set(),
     }).objectives).toEqual([
       expect.objectContaining({
-        description: 'Recover the lost field kit on Route 1',
+        description: 'Recover the lost field kit at the Floodplain Relay',
         progress: '0/1',
         complete: false,
         reward: '1× super potion',
@@ -39,8 +42,8 @@ describe('objective field guide', () => {
 
     session.manager.recoverFieldKit();
     expect(buildObjectiveGuide(session, {
-      currentMapId: 'route-1',
-      currentPosition: { x: 8, y: 15 },
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 11, y: 23 },
       activatedPoiIds: new Set(),
     }).objectives[0]).toMatchObject({
       progress: '1/1',
@@ -51,8 +54,8 @@ describe('objective field guide', () => {
   it('gives the first contract a sequenced briefing, then shortens later runs', () => {
     const firstSession = createFirstContractSession();
     const firstGuide = buildObjectiveGuide(firstSession, {
-      currentMapId: 'pallet-town',
-      currentPosition: { x: 6, y: 8 },
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 15, y: 3 },
       activatedPoiIds: new Set(),
     });
     const laterSession = createActiveRunSession(
@@ -70,8 +73,8 @@ describe('objective field guide', () => {
       activatedPoiIds: new Set(),
     });
 
-    expect(firstGuide.hints.join(' ')).toContain('Route 1');
-    expect(firstGuide.hints.join(' ')).toContain('Field Station');
+    expect(firstGuide.hints.join(' ')).toContain('Floodplain Relay');
+    expect(firstGuide.hints.join(' ')).toContain('reeds');
     expect(firstGuide.hints.join(' ')).toContain('lost field kit');
     expect(firstGuide.hints.join(' ')).toContain('Extract');
     expect(firstGuide.hints).toHaveLength(4);
@@ -79,42 +82,47 @@ describe('objective field guide', () => {
     expect(laterGuide.hints).toHaveLength(2);
   });
 
-  it('only calls the field station secured after its actual activation', () => {
+  it('offers both routes to the field kit before it is recovered, then only the extraction', () => {
     const session = createFirstContractSession();
     const before = buildObjectiveGuide(session, {
-      currentMapId: 'route-1',
-      currentPosition: { x: 7, y: 1 },
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 15, y: 3 },
       activatedPoiIds: new Set(),
     });
+
+    expect(before.hints.join(' ')).toContain('central road');
+    expect(before.hints.join(' ')).toContain('west reeds');
+
+    session.manager.recoverFieldKit();
     const after = buildObjectiveGuide(session, {
-      currentMapId: 'route-1',
-      currentPosition: { x: 7, y: 1 },
-      activatedPoiIds: new Set(['oak-field-station-relay']),
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 11, y: 23 },
+      activatedPoiIds: new Set(),
     });
 
-    expect(before.hints.join(' ')).not.toContain('cache is secured');
-    expect(after.hints.join(' ')).toContain('cache is secured');
+    expect(after.hints).toHaveLength(2);
+    expect(after.hints[0]).toContain('Field kit secured');
+    expect(after.hints.join(' ')).toContain('SOUTH GATE');
   });
 
-  it('names the current area and updates the first-contract direction without revealing the forest', () => {
+  it('names the current area and keeps the first-contract direction live', () => {
     const session = createFirstContractSession();
 
-    const townGuide = buildObjectiveGuide(session, {
-      currentMapId: 'pallet-town',
-      currentPosition: { x: 6, y: 8 },
+    const insertionGuide = buildObjectiveGuide(session, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 15, y: 3 },
       activatedPoiIds: new Set(),
     });
-    const routeGuide = buildObjectiveGuide(session, {
-      currentMapId: 'route-1',
-      currentPosition: { x: 7, y: 1 },
+    const reedGuide = buildObjectiveGuide(session, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 7, y: 22 },
       activatedPoiIds: new Set(),
     });
 
-    expect(townGuide.hints[0]).toContain('Pallet Town');
-    expect(townGuide.hints[0]).toContain('south');
-    expect(routeGuide.hints[0]).toContain('Route 1');
-    expect(routeGuide.hints[0]).toContain('south-east');
-    expect(townGuide.hints.join(' ')).not.toContain('Viridian');
+    expect(insertionGuide.hints[0]).toContain('Floodplain Relay');
+    expect(insertionGuide.hints[0]).toContain('south-west');
+    expect(reedGuide.hints[0]).toContain('south-east');
+    expect(insertionGuide.hints.join(' ')).not.toContain('Viridian');
   });
 
   it('explains Floodplain route and Radio Exit trade-offs before and after Ranger activation', () => {

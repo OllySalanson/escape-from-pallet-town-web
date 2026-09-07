@@ -13,7 +13,16 @@ import {
 } from '../world/trainers';
 import { createSeededRng } from './rng';
 
+// Floodplain Relay is listed first because it is the starting area every save
+// deploys into; the Pallet Town insertions are unlocked by the first contract.
 export const RUN_INSERTIONS = {
+  'floodplain-relay': {
+    id: 'floodplain-relay',
+    label: 'Floodplain Relay',
+    mapId: 'floodplain-relay',
+    position: { x: 15, y: 3 },
+    description: 'A compact relay with a road checkpoint, reed bypass, and three extraction choices.',
+  },
   'town-square': {
     id: 'town-square',
     label: 'Town Square',
@@ -28,23 +37,22 @@ export const RUN_INSERTIONS = {
     position: { x: 7, y: 36 },
     description: 'A faster, rougher route toward Route 1.',
   },
-  'floodplain-relay': {
-    id: 'floodplain-relay',
-    label: 'Floodplain Relay',
-    mapId: 'floodplain-relay',
-    position: { x: 15, y: 3 },
-    description: 'A compact relay with a road checkpoint, reed bypass, and three extraction choices.',
-  },
 } as const;
 
 export type RunInsertionId = keyof typeof RUN_INSERTIONS;
 export type RunInsertion = (typeof RUN_INSERTIONS)[RunInsertionId];
 
+/**
+ * The first contract sits on the southern junction of the Floodplain Relay, so
+ * the fast central road and the slower west reed lane are both honest ways to
+ * reach it and the choice between them is the raid's first real decision. The
+ * South Gate, the timed Ferry Dock and the vault detour all branch from there.
+ */
 export const FIRST_CONTRACT = {
   id: 'recover-lost-field-kit',
-  description: 'Recover the lost field kit on Route 1',
-  mapId: 'route-1',
-  position: { x: 8, y: 15 },
+  description: 'Recover the lost field kit at the Floodplain Relay',
+  mapId: 'floodplain-relay',
+  position: { x: 11, y: 23 },
   label: 'LOST FIELD KIT',
 } as const;
 
@@ -54,6 +62,7 @@ export const RUN_GENERATION_BOUNDS = {
   encounterRateMaximum: 0.14,
   extractionUnlockMinimumMs: 0,
   extractionUnlockMaximumMs: 75_000,
+  extractionUnlockVarianceMs: 10_000,
   hunterSpawnDelayMinimumMs: 55_000,
   hunterSpawnDelayMaximumMs: 75_000,
   hunterAggressionMinimum: 1,
@@ -98,7 +107,7 @@ const DEFAULT_CONTENT: RunGenerationContent = {
 export function generateRunPlan(
   seed: number,
   content: RunGenerationContent = DEFAULT_CONTENT,
-  insertionId: RunInsertionId = 'town-square',
+  insertionId: RunInsertionId = 'floodplain-relay',
   includeFirstContract = true,
 ): RunPlan {
   const rng = createSeededRng(seed);
@@ -111,10 +120,13 @@ export function generateRunPlan(
       .map((map) => [map.id, varyEncounterTable(map.encounters, rng)]),
   ) as Partial<Record<WorldMapId, WildEncounterTable>>;
 
-  const extractionPoints = generateExtractionPoints(content.extractionPoints, rng, insertion.mapId);
+  // A contract the insertion cannot walk to is worse than no contract, so the
+  // generator refuses to attach one to a raid that starts on another map.
+  const carriesFirstContract = includeFirstContract && insertion.mapId === FIRST_CONTRACT.mapId;
+  const extractionPoints = generateExtractionPoints(content.extractionPoints, rng, insertion, content.maps);
   const reservedTiles = new Map<WorldMapId, Set<string>>();
   reserve(reservedTiles, insertion.mapId, insertion.position);
-  if (includeFirstContract) {
+  if (carriesFirstContract) {
     reserve(reservedTiles, FIRST_CONTRACT.mapId, FIRST_CONTRACT.position);
   }
   for (const point of extractionPoints) {
@@ -131,7 +143,7 @@ export function generateRunPlan(
   return {
     seed: seed >>> 0,
     insertion,
-    ...(includeFirstContract ? { contract: FIRST_CONTRACT } : {}),
+    ...(carriesFirstContract ? { contract: FIRST_CONTRACT } : {}),
     encounters,
     loot,
     trainers,
@@ -178,29 +190,65 @@ function varyEncounterTable(
   };
 }
 
+/**
+ * Every authored exit a run can actually walk to is offered. Randomising which
+ * exits exist used to leave whole runs with a single gate, which removes the
+ * extraction choice the game is built around; run variance now lives in *when*
+ * an unconditioned exit opens, never in whether it is there at all. Authored
+ * conditions - the Floodplain's ferry signal and radio - are map design and are
+ * passed through untouched.
+ */
 function generateExtractionPoints(
   points: readonly ExtractionPoint[],
   rng: ReturnType<typeof createSeededRng>,
-  insertionMapId: WorldMapId,
+  insertion: RunInsertion,
+  maps: Readonly<Record<WorldMapId, WorldMapDefinition>>,
 ): ExtractionPoint[] {
-  const floodplainPoints = points.filter((point) => point.mapId === 'floodplain-relay');
-  const standardPoints = points.filter((point) => point.mapId !== 'floodplain-relay');
-  const guaranteed = standardPoints.find((point) => point.mapId === 'pallet-town') ?? standardPoints[0];
-  const selected = standardPoints.filter((point) => point === guaranteed || rng.chance(0.6));
-  if (guaranteed && !selected.includes(guaranteed)) {
-    selected.unshift(guaranteed);
-  }
-  const generatedStandard = selected.map((point) => ({
-    ...point,
-    // The guaranteed starting-area exit is immediately reachable every run.
-    unlockAtMs: point === guaranteed
-      ? 0
-      : rng.int(
+  const reachableMaps = mapsReachableFrom(insertion.mapId, maps);
+  const available = points.filter((point) => reachableMaps.has(point.mapId));
+  // One exit is open from the first second, so leaving early is always possible.
+  const guaranteed =
+    available.find((point) => point.mapId === insertion.mapId && point.requirement === undefined) ??
+    available.find((point) => point.mapId === insertion.mapId) ??
+    available[0];
+  return available.map((point) => {
+    if (point.requirement) {
+      return point;
+    }
+    if (point === guaranteed) {
+      return { ...point, unlockAtMs: 0 };
+    }
+    return {
+      ...point,
+      unlockAtMs: clamp(
+        point.unlockAtMs +
+          rng.int(
+            -RUN_GENERATION_BOUNDS.extractionUnlockVarianceMs,
+            RUN_GENERATION_BOUNDS.extractionUnlockVarianceMs,
+          ),
         RUN_GENERATION_BOUNDS.extractionUnlockMinimumMs,
         RUN_GENERATION_BOUNDS.extractionUnlockMaximumMs,
       ),
-  }));
-  return insertionMapId === 'floodplain-relay' ? floodplainPoints : generatedStandard;
+    };
+  });
+}
+
+/** The set of maps a raid can walk to from its insertion, following warps. */
+function mapsReachableFrom(
+  originMapId: WorldMapId,
+  maps: Readonly<Record<WorldMapId, WorldMapDefinition>>,
+): ReadonlySet<WorldMapId> {
+  const reachable = new Set<WorldMapId>([originMapId]);
+  const pending: WorldMapId[] = [originMapId];
+  while (pending.length > 0) {
+    for (const warp of maps[pending.pop()!]?.warps ?? []) {
+      if (!reachable.has(warp.destinationMapId)) {
+        reachable.add(warp.destinationMapId);
+        pending.push(warp.destinationMapId);
+      }
+    }
+  }
+  return reachable;
 }
 
 function generateTrainers(

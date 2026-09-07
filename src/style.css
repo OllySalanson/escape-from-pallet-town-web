@@ -194,7 +194,13 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  /* A narrow panel must wrap its trailing note, never overlap the heading. */
+  gap: var(--space-2);
+  flex-wrap: wrap;
   margin-bottom: var(--space-2);
+}
+.panel-heading > * {
+  min-width: 0;
 }
 .panel-heading h2,
 .stash-layout h2,

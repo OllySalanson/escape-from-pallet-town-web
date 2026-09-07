@@ -11,16 +11,18 @@ describe('in-run objective HUD layout', () => {
   });
 
   it('keeps the active first-contract destination visible and direction-aware', () => {
-    expect(sceneSource).toContain('SOUTH: ROUTE 1');
+    expect(sceneSource).toContain('TRAVEL TO ${WORLD_MAP_NAMES[contract.mapId].toUpperCase()}');
     expect(sceneSource).toContain('LOST KIT: ${directionTo(this.currentTile, contract.position)}');
     expect(sceneSource).toContain('firstContractNavigationCue');
   });
 
-  it('labels the first route transition and Oak’s Field Station without exposing the forest gate', () => {
+  it('names route transitions from map data and hides areas the first contract does not need', () => {
     expect(sceneSource).toContain('createRouteTransitionLabels');
-    expect(sceneSource).toContain("destinationName = warp.destinationMapId === 'route-1' ? 'ROUTE 1' : 'PALLET TOWN'");
+    expect(sceneSource).toContain('WORLD_MAP_NAMES[warp.destinationMapId].toUpperCase()');
     expect(sceneSource).toContain('poi.label');
+    // No area name is hard-coded, so a label can never contradict the map data.
     expect(sceneSource).not.toContain("'VIRIDIAN FOREST'");
+    expect(sceneSource).not.toContain("'PALLET TOWN'");
   });
 });
 

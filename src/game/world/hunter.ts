@@ -380,12 +380,17 @@ export const applyHunterBreakaway = (
   position: GridPosition,
 ): HunterState => ({ ...state, position: { ...position }, pendingBreakaway: false });
 
-/** First-contract players must make a navigation choice before pursuit starts. */
+/**
+ * First-contract players must reach the contract's own area, or commit to a
+ * landmark, before pursuit starts. Staging areas the contract does not use stay
+ * quiet; on the Floodplain the raid begins on the contract map, so the hunter's
+ * seeded spawn delay is the grace period.
+ */
 export const isHunterEligibleForFirstContract = (
   mapId: WorldMapId,
-  hasFirstContract: boolean,
+  contractMapId: WorldMapId | undefined,
   hasVisitedFieldStation: boolean,
-): boolean => !hasFirstContract || mapId === 'route-1' || hasVisitedFieldStation;
+): boolean => contractMapId === undefined || mapId === contractMapId || hasVisitedFieldStation;
 
 /** Keeps hunter defeats on the exact secure-slot run-resolution path. */
 export const resolveHunterBattleLoss = (session: ActiveRunSession): RunResult =>

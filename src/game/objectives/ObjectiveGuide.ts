@@ -1,7 +1,7 @@
 import { formatObjectiveReward, type RunObjective } from './RunObjectives';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { GridPosition } from '../movement/gridMovement';
-import type { WorldMapId } from '../worldMap';
+import { WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
 import { WORLD_POIS } from '../world/pois';
 
 export interface ObjectiveGuideContext {
@@ -70,8 +70,6 @@ function firstContractHints(
   safeExit: string | undefined,
   currentExit: string | undefined,
 ): readonly string[] {
-  const fieldStation = WORLD_POIS.find((poi) => poi.mapId === 'route-1');
-  const stationVisited = fieldStation !== undefined && context.activatedPoiIds.has(fieldStation.id);
   const extractionHint = knownExitHint(safeExit, currentExit);
 
   if (recoveredFieldKit) {
@@ -81,12 +79,9 @@ function firstContractHints(
     ];
   }
 
-  const locationHint = firstContractLocationHint(session, context);
   return [
-    `1. You are in ${locationHint}.`,
-    stationVisited
-      ? '2. The Field Station cache is secured. Continue searching Route 1 for the lost field kit.'
-      : '2. On Route 1, look for Oak’s Field Station. Its cache is optional, but it confirms you are on the right route.',
+    `1. You are in ${firstContractLocationHint(session, context)}.`,
+    '2. Two ways down: the central road is fast and open but Maya holds its checkpoint, and the west reeds are slower cover that rejoins the road above and below her.',
     '3. Step onto the lost field kit marker to retrieve it.',
     `4. ${extractionHint}`,
   ];
@@ -97,11 +92,14 @@ function firstContractLocationHint(
   context: ObjectiveGuideContext,
 ): string {
   const contract = session.plan?.contract;
-  if (!contract || context.currentMapId !== contract.mapId) {
-    return 'Pallet Town. Follow the road south through the Route 1 gate';
+  if (!contract) {
+    return WORLD_MAP_NAMES[context.currentMapId];
+  }
+  if (context.currentMapId !== contract.mapId) {
+    return `${WORLD_MAP_NAMES[context.currentMapId]}. Travel to ${WORLD_MAP_NAMES[contract.mapId]}`;
   }
 
-  return `Route 1. The lost field kit is ${directionTo(context.currentPosition, contract.position)}`;
+  return `${WORLD_MAP_NAMES[contract.mapId]}. The lost field kit is ${directionTo(context.currentPosition, contract.position)}`;
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {
