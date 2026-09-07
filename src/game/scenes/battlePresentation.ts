@@ -115,6 +115,31 @@ export const describeMoveGuidance = (
   };
 };
 
+/** Whole seconds, so a cost printed on a command reads the same as the raid timer. */
+export const formatSeconds = (ms: number): string => `${Math.round(ms / 1_000)}s`;
+
+/**
+ * Escape commands state their price before the player commits. The hunter's escape
+ * costs raid time and always works; a wild escape is a roll, so it shows its odds.
+ */
+export const formatHunterFleeCommand = (penaltyMs: number): string =>
+  `FLEE -${formatSeconds(penaltyMs)}`;
+
+export const formatWildEscapeCommand = (chance: number): string =>
+  `RUN ${Math.round(chance * 100)}%`;
+
+/** What the player is told after breaking contact, so the cost is never silent. */
+export const hunterFleeMessages = (penaltyMs: number, searchMs: number): readonly string[] => [
+  'You broke away from the RIVAL HUNTER!',
+  `It lost your trail and holds off for ${formatSeconds(searchMs)}.`,
+  `Breaking contact cost ${formatSeconds(penaltyMs)} of raid time.`,
+];
+
+export const WILD_ESCAPE_SUCCESS_MESSAGE = 'Got away safely!';
+
+export const wildEscapeFailureMessage = (enemyName: string): string =>
+  `Couldn't get away from ${enemyName.toUpperCase()}!`;
+
 export const combatPresentationSteps = (
   events: readonly BattleEvent[],
 ): readonly CombatPresentationStep[] =>

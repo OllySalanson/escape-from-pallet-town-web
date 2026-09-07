@@ -28,15 +28,26 @@ import { audioManager } from '../audio/AudioManager';
 import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import type { ActiveRunSession, RaidLocation } from '../run/RunSession';
-import { resolveHunterBattleLoss, type HunterState } from '../world/hunter';
 import {
+  HUNTER_SEARCH_MS,
+  beginHunterDisengage,
+  resolveHunterBattleLoss,
+  type HunterState,
+} from '../world/hunter';
+import { attemptWildEscape, wildEscapeChanceFor } from '../pokemon/battle/escape';
+import {
+  WILD_ESCAPE_SUCCESS_MESSAGE,
   combatantBanner,
   combatPresentationSteps,
   describeMoveGuidance,
   eventToMessage,
+  formatHunterFleeCommand,
   formatMoveCommand,
+  formatWildEscapeCommand,
+  hunterFleeMessages,
   moveCommandLayout,
   moveGuidanceLayout,
+  wildEscapeFailureMessage,
   type MatchupTone,
 } from './battlePresentation';
 
@@ -139,6 +150,8 @@ export class BattleScene extends Phaser.Scene {
   private displayedEnemy: PokemonInstance | undefined;
   private isTransitioning = false;
   private pendingBattleExit = false;
+  /** Failed wild escapes so far in this battle; each one improves the next roll. */
+  private wildEscapeAttempts = 0;
   private displayedHp = { player: 0, enemy: 0 };
   private pendingCombatMessages: { readonly event?: BattleEvent; readonly message: string }[] = [];
   private isPresentingCombatEvents = false;
@@ -170,6 +183,7 @@ export class BattleScene extends Phaser.Scene {
     data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
     this.pendingHubTransition = false;
     this.pendingBattleExit = false;
+    this.wildEscapeAttempts = 0;
     // Phaser reuses this scene instance after it returns to the overworld.
     // A completed first battle must not leave the return guard armed for the
     // next encounter, or its completed escape dialogue cannot hand back control.
@@ -414,9 +428,9 @@ export class BattleScene extends Phaser.Scene {
       this.mode === 'main'
         ? this.trainer
           ? this.hunterBattle
-            ? ['FIGHT', 'FLEE', 'POKéMON']
+            ? ['FIGHT', this.hunterFleeLabel(), 'POKéMON']
             : ['FIGHT', 'POKéMON']
-          : ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', 'RUN']
+          : ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', this.wildEscapeLabel()]
         : this.state.player.moves.map(formatMoveCommand);
     this.createCommandBox(labels);
     this.selectedCommand = Math.min(this.selectedCommand, labels.length - 1);
@@ -674,12 +688,74 @@ export class BattleScene extends Phaser.Scene {
     audioManager.playCancel();
   }
 
+  private hunterFleeLabel(): string {
+    return formatHunterFleeCommand(this.runSession?.manager.nextHunterFleePenaltyMs() ?? 0);
+  }
+
+  private wildEscapeLabel(): string {
+    return formatWildEscapeCommand(
+      wildEscapeChanceFor(this.state.player, this.state.enemy, this.wildEscapeAttempts),
+    );
+  }
+
   private flee(): void {
-    // Hunter pursuit battles are deliberately escapable, unlike ordinary trainers.
+    if (this.hunterBattle) {
+      this.fleeFromHunter();
+      return;
+    }
+    this.escapeWildEncounter();
+  }
+
+  /**
+   * Hunter pursuit battles are deliberately escapable, unlike ordinary trainers, and
+   * the escape never fails. A failure roll here would drop the player back beside a
+   * pursuer they cannot outrun, which is the loop this exit exists to break; the cost
+   * is raid time instead, charged up front and stated on the command.
+   */
+  private fleeFromHunter(): void {
+    const penaltyMs = this.runSession?.manager.registerHunterFlee().penaltyMs;
+    if (this.hunterState) {
+      this.hunterState = beginHunterDisengage(this.hunterState);
+    }
     this.pendingBattleExit = true;
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.dialog.showMessage('Got away safely!');
+    this.dialog.showMessages(
+      penaltyMs === undefined
+        ? [WILD_ESCAPE_SUCCESS_MESSAGE]
+        : [...hunterFleeMessages(penaltyMs, HUNTER_SEARCH_MS)],
+    );
+  }
+
+  /**
+   * A wild escape is a roll, because nothing follows the player out of it: failing
+   * costs the enemy's turn and the fight continues, and the per-attempt bonus makes
+   * the exit certain within a few tries, so a failure can never become a trap.
+   */
+  private escapeWildEncounter(): void {
+    const attempt = attemptWildEscape(
+      this.state.player,
+      this.state.enemy,
+      this.wildEscapeAttempts,
+      () => Math.random(),
+    );
+    this.mode = 'events';
+    this.commandContainer.setVisible(false);
+    if (attempt.escaped) {
+      this.pendingBattleExit = true;
+      this.dialog.showMessage(WILD_ESCAPE_SUCCESS_MESSAGE);
+      return;
+    }
+
+    this.wildEscapeAttempts += 1;
+    const enemyResult = resolveEnemyTurn(this.state, () => Math.random());
+    this.state = enemyResult.state;
+    this.persistActivePokemonHp();
+    this.refreshStatusLabels();
+    this.prepareForcedReplacement();
+    this.showCombatEvents(enemyResult.events, [
+      wildEscapeFailureMessage(this.state.enemy.pokemon.base.name),
+    ]);
   }
 
   private useMove(moveIndex: number): void {

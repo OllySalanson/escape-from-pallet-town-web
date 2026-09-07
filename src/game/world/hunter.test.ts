@@ -5,11 +5,19 @@ import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 import {
+  HUNTER_BREAKAWAY_DISTANCE,
+  HUNTER_SEARCH_MS,
+  applyHunterBreakaway,
+  beginHunterDisengage,
   chooseHunterPursuitStep,
+  createHunterState,
+  findHunterBreakawayTile,
   findHunterPursuitPath,
   hunterTierFor,
   isHunterContactingPlayer,
+  isHunterSearching,
   resolveHunterBattleLoss,
+  tickHunterSearch,
 } from './hunter';
 
 const mapBlocker = (mapId: WorldMapId) => {
@@ -282,5 +290,282 @@ describe('resolveHunterBattleLoss', () => {
       bankedItems: [{ itemId: 'potion', quantity: 1 }],
       lostItems: [{ itemId: 'potion', quantity: 1 }],
     });
+  });
+});
+
+/** Walkable path length between two tiles, independent of the hunter's own search. */
+const walkDistance = (
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  bounds: { width: number; height: number },
+  isBlocked: (tile: { x: number; y: number }) => boolean,
+): number => {
+  const seen = new Set([`${from.x},${from.y}`]);
+  let frontier = [from];
+  for (let distance = 0; frontier.length > 0; distance += 1) {
+    if (frontier.some((tile) => tile.x === to.x && tile.y === to.y)) {
+      return distance;
+    }
+    const next: { x: number; y: number }[] = [];
+    for (const tile of frontier) {
+      for (const delta of [
+        { x: 0, y: -1 },
+        { x: 0, y: 1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 },
+      ]) {
+        const neighbour = { x: tile.x + delta.x, y: tile.y + delta.y };
+        const key = `${neighbour.x},${neighbour.y}`;
+        if (
+          neighbour.x < 0 || neighbour.y < 0 ||
+          neighbour.x >= bounds.width || neighbour.y >= bounds.height ||
+          seen.has(key) || isBlocked(neighbour)
+        ) {
+          continue;
+        }
+        seen.add(key);
+        next.push(neighbour);
+      }
+    }
+    frontier = next;
+  }
+  return Number.POSITIVE_INFINITY;
+};
+
+describe('breaking contact with the hunter', () => {
+  const open = () => false;
+
+  it('puts the full breakaway gap between a contacting hunter and the player', () => {
+    const bounds = { width: 20, height: 20 };
+    const player = { x: 10, y: 10 };
+    const hunter = { x: 10, y: 9 };
+
+    const breakaway = findHunterBreakawayTile(hunter, player, bounds, open);
+
+    expect(walkDistance(breakaway, player, bounds, open)).toBe(HUNTER_BREAKAWAY_DISTANCE);
+  });
+
+  it('falls back along the route it came by rather than teleporting across the map', () => {
+    // A single corridor: every escape route is the way the hunter arrived.
+    const bounds = { width: 20, height: 3 };
+    const isBlocked = (tile: { x: number; y: number }) => tile.y !== 1;
+    const player = { x: 10, y: 1 };
+
+    expect(findHunterBreakawayTile({ x: 9, y: 1 }, player, bounds, isBlocked)).toEqual({
+      x: 4,
+      y: 1,
+    });
+    expect(findHunterBreakawayTile({ x: 11, y: 1 }, player, bounds, isBlocked)).toEqual({
+      x: 16,
+      y: 1,
+    });
+  });
+
+  it('takes the best separation a cramped area allows instead of failing', () => {
+    // A three-tile pocket: six tiles of separation simply do not exist here.
+    const bounds = { width: 5, height: 3 };
+    const isBlocked = (tile: { x: number; y: number }) => tile.y !== 1 || tile.x > 2;
+    const player = { x: 0, y: 1 };
+
+    const breakaway = findHunterBreakawayTile({ x: 1, y: 1 }, player, bounds, isBlocked);
+
+    expect(breakaway).toEqual({ x: 2, y: 1 });
+    expect(walkDistance(breakaway, player, bounds, isBlocked)).toBe(2);
+  });
+
+  it('never falls back onto the player', () => {
+    const bounds = { width: 3, height: 1 };
+    const player = { x: 1, y: 0 };
+
+    expect(findHunterBreakawayTile({ x: 0, y: 0 }, player, bounds, open)).not.toEqual(player);
+  });
+
+  it('holds pursuit until the search window is spent, then resumes it', () => {
+    const spawned = { ...createHunterState(), spawned: true, position: { x: 10, y: 9 } };
+
+    const disengaged = beginHunterDisengage(spawned);
+    expect(isHunterSearching(disengaged)).toBe(true);
+    expect(disengaged.pendingBreakaway).toBe(true);
+
+    const halfway = tickHunterSearch(disengaged, HUNTER_SEARCH_MS - 1);
+    expect(isHunterSearching(halfway)).toBe(true);
+
+    const resumed = tickHunterSearch(halfway, 1);
+    expect(isHunterSearching(resumed)).toBe(false);
+    // The threat must come back: an escape buys time, it does not end the hunt.
+    expect(resumed.defeated).toBe(false);
+    expect(resumed.spawned).toBe(true);
+  });
+
+  it('clears the pending marker once the world has placed the hunter', () => {
+    const disengaged = beginHunterDisengage({
+      ...createHunterState(),
+      spawned: true,
+      position: { x: 10, y: 9 },
+    });
+
+    const placed = applyHunterBreakaway(disengaged, { x: 10, y: 4 });
+
+    expect(placed.position).toEqual({ x: 10, y: 4 });
+    expect(placed.pendingBreakaway).toBe(false);
+    expect(placed.searchRemainingMs).toBe(HUNTER_SEARCH_MS);
+  });
+
+  it('leaves the player far enough out that a step does not walk back into contact', () => {
+    // The bug this exists to kill: fleeing used to return the player adjacent, so the
+    // next step handed the same battle straight back.
+    const bounds = { width: 20, height: 20 };
+    const player = { x: 10, y: 10 };
+    const breakaway = findHunterBreakawayTile({ x: 10, y: 9 }, player, bounds, open);
+
+    expect(isHunterContactingPlayer(breakaway, player)).toBe(false);
+    // Even a hunter taking two steps per player step needs several before contact.
+    const path = findHunterPursuitPath(breakaway, player, bounds, open);
+    expect(path.length).toBeGreaterThanOrEqual(HUNTER_BREAKAWAY_DISTANCE - 1);
+  });
+
+  it('measures the escape on a real map, not an empty grid', () => {
+    const { bounds, isBlocked } = mapBlocker('floodplain-relay');
+    const player = { x: 15, y: 20 };
+    const hunter = chooseHunterPursuitStep({ x: 15, y: 26 }, player, bounds, isBlocked)!;
+
+    const breakaway = findHunterBreakawayTile(hunter, player, bounds, isBlocked);
+
+    expect(walkDistance(breakaway, player, bounds, isBlocked)).toBe(HUNTER_BREAKAWAY_DISTANCE);
+    expect(isHunterContactingPlayer(breakaway, player)).toBe(false);
+  });
+});
+
+/**
+ * One overworld step, in the exact order WorldScene.advanceStep runs it: contact check,
+ * pursuit, contact check. The 130ms is STEP_DURATION_MS, so the search window is spent
+ * at the rate a walking player actually spends it.
+ */
+const WORLD_STEP_MS = 130;
+
+const simulateWorldSteps = (
+  initialState: ReturnType<typeof createHunterState>,
+  start: { x: number; y: number },
+  moves: readonly { x: number; y: number }[],
+  bounds: { width: number; height: number },
+  isBlocked: (tile: { x: number; y: number }) => boolean,
+  stepsPerPlayerStep = 1,
+) => {
+  let state = initialState;
+  let player = start;
+  for (const [index, move] of moves.entries()) {
+    player = { x: player.x + move.x, y: player.y + move.y };
+    state = tickHunterSearch(state, WORLD_STEP_MS);
+    const engages = () =>
+      !isHunterSearching(state) && isHunterContactingPlayer(state.position!, player);
+    if (engages()) {
+      return { engagedAtStep: index, state, player };
+    }
+    if (!isHunterSearching(state)) {
+      const path = findHunterPursuitPath(state.position!, player, bounds, isBlocked);
+      let position = state.position!;
+      for (let step = 0; step < stepsPerPlayerStep && step < path.length; step += 1) {
+        position = path[step];
+        if (isHunterContactingPlayer(position, player)) {
+          break;
+        }
+      }
+      state = { ...state, position };
+    }
+    if (engages()) {
+      return { engagedAtStep: index, state, player };
+    }
+  }
+  return { engagedAtStep: null, state, player };
+};
+
+describe('a raid where the player flees and then walks', () => {
+  const bounds = { width: 200, height: 20 };
+  const open = () => false;
+  const west = { x: -1, y: 0 };
+  const still = { x: 0, y: 0 };
+  const player = { x: 150, y: 10 };
+
+  const fledState = () => {
+    const contacting = {
+      ...createHunterState(),
+      spawned: true,
+      mapId: 'route-1' as const,
+      position: { x: 150, y: 9 },
+    };
+    const disengaged = beginHunterDisengage(contacting);
+    return applyHunterBreakaway(
+      disengaged,
+      findHunterBreakawayTile(disengaged.position!, player, bounds, open),
+    );
+  };
+
+  it('is not dragged straight back into the same battle', () => {
+    const walk = simulateWorldSteps(fledState(), player, [west, west, west], bounds, open);
+
+    expect(walk.engagedAtStep).toBeNull();
+  });
+
+  it('buys the whole search window of walking, whatever direction the player takes', () => {
+    const windowSteps = Math.floor(HUNTER_SEARCH_MS / WORLD_STEP_MS);
+    // Standing still is the worst case: the hunter would close on a stationary player
+    // at one tile per step, so nothing but the search window is protecting them.
+    const held = simulateWorldSteps(
+      fledState(),
+      player,
+      Array.from({ length: windowSteps }, () => still),
+      bounds,
+      open,
+    );
+
+    expect(windowSteps).toBe(76);
+    expect(held.engagedAtStep).toBeNull();
+  });
+
+  it('turns a spent search window into real ground when the player runs with it', () => {
+    const windowSteps = Math.floor(HUNTER_SEARCH_MS / WORLD_STEP_MS);
+    const run = simulateWorldSteps(
+      fledState(),
+      player,
+      Array.from({ length: windowSteps }, () => west),
+      bounds,
+      open,
+      2,
+    );
+
+    // The window is worth what the player does with it: 76 steps of walking puts the
+    // map between them, which even a two-steps-per-step enraged hunter has to walk back.
+    expect(run.engagedAtStep).toBeNull();
+    expect(walkDistance(run.state.position!, run.player, bounds, open)).toBeGreaterThan(70);
+  });
+
+  it('gives an enraged hunter that regains the trail only the breakaway gap', () => {
+    const windowSteps = Math.floor(HUNTER_SEARCH_MS / WORLD_STEP_MS);
+    // The worst case for the player: they spent the whole window standing still, so all
+    // that is left of the escape is the ground the breakaway bought them.
+    const chase = simulateWorldSteps(
+      fledState(),
+      player,
+      Array.from({ length: windowSteps + 40 }, () => still),
+      bounds,
+      open,
+      2,
+    );
+
+    expect(chase.engagedAtStep).toBe(windowSteps + 2);
+  });
+
+  it('does not make the hunter permanently harmless', () => {
+    const windowSteps = Math.floor(HUNTER_SEARCH_MS / WORLD_STEP_MS);
+    const stopped = simulateWorldSteps(
+      fledState(),
+      player,
+      Array.from({ length: windowSteps + 40 }, () => still),
+      bounds,
+      open,
+    );
+
+    expect(stopped.engagedAtStep).not.toBeNull();
+    expect(stopped.engagedAtStep!).toBeGreaterThanOrEqual(windowSteps);
   });
 });
