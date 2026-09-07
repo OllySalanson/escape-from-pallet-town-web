@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { MoveBase, MoveCategory } from '../MoveBase';
 import { Pokemon } from '../Pokemon';
 import { PokemonType } from '../PokemonType';
-import { EMBER, GROWL, POISON_POWDER, SING, SUPER_SONIC, TACKLE, THUNDER_WAVE } from '../moves';
-import { BULBASAUR, BUTTERFREE, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU } from '../species';
+import { EMBER, GROWL, POISON_POWDER, SING, SUPER_SONIC, TACKLE, TAIL_WHIP, THUNDER_WAVE } from '../moves';
+import { BULBASAUR, BUTTERFREE, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE } from '../species';
 import {
   attemptCatch,
   chooseEnemyMove,
@@ -165,6 +165,39 @@ describe('damage calculation', () => {
         lowered.state.enemy.statStages,
       ).damage,
     ).toBeLessThan(calculateDamage(state.player.pokemon, state.enemy.pokemon, TACKLE, maximumRandom).damage);
+  });
+
+  it('raises the damage a landed Tail Whip lets through, the mirror of Growl', () => {
+    const opening = createBattleState(new Pokemon(SQUIRTLE, 5), new Pokemon(BULBASAUR, 5));
+    // The enemy is held to Tackle so its own Growl cannot mask the change.
+    const state = {
+      ...opening,
+      enemy: { ...opening.enemy, moves: [{ base: TACKLE, pp: TACKLE.pp }] },
+    };
+    const tailWhipIndex = state.player.moves.findIndex((move) => move.base === TAIL_WHIP);
+    expect(tailWhipIndex).toBeGreaterThanOrEqual(0);
+
+    const lowered = resolveTurn(state, tailWhipIndex, maximumRandom);
+
+    expect(lowered.events).toContainEqual({
+      type: 'stat-stage-changed',
+      user: 'enemy',
+      name: 'Bulbasaur',
+      stat: 'defense',
+      stages: -1,
+    });
+    expect(
+      calculateDamage(
+        lowered.state.player.pokemon,
+        lowered.state.enemy.pokemon,
+        TACKLE,
+        maximumRandom,
+        lowered.state.player.statStages,
+        lowered.state.enemy.statStages,
+      ).damage,
+    ).toBeGreaterThan(
+      calculateDamage(state.player.pokemon, state.enemy.pokemon, TACKLE, maximumRandom).damage,
+    );
   });
 });
 

@@ -25,7 +25,8 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - Battle data is ported from the public Unity original, `OllySalanson/escapeFromPalletTown` (readable through `gh-axi api`), but the web game adds a 1.5x same-type bonus that Unity's `Pokemon.TakeDamage` has no equivalent of, and Unity fought its encounter tables with a level-10 five-strong party rather than one level-5 starter. Check that repo before treating any stat, learnset or encounter table as intentional - and re-measure early balance rather than porting a number across.
 - Every species sprite is `public/assets/pokemon/{front,back}/<dexId>.png`; `spriteAssets.test.ts` enforces the format and a size bound, because a dimensionless SVG once rasterised to 150x150 and covered the battle screen.
 - Battle text lives in `src/game/scenes/battlePresentation.ts` as pure functions, so message wording, move guidance and layout are testable without Phaser.
-- `PALLET_TALL_GRASS` in `src/game/pokemon/encounters.ts` is shared by Pallet Town, Route 1 and the Floodplain Relay; changing it changes all three.
+- `PALLET_TALL_GRASS` in `src/game/pokemon/encounters.ts` is shared by Pallet Town, Route 1 and the Floodplain Relay; changing it changes all three. It holds one of each starter species so every starter's level-7 move has a super-effective target; `starterIdentity.test.ts` guards that.
+- Nothing distinguishes the three starters before level 7 except their level-1 kit. `computePokemonStats` is `floor(base * level / 100) + 5`, so at level 5 every starter stat sits within one point of the others, and every typed move is gated to level 7 - which is why pulling signature moves earlier has been measured and rejected twice (it makes one starter dominant, or arms the wild roster with 3x hits a 17 HP starter cannot read). Balance changes here belong in movesets, type matchups or encounter composition, re-measured over the real engine.
 
 ## Maintaining this file
 

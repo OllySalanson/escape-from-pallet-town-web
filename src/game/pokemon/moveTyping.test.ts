@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EMBER, POISON_POWDER, SING, THUNDER_WAVE, VINE_WHIP, WATER_GUN } from './moves';
+import { EMBER, GROWL, POISON_POWDER, SING, TAIL_WHIP, THUNDER_WAVE, VINE_WHIP, WATER_GUN } from './moves';
 import { PokemonType } from './PokemonType';
 import { MoveCategory } from './MoveBase';
 
@@ -22,5 +22,17 @@ describe('move typing', () => {
     expect(EMBER.type).toBe(PokemonType.Fire);
     expect(WATER_GUN.type).toBe(PokemonType.Water);
     expect(VINE_WHIP.type).toBe(PokemonType.Grass);
+  });
+
+  // Unity has neither Squirtle nor Tail Whip. The move is authored here for the
+  // Water starter and runs through the same stat-stage boost as Growl, so it
+  // adds no mechanic of its own.
+  it('mirrors Growl with Tail Whip, on Defense rather than Attack', () => {
+    expect(TAIL_WHIP.type).toBe(PokemonType.Normal);
+    expect(TAIL_WHIP.category).toBe(MoveCategory.Status);
+    expect(TAIL_WHIP.power).toBe(0);
+    expect(TAIL_WHIP.boosts).toEqual([{ stat: 'defense', stages: -1 }]);
+    expect(GROWL.boosts).toEqual([{ stat: 'attack', stages: -1 }]);
+    expect(TAIL_WHIP.description).not.toBe('');
   });
 });
