@@ -26,8 +26,13 @@ interface RenderedText {
   setColor: ReturnType<typeof vi.fn>;
 }
 
-function createBattleSceneHarness(): { scene: BattleScene; renderedTexts: RenderedText[] } {
+function createBattleSceneHarness(): {
+  scene: BattleScene;
+  renderedTexts: RenderedText[];
+  dialog: { setVisible: ReturnType<typeof vi.fn> };
+} {
   const renderedTexts: RenderedText[] = [];
+  const dialog = { setVisible: vi.fn() };
   const commandContainer = {
     add: vi.fn(),
     removeAll: vi.fn(),
@@ -69,6 +74,7 @@ function createBattleSceneHarness(): { scene: BattleScene; renderedTexts: Render
       }),
     },
     commandContainer,
+    dialog,
     displayedEnemy: enemy,
     forcedReplacement: false,
     isPresentingCombatEvents: false,
@@ -80,15 +86,19 @@ function createBattleSceneHarness(): { scene: BattleScene; renderedTexts: Render
     trainer: undefined,
   });
 
-  return { scene, renderedTexts };
+  return { scene, renderedTexts, dialog };
 }
 
 describe('BattleScene command presentation', () => {
-  it('renders opening-dialogue completion as a readable Fight/Run menu and lets mouse select moves', () => {
-    const { scene, renderedTexts } = createBattleSceneHarness();
+  it('removes the opaque dialogue overlay before rendering Fight/Run, then renders selectable moves', () => {
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness();
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
+    // The dialogue panel is depth 1000 and occupies the command area. This
+    // explicit handoff is the screenshot regression: PR #55 rendered the
+    // labels but left this masking layer eligible to cover them.
+    expect(dialog.setVisible).toHaveBeenCalledWith(false);
     expect(renderedTexts.map(({ text, x, y }) => ({ text, x, y }))).toEqual([
       { text: '▶ FIGHT', x: 18, y: 185 },
       { text: '  BALL x5', x: 166, y: 185 },

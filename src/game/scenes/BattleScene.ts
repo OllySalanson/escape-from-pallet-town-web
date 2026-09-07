@@ -169,6 +169,7 @@ export class BattleScene extends Phaser.Scene {
       padding: 12,
       cornerRadius: 0,
       charsPerSecond: 55,
+      indicatorText: 'SPACE ▼',
       backgroundTexture: 'battle-dialog',
       textStyle: {
         fontFamily: BATTLE_FONT,
@@ -363,6 +364,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private showCommands(): void {
+    // The dialogue box is a high-depth opaque overlay. Command states own this
+    // same screen area, so make the handoff explicit instead of relying on the
+    // typewriter's completion callback to have hidden it first.
+    this.dialog.setVisible(false);
     this.commandContainer.removeAll(true);
     this.commandContainer.setVisible(true);
     if (this.mode === 'party') {
