@@ -38,6 +38,37 @@ describe('deployment flow', () => {
     expect(() => flow.deploy()).not.toThrow();
   });
 
+  it('refuses a loadout of nothing but fainted Pokemon, which is a wipe with extra steps', () => {
+    const { flow, stash } = seedFlow();
+    const fainted = stash.listPokemon().find((stored) => stored.id === 'charmander-1')!.pokemon;
+    fainted.takeDamage(fainted.maxHp);
+
+    flow.togglePokemon('charmander-1');
+    expect(flow.party).toHaveLength(1);
+    expect(flow.isDeployable).toBe(false);
+    expect(flow.advance()).toMatch(/fainted/);
+    expect(flow.step).toBe('loadout');
+
+    // A recovery at base is the way out, and reopens the same route.
+    expect(stash.recoverPokemon('charmander-1')).toBe(true);
+    expect(flow.isDeployable).toBe(true);
+    expect(flow.advance()).toBeUndefined();
+    expect(flow.step).toBe('confirm');
+  });
+
+  it('still deploys a fainted Pokemon alongside one that can fight', () => {
+    const { flow, stash } = seedFlow();
+    const fainted = stash.listPokemon().find((stored) => stored.id === 'charmander-1')!.pokemon;
+    fainted.takeDamage(fainted.maxHp);
+
+    flow.togglePokemon('charmander-1');
+    flow.togglePokemon('bulbasaur-1');
+
+    expect(flow.isDeployable).toBe(true);
+    expect(flow.advance()).toBeUndefined();
+    expect(flow.deploy().party.map((stored) => stored.id)).toEqual(['charmander-1', 'bulbasaur-1']);
+  });
+
   it('deploys exactly the party, supplies, insertion and secure slot that were confirmed', () => {
     const { flow, stash } = seedFlow();
 

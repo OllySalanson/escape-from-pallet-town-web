@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Bag } from '../items';
 import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
+import { PrimaryStatus } from '../pokemon/battle/status';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
 import { MINIMUM_SUPPLIES, Stash } from './Stash';
 
@@ -110,6 +111,42 @@ describe('Stash', () => {
     expect(stash.canSwapStarter()).toBe(false);
     expect(stash.swapStarter(SQUIRTLE)).toBe(false);
     expect(stash.listPokemon()).toEqual([]);
+  });
+
+  it('recovers a worn Pokemon to full health and clears its status', () => {
+    const stash = new Stash({ items: { potion: 2 } });
+    const charmander = new Pokemon(CHARMANDER, 7);
+    charmander.takeDamage(charmander.maxHp - 3);
+    charmander.primaryStatus = PrimaryStatus.Poison;
+    stash.addPokemon(charmander, 'charmander-1');
+
+    expect(stash.recoverPokemon('charmander-1')).toBe(true);
+    expect(charmander.currentHp).toBe(charmander.maxHp);
+    expect(charmander.primaryStatus).toBeNull();
+    // Recovery is paid for in raid time, so it neither spends nor mints supplies.
+    expect(stash.listItems()).toEqual({ potion: 2 });
+  });
+
+  it('revives a Pokemon that came home fainted, the state nothing else could undo', () => {
+    const stash = new Stash();
+    const survivor = new Pokemon(PIDGEY, 6);
+    survivor.takeDamage(survivor.maxHp);
+    stash.addPokemon(survivor, 'pidgey-1');
+
+    expect(survivor.isFainted).toBe(true);
+    expect(stash.recoverPokemon('pidgey-1')).toBe(true);
+    expect(survivor.isFainted).toBe(false);
+    expect(survivor.currentHp).toBe(survivor.maxHp);
+  });
+
+  it('reports nothing to do for a fit Pokemon or an unknown ID', () => {
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+    const contents = stash.toJSON();
+
+    expect(stash.recoverPokemon('charmander-1')).toBe(false);
+    expect(stash.recoverPokemon('nobody')).toBe(false);
+    expect(stash.toJSON()).toEqual(contents);
   });
 
   it('persists the stash and banks extraction rewards', () => {

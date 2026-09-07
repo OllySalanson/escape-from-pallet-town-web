@@ -1,3 +1,4 @@
+import { clampPendingRecoveryMs } from '../hub/recovery';
 import { Move, Pokemon, PokemonParty, getSpeciesById, type MoveBase } from '../pokemon';
 import { Bag, type BagContents } from '../items/Bag';
 import type { PrimaryStatus } from '../pokemon/battle/status';
@@ -64,6 +65,12 @@ export interface SaveData {
   readonly stash: SavedStash;
   readonly raidProgress: RaidProgress;
   readonly starterSpeciesId: StarterSpeciesId | null;
+  /**
+   * Raid time owed for recovery already carried out at base, subtracted from
+   * the next raid's clock. Saves written before recovery existed simply have no
+   * debt, so they keep loading unchanged and need no version bump.
+   */
+  readonly pendingRecoveryMs: number;
 }
 
 export interface RestoredGame {
@@ -75,6 +82,7 @@ export interface RestoredGame {
   readonly stash: Stash;
   readonly raidProgress: RaidProgress;
   readonly starterSpeciesId: StarterSpeciesId | null;
+  readonly pendingRecoveryMs: number;
 }
 
 export interface SaveGameState {
@@ -86,6 +94,7 @@ export interface SaveGameState {
   readonly stash?: Stash;
   readonly raidProgress?: RaidProgress;
   readonly starterSpeciesId?: StarterSpeciesId | null;
+  readonly pendingRecoveryMs?: number;
 }
 
 export interface StorageLike {
@@ -154,7 +163,10 @@ export class SaveManager {
     }
 
     game.stash.bankRun(result);
-    return this.save(game);
+    // The raid this debt paid for has now resolved, so it is settled. Charging
+    // on resolution rather than on deployment is what stops a player healing,
+    // deploying into the shortened raid and reloading the page to shed the bill.
+    return this.save({ ...game, pendingRecoveryMs: 0 });
   }
 
   /**
@@ -169,7 +181,7 @@ export class SaveManager {
 
     game.stash.bankRun(result);
     if (game.raidProgress.firstContractExtracted) {
-      return { saved: this.save(game), granted: false };
+      return { saved: this.save({ ...game, pendingRecoveryMs: 0 }), granted: false };
     }
 
     const raidProgress: RaidProgress = {
@@ -180,7 +192,7 @@ export class SaveManager {
     };
     game.stash.addItem('super-potion', 1);
     return {
-      saved: this.save({ ...game, raidProgress }),
+      saved: this.save({ ...game, raidProgress, pendingRecoveryMs: 0 }),
       granted: true,
     };
   }
@@ -221,7 +233,7 @@ export class SaveManager {
     // way, including when the secure slot saved a Pokemon but no items.
     game.stash.ensurePlayable(game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined);
     game.stash.restockMinimumSupplies();
-    return this.save(game);
+    return this.save({ ...game, pendingRecoveryMs: 0 });
   }
 }
 
@@ -236,6 +248,7 @@ export function serializeGame(state: SaveGameState): SaveData {
     stash: serializeStash(state.stash ?? new Stash()),
     raidProgress: state.raidProgress ?? DEFAULT_RAID_PROGRESS,
     starterSpeciesId: state.starterSpeciesId ?? inferStarterSpeciesId(state.stash),
+    pendingRecoveryMs: clampPendingRecoveryMs(state.pendingRecoveryMs),
   };
 }
 
@@ -280,6 +293,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     stash,
     raidProgress: deserializeRaidProgress(value.raidProgress),
     starterSpeciesId: deserializeStarterSpeciesId(value.starterSpeciesId) ?? inferStarterSpeciesId(stash),
+    pendingRecoveryMs: clampPendingRecoveryMs(value.pendingRecoveryMs),
   };
 }
 

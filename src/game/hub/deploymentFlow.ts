@@ -70,8 +70,13 @@ export class DeploymentFlow {
     return this.items.filter((item) => this.securedItemIds.includes(item.itemId));
   }
 
+  /**
+   * A fainted Pokemon cannot fight, so a loadout of nothing but fainted Pokemon
+   * is not a raid, it is a wipe with extra steps. Recovering it at base is the
+   * way out - see `../hub/recovery`.
+   */
   public get isDeployable(): boolean {
-    return this.party.length > 0;
+    return this.party.some((stored) => !stored.pokemon.isFainted);
   }
 
   public includesPokemon(id: string): boolean {
@@ -161,7 +166,9 @@ export class DeploymentFlow {
     }
     if (this.currentStep === 'loadout') {
       if (!this.isDeployable) {
-        return 'Choose at least one Pokemon to take into the raid.';
+        return this.party.length === 0
+          ? 'Choose at least one Pokemon to take into the raid.'
+          : 'Every Pokemon in this loadout has fainted. Recover one at base first.';
       }
       this.currentStep = 'confirm';
     }
@@ -203,6 +210,9 @@ export class DeploymentFlow {
     const party = this.party;
     if (party.length === 0) {
       throw new Error('A raid needs at least one Pokemon.');
+    }
+    if (!this.isDeployable) {
+      throw new Error('A raid needs at least one Pokemon that has not fainted.');
     }
     const securedPokemon = this.securedPokemon;
     const securedItems = this.securedItems.slice(0, MAX_SECURE_ITEM_STACKS);

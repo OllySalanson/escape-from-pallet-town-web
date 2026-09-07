@@ -12,15 +12,20 @@ import { Bag } from '../items';
 import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
 import { activeRunManager, RunPhase } from '../run';
 import type { ActiveRunSession } from '../run/RunSession';
-import { createStartingStash } from '../stash';
-import type { DeploymentFlow } from '../hub';
+import { createStartingStash, type Stash, type StashedPokemon } from '../stash';
+import {
+  MAX_PENDING_RECOVERY_MS,
+  raidClockAfterRecovery,
+  recoveryCostMs,
+  type DeploymentFlow,
+} from '../hub';
 import {
   DEFAULT_RAID_PROGRESS,
   SaveManager,
   type RaidProgress,
   type StorageLike,
 } from '../save/SaveManager';
-import { HubScene, type HubSceneData } from './HubScene';
+import { HubScene, RUN_DURATION_MS, type HubSceneData } from './HubScene';
 
 interface WorldSceneData {
   readonly party: PokemonParty;
@@ -32,7 +37,11 @@ interface HubInternals {
   init(data?: HubSceneData): void;
   startRun(): void;
   render(): void;
+  recover(ids: readonly string[]): void;
   readonly flow: DeploymentFlow;
+  readonly stash: Stash;
+  readonly raidClockMs: number;
+  readonly pendingRecoveryMs: number;
 }
 
 class MemoryStorage implements StorageLike {
@@ -91,6 +100,7 @@ function createHub(
       stash,
       raidProgress,
       starterSpeciesId: 'bulbasaur',
+      pendingRecoveryMs: 0,
     },
   });
   return {
@@ -110,6 +120,30 @@ function deploy(hub: HubInternals, start: ReturnType<typeof vi.fn>): void {
   (start as unknown as { flushFade(): void }).flushFade();
 }
 
+/** A hub whose stored save holds one worn-down Pokemon, as a raid leaves it. */
+function createWornHub(damage = (maxHp: number) => maxHp - 3): {
+  hub: HubInternals;
+  start: ReturnType<typeof vi.fn>;
+  storage: MemoryStorage;
+  worn: StashedPokemon;
+} {
+  const storage = new MemoryStorage();
+  const stash = createStartingStash();
+  const charmander = new Pokemon(CHARMANDER, 7);
+  charmander.takeDamage(damage(charmander.maxHp));
+  stash.addPokemon(charmander, 'charmander-1');
+  new SaveManager(storage).save({
+    party: new PokemonParty(),
+    mapId: 'pallet-town',
+    position: { x: 6, y: 8 },
+    bag: new Bag(),
+    stash,
+  });
+  const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);
+  const worn = hub.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!;
+  return { hub, start, storage, worn };
+}
+
 describe('hub deployment route', () => {
   // The hub shares one process-wide run manager, so a started raid has to be
   // resolved before the next test can deploy again.
@@ -117,6 +151,67 @@ describe('hub deployment route', () => {
     if (activeRunManager.phase === RunPhase.InRun) {
       activeRunManager.resolveEscape();
     }
+  });
+
+  it('recovers a worn Pokemon at base and takes the cost off the next raid clock', () => {
+    const { hub, start, storage, worn } = createWornHub();
+    const costMs = recoveryCostMs(worn.pokemon);
+    // The player builds the loadout first, so recovery has to leave it intact.
+    hub.flow.togglePokemon('charmander-1');
+    expect(costMs).toBeGreaterThan(0);
+    expect(hub.raidClockMs).toBe(RUN_DURATION_MS);
+
+    hub.recover(['charmander-1']);
+
+    expect(worn.pokemon.currentHp).toBe(worn.pokemon.maxHp);
+    expect(hub.pendingRecoveryMs).toBe(costMs);
+    expect(hub.raidClockMs).toBe(RUN_DURATION_MS - costMs);
+    // The recovery and its bill survive a reload, so neither can be scummed away.
+    const reloaded = new SaveManager(storage).load();
+    expect(reloaded?.pendingRecoveryMs).toBe(costMs);
+    expect(reloaded?.stash.listPokemon()).toMatchObject([
+      { id: 'bulbasaur-1' },
+      { id: 'charmander-1', pokemon: { currentHp: worn.pokemon.maxHp } },
+    ]);
+
+    hub.flow.advance();
+    deploy(hub, start);
+    expect(hub.flow.party.map((stored) => stored.id)).toEqual(['charmander-1']);
+    expect(activeRunManager.snapshot().remainingMs).toBe(
+      raidClockAfterRecovery(RUN_DURATION_MS, costMs),
+    );
+  });
+
+  it('never books recovery it cannot fit inside half a raid clock', () => {
+    // Recovering a whole worn-out party has to stay affordable, or the player
+    // goes back to hoarding a heal they never dare spend.
+    expect(MAX_PENDING_RECOVERY_MS * 2).toBeLessThanOrEqual(RUN_DURATION_MS);
+  });
+
+  it('revives a sole Pokemon that came home fainted and lets it deploy again', () => {
+    const { hub, start, worn } = createWornHub((maxHp) => maxHp);
+    hub.flow.togglePokemon('charmander-1');
+
+    expect(worn.pokemon.isFainted).toBe(true);
+    expect(hub.flow.isDeployable).toBe(false);
+    expect(hub.flow.advance()).toMatch(/fainted/);
+
+    hub.recover(['charmander-1']);
+
+    expect(worn.pokemon.isFainted).toBe(false);
+    expect(hub.flow.advance()).toBeUndefined();
+    deploy(hub, start);
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a fit party alone rather than charging for a recovery it does not need', () => {
+    const { hub } = createHub();
+
+    hub.recover(['bulbasaur-1', 'charmander-1']);
+
+    expect(statusOf(hub)).toBe('Everyone there is already fit.');
+    expect(hub.pendingRecoveryMs).toBe(0);
+    expect(hub.raidClockMs).toBe(RUN_DURATION_MS);
   });
 
   it('opens the base screen with an empty loadout instead of a partner the player never picked', () => {
