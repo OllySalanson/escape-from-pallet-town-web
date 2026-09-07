@@ -54,4 +54,12 @@ describe('Pokemon sprite assets', () => {
     expect(source).not.toMatch(/dexId === \d/);
     expect(source).not.toContain('svg');
   });
+
+  it('draws menu avatars from the same PNGs, so no hub screen requests a deleted file', async () => {
+    const source = await readFile(new URL('../ui/MenuOverlay.ts', import.meta.url), 'utf8');
+
+    expect(source).toContain('/assets/pokemon/front/${dexId}.png');
+    expect(source).not.toMatch(/dexId === \d/);
+    expect(source).not.toContain('svg');
+  });
 });

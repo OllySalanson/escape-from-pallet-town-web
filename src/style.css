@@ -113,7 +113,7 @@ button {
 }
 .hub-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1.45fr 1fr;
   gap: var(--space-2);
 }
 .hub-home {
@@ -125,7 +125,7 @@ button {
 }
 .objective-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 8px;
 }
 .objective-copy {
@@ -222,12 +222,27 @@ button {
 .entity-row small {
   display: block;
 }
+.entity-row > span:last-child {
+  margin-left: auto;
+}
+.risk-tag,
+.secure-tag {
+  font-size: 0.85em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.risk-tag {
+  color: #ffb4a2;
+}
+.secure-tag {
+  color: #f6c969;
+}
 .selectable:hover,
 .selectable.selected {
   border-color: var(--menu-accent);
   background: #1d3950;
 }
-.selectable.secured {
+.entity-row.secured {
   border-color: #f6c969;
   background: #3e3420;
 }
@@ -324,10 +339,17 @@ button {
 }
 .loadout-layout {
   grid-template-columns: 1.25fr 0.75fr;
+  align-items: start;
 }
 .run-loadout {
   display: flex;
   flex-direction: column;
+}
+.run-loadout .entity-row + .entity-row {
+  margin-top: 8px;
+}
+.run-loadout .panel-heading:not(:first-child) {
+  margin-top: var(--space-3);
 }
 .risk-note {
   color: #ffd0c5;
@@ -336,6 +358,84 @@ button {
   padding: 10px;
   font-size: 0.9em;
   margin: 14px 0;
+}
+.deploy-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  list-style: none;
+  margin: calc(var(--space-3) * -1) 0 var(--space-3);
+  padding: 0;
+  color: var(--menu-muted);
+  font-weight: 650;
+}
+.deploy-progress li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.deploy-progress li + li::before {
+  content: '';
+  width: clamp(14px, 4vw, 48px);
+  height: 2px;
+  border-radius: 2px;
+  background: var(--menu-border);
+}
+.deploy-progress li span {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: 1px solid var(--menu-border);
+  background: var(--menu-surface);
+  font-size: 0.85em;
+}
+.deploy-progress .done,
+.deploy-progress .done span {
+  color: var(--menu-accent);
+  border-color: var(--menu-accent);
+}
+.deploy-progress .current {
+  color: var(--menu-text);
+}
+.deploy-progress .current span {
+  background: var(--menu-accent);
+  border-color: var(--menu-accent);
+  color: #082226;
+}
+.deploy-progress .done::before,
+.deploy-progress .current::before {
+  background: var(--menu-accent) !important;
+}
+.confirm-layout {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+.confirm-layout .panel {
+  display: flex;
+  flex-direction: column;
+}
+.menu-overlay .confirm-note {
+  color: var(--menu-muted);
+  margin-bottom: var(--space-2);
+}
+.confirm-layout .panel .button {
+  display: block;
+  width: 100%;
+  margin-top: auto;
+}
+.confirm-layout .entity-list {
+  margin-bottom: var(--space-2);
+}
+.confirm-risk .entity-row {
+  box-shadow: inset 3px 0 0 #915249;
+}
+.confirm-bar {
+  grid-column: 1 / -1;
 }
 .button {
   border: 1px solid var(--menu-border);
@@ -758,6 +858,7 @@ button {
   .stash-layout,
   .loadout-layout,
   .secure-layout,
+  .confirm-layout,
   .test-lab-layout,
   .starter-grid {
     grid-template-columns: 1fr;
