@@ -114,6 +114,7 @@ export class BattleScene extends Phaser.Scene {
   private returnScene: BattleSceneData['returnScene'];
   private displayedEnemy: PokemonInstance | undefined;
   private isTransitioning = false;
+  private pendingBattleExit = false;
   private displayedHp = { player: 0, enemy: 0 };
   private pendingCombatMessages: { readonly event?: BattleEvent; readonly message: string }[] = [];
   private isPresentingCombatEvents = false;
@@ -143,6 +144,11 @@ export class BattleScene extends Phaser.Scene {
     this.activatedPoiIds.clear();
     data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
     this.pendingHubTransition = false;
+    this.pendingBattleExit = false;
+    // Phaser reuses this scene instance after it returns to the overworld.
+    // A completed first battle must not leave the return guard armed for the
+    // next encounter, or its completed escape dialogue cannot hand back control.
+    this.isTransitioning = false;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
@@ -609,7 +615,8 @@ export class BattleScene extends Phaser.Scene {
 
   private flee(): void {
     // Hunter pursuit battles are deliberately escapable, unlike ordinary trainers.
-    this.mode = 'finished';
+    this.pendingBattleExit = true;
+    this.mode = 'events';
     this.commandContainer.setVisible(false);
     this.dialog.showMessage('Got away safely!');
   }
@@ -801,6 +808,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private onMessagesComplete(): void {
+    if (this.pendingBattleExit) {
+      this.pendingBattleExit = false;
+      this.mode = 'finished';
+      this.returnToWorld();
+      return;
+    }
+
     if (this.mode === 'finished') {
       return;
     }
