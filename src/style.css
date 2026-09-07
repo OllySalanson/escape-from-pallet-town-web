@@ -249,7 +249,7 @@ button {
   object-fit: contain;
   image-rendering: pixelated;
 }
-.pokemon-avatar:has(img) > span {
+.pokemon-avatar:not(.artwork-unavailable) > span {
   display: none;
 }
 .hp-track {

@@ -109,6 +109,9 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.typewriter = new TypewriterQueue(texts, { charsPerSecond: this.charsPerSecond });
     this.hasTriggeredCompletion = false;
     this.indicatorElapsedMs = 0;
+    // Render immediately so a newly entered battle never presents an empty
+    // dialogue panel while it waits for the first animation frame.
+    this.typewriter.update(1000 / this.charsPerSecond);
     this.textObject.setText(this.typewriter.visibleText);
     this.indicatorObject.setVisible(false);
 
