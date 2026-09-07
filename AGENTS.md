@@ -10,6 +10,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - Active raid scene data is defined by `ActiveRunSession` in `src/game/run/RunSession.ts` and must pass unchanged between `WorldScene` and `BattleScene`.
 - The raid field guide is `ObjectivesScene` in `src/game/scenes/ObjectivesScene.ts`; derive its objective text from `buildObjectiveGuide()` in `src/game/objectives/ObjectiveGuide.ts`, and have it resume only the `WorldScene` instance it paused.
 - Scenes are registered in `src/game/gameConfig.ts`, not `main.ts`.
+- Both starter selection surfaces (`StarterScene` and `HubScene`'s `reselect` view) share their markup through `src/game/ui/starterPicker.ts`; the reselection rule itself is `Stash.swapStarter()`, and `SaveManager.reselectStarter()` also rewrites `starterSpeciesId` so later wipe re-grants follow the new choice.
 - `Pokemon` has no `cureStatus()` method; clear a status by setting `primaryStatus` to null directly, which `SaveManager` saves and restores.
 
 ## Maintaining this file

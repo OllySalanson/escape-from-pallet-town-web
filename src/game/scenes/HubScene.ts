@@ -1,13 +1,20 @@
 import Phaser from 'phaser';
 import { Bag, ITEM_DEFINITIONS, type ItemDefinition, type ItemId } from '../items';
-import { PokemonParty } from '../pokemon';
+import { PokemonParty, type PokemonBase } from '../pokemon';
 import { activeRunManager, type ItemStack, type SecureSlot } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { formatObjectiveReward, RUN_OBJECTIVES } from '../objectives';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
-import { type SecureSlot as StashSecureSlot, type Stash, type StashedPokemon } from '../stash';
+import {
+  getStarterSpecies,
+  type SecureSlot as StashSecureSlot,
+  type StarterSpeciesId,
+  type Stash,
+  type StashedPokemon,
+} from '../stash';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
+import { starterCards, starterLoadoutSummary } from '../ui/starterPicker';
 
 // Leaves enough time to visit an outer area and return, while still punishing detours.
 const RUN_DURATION_MS = 18 * 60 * 1000;
@@ -26,7 +33,10 @@ export class HubScene extends Phaser.Scene {
   private securedItemIds: ItemId[] = [];
   private selectedInsertionId: RunInsertionId = 'town-square';
   private overlay!: MenuOverlay;
-  private view: 'home' | 'stash' | 'loadout' | 'secure' = 'home';
+  private view: 'home' | 'stash' | 'loadout' | 'secure' | 'reselect' = 'home';
+  private reselectStarterId: StarterSpeciesId = 'bulbasaur';
+  /** A swap only runs from an explicit second click, so a misclick cannot delete a survivor. */
+  private swapArmed = false;
   private status = '';
 
   public constructor() {
@@ -39,6 +49,10 @@ export class HubScene extends Phaser.Scene {
       throw new Error('HubScene requires a saved game.');
     }
 
+    this.applyLoadedGame(loaded);
+  }
+
+  private applyLoadedGame(loaded: RestoredGame): void {
     this.savedGame = loaded;
     this.stash = loaded.stash;
     this.selectedPokemonIds = this.stash.listPokemon().slice(0, 1).map(({ id }) => id);
@@ -46,6 +60,8 @@ export class HubScene extends Phaser.Scene {
     this.securedPokemonId = undefined;
     this.securedItemIds = [];
     this.selectedInsertionId = 'town-square';
+    this.reselectStarterId = this.startingStarterId();
+    this.swapArmed = false;
   }
 
   public create(): void {
@@ -70,6 +86,45 @@ export class HubScene extends Phaser.Scene {
 
   private get loadoutItems(): readonly ItemStack[] {
     return [...this.selectedItems].map(([itemId, quantity]) => ({ itemId, quantity }));
+  }
+
+  /** The lone Pokemon a swap would trade away, or undefined while a team remains. */
+  private get sparePartner(): StashedPokemon | undefined {
+    return this.stash.canSwapStarter() ? this.stashPokemon[0] : undefined;
+  }
+
+  /** Preselects the species already held so a swap is never armed by default. */
+  private startingStarterId(): StarterSpeciesId {
+    const heldId = this.stash.listPokemon()[0]?.pokemon.base.id;
+    return heldId === 'charmander' || heldId === 'squirtle' ? heldId : 'bulbasaur';
+  }
+
+  private setView(view: typeof this.view): void {
+    this.view = view;
+    this.swapArmed = false;
+    if (view === 'reselect') {
+      this.reselectStarterId = this.startingStarterId();
+    }
+  }
+
+  private confirmSwap(): void {
+    if (!this.sparePartner) {
+      this.setView('home');
+      this.setStatus('Swapping is only offered while one Pokemon remains at base.');
+      return;
+    }
+    if (!this.saveManager.reselectStarter(this.reselectStarterId)) {
+      this.setView('home');
+      this.setStatus('That swap could not be saved.');
+      return;
+    }
+
+    const reloaded = this.saveManager.load();
+    if (reloaded) {
+      this.applyLoadedGame(reloaded);
+    }
+    this.setView('home');
+    this.setStatus(`${getStarterSpecies(this.reselectStarterId).name} is your new partner.`);
   }
 
   private togglePokemon(pokemon: StashedPokemon): void {
@@ -136,7 +191,7 @@ export class HubScene extends Phaser.Scene {
 
   private handleKey(event: KeyboardEvent): void {
     if (event.key === 'Escape' && this.view !== 'home') {
-      event.preventDefault(); this.view = 'home'; this.render(); return;
+      event.preventDefault(); this.setView('home'); this.render(); return;
     }
     const controls = [...this.overlay.root.querySelectorAll<HTMLButtonElement>('button:not([disabled])')];
     const current = controls.indexOf(document.activeElement as HTMLButtonElement);
@@ -148,8 +203,12 @@ export class HubScene extends Phaser.Scene {
 
   private render(): void {
     const back = this.view === 'home' ? '' : '<button class="back-button" data-view="home">← Base</button>';
-    this.overlay.root.innerHTML = `<div class="menu-shell"><header class="menu-header">${back}<div><p class="eyebrow">Pallet Town</p><h1>${this.view === 'home' ? 'Ready for a run?' : this.view === 'stash' ? 'Your stash' : this.view === 'loadout' ? 'Build your loadout' : 'Secure slot'}</h1></div><div class="stash-count">${this.stashPokemon.length} Pokémon · ${this.stashItems.length} item types</div></header>${this.content()}${this.status ? `<p class="menu-status" role="status">${this.status}</p>` : ''}</div>`;
-    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((button) => button.onclick = () => { this.view = button.dataset.view as typeof this.view; this.render(); });
+    this.overlay.root.innerHTML = `<div class="menu-shell"><header class="menu-header">${back}<div><p class="eyebrow">Pallet Town</p><h1>${this.view === 'home' ? 'Ready for a run?' : this.view === 'stash' ? 'Your stash' : this.view === 'loadout' ? 'Build your loadout' : this.view === 'reselect' ? 'Swap your partner' : 'Secure slot'}</h1></div><div class="stash-count">${this.stashPokemon.length} Pokémon · ${this.stashItems.length} item types</div></header>${this.content()}${this.status ? `<p class="menu-status" role="status">${this.status}</p>` : ''}</div>`;
+    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((button) => button.onclick = () => { this.setView(button.dataset.view as typeof this.view); this.render(); });
+    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-starter]').forEach((button) => button.onclick = () => { this.reselectStarterId = button.dataset.starter as StarterSpeciesId; this.swapArmed = false; this.render(); });
+    this.overlay.root.querySelector<HTMLButtonElement>('[data-swap-arm]')?.addEventListener('click', () => { this.swapArmed = true; this.render(); });
+    this.overlay.root.querySelector<HTMLButtonElement>('[data-swap-cancel]')?.addEventListener('click', () => { this.swapArmed = false; this.render(); });
+    this.overlay.root.querySelector<HTMLButtonElement>('[data-swap-confirm]')?.addEventListener('click', () => this.confirmSwap());
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-pokemon]').forEach((button) => button.onclick = () => { this.togglePokemon(this.stashPokemon.find((p) => p.id === button.dataset.pokemon)!); this.render(); });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-item]').forEach((button) => { button.onclick = () => { this.adjustItem(button.dataset.item as ItemId, Number(button.dataset.amount)); this.render(); }; });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-secure-pokemon]').forEach((button) => { button.onclick = () => { this.toggleSecurePokemon(button.dataset.securePokemon!); this.render(); }; });
@@ -162,10 +221,39 @@ export class HubScene extends Phaser.Scene {
   }
 
   private content(): string {
-    if (this.view === 'home') return `<main class="hub-home">${this.savedGame.raidProgress.firstContractExtracted ? '<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">New permanent unlock</p><h2>South Verge + Super Potion</h2></div><small>Now available in your stash and insertion list</small></div></section>' : ''}<section class="hub-actions"><button class="action-card primary" data-start><span>DEPLOY</span><h2>Deploy to ${RUN_INSERTIONS[this.selectedInsertionId].label}</h2><p>${this.savedGame.raidProgress.firstContractExtracted ? 'South Verge is unlocked. Take your partner out, find supplies, and escape with your haul.' : 'Your recommended partner is ready. Recover the lost field kit on Route 1, then escape through the marked South Gate.'}</p><b>Begin raid →</b></button><button class="action-card" data-view="loadout"><span>PREPARE</span><h2>Loadout & insertion</h2><p>${this.loadoutPokemon.length}/6 Pokémon selected. Everything taken is at risk.</p><b>Adjust raid plan →</b></button><button class="action-card" data-view="stash"><span>STASH</span><h2>Review supplies</h2><p>Check the Pokémon and supplies secured at base.</p><b>Open stash →</b></button></section>${this.savedGame.raidProgress.firstContractExtracted ? '' : `<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">Active contract</p><h2>Lost field kit</h2></div><small>Reward requires extraction</small></div><div class="objective-list">${RUN_OBJECTIVES.map((objective) => `<article class="entity-row"><span class="item-icon">✦</span><div class="objective-copy"><strong>${objective.description}</strong><small>Reward: unlock South Verge + ${formatObjectiveReward(objective.reward)}</small></div></article>`).join('')}</div></section>`}</main>`;
+    if (this.view === 'home') return `<main class="hub-home">${this.savedGame.raidProgress.firstContractExtracted ? '<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">New permanent unlock</p><h2>South Verge + Super Potion</h2></div><small>Now available in your stash and insertion list</small></div></section>' : ''}<section class="hub-actions"><button class="action-card primary" data-start><span>DEPLOY</span><h2>Deploy to ${RUN_INSERTIONS[this.selectedInsertionId].label}</h2><p>${this.savedGame.raidProgress.firstContractExtracted ? 'South Verge is unlocked. Take your partner out, find supplies, and escape with your haul.' : 'Your recommended partner is ready. Recover the lost field kit on Route 1, then escape through the marked South Gate.'}</p><b>Begin raid →</b></button><button class="action-card" data-view="loadout"><span>PREPARE</span><h2>Loadout & insertion</h2><p>${this.loadoutPokemon.length}/6 Pokémon selected. Everything taken is at risk.</p><b>Adjust raid plan →</b></button><button class="action-card" data-view="stash"><span>STASH</span><h2>Review supplies</h2><p>Check the Pokémon and supplies secured at base.</p><b>Open stash →</b></button></section>${this.swapPanel()}${this.savedGame.raidProgress.firstContractExtracted ? '' : `<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">Active contract</p><h2>Lost field kit</h2></div><small>Reward requires extraction</small></div><div class="objective-list">${RUN_OBJECTIVES.map((objective) => `<article class="entity-row"><span class="item-icon">✦</span><div class="objective-copy"><strong>${objective.description}</strong><small>Reward: unlock South Verge + ${formatObjectiveReward(objective.reward)}</small></div></article>`).join('')}</div></section>`}</main>`;
     if (this.view === 'stash') return `<main class="stash-layout"><section><h2>Pokémon</h2><div class="entity-list">${this.stashPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div><strong>${stored.pokemon.base.name}</strong><small>Level ${stored.pokemon.level} · ${stored.pokemon.currentHp}/${stored.pokemon.maxHp} HP</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><div>${typeBadge(stored.pokemon.base.primaryType)}${stored.pokemon.base.secondaryType ? typeBadge(stored.pokemon.base.secondaryType) : ''}</div></article>`).join('') || '<p class="empty-state">No Pokémon in storage.</p>'}</div></section><section><h2>Supplies</h2><div class="item-grid">${this.stashItems.map((item) => `<article class="item-card"><span class="item-icon">✦</span><strong>${item.displayName}</strong><small>${item.category} · ${this.stash.itemCount(item.id)} available</small></article>`).join('') || '<p class="empty-state">No supplies in storage.</p>'}</div></section></main>`;
     if (this.view === 'loadout') return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<button class="entity-row selectable ${this.selectedPokemonIds.includes(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div><strong>${stored.pokemon.base.name}</strong><small>Level ${stored.pokemon.level}${stored.id === this.stashPokemon[0]?.id ? ' · Recommended partner' : ''}</small></div><span>${this.selectedPokemonIds.includes(stored.id) ? 'Added' : 'Add +'}</span></button>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.selectedItems.get(item.id as ItemId) ?? 0}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>Choose your entry</h2></div></div>${(Object.entries(RUN_INSERTIONS) as [RunInsertionId, typeof RUN_INSERTIONS[RunInsertionId]][]).filter(([id]) => this.savedGame.raidProgress.unlockedInsertions.includes(id) || (id === 'floodplain-relay' && this.savedGame.raidProgress.firstContractExtracted)).map(([id, insertion]) => `<button class="entity-row selectable ${this.selectedInsertionId === id ? 'selected' : ''}" data-insertion="${id}"><strong>${insertion.label}</strong><small>${insertion.description}</small></button>`).join('')}<div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Run loadout</h2></div><b>${this.loadoutPokemon.length}/6</b></div>${this.loadoutPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong></article>`).join('') || '<p class="empty-state">Add a Pokémon from your stash.</p>'}<div class="risk-note">Everything here is lost on a wipe unless it is in the secure slot.</div><button class="button primary-button" data-view="secure">Set up secure slot →</button><button class="button" data-start ${this.loadoutPokemon.length ? '' : 'disabled'}>Deploy to ${RUN_INSERTIONS[this.selectedInsertionId].label}</button></section></main>`;
+    if (this.view === 'reselect') return this.reselectView();
     return `<main class="secure-layout"><section class="secure-intro"><p class="eyebrow">Protected on a wipe</p><h2>SECURED</h2><p>One Pokémon and two item stacks survive. Everything else in your loadout is at risk.</p></section><section class="secure-group"><h2>Pokémon <small>1 slot</small></h2>${this.loadoutPokemon.map((stored) => `<button class="entity-row selectable ${this.securedPokemonId === stored.id ? 'secured' : ''}" data-secure-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong><span>${this.securedPokemonId === stored.id ? 'Secured ✓' : 'Secure'}</span></button>`).join('') || '<p class="empty-state">Add a Pokémon to your loadout first.</p>'}</section><section class="secure-group"><h2>Item stacks <small>${this.securedItemIds.length}/2 slots</small></h2>${this.loadoutItems.map((item) => `<button class="entity-row selectable ${this.securedItemIds.includes(item.itemId) ? 'secured' : ''}" data-secure-item="${item.itemId}"><span class="item-icon">✦</span><strong>${this.itemName(item.itemId)} ×${item.quantity}</strong><span>${this.securedItemIds.includes(item.itemId) ? 'Secured ✓' : 'Secure'}</span></button>`).join('') || '<p class="empty-state">Add supplies to your loadout first.</p>'}<button class="button primary-button" data-view="loadout">Back to loadout</button></section></main>`;
+  }
+
+  /**
+   * Advertises the swap on the lobby home screen, but only while the rule
+   * applies, so the offer disappears the moment a second Pokemon is banked.
+   */
+  private swapPanel(): string {
+    const spare = this.sparePartner;
+    if (!spare) return '';
+    return `<section class="panel swap-panel"><div class="panel-heading"><div><p class="eyebrow">Down to one Pokémon</p><h2>Swap your partner</h2></div><small>Only while one Pokémon is left at base</small></div><p>${spare.pokemon.base.name} (Level ${spare.pokemon.level}) is all you have left. Trade it for a fresh level 5 Bulbasaur, Charmander or Squirtle — the species you settle on is the one you are re-issued after a wipe.</p><button class="button primary-button" data-view="reselect">Choose a new partner →</button></section>`;
+  }
+
+  private reselectView(): string {
+    const spare = this.sparePartner;
+    if (!spare) return '<main class="hub-home"><p class="empty-state">You have more than one Pokémon, so there is nothing to swap.</p></main>';
+    const chosen = getStarterSpecies(this.reselectStarterId);
+    const held = `${spare.pokemon.base.name} (Level ${spare.pokemon.level})`;
+    return `<main class="starter-shell reselect-shell"><header class="starter-header"><p class="eyebrow">Re-specialise</p><h1>Choose a new partner</h1><p>${held} is your last Pokémon. Swapping releases it for good and issues a fresh level 5 starter in its place, so this is never an upgrade — only a change of direction.</p></header><main class="starter-grid">${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectLabel: 'Swap to →' })}</main><footer class="starter-confirm ${this.swapArmed ? 'arming' : ''}">${this.swapFooter(spare, chosen)}</footer></main>`;
+  }
+
+  private swapFooter(spare: StashedPokemon, chosen: PokemonBase): string {
+    if (spare.pokemon.base.id === chosen.id) {
+      return `<div><span class="eyebrow">Already yours</span><strong>${chosen.name}</strong><small>Pick a different starter to swap.</small></div><button class="button primary-button" disabled>Swap for ${chosen.name} →</button>`;
+    }
+    if (!this.swapArmed) {
+      return `<div><span class="eyebrow">Arrives as</span><strong>${chosen.name}</strong><small>${starterLoadoutSummary(chosen)}</small></div><button class="button primary-button" data-swap-arm>Swap for ${chosen.name} →</button>`;
+    }
+    return `<div><span class="eyebrow">This cannot be undone</span><strong>Release ${spare.pokemon.base.name} (Level ${spare.pokemon.level})?</strong><small>It is gone for good, and ${chosen.name} arrives at level 5.</small></div><div class="swap-actions"><button class="button" data-swap-cancel>Keep ${spare.pokemon.base.name}</button><button class="button danger-button" data-swap-confirm>Release and take ${chosen.name}</button></div>`;
   }
 
   private runSecureSlot(party: readonly StashedPokemon[]): SecureSlot {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Bag } from '../items';
 import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
-import { SaveManager, type StorageLike } from '../save/SaveManager';
+import { SAVE_KEY, SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash } from '../stash';
 import { createActiveRunSession } from './RunSession';
 import { RunManager } from './RunManager';
@@ -23,6 +23,11 @@ class MemoryStorage implements StorageLike {
 }
 
 const RUN_CONFIG = { mapId: 'pallet-town', durationMs: 60_000 };
+
+/** Reads the field straight out of storage, so persistence is proven, not inferred. */
+function persistedStarterSpeciesId(storage: StorageLike): unknown {
+  return (JSON.parse(storage.getItem(SAVE_KEY)!) as Record<string, unknown>).starterSpeciesId;
+}
 
 function seedNewPlayer(storage: StorageLike): SaveManager {
   const saves = new SaveManager(storage);
@@ -126,6 +131,54 @@ describe('extraction loop integration', () => {
     const wipedStash = saves.load()!.stash;
     expect(wipedStash.listPokemon().map(({ id }) => id)).toEqual([starter.id]);
     expect(wipedStash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
+  });
+
+  it('lets a wiped player re-specialise, and re-grants the newly chosen starter on the next wipe', () => {
+    const storage = new MemoryStorage();
+    const saves = seedNewPlayer(storage);
+    const wipeWith = (manager: SaveManager, stored: { id: string; pokemon: Pokemon }): void => {
+      const runManager = new RunManager();
+      runManager.startRun({ party: [stored.pokemon], items: [] }, RUN_CONFIG);
+      const session = createActiveRunSession(runManager, {}, {}, [stored.id], []);
+      session.manager.resolveWipe(session.secureSlot);
+      expect(
+        manager.applyWipeLoss(session.broughtPokemonIds, session.broughtItems, session.stashSecureSlot),
+      ).toBe(true);
+    };
+
+    // The captain's starting position: a first wipe hands back the same species.
+    wipeWith(saves, saves.load()!.stash.listPokemon()[0]);
+    expect(saves.load()!.stash.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'bulbasaur' }, level: 5 } },
+    ]);
+    expect(persistedStarterSpeciesId(storage)).toBe('bulbasaur');
+    expect(saves.load()!.stash.canSwapStarter()).toBe(true);
+
+    // Re-specialising rewrites the recorded species, not just the stash.
+    expect(saves.reselectStarter('squirtle')).toBe(true);
+    expect(persistedStarterSpeciesId(storage)).toBe('squirtle');
+    expect(saves.load()!.stash.listPokemon()).toMatchObject([
+      { id: 'squirtle-1', pokemon: { base: { id: 'squirtle' }, level: 5 } },
+    ]);
+
+    // Reload the page, then wipe again: the re-grant follows the new choice.
+    const afterReload = new SaveManager(storage);
+    expect(afterReload.load()!.starterSpeciesId).toBe('squirtle');
+    wipeWith(afterReload, afterReload.load()!.stash.listPokemon()[0]);
+
+    const regranted = afterReload.load()!.stash.listPokemon();
+    expect(regranted).toMatchObject([{ pokemon: { base: { id: 'squirtle' }, level: 5 } }]);
+    expect(regranted.map(({ pokemon }) => pokemon.base.id)).not.toContain('bulbasaur');
+
+    // The offer withdraws itself the moment a second Pokemon is banked.
+    expect(afterReload.bankRun({ pokemon: [new Pokemon(CHARMANDER, 4)], items: [] })).toBe(true);
+    expect(afterReload.load()!.stash.canSwapStarter()).toBe(false);
+    expect(afterReload.reselectStarter('bulbasaur')).toBe(false);
+    expect(persistedStarterSpeciesId(storage)).toBe('squirtle');
+    expect(afterReload.load()!.stash.listPokemon().map(({ id }) => id)).toEqual([
+      'squirtle-1',
+      'charmander-1',
+    ]);
   });
 
   it('unlocks South Verge and grants one supply exactly once after extracting the recovered field kit', () => {

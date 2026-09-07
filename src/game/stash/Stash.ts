@@ -107,6 +107,31 @@ export class Stash {
     return true;
   }
 
+  /**
+   * Whether the vault is down to a single Pokemon, the only state in which the
+   * player may re-specialise into another starter.
+   */
+  public canSwapStarter(): boolean {
+    return this.storedPokemon.length === 1;
+  }
+
+  /**
+   * Trades the sole remaining Pokemon for a fresh level-5 starter, so a player
+   * recovering from a wipe can change species instead of being locked to one.
+   * Refused while two or more Pokemon remain, so a team can never be discarded.
+   *
+   * @returns Whether the swap happened.
+   */
+  public swapStarter(starter: PokemonBase): boolean {
+    if (!this.canSwapStarter()) {
+      return false;
+    }
+
+    this.storedPokemon.length = 0;
+    this.addPokemon(new Pokemon(starter, 5));
+    return true;
+  }
+
   public bankRun(result: RunResult): void {
     for (const pokemon of result.pokemon) {
       this.addPokemon(pokemon);
