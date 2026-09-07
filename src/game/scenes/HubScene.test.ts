@@ -11,6 +11,7 @@ vi.mock('phaser', () => ({
 import { Bag } from '../items';
 import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
 import { activeRunManager, RunPhase } from '../run';
+import { RAID_DURATION_MS } from '../run/raidClock';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash, type Stash, type StashedPokemon } from '../stash';
 import {
@@ -25,7 +26,7 @@ import {
   type RaidProgress,
   type StorageLike,
 } from '../save/SaveManager';
-import { HubScene, RUN_DURATION_MS, type HubSceneData } from './HubScene';
+import { HubScene, type HubSceneData } from './HubScene';
 
 interface WorldSceneData {
   readonly party: PokemonParty;
@@ -159,13 +160,13 @@ describe('hub deployment route', () => {
     // The player builds the loadout first, so recovery has to leave it intact.
     hub.flow.togglePokemon('charmander-1');
     expect(costMs).toBeGreaterThan(0);
-    expect(hub.raidClockMs).toBe(RUN_DURATION_MS);
+    expect(hub.raidClockMs).toBe(RAID_DURATION_MS);
 
     hub.recover(['charmander-1']);
 
     expect(worn.pokemon.currentHp).toBe(worn.pokemon.maxHp);
     expect(hub.pendingRecoveryMs).toBe(costMs);
-    expect(hub.raidClockMs).toBe(RUN_DURATION_MS - costMs);
+    expect(hub.raidClockMs).toBe(RAID_DURATION_MS - costMs);
     // The recovery and its bill survive a reload, so neither can be scummed away.
     const reloaded = new SaveManager(storage).load();
     expect(reloaded?.pendingRecoveryMs).toBe(costMs);
@@ -178,14 +179,16 @@ describe('hub deployment route', () => {
     deploy(hub, start);
     expect(hub.flow.party.map((stored) => stored.id)).toEqual(['charmander-1']);
     expect(activeRunManager.snapshot().remainingMs).toBe(
-      raidClockAfterRecovery(RUN_DURATION_MS, costMs),
+      raidClockAfterRecovery(RAID_DURATION_MS, costMs),
     );
   });
 
   it('never books recovery it cannot fit inside half a raid clock', () => {
     // Recovering a whole worn-out party has to stay affordable, or the player
     // goes back to hoarding a heal they never dare spend.
-    expect(MAX_PENDING_RECOVERY_MS * 2).toBeLessThanOrEqual(RUN_DURATION_MS);
+    expect(MAX_PENDING_RECOVERY_MS * 2).toBeLessThanOrEqual(RAID_DURATION_MS);
+    // And the raid a fully-indebted player deploys into is still a raid.
+    expect(raidClockAfterRecovery(RAID_DURATION_MS, MAX_PENDING_RECOVERY_MS)).toBeGreaterThan(0);
   });
 
   it('revives a sole Pokemon that came home fainted and lets it deploy again', () => {
@@ -211,7 +214,7 @@ describe('hub deployment route', () => {
 
     expect(statusOf(hub)).toBe('Everyone there is already fit.');
     expect(hub.pendingRecoveryMs).toBe(0);
-    expect(hub.raidClockMs).toBe(RUN_DURATION_MS);
+    expect(hub.raidClockMs).toBe(RAID_DURATION_MS);
   });
 
   it('opens the base screen with an empty loadout instead of a partner the player never picked', () => {

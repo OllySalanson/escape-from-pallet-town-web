@@ -27,6 +27,7 @@ import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
+import { buildExtractionReport } from '../run/extractionReport';
 import type { ActiveRunSession, RaidLocation } from '../run/RunSession';
 import {
   HUNTER_SEARCH_MS,
@@ -64,6 +65,8 @@ type BattleAction =
 const COMMAND_Y = 174;
 const BATTLE_FONT = '"Orange Kid", monospace';
 const STARTING_POKE_BALLS = 5;
+/** Long enough for the wipe flash and shake to read before the result screen. */
+const RUN_RESULT_DELAY_MS = 700;
 const PARTY_LIMIT = 6;
 const BATTLEFIELD_WIDTH = 320;
 const GRASS_BACKDROP_WIDTH = 257;
@@ -138,6 +141,8 @@ export class BattleScene extends Phaser.Scene {
   private caughtPokemonStash: PokemonInstance[] = [];
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
+  /** Set once a lost raid is on its way to the result screen. */
+  private pendingResultScreen = false;
   private trainer: TrainerBattle | undefined;
   private hunterBattle = false;
   private teachingBattle = false;
@@ -182,6 +187,9 @@ export class BattleScene extends Phaser.Scene {
     this.activatedPoiIds.clear();
     data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
     this.pendingHubTransition = false;
+    // Same lifetime and the same teeth as pendingHubTransition: left set, the
+    // next battle's first completed line would refuse to hand control back.
+    this.pendingResultScreen = false;
     this.pendingBattleExit = false;
     this.wildEscapeAttempts = 0;
     // Phaser reuses this scene instance after it returns to the overworld.
@@ -1162,6 +1170,12 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private completeReturnToWorld(): void {
+    // A lost raid is already on its way to the result screen. The faint
+    // narration completing behind it must not race the hub in first and skip it.
+    if (this.pendingResultScreen) {
+      return;
+    }
+
     if (this.returnScene && this.scene.manager.keys[this.returnScene]) {
       this.scene.start(this.returnScene);
       return;
@@ -1209,7 +1223,12 @@ export class BattleScene extends Phaser.Scene {
     const result = this.hunterBattle
       ? resolveHunterBattleLoss(this.runSession)
       : this.runSession.manager.resolveWipe(this.runSession.secureSlot);
-    const saved = new SaveManager().applyWipeLoss(
+    const snapshot = this.runSession.manager.snapshot();
+    // Read the persisted bag before the wipe rewrites the save, and correct the
+    // ball count for throws this battle, which never reached storage.
+    const saves = new SaveManager();
+    const carriedOut = saves.load()?.bag.toJSON();
+    const saved = saves.applyWipeLoss(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
       this.runSession.stashSecureSlot,
@@ -1218,26 +1237,28 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.shake(180, 0.009);
     audioManager.playWipe();
     this.pendingHubTransition = true;
+    this.pendingResultScreen = true;
     this.mode = 'finished';
     this.commandContainer.setVisible(false);
-    this.dialog.showMessages([
-      'YOU WERE WIPED.',
-      formatWipeSummary(result.lostPokemon, result.lostItems),
-      saved
-        ? 'Secure slot preserved. Returning to hub.'
-        : 'Stash save unavailable. Returning to hub.',
-    ]);
+    // A lost raid is accounted for on the same screen a survived one is, so the
+    // secure-slot decision reads the same either way.
+    const report = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'defeated',
+      snapshot,
+      durationMs: snapshot.durationMs,
+      lost: { pokemon: result.lostPokemon, items: result.lostItems },
+      ...(carriedOut === undefined
+        ? {}
+        : { carriedOut: { ...carriedOut, 'poke-ball': this.pokeBalls } }),
+      saved,
+    });
+    this.time.delayedCall(RUN_RESULT_DELAY_MS, () => {
+      if (this.scene.manager.keys.extraction) {
+        this.scene.start('extraction', { report });
+        return;
+      }
+      this.scene.start(this.scene.manager.keys.hub ? 'hub' : 'title');
+    });
   }
-}
-
-function formatWipeSummary(
-  pokemon: readonly PokemonInstance[],
-  items: readonly { readonly itemId: string; readonly quantity: number }[],
-): string {
-  const pokemonSummary = pokemon.length === 0 ? 'no Pokemon' : `${pokemon.length} Pokemon`;
-  const itemSummary =
-    items.length === 0
-      ? 'no items'
-      : items.map((item) => `${item.quantity} ${item.itemId}`).join(', ');
-  return `Lost: ${pokemonSummary}; ${itemSummary}.`;
 }

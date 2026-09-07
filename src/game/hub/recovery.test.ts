@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CHARMANDER, PIDGEY, Pokemon } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
+import { RAID_DURATION_MS } from '../run/raidClock';
 import { Stash } from '../stash';
 import {
   applyRecovery,
@@ -152,9 +153,29 @@ describe('recovery charges', () => {
 
 describe('recovery against the raid clock', () => {
   it('takes booked recovery off the next raid and never below zero', () => {
-    expect(raidClockAfterRecovery(1_080_000, 0)).toBe(1_080_000);
-    expect(raidClockAfterRecovery(1_080_000, 240_000)).toBe(840_000);
+    expect(raidClockAfterRecovery(RAID_DURATION_MS, 0)).toBe(RAID_DURATION_MS);
+    expect(raidClockAfterRecovery(RAID_DURATION_MS, RECOVERY_FULL_BAR_MS)).toBe(
+      RAID_DURATION_MS - RECOVERY_FULL_BAR_MS,
+    );
     expect(raidClockAfterRecovery(60_000, MAX_PENDING_RECOVERY_MS)).toBe(0);
+  });
+
+  it('always leaves a raid worth deploying into, however much was booked', () => {
+    // The cap and the clock are the same number halved, so the worst possible
+    // debt still leaves half a raid. An absolute cap written against a longer
+    // clock would hand a fully treated party a raid that enrages on frame one.
+    expect(MAX_PENDING_RECOVERY_MS).toBe(Math.floor(RAID_DURATION_MS / 2));
+    expect(raidClockAfterRecovery(RAID_DURATION_MS, MAX_PENDING_RECOVERY_MS)).toBeGreaterThanOrEqual(
+      RAID_DURATION_MS / 2,
+    );
+  });
+
+  it('prices every treatment as a whole number of quoting steps', () => {
+    // A full bar has to cost exactly its listed price, not the next step up.
+    for (const price of [RECOVERY_FULL_BAR_MS, RECOVERY_REVIVE_MS, RECOVERY_STATUS_MS]) {
+      expect(price % RECOVERY_STEP_MS).toBe(0);
+      expect(price).toBeGreaterThan(0);
+    }
   });
 
   it('ignores a corrupt or negative debt rather than handing out extra time', () => {
