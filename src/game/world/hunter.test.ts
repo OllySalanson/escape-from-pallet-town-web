@@ -13,6 +13,9 @@ import {
   createHunterState,
   findHunterBreakawayTile,
   findHunterPursuitPath,
+  findHunterSpawnTile,
+  HUNTER_MINIMUM_SPAWN_DISTANCE,
+  HUNTER_SPAWN_DISTANCE,
   hunterTierFor,
   isHunterContactingPlayer,
   isHunterSearching,
@@ -567,5 +570,154 @@ describe('a raid where the player flees and then walks', () => {
 
     expect(stopped.engagedAtStep).not.toBeNull();
     expect(stopped.engagedAtStep!).toBeGreaterThanOrEqual(windowSteps);
+  });
+});
+
+/** Every walkable tile's distance from an origin, so a candidate can be checked in O(1). */
+const walkDistancesFrom = (
+  origin: { x: number; y: number },
+  bounds: { width: number; height: number },
+  isBlocked: (tile: { x: number; y: number }) => boolean,
+): Map<string, number> => {
+  const distances = new Map([[`${origin.x},${origin.y}`, 0]]);
+  const frontier = [origin];
+  for (let head = 0; head < frontier.length; head += 1) {
+    const tile = frontier[head];
+    const distance = distances.get(`${tile.x},${tile.y}`)!;
+    for (const delta of [
+      { x: 0, y: -1 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 },
+      { x: 1, y: 0 },
+    ]) {
+      const neighbour = { x: tile.x + delta.x, y: tile.y + delta.y };
+      const key = `${neighbour.x},${neighbour.y}`;
+      if (
+        neighbour.x < 0 || neighbour.y < 0 ||
+        neighbour.x >= bounds.width || neighbour.y >= bounds.height ||
+        distances.has(key) || isBlocked(neighbour)
+      ) {
+        continue;
+      }
+      distances.set(key, distance + 1);
+      frontier.push(neighbour);
+    }
+  }
+  return distances;
+};
+
+/**
+ * Every tile the spawn search would consider, not just the one it happened to pick.
+ * A spawn this rare proves nothing from a single lucky roll, so the tests check the
+ * whole candidate set from every tile of every map.
+ */
+const spawnCandidates = (
+  player: { x: number; y: number },
+  bounds: { width: number; height: number },
+  isBlocked: (tile: { x: number; y: number }) => boolean,
+): { x: number; y: number }[] => {
+  const offered: { x: number; y: number }[] = [];
+  const chosen = findHunterSpawnTile(player, bounds, isBlocked, (candidates) => {
+    offered.push(...candidates);
+    return candidates[0];
+  });
+  // A tile returned without going through the pick is a spawn no candidate list vouched
+  // for - exactly the shape the old fallback had - so it counts as an offer here.
+  if (chosen && !offered.some((tile) => tile.x === chosen.x && tile.y === chosen.y)) {
+    offered.push(chosen);
+  }
+  return offered;
+};
+
+describe('findHunterSpawnTile', () => {
+  const mapIds = Object.keys(WORLD_MAPS) as WorldMapId[];
+
+  it.each(mapIds)('never offers a tile on or beside the player anywhere on %s', (mapId) => {
+    const { bounds, isBlocked, walkableTiles } = mapBlocker(mapId);
+    const tooClose: string[] = [];
+
+    for (const player of walkableTiles) {
+      const distances = walkDistancesFrom(player, bounds, isBlocked);
+      for (const candidate of spawnCandidates(player, bounds, isBlocked)) {
+        const distance = distances.get(`${candidate.x},${candidate.y}`);
+        if (distance === undefined || distance < HUNTER_MINIMUM_SPAWN_DISTANCE) {
+          tooClose.push(`${player.x},${player.y} -> ${candidate.x},${candidate.y}`);
+        }
+      }
+    }
+
+    expect(tooClose).toEqual([]);
+  });
+
+  it.each(mapIds)('offers the authored spawn distance from every tile of %s', (mapId) => {
+    const { bounds, isBlocked, walkableTiles } = mapBlocker(mapId);
+    const short: string[] = [];
+
+    for (const player of walkableTiles) {
+      const distances = walkDistancesFrom(player, bounds, isBlocked);
+      const candidates = spawnCandidates(player, bounds, isBlocked);
+      // Every authored map is open enough to hold the full lead time from every tile,
+      // so the short-area path below is dead code in shipped content, not a fallback
+      // the player meets. Walled-in candidates used to send the search to the player's
+      // own tile instead.
+      if (
+        candidates.length === 0 ||
+        candidates.some(
+          (tile) => distances.get(`${tile.x},${tile.y}`) !== HUNTER_SPAWN_DISTANCE,
+        )
+      ) {
+        short.push(`${player.x},${player.y}`);
+      }
+    }
+
+    expect(short).toEqual([]);
+  });
+
+  it('offers a real spawn where the four straight lines are all walled off', () => {
+    // The Floodplain Relay tile that used to drop the hunter onto the player: nothing
+    // walkable sits five tiles due north, south, east or west of it.
+    const { bounds, isBlocked } = mapBlocker('floodplain-relay');
+    const player = { x: 17, y: 7 };
+    const straightLines = [
+      { x: player.x - 5, y: player.y },
+      { x: player.x + 5, y: player.y },
+      { x: player.x, y: player.y - 5 },
+      { x: player.x, y: player.y + 5 },
+    ].filter(
+      (tile) =>
+        tile.x >= 0 && tile.y >= 0 && tile.x < bounds.width && tile.y < bounds.height &&
+        !isBlocked(tile),
+    );
+    expect(straightLines).toEqual([]);
+
+    const spawn = findHunterSpawnTile(player, bounds, isBlocked);
+    expect(spawn).not.toBeNull();
+    expect(walkDistance(spawn!, player, bounds, isBlocked)).toBe(HUNTER_SPAWN_DISTANCE);
+  });
+
+  it('lets the run seed choose between the tiles the map offers', () => {
+    const bounds = { width: 12, height: 12 };
+    const open = () => false;
+    const candidates = spawnCandidates({ x: 6, y: 6 }, bounds, open);
+
+    expect(candidates.length).toBeGreaterThan(4);
+    expect(findHunterSpawnTile({ x: 6, y: 6 }, bounds, open, (tiles) => tiles[3])).toEqual(
+      candidates[3],
+    );
+  });
+
+  it('settles for the best an enclosed area can offer', () => {
+    // A five-tile corridor: the far end is four steps away, all this room allows.
+    const bounds = { width: 5, height: 1 };
+    const spawn = findHunterSpawnTile({ x: 0, y: 0 }, bounds, () => false);
+
+    expect(spawn).toEqual({ x: 4, y: 0 });
+  });
+
+  it('refuses to spawn rather than appear on top of the player', () => {
+    // Three walkable tiles is not enough room for a hunter the player can see coming,
+    // so it waits for them to move instead. WorldScene retries on the next tick.
+    expect(findHunterSpawnTile({ x: 0, y: 0 }, { width: 3, height: 1 }, () => false)).toBeNull();
+    expect(findHunterSpawnTile({ x: 9, y: 9 }, { width: 3, height: 3 }, () => false)).toBeNull();
   });
 });

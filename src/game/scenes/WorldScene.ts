@@ -43,6 +43,7 @@ import {
 import {
   findHunterPursuitPath,
   findHunterBreakawayTile,
+  findHunterSpawnTile,
   applyHunterBreakaway,
   isHunterSearching,
   tickHunterSearch,
@@ -1044,10 +1045,10 @@ export class WorldScene extends Phaser.Scene {
       this.currentMap = getWorldMap(warp.destinationMapId);
       this.runSession?.manager.setMap(this.currentMap.id);
       this.currentTile = { ...warp.destination };
-      this.moveHunterToCurrentMap();
       this.facing = warp.facing;
       this.targetTile = null;
       this.createMap();
+      this.moveHunterToCurrentMap();
       this.createEntities();
       this.player.setPosition(
         this.currentTile.x * TILE_SIZE,
@@ -1325,7 +1326,7 @@ export class WorldScene extends Phaser.Scene {
 
     const snapshot = this.runSession.manager.tick(deltaMs);
     this.advanceHunterSearch(deltaMs);
-    this.spawnHunterIfDue(snapshot.elapsedMs);
+    this.placeHunterIfDue(snapshot.elapsedMs);
     this.refreshExtractionMarkers();
     this.refreshRunTimerHud();
     if (snapshot.isEnraged && this.runSession.manager.isEnrageGraceExpired) {
@@ -1404,25 +1405,47 @@ export class WorldScene extends Phaser.Scene {
     this.scene.start('title');
   }
 
-  private spawnHunterIfDue(elapsedMs: number): void {
+  /**
+   * Brings the hunter into the raid, and re-places one that arrived somewhere unfair.
+   *
+   * Both cases retry every tick rather than settle for a bad tile: the spawn search
+   * only comes up empty in a pocket too small to hold a fair arrival, and the player
+   * walking out of that pocket is what fixes it.
+   */
+  private placeHunterIfDue(elapsedMs: number): void {
     if (
       !this.runSession ||
       this.runSession.manager.phase !== RunPhase.InRun ||
-      this.hunterState.spawned ||
-      this.hunterState.defeated ||
-      !this.isHunterEligible() ||
-      elapsedMs < (this.runSession.plan?.hunter.spawnDelayMs ?? HUNTER_SPAWN_MS)
+      this.hunterState.defeated
     ) {
       return;
     }
+    const awaitingSpawn =
+      !this.hunterState.spawned &&
+      this.isHunterEligible() &&
+      elapsedMs >= (this.runSession.plan?.hunter.spawnDelayMs ?? HUNTER_SPAWN_MS);
+    const awaitingPlacement =
+      this.hunterState.spawned &&
+      this.hunterState.mapId === this.currentMap.id &&
+      !this.hunterState.position;
+    if (!awaitingSpawn && !awaitingPlacement) {
+      return;
+    }
+    const position = this.findHunterSpawnTile();
+    if (!position) {
+      return;
+    }
     this.hunterState = {
+      ...this.hunterState,
       spawned: true,
       defeated: false,
       mapId: this.currentMap.id,
-      position: this.findHunterSpawnTile(),
+      position,
     };
     this.createHunterSprite();
-    this.dialogBox.showMessage('A RIVAL HUNTER is on your trail!');
+    if (awaitingSpawn) {
+      this.dialogBox.showMessage('A RIVAL HUNTER is on your trail!');
+    }
   }
 
   private isHunterEligible(): boolean {
@@ -1433,27 +1456,21 @@ export class WorldScene extends Phaser.Scene {
     );
   }
 
-  private findHunterSpawnTile(): GridPosition {
-    const candidates = [
-      { x: this.currentTile.x - 5, y: this.currentTile.y },
-      { x: this.currentTile.x + 5, y: this.currentTile.y },
-      { x: this.currentTile.x, y: this.currentTile.y - 5 },
-      { x: this.currentTile.x, y: this.currentTile.y + 5 },
-    ];
-    const legalCandidates = candidates.filter(
-      (tile) =>
-        tile.x >= 0 &&
-        tile.y >= 0 &&
-        tile.x < this.bounds.width &&
-        tile.y < this.bounds.height &&
-        !this.isBlocked(tile),
+  private findHunterSpawnTile(): GridPosition | null {
+    const rng = this.runSession?.rng;
+    return findHunterSpawnTile(
+      this.currentTile,
+      this.bounds,
+      (tile) => this.isBlockedForHunter(tile),
+      // Wrapped rather than passed by reference so the RNG keeps its own `this`.
+      rng ? (candidates) => rng.pick(candidates) : undefined,
     );
-    if (legalCandidates.length === 0) {
-      return { ...this.currentTile };
-    }
-    return this.runSession?.rng?.pick(legalCandidates) ?? legalCandidates[0];
   }
 
+  /**
+   * Re-places the hunter after a warp. Must run once the destination map's collision
+   * is loaded, or the spawn search reads the map the player just left.
+   */
   private moveHunterToCurrentMap(): void {
     if (!this.hunterState.spawned || this.hunterState.defeated) {
       return;
@@ -1461,7 +1478,7 @@ export class WorldScene extends Phaser.Scene {
     this.hunterState = {
       ...this.hunterState,
       mapId: this.currentMap.id,
-      position: this.findHunterSpawnTile(),
+      position: this.findHunterSpawnTile() ?? undefined,
     };
   }
 

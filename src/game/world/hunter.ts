@@ -282,6 +282,78 @@ export const findHunterPursuitPath = (
 };
 
 /**
+ * How far from the player the hunter arrives, in walkable tiles.
+ *
+ * A fixed walking distance is the whole point of the hunter: the same lead time
+ * every raid, so the appearance is a warning the player can act on rather than an
+ * ambush. Walking distance, not straight-line distance, because that is the number
+ * of steps the player actually has before contact.
+ */
+export const HUNTER_SPAWN_DISTANCE = 5;
+
+/**
+ * The closest the hunter may ever appear, in walkable tiles.
+ *
+ * Only an area too small to hold the full spawn distance can drop below it, and
+ * below this floor there is no read and no counterplay - contact is one tile away
+ * and an enraged hunter covers two tiles per player step - so the hunter waits for
+ * the player to move somewhere it can arrive fairly instead of appearing on top of
+ * them. No authored map reaches this case; `hunter.test.ts` pins that.
+ */
+export const HUNTER_MINIMUM_SPAWN_DISTANCE = 3;
+
+const firstCandidate = (candidates: readonly GridPosition[]): GridPosition => candidates[0];
+
+/**
+ * Where the hunter appears when it joins the raid, or null when nowhere is fair.
+ *
+ * Every walkable tile exactly HUNTER_SPAWN_DISTANCE steps from the player is a
+ * candidate, so the hunter arrives at the authored lead time from whichever side the
+ * map allows, and always somewhere it can actually walk in from. An area too small
+ * for that yields the furthest tile it does hold; an area smaller than
+ * HUNTER_MINIMUM_SPAWN_DISTANCE yields nothing at all, because the only tiles left
+ * are on top of the player.
+ */
+export const findHunterSpawnTile = (
+  player: GridPosition,
+  bounds: GridBounds,
+  isBlocked: (tile: GridPosition) => boolean,
+  pick: (candidates: readonly GridPosition[]) => GridPosition = firstCandidate,
+  spawnDistance: number = HUNTER_SPAWN_DISTANCE,
+): GridPosition | null => {
+  if (!isInsideBounds(player, bounds)) {
+    return null;
+  }
+  const visited = new Uint8Array(bounds.width * bounds.height);
+  visited[tileIndex(player, bounds)] = 1;
+  // Ring N holds every tile exactly N walkable steps out, so ring 0 is the player.
+  const rings: GridPosition[][] = [[player]];
+  for (let distance = 0; distance < spawnDistance; distance += 1) {
+    const nextRing: GridPosition[] = [];
+    for (const tile of rings[distance]) {
+      for (const neighbour of walkableNeighbours(tile, bounds, isBlocked)) {
+        const index = tileIndex(neighbour, bounds);
+        if (visited[index] === 1) {
+          continue;
+        }
+        visited[index] = 1;
+        nextRing.push(neighbour);
+      }
+    }
+    if (nextRing.length === 0) {
+      break;
+    }
+    rings.push(nextRing);
+  }
+
+  const furthestRing = rings.length - 1;
+  if (furthestRing < HUNTER_MINIMUM_SPAWN_DISTANCE) {
+    return null;
+  }
+  return pick(rings[furthestRing]);
+};
+
+/**
  * Selects the first step of the hunter's shortest walkable route to the player.
  * Fixed tie ordering keeps the hunter predictable and unit-testable.
  */
