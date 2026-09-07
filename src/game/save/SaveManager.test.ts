@@ -232,7 +232,7 @@ describe('SaveManager', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
     const stash = new Stash();
-    stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+    stash.addPokemon(new Pokemon(CHARMANDER, 18), 'charmander-1');
     saves.save({
       party: new PokemonParty([]),
       mapId: 'pallet-town',
@@ -242,6 +242,7 @@ describe('SaveManager', () => {
       starterSpeciesId: 'charmander',
     });
 
+    // A levelled Pokemon is released for good, so a swap is never an upgrade.
     expect(saves.reselectStarter('squirtle')).toBe(true);
 
     const swapped = saves.load();
