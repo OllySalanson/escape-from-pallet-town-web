@@ -1,4 +1,4 @@
-import { Move, Pokemon, PokemonParty, getSpeciesById } from '../pokemon';
+import { Move, Pokemon, PokemonParty, getSpeciesById, type MoveBase } from '../pokemon';
 import { Bag, type BagContents } from '../items/Bag';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 import type { GridPosition } from '../movement/gridMovement';
@@ -12,7 +12,7 @@ import {
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 const PRIMARY_STATUSES = new Set<PrimaryStatus>([
   'poison',
   'burn',
@@ -217,7 +217,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
   if (
     !isRecord(value) ||
     typeof value.version !== 'number' ||
-    ![1, 2, 3, SAVE_VERSION].includes(value.version)
+    ![1, 2, 3, 4, SAVE_VERSION].includes(value.version)
   ) {
     return null;
   }
@@ -237,7 +237,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
 
   const pokemon: Pokemon[] = [];
   for (const savedPokemon of party) {
-    const restoredPokemon = deserializePokemon(savedPokemon);
+    const restoredPokemon = deserializePokemon(savedPokemon, value.version);
     if (!restoredPokemon) {
       return null;
     }
@@ -286,7 +286,7 @@ function serializePokemon(pokemon: Pokemon): SavedPokemon {
   };
 }
 
-function deserializePokemon(value: unknown): Pokemon | null {
+function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon | null {
   if (!isRecord(value) || typeof value.speciesId !== 'string' || !isPositiveInteger(value.level)) {
     return null;
   }
@@ -307,6 +307,7 @@ function deserializePokemon(value: unknown): Pokemon | null {
       .map((name) => movesByName.get(name))
       .filter((move): move is NonNullable<typeof move> => move !== undefined)
       .slice(0, 4);
+    reconcileLegacyBulbasaurMoves(species.id, savedMoves, saveVersion);
     if (savedMoves.length > 0) {
       pokemon.moves.splice(0, pokemon.moves.length, ...savedMoves.map((move) => new Move(move)));
     }
@@ -332,7 +333,7 @@ function deserializeStash(value: unknown, saveVersion: number): Stash {
     const pokemon = Array.isArray(value.pokemon)
       ? value.pokemon
           .map((entry, index) => {
-            const restored = deserializePokemon(entry);
+            const restored = deserializePokemon(entry, saveVersion);
             return restored ? { id: `legacy-${index + 1}`, pokemon: restored } : null;
           })
           .filter((entry): entry is { id: string; pokemon: Pokemon } => entry !== null)
@@ -342,18 +343,43 @@ function deserializeStash(value: unknown, saveVersion: number): Stash {
 
   const pokemon = Array.isArray(value.pokemon)
     ? value.pokemon
-        .map((entry) => deserializeStashedPokemon(entry))
+        .map((entry) => deserializeStashedPokemon(entry, saveVersion))
         .filter((entry): entry is { id: string; pokemon: Pokemon } => entry !== null)
     : [];
   return new Stash({ pokemon, items: bagContents(value.items) });
 }
 
-function deserializeStashedPokemon(value: unknown): { id: string; pokemon: Pokemon } | null {
+function deserializeStashedPokemon(
+  value: unknown,
+  saveVersion: number,
+): { id: string; pokemon: Pokemon } | null {
   if (!isRecord(value) || typeof value.id !== 'string' || value.id.length === 0) {
     return null;
   }
-  const pokemon = deserializePokemon(value.pokemon);
+  const pokemon = deserializePokemon(value.pokemon, saveVersion);
   return pokemon ? { id: value.id, pokemon } : null;
+}
+
+/**
+ * Version 4 and earlier could persist Bulbasaur without its required level-1
+ * Tackle. Add only that omitted move, leaving all legitimate saved moves and
+ * any full custom moveset untouched.
+ */
+function reconcileLegacyBulbasaurMoves(
+  speciesId: string,
+  moves: MoveBase[],
+  saveVersion: number,
+): void {
+  if (saveVersion >= SAVE_VERSION || speciesId !== 'bulbasaur' || moves.length >= 4) {
+    return;
+  }
+
+  const tackle = getSpeciesById('bulbasaur')?.learnset.find(
+    ({ level, move }) => level === 1 && move.name === 'Tackle',
+  )?.move;
+  if (tackle && !moves.some((move) => move.name === tackle.name)) {
+    moves.unshift(tackle);
+  }
 }
 
 function deserializeStarterSpeciesId(value: unknown): StarterSpeciesId | null {

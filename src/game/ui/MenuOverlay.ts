@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 export class MenuOverlay {
   public readonly root: HTMLElement;
   private readonly keyHandler: (event: KeyboardEvent) => void;
+  private readonly artworkErrorHandler: (event: Event) => void;
 
   public constructor(
     scene: Phaser.Scene,
@@ -19,13 +20,23 @@ export class MenuOverlay {
       }
       onKeyDown(event);
     };
+    this.artworkErrorHandler = (event) => {
+      const image = event.target;
+      if (!(image instanceof HTMLImageElement) || !image.matches('.pokemon-avatar img')) {
+        return;
+      }
+      image.remove();
+      image.parentElement?.classList.add('artwork-unavailable');
+    };
     window.addEventListener('keydown', this.keyHandler);
+    this.root.addEventListener('error', this.artworkErrorHandler, true);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
     scene.events.once(Phaser.Scenes.Events.DESTROY, () => this.destroy());
   }
 
   public destroy(): void {
     window.removeEventListener('keydown', this.keyHandler);
+    this.root.removeEventListener('error', this.artworkErrorHandler, true);
     this.root.remove();
   }
 
@@ -36,7 +47,7 @@ export class MenuOverlay {
 
 export function pokemonAvatar(dexId: number, name: string): string {
   const extension = dexId === 7 ? 'svg' : 'png';
-  return `<span class="pokemon-avatar"><img src="/assets/pokemon/front/${dexId}.${extension}" alt="" /><span>${name.slice(0, 1)}</span></span>`;
+  return `<span class="pokemon-avatar" aria-label="${name}"><img src="/assets/pokemon/front/${dexId}.${extension}" alt="${name} artwork" /><span aria-hidden="true">${name.slice(0, 1)}</span></span>`;
 }
 
 export function hpBar(current: number, max: number): string {

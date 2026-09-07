@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { POISON_POWDER, SUPER_SONIC, THUNDER_WAVE } from '../pokemon/moves';
+import { battleOpeningMessages } from '../pokemon/battle/battleFlow';
+import { TypewriterQueue } from '../ui/TypewriterQueue';
 import {
   BATTLE_SCREEN_WIDTH,
   MOVE_COMMAND_HEIGHT,
@@ -30,6 +32,19 @@ describe('battle presentation', () => {
     expect(battleSceneSource).toContain("text.setBackgroundColor(index === this.selectedCommand ? '#155e75' : '#111827');");
     expect(battleSceneSource).toContain(".setInteractive({ useHandCursor: true })");
     expect(battleSceneSource).toContain(".on('pointerdown'");
+  });
+
+  it('advances opening narration before presenting the actionable command menu', () => {
+    const narration = new TypewriterQueue(battleOpeningMessages(undefined, 'Bulbasaur', 'Pidgey'));
+    narration.skip();
+
+    expect(narration.advance()).toBe(false);
+    expect(narration.isDone).toBe(true);
+    expect(battleSceneSource).toMatch(
+      /if \(this\.state\.outcome === 'active'\) \{[\s\S]*this\.mode = 'main';[\s\S]*this\.showCommands\(\);/,
+    );
+    expect(battleSceneSource).toContain("case 'choose-fight':");
+    expect(battleSceneSource).toContain("this.mode = 'moves';");
   });
 
   it('keeps same-species two-sided damage events in actor and target order', () => {

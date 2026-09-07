@@ -142,6 +142,92 @@ describe('SaveManager', () => {
     expect(restored?.stash.listPokemon()).toMatchObject([{ id: 'charmander-1', pokemon: { base: { id: 'charmander' } } }]);
   });
 
+  it('repairs Tackle in legacy Bulbasaur party and stash records without replacing learned moves', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 4,
+        party: [
+          {
+            speciesId: 'bulbasaur',
+            level: 7,
+            currentHp: 20,
+            xp: 343,
+            moves: ['Super Sonic', 'Growl', 'Vine Whip'],
+            primaryStatus: null,
+          },
+        ],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: [],
+        bag: {},
+        stash: {
+          pokemon: [
+            {
+              id: 'bulbasaur-1',
+              pokemon: {
+                speciesId: 'bulbasaur',
+                level: 7,
+                currentHp: 20,
+                xp: 343,
+                moves: ['Growl', 'Vine Whip'],
+                primaryStatus: null,
+              },
+            },
+          ],
+          items: {},
+        },
+      }),
+    );
+
+    const restored = new SaveManager(storage).load();
+
+    expect(restored?.party.pokemon[0]?.moves.map((move) => move.base.name)).toEqual([
+      'Tackle',
+      'Super Sonic',
+      'Growl',
+      'Vine Whip',
+    ]);
+    expect(restored?.stash.listPokemon()[0]?.pokemon.moves.map((move) => move.base.name)).toEqual([
+      'Tackle',
+      'Growl',
+      'Vine Whip',
+    ]);
+  });
+
+  it('does not replace a full legacy Bulbasaur moveset while reconciling Tackle', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 4,
+        party: [
+          {
+            speciesId: 'bulbasaur',
+            level: 7,
+            currentHp: 20,
+            xp: 343,
+            moves: ['Super Sonic', 'Growl', 'Vine Whip', 'Tackle'],
+            primaryStatus: null,
+          },
+        ],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: [],
+        bag: {},
+        stash: { pokemon: [], items: {} },
+      }),
+    );
+
+    expect(new SaveManager(storage).load()?.party.pokemon[0]?.moves.map((move) => move.base.name)).toEqual([
+      'Super Sonic',
+      'Growl',
+      'Vine Whip',
+      'Tackle',
+    ]);
+  });
+
   it('restores a starter after a wipe removes the last stashed Pokemon', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
