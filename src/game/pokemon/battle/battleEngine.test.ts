@@ -203,6 +203,37 @@ describe('battle turn resolution', () => {
     expect(charmander.moves[2]?.pp).toBe(EMBER.pp);
   });
 
+  it('reports the same-type bonus on a damaging hit so its 1.5x is visible', () => {
+    const charmander = new Pokemon(CHARMANDER, 10);
+    const result = resolveTurn(createBattleState(charmander, new Pokemon(BULBASAUR, 10)), 2, maximumRandom);
+    const [ember] = result.events.filter(
+      (event) => event.type === 'used-move' && event.move === 'Ember',
+    );
+
+    expect(ember).toMatchObject({ type: 'used-move', isStab: true });
+    // Scratch is Normal on a Fire attacker, so it must not claim the bonus.
+    const scratch = resolveTurn(createBattleState(charmander, new Pokemon(BULBASAUR, 10)), 0, maximumRandom)
+      .events.find((event) => event.type === 'used-move' && event.move === 'Scratch');
+    expect(scratch).toMatchObject({ isStab: false });
+  });
+
+  it('does not narrate type effectiveness for a move that deals no damage', () => {
+    // Poison Powder is Poison and Bulbasaur is part Grass, so the old code
+    // announced "It's super effective!" for a status move that dealt nothing.
+    const butterfree = new Pokemon(BUTTERFREE, 12);
+    const powderIndex = butterfree.moves.findIndex((move) => move.base === POISON_POWDER);
+    const result = resolveTurn(createBattleState(butterfree, new Pokemon(BULBASAUR, 10)), powderIndex, maximumRandom);
+    // Butterfree is faster, so its own action is everything before the reply.
+    const enemyReplyIndex = result.events.findIndex(
+      (event) => event.type === 'used-move' && event.user === 'enemy',
+    );
+    const powderEvents = result.events.slice(0, enemyReplyIndex);
+
+    expect(powderEvents[0]).toMatchObject({ type: 'used-move', move: 'Poison Powder' });
+    expect(powderEvents.filter((event) => event.type === 'effectiveness')).toEqual([]);
+    expect(powderEvents.some((event) => event.type === 'status-applied')).toBe(true);
+  });
+
   it('identifies same-species attack targets and preserves their independent HP deltas', () => {
     const player = new Pokemon(BULBASAUR, 10);
     const enemy = new Pokemon(BULBASAUR, 10);

@@ -332,7 +332,9 @@ const applyMove = (
       isStab: damage.isStab,
     },
     ...(damage.isCritical ? [{ type: 'critical-hit' } as const] : []),
-    ...effectivenessEvents(damage.typeEffectiveness),
+    // A status move deals no damage, so its type effectiveness is not feedback
+    // about anything the player just saw happen.
+    ...(isDamagingMove(move) ? effectivenessEvents(damage.typeEffectiveness) : []),
   ];
 
   const defenderFainted = updatedDefender.currentHp === 0;

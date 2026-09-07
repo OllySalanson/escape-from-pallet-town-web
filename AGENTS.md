@@ -11,9 +11,10 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - The raid field guide is `ObjectivesScene` in `src/game/scenes/ObjectivesScene.ts`; derive its objective text from `buildObjectiveGuide()` in `src/game/objectives/ObjectiveGuide.ts`, and have it resume only the `WorldScene` instance it paused.
 - Scenes are registered in `src/game/gameConfig.ts`, not `main.ts`.
 - `Pokemon` has no `cureStatus()` method; clear a status by setting `primaryStatus` to null directly, which `SaveManager` saves and restores.
-- Battle data is ported from the public Unity original, `OllySalanson/escapeFromPalletTown` (readable through `gh-axi api`), but the web game adds a 1.5x same-type bonus that Unity's `Pokemon.TakeDamage` has no equivalent of. Check that repo before treating any stat, learnset or encounter table as intentional.
+- Battle data is ported from the public Unity original, `OllySalanson/escapeFromPalletTown` (readable through `gh-axi api`), but the web game adds a 1.5x same-type bonus that Unity's `Pokemon.TakeDamage` has no equivalent of, and Unity fought its encounter tables with a level-10 five-strong party rather than one level-5 starter. Check that repo before treating any stat, learnset or encounter table as intentional - and re-measure early balance rather than porting a number across.
 - Every species sprite is `public/assets/pokemon/{front,back}/<dexId>.png`; `spriteAssets.test.ts` enforces the format and a size bound, because a dimensionless SVG once rasterised to 150x150 and covered the battle screen.
 - Battle text lives in `src/game/scenes/battlePresentation.ts` as pure functions, so message wording, move guidance and layout are testable without Phaser.
+- `PALLET_TALL_GRASS` in `src/game/pokemon/encounters.ts` is shared by Pallet Town, Route 1 and the Floodplain Relay; changing it changes all three.
 
 ## Maintaining this file
 

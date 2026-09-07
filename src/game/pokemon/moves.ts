@@ -75,7 +75,10 @@ export const POISON_POWDER = new MoveBase({
 export const SING = new MoveBase({
   name: 'Sing',
   description: 'Puts the target to sleep for a few turns.',
-  type: PokemonType.Poison,
+  // Unity's Sing.asset and ThunderWave.asset both carry type 8 (Poison), which
+  // is a data-entry slip beside PoisonPowder rather than a design choice. Typing
+  // drives immunity and the move guidance panel, so both are corrected here.
+  type: PokemonType.Normal,
   power: 0,
   accuracy: 100,
   pp: 20,
@@ -95,7 +98,7 @@ export const SUPER_SONIC = new MoveBase({
 export const THUNDER_WAVE = new MoveBase({
   name: 'Thunder Wave',
   description: 'Paralyses the target. It may lose turns.',
-  type: PokemonType.Poison,
+  type: PokemonType.Electric,
   power: 0,
   accuracy: 100,
   pp: 20,

@@ -89,12 +89,12 @@ describe('teaching encounter', () => {
       expect(player.maxHp).toBeGreaterThan(teacher.maxHp);
     }
 
-    // The rolled alternative is a level-7 Bulbasaur three times out of five.
-    const levelSevenWeight = PALLET_TALL_GRASS.entries
-      .filter((entry) => entry.minLevel >= 7)
+    // Even on the rebalanced table a first roll can still land above the
+    // starter's own level, which is what the authored fight replaces.
+    const aboveStarterWeight = PALLET_TALL_GRASS.entries
+      .filter((entry) => entry.maxLevel > 5)
       .reduce((total, entry) => total + entry.weight, 0);
-    const totalWeight = PALLET_TALL_GRASS.entries.reduce((total, entry) => total + entry.weight, 0);
-    expect(levelSevenWeight / totalWeight).toBeGreaterThan(0.5);
+    expect(aboveStarterWeight).toBeGreaterThan(0);
   });
 
   it('is won by all three starters at both extremes of the damage roll', () => {
