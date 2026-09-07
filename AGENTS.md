@@ -2,13 +2,15 @@
 
 This file is the project's committed home for project-intrinsic agent knowledge: build, test, release, architecture, and sharp-edge notes that should travel with the code.
 
-- Add durable project-specific notes here as they are discovered through real work.
+- Update this file in the same change whenever work adds a subsystem, changes where something is registered, or contradicts a note below. This is part of finishing the task, not optional cleanup.
 
 ## Project notes
 
 - The overworld's tile collision is built by `buildCollisionData()` in `src/game/worldMap.ts`; interactive NPC and sign definitions live in `src/game/world/npcs.ts`.
 - Active raid scene data is defined by `ActiveRunSession` in `src/game/run/RunSession.ts` and must pass unchanged between `WorldScene` and `BattleScene`.
-- The raid field guide is `ObjectivesScene`; derive its objective text from `buildObjectiveGuide()` and have it resume only the `WorldScene` instance it paused.
+- The raid field guide is `ObjectivesScene` in `src/game/scenes/ObjectivesScene.ts`; derive its objective text from `buildObjectiveGuide()` in `src/game/objectives/ObjectiveGuide.ts`, and have it resume only the `WorldScene` instance it paused.
+- Scenes are registered in `src/game/gameConfig.ts`, not `main.ts`.
+- `Pokemon` has no `cureStatus()` method; clear a status by setting `primaryStatus` to null directly, which `SaveManager` saves and restores.
 
 ## Maintaining this file
 
