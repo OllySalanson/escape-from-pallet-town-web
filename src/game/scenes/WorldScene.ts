@@ -21,6 +21,7 @@ import { type WorldEntity } from '../world/npcs';
 import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { DialogBox } from '../ui/DialogBox';
 import { rollEncounter } from '../world/wildEncounters';
+import { consumeTeachingEncounter } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { Bag, ITEMS, type ItemId } from '../items';
@@ -922,11 +923,16 @@ export class WorldScene extends Phaser.Scene {
     const encounters = this.encountersForCurrentMap();
     if (isTallGrassInMap(this.currentMap, this.currentTile) && encounters) {
       const rng = this.runSession?.rng;
-      const wild = rollEncounter(encounters, rng === undefined ? undefined : () => rng.next());
+      // The authored teaching fight replaces the first roll of a first-contract
+      // raid, so a new player's opening battle is winnable and explicable.
+      const teaching = consumeTeachingEncounter(this.runSession);
+      const wild =
+        teaching ?? rollEncounter(encounters, rng === undefined ? undefined : () => rng.next());
       if (wild) {
         audioManager.playEncounter();
         this.transitionToBattle({
           wild,
+          teachingBattle: teaching !== null,
           party: this.party,
           pokeBalls: this.bag.count('poke-ball'),
           caughtPokemonStash: this.caughtPokemonStash,

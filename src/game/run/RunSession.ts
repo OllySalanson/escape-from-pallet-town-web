@@ -44,6 +44,8 @@ export interface ActiveRunSession {
   readonly rng?: SeededRng;
   /** Kept in the live session so battle returns do not replay onboarding. */
   firstDeploymentBriefingShown?: boolean;
+  /** Set once the authored teaching encounter has been handed to BattleScene. */
+  teachingEncounterUsed?: boolean;
 }
 
 export function createActiveRunSession(

@@ -14,12 +14,13 @@ import {
   resolveCatchAttempt,
   resolveEnemyTurn,
   resolveTurn,
+  getCombatantTypes,
   type BattleCombatant,
   type BattleEvent,
   type BattleState,
   type TrainerBattle,
 } from '../pokemon/battle/battleEngine';
-import { battleOpeningMessages } from '../pokemon/battle/battleFlow';
+import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle/battleFlow';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import type { WildEncounter } from '../world/wildEncounters';
@@ -29,10 +30,14 @@ import { RunPhase } from '../run/RunManager';
 import type { ActiveRunSession, RaidLocation } from '../run/RunSession';
 import { resolveHunterBattleLoss, type HunterState } from '../world/hunter';
 import {
-  combatantLabel,
+  combatantBanner,
   combatPresentationSteps,
+  describeMoveGuidance,
+  eventToMessage,
   formatMoveCommand,
   moveCommandLayout,
+  moveGuidanceLayout,
+  type MatchupTone,
 } from './battlePresentation';
 
 type CommandMode = 'main' | 'moves' | 'party' | 'events' | 'finished';
@@ -51,6 +56,19 @@ const STARTING_POKE_BALLS = 5;
 const PARTY_LIMIT = 6;
 const BATTLEFIELD_WIDTH = 320;
 const GRASS_BACKDROP_WIDTH = 257;
+const BANNER_TEXT_STYLE = {
+  fontFamily: BATTLE_FONT,
+  fontSize: '8px',
+  color: '#f8fafc',
+  stroke: '#0f172a',
+  strokeThickness: 3,
+} as const;
+const MATCHUP_COLORS: Readonly<Record<MatchupTone, string>> = {
+  good: '#86efac',
+  bad: '#fca5a5',
+  none: '#94a3b8',
+  neutral: '#e2e8f0',
+};
 export interface BattleSceneData {
   wild?: WildEncounter;
   trainer?: TrainerBattle;
@@ -62,6 +80,8 @@ export interface BattleSceneData {
   defeatedTrainerIds?: readonly string[];
   collectedLootIds?: readonly string[];
   activatedPoiIds?: readonly string[];
+  /** The authored opening fight adds one-off narration explaining the screen. */
+  teachingBattle?: boolean;
   /** Hunters are trainer battles that can be fled from and resume pursuit. */
   hunterBattle?: boolean;
   hunterState?: HunterState;
@@ -84,6 +104,9 @@ export class BattleScene extends Phaser.Scene {
   private playerStatusBox!: Phaser.GameObjects.Container;
   private enemyStatusBox!: Phaser.GameObjects.Container;
   private commandTexts: Phaser.GameObjects.Text[] = [];
+  private moveGuidanceTexts: Phaser.GameObjects.Text[] = [];
+  private enemyBannerText!: Phaser.GameObjects.Text;
+  private playerBannerText!: Phaser.GameObjects.Text;
   private mode: CommandMode = 'main';
   private selectedCommand = 0;
   private commandContainer!: Phaser.GameObjects.Container;
@@ -106,6 +129,7 @@ export class BattleScene extends Phaser.Scene {
   private pendingHubTransition = false;
   private trainer: TrainerBattle | undefined;
   private hunterBattle = false;
+  private teachingBattle = false;
   private hunterState: HunterState | undefined;
   private readonly defeatedTrainerIds = new Set<string>();
   private readonly collectedLootIds = new Set<string>();
@@ -134,6 +158,7 @@ export class BattleScene extends Phaser.Scene {
     this.runSession = data.runSession;
     this.trainer = data.trainer;
     this.hunterBattle = data.hunterBattle ?? false;
+    this.teachingBattle = data.teachingBattle ?? false;
     this.hunterState = data.hunterState;
     this.returnLocation = data.returnLocation;
     this.returnScene = data.returnScene;
@@ -173,6 +198,10 @@ export class BattleScene extends Phaser.Scene {
       width: 304,
       height: 64,
       padding: 12,
+      // The battle-dialog texture is a 32px frame stretched to 304x64, so its
+      // painted left and right edges are 19px wide. Text inset by the vertical
+      // padding alone lost the first character of every line behind that edge.
+      paddingHorizontal: 22,
       cornerRadius: 0,
       charsPerSecond: 55,
       indicatorText: 'SPACE ▼',
@@ -198,11 +227,16 @@ export class BattleScene extends Phaser.Scene {
     this.input.keyboard!.on?.('keydown-M', () => audioManager.toggleMute());
     this.mode = 'events';
     this.dialog.showMessages(
-      battleOpeningMessages(
-        data.trainer?.name,
-        this.state.player.pokemon.base.name,
-        this.state.enemy.pokemon.base.name,
-      ),
+      this.teachingBattle
+        ? teachingBattleMessages(
+            this.state.player.pokemon.base.name,
+            this.state.enemy.pokemon.base.name,
+          )
+        : battleOpeningMessages(
+            data.trainer?.name,
+            this.state.player.pokemon.base.name,
+            this.state.enemy.pokemon.base.name,
+          ),
     );
   }
 
@@ -260,19 +294,14 @@ export class BattleScene extends Phaser.Scene {
     this.enemyStatusBox = this.createStatusBox(16, 16, this.state.enemy, false);
     this.displayedEnemy = this.state.enemy.pokemon;
     this.playerStatusBox = this.createStatusBox(150, 104, this.state.player, true);
-    this.add
-      .text(16, 4, this.trainer ? 'RIVAL' : 'WILD', {
-        fontFamily: BATTLE_FONT,
-        fontSize: '8px',
-        color: '#f8fafc',
-      })
+    // Typing sits in the banners so incoming damage is readable before it lands.
+    // Both banners float over the battlefield art, so they carry a dark outline
+    // rather than relying on whatever happens to be behind them.
+    this.enemyBannerText = this.add
+      .text(16, 4, combatantBanner(this.trainer ? 'RIVAL' : 'WILD', getCombatantTypes(this.state.enemy)), BANNER_TEXT_STYLE)
       .setDepth(7);
-    this.add
-      .text(150, 96, 'YOUR POKéMON', {
-        fontFamily: BATTLE_FONT,
-        fontSize: '8px',
-        color: '#f8fafc',
-      })
+    this.playerBannerText = this.add
+      .text(150, 96, combatantBanner('YOUR POKéMON', getCombatantTypes(this.state.player)), BANNER_TEXT_STYLE)
       .setDepth(7);
   }
 
@@ -401,6 +430,20 @@ export class BattleScene extends Phaser.Scene {
     panel.lineStyle(2, 0x93c5fd, 1);
     panel.strokeRect(1, COMMAND_Y + 1, BATTLEFIELD_WIDTH - 2, 62);
     this.commandContainer.add(panel);
+    this.moveGuidanceTexts =
+      this.mode === 'moves'
+        ? [0, 1].map((line) => {
+            const layout = moveGuidanceLayout(line);
+            // No fixed width here: guidance must never be silently truncated.
+            const text = this.add.text(layout.x, COMMAND_Y + layout.y, '', {
+              fontFamily: BATTLE_FONT,
+              fontSize: '10px',
+              color: '#e2e8f0',
+            });
+            this.commandContainer.add(text);
+            return text;
+          })
+        : [];
     this.commandTexts = labels.map((label, index) => {
       const column = index % 2;
       const row = Math.floor(index / 2);
@@ -411,7 +454,7 @@ export class BattleScene extends Phaser.Scene {
         label,
         {
           fontFamily: BATTLE_FONT,
-          fontSize: this.mode === 'moves' ? '11px' : '16px',
+          fontSize: this.mode === 'moves' ? '13px' : '16px',
           color:
             this.mode === 'main' && !this.trainer && index === 1 && this.pokeBalls === 0
               ? '#fca5a5'
@@ -519,6 +562,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private updateSelection(): void {
+    this.refreshMoveGuidance();
     this.commandTexts.forEach((text, index) => {
       text.setText(
         `${index === this.selectedCommand ? '▶ ' : '  '}${text.text.replace(/^[▶ ]{2}/, '')}`,
@@ -532,6 +576,23 @@ export class BattleScene extends Phaser.Scene {
             : '#f8fafc',
       );
     });
+  }
+
+  /** Keeps the guidance lines describing whichever move is highlighted. */
+  private refreshMoveGuidance(): void {
+    if (this.mode !== 'moves' || this.moveGuidanceTexts.length === 0) {
+      return;
+    }
+    const move = this.state.player.moves[this.selectedCommand];
+    if (!move) {
+      return;
+    }
+    const guidance = describeMoveGuidance(move, getCombatantTypes(this.state.player), {
+      name: this.state.enemy.pokemon.base.name,
+      types: getCombatantTypes(this.state.enemy),
+    });
+    this.moveGuidanceTexts[0]?.setText(guidance.summary).setColor('#cbd5f5');
+    this.moveGuidanceTexts[1]?.setText(guidance.matchup).setColor(MATCHUP_COLORS[guidance.tone]);
   }
 
   private confirm(): void {
@@ -754,6 +815,9 @@ export class BattleScene extends Phaser.Scene {
   private refreshPlayerCombatant(): void {
     this.playerStatusBox.destroy();
     this.playerStatusBox = this.createStatusBox(150, 104, this.state.player, true);
+    this.playerBannerText.setText(
+      combatantBanner('YOUR POKéMON', getCombatantTypes(this.state.player)),
+    );
     this.refreshStatusLabels();
     this.playerSprite
       .setTexture(`pokemon-back-${this.state.player.pokemon.base.dexId}`)
@@ -765,6 +829,9 @@ export class BattleScene extends Phaser.Scene {
   private refreshEnemyCombatant(): void {
     this.enemyStatusBox.destroy();
     this.enemyStatusBox = this.createStatusBox(16, 16, this.state.enemy, false);
+    this.enemyBannerText.setText(
+      combatantBanner(this.trainer ? 'RIVAL' : 'WILD', getCombatantTypes(this.state.enemy)),
+    );
     this.enemySprite
       .setTexture(`pokemon-front-${this.state.enemy.pokemon.base.dexId}`)
       .setPosition(245, 68)
@@ -1094,72 +1161,3 @@ function formatWipeSummary(
       : items.map((item) => `${item.quantity} ${item.itemId}`).join(', ');
   return `Lost: ${pokemonSummary}; ${itemSummary}.`;
 }
-
-const eventToMessage = (event: BattleEvent): string => {
-  switch (event.type) {
-    case 'used-move':
-      return `${combatantLabel(event.user)} ${event.name.toUpperCase()} used ${event.move.toUpperCase()}!`;
-    case 'missed':
-      return 'The attack missed!';
-    case 'critical-hit':
-      return 'A critical hit!';
-    case 'effectiveness':
-      if (event.multiplier === 0) {
-        return 'It does not affect the target...';
-      }
-      return event.multiplier > 1 ? "It's super effective!" : "It's not very effective...";
-    case 'fainted':
-      return `${event.name} fainted!`;
-    case 'no-pp':
-      return `No PP left for ${event.move}!`;
-    case 'status-applied':
-      return `${event.name} is ${statusLabel(event.status)}!`;
-    case 'status-already':
-      return `${event.name} already has a status condition!`;
-    case 'status-prevented':
-      return `${event.name} is ${statusLabel(event.status)} and can't move!`;
-    case 'status-damage':
-      return `${event.name} is hurt by ${statusLabel(event.status)}!`;
-    case 'status-cured':
-      return event.status === 'sleep'
-        ? `${event.name} woke up!`
-        : event.status === 'freeze'
-          ? `${event.name} thawed out!`
-          : `${event.name} snapped out of confusion!`;
-    case 'confusion-self-hit':
-      return `${combatantLabel(event.user)} ${event.name.toUpperCase()} hurt itself in confusion!`;
-    case 'stat-stage-changed':
-      return `${event.name}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
-    case 'ball-thrown':
-      return `Threw a POKé BALL at ${event.name.toUpperCase()}!`;
-    case 'catch-shake':
-      return `${event.count}...`;
-    case 'caught':
-      return `Gotcha! ${event.name.toUpperCase()} was caught!`;
-    case 'broke-free':
-      return `${event.name.toUpperCase()} broke free!`;
-    case 'catch-disabled':
-      return "You can't catch a trainer's POKéMON!";
-    case 'enemy-sent-out':
-      return `Go, ${event.name.toUpperCase()}!`;
-  }
-};
-
-const statusLabel = (status: string): string =>
-  ({
-    poison: 'poison',
-    burn: 'a burn',
-    paralysis: 'paralysis',
-    sleep: 'asleep',
-    freeze: 'frozen',
-    confusion: 'confused',
-  })[status] ?? status;
-
-const statLabel = (stat: string): string =>
-  ({
-    attack: 'Attack',
-    defense: 'Defense',
-    spAttack: 'Sp. Attack',
-    spDefense: 'Sp. Defense',
-    speed: 'Speed',
-  })[stat] ?? stat;
