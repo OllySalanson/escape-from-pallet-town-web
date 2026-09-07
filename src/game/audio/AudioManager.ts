@@ -28,6 +28,9 @@ const THEMES: Record<AudioTheme, ThemeDefinition> = {
 
 const DEFAULT_VOLUME = 0.55;
 
+/** Temporary playtesting measure: looping themes stay silent. Set to false to bring the music back. */
+const SILENCE_BACKGROUND_THEMES: boolean = true;
+
 /**
  * A small Web Audio wrapper for the game's synthesized music and effects.
  * Call activate from a user input handler before requesting audio playback.
@@ -113,6 +116,10 @@ export class AudioManager {
     }
 
     if (this.muted || this.isThemePlaying || !(await this.activate()) || this.context === null) {
+      return;
+    }
+
+    if (SILENCE_BACKGROUND_THEMES) {
       return;
     }
 
