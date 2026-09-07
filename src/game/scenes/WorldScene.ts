@@ -38,7 +38,7 @@ import {
   type ExtractionPoint,
 } from '../world/extractionPoints';
 import {
-  chooseHunterPursuitStep,
+  findHunterPursuitPath,
   createHunterState,
   createHunterTrainer,
   DEFAULT_HUNTER_TUNING,
@@ -1395,14 +1395,12 @@ export class WorldScene extends Phaser.Scene {
       ? Math.max(aggression, HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP)
       : aggression;
     let position = this.hunterState.position;
-    for (let index = 0; index < steps; index += 1) {
-      const target = chooseHunterPursuitStep(position, this.currentTile, this.bounds, (tile) =>
-        this.isBlockedForHunter(tile),
-      );
-      if (!target) {
-        break;
-      }
-      position = target;
+    // The player holds still for the whole tick, so one search covers every step it takes.
+    const path = findHunterPursuitPath(position, this.currentTile, this.bounds, (tile) =>
+      this.isBlockedForHunter(tile),
+    );
+    for (let index = 0; index < steps && index < path.length; index += 1) {
+      position = path[index];
       if (isHunterContactingPlayer(position, this.currentTile)) {
         break;
       }
