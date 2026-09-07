@@ -378,34 +378,38 @@ export class BattleScene extends Phaser.Scene {
             : ['FIGHT', 'POKéMON']
           : ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', 'RUN']
         : this.state.player.moves.map(formatMoveCommand);
-    this.commandContainer.add(this.createCommandBox(labels));
+    this.createCommandBox(labels);
     this.selectedCommand = Math.min(this.selectedCommand, labels.length - 1);
     this.updateSelection();
   }
 
-  private createCommandBox(labels: readonly string[]): Phaser.GameObjects.Container {
-    const container = this.add.container(0, COMMAND_Y);
+  private createCommandBox(labels: readonly string[]): void {
     const panel = this.add.graphics();
     panel.fillStyle(0x111827, 1);
-    panel.fillRect(0, 0, BATTLEFIELD_WIDTH, 64);
+    panel.fillRect(0, COMMAND_Y, BATTLEFIELD_WIDTH, 64);
     panel.lineStyle(2, 0x93c5fd, 1);
-    panel.strokeRect(1, 1, BATTLEFIELD_WIDTH - 2, 62);
-    container.add(panel);
+    panel.strokeRect(1, COMMAND_Y + 1, BATTLEFIELD_WIDTH - 2, 62);
+    this.commandContainer.add(panel);
     this.commandTexts = labels.map((label, index) => {
       const column = index % 2;
       const row = Math.floor(index / 2);
       const layout = this.mode === 'moves' ? moveCommandLayout(index) : undefined;
-      const text = this.add.text(layout?.x ?? 18 + column * 148, layout?.y ?? 11 + row * 25, label, {
-        fontFamily: BATTLE_FONT,
-        fontSize: this.mode === 'moves' ? '11px' : '16px',
-        color:
-          this.mode === 'main' && !this.trainer && index === 1 && this.pokeBalls === 0
-            ? '#fca5a5'
-            : '#f8fafc',
-        fixedWidth: layout?.width,
-        fixedHeight: layout?.height,
-        wordWrap: layout ? { width: layout.width } : undefined,
-      });
+      const text = this.add.text(
+        layout?.x ?? 18 + column * 148,
+        COMMAND_Y + (layout?.y ?? 11 + row * 25),
+        label,
+        {
+          fontFamily: BATTLE_FONT,
+          fontSize: this.mode === 'moves' ? '11px' : '16px',
+          color:
+            this.mode === 'main' && !this.trainer && index === 1 && this.pokeBalls === 0
+              ? '#fca5a5'
+              : '#f8fafc',
+          fixedWidth: layout?.width,
+          fixedHeight: layout?.height,
+          wordWrap: layout ? { width: layout.width } : undefined,
+        },
+      );
       text
         .setInteractive({ useHandCursor: true })
         .on('pointerover', () => {
@@ -417,10 +421,9 @@ export class BattleScene extends Phaser.Scene {
           this.updateSelection();
           this.confirm();
         });
-      container.add(text);
+      this.commandContainer.add(text);
       return text;
     });
-    return container;
   }
 
   private createPartyBox(): Phaser.GameObjects.Container {
