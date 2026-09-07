@@ -210,7 +210,11 @@ export class SaveManager {
     }
 
     game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot);
+    // A wipe must never hand the player back a run they cannot attempt: a fresh
+    // starter when none survived, and supplies topped up to the minimum either
+    // way, including when the secure slot saved a Pokemon but no items.
     game.stash.ensurePlayable(game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined);
+    game.stash.restockMinimumSupplies();
     return this.save(game);
   }
 }

@@ -318,7 +318,9 @@ describe('SaveManager', () => {
     expect(swapped?.stash.listPokemon()).toMatchObject([
       { id: 'charmander-1', pokemon: { base: { id: 'charmander' }, level: 5 } },
     ]);
-    expect(swapped?.stash.listItems()).toEqual({ potion: 3 });
+    // The swap is a recovery path, so it also restores the Poke Balls this
+    // legacy save had none of; the 3 kept Potions are already at the minimum.
+    expect(swapped?.stash.listItems()).toEqual({ potion: 3, 'poke-ball': 5 });
 
     expect(saves.applyWipeLoss(['charmander-1'], [{ itemId: 'potion', quantity: 3 }])).toBe(true);
     expect(saves.load()?.stash.listPokemon()).toMatchObject([

@@ -4,6 +4,24 @@ import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE, type PokemonBase } from '../p
 export const STARTER_SPECIES = [BULBASAUR, CHARMANDER, SQUIRTLE] as const;
 export type StarterSpeciesId = (typeof STARTER_SPECIES)[number]['id'];
 
+/**
+ * The supplies a player must hold to be able to attempt a real run. Every
+ * recovery path tops the stash up to these counts, so a wipe can never return
+ * a player to play in a state they cannot escape.
+ *
+ * Five Poke Balls and three Potions is deliberately the same kit a brand new
+ * save is given, not a discounted one: catching is the only way to grow the
+ * stash, and catch chance runs from 20% at full HP up to a 95% cap as the
+ * target weakens, so five throws is what makes at least one catch near
+ * certain. Three Potions is the supply every balance simulation of the raid
+ * gauntlet was measured with; the same runs carrying none wipe about 99% of
+ * the time even as Charmander.
+ */
+export const MINIMUM_SUPPLIES: Readonly<Record<string, number>> = {
+  'poke-ball': 5,
+  potion: 3,
+};
+
 export function getStarterSpecies(starterId: StarterSpeciesId): PokemonBase {
   return STARTER_SPECIES.find((species) => species.id === starterId) ?? BULBASAUR;
 }
@@ -90,7 +108,8 @@ export class Stash {
 
   /**
    * Restores the minimum resources needed to begin a run when no Pokemon
-   * remain. Existing Pokemon or supplies are never changed.
+   * remain: a fresh starter, plus a top-up to MINIMUM_SUPPLIES. Existing
+   * Pokemon are never changed and no item is ever taken away.
    *
    * @returns Whether a starter was granted.
    */
@@ -100,11 +119,27 @@ export class Stash {
     }
 
     this.addPokemon(new Pokemon(starter, 5));
-    if (Object.keys(this.listItems()).length === 0) {
-      this.addItem('poke-ball', 5);
-      this.addItem('potion', 3);
-    }
+    this.restockMinimumSupplies();
     return true;
+  }
+
+  /**
+   * Tops the vault up to MINIMUM_SUPPLIES. Only the shortfall is added, so a
+   * player who kept supplies keeps exactly what they had and the restock
+   * cannot be farmed by wiping on purpose. Nothing is ever removed, and
+   * unrelated items the player kept are left alone.
+   *
+   * @returns Whether anything was added.
+   */
+  public restockMinimumSupplies(): boolean {
+    let restocked = false;
+    for (const [itemId, minimum] of Object.entries(MINIMUM_SUPPLIES)) {
+      const shortfall = minimum - this.itemCount(itemId);
+      if (shortfall > 0 && this.addItem(itemId, shortfall)) {
+        restocked = true;
+      }
+    }
+    return restocked;
   }
 
   /**
@@ -129,6 +164,9 @@ export class Stash {
 
     this.storedPokemon.length = 0;
     this.addPokemon(new Pokemon(starter, 5));
+    // The swap is only ever reachable while recovering, so it carries the same
+    // supply guarantee as a re-grant.
+    this.restockMinimumSupplies();
     return true;
   }
 

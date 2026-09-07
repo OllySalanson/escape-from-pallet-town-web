@@ -1,6 +1,7 @@
 export {
   createStartingStash,
   getStarterSpecies,
+  MINIMUM_SUPPLIES,
   STARTER_SPECIES,
   Stash,
   type RunResult,
