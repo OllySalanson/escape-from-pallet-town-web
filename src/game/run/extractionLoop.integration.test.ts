@@ -128,6 +128,44 @@ describe('extraction loop integration', () => {
     expect(wipedStash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
   });
 
+  it('lets a wiped player re-specialise, and re-grants the newly chosen starter on the next wipe', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const wipe = (pokemonId: string, pokemon: Pokemon): void => {
+      const manager = new RunManager();
+      manager.startRun({ party: [pokemon], items: [] }, RUN_CONFIG);
+      const session = createActiveRunSession(manager, {}, {}, [pokemonId], []);
+      session.manager.resolveWipe(session.secureSlot);
+      expect(
+        saves.applyWipeLoss(session.broughtPokemonIds, session.broughtItems, session.stashSecureSlot),
+      ).toBe(true);
+    };
+
+    wipe(starter.id, starter.pokemon);
+
+    const regranted = saves.load()!.stash;
+    expect(regranted.listPokemon()).toMatchObject([{ pokemon: { base: { id: 'bulbasaur' }, level: 5 } }]);
+    expect(regranted.canSwapStarter()).toBe(true);
+
+    expect(saves.reselectStarter('squirtle')).toBe(true);
+    const swapped = saves.load()!;
+    expect(swapped.starterSpeciesId).toBe('squirtle');
+    expect(swapped.stash.listPokemon()).toMatchObject([
+      { id: 'squirtle-1', pokemon: { base: { id: 'squirtle' }, level: 5 } },
+    ]);
+
+    const newPartner = swapped.stash.listPokemon()[0];
+    wipe(newPartner.id, newPartner.pokemon);
+    expect(saves.load()!.stash.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'squirtle' }, level: 5 } },
+    ]);
+
+    expect(saves.bankRun({ pokemon: [new Pokemon(CHARMANDER, 4)], items: [] })).toBe(true);
+    expect(saves.load()!.stash.canSwapStarter()).toBe(false);
+    expect(saves.reselectStarter('bulbasaur')).toBe(false);
+    expect(saves.load()!.starterSpeciesId).toBe('squirtle');
+  });
+
   it('unlocks South Verge and grants one supply exactly once after extracting the recovered field kit', () => {
     const saves = seedNewPlayer(new MemoryStorage());
     const starter = saves.load()!.stash.listPokemon()[0];

@@ -63,6 +63,37 @@ describe('Stash', () => {
     expect(stash.listItems()).toEqual({ potion: 2, 'poke-ball': 1 });
   });
 
+  it.each([BULBASAUR, CHARMANDER, SQUIRTLE])('swaps a sole Pokemon for a fresh level 5 %s', (starter) => {
+    const stash = new Stash({ items: { potion: 2 } });
+    stash.addPokemon(new Pokemon(PIDGEY, 21), 'survivor');
+
+    expect(stash.canSwapStarter()).toBe(true);
+    expect(stash.swapStarter(starter)).toBe(true);
+    expect(stash.listPokemon()).toMatchObject([
+      { id: `${starter.id}-1`, pokemon: { base: { id: starter.id }, level: 5 } },
+    ]);
+    expect(stash.listItems()).toEqual({ potion: 2 });
+  });
+
+  it('refuses to swap a starter while more than one Pokemon remains', () => {
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 12), 'charmander-1');
+    stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
+    const contents = stash.toJSON();
+
+    expect(stash.canSwapStarter()).toBe(false);
+    expect(stash.swapStarter(SQUIRTLE)).toBe(false);
+    expect(stash.toJSON()).toEqual(contents);
+  });
+
+  it('refuses to swap a starter when no Pokemon remain', () => {
+    const stash = new Stash();
+
+    expect(stash.canSwapStarter()).toBe(false);
+    expect(stash.swapStarter(SQUIRTLE)).toBe(false);
+    expect(stash.listPokemon()).toEqual([]);
+  });
+
   it('persists the stash and banks extraction rewards', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);

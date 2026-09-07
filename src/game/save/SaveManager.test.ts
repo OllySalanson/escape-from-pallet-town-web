@@ -228,6 +228,103 @@ describe('SaveManager', () => {
     ]);
   });
 
+  it('swaps a sole Pokemon for a new starter and re-grants that species on the next wipe', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'charmander',
+    });
+
+    expect(saves.reselectStarter('squirtle')).toBe(true);
+
+    const swapped = saves.load();
+    expect(swapped?.starterSpeciesId).toBe('squirtle');
+    expect(swapped?.stash.listPokemon()).toMatchObject([
+      { id: 'squirtle-1', pokemon: { base: { id: 'squirtle' }, level: 5 } },
+    ]);
+
+    expect(saves.applyWipeLoss(['squirtle-1'], [])).toBe(true);
+    expect(saves.load()?.stash.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'squirtle' }, level: 5 } },
+    ]);
+  });
+
+  it('refuses a starter swap while more than one Pokemon is stashed', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 12), 'charmander-1');
+    stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'charmander',
+    });
+
+    expect(saves.reselectStarter('squirtle')).toBe(false);
+
+    const unchanged = saves.load();
+    expect(unchanged?.starterSpeciesId).toBe('charmander');
+    expect(unchanged?.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1', 'pidgey-1']);
+  });
+
+  it('lets a save written before starter reselection swap and re-grant the new species', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 4,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: [],
+        bag: {},
+        stash: {
+          pokemon: [
+            {
+              id: 'bulbasaur-1',
+              pokemon: {
+                speciesId: 'bulbasaur',
+                level: 5,
+                currentHp: 20,
+                xp: 0,
+                moves: ['Tackle', 'Growl'],
+                primaryStatus: null,
+              },
+            },
+          ],
+          items: { potion: 3 },
+        },
+      }),
+    );
+    const saves = new SaveManager(storage);
+
+    expect(saves.load()?.starterSpeciesId).toBe('bulbasaur');
+    expect(saves.reselectStarter('charmander')).toBe(true);
+
+    const swapped = saves.load();
+    expect(swapped?.starterSpeciesId).toBe('charmander');
+    expect(swapped?.stash.listPokemon()).toMatchObject([
+      { id: 'charmander-1', pokemon: { base: { id: 'charmander' }, level: 5 } },
+    ]);
+    expect(swapped?.stash.listItems()).toEqual({ potion: 3 });
+
+    expect(saves.applyWipeLoss(['charmander-1'], [{ itemId: 'potion', quantity: 3 }])).toBe(true);
+    expect(saves.load()?.stash.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'charmander' }, level: 5 } },
+    ]);
+  });
+
   it('restores a starter after a wipe removes the last stashed Pokemon', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);

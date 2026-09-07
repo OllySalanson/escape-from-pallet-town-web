@@ -180,6 +180,22 @@ export class SaveManager {
   }
 
   /**
+   * Trades the player's sole remaining Pokemon for a fresh level-5 starter and
+   * records the new species, so later wipe re-grants restore what the player
+   * has just chosen rather than the species they picked on their first run.
+   *
+   * @returns Whether the swap was applied and persisted.
+   */
+  public reselectStarter(starterId: StarterSpeciesId): boolean {
+    const game = this.load();
+    if (!game || !game.stash.swapStarter(getStarterSpecies(starterId))) {
+      return false;
+    }
+
+    return this.save({ ...game, starterSpeciesId: starterId });
+  }
+
+  /**
    * Persists a wipe after permanently deleting deployed assets outside the
    * secure slot. SecureSlot allows one Pokemon ID and at most two item stacks.
    */
