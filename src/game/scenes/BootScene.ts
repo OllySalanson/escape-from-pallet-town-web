@@ -8,6 +8,7 @@ import {
 } from '../playerFrames';
 import { SPECIES_BY_ID } from '../pokemon/species';
 import { isTestLabRequested } from '../dev/testLabAccess';
+import { ICON_NAMES, iconTextureKey } from '../ui/icons';
 
 const DIRECTIONS: readonly Direction[] = ['down', 'left', 'up', 'right'];
 
@@ -25,6 +26,13 @@ export class BootScene extends Phaser.Scene {
     this.load.image('battle-background-grass', 'assets/battle/background-grass.png');
     this.load.image('battle-hud', 'assets/battle/hud-box.png');
     this.load.image('battle-dialog', 'assets/battle/dialog-plain.png');
+
+    // The raid's markers are pixel art rather than tinted rectangles. They are
+    // all one tile square, so a marker drawn at the centre of a tile lands on
+    // whole pixels; `iconAssets.test.ts` enforces both facts.
+    for (const name of ICON_NAMES) {
+      this.load.image(iconTextureKey(name), `assets/icons/${name}.png`);
+    }
 
     // Every species sprite is a PNG. A per-species file-format exception is how
     // Squirtle shipped as a dimensionless SVG that rasterised to a 150x150

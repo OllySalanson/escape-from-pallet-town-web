@@ -423,9 +423,36 @@ button {
   width: 26px;
   height: 26px;
 }
+/*
+ * Icons are 16x16 pixel art. The box is a whole multiple of that (32px, or 2x)
+ * and the image fills it exactly, so every source pixel lands on four screen
+ * pixels rather than being resampled across a half-pixel edge.
+ */
 .item-icon {
-  color: var(--menu-accent);
-  font-size: 1.2em;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #101b2c;
+  border: 1px solid var(--menu-border);
+}
+.item-icon img {
+  width: 32px;
+  height: 32px;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+/* Text that only the screen reader needs: the icon itself is decorative. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .loadout-layout {
   grid-template-columns: 1.25fr 0.75fr;
@@ -1164,8 +1191,9 @@ button {
 .extraction-lost .extraction-ledger .entity-row {
   box-shadow: inset 3px 0 0 #915249;
 }
-.extraction-lost .extraction-ledger .item-icon {
-  color: var(--menu-danger);
+/* A lost stack is drained of colour, so the ledger reads at a glance. */
+.extraction-lost .extraction-ledger .item-icon img {
+  filter: grayscale(1) brightness(0.72);
 }
 .extraction-contract {
   display: flex;

@@ -30,6 +30,7 @@ import {
 import { type WorldEntity } from '../world/npcs';
 import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { DialogBox } from '../ui/DialogBox';
+import { WORLD_ICONS, iconTextureKey } from '../ui/icons';
 import { rollEncounter } from '../world/wildEncounters';
 import { consumeTeachingEncounter } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
@@ -174,7 +175,7 @@ export class WorldScene extends Phaser.Scene {
   private isWarping = false;
   private extractionMarkers: Array<{
     readonly point: ExtractionPoint;
-    readonly marker: Phaser.GameObjects.Rectangle;
+    readonly marker: Phaser.GameObjects.Image;
     readonly label: WorldLabel;
   }> = [];
   /** Every map caption, so each one can be kept inside the view each frame. */
@@ -191,11 +192,11 @@ export class WorldScene extends Phaser.Scene {
   private trainerEncounters: readonly RunTrainerEncounter[] = [];
   private readonly defeatedTrainerIds = new Set<string>();
   private readonly collectedLootIds = new Set<string>();
-  private readonly lootSprites = new Map<string, Phaser.GameObjects.Rectangle>();
+  private readonly lootSprites = new Map<string, Phaser.GameObjects.Image>();
   private readonly activatedPoiIds = new Set<string>();
   private readonly poiSprites = new Map<string, Phaser.GameObjects.Container>();
   private readonly poiLabels = new Map<string, WorldLabel>();
-  private fieldKitMarker: Phaser.GameObjects.Rectangle | undefined;
+  private fieldKitMarker: Phaser.GameObjects.Image | undefined;
   private pendingTrainerBattle:
     | {
         readonly trainer: RunTrainerEncounter['trainer'];
@@ -438,8 +439,7 @@ export class WorldScene extends Phaser.Scene {
       const x = point.position.x * TILE_SIZE + TILE_SIZE / 2;
       const y = point.position.y * TILE_SIZE + TILE_SIZE / 2;
       const marker = this.add
-        .rectangle(x, y, 14, 14, isOpen ? 0x16a34a : 0x991b1b, 0.8)
-        .setStrokeStyle(2, isOpen ? 0xdcfce7 : 0xfecaca)
+        .image(x, y, extractionIconKey(isOpen))
         .setDepth(3 + point.position.y / 1000);
       const label = new WorldLabel(
         this,
@@ -510,14 +510,11 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const marker = this.add
-      .rectangle(
+      .image(
         contract.position.x * TILE_SIZE + TILE_SIZE / 2,
         contract.position.y * TILE_SIZE + TILE_SIZE / 2,
-        12,
-        10,
-        0x60a5fa,
+        iconTextureKey(WORLD_ICONS.fieldKit),
       )
-      .setStrokeStyle(2, 0xdbeafe)
       .setDepth(3 + contract.position.y / 1000);
     this.fieldKitMarker = marker;
     this.mapObjects.push(marker);
@@ -530,14 +527,11 @@ export class WorldScene extends Phaser.Scene {
       this.collectedLootIds,
     )) {
       const marker = this.add
-        .rectangle(
+        .image(
           loot.position.x * TILE_SIZE + TILE_SIZE / 2,
           loot.position.y * TILE_SIZE + TILE_SIZE / 2,
-          9,
-          9,
-          0xfacc15,
+          iconTextureKey(WORLD_ICONS.supplyCrate),
         )
-        .setStrokeStyle(2, 0x92400e)
         .setDepth(3 + loot.position.y / 1000);
       this.lootSprites.set(loot.id, marker);
       this.mapObjects.push(marker);
@@ -556,13 +550,17 @@ export class WorldScene extends Phaser.Scene {
       const x = poi.position.x * TILE_SIZE + TILE_SIZE / 2;
       const y = poi.position.y * TILE_SIZE + TILE_SIZE / 2;
       const station = this.add.container(x, y).setDepth(3 + poi.position.y / 1000);
-      station.add([
-        this.add.rectangle(0, 2, 14, 10, 0x334155).setStrokeStyle(2, 0x93c5fd),
-        this.add.rectangle(0, -5, 3, 9, 0xe2e8f0),
-        this.add.rectangle(0, -10, 8, 2, 0x38bdf8),
-        this.add.rectangle(-4, 2, 2, 3, 0xfacc15),
-        this.add.rectangle(4, 2, 2, 3, 0xfacc15),
-      ]);
+      // A radio landmark and a supply landmark are different objects, so they
+      // are drawn as different things rather than one shared box.
+      station.add(
+        this.add.image(
+          0,
+          0,
+          iconTextureKey(
+            poi.effect === 'activate-radio' ? WORLD_ICONS.radioMast : WORLD_ICONS.supplyCache,
+          ),
+        ),
+      );
       const label = new WorldLabel(
         this,
         x,
@@ -636,14 +634,11 @@ export class WorldScene extends Phaser.Scene {
 
   private createSign(entity: WorldEntity): void {
     const sign = this.add
-      .rectangle(
+      .image(
         entity.position.x * TILE_SIZE + TILE_SIZE / 2,
         entity.position.y * TILE_SIZE + TILE_SIZE / 2,
-        10,
-        12,
-        0x8b5a2b,
+        iconTextureKey(WORLD_ICONS.signPost),
       )
-      .setStrokeStyle(1, 0x4d2c16)
       .setDepth(2 + entity.position.y / 1000);
     this.mapObjects.push(sign);
   }
@@ -1476,9 +1471,7 @@ export class WorldScene extends Phaser.Scene {
   private refreshExtractionMarkers(): void {
     for (const { point, marker, label } of this.extractionMarkers) {
       const isOpen = this.isExtractionOpen(point);
-      marker
-        .setFillStyle(isOpen ? 0x16a34a : 0x991b1b, 0.8)
-        .setStrokeStyle(2, isOpen ? 0xdcfce7 : 0xfecaca);
+      marker.setTexture(extractionIconKey(isOpen));
       label.setText(
         `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession?.manager.snapshot().elapsedMs ?? 0)}`,
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
@@ -1744,6 +1737,14 @@ export class WorldScene extends Phaser.Scene {
     this.dialogBox.showMessages([...this.pendingTrainerBattle.introLines]);
     return true;
   }
+}
+
+/**
+ * An exit is one object in two states, so the open and the locked pad are the
+ * same silhouette in two colours rather than two different marks.
+ */
+function extractionIconKey(isOpen: boolean): string {
+  return iconTextureKey(isOpen ? WORLD_ICONS.extractionOpen : WORLD_ICONS.extractionLocked);
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {
