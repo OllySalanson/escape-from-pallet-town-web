@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TypewriterQueue } from './TypewriterQueue';
+import { drawPixelWindow } from './pixelWindow';
 
 export interface DialogBoxOptions {
   x?: number;
@@ -20,6 +21,11 @@ export interface DialogBoxOptions {
   indicatorText?: string;
   indicatorBlinkMs?: number;
   backgroundTexture?: string;
+  /**
+   * Draws the game's own window frame - a one-pixel border with clear corners -
+   * instead of a rounded stroke. Geometry and text are untouched.
+   */
+  pixelWindow?: boolean;
   textStyle?: Phaser.Types.GameObjects.Text.TextStyle;
   onComplete?: () => void;
 }
@@ -215,6 +221,14 @@ export class DialogBox extends Phaser.GameObjects.Container {
     const alpha = options.backgroundTexture ? 0 : 1;
 
     this.backgroundGraphics.clear();
+    if (options.pixelWindow) {
+      drawPixelWindow(
+        this.backgroundGraphics,
+        { x: 0, y: 0, width: this.widthPx, height: this.heightPx },
+        { fill: backgroundColor, border: borderColor, fillAlpha: alpha },
+      );
+      return;
+    }
     this.backgroundGraphics.fillStyle(backgroundColor, alpha);
     this.backgroundGraphics.fillRoundedRect(0, 0, this.widthPx, this.heightPx, cornerRadius);
 

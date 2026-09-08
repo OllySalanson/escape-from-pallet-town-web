@@ -22,7 +22,10 @@ vi.mock('phaser', () => ({
     Scale: {
       CENTER_BOTH: 0,
       FIT: 0,
+      NONE: 0,
+      Events: { RESIZE: 'resize' },
     },
+    Scenes: { Events: { SHUTDOWN: 'shutdown' } },
     Scene: class {},
   },
 }));
@@ -47,6 +50,7 @@ import { TitleScene } from './scenes/TitleScene';
 import { SaveManager } from './save/SaveManager';
 import { createStartingStash, Stash } from './stash';
 import { WorldScene } from './scenes/WorldScene';
+import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from './display/stage';
 
 describe('game start flow', () => {
   it('auto-starts Boot so World prerequisites are ready before Title can start it', () => {
@@ -117,6 +121,12 @@ describe('game start flow', () => {
           setZoom: vi.fn(),
           startFollow: vi.fn(),
         },
+      },
+      scale: {
+        width: BASE_STAGE_WIDTH,
+        height: BASE_STAGE_HEIGHT,
+        on: vi.fn(),
+        off: vi.fn(),
       },
       input: {
         keyboard: {

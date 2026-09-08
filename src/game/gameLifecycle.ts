@@ -14,10 +14,10 @@ export type GameFactory = () => MountedGame;
  * Replaces an existing game before mounting a new one. Vite re-evaluates entry
  * modules during HMR, so module-local state alone cannot enforce this invariant.
  */
-export function mountGame(
-  createGame: GameFactory,
+export function mountGame<TGame extends MountedGame>(
+  createGame: () => TGame,
   host: GameHost = window as unknown as GameHost,
-): MountedGame {
+): TGame {
   host[GAME_INSTANCE_KEY]?.destroy(true);
   removePreviousGameDom();
   const game = createGame();

@@ -1,15 +1,29 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
+import {
+  HUNTER_ALERT_DISTANCE,
+  RAID_CLOCK_CAUTION_MS,
+  RAID_CLOCK_URGENT_MS,
+  hunterChipView,
+  objectiveChipLines,
+  raidClockAlertTier,
+  raidClockView,
+} from './raidHud';
+import { ENRAGE_GRACE_MS } from '../run/RunManager';
+import { RAID_DURATION_MS } from '../run/raidClock';
 
 const sceneSource = await readFile(new URL('./WorldScene.ts', import.meta.url), 'utf8');
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
 const extractionSceneSource = await readFile(new URL('./ExtractionScene.ts', import.meta.url), 'utf8');
 
 describe('in-run objective HUD layout', () => {
-  it('wraps long text and grows the backing to fit all wrapped lines', () => {
-    expect(sceneSource).toMatch(/wordWrap: \{ width: 148, useAdvancedWrap: true \}/);
-    expect(sceneSource).toContain('.setSize(164, objectivesHeight)');
-    expect(sceneSource).toContain('.setY(24 + objectivesHeight / 2)');
+  it('feeds the chip from the raid, and only lets it grow while the objective is new', () => {
+    // The panel this replaced was a fixed 164x37 slab over the top-left of the
+    // map. The chip is one line unless what it says has just changed.
+    expect(objectiveChipLines('LOST KIT: SW', false)).toEqual(['LOST KIT: SW']);
+    expect(objectiveChipLines('LOST KIT: SW', true)).toHaveLength(2);
+    expect(sceneSource).toContain('this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;');
+    expect(sceneSource).toContain('objectiveChipLines(navigationCue, this.objectiveDetailMs > 0)');
   });
 
   it('keeps the active first-contract destination visible and direction-aware', () => {
@@ -101,8 +115,23 @@ describe('hunter disengagement wiring', () => {
   });
 
   it('keeps the remaining escape readable on the HUD instead of hiding it', () => {
-    expect(sceneSource).toContain('HUNTER OFF TRAIL ${Math.ceil(');
-    expect(sceneSource).toContain('hud.hunterBacking.setVisible(searching)');
+    expect(
+      hunterChipView({ searching: true, searchRemainingMs: 6_400, distance: 2, direction: 'N' }),
+    ).toEqual({ label: 'OFF TRAIL 7s', tone: 'off-trail' });
+    expect(sceneSource).toContain('searching: isHunterSearching(this.hunterState)');
+  });
+
+  it('shows a hunter that is actually near, and which way it is', () => {
+    // The old HUD said nothing about the hunter unless the player had escaped
+    // one, so an arrival announced once in a dialogue box then went silent.
+    expect(hunterChipView({ searching: false, distance: 4, direction: 'NW' })).toEqual({
+      label: 'HUNTER NW 4',
+      tone: 'closing',
+    });
+    expect(hunterChipView({ searching: false, distance: null, direction: 'HERE' })).toBeNull();
+    expect(
+      hunterChipView({ searching: false, distance: HUNTER_ALERT_DISTANCE + 1, direction: 'S' }),
+    ).toBeNull();
   });
 });
 
@@ -145,5 +174,41 @@ describe('raid resolution hand-off', () => {
     expect(sceneSource).toContain("this.scene.start(this.scene.manager.keys.hub ? 'hub' : 'title');");
     expect(battleSceneSource).toContain("this.scene.start(this.scene.manager.keys.hub ? 'hub' : 'title');");
     expect(extractionSceneSource).toContain("this.scene.manager.keys.hub ? 'hub' : 'title'");
+  });
+});
+
+describe('the raid clock chip', () => {
+  it('stays quiet for most of the raid and escalates as it runs out', () => {
+    expect(raidClockView(RAID_DURATION_MS, false, ENRAGE_GRACE_MS)).toEqual({
+      label: 'RAID 5:00',
+      tone: 'calm',
+      pulses: false,
+    });
+    expect(raidClockView(RAID_CLOCK_CAUTION_MS, false, ENRAGE_GRACE_MS).tone).toBe('caution');
+    expect(raidClockView(RAID_CLOCK_URGENT_MS, false, ENRAGE_GRACE_MS).tone).toBe('urgent');
+  });
+
+  it('only pulses once it is an alarm, so it can be ignored the rest of the time', () => {
+    expect(raidClockView(RAID_CLOCK_CAUTION_MS, false, ENRAGE_GRACE_MS).pulses).toBe(false);
+    expect(raidClockView(RAID_CLOCK_URGENT_MS, false, ENRAGE_GRACE_MS).pulses).toBe(true);
+    expect(raidClockView(0, true, ENRAGE_GRACE_MS).pulses).toBe(true);
+  });
+
+  it('fires the flash and the warning sting on exactly the threshold it always did', () => {
+    expect(raidClockAlertTier(RAID_CLOCK_URGENT_MS + 1)).toBe('normal');
+    expect(raidClockAlertTier(RAID_CLOCK_URGENT_MS)).toBe('urgent');
+    // Caution is a colour, not an interruption.
+    expect(raidClockAlertTier(RAID_CLOCK_CAUTION_MS)).toBe('normal');
+  });
+
+  it('counts the grace period down once the raid clock is spent', () => {
+    // Enrage used to replace the clock with a fixed sentence, so the fifteen
+    // seconds that still decide the raid were the one number not on screen.
+    expect(raidClockView(0, true, 12_000).label).toBe('ENRAGED 0:12');
+    expect(raidClockView(0, true, 0)).toEqual({
+      label: 'ENRAGED 0:00',
+      tone: 'enraged',
+      pulses: true,
+    });
   });
 });

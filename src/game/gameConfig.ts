@@ -9,10 +9,8 @@ import { PartyScene } from './scenes/PartyScene';
 import { StarterScene } from './scenes/StarterScene';
 import { TitleScene } from './scenes/TitleScene';
 import { WorldScene } from './scenes/WorldScene';
+import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, computeStage } from './display/stage';
 
-const GAME_WIDTH = 320;
-const GAME_HEIGHT = 240;
-const GAME_ZOOM = 3;
 const BASE_SCENES = [
   BootScene,
   TitleScene,
@@ -29,11 +27,20 @@ const BASE_SCENES = [
 export function createGameConfig(
   developmentScenes: Phaser.Types.Scenes.SceneType[] = [],
 ): Phaser.Types.Core.GameConfig {
+  // Sized once here so the first frame is already correct; `watchViewport` owns
+  // it from then on. FIT is deliberately not used: it keeps one backing-store
+  // size and resamples it, which is what blurred the art in a short window and
+  // pinned the game to 960x720 in a tall one.
+  const stage =
+    typeof window === 'undefined'
+      ? { width: BASE_STAGE_WIDTH, height: BASE_STAGE_HEIGHT, zoom: 3 }
+      : computeStage(window.innerWidth, window.innerHeight);
+
   return {
     type: Phaser.AUTO,
     parent: 'app',
-    width: GAME_WIDTH,
-    height: GAME_HEIGHT,
+    width: stage.width,
+    height: stage.height,
     backgroundColor: '#000000',
     pixelArt: true,
     render: {
@@ -41,9 +48,9 @@ export function createGameConfig(
       roundPixels: true,
     },
     scale: {
-      mode: Phaser.Scale.FIT,
+      mode: Phaser.Scale.NONE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
-      zoom: GAME_ZOOM,
+      zoom: stage.zoom,
     },
     scene: [...BASE_SCENES, ...developmentScenes],
   };

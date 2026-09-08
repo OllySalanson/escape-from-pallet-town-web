@@ -41,6 +41,7 @@ vi.mock('phaser', () => ({
       },
     },
     Scenes: { Events: { SHUTDOWN: 'shutdown' } },
+    Scale: { Events: { RESIZE: 'resize' } },
     Cameras: {
       Scene2D: {
         Events: {
@@ -83,6 +84,7 @@ import { createActiveRunSession } from '../run/RunSession';
 import { ENRAGE_GRACE_MS } from '../run/RunManager';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
+import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
 import { WorldScene } from './WorldScene';
 
 /** A display object that answers every chainable setter with itself. */
@@ -111,6 +113,12 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
       container: vi.fn(() => chainable()),
       graphics: vi.fn(() => chainable()),
     },
+    scale: {
+      width: BASE_STAGE_WIDTH,
+      height: BASE_STAGE_HEIGHT,
+      on: vi.fn(),
+      off: vi.fn(),
+    },
     cameras: {
       main: {
         fadeIn: vi.fn(),
@@ -124,6 +132,7 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
         setRoundPixels: vi.fn(),
         setZoom: vi.fn(),
         startFollow: vi.fn(),
+        worldView: { left: 0, right: BASE_STAGE_WIDTH },
       },
     },
     input: {
@@ -165,7 +174,10 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
     },
     events: { once: vi.fn(), on: vi.fn() },
     // Raid resolution waits a beat so the flash lands on the map; run it now.
-    time: { delayedCall: vi.fn((_delayMs: number, callback: () => void) => callback()) },
+    time: {
+      now: 0,
+      delayedCall: vi.fn((_delayMs: number, callback: () => void) => callback()),
+    },
   });
 };
 

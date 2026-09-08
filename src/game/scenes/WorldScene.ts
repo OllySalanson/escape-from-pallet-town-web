@@ -39,7 +39,17 @@ import { completedObjectiveRewards } from '../objectives';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
 import { buildRaidSettlement, deployedRaidCondition } from '../run/raidSettlement';
-import { formatRaidClock } from '../run/raidClock';
+import { BASE_STAGE_WIDTH } from '../display/stage';
+import { RaidHud } from '../ui/RaidHud';
+import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
+import { WINDOW_CREAM } from '../ui/pixelWindow';
+import {
+  OBJECTIVE_DETAIL_MS,
+  hunterChipView,
+  objectiveChipLines,
+  raidClockAlertTier,
+  raidClockView,
+} from './raidHud';
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
 import { FIRST_CONTRACT } from '../run/runGeneration';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
@@ -71,19 +81,28 @@ import {
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
-const RAID_TIMER_URGENT_MS = 30_000;
 /** Long enough for the extraction flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
 
-interface RunTimerHud {
-  readonly backing: Phaser.GameObjects.Rectangle;
-  readonly text: Phaser.GameObjects.Text;
-  readonly objectivesBacking: Phaser.GameObjects.Rectangle;
-  readonly objectivesText: Phaser.GameObjects.Text;
-  /** Shown only while an escape is still holding the hunter off. */
-  readonly hunterBacking: Phaser.GameObjects.Rectangle;
-  readonly hunterText: Phaser.GameObjects.Text;
-}
+/**
+ * Map captions share the raid HUD's window, in a darker weight: screen furniture
+ * is cream, world annotation is a tinted panel with a coloured frame. Each tone
+ * keeps the colour the caption already carried, so nothing changes meaning.
+ */
+const LABEL_TONES: Readonly<Record<'station' | 'exitOpen' | 'exitShut' | 'route', WorldLabelTone>> = {
+  station: { fill: 0x14243a, border: 0x7fb2e5, ink: '#dff0ff' },
+  exitOpen: { fill: 0x123d22, border: 0x86efac, ink: '#dcfce7' },
+  exitShut: { fill: 0x3d1414, border: 0xfca5a5, ink: '#fecaca' },
+  route: { fill: 0x3a2408, border: 0xf1bf63, ink: '#fef3c7' },
+};
+/**
+ * The dialogue frame keeps the authored size it was written for and is centred
+ * on the bottom of whatever screen it is on. Stretching it to a wide window
+ * turns four lines of narration into a billboard across half the map.
+ */
+const DIALOG_WIDTH = BASE_STAGE_WIDTH - 16;
+const DIALOG_HEIGHT = 80;
+const DIALOG_MARGIN = 8;
 
 interface ControlKeys {
   up: Phaser.Input.Keyboard.Key;
@@ -156,9 +175,15 @@ export class WorldScene extends Phaser.Scene {
   private extractionMarkers: Array<{
     readonly point: ExtractionPoint;
     readonly marker: Phaser.GameObjects.Rectangle;
-    readonly label: Phaser.GameObjects.Text;
+    readonly label: WorldLabel;
   }> = [];
-  private runTimerHud: RunTimerHud | undefined;
+  /** Every map caption, so each one can be kept inside the view each frame. */
+  private worldLabels: WorldLabel[] = [];
+  private raidHud: RaidHud | undefined;
+  /** The cue the objective chip is currently showing, so a change can be noticed. */
+  private objectiveCue = '';
+  /** Counts down the window in which a changed objective shows its extra line. */
+  private objectiveDetailMs = 0;
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
   /** Set once a finished raid is on its way to the result screen. */
@@ -169,6 +194,7 @@ export class WorldScene extends Phaser.Scene {
   private readonly lootSprites = new Map<string, Phaser.GameObjects.Rectangle>();
   private readonly activatedPoiIds = new Set<string>();
   private readonly poiSprites = new Map<string, Phaser.GameObjects.Container>();
+  private readonly poiLabels = new Map<string, WorldLabel>();
   private fieldKitMarker: Phaser.GameObjects.Rectangle | undefined;
   private pendingTrainerBattle:
     | {
@@ -256,14 +282,20 @@ export class WorldScene extends Phaser.Scene {
     this.bindControls();
     this.configureCamera();
     this.createRunTimerHud();
-    if (this.runTimerHud) {
+    if (this.raidHud) {
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyRunTimerHud());
     }
+    const relayout = () => this.layoutForStage();
+    this.scale.on?.(Phaser.Scale.Events.RESIZE, relayout);
+    this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () =>
+      this.scale.off?.(Phaser.Scale.Events.RESIZE, relayout),
+    );
     this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => this.clearMap());
     this.showFirstDeploymentBriefing();
   }
 
   public update(_time: number, deltaMs: number): void {
+    this.clampWorldLabels();
     if (Phaser.Input.Keyboard.JustDown(this.controls.objectives)) {
       this.openObjectives();
       return;
@@ -409,16 +441,16 @@ export class WorldScene extends Phaser.Scene {
         .rectangle(x, y, 14, 14, isOpen ? 0x16a34a : 0x991b1b, 0.8)
         .setStrokeStyle(2, isOpen ? 0xdcfce7 : 0xfecaca)
         .setDepth(3 + point.position.y / 1000);
-      const label = this.add
-        .text(x, y - 13, `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}`, {
-          fontFamily: 'monospace',
-          fontSize: '7px',
-          color: isOpen ? '#dcfce7' : '#fecaca',
-          backgroundColor: '#111827',
-        })
-        .setOrigin(0.5, 1)
-        .setDepth(4 + point.position.y / 1000);
-      this.mapObjects.push(marker, label);
+      const label = new WorldLabel(
+        this,
+        x,
+        y - 11,
+        `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}`,
+        isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
+        4 + point.position.y / 1000,
+      );
+      this.mapObjects.push(marker);
+      this.worldLabels.push(label);
       this.extractionMarkers.push({ point, marker, label });
     }
   }
@@ -531,21 +563,16 @@ export class WorldScene extends Phaser.Scene {
         this.add.rectangle(-4, 2, 2, 3, 0xfacc15),
         this.add.rectangle(4, 2, 2, 3, 0xfacc15),
       ]);
-      const label = this.add
-        .text(
-          0,
-          -16,
-          `${poi.label}\n${poi.effect === 'activate-radio' ? 'RADIO: EXIT OFFLINE' : `CACHE: ${formatPoiReward(poi)}`}`,
-          {
-          fontFamily: 'monospace',
-          fontSize: '7px',
-          color: '#e0f2fe',
-          backgroundColor: '#0f172a',
-          padding: { x: 2, y: 1 },
-          },
-        )
-        .setOrigin(0.5, 1);
-      station.add(label);
+      const label = new WorldLabel(
+        this,
+        x,
+        y - 12,
+        `${poi.label}\n${poi.effect === 'activate-radio' ? 'RADIO: EXIT OFFLINE' : `CACHE: ${formatPoiReward(poi)}`}`,
+        LABEL_TONES.station,
+        4 + poi.position.y / 1000,
+      );
+      this.worldLabels.push(label);
+      this.poiLabels.set(poi.id, label);
       this.poiSprites.set(poi.id, station);
       this.mapObjects.push(station);
     }
@@ -569,22 +596,16 @@ export class WorldScene extends Phaser.Scene {
       ) {
         continue;
       }
-      const label = this.add
-        .text(
+      this.worldLabels.push(
+        new WorldLabel(
+          this,
           warp.source.x * TILE_SIZE + TILE_SIZE,
-          warp.source.y * TILE_SIZE - 3,
+          warp.source.y * TILE_SIZE - 1,
           `${WORLD_MAP_NAMES[warp.destinationMapId].toUpperCase()} ${this.warpArrow(warp)}`,
-          {
-            fontFamily: 'monospace',
-            fontSize: '8px',
-            color: '#fef3c7',
-            backgroundColor: '#422006',
-            padding: { x: 2, y: 1 },
-          },
-        )
-        .setOrigin(0.5, 1)
-        .setDepth(5 + warp.source.y / 1000);
-      this.mapObjects.push(label);
+          LABEL_TONES.route,
+          5 + warp.source.y / 1000,
+        ),
+      );
     }
   }
 
@@ -675,14 +696,36 @@ export class WorldScene extends Phaser.Scene {
 
   private createDialogBox(): void {
     this.dialogBox = new DialogBox(this, {
-      x: 8,
-      y: 152,
-      width: 304,
-      height: 80,
+      x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+      y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+      width: DIALOG_WIDTH,
+      height: DIALOG_HEIGHT,
       padding: 10,
+      // The same window the raid HUD and the map captions are drawn with, so the
+      // overworld has one frame rather than a rounded bubble beside them. Text
+      // metrics are untouched: authored narration still wraps exactly as before.
+      pixelWindow: true,
+      borderColor: WINDOW_CREAM,
+      backgroundColor: 0x0e1828,
       textStyle: { fontSize: '14px' },
       onComplete: () => this.handleRunResolutionComplete(),
     }).setScrollFactor(0, 0, true);
+  }
+
+  /**
+   * The screen resizes with the browser window, so anything anchored to an edge
+   * has to be re-anchored rather than left where it was built. The dialogue box
+   * is rebuilt because its frame is drawn at a fixed width.
+   */
+  private layoutForStage(): void {
+    if (!this.dialogBox) {
+      return;
+    }
+    this.dialogBox.setPosition(
+      Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+      this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+    );
+    this.refreshRunTimerHud();
   }
 
   private createRunTimerHud(): void {
@@ -690,69 +733,22 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    const backing = this.add
-      .rectangle(160, 10, 154, 22, 0x111827, 1)
-      .setStrokeStyle(2, 0xdbeafe)
-      .setScrollFactor(0)
-      .setDepth(100);
-    const text = this.add
-      .text(160, 10, '', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#f8fafc',
-      })
-      .setOrigin(0.5)
-      .setStroke('#020617', 2)
-      .setScrollFactor(0)
-      .setDepth(101);
-    const objectivesBacking = this.add
-      .rectangle(85, 56, 164, 64, 0x111827, 0.88)
-      .setStrokeStyle(1, 0x2b3e59)
-      .setScrollFactor(0)
-      .setDepth(100);
-    const objectivesText = this.add
-      .text(8, 29, '', {
-        fontFamily: 'monospace',
-        fontSize: '8px',
-        color: '#dbeafe',
-        lineSpacing: 3,
-        wordWrap: { width: 148, useAdvancedWrap: true },
-      })
-      .setStroke('#020617', 2)
-      .setScrollFactor(0)
-      .setDepth(101);
-    // Right of the objectives panel, so an escape's remaining room is readable at a
-    // glance without covering the raid timer or the objective cue.
-    const hunterBacking = this.add
-      .rectangle(245, 32, 146, 18, 0x064e3b, 0.9)
-      .setStrokeStyle(1, 0x6ee7b7)
-      .setScrollFactor(0)
-      .setDepth(100)
-      .setVisible(false);
-    const hunterText = this.add
-      .text(245, 32, '', {
-        fontFamily: 'monospace',
-        fontSize: '8px',
-        color: '#d1fae5',
-      })
-      .setOrigin(0.5)
-      .setStroke('#020617', 2)
-      .setScrollFactor(0)
-      .setDepth(101)
-      .setVisible(false);
-    this.runTimerHud = {
-      backing,
-      text,
-      objectivesBacking,
-      objectivesText,
-      hunterBacking,
-      hunterText,
-    };
+    this.raidHud = new RaidHud(this);
+    this.objectiveCue = '';
+    this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
     this.refreshRunTimerHud();
   }
 
-  private refreshRunTimerHud(): void {
-    const hud = this.runTimerHud;
+  /**
+   * Redraws the three chips from the raid's own state.
+   *
+   * Everything the player has to be able to answer at a glance - what am I
+   * doing, how long have I got, where is the hunter - is a corner chip sized to
+   * its own text. The panel this replaced was a 164x37 slab pinned over the
+   * top-left of the map, which is exactly where the road ahead is.
+   */
+  private refreshRunTimerHud(deltaMs = 0): void {
+    const hud = this.raidHud;
     const session = this.runSession;
     const manager = session?.manager;
     if (!hud || !session || !manager || manager.phase !== RunPhase.InRun) {
@@ -763,24 +759,12 @@ export class WorldScene extends Phaser.Scene {
     const navigationCue = this.firstContractNavigationCue(snapshot.recoveredFieldKit)
       ?? session.objectives.find((objective) => !objective.progress(snapshot).complete)?.description
       ?? 'EXTRACT WITH YOUR HAUL';
-    hud.objectivesText.setText(`► ${navigationCue}\nO: FIELD GUIDE`);
-    const hasObjectives = true;
-    const objectivesHeight = Math.max(22, hud.objectivesText.height + 10);
-    hud.objectivesText.setVisible(hasObjectives);
-    hud.objectivesBacking
-      .setVisible(hasObjectives)
-      .setSize(164, objectivesHeight)
-      .setY(24 + objectivesHeight / 2);
-
-    const searching = isHunterSearching(this.hunterState);
-    hud.hunterBacking.setVisible(searching);
-    hud.hunterText
-      .setVisible(searching)
-      .setText(
-        searching
-          ? `HUNTER OFF TRAIL ${Math.ceil((this.hunterState.searchRemainingMs ?? 0) / 1_000)}s`
-          : '',
-      );
+    if (navigationCue !== this.objectiveCue) {
+      this.objectiveCue = navigationCue;
+      this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
+    } else {
+      this.objectiveDetailMs = Math.max(0, this.objectiveDetailMs - deltaMs);
+    }
 
     if (manager.isEnraged) {
       if (this.timerThreat !== 'enraged') {
@@ -788,40 +772,53 @@ export class WorldScene extends Phaser.Scene {
         this.cameras.main.flash(160, 239, 68, 68, false);
         audioManager.playLowHpWarning();
       }
-      hud.backing.setFillStyle(0x7f1d1d, 0.95).setStrokeStyle(2, 0xfca5a5);
-      hud.text.setText('ENRAGED - EXTRACT NOW').setColor('#fee2e2');
-      const pulse = 0.7 + (Math.sin(this.time.now / 100) + 1) * 0.15;
-      hud.backing.setAlpha(pulse);
-      hud.text.setAlpha(pulse);
-      return;
+    } else {
+      const tier = raidClockAlertTier(snapshot.remainingMs);
+      if (tier !== this.timerThreat) {
+        this.timerThreat = tier;
+        this.cameras.main.flash(120, 251, 191, 36, false);
+        audioManager.playLowHpWarning();
+      }
     }
 
-    const remainingMs = manager.remainingMs();
-    const isUrgent = remainingMs <= RAID_TIMER_URGENT_MS;
-    const threat = isUrgent ? 'urgent' : 'normal';
-    if (threat !== this.timerThreat) {
-      this.timerThreat = threat;
-      this.cameras.main.flash(120, 251, 191, 36, false);
-      audioManager.playLowHpWarning();
+    hud.render(
+      {
+        clock: raidClockView(
+          snapshot.remainingMs,
+          manager.isEnraged,
+          snapshot.enrageGraceRemainingMs,
+        ),
+        objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0),
+        hunter: hunterChipView({
+          searching: isHunterSearching(this.hunterState),
+          searchRemainingMs: this.hunterState.searchRemainingMs,
+          distance: this.hunterStepsAway(),
+          direction: this.hunterBearing(),
+        }),
+      },
+      this.time.now,
+    );
+  }
+
+  /** Steps to the hunter, or null when it is not on this map. */
+  private hunterStepsAway(): number | null {
+    if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
+      return null;
     }
-    hud.text.setText(`RAID ${formatRaidClock(remainingMs)}`);
-    hud.backing
-      .setFillStyle(isUrgent ? 0x78350f : 0x111827, 1)
-      .setStrokeStyle(2, isUrgent ? 0xfbbf24 : 0xdbeafe)
-      .setAlpha(1);
-    hud.text
-      .setColor(isUrgent ? '#fef3c7' : '#f8fafc')
-      .setAlpha(isUrgent ? 0.75 + (Math.sin(this.time.now / 140) + 1) * 0.125 : 1);
+    const hunter = this.hunterState.position;
+    return (
+      Math.abs(hunter.x - this.currentTile.x) + Math.abs(hunter.y - this.currentTile.y)
+    );
+  }
+
+  private hunterBearing(): string {
+    const hunter = this.hunterState.position;
+    return hunter ? directionTo(this.currentTile, hunter) : 'HERE';
   }
 
   private destroyRunTimerHud(): void {
-    this.runTimerHud?.backing.destroy();
-    this.runTimerHud?.text.destroy();
-    this.runTimerHud?.objectivesBacking.destroy();
-    this.runTimerHud?.objectivesText.destroy();
-    this.runTimerHud?.hunterBacking.destroy();
-    this.runTimerHud?.hunterText.destroy();
-    this.runTimerHud = undefined;
+    this.raidHud?.destroy();
+    this.raidHud = undefined;
   }
 
   private bindControls(): void {
@@ -1141,11 +1138,36 @@ export class WorldScene extends Phaser.Scene {
   private clearMap(): void {
     this.mapObjects.forEach((object) => object.destroy());
     this.mapObjects = [];
+    this.worldLabels.forEach((label) => label.destroy());
+    this.worldLabels = [];
     this.npcSprites.clear();
     this.lootSprites.clear();
     this.poiSprites.clear();
+    this.poiLabels.clear();
     this.fieldKitMarker = undefined;
     this.extractionMarkers = [];
+  }
+
+  private removeWorldLabel(label: WorldLabel | undefined): void {
+    if (!label) {
+      return;
+    }
+    label.destroy();
+    this.worldLabels = this.worldLabels.filter((candidate) => candidate !== label);
+  }
+
+  /**
+   * A caption belongs to a thing on the map, but it is read on a screen: one
+   * near the edge of the view used to be cut in half by it.
+   */
+  private clampWorldLabels(): void {
+    if (this.worldLabels.length === 0) {
+      return;
+    }
+    const view = this.cameras.main.worldView;
+    for (const label of this.worldLabels) {
+      label.clampInto(view.left, view.right);
+    }
   }
 
   private isLootAvailable(): boolean {
@@ -1201,6 +1223,8 @@ export class WorldScene extends Phaser.Scene {
 
     this.poiSprites.get(poi!.id)?.destroy();
     this.poiSprites.delete(poi!.id);
+    this.removeWorldLabel(this.poiLabels.get(poi!.id));
+    this.poiLabels.delete(poi!.id);
     this.cameras.main.flash(140, 56, 189, 248, false);
     audioManager.playLootPickup();
     const reward = poi!.reward
@@ -1443,7 +1467,7 @@ export class WorldScene extends Phaser.Scene {
     this.advanceHunterSearch(deltaMs);
     this.placeHunterIfDue(snapshot.elapsedMs);
     this.refreshExtractionMarkers();
-    this.refreshRunTimerHud();
+    this.refreshRunTimerHud(deltaMs);
     if (snapshot.isEnraged && this.runSession.manager.isEnrageGraceExpired) {
       this.resolveExpiredRun();
     }
@@ -1455,9 +1479,10 @@ export class WorldScene extends Phaser.Scene {
       marker
         .setFillStyle(isOpen ? 0x16a34a : 0x991b1b, 0.8)
         .setStrokeStyle(2, isOpen ? 0xdcfce7 : 0xfecaca);
-      label
-        .setText(`EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession?.manager.snapshot().elapsedMs ?? 0)}`)
-        .setColor(isOpen ? '#dcfce7' : '#fecaca');
+      label.setText(
+        `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession?.manager.snapshot().elapsedMs ?? 0)}`,
+        isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
+      );
     }
   }
 

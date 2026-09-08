@@ -37,6 +37,8 @@ import {
   type HunterState,
 } from '../world/hunter';
 import { attemptWildEscape, wildEscapeChanceFor } from '../pokemon/battle/escape';
+import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
+import { WINDOW_CREAM } from '../ui/pixelWindow';
 import {
   WILD_ESCAPE_SUCCESS_MESSAGE,
   combatantBanner,
@@ -69,7 +71,8 @@ const STARTING_POKE_BALLS = 5;
 /** Long enough for the wipe flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
 const PARTY_LIMIT = 6;
-const BATTLEFIELD_WIDTH = 320;
+const BATTLEFIELD_WIDTH = BASE_STAGE_WIDTH;
+const BATTLEFIELD_HEIGHT = BASE_STAGE_HEIGHT;
 const GRASS_BACKDROP_WIDTH = 257;
 const BANNER_TEXT_STYLE = {
   fontFamily: BATTLE_FONT,
@@ -209,9 +212,15 @@ export class BattleScene extends Phaser.Scene {
       ? createTrainerBattleState(playerPokemon, data.trainer)
       : createBattleState(playerPokemon, wildPokemon);
     this.participatingPokemon.add(playerPokemon);
-    this.cameras.main.setBackgroundColor('#111827');
+    this.cameras.main.setBackgroundColor('#0b1220');
+    this.centreComposition();
     this.cameras.main.fadeIn(180, 0, 0, 0);
     this.drawBackdrop();
+    const recentre = () => this.centreComposition();
+    this.scale.on?.(Phaser.Scale.Events.RESIZE, recentre);
+    this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () =>
+      this.scale.off?.(Phaser.Scale.Events.RESIZE, recentre),
+    );
     this.drawCombatants();
     this.drawStatusBoxes();
     this.displayedHp = {
@@ -291,11 +300,45 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Keeps the authored 320x240 battle screen the shape it was tuned to.
+   *
+   * The overworld spends a larger browser window on more map; a battle has a
+   * composition rather than a viewport, so it stays exactly as laid out and is
+   * centred by scrolling the camera. Every coordinate in this scene is still
+   * read as a position on the battle screen, which is why nothing else here
+   * knows the window size.
+   */
+  private centreComposition(): void {
+    const offset = baseCompositionOffset({
+      width: this.scale.width,
+      height: this.scale.height,
+      zoom: 1,
+    });
+    this.cameras.main.setScroll(-offset.x, -offset.y);
+  }
+
+  /**
+   * The battlefield, and the bezel it sits in on a screen wider than itself.
+   *
+   * Widening the backdrop was tried and rejected: its horizon is bands but its
+   * platform is an ellipse, so stretching it put a second, flatter platform in
+   * the margin. The margin is the camera's own colour instead, with the frame
+   * the rest of the game's windows are drawn with around the battle, which is
+   * what makes it read as a screen rather than as art that stopped short.
+   */
   private drawBackdrop(): void {
     this.add
       .image(BATTLEFIELD_WIDTH / 2, 0, 'battle-background-grass')
       .setOrigin(0.5, 0)
       .setScale(BATTLEFIELD_WIDTH / GRASS_BACKDROP_WIDTH);
+    const bezel = this.add.graphics().setDepth(20);
+    bezel.fillStyle(WINDOW_CREAM, 1);
+    bezel.fillRect(-1, -1, BATTLEFIELD_WIDTH + 2, 1);
+    bezel.fillRect(-1, BATTLEFIELD_HEIGHT, BATTLEFIELD_WIDTH + 2, 1);
+    bezel.fillRect(-1, 0, 1, BATTLEFIELD_HEIGHT);
+    bezel.fillRect(BATTLEFIELD_WIDTH, 0, 1, BATTLEFIELD_HEIGHT);
+    this.centreComposition();
   }
 
   private drawCombatants(): void {
