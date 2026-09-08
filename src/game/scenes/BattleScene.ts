@@ -28,7 +28,7 @@ import { audioManager } from '../audio/AudioManager';
 import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
-import { deployedRaidCondition } from '../run/raidSettlement';
+import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlement';
 import type { ActiveRunSession, RaidLocation } from '../run/RunSession';
 import {
   HUNTER_SEARCH_MS,
@@ -83,6 +83,7 @@ type BattleAction =
 const COMMAND_Y = 174;
 /** One name for the face, so nothing can drift from what BootScene waits on. */
 const BATTLE_FONT = GAME_FONT;
+/** What a battle launched outside a raid stocks its stand-in pack with. */
 const STARTING_POKE_BALLS = 5;
 /** Long enough for the wipe flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
@@ -107,9 +108,11 @@ export interface BattleSceneData {
   wild?: WildEncounter;
   trainer?: TrainerBattle;
   party?: PokemonParty;
-  /** The raid's own bag, so an item used in a fight is spent from what was packed. */
+  /**
+   * The raid's own bag, balls included, so anything used in a fight is spent
+   * from what was packed.
+   */
   bag?: Bag;
-  pokeBalls?: number;
   caughtPokemonStash?: PokemonInstance[];
   /** The active raid context, passed through from WorldScene. */
   runSession?: ActiveRunSession;
@@ -165,14 +168,17 @@ export class BattleScene extends Phaser.Scene {
   private partyMessage = '';
   private readonly participatingPokemon = new Set<PokemonInstance>();
   private victoryRewardsGranted = false;
-  // This seam is intentionally plain data until the run-level bag and stash systems own it.
-  private pokeBalls = STARTING_POKE_BALLS;
   /**
    * The bag the raid is carrying, not the persisted overworld bag. They are
    * different inventories, and reading the wrong one is how a wipe report came
    * to describe supplies the raid never had.
+   *
+   * Poke Balls are counted here like every other supply. A separate ball
+   * counter beside this was the last of the raid's inventory kept somewhere the
+   * settlement could not see, which is why the wipe report had to overwrite the
+   * ball line by hand after reading the bag for everything else.
    */
-  private bag = new Bag();
+  private bag = new Bag({ 'poke-ball': STARTING_POKE_BALLS });
   /** The medicine chosen from the ITEM list, waiting on a Pokemon to use it on. */
   private pendingItem: ItemDefinition | undefined;
   private caughtPokemonStash: PokemonInstance[] = [];
@@ -208,11 +214,10 @@ export class BattleScene extends Phaser.Scene {
     this.participatingPokemon.clear();
     this.victoryRewardsGranted = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
-    this.bag = data.bag ?? new Bag();
+    this.bag = data.bag ?? new Bag({ 'poke-ball': STARTING_POKE_BALLS });
     // Phaser reuses this scene, so a medicine chosen in the last fight and never
     // handed to anyone would still be waiting for a target in this one.
     this.pendingItem = undefined;
-    this.pokeBalls = data.pokeBalls ?? STARTING_POKE_BALLS;
     this.caughtPokemonStash = data.caughtPokemonStash ?? [];
     this.runSession = data.runSession;
     this.trainer = data.trainer;
@@ -552,7 +557,13 @@ export class BattleScene extends Phaser.Scene {
       ? this.hunterBattle
         ? ['FIGHT', this.hunterFleeLabel(), 'POKéMON', item]
         : ['FIGHT', 'POKéMON', item]
-      : ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', item, this.wildEscapeLabel()];
+      : [
+        'FIGHT',
+        `BALL x${this.bag.count('poke-ball')}`,
+        'POKéMON',
+        item,
+        this.wildEscapeLabel(),
+      ];
   }
 
   private itemCommandLabels(): readonly string[] {
@@ -954,14 +965,13 @@ export class BattleScene extends Phaser.Scene {
       this.dialog.showMessage("You can't catch a trainer's POKéMON!");
       return;
     }
-    if (this.pokeBalls === 0) {
+    if (!this.bag.remove('poke-ball', 1)) {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
       this.dialog.showMessage('No POKé BALLS left!');
       return;
     }
 
-    this.pokeBalls -= 1;
     const result = resolveCatchAttempt(this.state, () => Math.random());
     this.state = result.state;
     let events = result.events;
@@ -1449,7 +1459,6 @@ export class BattleScene extends Phaser.Scene {
         // an item drunk in this fight is gone from the supplies the overworld,
         // the extraction settlement and the stash all read.
         bag: this.bag,
-        pokeBalls: this.pokeBalls,
         caughtPokemonStash: this.caughtPokemonStash,
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],
@@ -1477,11 +1486,14 @@ export class BattleScene extends Phaser.Scene {
     // with, spent down by this fight. The persisted save's bag was read here
     // once; that is the free-roam inventory and has nothing to do with the
     // raid, so a wipe report priced supplies the raid never carried.
-    const carriedOut = { ...this.bag.toJSON(), 'poke-ball': this.pokeBalls };
+    const carriedOut = this.bag.toJSON();
+    // The pack is also what divides the loss: only a secured supply still in it
+    // comes home, and only what is still in it was destroyed with the raid.
+    const wipe = buildWipeSettlement(this.runSession.secureSlot.items ?? [], carriedOut);
     const saved = new SaveManager().applyWipeLoss(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
-      this.runSession.stashSecureSlot,
+      { ...this.runSession.stashSecureSlot, items: wipe.securedItems },
       // A secured Pokemon comes home in the state this battle left it in, which
       // after a lost raid is almost always fainted.
       deployedRaidCondition(this.runSession.broughtPokemonIds, snapshot),
@@ -1500,7 +1512,7 @@ export class BattleScene extends Phaser.Scene {
       cause: 'defeated',
       snapshot,
       durationMs: snapshot.durationMs,
-      lost: { pokemon: result.lostPokemon, items: result.lostItems },
+      lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
       carriedOut,
       // The one that was out when the party ran out. The result screen's defeat
       // sequence names it, and it cannot be recovered afterwards: by then every

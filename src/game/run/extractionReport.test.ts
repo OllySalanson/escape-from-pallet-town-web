@@ -204,8 +204,13 @@ describe('extraction report after a lost raid', () => {
       { itemId: 'poke-ball', label: 'Poke Ball', quantity: 3 },
     ]);
     expect(report.secured.pokemon.map(({ name }) => name)).toEqual(['Pidgey']);
+    // Three Potions were secured and only one was still in the pack, so only
+    // one came home. Claiming all three while the panel beside this one said
+    // two were spent was the screen contradicting itself.
+    expect(report.secured.items).toEqual([{ itemId: 'potion', label: 'Potion', quantity: 1 }]);
+    expect(report.spent).toEqual([{ itemId: 'potion', label: 'Potion', quantity: 2 }]);
     expect(report.gambleVerdict).toBe(
-      'The secure slot brought Pidgey and 3 Potions home. Bulbasaur and 3 Poke Balls did not make it.',
+      'The secure slot brought Pidgey and 1 Potion home. Bulbasaur and 3 Poke Balls did not make it.',
     );
     // A loss is never graded as a haul, whatever the secure slot rescued.
     expect(report.haulTier).toBe('empty');

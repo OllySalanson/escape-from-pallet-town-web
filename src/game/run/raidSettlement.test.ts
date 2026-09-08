@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { BULBASAUR, CHARMANDER, Pokemon, experienceForLevel } from '../pokemon';
 import { RunManager } from './RunManager';
-import { buildRaidSettlement, deployedRaidCondition, raidSupplyDelta } from './raidSettlement';
+import {
+  buildRaidSettlement,
+  buildWipeSettlement,
+  deployedRaidCondition,
+  raidSupplyDelta,
+  survivingSecureItems,
+} from './raidSettlement';
 
 const RUN_CONFIG = { mapId: 'pallet-town', durationMs: 60_000 };
 
@@ -116,5 +122,53 @@ describe('raid settlement', () => {
       ],
       supplies: [{ itemId: 'potion', quantity: -2 }],
     });
+  });
+});
+
+describe('what a lost raid leaves behind', () => {
+  it('divides the pack into what the slot held and what went down with the raid', () => {
+    expect(
+      buildWipeSettlement([{ itemId: 'potion', quantity: 2 }], { potion: 3, 'poke-ball': 4 }),
+    ).toEqual({
+      securedItems: [{ itemId: 'potion', quantity: 2 }],
+      destroyedItems: [
+        { itemId: 'potion', quantity: 1 },
+        { itemId: 'poke-ball', quantity: 4 },
+      ],
+    });
+  });
+
+  it('brings home only the secured supplies that were still in the pack', () => {
+    // Two Potions were declared secure and only one survived the raid. Handing
+    // back both made drinking a secured Potion free, and said on screen that it
+    // came home while the line beside it said it was drunk.
+    expect(survivingSecureItems([{ itemId: 'potion', quantity: 2 }], { potion: 1 })).toEqual([
+      { itemId: 'potion', quantity: 1 },
+    ]);
+    expect(survivingSecureItems([{ itemId: 'potion', quantity: 2 }], {})).toEqual([]);
+  });
+
+  it('charges spending against unprotected stock first, because supplies are fungible', () => {
+    // Three carried, two protected, one drunk: the loose one is the one gone.
+    expect(
+      buildWipeSettlement([{ itemId: 'potion', quantity: 2 }], { potion: 2 }),
+    ).toEqual({
+      securedItems: [{ itemId: 'potion', quantity: 2 }],
+      destroyedItems: [],
+    });
+  });
+
+  it('accounts for every supply exactly once, whatever the raid did with it', () => {
+    const carriedOut = { potion: 2, 'poke-ball': 3 };
+    const { securedItems, destroyedItems } = buildWipeSettlement(
+      [{ itemId: 'potion', quantity: 1 }],
+      carriedOut,
+    );
+    const totals = new Map<string, number>();
+    for (const { itemId, quantity } of [...securedItems, ...destroyedItems]) {
+      totals.set(itemId, (totals.get(itemId) ?? 0) + quantity);
+    }
+
+    expect(Object.fromEntries(totals)).toEqual(carriedOut);
   });
 });

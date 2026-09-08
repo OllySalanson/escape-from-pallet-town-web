@@ -12,7 +12,7 @@ import { createStartingStash } from '../stash';
 import { createActiveRunSession } from './RunSession';
 import { RunManager } from './RunManager';
 import { buildExtractionReport } from './extractionReport';
-import { buildRaidSettlement, deployedRaidCondition } from './raidSettlement';
+import { buildRaidSettlement, buildWipeSettlement, deployedRaidCondition } from './raidSettlement';
 import { RAID_DURATION_MS } from './raidClock';
 
 class MemoryStorage implements StorageLike {
@@ -655,6 +655,95 @@ describe('extraction loop integration', () => {
     expect(report.secured.pokemon.map(({ name }) => name)).toEqual(['Bulbasaur']);
     expect(report.headline).toBe('The clock ran out with you still inside.');
     expect(report.haulTier).toBe('empty');
+  });
+
+  it('does not hand back a secured supply the raid drank before it went down', () => {
+    const storage = new MemoryStorage();
+    const saves = seedNewPlayer(storage);
+    const stash = saves.load()!.stash;
+    const starter = stash.listPokemon()[0];
+    // Super Potions sit above no restock floor, so the stash total after the
+    // wipe is the settlement's own answer rather than a top-up.
+    stash.addItem('super-potion', 2);
+    saves.save({
+      party: new PokemonParty(),
+      mapId: 'floodplain-relay',
+      position: { x: 15, y: 3 },
+      bag: new Bag(),
+      stash,
+    });
+
+    const secured = [{ itemId: 'super-potion', quantity: 2 }] as const;
+    const loadout = { party: [starter.pokemon], items: [...secured] };
+    const secureSlot = { pokemon: starter.pokemon, items: [...secured] };
+    const manager = new RunManager();
+    manager.startRun(loadout, { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS }, secureSlot);
+    const session = createActiveRunSession(
+      manager,
+      secureSlot,
+      { pokemonId: starter.id, items: [...secured] },
+      [starter.id],
+      loadout.items,
+    );
+    // One of the two was drunk in the field; the pack came out holding one.
+    const carriedOut = new Bag({ 'super-potion': 1 }).toJSON();
+    session.manager.tick(RAID_DURATION_MS);
+    session.manager.resolveWipe(session.secureSlot);
+    const wipe = buildWipeSettlement(session.secureSlot.items ?? [], carriedOut);
+
+    expect(
+      saves.applyWipeLoss(session.broughtPokemonIds, session.broughtItems, {
+        ...session.stashSecureSlot,
+        items: wipe.securedItems,
+      }),
+    ).toBe(true);
+
+    // The secure slot brings home what survived the raid, not what was declared
+    // before it: honouring the whole stack made drinking a secured Potion free,
+    // and wiping the cheapest way to heal a worn party.
+    expect(saves.load()!.stash.itemCount('super-potion')).toBe(1);
+    expect(wipe.destroyedItems).toEqual([]);
+  });
+
+  it('banks the loot a survived raid actually kept, not the loot it picked up and drank', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const loadout = { party: [starter.pokemon], items: [{ itemId: 'potion', quantity: 3 }] } as const;
+    const manager = new RunManager();
+    manager.startRun(loadout, { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS });
+    const session = createActiveRunSession(manager, {}, {}, [starter.id], loadout.items);
+    session.manager.tick(60_000);
+    // Two Super Potions found in the field, both drunk before the exit.
+    session.manager.registerFoundItem('super-potion', 2);
+    session.manager.resolveEscape();
+    const snapshot = session.manager.snapshot();
+    const carriedOut = new Bag({ potion: 3 }).toJSON();
+    const settlement = buildRaidSettlement(session.broughtPokemonIds, snapshot, carriedOut);
+
+    const before = saves.load()!.stash.listItems();
+    expect(saves.bankRun({ pokemon: snapshot.caughtPokemon, items: [] }, settlement)).toBe(true);
+    const after = saves.load()!.stash.listItems();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot,
+      durationMs: RAID_DURATION_MS,
+      exitLabel: 'SOUTH GATE',
+      banked: {
+        pokemon: snapshot.caughtPokemon,
+        items: settlement.supplies.filter(({ quantity }) => quantity > 0),
+      },
+      carriedOut,
+      saved: true,
+    });
+
+    // The stash is no better off, so the ledger has nothing to list - and the
+    // panel below it says where the two Super Potions went.
+    expect(after).toEqual(before);
+    expect(report.ledger.items).toEqual([]);
+    expect(report.spent).toEqual([
+      { itemId: 'super-potion', label: 'Super Potion', quantity: 2 },
+    ]);
   });
 
   it('unlocks the three remaining insertions and grants one supply exactly once after extracting the recovered field kit', () => {
