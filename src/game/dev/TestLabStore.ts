@@ -9,7 +9,7 @@ export interface TestLabScenario {
   readonly title: string;
   readonly setup: string;
   readonly expected: string;
-  readonly route: 'base' | 'run-town' | 'run-south' | 'battle';
+  readonly route: 'base' | 'run-town' | 'run-forest' | 'run-route' | 'battle';
 }
 
 export interface TestLabRecord {
@@ -42,16 +42,16 @@ export const TEST_LAB_SCENARIOS: readonly TestLabScenario[] = [
   {
     id: 'redeploy-spawn',
     title: 'Redeployment spawn',
-    setup: 'South Verge fixed raid.',
+    setup: 'Viridian Forest fixed raid.',
     expected: 'Run begins at the selected insertion.',
-    route: 'run-south',
+    route: 'run-forest',
   },
   {
     id: 'field-station-cache',
     title: 'Field Station cache',
-    setup: 'Fixed Town Square raid.',
+    setup: 'Fixed Route 1 raid.',
     expected: 'Field Station cache is usable once per raid.',
-    route: 'run-town',
+    route: 'run-route',
   },
   {
     id: 'battle-attribution',
@@ -63,9 +63,9 @@ export const TEST_LAB_SCENARIOS: readonly TestLabScenario[] = [
   {
     id: 'long-text',
     title: 'Long objective / move text',
-    setup: 'South Verge fixed raid.',
+    setup: 'Viridian Forest fixed raid.',
     expected: 'Long copy remains readable without clipping.',
-    route: 'run-south',
+    route: 'run-forest',
   },
   {
     id: 'pp-persistence',

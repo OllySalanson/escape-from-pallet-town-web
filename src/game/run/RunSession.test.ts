@@ -11,7 +11,7 @@ describe('raid session locations', () => {
     expect(plan.insertion).toMatchObject({
       id: 'town-square',
       mapId: 'pallet-town',
-      position: { x: 6, y: 8 },
+      position: { x: 7, y: 6 },
     });
   });
 

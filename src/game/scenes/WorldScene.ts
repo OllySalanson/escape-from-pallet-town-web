@@ -565,7 +565,9 @@ export class WorldScene extends Phaser.Scene {
         this,
         x,
         y - 12,
-        `${poi.label}\n${poi.effect === 'activate-radio' ? 'RADIO: EXIT OFFLINE' : `CACHE: ${formatPoiReward(poi)}`}`,
+        `${poi.label}\n${poi.effect === 'unlock-extraction'
+          ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED`
+          : `CACHE: ${formatPoiReward(poi)}`}`,
         LABEL_TONES.station,
         4 + poi.position.y / 1000,
       );
@@ -1225,11 +1227,12 @@ export class WorldScene extends Phaser.Scene {
     const reward = poi!.reward
       .map(({ itemId, quantity }) => `${quantity}× ${ITEMS[itemId].displayName}`)
       .join(' + ');
-    if (poi!.effect === 'activate-radio') {
+    if (poi!.effect === 'unlock-extraction') {
+      const exit = poi!.unlockedExtractionLabel ?? 'A NEW EXIT';
       this.dialogBox.showMessages([
-        'RANGER STATION: Radio Exit activated.',
+        `${poi!.label}: ${exit} is open.`,
         this.rangerForecast(),
-        'Road: fastest, but Maya watches it. Reeds: longer cover. South Gate stays dependable.',
+        ...(reward ? [`${reward} secured. Extract to bank it.`] : []),
       ]);
       this.refreshExtractionMarkers();
       return true;
@@ -1344,10 +1347,10 @@ export class WorldScene extends Phaser.Scene {
     const elapsedMs = this.runSession?.manager.snapshot().elapsedMs ?? 0;
     const spawnDelayMs = this.runSession?.plan?.hunter.spawnDelayMs ?? HUNTER_SPAWN_MS;
     if (this.hunterState.spawned && !this.hunterState.defeated) {
-      return 'HUNTER FORECAST: active in this area. Use reeds to break the straight road approach.';
+      return 'HUNTER FORECAST: active in this area. Break its line of sight and keep moving.';
     }
     const seconds = Math.max(0, Math.ceil((spawnDelayMs - elapsedMs) / 1_000));
-    return `HUNTER FORECAST: trail enters this area in about ${seconds}s. Ferry timing may be costly.`;
+    return `HUNTER FORECAST: trail enters this area in about ${seconds}s. Waiting for a timed exit may cost you.`;
   }
 
   /**
@@ -1421,7 +1424,7 @@ export class WorldScene extends Phaser.Scene {
               description: FIRST_CONTRACT.description,
               complete: true,
               reward: contractResult.granted
-                ? 'The Pallet Town insertions are permanently unlocked, and a Super Potion is waiting at base.'
+                ? 'Three more insertions are permanently unlocked, and a Super Potion is waiting at base.'
                 : 'Already banked on an earlier raid, so there is no new unlock this time.',
             },
           }

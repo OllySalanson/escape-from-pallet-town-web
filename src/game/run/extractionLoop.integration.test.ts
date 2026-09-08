@@ -515,7 +515,7 @@ describe('extraction loop integration', () => {
     expect(report.haulTier).toBe('empty');
   });
 
-  it('unlocks the Pallet Town insertions and grants one supply exactly once after extracting the recovered field kit', () => {
+  it('unlocks the three remaining insertions and grants one supply exactly once after extracting the recovered field kit', () => {
     const saves = seedNewPlayer(new MemoryStorage());
     const starter = saves.load()!.stash.listPokemon()[0];
     const loadout = { party: [starter.pokemon], items: [] };
@@ -529,7 +529,7 @@ describe('extraction loop integration', () => {
     expect(saves.bankFirstContractRun(result)).toEqual({ saved: true, granted: true });
     expect(saves.load()!.raidProgress).toEqual({
       firstContractExtracted: true,
-      unlockedInsertions: ['floodplain-relay', 'town-square', 'south-verge'],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     });
     expect(saves.load()!.stash.itemCount('super-potion')).toBe(1);
 

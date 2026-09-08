@@ -7,7 +7,12 @@ export const EXTRACTION_UNLOCK_DELAY_MS = 25_000;
 export type ExtractionRequirement =
   | { readonly kind: 'always' }
   | { readonly kind: 'elapsed'; readonly unlockAtMs: number }
-  | { readonly kind: 'poi-activated'; readonly poiId: string };
+  | {
+      readonly kind: 'poi-activated';
+      readonly poiId: string;
+      /** Named on the marker so a sealed exit says what opens it. */
+      readonly poiLabel: string;
+    };
 
 export interface ExtractionPoint {
   readonly mapId: WorldMapId;
@@ -51,30 +56,76 @@ export function extractionRequirementText(point: ExtractionPoint, elapsedMs: num
     return 'OPEN';
   }
   if (requirement.kind === 'poi-activated') {
-    return 'ACTIVATE RANGER RADIO';
+    return `ACTIVATE ${requirement.poiLabel}`;
   }
   const seconds = Math.max(0, Math.ceil((requirement.unlockAtMs - elapsedMs) / 1_000));
-  return seconds === 0 ? 'OPEN' : `FERRY IN ${seconds}s`;
+  return seconds === 0 ? 'OPEN' : `OPENS IN ${seconds}s`;
 }
 
 export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   {
     mapId: 'pallet-town',
-    position: { x: 13, y: 39 },
+    position: { x: 15, y: 43 },
     label: 'SOUTH GATE',
     unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'pallet-town',
+    position: { x: 31, y: 20 },
+    label: 'MILL STAIR',
+    unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
+  },
+  {
+    mapId: 'pallet-town',
+    position: { x: 0, y: 32 },
+    label: 'WEST CULVERT',
+    unlockAtMs: 0,
+    requirement: { kind: 'poi-activated', poiId: 'pallet-sluice-wheel', poiLabel: 'SLUICE WHEEL' },
   },
   {
     mapId: 'route-1',
-    position: { x: 14, y: 25 },
+    position: { x: 0, y: 26 },
+    label: 'WEST GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'route-1',
+    position: { x: 16, y: 31 },
     label: 'ROUTE OUTPOST',
     unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
+  },
+  {
+    mapId: 'route-1',
+    position: { x: 31, y: 13 },
+    label: 'STATION RELAY',
+    unlockAtMs: 0,
+    requirement: {
+      kind: 'poi-activated',
+      poiId: 'oak-field-station-relay',
+      poiLabel: "OAK'S FIELD STATION",
+    },
+  },
+  {
+    mapId: 'viridian-forest',
+    position: { x: 1, y: 20 },
+    label: 'BROOK FORD',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
   },
   {
     mapId: 'viridian-forest',
     position: { x: 20, y: 30 },
     label: 'FOREST CLEARING',
     unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS * 2,
+  },
+  {
+    mapId: 'viridian-forest',
+    position: { x: 30, y: 8 },
+    label: 'TOWER STEPS',
+    unlockAtMs: 0,
+    requirement: { kind: 'poi-activated', poiId: 'forest-fire-tower', poiLabel: 'FIRE TOWER' },
   },
   {
     mapId: 'floodplain-relay',
@@ -95,6 +146,10 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     position: { x: 19, y: 8 },
     label: 'RADIO EXIT',
     unlockAtMs: 0,
-    requirement: { kind: 'poi-activated', poiId: 'floodplain-ranger-radio' },
+    requirement: {
+      kind: 'poi-activated',
+      poiId: 'floodplain-ranger-radio',
+      poiLabel: 'RANGER STATION',
+    },
   },
 ];

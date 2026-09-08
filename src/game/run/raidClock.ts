@@ -11,10 +11,12 @@
  * - A step is `STEP_DURATION_MS` of animation plus a frame to finish it and a
  *   frame to plan the next one, so a tile costs about 0.17s at 60fps, and
  *   measured about 0.23s in a headless browser.
- * - Insertion (15,3) to the contract (11,23) is 24 tiles, and the contract to the
- *   South Gate is 9. The whole beeline is 33 tiles: about 8 seconds of walking.
+ * - Insertion (15,3) to the contract (11,23) is 41 tiles, and the contract to the
+ *   South Gate is 12. The whole beeline is 53 tiles: about 12 seconds of walking.
+ *   (It was 33 tiles before the map was redrawn; the contract now sits three
+ *   reed shelves deep instead of one step off the road.)
  * - The greediest sensible route - ranger radio, flooded vault, both loot drops,
- *   the contract, then the Ferry Dock - is 72 tiles: about 17 seconds.
+ *   the contract, then the Ferry Dock - is 108 tiles: about 25 seconds.
  * - Authored dialogue types at 40 characters a second. Both signs, the radio, the
  *   vault cache, two loot pickups, the kit and the hunter warning come to about
  *   25 seconds of reading.

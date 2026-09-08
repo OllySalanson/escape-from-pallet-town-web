@@ -13,29 +13,39 @@ import {
 } from '../world/trainers';
 import { createSeededRng } from './rng';
 
-// Floodplain Relay is listed first because it is the starting area every save
-// deploys into; the Pallet Town insertions are unlocked by the first contract.
+// Every raid map is its own level, entered at its own insertion - no map is
+// reachable by walking off the edge of another, so no two insertions can be the
+// same level under two names. Floodplain Relay is listed first because it is the
+// starting area every save deploys into; the other three unlock together when
+// the first contract is extracted.
 export const RUN_INSERTIONS = {
   'floodplain-relay': {
     id: 'floodplain-relay',
     label: 'Floodplain Relay',
     mapId: 'floodplain-relay',
     position: { x: 15, y: 3 },
-    description: 'A compact relay with a road checkpoint, reed bypass, and three extraction choices.',
+    description: 'The landing jetty. A doglegged road, eight reed shelves, and three exits on three different rules.',
   },
   'town-square': {
     id: 'town-square',
     label: 'Town Square',
     mapId: 'pallet-town',
-    position: { x: 6, y: 8 },
-    description: 'A protected start with the South Gate marked for a safe escape.',
+    position: { x: 7, y: 6 },
+    description: 'A fenced market square with one gate on each side. Four gates, four different halves of the town.',
   },
-  'south-verge': {
-    id: 'south-verge',
-    label: 'South Verge',
-    mapId: 'pallet-town',
-    position: { x: 7, y: 36 },
-    description: 'A faster, rougher route toward Route 1.',
+  'route-1': {
+    id: 'route-1',
+    label: 'Route 1',
+    mapId: 'route-1',
+    position: { x: 16, y: 3 },
+    description: 'The head of the braid. Two roads run the length of it and every crossing between them is grass.',
+  },
+  'viridian-forest': {
+    id: 'viridian-forest',
+    label: 'Viridian Forest',
+    mapId: 'viridian-forest',
+    position: { x: 7, y: 2 },
+    description: 'North Landing. Eleven clearings, seventeen trails, and no fast lane anywhere on the map.',
   },
 } as const;
 
@@ -43,10 +53,10 @@ export type RunInsertionId = keyof typeof RUN_INSERTIONS;
 export type RunInsertion = (typeof RUN_INSERTIONS)[RunInsertionId];
 
 /**
- * The first contract sits on the southern junction of the Floodplain Relay, so
- * the fast central road and the slower west reed lane are both honest ways to
- * reach it and the choice between them is the raid's first real decision. The
- * South Gate, the timed Ferry Dock and the vault detour all branch from there.
+ * The first contract sits three reed shelves deep on the Floodplain Relay, so
+ * the fast road and the slow covered reeds are both honest ways to reach it and
+ * the choice between them is the raid's first real decision. The South Gate,
+ * the timed Ferry Dock and the vault detour all branch from there.
  */
 export const FIRST_CONTRACT = {
   id: 'recover-lost-field-kit',

@@ -43,10 +43,14 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     ),
   },
   {
+    // The centre ford is the direct line from the allotments to the South Gate,
+    // and Lee stands on it: the fast crossing has a toll, the west and east
+    // fords do not, and they land you in different thirds of the south.
     mapId: 'pallet-town',
-    position: { x: 14, y: 26 },
-    facing: 'left',
-    introLines: ['HEY, RUNNER!', 'The grass belongs to the bold!', 'Let me see your team!'],
+    position: { x: 15, y: 30 },
+    facing: 'up',
+    fixedPosition: true,
+    introLines: ['HEY, RUNNER!', 'This is the quick ford. Quick costs.', 'Let me see your team!'],
     // Lee is the first authored trainer a new player meets. A Bulbasaur here
     // made the fight a starter lottery at level 7 - 9% for Bulbasaur against
     // 95% for Charmander - because Grass is resisted by the whole early roster.
@@ -59,9 +63,12 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     ),
   },
   {
+    // The third cross-link is the short way between the two roads. Maya holds
+    // it; the roads still go round her.
     mapId: 'route-1',
-    position: { x: 13, y: 18 },
+    position: { x: 16, y: 20 },
     facing: 'down',
+    fixedPosition: true,
     introLines: ['NO ONE loots Route 1 for free!', 'My partner is ready!'],
     trainer: createTrainer(
       'route-raider-maya',
@@ -71,9 +78,12 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     ),
   },
   {
+    // Ivy stands in the middle of a three-trail hub, so she is passable: her
+    // clearing has other ways out and being caught here is never forced.
     mapId: 'viridian-forest',
     position: { x: 18, y: 18 },
     facing: 'down',
+    fixedPosition: true,
     introLines: ['THE FOREST KEEPS WHAT IT TAKES.', 'Turn back or face my bugs!'],
     trainer: createTrainer(
       'forest-warden-ivy',

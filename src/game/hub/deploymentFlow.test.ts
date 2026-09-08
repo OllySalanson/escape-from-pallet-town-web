@@ -76,7 +76,7 @@ describe('deployment flow', () => {
     flow.togglePokemon('bulbasaur-1');
     flow.adjustItem('potion', 2);
     flow.adjustItem('poke-ball', 1);
-    flow.chooseInsertion('south-verge');
+    flow.chooseInsertion('viridian-forest');
     flow.openSecureSlot();
     flow.toggleSecurePokemon('charmander-1');
     flow.toggleSecureItem('potion');
@@ -85,7 +85,7 @@ describe('deployment flow', () => {
 
     const deployment = flow.deploy();
 
-    expect(deployment.insertionId).toBe('south-verge');
+    expect(deployment.insertionId).toBe('viridian-forest');
     expect(deployment.party.map(({ id }) => id)).toEqual(['charmander-1', 'bulbasaur-1']);
     expect(deployment.party[0].pokemon).toBe(
       stash.listPokemon().find(({ id }) => id === 'charmander-1')?.pokemon,

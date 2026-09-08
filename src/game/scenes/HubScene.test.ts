@@ -326,7 +326,7 @@ describe('hub deployment route', () => {
   it('reopens the legacy insertions only once the first contract has been banked', () => {
     const { hub, start } = createHub({
       firstContractExtracted: true,
-      unlockedInsertions: ['floodplain-relay', 'town-square', 'south-verge'],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     });
 
     hub.flow.togglePokemon('charmander-1');
@@ -354,7 +354,7 @@ describe('hub deployment route', () => {
       stash: createStartingStash(),
       raidProgress: {
         firstContractExtracted: true,
-        unlockedInsertions: ['floodplain-relay', 'town-square', 'south-verge'],
+        unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
       },
     });
     const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
@@ -362,7 +362,7 @@ describe('hub deployment route', () => {
     expect((hub as unknown as { savedGame: { raidProgress: RaidProgress } }).savedGame.raidProgress)
       .toEqual({
         firstContractExtracted: true,
-        unlockedInsertions: ['floodplain-relay', 'town-square', 'south-verge'],
+        unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
       });
   });
 

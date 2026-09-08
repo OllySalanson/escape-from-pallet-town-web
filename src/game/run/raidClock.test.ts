@@ -55,7 +55,7 @@ describe('raid duration', () => {
       walkingDistance(relay, insertion, FIRST_CONTRACT.position) +
       walkingDistance(relay, FIRST_CONTRACT.position, southGate.position);
 
-    expect(beelineTiles).toBe(33);
+    expect(beelineTiles).toBe(53);
     // The objective route must never be a sprint: walking it costs a small part
     // of the raid, leaving the clock to price detours, reading and hesitation.
     expect(beelineTiles * STEP_COST_MS).toBeLessThan(RAID_DURATION_MS * 0.05);
