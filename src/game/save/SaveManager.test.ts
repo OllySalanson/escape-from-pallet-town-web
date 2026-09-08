@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Pokemon, PokemonParty, CHARMANDER, PIDGEY, SQUIRTLE } from '../pokemon';
+import {
+  Pokemon,
+  PokemonParty,
+  CHARMANDER,
+  PIDGEY,
+  SQUIRTLE,
+  experienceForLevel,
+} from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { Bag } from '../items';
 import { SAVE_KEY, SaveManager } from './SaveManager';
@@ -367,7 +374,9 @@ describe('SaveManager', () => {
       saves.bankRun(
         { pokemon: [], items: [] },
         {
-          condition: [{ id: 'charmander-1', currentHp: 6, primaryStatus: 'burn' }],
+          condition: [
+            { id: 'charmander-1', currentHp: 6, primaryStatus: 'burn', experience: 400 },
+          ],
           supplies: [{ itemId: 'potion', quantity: -2 }],
         },
       ),
@@ -394,8 +403,18 @@ describe('SaveManager', () => {
         { pokemon: [], items: [] },
         {
           condition: [
-            { id: 'charmander-1', currentHp: 9_999, primaryStatus: null },
-            { id: 'nobody-1', currentHp: 5, primaryStatus: 'burn' },
+            {
+              id: 'charmander-1',
+              currentHp: 9_999,
+              primaryStatus: null,
+              experience: charmander.experience,
+            },
+            {
+              id: 'nobody-1',
+              currentHp: 5,
+              primaryStatus: 'burn',
+              experience: charmander.experience,
+            },
           ],
           // More Potions spent than the vault holds, which can only clear it.
           supplies: [{ itemId: 'potion', quantity: -4 }],
@@ -408,6 +427,70 @@ describe('SaveManager', () => {
       { id: 'charmander-1', pokemon: { currentHp: charmander.maxHp } },
     ]);
     expect(settled?.stash.listItems()).toEqual({});
+  });
+
+  it('never demotes a Pokemon on a stale or replayed settlement', () => {
+    // Experience is carried as a total rather than a delta precisely so this is
+    // a no-op: banking the same raid twice must not pay its wins out twice, and
+    // a settlement written before a level the vault has since banked must not
+    // take that level away.
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    const charmander = new Pokemon(CHARMANDER, 7);
+    stash.addPokemon(charmander, 'charmander-1');
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 1, y: 1 }, stash });
+
+    const settlement = {
+      condition: [
+        { id: 'charmander-1', currentHp: 4, primaryStatus: null, experience: experienceForLevel(8) },
+      ],
+      supplies: [],
+    } as const;
+    expect(saves.bankRun({ pokemon: [], items: [] }, settlement)).toBe(true);
+    expect(saves.load()?.stash.listPokemon()[0].pokemon.level).toBe(8);
+
+    // The same settlement again, and then an older one from before the level.
+    expect(saves.bankRun({ pokemon: [], items: [] }, settlement)).toBe(true);
+    expect(
+      saves.bankRun(
+        { pokemon: [], items: [] },
+        {
+          condition: [
+            { id: 'charmander-1', currentHp: 4, primaryStatus: null, experience: 0 },
+          ],
+          supplies: [],
+        },
+      ),
+    ).toBe(true);
+
+    const settled = saves.load()?.stash.listPokemon()[0].pokemon;
+    expect(settled?.level).toBe(8);
+    expect(settled?.experience).toBe(experienceForLevel(8));
+  });
+
+  it('reads a save written before experience was recorded as being at its level, not at zero', () => {
+    // Version 1 saves carry a level and no XP. Reading that as zero would make a
+    // returning player pay the whole curve again for a level they already had.
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 1,
+        party: [{ speciesId: 'charmander', level: 7, currentHp: 21, moves: ['Scratch'] }],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        stash: {
+          pokemon: [{ speciesId: 'charmander', level: 7, currentHp: 21, moves: ['Scratch'] }],
+          items: [],
+        },
+      }),
+    );
+
+    const restored = new SaveManager(storage).load();
+    expect(restored?.stash.listPokemon()[0].pokemon.experience).toBe(experienceForLevel(7));
+    // One ordinary win is enough to make progress from there, rather than 343.
+    expect(restored?.party.pokemon[0].experience).toBe(experienceForLevel(7));
   });
 
   it('keeps a recovery and the raid time it cost across a reload', () => {

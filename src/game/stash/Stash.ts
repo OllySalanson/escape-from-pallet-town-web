@@ -74,6 +74,15 @@ export interface RaidCondition {
   readonly id: string;
   readonly currentHp: number;
   readonly primaryStatus: PrimaryStatus | null;
+  /**
+   * The Pokemon's total experience at the end of the raid, absolute rather than
+   * a delta so applying a settlement twice cannot pay a win out twice.
+   *
+   * Level is deliberately not carried alongside it: it is a function of
+   * experience through the one curve in `experienceForLevel`, and two stored
+   * numbers for one fact are two answers waiting to disagree.
+   */
+  readonly experience: number;
 }
 
 /**
@@ -165,12 +174,21 @@ export class Stash {
 
   /**
    * Writes the condition every deployed Pokemon came home in back onto the
-   * matching stash entry. Damage, faints and lingering status all survive the
-   * raid that caused them, which is what makes a raid cost anything at all.
+   * matching stash entry: what the raid cost it, and what it earned. Damage,
+   * faints and lingering status survive the raid that caused them, which is
+   * what makes a raid cost anything at all - and the experience survives it
+   * too, which is what makes winning one worth anything at all.
    *
-   * Nothing is created, removed or healed here: unknown IDs are ignored and the
-   * HP written is clamped into the Pokemon's own range, so a corrupt or stale
-   * settlement can only ever be a no-op.
+   * Experience is replayed through `gainExperience` rather than assigned, so a
+   * level crossed in the field arrives here with the stats and the learned move
+   * that come with it instead of a level number the rest of the Pokemon
+   * disagrees with. It is applied before the HP, because levelling raises max
+   * HP and the raid's own current HP is already measured against the raised
+   * one.
+   *
+   * Nothing is created, removed or healed here: unknown IDs are ignored, the HP
+   * written is clamped into the Pokemon's own range and experience can only
+   * move forwards, so a corrupt or stale settlement can only ever be a no-op.
    */
   public applyRaidCondition(condition: readonly RaidCondition[]): void {
     for (const entry of condition) {
@@ -178,6 +196,7 @@ export class Stash {
       if (!stored) {
         continue;
       }
+      stored.pokemon.gainExperience(experienceGain(entry.experience, stored.pokemon.experience));
       stored.pokemon.currentHp = clampHp(entry.currentHp, stored.pokemon.maxHp);
       stored.pokemon.primaryStatus = entry.primaryStatus;
     }
@@ -348,6 +367,20 @@ export function createStartingStash(starter = BULBASAUR): Stash {
   const stash = new Stash();
   stash.ensurePlayable(starter);
   return stash;
+}
+
+/**
+ * How much experience a settlement still owes a stashed Pokemon: the total it
+ * reached in the raid, less the total the vault already recorded for it.
+ *
+ * Never negative, so re-applying a settlement - or applying a stale one written
+ * before a level the vault has since banked - cannot demote a Pokemon.
+ */
+function experienceGain(raidExperience: number, storedExperience: number): number {
+  if (!Number.isFinite(raidExperience)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor(raidExperience) - storedExperience);
 }
 
 function clampHp(value: number, maxHp: number): number {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BULBASAUR, CHARMANDER, Pokemon } from '../pokemon';
+import { BULBASAUR, CHARMANDER, Pokemon, experienceForLevel } from '../pokemon';
 import { RunManager } from './RunManager';
 import { buildRaidSettlement, deployedRaidCondition, raidSupplyDelta } from './raidSettlement';
 
@@ -22,13 +22,27 @@ describe('raid settlement', () => {
 
     starter.takeDamage(4);
     starter.primaryStatus = 'poison';
+    starter.gainExperience(30);
     partner.takeDamage(partner.maxHp);
 
     expect(deployedRaidCondition(['bulbasaur-1', 'charmander-1'], manager.snapshot())).toEqual([
-      { id: 'bulbasaur-1', currentHp: starter.currentHp, primaryStatus: 'poison' },
+      {
+        id: 'bulbasaur-1',
+        currentHp: starter.currentHp,
+        primaryStatus: 'poison',
+        // What the raid earned, carried by the same trip as what it cost.
+        experience: experienceForLevel(5) + 30,
+      },
       // A faint comes home as a faint. Deleting it here would charge the same
       // faint twice: losing deployed Pokemon is what a wipe is for.
-      { id: 'charmander-1', currentHp: 0, primaryStatus: null },
+      {
+        id: 'charmander-1',
+        currentHp: 0,
+        primaryStatus: null,
+        // Even a fainted Pokemon reports its experience: whether it survives at
+        // all is the wipe's decision, not this one's.
+        experience: experienceForLevel(7),
+      },
     ]);
   });
 
@@ -38,7 +52,12 @@ describe('raid settlement', () => {
 
     // More IDs than Pokemon is a mismatch, not an invitation to guess.
     expect(deployedRaidCondition(['bulbasaur-1', 'ghost-9'], manager.snapshot())).toEqual([
-      { id: 'bulbasaur-1', currentHp: starter.maxHp, primaryStatus: null },
+      {
+        id: 'bulbasaur-1',
+        currentHp: starter.maxHp,
+        primaryStatus: null,
+        experience: experienceForLevel(5),
+      },
     ]);
     expect(deployedRaidCondition([], manager.snapshot())).toEqual([]);
     expect(deployedRaidCondition(['bulbasaur-1'], new RunManager().snapshot())).toEqual([]);
@@ -87,7 +106,14 @@ describe('raid settlement', () => {
     starter.takeDamage(3);
 
     expect(buildRaidSettlement(['bulbasaur-1'], manager.snapshot(), { potion: 1 })).toEqual({
-      condition: [{ id: 'bulbasaur-1', currentHp: starter.currentHp, primaryStatus: null }],
+      condition: [
+        {
+          id: 'bulbasaur-1',
+          currentHp: starter.currentHp,
+          primaryStatus: null,
+          experience: experienceForLevel(5),
+        },
+      ],
       supplies: [{ itemId: 'potion', quantity: -2 }],
     });
   });
