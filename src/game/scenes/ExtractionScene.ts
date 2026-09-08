@@ -13,7 +13,7 @@ import type {
   ReportPokemon,
 } from '../run/extractionReport';
 import { raidClockProgress } from '../run/raidClock';
-import { itemIcon, objectiveIcon } from '../ui/icons';
+import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
 import { MenuOverlay, hpBar, pokemonAvatar } from '../ui/MenuOverlay';
 
 export interface ExtractionSceneData {
@@ -427,7 +427,7 @@ function defeatFigure(figure: DefeatFigure, index: number): string {
   const body =
     figure.kind === 'pokemon'
       ? `<img src="/assets/pokemon/front/${figure.dexId}.png" alt="" />`
-      : `<span class="defeat-item-glyph" aria-hidden="true">\u2726</span>`;
+      : `<span class="defeat-item-glyph"><img src="${iconUrl(itemIconName(figure.itemId ?? ''))}" alt="" aria-hidden="true" /></span>`;
   const meta = figure.kind === 'pokemon' ? `Lv ${figure.level ?? '?'}` : `\u00d7${figure.quantity ?? 1}`;
   return `<figure class="${classes}" data-kind="${figure.kind}" data-fate="${figure.fate}" style="--figure-index:${index}">
     <span class="defeat-sprite">${body}</span>

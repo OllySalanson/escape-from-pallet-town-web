@@ -283,6 +283,8 @@ describe('the result screen on a defeat', () => {
     // The gamble, drawn: one figure taken off the body, one held by the slot.
     expect(root.html).toContain('data-fate="taken"');
     expect(root.html).toContain('data-fate="held"');
+    // Supplies at stake are drawn with the game's own item art, never a glyph.
+    expect(root.html).toContain('/assets/icons/potion.png');
     expect(root.html).not.toContain('data-continue');
   });
 

@@ -95,11 +95,11 @@ describe('the defeat sequence a lost raid opens on', () => {
 
     expect(sequence?.figures.filter((figure) => figure.fate === 'held')).toEqual([
       expect.objectContaining({ label: 'Squirtle' }),
-      expect.objectContaining({ kind: 'item', label: 'Potion', quantity: 1 }),
+      expect.objectContaining({ kind: 'item', label: 'Potion', quantity: 1, itemId: 'potion' }),
     ]);
     expect(sequence?.figures.filter((figure) => figure.fate === 'taken')).toEqual([
       expect.objectContaining({ label: 'Charmander' }),
-      expect.objectContaining({ kind: 'item', label: 'Potion', quantity: 2 }),
+      expect.objectContaining({ kind: 'item', label: 'Potion', quantity: 2, itemId: 'potion' }),
     ]);
     expect(sequence?.beats[1].headline).toBe('THEY STRIPPED YOU.');
     expect(sequence?.beats[1].detail).toBe('Charmander and 2 Potions lifted off you and gone from your stash.');

@@ -1406,17 +1406,33 @@ button {
   image-rendering: pixelated;
   transform-origin: 50% 100%;
 }
+/* Supplies stand in a crate rather than on their own feet. The icon inside is
+   16x16 art drawn at a whole multiple of itself, as `.item-icon` does, so every
+   source pixel lands on a whole block of screen pixels. */
 .defeat-item-glyph {
   display: grid;
   place-items: center;
-  width: clamp(52px, 7.5vw, 78px);
+  width: 80px;
   aspect-ratio: 1;
   border: 3px solid #a8564a;
   background: #2c1a1b;
-  color: #f1bf63;
-  font-size: clamp(24px, 3.2vw, 38px);
-  line-height: 1;
   box-shadow: inset 0 0 0 2px #14090b;
+}
+.defeat-item-glyph img {
+  width: 48px;
+  height: 48px;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+@media (width <= 720px), (height <= 560px) {
+  .defeat-item-glyph {
+    width: 56px;
+  }
+  .defeat-item-glyph img {
+    width: 32px;
+    height: 32px;
+  }
 }
 /* The plate lies on the ground under its figure, HUD-box style. */
 .defeat-plate {
@@ -1609,13 +1625,21 @@ button {
 .defeat-stage:not([data-beat~='fall']) .defeat-caption {
   opacity: 0;
 }
-.defeat-caption.is-entering {
-  animation: defeat-caption-in 220ms steps(3);
+/* Only the words animate in. Fading the whole panel made its heavy frame blink
+   out of existence for a fifth of a second at every beat change, which reads as
+   a glitch rather than as a beat landing. */
+.defeat-caption.is-entering .defeat-headline,
+.defeat-caption.is-entering .defeat-detail {
+  animation: defeat-caption-in 200ms steps(3);
+}
+.defeat-caption.is-entering .defeat-detail {
+  animation-delay: 60ms;
+  animation-fill-mode: backwards;
 }
 @keyframes defeat-caption-in {
   0% {
     opacity: 0;
-    transform: translateY(7px);
+    transform: translateY(6px);
   }
   100% {
     opacity: 1;

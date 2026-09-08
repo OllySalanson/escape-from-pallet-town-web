@@ -32,6 +32,8 @@ export interface DefeatFigure {
   readonly level?: number;
   /** Present for items, which stack rather than stand alone. */
   readonly quantity?: number;
+  /** Present for items, and how their icon is found. */
+  readonly itemId?: string;
   readonly fate: DefeatFate;
   /** The Pokemon that was out when the party ran out, drawn front and centre. */
   readonly lastStand: boolean;
@@ -174,7 +176,14 @@ function buildFigures(report: ExtractionReport): DefeatFigure[] {
 }
 
 function toItemFigure(item: ReportItem, fate: DefeatFate): DefeatFigure {
-  return { kind: 'item', label: item.label, quantity: item.quantity, fate, lastStand: false };
+  return {
+    kind: 'item',
+    label: item.label,
+    quantity: item.quantity,
+    itemId: item.itemId,
+    fate,
+    lastStand: false,
+  };
 }
 
 function capitalise(value: string): string {
