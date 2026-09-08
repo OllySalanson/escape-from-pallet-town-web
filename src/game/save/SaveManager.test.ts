@@ -107,6 +107,175 @@ describe('SaveManager', () => {
     expect(saves.load()?.stash.toJSON()).toEqual({ pokemon: [], items: {} });
   });
 
+  // A free-roam save (versions 1 to 3) kept the player's team in `party` and
+  // their supplies in `bag`. The extraction game reads neither: the vault is the
+  // team. Loading one used to say yes and hand back an empty vault, which the
+  // title screen then filled with a fresh level-5 starter and wrote back over
+  // the save, so a levelled team was destroyed without a word.
+  it('carries a version 1 free-roam party into the vault instead of losing it', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 1,
+        party: [
+          { speciesId: 'bulbasaur', level: 9, currentHp: 11, moves: ['Tackle', 'Vine Whip'], primaryStatus: 'poison' },
+          { speciesId: 'pikachu', level: 7, currentHp: 12, moves: ['Thunder Shock'], primaryStatus: null },
+        ],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: [],
+        bag: { potion: 3, 'poke-ball': 5 },
+      }),
+    );
+    const saves = new SaveManager(storage);
+
+    const restored = saves.load();
+
+    expect(restored?.stash.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'bulbasaur' }, level: 9, currentHp: 11, primaryStatus: PrimaryStatus.Poison } },
+      { pokemon: { base: { id: 'pikachu' }, level: 7, currentHp: 12 } },
+    ]);
+    expect(restored?.stash.listPokemon()[0].pokemon.moves.map((move) => move.base.name)).toEqual([
+      'Tackle',
+      'Vine Whip',
+    ]);
+    // The supplies were carried in the same dead field and go the same way.
+    expect(restored?.stash.listItems()).toEqual({ potion: 3, 'poke-ball': 5 });
+    // Moved, not copied: leaving the team in both places would let a later save
+    // write bank the same Pokemon twice.
+    expect(restored?.party.pokemon).toEqual([]);
+    // The vault now holds a team, so nothing hands the player a fresh starter.
+    expect(restored?.stash.ensurePlayable()).toBe(false);
+    expect(restored?.starterSpeciesId).toBe('bulbasaur');
+  });
+
+  it('survives the title screen rewriting a migrated free-roam save', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 1,
+        party: [{ speciesId: 'bulbasaur', level: 9, currentHp: 11, moves: ['Tackle'], primaryStatus: null }],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: { potion: 3 },
+      }),
+    );
+    const saves = new SaveManager(storage);
+
+    // What TitleScene does with a loaded save: top it up if unplayable, then
+    // write it back at the current version.
+    const first = saves.load();
+    expect(first?.stash.ensurePlayable()).toBe(false);
+    expect(saves.save(first!)).toBe(true);
+
+    expect(saves.load()?.stash.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'bulbasaur' }, level: 9 } },
+    ]);
+    expect(saves.load()?.stash.listItems()).toEqual({ potion: 3 });
+  });
+
+  it.each([2, 3])('carries a version %i free-roam party into the vault as well', (version) => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version,
+        party: [{ speciesId: 'squirtle', level: 11, currentHp: 30, xp: 1331, moves: ['Tackle'], primaryStatus: null }],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: { potion: 1 },
+        stash: { pokemon: [], items: {} },
+      }),
+    );
+
+    const restored = new SaveManager(storage).load();
+
+    expect(restored?.stash.listPokemon()).toMatchObject([
+      { pokemon: { base: { id: 'squirtle' }, level: 11, experience: 1331 } },
+    ]);
+    expect(restored?.stash.listItems()).toEqual({ potion: 1 });
+    expect(restored?.party.pokemon).toEqual([]);
+  });
+
+  it.each([2, 3])('leaves a version %i save that already has a vault exactly as it is', (version) => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version,
+        party: [{ speciesId: 'squirtle', level: 11, currentHp: 30, moves: ['Tackle'], primaryStatus: null }],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: { potion: 1 },
+        stash: {
+          pokemon: [
+            { id: 'squirtle-1', pokemon: { speciesId: 'squirtle', level: 11, currentHp: 30, moves: ['Tackle'], primaryStatus: null } },
+          ],
+          items: { 'poke-ball': 2 },
+        },
+      }),
+    );
+
+    const restored = new SaveManager(storage).load();
+
+    // The vault is the vault of record here, and this party came out of it, so
+    // merging it would put the same Squirtle in twice.
+    expect(restored?.stash.listPokemon()).toHaveLength(1);
+    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 2 });
+    expect(restored?.party.pokemon).toMatchObject([{ base: { id: 'squirtle' }, level: 11 }]);
+  });
+
+  it.each([4, 5])('leaves a version %i save alone, party and empty vault included', (version) => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version,
+        party: [{ speciesId: 'charmander', level: 6, currentHp: 19, xp: 216, moves: ['Scratch'], primaryStatus: null }],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: { potion: 2 },
+        stash: { pokemon: [], items: {} },
+        starterSpeciesId: 'charmander',
+      }),
+    );
+
+    const restored = new SaveManager(storage).load();
+
+    // By version 4 the vault is the team and the party is a raid selection out
+    // of it, so an empty vault means a wipe - which `ensurePlayable` answers
+    // with a fresh starter. Migrating here would resurrect a lost run.
+    expect(restored?.stash.toJSON()).toEqual({ pokemon: [], items: {} });
+    expect(restored?.party.pokemon).toMatchObject([{ base: { id: 'charmander' }, level: 6 }]);
+    expect(restored?.bag.toJSON()).toEqual({ potion: 2 });
+  });
+
+  it('carries the loose overworld item list of the earliest saves into the vault too', () => {
+    // Versions 1 and 2 predate the Bag: picked-up items were a list of ids.
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 1,
+        party: [{ speciesId: 'charmander', level: 5, currentHp: 19, moves: ['Scratch'], primaryStatus: null }],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: ['potion', 'potion', 'antidote'],
+        // A save from the changeover can hold supplies in both fields at once,
+        // and the two are added rather than one shadowing the other.
+        bag: { potion: 1, 'poke-ball': 4 },
+      }),
+    );
+
+    expect(new SaveManager(storage).load()?.stash.listItems()).toEqual({
+      potion: 3,
+      antidote: 1,
+      'poke-ball': 4,
+    });
+  });
+
   it('persists a selected starter and restores it as the playable fallback after a wipe', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
