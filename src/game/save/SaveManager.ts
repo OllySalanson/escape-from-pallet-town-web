@@ -87,6 +87,20 @@ export const CONTRACT_REWARD_INSERTIONS: readonly string[] =
  */
 const RETIRED_INSERTIONS: Readonly<Record<string, string>> = { 'south-verge': 'town-square' };
 
+/**
+ * The last save version that could be written by the free-roam game, where the
+ * player's team lived in `party` and their supplies in `bag`. The extraction
+ * game reads neither - the vault is the team, and a raid party is a selection
+ * out of it - so a save at or below this version whose vault is empty is
+ * holding everything the player owns in fields nothing will ever look at again.
+ *
+ * Version 1 always looks like that: its `WorldScene.saveGame()` wrote party,
+ * position and bag and nothing else. Versions 2 and 3 can, because the vault
+ * arrived before free roam left and that same save call kept overwriting the
+ * vault with an empty one until it learned to carry it through.
+ */
+const LAST_FREE_ROAM_SAVE_VERSION = 3;
+
 export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   firstContractExtracted: false,
   unlockedInsertions: ['floodplain-relay'],
@@ -380,17 +394,67 @@ export function deserializeGame(value: unknown): RestoredGame | null {
   }
 
   const stash = deserializeStash(value.stash, value.version);
+  const carriedIntoVault = moveFreeRoamHoldingsIntoVault(
+    value.version,
+    pokemon,
+    // Both halves, added rather than one shadowing the other: the earliest
+    // saves carried picked-up items as a list of ids and the Bag replaced it,
+    // so a save from the changeover can hold supplies in either field.
+    addBagContents(bagContents(value.bag), stringArrayToBagContents(value.items)),
+    stash,
+  );
   return {
-    party: new PokemonParty(pokemon),
+    party: new PokemonParty(carriedIntoVault ? [] : pokemon),
     mapId,
     position: { ...position },
-    items: stringArray(value.items),
-    bag: new Bag(bagContents(value.bag)),
+    items: carriedIntoVault ? [] : stringArray(value.items),
+    bag: new Bag(carriedIntoVault ? {} : bagContents(value.bag)),
     stash,
     raidProgress: deserializeRaidProgress(value.raidProgress),
     starterSpeciesId: deserializeStarterSpeciesId(value.starterSpeciesId) ?? inferStarterSpeciesId(stash),
     pendingRecoveryMs: clampPendingRecoveryMs(value.pendingRecoveryMs),
   };
+}
+
+/**
+ * Moves a free-roam save's team and supplies into the vault, and reports
+ * whether it did.
+ *
+ * Without this the loader accepted such a save and handed back a hub with an
+ * empty vault: `Stash.ensurePlayable()` filled it with a fresh level-5 starter
+ * and `TitleScene` wrote that back over the file at the current version. A
+ * levelled team was destroyed, and the loader said yes throughout. Refusing to
+ * load would have been better than that; migrating is better still, because the
+ * team is right there in the save - only in the wrong field.
+ *
+ * The move is gated on the vault being entirely empty, which is the signature
+ * of a free-roam save and of nothing else. A legacy save whose vault holds
+ * anything is a save the vault-era game wrote, and its party is a raid
+ * selection taken out of that vault, so merging it would bank the same Pokemon
+ * twice. Everything migrated is moved rather than copied, for the same reason.
+ */
+function moveFreeRoamHoldingsIntoVault(
+  saveVersion: number,
+  party: readonly Pokemon[],
+  supplies: BagContents,
+  stash: Stash,
+): boolean {
+  if (
+    saveVersion > LAST_FREE_ROAM_SAVE_VERSION ||
+    stash.listPokemon().length > 0 ||
+    Object.keys(stash.listItems()).length > 0 ||
+    (party.length === 0 && Object.keys(supplies).length === 0)
+  ) {
+    return false;
+  }
+
+  for (const pokemon of party) {
+    stash.addPokemon(pokemon);
+  }
+  for (const [itemId, quantity] of Object.entries(supplies)) {
+    stash.addItem(itemId, quantity);
+  }
+  return true;
 }
 
 function deserializeRaidProgress(value: unknown): RaidProgress {
@@ -632,6 +696,14 @@ function bagContents(value: unknown): BagContents {
     if (typeof quantity === 'number' && Number.isInteger(quantity) && quantity > 0) {
       contents[itemId] = quantity;
     }
+  }
+  return contents;
+}
+
+function addBagContents(first: BagContents, second: BagContents): BagContents {
+  const contents: Record<string, number> = { ...first };
+  for (const [itemId, quantity] of Object.entries(second)) {
+    contents[itemId] = (contents[itemId] ?? 0) + quantity;
   }
   return contents;
 }
