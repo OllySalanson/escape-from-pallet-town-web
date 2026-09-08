@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
+import { claimOverlayKeyboard } from './overlayKeyboard';
 
 export class MenuOverlay {
   public readonly root: HTMLElement;
-  private readonly keyHandler: (event: KeyboardEvent) => void;
+  private readonly releaseKeyboard: () => void;
   private readonly artworkErrorHandler: (event: Event) => void;
 
   public constructor(
@@ -14,12 +15,9 @@ export class MenuOverlay {
     this.root.className = `menu-overlay ${className}`;
     this.root.setAttribute('aria-label', 'Game menu');
     document.getElementById('app')?.append(this.root);
-    this.keyHandler = (event) => {
-      if (event.defaultPrevented || event.target instanceof HTMLInputElement) {
-        return;
-      }
-      onKeyDown(event);
-    };
+    // An overlay owns the keyboard for as long as it is on screen; see
+    // `overlayKeyboard.ts` for why that ownership cannot live in the scenes.
+    this.releaseKeyboard = claimOverlayKeyboard(onKeyDown, window);
     this.artworkErrorHandler = (event) => {
       const image = event.target;
       if (!(image instanceof HTMLImageElement) || !image.matches('.pokemon-avatar img')) {
@@ -28,14 +26,13 @@ export class MenuOverlay {
       image.remove();
       image.parentElement?.classList.add('artwork-unavailable');
     };
-    window.addEventListener('keydown', this.keyHandler);
     this.root.addEventListener('error', this.artworkErrorHandler, true);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
     scene.events.once(Phaser.Scenes.Events.DESTROY, () => this.destroy());
   }
 
   public destroy(): void {
-    window.removeEventListener('keydown', this.keyHandler);
+    this.releaseKeyboard();
     this.root.removeEventListener('error', this.artworkErrorHandler, true);
     this.root.remove();
   }

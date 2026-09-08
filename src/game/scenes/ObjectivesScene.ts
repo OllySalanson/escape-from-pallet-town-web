@@ -4,6 +4,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { WorldMapId } from '../worldMap';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 
 export interface ObjectivesSceneData {
   readonly runSession: ActiveRunSession;
@@ -43,7 +44,7 @@ export class ObjectivesScene extends Phaser.Scene {
 
   private createOverlay(guide: ReturnType<typeof buildObjectiveGuide>): void {
     this.menuOverlay = new MenuOverlay(this, 'objectives-menu', (event) => {
-      if (event.key === 'o' || event.key === 'O' || event.key === 'Escape') {
+      if (isOverlayDismissKey(event, 'o')) {
         event.preventDefault();
         this.close();
       }

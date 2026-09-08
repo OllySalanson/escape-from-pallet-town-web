@@ -69,7 +69,6 @@ export class ExtractionScene extends Phaser.Scene {
   private report!: ExtractionReport;
   private leaving = false;
   private locked = true;
-  private keyListener: ((event: KeyboardEvent) => void) | undefined;
   /** Set while the defeat sequence is on screen, which is when a key skips. */
   private sequencePlaying = false;
   private sequenceTimers: Phaser.Time.TimerEvent[] = [];
@@ -92,9 +91,8 @@ export class ExtractionScene extends Phaser.Scene {
 
   public create(): void {
     this.cameras.main.fadeIn?.(200, 0, 0, 0);
-    this.overlay = new MenuOverlay(this, 'extraction-menu', () => {});
+    this.overlay = new MenuOverlay(this, 'extraction-menu', (event) => this.handleKey(event));
     this.overlay.root.setAttribute('aria-label', 'Raid result');
-    this.listenForKeys();
     const sequence = buildDefeatSequence(this.report, { pace: this.defeatPace() });
     if (sequence) {
       this.playDefeatSequence(sequence);
@@ -210,43 +208,30 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   /**
-   * Listens in the capture phase, on the scene's own listener.
-   *
-   * WorldScene and BattleScene both `addCapture` SPACE and ENTER, and those
-   * captures live on the game's KeyboardManager rather than the scene that asked
-   * for them. While they stand, Phaser calls `preventDefault()` on every SPACE
-   * and ENTER - which stops the browser activating the focused button and makes
-   * `MenuOverlay` drop the event as already handled. Capturing first is what
-   * gives this screen a keyboard at all; without it, it is mouse-only.
+   * Reached through the overlay's own claim on the keyboard, which is what gives
+   * this screen a keyboard at all: WorldScene and BattleScene both capture SPACE
+   * and ENTER on the game's KeyboardManager, and those captures outlive the scene
+   * that asked for them, so without the overlay owning the keys first Phaser
+   * would `preventDefault()` every SPACE and ENTER and leave this screen
+   * mouse-only. See `overlayKeyboard.ts`.
    */
-  private listenForKeys(): void {
-    this.keyListener = (event: KeyboardEvent) => {
-      // While the defeat plays, every key is the skip. A player who has seen it
-      // must never have to find the right one, and a bare modifier is not a
-      // keypress a player meant as one.
-      if (this.sequencePlaying) {
-        if (MODIFIER_KEYS.has(event.key)) {
-          return;
-        }
-        event.preventDefault();
-        this.finishDefeatSequence(true);
-        return;
-      }
-      if (this.locked || !['Enter', ' ', 'Escape'].includes(event.key)) {
+  private handleKey(event: KeyboardEvent): void {
+    // While the defeat plays, every key is the skip. A player who has seen it
+    // must never have to find the right one, and a bare modifier is not a
+    // keypress a player meant as one.
+    if (this.sequencePlaying) {
+      if (MODIFIER_KEYS.has(event.key)) {
         return;
       }
       event.preventDefault();
-      this.leave();
-    };
-    window.addEventListener('keydown', this.keyListener, true);
-    const stopListening = (): void => {
-      if (this.keyListener) {
-        window.removeEventListener('keydown', this.keyListener, true);
-        this.keyListener = undefined;
-      }
-    };
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopListening);
-    this.events.once(Phaser.Scenes.Events.DESTROY, stopListening);
+      this.finishDefeatSequence(true);
+      return;
+    }
+    if (this.locked || !['Enter', ' ', 'Escape'].includes(event.key)) {
+      return;
+    }
+    event.preventDefault();
+    this.leave();
   }
 
   private leave(): void {

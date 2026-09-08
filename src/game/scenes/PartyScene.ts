@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { Pokemon, PokemonParty } from '../pokemon';
 import type { PokemonType } from '../pokemon/PokemonType';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
+import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { conditionLine } from '../ui/condition';
 
 const SCREEN_WIDTH = 320;
@@ -74,7 +75,8 @@ export class PartyScene extends Phaser.Scene {
 
   private createModernMenu(): void {
     this.menuOverlay = new MenuOverlay(this, 'party-menu', (event) => {
-      if (event.key === 'Escape' || event.key === 'Backspace') {
+      // P is what opened this, so P is what the player will press to leave it.
+      if (isOverlayDismissKey(event, 'p', 'Backspace')) {
         event.preventDefault();
         this.close();
         return;

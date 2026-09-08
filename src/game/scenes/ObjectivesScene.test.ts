@@ -23,7 +23,9 @@ describe('raid objective overlay controls', () => {
   });
 
   it('closes with O, Escape, or the visible close control', () => {
-    expect(overlaySource).toMatch(/event\.key === 'o'[\s\S]*?event\.key === 'Escape'/);
+    // The shared rule is what says Escape and the opening key both close an
+    // overlay; `overlayKeyboard.test.ts` proves the key reaches it at all.
+    expect(overlaySource).toContain("isOverlayDismissKey(event, 'o')");
     expect(overlaySource).toContain('data-close');
     expect(overlaySource).toContain("querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close()");
   });

@@ -27,11 +27,21 @@ const overlayRoots: FakeRoot[] = [];
 vi.mock('../ui/MenuOverlay', () => ({
   MenuOverlay: class {
     public readonly root = new FakeRoot();
-    public constructor() {
+    private readonly onKeyDown: (event: KeyboardEvent) => void;
+    /**
+     * The real overlay claims the keyboard for the screen it draws, so the stand-in
+     * has to as well: the result screen's keys now arrive through its overlay
+     * rather than through a listener the scene attaches itself.
+     */
+    public constructor(_scene: unknown, _className: string, onKeyDown: (event: KeyboardEvent) => void) {
       overlayRoots.push(this.root);
+      this.onKeyDown = onKeyDown;
+      window.addEventListener('keydown', this.onKeyDown);
     }
     public focus(): void {}
-    public destroy(): void {}
+    public destroy(): void {
+      window.removeEventListener('keydown', this.onKeyDown);
+    }
   },
   hpBar: () => '',
   pokemonAvatar: () => '',
