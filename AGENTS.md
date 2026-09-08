@@ -7,6 +7,9 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 ## Project notes
 
 - The overworld's tile collision is built by `buildCollisionData()` in `src/game/worldMap.ts`; interactive NPC and sign definitions live in `src/game/world/npcs.ts`.
+- Each raid map is authored tile by tile in its own file under `src/game/world/maps/`, drawn as character art through the helpers in `src/game/world/mapGrid.ts`, with the tile vocabulary and its tints in `src/game/world/tiles.ts`. Edit the drawing, not a generated grid.
+- A map is judged as a network of passages, not by how much ground it has: counting walkable tiles says nothing, because an open field scores well on it. `src/game/world/mapStructure.ts` computes the two numbers that do say it - longest straight walk and connected open ground - and `mapStructure.test.ts` holds every map to them, along with reachability of every exit and landmark from every insertion, a sealed map edge, a fair hunter arrival from any tile, and a flee that buys real separation without walling the player in. Change a map and re-run that suite rather than eyeballing the result.
+- Hedges, trees and tall grass are the same leafy art in the classic tileset, so on maps built out of them nothing distinguishes a wall from a lane. `TREE_TINT` and `TALL_GRASS_TINT` in `tiles.ts` are what does, applied in `WorldScene.createMap()`. Tints multiply, so they can only darken.
 - Active raid scene data is defined by `ActiveRunSession` in `src/game/run/RunSession.ts` and must pass unchanged between `WorldScene` and `BattleScene`.
 - The raid field guide is `ObjectivesScene` in `src/game/scenes/ObjectivesScene.ts`; derive its objective text from `buildObjectiveGuide()` in `src/game/objectives/ObjectiveGuide.ts`, and have it resume only the `WorldScene` instance it paused.
 - Scenes are registered in `src/game/gameConfig.ts`, not `main.ts`.

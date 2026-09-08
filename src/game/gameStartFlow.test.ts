@@ -176,8 +176,8 @@ describe('game start flow', () => {
       }),
     };
     Object.assign(world as unknown as Record<string, unknown>, {
-      currentTile: { x: 6, y: 8 },
-      facing: 'left',
+      currentTile: { x: 5, y: 8 },
+      facing: 'up',
       dialogBox: dialog,
       npcSprites: new Map(),
     });
@@ -185,8 +185,8 @@ describe('game start flow', () => {
     (world as unknown as { tryInteract(): void }).tryInteract();
 
     expect(dialog.showMessages).toHaveBeenCalledWith([
-      'Pallet Town is small, but every great journey starts somewhere.',
-      'The tall grass is waiting just beyond town!',
+      'Four gates, four different mornings.',
+      'East for the orchard and the mill. South for the sheds and the allotments.',
     ]);
     expect(dialog.visible).toBe(true);
   });

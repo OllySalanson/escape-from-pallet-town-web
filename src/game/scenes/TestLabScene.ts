@@ -5,7 +5,12 @@ import { createTestLabBattleScenario } from '../dev/testLabRoutes';
 import { activeRunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
-import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
+import {
+  CONTRACT_REWARD_INSERTIONS,
+  DEFAULT_RAID_PROGRESS,
+  SaveManager,
+  type RestoredGame,
+} from '../save/SaveManager';
 import { createStartingStash } from '../stash';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import {
@@ -109,26 +114,28 @@ export class TestLabScene extends Phaser.Scene {
       this.scene.start('battle', createTestLabBattleScenario());
       return;
     }
-    const game = this.createFreshProfile(route === 'run-south');
+    const game = this.createFreshProfile(route !== 'base' && route !== 'run-town');
     if (route === 'base') {
       this.scene.start('hub', { savedGame: game });
       return;
     }
-    this.launchFixedRun(game, route === 'run-south' ? 'south-verge' : 'town-square');
+    const insertion: RunInsertionId =
+      route === 'run-forest' ? 'viridian-forest' : route === 'run-route' ? 'route-1' : 'town-square';
+    this.launchFixedRun(game, insertion);
   }
 
-  private createFreshProfile(unlockSouthVerge = false): RestoredGame {
+  private createFreshProfile(unlockEveryInsertion = false): RestoredGame {
     this.saveManager.clear();
     const stash = createStartingStash();
     stash.ensurePlayable();
     this.saveManager.save({
       party: new PokemonParty([]),
       mapId: 'pallet-town',
-      position: { x: 6, y: 8 },
+      position: { x: 7, y: 6 },
       bag: new Bag(),
       stash,
-      raidProgress: unlockSouthVerge
-        ? { firstContractExtracted: true, unlockedInsertions: ['town-square', 'south-verge'] }
+      raidProgress: unlockEveryInsertion
+        ? { firstContractExtracted: true, unlockedInsertions: [...CONTRACT_REWARD_INSERTIONS] }
         : DEFAULT_RAID_PROGRESS,
     });
     const game = this.saveManager.load();

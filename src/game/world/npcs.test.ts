@@ -3,25 +3,24 @@ import { nextTileFromDirection } from '../movement/gridMovement';
 import { getWorldEntityAt } from './npcs';
 
 describe('world interaction targets', () => {
-  it('finds the route guide directly in front of the player', () => {
-    const facedTile = nextTileFromDirection({ x: 6, y: 8 }, 'left');
-    expect(getWorldEntityAt(facedTile)).toEqual({
+  it('finds the market square guide directly in front of the player', () => {
+    const facedTile = nextTileFromDirection({ x: 5, y: 8 }, 'up');
+    expect(getWorldEntityAt('pallet-town', facedTile)).toMatchObject({
       id: 'route-guide',
       kind: 'npc',
-      position: { x: 5, y: 8 },
-      facing: 'right',
-      dialogLines: [
-        'Pallet Town is small, but every great journey starts somewhere.',
-        'The tall grass is waiting just beyond town!',
-      ],
+      position: { x: 5, y: 7 },
     });
   });
 
   it('finds the town sign directly in front of the player', () => {
-    const facedTile = nextTileFromDirection({ x: 9, y: 9 }, 'up');
-    expect(getWorldEntityAt(facedTile)).toMatchObject({
+    const facedTile = nextTileFromDirection({ x: 9, y: 5 }, 'up');
+    expect(getWorldEntityAt('pallet-town', facedTile)).toMatchObject({
       id: 'town-sign',
-      dialogLines: ['PALLET TOWN', 'A town of new beginnings.'],
+      kind: 'sign',
     });
+  });
+
+  it('never returns another map\u2019s entity for the same tile', () => {
+    expect(getWorldEntityAt('viridian-forest', { x: 9, y: 4 })).toBeUndefined();
   });
 });

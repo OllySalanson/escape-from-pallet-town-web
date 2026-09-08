@@ -50,8 +50,26 @@ export interface RaidProgress {
 
 /**
  * Floodplain Relay is the area every save starts with: it is where the first
- * contract lives. The Pallet Town insertions are the first contract's reward.
+ * contract lives. Every other insertion is the first contract's reward.
  */
+/**
+ * Extracting the first contract opens every other level at once. They are three
+ * different maps rather than three doors into one, which is the whole point of
+ * the unlock.
+ */
+export const CONTRACT_REWARD_INSERTIONS: readonly string[] = [
+  'town-square',
+  'route-1',
+  'viridian-forest',
+];
+
+/**
+ * `south-verge` was a second insertion on the Pallet Town map whose entire
+ * route was contained in the Town Square route - the same level under two
+ * names. It is gone; saves that unlocked it keep Town Square instead.
+ */
+const RETIRED_INSERTIONS: Readonly<Record<string, string>> = { 'south-verge': 'town-square' };
+
 export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   firstContractExtracted: false,
   unlockedInsertions: ['floodplain-relay'],
@@ -200,7 +218,7 @@ export class SaveManager {
     const raidProgress: RaidProgress = {
       firstContractExtracted: true,
       unlockedInsertions: [
-        ...new Set([...game.raidProgress.unlockedInsertions, 'town-square', 'south-verge']),
+        ...new Set([...game.raidProgress.unlockedInsertions, ...CONTRACT_REWARD_INSERTIONS]),
       ],
     };
     game.stash.addItem('super-potion', 1);
@@ -331,14 +349,25 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     return DEFAULT_RAID_PROGRESS;
   }
 
-  const unlockedInsertions = Array.isArray(value.unlockedInsertions)
-    ? value.unlockedInsertions.filter((insertion): insertion is string => typeof insertion === 'string')
-    : DEFAULT_RAID_PROGRESS.unlockedInsertions;
+  const unlockedInsertions = (
+    Array.isArray(value.unlockedInsertions)
+      ? value.unlockedInsertions.filter((insertion): insertion is string => typeof insertion === 'string')
+      : DEFAULT_RAID_PROGRESS.unlockedInsertions
+  ).map((insertion) => RETIRED_INSERTIONS[insertion] ?? insertion);
+  const firstContractExtracted = value.firstContractExtracted === true;
   return {
-    firstContractExtracted: value.firstContractExtracted === true,
+    firstContractExtracted,
     // The starting area is never lost, so a save written before Floodplain Relay
-    // became the first raid still opens on an insertion the player can use.
-    unlockedInsertions: [...new Set(['floodplain-relay', ...unlockedInsertions])],
+    // became the first raid still opens on an insertion the player can use, and
+    // a save that already banked the contract gets every level the contract now
+    // pays out rather than only the ones that existed when it was written.
+    unlockedInsertions: [
+      ...new Set([
+        'floodplain-relay',
+        ...unlockedInsertions,
+        ...(firstContractExtracted ? CONTRACT_REWARD_INSERTIONS : []),
+      ]),
+    ],
   };
 }
 

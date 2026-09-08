@@ -131,10 +131,10 @@ describe('chooseHunterPursuitStep', () => {
 
   it('keeps closing on a player who steps back and forth on the spot', () => {
     const { bounds, isBlocked } = mapBlocker('pallet-town');
-    let hunter = { x: 20, y: 5 };
+    let hunter = { x: 10, y: 11 };
     const patrol = [
       { x: 5, y: 2 },
-      { x: 5, y: 3 },
+      { x: 6, y: 2 },
     ];
 
     for (let step = 0; step < 40; step += 1) {
@@ -179,10 +179,14 @@ describe('chooseHunterPursuitStep', () => {
     // Roadmap B1: greedy pursuit walked 200 steps from here, changed direction 187 times
     // and never arrived, ending up bouncing between two tiles pinned against a wall.
     const { bounds, isBlocked } = mapBlocker('floodplain-relay');
-    const pursuit = runPursuit({ x: 15, y: 5 }, { x: 8, y: 18 }, bounds, isBlocked);
+    const hunter = { x: 15, y: 5 };
+    const player = { x: 8, y: 18 };
+    const pursuit = runPursuit(hunter, player, bounds, isBlocked);
 
     expect(pursuit.contacted).toBe(true);
-    expect(pursuit.steps).toBeLessThanOrEqual(20);
+    // It walks the map's own shortest route - the doglegged road and a reed
+    // crossing - rather than wandering the length of it.
+    expect(pursuit.steps).toBeLessThanOrEqual(walkDistance(hunter, player, bounds, isBlocked));
   });
 
   it('is deterministic for the same map, hunter and player positions', () => {
@@ -430,7 +434,7 @@ describe('breaking contact with the hunter', () => {
   it('measures the escape on a real map, not an empty grid', () => {
     const { bounds, isBlocked } = mapBlocker('floodplain-relay');
     const player = { x: 15, y: 20 };
-    const hunter = chooseHunterPursuitStep({ x: 15, y: 26 }, player, bounds, isBlocked)!;
+    const hunter = chooseHunterPursuitStep({ x: 15, y: 25 }, player, bounds, isBlocked)!;
 
     const breakaway = findHunterBreakawayTile(hunter, player, bounds, isBlocked);
 
@@ -674,10 +678,11 @@ describe('findHunterSpawnTile', () => {
   });
 
   it('offers a real spawn where the four straight lines are all walled off', () => {
-    // The Floodplain Relay tile that used to drop the hunter onto the player: nothing
-    // walkable sits five tiles due north, south, east or west of it.
+    // On maps built out of lanes this is the common case, not the corner case:
+    // the Floodplain Relay landing jetty - where every raid starts - has nothing
+    // walkable five tiles due north, south, east or west of it.
     const { bounds, isBlocked } = mapBlocker('floodplain-relay');
-    const player = { x: 17, y: 7 };
+    const player = { x: 15, y: 3 };
     const straightLines = [
       { x: player.x - 5, y: player.y },
       { x: player.x + 5, y: player.y },

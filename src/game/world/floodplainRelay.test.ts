@@ -18,10 +18,10 @@ describe('Floodplain Relay', () => {
 
     expect(isExtractionAvailable(southGate, 0, inactive)).toBe(true);
     expect(isExtractionAvailable(ferryDock, 44_999, inactive)).toBe(false);
-    expect(extractionRequirementText(ferryDock, 44_999)).toBe('FERRY IN 1s');
+    expect(extractionRequirementText(ferryDock, 44_999)).toBe('OPENS IN 1s');
     expect(isExtractionAvailable(ferryDock, 45_000, inactive)).toBe(true);
     expect(isExtractionAvailable(radioExit, 60_000, inactive)).toBe(false);
-    expect(extractionRequirementText(radioExit, 60_000)).toBe('ACTIVATE RANGER RADIO');
+    expect(extractionRequirementText(radioExit, 60_000)).toBe('ACTIVATE RANGER STATION');
 
     inactive.add(rangerStation.id);
     expect(isExtractionAvailable(radioExit, 0, inactive)).toBe(true);

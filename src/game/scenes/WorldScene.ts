@@ -21,6 +21,9 @@ import {
   getWorldMap,
   isTallGrassInMap,
   POND_TILES,
+  TALL_GRASS_TINT,
+  TREE_TILES,
+  TREE_TINT,
   TILE_SIZE,
   WATER_TINT,
   WORLD_MAP_NAMES,
@@ -424,6 +427,19 @@ export class WorldScene extends Phaser.Scene {
         tile.tint = WATER_TINT;
       }
     });
+    // Hedges, trees and tall grass are drawn from the same leafy art, so on a
+    // map made mostly of both the player cannot see which is a wall. Darkening
+    // the solid growth and keeping the grass bright is the difference.
+    detailLayer.forEachTile((tile) => {
+      if (TREE_TILES.has(tile.index)) {
+        tile.tint = TREE_TINT;
+      }
+    });
+    tallGrassLayer.forEachTile((tile) => {
+      if (tile.index >= 0) {
+        tile.tint = TALL_GRASS_TINT;
+      }
+    });
     this.mapObjects.push(groundLayer, tallGrassLayer, detailLayer);
     this.createExtractionPoints();
     this.createRouteTransitionLabels();
@@ -454,6 +470,7 @@ export class WorldScene extends Phaser.Scene {
       this.extractionMarkers.push({ point, marker, label });
     }
   }
+
 
   private createEntities(): void {
     this.createLoot();
@@ -550,14 +567,15 @@ export class WorldScene extends Phaser.Scene {
       const x = poi.position.x * TILE_SIZE + TILE_SIZE / 2;
       const y = poi.position.y * TILE_SIZE + TILE_SIZE / 2;
       const station = this.add.container(x, y).setDepth(3 + poi.position.y / 1000);
-      // A radio landmark and a supply landmark are different objects, so they
-      // are drawn as different things rather than one shared box.
+      // A landmark that opens an exit and a landmark that holds supplies are
+      // different objects, so they are drawn as different things rather than
+      // one shared box. Every map now has one of each.
       station.add(
         this.add.image(
           0,
           0,
           iconTextureKey(
-            poi.effect === 'activate-radio' ? WORLD_ICONS.radioMast : WORLD_ICONS.supplyCache,
+            poi.effect === 'unlock-extraction' ? WORLD_ICONS.radioMast : WORLD_ICONS.supplyCache,
           ),
         ),
       );
@@ -565,7 +583,11 @@ export class WorldScene extends Phaser.Scene {
         this,
         x,
         y - 12,
-        `${poi.label}\n${poi.effect === 'activate-radio' ? 'RADIO: EXIT OFFLINE' : `CACHE: ${formatPoiReward(poi)}`}`,
+        // Oak's Field Station is both a sealed exit and a cache, so the label
+        // has to say so - the mast art can only show one of the two.
+        `${poi.label}\n${poi.effect === 'unlock-extraction'
+          ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED${poi.reward.length > 0 ? ' + CACHE' : ''}`
+          : `CACHE: ${formatPoiReward(poi)}`}`,
         LABEL_TONES.station,
         4 + poi.position.y / 1000,
       );
@@ -1225,11 +1247,12 @@ export class WorldScene extends Phaser.Scene {
     const reward = poi!.reward
       .map(({ itemId, quantity }) => `${quantity}× ${ITEMS[itemId].displayName}`)
       .join(' + ');
-    if (poi!.effect === 'activate-radio') {
+    if (poi!.effect === 'unlock-extraction') {
+      const exit = poi!.unlockedExtractionLabel ?? 'A NEW EXIT';
       this.dialogBox.showMessages([
-        'RANGER STATION: Radio Exit activated.',
+        `${poi!.label}: ${exit} is open.`,
         this.rangerForecast(),
-        'Road: fastest, but Maya watches it. Reeds: longer cover. South Gate stays dependable.',
+        ...(reward ? [`${reward} secured. Extract to bank it.`] : []),
       ]);
       this.refreshExtractionMarkers();
       return true;
@@ -1344,10 +1367,10 @@ export class WorldScene extends Phaser.Scene {
     const elapsedMs = this.runSession?.manager.snapshot().elapsedMs ?? 0;
     const spawnDelayMs = this.runSession?.plan?.hunter.spawnDelayMs ?? HUNTER_SPAWN_MS;
     if (this.hunterState.spawned && !this.hunterState.defeated) {
-      return 'HUNTER FORECAST: active in this area. Use reeds to break the straight road approach.';
+      return 'HUNTER FORECAST: active in this area. Break its line of sight and keep moving.';
     }
     const seconds = Math.max(0, Math.ceil((spawnDelayMs - elapsedMs) / 1_000));
-    return `HUNTER FORECAST: trail enters this area in about ${seconds}s. Ferry timing may be costly.`;
+    return `HUNTER FORECAST: trail enters this area in about ${seconds}s. Waiting for a timed exit may cost you.`;
   }
 
   /**
@@ -1421,7 +1444,7 @@ export class WorldScene extends Phaser.Scene {
               description: FIRST_CONTRACT.description,
               complete: true,
               reward: contractResult.granted
-                ? 'The Pallet Town insertions are permanently unlocked, and a Super Potion is waiting at base.'
+                ? 'Three more insertions are permanently unlocked, and a Super Potion is waiting at base.'
                 : 'Already banked on an earlier raid, so there is no new unlock this time.',
             },
           }
