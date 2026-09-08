@@ -1275,3 +1275,391 @@ button {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* The defeat sequence that opens a lost raid, in front of the result screen's
+   own accounting.
+
+   Built from the game's own pixels: the party's front sprites, the character
+   sheet's idle frame for the trainer, the battle font, and the losing screen's
+   warm ramp. Chunky frames, hard shadows, no radii, no modern chrome.
+
+   The composition is one line-up standing on a band of ground, each figure over
+   a plate carrying its name, its level and what the raid did with it. Every beat
+   is an additive state on `[data-beat]`, so a figure animates from one beat to
+   the next rather than being redrawn, and each state holds once it lands. */
+.defeat-stage {
+  --defeat-band: clamp(42px, 7vh, 56px);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(12px, 3vh, 28px);
+  padding: clamp(14px, 3vw, 30px);
+  background:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 22%) 0 2px, transparent 2px 4px),
+    radial-gradient(ellipse at 50% 62%, #3d1a17 0%, #1b1520 52%, #080609 100%);
+  font-family: 'Orange Kid', monospace;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  user-select: none;
+}
+.defeat-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff6ea;
+  opacity: 0;
+  pointer-events: none;
+}
+.defeat-stage[data-beat~='fall'] .defeat-flash {
+  animation: defeat-flash 300ms steps(3) forwards;
+}
+@keyframes defeat-flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+/* The field is only ever a band of ground under the line-up: the overworld's
+   grass is 16px art built for a top-down camera and reads as wallpaper here. */
+.defeat-field {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 clamp(4px, 1.5vw, 16px);
+}
+.defeat-field::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--defeat-band);
+  background:
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 26%) 0 4px, transparent 4px 8px),
+    linear-gradient(#1e2f1e, #0d1710);
+  border-top: 3px solid #3a5233;
+  box-shadow: 0 5px 0 rgb(0 0 0 / 45%);
+}
+.defeat-cast {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(4px, 1.4vw, 16px);
+  max-width: 100%;
+}
+/* Fixed columns: the plates below stay side by side however long a species name
+   is, which is what stopped "CHARMANDER" from running under its neighbour. */
+.defeat-figure {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) var(--defeat-band);
+  justify-items: center;
+  width: clamp(72px, 10.5vw, 116px);
+  margin: 0;
+}
+.defeat-figure.is-last-stand {
+  width: clamp(96px, 14vw, 152px);
+}
+.defeat-sprite {
+  display: grid;
+  place-items: end center;
+  align-self: end;
+  width: 100%;
+  height: clamp(94px, 17vh, 132px);
+  transform-origin: 50% 100%;
+}
+.defeat-figure.is-last-stand .defeat-sprite,
+.defeat-figure.is-trainer .defeat-sprite {
+  height: clamp(126px, 23vh, 182px);
+}
+/* Species sprites ship at 36x44 to 64x64. They are scaled to fill the column
+   rather than left at their intrinsic size, because a line-up drawn at native
+   resolution on a 720px stage is too small to recognise anyone in. */
+.defeat-sprite img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  image-rendering: pixelated;
+}
+.defeat-trainer {
+  height: 100%;
+  width: auto;
+  /* Frame 0 of the character sheet - the player standing, facing the camera -
+     cropped to the drawn figure rather than to its frame. The frame is 16x32 but
+     the figure only occupies rows 5 to 27 (see CHARACTER_HEAD_PIXEL_Y and
+     CHARACTER_FEET_PIXEL_Y), so framing the whole 16x32 cell drew the player at
+     two thirds the height of the Pokemon standing beside them.
+
+     1163.6% is 256/22, which scales the sheet so 22 of its pixels fill the box.
+     A percentage background-position is not an offset - it aligns that point of
+     the image with that point of the box - so shifting up by 5 of those 22 pixels
+     is 5/22 divided by (1163.6% - 100%), which is 2.137%, not 22.727%. */
+  aspect-ratio: 16 / 22;
+  background: url('/assets/character.png') 0 2.137% / 1700% 1163.6% no-repeat;
+  image-rendering: pixelated;
+  transform-origin: 50% 100%;
+}
+.defeat-item-glyph {
+  display: grid;
+  place-items: center;
+  width: clamp(52px, 7.5vw, 78px);
+  aspect-ratio: 1;
+  border: 3px solid #a8564a;
+  background: #2c1a1b;
+  color: #f1bf63;
+  font-size: clamp(24px, 3.2vw, 38px);
+  line-height: 1;
+  box-shadow: inset 0 0 0 2px #14090b;
+}
+/* The plate lies on the ground under its figure, HUD-box style. */
+.defeat-plate {
+  /* Always over the bodies. A figure lying at an angle reaches across the top of
+     its own plate, and the plate is the information the player came for. */
+  position: relative;
+  z-index: 2;
+  align-self: end;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1px;
+  width: 100%;
+  height: var(--defeat-band);
+  padding: 2px 4px;
+  border: 2px solid #593330;
+  background: rgb(10 7 10 / 82%);
+  color: #f4ece2;
+  font-size: clamp(11px, 1.35vw, 15px);
+  line-height: 1.05;
+  text-align: center;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.defeat-figure.is-last-stand .defeat-plate {
+  border-color: #a8564a;
+}
+.defeat-figure.is-last-stand .defeat-plate b {
+  color: #ffd9d1;
+}
+.defeat-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #a78a86;
+  font-size: 0.85em;
+}
+.defeat-tag {
+  opacity: 0;
+  color: var(--menu-danger);
+  font-weight: 700;
+}
+.defeat-figure.is-trainer .defeat-meta {
+  color: #d8a79c;
+}
+/* Beat one: the line-up goes down. Stepped easing keeps the motion reading as
+   sprite animation rather than as a CSS transition, and each kind falls the way
+   its kind would: a Pokemon tips over, a bag of supplies just drops. */
+.defeat-stage[data-beat~='fall'] .defeat-figure[data-kind='pokemon'] .defeat-sprite {
+  animation: defeat-drop 420ms steps(4) forwards;
+  animation-delay: calc(var(--figure-index, 0) * 70ms);
+}
+@keyframes defeat-drop {
+  0% {
+    transform: rotate(0) scale(1);
+    filter: none;
+  }
+  40% {
+    transform: translateX(6%) rotate(-16deg) scale(1.02);
+  }
+  100% {
+    /* Scaled down and pushed back over its own column as it turns: a body as
+       tall as its column is wider than the column once it is on its side, and
+       pivoting at the feet swings it across its neighbour's name plate. */
+    transform: translateX(26%) rotate(-56deg) scale(0.72);
+    filter: grayscale(0.85) brightness(0.5);
+  }
+}
+.defeat-stage[data-beat~='fall'] .defeat-figure[data-kind='item'] .defeat-sprite {
+  animation: defeat-spill 420ms steps(4) forwards;
+  animation-delay: calc(var(--figure-index, 0) * 70ms);
+}
+@keyframes defeat-spill {
+  0% {
+    transform: translateY(0) scale(1);
+    filter: none;
+  }
+  100% {
+    transform: translateY(9px) scale(0.86);
+    filter: grayscale(0.85) brightness(0.5);
+  }
+}
+/* The trainer slumps rather than falling flat: an extraction raid takes you
+   down and takes your gear, it does not kill you. */
+.defeat-stage[data-beat~='fall'] .defeat-figure.is-trainer .defeat-sprite {
+  animation: defeat-slump 520ms steps(5) forwards;
+}
+@keyframes defeat-slump {
+  0% {
+    transform: rotate(0) translateY(0);
+    filter: none;
+  }
+  55% {
+    transform: translateX(-6%) rotate(-18deg);
+  }
+  100% {
+    /* Down like the rest of them, but never greyed: this is the player, not an
+       asset the raid took. They fall away from the party so the pile reads. */
+    transform: translateX(-20%) rotate(-54deg) scale(0.82);
+    filter: brightness(0.72) saturate(0.7);
+  }
+}
+/* Beat two: what was lifted off you is stamped and dulled, and stays visible.
+   Dragging it off screen would have made the comparison the beat exists for
+   impossible to read, and the name plate is never dimmed with the body - the
+   plate is the information the player came for. */
+.defeat-stage[data-beat~='taken'] .defeat-figure[data-fate='taken'] .defeat-sprite > * {
+  animation: defeat-taken 460ms ease-out forwards;
+  animation-delay: calc(var(--figure-index, 0) * 60ms);
+}
+@keyframes defeat-taken {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.34;
+  }
+}
+.defeat-stage[data-beat~='taken'] .defeat-figure[data-fate='taken'] .defeat-tag {
+  animation: defeat-stamp 260ms steps(3) forwards;
+  animation-delay: calc(var(--figure-index, 0) * 60ms + 120ms);
+}
+/* Beat three: whatever the secure slot held stands back up in full colour. It is
+   the only thing on this screen allowed to look alive. */
+.defeat-stage[data-beat~='held'] .defeat-figure[data-kind='pokemon'][data-fate='held'] .defeat-sprite {
+  animation: defeat-recover 520ms steps(5) forwards;
+}
+@keyframes defeat-recover {
+  0% {
+    transform: translateX(26%) rotate(-56deg) scale(0.72);
+    filter: grayscale(0.85) brightness(0.5);
+  }
+  100% {
+    transform: translateX(0) rotate(0) translateY(-8px) scale(1);
+    filter: none;
+  }
+}
+.defeat-stage[data-beat~='held'] .defeat-figure[data-kind='item'][data-fate='held'] .defeat-sprite {
+  animation: defeat-reclaim 520ms steps(5) forwards;
+}
+@keyframes defeat-reclaim {
+  0% {
+    transform: translateY(9px) scale(0.86);
+    filter: grayscale(0.85) brightness(0.5);
+  }
+  100% {
+    transform: translateY(-8px) scale(1);
+    filter: none;
+  }
+}
+.defeat-stage[data-beat~='held'] .defeat-figure[data-fate='held'] .defeat-plate {
+  border-color: var(--menu-accent);
+  background: #0b2420;
+}
+.defeat-stage[data-beat~='held'] .defeat-figure[data-fate='held'] .defeat-plate b {
+  color: #d8fff4;
+}
+.defeat-stage[data-beat~='held'] .defeat-figure[data-fate='held'] .defeat-tag {
+  color: var(--menu-accent);
+  animation: defeat-stamp 260ms steps(3) forwards;
+  animation-delay: 200ms;
+}
+@keyframes defeat-stamp {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(1.6);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.defeat-caption {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  width: min(100%, 700px);
+  padding: clamp(9px, 1.8vw, 15px) clamp(12px, 2.4vw, 22px);
+  border: 4px solid #a8564a;
+  outline: 3px solid #2a1013;
+  outline-offset: -10px;
+  background: linear-gradient(#2a1013, #140a10);
+  box-shadow:
+    0 0 0 5px #080609,
+    10px 10px 0 rgb(0 0 0 / 50%);
+  text-align: center;
+}
+.defeat-stage:not([data-beat~='fall']) .defeat-caption {
+  opacity: 0;
+}
+.defeat-caption.is-entering {
+  animation: defeat-caption-in 220ms steps(3);
+}
+@keyframes defeat-caption-in {
+  0% {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.defeat-headline {
+  margin: 0;
+  color: #ffd9d1;
+  font-size: clamp(24px, 4.2vw, 40px);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+.defeat-detail {
+  margin: 0;
+  max-width: 54ch;
+  color: #e6cfc7;
+  font-size: clamp(14px, 1.9vw, 20px);
+  line-height: 1.2;
+}
+.defeat-skip {
+  position: absolute;
+  right: clamp(14px, 3vw, 30px);
+  top: clamp(14px, 3vw, 30px);
+  border: 2px solid #7d4038;
+  background: rgb(8 6 9 / 78%);
+  padding: 5px 9px;
+  color: #d8a79c;
+  font: inherit;
+  font-size: clamp(13px, 1.6vw, 16px);
+  cursor: pointer;
+}
+.defeat-skip:hover,
+.defeat-skip:focus-visible {
+  border-color: var(--menu-danger);
+  color: #ffd9d1;
+}
+/* Motion is the whole point of this screen, so it is not removed for a player
+   who asked for less of it - it is made instant, and the words still land. */
+@media (prefers-reduced-motion: reduce) {
+  .defeat-stage *,
+  .defeat-stage *::before,
+  .defeat-stage *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

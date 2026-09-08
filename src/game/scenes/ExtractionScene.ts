@@ -1,4 +1,11 @@
 import Phaser from 'phaser';
+import { audioManager } from '../audio/AudioManager';
+import {
+  buildDefeatSequence,
+  type DefeatBeat,
+  type DefeatFigure,
+  type DefeatSequence,
+} from '../run/defeatSequence';
 import type {
   ExtractionReport,
   ReportGroup,
@@ -35,21 +42,52 @@ export interface ExtractionSceneData {
  */
 const INPUT_LOCK_MS = 900;
 
+/**
+ * The shorter hold used when the defeat sequence played all the way through.
+ *
+ * The full lock exists to absorb the tap that closed the last battle line. A
+ * player who watched four seconds of their party going down has already spent
+ * that tap, so making them wait again is the screen being slow rather than safe.
+ */
+const SETTLED_LOCK_MS = 350;
+
+/**
+ * Whether this save has already seen a defeat, which is all the sequence needs
+ * to know to run at its shorter pace from the second death onwards.
+ *
+ * Kept out of the save blob deliberately: it is presentation pacing, it must
+ * survive a wipe rather than be undone by one, and a browser with no storage
+ * simply always gets the first-viewing pace rather than an error.
+ */
+const DEFEAT_SEEN_KEY = 'escape-from-pallet-town.defeat-seen.v1';
+
+/** Keys that are only ever half of a keypress, so they never count as the skip. */
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab']);
+
 export class ExtractionScene extends Phaser.Scene {
   private overlay!: MenuOverlay;
   private report!: ExtractionReport;
   private leaving = false;
   private locked = true;
   private keyListener: ((event: KeyboardEvent) => void) | undefined;
+  /** Set while the defeat sequence is on screen, which is when a key skips. */
+  private sequencePlaying = false;
+  private sequenceTimers: Phaser.Time.TimerEvent[] = [];
 
   public constructor() {
     super('extraction');
   }
 
+  /**
+   * Phaser reuses one instance per scene key, so every field describing the last
+   * result outlives it. Everything the sequence sets is cleared here.
+   */
   public init(data: ExtractionSceneData): void {
     this.report = data.report;
     this.leaving = false;
     this.locked = true;
+    this.sequencePlaying = false;
+    this.sequenceTimers = [];
   }
 
   public create(): void {
@@ -57,17 +95,118 @@ export class ExtractionScene extends Phaser.Scene {
     this.overlay = new MenuOverlay(this, 'extraction-menu', () => {});
     this.overlay.root.setAttribute('aria-label', 'Raid result');
     this.listenForKeys();
+    const sequence = buildDefeatSequence(this.report, { pace: this.defeatPace() });
+    if (sequence) {
+      this.playDefeatSequence(sequence);
+      return;
+    }
+    this.showReport(INPUT_LOCK_MS);
+  }
+
+  /**
+   * Plays the defeat beats over the result screen, then hands it the screen.
+   *
+   * Nothing here can strand the player: the scene keeps every timer it schedules
+   * so a skip cancels the rest, and a skip and a finished sequence land on the
+   * same report through the same method.
+   */
+  private playDefeatSequence(sequence: DefeatSequence): void {
+    this.sequencePlaying = true;
+    this.overlay.root.innerHTML = defeatMarkup(sequence);
+    const stage = this.overlay.root.querySelector<HTMLElement>('[data-defeat]');
+    if (!stage) {
+      this.finishDefeatSequence(true);
+      return;
+    }
+    // A click anywhere on the stage skips, so the skip button is a signpost for
+    // the behaviour rather than the only target for it.
+    stage.onpointerdown = () => this.finishDefeatSequence(true);
+
+    let offsetMs = sequence.leadInMs;
+    for (const beat of sequence.beats) {
+      this.sequenceTimers.push(
+        this.time.delayedCall(offsetMs, () => this.enterDefeatBeat(stage, beat)),
+      );
+      offsetMs += beat.durationMs;
+    }
+    this.sequenceTimers.push(
+      this.time.delayedCall(sequence.totalMs, () => this.finishDefeatSequence(false)),
+    );
+  }
+
+  /**
+   * Adds the beat to the stage rather than replacing the last one.
+   *
+   * The states are cumulative - the party stays down while their gear is taken,
+   * and stays down while the secure slot is counted - so the stage carries every
+   * beat it has reached and the CSS reads them with `~=`.
+   */
+  private enterDefeatBeat(stage: HTMLElement, beat: DefeatBeat): void {
+    stage.dataset.beat = `${stage.dataset.beat ?? ''} ${beat.id}`.trim();
+    const headline = stage.querySelector<HTMLElement>('[data-defeat-headline]');
+    const detail = stage.querySelector<HTMLElement>('[data-defeat-detail]');
+    if (headline && detail) {
+      headline.textContent = beat.headline;
+      detail.textContent = beat.detail;
+      // Removing and re-adding in the same frame restarts the caption animation,
+      // which otherwise only ever plays for the first beat.
+      const caption = headline.parentElement;
+      caption?.classList.remove('is-entering');
+      void caption?.offsetWidth;
+      caption?.classList.add('is-entering');
+    }
+    if (beat.id === 'fall') {
+      audioManager.playFaint();
+    }
+    if (beat.id === 'held' && this.report.secured.pokemon.length + this.report.secured.items.length > 0) {
+      audioManager.playConfirm();
+    }
+  }
+
+  /** The single way out of the sequence, whether it was watched or skipped. */
+  private finishDefeatSequence(skipped: boolean): void {
+    if (!this.sequencePlaying) {
+      return;
+    }
+    this.sequencePlaying = false;
+    for (const timer of this.sequenceTimers) {
+      timer.remove(false);
+    }
+    this.sequenceTimers = [];
+    this.rememberDefeatSeen();
+    this.showReport(skipped ? INPUT_LOCK_MS : SETTLED_LOCK_MS);
+  }
+
+  private showReport(lockMs: number): void {
     this.overlay.root.innerHTML = this.markup();
     const control = this.overlay.root.querySelector<HTMLButtonElement>('[data-continue]')!;
     control.onclick = () => this.leave();
     control.disabled = true;
-    this.time.delayedCall(INPUT_LOCK_MS, () => {
+    this.time.delayedCall(lockMs, () => {
       this.locked = false;
       control.disabled = false;
       // Focus only lands once the button can act on it, so the first keypress a
       // player makes after reading is the one that leaves.
       this.overlay.focus('[data-continue]');
     });
+  }
+
+  private defeatPace(): 'first' | 'repeat' {
+    try {
+      return window.localStorage?.getItem(DEFEAT_SEEN_KEY) ? 'repeat' : 'first';
+    } catch {
+      // Storage can be unavailable or blocked. A defeat still plays, at the pace
+      // a player who has never seen one should get.
+      return 'first';
+    }
+  }
+
+  private rememberDefeatSeen(): void {
+    try {
+      window.localStorage?.setItem(DEFEAT_SEEN_KEY, '1');
+    } catch {
+      // Nothing to do: the next defeat simply plays at the first-viewing pace.
+    }
   }
 
   /**
@@ -82,6 +221,17 @@ export class ExtractionScene extends Phaser.Scene {
    */
   private listenForKeys(): void {
     this.keyListener = (event: KeyboardEvent) => {
+      // While the defeat plays, every key is the skip. A player who has seen it
+      // must never have to find the right one, and a bare modifier is not a
+      // keypress a player meant as one.
+      if (this.sequencePlaying) {
+        if (MODIFIER_KEYS.has(event.key)) {
+          return;
+        }
+        event.preventDefault();
+        this.finishDefeatSequence(true);
+        return;
+      }
       if (this.locked || !['Enter', ' ', 'Escape'].includes(event.key)) {
         return;
       }
@@ -231,6 +381,61 @@ export class ExtractionScene extends Phaser.Scene {
       ? 'Nothing new to bank, but your loadout is back at base and ready to redeploy.'
       : 'Everything above is in your stash and ready for the next deployment.';
   }
+}
+
+/**
+ * The defeat tableau: the trainer and the party, drawn from the sprites the game
+ * already ships and laid out as one line-up standing on the field.
+ *
+ * The markup is written once and never re-rendered. Every beat is a state on the
+ * stage element, so the figures animate from one beat to the next instead of
+ * snapping between three separate pictures, and the stage is exactly as
+ * skippable at the first frame as at the last.
+ */
+function defeatMarkup(sequence: DefeatSequence): string {
+  const cast = sequence.figures.map((figure, index) => defeatFigure(figure, index)).join('');
+  return `<div class="defeat-stage" data-defeat data-beat="" role="group" aria-label="Raid lost">
+    <div class="defeat-flash" aria-hidden="true"></div>
+    <div class="defeat-field">
+      <div class="defeat-cast">
+        <figure class="defeat-figure is-trainer">
+          <span class="defeat-sprite"><span class="defeat-trainer" aria-label="You, face down in the grass"></span></span>
+          <span class="defeat-plate"><b>You</b><span class="defeat-meta"><small>Down</small></span></span>
+        </figure>
+        ${cast}
+      </div>
+    </div>
+    <div class="defeat-caption is-entering" aria-live="polite">
+      <p class="defeat-headline" data-defeat-headline></p>
+      <p class="defeat-detail" data-defeat-detail></p>
+    </div>
+    <button type="button" class="defeat-skip" data-defeat-skip>${escapeHtml(sequence.skipHint)} \u25b8</button>
+  </div>`;
+}
+
+/**
+ * One column of the line-up: the sprite standing on the ground, and a plate laid
+ * on the ground beneath it carrying the name, the level and the verdict.
+ *
+ * The plate is what makes the moment personal and legible at once - the level is
+ * the difference between "a Charmander" and the one carried through six raids -
+ * and putting the verdict on it rather than floating a stamp over the sprite
+ * keeps every column the same shape however the sprite is rotated.
+ */
+function defeatFigure(figure: DefeatFigure, index: number): string {
+  const classes = ['defeat-figure', figure.lastStand ? 'is-last-stand' : ''].join(' ').trim();
+  const body =
+    figure.kind === 'pokemon'
+      ? `<img src="/assets/pokemon/front/${figure.dexId}.png" alt="" />`
+      : `<span class="defeat-item-glyph" aria-hidden="true">\u2726</span>`;
+  const meta = figure.kind === 'pokemon' ? `Lv ${figure.level ?? '?'}` : `\u00d7${figure.quantity ?? 1}`;
+  return `<figure class="${classes}" data-kind="${figure.kind}" data-fate="${figure.fate}" style="--figure-index:${index}">
+    <span class="defeat-sprite">${body}</span>
+    <span class="defeat-plate">
+      <b>${escapeHtml(figure.label)}</b>
+      <span class="defeat-meta"><small>${meta}</small><span class="defeat-tag">${figure.fate === 'held' ? 'Held' : 'Taken'}</span></span>
+    </span>
+  </figure>`;
 }
 
 type RowTag = 'banked' | 'lost' | 'secured' | 'survived';
