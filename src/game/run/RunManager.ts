@@ -56,6 +56,12 @@ export interface RunSnapshot {
    */
   readonly durationMs: number;
   readonly isEnraged: boolean;
+  /**
+   * What is left of `ENRAGE_GRACE_MS` once the raid clock has run out, so the
+   * HUD can keep counting the only number that still decides the raid. Equal to
+   * `ENRAGE_GRACE_MS` while the raid clock is still running.
+   */
+  readonly enrageGraceRemainingMs: number;
 }
 
 export interface RunResult {
@@ -115,6 +121,10 @@ export class RunManager {
 
   public get isEnrageGraceExpired(): boolean {
     return this.isEnragedValue && this.enrageElapsedMs >= ENRAGE_GRACE_MS;
+  }
+
+  public enrageGraceRemainingMs(): number {
+    return this.isEnragedValue ? Math.max(0, ENRAGE_GRACE_MS - this.enrageElapsedMs) : ENRAGE_GRACE_MS;
   }
 
   public startRun(
@@ -302,6 +312,7 @@ export class RunManager {
       remainingMs: this.remainingMs(),
       durationMs: this.durationMs,
       isEnraged: this.isEnragedValue,
+      enrageGraceRemainingMs: this.enrageGraceRemainingMs(),
     };
   }
 

@@ -34,18 +34,29 @@ body {
   place-items: center;
 }
 
+/* Sized in script to the exact canvas size - see display/stageScaler.ts. The
+   fallback here is the smallest screen the game will present, so a first paint
+   before the scaler runs is never larger than the game itself. */
 #app {
-  width: min(100vw, 960px);
-  height: min(100vh, 720px);
+  /* A frame drawn outside the layout box: a border here would eat pixels off
+     the canvas and put the art back on a fractional scale. */
+  box-shadow: 0 0 0 2px #253d55;
+  width: 640px;
+  height: 480px;
+  max-width: 100vw;
+  max-height: 100vh;
   display: grid;
   place-items: center;
   position: relative;
 }
 
 #app canvas {
-  border: 2px solid #253d55;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  /* A window too small for even 2x scales the canvas down rather than clipping
+     it; every window that can hold the game leaves this untouched. */
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .menu-overlay {
@@ -129,6 +140,9 @@ button {
   gap: 8px;
 }
 .objective-copy {
+  /* Grows into the row instead of being pushed to its right edge by the
+     trailing-child rule above, which only reads correctly on a narrow row. */
+  flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -819,6 +833,12 @@ button {
   color: var(--menu-danger);
 }
 .objectives-menu {
+  /* The screen is now as tall as the browser window, so the guide is centred in
+     it rather than pinned to the top of a much taller box. `safe` keeps a guide
+     too tall to fit scrollable from its own top edge. */
+  display: grid;
+  align-content: safe center;
+  justify-items: center;
   background:
     repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 4px),
     #07151b;
@@ -826,8 +846,10 @@ button {
   letter-spacing: 0.025em;
 }
 .field-guide-shell {
-  width: min(800px, calc(100% - 28px));
-  min-height: min(530px, calc(100% - 28px));
+  /* Same measure as the lobby's `.menu-shell`, so the guide is a page of the
+     same game rather than a small card floating in a large screen. */
+  width: min(1040px, calc(100% - 28px));
+  min-height: min(660px, calc(100% - 28px));
   margin: 14px auto;
   padding: clamp(18px, 3vw, 34px);
   border: 4px solid #b7e7d0;

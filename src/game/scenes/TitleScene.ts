@@ -3,9 +3,6 @@ import { audioManager } from '../audio/AudioManager';
 import { SaveManager } from '../save/SaveManager';
 import { getStarterSpecies } from '../stash';
 
-const SCREEN_WIDTH = 320;
-const SCREEN_HEIGHT = 240;
-
 export class TitleScene extends Phaser.Scene {
   private hasStarted = false;
   private prompt!: Phaser.GameObjects.Text;
@@ -32,19 +29,23 @@ export class TitleScene extends Phaser.Scene {
     this.prompt.setAlpha(0.45 + pulse * 0.55);
   }
 
+  /** Drawn to the live screen size, so the frame always sits on its edges. */
   private drawBackdrop(): void {
+    const width = this.scale.width;
+    const height = this.scale.height;
+    const horizonY = Math.round(height * 0.733);
     const graphics = this.add.graphics();
     graphics.fillStyle(0x09172a);
-    graphics.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    graphics.fillRect(0, 0, width, height);
     graphics.fillStyle(0x122d45);
-    graphics.fillRect(0, 176, SCREEN_WIDTH, 64);
+    graphics.fillRect(0, horizonY, width, height - horizonY);
     graphics.fillStyle(0x1f4c5f);
-    graphics.fillRect(0, 181, SCREEN_WIDTH, 4);
+    graphics.fillRect(0, horizonY + 5, width, 4);
 
     graphics.lineStyle(2, 0x8ed4c2);
-    graphics.strokeRect(12, 12, SCREEN_WIDTH - 24, SCREEN_HEIGHT - 24);
+    graphics.strokeRect(12, 12, width - 24, height - 24);
     graphics.lineStyle(1, 0x31566a);
-    graphics.strokeRect(17, 17, SCREEN_WIDTH - 34, SCREEN_HEIGHT - 34);
+    graphics.strokeRect(17, 17, width - 34, height - 34);
   }
 
   private createTitle(): void {
@@ -58,9 +59,9 @@ export class TitleScene extends Phaser.Scene {
       strokeThickness: 4,
     };
 
-    this.add.text(SCREEN_WIDTH / 2, 66, 'ESCAPE FROM', titleStyle).setOrigin(0.5);
+    this.add.text(this.scale.width / 2, this.scale.height * 0.275, 'ESCAPE FROM', titleStyle).setOrigin(0.5);
     this.add
-      .text(SCREEN_WIDTH / 2, 100, 'PALLET TOWN', {
+      .text(this.scale.width / 2, this.scale.height * 0.417, 'PALLET TOWN', {
         ...titleStyle,
         color: '#8ed4c2',
         fontSize: '28px',
@@ -68,7 +69,7 @@ export class TitleScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(SCREEN_WIDTH / 2, 145, 'A WEB ADVENTURE', {
+      .text(this.scale.width / 2, this.scale.height * 0.604, 'A WEB ADVENTURE', {
         align: 'center',
         color: '#9bb4c6',
         fontFamily: 'monospace',
@@ -79,7 +80,7 @@ export class TitleScene extends Phaser.Scene {
 
   private createPrompt(): void {
     this.prompt = this.add
-      .text(SCREEN_WIDTH / 2, 204, 'PRESS ENTER OR TAP', {
+      .text(this.scale.width / 2, this.scale.height * 0.85, 'PRESS ENTER OR TAP', {
         align: 'center',
         color: '#f8f5d7',
         fontFamily: 'monospace',

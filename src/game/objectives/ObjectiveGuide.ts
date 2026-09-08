@@ -79,11 +79,13 @@ function firstContractHints(
     ];
   }
 
+  // Unnumbered: the field guide renders these in an ordered list, and hints
+  // that numbered themselves as well came out as "1. 1. You are in ...".
   return [
-    `1. You are in ${firstContractLocationHint(session, context)}.`,
-    '2. Two ways down: the central road is fast and open but Maya holds its checkpoint, and the west reeds are slower cover that rejoins the road above and below her.',
-    '3. Step onto the lost field kit marker to retrieve it.',
-    `4. ${extractionHint}`,
+    `You are in ${firstContractLocationHint(session, context)}.`,
+    'Two ways down: the central road is fast and open but Maya holds its checkpoint, and the west reeds are slower cover that rejoins the road above and below her.',
+    'Step onto the lost field kit marker to retrieve it.',
+    extractionHint,
   ];
 }
 
