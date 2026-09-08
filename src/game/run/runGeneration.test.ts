@@ -126,8 +126,6 @@ describe('run generation', () => {
    * two or more exits, all of them walkable from the insertion, at least one
    * open immediately and at least one that has to be earned or waited for.
    */
-  // 500 plans per insertion, each with a flood fill of its map behind it, runs
-  // close enough to the 5s default to time out on a loaded machine.
   it('never generates a run with one exit, and every offered exit can be walked to', () => {
     for (const insertionId of insertionIds) {
       const insertion = RUN_INSERTIONS[insertionId];
@@ -143,7 +141,7 @@ describe('run generation', () => {
         expect(extractionPoints.some((point) => !isOpenAtStart(point))).toBe(true);
       }
     }
-  }, 30_000);
+  });
 
   it('puts the first contract and its map on a raid the default insertion can complete', () => {
     const plan = generateRunPlan(2024);

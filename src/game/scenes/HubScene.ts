@@ -35,6 +35,7 @@ import {
   type StashedPokemon,
 } from '../stash';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
+import { conditionLine } from '../ui/condition';
 import { starterCards, starterLoadoutSummary } from '../ui/starterPicker';
 
 export interface HubSceneData {
@@ -414,12 +415,7 @@ export class HubScene extends Phaser.Scene {
 
   /** One line of condition, so "fainted" is never hidden behind an HP number. */
   private conditionLine(stored: StashedPokemon): string {
-    const { pokemon } = stored;
-    const flags = [
-      ...(pokemon.isFainted ? ['fainted'] : []),
-      ...(pokemon.primaryStatus === null ? [] : [pokemon.primaryStatus]),
-    ];
-    return `Level ${pokemon.level} · ${pokemon.currentHp}/${pokemon.maxHp} HP${flags.length ? ` · ${flags.join(' · ')}` : ''}`;
+    return conditionLine(stored.pokemon);
   }
 
   /**
