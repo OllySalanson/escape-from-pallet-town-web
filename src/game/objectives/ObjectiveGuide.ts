@@ -3,7 +3,7 @@ import { formatStacks, type RunObjective } from './RunObjectives';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { GridPosition } from '../movement/gridMovement';
 import { WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
-import { WORLD_POIS } from '../world/pois';
+import { poisForMap } from '../world/pois';
 
 export interface ObjectiveGuideContext {
   readonly currentMapId: WorldMapId;
@@ -150,12 +150,14 @@ function laterRunHints(context: ObjectiveGuideContext, currentExit: string | und
         : 'Ranger Station gives a hunter forecast and activates the Radio Exit. South Gate is always open; Ferry Dock opens on its signal.',
     ];
   }
-  const fieldStation = WORLD_POIS.find((poi) => poi.mapId === context.currentMapId);
-  const stationHint =
-    fieldStation && !context.activatedPoiIds.has(fieldStation.id)
-      ? `Oak’s Field Station is nearby. Its marked cache is worth checking.`
-      : 'Search marked caches and loose supplies, then leave before the raid turns against you.';
-  return [stationHint, currentExit ? `Use ${currentExit} on this map to bank your haul.` : 'Return to a marked extraction gate to bank your haul.'];
+  // Named and explained by the landmark itself. Every map has its own, and more
+  // than one on some, so a sentence that wrote a landmark's name or what it does
+  // as a literal would be right on one map and misdirecting on the other three.
+  const landmark = poisForMap(context.currentMapId).find((poi) => !context.activatedPoiIds.has(poi.id));
+  const landmarkHint = landmark
+    ? `${landmark.label} is nearby. ${landmark.description}`
+    : 'Search marked caches and loose supplies, then leave before the raid turns against you.';
+  return [landmarkHint, currentExit ? `Use ${currentExit} on this map to bank your haul.` : 'Return to a marked extraction gate to bank your haul.'];
 }
 
 /** How this contract gets banked, which is not always "any exit will do". */
