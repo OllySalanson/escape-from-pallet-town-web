@@ -3,6 +3,7 @@ import { ItemCategory, useFieldItem, type Bag, type ItemDefinition } from '../it
 import type { PokemonParty } from '../pokemon';
 import { itemIcon } from '../ui/icons';
 import { MenuOverlay, hpBar, pokemonAvatar } from '../ui/MenuOverlay';
+import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 
 const SCREEN_WIDTH = 320;
 const SCREEN_HEIGHT = 240;
@@ -59,7 +60,8 @@ export class BagScene extends Phaser.Scene {
 
   private createModernMenu(): void {
     this.menuOverlay = new MenuOverlay(this, 'bag-menu', (event) => {
-      if (event.key === 'Escape' || event.key === 'Backspace') {
+      // B is what opened this, so B is what the player will press to leave it.
+      if (isOverlayDismissKey(event, 'b', 'Backspace')) {
         event.preventDefault();
         if (this.choosingPokemon) { this.choosingPokemon = false; this.renderModernMenu(); } else this.close();
         return;
