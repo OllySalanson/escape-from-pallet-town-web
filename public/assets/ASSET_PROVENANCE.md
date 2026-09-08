@@ -25,8 +25,8 @@ The two SHAs match when the file is byte-for-byte the upstream one.
 
 `OllySalanson/escapeFromPalletTown` is the repository owner's own Unity game and
 the source of this port's art. The owner has stated that the art in that project
-is their own work and that this port may use it. Two files below are the noted
-exceptions - they came through that project but are not the owner's own work.
+is their own work and that this port may use it. One file below is the noted
+exception - it came through that project but is not the owner's own work.
 
 Every file in this table is byte-for-byte identical to the upstream path named,
 verified by Git blob SHA on 2026-09-08 against `main`.
@@ -45,7 +45,6 @@ verified by Git blob SHA on 2026-09-08 against `main`.
 | --- | --- | --- |
 | `battle/hud-box.png` - HUD panel | `Assets/Art/Battle/hud-box.png` | `9efe8d233a2ce115d0b46134443772e1aa5b0601` |
 | `battle/dialog-plain.png` - dialogue panel | `Assets/Art/Battle/dialog-plain.png` | `4e9eb7ddb7def477a33e4b044f6692265b4508b4` |
-| `battle/orange-kid.ttf` - the UI typeface | `Assets/Art/Battle/Orange kid.ttf` | `8c1b9b2a1feca5e460ff9424d18556149fc8cd7b` |
 
 `battle/background-grass.png` is the one derived file, so it matches no upstream
 SHA: it is a single grassland panel cropped out of the montage sheet
@@ -68,6 +67,55 @@ asset", #30).
 | 16 | `6d6d7baf045fb39dc340827b1a96716e6974bee5` | `6228af788171e91855a6651663ea0055879b086c` |
 | 25 | `dee4c3ef73fcbacc8a3878619f623f10ccbceeee` | `a4a753cf0ea66aaa547444480481edda7ff22b7e` |
 | 39 | `03f9d6424620e8fed5ea3fb055c12338a612b827` | `37687a76faec875f2e115063ddb5cb1911acd4b1` |
+
+## `battle/orange-kid.woff2` - the UI typeface, CC0 from its designer
+
+Orange Kid is Ray Larabie's 1999 replica of the EarthBound lettering, and it is
+the typeface every battle line, HUD banner and field-guide heading is set in
+(`src/style.css` declares it; `BATTLE_FONT` in `BattleScene.ts` and
+`.objectives-menu` both name it).
+
+- **Shipping.** `Orange Kid.woff2`, **version 4.001**, taken byte-for-byte from
+  the WOFF2 webfont package on Typodermic's own public-domain page,
+  <https://typodermicfonts.com/public-domain/> (the per-font desktop download
+  beside it is `/assets/downloads/cc0-fonts/orange-kid.zip`). Downloaded
+  2026-09-08.
+- **Licence: CC0 1.0 Universal.** Confirmed at the publisher for *this* version,
+  not carried over from the previous one. The page states the collection is
+  released "under the official CC0 1.0 Universal public-domain dedication, with
+  no rights reserved" and that you may "embed them in software, redistribute
+  them, or sell them"; the WOFF2 package is the one it routes live website text
+  to. The file's own name table says the same - name ID 0 is "Released in 2024
+  under CC0 license. No rights reserved." and name ID 14 is
+  <https://creativecommons.org/publicdomain/zero/1.0/>. Its `fsType` is 0, where
+  the old build's was 4. No attribution is required; the credit above is
+  voluntary.
+
+### What this replaces, and why the licence question is now closed
+
+The file that shipped until 2026-09-08 was `battle/orange-kid.ttf`, version
+4.000, carried over from `Assets/Art/Battle/Orange kid.ttf` in the Unity project
+(blob `8c1b9b2a1feca5e460ff9424d18556149fc8cd7b`). That build predates the CC0
+release: its name table still carried the 1999-2009 Larabie copyright and pointed
+at Typodermic's commercial licence page, which routes live website text to a
+separate **webfont** licence - and `@font-face` is exactly that case. This file
+recorded that as an open question rather than guessing.
+
+Version 4.001 answers it at the publisher rather than around it, so the question
+is closed by shipping the licensed build, not by reinterpreting the old one. The
+4.000 TTF is deleted.
+
+**The swap is metrically identical, which is what made it safe.** Both builds are
+1000 units/em with the same `hhea` ascender/descender (978/-222) and the same
+`usWin` metrics, and neither sets `USE_TYPO_METRICS`, so the one OS/2 field that
+did change (`sTypoAscender`, 778 to 599) is not a field browsers read here. All
+551 codepoints the old build mapped are present in the new one with **identical
+advance widths**, verified again in Chrome: `measureText().width` matches to the
+float across every battle string and all 100 characters at 8, 13 and 16px. Only
+the rasterisation differs, because 4.001 is CFF where 4.000 was `glyf`. This
+mattered because #64 had fixed battle dialogue losing the first character of
+every line; that fix is `DialogBox` padding, and identical advances mean nothing
+about it moved.
 
 ## Pixel icons, authored for this repository
 
@@ -97,11 +145,11 @@ nothing for a Poke Ball, an extraction pad or a radio mast, so half the set woul
 have had to be drawn anyway and the result would not have read as one set.
 Nothing from it ships here.
 
-## Flagged: two files that are not the owner's own work
+## Flagged: one file that is not the owner's own work
 
-Both came through the Unity project, and neither is settled. They are recorded
-here so each decision gets made deliberately rather than by omission. **Nothing
-in the icon work changes either of them.**
+It came through the Unity project and is not settled. It is recorded here so the
+decision gets made deliberately rather than by omission. The typeface used to sit
+beside it; that question is closed above.
 
 ### `battle/background-grass.png` is ripped from a commercial game
 
@@ -109,19 +157,3 @@ The montage sheet it was cropped from carries an attribution painted into the
 image itself: *"Pokémon Platinum Battle Backgrounds, ripped by Professor Valley,
 for use only at The Spriters Resource and Pokemon Valley"*. That is a commercial
 game's asset, and the stated permission does not cover this repository.
-
-### `battle/orange-kid.ttf` is a third-party typeface, licensed for desktop use
-
-Its own name table identifies it, and the identification is not in doubt:
-
-- Name: Orange Kid; Designer: Ray Larabie; Vendor URL: `larabiefonts.com`;
-  Licence URL: the `typodermicfonts.com` licence page.
-- Copyright: "(c) 1999-2009 Ray Larabie. See attached license agreement for more
-  information." No such agreement is bundled here or upstream.
-
-Typodermic's current [licence page](https://typodermicfonts.com/license/) states
-that the free-font package carries a *desktop* EULA, and routes "live website
-text - a browser receives a font for live, selectable text" to a separate
-**webfont** licence. `src/style.css` serves this TTF through `@font-face`, which
-is that case. Third-party mirrors classify the font as public domain; per the
-rule at the top of this file, a mirror's classification is not evidence.
