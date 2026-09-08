@@ -6,6 +6,8 @@ import type { GridPosition } from '../movement/gridMovement';
 import {
   getStarterSpecies,
   Stash,
+  type RaidCondition,
+  type RaidSettlement,
   type RunResult,
   type SecureSlot,
   type StarterSpeciesId,
@@ -155,13 +157,20 @@ export class SaveManager {
   /**
    * Adds successful extraction rewards to the persisted vault. The active save
    * must exist because its world state is retained while only the stash changes.
+   *
+   * The settlement is what the raid itself cost - the condition every deployed
+   * Pokemon came home in, and the supplies that did not come home. It is applied
+   * before the rewards so a raid is never free, and it is optional only so that
+   * callers with nothing to settle (tests, and any future reward-only banking)
+   * stay honest rather than passing an invented one.
    */
-  public bankRun(result: RunResult): boolean {
+  public bankRun(result: RunResult, settlement?: RaidSettlement): boolean {
     const game = this.load();
     if (!game) {
       return false;
     }
 
+    applySettlement(game.stash, settlement);
     game.stash.bankRun(result);
     // The raid this debt paid for has now resolved, so it is settled. Charging
     // on resolution rather than on deployment is what stops a player healing,
@@ -173,12 +182,16 @@ export class SaveManager {
    * Banks the recovered field kit's raid and applies its permanent reward once.
    * The persisted completion flag makes repeated extraction handling idempotent.
    */
-  public bankFirstContractRun(result: RunResult): { readonly saved: boolean; readonly granted: boolean } {
+  public bankFirstContractRun(
+    result: RunResult,
+    settlement?: RaidSettlement,
+  ): { readonly saved: boolean; readonly granted: boolean } {
     const game = this.load();
     if (!game) {
       return { saved: false, granted: false };
     }
 
+    applySettlement(game.stash, settlement);
     game.stash.bankRun(result);
     if (game.raidProgress.firstContractExtracted) {
       return { saved: this.save({ ...game, pendingRecoveryMs: 0 }), granted: false };
@@ -216,17 +229,24 @@ export class SaveManager {
   /**
    * Persists a wipe after permanently deleting deployed assets outside the
    * secure slot. SecureSlot allows one Pokemon ID and at most two item stacks.
+   *
+   * Only the condition half of a settlement applies here: a secured Pokemon
+   * comes home in the state the raid left it in, usually fainted, while every
+   * other deployed Pokemon and the whole deployed supply are removed outright,
+   * so a supply delta would only take the same items away twice.
    */
   public applyWipeLoss(
     broughtPokemonIds: readonly string[],
     broughtItems: readonly { readonly itemId: string; readonly quantity: number }[],
     secureSlot: SecureSlot = {},
+    condition: readonly RaidCondition[] = [],
   ): boolean {
     const game = this.load();
     if (!game) {
       return false;
     }
 
+    game.stash.applyRaidCondition(condition);
     game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot);
     // A wipe must never hand the player back a run they cannot attempt: a fresh
     // starter when none survived, and supplies topped up to the minimum either
@@ -235,6 +255,15 @@ export class SaveManager {
     game.stash.restockMinimumSupplies();
     return this.save({ ...game, pendingRecoveryMs: 0 });
   }
+}
+
+/** Settles the raid's own cost before anything it earned is added. */
+function applySettlement(stash: Stash, settlement: RaidSettlement | undefined): void {
+  if (!settlement) {
+    return;
+  }
+  stash.applyRaidCondition(settlement.condition);
+  stash.applyRaidSupplies(settlement.supplies);
 }
 
 export function serializeGame(state: SaveGameState): SaveData {

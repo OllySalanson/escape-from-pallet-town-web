@@ -58,8 +58,19 @@ export class DeploymentFlow {
       .filter((stored): stored is StashedPokemon => stored !== undefined);
   }
 
+  /**
+   * The chosen supplies, resolved against the live stash exactly as the party
+   * is. Treating a Pokemon at base spends items out of the same vault this
+   * loadout is drawn from, so a stack the stash no longer holds shrinks here
+   * rather than deploying supplies that no longer exist.
+   */
   public get items(): readonly ItemStack[] {
-    return [...this.selectedItems].map(([itemId, quantity]) => ({ itemId, quantity }));
+    return [...this.selectedItems]
+      .map(([itemId, quantity]) => ({
+        itemId,
+        quantity: Math.min(quantity, this.stash.itemCount(itemId)),
+      }))
+      .filter((item) => item.quantity > 0);
   }
 
   public get securedPokemon(): StashedPokemon | undefined {
@@ -84,7 +95,7 @@ export class DeploymentFlow {
   }
 
   public itemQuantity(itemId: ItemId): number {
-    return this.selectedItems.get(itemId) ?? 0;
+    return Math.min(this.selectedItems.get(itemId) ?? 0, this.stash.itemCount(itemId));
   }
 
   public securesPokemon(id: string): boolean {

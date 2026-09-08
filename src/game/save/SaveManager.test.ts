@@ -329,6 +329,86 @@ describe('SaveManager', () => {
     ]);
   });
 
+  it('settles a raid into a save written before raid damage was ever persisted', () => {
+    // The settlement rides in the arguments, not in the save format, so a save
+    // from before this existed takes one without a version bump or a migration.
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 4,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: [],
+        bag: {},
+        stash: {
+          pokemon: [
+            {
+              id: 'charmander-1',
+              pokemon: {
+                speciesId: 'charmander',
+                level: 7,
+                currentHp: 21,
+                xp: 0,
+                moves: ['Scratch', 'Growl'],
+                primaryStatus: null,
+              },
+            },
+          ],
+          items: { potion: 3 },
+        },
+      }),
+    );
+    const saves = new SaveManager(storage);
+
+    expect(
+      saves.bankRun(
+        { pokemon: [], items: [] },
+        {
+          condition: [{ id: 'charmander-1', currentHp: 6, primaryStatus: 'burn' }],
+          supplies: [{ itemId: 'potion', quantity: -2 }],
+        },
+      ),
+    ).toBe(true);
+
+    const settled = saves.load();
+    expect(settled?.stash.listPokemon()).toMatchObject([
+      { id: 'charmander-1', pokemon: { currentHp: 6, primaryStatus: 'burn' } },
+    ]);
+    expect(settled?.stash.listItems()).toEqual({ potion: 1 });
+  });
+
+  it('never lets a settlement invent HP or supplies the vault cannot hold', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    const charmander = new Pokemon(CHARMANDER, 7);
+    stash.addPokemon(charmander, 'charmander-1');
+    stash.addItem('potion', 1);
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 1, y: 1 }, stash });
+
+    expect(
+      saves.bankRun(
+        { pokemon: [], items: [] },
+        {
+          condition: [
+            { id: 'charmander-1', currentHp: 9_999, primaryStatus: null },
+            { id: 'nobody-1', currentHp: 5, primaryStatus: 'burn' },
+          ],
+          // More Potions spent than the vault holds, which can only clear it.
+          supplies: [{ itemId: 'potion', quantity: -4 }],
+        },
+      ),
+    ).toBe(true);
+
+    const settled = saves.load();
+    expect(settled?.stash.listPokemon()).toMatchObject([
+      { id: 'charmander-1', pokemon: { currentHp: charmander.maxHp } },
+    ]);
+    expect(settled?.stash.listItems()).toEqual({});
+  });
+
   it('keeps a recovery and the raid time it cost across a reload', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);

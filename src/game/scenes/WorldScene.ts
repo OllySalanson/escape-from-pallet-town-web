@@ -38,6 +38,7 @@ import { Bag, ITEMS, type ItemId } from '../items';
 import { completedObjectiveRewards } from '../objectives';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
+import { buildRaidSettlement, deployedRaidCondition } from '../run/raidSettlement';
 import { formatRaidClock } from '../run/raidClock';
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
 import { FIRST_CONTRACT } from '../run/runGeneration';
@@ -1061,6 +1062,15 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    // Extraction is a deliberate destination, so it beats a random roll. Several
+    // authored exits stand in tall grass, and rolling first used to resolve the
+    // raid and then start a wild battle in the same tick: the scene the result
+    // screen was scheduled on was torn down for the battle, so the raid banked
+    // but the player came back to a dead world with no way out of it.
+    if (this.tryExtract()) {
+      return;
+    }
+
     const encounters = this.encountersForCurrentMap();
     if (isTallGrassInMap(this.currentMap, this.currentTile) && encounters) {
       const rng = this.runSession?.rng;
@@ -1084,8 +1094,6 @@ export class WorldScene extends Phaser.Scene {
         });
       }
     }
-
-    this.tryExtract();
   }
 
   private showIdlePose(): void {
@@ -1323,9 +1331,13 @@ export class WorldScene extends Phaser.Scene {
     return `HUNTER FORECAST: trail enters this area in about ${seconds}s. Ferry timing may be costly.`;
   }
 
-  private tryExtract(): void {
+  /**
+   * @returns Whether this step ended the raid, or was spent on a locked exit,
+   *   so the caller stops rather than rolling anything else into the same tick.
+   */
+  private tryExtract(): boolean {
     if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun) {
-      return;
+      return false;
     }
 
     const point = this.extractionPointsForCurrentMap().find(
@@ -1333,14 +1345,14 @@ export class WorldScene extends Phaser.Scene {
         candidate.position.x === this.currentTile.x && candidate.position.y === this.currentTile.y,
     );
     if (!point) {
-      return;
+      return false;
     }
 
     if (!this.isExtractionOpen(point)) {
       this.dialogBox.showMessage(
         `${point.label} is LOCKED: ${extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}.`,
       );
-      return;
+      return true;
     }
 
     this.runSession.manager.resolveEscape();
@@ -1354,13 +1366,19 @@ export class WorldScene extends Phaser.Scene {
     const objectiveRewards = snapshot.recoveredFieldKit
       ? []
       : completedObjectiveRewards(this.runSession.objectives, snapshot);
-    const runResult = {
-      pokemon: snapshot.caughtPokemon,
-      items: [...snapshot.foundItems, ...objectiveRewards],
-    };
+    // Loot found in the field is already in the bag, so it comes home through
+    // the settlement's supply delta. Only rewards granted at base are banked
+    // separately, or the same antidote would arrive twice.
+    const runResult = { pokemon: snapshot.caughtPokemon, items: objectiveRewards };
+    // What the raid itself cost, settled the same way whichever ending fires.
+    const settlement = buildRaidSettlement(
+      this.runSession.broughtPokemonIds,
+      snapshot,
+      this.bag.toJSON(),
+    );
     const contractResult = snapshot.recoveredFieldKit
-      ? new SaveManager().bankFirstContractRun(runResult)
-      : { saved: new SaveManager().bankRun(runResult), granted: false };
+      ? new SaveManager().bankFirstContractRun(runResult, settlement)
+      : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };
     this.pendingHubTransition = true;
     this.showRunResult(
       buildExtractionReport({
@@ -1372,9 +1390,11 @@ export class WorldScene extends Phaser.Scene {
         // run, so the report is handed exactly what the stash received.
         banked: {
           pokemon: runResult.pokemon,
-          items: contractResult.granted
-            ? [...runResult.items, { itemId: 'super-potion', quantity: 1 }]
-            : runResult.items,
+          items: [
+            ...snapshot.foundItems,
+            ...objectiveRewards,
+            ...(contractResult.granted ? [{ itemId: 'super-potion', quantity: 1 }] : []),
+          ],
         },
         ...(snapshot.recoveredFieldKit
           ? {
@@ -1391,6 +1411,7 @@ export class WorldScene extends Phaser.Scene {
         saved: contractResult.saved,
       }),
     );
+    return true;
   }
 
   /**
@@ -1455,6 +1476,8 @@ export class WorldScene extends Phaser.Scene {
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
       this.runSession.stashSecureSlot,
+      // A secured Pokemon comes home in the state the raid left it in.
+      deployedRaidCondition(this.runSession.broughtPokemonIds, snapshot),
     );
     this.pendingHubTransition = true;
     this.showRunResult(

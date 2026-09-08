@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import {
   applyRecovery,
   DeploymentFlow,
+  FAINTED_TREATMENT_NOTE,
   formatRecoveryClock,
   MAX_SECURE_ITEM_STACKS,
   needsRecovery,
@@ -9,7 +10,10 @@ import {
   quoteRecovery,
   raidClockAfterRecovery,
   recoveryCostMs,
+  treatmentOptions,
+  treatWithItem,
   type Deployment,
+  type TreatmentOption,
 } from '../hub';
 import { Bag, ITEM_DEFINITIONS, type ItemDefinition, type ItemId } from '../items';
 import { PokemonParty, type PokemonBase } from '../pokemon';
@@ -161,6 +165,27 @@ export class HubScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * Spends one medicine out of the stash on a Pokemon at base.
+   *
+   * The stash is the same vault the half-built loadout draws from, so the
+   * loadout's own supply counts shrink with it and a deployed stack can never
+   * outgrow what is actually held - see `DeploymentFlow.items`.
+   */
+  private treat(pokemonId: string, itemId: string): void {
+    const result = treatWithItem(this.stash, pokemonId, itemId);
+    if (!result.used) {
+      this.setStatus(result.message);
+      return;
+    }
+
+    this.setStatus(
+      this.saveManager.save({ ...this.savedGame, stash: this.stash })
+        ? result.message
+        : `${result.message} The treatment could not be saved.`,
+    );
+  }
+
   /** The lone Pokemon a swap would trade away, or undefined while a team remains. */
   private get sparePartner(): StashedPokemon | undefined {
     return this.stash.canSwapStarter() ? this.stashPokemon[0] : undefined;
@@ -302,6 +327,7 @@ export class HubScene extends Phaser.Scene {
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-recover]').forEach((button) => button.onclick = () => this.recover([button.dataset.recover!]));
     this.overlay.root.querySelector<HTMLButtonElement>('[data-recover-all]')?.addEventListener('click', () => this.recover(this.injuredPokemon.map((stored) => stored.id)));
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-pokemon]').forEach((button) => button.onclick = () => { this.setStatus(this.flow.togglePokemon(button.dataset.pokemon!)); });
+    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-treat-item]').forEach((button) => { button.onclick = () => this.treat(button.dataset.treatPokemon!, button.dataset.treatItem!); });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-item]').forEach((button) => { button.onclick = () => { this.flow.adjustItem(button.dataset.item as ItemId, Number(button.dataset.amount)); this.render(); }; });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-secure-pokemon]').forEach((button) => { button.onclick = () => { this.flow.toggleSecurePokemon(button.dataset.securePokemon!); this.render(); }; });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-secure-item]').forEach((button) => { button.onclick = () => { this.setStatus(this.flow.toggleSecureItem(button.dataset.secureItem as ItemId)); }; });
@@ -396,6 +422,34 @@ export class HubScene extends Phaser.Scene {
     return `Level ${pokemon.level} · ${pokemon.currentHp}/${pokemon.maxHp} HP${flags.length ? ` · ${flags.join(' · ')}` : ''}`;
   }
 
+  /**
+   * The treatment surface. It only appears on a Pokemon a raid actually hurt,
+   * and it names both prices side by side before either is paid: one medicine
+   * out of the stash, or a full restore at the recovery bay for raid time. A
+   * player should never have to spend a Potion to find out what it does.
+   */
+  private careStrip(stored: StashedPokemon): string {
+    const { pokemon } = stored;
+    if (!needsRecovery(pokemon)) {
+      return '';
+    }
+
+    const lead = pokemon.isFainted
+      ? FAINTED_TREATMENT_NOTE
+      : `Hurt · ${pokemon.currentHp}/${pokemon.maxHp} HP${
+        pokemon.primaryStatus === null ? '' : ` · ${pokemon.primaryStatus}`
+      }`;
+    const options = treatmentOptions(this.stash, pokemon);
+    const medicine = options.length
+      ? `<div class="care-options">${options.map((option) => this.careOption(stored.id, option)).join('')}</div>`
+      : '<p class="care-empty">No medicine at base.</p>';
+    return `<div class="care-strip"><p class="care-lead">${lead}</p>${medicine}<button class="button" data-recover="${stored.id}">Recovery bay · full restore for −${formatRecoveryClock(recoveryCostMs(pokemon))} raid time</button></div>`;
+  }
+
+  private careOption(pokemonId: string, option: TreatmentOption): string {
+    return `<button class="care-item" data-treat-pokemon="${pokemonId}" data-treat-item="${option.itemId}"${option.usable ? '' : ' disabled'}><strong>${option.displayName} ×${option.held}</strong><small>${option.effect}</small></button>`;
+  }
+
   private stashView(): string {
     return `<main class="stash-layout"><section><h2>Pokémon</h2><p class="confirm-note">Recovery costs raid time: your next raid clock is ${formatRecoveryClock(this.raidClockMs)}.</p><div class="entity-list">${this.stashPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><div>${typeBadge(stored.pokemon.base.primaryType)}${stored.pokemon.base.secondaryType ? typeBadge(stored.pokemon.base.secondaryType) : ''}</div>${needsRecovery(stored.pokemon) ? `<button class="button" data-recover="${stored.id}">Recover · −${formatRecoveryClock(recoveryCostMs(stored.pokemon))}</button>` : '<span class="fit-tag">Fit ✓</span>'}</article>`).join('') || '<p class="empty-state">No Pokémon in storage.</p>'}</div></section><section><h2>Supplies</h2><div class="item-grid">${this.stashItems.map((item) => `<article class="item-card"><span class="item-icon">✦</span><strong>${item.displayName}</strong><small>${item.category} · ${this.stash.itemCount(item.id)} available</small></article>`).join('') || '<p class="empty-state">No supplies in storage.</p>'}</div></section></main>`;
   }
@@ -404,7 +458,7 @@ export class HubScene extends Phaser.Scene {
     const party = this.flow.party;
     const securedCount = (this.flow.securedPokemon ? 1 : 0) + this.flow.securedItems.length;
     const single = this.stashPokemon.length === 1;
-    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<button class="entity-row selectable ${this.flow.includesPokemon(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}${single ? ' · your only Pokémon' : ''}</small></div><span>${this.flow.includesPokemon(stored.id) ? 'Added ✓' : 'Add +'}</span></button>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.flow.itemQuantity(item.id as ItemId)}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${this.firstContractActive ? 'Contract area' : 'Choose your entry'}</h2></div></div>${this.unlockedInsertions.map(([id, insertion]) => `<button class="entity-row selectable ${this.flow.insertionId === id ? 'selected' : ''}" data-insertion="${id}"><div><strong>${insertion.label}</strong><small>${insertion.description}</small></div></button>`).join('')}${this.firstContractActive ? '<p class="confirm-note">Your active contract is here. The Pallet Town insertions unlock when you extract it.</p>' : ''}<div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Run loadout</h2></div><b>${party.length}/6</b></div>${party.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong></article>`).join('') || '<p class="empty-state">Nothing selected yet. Add a Pokémon from your stash to continue.</p>'}<div class="risk-note">Everything here is lost on a wipe unless it is in the secure slot.</div><button class="button" data-secure-slot>Secure slot${securedCount ? ` · ${securedCount} protected` : ''} →</button>${party.length > 0 && !this.flow.isDeployable ? '<div class="risk-note">Every Pokémon here has fainted. Recover one at base before you deploy.</div>' : ''}<button class="button primary-button" data-advance ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy →</button></section></main>`;
+    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove · treat anyone hurt before you go</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<div class="loadout-entry${needsRecovery(stored.pokemon) ? ' hurt' : ''}"><button class="entity-row selectable ${this.flow.includesPokemon(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}${single ? ' · your only Pokémon' : ''}</small>${needsRecovery(stored.pokemon) ? hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp) : ''}</div><span>${this.flow.includesPokemon(stored.id) ? 'Added ✓' : 'Add +'}</span></button>${this.careStrip(stored)}</div>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.flow.itemQuantity(item.id as ItemId)}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${this.firstContractActive ? 'Contract area' : 'Choose your entry'}</h2></div></div>${this.unlockedInsertions.map(([id, insertion]) => `<button class="entity-row selectable ${this.flow.insertionId === id ? 'selected' : ''}" data-insertion="${id}"><div><strong>${insertion.label}</strong><small>${insertion.description}</small></div></button>`).join('')}${this.firstContractActive ? '<p class="confirm-note">Your active contract is here. The Pallet Town insertions unlock when you extract it.</p>' : ''}<div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Run loadout</h2></div><b>${party.length}/6</b></div>${party.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong></article>`).join('') || '<p class="empty-state">Nothing selected yet. Add a Pokémon from your stash to continue.</p>'}<div class="risk-note">Everything here is lost on a wipe unless it is in the secure slot.</div><button class="button" data-secure-slot>Secure slot${securedCount ? ` · ${securedCount} protected` : ''} →</button>${party.length > 0 && !this.flow.isDeployable ? '<div class="risk-note">Every Pokémon here has fainted. Recover one at base before you deploy.</div>' : ''}<button class="button primary-button" data-advance ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy →</button></section></main>`;
   }
 
   private secureView(): string {

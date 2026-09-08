@@ -4,9 +4,12 @@ export {
   MINIMUM_SUPPLIES,
   STARTER_SPECIES,
   Stash,
+  type RaidCondition,
+  type RaidSettlement,
   type RunResult,
   type SecureSlot,
   type StarterSpeciesId,
   type StashContents,
   type StashedPokemon,
+  type StashItemChange,
 } from './Stash';

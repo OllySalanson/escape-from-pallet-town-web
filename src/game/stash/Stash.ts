@@ -1,5 +1,6 @@
 import { Bag, type BagContents } from '../items';
 import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE, type PokemonBase } from '../pokemon';
+import type { PrimaryStatus } from '../pokemon/battle/status';
 
 export const STARTER_SPECIES = [BULBASAUR, CHARMANDER, SQUIRTLE] as const;
 export type StarterSpeciesId = (typeof STARTER_SPECIES)[number]['id'];
@@ -43,6 +44,38 @@ export interface StashContents {
 export interface RunResult {
   readonly pokemon: readonly Pokemon[];
   readonly items: readonly { readonly itemId: string; readonly quantity: number }[];
+}
+
+/** A quantity of one item. Negative quantities are only legal in a supply delta. */
+export interface StashItemChange {
+  readonly itemId: string;
+  readonly quantity: number;
+}
+
+/**
+ * How one deployed Pokemon came out of a raid, addressed by its stash ID.
+ *
+ * The raid mutates the stash's own Pokemon objects, but every write-back path
+ * reloads the vault from storage first, so those mutations are discarded unless
+ * they are carried across explicitly. This is that carriage.
+ */
+export interface RaidCondition {
+  readonly id: string;
+  readonly currentHp: number;
+  readonly primaryStatus: PrimaryStatus | null;
+}
+
+/**
+ * What a finished raid did to the vault, independently of how it ended.
+ *
+ * `condition` is the state every deployed Pokemon came home in. `supplies` is a
+ * signed delta - what came out of the raid minus what went into it - so spent
+ * Potions and thrown Poke Balls are negative and loot picked up in the field is
+ * positive, in one pass and with no double counting between the two.
+ */
+export interface RaidSettlement {
+  readonly condition: readonly RaidCondition[];
+  readonly supplies: readonly StashItemChange[];
 }
 
 export interface SecureSlot {
@@ -117,6 +150,44 @@ export class Stash {
     const curedStatus = stored.pokemon.primaryStatus !== null;
     stored.pokemon.primaryStatus = null;
     return healedHp > 0 || curedStatus;
+  }
+
+  /**
+   * Writes the condition every deployed Pokemon came home in back onto the
+   * matching stash entry. Damage, faints and lingering status all survive the
+   * raid that caused them, which is what makes a raid cost anything at all.
+   *
+   * Nothing is created, removed or healed here: unknown IDs are ignored and the
+   * HP written is clamped into the Pokemon's own range, so a corrupt or stale
+   * settlement can only ever be a no-op.
+   */
+  public applyRaidCondition(condition: readonly RaidCondition[]): void {
+    for (const entry of condition) {
+      const stored = this.storedPokemon.find((candidate) => candidate.id === entry.id);
+      if (!stored) {
+        continue;
+      }
+      stored.pokemon.currentHp = clampHp(entry.currentHp, stored.pokemon.maxHp);
+      stored.pokemon.primaryStatus = entry.primaryStatus;
+    }
+  }
+
+  /**
+   * Applies a raid's signed supply delta: supplies spent in the field leave the
+   * vault, loot found there arrives in it. A removal is capped at what the
+   * vault actually holds, so the delta can never drive a count negative.
+   */
+  public applyRaidSupplies(supplies: readonly StashItemChange[]): void {
+    for (const { itemId, quantity } of supplies) {
+      if (!Number.isInteger(quantity) || quantity === 0) {
+        continue;
+      }
+      if (quantity > 0) {
+        this.addItem(itemId, quantity);
+        continue;
+      }
+      this.removeItem(itemId, Math.min(-quantity, this.itemCount(itemId)));
+    }
   }
 
   public addItem(itemId: string, quantity = 1): boolean {
@@ -256,6 +327,13 @@ export function createStartingStash(starter = BULBASAUR): Stash {
   const stash = new Stash();
   stash.ensurePlayable(starter);
   return stash;
+}
+
+function clampHp(value: number, maxHp: number): number {
+  if (!Number.isFinite(value)) {
+    return maxHp;
+  }
+  return Math.min(maxHp, Math.max(0, Math.floor(value)));
 }
 
 function isPositiveInteger(value: number): boolean {

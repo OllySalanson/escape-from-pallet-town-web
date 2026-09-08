@@ -28,6 +28,38 @@ describe('in-run objective HUD layout', () => {
   });
 });
 
+describe('finishing a step on an extraction tile', () => {
+  const step = sceneSource.slice(
+    sceneSource.indexOf('if (this.tryStartHunterBattle()) {'),
+    sceneSource.indexOf('private showIdlePose('),
+  );
+
+  it('resolves the exit before rolling an encounter, and rolls nothing after it', () => {
+    // Authored exits stand in tall grass. Rolling first used to resolve the raid
+    // and start a wild battle in the same tick, tearing down the scene the
+    // result screen was scheduled on: the raid banked and the player came back
+    // to a dead world. Extraction is a destination, so it wins the tick.
+    expect(step).toContain('if (this.tryExtract()) {');
+    expect(step.indexOf('if (this.tryExtract()) {')).toBeLessThan(
+      step.indexOf('isTallGrassInMap(this.currentMap, this.currentTile)'),
+    );
+    expect(step.indexOf('this.transitionToBattle({')).toBeLessThan(step.length);
+    expect(step.slice(step.indexOf('this.transitionToBattle({'))).not.toContain('tryExtract');
+  });
+
+  it('reports whether it took the step, so a locked exit also stops the tick', () => {
+    const extract = sceneSource.slice(
+      sceneSource.indexOf('private tryExtract('),
+      sceneSource.indexOf('private showRunResult('),
+    );
+
+    expect(extract).toContain('private tryExtract(): boolean {');
+    // The two ways out without an exit under the player, then the locked exit.
+    expect(extract.match(/return false;/g)).toHaveLength(2);
+    expect(extract.match(/return true;/g)).toHaveLength(2);
+  });
+});
+
 describe('battle return recovery', () => {
   it('clears the battle-transition lock before rebuilding the returned world', () => {
     expect(sceneSource).toContain('this.isWarping = false;');
