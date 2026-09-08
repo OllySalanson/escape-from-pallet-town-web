@@ -21,6 +21,9 @@ import {
   getWorldMap,
   isTallGrassInMap,
   POND_TILES,
+  TALL_GRASS_TINT,
+  TREE_TILES,
+  TREE_TINT,
   TILE_SIZE,
   WATER_TINT,
   WORLD_MAP_NAMES,
@@ -424,6 +427,19 @@ export class WorldScene extends Phaser.Scene {
         tile.tint = WATER_TINT;
       }
     });
+    // Hedges, trees and tall grass are drawn from the same leafy art, so on a
+    // map made mostly of both the player cannot see which is a wall. Darkening
+    // the solid growth and keeping the grass bright is the difference.
+    detailLayer.forEachTile((tile) => {
+      if (TREE_TILES.has(tile.index)) {
+        tile.tint = TREE_TINT;
+      }
+    });
+    tallGrassLayer.forEachTile((tile) => {
+      if (tile.index >= 0) {
+        tile.tint = TALL_GRASS_TINT;
+      }
+    });
     this.mapObjects.push(groundLayer, tallGrassLayer, detailLayer);
     this.createExtractionPoints();
     this.createRouteTransitionLabels();
@@ -454,6 +470,7 @@ export class WorldScene extends Phaser.Scene {
       this.extractionMarkers.push({ point, marker, label });
     }
   }
+
 
   private createEntities(): void {
     this.createLoot();

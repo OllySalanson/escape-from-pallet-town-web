@@ -5,6 +5,7 @@ import { Bag } from '../items';
 import { SAVE_KEY, SaveManager } from './SaveManager';
 import { applyRecovery, MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
 import { Stash } from '../stash';
+import { RUN_INSERTIONS } from '../run/runGeneration';
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -566,5 +567,38 @@ describe('SaveManager', () => {
     ]);
     expect(restored?.stash.listPokemon()).toHaveLength(1);
     expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
+  });
+
+  it('turns a save that unlocked the retired south-verge insertion into Town Square', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 5,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: {},
+        stash: { pokemon: [], items: {} },
+        raidProgress: {
+          firstContractExtracted: true,
+          unlockedInsertions: ['floodplain-relay', 'south-verge', 'route-1'],
+        },
+      }),
+    );
+
+    const restored = new SaveManager(storage).load();
+
+    // The retired id must not survive: nothing can look it up any more.
+    expect(restored?.raidProgress.unlockedInsertions).not.toContain('south-verge');
+    // Its replacement is unlocked exactly once, even though the contract grants
+    // Town Square too, so the hub cannot render the same entry twice.
+    expect(
+      restored?.raidProgress.unlockedInsertions.filter((id) => id === 'town-square'),
+    ).toEqual(['town-square']);
+    // Every surviving insertion still resolves to a real one.
+    for (const id of restored?.raidProgress.unlockedInsertions ?? []) {
+      expect(Object.keys(RUN_INSERTIONS)).toContain(id);
+    }
   });
 });

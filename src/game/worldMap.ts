@@ -18,6 +18,9 @@ export {
   CLASSIC_TILE,
   POND_TILES,
   SOLID_CLASSIC_TILES,
+  TALL_GRASS_TINT,
+  TREE_TILES,
+  TREE_TINT,
   WATER_TINT,
 } from './world/tiles';
 

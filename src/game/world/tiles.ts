@@ -12,9 +12,10 @@ export const CLASSIC_TILE = {
   GRASS: 46,
   TALL_GRASS: 47,
   /**
-   * A low leafy fringe with a transparent top. Drawn over the tall-grass ground
-   * tile it reads as grass you wade through - distinct from the round bush that
-   * draws a tree, which matters now that whole maps are made of both.
+   * A low leafy fringe with a transparent top half. Over the tall-grass ground
+   * tile it reads as growth you wade through rather than the round bush that
+   * draws a tree - which is the whole difference between a lane and a wall on a
+   * map made mostly of both.
    */
   TALL_GRASS_TUFT: 49,
   DIRT_PATH: 44,
@@ -71,6 +72,23 @@ export const SOLID_CLASSIC_TILES: ReadonlySet<number> = new Set([
  * keeps the lighter bank tiles as a readable shoreline.
  */
 export const WATER_TINT = 0x8073ff;
+
+/**
+ * Hedges, trees and tall grass are the same leafy art in this tileset, and on
+ * maps built out of them that is the difference between a wall and a lane the
+ * player cannot see. Tints separate them: solid growth is darkened until it
+ * reads as mass, and the grass you can wade through is left bright and warm.
+ *
+ * Tints multiply, so they can only darken - which is why the wall is the one
+ * that moves.
+ */
+export const TREE_TINT = 0x6d8f76;
+export const TALL_GRASS_TINT = 0xf4ffbe;
+
+export const TREE_TILES: ReadonlySet<number> = new Set([
+  CLASSIC_TILE.TREE_RED,
+  CLASSIC_TILE.TREE_LEAFY,
+]);
 
 export const POND_TILES: ReadonlySet<number> = new Set([
   CLASSIC_TILE.POND_WATER,
