@@ -107,6 +107,16 @@ describe('game start flow', () => {
           setDepth: vi.fn().mockReturnThis(),
           setStrokeStyle: vi.fn().mockReturnThis(),
         })),
+        // Every marker the raid draws is a preloaded icon texture, so a marker
+        // added without a matching `load.image` in BootScene fails here rather
+        // than rendering as Phaser's missing-texture block in a live raid.
+        image: vi.fn((_: number, __: number, texture: string) => {
+          expect(textures).toContain(texture);
+          return {
+            setDepth: vi.fn().mockReturnThis(),
+            setTexture: vi.fn().mockReturnThis(),
+          };
+        }),
         graphics: vi.fn(() => graphics),
         sprite: vi.fn((_: number, __: number, texture: string) => {
           expect(textures).toContain(texture);

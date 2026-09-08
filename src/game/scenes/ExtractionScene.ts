@@ -6,6 +6,7 @@ import type {
   ReportPokemon,
 } from '../run/extractionReport';
 import { raidClockProgress } from '../run/raidClock';
+import { itemIcon, objectiveIcon } from '../ui/icons';
 import { MenuOverlay, hpBar, pokemonAvatar } from '../ui/MenuOverlay';
 
 export interface ExtractionSceneData {
@@ -160,7 +161,7 @@ export class ExtractionScene extends Phaser.Scene {
         <b>${total} ${total === 1 ? 'entry' : 'entries'}</b>
       </div>
       <div class="entity-list">${rows || `<p class="empty-state">${escapeHtml(report.ledgerEmptyText)}</p>`}</div>
-      ${report.contract ? `<article class="extraction-contract"><span class="item-icon">✦</span><div><strong>Contract complete: ${escapeHtml(report.contract.description)}</strong><small>${escapeHtml(report.contract.reward)}</small></div></article>` : ''}
+      ${report.contract ? `<article class="extraction-contract">${objectiveIcon('Contract')}<div><strong>Contract complete: ${escapeHtml(report.contract.description)}</strong><small>${escapeHtml(report.contract.reward)}</small></div></article>` : ''}
     </section>`;
   }
 
@@ -257,7 +258,7 @@ function itemRow(item: ReportItem, tag: RowTag): string {
   const { text, className } = ROW_TAGS[tag];
   // Quantity sits on the name's own line: an item row has nothing to say on a
   // second one, and the screen is worth more than the extra height costs.
-  return `<article class="entity-row"><span class="item-icon">✦</span><div><strong>${escapeHtml(item.label)} <span class="item-quantity">×${item.quantity}</span></strong></div><span class="${className}">${text}</span></article>`;
+  return `<article class="entity-row">${itemIcon(item.itemId, item.label)}<div><strong>${escapeHtml(item.label)} <span class="item-quantity">×${item.quantity}</span></strong></div><span class="${className}">${text}</span></article>`;
 }
 
 function itemText(item: ReportItem): string {
