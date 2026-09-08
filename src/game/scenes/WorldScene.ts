@@ -57,6 +57,7 @@ import {
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
 import { FIRST_CONTRACT } from '../run/runGeneration';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
+import { findWatchingTrainer, trainerSightTiles } from '../world/trainerSight';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { tryActivatePoi } from '../world/pois';
 import {
@@ -93,11 +94,33 @@ const RUN_RESULT_DELAY_MS = 700;
  * is cream, world annotation is a tinted panel with a coloured frame. Each tone
  * keeps the colour the caption already carried, so nothing changes meaning.
  */
-const LABEL_TONES: Readonly<Record<'station' | 'exitOpen' | 'exitShut' | 'route', WorldLabelTone>> = {
+const LABEL_TONES: Readonly<
+  Record<'station' | 'exitOpen' | 'exitShut' | 'route' | 'watch', WorldLabelTone>
+> = {
   station: { fill: 0x14243a, border: 0x7fb2e5, ink: '#dff0ff' },
   exitOpen: { fill: 0x123d22, border: 0x86efac, ink: '#dcfce7' },
   exitShut: { fill: 0x3d1414, border: 0xfca5a5, ink: '#fecaca' },
   route: { fill: 0x3a2408, border: 0xf1bf63, ink: '#fef3c7' },
+  // A trainer's watch is the one caption that is a threat rather than a place,
+  // so it borrows the hunter chip's red rather than the sealed exit's.
+  watch: { fill: 0x3f1220, border: 0xf87171, ink: '#ffe4e6' },
+};
+
+/** How the ground a trainer is watching is shaded. */
+const WATCH_TINT = 0xf87171;
+const WATCH_FILL_ALPHA = 0.16;
+const WATCH_EDGE_ALPHA = 0.42;
+/**
+ * Compass letters rather than arrow glyphs: the caption font is 7px, and an
+ * arrow at that size renders as a tick with no head. The raid HUD already gives
+ * the hunter and the objective a bearing, so this is the language the player is
+ * reading directions in anyway.
+ */
+const WATCH_BEARING: Readonly<Record<Direction, string>> = {
+  up: 'N',
+  down: 'S',
+  left: 'W',
+  right: 'E',
 };
 /**
  * The dialogue frame keeps the authored size it was written for and is centred
@@ -510,9 +533,69 @@ export class WorldScene extends Phaser.Scene {
         .setDepth(2 + encounter.position.y / 1000);
       this.npcSprites.set(encounter.trainer.id, sprite);
       this.mapObjects.push(sprite);
+      this.createTrainerWatch(encounter);
     }
 
     this.createHunterSprite();
+  }
+
+  /**
+   * Draws what a watching trainer costs, before the player is inside it.
+   *
+   * Every figure on the map is the same sprite in a different tint, so a facing
+   * alone cannot say "this one will fight you and these tiles are where". The
+   * watched ground is shaded and the trainer is captioned, which is the same
+   * treatment the map already gives an exit or a cache - the point of all three
+   * is that the player decides with the price on screen rather than after it.
+   */
+  private createTrainerWatch(encounter: RunTrainerEncounter): void {
+    const watched = trainerSightTiles(encounter, (tile) => this.isSightBlocked(tile));
+    if (watched.length === 0) {
+      return;
+    }
+
+    // Outlined as one strip rather than as a row of boxes: the edge is only
+    // drawn where the watch stops, so three watched tiles read as one lane the
+    // trainer is looking down.
+    const inWatch = new Set(watched.map((tile) => `${tile.x},${tile.y}`));
+    const shading = this.add.graphics().setDepth(1.5);
+    for (const tile of watched) {
+      const x = tile.x * TILE_SIZE;
+      const y = tile.y * TILE_SIZE;
+      shading.fillStyle(WATCH_TINT, WATCH_FILL_ALPHA);
+      shading.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+      shading.fillStyle(WATCH_TINT, WATCH_EDGE_ALPHA);
+      if (!inWatch.has(`${tile.x},${tile.y - 1}`)) {
+        shading.fillRect(x, y, TILE_SIZE, 1);
+      }
+      if (!inWatch.has(`${tile.x},${tile.y + 1}`)) {
+        shading.fillRect(x, y + TILE_SIZE - 1, TILE_SIZE, 1);
+      }
+      if (!inWatch.has(`${tile.x - 1},${tile.y}`)) {
+        shading.fillRect(x, y, 1, TILE_SIZE);
+      }
+      if (!inWatch.has(`${tile.x + 1},${tile.y}`)) {
+        shading.fillRect(x + TILE_SIZE - 1, y, 1, TILE_SIZE);
+      }
+    }
+    this.mapObjects.push(shading);
+
+    // The caption hangs on the trainer's blind side, so it never covers the
+    // shaded ground it is there to explain.
+    const placement = encounter.facing === 'up' ? 'below' : 'above';
+    this.worldLabels.push(
+      new WorldLabel(
+        this,
+        encounter.position.x * TILE_SIZE + TILE_SIZE / 2,
+        placement === 'below'
+          ? encounter.position.y * TILE_SIZE + TILE_SIZE + 4
+          : encounter.position.y * TILE_SIZE - 4,
+        `${encounter.trainer.name}\nWATCHING ${WATCH_BEARING[encounter.facing]}`,
+        LABEL_TONES.watch,
+        4 + encounter.position.y / 1000,
+        placement,
+      ),
+    );
   }
 
   private createFieldKit(): void {
@@ -921,7 +1004,9 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    if (this.tryCollectLootAt(targetTile)) {
+    const picked = this.tryCollectLootAt(targetTile);
+    if (picked !== null) {
+      this.dialogBox.showMessage(picked);
       return;
     }
     if (this.tryActivatePoiAt(targetTile)) {
@@ -1009,6 +1094,40 @@ export class WorldScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * What stops a trainer seeing further. Terrain only: a figure standing in the
+   * lane is not cover, because a rule the player cannot see is not a rule they
+   * can play around, and the shaded ground has to stay true whoever is on it.
+   */
+  private isSightBlocked(tile: GridPosition): boolean {
+    return this.collisionData[tile.y]?.[tile.x] !== false;
+  }
+
+  /**
+   * The price of walking a watched route. The player turns to face whoever
+   * caught them and the fight starts from the intro lines, which is the same
+   * path as speaking to a trainer - what differs is who started it.
+   */
+  private tryTrainerChallengeAt(tile: GridPosition, lead: readonly string[] = []): boolean {
+    const watcher = findWatchingTrainer(this.trainersForCurrentMap(), tile, (candidate) =>
+      this.isSightBlocked(candidate),
+    );
+    if (!watcher) {
+      return false;
+    }
+
+    this.facing = OPPOSITE_DIRECTION[watcher.facing];
+    this.showIdlePose();
+    audioManager.playEncounter();
+    this.pendingTrainerBattle = {
+      trainer: watcher.trainer,
+      introLines: watcher.introLines,
+      isHunter: false,
+    };
+    this.dialogBox.showMessages([...lead, ...watcher.introLines]);
+    return true;
+  }
+
   private isBlocked(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
@@ -1061,10 +1180,16 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    if (this.tryCollectLootAt(this.currentTile)) {
-      return;
-    }
-    if (this.tryRecoverFieldKitAt(this.currentTile)) {
+    // Taking something off a watched tile is still being seen taking it: the
+    // pickup lands, and the challenge follows it in the same dialogue. Without
+    // this the collection returned early and the road could be walked free by
+    // whichever tile a generated cache happened to land on.
+    const pickup =
+      this.tryCollectLootAt(this.currentTile) ?? this.tryRecoverFieldKitAt(this.currentTile);
+    if (pickup !== null) {
+      if (!this.tryTrainerChallengeAt(this.currentTile, [pickup])) {
+        this.dialogBox.showMessage(pickup);
+      }
       return;
     }
 
@@ -1082,6 +1207,12 @@ export class WorldScene extends Phaser.Scene {
     // screen was scheduled on was torn down for the battle, so the raid banked
     // but the player came back to a dead world with no way out of it.
     if (this.tryExtract()) {
+      return;
+    }
+
+    // A trainer who saw you coming is authored content and beats a dice roll,
+    // so the challenge is resolved before the tall grass is.
+    if (this.tryTrainerChallengeAt(this.currentTile)) {
       return;
     }
 
@@ -1191,7 +1322,13 @@ export class WorldScene extends Phaser.Scene {
     return this.runSession?.manager.phase === RunPhase.InRun;
   }
 
-  private tryCollectLootAt(position: GridPosition): boolean {
+  /**
+   * Collects what is on a tile and returns what to say about it, or null if
+   * there was nothing. The caller shows the line, because a step can also be
+   * the step a trainer challenges on, and then both facts have to be said in
+   * one dialogue rather than one of them overwriting the other.
+   */
+  private tryCollectLootAt(position: GridPosition): string | null {
     const loot = this.lootForCurrentMap().find(
       (candidate) => candidate.position.x === position.x && candidate.position.y === position.y,
     );
@@ -1202,11 +1339,10 @@ export class WorldScene extends Phaser.Scene {
       (itemId, quantity) => this.collectRunItem(itemId, quantity),
     );
     if (result === 'unavailable') {
-      return false;
+      return null;
     }
     if (result === 'bag-full') {
-      this.dialogBox.showMessage('Bag is full!');
-      return true;
+      return 'Bag is full!';
     }
 
     const marker = this.lootSprites.get(loot!.id);
@@ -1216,8 +1352,7 @@ export class WorldScene extends Phaser.Scene {
     this.lootSprites.delete(loot!.id);
     const item = ITEMS[loot!.itemId];
     const quantity = loot!.quantity > 1 ? ` x${loot!.quantity}` : '';
-    this.dialogBox.showMessage(`Found ${item.displayName}${quantity}!`);
-    return true;
+    return `Found ${item.displayName}${quantity}!`;
   }
 
   private tryActivatePoiAt(position: GridPosition): boolean {
@@ -1303,7 +1438,8 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  private tryRecoverFieldKitAt(position: GridPosition): boolean {
+  /** As `tryCollectLootAt`: recovers the kit and returns what to say about it. */
+  private tryRecoverFieldKitAt(position: GridPosition): string | null {
     const session = this.runSession;
     const contract = session?.plan?.contract;
     if (
@@ -1313,7 +1449,7 @@ export class WorldScene extends Phaser.Scene {
       contract.position.x !== position.x ||
       contract.position.y !== position.y
     ) {
-      return false;
+      return null;
     }
 
     session.manager.recoverFieldKit();
@@ -1321,9 +1457,8 @@ export class WorldScene extends Phaser.Scene {
     this.fieldKitMarker = undefined;
     this.cameras.main.flash(120, 96, 165, 250, false);
     audioManager.playLootPickup();
-    this.dialogBox.showMessage('Recovered the lost field kit! Extract to secure it.');
     this.refreshRunTimerHud();
-    return true;
+    return 'Recovered the lost field kit! Extract to secure it.';
   }
 
   private returnLocation(): RaidLocation {

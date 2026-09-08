@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { GridPosition } from '../movement/gridMovement';
 import {
   getWorldMap,
   WORLD_MAPS,
@@ -14,6 +15,7 @@ import {
   HUNTER_MINIMUM_SPAWN_DISTANCE,
 } from './hunter';
 import {
+  isBlockedAt,
   openGround,
   slideLength,
   stepDistances,
@@ -21,6 +23,7 @@ import {
   unreachableTiles,
   walkableTiles,
 } from './mapStructure';
+import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters } from './trainers';
 import { FIRST_CONTRACT, RUN_INSERTIONS } from '../run/runGeneration';
 
@@ -195,6 +198,69 @@ describe('map structure', () => {
         .toBe(`${mapId} ${player.x},${player.y} fled to ${breakaway.x},${breakaway.y}: still has a way out`);
     }
     expect(worst).toBeGreaterThanOrEqual(HUNTER_MINIMUM_SPAWN_DISTANCE);
+  });
+
+  /**
+   * A trainer's watch is a price on a route, so it has to be a price the player
+   * walks into on purpose. These are the ways it stops being one: it reaches
+   * the tile the raid drops you on, it reaches the door you leave by, or it
+   * covers ground with no way back out of it.
+   */
+  it.each(MAP_IDS)('%s never lets a trainer watch corner the player', (mapId) => {
+    const map = getWorldMap(mapId);
+    const isSightBlocked = (tile: GridPosition): boolean =>
+      map.collision[tile.y]?.[tile.x] !== false;
+    const doors = [
+      ...insertionsOn(mapId).map((insertion) => ({
+        what: insertion.id,
+        position: insertion.position,
+      })),
+      ...EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => ({
+        what: point.label,
+        position: point.position,
+      })),
+      // Arriving through a warp is no more a choice than dropping in is.
+      ...map.warps.map((warp) => ({
+        what: `arrival from ${warp.destinationMapId}`,
+        position: warp.destination,
+      })),
+    ];
+
+    for (const trainer of createRunTrainerEncounters()) {
+      if (trainer.mapId !== mapId) {
+        continue;
+      }
+      const watched = trainerSightTiles(trainer, isSightBlocked);
+      if (watched.length === 0) {
+        // A trainer with no watch is one the player has to speak to, which is
+        // its own answer to every question below.
+        continue;
+      }
+      const watch = new Set(watched.map((tile) => `${tile.x},${tile.y}`));
+
+      for (const door of doors) {
+        const key = `${door.position.x},${door.position.y}`;
+        expect(`${trainer.trainer.id} watches ${door.what}: ${watch.has(key)}`)
+          .toBe(`${trainer.trainer.id} watches ${door.what}: false`);
+      }
+
+      // The challenge fires on the first watched tile, so what matters is that
+      // the watch has an outside to be approached from: a watch nothing borders
+      // is one the player can only ever be inside, which is an ambush.
+      const approaches = watched.filter((tile) =>
+        [
+          { x: tile.x + 1, y: tile.y },
+          { x: tile.x - 1, y: tile.y },
+          { x: tile.x, y: tile.y + 1 },
+          { x: tile.x, y: tile.y - 1 },
+        ].some(
+          (step) =>
+            !isBlockedAt(map.collision, step.x, step.y) && !watch.has(`${step.x},${step.y}`),
+        ),
+      );
+      expect(`${trainer.trainer.id} watch approaches: ${approaches.length}`)
+        .not.toBe(`${trainer.trainer.id} watch approaches: 0`);
+    }
   });
 
   /**

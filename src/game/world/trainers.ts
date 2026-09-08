@@ -2,14 +2,22 @@ import { Pokemon } from '../pokemon';
 import { BUTTERFREE, PIDGEY, PIKACHU, SQUIRTLE } from '../pokemon/species';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import type { Direction, GridPosition } from '../movement/gridMovement';
+import type { TrainerWatch } from './trainerSight';
 import type { WorldMapId } from '../worldMap';
 
-export interface RunTrainerEncounter {
+export interface RunTrainerEncounter extends TrainerWatch {
   readonly mapId: WorldMapId;
   readonly position: GridPosition;
   readonly facing: Direction;
   /** Authored checkpoints retain their readable position across seeded runs. */
   readonly fixedPosition?: boolean;
+  /**
+   * How far ahead this trainer challenges on sight. Omitted is the old
+   * behaviour - the player has to walk up and speak to them - which is still
+   * what the three trainers outside the Floodplain route do. See
+   * `trainerSight.ts` for why a watch and a body are not the same thing.
+   */
+  readonly sightRange?: number;
   readonly introLines: readonly string[];
   readonly trainer: TrainerBattle;
 }
@@ -27,12 +35,18 @@ const createTrainer = (
  */
 export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => [
   {
+    // The price of the fast road. Maya stands on the jetty off the checkpoint
+    // corner rather than in the lane, so the road is open and quick, and what it
+    // costs is the three tiles of it she is watching. The vault turn at 15,13
+    // sits one step outside that watch, so the player reads her, and the price,
+    // from a junction they can still turn round at.
     mapId: 'floodplain-relay',
-    position: { x: 15, y: 16 },
-    facing: 'down',
+    position: { x: 15, y: 17 },
+    facing: 'up',
     fixedPosition: true,
+    sightRange: 3,
     introLines: [
-      'MAYA HOLDS THE ROAD.',
+      'MAYA HAS THE ROAD IN SIGHT.',
       'The reeds go around. The road goes through me.',
     ],
     trainer: createTrainer(
