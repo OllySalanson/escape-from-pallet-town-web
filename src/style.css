@@ -413,6 +413,66 @@ button {
 .run-loadout .panel-heading:not(:first-child) {
   margin-top: var(--space-3);
 }
+/* A hurt Pokemon in the loadout carries its own treatment surface: the row that
+   adds it to the raid, and under it the two ways to fix it, priced. */
+.loadout-entry {
+  display: grid;
+  gap: 8px;
+  border-radius: 10px;
+}
+.loadout-entry.hurt {
+  border: 1px solid #7a4b46;
+  background: rgb(72 42 43 / 45%);
+  padding: 7px;
+}
+.loadout-entry.hurt > .entity-row {
+  background: var(--menu-raised);
+}
+.care-strip {
+  display: grid;
+  gap: 7px;
+  padding: 0 2px 2px;
+}
+.care-lead {
+  margin: 0;
+  color: #ffd0c5;
+  font-size: 0.85em;
+  font-weight: 700;
+}
+.care-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 7px;
+}
+.care-item {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  border: 1px solid var(--menu-border);
+  border-radius: 9px;
+  background: var(--menu-raised);
+  padding: 8px 10px;
+}
+.care-item small {
+  color: var(--menu-muted);
+}
+.care-item:disabled {
+  opacity: 0.45;
+}
+.care-item:not(:disabled):hover {
+  border-color: var(--menu-accent);
+}
+.care-empty {
+  margin: 0;
+  color: var(--menu-muted);
+  font-size: 0.85em;
+}
+.care-strip .button {
+  margin: 0;
+  justify-self: start;
+  padding: 7px 11px;
+  font-size: 0.85em;
+}
 .risk-note {
   color: #ffd0c5;
   background: #482a2b;

@@ -15,6 +15,7 @@ import { RAID_DURATION_MS } from '../run/raidClock';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash, type Stash, type StashedPokemon } from '../stash';
 import {
+  FAINTED_TREATMENT_NOTE,
   MAX_PENDING_RECOVERY_MS,
   raidClockAfterRecovery,
   recoveryCostMs,
@@ -39,6 +40,7 @@ interface HubInternals {
   startRun(): void;
   render(): void;
   recover(ids: readonly string[]): void;
+  treat(pokemonId: string, itemId: string): void;
   readonly flow: DeploymentFlow;
   readonly stash: Stash;
   readonly raidClockMs: number;
@@ -205,6 +207,68 @@ describe('hub deployment route', () => {
     expect(hub.flow.advance()).toBeUndefined();
     deploy(hub, start);
     expect(start).toHaveBeenCalledTimes(1);
+  });
+
+  it('heals a worn Pokemon with a stash Potion, and both the heal and the cost survive a reload', () => {
+    // The other price for raid damage: an item instead of raid time. It has to
+    // be a real trade, so the Potion has to actually leave the vault and stay
+    // gone, and it must never touch the recovery bay's clock.
+    const { hub, storage, worn } = createWornHub((maxHp) => maxHp - 3);
+    const before = worn.pokemon.currentHp;
+    expect(hub.stash.itemCount('potion')).toBe(3);
+
+    hub.treat('charmander-1', 'potion');
+
+    expect(worn.pokemon.currentHp).toBeGreaterThan(before);
+    expect(hub.stash.itemCount('potion')).toBe(2);
+    // A Potion is not raid time: the clock the next raid starts on is untouched.
+    expect(hub.pendingRecoveryMs).toBe(0);
+    expect(hub.raidClockMs).toBe(RAID_DURATION_MS);
+
+    const reloaded = new SaveManager(storage).load();
+    expect(reloaded?.stash.listItems().potion).toBe(2);
+    expect(reloaded?.stash.listPokemon()).toMatchObject([
+      { id: 'bulbasaur-1' },
+      { id: 'charmander-1', pokemon: { currentHp: worn.pokemon.currentHp } },
+    ]);
+  });
+
+  it('never deploys a supply the treatment already spent, secure slot included', () => {
+    const { hub, start, storage } = createWornHub((maxHp) => maxHp - 3);
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.adjustItem('potion', 3);
+    hub.flow.toggleSecureItem('potion');
+    expect(hub.flow.items).toEqual([{ itemId: 'potion', quantity: 3 }]);
+
+    // One of those three Potions is drunk at base, so only two can be packed.
+    hub.treat('charmander-1', 'potion');
+
+    expect(hub.stash.itemCount('potion')).toBe(2);
+    expect(hub.flow.items).toEqual([{ itemId: 'potion', quantity: 2 }]);
+    expect(hub.flow.securedItems).toEqual([{ itemId: 'potion', quantity: 2 }]);
+
+    hub.flow.advance();
+    deploy(hub, start);
+    const deployed = start.mock.calls[0][1] as WorldSceneData;
+    expect(deployed.bag.count('potion')).toBe(2);
+    // And the vault the raid was drawn from agrees, on disk.
+    expect(new SaveManager(storage).load()?.stash.itemCount('potion')).toBe(2);
+  });
+
+  it('leaves a fainted Pokemon to the recovery bay rather than letting a Potion revive it', () => {
+    // Reviving stays the bay's premium, which is what keeps a faint the worst
+    // outcome of a fight rather than a three-Potion inconvenience.
+    const { hub, worn } = createWornHub((maxHp) => maxHp);
+
+    hub.treat('charmander-1', 'potion');
+
+    expect(worn.pokemon.isFainted).toBe(true);
+    expect(hub.stash.itemCount('potion')).toBe(3);
+    expect(statusOf(hub)).toBe(FAINTED_TREATMENT_NOTE);
+
+    hub.recover(['charmander-1']);
+    expect(worn.pokemon.isFainted).toBe(false);
+    expect(hub.pendingRecoveryMs).toBeGreaterThan(0);
   });
 
   it('leaves a fit party alone rather than charging for a recovery it does not need', () => {

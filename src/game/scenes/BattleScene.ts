@@ -28,6 +28,7 @@ import { audioManager } from '../audio/AudioManager';
 import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
+import { deployedRaidCondition } from '../run/raidSettlement';
 import type { ActiveRunSession, RaidLocation } from '../run/RunSession';
 import {
   HUNTER_SEARCH_MS,
@@ -1232,6 +1233,9 @@ export class BattleScene extends Phaser.Scene {
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
       this.runSession.stashSecureSlot,
+      // A secured Pokemon comes home in the state this battle left it in, which
+      // after a lost raid is almost always fainted.
+      deployedRaidCondition(this.runSession.broughtPokemonIds, snapshot),
     );
     this.cameras.main.flash(220, 239, 68, 68, false);
     this.cameras.main.shake(180, 0.009);

@@ -6,6 +6,7 @@ import { createStartingStash } from '../stash';
 import { createActiveRunSession } from './RunSession';
 import { RunManager } from './RunManager';
 import { buildExtractionReport } from './extractionReport';
+import { buildRaidSettlement, deployedRaidCondition } from './raidSettlement';
 import { RAID_DURATION_MS } from './raidClock';
 
 class MemoryStorage implements StorageLike {
@@ -87,6 +88,145 @@ describe('extraction loop integration', () => {
       { pokemon: { base: { id: 'charmander' }, level: 4 } },
     ]);
     expect(escapedStash.listItems()).toEqual({ 'poke-ball': 5, potion: 3, antidote: 2 });
+  });
+
+  /**
+   * The regression this change exists for. A raid used to be free: the deployed
+   * Pokemon were the stash's own objects, but every write-back path reloads the
+   * stash from storage, so the HP they lost, the status they caught and the
+   * supplies they drank were all discarded the moment the raid resolved. Losing
+   * everything then re-granted a fresh level-5 starter, which made wiping the
+   * cheapest way to heal a worn party.
+   */
+  it('carries the damage, status and supply use of an extracted raid back into the stash', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const loadout = {
+      party: [starter.pokemon],
+      items: [
+        { itemId: 'poke-ball', quantity: 5 },
+        { itemId: 'potion', quantity: 3 },
+      ],
+    } as const;
+    const manager = new RunManager();
+    manager.startRun(loadout, RUN_CONFIG, {});
+    const session = createActiveRunSession(manager, {}, {}, [starter.id], loadout.items);
+
+    // The raid itself: a beating, a burn nobody cured, two Potions and a ball spent.
+    starter.pokemon.takeDamage(7);
+    starter.pokemon.primaryStatus = 'burn';
+    const survivingHp = starter.pokemon.currentHp;
+    expect(survivingHp).toBeGreaterThan(0);
+    expect(survivingHp).toBeLessThan(starter.pokemon.maxHp);
+    const carriedOut = new Bag({ 'poke-ball': 4, potion: 1 }).toJSON();
+
+    session.manager.resolveEscape();
+    const resolved = session.manager.snapshot();
+    expect(
+      saves.bankRun(
+        { pokemon: resolved.caughtPokemon, items: [] },
+        buildRaidSettlement(session.broughtPokemonIds, resolved, carriedOut),
+      ),
+    ).toBe(true);
+
+    const banked = saves.load()!.stash;
+    expect(banked.listPokemon()).toMatchObject([
+      { id: starter.id, pokemon: { currentHp: survivingHp, primaryStatus: 'burn' } },
+    ]);
+    expect(banked.listItems()).toEqual(carriedOut);
+  });
+
+  it('brings a Pokemon that fainted mid-raid home fainted rather than deleting it', () => {
+    // Fainting is a wound, not a death: deleting deployed Pokemon is the wipe's
+    // job, and doing it here too would charge one faint twice. The recovery bay
+    // revive premium is what a faint actually costs.
+    const saves = seedNewPlayer(new MemoryStorage());
+    const stash = saves.load()!.stash;
+    const starter = stash.listPokemon()[0];
+    const partner = new Pokemon(CHARMANDER, 5);
+    const partnerId = stash.addPokemon(partner, 'charmander-1');
+    saves.save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash,
+    });
+
+    const manager = new RunManager();
+    manager.startRun({ party: [starter.pokemon, partner], items: [] }, RUN_CONFIG);
+    const session = createActiveRunSession(manager, {}, {}, [starter.id, partnerId], []);
+    partner.takeDamage(partner.maxHp);
+    expect(partner.isFainted).toBe(true);
+
+    session.manager.resolveEscape();
+    expect(
+      saves.bankRun(
+        { pokemon: [], items: [] },
+        buildRaidSettlement(session.broughtPokemonIds, session.manager.snapshot(), {}),
+      ),
+    ).toBe(true);
+
+    expect(saves.load()!.stash.listPokemon()).toMatchObject([
+      { id: starter.id, pokemon: { currentHp: starter.pokemon.maxHp } },
+      { id: partnerId, pokemon: { currentHp: 0 } },
+    ]);
+  });
+
+  it('banks field loot exactly once, through the bag it was picked up into', () => {
+    // Found items travel home inside the bag, so the supply delta already
+    // carries them. Banking them again as a reward would double the haul.
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const items = [{ itemId: 'potion', quantity: 3 }] as const;
+    const manager = new RunManager();
+    manager.startRun({ party: [starter.pokemon], items }, RUN_CONFIG);
+    const session = createActiveRunSession(manager, {}, {}, [starter.id], items);
+
+    // One Potion drunk, two more found: the bag ends holding four.
+    session.manager.registerFoundItem('potion', 2);
+    session.manager.resolveEscape();
+    expect(
+      saves.bankRun(
+        { pokemon: [], items: [] },
+        buildRaidSettlement(session.broughtPokemonIds, session.manager.snapshot(), { potion: 4 }),
+      ),
+    ).toBe(true);
+
+    expect(saves.load()!.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 4 });
+  });
+
+  it('returns a secured Pokemon from a lost raid in the state the raid left it', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const loadout = { party: [starter.pokemon], items: [] } as const;
+    const secureSlot = { pokemon: starter.pokemon };
+    const manager = new RunManager();
+    manager.startRun(loadout, RUN_CONFIG, secureSlot);
+    const session = createActiveRunSession(
+      manager,
+      secureSlot,
+      { pokemonId: starter.id },
+      [starter.id],
+      [],
+    );
+
+    starter.pokemon.takeDamage(starter.pokemon.maxHp);
+    session.manager.resolveWipe(session.secureSlot);
+    expect(
+      saves.applyWipeLoss(
+        session.broughtPokemonIds,
+        session.broughtItems,
+        session.stashSecureSlot,
+        deployedRaidCondition(session.broughtPokemonIds, session.manager.snapshot()),
+      ),
+    ).toBe(true);
+
+    // Saved by the secure slot, but fainted - and the restock still leaves the
+    // player able to attempt another raid once the bay revives it.
+    const wiped = saves.load()!.stash;
+    expect(wiped.listPokemon()).toMatchObject([{ id: starter.id, pokemon: { currentHp: 0 } }]);
+    expect(wiped.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
   });
 
   it('preserves only the secure slot when a run wipes', () => {

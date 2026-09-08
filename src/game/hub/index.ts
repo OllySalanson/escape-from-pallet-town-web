@@ -23,3 +23,11 @@ export {
   recoveryCostMs,
   type RecoveryOutcome,
 } from './recovery';
+
+export {
+  FAINTED_TREATMENT_NOTE,
+  treatmentOptions,
+  treatWithItem,
+  type TreatmentOption,
+  type TreatmentResult,
+} from './treatment';
