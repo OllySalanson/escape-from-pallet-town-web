@@ -286,11 +286,11 @@ describe('raid resolution hand-off', () => {
     // activates, which also covers the mouse.
     expect(extractionSceneSource).toContain('const INPUT_LOCK_MS = 900;');
     expect(extractionSceneSource).toContain('control.disabled = true;');
-    // A defeat opens on its sequence and hands the report the same full lock the
-    // moment it is skipped, so the tap that ends the animation is never also the
-    // tap that dismisses the ledger.
+    // A defeat spends that tap on the first beat of its own sequence instead,
+    // and every beat after it is a deliberate press, so the report only has to
+    // survive the last of those presses being held a moment too long.
     expect(extractionSceneSource).toContain('this.showReport(INPUT_LOCK_MS);');
-    expect(extractionSceneSource).toContain('this.showReport(skipped ? INPUT_LOCK_MS : SETTLED_LOCK_MS);');
+    expect(extractionSceneSource).toContain('this.showReport(SETTLED_LOCK_MS);');
     expect(extractionSceneSource).toContain('this.time.delayedCall(lockMs, () => {');
     expect(extractionSceneSource).toContain('if (this.leaving || this.locked) {');
     // Focus is only handed to the button once it can act on the keypress.
