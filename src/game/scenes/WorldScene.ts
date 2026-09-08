@@ -7,7 +7,14 @@ import {
   type GridInputState,
   type GridPosition,
 } from '../movement/gridMovement';
-import { getIdleFrame, getWalkAnimationKey } from '../playerFrames';
+import { CHARACTER_FEET_PIXEL_Y, getIdleFrame, getWalkAnimationKey } from '../playerFrames';
+import {
+  worldCharacterTint,
+  PLAYER_MARKER_DEPTH,
+  PLAYER_MARKER_GROUND_LAYERS,
+  PLAYER_MARKER_HEAD_LAYERS,
+  type MarkerLayer,
+} from '../world/characterPresentation';
 import {
   CLASSIC_TILE,
   getWarpAt,
@@ -62,8 +69,7 @@ import {
 
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
-const PLAYER_FEET_PIXEL_Y = 27;
-const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - PLAYER_FEET_PIXEL_Y;
+const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 const RAID_TIMER_URGENT_MS = 30_000;
 /** Long enough for the extraction flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
@@ -128,6 +134,9 @@ export class WorldScene extends Phaser.Scene {
   private readonly stepEnd = new Phaser.Math.Vector2();
 
   private player!: Phaser.GameObjects.Sprite;
+  /** Travel with the player so which figure is yours never has to be guessed. */
+  private playerGroundMark!: Phaser.GameObjects.Graphics;
+  private playerHeadMark!: Phaser.GameObjects.Graphics;
   private dialogBox!: DialogBox;
   private controls!: ControlKeys;
   private collisionData!: boolean[][];
@@ -432,6 +441,7 @@ export class WorldScene extends Phaser.Scene {
           getIdleFrame(entity.facing),
         )
         .setOrigin(0, 0)
+        .setTint(worldCharacterTint('npc'))
         .setDepth(2 + entity.position.y / 1000);
       this.npcSprites.set(entity.id, sprite);
       this.mapObjects.push(sprite);
@@ -446,7 +456,7 @@ export class WorldScene extends Phaser.Scene {
           getIdleFrame(encounter.facing),
         )
         .setOrigin(0, 0)
-        .setTint(0xfbbf24)
+        .setTint(worldCharacterTint('trainer'))
         .setDepth(2 + encounter.position.y / 1000);
       this.npcSprites.set(encounter.trainer.id, sprite);
       this.mapObjects.push(sprite);
@@ -596,7 +606,7 @@ export class WorldScene extends Phaser.Scene {
         getIdleFrame('down'),
       )
       .setOrigin(0, 0)
-      .setTint(0xef4444)
+      .setTint(worldCharacterTint('hunter'))
       .setDepth(2 + position.y / 1000);
     this.npcSprites.set('rival-hunter', sprite);
     this.mapObjects.push(sprite);
@@ -617,13 +627,49 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createPlayer(): void {
-    const spawnX = this.currentTile.x * TILE_SIZE;
-    const spawnY = this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET;
+    this.player = this.add.sprite(0, 0, 'character', getIdleFrame(this.facing)).setOrigin(0, 0);
+    // Painted after the sprite so the ring covers the player's own feet while
+    // still sorting behind anything standing in front of them.
+    this.playerGroundMark = this.paintPlayerMark(PLAYER_MARKER_GROUND_LAYERS);
+    this.playerHeadMark =
+      this.paintPlayerMark(PLAYER_MARKER_HEAD_LAYERS).setDepth(PLAYER_MARKER_DEPTH);
+    this.setPlayerPosition(
+      this.currentTile.x * TILE_SIZE,
+      this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+    );
+  }
 
-    this.player = this.add
-      .sprite(spawnX, spawnY, 'character', getIdleFrame(this.facing))
-      .setOrigin(0, 0)
-      .setDepth(2);
+  /**
+   * The marker is painted a pixel at a time so it stays as crisp as the sprite
+   * art it sits against. Its layers are authored in `characterPresentation.ts`;
+   * this only puts them on screen.
+   */
+  private paintPlayerMark(layers: readonly MarkerLayer[]): Phaser.GameObjects.Graphics {
+    const mark = this.add.graphics();
+
+    for (const layer of layers) {
+      mark.fillStyle(layer.colour, layer.alpha);
+      for (const rect of layer.rects) {
+        mark.fillRect(rect.x, rect.y, rect.width, rect.height);
+      }
+    }
+
+    return mark;
+  }
+
+  /**
+   * The one place the player moves. Both marks are positioned with the sprite
+   * rather than chased in `update`, so neither can lag a step behind.
+   */
+  private setPlayerPosition(x: number, y: number): void {
+    this.player.setPosition(x, y);
+    // Sorted into the same `2 + tile y / 1000` band as every other figure, so
+    // an NPC to the south is drawn in front of the player and one to the north
+    // behind. A flat depth left the player behind every NPC on the map.
+    const depth = 2 + (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE / 1000;
+    this.player.setDepth(depth);
+    this.playerGroundMark.setPosition(x, y).setDepth(depth);
+    this.playerHeadMark.setPosition(x, y);
   }
 
   private createDialogBox(): void {
@@ -979,7 +1025,7 @@ export class WorldScene extends Phaser.Scene {
   private advanceStep(deltaMs: number): void {
     this.stepProgress = Math.min(1, this.stepProgress + deltaMs / STEP_DURATION_MS);
 
-    this.player.setPosition(
+    this.setPlayerPosition(
       Phaser.Math.Linear(this.stepStart.x, this.stepEnd.x, this.stepProgress),
       Phaser.Math.Linear(this.stepStart.y, this.stepEnd.y, this.stepProgress),
     );
@@ -990,7 +1036,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.currentTile = { ...this.targetTile };
     this.targetTile = null;
-    this.player.setPosition(this.stepEnd.x, this.stepEnd.y);
+    this.setPlayerPosition(this.stepEnd.x, this.stepEnd.y);
     this.showIdlePose();
     this.saveGame();
 
@@ -1061,7 +1107,7 @@ export class WorldScene extends Phaser.Scene {
       this.createMap();
       this.moveHunterToCurrentMap();
       this.createEntities();
-      this.player.setPosition(
+      this.setPlayerPosition(
         this.currentTile.x * TILE_SIZE,
         this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
       );

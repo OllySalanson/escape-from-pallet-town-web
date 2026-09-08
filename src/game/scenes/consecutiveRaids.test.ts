@@ -109,6 +109,7 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
       rectangle: vi.fn(() => chainable()),
       text: vi.fn(() => chainable()),
       container: vi.fn(() => chainable()),
+      graphics: vi.fn(() => chainable()),
     },
     cameras: {
       main: {
