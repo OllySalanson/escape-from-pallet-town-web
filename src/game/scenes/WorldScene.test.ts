@@ -74,6 +74,49 @@ describe('finishing a step on an extraction tile', () => {
   });
 });
 
+/**
+ * A trainer's watch is only a price if finishing a step inside it is what
+ * starts the fight, and if nothing else on that tile can be used to buy a free
+ * pass through it. Both of these were found by walking the road: the second one
+ * because a generated cache landed on a watched tile, the collection returned
+ * early, and the checkpoint was walked past without a word.
+ */
+describe('finishing a step in a trainer watch', () => {
+  const step = sceneSource.slice(
+    sceneSource.indexOf('private advanceStep('),
+    sceneSource.indexOf('private showIdlePose('),
+  );
+
+  it('challenges after the exit is resolved and before the grass is rolled', () => {
+    expect(step).toContain('if (this.tryTrainerChallengeAt(this.currentTile)) {');
+    expect(step.indexOf('if (this.tryExtract()) {')).toBeLessThan(
+      step.indexOf('if (this.tryTrainerChallengeAt(this.currentTile)) {'),
+    );
+    expect(step.indexOf('if (this.tryTrainerChallengeAt(this.currentTile)) {')).toBeLessThan(
+      step.indexOf('isTallGrassInMap(this.currentMap, this.currentTile)'),
+    );
+  });
+
+  it('still challenges on the step that picks something up off the watched tile', () => {
+    expect(step).toContain('this.tryTrainerChallengeAt(this.currentTile, [pickup])');
+    // The collection reports its line instead of showing it, so the pickup and
+    // the challenge arrive as one dialogue rather than one erasing the other.
+    expect(sceneSource).toContain('private tryCollectLootAt(position: GridPosition): string | null');
+    expect(sceneSource).toContain(
+      'private tryRecoverFieldKitAt(position: GridPosition): string | null',
+    );
+  });
+
+  it('reads the watch off the trainer facing and the terrain, not off entities', () => {
+    const sight = sceneSource.slice(
+      sceneSource.indexOf('private isSightBlocked('),
+      sceneSource.indexOf('private isBlocked('),
+    );
+    expect(sight).toContain('this.collisionData[tile.y]?.[tile.x] !== false');
+    expect(sight).not.toContain('this.currentMap.entities');
+  });
+});
+
 describe('battle return recovery', () => {
   it('clears the battle-transition lock before rebuilding the returned world', () => {
     expect(sceneSource).toContain('this.isWarping = false;');

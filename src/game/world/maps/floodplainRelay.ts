@@ -4,10 +4,12 @@ import { MapSketch } from '../mapGrid';
  * Floodplain Relay. 32x32, the shipped footprint. Water is the default here:
  * the flood is what says no.
  *
- * This is a pure geometry change. Every coordinate the rest of the code depends
- * on - the insertion, the three exits, both landmarks, the first contract, the
- * checkpoint, the loot and the signs - keeps its shipped position, so nothing
- * outside the map data had to move.
+ * Every coordinate the rest of the code depends on - the insertion, the three
+ * exits, both landmarks, the first contract, the loot and the signs - keeps its
+ * shipped position. The one thing that has moved since is the checkpoint: it
+ * used to sit in the corner of the road, where a trainer who has to be spoken
+ * to is a locked door rather than a price, and it now stands on a jetty beside
+ * it and watches the approach instead.
  *
  * It stays the smallest map in the game. Its job is to teach four things in
  * ninety seconds: the road is fast and exposed, the reeds are slow and covered,
@@ -35,7 +37,13 @@ export function sketchFloodplainRelay(): MapSketch {
   map.lane([[13, 16], [13, 20]]);
   map.lane([[13, 20], [15, 20]]);
   map.lane([[15, 20], [15, 25]]);
-  map.raw(15, 16, 'H');
+
+  // The checkpoint. RAIDER MAYA stands on a jetty hung off the corner rather
+  // than in the corner itself, so the road stays open and stays the fast route;
+  // what it costs is her watch, which runs north up the approach she is facing.
+  // A trainer standing in a one-tile lane is a locked door, not a price.
+  map.lane([[15, 16], [15, 17]]);
+  map.raw(15, 17, 'H');
 
   // 3. The ranger station: a loop off the road holding the Radio Exit.
   map.lane([[18, 4], [18, 7]], '.');

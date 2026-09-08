@@ -83,7 +83,7 @@ function firstContractHints(
   // that numbered themselves as well came out as "1. 1. You are in ...".
   return [
     `You are in ${firstContractLocationHint(session, context)}.`,
-    'Two ways down: the central road is fast and open but Maya holds its checkpoint, and the west reeds are slower cover that rejoins the road above and below her.',
+    'Two ways down: the central road is fast and open, but Maya watches its checkpoint and fights whoever walks it; the west reeds are slower, cost encounters, and rejoin the road above and below her.',
     'Step onto the lost field kit marker to retrieve it.',
     extractionHint,
   ];
@@ -115,7 +115,7 @@ function laterRunHints(context: ObjectiveGuideContext, currentExit: string | und
   if (context.currentMapId === 'floodplain-relay') {
     const radioActive = context.activatedPoiIds.has('floodplain-ranger-radio');
     return [
-      'Floodplain Relay: Maya watches the fast central road. The west reeds reconnect above and below her checkpoint.',
+      'Floodplain Relay: Maya watches three tiles of the fast central road, and taking it means fighting her. The west reeds reconnect above and below her checkpoint.',
       'Flooded Supply Vault: 2 Great Balls + 1 Super Potion. Its causeway is exposed, and the haul banks only on extraction.',
       radioActive
         ? 'Radio Exit is active at Ranger Station. South Gate is always open; Ferry Dock opens on its signal.'
