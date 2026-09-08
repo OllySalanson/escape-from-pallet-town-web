@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BattleScene } from './scenes/BattleScene';
 import { BagScene } from './scenes/BagScene';
 import { BootScene } from './scenes/BootScene';
+import { ExtractionScene } from './scenes/ExtractionScene';
 import { HubScene } from './scenes/HubScene';
 import { ObjectivesScene } from './scenes/ObjectivesScene';
 import { PartyScene } from './scenes/PartyScene';
@@ -22,6 +23,7 @@ const BASE_SCENES = [
   PartyScene,
   BagScene,
   ObjectivesScene,
+  ExtractionScene,
 ];
 
 export function createGameConfig(

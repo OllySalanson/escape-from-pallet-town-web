@@ -30,7 +30,10 @@ import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { Bag, ITEMS, type ItemId } from '../items';
 import { completedObjectiveRewards } from '../objectives';
 import { RunPhase } from '../run/RunManager';
+import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
+import { formatRaidClock } from '../run/raidClock';
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
+import { FIRST_CONTRACT } from '../run/runGeneration';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { tryActivatePoi } from '../world/pois';
@@ -62,6 +65,8 @@ const CAMERA_ZOOM = 1;
 const PLAYER_FEET_PIXEL_Y = 27;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - PLAYER_FEET_PIXEL_Y;
 const RAID_TIMER_URGENT_MS = 30_000;
+/** Long enough for the extraction flash and shake to read before the result screen. */
+const RUN_RESULT_DELAY_MS = 700;
 
 interface RunTimerHud {
   readonly backing: Phaser.GameObjects.Rectangle;
@@ -146,6 +151,8 @@ export class WorldScene extends Phaser.Scene {
   private runTimerHud: RunTimerHud | undefined;
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
+  /** Set once a finished raid is on its way to the result screen. */
+  private pendingResultScreen = false;
   private trainerEncounters: readonly RunTrainerEncounter[] = [];
   private readonly defeatedTrainerIds = new Set<string>();
   private readonly collectedLootIds = new Set<string>();
@@ -179,6 +186,10 @@ export class WorldScene extends Phaser.Scene {
    */
   private resetStateFromPreviousRaid(): void {
     this.pendingHubTransition = false;
+    // Set on the way to the result screen, and read by handleRunResolutionComplete
+    // to keep a dialogue from completing past it - so it is exactly the shape of
+    // flag that froze the second raid, and belongs on this list.
+    this.pendingResultScreen = false;
     this.pendingTrainerBattle = undefined;
     this.isWarping = false;
     this.targetTile = null;
@@ -633,7 +644,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const backing = this.add
-      .rectangle(160, 10, 154, 22, 0x111827, 0.9)
+      .rectangle(160, 10, 154, 22, 0x111827, 1)
       .setStrokeStyle(2, 0xdbeafe)
       .setScrollFactor(0)
       .setDepth(100);
@@ -746,9 +757,9 @@ export class WorldScene extends Phaser.Scene {
       this.cameras.main.flash(120, 251, 191, 36, false);
       audioManager.playLowHpWarning();
     }
-    hud.text.setText(`RAID ${formatRaidTimer(remainingMs)}`);
+    hud.text.setText(`RAID ${formatRaidClock(remainingMs)}`);
     hud.backing
-      .setFillStyle(isUrgent ? 0x78350f : 0x111827, 0.9)
+      .setFillStyle(isUrgent ? 0x78350f : 0x111827, 1)
       .setStrokeStyle(2, isUrgent ? 0xfbbf24 : 0xdbeafe)
       .setAlpha(1);
     hud.text
@@ -1304,19 +1315,56 @@ export class WorldScene extends Phaser.Scene {
     const contractResult = snapshot.recoveredFieldKit
       ? new SaveManager().bankFirstContractRun(runResult)
       : { saved: new SaveManager().bankRun(runResult), granted: false };
-    const saved = contractResult.saved;
     this.pendingHubTransition = true;
-    this.dialogBox.showMessages([
-      'EXTRACTED!',
-      formatRunSummary('Carried out and banked', snapshot.caughtPokemon, snapshot.foundItems),
-      contractResult.granted
-        ? 'CONTRACT COMPLETE: the Pallet Town insertions are permanently unlocked. 1× Super Potion is now in your Base stash.'
-        : objectiveRewards.length
-          ? `Objective rewards secured: ${objectiveRewards.map(({ itemId, quantity }) => `${quantity}× ${itemId}`).join(', ')}.`
-          : 'No objectives completed this run.',
-      'Nothing carried was left behind. A wipe would have lost unsecured supplies.',
-      saved ? 'Stash secured. Returning to hub.' : 'Stash save unavailable. Returning to hub.',
-    ]);
+    this.showRunResult(
+      buildExtractionReport({
+        outcome: 'ESCAPED',
+        snapshot,
+        durationMs: snapshot.durationMs,
+        exitLabel: point.label,
+        // The contract's Super Potion is granted by the save rather than by the
+        // run, so the report is handed exactly what the stash received.
+        banked: {
+          pokemon: runResult.pokemon,
+          items: contractResult.granted
+            ? [...runResult.items, { itemId: 'super-potion', quantity: 1 }]
+            : runResult.items,
+        },
+        ...(snapshot.recoveredFieldKit
+          ? {
+            contract: {
+              description: FIRST_CONTRACT.description,
+              complete: true,
+              reward: contractResult.granted
+                ? 'The Pallet Town insertions are permanently unlocked, and a Super Potion is waiting at base.'
+                : 'Already banked on an earlier raid, so there is no new unlock this time.',
+            },
+          }
+          : {}),
+        carriedOut: this.bag.toJSON(),
+        saved: contractResult.saved,
+      }),
+    );
+  }
+
+  /**
+   * Hands a finished raid to the result screen. The world is left standing for a
+   * beat first, which is the only reason this is delayed: the extraction flash
+   * and the wipe shake have to land on the map they happened on.
+   */
+  private showRunResult(report: ExtractionReport): void {
+    // The clock can expire while a sign is still on screen. Retiring the dialogue
+    // here stops its next advance from completing into the old hub hand-off and
+    // skipping the result the raid just earned.
+    this.pendingResultScreen = true;
+    this.dialogBox.setVisible(false);
+    this.time.delayedCall(RUN_RESULT_DELAY_MS, () => {
+      if (this.scene.manager.keys.extraction) {
+        this.scene.start('extraction', { report });
+        return;
+      }
+      this.scene.start(this.scene.manager.keys.hub ? 'hub' : 'title');
+    });
   }
 
   private advanceRunClock(deltaMs: number): void {
@@ -1352,6 +1400,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const result = this.runSession.manager.resolveWipe(this.runSession.secureSlot);
+    const snapshot = this.runSession.manager.snapshot();
     this.destroyRunTimerHud();
     this.cameras.main.flash(220, 239, 68, 68, false);
     this.cameras.main.shake(180, 0.009);
@@ -1362,16 +1411,24 @@ export class WorldScene extends Phaser.Scene {
       this.runSession.stashSecureSlot,
     );
     this.pendingHubTransition = true;
-    this.dialogBox.showMessages([
-      'TIME EXPIRED - YOU WERE WIPED.',
-      formatRunSummary('Lost', result.lostPokemon, result.lostItems),
-      saved
-        ? 'Secure slot preserved. Returning to hub.'
-        : 'Stash save unavailable. Returning to hub.',
-    ]);
+    this.showRunResult(
+      buildExtractionReport({
+        outcome: 'WIPED',
+        cause: 'timer',
+        snapshot,
+        durationMs: snapshot.durationMs,
+        lost: { pokemon: result.lostPokemon, items: result.lostItems },
+        carriedOut: this.bag.toJSON(),
+        saved,
+      }),
+    );
   }
 
   private handleRunResolutionComplete(): void {
+    if (this.pendingResultScreen) {
+      return;
+    }
+
     if (this.pendingTrainerBattle) {
       const battle = this.pendingTrainerBattle;
       this.pendingTrainerBattle = undefined;
@@ -1593,26 +1650,6 @@ export class WorldScene extends Phaser.Scene {
     this.dialogBox.showMessages([...this.pendingTrainerBattle.introLines]);
     return true;
   }
-}
-
-function formatRunSummary(
-  heading: string,
-  pokemon: readonly Pokemon[],
-  items: readonly { readonly itemId: string; readonly quantity: number }[],
-): string {
-  const pokemonSummary = pokemon.length === 0 ? 'no Pokemon' : `${pokemon.length} Pokemon`;
-  const itemSummary =
-    items.length === 0
-      ? 'no items'
-      : items.map((item) => `${item.quantity} ${item.itemId}`).join(', ');
-  return `${heading}: ${pokemonSummary}; ${itemSummary}.`;
-}
-
-function formatRaidTimer(remainingMs: number): string {
-  const totalSeconds = Math.ceil(remainingMs / 1_000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {

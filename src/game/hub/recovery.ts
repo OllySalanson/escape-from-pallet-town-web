@@ -1,4 +1,5 @@
 import type { Pokemon } from '../pokemon';
+import { RAID_DURATION_MS } from '../run/raidClock';
 import type { Stash, StashedPokemon } from '../stash';
 
 /**
@@ -17,28 +18,43 @@ import type { Stash, StashedPokemon } from '../stash';
  *
  * The debt is charged when the raid resolves, not when it starts, so abandoning
  * a shortened raid cannot wash it away.
+ *
+ * Every price here is a share of one raid, not an absolute number of minutes.
+ * They were first written against an 18-minute clock; `RAID_DURATION_MS` is now
+ * 5 minutes, and left absolute a single revive would have cost more than a whole
+ * raid and handed the player a zero clock. The shares below are the ones that
+ * schedule expressed, carried across intact.
  */
 
+/** Quoted prices are rounded up to this, so the lobby never shows odd seconds. */
+export const RECOVERY_STEP_MS = 5_000;
+
+/**
+ * One price, as a share of a raid, snapped to the quoting step - so a full bar
+ * costs exactly its listed price rather than the next step up.
+ */
+const shareOfRaid = (share: number): number =>
+  Math.round((RAID_DURATION_MS * share) / RECOVERY_STEP_MS) * RECOVERY_STEP_MS;
+
 /** Restoring a full health bar's worth of HP costs this much of the next raid. */
-export const RECOVERY_FULL_BAR_MS = 240_000;
+export const RECOVERY_FULL_BAR_MS = shareOfRaid(0.22);
 
 /**
  * Reviving costs this on top of refilling the bar, so a faint stays the worst
  * outcome of a fight. Without it, letting a Pokemon drop would cost exactly the
  * same as pulling it out at 1 HP and retreating would be pointless.
  */
-export const RECOVERY_REVIVE_MS = 120_000;
+export const RECOVERY_REVIVE_MS = shareOfRaid(0.11);
 
 /** Clearing a lingering status, which also persists between raids. */
-export const RECOVERY_STATUS_MS = 30_000;
-
-/** Quoted prices are rounded up to this, so the lobby never shows odd seconds. */
-export const RECOVERY_STEP_MS = 15_000;
+export const RECOVERY_STATUS_MS = shareOfRaid(0.03);
 
 /**
- * The most raid time recovery can ever take, half of the 18-minute raid clock
- * (RUN_DURATION_MS in HubScene; `hub keeps recovery affordable` in
- * HubScene.test.ts pins the two together).
+ * The most raid time recovery can ever take: half the raid clock, exactly.
+ *
+ * This is derived rather than written down because the two must move together -
+ * a cap larger than the clock leaves a treated party deploying into a raid that
+ * enrages on the first frame.
  *
  * The cap is what stops recovery becoming the hoarding trap it replaced: a
  * whole worn-out party is always treatable in one go for a price the player can
@@ -46,7 +62,7 @@ export const RECOVERY_STEP_MS = 15_000;
  * which is deliberate - it makes batching a reward rather than making the sixth
  * Pokemon the one nobody dares fix.
  */
-export const MAX_PENDING_RECOVERY_MS = 540_000;
+export const MAX_PENDING_RECOVERY_MS = Math.floor(RAID_DURATION_MS / 2);
 
 export interface RecoveryOutcome {
   /** Stash IDs that were actually restored, in the order they were treated. */

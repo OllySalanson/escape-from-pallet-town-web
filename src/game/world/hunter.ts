@@ -33,7 +33,11 @@ export const DEFAULT_HUNTER_TUNING: HunterTuning = {
   teamTierOffset: 0,
 };
 
-const HUNTER_TIERS = [
+/**
+ * When the hunter's team grows. Exported so `raidClock.test.ts` can prove every
+ * tier is still reachable inside the raid duration.
+ */
+export const HUNTER_TIERS = [
   { startsAtMs: 0, level: 6, party: [PIDGEY] },
   { startsAtMs: 120_000, level: 9, party: [PIDGEY, BULBASAUR] },
   { startsAtMs: 240_000, level: 12, party: [PIDGEY, BULBASAUR, PIKACHU] },

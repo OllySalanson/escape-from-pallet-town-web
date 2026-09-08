@@ -951,3 +951,203 @@ button {
     padding: 18px;
   }
 }
+
+/* Raid result screen. Built from the lobby's own panels, rows and tags so a
+   finished raid is accounted for in the same language the loadout was built in.
+   Winning leans on the accent; losing swaps to the danger ramp and never
+   celebrates. */
+.extraction-shell {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  /* The result is the payoff of the raid, so a normal haul has to land whole on
+     the 720px stage rather than hiding its own "back to base" below a fold. */
+  padding: clamp(12px, 2.2vw, 22px);
+}
+.extraction-shell .entity-row {
+  gap: 9px;
+  padding: 7px;
+}
+.extraction-shell .entity-list {
+  gap: 6px;
+}
+.extraction-shell .panel {
+  padding: var(--space-2);
+}
+.extraction-shell .panel-heading {
+  margin-bottom: 9px;
+}
+.extraction-cost .panel-heading {
+  margin-bottom: 7px;
+}
+.extraction-shell .item-quantity {
+  color: var(--menu-muted);
+  font-weight: 500;
+}
+.extraction-shell .pokemon-avatar {
+  width: 32px;
+  height: 32px;
+  flex-basis: 32px;
+}
+.extraction-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--menu-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.extraction-won .extraction-header,
+.extraction-won .extraction-footer {
+  border-color: #416a70;
+  background: linear-gradient(110deg, #153d45, #142438);
+}
+.extraction-lost .extraction-header {
+  border-color: #7d4038;
+  background: linear-gradient(110deg, #3d1a17, #1b1520);
+}
+.extraction-headline {
+  min-width: 0;
+}
+.extraction-headline h1 {
+  margin: 2px 0 6px;
+  font-size: clamp(23px, 3vw, 34px);
+  letter-spacing: -0.045em;
+  overflow-wrap: anywhere;
+}
+.extraction-lost .eyebrow {
+  /* Accent green is the game's "good news" colour. A lost raid keeps the same
+     hierarchy in a warm, desaturated tone so nothing on it reads as a reward. */
+  color: #d8a79c;
+}
+.extraction-summary {
+  color: var(--menu-muted);
+  max-width: 62ch;
+}
+.extraction-clock {
+  min-width: 168px;
+  display: grid;
+  gap: 5px;
+  justify-items: start;
+  padding: var(--space-2);
+  border: 1px solid var(--menu-border);
+  border-radius: 10px;
+  background: rgb(11 18 32 / 62%);
+}
+.extraction-clock strong {
+  font-size: 1.5em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.clock-track {
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: #0b1220;
+  overflow: hidden;
+}
+.clock-track span {
+  display: block;
+  height: 100%;
+  background: var(--menu-accent);
+}
+.extraction-lost .clock-track span {
+  background: var(--menu-danger);
+}
+.extraction-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-2);
+}
+.extraction-ledger .entity-row {
+  box-shadow: inset 3px 0 0 var(--menu-accent);
+}
+.extraction-lost .extraction-ledger .entity-row {
+  box-shadow: inset 3px 0 0 #915249;
+}
+.extraction-lost .extraction-ledger .item-icon {
+  color: var(--menu-danger);
+}
+.extraction-contract {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 9px;
+  padding: 9px 11px;
+  border: 1px solid #f6c969;
+  border-radius: 10px;
+  background: #3e3420;
+}
+.extraction-contract small {
+  display: block;
+  color: #f7e4ae;
+}
+.gamble-group + .gamble-group {
+  margin-top: 9px;
+}
+.gamble-group .eyebrow {
+  display: block;
+  margin-bottom: 7px;
+}
+.gamble-group .empty-state {
+  padding: 9px 4px;
+}
+.banked-tag {
+  color: var(--menu-accent);
+}
+.survived-tag {
+  color: var(--menu-muted);
+}
+.gamble-verdict {
+  margin-top: 9px !important;
+  padding-top: 9px;
+  border-top: 1px solid var(--menu-border);
+  color: var(--menu-text);
+  overflow-wrap: anywhere;
+}
+.extraction-cost .cost-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--menu-muted);
+}
+.extraction-cost li {
+  min-width: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--menu-border);
+  border-radius: 999px;
+  background: var(--menu-raised);
+  overflow-wrap: anywhere;
+}
+.extraction-footer {
+  /* A long haul is allowed to scroll, but the way out of the screen never is. */
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+}
+.extraction-footer .button {
+  margin-top: 0;
+}
+.extraction-lost .extraction-footer {
+  border-color: #7d4038;
+  background: linear-gradient(110deg, #3d1a17, #1b1520);
+}
+.extraction-lost .extraction-footer .primary-button {
+  background: #52211c;
+  border-color: #a8564a;
+  color: #ffd9d1;
+}
+@media (width <= 720px) {
+  .extraction-header,
+  .extraction-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -5,6 +5,8 @@ import { SAVE_KEY, SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash } from '../stash';
 import { createActiveRunSession } from './RunSession';
 import { RunManager } from './RunManager';
+import { buildExtractionReport } from './extractionReport';
+import { RAID_DURATION_MS } from './raidClock';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -256,6 +258,121 @@ describe('extraction loop integration', () => {
       'squirtle-1',
       'charmander-1',
     ]);
+  });
+
+  it('reports exactly the stash change a survived raid produced', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const loadout = {
+      party: [starter.pokemon],
+      items: [
+        { itemId: 'poke-ball', quantity: 5 },
+        { itemId: 'potion', quantity: 3 },
+      ],
+    } as const;
+    const secureSlot = { pokemon: starter.pokemon, items: [loadout.items[1]] };
+    const manager = new RunManager();
+    manager.startRun(loadout, { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS }, secureSlot);
+    const session = createActiveRunSession(
+      manager,
+      secureSlot,
+      { pokemonId: starter.id, items: [loadout.items[1]] },
+      [starter.id],
+      loadout.items,
+    );
+    const caught = new Pokemon(CHARMANDER, 4);
+    session.manager.tick(94_000);
+    session.manager.registerCaughtPokemon(caught);
+    session.manager.registerFoundItem('great-ball', 2);
+    session.manager.resolveEscape();
+    const snapshot = session.manager.snapshot();
+
+    const before = saves.load()!.stash.listItems();
+    const banked = { pokemon: snapshot.caughtPokemon, items: snapshot.foundItems };
+    expect(saves.bankRun(banked)).toBe(true);
+    const after = saves.load()!.stash;
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot,
+      durationMs: RAID_DURATION_MS,
+      exitLabel: 'SOUTH GATE',
+      banked,
+      carriedOut: { 'poke-ball': 4, potion: 3, 'great-ball': 2 },
+      saved: true,
+    });
+
+    // Every line of the ledger is a real change to persisted storage, and every
+    // change to storage is on the ledger.
+    expect(report.ledger.pokemon.map(({ name }) => name)).toEqual(['Charmander']);
+    expect(after.listPokemon().map(({ pokemon }) => pokemon.base.name)).toEqual([
+      'Bulbasaur',
+      'Charmander',
+    ]);
+    expect(
+      Object.fromEntries(report.ledger.items.map(({ itemId, quantity }) => [itemId, quantity])),
+    ).toEqual({ 'great-ball': 2 });
+    expect(after.listItems()).toEqual({ ...before, 'great-ball': 2 });
+    // The loadout is never taken out of the stash on a survived raid, so the
+    // gamble panel is the only place the risk is ever visible.
+    expect(report.risked.items).toEqual([
+      { itemId: 'poke-ball', label: 'Poke Ball', quantity: 5 },
+    ]);
+    expect(report.spent).toEqual([{ itemId: 'poke-ball', label: 'Poke Ball', quantity: 1 }]);
+    expect(report.clockLabel).toBe('1:34 of 5:00');
+  });
+
+  it('reports exactly the stash losses a wiped raid produced', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const stash = saves.load()!.stash;
+    const starter = stash.listPokemon()[0];
+    const partner = new Pokemon(CHARMANDER, 5);
+    const partnerId = stash.addPokemon(partner, 'charmander-1');
+    saves.save({
+      party: new PokemonParty(),
+      mapId: 'floodplain-relay',
+      position: { x: 15, y: 3 },
+      bag: new Bag(),
+      stash,
+    });
+
+    const loadout = {
+      party: [starter.pokemon, partner],
+      items: [{ itemId: 'poke-ball', quantity: 5 }],
+    } as const;
+    const secureSlot = { pokemon: starter.pokemon };
+    const manager = new RunManager();
+    manager.startRun(loadout, { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS }, secureSlot);
+    const session = createActiveRunSession(
+      manager,
+      secureSlot,
+      { pokemonId: starter.id },
+      [starter.id, partnerId],
+      loadout.items,
+    );
+    // Running the clock out is the wipe the new duration makes reachable.
+    session.manager.tick(RAID_DURATION_MS);
+    expect(session.manager.isEnraged).toBe(true);
+    const result = session.manager.resolveWipe(session.secureSlot);
+    const snapshot = session.manager.snapshot();
+    expect(
+      saves.applyWipeLoss(session.broughtPokemonIds, session.broughtItems, session.stashSecureSlot),
+    ).toBe(true);
+
+    const report = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'timer',
+      snapshot,
+      durationMs: RAID_DURATION_MS,
+      lost: { pokemon: result.lostPokemon, items: result.lostItems },
+      saved: true,
+    });
+
+    expect(report.ledger.pokemon.map(({ name }) => name)).toEqual(['Charmander']);
+    expect(saves.load()!.stash.listPokemon().map(({ id }) => id)).toEqual([starter.id]);
+    expect(report.secured.pokemon.map(({ name }) => name)).toEqual(['Bulbasaur']);
+    expect(report.headline).toBe('The clock ran out with you still inside.');
+    expect(report.haulTier).toBe('empty');
   });
 
   it('unlocks the Pallet Town insertions and grants one supply exactly once after extracting the recovered field kit', () => {

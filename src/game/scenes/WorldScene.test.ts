@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 const sceneSource = await readFile(new URL('./WorldScene.ts', import.meta.url), 'utf8');
+const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
+const extractionSceneSource = await readFile(new URL('./ExtractionScene.ts', import.meta.url), 'utf8');
 
 describe('in-run objective HUD layout', () => {
   it('wraps long text and grows the backing to fit all wrapped lines', () => {
@@ -69,5 +71,47 @@ describe('hunter disengagement wiring', () => {
   it('keeps the remaining escape readable on the HUD instead of hiding it', () => {
     expect(sceneSource).toContain('HUNTER OFF TRAIL ${Math.ceil(');
     expect(sceneSource).toContain('hud.hunterBacking.setVisible(searching)');
+  });
+});
+
+describe('raid resolution hand-off', () => {
+  it('sends every way a raid can end to the one result screen', () => {
+    // Three call sites resolved a raid in three different dialogue scripts. They
+    // now build the same report and hand it to the same scene.
+    expect(sceneSource).toContain("outcome: 'ESCAPED',");
+    expect(sceneSource).toContain("outcome: 'WIPED',");
+    expect(sceneSource).toContain("cause: 'timer',");
+    expect(battleSceneSource).toContain("cause: 'defeated',");
+    expect(sceneSource).toContain("this.scene.start('extraction', { report });");
+    expect(battleSceneSource).toContain("this.scene.start('extraction', { report });");
+    // Both scenes guard the hand-off: a dialogue completing behind a resolved
+    // raid used to start the hub first and skip the screen entirely.
+    expect(sceneSource).toContain('if (this.pendingResultScreen) {');
+    expect(battleSceneSource).toContain('if (this.pendingResultScreen) {');
+    // No resolution may narrate itself through the dialogue box any more.
+    expect(sceneSource).not.toContain("'EXTRACTED!'");
+    expect(sceneSource).not.toContain("'TIME EXPIRED - YOU WERE WIPED.'");
+    expect(battleSceneSource).not.toContain("'YOU WERE WIPED.'");
+  });
+
+  it('will not let the tap that closed the last battle line dismiss the result', () => {
+    // Phaser captures SPACE and ENTER game-wide, so an overlay key listener
+    // never sees them: the guard has to sit on the button the browser actually
+    // activates, which also covers the mouse.
+    expect(extractionSceneSource).toContain('const INPUT_LOCK_MS = 900;');
+    expect(extractionSceneSource).toContain('control.disabled = true;');
+    expect(extractionSceneSource).toContain('this.time.delayedCall(INPUT_LOCK_MS, () => {');
+    expect(extractionSceneSource).toContain('if (this.leaving || this.locked) {');
+    // Focus is only handed to the button once it can act on the keypress.
+    const unlock = extractionSceneSource.slice(extractionSceneSource.indexOf('delayedCall(INPUT_LOCK_MS'));
+    expect(unlock.indexOf('control.disabled = false;')).toBeLessThan(
+      unlock.indexOf("this.overlay.focus('[data-continue]')"),
+    );
+  });
+
+  it('keeps a way out of the result screen when the hub scene is unavailable', () => {
+    expect(sceneSource).toContain("this.scene.start(this.scene.manager.keys.hub ? 'hub' : 'title');");
+    expect(battleSceneSource).toContain("this.scene.start(this.scene.manager.keys.hub ? 'hub' : 'title');");
+    expect(extractionSceneSource).toContain("this.scene.manager.keys.hub ? 'hub' : 'title'");
   });
 });

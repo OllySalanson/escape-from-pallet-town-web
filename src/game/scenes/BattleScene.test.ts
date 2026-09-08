@@ -158,6 +158,8 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     enemySprite: spriteStub(),
     tweens: { add: vi.fn(), addCounter: vi.fn() },
     cameras: { main: { flash: vi.fn(), shake: vi.fn(), fadeOut: vi.fn(), once: vi.fn() } },
+    // Raid resolution waits a beat before handing over; run it now.
+    time: { delayedCall: vi.fn((_delayMs: number, callback: () => void) => callback()) },
     hunterBattle: options.hunterBattle ?? false,
     hunterState: options.hunterBattle
       ? { ...createHunterState(), spawned: true, mapId: 'route-1', position: { x: 4, y: 4 } }
@@ -397,5 +399,67 @@ describe('escaping a wild encounter', () => {
     (scene as unknown as { showCommands(): void }).showCommands();
 
     expect(renderedTexts.at(-1)?.text).toBe('▶ RUN 77%');
+  });
+});
+
+describe('a lost raid resolved inside a battle', () => {
+  it('hands the wipe to the result screen instead of racing the hub to it', () => {
+    const manager = new RunManager();
+    const deployed = new Pokemon(CHARMANDER, 5);
+    manager.startRun(
+      { party: [deployed], items: [{ itemId: 'potion', quantity: 2 }] },
+      { mapId: 'floodplain-relay', durationMs: 300_000 },
+    );
+    const runSession = createActiveRunSession(manager, {}, {}, ['charmander-1'], [
+      { itemId: 'potion', quantity: 2 },
+    ]);
+    const start = vi.fn();
+    const { scene } = createBattleSceneHarness({ runSession });
+    Object.assign(scene as object, {
+      scene: { manager: { keys: { world: {}, hub: {}, extraction: {} } }, start },
+    });
+    const internals = scene as unknown as {
+      resolveRunWipe(): void;
+      completeReturnToWorld(): void;
+    };
+
+    internals.resolveRunWipe();
+
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(start.mock.calls[0][0]).toBe('extraction');
+    expect(start.mock.calls[0][1]).toMatchObject({
+      report: { outcome: 'WIPED', cause: 'defeated' },
+    });
+
+    // The faint narration finishes behind the hand-off. Before this was guarded
+    // it started the hub here and the result screen was never seen at all.
+    start.mockClear();
+    internals.completeReturnToWorld();
+
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it('reports the raid clock the raid actually ran on, not the base duration', () => {
+    const manager = new RunManager();
+    const deployed = new Pokemon(CHARMANDER, 5);
+    // A recovery booked at base shortens the raid; the screen has to say so.
+    const shortenedMs = 180_000;
+    manager.startRun(
+      { party: [deployed], items: [] },
+      { mapId: 'floodplain-relay', durationMs: shortenedMs },
+    );
+    manager.tick(60_000);
+    const runSession = createActiveRunSession(manager, {}, {}, ['charmander-1'], []);
+    const start = vi.fn();
+    const { scene } = createBattleSceneHarness({ runSession });
+    Object.assign(scene as object, {
+      scene: { manager: { keys: { world: {}, hub: {}, extraction: {} } }, start },
+    });
+
+    (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();
+
+    expect(start.mock.calls[0][1]).toMatchObject({
+      report: { durationMs: shortenedMs, clockLabel: '1:00 of 3:00' },
+    });
   });
 });

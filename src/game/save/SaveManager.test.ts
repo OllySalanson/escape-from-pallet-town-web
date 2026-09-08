@@ -373,12 +373,12 @@ describe('SaveManager', () => {
       position: { x: 1, y: 1 },
       bag: new Bag(),
       stash,
-      pendingRecoveryMs: 240_000,
+      pendingRecoveryMs: MAX_PENDING_RECOVERY_MS,
     });
 
     // Reloading mid-raid still owes the time, so a shortened raid cannot be
     // abandoned to shed the bill.
-    expect(saves.load()?.pendingRecoveryMs).toBe(240_000);
+    expect(saves.load()?.pendingRecoveryMs).toBe(MAX_PENDING_RECOVERY_MS);
 
     expect(saves.bankRun({ pokemon: [], items: [{ itemId: 'potion', quantity: 1 }] })).toBe(true);
     expect(saves.load()?.pendingRecoveryMs).toBe(0);

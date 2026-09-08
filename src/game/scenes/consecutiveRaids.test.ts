@@ -60,6 +60,10 @@ vi.mock('../ui/DialogBox', () => ({
     public setScrollFactor(): this {
       return this;
     }
+    public setVisible(value: boolean): this {
+      this.visible = value;
+      return this;
+    }
     public showMessage(): void {
       this.visible = true;
     }
@@ -76,6 +80,8 @@ import { Bag } from '../items';
 import { BULBASAUR, Pokemon, PokemonParty } from '../pokemon';
 import { RunManager, RunPhase } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
+import { ENRAGE_GRACE_MS } from '../run/RunManager';
+import { RAID_DURATION_MS } from '../run/raidClock';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { WorldScene } from './WorldScene';
 
@@ -110,7 +116,9 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
         fadeOut: vi.fn(),
         flash: vi.fn(),
         shake: vi.fn(),
-        once: vi.fn(),
+        // Fades resolve immediately, so a transition that waits on one is
+        // observable rather than stranded in a callback nothing ever fires.
+        once: vi.fn((_event: string, callback: () => void) => callback()),
         setBounds: vi.fn(),
         setRoundPixels: vi.fn(),
         setZoom: vi.fn(),
@@ -146,8 +154,17 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
         })),
       })),
     },
-    scene: { start: vi.fn(), launch: vi.fn(), pause: vi.fn(), manager: { keys: {} } },
+    scene: {
+      start: vi.fn(),
+      launch: vi.fn(),
+      pause: vi.fn(),
+      // The real game registers both, and which one exists decides where a
+      // finished raid is handed to.
+      manager: { keys: { hub: {}, extraction: {} } },
+    },
     events: { once: vi.fn(), on: vi.fn() },
+    // Raid resolution waits a beat so the flash lands on the map; run it now.
+    time: { delayedCall: vi.fn((_delayMs: number, callback: () => void) => callback()) },
   });
 };
 
@@ -160,7 +177,7 @@ const startRaid = (
   const party = new PokemonParty([new Pokemon(BULBASAUR, 5)]);
   manager.startRun(
     { party: party.pokemon, items: [{ itemId: 'potion', quantity: 5 }] },
-    { mapId: RUN_INSERTIONS[insertionId].mapId, durationMs: 1_080_000 },
+    { mapId: RUN_INSERTIONS[insertionId].mapId, durationMs: RAID_DURATION_MS },
   );
   // A second raid never carries the first contract: it was banked on extraction.
   const plan = generateRunPlan(seed, undefined, insertionId, seed === 1);
@@ -218,6 +235,74 @@ describe('two raids in a row on one WorldScene instance', () => {
     expect(internals.targetTile).toEqual({ x: spawn.x + 1, y: spawn.y });
   });
 
+  /**
+   * Every way a raid can end now routes through the result screen, which is a
+   * new hand-off at the exact moment PR #70 found the freeze. Each ending is
+   * played out and then followed by a second raid on the same scene instance.
+   */
+  it.each([
+    ['extraction', 'extraction'],
+    ['the clock expiring', 'timer'],
+    ['losing the last Pokemon in a battle', 'defeat'],
+  ] as const)('leaves the next raid playable after %s', (_label, ending) => {
+    const controls = makeControls();
+    const scene = new WorldScene();
+    attachSceneStubs(scene, controls);
+    const manager = new RunManager();
+    const started = scene as unknown as { scene: { start: ReturnType<typeof vi.fn> } };
+
+    const first = startRaid(scene, manager, 'floodplain-relay', 1);
+    const internals = scene as unknown as {
+      currentTile: { x: number; y: number };
+      targetTile: { x: number; y: number } | null;
+      isWarping: boolean;
+      pendingTrainerBattle: unknown;
+      tryExtract(): void;
+      advanceRunClock(deltaMs: number): void;
+      handleRunResolutionComplete(): void;
+    };
+
+    if (ending === 'extraction') {
+      const exit = first.plan!.extractionPoints.find(
+        (point) => point.mapId === 'floodplain-relay' && point.requirement?.kind === 'always',
+      )!;
+      internals.currentTile = { ...exit.position };
+      internals.tryExtract();
+      expect(manager.phase).toBe(RunPhase.Escaped);
+    } else if (ending === 'timer') {
+      internals.advanceRunClock(RAID_DURATION_MS);
+      internals.advanceRunClock(ENRAGE_GRACE_MS);
+      expect(manager.phase).toBe(RunPhase.Wiped);
+    } else {
+      // A defeat resolves inside BattleScene, so the world is left exactly as it
+      // was when it handed off - mid battle-transition, and never told the raid
+      // ended.
+      internals.isWarping = true;
+      manager.resolveWipe();
+      expect(manager.phase).toBe(RunPhase.Wiped);
+    }
+
+    if (ending !== 'defeat') {
+      // A finished raid goes to the result screen, not straight back to the hub.
+      expect(started.scene.start).toHaveBeenCalledWith('extraction', expect.anything());
+    }
+
+    startRaid(scene, manager, 'town-square', 2);
+    const spawn = { ...internals.currentTile };
+    pressRight(scene, controls);
+
+    expect(internals.targetTile).toEqual({ x: spawn.x + 1, y: spawn.y });
+
+    // And the second raid can still hand a fight to BattleScene. An inherited
+    // result-screen flag makes handleRunResolutionComplete() return before that
+    // branch, so a trainer walked into would simply never fight.
+    started.scene.start.mockClear();
+    internals.pendingTrainerBattle = { trainer: { id: 't', name: 'T', party: [] }, isHunter: false };
+    internals.handleRunResolutionComplete();
+
+    expect(started.scene.start).toHaveBeenCalledWith('battle', expect.anything());
+  });
+
   it('starts every raid from a clean per-raid state rather than the last one', () => {
     const controls = makeControls();
     const scene = new WorldScene();
@@ -229,6 +314,7 @@ describe('two raids in a row on one WorldScene instance', () => {
       facing: string;
       caughtPokemonStash: Pokemon[];
       pendingHubTransition: boolean;
+      pendingResultScreen: boolean;
       isWarping: boolean;
       targetTile: unknown;
       stepProgress: number;
@@ -239,6 +325,7 @@ describe('two raids in a row on one WorldScene instance', () => {
       facing: 'left',
       caughtPokemonStash: [new Pokemon(BULBASAUR, 5)],
       pendingHubTransition: true,
+      pendingResultScreen: true,
       isWarping: true,
       stepProgress: 0.5,
       pendingTrainerBattle: { trainer: {}, introLines: [], isHunter: false },
@@ -248,6 +335,10 @@ describe('two raids in a row on one WorldScene instance', () => {
     startRaid(scene, manager, 'town-square', 2);
 
     expect(internals.pendingHubTransition).toBe(false);
+    // The result screen's own flag has the same lifetime and the same teeth:
+    // handleRunResolutionComplete() returns on it, so a raid that inherited it
+    // could never hand off to a battle or to the hub again.
+    expect(internals.pendingResultScreen).toBe(false);
     expect(internals.isWarping).toBe(false);
     expect(internals.targetTile).toBeNull();
     expect(internals.stepProgress).toBe(0);

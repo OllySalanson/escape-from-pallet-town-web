@@ -49,6 +49,12 @@ export interface RunSnapshot {
   readonly visitedMapIds: readonly string[];
   readonly elapsedMs: number;
   readonly remainingMs: number;
+  /**
+   * The clock this raid actually started with. Recovery booked at base shortens
+   * it, so a result screen that assumed the base duration would misreport how
+   * much of the raid was spent.
+   */
+  readonly durationMs: number;
   readonly isEnraged: boolean;
 }
 
@@ -294,6 +300,7 @@ export class RunManager {
       visitedMapIds: [...this.visitedMapIdsValue],
       elapsedMs: this.elapsedMsValue,
       remainingMs: this.remainingMs(),
+      durationMs: this.durationMs,
       isEnraged: this.isEnragedValue,
     };
   }

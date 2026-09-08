@@ -14,6 +14,7 @@ import {
 import { Bag, ITEM_DEFINITIONS, type ItemDefinition, type ItemId } from '../items';
 import { PokemonParty, type PokemonBase } from '../pokemon';
 import { activeRunManager } from '../run';
+import { RAID_DURATION_MS } from '../run/raidClock';
 import { createActiveRunSession } from '../run/RunSession';
 import {
   FIRST_CONTRACT,
@@ -31,9 +32,6 @@ import {
 } from '../stash';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
 import { starterCards, starterLoadoutSummary } from '../ui/starterPicker';
-
-// Leaves enough time to visit an outer area and return, while still punishing detours.
-export const RUN_DURATION_MS = 18 * 60 * 1000;
 
 export interface HubSceneData {
   readonly savedGame?: RestoredGame;
@@ -131,7 +129,7 @@ export class HubScene extends Phaser.Scene {
 
   /** The clock the next raid starts with, once recovery is taken out of it. */
   private get raidClockMs(): number {
-    return raidClockAfterRecovery(RUN_DURATION_MS, this.pendingRecoveryMs);
+    return raidClockAfterRecovery(RAID_DURATION_MS, this.pendingRecoveryMs);
   }
 
   /**
@@ -229,6 +227,7 @@ export class HubScene extends Phaser.Scene {
     const items = deployment.items;
     activeRunManager.startRun(
       { party: deployment.party.map((stored) => stored.pokemon), items },
+      // The base clock, less whatever recovery has already been booked against it.
       { mapId: RUN_INSERTIONS[deployment.insertionId].mapId, durationMs: this.raidClockMs },
       deployment.secureSlot,
     );
@@ -377,8 +376,8 @@ export class HubScene extends Phaser.Scene {
         : '';
     const clock = `<div><strong>Next raid clock ${formatRecoveryClock(this.raidClockMs)}</strong><small>${
       this.pendingRecoveryMs === 0
-        ? `full ${formatRecoveryClock(RUN_DURATION_MS)}, nothing booked`
-        : `${formatRecoveryClock(RUN_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery already booked`
+        ? `full ${formatRecoveryClock(RAID_DURATION_MS)}, nothing booked`
+        : `${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery already booked`
     }</small>${capNote}</div>`;
     const action =
       injuredCount === 0
@@ -427,7 +426,7 @@ export class HubScene extends Phaser.Scene {
       .filter((item) => item.quantity > 0);
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
     const protectedCount = (securedPokemon ? 1 : 0) + securedItems.length;
-    return `<main class="confirm-layout"><section class="panel confirm-insertion"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${insertion.label}</h2></div></div><p class="confirm-note">${insertion.description}</p><p class="confirm-note"><strong>Raid clock ${formatRecoveryClock(this.raidClockMs)}</strong>${this.pendingRecoveryMs === 0 ? '' : ` · ${formatRecoveryClock(RUN_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery`}</p><button class="button" data-back-step>Change loadout</button></section><section class="panel confirm-risk"><div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Lost if you wipe</h2></div><b>${riskedPokemon.length + riskedItems.length} ${riskedPokemon.length + riskedItems.length === 1 ? 'entry' : 'entries'}</b></div><div class="entity-list">${riskedPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><span class="risk-tag">At risk</span></article>`).join('')}${riskedItems.map((item) => `<article class="entity-row"><span class="item-icon">✦</span><div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="risk-tag">At risk</span></article>`).join('')}${riskedPokemon.length + riskedItems.length ? '' : '<p class="empty-state">Nothing extra is at risk. Your whole loadout is protected.</p>'}</div></section><section class="panel confirm-secure"><div class="panel-heading"><div><p class="eyebrow">Protected</p><h2>Secure slot</h2></div><b>${protectedCount}/${1 + MAX_SECURE_ITEM_STACKS}</b></div><div class="entity-list">${securedPokemon ? `<article class="entity-row secured">${pokemonAvatar(securedPokemon.pokemon.base.dexId, securedPokemon.pokemon.base.name)}<div><strong>${securedPokemon.pokemon.base.name}</strong><small>Level ${securedPokemon.pokemon.level}</small></div><span class="secure-tag">Comes home ✓</span></article>` : ''}${securedItems.map((item) => `<article class="entity-row secured"><span class="item-icon">✦</span><div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="secure-tag">Comes home ✓</span></article>`).join('')}${protectedCount ? '' : '<p class="risk-note">Nothing is protected. A wipe costs you your whole loadout.</p>'}</div><button class="button" data-secure-slot>${protectedCount ? 'Change secure slot' : 'Set up secure slot'} →</button></section><section class="starter-confirm confirm-bar"><div><strong>Deploy to ${insertion.label}</strong><small>${this.flow.party.length} Pokémon · ${supplies} supplies packed · ${protectedCount} protected · ${formatRecoveryClock(this.raidClockMs)} on the clock</small></div><button class="button primary-button" data-start>Enter the raid →</button></section></main>`;
+    return `<main class="confirm-layout"><section class="panel confirm-insertion"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${insertion.label}</h2></div></div><p class="confirm-note">${insertion.description}</p><p class="confirm-note"><strong>Raid clock ${formatRecoveryClock(this.raidClockMs)}</strong>${this.pendingRecoveryMs === 0 ? '' : ` · ${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery`}</p><button class="button" data-back-step>Change loadout</button></section><section class="panel confirm-risk"><div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Lost if you wipe</h2></div><b>${riskedPokemon.length + riskedItems.length} ${riskedPokemon.length + riskedItems.length === 1 ? 'entry' : 'entries'}</b></div><div class="entity-list">${riskedPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><span class="risk-tag">At risk</span></article>`).join('')}${riskedItems.map((item) => `<article class="entity-row"><span class="item-icon">✦</span><div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="risk-tag">At risk</span></article>`).join('')}${riskedPokemon.length + riskedItems.length ? '' : '<p class="empty-state">Nothing extra is at risk. Your whole loadout is protected.</p>'}</div></section><section class="panel confirm-secure"><div class="panel-heading"><div><p class="eyebrow">Protected</p><h2>Secure slot</h2></div><b>${protectedCount}/${1 + MAX_SECURE_ITEM_STACKS}</b></div><div class="entity-list">${securedPokemon ? `<article class="entity-row secured">${pokemonAvatar(securedPokemon.pokemon.base.dexId, securedPokemon.pokemon.base.name)}<div><strong>${securedPokemon.pokemon.base.name}</strong><small>Level ${securedPokemon.pokemon.level}</small></div><span class="secure-tag">Comes home ✓</span></article>` : ''}${securedItems.map((item) => `<article class="entity-row secured"><span class="item-icon">✦</span><div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="secure-tag">Comes home ✓</span></article>`).join('')}${protectedCount ? '' : '<p class="risk-note">Nothing is protected. A wipe costs you your whole loadout.</p>'}</div><button class="button" data-secure-slot>${protectedCount ? 'Change secure slot' : 'Set up secure slot'} →</button></section><section class="starter-confirm confirm-bar"><div><strong>Deploy to ${insertion.label}</strong><small>${this.flow.party.length} Pokémon · ${supplies} supplies packed · ${protectedCount} protected · ${formatRecoveryClock(this.raidClockMs)} on the clock</small></div><button class="button primary-button" data-start>Enter the raid →</button></section></main>`;
   }
 
   /**
