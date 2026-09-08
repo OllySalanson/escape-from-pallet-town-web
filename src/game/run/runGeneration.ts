@@ -11,7 +11,10 @@ import {
   createRunTrainerEncounters,
   type RunTrainerEncounter,
 } from '../world/trainers';
+import type { RaidContract } from '../objectives/contracts';
 import { createSeededRng } from './rng';
+
+export { FIRST_CONTRACT } from '../objectives/contracts';
 
 // Every raid map is its own level, entered at its own insertion - no map is
 // reachable by walking off the edge of another, so no two insertions can be the
@@ -52,20 +55,6 @@ export const RUN_INSERTIONS = {
 export type RunInsertionId = keyof typeof RUN_INSERTIONS;
 export type RunInsertion = (typeof RUN_INSERTIONS)[RunInsertionId];
 
-/**
- * The first contract sits three reed shelves deep on the Floodplain Relay, so
- * the fast road and the slow covered reeds are both honest ways to reach it and
- * the choice between them is the raid's first real decision. The South Gate,
- * the timed Ferry Dock and the vault detour all branch from there.
- */
-export const FIRST_CONTRACT = {
-  id: 'recover-lost-field-kit',
-  description: 'Recover the lost field kit at the Floodplain Relay',
-  mapId: 'floodplain-relay',
-  position: { x: 11, y: 23 },
-  label: 'LOST FIELD KIT',
-} as const;
-
 export const RUN_GENERATION_BOUNDS = {
   encounterLevelVariance: 1,
   encounterRateMinimum: 0.05,
@@ -91,7 +80,7 @@ export interface RunPlan {
   readonly seed: number;
   /** The intentional, valid location used for every newly deployed raid. */
   readonly insertion: RunInsertion;
-  readonly contract?: typeof FIRST_CONTRACT;
+  readonly contract?: RaidContract;
   readonly encounters: Readonly<Partial<Record<WorldMapId, WildEncounterTable>>>;
   readonly loot: Readonly<Record<WorldMapId, readonly WorldLoot[]>>;
   readonly trainers: readonly RunTrainerEncounter[];
@@ -118,7 +107,10 @@ export function generateRunPlan(
   seed: number,
   content: RunGenerationContent = DEFAULT_CONTENT,
   insertionId: RunInsertionId = 'floodplain-relay',
-  includeFirstContract = true,
+  // No default: a raid carries the contract its caller chose. A default of "the
+  // first contract" reads as harmless and is not - `undefined` passed for "no
+  // contract" would silently take the default and attach one anyway.
+  contract?: RaidContract,
 ): RunPlan {
   const rng = createSeededRng(seed);
   const insertion = RUN_INSERTIONS[insertionId];
@@ -132,12 +124,14 @@ export function generateRunPlan(
 
   // A contract the insertion cannot walk to is worse than no contract, so the
   // generator refuses to attach one to a raid that starts on another map.
-  const carriesFirstContract = includeFirstContract && insertion.mapId === FIRST_CONTRACT.mapId;
+  const carriedContract = contract?.mapId === insertion.mapId ? contract : undefined;
   const extractionPoints = generateExtractionPoints(content.extractionPoints, rng, insertion, content.maps);
   const reservedTiles = new Map<WorldMapId, Set<string>>();
   reserve(reservedTiles, insertion.mapId, insertion.position);
-  if (carriesFirstContract) {
-    reserve(reservedTiles, FIRST_CONTRACT.mapId, FIRST_CONTRACT.position);
+  // Every stop of the carried contract is reserved, so seeded loot and roaming
+  // trainers can never be rolled onto a tile the objective already owns.
+  for (const marker of carriedContract?.markers ?? []) {
+    reserve(reservedTiles, carriedContract!.mapId, marker.position);
   }
   for (const point of extractionPoints) {
     reserve(reservedTiles, point.mapId, point.position);
@@ -153,7 +147,7 @@ export function generateRunPlan(
   return {
     seed: seed >>> 0,
     insertion,
-    ...(carriesFirstContract ? { contract: FIRST_CONTRACT } : {}),
+    ...(carriedContract ? { contract: carriedContract } : {}),
     encounters,
     loot,
     trainers,

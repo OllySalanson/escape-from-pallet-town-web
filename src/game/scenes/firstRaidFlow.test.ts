@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createTestLabBattleScenario } from '../dev/testLabRoutes';
 import { battleOpeningMessages } from '../pokemon/battle/battleFlow';
 import { isHunterEligibleForFirstContract } from '../world/hunter';
+import { FIRST_CONTRACT } from '../objectives';
 import { generateRunPlan } from '../run/runGeneration';
 import { createActiveRunSession } from '../run/RunSession';
 import type { RunManager } from '../run/RunManager';
@@ -34,7 +35,7 @@ describe('first raid flow regressions', () => {
       [],
       [],
       [],
-      generateRunPlan(1234),
+      generateRunPlan(1234, undefined, 'floodplain-relay', FIRST_CONTRACT),
     );
 
     expect(consumeTeachingEncounter(session)).toEqual(TEACHING_ENCOUNTER);

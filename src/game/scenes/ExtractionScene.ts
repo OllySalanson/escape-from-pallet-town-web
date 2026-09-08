@@ -311,7 +311,7 @@ export class ExtractionScene extends Phaser.Scene {
         <b>${total} ${total === 1 ? 'entry' : 'entries'}</b>
       </div>
       <div class="entity-list">${rows || `<p class="empty-state">${escapeHtml(report.ledgerEmptyText)}</p>`}</div>
-      ${report.contract ? `<article class="extraction-contract">${objectiveIcon('Contract')}<div><strong>Contract complete: ${escapeHtml(report.contract.description)}</strong><small>${escapeHtml(report.contract.reward)}</small></div></article>` : ''}
+      ${report.contract ? `<article class="extraction-contract${report.contract.complete ? '' : ' unpaid'}">${objectiveIcon('Contract')}<div><strong>Contract ${report.contract.complete ? 'complete' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small>${escapeHtml(report.contract.reward)}</small></div></article>` : ''}
     </section>`;
   }
 

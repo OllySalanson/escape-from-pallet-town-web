@@ -529,6 +529,7 @@ describe('extraction loop integration', () => {
     expect(saves.bankFirstContractRun(result)).toEqual({ saved: true, granted: true });
     expect(saves.load()!.raidProgress).toEqual({
       firstContractExtracted: true,
+      completedContracts: ['recover-lost-field-kit'],
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     });
     expect(saves.load()!.stash.itemCount('super-potion')).toBe(1);

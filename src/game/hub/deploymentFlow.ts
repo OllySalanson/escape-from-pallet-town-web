@@ -1,10 +1,12 @@
 import type { ItemId } from '../items';
+import { BASE_SECURE_ITEM_STACKS } from '../objectives/contracts';
 import type { ItemStack, SecureSlot as RunSecureSlot } from '../run';
 import type { RunInsertionId } from '../run/runGeneration';
 import type { SecureSlot as StashSecureSlot, Stash, StashedPokemon } from '../stash';
 
 export const MAX_RUN_PARTY = 6;
-export const MAX_SECURE_ITEM_STACKS = 2;
+/** The secure slot every save starts with; the cordon ledger adds to it. */
+export const MAX_SECURE_ITEM_STACKS = BASE_SECURE_ITEM_STACKS;
 
 /**
  * Preparation is a route, not a screen: a player picks what to risk, may detour
@@ -32,10 +34,17 @@ export class DeploymentFlow {
   private insertion: RunInsertionId;
   private currentStep: DeploymentStep = 'loadout';
   private secureReturn: Exclude<DeploymentStep, 'secure'> = 'loadout';
+  /** How many item stacks this save's secure slot protects. */
+  public readonly secureItemStacks: number;
 
-  public constructor(stash: Stash, insertionId: RunInsertionId = 'floodplain-relay') {
+  public constructor(
+    stash: Stash,
+    insertionId: RunInsertionId = 'floodplain-relay',
+    secureItemStacks: number = MAX_SECURE_ITEM_STACKS,
+  ) {
     this.stash = stash;
     this.insertion = insertionId;
+    this.secureItemStacks = secureItemStacks;
   }
 
   public get step(): DeploymentStep {
@@ -145,8 +154,8 @@ export class DeploymentFlow {
       this.securedItemIds = this.securedItemIds.filter((secured) => secured !== itemId);
       return undefined;
     }
-    if (this.securedItemIds.length >= MAX_SECURE_ITEM_STACKS) {
-      return `The secure slot protects ${MAX_SECURE_ITEM_STACKS} item stacks.`;
+    if (this.securedItemIds.length >= this.secureItemStacks) {
+      return `The secure slot protects ${this.secureItemStacks} item stacks.`;
     }
     this.securedItemIds.push(itemId);
     return undefined;
@@ -226,7 +235,7 @@ export class DeploymentFlow {
       throw new Error('A raid needs at least one Pokemon that has not fainted.');
     }
     const securedPokemon = this.securedPokemon;
-    const securedItems = this.securedItems.slice(0, MAX_SECURE_ITEM_STACKS);
+    const securedItems = this.securedItems.slice(0, this.secureItemStacks);
     return {
       insertionId: this.insertion,
       party,

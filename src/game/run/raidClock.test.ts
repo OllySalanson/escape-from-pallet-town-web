@@ -52,8 +52,8 @@ describe('raid duration', () => {
       (point) => point.mapId === 'floodplain-relay' && point.label === 'SOUTH GATE',
     )!;
     const beelineTiles =
-      walkingDistance(relay, insertion, FIRST_CONTRACT.position) +
-      walkingDistance(relay, FIRST_CONTRACT.position, southGate.position);
+      walkingDistance(relay, insertion, FIRST_CONTRACT.markers[0].position) +
+      walkingDistance(relay, FIRST_CONTRACT.markers[0].position, southGate.position);
 
     expect(beelineTiles).toBe(53);
     // The objective route must never be a sprint: walking it costs a small part

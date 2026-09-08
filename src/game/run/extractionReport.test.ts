@@ -88,6 +88,37 @@ describe('extraction report after a survived raid', () => {
     expect(report.contract?.complete).toBe(true);
   });
 
+  /**
+   * A contract that only banks through one exit can be carried out of the wrong
+   * one. The report has to say so: the raid succeeded, the contract did not, and
+   * dropping the row entirely reads as though no contract had been taken.
+   */
+  it('reports a carried contract that this exit did not bank', () => {
+    const starter = new Pokemon(CHARMANDER, 5);
+    const manager = startedRun({ party: [starter], items: [] });
+    manager.registerFoundItem('great-ball', 1);
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      exitLabel: 'SOUTH GATE',
+      banked: { pokemon: [], items: [{ itemId: 'great-ball', quantity: 1 }] },
+      contract: {
+        description: 'Carry the cordon ledger out of Pallet Town through the West Culvert',
+        complete: false,
+        reward: 'You had it, and SOUTH GATE is not WEST CULVERT.',
+      },
+      saved: true,
+    });
+
+    expect(report.contract).toMatchObject({ complete: false });
+    // The haul is graded on what was actually banked, so an unpaid contract
+    // cannot flatter the headline.
+    expect(report.summary.startsWith('Contract banked')).toBe(false);
+  });
+
   it('reads differently after a marginal raid than after a good one', () => {
     const starter = new Pokemon(CHARMANDER, 5);
     const manager = startedRun({ party: [starter], items: [{ itemId: 'potion', quantity: 3 }] });
