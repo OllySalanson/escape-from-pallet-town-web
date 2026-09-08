@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { Pokemon, BULBASAUR } from '../pokemon';
 import { RunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
-import { generateRunPlan } from '../run/runGeneration';
+import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { FIRST_CONTRACT } from './contracts';
 import { objectivesForContract } from './RunObjectives';
 import { buildObjectiveGuide } from './ObjectiveGuide';
+import { WORLD_POIS, poisForMap } from '../world/pois';
+import type { WorldMapId } from '../worldMap';
 
 function createFirstContractSession() {
   const manager = new RunManager();
@@ -21,6 +23,24 @@ function createFirstContractSession() {
     [],
     objectivesForContract(FIRST_CONTRACT),
     generateRunPlan(42, undefined, 'floodplain-relay', FIRST_CONTRACT),
+  );
+}
+
+/** A raid with no contract left to run, which is when the guide falls back to the map's own landmarks. */
+function createUncontractedSession(insertionId: RunInsertionId) {
+  const manager = new RunManager();
+  manager.startRun(
+    { party: [new Pokemon(BULBASAUR, 5)], items: [] },
+    { mapId: RUN_INSERTIONS[insertionId].mapId, durationMs: 60_000 },
+  );
+  return createActiveRunSession(
+    manager,
+    {},
+    {},
+    [],
+    [],
+    [],
+    generateRunPlan(42, undefined, insertionId, undefined),
   );
 }
 
@@ -152,5 +172,39 @@ describe('objective field guide', () => {
     expect(before.hints.join(' ')).toContain('Flooded Supply Vault');
     expect(before.hints.join(' ')).toContain('activates the Radio Exit');
     expect(after.hints.join(' ')).toContain('Radio Exit is active');
+  });
+
+  it('names the landmark the map actually has, on every map', () => {
+    const insertions: readonly { readonly id: RunInsertionId; readonly mapId: WorldMapId }[] = [
+      { id: 'floodplain-relay', mapId: 'floodplain-relay' },
+      { id: 'town-square', mapId: 'pallet-town' },
+      { id: 'route-1', mapId: 'route-1' },
+      { id: 'viridian-forest', mapId: 'viridian-forest' },
+    ];
+
+    for (const { id, mapId } of insertions) {
+      const guide = buildObjectiveGuide(createUncontractedSession(id), {
+        currentMapId: mapId,
+        currentPosition: RUN_INSERTIONS[id].position,
+        activatedPoiIds: new Set(),
+      });
+      const text = guide.hints.join(' ').toUpperCase();
+
+      expect(text).toContain(poisForMap(mapId)[0].label.toUpperCase());
+      for (const elsewhere of WORLD_POIS.filter((poi) => poi.mapId !== mapId)) {
+        expect(text).not.toContain(elsewhere.label.toUpperCase());
+      }
+    }
+  });
+
+  it('moves on to the next landmark on a map that has two', () => {
+    const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
+      currentMapId: 'pallet-town',
+      currentPosition: { x: 7, y: 6 },
+      activatedPoiIds: new Set(['pallet-town-pump']),
+    });
+
+    expect(guide.hints[0]).toContain('SLUICE WHEEL');
+    expect(guide.hints[0]).toContain('opens it as an exit');
   });
 });
