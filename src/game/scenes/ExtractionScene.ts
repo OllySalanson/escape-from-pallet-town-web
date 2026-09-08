@@ -263,6 +263,7 @@ export class ExtractionScene extends Phaser.Scene {
       <main class="extraction-layout">
         ${this.ledgerPanel()}
         ${this.gamblePanel()}
+        ${this.progressPanel()}
       </main>
       ${this.costPanel()}
       <footer class="starter-confirm extraction-footer">
@@ -326,6 +327,38 @@ export class ExtractionScene extends Phaser.Scene {
     </section>`;
   }
 
+  /**
+   * What the party earned, when it earned anything.
+   *
+   * One row per Pokemon, in the ledger's column so a short haul fills the space
+   * it already left empty rather than making the screen taller. The sentence
+   * that names what the party earned is the headline summary at the top of the
+   * screen, so it is deliberately not repeated here.
+   */
+  private progressPanel(): string {
+    const { progress } = this.report;
+    if (progress.length === 0) {
+      return '';
+    }
+    const rows = progress
+      .map((entry) => {
+        const levelled = entry.toLevel > entry.fromLevel;
+        return `<article class="entity-row${levelled ? ' levelled' : ''}">${pokemonAvatar(entry.dexId, entry.name)}<div class="entity-copy"><strong>${escapeHtml(entry.name)}</strong><small>${
+          levelled
+            ? `Level ${entry.fromLevel} → ${entry.toLevel}`
+            : `Level ${entry.toLevel} · ${entry.experienceToNextLevel} to go`
+        }</small></div><span class="${levelled ? 'level-tag' : 'xp-tag'}">${levelled ? `Level ${entry.toLevel} ✓` : `+${entry.experienceGained} xp`}</span></article>`;
+      })
+      .join('');
+    return `<section class="panel extraction-progress">
+      <div class="panel-heading">
+        <div><p class="eyebrow">Carried home in the party</p><h2>Field experience</h2></div>
+        <b>${progress.length} Pokémon</b>
+      </div>
+      <div class="entity-list">${rows}</div>
+    </section>`;
+  }
+
   private costPanel(): string {
     const report = this.report;
     const spent = report.spent;
@@ -361,10 +394,14 @@ export class ExtractionScene extends Phaser.Scene {
       return 'Your base has been topped back up to a loadout you can deploy with.';
     }
     // Promising a stash full of new supplies after an empty raid is the one way
-    // this screen could lie about a result the player can see for themselves.
-    return this.report.haulTier === 'empty'
-      ? 'Nothing new to bank, but your loadout is back at base and ready to redeploy.'
-      : 'Everything above is in your stash and ready for the next deployment.';
+    // this screen could lie about a result the player can see for themselves -
+    // and so is calling a raid that levelled a Pokemon "nothing new to bank".
+    if (this.report.haulTier !== 'empty') {
+      return 'Everything above is in your stash and ready for the next deployment.';
+    }
+    return this.report.progress.length > 0
+      ? 'No gear banked, but what your party learned is banked with them.'
+      : 'Nothing new to bank, but your loadout is back at base and ready to redeploy.';
   }
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BULBASAUR, CHARMANDER, PIDGEY } from '../pokemon/species';
-import { Pokemon } from '../pokemon';
+import { Pokemon, experienceForLevel } from '../pokemon';
 import { RunManager, type ItemStack, type SecureSlot } from './RunManager';
 import { buildExtractionReport } from './extractionReport';
 import { RAID_DURATION_MS } from './raidClock';
@@ -250,5 +250,101 @@ describe('extraction report after a lost raid', () => {
         saved: false,
       }).saved,
     ).toBe(false);
+  });
+});
+
+describe('what the party earned', () => {
+  /** A raid that fought: one starter, one win, nothing picked up. */
+  function raidThatWon(gained: number, secure?: SecureSlot): {
+    manager: RunManager;
+    starter: Pokemon;
+  } {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({ party: [starter], items: [], secure });
+    manager.tick(90_000);
+    starter.gainExperience(gained);
+    return { manager, starter };
+  }
+
+  it('names the level a Pokemon came home at instead of calling the raid empty', () => {
+    const { manager } = raidThatWon(experienceForLevel(7) - experienceForLevel(5));
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.progress).toEqual([
+      expect.objectContaining({ name: 'Bulbasaur', fromLevel: 5, toLevel: 7 }),
+    ]);
+    expect(report.progressSummary).toBe('Bulbasaur at level 7 came home.');
+    // The screen used to grade this "You got out clean, and empty."
+    expect(report.haulTier).not.toBe('empty');
+    expect(report.summary).toContain('Bulbasaur at level 7 came home.');
+    // Said once, at the top of the screen: the panel below lists the rows.
+  });
+
+  it('says how close the next level is when the raid did not deliver one', () => {
+    const { manager, starter } = raidThatWon(20);
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.progress[0]).toMatchObject({ fromLevel: 5, toLevel: 5, experienceGained: 20 });
+    expect(report.progressSummary).toBe(
+      `Nobody levelled. Bulbasaur came out ${experienceForLevel(6) - starter.experience} experience short of level 6.`,
+    );
+    expect(report.haulTier).toBe('thin');
+    expect(report.summary).toContain('experience short of level 6.');
+  });
+
+  it('says nothing at all about a raid that taught nobody anything', () => {
+    const manager = startedRun({ party: [new Pokemon(CHARMANDER, 5)], items: [] });
+    manager.tick(40_000);
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.progress).toEqual([]);
+    expect(report.progressSummary).toBeNull();
+    expect(report.ledgerEmptyText).toBe('Nothing new. You leave with exactly what you took in.');
+  });
+
+  it('never reports a level on a Pokemon the same screen says is gone for good', () => {
+    const secured = new Pokemon(CHARMANDER, 5);
+    const lost = new Pokemon(BULBASAUR, 5);
+    const manager = new RunManager();
+    manager.startRun({ party: [secured, lost], items: [] }, RUN_CONFIG, { pokemon: secured });
+    manager.tick(120_000);
+    secured.gainExperience(experienceForLevel(7) - experienceForLevel(5));
+    lost.gainExperience(experienceForLevel(8) - experienceForLevel(5));
+    manager.resolveWipe();
+
+    const report = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'defeated',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      lost: { pokemon: [lost], items: [] },
+      saved: true,
+    });
+
+    expect(report.progress.map((entry) => entry.name)).toEqual(['Charmander']);
   });
 });

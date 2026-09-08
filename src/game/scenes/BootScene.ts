@@ -9,6 +9,7 @@ import {
 import { SPECIES_BY_ID } from '../pokemon/species';
 import { isTestLabRequested } from '../dev/testLabAccess';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
+import { awaitGameFont } from '../ui/gameFont';
 
 const DIRECTIONS: readonly Direction[] = ['down', 'left', 'up', 'right'];
 
@@ -24,8 +25,6 @@ export class BootScene extends Phaser.Scene {
     });
     this.load.image('classicTiles', 'assets/tileset.png');
     this.load.image('battle-background-grass', 'assets/battle/background-grass.png');
-    this.load.image('battle-hud', 'assets/battle/hud-box.png');
-    this.load.image('battle-dialog', 'assets/battle/dialog-plain.png');
 
     // The raid's markers are pixel art rather than tinted rectangles. They are
     // all one tile square, so a marker drawn at the centre of a tile lands on
@@ -46,7 +45,15 @@ export class BootScene extends Phaser.Scene {
 
   public create(): void {
     this.createPlayerAnimations();
-    this.scene.start(isTestLabRequested() ? 'test-lab' : 'title');
+    // The game font is an asset like any other, so it is waited for here rather
+    // than hoped for later: Phaser paints canvas text with whatever face is
+    // ready at that instant and never repaints it, so a battle drawn before the
+    // face arrives keeps the browser's monospace for the life of that screen.
+    // `awaitGameFont` resolves either way, so a missing file delays boot by at
+    // most `GAME_FONT_TIMEOUT_MS` instead of wedging it.
+    void awaitGameFont().then(() => {
+      this.scene.start(isTestLabRequested() ? 'test-lab' : 'title');
+    });
   }
 
   private createPlayerAnimations(): void {

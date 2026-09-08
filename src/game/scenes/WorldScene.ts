@@ -56,6 +56,16 @@ import { buildRaidSettlement, deployedRaidCondition } from '../run/raidSettlemen
 import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
+import type { Rect } from '../ui/labelPlacement';
+import { GAME_FONT } from '../ui/gameFont';
+import {
+  CAPTION_BAND,
+  FIGURE_BAND,
+  MARKER_BAND,
+  TERRAIN_DEPTH,
+  WATCH_SHADING_DEPTH,
+  atRow,
+} from '../world/depths';
 import { WINDOW_CREAM } from '../ui/pixelWindow';
 import {
   OBJECTIVE_DETAIL_MS,
@@ -338,7 +348,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   public update(_time: number, deltaMs: number): void {
-    this.clampWorldLabels();
+    this.containWorldLabels();
     if (Phaser.Input.Keyboard.JustDown(this.controls.objectives)) {
       this.openObjectives();
       return;
@@ -452,13 +462,13 @@ export class WorldScene extends Phaser.Scene {
       0,
       0,
     );
-    tallGrassLayer.setDepth(1);
+    tallGrassLayer.setDepth(TERRAIN_DEPTH);
     detailLayer.putTilesAt(
       this.currentMap.detailLayer.map((row) => [...row]),
       0,
       0,
     );
-    detailLayer.setDepth(1);
+    detailLayer.setDepth(TERRAIN_DEPTH);
     // Water has to look like water: without this the Floodplain Relay's flood,
     // and Pallet Town's pond, render as green fields with invisible walls.
     groundLayer.forEachTile((tile) => {
@@ -495,14 +505,14 @@ export class WorldScene extends Phaser.Scene {
       const y = point.position.y * TILE_SIZE + TILE_SIZE / 2;
       const marker = this.add
         .image(x, y, extractionIconKey(isOpen))
-        .setDepth(3 + point.position.y / 1000);
+        .setDepth(atRow(MARKER_BAND, point.position.y));
       const label = new WorldLabel(
         this,
         x,
         y - 11,
         `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}`,
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
-        4 + point.position.y / 1000,
+        atRow(CAPTION_BAND, point.position.y),
       );
       this.mapObjects.push(marker);
       this.worldLabels.push(label);
@@ -531,7 +541,7 @@ export class WorldScene extends Phaser.Scene {
         )
         .setOrigin(0, 0)
         .setTint(worldCharacterTint('npc'))
-        .setDepth(2 + entity.position.y / 1000);
+        .setDepth(atRow(FIGURE_BAND, entity.position.y));
       this.npcSprites.set(entity.id, sprite);
       this.mapObjects.push(sprite);
     }
@@ -546,7 +556,7 @@ export class WorldScene extends Phaser.Scene {
         )
         .setOrigin(0, 0)
         .setTint(worldCharacterTint('trainer'))
-        .setDepth(2 + encounter.position.y / 1000);
+        .setDepth(atRow(FIGURE_BAND, encounter.position.y));
       this.npcSprites.set(encounter.trainer.id, sprite);
       this.mapObjects.push(sprite);
       this.createTrainerWatch(encounter);
@@ -574,7 +584,7 @@ export class WorldScene extends Phaser.Scene {
     // drawn where the watch stops, so three watched tiles read as one lane the
     // trainer is looking down.
     const inWatch = new Set(watched.map((tile) => `${tile.x},${tile.y}`));
-    const shading = this.add.graphics().setDepth(1.5);
+    const shading = this.add.graphics().setDepth(WATCH_SHADING_DEPTH);
     for (const tile of watched) {
       const x = tile.x * TILE_SIZE;
       const y = tile.y * TILE_SIZE;
@@ -608,7 +618,7 @@ export class WorldScene extends Phaser.Scene {
           : encounter.position.y * TILE_SIZE - 4,
         `${encounter.trainer.name}\nWATCHING ${WATCH_BEARING[encounter.facing]}`,
         LABEL_TONES.watch,
-        4 + encounter.position.y / 1000,
+        atRow(CAPTION_BAND, encounter.position.y),
         placement,
       ),
     );
@@ -631,14 +641,14 @@ export class WorldScene extends Phaser.Scene {
       const y = marker.position.y * TILE_SIZE + TILE_SIZE / 2;
       const image = this.add
         .image(x, y, iconTextureKey(contractMarkerIcon(marker)))
-        .setDepth(3 + marker.position.y / 1000);
+        .setDepth(atRow(MARKER_BAND, marker.position.y));
       const label = new WorldLabel(
         this,
         x,
         y - 12,
         marker.label,
         LABEL_TONES.contract,
-        4 + marker.position.y / 1000,
+        atRow(CAPTION_BAND, marker.position.y),
       );
       this.worldLabels.push(label);
       this.contractMarkers.set(marker.id, { image, label });
@@ -658,7 +668,7 @@ export class WorldScene extends Phaser.Scene {
           loot.position.y * TILE_SIZE + TILE_SIZE / 2,
           iconTextureKey(WORLD_ICONS.supplyCrate),
         )
-        .setDepth(3 + loot.position.y / 1000);
+        .setDepth(atRow(MARKER_BAND, loot.position.y));
       this.lootSprites.set(loot.id, marker);
       this.mapObjects.push(marker);
     }
@@ -675,7 +685,7 @@ export class WorldScene extends Phaser.Scene {
       }
       const x = poi.position.x * TILE_SIZE + TILE_SIZE / 2;
       const y = poi.position.y * TILE_SIZE + TILE_SIZE / 2;
-      const station = this.add.container(x, y).setDepth(3 + poi.position.y / 1000);
+      const station = this.add.container(x, y).setDepth(atRow(MARKER_BAND, poi.position.y));
       // A landmark that opens an exit and a landmark that holds supplies are
       // different objects, so they are drawn as different things rather than
       // one shared box. Every map now has one of each.
@@ -698,7 +708,7 @@ export class WorldScene extends Phaser.Scene {
           ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED${poi.reward.length > 0 ? ' + CACHE' : ''}`
           : `CACHE: ${formatPoiReward(poi)}`}`,
         LABEL_TONES.station,
-        4 + poi.position.y / 1000,
+        atRow(CAPTION_BAND, poi.position.y),
       );
       this.worldLabels.push(label);
       this.poiLabels.set(poi.id, label);
@@ -732,7 +742,7 @@ export class WorldScene extends Phaser.Scene {
           warp.source.y * TILE_SIZE - 1,
           `${WORLD_MAP_NAMES[warp.destinationMapId].toUpperCase()} ${this.warpArrow(warp)}`,
           LABEL_TONES.route,
-          5 + warp.source.y / 1000,
+          atRow(CAPTION_BAND, warp.source.y),
         ),
       );
     }
@@ -758,19 +768,21 @@ export class WorldScene extends Phaser.Scene {
       )
       .setOrigin(0, 0)
       .setTint(worldCharacterTint('hunter'))
-      .setDepth(2 + position.y / 1000);
+      .setDepth(atRow(FIGURE_BAND, position.y));
     this.npcSprites.set('rival-hunter', sprite);
     this.mapObjects.push(sprite);
   }
 
   private createSign(entity: WorldEntity): void {
+    // Map art rather than a figure: a signpost that outranked a caption put its
+    // post through the middle of the cache list beside it.
     const sign = this.add
       .image(
         entity.position.x * TILE_SIZE + TILE_SIZE / 2,
         entity.position.y * TILE_SIZE + TILE_SIZE / 2,
         iconTextureKey(WORLD_ICONS.signPost),
       )
-      .setDepth(2 + entity.position.y / 1000);
+      .setDepth(atRow(MARKER_BAND, entity.position.y));
     this.mapObjects.push(sign);
   }
 
@@ -814,7 +826,7 @@ export class WorldScene extends Phaser.Scene {
     // Sorted into the same `2 + tile y / 1000` band as every other figure, so
     // an NPC to the south is drawn in front of the player and one to the north
     // behind. A flat depth left the player behind every NPC on the map.
-    const depth = 2 + (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE / 1000;
+    const depth = atRow(FIGURE_BAND, (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE);
     this.player.setDepth(depth);
     this.playerGroundMark.setPosition(x, y).setDepth(depth);
     this.playerHeadMark.setPosition(x, y);
@@ -833,7 +845,11 @@ export class WorldScene extends Phaser.Scene {
       pixelWindow: true,
       borderColor: WINDOW_CREAM,
       backgroundColor: 0x0e1828,
-      textStyle: { fontSize: '14px' },
+      // The same face as the battle's dialogue and the map's captions. It is
+      // narrower than the browser monospace it replaces at every size, so
+      // authored narration wraps to the same lines or fewer, never more.
+      textStyle: { fontFamily: GAME_FONT, fontSize: '16px' },
+      indicatorStyle: { fontFamily: GAME_FONT, fontSize: '12px' },
       onComplete: () => this.handleRunResolutionComplete(),
     }).setScrollFactor(0, 0, true);
   }
@@ -1369,16 +1385,32 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * A caption belongs to a thing on the map, but it is read on a screen: one
-   * near the edge of the view used to be cut in half by it.
+   * A caption belongs to a thing on the map, but it is read on a screen, and
+   * the screen has other tenants. Every caption is put back inside the camera
+   * view and out from under the raid HUD's chips every frame, because both of
+   * those move under it while the player walks.
    */
-  private clampWorldLabels(): void {
+  private containWorldLabels(): void {
     if (this.worldLabels.length === 0) {
       return;
     }
     const view = this.cameras.main.worldView;
+    const bounds: Rect = {
+      x: view.left,
+      y: view.top,
+      width: view.width,
+      height: view.height,
+    };
+    // The HUD is pinned to the screen and the captions live in the world, so
+    // the chips are translated into world space before they are avoided.
+    const obstacles = (this.raidHud?.occupied ?? []).map((chip) => ({
+      x: chip.x + view.left,
+      y: chip.y + view.top,
+      width: chip.width,
+      height: chip.height,
+    }));
     for (const label of this.worldLabels) {
-      label.clampInto(view.left, view.right);
+      label.contain(bounds, obstacles);
     }
   }
 
@@ -1923,7 +1955,7 @@ export class WorldScene extends Phaser.Scene {
     const sprite = this.npcSprites.get('rival-hunter');
     sprite
       ?.setPosition(position.x * TILE_SIZE, position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
-      .setDepth(2 + position.y / 1000);
+      .setDepth(atRow(FIGURE_BAND, position.y));
   }
 
   /**

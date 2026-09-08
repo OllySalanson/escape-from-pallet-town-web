@@ -53,7 +53,7 @@ import { WorldScene } from './scenes/WorldScene';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from './display/stage';
 
 describe('game start flow', () => {
-  it('auto-starts Boot so World prerequisites are ready before Title can start it', () => {
+  it('auto-starts Boot so World prerequisites are ready before Title can start it', async () => {
     const scenes = gameConfig.scene as unknown[];
 
     expect(scenes).toEqual(expect.arrayContaining([BootScene, TitleScene, StarterScene, HubScene, WorldScene]));
@@ -86,7 +86,10 @@ describe('game start flow', () => {
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ key: getWalkAnimationKey('down') }),
     );
-    expect(start).toHaveBeenCalledWith('title');
+    // Boot waits for the game font before it starts a scene, so the first
+    // battle of a session cannot be drawn in the browser's fallback face.
+    expect(start).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(start).toHaveBeenCalledWith('title'));
 
     const sprite = {
       setDepth: vi.fn().mockReturnThis(),

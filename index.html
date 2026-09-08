@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Escape from Pallet Town Web</title>
+    <!-- The game draws its text into a canvas, and canvas text never blocks on
+         a font load: whatever is ready when a scene draws is what is painted,
+         for good. Fetching the face with the document is half of the guarantee;
+         BootScene waiting on it is the other half. -->
+    <link
+      rel="preload"
+      href="/assets/battle/orange-kid.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
   </head>
   <body>
     <div id="app"></div>
