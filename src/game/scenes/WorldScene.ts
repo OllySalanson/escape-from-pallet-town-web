@@ -567,14 +567,15 @@ export class WorldScene extends Phaser.Scene {
       const x = poi.position.x * TILE_SIZE + TILE_SIZE / 2;
       const y = poi.position.y * TILE_SIZE + TILE_SIZE / 2;
       const station = this.add.container(x, y).setDepth(3 + poi.position.y / 1000);
-      // A radio landmark and a supply landmark are different objects, so they
-      // are drawn as different things rather than one shared box.
+      // A landmark that opens an exit and a landmark that holds supplies are
+      // different objects, so they are drawn as different things rather than
+      // one shared box. Every map now has one of each.
       station.add(
         this.add.image(
           0,
           0,
           iconTextureKey(
-            poi.effect === 'activate-radio' ? WORLD_ICONS.radioMast : WORLD_ICONS.supplyCache,
+            poi.effect === 'unlock-extraction' ? WORLD_ICONS.radioMast : WORLD_ICONS.supplyCache,
           ),
         ),
       );
