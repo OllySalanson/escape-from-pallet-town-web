@@ -55,8 +55,15 @@ export function iconMarkup(name: string, label: string): string {
  * leave a menu row with an empty slot.
  */
 export function itemIcon(itemId: string, label = ''): string {
-  const name = (ITEM_ICONS as Record<string, string | undefined>)[itemId] ?? WORLD_ICONS.supplyCrate;
-  return iconMarkup(name, label);
+  return iconMarkup(itemIconName(itemId), label);
+}
+
+/**
+ * The icon file an item resolves to, for the one surface that draws an item
+ * outside a menu row and needs its own box: the defeat sequence's line-up.
+ */
+export function itemIconName(itemId: string): string {
+  return (ITEM_ICONS as Record<string, string | undefined>)[itemId] ?? WORLD_ICONS.supplyCrate;
 }
 
 /** The run objective's icon: the field kit the first contract asks for. */

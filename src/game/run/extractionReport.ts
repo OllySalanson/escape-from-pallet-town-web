@@ -42,6 +42,20 @@ export interface ReportPokemon {
   readonly maxHp: number;
 }
 
+/**
+ * One member of the party that was on the field when the raid was lost.
+ *
+ * The result screen's defeat sequence is built from this rather than from the
+ * ledger, because the ledger only lists what was deleted: the secured member
+ * came home and would be missing from the line-up that actually went down.
+ */
+export interface FallenPokemon extends ReportPokemon {
+  /** True when the secure slot is why this one came home rather than dying. */
+  readonly secured: boolean;
+  /** The one still standing when the party ran out, so it can be named. */
+  readonly lastStand: boolean;
+}
+
 export interface ReportGroup {
   readonly pokemon: readonly ReportPokemon[];
   readonly items: readonly ReportItem[];
@@ -78,6 +92,11 @@ export interface ExtractionReport {
   readonly spent?: readonly ReportItem[];
   /** What the raid put the player through: escapes, fights, the clock. */
   readonly pressure: readonly string[];
+  /**
+   * The party as it went down, in deployment order. Present only when the raid
+   * was lost in a battle, which is the one ending with a line-up to show.
+   */
+  readonly fallen?: readonly FallenPokemon[];
   readonly saved: boolean;
 }
 
@@ -97,6 +116,12 @@ export interface ExtractionReportInput {
   readonly contract?: ReportContract;
   /** The bag as it stood at the end, which is how supplies spent is measured. */
   readonly carriedOut?: BagContents;
+  /**
+   * The Pokemon that was out when the party ran out of Pokemon. Naming the one
+   * that actually fell last is the whole point of the defeat sequence, and it
+   * cannot be recovered from the party afterwards: by then they are all at 0 HP.
+   */
+  readonly lastStand?: Pokemon;
   readonly saved: boolean;
 }
 
@@ -153,8 +178,27 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       ? {}
       : { spent: suppliesSpent(snapshot, input.carriedOut) }),
     pressure: pressureLines(snapshot, escaped),
+    ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
     saved: input.saved,
   };
+}
+
+/**
+ * The deployed party in the order it was deployed, flagged with what the secure
+ * slot did for each member.
+ *
+ * The last-stand flag falls back to the final member rather than going missing:
+ * a losing battle always has one Pokemon out when it ends, and a caller that
+ * cannot name it should still get a line-up with a subject.
+ */
+function fallenParty(snapshot: RunSnapshot, lastStand: Pokemon | undefined): FallenPokemon[] {
+  const party = snapshot.loadout?.party ?? [];
+  const standing = party.includes(lastStand as Pokemon) ? lastStand : party[party.length - 1];
+  return party.map((member) => ({
+    ...toReportPokemon(member),
+    secured: member === snapshot.secureSlot.pokemon,
+    lastStand: member === standing,
+  }));
 }
 
 function escapeHeadline(tier: HaulTier): string {
@@ -290,8 +334,13 @@ function gradeHaul(ledger: ReportGroup, contractComplete: boolean, escaped: bool
   return score <= 6 ? 'solid' : 'loaded';
 }
 
-/** "Bulbasaur and 3 Potions", or null when the group holds nothing. */
-function describeGroup(group: ReportGroup): string | null {
+/**
+ * "Bulbasaur and 3 Potions", or null when the group holds nothing.
+ *
+ * Exported so the defeat sequence names a loss in the same words the report
+ * beneath it uses; two phrasings of one loss is how they drift apart.
+ */
+export function describeGroup(group: ReportGroup): string | null {
   const parts = [
     ...group.pokemon.map((member) => member.name),
     ...group.items.map((item) => `${item.quantity} ${item.label}${item.quantity === 1 ? '' : 's'}`),
