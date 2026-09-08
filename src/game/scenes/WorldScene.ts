@@ -56,6 +56,7 @@ import { buildRaidSettlement, deployedRaidCondition } from '../run/raidSettlemen
 import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
+import { ChoicePrompt } from '../ui/ChoicePrompt';
 import type { Rect } from '../ui/labelPlacement';
 import { GAME_FONT } from '../ui/gameFont';
 import {
@@ -77,6 +78,11 @@ import {
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
 import { findWatchingTrainer, trainerSightTiles } from '../world/trainerSight';
+import {
+  trainerChallengePrompt,
+  trainerDeclinedMessage,
+  trainerWatchCaption,
+} from '../world/trainerEngagement';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { tryActivatePoi } from '../world/pois';
 import {
@@ -250,6 +256,11 @@ export class WorldScene extends Phaser.Scene {
     string,
     { readonly image: Phaser.GameObjects.Image; readonly label: WorldLabel }
   >();
+  /**
+   * The confirmation standing between the interact key and an authored trainer
+   * fight. It owns the keyboard while it is open, exactly as a dialogue does.
+   */
+  private trainerPrompt: ChoicePrompt | undefined;
   private pendingTrainerBattle:
     | {
         readonly trainer: RunTrainerEncounter['trainer'];
@@ -289,6 +300,10 @@ export class WorldScene extends Phaser.Scene {
     this.pendingResultScreen = false;
     this.pendingTrainerBattle = undefined;
     this.unsolicitedDialog = false;
+    // Phaser destroyed the object with the last raid's scene, so this only has
+    // to stop pointing at it - and it does have to, or the first frame of the
+    // next raid hands the keyboard to a dead panel.
+    this.trainerPrompt = undefined;
     this.isWarping = false;
     this.targetTile = null;
     this.stepProgress = 0;
@@ -372,6 +387,13 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (this.isWarping) {
+      return;
+    }
+
+    // A decision the player is being asked to take comes before everything,
+    // including walking: the map must not move under an open question.
+    if (this.trainerPrompt) {
+      this.handleTrainerPromptInput();
       return;
     }
 
@@ -625,7 +647,10 @@ export class WorldScene extends Phaser.Scene {
         placement === 'below'
           ? encounter.position.y * TILE_SIZE + TILE_SIZE + 4
           : encounter.position.y * TILE_SIZE - 4,
-        `${encounter.trainer.name}\nWATCHING ${WATCH_BEARING[encounter.facing]}`,
+        // The third line is the price the shading cannot show: this fight has no
+        // exit, and the player has to know that before the step into the lane,
+        // not from inside the battle.
+        trainerWatchCaption(encounter.trainer.name, WATCH_BEARING[encounter.facing]),
         LABEL_TONES.watch,
         atRow(CAPTION_BAND, encounter.position.y),
         placement,
@@ -1113,12 +1138,7 @@ export class WorldScene extends Phaser.Scene {
       this.npcSprites
         .get(trainer.trainer.id)
         ?.setFrame(getIdleFrame(OPPOSITE_DIRECTION[this.facing]));
-      this.pendingTrainerBattle = {
-        trainer: trainer.trainer,
-        introLines: trainer.introLines,
-        isHunter: false,
-      };
-      this.dialogBox.showMessages([...trainer.introLines]);
+      this.askForTrainerChallenge(trainer);
       return;
     }
 
@@ -1241,6 +1261,80 @@ export class WorldScene extends Phaser.Scene {
     return true;
   }
 
+  /**
+   * The interact key at a trainer opens a question, not a fight.
+   *
+   * Speaking to an authored trainer used to commit the player silently: two
+   * lines of flavour and then a battle with no exit, discovered from inside it.
+   * The commitment is kept - see `../world/trainerEngagement` for why a trainer
+   * that could be declined mid-fight would make every route it prices free -
+   * and what is added is the sentence before it.
+   */
+  private askForTrainerChallenge(encounter: RunTrainerEncounter): void {
+    const prompt = trainerChallengePrompt(encounter.trainer.name);
+    this.trainerPrompt = new ChoicePrompt(this, {
+      x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
+      y: this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
+      width: DIALOG_WIDTH,
+      height: DIALOG_HEIGHT,
+      padding: 10,
+      lines: prompt.lines,
+      options: prompt.options,
+      selected: prompt.selected,
+      onChoose: (index) => this.resolveTrainerChallenge(encounter, index === 0),
+    });
+  }
+
+  private resolveTrainerChallenge(encounter: RunTrainerEncounter, accepted: boolean): void {
+    this.trainerPrompt?.destroy();
+    this.trainerPrompt = undefined;
+    if (!accepted) {
+      audioManager.playCancel();
+      // Raised as an interruption, so the player who just chose to walk away
+      // can walk away on the next key rather than having to read a box first.
+      this.interrupt([trainerDeclinedMessage(encounter.trainer.name)]);
+      return;
+    }
+
+    audioManager.playEncounter();
+    this.pendingTrainerBattle = {
+      trainer: encounter.trainer,
+      introLines: encounter.introLines,
+      isHunter: false,
+    };
+    this.dialogBox.showMessages([...encounter.introLines]);
+  }
+
+  private handleTrainerPromptInput(): void {
+    const prompt = this.trainerPrompt;
+    if (!prompt) {
+      return;
+    }
+    if (
+      Phaser.Input.Keyboard.JustDown(this.controls.left) ||
+      Phaser.Input.Keyboard.JustDown(this.controls.a) ||
+      Phaser.Input.Keyboard.JustDown(this.controls.up) ||
+      Phaser.Input.Keyboard.JustDown(this.controls.w)
+    ) {
+      prompt.moveSelection(-1);
+      audioManager.playSelect();
+      return;
+    }
+    if (
+      Phaser.Input.Keyboard.JustDown(this.controls.right) ||
+      Phaser.Input.Keyboard.JustDown(this.controls.d) ||
+      Phaser.Input.Keyboard.JustDown(this.controls.down) ||
+      Phaser.Input.Keyboard.JustDown(this.controls.s)
+    ) {
+      prompt.moveSelection(1);
+      audioManager.playSelect();
+      return;
+    }
+    if (this.isInteractionPressed()) {
+      prompt.confirm();
+    }
+  }
+
   private isBlocked(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
@@ -1352,6 +1446,7 @@ export class WorldScene extends Phaser.Scene {
           wild,
           teachingBattle: teaching !== null,
           party: this.party,
+          bag: this.bag,
           pokeBalls: this.bag.count('poke-ball'),
           caughtPokemonStash: this.caughtPokemonStash,
           runSession: this.runSession,
@@ -1861,6 +1956,10 @@ export class WorldScene extends Phaser.Scene {
       this.transitionToBattle({
         trainer: battle.trainer,
         party: this.party,
+        // The raid's own supplies go into the fight with the party. A battle
+        // that had to reach for the persisted bag instead would be spending an
+        // inventory this raid never deployed with.
+        bag: this.bag,
         pokeBalls: this.bag.count('poke-ball'),
         caughtPokemonStash: this.caughtPokemonStash,
         runSession: this.runSession,

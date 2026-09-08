@@ -37,33 +37,47 @@ import {
   type HunterState,
 } from '../world/hunter';
 import { attemptWildEscape, wildEscapeChanceFor } from '../pokemon/battle/escape';
+import {
+  applyBattleItem,
+  battleItemCount,
+  usableBattleItems,
+} from '../pokemon/battle/battleItems';
+import { Bag, type ItemDefinition } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { GAME_FONT } from '../ui/gameFont';
 import {
+  NO_BATTLE_ITEMS_MESSAGE,
   WILD_ESCAPE_SUCCESS_MESSAGE,
   combatantBanner,
   combatPresentationSteps,
+  describeItemGuidance,
   describeMoveGuidance,
   eventToMessage,
   formatHunterFleeCommand,
+  formatItemCommand,
+  formatItemRow,
   formatMoveCommand,
   formatWildEscapeCommand,
   hunterFleeMessages,
+  itemTargetPrompt,
   moveCommandLayout,
   moveGuidanceLayout,
   wildEscapeFailureMessage,
   type MatchupTone,
 } from './battlePresentation';
 
-type CommandMode = 'main' | 'moves' | 'party' | 'events' | 'finished';
+type CommandMode = 'main' | 'moves' | 'items' | 'party' | 'events' | 'finished';
 
 type BattleAction =
   | { readonly type: 'choose-fight' }
   | { readonly type: 'throw-ball' }
   | { readonly type: 'choose-pokemon' }
+  | { readonly type: 'choose-item' }
   | { readonly type: 'choose-run' }
   | { readonly type: 'use-move'; readonly moveIndex: number }
+  | { readonly type: 'select-item'; readonly itemIndex: number }
+  | { readonly type: 'use-item'; readonly partyIndex: number }
   | { readonly type: 'switch-pokemon'; readonly partyIndex: number };
 
 const COMMAND_Y = 174;
@@ -93,6 +107,8 @@ export interface BattleSceneData {
   wild?: WildEncounter;
   trainer?: TrainerBattle;
   party?: PokemonParty;
+  /** The raid's own bag, so an item used in a fight is spent from what was packed. */
+  bag?: Bag;
   pokeBalls?: number;
   caughtPokemonStash?: PokemonInstance[];
   /** The active raid context, passed through from WorldScene. */
@@ -110,6 +126,13 @@ export interface BattleSceneData {
   /** A development route can return to its launcher after a complete battle. */
   returnScene?: string;
 }
+
+/**
+ * A command whose stack has run out - BALL x0, ITEM x0. It is still shown and
+ * still pressable, in red, because a command that disappears when it is empty
+ * takes the reason it is empty with it.
+ */
+const isEmptyStackLabel = (label: string): boolean => / x0$/.test(label);
 
 export class BattleScene extends Phaser.Scene {
   private state!: BattleState;
@@ -144,6 +167,14 @@ export class BattleScene extends Phaser.Scene {
   private victoryRewardsGranted = false;
   // This seam is intentionally plain data until the run-level bag and stash systems own it.
   private pokeBalls = STARTING_POKE_BALLS;
+  /**
+   * The bag the raid is carrying, not the persisted overworld bag. They are
+   * different inventories, and reading the wrong one is how a wipe report came
+   * to describe supplies the raid never had.
+   */
+  private bag = new Bag();
+  /** The medicine chosen from the ITEM list, waiting on a Pokemon to use it on. */
+  private pendingItem: ItemDefinition | undefined;
   private caughtPokemonStash: PokemonInstance[] = [];
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
@@ -177,6 +208,10 @@ export class BattleScene extends Phaser.Scene {
     this.participatingPokemon.clear();
     this.victoryRewardsGranted = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
+    this.bag = data.bag ?? new Bag();
+    // Phaser reuses this scene, so a medicine chosen in the last fight and never
+    // handed to anyone would still be waiting for a target in this one.
+    this.pendingItem = undefined;
     this.pokeBalls = data.pokeBalls ?? STARTING_POKE_BALLS;
     this.caughtPokemonStash = data.caughtPokemonStash ?? [];
     this.runSession = data.runSession;
@@ -495,15 +530,38 @@ export class BattleScene extends Phaser.Scene {
 
     const labels =
       this.mode === 'main'
-        ? this.trainer
-          ? this.hunterBattle
-            ? ['FIGHT', this.hunterFleeLabel(), 'POKéMON']
-            : ['FIGHT', 'POKéMON']
-          : ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', this.wildEscapeLabel()]
-        : this.state.player.moves.map(formatMoveCommand);
+        ? this.mainCommandLabels()
+        : this.mode === 'items'
+          ? this.itemCommandLabels()
+          : this.state.player.moves.map(formatMoveCommand);
     this.createCommandBox(labels);
     this.selectedCommand = Math.min(this.selectedCommand, labels.length - 1);
     this.updateSelection();
+  }
+
+  /**
+   * The main command set, one entry per action in `mainActions()`. ITEM is on
+   * every one of them: the bag is what the loadout step asked the player to
+   * commit to, so it has to be reachable from inside the fight it was packed
+   * for - most of all in an authored trainer battle, which is the fight the
+   * player cannot walk out of to reach the overworld bag.
+   */
+  private mainCommandLabels(): readonly string[] {
+    const item = formatItemCommand(battleItemCount(this.bag));
+    return this.trainer
+      ? this.hunterBattle
+        ? ['FIGHT', this.hunterFleeLabel(), 'POKéMON', item]
+        : ['FIGHT', 'POKéMON', item]
+      : ['FIGHT', `BALL x${this.pokeBalls}`, 'POKéMON', item, this.wildEscapeLabel()];
+  }
+
+  private itemCommandLabels(): readonly string[] {
+    return usableBattleItems(this.bag).map((item) => formatItemRow(item, this.bag.count(item.id)));
+  }
+
+  /** The submenus that list rows with a guidance line under them. */
+  private get isRowListMode(): boolean {
+    return this.mode === 'moves' || this.mode === 'items';
   }
 
   private createCommandBox(labels: readonly string[]): void {
@@ -513,35 +571,37 @@ export class BattleScene extends Phaser.Scene {
     panel.lineStyle(2, 0x93c5fd, 1);
     panel.strokeRect(1, COMMAND_Y + 1, BATTLEFIELD_WIDTH - 2, 62);
     this.commandContainer.add(panel);
-    this.moveGuidanceTexts =
-      this.mode === 'moves'
-        ? [0, 1].map((line) => {
-            const layout = moveGuidanceLayout(line);
-            // No fixed width here: guidance must never be silently truncated.
-            const text = this.add.text(layout.x, COMMAND_Y + layout.y, '', {
-              fontFamily: BATTLE_FONT,
-              fontSize: '10px',
-              color: '#e2e8f0',
-            });
-            this.commandContainer.add(text);
-            return text;
-          })
-        : [];
+    this.moveGuidanceTexts = this.isRowListMode
+      ? [0, 1].map((line) => {
+          const layout = moveGuidanceLayout(line);
+          // No fixed width here: guidance must never be silently truncated.
+          const text = this.add.text(layout.x, COMMAND_Y + layout.y, '', {
+            fontFamily: BATTLE_FONT,
+            fontSize: '10px',
+            color: '#e2e8f0',
+          });
+          this.commandContainer.add(text);
+          return text;
+        })
+      : [];
+    // The wild command set is five entries, so the main grid is three rows deep
+    // and its spacing is measured from the panel rather than assumed: at the
+    // two-row pitch the last row fell off the bottom of a 240px screen.
+    const rows = Math.ceil(labels.length / 2);
+    const rowPitch = rows > 2 ? 18 : 25;
+    const firstRowY = rows > 2 ? 6 : 11;
     this.commandTexts = labels.map((label, index) => {
       const column = index % 2;
       const row = Math.floor(index / 2);
-      const layout = this.mode === 'moves' ? moveCommandLayout(index) : undefined;
+      const layout = this.isRowListMode ? moveCommandLayout(index) : undefined;
       const text = this.add.text(
         layout?.x ?? 18 + column * 148,
-        COMMAND_Y + (layout?.y ?? 11 + row * 25),
+        COMMAND_Y + (layout?.y ?? firstRowY + row * rowPitch),
         label,
         {
           fontFamily: BATTLE_FONT,
-          fontSize: this.mode === 'moves' ? '13px' : '16px',
-          color:
-            this.mode === 'main' && !this.trainer && index === 1 && this.pokeBalls === 0
-              ? '#fca5a5'
-              : '#f8fafc',
+          fontSize: this.isRowListMode ? '13px' : '16px',
+          color: isEmptyStackLabel(label) ? '#fca5a5' : '#f8fafc',
           ...(layout
             ? {
                 fixedWidth: layout.width,
@@ -579,7 +639,11 @@ export class BattleScene extends Phaser.Scene {
       this.add.text(
         16,
         108,
-        this.forcedReplacement ? 'Choose a POKéMON!' : 'Choose a POKéMON  BACK: cancel',
+        this.pendingItem
+          ? `${itemTargetPrompt(this.pendingItem)}  BACK: cancel`
+          : this.forcedReplacement
+            ? 'Choose a POKéMON!'
+            : 'Choose a POKéMON  BACK: cancel',
         {
           fontFamily: BATTLE_FONT,
           fontSize: '12px',
@@ -654,16 +718,25 @@ export class BattleScene extends Phaser.Scene {
       text.setColor(
         index === this.selectedCommand
           ? '#ffffff'
-          : text.text.includes('FNT') || text.text.includes('BALL x0')
+          : text.text.includes('FNT') || isEmptyStackLabel(text.text)
             ? '#fca5a5'
             : '#f8fafc',
       );
     });
   }
 
-  /** Keeps the guidance lines describing whichever move is highlighted. */
+  /** Keeps the guidance lines describing whichever row is highlighted. */
   private refreshMoveGuidance(): void {
-    if (this.mode !== 'moves' || this.moveGuidanceTexts.length === 0) {
+    if (this.moveGuidanceTexts.length === 0) {
+      return;
+    }
+    if (this.mode === 'items') {
+      const item = usableBattleItems(this.bag)[this.selectedCommand];
+      this.moveGuidanceTexts[0]?.setText(item ? describeItemGuidance(item) : '').setColor('#cbd5f5');
+      this.moveGuidanceTexts[1]?.setText('').setColor('#e2e8f0');
+      return;
+    }
+    if (this.mode !== 'moves') {
       return;
     }
     const move = this.state.player.moves[this.selectedCommand];
@@ -702,8 +775,19 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'items') {
+      this.dispatchAction({ type: 'select-item', itemIndex: this.selectedCommand });
+      return;
+    }
+
     if (this.mode === 'party') {
-      this.dispatchAction({ type: 'switch-pokemon', partyIndex: this.selectedCommand });
+      // The party screen is the target picker as well as the switch menu, so
+      // which one it is answering is the item waiting to be handed over.
+      this.dispatchAction(
+        this.pendingItem
+          ? { type: 'use-item', partyIndex: this.selectedCommand }
+          : { type: 'switch-pokemon', partyIndex: this.selectedCommand },
+      );
     }
   }
 
@@ -720,11 +804,20 @@ export class BattleScene extends Phaser.Scene {
       case 'choose-pokemon':
         this.showPartySelection(false);
         return;
+      case 'choose-item':
+        this.showItemSelection();
+        return;
       case 'choose-run':
         this.flee();
         return;
       case 'use-move':
         this.useMove(action.moveIndex);
+        return;
+      case 'select-item':
+        this.selectItem(action.itemIndex);
+        return;
+      case 'use-item':
+        this.useItem(action.partyIndex);
         return;
       case 'switch-pokemon':
         this.switchPokemon(action.partyIndex);
@@ -734,12 +827,18 @@ export class BattleScene extends Phaser.Scene {
   private mainActions(): readonly BattleAction[] {
     return this.trainer
       ? this.hunterBattle
-        ? [{ type: 'choose-fight' }, { type: 'choose-run' }, { type: 'choose-pokemon' }]
-        : [{ type: 'choose-fight' }, { type: 'choose-pokemon' }]
+        ? [
+            { type: 'choose-fight' },
+            { type: 'choose-run' },
+            { type: 'choose-pokemon' },
+            { type: 'choose-item' },
+          ]
+        : [{ type: 'choose-fight' }, { type: 'choose-pokemon' }, { type: 'choose-item' }]
       : [
           { type: 'choose-fight' },
           { type: 'throw-ball' },
           { type: 'choose-pokemon' },
+          { type: 'choose-item' },
           { type: 'choose-run' },
         ];
   }
@@ -748,10 +847,15 @@ export class BattleScene extends Phaser.Scene {
     if (this.mode === 'party' && this.forcedReplacement) {
       return;
     }
-    if (this.mode !== 'moves' && this.mode !== 'party') {
+    if (this.mode !== 'moves' && this.mode !== 'items' && this.mode !== 'party') {
       return;
     }
-    this.mode = 'main';
+    // Backing out of the target picker returns to the item list, not to the
+    // main commands: the player is cancelling the recipient, not the decision
+    // to spend something.
+    const returningToItems = this.mode === 'party' && this.pendingItem !== undefined;
+    this.pendingItem = undefined;
+    this.mode = returningToItems ? 'items' : 'main';
     this.selectedCommand = 0;
     this.showCommands();
     audioManager.playCancel();
@@ -891,9 +995,93 @@ export class BattleScene extends Phaser.Scene {
   private showPartySelection(forcedReplacement: boolean): void {
     this.mode = 'party';
     this.forcedReplacement = forcedReplacement;
+    this.pendingItem = undefined;
     this.partyMessage = '';
     this.selectedCommand = 0;
     this.showCommands();
+  }
+
+  /**
+   * Opens the medicine pocket of the raid bag. An empty pocket says so rather
+   * than opening on nothing, and costs no turn - nothing has been spent.
+   */
+  private showItemSelection(): void {
+    if (battleItemCount(this.bag) === 0) {
+      this.mode = 'events';
+      this.commandContainer.setVisible(false);
+      this.dialog.showMessage(NO_BATTLE_ITEMS_MESSAGE);
+      return;
+    }
+    this.mode = 'items';
+    this.pendingItem = undefined;
+    this.selectedCommand = 0;
+    this.showCommands();
+  }
+
+  private selectItem(itemIndex: number): void {
+    const item = usableBattleItems(this.bag)[itemIndex];
+    if (!item) {
+      return;
+    }
+    this.pendingItem = item;
+    this.mode = 'party';
+    this.forcedReplacement = false;
+    this.partyMessage = '';
+    this.selectedCommand = 0;
+    this.showCommands();
+  }
+
+  /**
+   * Spends one medicine out of the raid bag on one party Pokemon.
+   *
+   * The turn is the price, so the enemy moves straight afterwards - but only
+   * when the item actually did something. A refused use (full HP, nothing to
+   * cure, a fainted Pokemon medicine cannot revive) says why and leaves the
+   * player still choosing, because charging a turn for a message would make
+   * reading the pocket more dangerous than not carrying one.
+   */
+  private useItem(partyIndex: number): void {
+    const item = this.pendingItem;
+    const target = this.party.pokemon[partyIndex];
+    if (!item || !target) {
+      return;
+    }
+    if (this.bag.count(item.id) <= 0) {
+      this.showPartyMessage(`No ${item.displayName.toUpperCase()} left!`);
+      return;
+    }
+
+    const use = applyBattleItem(this.state, item, target);
+    if (!use.used) {
+      this.showPartyMessage(use.message);
+      return;
+    }
+
+    this.bag.remove(item.id, 1);
+    this.pendingItem = undefined;
+    this.state = use.state;
+    this.persistActivePokemonHp();
+    this.refreshPlayerHpDisplay();
+    this.refreshStatusLabels();
+    const enemyResult = resolveEnemyTurn(this.state, () => Math.random());
+    this.state = enemyResult.state;
+    this.persistActivePokemonHp();
+    this.refreshStatusLabels();
+    this.prepareForcedReplacement();
+    this.mode = 'events';
+    this.commandContainer.setVisible(false);
+    this.showCombatEvents(enemyResult.events, [use.message]);
+  }
+
+  /**
+   * Puts the player's HP bar back in step with the battle state after it moved
+   * upwards. `animateHpDelta` only ever counts down, so healing needs this.
+   */
+  private refreshPlayerHpDisplay(): void {
+    const { currentHp, pokemon } = this.state.player;
+    this.displayedHp.player = currentHp;
+    this.drawHpBar(this.playerHpBar, 189, 130, currentHp / pokemon.maxHp);
+    this.playerHpText.setText(`${currentHp}/${pokemon.maxHp}`);
   }
 
   private switchPokemon(partyIndex: number): void {
@@ -1257,6 +1445,10 @@ export class BattleScene extends Phaser.Scene {
       this.persistActivePokemonHp();
       this.scene.start('world', {
         party: this.party,
+        // The same bag object the raid walked in with, handed back explicitly:
+        // an item drunk in this fight is gone from the supplies the overworld,
+        // the extraction settlement and the stash all read.
+        bag: this.bag,
         pokeBalls: this.pokeBalls,
         caughtPokemonStash: this.caughtPokemonStash,
         runSession: this.runSession,
@@ -1281,11 +1473,12 @@ export class BattleScene extends Phaser.Scene {
       ? resolveHunterBattleLoss(this.runSession)
       : this.runSession.manager.resolveWipe(this.runSession.secureSlot);
     const snapshot = this.runSession.manager.snapshot();
-    // Read the persisted bag before the wipe rewrites the save, and correct the
-    // ball count for throws this battle, which never reached storage.
-    const saves = new SaveManager();
-    const carriedOut = saves.load()?.bag.toJSON();
-    const saved = saves.applyWipeLoss(
+    // What the raid was still carrying when it ended - the bag it deployed
+    // with, spent down by this fight. The persisted save's bag was read here
+    // once; that is the free-roam inventory and has nothing to do with the
+    // raid, so a wipe report priced supplies the raid never carried.
+    const carriedOut = { ...this.bag.toJSON(), 'poke-ball': this.pokeBalls };
+    const saved = new SaveManager().applyWipeLoss(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
       this.runSession.stashSecureSlot,
@@ -1308,9 +1501,7 @@ export class BattleScene extends Phaser.Scene {
       snapshot,
       durationMs: snapshot.durationMs,
       lost: { pokemon: result.lostPokemon, items: result.lostItems },
-      ...(carriedOut === undefined
-        ? {}
-        : { carriedOut: { ...carriedOut, 'poke-ball': this.pokeBalls } }),
+      carriedOut,
       // The one that was out when the party ran out. The result screen's defeat
       // sequence names it, and it cannot be recovered afterwards: by then every
       // member of the party is at 0 HP and indistinguishable from every other.
