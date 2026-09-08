@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Bag } from '../items';
-import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
+import {
+  CHARMANDER,
+  Pokemon,
+  PokemonParty,
+  experienceAwardForDefeat,
+  experienceForLevel,
+} from '../pokemon';
 import { SAVE_KEY, SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash } from '../stash';
 import { createActiveRunSession } from './RunSession';
@@ -134,6 +140,142 @@ describe('extraction loop integration', () => {
       { id: starter.id, pokemon: { currentHp: survivingHp, primaryStatus: 'burn' } },
     ]);
     expect(banked.listItems()).toEqual(carriedOut);
+  });
+
+  /**
+   * The other half of the same seam, and the fault the morning playtest found:
+   * damage came home but the win that caused it did not. A raid was played on
+   * the stash's own Pokemon, so the experience it earned was real - and then
+   * every write-back path reloaded the vault from storage and handed the player
+   * back the level-5 starter they deployed. The starter could never reach the
+   * level-7 typed move the whole early curve is built around, so the hunter and
+   * RAIDER MAYA were unreachable by construction.
+   */
+  it('carries experience earned in a raid home through an extraction', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const deployedXp = starter.pokemon.experience;
+    const loadout = { party: [starter.pokemon], items: [] } as const;
+    const manager = new RunManager();
+    manager.startRun(loadout, RUN_CONFIG, {});
+    const session = createActiveRunSession(manager, {}, {}, [starter.id], []);
+
+    // One win in the field, exactly as a battle awards it.
+    const awarded = starter.pokemon.gainExperience(experienceAwardForDefeat(3)).awarded;
+    expect(awarded).toBeGreaterThan(0);
+
+    session.manager.resolveEscape();
+    expect(
+      saves.bankRun(
+        { pokemon: [], items: [] },
+        buildRaidSettlement(session.broughtPokemonIds, session.manager.snapshot(), {}),
+      ),
+    ).toBe(true);
+
+    expect(saves.load()!.stash.listPokemon()[0].pokemon.experience).toBe(deployedXp + awarded);
+  });
+
+  it('carries a mid-raid level up home with the stats and the move it earned', () => {
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const manager = new RunManager();
+    manager.startRun({ party: [starter.pokemon], items: [] }, RUN_CONFIG, {});
+    const session = createActiveRunSession(manager, {}, {}, [starter.id], []);
+
+    // Enough to cross two boundaries, which is where the level-7 typed move is.
+    const result = starter.pokemon.gainExperience(experienceForLevel(7) - starter.pokemon.experience);
+    expect(result.levelsGained).toEqual([6, 7]);
+    const raidLevel = starter.pokemon.level;
+    const raidStats = { ...starter.pokemon.stats };
+    const raidHp = starter.pokemon.currentHp;
+
+    session.manager.resolveEscape();
+    expect(
+      saves.bankRun(
+        { pokemon: [], items: [] },
+        buildRaidSettlement(session.broughtPokemonIds, session.manager.snapshot(), {}),
+      ),
+    ).toBe(true);
+
+    const banked = saves.load()!.stash.listPokemon()[0].pokemon;
+    expect(banked.level).toBe(raidLevel);
+    expect(banked.experience).toBe(experienceForLevel(7));
+    expect(banked.stats).toEqual(raidStats);
+    expect(banked.currentHp).toBe(raidHp);
+    expect(banked.moves.map((move) => move.base.name)).toContain('Vine Whip');
+  });
+
+  it('carries experience home when the raid runs out of clock with the party still standing', () => {
+    // A timeout is settled exactly as a defeat is - the same applyWipeLoss with
+    // the same condition - so the third ending is covered by the same seam. The
+    // difference on the ground is only that the secured Pokemon walks away.
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const secureSlot = { pokemon: starter.pokemon };
+    const manager = new RunManager();
+    manager.startRun({ party: [starter.pokemon], items: [] }, RUN_CONFIG, secureSlot);
+    const session = createActiveRunSession(
+      manager,
+      secureSlot,
+      { pokemonId: starter.id },
+      [starter.id],
+      [],
+    );
+
+    starter.pokemon.gainExperience(experienceAwardForDefeat(4));
+    starter.pokemon.takeDamage(5);
+    const raidXp = starter.pokemon.experience;
+    const raidHp = starter.pokemon.currentHp;
+    manager.tick(RAID_DURATION_MS);
+    session.manager.resolveWipe(session.secureSlot);
+    expect(
+      saves.applyWipeLoss(
+        session.broughtPokemonIds,
+        session.broughtItems,
+        session.stashSecureSlot,
+        deployedRaidCondition(session.broughtPokemonIds, session.manager.snapshot()),
+      ),
+    ).toBe(true);
+
+    const secured = saves.load()!.stash.listPokemon()[0].pokemon;
+    expect(secured.experience).toBe(raidXp);
+    expect(secured.currentHp).toBe(raidHp);
+  });
+
+  it('carries experience home when the raid is lost and the secure slot saves the Pokemon', () => {
+    // A wipe deletes every deployed Pokemon but the secured one, so this is the
+    // only ending where in-raid experience still has a body to come home to -
+    // and the secure slot is the game's promise that what it protects comes back
+    // as it was, not demoted.
+    const saves = seedNewPlayer(new MemoryStorage());
+    const starter = saves.load()!.stash.listPokemon()[0];
+    const secureSlot = { pokemon: starter.pokemon };
+    const manager = new RunManager();
+    manager.startRun({ party: [starter.pokemon], items: [] }, RUN_CONFIG, secureSlot);
+    const session = createActiveRunSession(
+      manager,
+      secureSlot,
+      { pokemonId: starter.id },
+      [starter.id],
+      [],
+    );
+
+    starter.pokemon.gainExperience(experienceForLevel(6) - starter.pokemon.experience);
+    starter.pokemon.takeDamage(starter.pokemon.maxHp);
+    session.manager.resolveWipe(session.secureSlot);
+    expect(
+      saves.applyWipeLoss(
+        session.broughtPokemonIds,
+        session.broughtItems,
+        session.stashSecureSlot,
+        deployedRaidCondition(session.broughtPokemonIds, session.manager.snapshot()),
+      ),
+    ).toBe(true);
+
+    const secured = saves.load()!.stash.listPokemon()[0].pokemon;
+    expect(secured.level).toBe(6);
+    expect(secured.experience).toBe(experienceForLevel(6));
+    expect(secured.currentHp).toBe(0);
   });
 
   it('brings a Pokemon that fainted mid-raid home fainted rather than deleting it', () => {

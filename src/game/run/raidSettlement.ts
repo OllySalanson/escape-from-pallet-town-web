@@ -28,6 +28,16 @@ import type { ItemStack, RunSnapshot } from './RunManager';
  * the recovery bay's premium (`../hub/recovery`), which is exactly the price a
  * faint is supposed to carry.
  *
+ * Experience travels the same way, and for the same reason: a raid is played on
+ * the stash's own Pokemon, so a win in the field is real until the vault is
+ * reloaded over it. Carrying it here is what lets a starter ever reach the
+ * level-7 typed move the early curve is built around - without it the level
+ * every threat in the game is priced against was unreachable by construction.
+ * It is carried on every ending, including a lost one: a wipe already deletes
+ * the Pokemon it took, so the only body left for it to come home to is the one
+ * the secure slot protected, and a secure slot that returned a demoted Pokemon
+ * would be punishment where the game promised protection.
+ *
  * `broughtPokemonIds` and the run loadout's party are the same deployment in
  * the same order - `HubScene.startRun()` builds both from one list - so they are
  * paired by position, and a party the ids cannot account for is left alone
@@ -44,6 +54,7 @@ export function deployedRaidCondition(
       id,
       currentHp: party[index].currentHp,
       primaryStatus: party[index].primaryStatus,
+      experience: party[index].experience,
     }));
 }
 

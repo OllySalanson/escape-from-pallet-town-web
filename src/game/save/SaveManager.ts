@@ -5,7 +5,14 @@ import {
   FIRST_CONTRACT_ID,
   getContract,
 } from '../objectives/contracts';
-import { Move, Pokemon, PokemonParty, getSpeciesById, type MoveBase } from '../pokemon';
+import {
+  Move,
+  Pokemon,
+  PokemonParty,
+  experienceForLevel,
+  getSpeciesById,
+  type MoveBase,
+} from '../pokemon';
 import { Bag, type BagContents } from '../items/Bag';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 import type { GridPosition } from '../movement/gridMovement';
@@ -429,8 +436,6 @@ function serializePokemon(pokemon: Pokemon): SavedPokemon {
     speciesId: pokemon.base.id,
     level: pokemon.level,
     currentHp: pokemon.currentHp,
-    // XP is not yet represented by the Pokemon class. This preserves the field
-    // for the rewards layer that will add it without coupling save code to it.
     xp: getPokemonXp(pokemon),
     moves: pokemon.moves.map((move) => move.base.name),
     primaryStatus: pokemon.primaryStatus,
@@ -464,7 +469,18 @@ function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon
     }
   }
 
-  setPokemonXp(pokemon, clampInteger(value.xp, 0, Number.MAX_SAFE_INTEGER, 0));
+  // Experience is floored at the level's own total rather than at zero. A save
+  // written before XP was recorded has a level and no XP, and reading that as
+  // "level 5 with 0 XP" would make the next level cost the whole curve from
+  // scratch - so a returning player would be charged twice for progress they
+  // had already made.
+  setPokemonXp(
+    pokemon,
+    Math.max(
+      experienceForLevel(pokemon.level),
+      clampInteger(value.xp, 0, Number.MAX_SAFE_INTEGER, 0),
+    ),
+  );
   return pokemon;
 }
 
