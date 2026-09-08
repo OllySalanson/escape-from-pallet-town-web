@@ -9,6 +9,9 @@ import {
   toCssColor,
   type PixelWindowRect,
 } from './pixelWindow';
+import { GAME_FONT } from './gameFont';
+import { CHIP_FONT_SIZE, CLOCK_FONT_SIZE } from './screenType';
+import type { Rect } from './labelPlacement';
 import type { HunterChipTone, HunterChipView, RaidClockTone, RaidClockView } from '../scenes/raidHud';
 
 /**
@@ -25,8 +28,6 @@ const EDGE_MARGIN = 4;
 const CHIP_GAP = 3;
 const TEXT_PADDING_X = 4;
 const TEXT_PADDING_Y = 3;
-const CLOCK_FONT_SIZE = '10px';
-const CHIP_FONT_SIZE = '8px';
 const CURSOR_GAP = 3;
 const HUD_DEPTH = 100;
 
@@ -57,6 +58,11 @@ export interface RaidHudState {
 
 export class RaidHud {
   private readonly frames: Phaser.GameObjects.Graphics;
+  /**
+   * What the chips are currently covering, in screen space. Map captions are
+   * kept out of it: a caption slid under the raid clock is not a caption.
+   */
+  private covered: Rect[] = [];
   private readonly clockText: Phaser.GameObjects.Text;
   private readonly objectiveText: Phaser.GameObjects.Text;
   private readonly hunterText: Phaser.GameObjects.Text;
@@ -71,9 +77,15 @@ export class RaidHud {
     this.hunterText = this.createText(CHIP_FONT_SIZE);
   }
 
+  /** The chips' screen rectangles, for anything that has to avoid them. */
+  public get occupied(): readonly Rect[] {
+    return this.covered;
+  }
+
   public render(state: RaidHudState, timeMs: number): void {
     const stageWidth = this.scene.scale.width;
     this.frames.clear();
+    this.covered = [];
 
     const clockStyle = CLOCK_STYLES[state.clock.tone];
     const clockAlpha = state.clock.pulses
@@ -122,7 +134,7 @@ export class RaidHud {
   private createText(fontSize: string): Phaser.GameObjects.Text {
     return this.scene.add
       .text(0, 0, '', {
-        fontFamily: 'monospace',
+        fontFamily: GAME_FONT,
         fontSize,
         color: toCssColor(WINDOW_INK_VALUE),
         lineSpacing: 1,
@@ -150,6 +162,7 @@ export class RaidHud {
     const height = Math.ceil(text.height) + TEXT_PADDING_Y * 2;
     const { x, y } = anchor(width, height);
     const rect = { x: Math.round(x), y: Math.round(y), width, height };
+    this.covered.push(rect);
     drawPixelWindow(this.frames, rect, { fill: style.fill, fillAlpha: alpha });
     if (withCursor) {
       drawMenuCursor(

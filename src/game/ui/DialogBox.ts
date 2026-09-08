@@ -27,6 +27,8 @@ export interface DialogBoxOptions {
    */
   pixelWindow?: boolean;
   textStyle?: Phaser.Types.GameObjects.Text.TextStyle;
+  /** The continue indicator, when it should not be the default white glyph. */
+  indicatorStyle?: Phaser.Types.GameObjects.Text.TextStyle;
   onComplete?: () => void;
 }
 
@@ -103,6 +105,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
           fontFamily: 'monospace',
           fontSize: '14px',
           color: '#ffffff',
+          ...(options.indicatorStyle ?? {}),
         },
       )
       .setOrigin(1, 1)

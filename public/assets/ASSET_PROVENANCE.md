@@ -43,8 +43,14 @@ verified by Git blob SHA on 2026-09-08 against `main`.
 
 | File here | Upstream path | Blob SHA |
 | --- | --- | --- |
-| `battle/hud-box.png` - HUD panel | `Assets/Art/Battle/hud-box.png` | `9efe8d233a2ce115d0b46134443772e1aa5b0601` |
-| `battle/dialog-plain.png` - dialogue panel | `Assets/Art/Battle/dialog-plain.png` | `4e9eb7ddb7def477a33e4b044f6692265b4508b4` |
+| `battle/hud-box.png` - HUD panel, no longer loaded by the web client | `Assets/Art/Battle/hud-box.png` | `9efe8d233a2ce115d0b46134443772e1aa5b0601` |
+| `battle/dialog-plain.png` - dialogue panel, no longer loaded by the web client | `Assets/Art/Battle/dialog-plain.png` | `4e9eb7ddb7def477a33e4b044f6692265b4508b4` |
+
+Neither panel texture is loaded any more. Both are 32x32 frames, and every panel
+in this game is drawn at a size those frames smear at, so `src/game/ui/pixelWindow.ts`
+reproduces the shape at any size instead. They are kept here because
+`hud-box.png` is the authority for that shape - its border colour and its clear
+corners are what `pixelWindow` is sampled from.
 
 `battle/background-grass.png` is the one derived file, so it matches no upstream
 SHA: it is a single grassland panel cropped out of the montage sheet

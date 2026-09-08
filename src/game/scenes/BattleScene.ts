@@ -38,7 +38,8 @@ import {
 } from '../world/hunter';
 import { attemptWildEscape, wildEscapeChanceFor } from '../pokemon/battle/escape';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
-import { WINDOW_CREAM } from '../ui/pixelWindow';
+import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { GAME_FONT } from '../ui/gameFont';
 import {
   WILD_ESCAPE_SUCCESS_MESSAGE,
   combatantBanner,
@@ -66,7 +67,8 @@ type BattleAction =
   | { readonly type: 'switch-pokemon'; readonly partyIndex: number };
 
 const COMMAND_Y = 174;
-const BATTLE_FONT = '"Orange Kid", monospace';
+/** One name for the face, so nothing can drift from what BootScene waits on. */
+const BATTLE_FONT = GAME_FONT;
 const STARTING_POKE_BALLS = 5;
 /** Long enough for the wipe flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
@@ -234,18 +236,28 @@ export class BattleScene extends Phaser.Scene {
       width: 304,
       height: 64,
       padding: 12,
-      // The battle-dialog texture is a 32px frame stretched to 304x64, so its
-      // painted left and right edges are 19px wide. Text inset by the vertical
-      // padding alone lost the first character of every line behind that edge.
-      paddingHorizontal: 22,
-      cornerRadius: 0,
       charsPerSecond: 55,
       indicatorText: 'SPACE ▼',
-      backgroundTexture: 'battle-dialog',
+      // The last panel in the game still stretching a 32x32 texture. At 304x64
+      // that frame's rounded corners smeared into a grey band down the right
+      // and along the bottom, left no border at all on the left, clipped the
+      // continue indicator, and filled the interior stark white against cream
+      // everywhere else - all of it under the player's eyes for every fight.
+      // Drawn instead, it is the one-pixel window the HUD, the map captions and
+      // the overworld dialogue already use, and the 22px text inset that used to
+      // clear the smear goes with it.
+      pixelWindow: true,
+      backgroundColor: WINDOW_CREAM,
+      borderColor: WINDOW_BORDER,
       textStyle: {
         fontFamily: BATTLE_FONT,
         fontSize: '16px',
-        color: '#1f2937',
+        color: WINDOW_INK,
+      },
+      indicatorStyle: {
+        fontFamily: BATTLE_FONT,
+        fontSize: '10px',
+        color: WINDOW_INK,
       },
       onComplete: () => this.onMessagesComplete(),
     });
@@ -383,12 +395,13 @@ export class BattleScene extends Phaser.Scene {
   ): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
     const height = showNumbers ? 58 : 47;
-    container.add(
-      this.add
-        .image(x + 72, y + height / 2, 'battle-hud')
-        .setDisplaySize(144, height)
-        .setDepth(5),
-    );
+    // Drawn, not stretched. `hud-box.png` is 32x32 with a one-pixel border, so
+    // at 144 wide that border came out four pixels down the left and eight
+    // along the bottom - the same smear the dialogue panel below had, on the
+    // panel directly above it.
+    const frame = this.add.graphics().setDepth(5);
+    drawPixelWindow(frame, { x, y, width: 144, height }, { fill: WINDOW_CREAM });
+    container.add(frame);
     container.add(
       this.add
         .text(x + 9, y + 7, combatant.pokemon.base.name.toUpperCase(), {

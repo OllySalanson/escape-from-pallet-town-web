@@ -82,14 +82,19 @@ body {
   max-width: 70em;
   min-height: 100%;
   margin: auto;
-  padding: clamp(18px, 4vw, 48px);
+  /* In `cqw`, against the game screen, like every other measurement here: in
+     `vw` the margin grew with the browser window while the screen inside it did
+     not, which is what tipped the base screen past the frame on a short one. */
+  padding: clamp(14px, 3.2cqw, 40px);
 }
 .menu-header {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   justify-content: space-between;
-  margin-bottom: var(--space-4);
+  /* Scales with the screen for the same reason the shell padding does: a fixed
+     28px is a fifth of the fold on the smallest window the game runs in. */
+  margin-bottom: clamp(14px, 2.2cqw, 28px);
 }
 .menu-header h1,
 .menu-overlay h2,
@@ -97,7 +102,7 @@ body {
   margin: 0;
 }
 .menu-header h1 {
-  font-size: clamp(27px, 4vw, 44px);
+  font-size: clamp(24px, 3.6cqw, 44px);
   letter-spacing: -0.045em;
 }
 .eyebrow {
@@ -160,7 +165,10 @@ button {
   background: var(--menu-surface);
   padding: var(--space-3);
   box-shadow: var(--shadow);
-  min-height: 225px;
+  /* In em rather than px: the lobby scales with the game screen, so a card
+     fixed at 225px ate two thirds of the fold on a 900x600 window while
+     looking sparse on a large one. */
+  min-height: 11em;
   display: flex;
   flex-direction: column;
   transition:
@@ -316,7 +324,9 @@ button {
   white-space: nowrap;
 }
 .risk-tag,
-.secure-tag {
+.secure-tag,
+.level-tag,
+.xp-tag {
   font-size: 0.85em;
   font-weight: 700;
   white-space: nowrap;
@@ -335,6 +345,14 @@ button {
 }
 .secure-tag {
   color: #f6c969;
+}
+/* Gold is the secure slot's colour throughout, so a level uses the accent
+   instead: two meanings on one token is how a screen stops being readable. */
+.level-tag {
+  color: var(--menu-accent);
+}
+.xp-tag {
+  color: var(--menu-muted);
 }
 .selectable:hover,
 .selectable.selected {
@@ -466,6 +484,31 @@ button {
 .loadout-layout {
   grid-template-columns: 1.25fr 0.75fr;
   align-items: start;
+}
+/* The commitment bar spans both columns and sticks to the bottom of the scroll
+   area, so the primary action is on screen at every window size. The column
+   layout it replaced pushed `Review & deploy` below the fold at 1280x800 while
+   leaving half a column of empty space beside it. */
+.loadout-layout .confirm-bar {
+  grid-column: 1 / -1;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  box-shadow: var(--shadow);
+}
+.bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.bar-actions .button {
+  margin: 0;
+  white-space: nowrap;
+}
+.bar-warning {
+  display: block;
+  color: #ffd4c8;
 }
 .run-loadout {
   display: flex;
@@ -1016,6 +1059,9 @@ button {
 .swap-panel {
   border-color: #6f5aa8;
   background: linear-gradient(135deg, rgb(58 44 96 / 90%), rgb(17 28 46 / 90%));
+  /* It sits inside the stash's Pokémon column, under the list it would trade
+     away from, so it needs the separation a top-level panel gets from the grid. */
+  margin-top: var(--space-3);
 }
 .swap-panel p {
   color: var(--menu-muted);
@@ -1249,6 +1295,27 @@ button {
   border-top: 1px solid var(--menu-border);
   color: var(--menu-text);
   overflow-wrap: anywhere;
+}
+/* Experience is a reward, so it gets the ledger's accent stripe rather than the
+   cost panel's grey - and a levelled Pokemon gets the brighter one, because a
+   level is the thing the player came out for. */
+.extraction-progress {
+  /* Second row of the two-column layout, under the ledger it belongs beside. */
+  grid-column: 1;
+}
+.extraction-progress .entity-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+}
+.extraction-progress .entity-row {
+  box-shadow: inset 3px 0 0 var(--menu-border);
+}
+.extraction-progress .entity-row.levelled {
+  box-shadow: inset 3px 0 0 var(--menu-accent);
+}
+.extraction-progress .gamble-verdict {
+  margin-top: var(--space-2);
 }
 .extraction-cost .cost-list {
   display: flex;

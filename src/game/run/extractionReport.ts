@@ -1,5 +1,5 @@
 import { ITEM_DEFINITIONS, type BagContents } from '../items';
-import type { Pokemon } from '../pokemon';
+import { experienceForLevel, type Pokemon } from '../pokemon';
 import type { RunSnapshot } from './RunManager';
 import { hunterFleePenaltyMs } from './fleePenalty';
 import { formatRaidClock } from './raidClock';
@@ -61,6 +61,24 @@ export interface ReportGroup {
   readonly items: readonly ReportItem[];
 }
 
+/**
+ * What one Pokemon took out of the raid in its own right.
+ *
+ * Experience is the only thing a raid pays that is not an object, so it is the
+ * one part of the haul the ledger cannot list. It is reported per Pokemon
+ * because that is how the player thinks about it - a level is something that
+ * happened to Bulbasaur, not to the stash.
+ */
+export interface ReportProgress {
+  readonly name: string;
+  readonly dexId: number;
+  readonly fromLevel: number;
+  readonly toLevel: number;
+  readonly experienceGained: number;
+  /** Experience still owed for the next level, once this raid is banked. */
+  readonly experienceToNextLevel: number;
+}
+
 export interface ReportContract {
   readonly description: string;
   readonly complete: boolean;
@@ -90,6 +108,14 @@ export interface ExtractionReport {
   readonly gambleVerdict: string;
   /** Undefined when the losing scene could not see the bag, never an empty lie. */
   readonly spent?: readonly ReportItem[];
+  /**
+   * Every Pokemon that came home having learned something, most improved
+   * first. Empty when the raid taught nobody anything, which is when the screen
+   * says nothing about it at all.
+   */
+  readonly progress: readonly ReportProgress[];
+  /** One sentence naming what the party earned, or null when it earned nothing. */
+  readonly progressSummary: string | null;
   /** What the raid put the player through: escapes, fights, the clock. */
   readonly pressure: readonly string[];
   /**
@@ -154,7 +180,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   // of the wrong gate, and that is the moment the player most needs telling.
   const contract = input.contract;
   const contractBanked = contract?.complete === true;
-  const haulTier = gradeHaul(ledger, contractBanked, escaped);
+  const progress = partyProgress(snapshot, escaped);
+  const haulTier = gradeHaul(ledger, contractBanked, escaped, progress);
 
   return {
     outcome,
@@ -164,7 +191,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       : 'Raid lost',
     headline: escaped ? escapeHeadline(haulTier) : wipeHeadline(input.cause, secured),
     summary: escaped
-      ? escapeSummary(ledger, risked, contractBanked)
+      ? escapeSummary(ledger, risked, contractBanked, progress)
       : wipeSummary(input.cause, ledger, secured),
     haulTier,
     clockLabel: `${formatRaidClock(snapshot.elapsedMs)} of ${formatRaidClock(input.durationMs)}`,
@@ -173,7 +200,9 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ledger,
     ledgerHeading: escaped ? 'Banked' : 'Gone for good',
     ledgerEmptyText: escaped
-      ? 'Nothing new. You leave with exactly what you took in.'
+      ? progress.length > 0
+        ? 'No new gear or Pokémon. What your party earned is below.'
+        : 'Nothing new. You leave with exactly what you took in.'
       : 'Nothing outside the secure slot was at stake.',
     ...(contract ? { contract } : {}),
     secured,
@@ -182,6 +211,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ...(input.carriedOut === undefined
       ? {}
       : { spent: suppliesSpent(snapshot, input.carriedOut) }),
+    progress,
+    progressSummary: progressSummary(progress),
     pressure: pressureLines(snapshot, escaped),
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
     saved: input.saved,
@@ -230,6 +261,7 @@ function escapeSummary(
   ledger: ReportGroup,
   risked: ReportGroup,
   contractComplete: boolean,
+  progress: readonly ReportProgress[],
 ): string {
   const haul = describeGroup(ledger);
   const riskedCount = countGroup(risked);
@@ -238,7 +270,10 @@ function escapeSummary(
       ? 'Nothing you took in was ever exposed.'
       : `${riskedCount === 1 ? 'One entry' : `${riskedCount} entries`} rode out unprotected and came home.`;
   if (haul === null) {
-    return `No new haul. ${riskLine}`;
+    // A raid that levelled a Pokemon and banked no gear is not an empty raid,
+    // and saying "no new haul" about it was the screen's own contradiction.
+    const earned = progressSummary(progress);
+    return earned === null ? `No new haul. ${riskLine}` : `${earned} ${riskLine}`;
   }
   return `${contractComplete ? 'Contract banked, plus ' : 'Banked '}${haul}. ${riskLine}`;
 }
@@ -322,14 +357,94 @@ function pressureLines(snapshot: RunSnapshot, escaped: boolean): string[] {
   return lines;
 }
 
-function gradeHaul(ledger: ReportGroup, contractComplete: boolean, escaped: boolean): HaulTier {
+/**
+ * What every Pokemon that came home learned, most improved first.
+ *
+ * Only Pokemon that come home are listed. A wipe deletes everything outside the
+ * secure slot, so reporting a level on a Pokemon the same screen says is gone
+ * for good would be the cruellest possible way to be wrong.
+ */
+function partyProgress(snapshot: RunSnapshot, escaped: boolean): ReportProgress[] {
+  const party = snapshot.loadout?.party ?? [];
+  return party
+    .map((member, index) => ({ member, before: snapshot.deployedExperience[index] }))
+    .filter(({ member, before }) =>
+      before !== undefined &&
+      member.experience > before &&
+      (escaped || member === snapshot.secureSlot.pokemon))
+    .map(({ member, before }) => ({
+      name: member.base.name,
+      dexId: member.base.dexId,
+      fromLevel: levelForExperience(before, member.level),
+      toLevel: member.level,
+      experienceGained: member.experience - before,
+      experienceToNextLevel: Math.max(0, experienceForLevel(member.level + 1) - member.experience),
+    }))
+    .sort((a, b) => b.toLevel - b.fromLevel - (a.toLevel - a.fromLevel)
+      || b.experienceGained - a.experienceGained);
+}
+
+/**
+ * The level a total of experience buys, walked down from the level the Pokemon
+ * is at now. Level is a function of experience through one curve, so deriving
+ * the starting level is safer than storing a second number that can disagree.
+ */
+function levelForExperience(experience: number, currentLevel: number): number {
+  let level = currentLevel;
+  while (level > 1 && experience < experienceForLevel(level)) {
+    level -= 1;
+  }
+  return level;
+}
+
+/** "BULBASAUR came home at level 7", or null when nobody levelled. */
+function describeLevels(progress: readonly ReportProgress[]): string | null {
+  const levelled = progress.filter((entry) => entry.toLevel > entry.fromLevel);
+  if (levelled.length === 0) {
+    return null;
+  }
+  const names = levelled.map((entry) => `${entry.name} at level ${entry.toLevel}`);
+  return `${capitalise(joinList(names))} came home.`;
+}
+
+/**
+ * One sentence about what the party earned. A level is the headline; short of
+ * one, how close the nearest Pokemon came is the more useful thing to say than
+ * a raw experience total nobody can price.
+ */
+function progressSummary(progress: readonly ReportProgress[]): string | null {
+  if (progress.length === 0) {
+    return null;
+  }
+  const levelled = describeLevels(progress);
+  if (levelled !== null) {
+    return levelled;
+  }
+  const closest = progress.reduce((best, entry) =>
+    entry.experienceToNextLevel < best.experienceToNextLevel ? entry : best);
+  return `Nobody levelled. ${closest.name} came out ${closest.experienceToNextLevel} experience short of level ${closest.toLevel + 1}.`;
+}
+
+function gradeHaul(
+  ledger: ReportGroup,
+  contractComplete: boolean,
+  escaped: boolean,
+  progress: readonly ReportProgress[],
+): HaulTier {
   if (!escaped) {
     return 'empty';
   }
+  // Experience counts towards the haul, because it is the only thing a raid
+  // pays that the ledger cannot hold: without it a raid that took a starter to
+  // level 7 - the level the whole early game is priced against - was graded
+  // "You got out clean, and empty."
+  const levelsGained = progress.reduce((total, entry) => total + entry.toLevel - entry.fromLevel, 0);
   const score =
     ledger.pokemon.length * 3 +
     ledger.items.reduce((total, item) => total + item.quantity, 0) +
-    (contractComplete ? 4 : 0);
+    (contractComplete ? 4 : 0) +
+    levelsGained * 2 +
+    (progress.length > 0 ? 1 : 0);
   if (score === 0) {
     return 'empty';
   }
@@ -355,6 +470,13 @@ export function describeGroup(group: ReportGroup): string | null {
   }
   if (parts.length === 1) {
     return parts[0];
+  }
+  return joinList(parts);
+}
+
+function joinList(parts: readonly string[]): string {
+  if (parts.length <= 1) {
+    return parts[0] ?? '';
   }
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }

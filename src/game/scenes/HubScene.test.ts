@@ -38,6 +38,7 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
+  setView(view: 'home' | 'stash' | 'deploy' | 'reselect'): void;
   startRun(): void;
   render(): void;
   recover(ids: readonly string[]): void;
@@ -390,5 +391,89 @@ describe('hub deployment route', () => {
     expect(activeRunManager.snapshot().loadout?.party.map((pokemon) => pokemon.base.id)).toEqual([
       'charmander',
     ]);
+  });
+});
+
+describe('what the base screen leads with', () => {
+  /** The markup the lobby actually renders, for the view it is currently on. */
+  function markupOf(hub: HubInternals): string {
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  }
+
+  /** A save exactly as a new player has it: one starter, nothing lost yet. */
+  function createFreshHub(): HubInternals {
+    const { hub } = createHub();
+    const stash = hub.stash;
+    for (const stored of stash.listPokemon().slice(1)) {
+      stash.removePokemon(stored.id);
+    }
+    return hub;
+  }
+
+  it('opens on the raid, not on an offer to trade the partner just chosen', () => {
+    const hub = createFreshHub();
+
+    const home = markupOf(hub);
+
+    // Three seconds into a first game the loudest panel on the screen said
+    // "DOWN TO ONE POKEMON". It also pushed the contract board past the frame.
+    expect(home).not.toContain('Down to one Pokémon');
+    expect(home).not.toContain('swap-panel');
+    expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('Contract board'));
+    expect(home).toContain('Contract board');
+  });
+
+  it('keeps the swap offer, in the stash beside the Pokémon it would trade away', () => {
+    const hub = createFreshHub();
+
+    hub.setView('stash');
+    const stash = markupOf(hub);
+
+    expect(stash).toContain('swap-panel');
+    expect(stash).toContain('Down to one Pokémon');
+    expect(stash).toContain('data-view="reselect"');
+  });
+
+  it('says the swap is there, so a wiped player is not left hunting for it', () => {
+    const hub = createFreshHub();
+
+    expect(markupOf(hub)).toContain('trade your last partner for a different starter');
+  });
+
+  it('drops the offer everywhere the moment a second Pokémon is banked', () => {
+    const { hub } = createHub();
+
+    hub.setView('stash');
+    expect(markupOf(hub)).not.toContain('swap-panel');
+  });
+
+  it('puts both loadout actions in one bar rather than at the bottom of a column', () => {
+    const { hub } = createHub();
+
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+    const loadout = markupOf(hub);
+    const bar = loadout.slice(loadout.indexOf('confirm-bar'));
+
+    // The primary action was entirely below the fold at 1280x800 because it sat
+    // at the end of the right-hand column. It is in the full-width bar now, and
+    // the secure-slot detour with it.
+    expect(bar).toContain('data-advance');
+    expect(bar).toContain('data-secure-slot');
+    expect(loadout.slice(0, loadout.indexOf('confirm-bar'))).not.toContain('data-advance');
+  });
+
+  it('says in the bar what is packed, so the summary is beside the button that commits it', () => {
+    const { hub } = createHub();
+
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.adjustItem('potion', 2);
+    hub.setView('deploy');
+    const loadout = markupOf(hub);
+    const bar = loadout.slice(loadout.indexOf('confirm-bar'));
+
+    expect(bar).toContain('1/6 Pokémon packed');
+    expect(bar).toContain('Charmander · 2 supplies packed · 0 protected');
   });
 });

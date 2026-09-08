@@ -72,6 +72,16 @@ export interface RunSnapshot {
    * much of the raid was spent.
    */
   readonly durationMs: number;
+  /**
+   * What each deployed Pokemon's total experience was at the moment of deploy,
+   * paired by position with `loadout.party`.
+   *
+   * A raid is played on the stash's own Pokemon objects, so by the time a raid
+   * resolves the party's own numbers are the *end* of the raid and the start of
+   * it is gone. Recording it here is what lets the result screen say what the
+   * raid was worth without any scene keeping a private copy.
+   */
+  readonly deployedExperience: readonly number[];
   readonly isEnraged: boolean;
   /**
    * What is left of `ENRAGE_GRACE_MS` once the raid clock has run out, so the
@@ -114,6 +124,7 @@ export class RunManager {
   private secureItemStackLimitValue = MAX_SECURE_ITEM_STACKS;
   private defeatedTrainersValue = 0;
   private hunterFleesValue = 0;
+  private deployedExperienceValue: number[] = [];
   private mapIdValue: string | null = null;
   private visitedMapIdsValue: string[] = [];
   private durationMs = 0;
@@ -157,6 +168,7 @@ export class RunManager {
     validateSecureSlot(secureSlot, loadout.party, loadout.items, this.secureItemStackLimitValue);
 
     this.loadoutValue = copyLoadout(loadout);
+    this.deployedExperienceValue = loadout.party.map((member) => member.experience);
     this.secureSlotValue = copySecureSlot(secureSlot);
     this.caughtPokemonValue = [];
     this.foundItemsValue = [];
@@ -345,6 +357,7 @@ export class RunManager {
       remainingMs: this.remainingMs(),
       durationMs: this.durationMs,
       isEnraged: this.isEnragedValue,
+      deployedExperience: [...this.deployedExperienceValue],
       enrageGraceRemainingMs: this.enrageGraceRemainingMs(),
     };
   }

@@ -216,7 +216,11 @@ describe('the world scene draws what this module describes', () => {
     const scene = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
     const setter = scene.slice(scene.indexOf('private setPlayerPosition('));
 
-    expect(setter).toContain('const depth = 2 + (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE / 1000;');
+    // The band is named in `world/depths.ts` now, so the player sorting with
+    // every other figure is a shared constant rather than a repeated literal.
+    expect(setter).toContain(
+      'const depth = atRow(FIGURE_BAND, (y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE);',
+    );
     expect(setter).toContain('this.player.setDepth(depth);');
     expect(setter).toContain('this.playerGroundMark.setPosition(x, y).setDepth(depth);');
   });

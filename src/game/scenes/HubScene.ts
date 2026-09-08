@@ -257,7 +257,7 @@ export class HubScene extends Phaser.Scene {
 
   private confirmSwap(): void {
     if (!this.sparePartner) {
-      this.setView('home');
+      this.setView('stash');
       this.setStatus('Swapping is only offered while one Pokemon remains at base.');
       return;
     }
@@ -273,7 +273,7 @@ export class HubScene extends Phaser.Scene {
       // never linger in a half-built loadout.
       this.applyLoadedGame(reloaded);
     }
-    this.setView('home');
+    this.setView('stash');
     this.setStatus(`${getStarterSpecies(this.reselectStarterId).name} is your new partner.`);
   }
 
@@ -341,6 +341,13 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
+    // The swap is reached from the stash, so backing out of it returns there
+    // rather than dropping the player two screens out to the base.
+    if (this.view === 'reselect') {
+      this.setView('stash');
+      this.render();
+      return;
+    }
     this.leaveDeployment();
   }
 
@@ -365,6 +372,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   private get backLabel(): string {
+    if (this.view === 'reselect') return '← Stash';
     if (this.view !== 'deploy') return '← Base';
     if (this.flow.step === 'confirm') return '← Loadout';
     if (this.flow.step === 'secure') {
@@ -421,9 +429,17 @@ export class HubScene extends Phaser.Scene {
     return this.flow.step === 'secure' ? this.secureView() : this.confirmView();
   }
 
+  /**
+   * The base screen leads with the raid it is sending you on: what to do next,
+   * then what is outstanding. Nothing here is a consolation prize - the swap
+   * offer lives in the stash, beside the Pokemon it would trade away, because
+   * on a fresh save it is the loudest panel on the screen three seconds after
+   * the player chose that partner, and it is what pushed the lobby past the
+   * frame and put a browser scrollbar down the side of the game.
+   */
   private homeView(): string {
     const unlocked = this.savedGame.raidProgress.firstContractExtracted;
-    return `<main class="hub-home">${this.recoveryPanel()}<section class="hub-actions"><button class="action-card primary" data-deploy-flow><span>DEPLOY</span><h2>Start a raid</h2><p>${unlocked ? 'Pick the Pokémon and supplies you are willing to risk, choose where you drop in, then confirm. Where you drop in is which contract you take.' : 'Pick the Pokémon and supplies you are willing to risk, then confirm before you drop in. Recover the lost field kit at the Floodplain Relay, then pick an exit and get out.'}</p><b>Prepare loadout →</b></button><button class="action-card" data-view="stash"><span>STASH</span><h2>Review &amp; recover</h2><p>Check the Pokémon and supplies secured at base, and treat anyone who came home hurt.</p><b>Open stash →</b></button></section>${this.swapPanel()}${this.contractBoard()}</main>`;
+    return `<main class="hub-home">${this.recoveryPanel()}<section class="hub-actions"><button class="action-card primary" data-deploy-flow><span>DEPLOY</span><h2>Start a raid</h2><p>${unlocked ? 'Pick the Pokémon and supplies you are willing to risk, choose where you drop in, then confirm. Where you drop in is which contract you take.' : 'Pick the Pokémon and supplies you are willing to risk, then confirm before you drop in. Recover the lost field kit at the Floodplain Relay, then pick an exit and get out.'}</p><b>Prepare loadout →</b></button><button class="action-card" data-view="stash"><span>STASH</span><h2>Review &amp; recover</h2><p>Check the Pokémon and supplies secured at base, treat anyone who came home hurt${this.sparePartner ? ', or trade your last partner for a different starter' : ''}.</p><b>Open stash →</b></button></section>${this.contractBoard()}</main>`;
   }
 
   /**
@@ -528,14 +544,32 @@ export class HubScene extends Phaser.Scene {
   }
 
   private stashView(): string {
-    return `<main class="stash-layout"><section><h2>Pokémon</h2><p class="confirm-note">Recovery costs raid time: your next raid clock is ${formatRecoveryClock(this.raidClockMs)}.</p><div class="entity-list">${this.stashPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><div>${typeBadge(stored.pokemon.base.primaryType)}${stored.pokemon.base.secondaryType ? typeBadge(stored.pokemon.base.secondaryType) : ''}</div>${needsRecovery(stored.pokemon) ? `<button class="button" data-recover="${stored.id}">Recover · −${formatRecoveryClock(recoveryCostMs(stored.pokemon))}</button>` : '<span class="fit-tag">Fit ✓</span>'}</article>`).join('') || '<p class="empty-state">No Pokémon in storage.</p>'}</div></section><section><h2>Supplies</h2><div class="item-grid">${this.stashItems.map((item) => `<article class="item-card">${itemIcon(item.id, item.displayName)}<strong>${item.displayName}</strong><small>${item.category} · ${this.stash.itemCount(item.id)} available</small></article>`).join('') || '<p class="empty-state">No supplies in storage.</p>'}</div></section></main>`;
+    return `<main class="stash-layout"><section><h2>Pokémon</h2><p class="confirm-note">Recovery costs raid time: your next raid clock is ${formatRecoveryClock(this.raidClockMs)}.</p><div class="entity-list">${this.stashPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><div>${typeBadge(stored.pokemon.base.primaryType)}${stored.pokemon.base.secondaryType ? typeBadge(stored.pokemon.base.secondaryType) : ''}</div>${needsRecovery(stored.pokemon) ? `<button class="button" data-recover="${stored.id}">Recover · −${formatRecoveryClock(recoveryCostMs(stored.pokemon))}</button>` : '<span class="fit-tag">Fit ✓</span>'}</article>`).join('') || '<p class="empty-state">No Pokémon in storage.</p>'}</div>${this.swapPanel()}</section><section><h2>Supplies</h2><div class="item-grid">${this.stashItems.map((item) => `<article class="item-card">${itemIcon(item.id, item.displayName)}<strong>${item.displayName}</strong><small>${item.category} · ${this.stash.itemCount(item.id)} available</small></article>`).join('') || '<p class="empty-state">No supplies in storage.</p>'}</div></section></main>`;
   }
 
+  /**
+   * Two panels and a bar. The two columns are what you choose from - the stash
+   * on the left, where you are dropping in on the right - and everything that
+   * commits you sits in a full-width bar that stays on screen, because the
+   * three-panel column layout this replaced ran the right column past the fold
+   * at 1280x800 and put `Review & deploy` somewhere a new player never saw it,
+   * with an empty half-column beside it. The bar is the same one the final
+   * check screen already ends on, so the route reads as one route.
+   */
   private loadoutView(): string {
     const party = this.flow.party;
     const securedCount = (this.flow.securedPokemon ? 1 : 0) + this.flow.securedItems.length;
     const single = this.stashPokemon.length === 1;
-    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove · treat anyone hurt before you go</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<div class="loadout-entry${needsRecovery(stored.pokemon) ? ' hurt' : ''}"><button class="entity-row selectable ${this.flow.includesPokemon(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}${single ? ' · your only Pokémon' : ''}</small>${needsRecovery(stored.pokemon) ? hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp) : ''}</div><span>${this.flow.includesPokemon(stored.id) ? 'Added ✓' : 'Add +'}</span></button>${this.careStrip(stored)}</div>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.flow.itemQuantity(item.id as ItemId)}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${this.firstContractActive ? 'Contract area' : 'Choose your entry'}</h2></div></div>${this.unlockedInsertions.map(([id, insertion]) => { const contract = this.contractFor(id); return `<button class="entity-row selectable ${this.flow.insertionId === id ? 'selected' : ''}" data-insertion="${id}"><div><strong>${insertion.label}</strong>${contract ? `<small class="insertion-contract">CONTRACT · ${contract.name}</small>` : ''}<small>${insertion.description}</small></div></button>`; }).join('')}${this.firstContractActive ? '<p class="confirm-note">Your active contract is here. Three more insertions unlock when you extract it.</p>' : ''}${this.carryInNote()}<div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Run loadout</h2></div><b>${party.length}/6</b></div>${party.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong></article>`).join('') || '<p class="empty-state">Nothing selected yet. Add a Pokémon from your stash to continue.</p>'}<div class="risk-note">Everything here is lost on a wipe unless it is in the secure slot.</div><button class="button" data-secure-slot>Secure slot${securedCount ? ` · ${securedCount} protected` : ''} →</button>${party.length > 0 && !this.flow.isDeployable ? '<div class="risk-note">Every Pokémon here has fainted. Recover one at base before you deploy.</div>' : ''}<button class="button primary-button" data-advance ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy →</button></section></main>`;
+    const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
+    const allFainted = party.length > 0 && !this.flow.isDeployable;
+    // The bar is where the loadout is now read back, so it names what is in it
+    // rather than counting it: the panel column that used to list the party is
+    // what pushed the primary action off the screen, and the final check screen
+    // is where the full at-risk breakdown belongs anyway.
+    const summary = party.length === 0
+      ? 'Nothing selected yet. Add a Pokémon from your stash.'
+      : `${party.map((stored) => stored.pokemon.base.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} packed · ${securedCount} protected`;
+    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove · treat anyone hurt before you go</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<div class="loadout-entry${needsRecovery(stored.pokemon) ? ' hurt' : ''}"><button class="entity-row selectable ${this.flow.includesPokemon(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}${single ? ' · your only Pokémon' : ''}</small>${needsRecovery(stored.pokemon) ? hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp) : ''}</div><span>${this.flow.includesPokemon(stored.id) ? 'Added ✓' : 'Add +'}</span></button>${this.careStrip(stored)}</div>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.flow.itemQuantity(item.id as ItemId)}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${this.firstContractActive ? 'Contract area' : 'Choose your entry'}</h2></div></div>${this.unlockedInsertions.map(([id, insertion]) => { const contract = this.contractFor(id); return `<button class="entity-row selectable ${this.flow.insertionId === id ? 'selected' : ''}" data-insertion="${id}"><div><strong>${insertion.label}</strong>${contract ? `<small class="insertion-contract">CONTRACT · ${contract.name}</small>` : ''}<small>${insertion.description}</small></div></button>`; }).join('')}${this.firstContractActive ? '<p class="confirm-note">Your active contract is here. Three more insertions unlock when you extract it.</p>' : ''}${this.carryInNote()}</section><section class="starter-confirm confirm-bar"><div><strong>${party.length}/6 Pokémon packed</strong><small>${summary}</small><small class="bar-warning">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : 'Everything here is lost on a wipe unless it is in the secure slot.'}</small></div><div class="bar-actions"><button class="button" data-secure-slot>Secure slot${securedCount ? ` · ${securedCount} protected` : ''} →</button><button class="button primary-button" data-advance ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy →</button></div></section></main>`;
   }
 
   private secureView(): string {
@@ -561,13 +595,14 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * Advertises the swap on the lobby home screen, but only while the rule
-   * applies, so the offer disappears the moment a second Pokemon is banked.
+   * The swap offer, shown in the stash beside the Pokemon it would trade away.
+   * It still only appears while the rule applies, so it disappears the moment a
+   * second Pokemon is banked.
    */
   private swapPanel(): string {
     const spare = this.sparePartner;
     if (!spare) return '';
-    return `<section class="panel swap-panel"><div class="panel-heading"><div><p class="eyebrow">Down to one Pokémon</p><h2>Swap your partner</h2></div><small>Only while one Pokémon is left at base</small></div><p>${spare.pokemon.base.name} (Level ${spare.pokemon.level}) is all you have left. Trade it for a fresh level 5 Bulbasaur, Charmander or Squirtle — the species you settle on is the one you are re-issued after a wipe.</p><button class="button primary-button" data-view="reselect">Choose a new partner →</button></section>`;
+    return `<section class="panel swap-panel"><div class="panel-heading"><div><p class="eyebrow">Down to one Pokémon</p><h2>Swap your partner</h2></div><small>Only while one Pokémon is left at base</small></div><p>${spare.pokemon.base.name} (Level ${spare.pokemon.level}) is all you have left. Trade it for a fresh level 5 Bulbasaur, Charmander or Squirtle - the species you settle on is the one you are re-issued after a wipe.</p><button class="button" data-view="reselect">Choose a new partner →</button></section>`;
   }
 
   private reselectView(): string {
@@ -575,7 +610,7 @@ export class HubScene extends Phaser.Scene {
     if (!spare) return '<main class="hub-home"><p class="empty-state">You have more than one Pokémon, so there is nothing to swap.</p></main>';
     const chosen = getStarterSpecies(this.reselectStarterId);
     const held = `${spare.pokemon.base.name} (Level ${spare.pokemon.level})`;
-    return `<main class="starter-shell reselect-shell"><header class="starter-header"><p class="eyebrow">Re-specialise</p><h1>Choose a new partner</h1><p>${held} is your last Pokémon. Swapping releases it for good and issues a fresh level 5 starter in its place, so this is never an upgrade — only a change of direction.</p></header><main class="starter-grid">${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectLabel: 'Swap to →' })}</main><footer class="starter-confirm ${this.swapArmed ? 'arming' : ''}">${this.swapFooter(spare, chosen)}</footer></main>`;
+    return `<main class="starter-shell reselect-shell"><header class="starter-header"><p class="eyebrow">Re-specialise</p><h1>Choose a new partner</h1><p>${held} is your last Pokémon. Swapping releases it for good and issues a fresh level 5 starter in its place, so this is never an upgrade - only a change of direction.</p></header><main class="starter-grid">${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectLabel: 'Swap to →' })}</main><footer class="starter-confirm ${this.swapArmed ? 'arming' : ''}">${this.swapFooter(spare, chosen)}</footer></main>`;
   }
 
   private swapFooter(spare: StashedPokemon, chosen: PokemonBase): string {

@@ -3,6 +3,10 @@ import { audioManager } from '../audio/AudioManager';
 import { SaveManager } from '../save/SaveManager';
 import { getStarterSpecies } from '../stash';
 
+/** The mint frame the title screen is composed inside. */
+const FRAME_INSET = 12;
+const FRAME_WIDTH = 2;
+
 export class TitleScene extends Phaser.Scene {
   private hasStarted = false;
   private prompt!: Phaser.GameObjects.Text;
@@ -34,16 +38,21 @@ export class TitleScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
     const horizonY = Math.round(height * 0.733);
+    // The mint frame is a 2px stroke centred on x=12, so the picture it frames
+    // starts at 13. The ground band and its horizon stripe are drawn to that
+    // box rather than to the whole canvas: at full width they ran straight
+    // through the frame and out the sides of the screen.
+    const inset = FRAME_INSET + FRAME_WIDTH / 2;
     const graphics = this.add.graphics();
     graphics.fillStyle(0x09172a);
     graphics.fillRect(0, 0, width, height);
     graphics.fillStyle(0x122d45);
-    graphics.fillRect(0, horizonY, width, height - horizonY);
+    graphics.fillRect(inset, horizonY, width - inset * 2, height - horizonY - inset);
     graphics.fillStyle(0x1f4c5f);
-    graphics.fillRect(0, horizonY + 5, width, 4);
+    graphics.fillRect(inset, horizonY + 5, width - inset * 2, 4);
 
-    graphics.lineStyle(2, 0x8ed4c2);
-    graphics.strokeRect(12, 12, width - 24, height - 24);
+    graphics.lineStyle(FRAME_WIDTH, 0x8ed4c2);
+    graphics.strokeRect(FRAME_INSET, FRAME_INSET, width - FRAME_INSET * 2, height - FRAME_INSET * 2);
     graphics.lineStyle(1, 0x31566a);
     graphics.strokeRect(17, 17, width - 34, height - 34);
   }
