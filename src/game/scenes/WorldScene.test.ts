@@ -163,14 +163,58 @@ describe('hunter disengagement wiring', () => {
   });
 
   it('spends the search window on the raid clock, so standing still burns it too', () => {
-    expect(sceneSource).toContain('this.advanceHunterSearch(deltaMs);');
+    const clock = sceneSource.slice(
+      sceneSource.indexOf('private advanceRunClock('),
+      sceneSource.indexOf('private refreshExtractionMarkers('),
+    );
+    // The window and the raid are billed the same milliseconds, so anything that
+    // stops one stops the other and an escape can never be idled away for free.
+    expect(clock).toContain('this.runSession.manager.tick(clockMs)');
+    expect(clock).toContain('this.advanceHunterSearch(clockMs);');
     expect(sceneSource).toContain('tickHunterSearch(this.hunterState, deltaMs)');
+  });
+
+  it('stops the raid clock once the raid has committed to a battle', () => {
+    // Being caught opens a modal the player did not ask for and cannot walk out
+    // of. Charging them raid time for reading it is charging them for the fight
+    // twice, and battles themselves are free.
+    const clock = sceneSource.slice(
+      sceneSource.indexOf('private advanceRunClock('),
+      sceneSource.indexOf('private refreshExtractionMarkers('),
+    );
+    expect(clock).toContain('const clockMs = this.pendingTrainerBattle ? 0 : deltaMs;');
+  });
+
+  it('lets a player walk out of a dialogue they did not open', () => {
+    // A box that only answers to SPACE and ENTER never says so, so the reflex -
+    // press a direction - has to advance the ones the world raised on its own.
+    const advance = sceneSource.slice(
+      sceneSource.indexOf('private isDialogAdvancePressed('),
+      sceneSource.indexOf('private handleDialogInput('),
+    );
+    expect(advance).toContain('this.isInteractionPressed()');
+    expect(advance).toContain('this.unsolicitedDialog');
+    for (const key of ['this.controls.up', 'this.controls.down', 'this.controls.left', 'this.controls.right']) {
+      expect(advance).toContain(key);
+    }
+    expect(sceneSource).toContain('if (!this.isDialogAdvancePressed()) {');
+    // Every interruption the hunter causes goes through it, and a sign does not.
+    expect(sceneSource).toContain("this.interrupt(['A RIVAL HUNTER is on your trail!']);");
+    expect(sceneSource).toContain('this.interrupt(this.pendingTrainerBattle.introLines);');
+    expect(sceneSource).toContain('this.interrupt([...lead, ...watcher.introLines]);');
+    expect(sceneSource).toContain("this.dialogBox.showMessages([...entity!.dialogLines]);");
+    // And it is on the per-raid reset list, because it outlives the scene otherwise.
+    const reset = sceneSource.slice(
+      sceneSource.indexOf('private resetStateFromPreviousRaid('),
+      sceneSource.indexOf('public create('),
+    );
+    expect(reset).toContain('this.unsolicitedDialog = false;');
   });
 
   it('keeps the remaining escape readable on the HUD instead of hiding it', () => {
     expect(
       hunterChipView({ searching: true, searchRemainingMs: 6_400, distance: 2, direction: 'N' }),
-    ).toEqual({ label: 'OFF TRAIL 7s', tone: 'off-trail' });
+    ).toEqual({ label: 'HUNTER LOST YOU 7s', tone: 'lost-you' });
     expect(sceneSource).toContain('searching: isHunterSearching(this.hunterState)');
   });
 

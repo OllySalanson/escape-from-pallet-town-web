@@ -322,7 +322,7 @@ describe('escaping the hunter', () => {
     expect(runSession.manager.snapshot().hunterFlees).toBe(1);
     expect(dialog.shownMessages).toEqual([
       'You broke away from the RIVAL HUNTER!',
-      'It lost your trail and holds off for 10s.',
+      'It lost your trail and holds off for 15s.',
       'Breaking contact cost 40s of raid time.',
     ]);
     const hunterState = (scene as unknown as { hunterState: { searchRemainingMs?: number; pendingBreakaway?: boolean } })

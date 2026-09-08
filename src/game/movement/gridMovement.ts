@@ -32,7 +32,7 @@ export interface PlanNextGridStepOptions {
 
 const DIRECTION_PRIORITY: readonly Direction[] = ['up', 'down', 'left', 'right'];
 
-const DIRECTION_DELTAS: Record<Direction, GridPosition> = {
+export const DIRECTION_DELTAS: Record<Direction, GridPosition> = {
   up: { x: 0, y: -1 },
   down: { x: 0, y: 1 },
   left: { x: -1, y: 0 },

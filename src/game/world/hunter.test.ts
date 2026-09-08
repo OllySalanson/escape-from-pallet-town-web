@@ -525,7 +525,7 @@ describe('a raid where the player flees and then walks', () => {
       open,
     );
 
-    expect(windowSteps).toBe(76);
+    expect(windowSteps).toBe(115);
     expect(held.engagedAtStep).toBeNull();
   });
 

@@ -46,7 +46,7 @@ const CLOCK_STYLES: Readonly<Record<RaidClockTone, ChipStyle>> = {
 };
 
 const HUNTER_STYLES: Readonly<Record<HunterChipTone, ChipStyle>> = {
-  'off-trail': { fill: 0x9bc48f, ink: 0x16290f },
+  'lost-you': { fill: 0x9bc48f, ink: 0x16290f },
   closing: { fill: 0xb0201c, ink: 0xffe8d8 },
 };
 

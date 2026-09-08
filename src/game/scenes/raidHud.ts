@@ -84,7 +84,7 @@ export function objectiveChipLines(cue: string, showDetail: boolean): readonly s
 /** Tiles between the player and the hunter at which the hunter chip appears. */
 export const HUNTER_ALERT_DISTANCE = 8;
 
-export type HunterChipTone = 'off-trail' | 'closing';
+export type HunterChipTone = 'lost-you' | 'closing';
 
 export interface HunterChipView {
   readonly label: string;
@@ -110,8 +110,11 @@ export interface HunterChipInput {
  */
 export function hunterChipView(input: HunterChipInput): HunterChipView | null {
   if (input.searching) {
+    // The subject of this chip is the hunter, not the player. `OFF TRAIL` named
+    // neither and read as a warning about where the player had wandered to, when
+    // what it counts down is how long the thing chasing them stays blind.
     const seconds = Math.max(0, Math.ceil((input.searchRemainingMs ?? 0) / 1_000));
-    return { label: `OFF TRAIL ${seconds}s`, tone: 'off-trail' };
+    return { label: `HUNTER LOST YOU ${seconds}s`, tone: 'lost-you' };
   }
   if (input.distance === null || input.distance > HUNTER_ALERT_DISTANCE) {
     return null;
