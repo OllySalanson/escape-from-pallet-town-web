@@ -8,6 +8,7 @@ import {
 import { EXTRACTION_POINTS } from './extractionPoints';
 import {
   findHunterBreakawayTile,
+  findHunterPursuitPath,
   findHunterSpawnTile,
   HUNTER_BREAKAWAY_DISTANCE,
   HUNTER_MINIMUM_SPAWN_DISTANCE,
@@ -194,5 +195,29 @@ describe('map structure', () => {
         .toBe(`${mapId} ${player.x},${player.y} fled to ${breakaway.x},${breakaway.y}: still has a way out`);
     }
     expect(worst).toBeGreaterThanOrEqual(HUNTER_MINIMUM_SPAWN_DISTANCE);
+  });
+
+  /**
+   * The hunter closes with a real shortest-path search, so a map can strand it
+   * in a way a spawn check never sees: it arrives somewhere fair and then finds
+   * no route to the player. Walking the whole route proves the search actually
+   * reaches contact rather than stopping at the nearest tile it can stand on.
+   */
+  it.each(MAP_IDS)('%s lets the hunter path to the player from anywhere it can arrive', (mapId) => {
+    const map = getWorldMap(mapId);
+    const bounds = { width: map.width, height: map.height };
+    const isBlocked = (tile: { x: number; y: number }): boolean =>
+      map.collision[tile.y]?.[tile.x] !== false;
+    const tiles = walkableTiles(map.collision);
+    // Every tile as the player, against the spawn the hunter would really get.
+    for (const player of tiles) {
+      const spawn = findHunterSpawnTile(player, bounds, isBlocked);
+      expect(spawn).not.toBeNull();
+      const route = findHunterPursuitPath(spawn!, player, bounds, isBlocked);
+      const last = route[route.length - 1] ?? spawn!;
+      const contact = Math.abs(last.x - player.x) + Math.abs(last.y - player.y);
+      expect(`${mapId} ${spawn!.x},${spawn!.y} -> ${player.x},${player.y}: ends ${contact} away`)
+        .toBe(`${mapId} ${spawn!.x},${spawn!.y} -> ${player.x},${player.y}: ends ${contact > 1 ? 'stranded' : contact} away`);
+    }
   });
 });

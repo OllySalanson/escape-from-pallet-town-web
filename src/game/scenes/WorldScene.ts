@@ -583,8 +583,10 @@ export class WorldScene extends Phaser.Scene {
         this,
         x,
         y - 12,
+        // Oak's Field Station is both a sealed exit and a cache, so the label
+        // has to say so - the mast art can only show one of the two.
         `${poi.label}\n${poi.effect === 'unlock-extraction'
-          ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED`
+          ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED${poi.reward.length > 0 ? ' + CACHE' : ''}`
           : `CACHE: ${formatPoiReward(poi)}`}`,
         LABEL_TONES.station,
         4 + poi.position.y / 1000,
