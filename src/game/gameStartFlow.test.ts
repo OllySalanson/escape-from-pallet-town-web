@@ -87,6 +87,14 @@ describe('game start flow', () => {
     const sprite = {
       setDepth: vi.fn().mockReturnThis(),
       setOrigin: vi.fn().mockReturnThis(),
+      setPosition: vi.fn().mockReturnThis(),
+      setTint: vi.fn().mockReturnThis(),
+    };
+    const graphics = {
+      fillStyle: vi.fn().mockReturnThis(),
+      fillRect: vi.fn().mockReturnThis(),
+      setDepth: vi.fn().mockReturnThis(),
+      setPosition: vi.fn().mockReturnThis(),
     };
     const world = new WorldScene();
     Object.assign(world as unknown as Record<string, unknown>, {
@@ -95,6 +103,7 @@ describe('game start flow', () => {
           setDepth: vi.fn().mockReturnThis(),
           setStrokeStyle: vi.fn().mockReturnThis(),
         })),
+        graphics: vi.fn(() => graphics),
         sprite: vi.fn((_: number, __: number, texture: string) => {
           expect(textures).toContain(texture);
           expect(animations).toContain(getWalkAnimationKey('down'));
