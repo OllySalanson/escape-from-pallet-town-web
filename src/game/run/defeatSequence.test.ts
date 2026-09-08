@@ -136,18 +136,38 @@ describe('the defeat sequence a lost raid opens on', () => {
   });
 
   /**
-   * Dying is common and raids are five minutes, so the tenth viewing is the one
-   * that decides whether this is a feature. It has to be measurably shorter.
+   * The screen is where a raid's cost is read, so it waits for the player. That
+   * makes the prompt load-bearing: a beat that holds without saying how to move
+   * it on is a dead end, and it has to name the key the rest of the game names.
    */
-  it('runs shorter every time after the first, and is short even the first time', () => {
-    const report = wipedReport([new Pokemon(CHARMANDER, 12)]);
-    const first = buildDefeatSequence(report, { pace: 'first' })!;
-    const repeat = buildDefeatSequence(report, { pace: 'repeat' })!;
+  it('tells the player which key moves each beat on, in the words the battle dialogue uses', () => {
+    const sequence = buildDefeatSequence(wipedReport([new Pokemon(CHARMANDER, 12)]))!;
 
-    expect(first.totalMs).toBeLessThanOrEqual(4500);
-    expect(repeat.totalMs).toBeLessThan(first.totalMs * 0.75);
-    expect(repeat.beats.map((beat) => beat.headline)).toEqual(
-      first.beats.map((beat) => beat.headline),
+    expect(sequence.beats.map((beat) => beat.prompt)).toEqual([
+      'PRESS SPACE',
+      'PRESS SPACE',
+      'PRESS SPACE FOR THE RESULT',
+    ]);
+    // The glyph is the battle dialogue's, and it is the only part that blinks.
+    expect(sequence.promptIndicator).toBe('\u25bc');
+  });
+
+  /**
+   * The sequence carries no schedule at all any more: the lead-in is the tableau
+   * arriving, and every beat after it is a press. A duration reappearing here is
+   * the screen learning to move on by itself again.
+   */
+  it('carries no duration a beat could advance itself on', () => {
+    const sequence = buildDefeatSequence(wipedReport([new Pokemon(CHARMANDER, 12)]))!;
+
+    expect(Object.keys(sequence).sort()).toEqual([
+      'beats',
+      'figures',
+      'leadInMs',
+      'promptIndicator',
+    ]);
+    expect(sequence.beats.flatMap((beat) => Object.keys(beat)).sort()).toEqual(
+      ['detail', 'headline', 'id', 'prompt', 'detail', 'headline', 'id', 'prompt', 'detail', 'headline', 'id', 'prompt'].sort(),
     );
   });
 

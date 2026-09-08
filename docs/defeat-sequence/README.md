@@ -11,6 +11,11 @@ Captured from the running game at 1000x760 in headless Chrome.
 | `4-secure-slot-held.png` | Beat three. What the secure slot held stands back up in full colour. |
 | `5-result-screen.png` | The unchanged result screen from #71, which the sequence hands over to. |
 
-Frames 1, 2 and 5 are a real lost raid played end to end. Frames 3 and 4 are the
-same page and the same stylesheet with the beat states set directly, because a
-355ms screenshot cannot be aimed at a 1.3s beat reliably.
+Every beat holds until the player presses, so each carries the continue prompt
+under its words - `PRESS SPACE` with the battle dialogue's own blinking glyph,
+and `PRESS SPACE FOR THE RESULT` on the last one.
+
+Frames 1 and 5 are a real lost raid played end to end, deployed with two
+Pokemon. Frames 2, 3 and 4 are a later real raid, played end to end with the one
+partner a fresh save has, and captured a beat at a time: nothing advances by
+itself any more, so each beat can simply be photographed where it waits.

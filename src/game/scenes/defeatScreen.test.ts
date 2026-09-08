@@ -5,10 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *
  * The sequence sits between a defeat and the accounting the player needs, so the
  * things worth proving are the ones that could trap somebody: that a defeat
- * reaches it, that any key ends it from the very first frame, that the result
- * screen is still what the player is left holding, and that a second defeat on
- * the same reused scene object plays rather than inheriting the first one's
- * finished state.
+ * reaches it, that it never moves on without the player, that any key does move
+ * it on from the very first frame, that the result screen is still what the
+ * player is left holding, and that a second defeat on the same reused scene
+ * object plays rather than inheriting the first one's finished state.
  */
 
 vi.mock('phaser', () => ({
@@ -96,6 +96,7 @@ class FakeRoot {
   public constructor() {
     this.stage.child('[data-defeat-headline]');
     this.stage.child('[data-defeat-detail]');
+    this.stage.child('[data-defeat-prompt]');
   }
 
   public set innerHTML(value: string) {
@@ -128,25 +129,10 @@ interface Timer {
   remove(): void;
 }
 
-class MemoryStorage {
-  private readonly values = new Map<string, string>();
-  public getItem(key: string): string | null {
-    return this.values.get(key) ?? null;
-  }
-  public setItem(key: string, value: string): void {
-    this.values.set(key, value);
-  }
-  public removeItem(key: string): void {
-    this.values.delete(key);
-  }
-}
-
 let keyListeners: ((event: KeyboardEvent) => void)[] = [];
-let storage: MemoryStorage;
 
 beforeEach(() => {
   keyListeners = [];
-  storage = new MemoryStorage();
   overlayRoots.length = 0;
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
@@ -159,7 +145,6 @@ beforeEach(() => {
       removeEventListener: (_type: string, listener: (event: KeyboardEvent) => void) => {
         keyListeners = keyListeners.filter((entry) => entry !== listener);
       },
-      localStorage: storage,
     },
   });
 });
@@ -298,7 +283,7 @@ describe('the result screen on a defeat', () => {
     expect(root.html).not.toContain('data-continue');
   });
 
-  it('plays its beats in order and keeps each one as it reaches the next', () => {
+  it('plays its beats in order on the key it advertises, keeping each one as it reaches the next', () => {
     const { root, advance } = open(defeatReport());
     const headline = root.stage.child('[data-defeat-headline]');
 
@@ -306,20 +291,40 @@ describe('the result screen on a defeat', () => {
     expect(root.stage.dataset.beat).toBe('fall');
     expect(headline.textContent).toBe('CHARMANDER FAINTED.');
 
-    advance(1300);
+    press(' ');
     expect(root.stage.dataset.beat).toBe('fall taken');
     expect(headline.textContent).toBe('THEY STRIPPED YOU.');
 
-    advance(1400);
+    press(' ');
     expect(root.stage.dataset.beat).toBe('fall taken held');
     expect(headline.textContent).toBe('THE SECURE SLOT HELD.');
   });
 
-  it('settles onto the result screen on its own, and lets the player leave', () => {
+  /** The captain's whole complaint: it moved on while he was still reading. */
+  it('never advances on its own, however long it is left alone', () => {
+    const { root, advance } = open(defeatReport());
+
+    advance(60_000);
+
+    expect(root.html).toContain('defeat-stage');
+    expect(root.html).not.toContain('data-continue');
+    expect(root.stage.dataset.beat).toBe('fall');
+    expect(root.stage.child('[data-defeat-prompt]').textContent).toBe('PRESS SPACE');
+  });
+
+  it('holds the last beat until the player asks for the accounting', () => {
     const { root, start, advance } = open(defeatReport());
 
-    advance(5_000);
+    advance(300);
+    press(' ');
+    press(' ');
+    expect(root.stage.child('[data-defeat-prompt]').textContent).toBe(
+      'PRESS SPACE FOR THE RESULT',
+    );
+    advance(60_000);
+    expect(root.html).toContain('defeat-stage');
 
+    press(' ');
     expect(root.html).toContain('extraction-lost');
     expect(root.html).toContain('data-continue');
     expect(root.html).toContain('The secure slot brought Bulbasaur home.');
@@ -331,51 +336,79 @@ describe('the result screen on a defeat', () => {
   });
 });
 
-describe('skipping the defeat sequence', () => {
-  it('ends on any key from the very first frame, before a single beat has played', () => {
+describe('moving the defeat sequence on', () => {
+  /**
+   * Skipping ahead and being pushed ahead are different things. A player on
+   * their tenth defeat taps straight through, and the first tap has to land the
+   * first beat rather than be swallowed by the lead-in it arrived during.
+   */
+  it('answers a key on the very first frame, before the lead-in has elapsed', () => {
     const { root } = open(defeatReport());
 
     press('x');
+
+    expect(root.html).toContain('defeat-stage');
+    expect(root.stage.dataset.beat).toBe('fall');
+  });
+
+  it('reaches the result screen in three presses, as fast as a player can press', () => {
+    const { root } = open(defeatReport());
+
+    press(' ');
+    press(' ');
+    press(' ');
+    press(' ');
 
     expect(root.html).toContain('data-continue');
     expect(root.html).not.toContain('defeat-stage');
   });
 
-  it('ends on a click anywhere on the stage', () => {
+  it('advances on a click anywhere on the stage', () => {
     const { root } = open(defeatReport());
 
     root.stage.onpointerdown?.();
+    expect(root.stage.dataset.beat).toBe('fall');
 
-    expect(root.html).toContain('data-continue');
+    root.stage.onpointerdown?.();
+    expect(root.stage.dataset.beat).toBe('fall taken');
   });
 
-  it('cancels the beats it did not play, so nothing rewrites the screen behind it', () => {
+  it('cancels the lead-in it did not need, so nothing rewrites the screen behind it', () => {
+    const { root, advance } = open(defeatReport());
+
+    press(' ');
+    press(' ');
+    press(' ');
+    press(' ');
+    const afterSequence = root.html;
+    advance(10_000);
+
+    expect(root.html).toBe(afterSequence);
+  });
+
+  it('is not moved on by a modifier on its own', () => {
     const { root, advance } = open(defeatReport());
 
     advance(300);
-    press(' ');
-    const afterSkip = root.html;
-    advance(10_000);
-
-    expect(root.html).toBe(afterSkip);
-  });
-
-  it('is not triggered by a modifier on its own', () => {
-    const { root } = open(defeatReport());
-
     press('Shift');
 
     expect(root.html).toContain('defeat-stage');
+    expect(root.stage.dataset.beat).toBe('fall');
   });
 
   /**
-   * The skip only costs the animation. The lock on the result screen's own way
-   * out still stands, so a mashed key cannot carry through the ledger too.
+   * The last press of the sequence must not carry through the ledger as well,
+   * so the result screen's own short lock still stands behind it.
    */
   it('still holds the way out of the result screen behind it', () => {
-    const { start, advance } = open(defeatReport());
+    const { root, start, advance } = open(defeatReport());
 
     press(' ');
+    press(' ');
+    press(' ');
+    press(' ');
+    expect(root.html).toContain('data-continue');
+
     press(' ');
     expect(start).not.toHaveBeenCalled();
 
@@ -394,7 +427,10 @@ describe('the defeat sequence across raids', () => {
    */
   it('plays again on the same scene object after an earlier defeat has finished', () => {
     const { scene, root, advance } = open(defeatReport());
-    advance(5_000);
+    press(' ');
+    press(' ');
+    press(' ');
+    press(' ');
     expect(root.html).toContain('data-continue');
 
     scene.init({ report: defeatReport() });
@@ -403,24 +439,10 @@ describe('the defeat sequence across raids', () => {
 
     expect(second.html).toContain('defeat-stage');
 
+    // Through the lead-in rather than a press: the harness leaves the finished
+    // raid's overlay listening, so one press would reach both of them.
     advance(300);
     expect(second.stage.dataset.beat).toBe('fall');
-  });
-
-  it('runs shorter on a second defeat than on a player\'s first ever one', () => {
-    const first = open(defeatReport());
-    first.advance(3_000);
-    // Three seconds in, a first defeat is still playing.
-    expect(first.root.html).toContain('defeat-stage');
-    first.advance(2_000);
-    expect(first.root.html).toContain('data-continue');
-    expect(storage.getItem('escape-from-pallet-town.defeat-seen.v1')).toBe('1');
-
-    // The same three seconds is the whole of a later one.
-    const second = open(defeatReport());
-    second.advance(3_000);
-
-    expect(second.root.html).toContain('data-continue');
   });
 
   it('leaves an extraction untouched: a survived raid still opens on its haul', () => {

@@ -43,25 +43,16 @@ export interface ExtractionSceneData {
 const INPUT_LOCK_MS = 900;
 
 /**
- * The shorter hold used when the defeat sequence played all the way through.
+ * The shorter hold used on the way out of the defeat sequence.
  *
- * The full lock exists to absorb the tap that closed the last battle line. A
- * player who watched four seconds of their party going down has already spent
- * that tap, so making them wait again is the screen being slow rather than safe.
+ * The full lock exists to absorb the tap that closed the last battle line. That
+ * tap is spent on the sequence's own first beat now, and every beat after it is
+ * a press the player made deliberately, so the report only has to survive the
+ * last of those presses being held down a moment too long.
  */
 const SETTLED_LOCK_MS = 350;
 
-/**
- * Whether this save has already seen a defeat, which is all the sequence needs
- * to know to run at its shorter pace from the second death onwards.
- *
- * Kept out of the save blob deliberately: it is presentation pacing, it must
- * survive a wipe rather than be undone by one, and a browser with no storage
- * simply always gets the first-viewing pace rather than an error.
- */
-const DEFEAT_SEEN_KEY = 'escape-from-pallet-town.defeat-seen.v1';
-
-/** Keys that are only ever half of a keypress, so they never count as the skip. */
+/** Keys that are only ever half of a keypress, so they never advance a beat. */
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab']);
 
 export class ExtractionScene extends Phaser.Scene {
@@ -69,9 +60,13 @@ export class ExtractionScene extends Phaser.Scene {
   private report!: ExtractionReport;
   private leaving = false;
   private locked = true;
-  /** Set while the defeat sequence is on screen, which is when a key skips. */
+  /** Set while the defeat sequence is on screen, which is when a key advances. */
   private sequencePlaying = false;
-  private sequenceTimers: Phaser.Time.TimerEvent[] = [];
+  private sequenceBeats: readonly DefeatBeat[] = [];
+  /** The beat on screen, or -1 during the lead-in before the first one lands. */
+  private beatIndex = -1;
+  private leadInTimer: Phaser.Time.TimerEvent | null = null;
+  private defeatStage: HTMLElement | null = null;
 
   public constructor() {
     super('extraction');
@@ -86,14 +81,17 @@ export class ExtractionScene extends Phaser.Scene {
     this.leaving = false;
     this.locked = true;
     this.sequencePlaying = false;
-    this.sequenceTimers = [];
+    this.sequenceBeats = [];
+    this.beatIndex = -1;
+    this.leadInTimer = null;
+    this.defeatStage = null;
   }
 
   public create(): void {
     this.cameras.main.fadeIn?.(200, 0, 0, 0);
     this.overlay = new MenuOverlay(this, 'extraction-menu', (event) => this.handleKey(event));
     this.overlay.root.setAttribute('aria-label', 'Raid result');
-    const sequence = buildDefeatSequence(this.report, { pace: this.defeatPace() });
+    const sequence = buildDefeatSequence(this.report);
     if (sequence) {
       this.playDefeatSequence(sequence);
       return;
@@ -102,34 +100,52 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   /**
-   * Plays the defeat beats over the result screen, then hands it the screen.
+   * Opens the defeat beats over the result screen and then waits for the player.
    *
-   * Nothing here can strand the player: the scene keeps every timer it schedules
-   * so a skip cancels the rest, and a skip and a finished sequence land on the
-   * same report through the same method.
+   * The only timer here is the lead-in, which is the tableau standing before it
+   * falls rather than a beat being read out; everything after it moves because
+   * the player moved it. Nothing can strand them: a key or a click always
+   * advances, and the beat after the last one is the report.
    */
   private playDefeatSequence(sequence: DefeatSequence): void {
     this.sequencePlaying = true;
+    this.sequenceBeats = sequence.beats;
+    this.beatIndex = -1;
     this.overlay.root.innerHTML = defeatMarkup(sequence);
     const stage = this.overlay.root.querySelector<HTMLElement>('[data-defeat]');
     if (!stage) {
-      this.finishDefeatSequence(true);
+      this.finishDefeatSequence();
       return;
     }
-    // A click anywhere on the stage skips, so the skip button is a signpost for
+    this.defeatStage = stage;
+    // A click anywhere on the stage advances, so the prompt is a signpost for
     // the behaviour rather than the only target for it.
-    stage.onpointerdown = () => this.finishDefeatSequence(true);
-
-    let offsetMs = sequence.leadInMs;
-    for (const beat of sequence.beats) {
-      this.sequenceTimers.push(
-        this.time.delayedCall(offsetMs, () => this.enterDefeatBeat(stage, beat)),
-      );
-      offsetMs += beat.durationMs;
-    }
-    this.sequenceTimers.push(
-      this.time.delayedCall(sequence.totalMs, () => this.finishDefeatSequence(false)),
+    stage.onpointerdown = () => this.advanceDefeatSequence();
+    this.leadInTimer = this.time.delayedCall(sequence.leadInMs, () =>
+      this.advanceDefeatSequence(),
     );
+  }
+
+  /**
+   * The one way the sequence ever moves: on to the next beat, or off the screen.
+   *
+   * A press during the lead-in lands the first beat rather than being swallowed,
+   * which is what keeps the screen answerable from its very first frame without
+   * costing the player a beat they never saw.
+   */
+  private advanceDefeatSequence(): void {
+    if (!this.sequencePlaying) {
+      return;
+    }
+    this.leadInTimer?.remove(false);
+    this.leadInTimer = null;
+    const next = this.sequenceBeats[this.beatIndex + 1];
+    if (!next || !this.defeatStage) {
+      this.finishDefeatSequence();
+      return;
+    }
+    this.beatIndex += 1;
+    this.enterDefeatBeat(this.defeatStage, next);
   }
 
   /**
@@ -143,6 +159,10 @@ export class ExtractionScene extends Phaser.Scene {
     stage.dataset.beat = `${stage.dataset.beat ?? ''} ${beat.id}`.trim();
     const headline = stage.querySelector<HTMLElement>('[data-defeat-headline]');
     const detail = stage.querySelector<HTMLElement>('[data-defeat-detail]');
+    const prompt = stage.querySelector<HTMLElement>('[data-defeat-prompt]');
+    if (prompt) {
+      prompt.textContent = beat.prompt;
+    }
     if (headline && detail) {
       headline.textContent = beat.headline;
       detail.textContent = beat.detail;
@@ -161,18 +181,16 @@ export class ExtractionScene extends Phaser.Scene {
     }
   }
 
-  /** The single way out of the sequence, whether it was watched or skipped. */
-  private finishDefeatSequence(skipped: boolean): void {
+  /** The single way out of the sequence, whichever beat the player left from. */
+  private finishDefeatSequence(): void {
     if (!this.sequencePlaying) {
       return;
     }
     this.sequencePlaying = false;
-    for (const timer of this.sequenceTimers) {
-      timer.remove(false);
-    }
-    this.sequenceTimers = [];
-    this.rememberDefeatSeen();
-    this.showReport(skipped ? INPUT_LOCK_MS : SETTLED_LOCK_MS);
+    this.leadInTimer?.remove(false);
+    this.leadInTimer = null;
+    this.defeatStage = null;
+    this.showReport(SETTLED_LOCK_MS);
   }
 
   private showReport(lockMs: number): void {
@@ -189,24 +207,6 @@ export class ExtractionScene extends Phaser.Scene {
     });
   }
 
-  private defeatPace(): 'first' | 'repeat' {
-    try {
-      return window.localStorage?.getItem(DEFEAT_SEEN_KEY) ? 'repeat' : 'first';
-    } catch {
-      // Storage can be unavailable or blocked. A defeat still plays, at the pace
-      // a player who has never seen one should get.
-      return 'first';
-    }
-  }
-
-  private rememberDefeatSeen(): void {
-    try {
-      window.localStorage?.setItem(DEFEAT_SEEN_KEY, '1');
-    } catch {
-      // Nothing to do: the next defeat simply plays at the first-viewing pace.
-    }
-  }
-
   /**
    * Reached through the overlay's own claim on the keyboard, which is what gives
    * this screen a keyboard at all: WorldScene and BattleScene both capture SPACE
@@ -216,15 +216,16 @@ export class ExtractionScene extends Phaser.Scene {
    * mouse-only. See `overlayKeyboard.ts`.
    */
   private handleKey(event: KeyboardEvent): void {
-    // While the defeat plays, every key is the skip. A player who has seen it
-    // must never have to find the right one, and a bare modifier is not a
-    // keypress a player meant as one.
+    // While the defeat plays, every key moves it on. SPACE is the one the screen
+    // advertises, because it is the key the battle dialogue advertises, but a
+    // player on their tenth defeat must never have to find the right one - and a
+    // bare modifier is not a keypress a player meant as one.
     if (this.sequencePlaying) {
       if (MODIFIER_KEYS.has(event.key)) {
         return;
       }
       event.preventDefault();
-      this.finishDefeatSequence(true);
+      this.advanceDefeatSequence();
       return;
     }
     if (this.locked || !['Enter', ' ', 'Escape'].includes(event.key)) {
@@ -411,8 +412,15 @@ export class ExtractionScene extends Phaser.Scene {
  *
  * The markup is written once and never re-rendered. Every beat is a state on the
  * stage element, so the figures animate from one beat to the next instead of
- * snapping between three separate pictures, and the stage is exactly as
- * skippable at the first frame as at the last.
+ * snapping between three separate pictures, and the stage answers a key or a
+ * click at the first frame exactly as it does at the last.
+ *
+ * The continue prompt sits inside the caption panel, under the words it is
+ * waiting on, which is where the battle dialogue's own `SPACE \u25bc` indicator
+ * sits relative to its text, and only its glyph blinks. It is written as text
+ * rather than as a button because the whole stage is already the target: a
+ * button inside a stage that takes pointerdown would advance the sequence twice
+ * on one click.
  */
 function defeatMarkup(sequence: DefeatSequence): string {
   const cast = sequence.figures.map((figure, index) => defeatFigure(figure, index)).join('');
@@ -430,8 +438,8 @@ function defeatMarkup(sequence: DefeatSequence): string {
     <div class="defeat-caption is-entering" aria-live="polite">
       <p class="defeat-headline" data-defeat-headline></p>
       <p class="defeat-detail" data-defeat-detail></p>
+      <p class="defeat-advance"><span data-defeat-prompt></span> <span class="defeat-advance-cursor" aria-hidden="true">${escapeHtml(sequence.promptIndicator)}</span></p>
     </div>
-    <button type="button" class="defeat-skip" data-defeat-skip>${escapeHtml(sequence.skipHint)} \u25b8</button>
   </div>`;
 }
 

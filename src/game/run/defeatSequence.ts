@@ -6,9 +6,16 @@ import { describeGroup, type ExtractionReport, type ReportItem } from './extract
  * A defeat is the only moment in the loop where the secure-slot decision is
  * finally paid, so the sequence is built to answer that decision rather than to
  * announce a death: who was standing when the party ran out, what was taken off
- * the body, and what the slot held anyway. Every word and every duration is here
- * rather than in the scene, so the tone is one file to re-read and one file to
- * change, and so it is testable without Phaser.
+ * the body, and what the slot held anyway. Every word is here rather than in the
+ * scene, so the tone is one file to re-read and one file to change, and so it is
+ * testable without Phaser.
+ *
+ * Nothing in it advances by itself. The player is being shown what a raid cost,
+ * and a screen that moves on while they are still reading takes that away at the
+ * moment they most want to sit with it, so each beat holds until a key or a
+ * click moves it on and each beat carries the prompt that says so. It stays as
+ * skippable as it ever was - every key advances, from the first frame - because
+ * skipping ahead and being pushed ahead are different things.
  *
  * Tone: the player is knocked out and stripped, not killed. That is what an
  * extraction raid does to you, it is what the rest of this game's wipe copy
@@ -47,7 +54,11 @@ export interface DefeatBeat {
   readonly headline: string;
   /** The sentence under it, which is where the specifics live. */
   readonly detail: string;
-  readonly durationMs: number;
+  /**
+   * How the player is told to move this beat on. Nothing here advances by
+   * itself, so a beat without a prompt on screen would be a dead end.
+   */
+  readonly prompt: string;
 }
 
 export interface DefeatSequence {
@@ -58,37 +69,43 @@ export interface DefeatSequence {
    * A held instant on the line-up still standing, before the first beat drops
    * it. Without it the party is already on the ground when the screen opens and
    * there is nothing to recognise as having fallen.
+   *
+   * It is the one duration left in the sequence, and it is the screen arriving
+   * rather than the screen proceeding: it carries no words, and a key pressed
+   * inside it lands the first beat instead of being swallowed.
    */
   readonly leadInMs: number;
-  /** Lead-in plus every beat: how long a defeat lasts if nobody touches it. */
-  readonly totalMs: number;
-  /** Never a lie about which key: every key and every click ends it. */
-  readonly skipHint: string;
+  /**
+   * The blinking glyph drawn after every prompt. It is the battle dialogue's own
+   * continue indicator, kept separate from the words because only the glyph
+   * blinks - a prompt that blinks out entirely is unreadable half the time.
+   */
+  readonly promptIndicator: string;
 }
 
 /**
- * How long a defeat holds, first time and every time after.
+ * The prompt under every beat, and the only way out of one.
  *
- * Raids are five minutes and dying is common, so the tenth viewing is the one
- * that decides whether this is loved or endured. The repeat pace is a little
- * over half the first, and both are short enough that the skip is a courtesy
- * rather than the only way to tolerate the screen.
+ * A defeat is where the secure-slot gamble is finally paid, so the screen waits
+ * for the player rather than reading itself out at them; the price of waiting is
+ * that it must say so, unmistakably, in the same words the rest of the game uses
+ * for the same key. The battle dialogue's continue indicator is `SPACE \u25bc`, so
+ * this is that indicator said out loud, with the same glyph blinking after it.
+ *
+ * The key is advertised rather than enforced: any key and any click advance,
+ * because a player on their tenth defeat must never have to find the right one.
  */
-export type DefeatPace = 'first' | 'repeat';
+const ADVANCE_PROMPT = 'PRESS SPACE';
 
-const BEAT_MS: Record<DefeatPace, Record<DefeatBeatId, number>> = {
-  first: { fall: 1200, taken: 1300, held: 1400 },
-  repeat: { fall: 800, taken: 850, held: 900 },
-};
+/** The last beat says where it is going, because it leaves the sequence. */
+const FINAL_PROMPT = 'PRESS SPACE FOR THE RESULT';
 
-const LEAD_IN_MS: Record<DefeatPace, number> = { first: 260, repeat: 140 };
+const PROMPT_INDICATOR = '\u25bc';
+
+const LEAD_IN_MS = 260;
 
 /** Past this many, the line-up stops reading as a line-up and starts as a list. */
 const MAX_FIGURES = 8;
-
-export interface DefeatSequenceOptions {
-  readonly pace?: DefeatPace;
-}
 
 /**
  * Builds the sequence for a report, or null when the report is not a defeat.
@@ -96,18 +113,12 @@ export interface DefeatSequenceOptions {
  * A raid lost to the clock is a different failure with no line-up on the ground,
  * and an extraction is not a failure at all; both go straight to the accounting.
  */
-export function buildDefeatSequence(
-  report: ExtractionReport,
-  options: DefeatSequenceOptions = {},
-): DefeatSequence | null {
+export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | null {
   const fallen = report.fallen ?? [];
   if (report.outcome !== 'WIPED' || report.cause !== 'defeated' || fallen.length === 0) {
     return null;
   }
 
-  const pace = options.pace ?? 'first';
-  const beatMs = BEAT_MS[pace];
-  const leadInMs = LEAD_IN_MS[pace];
   const figures = buildFigures(report);
   const takenNames = describeGroup(report.ledger);
   const heldNames = describeGroup(report.secured);
@@ -121,7 +132,7 @@ export function buildDefeatSequence(
         fallen.length === 1
           ? 'The only one you brought. You went down in the grass beside it.'
           : `The last of ${fallen.length} still standing. You went down in the grass beside it.`,
-      durationMs: beatMs.fall,
+      prompt: ADVANCE_PROMPT,
     },
     {
       id: 'taken',
@@ -130,7 +141,7 @@ export function buildDefeatSequence(
         takenNames === null
           ? 'Everything you carried out was already protected. They went through your bag for nothing.'
           : `${capitalise(takenNames)} lifted off you and gone from your stash.`,
-      durationMs: beatMs.taken,
+      prompt: ADVANCE_PROMPT,
     },
     {
       id: 'held',
@@ -139,17 +150,11 @@ export function buildDefeatSequence(
         heldNames === null
           ? 'You deployed with nothing protected, so nothing came back with you.'
           : `${capitalise(heldNames)} came home with you. That was the call you made before you deployed.`,
-      durationMs: beatMs.held,
+      prompt: FINAL_PROMPT,
     },
   ];
 
-  return {
-    figures,
-    beats,
-    leadInMs,
-    totalMs: beats.reduce((total, beat) => total + beat.durationMs, leadInMs),
-    skipHint: 'Any key to skip',
-  };
+  return { figures, beats, leadInMs: LEAD_IN_MS, promptIndicator: PROMPT_INDICATOR };
 }
 
 /**

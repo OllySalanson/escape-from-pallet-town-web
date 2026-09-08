@@ -1744,23 +1744,34 @@ button {
   color: #e6cfc7;
   font-size: clamp(14px, 1.9vw, 20px);
   line-height: 1.2;
+  /* Two lines carrying one sentence, so they are balanced rather than left with
+     a one-word orphan under a full line. */
+  text-wrap: balance;
 }
-.defeat-skip {
-  position: absolute;
-  right: clamp(14px, 3vw, 30px);
-  top: clamp(14px, 3vw, 30px);
-  border: 2px solid #7d4038;
-  background: rgb(8 6 9 / 78%);
-  padding: 5px 9px;
-  color: #d8a79c;
-  font: inherit;
-  font-size: clamp(13px, 1.6vw, 16px);
-  cursor: pointer;
+/* The continue prompt: the only way any beat moves on, so it is never subtle.
+   The words hold and only the glyph blinks, on the same 300ms phase as the
+   battle dialogue's own SPACE indicator - it is that indicator said out loud,
+   and a prompt that blinked out with it would be unreadable half the time. */
+.defeat-advance {
+  margin: 7px 0 0;
+  color: #ffe8b0;
+  font-size: clamp(15px, 2.1vw, 22px);
+  letter-spacing: 0.08em;
+  text-shadow: 0 3px 0 #1a0a0c;
 }
-.defeat-skip:hover,
-.defeat-skip:focus-visible {
-  border-color: var(--menu-danger);
-  color: #ffd9d1;
+.defeat-advance-cursor {
+  display: inline-block;
+  animation: defeat-advance-blink 600ms steps(1, end) infinite;
+}
+@keyframes defeat-advance-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 /* Motion is the whole point of this screen, so it is not removed for a player
    who asked for less of it - it is made instant, and the words still land. */
