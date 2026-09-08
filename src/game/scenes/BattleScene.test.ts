@@ -16,6 +16,7 @@ vi.mock('phaser', () => ({
   },
 }));
 
+import { Bag } from '../items';
 import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
 import { createBattleState, createTrainerBattleState } from '../pokemon/battle/battleEngine';
 import { BULBASAUR, PIDGEY } from '../pokemon/species';
@@ -40,7 +41,12 @@ interface RenderedText {
 interface HarnessOptions {
   /** Builds the hunter pursuit battle instead of the default wild encounter. */
   readonly hunterBattle?: boolean;
+  /** Fights an authored trainer, which is the battle that cannot be left. */
+  readonly authoredTrainer?: boolean;
   readonly runSession?: ReturnType<typeof createActiveRunSession>;
+  /** The raid bag this fight is carrying. Defaults to two Potions. */
+  readonly bag?: Bag;
+  readonly party?: PokemonParty;
 }
 
 const graphicsStub = () => ({
@@ -98,7 +104,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     removeAll: vi.fn(),
     setVisible: vi.fn(),
   };
-  const player = new Pokemon(CHARMANDER, 12);
+  const player = options.party?.pokemon[0] ?? new Pokemon(CHARMANDER, 12);
   const enemy = new Pokemon(BULBASAUR, 10);
   const trainer = options.hunterBattle
     ? {
@@ -107,7 +113,14 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
         party: [new Pokemon(PIDGEY, 6)],
         defeatText: 'You slipped through my fingers... this time.',
       }
-    : undefined;
+    : options.authoredTrainer
+      ? {
+          id: 'floodplain-checkpoint-maya',
+          name: 'RAIDER MAYA',
+          party: [new Pokemon(PIDGEY, 7)],
+          defeatText: 'The checkpoint is open.',
+        }
+      : undefined;
   const state = trainer
     ? createTrainerBattleState(player, trainer)
     : createBattleState(player, enemy);
@@ -115,6 +128,12 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
 
   Object.assign(scene as object, {
     add: {
+      // The party screen - the target picker for an item as well as the switch
+      // menu - is built inside a container, so the harness has to hold one.
+      container: vi.fn(() => {
+        const children: unknown[] = [];
+        return { children, add: vi.fn((child: unknown) => children.push(child)) };
+      }),
       graphics: vi.fn(() => ({
         fillStyle: vi.fn().mockReturnThis(),
         fillRect: vi.fn().mockReturnThis(),
@@ -165,6 +184,8 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
       ? { ...createHunterState(), spawned: true, mapId: 'route-1', position: { x: 4, y: 4 } }
       : undefined,
     runSession: options.runSession,
+    bag: options.bag ?? new Bag({ potion: 2 }),
+    pendingItem: undefined,
     wildEscapeAttempts: 0,
     pendingBattleExit: false,
     defeatedTrainerIds: new Set(),
@@ -173,7 +194,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     forcedReplacement: false,
     isPresentingCombatEvents: false,
     mode: 'events',
-    party: new PokemonParty([player]),
+    party: options.party ?? new PokemonParty([player]),
     pokeBalls: 5,
     selectedCommand: 0,
     state,
@@ -194,19 +215,23 @@ describe('BattleScene command presentation', () => {
     // labels but left this masking layer eligible to cover them.
     expect(dialog.setVisible).toHaveBeenCalledWith(false);
     expect(renderedTexts.map(({ text, x, y }) => ({ text, x, y }))).toEqual([
-      { text: '▶ FIGHT', x: 18, y: 185 },
-      { text: '  BALL x5', x: 166, y: 185 },
-      { text: '  POKéMON', x: 18, y: 210 },
+      { text: '▶ FIGHT', x: 18, y: 180 },
+      { text: '  BALL x5', x: 166, y: 180 },
+      { text: '  POKéMON', x: 18, y: 198 },
+      // What the loadout packed, counted on the command itself.
+      { text: '  ITEM x2', x: 166, y: 198 },
       // The escape command prices itself: Charmander outruns Bulbasaur 12 to 9.
-      { text: '  RUN 57%', x: 166, y: 210 },
+      { text: '  RUN 57%', x: 18, y: 216 },
     ]);
+    // Five commands are three rows, and the third row still has to be on a
+    // 240px screen: the panel ends at 238.
     expect(renderedTexts.every(({ y }) => y >= 174 && y < 238)).toBe(true);
     expect(renderedTexts.every(({ style }) => !('fixedWidth' in style))).toBe(true);
 
     renderedTexts[0].handlers.pointerdown();
 
     // Two guidance lines are laid out first, then one row per known move.
-    const [summaryLine, matchupLine, ...moveTexts] = renderedTexts.slice(4);
+    const [summaryLine, matchupLine, ...moveTexts] = renderedTexts.slice(5);
     expect(moveTexts).toHaveLength(3);
     expect([summaryLine, matchupLine, ...moveTexts].every(({ y }) => y >= 174 && y < 238)).toBe(
       true,
@@ -221,10 +246,11 @@ describe('BattleScene command presentation', () => {
 
     (scene as unknown as { goBack(): void }).goBack();
 
-    expect(renderedTexts.slice(9).map(({ text }) => text)).toEqual([
+    expect(renderedTexts.slice(10).map(({ text }) => text)).toEqual([
       '▶ FIGHT',
       '  BALL x5',
       '  POKéMON',
+      '  ITEM x2',
       '  RUN 57%',
     ]);
   });
@@ -235,7 +261,7 @@ describe('BattleScene command presentation', () => {
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     renderedTexts[0].handlers.pointerdown();
 
-    const [summaryLine, matchupLine, , , emberRow] = renderedTexts.slice(4);
+    const [summaryLine, matchupLine, , , emberRow] = renderedTexts.slice(5);
     emberRow.handlers.pointerover();
 
     expect(summaryLine.text).toBe('FIRE · SPECIAL · POWER 40 · PP 25/25 · SAME-TYPE x1.5');
@@ -265,7 +291,7 @@ describe('BattleScene command presentation', () => {
     });
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts[3].handlers.pointerdown();
+    renderedTexts[4].handlers.pointerdown();
 
     expect(dialog.visibleText).toBe('Got away safely!');
     expect(dialog.showMessage).toHaveBeenCalledWith('Got away safely!');
@@ -303,7 +329,12 @@ describe('escaping the hunter', () => {
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
-    expect(renderedTexts.map(({ text }) => text)).toEqual(['▶ FIGHT', '  FLEE -40s', '  POKéMON']);
+    expect(renderedTexts.map(({ text }) => text)).toEqual([
+      '▶ FIGHT',
+      '  FLEE -40s',
+      '  POKéMON',
+      '  ITEM x2',
+    ]);
   });
 
   it('charges the raid clock, never rolls for it, and marks the hunter as having lost the trail', () => {
@@ -381,7 +412,7 @@ describe('escaping a wild encounter', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts[3].handlers.pointerdown();
+    renderedTexts[4].handlers.pointerdown();
 
     expect(dialog.shownMessages[0]).toBe("Couldn't get away from BULBASAUR!");
     expect((scene as unknown as { pendingBattleExit: boolean }).pendingBattleExit).toBe(false);
@@ -393,7 +424,7 @@ describe('escaping a wild encounter', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts[3].handlers.pointerdown();
+    renderedTexts[4].handlers.pointerdown();
 
     (scene as unknown as { mode: string }).mode = 'main';
     (scene as unknown as { showCommands(): void }).showCommands();
@@ -402,7 +433,144 @@ describe('escaping a wild encounter', () => {
   });
 });
 
+describe('using an item in a battle', () => {
+  /** Walks the command tree the way a player does: ITEM, the medicine, the target. */
+  const chooseItemFor = (
+    scene: BattleScene,
+    renderedTexts: RenderedText[],
+    itemName = 'POTION',
+  ): void => {
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    const clickLast = (match: string, from = 0): void => {
+      const row = renderedTexts.slice(from).filter(({ text }) => text.includes(match)).at(-1);
+      if (!row) {
+        throw new Error(`No command row matching ${match}`);
+      }
+      row.handlers.pointerdown();
+    };
+    const beforeItemList = renderedTexts.length;
+    clickLast('ITEM x');
+    const beforeTargetList = renderedTexts.length;
+    clickLast(`${itemName} x`, beforeItemList);
+    // Party rows are the only ones carrying a level, which is what makes them
+    // the target picker rather than the item list.
+    clickLast(':L', beforeTargetList);
+  };
+
+  it('is offered in an authored trainer battle, which is the fight that cannot be left', () => {
+    const { scene, renderedTexts } = createBattleSceneHarness({ authoredTrainer: true });
+
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+
+    expect(renderedTexts.map(({ text }) => text)).toEqual([
+      '▶ FIGHT',
+      '  POKéMON',
+      '  ITEM x2',
+    ]);
+  });
+
+  it('heals the Pokemon that is out and spends the item from the raid bag', () => {
+    const hurt = new Pokemon(CHARMANDER, 12);
+    hurt.takeDamage(15);
+    const bag = new Bag({ potion: 2 });
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      bag,
+      party: new PokemonParty([hurt]),
+    });
+    // The enemy's reply is deterministic, so only the heal is under test here.
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const state = () => (scene as unknown as { state: { player: { currentHp: number } } }).state;
+    const hpBefore = state().player.currentHp;
+
+    chooseItemFor(scene, renderedTexts);
+
+    expect(dialog.shownMessages[0]).toBe('CHARMANDER recovered 15 HP!');
+    expect(state().player.currentHp).toBeGreaterThan(hpBefore);
+    expect(hurt.currentHp).toBe(state().player.currentHp);
+    // One Potion, out of the bag the raid deployed with.
+    expect(bag.count('potion')).toBe(1);
+  });
+
+  it('costs the turn, so the enemy answers the heal', () => {
+    const hurt = new Pokemon(CHARMANDER, 12);
+    hurt.takeDamage(15);
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      bag: new Bag({ potion: 1 }),
+      party: new PokemonParty([hurt]),
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0.01);
+
+    chooseItemFor(scene, renderedTexts);
+
+    // The heal is said first; the rest of the log is the turn it was paid with.
+    expect(dialog.shownMessages[0]).toBe('CHARMANDER recovered 15 HP!');
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+
+    expect(dialog.shownMessages.slice(1).join(' ')).toContain('Foe BULBASAUR used');
+  });
+
+  it('keeps the item and the turn when the medicine would do nothing', () => {
+    const bag = new Bag({ potion: 1 });
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({ bag });
+
+    chooseItemFor(scene, renderedTexts);
+
+    expect(bag.count('potion')).toBe(1);
+    expect(dialog.shownMessages).toEqual([]);
+    expect((scene as unknown as { mode: string }).mode).toBe('party');
+    expect(
+      renderedTexts.filter(({ text }) => text.includes('already at full HP')),
+    ).toHaveLength(1);
+  });
+
+  it('says the pocket is empty rather than opening on nothing', () => {
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      bag: new Bag({ 'poke-ball': 3 }),
+    });
+
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    const itemCommand = renderedTexts.find(({ text }) => text.includes('ITEM x'));
+
+    expect(itemCommand?.text).toBe('  ITEM x0');
+
+    itemCommand!.handlers.pointerdown();
+
+    expect(dialog.shownMessages).toEqual(['No medicine in your pack!']);
+    expect((scene as unknown as { mode: string }).mode).toBe('events');
+  });
+});
+
 describe('a lost raid resolved inside a battle', () => {
+  it('prices the supplies against the bag the raid carried, not the persisted one', () => {
+    const manager = new RunManager();
+    const deployed = new Pokemon(CHARMANDER, 5);
+    manager.startRun(
+      { party: [deployed], items: [{ itemId: 'potion', quantity: 2 }] },
+      { mapId: 'floodplain-relay', durationMs: 300_000 },
+    );
+    const runSession = createActiveRunSession(manager, {}, {}, ['charmander-1'], [
+      { itemId: 'potion', quantity: 2 },
+    ]);
+    const start = vi.fn();
+    // Two Potions deployed, one drunk in this fight, one still in the pack.
+    const { scene } = createBattleSceneHarness({ runSession, bag: new Bag({ potion: 1 }) });
+    Object.assign(scene as object, {
+      scene: { manager: { keys: { world: {}, hub: {}, extraction: {} } }, start },
+    });
+
+    (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();
+
+    const { report } = start.mock.calls[0][1] as {
+      report: { spent: readonly { readonly label: string; readonly quantity: number }[] };
+    };
+    // Read from the persisted save's bag - which is the free-roam inventory and
+    // has nothing to do with a raid - this said the raid spent everything it
+    // carried, or nothing at all, depending on what was in that other bag.
+    expect(report.spent.map(({ label, quantity }) => `${quantity}x ${label}`)).toEqual([
+      '1x Potion',
+    ]);
+  });
+
   it('hands the wipe to the result screen instead of racing the hub to it', () => {
     const manager = new RunManager();
     const deployed = new Pokemon(CHARMANDER, 5);

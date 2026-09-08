@@ -115,6 +115,34 @@ export const describeMoveGuidance = (
   };
 };
 
+/**
+ * The ITEM command carries what the player packed, the way BALL carries the
+ * balls: the count is on the command, so the loadout decision is legible from
+ * inside the fight it was made for rather than only from the bag screen.
+ */
+export const formatItemCommand = (count: number): string => `ITEM x${count}`;
+
+/** One medicine row in the item submenu, counted the way the pocket counts it. */
+export const formatItemRow = (
+  item: { readonly displayName: string },
+  count: number,
+): string => `${item.displayName.toUpperCase()} x${count}`;
+
+/** The party screen's heading while it is choosing who to give an item to. */
+export const itemTargetPrompt = (item: { readonly displayName: string }): string =>
+  `Use ${item.displayName.toUpperCase()} on which POKéMON?`;
+
+/**
+ * What the highlighted medicine would do, on the same line the move submenu
+ * puts a move's numbers - and it ends with the turn, because that is the price
+ * and it has to be read before the item is spent, not after.
+ */
+export const describeItemGuidance = (item: { readonly description: string }): string =>
+  `${item.description} Using it costs your turn.`;
+
+/** Said when the ITEM command is chosen with nothing in the medicine pocket. */
+export const NO_BATTLE_ITEMS_MESSAGE = 'No medicine in your pack!';
+
 /** Whole seconds, so a cost printed on a command reads the same as the raid timer. */
 export const formatSeconds = (ms: number): string => `${Math.round(ms / 1_000)}s`;
 
