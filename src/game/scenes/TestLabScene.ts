@@ -5,6 +5,7 @@ import { createTestLabBattleScenario } from '../dev/testLabRoutes';
 import { activeRunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
+import { contractForMap, FIRST_CONTRACT_ID, objectivesForContract } from '../objectives';
 import {
   CONTRACT_REWARD_INSERTIONS,
   DEFAULT_RAID_PROGRESS,
@@ -135,7 +136,11 @@ export class TestLabScene extends Phaser.Scene {
       bag: new Bag(),
       stash,
       raidProgress: unlockEveryInsertion
-        ? { firstContractExtracted: true, unlockedInsertions: [...CONTRACT_REWARD_INSERTIONS] }
+        ? {
+          firstContractExtracted: true,
+          unlockedInsertions: [...CONTRACT_REWARD_INSERTIONS],
+          completedContracts: [FIRST_CONTRACT_ID],
+        }
         : DEFAULT_RAID_PROGRESS,
     });
     const game = this.saveManager.load();
@@ -151,19 +156,18 @@ export class TestLabScene extends Phaser.Scene {
       { mapId: RUN_INSERTIONS[insertion].mapId, durationMs: 18 * 60 * 1000 },
       {},
     );
-    const plan = generateRunPlan(
-      0x5eed1234,
-      undefined,
-      insertion,
-      !game.raidProgress.firstContractExtracted,
+    const contract = contractForMap(
+      RUN_INSERTIONS[insertion].mapId,
+      game.raidProgress.completedContracts,
     );
+    const plan = generateRunPlan(0x5eed1234, undefined, insertion, contract);
     const runSession = createActiveRunSession(
       activeRunManager,
       {},
       {},
       [stored.id],
       [],
-      undefined,
+      plan.contract ? objectivesForContract(plan.contract) : [],
       plan,
     );
     this.scene.start('world', { party: new PokemonParty(party), bag: new Bag(), runSession });

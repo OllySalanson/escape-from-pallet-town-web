@@ -1,6 +1,11 @@
 import type { ItemId } from '../items';
 import type { Pokemon } from '../pokemon';
+import { BASE_SECURE_ITEM_STACKS } from '../objectives/contracts';
 import { hunterFleePenaltyMs } from './fleePenalty';
+
+/** The first contract's one stop, kept here so the snapshot can still name it. */
+const FIELD_KIT_STEP_ID = 'lost-field-kit';
+const MAX_SECURE_ITEM_STACKS = BASE_SECURE_ITEM_STACKS;
 
 /** Time the player has to extract after the raid timer reaches zero. */
 export const ENRAGE_GRACE_MS = 15_000;
@@ -28,6 +33,12 @@ export interface RunLoadout {
 export interface RunConfig {
   readonly mapId: string;
   readonly durationMs: number;
+  /**
+   * How many item stacks this raid's secure slot protects. It is a raid
+   * parameter rather than a constant because banking the cordon ledger enlarges
+   * it permanently, so the limit belongs to the save, not to the code.
+   */
+  readonly secureItemStackLimit?: number;
 }
 
 export interface SecureSlot {
@@ -41,6 +52,12 @@ export interface RunSnapshot {
   readonly secureSlot: SecureSlot;
   readonly caughtPokemon: readonly Pokemon[];
   readonly foundItems: readonly ItemStack[];
+  /**
+   * Contract stops made this raid, by marker id. A contract is a list of stops
+   * rather than one flag because the braid survey is three of them.
+   */
+  readonly contractSteps: readonly string[];
+  /** The first contract's only stop, which several systems still ask about. */
   readonly recoveredFieldKit: boolean;
   readonly defeatedTrainers: number;
   /** Escapes from the hunter so far; the next one costs more raid time. */
@@ -93,7 +110,8 @@ export class RunManager {
   private secureSlotValue: SecureSlot = {};
   private caughtPokemonValue: Pokemon[] = [];
   private foundItemsValue: ItemStack[] = [];
-  private recoveredFieldKitValue = false;
+  private contractStepsValue: string[] = [];
+  private secureItemStackLimitValue = MAX_SECURE_ITEM_STACKS;
   private defeatedTrainersValue = 0;
   private hunterFleesValue = 0;
   private mapIdValue: string | null = null;
@@ -135,13 +153,14 @@ export class RunManager {
     this.requirePhase('start a run', RunPhase.InHub, RunPhase.Escaped, RunPhase.Wiped);
     validateRunConfig(config);
     validateItemStacks(loadout.items);
-    validateSecureSlot(secureSlot, loadout.party, loadout.items);
+    this.secureItemStackLimitValue = config.secureItemStackLimit ?? MAX_SECURE_ITEM_STACKS;
+    validateSecureSlot(secureSlot, loadout.party, loadout.items, this.secureItemStackLimitValue);
 
     this.loadoutValue = copyLoadout(loadout);
     this.secureSlotValue = copySecureSlot(secureSlot);
     this.caughtPokemonValue = [];
     this.foundItemsValue = [];
-    this.recoveredFieldKitValue = false;
+    this.contractStepsValue = [];
     this.defeatedTrainersValue = 0;
     this.hunterFleesValue = 0;
     this.mapIdValue = config.mapId;
@@ -182,10 +201,23 @@ export class RunManager {
     return this.snapshot();
   }
 
-  public recoverFieldKit(): RunSnapshot {
-    this.requirePhase('recover the field kit', RunPhase.InRun);
-    this.recoveredFieldKitValue = true;
+  /**
+   * Records one contract stop. Repeating a stop is a no-op rather than an
+   * error: a marker is a tile, and stepping back onto it must not double-count.
+   */
+  public registerContractStep(stepId: string): RunSnapshot {
+    this.requirePhase('record a contract step', RunPhase.InRun);
+    if (stepId.length === 0) {
+      throw new Error('A contract step id must not be empty.');
+    }
+    if (!this.contractStepsValue.includes(stepId)) {
+      this.contractStepsValue.push(stepId);
+    }
     return this.snapshot();
+  }
+
+  public recoverFieldKit(): RunSnapshot {
+    return this.registerContractStep(FIELD_KIT_STEP_ID);
   }
 
   public registerTrainerDefeat(): RunSnapshot {
@@ -276,7 +308,7 @@ export class RunManager {
     const allPokemon = this.allPokemon();
     const allItems = this.allItems();
     const resolvedSecureSlot = secureSlot ?? this.secureSlotValue;
-    validateSecureSlot(resolvedSecureSlot, allPokemon, allItems);
+    validateSecureSlot(resolvedSecureSlot, allPokemon, allItems, this.secureItemStackLimitValue);
     this.beginResolution();
 
     const bankedPokemon =
@@ -303,7 +335,8 @@ export class RunManager {
       secureSlot: copySecureSlot(this.secureSlotValue),
       caughtPokemon: [...this.caughtPokemonValue],
       foundItems: [...this.foundItemsValue],
-      recoveredFieldKit: this.recoveredFieldKitValue,
+      contractSteps: [...this.contractStepsValue],
+      recoveredFieldKit: this.contractStepsValue.includes(FIELD_KIT_STEP_ID),
       defeatedTrainers: this.defeatedTrainersValue,
       hunterFlees: this.hunterFleesValue,
       mapId: this.mapIdValue,
@@ -382,6 +415,7 @@ function validateSecureSlot(
   secureSlot: SecureSlot,
   availablePokemon: readonly Pokemon[],
   availableItems: readonly ItemStack[],
+  itemStackLimit: number = MAX_SECURE_ITEM_STACKS,
 ): void {
   if (
     secureSlot.pokemon !== undefined &&
@@ -391,8 +425,8 @@ function validateSecureSlot(
   }
 
   const secureItems = secureSlot.items ?? [];
-  if (secureItems.length > 2) {
-    throw new Error('A secure slot can contain at most two item stacks.');
+  if (secureItems.length > itemStackLimit) {
+    throw new Error(`A secure slot can contain at most ${itemStackLimit} item stacks.`);
   }
   validateItemStacks(secureItems);
 

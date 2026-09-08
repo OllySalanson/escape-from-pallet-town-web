@@ -39,7 +39,17 @@ import { consumeTeachingEncounter } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { Bag, ITEMS, type ItemId } from '../items';
-import { completedObjectiveRewards } from '../objectives';
+import {
+  areContractStopsComplete,
+  completedObjectiveRewards,
+  contractCarryIn,
+  formatStacks,
+  isContractBankable,
+  missingCarryIn,
+  remainingMarkers,
+  type ContractMarker,
+  type RaidContract,
+} from '../objectives';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
 import { buildRaidSettlement, deployedRaidCondition } from '../run/raidSettlement';
@@ -55,7 +65,6 @@ import {
   raidClockView,
 } from './raidHud';
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
-import { FIRST_CONTRACT } from '../run/runGeneration';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
 import { findWatchingTrainer, trainerSightTiles } from '../world/trainerSight';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
@@ -95,9 +104,12 @@ const RUN_RESULT_DELAY_MS = 700;
  * keeps the colour the caption already carried, so nothing changes meaning.
  */
 const LABEL_TONES: Readonly<
-  Record<'station' | 'exitOpen' | 'exitShut' | 'route' | 'watch', WorldLabelTone>
+  Record<'station' | 'exitOpen' | 'exitShut' | 'route' | 'watch' | 'contract', WorldLabelTone>
 > = {
   station: { fill: 0x14243a, border: 0x7fb2e5, ink: '#dff0ff' },
+  // Contract stops are the one thing on the map the raid was taken for, so they
+  // are the only violet on it and cannot be mistaken for a cache or a gate.
+  contract: { fill: 0x281a3d, border: 0xc4b5fd, ink: '#ede9fe' },
   exitOpen: { fill: 0x123d22, border: 0x86efac, ink: '#dcfce7' },
   exitShut: { fill: 0x3d1414, border: 0xfca5a5, ink: '#fecaca' },
   route: { fill: 0x3a2408, border: 0xf1bf63, ink: '#fef3c7' },
@@ -222,7 +234,11 @@ export class WorldScene extends Phaser.Scene {
   private readonly activatedPoiIds = new Set<string>();
   private readonly poiSprites = new Map<string, Phaser.GameObjects.Container>();
   private readonly poiLabels = new Map<string, WorldLabel>();
-  private fieldKitMarker: Phaser.GameObjects.Image | undefined;
+  /** One drawn stop per outstanding contract marker, keyed by marker id. */
+  private readonly contractMarkers = new Map<
+    string,
+    { readonly image: Phaser.GameObjects.Image; readonly label: WorldLabel }
+  >();
   private pendingTrainerBattle:
     | {
         readonly trainer: RunTrainerEncounter['trainer'];
@@ -498,7 +514,7 @@ export class WorldScene extends Phaser.Scene {
   private createEntities(): void {
     this.createLoot();
     this.createPois();
-    this.createFieldKit();
+    this.createContractMarkers();
 
     for (const entity of this.currentMap.entities) {
       if (entity.kind === 'sign') {
@@ -598,26 +614,36 @@ export class WorldScene extends Phaser.Scene {
     );
   }
 
-  private createFieldKit(): void {
+  /**
+   * Every stop this contract still wants, drawn where it stands and captioned
+   * with what it is. A contract can ask for three of them, so nothing here may
+   * assume the single unlabelled field-kit icon the first contract shipped with.
+   */
+  private createContractMarkers(): void {
     const session = this.runSession;
     const contract = session?.plan?.contract;
-    if (
-      !contract ||
-      session.manager.snapshot().recoveredFieldKit ||
-      contract.mapId !== this.currentMap.id
-    ) {
+    if (!contract || contract.mapId !== this.currentMap.id) {
       return;
     }
 
-    const marker = this.add
-      .image(
-        contract.position.x * TILE_SIZE + TILE_SIZE / 2,
-        contract.position.y * TILE_SIZE + TILE_SIZE / 2,
-        iconTextureKey(WORLD_ICONS.fieldKit),
-      )
-      .setDepth(3 + contract.position.y / 1000);
-    this.fieldKitMarker = marker;
-    this.mapObjects.push(marker);
+    for (const marker of remainingMarkers(contract, session.manager.snapshot().contractSteps)) {
+      const x = marker.position.x * TILE_SIZE + TILE_SIZE / 2;
+      const y = marker.position.y * TILE_SIZE + TILE_SIZE / 2;
+      const image = this.add
+        .image(x, y, iconTextureKey(contractMarkerIcon(marker)))
+        .setDepth(3 + marker.position.y / 1000);
+      const label = new WorldLabel(
+        this,
+        x,
+        y - 12,
+        marker.label,
+        LABEL_TONES.contract,
+        4 + marker.position.y / 1000,
+      );
+      this.worldLabels.push(label);
+      this.contractMarkers.set(marker.id, { image, label });
+      this.mapObjects.push(image);
+    }
   }
 
   private createLoot(): void {
@@ -856,7 +882,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const snapshot = manager.snapshot();
-    const navigationCue = this.firstContractNavigationCue(snapshot.recoveredFieldKit)
+    const navigationCue = this.contractNavigationCue(snapshot.contractSteps)
       ?? session.objectives.find((objective) => !objective.progress(snapshot).complete)?.description
       ?? 'EXTRACT WITH YOUR HAUL';
     if (navigationCue !== this.objectiveCue) {
@@ -1009,7 +1035,9 @@ export class WorldScene extends Phaser.Scene {
       this.dialogBox.showMessage(picked);
       return;
     }
-    if (this.tryActivatePoiAt(targetTile)) {
+    const worked = this.tryActivatePoiAt(targetTile);
+    if (worked !== null) {
+      this.dialogBox.showMessages([...worked]);
       return;
     }
 
@@ -1072,25 +1100,52 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  private firstContractNavigationCue(recoveredFieldKit: boolean): string | undefined {
+  /**
+   * The corner chip's one line: the next contract stop and which way it is, or
+   * - once every stop is made - the exit that actually banks the contract. A
+   * contract that only banks one way must say so on the map, not only in the
+   * guide, because the temptation is a gate the player is walking past.
+   */
+  private contractNavigationCue(contractSteps: readonly string[]): string | undefined {
     const contract = this.runSession?.plan?.contract;
-    if (!contract || recoveredFieldKit) {
+    if (!contract) {
       return undefined;
     }
     if (this.currentMap.id !== contract.mapId) {
       return `TRAVEL TO ${WORLD_MAP_NAMES[contract.mapId].toUpperCase()}`;
     }
-    return `LOST KIT: ${directionTo(this.currentTile, contract.position)}`;
+    const outstanding = remainingMarkers(contract, contractSteps);
+    if (outstanding.length === 0) {
+      return contract.requiredExitLabel
+        ? `BANK VIA ${contract.requiredExitLabel}`
+        : undefined;
+    }
+    // Straight-line distance, not a path search: the chip names the stop the
+    // player is closest to so it changes as they move, and running that search
+    // every frame would buy nothing a bearing does not already say.
+    const next = outstanding.reduce((closest, marker) =>
+      manhattan(this.currentTile, marker.position) < manhattan(this.currentTile, closest.position)
+        ? marker
+        : closest,
+    );
+    const remaining = outstanding.length > 1 ? ` (${outstanding.length} LEFT)` : '';
+    return `${next.cue}: ${directionTo(this.currentTile, next.position)}${remaining}`;
   }
 
   private showFirstDeploymentBriefing(): void {
     const session = this.runSession;
-    if (!session?.plan?.contract || session.firstDeploymentBriefingShown) {
+    const contract = session?.plan?.contract;
+    if (!contract || session.firstDeploymentBriefingShown) {
       return;
     }
     session.firstDeploymentBriefingShown = true;
+    // A contract that needs supplies out of the pack says so before the first
+    // step, because arriving at the drop without them wastes the whole raid.
+    const missing = missingCarryIn(contractCarryIn(contract), (itemId) => this.bag.count(itemId));
     this.dialogBox.showMessage(
-      'ARROW KEYS / WASD: move. The field kit is SOUTH - fast road or west reeds. Press O for the FIELD GUIDE.',
+      missing.length === 0
+        ? contract.deploymentBriefing
+        : `You are still short ${formatStacks(missing)} for this contract's drop. It will refuse you.`,
     );
   }
 
@@ -1184,11 +1239,20 @@ export class WorldScene extends Phaser.Scene {
     // pickup lands, and the challenge follows it in the same dialogue. Without
     // this the collection returned early and the road could be walked free by
     // whichever tile a generated cache happened to land on.
+    //
+    // Standing on a landmark works it too, as well as facing it from beside it.
+    // Movement has no free turn onto walkable ground, so a landmark whose only
+    // approach lane is a dead end could never be faced at all: the Sluice Wheel
+    // sits between a hedge and the leat, and the West Culvert it opens had
+    // therefore never been openable. Reaching a landmark is the cost of it, not
+    // standing on the correct side of it - and it is on the same footing as a
+    // pickup here, so a watched landmark cannot be worked for free either.
     const pickup =
-      this.tryCollectLootAt(this.currentTile) ?? this.tryRecoverFieldKitAt(this.currentTile);
-    if (pickup !== null) {
-      if (!this.tryTrainerChallengeAt(this.currentTile, [pickup])) {
-        this.dialogBox.showMessage(pickup);
+      this.tryCollectLootAt(this.currentTile) ?? this.tryMakeContractStopAt(this.currentTile);
+    const spoken = pickup === null ? this.tryActivatePoiAt(this.currentTile) : [pickup];
+    if (spoken !== null && spoken.length > 0) {
+      if (!this.tryTrainerChallengeAt(this.currentTile, spoken)) {
+        this.dialogBox.showMessages([...spoken]);
       }
       return;
     }
@@ -1292,7 +1356,7 @@ export class WorldScene extends Phaser.Scene {
     this.lootSprites.clear();
     this.poiSprites.clear();
     this.poiLabels.clear();
-    this.fieldKitMarker = undefined;
+    this.contractMarkers.clear();
     this.extractionMarkers = [];
   }
 
@@ -1355,7 +1419,13 @@ export class WorldScene extends Phaser.Scene {
     return `Found ${item.displayName}${quantity}!`;
   }
 
-  private tryActivatePoiAt(position: GridPosition): boolean {
+  /**
+   * Works a landmark and returns what to say about it, or null if there was
+   * nothing to work. Lines rather than a boolean for the same reason
+   * `tryCollectLootAt` does it: a landmark can stand on ground a trainer is
+   * watching, and then both facts belong in one dialogue.
+   */
+  private tryActivatePoiAt(position: GridPosition): readonly string[] | null {
     const poi = this.currentMap.pois.find(
       (candidate) => candidate.position.x === position.x && candidate.position.y === position.y,
     );
@@ -1366,11 +1436,10 @@ export class WorldScene extends Phaser.Scene {
       (itemId, quantity) => this.collectRunItem(itemId, quantity),
     );
     if (result === 'unavailable') {
-      return false;
+      return null;
     }
     if (result === 'bag-full') {
-      this.dialogBox.showMessage('Bag is full. The marked cache remains sealed.');
-      return true;
+      return ['Bag is full. The marked cache remains sealed.'];
     }
 
     this.poiSprites.get(poi!.id)?.destroy();
@@ -1384,18 +1453,14 @@ export class WorldScene extends Phaser.Scene {
       .join(' + ');
     if (poi!.effect === 'unlock-extraction') {
       const exit = poi!.unlockedExtractionLabel ?? 'A NEW EXIT';
-      this.dialogBox.showMessages([
+      this.refreshExtractionMarkers();
+      return [
         `${poi!.label}: ${exit} is open.`,
         this.rangerForecast(),
         ...(reward ? [`${reward} secured. Extract to bank it.`] : []),
-      ]);
-      this.refreshExtractionMarkers();
-      return true;
+      ];
     }
-    this.dialogBox.showMessage(
-      `${poi!.label}: ${reward} secured. Detour reward is LOST ON WIPE - extract to bank it.`,
-    );
-    return true;
+    return [`${poi!.label}: ${reward} secured. Detour reward is LOST ON WIPE - extract to bank it.`];
   }
 
   private restoreSavedGame(savedGame: RestoredGame | undefined): void {
@@ -1438,27 +1503,54 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  /** As `tryCollectLootAt`: recovers the kit and returns what to say about it. */
-  private tryRecoverFieldKitAt(position: GridPosition): string | null {
+  /**
+   * Makes a contract stop by standing on it, and - as `tryCollectLootAt` -
+   * returns what to say about it so the caller can merge that line with a
+   * trainer challenge on the same tile rather than one silencing the other.
+   *
+   * A drop that asks for supplies takes them out of the bag here, and refuses
+   * the stop when they are not there: the warden's resupply is a delivery, so
+   * arriving without the Potions has to be a readable "not yet" rather than a
+   * silent nothing. It still returns a line, because the player did stop for it
+   * and an encounter roll on the same tick would bury the message.
+   */
+  private tryMakeContractStopAt(position: GridPosition): string | null {
     const session = this.runSession;
     const contract = session?.plan?.contract;
-    if (
-      !contract ||
-      session.manager.snapshot().recoveredFieldKit ||
-      contract.mapId !== this.currentMap.id ||
-      contract.position.x !== position.x ||
-      contract.position.y !== position.y
-    ) {
+    if (!contract || contract.mapId !== this.currentMap.id) {
       return null;
     }
 
-    session.manager.recoverFieldKit();
-    this.fieldKitMarker?.destroy();
-    this.fieldKitMarker = undefined;
+    const steps = session.manager.snapshot().contractSteps;
+    const marker = contract.markers.find(
+      (candidate) =>
+        !steps.includes(candidate.id) &&
+        candidate.position.x === position.x &&
+        candidate.position.y === position.y,
+    );
+    if (!marker) {
+      return null;
+    }
+
+    const carriedIn = marker.carriedIn ?? [];
+    if (missingCarryIn(carriedIn, (itemId) => this.bag.count(itemId)).length > 0) {
+      return marker.shortMessage ?? 'You are not carrying what this drop needs.';
+    }
+    for (const { itemId, quantity } of carriedIn) {
+      this.bag.remove(itemId, quantity);
+    }
+    this.syncPokeBallsToBag();
+
+    session.manager.registerContractStep(marker.id);
+    const drawn = this.contractMarkers.get(marker.id);
+    drawn?.image.destroy();
+    this.removeWorldLabel(drawn?.label);
+    this.contractMarkers.delete(marker.id);
     this.cameras.main.flash(120, 96, 165, 250, false);
     audioManager.playLootPickup();
     this.refreshRunTimerHud();
-    return 'Recovered the lost field kit! Extract to secure it.';
+    this.saveGame();
+    return marker.collectedMessage;
   }
 
   private returnLocation(): RaidLocation {
@@ -1538,9 +1630,14 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.shake(120, 0.004);
     audioManager.playExtract();
     const snapshot = this.runSession.manager.snapshot();
-    // The first contract's permanent reward is granted atomically below, rather
+    const contract = this.runSession.plan?.contract;
+    // Whether this exit banks the contract, not merely whether its stops were
+    // made: the cordon ledger is finished by leaving the right way, so walking
+    // out of the South Gate with it in hand completes nothing.
+    const banksContract = contract !== undefined && isContractBankable(contract, snapshot, point.label);
+    // Contract rewards are granted by the save, once and permanently, rather
     // than as a repeatable per-run objective item.
-    const objectiveRewards = snapshot.recoveredFieldKit
+    const objectiveRewards = contract
       ? []
       : completedObjectiveRewards(this.runSession.objectives, snapshot);
     // Loot found in the field is already in the bag, so it comes home through
@@ -1553,8 +1650,8 @@ export class WorldScene extends Phaser.Scene {
       snapshot,
       this.bag.toJSON(),
     );
-    const contractResult = snapshot.recoveredFieldKit
-      ? new SaveManager().bankFirstContractRun(runResult, settlement)
+    const contractResult = banksContract
+      ? new SaveManager().bankContract(contract.id, runResult, settlement)
       : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };
     this.pendingHubTransition = true;
     this.showRunResult(
@@ -1563,24 +1660,28 @@ export class WorldScene extends Phaser.Scene {
         snapshot,
         durationMs: snapshot.durationMs,
         exitLabel: point.label,
-        // The contract's Super Potion is granted by the save rather than by the
-        // run, so the report is handed exactly what the stash received.
+        // The contract's payout is granted by the save rather than by the run,
+        // so the report is handed exactly what the stash received.
         banked: {
           pokemon: runResult.pokemon,
           items: [
             ...snapshot.foundItems,
             ...objectiveRewards,
-            ...(contractResult.granted ? [{ itemId: 'super-potion', quantity: 1 }] : []),
+            ...(contractResult.granted ? contract!.reward.items : []),
           ],
         },
-        ...(snapshot.recoveredFieldKit
+        ...(contract
           ? {
             contract: {
-              description: FIRST_CONTRACT.description,
-              complete: true,
-              reward: contractResult.granted
-                ? 'Three more insertions are permanently unlocked, and a Super Potion is waiting at base.'
-                : 'Already banked on an earlier raid, so there is no new unlock this time.',
+              description: contract.description,
+              complete: banksContract,
+              reward: contractReportLine(
+                contract,
+                banksContract,
+                contractResult.granted,
+                areContractStopsComplete(contract, snapshot.contractSteps),
+                point.label,
+              ),
             },
           }
           : {}),
@@ -1903,6 +2004,36 @@ export class WorldScene extends Phaser.Scene {
  */
 function extractionIconKey(isOpen: boolean): string {
   return iconTextureKey(isOpen ? WORLD_ICONS.extractionOpen : WORLD_ICONS.extractionLocked);
+}
+
+/**
+ * What the result screen says about the contract, including the case the whole
+ * cordon ledger exists for: every stop made and the wrong gate taken.
+ */
+function contractReportLine(
+  contract: RaidContract,
+  banked: boolean,
+  granted: boolean,
+  stopsComplete: boolean,
+  exitLabel: string,
+): string {
+  if (banked) {
+    return granted
+      ? contract.reward.summary
+      : 'Already banked on an earlier raid, so there is no new unlock this time.';
+  }
+  if (stopsComplete && contract.requiredExitLabel) {
+    return `You had it, and ${exitLabel} is not ${contract.requiredExitLabel}. It came home unpaid and stays on the board.`;
+  }
+  return 'Unfinished, so it stays on the board for the next raid.';
+}
+
+function manhattan(from: GridPosition, to: GridPosition): number {
+  return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
+}
+
+function contractMarkerIcon(marker: ContractMarker): string {
+  return marker.icon === 'supply-cache' ? WORLD_ICONS.supplyCache : WORLD_ICONS.fieldKit;
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {

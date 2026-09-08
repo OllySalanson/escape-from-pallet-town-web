@@ -83,6 +83,7 @@ import { RunManager, RunPhase } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
 import { ENRAGE_GRACE_MS } from '../run/RunManager';
 import { RAID_DURATION_MS } from '../run/raidClock';
+import { FIRST_CONTRACT } from '../objectives';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
 import { WorldScene } from './WorldScene';
@@ -194,7 +195,7 @@ const startRaid = (
     { mapId: RUN_INSERTIONS[insertionId].mapId, durationMs: RAID_DURATION_MS },
   );
   // A second raid never carries the first contract: it was banked on extraction.
-  const plan = generateRunPlan(seed, undefined, insertionId, seed === 1);
+  const plan = generateRunPlan(seed, undefined, insertionId, seed === 1 ? FIRST_CONTRACT : undefined);
   const runSession = createActiveRunSession(manager, {}, {}, [], [], [], plan);
   scene.create({ party, bag: new Bag({ potion: 5 }), runSession });
   return runSession;

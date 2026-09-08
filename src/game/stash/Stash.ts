@@ -23,6 +23,17 @@ export const MINIMUM_SUPPLIES: Readonly<Record<string, number>> = {
   potion: 3,
 };
 
+/** The standing minimum plus whatever banked contracts have added to it. */
+export function minimumSupplies(
+  extraSupplies: Readonly<Record<string, number>> = {},
+): Readonly<Record<string, number>> {
+  const floor: Record<string, number> = { ...MINIMUM_SUPPLIES };
+  for (const [itemId, quantity] of Object.entries(extraSupplies)) {
+    floor[itemId] = (floor[itemId] ?? 0) + quantity;
+  }
+  return floor;
+}
+
 export function getStarterSpecies(starterId: StarterSpeciesId): PokemonBase {
   return STARTER_SPECIES.find((species) => species.id === starterId) ?? BULBASAUR;
 }
@@ -205,13 +216,16 @@ export class Stash {
    *
    * @returns Whether a starter was granted.
    */
-  public ensurePlayable(starter = BULBASAUR): boolean {
+  public ensurePlayable(
+    starter = BULBASAUR,
+    extraSupplies: Readonly<Record<string, number>> = {},
+  ): boolean {
     if (this.storedPokemon.length > 0) {
       return false;
     }
 
     this.addPokemon(new Pokemon(starter, 5));
-    this.restockMinimumSupplies();
+    this.restockMinimumSupplies(extraSupplies);
     return true;
   }
 
@@ -221,11 +235,15 @@ export class Stash {
    * cannot be farmed by wiping on purpose. Nothing is ever removed, and
    * unrelated items the player kept are left alone.
    *
+   * `extraSupplies` is what banked contracts have added to that floor - the
+   * warden's resupply pays in exactly this - so the guarantee is one rule with
+   * a per-save kit rather than two competing restocks.
+   *
    * @returns Whether anything was added.
    */
-  public restockMinimumSupplies(): boolean {
+  public restockMinimumSupplies(extraSupplies: Readonly<Record<string, number>> = {}): boolean {
     let restocked = false;
-    for (const [itemId, minimum] of Object.entries(MINIMUM_SUPPLIES)) {
+    for (const [itemId, minimum] of Object.entries(minimumSupplies(extraSupplies))) {
       const shortfall = minimum - this.itemCount(itemId);
       if (shortfall > 0 && this.addItem(itemId, shortfall)) {
         restocked = true;
@@ -249,7 +267,10 @@ export class Stash {
    *
    * @returns Whether the swap happened.
    */
-  public swapStarter(starter: PokemonBase): boolean {
+  public swapStarter(
+    starter: PokemonBase,
+    extraSupplies: Readonly<Record<string, number>> = {},
+  ): boolean {
     if (!this.canSwapStarter()) {
       return false;
     }
@@ -258,7 +279,7 @@ export class Stash {
     this.addPokemon(new Pokemon(starter, 5));
     // The swap is only ever reachable while recovering, so it carries the same
     // supply guarantee as a re-grant.
-    this.restockMinimumSupplies();
+    this.restockMinimumSupplies(extraSupplies);
     return true;
   }
 

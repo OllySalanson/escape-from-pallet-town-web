@@ -4,7 +4,6 @@ import {
   DeploymentFlow,
   FAINTED_TREATMENT_NOTE,
   formatRecoveryClock,
-  MAX_SECURE_ITEM_STACKS,
   needsRecovery,
   pokemonNeedingRecovery,
   quoteRecovery,
@@ -26,7 +25,16 @@ import {
   RUN_INSERTIONS,
   type RunInsertionId,
 } from '../run/runGeneration';
-import { formatObjectiveReward, RUN_OBJECTIVES } from '../objectives';
+import {
+  availableContracts,
+  contractCarryIn,
+  contractForMap,
+  formatStacks,
+  missingCarryIn,
+  objectivesForContract,
+  secureItemStackLimit,
+  type RaidContract,
+} from '../objectives';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import {
   getStarterSpecies,
@@ -35,6 +43,7 @@ import {
   type StashedPokemon,
 } from '../stash';
 import { itemIcon, objectiveIcon } from '../ui/icons';
+import { WORLD_MAP_NAMES } from '../worldMap';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
 import { starterCards, starterLoadoutSummary } from '../ui/starterPicker';
@@ -82,7 +91,11 @@ export class HubScene extends Phaser.Scene {
     this.savedGame = loaded;
     this.stash = loaded.stash;
     // Nothing is pre-selected: the raid party is always something the player picked.
-    this.flow = new DeploymentFlow(this.stash, this.unlockedInsertions[0]?.[0]);
+    this.flow = new DeploymentFlow(
+      this.stash,
+      this.unlockedInsertions[0]?.[0],
+      secureItemStackLimit(loaded.raidProgress.completedContracts),
+    );
     this.view = 'home';
     this.reselectStarterId = this.startingStarterId();
     this.swapArmed = false;
@@ -105,6 +118,41 @@ export class HubScene extends Phaser.Scene {
 
   private get firstContractActive(): boolean {
     return !this.savedGame.raidProgress.firstContractExtracted;
+  }
+
+  /** Every contract the board is offering, in the order they unlock. */
+  private get openContracts(): readonly RaidContract[] {
+    return availableContracts(this.savedGame.raidProgress.completedContracts);
+  }
+
+  /**
+   * The contract a raid inserting here would carry. A contract belongs to its
+   * map, so the insertion list *is* the contract board: choosing where to drop
+   * in is choosing which contract to take, and no separate acceptance step can
+   * fall out of step with it.
+   */
+  private contractFor(insertionId: RunInsertionId): RaidContract | undefined {
+    return contractForMap(
+      RUN_INSERTIONS[insertionId].mapId,
+      this.savedGame.raidProgress.completedContracts,
+    );
+  }
+
+  /**
+   * What the chosen contract asks you to pack, checked against what is actually
+   * in the loadout. A delivery is decided here or not at all: the drop refuses
+   * a player who arrives without the supplies, and the raid is spent by then.
+   */
+  private carryInNote(): string {
+    const contract = this.contractFor(this.flow.insertionId);
+    const required = contract ? contractCarryIn(contract) : [];
+    if (required.length === 0) {
+      return '';
+    }
+    const short = missingCarryIn(required, (itemId) => this.flow.itemQuantity(itemId));
+    return short.length === 0
+      ? `<p class="confirm-note">${contract!.name}: ${formatStacks(required)} packed for the drop. They are spent when you hand them over.</p>`
+      : `<div class="risk-note">${contract!.name} needs ${formatStacks(required)} in your pack. Still short: ${formatStacks(short)}.</div>`;
   }
 
   /**
@@ -255,18 +303,27 @@ export class HubScene extends Phaser.Scene {
     activeRunManager.startRun(
       { party: deployment.party.map((stored) => stored.pokemon), items },
       // The base clock, less whatever recovery has already been booked against it.
-      { mapId: RUN_INSERTIONS[deployment.insertionId].mapId, durationMs: this.raidClockMs },
+      {
+        mapId: RUN_INSERTIONS[deployment.insertionId].mapId,
+        durationMs: this.raidClockMs,
+        secureItemStackLimit: this.flow.secureItemStacks,
+      },
       deployment.secureSlot,
     );
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
-    const plan = generateRunPlan(seed, undefined, deployment.insertionId, this.firstContractActive);
+    const plan = generateRunPlan(
+      seed,
+      undefined,
+      deployment.insertionId,
+      this.contractFor(deployment.insertionId),
+    );
     const runSession = createActiveRunSession(
       activeRunManager,
       deployment.secureSlot,
       deployment.stashSecureSlot,
       deployment.party.map((stored) => stored.id),
       items,
-      plan.contract ? RUN_OBJECTIVES : [],
+      plan.contract ? objectivesForContract(plan.contract) : [],
       plan,
     );
     this.cameras.main.fadeOut(180, 0, 0, 0);
@@ -366,7 +423,30 @@ export class HubScene extends Phaser.Scene {
 
   private homeView(): string {
     const unlocked = this.savedGame.raidProgress.firstContractExtracted;
-    return `<main class="hub-home">${this.recoveryPanel()}${unlocked ? '<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">New permanent unlock</p><h2>Three new insertions + Super Potion</h2></div><small>Town Square, Route 1 and Viridian Forest are now in your insertion list</small></div></section>' : ''}<section class="hub-actions"><button class="action-card primary" data-deploy-flow><span>DEPLOY</span><h2>Start a raid</h2><p>${unlocked ? 'Pick the Pokémon and supplies you are willing to risk, choose where you drop in, then confirm.' : 'Pick the Pokémon and supplies you are willing to risk, then confirm before you drop in. Recover the lost field kit at the Floodplain Relay, then pick an exit and get out.'}</p><b>Prepare loadout →</b></button><button class="action-card" data-view="stash"><span>STASH</span><h2>Review &amp; recover</h2><p>Check the Pokémon and supplies secured at base, and treat anyone who came home hurt.</p><b>Open stash →</b></button></section>${this.swapPanel()}${unlocked ? '' : `<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">Active contract</p><h2>Lost field kit</h2></div><small>Reward requires extraction</small></div><div class="objective-list">${RUN_OBJECTIVES.map((objective) => `<article class="entity-row">${objectiveIcon('Contract')}<div class="objective-copy"><strong>${objective.description}</strong><small>Reward: unlock three more insertions + ${formatObjectiveReward(objective.reward)}</small></div></article>`).join('')}</div></section>`}</main>`;
+    return `<main class="hub-home">${this.recoveryPanel()}<section class="hub-actions"><button class="action-card primary" data-deploy-flow><span>DEPLOY</span><h2>Start a raid</h2><p>${unlocked ? 'Pick the Pokémon and supplies you are willing to risk, choose where you drop in, then confirm. Where you drop in is which contract you take.' : 'Pick the Pokémon and supplies you are willing to risk, then confirm before you drop in. Recover the lost field kit at the Floodplain Relay, then pick an exit and get out.'}</p><b>Prepare loadout →</b></button><button class="action-card" data-view="stash"><span>STASH</span><h2>Review &amp; recover</h2><p>Check the Pokémon and supplies secured at base, and treat anyone who came home hurt.</p><b>Open stash →</b></button></section>${this.swapPanel()}${this.contractBoard()}</main>`;
+  }
+
+  /**
+   * The contract board: every contract on offer, what it asks and what it pays.
+   *
+   * Each row names its insertion because taking a contract is choosing where to
+   * drop in, and names what has to be packed for it, because a delivery decided
+   * at the loadout screen is decided too late once the raid has started.
+   */
+  private contractBoard(): string {
+    const contracts = this.openContracts;
+    if (contracts.length === 0) {
+      return `<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">Contract board</p><h2>Nothing outstanding</h2></div><small>Every contract is banked</small></div><div class="objective-list"><p class="empty-state">Raids from here are for supplies, Pokémon and whatever the maps still hold.</p></div></section>`;
+    }
+    const insertionFor = (contract: RaidContract): string =>
+      Object.values(RUN_INSERTIONS).find((insertion) => insertion.mapId === contract.mapId)?.label
+        ?? WORLD_MAP_NAMES[contract.mapId];
+    return `<section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">Contract board</p><h2>${contracts.length === 1 ? '1 contract open' : `${contracts.length} contracts open`}</h2></div><small>Rewards require extraction</small></div><div class="objective-list">${contracts
+      .map((contract) => {
+        const carryIn = contractCarryIn(contract);
+        return `<article class="entity-row">${objectiveIcon('Contract')}<div class="objective-copy"><strong>${contract.description}</strong><small>Insert at ${insertionFor(contract)}${contract.requiredExitLabel ? ` · banks only through ${contract.requiredExitLabel}` : ''}${carryIn.length ? ` · pack ${formatStacks(carryIn)}` : ''}</small><small>Reward: ${contract.reward.summary}</small></div></article>`;
+      })
+      .join('')}</div></section>`;
   }
 
   /**
@@ -455,13 +535,13 @@ export class HubScene extends Phaser.Scene {
     const party = this.flow.party;
     const securedCount = (this.flow.securedPokemon ? 1 : 0) + this.flow.securedItems.length;
     const single = this.stashPokemon.length === 1;
-    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove · treat anyone hurt before you go</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<div class="loadout-entry${needsRecovery(stored.pokemon) ? ' hurt' : ''}"><button class="entity-row selectable ${this.flow.includesPokemon(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}${single ? ' · your only Pokémon' : ''}</small>${needsRecovery(stored.pokemon) ? hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp) : ''}</div><span>${this.flow.includesPokemon(stored.id) ? 'Added ✓' : 'Add +'}</span></button>${this.careStrip(stored)}</div>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.flow.itemQuantity(item.id as ItemId)}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${this.firstContractActive ? 'Contract area' : 'Choose your entry'}</h2></div></div>${this.unlockedInsertions.map(([id, insertion]) => `<button class="entity-row selectable ${this.flow.insertionId === id ? 'selected' : ''}" data-insertion="${id}"><div><strong>${insertion.label}</strong><small>${insertion.description}</small></div></button>`).join('')}${this.firstContractActive ? '<p class="confirm-note">Your active contract is here. Three more insertions unlock when you extract it.</p>' : ''}<div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Run loadout</h2></div><b>${party.length}/6</b></div>${party.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong></article>`).join('') || '<p class="empty-state">Nothing selected yet. Add a Pokémon from your stash to continue.</p>'}<div class="risk-note">Everything here is lost on a wipe unless it is in the secure slot.</div><button class="button" data-secure-slot>Secure slot${securedCount ? ` · ${securedCount} protected` : ''} →</button>${party.length > 0 && !this.flow.isDeployable ? '<div class="risk-note">Every Pokémon here has fainted. Recover one at base before you deploy.</div>' : ''}<button class="button primary-button" data-advance ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy →</button></section></main>`;
+    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove · treat anyone hurt before you go</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<div class="loadout-entry${needsRecovery(stored.pokemon) ? ' hurt' : ''}"><button class="entity-row selectable ${this.flow.includesPokemon(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}${single ? ' · your only Pokémon' : ''}</small>${needsRecovery(stored.pokemon) ? hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp) : ''}</div><span>${this.flow.includesPokemon(stored.id) ? 'Added ✓' : 'Add +'}</span></button>${this.careStrip(stored)}</div>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.flow.itemQuantity(item.id as ItemId)}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${this.firstContractActive ? 'Contract area' : 'Choose your entry'}</h2></div></div>${this.unlockedInsertions.map(([id, insertion]) => { const contract = this.contractFor(id); return `<button class="entity-row selectable ${this.flow.insertionId === id ? 'selected' : ''}" data-insertion="${id}"><div><strong>${insertion.label}</strong>${contract ? `<small class="insertion-contract">CONTRACT · ${contract.name}</small>` : ''}<small>${insertion.description}</small></div></button>`; }).join('')}${this.firstContractActive ? '<p class="confirm-note">Your active contract is here. Three more insertions unlock when you extract it.</p>' : ''}${this.carryInNote()}<div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Run loadout</h2></div><b>${party.length}/6</b></div>${party.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong></article>`).join('') || '<p class="empty-state">Nothing selected yet. Add a Pokémon from your stash to continue.</p>'}<div class="risk-note">Everything here is lost on a wipe unless it is in the secure slot.</div><button class="button" data-secure-slot>Secure slot${securedCount ? ` · ${securedCount} protected` : ''} →</button>${party.length > 0 && !this.flow.isDeployable ? '<div class="risk-note">Every Pokémon here has fainted. Recover one at base before you deploy.</div>' : ''}<button class="button primary-button" data-advance ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy →</button></section></main>`;
   }
 
   private secureView(): string {
     const party = this.flow.party;
     const returnLabel = this.flow.secureReturnStep === 'confirm' ? 'final check' : 'loadout';
-    return `<main class="secure-layout"><section class="secure-intro"><p class="eyebrow">Protected on a wipe</p><h2>SECURED</h2><p>One Pokémon and ${MAX_SECURE_ITEM_STACKS} item stacks survive. Everything else in your loadout is at risk.</p></section><section class="secure-group"><h2>Pokémon <small>1 slot</small></h2>${party.map((stored) => `<button class="entity-row selectable ${this.flow.securesPokemon(stored.id) ? 'secured' : ''}" data-secure-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong><span>${this.flow.securesPokemon(stored.id) ? 'Secured ✓' : 'Secure'}</span></button>`).join('') || '<p class="empty-state">Add a Pokémon to your loadout first.</p>'}</section><section class="secure-group"><h2>Item stacks <small>${this.flow.securedItems.length}/${MAX_SECURE_ITEM_STACKS} slots</small></h2>${this.flow.items.map((item) => `<button class="entity-row selectable ${this.flow.securesItem(item.itemId) ? 'secured' : ''}" data-secure-item="${item.itemId}">${itemIcon(item.itemId, this.itemName(item.itemId))}<strong>${this.itemName(item.itemId)} ×${item.quantity}</strong><span>${this.flow.securesItem(item.itemId) ? 'Secured ✓' : 'Secure'}</span></button>`).join('') || '<p class="empty-state">Add supplies to your loadout first.</p>'}<button class="button primary-button" data-advance>Back to ${returnLabel} →</button></section></main>`;
+    return `<main class="secure-layout"><section class="secure-intro"><p class="eyebrow">Protected on a wipe</p><h2>SECURED</h2><p>One Pokémon and ${this.flow.secureItemStacks} item stacks survive. Everything else in your loadout is at risk.</p></section><section class="secure-group"><h2>Pokémon <small>1 slot</small></h2>${party.map((stored) => `<button class="entity-row selectable ${this.flow.securesPokemon(stored.id) ? 'secured' : ''}" data-secure-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong><span>${this.flow.securesPokemon(stored.id) ? 'Secured ✓' : 'Secure'}</span></button>`).join('') || '<p class="empty-state">Add a Pokémon to your loadout first.</p>'}</section><section class="secure-group"><h2>Item stacks <small>${this.flow.securedItems.length}/${this.flow.secureItemStacks} slots</small></h2>${this.flow.items.map((item) => `<button class="entity-row selectable ${this.flow.securesItem(item.itemId) ? 'secured' : ''}" data-secure-item="${item.itemId}">${itemIcon(item.itemId, this.itemName(item.itemId))}<strong>${this.itemName(item.itemId)} ×${item.quantity}</strong><span>${this.flow.securesItem(item.itemId) ? 'Secured ✓' : 'Secure'}</span></button>`).join('') || '<p class="empty-state">Add supplies to your loadout first.</p>'}<button class="button primary-button" data-advance>Back to ${returnLabel} →</button></section></main>`;
   }
 
   private confirmView(): string {
@@ -477,7 +557,7 @@ export class HubScene extends Phaser.Scene {
       .filter((item) => item.quantity > 0);
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
     const protectedCount = (securedPokemon ? 1 : 0) + securedItems.length;
-    return `<main class="confirm-layout"><section class="panel confirm-insertion"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${insertion.label}</h2></div></div><p class="confirm-note">${insertion.description}</p><p class="confirm-note"><strong>Raid clock ${formatRecoveryClock(this.raidClockMs)}</strong>${this.pendingRecoveryMs === 0 ? '' : ` · ${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery`}</p><button class="button" data-back-step>Change loadout</button></section><section class="panel confirm-risk"><div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Lost if you wipe</h2></div><b>${riskedPokemon.length + riskedItems.length} ${riskedPokemon.length + riskedItems.length === 1 ? 'entry' : 'entries'}</b></div><div class="entity-list">${riskedPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><span class="risk-tag">At risk</span></article>`).join('')}${riskedItems.map((item) => `<article class="entity-row">${itemIcon(item.itemId, this.itemName(item.itemId))}<div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="risk-tag">At risk</span></article>`).join('')}${riskedPokemon.length + riskedItems.length ? '' : '<p class="empty-state">Nothing extra is at risk. Your whole loadout is protected.</p>'}</div></section><section class="panel confirm-secure"><div class="panel-heading"><div><p class="eyebrow">Protected</p><h2>Secure slot</h2></div><b>${protectedCount}/${1 + MAX_SECURE_ITEM_STACKS}</b></div><div class="entity-list">${securedPokemon ? `<article class="entity-row secured">${pokemonAvatar(securedPokemon.pokemon.base.dexId, securedPokemon.pokemon.base.name)}<div><strong>${securedPokemon.pokemon.base.name}</strong><small>Level ${securedPokemon.pokemon.level}</small></div><span class="secure-tag">Comes home ✓</span></article>` : ''}${securedItems.map((item) => `<article class="entity-row secured">${itemIcon(item.itemId, this.itemName(item.itemId))}<div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="secure-tag">Comes home ✓</span></article>`).join('')}${protectedCount ? '' : '<p class="risk-note">Nothing is protected. A wipe costs you your whole loadout.</p>'}</div><button class="button" data-secure-slot>${protectedCount ? 'Change secure slot' : 'Set up secure slot'} →</button></section><section class="starter-confirm confirm-bar"><div><strong>Deploy to ${insertion.label}</strong><small>${this.flow.party.length} Pokémon · ${supplies} supplies packed · ${protectedCount} protected · ${formatRecoveryClock(this.raidClockMs)} on the clock</small></div><button class="button primary-button" data-start>Enter the raid →</button></section></main>`;
+    return `<main class="confirm-layout"><section class="panel confirm-insertion"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${insertion.label}</h2></div></div><p class="confirm-note">${insertion.description}</p><p class="confirm-note"><strong>Raid clock ${formatRecoveryClock(this.raidClockMs)}</strong>${this.pendingRecoveryMs === 0 ? '' : ` · ${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery`}</p><button class="button" data-back-step>Change loadout</button></section><section class="panel confirm-risk"><div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Lost if you wipe</h2></div><b>${riskedPokemon.length + riskedItems.length} ${riskedPokemon.length + riskedItems.length === 1 ? 'entry' : 'entries'}</b></div><div class="entity-list">${riskedPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><span class="risk-tag">At risk</span></article>`).join('')}${riskedItems.map((item) => `<article class="entity-row">${itemIcon(item.itemId, this.itemName(item.itemId))}<div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="risk-tag">At risk</span></article>`).join('')}${riskedPokemon.length + riskedItems.length ? '' : '<p class="empty-state">Nothing extra is at risk. Your whole loadout is protected.</p>'}</div></section><section class="panel confirm-secure"><div class="panel-heading"><div><p class="eyebrow">Protected</p><h2>Secure slot</h2></div><b>${protectedCount}/${1 + this.flow.secureItemStacks}</b></div><div class="entity-list">${securedPokemon ? `<article class="entity-row secured">${pokemonAvatar(securedPokemon.pokemon.base.dexId, securedPokemon.pokemon.base.name)}<div><strong>${securedPokemon.pokemon.base.name}</strong><small>Level ${securedPokemon.pokemon.level}</small></div><span class="secure-tag">Comes home ✓</span></article>` : ''}${securedItems.map((item) => `<article class="entity-row secured">${itemIcon(item.itemId, this.itemName(item.itemId))}<div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="secure-tag">Comes home ✓</span></article>`).join('')}${protectedCount ? '' : '<p class="risk-note">Nothing is protected. A wipe costs you your whole loadout.</p>'}</div><button class="button" data-secure-slot>${protectedCount ? 'Change secure slot' : 'Set up secure slot'} →</button></section><section class="starter-confirm confirm-bar"><div><strong>Deploy to ${insertion.label}</strong><small>${this.flow.party.length} Pokémon · ${supplies} supplies packed · ${protectedCount} protected · ${formatRecoveryClock(this.raidClockMs)} on the clock</small></div><button class="button primary-button" data-start>Enter the raid →</button></section></main>`;
   }
 
   /**

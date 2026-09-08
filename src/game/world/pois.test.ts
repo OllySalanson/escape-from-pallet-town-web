@@ -1,6 +1,10 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { RunManager } from '../run/RunManager';
+import { WORLD_MAPS } from '../worldMap';
 import { WORLD_POIS, tryActivatePoi } from './pois';
+
+const worldSceneSource = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
 
 const fieldStation = WORLD_POIS[0];
 
@@ -63,5 +67,36 @@ describe('world POIs', () => {
       { itemId: 'poke-ball', quantity: 2 },
       { itemId: 'potion', quantity: 1 },
     ]);
+  });
+
+  /**
+   * Movement has no free turn onto walkable ground, so a landmark can only be
+   * faced from beside it when some lane runs *into* that neighbouring tile
+   * pointing at it. The Sluice Wheel has no such lane - it sits between a hedge
+   * and the leat - so the West Culvert it opens had never been openable. Rather
+   * than reshape a signed-off map around an input rule, standing on a landmark
+   * now works it, which is also how loot and contract stops already behave.
+   */
+  it('lets a landmark be worked by standing on it, not only by facing it', () => {
+    const facedFromBeside = (poi: (typeof WORLD_POIS)[number]): boolean => {
+      const map = WORLD_MAPS[poi.mapId];
+      const free = (x: number, y: number): boolean => map.collision[y]?.[x] === false;
+      return [[0, -1], [0, 1], [-1, 0], [1, 0]].some(([dx, dy]) =>
+        free(poi.position.x - dx, poi.position.y - dy) &&
+        free(poi.position.x - dx * 2, poi.position.y - dy * 2),
+      );
+    };
+
+    expect(WORLD_POIS.filter((poi) => !facedFromBeside(poi)).map((poi) => poi.id))
+      .toEqual(['pallet-sluice-wheel']);
+    // Every landmark stands on ground the player can reach, so stepping on it
+    // is an approach that no map geometry can take away.
+    for (const poi of WORLD_POIS) {
+      expect(`${poi.id} stands on walkable ground: ${WORLD_MAPS[poi.mapId].collision[poi.position.y][poi.position.x] === false}`)
+        .toBe(`${poi.id} stands on walkable ground: true`);
+    }
+    expect(worldSceneSource).toContain(
+      'const spoken = pickup === null ? this.tryActivatePoiAt(this.currentTile) : [pickup];',
+    );
   });
 });

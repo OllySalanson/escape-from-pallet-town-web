@@ -10,6 +10,7 @@ vi.mock('phaser', () => ({
 
 import { Bag } from '../items';
 import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
+import { FIRST_CONTRACT_ID } from '../objectives';
 import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import type { ActiveRunSession } from '../run/RunSession';
@@ -326,6 +327,7 @@ describe('hub deployment route', () => {
   it('reopens the legacy insertions only once the first contract has been banked', () => {
     const { hub, start } = createHub({
       firstContractExtracted: true,
+      completedContracts: [FIRST_CONTRACT_ID],
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     });
 
@@ -354,6 +356,7 @@ describe('hub deployment route', () => {
       stash: createStartingStash(),
       raidProgress: {
         firstContractExtracted: true,
+        completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
       },
     });
@@ -362,6 +365,7 @@ describe('hub deployment route', () => {
     expect((hub as unknown as { savedGame: { raidProgress: RaidProgress } }).savedGame.raidProgress)
       .toEqual({
         firstContractExtracted: true,
+        completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
       });
   });

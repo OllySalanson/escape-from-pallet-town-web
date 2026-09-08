@@ -324,6 +324,15 @@ button {
 .risk-tag {
   color: #ffb4a2;
 }
+/* An insertion that carries a contract says so in the accent, so the insertion
+   list reads as the contract board it now is. */
+.insertion-contract {
+  display: block;
+  color: var(--menu-accent);
+  font-weight: 750;
+  font-size: 0.75em;
+  letter-spacing: 0.1em;
+}
 .secure-tag {
   color: #f6c969;
 }
@@ -1208,6 +1217,15 @@ button {
 .extraction-contract small {
   display: block;
   color: #f7e4ae;
+}
+/* A contract carried out and not banked is a loss, and must not be dressed as
+   the reward panel beside it. */
+.extraction-contract.unpaid {
+  border-color: #7f4a4a;
+  background: rgba(127, 74, 74, 0.16);
+}
+.extraction-contract.unpaid small {
+  color: #ffc9bd;
 }
 .gamble-group + .gamble-group {
   margin-top: 9px;

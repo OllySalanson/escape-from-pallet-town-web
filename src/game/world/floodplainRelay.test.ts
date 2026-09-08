@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RunManager } from '../run/RunManager';
-import { FIRST_CONTRACT, RUN_INSERTIONS } from '../run/runGeneration';
+import { FIRST_CONTRACT, RAID_CONTRACTS } from '../objectives';
+import { RUN_INSERTIONS } from '../run/runGeneration';
 import type { GridPosition } from '../movement/gridMovement';
 import { getWorldMap } from '../worldMap';
 import {
@@ -163,7 +164,16 @@ describe('the Floodplain checkpoint', () => {
         `${point.label} watched: false`,
       );
     }
-    expect(watch.has(key(FIRST_CONTRACT.position))).toBe(false);
+    // Every stop of every contract on this map, not just the first contract's:
+    // a landmark or objective inside the watch is one a player cannot decline,
+    // and there is now more than one contract that could be authored into it.
+    for (const contract of RAID_CONTRACTS.filter((candidate) => candidate.mapId === map.id)) {
+      for (const marker of contract.markers) {
+        expect(`${contract.id}/${marker.id} watched: ${watch.has(key(marker.position))}`).toBe(
+          `${contract.id}/${marker.id} watched: false`,
+        );
+      }
+    }
     for (const poi of map.pois) {
       expect(`${poi.label} watched: ${watch.has(key(poi.position))}`).toBe(
         `${poi.label} watched: false`,
@@ -180,6 +190,7 @@ describe('the Floodplain checkpoint', () => {
 
     const fromJunction = stepDistances(map.collision, junction, union(checkpoint, watch));
     expect(fromJunction[southGate.position.y][southGate.position.x]).toBeGreaterThan(0);
-    expect(fromJunction[FIRST_CONTRACT.position.y][FIRST_CONTRACT.position.x]).toBeGreaterThan(0);
+    const kit = FIRST_CONTRACT.markers[0].position;
+    expect(fromJunction[kit.y][kit.x]).toBeGreaterThan(0);
   });
 });

@@ -148,8 +148,13 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     items: toReportItems(subtractStacks(snapshot.loadout?.items ?? [], securedItems)),
   };
 
-  const contract = input.contract?.complete ? input.contract : undefined;
-  const haulTier = gradeHaul(ledger, contract !== undefined, escaped);
+  // A carried contract is reported whether or not it paid. Leaving an unbanked
+  // one off the screen was harmless while the only contract completed on the
+  // tile you stood on; a contract that banks through one exit can be walked out
+  // of the wrong gate, and that is the moment the player most needs telling.
+  const contract = input.contract;
+  const contractBanked = contract?.complete === true;
+  const haulTier = gradeHaul(ledger, contractBanked, escaped);
 
   return {
     outcome,
@@ -159,7 +164,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       : 'Raid lost',
     headline: escaped ? escapeHeadline(haulTier) : wipeHeadline(input.cause, secured),
     summary: escaped
-      ? escapeSummary(ledger, risked, contract !== undefined)
+      ? escapeSummary(ledger, risked, contractBanked)
       : wipeSummary(input.cause, ledger, secured),
     haulTier,
     clockLabel: `${formatRaidClock(snapshot.elapsedMs)} of ${formatRaidClock(input.durationMs)}`,

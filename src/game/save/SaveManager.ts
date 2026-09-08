@@ -1,4 +1,10 @@
 import { clampPendingRecoveryMs } from '../hub/recovery';
+import {
+  contractRestockBonus,
+  contractUnlockedInsertionIds,
+  FIRST_CONTRACT_ID,
+  getContract,
+} from '../objectives/contracts';
 import { Move, Pokemon, PokemonParty, getSpeciesById, type MoveBase } from '../pokemon';
 import { Bag, type BagContents } from '../items/Bag';
 import type { PrimaryStatus } from '../pokemon/battle/status';
@@ -46,6 +52,13 @@ export interface SavedStash {
 export interface RaidProgress {
   readonly firstContractExtracted: boolean;
   readonly unlockedInsertions: readonly string[];
+  /**
+   * Every contract banked for good, by id. It is the whole record of contract
+   * progression: which contracts the board still offers, how many stacks the
+   * secure slot protects and what base restocks are all derived from it, so
+   * nothing can disagree with it.
+   */
+  readonly completedContracts: readonly string[];
 }
 
 /**
@@ -57,11 +70,8 @@ export interface RaidProgress {
  * different maps rather than three doors into one, which is the whole point of
  * the unlock.
  */
-export const CONTRACT_REWARD_INSERTIONS: readonly string[] = [
-  'town-square',
-  'route-1',
-  'viridian-forest',
-];
+export const CONTRACT_REWARD_INSERTIONS: readonly string[] =
+  contractUnlockedInsertionIds([FIRST_CONTRACT_ID]);
 
 /**
  * `south-verge` was a second insertion on the Pallet Town map whose entire
@@ -73,6 +83,7 @@ const RETIRED_INSERTIONS: Readonly<Record<string, string>> = { 'south-verge': 't
 export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   firstContractExtracted: false,
   unlockedInsertions: ['floodplain-relay'],
+  completedContracts: [],
 };
 
 export interface SaveData {
@@ -197,10 +208,14 @@ export class SaveManager {
   }
 
   /**
-   * Banks the recovered field kit's raid and applies its permanent reward once.
-   * The persisted completion flag makes repeated extraction handling idempotent.
+   * Banks a raid that completed a contract, and applies that contract's
+   * permanent reward exactly once. The persisted `completedContracts` list makes
+   * repeated extraction handling idempotent, and it is the same path for every
+   * contract: the first one is not a special case, it is just the one whose
+   * reward happens to be insertions.
    */
-  public bankFirstContractRun(
+  public bankContract(
+    contractId: string,
     result: RunResult,
     settlement?: RaidSettlement,
   ): { readonly saved: boolean; readonly granted: boolean } {
@@ -211,21 +226,38 @@ export class SaveManager {
 
     applySettlement(game.stash, settlement);
     game.stash.bankRun(result);
-    if (game.raidProgress.firstContractExtracted) {
+    const contract = getContract(contractId);
+    if (!contract || game.raidProgress.completedContracts.includes(contractId)) {
       return { saved: this.save({ ...game, pendingRecoveryMs: 0 }), granted: false };
     }
 
+    const completedContracts = [...game.raidProgress.completedContracts, contractId];
     const raidProgress: RaidProgress = {
-      firstContractExtracted: true,
+      firstContractExtracted:
+        game.raidProgress.firstContractExtracted || contractId === FIRST_CONTRACT_ID,
       unlockedInsertions: [
-        ...new Set([...game.raidProgress.unlockedInsertions, ...CONTRACT_REWARD_INSERTIONS]),
+        ...new Set([
+          ...game.raidProgress.unlockedInsertions,
+          ...(contract.reward.unlockedInsertionIds ?? []),
+        ]),
       ],
+      completedContracts,
     };
-    game.stash.addItem('super-potion', 1);
+    for (const { itemId, quantity } of contract.reward.items) {
+      game.stash.addItem(itemId, quantity);
+    }
     return {
       saved: this.save({ ...game, raidProgress, pendingRecoveryMs: 0 }),
       granted: true,
     };
+  }
+
+  /** The first contract's banking path, named for the one raid that uses it. */
+  public bankFirstContractRun(
+    result: RunResult,
+    settlement?: RaidSettlement,
+  ): { readonly saved: boolean; readonly granted: boolean } {
+    return this.bankContract(FIRST_CONTRACT_ID, result, settlement);
   }
 
   /**
@@ -237,7 +269,13 @@ export class SaveManager {
    */
   public reselectStarter(starterId: StarterSpeciesId): boolean {
     const game = this.load();
-    if (!game || !game.stash.swapStarter(getStarterSpecies(starterId))) {
+    if (
+      !game ||
+      !game.stash.swapStarter(
+        getStarterSpecies(starterId),
+        contractRestockBonus(game.raidProgress.completedContracts),
+      )
+    ) {
       return false;
     }
 
@@ -269,8 +307,12 @@ export class SaveManager {
     // A wipe must never hand the player back a run they cannot attempt: a fresh
     // starter when none survived, and supplies topped up to the minimum either
     // way, including when the secure slot saved a Pokemon but no items.
-    game.stash.ensurePlayable(game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined);
-    game.stash.restockMinimumSupplies();
+    const restockBonus = contractRestockBonus(game.raidProgress.completedContracts);
+    game.stash.ensurePlayable(
+      game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined,
+      restockBonus,
+    );
+    game.stash.restockMinimumSupplies(restockBonus);
     return this.save({ ...game, pendingRecoveryMs: 0 });
   }
 }
@@ -354,9 +396,20 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ? value.unlockedInsertions.filter((insertion): insertion is string => typeof insertion === 'string')
       : DEFAULT_RAID_PROGRESS.unlockedInsertions
   ).map((insertion) => RETIRED_INSERTIONS[insertion] ?? insertion);
-  const firstContractExtracted = value.firstContractExtracted === true;
+  const savedContracts = Array.isArray(value.completedContracts)
+    ? value.completedContracts.filter((id): id is string => typeof id === 'string')
+    : [];
+  // A save written before contracts were a list still records the first one as
+  // a flag, so a player who banked it keeps its reward and is offered the next
+  // contract rather than being asked to recover the field kit twice.
+  const firstContractExtracted =
+    value.firstContractExtracted === true || savedContracts.includes(FIRST_CONTRACT_ID);
+  const completedContracts = [
+    ...new Set([...(firstContractExtracted ? [FIRST_CONTRACT_ID] : []), ...savedContracts]),
+  ];
   return {
     firstContractExtracted,
+    completedContracts,
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now

@@ -1,4 +1,5 @@
-import { formatObjectiveReward, type RunObjective } from './RunObjectives';
+import { contractStopsDone, remainingMarkers, type RaidContract } from './contracts';
+import { formatStacks, type RunObjective } from './RunObjectives';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { GridPosition } from '../movement/gridMovement';
 import { WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
@@ -27,14 +28,19 @@ export interface ObjectiveGuideModel {
 /**
  * Builds the field guide from the live raid session so its text cannot drift
  * from objective progress, the chosen insertion, or this run's exits.
+ *
+ * A contract carries its own briefing, so the guide reads the contract rather
+ * than holding a script per contract: a new contract writes its own lines in
+ * `contracts.ts` and appears here without touching this file.
  */
 export function buildObjectiveGuide(
   session: ActiveRunSession,
   context: ObjectiveGuideContext,
 ): ObjectiveGuideModel {
   const snapshot = session.manager.snapshot();
-  const objectives = session.objectives.map((objective) => objectiveModel(objective, snapshot));
-  const isFirstContract = session.objectives.some((objective) => objective.id === 'recover-lost-field-kit');
+  const contract = session.plan?.contract;
+  const objectives = session.objectives.map((objective) => objectiveModel(objective, contract, snapshot));
+  const isFirstContract = contract?.id === 'recover-lost-field-kit';
   const currentExit = session.plan?.extractionPoints.find((point) => point.mapId === context.currentMapId);
   const safeExit = session.plan?.extractionPoints.find(
     (point) => point.mapId === session.plan?.insertion.mapId,
@@ -42,16 +48,21 @@ export function buildObjectiveGuide(
 
   return {
     isFirstContract,
-    contractLabel: isFirstContract ? 'Recovery contract' : 'Raid field guide',
+    contractLabel: contract ? contractLabel(contract, isFirstContract) : 'Raid field guide',
     objectives,
-    hints: isFirstContract
-      ? firstContractHints(session, context, snapshot.recoveredFieldKit, safeExit?.label, currentExit?.label)
+    hints: contract
+      ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
       : laterRunHints(context, currentExit?.label),
   };
 }
 
+function contractLabel(contract: RaidContract, isFirstContract: boolean): string {
+  return isFirstContract ? 'Recovery contract' : `${contract.name} contract`;
+}
+
 function objectiveModel(
   objective: RunObjective,
+  contract: RaidContract | undefined,
   snapshot: Parameters<RunObjective['progress']>[0],
 ): ObjectiveGuideObjective {
   const progress = objective.progress(snapshot);
@@ -59,22 +70,36 @@ function objectiveModel(
     description: objective.description,
     progress: `${progress.current}/${progress.target}`,
     complete: progress.complete,
-    reward: formatObjectiveReward(objective.reward),
+    // A contract pays once, permanently, so the guide prints the contract's own
+    // promise rather than a per-raid item list that would always be empty.
+    reward:
+      contract && contract.id === objective.id
+        ? contract.reward.summary
+        : formatStacks(objective.reward.items),
   };
 }
 
-function firstContractHints(
+/**
+ * What to do next, in the contract's own words, followed by how to bank it.
+ *
+ * The order is deliberate: where you are, what the contract asks, then the exit.
+ * A contract that only banks through one exit says so before the guide names
+ * any other gate, because that is the fact a player leaves the wrong way for.
+ */
+function contractHints(
+  contract: RaidContract,
   session: ActiveRunSession,
   context: ObjectiveGuideContext,
-  recoveredFieldKit: boolean,
+  contractSteps: readonly string[],
   safeExit: string | undefined,
   currentExit: string | undefined,
 ): readonly string[] {
-  const extractionHint = knownExitHint(safeExit, currentExit);
+  const outstanding = remainingMarkers(contract, contractSteps);
+  const extractionHint = bankingHint(contract, safeExit, currentExit);
 
-  if (recoveredFieldKit) {
+  if (outstanding.length === 0) {
     return [
-      'Field kit secured. The contract only banks when you extract.',
+      `${contract.name} secured. It only banks when you extract.`,
       extractionHint,
     ];
   }
@@ -82,26 +107,29 @@ function firstContractHints(
   // Unnumbered: the field guide renders these in an ordered list, and hints
   // that numbered themselves as well came out as "1. 1. You are in ...".
   return [
-    `You are in ${firstContractLocationHint(session, context)}.`,
-    'Two ways down: the central road is fast and open, but Maya watches its checkpoint and fights whoever walks it; the west reeds are slower, cost encounters, and rejoin the road above and below her.',
-    'Step onto the lost field kit marker to retrieve it.',
+    `You are in ${locationHint(contract, session, context, outstanding[0].position)}.`,
+    ...(contract.markers.length > 1
+      ? [`${contractStopsDone(contract, contractSteps)} of ${contract.markers.length} stops made.`]
+      : []),
+    ...contract.briefing,
     extractionHint,
   ];
 }
 
-function firstContractLocationHint(
+function locationHint(
+  contract: RaidContract,
   session: ActiveRunSession,
   context: ObjectiveGuideContext,
+  nextStop: GridPosition,
 ): string {
-  const contract = session.plan?.contract;
-  if (!contract) {
+  if (!session.plan) {
     return WORLD_MAP_NAMES[context.currentMapId];
   }
   if (context.currentMapId !== contract.mapId) {
     return `${WORLD_MAP_NAMES[context.currentMapId]}. Travel to ${WORLD_MAP_NAMES[contract.mapId]}`;
   }
 
-  return `${WORLD_MAP_NAMES[contract.mapId]}. The lost field kit is ${directionTo(context.currentPosition, contract.position)}`;
+  return `${WORLD_MAP_NAMES[contract.mapId]}. The next stop is ${directionTo(context.currentPosition, nextStop)}`;
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {
@@ -130,12 +158,20 @@ function laterRunHints(context: ObjectiveGuideContext, currentExit: string | und
   return [stationHint, currentExit ? `Use ${currentExit} on this map to bank your haul.` : 'Return to a marked extraction gate to bank your haul.'];
 }
 
-function knownExitHint(safeExit: string | undefined, currentExit: string | undefined): string {
+/** How this contract gets banked, which is not always "any exit will do". */
+function bankingHint(
+  contract: RaidContract,
+  safeExit: string | undefined,
+  currentExit: string | undefined,
+): string {
+  if (contract.requiredExitLabel) {
+    return `Only ${contract.requiredExitLabel} banks this contract. Any other gate ends the raid and leaves it unpaid.`;
+  }
   if (safeExit) {
-    return `Extract through the known safe gate, ${safeExit}, to bank the field kit and your haul.`;
+    return `Extract through the known safe gate, ${safeExit}, to bank the contract and your haul.`;
   }
   if (currentExit) {
-    return `Extract through ${currentExit} on this map to bank the field kit and your haul.`;
+    return `Extract through ${currentExit} on this map to bank the contract and your haul.`;
   }
-  return 'Return to a marked extraction gate to bank the field kit and your haul.';
+  return 'Return to a marked extraction gate to bank the contract and your haul.';
 }

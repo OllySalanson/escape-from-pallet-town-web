@@ -4,6 +4,7 @@ import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunManager } from './RunManager';
 import { createActiveRunSession } from './RunSession';
+import { FIRST_CONTRACT, RAID_CONTRACTS } from '../objectives';
 import {
   generateRunPlan,
   RUN_GENERATION_BOUNDS,
@@ -92,9 +93,9 @@ describe('run generation', () => {
 
   it('keeps generated loot, trainers, and extraction points on valid tiles', () => {
     for (const seed of seeds) {
-      const plan = generateRunPlan(seed);
+      const plan = generateRunPlan(seed, undefined, 'floodplain-relay', FIRST_CONTRACT);
       expectValidTile(plan.insertion.mapId, plan.insertion.position);
-      expectValidTile(plan.contract!.mapId, plan.contract!.position);
+      plan.contract!.markers.forEach((marker) => expectValidTile(plan.contract!.mapId, marker.position));
       for (const [mapId, loot] of Object.entries(plan.loot) as [WorldMapId, typeof plan.loot[WorldMapId]][]) {
         loot.forEach((item) => expectValidTile(mapId, item.position));
       }
@@ -144,20 +145,48 @@ describe('run generation', () => {
   });
 
   it('puts the first contract and its map on a raid the default insertion can complete', () => {
-    const plan = generateRunPlan(2024);
+    const plan = generateRunPlan(2024, undefined, 'floodplain-relay', FIRST_CONTRACT);
     const walkable = walkableFrom(plan.insertion.mapId, plan.insertion.position);
 
     expect(plan.insertion.id).toBe('floodplain-relay');
     expect(plan.contract?.mapId).toBe('floodplain-relay');
-    expect(walkable.has(`${plan.contract!.mapId}:${tileKey(plan.contract!.position)}`)).toBe(true);
+    for (const marker of plan.contract!.markers) {
+      expect(walkable.has(`${plan.contract!.mapId}:${tileKey(marker.position)}`)).toBe(true);
+    }
     for (const poi of WORLD_MAPS['floodplain-relay'].pois) {
       expect(walkable.has(`floodplain-relay:${tileKey(poi.position)}`)).toBe(true);
     }
   });
 
-  it('refuses to attach the first contract to a raid that starts on another map', () => {
-    expect(generateRunPlan(7, undefined, 'town-square', true).contract).toBeUndefined();
-    expect(generateRunPlan(7, undefined, 'floodplain-relay', true).contract).toBeDefined();
+  it('refuses to attach a contract to a raid that starts on another map', () => {
+    expect(generateRunPlan(7, undefined, 'town-square', FIRST_CONTRACT).contract).toBeUndefined();
+    expect(generateRunPlan(7, undefined, 'floodplain-relay', FIRST_CONTRACT).contract).toBeDefined();
+  });
+
+  /**
+   * Every contract, on its own map, from its own insertion. A contract whose
+   * marker the generator rolled a supply crate onto would be unreachable in
+   * exactly the raid it is the point of.
+   */
+  it('carries every contract on its own map and reserves each of its stops', () => {
+    for (const contract of RAID_CONTRACTS) {
+      const insertionId = Object.values(RUN_INSERTIONS).find(
+        (insertion) => insertion.mapId === contract.mapId,
+      )!.id;
+      for (const seed of seeds) {
+        const plan = generateRunPlan(seed, undefined, insertionId, contract);
+        expect(plan.contract?.id).toBe(contract.id);
+        const walkable = walkableFrom(plan.insertion.mapId, plan.insertion.position);
+        const taken = new Set([
+          ...plan.loot[contract.mapId].map((item) => tileKey(item.position)),
+          ...plan.trainers.filter((t) => t.mapId === contract.mapId).map((t) => tileKey(t.position)),
+        ]);
+        for (const marker of contract.markers) {
+          expect(`${contract.id} ${marker.id}: ${walkable.has(`${contract.mapId}:${tileKey(marker.position)}`) ? 'reachable' : 'unreachable'}, ${taken.has(tileKey(marker.position)) ? 'occupied' : 'clear'}`)
+            .toBe(`${contract.id} ${marker.id}: reachable, clear`);
+        }
+      }
+    }
   });
 
   it('keeps encounter, extraction, and hunter values within configured bounds', () => {

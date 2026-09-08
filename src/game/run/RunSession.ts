@@ -1,5 +1,5 @@
 import type { SecureSlot as StashSecureSlot } from '../stash';
-import { RUN_OBJECTIVES, type RunObjective } from '../objectives';
+import type { RunObjective } from '../objectives';
 import type { SecureSlot, ItemStack } from './RunManager';
 import type { Pokemon } from '../pokemon';
 import type { RunManager } from './RunManager';
@@ -54,7 +54,7 @@ export function createActiveRunSession(
   stashSecureSlot: StashSecureSlot,
   broughtPokemonIds: readonly string[],
   broughtItems: readonly ItemStack[],
-  objectives: readonly RunObjective[] = RUN_OBJECTIVES,
+  objectives: readonly RunObjective[] = [],
   plan?: RunPlan,
 ): ActiveRunSession {
   return {

@@ -25,7 +25,8 @@ import {
 } from './mapStructure';
 import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters } from './trainers';
-import { FIRST_CONTRACT, RUN_INSERTIONS } from '../run/runGeneration';
+import { RAID_CONTRACTS } from '../objectives';
+import { RUN_INSERTIONS } from '../run/runGeneration';
 
 /**
  * The standard every map is held to, as machine-checkable numbers.
@@ -64,9 +65,15 @@ function landmarksOn(map: WorldMapDefinition) {
       position: point.position,
     })),
     ...map.pois.map((poi) => ({ what: poi.label, position: poi.position })),
-    ...(FIRST_CONTRACT.mapId === map.id
-      ? [{ what: FIRST_CONTRACT.label, position: FIRST_CONTRACT.position }]
-      : []),
+    // Every stop of every contract on this map. A contract objective the
+    // insertion cannot walk to is a raid the player cannot finish, and there is
+    // now more than one contract that could be authored into a pocket.
+    ...RAID_CONTRACTS.filter((contract) => contract.mapId === map.id).flatMap((contract) =>
+      contract.markers.map((marker) => ({
+        what: `${contract.id}/${marker.id}`,
+        position: marker.position,
+      })),
+    ),
   ];
 }
 

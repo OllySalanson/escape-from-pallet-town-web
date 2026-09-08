@@ -3,7 +3,8 @@ import { Pokemon, BULBASAUR } from '../pokemon';
 import { RunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan } from '../run/runGeneration';
-import { RUN_OBJECTIVES } from './RunObjectives';
+import { FIRST_CONTRACT } from './contracts';
+import { objectivesForContract } from './RunObjectives';
 import { buildObjectiveGuide } from './ObjectiveGuide';
 
 function createFirstContractSession() {
@@ -18,8 +19,8 @@ function createFirstContractSession() {
     {},
     [],
     [],
-    RUN_OBJECTIVES,
-    generateRunPlan(42, undefined, 'floodplain-relay', true),
+    objectivesForContract(FIRST_CONTRACT),
+    generateRunPlan(42, undefined, 'floodplain-relay', FIRST_CONTRACT),
   );
 }
 
@@ -36,7 +37,7 @@ describe('objective field guide', () => {
         description: 'Recover the lost field kit at the Floodplain Relay',
         progress: '0/1',
         complete: false,
-        reward: '1× super potion',
+        reward: FIRST_CONTRACT.reward.summary,
       }),
     ]);
 
@@ -65,7 +66,7 @@ describe('objective field guide', () => {
       [],
       [],
       [],
-      generateRunPlan(42, undefined, 'town-square', false),
+      generateRunPlan(42, undefined, 'town-square', undefined),
     );
     const laterGuide = buildObjectiveGuide(laterSession, {
       currentMapId: 'pallet-town',
@@ -101,7 +102,7 @@ describe('objective field guide', () => {
     });
 
     expect(after.hints).toHaveLength(2);
-    expect(after.hints[0]).toContain('Field kit secured');
+    expect(after.hints[0]).toContain('Lost field kit secured');
     expect(after.hints.join(' ')).toContain('SOUTH GATE');
   });
 
@@ -134,7 +135,7 @@ describe('objective field guide', () => {
       [],
       [],
       [],
-      generateRunPlan(42, undefined, 'floodplain-relay', false),
+      generateRunPlan(42, undefined, 'floodplain-relay', undefined),
     );
     const before = buildObjectiveGuide(session, {
       currentMapId: 'floodplain-relay',

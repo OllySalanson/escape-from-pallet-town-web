@@ -1,3 +1,4 @@
+import { FIRST_CONTRACT_ID } from '../objectives/contracts';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { WildEncounter } from './wildEncounters';
 
@@ -18,11 +19,13 @@ import type { WildEncounter } from './wildEncounters';
 export const TEACHING_ENCOUNTER: WildEncounter = { speciesId: 'pidgey', level: 3 };
 
 /**
- * Only raids still carrying the first contract get the authored opening, and
- * only once. Ordinary encounter rolls resume from the second grass step.
+ * Only raids still carrying the *first* contract get the authored opening, and
+ * only once. Ordinary encounter rolls resume from the second grass step. Later
+ * contracts are taken by players who have already been taught the battle
+ * screen, so handing them a level-3 Pidgey would only be free experience.
  */
 export const hasTeachingEncounter = (session: ActiveRunSession | undefined): boolean =>
-  Boolean(session?.plan?.contract) && session?.teachingEncounterUsed !== true;
+  session?.plan?.contract?.id === FIRST_CONTRACT_ID && session?.teachingEncounterUsed !== true;
 
 export const consumeTeachingEncounter = (
   session: ActiveRunSession | undefined,

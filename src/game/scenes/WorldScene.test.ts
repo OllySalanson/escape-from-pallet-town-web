@@ -26,10 +26,15 @@ describe('in-run objective HUD layout', () => {
     expect(sceneSource).toContain('objectiveChipLines(navigationCue, this.objectiveDetailMs > 0)');
   });
 
-  it('keeps the active first-contract destination visible and direction-aware', () => {
+  it('keeps the active contract destination visible and direction-aware', () => {
     expect(sceneSource).toContain('TRAVEL TO ${WORLD_MAP_NAMES[contract.mapId].toUpperCase()}');
-    expect(sceneSource).toContain('LOST KIT: ${directionTo(this.currentTile, contract.position)}');
-    expect(sceneSource).toContain('firstContractNavigationCue');
+    // The cue is the marker's own short name, so a contract with three stops
+    // names the one you are nearest rather than a hard-coded objective.
+    expect(sceneSource).toContain('${next.cue}: ${directionTo(this.currentTile, next.position)}');
+    expect(sceneSource).toContain('contractNavigationCue');
+    // A contract that banks through one exit says so on the map too, because
+    // the temptation is a gate the player walks past with the job in hand.
+    expect(sceneSource).toContain('BANK VIA ${contract.requiredExitLabel}');
   });
 
   it('names route transitions from map data and hides areas the first contract does not need', () => {
@@ -97,13 +102,18 @@ describe('finishing a step in a trainer watch', () => {
     );
   });
 
-  it('still challenges on the step that picks something up off the watched tile', () => {
-    expect(step).toContain('this.tryTrainerChallengeAt(this.currentTile, [pickup])');
-    // The collection reports its line instead of showing it, so the pickup and
-    // the challenge arrive as one dialogue rather than one erasing the other.
+  it('still challenges on the step that takes something off the watched tile', () => {
+    expect(step).toContain('this.tryTrainerChallengeAt(this.currentTile, spoken)');
+    // Everything a step can do on its own tile reports its line instead of
+    // showing it, so the deed and the challenge arrive as one dialogue rather
+    // than one erasing the other. A landmark is on that footing too, or a
+    // watched lane could be worked for free by standing on whatever is in it.
     expect(sceneSource).toContain('private tryCollectLootAt(position: GridPosition): string | null');
     expect(sceneSource).toContain(
-      'private tryRecoverFieldKitAt(position: GridPosition): string | null',
+      'private tryMakeContractStopAt(position: GridPosition): string | null',
+    );
+    expect(sceneSource).toContain(
+      'private tryActivatePoiAt(position: GridPosition): readonly string[] | null',
     );
   });
 
