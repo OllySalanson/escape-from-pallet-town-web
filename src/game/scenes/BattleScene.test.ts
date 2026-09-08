@@ -44,7 +44,7 @@ interface HarnessOptions {
   /** Fights an authored trainer, which is the battle that cannot be left. */
   readonly authoredTrainer?: boolean;
   readonly runSession?: ReturnType<typeof createActiveRunSession>;
-  /** The raid bag this fight is carrying. Defaults to two Potions. */
+  /** The raid bag this fight is carrying. Defaults to two Potions and five balls. */
   readonly bag?: Bag;
   readonly party?: PokemonParty;
 }
@@ -184,7 +184,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
       ? { ...createHunterState(), spawned: true, mapId: 'route-1', position: { x: 4, y: 4 } }
       : undefined,
     runSession: options.runSession,
-    bag: options.bag ?? new Bag({ potion: 2 }),
+    bag: options.bag ?? new Bag({ potion: 2, 'poke-ball': 5 }),
     pendingItem: undefined,
     wildEscapeAttempts: 0,
     pendingBattleExit: false,
@@ -195,7 +195,6 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     isPresentingCombatEvents: false,
     mode: 'events',
     party: options.party ?? new PokemonParty([player]),
-    pokeBalls: 5,
     selectedCommand: 0,
     state,
     trainer,
@@ -568,6 +567,72 @@ describe('a lost raid resolved inside a battle', () => {
     // carried, or nothing at all, depending on what was in that other bag.
     expect(report.spent.map(({ label, quantity }) => `${quantity}x ${label}`)).toEqual([
       '1x Potion',
+    ]);
+  });
+
+  it('splits what the raid drank from what went down with it, so neither counts twice', () => {
+    const manager = new RunManager();
+    const deployed = new Pokemon(CHARMANDER, 5);
+    manager.startRun(
+      { party: [deployed], items: [{ itemId: 'potion', quantity: 2 }] },
+      { mapId: 'floodplain-relay', durationMs: 300_000 },
+    );
+    const runSession = createActiveRunSession(manager, {}, {}, ['charmander-1'], [
+      { itemId: 'potion', quantity: 2 },
+    ]);
+    const start = vi.fn();
+    // Two Potions deployed, one drunk in this fight, one still in the pack.
+    const { scene } = createBattleSceneHarness({ runSession, bag: new Bag({ potion: 1 }) });
+    Object.assign(scene as object, {
+      scene: { manager: { keys: { world: {}, hub: {}, extraction: {} } }, start },
+    });
+
+    (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();
+
+    const { report } = start.mock.calls[0][1] as {
+      report: {
+        ledger: { items: readonly { readonly itemId: string; readonly quantity: number }[] };
+        spent: readonly { readonly itemId: string; readonly quantity: number }[];
+      };
+    };
+    // "Gone for good" is what was still on the player when the raid ended;
+    // "Supplies spent" is what the raid drank. Listing the whole loadout under
+    // the first while the second named part of it again made two Potions read
+    // as four on one screen.
+    expect(report.ledger.items.map(({ itemId, quantity }) => [itemId, quantity])).toEqual([
+      ['potion', 1],
+    ]);
+    expect(report.spent.map(({ itemId, quantity }) => [itemId, quantity])).toEqual([['potion', 1]]);
+  });
+
+  it('never claims supplies were spent by a raid that did not open the pack', () => {
+    const manager = new RunManager();
+    const deployed = new Pokemon(CHARMANDER, 5);
+    manager.startRun(
+      { party: [deployed], items: [{ itemId: 'potion', quantity: 2 }] },
+      { mapId: 'floodplain-relay', durationMs: 300_000 },
+    );
+    const runSession = createActiveRunSession(manager, {}, {}, ['charmander-1'], [
+      { itemId: 'potion', quantity: 2 },
+    ]);
+    const start = vi.fn();
+    // The whole loadout is still in the pack: this raid healed nobody.
+    const { scene } = createBattleSceneHarness({ runSession, bag: new Bag({ potion: 2 }) });
+    Object.assign(scene as object, {
+      scene: { manager: { keys: { world: {}, hub: {}, extraction: {} } }, start },
+    });
+
+    (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();
+
+    const { report } = start.mock.calls[0][1] as {
+      report: {
+        ledger: { items: readonly { readonly itemId: string; readonly quantity: number }[] };
+        spent: readonly unknown[];
+      };
+    };
+    expect(report.spent).toEqual([]);
+    expect(report.ledger.items.map(({ itemId, quantity }) => [itemId, quantity])).toEqual([
+      ['potion', 2],
     ]);
   });
 

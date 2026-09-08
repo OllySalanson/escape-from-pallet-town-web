@@ -252,6 +252,34 @@ describe('raid resolution hand-off', () => {
     expect(battleSceneSource).not.toContain("'YOU WERE WIPED.'");
   });
 
+  it('settles every ending against the pack the raid actually came out with', () => {
+    // The raid's supplies live in one Bag, balls included. A second ball counter
+    // beside it was inventory the settlement could not see, which is why the
+    // wipe report had to overwrite its ball line by hand after reading the bag
+    // for everything else.
+    expect(sceneSource).not.toContain('this.pokeBalls');
+    expect(battleSceneSource).not.toContain('this.pokeBalls');
+    expect(battleSceneSource).toContain("this.bag.remove('poke-ball', 1)");
+    // Both lost endings divide that pack the same way: a secured supply comes
+    // home only if it was still in it, and only what was still in it was lost.
+    expect(sceneSource).toContain(
+      'const wipe = buildWipeSettlement(this.runSession.secureSlot.items ?? [], carriedOut);',
+    );
+    expect(battleSceneSource).toContain(
+      'const wipe = buildWipeSettlement(this.runSession.secureSlot.items ?? [], carriedOut);',
+    );
+    expect(sceneSource).toContain('items: wipe.destroyedItems },');
+    expect(battleSceneSource).toContain('items: wipe.destroyedItems },');
+    expect(sceneSource).toContain('{ ...this.runSession.stashSecureSlot, items: wipe.securedItems }');
+    expect(battleSceneSource).toContain(
+      '{ ...this.runSession.stashSecureSlot, items: wipe.securedItems }',
+    );
+    // And a survived raid banks the settlement's own gain rather than the
+    // pickups it recorded: loot found and then drunk left the stash unchanged.
+    expect(sceneSource).toContain('...settlement.supplies.filter(({ quantity }) => quantity > 0),');
+    expect(sceneSource).not.toContain('...snapshot.foundItems,');
+  });
+
   it('will not let the tap that closed the last battle line dismiss the result', () => {
     // Phaser captures SPACE and ENTER game-wide, so an overlay key listener
     // never sees them: the guard has to sit on the button the browser actually

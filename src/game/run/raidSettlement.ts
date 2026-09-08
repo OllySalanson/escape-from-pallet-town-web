@@ -98,3 +98,61 @@ export function buildRaidSettlement(
     supplies: raidSupplyDelta(snapshot, carriedOut),
   };
 }
+
+/**
+ * How a lost raid's supplies divide, with nothing counted twice.
+ *
+ * A wipe used to settle supplies without ever looking in the pack, and that
+ * one blind spot produced two separate untruths. The stash handed back every
+ * secured stack whether or not the raid had drunk it, so securing a Potion and
+ * drinking it made the heal free - and wiping the cheapest way to fix a worn
+ * party, which is the loop inverted. And the result screen listed the whole
+ * loadout under "Gone for good" while the panel beside it listed part of that
+ * same loadout again under "Supplies spent", so two Potions read as four.
+ *
+ * The pack at the end is what separates the two: what is still in it was either
+ * protected or destroyed, and what is missing from it was spent. The three add
+ * back up to everything the raid held.
+ */
+export interface WipeSettlement {
+  /** Secured supplies still in the pack, and so the only ones the stash keeps. */
+  readonly securedItems: readonly StashItemChange[];
+  /** What was still on the player when the raid was lost, and is now gone. */
+  readonly destroyedItems: readonly StashItemChange[];
+}
+
+/**
+ * The secured stacks that survived the raid.
+ *
+ * Spending is charged against unprotected stock first, which is both the
+ * generous reading and the honest one: supplies are fungible, so a player who
+ * carried three Potions and protected two of them drank the loose one.
+ *
+ * Shared with the result screen so the secure-slot panel names exactly what the
+ * stash is about to receive; two derivations of one rule is how they drift.
+ */
+export function survivingSecureItems(
+  secured: readonly StashItemChange[],
+  carriedOut: BagContents,
+): readonly StashItemChange[] {
+  const held = new Map<string, number>();
+  for (const { itemId, quantity } of secured) {
+    held.set(itemId, (held.get(itemId) ?? 0) + quantity);
+  }
+  return [...held]
+    .map(([itemId, quantity]) => ({ itemId, quantity: Math.min(quantity, carriedOut[itemId] ?? 0) }))
+    .filter(({ quantity }) => quantity > 0);
+}
+
+/** Both halves of a lost raid's supply accounting, from the pack it went down with. */
+export function buildWipeSettlement(
+  secured: readonly StashItemChange[],
+  carriedOut: BagContents,
+): WipeSettlement {
+  const securedItems = survivingSecureItems(secured, carriedOut);
+  const kept = new Map(securedItems.map(({ itemId, quantity }) => [itemId, quantity]));
+  const destroyedItems = Object.entries(carriedOut)
+    .map(([itemId, quantity]) => ({ itemId, quantity: quantity - (kept.get(itemId) ?? 0) }))
+    .filter(({ quantity }) => quantity > 0);
+  return { securedItems, destroyedItems };
+}

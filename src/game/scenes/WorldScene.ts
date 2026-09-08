@@ -52,7 +52,11 @@ import {
 } from '../objectives';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
-import { buildRaidSettlement, deployedRaidCondition } from '../run/raidSettlement';
+import {
+  buildRaidSettlement,
+  buildWipeSettlement,
+  deployedRaidCondition,
+} from '../run/raidSettlement';
 import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
@@ -179,9 +183,11 @@ interface ControlKeys {
 export interface WorldSceneData {
   readonly savedGame?: RestoredGame;
   readonly party?: PokemonParty;
-  /** The consumable items deployed from the hub for an extraction raid. */
+  /**
+   * The consumable items deployed from the hub for an extraction raid, balls
+   * included: the pack is the whole of what a raid carries.
+   */
   readonly bag?: Bag;
-  readonly pokeBalls?: number;
   readonly caughtPokemonStash?: Pokemon[];
   /** Present only while playing an extraction raid launched by the hub. */
   readonly runSession?: ActiveRunSession;
@@ -220,7 +226,6 @@ export class WorldScene extends Phaser.Scene {
   private mapObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly npcSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
-  private pokeBalls = 5;
   private caughtPokemonStash: Pokemon[] = [];
   private bag = new Bag({ potion: 3, antidote: 1, 'poke-ball': 5, 'great-ball': 1 });
   private currentTile: GridPosition = { x: 6, y: 8 };
@@ -333,10 +338,6 @@ export class WorldScene extends Phaser.Scene {
     }
     if (data.bag) {
       this.bag = data.bag;
-    }
-    if (data.pokeBalls !== undefined) {
-      this.pokeBalls = data.pokeBalls;
-      this.syncPokeBallsToBag();
     }
     if (data.caughtPokemonStash) {
       this.caughtPokemonStash = data.caughtPokemonStash;
@@ -1447,7 +1448,6 @@ export class WorldScene extends Phaser.Scene {
           teachingBattle: teaching !== null,
           party: this.party,
           bag: this.bag,
-          pokeBalls: this.bag.count('poke-ball'),
           caughtPokemonStash: this.caughtPokemonStash,
           runSession: this.runSession,
           collectedLootIds: [...this.collectedLootIds],
@@ -1643,14 +1643,6 @@ export class WorldScene extends Phaser.Scene {
     this.currentTile = { ...savedGame.position };
   }
 
-  private syncPokeBallsToBag(): void {
-    const existingPokeBalls = this.bag.count('poke-ball');
-    if (existingPokeBalls > 0) {
-      this.bag.remove('poke-ball', existingPokeBalls);
-    }
-    this.bag.add('poke-ball', this.pokeBalls);
-  }
-
   private saveGame(): void {
     if (this.runSession) {
       return;
@@ -1708,7 +1700,6 @@ export class WorldScene extends Phaser.Scene {
     for (const { itemId, quantity } of carriedIn) {
       this.bag.remove(itemId, quantity);
     }
-    this.syncPokeBallsToBag();
 
     session.manager.registerContractStep(marker.id);
     const drawn = this.contractMarkers.get(marker.id);
@@ -1830,11 +1821,15 @@ export class WorldScene extends Phaser.Scene {
         durationMs: snapshot.durationMs,
         exitLabel: point.label,
         // The contract's payout is granted by the save rather than by the run,
-        // so the report is handed exactly what the stash received.
+        // so the report is handed exactly what the stash received. Field loot
+        // arrives as the settlement's own positive delta rather than as the
+        // pickups the run recorded: a Potion found and then drunk left the
+        // stash no better off, and listing it as banked beside the line that
+        // says it was spent is the screen disagreeing with itself.
         banked: {
           pokemon: runResult.pokemon,
           items: [
-            ...snapshot.foundItems,
+            ...settlement.supplies.filter(({ quantity }) => quantity > 0),
             ...objectiveRewards,
             ...(contractResult.granted ? contract!.reward.items : []),
           ],
@@ -1924,10 +1919,15 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.flash(220, 239, 68, 68, false);
     this.cameras.main.shake(180, 0.009);
     audioManager.playWipe();
+    const carriedOut = this.bag.toJSON();
+    // The pack the clock ran out on is what divides the loss: only a secured
+    // supply still in it comes home, and only what is still in it was lost with
+    // the raid. Anything missing from it was spent, and is reported as spent.
+    const wipe = buildWipeSettlement(this.runSession.secureSlot.items ?? [], carriedOut);
     const saved = new SaveManager().applyWipeLoss(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
-      this.runSession.stashSecureSlot,
+      { ...this.runSession.stashSecureSlot, items: wipe.securedItems },
       // A secured Pokemon comes home in the state the raid left it in.
       deployedRaidCondition(this.runSession.broughtPokemonIds, snapshot),
     );
@@ -1938,8 +1938,8 @@ export class WorldScene extends Phaser.Scene {
         cause: 'timer',
         snapshot,
         durationMs: snapshot.durationMs,
-        lost: { pokemon: result.lostPokemon, items: result.lostItems },
-        carriedOut: this.bag.toJSON(),
+        lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
+        carriedOut,
         saved,
       }),
     );
@@ -1960,7 +1960,6 @@ export class WorldScene extends Phaser.Scene {
         // that had to reach for the persisted bag instead would be spending an
         // inventory this raid never deployed with.
         bag: this.bag,
-        pokeBalls: this.bag.count('poke-ball'),
         caughtPokemonStash: this.caughtPokemonStash,
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],

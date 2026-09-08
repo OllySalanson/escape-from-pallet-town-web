@@ -5,6 +5,7 @@ import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE } from '../pokemon';
 import { RunManager, type ItemStack } from './RunManager';
 import { buildDefeatSequence } from './defeatSequence';
 import { buildExtractionReport, type ExtractionReport } from './extractionReport';
+import { buildWipeSettlement } from './raidSettlement';
 
 const DURATION_MS = 300_000;
 
@@ -35,13 +36,19 @@ function wipedReport(
     member.takeDamage(member.maxHp);
   }
   const result = manager.resolveWipe(secureSlot);
+  // The pack as the raid went down with it: nothing here is ever drunk, so it
+  // is the loadout, and the loss divides the way the two wipe scenes divide it.
+  const carriedOut = new Bag(
+    Object.fromEntries(items.map(({ itemId, quantity }) => [itemId, quantity])),
+  ).toJSON();
+  const wipe = buildWipeSettlement(secureSlot.items ?? [], carriedOut);
   return buildExtractionReport({
     outcome: 'WIPED',
     cause: options.cause ?? 'defeated',
     snapshot: manager.snapshot(),
     durationMs: DURATION_MS,
-    lost: { pokemon: result.lostPokemon, items: result.lostItems },
-    carriedOut: new Bag().toJSON(),
+    lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
+    carriedOut,
     ...(options.lastStandIndex === undefined ? {} : { lastStand: party[options.lastStandIndex] }),
     saved: true,
   });

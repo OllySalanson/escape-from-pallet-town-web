@@ -315,6 +315,15 @@ export class RunManager {
     return result;
   }
 
+  /**
+   * Resolves a lost raid's Pokemon.
+   *
+   * Its item split is deliberately not what the wipe path uses: this class
+   * never sees the pack, so `lostItems` counts a Potion the raid drank as
+   * though it were still being carried. `buildWipeSettlement()` in
+   * `./raidSettlement` divides the pack itself into what the secure slot
+   * brought home, what went down with the raid, and what was spent.
+   */
   public resolveWipe(secureSlot?: SecureSlot): RunResult {
     this.requirePhase('resolve a run', RunPhase.InRun, RunPhase.Extracting);
     const allPokemon = this.allPokemon();

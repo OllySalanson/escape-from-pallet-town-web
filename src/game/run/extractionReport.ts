@@ -2,6 +2,7 @@ import { ITEM_DEFINITIONS, type BagContents } from '../items';
 import { experienceForLevel, type Pokemon } from '../pokemon';
 import type { RunSnapshot } from './RunManager';
 import { hunterFleePenaltyMs } from './fleePenalty';
+import { survivingSecureItems } from './raidSettlement';
 import { formatRaidClock } from './raidClock';
 
 /**
@@ -162,17 +163,32 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     items: toReportItems(ledgerSource.items),
   };
 
-  const securedItems = snapshot.secureSlot.items ?? [];
+  // A secure slot is a decision right up until the raid is lost, and then it is
+  // an outcome. A Potion declared secure and then drunk in the field did not
+  // come home, and a panel saying it did contradicts the supplies-spent line
+  // beside it. A survived raid keeps everything it carried either way, so there
+  // the slot is still reported as it was chosen.
+  const declaredSecureItems = snapshot.secureSlot.items ?? [];
+  const securedItems =
+    escaped || input.carriedOut === undefined
+      ? declaredSecureItems
+      : survivingSecureItems(declaredSecureItems, input.carriedOut);
   const secured: ReportGroup = {
     pokemon: snapshot.secureSlot.pokemon ? [toReportPokemon(snapshot.secureSlot.pokemon)] : [],
     items: toReportItems(securedItems),
   };
-  const risked: ReportGroup = {
-    pokemon: (snapshot.loadout?.party ?? [])
-      .filter((member) => member !== snapshot.secureSlot.pokemon)
-      .map(toReportPokemon),
-    items: toReportItems(subtractStacks(snapshot.loadout?.items ?? [], securedItems)),
-  };
+  // What rode out unprotected. A lost raid's answer is the ledger itself - what
+  // actually failed to come home - rather than the loadout minus the secure
+  // slot, which counts a drunk Potion as one the raid was still carrying and
+  // leaves found loot out of a loss it was part of.
+  const risked: ReportGroup = escaped
+    ? {
+      pokemon: (snapshot.loadout?.party ?? [])
+        .filter((member) => member !== snapshot.secureSlot.pokemon)
+        .map(toReportPokemon),
+      items: toReportItems(subtractStacks(snapshot.loadout?.items ?? [], securedItems)),
+    }
+    : ledger;
 
   // A carried contract is reported whether or not it paid. Leaving an unbanked
   // one off the screen was harmless while the only contract completed on the
