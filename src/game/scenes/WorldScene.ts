@@ -89,6 +89,7 @@ import {
   findHunterPursuitPath,
   findHunterBreakawayTile,
   findHunterSpawnTile,
+  HUNTER_BREAKAWAY_DISTANCE,
   applyHunterBreakaway,
   isHunterSearching,
   tickHunterSearch,
@@ -256,6 +257,13 @@ export class WorldScene extends Phaser.Scene {
         readonly isHunter: boolean;
       }
     | undefined;
+  /**
+   * True while a dialogue the player did not open is on screen - the hunter's
+   * arrival, a trainer's line of sight, being caught. It is the difference
+   * between a box you asked for and one that landed in front of you, and it is
+   * what lets a direction key get you out of the second kind.
+   */
+  private unsolicitedDialog = false;
   private hunterState: HunterState = createHunterState();
   private timerThreat: 'normal' | 'urgent' | 'enraged' = 'normal';
 
@@ -280,6 +288,7 @@ export class WorldScene extends Phaser.Scene {
     // flag that froze the second raid, and belongs on this list.
     this.pendingResultScreen = false;
     this.pendingTrainerBattle = undefined;
+    this.unsolicitedDialog = false;
     this.isWarping = false;
     this.targetTile = null;
     this.stepProgress = 0;
@@ -1025,17 +1034,50 @@ export class WorldScene extends Phaser.Scene {
     return this.controls.interact.some((key) => Phaser.Input.Keyboard.JustDown(key));
   }
 
+  /**
+   * A dialogue the player opened advances on the interact keys. A challenge they did
+   * not open - the hunter's capture, a trainer's line of sight - also advances on a
+   * direction key: trying to walk away is what a player actually does when something
+   * they did not ask for lands in front of them, and a key that does nothing reads as
+   * the game having frozen on them.
+   */
+  private isDialogAdvancePressed(): boolean {
+    if (this.isInteractionPressed()) {
+      return true;
+    }
+    return (
+      this.unsolicitedDialog &&
+      [
+        this.controls.up,
+        this.controls.down,
+        this.controls.left,
+        this.controls.right,
+        this.controls.w,
+        this.controls.a,
+        this.controls.s,
+        this.controls.d,
+      ].some((key) => Phaser.Input.Keyboard.JustDown(key))
+    );
+  }
+
   private handleDialogInput(): void {
-    if (!this.isInteractionPressed()) {
+    if (!this.isDialogAdvancePressed()) {
       return;
     }
 
     if (this.dialogBox.isCurrentMessageComplete) {
       this.dialogBox.advance();
+      this.unsolicitedDialog = this.unsolicitedDialog && this.dialogBox.visible;
       return;
     }
 
     this.dialogBox.skip();
+  }
+
+  /** Raises a dialogue the player did not ask for. See `unsolicitedDialog`. */
+  private interrupt(lines: readonly string[]): void {
+    this.unsolicitedDialog = true;
+    this.dialogBox.showMessages([...lines]);
   }
 
   private tryInteract(): void {
@@ -1195,7 +1237,7 @@ export class WorldScene extends Phaser.Scene {
       introLines: watcher.introLines,
       isHunter: false,
     };
-    this.dialogBox.showMessages([...lead, ...watcher.introLines]);
+    this.interrupt([...lead, ...watcher.introLines]);
     return true;
   }
 
@@ -1749,8 +1791,14 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    const snapshot = this.runSession.manager.tick(deltaMs);
-    this.advanceHunterSearch(deltaMs);
+    // A battle is free of the raid clock, and the challenge that announces one is
+    // the battle's first beat rather than the world's last. Billing the player for
+    // reading "FOUND YOU." is billing them for being caught twice: the hunter's
+    // capture is not a dialogue they chose to open, they cannot walk out of it, and
+    // watching the clock drain behind it is the only thing the box lets them do.
+    const clockMs = this.pendingTrainerBattle ? 0 : deltaMs;
+    const snapshot = this.runSession.manager.tick(clockMs);
+    this.advanceHunterSearch(clockMs);
     this.placeHunterIfDue(snapshot.elapsedMs);
     this.refreshExtractionMarkers();
     this.refreshRunTimerHud(deltaMs);
@@ -1879,7 +1927,7 @@ export class WorldScene extends Phaser.Scene {
     };
     this.createHunterSprite();
     if (awaitingSpawn) {
-      this.dialogBox.showMessage('A RIVAL HUNTER is on your trail!');
+      this.interrupt(['A RIVAL HUNTER is on your trail!']);
     }
   }
 
@@ -1975,8 +2023,16 @@ export class WorldScene extends Phaser.Scene {
     }
     this.hunterState = applyHunterBreakaway(
       this.hunterState,
-      findHunterBreakawayTile(this.hunterState.position, this.currentTile, this.bounds, (tile) =>
-        this.isBlockedForHunter(tile),
+      findHunterBreakawayTile(
+        this.hunterState.position,
+        this.currentTile,
+        this.bounds,
+        (tile) => this.isBlockedForHunter(tile),
+        HUNTER_BREAKAWAY_DISTANCE,
+        // The way the player was walking when they were caught is the only read the
+        // world has on where they are going, and it is enough to keep the hunter from
+        // falling back onto the ground they are about to cross.
+        this.facing,
       ),
     );
   }
@@ -2025,7 +2081,7 @@ export class WorldScene extends Phaser.Scene {
       introLines: ['FOUND YOU.', 'There is nowhere left to run!'],
       isHunter: true,
     };
-    this.dialogBox.showMessages([...this.pendingTrainerBattle.introLines]);
+    this.interrupt(this.pendingTrainerBattle.introLines);
     return true;
   }
 }

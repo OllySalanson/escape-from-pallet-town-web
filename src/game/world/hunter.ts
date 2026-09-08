@@ -2,7 +2,7 @@ import { Pokemon } from '../pokemon';
 import { BULBASAUR, PIDGEY, PIKACHU } from '../pokemon/species';
 import type { PokemonBase } from '../pokemon/PokemonBase';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
-import type { GridBounds, GridPosition } from '../movement/gridMovement';
+import { DIRECTION_DELTAS, type Direction, type GridBounds, type GridPosition } from '../movement/gridMovement';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { RunResult } from '../run/RunManager';
 import type { HunterTuning } from '../run/runGeneration';
@@ -25,8 +25,19 @@ export const HUNTER_BREAKAWAY_DISTANCE = 6;
  *
  * Measured in raid time rather than player steps so standing still burns it too:
  * an escape buys a window to reposition or extract, never a safe place to idle.
+ *
+ * The length is not a feel: it is the walk it has to cover. An escape is bought
+ * because the player cannot win the fight, so the least it can promise is the
+ * walk to a way out. On the rebuilt maps the furthest any tile sits from its
+ * nearest extraction point is 47 tiles (Pallet Town), and a tile costs about
+ * 0.23s of clock at the rate measured in a headless browser - 10.8s of walking,
+ * which the old 10s window did not cover. Fifteen seconds covers it with room to
+ * route around whatever is in the way, and is still only a twentieth of the raid
+ * against an escape priced at an eighth of it. `hunterFlee.test.ts` recomputes
+ * that walk from the maps themselves, so redrawing one that strands a corner
+ * fails there rather than in a playtest.
  */
-export const HUNTER_SEARCH_MS = 10_000;
+export const HUNTER_SEARCH_MS = 15_000;
 export const DEFAULT_HUNTER_TUNING: HunterTuning = {
   spawnDelayMs: HUNTER_SPAWN_MS,
   aggressionStepsPerPlayerStep: 1,
@@ -397,11 +408,21 @@ export const tickHunterSearch = (state: HunterState, deltaMs: number): HunterSta
 /**
  * Where a hunter falls back to when the player breaks contact.
  *
- * It picks the tile that puts HUNTER_BREAKAWAY_DISTANCE walkable tiles between hunter
- * and player, and among the tiles that manage that, the one the hunter can reach
- * soonest - so it backs off along the route it arrived by instead of teleporting
- * across the map. A cramped or enclosed area yields the best separation available
- * rather than failing, and the player's own tile is never chosen.
+ * Distance alone was never the thing an escape buys. Measured across every walkable
+ * tile of all four rebuilt maps, a heading-blind fallback parked the hunter on the
+ * player's own shortest route to an exit, landmark or contract stop about a third of
+ * the time, and lengthened that route about a quarter of the time - so a quarter of
+ * all escapes were paid for in raid time and then made the player's position worse.
+ * That is why this takes the direction the player was walking: the hunter falls back
+ * *behind* them, off the ground they are about to cross, and the window is spent
+ * going somewhere instead of going round.
+ *
+ * It picks the tile that puts `breakawayDistance` walkable tiles between hunter and
+ * player; among the tiles that manage that it prefers the one furthest behind the
+ * player's heading, and among those the one the hunter can reach soonest - so it
+ * backs off along ground it could have walked instead of teleporting across the map.
+ * A cramped or enclosed area yields the best separation available rather than
+ * failing, and the player's own tile is never chosen.
  */
 export const findHunterBreakawayTile = (
   hunter: GridPosition,
@@ -409,6 +430,7 @@ export const findHunterBreakawayTile = (
   bounds: GridBounds,
   isBlocked: (tile: GridPosition) => boolean,
   breakawayDistance: number = HUNTER_BREAKAWAY_DISTANCE,
+  heading: Direction | null = null,
 ): GridPosition => {
   if (!isInsideBounds(hunter, bounds)) {
     return hunter;
@@ -421,33 +443,71 @@ export const findHunterBreakawayTile = (
 
   const visited = new Uint8Array(bounds.width * bounds.height);
   visited[tileIndex(hunter, bounds)] = 1;
-  // Breadth-first, so the first tile reaching a given separation is also the one the
-  // hunter reaches soonest, and the N/S/W/E order settles the remaining ties.
+  // Breadth-first, so `reached` is ordered by how soon the hunter gets there and
+  // `walk` is the number of steps it would have taken to back off that far.
   const reached = [hunter];
-  let best = hunter;
-  let bestSeparation = separation(hunter);
-
+  const walk = [0];
   for (let head = 0; head < reached.length; head += 1) {
-    const tile = reached[head];
-    const tileSeparation = separation(tile);
-    if (tileSeparation > bestSeparation) {
-      best = tile;
-      bestSeparation = tileSeparation;
-      if (bestSeparation === breakawayDistance) {
-        return best;
-      }
-    }
-    for (const neighbour of walkableNeighbours(tile, bounds, isBlocked)) {
+    for (const neighbour of walkableNeighbours(reached[head], bounds, isBlocked)) {
       const index = tileIndex(neighbour, bounds);
       if (visited[index] === 1) {
         continue;
       }
       visited[index] = 1;
       reached.push(neighbour);
+      walk.push(walk[head] + 1);
     }
   }
 
-  return best;
+  /**
+   * How far the hunter may walk back and still look like it retreated rather than
+   * vanished. Every tile at full separation is within the hunter's own distance to
+   * the player plus that separation plus one, so this rules nothing out - it only
+   * stops "furthest behind the player" from reaching across the whole map when a
+   * dozen tiles are tied on separation.
+   */
+  const hunterToPlayer = fromPlayer[tileIndex(hunter, bounds)];
+  const walkLimit =
+    (hunterToPlayer === UNREACHED ? breakawayDistance : hunterToPlayer) + breakawayDistance + 1;
+  const delta = heading === null ? null : DIRECTION_DELTAS[heading];
+  /** Positive is in front of the player, negative behind: smaller is a better retreat. */
+  const aheadOfPlayer = (tile: GridPosition): number =>
+    delta === null ? 0 : (tile.x - player.x) * delta.x + (tile.y - player.y) * delta.y;
+
+  const playerDistance = (tile: GridPosition): number => {
+    const distance = fromPlayer[tileIndex(tile, bounds)];
+    return distance === UNREACHED ? Number.POSITIVE_INFINITY : distance;
+  };
+
+  /**
+   * Most separation first, because that is what the escape is for, and then the
+   * nearest tile that achieves it - so the gap is `breakawayDistance` and not
+   * whatever the heading could be talked into. Only then does the player's
+   * heading break the tie, which on a lane running both ways is the whole
+   * question; a retreat the hunter could have walked comes before it so a tie
+   * can never be settled by a tile across the map, and the tile it reaches
+   * soonest settles what is left, deterministically.
+   */
+  const rank = (index: number): readonly number[] => [
+    -separation(reached[index]),
+    playerDistance(reached[index]),
+    walk[index] > walkLimit ? 1 : 0,
+    aheadOfPlayer(reached[index]),
+    walk[index],
+  ];
+
+  let best = 0;
+  let bestRank = rank(0);
+  for (let index = 1; index < reached.length; index += 1) {
+    const candidate = rank(index);
+    const decided = candidate.findIndex((value, place) => value !== bestRank[place]);
+    if (decided !== -1 && candidate[decided] < bestRank[decided]) {
+      best = index;
+      bestRank = candidate;
+    }
+  }
+
+  return reached[best];
 };
 
 /** Places a disengaged hunter on its fallback tile and clears the pending marker. */
