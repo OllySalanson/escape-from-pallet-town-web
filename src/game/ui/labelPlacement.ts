@@ -80,6 +80,18 @@ export interface CaptionSurroundings {
    * seats does the rest: the other row, slid along it, then beside the subject.
    */
   readonly canopy: readonly Rect[];
+  /**
+   * The player: the figure and the chevron over it, on the tile they stand on
+   * and the one they are stepping to. A figure is drawn over every caption, so
+   * the player was never hidden - but the place to read a caption is beside the
+   * thing it names, and a caption naming the tile underfoot was seated across
+   * the reader's own head (`DROP-IN READ▼`, `TOLL BRIDGE / OPEN` through the
+   * hair). It is ground a caption gives up *if it has anywhere else to go*: a
+   * caption with no other seat keeps the one under the player rather than
+   * vanishing, because the player walks everywhere and a warning that blinked
+   * out whenever they stood near it would be the worse fault.
+   */
+  readonly player?: readonly Rect[];
 }
 
 export interface CaptionPlacement {
@@ -189,6 +201,7 @@ function intrusion(rect: Rect, surroundings: CaptionSurroundings, seated: readon
     against(surroundings.furniture, NEIGHBOUR_GAP) +
     against(surroundings.keepClear, 0) +
     against(surroundings.canopy, 0) +
+    against(surroundings.player ?? [], 0) +
     against(seated, NEIGHBOUR_GAP)
   );
 }
@@ -202,6 +215,8 @@ export interface SeatRefusal {
   readonly underHud: number;
   readonly overMapArt: number;
   readonly underCanopy: number;
+  /** Given up only while another seat is clear - see `CaptionSurroundings.player`. */
+  readonly overPlayer: number;
   readonly againstCaption: number;
 }
 
@@ -229,6 +244,7 @@ export function explainSeats(
       underHud: against(rect, surroundings.furniture, NEIGHBOUR_GAP),
       overMapArt: against(rect, surroundings.keepClear, 0),
       underCanopy: against(rect, surroundings.canopy, 0),
+      overPlayer: against(rect, surroundings.player ?? [], 0),
       againstCaption: against(rect, seated, NEIGHBOUR_GAP),
     };
   });
@@ -285,13 +301,18 @@ export function placeCaptions(
       return hidden(0);
     }
 
-    const isClear = (index: number): boolean =>
-      intrusion(rectOf(candidates[index]), around, seated) === 0;
-    const held =
-      request.held !== undefined && request.held < candidates.length && isClear(request.held)
+    // Twice at most: clear of everything, then clear of everything but the
+    // player. The held seat is asked first both times, so a caption the player
+    // walks under moves once and stays where it went.
+    const seatClearOf = (ground: CaptionSurroundings): number => {
+      const isClear = (index: number): boolean =>
+        intrusion(rectOf(candidates[index]), ground, seated) === 0;
+      return request.held !== undefined && request.held < candidates.length && isClear(request.held)
         ? request.held
-        : -1;
-    const index = held >= 0 ? held : candidates.findIndex((_, at) => isClear(at));
+        : candidates.findIndex((_, at) => isClear(at));
+    };
+    const clearOfPlayer = seatClearOf(around);
+    const index = clearOfPlayer >= 0 ? clearOfPlayer : seatClearOf({ ...around, player: [] });
     if (index < 0) {
       return hidden(0);
     }

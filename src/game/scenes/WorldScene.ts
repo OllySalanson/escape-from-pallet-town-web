@@ -2070,7 +2070,13 @@ export class WorldScene extends Phaser.Scene {
     }));
     const placements = placeCaptions(
       this.worldLabels.map((label) => label.request()),
-      { bounds, furniture, keepClear: this.captionKeepClear(), canopy: this.canopyInView(bounds) },
+      {
+        bounds,
+        furniture,
+        keepClear: this.captionKeepClear(),
+        canopy: this.canopyInView(bounds),
+        player: this.captionPlayer(),
+      },
     );
     this.worldLabels.forEach((label, index) => label.seat(placements[index]));
   }
@@ -2116,9 +2122,11 @@ export class WorldScene extends Phaser.Scene {
   /**
    * What stands on this map that a caption may not cover, beyond the things the
    * captions themselves name: signs, crates, the ground a trainer watches, and
-   * everyone standing still. The player and the hunter are left out on purpose.
-   * They walk, a caption that dodged them would chase around the screen, and
-   * `depths.ts` already draws every figure over every caption.
+   * everyone standing still. The hunter is left out on purpose: it walks, a
+   * caption that dodged it would chase around the screen, and `depths.ts`
+   * already draws every figure over every caption. The player walks too, and is
+   * `captionPlayer()`'s business rather than this list's, because a caption
+   * gives the player room only while it has somewhere else to sit.
    */
   private captionKeepClear(): Rect[] {
     const signs = this.currentMap.entities
@@ -2139,6 +2147,17 @@ export class WorldScene extends Phaser.Scene {
         height: FIGURE_HEIGHT,
       }));
     return [...signs, ...crates, ...standing, ...this.watchedGround];
+  }
+
+  /**
+   * Where the player is, as captions see them: the figure and its chevron on
+   * the tile they stand on, and on the tile they are stepping to. Whole tiles
+   * rather than the sprite's own position, so the answer changes when a step
+   * begins and not on every frame of it - a caption in the way moves once, as
+   * the player sets off towards it, instead of sliding along ahead of them.
+   */
+  private captionPlayer(): Rect[] {
+    return [this.currentTile, ...(this.targetTile ? [this.targetTile] : [])].map(landingRect);
   }
 
   private isLootAvailable(): boolean {
