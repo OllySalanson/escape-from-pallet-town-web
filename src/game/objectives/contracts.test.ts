@@ -18,7 +18,7 @@ import {
   isContractBankable,
   missingCarryIn,
   RAID_CONTRACTS,
-  secureItemStackLimit,
+  secureGrid,
   securePokemonLimit,
   type RaidContract,
 } from './contracts';
@@ -211,35 +211,39 @@ describe('what a banked contract buys', () => {
   it('stacks the Outfitter\'s locker on top of the ledger\'s, from the two lists alone', () => {
     const ledger = [FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger'];
 
-    expect(secureItemStackLimit([], ['secure-locker-1'])).toBe(3);
-    expect(secureItemStackLimit(ledger, ['secure-locker-1'])).toBe(4);
-    // The second locker protects a Pokemon, not another stack.
-    expect(secureItemStackLimit(ledger, ['secure-locker-1', 'secure-locker-2'])).toBe(4);
+    expect(secureGrid([], ['secure-locker-1'])).toEqual({ width: 3, height: 2 });
+    expect(secureGrid(ledger, ['secure-locker-1'])).toEqual({ width: 4, height: 2 });
+    // The second locker protects a Pokemon, not another column.
+    expect(secureGrid(ledger, ['secure-locker-1', 'secure-locker-2'])).toEqual({ width: 4, height: 2 });
     expect(securePokemonLimit([])).toBe(1);
     expect(securePokemonLimit(['secure-locker-1'])).toBe(1);
     expect(securePokemonLimit(['secure-locker-1', 'secure-locker-2'])).toBe(2);
   });
 
   it('enlarges the secure slot when the cordon ledger is banked, and the raid honours it', () => {
-    expect(secureItemStackLimit([], [])).toBe(2);
-    expect(secureItemStackLimit([FIRST_CONTRACT_ID, 'survey-the-braid'], [])).toBe(2);
-    expect(secureItemStackLimit([FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger'], [])).toBe(3);
+    expect(secureGrid([], [])).toEqual({ width: 2, height: 2 });
+    expect(secureGrid([FIRST_CONTRACT_ID, 'survey-the-braid'], [])).toEqual({ width: 2, height: 2 });
+    expect(secureGrid([FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger'], [])).toEqual({
+      width: 3,
+      height: 2,
+    });
 
     const party = [new Pokemon(BULBASAUR, 5)];
+    // Five one-square supplies: four squares hold them, five do not.
     const items = [
-      { itemId: 'potion', quantity: 1 },
-      { itemId: 'poke-ball', quantity: 1 },
+      { itemId: 'potion', quantity: 2 },
+      { itemId: 'poke-ball', quantity: 2 },
       { itemId: 'antidote', quantity: 1 },
     ] as const;
-    const threeStacks = { items: [...items] };
+    const fiveSquares = { items: [...items] };
     expect(() =>
-      new RunManager().startRun({ party, items: [...items] }, { mapId: 'pallet-town', durationMs: 1 }, threeStacks),
-    ).toThrow(/at most 2 item stacks/);
+      new RunManager().startRun({ party, items: [...items] }, { mapId: 'pallet-town', durationMs: 1 }, fiveSquares),
+    ).toThrow(/2x2 cannot hold that/);
     expect(() =>
       new RunManager().startRun(
         { party, items: [...items] },
-        { mapId: 'pallet-town', durationMs: 1, secureItemStackLimit: 3 },
-        threeStacks,
+        { mapId: 'pallet-town', durationMs: 1, secureGrid: { width: 3, height: 2 } },
+        fiveSquares,
       ),
     ).not.toThrow();
   });
@@ -307,11 +311,11 @@ describe('saves written before contracts were a list', () => {
     expect(availableContracts(loaded.raidProgress.completedContracts).map(({ id }) => id))
       .toEqual([FIRST_CONTRACT_ID]);
     expect(
-      secureItemStackLimit(
+      secureGrid(
         loaded.raidProgress.completedContracts,
         loaded.raidProgress.outfitterUpgrades,
       ),
-    ).toBe(2);
+    ).toEqual({ width: 2, height: 2 });
   });
 });
 

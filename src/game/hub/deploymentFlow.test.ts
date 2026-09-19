@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SECURED_MATERIAL_QUANTITY } from '../items';
+import { RAID_BAG_GRID } from '../items';
 import { CHARMANDER, Pokemon, SQUIRTLE } from '../pokemon';
 import { createStartingStash, type Stash } from '../stash';
 import { DeploymentFlow } from './deploymentFlow';
@@ -80,7 +80,7 @@ describe('deployment flow', () => {
     flow.chooseInsertion('viridian-forest');
     flow.openSecureSlot();
     flow.toggleSecurePokemon('charmander-1');
-    flow.toggleSecureItem('potion');
+    flow.adjustSecureItem('potion', 2);
     flow.advance();
     flow.advance();
 
@@ -135,8 +135,8 @@ describe('deployment flow', () => {
     flow.toggleSecurePokemon(ids[0]);
     flow.toggleSecurePokemon(ids[1]);
     expect(flow.securedPokemon.map(({ id }) => id)).toEqual([ids[1]]);
-    expect(flow.toggleSecureItem('potion')).toBeUndefined();
-    expect(flow.toggleSecureItem('poke-ball')).toBeUndefined();
+    expect(flow.adjustSecureItem('potion', 1)).toBeUndefined();
+    expect(flow.adjustSecureItem('poke-ball', 1)).toBeUndefined();
     expect(flow.securedItems).toHaveLength(2);
   });
 
@@ -147,7 +147,7 @@ describe('deployment flow', () => {
     flow.adjustItem('potion', 2);
     flow.openSecureSlot();
     flow.toggleSecurePokemon('charmander-1');
-    flow.toggleSecureItem('potion');
+    flow.adjustSecureItem('potion', 1);
     flow.advance();
 
     flow.togglePokemon('charmander-1');
@@ -208,7 +208,7 @@ describe('deployment flow', () => {
     const stash = createStartingStash();
     stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
     stash.addPokemon(new Pokemon(SQUIRTLE, 6), 'squirtle-1');
-    const flow = new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 2, itemStacks: 3 });
+    const flow = new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 2, secureGrid: { width: 3, height: 2 }, bagGrid: RAID_BAG_GRID });
     for (const id of ['bulbasaur-1', 'charmander-1', 'squirtle-1']) {
       flow.togglePokemon(id);
       flow.toggleSecurePokemon(id);
@@ -234,20 +234,64 @@ describe('deployment flow', () => {
     flow.adjustItem('radio-valve', 1);
     expect(flow.items).toEqual([]);
 
-    // A material is found rather than brought, so protecting it is naming the kind.
-    expect(flow.toggleSecureItem('radio-valve')).toBeUndefined();
+    // A material is found rather than brought, so the container keeps room for
+    // it: two squares of a four-square container, for one radio valve.
+    expect(flow.adjustSecureItem('radio-valve', 1)).toBeUndefined();
     expect(flow.securesItem('radio-valve')).toBe(true);
-    expect(flow.securedItems).toEqual([{ itemId: 'radio-valve', quantity: SECURED_MATERIAL_QUANTITY }]);
+    expect(flow.securedItems).toEqual([{ itemId: 'radio-valve', quantity: 1 }]);
     flow.advance();
     const deployment = flow.deploy();
     expect(deployment.items).toEqual([]);
-    expect(deployment.stashSecureSlot.items).toEqual([{ itemId: 'radio-valve', quantity: SECURED_MATERIAL_QUANTITY }]);
+    expect(deployment.stashSecureSlot.items).toEqual([{ itemId: 'radio-valve', quantity: 1 }]);
   });
 
-  it('counts a secured material against the same slots as any other stack', () => {
+  it('measures a secured material in the same squares as any other item', () => {
     const { flow } = seedFlow();
-    flow.toggleSecureItem('radio-valve');
-    flow.toggleSecureItem('lamp-oil');
-    expect(flow.toggleSecureItem('cable-coil')).toMatch(/2 item stacks/);
+    // Two radio valves are two squares each: the base container is full.
+    expect(flow.adjustSecureItem('radio-valve', 1)).toBeUndefined();
+    expect(flow.adjustSecureItem('radio-valve', 1)).toBeUndefined();
+    expect(flow.secureCells).toEqual({ used: 4, total: 4 });
+    expect(flow.adjustSecureItem('lamp-oil', 1)).toMatch(/full/);
+    // A four-square crate never fits a four-square container that holds anything.
+    expect(flow.adjustSecureItem('cable-coil', 1)).toMatch(/full/);
+  });
+
+  it('caps the pack by its squares, not by the vault', () => {
+    const { flow, stash } = seedFlow();
+    stash.addItem('potion', 40);
+    flow.togglePokemon('bulbasaur-1');
+    // Eighteen squares, one apiece: the nineteenth Potion is refused, and the
+    // refusal is a sentence rather than a disabled button.
+    for (let index = 0; index < 18; index += 1) {
+      expect(flow.adjustItem('potion', 1)).toBeUndefined();
+    }
+    expect(flow.itemQuantity('potion')).toBe(18);
+    expect(flow.bagCells).toEqual({ used: 18, total: 18 });
+    expect(flow.adjustItem('potion', 1)).toMatch(/No room/);
+    expect(flow.packHasRoomFor('potion')).toBe(false);
+    expect(flow.itemQuantity('potion')).toBe(18);
+  });
+
+  /**
+   * A Super Potion is one square wide and two tall, and the pack is three rows
+   * deep - so six of them stand a column apiece and leave the bottom row, which
+   * only one-square things can use. Twice the heal for twice the room is the
+   * rule; the leftover row is the shape of the pack answering back.
+   */
+  it('measures a Super Potion at two squares, and leaves a row only singles can fill', () => {
+    const { flow, stash } = seedFlow();
+    stash.addItem('super-potion', 20);
+    stash.addItem('potion', 20);
+    for (let index = 0; index < 6; index += 1) {
+      expect(flow.adjustItem('super-potion', 1)).toBeUndefined();
+    }
+    expect(flow.bagCells).toEqual({ used: 12, total: 18 });
+    expect(flow.adjustItem('super-potion', 1)).toMatch(/No room/);
+
+    for (let index = 0; index < 6; index += 1) {
+      expect(flow.adjustItem('potion', 1)).toBeUndefined();
+    }
+    expect(flow.bagCells).toEqual({ used: 18, total: 18 });
+    expect(flow.adjustItem('potion', 1)).toMatch(/No room/);
   });
 });

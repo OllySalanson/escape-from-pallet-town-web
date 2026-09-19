@@ -1,4 +1,10 @@
-import type { SupplyItemId } from '../items';
+import {
+  growGridRows,
+  RAID_BAG_GRID,
+  RAID_BAG_ROWS_PER_UPGRADE,
+  type GridSize,
+  type SupplyItemId,
+} from '../items';
 import type { ContractStack } from '../objectives/contracts';
 import { Stash, type StashedPokemon } from '../stash';
 
@@ -52,8 +58,18 @@ export interface OutfitterUpgrade {
   /** The upgrade that must already stand before this one is offered. */
   readonly requires?: string;
   readonly cost: OutfitterCost;
-  /** Adds one protected item stack to the secure slot. */
+  /** Adds one column to the secure container. */
   readonly secureItemStack?: boolean;
+  /**
+   * Adds one row of squares to the raid pack.
+   *
+   * Nothing on the ladder sells this yet - the rungs that exist were priced and
+   * measured before the pack had a size. It is wired because a bigger pack is
+   * the obvious next rung and the pack must be able to grow *before* one is
+   * written, or the rung would arrive as a change to the save, the loadout and
+   * the raid rather than one row in this table.
+   */
+  readonly bagRow?: boolean;
   /** Adds one protected Pokemon to the secure slot. */
   readonly securePokemon?: boolean;
   /**
@@ -200,9 +216,19 @@ export function builtUpgrades(builtIds: readonly string[]): readonly OutfitterUp
   return OUTFITTER_UPGRADES.filter((upgrade) => builtIds.includes(upgrade.id));
 }
 
-/** Item stacks the Outfitter has added to the secure slot. */
+/** Columns the Outfitter has added to the secure container. */
 export function outfitterSecureItemStacks(builtIds: readonly string[]): number {
   return builtUpgrades(builtIds).filter((upgrade) => upgrade.secureItemStack).length;
+}
+
+/**
+ * How big this base's raid pack is: the starting grid plus a row for every rung
+ * built that grows it. Derived from the built list like every other Outfitter
+ * effect, so the save stores the ladder and nothing else.
+ */
+export function raidBagGridFor(builtIds: readonly string[]): GridSize {
+  const rows = builtUpgrades(builtIds).filter((upgrade) => upgrade.bagRow).length;
+  return growGridRows(RAID_BAG_GRID, rows * RAID_BAG_ROWS_PER_UPGRADE);
 }
 
 /** Protected Pokemon the Outfitter has added to the secure slot. */

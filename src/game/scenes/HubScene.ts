@@ -17,6 +17,7 @@ import {
   paymentCandidates,
   pokemonNeedingRecovery,
   quoteRecovery,
+  raidBagGridFor,
   raidClockAfterRecovery,
   recoveryCostMs,
   recoveryPriceShare,
@@ -37,7 +38,9 @@ import {
   HELD_ITEM_DEFINITIONS,
   ITEM_DEFINITIONS,
   MATERIAL_IDS,
+  footprintOf,
   getHeldItem,
+  gridCells,
   isMaterial,
   type ItemDefinition,
   type ItemId,
@@ -61,7 +64,7 @@ import {
   formatStacks,
   missingCarryIn,
   objectivesForContract,
-  secureItemStackLimit,
+  secureGrid,
   securePokemonLimit,
   type RaidContract,
 } from '../objectives';
@@ -87,6 +90,7 @@ import {
   pixelPortrait,
   pixelRail,
   pixelScreen,
+  pixelGrid,
   pixelTag,
   pixelTypeBadge,
   pixelWindow,
@@ -153,10 +157,11 @@ export class HubScene extends Phaser.Scene {
     // Nothing is pre-selected: the raid party is always something the player picked.
     this.flow = new DeploymentFlow(this.stash, this.unlockedInsertions[0]?.[0], {
       pokemon: securePokemonLimit(loaded.raidProgress.outfitterUpgrades),
-      itemStacks: secureItemStackLimit(
+      secureGrid: secureGrid(
         loaded.raidProgress.completedContracts,
         loaded.raidProgress.outfitterUpgrades,
       ),
+      bagGrid: raidBagGridFor(loaded.raidProgress.outfitterUpgrades),
     });
     this.view = 'home';
     this.reselectStarterId = this.startingStarterId();
@@ -424,7 +429,7 @@ export class HubScene extends Phaser.Scene {
     }
     audioManager.play('select');
     const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.base.name;
-    const gear = this.itemName(itemId as ItemId);
+    const gear = this.itemName(itemId);
     this.setStatus(
       this.saveManager.save({ ...this.savedGame, stash: this.stash })
         ? `${name ?? 'Your Pokémon'} is holding the ${gear}. It rides into the raid, and a wipe takes it unless ${name ?? 'it'} is secured.`
@@ -675,7 +680,7 @@ export class HubScene extends Phaser.Scene {
       {
         mapId: RUN_INSERTIONS[deployment.insertionId].mapId,
         durationMs: this.raidClockMs,
-        secureItemStackLimit: this.flow.secureItemStacks,
+        secureGrid: this.flow.secureGrid,
         securePokemonLimit: this.flow.securePokemonSlots,
       },
       deployment.secureSlot,
@@ -710,7 +715,12 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.start('world', {
         party: new PokemonParty(deployment.party.map((stored) => stored.pokemon)),
-        bag: new Bag(Object.fromEntries(items.map(({ itemId, quantity }) => [itemId, quantity]))),
+        // The pack goes into the raid at the size the loadout was packed
+        // against, so what the grid refused at base it refuses in the field.
+        bag: new Bag(
+          Object.fromEntries(items.map(({ itemId, quantity }) => [itemId, quantity])),
+          this.flow.bagGrid,
+        ),
         runSession,
       });
     });
@@ -841,15 +851,28 @@ export class HubScene extends Phaser.Scene {
     on('[data-treat-item]', (button) => this.treat(button.dataset.treatPokemon!, button.dataset.treatItem!));
     on('[data-gear-give]', (button) => this.giveGear(button.dataset.gearPokemon!, button.dataset.gearGive!));
     on('[data-gear-take]', (button) => this.takeGear(button.dataset.gearTake!));
-    on('[data-item]', (button) =>
-      rerender(() => this.flow.adjustItem(button.dataset.item as ItemId, Number(button.dataset.amount))),
-    );
+    on('[data-item]', (button) => {
+      const refusal = this.flow.adjustItem(button.dataset.item as ItemId, Number(button.dataset.amount));
+      if (refusal) {
+        this.answer(refusal, 'select');
+        return;
+      }
+      rerender(() => undefined);
+    });
     on('[data-secure-pokemon]', (button) =>
       rerender(() => this.flow.toggleSecurePokemon(button.dataset.securePokemon!)),
     );
-    on('[data-secure-item]', (button) =>
-      this.answer(this.flow.toggleSecureItem(button.dataset.secureItem as ItemId), 'select'),
-    );
+    on('[data-secure-item]', (button) => {
+      const refusal = this.flow.adjustSecureItem(
+        button.dataset.secureItem as ItemId,
+        Number(button.dataset.secureAmount),
+      );
+      if (refusal) {
+        this.answer(refusal, 'select');
+        return;
+      }
+      rerender(() => undefined);
+    });
     on('[data-insertion]', (button) =>
       rerender(() => this.flow.chooseInsertion(button.dataset.insertion as RunInsertionId)),
     );
@@ -1093,7 +1116,11 @@ export class HubScene extends Phaser.Scene {
    */
   private loadoutView(): string {
     const party = this.flow.party;
-    const securedCount = this.flow.securedPokemon.length + this.flow.securedItems.length;
+    // Things, not kinds: four Potions in the container is four protected, and
+    // "1 protected" beside a full container was a number nobody could place.
+    const securedCount =
+      this.flow.securedPokemon.length +
+      this.flow.securedItems.reduce((total, item) => total + item.quantity, 0);
     const single = this.stashPokemon.length === 1;
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
     const allFainted = party.length > 0 && !this.flow.isDeployable;
@@ -1121,8 +1148,19 @@ export class HubScene extends Phaser.Scene {
       .map((item) => {
         const packed = this.flow.itemQuantity(item.id as ItemId);
         const held = this.stash.itemCount(item.id);
-        const help = escapeAttribute(`${item.displayName}: ${item.description} ${held} at base.`);
-        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${held} at base</small></span><span class="px-stepper"><button class="px-window px-step" data-item="${item.id}" data-amount="-1" data-help="${help}" aria-label="Remove ${item.displayName}"${packed ? '' : ' disabled'}>−</button><b>${packed}</b><button class="px-window px-step" data-item="${item.id}" data-amount="1" data-help="${help}" aria-label="Add ${item.displayName}"${packed < held ? '' : ' disabled'}>+</button></span></div>`;
+        const footprint = footprintOf(item.id);
+        const size = footprint.width === 1 && footprint.height === 1
+          ? '1 square'
+          : `${footprint.width * footprint.height} squares`;
+        const room = this.flow.packHasRoomFor(item.id as ItemId);
+        const help = escapeAttribute(
+          `${item.displayName}: ${item.description} ${size} each, ${held} at base.`,
+        );
+        // The pack is the second cap after the vault, so a row says both: what
+        // it costs in squares, and how many of it the base still holds. A plus
+        // that would not fit is left reachable and refuses out loud, because a
+        // control the cursor cannot land on can never say why.
+        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${size} · ${held} at base</small></span><span class="px-stepper"><button class="px-window px-step" data-item="${item.id}" data-amount="-1" data-help="${help}" aria-label="Remove ${item.displayName}"${packed ? '' : ' disabled'}>−</button><b>${packed}</b><button class="px-window px-step" data-item="${item.id}" data-amount="1" data-help="${help}" aria-label="Add ${item.displayName}"${packed < held ? '' : ' aria-disabled="true"'}${room ? '' : ' aria-disabled="true"'}>+</button></span></div>`;
       })
       .join('');
     const insertions = this.unlockedInsertions
@@ -1136,26 +1174,38 @@ export class HubScene extends Phaser.Scene {
         }<small class="insertion-contract">${contract ? `${contract.name}${contract.hunterPressure ? ` · hunter +${contract.hunterPressure}` : ''}` : 'No contract'}</small></span>${chosen ? pixelTag('', 'good', true) : ''}</button>`;
       })
       .join('');
+    const cells = this.flow.bagCells;
+    // The stash list is the tall one - it holds every Pokemon and every supply
+    // at base - so it keeps the first column whole, and the pack stands over the
+    // insertions in the second, where its own lid counts the squares.
     return `<main class="px-body loadout-layout">${pixelWindow(
       `<div class="px-list px-scroll">${pokemonRows}<h3 class="px-subheading">Supplies</h3>${supplyRows || '<p class="px-empty">No supplies at base.</p>'}</div>`,
       { heading: 'Stash', note: hurtCount ? `${hurtCount} hurt · treat them first` : '' },
+    )}<div class="loadout-side">${pixelWindow(
+      pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
+        label: `Pack, ${cells.used} of ${cells.total} squares full`,
+      }),
+      {
+        className: 'pack-window',
+        heading: 'Pack',
+        note: `${cells.used}/${cells.total} squares`,
+      },
     )}${pixelWindow(
       `<div class="px-list">${insertions}</div>${this.firstContractActive ? '<p class="px-note px-wrap">Three more insertions unlock when you extract this contract.</p>' : ''}${this.carryInNote()}`,
       { className: 'run-loadout px-scroll', heading: this.firstContractActive ? 'Contract area' : 'Drop in at' },
-    )}${pixelCommitBar({
+    )}</div>${pixelCommitBar({
       title: `${party.length}/6 Pokémon packed`,
       lines: [
         `<span class="px-wrap">${summary}</span>`,
         `<small class="px-wrap${allFainted ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : 'Everything here is lost on a wipe unless it is in the secure slot.'}</small>`,
       ],
-      actions: `<button class="px-window px-button" data-secure-slot data-help="Choose the ${this.flow.securePokemonSlots === 1 ? 'one Pokémon' : `${this.flow.securePokemonSlots} Pokémon`} and ${this.flow.secureItemStacks} item stacks that survive a wipe.">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Read back what this raid risks before you commit to it." ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy</button>`,
+      actions: `<button class="px-window px-button" data-secure-slot data-help="Choose the ${this.flow.securePokemonSlots === 1 ? 'one Pokémon' : `${this.flow.securePokemonSlots} Pokémon`} and the ${gridCells(this.flow.secureGrid)} squares of gear that survive a wipe.">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Read back what this raid risks before you commit to it." ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy</button>`,
     })}</main>`;
   }
 
   private secureView(): string {
     const party = this.flow.party;
     const returnLabel = this.flow.secureReturnStep === 'confirm' ? 'final check' : 'loadout';
-    const securedCount = this.flow.securedPokemon.length + this.flow.securedItems.length;
     const slots = this.flow.securePokemonSlots;
     const pokemonRows = party
       .map((stored) => {
@@ -1163,33 +1213,59 @@ export class HubScene extends Phaser.Scene {
         return `<button class="px-row${secured ? ' is-secured' : ''}" data-secure-pokemon="${stored.id}" data-help="${secured ? 'Secured: it comes home even if you wipe.' : 'Secure this Pokémon so a wipe cannot take it.'}">${this.pokemonRowBody(stored, secured ? pixelTag('', 'secure', true) : '')}</button>`;
       })
       .join('');
+    // One stepper a kind, exactly as the loadout packs: the container is squares
+    // now, so "how much of this comes home" is a number rather than a tick, and
+    // the same two keys answer it on both screens.
+    // The pane is narrow: the row says how many squares one costs and nothing
+    // else, because a second clause wrapped every row onto three lines and a
+    // list of three-line rows is a list nobody scrolls. What is packed, and
+    // what a material's room is for, are in the help bar the cursor fills.
+    const secureRow = (itemId: ItemId, help: string): string => {
+      const held = this.flow.secureQuantity(itemId);
+      const footprint = footprintOf(itemId);
+      const size = footprint.width * footprint.height;
+      const room = this.flow.secureHasRoomFor(itemId);
+      const label = escapeAttribute(this.itemName(itemId));
+      return `<div class="px-row has-icon${held ? ' is-secured' : ''}">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong>${this.itemName(itemId)}</strong><small>${size === 1 ? '1 square' : `${size} squares`}</small></span><span class="px-stepper"><button class="px-window px-step" data-secure-item="${itemId}" data-secure-amount="-1" data-help="${escapeAttribute(help)}" aria-label="Take ${label} out of the container"${held ? '' : ' disabled'}>−</button><b>${held}</b><button class="px-window px-step" data-secure-item="${itemId}" data-secure-amount="1" data-help="${escapeAttribute(help)}" aria-label="Put ${label} in the container"${room ? '' : ' aria-disabled="true"'}>+</button></span></div>`;
+    };
     const itemRows = this.flow.items
-      .map((item) => {
-        const secured = this.flow.securesItem(item.itemId);
-        return `<button class="px-row has-icon${secured ? ' is-secured' : ''}" data-secure-item="${item.itemId}" data-help="${secured ? 'Secured: this whole stack comes home even if you wipe.' : 'Secure this whole stack so a wipe cannot take it.'}">${itemIcon(item.itemId, this.itemName(item.itemId))}<span class="px-row-main"><strong>${this.itemName(item.itemId)} ×${item.quantity}</strong></span>${secured ? pixelTag('', 'secure', true) : ''}</button>`;
-      })
+      .map((item) =>
+        secureRow(
+          item.itemId,
+          `${this.itemName(item.itemId)}: ${item.quantity} packed. What you put in the container comes home even if you wipe.`,
+        ),
+      )
       .join('');
-    // A material is found rather than packed, so the slot names its kind: any of
-    // it still in the pack when the raid is lost comes home.
-    const materialRows = MATERIAL_IDS.map((itemId) => {
-      const secured = this.flow.securesItem(itemId);
-      return `<button class="px-row has-icon${secured ? ' is-secured' : ''}" data-secure-item="${itemId}" data-help="${secured ? 'Secured: any of this you find comes home even if you wipe.' : 'Secure this kind so anything of it you find comes home even if you wipe.'}">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong>${this.itemName(itemId)}</strong><small>anything you find</small></span>${secured ? pixelTag('', 'secure', true) : ''}</button>`;
-    }).join('');
+    // A material is found rather than packed, so the container holds room for
+    // it: whatever of that kind is still in the pack when the raid is lost
+    // comes home, up to the squares set aside here.
+    const materialRows = MATERIAL_IDS.map((itemId) =>
+      secureRow(
+        itemId,
+        `${this.itemName(itemId)}: room kept for one you find. A material is never packed, so this is squares held open for it.`,
+      ),
+    ).join('');
+    const cells = this.flow.secureCells;
     return `<main class="px-body secure-layout">${pixelWindow(
       `<div class="px-list px-scroll">${pokemonRows || '<p class="px-empty">Add a Pokémon to your loadout first.</p>'}</div>`,
       { className: 'secure-group', heading: 'Pokémon', note: `${this.flow.securedPokemon.length}/${slots} ${slots === 1 ? 'slot' : 'slots'}` },
     )}${pixelWindow(
-      `<div class="px-list px-scroll">${itemRows ? `${itemRows}<h3 class="px-subheading">Materials</h3>` : ''}${materialRows}</div>`,
+      // The squares and the list are one child of the window, or the window's
+      // second row takes both and the container scrolls away with the list.
+      `<div class="secure-body">${pixelGrid(this.flow.secureLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
+        className: 'is-secure',
+        label: `Secure container, ${cells.used} of ${cells.total} squares full`,
+      })}<div class="px-list px-scroll">${itemRows ? `${itemRows}<h3 class="px-subheading">Materials</h3>` : ''}${materialRows}</div></div>`,
       {
         className: 'secure-group',
-        heading: 'Item stacks',
-        note: `${this.flow.securedItems.length}/${this.flow.secureItemStacks} slots`,
+        heading: 'Container',
+        note: `${cells.used}/${cells.total} squares`,
       },
     )}${pixelCommitBar({
       className: 'px-tone-secure secure-intro',
-      title: `Protected on a wipe · ${securedCount}/${slots + this.flow.secureItemStacks}`,
+      title: 'Protected on a wipe',
       lines: [
-        // The two lids above already count the slots and what fills them, so
+        // The two lids above already count the squares and what fills them, so
         // this line says only what the counting does not: the rest is gone.
         '<span class="px-wrap">Everything else in your loadout is lost on a wipe.</span>',
       ],
@@ -1210,8 +1286,10 @@ export class HubScene extends Phaser.Scene {
       }))
       .filter((item) => item.quantity > 0);
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
-    const protectedCount = securedPokemon.length + securedItems.length;
-    const riskedCount = riskedPokemon.length + riskedItems.length;
+    const protectedCount =
+      securedPokemon.length + securedItems.reduce((total, item) => total + item.quantity, 0);
+    const riskedCount =
+      riskedPokemon.length + riskedItems.reduce((total, item) => total + item.quantity, 0);
     // The price of the party, on screen before the player commits to it - the
     // rule the trainer watch and the flee cost already follow. It sits in the
     // full-width bar beside the button that pays it.
@@ -1220,7 +1298,7 @@ export class HubScene extends Phaser.Scene {
     // The window a row stands in is what says whether it is lost or comes home,
     // so the rows do not each say it again.
     const itemRow = (item: { readonly itemId: ItemId; readonly quantity: number }, secured: boolean): string =>
-      `<div class="px-row has-icon${secured ? ' is-secured' : ''}">${itemIcon(item.itemId, this.itemName(item.itemId))}<span class="px-row-main"><strong>${this.itemName(item.itemId)}${isMaterial(item.itemId) ? '' : ` ×${item.quantity}`}</strong>${isMaterial(item.itemId) ? '<small>anything you find</small>' : ''}</span></div>`;
+      `<div class="px-row has-icon${secured ? ' is-secured' : ''}">${itemIcon(item.itemId, this.itemName(item.itemId))}<span class="px-row-main"><strong>${this.itemName(item.itemId)} ×${item.quantity}</strong>${isMaterial(item.itemId) ? '<small>room kept for what you find</small>' : ''}</span></div>`;
     const risked = `${riskedPokemon
       .map((stored) => `<div class="px-row">${this.pokemonRowBody(stored, '')}</div>`)
       .join('')}${riskedItems.map((item) => itemRow(item, false)).join('')}`;
@@ -1239,13 +1317,13 @@ export class HubScene extends Phaser.Scene {
       {
         className: 'confirm-secure px-tone-secure',
         heading: 'Comes home',
-        note: `${protectedCount}/${this.flow.securePokemonSlots + this.flow.secureItemStacks} secured`,
+        note: `${protectedCount} secured · ${this.flow.secureCells.used}/${this.flow.secureCells.total} squares`,
       },
     )}${pixelCommitBar({
       title: `Deploy to ${insertion.label}`,
       lines: [
         `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · raid clock ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}</span>`,
-        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} supplies packed</small>`,
+        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} supplies · pack ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
         `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
       ],
       actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-start data-cursor-start data-help="There is no way back from here: the raid starts.">Enter the raid</button>`,
@@ -1483,7 +1561,7 @@ export class HubScene extends Phaser.Scene {
     return `${conditionLine(incoming)} · ${incoming.moves.map((move) => move.base.name).join(', ')}`;
   }
 
-  private itemName(itemId: ItemId): string {
+  private itemName(itemId: string): string {
     return ITEM_DEFINITIONS.find((item) => item.id === itemId)?.displayName ?? itemId;
   }
 

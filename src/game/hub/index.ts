@@ -1,11 +1,10 @@
 export {
-  BASE_SECURE_SLOT_CAPACITY,
+  BASE_LOADOUT_CAPACITY,
   DeploymentFlow,
   MAX_RUN_PARTY,
-  MAX_SECURE_ITEM_STACKS,
   type Deployment,
   type DeploymentStep,
-  type SecureSlotCapacity,
+  type LoadoutCapacity,
 } from './deploymentFlow';
 
 export {
@@ -51,6 +50,7 @@ export {
   LAST_FIT_REFUSAL,
   OUTFITTER_UPGRADES,
   outfitterOffers,
+  raidBagGridFor,
   PARTNER_REFUSAL,
   payablePokemonCount,
   paymentCandidates,

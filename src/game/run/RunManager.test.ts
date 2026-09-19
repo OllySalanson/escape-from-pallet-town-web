@@ -116,7 +116,9 @@ describe('RunManager lifecycle', () => {
     const caught = makePokemon(CHARMANDER);
     manager.startRun(
       { party: [partyMember], items: [{ itemId: 'potion', quantity: 2 }] },
-      { mapId: 'pallet-town', durationMs: 60_000 },
+      // Five one-square things come home, so the container is a column wider
+      // than the one every save starts with.
+      { mapId: 'pallet-town', durationMs: 60_000, secureGrid: { width: 3, height: 2 } },
     );
     manager.registerCaughtPokemon(caught);
     manager.registerFoundItem('potion');
@@ -148,7 +150,9 @@ describe('RunManager lifecycle', () => {
           { itemId: 'poke-ball', quantity: 3 },
         ],
       },
-      { mapId: 'pallet-town', durationMs: 60_000 },
+      // Five one-square things come home, so the container is a column wider
+      // than the one every save starts with.
+      { mapId: 'pallet-town', durationMs: 60_000, secureGrid: { width: 3, height: 2 } },
     );
     manager.registerCaughtPokemon(caught);
     manager.registerCaughtPokemon(secondCaught);
@@ -186,7 +190,7 @@ describe('RunManager lifecycle', () => {
       new RunManager().startRun(
         { party: [makePokemon()], items: [{ itemId: 'potion', quantity: 1 }] },
         { mapId: 'pallet-town', durationMs: 60_000 },
-        { items: [{ itemId, quantity: 99 }] },
+        { items: [{ itemId, quantity: 1 }] },
       );
 
     expect(() => start('radio-valve')).not.toThrow();

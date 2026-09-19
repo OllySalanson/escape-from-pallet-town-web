@@ -69,10 +69,44 @@ export type ItemEffect =
   | { readonly type: 'evolution-stone' }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
+/**
+ * The squares one of an item takes up in a container, in chequered cells.
+ *
+ * It is authored beside the item's name and its effect for the same reason a
+ * Potion's 20 HP is: how big a thing is is something the player is told, so it
+ * belongs where everything else they are told about it lives. How a footprint
+ * is *seated* is `./itemGrid`, which is the only module that knows a grid has
+ * corners.
+ */
+export interface ItemFootprint {
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface ItemDefinition {
   readonly id: string;
   readonly displayName: string;
   readonly category: ItemCategory;
+  /**
+   * How many squares one of these takes. Nothing in the catalogue is more than
+   * two squares on a side, which is what keeps the greedy packer in
+   * `./itemGrid` honest and keeps a container legible at 320x240.
+   *
+   * The sizes are the design: a Potion is one square and a Super Potion is two,
+   * so healing twice as hard costs twice the room; every material is at least
+   * two and the three heaviest are four, so a good raid is the raid where the
+   * pack runs out before the map does.
+   */
+  readonly footprint: ItemFootprint;
+  /**
+   * How many of this id share one square block. One for everything the game
+   * ships, because a second Potion taking a second square is the whole point.
+   *
+   * It exists for the things that are counted in the hundreds rather than the
+   * handful - money is the one on its way - where one square per unit would be
+   * absurd and one square for the lot is what a player expects.
+   */
+  readonly stackSize?: number;
   readonly description: string;
   readonly effect: ItemEffect;
 }
@@ -87,6 +121,7 @@ export const ITEMS = {
     id: 'potion',
     displayName: 'Potion',
     category: ItemCategory.Medicine,
+    footprint: { width: 1, height: 1 },
     description: 'Restores 20 HP.',
     effect: { type: 'heal', amount: 20 },
   },
@@ -94,6 +129,7 @@ export const ITEMS = {
     id: 'super-potion',
     displayName: 'Super Potion',
     category: ItemCategory.Medicine,
+    footprint: { width: 1, height: 2 },
     description: 'Restores 50 HP.',
     effect: { type: 'heal', amount: 50 },
   },
@@ -101,6 +137,7 @@ export const ITEMS = {
     id: 'antidote',
     displayName: 'Antidote',
     category: ItemCategory.Medicine,
+    footprint: { width: 1, height: 1 },
     description: 'Cures poison.',
     effect: { type: 'cure-status', status: PrimaryStatus.Poison },
   },
@@ -108,6 +145,7 @@ export const ITEMS = {
     id: 'poke-ball',
     displayName: 'Poké Ball',
     category: ItemCategory.PokeBall,
+    footprint: { width: 1, height: 1 },
     description: 'A device for catching wild Pokemon.',
     effect: { type: 'capture-modifier', multiplier: 1 },
   },
@@ -115,6 +153,7 @@ export const ITEMS = {
     id: 'great-ball',
     displayName: 'Great Ball',
     category: ItemCategory.PokeBall,
+    footprint: { width: 1, height: 1 },
     description: 'A high-performance Ball with a better catch rate.',
     effect: { type: 'capture-modifier', multiplier: 1.5 },
   },
@@ -122,6 +161,7 @@ export const ITEMS = {
     id: 'radio-valve',
     displayName: 'Radio valve',
     category: ItemCategory.Misc,
+    footprint: { width: 1, height: 2 },
     description: 'A glass valve pulled from a dead set. The Outfitter wants it for the radio mast.',
     effect: { type: 'material' },
   },
@@ -129,6 +169,7 @@ export const ITEMS = {
     id: 'cable-coil',
     displayName: 'Cable coil',
     category: ItemCategory.Misc,
+    footprint: { width: 2, height: 2 },
     description: 'Copper cable, still good. The Outfitter wires the beacon and the bay with it.',
     effect: { type: 'material' },
   },
@@ -136,6 +177,7 @@ export const ITEMS = {
     id: 'parts-crate',
     displayName: 'Parts crate',
     category: ItemCategory.Misc,
+    footprint: { width: 2, height: 2 },
     description: 'Hinges, bolts and hasps. The Outfitter builds the secure lockers out of them.',
     effect: { type: 'material' },
   },
@@ -143,6 +185,7 @@ export const ITEMS = {
     id: 'lamp-oil',
     displayName: 'Lamp oil',
     category: ItemCategory.Misc,
+    footprint: { width: 1, height: 2 },
     description: 'A sealed tin of lamp oil. The Outfitter burns it in the beacon and the ward.',
     effect: { type: 'material' },
   },
@@ -150,6 +193,7 @@ export const ITEMS = {
     id: 'mooring-rope',
     displayName: 'Mooring rope',
     category: ItemCategory.Misc,
+    footprint: { width: 2, height: 2 },
     description: 'Tarred rope off a ferry post. The Outfitter guys the mast and lashes the second locker with it.',
     effect: { type: 'material' },
   },
@@ -157,6 +201,7 @@ export const ITEMS = {
     id: 'linen-roll',
     displayName: 'Linen roll',
     category: ItemCategory.Misc,
+    footprint: { width: 2, height: 1 },
     description: 'Clean linen for beds and bandages. The Outfitter fits the recovery bay and the ward with it.',
     effect: { type: 'material' },
   },
@@ -171,6 +216,7 @@ export const ITEMS = {
     id: 'thunder-stone',
     displayName: 'Thunder Stone',
     category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
     description: 'A stone with a thunderbolt in it. Some Pokemon answer to it.',
     effect: { type: 'evolution-stone' },
   },
@@ -181,6 +227,7 @@ export const ITEMS = {
     id: 'leftovers',
     displayName: 'Leftovers',
     category: ItemCategory.Held,
+    footprint: { width: 1, height: 1 },
     description: 'The holder recovers a little HP at the end of every turn.',
     effect: { type: 'held', held: { type: 'end-of-turn-heal', maxHpFraction: 16 } },
   },
@@ -188,6 +235,7 @@ export const ITEMS = {
     id: 'focus-band',
     displayName: 'Focus Band',
     category: ItemCategory.Held,
+    footprint: { width: 1, height: 1 },
     description: 'Once a battle, the holder survives a knockout blow on 1 HP.',
     effect: { type: 'held', held: { type: 'survive-one-ko' } },
   },
@@ -195,6 +243,7 @@ export const ITEMS = {
     id: 'life-orb',
     displayName: 'Life Orb',
     category: ItemCategory.Held,
+    footprint: { width: 1, height: 1 },
     description: "The holder's hits land a third harder and cost it a tenth of its own HP.",
     effect: {
       type: 'held',
@@ -205,6 +254,7 @@ export const ITEMS = {
     id: 'quick-claw',
     displayName: 'Quick Claw',
     category: ItemCategory.Held,
+    footprint: { width: 1, height: 1 },
     description: 'Sometimes the holder strikes first, whatever the Speed says.',
     effect: { type: 'held', held: { type: 'first-strike', chance: 0.25 } },
   },
@@ -234,14 +284,6 @@ export const ITEM_DEFINITIONS: readonly ItemDefinition[] = Object.values(ITEMS);
 export const MATERIAL_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
   (item) => item.effect.type === 'material',
 ).map((item) => item.id as SupplyItemId);
-
-/**
- * How much of one material a secure-slot stack protects. A material is found in
- * the raid rather than brought, so the slot cannot be sized by a loadout: it
- * names the kind, and whatever of that kind is still in the pack when a raid
- * is lost comes home. The pack caps it, never this number.
- */
-export const SECURED_MATERIAL_QUANTITY = 99;
 
 export function isMaterial(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'material';

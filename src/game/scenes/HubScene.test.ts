@@ -351,7 +351,7 @@ describe('hub deployment route', () => {
     const { hub, start, storage } = createWornHub((maxHp) => maxHp - 3);
     hub.flow.togglePokemon('charmander-1');
     hub.flow.adjustItem('potion', 3);
-    hub.flow.toggleSecureItem('potion');
+    hub.flow.adjustSecureItem('potion', 3);
     expect(hub.flow.items).toEqual([{ itemId: 'potion', quantity: 3 }]);
 
     // One of those three Potions is drunk at base, so only two can be packed.
@@ -988,9 +988,9 @@ describe('the Outfitter', () => {
     expect(hub.outfitterArmed).toBe(false);
   });
 
-  it('builds the locker, releases exactly what was named, and protects a third stack from then on', () => {
+  it('builds the locker, releases exactly what was named, and protects a wider container from then on', () => {
     const { hub, storage } = createOutfittedHub();
-    expect(hub.flow.secureItemStacks).toBe(2);
+    expect(hub.flow.secureGrid).toEqual({ width: 2, height: 2 });
 
     hub.setView('outfitter');
     hub.choosePayment('secure-locker-1');
@@ -1004,7 +1004,7 @@ describe('the Outfitter', () => {
     expect(hub.stash.itemCount('parts-crate')).toBe(1);
     expect(hub.stash.itemCount('poke-ball')).toBe(9);
     expect(hub.stash.itemCount('potion')).toBe(7);
-    expect(hub.flow.secureItemStacks).toBe(3);
+    expect(hub.flow.secureGrid).toEqual({ width: 3, height: 2 });
     expect(markupOf(hub)).toMatch(/data-built="secure-locker-1"[\s\S]*?has-tick">Built</);
     // The upgrade is in storage, not just on screen.
     expect(new SaveManager(storage).load()?.raidProgress.outfitterUpgrades).toEqual(['secure-locker-1']);
@@ -1042,7 +1042,7 @@ describe('the Outfitter', () => {
     hub.flow.toggleSecurePokemon('pidgey-2');
     hub.setView('deploy');
     hub.flow.advance();
-    expect(markupOf(hub)).toContain('2/5 secured');
+    expect(markupOf(hub)).toContain('2 secured · 0/6 squares');
 
     deploy(hub, start);
 

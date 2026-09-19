@@ -4,7 +4,7 @@ import {
   contractUnlockedInsertionIds,
   FIRST_CONTRACT_ID,
   getContract,
-  secureItemStackLimit,
+  secureGrid,
   securePokemonLimit,
   type RaidContract,
 } from '../objectives/contracts';
@@ -572,7 +572,7 @@ export class SaveManager {
     game.stash.applyRaidCondition(condition);
     game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot, {
       pokemon: securePokemonLimit(game.raidProgress.outfitterUpgrades),
-      itemStacks: secureItemStackLimit(
+      grid: secureGrid(
         game.raidProgress.completedContracts,
         game.raidProgress.outfitterUpgrades,
       ),
@@ -660,7 +660,9 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     mapId,
     position: { ...position },
     items: carriedIntoVault ? [] : stringArray(value.items),
-    bag: new Bag(carriedIntoVault ? {} : bagContents(value.bag)),
+    // The persisted bag is the free-roam inventory, which no raid reads and
+    // which never had a size; a raid's own pack is built from the loadout.
+    bag: new Bag(carriedIntoVault ? {} : bagContents(value.bag), null),
     stash,
     raidProgress: deserializeRaidProgress(value.raidProgress),
     starterSpeciesId: deserializeStarterSpeciesId(value.starterSpeciesId) ?? inferStarterSpeciesId(stash),

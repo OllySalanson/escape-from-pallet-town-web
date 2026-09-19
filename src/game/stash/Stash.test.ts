@@ -315,9 +315,30 @@ describe('Stash', () => {
     expect(base.listItems()).toEqual({ potion: 2, 'poke-ball': 2 });
 
     const upgraded = build();
-    upgraded.applyWipeLoss(['first', 'second'], brought, secureSlot, { pokemon: 2, itemStacks: 4 });
+    upgraded.applyWipeLoss(['first', 'second'], brought, secureSlot, { pokemon: 2, grid: { width: 4, height: 2 } });
     expect(upgraded.listPokemon().map(({ id }) => id)).toEqual(['first', 'second']);
     expect(upgraded.listItems()).toEqual({ potion: 2, 'poke-ball': 2, antidote: 2, 'great-ball': 2 });
+  });
+
+  /**
+   * The container is the last word on what a wipe honours, whoever built the
+   * slot. The loadout screen already cuts it, but the stash is the thing that
+   * actually deletes, so it packs the slot itself rather than trusting a count.
+   */
+  it('keeps only what the container holds, dropping the entry that overflows it', () => {
+    const stash = new Stash({ items: { potion: 3, 'poke-ball': 3 } });
+    stash.addPokemon(new Pokemon(CHARMANDER, 5), 'first');
+    const brought = [
+      { itemId: 'potion', quantity: 3 },
+      { itemId: 'poke-ball', quantity: 3 },
+    ];
+
+    // Six one-square supplies named for a four-square container: the Potions
+    // fit, and the balls are the entry that does not.
+    stash.applyWipeLoss(['first'], brought, { items: brought });
+
+    // The kit restock is a later step, so what the wipe itself left is exact.
+    expect(stash.listItems()).toEqual({ potion: 3 });
   });
 
   it('brings a secured material home from a wipe and takes no other found one', () => {

@@ -1,4 +1,13 @@
-import { Bag, getItemById, isHeldItemId, isMaterial, type BagContents } from '../items';
+import {
+  Bag,
+  BASE_SECURE_GRID,
+  fitsInGrid,
+  getItemById,
+  isHeldItemId,
+  isMaterial,
+  type BagContents,
+  type GridSize,
+} from '../items';
 import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE, getSpeciesById, type PokemonBase } from '../pokemon';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 
@@ -158,11 +167,15 @@ export interface SecureSlot {
  */
 export interface SecureSlotLimits {
   readonly pokemon: number;
-  readonly itemStacks: number;
+  /** The squares the container has. What fits in them is what comes home. */
+  readonly grid: GridSize;
 }
 
-/** The secure slot every save starts with: one Pokemon and two item stacks. */
-export const BASE_SECURE_SLOT_LIMITS: SecureSlotLimits = { pokemon: 1, itemStacks: 2 };
+/** The secure slot every save starts with: one Pokemon and four squares. */
+export const BASE_SECURE_SLOT_LIMITS: SecureSlotLimits = {
+  pokemon: 1,
+  grid: BASE_SECURE_GRID,
+};
 
 /**
  * The persistent vault. Its methods only change in-memory state; persistence is
@@ -174,7 +187,10 @@ export class Stash {
 
   public constructor(contents: Partial<StashContents> = {}) {
     this.storedPokemon = [...(contents.pokemon ?? [])];
-    this.bag = new Bag(contents.items);
+    // The vault has no size. A grid is what a raid is carried in; what a
+    // player has banked is a warehouse, and capping it would make banking a
+    // thing that can fail.
+    this.bag = new Bag(contents.items, null);
   }
 
   public listPokemon(): readonly StashedPokemon[] {
@@ -478,7 +494,9 @@ export class Stash {
    *
    * The limits used to be a literal two stacks here, which silently destroyed
    * the third stack the cordon ledger pays for while the result screen beside
-   * it reported that stack as safe.
+   * it reported that stack as safe. They are squares now, and the cut is made
+   * by the same packer that drew the container, so what a screen showed fitting
+   * is exactly what a wipe honours.
    */
   public applyWipeLoss(
     broughtPokemonIds: readonly string[],
@@ -497,12 +515,7 @@ export class Stash {
       }
     }
 
-    const securedItems = new Map<string, number>();
-    for (const item of (secureSlot.items ?? []).slice(0, Math.max(0, limits.itemStacks))) {
-      if (isPositiveInteger(item.quantity)) {
-        securedItems.set(item.itemId, (securedItems.get(item.itemId) ?? 0) + item.quantity);
-      }
-    }
+    const securedItems = cutToContainer(secureSlot.items ?? [], limits.grid);
     for (const { itemId, quantity } of broughtItems) {
       if (!isPositiveInteger(quantity)) {
         continue;
@@ -543,6 +556,30 @@ export class Stash {
  *
  * Exported so the swap screen previews exactly what the stash will hold.
  */
+/**
+ * What of a secure slot the container actually holds, entry by entry in the
+ * order they were chosen, dropping the first thing that will not fit and
+ * everything after it. A slot built by the loadout screen already fits; this is
+ * the last word on one that came from anywhere else.
+ */
+function cutToContainer(
+  items: readonly { readonly itemId: string; readonly quantity: number }[],
+  grid: GridSize,
+): Map<string, number> {
+  const held = new Map<string, number>();
+  for (const { itemId, quantity } of items) {
+    if (!isPositiveInteger(quantity)) {
+      continue;
+    }
+    const next = new Map(held).set(itemId, (held.get(itemId) ?? 0) + quantity);
+    if (!fitsInGrid(Object.fromEntries(next), grid)) {
+      break;
+    }
+    held.set(itemId, next.get(itemId)!);
+  }
+  return held;
+}
+
 export function starterInConditionOf(outgoing: Pokemon, starter: PokemonBase): Pokemon {
   const incoming = new Pokemon(starter, 5);
   const carriedHp = outgoing.isFainted

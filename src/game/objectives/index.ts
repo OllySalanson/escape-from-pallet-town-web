@@ -1,7 +1,6 @@
 export {
   areContractStopsComplete,
   availableContracts,
-  BASE_SECURE_ITEM_STACKS,
   BASE_SECURE_POKEMON,
   contractCarryIn,
   contractForMap,
@@ -14,7 +13,7 @@ export {
   missingCarryIn,
   RAID_CONTRACTS,
   remainingMarkers,
-  secureItemStackLimit,
+  secureGrid,
   securePokemonLimit,
   type ContractMarker,
   type ContractReward,

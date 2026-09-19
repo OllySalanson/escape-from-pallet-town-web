@@ -434,7 +434,7 @@ describe('what the party earned', () => {
     const manager = startedRun({
       party: [new Pokemon(BULBASAUR, 5)],
       items: [{ itemId: 'potion', quantity: 1 }],
-      secure: { items: [{ itemId: 'radio-valve', quantity: 99 }] },
+      secure: { items: [{ itemId: 'radio-valve', quantity: 1 }] },
     });
     manager.resolveEscape();
 
