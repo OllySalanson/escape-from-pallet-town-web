@@ -71,6 +71,7 @@ import {
   type StandingBoardProgress,
 } from '../objectives';
 import { RunPhase } from '../run/RunManager';
+import { compassBearing } from '../world/bearing';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
 import {
   buildRaidSettlement,
@@ -2857,10 +2858,7 @@ function contractMarkerIcon(marker: ContractMarker): string {
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {
-  const horizontal = to.x === from.x ? '' : to.x > from.x ? 'E' : 'W';
-  const vertical = to.y === from.y ? '' : to.y > from.y ? 'S' : 'N';
-  const direction = `${vertical}${horizontal}`;
-  return direction || 'HERE';
+  return compassBearing(from, to) ?? 'HERE';
 }
 
 function formatPoiReward(poi: { readonly reward: readonly { readonly itemId: ItemId; readonly quantity: number }[] }): string {

@@ -2,6 +2,7 @@ import { contractStopsDone, remainingMarkers, type RaidContract } from './contra
 import { formatStacks, type RunObjective } from './RunObjectives';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { GridPosition } from '../movement/gridMovement';
+import { compassBearing, compassWord } from '../world/bearing';
 import { WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
 import { poisForMap } from '../world/pois';
 
@@ -133,10 +134,8 @@ function locationHint(
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {
-  const horizontal = to.x === from.x ? '' : to.x > from.x ? 'east' : 'west';
-  const vertical = to.y === from.y ? '' : to.y > from.y ? 'south' : 'north';
-  const direction = [vertical, horizontal].filter(Boolean).join('-');
-  return direction ? `to the ${direction}` : 'right here';
+  const bearing = compassBearing(from, to);
+  return bearing ? `to the ${compassWord(bearing)}` : 'right here';
 }
 
 function laterRunHints(context: ObjectiveGuideContext, currentExit: string | undefined): readonly string[] {

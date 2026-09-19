@@ -152,7 +152,8 @@ describe('objective field guide', () => {
     });
 
     expect(insertionGuide.hints[0]).toContain('Floodplain Relay');
-    expect(insertionGuide.hints[0]).toContain('south-west');
+    // Two tiles west and eleven south is south, which is what the briefing calls it.
+    expect(insertionGuide.hints[0]).toContain('to the south.');
     expect(reedGuide.hints[0]).toContain('north-east');
     expect(insertionGuide.hints.join(' ')).not.toContain('Viridian');
   });

@@ -1126,6 +1126,20 @@ describe('taking a status line down', () => {
     expect(statusOf(hub)).toBe('');
   });
 
+  // Playtest 4: "Charmander recovered for 0:50 of raid time" was still in the
+  // help bar on the Outfitter, a screen that had said nothing.
+  it('leaves a status line on the screen that raised it', () => {
+    const { hub, internals, timers } = hubWithRenderCount();
+    const views = hub as unknown as { setView(view: string): void };
+    views.setView('stash');
+    internals.setStatus('Charmander recovered for 0:50 of raid time. Next raid clock: 4:10.');
+
+    views.setView('outfitter');
+
+    expect(statusOf(hub)).toBe('');
+    expect(timers[0].remove).toHaveBeenCalledOnce();
+  });
+
   it('keeps one timer, so an old message cannot cut a new one short', () => {
     const { internals, timers } = hubWithRenderCount();
     internals.setStatus('first');

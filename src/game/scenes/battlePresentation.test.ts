@@ -16,6 +16,7 @@ import {
   BATTLE_SCREEN_WIDTH,
   MOVE_COMMAND_HEIGHT,
   combatantBanner,
+  enemyBannerRole,
   combatPresentationSteps,
   describeMoveGuidance,
   eventToMessage,
@@ -157,6 +158,10 @@ describe('battle presentation', () => {
       'WILD  GRASS/POISON',
     );
     expect(combatantBanner('YOURS', [PokemonType.Fire])).toBe('YOURS  FIRE');
+    // RIVAL is the hunter's word; a toll keeper's Pidgey fought under it.
+    expect(enemyBannerRole({ trainer: true, hunter: true })).toBe('RIVAL');
+    expect(enemyBannerRole({ trainer: true, hunter: false })).toBe('FOE');
+    expect(enemyBannerRole({ trainer: false, hunter: false })).toBe('WILD');
   });
 
   it('opens the teaching fight by explaining the guidance surfaces', () => {

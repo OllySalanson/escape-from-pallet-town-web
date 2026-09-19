@@ -89,7 +89,7 @@ export class TitleScene extends Phaser.Scene {
 
   private createPrompt(): void {
     this.prompt = this.add
-      .text(this.scale.width / 2, this.scale.height * 0.85, 'PRESS ENTER OR TAP', {
+      .text(this.scale.width / 2, this.scale.height * 0.85, 'PRESS SPACE OR TAP', {
         align: 'center',
         color: '#f8f5d7',
         fontFamily: GAME_FONT,
