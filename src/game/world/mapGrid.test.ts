@@ -66,6 +66,23 @@ describe('stamping landmarks into a drawing', () => {
       expect(map.props()).toEqual([]);
     });
 
+    /**
+     * The first version of this rule drew a block in reading order, so a tree
+     * was cut down by the grass to its right in its own drawing - and an
+     * orchard came out as striped lawn.
+     */
+    it('never lets a drawing cut down its own trees with the grass beside them', () => {
+      const map = new MapSketch<'tree'>({
+        width: 7,
+        height: 4,
+        fill: 'T',
+        stamps: {
+          t: { prop: 'tree', anchor: [1, 2], ground: '.', blocks: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]] },
+        },
+      }).draw(0, 0, ['.......', '.......', '.t...t.', '.......']);
+      expect(map.props()).toHaveLength(2);
+    });
+
     it('leaves it standing when the lane passes clear of it', () => {
       const map = woods().draw(5, 0, [',', ',', ',', ',', ',']);
       expect(map.props()).toHaveLength(1);

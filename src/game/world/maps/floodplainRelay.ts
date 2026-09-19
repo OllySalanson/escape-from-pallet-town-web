@@ -141,7 +141,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '  T,,,,,,,,,,,,,,,,MMMMMMMMMMMMM',
     ' ,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMM',
     ' ,,,,,,,,,,,,,,,,,,MMMWWWWWWMMMM',
-    ' ,,        ,,,,,,,,MMMWWWWWWMMMM',
+    ' ,,         ,,,,,,,MMMWWWWWWMMMM',
     ' ,,        T  T  T MMMWWWWWWMMMM',
     ' ,, ..             MMMWWWWWWMMMM',
   ]);
@@ -164,21 +164,20 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.draw(3, 14, [
     '      ,, ..             ',
     '      ,, ..             ',
-    '      ,,,,,,,,,,        ',
-    ' ggg.....gg...,,,       ',
-    'ggggg.ggggg...,,,,,,,,, ',
-    'gggggCgggggg..,,,,,,,,, ',
-    ' gggg.ggggggg.ggg...,,.C',
-    '  .ggg.ggggggggg..C.,,. ',
-    '  .gggg..ggggggg....,,.C',
-    ' C.ggggg....ggggg...,,, ',
-    '  .ggggggg...gggg.C..,, ',
-    ' gggggggggg.ggggg....,, ',
-    ' ggggg.ggggggggg.....,, ',
+    '      ,,,,,,,,,         ',
+    ' ggg....Cgg..,,,,       ',
+    'gggggCggggg..T,,,,,,,,, ',
+    'gggggWWWgggg.C,,,,,,,,, ',
+    ' ggggWWWgggggCggg...,,.C',
+    '  .gWW.gg.t.gggg..C.,,. ',
+    '  CgWWg..ggggWWg..,,,,  ',
+    ' ..CgggCg...gWWgg.,,,   ',
+    '  .ggCgggg..Cgggg.,,.T  ',
+    ' ggggggggggCggggT,,,,,, ',
+    ' gggggCggggggggT.....,, ',
     '   ,,                ,, ',
-    '   ,,              T,,, ',
+    '   ,C              T,,, ',
   ]);
-  map.plant(11, 20, 'tree');
 
   // == MARKET ISLE - the middle of the river ===============================
   // The square, paved and still standing. Two bridges leave its north shore
@@ -203,6 +202,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(26, 38, 'produce');
   map.plant(34, 39, 'bench');
   map.plant(34, 35, 'potPlant');
+  map.plant(24, 35, 'cratePair');
   map.plant(31, 33, 'banner');
   map.plant(35, 33, 'banner');
 

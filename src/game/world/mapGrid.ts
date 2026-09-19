@@ -211,6 +211,18 @@ export class MapSketch<PropName extends string = string> {
         );
       }
     }
+    // Ground first, then what stands on it. A block is one picture: the grass
+    // beside a tree in the same drawing is the grass that tree stands in, and
+    // laying it after the tree would cut the tree down with its own lawn. Only
+    // a *later* block cutting under a landmark takes it away.
+    for (const [rowIndex, row] of rows.entries()) {
+      for (let column = 0; column < row.length; column += 1) {
+        const char = row[column];
+        if (char !== KEEP && !this.stamps[char]) {
+          this.raw(x0 + column, y0 + rowIndex, char);
+        }
+      }
+    }
     for (const [rowIndex, row] of rows.entries()) {
       for (let column = 0; column < row.length; column += 1) {
         const char = row[column];
@@ -233,9 +245,7 @@ export class MapSketch<PropName extends string = string> {
             letters.add(`${x},${y}`);
             this.blockedBy.set(tile, letters);
           }
-          continue;
         }
-        this.raw(x0 + column, y0 + rowIndex, char);
       }
     }
     return this;
