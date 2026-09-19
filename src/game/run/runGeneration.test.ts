@@ -167,7 +167,7 @@ describe('run generation', () => {
         layouts.set(layout, (layouts.get(layout) ?? 0) + 1);
       }
       // How much is live varies, from half the pool to all of it...
-      expect([...liveCounts].sort()).toEqual(
+      expect([...liveCounts].sort((a, b) => a - b)).toEqual(
         Array.from(
           { length: pool.length - Math.ceil(pool.length / 2) + 1 },
           (_, index) => Math.ceil(pool.length / 2) + index,

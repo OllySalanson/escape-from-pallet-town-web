@@ -171,4 +171,19 @@ describe('what a lost raid leaves behind', () => {
 
     expect(Object.fromEntries(totals)).toEqual(carriedOut);
   });
+
+  it('loses a found material to a wipe unless its kind was secured, and keeps the secured kind whole', () => {
+    // Nothing was packed: a valve and two ropes were found in the field.
+    const carriedOut = { 'radio-valve': 1, 'mooring-rope': 2 };
+    const wipe = buildWipeSettlement([{ itemId: 'radio-valve', quantity: 99 }], carriedOut);
+
+    expect(wipe.securedItems).toEqual([{ itemId: 'radio-valve', quantity: 1 }]);
+    expect(wipe.destroyedItems).toEqual([{ itemId: 'mooring-rope', quantity: 2 }]);
+    expect(buildWipeSettlement([], carriedOut).securedItems).toEqual([]);
+  });
+
+  it('banks found materials with the rest of the delta on a raid that got out', () => {
+    const snapshot = startedRun([new Pokemon(BULBASAUR, 5)], [{ itemId: 'potion', quantity: 1 }]).snapshot();
+    expect(raidSupplyDelta(snapshot, { potion: 1, 'cable-coil': 2 })).toEqual([{ itemId: 'cable-coil', quantity: 2 }]);
+  });
 });

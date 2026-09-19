@@ -1,4 +1,4 @@
-import type { ItemId } from '../items';
+import { isMaterial, SECURED_MATERIAL_QUANTITY, type ItemId } from '../items';
 import { BASE_SECURE_ITEM_STACKS, BASE_SECURE_POKEMON } from '../objectives/contracts';
 import type { ItemStack, SecureSlot as RunSecureSlot } from '../run';
 import type { RunInsertionId } from '../run/runGeneration';
@@ -101,8 +101,18 @@ export class DeploymentFlow {
     return this.party.filter((stored) => this.securedPokemonIds.includes(stored.id));
   }
 
+  /**
+   * The protected stacks: loadout supplies the player chose to protect, and any
+   * material kind they named. A material is never packed - it is found - so its
+   * stack carries the slot's own cap and the pack decides how much is kept.
+   */
   public get securedItems(): readonly ItemStack[] {
-    return this.items.filter((item) => this.securedItemIds.includes(item.itemId));
+    return [
+      ...this.items.filter((item) => this.securedItemIds.includes(item.itemId)),
+      ...this.securedItemIds
+        .filter((itemId) => isMaterial(itemId))
+        .map((itemId) => ({ itemId, quantity: SECURED_MATERIAL_QUANTITY })),
+    ];
   }
 
   /**
@@ -145,6 +155,10 @@ export class DeploymentFlow {
   }
 
   public adjustItem(itemId: ItemId, direction: number): void {
+    // Materials are for the Outfitter: packing one only puts it at risk.
+    if (isMaterial(itemId)) {
+      return;
+    }
     const next = Math.max(
       0,
       Math.min(this.stash.itemCount(itemId), this.itemQuantity(itemId) + direction),

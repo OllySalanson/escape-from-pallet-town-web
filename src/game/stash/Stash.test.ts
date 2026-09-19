@@ -319,4 +319,18 @@ describe('Stash', () => {
     expect(upgraded.listPokemon().map(({ id }) => id)).toEqual(['first', 'second']);
     expect(upgraded.listItems()).toEqual({ potion: 2, 'poke-ball': 2, antidote: 2, 'great-ball': 2 });
   });
+
+  it('brings a secured material home from a wipe and takes no other found one', () => {
+    const stash = new Stash({ items: { potion: 1, 'radio-valve': 1 } });
+    stash.addPokemon(new Pokemon(BULBASAUR, 5), 'first');
+
+    // The caller has cut the slot to what the pack still held: two valves.
+    stash.applyWipeLoss(['first'], [{ itemId: 'potion', quantity: 1 }], {
+      items: [{ itemId: 'radio-valve', quantity: 2 }],
+    });
+
+    expect(stash.itemCount('radio-valve')).toBe(3);
+    expect(stash.itemCount('potion')).toBe(0);
+    expect(stash.itemCount('mooring-rope')).toBe(0);
+  });
 });

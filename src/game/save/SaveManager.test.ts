@@ -992,7 +992,16 @@ describe('SaveManager', () => {
   function outfittedSave(storage: MemoryStorage, completedContracts: readonly string[] = []): SaveManager {
     const saves = new SaveManager(storage);
     const stash = new Stash({
-      items: { 'poke-ball': 9, potion: 7, 'super-potion': 4, 'great-ball': 5, antidote: 3 },
+      items: {
+        'poke-ball': 9,
+        potion: 7,
+        'super-potion': 4,
+        'great-ball': 5,
+        antidote: 3,
+        'radio-valve': 2,
+        'mooring-rope': 3,
+        'parts-crate': 4,
+      },
     });
     stash.addPokemon(new Pokemon(CHARMANDER, 9), 'partner');
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
@@ -1079,8 +1088,10 @@ describe('SaveManager', () => {
     const reloaded = new SaveManager(storage).load();
     expect(reloaded?.raidProgress.outfitterUpgrades).toEqual(['secure-locker-1']);
     expect(reloaded?.stash.listPokemon().map(({ id }) => id)).toEqual(['partner', 'bulbasaur-1']);
-    expect(reloaded?.stash.itemCount('poke-ball')).toBe(7);
-    expect(reloaded?.stash.itemCount('potion')).toBe(6);
+    // Two parts crates are spent; the raid's own kit is not touched.
+    expect(reloaded?.stash.itemCount('parts-crate')).toBe(2);
+    expect(reloaded?.stash.itemCount('poke-ball')).toBe(9);
+    expect(reloaded?.stash.itemCount('potion')).toBe(7);
   });
 
   it('charges nothing for a refused build, and never builds the same upgrade twice', () => {
@@ -1126,7 +1137,7 @@ describe('SaveManager', () => {
   it('never takes the kit a wipe would hand straight back', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
-    const stash = new Stash({ items: { 'poke-ball': 5, potion: 3, antidote: 9 } });
+    const stash = new Stash({ items: { 'poke-ball': 5, potion: 3, antidote: 9, 'parts-crate': 2 } });
     stash.addPokemon(new Pokemon(CHARMANDER, 9), 'partner');
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-2');
@@ -1139,10 +1150,29 @@ describe('SaveManager', () => {
       starterSpeciesId: 'charmander',
     });
 
-    expect(saves.buildOutfitterUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2'])).toMatchObject({
-      ok: false,
-      refusal: 'supplies-short',
-    });
+    // Materials are the whole price, so the kit is never in reach of it.
+    expect(saves.buildOutfitterUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2'])).toMatchObject({ ok: true });
+    expect(saves.load()!.stash.supplyShortfall()).toEqual({});
+    expect(saves.load()!.stash.itemCount('poke-ball')).toBe(5);
+    expect(saves.load()!.stash.itemCount('potion')).toBe(3);
+  });
+
+  it('brings home only the materials a wipe was told were secured', () => {
+    const storage = new MemoryStorage();
+    const saves = outfittedSave(storage);
+    const before = saves.load()!.stash.itemCount('radio-valve');
+
+    // Two valves were found and one rope; only the valve's kind was secured.
+    // The caller has already cut the slot to what was still in the pack.
+    expect(
+      saves.applyWipeLoss(['bulbasaur-1'], [{ itemId: 'potion', quantity: 1 }], {
+        items: [{ itemId: 'radio-valve', quantity: 2 }],
+      }),
+    ).toBe(true);
+
+    const after = saves.load()!.stash;
+    expect(after.itemCount('radio-valve')).toBe(before + 2);
+    expect(after.itemCount('mooring-rope')).toBe(3);
   });
 
   it('brings every stack the save protects home from a wipe, not just the first two', () => {

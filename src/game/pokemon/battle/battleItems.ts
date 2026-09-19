@@ -111,5 +111,7 @@ function refusalMessage(item: ItemDefinition, name: string): string {
       return `It would not have any effect on ${name}.`;
     case 'capture-modifier':
       return `A ${item.displayName.toUpperCase()} is thrown with the BALL command.`;
+    case 'material':
+      return `${item.displayName} is for the Outfitter, not the field.`;
   }
 }

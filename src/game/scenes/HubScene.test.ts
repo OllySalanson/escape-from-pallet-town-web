@@ -881,6 +881,9 @@ describe('the Outfitter', () => {
     stash.addItem('potion', 4);
     stash.addItem('great-ball', 3);
     stash.addItem('antidote', 3);
+    stash.addItem('parts-crate', 3);
+    stash.addItem('mooring-rope', 1);
+    stash.addItem('radio-valve', 2);
     new SaveManager(storage).save({
       party: new PokemonParty(),
       mapId: 'pallet-town',
@@ -917,13 +920,13 @@ describe('the Outfitter', () => {
     hub.setView('outfitter');
     const ladder = markupOf(hub);
     expect(ladder).toContain('Secure locker I');
-    expect(ladder).toContain('Costs 2 Pokémon + 2× Poké Ball + 1× Potion');
+    expect(ladder).toContain('Costs 2 Pokémon + 2× Parts crate');
     expect(ladder).toContain('After Secure locker I: ');
     // Three spendable catches cannot pay the four the second locker asks.
     expect(ladder).toContain('<span class="cost-short" title="Not enough spare at base yet">4 Pokémon</span>');
     // A rung that cannot be built is still a control, so the cursor can reach it
     // and the pane under the list can say what it does.
-    expect(ladder).toMatch(/data-outfit="secure-locker-1" data-shows/);
+    expect(ladder).toMatch(/data-outfit="secure-locker-1"(?![^>]*aria-disabled)[^>]* data-shows/);
     expect(ladder).toMatch(/data-outfit="secure-locker-2" aria-disabled="true"/);
     expect(ladder).not.toMatch(/<button[^>]* disabled/);
     expect(ladder).toContain('data-shown-by="secure-locker-2"');
@@ -948,7 +951,7 @@ describe('the Outfitter', () => {
     hub.togglePayment('pidgey-1');
     hub.togglePayment('bulbasaur-9');
     const chosen = markupOf(hub);
-    expect(chosen).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Poké Ball, 1× Potion');
+    expect(chosen).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Parts crate');
     expect(chosen).toContain('data-pay-arm');
     expect(chosen).not.toContain('data-pay-confirm');
 
@@ -959,7 +962,7 @@ describe('the Outfitter', () => {
     hub.outfitterArmed = true;
     const armed = markupOf(hub);
     expect(armed).toContain('This cannot be undone');
-    expect(armed).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Poké Ball, 1× Potion?');
+    expect(armed).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Parts crate?');
     expect(armed).toContain('data-pay-confirm');
     expect(armed).toContain('Keep them');
   });
@@ -989,8 +992,9 @@ describe('the Outfitter', () => {
 
     expect(statusOf(hub)).toBe('Secure locker I built. Pidgey and Pidgey released.');
     expect(hub.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1', 'bulbasaur-9']);
-    expect(hub.stash.itemCount('poke-ball')).toBe(7);
-    expect(hub.stash.itemCount('potion')).toBe(6);
+    expect(hub.stash.itemCount('parts-crate')).toBe(1);
+    expect(hub.stash.itemCount('poke-ball')).toBe(9);
+    expect(hub.stash.itemCount('potion')).toBe(7);
     expect(hub.flow.secureItemStacks).toBe(3);
     expect(markupOf(hub)).toMatch(/data-built="secure-locker-1"[\s\S]*?has-tick">Built</);
     // The upgrade is in storage, not just on screen.

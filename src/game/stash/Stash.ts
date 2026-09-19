@@ -1,4 +1,4 @@
-import { Bag, getItemById, type BagContents } from '../items';
+import { Bag, getItemById, isMaterial, type BagContents } from '../items';
 import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE, type PokemonBase } from '../pokemon';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 
@@ -421,6 +421,14 @@ export class Stash {
       const protectedQuantity = Math.min(quantity, securedItems.get(itemId) ?? 0);
       securedItems.set(itemId, Math.max(0, (securedItems.get(itemId) ?? 0) - protectedQuantity));
       this.removeItem(itemId, quantity - protectedQuantity);
+    }
+    // A material is found rather than brought, so the loop above never met it:
+    // the slot names its kind and the caller has already cut the quantity to
+    // what was still in the pack, which is the only place this stash learns it.
+    for (const [itemId, quantity] of securedItems) {
+      if (isMaterial(itemId) && !broughtItems.some((item) => item.itemId === itemId) && quantity > 0) {
+        this.addItem(itemId, quantity);
+      }
     }
   }
 

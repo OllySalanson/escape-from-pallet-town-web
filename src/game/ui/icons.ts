@@ -12,6 +12,12 @@ export const ITEM_ICONS = {
   antidote: 'antidote',
   'poke-ball': 'poke-ball',
   'great-ball': 'great-ball',
+  'radio-valve': 'radio-valve',
+  'cable-coil': 'cable-coil',
+  'parts-crate': 'parts-crate',
+  'lamp-oil': 'lamp-oil',
+  'mooring-rope': 'mooring-rope',
+  'linen-roll': 'linen-roll',
 } as const satisfies Record<string, string>;
 
 /** Icons the raid draws on the map, plus the objective icon the menus reuse. */
