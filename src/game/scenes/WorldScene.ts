@@ -115,7 +115,15 @@ import {
   withoutDefeatedBosses,
   type RunTrainerEncounter,
 } from '../world/trainers';
-import { gateCaption, gatesOpenedLines, isGateOpen, WORLD_GATES } from '../world/gates';
+import {
+  gateCaption,
+  gatesByKeeper,
+  gatesOpenedLines,
+  isGateOpen,
+  jointGateCaption,
+  WORLD_GATES,
+  type MapGate,
+} from '../world/gates';
 import { dropInCaption, dropInReachedLine } from '../world/dropIns';
 import { insertionAt, isDropInPoint, RUN_INSERTIONS } from '../run/runGeneration';
 import { findWatchingTrainer, trainerSightTiles } from '../world/trainerSight';
@@ -748,31 +756,63 @@ export class WorldScene extends Phaser.Scene {
     if (!this.runSession) {
       return;
     }
-    for (const gate of this.currentMap.gates) {
-      const open = isGateOpen(gate, this.defeatedBosses);
-      const boss = bossEncounters(createRunTrainerEncounters()).find(
-        (candidate) => candidate.bossId === gate.bossId,
-      );
+    const spanOf = (gate: MapGate): { rect: Rect; bottom: number } => {
       const left = Math.min(...gate.tiles.map((tile) => tile.x));
       const right = Math.max(...gate.tiles.map((tile) => tile.x));
       const top = Math.min(...gate.tiles.map((tile) => tile.y));
       const bottom = Math.max(...gate.tiles.map((tile) => tile.y));
-      this.worldLabels.push(
-        new WorldLabel(
-          this,
-          // A gate is named as the whole door, however many tiles it spans.
-          {
-            x: left * TILE_SIZE,
-            y: top * TILE_SIZE,
-            width: (right - left + 1) * TILE_SIZE,
-            height: (bottom - top + 1) * TILE_SIZE,
-          },
-          gateCaption(gate, open, boss?.trainer.name),
-          open ? LABEL_TONES.gateOpen : LABEL_TONES.gateShut,
-          atRow(CAPTION_BAND, bottom),
-          'below',
-        ),
+      return {
+        // A gate is named as the whole door, however many tiles it spans.
+        rect: {
+          x: left * TILE_SIZE,
+          y: top * TILE_SIZE,
+          width: (right - left + 1) * TILE_SIZE,
+          height: (bottom - top + 1) * TILE_SIZE,
+        },
+        bottom,
+      };
+    };
+    for (const doors of gatesByKeeper(this.currentMap.gates)) {
+      const [front] = doors;
+      const open = isGateOpen(front, this.defeatedBosses);
+      const tone = open ? LABEL_TONES.gateOpen : LABEL_TONES.gateShut;
+      const boss = bossEncounters(createRunTrainerEncounters()).find(
+        (candidate) => candidate.bossId === front.bossId,
       );
+      const group = doors.length > 1 ? `gates:${front.bossId}` : undefined;
+      for (const gate of doors) {
+        const { rect, bottom } = spanOf(gate);
+        this.worldLabels.push(
+          new WorldLabel(
+            this,
+            rect,
+            gateCaption(gate, open, boss?.trainer.name),
+            tone,
+            atRow(CAPTION_BAND, bottom),
+            'below',
+            false,
+            { group },
+          ),
+        );
+      }
+      // One keeper's doors on one screen are named in one caption: seated one
+      // each, the second door lost its ground to the first and to the keeper's
+      // warning, and from the road nothing said the Overlook had steps.
+      if (group) {
+        const { rect, bottom } = spanOf(front);
+        this.worldLabels.push(
+          new WorldLabel(
+            this,
+            rect,
+            jointGateCaption(doors, open, boss?.trainer.name),
+            tone,
+            atRow(CAPTION_BAND, bottom),
+            'below',
+            false,
+            { speaksFor: group },
+          ),
+        );
+      }
     }
   }
 

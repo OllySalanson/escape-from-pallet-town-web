@@ -9,8 +9,8 @@ import type { FloodTownPropName } from '../tileset/floodTownTileset';
  * every clearing dry and every trail tall grass, so distance is priced in
  * fights rather than steps and the only question is which clearings to chain.
  * There is no fast lane. It is two-connected throughout - no one blocked tile
- * seals a clearing off from every exit - which is why Warden Ivy can stand in
- * the middle of her hub and still be walked round.
+ * seals a clearing off from every exit - which is why Ivy the bug catcher can
+ * stand in the middle of her hub and still be walked round.
  *
  * The trails are the approved skeleton, kept tile for tile, because it already
  * was a network of passages and every authored fact on it still stands where it
@@ -22,9 +22,10 @@ import type { FloodTownPropName } from '../tileset/floodTownTileset';
  * sap pool is a pool; and the TOWER STEPS are a stair in the rock of the east
  * ridge.
  *
- * Every clearing has a name, and until now only the design notes knew them:
- * `../districts.ts` puts each on the arrival plate, because a wood is the one
- * kind of map where every screen looks like the last.
+ * Every clearing has a name, and `../districts.ts` puts each on the arrival
+ * plate - but a plate is read once, so every clearing also holds the thing its
+ * name says (see WHAT EACH CLEARING IS, below): a wood is the one kind of map
+ * where every screen otherwise looks like the last.
  *
  * Legend as `floodplainRelay.ts`.
  */
@@ -67,7 +68,7 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
     'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TWWTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
     'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TWWTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TWWTTtTTtTTTTTtTTtTTtTTtTTtTTtTT',
     'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TWWTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
     'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
@@ -134,14 +135,80 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
 
   map.plant(15, 0, 'tower');
   map.plant(28, 4, 'rockStair');
-  map.plant(14, 21, 'bigStump');
   map.plant(29, 19, 'sack');
   map.plant(29, 22, 'sack');
   map.plant(18, 31, 'log');
 
+  // == WHAT EACH CLEARING IS ===============================================
+  // A stranger toured this map once and drew it from memory: the four corners
+  // that hold an object - tower, stair, brook, log - came back placed, and the
+  // inside came back as "a lawn with four pins in it", because every other
+  // clearing was the same three plants under a different plate. A plate is
+  // read once; a place is remembered because it looks like something. So each
+  // named clearing that had nothing now has the thing its name says, and none
+  // of it moves a trail: what is planted stands on the thicket round a
+  // clearing, never in the way through it.
+  //
+  // THE CROSSROADS is the one place in the wood where worn ground crosses:
+  // trodden earth, two wide as the sheet requires, and each arm sets off up its
+  // own trail - the north one turning east for the tower as the trail does -
+  // for as far as it can while every trail still ends in grass. The forest's
+  // rule is that nothing is reached dry, and the arms stop short of breaking
+  // it. Drawn first as a square plus, a second stranger called it a helipad:
+  // a crossing has to be seen going somewhere.
+  map.draw(10, 9, [
+    '   ,,,, ',
+    '   ,,,, ',
+    '   ,,   ',
+    '   ,,   ',
+    ',,,,,,,,',
+    ',,,,,,,,',
+    '   ,,   ',
+    '   ,,   ',
+  ]);
 
+  // BEETLE HOLLOW is a rotten trunk lying across the hollow with the stumps of
+  // what fell round it - the log leaves the east side open, where the trails
+  // pass. WARDEN'S CUT is what the warden cut: the great stump, which stood one
+  // clearing south under DEEP STAND's plate and was filed here by everyone who
+  // saw it anyway. It stands on the rim so that Ivy's hub keeps every way round
+  // her, and alone: small stumps on that rim read as rocks, one of them
+  // sitting on the head of anybody walking the east trail.
+  map.draw(1, 7, [
+    '  .  .',
+    '     .',
+    '      ',
+    '     .',
+    '     .',
+    ' . .  ',
+  ]);
+  map.plant(2, 10, 'log');
+  map.plant(3, 7, 'deadStump');
+  map.plant(6, 7, 'stump');
+  map.plant(6, 8, 'deadStump');
+  map.plant(6, 10, 'stump');
+  map.plant(6, 11, 'deadStump');
+  map.plant(2, 12, 'stump');
+  map.plant(4, 12, 'deadStump');
 
+  map.draw(15, 18, ['..', '..']);
+  map.plant(15, 18, 'bigStump');
 
+  // EAST RISE is a rise: the sheet's ledge runs under its brow, either side of
+  // the trail that climbs to it, with a rail along the top as the Overlook has.
+  // Nothing hops down a ledge in this game, so the rail and the ledge stand on
+  // what was thicket, a row and two rows below the clearing, and nobody can get
+  // on top of either. Without the rail it read as a brown stripe in the hedge.
+  map.draw(23, 23, [
+    '  FFF FF',
+    '<===> <>',
+  ]);
+
+  // DEEP STAND is the solid stand of broadleaves south-west of its clearing -
+  // what a player calls deep whatever a plate says, so `../districts.ts` puts
+  // the name on it. The nub at the clearing's south-west corner ran under the
+  // stand's nearest crown, which hid whoever stood on it; it is thicket again.
+  map.draw(12, 24, ['T']);
 
   // == WHAT GROWS IN THE THICKET ===========================================
   // The lanes are packed so close that the wood between them is mostly a hedge
@@ -174,15 +241,15 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
     'b                             t ',
     '                         p      ',
     '      b                         ',
-    '               t              t ',
+    '                              t ',
     '                                ',
     '            b                   ',
     '                                ',
     '                b             p ',
     '       p           b    t       ',
     'b  b                            ',
-    '                              t ',
-    '                   p    t       ',
+    '                                ',
+    '                   p            ',
     '   b                            ',
     'b                          b    ',
     '                                ',

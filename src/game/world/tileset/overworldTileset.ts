@@ -324,6 +324,17 @@ const PROPS = {
   produceStall: block('produce stall', 23, 20, 3, 2),
   /** Four crates of produce in a row - what a stall puts out the front. */
   produce: block('produce crates', 26, 20, 4, 2),
+  /** One of those crates by itself, for a plot with something to show for the year. */
+  produceCrate: block('produce crate', 26, 20, 1, 2),
+  /**
+   * A dug bed, one tile of it: seedlings, a yellow crop and a red one. It is soil edge to edge with none of this sheet's
+   * grass in it, so it lies on any ground; and it is walked over, not round -
+   * a bed is drawn onto ground that was already open, so planting one never
+   * changes where anybody can go.
+   */
+  bedSeedlings: block('planted bed', 0, 34, 1, 1, { walkable: [[0, 0]] }),
+  bedYellowCrop: block('planted bed', 1, 34, 1, 1, { walkable: [[0, 0]] }),
+  bedRedCrop: block('planted bed', 0, 35, 1, 1, { walkable: [[0, 0]] }),
   /** A felled tree's stump, roots and all - two tiles across. */
   bigStump: block('stump', 31, 3, 2, 2),
   /** A banner on a pole - the relay flew them along the causeway. */

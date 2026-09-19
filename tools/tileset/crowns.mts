@@ -6,8 +6,12 @@
  *
  * - over ground that is not grass. A crown tile has this sheet's grass baked
  *   into its corners, so over a road it is a green square punched in the road;
- * - over a run of ground somebody walks. One tile is walking behind a tree; six
- *   is the player gone, and in a playtest the hunter stood under one unseen;
+ * - over ground somebody walks. Six tiles is the player gone, and in a playtest
+ *   the hunter stood under one unseen - and one tile is no better, because a
+ *   tile can be stood on: for the whole of this tool's first life one tile was
+ *   excused as "walking behind a tree", and Viridian shipped a dead-end tile at
+ *   12,24 where all that showed of the player was the chevron. A walk-under
+ *   arch is not a tree and is not this tool's business;
  * - over the seat a caption needs. Canopy is ground a caption may not take
  *   (`labelPlacement.ts`), so an exit ringed by crowns is an exit with no name.
  *   One band of sky, above or below, is kept clear beside everything the map
@@ -88,7 +92,8 @@ for (const subject of subjects) {
   const best = cost.sort((l, r) => l.length - r.length)[0] ?? [];
   for (const tree of best) doomed.set(tree, `crown in the caption seat of ${subject.x},${subject.y0}`);
 }
-// Runs of walkable ground under canopy: every tree over a run of two or more goes.
+// Walkable ground under canopy: every tree over any of it goes, one tile or six.
+// The run is only measured to say how much the tree was hiding.
 const seen = new Set<string>();
 for (const key of under.keys()) {
   const [sx, sy] = key.split(',').map(Number);
@@ -98,7 +103,7 @@ for (const key of under.keys()) {
     const nx = run[i][0] + dx, ny = run[i][1] + dy, k = `${nx},${ny}`;
     if (!seen.has(k) && under.has(k) && walkable(nx, ny)) { seen.add(k); run.push([nx, ny]); }
   }
-  if (run.length >= 2) for (const [x, y] of run) for (const tree of under.get(`${x},${y}`)!) if (!doomed.has(tree)) doomed.set(tree, `hides a run of ${run.length} at ${x},${y}`);
+  for (const [x, y] of run) for (const tree of under.get(`${x},${y}`)!) if (!doomed.has(tree)) doomed.set(tree, `hides ${run.length === 1 ? 'a tile' : `a run of ${run.length}`} somebody walks at ${x},${y}`);
 }
 const anchor = { tree: [1, 2], pine: [0, 2], tallBush: [0, 2] } as Record<string, [number, number]>;
 const letters = [...doomed.entries()].map(([tree, why]) => ({ x: tree.x + anchor[tree.name][0], y: tree.y + anchor[tree.name][1], name: tree.name, why }));

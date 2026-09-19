@@ -193,7 +193,11 @@ export class MapSketch<PropName extends string = string> {
       // Ground drawn over a stamp takes the landmark with it. Blocks are meant
       // to be drawn over each other, and a tree left behind by the block under
       // it is a tree standing in whatever was painted on top - a river, usually.
-      this.stamped.delete(`${x},${y}`);
+      // With everything it was blocking: left behind, a felled tree's claims
+      // outlive it, and the next landmark stamped on the same tile is taken
+      // away by ground cut beside a tree that is no longer there - a ledge
+      // drawn over a lattice trunk lost its west end that way.
+      this.forgetStamp(`${x},${y}`);
       // And so does ground cut to be walked under any tile it blocks.
       if (!isSolidTerrain(char)) {
         for (const letter of this.blockedBy.get(`${x},${y}`) ?? []) {
@@ -207,6 +211,18 @@ export class MapSketch<PropName extends string = string> {
       }
     }
     return this;
+  }
+
+  /** Takes a stamped landmark off the map, and its claims on the tiles round it with it. */
+  private forgetStamp(letter: string): void {
+    this.stamped.delete(letter);
+    this.bareUnder.delete(letter);
+    for (const [tile, letters] of this.blockedBy) {
+      letters.delete(letter);
+      if (letters.size === 0) {
+        this.blockedBy.delete(tile);
+      }
+    }
   }
 
   /**

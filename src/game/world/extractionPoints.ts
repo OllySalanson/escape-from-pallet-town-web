@@ -129,8 +129,12 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   {
     // Behind the Overlook Gate, and open from the first second: a raid that
     // drops in at the Overlook Landing must never depend on a door to get home.
+    // It stands two tiles in from the map's corner, not in it: the raid clock
+    // owns the screen's top-right corner, the camera stops at the map's edge,
+    // and in the corner every seat its caption had was the clock's or off the
+    // screen - a stranger placed it from the road and never learned its name.
     mapId: 'route-1',
-    position: { x: 30, y: 2 },
+    position: { x: 28, y: 2 },
     label: 'OVERLOOK STILE',
     unlockAtMs: 0,
     requirement: { kind: 'always' },

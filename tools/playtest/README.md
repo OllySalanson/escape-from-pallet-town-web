@@ -58,7 +58,7 @@ judge either by eye only at real speed.
 ## Any map, any ending
 
 A fresh save is offered one insertion, the Floodplain's front door. `deploy.mjs`
-is the way in for all three drivers (`raid.mjs`, `tour.mjs`, `whyHidden.mjs`),
+is the way in for every driver (`raid.mjs`, `tour.mjs`, `gridtour.mjs`, `whyHidden.mjs`),
 and it goes the way a player does: the game writes its own save, `raidProgress`
 is edited in it, the page is reloaded and the raid is deployed from the lobby
 that save opens on, by clicking the insertion's own row in the loadout.
@@ -98,6 +98,18 @@ failing somewhere odd. With another worker editing, play the real-speed pass
 against a snapshot: `npx vite build --outDir "$SCRATCH/dist"` (no
 `VITE_EPTW_TEST_MODE`: that build is in test mode at every URL) and
 `npx vite preview --outDir "$SCRATCH/dist" --port "$FREE_PORT" --strictPort`.
+
+## The stranger's memory test
+
+Whether a map reads as places is not something its author can judge: they know
+where everything is. `gridtour.mjs <url> <out dir> --insertion=id` tiles a map
+with playable-view frames knowing nothing about it, and the frames go - once
+each, in order - to someone who has read nothing else: a fresh agent told to
+open no other file and to draw the map from memory afterwards. Compare the
+sketch with `tools/tileset/renderMap.mts`. What comes back placed is what holds
+an object of its own; what comes back as "the same as everywhere else" is a
+name plate over nothing. `whyHidden.mjs` answers the other half - a thing the
+stranger saw and could not name.
 
 ## Idle costs the machine, so do not idle live
 

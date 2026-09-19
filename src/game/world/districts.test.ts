@@ -4,6 +4,7 @@ import { getWorldMap, type WorldMapId } from '../worldMap';
 import { districtAt, districtsForMap, MAP_DISTRICTS } from './districts';
 import { EXTRACTION_POINTS } from './extractionPoints';
 import { gatesForMap } from './gates';
+import { sketchViridianForest } from './maps/viridianForest';
 import { WORLD_POIS } from './pois';
 
 const DISTRICTED_MAPS = [...new Set(MAP_DISTRICTS.map((district) => district.mapId))];
@@ -74,11 +75,17 @@ describe('the named districts of a map', () => {
       landings: { 'Town Square': 'MARKET SQUARE' },
       landmarks: { 'TOWN PUMP': 'THE GREEN', 'SLUICE WHEEL': 'THE STOCKYARD' },
     });
-    // The water belongs to the bank it lands you on: each crossing is already
-    // the south, so the plate changes as the player commits to the leat.
-    expect(districtAt('pallet-town', { x: 7, y: 28 })?.name).toBe('THE FLOOD');
-    expect(districtAt('pallet-town', { x: 13, y: 28 })?.name).toBe('THE STOCKYARD');
-    expect(districtAt('pallet-town', { x: 20, y: 28 })?.name).toBe('THE STOCKYARD');
+    // The south is named where the south bank starts: on the far step of each
+    // crossing, never on the near one. Named on the bridge head, THE STOCKYARD
+    // went up over a screen that was still three quarters allotments, and a
+    // stranger who toured the town once called the hut band the Stockyard.
+    for (const [x, south] of [[7, 'THE FLOOD'], [13, 'THE STOCKYARD'], [20, 'THE STOCKYARD']] as const) {
+      for (const y of [27, 28, 29]) {
+        expect(`${x},${y}: ${districtAt('pallet-town', { x, y })?.name}`).toBe(`${x},${y}: THE ALLOTMENTS`);
+      }
+      expect(getWorldMap('pallet-town').collision[30][x]).toBe(false);
+      expect(districtAt('pallet-town', { x, y: 30 })?.name).toBe(south);
+    }
   });
 
   it('Route 1: puts every exit, landing and landmark in the place it is remembered as part of', () => {
@@ -106,6 +113,42 @@ describe('the named districts of a map', () => {
       landings: { 'Viridian Forest': 'NORTH LANDING' },
       landmarks: { 'FIRE TOWER': 'FIRE TOWER' },
     });
+  });
+
+  /**
+   * A plate is read once and a place is remembered because it looks like
+   * something. A stranger toured the forest and placed every clearing that
+   * holds an object - tower, stair, pool, brook, log - and not one of the four
+   * that held nothing; DEEP STAND, attached to nothing, he pinned on the nearest
+   * thing that looked deep. So every clearing's name is on the thing it names.
+   */
+  it('Viridian Forest: every clearing holds the thing its name says', () => {
+    const sketch = sketchViridianForest();
+    const where = (tile: { x: number; y: number }) => districtAt('viridian-forest', tile)?.name;
+    const planted = (name: string) =>
+      sketch.props().filter((prop) => prop.name === name).map((prop) => where(prop));
+    const drawn = (char: string) =>
+      sketch.toGrid().flatMap((row, y) => [...row].flatMap((cell, x) => (cell === char ? [where({ x, y })] : [])));
+
+    expect(planted('tower')).toEqual(['FIRE TOWER']);
+    expect(planted('rockStair')).toEqual(['TOWER STEPS']);
+    expect(planted('log').sort()).toEqual(['BEETLE HOLLOW', 'THE CLEARING']);
+    expect(planted('bigStump')).toEqual(["WARDEN'S CUT"]);
+    expect(new Set(planted('sack'))).toEqual(new Set(['EAST RISE']));
+    expect(new Set(['bankWest', 'bank', 'bankEast'].flatMap(planted))).toEqual(new Set(['EAST RISE']));
+    // The one worn ground in the wood is the crossing, and all of it is.
+    expect(new Set(drawn(','))).toEqual(new Set(['THE CROSSROADS']));
+    // Water: the pool, and the brook with its ford.
+    expect(new Set([...drawn('W'), ...drawn('w')])).toEqual(new Set(['SAP POOL', 'BROOK HEAD', 'BEETLE HOLLOW']));
+    // DEEP STAND is the stand: no other place has as many of the forest's
+    // broadleaves standing in it, and its clearing is under its name.
+    const trees = new Map<string, number>();
+    for (const tree of planted('tree')) {
+      trees.set(tree ?? '', (trees.get(tree ?? '') ?? 0) + 1);
+    }
+    const [deepest] = [...trees].sort((a, b) => b[1] - a[1]);
+    expect(deepest[0]).toBe('DEEP STAND');
+    expect(where({ x: 13, y: 22 })).toBe('DEEP STAND');
   });
 
   /**
