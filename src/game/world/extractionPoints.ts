@@ -62,6 +62,19 @@ export function extractionRequirementText(point: ExtractionPoint, elapsedMs: num
   return seconds === 0 ? 'OPEN' : `OPENS IN ${seconds}s`;
 }
 
+/**
+ * What the map says over an exit: its name, then whether it can be left by.
+ *
+ * Every exit used to be captioned `EXTRACT OPEN`, so six authored names - Mill
+ * Race, Signal Fire, Vault Culvert - were good names nobody playing ever read. A
+ * stranger asked to draw the Floodplain from memory placed all six exits and
+ * could name two, both from text elsewhere. A map lives in people's heads as the
+ * names of its ways out, so the name goes first, the way a gate's does.
+ */
+export function extractionCaption(point: ExtractionPoint, isOpen: boolean, elapsedMs: number): string {
+  return `${point.label}\nEXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, elapsedMs)}`;
+}
+
 export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   {
     mapId: 'pallet-town',

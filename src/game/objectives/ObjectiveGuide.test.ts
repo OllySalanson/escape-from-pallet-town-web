@@ -106,19 +106,22 @@ describe('objective field guide', () => {
 
   it('offers both routes to the field kit before it is recovered, then only the extraction', () => {
     const session = createFirstContractSession();
+    // Asked at the front door, and then standing on the kit - both read from the
+    // data, because the map has been redrawn once under typed coordinates.
     const before = buildObjectiveGuide(session, {
       currentMapId: 'floodplain-relay',
-      currentPosition: { x: 15, y: 3 },
+      currentPosition: RUN_INSERTIONS['floodplain-relay'].position,
       activatedPoiIds: new Set(),
     });
 
-    expect(before.hints.join(' ')).toContain('central road');
-    expect(before.hints.join(' ')).toContain('west reeds');
+    // The priced road and the way round it, in the words the map's own sign uses.
+    expect(before.hints.join(' ')).toContain('shore road');
+    expect(before.hints.join(' ')).toContain('the reeds go round her');
 
     session.manager.recoverFieldKit();
     const after = buildObjectiveGuide(session, {
       currentMapId: 'floodplain-relay',
-      currentPosition: { x: 11, y: 23 },
+      currentPosition: FIRST_CONTRACT.markers[0].position,
       activatedPoiIds: new Set(),
     });
 

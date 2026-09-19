@@ -125,6 +125,7 @@ import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { tryActivatePoi } from '../world/pois';
 import {
   EXTRACTION_POINTS,
+  extractionCaption,
   extractionRequirementText,
   isExtractionAvailable,
   type ExtractionPoint,
@@ -877,7 +878,7 @@ export class WorldScene extends Phaser.Scene {
       const label = new WorldLabel(
         this,
         point.label === BEACON_EXIT_LABEL ? landingRect(point.position) : tileRect(point.position),
-        `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}`,
+        extractionCaption(point, isOpen, this.runSession.manager.snapshot().elapsedMs),
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
         atRow(CAPTION_BAND, point.position.y),
       );
@@ -2459,7 +2460,7 @@ export class WorldScene extends Phaser.Scene {
       const isOpen = this.isExtractionOpen(point);
       marker.setTexture(extractionIconKey(isOpen));
       label.setText(
-        `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession?.manager.snapshot().elapsedMs ?? 0)}`,
+        extractionCaption(point, isOpen, this.runSession?.manager.snapshot().elapsedMs ?? 0),
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
       );
     }

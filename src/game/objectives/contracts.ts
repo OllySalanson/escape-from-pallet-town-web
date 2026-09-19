@@ -134,11 +134,11 @@ const RECOVER_LOST_FIELD_KIT: RaidContract = {
     unlockedInsertionIds: ['town-square', 'route-1', 'viridian-forest'],
   },
   briefing: [
-    'Two ways down: the central road is fast and open, but Maya watches its checkpoint and fights whoever walks it; the west reeds are slower, cost encounters, and rejoin the road above and below her.',
+    'The kit is close: follow the road down from the Landing to the ranger hut, and where the road turns east carry straight on - it is beside the lone tree at the edge of the pool, a few steps into the reeds. Going on south is the real choice: the shore road is quick and dry but narrows to one tile where Maya watches it, and she fights whoever walks that; the reeds go round her and come back to the road below her, the long way, and nothing in them is free.',
     'Step onto the lost field kit marker to retrieve it.',
   ],
   deploymentBriefing:
-    'ARROW KEYS / WASD: move. The field kit is SOUTH - fast road or west reeds. Press O for the FIELD GUIDE.',
+    'ARROW KEYS / WASD: move. The field kit is SOUTH, in the reeds past the ranger hut. Press O for the FIELD GUIDE.',
 };
 
 /**
