@@ -444,7 +444,7 @@ export class BattleScene extends Phaser.Scene {
       .text(16, 1, combatantBanner(this.trainer ? 'RIVAL' : 'WILD', getCombatantTypes(this.state.enemy)), BANNER_TEXT_STYLE)
       .setDepth(7);
     this.playerBannerText = this.add
-      .text(150, 89, combatantBanner('YOUR POKéMON', getCombatantTypes(this.state.player)), BANNER_TEXT_STYLE)
+      .text(150, 89, combatantBanner('YOURS', getCombatantTypes(this.state.player)), BANNER_TEXT_STYLE)
       .setDepth(7);
   }
 
@@ -1184,7 +1184,7 @@ export class BattleScene extends Phaser.Scene {
     this.playerStatusBox.destroy();
     this.playerStatusBox = this.createStatusBox(150, 104, this.state.player, true);
     this.playerBannerText.setText(
-      combatantBanner('YOUR POKéMON', getCombatantTypes(this.state.player)),
+      combatantBanner('YOURS', getCombatantTypes(this.state.player)),
     );
     this.refreshStatusLabels();
     this.playerSprite

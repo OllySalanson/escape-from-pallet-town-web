@@ -287,9 +287,14 @@ export const combatantName = (who: { readonly user: 'player' | 'enemy'; readonly
  */
 export const levelLabel = (level: number): string => `Lv ${level}`;
 
-/** The HUD banner names the side and its typing, so incoming damage is readable. */
+/**
+ * The HUD banner names the side and its typing, so incoming damage is readable.
+ * The player's side is YOURS and no longer: the banner starts at the plate's left
+ * edge, and YOUR POKeMON with two long types ran past the plate and, for the
+ * longest pair, past the screen.
+ */
 export const combatantBanner = (
-  role: 'WILD' | 'RIVAL' | 'YOUR POKéMON',
+  role: 'WILD' | 'RIVAL' | 'YOURS',
   types: readonly PokemonType[],
 ): string => `${role}  ${formatTypeList(types)}`;
 

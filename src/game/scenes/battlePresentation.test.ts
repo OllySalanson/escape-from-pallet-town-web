@@ -156,7 +156,7 @@ describe('battle presentation', () => {
     expect(combatantBanner('WILD', [PokemonType.Grass, PokemonType.Poison])).toBe(
       'WILD  GRASS/POISON',
     );
-    expect(combatantBanner('YOUR POKéMON', [PokemonType.Fire])).toBe('YOUR POKéMON  FIRE');
+    expect(combatantBanner('YOURS', [PokemonType.Fire])).toBe('YOURS  FIRE');
   });
 
   it('opens the teaching fight by explaining the guidance surfaces', () => {

@@ -812,7 +812,8 @@ button {
 }
 .defeat-figure.is-last-stand .defeat-sprite,
 .defeat-figure.is-trainer .defeat-sprite {
-  height: clamp(126px, 23vh, 182px);
+  --defeat-tall: clamp(126px, 23vh, 182px);
+  height: var(--defeat-tall);
 }
 /* Species sprites ship at 36x44 to 64x64. They are scaled to fill the column
    rather than left at their intrinsic size, because a line-up drawn at native
@@ -967,7 +968,12 @@ button {
   100% {
     /* Down like the rest of them, but never greyed: this is the player, not an
        asset the raid took. They fall away from the party so the pile reads. */
-    transform: translateX(-20%) rotate(-54deg) scale(0.82);
+    /* Turned about the middle of its feet, the downhill foot swings below the
+       ground line - and lay across the corner of the YOU / DOWN plate. It is
+       lifted by that dip so the foot rests on the ground. The drawn figure is
+       12 of its frame's 16 pixels wide with rounded soles, so the dip is
+       measured rather than derived: 19px on a 182px figure. */
+    transform: translate(-20%, calc(var(--defeat-tall) * -0.105)) rotate(-54deg) scale(0.82);
     filter: brightness(0.72) saturate(0.7);
   }
 }
