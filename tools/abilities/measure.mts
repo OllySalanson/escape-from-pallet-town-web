@@ -32,11 +32,15 @@ console.log(`# wild tables (${TRIALS} trials each)`);
 for (const map of Object.values(WORLD_MAPS)) {
   const level = map.id === 'viridian-forest' ? 8 : 5;
   for (const district of districtsForMap(map.id).filter((entry) => entry.encounters)) {
+    // The place's own weather, because that is the fight the player has: a
+    // rainy district is a different table against a Fire lead, and two of the
+    // abilities here are only ever about the weather.
     const wins = STARTERS.map(
       (starter) =>
-        `${starter.slice(0, 4)} ${(measureTable(district.encounters!, starter, level, TRIALS).winRate * 100).toFixed(0)}%`,
+        `${starter.slice(0, 4)} ${(measureTable(district.encounters!, starter, level, TRIALS, district.weather ?? null).winRate * 100).toFixed(0)}%`,
     ).join('  ');
-    console.log(`${map.id.padEnd(18)} ${district.name.padEnd(22)} Lv${level}  ${wins}`);
+    const sky = district.weather ? ` (${district.weather})` : '';
+    console.log(`${map.id.padEnd(18)} ${district.name.padEnd(22)} Lv${level}  ${wins}${sky}`);
   }
 }
 
