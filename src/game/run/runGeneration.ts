@@ -509,9 +509,17 @@ function generateLoot(
 ): Record<WorldMapId, readonly WorldLoot[]> {
   const generatedByMap = {} as Record<WorldMapId, readonly WorldLoot[]>;
   for (const map of Object.values(maps)) {
+    // A piece with its own `chance` is rolled on its own and is not part of the
+    // pool the floor below is measured against. Both halves are drawn from the
+    // same seeded stream in the same order every time, so a seed still plays
+    // the same raid.
+    const pool = map.loot.filter((item) => item.chance === undefined);
+    const rare = map.loot.filter(
+      (item) => item.chance !== undefined && rng.int(1, 1_000) <= Math.round(item.chance * 1_000),
+    );
     // At least half a map's loot is present, so exploring is reliably worth the risk.
-    const count = rng.int(Math.ceil(map.loot.length / 2), map.loot.length);
-    const items = rng.shuffle(map.loot).slice(0, count);
+    const count = rng.int(Math.ceil(pool.length / 2), pool.length);
+    const items = [...rng.shuffle(pool).slice(0, count), ...rare];
     const candidates = rng.shuffle(validTiles(map, reservedTiles.get(map.id), isReachable));
     const generated = items.map((item, index) => {
       const position = candidates[index] ?? item.position;

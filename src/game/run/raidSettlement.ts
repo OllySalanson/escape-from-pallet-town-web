@@ -38,6 +38,12 @@ import type { ItemStack, RunSnapshot } from './RunManager';
  * the secure slot protected, and a secure slot that returned a demoted Pokemon
  * would be punishment where the game promised protection.
  *
+ * The species comes home too. A Pokemon that crossed its evolution level in
+ * the field would arrive evolved anyway, because the experience is replayed
+ * through the same `gainExperience` that evolved it out there - but one
+ * evolved by a stone spent nothing the vault can replay, so the species has to
+ * travel on its own or the stone would be spent for nothing.
+ *
  * `broughtPokemonIds` and the run loadout's party are the same deployment in
  * the same order - `HubScene.startRun()` builds both from one list - so they are
  * paired by position, and a party the ids cannot account for is left alone
@@ -55,6 +61,7 @@ export function deployedRaidCondition(
       currentHp: party[index].currentHp,
       primaryStatus: party[index].primaryStatus,
       experience: party[index].experience,
+      speciesId: party[index].base.id,
     }));
 }
 

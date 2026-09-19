@@ -5,6 +5,7 @@ import {
   CHARMANDER,
   BULBASAUR,
   PIDGEY,
+  PIKACHU,
   SQUIRTLE,
   experienceForLevel,
 } from '../pokemon';
@@ -637,6 +638,97 @@ describe('SaveManager', () => {
     const settled = saves.load()?.stash.listPokemon()[0].pokemon;
     expect(settled?.level).toBe(8);
     expect(settled?.experience).toBe(experienceForLevel(8));
+  });
+
+  it('brings a Pokemon home evolved, whichever way it evolved out there', () => {
+    // Two different journeys home. A level evolution needs nothing carried: the
+    // experience is replayed through the same `gainExperience` that evolved it
+    // in the field, so the vault crosses the same threshold. A stone evolution
+    // spends no experience at all, so the species has to travel on its own or
+    // the stone would have been spent for nothing.
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(BULBASAUR, 15), 'bulbasaur-1');
+    stash.addPokemon(new Pokemon(PIKACHU, 12), 'pikachu-1');
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 1, y: 1 }, stash });
+
+    const settlement = {
+      condition: [
+        {
+          id: 'bulbasaur-1',
+          currentHp: 20,
+          primaryStatus: null,
+          experience: experienceForLevel(16),
+          speciesId: 'ivysaur',
+        },
+        {
+          id: 'pikachu-1',
+          currentHp: 20,
+          primaryStatus: null,
+          experience: experienceForLevel(12),
+          speciesId: 'raichu',
+        },
+      ],
+      supplies: [],
+    } as const;
+    expect(saves.bankRun({ pokemon: [], items: [] }, settlement)).toBe(true);
+
+    const banked = saves.load()!.stash.listPokemon();
+    expect(banked.map(({ id, pokemon }) => [id, pokemon.base.id, pokemon.level])).toEqual([
+      ['bulbasaur-1', 'ivysaur', 16],
+      ['pikachu-1', 'raichu', 12],
+    ]);
+    // And the moves only the pre-evolution ever teaches came home with it.
+    expect(banked[0].pokemon.moves.map((move) => move.base.name)).toContain('Super Sonic');
+  });
+
+  it('evolves exactly once on a replayed settlement, and never the wrong way', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(PIKACHU, 12), 'pikachu-1');
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 1, y: 1 }, stash });
+
+    const settlement = {
+      condition: [
+        {
+          id: 'pikachu-1',
+          currentHp: 20,
+          primaryStatus: null,
+          experience: experienceForLevel(12),
+          speciesId: 'raichu',
+        },
+      ],
+      supplies: [],
+    } as const;
+    saves.bankRun({ pokemon: [], items: [] }, settlement);
+    const afterFirst = saves.load()!.stash.listPokemon()[0].pokemon;
+    const statsAfterFirst = { ...afterFirst.stats };
+
+    // The same settlement again, and then a stale one from before the stone.
+    saves.bankRun({ pokemon: [], items: [] }, settlement);
+    saves.bankRun(
+      { pokemon: [], items: [] },
+      {
+        condition: [
+          {
+            id: 'pikachu-1',
+            currentHp: 20,
+            primaryStatus: null,
+            experience: experienceForLevel(12),
+            speciesId: 'pikachu',
+          },
+        ],
+        supplies: [],
+      },
+    );
+
+    const settled = saves.load()!.stash.listPokemon()[0].pokemon;
+    expect(settled.base.id).toBe('raichu');
+    expect(settled.level).toBe(12);
+    // Evolving twice would have paid out the stat jump twice over.
+    expect(settled.stats).toEqual(statsAfterFirst);
   });
 
   it('reads a save written before experience was recorded as being at its level, not at zero', () => {

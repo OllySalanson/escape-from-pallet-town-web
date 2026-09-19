@@ -153,11 +153,15 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
       // menu - is built inside a container, so the harness has to hold one.
       container: vi.fn(() => {
         const children: unknown[] = [];
-        return {
+        const stub: Record<string, unknown> = {
           children,
           add: vi.fn((child: unknown) => children.push(child)),
           destroy: vi.fn(),
+          // A name plate is a container that is depth-sorted against the
+          // combatant sprites, so the stub has to answer `setDepth` too.
+          setDepth: vi.fn(() => stub),
         };
+        return stub;
       }),
       graphics: vi.fn(() => ({
         clear: vi.fn().mockReturnThis(),

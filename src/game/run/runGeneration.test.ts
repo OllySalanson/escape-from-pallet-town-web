@@ -154,15 +154,26 @@ describe('run generation', () => {
   it('never lays the same loot on the same tiles raid after raid', () => {
     for (const insertionId of insertionIds) {
       const mapId = RUN_INSERTIONS[insertionId].mapId;
-      const pool = WORLD_MAPS[mapId].loot;
+      // Only the ordinary pool: a piece with its own `chance` is rolled
+      // separately and so is neither part of the half-the-pool floor nor able
+      // to crowd a supply out of it.
+      const pool = WORLD_MAPS[mapId].loot.filter((item) => item.chance === undefined);
+      const rare = WORLD_MAPS[mapId].loot.filter((item) => item.chance !== undefined);
+      const rareSeen = new Map<string, number>();
       const layouts = new Map<string, number>();
       const liveCounts = new Set<number>();
       for (let seed = 0; seed < SAMPLED_RUNS; seed += 1) {
         const loot = generateRunPlan(seed, undefined, insertionId).loot[mapId];
-        liveCounts.add(loot.length);
+        const rareIds = new Set(rare.map(({ id }) => id));
+        loot
+          .filter((item) => rareIds.has(item.id))
+          .forEach((item) => rareSeen.set(item.id, (rareSeen.get(item.id) ?? 0) + 1));
+        liveCounts.add(loot.filter((item) => !rareIds.has(item.id)).length);
         // Only the map's own pool is ever drawn from, each entry at most once.
         expect(new Set(loot.map((item) => item.id)).size).toBe(loot.length);
-        loot.forEach((item) => expect(pool.map(({ id }) => id)).toContain(item.id));
+        loot.forEach((item) =>
+          expect(WORLD_MAPS[mapId].loot.map(({ id }) => id)).toContain(item.id),
+        );
         const layout = loot.map((item) => `${item.id}@${tileKey(item.position)}`).sort().join('|');
         layouts.set(layout, (layouts.get(layout) ?? 0) + 1);
       }
@@ -173,6 +184,14 @@ describe('run generation', () => {
           (_, index) => Math.ceil(pool.length / 2) + index,
         ),
       );
+      // ...a rare piece is neither guaranteed nor a formality: it lies on the
+      // ground about as often as it is authored to and never every raid.
+      for (const item of rare) {
+        const share = (rareSeen.get(item.id) ?? 0) / SAMPLED_RUNS;
+        expect(
+          `${item.id}: ${share > 0 && share < item.chance! * 2 ? 'within twice its rate' : share}`,
+        ).toBe(`${item.id}: within twice its rate`);
+      }
       // ...and no one layout is what a player can expect to find twice.
       const commonest = Math.max(...layouts.values());
       expect(`${insertionId}: commonest layout in ${commonest} of ${SAMPLED_RUNS} raids`).toBe(

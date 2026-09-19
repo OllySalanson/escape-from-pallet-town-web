@@ -38,6 +38,8 @@ describe('raid settlement', () => {
         primaryStatus: 'poison',
         // What the raid earned, carried by the same trip as what it cost.
         experience: experienceForLevel(5) + 30,
+        // And what it became, for the evolution that spends no experience.
+        speciesId: 'bulbasaur',
       },
       // A faint comes home as a faint. Deleting it here would charge the same
       // faint twice: losing deployed Pokemon is what a wipe is for.
@@ -48,6 +50,7 @@ describe('raid settlement', () => {
         // Even a fainted Pokemon reports its experience: whether it survives at
         // all is the wipe's decision, not this one's.
         experience: experienceForLevel(7),
+        speciesId: 'charmander',
       },
     ]);
   });
@@ -63,6 +66,7 @@ describe('raid settlement', () => {
         currentHp: starter.maxHp,
         primaryStatus: null,
         experience: experienceForLevel(5),
+        speciesId: 'bulbasaur',
       },
     ]);
     expect(deployedRaidCondition([], manager.snapshot())).toEqual([]);
@@ -118,6 +122,7 @@ describe('raid settlement', () => {
           currentHp: starter.currentHp,
           primaryStatus: null,
           experience: experienceForLevel(5),
+          speciesId: 'bulbasaur',
         },
       ],
       supplies: [{ itemId: 'potion', quantity: -2 }],

@@ -341,6 +341,21 @@ export const SOUND_EFFECTS = {
     moment: 'A Pokemon grows a level',
     tones: run([523, 659, 784, 1047], 0.11, 0.07, 0.09),
   },
+  /**
+   * Higher and longer than `levelUp`, because it is the rarest thing the raid
+   * can announce: the line it rides on is heard maybe twice in a save.
+   */
+  evolved: {
+    channel: 'fanfare',
+    moment: 'A Pokemon becomes another species',
+    tones: [
+      ...run([523, 622, 740], 0.07, 0.06, 0.07),
+      sq(880, 0.1, 0.065, 0.21),
+      sq(1175, 0.12, 0.07, 0.31),
+      sq(1568, 0.36, 0.07, 0.43),
+      tri(330, 0.36, 0.05, 0.43),
+    ],
+  },
   moveLearned: {
     channel: 'fanfare',
     moment: 'A new move is learned',

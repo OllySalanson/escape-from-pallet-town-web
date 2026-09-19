@@ -18,6 +18,7 @@ import {
   Move,
   Pokemon,
   PokemonParty,
+  evolutionFamily,
   experienceForLevel,
   getSpeciesById,
   type MoveBase,
@@ -752,7 +753,17 @@ function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon
   pokemon.primaryStatus = isPrimaryStatus(value.primaryStatus) ? value.primaryStatus : null;
 
   if (Array.isArray(value.moves)) {
-    const movesByName = new Map(species.learnset.map((entry) => [entry.move.name, entry.move]));
+    // The whole line, not this species alone. An Ivysaur that evolved out of
+    // this game's Bulbasaur still knows the Super Sonic only Bulbasaur teaches,
+    // and a lookup confined to Ivysaur's own learnset would have deleted it on
+    // the next load without saying so. Widening it to the line rather than to
+    // every move in the game is what stops a corrupt save handing a Pidgey a
+    // Hydro Pump.
+    const movesByName = new Map(
+      evolutionFamily(species.id).flatMap((member) =>
+        member.learnset.map((entry) => [entry.move.name, entry.move] as const),
+      ),
+    );
     const savedMoves = value.moves
       .filter((move): move is string => typeof move === 'string')
       .map((name) => movesByName.get(name))

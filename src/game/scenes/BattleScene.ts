@@ -149,6 +149,23 @@ export interface BattleSceneData extends Partial<RaidCarriage> {
  */
 const isEmptyStackLabel = (label: string): boolean => / x0$/.test(label);
 
+/**
+ * A narration line the scene may hang one visual change on - the only such
+ * change today being an evolution, which has to land with its own line rather
+ * than at whatever moment the experience happened to be awarded.
+ *
+ * `BattleNote` stays pure data in `battleSounds.ts`: a callback is a scene's
+ * business, so it is added here and nowhere else.
+ */
+type StagedNote =
+  | BattleNote
+  | { readonly message: string; readonly sound?: SoundEffectName; readonly onShow: () => void };
+
+const stagedNote = (
+  note: StagedNote,
+): { readonly message: string; readonly sound?: SoundEffectName; readonly onShow?: () => void } =>
+  typeof note === 'string' ? battleNote(note) : note;
+
 export class BattleScene extends Phaser.Scene {
   private state!: BattleState;
   private dialog!: DialogBox;
@@ -225,6 +242,8 @@ export class BattleScene extends Phaser.Scene {
     readonly event?: BattleEvent;
     readonly message: string;
     readonly sound?: SoundEffectName;
+    /** Run as the line is put up, for a line that is also a change on screen. */
+    readonly onShow?: () => void;
   }[] = [];
   private isPresentingCombatEvents = false;
 
@@ -477,7 +496,14 @@ export class BattleScene extends Phaser.Scene {
     combatant: BattleCombatant,
     showNumbers: boolean,
   ): Phaser.GameObjects.Container {
-    const container = this.add.container(0, 0);
+    // Depth 6, between the combatants at 2 and the type banner at 7. The
+    // container's own depth is what decides this - a child's `setDepth` only
+    // orders it against its siblings inside the container - so without it the
+    // plate sat at depth 0, under both sprites: a Pokemon fainting slides its
+    // sprite 34 pixels down as it fades, and on the way it crossed the other
+    // side's name and level. Spotted on an evolution, but it happened on every
+    // won battle.
+    const container = this.add.container(0, 0).setDepth(6);
     const height = showNumbers ? 58 : 47;
     // Drawn, not stretched. `hud-box.png` is 32x32 with a one-pixel border, so
     // at 144 wide that border came out four pixels down the left and eight
@@ -1338,9 +1364,9 @@ export class BattleScene extends Phaser.Scene {
     );
   }
 
-  private awardVictoryExperience(defeatedPokemon: PokemonInstance): BattleNote[] {
+  private awardVictoryExperience(defeatedPokemon: PokemonInstance): StagedNote[] {
     const experience = experienceAwardForDefeat(defeatedPokemon.level);
-    const messages: BattleNote[] = [];
+    const messages: StagedNote[] = [];
     const active = this.state.player.pokemon;
     const activeMaxHpBeforeAward = active.maxHp;
     let activeLevelledUp = false;
@@ -1348,14 +1374,35 @@ export class BattleScene extends Phaser.Scene {
     for (const pokemon of this.participatingPokemon) {
       const result = pokemon.gainExperience(experience);
       activeLevelledUp ||= pokemon === active && result.levelsGained.length > 0;
+      // The species may already have changed under it, so the name every line
+      // below is written with is read once, before any of them are said. A
+      // Bulbasaur that levelled into an Ivysaur grew as a Bulbasaur and learns
+      // its next move as an Ivysaur, and the evolution line in between is what
+      // makes the change of name make sense.
+      const grewAs = result.evolutions[0]?.from.name ?? pokemon.base.name;
       messages.push({
-        message: `${pokemon.base.name.toUpperCase()} gained ${result.awarded} XP!`,
+        message: `${grewAs.toUpperCase()} gained ${result.awarded} XP!`,
         sound: 'xpGain',
       });
       messages.push(
         ...result.levelsGained.map((level) => ({
-          message: `${pokemon.base.name.toUpperCase()} grew to ${levelLabel(level)}!`,
+          message: `${grewAs.toUpperCase()} grew to ${levelLabel(level)}!`,
           sound: 'levelUp' as const,
+        })),
+      );
+      messages.push(
+        ...result.evolutions.map((evolution) => ({
+          message: `${evolution.from.name.toUpperCase()} evolved into ${evolution.to.name.toUpperCase()}!`,
+          sound: 'evolved' as const,
+          // The sprite, the name plate and the level plate are all rebuilt from
+          // the combatant, and the combatant reads its species live - so the
+          // one call is the whole change, and it is deliberately tied to this
+          // line rather than to the moment the experience was awarded.
+          onShow: () => {
+            if (pokemon === this.state.player.pokemon) {
+              this.refreshPlayerCombatant();
+            }
+          },
         })),
       );
       messages.push(
@@ -1406,7 +1453,7 @@ export class BattleScene extends Phaser.Scene {
   private awardTrainerDefeatExperience(
     previousState: BattleState,
     events: readonly BattleEvent[],
-  ): BattleNote[] {
+  ): StagedNote[] {
     if (
       !this.trainer ||
       !events.some((event) => event.type === 'fainted' && event.user === 'enemy')
@@ -1418,13 +1465,13 @@ export class BattleScene extends Phaser.Scene {
 
   private showCombatEvents(
     events: readonly BattleEvent[],
-    leadingMessages: readonly BattleNote[] = [],
-    trailingMessages: readonly BattleNote[] = [],
+    leadingMessages: readonly StagedNote[] = [],
+    trailingMessages: readonly StagedNote[] = [],
   ): void {
     this.pendingCombatMessages = [
-      ...leadingMessages.map(battleNote),
+      ...leadingMessages.map(stagedNote),
       ...events.map((event) => ({ event, message: eventToMessage(event) })),
-      ...trailingMessages.map(battleNote),
+      ...trailingMessages.map(stagedNote),
     ];
     if (this.pendingCombatMessages.length === 0) {
       // Nothing to say still has to complete, or the fight waits on a line
@@ -1444,6 +1491,9 @@ export class BattleScene extends Phaser.Scene {
     if (next.event) {
       this.presentCombatEvent(next.event);
     }
+    // Before the line, not after it: the player should be reading "IVYSAUR"
+    // while looking at an Ivysaur, never at the Bulbasaur it stopped being.
+    next.onShow?.();
     if (next.sound) {
       audioManager.play(next.sound);
     }

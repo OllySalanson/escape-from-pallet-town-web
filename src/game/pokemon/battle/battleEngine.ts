@@ -558,6 +558,7 @@ const statusEffects: Readonly<Record<string, StatusName>> = {
   'Poision Powder': PrimaryStatus.Poison,
   'Poison Powder': PrimaryStatus.Poison,
   Sing: PrimaryStatus.Sleep,
+  'Sleep Powder': PrimaryStatus.Sleep,
   'Thunder Wave': PrimaryStatus.Paralysis,
   'Super Sonic': 'confusion',
 };
