@@ -6,6 +6,16 @@ export interface WorldLoot {
   readonly position: GridPosition;
   readonly itemId: ItemId;
   readonly quantity: number;
+  /**
+   * How often this piece is on the ground at all, 0 to 1. A piece with no
+   * `chance` is part of a map's ordinary pool, of which `generateLoot` lays at
+   * least half every raid; a piece with one is rolled on its own instead, and
+   * so is neither guaranteed by that floor nor able to crowd a supply out of
+   * it. It exists for the one thing in the game that is not a supply - an
+   * evolution stone, which has to be rare to be worth walking for and would be
+   * a formality at the pool's own odds.
+   */
+  readonly chance?: number;
 }
 
 export type LootPickupResult = 'collected' | 'bag-full' | 'unavailable';

@@ -1,4 +1,4 @@
-import type { Pokemon } from '../pokemon';
+import { evolutionByStone, type Pokemon } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
 
 export const ItemCategory = {
@@ -24,7 +24,14 @@ export type ItemEffect =
    * Nothing to use: the item exists to be spent at the Outfitter, and no raid,
    * battle or bag screen may do anything with it.
    */
-  | { readonly type: 'material' };
+  | { readonly type: 'material' }
+  /**
+   * Evolves the Pokemon it is used on, if its line answers to this stone. The
+   * stone is the item's own id rather than a field, because a second field
+   * naming the same thing is a second answer waiting to disagree with the
+   * first - `src/game/pokemon/evolution.ts` is the table both read.
+   */
+  | { readonly type: 'evolution-stone' };
 
 export interface ItemDefinition {
   readonly id: string;
@@ -117,6 +124,20 @@ export const ITEMS = {
     description: 'Clean linen for beds and bandages. The Outfitter fits the recovery bay and the ward with it.',
     effect: { type: 'material' },
   },
+  /**
+   * The one thing in the pack that is neither a supply nor a material: it is
+   * spent on a Pokemon rather than at base. It is rare field loot, it is used
+   * from the raid's own Bag on a Pokemon standing beside you, and it is
+   * destroyed with everything else on a wipe unless a secure slot is spent on
+   * it.
+   */
+  'thunder-stone': {
+    id: 'thunder-stone',
+    displayName: 'Thunder Stone',
+    category: ItemCategory.Misc,
+    description: 'A stone with a thunderbolt in it. Some Pokemon answer to it.',
+    effect: { type: 'evolution-stone' },
+  },
 } as const satisfies Record<string, ItemDefinition>;
 
 export type ItemId = keyof typeof ITEMS;
@@ -162,5 +183,12 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} can only be used in battle.` };
     case 'material':
       return { used: false, message: `${item.displayName} is for the Outfitter, not the field.` };
+    case 'evolution-stone': {
+      const species = evolutionByStone(pokemon.base.id, item.id);
+      const evolution = species ? pokemon.evolveInto(species) : null;
+      return evolution
+        ? { used: true, message: `${evolution.from.name} evolved into ${evolution.to.name}!` }
+        : { used: false, message: `It will not have any effect.` };
+    }
   }
 }

@@ -42,13 +42,26 @@ const typeOrder = [
   PokemonType.Dragon,
 ] as const;
 
-// PokemonBase.cs, attacker rows and defender columns in the order above.
-const unityTypeMatrix: readonly (readonly number[])[] = [
+/**
+ * Generation III's chart for the fifteen types this game has, attacker rows and
+ * defender columns in the order above.
+ *
+ * It is `PokemonBase.cs`'s matrix with three cells put right, which the captain
+ * ruled on 2026-09-19 should happen when the roster grew: Water into Electric,
+ * Grass into Electric and Electric into Ice were all 2x here and are 1x in
+ * canon. Two of them were live against a Pikachu, which is in the forest grass,
+ * on Raider Maya's team and on the hunter's third tier.
+ *
+ * Fifteen types is the whole chart for the original 151 and is not a gap: Dark,
+ * Steel and Fairy arrived with later generations, and so did every species that
+ * has one.
+ */
+const generationThreeTypeMatrix: readonly (readonly number[])[] = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5, 0, 1],
   [1, 0.5, 0.5, 1, 2, 2, 1, 1, 1, 1, 1, 2, 0.5, 1, 0.5],
-  [1, 2, 0.5, 2, 0.5, 1, 1, 1, 2, 1, 1, 1, 2, 1, 0.5],
-  [1, 1, 2, 0.5, 0.5, 2, 1, 1, 0, 2, 1, 1, 1, 1, 0.5],
-  [1, 0.5, 2, 2, 0.5, 1, 1, 0.5, 2, 0.5, 1, 0.5, 2, 1, 0.5],
+  [1, 2, 0.5, 1, 0.5, 1, 1, 1, 2, 1, 1, 1, 2, 1, 0.5],
+  [1, 1, 2, 0.5, 0.5, 1, 1, 1, 0, 2, 1, 1, 1, 1, 0.5],
+  [1, 0.5, 2, 1, 0.5, 1, 1, 0.5, 2, 0.5, 1, 0.5, 2, 1, 0.5],
   [1, 0.5, 0.5, 1, 2, 0.5, 1, 1, 2, 2, 1, 1, 1, 1, 2],
   [2, 1, 1, 1, 1, 2, 1, 0.5, 1, 0.5, 0.5, 0.5, 2, 0, 1],
   [1, 1, 1, 1, 2, 1, 1, 0.5, 0.5, 1, 1, 1, 0.5, 0.5, 1],
@@ -61,12 +74,12 @@ const unityTypeMatrix: readonly (readonly number[])[] = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
 ];
 
-describe('Unity type-chart regression', () => {
+describe('generation III type-chart regression', () => {
   it('matches every value in the canonical 15 by 15 matrix', () => {
     for (const [attackerIndex, attackingType] of typeOrder.entries()) {
       for (const [defenderIndex, defendingType] of typeOrder.entries()) {
         expect(getTypeEffectiveness(attackingType, [defendingType])).toBe(
-          unityTypeMatrix[attackerIndex]?.[defenderIndex],
+          generationThreeTypeMatrix[attackerIndex]?.[defenderIndex],
         );
       }
     }

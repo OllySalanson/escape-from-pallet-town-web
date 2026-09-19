@@ -162,6 +162,18 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'forest-antidote', position: { x: 21, y: 30 }, itemId: 'antidote', quantity: 1 },
       { id: 'forest-lamp-oil', position: { x: 9, y: 12 }, itemId: 'lamp-oil', quantity: 1 },
       { id: 'forest-mooring-rope', position: { x: 24, y: 27 }, itemId: 'mooring-rope', quantity: 1 },
+      // The one evolution stone in the game, on the one map whose tall grass
+      // holds a Pikachu - so the stone and the Pokemon it answers to are found
+      // in the same place. One raid in five, rolled on its own rather than out
+      // of the pool above, because a stone at pool odds would be a formality
+      // and the walk to it is meant to be a decision.
+      {
+        id: 'forest-thunder-stone',
+        position: { x: 20, y: 6 },
+        itemId: 'thunder-stone',
+        quantity: 1,
+        chance: 0.2,
+      },
     ],
   },
   // The first map drawn on the FireRed sheet, which is the only one with

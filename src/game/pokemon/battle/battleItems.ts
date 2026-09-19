@@ -113,5 +113,10 @@ function refusalMessage(item: ItemDefinition, name: string): string {
       return `A ${item.displayName.toUpperCase()} is thrown with the BALL command.`;
     case 'material':
       return `${item.displayName} is for the Outfitter, not the field.`;
+    // A stone works out of the Bag in the world, not from inside a fight: an
+    // evolution has a sprite and a name plate to change, and a battle is
+    // already drawing both for a different species.
+    case 'evolution-stone':
+      return `A ${item.displayName.toUpperCase()} cannot be used in a battle.`;
   }
 }

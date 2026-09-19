@@ -1,5 +1,5 @@
 import { Bag, getItemById, isMaterial, type BagContents } from '../items';
-import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE, type PokemonBase } from '../pokemon';
+import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE, getSpeciesById, type PokemonBase } from '../pokemon';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 
 export const STARTER_SPECIES = [BULBASAUR, CHARMANDER, SQUIRTLE] as const;
@@ -81,6 +81,19 @@ export interface RaidCondition {
   readonly id: string;
   readonly currentHp: number;
   readonly primaryStatus: PrimaryStatus | null;
+  /**
+   * The species it came home as. A level evolution needs no help from this -
+   * replaying the experience below crosses the same level and evolves the
+   * stored Pokemon exactly as the field did - but a stone spends no experience
+   * at all, so without this a Thunder Stone found, carried and used in a raid
+   * would be a Raichu at the extraction pad and a Pikachu in the vault.
+   *
+   * Optional, because a settlement written before stones existed has no opinion
+   * about species, and `Pokemon.evolveInto` refuses anything that is not
+   * further along the same line, so a stale or corrupt one is a no-op rather
+   * than a Pokemon swap.
+   */
+  readonly speciesId?: string;
   /**
    * The Pokemon's total experience at the end of the raid, absolute rather than
    * a delta so applying a settlement twice cannot pay a win out twice.
@@ -217,6 +230,14 @@ export class Stash {
         continue;
       }
       stored.pokemon.gainExperience(experienceGain(entry.experience, stored.pokemon.experience));
+      // After the experience, because a level crossed in the field may already
+      // have evolved it - and then this is the no-op it should be. Before the
+      // HP, for the same reason a level is: evolving raises the maximum the
+      // raid's own current HP was measured against.
+      const species = entry.speciesId ? getSpeciesById(entry.speciesId) : undefined;
+      if (species) {
+        stored.pokemon.evolveInto(species);
+      }
       stored.pokemon.currentHp = clampHp(entry.currentHp, stored.pokemon.maxHp);
       stored.pokemon.primaryStatus = entry.primaryStatus;
     }

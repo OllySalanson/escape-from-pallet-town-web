@@ -18,6 +18,7 @@ export const ITEM_ICONS = {
   'lamp-oil': 'lamp-oil',
   'mooring-rope': 'mooring-rope',
   'linen-roll': 'linen-roll',
+  'thunder-stone': 'thunder-stone',
 } as const satisfies Record<string, string>;
 
 /** Icons the raid draws on the map, plus the objective icon the menus reuse. */

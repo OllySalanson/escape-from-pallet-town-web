@@ -378,6 +378,11 @@ const MATERIAL_SHARE: Readonly<Record<ItemId, number>> = {
   'parts-crate': 1,
   'lamp-oil': 1,
   'mooring-rope': 1,
+  // Never actually paid out - a stone is found, not awarded, and
+  // `outfitterMaterialKinds()` is what the board draws from - but priced here
+  // because this record is exhaustive on purpose, so that adding an item makes
+  // the compiler ask what it is worth instead of a default answering for it.
+  'thunder-stone': 1,
   'linen-roll': 1,
 };
 
