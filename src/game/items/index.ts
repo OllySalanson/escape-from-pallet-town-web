@@ -1,11 +1,31 @@
 export { Bag, type BagContents } from './Bag';
 export {
+  BASE_SECURE_GRID,
+  RAID_BAG_GRID,
+  RAID_BAG_ROWS_PER_UPGRADE,
+  SECURE_COLUMNS_PER_UPGRADE,
+} from './containers';
+export {
+  blocksFor,
+  cellsFor,
+  fitsInGrid,
+  footprintOf,
+  gridCells,
+  growGridColumns,
+  growGridRows,
+  packContents,
+  roomFor,
+  stackSizeOf,
+  type GridPacking,
+  type GridPlacement,
+  type GridSize,
+} from './itemGrid';
+export {
   HELD_ITEM_DEFINITIONS,
   ITEM_CATEGORY_LABELS,
   ITEM_DEFINITIONS,
   ITEMS,
   MATERIAL_IDS,
-  SECURED_MATERIAL_QUANTITY,
   isMaterial,
   ItemCategory,
   getHeldItem,
@@ -19,6 +39,7 @@ export {
   type HeldItemId,
   type ItemDefinition,
   type ItemEffect,
+  type ItemFootprint,
   type ItemId,
   type SupplyItemId,
 } from './items';

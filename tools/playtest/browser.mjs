@@ -30,7 +30,11 @@ function keyDescription(code) {
     throw new Error(`unknown key ${code}`);
   }
   const key = code === 'Space' ? ' ' : code;
-  return { code, key, windowsVirtualKeyCode: KEYS[code], ...(code === 'Space' ? { text: ' ' } : {}) };
+  // `text` is what makes Chromium run a key's default action, so without it
+  // Enter moved focus around a DOM menu and activated nothing: a driver could
+  // only ever click. Space carries it for the same reason.
+  const text = code === 'Space' ? ' ' : code === 'Enter' ? '\r' : undefined;
+  return { code, key, windowsVirtualKeyCode: KEYS[code], ...(text === undefined ? {} : { text }) };
 }
 
 function findChromium() {

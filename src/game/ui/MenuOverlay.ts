@@ -138,7 +138,16 @@ export class MenuOverlay {
     }
     const controls = [...this.root.querySelectorAll<HTMLElement>('button:not([disabled])')];
     const current = controls.indexOf(document.activeElement as HTMLElement);
-    controls[nextFocusIndex(controls.map((control) => control.getBoundingClientRect()), current, direction)]?.focus();
+    const panes: HTMLElement[] = [];
+    const rects = controls.map((control) => {
+      const pane = scrollingAncestor(control, this.root);
+      if (pane && !panes.includes(pane)) {
+        panes.push(pane);
+      }
+      const { left, top, right, bottom } = control.getBoundingClientRect();
+      return { left, top, right, bottom, ...(pane ? { group: `pane-${panes.indexOf(pane)}` } : {}) };
+    });
+    controls[nextFocusIndex(rects, current, direction)]?.focus();
     return true;
   }
 
@@ -249,4 +258,19 @@ export function hpBar(current: number, max: number): string {
 
 export function typeBadge(type: string): string {
   return `<span class="type-badge type-${type.toLowerCase()}">${type}</span>`;
+}
+
+/**
+ * The nearest ancestor that scrolls its own contents, or null. A control inside
+ * one reports a position the pane may not be showing, which is why a vertical
+ * move is kept inside it - see `FocusRect.group` in `spatialFocus.ts`.
+ */
+function scrollingAncestor(control: HTMLElement, root: HTMLElement): HTMLElement | null {
+  for (let node = control.parentElement; node && node !== root; node = node.parentElement) {
+    const overflow = getComputedStyle(node).overflowY;
+    if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+  }
+  return null;
 }

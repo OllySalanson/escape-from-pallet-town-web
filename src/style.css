@@ -1141,6 +1141,85 @@ button {
   }
 }
 
+/* --- The raid pack, on the in-raid bag screen ----------------------------
+   The same squares the loadout packs into, in the rounded language the in-raid
+   screens are still written in. Cells are the icon box's own 38px, so nothing
+   is resampled here either. ------------------------------------------------ */
+.bag-pack {
+  grid-column: 1 / -1;
+  background: rgb(17 28 46 / 90%);
+  border: 1px solid var(--menu-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  box-shadow: var(--shadow);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+.bag-pack header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.bag-pack h2 {
+  font-size: 1.2em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.bag-pack header p {
+  color: var(--menu-accent);
+  font-weight: 800;
+}
+.raid-grid {
+  display: grid;
+  padding: 2px;
+  border-radius: 6px;
+  background: #0b1220;
+}
+.raid-grid > * {
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 38px);
+  grid-template-rows: repeat(var(--rows), 38px);
+  gap: 2px;
+}
+.raid-grid-cells > i {
+  border-radius: 8px;
+  background: rgb(255 255 255 / 6%);
+}
+.raid-grid-block {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgb(142 212 194 / 18%);
+  border: 1px solid var(--menu-accent);
+}
+/* A block already carries its own icon box, so the one inside it is stripped
+   back to the art: two rounded frames a pixel apart read as a mistake. */
+.raid-grid-block .item-icon {
+  width: auto;
+  height: auto;
+  border: 0;
+  background: none;
+}
+.raid-grid-block > b {
+  position: absolute;
+  right: 3px;
+  bottom: 0;
+  font-size: 0.8em;
+  color: var(--menu-accent);
+}
+.raid-grid-block.marked {
+  background: rgb(240 196 84 / 28%);
+  border-color: var(--menu-accent-2, #f0c454);
+}
+.bag-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 /* ==========================================================================
    Pixel UI: the DOM screens drawn in the game's own visual language.
 
@@ -1867,6 +1946,7 @@ button {
 :where(.pixel-ui) .stash-layout > .px-window,
 :where(.pixel-ui) .stash-side > .px-window,
 :where(.pixel-ui) .loadout-layout > .px-window,
+:where(.pixel-ui) .loadout-side > .px-window,
 :where(.pixel-ui) .secure-layout > .px-window,
 :where(.pixel-ui) .confirm-layout > .px-window {
   display: grid;
@@ -2074,4 +2154,74 @@ button {
   margin-top: calc(var(--u) * 3);
   padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
   box-shadow: 0 calc(var(--u) * -1) 0 var(--frame);
+}
+
+/* --- The chequered containers: the pack, and the one a wipe cannot take ---
+   One square is sixteen game pixels - the icon set's own size, so nothing in a
+   block is ever resampled - with a one-pixel hairline of frame between them.
+   Two layers share one grid: the squares, and the blocks laid over them. A
+   block wider than a square spans the hairline too, so a parts crate reads as
+   one object rather than as four squares that happen to be next to each other.
+   ------------------------------------------------------------------------ */
+:where(.pixel-ui) .px-grid {
+  display: grid;
+  justify-self: start;
+  padding: var(--u);
+  background: var(--frame);
+}
+:where(.pixel-ui) .px-grid > * {
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), calc(var(--u) * 16));
+  grid-template-rows: repeat(var(--rows), calc(var(--u) * 16));
+  gap: var(--u);
+}
+:where(.pixel-ui) .px-grid-cells > i {
+  background: var(--cream-dim);
+}
+:where(.pixel-ui) .px-grid-block {
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: var(--cream-lit);
+}
+/* The count a stack carries, tucked into the block's own corner. */
+:where(.pixel-ui) .px-grid-block > b {
+  position: absolute;
+  right: var(--u);
+  bottom: 0;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+/* The block the pointed-at row is about, so a list and a container answer to
+   each other without a second cursor. */
+:where(.pixel-ui) .px-grid-block.is-marked {
+  background: var(--gold-wash);
+  box-shadow: inset 0 0 0 var(--u) var(--frame);
+}
+:where(.pixel-ui) .px-grid.is-secure .px-grid-block {
+  background: var(--teal-wash);
+}
+/* The pack, stacked over the insertions in the loadout's second column. */
+:where(.pixel-ui) .loadout-side {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: calc(var(--u) * 4);
+}
+/* The squares are centred under the lid; the lid itself still bleeds out to the
+   window's frame, as every heading on these screens does. */
+:where(.pixel-ui) .pack-window > .px-grid {
+  justify-self: center;
+  margin: calc(var(--u) * 3) 0;
+}
+/* The container's squares stand above its list, and only the list scrolls. */
+:where(.pixel-ui) .secure-body {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .secure-body > .px-grid {
+  justify-self: center;
+  margin: calc(var(--u) * 3) 0;
 }

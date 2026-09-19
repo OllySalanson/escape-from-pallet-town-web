@@ -69,3 +69,33 @@ describe('focusDirectionForKey', () => {
     expect(focusDirectionForKey('Enter')).toBeUndefined();
   });
 });
+
+describe('a list that scrolls', () => {
+  /**
+   * A row below a pane's fold reports the position it would have if the pane
+   * were as tall as its list, so by rectangles alone the commit bar under the
+   * pane is nearer than the next row in it. That is how the loadout screen came
+   * to have supplies no arrow key could reach.
+   */
+  const pane = (top: number): FocusRect => ({ left: 0, top, right: 100, bottom: top + 20, group: 'list' });
+  const bar: FocusRect = { left: 0, top: 200, right: 300, bottom: 230 };
+
+  it('keeps a vertical move inside the pane it started in', () => {
+    const rects = [pane(0), pane(30), pane(300), bar];
+
+    expect(nextFocusIndex(rects, 1, 'down')).toBe(2);
+    expect(nextFocusIndex(rects, 2, 'up')).toBe(1);
+  });
+
+  it('leaves the pane once there is nothing ahead in it', () => {
+    const rects = [pane(0), pane(30), bar];
+
+    expect(nextFocusIndex(rects, 1, 'down')).toBe(2);
+  });
+
+  it('crosses out of a pane sideways, where nothing is hidden by it', () => {
+    const rects = [pane(0), { left: 200, top: 0, right: 300, bottom: 20 }];
+
+    expect(nextFocusIndex(rects, 0, 'right')).toBe(1);
+  });
+});

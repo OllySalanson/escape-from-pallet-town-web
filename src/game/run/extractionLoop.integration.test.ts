@@ -68,8 +68,11 @@ describe('extraction loop integration', () => {
         { itemId: 'potion', quantity: 3 },
       ],
     } as const;
-    const secureSlot = { pokemon: [starter.pokemon], items: loadout.items };
-    const stashSecureSlot = { pokemonIds: [starter.id], items: loadout.items };
+    // The base container is four squares, so it holds the Potions and not the
+    // balls as well - the choice the grid exists to make.
+    const securedItems = [{ itemId: 'potion', quantity: 3 }] as const;
+    const secureSlot = { pokemon: [starter.pokemon], items: securedItems };
+    const stashSecureSlot = { pokemonIds: [starter.id], items: securedItems };
     const manager = new RunManager();
     manager.startRun(loadout, RUN_CONFIG, secureSlot);
     const session = createActiveRunSession(
@@ -392,8 +395,11 @@ describe('extraction loop integration', () => {
         { itemId: 'potion', quantity: 3 },
       ],
     } as const;
-    const secureSlot = { pokemon: [starter.pokemon], items: loadout.items };
-    const stashSecureSlot = { pokemonIds: [starter.id], items: loadout.items };
+    // The base container is four squares, so it holds the Potions and not the
+    // balls as well - the choice the grid exists to make.
+    const securedItems = [{ itemId: 'potion', quantity: 3 }] as const;
+    const secureSlot = { pokemon: [starter.pokemon], items: securedItems };
+    const stashSecureSlot = { pokemonIds: [starter.id], items: securedItems };
     const manager = new RunManager();
     manager.startRun(loadout, RUN_CONFIG, secureSlot);
     const session = createActiveRunSession(

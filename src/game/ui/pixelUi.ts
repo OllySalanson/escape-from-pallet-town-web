@@ -1,3 +1,5 @@
+import type { GridPacking } from '../items';
+
 /**
  * Markup for the DOM screens drawn in the game's own visual language.
  *
@@ -149,4 +151,40 @@ export function pixelCommitBar(options: CommitBarOptions): string {
     `<div class="px-bar-head"><strong>${options.title}</strong><div class="px-bar-actions">${options.actions}</div></div>${(options.lines ?? []).join('')}`,
     { className: `confirm-bar${options.className ? ` ${options.className}` : ''}`, tag: 'div' },
   );
+}
+
+export interface PixelGridOptions {
+  /** A tone class for the frame: `is-secure` for the container a wipe cannot take. */
+  readonly className?: string;
+  /** What a screen reader is told the container is. */
+  readonly label?: string;
+  /** Marks one id's squares, so a row and its blocks answer to each other. */
+  readonly highlight?: string;
+}
+
+/**
+ * A container drawn as the chequered squares it is.
+ *
+ * Two layers on one grid: every square of the container, and the packed blocks
+ * laid over them. The empty squares are drawn rather than implied, because a
+ * pack is read for the room it has left as much as for what is in it - the
+ * question the whole grid exists to ask is "will the next thing go in".
+ *
+ * One square is sixteen game pixels, which is the icon set's own size, so
+ * nothing here is ever resampled (`ui/icons.ts` holds that rule for the rest of
+ * the game). A block wider or taller than one square spans the hairline between
+ * them, so a parts crate reads as one object and not as four.
+ */
+export function pixelGrid(packing: GridPacking, icon: (itemId: string) => string, options: PixelGridOptions = {}): string {
+  const { width, height } = packing.size;
+  const cells = new Array(Math.max(0, width * height)).fill('<i></i>').join('');
+  const blocks = packing.placements
+    .map((placement) => {
+      const marked = options.highlight === placement.itemId ? ' is-marked' : '';
+      const count = placement.quantity > 1 ? `<b>${placement.quantity}</b>` : '';
+      return `<span class="px-grid-block${marked}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}">${icon(placement.itemId)}${count}</span>`;
+    })
+    .join('');
+  const label = options.label ? ` aria-label="${escapeAttribute(options.label)}" role="img"` : '';
+  return `<div class="px-grid${options.className ? ` ${options.className}` : ''}" style="--cols:${width};--rows:${height}"${label}><div class="px-grid-cells" aria-hidden="true">${cells}</div><div class="px-grid-blocks">${blocks}</div></div>`;
 }

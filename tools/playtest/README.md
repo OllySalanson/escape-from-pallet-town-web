@@ -44,6 +44,10 @@ game polls (`src/game/input/KeyPresses.ts`); it used not to, at any frame rate -
 movement read `isDown`, and Phaser clears `JustDown` on key up. `raid.mjs --taps`
 plays the whole raid on such presses.
 
+Enter works a focused DOM control, so a driver can play the lobby's screens the
+way a player does rather than calling `.click()`: `keyDescription` gives Enter a
+`text`, which is what makes Chromium run a key's default action.
+
 `raid.mjs --exit=LABEL` (`--exit=ferry-dock`) leaves by a named exit rather than
 the nearest one open from the first second: it stands beside the exit until its
 caption reads `EXTRACT OPEN`, then steps on. A timed exit is never chosen

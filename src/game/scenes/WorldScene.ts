@@ -57,7 +57,7 @@ import {
   nextHunterProximity,
 } from '../audio/worldSounds';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
-import { Bag, ITEMS, getItemById, type ItemId } from '../items';
+import { Bag, ITEMS, footprintOf, getItemById, type ItemId } from '../items';
 import {
   areContractStopsComplete,
   completedObjectiveRewards,
@@ -651,7 +651,14 @@ export class WorldScene extends Phaser.Scene {
   private takeBossGear(newlyBeaten: readonly string[]): readonly string[] {
     return bossGearDropped(this.trainerEncounters, newlyBeaten).flatMap((drop) => {
       if (!this.bag.add(drop.itemId, 1)) {
-        return [];
+        // Gear comes off a boss once per save and the win is already written,
+        // so a full pack loses it for good. That is said out loud rather than
+        // swallowed: a player who packed to the last square is owed the reason.
+        const gear = getItemById(drop.itemId);
+        return [
+          `${drop.name} was carrying a ${gear?.displayName.toUpperCase() ?? 'PIECE OF GEAR'} - and your pack has no room for it.`,
+          'It stays where it fell. Deploy with a square to spare next time.',
+        ];
       }
       const item = getItemById(drop.itemId);
       return [
@@ -2452,7 +2459,13 @@ export class WorldScene extends Phaser.Scene {
     }
     if (result === 'bag-full') {
       audioManager.play('denied');
-      return 'Bag is full!';
+      // The Tarkov moment, and the whole point of a pack with squares in it:
+      // the thing is still on the ground, so the choice is what comes out to
+      // make room for it. It names both so the choice can be made from here.
+      const wanted = ITEMS[loot!.itemId];
+      const footprint = footprintOf(loot!.itemId);
+      const squares = footprint.width * footprint.height;
+      return `No room for ${wanted.displayName.toUpperCase()} - it needs ${squares} ${squares === 1 ? 'square' : 'squares'}. Drop something from the BAG and come back for it.`;
     }
 
     const marker = this.lootSprites.get(loot!.id);

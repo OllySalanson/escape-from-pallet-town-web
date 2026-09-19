@@ -1,11 +1,11 @@
-import { isMaterial, type ItemId } from '../items';
+import { BASE_SECURE_GRID, fitsInGrid, isMaterial, type GridSize, type ItemId } from '../items';
 import type { Pokemon } from '../pokemon';
-import { BASE_SECURE_ITEM_STACKS, BASE_SECURE_POKEMON } from '../objectives/contracts';
+import { BASE_SECURE_POKEMON } from '../objectives/contracts';
 import { hunterFleePenaltyMs } from './fleePenalty';
 
 /** The first contract's one stop, kept here so the snapshot can still name it. */
 const FIELD_KIT_STEP_ID = 'lost-field-kit';
-const MAX_SECURE_ITEM_STACKS = BASE_SECURE_ITEM_STACKS;
+const DEFAULT_SECURE_GRID = BASE_SECURE_GRID;
 const MAX_SECURE_POKEMON = BASE_SECURE_POKEMON;
 
 /** Time the player has to extract after the raid timer reaches zero. */
@@ -35,11 +35,11 @@ export interface RunConfig {
   readonly mapId: string;
   readonly durationMs: number;
   /**
-   * How many item stacks this raid's secure slot protects. It is a raid
-   * parameter rather than a constant because banking the cordon ledger enlarges
-   * it permanently, so the limit belongs to the save, not to the code.
+   * How big this raid's secure container is. It is a raid parameter rather than
+   * a constant because banking the cordon ledger enlarges it permanently, so
+   * the size belongs to the save, not to the code.
    */
-  readonly secureItemStackLimit?: number;
+  readonly secureGrid?: GridSize;
   /** How many Pokemon it protects, which the Outfitter's second locker raises. */
   readonly securePokemonLimit?: number;
 }
@@ -135,7 +135,7 @@ export class RunManager {
   private caughtPokemonValue: Pokemon[] = [];
   private foundItemsValue: ItemStack[] = [];
   private contractStepsValue: string[] = [];
-  private secureItemStackLimitValue = MAX_SECURE_ITEM_STACKS;
+  private secureGridValue: GridSize = DEFAULT_SECURE_GRID;
   private securePokemonLimitValue = MAX_SECURE_POKEMON;
   private defeatedTrainersValue = 0;
   private hunterFleesValue = 0;
@@ -180,7 +180,7 @@ export class RunManager {
     this.requirePhase('start a run', RunPhase.InHub, RunPhase.Escaped, RunPhase.Wiped);
     validateRunConfig(config);
     validateItemStacks(loadout.items);
-    this.secureItemStackLimitValue = config.secureItemStackLimit ?? MAX_SECURE_ITEM_STACKS;
+    this.secureGridValue = config.secureGrid ?? DEFAULT_SECURE_GRID;
     this.securePokemonLimitValue = config.securePokemonLimit ?? MAX_SECURE_POKEMON;
     validateSecureSlot(secureSlot, loadout.party, loadout.items, this.secureLimits());
 
@@ -392,7 +392,7 @@ export class RunManager {
   private secureLimits(): SecureLimits {
     return {
       pokemon: this.securePokemonLimitValue,
-      itemStacks: this.secureItemStackLimitValue,
+      grid: this.secureGridValue,
     };
   }
 
@@ -460,7 +460,7 @@ function validateRunConfig(config: RunConfig): void {
 
 interface SecureLimits {
   readonly pokemon: number;
-  readonly itemStacks: number;
+  readonly grid: GridSize;
 }
 
 function validateSecureSlot(
@@ -480,14 +480,23 @@ function validateSecureSlot(
     throw new Error('The secure-slot Pokemon must come from the current run.');
   }
 
-  const secureItems = secureSlot.items ?? [];
-  if (secureItems.length > limits.itemStacks) {
-    throw new Error(`A secure slot can contain at most ${limits.itemStacks} item stacks.`);
-  }
+  const secureItems = combineItems(secureSlot.items ?? []);
   validateItemStacks(secureItems);
+  // Squares rather than a count of entries: what the container protects is what
+  // fits in it, and that is asked of the same packer the loadout screen drew.
+  if (
+    !fitsInGrid(
+      Object.fromEntries(secureItems.map(({ itemId, quantity }) => [itemId, quantity])),
+      limits.grid,
+    )
+  ) {
+    throw new Error(
+      `A secure container of ${limits.grid.width}x${limits.grid.height} cannot hold that.`,
+    );
+  }
 
   const availableQuantities = toItemQuantities(availableItems);
-  for (const item of combineItems(secureItems)) {
+  for (const item of secureItems) {
     // A material is found in the raid, so the slot may name one the loadout
     // never carried.
     if (!isMaterial(item.itemId) && (availableQuantities.get(item.itemId) ?? 0) < item.quantity) {

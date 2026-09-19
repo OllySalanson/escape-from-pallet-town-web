@@ -1,22 +1,39 @@
-import { isMaterial, SECURED_MATERIAL_QUANTITY, type ItemId } from '../items';
-import { BASE_SECURE_ITEM_STACKS, BASE_SECURE_POKEMON } from '../objectives/contracts';
+import {
+  BASE_SECURE_GRID,
+  fitsInGrid,
+  gridCells,
+  isMaterial,
+  packContents,
+  RAID_BAG_GRID,
+  type GridPacking,
+  type GridSize,
+  type ItemId,
+} from '../items';
+import { BASE_SECURE_POKEMON } from '../objectives/contracts';
 import type { ItemStack, SecureSlot as RunSecureSlot } from '../run';
 import type { RunInsertionId } from '../run/runGeneration';
 import type { SecureSlot as StashSecureSlot, Stash, StashedPokemon } from '../stash';
 
 export const MAX_RUN_PARTY = 6;
-/** The secure slot every save starts with; the cordon ledger adds to it. */
-export const MAX_SECURE_ITEM_STACKS = BASE_SECURE_ITEM_STACKS;
 
-/** What this save's secure slot protects; contracts and the Outfitter enlarge it. */
-export interface SecureSlotCapacity {
+/**
+ * What this save carries a raid in: the pack it packs into, the container the
+ * wipe cannot touch, and how many Pokemon that container holds.
+ *
+ * All three belong to the save rather than to this class - contracts and the
+ * Outfitter enlarge two of them - so preparation is told its capacities instead
+ * of assuming them.
+ */
+export interface LoadoutCapacity {
   readonly pokemon: number;
-  readonly itemStacks: number;
+  readonly secureGrid: GridSize;
+  readonly bagGrid: GridSize;
 }
 
-export const BASE_SECURE_SLOT_CAPACITY: SecureSlotCapacity = {
+export const BASE_LOADOUT_CAPACITY: LoadoutCapacity = {
   pokemon: BASE_SECURE_POKEMON,
-  itemStacks: BASE_SECURE_ITEM_STACKS,
+  secureGrid: BASE_SECURE_GRID,
+  bagGrid: RAID_BAG_GRID,
 };
 
 /**
@@ -41,23 +58,27 @@ export class DeploymentFlow {
   private selectedPokemonIds: string[] = [];
   private readonly selectedItems = new Map<ItemId, number>();
   private securedPokemonIds: string[] = [];
-  private securedItemIds: ItemId[] = [];
+  /** How many of each kind is in the secure container, by id. */
+  private readonly securedItemCounts = new Map<ItemId, number>();
   private insertion: RunInsertionId;
   private currentStep: DeploymentStep = 'loadout';
   private secureReturn: Exclude<DeploymentStep, 'secure'> = 'loadout';
-  /** How many item stacks this save's secure slot protects. */
-  public readonly secureItemStacks: number;
-  /** How many Pokemon it protects. */
+  /** The squares the secure container has. */
+  public readonly secureGrid: GridSize;
+  /** The squares the raid pack has. */
+  public readonly bagGrid: GridSize;
+  /** How many Pokemon the secure container protects. */
   public readonly securePokemonSlots: number;
 
   public constructor(
     stash: Stash,
     insertionId: RunInsertionId = 'floodplain-relay',
-    capacity: SecureSlotCapacity = BASE_SECURE_SLOT_CAPACITY,
+    capacity: LoadoutCapacity = BASE_LOADOUT_CAPACITY,
   ) {
     this.stash = stash;
     this.insertion = insertionId;
-    this.secureItemStacks = capacity.itemStacks;
+    this.secureGrid = capacity.secureGrid;
+    this.bagGrid = capacity.bagGrid;
     this.securePokemonSlots = capacity.pokemon;
   }
 
@@ -102,17 +123,50 @@ export class DeploymentFlow {
   }
 
   /**
-   * The protected stacks: loadout supplies the player chose to protect, and any
-   * material kind they named. A material is never packed - it is found - so its
-   * stack carries the slot's own cap and the pack decides how much is kept.
+   * What is in the secure container: loadout supplies the player put in it, and
+   * room set aside for the materials they expect to find.
+   *
+   * A supply is capped at what is actually packed, so a stack shrunk at base
+   * cannot protect more than deploys. A material is never packed - it is found -
+   * so its entry is the room reserved for it, and how much of that room is
+   * filled is decided by the pack at the end of the raid.
    */
   public get securedItems(): readonly ItemStack[] {
-    return [
-      ...this.items.filter((item) => this.securedItemIds.includes(item.itemId)),
-      ...this.securedItemIds
-        .filter((itemId) => isMaterial(itemId))
-        .map((itemId) => ({ itemId, quantity: SECURED_MATERIAL_QUANTITY })),
-    ];
+    return [...this.securedItemCounts]
+      .map(([itemId, quantity]) => ({
+        itemId,
+        quantity: isMaterial(itemId) ? quantity : Math.min(quantity, this.itemQuantity(itemId)),
+      }))
+      .filter((item) => item.quantity > 0);
+  }
+
+  /** The secure container's contents as a record, for the packer and the view. */
+  public get securedContents(): Readonly<Record<string, number>> {
+    return Object.fromEntries(this.securedItems.map(({ itemId, quantity }) => [itemId, quantity]));
+  }
+
+  /** Where the secure container's contents sit, for the screen that draws it. */
+  public secureLayout(): GridPacking {
+    return packContents(this.securedContents, this.secureGrid);
+  }
+
+  /** The packed supplies as a record, for the packer and the view. */
+  public get packedContents(): Readonly<Record<string, number>> {
+    return Object.fromEntries(this.items.map(({ itemId, quantity }) => [itemId, quantity]));
+  }
+
+  /** Where the packed supplies sit in the raid pack. */
+  public bagLayout(): GridPacking {
+    return packContents(this.packedContents, this.bagGrid);
+  }
+
+  /** Squares filled and squares there are, for the line that reads the pack back. */
+  public get bagCells(): { readonly used: number; readonly total: number } {
+    return { used: this.bagLayout().cellsUsed, total: gridCells(this.bagGrid) };
+  }
+
+  public get secureCells(): { readonly used: number; readonly total: number } {
+    return { used: this.secureLayout().cellsUsed, total: gridCells(this.secureGrid) };
   }
 
   /**
@@ -137,7 +191,13 @@ export class DeploymentFlow {
   }
 
   public securesItem(itemId: ItemId): boolean {
-    return this.securedItemIds.includes(itemId);
+    return this.secureQuantity(itemId) > 0;
+  }
+
+  /** How many of one kind is in the secure container. */
+  public secureQuantity(itemId: ItemId): number {
+    const held = this.securedItemCounts.get(itemId) ?? 0;
+    return isMaterial(itemId) ? held : Math.min(held, this.itemQuantity(itemId));
   }
 
   /** @returns A message when the change was refused, otherwise undefined. */
@@ -154,21 +214,40 @@ export class DeploymentFlow {
     return undefined;
   }
 
-  public adjustItem(itemId: ItemId, direction: number): void {
+  /**
+   * Packs or unpacks one supply.
+   *
+   * @returns A message when the pack had no room, otherwise undefined. The pack
+   *   is the second cap, after the vault: a stash of twenty Potions still only
+   *   deploys with what fits in the squares.
+   */
+  public adjustItem(itemId: ItemId, direction: number): string | undefined {
     // Materials are for the Outfitter: packing one only puts it at risk.
     if (isMaterial(itemId)) {
-      return;
+      return undefined;
     }
     const next = Math.max(
       0,
       Math.min(this.stash.itemCount(itemId), this.itemQuantity(itemId) + direction),
     );
+    if (next === this.itemQuantity(itemId)) {
+      return undefined;
+    }
+    if (next > 0 && !fitsInGrid({ ...this.packedContents, [itemId]: next }, this.bagGrid)) {
+      return 'No room in the pack. Take something out first.';
+    }
     if (next === 0) {
       this.selectedItems.delete(itemId);
-      this.securedItemIds = this.securedItemIds.filter((secured) => secured !== itemId);
-      return;
+      this.securedItemCounts.delete(itemId);
+      return undefined;
     }
     this.selectedItems.set(itemId, next);
+    return undefined;
+  }
+
+  /** Whether one more of a supply would go into the pack beside what is packed. */
+  public packHasRoomFor(itemId: ItemId): boolean {
+    return fitsInGrid({ ...this.packedContents, [itemId]: this.itemQuantity(itemId) + 1 }, this.bagGrid);
   }
 
   /**
@@ -187,17 +266,37 @@ export class DeploymentFlow {
     this.securedPokemonIds = [...held, id].slice(-Math.max(1, this.securePokemonSlots));
   }
 
-  /** @returns A message when the change was refused, otherwise undefined. */
-  public toggleSecureItem(itemId: ItemId): string | undefined {
-    if (this.securedItemIds.includes(itemId)) {
-      this.securedItemIds = this.securedItemIds.filter((secured) => secured !== itemId);
+  /**
+   * Puts one more of a kind into the secure container, or takes one out.
+   *
+   * @returns A message when the container had no room, otherwise undefined.
+   */
+  public adjustSecureItem(itemId: ItemId, direction: number): string | undefined {
+    const ceiling = isMaterial(itemId) ? gridCells(this.secureGrid) : this.itemQuantity(itemId);
+    const next = Math.max(0, Math.min(ceiling, this.secureQuantity(itemId) + direction));
+    if (next === this.secureQuantity(itemId)) {
+      return direction > 0 && ceiling === 0
+        ? 'Pack some of this first - the container protects what you carry.'
+        : undefined;
+    }
+    if (next === 0) {
+      this.securedItemCounts.delete(itemId);
       return undefined;
     }
-    if (this.securedItemIds.length >= this.secureItemStacks) {
-      return `The secure slot protects ${this.secureItemStacks} item stacks.`;
+    if (!fitsInGrid({ ...this.securedContents, [itemId]: next }, this.secureGrid)) {
+      return 'The secure container is full. Take something out of it first.';
     }
-    this.securedItemIds.push(itemId);
+    this.securedItemCounts.set(itemId, next);
     return undefined;
+  }
+
+  /** Whether one more of a kind would go into the secure container. */
+  public secureHasRoomFor(itemId: ItemId): boolean {
+    const ceiling = isMaterial(itemId) ? gridCells(this.secureGrid) : this.itemQuantity(itemId);
+    return (
+      this.secureQuantity(itemId) < ceiling &&
+      fitsInGrid({ ...this.securedContents, [itemId]: this.secureQuantity(itemId) + 1 }, this.secureGrid)
+    );
   }
 
   public chooseInsertion(insertionId: RunInsertionId): void {
@@ -274,7 +373,10 @@ export class DeploymentFlow {
       throw new Error('A raid needs at least one Pokemon that has not fainted.');
     }
     const securedPokemon = this.securedPokemon.slice(0, this.securePokemonSlots);
-    const securedItems = this.securedItems.slice(0, this.secureItemStacks);
+    // The container is squares, so it is cut by what fits in them rather than
+    // by a count of entries - the one cut, made once, that the run manager and
+    // the wipe both check again from their own side.
+    const securedItems = this.securedItems;
     return {
       insertionId: this.insertion,
       party,

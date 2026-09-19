@@ -1,4 +1,11 @@
-import type { ItemId, SupplyItemId } from '../items';
+import {
+  BASE_SECURE_GRID,
+  growGridColumns,
+  SECURE_COLUMNS_PER_UPGRADE,
+  type GridSize,
+  type ItemId,
+  type SupplyItemId,
+} from '../items';
 import { outfitterSecureItemStacks, outfitterSecurePokemon } from '../hub/outfitter';
 import type { GridPosition } from '../movement/gridMovement';
 import type { RunSnapshot } from '../run/RunManager';
@@ -407,31 +414,32 @@ export function missingCarryIn(
     .filter(({ quantity }) => quantity > 0);
 }
 
-/** The secure slot before any contract or upgrade has enlarged it. */
-export const BASE_SECURE_ITEM_STACKS = 2;
+/** The secure container before any contract or upgrade has enlarged it. */
 export const BASE_SECURE_POKEMON = 1;
 
 /**
- * How many item stacks the secure slot protects for this save. The cordon
- * ledger's whole reward is this number, and the Outfitter's first locker is the
- * same number again, so it is derived from what the save has banked and built
- * rather than stored, and a save can never disagree with either list.
+ * How big the secure container is for this save. The cordon ledger's whole
+ * reward is one column of it, and the Outfitter's first locker is another, so
+ * it is derived from what the save has banked and built rather than stored, and
+ * a save can never disagree with either list.
  *
  * Both sources are required. A defaulted second list reads as harmless and is
  * not: a caller that forgot it would silently price the player's locker at
- * nothing, and the wipe that followed would destroy a stack they paid for.
+ * nothing, and the wipe that followed would destroy a square they paid for.
+ *
+ * A column rather than a number of stacks, because the container is squares
+ * now: two more of them is a Potion and a Poké Ball, or half a parts crate, and
+ * which of those it turns out to be is the decision the upgrade buys.
  */
-export function secureItemStackLimit(
+export function secureGrid(
   completedContractIds: readonly string[],
   outfitterUpgradeIds: readonly string[],
-): number {
-  return (
+): GridSize {
+  const columns =
     RAID_CONTRACTS.filter(
       (contract) => contract.reward.secureItemStack && completedContractIds.includes(contract.id),
-    ).length +
-    outfitterSecureItemStacks(outfitterUpgradeIds) +
-    BASE_SECURE_ITEM_STACKS
-  );
+    ).length + outfitterSecureItemStacks(outfitterUpgradeIds);
+  return growGridColumns(BASE_SECURE_GRID, columns * SECURE_COLUMNS_PER_UPGRADE);
 }
 
 /** How many Pokemon the secure slot protects for this save. */

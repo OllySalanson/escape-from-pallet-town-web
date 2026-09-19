@@ -1,6 +1,15 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
-import { ITEM_CATEGORY_LABELS, ItemCategory, useFieldItem, type Bag, type ItemDefinition } from '../items';
+import {
+  footprintOf,
+  gridCells,
+  ITEM_CATEGORY_LABELS,
+  ItemCategory,
+  useFieldItem,
+  type Bag,
+  type GridPacking,
+  type ItemDefinition,
+} from '../items';
 import type { PokemonParty } from '../pokemon';
 import { itemIcon } from '../ui/icons';
 import { MenuOverlay, hpBar, pokemonAvatar } from '../ui/MenuOverlay';
@@ -81,12 +90,18 @@ export class BagScene extends Phaser.Scene {
 
   private renderModernMenu(message?: string, itemJustChosen = false): void {
     const item = this.selectedItem;
-    const detail = item ? `<section class="bag-detail"><p class="eyebrow">${ITEM_CATEGORY_LABELS[item.category]}</p><h2>${item.displayName}</h2><p>${item.description}</p><div class="item-count">${this.bag.count(item.id)} available</div>${this.choosingPokemon ? `<h3>Choose a Pokémon</h3><div class="entity-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable" data-target="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${pokemon.currentHp}/${pokemon.maxHp} HP</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('')}</div>` : `<button class="button primary-button" data-use ${item.effect.type === 'capture-modifier' || item.effect.type === 'material' ? 'disabled' : ''}>${item.effect.type === 'capture-modifier' ? 'Battle use only' : item.effect.type === 'material' ? 'For the Outfitter' : 'Use item'}</button>`}</section>` : '<section class="bag-detail"><p class="empty-state">Try another pocket.</p></section>';
-    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run supplies</p><h1>Bag</h1></div><p class="stash-count">${this.choosingPokemon ? 'Choose a recipient' : 'Choose an item'}</p></header><main class="bag-layout"><section class="bag-list"><nav class="category-tabs">${CATEGORIES.map((category, index) => `<button class="${index === this.categoryIndex ? 'active' : ''}" data-category="${index}">${ITEM_CATEGORY_LABELS[category]}</button>`).join('')}</nav><div class="entity-list">${this.currentItems.map((entry, index) => `<button class="entity-row selectable ${index === this.selectedItemIndex ? 'selected' : ''}" data-item-index="${index}">${itemIcon(entry.id, entry.displayName)}<div><strong>${entry.displayName}</strong><small>${this.bag.count(entry.id)} available</small></div></button>`).join('') || '<p class="empty-state">Nothing in this pocket.</p>'}</div></section>${detail}</main>${message ? `<p class="menu-status">${message}</p>` : ''}</div>`;
+    // Dropping is the other half of a pack with a size: a crate on the ground
+    // is only a decision if something in here can come out to make room for it.
+    const drop = item
+      ? `<button class="button" data-drop>Drop one</button>`
+      : '';
+    const detail = item ? `<section class="bag-detail"><p class="eyebrow">${ITEM_CATEGORY_LABELS[item.category]}</p><h2>${item.displayName}</h2><p>${item.description}</p><div class="item-count">${this.bag.count(item.id)} carried · ${this.squareLabel(item.id)} each</div>${this.choosingPokemon ? `<h3>Choose a Pokémon</h3><div class="entity-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable" data-target="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${pokemon.currentHp}/${pokemon.maxHp} HP</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('')}</div>` : `<div class="bag-actions"><button class="button primary-button" data-use ${item.effect.type === 'capture-modifier' || item.effect.type === 'material' ? 'disabled' : ''}>${item.effect.type === 'capture-modifier' ? 'Battle use only' : item.effect.type === 'material' ? 'For the Outfitter' : 'Use item'}</button>${drop}</div>`}</section>` : '<section class="bag-detail"><p class="empty-state">Try another pocket.</p></section>';
+    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run supplies</p><h1>Bag</h1></div><p class="stash-count">${this.packLabel()}</p></header><main class="bag-layout">${this.packPanel(item?.id)}<section class="bag-list"><nav class="category-tabs">${CATEGORIES.map((category, index) => `<button class="${index === this.categoryIndex ? 'active' : ''}" data-category="${index}">${ITEM_CATEGORY_LABELS[category]}</button>`).join('')}</nav><div class="entity-list">${this.currentItems.map((entry, index) => `<button class="entity-row selectable ${index === this.selectedItemIndex ? 'selected' : ''}" data-item-index="${index}">${itemIcon(entry.id, entry.displayName)}<div><strong>${entry.displayName}</strong><small>${this.bag.count(entry.id)} carried · ${this.squareLabel(entry.id)}</small></div></button>`).join('') || '<p class="empty-state">Nothing in this pocket.</p>'}</div></section>${detail}</main>${message ? `<p class="menu-status">${message}</p>` : ''}</div>`;
     this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach((button) => button.onclick = () => { this.categoryIndex = Number(button.dataset.category); this.selectedItemIndex = 0; this.renderModernMenu(); });
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-item-index]').forEach((button) => button.onclick = () => { this.selectedItemIndex = Number(button.dataset.itemIndex); this.renderModernMenu(undefined, true); });
     this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-use]')?.addEventListener('click', () => { this.choosingPokemon = true; this.renderModernMenu(); });
+    this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-drop]')?.addEventListener('click', () => this.dropSelected());
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-target]').forEach((button) => button.onclick = () => {
       const target = this.party.pokemon[Number(button.dataset.target)];
       const selectedItem = this.selectedItem;
@@ -97,6 +112,53 @@ export class BagScene extends Phaser.Scene {
       this.choosingPokemon = false; this.renderModernMenu(result.message);
     });
     this.menuOverlay!.focus(...bagFocusPreference({ choosingPokemon: this.choosingPokemon, itemJustChosen }));
+  }
+
+  /**
+   * The pack itself, drawn as the squares it is, with the pointed-at item's own
+   * blocks marked. It is above the pockets rather than beside them because the
+   * question it answers - how much room is left - is the one the whole screen is
+   * opened to ask when a crate is on the ground outside.
+   */
+  private packPanel(highlight?: string): string {
+    const layout = this.bag.layout();
+    return `<section class="bag-pack"><header><h2>Pack</h2><p>${this.packLabel()}</p></header>${this.gridMarkup(layout, highlight)}</section>`;
+  }
+
+  private packLabel(): string {
+    const layout = this.bag.layout();
+    const total = this.bag.capacity === null ? layout.cellsTotal : gridCells(this.bag.capacity);
+    return `${layout.cellsUsed}/${total} squares`;
+  }
+
+  private squareLabel(itemId: string): string {
+    const footprint = footprintOf(itemId);
+    const squares = footprint.width * footprint.height;
+    return squares === 1 ? '1 square' : `${squares} squares`;
+  }
+
+  private gridMarkup(layout: GridPacking, highlight?: string): string {
+    const cells = new Array(layout.size.width * layout.size.height).fill('<i></i>').join('');
+    const blocks = layout.placements
+      .map((placement) => {
+        const marked = highlight === placement.itemId ? ' marked' : '';
+        const count = placement.quantity > 1 ? `<b>${placement.quantity}</b>` : '';
+        return `<span class="raid-grid-block${marked}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}">${itemIcon(placement.itemId)}${count}</span>`;
+      })
+      .join('');
+    return `<div class="raid-grid" style="--cols:${layout.size.width};--rows:${layout.size.height}"><div class="raid-grid-cells" aria-hidden="true">${cells}</div><div class="raid-grid-blocks">${blocks}</div></div>`;
+  }
+
+  /** Puts one of the chosen item on the ground, and says the room it bought. */
+  private dropSelected(): void {
+    const item = this.selectedItem;
+    if (!item || !this.bag.remove(item.id)) {
+      return;
+    }
+    audioManager.play('menuClose');
+    this.onItemUsed();
+    this.selectedItemIndex = Math.min(this.selectedItemIndex, Math.max(0, this.currentItems.length - 1));
+    this.renderModernMenu(`Dropped ${item.displayName}. ${this.packLabel()}.`);
   }
 
   private drawBackground(): void {

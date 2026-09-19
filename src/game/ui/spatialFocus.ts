@@ -16,6 +16,23 @@ export interface FocusRect {
   readonly top: number;
   readonly right: number;
   readonly bottom: number;
+  /**
+   * Which scrolling pane this control lives in, if any.
+   *
+   * A pane that scrolls tells lies about where its contents are: a row below
+   * the fold still reports the position it would have if the pane were as tall
+   * as its list, which is somewhere past the bottom of the screen. So Down from
+   * the last row you can see picked the commit bar under the pane, and the row
+   * that was actually next - one pixel below, just clipped - was unreachable by
+   * arrow key. On the loadout screen that meant the Poké Balls could not be
+   * packed without a mouse.
+   *
+   * The fix is to keep a vertical move inside the pane it started in while that
+   * pane still has anything ahead in it, which is also what a player means by
+   * Down in a list. Across panes, and in every horizontal move, the rectangles
+   * are the whole rule as before.
+   */
+  readonly group?: string;
 }
 
 const DIRECTION_BY_KEY: Readonly<Record<string, FocusDirection>> = {
@@ -44,6 +61,24 @@ const CENTRE_WEIGHT = 0.1;
 
 const centre = (start: number, end: number): number => (start + end) / 2;
 
+/** How far past the end of `from` the start of `to` is, in the direction pressed. */
+function aheadBy(from: FocusRect, to: FocusRect, direction: FocusDirection): number {
+  switch (direction) {
+    case 'down':
+      return to.top - from.bottom;
+    case 'up':
+      return from.top - to.bottom;
+    case 'right':
+      return to.left - from.right;
+    case 'left':
+      return from.left - to.right;
+  }
+}
+
+/** A control counts as "that way" only if it starts past where this one ends. */
+const isAhead = (from: FocusRect, to: FocusRect, direction: FocusDirection): boolean =>
+  aheadBy(from, to, direction) >= 0;
+
 /**
  * The index of the control the cursor moves to, or `current` when there is
  * nothing that way - a cursor at the edge of a screen stays where it is rather
@@ -63,21 +98,22 @@ export function nextFocusIndex(
   }
 
   const vertical = direction === 'up' || direction === 'down';
+  // Walking out of a scrolling pane is only allowed once there is nothing left
+  // in it that way; see `FocusRect.group`.
+  const stayInGroup =
+    vertical &&
+    from.group !== undefined &&
+    rects.some((to, index) => index !== current && to.group === from.group && isAhead(from, to, direction));
   let best = current;
   let bestScore = Number.POSITIVE_INFINITY;
   rects.forEach((to, index) => {
     if (index === current) {
       return;
     }
-    // A control only counts as "that way" if it starts past where this one ends.
-    const ahead =
-      direction === 'down'
-        ? to.top - from.bottom
-        : direction === 'up'
-          ? from.top - to.bottom
-          : direction === 'right'
-            ? to.left - from.right
-            : from.left - to.right;
+    if (stayInGroup && to.group !== from.group) {
+      return;
+    }
+    const ahead = aheadBy(from, to, direction);
     if (ahead < 0) {
       return;
     }
