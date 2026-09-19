@@ -36,7 +36,7 @@ export class StarterScene extends Phaser.Scene {
 
   private render(): void {
     const selected = getStarterSpecies(this.selectedStarterId);
-    this.overlay.root.innerHTML = `<div class="menu-shell starter-shell"><header class="starter-header"><p class="eyebrow">First raid briefing</p><h1>Choose your partner</h1><p>Your partner enters the lost field kit raid with you. Choose carefully, then confirm to lock in your first Pokémon.</p></header><main class="starter-grid">${starterCards(this.selectedStarterId)}</main><footer class="starter-confirm"><div><span class="eyebrow">Ready to deploy</span><strong>${selected.name}</strong><small>${starterLoadoutSummary(selected)}</small></div><button class="button primary-button" data-confirm>Confirm ${selected.name} →</button></footer></div>`;
+    this.overlay.root.innerHTML = `<div class="menu-shell starter-shell"><header class="starter-header"><p class="eyebrow">First raid briefing</p><h1>Choose your partner</h1><p>Your partner enters the lost field kit raid with you. Choose carefully, then confirm to lock in your first Pokémon.</p></header><main class="starter-grid">${starterCards(this.selectedStarterId)}</main><footer class="starter-confirm"><div><span class="eyebrow">Ready to deploy</span><strong>${selected.name}</strong><small>${starterLoadoutSummary(selected)}</small></div><button class="button primary-button" data-confirm data-sfx="confirm">Confirm ${selected.name} →</button></footer></div>`;
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-starter]').forEach((button) => {
       button.onclick = () => {
         this.selectedStarterId = button.dataset.starter as StarterSpeciesId;

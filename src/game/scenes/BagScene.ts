@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { audioManager } from '../audio/AudioManager';
 import { ItemCategory, useFieldItem, type Bag, type ItemDefinition } from '../items';
 import type { PokemonParty } from '../pokemon';
 import { itemIcon } from '../ui/icons';
@@ -89,6 +90,7 @@ export class BagScene extends Phaser.Scene {
       const selectedItem = this.selectedItem;
       if (!target || !selectedItem) return;
       const result = useFieldItem(selectedItem, target);
+      audioManager.play(result.used ? 'heal' : 'denied');
       if (result.used) { this.bag.remove(selectedItem.id); this.onItemUsed(); this.selectedItemIndex = Math.min(this.selectedItemIndex, Math.max(0, this.currentItems.length - 1)); }
       this.choosingPokemon = false; this.renderModernMenu(result.message);
     });
@@ -190,6 +192,7 @@ export class BagScene extends Phaser.Scene {
   }
 
   private close(): void {
+    audioManager.play('menuClose');
     this.scene.stop();
     this.scene.resume('world');
   }

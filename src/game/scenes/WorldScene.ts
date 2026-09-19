@@ -39,6 +39,12 @@ import { WORLD_ICONS, iconTextureKey } from '../ui/icons';
 import { rollEncounter } from '../world/wildEncounters';
 import { consumeTeachingEncounter } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
+import {
+  entersTallGrass,
+  HUNTER_NEAR_STEPS,
+  nextBump,
+  nextHunterProximity,
+} from '../audio/worldSounds';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import { Bag, ITEMS, type ItemId } from '../items';
 import {
@@ -326,6 +332,10 @@ export class WorldScene extends Phaser.Scene {
   private readonly knownInsertionIds = new Set<string>();
   /** The caption over each drop-in point, so reaching one can change what it says. */
   private readonly dropInLabels = new Map<string, WorldLabel>();
+  /** The wall the player is already leaning on, so it thuds once. See `nextBump`. */
+  private pushingAgainst: Direction | null = null;
+  /** Whether the hunter's approach has already been announced. See `nextHunterProximity`. */
+  private hunterNear = false;
 
   public constructor() {
     super('world');
@@ -364,6 +374,30 @@ export class WorldScene extends Phaser.Scene {
     // what must not survive is this instance's own copy of the list.
     this.defeatedBosses = [];
     this.knownInsertionIds.clear();
+    this.pushingAgainst = null;
+    this.hunterNear = false;
+  }
+
+  /**
+   * This scene is rebuilt every time a battle hands the raid back, and a threat
+   * the player was already warned about is not news on the way out of a fight.
+   * Starting from `normal` each time replayed the clock's flash and sting after
+   * every battle of a raid's last minute - one event, sounded again and again.
+   */
+  private resumeThreatsAlreadyAnnounced(): void {
+    const manager = this.runSession?.manager;
+    if (manager) {
+      this.timerThreat = manager.isEnraged
+        ? 'enraged'
+        : raidClockAlertTier(manager.snapshot().remainingMs);
+    }
+    const hunter = this.hunterState.position;
+    this.hunterNear =
+      hunter !== undefined &&
+      hunter !== null &&
+      this.hunterState.mapId === this.currentMap.id &&
+      Math.abs(hunter.x - this.currentTile.x) + Math.abs(hunter.y - this.currentTile.y) <=
+        HUNTER_NEAR_STEPS;
   }
 
   public create(data: WorldSceneData = {}): void {
@@ -400,6 +434,7 @@ export class WorldScene extends Phaser.Scene {
     this.activatedPoiIds.clear();
     data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
     this.hunterState = data.hunterState ?? createHunterState();
+    this.resumeThreatsAlreadyAnnounced();
     this.createMap();
     this.applyPendingHunterBreakaway();
     this.createEntities();
@@ -526,6 +561,13 @@ export class WorldScene extends Phaser.Scene {
       isBlocked: (tile) => this.isBlocked(tile),
     });
 
+    const input = this.readInput();
+    const pushing = input.up || input.down || input.left || input.right;
+    const bump = nextBump(this.pushingAgainst, !decision.target && pushing ? decision.facing : null);
+    this.pushingAgainst = bump.pushingAgainst;
+    if (bump.thud) {
+      audioManager.play('bump');
+    }
     this.facing = decision.facing;
 
     if (decision.target) {
@@ -1167,14 +1209,14 @@ export class WorldScene extends Phaser.Scene {
       if (this.timerThreat !== 'enraged') {
         this.timerThreat = 'enraged';
         this.cameras.main.flash(160, 239, 68, 68, false);
-        audioManager.playLowHpWarning();
+        audioManager.play('clockEnraged');
       }
     } else {
       const tier = raidClockAlertTier(snapshot.remainingMs);
       if (tier !== this.timerThreat) {
         this.timerThreat = tier;
         this.cameras.main.flash(120, 251, 191, 36, false);
-        audioManager.playLowHpWarning();
+        audioManager.play('clockUrgent');
       }
     }
 
@@ -1312,6 +1354,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (this.dialogBox.isCurrentMessageComplete) {
+      audioManager.play('textAdvance');
       this.dialogBox.advance();
       this.unsolicitedDialog = this.unsolicitedDialog && this.dialogBox.visible;
       return;
@@ -1369,11 +1412,13 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private openParty(): void {
+    audioManager.play('menuOpen');
     this.scene.pause();
     this.scene.launch('party', { party: this.party });
   }
 
   private openBag(): void {
+    audioManager.play('menuOpen');
     this.scene.pause();
     this.scene.launch('bag', {
       bag: this.bag,
@@ -1387,6 +1432,7 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    audioManager.play('menuOpen');
     this.scene.pause();
     this.scene.launch('objectives', {
       runSession: this.runSession,
@@ -1470,7 +1516,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.facing = OPPOSITE_DIRECTION[watcher.facing];
     this.showIdlePose();
-    audioManager.playEncounter();
+    audioManager.play('trainerSpotted');
     this.pendingTrainerBattle = {
       trainer: watcher.trainer,
       introLines: watcher.introLines,
@@ -1508,14 +1554,14 @@ export class WorldScene extends Phaser.Scene {
     this.trainerPrompt?.destroy();
     this.trainerPrompt = undefined;
     if (!accepted) {
-      audioManager.playCancel();
+      audioManager.play('cancel');
       // Raised as an interruption, so the player who just chose to walk away
       // can walk away on the next key rather than having to read a box first.
       this.interrupt([trainerDeclinedMessage(encounter.trainer.name)]);
       return;
     }
 
-    audioManager.playEncounter();
+    audioManager.play('trainerSpotted');
     this.pendingTrainerBattle = {
       trainer: encounter.trainer,
       introLines: encounter.introLines,
@@ -1536,7 +1582,7 @@ export class WorldScene extends Phaser.Scene {
       Phaser.Input.Keyboard.JustDown(this.controls.w)
     ) {
       prompt.moveSelection(-1);
-      audioManager.playSelect();
+      audioManager.play('select');
       return;
     }
     if (
@@ -1546,7 +1592,7 @@ export class WorldScene extends Phaser.Scene {
       Phaser.Input.Keyboard.JustDown(this.controls.s)
     ) {
       prompt.moveSelection(1);
-      audioManager.playSelect();
+      audioManager.play('select');
       return;
     }
     if (this.isInteractionPressed()) {
@@ -1582,6 +1628,25 @@ export class WorldScene extends Phaser.Scene {
     this.player.play(getWalkAnimationKey(this.facing), true);
   }
 
+  /**
+   * The one footstep the raid has: stepping *into* tall grass rustles, because
+   * that is the step that puts a risk under your feet. A sound under every step
+   * - even every step of grass, which on the Floodplain is most of them - is the
+   * kind of thing the captain turned the music off to be rid of. Anything the
+   * step goes on to find - loot, a wild Pokemon, a door - takes the same
+   * channel and is heard instead.
+   */
+  private soundFootstep(from: GridPosition): void {
+    if (
+      entersTallGrass(
+        isTallGrassInMap(this.currentMap, from),
+        isTallGrassInMap(this.currentMap, this.currentTile),
+      )
+    ) {
+      audioManager.play('grassRustle');
+    }
+  }
+
   private advanceStep(deltaMs: number): void {
     this.stepProgress = Math.min(1, this.stepProgress + deltaMs / STEP_DURATION_MS);
 
@@ -1594,11 +1659,13 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    const steppedFrom = this.currentTile;
     this.currentTile = { ...this.targetTile };
     this.targetTile = null;
     this.setPlayerPosition(this.stepEnd.x, this.stepEnd.y);
     this.showIdlePose();
     this.saveGame();
+    this.soundFootstep(steppedFrom);
 
     const warp = getWarpAt(this.currentMap, this.currentTile, 'step');
     if (warp) {
@@ -1662,7 +1729,7 @@ export class WorldScene extends Phaser.Scene {
       const wild =
         teaching ?? rollEncounter(encounters, rng === undefined ? undefined : () => rng.next());
       if (wild) {
-        audioManager.playEncounter();
+        audioManager.play('encounter');
         this.transitionToBattle({
           wild,
           teachingBattle: teaching !== null,
@@ -1670,6 +1737,12 @@ export class WorldScene extends Phaser.Scene {
           bag: this.bag,
           caughtPokemonStash: this.caughtPokemonStash,
           runSession: this.runSession,
+          // A wild fight has to hand back everything a trainer fight does. It
+          // used to drop these two, so the world was rebuilt with no hunter and
+          // no beaten trainers: the hunter arrived all over again, announcement
+          // and all, after every wild battle - even one it had already lost.
+          defeatedTrainerIds: [...this.defeatedTrainerIds],
+          hunterState: this.hunterState,
           collectedLootIds: [...this.collectedLootIds],
           activatedPoiIds: [...this.activatedPoiIds],
           returnLocation: this.returnLocation(),
@@ -1684,6 +1757,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private warp(warp: MapWarp): void {
+    audioManager.play('warp');
     this.isWarping = true;
     this.player.stop();
     this.cameras.main.fadeOut(180, 0, 0, 0);
@@ -1797,12 +1871,13 @@ export class WorldScene extends Phaser.Scene {
       return null;
     }
     if (result === 'bag-full') {
+      audioManager.play('denied');
       return 'Bag is full!';
     }
 
     const marker = this.lootSprites.get(loot!.id);
     this.cameras.main.flash(100, 250, 204, 21, false);
-    audioManager.playLootPickup();
+    audioManager.play('lootPickup');
     marker?.destroy();
     this.lootSprites.delete(loot!.id);
     const item = ITEMS[loot!.itemId];
@@ -1830,6 +1905,7 @@ export class WorldScene extends Phaser.Scene {
       return null;
     }
     if (result === 'bag-full') {
+      audioManager.play('denied');
       return ['Bag is full. The marked cache remains sealed.'];
     }
 
@@ -1838,7 +1914,9 @@ export class WorldScene extends Phaser.Scene {
     this.removeWorldLabel(this.poiLabels.get(poi!.id));
     this.poiLabels.delete(poi!.id);
     this.cameras.main.flash(140, 56, 189, 248, false);
-    audioManager.playLootPickup();
+    // A cache pays out; a landmark is worked. They are different deeds on the
+    // map and the field guide, so they are different sounds.
+    audioManager.play(poi!.effect === 'unlock-extraction' ? 'landmarkWorked' : 'cacheOpen');
     const reward = poi!.reward
       .map(({ itemId, quantity }) => `${quantity}× ${ITEMS[itemId].displayName}`)
       .join(' + ');
@@ -1917,6 +1995,7 @@ export class WorldScene extends Phaser.Scene {
 
     const carriedIn = marker.carriedIn ?? [];
     if (missingCarryIn(carriedIn, (itemId) => this.bag.count(itemId)).length > 0) {
+      audioManager.play('denied');
       return marker.shortMessage ?? 'You are not carrying what this drop needs.';
     }
     for (const { itemId, quantity } of carriedIn) {
@@ -1929,7 +2008,7 @@ export class WorldScene extends Phaser.Scene {
     this.removeWorldLabel(drawn?.label);
     this.contractMarkers.delete(marker.id);
     this.cameras.main.flash(120, 96, 165, 250, false);
-    audioManager.playLootPickup();
+    audioManager.play('contractStop');
     this.refreshRunTimerHud();
     this.saveGame();
     return marker.collectedMessage;
@@ -2000,6 +2079,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (!this.isExtractionOpen(point)) {
+      audioManager.play('denied');
       this.dialogBox.showMessage(
         `${point.label} is LOCKED: ${extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}.`,
       );
@@ -2010,7 +2090,7 @@ export class WorldScene extends Phaser.Scene {
     this.destroyRunTimerHud();
     this.cameras.main.flash(240, 134, 239, 172, false);
     this.cameras.main.shake(120, 0.004);
-    audioManager.playExtract();
+    audioManager.play('extract');
     const snapshot = this.runSession.manager.snapshot();
     const contract = this.runSession.plan?.contract;
     // Whether this exit banks the contract, not merely whether its stops were
@@ -2140,7 +2220,7 @@ export class WorldScene extends Phaser.Scene {
     this.destroyRunTimerHud();
     this.cameras.main.flash(220, 239, 68, 68, false);
     this.cameras.main.shake(180, 0.009);
-    audioManager.playWipe();
+    audioManager.play('clockExpired');
     const carriedOut = this.bag.toJSON();
     // The pack the clock ran out on is what divides the loss: only a secured
     // supply still in it comes home, and only what is still in it was lost with
@@ -2247,6 +2327,7 @@ export class WorldScene extends Phaser.Scene {
     };
     this.createHunterSprite();
     if (awaitingSpawn) {
+      audioManager.play('hunterArrival');
       this.interrupt(['A RIVAL HUNTER is on your trail!']);
     }
   }
@@ -2320,6 +2401,17 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     this.hunterState = { ...this.hunterState, position };
+    const moved = Math.min(steps, path.length);
+    const proximity = nextHunterProximity(
+      this.hunterNear,
+      path.length === 0 ? null : path.length - moved,
+    );
+    this.hunterNear = proximity.near;
+    // Contact has its own sting on this same tick; the warning is for the
+    // steps before it.
+    if (proximity.warn && !isHunterContactingPlayer(position, this.currentTile)) {
+      audioManager.play('hunterNear');
+    }
     const sprite = this.npcSprites.get('rival-hunter');
     sprite
       ?.setPosition(position.x * TILE_SIZE, position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
@@ -2368,7 +2460,7 @@ export class WorldScene extends Phaser.Scene {
     // The same flash-and-warning language the raid timer uses for a threat change,
     // rather than a dialogue box that would freeze the player exactly as pursuit resumes.
     this.cameras.main.flash(120, 251, 191, 36, false);
-    audioManager.playLowHpWarning();
+    audioManager.play('hunterResume');
   }
 
   private isBlockedForHunter(tile: GridPosition): boolean {
@@ -2401,6 +2493,7 @@ export class WorldScene extends Phaser.Scene {
       introLines: ['FOUND YOU.', 'There is nowhere left to run!'],
       isHunter: true,
     };
+    audioManager.play('hunterContact');
     this.interrupt(this.pendingTrainerBattle.introLines);
     return true;
   }

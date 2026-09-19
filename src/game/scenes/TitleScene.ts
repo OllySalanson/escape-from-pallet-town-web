@@ -129,6 +129,6 @@ export class TitleScene extends Phaser.Scene {
   private async playStartAudio(): Promise<void> {
     await audioManager.activate();
     void audioManager.startTheme('title');
-    audioManager.playConfirm();
+    audioManager.play('confirm');
   }
 }

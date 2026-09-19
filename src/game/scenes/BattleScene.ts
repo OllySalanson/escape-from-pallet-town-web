@@ -26,6 +26,8 @@ import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
+import { battleEventSound, battleNote, type BattleNote } from '../audio/battleSounds';
+import type { SoundEffectName } from '../audio/soundEffects';
 import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
@@ -208,7 +210,11 @@ export class BattleScene extends Phaser.Scene {
   /** Failed wild escapes so far in this battle; each one improves the next roll. */
   private wildEscapeAttempts = 0;
   private displayedHp = { player: 0, enemy: 0 };
-  private pendingCombatMessages: { readonly event?: BattleEvent; readonly message: string }[] = [];
+  private pendingCombatMessages: {
+    readonly event?: BattleEvent;
+    readonly message: string;
+    readonly sound?: SoundEffectName;
+  }[] = [];
   private isPresentingCombatEvents = false;
 
   public constructor() {
@@ -217,7 +223,12 @@ export class BattleScene extends Phaser.Scene {
 
   public create(data: BattleSceneData = {}): void {
     void audioManager.startTheme('battle');
-    audioManager.playEncounter();
+    // A wild fight was announced by the grass that produced it, one fade ago;
+    // announcing it again here put two jingles on top of each other. A trainer's
+    // challenge was read through dialogue first, so that fight opens on its own.
+    if (data.trainer) {
+      audioManager.play('battleStart');
+    }
     this.participatingPokemon.clear();
     this.victoryRewardsGranted = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
@@ -725,7 +736,7 @@ export class BattleScene extends Phaser.Scene {
           : column;
     this.selectedCommand = Math.min(nextRow * columns + nextColumn, count - 1);
     this.updateSelection();
-    audioManager.playSelect();
+    audioManager.play('select');
   }
 
   private updateSelection(): void {
@@ -772,7 +783,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private confirm(): void {
-    audioManager.playConfirm();
+    audioManager.play('confirm');
     if (this.mode === 'events' || this.mode === 'finished') {
       if (!this.dialog.isCurrentMessageComplete) {
         this.dialog.skip();
@@ -878,7 +889,7 @@ export class BattleScene extends Phaser.Scene {
     this.mode = returningToItems ? 'items' : 'main';
     this.selectedCommand = 0;
     this.showCommands();
-    audioManager.playCancel();
+    audioManager.play('cancel');
   }
 
   private hunterFleeLabel(): string {
@@ -913,6 +924,7 @@ export class BattleScene extends Phaser.Scene {
     this.pendingBattleExit = true;
     this.mode = 'events';
     this.commandContainer.setVisible(false);
+    audioManager.play('flee');
     this.dialog.showMessages(
       penaltyMs === undefined
         ? [WILD_ESCAPE_SUCCESS_MESSAGE]
@@ -936,6 +948,7 @@ export class BattleScene extends Phaser.Scene {
     this.commandContainer.setVisible(false);
     if (attempt.escaped) {
       this.pendingBattleExit = true;
+      audioManager.play('flee');
       this.dialog.showMessage(WILD_ESCAPE_SUCCESS_MESSAGE);
       return;
     }
@@ -947,7 +960,10 @@ export class BattleScene extends Phaser.Scene {
     this.refreshStatusLabels();
     this.prepareForcedReplacement();
     this.showCombatEvents(enemyResult.events, [
-      wildEscapeFailureMessage(this.state.enemy.pokemon.base.name),
+      {
+        message: wildEscapeFailureMessage(this.state.enemy.pokemon.base.name),
+        sound: 'denied',
+      },
     ]);
   }
 
@@ -971,12 +987,14 @@ export class BattleScene extends Phaser.Scene {
     if (this.trainer) {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
+      audioManager.play('denied');
       this.dialog.showMessage("You can't catch a trainer's POKéMON!");
       return;
     }
     if (!this.bag.remove('poke-ball', 1)) {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
+      audioManager.play('denied');
       this.dialog.showMessage('No POKé BALLS left!');
       return;
     }
@@ -1028,6 +1046,7 @@ export class BattleScene extends Phaser.Scene {
     if (battleItemCount(this.bag) === 0) {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
+      audioManager.play('denied');
       this.dialog.showMessage(NO_BATTLE_ITEMS_MESSAGE);
       return;
     }
@@ -1089,7 +1108,7 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.showCombatEvents(enemyResult.events, [use.message]);
+    this.showCombatEvents(enemyResult.events, [{ message: use.message, sound: 'heal' }]);
   }
 
   /**
@@ -1134,11 +1153,13 @@ export class BattleScene extends Phaser.Scene {
     this.commandContainer.setVisible(false);
     this.showCombatEvents(result.events, [
       ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
-      `Go, ${pokemon.base.name.toUpperCase()}!`,
+      { message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' },
     ]);
   }
 
+  /** Every line shown here is a refusal: already out, fainted, nothing to heal. */
   private showPartyMessage(message: string): void {
+    audioManager.play('denied');
     this.partyMessage = message;
     this.showCommands();
   }
@@ -1203,7 +1224,7 @@ export class BattleScene extends Phaser.Scene {
     const pokemon =
       user === 'player' ? this.state.player.pokemon : (this.displayedEnemy ?? this.state.enemy.pokemon);
     if (user === 'player' && from > pokemon.maxHp * 0.2 && to > 0 && to <= pokemon.maxHp * 0.2) {
-      audioManager.playLowHpWarning();
+      audioManager.play('lowHp');
     }
     const bar = user === 'player' ? this.playerHpBar : this.enemyHpBar;
     const showNumbers = user === 'player';
@@ -1270,9 +1291,15 @@ export class BattleScene extends Phaser.Scene {
     if (this.state.outcome === 'victory' && !this.victoryRewardsGranted) {
       this.victoryRewardsGranted = true;
       this.mode = 'events';
-      this.dialog.showMessages(
+      this.showCombatEvents(
+        [],
         this.trainer
-          ? [this.trainer.defeatText ?? `${this.trainer.name} was defeated!`]
+          ? [
+              {
+                message: this.trainer.defeatText ?? `${this.trainer.name} was defeated!`,
+                sound: 'victory',
+              },
+            ]
           : this.awardVictoryExperience(this.state.enemy.pokemon),
       );
       return;
@@ -1289,9 +1316,9 @@ export class BattleScene extends Phaser.Scene {
     );
   }
 
-  private awardVictoryExperience(defeatedPokemon: PokemonInstance): string[] {
+  private awardVictoryExperience(defeatedPokemon: PokemonInstance): BattleNote[] {
     const experience = experienceAwardForDefeat(defeatedPokemon.level);
-    const messages: string[] = [];
+    const messages: BattleNote[] = [];
     const active = this.state.player.pokemon;
     const activeMaxHpBeforeAward = active.maxHp;
     let activeLevelledUp = false;
@@ -1299,16 +1326,21 @@ export class BattleScene extends Phaser.Scene {
     for (const pokemon of this.participatingPokemon) {
       const result = pokemon.gainExperience(experience);
       activeLevelledUp ||= pokemon === active && result.levelsGained.length > 0;
-      messages.push(`${pokemon.base.name.toUpperCase()} gained ${result.awarded} XP!`);
+      messages.push({
+        message: `${pokemon.base.name.toUpperCase()} gained ${result.awarded} XP!`,
+        sound: 'xpGain',
+      });
       messages.push(
-        ...result.levelsGained.map(
-          (level) => `${pokemon.base.name.toUpperCase()} grew to Lv ${level}!`,
-        ),
+        ...result.levelsGained.map((level) => ({
+          message: `${pokemon.base.name.toUpperCase()} grew to Lv ${level}!`,
+          sound: 'levelUp' as const,
+        })),
       );
       messages.push(
-        ...result.learnedMoves.map(
-          (move) => `${pokemon.base.name.toUpperCase()} learned ${move.name.toUpperCase()}!`,
-        ),
+        ...result.learnedMoves.map((move) => ({
+          message: `${pokemon.base.name.toUpperCase()} learned ${move.name.toUpperCase()}!`,
+          sound: 'moveLearned' as const,
+        })),
       );
     }
 
@@ -1352,7 +1384,7 @@ export class BattleScene extends Phaser.Scene {
   private awardTrainerDefeatExperience(
     previousState: BattleState,
     events: readonly BattleEvent[],
-  ): string[] {
+  ): BattleNote[] {
     if (
       !this.trainer ||
       !events.some((event) => event.type === 'fainted' && event.user === 'enemy')
@@ -1364,14 +1396,20 @@ export class BattleScene extends Phaser.Scene {
 
   private showCombatEvents(
     events: readonly BattleEvent[],
-    leadingMessages: readonly string[] = [],
-    trailingMessages: readonly string[] = [],
+    leadingMessages: readonly BattleNote[] = [],
+    trailingMessages: readonly BattleNote[] = [],
   ): void {
     this.pendingCombatMessages = [
-      ...leadingMessages.map((message) => ({ message })),
+      ...leadingMessages.map(battleNote),
       ...events.map((event) => ({ event, message: eventToMessage(event) })),
-      ...trailingMessages.map((message) => ({ message })),
+      ...trailingMessages.map(battleNote),
     ];
+    if (this.pendingCombatMessages.length === 0) {
+      // Nothing to say still has to complete, or the fight waits on a line
+      // that was never shown.
+      this.dialog.showMessages([]);
+      return;
+    }
     this.isPresentingCombatEvents = true;
     this.showNextCombatMessage();
   }
@@ -1384,6 +1422,9 @@ export class BattleScene extends Phaser.Scene {
     if (next.event) {
       this.presentCombatEvent(next.event);
     }
+    if (next.sound) {
+      audioManager.play(next.sound);
+    }
     this.dialog.showMessage(next.message);
   }
 
@@ -1391,6 +1432,10 @@ export class BattleScene extends Phaser.Scene {
     const step = combatPresentationSteps([event])[0];
     if (!step) {
       return;
+    }
+    const cue = battleEventSound(event);
+    if (cue?.at === 'line') {
+      audioManager.play(cue.name);
     }
     if (event.type === 'caught') {
       this.cameras.main.flash(180, 255, 255, 255, false);
@@ -1407,7 +1452,6 @@ export class BattleScene extends Phaser.Scene {
 
     if (event.type === 'fainted') {
       const sprite = event.user === 'player' ? this.playerSprite : this.enemySprite;
-      audioManager.playFaint();
       this.tweens.add({
         targets: sprite,
         y: sprite.y + 34,
@@ -1434,6 +1478,9 @@ export class BattleScene extends Phaser.Scene {
         duration: 140,
         repeat: 1,
         onComplete: () => {
+          if (cue?.at === 'impact') {
+            audioManager.play(cue.name);
+          }
           target.setTintFill(0xffffff);
           this.tweens.add({
             targets: target,
@@ -1449,12 +1496,7 @@ export class BattleScene extends Phaser.Scene {
           }
         },
       });
-      audioManager.playAttackHit();
       return;
-    }
-
-    if (event.type === 'critical-hit') {
-      audioManager.playStrongHit();
     }
 
     if (step.target) {
@@ -1547,7 +1589,7 @@ export class BattleScene extends Phaser.Scene {
     );
     this.cameras.main.flash(220, 239, 68, 68, false);
     this.cameras.main.shake(180, 0.009);
-    audioManager.playWipe();
+    audioManager.play('wipe');
     this.pendingHubTransition = true;
     this.pendingResultScreen = true;
     this.mode = 'finished';

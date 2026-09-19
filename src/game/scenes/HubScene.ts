@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { audioManager } from '../audio/AudioManager';
+import type { SoundEffectName } from '../audio/soundEffects';
 import {
   applyRecovery,
   DeploymentFlow,
@@ -220,9 +222,10 @@ export class HubScene extends Phaser.Scene {
   private recover(ids: readonly string[]): void {
     const outcome = applyRecovery(this.stash, this.pendingRecoveryMs, ids);
     if (outcome.recoveredIds.length === 0) {
-      this.setStatus('Everyone there is already fit.');
+      this.refuse('Everyone there is already fit.');
       return;
     }
+    audioManager.play('heal');
 
     this.savedGame = { ...this.savedGame, pendingRecoveryMs: outcome.pendingRecoveryMs };
     const treated =
@@ -251,9 +254,10 @@ export class HubScene extends Phaser.Scene {
   private treat(pokemonId: string, itemId: string): void {
     const result = treatWithItem(this.stash, pokemonId, itemId);
     if (!result.used) {
-      this.setStatus(result.message);
+      this.refuse(result.message);
       return;
     }
+    audioManager.play('heal');
 
     this.setStatus(
       this.saveManager.save({ ...this.savedGame, stash: this.stash })
@@ -284,12 +288,12 @@ export class HubScene extends Phaser.Scene {
   private confirmSwap(): void {
     if (!this.sparePartner) {
       this.setView('stash');
-      this.setStatus('Swapping is only offered while one Pokemon remains at base.');
+      this.refuse('Swapping is only offered while one Pokemon remains at base.');
       return;
     }
     if (!this.saveManager.reselectStarter(this.reselectStarterId)) {
       this.setView('home');
-      this.setStatus('That swap could not be saved.');
+      this.refuse('That swap could not be saved.');
       return;
     }
 
@@ -300,6 +304,7 @@ export class HubScene extends Phaser.Scene {
       this.applyLoadedGame(reloaded);
     }
     this.setView('stash');
+    audioManager.play('confirm');
     this.setStatus(`${getStarterSpecies(this.reselectStarterId).name} is your new partner.`);
   }
 
@@ -321,9 +326,10 @@ export class HubScene extends Phaser.Scene {
     try {
       deployment = this.flow.deploy();
     } catch {
-      this.setStatus('Confirm your loadout before deploying.');
+      this.refuse('Confirm your loadout before deploying.');
       return;
     }
+    audioManager.play('deploy');
 
     const items = deployment.items;
     activeRunManager.startRun(
@@ -383,7 +389,7 @@ export class HubScene extends Phaser.Scene {
 
   private handleKey(event: KeyboardEvent): void {
     if (event.key === 'Escape' && this.view !== 'home') {
-      event.preventDefault(); this.goBack(); return;
+      event.preventDefault(); audioManager.play('cancel'); this.goBack(); return;
     }
     const controls = [...this.overlay.root.querySelectorAll<HTMLButtonElement>('button:not([disabled])')];
     const current = controls.indexOf(document.activeElement as HTMLButtonElement);
@@ -423,17 +429,17 @@ export class HubScene extends Phaser.Scene {
     this.overlay.root.querySelector<HTMLButtonElement>('[data-deploy-flow]')?.addEventListener('click', () => this.openDeployment());
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-recover]').forEach((button) => button.onclick = () => this.recover([button.dataset.recover!]));
     this.overlay.root.querySelector<HTMLButtonElement>('[data-recover-all]')?.addEventListener('click', () => this.recover(this.injuredPokemon.map((stored) => stored.id)));
-    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-pokemon]').forEach((button) => button.onclick = () => { this.setStatus(this.flow.togglePokemon(button.dataset.pokemon!)); });
+    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-pokemon]').forEach((button) => button.onclick = () => { this.answer(this.flow.togglePokemon(button.dataset.pokemon!), 'select'); });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-treat-item]').forEach((button) => { button.onclick = () => this.treat(button.dataset.treatPokemon!, button.dataset.treatItem!); });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-item]').forEach((button) => { button.onclick = () => { this.flow.adjustItem(button.dataset.item as ItemId, Number(button.dataset.amount)); this.render(); }; });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-secure-pokemon]').forEach((button) => { button.onclick = () => { this.flow.toggleSecurePokemon(button.dataset.securePokemon!); this.render(); }; });
-    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-secure-item]').forEach((button) => { button.onclick = () => { this.setStatus(this.flow.toggleSecureItem(button.dataset.secureItem as ItemId)); }; });
+    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-secure-item]').forEach((button) => { button.onclick = () => { this.answer(this.flow.toggleSecureItem(button.dataset.secureItem as ItemId), 'select'); }; });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-insertion]').forEach((button) => {
       button.onclick = () => { this.flow.chooseInsertion(button.dataset.insertion as RunInsertionId); this.render(); };
     });
     this.overlay.root.querySelector<HTMLButtonElement>('[data-back-step]')?.addEventListener('click', () => this.goBack());
     this.overlay.root.querySelector<HTMLButtonElement>('[data-secure-slot]')?.addEventListener('click', () => { this.flow.openSecureSlot(); this.render(); });
-    this.overlay.root.querySelector<HTMLButtonElement>('[data-advance]')?.addEventListener('click', () => { this.setStatus(this.flow.advance()); });
+    this.overlay.root.querySelector<HTMLButtonElement>('[data-advance]')?.addEventListener('click', () => { this.answer(this.flow.advance(), 'confirm'); });
     this.overlay.root.querySelector<HTMLButtonElement>('[data-start]')?.addEventListener('click', () => this.startRun());
     this.overlay.focus('button');
   }
@@ -661,6 +667,27 @@ export class HubScene extends Phaser.Scene {
 
   private itemName(itemId: ItemId): string {
     return ITEM_DEFINITIONS.find((item) => item.id === itemId)?.displayName ?? itemId;
+  }
+
+  /** A status line that is the game saying no. */
+  private refuse(message: string): void {
+    audioManager.play('denied');
+    this.setStatus(message);
+  }
+
+  /**
+   * The deployment flow answers a request with a message only when it refuses
+   * it, so the message's presence is what decides the sound.
+   */
+  private answer(refusal: string | undefined, accepted?: SoundEffectName): void {
+    if (refusal !== undefined) {
+      this.refuse(refusal);
+      return;
+    }
+    if (accepted) {
+      audioManager.play(accepted);
+    }
+    this.setStatus(undefined);
   }
 
   private setStatus(message: string | undefined): void {

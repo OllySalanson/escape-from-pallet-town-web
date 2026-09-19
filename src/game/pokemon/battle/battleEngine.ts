@@ -54,6 +54,8 @@ export type BattleEvent =
       readonly name: string;
       readonly move: string;
       readonly damage?: number;
+      /** What kind of move it was, so the hit can sound like one. */
+      readonly category?: MoveCategory;
       /** The web game's same-type bonus, reported so its 1.5x is not hidden. */
       readonly isStab?: boolean;
     }
@@ -369,6 +371,7 @@ const applyMove = (
       name: attackerAfterStatus.pokemon.base.name,
       move: move.base.name,
       damage: damage.damage,
+      category: move.base.category,
       isStab: damage.isStab,
     },
     ...(damage.isCritical ? [{ type: 'critical-hit' } as const] : []),

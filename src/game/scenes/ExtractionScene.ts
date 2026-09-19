@@ -173,11 +173,15 @@ export class ExtractionScene extends Phaser.Scene {
       void caption?.offsetWidth;
       caption?.classList.add('is-entering');
     }
-    if (beat.id === 'fall') {
-      audioManager.playFaint();
+    // The fall itself is silent. It used to repeat the faint jingle, but this
+    // screen is only ever reached from the battle that has just played that
+    // jingle for the last Pokemon and the wipe sting after it: a third falling
+    // phrase in three seconds for the one loss.
+    if (beat.id === 'taken') {
+      audioManager.play('lossTaken');
     }
     if (beat.id === 'held' && this.report.secured.pokemon.length + this.report.secured.items.length > 0) {
-      audioManager.playConfirm();
+      audioManager.play('secureHeld');
     }
   }
 
@@ -201,6 +205,13 @@ export class ExtractionScene extends Phaser.Scene {
     this.time.delayedCall(lockMs, () => {
       this.locked = false;
       control.disabled = false;
+      // The raid's own ending has already sounded on the way here. The one
+      // thing this screen adds is the contract, and it says so as the screen
+      // becomes answerable: played on arrival it landed 0.7s behind the
+      // extraction jingle, two rising phrases running into each other.
+      if (this.report.outcome === 'ESCAPED' && this.report.contract?.complete) {
+        audioManager.play('contractBanked');
+      }
       // Focus only lands once the button can act on it, so the first keypress a
       // player makes after reading is the one that leaves.
       this.overlay.focus('[data-continue]');
@@ -240,6 +251,7 @@ export class ExtractionScene extends Phaser.Scene {
       return;
     }
     this.leaving = true;
+    audioManager.play('confirm');
     // Storage-less browsers never reached a hub in the first place, so the title
     // screen stays the fallback it is everywhere else in the game.
     const target = this.scene.manager.keys.hub ? 'hub' : 'title';
