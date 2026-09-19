@@ -153,7 +153,11 @@ interface Candidate {
  * end of the subject, and every one is pulled inside the view along its own
  * axis - so a caption near an edge slides along its row rather than leaving it.
  */
-function candidatesFor(request: CaptionRequest, bounds: Rect): Candidate[] {
+function candidatesFor(
+  request: CaptionRequest,
+  bounds: Rect,
+  player: readonly Rect[] = [],
+): Candidate[] {
   const { subject, width, height, preferred } = request;
   const minimumX = bounds.x + VIEW_INSET;
   const maximumX = bounds.x + bounds.width - VIEW_INSET - width;
@@ -178,11 +182,36 @@ function candidatesFor(request: CaptionRequest, bounds: Rect): Candidate[] {
     return rows.map((y) => ({ x: Math.round(x), y: slideY(y), seat }));
   };
 
+  // The last resort before a seat under the player: the same two rows, moved
+  // out past the player. Hard against the map's west edge, the Radio Exit had
+  // forest on one side, its notice below and the reeds lane - the player -
+  // on the other, and its caption lay across the chevron of anyone walking the
+  // lane. Lifted over their head it is still plainly the exit's. Only a player
+  // standing in a row's own band moves it, and these come after every ordinary
+  // seat, so a caption with room is never drawn away from what it names.
+  const reach = { x: subject.x - width, width: subject.width + width * 2 };
+  const inBand = (y: number): Rect[] =>
+    player.filter((one) => overlap(one, { ...reach, y, height }) > 0);
+  const clearOfPlayer = (seat: CaptionSide): Candidate[] => {
+    const [ordinary] = row(seat);
+    const inTheWay = inBand(ordinary.y);
+    if (inTheWay.length === 0) {
+      return [];
+    }
+    const y =
+      seat === 'above'
+        ? Math.min(...inTheWay.map((one) => one.y)) - SUBJECT_GAP - height
+        : Math.max(...inTheWay.map((one) => one.y + one.height)) + SUBJECT_GAP;
+    return columns.map((x) => ({ x: slideX(x), y: Math.round(y), seat }));
+  };
+
   return [
     ...row(preferred),
     ...row(preferred === 'above' ? 'below' : 'above'),
     ...column('right'),
     ...column('left'),
+    ...clearOfPlayer(preferred),
+    ...clearOfPlayer(preferred === 'above' ? 'below' : 'above'),
   ];
 }
 
@@ -234,7 +263,7 @@ export function explainSeats(
   const view = inflate(surroundings.bounds, -VIEW_INSET);
   const against = (rect: Rect, others: readonly Rect[], gap: number): number =>
     others.reduce((total, one) => total + overlap(rect, inflate(one, gap)), 0);
-  return candidatesFor(request, surroundings.bounds).map((candidate) => {
+  return candidatesFor(request, surroundings.bounds, surroundings.player).map((candidate) => {
     const rect: Rect = { x: candidate.x, y: candidate.y, width: request.width, height: request.height };
     return {
       seat: candidate.seat,
@@ -284,7 +313,7 @@ export function placeCaptions(
   const placements: CaptionPlacement[] = [];
 
   const place = (request: CaptionRequest): CaptionPlacement => {
-    const candidates = candidatesFor(request, surroundings.bounds);
+    const candidates = candidatesFor(request, surroundings.bounds, surroundings.player);
     const rectOf = (candidate: Candidate): Rect => ({
       x: candidate.x,
       y: candidate.y,

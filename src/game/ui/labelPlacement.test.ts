@@ -366,6 +366,21 @@ describe('where a map caption is allowed to sit', () => {
       expect(placement.seat).toBe('above');
     });
 
+    it('lifts over the head of a player beside it before it will sit on them', () => {
+      // The Radio Exit: forest to the west, its notice below, and the player
+      // in the lane to the east - every ordinary seat is taken or crosses them.
+      const beside: Rect = { ...player, x: player.x + TILE };
+      const walls: Rect[] = [
+        { x: 0, y: 0, width: 149, height: 240 },
+        { x: 152, y: 128, width: 16, height: 16 },
+      ];
+      const placement = seat({ subject, width: 81, height: 27 }, { keepClear: walls, player: [beside] });
+      expect(placement.visible).toBe(true);
+      expect(placement.seat).toBe('above');
+      expect(overlaps(rectOf(placement, 81, 27), beside)).toBe(false);
+      expect(placement.y + 27).toBeLessThanOrEqual(beside.y - SUBJECT_GAP);
+    });
+
     it('says so when asked why a seat was refused', () => {
       const seats = explainSeats(request({ subject }), around({ player: [player] }));
       expect(seats[0].overPlayer).toBeGreaterThan(0);
