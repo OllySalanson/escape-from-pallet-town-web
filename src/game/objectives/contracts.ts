@@ -142,13 +142,17 @@ const RECOVER_LOST_FIELD_KIT: RaidContract = {
 };
 
 /**
- * Route 1. Three stakes, one on each road and one inside the middle field, so
- * the braid cannot be run down one side: the survey is a zigzag and every
- * crossing of it is tall grass, which is where Route 1 keeps its fights.
+ * Route 1. Three stakes, one on each road and one inside the fenced Middle
+ * Field, so the braid cannot be run down one side: the survey is a zigzag, and
+ * between the Route Head and the Outpost apron every way across the Meadows is
+ * tall grass, which is where Route 1 keeps its fights.
  *
- * It is also the contract that keeps you in past the hunter. Collecting all
- * three and reaching a gate is about ninety steps against the fifty-four a
- * straight run down one road costs.
+ * It is also the contract that keeps you in past the hunter. Reading all three
+ * and reaching a gate is eighty-seven steps with June still standing, against
+ * the forty-three a straight run down either road costs. She stands in the
+ * one-tile gap that is both the third way across and the field's south door,
+ * so beating her is worth twenty-two of those steps: sixty-five. The legs are
+ * held in `world/route1.test.ts`, the whole walk in `contracts.test.ts`.
  */
 const SURVEY_THE_BRAID: RaidContract = {
   id: 'survey-the-braid',
@@ -159,7 +163,7 @@ const SURVEY_THE_BRAID: RaidContract = {
   markers: [
     {
       id: 'braid-stake-west',
-      position: { x: 7, y: 18 },
+      position: { x: 8, y: 19 },
       label: 'SURVEY STAKE\nWEST ROAD',
       cue: 'WEST STAKE',
       icon: 'field-kit',
@@ -167,7 +171,7 @@ const SURVEY_THE_BRAID: RaidContract = {
     },
     {
       id: 'braid-stake-field',
-      position: { x: 16, y: 17 },
+      position: { x: 15, y: 16 },
       label: 'SURVEY STAKE\nMIDDLE FIELD',
       cue: 'FIELD STAKE',
       icon: 'field-kit',
@@ -175,7 +179,7 @@ const SURVEY_THE_BRAID: RaidContract = {
     },
     {
       id: 'braid-stake-east',
-      position: { x: 25, y: 23 },
+      position: { x: 22, y: 21 },
       label: 'SURVEY STAKE\nEAST ROAD',
       cue: 'EAST STAKE',
       icon: 'field-kit',
@@ -189,22 +193,28 @@ const SURVEY_THE_BRAID: RaidContract = {
   },
   briefing: [
     'Three stakes: west road, middle field, east road. No single road passes two of them.',
-    'The middle field is fenced. Its north doors open off the second cross-link; its south door and the third cross-link are behind June, and she only steps aside once you have beaten her.',
-    'Every cross-link is tall grass, so each crossing of the braid is a fight you are choosing to take.',
+    'The Middle Field is fenced. Its two north doors open off the second way across the Meadows; its south door is the third way across, a gap one tile wide, and June stands in it until you have beaten her.',
+    'Between the Route Head and the Outpost every way across is tall grass, so each crossing of the braid is a fight you are choosing to take.',
   ],
   deploymentBriefing:
     'Three survey stakes: west road, middle field, east road. No one road passes two. Press O for the FIELD GUIDE.',
 };
 
 /**
- * Pallet Town. The ledger sits deep in the Allotments, and the only exit that
- * banks it is the West Culvert - sealed until the Sluice Wheel is wound, and
- * the wheel is at the opposite end of the south bank.
+ * Pallet Town. The ledger lies in a bed gone to seed in the Allotments, and the
+ * only exit that banks it is the West Culvert - sealed until the Sluice Wheel
+ * is wound, and the two are at opposite ends of the south bank: the culvert on
+ * the far shore of the Flood in the south-west, the sluice at the head of the
+ * leat in the south-east.
  *
  * So the map's always-open South Gate stops being an escape and becomes the
- * decision: thirty-five steps to bank the raid, eighty-three to bank the
- * contract, with the hunter already up. Both orders of the two errands cost
- * within two steps of each other, so there is no route to be told.
+ * decision: twenty-nine steps from the ledger to bank the raid, by the west
+ * ford with Scout Lee still holding the bridge, against fifty-six to bank the
+ * contract, with the hunter already up - and the culvert itself only twenty-two
+ * away, shut. The order of the two errands is not a toss-up: the ledger is on
+ * the way to the sluice, so ledger first is eighty-two steps from the square
+ * and sluice first is ninety-two. `world/palletTown.test.ts` holds the walk;
+ * `contracts.test.ts` holds how near the shut culvert is.
  */
 const CORDON_LEDGER: RaidContract = {
   id: 'cordon-ledger',
@@ -216,7 +226,7 @@ const CORDON_LEDGER: RaidContract = {
   markers: [
     {
       id: 'cordon-ledger',
-      position: { x: 13, y: 24 },
+      position: { x: 11, y: 23 },
       label: 'CORDON LEDGER',
       cue: 'LEDGER',
       icon: 'field-kit',
@@ -229,21 +239,27 @@ const CORDON_LEDGER: RaidContract = {
     secureItemStack: true,
   },
   briefing: [
-    'The ledger is in the Allotments, in the tall grass strips.',
-    'Only the West Culvert banks it, and the culvert stays sealed until the Sluice Wheel on the far east of the south bank is wound.',
+    'The ledger is in the Allotments, in one of the beds gone to seed below the sheds.',
+    'Only the West Culvert banks it - the mouth on the far shore of the Flood, in the south-west - and it stays sealed until the Sluice Wheel is wound, at the head of the leat at the east end of the south bank.',
     'The South Gate will still take you home. It will not take the ledger.',
   ],
   deploymentBriefing:
-    'Ledger in the Allotments, Sluice Wheel in the east, out through the West Culvert. Press O for the FIELD GUIDE.',
+    'Ledger in the Allotments, Sluice Wheel in the south-east, out through the West Culvert. Press O for the FIELD GUIDE.',
 };
 
 /**
  * Viridian Forest. A delivery, so this one is decided at the loadout screen:
  * two Potions have to leave base in your pack and be handed over at East Rise,
- * which is forty-five steps of tall grass from the landing.
+ * which is forty-three steps from the North Landing with thirty-four of them in
+ * tall grass, and no way there that misses the grass.
  *
- * The pressure is not the clock, it is your health bar. Every step in is an
- * encounter roll, and the cure for that is in the pack you promised away.
+ * The pressure is not the clock, it is your health bar. Three steps in every
+ * four on the way in are an encounter roll, and the cure for that is in the
+ * pack you promised away. The Fire Tower is four steps off that walk - its foot
+ * is a nook beside the lane, so it is lit on purpose or not at all - and opens
+ * the Tower Steps twenty-one steps from the cache; the Forest Clearing is
+ * eighteen but opens late, and the Brook Ford is forty-seven.
+ * `world/viridianForest.test.ts` holds those numbers.
  */
 const WARDENS_RESUPPLY: RaidContract = {
   id: 'wardens-resupply',
@@ -276,11 +292,11 @@ const WARDENS_RESUPPLY: RaidContract = {
   },
   briefing: [
     'Pack the two Potions at base. Nothing in this forest replaces them.',
-    'The cache is at East Rise, in the south-east. Every trail there is tall grass.',
-    'Light the Fire Tower on the way in and the Tower Steps open twenty steps from the cache; skip it and the only near exit is The Clearing.',
+    'The cache is at East Rise, in the east of the map. Every trail there is tall grass.',
+    'Light the Fire Tower on the way in - it is four steps out of your way - and the Tower Steps open twenty-one steps from the cache. Skip it and the only near exit is the Forest Clearing, which opens late; the Brook Ford is the whole forest away.',
   ],
   deploymentBriefing:
-    'Two Potions to the warden’s cache at East Rise, south-east. Every trail is grass. Press O for the FIELD GUIDE.',
+    'Two Potions to the warden’s cache at East Rise, in the east. Every trail is grass. Press O for the FIELD GUIDE.',
 };
 
 export const RAID_CONTRACTS: readonly RaidContract[] = [

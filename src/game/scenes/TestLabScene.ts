@@ -203,7 +203,7 @@ export class TestLabScene extends Phaser.Scene {
     this.saveManager.save({
       party: new PokemonParty([]),
       mapId: 'pallet-town',
-      position: { x: 7, y: 6 },
+      position: { x: 7, y: 9 },
       bag: new Bag(),
       stash,
       raidProgress: unlockEveryInsertion

@@ -3,10 +3,13 @@ import { CLASSIC } from './sheets';
 
 /**
  * `public/assets/tileset.png`, the 104-tile sheet the game drew every map from
- * before, catalogued so the three maps that have not been redrawn keep the look
- * they shipped with.
+ * before. No shipped map draws from it any more - all four have been redrawn on
+ * the FireRed sheet - and it is kept as a catalogue the rules can be held
+ * against: a sheet with no transition art, whose walls are told apart by tint,
+ * is the hard case for `buildMapLayers`, and `worldMap.test.ts` draws small
+ * maps from it to keep that case working.
  *
- * It is kept for exactly that reason and no other. Its poverty is on the record
+ * Its poverty is on the record
  * in `AGENTS.md`: it has no water art at all - the "pond" tiles are the same
  * green as grass and have to be tinted blue - and its hedges, trees and tall
  * grass are one leafy drawing at three densities, so a wall and a lane are told

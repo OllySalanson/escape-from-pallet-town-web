@@ -1,14 +1,20 @@
 // One scripted raid, start to result screen, through real key events and real
-// clicks: a fresh save, the first contract, its stop, the nearest open exit.
+// clicks: a fresh save, the first contract, its stop, the nearest open exit,
+// the result screen and the lobby behind it.
 // It is the measurement the test-mode numbers in README.md came from, and the
 // check that a raid plays the same at ten frames a second as at sixty.
 //
 //   node tools/playtest/raid.mjs http://localhost:5173/ [--testmode] [--stepped] [--pixels]
-//        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch] [--exit=LABEL]
+//        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
+//        [--insertion=id] [--beaten=bossId,..] [--completed=contractId,..] [--hp=N]
+//        [--work=LABEL] [--exit=LABEL] [--fight]
 //
 // --seed pins `crypto.getRandomValues` and `Math.random` in the page, so two
 // runs roll the same raid and their event logs can be compared line for line.
+// --insertion and the save flags beside it are deploy.mjs's; README.md has the
+// rest, and how the two endings nobody chooses are reached with them.
 import { LOGIC_WINDOW, PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
+import { GAME, deploy, deployOptions, sceneIs } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
@@ -26,9 +32,11 @@ if (testMode) {
   url.searchParams.set('testmode', pixels ? 'pixels' : '1');
 }
 
-const GAME = 'window.__escapeFromPalletTownGame__';
+// A dev server reloads the page when anyone saves a file under src/, and the raid
+// goes with it. Said here, because what it looks like otherwise is a driver bug.
 const STATE = `(() => {
   const g = ${GAME};
+  if (!g?.scene.getScene('world')?.runSession && !g?.scene.getScenes(true).some((s) => s.scene.key === 'extraction')) throw new Error('the raid is gone: the page was reloaded under the driver (a file saved under src/?)');
   const active = g.scene.getScenes(true).map((s) => s.scene.key);
   const out = { active, overlays: document.querySelectorAll('.menu-overlay').length };
   const w = g.scene.getScene('world');
@@ -68,8 +76,9 @@ try {
     await page.send('Page.addScriptToEvaluateOnNewDocument', { source: SEEDED(seed) });
   }
   await page.send('Page.navigate', { url: url.href });
-  const state = () => page.evaluate(STATE);
-  const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
+  // The last the world was seen of is the clock the raid ended on.
+  let clockMs = null;
+  const state = async () => { const s = await page.evaluate(STATE); clockMs = s.world?.elapsedMs ?? clockMs; return s; };
 
   // In stepped mode the loop is asleep and game time moves only when asked to:
   // `wait` is the one place that knows which of the two clocks is running.
@@ -103,19 +112,8 @@ try {
     await wait(350);
   };
 
-  await page.waitFor(sceneIs('title'));
-  if (stepped) {
-    await page.evaluate(`${GAME}.pauseLoop()`);
-  }
+  await deploy(page, url.href, { press, click, until, paused: stepped, ...deployOptions(args) });
   note(`renderer ${(await page.evaluate(`${GAME}.config.renderType`)) === 1 ? 'canvas' : 'webgl'}, test mode ${testMode}, stepped ${stepped}`);
-  await press('Space');
-  await until(sceneIs('starter'));
-  await click('Confirm Bulbasaur');
-  await click('Start a raid');
-  await click('Bulbasaur');
-  await click('Review & deploy');
-  await click('Enter the raid');
-  await until(sceneIs('world'));
   await wait(600);
   if (option('shot')) {
     await page.screenshot(option('shot').replace(/\.png$/, '-world.png'));
@@ -124,9 +122,9 @@ try {
   const raidStarted = Date.now();
 
   const plan = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const p = w.runSession.plan;
-    return { seed: p.seed, markers: (p.contract?.markers ?? []).map((m) => m.position),
-      exits: p.extractionPoints.filter((e) => e.mapId === w.currentMap.id).map((e) => ({ label: e.label, position: e.position, open: (e.requirement?.kind ?? (e.unlockAtMs === 0 ? 'always' : 'elapsed')) === 'always' })) }; })()`);
-  note(`seed ${plan.seed}, stops ${JSON.stringify(plan.markers)}`);
+    return { seed: p.seed, map: w.currentMap.id, start: w.currentTile, contract: p.contract?.name ?? null, markers: (p.contract?.markers ?? []).map((m) => m.position),
+      exits: p.extractionPoints.filter((e) => e.mapId === w.currentMap.id).map((e) => ({ label: e.label, position: e.position, opens: e.requirement?.poiId ?? null, open: (e.requirement?.kind ?? (e.unlockAtMs === 0 ? 'always' : 'elapsed')) === 'always' })) }; })()`);
+  note(`seed ${plan.seed}, ${plan.map} from ${plan.start.x},${plan.start.y}, contract ${plan.contract}, stops ${JSON.stringify(plan.markers)}`);
 
   // --avoid-watch plays the player the map is drawn for: one who reads the shaded
   // ground in front of a trainer and does not walk into it. Without it the driver
@@ -173,7 +171,8 @@ try {
         if (s.battle.mode === 'main') {
           // A level-5 starter does not win a raid by fighting everything in the
           // reeds. Leave a wild fight; a fight with no RUN on its menu is fought.
-          const wanted = s.battle.commands.some((command) => command.includes('RUN')) ? 'RUN' : 'FIGHT';
+          // --fight stays in every one, which with --hp=1 is how a raid is lost.
+          const wanted = !flag('fight') && s.battle.commands.some((command) => command.includes('RUN')) ? 'RUN' : 'FIGHT';
           if (!selected.includes(wanted)) {
             // Whatever shape the menu is this week: walk along the row, and drop a
             // row whenever that comes back round to a command already seen.
@@ -205,6 +204,9 @@ try {
   };
 
   const walkTo = async (goal, what) => {
+    if (ended) {
+      return;
+    }
     note(`walking to ${what} at ${goal.x},${goal.y}`);
     for (let guard = 0; guard < 400 && !ended; guard += 1) {
       await clearInterruptions();
@@ -244,6 +246,39 @@ try {
   for (const [index, marker] of plan.markers.entries()) {
     await walkTo(marker, `contract stop ${index + 1}`);
   }
+  // --work=LABEL works a landmark before leaving, which is the only way an exit
+  // a landmark opens is ever left by. Stood on where it is ground, as the game
+  // allows; faced from beside and worked with the interact key where it is not.
+  const work = option('work')?.toLowerCase().replace(/[-_]/g, ' ');
+  if (work && !ended) {
+    const poi = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+      const p = w.currentMap.pois.find((p) => p.label.toLowerCase().includes(${JSON.stringify(work)})); if (!p) return null;
+      const beside = [[0,1,'ArrowUp'],[0,-1,'ArrowDown'],[1,0,'ArrowLeft'],[-1,0,'ArrowRight']].map(([dx, dy, key]) => ({ x: p.position.x + dx, y: p.position.y + dy, key })).filter((t) => !w.isBlocked(t));
+      return { id: p.id, label: p.label, position: p.position, ground: !w.isBlocked(p.position), beside }; })()`);
+    if (!poi) {
+      throw new Error(`no landmark called ${work} on this map`);
+    }
+    if (poi.ground) {
+      await walkTo(poi.position, poi.label);
+    } else {
+      // Whichever side can be walked to: the first is not always on this bank.
+      for (const side of poi.beside) {
+        if (!(await nextKey(side)).unreachable) {
+          await walkTo(side, `the tile beside ${poi.label}`);
+          await press(side.key);
+          await wait(200);
+          await press('Space');
+          break;
+        }
+      }
+    }
+    await wait(300);
+    await clearInterruptions();
+    const worked = await page.evaluate(`${GAME}.scene.getScene('world').activatedPoiIds.has(${JSON.stringify(poi.id)})`);
+    note(`${poi.label} ${worked ? 'worked' : 'NOT worked'}`);
+    // The exit it opens is open from now on, so the nearest-open rule may take it.
+    plan.exits.forEach((e) => { e.open ||= worked && e.opens === poi.id; });
+  }
   if (!ended) {
     // An exit that is open from the first second: the others are a wait or a
     // detour. Nearest by the walk, not by the crow - on a map of rivers and shut
@@ -276,7 +311,9 @@ try {
       const beside = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
         return [[0,-1],[0,1],[-1,0],[1,0]].map(([dx, dy]) => ({ x: ${exit.position.x} + dx, y: ${exit.position.y} + dy })).find((t) => !w.isBlocked(t)) ?? null; })()`);
       await walkTo(beside, `the tile beside ${exit.label}`);
-      note(`waiting for ${exit.label} to open`);
+      if (!ended) {
+        note(`waiting for ${exit.label} to open`);
+      }
       for (let guard = 0; guard < 4000 && !ended; guard += 1) {
         await clearInterruptions();
         const open = await page.evaluate(`${GAME}.scene.getScene('world').worldLabels.some((l) => l.label.text.startsWith(${JSON.stringify(exit.label)}) && /EXTRACT OPEN$/.test(l.label.text))`);
@@ -291,8 +328,14 @@ try {
     await wait(200);
   }
 
-  const report = await page.evaluate(`document.querySelector('.menu-overlay, #app')?.innerText.replace(/\\n+/g, ' | ').slice(0, 260)`);
-  note(`result: ${ended ? report : 'raid did not end'}`);
+  // A defeat holds each of its beats for a key; every ending is then one report.
+  for (let guard = 0; guard < 40 && ended && !(await page.evaluate(`Boolean(document.querySelector('[data-continue]'))`)); guard += 1) {
+    await press('Space');
+    await wait(500);
+  }
+  const clock = clockMs === null ? 'unknown' : `${Math.floor(clockMs / 60000)}:${String(Math.floor(clockMs / 1000) % 60).padStart(2, '0')}`;
+  const report = await page.evaluate(`document.querySelector('.menu-overlay, #app')?.innerText.replace(/\\n+/g, ' | ').slice(0, 420)`);
+  note(`result after ${clock} of raid: ${ended ? report : 'raid did not end'}`);
   const cpu = browser.cpuSeconds() - cpuAtDeploy;
   const wall = (Date.now() - raidStarted) / 1000;
   console.log(JSON.stringify({
@@ -305,6 +348,16 @@ try {
   }));
   if (option('shot')) {
     await page.screenshot(option('shot'));
+  }
+  if (ended) {
+    // And home, which is where a second raid starts from.
+    await click('Back to base');
+    await until(sceneIs('hub'), 'the lobby');
+    await wait(400);
+    note(`lobby: ${await page.evaluate(`document.querySelector('.menu-overlay')?.innerText.replace(/\\n+/g, ' | ').slice(0, 160)`)}`);
+    if (option('shot')) {
+      await page.screenshot(option('shot').replace(/\.png$/, '-lobby.png'));
+    }
   }
 } finally {
   await browser.close();

@@ -1,85 +1,154 @@
 import { describe, expect, it } from 'vitest';
 import { sketchFloodplainRelay } from './maps/floodplainRelay';
 import { sketchPalletTown } from './maps/palletTown';
+import { sketchRoute1 } from './maps/route1';
 import { sketchViridianForest } from './maps/viridianForest';
 
 /**
- * The three approved maps, exactly as they were drawn and signed off, one
- * character per tile.
+ * The four raid maps exactly as they are drawn, one character per tile.
  *
- * These are the design, not a snapshot of the code: they were authored and
- * measured before any of this was built, reviewed tile by tile, and approved as
- * drawn. The authoring functions are readable and easy to nudge, which is
- * precisely why the grid they produce is pinned here - a stray tile in a lane is
- * invisible in a diff of polylines and obvious in a diff of these.
+ * None of these is a signed-off design. The grids that first stood here were:
+ * three maps authored and measured before any of this was built, reviewed tile
+ * by tile and approved as drawn. Every map has since been redrawn by hand on
+ * the FireRed sheet - the Floodplain because the captain asked for the approved
+ * one to be replaced outright, then Pallet Town, Route 1 and Viridian Forest in
+ * the same hand - and each grid below is the drawing PROPOSED in an approved
+ * one's place, pinned so that the change which proposes it is also where it is
+ * reviewed tile by tile. Until the captain approves one as drawn, no grid in
+ * this file is more than that.
  *
- * Legend: T hedge or tree, F fence, W water, `.` grass, `,` lane, P paved,
- * g tall grass; I insertion, X extraction, O objective, L cache, H trainer,
- * S sign, N townsfolk, * landmark.
+ * What the pin is for has not changed. A map file composes its picture from
+ * layered blocks - the water and the forest first, each place cut out of them
+ * after - which is readable and easy to nudge, and that is precisely why the
+ * grid it produces is held here: a stray tile in a lane is invisible in a diff
+ * of overlapping blocks and obvious in a diff of these. It is also the one
+ * place a finished map can be read whole.
+ *
+ * Legend: `T` thicket, `.` grass, `"` mown turf, `g` tall grass, `,` trodden
+ * earth, `P` paving, `M` stone, `v` gravel, `#` hedge, `C` rock, `F` fence,
+ * `W` deep water, `w` a ford you can wade. A landmark stamped into a drawing is
+ * pinned as the ground its letter stands on: a forest tree or a pine is the
+ * tile of grass under its trunk - `.` inside a run of `T` - a tall bush is
+ * thicket, and a length of the Overlook's rock bank is grass. A landmark
+ * planted by name is not in the grid at all, so a bridge reads as the deep
+ * water under its deck. And none of these drawings marks content any more:
+ * insertions, exits, landmarks, trainers and signs are authored in their own
+ * files, and `worldMap.test.ts` and `mapStructure.test.ts` hold them to this
+ * ground.
  */
-const APPROVED_PALLET_TOWN = [
+
+/**
+ * Pallet Town as redrawn: the mill town on the leat, in the shipped 32x44
+ * footprint, cut out of lattice forest, and NOT yet signed off. The grid that
+ * stood here was the approved design - a fenced market square and a town of
+ * one-tile lanes, drawn for the classic tiles - and this is the drawing
+ * proposed in its place.
+ *
+ * One water is the whole of its shape: the millpond in the east, its race
+ * running south out of it, the leat turning west across the town, and the
+ * Flood the leat ends in. The leat has three crossings and the grid shows two
+ * of them, the fords at either end; the bridge between them is planted.
+ */
+const DRAWN_PALLET_TOWN = [
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'TTTT,,,,,,,,FLgggggWWWWWWWWT...T',
-  'TTT,FFFF,FF,FTTTTgTWWWWWWWWT.T.T',
-  'T*.,FPPPPSF,FggggggWWWWWWWW....T',
-  'TST,,PPPPPF,FTgTTTTWWWWWWWW.TT.T',
-  'T..,FPPIPPF,,ggggggWWWWWWWW....T',
-  'TT.,FNPPPP,,FTTTTgTWWWWWWWWT.T.T',
-  'T.T,FPPPPPF,FggggggWWWWWWWW...TT',
-  'T..,FF,FFFF,F,T,T.,N.WW.....TT.T',
-  'TTT,,,,,,,,,F,,,,T,,,T,,,T,,,T,T',
-  'TTTT..T...,FF,FFFFF,FFFF,F,FFT,T',
-  'TFFFF.F.FF,FggggggF,FLgF,FggFT,T',
-  'TFL...F...TFgggggg,,Fgg,,FggFT,T',
-  'TFFFF.FFFF,FFFFgFFF,FFFF,FFF,T,T',
-  'TTT.......,FggFgggF,,,,,,,,T,,,T',
-  'TFF.FTF.FF,,ggggggF,FFFFF,FF,FFT',
-  'TFL.FTF..F,FggFgggF,,gggF,,ggLFT',
-  'TFFFFTF.FF,F,FFF,FF,FFFFF,FFFFFT',
-  'TFFFFFF,FF,F,FFF,FFFFF....TTTTTT',
-  'TLggggFgggggggFggggggF.TT.TTTTXX',
-  'TFgFFFFFgFFFgFFFFFFgFFHTT......T',
-  'TggFggggggFggggggFgggF.TTTT.TTTT',
-  'TFgFFgFFFgFFFgFFFFgFFF.TTTT.TTTT',
-  'TgggggFggggggOFggggggF........TT',
-  'TFgFFFFFgFFFgFFgFFFgFF.TT.TTTLTT',
-  'TLgFggggggFggggggFggg,.TT.....TT',
-  'TFFFFFFF,FFFFFFF,FFFFFTTT.TTTTTT',
-  'TWWWWWWW,WWWWWWW,WWWWWWWW,WWWWWT',
-  'TWWWWWW,,WWWWWW,,WWWWWWW,,WWWWWT',
-  'TWWWWWW,WWWWWWWHWWWWWWWW,WWWWWWT',
-  'TT,,,,,,,,T,,,,,,T,,,T,,,,T.*T.T',
-  'X,,TTT,,,,,T,,,,,T,,,,,T,,,..T.T',
-  'TWWWWWT,,FFFFF,FFFFF,FFFFF,TT..T',
-  'TWWWWWT,,FLggF,,gggF,FgggF,TT.TT',
-  'TWWWWWT,,,gggF,FgggF,,gggF,TT..T',
-  'TWWWWW,,,FFFFF,FFFFF,FFFFF,TTT.T',
-  'TWWWWW,T,,,,,F,,,,,,,,,,F,,..T.T',
-  'TWWWWW,TTT,FFFFF,FFFFF,FFFFF...T',
-  'TWWWWW,TTT,,ggg,,FLggF,,Lgg...TT',
-  'TWWWWW,TTT,FgggF,,gggF,FgggF...T',
-  'TT......TT,FFFFF,FFFFF,FFFFF.T.T',
-  'TT....T.,,,,T,,X,,,,,T,,,,T....T',
-  'TTTTTTTTTTTTTTTXTTTTTTTTTTTTTTTT',
+  'TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT',
+  'TT.....TT.....TTT.ggg.##.gggg.TT',
+  'TT.....TT.....TT.ggTTT##gTTTg.TT',
+  '.T......T......T.gg...g.g...gg.T',
+  'TT............TT,,g...ggg...g..T',
+  'TT............TT,,gggg.C.gggg,,T',
+  '.TPPPPPPPPPPPP,,,,..ggC.ggg..,,T',
+  'TTPPPPPPPPPPPP,,,,.....#.....,,T',
+  'TTPPPPPPPPPPPP#TTTTTTTTTTTTTT,,T',
+  '.TPPPPPPPPPPPP#TTTT........T.,,T',
+  'TTPPPPPPPPPPPP#..............TTT',
+  'TT###,,#######......WWWWWWW,,TTT',
+  '.T""",,,,,,,,#......WWWWWWW,,,.T',
+  'TT""",,,,,,,,#......WWWWWWWT,,TT',
+  'TT#"""""TTT,,#......WWWWWWWT,,TT',
+  'TT""""""...,,,,,,,,,WWWWWWWT,,TT',
+  'TT..""""...,,,,,,,,,TTTTWW,,,,.T',
+  'TT,,...ggg#,,...ggg#...gWW,,...T',
+  '.T,,...ggg#,,...ggg#...gWW,,...T',
+  'TT#....ggg......ggg.....WW,,...T',
+  'TTggg.....###..#........WW.....T',
+  '.Tggg#.##.ggg...##.g###.WW.....T',
+  'TTg#g#..g.ggg#....gg..g.WWTT,,TT',
+  'TTggg..gg.g#g#..#ggg..g.WWTT,,TT',
+  '.T..........TTTT........WWTT,,.T',
+  'TTWWWWWwwWWWWWWWWWWWwwWWWW,,,,TT',
+  'TTWWWWWwwWWWWWWWWWWWwwWWWW,,TTTT',
+  '.TWWWWWwwWWWWWWWWWWWwwWWWW,,TTTT',
+  'TTWWWWW..gg#TTTTTTTT..MMMMMTTTTT',
+  'TTWWWWW..ggFF.FFFTTT..MMMMMTTTTT',
+  '.TWWWWW##ggg#,,TT.FFFFMMMMM#TTTT',
+  'TTWWWWWgggg.#,,#TTgggg.gggg.TTTT',
+  'TTWWWWWgCgg.#,,,,#gggg.gggg.T.TT',
+  '.TWWWWWgggC.g,,,,FFF.F.FF.F.TTTT',
+  'TTT....ggg#g###,,#gggg.gg...T.TT',
+  'TTT....g.gg####,,....#..gg.TTTTT',
+  'TTTTT......TTT#,,......TTTTTT.TT',
+  'TTTTTTTTTTTTTT.,,.TTTTTTTTTTTTTT',
+  'TT.TTTTTTTTT.T.,,.TTTTTTTT.TT.TT',
+  'TTTTTTTTTTTTTT.,,.TTTTTTTTTTTTTT',
+  'TT.TT.TT.TTTTTT,,TTTTTT.TT.TT.TT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+];
+
+/**
+ * Route 1 as redrawn: the braid, in the shipped 32x32 footprint, and NOT yet
+ * signed off. It had no grid here while it was built out of polylines, so
+ * there is no approved drawing it replaces; it is pinned now for the reason
+ * the others are.
+ *
+ * Two roads run from the Route Head to the Outpost apron with the Meadows
+ * between them, the fenced Middle Field in the middle of those, and Oak's
+ * Field Station in the east under the rock bank the Overlook stands on.
+ */
+const DRAWN_ROUTE_1 = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TT.TT.TT.TT.T.T...T.TTTTTTT....T',
+  'TTTTTTTTTTTTTT.....TTTTTTTT....T',
+  'TT.TT.TT.TT.TT,,,,,,,,,,TTT....T',
+  'TTTTTTTT,,,,,,,,,T,,,,,,TTT....T',
+  'TT.TT.TT,,gggggTTTTTTT,,TTT....T',
+  'TTTTTTTT,,TggTTTgggTTT,,..T....T',
+  'TT.TT.TT,,Tgg...ggggggg,TTTFFCFT',
+  'TTTTT,,,,,Tg.....ggT,,,,TT...C.T',
+  'TT.TT,,,,,Tgggg.gCgg,,,,T......T',
+  'TTTTT,,TTTTgggg.gggT,,TTT......T',
+  'TT.TT,,gggggggCggggT,,TTT......T',
+  'TTggg,,TTTTFF.FFF.FF,,TTT......T',
+  'TTgg.,,TTTT#ggg.ggg#,,TTT......T',
+  '.TTTT,,T.TT#g.gggCg#,,,,TPPPP..T',
+  'TTTTT,,,,,T#gggg.gg#,,,,,PPPPP.T',
+  'TTTTT,,,,,T#gg.gggg#TT,,TPPPPP.T',
+  'TT.TTTTT,,TFFFFF.FFFTT,,TTTTTTTT',
+  'TTTTTTTT,,Tggggg.ggTTT,,TTTTTTTT',
+  'TT.TT.TT,,gggg.gTggggg,,TTTTTTTT',
+  'TTTTTTTT,,TTTTTTTTTT,,,,TTTTTTTT',
+  'TTTTTTTT,,TTTTTTTTTT,,,,TTTTTTTT',
+  'T.T,,,,,,,TTTTTT.TTT,,TTTTTTTTTT',
+  'TTT,,,,,,,TTTTTTTTTT,,TTTTTTTTTT',
+  'TTT,,T,,TTTTTTTTT.TT,,,,TTTTTTTT',
+  'TTT,,T,,TT,,,,PPPPPT,,,,TT.TT.TT',
+  'TTT,,T,,TT,,,,PPPPPTTT,,TTTTTTTT',
+  'TTT,,T,,,,,,TTPPPPP,,,,,TT.TT.TT',
+  'TTT,,T,,,,,,TTPPPPP,,,,,TTTTTTTT',
+  'TTTTTTTTTTTTTTTTPPTTTTTTTT.TT.TT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
 ];
 
 /**
  * Floodplain Relay as redrawn: a 64x64 river town cut out of solid forest, and
  * NOT yet signed off. The grid that stood here was the approved 32x32 design,
  * which the captain has since asked to be replaced outright; this is the
- * drawing proposed in its place, pinned so that the change which proposes it
- * is also where it is reviewed tile by tile. Until it is approved as drawn, read
- * "approved" above as true of the other two maps only.
- *
- * The map file composes this from layered blocks - the river and the forest
- * first, each district cut out of them after - so this is the one place the
- * finished picture can be read whole. A forest tree is drawn as the tile of
- * grass its trunk stands on, in thicket: `.` inside a run of `T`. Legend as
- * above, plus `w` ford, `M` stone, `v` gravel, `#` hedge, `C` rock and the
- * double quote for mown turf.
+ * drawing proposed in its place, and the first of the four to be redrawn - the
+ * other three are in its hand.
  */
-const APPROVED_FLOODPLAIN_RELAY = [
+const DRAWN_FLOODPLAIN_RELAY = [
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
   'T.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TTWWWTTT.TT.TT.TT.TT.TT.TT',
@@ -146,51 +215,61 @@ const APPROVED_FLOODPLAIN_RELAY = [
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
 ];
 
-const APPROVED_VIRIDIAN_FOREST = [
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'TTTTTT.I..TTTTTTTTTTTTTTTTTTTTTT',
-  'TTTTTT....TTTTTTTTTTTTTTTTTTTTTT',
-  'TTTTTTg.g.TTTT.....TTTTTTTTTTTTT',
-  'TTTTTTgTgTTggg.....TTTTTTTTTTTTT',
-  'TTTTgggTgTTgTT..*.ggggTTTTTT...T',
+/**
+ * Viridian Forest as redrawn, in the shipped 32x36 footprint, and NOT yet
+ * signed off. The approved design's clearings and one-tile trails are kept
+ * where they were, so this is the nearest of the four to a drawing that was
+ * signed off - but the wood they are cut from is new, and so are the glade
+ * under the fire tower, the rock stair in the north-east, the pool in the east
+ * and the brook down the west edge with the ford in it, and none of that has
+ * been approved.
+ */
+const DRAWN_VIRIDIAN_FOREST = [
+  'TTTTTTTTTTTTTTT...TTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTT...TTTTTTTTTTTTTT',
+  'TT.T.T....T.T.T...TT.TT.TT.TT.TT',
+  'TTTTTT....TTTTT...TTTTTTTTTTTTTT',
+  'TT.TTTg.g.TTTT.....TTTT.TT.T...T',
+  'TTTT.TgTgTTggg.....TTTTTTTTT...T',
+  'TT.TgggTgTTgTT....ggggT.TT.T...T',
   'TTTTgTTTggggTT..g..TTgTTTTTT...T',
-  'TT..g.TTTTTTTTTTgTTTTgTT......XT',
-  'TT.L.gggTTTTTTgggTTTTggg...gg..T',
-  'TT....TgTTTTTTgTTTTTTTTggL..TTTT',
+  'TT..g.TTTTTTTTTTgTTTTgTT.......T',
+  '.T...gggTTTTTTgggTTTTggg.WWgg..T',
+  'TT....Tg.TT.TTgTTT.TTTTggWW.TTTT',
   'TT...gTgggTTTTgTTTTTTTTT..g.TTTT',
-  'TTTTTgTTTgTTT.g..TTTTTTTTTgTTTTT',
-  'TTTTTgTTTgggg..L.TTTTTTTTTgggTTT',
-  'TTTgggTTTTTTT...gggTTTTTTTTTgTTT',
-  'TTTgTTTTTTTTTg...TgTTTTTTTTTgTTT',
-  'TTTggTTTTTTTTgTTTTggTTTTTTTggTTT',
-  'TT..g.TTTTTgggTTT..g.TTTTTTgTTTT',
-  'TT..LgggTTTgTTTTT.H.ggggTTTggTTT',
-  'TT....TgTTTgTTTTT..L.TTgTT..g.TT',
-  'TXg...TgggTgTTTTT...gTTgggg...TT',
-  'TTTTTTTTTgTgg...TTTTgTTTTT.L.LTT',
-  'TTTTTTTTTgTT..L.TTTTgTTTTT..g.TT',
-  'TTTTTTTTTggggL..TTTTgggTTTTTgTTT',
-  'TTTTTTTTTTTT..g.TTTTTTgTTTTTgTTT',
-  'TTTTTTTTTTTTTTgTTTTTTggTTTgggTTT',
-  'TTTTTTTTTTTTTTgggggTTgTTTTgTTTTT',
-  'TTTTTTTTTTTTTTTTTTgTTgTggggTTTTT',
-  'TTTTTTTTTTTTTTTTTTg..gggTTTTTTTT',
+  'TTTTTgTTTgT.T.g..TTT.TTTTTgTT.TT',
+  'TWWTTgTTTgggg.....TTTTTTTTgggTTT',
+  'TWWgggT.TTTTT...gggT.TT.TTTTgTTT',
+  'TWWgTTTTTTTTTg...TgTTTTTTTTTgT.T',
+  'TWWggTTT.TT.TgTTTTggTTT.T.TggTTT',
+  'TWW.g.TTTTTgggTTT..g.TTTTTTgTTTT',
+  'TWW..gggTTTgTTT.T...ggggTTTggT.T',
+  'Tww...TgTTTgTTTTT....TTgTT..g.TT',
+  'Tww...TgggTgTT.TT...gTTgggg...TT',
+  'TWWTTTTTTgTgg...TTTTgTTTTT....TT',
+  'TWWTTTTTTgTT....TTTTgTTTTT..g..T',
+  'TWWTTTT.Tgggg...TTTTgggT.TTTgTTT',
+  'TWWTT.TTTTTT..g.T.TTTTgTTTTTgTTT',
+  'TWWTTTTTTTTTTTgTTTTTTggTTTgggT.T',
+  'TWWTT.TT.TT.TTggggg.TgTT.TgTTTTT',
+  'TWWTTTTTTTTTTTTTTTgTTgTggggTTTTT',
+  'TTTTT.TT.TT.TTTTTTg..gggTTTTT.TT',
   'TTTTTTTTTTTTTTTTTT.....TTTTTTTTT',
-  'TTTTTTTTTTTTTTTTTT..XL.TTTTTTTTT',
+  'TT.TT.TT.TT.TTTTTT.....TTTTTT.TT',
   'TTTTTTTTTTTTTTTTTT.....TTTTTTTTT',
+  'TT.TT.TT.TT.TT.T.TTTTTTTTT.TT.TT',
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT',
   'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
 ];
 
-describe('approved map designs', () => {
+describe('map designs, as drawn', () => {
   it.each([
-    ['Pallet Town', sketchPalletTown, APPROVED_PALLET_TOWN],
-    ['Floodplain Relay', sketchFloodplainRelay, APPROVED_FLOODPLAIN_RELAY],
-    ['Viridian Forest', sketchViridianForest, APPROVED_VIRIDIAN_FOREST],
-  ])('builds %s exactly as it was drawn', (_name, sketch, approved) => {
-    expect(sketch().toGrid()).toEqual(approved);
+    ['Pallet Town', sketchPalletTown, DRAWN_PALLET_TOWN],
+    ['Route 1', sketchRoute1, DRAWN_ROUTE_1],
+    ['Floodplain Relay', sketchFloodplainRelay, DRAWN_FLOODPLAIN_RELAY],
+    ['Viridian Forest', sketchViridianForest, DRAWN_VIRIDIAN_FOREST],
+  ])('builds %s exactly as it was drawn', (_name, sketch, drawn) => {
+    expect(sketch().toGrid()).toEqual(drawn);
   });
 });

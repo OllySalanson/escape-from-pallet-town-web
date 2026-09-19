@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { CLASSIC_TILE, getWorldMap, isTallGrassInMap, WORLD_MAPS } from './worldMap';
 import { EXTRACTION_POINTS } from './world/extractionPoints';
+import { MapSketch } from './world/mapGrid';
+import { buildMapLayers } from './world/tiles';
 import { CLASSIC_TILESET } from './world/tileset/classicTileset';
 import { FLOOD_TOWN_TILESET } from './world/tileset/floodTownTileset';
 import { createRunTrainerEncounters } from './world/trainers';
+
+/** A small map drawn as character art, the way a real map is authored. */
+function sketch(rows: readonly string[]): MapSketch {
+  const map = new MapSketch({ width: rows[0].length, height: rows.length, fill: '.' });
+  map.draw(0, 0, rows);
+  return map;
+}
 
 describe('worldMap', () => {
   it('registers four self-contained raid maps', () => {
@@ -37,13 +46,16 @@ describe('worldMap', () => {
   });
 
   /**
-   * A sheet is chosen per map, which is what lets one map be redrawn to the
-   * wide vocabulary without dragging three others through the same change.
+   * A sheet is chosen per map, which is what let the four be redrawn to the
+   * wide vocabulary one at a time: the Floodplain first, with the other three
+   * still on the classic catalogue beside it. All four have been redrawn now,
+   * so all four draw from the town catalogue - the FireRed ground with the
+   * chosen buildings standing on it - and none is left on the classic sheet.
    */
-  it('draws the Floodplain from the town catalogue and the rest from the classic one', () => {
-    expect(getWorldMap('floodplain-relay').tileset).toBe(FLOOD_TOWN_TILESET);
-    for (const id of ['pallet-town', 'route-1', 'viridian-forest'] as const) {
-      expect(getWorldMap(id).tileset).toBe(CLASSIC_TILESET);
+  it('draws every map from the town catalogue', () => {
+    for (const map of Object.values(WORLD_MAPS)) {
+      expect({ map: map.id, fromTheTownCatalogue: map.tileset === FLOOD_TOWN_TILESET })
+        .toMatchObject({ fromTheTownCatalogue: true });
     }
     // Every tile a map draws has to land inside one of its catalogue's sheets:
     // a map with two sheets shares one numbering, and a tile in the gap between
@@ -75,25 +87,7 @@ describe('worldMap', () => {
     }
   });
 
-  it('marks hedges, water and fences solid and leaves grass and lanes walkable', () => {
-    const pallet = getWorldMap('pallet-town');
-
-    // The market square's paved yard, its fence, and the millpond.
-    expect(pallet.collision[6][7]).toBe(false);
-    expect(pallet.layers.ground.tiles[6][7]).toBe(CLASSIC_TILE.DIRT_PATH);
-    expect(pallet.collision[6][4]).toBe(true);
-    expect(pallet.layers.overlay.tiles[6][4]).toBeGreaterThanOrEqual(0);
-    expect(pallet.collision[4][22]).toBe(true);
-    expect(pallet.layers.ground.tiles[4][22]).toBe(CLASSIC_TILE.POND_WATER);
-    expect(pallet.collision[0][0]).toBe(true);
-  });
-
-  it('draws a bank wherever water meets ground, and none where it does not', () => {
-    const pallet = getWorldMap('pallet-town');
-    // The millpond's west shore is a bank; its middle is open water.
-    expect(pallet.layers.ground.tiles[5][19]).toBe(CLASSIC_TILE.POND_BANK_WEST);
-    expect(pallet.layers.ground.tiles[5][22]).toBe(CLASSIC_TILE.POND_WATER);
-
+  it('walls a map with whatever stands at its edge, and leaves its front door dry', () => {
     // The Floodplain is cut out of a forest, so its corner is a wall; the
     // river runs off its north edge as water, which is a wall too; and its
     // front door, in the Landing's yard, is dry ground.
@@ -108,12 +102,18 @@ describe('worldMap', () => {
     const forest = getWorldMap('viridian-forest');
 
     // A trail is one tile wide and the trees either side of it are not grass.
+    // The redrawn forest kept its trails, so this is the tile it always was.
     expect(isTallGrassInMap(forest, { x: 8, y: 5 })).toBe(true);
+    expect(forest.collision[5][8]).toBe(false);
     expect(isTallGrassInMap(forest, { x: 7, y: 5 })).toBe(false);
-    expect(forest.layers.overlay.tiles[5][8]).toBe(CLASSIC_TILE.TALL_GRASS_TUFT);
-    expect(forest.layers.ground.tiles[5][8]).toBe(CLASSIC_TILE.GRASS);
+    expect(forest.collision[5][7]).toBe(true);
+    // It is drawn as the map's own catalogue draws tall grass, on the ground
+    // layer: the FireRed plant is a ground tile, not a tuft laid over grass.
+    expect(forest.layers.ground.tiles[5][8]).toBe(forest.tileset.materials['tall-grass'].roles.fill);
+    expect(forest.layers.overlay.tiles[5][8]).toBeLessThan(0);
     // A clearing is open ground, not an encounter zone.
     expect(isTallGrassInMap(forest, { x: 7, y: 3 })).toBe(false);
+    expect(forest.collision[3][7]).toBe(false);
   });
 
   it('keeps every placed run interaction on a walkable tile', () => {
@@ -173,8 +173,111 @@ describe('worldMap', () => {
     const board = getWorldMap('pallet-town').entities.find((entity) => entity.id === 'town-sign');
     const message = board?.dialogLines.join(' ') ?? '';
 
-    expect(message).toContain('South Gate');
-    expect(message).toContain('Mill Stair');
-    expect(message).toContain('West Culvert');
+    // The board names every way out of its own map, spelt the way the map
+    // captions it - in capitals - so the name read in the square is the name
+    // read over the gate. Asked of the exits themselves, so one added or
+    // renamed fails here rather than leaving the board a gate short.
+    const exits = EXTRACTION_POINTS.filter((point) => point.mapId === 'pallet-town');
+    expect(exits.map((exit) => exit.label).sort()).toEqual(['MILL STAIR', 'SOUTH GATE', 'WEST CULVERT']);
+    for (const exit of exits) {
+      expect(message).toContain(exit.label);
+    }
+  });
+});
+
+/**
+ * The classic catalogue - `tileset.png`, the 104-tile sheet every map was once
+ * drawn from. No shipped map draws from it any more, so its rules are held on
+ * ground drawn here: they used to be read off Pallet Town's millpond and the
+ * forest's trails, and redrawing those maps on another sheet would otherwise
+ * have left the catalogue with nothing checking it.
+ */
+describe('the classic catalogue, on a map drawn for it', () => {
+  it('marks hedges, water and fences solid and leaves grass and lanes walkable', () => {
+    // A paved yard inside a fence, a hedge behind it, a lane past its gate and
+    // a pond below the lane.
+    const { collision, ground, overlay } = buildMapLayers(
+      sketch([
+        '########',
+        '#FFFFFF#',
+        '#FPPPPF#',
+        '#FPPPPF#',
+        '#FF,FFF#',
+        '.,,,,,,.',
+        '.WWWWWW.',
+        '.WWWWWW.',
+        '.WWWWWW.',
+        '........',
+      ]),
+      CLASSIC_TILESET,
+    );
+
+    // The yard, and the lane it opens onto: this sheet has one laid floor.
+    expect(collision[2][3]).toBe(false);
+    expect(ground.tiles[2][3]).toBe(CLASSIC_TILE.DIRT_PATH);
+    expect(collision[5][3]).toBe(false);
+    expect(ground.tiles[5][3]).toBe(CLASSIC_TILE.DIRT_PATH);
+    expect(collision[5][0]).toBe(false);
+    expect(ground.tiles[5][0]).toBe(CLASSIC_TILE.GRASS);
+    // Its fence is a wall you can see through, so it is drawn over ground.
+    expect(collision[2][1]).toBe(true);
+    expect(overlay.tiles[2][1]).toBeGreaterThanOrEqual(0);
+    expect(collision[4][3]).toBe(false);
+    // The pond, and the hedge the whole yard is set in.
+    expect(collision[7][3]).toBe(true);
+    expect(ground.tiles[7][3]).toBe(CLASSIC_TILE.POND_WATER);
+    expect(collision[0][0]).toBe(true);
+    expect(overlay.tiles[0][0]).toBeGreaterThanOrEqual(0);
+  });
+
+  it('draws a bank wherever water meets ground, and none where it does not', () => {
+    // A pond that runs off the north edge of the map, as a river does. This
+    // sheet has no shoreline to lay on the land, so the bank is the water's
+    // own edge, drawn on the water tile that touches ground.
+    const { ground } = buildMapLayers(
+      sketch([
+        '..WWW..',
+        '..WWW..',
+        '..WWW..',
+        '.......',
+      ]),
+      CLASSIC_TILESET,
+    );
+
+    expect(ground.tiles[1][2]).toBe(CLASSIC_TILE.POND_BANK_WEST);
+    expect(ground.tiles[1][4]).toBe(CLASSIC_TILE.POND_BANK_EAST);
+    expect(ground.tiles[2][3]).toBe(CLASSIC_TILE.POND_BANK_SOUTH);
+    expect(ground.tiles[2][2]).toBe(CLASSIC_TILE.POND_BANK_SOUTH_WEST);
+    // Its middle is open water, and so is where it leaves the map: the edge of
+    // the map is not a shore.
+    expect(ground.tiles[1][3]).toBe(CLASSIC_TILE.POND_WATER);
+    expect(ground.tiles[0][3]).toBe(CLASSIC_TILE.POND_WATER);
+    // The land beside it is left alone.
+    expect(ground.tiles[1][1]).toBe(CLASSIC_TILE.GRASS);
+  });
+
+  it('lays tall grass over grass tile by tile, not as rectangles', () => {
+    // A trail one tile wide through a wood, out of a clearing.
+    const { ground, overlay, tallGrass, collision } = buildMapLayers(
+      sketch([
+        'TTTTT',
+        'T...T',
+        'TTgTT',
+        'TTgTT',
+        'TTggT',
+      ]),
+      CLASSIC_TILESET,
+    );
+
+    expect(tallGrass[2][2]).toBe(true);
+    expect(overlay.tiles[2][2]).toBe(CLASSIC_TILE.TALL_GRASS_TUFT);
+    expect(ground.tiles[2][2]).toBe(CLASSIC_TILE.GRASS);
+    // The trees either side of the trail are not grass, and are not walked.
+    expect(tallGrass[2][1]).toBe(false);
+    expect(collision[2][1]).toBe(true);
+    expect(tallGrass[2][3]).toBe(false);
+    // A clearing is open ground, not an encounter zone.
+    expect(tallGrass[1][2]).toBe(false);
+    expect(overlay.tiles[1][2]).toBeLessThan(0);
   });
 });

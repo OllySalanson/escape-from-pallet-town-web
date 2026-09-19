@@ -47,9 +47,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
   {
     id: 'pallet-town-pump',
     mapId: 'pallet-town',
-    position: { x: 1, y: 4 },
+    position: { x: 3, y: 16 },
     label: 'TOWN PUMP',
-    description: 'Marked supply cache at the end of the Well Verge. Nothing else comes through here.',
+    description: 'Marked supply cache under the pump on the Green, a few steps south of the square.',
     reward: [
       { itemId: 'poke-ball', quantity: 2 },
       { itemId: 'potion', quantity: 1 },
@@ -58,9 +58,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
   {
     id: 'pallet-sluice-wheel',
     mapId: 'pallet-town',
-    position: { x: 28, y: 31 },
+    position: { x: 25, y: 31 },
     label: 'SLUICE WHEEL',
-    description: 'Winding it drains the culvert at the far west corner of the leat and opens it as an exit.',
+    description: 'The hatch at the head of the leat, below the mill race. Winding it shut drains the culvert on the far shore of the Flood and opens it as an exit.',
     reward: [],
     effect: 'unlock-extraction',
     unlockedExtractionLabel: 'WEST CULVERT',
@@ -68,9 +68,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
   {
     id: 'oak-field-station-relay',
     mapId: 'route-1',
-    position: { x: 28, y: 18 },
+    position: { x: 26, y: 15 },
     label: "OAK'S FIELD STATION",
-    description: 'Marked supply cache: 2 Poké Balls and 1 Potion. Its relay opens the east spur.',
+    description: 'Marked supply cache at the station door: 2 Poké Balls and 1 Potion. Switching its relay on opens the Station Relay exit at the east end of the yard.',
     reward: [
       { itemId: 'poke-ball', quantity: 2 },
       { itemId: 'potion', quantity: 1 },
@@ -81,9 +81,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
   {
     id: 'forest-fire-tower',
     mapId: 'viridian-forest',
-    position: { x: 16, y: 6 },
+    position: { x: 14, y: 4 },
     label: 'FIRE TOWER',
-    description: 'The warden ladder above the canopy. Lighting it opens the Tower Steps on the east ridge.',
+    description: 'The stone tower that stands above the canopy. Lighting it opens the Tower Steps, the stair in the rock on the east ridge.',
     reward: [],
     effect: 'unlock-extraction',
     unlockedExtractionLabel: 'TOWER STEPS',

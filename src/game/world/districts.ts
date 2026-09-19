@@ -93,6 +93,184 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     name: 'THE VAULT',
     areas: [{ x: 30, y: 46, width: 34, height: 18 }],
   },
+
+  // -- Pallet Town -----------------------------------------------------------
+  // A small map, so its places are small: a plate every dozen steps is right
+  // for a town, where it would be noise on the Floodplain. The leat is the one
+  // boundary that matters, and it is drawn so that stepping onto a crossing is
+  // stepping into the south - the water belongs to the bank it lands you on.
+  {
+    id: 'pallet-market-square',
+    mapId: 'pallet-town',
+    name: 'MARKET SQUARE',
+    areas: [{ x: 0, y: 0, width: 16, height: 13 }],
+  },
+  {
+    id: 'pallet-north-field',
+    mapId: 'pallet-town',
+    name: 'THE NORTH FIELD',
+    areas: [{ x: 16, y: 0, width: 16, height: 11 }],
+  },
+  {
+    id: 'pallet-millpond',
+    mapId: 'pallet-town',
+    name: 'THE MILLPOND',
+    // The mill, the pond and both its banks - and the far bank's path on down
+    // past the stair to the head of the leat, which is the mill's own water.
+    areas: [
+      { x: 14, y: 11, width: 18, height: 8 },
+      { x: 24, y: 19, width: 8, height: 11 },
+    ],
+  },
+  {
+    id: 'pallet-green',
+    mapId: 'pallet-town',
+    name: 'THE GREEN',
+    areas: [{ x: 0, y: 13, width: 14, height: 6 }],
+  },
+  {
+    id: 'pallet-allotments',
+    mapId: 'pallet-town',
+    name: 'THE ALLOTMENTS',
+    areas: [{ x: 0, y: 19, width: 24, height: 8 }],
+  },
+  {
+    id: 'pallet-flood',
+    mapId: 'pallet-town',
+    name: 'THE FLOOD',
+    areas: [{ x: 0, y: 27, width: 12, height: 17 }],
+  },
+  {
+    id: 'pallet-stockyard',
+    mapId: 'pallet-town',
+    name: 'THE STOCKYARD',
+    // The bridge foot, the paddocks, the sluice at the east end of the bank and
+    // the road down to the South Gate: everything the bridge lands you in.
+    areas: [{ x: 12, y: 27, width: 20, height: 17 }],
+  },
+
+  // -- Route 1 ---------------------------------------------------------------
+  {
+    id: 'route-1-overlook',
+    mapId: 'route-1',
+    name: 'THE OVERLOOK',
+    // Both of the warden's doors are the Overlook's: its gate and its steps.
+    areas: [{ x: 26, y: 0, width: 6, height: 10 }],
+  },
+  {
+    id: 'route-1-head',
+    mapId: 'route-1',
+    name: 'ROUTE HEAD',
+    areas: [{ x: 0, y: 0, width: 26, height: 6 }],
+  },
+  {
+    id: 'route-1-field-station',
+    mapId: 'route-1',
+    name: "OAK'S FIELD STATION",
+    areas: [{ x: 24, y: 10, width: 8, height: 9 }],
+  },
+  {
+    id: 'route-1-meadows',
+    mapId: 'route-1',
+    name: 'THE MEADOWS',
+    areas: [{ x: 10, y: 6, width: 10, height: 15 }],
+  },
+  {
+    id: 'route-1-west-road',
+    mapId: 'route-1',
+    name: 'WEST ROAD',
+    areas: [{ x: 0, y: 6, width: 10, height: 17 }],
+  },
+  {
+    id: 'route-1-east-road',
+    mapId: 'route-1',
+    name: 'EAST ROAD',
+    areas: [{ x: 20, y: 6, width: 12, height: 20 }],
+  },
+  {
+    id: 'route-1-west-gate',
+    mapId: 'route-1',
+    name: 'WEST GATE',
+    areas: [{ x: 0, y: 23, width: 10, height: 9 }],
+  },
+  {
+    id: 'route-1-outpost',
+    mapId: 'route-1',
+    name: 'THE OUTPOST',
+    areas: [{ x: 10, y: 21, width: 22, height: 11 }],
+  },
+
+  // -- Viridian Forest -------------------------------------------------------
+  // The forest has always been eleven clearings, and until now only the design
+  // notes knew their names. A wood is the one kind of map where every screen
+  // looks like the last, so here the plate is most of how a player knows where
+  // they are.
+  {
+    id: 'forest-tower-steps',
+    mapId: 'viridian-forest',
+    name: 'TOWER STEPS',
+    areas: [{ x: 27, y: 0, width: 5, height: 10 }],
+  },
+  {
+    id: 'forest-fire-tower',
+    mapId: 'viridian-forest',
+    name: 'FIRE TOWER',
+    areas: [{ x: 11, y: 0, width: 16, height: 8 }],
+  },
+  {
+    id: 'forest-north-landing',
+    mapId: 'viridian-forest',
+    name: 'NORTH LANDING',
+    areas: [{ x: 0, y: 0, width: 11, height: 8 }],
+  },
+  {
+    id: 'forest-sap-pool',
+    mapId: 'viridian-forest',
+    name: 'SAP POOL',
+    areas: [{ x: 20, y: 8, width: 12, height: 9 }],
+  },
+  {
+    id: 'forest-beetle-hollow',
+    mapId: 'viridian-forest',
+    name: 'BEETLE HOLLOW',
+    areas: [{ x: 0, y: 8, width: 11, height: 9 }],
+  },
+  {
+    id: 'forest-crossroads',
+    mapId: 'viridian-forest',
+    name: 'THE CROSSROADS',
+    areas: [{ x: 11, y: 8, width: 9, height: 9 }],
+  },
+  {
+    id: 'forest-brook-head',
+    mapId: 'viridian-forest',
+    name: 'BROOK HEAD',
+    areas: [{ x: 0, y: 17, width: 11, height: 19 }],
+  },
+  {
+    id: 'forest-wardens-cut',
+    mapId: 'viridian-forest',
+    name: "WARDEN'S CUT",
+    areas: [{ x: 11, y: 17, width: 14, height: 4 }],
+  },
+  {
+    id: 'forest-east-rise',
+    mapId: 'viridian-forest',
+    name: 'EAST RISE',
+    areas: [{ x: 25, y: 17, width: 7, height: 10 }],
+  },
+  {
+    id: 'forest-deep-stand',
+    mapId: 'viridian-forest',
+    name: 'DEEP STAND',
+    areas: [{ x: 11, y: 21, width: 14, height: 6 }],
+  },
+  {
+    id: 'forest-clearing',
+    mapId: 'viridian-forest',
+    name: 'THE CLEARING',
+    areas: [{ x: 11, y: 27, width: 21, height: 9 }],
+  },
 ];
 
 const holds = (area: DistrictArea, tile: GridPosition): boolean =>

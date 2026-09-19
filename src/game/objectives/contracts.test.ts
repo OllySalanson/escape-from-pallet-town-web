@@ -6,6 +6,10 @@ import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash, MINIMUM_SUPPLIES, Stash } from '../stash';
+import { EXTRACTION_POINTS } from '../world/extractionPoints';
+import { stepDistances } from '../world/mapStructure';
+import { createRunTrainerEncounters } from '../world/trainers';
+import { getWorldMap } from '../worldMap';
 import {
   availableContracts,
   contractCarryIn,
@@ -45,7 +49,7 @@ function seedSave(storage: StorageLike, completedContracts: readonly string[], s
   saves.save({
     party: new PokemonParty([]),
     mapId: 'pallet-town',
-    position: { x: 7, y: 6 },
+    position: { x: 7, y: 9 },
     bag: new Bag(),
     stash,
     raidProgress: {
@@ -384,5 +388,70 @@ describe('what makes each contract a contract rather than a waypoint', () => {
       );
       expect(session.objectives.map(({ id }) => id)).toEqual([contract.id]);
     }
+  });
+});
+
+/**
+ * The comments over the contracts argue from walking distances, and a number in
+ * a comment is held by nothing: the ones written for the maps before these were
+ * still there, word for word, after every map had been redrawn under them. Each
+ * map's own route test holds most of them (`world/palletTown.test.ts` and its
+ * neighbours); these are the two that argument rests on which those do not ask.
+ */
+describe('what the contracts cost on foot', () => {
+  type Tile = { readonly x: number; readonly y: number };
+  const trainerTile = (id: string): Tile =>
+    createRunTrainerEncounters().find((encounter) => encounter.trainer.id === id)!.position;
+  const exitTile = (mapId: RaidContract['mapId'], label: string): Tile =>
+    EXTRACTION_POINTS.find((point) => point.mapId === mapId && point.label === label)!.position;
+  /** Walking steps with these trainers still standing: a trainer blocks their own tile. */
+  const steps = (mapId: RaidContract['mapId'], from: Tile, to: Tile, standing: readonly string[]): number =>
+    stepDistances(
+      getWorldMap(mapId).collision,
+      from,
+      new Set(standing.map(trainerTile).map((tile) => `${tile.x},${tile.y}`)),
+    )[to.y][to.x];
+  const orders = <T,>(items: readonly T[]): T[][] =>
+    items.length <= 1
+      ? [[...items]]
+      : items.flatMap((item, index) =>
+          orders([...items.slice(0, index), ...items.slice(index + 1)]).map((rest) => [item, ...rest]),
+        );
+
+  it('makes the braid survey twice a straight run, and June worth a quarter of it', () => {
+    const survey = RAID_CONTRACTS.find((contract) => contract.id === 'survey-the-braid')!;
+    const head = RUN_INSERTIONS['route-1'].position;
+    const gates = [exitTile('route-1', 'WEST GATE'), exitTile('route-1', 'ROUTE OUTPOST')];
+    const stakes = survey.markers.map((marker) => marker.position);
+    // The shortest walk from the Route Head over all three stakes, in whichever
+    // order is best, and out by whichever gate is nearer at the end of it.
+    const surveyWalk = (standing: readonly string[]): number =>
+      Math.min(
+        ...orders(stakes).flatMap((order) =>
+          gates.map((gate) =>
+            [head, ...order, gate].reduce(
+              (total, tile, index, walk) => (index === 0 ? 0 : total + steps('route-1', walk[index - 1], tile, standing)),
+              0,
+            ),
+          ),
+        ),
+      );
+    const wren = 'overlook-warden-wren';
+
+    expect({
+      straightRun: gates.map((gate) => steps('route-1', head, gate, ['route-lass-june', wren])),
+      juneStanding: surveyWalk(['route-lass-june', wren]),
+      juneBeaten: surveyWalk([wren]),
+    }).toEqual({ straightRun: [43, 43], juneStanding: 87, juneBeaten: 65 });
+  });
+
+  it('puts the shut culvert nearer the ledger than the open gate', () => {
+    const ledger = RAID_CONTRACTS.find((contract) => contract.id === 'cordon-ledger')!.markers[0].position;
+    const lee = ['grass-scout-lee'];
+
+    expect({
+      toTheCulvert: steps('pallet-town', ledger, exitTile('pallet-town', 'WEST CULVERT'), lee),
+      toTheSouthGate: steps('pallet-town', ledger, exitTile('pallet-town', 'SOUTH GATE'), lee),
+    }).toEqual({ toTheCulvert: 22, toTheSouthGate: 29 });
   });
 });

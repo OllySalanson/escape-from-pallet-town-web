@@ -1,69 +1,198 @@
 import { MapSketch } from '../mapGrid';
+import type { FloodTownPropName } from '../tileset/floodTownTileset';
 
 /**
- * Viridian Forest. 32x36, the shipped footprint. Trees are the default.
+ * Viridian Forest.
  *
- * Its rule is not "pick the fast lane or the covered one" - there is no fast
- * lane. Eleven clearings joined by seventeen trails, and every trail is tall
- * grass, so distance here is priced in fights rather than steps and the only
- * question is which clearings you chain together.
+ * 32x36, the shipped footprint. Trees are the default, and this is the one map
+ * where that is the whole design: eleven clearings joined by seventeen trails,
+ * every clearing dry and every trail tall grass, so distance is priced in
+ * fights rather than steps and the only question is which clearings to chain.
+ * There is no fast lane. It is two-connected throughout - no one blocked tile
+ * seals a clearing off from every exit - which is why Warden Ivy can stand in
+ * the middle of her hub and still be walked round.
  *
- * It is the only one of the three maps that is fully two-connected: no single
- * blocked tile anywhere can seal a region off from every exit.
+ * The trails are the approved skeleton, kept tile for tile, because it already
+ * was a network of passages and every authored fact on it still stands where it
+ * stood. What is new is everything that says *forest*: the wood is cut from the
+ * same lattice of trees as the Floodplain, and wherever the trails leave a
+ * hedge too thin for a broadleaf it is planted with what fits - pines, and
+ * tall bushes along the rest. The FIRE TOWER is a stone tower that stands
+ * above the canopy; the brook runs down the west edge to the BROOK FORD; the
+ * sap pool is a pool; and the TOWER STEPS are a stair in the rock of the east
+ * ridge.
+ *
+ * Every clearing has a name, and until now only the design notes knew them:
+ * `../districts.ts` puts each on the arrival plate, because a wood is the one
+ * kind of map where every screen looks like the last.
+ *
+ * Legend as `floodplainRelay.ts`.
  */
-export function sketchViridianForest(): MapSketch {
-  const map = new MapSketch({ width: 32, height: 36, fill: 'T' });
+export function sketchViridianForest(): MapSketch<FloodTownPropName> {
+  const map = new MapSketch<FloodTownPropName>({
+    width: 32,
+    height: 36,
+    fill: '.',
+    stamps: {
+      t: {
+        prop: 'tree',
+        anchor: [1, 2],
+        ground: '.',
+        bare: 'T',
+        blocks: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]],
+      },
+      o: { prop: 'tree', anchor: [1, 2], ground: '.' },
+      p: { prop: 'pine', anchor: [0, 2], ground: '.', blocks: [[0, -1], [1, -1], [1, 0]] },
+      b: { prop: 'tallBush', anchor: [0, 2], ground: 'T' },
+      '<': { prop: 'bankWest', anchor: [0, 0], ground: '.' },
+      '=': { prop: 'bank', anchor: [0, 0], ground: '.' },
+      '>': { prop: 'bankEast', anchor: [0, 0], ground: '.' },
+    },
+  });
 
-  // The eleven clearings.
-  const clearing = (x0: number, y0: number, x1: number, y1: number): void => {
-    map.rect(x0, y0, x1, y1, '.');
-  };
-  clearing(6, 2, 9, 4); // North Landing
-  clearing(14, 4, 18, 7); // Fire Tower
-  clearing(2, 8, 5, 11); // Beetle Hollow
-  clearing(13, 12, 16, 15); // The Crossroads
-  clearing(24, 8, 27, 11); // Sap Pool
-  clearing(28, 6, 30, 9); // Tower Steps
-  clearing(2, 17, 5, 20); // Brook Head
-  clearing(17, 17, 20, 20); // Warden's Cut
-  clearing(12, 21, 15, 24); // Deep Stand
-  clearing(26, 19, 29, 22); // East Rise
-  clearing(18, 28, 22, 31); // The Clearing
+  map.draw(0, 0, [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTTTTtTTtTTTTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTWWTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTTTTtTT',
+    'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TWWTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TWWTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TWWTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TWWTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TWWTTTTTtTTtTTtTTTTTtTTTTTtTTtTT',
+    'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TWWTTtTTtTTtTTtTTtTTtTTtTTTTTtTT',
+    'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TWWTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTtTTtTTtTTTTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTTTTtTTtTTtTTTTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  ]);
 
-  // Seventeen trails, every one of them tall grass.
-  const trail = (points: readonly (readonly [number, number])[]): void => {
-    map.lane(points, 'g');
-  };
-  trail([[8, 4], [8, 7], [11, 7], [11, 5], [13, 5]]); // Landing -> Fire Tower
-  trail([[6, 4], [6, 6], [4, 6], [4, 8]]); // Landing -> Beetle Hollow
-  trail([[18, 6], [21, 6], [21, 9], [23, 9], [23, 10], [24, 10]]); // Fire Tower -> Sap Pool
-  trail([[16, 7], [16, 9], [14, 9], [14, 12]]); // Fire Tower -> Crossroads
-  trail([[5, 9], [7, 9], [7, 11], [9, 11], [9, 13], [12, 13]]); // Beetle Hollow -> Crossroads
-  trail([[5, 11], [5, 14], [3, 14], [3, 16], [4, 16], [4, 17]]); // Beetle Hollow -> Brook Head
-  trail([[16, 14], [18, 14], [18, 16], [19, 16], [19, 17]]); // Crossroads -> Warden's Cut
-  trail([[13, 15], [13, 17], [11, 17], [11, 21], [12, 21]]); // Crossroads -> Deep Stand
-  trail([[26, 11], [26, 13], [28, 13], [28, 16], [27, 16], [27, 18], [28, 18], [28, 19]]); // Sap Pool -> East Rise
-  trail([[5, 18], [7, 18], [7, 20], [9, 20], [9, 23], [12, 23]]); // Brook Head -> Deep Stand
-  trail([[20, 18], [23, 18], [23, 20], [26, 20]]); // Warden's Cut -> East Rise
-  trail([[20, 20], [20, 23], [22, 23], [22, 25], [21, 25], [21, 28]]); // Warden's Cut -> The Clearing
-  trail([[14, 24], [14, 26], [18, 26], [18, 28]]); // Deep Stand -> The Clearing
-  trail([[28, 22], [28, 25], [26, 25], [26, 27], [23, 27], [23, 28], [22, 28]]); // East Rise -> The Clearing
-  trail([[27, 9], [28, 9]]); // Sap Pool -> Tower Steps
-  trail([[2, 20], [1, 20]]); // Brook Head -> the ford
+  // == THE CLEARINGS AND THE TRAILS ========================================
+  // The approved skeleton, as a drawing. A clearing is grass; a trail is tall
+  // grass, one tile wide, and never runs more than a few steps before it turns.
+  // The column of grass at the top is the ground the fire tower stands on, the
+  // pale reach in the brook is the ford, and the three tiles above the east
+  // ridge's clearing are the ground under the stair.
+  //            0         1         2         3
+  //            01234567890123456789012345678901
+  map.draw(0, 0, [
+    '               ...              ',
+    '               ...              ',
+    '      ....     ...              ',
+    '      ....     ...              ',
+    '      g.g.    .....         ... ',
+    '      g g  ggg.....         ... ',
+    '    ggg g  g  ....gggg      ... ',
+    '    g   gggg  ..g..  g      ... ',
+    '  ..g.          g    g  ....... ',
+    '  ...ggg      ggg    ggg.  gg.. ',
+    '  .... g      g        gg  .    ',
+    '  ...g ggg    g         ..g.    ',
+    '     g   g   .g..         g     ',
+    '     g   gggg....         ggg   ',
+    '   ggg       ...ggg         g   ',
+    '   g         g... g         g   ',
+    '   gg        g    gg       gg   ',
+    '   .g.     ggg   ..g.      g    ',
+    '   ..ggg   g     ...gggg   gg   ',
+    ' ww... g   g     ....  g  ..g.  ',
+    ' ww... ggg g     ...g  gggg...  ',
+    '         g gg...    g     ....  ',
+    '         g  ....    g     ..g.  ',
+    '         gggg...    ggg     g   ',
+    '            ..g.      g     g   ',
+    '              g      gg   ggg   ',
+    '              ggggg  g    g     ',
+    '                  g  g gggg     ',
+    '                  g..ggg        ',
+    '                  .....         ',
+    '                  .....         ',
+    '                  .....         ',
+  ]);
 
-  // Content. The insertion lands where the old warp from Route 1 used to.
-  map.raw(7, 2, 'I');
-  map.raw(16, 6, '*'); // Fire Tower - opens the Tower Steps
-  map.raw(18, 18, 'H'); // Warden Ivy, in the middle of her three-trail hub
-  map.raw(20, 30, 'X'); // The Clearing
-  map.raw(1, 20, 'X'); // Brook Ford
-  map.raw(30, 8, 'X'); // Tower Steps
-  for (const [x, y] of [[4, 18], [14, 22], [27, 21], [21, 30]] as const) {
-    map.raw(x, y, 'L');
-  }
-  for (const [x, y] of [[3, 9], [25, 10], [15, 13], [19, 19], [29, 21], [13, 23]] as const) {
-    map.raw(x, y, 'L');
-  }
+  map.plant(15, 0, 'tower');
+  map.plant(28, 4, 'rockStair');
+  map.plant(14, 21, 'bigStump');
+  map.plant(29, 19, 'sack');
+  map.plant(29, 22, 'sack');
+  map.plant(18, 31, 'log');
+
+
+
+
+
+  // == WHAT GROWS IN THE THICKET ===========================================
+  // The lanes are packed so close that the wood between them is mostly a hedge
+  // thick, and the lattice only fits a broadleaf where three tiles by two are
+  // left standing. Left alone that is a carpet of one round bush. So wherever
+  // the thicket is deep enough it is planted with what fits - a broadleaf off
+  // the lattice, a pine where there are two tiles, a tall bush where there is
+  // one - unevenly, with undergrowth left between. A crown here only ever hangs
+  // over thicket: a crown tile has grass baked into it, so over a road it is a
+  // green square, and over ground anyone walks it hides them. The lattice is
+  // held to the same rule, which is why some of its trees are down to a bush -
+  // and to one more: beside everything the map captions, one band of sky is
+  // left clear for the caption to sit in.
+  map.draw(0, 0, [
+    '                                ',
+    '                                ',
+    'b   p        p                  ',
+    '                                ',
+    '                                ',
+    'b   p                           ',
+    '          b                     ',
+    '                                ',
+    '            bb                  ',
+    'p                               ',
+    '        p         t b           ',
+    '                                ',
+    '                               b',
+    '                 p              ',
+    '       t                        ',
+    'b                             t ',
+    '                         p      ',
+    '      b                         ',
+    '               t              t ',
+    '                                ',
+    '            b                   ',
+    '                                ',
+    '                b             p ',
+    '       p           b    t       ',
+    'b  b                            ',
+    '                              t ',
+    '                   p    t       ',
+    '   b                            ',
+    'b                          b    ',
+    '                                ',
+    '                                ',
+    '                                ',
+    '                p              b',
+    'b                               ',
+    '                                ',
+    '                               b',
+  ]);
 
   return map;
 }

@@ -177,9 +177,27 @@ const PROPS = {
   cliffFace: object('cliff', FRLG_OBJECTS.CLIFF_FACE),
   /** The one-way drop. Directional: these are not interchangeable. */
   ledge: object('ledge', FRLG_OBJECTS.LEDGE_RUN),
+  /**
+   * A south-facing bank, a tile at a time: the west end, the run and the east
+   * end of the sheet's ledge strip. Nothing here hops down a ledge, so a map
+   * may only stand one where nobody can get on top of it - a bank with growth
+   * along its brow is a wall; a bare one is a promise the game does not keep.
+   */
+  bankWest: object('bank', FRLG_OBJECTS.LEDGE_RUN, { width: 1, height: 1 }),
+  bank: object('bank', FRLG_OBJECTS.LEDGE_RUN, { width: 1, height: 1, offsetX: 1 }),
+  bankEast: object('bank', FRLG_OBJECTS.LEDGE_RUN, { width: 1, height: 1, offsetX: 2 }),
   boulders: object('boulders', FRLG_OBJECTS.BOULDERS),
   boulder: object('boulder', FRLG_OBJECTS.BOULDERS, { width: 2, height: 2 }),
   rock: single('rock', FRLG_TILES.ROCK),
+  /**
+   * The brown outcrop with a flight of steps cut into its face: the first four
+   * columns of the sheet's boulder strip. Only the steps are ground - a stair
+   * is somewhere you go up and out by, not a room to stand in.
+   */
+  rockStair: object('stair', FRLG_OBJECTS.BOULDERS, {
+    width: 4,
+    walkable: [[1, 2], [2, 2]],
+  }),
 
   // --- Built ----------------------------------------------------------------
   /** A shop front with its door. The relay's own office. */
@@ -237,13 +255,16 @@ export const FRLG_TILESET: TilesetCatalogue<FrlgPropName> = {
     paving: ground(FRLG_MATERIALS.PAVING),
     stone: ground(FRLG_MATERIALS.STONE_BRICK),
     gravel: ground(FRLG_MATERIALS.GRAVEL),
-    ford: nineSlice(FRLG_NINE_SLICES.WATER_SHALLOW),
+    // The shallows are part of the river, so neither draws its bank against
+    // the other: a ford is a paler reach of the same water, banked only where
+    // it meets land.
+    ford: nineSlice(FRLG_NINE_SLICES.WATER_SHALLOW, { joins: ['water'] }),
     // No variant. The sheet's other open-water tile is a flatter blue than the
     // nine-slice's fill, so spending it as an accent lays a visible lattice of
     // dark diamonds across the whole river - which is the exact failure the
     // last playtest called "one flat blue texture", arrived at from the other
     // direction. The wave fill carries the surface on its own.
-    water: nineSlice(FRLG_NINE_SLICES.WATER_DEEP),
+    water: nineSlice(FRLG_NINE_SLICES.WATER_DEEP, { joins: ['ford'] }),
     // The sheet's hedges and tall grass are two-row beds, so there is no
     // one-tile hedge on it. The 1x1 bush is the stand-in, and a hedge is drawn
     // as a mass rather than as a line.

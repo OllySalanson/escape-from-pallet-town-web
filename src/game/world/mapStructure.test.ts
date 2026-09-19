@@ -40,6 +40,19 @@ const LONGEST_STRAIGHT_WALK = 9;
 /** How far you may hold a direction from an insertion before something answers. */
 const INSERTION_DECISION_STEPS = 4;
 
+/**
+ * Exits the rule below was written too late for. Both are on the Floodplain and
+ * neither is this rule's to move: the Signal Fire stands in the one-tile neck
+ * between the keep's court and the old causeway, so once the sluice keeper is
+ * beaten the way along the reveal runs over an open exit; the Vault Culvert
+ * only walls off the one dead-end tile past it. They are listed rather than
+ * excused so the rule can hold every other exit on every map, and the test
+ * beside it fails the day either is moved.
+ */
+const EXITS_KNOWN_TO_STAND_IN_A_PASSAGE: Readonly<Partial<Record<WorldMapId, readonly string[]>>> = {
+  'floodplain-relay': ['SIGNAL FIRE', 'VAULT CULVERT'],
+};
+
 const MAP_IDS = Object.keys(WORLD_MAPS) as WorldMapId[];
 
 /**
@@ -223,6 +236,59 @@ describe('map structure', () => {
           continue;
         }
         expect({ mapId, x, y, gate: gates.has(`${x},${y}`) }).toMatchObject({ gate: true });
+      }
+    }
+  });
+
+  /**
+   * An open exit takes whoever steps on it, with no prompt, so to anyone who is
+   * not leaving it is a wall - and every one of them can be open at once. An
+   * exit standing in a passage therefore shuts the passage: the Floodplain's
+   * Radio Exit once stood in the one-tile gap that was the way round a watched
+   * road. Held here for every map, with every exit shut at once: whatever a raid
+   * can walk to, it can still walk to without stepping on a way out.
+   */
+  it.each(named(MAP_STATES))('%s never stands an exit in a passage', (_name, state) => {
+    const { map, mapId } = state;
+    const known = EXITS_KNOWN_TO_STAND_IN_A_PASSAGE[mapId] ?? [];
+    const exits = new Set(
+      EXTRACTION_POINTS.filter((point) => point.mapId === mapId && !known.includes(point.label)).map(
+        (point) => `${point.position.x},${point.position.y}`,
+      ),
+    );
+    for (const insertion of insertionsOn(mapId)) {
+      const open = stepDistances(map.collision, insertion.position);
+      const shut = stepDistances(map.collision, insertion.position, exits);
+      const cutOff = walkableTiles(map.collision).filter(
+        (tile) =>
+          !exits.has(`${tile.x},${tile.y}`) && open[tile.y][tile.x] >= 0 && shut[tile.y][tile.x] < 0,
+      );
+      expect(`${insertion.id}: ${cutOff.map((tile) => `${tile.x},${tile.y}`).join(' ')}`).toBe(
+        `${insertion.id}: `,
+      );
+    }
+  });
+
+  it('keeps the list of exits known to stand in a passage honest', () => {
+    // Each of these really does cut ground off in some gate state; when one is
+    // moved, this fails and the entry comes out of the list.
+    for (const [mapId, labels] of Object.entries(EXITS_KNOWN_TO_STAND_IN_A_PASSAGE)) {
+      for (const label of labels) {
+        const exit = EXTRACTION_POINTS.find((point) => point.mapId === mapId && point.label === label)!;
+        const shutTile = new Set([`${exit.position.x},${exit.position.y}`]);
+        const offends = MAP_STATES.filter((state) => state.mapId === mapId).some(({ map }) =>
+          insertionsOn(map.id).some((insertion) => {
+            const open = stepDistances(map.collision, insertion.position);
+            const shut = stepDistances(map.collision, insertion.position, shutTile);
+            return walkableTiles(map.collision).some(
+              (tile) =>
+                !shutTile.has(`${tile.x},${tile.y}`) && open[tile.y][tile.x] >= 0 && shut[tile.y][tile.x] < 0,
+            );
+          }),
+        );
+        expect(`${mapId} ${label}: ${offends ? 'still in a passage' : 'fixed - remove it from the list'}`).toBe(
+          `${mapId} ${label}: still in a passage`,
+        );
       }
     }
   });

@@ -59,9 +59,23 @@ export const WORLD_GATES: readonly MapGate[] = [
     mapId: 'route-1',
     bossId: 'overlook-warden',
     label: 'OVERLOOK GATE',
-    tiles: [{ x: 26, y: 5 }],
+    tiles: [{ x: 26, y: 7 }],
     closed: { material: 'fence' },
-    open: { material: 'earth' },
+    open: { material: 'grass' },
+  },
+  {
+    // Wren's second door, as every boss on the Floodplain has one: the Overlook
+    // stands on a bank above Oak's field station, and the way down it is choked
+    // with rock until the warden gives the place up. The way in is the long
+    // walk up the east road to the gate; the way back lands in the station
+    // yard, a few steps from the relay exit.
+    id: 'route-1-overlook-steps',
+    mapId: 'route-1',
+    bossId: 'overlook-warden',
+    label: 'OVERLOOK STEPS',
+    tiles: [{ x: 29, y: 8 }, { x: 29, y: 9 }],
+    closed: { material: 'cliff' },
+    open: { material: 'grass' },
   },
 
   // -- Floodplain Relay ------------------------------------------------------

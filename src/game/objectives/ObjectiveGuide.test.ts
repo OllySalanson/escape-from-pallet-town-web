@@ -226,7 +226,7 @@ describe('objective field guide', () => {
   it('moves on to the next landmark on a map that has two', () => {
     const guide = buildObjectiveGuide(createUncontractedSession('town-square'), {
       currentMapId: 'pallet-town',
-      currentPosition: { x: 7, y: 6 },
+      currentPosition: { x: 7, y: 9 },
       activatedPoiIds: new Set(['pallet-town-pump']),
     });
 

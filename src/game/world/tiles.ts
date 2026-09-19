@@ -160,12 +160,27 @@ export function buildMapLayers(
       }
       if (!isOverlay) {
         // A non-overlay material still wants its own edges: water, cliff and
-        // paving all change tile where they stop.
+        // paving all change tile where they stop. The diagonals are asked too,
+        // because a lane that turns a corner is whole on all four sides and
+        // missing only a diagonal: without them that tile drew as plain fill,
+        // and the fringe either side of it stopped dead in a square notch.
+        const joins = tiles.joins ?? [];
+        const continues = (dx: number, dy: number): boolean =>
+          materialAt(x + dx, y + dy) === material ||
+          joins.includes(materialAt(x + dx, y + dy) as Material) ||
+          x + dx < 0 ||
+          y + dy < 0 ||
+          x + dx >= width ||
+          y + dy >= height;
         const role = roleFor({
-          north: materialAt(x, y - 1) === material || y === 0,
-          south: materialAt(x, y + 1) === material || y === height - 1,
-          east: materialAt(x + 1, y) === material || x === width - 1,
-          west: materialAt(x - 1, y) === material || x === 0,
+          north: continues(0, -1),
+          south: continues(0, 1),
+          east: continues(1, 0),
+          west: continues(-1, 0),
+          northEast: continues(1, -1),
+          northWest: continues(-1, -1),
+          southEast: continues(1, 1),
+          southWest: continues(-1, 1),
         });
         if (role !== 'fill') {
           ground.tiles[y][x] = resolveTile(tiles, role);

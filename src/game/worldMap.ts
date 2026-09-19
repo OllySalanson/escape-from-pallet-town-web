@@ -129,36 +129,39 @@ function createMap(
 const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
   'pallet-town': {
     sketch: sketchPalletTown,
+    tileset: FLOOD_TOWN_TILESET,
     encounters: PALLET_TALL_GRASS,
     loot: [
-      { id: 'pallet-town-poke-ball', position: { x: 2, y: 13 }, itemId: 'poke-ball', quantity: 1 },
-      { id: 'pallet-town-potion', position: { x: 1, y: 20 }, itemId: 'potion', quantity: 1 },
-      { id: 'pallet-town-antidote', position: { x: 18, y: 39 }, itemId: 'antidote', quantity: 1 },
+      { id: 'pallet-town-poke-ball', position: { x: 2, y: 18 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'pallet-town-potion', position: { x: 23, y: 21 }, itemId: 'potion', quantity: 1 },
+      { id: 'pallet-town-antidote', position: { x: 8, y: 37 }, itemId: 'antidote', quantity: 1 },
     ],
   },
   'route-1': {
     sketch: sketchRoute1,
+    tileset: FLOOD_TOWN_TILESET,
     encounters: PALLET_TALL_GRASS,
     loot: [
-      { id: 'route-1-poke-ball', position: { x: 4, y: 7 }, itemId: 'poke-ball', quantity: 2 },
-      { id: 'route-1-potion', position: { x: 28, y: 9 }, itemId: 'potion', quantity: 1 },
-      { id: 'route-1-great-ball', position: { x: 4, y: 22 }, itemId: 'great-ball', quantity: 1 },
+      { id: 'route-1-poke-ball', position: { x: 3, y: 14 }, itemId: 'poke-ball', quantity: 2 },
+      { id: 'route-1-potion', position: { x: 29, y: 12 }, itemId: 'potion', quantity: 1 },
+      { id: 'route-1-great-ball', position: { x: 12, y: 15 }, itemId: 'great-ball', quantity: 1 },
     ],
   },
   'viridian-forest': {
     sketch: sketchViridianForest,
+    tileset: FLOOD_TOWN_TILESET,
     encounters: VIRIDIAN_FOREST_TALL_GRASS,
     loot: [
       { id: 'forest-poke-ball', position: { x: 4, y: 18 }, itemId: 'poke-ball', quantity: 2 },
-      { id: 'forest-super-potion', position: { x: 14, y: 22 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'forest-super-potion', position: { x: 13, y: 22 }, itemId: 'super-potion', quantity: 1 },
       { id: 'forest-great-ball', position: { x: 27, y: 21 }, itemId: 'great-ball', quantity: 1 },
       { id: 'forest-antidote', position: { x: 21, y: 30 }, itemId: 'antidote', quantity: 1 },
     ],
   },
-  // The one map drawn on the FireRed sheet, which is the only one with
-  // transition art in it. The other three keep the classic catalogue until they
-  // are redrawn to the same standard - a catalogue is chosen per map precisely
-  // so that can happen one map at a time.
+  // The first map drawn on the FireRed sheet, which is the only one with
+  // transition art in it. The other three have since been redrawn on it in the
+  // same hand; a catalogue is still chosen per map, which is what let that
+  // happen one map at a time.
   'floodplain-relay': {
     sketch: sketchFloodplainRelay,
     tileset: FLOOD_TOWN_TILESET,
