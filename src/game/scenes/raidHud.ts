@@ -67,7 +67,20 @@ export function raidClockAlertTier(remainingMs: number): 'normal' | 'urgent' {
  */
 export const OBJECTIVE_DETAIL_MS = 4_500;
 
-export const FIELD_GUIDE_HINT = '[O] FIELD GUIDE';
+export const FIELD_GUIDE_HINT = '[O] GUIDE';
+/**
+ * The look: every name on the screen while it is held. The map does not caption
+ * itself any more (`ui/captionReveal.ts`), so this is the key that answers
+ * "what is all of this called" - and the chip is where it is taught, because a
+ * key nothing on the screen names is a key nobody presses.
+ */
+export const LOOK_HINT = '[L] LOOK';
+
+/**
+ * The two keys the raid screen is read with, on one line: it is what the
+ * detail row is for, and two short hints fit where `[O] FIELD GUIDE` sat.
+ */
+export const RAID_KEY_HINTS = `${FIELD_GUIDE_HINT}  ${LOOK_HINT}`;
 
 /**
  * The objective chip is one line by default and only opens up when the thing it
@@ -78,7 +91,7 @@ export const FIELD_GUIDE_HINT = '[O] FIELD GUIDE';
  * came out as a dash.
  */
 export function objectiveChipLines(cue: string, showDetail: boolean): readonly string[] {
-  return showDetail ? [cue, FIELD_GUIDE_HINT] : [cue];
+  return showDetail ? [cue, RAID_KEY_HINTS] : [cue];
 }
 
 /**

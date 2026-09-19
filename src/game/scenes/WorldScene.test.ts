@@ -16,6 +16,48 @@ const sceneSource = await readFile(new URL('./WorldScene.ts', import.meta.url), 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
 const extractionSceneSource = await readFile(new URL('./ExtractionScene.ts', import.meta.url), 'utf8');
 
+/**
+ * Every caption on the map used to be permanent, and on a 400x256 stage seven
+ * of them left no map to walk. `ui/captionReveal.ts` is the rule now, and this
+ * holds the scene to it: a new caption declares what kind of thing it is and
+ * which tiles it is about, or it cannot be built at all.
+ */
+describe('the map speaks only when asked', () => {
+  it('gives every caption on the map a voice and the tiles it is about', () => {
+    const captions = sceneSource.match(/new WorldLabel\(this, \{/g) ?? [];
+    expect(captions.length).toBeGreaterThan(5);
+    // One `speech:` per caption, and no positional constructor left anywhere.
+    expect((sceneSource.match(/speech: \{[\s\S]*?voice:/g) ?? [])).toHaveLength(captions.length);
+    expect(sceneSource).not.toContain('new WorldLabel(\n');
+  });
+
+  it('asks every caption whether it speaks before any of them is seated', () => {
+    const asked = sceneSource.indexOf('label.describe(audience)');
+    const seated = sceneSource.indexOf('placeCaptions(');
+    expect(asked).toBeGreaterThan(0);
+    expect(asked).toBeLessThan(seated);
+    expect(sceneSource).toContain('isLooking(this.lookMs, this.controls.look.isDown)');
+  });
+
+  it('advances the look before the early returns, so it answers under a dialogue too', () => {
+    const look = sceneSource.indexOf('this.lookMs = advanceLookMs(');
+    const firstReturn = sceneSource.indexOf('this.openObjectives();');
+    expect(look).toBeGreaterThan(0);
+    expect(look).toBeLessThan(firstReturn);
+    // Phaser reuses one scene instance per raid - see `resetStateFromPreviousRaid`.
+    expect(sceneSource).toContain('this.lookMs = 0;');
+  });
+
+  it('is the only thing the exits say for themselves, and only once they are open', () => {
+    expect(sceneSource).toContain("speech: { voice: 'exit', tiles: [point.position], open: isOpen }");
+    expect(sceneSource).toContain('label.setOpen(isOpen);');
+  });
+
+  it('teaches the look on the chip, because a key nothing names is a key nobody presses', () => {
+    expect(objectiveChipLines('LOST KIT: SW', true)[1]).toContain('[L] LOOK');
+  });
+});
+
 describe('in-run objective HUD layout', () => {
   it('feeds the chip from the raid, and only lets it grow while the objective is new', () => {
     // The panel this replaced was a fixed 164x37 slab over the top-left of the

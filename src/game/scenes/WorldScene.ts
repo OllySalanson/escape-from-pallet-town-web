@@ -83,6 +83,7 @@ import { RaidHud } from '../ui/RaidHud';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { placeCaptions, placeDialog, type Rect } from '../ui/labelPlacement';
+import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
 import { DIALOG_FONT_SIZE } from '../ui/screenType';
 import {
@@ -274,6 +275,8 @@ interface ControlKeys {
   bag: Phaser.Input.Keyboard.Key;
   save: Phaser.Input.Keyboard.Key;
   objectives: Phaser.Input.Keyboard.Key;
+  /** The look: every name on the screen while it is held - see `captionReveal.ts`. */
+  look: Phaser.Input.Keyboard.Key;
   interact: Phaser.Input.Keyboard.Key[];
 }
 
@@ -336,8 +339,14 @@ export class WorldScene extends Phaser.Scene {
     readonly marker: Phaser.GameObjects.Image;
     readonly label: WorldLabel;
   }> = [];
-  /** Every map caption, so each one can be kept inside the view each frame. */
+  /** Every map caption, so each one can be asked whether it speaks and seated each frame. */
   private worldLabels: WorldLabel[] = [];
+  /**
+   * What is left of the glance a tap of the look key bought. Held down, the key
+   * itself keeps the look open; this is only so that a tap is longer than a
+   * frame. See `advanceLookMs`.
+   */
+  private lookMs = 0;
   private canopyInViewCache: { readonly key: string; readonly runs: readonly Rect[] } | null = null;
   /** Ground a trainer is watching: shaded to be read, so no caption may sit on it. */
   private watchedGround: Rect[] = [];
@@ -432,6 +441,7 @@ export class WorldScene extends Phaser.Scene {
    * scoped to a single raid belongs in this list, not in a guard at the point it is read.
    */
   private resetStateFromPreviousRaid(): void {
+    this.lookMs = 0;
     this.canopyInViewCache = null;
     this.pendingHubTransition = false;
     // Set on the way to the result screen, and read by handleRunResolutionComplete
@@ -594,6 +604,10 @@ export class WorldScene extends Phaser.Scene {
   public update(_time: number, deltaMs: number): void {
     const stepCarryMs = this.stepCarryMs;
     this.stepCarryMs = null;
+    // Before the captions are seated, and before any of the early returns
+    // below: the look is a way of reading the map, so it answers while a
+    // dialogue box is open exactly as it does while walking.
+    this.lookMs = advanceLookMs(this.lookMs, this.keyPresses.justPressed(this.controls.look), deltaMs);
     this.containWorldLabels();
     if (this.keyPresses.justPressed(this.controls.objectives)) {
       this.openObjectives();
@@ -783,16 +797,15 @@ export class WorldScene extends Phaser.Scene {
       for (const gate of doors) {
         const { rect, bottom } = spanOf(gate);
         this.worldLabels.push(
-          new WorldLabel(
-            this,
-            rect,
-            gateCaption(gate, open, boss?.trainer.name),
+          new WorldLabel(this, {
+            subject: rect,
+            text: gateCaption(gate, open, boss?.trainer.name),
             tone,
-            atRow(CAPTION_BAND, bottom),
-            'below',
-            false,
-            { group },
-          ),
+            depth: atRow(CAPTION_BAND, bottom),
+            placement: 'below',
+            speech: { voice: 'name', tiles: gate.tiles },
+            grouping: { group },
+          }),
         );
       }
       // One keeper's doors on one screen are named in one caption: seated one
@@ -801,16 +814,17 @@ export class WorldScene extends Phaser.Scene {
       if (group) {
         const { rect, bottom } = spanOf(front);
         this.worldLabels.push(
-          new WorldLabel(
-            this,
-            rect,
-            jointGateCaption(doors, open, boss?.trainer.name),
+          new WorldLabel(this, {
+            subject: rect,
+            text: jointGateCaption(doors, open, boss?.trainer.name),
             tone,
-            atRow(CAPTION_BAND, bottom),
-            'below',
-            false,
-            { speaksFor: group },
-          ),
+            depth: atRow(CAPTION_BAND, bottom),
+            placement: 'below',
+            // Near either door: whichever the player walks up to, the sentence
+            // about both is the one that is allowed to speak.
+            speech: { voice: 'name', tiles: doors.flatMap((door) => door.tiles) },
+            grouping: { speaksFor: group },
+          }),
         );
       }
     }
@@ -853,13 +867,13 @@ export class WorldScene extends Phaser.Scene {
       }
       pad.fillRect(x + 7, y + 7, 2, 2);
       this.mapObjects.push(pad);
-      const label = new WorldLabel(
-        this,
-        tileRect(insertion.position),
-        dropInCaption(this.knownInsertionIds.has(insertion.id)),
-        LABEL_TONES.dropIn,
-        atRow(CAPTION_BAND, insertion.position.y),
-      );
+      const label = new WorldLabel(this, {
+        subject: tileRect(insertion.position),
+        text: dropInCaption(this.knownInsertionIds.has(insertion.id)),
+        tone: LABEL_TONES.dropIn,
+        depth: atRow(CAPTION_BAND, insertion.position.y),
+        speech: { voice: 'name', tiles: [insertion.position] },
+      });
       this.worldLabels.push(label);
       this.dropInLabels.set(insertion.id, label);
     }
@@ -937,13 +951,16 @@ export class WorldScene extends Phaser.Scene {
       // The beacon stands on the landing, which is the one exit the player is
       // guaranteed to be standing on when it is first drawn, so its caption is
       // seated around a marked figure instead of lying across their head and chevron.
-      const label = new WorldLabel(
-        this,
-        point.label === BEACON_EXIT_LABEL ? landingRect(point.position) : tileRect(point.position),
-        extractionCaption(point, isOpen, this.runSession.manager.snapshot().elapsedMs),
-        isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
-        atRow(CAPTION_BAND, point.position.y),
-      );
+      const label = new WorldLabel(this, {
+        subject:
+          point.label === BEACON_EXIT_LABEL ? landingRect(point.position) : tileRect(point.position),
+        text: extractionCaption(point, isOpen, this.runSession.manager.snapshot().elapsedMs),
+        tone: isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
+        depth: atRow(CAPTION_BAND, point.position.y),
+        // The one caption that speaks for itself without being walked up to,
+        // and only while it is open and the clock has gone red.
+        speech: { voice: 'exit', tiles: [point.position], open: isOpen },
+      });
       this.mapObjects.push(marker);
       this.worldLabels.push(label);
       this.extractionMarkers.push({ point, marker, label });
@@ -1025,20 +1042,21 @@ export class WorldScene extends Phaser.Scene {
     // shaded ground it is there to explain.
     const placement = encounter.facing === 'up' ? 'below' : 'above';
     this.worldLabels.push(
-      new WorldLabel(
-        this,
-        figureRect(encounter.position),
+      new WorldLabel(this, {
+        subject: figureRect(encounter.position),
         // The third line is the price the shading cannot show: this fight has no
         // exit, and the player has to know that before the step into the lane,
         // not from inside the battle.
-        trainerWatchCaption(encounter.trainer.name, WATCH_BEARING[encounter.facing]),
-        LABEL_TONES.watch,
-        atRow(CAPTION_BAND, encounter.position.y),
+        text: trainerWatchCaption(encounter.trainer.name, WATCH_BEARING[encounter.facing]),
+        tone: LABEL_TONES.watch,
+        depth: atRow(CAPTION_BAND, encounter.position.y),
         placement,
-        // The one caption that is a price rather than a name, so it is seated
-        // before the gate its keeper stands at and the exit beside that.
-        true,
-      ),
+        // The one caption that is a price rather than a name. It is seated
+        // before the gate its keeper stands at and the exit beside that, and it
+        // is the one caption nobody has to walk up to: a step into the shading
+        // is decided from wherever the shading can be seen.
+        speech: { voice: 'warning', tiles: [encounter.position, ...watched] },
+      }),
     );
   }
 
@@ -1060,13 +1078,15 @@ export class WorldScene extends Phaser.Scene {
       const image = this.add
         .image(x, y, iconTextureKey(contractMarkerIcon(marker)))
         .setDepth(atRow(MARKER_BAND, marker.position.y));
-      const label = new WorldLabel(
-        this,
-        tileRect(marker.position),
-        marker.label,
-        LABEL_TONES.contract,
-        atRow(CAPTION_BAND, marker.position.y),
-      );
+      const label = new WorldLabel(this, {
+        subject: tileRect(marker.position),
+        text: marker.label,
+        tone: LABEL_TONES.contract,
+        depth: atRow(CAPTION_BAND, marker.position.y),
+        // The objective chip already names this stop and its bearing every
+        // frame, so the window over it is only for arriving at.
+        speech: { voice: 'name', tiles: [marker.position] },
+      });
       this.worldLabels.push(label);
       this.contractMarkers.set(marker.id, { image, label });
       this.mapObjects.push(image);
@@ -1115,17 +1135,17 @@ export class WorldScene extends Phaser.Scene {
           ),
         ),
       );
-      const label = new WorldLabel(
-        this,
-        tileRect(poi.position),
+      const label = new WorldLabel(this, {
+        subject: tileRect(poi.position),
         // Oak's Field Station is both a sealed exit and a cache, so the label
         // has to say so - the mast art can only show one of the two.
-        `${poi.label}\n${poi.effect === 'unlock-extraction'
+        text: `${poi.label}\n${poi.effect === 'unlock-extraction'
           ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED${poi.reward.length > 0 ? ' + CACHE' : ''}`
           : `CACHE: ${formatPoiReward(poi)}`}`,
-        LABEL_TONES.station,
-        atRow(CAPTION_BAND, poi.position.y),
-      );
+        tone: LABEL_TONES.station,
+        depth: atRow(CAPTION_BAND, poi.position.y),
+        speech: { voice: 'name', tiles: [poi.position] },
+      });
       this.worldLabels.push(label);
       this.poiLabels.set(poi.id, label);
       this.poiSprites.set(poi.id, station);
@@ -1152,14 +1172,17 @@ export class WorldScene extends Phaser.Scene {
         continue;
       }
       this.worldLabels.push(
-        new WorldLabel(
-          this,
+        new WorldLabel(this, {
           // A boundary is two tiles wide and is named from between them.
-          { ...tileRect(warp.source), width: TILE_SIZE * 2 },
-          `${WORLD_MAP_NAMES[warp.destinationMapId].toUpperCase()} ${this.warpArrow(warp)}`,
-          LABEL_TONES.route,
-          atRow(CAPTION_BAND, warp.source.y),
-        ),
+          subject: { ...tileRect(warp.source), width: TILE_SIZE * 2 },
+          text: `${WORLD_MAP_NAMES[warp.destinationMapId].toUpperCase()} ${this.warpArrow(warp)}`,
+          tone: LABEL_TONES.route,
+          depth: atRow(CAPTION_BAND, warp.source.y),
+          speech: {
+            voice: 'name',
+            tiles: [warp.source, { x: warp.source.x + 1, y: warp.source.y }],
+          },
+        }),
       );
     }
   }
@@ -1474,6 +1497,7 @@ export class WorldScene extends Phaser.Scene {
       bag: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B),
       save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
       objectives: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O),
+      look: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L),
       interact: [
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
@@ -2083,16 +2107,25 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * A caption belongs to a thing on the map, but it is read on a screen, and
-   * the screen has other tenants. Every caption is seated again every frame -
-   * inside the camera view, out from under the raid HUD's chips, clear of the
-   * map art and the people around it, and clear of each other - because the
-   * view and the chips move under them while the player walks.
+   * Asks every caption whether it speaks this frame, and seats the ones that do.
+   *
+   * Two rules, in two files. `captionReveal.ts` decides whether a caption is on
+   * the screen at all - almost none of them are, almost all of the time - and
+   * `labelPlacement.ts` seats what is left, against the view's edges, the raid
+   * HUD's chips, the map art, the canopy, the player and each other. Both are
+   * asked again every frame because the player, the view and the chips all move.
    */
   private containWorldLabels(): void {
     if (this.worldLabels.length === 0) {
       return;
     }
+    const looking = isLooking(this.lookMs, this.controls.look.isDown);
+    const audience = {
+      player: this.currentTile,
+      looking,
+      raidRemainingMs: this.runSession?.manager.snapshot().remainingMs ?? Number.POSITIVE_INFINITY,
+    };
+    this.worldLabels.forEach((label) => label.describe(audience));
     const view = this.cameras.main.worldView;
     const bounds: Rect = {
       x: view.left,
@@ -2617,6 +2650,9 @@ export class WorldScene extends Phaser.Scene {
         extractionCaption(point, isOpen, this.runSession?.manager.snapshot().elapsedMs ?? 0),
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
       );
+      // An exit that has just opened is now a way out rather than a locked
+      // sign, which is what lets it call for itself in the last of the raid.
+      label.setOpen(isOpen);
     }
   }
 

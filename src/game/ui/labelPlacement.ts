@@ -16,6 +16,16 @@
  * is not drawn: half a caption, or a caption over the thing it explains, says
  * less than none. It is Phaser-free so the rule is testable rather than
  * eyeballed, in the manner of `raidHud.ts` and `battlePresentation.ts`.
+ *
+ * *Whether* a caption is on the screen at all is a different question and lives
+ * in `captionReveal.ts`: almost every caption is silent almost all the time,
+ * and arrives here only as `CaptionRequest.speaks`. Every rule below is one
+ * caption against the screen - the view's edges, the HUD, a canopy, the person
+ * reading it - so they all survive that change; what has gone is the crowd. A
+ * seat contest between six captions used to be the common case and is now rare,
+ * which is why the last-resort seats and the warning-first order still earn
+ * their place rather than being loosened: the captions that do speak are the
+ * ones the player is standing among.
  */
 
 export interface Rect {
@@ -70,6 +80,18 @@ export interface CaptionRequest {
   readonly group?: string;
   /** The key of the group this caption names all of. Its own `subject` is only a fallback. */
   readonly speaksFor?: string;
+  /**
+   * Whether this caption is on the screen at all this frame. `captionReveal.ts`
+   * is the rule and this is only its answer: a caption is an answer to a
+   * question the player has asked by walking up to something or by looking, so
+   * most of them are silent most of the time. Absent means yes.
+   *
+   * A silent caption is still an obstacle: the thing it names is drawn where it
+   * always was, and no other caption may sit on that. It also still counts as
+   * one of its group's members in view, because two doors on one screen want
+   * one sentence whether or not the player has walked up to both.
+   */
+  readonly speaks?: boolean;
 }
 
 export interface CaptionSurroundings {
@@ -100,10 +122,14 @@ export interface CaptionSurroundings {
    * the player was never hidden - but the place to read a caption is beside the
    * thing it names, and a caption naming the tile underfoot was seated across
    * the reader's own head (`DROP-IN READ▼`, `TOLL BRIDGE / OPEN` through the
-   * hair). It is ground a caption gives up *if it has anywhere else to go*: a
-   * caption with no other seat keeps the one under the player rather than
-   * vanishing, because the player walks everywhere and a warning that blinked
-   * out whenever they stood near it would be the worse fault.
+   * hair). It is ground a caption gives up: a name with no other seat is hidden
+   * rather than drawn across its reader, because a name now appears only when
+   * the player has walked up to the thing (`captionReveal.ts`) - which is
+   * exactly when the player is in its way - and they have already been told in
+   * a dialogue what they stepped on. Only a `warns` caption keeps the seat
+   * under them, because a warning that blinked out as they came into range
+   * would be the worse fault, and it is the one caption that speaks from far
+   * enough off to have had somewhere else to sit on the way in.
    */
   readonly player?: readonly Rect[];
 }
@@ -258,7 +284,7 @@ export interface SeatRefusal {
   readonly underHud: number;
   readonly overMapArt: number;
   readonly underCanopy: number;
-  /** Given up only while another seat is clear - see `CaptionSurroundings.player`. */
+  /** Given up outright by a name; a warning gives it up only while another seat is clear. */
   readonly overPlayer: number;
   readonly againstCaption: number;
 }
@@ -321,8 +347,13 @@ export function resolveGroups(
   requests: readonly CaptionRequest[],
   bounds: Rect,
 ): (readonly CaptionRequest[])[] {
+  const speaks = (request: CaptionRequest): boolean => request.speaks !== false;
   const inView = new Map<string, Rect[]>();
   for (const request of requests) {
+    // In view, not speaking: a keeper's far door is still a door on this screen,
+    // and one sentence naming both is what the near one's own caption would
+    // otherwise have to fight that keeper's warning for - and lose, on the east
+    // edge of Route 1, exactly as it did before the joint caption existed.
     if (request.group !== undefined && isOnScreen(request.subject, bounds)) {
       inView.set(request.group, [...(inView.get(request.group) ?? []), request.subject]);
     }
@@ -332,10 +363,18 @@ export function resolveGroups(
     return subjects.length >= 2 ? subjects : [];
   };
   return requests.map((request) => {
+    if (!speaks(request)) {
+      return [];
+    }
     if (request.speaksFor !== undefined) {
       return together(request.speaksFor).map((subject) => ({ ...request, subject }));
     }
-    return together(request.group).length > 0 ? [] : [request];
+    // A group whose joint caption is itself silent does not silence its members:
+    // there would then be nothing on the screen about either door.
+    const joint = requests.find((one) => one.speaksFor === request.group);
+    return together(request.group).length > 0 && (joint === undefined || speaks(joint))
+      ? []
+      : [request];
   });
 }
 
@@ -383,9 +422,10 @@ export function placeCaptions(
       return hidden(0);
     }
 
-    // Twice at most: clear of everything, then clear of everything but the
-    // player. The held seat is asked first both times, so a caption the player
-    // walks under moves once and stays where it went.
+    // Twice at most, and the second time only for a warning: clear of
+    // everything, then clear of everything but the player. The held seat is
+    // asked first both times, so a caption the player walks under moves once
+    // and stays where it went.
     const seatClearOf = (ground: CaptionSurroundings): number => {
       const isClear = (index: number): boolean =>
         intrusion(rectOf(candidates[index]), ground, seated) === 0;
@@ -394,7 +434,10 @@ export function placeCaptions(
         : candidates.findIndex((_, at) => isClear(at));
     };
     const clearOfPlayer = seatClearOf(around);
-    const index = clearOfPlayer >= 0 ? clearOfPlayer : seatClearOf({ ...around, player: [] });
+    const index =
+      clearOfPlayer >= 0 || request.warns !== true
+        ? clearOfPlayer
+        : seatClearOf({ ...around, player: [] });
     if (index < 0) {
       return hidden(0);
     }
