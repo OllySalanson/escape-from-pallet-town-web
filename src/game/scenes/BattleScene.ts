@@ -10,6 +10,7 @@ import {
   createBattleState,
   createTrainerBattleState,
   persistCombatantToPokemon,
+  refreshPlayerAfterLevelUp,
   replacePlayerPokemon,
   resolveCatchAttempt,
   resolveEnemyTurn,
@@ -143,6 +144,12 @@ export class BattleScene extends Phaser.Scene {
   private playerHpBar!: Phaser.GameObjects.Graphics;
   private enemyHpBar!: Phaser.GameObjects.Graphics;
   private playerHpText!: Phaser.GameObjects.Text;
+  /**
+   * The player's level plate. It is held rather than painted once because a
+   * level reached mid-battle has to appear on it - see
+   * `applyMidBattleLevelUp`.
+   */
+  private playerLevelText!: Phaser.GameObjects.Text;
   private playerStatusText!: Phaser.GameObjects.Text;
   private enemyStatusText!: Phaser.GameObjects.Text;
   private playerSprite!: Phaser.GameObjects.Image;
@@ -451,15 +458,17 @@ export class BattleScene extends Phaser.Scene {
         })
         .setDepth(6),
     );
-    container.add(
-      this.add
-        .text(x + 111, y + 8, `:L${combatant.pokemon.level}`, {
-          fontFamily: BATTLE_FONT,
-          fontSize: '13px',
-          color: '#202020',
-        })
-        .setDepth(6),
-    );
+    const levelText = this.add
+      .text(x + 111, y + 8, `:L${combatant.pokemon.level}`, {
+        fontFamily: BATTLE_FONT,
+        fontSize: '13px',
+        color: '#202020',
+      })
+      .setDepth(6);
+    container.add(levelText);
+    if (showNumbers) {
+      this.playerLevelText = levelText;
+    }
     const statusText = this.add
       .text(
         x + 82,
@@ -1283,9 +1292,13 @@ export class BattleScene extends Phaser.Scene {
   private awardVictoryExperience(defeatedPokemon: PokemonInstance): string[] {
     const experience = experienceAwardForDefeat(defeatedPokemon.level);
     const messages: string[] = [];
+    const active = this.state.player.pokemon;
+    const activeMaxHpBeforeAward = active.maxHp;
+    let activeLevelledUp = false;
 
     for (const pokemon of this.participatingPokemon) {
       const result = pokemon.gainExperience(experience);
+      activeLevelledUp ||= pokemon === active && result.levelsGained.length > 0;
       messages.push(`${pokemon.base.name.toUpperCase()} gained ${result.awarded} XP!`);
       messages.push(
         ...result.levelsGained.map(
@@ -1299,7 +1312,41 @@ export class BattleScene extends Phaser.Scene {
       );
     }
 
+    if (activeLevelledUp) {
+      this.applyMidBattleLevelUp(activeMaxHpBeforeAward);
+    }
+
     return messages;
+  }
+
+  /**
+   * Carries a level reached mid-battle into the battle the player is looking at.
+   *
+   * `BattleCombatant` is a snapshot taken when its Pokemon was sent out, so
+   * without this the plate keeps the level it was painted with, the move menu
+   * keeps the moves the Pokemon walked in with - so "SQUIRTLE learned WATER
+   * GUN!" is followed by a menu that does not offer it - and the HP the raised
+   * maximum grants is thrown away when the combatant's own count is written
+   * back on the way out. A party member that levels on the bench needs none of
+   * this: `replacePlayerPokemon` reads it live when it is sent out.
+   *
+   * Only a trainer battle with a second Pokemon reaches here with the fight
+   * still running, which is why this went unseen: a wild battle ends on the
+   * knockout that awarded the experience.
+   */
+  private applyMidBattleLevelUp(previousMaxHp: number): void {
+    const gainedHp = Math.max(0, this.state.player.pokemon.maxHp - previousMaxHp);
+    this.state = refreshPlayerAfterLevelUp(this.state, previousMaxHp);
+    const { currentHp, pokemon } = this.state.player;
+    // This turn's HP events have not been drawn yet and each one animates down
+    // from `displayedHp`, so the gain has to move that starting point too or
+    // the bar would settle a couple of points below the state it is showing.
+    if (currentHp > 0) {
+      this.displayedHp.player = Math.min(pokemon.maxHp, this.displayedHp.player + gainedHp);
+    }
+    this.playerLevelText.setText(`:L${pokemon.level}`);
+    this.drawHpBar(this.playerHpBar, 189, 130, this.displayedHp.player / pokemon.maxHp);
+    this.playerHpText.setText(`${this.displayedHp.player}/${pokemon.maxHp}`);
   }
 
   private awardTrainerDefeatExperience(

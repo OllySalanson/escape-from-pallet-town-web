@@ -17,9 +17,19 @@ vi.mock('phaser', () => ({
 }));
 
 import { Bag } from '../items';
-import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
-import { createBattleState, createTrainerBattleState } from '../pokemon/battle/battleEngine';
-import { BULBASAUR, PIDGEY } from '../pokemon/species';
+import {
+  CHARMANDER,
+  Pokemon,
+  PokemonParty,
+  experienceAwardForDefeat,
+  experienceForLevel,
+} from '../pokemon';
+import {
+  createBattleState,
+  createTrainerBattleState,
+  type BattleState,
+} from '../pokemon/battle/battleEngine';
+import { BULBASAUR, PIDGEY, SQUIRTLE } from '../pokemon/species';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
@@ -36,6 +46,7 @@ interface RenderedText {
   setText: ReturnType<typeof vi.fn>;
   setBackgroundColor: ReturnType<typeof vi.fn>;
   setColor: ReturnType<typeof vi.fn>;
+  setDepth: ReturnType<typeof vi.fn>;
 }
 
 interface HarnessOptions {
@@ -43,6 +54,12 @@ interface HarnessOptions {
   readonly hunterBattle?: boolean;
   /** Fights an authored trainer, which is the battle that cannot be left. */
   readonly authoredTrainer?: boolean;
+  /**
+   * The authored trainer's own party. A second Pokemon is what keeps a battle
+   * alive across a knockout, which is the only way a level-up is ever seen
+   * from inside one.
+   */
+  readonly trainerParty?: readonly Pokemon[];
   readonly runSession?: ReturnType<typeof createActiveRunSession>;
   /** The raid bag this fight is carrying. Defaults to two Potions and five balls. */
   readonly bag?: Bag;
@@ -63,6 +80,9 @@ const spriteStub = () => ({
   scaleY: 1,
   setTintFill: vi.fn().mockReturnThis(),
   clearTint: vi.fn().mockReturnThis(),
+  setTexture: vi.fn().mockReturnThis(),
+  setPosition: vi.fn().mockReturnThis(),
+  setAlpha: vi.fn().mockReturnThis(),
 });
 
 function createBattleSceneHarness(options: HarnessOptions = {}): {
@@ -117,7 +137,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
       ? {
           id: 'floodplain-checkpoint-maya',
           name: 'RAIDER MAYA',
-          party: [new Pokemon(PIDGEY, 7)],
+          party: options.trainerParty ?? [new Pokemon(PIDGEY, 7)],
           defeatText: 'The checkpoint is open.',
         }
       : undefined;
@@ -132,13 +152,19 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
       // menu - is built inside a container, so the harness has to hold one.
       container: vi.fn(() => {
         const children: unknown[] = [];
-        return { children, add: vi.fn((child: unknown) => children.push(child)) };
+        return {
+          children,
+          add: vi.fn((child: unknown) => children.push(child)),
+          destroy: vi.fn(),
+        };
       }),
       graphics: vi.fn(() => ({
+        clear: vi.fn().mockReturnThis(),
         fillStyle: vi.fn().mockReturnThis(),
         fillRect: vi.fn().mockReturnThis(),
         lineStyle: vi.fn().mockReturnThis(),
         strokeRect: vi.fn().mockReturnThis(),
+        setDepth: vi.fn().mockReturnThis(),
       })),
       text: vi.fn((x: number, y: number, text: string, style: Record<string, unknown>) => {
         const rendered = {
@@ -158,6 +184,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
           }),
           setBackgroundColor: vi.fn().mockReturnThis(),
           setColor: vi.fn().mockReturnThis(),
+          setDepth: vi.fn().mockReturnThis(),
         } satisfies RenderedText;
         renderedTexts.push(rendered);
         return rendered;
@@ -171,10 +198,23 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     playerHpBar: graphicsStub(),
     enemyHpBar: graphicsStub(),
     playerHpText: { setText: vi.fn() },
+    // The level plate is held by the scene rather than painted once, because a
+    // level reached mid-battle has to reach it.
+    playerLevelText: {
+      text: `:L${player.level}`,
+      setText: vi.fn(function (this: { text: string }, value: string) {
+        this.text = value;
+      }),
+    },
     playerStatusText: { setText: vi.fn() },
     enemyStatusText: { setText: vi.fn() },
     playerSprite: spriteStub(),
     enemySprite: spriteStub(),
+    // A trainer sending out its next Pokemon rebuilds the enemy plate.
+    playerStatusBox: { destroy: vi.fn() },
+    enemyStatusBox: { destroy: vi.fn() },
+    playerBannerText: { setText: vi.fn() },
+    enemyBannerText: { setText: vi.fn() },
     tweens: { add: vi.fn(), addCounter: vi.fn() },
     cameras: { main: { flash: vi.fn(), shake: vi.fn(), fadeOut: vi.fn(), once: vi.fn() } },
     // Raid resolution waits a beat before handing over; run it now.
@@ -193,6 +233,10 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     activatedPoiIds: new Set(),
     forcedReplacement: false,
     isPresentingCombatEvents: false,
+    // Class fields do not run for an Object.create'd scene, and experience is
+    // awarded by walking this set.
+    participatingPokemon: new Set([player]),
+    victoryRewardsGranted: false,
     mode: 'events',
     party: options.party ?? new PokemonParty([player]),
     selectedCommand: 0,
@@ -694,5 +738,136 @@ describe('a lost raid resolved inside a battle', () => {
     expect(start.mock.calls[0][1]).toMatchObject({
       report: { durationMs: shortenedMs, clockLabel: '1:00 of 3:00' },
     });
+  });
+});
+
+describe('a level reached in the middle of a trainer battle', () => {
+  /**
+   * The reported fight, reduced to its moving parts: a Squirtle one knockout
+   * short of level 7 - where it learns Water Gun - against a trainer whose lead
+   * is on its last point of HP and who has a second Pokemon behind it. Only
+   * that second Pokemon keeps the battle alive long enough for the level-up to
+   * be looked at; a wild battle ends on the knockout that awards it, which is
+   * why this was only ever reported from a trainer fight.
+   */
+  const levellingBattle = () => {
+    const squirtle = new Pokemon(SQUIRTLE, 6);
+    squirtle.experience = experienceForLevel(7) - experienceAwardForDefeat(3);
+    squirtle.takeDamage(4);
+    const lead = new Pokemon(PIDGEY, 3);
+    lead.takeDamage(lead.maxHp - 1);
+    const harness = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [lead, new Pokemon(PIDGEY, 5)],
+      party: new PokemonParty([squirtle]),
+    });
+    return { ...harness, squirtle };
+  };
+
+  /** Plays the queued narration out the way pressing through it does. */
+  const readThroughNarration = (scene: BattleScene, dialog: { isCurrentMessageComplete: boolean }): void => {
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40; step += 1) {
+      if ((scene as unknown as { mode: string }).mode === 'main') {
+        return;
+      }
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    throw new Error('The battle never handed the commands back.');
+  };
+
+  const knockOutTheLead = (scene: BattleScene, renderedTexts: RenderedText[]): void => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    const tackle = renderedTexts.filter(({ text }) => text.includes('TACKLE')).at(-1);
+    if (!tackle) {
+      throw new Error('The move menu did not offer Tackle.');
+    }
+    tackle.handlers.pointerdown();
+  };
+
+  it('puts the new level on the plate the player is reading', () => {
+    const { scene, renderedTexts, dialog, squirtle } = levellingBattle();
+
+    knockOutTheLead(scene, renderedTexts);
+
+    expect(squirtle.level).toBe(7);
+    // The plate is rewritten as the level is awarded, not on the way out of the
+    // battle: the rest of this fight is played against it.
+    expect((scene as unknown as { playerLevelText: { text: string } }).playerLevelText.text).toBe(
+      ':L7',
+    );
+    readThroughNarration(scene, dialog);
+    expect(dialog.shownMessages).toContain('SQUIRTLE grew to Lv 7!');
+  });
+
+  it('offers the move it just said was learned, with the PP of the old moves untouched', () => {
+    const { scene, renderedTexts, dialog } = levellingBattle();
+
+    knockOutTheLead(scene, renderedTexts);
+
+    // The battle's own move list, which is what the menu is built from.
+    const { player } = (scene as unknown as { state: BattleState }).state;
+    expect(player.moves.map(({ base, pp }) => `${base.name} ${pp}`)).toEqual([
+      // One Tackle spent on the knockout, and nothing else refilled behind it.
+      'Tackle 19',
+      'Tail Whip 30',
+      'Growl 30',
+      'Water Gun 25',
+    ]);
+
+    readThroughNarration(scene, dialog);
+    expect(dialog.shownMessages).toContain('SQUIRTLE learned WATER GUN!');
+    const beforeMenu = renderedTexts.length;
+    renderedTexts.filter(({ text }) => text.includes('FIGHT')).at(-1)?.handlers.pointerdown();
+
+    expect(
+      renderedTexts
+        .slice(beforeMenu)
+        .map(({ text }) => text.trim())
+        .filter((text) => /^[▶ ]*[A-Z]/.test(text) && !text.includes('·')),
+    ).toEqual(['▶ TACKLE', 'TAIL WHIP', 'GROWL', 'WATER GUN']);
+  });
+
+  it('carries the HP the higher maximum granted instead of dropping it on the way out', () => {
+    const { scene, squirtle, renderedTexts, dialog } = levellingBattle();
+    const maxHpBefore = squirtle.maxHp;
+
+    knockOutTheLead(scene, renderedTexts);
+
+    const { player } = (scene as unknown as { state: BattleState }).state;
+    expect(maxHpBefore).toBe(18);
+    expect(player.pokemon.maxHp).toBe(20);
+    // `Pokemon.gainExperience` grants the two points the new maximum brings.
+    // The battle's own count is what is written back to the party on the way
+    // out, so if it does not pick the same two up they are quietly lost.
+    expect(player.currentHp).toBe(squirtle.currentHp);
+    expect(player.currentHp).toBeGreaterThan(0);
+    readThroughNarration(scene, dialog);
+  });
+
+  it('leaves a benched Pokemon to be read live when it is sent out', () => {
+    const squirtle = new Pokemon(SQUIRTLE, 6);
+    squirtle.experience = experienceForLevel(7) - experienceAwardForDefeat(3);
+    const benched = new Pokemon(SQUIRTLE, 6);
+    benched.experience = experienceForLevel(7) - experienceAwardForDefeat(3);
+    const lead = new Pokemon(PIDGEY, 3);
+    lead.takeDamage(lead.maxHp - 1);
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [lead, new Pokemon(PIDGEY, 5)],
+      party: new PokemonParty([squirtle, benched]),
+    });
+    (scene as unknown as { participatingPokemon: Set<Pokemon> }).participatingPokemon.add(benched);
+
+    knockOutTheLead(scene, renderedTexts);
+    readThroughNarration(scene, dialog);
+    (scene as unknown as { switchPokemon(index: number): void }).switchPokemon(1);
+
+    const { player } = (scene as unknown as { state: BattleState }).state;
+    expect(benched.level).toBe(7);
+    expect(player.pokemon).toBe(benched);
+    expect(player.moves.map(({ base }) => base.name)).toContain('Water Gun');
   });
 });

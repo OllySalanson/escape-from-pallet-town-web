@@ -116,6 +116,19 @@ describe('Pokemon experience and leveling', () => {
     expect(charmander.maxHp).toBeGreaterThan(initialMaxHp);
   });
 
+  it('leaves a fainted Pokemon fainted rather than standing it back up', () => {
+    const charmander = new Pokemon(CHARMANDER, 5);
+    charmander.takeDamage(charmander.maxHp);
+
+    const result = charmander.gainExperience(experienceForLevel(6) - charmander.experience);
+
+    // The extra HP a level brings is not a revive. A party member levelling
+    // from the bench of a trainer battle would otherwise walk back on at 1 HP.
+    expect(result.levelsGained).toEqual([6]);
+    expect(charmander.currentHp).toBe(0);
+    expect(charmander.isFainted).toBe(true);
+  });
+
   it('learns moves that unlock during a level-up', () => {
     const charmander = new Pokemon(CHARMANDER, 6);
 

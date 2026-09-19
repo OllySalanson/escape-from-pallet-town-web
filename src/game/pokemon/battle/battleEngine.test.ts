@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MoveBase, MoveCategory } from '../MoveBase';
-import { Pokemon } from '../Pokemon';
+import { Pokemon, experienceForLevel } from '../Pokemon';
 import { PokemonType } from '../PokemonType';
 import { EMBER, GROWL, POISON_POWDER, SING, SUPER_SONIC, TACKLE, TAIL_WHIP, THUNDER_WAVE } from '../moves';
 import { BULBASAUR, BUTTERFREE, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE } from '../species';
@@ -11,6 +11,7 @@ import {
   createTrainerBattleState,
   getCatchChance,
   persistCombatantToPokemon,
+  refreshCombatantAfterLevelUp,
   replacePlayerPokemon,
   resolveCatchAttempt,
   resolveEnemyTurn,
@@ -630,5 +631,82 @@ describe('status conditions', () => {
       damage: Math.floor(maxHp / 8),
     });
     expect(result.events).toContainEqual({ type: 'status-cured', user: 'enemy', name: 'Bulbasaur', status: 'confusion' });
+  });
+});
+
+describe('a combatant refreshed after a level-up', () => {
+  /** A Squirtle on the far side of level 7, where it learns Water Gun. */
+  const levelledSquirtle = () => {
+    const squirtle = new Pokemon(SQUIRTLE, 6);
+    const combatant = createBattleState(squirtle, new Pokemon(PIDGEY, 5)).player;
+    const previousMaxHp = squirtle.maxHp;
+    squirtle.gainExperience(experienceForLevel(7) - squirtle.experience);
+    return { squirtle, combatant, previousMaxHp };
+  };
+
+  it('adds the move learned on the way at full PP and leaves the older moves as they were', () => {
+    const { combatant, previousMaxHp } = levelledSquirtle();
+    const spent = {
+      ...combatant,
+      moves: combatant.moves.map((move, index) => (index === 0 ? { ...move, pp: 3 } : move)),
+    };
+
+    const refreshed = refreshCombatantAfterLevelUp(spent, previousMaxHp);
+
+    expect(refreshed.moves.map(({ base, pp }) => `${base.name} ${pp}`)).toEqual([
+      'Tackle 3',
+      'Tail Whip 30',
+      'Growl 30',
+      'Water Gun 25',
+    ]);
+  });
+
+  it('keeps the status, its counters and the stat stages the battle earned', () => {
+    const { combatant, previousMaxHp } = levelledSquirtle();
+    const fought = {
+      ...combatant,
+      primaryStatus: PrimaryStatus.Poison,
+      sleepTurns: 2,
+      confusionTurns: 3,
+      statStages: applyStatBoost(createStatStages(), { stat: 'attack', stages: -2 }),
+    };
+
+    const refreshed = refreshCombatantAfterLevelUp(fought, previousMaxHp);
+
+    expect(refreshed.primaryStatus).toBe(PrimaryStatus.Poison);
+    expect(refreshed.sleepTurns).toBe(2);
+    expect(refreshed.confusionTurns).toBe(3);
+    expect(refreshed.statStages).toEqual(fought.statStages);
+  });
+
+  it('adds exactly the HP the raised maximum brought, and never more than the maximum', () => {
+    const { combatant, previousMaxHp } = levelledSquirtle();
+
+    expect(previousMaxHp).toBe(18);
+    expect(combatant.pokemon.maxHp).toBe(20);
+    expect(refreshCombatantAfterLevelUp({ ...combatant, currentHp: 7 }, previousMaxHp).currentHp).toBe(9);
+    expect(refreshCombatantAfterLevelUp({ ...combatant, currentHp: 19 }, previousMaxHp).currentHp).toBe(20);
+  });
+
+  it('leaves a fainted combatant fainted, because a level is not a revive', () => {
+    const { combatant, previousMaxHp } = levelledSquirtle();
+
+    expect(refreshCombatantAfterLevelUp({ ...combatant, currentHp: 0 }, previousMaxHp).currentHp).toBe(0);
+  });
+
+  it('follows the Pokemon when a fifth move pushes the oldest one out', () => {
+    const { squirtle, combatant, previousMaxHp } = levelledSquirtle();
+    // What `learnMovesAtLevel` does when a new move arrives on a full set of
+    // four. No shipped learnset is that long yet, so this is the rule rather
+    // than a reproduction of one.
+    squirtle.moves.shift();
+
+    const refreshed = refreshCombatantAfterLevelUp(combatant, previousMaxHp);
+
+    expect(refreshed.moves.map(({ base }) => base.name)).toEqual([
+      'Tail Whip',
+      'Growl',
+      'Water Gun',
+    ]);
   });
 });
