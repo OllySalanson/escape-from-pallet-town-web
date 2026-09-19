@@ -744,7 +744,9 @@ export class WorldScene extends Phaser.Scene {
       return null;
     }
     this.dropInLabels.get(insertion.id)?.setText(dropInCaption(true), LABEL_TONES.dropIn);
-    audioManager.playLootPickup();
+    // A place reached rather than a thing picked up, so it sounds like a
+    // landmark and not like loot.
+    audioManager.play('landmarkWorked');
     this.cameras.main.flash(120, 94, 234, 212, false);
     return dropInReachedLine(insertion.label);
   }

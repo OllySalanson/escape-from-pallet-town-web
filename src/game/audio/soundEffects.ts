@@ -164,7 +164,7 @@ export const SOUND_EFFECTS = {
   },
   landmarkWorked: {
     channel: 'world',
-    moment: 'A landmark is worked - the sluice wheel turns, a station answers',
+    moment: 'A landmark is worked or a new drop-in point is reached - the sluice wheel turns, a station answers',
     tones: [tri(196, 0.09, 0.07), tri(262, 0.09, 0.07, 0.09), sq(392, 0.16, 0.05, 0.18)],
   },
   contractStop: {
