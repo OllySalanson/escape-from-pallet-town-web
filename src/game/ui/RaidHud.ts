@@ -53,12 +53,22 @@ const HUNTER_STYLES: Readonly<Record<HunterChipTone, ChipStyle>> = {
   intel: { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
 };
 
+/**
+ * Weather is neither furniture nor a warning: it is a standing fact about the
+ * ground, so it is the cream window under a slate ink rather than either of the
+ * alarm reds. It is the only chip whose fill is not plain cream, which is what
+ * lets it be told from the arrival plate directly under it at a glance.
+ */
+const WEATHER_STYLE: ChipStyle = { fill: 0xa9c3d6, ink: 0x14232e };
+
 export interface RaidHudState {
   readonly clock: RaidClockView;
   readonly objectiveLines: readonly string[];
   readonly hunter: HunterChipView | null;
   /** The district just walked into, while that is news; null otherwise. */
   readonly place: string | null;
+  /** The weather of the district being stood in, for as long as it is true. */
+  readonly weather: string | null;
 }
 
 export class RaidHud {
@@ -72,6 +82,7 @@ export class RaidHud {
   private readonly objectiveText: Phaser.GameObjects.Text;
   private readonly hunterText: Phaser.GameObjects.Text;
   private readonly placeText: Phaser.GameObjects.Text;
+  private readonly weatherText: Phaser.GameObjects.Text;
 
   private readonly scene: Phaser.Scene;
 
@@ -82,6 +93,7 @@ export class RaidHud {
     this.objectiveText = this.createText(CHIP_FONT_SIZE);
     this.hunterText = this.createText(CHIP_FONT_SIZE);
     this.placeText = this.createText(CHIP_FONT_SIZE);
+    this.weatherText = this.createText(CHIP_FONT_SIZE);
   }
 
   /** The chips' screen rectangles, for anything that has to avoid them. */
@@ -115,16 +127,31 @@ export class RaidHud {
       true,
     );
 
-    // The arrival plate hangs under the objective as the hunter hangs under the
-    // clock: the left column is where the raid says where you are going, so it
-    // is where it says where you are.
+    // The left column is where the raid says where you are going, so it is
+    // where it says where you are: the weather under the objective, and the
+    // arrival plate under the weather. The weather is the one of the two that
+    // stays, so it takes the fixed seat - a plate that pushed it down and let
+    // it jump back up three seconds later would be movement in the corner of
+    // the eye for no news at all.
+    let column = objective;
+    if (state.weather) {
+      column = this.placeChip(
+        this.weatherText,
+        [state.weather],
+        { fill: WEATHER_STYLE.fill, ink: WEATHER_STYLE.ink },
+        1,
+        () => ({ x: EDGE_MARGIN, y: column.y + column.height + CHIP_GAP }),
+      );
+    } else {
+      this.weatherText.setVisible(false);
+    }
     if (state.place) {
       this.placeChip(
         this.placeText,
         [state.place],
         { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
         1,
-        () => ({ x: EDGE_MARGIN, y: objective.y + objective.height + CHIP_GAP }),
+        () => ({ x: EDGE_MARGIN, y: column.y + column.height + CHIP_GAP }),
       );
     } else {
       this.placeText.setVisible(false);
@@ -152,6 +179,7 @@ export class RaidHud {
     this.objectiveText.destroy();
     this.hunterText.destroy();
     this.placeText.destroy();
+    this.weatherText.destroy();
   }
 
   private createText(fontSize: string): Phaser.GameObjects.Text {

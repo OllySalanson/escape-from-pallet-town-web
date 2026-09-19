@@ -1,6 +1,7 @@
 import { MoveBase, MoveCategory, MoveCharge, MoveFlag, MoveTarget } from './MoveBase';
 import { PrimaryStatus } from './battle/status';
 import { PokemonType } from './PokemonType';
+import { WeatherId } from './battle/weather';
 
 export const TACKLE = new MoveBase({
   name: 'Tackle',
@@ -594,4 +595,33 @@ export const ROCK_SMASH = new MoveBase({
   category: MoveCategory.Physical,
   flags: [MoveFlag.Contact],
   secondaries: [{ chance: 50, boosts: [{ stat: 'defense', stages: -1 }] }],
+});
+
+/**
+ * Weather, as a move. It changes neither side: it changes the field both sides
+ * are standing on, for five turns.
+ *
+ * Rain Dance is the only one of generation III's four weather moves that any of
+ * the shipped roster learns by level - the Squirtle line, at 33/37/42 in
+ * FireRed/LeafGreen. Of the whole 151, `tools/moves/frlg-level-up-moves.json`
+ * counts seven level-up learners for Rain Dance, three for Sandstorm and one
+ * for Sunny Day, and **none at all for Hail**: it exists in generation III, but
+ * no Kanto species is taught it by levelling. Sandstorm and Sunny Day are left
+ * unauthored for the same reason every other move is - nothing in the roster
+ * reaches them - and the engine expresses all four, which is what
+ * `tools/moves/coverage.mjs` now counts. All four are also discs in FireRed
+ * (TM18, TM11, TM37, TM07); `./machines.ts` carries none of them yet, and a
+ * disc is the obvious way to put weather in a player's hands on purpose.
+ */
+export const RAIN_DANCE = new MoveBase({
+  name: 'Rain Dance',
+  description: 'Calls down rain for five turns: Water hits harder, Fire softer.',
+  type: PokemonType.Water,
+  power: 0,
+  accuracy: 100,
+  pp: 5,
+  category: MoveCategory.Status,
+  target: MoveTarget.Self,
+  alwaysHits: true,
+  effects: { weather: WeatherId.Rain },
 });

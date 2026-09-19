@@ -113,7 +113,8 @@ import {
   WATCH_SHADING_DEPTH,
   atRow,
 } from '../world/depths';
-import { districtAt } from '../world/districts';
+import { districtAt, weatherAt } from '../world/districts';
+import type { WeatherId } from '../pokemon/battle/weather';
 import { WINDOW_CREAM } from '../ui/pixelWindow';
 import {
   OBJECTIVE_DETAIL_MS,
@@ -122,6 +123,7 @@ import {
   hunterChipView,
   objectiveChipLines,
   placePlateLine,
+  weatherChipLine,
   raidClockAlertTier,
   raidClockView,
 } from './raidHud';
@@ -1712,8 +1714,13 @@ export class WorldScene extends Phaser.Scene {
     this.placePlateMs = silently ? 0 : PLACE_PLATE_MS;
   }
 
+  /** The weather of the district the player is standing in, or null. */
+  private currentWeather(): WeatherId | null {
+    return weatherAt(this.currentMap.id, this.currentTile);
+  }
+
   /**
-   * Redraws the three chips from the raid's own state.
+   * Redraws the corner chips from the raid's own state.
    *
    * Everything the player has to be able to answer at a glance - what am I
    * doing, how long have I got, where is the hunter - is a corner chip sized to
@@ -1769,6 +1776,10 @@ export class WorldScene extends Phaser.Scene {
         ),
         objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0),
         place: placePlateLine(this.placeName, this.placePlateMs),
+        // Read off the tile rather than remembered with the district name: the
+        // chip and the fight that is about to start have to be reading the same
+        // thing, and `transitionToBattle` reads the tile too.
+        weather: weatherChipLine(this.currentWeather()),
         hunter: hunterChipView({
           searching: isHunterSearching(this.hunterState),
           searchRemainingMs: this.hunterState.searchRemainingMs,
@@ -2618,7 +2629,15 @@ export class WorldScene extends Phaser.Scene {
     // Whatever beat was playing has been overtaken by the fight it was leading
     // to, so it lets go of the frame before the world is torn down.
     this.endCutscene();
-    const data: BattleSceneData = { ...this.raidCarriage(), ...encounter };
+    // Weather is not carried through the fight the way the hunter and the pack
+    // are: it is a fact about the tile the player is standing on, so it is read
+    // fresh here and never stored. A fight is fought in the weather of the
+    // place it started in, whichever kind of fight it is.
+    const data: BattleSceneData = {
+      ...this.raidCarriage(),
+      ...encounter,
+      weather: this.currentWeather(),
+    };
     this.isWarping = true;
     this.player.stop();
     this.cameras.main.fadeOut(180, 0, 0, 0);

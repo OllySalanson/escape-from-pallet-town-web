@@ -7,7 +7,9 @@ import {
   hunterIntelLine,
   openRaidCue,
   placePlateLine,
+  weatherChipLine,
 } from './raidHud';
+import { WeatherId } from '../pokemon/battle/weather';
 
 const FAR = { searching: false, distance: null, direction: 'N' } as const;
 
@@ -114,5 +116,23 @@ describe('the arrival plate', () => {
   it('is up long enough to read and short enough not to be furniture', () => {
     expect(PLACE_PLATE_MS).toBeGreaterThanOrEqual(2_000);
     expect(PLACE_PLATE_MS).toBeLessThanOrEqual(5_000);
+  });
+});
+
+describe('the weather chip', () => {
+  it('names the weather and nothing else', () => {
+    expect(weatherChipLine(WeatherId.Rain)).toBe('RAIN');
+    expect(weatherChipLine(WeatherId.HarshSunlight)).toBe('HARSH SUN');
+    expect(weatherChipLine(WeatherId.Sandstorm)).toBe('SANDSTORM');
+  });
+
+  it('shows nothing where a place has no weather, which is most places', () => {
+    expect(weatherChipLine(null)).toBeNull();
+  });
+
+  it('stays short enough to be a chip rather than a panel', () => {
+    for (const weather of Object.values(WeatherId)) {
+      expect(weatherChipLine(weather)!.length).toBeLessThanOrEqual('EXTRACT WITH YOUR HAUL'.length);
+    }
   });
 });

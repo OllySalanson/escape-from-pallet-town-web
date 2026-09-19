@@ -5,6 +5,7 @@ import type { WildEncounterTable } from '../pokemon/encounters';
 import { getSpeciesById } from '../pokemon/species';
 import { MoveCategory } from '../pokemon/MoveBase';
 import { createSeededRng } from '../run/rng';
+import type { WeatherId } from '../pokemon/battle/weather';
 
 /**
  * What a table costs, measured over the real engine rather than argued.
@@ -53,6 +54,8 @@ export function winRateAgainst(
   level: number,
   trials = 200,
   seed = 0x5eed,
+  /** The weather of the place this fight is in, as a raid would supply it. */
+  weather: WeatherId | null = null,
 ): number {
   const rng = createSeededRng(seed);
   const random = (): number => rng.next();
@@ -61,6 +64,7 @@ export function winRateAgainst(
     let state = createBattleState(
       new Pokemon(getSpeciesById(partnerSpeciesId)!, partnerLevel),
       new Pokemon(getSpeciesById(speciesId)!, level),
+      weather,
     );
     for (let turn = 0; turn < 60 && state.outcome === 'active'; turn += 1) {
       state = resolveTurn(state, bestMove(state), random).state;
@@ -77,6 +81,7 @@ export function measureTable(
   partnerSpeciesId: string,
   partnerLevel: number,
   trials = 200,
+  weather: WeatherId | null = null,
 ): TableMeasure {
   const total = table.entries.reduce((sum, entry) => sum + entry.weight, 0);
   let meanLevel = 0;
@@ -88,7 +93,15 @@ export function measureTable(
     const levels = entry.maxLevel - entry.minLevel + 1;
     for (let level = entry.minLevel; level <= entry.maxLevel; level += 1) {
       const each = share / levels;
-      const rate = winRateAgainst(partnerSpeciesId, partnerLevel, entry.speciesId, level, trials);
+      const rate = winRateAgainst(
+        partnerSpeciesId,
+        partnerLevel,
+        entry.speciesId,
+        level,
+        trials,
+        0x5eed,
+        weather,
+      );
       meanLevel += level * each;
       winRate += rate * each;
       if (level > partnerLevel) {
