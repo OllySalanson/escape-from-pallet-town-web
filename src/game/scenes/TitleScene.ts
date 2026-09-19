@@ -219,7 +219,6 @@ export class TitleScene extends Phaser.Scene {
 
     this.hasStarted = true;
     void this.playStartAudio();
-    this.prompt.setAlpha(1);
     this.prompt.setText('READY!');
     this.time.delayedCall(180, () => {
       const savedGame = this.loadOrCreateGame();
