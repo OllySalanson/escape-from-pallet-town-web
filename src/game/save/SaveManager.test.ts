@@ -853,4 +853,137 @@ describe('SaveManager', () => {
       expect(Object.keys(RUN_INSERTIONS)).toContain(id);
     }
   });
+
+  /**
+   * Gates and drop-in points arrived without a version bump: a save that has
+   * never heard of them has beaten no boss and reached nowhere, which is what a
+   * missing list reads as. Every accepted version is pinned, because accepting
+   * a version is a promise to keep loading it.
+   */
+  it.each([1, 2, 3, 4, 5])(
+    'opens a version %i save written before gates existed with no boss beaten and nowhere reached',
+    (version) => {
+      const storage = new MemoryStorage();
+      storage.setItem(
+        SAVE_KEY,
+        JSON.stringify({
+          version,
+          party: [],
+          mapId: 'pallet-town',
+          position: { x: 1, y: 1 },
+          bag: {},
+          stash: { pokemon: [], items: {} },
+          raidProgress: { firstContractExtracted: true, unlockedInsertions: ['route-1'] },
+        }),
+      );
+
+      const progress = new SaveManager(storage).load()?.raidProgress;
+
+      expect(progress?.defeatedBosses).toEqual([]);
+      expect(progress?.reachedInsertions).toEqual([]);
+      // What the save did record is untouched by the new fields.
+      expect(progress?.firstContractExtracted).toBe(true);
+      expect(progress?.unlockedInsertions).toContain('route-1');
+    },
+  );
+
+  it('keeps beaten bosses and reached drop-in points across a reload, once each', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 5,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: {},
+        stash: { pokemon: [], items: {} },
+        raidProgress: {
+          firstContractExtracted: false,
+          unlockedInsertions: ['floodplain-relay'],
+          completedContracts: [],
+          defeatedBosses: ['overlook-warden', 'overlook-warden', 7],
+          reachedInsertions: ['route-1-overlook', null, 'route-1-overlook'],
+        },
+      }),
+    );
+
+    const manager = new SaveManager(storage);
+    const loaded = manager.load()!;
+    expect(loaded.raidProgress.defeatedBosses).toEqual(['overlook-warden']);
+    expect(loaded.raidProgress.reachedInsertions).toEqual(['route-1-overlook']);
+
+    // And it survives being written back, which is what every banking path does.
+    manager.save(loaded);
+    expect(manager.load()!.raidProgress).toEqual(loaded.raidProgress);
+  });
+
+  it('records a boss win the moment it happens, exactly once, and touches nothing else', () => {
+    const storage = new MemoryStorage();
+    const manager = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 12));
+    stash.addItem('potion', 3);
+    manager.save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      stash,
+      pendingRecoveryMs: 30_000,
+    });
+    const before = manager.load()!;
+
+    expect(manager.recordDefeatedBosses(['overlook-warden'])).toEqual(['overlook-warden']);
+    // The world scene reports the same win again on every later battle return.
+    expect(manager.recordDefeatedBosses(['overlook-warden'])).toEqual([]);
+    expect(manager.recordDefeatedBosses([])).toEqual([]);
+
+    const after = manager.load()!;
+    expect(after.raidProgress).toEqual({
+      ...before.raidProgress,
+      defeatedBosses: ['overlook-warden'],
+    });
+    // A gate opening is not a raid settling: the vault in storage is still the
+    // pre-raid vault, and the recovery bill is still owed.
+    expect(after.stash.listPokemon().map((stored) => stored.pokemon.level)).toEqual([12]);
+    expect(after.stash.itemCount('potion')).toBe(3);
+    expect(after.pendingRecoveryMs).toBe(30_000);
+  });
+
+  it('records a reached drop-in point once, and never one the lobby already offers', () => {
+    const storage = new MemoryStorage();
+    const manager = new SaveManager(storage);
+    manager.save({ party: new PokemonParty([]), mapId: 'pallet-town', position: { x: 1, y: 1 } });
+
+    expect(manager.recordReachedInsertion('route-1-overlook')).toBe(true);
+    expect(manager.recordReachedInsertion('route-1-overlook')).toBe(false);
+    // Already unlocked from the first second of the save, so reaching it is not news.
+    expect(manager.recordReachedInsertion('floodplain-relay')).toBe(false);
+
+    expect(manager.load()!.raidProgress.reachedInsertions).toEqual(['route-1-overlook']);
+  });
+
+  it('keeps an opened gate and a reached landing through a wipe and a banked contract', () => {
+    const storage = new MemoryStorage();
+    const manager = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 8));
+    manager.save({ party: new PokemonParty([]), mapId: 'pallet-town', position: { x: 1, y: 1 }, stash });
+    manager.recordDefeatedBosses(['overlook-warden']);
+    manager.recordReachedInsertion('route-1-overlook');
+
+    manager.applyWipeLoss([manager.load()!.stash.listPokemon()[0].id], []);
+    manager.bankFirstContractRun({ pokemon: [], items: [] });
+
+    const progress = manager.load()!.raidProgress;
+    expect(progress.defeatedBosses).toEqual(['overlook-warden']);
+    expect(progress.reachedInsertions).toEqual(['route-1-overlook']);
+    expect(progress.firstContractExtracted).toBe(true);
+  });
+
+  it('cannot record progress where nothing can be stored, and says so', () => {
+    const manager = new SaveManager(null);
+    expect(manager.recordDefeatedBosses(['overlook-warden'])).toEqual([]);
+    expect(manager.recordReachedInsertion('route-1-overlook')).toBe(false);
+  });
 });

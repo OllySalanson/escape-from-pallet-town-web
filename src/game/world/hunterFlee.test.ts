@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
+import { gatesForMap, gateStatesToVerify } from './gates';
 import { EXTRACTION_POINTS } from './extractionPoints';
 import {
   findHunterBreakawayTile,
@@ -27,6 +28,17 @@ import { RAID_DURATION_MS } from '../run/raidClock';
  */
 
 const MAP_IDS = Object.keys(WORLD_MAPS) as WorldMapId[];
+const GATE_STATES: readonly (readonly [string, WorldMapId, readonly string[]])[] = MAP_IDS.flatMap(
+  (mapId) =>
+    gateStatesToVerify(gatesForMap(mapId)).map(
+      (defeatedBosses) =>
+        [
+          defeatedBosses.length === 0 ? mapId : `${mapId} with ${defeatedBosses.join(' and ')} beaten`,
+          mapId,
+          defeatedBosses,
+        ] as const,
+    ),
+);
 
 /**
  * The pessimistic tile cost. `raidClock.ts` records ~0.17s at 60fps and ~0.23s
@@ -105,11 +117,13 @@ describe('what an escape buys', () => {
    * costs. Redraw a map with a corner further from its exits than this and the
    * failure lands here rather than in a playtest.
    */
-  it.each(MAP_IDS)('%s: the blind window covers the walk to an exit from anywhere', (mapId) => {
+  it.each(GATE_STATES)('%s: the blind window covers the walk to an exit from anywhere', (_name, mapId, defeatedBosses) => {
     const exits = EXTRACTION_POINTS.filter((point) => point.mapId === mapId);
     expect(exits.length).toBeGreaterThan(0);
 
-    const collision = getWorldMap(mapId).collision;
+    // A shut gate is a longer walk to whichever exits are left on this side of
+    // it, so the window is held against every gate state rather than one.
+    const collision = getWorldMap(mapId, defeatedBosses).collision;
     const fields = exits.map((exit) => stepDistances(collision, exit.position));
     let furthest = 0;
     for (const tile of openTiles(mapId)) {

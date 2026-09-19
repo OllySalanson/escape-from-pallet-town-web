@@ -108,6 +108,15 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     },
   },
   {
+    // Behind the Overlook Gate, and open from the first second: a raid that
+    // drops in at the Overlook Landing must never depend on a door to get home.
+    mapId: 'route-1',
+    position: { x: 31, y: 5 },
+    label: 'OVERLOOK STILE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
     mapId: 'viridian-forest',
     position: { x: 1, y: 20 },
     label: 'BROOK FORD',

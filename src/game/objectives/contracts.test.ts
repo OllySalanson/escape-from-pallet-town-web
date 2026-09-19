@@ -4,7 +4,7 @@ import { BULBASAUR, Pokemon, PokemonParty } from '../pokemon';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
-import { SaveManager, type StorageLike } from '../save/SaveManager';
+import { DEFAULT_RAID_PROGRESS, SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash, MINIMUM_SUPPLIES, Stash } from '../stash';
 import {
   availableContracts,
@@ -48,6 +48,7 @@ function seedSave(storage: StorageLike, completedContracts: readonly string[], s
     bag: new Bag(),
     stash,
     raidProgress: {
+      ...DEFAULT_RAID_PROGRESS,
       firstContractExtracted: completedContracts.includes(FIRST_CONTRACT_ID),
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
       completedContracts: [...completedContracts],

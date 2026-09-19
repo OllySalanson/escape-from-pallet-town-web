@@ -4,6 +4,7 @@ import {
   VIRIDIAN_FOREST_TALL_GRASS,
   type WildEncounterTable,
 } from './pokemon/encounters';
+import { applyGates, gatesForMap, gateStateKey, type MapGate } from './world/gates';
 import type { WorldLoot } from './world/loot';
 import type { MapSketch } from './world/mapGrid';
 import { sketchFloodplainRelay } from './world/maps/floodplainRelay';
@@ -19,6 +20,8 @@ import { POKEMON_GROUND_TILESET } from './world/tileset/pokemonGround';
 
 export { CLASSIC_TILE } from './world/tileset/classicTileset';
 export type { MapLayers, TileLayer } from './world/tiles';
+
+export type { MapGate } from './world/gates';
 
 export const TILE_SIZE = 16;
 
@@ -62,6 +65,13 @@ export interface WorldMapDefinition {
   readonly loot: readonly WorldLoot[];
   /** Fixed landmarks are authored separately from randomised run loot. */
   readonly pois: readonly WorldPoi[];
+  /**
+   * Every boss-held door on the map, open or shut. The layers and collision
+   * above are already in the state this definition was built for - see
+   * `getWorldMap` - so this is for drawing and naming the doors, not for
+   * deciding what is solid.
+   */
+  readonly gates: readonly MapGate[];
 }
 
 export type WorldMapId = 'pallet-town' | 'route-1' | 'viridian-forest' | 'floodplain-relay';
@@ -75,6 +85,10 @@ export const WORLD_MAP_NAMES: Readonly<Record<WorldMapId, string>> = {
 };
 
 interface MapContent {
+  /** A fresh sketch per build: a gate state is drawn onto it, so it is never shared. */
+  readonly sketch: () => MapSketch;
+  /** The sheet this map is drawn from. Omitted is the plain classic catalogue. */
+  readonly tileset?: TilesetCatalogue;
   readonly encounters?: WildEncounterTable;
   readonly loot: readonly WorldLoot[];
 }
@@ -88,10 +102,12 @@ interface MapContent {
  */
 function createMap(
   id: WorldMapId,
-  sketch: MapSketch,
   content: MapContent,
-  tileset: TilesetCatalogue = CLASSIC_TILESET,
+  defeatedBosses: readonly string[] = [],
 ): WorldMapDefinition {
+  const gates = gatesForMap(id);
+  const tileset = content.tileset ?? CLASSIC_TILESET;
+  const sketch = applyGates(content.sketch(), gates, defeatedBosses);
   const layers = buildMapLayers(sketch, tileset);
   return {
     id,
@@ -105,28 +121,32 @@ function createMap(
     warps: [],
     entities: entitiesForMap(id),
     pois: poisForMap(id),
+    gates,
     loot: content.loot,
   };
 }
 
-export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = {
-  'pallet-town': createMap('pallet-town', sketchPalletTown(), {
+const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
+  'pallet-town': {
+    sketch: sketchPalletTown,
     encounters: PALLET_TALL_GRASS,
     loot: [
       { id: 'pallet-town-poke-ball', position: { x: 2, y: 13 }, itemId: 'poke-ball', quantity: 1 },
       { id: 'pallet-town-potion', position: { x: 1, y: 20 }, itemId: 'potion', quantity: 1 },
       { id: 'pallet-town-antidote', position: { x: 18, y: 39 }, itemId: 'antidote', quantity: 1 },
     ],
-  }),
-  'route-1': createMap('route-1', sketchRoute1(), {
+  },
+  'route-1': {
+    sketch: sketchRoute1,
     encounters: PALLET_TALL_GRASS,
     loot: [
       { id: 'route-1-poke-ball', position: { x: 4, y: 7 }, itemId: 'poke-ball', quantity: 2 },
       { id: 'route-1-potion', position: { x: 28, y: 9 }, itemId: 'potion', quantity: 1 },
       { id: 'route-1-great-ball', position: { x: 4, y: 22 }, itemId: 'great-ball', quantity: 1 },
     ],
-  }),
-  'viridian-forest': createMap('viridian-forest', sketchViridianForest(), {
+  },
+  'viridian-forest': {
+    sketch: sketchViridianForest,
     encounters: VIRIDIAN_FOREST_TALL_GRASS,
     loot: [
       { id: 'forest-poke-ball', position: { x: 4, y: 18 }, itemId: 'poke-ball', quantity: 2 },
@@ -134,27 +154,59 @@ export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = {
       { id: 'forest-great-ball', position: { x: 27, y: 21 }, itemId: 'great-ball', quantity: 1 },
       { id: 'forest-antidote', position: { x: 21, y: 30 }, itemId: 'antidote', quantity: 1 },
     ],
-  }),
+  },
   // The one map drawn from the wide vocabulary: GBA-palette ground with the
   // CC0 sheet's objects standing on it. The other three keep the plain classic
   // catalogue until they are redrawn to the same standard - a catalogue is
   // chosen per map precisely so that can happen one map at a time.
-  'floodplain-relay': createMap(
-    'floodplain-relay',
-    sketchFloodplainRelay(),
-    {
-      encounters: PALLET_TALL_GRASS,
-      loot: [
-        { id: 'floodplain-potion', position: { x: 7, y: 12 }, itemId: 'potion', quantity: 1 },
-        { id: 'floodplain-antidote', position: { x: 11, y: 15 }, itemId: 'antidote', quantity: 1 },
-      ],
-    },
-    POKEMON_GROUND_TILESET,
-  ),
+  'floodplain-relay': {
+    sketch: sketchFloodplainRelay,
+    tileset: POKEMON_GROUND_TILESET,
+    encounters: PALLET_TALL_GRASS,
+    loot: [
+      { id: 'floodplain-potion', position: { x: 7, y: 12 }, itemId: 'potion', quantity: 1 },
+      { id: 'floodplain-antidote', position: { x: 11, y: 15 }, itemId: 'antidote', quantity: 1 },
+    ],
+  },
 };
 
-export function getWorldMap(id: WorldMapId): WorldMapDefinition {
-  return WORLD_MAPS[id];
+const MAP_IDS = Object.keys(MAP_CONTENT) as WorldMapId[];
+
+/**
+ * Every map with every gate shut - the world a fresh save deploys into, and the
+ * one anything that has no save to ask (tests, the structure rules) reads.
+ */
+export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = Object.fromEntries(
+  MAP_IDS.map((id) => [id, createMap(id, MAP_CONTENT[id])]),
+) as Record<WorldMapId, WorldMapDefinition>;
+
+const builtMaps = new Map<string, WorldMapDefinition>();
+
+/**
+ * A map as it stands for a player who has beaten these bosses.
+ *
+ * A shut gate is collision and an open one is not, and everything that walks
+ * the map - the player, the hunter's search, the structure tests - reads that
+ * collision, so a gate state is a different map rather than a flag checked at
+ * the door. Maps are rebuilt from their sketch per state and remembered by
+ * which doors are open, so however long the boss list grows a map is built once
+ * per arrangement of its own doors.
+ */
+export function getWorldMap(
+  id: WorldMapId,
+  defeatedBosses: readonly string[] = [],
+): WorldMapDefinition {
+  const state = gateStateKey(gatesForMap(id), defeatedBosses);
+  if (state === '') {
+    return WORLD_MAPS[id];
+  }
+  const key = `${id}|${state}`;
+  let built = builtMaps.get(key);
+  if (!built) {
+    built = createMap(id, MAP_CONTENT[id], defeatedBosses);
+    builtMaps.set(key, built);
+  }
+  return built;
 }
 
 export function getWarpAt(

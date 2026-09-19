@@ -7,6 +7,7 @@ import {
   type WorldMapId,
 } from '../worldMap';
 import { EXTRACTION_POINTS } from './extractionPoints';
+import { gateBossIds, gatesForMap, gateStatesToVerify } from './gates';
 import {
   findHunterBreakawayTile,
   findHunterPursuitPath,
@@ -24,7 +25,7 @@ import {
   walkableTiles,
 } from './mapStructure';
 import { trainerSightTiles } from './trainerSight';
-import { createRunTrainerEncounters } from './trainers';
+import { createRunTrainerEncounters, withoutDefeatedBosses } from './trainers';
 import { RAID_CONTRACTS } from '../objectives';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 
@@ -41,14 +42,56 @@ const INSERTION_DECISION_STEPS = 4;
 
 const MAP_IDS = Object.keys(WORLD_MAPS) as WorldMapId[];
 
+/**
+ * A map with boss-held gates is several maps: a shut gate is collision and an
+ * open one is ground, and the hunter, the flee and every rule below read that
+ * collision. So each rule is held against every state a player can be standing
+ * in - every gate shut, each boss beaten, every gate open - rather than against
+ * whichever one a fresh save happens to see. A map with no gates is one state
+ * under its own name, exactly as before.
+ */
+interface MapState {
+  readonly name: string;
+  readonly mapId: WorldMapId;
+  readonly defeatedBosses: readonly string[];
+  readonly map: WorldMapDefinition;
+  /** Every gate open: the one state in which the map has to be a single place. */
+  readonly fullyOpen: boolean;
+}
+
+const MAP_STATES: readonly MapState[] = MAP_IDS.flatMap((mapId) => {
+  const gates = gatesForMap(mapId);
+  const bosses = gateBossIds(gates);
+  return gateStatesToVerify(gates).map((defeatedBosses) => ({
+    name:
+      bosses.length === 0
+        ? mapId
+        : `${mapId} with ${defeatedBosses.length === 0 ? 'every gate shut' : `${defeatedBosses.join(' and ')} beaten`}`,
+    mapId,
+    defeatedBosses,
+    map: getWorldMap(mapId, defeatedBosses),
+    fullyOpen: bosses.every((boss) => defeatedBosses.includes(boss)),
+  }));
+});
+const OPEN_STATES = MAP_STATES.filter((state) => state.fullyOpen);
+
+const named = <T extends { readonly name: string }>(states: readonly T[]): [string, T][] =>
+  states.map((state) => [state.name, state]);
+
+/** The trainers still standing in this state: a beaten boss is gone for good. */
+function trainersIn(state: MapState) {
+  return withoutDefeatedBosses(createRunTrainerEncounters(), state.defeatedBosses).filter(
+    (trainer) => trainer.mapId === state.mapId,
+  );
+}
+
 /** Signs, townsfolk and live trainers block their own tile, as the engine does. */
-function entityTiles(mapId: WorldMapId): Set<string> {
-  const map = getWorldMap(mapId);
-  const tiles = new Set(map.entities.map((entity) => `${entity.position.x},${entity.position.y}`));
-  for (const trainer of createRunTrainerEncounters()) {
-    if (trainer.mapId === mapId) {
-      tiles.add(`${trainer.position.x},${trainer.position.y}`);
-    }
+function entityTiles(state: MapState): Set<string> {
+  const tiles = new Set(
+    state.map.entities.map((entity) => `${entity.position.x},${entity.position.y}`),
+  );
+  for (const trainer of trainersIn(state)) {
+    tiles.add(`${trainer.position.x},${trainer.position.y}`);
   }
   return tiles;
 }
@@ -78,31 +121,69 @@ function landmarksOn(map: WorldMapDefinition) {
 }
 
 describe('map structure', () => {
-  it.each(MAP_IDS)('%s never lets a held direction cross it', (mapId) => {
-    const { longest } = straightWalk(getWorldMap(mapId).collision);
+  it.each(named(MAP_STATES))('%s never lets a held direction cross it', (_name, { map }) => {
+    const { longest } = straightWalk(map.collision);
     expect(longest).toBeLessThanOrEqual(LONGEST_STRAIGHT_WALK);
   });
 
-  it.each(MAP_IDS)('%s has no open ground in it', (mapId) => {
-    const open = openGround(getWorldMap(mapId).collision);
+  it.each(named(MAP_STATES))('%s has no open ground in it', (_name, { map }) => {
+    const open = openGround(map.collision);
     // A single tile with nothing within three steps is a wide junction. Two of
     // them joined together is the beginning of a field.
     expect(open.blobs.filter((blob) => blob > 1)).toEqual([]);
   });
 
-  it.each(MAP_IDS)('%s is one connected place with signs and trainers solid', (mapId) => {
-    const map = getWorldMap(mapId);
-    const blocked = entityTiles(mapId);
-    const start = walkableTiles(map.collision).find((tile) => !blocked.has(`${tile.x},${tile.y}`));
-    expect(start).toBeDefined();
-    expect(unreachableTiles(map.collision, start!, blocked)).toEqual([]);
-  });
+  it.each(named(OPEN_STATES))(
+    '%s is one connected place with signs and trainers solid',
+    (_name, state) => {
+      const { map } = state;
+      const blocked = entityTiles(state);
+      const start = walkableTiles(map.collision).find(
+        (tile) => !blocked.has(`${tile.x},${tile.y}`),
+      );
+      expect(start).toBeDefined();
+      expect(unreachableTiles(map.collision, start!, blocked)).toEqual([]);
+    },
+  );
 
-  it.each(MAP_IDS)('%s can walk from every insertion to every exit and landmark', (mapId) => {
-    const map = getWorldMap(mapId);
+  /**
+   * A shut gate cuts a map into regions, and a raid can start inside any of
+   * them that holds an insertion. The clock does not care which: a region with
+   * no way out is a raid that can only end by running out of time, so every
+   * region a raid can start in has to hold an exit it can open from inside -
+   * one on no condition, or one whose landmark is in the same region.
+   */
+  it.each(named(MAP_STATES))(
+    '%s gives every region a raid can start in its own way out',
+    (_name, state) => {
+      const { map, mapId } = state;
+      const blocked = entityTiles(state);
+      for (const insertion of insertionsOn(mapId)) {
+        const distances = stepDistances(map.collision, insertion.position, blocked);
+        const within = (position: GridPosition): boolean =>
+          (distances[position.y]?.[position.x] ?? -1) >= 0;
+        const usable = EXTRACTION_POINTS.filter((point) => {
+          if (point.mapId !== mapId || !within(point.position)) {
+            return false;
+          }
+          const requirement = point.requirement;
+          if (requirement?.kind !== 'poi-activated') {
+            return true;
+          }
+          const poi = map.pois.find((candidate) => candidate.id === requirement.poiId);
+          return poi !== undefined && within(poi.position);
+        });
+        expect(`${insertion.id}: ${usable.length === 0 ? 'no way out' : 'has a way out'}`)
+          .toBe(`${insertion.id}: has a way out`);
+      }
+    },
+  );
+
+  it.each(named(OPEN_STATES))('%s can walk from every insertion to every exit and landmark', (_name, state) => {
+    const { map, mapId } = state;
     const insertions = insertionsOn(mapId);
     expect(insertions.length).toBeGreaterThan(0);
-    const blocked = entityTiles(mapId);
+    const blocked = entityTiles(state);
     for (const insertion of insertions) {
       const distances = stepDistances(map.collision, insertion.position, blocked);
       for (const landmark of landmarksOn(map)) {
@@ -113,9 +194,9 @@ describe('map structure', () => {
     }
   });
 
-  it.each(MAP_IDS)('%s answers a held direction from its insertion within a few steps', (mapId) => {
+  it.each(named(MAP_STATES))('%s answers a held direction from its insertion within a few steps', (_name, { map, mapId }) => {
     for (const insertion of insertionsOn(mapId)) {
-      const collision = getWorldMap(mapId).collision;
+      const collision = map.collision;
       for (const [dx, dy] of [
         [0, -1],
         [0, 1],
@@ -129,8 +210,7 @@ describe('map structure', () => {
     }
   });
 
-  it.each(MAP_IDS)('%s seals every map edge except its authored exits', (mapId) => {
-    const map = getWorldMap(mapId);
+  it.each(named(MAP_STATES))('%s seals every map edge except its authored exits', (_name, { map, mapId }) => {
     const gates = new Set(
       EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
         (point) => `${point.position.x},${point.position.y}`,
@@ -147,8 +227,7 @@ describe('map structure', () => {
     }
   });
 
-  it.each(MAP_IDS)('%s always gives the hunter somewhere fair to arrive', (mapId) => {
-    const map = getWorldMap(mapId);
+  it.each(named(MAP_STATES))('%s always gives the hunter somewhere fair to arrive', (_name, { map }) => {
     const bounds = { width: map.width, height: map.height };
     const isBlocked = (tile: { x: number; y: number }): boolean =>
       map.collision[tile.y]?.[tile.x] !== false;
@@ -166,8 +245,7 @@ describe('map structure', () => {
    * what you want; the failure it must never have is landing on the only door
    * out of wherever the player is standing.
    */
-  it.each(MAP_IDS)('%s lets a flee put real ground between hunter and player', (mapId) => {
-    const map = getWorldMap(mapId);
+  it.each(named(MAP_STATES))('%s lets a flee put real ground between hunter and player', (_name, { map, name: mapId }) => {
     const bounds = { width: map.width, height: map.height };
     const isBlocked = (tile: { x: number; y: number }): boolean =>
       map.collision[tile.y]?.[tile.x] !== false;
@@ -213,8 +291,8 @@ describe('map structure', () => {
    * the tile the raid drops you on, it reaches the door you leave by, or it
    * covers ground with no way back out of it.
    */
-  it.each(MAP_IDS)('%s never lets a trainer watch corner the player', (mapId) => {
-    const map = getWorldMap(mapId);
+  it.each(named(MAP_STATES))('%s never lets a trainer watch corner the player', (_name, state) => {
+    const { map, mapId } = state;
     const isSightBlocked = (tile: GridPosition): boolean =>
       map.collision[tile.y]?.[tile.x] !== false;
     const doors = [
@@ -233,10 +311,7 @@ describe('map structure', () => {
       })),
     ];
 
-    for (const trainer of createRunTrainerEncounters()) {
-      if (trainer.mapId !== mapId) {
-        continue;
-      }
+    for (const trainer of trainersIn(state)) {
       const watched = trainerSightTiles(trainer, isSightBlocked);
       if (watched.length === 0) {
         // A trainer with no watch is one the player has to speak to, which is
@@ -276,8 +351,7 @@ describe('map structure', () => {
    * no route to the player. Walking the whole route proves the search actually
    * reaches contact rather than stopping at the nearest tile it can stand on.
    */
-  it.each(MAP_IDS)('%s lets the hunter path to the player from anywhere it can arrive', (mapId) => {
-    const map = getWorldMap(mapId);
+  it.each(named(MAP_STATES))('%s lets the hunter path to the player from anywhere it can arrive', (_name, { map, name: mapId }) => {
     const bounds = { width: map.width, height: map.height };
     const isBlocked = (tile: { x: number; y: number }): boolean =>
       map.collision[tile.y]?.[tile.x] !== false;
