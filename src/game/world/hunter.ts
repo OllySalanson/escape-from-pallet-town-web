@@ -1,5 +1,5 @@
 import { Pokemon } from '../pokemon';
-import { BULBASAUR, PIDGEY, PIKACHU } from '../pokemon/species';
+import { BULBASAUR, JIGGLYPUFF, PIDGEY, PIKACHU } from '../pokemon/species';
 import type { PokemonBase } from '../pokemon/PokemonBase';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import { DIRECTION_DELTAS, type Direction, type GridBounds, type GridPosition } from '../movement/gridMovement';
@@ -47,13 +47,86 @@ export const DEFAULT_HUNTER_TUNING: HunterTuning = {
 /**
  * When the hunter's team grows. Exported so `raidClock.test.ts` can prove every
  * tier is still reachable inside the raid duration.
+ *
+ * **Four rungs, and the fourth is a fourth Pokemon.** It arrived with evolution,
+ * which begins at level 16 and had put an evolved party above the whole ladder.
+ * The obvious answer was to evolve the rival's team with it - the same three
+ * Pokemon further along their own lines - and it was written that way first and
+ * measured second. The measurement threw it out, which is the entry worth
+ * keeping here: **an evolved form is worth far more than the levels it costs**,
+ * so a rung built from them overshoots whatever level it is pitched at.
+ *
+ * What a rung promises is the fight the party that *opens* it gets - a party
+ * opens the highest rung it out-levels, so a rung at level N is met by a party
+ * at N+1 (`hunterThreat.ts`). Measured over the real engine (300 seeded battles
+ * a cell, the player taking its best move each turn, the hunter choosing as
+ * `chooseEnemyMove` does, a mixed trio of the lead's own line plus another
+ * starter and a Pidgey), the shipped rungs keep a steady promise:
+ *
+ * | rung          | wins        | HP left    |
+ * | ------------- | ----------- | ---------- |
+ * | 1: Lv 6 x1    | 100%        | 66-86%     |
+ * | 2: Lv 9 x2    | 100%        | 47-70%     |
+ * | 3: Lv 12 x3   | 97-98%      | 36-57%     |
+ * | 4: Lv 15 x4   | 90-100%     | 36-63%     |
+ *
+ * The evolved team never came close to that band at any level: Pidgeotto,
+ * Ivysaur and Raichu beat their own opener 93% of the time at Lv 13 and 90% at
+ * Lv 18 - the ratio barely moves, because dropping the rung's level drops the
+ * opener's with it. Raichu alone does most of it; swapping it for Pikachu at
+ * one level higher than rung 3 turns a 97% rung into a 14% one.
+ *
+ * And **raising three levels is not a rung either**, for the same reason: Lv 15,
+ * 16 and 18 trios all leave their opener 99-100% wins with 44-71% of its health,
+ * which is softer than rung 3. Team size is the only lever that bites, because
+ * it is the one thing that does not scale with the party opposite. So the
+ * fourth rung is what the first three were doing all along - one more Pokemon.
+ *
+ * It is **Jigglypuff**, and its being Normal is the point rather than an
+ * accident: the rival's three cover Flying, Grass/Poison and Electric, so a
+ * fourth with a type would check one starter line and not the others. The
+ * Bug/Flying alternative (Butterfree) did exactly that - it took the Squirtle
+ * lead's win rate to 83% and its health to 22% while leaving Charmander's at
+ * 100% and 60%. Jigglypuff is also already a trainer's Pokemon in this game and
+ * nothing a player can own, so the rival having caught one costs nothing.
+ *
+ * **The schedule is even in hunted time, not in raid time.** The hunter is only
+ * on the map from its arrival (55-75s seeded, earlier for a party that raised
+ * it) to the end of a 300s raid, so the first rung's stretch is the one the
+ * arrival eats into. Measured that way the ladder is four near-equal watches:
+ *
+ * | rung | from   | to   | hunted length |
+ * | ---- | ------ | ---- | ------------- |
+ * | 1    | 55-75s | 120s | 45-65s        |
+ * | 2    | 120s   | 180s | 60s           |
+ * | 3    | 180s   | 240s | 60s           |
+ * | 4    | 240s   | 300s | 60s (enrages) |
+ *
+ * Sixty seconds is not a round number picked for the table: it is what a rung
+ * has to last for an escape taken inside it to still be an escape. A first
+ * breakaway costs `HUNTER_FLEE_BASE_PENALTY_MS` of clock (40s), so one taken the
+ * moment a rung lands leaves 20s of that rung to walk in - the player is still
+ * running from the hunter they fled. The second costs 60s, exactly one rung,
+ * which is the escalation doing its job rather than an accident. `raidClock.ts`
+ * holds the whole schedule and `raidClock.test.ts` the relationships.
  */
 export const HUNTER_TIERS = [
   { startsAtMs: 0, level: 6, party: [PIDGEY] },
   { startsAtMs: 120_000, level: 9, party: [PIDGEY, BULBASAUR] },
-  { startsAtMs: 240_000, level: 12, party: [PIDGEY, BULBASAUR, PIKACHU] },
+  { startsAtMs: 180_000, level: 12, party: [PIDGEY, BULBASAUR, PIKACHU] },
+  { startsAtMs: 240_000, level: 15, party: [PIDGEY, BULBASAUR, PIKACHU, JIGGLYPUFF] },
 ] as const;
-const HUNTER_ENRAGED_TIER = { level: 15, party: [PIDGEY, BULBASAUR, PIKACHU] } as const;
+/**
+ * What lands when the clock runs out. It has to be above the top rung or the
+ * enrage would be a reprieve - the old Lv 15 trio is now *weaker* than the top
+ * rung and beats its opener 99-100% of the time, which is what forced this to
+ * move - and it is pitched by what the shipped enrage did to the party that
+ * opened the shipped top rung: 9-39% wins with 17-26% of its health left. The
+ * top rung's own team at Lv 19 gives that party 16-45% and 26-40%. Lv 18 was
+ * measured first and leaves 28-61%, which is a rung rather than a reason to
+ * leave; Lv 20 leaves 1-18%, which is not a fight at all.
+ */
+const HUNTER_ENRAGED_TIER = { level: 19, party: [PIDGEY, BULBASAUR, PIKACHU, JIGGLYPUFF] } as const;
 
 export interface HunterState {
   readonly spawned: boolean;

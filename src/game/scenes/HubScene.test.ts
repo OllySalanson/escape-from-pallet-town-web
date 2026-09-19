@@ -600,12 +600,12 @@ describe('the hunter a loadout draws', () => {
     hub.flow.togglePokemon('veteran-1');
 
     const finalCheck = finalCheckOf(hub);
-    expect(finalCheck).toContain('data-hunter-tier="3"');
+    expect(finalCheck).toContain('data-hunter-tier="4"');
     expect(finalCheck).toContain('matched to your Lv 16 Charmander');
 
     deploy(hub, start);
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
-    expect(runSession.plan?.hunter.teamTierOffset).toBe(2);
+    expect(runSession.plan?.hunter.teamTierOffset).toBe(3);
   });
 
   it('prices the same save a tier-one hunter when the veteran stays at base', () => {

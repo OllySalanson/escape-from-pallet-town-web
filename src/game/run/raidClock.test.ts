@@ -1,7 +1,7 @@
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { describe, expect, it } from 'vitest';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
-import { HUNTER_TIERS } from '../world/hunter';
+import { HUNTER_SEARCH_MS, HUNTER_TIERS } from '../world/hunter';
 import { WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
 import { ENRAGE_GRACE_MS, RunManager } from './RunManager';
 import {
@@ -99,6 +99,56 @@ describe('raid duration', () => {
     expect(RAID_DURATION_MS - lastTier.startsAtMs).toBeGreaterThanOrEqual(60_000);
     // And the raid must outlast the latest hunter spawn by a wide margin.
     expect(RUN_GENERATION_BOUNDS.hunterSpawnDelayMaximumMs).toBeLessThan(RAID_DURATION_MS / 3);
+  });
+
+  /**
+   * How the tier schedule is derived, rather than what it happens to say. The
+   * hunter is only on the map from its arrival onwards, so a rung's worth is
+   * measured in *hunted* time: the first rung's stretch is the one the spawn
+   * eats into, and adding a rung is re-dividing that hunted raid rather than
+   * finding a gap in the raid clock.
+   */
+  it('gives every hunter tier a comparable watch of the hunted raid', () => {
+    const boundaries = [...HUNTER_TIERS.map((tier) => tier.startsAtMs), RAID_DURATION_MS];
+    // The rungs are in order and none of them is skipped past.
+    for (let index = 1; index < boundaries.length; index += 1) {
+      expect(boundaries[index]).toBeGreaterThan(boundaries[index - 1]);
+    }
+
+    // The first rung starts when the hunter arrives, not when the raid does, and
+    // at its worst seed that is the latest spawn the generator can roll.
+    const watches = boundaries.slice(1).map((endsAtMs, index) =>
+      endsAtMs -
+      Math.max(
+        HUNTER_TIERS[index].startsAtMs,
+        index === 0 ? RUN_GENERATION_BOUNDS.hunterSpawnDelayMaximumMs : 0,
+      ),
+    );
+    const shortest = Math.min(...watches);
+    const longest = Math.max(...watches);
+    // No rung may be a fifth of another: a team nobody meets is not escalation.
+    expect(`shortest watch ${shortest}ms of a longest ${longest}ms`)
+      .toBe(`shortest watch ${shortest}ms of a longest ${Math.min(longest, shortest * 2)}ms`);
+  });
+
+  /**
+   * The relationship between the two things that spend the clock. An escape is
+   * bought because the fight cannot be won, so it must not simply hand over the
+   * next team: the first one, the one the design expects everyone to pay, has to
+   * fit inside a rung with walking room left over.
+   */
+  it('leaves a first escape shorter than the tier it is taken inside', () => {
+    const spacings = HUNTER_TIERS.slice(1).map(
+      (tier, index) => tier.startsAtMs - HUNTER_TIERS[index].startsAtMs,
+    );
+    const tightest = Math.min(...spacings, RAID_DURATION_MS - HUNTER_TIERS[HUNTER_TIERS.length - 1].startsAtMs);
+
+    expect(HUNTER_FLEE_BASE_PENALTY_MS).toBeLessThan(tightest);
+    // And what is left of the rung after paying for it is still a walk, not a
+    // rounding error: the window an escape buys covers the way to an exit.
+    expect(tightest - HUNTER_FLEE_BASE_PENALTY_MS).toBeGreaterThanOrEqual(HUNTER_SEARCH_MS);
+    // The second escape is the escalation being felt: it costs a whole tier.
+    expect(hunterFleePenaltyMs(1)).toBeGreaterThanOrEqual(tightest);
   });
 
   it('leaves every authored and generated extraction openable with time left to reach it', () => {

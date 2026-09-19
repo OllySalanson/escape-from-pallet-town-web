@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getItemById, useFieldItem, type ItemId } from '../items';
 import { hunterThreatFor } from '../world/hunterThreat';
+import { HUNTER_TIERS } from '../world/hunter';
 import { Pokemon, computePokemonStats, experienceForLevel } from './Pokemon';
 import {
   EVOLUTIONS,
@@ -267,8 +268,11 @@ describe('what evolving costs you in hunter', () => {
     const after = hunterThreatFor([new Pokemon(IVYSAUR, 16)]);
 
     expect(before.tierOffset).toBeLessThan(after.tierOffset);
-    expect(after.tierOffset).toBe(2);
-    expect(after.openingTier.party.length).toBe(3);
+    // Sixteen is the first evolution and the fourth rung opens at exactly that
+    // level, so evolving draws the rung that was added to answer it - it used to
+    // draw the top of a three-rung ladder and then have nothing left to climb.
+    expect(after.tierOffset).toBe(HUNTER_TIERS.length - 1);
+    expect(after.openingTier.party.length).toBe(4);
   });
 
   it('charges nothing for a stone, which is the level it did not cost you', () => {
