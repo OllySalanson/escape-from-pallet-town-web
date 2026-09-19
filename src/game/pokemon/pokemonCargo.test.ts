@@ -29,9 +29,15 @@ describe('what a Pokemon costs to carry home', () => {
         evolutionStage(rule.from) + 1,
       );
     }
-    // Nothing evolves into Butterfree here, so it is a first-stage four.
-    expect(evolutionStage('butterfree')).toBe(1);
-    expect(pokemonCargoCells('butterfree')).toBe(4);
+    // Caterpie arrived with the other 144, so Butterfree went from a
+    // first-stage four to the full nine without a footprint being written.
+    expect(evolutionStage('caterpie')).toBe(1);
+    expect(pokemonCargoCells('caterpie')).toBe(4);
+    expect(evolutionStage('butterfree')).toBe(3);
+    expect(pokemonCargoCells('butterfree')).toBe(9);
+    // A trade line counts its stages the same way, because the rule is in the
+    // table whether or not anything can trigger it.
+    expect(evolutionStage('alakazam')).toBe(3);
   });
 
   it('gives every shipped species a footprint no bigger than the raid pack', () => {

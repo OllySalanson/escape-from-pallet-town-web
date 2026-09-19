@@ -271,8 +271,6 @@ describe('Pokemon move learnset behavior', () => {
         { level: 4, move: moves[3] },
         { level: 5, move: moves[4] },
       ],
-      frontSprite: 'sprites/pokemon/training_dummy_front.png',
-      backSprite: 'sprites/pokemon/training_dummy_back.png',
     });
     const pokemon = new Pokemon(trainingDummy, 10);
 

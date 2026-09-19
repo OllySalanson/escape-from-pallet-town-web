@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { Pokemon } from '../pokemon';
+import { Pokemon, experienceForLevel } from '../pokemon';
+import { pokemonCargoCells } from '../pokemon/pokemonCargo';
 import { BULBASAUR, CHARMANDER, PIDGEY } from '../pokemon/species';
 import { ENRAGE_GRACE_MS, RunManager, RunPhase, RunTransitionError } from './RunManager';
 
@@ -286,5 +287,30 @@ describe('RunManager lifecycle', () => {
       bankedPokemon: [first, second],
       lostPokemon: [loadout.party[2]],
     });
+  });
+
+  /**
+   * A secured Pokemon that evolves in the field is a stage taller than the room
+   * it was given - a Bulbasaur crossing 16 goes from four squares to six, which
+   * does not fit the 2x2 every save starts with. The container was filled at the
+   * door, so what it accepted is what it is holding; re-measuring it here threw,
+   * and a raid that ended in a wipe ended on an uncaught error instead of a
+   * result screen. Found by playing: it is reachable by anything that can
+   * evolve, which since the import is most of the roster.
+   */
+  it('keeps protecting a Pokemon that grew out of its own squares', () => {
+    const partner = makePokemon();
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [partner, makePokemon(PIDGEY)], items: [] },
+      { mapId: 'pallet-town', durationMs: 60_000 },
+      { pokemon: [partner] },
+    );
+
+    partner.gainExperience(experienceForLevel(16) - partner.experience);
+    expect(partner.base.id).toBe('ivysaur');
+    expect(pokemonCargoCells('ivysaur')).toBeGreaterThan(2 * 2);
+
+    expect(manager.resolveWipe()).toMatchObject({ bankedPokemon: [partner] });
   });
 });

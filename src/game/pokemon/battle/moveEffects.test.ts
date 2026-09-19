@@ -136,8 +136,6 @@ describe('status declared on the move', () => {
         primaryType: PokemonType.Ground,
         baseStats: { hp: 40, attack: 40, defense: 40, spAttack: 40, spDefense: 40, speed: 40 },
         learnset: [{ level: 1, move: TACKLE }],
-        frontSprite: '',
-        backSprite: '',
       }),
       10,
     );

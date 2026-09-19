@@ -19,7 +19,6 @@ import {
   PIDGEY,
   PIKACHU,
   RAICHU,
-  SPECIES_BY_ID,
   SQUIRTLE,
   VENUSAUR,
   WIGGLYTUFF,
@@ -32,17 +31,27 @@ const experienceTo = (pokemon: Pokemon, level: number): number =>
 
 describe('the evolution table', () => {
   /**
-   * Pinned in full, because every line of it is sourced rather than designed:
-   * Unity carries no evolution data at all, so this is PokeAPI's
-   * `/evolution-chain/` read on 2026-09-19 and nothing else. A change here is a
-   * change to canon and should have to be typed out.
+   * The ten lines the game shipped with, pinned as they were before the import
+   * widened the table to all 151: every one of them is sourced rather than
+   * designed, so a change here is a change to canon and should have to be
+   * typed out. The whole table is generated - `generated/evolutionRules.ts` -
+   * and what generation III had is the generator's filtering, which
+   * `speciesImport.test.ts` holds.
    */
-  it('is exactly the canon rules for the species this game ships', () => {
+  it('is exactly the canon rules for the species the game shipped with', () => {
+    const shipped = [
+      'bulbasaur', 'ivysaur', 'charmander', 'charmeleon', 'squirtle', 'wartortle',
+      'pidgey', 'pidgeotto', 'pikachu', 'jigglypuff',
+    ];
     expect(
-      EVOLUTIONS.map((rule) => [
+      EVOLUTIONS.filter((rule) => shipped.includes(rule.from)).map((rule) => [
         rule.from,
         rule.to,
-        rule.trigger.kind === 'level' ? `level ${rule.trigger.level}` : rule.trigger.itemId,
+        rule.trigger.kind === 'level'
+          ? `level ${rule.trigger.level}`
+          : rule.trigger.kind === 'stone'
+            ? rule.trigger.itemId
+            : 'trade',
       ]),
     ).toEqual([
       ['bulbasaur', 'ivysaur', 'level 16'],
@@ -68,25 +77,41 @@ describe('the evolution table', () => {
   });
 
   /**
-   * The Moon Stone rule ships without a Moon Stone. Jigglypuff is only ever a
-   * trainer's Pokemon today, so nothing a player can own would answer to one,
-   * and an item that can never do anything is a worse find than no item. Pinned
-   * so that the day Jigglypuff is catchable, this test is what says the stone
-   * has to arrive with it.
+   * **Sixteen of the seventeen stone rules ship without their stone.** Only the
+   * Thunder Stone is an item; a Fire, Water, Leaf or Moon Stone is named by a
+   * rule here and by nothing a player can own, so those lines are unreachable
+   * exactly as the four trade lines are. An item that can never do anything is
+   * a worse find than no item, and where a stone *should* be found is a
+   * question about loot tables and the Ferryman's shelf rather than about this
+   * table. Pinned so that adding one is a decision somebody made.
    */
-  it('ships an item for every stone a player could spend one on, and no others', () => {
-    const ownable = new Set(Object.keys(SPECIES_BY_ID).filter((id) => id !== 'jigglypuff'));
-    for (const rule of EVOLUTIONS) {
-      if (rule.trigger.kind !== 'stone') {
-        continue;
-      }
-      const item = getItemById(rule.trigger.itemId);
-      expect(Boolean(item), `${rule.trigger.itemId} exists as an item`).toBe(
-        ownable.has(rule.from),
-      );
+  it('gives every stone it does ship an evolution-stone effect, and names the rest', () => {
+    const stones = new Set(
+      EVOLUTIONS.flatMap((rule) => (rule.trigger.kind === 'stone' ? [rule.trigger.itemId] : [])),
+    );
+    expect([...stones].sort()).toEqual([
+      'fire-stone', 'leaf-stone', 'moon-stone', 'thunder-stone', 'water-stone',
+    ]);
+    for (const stone of stones) {
+      const item = getItemById(stone);
+      expect(Boolean(item), `${stone} exists as an item`).toBe(stone === 'thunder-stone');
       if (item) {
         expect(item.effect.type).toBe('evolution-stone');
       }
+    }
+  });
+
+  /** Nothing asks for a trade, so the four trade lines can never be crossed. */
+  it('cannot be triggered by a trade rule', () => {
+    const trades = EVOLUTIONS.filter((rule) => rule.trigger.kind === 'trade');
+    expect(trades.map((rule) => rule.from).sort()).toEqual([
+      'graveler', 'haunter', 'kadabra', 'machoke',
+    ]);
+    for (const rule of trades) {
+      expect(evolutionOnLevel(rule.from, 100)).toBeUndefined();
+      expect(evolutionByStone(rule.from, 'thunder-stone')).toBeUndefined();
+      // The family still runs through it, which is the whole reason it is kept.
+      expect(evolvesInto(rule.from, rule.to)).toBe(true);
     }
   });
 
@@ -113,7 +138,20 @@ describe('the evolution table', () => {
       'ivysaur',
       'venusaur',
     ]);
-    expect(evolutionFamily('butterfree').map((species) => species.id)).toEqual(['butterfree']);
+    // The import brought the rest of the line with it: Butterfree used to be
+    // a family of one because Caterpie and Metapod did not exist.
+    expect(evolutionFamily('butterfree').map((species) => species.id).sort()).toEqual([
+      'butterfree',
+      'caterpie',
+      'metapod',
+    ]);
+    // A trade line is still one family, which is what keeps a save's moves
+    // readable and an Alakazam three stages tall in the pack.
+    expect(evolutionFamily('alakazam').map((species) => species.id).sort()).toEqual([
+      'abra',
+      'alakazam',
+      'kadabra',
+    ]);
   });
 });
 

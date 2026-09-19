@@ -69,6 +69,28 @@ describe('wildlife authored per place', () => {
     }
   });
 
+  /**
+   * A wild encounter has to be a fight that can end. Abra and Ditto come out of
+   * the import with no move at all - Teleport and Transform are both on the
+   * bespoke list - so one in tall grass would stand there while the raid clock
+   * ran, and the player's only way out would be to flee. Cocoons are allowed:
+   * Metapod and Kakuna know Harden and nothing else in FireRed, which is a free
+   * catch rather than a stalemate.
+   */
+  it('never rolls a species with no move to make', () => {
+    for (const district of MAP_DISTRICTS.filter((entry) => entry.encounters)) {
+      for (const entry of (district.encounters as WildEncounterTable).entries) {
+        const species = getSpeciesById(entry.speciesId)!;
+        for (const level of [entry.minLevel, entry.maxLevel]) {
+          expect(
+            new Pokemon(species, level).moves.length,
+            `${district.id}: ${entry.speciesId} at ${level} knows nothing`,
+          ).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
   it('resolves a tile to its district, and only then to the map', () => {
     const fallback: WildEncounterTable = { stepEncounterRate: 0.5, entries: [] };
     const reed = districtsForMap('floodplain-relay').find((entry) => entry.id === 'floodplain-reedbeds')!;
