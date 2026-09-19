@@ -78,7 +78,9 @@ function describeEffect(
       const restored = Math.min(item.effect.amount, pokemon.maxHp - pokemon.currentHp);
       return restored > 0
         ? {
-          effect: `Restores ${restored} HP · ${pokemon.currentHp}/${pokemon.maxHp} → ${
+          // "to", not an arrow: the game's typeface has no arrows, and a glyph it
+          // lacks is drawn in whatever face the browser falls back to.
+          effect: `Restores ${restored} HP · ${pokemon.currentHp}/${pokemon.maxHp} to ${
             pokemon.currentHp + restored
           }/${pokemon.maxHp}`,
           usable: true,

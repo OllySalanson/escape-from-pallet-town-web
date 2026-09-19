@@ -12,9 +12,9 @@ import type {
   ReportItem,
   ReportPokemon,
 } from '../run/extractionReport';
-import { raidClockProgress } from '../run/raidClock';
 import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
-import { MenuOverlay, hpBar, pokemonAvatar } from '../ui/MenuOverlay';
+import { MenuOverlay } from '../ui/MenuOverlay';
+import { pixelCommitBar, pixelHpBar, pixelScreen, pixelTag, pixelWindow } from '../ui/pixelUi';
 
 export interface ExtractionSceneData {
   readonly report: ExtractionReport;
@@ -198,6 +198,9 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   private showReport(lockMs: number): void {
+    // Only the report is a pixel-ui screen. The defeat sequence in front of it
+    // is its own full-bleed tableau with its own type scale.
+    this.overlay.root.classList.add('pixel-ui');
     this.overlay.root.innerHTML = this.markup();
     const control = this.overlay.root.querySelector<HTMLButtonElement>('[data-continue]')!;
     control.onclick = () => this.leave();
@@ -261,94 +264,76 @@ export class ExtractionScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * The account of the raid, on the lobby's own screen: a title bar that says
+   * how it ended and what the clock read, the verdict, what happened to the haul
+   * beside what was gambled on it, and the one bar that leads back to base.
+   *
+   * Both lists scroll inside their own windows. The two-column grid this
+   * replaced stretched its first row to the taller card and ran the screen past
+   * the frame on any raid that came home with a secure slot and experience.
+   */
   private markup(): string {
     const report = this.report;
     const escaped = report.outcome === 'ESCAPED';
-    return `<div class="menu-shell extraction-shell ${escaped ? 'extraction-won' : 'extraction-lost'}">
-      <header class="extraction-header">
-        <div class="extraction-headline">
-          <p class="eyebrow">${escapeHtml(report.eyebrow)}</p>
-          <h1>${escapeHtml(report.headline)}</h1>
-          <p class="extraction-summary">${escapeHtml(report.summary)}</p>
-        </div>
-        ${this.clockCard()}
-      </header>
-      <main class="extraction-layout">
-        ${this.ledgerPanel()}
-        ${this.gamblePanel()}
-        ${this.progressPanel()}
-      </main>
-      ${this.costPanel()}
-      <footer class="starter-confirm extraction-footer">
-        <div>
-          <strong>${escapeHtml(this.footerTitle())}</strong>
-          <small>${escapeHtml(this.footerNote())}</small>
-        </div>
-        <button class="button primary-button" data-continue>Back to base →</button>
-      </footer>
-    </div>`;
-  }
-
-  private clockCard(): string {
-    const report = this.report;
-    const used = Math.round(raidClockProgress(report.elapsedMs, report.durationMs) * 100);
-    return `<div class="extraction-clock">
-      <p class="eyebrow">Raid clock</p>
-      <strong>${escapeHtml(report.clockLabel)}</strong>
-      <div class="clock-track" aria-label="${used}% of the raid clock used"><span style="width:${used}%"></span></div>
-      <small>${used}% of the raid spent</small>
-    </div>`;
+    return pixelScreen({
+      place: escapeHtml(report.eyebrow),
+      title: '',
+      aside: `Raid clock ${escapeHtml(report.clockLabel)}`,
+      // There is one control on this screen, so the help bar is free to carry
+      // what becomes of the result.
+      hints: escapeHtml(this.footerNote()),
+      body: `<main class="px-body extraction-layout ${escaped ? 'extraction-won' : 'extraction-lost'}">${pixelWindow(
+        `<strong class="px-name">${escapeHtml(report.headline)}</strong><span class="px-wrap">${escapeHtml(report.summary)}</span>`,
+        { className: `extraction-verdict ${escaped ? 'px-tone-primary' : 'px-tone-risk'}`, tag: 'div' },
+      )}${this.ledgerPanel()}${this.gamblePanel()}${pixelCommitBar({
+        title: escapeHtml(this.footerTitle()),
+        lines: [`<small class="px-wrap">${this.costFacts().map(escapeHtml).join(' · ')}</small>`],
+        actions: '<button class="px-window px-button is-primary" data-continue>Back to base</button>',
+      })}</main>`,
+    });
   }
 
   private ledgerPanel(): string {
     const report = this.report;
-    const rows = groupRows(report.ledger, report.outcome === 'ESCAPED' ? 'banked' : 'lost');
+    const escaped = report.outcome === 'ESCAPED';
+    const rows = groupRows(report.ledger, escaped ? 'banked' : 'lost');
     const total = report.ledger.pokemon.length + report.ledger.items.length;
-    return `<section class="panel extraction-ledger">
-      <div class="panel-heading">
-        <div><p class="eyebrow">${report.outcome === 'ESCAPED' ? 'Straight to your stash' : 'Deleted from your stash'}</p><h2>${escapeHtml(report.ledgerHeading)}</h2></div>
-        <b>${total} ${total === 1 ? 'entry' : 'entries'}</b>
-      </div>
-      <div class="entity-list">${rows || `<p class="empty-state">${escapeHtml(report.ledgerEmptyText)}</p>`}</div>
-      ${report.contract ? `<article class="extraction-contract${report.contract.complete ? '' : ' unpaid'}">${objectiveIcon('Contract')}<div><strong>Contract ${report.contract.complete ? 'complete' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small>${escapeHtml(report.contract.reward)}</small></div></article>` : ''}
-    </section>`;
+    const contract = report.contract
+      ? `<div class="px-row has-icon${report.contract.complete ? ' is-secured' : ''}">${objectiveIcon('Contract')}<span class="px-row-main"><strong class="px-wrap">Contract ${report.contract.complete ? 'complete' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small class="px-wrap${report.contract.complete ? '' : ' px-warning'}">${escapeHtml(report.contract.reward)}</small></span></div>`
+      : '';
+    return pixelWindow(
+      `<div class="px-list px-scroll">${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${contract}${this.progressRows()}</div>`,
+      {
+        className: 'extraction-ledger',
+        heading: escapeHtml(report.ledgerHeading),
+        note: `${total} ${total === 1 ? 'entry' : 'entries'} · ${escaped ? 'to your stash' : 'deleted'}`,
+      },
+    );
   }
 
   private gamblePanel(): string {
     const report = this.report;
     const securedRows = groupRows(report.secured, 'secured');
     const riskedRows = groupRows(report.risked, 'survived');
-    return `<section class="panel extraction-gamble">
-      <div class="panel-heading">
-        <div><p class="eyebrow">What you chose before you deployed</p><h2>The gamble</h2></div>
-      </div>
-      <div class="gamble-group">
-        <p class="eyebrow">Secure slot</p>
-        <div class="entity-list">${securedRows || `<p class="empty-state">${escapeHtml(report.securedEmptyText)}</p>`}</div>
-      </div>
-      ${
-        // A lost raid's at-risk list is exactly the ledger beside it, so only a
-        // survived one lists what rode out unprotected and came back anyway.
-        report.outcome === 'ESCAPED'
-          ? `<div class="gamble-group">
-        <p class="eyebrow">Carried at risk</p>
-        <div class="entity-list">${riskedRows || '<p class="empty-state">Nothing was carried unprotected.</p>'}</div>
-      </div>`
-          : ''
-      }
-      <p class="gamble-verdict">${escapeHtml(report.gambleVerdict)}</p>
-    </section>`;
+    // A lost raid's at-risk list is exactly the ledger beside it, so only a
+    // survived one lists what rode out unprotected and came back anyway.
+    const risked =
+      report.outcome === 'ESCAPED'
+        ? `<h3 class="px-subheading">Carried at risk</h3>${riskedRows || '<p class="px-empty">Nothing was carried unprotected.</p>'}`
+        : '';
+    return pixelWindow(
+      `<div class="px-list px-scroll"><h3 class="px-subheading">Secure slot</h3>${securedRows || `<p class="px-empty">${escapeHtml(report.securedEmptyText)}</p>`}${risked}<p class="px-wrap gamble-verdict">${escapeHtml(report.gambleVerdict)}</p></div>`,
+      { className: 'extraction-gamble', heading: 'The gamble' },
+    );
   }
 
   /**
-   * What the party earned, when it earned anything.
-   *
-   * One row per Pokemon, in the ledger's column so a short haul fills the space
-   * it already left empty rather than making the screen taller. The sentence
-   * that names what the party earned is the headline summary at the top of the
-   * screen, so it is deliberately not repeated here.
+   * What the party earned, when it earned anything: one row per Pokemon, under
+   * the ledger it belongs beside. The sentence that names what the party earned
+   * is the verdict at the top of the screen, so it is not repeated here.
    */
-  private progressPanel(): string {
+  private progressRows(): string {
     const { progress } = this.report;
     if (progress.length === 0) {
       return '';
@@ -356,37 +341,26 @@ export class ExtractionScene extends Phaser.Scene {
     const rows = progress
       .map((entry) => {
         const levelled = entry.toLevel > entry.fromLevel;
-        return `<article class="entity-row${levelled ? ' levelled' : ''}">${pokemonAvatar(entry.dexId, entry.name)}<div class="entity-copy"><strong>${escapeHtml(entry.name)}</strong><small>${
+        return `<div class="px-row${levelled ? ' is-selected' : ''}"><span class="px-row-main"><strong class="px-name">${escapeHtml(entry.name)}</strong><small>${
           levelled
-            ? `Level ${entry.fromLevel} → ${entry.toLevel}`
+            ? `Level ${entry.fromLevel} to ${entry.toLevel}`
             : `Level ${entry.toLevel} · ${entry.experienceToNextLevel} to go`
-        }</small></div><span class="${levelled ? 'level-tag' : 'xp-tag'}">${levelled ? `Level ${entry.toLevel} ✓` : `+${entry.experienceGained} xp`}</span></article>`;
+        }</small></span>${levelled ? pixelTag(`Level ${entry.toLevel}`, 'good', true) : pixelTag(`+${entry.experienceGained} xp`)}</div>`;
       })
       .join('');
-    return `<section class="panel extraction-progress">
-      <div class="panel-heading">
-        <div><p class="eyebrow">Carried home in the party</p><h2>Field experience</h2></div>
-        <b>${progress.length} Pokémon</b>
-      </div>
-      <div class="entity-list">${rows}</div>
-    </section>`;
+    return `<h3 class="px-subheading">Field experience</h3>${rows}`;
   }
 
-  private costPanel(): string {
-    const report = this.report;
-    const spent = report.spent;
-    const facts = [
+  private costFacts(): readonly string[] {
+    const spent = this.report.spent;
+    return [
       // An undefined spend means the losing screen could not see the bag, which
       // is not the same claim as "nothing was spent".
       ...(spent === undefined
         ? []
         : [spent.length ? `Supplies spent: ${spent.map(itemText).join(', ')}` : 'No supplies spent']),
-      ...report.pressure,
+      ...this.report.pressure,
     ];
-    return `<section class="panel extraction-cost">
-      <div class="panel-heading"><h2>What the raid cost</h2></div>
-      <ul class="cost-list">${facts.map((fact) => `<li>${escapeHtml(fact)}</li>`).join('')}</ul>
-    </section>`;
   }
 
   private footerTitle(): string {
@@ -494,11 +468,11 @@ function defeatFigure(figure: DefeatFigure, index: number): string {
 
 type RowTag = 'banked' | 'lost' | 'secured' | 'survived';
 
-const ROW_TAGS: Record<RowTag, { readonly text: string; readonly className: string }> = {
-  banked: { text: 'Banked ✓', className: 'secure-tag banked-tag' },
-  lost: { text: 'Gone', className: 'risk-tag' },
-  secured: { text: 'Protected', className: 'secure-tag' },
-  survived: { text: 'Made it back ✓', className: 'risk-tag survived-tag' },
+const ROW_TAGS: Record<RowTag, string> = {
+  banked: pixelTag('Banked', 'good', true),
+  lost: pixelTag('Gone', 'risk'),
+  secured: pixelTag('Protected', 'secure'),
+  survived: pixelTag('Made it', 'plain', true),
 };
 
 function groupRows(group: ReportGroup, tag: RowTag): string {
@@ -509,15 +483,13 @@ function groupRows(group: ReportGroup, tag: RowTag): string {
 }
 
 function pokemonRow(member: ReportPokemon, tag: RowTag): string {
-  const { text, className } = ROW_TAGS[tag];
-  return `<article class="entity-row">${pokemonAvatar(member.dexId, escapeHtml(member.name))}<div><strong>${escapeHtml(member.name)}</strong><small>Level ${member.level} · ${member.currentHp}/${member.maxHp} HP</small>${hpBar(member.currentHp, member.maxHp)}</div><span class="${className}">${text}</span></article>`;
+  return `<div class="px-row${tag === 'lost' ? ' is-lost' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(member.name)}</strong>${pixelHpBar(member.currentHp, member.maxHp)}</span><small>Level ${member.level} · ${member.currentHp}/${member.maxHp} HP</small></span>${ROW_TAGS[tag]}</div>`;
 }
 
 function itemRow(item: ReportItem, tag: RowTag): string {
-  const { text, className } = ROW_TAGS[tag];
   // Quantity sits on the name's own line: an item row has nothing to say on a
   // second one, and the screen is worth more than the extra height costs.
-  return `<article class="entity-row">${itemIcon(item.itemId, item.label)}<div><strong>${escapeHtml(item.label)} <span class="item-quantity">×${item.quantity}</span></strong></div><span class="${className}">${text}</span></article>`;
+  return `<div class="px-row has-icon${tag === 'lost' ? ' is-lost' : ''}">${itemIcon(item.itemId, item.label)}<span class="px-row-main"><strong>${escapeHtml(item.label)} ×${item.quantity}</strong></span>${ROW_TAGS[tag]}</div>`;
 }
 
 function itemText(item: ReportItem): string {

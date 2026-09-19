@@ -3,12 +3,18 @@ import { audioManager } from '../audio/AudioManager';
 import { menuClickSound } from '../audio/menuSounds';
 import { firstMatching } from './menuFocus';
 import { claimOverlayKeyboard } from './overlayKeyboard';
+import { focusDirectionForKey, nextFocusIndex } from './spatialFocus';
 
 export class MenuOverlay {
   public readonly root: HTMLElement;
   private readonly releaseKeyboard: () => void;
   private readonly artworkErrorHandler: (event: Event) => void;
   private readonly clickSoundHandler: (event: Event) => void;
+  private readonly focusHandler: (event: Event) => void;
+  private readonly hoverHandler: (event: Event) => void;
+  private readonly resizeHandler: () => void;
+  /** Which control the player was last on, so a re-render can put them back. */
+  private lastFocusKey: string | null = null;
 
   public constructor(
     scene: Phaser.Scene,
@@ -52,6 +58,28 @@ export class MenuOverlay {
       image.parentElement?.classList.add('artwork-unavailable');
     };
     this.root.addEventListener('error', this.artworkErrorHandler, true);
+    // Both listeners sit on the root rather than on the controls, because every
+    // screen re-renders by replacing its markup and the controls do not survive.
+    this.focusHandler = (event) => {
+      const control = event.target instanceof HTMLElement ? event.target : null;
+      this.lastFocusKey = control ? focusKeyOf(control) : null;
+      this.showHelpFor(control);
+    };
+    // A pixel-ui screen has one cursor, as the games it is dressed as do: the
+    // pointer moves it rather than lighting a second row beside the focused one.
+    this.hoverHandler = (event) => {
+      if (!this.root.classList.contains('pixel-ui') || !(event.target instanceof Element)) {
+        return;
+      }
+      const control = event.target.closest<HTMLElement>('button:not([disabled])');
+      if (control && control !== document.activeElement) {
+        control.focus({ preventScroll: true });
+      }
+    };
+    this.resizeHandler = () => this.snapTextBoxes();
+    window.addEventListener('resize', this.resizeHandler);
+    this.root.addEventListener('focusin', this.focusHandler);
+    this.root.addEventListener('mouseover', this.hoverHandler);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
     scene.events.once(Phaser.Scenes.Events.DESTROY, () => this.destroy());
   }
@@ -60,17 +88,118 @@ export class MenuOverlay {
     this.releaseKeyboard();
     this.root.removeEventListener('error', this.artworkErrorHandler, true);
     this.root.removeEventListener('click', this.clickSoundHandler, true);
+    this.root.removeEventListener('focusin', this.focusHandler);
+    this.root.removeEventListener('mouseover', this.hoverHandler);
+    window.removeEventListener('resize', this.resizeHandler);
     this.root.remove();
   }
 
-  /**
-   * Focus the first of `preference` that is on screen, tried in the order
-   * given - see `menuFocus.ts` for why one comma-separated selector cannot.
-   */
-  public focus(...preference: string[]): void {
-    requestAnimationFrame(() =>
-      firstMatching((selector) => this.root.querySelector<HTMLElement>(selector), preference)?.focus());
+  /** Starts the cursor on the first of these selectors the screen has. */
+  public focus(...selectors: string[]): void {
+    requestAnimationFrame(() => this.moveCursorTo(this.firstMatch(selectors)));
   }
+
+  /**
+   * Puts the cursor back after a re-render: on the control the player was on, if
+   * the new markup still has it, and otherwise where `focus` would start it.
+   * Toggling a row used to throw the cursor to the top of the screen, onto the
+   * way out.
+   */
+  public refocus(...selectors: string[]): void {
+    requestAnimationFrame(() => {
+      const controls = [...this.root.querySelectorAll<HTMLElement>('button:not([disabled])')];
+      const remembered = controls.find((control) => focusKeyOf(control) === this.lastFocusKey);
+      this.moveCursorTo(remembered ?? this.firstMatch(selectors));
+    });
+  }
+
+  /**
+   * Moves the cursor the way an arrow key points, by where the controls are on
+   * screen. Returns whether the key was one of the cursor's, so the caller knows
+   * to keep it from the browser.
+   */
+  public moveCursor(key: string): boolean {
+    const direction = focusDirectionForKey(key);
+    if (!direction) {
+      return false;
+    }
+    const controls = [...this.root.querySelectorAll<HTMLElement>('button:not([disabled])')];
+    const current = controls.indexOf(document.activeElement as HTMLElement);
+    controls[nextFocusIndex(controls.map((control) => control.getBoundingClientRect()), current, direction)]?.focus();
+    return true;
+  }
+
+  /** Tried one selector at a time - see `menuFocus.ts` for why a list cannot be. */
+  private firstMatch(selectors: readonly string[]): HTMLElement | null {
+    return firstMatching((selector) => this.root.querySelector<HTMLElement>(selector), selectors);
+  }
+
+  /**
+   * Widens every box that is as wide as its words to a whole number of game
+   * pixels. Text is the one thing on a pixel-ui screen whose size is not a
+   * multiple of the unit, and whatever is laid out after it - a health bar
+   * beside a name, the frame of a button - would otherwise start between two
+   * pixels and draw its one-pixel edges soft.
+   */
+  private snapTextBoxes(): void {
+    if (!this.root.classList.contains('pixel-ui')) {
+      return;
+    }
+    const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
+    if (unit <= 0) {
+      return;
+    }
+    const boxes = [...this.root.querySelectorAll<HTMLElement>(TEXT_SIZED_BOXES)];
+    boxes.forEach((box) => { box.style.width = ''; });
+    // Measured together and then written together, so this is one layout, not one a box.
+    const widths = boxes.map((box) => box.getBoundingClientRect().width);
+    boxes.forEach((box, index) => {
+      box.style.width = `${Math.ceil(widths[index] / unit - 0.001) * unit}px`;
+    });
+  }
+
+  private moveCursorTo(control: HTMLElement | null): void {
+    this.snapTextBoxes();
+    control?.focus();
+    // Focus that did not move fires no event, and the help bar was just rebuilt.
+    this.showHelpFor(control);
+  }
+
+  /**
+   * A control can own a detail pane: `data-shows="x"` on the control, and
+   * `data-shown-by="x"` on the pane. Focusing the control swaps the pane in, so
+   * a list can stay one line a row and still show the Pokemon it is naming.
+   */
+  private showDetailFor(control: HTMLElement | null): void {
+    const shows = control?.closest<HTMLElement>('[data-shows]')?.dataset.shows;
+    if (shows === undefined) {
+      return;
+    }
+    this.root.querySelectorAll<HTMLElement>('[data-shown-by]').forEach((pane) => {
+      pane.hidden = pane.dataset.shownBy !== shows;
+    });
+  }
+
+  private showHelpFor(control: HTMLElement | null): void {
+    this.showDetailFor(control);
+    const line = this.root.querySelector<HTMLElement>('[data-help-text]');
+    if (!line) {
+      return;
+    }
+    line.textContent =
+      control?.closest<HTMLElement>('[data-help]')?.dataset.help ?? line.dataset.helpDefault ?? '';
+  }
+}
+
+/** Everything on a pixel-ui screen that takes its width from the words inside it. */
+const TEXT_SIZED_BOXES = '.px-name, .px-tag, .px-button, .px-chip, .px-back, .px-type, .px-place, .px-rail li';
+
+/** A control is the same control across renders if it carries the same wiring. */
+function focusKeyOf(control: HTMLElement): string | null {
+  const entries = Object.entries(control.dataset).filter(([name]) => name !== 'help');
+  return entries.length === 0
+    ? null
+    : entries.map(([name, value]) => `${name}=${value}`).sort().join('|');
 }
 
 export function pokemonAvatar(dexId: number, name: string): string {

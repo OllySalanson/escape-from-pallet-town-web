@@ -24,7 +24,7 @@ describe('treating a Pokemon at base with a stash item', () => {
         itemId: 'potion',
         displayName: 'Potion',
         held: 2,
-        effect: `Restores 8 HP · ${pokemon.currentHp}/${pokemon.maxHp} → ${pokemon.maxHp}/${pokemon.maxHp}`,
+        effect: `Restores 8 HP · ${pokemon.currentHp}/${pokemon.maxHp} to ${pokemon.maxHp}/${pokemon.maxHp}`,
         usable: true,
       },
       {
@@ -37,7 +37,7 @@ describe('treating a Pokemon at base with a stash item', () => {
     ]);
   });
 
-  it('never offers a Poke Ball as a treatment, or a medicine the stash does not hold', () => {
+  it('never offers a Poké Ball as a treatment, or a medicine the stash does not hold', () => {
     const { stash, pokemon } = stashWith(8, { 'poke-ball': 5, 'great-ball': 2, potion: 1 });
 
     expect(treatmentOptions(stash, pokemon).map((option) => option.itemId)).toEqual(['potion']);

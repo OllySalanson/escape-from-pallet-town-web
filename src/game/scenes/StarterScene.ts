@@ -8,6 +8,7 @@ import {
   type StarterSpeciesId,
 } from '../stash';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { pixelCommitBar, pixelScreen } from '../ui/pixelUi';
 import { starterCards, starterLoadoutSummary } from '../ui/starterPicker';
 
 export class StarterScene extends Phaser.Scene {
@@ -20,23 +21,28 @@ export class StarterScene extends Phaser.Scene {
   }
 
   public create(): void {
-    this.overlay = new MenuOverlay(this, 'starter-menu', (event) => this.handleKey(event));
+    this.overlay = new MenuOverlay(this, 'starter-menu pixel-ui', (event) => this.handleKey(event));
     this.render();
   }
 
   private handleKey(event: KeyboardEvent): void {
-    const controls = [...this.overlay.root.querySelectorAll<HTMLButtonElement>('button:not([disabled])')];
-    const current = controls.indexOf(document.activeElement as HTMLButtonElement);
-    if (['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft'].includes(event.key) && controls.length) {
+    if (this.overlay.moveCursor(event.key)) {
       event.preventDefault();
-      const direction = event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1;
-      controls[(current + direction + controls.length) % controls.length]?.focus();
     }
   }
 
   private render(): void {
     const selected = getStarterSpecies(this.selectedStarterId);
-    this.overlay.root.innerHTML = `<div class="menu-shell starter-shell"><header class="starter-header"><p class="eyebrow">First raid briefing</p><h1>Choose your partner</h1><p>Your partner enters the lost field kit raid with you. Choose carefully, then confirm to lock in your first Pokémon.</p></header><main class="starter-grid">${starterCards(this.selectedStarterId)}</main><footer class="starter-confirm"><div><span class="eyebrow">Ready to deploy</span><strong>${selected.name}</strong><small>${starterLoadoutSummary(selected)}</small></div><button class="button primary-button" data-confirm data-sfx="confirm">Confirm ${selected.name} →</button></footer></div>`;
+    this.overlay.root.innerHTML = pixelScreen({
+      place: 'First raid briefing',
+      title: 'Choose your partner',
+      hints: 'ARROWS move · ENTER choose',
+      body: `<main class="px-body starter-shell"><p class="starter-brief">Your partner enters the lost field kit raid with you. Choose carefully.</p><div class="starter-grid">${starterCards(this.selectedStarterId)}</div>${pixelCommitBar({
+        title: selected.name,
+        lines: [`<span class="px-wrap">Ready to deploy: ${starterLoadoutSummary(selected)}</span>`],
+        actions: `<button class="px-window px-button is-primary" data-confirm data-sfx="confirm" data-help="Locks in ${selected.name} as your first Pokémon.">Confirm ${selected.name}</button>`,
+      })}</main>`,
+    });
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-starter]').forEach((button) => {
       button.onclick = () => {
         this.selectedStarterId = button.dataset.starter as StarterSpeciesId;

@@ -1,5 +1,6 @@
 export { Bag, type BagContents } from './Bag';
 export {
+  ITEM_CATEGORY_LABELS,
   ITEM_DEFINITIONS,
   ITEMS,
   ItemCategory,

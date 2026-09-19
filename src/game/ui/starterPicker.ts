@@ -1,32 +1,38 @@
 import type { PokemonBase } from '../pokemon';
 import { STARTER_SPECIES, type StarterSpeciesId } from '../stash';
-import { pokemonAvatar, typeBadge } from './MenuOverlay';
+import { pixelPortrait, pixelTypeBadge } from './pixelUi';
 
 /**
  * Shared by every surface that offers the three starters, so the first-run
  * briefing and the lobby swap always describe them in the same words.
  */
 export const STARTER_NOTES: Readonly<Record<StarterSpeciesId, string>> = {
-  bulbasaur: 'Grass / Poison · strong special bulk',
-  charmander: 'Fire · the quickest of the three',
-  squirtle: 'Water · strongest physical defense',
+  bulbasaur: 'Strong special bulk',
+  charmander: 'Quickest of the three',
+  squirtle: 'Best physical defense',
 };
 
 export interface StarterCardOptions {
   /** Species already held, marked so a swap into it is never a surprise. */
   readonly heldSpeciesId?: string;
-  /** Wording for the call to action on an unselected card. */
-  readonly selectLabel?: string;
+  /** What choosing an unselected card does, for the help bar. */
+  readonly selectHelp?: string;
 }
 
+/**
+ * The three starters as pixel-ui cards: the front sprite at its own size, then
+ * the name, the types and the one-line note. Which card is chosen is the card's
+ * own fill and the cursor, not a word at the bottom of it.
+ */
 export function starterCards(
   selectedId: StarterSpeciesId,
-  { heldSpeciesId, selectLabel = 'Select →' }: StarterCardOptions = {},
+  { heldSpeciesId, selectHelp = 'Choose this starter.' }: StarterCardOptions = {},
 ): string {
   return STARTER_SPECIES.map((species) => {
     const selected = species.id === selectedId;
     const held = species.id === heldSpeciesId;
-    return `<button class="starter-card ${selected ? 'selected' : ''}" data-starter="${species.id}" aria-pressed="${selected}">${pokemonAvatar(species.dexId, species.name)}<div><span class="eyebrow">No. ${String(species.dexId).padStart(3, '0')}${held ? ' · Current partner' : ''}</span><h2>${species.name}</h2><p>${STARTER_NOTES[species.id]}</p><div>${typeBadge(species.primaryType)}${species.secondaryType ? typeBadge(species.secondaryType) : ''}</div></div><b>${selected ? 'Selected' : selectLabel}</b></button>`;
+    const help = held ? 'Your current partner.' : selected ? 'Chosen. Confirm below.' : selectHelp;
+    return `<button class="px-window px-card starter-card${selected ? ' is-selected' : ''}" data-starter="${species.id}" data-help="${help}" aria-pressed="${selected}"><span class="starter-number">No. ${String(species.dexId).padStart(3, '0')}${held ? ' · yours' : ''}</span>${pixelPortrait(species.dexId, species.name)}<strong class="px-name">${species.name}</strong><span>${pixelTypeBadge(species.primaryType)}${species.secondaryType ? pixelTypeBadge(species.secondaryType) : ''}</span><small class="px-wrap">${STARTER_NOTES[species.id]}</small></button>`;
   }).join('');
 }
 

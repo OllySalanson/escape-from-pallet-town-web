@@ -90,6 +90,10 @@ class FakeElement {
 
 class FakeRoot {
   public html = '';
+  public readonly classes = new Set<string>();
+  public readonly classList = {
+    add: (name: string) => this.classes.add(name),
+  };
   public readonly stage = new FakeElement();
   public readonly continueButton = new FakeElement();
 

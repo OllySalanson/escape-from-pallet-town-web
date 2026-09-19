@@ -294,7 +294,7 @@ describe('Stash', () => {
 
     const restored = saves.load();
     expect(restored?.stash.listPokemon().map(({ id }) => id)).toEqual(['secured', 'home']);
-    // Three unsecured Poke Balls are gone for good, then the wipe tops the
+    // Three unsecured Poké Balls are gone for good, then the wipe tops the
     // survivor back up to the minimum needed to attempt another run.
     expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
   });

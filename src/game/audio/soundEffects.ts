@@ -311,7 +311,7 @@ export const SOUND_EFFECTS = {
   },
   ballThrow: {
     channel: 'battle',
-    moment: 'A Poke Ball is thrown',
+    moment: 'A Poké Ball is thrown',
     tones: [sweep(tri(400, 0.18, 0.06), 1200)],
   },
   ballShake: {
