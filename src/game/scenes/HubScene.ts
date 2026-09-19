@@ -815,7 +815,7 @@ export class HubScene extends Phaser.Scene {
   private outfitterCard(): string {
     const built = builtUpgrades(this.builtUpgradeIds).length;
     const ready = this.outfitterLadder.filter((offer) => offer.affordable).length;
-    return `<button class="action-card" data-view="outfitter"><span>OUTFITTER</span><h2>Base upgrades</h2><p>Spend banked Pokémon and spare supplies on permanent upgrades.</p><b>${built}/${OUTFITTER_UPGRADES.length} built${ready ? ` · ${ready} ready to build` : ''} →</b></button>`;
+    return `<button class="action-card" data-view="outfitter"><span>OUTFITTER</span><h2>Base upgrades</h2><p>Spend banked Pokémon and spare supplies on permanent upgrades.</p><b>${built}/${OUTFITTER_UPGRADES.length} built${ready ? ` · ${ready} ready` : ''} →</b></button>`;
   }
 
   private get outfitterLadder(): readonly OutfitterOffer[] {
