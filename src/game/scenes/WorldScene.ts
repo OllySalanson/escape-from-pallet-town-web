@@ -9,12 +9,13 @@ import {
 } from '../movement/gridMovement';
 import { KeyPresses } from '../input/KeyPresses';
 import { PressLatch } from '../input/pressLatch';
-import { advanceStepClock } from '../movement/stepClock';
+import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import {
   CHARACTER_FEET_PIXEL_Y,
   CHARACTER_HEAD_PIXEL_Y,
   getIdleFrame,
   getWalkAnimationKey,
+  getWalkFrames,
 } from '../playerFrames';
 import type { CharacterDesignId } from '../world/characterDesigns';
 import {
@@ -41,6 +42,21 @@ import {
   type WorldMapId,
 } from '../worldMap';
 import { type WorldEntity } from '../world/npcs';
+import {
+  advanceIdleFigures,
+  createIdleFigures,
+  idleFrames,
+  idleHeldTiles,
+  type IdleFigure,
+} from '../world/npcIdle';
+import {
+  LEDGE_HOP_DURATION_MS,
+  LEDGE_HOP_RISE,
+  ledgeCaption,
+  ledgeHopAt,
+  ledgeHopTiles,
+  ledgesForMap,
+} from '../world/ledges';
 import { PARTY_LIMIT, Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { createGiftPokemon, giftGivenBy, isGiftSpoken, type PokemonGift } from '../world/gifts';
 import { DialogBox } from '../ui/DialogBox';
@@ -221,7 +237,8 @@ const LABEL_TONES: Readonly<
     | 'contract'
     | 'gateShut'
     | 'gateOpen'
-    | 'dropIn',
+    | 'dropIn'
+    | 'ledge',
     WorldLabelTone
   >
 > = {
@@ -243,10 +260,26 @@ const LABEL_TONES: Readonly<
   // A drop-in point is the one teal on the map: somewhere a later raid can
   // start, which no cache, exit or contract stop is.
   dropIn: { fill: 0x0f3a3d, border: 0x5eead4, ink: '#ccfbf1' },
+  // A ledge is the ground itself, so it is stone: not an exit's green or red,
+  // not a threat, not a place a raid is sent to.
+  ledge: { fill: 0x1c2733, border: 0x9fb3c8, ink: '#e2e8f0' },
 };
 
 /** The landing pad drawn on a drop-in point, as filled pixel rects. */
 const DROP_IN_TINT = 0x5eead4;
+
+/**
+ * The chevrons painted on a ledge's brow, in the ledge caption's own stone.
+ *
+ * A caption cannot be relied on to teach this one: a name speaks only once the
+ * player has walked up to the thing, which on a brow is the tile they are
+ * standing on, and in a wood there is often no sky for it to sit in. Map art
+ * has neither problem - the drop-in point's landing pad is the same answer to
+ * the same question - and a mark on the ground is what a player reads as
+ * "something happens here" without being told.
+ */
+const LEDGE_MARK_TINT = 0xd6e4f0;
+const LEDGE_MARK_SHADE = 0x1c2733;
 
 /** How the ground a trainer is watching is shaded. */
 const WATCH_TINT = 0xf87171;
@@ -340,6 +373,16 @@ export class WorldScene extends Phaser.Scene {
   private mapObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly npcSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private readonly npcAppearances = new Map<string, WorldCharacterAppearance>();
+  /** The townsfolk keeping a beat on this map, and where each of them stands now. */
+  private idleFigures: IdleFigure[] = [];
+  /**
+   * What this step costs in game time. A walked tile is `STEP_DURATION_MS`; a
+   * ledge hop covers three tiles and takes longer than one of them, which is
+   * what makes it read as a jump and still be the quick way.
+   */
+  private stepDurationMs = STEP_DURATION_MS;
+  /** True while the step in progress is a ledge hop, so the figure arcs over it. */
+  private hopping = false;
   private party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
   private caughtPokemonStash: Pokemon[] = [];
   private bag = new Bag({ potion: 3, antidote: 1, 'poke-ball': 5, 'great-ball': 1 });
@@ -519,6 +562,10 @@ export class WorldScene extends Phaser.Scene {
     this.placeName = null;
     this.placePlateMs = 0;
     this.arrivedFromBattle = false;
+    // Where the last raid's townsfolk had wandered to, and whoever was half-way
+    // through a step when it ended: `createEntities` stands them all back on
+    // their marks, and a stale vacated tile would be a wall nobody was on.
+    this.idleFigures = [];
   }
 
   /**
@@ -693,6 +740,9 @@ export class WorldScene extends Phaser.Scene {
     this.dialogBox.update(deltaMs);
 
     this.advanceRunClock(deltaMs);
+    // Outside the clock and before the early returns: the townsfolk are the
+    // world going on around the raid, and they cost the player nothing.
+    this.advanceIdleFigures(deltaMs);
     if (this.pendingHubTransition) {
       this.handleDialogInput();
       return;
@@ -761,6 +811,11 @@ export class WorldScene extends Phaser.Scene {
     });
 
     const pushing = input.up || input.down || input.left || input.right;
+    // Before the bump: a ledge is solid, so walking into one is refused by the
+    // step planner, and the hop is what the refusal means on these tiles.
+    if (!decision.target && pushing && this.tryLedgeHop(decision.facing)) {
+      return;
+    }
     const bump = nextBump(this.pushingAgainst, !decision.target && pushing ? decision.facing : null);
     this.pushingAgainst = bump.pushingAgainst;
     if (bump.thud) {
@@ -1057,6 +1112,8 @@ export class WorldScene extends Phaser.Scene {
     this.createPois();
     this.createContractMarkers();
 
+    this.createLedgeLabels();
+    this.idleFigures = createIdleFigures(this.currentMap.entities, Math.random);
     for (const entity of this.currentMap.entities) {
       if (entity.kind === 'sign') {
         this.createSign(entity);
@@ -1281,6 +1338,81 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * The one route on the map only the player has, named so it is not guessed at.
+   *
+   * A bank is drawn all over these maps and none of the others may be hopped,
+   * so the one that may says so - and says the only thing that matters about
+   * it, which is that there is no way back up. It speaks like any other name:
+   * within five walking steps, or on a held look.
+   */
+  private createLedgeLabels(): void {
+    for (const ledge of ledgesForMap(this.currentMap.id)) {
+      for (const tile of ledge.brow) {
+        this.paintLedgeMark(tile, ledge.drop);
+      }
+      // The bank rather than the brow, because the brow is the tile the player
+      // is standing on when the caption speaks - and a caption gives the player
+      // room while any other seat is clear, so one named after the ground under
+      // their feet has nowhere left to sit. Seated on the far side of the drop,
+      // it is on the ground the hop lands on: exactly what it is about.
+      const tiles = [...ledge.brow, ...ledge.brow.flatMap((from) => ledgeHopTiles(ledge, from).slice(0, -1))];
+      const left = Math.min(...tiles.map((tile) => tile.x));
+      const top = Math.min(...tiles.map((tile) => tile.y));
+      this.worldLabels.push(
+        new WorldLabel(this, {
+          subject: {
+            x: left * TILE_SIZE,
+            y: top * TILE_SIZE,
+            width: (Math.max(...tiles.map((tile) => tile.x)) - left + 1) * TILE_SIZE,
+            height: (Math.max(...tiles.map((tile) => tile.y)) - top + 1) * TILE_SIZE,
+          },
+          text: ledgeCaption(ledge),
+          tone: LABEL_TONES.ledge,
+          depth: atRow(CAPTION_BAND, top),
+          placement: ledge.drop === 'up' ? 'above' : 'below',
+          speech: { voice: 'name', tiles: ledge.brow },
+        }),
+      );
+    }
+  }
+
+  /**
+   * Two chevrons on the brow, pointing the way the drop goes.
+   *
+   * Painted a pixel at a time, as the player's own marker and the drop-in pad
+   * are, so it stays as crisp as the art it lies on. The dark row under each
+   * one is what keeps it readable on grass, which is the only ground a brow has
+   * been drawn on so far.
+   */
+  private paintLedgeMark(tile: GridPosition, drop: Direction): void {
+    const mark = this.add.graphics().setDepth(atRow(MARKER_BAND, tile.y));
+    const originX = tile.x * TILE_SIZE;
+    const originY = tile.y * TILE_SIZE;
+    // Tile-local pixels of a shallow V pointing down, drawn twice; every other
+    // direction is the same V turned.
+    const turn = (x: number, y: number): [number, number] =>
+      drop === 'down'
+        ? [x, y]
+        : drop === 'up'
+          ? [x, TILE_SIZE - 1 - y]
+          : drop === 'right'
+            ? [y, x]
+            : [TILE_SIZE - 1 - y, x];
+    for (const shade of [true, false]) {
+      mark.fillStyle(shade ? LEDGE_MARK_SHADE : LEDGE_MARK_TINT, shade ? 0.5 : 1);
+      for (const top of [6, 10]) {
+        for (let step = 0; step < 4; step += 1) {
+          for (const x of [4 + step, 11 - step]) {
+            const [px, py] = turn(x, top + step + (shade ? 1 : 0));
+            mark.fillRect(originX + px, originY + py, 1, 1);
+          }
+        }
+      }
+    }
+    this.mapObjects.push(mark);
+  }
+
   /** Every raid boundary names where it leads, so no route has to be guessed. */
   private createRouteTransitionLabels(): void {
     const session = this.runSession;
@@ -1355,6 +1487,95 @@ export class WorldScene extends Phaser.Scene {
     this.npcSprites.set(id, sprite);
     this.npcAppearances.set(id, appearance);
     this.mapObjects.push(sprite);
+  }
+
+  /**
+   * Whether an authored figure is on this tile right now.
+   *
+   * A sign and a trainer are where they were put; a townsperson with a beat may
+   * have shifted a tile, and owns the tile they are stepping off until the step
+   * has finished drawing.
+   */
+  private entityHolds(entity: WorldEntity, tile: GridPosition): boolean {
+    const figure = this.idleFigures.find((standing) => standing.id === entity.id);
+    const held: readonly GridPosition[] = figure ? idleHeldTiles(figure) : [entity.position];
+    return held.some((stood) => stood.x === tile.x && stood.y === tile.y);
+  }
+
+  /**
+   * Moves the townsfolk on their own small schedules.
+   *
+   * It is driven by the frame rather than by the raid clock, and it runs before
+   * any of `update`'s early returns so a figure mid-step still finishes it while
+   * the player is reading - but the beats themselves stop dead while anything is
+   * on screen to read, because a person who walked off mid-sentence would leave
+   * their own words hanging in the air. Nothing here spends raid time, and
+   * nothing here touches the run's own randomness, so a seed plays the same raid
+   * whatever the street happens to be doing.
+   */
+  private advanceIdleFigures(deltaMs: number): void {
+    if (this.idleFigures.length === 0) {
+      return;
+    }
+    const frozen =
+      this.isWarping ||
+      this.pendingHubTransition ||
+      this.trainerPrompt !== undefined ||
+      this.dialogBox.visible;
+    this.idleFigures = advanceIdleFigures(this.idleFigures, {
+      deltaMs,
+      frozen,
+      isTileFree: (tile) => !this.isBlocked(tile) && !this.isPlayerOn(tile),
+      random: Math.random,
+    });
+    for (const frame of idleFrames(this.idleFigures)) {
+      this.placeFigure(frame.id, frame.x, frame.y, frame.facing, { striding: frame.striding });
+    }
+  }
+
+  /** The two tiles the player owns: the one they are on, and the one they are crossing to. */
+  private isPlayerOn(tile: GridPosition): boolean {
+    return (
+      (this.currentTile.x === tile.x && this.currentTile.y === tile.y) ||
+      (this.targetTile !== null && this.targetTile.x === tile.x && this.targetTile.y === tile.y)
+    );
+  }
+
+  /**
+   * Puts one figure on the map, in fractional tiles.
+   *
+   * The one place a figure that is not the player is positioned, sorted and
+   * posed, so a cutscene's actor and a townsperson keeping their own schedule
+   * are moved by the same code: both answer in fractional tiles, and both of
+   * them walk a tile on elapsed milliseconds rather than on a tween, which is
+   * what makes a 100ms test-mode frame play the same as six 16ms ones.
+   */
+  private placeFigure(
+    id: string,
+    x: number,
+    y: number,
+    facing: Direction,
+    options: { readonly visible?: boolean; readonly striding?: boolean } = {},
+  ): void {
+    const sprite = this.npcSprites.get(id);
+    if (!sprite) {
+      return;
+    }
+    sprite
+      .setPosition(x * TILE_SIZE, y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
+      .setDepth(atRow(FIGURE_BAND, y))
+      .setVisible(options.visible ?? true);
+    const appearance = this.npcAppearances.get(id);
+    if (!appearance) {
+      return;
+    }
+    // One stride frame rather than an animation: a shift of a single tile is
+    // one pace, and a looping cycle on it reads as somebody jogging on the spot.
+    sprite.setFrame(
+      options.striding
+        ? getWalkFrames(facing, appearance.sheetColumns)[0]
+        : worldCharacterIdleFrame(appearance, facing),
+    );
   }
 
   private faceFigure(id: string, facing: Direction): void {
@@ -1786,8 +2007,8 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    const entity = this.currentMap.entities.find(
-      (candidate) => candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
+    const entity = this.currentMap.entities.find((candidate) =>
+      this.entityHolds(candidate, targetTile),
     );
     const trainer = this.trainersForCurrentMap().find(
       (candidate) => candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
@@ -2176,9 +2397,7 @@ export class WorldScene extends Phaser.Scene {
   private isBlocked(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
-      this.currentMap.entities.some(
-        (entity) => entity.position.x === tile.x && entity.position.y === tile.y,
-      ) ||
+      this.currentMap.entities.some((entity) => this.entityHolds(entity, tile)) ||
       this.trainersForCurrentMap().some(
         (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
       ) ||
@@ -2191,6 +2410,8 @@ export class WorldScene extends Phaser.Scene {
   private beginStep(targetTile: GridPosition): void {
     this.targetTile = targetTile;
     this.stepProgress = 0;
+    this.stepDurationMs = STEP_DURATION_MS;
+    this.hopping = false;
 
     this.stepStart.set(
       this.currentTile.x * TILE_SIZE,
@@ -2199,6 +2420,39 @@ export class WorldScene extends Phaser.Scene {
     this.stepEnd.set(targetTile.x * TILE_SIZE, targetTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
 
     this.player.play(getWalkAnimationKey(this.facing), true);
+  }
+
+  /**
+   * Goes over a ledge, if the player is standing on one facing the way down.
+   *
+   * It is a whole step of the raid - the clock is charged for the time it
+   * takes, the landing rolls tall grass and works whatever it lands on exactly
+   * as a walked tile does - and it is refused the moment anything is standing
+   * where it would land. What it is not is reversible: `ledgeHopAt` only ever
+   * answers the authored direction, so walking back up the bank is the wall it
+   * has always been.
+   */
+  private tryLedgeHop(facing: Direction): boolean {
+    const hop = ledgeHopAt(this.currentMap.id, this.currentTile, facing);
+    if (!hop) {
+      return false;
+    }
+    if (
+      hop.landing.x < 0 ||
+      hop.landing.y < 0 ||
+      hop.landing.x >= this.bounds.width ||
+      hop.landing.y >= this.bounds.height ||
+      this.isBlocked(hop.landing)
+    ) {
+      return false;
+    }
+    this.facing = facing;
+    this.pushingAgainst = null;
+    this.beginStep(hop.landing);
+    this.stepDurationMs = LEDGE_HOP_DURATION_MS;
+    this.hopping = true;
+    audioManager.play('ledgeHop');
+    return true;
   }
 
   /**
@@ -2221,12 +2475,16 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private advanceStep(deltaMs: number): void {
-    const tick = advanceStepClock(this.stepProgress, deltaMs);
+    const tick = advanceStepClock(this.stepProgress, deltaMs, this.stepDurationMs);
     this.stepProgress = tick.progress;
 
+    // A hop leaves the ground: the same straight line between the two tiles,
+    // lifted over its middle, so the figure goes over the bank rather than
+    // sliding through it.
+    const rise = this.hopping ? Math.sin(this.stepProgress * Math.PI) * LEDGE_HOP_RISE : 0;
     this.setPlayerPosition(
       Phaser.Math.Linear(this.stepStart.x, this.stepEnd.x, this.stepProgress),
-      Phaser.Math.Linear(this.stepStart.y, this.stepEnd.y, this.stepProgress),
+      Phaser.Math.Linear(this.stepStart.y, this.stepEnd.y, this.stepProgress) - rise,
     );
 
     if (this.stepProgress < 1 || !this.targetTile) {
@@ -2395,6 +2653,7 @@ export class WorldScene extends Phaser.Scene {
     this.watchedGround = [];
     this.npcSprites.clear();
     this.npcAppearances.clear();
+    this.idleFigures = [];
     this.lootSprites.clear();
     this.poiSprites.clear();
     this.poiLabels.clear();
@@ -3230,9 +3489,7 @@ export class WorldScene extends Phaser.Scene {
   private isBlockedForHunter(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
-      this.currentMap.entities.some(
-        (entity) => entity.position.x === tile.x && entity.position.y === tile.y,
-      ) ||
+      this.currentMap.entities.some((entity) => this.entityHolds(entity, tile)) ||
       this.trainersForCurrentMap().some(
         (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
       )

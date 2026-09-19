@@ -27,6 +27,7 @@ import {
   walksLengthenedBy,
   type NamedGround,
 } from './mapStructure';
+import { idleBeatTiles, stepDirection } from './npcIdle';
 import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters, withoutDefeatedBosses } from './trainers';
 import { RAID_CONTRACTS } from '../objectives';
@@ -88,10 +89,18 @@ function trainersIn(state: MapState) {
   );
 }
 
-/** Signs, townsfolk and live trainers block their own tile, as the engine does. */
+/**
+ * Signs, townsfolk and live trainers block their own tile, as the engine does -
+ * and a townsperson with a beat blocks every tile of it at once. That is
+ * stricter than any position the game can be in, and it is what makes an idle
+ * beat safe to author: whatever the schedules happen to line up as, the map
+ * still passes every rule below.
+ */
 function entityTiles(state: MapState): Set<string> {
   const tiles = new Set(
-    state.map.entities.map((entity) => `${entity.position.x},${entity.position.y}`),
+    state.map.entities.flatMap((entity) =>
+      idleBeatTiles(entity).map((tile) => `${tile.x},${tile.y}`),
+    ),
   );
   for (const trainer of trainersIn(state)) {
     tiles.add(`${trainer.position.x},${trainer.position.y}`);
@@ -360,6 +369,68 @@ describe('map structure', () => {
         ),
       ).toEqual([]);
     }
+  });
+
+  /**
+   * A townsperson with a beat is a wall that moves, so the beat is held to the
+   * same rule an exit is: whatever tile of it they are standing on, no walk
+   * between two named places may be longer than it was. And nothing a raid is
+   * *for* may be stood on - an exit, a drop-in, a contract stop, a landmark or
+   * the ground a trainer is charging for - because a figure that wandered onto
+   * one would put a door, a stake or a price behind a person for as long as the
+   * schedule felt like it.
+   */
+  it.each(named(MAP_STATES))('%s never lets a townsperson wander onto a route', (_name, state) => {
+    const { map, mapId } = state;
+    const beats = map.entities.filter((entity) => entity.idle !== undefined);
+    const roamed = new Set(
+      beats.flatMap((entity) => idleBeatTiles(entity).map((tile) => `${tile.x},${tile.y}`)),
+    );
+    if (roamed.size === 0) {
+      return;
+    }
+    // Every tile of a beat is walkable ground one step from the last: a beat is
+    // walked, not teleported along.
+    for (const entity of beats) {
+      const beat = idleBeatTiles(entity);
+      for (const tile of beat) {
+        expect(`${entity.id} stands on ${tile.x},${tile.y}: ${isBlockedAt(map.collision, tile.x, tile.y) ? 'a wall' : 'ground'}`)
+          .toBe(`${entity.id} stands on ${tile.x},${tile.y}: ground`);
+      }
+      for (const tile of beat.slice(1)) {
+        expect(`${entity.id} reaches ${tile.x},${tile.y}: ${beat.some((other) => stepDirection(other, tile) !== null)}`)
+          .toBe(`${entity.id} reaches ${tile.x},${tile.y}: true`);
+      }
+    }
+
+    const exits = new Set(
+      EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
+        (point) => `${point.position.x},${point.position.y}`,
+      ),
+    );
+    const isSightBlocked = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] !== false;
+    const watched = trainersIn(state).flatMap((trainer) => trainerSightTiles(trainer, isSightBlocked));
+    const sacred = new Map<string, string>();
+    for (const point of EXTRACTION_POINTS.filter((point) => point.mapId === mapId)) {
+      sacred.set(`${point.position.x},${point.position.y}`, point.label);
+    }
+    for (const insertion of insertionsOn(mapId)) {
+      sacred.set(`${insertion.position.x},${insertion.position.y}`, insertion.id);
+    }
+    for (const landmark of landmarksOn(map)) {
+      sacred.set(`${landmark.position.x},${landmark.position.y}`, landmark.what);
+    }
+    for (const tile of watched) {
+      sacred.set(`${tile.x},${tile.y}`, 'watched ground');
+    }
+    const taken = [...roamed].filter((key) => sacred.has(key));
+    expect(taken.map((key) => `${key} is ${sacred.get(key)}`)).toEqual([]);
+
+    expect(
+      walksLengthenedBy(map.collision, exits, placesOn(state), roamed).map(
+        (walk) => `with everyone off their mark: ${walk}`,
+      ),
+    ).toEqual([]);
   });
 
   it.each(named(MAP_STATES))('%s always gives the hunter somewhere fair to arrive', (_name, { map }) => {

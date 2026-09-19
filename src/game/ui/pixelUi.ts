@@ -98,6 +98,18 @@ export function pixelHpBar(current: number, max: number): string {
   return `<span class="px-hp" role="img" aria-label="HP ${current} of ${max}"><span class="px-hp-fill ${state}" style="--fill:${fill}"></span></span>`;
 }
 
+/**
+ * An experience bar, drawn on the same grid as the health bar above it.
+ *
+ * The fill is handed over already counted in game pixels, because how far along
+ * a level a Pokemon is comes off the experience curve - `experienceBarFill` in
+ * `pokemonSummary.ts` - and that is a rule about the game rather than about a
+ * bar. This is only the markup.
+ */
+export function pixelXpBar(fill: number, label: string): string {
+  return `<span class="px-xp" role="img" aria-label="${escapeAttribute(label)}"><span class="px-xp-fill" style="--fill:${fill}"></span></span>`;
+}
+
 /** A species' front sprite at its own size: one source pixel is one game pixel. */
 export function pixelPortrait(dexId: number, name: string): string {
   return `<span class="px-portrait pokemon-avatar" aria-label="${escapeAttribute(name)}"><img src="/assets/pokemon/front/${dexId}.png" alt="" /><span aria-hidden="true">${name.slice(0, 1)}</span></span>`;
