@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { SaveManager } from '../save/SaveManager';
 import { getStarterSpecies } from '../stash';
+import { GAME_FONT } from '../ui/gameFont';
 
 /** The mint frame the title screen is composed inside. */
 const FRAME_INSET = 12;
@@ -61,9 +62,8 @@ export class TitleScene extends Phaser.Scene {
     const titleStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       align: 'center',
       color: '#f8f5d7',
-      fontFamily: 'monospace',
-      fontSize: '25px',
-      fontStyle: 'bold',
+      fontFamily: GAME_FONT,
+      fontSize: '32px',
       stroke: '#244159',
       strokeThickness: 4,
     };
@@ -73,7 +73,7 @@ export class TitleScene extends Phaser.Scene {
       .text(this.scale.width / 2, this.scale.height * 0.417, 'PALLET TOWN', {
         ...titleStyle,
         color: '#8ed4c2',
-        fontSize: '28px',
+        fontSize: '36px',
       })
       .setOrigin(0.5);
 
@@ -81,8 +81,8 @@ export class TitleScene extends Phaser.Scene {
       .text(this.scale.width / 2, this.scale.height * 0.604, 'A WEB ADVENTURE', {
         align: 'center',
         color: '#9bb4c6',
-        fontFamily: 'monospace',
-        fontSize: '9px',
+        fontFamily: GAME_FONT,
+        fontSize: '11px',
       })
       .setOrigin(0.5);
   }
@@ -92,9 +92,8 @@ export class TitleScene extends Phaser.Scene {
       .text(this.scale.width / 2, this.scale.height * 0.85, 'PRESS ENTER OR TAP', {
         align: 'center',
         color: '#f8f5d7',
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        fontStyle: 'bold',
+        fontFamily: GAME_FONT,
+        fontSize: '14px',
       })
       .setOrigin(0.5);
   }

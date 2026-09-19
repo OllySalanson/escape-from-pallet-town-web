@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { TypewriterQueue } from './TypewriterQueue';
 import { drawPixelWindow } from './pixelWindow';
+import { GAME_FONT } from './gameFont';
 
 export interface DialogBoxOptions {
   x?: number;
@@ -87,7 +88,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
     }
 
     this.textObject = scene.add.text(this.paddingHorizontalPx, this.paddingPx, '', {
-      fontFamily: 'monospace',
+      fontFamily: GAME_FONT,
       fontSize: '16px',
       color: '#ffffff',
       wordWrap: {
@@ -102,7 +103,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
         this.heightPx - this.paddingPx,
         options.indicatorText ?? DEFAULT_INDICATOR_TEXT,
         {
-          fontFamily: 'monospace',
+          fontFamily: GAME_FONT,
           fontSize: '14px',
           color: '#ffffff',
           ...(options.indicatorStyle ?? {}),

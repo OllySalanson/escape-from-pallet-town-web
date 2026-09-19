@@ -90,6 +90,7 @@ import {
 import { WINDOW_CREAM } from '../ui/pixelWindow';
 import {
   OBJECTIVE_DETAIL_MS,
+  openRaidCue,
   hunterChipView,
   objectiveChipLines,
   raidClockAlertTier,
@@ -1246,7 +1247,7 @@ export class WorldScene extends Phaser.Scene {
     const snapshot = manager.snapshot();
     const navigationCue = this.contractNavigationCue(snapshot.contractSteps)
       ?? session.objectives.find((objective) => !objective.progress(snapshot).complete)?.description
-      ?? 'EXTRACT WITH YOUR HAUL';
+      ?? openRaidCue({ items: snapshot.foundItems.length, pokemon: snapshot.caughtPokemon.length });
     if (navigationCue !== this.objectiveCue) {
       this.objectiveCue = navigationCue;
       this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;

@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { describe, expect, it, vi } from 'vitest';
 import { GAME_FONT, GAME_FONT_FAMILY, GAME_FONT_SIZES, awaitGameFont, isGameFontReady } from './gameFont';
 
@@ -72,6 +72,21 @@ describe('the game font', () => {
     for (const source of [hud, label]) {
       expect(source).toContain('fontFamily: GAME_FONT');
       expect(source).not.toContain("fontFamily: 'monospace'");
+    }
+  });
+
+  it('is the only family any scene or widget names', async () => {
+    // The title screen named the browser's monospace for as long as the rule
+    // was checked against three files, and it is the first screen anyone sees.
+    for (const directory of ['../scenes/', './']) {
+      const folder = new URL(directory, import.meta.url);
+      for (const file of await readdir(folder)) {
+        if (!file.endsWith('.ts') || file.endsWith('.test.ts')) {
+          continue;
+        }
+        const source = await readFile(new URL(file, folder), 'utf8');
+        expect(source, file).not.toMatch(/fontFamily:\s*['"`]/);
+      }
     }
   });
 });

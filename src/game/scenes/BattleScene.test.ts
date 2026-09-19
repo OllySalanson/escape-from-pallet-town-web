@@ -45,6 +45,7 @@ interface RenderedText {
   on: ReturnType<typeof vi.fn>;
   setText: ReturnType<typeof vi.fn>;
   setBackgroundColor: ReturnType<typeof vi.fn>;
+  setOrigin: ReturnType<typeof vi.fn>;
   setColor: ReturnType<typeof vi.fn>;
   setDepth: ReturnType<typeof vi.fn>;
 }

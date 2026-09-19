@@ -590,12 +590,17 @@ button {
   flex-direction: column;
   gap: var(--space-3);
 }
-.field-guide-header,
-.field-guide-heading {
+.field-guide-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
+}
+/* A panel heading is a kicker over its title, both on the left edge the
+   content under them starts from. It shared the header's space-between row,
+   which pushed each title to the right over left-aligned content. */
+.field-guide-heading {
+  display: block;
 }
 .field-guide-header h1 {
   margin: 2px 0 0;
