@@ -16,7 +16,7 @@ import { poisForMap, type WorldPoi } from './world/pois';
 import { buildMapLayers, type MapLayers } from './world/tiles';
 import type { TilesetCatalogue } from './world/tileset/catalogue';
 import { CLASSIC_TILESET } from './world/tileset/classicTileset';
-import { FRLG_TILESET } from './world/tileset/frlgTileset';
+import { FLOOD_TOWN_TILESET } from './world/tileset/floodTownTileset';
 
 export { CLASSIC_TILE } from './world/tileset/classicTileset';
 export type { MapLayers, TileLayer } from './world/tiles';
@@ -161,7 +161,7 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
   // so that can happen one map at a time.
   'floodplain-relay': {
     sketch: sketchFloodplainRelay,
-    tileset: FRLG_TILESET,
+    tileset: FLOOD_TOWN_TILESET,
     encounters: PALLET_TALL_GRASS,
     loot: [
       { id: 'floodplain-potion', position: { x: 7, y: 12 }, itemId: 'potion', quantity: 1 },
