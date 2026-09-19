@@ -58,6 +58,13 @@ export interface ActiveRunSession {
    * `world/hunterArrival.ts`.
    */
   stepsTaken?: number;
+  /**
+   * Beaten trainers whose watch has already been seen to lift. The world is
+   * rebuilt on every return from a fight, so the payoff for a win - the shading
+   * letting go of the route - must be played once, on the return from *that*
+   * fight, and not again after every wild encounter that follows.
+   */
+  watchesLifted?: string[];
 }
 
 export function createActiveRunSession(
