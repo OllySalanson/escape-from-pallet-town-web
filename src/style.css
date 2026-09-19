@@ -1465,6 +1465,9 @@ button {
   white-space: nowrap;
 }
 :where(.pixel-ui) .px-name {
+  /* Never squeezed: a name snapped to the grid and then shrunk by its line is
+     back between two pixels, and takes the health bar beside it along. */
+  flex: none;
   text-transform: uppercase;
 }
 :where(.pixel-ui) .px-row small {
@@ -1859,6 +1862,7 @@ button {
 :where(.pixel-ui) .stash-portrait > div {
   min-width: 0;
   display: grid;
+  justify-items: start;
   padding-bottom: calc(var(--u) * 2);
 }
 :where(.pixel-ui) .swap-panel {

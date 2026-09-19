@@ -288,6 +288,15 @@ export class HubScene extends Phaser.Scene {
     return `${this.inWardBed(stored) ? 'Ward' : 'Bay'} ${priceMs === 0 ? 'free' : `−${formatRecoveryClock(priceMs)}`}`;
   }
 
+  /**
+   * The price alone, for a stash row: beside a ten-letter name and its health
+   * bar there is room for `−0:45` and not for the word in front of it.
+   */
+  private recoveryPriceTag(stored: StashedPokemon): string {
+    const priceMs = this.recoveryPriceMs(stored);
+    return priceMs === 0 ? 'Free' : `−${formatRecoveryClock(priceMs)}`;
+  }
+
   /** The same price in a sentence, for the help bar of the control that pays it. */
   private recoveryHelp(stored: StashedPokemon): string {
     const priceMs = this.recoveryPriceMs(stored);
@@ -686,6 +695,7 @@ export class HubScene extends Phaser.Scene {
     on('[data-contract]', (button) => this.openDeployment(button.dataset.contract as RunInsertionId));
     on('[data-recover]', (button) => this.recover([button.dataset.recover!]));
     on('[data-recover-all]', () => this.recover(this.injuredPokemon.map((stored) => stored.id)));
+    on('[data-supply]', (button) => this.setStatus(button.dataset.help));
     on('[data-fit]', (button) => {
       const name = this.stashPokemon.find((stored) => stored.id === button.dataset.fit)?.pokemon.base.name;
       this.setStatus(`${name ?? 'That Pokémon'} is fit. There is nothing to recover.`);
@@ -887,7 +897,7 @@ export class HubScene extends Phaser.Scene {
           ? `data-recover="${stored.id}" data-help="${this.recoveryHelp(stored)}"`
           : `data-fit="${stored.id}" data-help="${escapeAttribute(stored.pokemon.base.name)} is fit to raid."`;
         const tag = hurt
-          ? pixelTag(this.recoveryPriceLabel(stored), 'risk')
+          ? pixelTag(this.recoveryPriceTag(stored), 'risk')
           : pixelTag('Fit', 'good', true);
         return `<button class="px-row" ${wiring} data-shows="${stored.id}">${this.pokemonRowBody(stored, tag)}</button>`;
       })
@@ -895,13 +905,18 @@ export class HubScene extends Phaser.Scene {
     const portraits = pokemon
       .map(
         (stored, index) =>
-          `<div class="stash-portrait" data-shown-by="${stored.id}"${index === 0 ? '' : ' hidden'}>${pixelPortrait(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div><strong class="px-name">${stored.pokemon.base.name}</strong><span>Level ${stored.pokemon.level}</span><span>${pixelTypeBadge(stored.pokemon.base.primaryType)}${stored.pokemon.base.secondaryType ? pixelTypeBadge(stored.pokemon.base.secondaryType) : ''}</span></div></div>`,
+          // The sprite and its types only: the name, level and condition are the
+          // row the cursor is on, and a ten-letter name does not fit beside a
+          // 64-pixel portrait in this column.
+          `<div class="stash-portrait" data-shown-by="${stored.id}"${index === 0 ? '' : ' hidden'}>${pixelPortrait(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div>${pixelTypeBadge(stored.pokemon.base.primaryType)}${stored.pokemon.base.secondaryType ? pixelTypeBadge(stored.pokemon.base.secondaryType) : ''}</div></div>`,
       )
       .join('');
     const supplies = this.stashItems
       .map(
         (item) =>
-          `<div class="px-row has-icon">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small class="px-wrap">${item.description}</small></span><span class="px-tag">×${this.stash.itemCount(item.id)}</span></div>`,
+          // One line a supply, as a bag lists them: what it does is said by the
+          // help bar when it is pointed at, which is why the row is a control.
+          `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">×${this.stash.itemCount(item.id)}</span></button>`,
       )
       .join('');
     return `<main class="px-body stash-layout">${pixelWindow(
@@ -944,7 +959,9 @@ export class HubScene extends Phaser.Scene {
         const name = escapeAttribute(stored.pokemon.base.name);
         return `<div class="loadout-entry"><button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-help="${added ? `Take ${name} back out of the raid.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
           stored,
-          added ? pixelTag('Added', 'good', true) : pixelTag('Add'),
+          // A tick, as every chosen row on these screens is marked: a ten-letter
+          // name and its health bar leave no room for a word beside them.
+          added ? pixelTag('', 'good', true) : pixelTag('Add'),
         )}</button>${this.careStrip(stored)}</div>`;
       })
       .join('');
@@ -960,11 +977,11 @@ export class HubScene extends Phaser.Scene {
       .map(([id, insertion]) => {
         const contract = this.contractFor(id);
         const chosen = this.flow.insertionId === id;
-        return `<button class="px-row${chosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertion.description)}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong><small class="insertion-contract">${
+        return `<button class="px-row${chosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertion.description)}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${
           // A drop-in point says which map it is on, because unlike a front door
           // its name is not the map's.
-          isDropInPoint(insertion) ? `DROP-IN · ${WORLD_MAP_NAMES[insertion.mapId]} · ` : ''
-        }${contract ? contract.name : 'No contract'}</small></span>${chosen ? pixelTag('', 'good', true) : ''}</button>`;
+          isDropInPoint(insertion) ? `<small class="insertion-drop-in">DROP-IN · ${WORLD_MAP_NAMES[insertion.mapId]}</small>` : ''
+        }<small class="insertion-contract">${contract ? contract.name : 'No contract'}</small></span>${chosen ? pixelTag('', 'good', true) : ''}</button>`;
       })
       .join('');
     return `<main class="px-body loadout-layout">${pixelWindow(
@@ -1071,7 +1088,7 @@ export class HubScene extends Phaser.Scene {
         `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} supplies packed · ${protectedCount} protected</small>`,
         `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
       ],
-      actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-start data-help="There is no way back from here: the raid starts.">Enter the raid</button>`,
+      actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-start data-cursor-start data-help="There is no way back from here: the raid starts.">Enter the raid</button>`,
     })}</main>`;
   }
 
@@ -1084,7 +1101,7 @@ export class HubScene extends Phaser.Scene {
   private outfitterCard(): string {
     const built = builtUpgrades(this.builtUpgradeIds).length;
     const ready = this.outfitterLadder.filter((offer) => offer.affordable).length;
-    return `<button class="px-window px-card" data-view="outfitter" data-help="Spend banked Pokémon and spare supplies on permanent base upgrades."><strong>Outfitter</strong><p>${built}/${OUTFITTER_UPGRADES.length} built${ready ? `<span class="px-ready"> · ${ready} ready</span>` : ''}</p></button>`;
+    return `<button class="px-window px-card" data-view="outfitter" data-help="Spend banked Pokémon and spare supplies on permanent base upgrades."><strong>Outfitter</strong><p>Permanent base upgrades.</p><p>${built}/${OUTFITTER_UPGRADES.length} built${ready ? `<span class="px-ready"> · ${ready} ready</span>` : ''}</p></button>`;
   }
 
   private get outfitterLadder(): readonly OutfitterOffer[] {
@@ -1191,12 +1208,9 @@ export class HubScene extends Phaser.Scene {
           refusal !== undefined
             ? `aria-disabled="true" data-help="${escapeAttribute(refusal)}."`
             : `data-help="${picked ? `Keep ${name} after all.` : `Release ${name} for good as payment.`}"`;
-        const tag =
-          refusal !== undefined
-            ? pixelTag('Kept')
-            : picked
-              ? pixelTag('Releasing', 'risk', true)
-              : pixelTag('Release');
+        // The window is headed "to release", so a picked row needs only the tick:
+        // a ten-letter name and its health bar leave room for nothing longer.
+        const tag = refusal !== undefined ? pixelTag('Kept') : picked ? pixelTag('', 'risk', true) : '';
         return `<button class="px-row${picked ? ' is-selected' : ''}" data-pay-pokemon="${stored.id}" ${wiring}>${this.pokemonRowBody(stored, tag)}</button>`;
       })
       .join('');
@@ -1238,7 +1252,7 @@ export class HubScene extends Phaser.Scene {
         title: `Costs ${this.priceLine(upgrade)}`,
         lines: [
           `<span class="px-wrap">${prompt}</span>`,
-          `<small class="px-wrap">${chosen.length ? `So far: ${named}.` : 'Nothing is spent until you confirm.'}</small>`,
+          ...(chosen.length ? [`<small class="px-wrap">So far: ${named}.</small>`] : []),
         ],
         actions: `<button class="px-window px-button is-primary" disabled>Build</button>`,
       });
@@ -1248,7 +1262,6 @@ export class HubScene extends Phaser.Scene {
         title: `Costs ${this.priceLine(upgrade)}`,
         lines: [
           `<span class="px-wrap">Release ${named} and spend ${supplies}</span>`,
-          '<small class="px-wrap">Nothing is spent until you confirm.</small>',
         ],
         actions: `<button class="px-window px-button is-primary" data-pay-arm data-help="You will be asked once more before anything is released.">Build</button>`,
       });

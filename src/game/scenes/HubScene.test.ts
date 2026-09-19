@@ -990,7 +990,7 @@ describe('the Outfitter', () => {
 
     // The bill is in the stash, beside the Pokémon it is for.
     hub.setView('stash');
-    expect(markupOf(hub)).toContain('Ward ');
+    expect(markupOf(hub)).toContain('Ward bed: ');
 
     // The bed goes to the worse case. It waives the refill; the revive is still
     // charged, at the better bay's price.
@@ -1001,7 +1001,7 @@ describe('the Outfitter', () => {
     const hurtPriceMs = recoveryCostMs(hurt.pokemon, terms);
     hub.recover(['pidgey-1']);
     expect(hub.pendingRecoveryMs).toBe(recoveryPrices(0.75).reviveMs + hurtPriceMs);
-    expect(markupOf(hub)).not.toContain('Ward ');
+    expect(markupOf(hub)).not.toContain('Ward bed: ');
   });
 });
 
