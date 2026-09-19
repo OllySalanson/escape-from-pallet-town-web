@@ -1,9 +1,8 @@
 import { Pokemon } from '../pokemon';
-import { createBattleState, resolveTurn, type BattleState } from '../pokemon/battle/battleEngine';
-import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
+import { createBattleState, resolveTurn } from '../pokemon/battle/battleEngine';
+import { bestDamagingMove } from './bestPlay';
 import type { WildEncounterTable } from '../pokemon/encounters';
 import { getSpeciesById } from '../pokemon/species';
-import { MoveCategory } from '../pokemon/MoveBase';
 import { createSeededRng } from '../run/rng';
 import type { WeatherId } from '../pokemon/battle/weather';
 
@@ -26,25 +25,6 @@ export interface TableMeasure {
   readonly worst: { readonly speciesId: string; readonly level: number; readonly winRate: number };
 }
 
-const bestMove = (state: BattleState): number => {
-  const types = [
-    state.enemy.pokemon.base.primaryType,
-    ...(state.enemy.pokemon.base.secondaryType ? [state.enemy.pokemon.base.secondaryType] : []),
-  ];
-  let best = 0;
-  let bestScore = -1;
-  state.player.moves.forEach((move, index) => {
-    if (move.pp <= 0 || move.base.category === MoveCategory.Status || move.base.power <= 0) {
-      return;
-    }
-    const score = move.base.power * getTypeEffectiveness(move.base.type, types);
-    if (score > bestScore) {
-      bestScore = score;
-      best = index;
-    }
-  });
-  return best;
-};
 
 /** The chance `partner` at `partnerLevel` beats one wild `speciesId` at `level`. */
 export function winRateAgainst(
@@ -67,7 +47,7 @@ export function winRateAgainst(
       weather,
     );
     for (let turn = 0; turn < 60 && state.outcome === 'active'; turn += 1) {
-      state = resolveTurn(state, bestMove(state), random).state;
+      state = resolveTurn(state, bestDamagingMove(state), random).state;
     }
     if (state.outcome === 'victory') {
       wins += 1;

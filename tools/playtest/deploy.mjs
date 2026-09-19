@@ -13,7 +13,7 @@ export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 export const GAME = 'window.__escapeFromPalletTownGame__';
 export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
 
-/** `--insertion=id --beaten=bossId,.. --completed=contractId,.. --hp=N --level=N --secure=itemId[:n],..`, out of a driver's arguments. */
+/** `--insertion=id --beaten=bossId,.. --completed=contractId,.. --hp=N --level=N --starter=name --pack=itemId[:n],.. --secure=itemId[:n],..`, out of a driver's arguments. */
 export function deployOptions(args) {
   const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const list = (name) => (option(name) ?? '').split(',').filter(Boolean);
@@ -23,6 +23,8 @@ export function deployOptions(args) {
     completed: list('completed'),
     hp: option('hp'),
     level: option('level'),
+    starter: option('starter'),
+    pack: list('pack'),
     secure: list('secure'),
   };
 }
@@ -32,11 +34,21 @@ export function deployOptions(args) {
  * are the driver's own, because only it knows whether the game is being stepped;
  * `paused` puts the loop to sleep on every load, for a driver that steps it.
  */
-export async function deploy(page, url, { press, click, until, paused = false, insertion, beaten = [], completed = [], hp, level, secure = [] }) {
+export async function deploy(page, url, { press, click, until, paused = false, insertion, beaten = [], completed = [], hp, level, starter = 'Bulbasaur', pack = [], secure = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   await press('Space'); await until(sceneIs('starter'));
-  await click('Confirm Bulbasaur');
+  // The picker's three cards are the three starters, and which one is taken is
+  // a real variable for anything measured per starter: the Floodplain
+  // checkpoint costs a Charmander and a Bulbasaur different numbers of Potions.
+  // The card is chosen by its own `data-starter`, because the confirm button is
+  // lettered with whichever one is selected and so cannot be found by name
+  // before it is.
+  await until(
+    `(() => { const b = document.querySelector('button[data-starter=${JSON.stringify(starter.toLowerCase())}]'); if (!b) return false; b.click(); return true; })()`,
+    `the picker to offer ${starter}`,
+  );
+  await click(`Confirm ${starter}`);
   if (insertion || beaten.length > 0 || completed.length > 0 || hp !== undefined || level !== undefined) {
     await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'the game to write its save');
     // Every other map's front door is what banking the first contract pays, and a
@@ -70,7 +82,22 @@ export async function deploy(page, url, { press, click, until, paused = false, i
     // The loadout's own row, by the id it carries: two rows can share a map's name.
     await until(`(() => { const b = document.querySelector('button[data-insertion=${JSON.stringify(insertion)}]'); if (!b) return false; b.click(); return true; })()`, `the lobby to offer insertion "${insertion}"`);
   }
-  await click('Bulbasaur');
+  await click(starter);
+  // --pack=itemId[:n],.. puts supplies in the raid bag by the loadout row's own
+  // stepper. Nothing is packed by default - the loadout is the decision the game
+  // is built around, and the flow starts it empty - so a driver that clicks
+  // straight through deploys with nothing, and a fight priced in Potions
+  // (`world/floodplainCheckpoint.test.ts`) cannot be played without this.
+  for (const entry of pack) {
+    const [itemId, count = '1'] = entry.split(':');
+    for (let i = 0; i < Number(count); i += 1) {
+      await until(
+        `(() => { const b = document.querySelector('button[data-item=${JSON.stringify(itemId)}][data-amount="1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
+        `the pack to take one more ${itemId}`,
+      );
+      await sleep(150);
+    }
+  }
   // --secure=itemId[:n],.. takes the secure-slot detour and puts that many
   // squares of each kind into the container, by the row's own stepper rather
   // than by a word on it. It is the only way anything the container protects is

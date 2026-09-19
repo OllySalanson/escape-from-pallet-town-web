@@ -135,7 +135,52 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'floodplain-checkpoint-maya',
       'RAIDER MAYA',
-      [new Pokemon(PIKACHU, 7), new Pokemon(PIDGEY, 7)],
+      // The toll on the first road a new player walks, and the only authored
+      // fight a fresh level-5 starter can be standing in front of ten steps
+      // into its first raid. It is priced to be **paid**, not to be a door:
+      // Maya holds no gate, carries no `bossId` and stands up again on every
+      // later raid, so "come back stronger" buys nothing here that is not
+      // bought again next time. What the road is worth is measured - from the
+      // lost kit it is two steps and nine tall-grass steps shorter than the
+      // reeds to the South Gate, and forty steps shorter to anything east - so
+      // the price has to be a raid's supplies, not a raid.
+      //
+      // Two level-7s were a wall, not a toll. A level-5 starter has 16-17 HP
+      // against their 38 and won 0% of the time with the whole pack open, 0% at
+      // level 6, and at level 10 with nothing packed it was still 10% for the
+      // Fire starter and 24% for the Grass one against 100% for the Water one -
+      // which is a starter lottery on the first road of the game.
+      //
+      // Pidgey 3 and Pikachu 4 is the same two species at the level the reeds
+      // around them hold, measured over the real engine at the level a player
+      // actually arrives at, in the rain this place has (`trainerMeasure.ts`,
+      // 800 trials, Potions drunk out of the pack exactly as `battleItems.ts`
+      // charges them - a turn each). At level 5 on full HP with the loadout's
+      // three Potions a starter wins 87/92/85%
+      // (Charmander/Squirtle/Bulbasaur), spending 2.2 of the three and walking
+      // away on about half to two thirds of its health; with two Potions
+      // 74/80/67%; walking in at 60% health 67/76/66%; with an empty pack
+      // 9/4/2%. By level 6 it is 96/96/94% and by level 7 one Potion is the
+      // whole price. So the fight is decided by the condition you arrive in and
+      // the supplies you are willing to spend on it - both of them things a
+      // player chooses - and not by the 6.25% critical roll that decided it when
+      // one hit was a third of the bar.
+      //
+      // It is fought in rain, because THE REEDBEDS is one of the three rain
+      // districts (`districts.ts`), and that is measured too: rain is inert
+      // while nobody has a typed move, and from level 7 it halves the Fire
+      // starter's Ember, so bare the road comes free for a Charmander a level
+      // after the other two. `floodplainCheckpoint.test.ts` reads the weather
+      // off her own tile rather than naming it.
+      //
+      // Pidgey leads and Pikachu anchors, which is the other half of the tuning.
+      // Pikachu is the only one of the two carrying Growl, and the enemy picks
+      // uniformly at random among its moves, so leading with it drops the
+      // player's Attack early and keeps it down for the whole fight - the same
+      // party in the other order wins 38/40/33%. The Pidgey is the teaching
+      // fight's own Pidgey at its own level: the opening battle is one of them,
+      // and the checkpoint is that Pidgey with something behind it.
+      [new Pokemon(PIDGEY, 3), new Pokemon(PIKACHU, 4)],
       'The checkpoint is open. Move before the hunter closes in.',
     ),
   },
