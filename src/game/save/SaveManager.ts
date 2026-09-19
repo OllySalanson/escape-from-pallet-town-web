@@ -54,6 +54,7 @@ import {
   type StashBox,
 } from '../stash/Stash';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
+import { mergeSurvey, type SurveyRecord } from '../world/survey';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 const SAVE_VERSION = 6;
@@ -188,6 +189,34 @@ export interface RaidProgress {
    * the default, which is the policy anyway - so no version bump.
    */
   readonly securePreference?: SecurePreference;
+  /**
+   * How many raids each map has seen, by map id: deployed, and how each of
+   * those ended. It is a record of what the player has done rather than a
+   * reward - the drop-in screen reads it back so choosing where to go is made
+   * against your own history of the place. Nothing else is stored: how many
+   * bosses a map has left, how much of it has been walked and which of its
+   * districts have been reached are all derived, here from `defeatedBosses`
+   * and there from `surveyed`. Absent on every save written before it, which
+   * reads as a player who has been nowhere - true of the record, and the
+   * screen says so rather than claiming a zero it invented.
+   */
+  readonly raidRecord?: Readonly<Record<string, MapRaidRecord>>;
+  /**
+   * The ground the player has walked, per map, as a bitset (`world/survey.ts`).
+   * The drop-in screen's bird's-eye picture is dark everywhere this does not
+   * reach, so this is the whole of what makes that picture a record. Absent on
+   * older saves, which is a map nobody has walked - and every insertion the
+   * player holds lights its own landing anyway, so such a save opens on a map
+   * with a way in on it rather than on a black square.
+   */
+  readonly surveyed?: SurveyRecord;
+}
+
+/** One map's raid history. Every other number on the drop-in screen is derived. */
+export interface MapRaidRecord {
+  readonly deployed: number;
+  readonly extracted: number;
+  readonly wiped: number;
 }
 
 /**
@@ -243,6 +272,8 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   traderScripSpent: 0,
   traderBarters: [],
   securePreference: DEFAULT_SECURE_PREFERENCE,
+  raidRecord: {},
+  surveyed: {},
 };
 
 export interface SaveData {
@@ -549,6 +580,53 @@ export class SaveManager {
   }
 
   /**
+   * Counts one raid deployed to a map, at the moment the player commits to it.
+   *
+   * Deployments are counted where they are made rather than where they end,
+   * because a raid nobody came back from is still a raid you went on - and it
+   * is the difference between the two numbers that says how a place has treated
+   * you. Nothing else in a save is touched.
+   */
+  public recordDeployment(mapId: string): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    return this.save({ ...game, raidProgress: bumpRaid(game.raidProgress, mapId, 'deployed') });
+  }
+
+  /**
+   * Closes a raid's entry in the record: how it ended, and the ground it walked.
+   *
+   * The survey is written here rather than a tile at a time because a save is
+   * the whole game serialised and a step is 150ms - a write a step would be a
+   * write four hundred times a raid. A raid that is abandoned by closing the
+   * tab therefore surveys nothing, which is the same answer the rest of the
+   * save gives about it.
+   */
+  public recordRaidEnded(
+    mapId: string,
+    outcome: 'extracted' | 'wiped',
+    survey: { readonly width: number; readonly walked: Iterable<number> } | undefined = undefined,
+  ): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    let raidProgress = bumpRaid(game.raidProgress, mapId, outcome);
+    if (survey && survey.width > 0) {
+      raidProgress = {
+        ...raidProgress,
+        surveyed: {
+          ...(raidProgress.surveyed ?? {}),
+          [mapId]: mergeSurvey(raidProgress.surveyed?.[mapId], survey.width, survey.walked),
+        },
+      };
+    }
+    return this.save({ ...game, raidProgress });
+  }
+
+  /**
    * Records an insertion the player has just stood on, and reports whether that
    * made it newly selectable - false for one a contract had already unlocked,
    * so the map only ever announces a drop-in the lobby did not already offer.
@@ -808,6 +886,22 @@ export class SaveManager {
   }
 }
 
+/** One more raid of a kind on one map, leaving every other map's count alone. */
+function bumpRaid(
+  progress: RaidProgress,
+  mapId: string,
+  field: keyof MapRaidRecord,
+): RaidProgress {
+  const held = progress.raidRecord?.[mapId] ?? { deployed: 0, extracted: 0, wiped: 0 };
+  return {
+    ...progress,
+    raidRecord: {
+      ...(progress.raidRecord ?? {}),
+      [mapId]: { ...held, [field]: held[field] + 1 },
+    },
+  };
+}
+
 /** Settles the raid's own cost before anything it earned is added. */
 function applySettlement(stash: Stash, settlement: RaidSettlement | undefined): void {
   if (!settlement) {
@@ -992,6 +1086,11 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // A save written before the container filled itself has no preference, and
     // the default is exactly what such a player wants: lead with the Pokemon.
     securePreference: readSecurePreference(value.securePreference),
+    // A save written before the record was kept has been nowhere, which is
+    // what an empty record says: the drop-in screen reads that as "you have
+    // not been here" rather than as a raid that went badly.
+    raidRecord: clampRaidRecord(value.raidRecord),
+    surveyed: clampSurvey(value.surveyed),
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now
@@ -1004,6 +1103,52 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ]),
     ],
   };
+}
+
+/** Only whole, non-negative counts, on maps that still exist. */
+function clampRaidRecord(value: unknown): Readonly<Record<string, MapRaidRecord>> {
+  if (!isRecord(value)) {
+    return {};
+  }
+  const count = (entry: unknown): number =>
+    typeof entry === 'number' && Number.isSafeInteger(entry) && entry > 0 ? entry : 0;
+  const record: Record<string, MapRaidRecord> = {};
+  for (const [mapId, held] of Object.entries(value)) {
+    if (!(mapId in WORLD_MAPS) || !isRecord(held)) {
+      continue;
+    }
+    record[mapId] = {
+      deployed: count(held.deployed),
+      extracted: count(held.extracted),
+      wiped: count(held.wiped),
+    };
+  }
+  return record;
+}
+
+/**
+ * A survey is only ever read back through `world/survey.ts`, which clips it to
+ * the map as it is drawn today, so all that is checked here is its shape.
+ */
+function clampSurvey(value: unknown): SurveyRecord {
+  if (!isRecord(value)) {
+    return {};
+  }
+  const record: Record<string, { width: number; tiles: string }> = {};
+  for (const [mapId, held] of Object.entries(value)) {
+    if (
+      !(mapId in WORLD_MAPS) ||
+      !isRecord(held) ||
+      typeof held.width !== 'number' ||
+      !Number.isSafeInteger(held.width) ||
+      held.width <= 0 ||
+      typeof held.tiles !== 'string'
+    ) {
+      continue;
+    }
+    record[mapId] = { width: held.width, tiles: held.tiles };
+  }
+  return record;
 }
 
 function uniqueStrings(value: unknown): string[] {

@@ -78,10 +78,6 @@ export async function deploy(page, url, { press, click, until, paused = false, i
     console.log(`continuing from a save with: ${JSON.stringify(await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress`))}`);
   }
   await click('Start a raid');
-  if (insertion) {
-    // The loadout's own row, by the id it carries: two rows can share a map's name.
-    await until(`(() => { const b = document.querySelector('button[data-insertion=${JSON.stringify(insertion)}]'); if (!b) return false; b.click(); return true; })()`, `the lobby to offer insertion "${insertion}"`);
-  }
   await click(starter);
   // --pack=itemId[:n],.. puts supplies in the raid bag by the loadout row's own
   // stepper. Nothing is packed by default - the loadout is the decision the game
@@ -131,6 +127,12 @@ export async function deploy(page, url, { press, click, until, paused = false, i
   }
   if (secure.length > 0) {
     await click('Back to loadout');
+  }
+  // Where to drop in is its own step, after the loadout: the row is clicked on
+  // that screen, by the id it carries, because two rows can share a map's name.
+  await click('Choose drop-in');
+  if (insertion) {
+    await until(`(() => { const b = document.querySelector('button[data-insertion=${JSON.stringify(insertion)}]'); if (!b) return false; b.click(); return true; })()`, `the lobby to offer insertion "${insertion}"`);
   }
   for (const label of ['Review & deploy', 'Enter the raid']) await click(label);
   await until(sceneIs('world'));

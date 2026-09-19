@@ -65,6 +65,17 @@ export interface ActiveRunSession {
    * fight, and not again after every wild encounter that follows.
    */
   watchesLifted?: string[];
+  /**
+   * The ground this raid has walked, as row-major tile indices at the map's own
+   * width - what the drop-in screen's picture of the place is drawn from.
+   *
+   * It lives on the session rather than on `WorldScene` because the world is
+   * torn down and rebuilt for every fight, and a raid that walked half a map
+   * and then met the hunter would otherwise remember only the half after the
+   * battle. It is written to the save once, when the raid ends: a save is the
+   * whole game serialised, and a write per step is a write per 150ms.
+   */
+  surveyed?: Set<number>;
 }
 
 export function createActiveRunSession(

@@ -15,6 +15,7 @@ import { entitiesForMap, type WorldEntity } from './world/npcs';
 import { poisForMap, type WorldPoi } from './world/pois';
 import { buildMapLayers, type MapLayers } from './world/tiles';
 import type { TilesetCatalogue } from './world/tileset/catalogue';
+import type { Material } from './world/tileset/materials';
 import { CLASSIC_TILESET } from './world/tileset/classicTileset';
 import { FLOOD_TOWN_TILESET } from './world/tileset/floodTownTileset';
 
@@ -47,6 +48,16 @@ export interface WorldMapDefinition {
   /** The sheet this map is drawn from, so two maps may use two sheets. */
   readonly tileset: TilesetCatalogue;
   readonly collision: readonly boolean[][];
+  /**
+   * What the ground is, tile by tile, in the map's own words - `grass`, `ford`,
+   * `cliff`. The layers above are tile numbers by the time they get here, and a
+   * tile number means nothing without the sheet it came from; this is the
+   * vocabulary a map is authored in, kept so anything that wants to say what a
+   * place looks like rather than draw it can ask. The drop-in screen's
+   * bird's-eye picture is derived from this and the collision beside it, which
+   * is what keeps that picture in step with a redrawn map with nothing stored.
+   */
+  readonly terrain: readonly Material[][];
   /**
    * Per tile, not per rectangle: tall grass is authored tile by tile now, so a
    * reed shelf or a forest trail can be one tile wide and still cost the player
@@ -116,6 +127,12 @@ function createMap(
     layers,
     tileset,
     collision: layers.collision,
+    // Read off the finished sketch rather than kept as it is drawn: a gate
+    // writes its own tiles onto the sketch, so the material here is the one
+    // the player will actually be standing on in this gate state.
+    terrain: Array.from({ length: sketch.height }, (_, y) =>
+      Array.from({ length: sketch.width }, (_, x) => sketch.surfaceAt(x, y)),
+    ),
     tallGrass: layers.tallGrass,
     ...(content.encounters ? { encounters: content.encounters } : {}),
     warps: [],

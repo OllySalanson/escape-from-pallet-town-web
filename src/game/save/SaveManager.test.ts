@@ -15,6 +15,8 @@ import { SAVE_KEY, SaveManager } from './SaveManager';
 import { applyRecovery, MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
 import { Stash } from '../stash';
 import { RUN_INSERTIONS } from '../run/runGeneration';
+import { WORLD_MAPS } from '../worldMap';
+import { surveyedTiles } from '../world/survey';
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -30,6 +32,19 @@ class MemoryStorage {
   public removeItem(key: string): void {
     this.values.delete(key);
   }
+}
+
+/** A save on disk for a new player, which is what a record is written onto. */
+function freshSave(storage: MemoryStorage): SaveManager {
+  const saves = new SaveManager(storage);
+  saves.save({
+    party: new PokemonParty(),
+    mapId: 'pallet-town',
+    position: { x: 6, y: 8 },
+    bag: new Bag(),
+    stash: new Stash(),
+  });
+  return saves;
 }
 
 describe('SaveManager', () => {
@@ -989,6 +1004,96 @@ describe('SaveManager', () => {
       expect(progress?.unlockedInsertions).toContain('route-1');
     },
   );
+
+  /**
+   * The raid record and the survey arrived without a version bump for the same
+   * reason the gates did: both default to empty, and empty is the truth about a
+   * save that never kept them - a player who has been nowhere. Every accepted
+   * version is pinned, because accepting a version is a promise to keep loading
+   * it and to honour everything in it.
+   */
+  it.each([1, 2, 3, 4, 5, 6])(
+    'opens a version %i save written before the raid record with nothing recorded',
+    (version) => {
+      const storage = new MemoryStorage();
+      storage.setItem(
+        SAVE_KEY,
+        JSON.stringify({
+          version,
+          party: [],
+          mapId: 'pallet-town',
+          position: { x: 1, y: 1 },
+          bag: {},
+          stash: { pokemon: [], items: {} },
+          raidProgress: { firstContractExtracted: true, unlockedInsertions: ['route-1'] },
+        }),
+      );
+
+      const progress = new SaveManager(storage).load()?.raidProgress;
+
+      expect(progress?.raidRecord).toEqual({});
+      expect(progress?.surveyed).toEqual({});
+    },
+  );
+
+  it('counts a raid where it was committed to and again where it ended', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+
+    expect(saves.recordDeployment('floodplain-relay')).toBe(true);
+    expect(saves.load()?.raidProgress.raidRecord).toEqual({
+      'floodplain-relay': { deployed: 1, extracted: 0, wiped: 0 },
+    });
+
+    expect(saves.recordRaidEnded('floodplain-relay', 'wiped')).toBe(true);
+    expect(saves.recordDeployment('floodplain-relay')).toBe(true);
+    expect(saves.recordRaidEnded('floodplain-relay', 'extracted')).toBe(true);
+    // Another map keeps its own count, and neither touches the other.
+    expect(saves.recordDeployment('route-1')).toBe(true);
+
+    expect(saves.load()?.raidProgress.raidRecord).toEqual({
+      'floodplain-relay': { deployed: 2, extracted: 1, wiped: 1 },
+      'route-1': { deployed: 1, extracted: 0, wiped: 0 },
+    });
+  });
+
+  it('adds each raid\'s walk to the survey rather than replacing it', () => {
+    const storage = new MemoryStorage();
+    const saves = freshSave(storage);
+    const width = WORLD_MAPS['floodplain-relay'].width;
+
+    saves.recordRaidEnded('floodplain-relay', 'extracted', { width, walked: [0, 1, 2] });
+    saves.recordRaidEnded('floodplain-relay', 'wiped', { width, walked: [2, 3, width] });
+
+    const held = saves.load()?.raidProgress.surveyed?.['floodplain-relay'];
+    expect([...surveyedTiles(held, width)].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, width]);
+  });
+
+  it('drops a record for a map that no longer exists, and a survey with no width', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 6,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: {},
+        stash: { pokemon: [], items: {} },
+        raidProgress: {
+          firstContractExtracted: true,
+          unlockedInsertions: ['route-1'],
+          raidRecord: { 'route-1': { deployed: 2, extracted: -1 }, 'a-place-that-went': { deployed: 9 } },
+          surveyed: { 'route-1': { width: 0, tiles: 'AAAA' }, 'pallet-town': { width: 32, tiles: 'AQ==' } },
+        },
+      }),
+    );
+
+    const progress = new SaveManager(storage).load()?.raidProgress;
+
+    expect(progress?.raidRecord).toEqual({ 'route-1': { deployed: 2, extracted: 0, wiped: 0 } });
+    expect(Object.keys(progress?.surveyed ?? {})).toEqual(['pallet-town']);
+  });
 
   /**
    * Version 6 is the held-item slot. It is a bump rather than a silent field

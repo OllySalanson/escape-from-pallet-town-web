@@ -8,11 +8,13 @@
 //        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
 //        [--insertion=id] [--beaten=bossId,..] [--completed=contractId,..] [--hp=N]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--grab=itemId,..] [--fight]
+//        [--progress=path.json]
 //
 // --seed pins `crypto.getRandomValues` and `Math.random` in the page, so two
 // runs roll the same raid and their event logs can be compared line for line.
 // --insertion and the save flags beside it are deploy.mjs's; README.md has the
 // rest, and how the two endings nobody chooses are reached with them.
+import { writeFileSync } from 'node:fs';
 import { LOGIC_WINDOW, PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
 import { GAME, deploy, deployOptions, sceneIs } from './deploy.mjs';
 
@@ -405,6 +407,14 @@ try {
     await until(sceneIs('hub'), 'the lobby');
     await wait(400);
     note(`lobby: ${await page.evaluate(`document.querySelector('.menu-overlay')?.innerText.replace(/\\n+/g, ' | ').slice(0, 160)`)}`);
+    // What the raid left in the record at base: the count, and the ground it
+    // walked. `--progress=path.json` writes it out, which is how a screenshot
+    // of the drop-in screen is taken against a survey a raid actually made.
+    const progress = await page.evaluate(`JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1')).raidProgress`);
+    note(`recorded: ${JSON.stringify(progress.raidRecord)}, surveyed ${Object.keys(progress.surveyed ?? {}).join(', ') || 'nothing'}`);
+    if (option('progress')) {
+      writeFileSync(option('progress'), JSON.stringify(progress));
+    }
     if (option('shot')) {
       await page.screenshot(option('shot').replace(/\.png$/, '-lobby.png'));
     }

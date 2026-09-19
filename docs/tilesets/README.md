@@ -38,6 +38,12 @@ npx vite-node tools/tileset/props.mts -- flood-town props.png 2
 # And the maps themselves, exactly as the scene draws them.
 npx vite-node tools/tileset/renderMap.mts -- all maps.png 2 --grid --content
 
+# And the maps as the lobby's drop-in screen draws them: one pixel to the tile,
+# dark everywhere nobody has walked. --survey takes a real save's record
+# (tools/playtest/raid.mjs --progress=) and --beaten opens a keeper's doors, so
+# what lights up is what a player would actually have.
+npx vite-node tools/tileset/minimap.mts -- all minimap.png 6 --beaten=overlook-warden
+
 # While drawing one: the structure numbers with coordinates, not pass or fail.
 # --runs lists every over-long lane once; --clashes lists landmarks drawn over
 # each other (a tree's crown eats a roof one tile away) and trunks on roads.

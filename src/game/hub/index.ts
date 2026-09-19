@@ -1,4 +1,15 @@
 export {
+  buildDropInBriefing,
+  gradeLine,
+  placePicture,
+
+  type DropInBriefing,
+  type DropInContext,
+  type PlaceGrade,
+  type PlaceRecord,
+} from './dropIn';
+
+export {
   BASE_LOADOUT_CAPACITY,
   DeploymentFlow,
   MAX_RUN_PARTY,
