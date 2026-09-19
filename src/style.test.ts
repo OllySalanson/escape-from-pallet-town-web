@@ -68,6 +68,13 @@ describe('the pixel-ui stylesheet', () => {
     expect(heading).toMatch(/background:\s*var\(--bar\);/);
     expect(heading).toMatch(/color:\s*var\(--bar-text\);/);
     expect(heading).not.toMatch(/--cream-dim/);
+    // A note is whole or it is not drawn: the strip wraps a note that does not
+    // fit onto a line it clips away, and never shrinks or clips the note itself.
+    expect(heading).toMatch(/flex-wrap:\s*wrap;/);
+    expect(heading).toMatch(/overflow:\s*hidden;/);
+    const note = /:where\(\.pixel-ui\) \.px-heading small \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
+    expect(note).toMatch(/flex:\s*0 0 auto;/);
+    expect(note).not.toMatch(/overflow/);
     const subheading = /:where\(\.pixel-ui\) \.px-subheading \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
     // Never `--ink-soft`: that is de-emphasis, and a heading is not that.
     expect(subheading).toMatch(/color:\s*var\(--ink\);/);

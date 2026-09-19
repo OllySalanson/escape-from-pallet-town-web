@@ -1527,10 +1527,26 @@ button {
   /* A strip is as wide as its window and no wider: with the frame drawn as a
      background there is nothing else to stop it painting over its neighbour. */
   overflow: hidden;
+  /* A note is whole or it is not drawn. The strip wraps, so a note that does
+     not fit beside its name drops to a second line - and the strip is exactly
+     one line tall and clips, so that line is never seen. Clipping the note
+     itself cut it through a letter (`4/4 SQI`) with nothing saying so, and on a
+     face whose stems are one pixel a half glyph reads as a different letter. */
+  flex-wrap: wrap;
+  align-content: flex-start;
+  row-gap: 0;
+}
+/* Both halves are one strip line tall, so a wrapped one starts a whole line down
+   and lands wholly under the clip. */
+:where(.pixel-ui) .px-heading > * {
+  display: flex;
+  align-items: center;
+  height: calc(var(--u) * 14);
 }
 :where(.pixel-ui) .px-heading small {
-  min-width: 0;
-  overflow: hidden;
+  flex: 0 0 auto;
+  /* Wrapped alone it still sits at the right, as it does beside its name. */
+  margin-left: auto;
   /* The title bar's own muted ink, so a count reads as a note on both. */
   color: var(--bar-muted);
 }
@@ -1538,6 +1554,8 @@ button {
    screen itself never does. The scrollbar is three game pixels of ink. */
 :where(.pixel-ui) .px-scroll {
   min-height: 0;
+  /* A row the cursor scrolls into view stops above the MORE strip, not under it. */
+  scroll-padding-bottom: calc(var(--u) * 8);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -1562,11 +1580,13 @@ button {
   bottom: 0;
   z-index: 1;
   display: block;
-  height: calc(var(--u) * 7);
-  margin-top: calc(var(--u) * -8);
+  /* `MenuOverlay.markScrollCues()` sets `--more-cover` when a row would
+     otherwise be cut through by the strip: the strip then takes the whole row. */
+  height: var(--more-cover, calc(var(--u) * 7));
+  margin-top: calc(var(--more-cover, calc(var(--u) * 7)) * -1 - var(--u));
   pointer-events: none;
   background:
-    var(--px-more) center calc(var(--u) * 3) / calc(var(--u) * 5) calc(var(--u) * 3) no-repeat,
+    var(--px-more) center bottom var(--u) / calc(var(--u) * 5) calc(var(--u) * 3) no-repeat,
     linear-gradient(rgb(23 23 23 / 25%), rgb(23 23 23 / 25%)) 0 0 / 100% var(--u) no-repeat,
     linear-gradient(var(--fill, var(--cream)), var(--fill, var(--cream)));
 }

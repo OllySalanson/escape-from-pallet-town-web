@@ -1993,8 +1993,6 @@ export class HubScene extends Phaser.Scene {
       }))
       .filter((item) => item.quantity > 0);
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
-    const protectedCount =
-      securedPokemon.length + securedItems.reduce((total, item) => total + item.quantity, 0);
     const riskedCount =
       riskedPokemon.length + riskedItems.reduce((total, item) => total + item.quantity, 0);
     // The price of the party, on screen before the player commits to it - the
@@ -2024,7 +2022,9 @@ export class HubScene extends Phaser.Scene {
       {
         className: 'confirm-secure px-tone-secure',
         heading: 'Comes home',
-        note: `${protectedCount} secured · ${this.flow.secureCells.used}/${this.flow.secureCells.total} squares`,
+        // The squares are the number a player who has just bought a berth is
+        // here for, so they are the whole note: the rows under it are the count.
+        note: `${this.flow.secureCells.used}/${this.flow.secureCells.total} squares`,
       },
     )}${pixelCommitBar({
       title: `Deploy to ${insertion.label}`,

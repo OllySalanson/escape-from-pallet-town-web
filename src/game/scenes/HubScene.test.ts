@@ -1181,7 +1181,7 @@ describe('the Outfitter', () => {
     hub.flow.toggleSecurePokemon('pidgey-2');
     hub.setView('deploy');
     readyToDeploy(hub);
-    expect(markupOf(hub)).toContain('2 secured · 8/8 squares');
+    expect(markupOf(hub)).toContain('8/8 squares');
 
     deploy(hub, start);
 

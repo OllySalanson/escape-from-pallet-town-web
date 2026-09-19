@@ -10,7 +10,7 @@ vi.mock('phaser', () => ({
 vi.mock('../audio/AudioManager', () => ({ audioManager: { play: vi.fn() } }));
 
 import type { ExtractionReport } from '../run/extractionReport';
-import { hasMoreBelow } from '../ui/MenuOverlay';
+import { hasMoreBelow, scrollCoverHeight } from '../ui/MenuOverlay';
 import { ExtractionScene } from './ExtractionScene';
 
 /**
@@ -45,5 +45,15 @@ describe('the result screen ledger', () => {
     expect(hasMoreBelow({ scrollHeight: 180, clientHeight: 110, scrollTop: 0 })).toBe(true);
     expect(hasMoreBelow({ scrollHeight: 180, clientHeight: 110, scrollTop: 70 })).toBe(false);
     expect(hasMoreBelow({ scrollHeight: 110.6, clientHeight: 110, scrollTop: 0 })).toBe(false);
+  });
+
+  it('covers a row the pane would cut through, whole, and leaves a clean cut alone', () => {
+    const pane = { top: 0, bottom: 168 };
+    // The strip is seven game pixels of three screen pixels each; a row spanning
+    // the line 21px above the edge is taken in full, to a whole game pixel.
+    expect(scrollCoverHeight(pane, [{ top: 0, bottom: 78 }, { top: 81, bottom: 159 }], 3)).toBe(87);
+    expect(scrollCoverHeight(pane, [{ top: 0, bottom: 78 }, { top: 81, bottom: 145 }], 3)).toBe(21);
+    // A row that would swallow most of the pane is cut rather than hide it.
+    expect(scrollCoverHeight(pane, [{ top: 20, bottom: 300 }], 3)).toBe(21);
   });
 });
