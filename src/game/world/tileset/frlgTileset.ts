@@ -231,10 +231,12 @@ export const FRLG_TILESET: TilesetCatalogue<FrlgPropName> = {
     stone: ground(FRLG_MATERIALS.STONE_BRICK),
     gravel: ground(FRLG_MATERIALS.GRAVEL),
     ford: nineSlice(FRLG_NINE_SLICES.WATER_SHALLOW),
-    water: nineSlice(FRLG_NINE_SLICES.WATER_DEEP, {
-      fillVariants: [index(FRLG_TILES.WATER_OPEN)],
-      variantRarity: 9,
-    }),
+    // No variant. The sheet's other open-water tile is a flatter blue than the
+    // nine-slice's fill, so spending it as an accent lays a visible lattice of
+    // dark diamonds across the whole river - which is the exact failure the
+    // last playtest called "one flat blue texture", arrived at from the other
+    // direction. The wave fill carries the surface on its own.
+    water: nineSlice(FRLG_NINE_SLICES.WATER_DEEP),
     // The sheet's hedges and tall grass are two-row beds, so there is no
     // one-tile hedge on it. The 1x1 bush is the stand-in, and a hedge is drawn
     // as a mass rather than as a line.

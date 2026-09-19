@@ -345,6 +345,14 @@ colour it can display lands on an exact multiple of 8 in 8-bit RGB, and 91% of
   `frlg-tiles.png` is a cut: the tiles this game needs, lifted individually and
   rearranged onto a new 20x31 grid that matches nothing on the source sheet. The
   source sheet is not in this repository and must not be added to it.
+- **One pixel edit, recorded.** The trees, the tree column and the 1x1 bush were
+  cut from a part of the source sheet where the ground under them is FireRed's
+  *shaded* forest grass, `#38a898`, while every ground material and every other
+  object uses the route grass `#70c8a0`. Standing one on the other drew a hard
+  teal rectangle round the foot of every tree. `scripts/reground-frlg-objects.mjs`
+  moves that one colour - 1415 pixels, and it appears nowhere else on the sheet -
+  leaving the tree's own shadow (`#388860`) untouched. The script is idempotent
+  and `--check` fails if the file ever regresses.
 - **What was cut.** Eight ground materials with a complete 13-tile edge set;
   three 3x3 nine-slices (shallow water, deep water, tall grass); sixteen
   multi-tile objects (trees, a ledge run, a cliff face, a bridge, a market stall,
