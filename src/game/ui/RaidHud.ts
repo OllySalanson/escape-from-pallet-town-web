@@ -17,7 +17,7 @@ import type { HunterChipTone, HunterChipView, RaidClockTone, RaidClockView } fro
 /**
  * The in-raid overlays.
  *
- * Three chips pinned to the top corners of the screen, each no larger than the
+ * Chips pinned to the top corners of the screen, each no larger than the
  * words in it. The overworld in the games this one is dressed as had no
  * permanent HUD at all, so the design rule here is that the map wins: the raid
  * clock and the objective earn a corner each because they are load-bearing, and
@@ -57,6 +57,8 @@ export interface RaidHudState {
   readonly clock: RaidClockView;
   readonly objectiveLines: readonly string[];
   readonly hunter: HunterChipView | null;
+  /** The district just walked into, while that is news; null otherwise. */
+  readonly place: string | null;
 }
 
 export class RaidHud {
@@ -69,6 +71,7 @@ export class RaidHud {
   private readonly clockText: Phaser.GameObjects.Text;
   private readonly objectiveText: Phaser.GameObjects.Text;
   private readonly hunterText: Phaser.GameObjects.Text;
+  private readonly placeText: Phaser.GameObjects.Text;
 
   private readonly scene: Phaser.Scene;
 
@@ -78,6 +81,7 @@ export class RaidHud {
     this.clockText = this.createText(CLOCK_FONT_SIZE);
     this.objectiveText = this.createText(CHIP_FONT_SIZE);
     this.hunterText = this.createText(CHIP_FONT_SIZE);
+    this.placeText = this.createText(CHIP_FONT_SIZE);
   }
 
   /** The chips' screen rectangles, for anything that has to avoid them. */
@@ -102,7 +106,7 @@ export class RaidHud {
       (width) => ({ x: stageWidth - EDGE_MARGIN - width, y: EDGE_MARGIN }),
     );
 
-    this.placeChip(
+    const objective = this.placeChip(
       this.objectiveText,
       state.objectiveLines,
       { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
@@ -110,6 +114,21 @@ export class RaidHud {
       () => ({ x: EDGE_MARGIN, y: EDGE_MARGIN }),
       true,
     );
+
+    // The arrival plate hangs under the objective as the hunter hangs under the
+    // clock: the left column is where the raid says where you are going, so it
+    // is where it says where you are.
+    if (state.place) {
+      this.placeChip(
+        this.placeText,
+        [state.place],
+        { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
+        1,
+        () => ({ x: EDGE_MARGIN, y: objective.y + objective.height + CHIP_GAP }),
+      );
+    } else {
+      this.placeText.setVisible(false);
+    }
 
     if (state.hunter) {
       this.placeChip(
@@ -132,6 +151,7 @@ export class RaidHud {
     this.clockText.destroy();
     this.objectiveText.destroy();
     this.hunterText.destroy();
+    this.placeText.destroy();
   }
 
   private createText(fontSize: string): Phaser.GameObjects.Text {

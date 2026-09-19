@@ -288,6 +288,9 @@ const PROPS = {
   }),
   /** A small columned shrine. Somewhere people left things. */
   shrine: block('shrine', 6, 22, 2, 2),
+  /** Round-topped churchyard stones, taller than a person: one cut with a cross, one worn. */
+  gravestone: block('gravestone', 35, 5, 2, 2),
+  gravestoneWorn: block('gravestone', 37, 5, 2, 2),
   /** A figure on a plinth, taller than anyone standing beside it. */
   statue: block('statue', 10, 22, 1, 4),
   /** A timber-framed mouth driven into a bank. */

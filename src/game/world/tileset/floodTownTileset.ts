@@ -33,6 +33,8 @@ const CHOSEN = [
   'stoneArch',
   'gateArch',
   'shrine',
+  'gravestone',
+  'gravestoneWorn',
   'statue',
   'mineMouth',
   'cellarDoors',

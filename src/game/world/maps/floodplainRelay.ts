@@ -10,7 +10,7 @@ import type { FloodTownPropName } from '../tileset/floodTownTileset';
  * water is the wall between every district and the next, the thing you steer
  * by, and the sightline that shows you the place you cannot reach yet.
  *
- * Six places, and what the river does to each:
+ * Eight places, and what the river does to each:
  *
  * - THE LANDING (north-west) - the quay, the relay office, the boathouse and
  *   the ferry jetty. The front door. Across the north reach stands the keep's
@@ -244,41 +244,55 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ',,,, .......... ',
     '   , .......... ',
     '   , .......... ',
-    '   ,,##,####,## ',
-    '   ,,,,,...wwwwC',
-    '   ,,,,,.o.wwwww',
-    '     ,,,,,,, ww ',
-    '     wwwwww  ww ',
-    '     wwwwww  Cw ',
-    '     wwwwww  ,, ',
-    '     wwwwww  ,, ',
+    '   ,,##P##PPPPPP',
+    '   ,PPPP...wwwwC',
+    '   ,PPPP.o.wwwww',
+    '    PPPPPPPPPwwP',
+    '     wwwwwwwwww ',
+    '     wwwwwwwwCw ',
+    '     wwwwwwwwPP ',
+    '     wwwwwwwwPP ',
   ]);
   map.plant(8, 31, 'house');
   map.plant(13, 31, 'house');
   // The town's chapel, round under a cone of a roof, standing in what was its
   // green. It is the one building on this map shaped like that.
   map.plant(9, 40, 'roundhouse');
+  // What says town, and says drowned. A second stranger placed every exit and
+  // every gate on this map from memory and still drew this district as "two
+  // barns" and "a chapel by a pond": the street was earth with a lipped pool
+  // beside it. So it is paved, with the pavement still showing along both
+  // sides of the water that has taken its east end; there is a mooring post on
+  // a street corner, which is the whole story in one object; and the
+  // churchyard's stones stand in the chapel's pool. Nothing else on the map
+  // has a gravestone on it.
+  map.plant(15, 38, 'mooringPost');
+  map.plant(12, 42, 'gravestone');
+  map.plant(14, 40, 'gravestoneWorn');
 
   // South of the river: the towpath in its reeds, the last house, and the
-  // road down to the gate.
+  // road down to the gate. The road is the town's own paving all the way from
+  // the drowned street to the arch - three screens of wood lie between the
+  // houses, the chapel, the last house and the gate, and the paving underfoot
+  // is what says they are one town.
   map.draw(3, 44, [
-    '             ,C           ',
-    '             ,,           ',
-    '       T     ,,           ',
-    '             ,,,ggggCggggg',
-    '           ,,,,Tgggggggggg',
-    '           ,,        ..   ',
-    '   .....   ,,        ..   ',
-    '   .....   ,,,,,,,,, ..   ',
-    '   .....   ,,    ,,  ,,   ',
-    '   .....   ,,    ,,,,,,,,,',
-    '   .....   ,,         ,,,,',
-    '    ,,,,,,,,,,            ',
-    '            ,,,,          ',
-    '              ,,          ',
-    '              ,,         T',
-    '              ,,          ',
-    '              ,,          ',
+    '             PC           ',
+    '             PP           ',
+    '       T     PP           ',
+    '             PP,ggggCggggg',
+    '           PPPPTgggggggggg',
+    '           PP        ..   ',
+    '   .....   PP        ..   ',
+    '   .....   PP,,,,,,, ..   ',
+    '   .....   PP    ,,  ,,   ',
+    '   .....   PP    ,,,,,,,,,',
+    '   .....   PP         ,,,,',
+    '    PPPPPPPPPP            ',
+    '            PPPP          ',
+    '              PP          ',
+    '              PP         T',
+    '              PP          ',
+    '              PP          ',
   ]);
   map.plant(6, 50, 'house');
   map.plant(24, 49, 'hut');
@@ -476,7 +490,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '                                                                ',
     '                                           p                    ',
     '                                                          p     ',
-    '               b                                                ',
+    '                                                                ',
     '                      p                                         ',
     '                  b                 p                           ',
     '                                                             p  ',

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { hunterIntelFor } from '../world/hunter';
-import { HUNTER_ALERT_DISTANCE, hunterChipView, hunterIntelLine,
+import {
+  HUNTER_ALERT_DISTANCE,
+  PLACE_PLATE_MS,
+  hunterChipView,
+  hunterIntelLine,
   openRaidCue,
+  placePlateLine,
 } from './raidHud';
 
 const FAR = { searching: false, distance: null, direction: 'N' } as const;
@@ -82,5 +87,22 @@ describe('the cue with no objective left', () => {
     expect(openRaidCue({ items: 0, pokemon: 0 })).toBe('FIND LOOT, THEN EXTRACT');
     expect(openRaidCue({ items: 1, pokemon: 0 })).toBe('EXTRACT WITH YOUR HAUL');
     expect(openRaidCue({ items: 0, pokemon: 1 })).toBe('EXTRACT WITH YOUR HAUL');
+  });
+});
+
+describe('the arrival plate', () => {
+  it('names a place while arriving in it is news, and then gets out of the way', () => {
+    expect(placePlateLine('OLD TOWN', PLACE_PLATE_MS)).toBe('OLD TOWN');
+    expect(placePlateLine('OLD TOWN', 1)).toBe('OLD TOWN');
+    expect(placePlateLine('OLD TOWN', 0)).toBeNull();
+  });
+
+  it('says nothing on a map that names no districts', () => {
+    expect(placePlateLine(null, PLACE_PLATE_MS)).toBeNull();
+  });
+
+  it('is up long enough to read and short enough not to be furniture', () => {
+    expect(PLACE_PLATE_MS).toBeGreaterThanOrEqual(2_000);
+    expect(PLACE_PLATE_MS).toBeLessThanOrEqual(5_000);
   });
 });

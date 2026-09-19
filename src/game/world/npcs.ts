@@ -116,9 +116,23 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     position: { x: 15, y: 56 },
     facing: 'right',
     dialogLines: [
-      'SOUTH GATE - always open',
+      'OLD TOWN - SOUTH GATE - always open',
       'The causeway east of here, over to the store-house, is barred from the far side. The orchard warden keeps the bar.',
       'Whatever the relay put in its cellar is still down there.',
+    ],
+  },
+  {
+    // Where the footpath from the reeds comes out onto the street, which is
+    // the first a walker sees of the town.
+    id: 'floodplain-old-town-sign',
+    mapId: 'floodplain-relay',
+    kind: 'sign',
+    position: { x: 7, y: 36 },
+    facing: 'down',
+    dialogLines: [
+      'OLD TOWN',
+      'The river has the east end of the street, and the churchyard. Wade it - it is only to the knee.',
+      'The paved road runs south past the chapel to the last house and the SOUTH GATE. Across the water is MARKET ISLE.',
     ],
   },
   {

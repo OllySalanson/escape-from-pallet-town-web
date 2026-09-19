@@ -92,12 +92,15 @@ import {
   WATCH_SHADING_DEPTH,
   atRow,
 } from '../world/depths';
+import { districtAt } from '../world/districts';
 import { WINDOW_CREAM } from '../ui/pixelWindow';
 import {
   OBJECTIVE_DETAIL_MS,
+  PLACE_PLATE_MS,
   openRaidCue,
   hunterChipView,
   objectiveChipLines,
+  placePlateLine,
   raidClockAlertTier,
   raidClockView,
 } from './raidHud';
@@ -333,6 +336,12 @@ export class WorldScene extends Phaser.Scene {
   private objectiveCue = '';
   /** Counts down the window in which a changed objective shows its extra line. */
   private objectiveDetailMs = 0;
+  /** The district the player is standing in, and how long its arrival plate has left. */
+  private districtId: string | null = null;
+  private placeName: string | null = null;
+  private placePlateMs = 0;
+  /** True when this build of the scene is a battle handing the raid back. */
+  private arrivedFromBattle = false;
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
   /** Set once a finished raid is on its way to the result screen. */
@@ -444,6 +453,12 @@ export class WorldScene extends Phaser.Scene {
     this.knownInsertionIds.clear();
     this.pushingAgainst = null;
     this.hunterNear = false;
+    // Where the last raid ended is not where this one starts, and the plate
+    // that named it must not flash up over the next insertion.
+    this.districtId = null;
+    this.placeName = null;
+    this.placePlateMs = 0;
+    this.arrivedFromBattle = false;
   }
 
   /**
@@ -479,6 +494,7 @@ export class WorldScene extends Phaser.Scene {
     if (!this.runSession) {
       this.restoreSavedGame(data.savedGame);
     } else if (data.returnLocation) {
+      this.arrivedFromBattle = true;
       this.currentMap = this.mapFor(data.returnLocation.mapId);
       this.currentTile = { ...data.returnLocation.position };
       this.facing = data.returnLocation.facing;
@@ -1258,7 +1274,24 @@ export class WorldScene extends Phaser.Scene {
     this.raidHud = new RaidHud(this);
     this.objectiveCue = '';
     this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
+    this.noteDistrict(this.arrivedFromBattle);
     this.refreshRunTimerHud();
+  }
+
+  /**
+   * Keeps track of the district the player is standing in, and raises its name
+   * when they walk into it. Dropping into a raid is an arrival; coming back
+   * from a fight is not - the scene is rebuilt after every battle, and a plate
+   * naming the place the player never left would be an announcement of nothing.
+   */
+  private noteDistrict(silently = false): void {
+    const district = districtAt(this.currentMap.id, this.currentTile);
+    if (!district || district.id === this.districtId) {
+      return;
+    }
+    this.districtId = district.id;
+    this.placeName = district.name;
+    this.placePlateMs = silently ? 0 : PLACE_PLATE_MS;
   }
 
   /**
@@ -1287,6 +1320,12 @@ export class WorldScene extends Phaser.Scene {
     } else {
       this.objectiveDetailMs = Math.max(0, this.objectiveDetailMs - deltaMs);
     }
+    // The plate's time is reading time. A raid opens on its briefing, and a
+    // plate that ran out behind that box had named the Landing to nobody.
+    if (deltaMs > 0 && !this.dialogBox.visible) {
+      this.placePlateMs = Math.max(0, this.placePlateMs - deltaMs);
+    }
+    this.noteDistrict();
 
     if (manager.isEnraged) {
       if (this.timerThreat !== 'enraged') {
@@ -1311,6 +1350,7 @@ export class WorldScene extends Phaser.Scene {
           snapshot.enrageGraceRemainingMs,
         ),
         objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0),
+        place: placePlateLine(this.placeName, this.placePlateMs),
         hunter: hunterChipView({
           searching: isHunterSearching(this.hunterState),
           searchRemainingMs: this.hunterState.searchRemainingMs,
