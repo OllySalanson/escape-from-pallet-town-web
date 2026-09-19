@@ -199,3 +199,51 @@ describe('the Floodplain checkpoint', () => {
     expect(fromJunction[kit.y][kit.x]).toBeGreaterThan(0);
   });
 });
+
+/**
+ * The promise the Floodplain's doors are drawn to keep. Each boss holds two:
+ * the one in front of the player, and a second that lets onto ground they
+ * already know. So beating a boss is not only being let into a district - it is
+ * finding out the district was nearer home than the way round to it, and the
+ * keep's causeway is that turned into a reveal. A gate that only lengthens the
+ * map is filler; this fails the day a redraw makes one.
+ */
+describe('the way back from a won district', () => {
+  const TOLL = 'floodplain-toll-keeper';
+  const homeBankExits = EXTRACTION_POINTS.filter(
+    (point) =>
+      point.mapId === 'floodplain-relay' &&
+      ['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT'].includes(point.label),
+  );
+
+  it.each([
+    ['Mill Weir', 'floodplain-mill-weir', [TOLL]],
+    ['Beacon Keep', 'floodplain-beacon-keep', [TOLL, 'floodplain-sluice-keeper']],
+    ['The Vault', 'floodplain-vault', [TOLL, 'floodplain-orchard-warden']],
+  ] as const)('is shorter than the way in was: %s', (_name, dropInId, beaten) => {
+    const opened = getWorldMap('floodplain-relay', beaten).collision;
+    const dropIn = RUN_INSERTIONS[dropInId].position;
+    const wayIn = stepDistances(opened, insertion.position, new Set())[dropIn.y][dropIn.x];
+    const fromDistrict = stepDistances(opened, dropIn, new Set());
+    const wayBack = Math.min(
+      ...homeBankExits
+        .map((exit) => fromDistrict[exit.position.y][exit.position.x])
+        .filter((steps) => steps >= 0),
+    );
+
+    expect(wayIn).toBeGreaterThan(0);
+    expect(wayBack).toBeGreaterThan(0);
+    expect(wayBack).toBeLessThan(wayIn);
+  });
+
+  it('puts Beacon Keep less than half as far from home as the way round to it', () => {
+    // The reveal, as a number: the tower stared at from the front door turns
+    // out to be next door once the causeway is out of the water.
+    const opened = getWorldMap('floodplain-relay', [TOLL, 'floodplain-sluice-keeper']).collision;
+    const keep = RUN_INSERTIONS['floodplain-beacon-keep'].position;
+    const wayIn = stepDistances(opened, insertion.position, new Set())[keep.y][keep.x];
+    const ferry = homeBankExits.find((exit) => exit.label === 'FERRY DOCK')!.position;
+    const wayBack = stepDistances(opened, keep, new Set())[ferry.y][ferry.x];
+    expect(wayBack * 2).toBeLessThan(wayIn + 3);
+  });
+});
