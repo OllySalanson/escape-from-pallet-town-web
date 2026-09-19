@@ -9,12 +9,13 @@ import {
 } from '../movement/gridMovement';
 import { KeyPresses } from '../input/KeyPresses';
 import { PressLatch } from '../input/pressLatch';
-import { advanceStepClock } from '../movement/stepClock';
+import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import {
   CHARACTER_FEET_PIXEL_Y,
   CHARACTER_HEAD_PIXEL_Y,
   getIdleFrame,
   getWalkAnimationKey,
+  getWalkFrames,
 } from '../playerFrames';
 import type { CharacterDesignId } from '../world/characterDesigns';
 import {
@@ -41,6 +42,12 @@ import {
   type WorldMapId,
 } from '../worldMap';
 import { type WorldEntity } from '../world/npcs';
+import {
+  advanceIdleFigures,
+  createIdleFigures,
+  type IdleFigure,
+  type IdleStep,
+} from '../world/npcIdle';
 import { PARTY_LIMIT, Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { createGiftPokemon, giftGivenBy, isGiftSpoken, type PokemonGift } from '../world/gifts';
 import { DialogBox } from '../ui/DialogBox';
@@ -340,6 +347,14 @@ export class WorldScene extends Phaser.Scene {
   private mapObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly npcSprites = new Map<string, Phaser.GameObjects.Sprite>();
   private readonly npcAppearances = new Map<string, WorldCharacterAppearance>();
+  /** The townsfolk keeping a beat on this map, and where each of them stands now. */
+  private idleFigures: IdleFigure[] = [];
+  /**
+   * The tile a figure is walking off, held until its step finishes drawing.
+   * A figure owns both ends of its step for as long as it is between them, so
+   * the player can never be let through the half-vacated tile it is crossing.
+   */
+  private readonly idleVacating = new Map<string, GridPosition>();
   private party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
   private caughtPokemonStash: Pokemon[] = [];
   private bag = new Bag({ potion: 3, antidote: 1, 'poke-ball': 5, 'great-ball': 1 });
@@ -519,6 +534,11 @@ export class WorldScene extends Phaser.Scene {
     this.placeName = null;
     this.placePlateMs = 0;
     this.arrivedFromBattle = false;
+    // Where the last raid's townsfolk had wandered to, and whoever was half-way
+    // through a step when it ended: `createEntities` stands them all back on
+    // their marks, and a stale vacated tile would be a wall nobody was on.
+    this.idleFigures = [];
+    this.idleVacating.clear();
   }
 
   /**
@@ -693,6 +713,9 @@ export class WorldScene extends Phaser.Scene {
     this.dialogBox.update(deltaMs);
 
     this.advanceRunClock(deltaMs);
+    // Outside the clock and before the early returns: the townsfolk are the
+    // world going on around the raid, and they cost the player nothing.
+    this.advanceIdleFigures(deltaMs);
     if (this.pendingHubTransition) {
       this.handleDialogInput();
       return;
@@ -1057,6 +1080,8 @@ export class WorldScene extends Phaser.Scene {
     this.createPois();
     this.createContractMarkers();
 
+    this.idleFigures = createIdleFigures(this.currentMap.entities, Math.random);
+    this.idleVacating.clear();
     for (const entity of this.currentMap.entities) {
       if (entity.kind === 'sign') {
         this.createSign(entity);
@@ -1355,6 +1380,94 @@ export class WorldScene extends Phaser.Scene {
     this.npcSprites.set(id, sprite);
     this.npcAppearances.set(id, appearance);
     this.mapObjects.push(sprite);
+  }
+
+  /**
+   * Whether an authored figure is on this tile right now.
+   *
+   * A sign and a trainer are where they were put; a townsperson with a beat may
+   * have shifted a tile, and owns the tile they are stepping off until the step
+   * has finished drawing.
+   */
+  private entityHolds(entity: WorldEntity, tile: GridPosition): boolean {
+    const figure = this.idleFigures.find((standing) => standing.id === entity.id);
+    const position = figure?.position ?? entity.position;
+    if (position.x === tile.x && position.y === tile.y) {
+      return true;
+    }
+    const vacating = this.idleVacating.get(entity.id);
+    return vacating !== undefined && vacating.x === tile.x && vacating.y === tile.y;
+  }
+
+  /**
+   * Moves the townsfolk on their own small schedules.
+   *
+   * It is driven by the frame rather than by the raid clock, and it runs before
+   * any of `update`'s early returns so a figure mid-step still finishes it while
+   * the player is reading - but the beats themselves stop dead while anything is
+   * on screen to read, because a person who walked off mid-sentence would leave
+   * their own words hanging in the air. Nothing here spends raid time, and
+   * nothing here touches the run's own randomness, so a seed plays the same raid
+   * whatever the street happens to be doing.
+   */
+  private advanceIdleFigures(deltaMs: number): void {
+    if (this.idleFigures.length === 0) {
+      return;
+    }
+    const frozen =
+      this.isWarping ||
+      this.pendingHubTransition ||
+      this.trainerPrompt !== undefined ||
+      this.dialogBox.visible;
+    const advanced = advanceIdleFigures(this.idleFigures, {
+      deltaMs,
+      frozen,
+      isTileFree: (tile) => !this.isBlocked(tile) && !this.isPlayerOn(tile),
+      random: Math.random,
+    });
+    this.idleFigures = advanced.figures;
+    for (const step of advanced.steps) {
+      this.drawIdleStep(step);
+    }
+  }
+
+  /** The two tiles the player owns: the one they are on, and the one they are crossing to. */
+  private isPlayerOn(tile: GridPosition): boolean {
+    return (
+      (this.currentTile.x === tile.x && this.currentTile.y === tile.y) ||
+      (this.targetTile !== null && this.targetTile.x === tile.x && this.targetTile.y === tile.y)
+    );
+  }
+
+  private drawIdleStep(step: IdleStep): void {
+    const sprite = this.npcSprites.get(step.id);
+    if (!sprite) {
+      return;
+    }
+    if (step.turnedOnly) {
+      this.faceFigure(step.id, step.facing);
+      return;
+    }
+    const appearance = this.npcAppearances.get(step.id);
+    if (appearance) {
+      // Two frames, not an animation: a one-tile shift is a single stride, and
+      // a looping cycle on it reads as someone jogging on the spot.
+      sprite.setFrame(getWalkFrames(step.facing, appearance.sheetColumns)[0]);
+    }
+    this.idleVacating.set(step.id, step.from);
+    sprite.setDepth(atRow(FIGURE_BAND, Math.max(step.from.y, step.to.y)));
+    this.tweens.add({
+      targets: sprite,
+      x: step.to.x * TILE_SIZE,
+      y: step.to.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+      duration: STEP_DURATION_MS,
+      ease: 'Linear',
+      onComplete: () => {
+        this.idleVacating.delete(step.id);
+        sprite.setDepth(atRow(FIGURE_BAND, step.to.y));
+        this.faceFigure(step.id, step.facing);
+      },
+    });
   }
 
   private faceFigure(id: string, facing: Direction): void {
@@ -1786,8 +1899,8 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    const entity = this.currentMap.entities.find(
-      (candidate) => candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
+    const entity = this.currentMap.entities.find((candidate) =>
+      this.entityHolds(candidate, targetTile),
     );
     const trainer = this.trainersForCurrentMap().find(
       (candidate) => candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
@@ -2176,9 +2289,7 @@ export class WorldScene extends Phaser.Scene {
   private isBlocked(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
-      this.currentMap.entities.some(
-        (entity) => entity.position.x === tile.x && entity.position.y === tile.y,
-      ) ||
+      this.currentMap.entities.some((entity) => this.entityHolds(entity, tile)) ||
       this.trainersForCurrentMap().some(
         (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
       ) ||
@@ -2395,6 +2506,8 @@ export class WorldScene extends Phaser.Scene {
     this.watchedGround = [];
     this.npcSprites.clear();
     this.npcAppearances.clear();
+    this.idleFigures = [];
+    this.idleVacating.clear();
     this.lootSprites.clear();
     this.poiSprites.clear();
     this.poiLabels.clear();
@@ -3230,9 +3343,7 @@ export class WorldScene extends Phaser.Scene {
   private isBlockedForHunter(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
-      this.currentMap.entities.some(
-        (entity) => entity.position.x === tile.x && entity.position.y === tile.y,
-      ) ||
+      this.currentMap.entities.some((entity) => this.entityHolds(entity, tile)) ||
       this.trainersForCurrentMap().some(
         (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
       )
