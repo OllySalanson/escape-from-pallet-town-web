@@ -58,7 +58,7 @@ export const RUN_INSERTIONS = {
     label: 'Beacon Keep',
     mapId: 'floodplain-relay',
     position: { x: 50, y: 12 },
-    description: 'Inside the moat, under the tower you could see from the Landing. The old causeway home is a short wade from here.',
+    description: 'Inside the moat, under the tower you could see from the Landing. The old causeway home is a short walk from here.',
   },
   'floodplain-vault': {
     id: 'floodplain-vault',

@@ -112,8 +112,11 @@ export const WORLD_GATES: readonly MapGate[] = [
     open: { material: 'stone' },
   },
   {
-    // The drowned causeway. Deep while the sluice is held shut; a wade once it
-    // is let go and the river drops.
+    // The drowned causeway. Deep while the sluice is held shut; once it is let
+    // go the river drops and the stones are out of the water - the quay's own
+    // paving, running straight across to the keep. It was a ford at first, and
+    // in the game a ford is a small pool with a bank all round it: the reveal
+    // read as a pond appearing rather than as a way across.
     id: 'floodplain-relay-causeway',
     mapId: 'floodplain-relay',
     bossId: 'floodplain-sluice-keeper',
@@ -123,7 +126,7 @@ export const WORLD_GATES: readonly MapGate[] = [
       { x: 40, y: 8 }, { x: 41, y: 8 }, { x: 42, y: 8 },
     ],
     closed: { material: 'water' },
-    open: { material: 'ford' },
+    open: { material: 'stone' },
   },
   {
     id: 'floodplain-vault-fence',
