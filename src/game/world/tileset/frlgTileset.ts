@@ -242,24 +242,11 @@ export const FRLG_TILESET: TilesetCatalogue<FrlgPropName> = {
     // as a mass rather than as a line.
     hedge: { overlay: true, roles: { fill: index(FRLG_TILES.BUSH) } },
     tree: { overlay: true, roles: { fill: index(FRLG_TILES.BUSH) } },
-    cliff: (() => {
-      const face = FRLG_OBJECTS.CLIFF_FACE;
-      const at = (column: number, row: number): number =>
-        index({ column: face.column + column, row: face.row + row });
-      return {
-        roles: {
-          fill: at(1, 1),
-          'edge-n': at(1, 0),
-          'edge-s': at(1, 5),
-          'edge-w': at(0, 1),
-          'edge-e': at(2, 1),
-          'corner-nw': at(0, 0),
-          'corner-ne': at(2, 0),
-          'corner-sw': at(0, 5),
-          'corner-se': at(2, 5),
-        },
-      };
-    })(),
+    // The sheet's cliff is a 6x6 object with grass on top and a face below, not
+    // a material with an edge set, so it is a prop. What `cliff` draws is the
+    // single rock: always solid, always reads as stone, and it takes an edge
+    // from nothing - which is right, because rock on this sheet has no edges.
+    cliff: { overlay: true, roles: { fill: index(FRLG_TILES.ROCK) } },
     fence: { overlay: true, roles: { fill: index(FRLG_TILES.FENCE_WOOD) } },
     wall: (() => {
       const shop = FRLG_OBJECTS.BUILDING_SHOP;
