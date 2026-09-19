@@ -136,23 +136,27 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     unlockAtMs: 0,
     requirement: { kind: 'poi-activated', poiId: 'forest-fire-tower', poiLabel: 'FIRE TOWER' },
   },
+  // The Floodplain is played a piece at a time, so every piece has a way out
+  // inside it: three on the home bank on three different rules, and one behind
+  // each door a boss holds. `hunterFlee.test.ts` holds the other half of that -
+  // no tile on the map is further from its nearest exit than a flee buys.
   {
     mapId: 'floodplain-relay',
-    position: { x: 15, y: 28 },
+    position: { x: 17, y: 60 },
     label: 'SOUTH GATE',
     unlockAtMs: 0,
     requirement: { kind: 'always' },
   },
   {
     mapId: 'floodplain-relay',
-    position: { x: 7, y: 21 },
+    position: { x: 32, y: 12 },
     label: 'FERRY DOCK',
     unlockAtMs: 45_000,
     requirement: { kind: 'elapsed', unlockAtMs: 45_000 },
   },
   {
     mapId: 'floodplain-relay',
-    position: { x: 19, y: 8 },
+    position: { x: 4, y: 23 },
     label: 'RADIO EXIT',
     unlockAtMs: 0,
     requirement: {
@@ -160,5 +164,26 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
       poiId: 'floodplain-ranger-radio',
       poiLabel: 'RANGER STATION',
     },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 50, y: 22 },
+    label: 'MILL RACE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 55, y: 6 },
+    label: 'SIGNAL FIRE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 50, y: 48 },
+    label: 'VAULT CULVERT',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
   },
 ];

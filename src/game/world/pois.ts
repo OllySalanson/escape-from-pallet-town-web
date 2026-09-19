@@ -91,9 +91,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
   {
     id: 'floodplain-supply-vault',
     mapId: 'floodplain-relay',
-    position: { x: 27, y: 15 },
+    position: { x: 45, y: 53 },
     label: 'FLOODED SUPPLY VAULT',
-    description: 'High-value cache. The way back north is longer than the causeway you came in on. Extract to bank it.',
+    description: 'High-value cache under the open trapdoor. The causeway west is the short way out once the orchard warden is beaten. Extract to bank it.',
     reward: [
       { itemId: 'great-ball', quantity: 2 },
       { itemId: 'super-potion', quantity: 1 },
@@ -102,9 +102,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
   {
     id: 'floodplain-ranger-radio',
     mapId: 'floodplain-relay',
-    position: { x: 18, y: 7 },
+    position: { x: 12, y: 16 },
     label: 'RANGER STATION',
-    description: 'Hunter forecast: the road is exposed, reeds break sightlines, and the Radio Exit opens here.',
+    description: 'Hunter forecast: the shore road is exposed, the reeds break sightlines, and switching this on opens the Radio Exit out west in the marsh.',
     reward: [],
     effect: 'unlock-extraction',
     unlockedExtractionLabel: 'RADIO EXIT',

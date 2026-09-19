@@ -181,8 +181,8 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ' ..CgggCg...gWWgg  ,    ',
     '  .ggCgggg..Cgggg  ,    ',
     ' ggggggggggCggggT,,,,,, ',
-    ' gggggCggggCggggg..C.,, ',
-    '   ,,                ,, ',
+    ' gggggCggggCggggg...T,, ',
+    '   ,,            gggg,, ',
     '   ,C              T,,, ',
   ]);
 
@@ -197,7 +197,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '..PPPPPPPPPPPP  ',
     '#.PPPPPPPPPPPP  ',
     '#.PPPPPPPPPPPP  ',
-    '##PPPPPPPPPPPP,,',
+    ',,PPPPPPPPPPPP,,',
     ',,PPPPPPPPPPPP,,',
     '#.PPPPPPPPPPPP.#',
   ]);
@@ -206,7 +206,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(26, 34, 'stripedStall');
   map.plant(32, 37, 'stoneFountain');
   map.plant(24, 35, 'cratePair');
-  map.plant(27, 38, 'sack');
+  map.plant(23, 38, 'sack');
   map.plant(31, 33, 'banner');
   map.plant(35, 33, 'banner');
 
@@ -227,8 +227,8 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '   ,C.......... ',
     '   ,,.......... ',
     '   ,,##,####,## ',
-    '   ,,,,,...,,,,,',
-    '   ,,,,,.o.,,,,C',
+    '   ,,,,,...,,,,C',
+    '   ,,,,,.o.,,,,,',
     '     ,,,,,,, ,, ',
     '    T""""""  ,, ',
     '     """"""  C, ',

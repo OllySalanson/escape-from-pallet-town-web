@@ -71,16 +71,21 @@ const createTrainer = (
  */
 export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => [
   {
-    // The price of the fast road. Maya stands on the jetty off the checkpoint
-    // corner rather than in the lane, so the road is open and quick, and what it
-    // costs is the three tiles of it she is watching. The vault turn at 15,13
-    // sits one step outside that watch, so the player reads her, and the price,
+    // The price of the fast road. The shore road narrows to one tile between
+    // thicket, and Maya looks straight up it - but from the tile *below* its
+    // mouth, off the road, which runs east and west across in front of her. In
+    // the narrows she would be a locked door; here the road is open and quick,
+    // and what it costs is walking the four tiles she can see. The reeds leave
+    // the road a row above the narrows and come back to it round underneath
+    // her, never crossing her line, so they are a real way round. The tile at
+    // 22,21 is one step outside her watch: the player reads her, and the price,
     // from a junction they can still turn round at.
     mapId: 'floodplain-relay',
-    position: { x: 15, y: 17 },
+    position: { x: 22, y: 26 },
     facing: 'up',
     fixedPosition: true,
-    sightRange: 3,
+    sightRange: 4,
+    design: 'beauty',
     introLines: [
       'MAYA HAS THE ROAD IN SIGHT.',
       'The reeds go around. The road goes through me.',
@@ -90,6 +95,77 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       'RAIDER MAYA',
       [new Pokemon(PIKACHU, 7), new Pokemon(PIDGEY, 7)],
       'The checkpoint is open. Move before the hunter closes in.',
+    ),
+  },
+  // The Floodplain's three doors, and who holds each. One fight opens two: the
+  // door in front of the player, and a second somewhere they have already been,
+  // so beating a boss is also finding out how the map was joined up all along.
+  {
+    // Holds the towered bridge off Market Isle, which is the only way east.
+    // Beating him also lowers the chain on the orchard ford, so the way back
+    // from the east bank is a wade to the square rather than the walk round.
+    mapId: 'floodplain-relay',
+    position: { x: 33, y: 33 },
+    facing: 'down',
+    fixedPosition: true,
+    sightRange: 1,
+    bossId: 'floodplain-toll-keeper',
+    design: 'sailor',
+    introLines: [
+      'TOLLMAN BRIGGS HOLDS THE BRIDGE.',
+      'Everything east of this river pays me first. So do you.',
+    ],
+    trainer: createTrainer(
+      'floodplain-toll-keeper-briggs',
+      'TOLLMAN BRIGGS',
+      [new Pokemon(PIDGEY, 8), new Pokemon(SQUIRTLE, 9)],
+      'Bridge is yours, and the ford with it. Mind the mill - the race is not mine to open.',
+    ),
+  },
+  {
+    // Holds the gatehouse that stands in the mill race, which is the keep's
+    // moat. He has the sluice shut, so the river is up: beating him drops it,
+    // and the old causeway between the keep and the Landing comes out of the
+    // water. The tower the player has looked at since their first step turns
+    // out to be next door.
+    mapId: 'floodplain-relay',
+    position: { x: 47, y: 22 },
+    facing: 'down',
+    fixedPosition: true,
+    sightRange: 1,
+    bossId: 'floodplain-sluice-keeper',
+    design: 'hiker',
+    introLines: [
+      'SLUICE KEEPER DANE HOLDS THE GATEHOUSE.',
+      'I keep the water high and the keep dry. Nobody walks in.',
+    ],
+    trainer: createTrainer(
+      'floodplain-sluice-keeper-dane',
+      'SLUICE KEEPER DANE',
+      [new Pokemon(SQUIRTLE, 10), new Pokemon(JIGGLYPUFF, 10), new Pokemon(PIKACHU, 12)],
+      'Gate is open. I am letting the sluice go too - watch the river by the Landing.',
+    ),
+  },
+  {
+    // Holds the gap in the orchard's back fence, with the vault behind it.
+    // Beating her also unbars the causeway from the vault to the South Gate
+    // road, so what is carried out of the vault has a short way home.
+    mapId: 'floodplain-relay',
+    position: { x: 53, y: 44 },
+    facing: 'up',
+    fixedPosition: true,
+    sightRange: 1,
+    bossId: 'floodplain-orchard-warden',
+    design: 'straw-hat',
+    introLines: [
+      'WARDEN HOLT HOLDS THE ORCHARD FENCE.',
+      'The rows are mine and so is what is buried past them.',
+    ],
+    trainer: createTrainer(
+      'floodplain-orchard-warden-holt',
+      'WARDEN HOLT',
+      [new Pokemon(BUTTERFREE, 11), new Pokemon(PIDGEY, 11), new Pokemon(JIGGLYPUFF, 12)],
+      'Go on through. The causeway out the far side is unbarred - it lands you on the gate road.',
     ),
   },
   {
