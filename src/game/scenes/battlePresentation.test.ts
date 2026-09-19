@@ -20,6 +20,14 @@ import {
   describeMoveGuidance,
   eventToMessage,
   formatMoveCommand,
+  BATTLE_PANEL,
+  formatPartyRow,
+  levelLabel,
+  mainCommandColumns,
+  mainCommandLayout,
+  partyPrompt,
+  partyPromptLayout,
+  partyRowLayout,
   moveCommandLayout,
   moveGuidanceLayout,
   HUNTER_FLEE_WARNING_SHARE,
@@ -47,6 +55,51 @@ describe('battle presentation', () => {
       expect(layout.x + layout.width).toBeLessThanOrEqual(BATTLE_SCREEN_WIDTH);
       expect(layout.y + layout.height).toBeLessThanOrEqual(MOVE_COMMAND_HEIGHT);
     }
+  });
+
+  it('keeps the main commands and a full party inside the panel, clear of its border', () => {
+    const inside = ({ x, y }: { x: number; y: number }, height: number): void => {
+      expect(x).toBeGreaterThanOrEqual(BATTLE_PANEL.x + 8);
+      expect(x).toBeLessThan(BATTLE_PANEL.x + BATTLE_PANEL.width);
+      expect(y).toBeGreaterThanOrEqual(4);
+      expect(y + height).toBeLessThanOrEqual(BATTLE_PANEL.height - 4);
+    };
+    for (const count of [3, 4, 5]) {
+      expect(Math.ceil(count / mainCommandColumns(count))).toBeLessThanOrEqual(2);
+      for (let index = 0; index < count; index += 1) {
+        inside(mainCommandLayout(index, count), 16);
+      }
+    }
+    expect(partyPromptLayout.y + 11).toBeLessThanOrEqual(partyRowLayout(0).y);
+    for (let index = 0; index < 6; index += 1) {
+      inside(partyRowLayout(index), 11);
+    }
+    // The player's own HP plate ends at 162: the list that picks a Potion's
+    // target may not reach up over the number it is being chosen by.
+    expect(BATTLE_PANEL.y).toBeGreaterThan(162);
+  });
+
+  it('writes a level so it cannot be read as a digit, and names every combatant one way', () => {
+    expect(levelLabel(6)).toBe('Lv 6');
+    expect(eventToMessage({ type: 'fainted', user: 'enemy', name: 'Pidgey' })).toBe('Foe PIDGEY fainted!');
+    expect(
+      eventToMessage({ type: 'status-applied', user: 'player', name: 'Squirtle', status: 'confusion' }),
+    ).toBe('Your SQUIRTLE is confused!');
+    expect(formatPartyRow({ base: { name: 'Squirtle' }, level: 5, currentHp: 17, maxHp: 17, isFainted: false }))
+      .toBe('SQUIRTLE Lv 5 HP 17/17');
+    expect(formatPartyRow({ base: { name: 'Squirtle' }, level: 5, currentHp: 0, maxHp: 17, isFainted: true }))
+      .toBe('SQUIRTLE Lv 5 FNT');
+  });
+
+  it('names the key that cancels, and says a refusal on the prompt line beside the list', () => {
+    expect(partyPrompt({ forced: false, refusal: '' })).toBe('Choose a POKéMON  ESC: cancel');
+    expect(partyPrompt({ forced: true, refusal: '' })).toBe('Choose a POKéMON!');
+    expect(partyPrompt({ item: { displayName: 'Potion' }, forced: false, refusal: '' })).toBe(
+      'Use POTION on whom?  ESC: cancel',
+    );
+    expect(partyPrompt({ forced: false, refusal: 'SQUIRTLE is already at full HP!' })).toBe(
+      'SQUIRTLE is already at full HP!',
+    );
   });
 
   it('marks a move with no PP left as unusable in its own label', () => {
@@ -103,7 +156,7 @@ describe('battle presentation', () => {
     expect(combatantBanner('WILD', [PokemonType.Grass, PokemonType.Poison])).toBe(
       'WILD  GRASS/POISON',
     );
-    expect(combatantBanner('YOUR POKéMON', [PokemonType.Fire])).toBe('YOUR POKéMON  FIRE');
+    expect(combatantBanner('YOURS', [PokemonType.Fire])).toBe('YOURS  FIRE');
   });
 
   it('opens the teaching fight by explaining the guidance surfaces', () => {
@@ -158,9 +211,14 @@ describe('battle presentation', () => {
     ).toBe('Your BULBASAUR used TACKLE!');
   });
 
-  it('uses an opaque high-contrast command panel with mouse and keyboard selection', () => {
-    expect(battleSceneSource).toContain('panel.fillStyle(0x111827, 1);');
-    expect(battleSceneSource).toContain("text.setBackgroundColor(index === this.selectedCommand ? '#155e75' : '#111827');");
+  it('draws every state of the bottom panel in the one frame, with mouse and keyboard selection', () => {
+    // The menu used to be its own navy, blue-bordered box, wider than the
+    // dialogue it replaced, so the panel changed colour and size every turn.
+    expect(battleSceneSource).not.toContain('0x111827');
+    expect(battleSceneSource).not.toContain('0x93c5fd');
+    expect(battleSceneSource).not.toContain('text.setBackgroundColor');
+    expect(battleSceneSource).toContain('drawPixelWindow(frame, BATTLE_PANEL, { fill: WINDOW_CREAM });');
+    expect(battleSceneSource).toContain('...BATTLE_PANEL,');
     expect(battleSceneSource).toContain(".setInteractive({ useHandCursor: true })");
     expect(battleSceneSource).toContain(".on('pointerdown'");
   });

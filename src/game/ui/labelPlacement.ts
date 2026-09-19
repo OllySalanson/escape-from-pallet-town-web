@@ -2,15 +2,20 @@
  * Where a map caption is allowed to sit.
  *
  * A caption belongs to a thing in the world but is read on a screen, and the
- * screen already has tenants: the raid HUD owns the top corners, and the view
- * has four edges. Left to hang wherever its landmark happens to be, a caption
- * ran off the right of the screen and slid underneath the raid clock, where it
- * was simply unreadable.
+ * screen already has tenants: the raid HUD owns the top corners, the view has
+ * four edges, the map is full of other things with captions of their own, and
+ * people are standing on it. Left to hang wherever its landmark happens to be,
+ * a caption ran off the screen, slid under the raid clock, sat on the icon it
+ * was naming, stacked flush against its neighbour and started over a trainer's
+ * feet.
  *
- * This is that rule, once, as arithmetic: slide along the row to stay inside
- * the view, and hang on whichever side of the anchor is actually clear. It is
- * Phaser-free so the rule is testable rather than eyeballed, in the manner of
- * `raidHud.ts` and `battlePresentation.ts`.
+ * This is that rule, once, as arithmetic, and it is solved for every caption on
+ * the screen together because most of those failures are one caption against
+ * another. A caption is tried on each side of what it names, slid along that
+ * side, and takes the first seat that is entirely clear. One with no clear seat
+ * is not drawn: half a caption, or a caption over the thing it explains, says
+ * less than none. It is Phaser-free so the rule is testable rather than
+ * eyeballed, in the manner of `raidHud.ts` and `battlePresentation.ts`.
  */
 
 export interface Rect {
@@ -20,14 +25,15 @@ export interface Rect {
   readonly height: number;
 }
 
-/** Which side of its anchor a caption hangs on. */
+/** The side a caption is authored to prefer. */
 export type CaptionSide = 'above' | 'below';
 
+/** The side it ended up on: beside its subject is a seat too, when neither row is clear. */
+export type CaptionSeat = CaptionSide | 'left' | 'right';
+
 export interface CaptionRequest {
-  /** Centre of the thing being named. */
-  readonly anchorX: number;
-  /** The row the caption hangs from: its bottom above, its top below. */
-  readonly anchorY: number;
+  /** The thing being named, as the rectangle of map it is drawn on. */
+  readonly subject: Rect;
   readonly width: number;
   readonly height: number;
   /**
@@ -35,21 +41,44 @@ export interface CaptionRequest {
    * captioned below themselves so the caption never covers the watched lane.
    */
   readonly preferred: CaptionSide;
-  /** The camera view, in the same space as the anchor. */
+  /**
+   * The seat this caption took last frame. A caption keeps a seat that is still
+   * clear: both the view and the HUD move under it while the player walks, and
+   * one that re-decided every frame would flicker between two equal answers.
+   */
+  readonly held?: number;
+}
+
+export interface CaptionSurroundings {
+  /** The camera view, in the same space as the subjects. */
   readonly bounds: Rect;
-  /** Screen furniture the caption may not slide under, in the same space. */
-  readonly obstacles: readonly Rect[];
+  /** Screen furniture - the raid HUD's chips - in the same space. */
+  readonly furniture: readonly Rect[];
+  /**
+   * Map art and people no caption may cover: every captioned subject is already
+   * counted, so this is the rest - signs, crates, standing figures, the ground a
+   * trainer is watching.
+   */
+  readonly keepClear: readonly Rect[];
 }
 
 export interface CaptionPlacement {
   /** Top-left of the caption window. */
   readonly x: number;
   readonly y: number;
-  readonly side: CaptionSide;
+  readonly seat: CaptionSeat;
+  /** Which candidate this is, to hand back as `held` next frame. */
+  readonly candidate: number;
+  /** False when the subject is off screen, or when nowhere around it is clear. */
+  readonly visible: boolean;
 }
 
 /** Kept off the very edge so a slid caption still reads as a window. */
 export const VIEW_INSET = 3;
+/** Clear ground between a caption and the thing it names. */
+export const SUBJECT_GAP = 3;
+/** Clear ground between a caption and a neighbour, so two windows never read as one. */
+export const NEIGHBOUR_GAP = 2;
 
 const overlap = (a: Rect, b: Rect): number => {
   const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
@@ -57,66 +86,164 @@ const overlap = (a: Rect, b: Rect): number => {
   return width > 0 && height > 0 ? width * height : 0;
 };
 
-const other = (side: CaptionSide): CaptionSide => (side === 'above' ? 'below' : 'above');
+const inflate = (rect: Rect, by: number): Rect => ({
+  x: rect.x - by,
+  y: rect.y - by,
+  width: rect.width + by * 2,
+  height: rect.height + by * 2,
+});
 
-const contains = (bounds: Rect, x: number, y: number): boolean =>
-  x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+const clamp = (value: number, minimum: number, maximum: number, fallback: number): number =>
+  maximum < minimum ? fallback : Math.min(Math.max(value, minimum), maximum);
 
 /**
- * How much of a caption is somewhere it should not be: over screen furniture,
- * or outside the view. Both are counted in pixels of the caption's own area, so
- * the two failures are comparable and the better of two bad sides can be picked
- * rather than the authored one being kept out of principle.
+ * A subject is on screen while its centre is. A caption whose subject has
+ * scrolled off goes with it rather than being dragged back to the edge, which
+ * would pin a row of captions along the view naming landmarks the player cannot
+ * see; and it goes whole, because the alternative was `EXTRACT OPENS IN 27s`
+ * with its bottom half under the edge of the screen.
  */
-function intrusion(rect: Rect, bounds: Rect, obstacles: readonly Rect[]): number {
-  const inside = overlap(rect, bounds);
-  const outside = rect.width * rect.height - inside;
-  return obstacles.reduce((total, obstacle) => total + overlap(rect, obstacle), outside);
+function isOnScreen(subject: Rect, bounds: Rect): boolean {
+  const x = subject.x + subject.width / 2;
+  const y = subject.y + subject.height / 2;
+  return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
 }
 
-export function placeCaption(request: CaptionRequest): CaptionPlacement {
-  const { anchorX, anchorY, width, height, preferred, bounds, obstacles } = request;
+interface Candidate {
+  readonly x: number;
+  readonly y: number;
+  readonly seat: CaptionSeat;
+}
 
-  // A caption belongs to something on the map. Once that thing has scrolled off
-  // the screen the caption goes with it: dragging it back to the edge would pin
-  // a row of captions along the bottom of the view naming landmarks the player
-  // cannot see.
-  if (!contains(bounds, anchorX, anchorY)) {
-    return {
-      x: Math.round(anchorX - width / 2),
-      y: Math.round(preferred === 'above' ? anchorY - height : anchorY),
-      side: preferred,
-    };
-  }
+/**
+ * Every seat a caption may take, best first: the authored side, then the other
+ * row, then beside the subject. Each is offered centred and then slid to either
+ * end of the subject, and every one is pulled inside the view along its own
+ * axis - so a caption near an edge slides along its row rather than leaving it.
+ */
+function candidatesFor(request: CaptionRequest, bounds: Rect): Candidate[] {
+  const { subject, width, height, preferred } = request;
+  const minimumX = bounds.x + VIEW_INSET;
+  const maximumX = bounds.x + bounds.width - VIEW_INSET - width;
+  const minimumY = bounds.y + VIEW_INSET;
+  const maximumY = bounds.y + bounds.height - VIEW_INSET - height;
+  const middleX = Math.round(bounds.x + (bounds.width - width) / 2);
+  const middleY = Math.round(bounds.y + (bounds.height - height) / 2);
+  const slideX = (x: number): number => clamp(Math.round(x), minimumX, maximumX, middleX);
+  const slideY = (y: number): number => clamp(Math.round(y), minimumY, maximumY, middleY);
 
-  // Horizontal first: the row a caption sits on is decided by what it names, so
-  // sliding along it is always cheaper than moving it off its landmark.
-  const minimum = bounds.x + VIEW_INSET;
-  const maximum = bounds.x + bounds.width - VIEW_INSET - width;
-  const wanted = Math.round(anchorX - width / 2);
-  const x =
-    maximum < minimum
-      ? Math.round(bounds.x + (bounds.width - width) / 2)
-      : Math.min(Math.max(wanted, minimum), maximum);
+  const centredX = subject.x + subject.width / 2 - width / 2;
+  const centredY = subject.y + subject.height / 2 - height / 2;
+  const columns = [centredX, subject.x, subject.x + subject.width - width];
+  const rows = [centredY, subject.y, subject.y + subject.height - height];
 
-  const topFor = (side: CaptionSide): number =>
-    side === 'above' ? anchorY - height : anchorY;
+  const row = (seat: CaptionSide): Candidate[] => {
+    const y = seat === 'above' ? subject.y - SUBJECT_GAP - height : subject.y + subject.height + SUBJECT_GAP;
+    return columns.map((x) => ({ x: slideX(x), y: Math.round(y), seat }));
+  };
+  const column = (seat: 'left' | 'right'): Candidate[] => {
+    const x = seat === 'left' ? subject.x - SUBJECT_GAP - width : subject.x + subject.width + SUBJECT_GAP;
+    return rows.map((y) => ({ x: Math.round(x), y: slideY(y), seat }));
+  };
 
-  const candidates = [preferred, other(preferred)].map((side) => {
-    const y = clampIntoRow(topFor(side), height, bounds);
-    return { side, y, cost: intrusion({ x, y, width, height }, bounds, obstacles) };
+  return [
+    ...row(preferred),
+    ...row(preferred === 'above' ? 'below' : 'above'),
+    ...column('right'),
+    ...column('left'),
+  ];
+}
+
+/**
+ * How much of a seat is somewhere a caption may not be, in pixels of its own
+ * area: outside the view, under the HUD, over map art or a person, or against a
+ * caption already seated.
+ */
+function intrusion(rect: Rect, surroundings: CaptionSurroundings, seated: readonly Rect[]): number {
+  const view = inflate(surroundings.bounds, -VIEW_INSET);
+  const outside = rect.width * rect.height - overlap(rect, view);
+  const against = (others: readonly Rect[], gap: number): number =>
+    others.reduce((total, one) => total + overlap(rect, inflate(one, gap)), 0);
+  return (
+    outside +
+    against(surroundings.furniture, NEIGHBOUR_GAP) +
+    against(surroundings.keepClear, 0) +
+    against(seated, NEIGHBOUR_GAP)
+  );
+}
+
+/**
+ * Seats every caption on the screen. Order is priority: an earlier request is
+ * seated first and a later one has to fit around it.
+ */
+export function placeCaptions(
+  requests: readonly CaptionRequest[],
+  surroundings: CaptionSurroundings,
+): CaptionPlacement[] {
+  // No caption may cover any subject, its own included, so they are all
+  // obstacles before the first caption is seated.
+  const everySubject = requests.map((request) => request.subject);
+  const around: CaptionSurroundings = {
+    ...surroundings,
+    keepClear: [...surroundings.keepClear, ...everySubject],
+  };
+  const seated: Rect[] = [];
+
+  return requests.map((request) => {
+    const candidates = candidatesFor(request, surroundings.bounds);
+    const rectOf = (candidate: Candidate): Rect => ({
+      x: candidate.x,
+      y: candidate.y,
+      width: request.width,
+      height: request.height,
+    });
+    const hidden = (index: number): CaptionPlacement => ({
+      ...candidates[index],
+      candidate: index,
+      visible: false,
+    });
+
+    if (!isOnScreen(request.subject, surroundings.bounds)) {
+      return hidden(0);
+    }
+
+    const isClear = (index: number): boolean =>
+      intrusion(rectOf(candidates[index]), around, seated) === 0;
+    const held =
+      request.held !== undefined && request.held < candidates.length && isClear(request.held)
+        ? request.held
+        : -1;
+    const index = held >= 0 ? held : candidates.findIndex((_, at) => isClear(at));
+    if (index < 0) {
+      return hidden(0);
+    }
+
+    seated.push(rectOf(candidates[index]));
+    return { ...candidates[index], candidate: index, visible: true };
   });
-
-  // A tie keeps the authored side: flipping a caption that gains nothing by it
-  // only makes captions jitter as the camera moves.
-  const best = candidates[1].cost < candidates[0].cost ? candidates[1] : candidates[0];
-  return { x, y: best.y, side: best.side };
 }
 
-/** Keeps a caption inside the view vertically, the way it already is horizontally. */
-function clampIntoRow(top: number, height: number, bounds: Rect): number {
-  const minimum = bounds.y + VIEW_INSET;
-  const maximum = bounds.y + bounds.height - VIEW_INSET - height;
-  return maximum < minimum ? Math.round(bounds.y + (bounds.height - height) / 2)
-    : Math.min(Math.max(Math.round(top), minimum), maximum);
+/**
+ * Where the dialogue box sits when it speaks about someone.
+ *
+ * It belongs at the bottom of the screen. But a line the world raises by itself
+ * is about a person - the hunter arriving, a trainer who saw you - and when that
+ * person stood south of the player the box announcing them was drawn over them.
+ * The box goes to the top when the bottom would cover anyone it is about and
+ * the top would cover fewer of them; a tie stays at the bottom, because a box
+ * that moved for no gain is one more thing to find.
+ */
+export function placeDialog(request: {
+  /** The screen, and the box on it, in screen pixels. */
+  readonly viewHeight: number;
+  readonly box: { readonly x: number; readonly width: number; readonly height: number };
+  readonly margin: number;
+  /** Who the line is about, in screen pixels. */
+  readonly about: readonly Rect[];
+}): { readonly y: number; readonly edge: 'top' | 'bottom' } {
+  const { viewHeight, box, margin, about } = request;
+  const at = (y: number): Rect => ({ x: box.x, y, width: box.width, height: box.height });
+  const covered = (y: number): number => about.filter((one) => overlap(at(y), one) > 0).length;
+  const bottom = viewHeight - box.height - margin;
+  return covered(margin) < covered(bottom) ? { y: margin, edge: 'top' } : { y: bottom, edge: 'bottom' };
 }

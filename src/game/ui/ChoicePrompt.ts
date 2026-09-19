@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { WINDOW_CREAM, drawPixelWindow } from './pixelWindow';
 import { GAME_FONT } from './gameFont';
+import { DIALOG_FONT_SIZE } from './screenType';
 
 /**
  * A decision the player has to take before something irreversible happens.
@@ -56,7 +57,7 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
       this.add(
         scene.add.text(padding, padding + index * LINE_HEIGHT, line, {
           fontFamily: GAME_FONT,
-          fontSize: '16px',
+          fontSize: DIALOG_FONT_SIZE,
           color: '#f8fafc',
           wordWrap: { width: options.width - padding * 2 },
         }),
@@ -70,7 +71,7 @@ export class ChoicePrompt extends Phaser.GameObjects.Container {
     this.optionTexts = options.options.map((label, index) =>
       scene.add.text(padding + index * OPTION_COLUMN_WIDTH, optionsY, label, {
         fontFamily: GAME_FONT,
-        fontSize: '16px',
+        fontSize: DIALOG_FONT_SIZE,
         color: UNSELECTED_COLOR,
       }),
     );

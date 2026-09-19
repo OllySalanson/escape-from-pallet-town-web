@@ -2,7 +2,13 @@ import type Phaser from 'phaser';
 import { drawPixelWindow } from './pixelWindow';
 import { GAME_FONT } from './gameFont';
 import { CAPTION_FONT_SIZE } from './screenType';
-import { placeCaption, type CaptionSide, type Rect } from './labelPlacement';
+import {
+  SUBJECT_GAP,
+  type CaptionPlacement,
+  type CaptionRequest,
+  type CaptionSide,
+  type Rect,
+} from './labelPlacement';
 
 /**
  * A caption pinned to something on the map.
@@ -26,8 +32,8 @@ export interface WorldLabelTone {
  * Which side of its anchor the caption prefers. Captions sit above what they
  * name, except where that would cover the thing being explained - a trainer's
  * watch runs north out of the trainer, so its caption prefers south of them.
- * A caption with nowhere clear on its preferred side is flipped by
- * `placeCaption`, so this is a preference rather than an instruction.
+ * A caption with nowhere clear on its preferred side is moved by
+ * `placeCaptions`, so this is a preference rather than an instruction.
  */
 export type WorldLabelPlacement = CaptionSide;
 
@@ -37,22 +43,24 @@ const PADDING_Y = 2;
 export class WorldLabel {
   private readonly frame: Phaser.GameObjects.Graphics;
   private readonly label: Phaser.GameObjects.Text;
-  private readonly anchorX: number;
-  private readonly anchorY: number;
+  private readonly subject: Rect;
   private readonly preferred: WorldLabelPlacement;
   private tone: WorldLabelTone;
+  private held: number | undefined;
 
+  /**
+   * @param subject The rectangle of map the named thing is drawn on. The
+   * caption is seated around it and never over it.
+   */
   public constructor(
     scene: Phaser.Scene,
-    x: number,
-    y: number,
+    subject: Rect,
     text: string,
     tone: WorldLabelTone,
     depth: number,
     placement: WorldLabelPlacement = 'above',
   ) {
-    this.anchorX = x;
-    this.anchorY = y;
+    this.subject = subject;
     this.preferred = placement;
     this.tone = tone;
     this.frame = scene.add.graphics().setDepth(depth);
@@ -60,7 +68,7 @@ export class WorldLabel {
     // is an odd number of pixels wide lands on a half pixel, and every glyph in
     // it is then resampled into a grey smear at the screen's whole-number zoom.
     this.label = scene.add
-      .text(x, y, text, {
+      .text(subject.x, subject.y, text, {
         fontFamily: GAME_FONT,
         fontSize: CAPTION_FONT_SIZE,
         color: tone.ink,
@@ -69,8 +77,12 @@ export class WorldLabel {
       .setOrigin(0, 0)
       .setDepth(depth + 0.0005);
     this.draw(
-      Math.round(x - this.windowWidth() / 2),
-      Math.round(placement === 'above' ? y - this.windowHeight() : y),
+      Math.round(subject.x + subject.width / 2 - this.windowWidth() / 2),
+      Math.round(
+        placement === 'above'
+          ? subject.y - SUBJECT_GAP - this.windowHeight()
+          : subject.y + subject.height + SUBJECT_GAP,
+      ),
     );
   }
 
@@ -81,24 +93,27 @@ export class WorldLabel {
     this.draw(this.windowX, this.windowY);
   }
 
-  /**
-   * Puts the caption where it is allowed to be, given the view and whatever the
-   * raid HUD is currently covering. Called every frame, because both of those
-   * move under the caption while the player walks.
-   */
-  public contain(bounds: Rect, obstacles: readonly Rect[]): void {
-    const width = this.windowWidth();
-    const height = this.windowHeight();
-    const placement = placeCaption({
-      anchorX: this.anchorX,
-      anchorY: this.anchorY,
-      width,
-      height,
+  /** What this caption asks of `placeCaptions`: what it names, and its size. */
+  public request(): CaptionRequest {
+    return {
+      subject: this.subject,
+      width: this.windowWidth(),
+      height: this.windowHeight(),
       preferred: this.preferred,
-      bounds,
-      obstacles,
-    });
-    if (placement.x !== this.windowX || placement.y !== this.windowY) {
+      held: this.held,
+    };
+  }
+
+  /**
+   * Takes the seat `placeCaptions` found for it. Called every frame, because
+   * the view and the HUD both move under the caption while the player walks. A
+   * caption with no clear seat is not drawn at all.
+   */
+  public seat(placement: CaptionPlacement): void {
+    this.held = placement.visible ? placement.candidate : undefined;
+    this.frame.setVisible(placement.visible);
+    this.label.setVisible(placement.visible);
+    if (placement.visible && (placement.x !== this.windowX || placement.y !== this.windowY)) {
       this.draw(placement.x, placement.y);
     }
   }

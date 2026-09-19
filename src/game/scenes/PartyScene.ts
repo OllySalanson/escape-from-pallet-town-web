@@ -4,6 +4,7 @@ import type { Pokemon, PokemonParty } from '../pokemon';
 import type { PokemonType } from '../pokemon/PokemonType';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
+import { GAME_FONT } from '../ui/gameFont';
 import { conditionLine } from '../ui/condition';
 
 const SCREEN_WIDTH = 320;
@@ -67,7 +68,7 @@ export class PartyScene extends Phaser.Scene {
     this.footerText = this.add.text(SCREEN_WIDTH / 2, 231, '', {
       align: 'center',
       color: '#d6e7ed',
-      fontFamily: 'monospace',
+      fontFamily: GAME_FONT,
       fontSize: '8px',
     }).setOrigin(0.5);
     this.bindInput();
@@ -118,13 +119,13 @@ export class PartyScene extends Phaser.Scene {
   private createHeading(): void {
     this.add.text(LIST_X, 11, 'PARTY', {
       color: '#f8f5d7',
-      fontFamily: 'monospace',
+      fontFamily: GAME_FONT,
       fontSize: '12px',
       fontStyle: 'bold',
     });
     this.add.text(DETAIL_X, 11, 'SUMMARY', {
       color: '#8ed4c2',
-      fontFamily: 'monospace',
+      fontFamily: GAME_FONT,
       fontSize: '12px',
       fontStyle: 'bold',
     });
@@ -149,7 +150,7 @@ export class PartyScene extends Phaser.Scene {
         .setOrigin(0, 0.5);
       const text = this.add.text(LIST_X + 34, y + 4, '', {
         color: '#f8f5d7',
-        fontFamily: 'monospace',
+        fontFamily: GAME_FONT,
         fontSize: '8px',
         lineSpacing: 2,
       });
@@ -323,7 +324,7 @@ export class PartyScene extends Phaser.Scene {
   private detailTextStyle(fontSize = '9px'): Phaser.Types.GameObjects.Text.TextStyle {
     return {
       color: '#f8f5d7',
-      fontFamily: 'monospace',
+      fontFamily: GAME_FONT,
       fontSize,
       lineSpacing: 2,
     };
@@ -332,7 +333,7 @@ export class PartyScene extends Phaser.Scene {
   private labelTextStyle(): Phaser.Types.GameObjects.Text.TextStyle {
     return {
       color: '#8ed4c2',
-      fontFamily: 'monospace',
+      fontFamily: GAME_FONT,
       fontSize: '8px',
       fontStyle: 'bold',
     };

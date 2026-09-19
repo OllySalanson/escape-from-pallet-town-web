@@ -4,6 +4,7 @@ import { createGameConfig } from './game/gameConfig';
 import { isTestLabRequested } from './game/dev/testLabAccess';
 import { mountGame, unmountGame } from './game/gameLifecycle';
 import { watchViewport } from './game/display/stageScaler';
+import { installPixelText } from './game/ui/pixelText';
 
 const developmentScenes = import.meta.env.DEV && isTestLabRequested()
   ? [(await import('./game/scenes/TestLabScene')).TestLabScene]
@@ -15,6 +16,9 @@ if (import.meta.env.DEV) {
   const { audioManager } = await import('./game/audio/AudioManager');
   (window as unknown as { __audio: typeof audioManager }).__audio = audioManager;
 }
+
+// Before the first scene exists, so no text is ever painted the soft way.
+installPixelText(Phaser.GameObjects.Text);
 
 const game = mountGame(() => new Phaser.Game(createGameConfig(developmentScenes)));
 const stopWatchingViewport = watchViewport(game);

@@ -6,6 +6,17 @@ import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
 
 export const BATTLE_SCREEN_WIDTH = 320;
 export const MOVE_COLUMN_WIDTH = 148;
+/**
+ * The one panel at the bottom of the battle screen. Dialogue, the command menu,
+ * the move and item lists and the party list are all drawn in this rectangle,
+ * in the same cream `pixelWindow`. They used to be two: a cream dialogue box
+ * and a navy, blue-bordered menu fifteen pixels wider, so the box changed
+ * colour, border and size every turn - and the party list was a third, tall
+ * enough to cover the player's own HP plate while they chose who to heal.
+ */
+export const BATTLE_PANEL = { x: 8, y: 174, width: 304, height: 64 } as const;
+/** Text starts this far inside the panel's left edge. */
+const PANEL_INSET_X = 10;
 export const MOVE_COMMAND_ROWS = 2;
 export const MOVE_COMMAND_HEIGHT = 64;
 /** Move rows are single-line so the two guidance lines share the same panel. */
@@ -40,6 +51,62 @@ export const moveCommandLayout = (index: number): MoveCommandLayout => {
     height: 16,
   };
 };
+
+/**
+ * The main command set is a grid with two rows, always. A wild fight has five
+ * commands, and as a third row its last entry sat six pixels off the border;
+ * as a third column every command keeps the pitch the four-command set has.
+ */
+export const mainCommandColumns = (count: number): number => (count > 4 ? 3 : 2);
+
+export const mainCommandLayout = (index: number, count: number): { x: number; y: number } => {
+  const columns = mainCommandColumns(count);
+  const pitch = Math.floor((BATTLE_PANEL.width - PANEL_INSET_X * 2) / columns);
+  return {
+    x: BATTLE_PANEL.x + PANEL_INSET_X + (index % columns) * pitch,
+    y: 11 + Math.floor(index / columns) * 25,
+  };
+};
+
+/** The party list: a prompt line, then the party two abreast - six fit the panel. */
+export const PARTY_COLUMNS = 2;
+export const partyPromptLayout = { x: BATTLE_PANEL.x + PANEL_INSET_X, y: 4 } as const;
+export const partyRowLayout = (index: number): { x: number; y: number } => ({
+  x: BATTLE_PANEL.x + PANEL_INSET_X + (index % PARTY_COLUMNS) * MOVE_COLUMN_WIDTH,
+  y: 19 + Math.floor(index / PARTY_COLUMNS) * 14,
+});
+
+/** One party member as the list names them. A fainted one has no HP worth a column. */
+export const formatPartyRow = (pokemon: {
+  readonly base: { readonly name: string };
+  readonly level: number;
+  readonly currentHp: number;
+  readonly maxHp: number;
+  readonly isFainted: boolean;
+}): string =>
+  `${pokemon.base.name.toUpperCase()} ${levelLabel(pokemon.level)} ${
+    pokemon.isFainted ? 'FNT' : `HP ${pokemon.currentHp}/${pokemon.maxHp}`
+  }`;
+
+/** Names the key. It said `BACK: cancel`, and BACK is not written on any keyboard. */
+export const CANCEL_HINT = 'ESC: cancel';
+
+/**
+ * The party list's top line. A refusal takes the line over rather than being
+ * added under the list: it is the answer to the row the cursor is on, so it is
+ * said beside that row and not at the far end of the panel.
+ */
+export const partyPrompt = (state: {
+  readonly item?: { readonly displayName: string };
+  readonly forced: boolean;
+  readonly refusal: string;
+}): string =>
+  state.refusal ||
+  (state.item
+    ? `${itemTargetPrompt(state.item)}  ${CANCEL_HINT}`
+    : state.forced
+      ? 'Choose a POKéMON!'
+      : `Choose a POKéMON  ${CANCEL_HINT}`);
 
 /** The guidance lines sit under the two move rows, inside the same panel. */
 export const moveGuidanceLayout = (line: number): MoveCommandLayout => ({
@@ -130,7 +197,7 @@ export const formatItemRow = (
 
 /** The party screen's heading while it is choosing who to give an item to. */
 export const itemTargetPrompt = (item: { readonly displayName: string }): string =>
-  `Use ${item.displayName.toUpperCase()} on which POKéMON?`;
+  `Use ${item.displayName.toUpperCase()} on whom?`;
 
 /**
  * What the highlighted medicine would do, on the same line the move submenu
@@ -206,9 +273,28 @@ export const combatPresentationSteps = (
 export const combatantLabel = (user: 'player' | 'enemy'): string =>
   user === 'player' ? 'Your' : 'Foe';
 
-/** The HUD banner names the side and its typing, so incoming damage is readable. */
+/**
+ * How a combatant is named in a line of battle text: always by side, always in
+ * capitals. One battle used to say "Foe PIDGEY used GUST!" and then "Pidgey
+ * fainted!", which reads as two different Pokemon.
+ */
+export const combatantName = (who: { readonly user: 'player' | 'enemy'; readonly name: string }): string =>
+  `${combatantLabel(who.user)} ${who.name.toUpperCase()}`;
+
+/**
+ * A level as every plate and list writes it. It was `:L6`, which Orange Kid
+ * draws as a dotted stroke against the number, so a level-6 PIDGEY read as 16.
+ */
+export const levelLabel = (level: number): string => `Lv ${level}`;
+
+/**
+ * The HUD banner names the side and its typing, so incoming damage is readable.
+ * The player's side is YOURS and no longer: the banner starts at the plate's left
+ * edge, and YOUR POKeMON with two long types ran past the plate and, for the
+ * longest pair, past the screen.
+ */
 export const combatantBanner = (
-  role: 'WILD' | 'RIVAL' | 'YOUR POKéMON',
+  role: 'WILD' | 'RIVAL' | 'YOURS',
   types: readonly PokemonType[],
 ): string => `${role}  ${formatTypeList(types)}`;
 
@@ -223,7 +309,7 @@ export const eventToMessage = (event: BattleEvent): string => {
       // log alone, not inferred from a bar that has already finished animating.
       // The same-type bonus is named because it is otherwise the largest
       // invisible term in the damage calculation.
-      const opening = `${combatantLabel(event.user)} ${event.name.toUpperCase()} used ${event.move.toUpperCase()}!`;
+      const opening = `${combatantName(event)} used ${event.move.toUpperCase()}!`;
       if (!event.damage) {
         return opening;
       }
@@ -240,27 +326,27 @@ export const eventToMessage = (event: BattleEvent): string => {
       }
       return event.multiplier > 1 ? "It's super effective!" : "It's not very effective...";
     case 'fainted':
-      return `${event.name} fainted!`;
+      return `${combatantName(event)} fainted!`;
     case 'no-pp':
       return `No PP left for ${event.move}!`;
     case 'status-applied':
-      return `${event.name} is ${statusLabel(event.status)}!`;
+      return `${combatantName(event)} is ${statusLabel(event.status)}!`;
     case 'status-already':
-      return `${event.name} already has a status condition!`;
+      return `${combatantName(event)} already has a status condition!`;
     case 'status-prevented':
-      return `${event.name} is ${statusLabel(event.status)} and can't move!`;
+      return `${combatantName(event)} is ${statusLabel(event.status)} and can't move!`;
     case 'status-damage':
-      return `${event.name} is hurt by ${statusLabel(event.status)}!`;
+      return `${combatantName(event)} is hurt by ${statusLabel(event.status)}!`;
     case 'status-cured':
       return event.status === 'sleep'
-        ? `${event.name} woke up!`
+        ? `${combatantName(event)} woke up!`
         : event.status === 'freeze'
-          ? `${event.name} thawed out!`
-          : `${event.name} snapped out of confusion!`;
+          ? `${combatantName(event)} thawed out!`
+          : `${combatantName(event)} snapped out of confusion!`;
     case 'confusion-self-hit':
-      return `${combatantLabel(event.user)} ${event.name.toUpperCase()} hurt itself in confusion!`;
+      return `${combatantName(event)} hurt itself in confusion!`;
     case 'stat-stage-changed':
-      return `${event.name}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
+      return `${combatantName(event)}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
     case 'ball-thrown':
       return `Threw a POKé BALL at ${event.name.toUpperCase()}!`;
     case 'catch-shake':

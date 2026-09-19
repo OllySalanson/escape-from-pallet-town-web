@@ -81,6 +81,15 @@ export function objectiveChipLines(cue: string, showDetail: boolean): readonly s
   return showDetail ? [cue, FIELD_GUIDE_HINT] : [cue];
 }
 
+/**
+ * What the chip says once no objective is left to name. It said EXTRACT WITH
+ * YOUR HAUL to a player carrying nothing, which is an instruction to bank an
+ * empty pack; with nothing found yet the raid's business is still the finding.
+ */
+export function openRaidCue(carried: { readonly items: number; readonly pokemon: number }): string {
+  return carried.items + carried.pokemon > 0 ? 'EXTRACT WITH YOUR HAUL' : 'FIND LOOT, THEN EXTRACT';
+}
+
 /** Tiles between the player and the hunter at which the hunter chip appears. */
 export const HUNTER_ALERT_DISTANCE = 8;
 

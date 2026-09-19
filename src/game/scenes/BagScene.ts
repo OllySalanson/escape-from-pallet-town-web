@@ -6,6 +6,7 @@ import { itemIcon } from '../ui/icons';
 import { MenuOverlay, hpBar, pokemonAvatar } from '../ui/MenuOverlay';
 import { bagFocusPreference } from '../ui/menuFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
+import { GAME_FONT } from '../ui/gameFont';
 
 const SCREEN_WIDTH = 320;
 const SCREEN_HEIGHT = 240;
@@ -250,10 +251,10 @@ export class BagScene extends Phaser.Scene {
   }
 
   private textStyle(fontSize = '10px'): Phaser.Types.GameObjects.Text.TextStyle {
-    return { color: '#f8f5d7', fontFamily: 'monospace', fontSize, lineSpacing: 3 };
+    return { color: '#f8f5d7', fontFamily: GAME_FONT, fontSize, lineSpacing: 3 };
   }
 
   private headingStyle(): Phaser.Types.GameObjects.Text.TextStyle {
-    return { color: '#8ed4c2', fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold' };
+    return { color: '#8ed4c2', fontFamily: GAME_FONT, fontSize: '12px', fontStyle: 'bold' };
   }
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { hunterIntelFor } from '../world/hunter';
-import { HUNTER_ALERT_DISTANCE, hunterChipView, hunterIntelLine } from './raidHud';
+import { HUNTER_ALERT_DISTANCE, hunterChipView, hunterIntelLine,
+  openRaidCue,
+} from './raidHud';
 
 const FAR = { searching: false, distance: null, direction: 'N' } as const;
 
@@ -72,5 +74,13 @@ describe('the radio mast', () => {
 
     expect(intel.level).toBe(9);
     expect(intel.next).toEqual({ level: 12, teamSize: 3, inMs: 120_000 });
+  });
+});
+
+describe('the cue with no objective left', () => {
+  it('only tells the player to extract a haul they are actually carrying', () => {
+    expect(openRaidCue({ items: 0, pokemon: 0 })).toBe('FIND LOOT, THEN EXTRACT');
+    expect(openRaidCue({ items: 1, pokemon: 0 })).toBe('EXTRACT WITH YOUR HAUL');
+    expect(openRaidCue({ items: 0, pokemon: 1 })).toBe('EXTRACT WITH YOUR HAUL');
   });
 });

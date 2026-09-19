@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Bag } from '../items';
 import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE } from '../pokemon';
 import { RunManager, type ItemStack } from './RunManager';
-import { buildDefeatSequence } from './defeatSequence';
+import { buildDefeatSequence, createBeatGate } from './defeatSequence';
 import { buildExtractionReport, type ExtractionReport } from './extractionReport';
 import { buildWipeSettlement } from './raidSettlement';
 
@@ -163,6 +163,9 @@ describe('the defeat sequence a lost raid opens on', () => {
     expect(Object.keys(sequence).sort()).toEqual([
       'beats',
       'figures',
+      // How long a beat stands before it listens - a floor under the player's
+      // press, never a timer that moves the beat on.
+      'holdMs',
       'leadInMs',
       'promptIndicator',
     ]);
@@ -193,5 +196,25 @@ describe('the defeat sequence a lost raid opens on', () => {
     });
 
     expect(buildDefeatSequence(report)).toBeNull();
+  });
+});
+
+describe('the gate a press has to pass to move a beat on', () => {
+  it('swallows a press until the beat has stood for its hold, and a held key for good', () => {
+    const gate = createBeatGate(650);
+
+    // Nothing has landed yet: the lead-in listens to nobody.
+    expect(gate.accepts({ nowMs: 100, repeat: false })).toBe(false);
+
+    gate.beatEntered(260);
+    expect(gate.accepts({ nowMs: 400, repeat: false })).toBe(false);
+    expect(gate.isListening(909)).toBe(false);
+    expect(gate.isListening(910)).toBe(true);
+    expect(gate.accepts({ nowMs: 910, repeat: true })).toBe(false);
+    expect(gate.accepts({ nowMs: 910, repeat: false })).toBe(true);
+
+    // Every beat holds again: the press that left the last one is not an answer to this one.
+    gate.beatEntered(910);
+    expect(gate.accepts({ nowMs: 1_000, repeat: false })).toBe(false);
   });
 });

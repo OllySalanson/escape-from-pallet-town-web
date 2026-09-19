@@ -206,9 +206,9 @@ describe('hunter disengagement wiring', () => {
     }
     expect(sceneSource).toContain('if (!this.isDialogAdvancePressed()) {');
     // Every interruption the hunter causes goes through it, and a sign does not.
-    expect(sceneSource).toContain("this.interrupt(['A RIVAL HUNTER is on your trail!']);");
-    expect(sceneSource).toContain('this.interrupt(this.pendingTrainerBattle.introLines);');
-    expect(sceneSource).toContain('this.interrupt([...lead, ...watcher.introLines]);');
+    expect(sceneSource).toContain("this.interrupt(['A RIVAL HUNTER is on your trail!'], [position]);");
+    expect(sceneSource).toContain('this.interrupt(this.pendingTrainerBattle.introLines, [this.hunterState.position]);');
+    expect(sceneSource).toContain('this.interrupt([...lead, ...watcher.introLines], [watcher.position]);');
     expect(sceneSource).toContain("this.dialogBox.showMessages([...entity!.dialogLines]);");
     // And it is on the per-raid reset list, because it outlives the scene otherwise.
     const reset = sceneSource.slice(

@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import {
   buildDefeatSequence,
+  createBeatGate,
+  type BeatGate,
   type DefeatBeat,
   type DefeatFigure,
   type DefeatSequence,
@@ -66,6 +68,10 @@ export class ExtractionScene extends Phaser.Scene {
   /** The beat on screen, or -1 during the lead-in before the first one lands. */
   private beatIndex = -1;
   private leadInTimer: Phaser.Time.TimerEvent | null = null;
+  /** Swallows presses carried in from the battle; see `DefeatSequence.holdMs`. */
+  private beatGate: BeatGate = createBeatGate(0);
+  private promptTimer: Phaser.Time.TimerEvent | null = null;
+  private sequenceHoldMs = 0;
   private defeatStage: HTMLElement | null = null;
 
   public constructor() {
@@ -84,6 +90,8 @@ export class ExtractionScene extends Phaser.Scene {
     this.sequenceBeats = [];
     this.beatIndex = -1;
     this.leadInTimer = null;
+    this.promptTimer?.remove(false);
+    this.promptTimer = null;
     this.defeatStage = null;
   }
 
@@ -120,19 +128,26 @@ export class ExtractionScene extends Phaser.Scene {
     this.defeatStage = stage;
     // A click anywhere on the stage advances, so the prompt is a signpost for
     // the behaviour rather than the only target for it.
-    stage.onpointerdown = () => this.advanceDefeatSequence();
+    this.beatGate = createBeatGate(sequence.holdMs);
+    this.sequenceHoldMs = sequence.holdMs;
+    stage.onpointerdown = () => this.pressDefeatSequence(false);
     this.leadInTimer = this.time.delayedCall(sequence.leadInMs, () =>
       this.advanceDefeatSequence(),
     );
   }
 
   /**
-   * The one way the sequence ever moves: on to the next beat, or off the screen.
-   *
-   * A press during the lead-in lands the first beat rather than being swallowed,
-   * which is what keeps the screen answerable from its very first frame without
-   * costing the player a beat they never saw.
+   * A key or a click, as opposed to the lead-in running out. It moves the
+   * sequence only once the beat on screen is listening, so nothing the player
+   * was already pressing when they got here costs them a beat they never saw.
    */
+  private pressDefeatSequence(repeat: boolean): void {
+    if (this.beatGate.accepts({ nowMs: this.time.now, repeat })) {
+      this.advanceDefeatSequence();
+    }
+  }
+
+  /** The one way the sequence ever moves: on to the next beat, or off the screen. */
   private advanceDefeatSequence(): void {
     if (!this.sequencePlaying) {
       return;
@@ -160,8 +175,16 @@ export class ExtractionScene extends Phaser.Scene {
     const headline = stage.querySelector<HTMLElement>('[data-defeat-headline]');
     const detail = stage.querySelector<HTMLElement>('[data-defeat-detail]');
     const prompt = stage.querySelector<HTMLElement>('[data-defeat-prompt]');
-    if (prompt) {
+    this.beatGate.beatEntered(this.time.now);
+    // The prompt is the beat saying it is listening, so it arrives with that.
+    const promptLine = prompt?.parentElement;
+    if (prompt && promptLine) {
       prompt.textContent = beat.prompt;
+      promptLine.style.visibility = 'hidden';
+      this.promptTimer?.remove(false);
+      this.promptTimer = this.time.delayedCall(this.sequenceHoldMs, () => {
+        promptLine.style.visibility = '';
+      });
     }
     if (headline && detail) {
       headline.textContent = beat.headline;
@@ -193,6 +216,8 @@ export class ExtractionScene extends Phaser.Scene {
     this.sequencePlaying = false;
     this.leadInTimer?.remove(false);
     this.leadInTimer = null;
+    this.promptTimer?.remove(false);
+    this.promptTimer = null;
     this.defeatStage = null;
     this.showReport(SETTLED_LOCK_MS);
   }
@@ -239,7 +264,7 @@ export class ExtractionScene extends Phaser.Scene {
         return;
       }
       event.preventDefault();
-      this.advanceDefeatSequence();
+      this.pressDefeatSequence(event.repeat);
       return;
     }
     if (this.locked || !['Enter', ' ', 'Escape'].includes(event.key)) {
