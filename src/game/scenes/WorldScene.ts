@@ -22,18 +22,13 @@ import {
   type WorldCharacterRole,
 } from '../world/characterPresentation';
 import {
-  CLASSIC_TILE,
   getWarpAt,
   getWorldMap,
   isTallGrassInMap,
-  POND_TILES,
-  TALL_GRASS_TINT,
-  TREE_TILES,
-  TREE_TINT,
   TILE_SIZE,
-  WATER_TINT,
   WORLD_MAP_NAMES,
   type MapWarp,
+  type TileLayer,
   type WorldMapDefinition,
 } from '../worldMap';
 import { type WorldEntity } from '../world/npcs';
@@ -73,6 +68,7 @@ import {
   CAPTION_BAND,
   FIGURE_BAND,
   MARKER_BAND,
+  CANOPY_BAND,
   TERRAIN_DEPTH,
   WATCH_SHADING_DEPTH,
   atRow,
@@ -470,6 +466,7 @@ export class WorldScene extends Phaser.Scene {
     this.collisionData = this.currentMap.collision.map((row) => [...row]);
     this.bounds = { width: this.currentMap.width, height: this.currentMap.height };
 
+    const { tileset, layers } = this.currentMap;
     const map = this.make.tilemap({
       width: this.currentMap.width,
       height: this.currentMap.height,
@@ -477,60 +474,68 @@ export class WorldScene extends Phaser.Scene {
       tileHeight: TILE_SIZE,
     });
 
-    const tileset = map.addTilesetImage('classicTiles', 'classicTiles', TILE_SIZE, TILE_SIZE);
-    if (!tileset) {
-      throw new Error('Classic tileset failed to load.');
+    // A map may draw its ground from one sheet and the things standing on it
+    // from another, so every source is registered against the same tilemap with
+    // its own first index and the layers carry one shared numbering.
+    const sheets = tileset.sources.map((source) => {
+      const sheet = map.addTilesetImage(
+        source.textureKey,
+        source.textureKey,
+        TILE_SIZE,
+        TILE_SIZE,
+        0,
+        0,
+        source.firstIndex,
+      );
+      if (!sheet) {
+        throw new Error(`Tileset '${source.textureKey}' failed to load.`);
+      }
+      return sheet;
+    });
+
+    // Four bands, drawn in this order: what the ground is, what stands on it,
+    // what is planted on it, and the crowns a figure walks behind. Only the
+    // last is above the player, which is what lets a wood have an inside.
+    for (const [name, layer, depth] of [
+      ['ground', layers.ground, atRow(TERRAIN_DEPTH, 0)],
+      ['overlay', layers.overlay, atRow(TERRAIN_DEPTH, 1)],
+      ['detail', layers.detail, atRow(TERRAIN_DEPTH, 2)],
+      ['canopy', layers.canopy, CANOPY_BAND],
+    ] as const) {
+      this.createTileLayer(map, sheets, name, layer, depth);
     }
 
-    const groundLayer = map.createBlankLayer('ground', tileset);
-    const tallGrassLayer = map.createBlankLayer('tall-grass', tileset);
-    const detailLayer = map.createBlankLayer('detail', tileset);
-    if (!groundLayer || !tallGrassLayer || !detailLayer) {
-      throw new Error('Tilemap layers failed to initialize.');
-    }
-
-    groundLayer.putTilesAt(
-      this.currentMap.groundLayer.map((row) =>
-        row.map((tile) => (tile === CLASSIC_TILE.TALL_GRASS ? CLASSIC_TILE.GRASS : tile)),
-      ),
-      0,
-      0,
-    );
-    tallGrassLayer.putTilesAt(
-      this.currentMap.tallGrassLayer.map((row) => [...row]),
-      0,
-      0,
-    );
-    tallGrassLayer.setDepth(TERRAIN_DEPTH);
-    detailLayer.putTilesAt(
-      this.currentMap.detailLayer.map((row) => [...row]),
-      0,
-      0,
-    );
-    detailLayer.setDepth(TERRAIN_DEPTH);
-    // Water has to look like water: without this the Floodplain Relay's flood,
-    // and Pallet Town's pond, render as green fields with invisible walls.
-    groundLayer.forEachTile((tile) => {
-      if (POND_TILES.has(tile.index)) {
-        tile.tint = WATER_TINT;
-      }
-    });
-    // Hedges, trees and tall grass are drawn from the same leafy art, so on a
-    // map made mostly of both the player cannot see which is a wall. Darkening
-    // the solid growth and keeping the grass bright is the difference.
-    detailLayer.forEachTile((tile) => {
-      if (TREE_TILES.has(tile.index)) {
-        tile.tint = TREE_TINT;
-      }
-    });
-    tallGrassLayer.forEachTile((tile) => {
-      if (tile.index >= 0) {
-        tile.tint = TALL_GRASS_TINT;
-      }
-    });
-    this.mapObjects.push(groundLayer, tallGrassLayer, detailLayer);
     this.createExtractionPoints();
     this.createRouteTransitionLabels();
+  }
+
+  private createTileLayer(
+    map: Phaser.Tilemaps.Tilemap,
+    sheets: Phaser.Tilemaps.Tileset[],
+    name: string,
+    layer: TileLayer,
+    depth: number,
+  ): void {
+    const created = map.createBlankLayer(name, sheets);
+    if (!created) {
+      throw new Error(`Tilemap layer '${name}' failed to initialize.`);
+    }
+    created.putTilesAt(
+      layer.tiles.map((row) => [...row]),
+      0,
+      0,
+    );
+    created.setDepth(depth);
+    // Tints come off the catalogue rather than off a set of tile numbers held
+    // here, because the two sheets need different ones: the classic set has no
+    // water art and its hedge and its tall grass are one drawing.
+    created.forEachTile((tile) => {
+      const tint = layer.tints[tile.y]?.[tile.x] ?? -1;
+      if (tint >= 0) {
+        tile.tint = tint;
+      }
+    });
+    this.mapObjects.push(created);
   }
 
   private createExtractionPoints(): void {

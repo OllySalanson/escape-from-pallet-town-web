@@ -12,17 +12,13 @@ import { sketchRoute1 } from './world/maps/route1';
 import { sketchViridianForest } from './world/maps/viridianForest';
 import { entitiesForMap, type WorldEntity } from './world/npcs';
 import { poisForMap, type WorldPoi } from './world/pois';
-import { buildMapLayers } from './world/tiles';
+import { buildMapLayers, type MapLayers } from './world/tiles';
+import type { TilesetCatalogue } from './world/tileset/catalogue';
+import { CLASSIC_TILESET } from './world/tileset/classicTileset';
+import { POKEMON_GROUND_TILESET } from './world/tileset/pokemonGround';
 
-export {
-  CLASSIC_TILE,
-  POND_TILES,
-  SOLID_CLASSIC_TILES,
-  TALL_GRASS_TINT,
-  TREE_TILES,
-  TREE_TINT,
-  WATER_TINT,
-} from './world/tiles';
+export { CLASSIC_TILE } from './world/tileset/classicTileset';
+export type { MapLayers, TileLayer } from './world/tiles';
 
 export const TILE_SIZE = 16;
 
@@ -40,9 +36,13 @@ export interface WorldMapDefinition {
   readonly id: WorldMapId;
   readonly width: number;
   readonly height: number;
-  readonly groundLayer: readonly number[][];
-  readonly tallGrassLayer: readonly number[][];
-  readonly detailLayer: readonly number[][];
+  /**
+   * What is drawn, in four bands: the ground, the growth and structure standing
+   * on it, planted landmarks, and the part of a landmark a figure walks behind.
+   */
+  readonly layers: MapLayers;
+  /** The sheet this map is drawn from, so two maps may use two sheets. */
+  readonly tileset: TilesetCatalogue;
   readonly collision: readonly boolean[][];
   /**
    * Per tile, not per rectangle: tall grass is authored tile by tile now, so a
@@ -86,13 +86,21 @@ interface MapContent {
  * screen, and `WorldScene.warp()` costs a third of a second of black screen
  * that a five-minute raid should never spend ten times.
  */
-function createMap(id: WorldMapId, sketch: MapSketch, content: MapContent): WorldMapDefinition {
-  const layers = buildMapLayers(sketch);
+function createMap(
+  id: WorldMapId,
+  sketch: MapSketch,
+  content: MapContent,
+  tileset: TilesetCatalogue = CLASSIC_TILESET,
+): WorldMapDefinition {
+  const layers = buildMapLayers(sketch, tileset);
   return {
     id,
     width: sketch.width,
     height: sketch.height,
-    ...layers,
+    layers,
+    tileset,
+    collision: layers.collision,
+    tallGrass: layers.tallGrass,
     ...(content.encounters ? { encounters: content.encounters } : {}),
     warps: [],
     entities: entitiesForMap(id),
@@ -127,13 +135,22 @@ export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = {
       { id: 'forest-antidote', position: { x: 21, y: 30 }, itemId: 'antidote', quantity: 1 },
     ],
   }),
-  'floodplain-relay': createMap('floodplain-relay', sketchFloodplainRelay(), {
-    encounters: PALLET_TALL_GRASS,
-    loot: [
-      { id: 'floodplain-potion', position: { x: 7, y: 12 }, itemId: 'potion', quantity: 1 },
-      { id: 'floodplain-antidote', position: { x: 11, y: 15 }, itemId: 'antidote', quantity: 1 },
-    ],
-  }),
+  // The one map drawn from the wide vocabulary: GBA-palette ground with the
+  // CC0 sheet's objects standing on it. The other three keep the plain classic
+  // catalogue until they are redrawn to the same standard - a catalogue is
+  // chosen per map precisely so that can happen one map at a time.
+  'floodplain-relay': createMap(
+    'floodplain-relay',
+    sketchFloodplainRelay(),
+    {
+      encounters: PALLET_TALL_GRASS,
+      loot: [
+        { id: 'floodplain-potion', position: { x: 7, y: 12 }, itemId: 'potion', quantity: 1 },
+        { id: 'floodplain-antidote', position: { x: 11, y: 15 }, itemId: 'antidote', quantity: 1 },
+      ],
+    },
+    POKEMON_GROUND_TILESET,
+  ),
 };
 
 export function getWorldMap(id: WorldMapId): WorldMapDefinition {

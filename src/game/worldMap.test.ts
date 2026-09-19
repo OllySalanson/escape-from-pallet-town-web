@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CLASSIC_TILE, getWorldMap, isTallGrassInMap, WORLD_MAPS } from './worldMap';
 import { EXTRACTION_POINTS } from './world/extractionPoints';
-import { SOLID_CLASSIC_TILES } from './world/tiles';
+import { CLASSIC_TILESET } from './world/tileset/classicTileset';
+import { POKEMON_GROUND_TILESET } from './world/tileset/pokemonGround';
 import { createRunTrainerEncounters } from './world/trainers';
 
 describe('worldMap', () => {
@@ -21,12 +22,44 @@ describe('worldMap', () => {
 
   it('builds complete layers for every map', () => {
     for (const map of Object.values(WORLD_MAPS)) {
-      for (const layer of [map.groundLayer, map.tallGrassLayer, map.detailLayer]) {
-        expect(layer).toHaveLength(map.height);
-        expect(layer.every((row) => row.length === map.width)).toBe(true);
+      const { ground, overlay, detail, canopy } = map.layers;
+      for (const layer of [ground, overlay, detail, canopy]) {
+        expect(layer.tiles).toHaveLength(map.height);
+        expect(layer.tiles.every((row) => row.length === map.width)).toBe(true);
+        expect(layer.tints).toHaveLength(map.height);
+        expect(layer.tints.every((row) => row.length === map.width)).toBe(true);
       }
       expect(map.collision).toHaveLength(map.height);
       expect(map.tallGrass).toHaveLength(map.height);
+    }
+  });
+
+  /**
+   * A sheet is chosen per map, which is what lets one map be redrawn to the
+   * wide vocabulary without dragging three others through the same change.
+   */
+  it('draws the Floodplain from the wide catalogue and the rest from the classic one', () => {
+    expect(getWorldMap('floodplain-relay').tileset).toBe(POKEMON_GROUND_TILESET);
+    for (const id of ['pallet-town', 'route-1', 'viridian-forest'] as const) {
+      expect(getWorldMap(id).tileset).toBe(CLASSIC_TILESET);
+    }
+    // Every tile a map draws has to land inside one of its catalogue's sheets:
+    // a map with two sheets shares one numbering, and a tile in the gap between
+    // them would render as whatever Phaser found nearest.
+    for (const map of Object.values(WORLD_MAPS)) {
+      const spans = map.tileset.sources.map((source) => ({
+        from: source.firstIndex,
+        to: source.firstIndex + source.columns * source.rows,
+      }));
+      for (const layer of [map.layers.ground, map.layers.overlay, map.layers.detail, map.layers.canopy]) {
+        for (const row of layer.tiles) {
+          for (const tile of row) {
+            if (tile < 0) continue;
+            const onSheet = spans.some((span) => tile >= span.from && tile < span.to);
+            expect({ map: map.id, tile, onSheet }).toMatchObject({ onSheet: true });
+          }
+        }
+      }
     }
   });
 
@@ -45,24 +78,24 @@ describe('worldMap', () => {
 
     // The market square's paved yard, its fence, and the millpond.
     expect(pallet.collision[6][7]).toBe(false);
-    expect(pallet.groundLayer[6][7]).toBe(CLASSIC_TILE.DIRT_PATH);
+    expect(pallet.layers.ground.tiles[6][7]).toBe(CLASSIC_TILE.DIRT_PATH);
     expect(pallet.collision[6][4]).toBe(true);
-    expect(SOLID_CLASSIC_TILES.has(pallet.detailLayer[6][4])).toBe(true);
+    expect(pallet.layers.overlay.tiles[6][4]).toBeGreaterThanOrEqual(0);
     expect(pallet.collision[4][22]).toBe(true);
-    expect(pallet.groundLayer[4][22]).toBe(CLASSIC_TILE.POND_WATER);
+    expect(pallet.layers.ground.tiles[4][22]).toBe(CLASSIC_TILE.POND_WATER);
     expect(pallet.collision[0][0]).toBe(true);
   });
 
   it('draws a bank wherever water meets ground, and none where it does not', () => {
     const pallet = getWorldMap('pallet-town');
     // The millpond's west shore is a bank; its middle is open water.
-    expect(pallet.groundLayer[5][19]).toBe(CLASSIC_TILE.POND_BANK_WEST);
-    expect(pallet.groundLayer[5][22]).toBe(CLASSIC_TILE.POND_WATER);
+    expect(pallet.layers.ground.tiles[5][19]).toBe(CLASSIC_TILE.POND_BANK_WEST);
+    expect(pallet.layers.ground.tiles[5][22]).toBe(CLASSIC_TILE.POND_WATER);
 
     // The Floodplain is water to its edges, so its corner has no shoreline
     // painted on it and its landing jetty is dry.
     const flood = getWorldMap('floodplain-relay');
-    expect(flood.groundLayer[0][0]).toBe(CLASSIC_TILE.POND_WATER);
+    expect(flood.layers.ground.tiles[0][0]).toBe(CLASSIC_TILE.POND_WATER);
     expect(flood.collision[3][15]).toBe(false);
   });
 
@@ -72,8 +105,8 @@ describe('worldMap', () => {
     // A trail is one tile wide and the trees either side of it are not grass.
     expect(isTallGrassInMap(forest, { x: 8, y: 5 })).toBe(true);
     expect(isTallGrassInMap(forest, { x: 7, y: 5 })).toBe(false);
-    expect(forest.tallGrassLayer[5][8]).toBe(CLASSIC_TILE.TALL_GRASS_TUFT);
-    expect(forest.groundLayer[5][8]).toBe(CLASSIC_TILE.TALL_GRASS);
+    expect(forest.layers.overlay.tiles[5][8]).toBe(CLASSIC_TILE.TALL_GRASS_TUFT);
+    expect(forest.layers.ground.tiles[5][8]).toBe(CLASSIC_TILE.GRASS);
     // A clearing is open ground, not an encounter zone.
     expect(isTallGrassInMap(forest, { x: 7, y: 3 })).toBe(false);
   });

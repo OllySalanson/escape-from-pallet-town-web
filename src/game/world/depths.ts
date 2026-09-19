@@ -32,3 +32,12 @@ export const FIGURE_BAND = 2;
 
 /** Sorts an object within its band by the tile row it stands on. */
 export const atRow = (band: number, tileY: number): number => band + tileY / 1000;
+
+/**
+ * The crown of a tree, and anything else a figure passes behind.
+ *
+ * It is the one band above the figures, which is what gives a wood an inside:
+ * walk under a canopy and you are covered by it. The player's own head chevron
+ * is above even this, so a covered player is still findable.
+ */
+export const CANOPY_BAND = 2.5;
