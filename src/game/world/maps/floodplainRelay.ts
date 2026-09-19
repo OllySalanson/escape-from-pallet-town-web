@@ -393,15 +393,16 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // here since the flood. The flood is still here too: south of the yard the
   // ground is a pond in its reeds, with the culvert mouth on its bank that the
   // water came in by and that the way out goes through. The path round to it
-  // leaves the yard by its own side, so the yard has two ways out.
+  // leaves the yard by its own side, so the yard has two ways out. The way back
+  // west to the causeway is a footpath, one tile wide: no cart ever went there.
   map.draw(33, 46, [
     '          T  T  T   ,,      ',
     ' ggggCggg           ,,      ',
     ' ggggCggg T  T   ,,,,,   T  ',
     '  ,,,,,,,,,      ,,         ',
-    '  ,,     CMMMMMv,,,         ',
-    '  ,,     vMMMMMv            ',
-    '  ,,     vMMMMMv            ',
+    '   ,     CMMMMMv,,,         ',
+    '   ,     vMMMMMv            ',
+    '   ,     vMMMMMv            ',
     '  ,,,,,,,vvvvvvv            ',
     'MM  ,,     ,,               ',
     'MM,,,,     ,,               ',
@@ -479,7 +480,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ' p          p                    p                              ',
     '                                                                ',
     '                                     p                    p     ',
-    '           p                     p                              ',
+    '           p                                                    ',
     '                 p                                              ',
     '                   b                    p                       ',
     '                                              p              p  ',
