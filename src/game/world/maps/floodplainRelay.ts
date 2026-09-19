@@ -161,6 +161,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(12, 10, 'sack');
   map.plant(21, 9, 'barrel');
   map.plant(37, 12, 'mooringPost');
+  map.plant(37, 7, 'barrel');
   map.plant(12, 13, 'hut');
 
   // == THE REEDBEDS - the west bank ========================================
@@ -176,11 +177,11 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     'gggggWWWgggg.C,,,,,,,,, ',
     ' ggggWWWgggggCggg...,,.C',
     '  .gWW.gg.o.gggg..C.,,. ',
-    '  CgWWg..ggggWWg..,,,,  ',
-    ' ..CgggCg...gWWgg.,,,   ',
-    '  .ggCgggg..Cgggg.,,.T  ',
+    '  CgWWg..ggggWWgT  ,    ',
+    ' ..CgggCg...gWWgg  ,    ',
+    '  .ggCgggg..Cgggg  ,    ',
     ' ggggggggggCggggT,,,,,, ',
-    ' gggggCggggggggT.....,, ',
+    ' gggggCggggCggggg..C.,, ',
     '   ,,                ,, ',
     '   ,C              T,,, ',
   ]);
@@ -209,8 +210,10 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(31, 33, 'banner');
   map.plant(35, 33, 'banner');
 
-  // The ford to Old Town. The one to the orchard is `gates.ts`'s to open.
+  // The ford to Old Town. The one to the orchard is `gates.ts`'s to open; its
+  // far landing climbs the bank and comes into the orchard between two rows.
   map.draw(19, 37, ['www', 'www']);
+  map.draw(41, 33, ['  ,,', '  , ', '  , ', '  , ', ',,, ']);
 
   // == OLD TOWN - the south-west ===========================================
   // The street the water came up: two houses behind their front hedges, the
