@@ -102,7 +102,12 @@ export class Pokemon {
       const previousMaxHp = this.maxHp;
       this.level += 1;
       this.stats = computePokemonStats(this.base.baseStats, this.level);
-      this.currentHp = Math.min(this.maxHp, this.currentHp + this.maxHp - previousMaxHp);
+      // A level carries its own HP with it, but it is not a revive: a Pokemon
+      // that is down stays down until something heals it, or a party member
+      // levelling from the bench of a trainer battle would stand back up.
+      this.currentHp = this.isFainted
+        ? 0
+        : Math.min(this.maxHp, this.currentHp + this.maxHp - previousMaxHp);
       levelsGained.push(this.level);
       learnedMoves.push(...this.learnMovesAtLevel(this.level));
     }

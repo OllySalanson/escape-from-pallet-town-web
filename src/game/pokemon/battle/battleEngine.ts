@@ -222,6 +222,46 @@ export const replacePlayerPokemon = (state: BattleState, pokemon: Pokemon): Batt
   };
 };
 
+/**
+ * Re-reads the two things a level-up reached mid-battle changes on the Pokemon
+ * underneath a combatant, so the fight that earned the level is the fight that
+ * pays it out.
+ *
+ * A `BattleCombatant` is a snapshot taken when its Pokemon was sent out, which
+ * is what lets the battle own PP, status, its counters and stat stages without
+ * writing them to the party. Level and stats are read through `pokemon` and so
+ * are already live; the move *list* and the HP that a raised maximum carries
+ * are not, and both arrive with a level-up. Only a trainer battle with a second
+ * Pokemon keeps a battle alive long enough to see it - a wild battle ends on the
+ * knockout that awarded the experience.
+ *
+ * `previousMaxHp` is the maximum before the level-up, so the HP a higher maximum
+ * grants is added exactly as `Pokemon.gainExperience` grants it. Everything the
+ * battle owns is kept: PP on a move already known is carried across by move
+ * identity rather than by position, and a fainted combatant is left fainted.
+ */
+export const refreshCombatantAfterLevelUp = (
+  combatant: BattleCombatant,
+  previousMaxHp: number,
+): BattleCombatant => {
+  const gainedHp = Math.max(0, combatant.pokemon.maxHp - previousMaxHp);
+  return {
+    ...combatant,
+    currentHp:
+      combatant.currentHp === 0
+        ? 0
+        : Math.min(combatant.pokemon.maxHp, combatant.currentHp + gainedHp),
+    moves: combatant.pokemon.moves.map((move) => {
+      const known = combatant.moves.find((candidate) => candidate.base === move.base);
+      return known ?? { base: move.base, pp: move.pp };
+    }),
+  };
+};
+
+/** `refreshCombatantAfterLevelUp` for the side that can gain experience. */
+export const refreshPlayerAfterLevelUp = (state: BattleState, previousMaxHp: number): BattleState =>
+  updateCombatant(state, 'player', refreshCombatantAfterLevelUp(state.player, previousMaxHp));
+
 /** Writes bounded, battle-owned state back to the matching party Pokemon. */
 export const persistCombatantToPokemon = (combatant: BattleCombatant): void => {
   combatant.pokemon.currentHp = combatant.currentHp;
