@@ -120,7 +120,7 @@ export class MenuOverlay {
    */
   public refocus(...selectors: string[]): void {
     requestAnimationFrame(() => {
-      const controls = [...this.root.querySelectorAll<HTMLElement>('button:not([disabled])')];
+      const controls = [...this.root.querySelectorAll<HTMLElement>(CURSOR_CONTROLS)];
       const remembered = controls.find((control) => focusKeyOf(control) === this.lastFocusKey);
       this.moveCursorTo(remembered ?? this.firstMatch(selectors));
     });
@@ -136,7 +136,7 @@ export class MenuOverlay {
     if (!direction) {
       return false;
     }
-    const controls = [...this.root.querySelectorAll<HTMLElement>('button:not([disabled])')];
+    const controls = [...this.root.querySelectorAll<HTMLElement>(CURSOR_CONTROLS)];
     const current = controls.indexOf(document.activeElement as HTMLElement);
     const panes: HTMLElement[] = [];
     const rects = controls.map((control) => {
@@ -176,7 +176,12 @@ export class MenuOverlay {
     // Measured together and then written together, so this is one layout, not one a box.
     const widths = boxes.map((box) => box.getBoundingClientRect().width);
     boxes.forEach((box, index) => {
-      box.style.width = `${Math.ceil(widths[index] / unit - 0.001) * unit}px`;
+      // A box in a hidden pane measures nothing, and snapping nothing to a whole
+      // pixel gave the stash's second portrait a zero-width type badge with its
+      // word spilling out of it. It is snapped when its pane is shown.
+      if (widths[index] > 0) {
+        box.style.width = `${Math.ceil(widths[index] / unit - 0.001) * unit}px`;
+      }
     });
   }
 
@@ -197,9 +202,15 @@ export class MenuOverlay {
     if (shows === undefined) {
       return;
     }
+    let changed = false;
     this.root.querySelectorAll<HTMLElement>('[data-shown-by]').forEach((pane) => {
-      pane.hidden = pane.dataset.shownBy !== shows;
+      const hidden = pane.dataset.shownBy !== shows;
+      changed ||= pane.hidden !== hidden;
+      pane.hidden = hidden;
     });
+    if (changed) {
+      this.snapTextBoxes();
+    }
   }
 
   private showHelpFor(control: HTMLElement | null): void {
@@ -236,6 +247,9 @@ export function hasMoreBelow(pane: {
 }
 
 /** Everything on a pixel-ui screen that takes its width from the words inside it. */
+/** What the arrow keys can rest on: a text field is one, so a keyboard can reach it. */
+const CURSOR_CONTROLS = 'button:not([disabled]), input:not([disabled])';
+
 const TEXT_SIZED_BOXES = '.px-name, .px-tag, .px-button, .px-chip, .px-back, .px-type, .px-place, .px-rail li';
 
 /** A control is the same control across renders if it carries the same wiring. */

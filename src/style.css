@@ -2225,3 +2225,66 @@ button {
   justify-self: center;
   margin: calc(var(--u) * 3) 0;
 }
+
+/* --- Boxes: finding a Pokemon among many --------------------------------- */
+/* The strip that leads a list of Pokemon. It stays at the top of its own scroll
+   pane, in the pane's own fill, so the way to narrow a long list is never the
+   thing that scrolled away. */
+:where(.pixel-ui) .box-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  gap: calc(var(--u) * 2);
+  padding-bottom: calc(var(--u) * 2);
+  margin-bottom: var(--u);
+  background: var(--fill, var(--cream));
+  box-shadow: 0 var(--u) 0 var(--frame);
+}
+:where(.pixel-ui) .box-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  min-width: 0;
+}
+:where(.pixel-ui) .box-title {
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(.pixel-ui) .box-form {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+.pixel-ui .px-field {
+  --pad-top: 2;
+  flex: 1 1 0;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  border-radius: 0;
+  font: inherit;
+  color: var(--ink);
+  padding: calc(var(--u) * 2) calc(var(--u) * 4);
+}
+.pixel-ui .px-field:focus {
+  --fill: var(--cream-lit);
+}
+.pixel-ui .px-field::placeholder {
+  color: var(--ink-soft);
+  opacity: 1;
+}
+/* A Pokemon's row and the chip that moves it share a line. */
+:where(.pixel-ui) .stash-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .stash-entry > .care-strip {
+  grid-column: 1 / -1;
+}
+:where(.pixel-ui) .box-manage {
+  padding: 0 calc(var(--u) * 3) calc(var(--u) * 2);
+}

@@ -1,5 +1,7 @@
 export {
   BASE_SECURE_SLOT_LIMITS,
+  BOX_CAPACITY,
+  MAX_BOX_NAME_LENGTH,
   createStartingStash,
   getStarterSpecies,
   MINIMUM_SUPPLIES,
@@ -12,6 +14,7 @@ export {
   type SecureSlot,
   type SecureSlotLimits,
   type StarterSpeciesId,
+  type StashBox,
   type StashContents,
   type StashedPokemon,
   type StashItemChange,

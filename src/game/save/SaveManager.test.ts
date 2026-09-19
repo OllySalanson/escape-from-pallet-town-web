@@ -106,7 +106,11 @@ describe('SaveManager', () => {
       }),
     );
 
-    expect(saves.load()?.stash.toJSON()).toEqual({ pokemon: [], items: {} });
+    expect(saves.load()?.stash.toJSON()).toEqual({
+      pokemon: [],
+      items: {},
+      boxes: [{ name: 'Box 1', pokemonIds: [] }],
+    });
   });
 
   // A free-roam save (versions 1 to 3) kept the player's team in `party` and
@@ -249,7 +253,7 @@ describe('SaveManager', () => {
     // By version 4 the vault is the team and the party is a raid selection out
     // of it, so an empty vault means a wipe - which `ensurePlayable` answers
     // with a fresh starter. Migrating here would resurrect a lost run.
-    expect(restored?.stash.toJSON()).toEqual({ pokemon: [], items: {} });
+    expect(restored?.stash.toJSON()).toMatchObject({ pokemon: [], items: {} });
     expect(restored?.party.pokemon).toMatchObject([{ base: { id: 'charmander' }, level: 6 }]);
     expect(restored?.bag.toJSON()).toEqual({ potion: 2 });
   });
@@ -1497,5 +1501,114 @@ describe('SaveManager', () => {
 
   it('gives the lesson when there is no save to remember it in', () => {
     expect(new SaveManager(new MemoryStorage()).claimBattleLesson()).toBe(true);
+  });
+
+  describe('storage boxes', () => {
+    const oldSave = (version: number): string =>
+      JSON.stringify({
+        version,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: [],
+        bag: {},
+        stash: {
+          pokemon: [
+            { id: 'charmander-1', pokemon: { speciesId: 'charmander', level: 5, currentHp: 12, xp: 125, moves: ['Scratch'], primaryStatus: null } },
+            { id: 'pidgey-1', pokemon: { speciesId: 'pidgey', level: 4, currentHp: 12, xp: 64, moves: ['Tackle'], primaryStatus: null } },
+          ],
+          items: {},
+        },
+      });
+
+    it.each([2, 3, 4, 5, 6])('puts a version %i stash, which has no boxes, in box one', (version) => {
+      const storage = new MemoryStorage();
+      storage.setItem(SAVE_KEY, oldSave(version));
+
+      const restored = new SaveManager(storage).load();
+
+      expect(restored?.stash.listBoxes()).toEqual([
+        { name: 'Box 1', pokemonIds: ['charmander-1', 'pidgey-1'] },
+      ]);
+      expect(restored?.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1', 'pidgey-1']);
+    });
+
+    it('keeps boxes, their names and who is in them across a reload', () => {
+      const storage = new MemoryStorage();
+      const saves = new SaveManager(storage);
+      const stash = new Stash();
+      stash.addPokemon(new Pokemon(CHARMANDER, 5), 'partner');
+      stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
+      const second = stash.addBox();
+      expect(stash.renameBox(second, 'Birds')).toBe(true);
+      expect(stash.movePokemon('pidgey-1', second)).toBe(true);
+      saves.save({
+        party: new PokemonParty([]),
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: new Bag(),
+        stash,
+        starterSpeciesId: 'charmander',
+      });
+
+      const reloaded = new SaveManager(storage).load();
+
+      expect(reloaded?.stash.listBoxes()).toEqual([
+        { name: 'Box 1', pokemonIds: ['partner'] },
+        { name: 'Birds', pokemonIds: ['pidgey-1'] },
+      ]);
+    });
+
+    it('repairs boxes a save contradicts: unknown ids dropped, the unboxed put away', () => {
+      const storage = new MemoryStorage();
+      const save = JSON.parse(oldSave(6)) as { stash: { boxes?: unknown } };
+      save.stash.boxes = [{ name: 'Mine', pokemonIds: ['pidgey-1', 'ghost', 'pidgey-1'] }, 'nonsense'];
+      storage.setItem(SAVE_KEY, JSON.stringify(save));
+
+      const restored = new SaveManager(storage).load();
+
+      expect(restored?.stash.listBoxes()).toEqual([
+        { name: 'Mine', pokemonIds: ['pidgey-1', 'charmander-1'] },
+      ]);
+    });
+
+    it('pays the Outfitter with a Pokemon kept in a later box, and forgets the box it left', () => {
+      const storage = new MemoryStorage();
+      const saves = outfittedSave(storage);
+      const loaded = saves.load()!;
+      const second = loaded.stash.addBox();
+      loaded.stash.movePokemon('pidgey-1', second);
+      loaded.stash.movePokemon('pidgey-2', second);
+      saves.save({ ...loaded, stash: loaded.stash });
+
+      const built = saves.buildOutfitterUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2']);
+      expect(built).toMatchObject({ ok: true, saved: true });
+
+      const reloaded = new SaveManager(storage).load();
+      expect(reloaded?.stash.listBoxes()[1].pokemonIds).toEqual([]);
+      expect(reloaded?.stash.listPokemon().map(({ id }) => id)).toEqual(['partner', 'bulbasaur-1']);
+    });
+
+    it('banks a raid into a new box once every box is full', () => {
+      const storage = new MemoryStorage();
+      const saves = new SaveManager(storage);
+      const stash = new Stash();
+      for (let index = 0; index < 30; index += 1) {
+        stash.addPokemon(new Pokemon(PIDGEY, 3), `pidgey-${index}`);
+      }
+      saves.save({
+        party: new PokemonParty([]),
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: new Bag(),
+        stash,
+        starterSpeciesId: 'charmander',
+      });
+
+      saves.bankFirstContractRun({ pokemon: [new Pokemon(PIDGEY, 3)], items: [] });
+
+      const boxes = saves.load()!.stash.listBoxes();
+      expect(boxes.map((box) => box.pokemonIds.length)).toEqual([30, 1]);
+    });
   });
 });
