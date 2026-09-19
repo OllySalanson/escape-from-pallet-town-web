@@ -78,6 +78,13 @@ export class MenuOverlay {
     };
     this.resizeHandler = () => this.snapTextBoxes();
     window.addEventListener('resize', this.resizeHandler);
+    // A box is as wide as its words in the face they were measured in. Boot
+    // waits for Orange Kid but not for ever (`GAME_FONT_TIMEOUT_MS`), and a
+    // screen snapped in the monospace fallback kept those widths when the real
+    // face arrived: the starter picker's GRASS and POISON tags, a third too
+    // wide, no longer fitted side by side and Bulbasaur's card stood a row
+    // taller than the other two.
+    document.fonts?.addEventListener?.('loadingdone', this.resizeHandler);
     this.root.addEventListener('focusin', this.focusHandler);
     this.root.addEventListener('mouseover', this.hoverHandler);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
@@ -91,6 +98,7 @@ export class MenuOverlay {
     this.root.removeEventListener('focusin', this.focusHandler);
     this.root.removeEventListener('mouseover', this.hoverHandler);
     window.removeEventListener('resize', this.resizeHandler);
+    document.fonts?.removeEventListener?.('loadingdone', this.resizeHandler);
     this.root.remove();
   }
 
