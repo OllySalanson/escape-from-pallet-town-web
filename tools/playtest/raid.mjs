@@ -145,6 +145,7 @@ try {
   let ended = false;
 
   /** Whatever is in the way of walking: dialogue, a prompt, a battle, the result. */
+  const seenCommands = new Set();
   const clearInterruptions = async () => {
     for (let guard = 0; guard < 600; guard += 1) {
       const s = await state();
@@ -159,10 +160,15 @@ try {
           // reeds. Leave a wild fight; a fight with no RUN on its menu is fought.
           const wanted = s.battle.commands.some((command) => command.includes('RUN')) ? 'RUN' : 'FIGHT';
           if (!selected.includes(wanted)) {
-            await press(wanted === 'RUN' ? 'ArrowDown' : 'ArrowUp');
+            // Whatever shape the menu is this week: walk along the row, and drop a
+            // row whenever that comes back round to a command already seen.
+            const key = seenCommands.has(selected) ? 'ArrowDown' : 'ArrowRight';
+            seenCommands.add(selected);
+            await press(key);
             await wait(100);
             continue;
           }
+          seenCommands.clear();
           note(`battle: ${selected.replace('\u25b6', '').trim()}`);
         }
         await press('Space');
@@ -180,7 +186,7 @@ try {
         await wait(100);
       }
     }
-    throw new Error('interruption never cleared');
+    throw new Error(`interruption never cleared: ${JSON.stringify(await state())}`);
   };
 
   const walkTo = async (goal, what) => {
