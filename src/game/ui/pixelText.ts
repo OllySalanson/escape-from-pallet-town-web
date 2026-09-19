@@ -15,12 +15,14 @@
  * Thresholding the finished line does not fix it: a stem that straddles two
  * pixel columns comes out two pixels wide in one word and one in the next, so
  * the same letter is drawn differently each time it appears. The unit that has
- * to be made whole is the glyph. Each one is rasterised alone, with its ink
- * snapped to a pixel column, cut to one-bit coverage, and cached; a line is then
- * set by stamping those bitmaps at whole-pixel advances. That is a bitmap font,
- * built at run time from the face the game already ships, at whatever size a
- * scene asks for - so a letter is the same shape everywhere it appears and no
- * scene has to know any of this happened.
+ * to be made whole is the glyph. Each one is rasterised alone in one fixed ink,
+ * at whichever sub-pixel nudge leaves it least grey, cut to one-bit coverage by
+ * `inkMask`, coloured, and cached; a line is then set by stamping those bitmaps
+ * ink-tight with one whole-pixel gap. That is a bitmap font, built at run time
+ * from the face the game already ships - so a letter is the same shape in every
+ * colour and everywhere it appears, and no scene has to know any of this
+ * happened. What a scene does have to know is in `screenType.ts`: below 12px
+ * the face does not survive being made one-bit, so nothing is set smaller.
  *
  * The arithmetic is kept apart from the canvas so it is testable without one.
  */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fontSizeOf, inkThreshold, letterGap, pixelAdvance, snapOffset } from './pixelText';
+import { fontSizeOf, greyness, inkMask, inkThreshold, letterGap, pixelAdvance, snapOffset } from './pixelText';
 
 describe('pixel text', () => {
   it('reads the size out of a canvas font shorthand', () => {
@@ -33,5 +33,66 @@ describe('pixel text', () => {
     expect(pixelAdvance(6.6, 5, 2)).toBe(7);
     expect(pixelAdvance(4.4, null, 2)).toBe(4);
     expect(pixelAdvance(0.2, null, 2)).toBe(1);
+  });
+
+  it('calls a pixel grey by how far it is from being ink or paper', () => {
+    expect(greyness(0)).toBe(0);
+    expect(greyness(255)).toBe(0);
+    expect(greyness(128)).toBe(127);
+  });
+
+  describe('which pixels of a glyph are ink', () => {
+    const mask = (rows: number[][], threshold = 128): number[][] => {
+      const width = rows[0].length;
+      const flat = inkMask(Uint8Array.from(rows.flat()), width, rows.length, threshold);
+      return rows.map((_, y) => [...flat.slice(y * width, (y + 1) * width)]);
+    };
+
+    it('keeps a crossbar that fell evenly across two rows, one pixel thick', () => {
+      // The bar that closes a P: under the bar in both rows, so it used to vanish.
+      expect(
+        mask([
+          [255, 0, 0, 0, 255],
+          [255, 120, 120, 120, 255],
+          [255, 110, 110, 110, 255],
+          [255, 0, 0, 0, 255],
+        ]),
+      ).toEqual([
+        [1, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+      ]);
+    });
+
+    it('does not thicken a stroke that is already ink with its own soft edge', () => {
+      expect(
+        mask([
+          [0, 0, 0],
+          [100, 100, 100],
+          [255, 255, 255],
+          [0, 0, 0],
+        ]),
+      ).toEqual([
+        [0, 0, 0],
+        [0, 0, 0],
+        [1, 1, 1],
+        [0, 0, 0],
+      ]);
+    });
+
+    it('leaves a lone grey pixel as paper: a crest has to be part of a stroke', () => {
+      expect(
+        mask([
+          [0, 0, 0],
+          [0, 120, 0],
+          [0, 0, 0],
+        ]),
+      ).toEqual([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+      ]);
+    });
   });
 });
