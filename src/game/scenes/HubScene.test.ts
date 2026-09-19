@@ -740,7 +740,14 @@ describe('what the base screen leads with', () => {
   it('says the swap is there, so a wiped player is not left hunting for it', () => {
     const hub = createFreshHub();
 
-    expect(markupOf(hub)).toContain('Your last partner can be swapped here.');
+    // On the card that leads to it, in the help bar rather than in the card's
+    // own line: with somebody hurt the line is already a warning, and a second
+    // sentence made the smallest card the loudest thing on the base screen.
+    const card = markupOf(hub);
+    const stash = card.slice(card.indexOf('data-view="stash"'));
+    expect(stash.slice(0, stash.indexOf('</button>'))).toContain(
+      'Your last partner can be swapped here.',
+    );
   });
 
   /** Playtest 3, D1: home from an extraction at 1 HP with no Potions and four Poke Balls. */
@@ -842,7 +849,8 @@ describe('what the base screen leads with', () => {
     const bar = loadout.slice(loadout.indexOf('confirm-bar'));
 
     expect(bar).toContain('1/6 Pokémon packed');
-    expect(bar).toContain('Charmander · 2 supplies packed · 0 protected');
+    // The bar's own title says "packed", so the summary under it does not.
+    expect(bar).toContain('Charmander · 2 supplies · 0 protected');
   });
 });
 

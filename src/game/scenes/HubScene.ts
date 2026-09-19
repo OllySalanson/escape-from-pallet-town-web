@@ -662,8 +662,12 @@ export class HubScene extends Phaser.Scene {
   private render(): void {
     const root = this.overlay.root;
     root.innerHTML = pixelScreen({
-      // The route's rail needs the room on a preparation step, and says where you are.
-      place: this.view === 'deploy' ? undefined : 'Pallet Town',
+      // Said once, on the screen the player arrives at. Every other view is
+      // reached from it and carries its own way back, so repeating the town on
+      // all five of them only spent the one line of the screen that is short of
+      // room - at the smallest stage the Outfitter's payment screen had a back
+      // label, a place, a title and a count on 320 pixels.
+      place: this.view === 'home' ? 'Pallet Town' : undefined,
       title: this.heading,
       back: this.view === 'home' ? undefined : { label: this.backLabel, attribute: 'data-back' },
       aside:
@@ -671,7 +675,13 @@ export class HubScene extends Phaser.Scene {
           ? this.progressRail()
           : this.view === 'reselect'
             ? undefined
-            : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} item types`,
+            : // On the stash the counts are the two lists on screen, so the
+              // aside carries the one fact the screen turns on instead - the
+              // clock the recovery bay is spending. It was said by the Pokémon
+              // window's own note and again by the bay's line under it.
+              this.view === 'stash'
+              ? `Next raid clock ${formatRecoveryClock(this.raidClockMs)}`
+              : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} items`,
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
@@ -763,11 +773,15 @@ export class HubScene extends Phaser.Scene {
     // about: the bill used to be a panel of its own on this screen, and with two
     // contracts open it left the board it sat above a single line tall.
     // Short, because three cards share the row: the help bar has the sentence.
+    // The swap offer is one, and on a card a third of the screen wide it was a
+    // fifth red line - the loudest thing on the base screen, for its
+    // second-most important panel. The stash puts the offer under the Pokemon
+    // it is about; this card only has to say there is something to do.
     const swap = this.sparePartner ? ' Your last partner can be swapped here.' : '';
     const stashLead = hurt
-      ? `<p class="px-warning">${hurt === 1 ? '1 Pokémon' : `${hurt} Pokémon`} came home hurt. Treat them here.${swap}</p>`
-      : `<p>What is secured at base.${swap}</p>`;
-    const stash = `<button class="px-window px-card" data-view="stash" data-help="Everything secured at base, and the recovery bay."><strong>Stash</strong>${stashLead}</button>`;
+      ? `<p class="px-warning">${hurt === 1 ? '1 Pokémon' : `${hurt} Pokémon`} came home hurt. Treat them here.</p>`
+      : '<p>What is secured at base.</p>';
+    const stash = `<button class="px-window px-card" data-view="stash" data-help="Everything secured at base, and the recovery bay.${swap}"><strong>Stash</strong>${stashLead}</button>`;
     return `<main class="px-body hub-home"><section class="hub-actions">${deploy}${stash}${this.outfitterCard()}</section>${this.contractBoard()}</main>`;
   }
 
@@ -839,11 +853,13 @@ export class HubScene extends Phaser.Scene {
     // The cap can make treating everyone cheaper than the rows add up to, so say so.
     const listedMs = injured.reduce((total, stored) => total + this.recoveryPriceMs(stored), 0);
     const lead = injured.length === 0 ? 'everyone is fit' : `${injured.length} hurt`;
-    const clock = `Next raid clock ${formatRecoveryClock(this.raidClockMs)} · ${
+    // The title bar carries the clock the next raid starts with. This line is
+    // only for what that number does not show - the time already booked out of
+    // it - so a fit, unbooked stash repeats nothing.
+    const clock =
       pending === 0
-        ? `full ${formatRecoveryClock(RAID_DURATION_MS)}, nothing booked`
-        : `${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(pending)} recovery booked`
-    }`;
+        ? ''
+        : `${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(pending)} already booked`;
     const cap =
       listedMs > quotedMs
         ? `<small class="px-wrap">Capped: everyone for ${formatRecoveryClock(quotedMs)}, not the ${formatRecoveryClock(listedMs)} they list for one by one.</small>`
@@ -855,7 +871,7 @@ export class HubScene extends Phaser.Scene {
     return pixelCommitBar({
       className: 'px-tone-care recovery-panel',
       title: `Recovery bay · ${lead}`,
-      lines: [`<small class="px-wrap">${clock}</small>`, cap],
+      lines: [clock ? `<small class="px-wrap">${clock}</small>` : '', cap],
       actions: action,
     });
   }
@@ -932,13 +948,10 @@ export class HubScene extends Phaser.Scene {
       .join('');
     return `<main class="px-body stash-layout">${pixelWindow(
       `<div class="px-list px-scroll">${rows || '<p class="px-empty">No Pokémon in storage.</p>'}${this.swapPanel()}</div>`,
-      {
-        heading: 'Pokémon',
-        note: `Next raid clock ${formatRecoveryClock(this.raidClockMs)}`,
-      },
+      { heading: 'Pokémon', note: `${pokemon.length} stored` },
     )}<div class="stash-side">${portraits ? pixelWindow(portraits, { tag: 'div' }) : ''}${pixelWindow(
       `<div class="px-list px-scroll">${supplies || '<p class="px-empty">No supplies in storage.</p>'}</div>`,
-      { heading: 'Supplies' },
+      { heading: 'Supplies', note: `${this.stashItems.length} kinds` },
     )}</div>${this.recoveryPanel()}</main>`;
   }
 
@@ -963,7 +976,7 @@ export class HubScene extends Phaser.Scene {
     // breakdown belongs.
     const summary = party.length === 0
       ? 'Nothing selected yet. Add a Pokémon from your stash.'
-      : `${party.map((stored) => stored.pokemon.base.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} packed · ${securedCount} protected`;
+      : `${party.map((stored) => stored.pokemon.base.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${securedCount} protected`;
     const pokemonRows = this.stashPokemon
       .map((stored) => {
         const added = this.flow.includesPokemon(stored.id);
@@ -1042,7 +1055,9 @@ export class HubScene extends Phaser.Scene {
       className: 'px-tone-secure secure-intro',
       title: `Protected on a wipe · ${securedCount}/${slots + this.flow.secureItemStacks}`,
       lines: [
-        `<span class="px-wrap">${slots === 1 ? 'One Pokémon' : `${slots} Pokémon`} and ${this.flow.secureItemStacks} item stacks survive. Everything else in your loadout is at risk.</span>`,
+        // The two lids above already count the slots and what fills them, so
+        // this line says only what the counting does not: the rest is gone.
+        '<span class="px-wrap">Everything else in your loadout is lost on a wipe.</span>',
       ],
       actions: `<button class="px-window px-button is-primary" data-advance data-help="Keep these choices and go back to the ${returnLabel}.">Back to ${returnLabel}</button>`,
     })}</main>`;
@@ -1096,7 +1111,7 @@ export class HubScene extends Phaser.Scene {
       title: `Deploy to ${insertion.label}`,
       lines: [
         `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · raid clock ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}</span>`,
-        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} supplies packed · ${protectedCount} protected</small>`,
+        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} supplies packed</small>`,
         `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
       ],
       actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-start data-cursor-start data-help="There is no way back from here: the raid starts.">Enter the raid</button>`,

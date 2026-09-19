@@ -1245,6 +1245,13 @@ button {
   height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  /* One column that may be narrower than what it holds. An `auto` column takes
+     its floor from the widest child's min-content, and the title bar's back
+     label and aside are both `nowrap`: at the smallest stage the lobby's own
+     count pushed the whole screen 19 pixels past the canvas, clipped itself
+     off the right edge and dragged both body columns along with it. Nothing
+     inside a screen may resize the screen. */
+  grid-template-columns: minmax(0, 1fr);
   /* Its own transparent layer, which is what makes the browser antialias the
      text in greys. On an opaque layer Windows and Linux use the LCD's colour
      subpixels instead, and every stem of a pixel face grows an orange fringe on
@@ -1262,12 +1269,16 @@ button {
   color: var(--bar-text);
   text-transform: uppercase;
   white-space: nowrap;
+  overflow: hidden;
   /* Over the body, so its one-pixel underline is never painted out. */
   position: relative;
   z-index: 1;
 }
+/* The screen's name never gives way; the count beside it does. It used to be
+   the other way round - the name shrank and clipped while the aside kept every
+   letter - which is backwards for the one line that says where you are. */
 :where(.pixel-ui) .px-title h1 {
-  flex: 1;
+  flex: 1 0 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: clip;
@@ -1277,6 +1288,8 @@ button {
   margin-right: calc(var(--u) * 6);
 }
 :where(.pixel-ui) .px-title-aside {
+  min-width: 0;
+  overflow: hidden;
   color: var(--bar-muted);
 }
 .pixel-ui .px-back {
@@ -1385,28 +1398,40 @@ button {
 .pixel-ui .px-tone-risk {
   --fill: var(--red-wash);
 }
+/* A section heading is the window's lid: the title bar again, in miniature,
+   bled out to the window's own frame. The face has no bold cut and there is
+   one type size, so inversion is the only lever left that puts a heading above
+   the sentences under it - and it is the one the games this is dressed as
+   pull. It stood in plain ink over a `--cream-dim` hairline, which on cream is
+   all but invisible, so STASH and the rows beneath it carried exactly the same
+   weight and a screen of true things read as a wall. Fourteen pixels deep to
+   the title bar's sixteen, and as wide as its window rather than the screen,
+   so the two ranks are told apart without a second type size. */
 :where(.pixel-ui) .px-heading {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: calc(var(--u) * 6);
-  margin-bottom: calc(var(--u) * 2);
-  padding-bottom: var(--u);
-  box-shadow: 0 var(--u) 0 var(--cream-dim);
-  white-space: nowrap;
-}
-:where(.pixel-ui) .px-heading h2 {
+  /* Out to the inside of the frame the window draws and no further: the
+     window's padding is four pixels and its frame is one. */
+  margin: calc(var(--u) * -3) calc(var(--u) * -3) calc(var(--u) * 4);
+  padding: 0 calc(var(--u) * 3);
+  height: calc(var(--u) * 14);
+  background: var(--bar);
+  color: var(--bar-text);
+  /* Caps for the whole strip, notes included, exactly as the title bar sets
+     its own aside: the strip is one rank, not a heading beside a sentence. */
   text-transform: uppercase;
+  white-space: nowrap;
+  /* A strip is as wide as its window and no wider: with the frame drawn as a
+     background there is nothing else to stop it painting over its neighbour. */
+  overflow: hidden;
 }
 :where(.pixel-ui) .px-heading small {
   min-width: 0;
   overflow: hidden;
-}
-:where(.pixel-ui) .px-tone-risk .px-heading,
-:where(.pixel-ui) .px-tone-secure .px-heading,
-:where(.pixel-ui) .px-tone-primary .px-heading,
-:where(.pixel-ui) .px-tone-care .px-heading {
-  box-shadow: 0 var(--u) 0 rgb(23 23 23 / 25%);
+  /* The title bar's own muted ink, so a count reads as a note on both. */
+  color: var(--bar-muted);
 }
 /* A window whose contents can outgrow it scrolls inside its own frame; the
    screen itself never does. The scrollbar is three game pixels of ink. */
@@ -1781,12 +1806,23 @@ button {
   white-space: normal;
   overflow-wrap: break-word;
 }
+/* A heading inside a list cannot be its window's lid, so it is a band across
+   the list instead: the ground under it darkened, in full ink caps, ruled off
+   below. Soft ink made it quieter than the rows it was introducing, which is
+   backwards - a heading is more present than its body or it is not one. The
+   room above it is three times the room below, so it binds to what follows
+   rather than floating between two blocks. */
 :where(.pixel-ui) .px-subheading {
-  margin-top: calc(var(--u) * 3);
-  padding: 0 calc(var(--u) * 3) var(--u);
-  box-shadow: 0 var(--u) 0 var(--cream-dim);
-  color: var(--ink-soft);
+  margin: calc(var(--u) * 3) 0 var(--u);
+  padding: var(--u) calc(var(--u) * 3);
+  background: var(--cream-dim);
+  box-shadow: 0 var(--u) 0 var(--frame);
+  color: var(--ink);
   text-transform: uppercase;
+}
+/* First in its list, the band needs no room above it: the lid is right there. */
+:where(.pixel-ui) .px-subheading:first-child {
+  margin-top: 0;
 }
 /* A card is a window that is also a choice: a caps title and a line about it. */
 .pixel-ui .px-card {
@@ -1852,7 +1888,7 @@ button {
 :where(.pixel-ui) .px-detail {
   margin-top: calc(var(--u) * 2);
   padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
-  box-shadow: 0 calc(var(--u) * -1) 0 var(--cream-dim);
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--frame);
 }
 :where(.pixel-ui) .px-detail[hidden] {
   display: none;
@@ -1934,7 +1970,7 @@ button {
 :where(.pixel-ui) .carry-note {
   margin-top: calc(var(--u) * 3);
   padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
-  box-shadow: 0 calc(var(--u) * -1) 0 var(--cream-dim);
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--frame);
 }
 :where(.pixel-ui) .run-loadout > .px-note {
   padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
@@ -2037,5 +2073,5 @@ button {
 :where(.pixel-ui) .gamble-verdict {
   margin-top: calc(var(--u) * 3);
   padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
-  box-shadow: 0 calc(var(--u) * -1) 0 var(--cream-dim);
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--frame);
 }

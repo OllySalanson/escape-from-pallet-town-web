@@ -39,7 +39,9 @@ export class StarterScene extends Phaser.Scene {
       hints: 'ARROWS move · ENTER choose',
       body: `<main class="px-body starter-shell"><p class="starter-brief">Your partner enters the lost field kit raid with you. Choose carefully.</p><div class="starter-grid">${starterCards(this.selectedStarterId)}</div>${pixelCommitBar({
         title: selected.name,
-        lines: [`<span class="px-wrap">Ready to deploy: ${starterLoadoutSummary(selected)}</span>`],
+        // The bar's title is the name and the button confirms it by name, so
+        // the line is only what the name does not say.
+        lines: [`<span class="px-wrap">${starterLoadoutSummary(selected)}</span>`],
         actions: `<button class="px-window px-button is-primary" data-confirm data-sfx="confirm" data-help="Locks in ${selected.name} as your first Pokémon.">Confirm ${selected.name}</button>`,
       })}</main>`,
     });

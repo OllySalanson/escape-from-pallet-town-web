@@ -59,6 +59,42 @@ describe('the pixel-ui stylesheet', () => {
     expect(selectors.filter((selector) => !/^(:where\(\.pixel-ui\)|\.pixel-ui|\.menu-overlay\.pixel-ui)[ .:]/.test(`${selector} `))).toEqual([]);
   });
 
+  it('ranks a heading above its own body: the face has no bold cut and one size', () => {
+    // Weight and size are both off the table (`strong` is 400, one font-size),
+    // so a heading is told from the sentences under it by inversion and ink.
+    // Plain ink over a `--cream-dim` hairline is what the captain read as a
+    // wall of equal text, and it must not come back.
+    const heading = /:where\(\.pixel-ui\) \.px-heading \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
+    expect(heading).toMatch(/background:\s*var\(--bar\);/);
+    expect(heading).toMatch(/color:\s*var\(--bar-text\);/);
+    expect(heading).not.toMatch(/--cream-dim/);
+    const subheading = /:where\(\.pixel-ui\) \.px-subheading \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
+    // Never `--ink-soft`: that is de-emphasis, and a heading is not that.
+    expect(subheading).toMatch(/color:\s*var\(--ink\);/);
+    // More room above than below, so it binds to what follows.
+    const [, above, below] = /margin:\s*calc\(var\(--u\) \* (\d+)\) 0 (var\(--u\)|calc\(var\(--u\) \* (\d+)\));/.exec(subheading) ?? [];
+    expect(Number(above)).toBeGreaterThan(Number(below === 'var(--u)' ? 1 : below));
+  });
+
+  it('never rules a divider in an ink that cannot be seen on cream', () => {
+    // `--cream-dim` on `--cream` is a twelve per cent step: it reads as a fill
+    // (the in-list band is one) and never as a line.
+    const shadows = [...pixelUiRules.matchAll(/box-shadow:\s*([^;]+);/g)].map((match) => match[1]);
+    expect(shadows.filter((value) => value.includes('--cream-dim'))).toEqual([]);
+  });
+
+  it('lets no child resize the screen it is drawn on', () => {
+    // A grid's `auto` column takes its floor from the widest child's
+    // min-content, and the title bar's back label and aside are both `nowrap`:
+    // at the smallest stage the lobby pushed the whole screen past the canvas
+    // and clipped its own count off the right edge.
+    const screen = /:where\(\.pixel-ui\) \.px-screen \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
+    expect(screen).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\);/);
+    const aside = /:where\(\.pixel-ui\) \.px-title-aside \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
+    expect(aside).toMatch(/min-width:\s*0;/);
+    expect(aside).toMatch(/overflow:\s*hidden;/);
+  });
+
   it('lets wrapped copy break inside a narrow window instead of widening it', () => {
     expect(pixelUi).toMatch(
       /\.px-wrap\s*\{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*break-word;[^}]*\}/,
