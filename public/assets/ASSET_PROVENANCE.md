@@ -156,79 +156,9 @@ nothing for a Poke Ball, an extraction pad or a radio mast, so half the set woul
 have had to be drawn anyway and the result would not have read as one set.
 Nothing from it ships here.
 
-## `characters/*.png` - RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly
-
-The seventeen overworld character designs are **Pokemon FireRed/LeafGreen art,
-ripped from the commercial game**. The rights holders are Nintendo, Creatures and
-Game Freak. This is not the repository owner's work, it is not CC0, and no licence
-from the rights holder covers it. It ships because the owner ruled on 2026-09-19
-that ripped commercial Pokemon art is accepted knowingly for this personal,
-non-commercial fan game, with FireRed/LeafGreen as the adopted art direction
-(`eptw-adopt-art-direction`). It is recorded here in those words so the decision
-stays visible rather than becoming an assumption.
-
-- **Source.** The Spriters Resource, Pokemon FireRed / LeafGreen, "Overworld
-  NPCs" - <https://www.spriters-resource.com/game_boy_advance/pokemonfireredleafgreen/asset/3698/>,
-  uploaded by **FrenchOrange**, 238x2967, fetched 2026-09-19 from
-  `https://www.spriters-resource.com/media/assets/4/3698.png`. The two
-  protagonist designs are the Red and Leaf rows of that same sheet.
-- **The publisher's terms**, read at <https://www.spriters-resource.com/page/tou/>
-  on 2026-09-19 and quoted exactly:
-  > "Content on these sites may not be used in any commercial works. These
-  > include, but are not limited to, paid games, free games with in-app purchases
-  > or advertisements, monetized videos, and other websites displaying
-  > advertisements. This also includes anything 100% free being published to an
-  > established market place (e.g. Steam, Apple's App Store, or Google Play)."
-
-  and:
-  > "Taking content in its original format from this website and distributing it
-  > elsewhere without prior consent or credit to its origin will also result in
-  > contact being made with those seen fit to have it removed as this is also
-  > viewed as theft."
-
-  Those are the publisher's terms for their rips. They are not a licence from the
-  rights holder, and nothing here should be read as one.
-- **What that means here.** The game is non-commercial, carries no advertising
-  and is on no marketplace, which is inside the first clause - and putting it on
-  one would put it outside. The second clause is why **the source sheet is never
-  committed**: what ships is cut and rearranged frames, credited to their origin
-  in this entry. Do not add a sheet from that site in the format it was
-  downloaded in.
-- **How they were cut.** `scripts/cut-frlg-characters.mjs` is the whole method and
-  names the source row of every design. Each 16x24 cell is keyed out of the
-  sheet's orange ("used") or green ("unused") backing and placed on a 16x32 frame
-  with the soles on row 27, in the rows and columns `src/game/playerFrames.ts`
-  reads from `character.png`: a row each for down, right, up, left; columns idle,
-  step, idle, step. Every file is 64x128 RGBA. `characterDesigns.test.ts` holds
-  the file list, the size, the sole line and the absence of any backing colour.
-
-| File | Row on the source sheet (top edge, px) |
-| --- | --- |
-| `characters/protagonist-red.png` | 42 |
-| `characters/protagonist-leaf.png` | 67 |
-| `characters/lass.png` | 192 |
-| `characters/heavy-man.png` | 217 |
-| `characters/scientist.png` | 242 |
-| `characters/boy.png` | 267 |
-| `characters/youngster.png` | 292 |
-| `characters/woman.png` | 492 |
-| `characters/bald-man.png` | 642 |
-| `characters/old-man.png` | 725 |
-| `characters/old-woman.png` | 775 |
-| `characters/straw-hat.png` | 800 |
-| `characters/bug-catcher.png` | 825 |
-| `characters/hiker.png` | 875 |
-| `characters/cooltrainer.png` | 1184 |
-| `characters/beauty.png` | 1309 |
-| `characters/sailor.png` | 1334 |
-
-The file names describe what each figure looks like on screen. They are this
-repository's labels, not a claim about what the game calls that sprite.
-
 ## Flagged: one file that is not the owner's own work
 
-Unlike `characters/*.png` above, which the owner has ruled on, this one came
-through the Unity project and is not settled. It is recorded here so the
+It came through the Unity project and is not settled. It is recorded here so the
 decision gets made deliberately rather than by omission. The typeface used to sit
 beside it; that question is closed above.
 
@@ -307,10 +237,67 @@ colour it can display lands on an exact multiple of 8 in 8-bit RGB, and 91% of
   states the images are not the maintainers' to relicense. **These are not CC0
   sprites, and this file must not describe them as such.**
 
+### `characters/*.png` - the overworld character designs
+
+- **Source.** Pokemon FireRed/LeafGreen overworld figures, from The Spriters
+  Resource: <https://www.spriters-resource.com/game_boy_advance/pokemonfireredleafgreen/asset/3698/>,
+  asset 3698 ("Overworld NPCs", 238x2967), uploaded by **FrenchOrange**.
+  Downloaded 2026-09-19 from
+  `https://www.spriters-resource.com/media/assets/4/3698.png`. The two
+  protagonist designs are the Red and Leaf rows of that same sheet.
+- **Rights holder.** Nintendo / Creatures / Game Freak. Nothing here is a licence
+  from them.
+- **Licence.** The Spriters Resource's terms, exactly as quoted under
+  `frlg-tiles.png` above and re-read at the publisher on 2026-09-19. The first
+  clause goes on, and it bears on where this game may ever be published:
+
+  > "This also includes anything 100% free being published to an established
+  > market place (e.g. Steam, Apple's App Store, or Google Play)."
+
+- **How this repository sits against them.** As for the tiles: non-commercial, no
+  advertising, on no marketplace - and the source sheet is not committed and must
+  not be. Each file is a cut: one figure's cells lifted individually out of the
+  sheet's orange ("used") or green ("unused") backing and rearranged onto a new
+  plain 16x32 frame grid, no margin and no spacing, that matches nothing on the
+  source sheet.
+- **What was cut.** Seventeen figures, each a 64x128 RGBA sheet in the rows and
+  columns `src/game/playerFrames.ts` reads from `character.png`: a row each for
+  down, right, up, left; columns idle, step, idle, step; soles on row 27.
+  `scripts/cut-frlg-characters.mjs` is the whole method, and the table below is
+  its list of source rows. `src/game/world/characterDesigns.ts` names every
+  design and `characterDesigns.test.ts` decodes each PNG to hold the file list,
+  the grid, the sole line and the absence of any backing colour, so this list
+  cannot drift from the files.
+
+| File | Row on the source sheet (top edge, px) |
+| --- | --- |
+| `characters/protagonist-red.png` | 42 |
+| `characters/protagonist-leaf.png` | 67 |
+| `characters/lass.png` | 192 |
+| `characters/heavy-man.png` | 217 |
+| `characters/scientist.png` | 242 |
+| `characters/boy.png` | 267 |
+| `characters/youngster.png` | 292 |
+| `characters/woman.png` | 492 |
+| `characters/bald-man.png` | 642 |
+| `characters/old-man.png` | 725 |
+| `characters/old-woman.png` | 775 |
+| `characters/straw-hat.png` | 800 |
+| `characters/bug-catcher.png` | 825 |
+| `characters/hiker.png` | 875 |
+| `characters/cooltrainer.png` | 1184 |
+| `characters/beauty.png` | 1309 |
+| `characters/sailor.png` | 1334 |
+
+The file names describe what each figure looks like on screen. They are this
+repository's labels, not a claim about what the game calls that sprite.
+
 ### If these are ever to be removed
 
-Both entries are self-contained. `frlg-tiles.png` is loaded by `BootScene` as
+All three entries are self-contained. `frlg-tiles.png` is loaded by `BootScene` as
 `frlgTiles` and nothing draws from it yet, so deleting the file, `frlgSheet.ts`,
-its test and that one loader line removes it completely. The species sprites
-would need replacement art at 64x64 or smaller rather than deletion, because
+its test and that one loader line removes it completely. The character designs go the same
+way: delete `characters/`, the `design` on the Route 1 trainer in `trainers.ts`,
+and the registry entries, and every figure falls back to `character.png` under
+its role tint. The species sprites would need replacement art at 64x64 or smaller rather than deletion, because
 `spriteAssets.test.ts` requires a front and a back for every shipped species.
