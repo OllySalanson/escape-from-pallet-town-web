@@ -133,7 +133,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TtTTtTTtTTtTTtTTTTTTTTTTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ]);
 
@@ -330,7 +330,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '    "#"#"#"#"#"#    ',
     '    ,,,,,,,,,,      ',
     '            ,,      ',
-    '            ,,      ',
+    '        T   ,,   T  ',
     'FFFFFFFFFFFF,,FFFFFF',
   ]);
 
@@ -385,9 +385,9 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // water came in by and that the way out goes through. The path round to it
   // leaves the yard by its own side, so the yard has two ways out.
   map.draw(33, 46, [
-    '                    ,,      ',
+    '          T  T  T   ,,      ',
     ' ggggCggg           ,,      ',
-    ' ggggCggg T  T   ,,,,,      ',
+    ' ggggCggg T  T   ,,,,,   T  ',
     '  ,,,,,,,,,      ,,         ',
     '  ,,     CMMMMMv,,,         ',
     '  ,,     vMMMMMv            ',
@@ -465,7 +465,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '    p                                                           ',
     '                                                                ',
     '                                                                ',
-    '                                            p  p b              ',
+    '                                                                ',
     ' p          p                    p                              ',
     '                                                                ',
     '                                     p                    p     ',

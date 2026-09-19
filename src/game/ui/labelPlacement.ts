@@ -184,6 +184,47 @@ function intrusion(rect: Rect, surroundings: CaptionSurroundings, seated: readon
   );
 }
 
+/** Why one seat was refused, as the pixels of it that each kind of obstacle took. */
+export interface SeatRefusal {
+  readonly seat: CaptionSeat;
+  readonly x: number;
+  readonly y: number;
+  readonly outsideView: number;
+  readonly underHud: number;
+  readonly overMapArt: number;
+  readonly underCanopy: number;
+  readonly againstCaption: number;
+}
+
+/**
+ * Every seat a caption was offered and what was wrong with each, in the order
+ * they are tried. For the question a screenshot cannot answer: a caption is
+ * missing, so which of five things is in every one of its twelve seats? Guessed
+ * at, the answer was three trees, and felling them changed nothing.
+ */
+export function explainSeats(
+  request: CaptionRequest,
+  surroundings: CaptionSurroundings,
+  seated: readonly Rect[] = [],
+): SeatRefusal[] {
+  const view = inflate(surroundings.bounds, -VIEW_INSET);
+  const against = (rect: Rect, others: readonly Rect[], gap: number): number =>
+    others.reduce((total, one) => total + overlap(rect, inflate(one, gap)), 0);
+  return candidatesFor(request, surroundings.bounds).map((candidate) => {
+    const rect: Rect = { x: candidate.x, y: candidate.y, width: request.width, height: request.height };
+    return {
+      seat: candidate.seat,
+      x: candidate.x,
+      y: candidate.y,
+      outsideView: rect.width * rect.height - overlap(rect, view),
+      underHud: against(rect, surroundings.furniture, NEIGHBOUR_GAP),
+      overMapArt: against(rect, surroundings.keepClear, 0),
+      underCanopy: against(rect, surroundings.canopy, 0),
+      againstCaption: against(rect, seated, NEIGHBOUR_GAP),
+    };
+  });
+}
+
 /**
  * Seats every caption on the screen. Order is priority: an earlier request is
  * seated first and a later one has to fit around it.

@@ -3,6 +3,7 @@ import {
   NEIGHBOUR_GAP,
   SUBJECT_GAP,
   VIEW_INSET,
+  explainSeats,
   placeCaptions,
   placeDialog,
   type CaptionRequest,
@@ -187,6 +188,27 @@ describe('where a map caption is allowed to sit', () => {
       const crowd: Rect = { x: 120, y: 138, width: 96, height: 60 };
       expect(seat({ subject }, { canopy: everywhereElse, keepClear: [crowd] }).visible).toBe(false);
     });
+  });
+
+  it('can say why each seat was refused, so a missing caption is read rather than guessed at', () => {
+    const subject = tile(160, 120);
+    const roof: Rect = { x: 96, y: 40, width: 144, height: 78 };
+    const keeper: Rect = { x: 160, y: 138, width: 16, height: 23 };
+    const seats = explainSeats(request({ subject }), around({ canopy: [roof], keepClear: [keeper, subject] }));
+    expect(seats).toHaveLength(12);
+    // The authored side is under the roof and nothing else is wrong with it...
+    expect(seats[0].seat).toBe('above');
+    expect(seats[0].underCanopy).toBeGreaterThan(0);
+    expect(seats[0].overMapArt + seats[0].outsideView + seats[0].underHud).toBe(0);
+    // ...the other row is over the keeper, not under the roof...
+    const below = seats.find((one) => one.seat === 'below')!;
+    expect(below.overMapArt).toBeGreaterThan(0);
+    expect(below.underCanopy).toBe(0);
+    // ...and the seat that placeCaptions takes is the first with nothing against it.
+    const clear = seats.findIndex(
+      (one) => one.outsideView + one.underHud + one.overMapArt + one.underCanopy + one.againstCaption === 0,
+    );
+    expect(placeCaptions([request({ subject })], around({ canopy: [roof], keepClear: [keeper] }))[0].candidate).toBe(clear);
   });
 
   it('is never drawn cut by the edge of the screen, wherever the camera is', () => {
