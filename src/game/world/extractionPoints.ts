@@ -156,7 +156,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   },
   {
     mapId: 'floodplain-relay',
-    position: { x: 4, y: 23 },
+    position: { x: 5, y: 23 },
     label: 'RADIO EXIT',
     unlockAtMs: 0,
     requirement: {
@@ -167,7 +167,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   },
   {
     mapId: 'floodplain-relay',
-    position: { x: 50, y: 22 },
+    position: { x: 51, y: 25 },
     label: 'MILL RACE',
     unlockAtMs: 0,
     requirement: { kind: 'always' },

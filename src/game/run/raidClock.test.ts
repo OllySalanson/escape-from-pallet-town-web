@@ -65,7 +65,7 @@ describe('raid duration', () => {
       walkingDistance(relay, insertion, station) +
       walkingDistance(relay, station, kit) +
       walkingDistance(relay, kit, radioExit.position);
-    expect(contractTiles).toBe(49);
+    expect(contractTiles).toBe(48);
     // The objective route must never be a sprint: walking it costs a small part
     // of the raid, leaving the clock to price detours, reading and hesitation.
     expect(contractTiles * STEP_COST_MS).toBeLessThan(RAID_DURATION_MS * 0.05);

@@ -186,7 +186,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ' ggggggggggCggggT,,,,,, ',
     ' gggggCggggCggggg...T,, ',
     '   ,             gggg,, ',
-    '   ,               T,,, ',
+    '   ,            T  T,,, ',
   ]);
 
   // == MARKET ISLE - the middle of the river ===============================

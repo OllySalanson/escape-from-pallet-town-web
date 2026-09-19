@@ -50,7 +50,7 @@ export const RUN_INSERTIONS = {
     id: 'floodplain-mill-weir',
     label: 'Mill Weir',
     mapId: 'floodplain-relay',
-    position: { x: 44, y: 24 },
+    position: { x: 37, y: 25 },
     description: 'The east bank, behind the toll bridge. The mill on its pond, the orchard south of it, and the gatehouse standing in the race.',
   },
   'floodplain-beacon-keep': {
