@@ -524,6 +524,131 @@ export const tickHunterSearch = (state: HunterState, deltaMs: number): HunterSta
   return { ...state, searchRemainingMs: remaining };
 };
 
+/** What `doorsFrom` answers about a map, keyed by `doorIndex`. */
+export interface MapDoors {
+  /** Tiles that take ground away from `from` when somebody stands on them. */
+  readonly doors: ReadonlySet<number>;
+  /** Tiles that leave `from` unable to reach a single one of the goals. */
+  readonly sealsIn: ReadonlySet<number>;
+}
+
+/**
+ * The map read as doors, from where one person is standing.
+ *
+ * This is the question behind every figure that stops on walkable ground: a
+ * person is collision, so wherever one stands is a door, and a door in the neck
+ * of a pocket is a wall round whoever is inside it. It answers both halves of
+ * that in one depth-first pass - which tiles are doors at all, and which of them
+ * shut away every one of a named set of goals - because a flood fill per
+ * candidate tile is a whole map walked thousands of times over.
+ *
+ * Rooted at `from`, a tile is a door exactly when it has a search-tree child
+ * whose subtree reaches nothing above it (Tarjan's articulation rule, with the
+ * root left out because that is the tile `from` is standing on). Counting the
+ * goals inside each severed subtree as the walk unwinds gives the second half
+ * for free. The walk is kept on an explicit stack: a 64x64 map is four thousand
+ * tiles deep in the worst case.
+ */
+export const doorsFrom = (
+  from: GridPosition,
+  bounds: GridBounds,
+  isBlocked: (tile: GridPosition) => boolean,
+  goals: readonly GridPosition[] = [],
+): MapDoors => {
+  const doors = new Set<number>();
+  const sealsIn = new Set<number>();
+  if (!isInsideBounds(from, bounds) || isBlocked(from)) {
+    return { doors, sealsIn };
+  }
+  const size = bounds.width * bounds.height;
+  const discovered = new Int32Array(size).fill(UNREACHED);
+  const lowest = new Int32Array(size);
+  /** Goals inside a tile's search subtree, and goals its doors shut away. */
+  const goalsBelow = new Int32Array(size);
+  const goalsShut = new Int32Array(size);
+  const isGoal = new Uint8Array(size);
+  for (const goal of goals) {
+    if (isInsideBounds(goal, bounds)) {
+      isGoal[tileIndex(goal, bounds)] = 1;
+    }
+  }
+  const root = tileIndex(from, bounds);
+  let order = 0;
+
+  const tiles: GridPosition[] = [from];
+  const parents: number[] = [UNREACHED];
+  const neighbours: GridPosition[][] = [walkableNeighbours(from, bounds, isBlocked)];
+  const cursors: number[] = [0];
+  discovered[root] = order;
+  lowest[root] = order;
+  goalsBelow[root] = isGoal[root];
+  order += 1;
+
+  while (tiles.length > 0) {
+    const top = tiles.length - 1;
+    const here = tileIndex(tiles[top], bounds);
+    if (cursors[top] < neighbours[top].length) {
+      const neighbour = neighbours[top][cursors[top]];
+      cursors[top] += 1;
+      const index = tileIndex(neighbour, bounds);
+      if (discovered[index] === UNREACHED) {
+        discovered[index] = order;
+        lowest[index] = order;
+        goalsBelow[index] = isGoal[index];
+        order += 1;
+        tiles.push(neighbour);
+        parents.push(here);
+        neighbours.push(walkableNeighbours(neighbour, bounds, isBlocked));
+        cursors.push(0);
+      } else if (index !== parents[top]) {
+        lowest[here] = Math.min(lowest[here], discovered[index]);
+      }
+      continue;
+    }
+    tiles.pop();
+    neighbours.pop();
+    cursors.pop();
+    const parent = parents.pop()!;
+    if (parent === UNREACHED) {
+      continue;
+    }
+    lowest[parent] = Math.min(lowest[parent], lowest[here]);
+    goalsBelow[parent] += goalsBelow[here];
+    // Everything under `here` is reached only through `parent`, so standing on
+    // `parent` shuts all of it away from `from`. The root is exempt: it is the
+    // tile `from` is on, and nobody else can be standing there.
+    if (parent !== root && lowest[here] >= discovered[parent]) {
+      doors.add(parent);
+      goalsShut[parent] += goalsBelow[here];
+    }
+  }
+
+  // Only goals `from` could reach in the first place are goals it can lose, and
+  // a goal is lost by being stood on as surely as by being shut away.
+  const within = goalsBelow[root];
+  for (const door of doors) {
+    if (within > 0 && within - goalsShut[door] - isGoal[door] <= 0) {
+      sealsIn.add(door);
+    }
+  }
+  // The last way out is shut by standing on it as well as by shutting the way
+  // to it: one exit and somebody on it is the same jar with a different lid.
+  if (within === 1) {
+    for (const goal of goals) {
+      const index = isInsideBounds(goal, bounds) ? tileIndex(goal, bounds) : UNREACHED;
+      if (index !== UNREACHED && discovered[index] !== UNREACHED) {
+        sealsIn.add(index);
+      }
+    }
+  }
+
+  return { doors, sealsIn };
+};
+
+/** The index `doorsFrom` keys a tile by, so a caller can ask about one. */
+export const doorIndex = (tile: GridPosition, bounds: GridBounds): number =>
+  tileIndex(tile, bounds);
+
 /**
  * Where a hunter falls back to when the player breaks contact.
  *
@@ -537,11 +662,25 @@ export const tickHunterSearch = (state: HunterState, deltaMs: number): HunterSta
  * going somewhere instead of going round.
  *
  * It picks the tile that puts `breakawayDistance` walkable tiles between hunter and
- * player; among the tiles that manage that it prefers the one furthest behind the
+ * player; among the tiles that manage that it prefers one that does not shut the
+ * player away from every way out of the raid, then the one furthest behind the
  * player's heading, and among those the one the hunter can reach soonest - so it
  * backs off along ground it could have walked instead of teleporting across the map.
  * A cramped or enclosed area yields the best separation available rather than
  * failing, and the player's own tile is never chosen.
+ *
+ * `mustReach` is the second of those, and it is the raid's own exits: a hunter
+ * that falls back across the only neck out of where the player is standing has
+ * sold them a jar for `HUNTER_FLEE_BASE_PENALTY_MS` of clock. Measured over all
+ * four maps in every gate state, that used to happen on 379 of the Floodplain's
+ * tile-and-heading pairs alone, and preferring an unsealing tile costs nothing at
+ * all: the full six tiles of separation are still available on every one of them.
+ * It is only a preference, because a pocket whose one way out is a one-tile lane
+ * has no unsealing tile at any distance - every tile of that lane is the lid. The
+ * floor under it is that the player may always walk into the hunter and be caught
+ * by it (`WorldScene.tryWalkIntoHunter`), so no arrangement of the two of them is
+ * a wall. Pass no exits and the rule is simply inert, which is what keeps this
+ * answerable about a bare grid.
  */
 export const findHunterBreakawayTile = (
   hunter: GridPosition,
@@ -550,6 +689,7 @@ export const findHunterBreakawayTile = (
   isBlocked: (tile: GridPosition) => boolean,
   breakawayDistance: number = HUNTER_BREAKAWAY_DISTANCE,
   heading: Direction | null = null,
+  mustReach: readonly GridPosition[] = [],
 ): GridPosition => {
   if (!isInsideBounds(hunter, bounds)) {
     return hunter;
@@ -599,16 +739,19 @@ export const findHunterBreakawayTile = (
   };
 
   /**
-   * Most separation first, because that is what the escape is for, and then the
-   * nearest tile that achieves it - so the gap is `breakawayDistance` and not
-   * whatever the heading could be talked into. Only then does the player's
-   * heading break the tie, which on a lane running both ways is the whole
-   * question; a retreat the hunter could have walked comes before it so a tie
-   * can never be settled by a tile across the map, and the tile it reaches
-   * soonest settles what is left, deterministically.
+   * Most separation first, because that is what the escape is for; then a tile
+   * that leaves the player a way out of the raid, because an escape that seals
+   * them in has sold them nothing; then the nearest tile that achieves both - so
+   * the gap is `breakawayDistance` and not whatever the heading could be talked
+   * into. Only then does the player's heading break the tie, which on a lane
+   * running both ways is the whole question; a retreat the hunter could have
+   * walked comes before it so a tie can never be settled by a tile across the
+   * map, and the tile it reaches soonest settles what is left, deterministically.
    */
+  const { sealsIn } = doorsFrom(player, bounds, isBlocked, mustReach);
   const rank = (index: number): readonly number[] => [
     -separation(reached[index]),
+    sealsIn.has(tileIndex(reached[index], bounds)) ? 1 : 0,
     playerDistance(reached[index]),
     walk[index] > walkLimit ? 1 : 0,
     aheadOfPlayer(reached[index]),

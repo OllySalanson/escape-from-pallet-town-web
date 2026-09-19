@@ -824,6 +824,12 @@ export class WorldScene extends Phaser.Scene {
     if (!decision.target && pushing && this.tryLedgeHop(decision.facing)) {
       return;
     }
+    // And the other refusal that means something: the hunter is a person, so
+    // its tile is collision, and walking into the person chasing you is being
+    // caught by them.
+    if (!decision.target && pushing && this.tryWalkIntoHunter(decision.facing)) {
+      return;
+    }
     const bump = nextBump(this.pushingAgainst, !decision.target && pushing ? decision.facing : null);
     this.pushingAgainst = bump.pushingAgainst;
     if (bump.thud) {
@@ -3504,6 +3510,10 @@ export class WorldScene extends Phaser.Scene {
         // world has on where they are going, and it is enough to keep the hunter from
         // falling back onto the ground they are about to cross.
         this.facing,
+        // And this raid's own exits, so the retreat is never through the one neck
+        // between the player and every way out of the raid. Read off the plan
+        // rather than the markers, which are not built until createEntities().
+        this.extractionPointsForCurrentMap().map((point) => point.position),
       ),
     );
   }
@@ -3541,6 +3551,53 @@ export class WorldScene extends Phaser.Scene {
     ) {
       return false;
     }
+    this.catchPlayer(this.hunterState.position);
+    return true;
+  }
+
+  /**
+   * Walking into the hunter, which is being caught by it.
+   *
+   * A figure is collision, and a hunter that has lost the trail holds its tile
+   * blind for `HUNTER_SEARCH_MS` - so for that whole window it was a thing that
+   * would neither fight the player nor get out of their way, and in a neck that
+   * is a door with nobody's hand on it. The captain played into one on
+   * 2026-09-19 and could not move: "it wouldn't attack me or do anything. It's
+   * just in my way and I was stuck in an area."
+   *
+   * The answer is not to let the player pass through a person. It is that this
+   * particular person is the one chasing them, so the tile they are standing on
+   * is a tile the player may always step into and the price of stepping into it
+   * is the fight - the same `hunterCatchCutscene` a pursuit contact plays,
+   * because it is the same event arrived at from the other side. That makes the
+   * trap impossible by construction rather than unlikely: no arrangement of the
+   * two figures can be a wall, on any map, in any gate state, whatever the
+   * search window is doing. `findHunterBreakawayTile` keeps it from arising in
+   * the first place where the map gives it any choice; this is what holds where
+   * the map gives none.
+   *
+   * It is deliberately not conditional on the search: during a pursuit the catch
+   * has already fired on the step that made the two adjacent, so this can only
+   * ever be reached by a player pushing into a hunter that is holding still.
+   */
+  private tryWalkIntoHunter(facing: Direction): boolean {
+    if (!this.isHunterOnCurrentMap() || !this.hunterState.position) {
+      return false;
+    }
+    const into = nextTileFromDirection(this.currentTile, facing);
+    if (into.x !== this.hunterState.position.x || into.y !== this.hunterState.position.y) {
+      return false;
+    }
+    this.facing = facing;
+    this.catchPlayer(this.hunterState.position);
+    return true;
+  }
+
+  /** The one catch: the fight is queued, and the beat that hands it over plays. */
+  private catchPlayer(hunter: GridPosition): void {
+    // Whichever way the two of them met, the hunter has the player: a search
+    // window left running would have it blind to someone it is already holding.
+    this.hunterState = { ...this.hunterState, searchRemainingMs: 0 };
     this.pendingTrainerBattle = {
       trainer: createHunterTrainer(
         this.runSession!.manager.snapshot().elapsedMs,
@@ -3553,13 +3610,12 @@ export class WorldScene extends Phaser.Scene {
     this.playCutscene(
       hunterCatchCutscene(
         HUNTER_FIGURE_ID,
-        this.hunterState.position,
+        hunter,
         this.currentTile,
         this.facing,
         this.pendingTrainerBattle.introLines,
       ),
     );
-    return true;
   }
 }
 

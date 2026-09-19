@@ -25,6 +25,8 @@ import {
   isHunterSearching,
   resolveHunterBattleLoss,
   tickHunterSearch,
+  doorsFrom,
+  doorIndex,
 } from './hunter';
 
 const mapBlocker = (mapId: WorldMapId) => {
@@ -589,6 +591,152 @@ const simulateWorldSteps = (
   }
   return { engagedAtStep: null, state, player };
 };
+
+describe('the tiles a figure may not simply stop on', () => {
+  /** `#` is a wall, a space is ground, and the player stands on `P`. */
+  const sketch = (rows: readonly string[]) => {
+    const bounds = { width: rows[0].length, height: rows.length };
+    const isBlocked = (tile: { x: number; y: number }) => (rows[tile.y]?.[tile.x] ?? '#') === '#';
+    const player = rows.flatMap((row, y) =>
+      [...row].flatMap((cell, x) => (cell === 'P' ? [{ x, y }] : [])),
+    )[0];
+    const { doors } = doorsFrom(player, bounds, isBlocked);
+    return (x: number, y: number) => doors.has(doorIndex({ x, y }, bounds));
+  };
+
+  it('names the neck between two rooms and nothing inside either of them', () => {
+    const isDoor = sketch([
+      '##########',
+      '#P #     #',
+      '#  #     #',
+      '#        #',
+      '##########',
+    ]);
+
+    // The neck the player's room empties through, and the corner leading into it.
+    expect(isDoor(3, 3)).toBe(true);
+    expect(isDoor(2, 3)).toBe(true);
+    // Inside either room the ground is walked round, so none of it is a door.
+    expect(isDoor(1, 2)).toBe(false);
+    expect(isDoor(5, 2)).toBe(false);
+    expect(isDoor(6, 3)).toBe(false);
+  });
+
+  it('names every tile of a one-tile lane, because each of them is the only way through', () => {
+    const isDoor = sketch([
+      '#######',
+      '#P#   #',
+      '# #   #',
+      '#     #',
+      '#######',
+    ]);
+
+    expect(isDoor(1, 2)).toBe(true);
+    expect(isDoor(1, 3)).toBe(true);
+    expect(isDoor(2, 3)).toBe(true);
+    // The far end of a lane is a place to stand, not a door: nothing is behind it.
+    expect(isDoor(5, 1)).toBe(false);
+  });
+
+  it('names nothing on a ring, which is what drawing one is for', () => {
+    const isDoor = sketch([
+      '#######',
+      '#P    #',
+      '# ### #',
+      '#     #',
+      '#######',
+    ]);
+
+    for (const [x, y] of [[2, 1], [5, 1], [5, 2], [3, 3], [1, 2]] as const) {
+      expect(`${x},${y} is a door: ${isDoor(x, y)}`).toBe(`${x},${y} is a door: false`);
+    }
+  });
+
+  it('never names the tile the player is standing on', () => {
+    const isDoor = sketch([
+      '#####',
+      '# P #',
+      '#####',
+    ]);
+
+    expect(isDoor(2, 1)).toBe(false);
+  });
+});
+
+describe('a flee that would seal the player in', () => {
+  const corridor = (width: number) => ({
+    bounds: { width, height: 3 },
+    isBlocked: (tile: { x: number; y: number }) =>
+      tile.y !== 1 || tile.x < 1 || tile.x > width - 2,
+  });
+
+  /**
+   * The fault the captain played into on 2026-09-19: he fled, and the hunter
+   * settled across the way he had come. It is a preference and not a promise,
+   * because a lane one tile wide has no tile in it that is not the lid on the
+   * jar - so the escape still buys its full separation here, and being caught by
+   * walking into the hunter is what makes that survivable.
+   */
+  it('keeps its separation where a one-tile lane leaves it no choice', () => {
+    const { bounds, isBlocked } = corridor(15);
+    const player = { x: 1, y: 1 };
+    const exit = { x: 13, y: 1 };
+
+    const breakaway = findHunterBreakawayTile(
+      { x: 2, y: 1 },
+      player,
+      bounds,
+      isBlocked,
+      HUNTER_BREAKAWAY_DISTANCE,
+      null,
+      [exit],
+    );
+
+    expect(walkDistance(breakaway, player, bounds, isBlocked)).toBe(HUNTER_BREAKAWAY_DISTANCE);
+  });
+
+  it('backs off the other way when that way is the only one to a way out', () => {
+    // A corridor with the raid's exit at its western end. Six steps back either
+    // way is the same escape; one of them is also a door shut on the exit.
+    const { bounds, isBlocked } = corridor(20);
+    const player = { x: 9, y: 1 };
+    const hunter = { x: 8, y: 1 };
+    const exit = { x: 1, y: 1 };
+    const flee = (mustReach: { x: number; y: number }[]) =>
+      findHunterBreakawayTile(
+        hunter,
+        player,
+        bounds,
+        isBlocked,
+        HUNTER_BREAKAWAY_DISTANCE,
+        null,
+        mustReach,
+      );
+
+    // Told nothing about the exit it falls back the way it came, which is the
+    // side the exit is on, and the player is shut in with no way to end the raid.
+    expect(flee([])).toEqual({ x: 3, y: 1 });
+    // Told about it, it takes the identical gap on the side that shuts nothing.
+    const breakaway = flee([exit]);
+    expect(breakaway).toEqual({ x: 15, y: 1 });
+    expect(walkDistance(breakaway, player, bounds, isBlocked)).toBe(HUNTER_BREAKAWAY_DISTANCE);
+  });
+
+  it('names the last way out itself as a seal, however it is shut', () => {
+    const { bounds, isBlocked } = corridor(20);
+    const player = { x: 9, y: 1 };
+    const { doors, sealsIn } = doorsFrom(player, bounds, isBlocked, [{ x: 1, y: 1 }]);
+    const at = (x: number) => doorIndex({ x, y: 1 }, bounds);
+
+    // Standing on the exit shuts it as surely as standing in front of it does.
+    expect(sealsIn.has(at(1))).toBe(true);
+    expect(sealsIn.has(at(5))).toBe(true);
+    expect(sealsIn.has(at(15))).toBe(false);
+    // Every tile of a lane is a door; only the ends of it are not.
+    expect(doors.has(at(5))).toBe(true);
+    expect(doors.has(at(18))).toBe(false);
+  });
+});
 
 describe('a raid where the player flees and then walks', () => {
   const bounds = { width: 200, height: 20 };
