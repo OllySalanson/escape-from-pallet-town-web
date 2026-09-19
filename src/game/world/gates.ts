@@ -97,7 +97,17 @@ export const WORLD_GATES: readonly MapGate[] = [
     bossId: 'floodplain-toll-keeper',
     label: 'ORCHARD FORD',
     tiles: [{ x: 38, y: 37 }, { x: 39, y: 37 }, { x: 40, y: 37 }],
-    closed: { material: 'water' },
+    // Shut, a ford is deep water, and deep water with nothing in it is just
+    // river: a stranger touring the map read this door's caption as the
+    // fountain's. So the chain Briggs keeps across it hangs from a post at each
+    // end while it is shut, and goes with him.
+    closed: {
+      material: 'water',
+      props: [
+        { name: 'mooringPost', x: 38, y: 36 },
+        { name: 'mooringPost', x: 40, y: 36 },
+      ],
+    },
     open: { material: 'ford' },
   },
   {

@@ -72,6 +72,12 @@ export function extractionRequirementText(point: ExtractionPoint, elapsedMs: num
  * names of its ways out, so the name goes first, the way a gate's does.
  */
 export function extractionCaption(point: ExtractionPoint, isOpen: boolean, elapsedMs: number): string {
+  // An exit a landmark has to open says so on a line of its own. On one line it
+  // was `EXTRACT ACTIVATE RANGER STATION` - two verbs in a row, and a caption
+  // twelve tiles wide lying across the ground it was meant to be beside.
+  if (!isOpen && point.requirement?.kind === 'poi-activated') {
+    return `${point.label}\nEXTRACT SEALED\n${extractionRequirementText(point, elapsedMs)}`;
+  }
   return `${point.label}\nEXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, elapsedMs)}`;
 }
 

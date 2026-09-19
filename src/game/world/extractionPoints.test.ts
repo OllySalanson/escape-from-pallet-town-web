@@ -19,9 +19,17 @@ describe('what the map says over an exit', () => {
   it('says what a shut exit is waiting for, under its name', () => {
     const ferry = exit('floodplain-relay', 'FERRY DOCK');
     expect(extractionCaption(ferry, false, 5_000)).toBe('FERRY DOCK\nEXTRACT OPENS IN 40s');
-    expect(extractionCaption(exit('floodplain-relay', 'RADIO EXIT'), false, 0)).toBe(
-      'RADIO EXIT\nEXTRACT ACTIVATE RANGER STATION',
+  });
+
+  it('gives an exit a landmark has to open a line for that, rather than two verbs in a row', () => {
+    const radio = exit('floodplain-relay', 'RADIO EXIT');
+    expect(extractionCaption(radio, false, 0)).toBe(
+      'RADIO EXIT\nEXTRACT SEALED\nACTIVATE RANGER STATION',
     );
+    expect(extractionCaption(radio, true, 0)).toBe('RADIO EXIT\nEXTRACT OPEN');
+    // No line of it is wider than the longest name a caption already carries.
+    const widest = Math.max(...extractionCaption(radio, false, 0).split('\n').map((line) => line.length));
+    expect(widest).toBeLessThanOrEqual('HELD BY SLUICE KEEPER DANE'.length);
   });
 
   it('names every authored exit differently on its own map, or the names are no use to steer by', () => {
