@@ -78,6 +78,63 @@ export const WORLD_GATES: readonly MapGate[] = [
     open: { material: 'grass' },
   },
 
+  // -- Pallet Town -----------------------------------------------------------
+  // The far bank of the millpond is a towpath with an end at each end: the head
+  // of it, off the pond lane a dozen steps from the square, and the foot of it,
+  // on the sluice apron the east ford lands on. Shut at both, it is the one part
+  // of the town nobody walks - and the Mill Stair, the only way out that never
+  // crosses the leat, is on it. Miller Vance holds the head, standing on the
+  // lane in front of it; beating him opens the foot as well, and the town turns
+  // out to be a ring: square to South Gate without crossing the water once.
+  {
+    id: 'pallet-towpath-gate',
+    mapId: 'pallet-town',
+    bossId: 'pallet-mill-keeper',
+    label: 'TOWPATH GATE',
+    tiles: [{ x: 27, y: 13 }, { x: 28, y: 13 }],
+    closed: { material: 'fence' },
+    open: { material: 'earth' },
+  },
+  {
+    id: 'pallet-towpath-steps',
+    mapId: 'pallet-town',
+    bossId: 'pallet-mill-keeper',
+    label: 'TOWPATH STEPS',
+    // Rock off the race wall, choking the last two rows of the towpath above
+    // the sluice apron - the same door the Overlook's steps are, and for the
+    // same reason: what is behind it is ground the player already stood on.
+    tiles: [{ x: 26, y: 28 }, { x: 27, y: 28 }],
+    closed: { material: 'cliff' },
+    open: { material: 'earth' },
+  },
+
+  // -- Viridian Forest -------------------------------------------------------
+  // The rock the fire tower is built against runs east along the top of the
+  // wood to the head of the Tower Steps. The way up is the nub at the tower's
+  // foot, which until now went nowhere; the way down is the rake of steps into
+  // the stair clearing. Lookout Pell holds the ridge, and beating him is the
+  // forest turning out to be a fifth as wide as it walks: light the tower and
+  // the exit it opens is a dozen steps along the top rather than the long way
+  // round the whole map.
+  {
+    id: 'forest-ridge-gate',
+    mapId: 'viridian-forest',
+    bossId: 'forest-ridge-keeper',
+    label: 'RIDGE GATE',
+    tiles: [{ x: 19, y: 4 }],
+    closed: { material: 'fence' },
+    open: { material: 'grass' },
+  },
+  {
+    id: 'forest-ridge-stair',
+    mapId: 'viridian-forest',
+    bossId: 'forest-ridge-keeper',
+    label: 'RIDGE STAIR',
+    tiles: [{ x: 25, y: 6 }, { x: 25, y: 7 }],
+    closed: { material: 'cliff' },
+    open: { material: 'grass' },
+  },
+
   // -- Floodplain Relay ------------------------------------------------------
   // Three bosses, two doors each. The first of each pair is the door in front
   // of the player; the second is somewhere they have already stood, and opens

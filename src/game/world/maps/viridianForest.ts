@@ -210,6 +210,46 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
   // stand's nearest crown, which hid whoever stood on it; it is thicket again.
   map.draw(12, 24, ['T']);
 
+  // == THE RIDGE ===========================================================
+  // The rock the fire tower is built against does not stop at the tower: it
+  // runs east along the top of the wood and comes out over the head of the
+  // Tower Steps. Lookout Pell holds both ends of it, so until he is beaten this
+  // is the one part of the forest nobody has stood on - and it is the one part
+  // with no tall grass in it, which is the whole point of it. `no dry way to
+  // anywhere` is this map's pinned rule for a fresh save; the ridge is what
+  // beating a boss buys, and it turns the walk from the tower to the stair it
+  // lights from half a map into a dozen steps.
+  //
+  // Bare shelf between rock knuckles, two rows deep and never a straight run,
+  // with the crest along the map's top edge and a rake of steps down into the
+  // stair clearing at 25,5-25,7. The nub at 18,4, which until now was a single
+  // step of ground that went nowhere, is the foot of the way up: 19,4 is the
+  // gate, 25,6-25,7 the stair, and the pocket at 28,3 is the RIDGE GAP.
+  //            1         2         3
+  //            8901234567890 1
+  map.draw(18, 0, [
+    'CCCCCCCCCCCCCC',
+    'TC...C....C..C',
+    'T..C...C.....C',
+    'T.CC.C...C.C.C',
+    '..CCCCC.CC    ',
+    '       .      ',
+    '       .      ',
+    '       .      ',
+  ]);
+  // The lookout's own: a signal flag on the crest, which is what the ridge is
+  // for and the thing that makes it a place rather than a gap in the rocks. It
+  // stands on rock that is solid either way, so it takes no ground.
+  map.plant(18, 0, 'flag');
+
+  // Four crowns felled for the ridge's sake. A crown is drawn over the figures
+  // and canopy is ground a caption may not take, so a door ringed by them is a
+  // door with no name on it: the stair's caption had no seat left in the whole
+  // view. `tools/tileset/crowns.mts` names the offenders; these are theirs.
+  map.draw(23, 6, ['T']);
+  map.draw(20, 12, ['T']);
+  map.draw(29, 12, ['T']);
+
   // == WHAT GROWS IN THE THICKET ===========================================
   // The lanes are packed so close that the wood between them is mostly a hedge
   // thick, and the lattice only fits a broadleaf where three tiles by two are
@@ -233,7 +273,7 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
     '                                ',
     '            bb                  ',
     'p                               ',
-    '        p         t b           ',
+    '        p         t             ',
     '                                ',
     '                               b',
     '                 p              ',

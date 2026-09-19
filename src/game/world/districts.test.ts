@@ -71,8 +71,8 @@ describe('the named districts of a map', () => {
 
   it('Pallet Town: puts every exit, landing and landmark in the place it is remembered as part of', () => {
     expect(placesOn('pallet-town')).toEqual({
-      exits: { 'SOUTH GATE': 'THE STOCKYARD', 'MILL STAIR': 'THE MILLPOND', 'WEST CULVERT': 'THE FLOOD' },
-      landings: { 'Town Square': 'MARKET SQUARE' },
+      exits: { 'SOUTH GATE': 'THE STOCKYARD', 'MILL STAIR': 'THE FAR BANK', 'WEST CULVERT': 'THE FLOOD' },
+      landings: { 'Town Square': 'MARKET SQUARE', 'The Far Bank': 'THE FAR BANK' },
       landmarks: { 'TOWN PUMP': 'THE GREEN', 'SLUICE WHEEL': 'THE STOCKYARD' },
     });
     // The south is named where the south bank starts: on the far step of each
@@ -109,8 +109,13 @@ describe('the named districts of a map', () => {
 
   it('Viridian Forest: puts every exit, landing and landmark in the clearing it is named for', () => {
     expect(placesOn('viridian-forest')).toEqual({
-      exits: { 'BROOK FORD': 'BROOK HEAD', 'FOREST CLEARING': 'THE CLEARING', 'TOWER STEPS': 'TOWER STEPS' },
-      landings: { 'Viridian Forest': 'NORTH LANDING' },
+      exits: {
+        'BROOK FORD': 'BROOK HEAD',
+        'FOREST CLEARING': 'THE CLEARING',
+        'TOWER STEPS': 'TOWER STEPS',
+        'RIDGE GAP': 'THE RIDGE',
+      },
+      landings: { 'Viridian Forest': 'NORTH LANDING', 'The Ridge': 'THE RIDGE' },
       landmarks: { 'FIRE TOWER': 'FIRE TOWER' },
     });
   });

@@ -44,6 +44,16 @@ const STATE = `(() => {
     out.world = {
       tile: w.currentTile, target: w.targetTile, dialog: w.dialogBox.visible,
       prompt: Boolean(w.trainerPrompt), map: w.currentMap.id,
+      // The three states in which nothing is on screen to press through and the
+      // world is about to change anyway: an authored beat is running (the
+      // watch's mark and walk-up is one - see world/cutscenes.ts), the fight
+      // it announces is still queued behind the last line of dialogue, and the
+      // hand-over to the battle is a fade. A driver that reads "no dialogue,
+      // not walking" as "nothing is happening" stops stepping in the middle of
+      // all three - and a boss fight is exactly the thing that changes the
+      // answer to the next question it asks the map, because winning one opens
+      // a gate.
+      pendingBattle: Boolean(w.pendingTrainerBattle || w.cutscene || w.isWarping),
       elapsedMs: w.runSession?.manager.snapshot().elapsedMs ?? null,
     };
   }
@@ -172,6 +182,17 @@ try {
         return;
       }
       if (s.battle) {
+        // A level crossed mid-fight can offer a move against a full moveset,
+        // and that question is a DOM overlay with no battle command behind it:
+        // the driver would sit on the events mode for ever. Escape in a fight
+        // is "do not learn", which is the answer a script has no business
+        // giving any other way.
+        if (s.overlays > 0) {
+          note('move chooser: declining');
+          await press('Escape');
+          await wait(250);
+          continue;
+        }
         const selected = s.battle.commands.find((command) => command.startsWith('\u25b6')) ?? '';
         if (s.battle.mode === 'main') {
           // A level-5 starter does not win a raid by fighting everything in the
@@ -199,6 +220,8 @@ try {
       } else if (s.world?.dialog) {
         await press('Space');
         await wait(200);
+      } else if (s.world?.pendingBattle) {
+        await wait(150);
       } else if (s.world && !s.world.target) {
         return;
       } else {
@@ -221,6 +244,9 @@ try {
       const next = await nextKey(goal);
       if (next.arrived || next.unreachable) {
         note(next.arrived ? `reached ${what}` : `${what} unreachable`);
+        // The last step may have walked into a watch, and the fight it starts
+        // can open a gate: leave with the world settled, not mid-approach.
+        await clearInterruptions();
         return;
       }
       // One step: the key goes down, and comes up once the game has taken it.

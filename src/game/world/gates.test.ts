@@ -277,7 +277,8 @@ describe('gate state', () => {
     expect(getWorldMap(mapId, [boss])).toBe(getWorldMap(mapId, [boss, 'someone-else']));
     expect(getWorldMap(mapId, ['someone-else'])).toBe(WORLD_MAPS[mapId]);
     expect(getWorldMap(mapId, [boss])).not.toBe(WORLD_MAPS[mapId]);
-    // A map without gates has one state whoever has been beaten.
+    // A map is remembered by its OWN doors: a boss beaten on another map opens
+    // nothing here, so this is the fresh-save map again.
     expect(getWorldMap('viridian-forest', [boss])).toBe(WORLD_MAPS['viridian-forest']);
   });
 
@@ -365,7 +366,10 @@ describe('gate state', () => {
   });
 
   it('groups a map\'s doors by keeper, front door first', () => {
-    for (const mapId of ['route-1', 'floodplain-relay'] as const) {
+    // Every gated map now, which is every map but none: two doors per keeper
+    // is the shape, and a keeper with one door would be a boss who opens no
+    // way back.
+    for (const mapId of GATED_MAP_IDS) {
       const groups = gatesByKeeper(gatesForMap(mapId));
       expect(groups.flat()).toHaveLength(gatesForMap(mapId).length);
       for (const doors of groups) {

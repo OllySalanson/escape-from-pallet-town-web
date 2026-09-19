@@ -75,6 +75,13 @@ export const RUN_INSERTIONS = {
     position: { x: 7, y: 9 },
     description: 'The market square under the two houses. East for the north field and the mill, south for the green and the allotments - and the leat between you and every way out but one.',
   },
+  'pallet-far-bank': {
+    id: 'pallet-far-bank',
+    label: 'The Far Bank',
+    mapId: 'pallet-town',
+    position: { x: 27, y: 22 },
+    description: 'The towpath behind the millpond, past the miller’s gate. The Mill Stair is cut in the rock beside you, and the foot of the path comes out on the sluice apron.',
+  },
   'route-1': {
     id: 'route-1',
     label: 'Route 1',
@@ -95,6 +102,13 @@ export const RUN_INSERTIONS = {
     mapId: 'viridian-forest',
     position: { x: 7, y: 4 },
     description: 'North Landing. Eleven clearings, seventeen trails, and no fast lane anywhere on the map.',
+  },
+  'viridian-ridge': {
+    id: 'viridian-ridge',
+    label: 'The Ridge',
+    mapId: 'viridian-forest',
+    position: { x: 26, y: 2 },
+    description: 'On top of the wood, past the lookout. Bare rock, its own way off at the east end, and the stair the fire tower lights a dozen steps down the rake.',
   },
 } as const;
 

@@ -167,6 +167,18 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     unlockAtMs: 0,
     requirement: { kind: 'poi-activated', poiId: 'forest-fire-tower', poiLabel: 'FIRE TOWER' },
   },
+  {
+    // The ridge's own way off, in a pocket at the east end of the shelf above
+    // the Tower Steps - always open, because a raid that drops in on the ridge
+    // must never depend on the door it came through. It is the far side of the
+    // rock the stair is cut into: two exits within sight of each other and a
+    // whole ridge's walk between them.
+    mapId: 'viridian-forest',
+    position: { x: 28, y: 3 },
+    label: 'RIDGE GAP',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
   // The Floodplain is played a piece at a time, so every piece has a way out
   // inside it: three on the home bank on three different rules, and one behind
   // each door a boss holds. `hunterFlee.test.ts` holds the other half of that -
