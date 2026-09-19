@@ -893,7 +893,12 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private hunterFleeLabel(): string {
-    return formatHunterFleeCommand(this.runSession?.manager.nextHunterFleePenaltyMs() ?? 0);
+    const manager = this.runSession?.manager;
+    const snapshot = manager?.snapshot();
+    return formatHunterFleeCommand(
+      manager?.nextHunterFleePenaltyMs() ?? 0,
+      snapshot ? snapshot.durationMs - snapshot.elapsedMs : undefined,
+    );
   }
 
   private wildEscapeLabel(): string {

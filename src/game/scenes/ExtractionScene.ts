@@ -324,7 +324,7 @@ export class ExtractionScene extends Phaser.Scene {
       </div>
       <div class="gamble-group">
         <p class="eyebrow">Secure slot</p>
-        <div class="entity-list">${securedRows || '<p class="empty-state">You protected nothing.</p>'}</div>
+        <div class="entity-list">${securedRows || `<p class="empty-state">${escapeHtml(report.securedEmptyText)}</p>`}</div>
       </div>
       ${
         // A lost raid's at-risk list is exactly the ledger beside it, so only a
@@ -396,7 +396,10 @@ export class ExtractionScene extends Phaser.Scene {
     if (this.report.outcome === 'WIPED') {
       return 'Losses applied';
     }
-    return this.report.haulTier === 'empty' ? 'You came home whole' : 'Stash secured';
+    if (this.report.haulTier !== 'empty') {
+      return 'Stash secured';
+    }
+    return this.spentSupplies ? 'You came home lighter' : 'You came home whole';
   }
 
   private footerNote(): string {
@@ -412,9 +415,18 @@ export class ExtractionScene extends Phaser.Scene {
     if (this.report.haulTier !== 'empty') {
       return 'Everything above is in your stash and ready for the next deployment.';
     }
-    return this.report.progress.length > 0
-      ? 'No gear banked, but what your party learned is banked with them.'
+    if (this.report.progress.length > 0) {
+      return 'No gear banked, but what your party learned is banked with them.';
+    }
+    // A loadout that drank its Potions is not "back at base": the panel above
+    // has just listed what it spent.
+    return this.spentSupplies
+      ? 'Nothing new to bank. What is left of your loadout is back at base.'
       : 'Nothing new to bank, but your loadout is back at base and ready to redeploy.';
+  }
+
+  private get spentSupplies(): boolean {
+    return (this.report.spent ?? []).length > 0;
   }
 }
 

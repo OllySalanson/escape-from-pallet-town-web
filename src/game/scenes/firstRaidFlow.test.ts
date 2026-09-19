@@ -44,7 +44,11 @@ describe('first raid flow regressions', () => {
     // flag it, or BattleScene cannot show the one-off explanation.
     expect(worldSceneSource).toContain('const teaching = consumeTeachingEncounter(this.runSession);');
     expect(worldSceneSource).toMatch(/teaching \?\?\s*rollEncounter\(/);
-    expect(worldSceneSource).toContain('teachingBattle: teaching !== null,');
+    // The lesson is claimed from the save, so it is given once per save rather
+    // than once per raid (`SaveManager.test.ts` holds the claim itself).
+    expect(worldSceneSource).toContain(
+      'const teachingBattle = teaching !== null && new SaveManager().claimBattleLesson();',
+    );
   });
 
   it("delays the first hunter until the player reaches the contract's area or a landmark", () => {

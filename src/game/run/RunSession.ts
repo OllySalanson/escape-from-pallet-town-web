@@ -52,6 +52,12 @@ export interface ActiveRunSession {
   firstDeploymentBriefingShown?: boolean;
   /** Set once the authored teaching encounter has been handed to BattleScene. */
   teachingEncounterUsed?: boolean;
+  /**
+   * Steps walked this raid, which is how the hunter's first arrival tells a
+   * player who has set off from one still reading the insertion screen - see
+   * `world/hunterArrival.ts`.
+   */
+  stepsTaken?: number;
 }
 
 export function createActiveRunSession(

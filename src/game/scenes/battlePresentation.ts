@@ -149,9 +149,26 @@ export const formatSeconds = (ms: number): string => `${Math.round(ms / 1_000)}s
 /**
  * Escape commands state their price before the player commits. The hunter's escape
  * costs raid time and always works; a wild escape is a roll, so it shows its odds.
+ *
+ * A price means nothing without the purse beside it: `FLEE -60s` with 1:24 on
+ * the clock was honest and still ended a raid eight steps from the exit, because
+ * nothing on the command related the two numbers. So once the price is a large
+ * share of what is left the label carries what is left, and once it is all of it
+ * the label says what buying it does instead of what it costs.
  */
-export const formatHunterFleeCommand = (penaltyMs: number): string =>
-  `FLEE -${formatSeconds(penaltyMs)}`;
+export const HUNTER_FLEE_WARNING_SHARE = 0.5;
+
+export const formatHunterFleeCommand = (
+  penaltyMs: number,
+  remainingMs: number = Number.POSITIVE_INFINITY,
+): string => {
+  if (penaltyMs >= remainingMs) {
+    return 'FLEE: CLOCK OUT';
+  }
+  return penaltyMs >= remainingMs * HUNTER_FLEE_WARNING_SHARE
+    ? `FLEE -${formatSeconds(penaltyMs)} OF ${formatSeconds(remainingMs)}`
+    : `FLEE -${formatSeconds(penaltyMs)}`;
+};
 
 export const formatWildEscapeCommand = (chance: number): string =>
   `RUN ${Math.round(chance * 100)}%`;

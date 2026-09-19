@@ -100,7 +100,7 @@ export class PartyScene extends Phaser.Scene {
     this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run team</p><h1>Party</h1></div><p class="stash-count">Select a member to inspect</p></header><main class="party-layout"><section class="party-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable ${index === this.selectedIndex ? 'selected' : ''}" data-member="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${conditionLine(pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('') || '<p class="empty-state">No Pokémon in your party.</p>'}</section>${detail}</main></div>`;
     this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-member]').forEach((button) => button.onclick = () => { this.selectedIndex = Number(button.dataset.member); this.renderModernMenu(); });
-    this.menuOverlay!.focus('[data-member], [data-close]');
+    this.menuOverlay!.focus('[data-member].selected', '[data-member]', '[data-close]');
   }
 
   private drawBackground(): void {

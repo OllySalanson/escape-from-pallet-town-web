@@ -870,3 +870,59 @@ describe('the Outfitter', () => {
   });
 });
 
+/**
+ * Playtest 3, B6d: clicking "Enter the raid" shortly after arriving on the final
+ * check did nothing, and a second click worked. Reproduced in a browser: a
+ * status line raised on an earlier step re-rendered the whole screen 2.2s
+ * later, and a render between mousedown and mouseup replaces the button the
+ * press began on, so no click is ever dispatched.
+ */
+describe('taking a status line down', () => {
+  function hubWithRenderCount() {
+    const { hub } = createHub();
+    let renders = 0;
+    let html = '';
+    const removed = vi.fn();
+    const root = {
+      get innerHTML() { return html; },
+      set innerHTML(value: string) { html = value; renders += 1; },
+      querySelector: (selector: string) => (selector === '.menu-status' ? { remove: removed } : null),
+      querySelectorAll: () => [],
+    };
+    const timers: { callback: () => void; remove: ReturnType<typeof vi.fn> }[] = [];
+    Object.assign(hub as unknown as Record<string, unknown>, {
+      overlay: { root, focus: vi.fn() },
+      time: {
+        delayedCall: (_ms: number, callback: () => void) => {
+          const timer = { callback, remove: vi.fn() };
+          timers.push(timer);
+          return timer;
+        },
+      },
+    });
+    const internals = hub as unknown as { setStatus(message: string | undefined): void };
+    return { hub, internals, timers, removed, renders: () => renders };
+  }
+
+  it('removes the line without rebuilding the buttons under the pointer', () => {
+    const { hub, internals, timers, removed, renders } = hubWithRenderCount();
+    internals.setStatus('The secure slot protects 1 item stacks.');
+    const rendersWhileShown = renders();
+
+    timers[0].callback();
+
+    expect(renders()).toBe(rendersWhileShown);
+    expect(removed).toHaveBeenCalledOnce();
+    expect(statusOf(hub)).toBe('');
+  });
+
+  it('keeps one timer, so an old message cannot cut a new one short', () => {
+    const { internals, timers } = hubWithRenderCount();
+    internals.setStatus('first');
+    internals.setStatus('second');
+
+    expect(timers).toHaveLength(2);
+    expect(timers[0].remove).toHaveBeenCalledOnce();
+    expect(timers[1].remove).not.toHaveBeenCalled();
+  });
+});

@@ -182,7 +182,9 @@ describe('hunter disengagement wiring', () => {
       sceneSource.indexOf('private advanceRunClock('),
       sceneSource.indexOf('private refreshExtractionMarkers('),
     );
-    expect(clock).toContain('const clockMs = this.pendingTrainerBattle ? 0 : deltaMs;');
+    expect(clock).toContain(
+      'const clockMs = this.pendingTrainerBattle || this.openingBriefingOpen ? 0 : deltaMs;',
+    );
   });
 
   it('lets a player walk out of a dialogue they did not open', () => {
@@ -194,8 +196,13 @@ describe('hunter disengagement wiring', () => {
     );
     expect(advance).toContain('this.isInteractionPressed()');
     expect(advance).toContain('this.unsolicitedDialog');
-    for (const key of ['this.controls.up', 'this.controls.down', 'this.controls.left', 'this.controls.right']) {
-      expect(advance).toContain(key);
+    expect(advance).toContain('this.directionKeys.some(');
+    const directionKeys = sceneSource.slice(
+      sceneSource.indexOf('private get directionKeys('),
+      sceneSource.indexOf('private isInteractionPressed('),
+    );
+    for (const key of ['up', 'down', 'left', 'right', 'w', 'a', 's', 'd']) {
+      expect(directionKeys).toMatch(new RegExp(`\\b${key}\\b`));
     }
     expect(sceneSource).toContain('if (!this.isDialogAdvancePressed()) {');
     // Every interruption the hunter causes goes through it, and a sign does not.
@@ -209,6 +216,7 @@ describe('hunter disengagement wiring', () => {
       sceneSource.indexOf('public create('),
     );
     expect(reset).toContain('this.unsolicitedDialog = false;');
+    expect(reset).toContain('this.spentPresses = new SpentPresses();');
   });
 
   it('keeps the remaining escape readable on the HUD instead of hiding it', () => {

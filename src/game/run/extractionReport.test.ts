@@ -67,17 +67,19 @@ describe('extraction report after a survived raid', () => {
       { itemId: 'super-potion', label: 'Super Potion', quantity: 1 },
     ]);
     // The secure slot and the exposed remainder are the pre-deployment choice,
-    // read back to the player as the consequence it turned out to have.
+    // read back as the consequence it turned out to have: two of the three
+    // secured Potions were drunk and one ball was thrown, so neither is listed
+    // as having come home.
     expect(report.secured.pokemon.map(({ name }) => name)).toEqual(['Bulbasaur']);
     expect(report.secured.items).toEqual([
-      { itemId: 'potion', label: 'Potion', quantity: 3 },
+      { itemId: 'potion', label: 'Potion', quantity: 1 },
     ]);
     expect(report.risked.pokemon).toEqual([]);
     expect(report.risked.items).toEqual([
-      { itemId: 'poke-ball', label: 'Poke Ball', quantity: 3 },
+      { itemId: 'poke-ball', label: 'Poke Ball', quantity: 2 },
     ]);
     expect(report.gambleVerdict).toBe(
-      'A wipe would have cost you 3 Poke Balls. It did not happen this time.',
+      'A wipe would have cost you 2 Poke Balls. It did not happen this time.',
     );
     // Spent is measured against the bag, so found supplies used up still count.
     expect(report.spent).toEqual([
@@ -86,6 +88,79 @@ describe('extraction report after a survived raid', () => {
     ]);
     expect(report.clockLabel).toBe('2:17 of 5:00');
     expect(report.contract?.complete).toBe(true);
+  });
+
+  /**
+   * Playtest 3, B3: three secured Potions drunk and one of two balls thrown.
+   * The screen listed "Potion x3 Protected" and "Poke Ball x2 Made it back"
+   * above "Supplies spent: 3x Potion, 1x Poke Ball", under a footer saying
+   * everything above was in the stash.
+   */
+  it('never lists a supply the raid spent as one that made it back', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({
+      party: [starter],
+      items: [
+        { itemId: 'potion', quantity: 3 },
+        { itemId: 'poke-ball', quantity: 2 },
+      ],
+      secure: { items: [{ itemId: 'potion', quantity: 3 }] },
+    });
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      carriedOut: { 'poke-ball': 1 },
+      saved: true,
+    });
+
+    expect(report.ledgerEmptyText).toBe('Nothing new. What the raid used up is counted below.');
+    expect(report.secured.items).toEqual([]);
+    expect(report.securedEmptyText).toBe('Everything you protected was used up in the field.');
+    expect(report.risked.items).toEqual([{ itemId: 'poke-ball', label: 'Poke Ball', quantity: 1 }]);
+    expect(report.spent).toEqual([
+      { itemId: 'potion', label: 'Potion', quantity: 3 },
+      { itemId: 'poke-ball', label: 'Poke Ball', quantity: 1 },
+    ]);
+    expect(report.gambleVerdict).toBe(
+      'A wipe would have cost you Bulbasaur and 1 Poke Ball. It did not happen this time.',
+    );
+  });
+
+  /**
+   * The ledger reconciles to the item: whatever the raid held - deployed or
+   * found - is listed exactly once, as protected, carried at risk, banked or
+   * spent. Found loot beyond the loadout is the banked ledger's, never also
+   * "made it back".
+   */
+  it('lists every supply the raid held exactly once', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({
+      party: [starter],
+      items: [{ itemId: 'potion', quantity: 3 }],
+      secure: { pokemon: [starter], items: [{ itemId: 'potion', quantity: 1 }] },
+    });
+    manager.registerFoundItem('potion', 2);
+    manager.resolveEscape();
+
+    // Five held, one drunk: the raid comes home one Potion up.
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [{ itemId: 'potion', quantity: 1 }] },
+      carriedOut: { potion: 4 },
+      saved: true,
+    });
+
+    const quantity = (items: readonly { quantity: number }[]): number =>
+      items.reduce((total, item) => total + item.quantity, 0);
+    expect(quantity(report.secured.items)).toBe(1);
+    expect(quantity(report.risked.items)).toBe(2);
+    expect(quantity(report.ledger.items)).toBe(1);
+    expect(quantity(report.spent ?? [])).toBe(1);
   });
 
   /**
@@ -140,10 +215,12 @@ describe('extraction report after a survived raid', () => {
     expect(report.haulTier).toBe('thin');
     expect(report.headline).toBe('You scraped out.');
     expect(report.summary).toContain('Banked 1 Antidote');
-    // Nothing was protected, so every entry was exposed and the screen says so.
+    // Nothing was protected, so every entry was exposed and the screen says so -
+    // but the three Potions were drunk, and a wipe cannot take what is gone.
     expect(report.secured).toEqual({ pokemon: [], items: [] });
+    expect(report.securedEmptyText).toBe('You protected nothing.');
     expect(report.gambleVerdict).toBe(
-      'A wipe would have cost you Charmander and 3 Potions. It did not happen this time.',
+      'A wipe would have cost you Charmander. It did not happen this time.',
     );
     expect(report.pressure).toContain('2 escapes from the hunter, for 1:40 off the clock');
     expect(report.spent).toEqual([{ itemId: 'potion', label: 'Potion', quantity: 3 }]);

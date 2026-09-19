@@ -285,6 +285,8 @@ describe('two raids in a row on one WorldScene instance', () => {
       internals.tryExtract();
       expect(manager.phase).toBe(RunPhase.Escaped);
     } else if (ending === 'timer') {
+      // The deployment briefing holds the clock until it is read.
+      (scene as unknown as { dialogBox: { visible: boolean } }).dialogBox.visible = false;
       internals.advanceRunClock(RAID_DURATION_MS);
       internals.advanceRunClock(ENRAGE_GRACE_MS);
       expect(manager.phase).toBe(RunPhase.Wiped);
@@ -316,6 +318,36 @@ describe('two raids in a row on one WorldScene instance', () => {
     internals.handleRunResolutionComplete();
 
     expect(started.scene.start).toHaveBeenCalledWith('battle', expect.anything());
+  });
+
+  /**
+   * Playtest 3, D4: the raid chip already read 4:58 while the first "ARROW KEYS
+   * / WASD" box was still typing. A box the raid raises on its own first frame
+   * is not billed; the clock starts when the player can first act.
+   */
+  it('does not charge the opening briefing to the raid clock', () => {
+    const controls = makeControls();
+    const scene = new WorldScene();
+    attachSceneStubs(scene, controls);
+    const manager = new RunManager();
+    startRaid(scene, manager, 'floodplain-relay', 1);
+    const internals = scene as unknown as {
+      dialogBox: { visible: boolean; showMessage(): void };
+      advanceRunClock(deltaMs: number): void;
+    };
+
+    expect(internals.dialogBox.visible).toBe(true);
+    internals.advanceRunClock(2_000);
+    expect(manager.snapshot().elapsedMs).toBe(0);
+
+    internals.dialogBox.visible = false;
+    internals.advanceRunClock(2_000);
+    expect(manager.snapshot().elapsedMs).toBe(2_000);
+
+    // Only that box is free: dialogue the player opens afterwards is billed.
+    internals.dialogBox.showMessage();
+    internals.advanceRunClock(2_000);
+    expect(manager.snapshot().elapsedMs).toBe(4_000);
   });
 
   it('starts every raid from a clean per-raid state rather than the last one', () => {
