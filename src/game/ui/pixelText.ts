@@ -230,8 +230,12 @@ function bitmapFor(
   metrics: GlyphMetrics,
   threshold: number,
 ): GlyphBitmap | null {
-  const style = pass === 'fill' ? context.fillStyle : `${String(context.strokeStyle)}/${context.lineWidth}`;
-  const key = `${context.font}|${char}|${pass}|${String(style)}`;
+  const paint = pass === 'fill' ? context.fillStyle : context.strokeStyle;
+  if (typeof paint !== 'string') {
+    // A gradient or a pattern has no value to cache by; the callers never send one here.
+    return null;
+  }
+  const key = `${context.font}|${char}|${pass}|${paint}|${pass === 'stroke' ? context.lineWidth : 0}`;
   if (bitmapCache.has(key)) {
     return bitmapCache.get(key) ?? null;
   }
@@ -344,6 +348,8 @@ export function installPixelText(TextClass: TextClassLike): void {
     return;
   }
   TextClass.prototype[PATCHED] = true;
+  // Taken off the prototype on purpose: it is only ever called back on a Text, below.
+  // eslint-disable-next-line @typescript-eslint/unbound-method
   const paint = TextClass.prototype.updateText;
   TextClass.prototype.updateText = function updateText(this: TextLike): unknown {
     hardenContext(this.context);

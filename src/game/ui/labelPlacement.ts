@@ -222,3 +222,28 @@ export function placeCaptions(
     return { ...candidates[index], candidate: index, visible: true };
   });
 }
+
+/**
+ * Where the dialogue box sits when it speaks about someone.
+ *
+ * It belongs at the bottom of the screen. But a line the world raises by itself
+ * is about a person - the hunter arriving, a trainer who saw you - and when that
+ * person stood south of the player the box announcing them was drawn over them.
+ * The box goes to the top when the bottom would cover anyone it is about and
+ * the top would cover fewer of them; a tie stays at the bottom, because a box
+ * that moved for no gain is one more thing to find.
+ */
+export function placeDialog(request: {
+  /** The screen, and the box on it, in screen pixels. */
+  readonly viewHeight: number;
+  readonly box: { readonly x: number; readonly width: number; readonly height: number };
+  readonly margin: number;
+  /** Who the line is about, in screen pixels. */
+  readonly about: readonly Rect[];
+}): { readonly y: number; readonly edge: 'top' | 'bottom' } {
+  const { viewHeight, box, margin, about } = request;
+  const at = (y: number): Rect => ({ x: box.x, y, width: box.width, height: box.height });
+  const covered = (y: number): number => about.filter((one) => overlap(at(y), one) > 0).length;
+  const bottom = viewHeight - box.height - margin;
+  return covered(margin) < covered(bottom) ? { y: margin, edge: 'top' } : { y: bottom, edge: 'bottom' };
+}

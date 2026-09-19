@@ -76,7 +76,7 @@ import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
-import { placeCaptions, type Rect } from '../ui/labelPlacement';
+import { placeCaptions, placeDialog, type Rect } from '../ui/labelPlacement';
 import { GAME_FONT } from '../ui/gameFont';
 import {
   CAPTION_BAND,
@@ -352,6 +352,8 @@ export class WorldScene extends Phaser.Scene {
    * what lets a direction key get you out of the second kind.
    */
   private unsolicitedDialog = false;
+  /** True while the dialogue box is seated at the top, clear of someone it announced. */
+  private dialogRaised = false;
   /**
    * True while the deployment briefing is still on screen. It is the one box
    * the raid opens on its own first frame, before the player has touched a key,
@@ -402,6 +404,8 @@ export class WorldScene extends Phaser.Scene {
     this.pendingResultScreen = false;
     this.pendingTrainerBattle = undefined;
     this.unsolicitedDialog = false;
+    // The box itself is rebuilt at the bottom by create(), so the note that it was moved goes too.
+    this.dialogRaised = false;
     this.openingBriefingOpen = false;
     this.spentPresses = new SpentPresses();
     // Phaser destroyed the object with the last raid's scene, so this only has
@@ -1421,16 +1425,45 @@ export class WorldScene extends Phaser.Scene {
       audioManager.play('textAdvance');
       this.dialogBox.advance();
       this.unsolicitedDialog = this.unsolicitedDialog && this.dialogBox.visible;
+      if (!this.dialogBox.visible) {
+        // Back to the bottom, where every line the player asks for is said.
+        this.seatDialog([]);
+      }
       return;
     }
 
     this.dialogBox.skip();
   }
 
-  /** Raises a dialogue the player did not ask for. See `unsolicitedDialog`. */
-  private interrupt(lines: readonly string[]): void {
+  /**
+   * Raises a dialogue the player did not ask for. See `unsolicitedDialog`.
+   *
+   * @param about Tiles of the people the line is about. The box is seated clear
+   * of them by `placeDialog` - the hunter's arrival used to be announced by a
+   * box drawn over the hunter.
+   */
+  private interrupt(lines: readonly string[], about: readonly GridPosition[] = []): void {
     this.unsolicitedDialog = true;
+    this.seatDialog(about);
     this.dialogBox.showMessages([...lines]);
+  }
+
+  private seatDialog(about: readonly GridPosition[]): void {
+    if (about.length === 0 && !this.dialogRaised) {
+      return;
+    }
+    const view = this.cameras.main.worldView;
+    const seat = placeDialog({
+      viewHeight: this.scale.height,
+      box: { x: this.dialogBox.x, width: DIALOG_WIDTH, height: DIALOG_HEIGHT },
+      margin: DIALOG_MARGIN,
+      about: about.map((tile) => {
+        const figure = figureRect(tile);
+        return { ...figure, x: figure.x - view.left, y: figure.y - view.top };
+      }),
+    });
+    this.dialogBox.setY(seat.y);
+    this.dialogRaised = seat.edge === 'top';
   }
 
   private tryInteract(): void {
@@ -1587,7 +1620,7 @@ export class WorldScene extends Phaser.Scene {
       introLines: watcher.introLines,
       isHunter: false,
     };
-    this.interrupt([...lead, ...watcher.introLines]);
+    this.interrupt([...lead, ...watcher.introLines], [watcher.position]);
     return true;
   }
 
@@ -2432,7 +2465,7 @@ export class WorldScene extends Phaser.Scene {
     this.createHunterSprite();
     if (awaitingSpawn) {
       audioManager.play('hunterArrival');
-      this.interrupt(['A RIVAL HUNTER is on your trail!']);
+      this.interrupt(['A RIVAL HUNTER is on your trail!'], [position]);
     }
   }
 
@@ -2598,7 +2631,7 @@ export class WorldScene extends Phaser.Scene {
       isHunter: true,
     };
     audioManager.play('hunterContact');
-    this.interrupt(this.pendingTrainerBattle.introLines);
+    this.interrupt(this.pendingTrainerBattle.introLines, [this.hunterState.position]);
     return true;
   }
 }

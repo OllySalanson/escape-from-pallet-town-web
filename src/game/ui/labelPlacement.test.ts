@@ -4,6 +4,7 @@ import {
   SUBJECT_GAP,
   VIEW_INSET,
   placeCaptions,
+  placeDialog,
   type CaptionRequest,
   type CaptionSurroundings,
   type Rect,
@@ -182,5 +183,31 @@ describe('where a map caption is allowed to sit', () => {
 
     expect(Number.isInteger(placement.x)).toBe(true);
     expect(Number.isInteger(placement.y)).toBe(true);
+  });
+});
+
+describe('where the dialogue box sits', () => {
+  const box = { x: 8, width: 304, height: 80 };
+  const figure = (y: number): Rect => ({ x: 152, y, width: 16, height: 23 });
+
+  it('stays at the bottom when it covers no one it is about', () => {
+    expect(placeDialog({ viewHeight: 240, box, margin: 8, about: [figure(100)] })).toEqual({
+      y: 152,
+      edge: 'bottom',
+    });
+    expect(placeDialog({ viewHeight: 240, box, margin: 8, about: [] }).edge).toBe('bottom');
+  });
+
+  it('goes to the top rather than cover the hunter it is announcing', () => {
+    expect(placeDialog({ viewHeight: 240, box, margin: 8, about: [figure(180)] })).toEqual({
+      y: 8,
+      edge: 'top',
+    });
+  });
+
+  it('does not move when the top would cover just as many', () => {
+    expect(
+      placeDialog({ viewHeight: 240, box, margin: 8, about: [figure(180), figure(20)] }).edge,
+    ).toBe('bottom');
   });
 });
