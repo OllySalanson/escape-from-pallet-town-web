@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import './style.css';
 import { createGameConfig } from './game/gameConfig';
 import { isTestLabRequested } from './game/dev/testLabAccess';
+import { installTestModeControls, requestedTestMode } from './game/dev/testMode';
 import { mountGame, unmountGame } from './game/gameLifecycle';
 import { watchViewport } from './game/display/stageScaler';
 import { installPixelText } from './game/ui/pixelText';
@@ -20,7 +21,13 @@ if (import.meta.env.DEV) {
 // Before the first scene exists, so no text is ever painted the soft way.
 installPixelText(Phaser.GameObjects.Text);
 
-const game = mountGame(() => new Phaser.Game(createGameConfig(developmentScenes)));
+const testMode = requestedTestMode();
+const game = mountGame(() => {
+  const created = new Phaser.Game(createGameConfig(developmentScenes, testMode));
+  // The handle a driver already reaches for gains `pauseLoop`, `stepFrames` and
+  // `resumeLoop` - and only in test mode, so nothing else can stop the game.
+  return testMode === 'off' ? created : installTestModeControls(created);
+});
 const stopWatchingViewport = watchViewport(game);
 if (import.meta.env.DEV) {
   (window as unknown as { __game: Phaser.Game }).__game = game;
