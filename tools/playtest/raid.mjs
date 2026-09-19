@@ -230,12 +230,25 @@ try {
     await walkTo(marker, `contract stop ${index + 1}`);
   }
   if (!ended) {
-    const here = (await state()).world.tile;
-    // An exit that is open from the first second: the others are a wait or a detour.
+    // An exit that is open from the first second: the others are a wait or a
+    // detour. Nearest by the walk, not by the crow - on a map of rivers and shut
+    // gates an exit can be open by its own rule, ten tiles away in a straight
+    // line, and on the far side of a door nobody has opened yet.
+    const walked = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+      const c = w.collisionData, H = c.length, W = c[0].length, s = w.currentTile, id = (x, y) => y * W + x;
+      const steps = new Map([[id(s.x, s.y), 0]]); const queue = [[s.x, s.y]];
+      while (queue.length) { const [x, y] = queue.shift();
+        for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) { const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H || steps.has(id(nx, ny)) || w.isBlocked({ x: nx, y: ny })) continue;
+          steps.set(id(nx, ny), steps.get(id(x, y)) + 1); queue.push([nx, ny]); } }
+      return ${JSON.stringify(plan.exits.map((e) => e.position))}.map((p) => steps.get(id(p.x, p.y)) ?? null); })()`);
     const exit = plan.exits
-      .filter((e) => e.open)
-      .map((e) => ({ ...e, d: Math.abs(e.position.x - here.x) + Math.abs(e.position.y - here.y) }))
+      .map((e, index) => ({ ...e, d: walked[index] }))
+      .filter((e) => e.open && e.d !== null)
       .sort((a, b) => a.d - b.d)[0];
+    if (!exit) {
+      throw new Error('no exit that is open from the first second can be walked to from here');
+    }
     await walkTo(exit.position, exit.label);
   }
   for (let guard = 0; guard < 100 && !ended; guard += 1) {
