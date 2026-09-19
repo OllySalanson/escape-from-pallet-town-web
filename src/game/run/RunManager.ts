@@ -1,4 +1,4 @@
-import { BASE_SECURE_GRID, fitsInGrid, isMaterial, type GridSize, type ItemId } from '../items';
+import { BASE_SECURE_GRID, fitsInGrid, isFoundOnly, type GridSize, type ItemId } from '../items';
 import type { Pokemon } from '../pokemon';
 import { BASE_SECURE_POKEMON } from '../objectives/contracts';
 import { hunterFleePenaltyMs } from './fleePenalty';
@@ -520,9 +520,9 @@ function validateSecureSlot(
 
   const availableQuantities = toItemQuantities(availableItems);
   for (const item of secureItems) {
-    // A material is found in the raid, so the slot may name one the loadout
-    // never carried.
-    if (!isMaterial(item.itemId) && (availableQuantities.get(item.itemId) ?? 0) < item.quantity) {
+    // A material, or a note of scrip, is found in the raid, so the container
+    // may reserve room for a kind the loadout never carried.
+    if (!isFoundOnly(item.itemId) && (availableQuantities.get(item.itemId) ?? 0) < item.quantity) {
       throw new Error(`The secure slot contains unavailable item "${item.itemId}".`);
     }
   }

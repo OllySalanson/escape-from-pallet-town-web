@@ -7,6 +7,7 @@ import {
   type SupplyItemId,
 } from '../items';
 import { outfitterSecureItemStacks, outfitterSecurePokemon } from '../hub/outfitter';
+import { berthSecureColumns } from '../hub/trader';
 import type { GridPosition } from '../movement/gridMovement';
 import type { RunSnapshot } from '../run/RunManager';
 import type { WorldMapId } from '../worldMap';
@@ -86,7 +87,7 @@ export interface ContractReward {
   readonly pokemon?: readonly ContractPokemon[];
   /** Insertions this contract opens for good. */
   readonly unlockedInsertionIds?: readonly string[];
-  /** Adds one protected item stack to the secure slot, for every later raid. */
+  /** Adds one column to the secure container, for every later raid. */
   readonly secureItemStack?: boolean;
 }
 
@@ -418,27 +419,33 @@ export function missingCarryIn(
 export const BASE_SECURE_POKEMON = 1;
 
 /**
- * How big the secure container is for this save. The cordon ledger's whole
- * reward is one column of it, and the Outfitter's first locker is another, so
- * it is derived from what the save has banked and built rather than stored, and
- * a save can never disagree with either list.
+ * How big the secure container is for this save: what has been banked, what has
+ * been built, and what has been rented for the coming raid.
  *
- * Both sources are required. A defaulted second list reads as harmless and is
- * not: a caller that forgot it would silently price the player's locker at
- * nothing, and the wipe that followed would destroy a square they paid for.
+ * The cordon ledger's whole reward is one column of it, the Outfitter's first
+ * locker is another, and the Ferryman's berth is a column for one trip
+ * (`../hub/trader`), so the size is derived from what the save records rather
+ * than stored, and a save can never disagree with any of the three.
  *
- * A column rather than a number of stacks, because the container is squares
- * now: two more of them is a Potion and a Poké Ball, or half a parts crate, and
+ * All three are required. A defaulted argument reads as harmless and is not: a
+ * caller that forgot one would silently price the player's locker at nothing,
+ * and the wipe that followed would destroy a square they paid for.
+ *
+ * Columns rather than a number of stacks, because the container is squares now:
+ * two more of them is a Potion and a Poké Ball, or half a parts crate, and
  * which of those it turns out to be is the decision the upgrade buys.
  */
 export function secureGrid(
   completedContractIds: readonly string[],
   outfitterUpgradeIds: readonly string[],
+  berthPaid: boolean,
 ): GridSize {
   const columns =
     RAID_CONTRACTS.filter(
       (contract) => contract.reward.secureItemStack && completedContractIds.includes(contract.id),
-    ).length + outfitterSecureItemStacks(outfitterUpgradeIds);
+    ).length +
+    outfitterSecureItemStacks(outfitterUpgradeIds) +
+    berthSecureColumns(berthPaid);
   return growGridColumns(BASE_SECURE_GRID, columns * SECURE_COLUMNS_PER_UPGRADE);
 }
 

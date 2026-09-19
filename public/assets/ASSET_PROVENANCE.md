@@ -189,7 +189,8 @@ game.
   `extraction-open`, `extraction-locked`, plus the six Outfitter materials
   `radio-valve`, `cable-coil`, `parts-crate`, `lamp-oil`, `mooring-rope` and
   `linen-roll`, the four held items `leftovers`, `focus-band`, `life-orb` and
-  `quick-claw`, and the one evolution stone `thunder-stone`. The materials are
+  `quick-claw`, the one evolution stone `thunder-stone`, and the money `scrip`.
+  The materials are
   drawn in code by `scripts/draw-material-icons.mjs` and the held items by
   `scripts/draw-gear-icons.mjs` (character art and small shapes on the same
   palette, written out as PNG), so they are original to this repository and can
@@ -198,6 +199,11 @@ game.
   top left in a yellow shade/base/light triple (`#b0781c`, `#f0b830`, `#ffe078`)
   chosen to stand beside the set's existing red and blue ones, with the bolt cut
   out of it in the shared outline colour rather than added in a second hue.
+  `scrip` is `scripts/draw-scrip-icon.mjs`: two pale sheets offset behind each
+  other with a seal printed on the face, in a bleached green (`#9aa77e`,
+  `#cfd8b6`, `#e8eed2`) and one warm seal (`#7d8a63` through `#c47a4e`). Flat and
+  square-cornered on purpose - every shaded, rounded draft of it read as a tin
+  or a jar, which is what every other icon in the Other pocket already is.
 
 ### Third-party packs considered and not used
 

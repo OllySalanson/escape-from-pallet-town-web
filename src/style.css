@@ -1937,10 +1937,17 @@ button {
 }
 :where(.pixel-ui) .hub-actions {
   display: grid;
-  /* The raid leads and takes what is left; the stash and the Outfitter are the
-     same fixed card. */
-  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 96) calc(var(--u) * 96);
+  /* The raid across the top, then the three places at base beneath it. A fourth
+     96-pixel card on the old single row left the raid about forty pixels wide at
+     the smallest stage - narrower than the words `Start a raid` - and two rows
+     of two left the Outfitter in a wide card with two short lines in it. This
+     way the raid still leads and is the widest thing on the screen, and the
+     three doors are equal because they are the same kind of thing. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .hub-actions > .px-tone-primary {
+  grid-column: 1 / -1;
 }
 :where(.pixel-ui) .objectives-panel,
 :where(.pixel-ui) .stash-layout > .px-window,
@@ -2287,4 +2294,36 @@ button {
 }
 :where(.pixel-ui) .box-manage {
   padding: 0 calc(var(--u) * 3) calc(var(--u) * 2);
+}
+
+/* --- The Ferryman ------------------------------------------------------- */
+/* Standing across the top, then the shelf and the barter table side by side,
+   because the whole design is the difference between the two: one is money and
+   supplies and is rationed, the other is found goods for what money may not
+   buy. One list would read as a shop. */
+:where(.pixel-ui) .trader-layout {
+  height: 100%;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .trader-standing {
+  grid-column: 1 / -1;
+}
+:where(.pixel-ui) .trader-standing > p {
+  margin: 0;
+  padding: calc(var(--u) * 1) calc(var(--u) * 3) 0;
+}
+:where(.pixel-ui) .trader-standing > p.px-note {
+  color: var(--ink-soft);
+  padding-bottom: calc(var(--u) * 2);
+}
+/* The berth is the shelf's own last row, not a third pane: it is the other
+   thing scrip buys, and a pane of its own would read as a third kind of deal. */
+:where(.pixel-ui) .trader-shelf,
+:where(.pixel-ui) .trader-table {
+  align-self: start;
+  max-height: 100%;
+}
+.pixel-ui .trader-shelf {
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }

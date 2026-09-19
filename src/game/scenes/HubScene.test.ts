@@ -182,7 +182,7 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
-  setView(view: 'home' | 'stash' | 'deploy' | 'reselect' | 'outfitter'): void;
+  setView(view: 'home' | 'stash' | 'deploy' | 'reselect' | 'outfitter' | 'trader'): void;
   startRun(): void;
   render(): void;
   recover(ids: readonly string[]): void;
@@ -256,6 +256,8 @@ function createHub(
       starterSpeciesId: 'bulbasaur',
       pendingRecoveryMs: 0,
       wardTreatmentsUsed: 0,
+      traderRationUsed: 0,
+      traderBerthPaid: false,
     },
   });
   return {
@@ -1199,5 +1201,145 @@ describe('taking a status line down', () => {
     expect(timers).toHaveLength(2);
     expect(timers[0].remove).toHaveBeenCalledOnce();
     expect(timers[1].remove).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The Ferryman's counter, as the lobby draws it.
+ *
+ * The screen is held to the thing the whole design rests on: two panes, never
+ * one, because a shelf priced in money and a barter table that money cannot
+ * touch read as a shop the moment they are one list.
+ */
+describe('HubScene - the Ferryman', () => {
+  function markupOf(hub: HubInternals): string {
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  }
+
+  /** A save standing high enough with him to be sold and bartered anything. */
+  function createTraderHub(scrip = 1_000): { hub: HubInternals; storage: MemoryStorage } {
+    const storage = new MemoryStorage();
+    const stash = createStartingStash(CHARMANDER);
+    stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
+    stash.addItem('scrip', scrip);
+    stash.addItem('parts-crate', 4);
+    stash.addItem('cable-coil', 3);
+    stash.addItem('lamp-oil', 3);
+    stash.addItem('mooring-rope', 2);
+    stash.addItem('linen-roll', 3);
+    stash.addItem('radio-valve', 3);
+    new SaveManager(storage).save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'charmander',
+      raidProgress: {
+        firstContractExtracted: true,
+        completedContracts: [FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger', 'wardens-resupply'],
+        unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+        outfitterUpgrades: [],
+        defeatedBosses: ['floodplain-toll-keeper', 'floodplain-sluice-keeper', 'floodplain-orchard-warden'],
+        reachedInsertions: [],
+        standingContractsBanked: 2,
+        giftsReceived: [],
+      },
+    });
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
+    return { hub, storage };
+  }
+
+  it('stands beside the Outfitter on the base screen, so the pair reads as two places', () => {
+    const { hub } = createTraderHub();
+    const home = markupOf(hub);
+
+    expect(home).toContain('data-view="trader"');
+    expect(home).toContain('data-view="outfitter"');
+    // The raid still leads; the two sinks are the row under it.
+    expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('data-view="trader"'));
+    // Money is on the card, because it is the one number found rather than earned.
+    expect(home).toContain('1000 scrip');
+  });
+
+  it('keeps the shelf and the barter table apart, and says money buys none of the second', () => {
+    const { hub } = createTraderHub();
+    hub.setView('trader');
+    const boat = markupOf(hub);
+
+    expect(boat).toContain('Off the deck');
+    expect(boat).toContain('Out of the hold');
+    expect(boat).toContain('No scrip buys these');
+    // The shelf prices in scrip; the table prices in found goods.
+    expect(boat).toContain('data-buy="potion"');
+    expect(boat).toContain('120 scrip');
+    expect(boat).toContain('data-barter="barter-quick-claw"');
+    expect(boat).toContain('2× Parts crate, 1× Cable coil');
+    // Nothing on the shelf is gear, at any standing.
+    expect(boat).not.toContain('data-buy="quick-claw"');
+    expect(boat).not.toContain('data-buy="leftovers"');
+  });
+
+  it('says what standing is and what the next tier costs, so it is never a mystery', () => {
+    const { hub } = createTraderHub();
+    hub.setView('trader');
+    const boat = markupOf(hub);
+
+    expect(boat).toContain('Standing · ');
+    expect(boat).toContain('with him');
+    // What raises it, as the three prices rather than a paragraph about them -
+    // and only while there is a tier left to raise it to.
+    expect(boat).toContain('Bank a contract +2, beat a boss +3, spend 200 scrip +1.');
+  });
+
+  it('offers a stranger nothing, and keeps every shut row reachable by the cursor', () => {
+    const storage = new MemoryStorage();
+    const stash = createStartingStash(CHARMANDER);
+    stash.addItem('scrip', 5_000);
+    new SaveManager(storage).save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'charmander',
+      raidProgress: DEFAULT_RAID_PROGRESS,
+    });
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
+    hub.setView('trader');
+    const boat = markupOf(hub);
+
+    // Five thousand scrip and he sells nothing: standing is the first gate, and
+    // money can never open it.
+    expect(boat).not.toContain('data-buy=');
+    expect(boat).toContain('Nothing for you yet');
+    // Not `disabled`: a cursor has to reach a shut row to be told why.
+    expect(boat).not.toMatch(/<button[^>]* disabled/);
+    expect(boat).toMatch(/aria-disabled="true"/);
+  });
+
+  it("rents a berth in the shelf, and names it against the Outfitter's locker", () => {
+    const { hub } = createTraderHub();
+    hub.setView('trader');
+    const boat = markupOf(hub);
+
+    expect(boat).toContain('data-berth');
+    expect(boat).toContain('Berth · 250 scrip');
+    // The one sentence that tells the two places apart, on the row itself.
+    // The squares come from the grid rather than a number typed beside it.
+    expect(boat).toMatch(/\+\d+ protected squares, this raid\./);
+    // The comparison with the built locker is the help bar's, because on the
+    // row it wrapped to three lines and ate the shelf above it.
+    expect(boat).toMatch(/data-help="[^"]*The Outfitter builds one for good/);
+    expect(boat).not.toMatch(/<small[^>]*>[^<]*The Outfitter builds one for good/);
+  });
+
+  it('types no arrow and no tick, exactly as every other pixel screen', () => {
+    const { hub } = createTraderHub();
+    hub.setView('trader');
+    const boat = markupOf(hub);
+
+    expect(boat).not.toMatch(/[▶▲▼◀→←↑↓✓✔]/u);
   });
 });

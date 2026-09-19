@@ -1,4 +1,4 @@
-import { ITEM_DEFINITIONS, heldItemName, isMaterial, type BagContents } from '../items';
+import { ITEM_DEFINITIONS, heldItemName, isFoundOnly, itemNameFor, type BagContents } from '../items';
 import { experienceForLevel, type Pokemon } from '../pokemon';
 import type { RunSnapshot } from './RunManager';
 import { hunterFleePenaltyMs } from './fleePenalty';
@@ -278,9 +278,9 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       declaredSecureItems.length > 0 || securedPokemon(snapshot).length > 0
         ? declaredSecureItems.length > 0 &&
           securedPokemon(snapshot).length === 0 &&
-          declaredSecureItems.every((item) => isMaterial(item.itemId))
-          // A material is protected before it exists, so an empty slot may only
-          // mean the raid never turned one up.
+          declaredSecureItems.every((item) => isFoundOnly(item.itemId))
+          // A material, or scrip, is protected before it exists, so an empty
+          // slot may only mean the raid never turned one up.
           ? 'None of what you protected turned up in the raid.'
           : 'Everything you protected was used up in the field.'
         : 'You protected nothing.',
@@ -613,7 +613,9 @@ function gradeHaul(
 export function describeGroup(group: ReportGroup): string | null {
   const parts = [
     ...group.pokemon.map((member) => member.name),
-    ...group.items.map((item) => `${item.quantity} ${item.label}${item.quantity === 1 ? '' : 's'}`),
+    // The catalogue owns the plural, because money has none: "40 scrip", not
+    // "40 Scrips", which is what this line printed in a playtest.
+    ...group.items.map((item) => `${item.quantity} ${itemNameFor(item.itemId, item.quantity)}`),
   ];
   if (parts.length === 0) {
     return null;

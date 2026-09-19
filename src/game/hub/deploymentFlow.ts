@@ -2,9 +2,10 @@ import {
   BASE_SECURE_GRID,
   fitsInGrid,
   gridCells,
-  isMaterial,
+  isFoundOnly,
   packContents,
   RAID_BAG_GRID,
+  stackSizeOf,
   type GridPacking,
   type GridSize,
   type ItemId,
@@ -124,18 +125,19 @@ export class DeploymentFlow {
 
   /**
    * What is in the secure container: loadout supplies the player put in it, and
-   * room set aside for the materials they expect to find.
+   * room set aside for the found goods they expect to bring back - materials,
+   * and the scrip they have not picked up yet.
    *
    * A supply is capped at what is actually packed, so a stack shrunk at base
-   * cannot protect more than deploys. A material is never packed - it is found -
-   * so its entry is the room reserved for it, and how much of that room is
-   * filled is decided by the pack at the end of the raid.
+   * cannot protect more than deploys. A found good is never packed - it is
+   * found - so its entry is the room reserved for it, and how much of that room
+   * is filled is decided by the pack at the end of the raid.
    */
   public get securedItems(): readonly ItemStack[] {
     return [...this.securedItemCounts]
       .map(([itemId, quantity]) => ({
         itemId,
-        quantity: isMaterial(itemId) ? quantity : Math.min(quantity, this.itemQuantity(itemId)),
+        quantity: isFoundOnly(itemId) ? quantity : Math.min(quantity, this.itemQuantity(itemId)),
       }))
       .filter((item) => item.quantity > 0);
   }
@@ -197,7 +199,7 @@ export class DeploymentFlow {
   /** How many of one kind is in the secure container. */
   public secureQuantity(itemId: ItemId): number {
     const held = this.securedItemCounts.get(itemId) ?? 0;
-    return isMaterial(itemId) ? held : Math.min(held, this.itemQuantity(itemId));
+    return isFoundOnly(itemId) ? held : Math.min(held, this.itemQuantity(itemId));
   }
 
   /** @returns A message when the change was refused, otherwise undefined. */
@@ -222,8 +224,9 @@ export class DeploymentFlow {
    *   deploys with what fits in the squares.
    */
   public adjustItem(itemId: ItemId, direction: number): string | undefined {
-    // Materials are for the Outfitter: packing one only puts it at risk.
-    if (isMaterial(itemId)) {
+    // Materials are for the Outfitter and scrip is for the Ferryman: neither
+    // does anything in a raid, so packing one only puts it at risk.
+    if (isFoundOnly(itemId)) {
       return undefined;
     }
     const next = Math.max(
@@ -267,13 +270,23 @@ export class DeploymentFlow {
   }
 
   /**
-   * Puts one more of a kind into the secure container, or takes one out.
+   * Puts one more *square* of a kind into the secure container, or takes one
+   * out.
+   *
+   * A square rather than a unit, because that is what the container is measured
+   * in and what the row's own line says one of these costs. For everything a
+   * square holds one of they are the same number; for the scrip, which stacks a
+   * bundle to a square, they are not - one press used to reserve a square and
+   * protect a single note, and a wipe brought one note home out of forty.
    *
    * @returns A message when the container had no room, otherwise undefined.
    */
   public adjustSecureItem(itemId: ItemId, direction: number): string | undefined {
-    const ceiling = isMaterial(itemId) ? gridCells(this.secureGrid) : this.itemQuantity(itemId);
-    const next = Math.max(0, Math.min(ceiling, this.secureQuantity(itemId) + direction));
+    const step = stackSizeOf(itemId);
+    const ceiling = isFoundOnly(itemId)
+      ? gridCells(this.secureGrid) * step
+      : this.itemQuantity(itemId);
+    const next = Math.max(0, Math.min(ceiling, this.secureQuantity(itemId) + direction * step));
     if (next === this.secureQuantity(itemId)) {
       return direction > 0 && ceiling === 0
         ? 'Pack some of this first - the container protects what you carry.'
@@ -290,12 +303,18 @@ export class DeploymentFlow {
     return undefined;
   }
 
-  /** Whether one more of a kind would go into the secure container. */
+  /** Whether one more square of a kind would go into the secure container. */
   public secureHasRoomFor(itemId: ItemId): boolean {
-    const ceiling = isMaterial(itemId) ? gridCells(this.secureGrid) : this.itemQuantity(itemId);
+    const step = stackSizeOf(itemId);
+    const ceiling = isFoundOnly(itemId)
+      ? gridCells(this.secureGrid) * step
+      : this.itemQuantity(itemId);
     return (
       this.secureQuantity(itemId) < ceiling &&
-      fitsInGrid({ ...this.securedContents, [itemId]: this.secureQuantity(itemId) + 1 }, this.secureGrid)
+      fitsInGrid(
+        { ...this.securedContents, [itemId]: this.secureQuantity(itemId) + step },
+        this.secureGrid,
+      )
     );
   }
 

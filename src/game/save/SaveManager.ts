@@ -1,5 +1,17 @@
 import { getOutfitterUpgrade, takePayment, type PaymentCheck } from '../hub/outfitter';
 import { clampPendingRecoveryMs, clampWardTreatmentsUsed } from '../hub/recovery';
+import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID } from '../items';
+import {
+  TRADER_BERTH_PRICE,
+  checkBarter,
+  checkBerth,
+  checkPurchase,
+  clampTraderBarters,
+  clampTraderCount,
+  formatTraderStacks,
+  type TraderCounter,
+  type TraderProgress,
+} from '../hub/trader';
 import {
   contractUnlockedInsertionIds,
   FIRST_CONTRACT_ID,
@@ -144,6 +156,21 @@ export interface RaidProgress {
    * here, and is offered again.
    */
   readonly giftsReceived: readonly string[];
+  /**
+   * Scrip that has crossed the Ferryman's counter, ever. It is turnover, not a
+   * balance: a player's money is what is in the vault and nothing else
+   * (`../hub/trader`), and this only records what was spent, because standing
+   * with him is derived from it. Absent on every save written before he tied
+   * up, which reads as nothing spent.
+   */
+  readonly traderScripSpent?: number;
+  /**
+   * Barters that may only be taken once, by barter id - the gear he brings up
+   * from the hold. Like `outfitterUpgrades` it is the whole record: what is
+   * still on his table is derived from it. Absent on older saves, which have
+   * taken none.
+   */
+  readonly traderBarters?: readonly string[];
 }
 
 /**
@@ -196,6 +223,8 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   outfitterUpgrades: [],
   standingContractsBanked: 0,
   giftsReceived: [],
+  traderScripSpent: 0,
+  traderBarters: [],
 };
 
 export interface SaveData {
@@ -221,6 +250,20 @@ export interface SaveData {
    * used none.
    */
   readonly wardTreatmentsUsed: number;
+  /**
+   * Units of the Ferryman's stock already bought before the coming raid. It is
+   * per-raid state rather than an effect, so it is stored, and it is cleared by
+   * the same `RAID_RESOLVED` as the ward's bed for the same reason: a reload
+   * must not hand the ration back. Absent on older saves, which have bought
+   * none.
+   */
+  readonly traderRationUsed: number;
+  /**
+   * Whether a berth in the Ferryman's hold is paid for on the coming raid - one
+   * more column of the secure container, this trip only. Cleared when the raid resolves
+   * whether or not the stack was used, because what was bought was the trip.
+   */
+  readonly traderBerthPaid: boolean;
 }
 
 export interface RestoredGame {
@@ -234,6 +277,8 @@ export interface RestoredGame {
   readonly starterSpeciesId: StarterSpeciesId | null;
   readonly pendingRecoveryMs: number;
   readonly wardTreatmentsUsed: number;
+  readonly traderRationUsed: number;
+  readonly traderBerthPaid: boolean;
 }
 
 export interface SaveGameState {
@@ -247,6 +292,8 @@ export interface SaveGameState {
   readonly starterSpeciesId?: StarterSpeciesId | null;
   readonly pendingRecoveryMs?: number;
   readonly wardTreatmentsUsed?: number;
+  readonly traderRationUsed?: number;
+  readonly traderBerthPaid?: boolean;
 }
 
 /**
@@ -271,7 +318,12 @@ function withGiftsReceived(game: RestoredGame, result: RunResult): RestoredGame 
 }
 
 /** What every raid ending clears: the recovery a resolved raid has now paid for. */
-const RAID_RESOLVED = { pendingRecoveryMs: 0, wardTreatmentsUsed: 0 } as const;
+const RAID_RESOLVED = {
+  pendingRecoveryMs: 0,
+  wardTreatmentsUsed: 0,
+  traderRationUsed: 0,
+  traderBerthPaid: false,
+} as const;
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -563,6 +615,123 @@ export class SaveManager {
   }
 
   /**
+   * What the Ferryman is looking at, for this save: the vault he is paid out
+   * of, the record he reads standing off, and the two per-raid facts.
+   *
+   * It is built here, from the loaded save alone, so the lobby that draws his
+   * counter and the methods that spend at it can never be judging different
+   * states. Undefined when there is no save to deal against.
+   */
+  public traderCounter(): TraderCounter | undefined {
+    const game = this.load();
+    return game === null ? undefined : traderCounterFor(game);
+  }
+
+  /**
+   * Buys one unit off the Ferryman's shelf.
+   *
+   * Nothing moves unless the whole deal stands - standing, ration and price all
+   * checked against the save that is about to be written - so a refused
+   * purchase costs nothing. The ration is spent here rather than at the shelf,
+   * and the price is added to turnover, which is what raises standing: money
+   * spent is the only kind he counts.
+   */
+  public buyTraderStock(itemId: string): TraderPurchaseResult {
+    const game = this.load();
+    if (!game) {
+      return { ok: false, message: 'There is no saved game to deal on.', saved: false };
+    }
+    const offer = checkPurchase(traderCounterFor(game), itemId);
+    if (!offer) {
+      return { ok: false, message: 'He does not stock that.', saved: false };
+    }
+    if (offer.refusal !== undefined) {
+      return { ok: false, message: offer.message ?? 'He will not deal.', saved: false };
+    }
+    game.stash.removeItem(TRADER_CURRENCY_ITEM_ID, offer.item.price);
+    game.stash.addItem(offer.item.itemId, 1);
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      traderScripSpent: clampTraderCount(game.raidProgress.traderScripSpent) + offer.item.price,
+    };
+    return {
+      ok: true,
+      message: `Bought one for ${offer.item.price} scrip.`,
+      saved: this.save({
+        ...game,
+        raidProgress,
+        traderRationUsed: clampTraderCount(game.traderRationUsed) + 1,
+      }),
+    };
+  }
+
+  /**
+   * Takes one barter: found goods across the counter, gear or a stone back.
+   *
+   * No scrip changes hands here and none may - these are the things the
+   * captain's ruling puts beyond money - so this path deliberately never
+   * touches turnover. A barter offered once is recorded the moment it is taken,
+   * which is what stops the boat becoming a gear faucet.
+   */
+  public takeTraderBarter(barterId: string): TraderPurchaseResult {
+    const game = this.load();
+    if (!game) {
+      return { ok: false, message: 'There is no saved game to deal on.', saved: false };
+    }
+    const offer = checkBarter(traderCounterFor(game), barterId);
+    if (!offer) {
+      return { ok: false, message: 'He has nothing like that.', saved: false };
+    }
+    if (offer.refusal !== undefined) {
+      return { ok: false, message: offer.message ?? 'He will not deal.', saved: false };
+    }
+    for (const { itemId, quantity } of offer.barter.takes) {
+      game.stash.removeItem(itemId, quantity);
+    }
+    game.stash.addItem(offer.barter.gives.itemId, offer.barter.gives.quantity);
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      traderBarters: offer.barter.once
+        ? [...new Set([...clampTraderBarters(game.raidProgress.traderBarters), offer.barter.id])]
+        : clampTraderBarters(game.raidProgress.traderBarters),
+    };
+    return {
+      ok: true,
+      message: `Traded ${formatTraderStacks(offer.barter.takes)} for a ${offer.barter.name}.`,
+      saved: this.save({ ...game, raidProgress }),
+    };
+  }
+
+  /**
+   * Rents a berth in his hold for the coming raid: one more column of the
+   * secure container, cleared with everything else when that raid resolves.
+   *
+   * The column itself is never stored - `secureGrid` derives it from this flag,
+   * exactly as it derives the banked and built ones - so a save can only ever
+   * hold the fact that the berth was paid for.
+   */
+  public buyTraderBerth(): TraderPurchaseResult {
+    const game = this.load();
+    if (!game) {
+      return { ok: false, message: 'There is no saved game to deal on.', saved: false };
+    }
+    const offer = checkBerth(traderCounterFor(game));
+    if (offer.refusal !== undefined) {
+      return { ok: false, message: offer.message ?? 'He will not deal.', saved: false };
+    }
+    game.stash.removeItem(TRADER_CURRENCY_ITEM_ID, TRADER_BERTH_PRICE);
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      traderScripSpent: clampTraderCount(game.raidProgress.traderScripSpent) + TRADER_BERTH_PRICE,
+    };
+    return {
+      ok: true,
+      message: `Berth paid. One more stack comes home from this raid.`,
+      saved: this.save({ ...game, raidProgress, traderBerthPaid: true }),
+    };
+  }
+
+  /**
    * Persists a wipe after permanently deleting deployed assets outside the
    * secure slot. How much the slot protects is read from the save itself - the
    * contracts banked and the upgrades built - so no caller can under-report it.
@@ -589,6 +758,10 @@ export class SaveManager {
       grid: secureGrid(
         game.raidProgress.completedContracts,
         game.raidProgress.outfitterUpgrades,
+        // A berth is paid for before the raid and read here, at the end of it,
+        // because a rented stack has to protect a haul from the wipe it was
+        // rented against. `RAID_RESOLVED` below is what takes it away again.
+        game.traderBerthPaid,
       ),
     });
     // A wipe must never hand the player back a run they cannot attempt: a fresh
@@ -625,6 +798,8 @@ export function serializeGame(state: SaveGameState): SaveData {
     starterSpeciesId: state.starterSpeciesId ?? inferStarterSpeciesId(state.stash),
     pendingRecoveryMs: clampPendingRecoveryMs(state.pendingRecoveryMs),
     wardTreatmentsUsed: clampWardTreatmentsUsed(state.wardTreatmentsUsed),
+    traderRationUsed: clampTraderCount(state.traderRationUsed),
+    traderBerthPaid: state.traderBerthPaid === true,
   };
 }
 
@@ -682,6 +857,8 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     starterSpeciesId: deserializeStarterSpeciesId(value.starterSpeciesId) ?? inferStarterSpeciesId(stash),
     pendingRecoveryMs: clampPendingRecoveryMs(value.pendingRecoveryMs),
     wardTreatmentsUsed: clampWardTreatmentsUsed(value.wardTreatmentsUsed),
+    traderRationUsed: clampTraderCount(value.traderRationUsed),
+    traderBerthPaid: value.traderBerthPaid === true,
   };
 }
 
@@ -775,6 +952,11 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       value.standingContractsBanked > 0
         ? value.standingContractsBanked
         : 0,
+    // Absent on every save written before the Ferryman tied up, which reads as
+    // nothing spent and nothing bartered - so such a save simply meets him as a
+    // stranger who has banked whatever it banked.
+    traderScripSpent: clampTraderCount(value.traderScripSpent),
+    traderBarters: clampTraderBarters(value.traderBarters),
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now
@@ -1053,4 +1235,37 @@ function stringArrayToBagContents(value: unknown): BagContents {
     contents[itemId] = (contents[itemId] ?? 0) + 1;
   }
   return contents;
+}
+
+
+/** The result of one deal across the counter, in the one line the lobby prints. */
+export interface TraderPurchaseResult {
+  readonly ok: boolean;
+  readonly message: string;
+  readonly saved: boolean;
+}
+
+/**
+ * The Ferryman's view of one loaded save. It is a function rather than a field
+ * so it is always read off the save that is about to be written, never off a
+ * snapshot the lobby happens to be holding.
+ */
+function traderCounterFor(game: RestoredGame): TraderCounter {
+  return {
+    stash: game.stash,
+    progress: traderProgressOf(game.raidProgress),
+    rationUsed: clampTraderCount(game.traderRationUsed),
+    berthPaid: game.traderBerthPaid,
+  };
+}
+
+/** The part of a save's raid progress the Ferryman reads standing off. */
+export function traderProgressOf(raidProgress: RaidProgress): TraderProgress {
+  return {
+    completedContracts: raidProgress.completedContracts,
+    standingContractsBanked: raidProgress.standingContractsBanked,
+    defeatedBosses: raidProgress.defeatedBosses,
+    traderScripSpent: clampTraderCount(raidProgress.traderScripSpent),
+    traderBarters: clampTraderBarters(raidProgress.traderBarters),
+  };
 }

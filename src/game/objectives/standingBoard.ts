@@ -384,6 +384,14 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   // the compiler ask what it is worth instead of a default answering for it.
   'thunder-stone': 1,
   'linen-roll': 1,
+  // Zero on purpose, and it must stay zero. Money is found in a raid and lost
+  // with the pack; a board that paid it out would be a faucet that repeats for
+  // as long as the player keeps banking, which is the one thing the captain's
+  // fourth constraint forbids. The board cannot reach it anyway - it draws only
+  // from `outfitterMaterialKinds()`, which is Outfitter prices or
+  // `FINISHED_BASE_PAY`, and scrip is in neither - so this entry exists to make
+  // the compiler ask rather than to be read.
+  scrip: 0,
 };
 
 /** "on Route 1", "in Pallet Town" - typed by map id, so a new map has to say which it is. */

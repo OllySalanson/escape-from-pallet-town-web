@@ -14,10 +14,11 @@ describe('materials', () => {
       expect(getItemById(id)?.category).toBe(ItemCategory.Misc);
       expect(wanted.has(id), `${id} is asked for by no rung`).toBe(true);
     }
-    // Nothing else lives in that pocket but the evolution stone, which is the
-    // one found thing that is spent on a Pokemon rather than at the Outfitter.
+    // Nothing else lives in that pocket but the evolution stone, which is
+    // spent on a Pokemon rather than at the Outfitter, and the scrip, which is
+    // spent at the Ferryman's counter and nowhere else.
     expect(ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Misc).map((item) => item.id).sort()).toEqual(
-      [...MATERIAL_IDS, 'thunder-stone'].sort(),
+      [...MATERIAL_IDS, 'thunder-stone', 'scrip'].sort(),
     );
   });
 

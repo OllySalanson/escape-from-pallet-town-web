@@ -7,15 +7,23 @@
 // opens on - so a gate is open because the raid was built with it open, and an
 // insertion is dropped into because its row in the loadout was clicked, not
 // because a scene's private state was poked.
+import { sleep } from './browser.mjs';
+
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 export const GAME = 'window.__escapeFromPalletTownGame__';
 export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
 
-/** `--insertion=id --beaten=bossId,.. --completed=contractId,.. --hp=N`, out of a driver's arguments. */
+/** `--insertion=id --beaten=bossId,.. --completed=contractId,.. --hp=N --secure=itemId[:n],..`, out of a driver's arguments. */
 export function deployOptions(args) {
   const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const list = (name) => (option(name) ?? '').split(',').filter(Boolean);
-  return { insertion: option('insertion'), beaten: list('beaten'), completed: list('completed'), hp: option('hp') };
+  return {
+    insertion: option('insertion'),
+    beaten: list('beaten'),
+    completed: list('completed'),
+    hp: option('hp'),
+    secure: list('secure'),
+  };
 }
 
 /**
@@ -23,7 +31,7 @@ export function deployOptions(args) {
  * are the driver's own, because only it knows whether the game is being stepped;
  * `paused` puts the loop to sleep on every load, for a driver that steps it.
  */
-export async function deploy(page, url, { press, click, until, paused = false, insertion, beaten = [], completed = [], hp }) {
+export async function deploy(page, url, { press, click, until, paused = false, insertion, beaten = [], completed = [], hp, secure = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   await press('Space'); await until(sceneIs('starter'));
@@ -50,6 +58,28 @@ export async function deploy(page, url, { press, click, until, paused = false, i
     // The loadout's own row, by the id it carries: two rows can share a map's name.
     await until(`(() => { const b = document.querySelector('button[data-insertion=${JSON.stringify(insertion)}]'); if (!b) return false; b.click(); return true; })()`, `the lobby to offer insertion "${insertion}"`);
   }
-  for (const label of ['Bulbasaur', 'Review & deploy', 'Enter the raid']) await click(label);
+  await click('Bulbasaur');
+  // --secure=itemId[:n],.. takes the secure-slot detour and puts that many
+  // squares of each kind into the container, by the row's own stepper rather
+  // than by a word on it. It is the only way anything the container protects is
+  // checked end to end - and the only way at all for a kind that is *found*
+  // rather than packed, whose row is room reserved for something not held yet.
+  for (const entry of secure) {
+    const [itemId, count = '1'] = entry.split(':');
+    if (entry === secure[0]) {
+      await click('Secure slot');
+    }
+    for (let i = 0; i < Number(count); i += 1) {
+      await until(
+        `(() => { const b = document.querySelector('button[data-secure-item=${JSON.stringify(itemId)}][data-secure-amount="1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
+        `the container to take one more ${itemId}`,
+      );
+      await sleep(250);
+    }
+  }
+  if (secure.length > 0) {
+    await click('Back to loadout');
+  }
+  for (const label of ['Review & deploy', 'Enter the raid']) await click(label);
   await until(sceneIs('world'));
 }

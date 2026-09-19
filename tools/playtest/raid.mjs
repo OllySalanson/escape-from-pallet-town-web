@@ -7,7 +7,7 @@
 //   node tools/playtest/raid.mjs http://localhost:5173/ [--testmode] [--stepped] [--pixels]
 //        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
 //        [--insertion=id] [--beaten=bossId,..] [--completed=contractId,..] [--hp=N]
-//        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--fight]
+//        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--grab=itemId,..] [--fight]
 //
 // --seed pins `crypto.getRandomValues` and `Math.random` in the page, so two
 // runs roll the same raid and their event logs can be compared line for line.
@@ -121,9 +121,14 @@ try {
   const cpuAtDeploy = browser.cpuSeconds();
   const raidStarted = Date.now();
 
+  // `plan.loot` is where this raid's loot actually lies. A map's authored
+  // position is only a fallback - `generateLoot` re-seats every piece every
+  // raid - so the run plan is the only thing that can send a driver to a piece
+  // of loot, which is why nothing here could check one until now.
   const plan = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const p = w.runSession.plan;
     return { seed: p.seed, map: w.currentMap.id, start: w.currentTile, contract: p.contract?.name ?? null, markers: (p.contract?.markers ?? []).map((m) => m.position),
-      exits: p.extractionPoints.filter((e) => e.mapId === w.currentMap.id).map((e) => ({ label: e.label, position: e.position, opens: e.requirement?.poiId ?? null, open: (e.requirement?.kind ?? (e.unlockAtMs === 0 ? 'always' : 'elapsed')) === 'always' })) }; })()`);
+      exits: p.extractionPoints.filter((e) => e.mapId === w.currentMap.id).map((e) => ({ label: e.label, position: e.position, opens: e.requirement?.poiId ?? null, open: (e.requirement?.kind ?? (e.unlockAtMs === 0 ? 'always' : 'elapsed')) === 'always' })),
+      loot: (p.loot[w.currentMap.id] ?? []).map((l) => ({ id: l.id, itemId: l.itemId, quantity: l.quantity, position: l.position })) }; })()`);
   note(`seed ${plan.seed}, ${plan.map} from ${plan.start.x},${plan.start.y}, contract ${plan.contract}, stops ${JSON.stringify(plan.markers)}`);
 
   // --avoid-watch plays the player the map is drawn for: one who reads the shaded
@@ -249,6 +254,18 @@ try {
   for (const tile of (option('via') ?? '').split(',').filter(Boolean)) {
     const [x, y] = tile.split(':').map(Number);
     await walkTo({ x, y }, `waypoint ${x},${y}`);
+  }
+  // --grab=itemId picks up every piece of that item this raid laid, wherever it
+  // laid it. Loot is re-seated every raid, so a driver cannot be pointed at it
+  // with --via: only the run plan knows where it is. It is how anything that is
+  // found rather than packed - a material, a note of scrip - is ever checked
+  // from the pack it has to come home in.
+  const grab = (option('grab') ?? '').split(',').filter(Boolean);
+  for (const piece of plan.loot.filter((l) => grab.includes(l.itemId))) {
+    await walkTo(piece.position, `${piece.quantity}x ${piece.itemId}`);
+  }
+  if (grab.length > 0) {
+    note(`pack now ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').bag.toJSON()`))}`);
   }
   for (const [index, marker] of plan.markers.entries()) {
     await walkTo(marker, `contract stop ${index + 1}`);
