@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SECURED_MATERIAL_QUANTITY } from '../items';
 import { CHARMANDER, Pokemon, SQUIRTLE } from '../pokemon';
 import { createStartingStash, type Stash } from '../stash';
 import { DeploymentFlow } from './deploymentFlow';
@@ -223,5 +224,30 @@ describe('deployment flow', () => {
     // A secured Pokemon that leaves the party stops holding a slot.
     flow.togglePokemon('squirtle-1');
     expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
+  });
+
+  it('never packs a material, but lets the secure slot name its kind', () => {
+    const { flow, stash } = seedFlow();
+    stash.addItem('radio-valve', 2);
+    flow.togglePokemon('bulbasaur-1');
+
+    flow.adjustItem('radio-valve', 1);
+    expect(flow.items).toEqual([]);
+
+    // A material is found rather than brought, so protecting it is naming the kind.
+    expect(flow.toggleSecureItem('radio-valve')).toBeUndefined();
+    expect(flow.securesItem('radio-valve')).toBe(true);
+    expect(flow.securedItems).toEqual([{ itemId: 'radio-valve', quantity: SECURED_MATERIAL_QUANTITY }]);
+    flow.advance();
+    const deployment = flow.deploy();
+    expect(deployment.items).toEqual([]);
+    expect(deployment.stashSecureSlot.items).toEqual([{ itemId: 'radio-valve', quantity: SECURED_MATERIAL_QUANTITY }]);
+  });
+
+  it('counts a secured material against the same slots as any other stack', () => {
+    const { flow } = seedFlow();
+    flow.toggleSecureItem('radio-valve');
+    flow.toggleSecureItem('lamp-oil');
+    expect(flow.toggleSecureItem('cable-coil')).toMatch(/2 item stacks/);
   });
 });

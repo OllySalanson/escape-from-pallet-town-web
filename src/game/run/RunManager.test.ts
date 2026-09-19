@@ -181,6 +181,18 @@ describe('RunManager lifecycle', () => {
     expect(manager.phase).toBe(RunPhase.Wiped);
   });
 
+  it('lets the secure slot name a material that was never packed, and still refuses an unpacked supply', () => {
+    const start = (itemId: 'radio-valve' | 'great-ball'): unknown =>
+      new RunManager().startRun(
+        { party: [makePokemon()], items: [{ itemId: 'potion', quantity: 1 }] },
+        { mapId: 'pallet-town', durationMs: 60_000 },
+        { items: [{ itemId, quantity: 99 }] },
+      );
+
+    expect(() => start('radio-valve')).not.toThrow();
+    expect(() => start('great-ball')).toThrow(/unavailable item/);
+  });
+
   it('retains the secure slot selected when the run starts', () => {
     const manager = new RunManager();
     const partyMember = makePokemon(BULBASAUR);

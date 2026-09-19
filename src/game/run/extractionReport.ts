@@ -1,4 +1,4 @@
-import { ITEM_DEFINITIONS, type BagContents } from '../items';
+import { ITEM_DEFINITIONS, isMaterial, type BagContents } from '../items';
 import { experienceForLevel, type Pokemon } from '../pokemon';
 import type { RunSnapshot } from './RunManager';
 import { hunterFleePenaltyMs } from './fleePenalty';
@@ -244,7 +244,13 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     secured,
     securedEmptyText:
       declaredSecureItems.length > 0 || securedPokemon(snapshot).length > 0
-        ? 'Everything you protected was used up in the field.'
+        ? declaredSecureItems.length > 0 &&
+          securedPokemon(snapshot).length === 0 &&
+          declaredSecureItems.every((item) => isMaterial(item.itemId))
+          // A material is protected before it exists, so an empty slot may only
+          // mean the raid never turned one up.
+          ? 'None of what you protected turned up in the raid.'
+          : 'Everything you protected was used up in the field.'
         : 'You protected nothing.',
     risked,
     gambleVerdict: gambleVerdict(escaped, secured, risked),

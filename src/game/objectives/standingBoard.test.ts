@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { isMaterial } from '../items';
 import { OUTFITTER_UPGRADES, outfitterMaterialKinds } from '../hub/outfitter';
 import { generateRunPlan, RUN_INSERTIONS, frontDoorFor } from '../run/runGeneration';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
@@ -231,7 +232,12 @@ describe('every standing contract', () => {
     for (const { contract } of everyBoard()) {
       expect(contract.reward.items.length + (contract.reward.pokemon?.length ?? 0)).toBeGreaterThan(0);
       for (const { itemId, quantity } of contract.reward.items) {
-        expect(ladderKinds).toContain(itemId);
+        // A delivery is paid back in a grade up of what it took out of the pack;
+        // everything else is paid in materials, which is what the ladder costs.
+        if (contractCarryIn(contract).length === 0) {
+          expect(ladderKinds).toContain(itemId);
+          expect(isMaterial(itemId), `${contract.id} pays ${itemId}`).toBe(true);
+        }
         expect(quantity).toBeGreaterThan(0);
       }
       expect(rewardPokemon(contract.reward)).toHaveLength(contract.reward.pokemon?.length ?? 0);
@@ -372,21 +378,22 @@ describe('escalation', () => {
 });
 
 describe('what it pays in', () => {
-  it('prefers the supplies the unbuilt rungs still cost', () => {
+  it('prefers the materials the unbuilt rungs still cost', () => {
     const allButMast = OUTFITTER_UPGRADES.filter((upgrade) => upgrade.id !== 'radio-mast').map((upgrade) => upgrade.id);
-    expect(outfitterMaterialKinds(allButMast)).toEqual(['antidote']);
+    expect(outfitterMaterialKinds(allButMast)).toEqual(['radio-valve', 'mooring-rope']);
     for (const seed of SEEDS.slice(0, 60)) {
       for (const contract of standingOffers(seed, progressWith({ outfitterUpgrades: allButMast }))) {
         if (contractCarryIn(contract).length === 0) {
-          expect(contract.reward.items.map(({ itemId }) => itemId)).toEqual(['antidote']);
+          expect(['radio-valve', 'mooring-rope']).toContain(contract.reward.items[0].itemId);
         }
       }
     }
   });
 
-  it('still pays once the whole ladder stands', () => {
+  it('still pays once the whole ladder stands, in supplies because nothing wants a material any more', () => {
     const everything = OUTFITTER_UPGRADES.map((upgrade) => upgrade.id);
     expect(outfitterMaterialKinds(everything).length).toBeGreaterThan(1);
+    expect(outfitterMaterialKinds(everything).some((itemId) => isMaterial(itemId))).toBe(false);
     expect(standingBoard(progressWith({ outfitterUpgrades: everything })).length).toBe(4);
   });
 });

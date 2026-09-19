@@ -49,7 +49,7 @@ import { formatStacks } from './RunObjectives';
  * steps down from the top to nothing, so the safe raid is still on offer: it
  * just pays what a safe raid is worth.
  *
- * It pays in Outfitter materials - the supplies the unbuilt rungs still cost,
+ * It pays in Outfitter materials - the radio valves, cable and the like the unbuilt rungs still cost,
  * and Pokemon, which are the ladder's real price - because the Outfitter is the
  * only thing in the game that gives a banked reward somewhere to go.
  */
@@ -373,6 +373,12 @@ const MATERIAL_SHARE: Readonly<Record<ItemId, number>> = {
   antidote: 2,
   'super-potion': 1,
   'great-ball': 1,
+  'radio-valve': 1,
+  'cable-coil': 1,
+  'parts-crate': 1,
+  'lamp-oil': 1,
+  'mooring-rope': 1,
+  'linen-roll': 1,
 };
 
 /** "on Route 1", "in Pallet Town" - typed by map id, so a new map has to say which it is. */

@@ -11,6 +11,13 @@ import { Stash, type StashedPokemon } from '../stash';
  * base capability bought with the only two things the vault holds - banked
  * Pokemon and banked supplies.
  *
+ * The supply half of every price is materials - radio valves, cable, lamp oil
+ * and the like - and never potions, balls or antidotes. Those are the raid's
+ * own stock, and a ladder priced in them competed with staying alive. A
+ * material has no use anywhere else (`../items`), is found only in the field,
+ * is lost with the pack on a wipe unless the secure slot names it, and leaves
+ * the game only here, so it is a sink-feeder and not a second economy.
+ *
  * It is a sink, not a shop. There is no currency, no vendor and no goods: it
  * never hands back an item or a Pokemon, only capability or information, and
  * never raw power - nothing here makes a Pokemon hit harder.
@@ -73,8 +80,10 @@ export interface OutfitterUpgrade {
  * found (a map holds two to five loot tiles and at least half are live). So the
  * Pokemon count is the real price and carries the ladder - seventeen in all,
  * which is roughly a dozen raids of catching past the six a party can use - and
- * the supply half is kept to one to four units of whichever stock the upgrade
- * is about, so it is felt without gating the rung behind a second grind.
+ * the material half is kept to one to four units of whichever part the upgrade
+ * is about, so it is felt without gating the rung behind a second grind. A raid
+ * finds a unit or two of material (the loot pools in `../worldMap`), so the whole
+ * ladder is twenty units - about as many raids as it is Pokemon.
  * Information is cheapest, the two capabilities that change the loadout
  * decision are mid-priced, and the second protected Pokemon - the strongest
  * thing on the list - costs the most.
@@ -87,7 +96,13 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     effect: 'The hunter’s team, on the raid HUD.',
     detail:
       'The raid HUD names the hunter’s current team and counts down to the next, stronger one. Information only: the hunter is not slowed.',
-    cost: { pokemon: 1, supplies: [{ itemId: 'antidote', quantity: 2 }] },
+    cost: {
+      pokemon: 1,
+      supplies: [
+        { itemId: 'radio-valve', quantity: 2 },
+        { itemId: 'mooring-rope', quantity: 1 },
+      ],
+    },
     hunterIntel: true,
   },
   {
@@ -96,7 +111,13 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     name: 'Beacon',
     effect: 'Your landing is a late extra exit.',
     detail: 'A beacon marks where you land on every map. Halfway through the raid clock it opens as an extra exit.',
-    cost: { pokemon: 3, supplies: [{ itemId: 'great-ball', quantity: 2 }] },
+    cost: {
+      pokemon: 3,
+      supplies: [
+        { itemId: 'lamp-oil', quantity: 2 },
+        { itemId: 'cable-coil', quantity: 2 },
+      ],
+    },
     beacon: true,
   },
   {
@@ -107,10 +128,7 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     detail: 'The secure slot protects one more item stack, so it comes home from every raid - even a lost one.',
     cost: {
       pokemon: 2,
-      supplies: [
-        { itemId: 'poke-ball', quantity: 2 },
-        { itemId: 'potion', quantity: 1 },
-      ],
+      supplies: [{ itemId: 'parts-crate', quantity: 2 }],
     },
     secureItemStack: true,
   },
@@ -124,8 +142,8 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     cost: {
       pokemon: 4,
       supplies: [
-        { itemId: 'great-ball', quantity: 2 },
-        { itemId: 'super-potion', quantity: 2 },
+        { itemId: 'parts-crate', quantity: 2 },
+        { itemId: 'mooring-rope', quantity: 2 },
       ],
     },
     securePokemon: true,
@@ -136,7 +154,7 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     name: 'Recovery bay I',
     effect: 'Recovery prices drop a quarter.',
     detail: 'Every recovery bay price - healing, curing and reviving - costs a quarter less raid time.',
-    cost: { pokemon: 2, supplies: [{ itemId: 'potion', quantity: 2 }] },
+    cost: { pokemon: 2, supplies: [{ itemId: 'linen-roll', quantity: 2 }] },
     recoveryPriceShare: 0.75,
   },
   {
@@ -146,7 +164,13 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     effect: 'Recovery prices drop to half.',
     detail: 'Every recovery bay price - healing, curing and reviving - costs half the raid time it started at.',
     requires: 'recovery-bay-1',
-    cost: { pokemon: 3, supplies: [{ itemId: 'super-potion', quantity: 2 }] },
+    cost: {
+      pokemon: 3,
+      supplies: [
+        { itemId: 'linen-roll', quantity: 2 },
+        { itemId: 'cable-coil', quantity: 1 },
+      ],
+    },
     recoveryPriceShare: 0.5,
   },
   {
@@ -159,8 +183,8 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     cost: {
       pokemon: 2,
       supplies: [
-        { itemId: 'super-potion', quantity: 1 },
-        { itemId: 'antidote', quantity: 1 },
+        { itemId: 'linen-roll', quantity: 1 },
+        { itemId: 'lamp-oil', quantity: 1 },
       ],
     },
     wardTreatments: 1,
@@ -208,18 +232,27 @@ export function hasBeacon(builtIds: readonly string[]): boolean {
 }
 
 /**
- * The supplies the ladder is still asking for: every kind an unbuilt rung
+ * What the standing board pays in once the whole ladder stands. Materials have
+ * no other use, so a finished base is paid in the raid's own supplies, exactly
+ * as it was before materials existed - no new faucet, only the old one kept.
+ */
+export const FINISHED_BASE_PAY: readonly ItemId[] = ['antidote', 'great-ball', 'poke-ball', 'potion', 'super-potion'];
+
+/**
+ * The materials the ladder is still asking for: every kind an unbuilt rung
  * costs, once each, in ladder order. It is what the standing board pays in, so
- * a reward is always something the player has a use for - and once the whole
- * ladder stands, it is every kind the ladder ever cost, because a finished base
- * still spends supplies on raids.
+ * a reward is always something the player has a use for. Once the whole ladder
+ * stands nothing wants a material any more, and the board pays in supplies.
  */
 export function outfitterMaterialKinds(builtIds: readonly string[]): readonly ItemId[] {
-  const kindsOf = (upgrades: readonly OutfitterUpgrade[]): ItemId[] => [
-    ...new Set(upgrades.flatMap((upgrade) => upgrade.cost.supplies.map(({ itemId }) => itemId))),
+  const outstanding = [
+    ...new Set(
+      OUTFITTER_UPGRADES.filter((upgrade) => !builtIds.includes(upgrade.id)).flatMap((upgrade) =>
+        upgrade.cost.supplies.map(({ itemId }) => itemId),
+      ),
+    ),
   ];
-  const outstanding = kindsOf(OUTFITTER_UPGRADES.filter((upgrade) => !builtIds.includes(upgrade.id)));
-  return outstanding.length > 0 ? outstanding : kindsOf(OUTFITTER_UPGRADES);
+  return outstanding.length > 0 ? outstanding : FINISHED_BASE_PAY;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ITEM_DEFINITIONS } from '../items';
+import { ITEM_DEFINITIONS, isMaterial } from '../items';
 import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon } from '../pokemon';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { ICON_NAMES } from '../ui/icons';
@@ -34,6 +34,12 @@ function vaultWith(
     'super-potion': 4,
     'great-ball': 4,
     antidote: 4,
+    'radio-valve': 4,
+    'cable-coil': 4,
+    'parts-crate': 6,
+    'lamp-oil': 4,
+    'mooring-rope': 4,
+    'linen-roll': 6,
   },
 ): OutfitterVault {
   const stash = new Stash({ items });
@@ -144,7 +150,7 @@ describe('what may be spent', () => {
   });
 
   it('never offers a lone Pokemon even when it is not the partner species', () => {
-    const stash = new Stash({ items: { antidote: 5 } });
+    const stash = new Stash({ items: { 'radio-valve': 2, 'mooring-rope': 1 } });
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'only');
     const vault: OutfitterVault = { stash, starterSpeciesId: 'charmander' };
     expect(paymentCandidates(vault)[0].refusal).toBe(LAST_FIT_REFUSAL);
@@ -159,7 +165,7 @@ describe('what may be spent', () => {
   });
 
   it('always leaves somebody fit to raid, even when every fit Pokemon is spendable', () => {
-    const stash = new Stash({ items: { 'poke-ball': 9, potion: 9 } });
+    const stash = new Stash({ items: { 'poke-ball': 9, potion: 9, 'parts-crate': 2 } });
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'fit-1');
     stash.addPokemon(new Pokemon(BULBASAUR, 4), 'fit-2');
     stash.addPokemon(fainted(new Pokemon(PIDGEY, 5)), 'down');
@@ -174,10 +180,19 @@ describe('what may be spent', () => {
     expect(checkPayment(vault, [], 'secure-locker-1', ['fit-1', 'down'])).toMatchObject({ ok: true });
   });
 
-  it('only ever takes supplies above the kit base restocks after a wipe', () => {
-    // Otherwise a wipe would refund the payment and a base could be built for nothing.
+  it('prices every rung in materials, never in the kit a wipe restocks', () => {
+    for (const upgrade of OUTFITTER_UPGRADES) {
+      expect(upgrade.cost.supplies.length, upgrade.id).toBeGreaterThan(0);
+      for (const { itemId } of upgrade.cost.supplies) {
+        expect(isMaterial(itemId), `${upgrade.id} costs ${itemId}`).toBe(true);
+        expect(MINIMUM_SUPPLIES, `${upgrade.id} costs ${itemId}`).not.toHaveProperty(itemId);
+      }
+    }
+  });
+
+  it('is short of a material a kit-only vault does not hold, and never takes the kit', () => {
     const vault = vaultWith([new Pokemon(PIDGEY, 4), new Pokemon(PIDGEY, 5)], { ...MINIMUM_SUPPLIES });
-    expect(spendableSupply(vault, 'poke-ball')).toBe(0);
+    expect(spendableSupply(vault, 'parts-crate')).toBe(0);
     expect(checkPayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-2'])).toMatchObject({
       ok: false,
       refusal: 'supplies-short',
@@ -185,10 +200,22 @@ describe('what may be spent', () => {
     const offer = outfitterOffers(vault, []).find(({ upgrade }) => upgrade.id === 'secure-locker-1')!;
     expect(offer.pokemonShort).toBe(0);
     expect(offer.affordable).toBe(false);
-    expect(offer.suppliesShort).toEqual([
-      { itemId: 'poke-ball', quantity: 2 },
-      { itemId: 'potion', quantity: 1 },
-    ]);
+    expect(offer.suppliesShort).toEqual([{ itemId: 'parts-crate', quantity: 2 }]);
+  });
+
+  it('spends materials in full and leaves the kit exactly as it was', () => {
+    const vault = vaultWith([new Pokemon(PIDGEY, 4), new Pokemon(PIDGEY, 5)], {
+      ...MINIMUM_SUPPLIES,
+      'parts-crate': 2,
+    });
+    expect(spendableSupply(vault, 'parts-crate')).toBe(2);
+    takePayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-2']);
+    expect(vault.stash.itemCount('parts-crate')).toBe(0);
+    expect(vault.stash.supplyShortfall()).toEqual({});
+    expect(vault.stash.itemCount('poke-ball')).toBe(MINIMUM_SUPPLIES['poke-ball']);
+    // The restock never hands a material out: a wiped vault is refilled with the kit alone.
+    vault.stash.restockMinimumSupplies();
+    expect(vault.stash.itemCount('parts-crate')).toBe(0);
   });
 
   it('reads the kit as a capability, so a better ball or potion frees the plain one', () => {
@@ -199,6 +226,7 @@ describe('what may be spent', () => {
       potion: 3,
       'super-potion': 1,
       antidote: 2,
+      'parts-crate': 2,
     });
     expect(spendableSupply(vault, 'poke-ball')).toBe(2);
     expect(spendableSupply(vault, 'potion')).toBe(1);
@@ -208,18 +236,6 @@ describe('what may be spent', () => {
 
     takePayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-2']);
     expect(vault.stash.supplyShortfall()).toEqual({});
-  });
-
-  it('never lets two stacks that serve one need both be called spare', () => {
-    // Two Great Balls and two Super Potions look spare one at a time; together
-    // with the Poke Balls already gone they would leave the kit short.
-    const vault = vaultWith(
-      Array.from({ length: 5 }, () => new Pokemon(PIDGEY, 4)),
-      { 'poke-ball': 4, 'great-ball': 2, potion: 1, 'super-potion': 3 },
-    );
-    expect(
-      checkPayment(vault, ['secure-locker-1'], 'secure-locker-2', ['catch-1', 'catch-2', 'catch-3', 'catch-4']),
-    ).toMatchObject({ ok: false, refusal: 'supplies-short' });
   });
 
   it('takes exactly the named Pokemon and the listed supplies, and nothing on a refusal', () => {
@@ -236,8 +252,9 @@ describe('what may be spent', () => {
 
     expect(takePayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-3'])).toMatchObject({ ok: true });
     expect(vault.stash.listPokemon().map(({ id }) => id)).toEqual(['partner', 'catch-2']);
-    expect(vault.stash.itemCount('poke-ball')).toBe(7);
-    expect(vault.stash.itemCount('potion')).toBe(6);
+    expect(vault.stash.itemCount('parts-crate')).toBe(4);
+    expect(vault.stash.itemCount('poke-ball')).toBe(9);
+    expect(vault.stash.itemCount('potion')).toBe(7);
     expect(vault.stash.itemCount('antidote')).toBe(4);
   });
 

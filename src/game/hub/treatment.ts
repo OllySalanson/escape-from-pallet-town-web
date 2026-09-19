@@ -93,6 +93,8 @@ function describeEffect(
         : { effect: `Nothing to cure`, usable: false };
     case 'capture-modifier':
       return { effect: 'Battle use only', usable: false };
+    case 'material':
+      return { effect: 'Outfitter only', usable: false };
   }
 }
 

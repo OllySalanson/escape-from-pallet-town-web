@@ -32,7 +32,7 @@ import {
   type RecoveryTerms,
   type TreatmentOption,
 } from '../hub';
-import { Bag, ITEM_DEFINITIONS, type ItemDefinition, type ItemId } from '../items';
+import { Bag, ITEM_DEFINITIONS, MATERIAL_IDS, isMaterial, type ItemDefinition, type ItemId } from '../items';
 import { PokemonParty, type PokemonBase } from '../pokemon';
 import { activeRunManager } from '../run';
 import { buildContractBoard } from '../hub/contractBoard';
@@ -922,14 +922,16 @@ export class HubScene extends Phaser.Scene {
           `<div class="stash-portrait" data-shown-by="${stored.id}"${index === 0 ? '' : ' hidden'}>${pixelPortrait(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div>${pixelTypeBadge(stored.pokemon.base.primaryType)}${stored.pokemon.base.secondaryType ? pixelTypeBadge(stored.pokemon.base.secondaryType) : ''}</div></div>`,
       )
       .join('');
-    const supplies = this.stashItems
-      .map(
-        (item) =>
-          // One line a supply, as a bag lists them: what it does is said by the
-          // help bar when it is pointed at, which is why the row is a control.
-          `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">×${this.stash.itemCount(item.id)}</span></button>`,
-      )
-      .join('');
+    const supplyRow = (item: ItemDefinition): string =>
+      // One line a supply, as a bag lists them: what it does is said by the
+      // help bar when it is pointed at, which is why the row is a control.
+      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">×${this.stash.itemCount(item.id)}</span></button>`;
+    const materialRows = this.stashItems.filter((item) => isMaterial(item.id)).map(supplyRow).join('');
+    const supplies = `${this.stashItems.filter((item) => !isMaterial(item.id)).map(supplyRow).join('')}${
+      // Materials are their own list: nothing in it can be packed or used, and
+      // the Outfitter is where it goes.
+      materialRows ? `<h3 class="px-subheading">Materials</h3>${materialRows}` : ''
+    }`;
     return `<main class="px-body stash-layout">${pixelWindow(
       `<div class="px-list px-scroll">${rows || '<p class="px-empty">No Pokémon in storage.</p>'}${this.swapPanel()}</div>`,
       {
@@ -977,6 +979,7 @@ export class HubScene extends Phaser.Scene {
       })
       .join('');
     const supplyRows = this.stashItems
+      .filter((item) => !isMaterial(item.id))
       .map((item) => {
         const packed = this.flow.itemQuantity(item.id as ItemId);
         const held = this.stash.itemCount(item.id);
@@ -1028,11 +1031,17 @@ export class HubScene extends Phaser.Scene {
         return `<button class="px-row has-icon${secured ? ' is-secured' : ''}" data-secure-item="${item.itemId}" data-help="${secured ? 'Secured: this whole stack comes home even if you wipe.' : 'Secure this whole stack so a wipe cannot take it.'}">${itemIcon(item.itemId, this.itemName(item.itemId))}<span class="px-row-main"><strong>${this.itemName(item.itemId)} ×${item.quantity}</strong></span>${secured ? pixelTag('', 'secure', true) : ''}</button>`;
       })
       .join('');
+    // A material is found rather than packed, so the slot names its kind: any of
+    // it still in the pack when the raid is lost comes home.
+    const materialRows = MATERIAL_IDS.map((itemId) => {
+      const secured = this.flow.securesItem(itemId);
+      return `<button class="px-row has-icon${secured ? ' is-secured' : ''}" data-secure-item="${itemId}" data-help="${secured ? 'Secured: any of this you find comes home even if you wipe.' : 'Secure this kind so anything of it you find comes home even if you wipe.'}">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong>${this.itemName(itemId)}</strong><small>anything you find</small></span>${secured ? pixelTag('', 'secure', true) : ''}</button>`;
+    }).join('');
     return `<main class="px-body secure-layout">${pixelWindow(
       `<div class="px-list px-scroll">${pokemonRows || '<p class="px-empty">Add a Pokémon to your loadout first.</p>'}</div>`,
       { className: 'secure-group', heading: 'Pokémon', note: `${this.flow.securedPokemon.length}/${slots} ${slots === 1 ? 'slot' : 'slots'}` },
     )}${pixelWindow(
-      `<div class="px-list px-scroll">${itemRows || '<p class="px-empty">Add supplies to your loadout first.</p>'}</div>`,
+      `<div class="px-list px-scroll">${itemRows ? `${itemRows}<h3 class="px-subheading">Materials</h3>` : ''}${materialRows}</div>`,
       {
         className: 'secure-group',
         heading: 'Item stacks',
@@ -1071,7 +1080,7 @@ export class HubScene extends Phaser.Scene {
     // The window a row stands in is what says whether it is lost or comes home,
     // so the rows do not each say it again.
     const itemRow = (item: { readonly itemId: ItemId; readonly quantity: number }, secured: boolean): string =>
-      `<div class="px-row has-icon${secured ? ' is-secured' : ''}">${itemIcon(item.itemId, this.itemName(item.itemId))}<span class="px-row-main"><strong>${this.itemName(item.itemId)} ×${item.quantity}</strong></span></div>`;
+      `<div class="px-row has-icon${secured ? ' is-secured' : ''}">${itemIcon(item.itemId, this.itemName(item.itemId))}<span class="px-row-main"><strong>${this.itemName(item.itemId)}${isMaterial(item.itemId) ? '' : ` ×${item.quantity}`}</strong>${isMaterial(item.itemId) ? '<small>anything you find</small>' : ''}</span></div>`;
     const risked = `${riskedPokemon
       .map((stored) => `<div class="px-row">${this.pokemonRowBody(stored, '')}</div>`)
       .join('')}${riskedItems.map((item) => itemRow(item, false)).join('')}`;
@@ -1239,8 +1248,8 @@ export class HubScene extends Phaser.Scene {
         note: `${chosen.length}/${upgrade.cost.pokemon} chosen`,
       },
     )}${pixelWindow(
-      `<div class="px-list">${supplies}</div><p class="px-note px-wrap carry-note">Only spare supplies are taken. The kit a wipe restocks is never payment.</p>`,
-      { className: 'run-loadout px-scroll', heading: 'Supplies spent' },
+      `<div class="px-list">${supplies}</div><p class="px-note px-wrap carry-note">Materials are spent here and nowhere else.</p>`,
+      { className: 'run-loadout px-scroll', heading: 'Materials spent' },
     )}${this.paymentFooter(upgrade, chosen)}</main>`;
   }
 

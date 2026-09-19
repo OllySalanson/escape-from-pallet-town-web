@@ -429,4 +429,23 @@ describe('what the party earned', () => {
 
     expect(report.progress.map((entry) => entry.name)).toEqual(['Charmander']);
   });
+
+  it('says a protected material never turned up, rather than that it was used up', () => {
+    const manager = startedRun({
+      party: [new Pokemon(BULBASAUR, 5)],
+      items: [{ itemId: 'potion', quantity: 1 }],
+      secure: { items: [{ itemId: 'radio-valve', quantity: 99 }] },
+    });
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      carriedOut: { potion: 1 },
+      saved: true,
+    });
+
+    expect(report.securedEmptyText).toBe('None of what you protected turned up in the raid.');
+  });
 });

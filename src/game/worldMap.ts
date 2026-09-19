@@ -135,6 +135,8 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'pallet-town-poke-ball', position: { x: 2, y: 18 }, itemId: 'poke-ball', quantity: 1 },
       { id: 'pallet-town-potion', position: { x: 23, y: 21 }, itemId: 'potion', quantity: 1 },
       { id: 'pallet-town-antidote', position: { x: 8, y: 37 }, itemId: 'antidote', quantity: 1 },
+      { id: 'pallet-town-parts-crate', position: { x: 4, y: 26 }, itemId: 'parts-crate', quantity: 1 },
+      { id: 'pallet-town-linen-roll', position: { x: 18, y: 33 }, itemId: 'linen-roll', quantity: 1 },
     ],
   },
   'route-1': {
@@ -145,6 +147,8 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'route-1-poke-ball', position: { x: 3, y: 14 }, itemId: 'poke-ball', quantity: 2 },
       { id: 'route-1-potion', position: { x: 29, y: 12 }, itemId: 'potion', quantity: 1 },
       { id: 'route-1-great-ball', position: { x: 12, y: 15 }, itemId: 'great-ball', quantity: 1 },
+      { id: 'route-1-cable-coil', position: { x: 8, y: 9 }, itemId: 'cable-coil', quantity: 1 },
+      { id: 'route-1-radio-valve', position: { x: 22, y: 18 }, itemId: 'radio-valve', quantity: 1 },
     ],
   },
   'viridian-forest': {
@@ -156,6 +160,8 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'forest-super-potion', position: { x: 13, y: 22 }, itemId: 'super-potion', quantity: 1 },
       { id: 'forest-great-ball', position: { x: 27, y: 21 }, itemId: 'great-ball', quantity: 1 },
       { id: 'forest-antidote', position: { x: 21, y: 30 }, itemId: 'antidote', quantity: 1 },
+      { id: 'forest-lamp-oil', position: { x: 9, y: 12 }, itemId: 'lamp-oil', quantity: 1 },
+      { id: 'forest-mooring-rope', position: { x: 24, y: 27 }, itemId: 'mooring-rope', quantity: 1 },
     ],
   },
   // The first map drawn on the FireRed sheet, which is the only one with
@@ -176,6 +182,12 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'floodplain-mill-potion', position: { x: 49, y: 27 }, itemId: 'potion', quantity: 1 },
       { id: 'floodplain-keep-super-potion', position: { x: 52, y: 7 }, itemId: 'super-potion', quantity: 1 },
       { id: 'floodplain-vault-great-ball', position: { x: 44, y: 53 }, itemId: 'great-ball', quantity: 1 },
+      { id: 'floodplain-radio-valve', position: { x: 10, y: 14 }, itemId: 'radio-valve', quantity: 1 },
+      { id: 'floodplain-mooring-rope', position: { x: 23, y: 36 }, itemId: 'mooring-rope', quantity: 1 },
+      { id: 'floodplain-parts-crate', position: { x: 30, y: 39 }, itemId: 'parts-crate', quantity: 1 },
+      { id: 'floodplain-mill-lamp-oil', position: { x: 46, y: 22 }, itemId: 'lamp-oil', quantity: 1 },
+      { id: 'floodplain-keep-cable-coil', position: { x: 54, y: 9 }, itemId: 'cable-coil', quantity: 1 },
+      { id: 'floodplain-linen-roll', position: { x: 6, y: 30 }, itemId: 'linen-roll', quantity: 1 },
     ],
   },
 };
