@@ -35,3 +35,15 @@ export const CHIP_FONT_SIZE = '12px';
 
 /** World annotation. The same size as a chip, because it is read the same way. */
 export const CAPTION_FONT_SIZE = CHIP_FONT_SIZE;
+
+/**
+ * Dialogue, and the battle's main commands: the size a sentence is read at.
+ *
+ * It was 16px, which is between the sizes the face's own pixel grid lands on.
+ * There a stem is a pixel and a quarter wide, so some letters in a word came
+ * out one pixel thick and their neighbours two - `kit is` with a bold `i` - and
+ * 17px does the same to `!` and `k`. 14px is the largest size at which every
+ * letter of a specimen holds one weight. Check a new size on a specimen of
+ * lowercase and punctuation before using it.
+ */
+export const DIALOG_FONT_SIZE = '14px';

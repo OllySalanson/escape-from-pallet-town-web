@@ -50,7 +50,7 @@ import { Bag, type ItemDefinition } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { GAME_FONT } from '../ui/gameFont';
-import { CAPTION_FONT_SIZE } from '../ui/screenType';
+import { CAPTION_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
@@ -312,7 +312,7 @@ export class BattleScene extends Phaser.Scene {
       borderColor: WINDOW_BORDER,
       textStyle: {
         fontFamily: BATTLE_FONT,
-        fontSize: '16px',
+        fontSize: DIALOG_FONT_SIZE,
         color: WINDOW_INK,
       },
       indicatorStyle: {
@@ -625,7 +625,7 @@ export class BattleScene extends Phaser.Scene {
         label,
         {
           fontFamily: BATTLE_FONT,
-          fontSize: this.isRowListMode ? '13px' : '16px',
+          fontSize: this.isRowListMode ? '13px' : DIALOG_FONT_SIZE,
           color: isEmptyStackLabel(label) ? PANEL_REFUSAL_INK : WINDOW_INK,
           ...(layout
             ? {

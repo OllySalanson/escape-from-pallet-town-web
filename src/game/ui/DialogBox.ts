@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { TypewriterQueue } from './TypewriterQueue';
 import { drawPixelWindow } from './pixelWindow';
 import { GAME_FONT } from './gameFont';
+import { DIALOG_FONT_SIZE } from './screenType';
 
 export interface DialogBoxOptions {
   x?: number;
@@ -89,7 +90,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
 
     this.textObject = scene.add.text(this.paddingHorizontalPx, this.paddingPx, '', {
       fontFamily: GAME_FONT,
-      fontSize: '16px',
+      fontSize: DIALOG_FONT_SIZE,
       color: '#ffffff',
       wordWrap: {
         width: Math.max(0, this.widthPx - this.paddingHorizontalPx * 2),

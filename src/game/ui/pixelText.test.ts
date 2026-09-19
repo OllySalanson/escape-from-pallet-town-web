@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fontSizeOf, greyness, inkMask, inkThreshold, letterGap, pixelAdvance, snapOffset } from './pixelText';
+import { fontSizeOf, greyness, inkMask, inkThreshold, letterGap, pixelAdvance, snapOffset, stackedParts } from './pixelText';
 
 describe('pixel text', () => {
   it('reads the size out of a canvas font shorthand', () => {
@@ -42,9 +42,9 @@ describe('pixel text', () => {
   });
 
   describe('which pixels of a glyph are ink', () => {
-    const mask = (rows: number[][], threshold = 128): number[][] => {
+    const mask = (rows: number[][], dotted = false): number[][] => {
       const width = rows[0].length;
-      const flat = inkMask(Uint8Array.from(rows.flat()), width, rows.length, threshold);
+      const flat = inkMask(Uint8Array.from(rows.flat()), width, rows.length, 128, dotted);
       return rows.map((_, y) => [...flat.slice(y * width, (y + 1) * width)]);
     };
 
@@ -81,11 +81,33 @@ describe('pixel text', () => {
       ]);
     });
 
-    it('leaves a lone grey pixel as paper: a crest has to be part of a stroke', () => {
+    it('keeps the dot of an i, which is a stroke in neither direction - and only on a dotted glyph', () => {
+      const glyph = [
+        [0, 0, 0],
+        [0, 120, 0],
+        [0, 0, 0],
+        [0, 255, 0],
+      ];
+      expect(mask(glyph, true)).toEqual([
+        [0, 0, 0],
+        [0, 1, 0],
+        [0, 0, 0],
+        [0, 1, 0],
+      ]);
+      // On a `v` or an `N` the same lone crest is a blot on the diagonal.
+      expect(mask(glyph)[1]).toEqual([0, 0, 0]);
+    });
+
+    it('counts the pieces stacked in a column, which is how a fused dot is noticed', () => {
+      expect(stackedParts(Uint8Array.from([0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0]), 3, 4)).toBe(2);
+      expect(stackedParts(Uint8Array.from([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]), 3, 4)).toBe(1);
+    });
+
+    it('leaves a speck too faint to be anything as paper', () => {
       expect(
         mask([
           [0, 0, 0],
-          [0, 120, 0],
+          [0, 50, 0],
           [0, 0, 0],
         ]),
       ).toEqual([

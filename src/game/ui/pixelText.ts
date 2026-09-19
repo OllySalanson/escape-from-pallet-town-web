@@ -112,13 +112,16 @@ export function pixelAdvance(measuredWidth: number, inkWidth: number | null, gap
  * So a pixel with a fair share of coverage is also ink when it is the crest of
  * a stroke - heavier than the pixel on one side of it and no lighter than the
  * other - and the stroke carries on beside it. A stroke split in two therefore
- * comes out one pixel wide on its heavier side, never zero and never two.
+ * comes out one pixel wide on its heavier side, never zero and never two. A
+ * crest in both directions at once, touching no ink, is a dot, and is kept too.
  */
 export function inkMask(
   coverage: Uint8Array,
   width: number,
   height: number,
   threshold: number,
+  /** Only a glyph that has a dot may keep one: on any other, a lone crest is a blot on a diagonal. */
+  dotted = false,
 ): Uint8Array {
   const faint = threshold / 2;
   const at = (x: number, y: number): number =>
@@ -141,10 +144,32 @@ export function inkMask(
       const runsAlong = (one: number, other: number): boolean => one >= faint && other >= faint;
       const bar = crest(at(x, y - 1), at(x, y + 1)) && runsAlong(at(x - 1, y), at(x + 1, y));
       const stem = crest(at(x - 1, y), at(x + 1, y)) && runsAlong(at(x, y - 1), at(x, y + 1));
-      mask[y * width + x] = bar || stem ? 1 : 0;
+      // The dot of an `i` is a stroke in neither direction: a crest both ways,
+      // touching no ink. Without it `field kit is` read `fleld klt ls`.
+      const alone = dotted && [-1, 0, 1].every((dy) => [-1, 0, 1].every((dx) => at(x + dx, y + dy) < threshold));
+      const dot = dotted && alone && crest(at(x, y - 1), at(x, y + 1)) && crest(at(x - 1, y), at(x + 1, y));
+      mask[y * width + x] = bar || stem || dot ? 1 : 0;
     }
   }
   return mask;
+}
+
+/**
+ * The most separate pieces of ink stacked in any one column: two for an `i` or
+ * an `!` that still has its dot, one for the same glyph once the dot has fused.
+ */
+export function stackedParts(mask: Uint8Array, width: number, height: number): number {
+  let most = 0;
+  for (let x = 0; x < width; x += 1) {
+    let runs = 0;
+    for (let y = 0; y < height; y += 1) {
+      if (mask[y * width + x] && (y === 0 || !mask[(y - 1) * width + x])) {
+        runs += 1;
+      }
+    }
+    most = Math.max(most, runs);
+  }
+  return most;
 }
 
 /** The size a canvas `font` shorthand asks for, or null when it names none in px. */
@@ -158,6 +183,8 @@ type Pass = 'fill' | 'stroke';
 interface GlyphMetrics {
   /** Sub-pixel nudge that lands the ink on a column. */
   readonly dx: number;
+  /** Vertical nudge: the face's own for this size, except for a dotted glyph. */
+  readonly dy: number;
   /** The first inked column, relative to the glyph's origin: the pen is set against it. */
   readonly inkLeft: number;
   readonly advance: number;
@@ -241,7 +268,7 @@ function rasterise(
   dx: number,
   dy: number,
   threshold: number,
-): { bitmap: GlyphBitmap | null; ink: { left: number; width: number } | null; grey: number } {
+): { bitmap: GlyphBitmap | null; ink: { left: number; width: number } | null; grey: number; parts: number } {
   const measured = measureGlyph(context.font, char);
   const reach = BITMAP_MARGIN + (pass === 'stroke' ? Math.ceil(context.lineWidth) : 0);
   const left = Math.ceil(Math.max(0, measured.actualBoundingBoxLeft)) + reach;
@@ -256,7 +283,7 @@ function rasterise(
   canvas.height = height;
   const glyph = canvas.getContext('2d', { willReadFrequently: true });
   if (!glyph) {
-    return { bitmap: null, ink: null, grey: 0 };
+    return { bitmap: null, ink: null, grey: 0, parts: 0 };
   }
   glyph.font = context.font;
   glyph.textBaseline = 'alphabetic';
@@ -285,7 +312,7 @@ function rasterise(
     coverage[at] = pixels[at * 4 + 3];
     grey += greyness(coverage[at]);
   }
-  const mask = inkMask(coverage, width, height, threshold);
+  const mask = inkMask(coverage, width, height, threshold, DOTTED.includes(char));
   let firstInkColumn = width;
   let lastInkColumn = -1;
   for (let at = 0; at < mask.length; at += 1) {
@@ -296,7 +323,7 @@ function rasterise(
     }
   }
   if (lastInkColumn < 0) {
-    return { bitmap: null, ink: null, grey };
+    return { bitmap: null, ink: null, grey, parts: 0 };
   }
   glyph.putImageData(image, 0, 0);
   // Coloured afterwards, inside the mask, so a colour can never change a shape.
@@ -307,8 +334,12 @@ function rasterise(
     bitmap: { canvas, left, top: ascent },
     ink: { left: firstInkColumn - left, width: lastInkColumn - firstInkColumn + 1 },
     grey,
+    parts: stackedParts(mask, width, height),
   };
 }
+
+/** Glyphs made of a stroke and a detached dot. */
+const DOTTED = 'ij!?;:';
 
 /** Letters whose crossbars, between them, sit at every height the face draws one. */
 const BASELINE_PROBE = 'EHPBRSAeas025';
@@ -351,13 +382,30 @@ function metricsFor(context: CanvasRenderingContext2D, char: string, threshold: 
   // The setting is decided by the filled glyph whichever pass is being drawn,
   // so an outline always sits exactly under the letter it outlines.
   const snapped = snapOffset(-measured.actualBoundingBoxLeft);
-  const dy = baselineNudge(context, threshold);
-  const { dx, ink } = SNAP_CANDIDATES.map((nudge) => {
-    const candidate = snapped + nudge;
-    return { dx: candidate, ...rasterise(context, char, 'fill', candidate, dy, threshold) };
-  }).reduce((best, next) => (next.grey < best.grey ? next : best));
+  // A dotted glyph may leave the face's shared nudge to keep its dot. The gap
+  // under a dot is the thinnest thing in the face, and at 17px the `!` lost it
+  // - `appeared!` read `appearedl` - while nothing about a lone stem and a dot
+  // shows a half-pixel of drift against the baseline its neighbours share.
+  const shared = baselineNudge(context, threshold);
+  const dotted = DOTTED.includes(char);
+  const nudges = dotted ? [shared, shared - 0.5, shared + 0.5, shared - 0.25, shared + 0.25] : [shared];
+  const { dx, dy, ink } = nudges
+    .flatMap((vertical) =>
+      SNAP_CANDIDATES.map((nudge) => {
+        const candidate = snapped + nudge;
+        return { dx: candidate, dy: vertical, ...rasterise(context, char, 'fill', candidate, vertical, threshold) };
+      }),
+    )
+    .reduce((best, next) =>
+      // Pieces only count for a glyph that is meant to have them: on a `v` or an
+      // `N` the setting with the most pieces is the one with a broken diagonal.
+      (dotted && next.parts > best.parts) || ((!dotted || next.parts === best.parts) && next.grey < best.grey)
+        ? next
+        : best,
+    );
   const metrics = {
     dx,
+    dy,
     inkLeft: ink?.left ?? 0,
     advance: pixelAdvance(measured.width, ink?.width ?? null, letterGap(fontSizeOf(context.font) ?? 0)),
   };
@@ -383,7 +431,7 @@ function bitmapFor(
   if (bitmapCache.has(key)) {
     return bitmapCache.get(key) ?? null;
   }
-  const { bitmap } = rasterise(context, char, pass, metrics.dx, baselineNudge(context, threshold), threshold);
+  const { bitmap } = rasterise(context, char, pass, metrics.dx, metrics.dy, threshold);
   if (isFontReady(context.font)) {
     bitmapCache.set(key, bitmap);
   }

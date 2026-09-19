@@ -78,6 +78,7 @@ import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
 import { placeCaptions, placeDialog, type Rect } from '../ui/labelPlacement';
 import { GAME_FONT } from '../ui/gameFont';
+import { DIALOG_FONT_SIZE } from '../ui/screenType';
 import {
   CAPTION_BAND,
   FIGURE_BAND,
@@ -1199,7 +1200,7 @@ export class WorldScene extends Phaser.Scene {
       // The same face as the battle's dialogue and the map's captions. It is
       // narrower than the browser monospace it replaces at every size, so
       // authored narration wraps to the same lines or fewer, never more.
-      textStyle: { fontFamily: GAME_FONT, fontSize: '16px' },
+      textStyle: { fontFamily: GAME_FONT, fontSize: DIALOG_FONT_SIZE },
       indicatorStyle: { fontFamily: GAME_FONT, fontSize: '12px' },
       onComplete: () => this.handleRunResolutionComplete(),
     }).setScrollFactor(0, 0, true);
