@@ -4,6 +4,7 @@ export {
   getStarterSpecies,
   MINIMUM_SUPPLIES,
   STARTER_SPECIES,
+  starterInConditionOf,
   Stash,
   type RaidCondition,
   type RaidSettlement,

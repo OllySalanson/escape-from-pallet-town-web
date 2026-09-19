@@ -347,22 +347,28 @@ export class Stash {
   }
 
   /**
-   * Trades the sole remaining Pokemon for a fresh level-5 starter, so a player
+   * Trades the sole remaining Pokemon for a level-5 starter, so a player
    * recovering from a wipe can change species instead of being locked to one.
    * Refused while two or more Pokemon remain, so a team can never be discarded.
+   *
+   * A swap is a change of species and nothing else. The newcomer arrives in the
+   * condition the old partner left in (`starterInConditionOf`), and no supplies
+   * come with it: a partner home at 1 HP with no Potions used to be traded for
+   * a full-health one and a full kit, which priced the recovery bay at nothing.
+   * A wiped player loses no guarantee by it - the wipe itself restocked the kit
+   * before the swap was ever on offer.
    *
    * @returns Whether the swap happened.
    */
   public swapStarter(starter: PokemonBase): boolean {
-    if (!this.canSwapStarter()) {
+    const outgoing = this.storedPokemon[0];
+    if (!this.canSwapStarter() || !outgoing) {
       return false;
     }
 
+    const incoming = starterInConditionOf(outgoing.pokemon, starter);
     this.storedPokemon.length = 0;
-    this.addPokemon(new Pokemon(starter, 5));
-    // The swap is only ever reachable while recovering, so it carries the same
-    // supply guarantee as a re-grant.
-    this.restockMinimumSupplies();
+    this.addPokemon(incoming);
     return true;
   }
 
@@ -430,6 +436,24 @@ export class Stash {
     }
     return `${prefix}-${number}`;
   }
+}
+
+/**
+ * The level-5 starter a swap hands over for `outgoing`: the same share of its
+ * health, rounded down so trading back and forth can only ever lose HP, and the
+ * same status. A partner still standing arrives standing - a swap cannot faint
+ * a Pokemon - and a fainted one arrives fainted, so the revive is still owed.
+ *
+ * Exported so the swap screen previews exactly what the stash will hold.
+ */
+export function starterInConditionOf(outgoing: Pokemon, starter: PokemonBase): Pokemon {
+  const incoming = new Pokemon(starter, 5);
+  const carriedHp = outgoing.isFainted
+    ? 0
+    : Math.max(1, Math.floor((incoming.maxHp * outgoing.currentHp) / outgoing.maxHp));
+  incoming.takeDamage(incoming.maxHp - carriedHp);
+  incoming.primaryStatus = outgoing.primaryStatus;
+  return incoming;
 }
 
 /** Provides a playable first vault for a player with no existing save. */
