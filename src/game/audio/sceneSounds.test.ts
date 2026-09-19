@@ -33,9 +33,15 @@ describe('sounds that used to play twice', () => {
     // sounding again after every wild fight. The wild payload dropped both
     // fields, so the world came back with a fresh hunter and no memory of who
     // had been beaten.
+    //
+    // Both payloads are now packed by the one `raidCarriage()`, and the round
+    // trip itself is driven in `consecutiveRaids.test.ts`; what is held here is
+    // that no call site has gone back to writing a payload of its own.
     const world = scene('WorldScene');
-    const wild = world.slice(world.indexOf('wild,\n'), world.indexOf('returnLocation: this.returnLocation(),'));
-    expect(wild).toContain('hunterState: this.hunterState');
-    expect(wild).toContain('defeatedTrainerIds: [...this.defeatedTrainerIds]');
+    const carriage = world.slice(world.indexOf('private raidCarriage()'), world.indexOf('private clearMap()'));
+    expect(carriage).toContain('hunterState: this.hunterState');
+    expect(carriage).toContain('defeatedTrainerIds: [...this.defeatedTrainerIds]');
+    expect(world).toContain('this.transitionToBattle({ wild, teachingBattle })');
+    expect(world.match(/hunterState: this\.hunterState/g)).toHaveLength(1);
   });
 });

@@ -91,6 +91,8 @@ import {
   raidClockView,
 } from './raidHud';
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
+import type { RaidCarriage } from '../run/raidCarriage';
+import type { BattleSceneData } from './BattleScene';
 import {
   bossEncounters,
   createRunTrainerEncounters,
@@ -226,28 +228,18 @@ interface ControlKeys {
   interact: Phaser.Input.Keyboard.Key[];
 }
 
-export interface WorldSceneData {
+/**
+ * What the world is started with. The hub supplies the carriage's deployment
+ * half (party, bag, session); a battle hands back the whole of it.
+ */
+export interface WorldSceneData extends Partial<RaidCarriage> {
   readonly savedGame?: RestoredGame;
-  readonly party?: PokemonParty;
-  /**
-   * The consumable items deployed from the hub for an extraction raid, balls
-   * included: the pack is the whole of what a raid carries.
-   */
-  readonly bag?: Bag;
-  readonly caughtPokemonStash?: Pokemon[];
-  /** Present only while playing an extraction raid launched by the hub. */
-  readonly runSession?: ActiveRunSession;
-  /** Trainer victories persist only for the active raid. */
-  readonly defeatedTrainerIds?: readonly string[];
-  /** Loot pickups persist only for the active raid. */
-  readonly collectedLootIds?: readonly string[];
-  /** Fixed landmark activations persist only for the active raid. */
-  readonly activatedPoiIds?: readonly string[];
-  /** The hunter persists across battle returns during the active raid. */
-  readonly hunterState?: HunterState;
-  /** Exact overworld location to restore after a battle scene. */
-  readonly returnLocation?: RaidLocation;
 }
+
+/** The fight itself - the only part of a battle payload a call site writes. */
+type BattleEncounter =
+  | Required<Pick<BattleSceneData, 'wild' | 'teachingBattle'>>
+  | Required<Pick<BattleSceneData, 'trainer' | 'hunterBattle'>>;
 
 const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
   up: 'down',
@@ -1778,23 +1770,7 @@ export class WorldScene extends Phaser.Scene {
         teaching ?? rollEncounter(encounters, rng === undefined ? undefined : () => rng.next());
       if (wild) {
         audioManager.play('encounter');
-        this.transitionToBattle({
-          wild,
-          teachingBattle,
-          party: this.party,
-          bag: this.bag,
-          caughtPokemonStash: this.caughtPokemonStash,
-          runSession: this.runSession,
-          // A wild fight has to hand back everything a trainer fight does. It
-          // used to drop these two, so the world was rebuilt with no hunter and
-          // no beaten trainers: the hunter arrived all over again, announcement
-          // and all, after every wild battle - even one it had already lost.
-          defeatedTrainerIds: [...this.defeatedTrainerIds],
-          hunterState: this.hunterState,
-          collectedLootIds: [...this.collectedLootIds],
-          activatedPoiIds: [...this.activatedPoiIds],
-          returnLocation: this.returnLocation(),
-        });
+        this.transitionToBattle({ wild, teachingBattle });
       }
     }
   }
@@ -1833,13 +1809,37 @@ export class WorldScene extends Phaser.Scene {
     });
   }
 
-  private transitionToBattle(data: object): void {
+  /**
+   * Starts a fight. The caller names only the fight; what the raid carries
+   * through it is packed here, once, for every kind of battle - a payload
+   * written out per call site is how a wild fight came to forget the hunter.
+   */
+  private transitionToBattle(encounter: BattleEncounter): void {
+    const data: BattleSceneData = { ...this.raidCarriage(), ...encounter };
     this.isWarping = true;
     this.player.stop();
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.start('battle', data);
     });
+  }
+
+  /** The raid state that exists only on this scene - see `RaidCarriage`. */
+  private raidCarriage(): RaidCarriage {
+    return {
+      party: this.party,
+      // The raid's own supplies go into the fight with the party. A battle
+      // that had to reach for the persisted bag instead would be spending an
+      // inventory this raid never deployed with.
+      bag: this.bag,
+      caughtPokemonStash: this.caughtPokemonStash,
+      runSession: this.runSession,
+      defeatedTrainerIds: [...this.defeatedTrainerIds],
+      collectedLootIds: [...this.collectedLootIds],
+      activatedPoiIds: [...this.activatedPoiIds],
+      hunterState: this.hunterState,
+      returnLocation: this.returnLocation(),
+    };
   }
 
   private clearMap(): void {
@@ -2309,22 +2309,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.pendingTrainerBattle) {
       const battle = this.pendingTrainerBattle;
       this.pendingTrainerBattle = undefined;
-      this.transitionToBattle({
-        trainer: battle.trainer,
-        party: this.party,
-        // The raid's own supplies go into the fight with the party. A battle
-        // that had to reach for the persisted bag instead would be spending an
-        // inventory this raid never deployed with.
-        bag: this.bag,
-        caughtPokemonStash: this.caughtPokemonStash,
-        runSession: this.runSession,
-        defeatedTrainerIds: [...this.defeatedTrainerIds],
-        collectedLootIds: [...this.collectedLootIds],
-        activatedPoiIds: [...this.activatedPoiIds],
-        returnLocation: this.returnLocation(),
-        hunterBattle: battle.isHunter,
-        hunterState: this.hunterState,
-      });
+      this.transitionToBattle({ trainer: battle.trainer, hunterBattle: battle.isHunter });
       return;
     }
 

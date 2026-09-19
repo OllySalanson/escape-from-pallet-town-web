@@ -32,7 +32,8 @@ import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
 import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlement';
-import type { ActiveRunSession, RaidLocation } from '../run/RunSession';
+import type { ActiveRunSession } from '../run/RunSession';
+import type { RaidCarriage } from '../run/raidCarriage';
 import {
   HUNTER_SEARCH_MS,
   beginHunterDisengage,
@@ -107,28 +108,17 @@ const MATCHUP_COLORS: Readonly<Record<MatchupTone, string>> = {
   none: '#94a3b8',
   neutral: '#e2e8f0',
 };
-export interface BattleSceneData {
+/**
+ * The fight, plus the raid's carriage: everything the world needs handed back
+ * to go on being the same raid. See `RaidCarriage` for why it is one type.
+ */
+export interface BattleSceneData extends Partial<RaidCarriage> {
   wild?: WildEncounter;
   trainer?: TrainerBattle;
-  party?: PokemonParty;
-  /**
-   * The raid's own bag, balls included, so anything used in a fight is spent
-   * from what was packed.
-   */
-  bag?: Bag;
-  caughtPokemonStash?: PokemonInstance[];
-  /** The active raid context, passed through from WorldScene. */
-  runSession?: ActiveRunSession;
-  defeatedTrainerIds?: readonly string[];
-  collectedLootIds?: readonly string[];
-  activatedPoiIds?: readonly string[];
   /** The authored opening fight adds one-off narration explaining the screen. */
   teachingBattle?: boolean;
   /** Hunters are trainer battles that can be fled from and resume pursuit. */
   hunterBattle?: boolean;
-  hunterState?: HunterState;
-  /** Location to restore when this battle returns to the overworld. */
-  returnLocation?: RaidLocation;
   /** A development route can return to its launcher after a complete battle. */
   returnScene?: string;
 }
@@ -1547,7 +1537,10 @@ export class BattleScene extends Phaser.Scene {
         this.runSession?.manager.registerTrainerDefeat();
       }
       this.persistActivePokemonHp();
-      this.scene.start('world', {
+      // Typed as the whole carriage, so a field the world packed and this
+      // scene forgot to hand back is a compile error rather than a raid that
+      // quietly loses its hunter.
+      const carriage: RaidCarriage = {
         party: this.party,
         // The same bag object the raid walked in with, handed back explicitly:
         // an item drunk in this fight is gone from the supplies the overworld,
@@ -1563,7 +1556,8 @@ export class BattleScene extends Phaser.Scene {
           this.trainer && this.state.outcome === 'victory' && this.hunterBattle && this.hunterState
             ? { ...this.hunterState, defeated: true }
             : this.hunterState,
-      });
+      };
+      this.scene.start('world', carriage);
     }
   }
 

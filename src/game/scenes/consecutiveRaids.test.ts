@@ -86,6 +86,10 @@ import { RAID_DURATION_MS } from '../run/raidClock';
 import { FIRST_CONTRACT } from '../objectives';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
+import { RAID_CARRIAGE_KEYS, type RaidCarriage } from '../run/raidCarriage';
+import { createHunterState, type HunterState } from '../world/hunter';
+import { isTallGrassInMap, type WorldMapDefinition } from '../worldMap';
+import { BattleScene, type BattleSceneData } from './BattleScene';
 import { WorldScene } from './WorldScene';
 
 /** A display object that answers every chainable setter with itself. */
@@ -393,4 +397,143 @@ describe('two raids in a row on one WorldScene instance', () => {
     expect(internals.facing).toBe('down');
     expect(internals.caughtPokemonStash).toEqual([]);
   });
+});
+
+/**
+ * Playtest 3, B1: "A RIVAL HUNTER is on your trail!" fired a second time after
+ * one wild Bulbasaur, with the hunter eleven tiles from where it had been.
+ *
+ * A battle shuts the world down and the world is rebuilt from whatever the
+ * battle hands back, so the raid is only as continuous as that payload. The
+ * wild-encounter payload had been written out beside the trainer one and was
+ * two fields short. These drive the real round trip - the real WorldScene into
+ * the real BattleScene and back - for both kinds of fight, and hold the payload
+ * to every key of `RaidCarriage` in both directions.
+ */
+describe('a raid carried through a battle and back', () => {
+  interface WorldInternals {
+    currentMap: WorldMapDefinition;
+    collisionData: boolean[][];
+    currentTile: { x: number; y: number };
+    targetTile: { x: number; y: number } | null;
+    stepProgress: number;
+    dialogBox: { visible: boolean };
+    hunterState: HunterState;
+    defeatedTrainerIds: Set<string>;
+    collectedLootIds: Set<string>;
+    activatedPoiIds: Set<string>;
+    pendingTrainerBattle: unknown;
+    advanceStep(deltaMs: number): void;
+    handleRunResolutionComplete(): void;
+  }
+
+  /** A walkable tile outside the tall grass, and the tall grass one step from it. */
+  const stepIntoTallGrass = (world: WorldInternals) => {
+    const { currentMap: map, collisionData } = world;
+    const open = (x: number, y: number) => collisionData[y]?.[x] === false;
+    for (let y = 0; y < collisionData.length; y += 1) {
+      for (let x = 0; x < collisionData[y].length; x += 1) {
+        if (!open(x, y) || isTallGrassInMap(map, { x, y })) continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const grass = { x: x + dx, y: y + dy };
+          if (open(grass.x, grass.y) && isTallGrassInMap(map, grass)) {
+            return { from: { x, y }, grass };
+          }
+        }
+      }
+    }
+    throw new Error(`${map.id} has no tall grass to walk into`);
+  };
+
+  const startsOf = (scene: object) =>
+    (scene as unknown as { scene: { start: ReturnType<typeof vi.fn> } }).scene.start;
+
+  const lastStart = <T>(scene: object, key: string): T => {
+    const call = startsOf(scene).mock.calls.filter(([started]) => started === key).at(-1);
+    expect(call, `nothing started '${key}'`).toBeDefined();
+    return call![1] as T;
+  };
+
+  it.each(['wild', 'trainer'] as const)(
+    'brings the hunter, the beaten trainers and the ground already worked back from a %s fight',
+    (kind) => {
+      const controls = makeControls();
+      const world = new WorldScene();
+      attachSceneStubs(world, controls);
+      const manager = new RunManager();
+      // Seed 1 carries the first contract, whose authored teaching fight makes
+      // the first step into tall grass a certain encounter rather than a roll.
+      const runSession = startRaid(world, manager, 'floodplain-relay', 1);
+      const internals = world as unknown as WorldInternals;
+      internals.dialogBox.visible = false;
+
+      const { from, grass } = stepIntoTallGrass(internals);
+      // The hunter has arrived, been beaten, and is standing where it fell.
+      const hunter: HunterState = {
+        ...createHunterState(),
+        spawned: true,
+        defeated: true,
+        mapId: internals.currentMap.id,
+        position: { ...from },
+      };
+      internals.hunterState = hunter;
+      internals.defeatedTrainerIds.add('raider-maya');
+      internals.collectedLootIds.add('a-potion-already-taken');
+      internals.activatedPoiIds.add('a-landmark-already-worked');
+
+      if (kind === 'wild') {
+        internals.currentTile = { ...from };
+        internals.targetTile = { ...grass };
+        internals.stepProgress = 0;
+        internals.advanceStep(60_000);
+      } else {
+        internals.currentTile = { ...grass };
+        internals.pendingTrainerBattle = {
+          trainer: { id: 'toll', name: 'TOLL', party: [new Pokemon(BULBASAUR, 3)] },
+          introLines: [],
+          isHunter: false,
+        };
+        internals.handleRunResolutionComplete();
+      }
+
+      // Out: the world packs the whole carriage, whatever kind of fight it is.
+      const outbound = lastStart<BattleSceneData>(world, 'battle');
+      expect(kind === 'wild' ? outbound.wild : outbound.trainer).toBeDefined();
+      for (const key of RAID_CARRIAGE_KEYS) {
+        expect(outbound, `the ${kind} payload drops ${key}`).toHaveProperty(key);
+      }
+      expect(outbound.hunterState).toEqual(hunter);
+      expect(outbound.defeatedTrainerIds).toEqual(['raider-maya']);
+      expect(outbound.runSession).toBe(runSession);
+
+      // Through: the real battle scene takes it and hands it back.
+      const battle = new BattleScene();
+      attachSceneStubs(battle as unknown as WorldScene, makeControls());
+      // The battle screen draws far more than the world does; none of it is
+      // what is under test, so everything it draws on answers with itself.
+      Object.assign(battle as object, {
+        add: new Proxy({}, { get: () => () => chainable() }),
+        tweens: chainable(),
+        input: { keyboard: new Proxy({}, { get: () => () => chainable() }) },
+        cameras: { main: chainable() },
+      });
+      battle.create(outbound);
+      (battle as unknown as { completeReturnToWorld(): void }).completeReturnToWorld();
+      const inbound = lastStart<RaidCarriage>(battle, 'world');
+      for (const key of RAID_CARRIAGE_KEYS) {
+        expect(inbound, `the battle hands back no ${key}`).toHaveProperty(key);
+      }
+
+      // Back: the same raid, not a new one with the same clock.
+      startsOf(world).mockClear();
+      world.create(inbound);
+      expect(internals.hunterState).toEqual(hunter);
+      expect([...internals.defeatedTrainerIds]).toEqual(['raider-maya']);
+      expect([...internals.collectedLootIds]).toEqual(['a-potion-already-taken']);
+      expect([...internals.activatedPoiIds]).toEqual(['a-landmark-already-worked']);
+      expect(internals.currentTile).toEqual(grass);
+      // The arrival is announced once per raid: nothing is said on the way back.
+      expect(internals.dialogBox.visible).toBe(false);
+    },
+  );
 });
