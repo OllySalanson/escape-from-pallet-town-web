@@ -80,6 +80,18 @@ export interface CaptionSurroundings {
    * seats does the rest: the other row, slid along it, then beside the subject.
    */
   readonly canopy: readonly Rect[];
+  /**
+   * The player: the figure and the chevron over it, on the tile they stand on
+   * and the one they are stepping to. A figure is drawn over every caption, so
+   * the player was never hidden - but the place to read a caption is beside the
+   * thing it names, and a caption naming the tile underfoot was seated across
+   * the reader's own head (`DROP-IN READ▼`, `TOLL BRIDGE / OPEN` through the
+   * hair). It is ground a caption gives up *if it has anywhere else to go*: a
+   * caption with no other seat keeps the one under the player rather than
+   * vanishing, because the player walks everywhere and a warning that blinked
+   * out whenever they stood near it would be the worse fault.
+   */
+  readonly player?: readonly Rect[];
 }
 
 export interface CaptionPlacement {
@@ -141,7 +153,11 @@ interface Candidate {
  * end of the subject, and every one is pulled inside the view along its own
  * axis - so a caption near an edge slides along its row rather than leaving it.
  */
-function candidatesFor(request: CaptionRequest, bounds: Rect): Candidate[] {
+function candidatesFor(
+  request: CaptionRequest,
+  bounds: Rect,
+  player: readonly Rect[] = [],
+): Candidate[] {
   const { subject, width, height, preferred } = request;
   const minimumX = bounds.x + VIEW_INSET;
   const maximumX = bounds.x + bounds.width - VIEW_INSET - width;
@@ -166,11 +182,36 @@ function candidatesFor(request: CaptionRequest, bounds: Rect): Candidate[] {
     return rows.map((y) => ({ x: Math.round(x), y: slideY(y), seat }));
   };
 
+  // The last resort before a seat under the player: the same two rows, moved
+  // out past the player. Hard against the map's west edge, the Radio Exit had
+  // forest on one side, its notice below and the reeds lane - the player -
+  // on the other, and its caption lay across the chevron of anyone walking the
+  // lane. Lifted over their head it is still plainly the exit's. Only a player
+  // standing in a row's own band moves it, and these come after every ordinary
+  // seat, so a caption with room is never drawn away from what it names.
+  const reach = { x: subject.x - width, width: subject.width + width * 2 };
+  const inBand = (y: number): Rect[] =>
+    player.filter((one) => overlap(one, { ...reach, y, height }) > 0);
+  const clearOfPlayer = (seat: CaptionSide): Candidate[] => {
+    const [ordinary] = row(seat);
+    const inTheWay = inBand(ordinary.y);
+    if (inTheWay.length === 0) {
+      return [];
+    }
+    const y =
+      seat === 'above'
+        ? Math.min(...inTheWay.map((one) => one.y)) - SUBJECT_GAP - height
+        : Math.max(...inTheWay.map((one) => one.y + one.height)) + SUBJECT_GAP;
+    return columns.map((x) => ({ x: slideX(x), y: Math.round(y), seat }));
+  };
+
   return [
     ...row(preferred),
     ...row(preferred === 'above' ? 'below' : 'above'),
     ...column('right'),
     ...column('left'),
+    ...clearOfPlayer(preferred),
+    ...clearOfPlayer(preferred === 'above' ? 'below' : 'above'),
   ];
 }
 
@@ -189,6 +230,7 @@ function intrusion(rect: Rect, surroundings: CaptionSurroundings, seated: readon
     against(surroundings.furniture, NEIGHBOUR_GAP) +
     against(surroundings.keepClear, 0) +
     against(surroundings.canopy, 0) +
+    against(surroundings.player ?? [], 0) +
     against(seated, NEIGHBOUR_GAP)
   );
 }
@@ -202,6 +244,8 @@ export interface SeatRefusal {
   readonly underHud: number;
   readonly overMapArt: number;
   readonly underCanopy: number;
+  /** Given up only while another seat is clear - see `CaptionSurroundings.player`. */
+  readonly overPlayer: number;
   readonly againstCaption: number;
 }
 
@@ -219,7 +263,7 @@ export function explainSeats(
   const view = inflate(surroundings.bounds, -VIEW_INSET);
   const against = (rect: Rect, others: readonly Rect[], gap: number): number =>
     others.reduce((total, one) => total + overlap(rect, inflate(one, gap)), 0);
-  return candidatesFor(request, surroundings.bounds).map((candidate) => {
+  return candidatesFor(request, surroundings.bounds, surroundings.player).map((candidate) => {
     const rect: Rect = { x: candidate.x, y: candidate.y, width: request.width, height: request.height };
     return {
       seat: candidate.seat,
@@ -229,6 +273,7 @@ export function explainSeats(
       underHud: against(rect, surroundings.furniture, NEIGHBOUR_GAP),
       overMapArt: against(rect, surroundings.keepClear, 0),
       underCanopy: against(rect, surroundings.canopy, 0),
+      overPlayer: against(rect, surroundings.player ?? [], 0),
       againstCaption: against(rect, seated, NEIGHBOUR_GAP),
     };
   });
@@ -268,7 +313,7 @@ export function placeCaptions(
   const placements: CaptionPlacement[] = [];
 
   const place = (request: CaptionRequest): CaptionPlacement => {
-    const candidates = candidatesFor(request, surroundings.bounds);
+    const candidates = candidatesFor(request, surroundings.bounds, surroundings.player);
     const rectOf = (candidate: Candidate): Rect => ({
       x: candidate.x,
       y: candidate.y,
@@ -285,13 +330,18 @@ export function placeCaptions(
       return hidden(0);
     }
 
-    const isClear = (index: number): boolean =>
-      intrusion(rectOf(candidates[index]), around, seated) === 0;
-    const held =
-      request.held !== undefined && request.held < candidates.length && isClear(request.held)
+    // Twice at most: clear of everything, then clear of everything but the
+    // player. The held seat is asked first both times, so a caption the player
+    // walks under moves once and stays where it went.
+    const seatClearOf = (ground: CaptionSurroundings): number => {
+      const isClear = (index: number): boolean =>
+        intrusion(rectOf(candidates[index]), ground, seated) === 0;
+      return request.held !== undefined && request.held < candidates.length && isClear(request.held)
         ? request.held
-        : -1;
-    const index = held >= 0 ? held : candidates.findIndex((_, at) => isClear(at));
+        : candidates.findIndex((_, at) => isClear(at));
+    };
+    const clearOfPlayer = seatClearOf(around);
+    const index = clearOfPlayer >= 0 ? clearOfPlayer : seatClearOf({ ...around, player: [] });
     if (index < 0) {
       return hidden(0);
     }

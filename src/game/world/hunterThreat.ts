@@ -122,6 +122,10 @@ export function hunterThreatLine(threat: HunterThreat): { readonly heading: stri
       : undefined;
   return {
     heading: `Hunter tier ${threat.tierOffset + 1} of ${HUNTER_TIERS.length}`,
-    detail: reason ? `${team}, ${sooner} - ${reason}` : `${team} - nothing you are bringing out-levels it`,
+    // The other wordings say "your", which is what tells the two teams apart. This
+    // one had no owner in it, and a stranger could not tell whose team of 1 it was.
+    detail: reason
+      ? `${team}, ${sooner} - ${reason}`
+      : `It fields a ${team} - nothing you bring out-levels it`,
   };
 }

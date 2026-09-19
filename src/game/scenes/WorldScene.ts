@@ -55,21 +55,23 @@ import {
   nextBump,
   nextHunterProximity,
 } from '../audio/worldSounds';
-import { SaveManager, type RestoredGame } from '../save/SaveManager';
+import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
 import { Bag, ITEMS, type ItemId } from '../items';
 import {
   areContractStopsComplete,
   completedObjectiveRewards,
   contractCarryIn,
+  contractReportLine,
   formatStacks,
   isContractBankable,
   missingCarryIn,
   remainingMarkers,
   rewardPokemon,
   type ContractMarker,
-  type RaidContract,
+  type StandingBoardProgress,
 } from '../objectives';
 import { RunPhase } from '../run/RunManager';
+import { compassBearing } from '../world/bearing';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
 import {
   buildRaidSettlement,
@@ -631,6 +633,10 @@ export class WorldScene extends Phaser.Scene {
 
     if (this.targetTile) {
       this.advanceStep(deltaMs);
+      return;
+    }
+
+    if (this.tryExtractWhereStanding()) {
       return;
     }
 
@@ -2064,7 +2070,13 @@ export class WorldScene extends Phaser.Scene {
     }));
     const placements = placeCaptions(
       this.worldLabels.map((label) => label.request()),
-      { bounds, furniture, keepClear: this.captionKeepClear(), canopy: this.canopyInView(bounds) },
+      {
+        bounds,
+        furniture,
+        keepClear: this.captionKeepClear(),
+        canopy: this.canopyInView(bounds),
+        player: this.captionPlayer(),
+      },
     );
     this.worldLabels.forEach((label, index) => label.seat(placements[index]));
   }
@@ -2110,9 +2122,11 @@ export class WorldScene extends Phaser.Scene {
   /**
    * What stands on this map that a caption may not cover, beyond the things the
    * captions themselves name: signs, crates, the ground a trainer watches, and
-   * everyone standing still. The player and the hunter are left out on purpose.
-   * They walk, a caption that dodged them would chase around the screen, and
-   * `depths.ts` already draws every figure over every caption.
+   * everyone standing still. The hunter is left out on purpose: it walks, a
+   * caption that dodged it would chase around the screen, and `depths.ts`
+   * already draws every figure over every caption. The player walks too, and is
+   * `captionPlayer()`'s business rather than this list's, because a caption
+   * gives the player room only while it has somewhere else to sit.
    */
   private captionKeepClear(): Rect[] {
     const signs = this.currentMap.entities
@@ -2133,6 +2147,17 @@ export class WorldScene extends Phaser.Scene {
         height: FIGURE_HEIGHT,
       }));
     return [...signs, ...crates, ...standing, ...this.watchedGround];
+  }
+
+  /**
+   * Where the player is, as captions see them: the figure and its chevron on
+   * the tile they stand on, and on the tile they are stepping to. Whole tiles
+   * rather than the sprite's own position, so the answer changes when a step
+   * begins and not on every frame of it - a caption in the way moves once, as
+   * the player sets off towards it, instead of sliding along ahead of them.
+   */
+  private captionPlayer(): Rect[] {
+    return [this.currentTile, ...(this.targetTile ? [this.targetTile] : [])].map(landingRect);
   }
 
   private isLootAvailable(): boolean {
@@ -2349,20 +2374,24 @@ export class WorldScene extends Phaser.Scene {
     return `HUNTER FORECAST: trail enters this area in about ${seconds}s. Waiting for a timed exit may cost you.`;
   }
 
+  /** The exit the player is standing on, if this raid offers one there. */
+  private exitUnderPlayer(): ExtractionPoint | undefined {
+    if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun) {
+      return undefined;
+    }
+    return this.extractionPointsForCurrentMap().find(
+      (candidate) =>
+        candidate.position.x === this.currentTile.x && candidate.position.y === this.currentTile.y,
+    );
+  }
+
   /**
    * @returns Whether this step ended the raid, or was spent on a locked exit,
    *   so the caller stops rather than rolling anything else into the same tick.
    */
   private tryExtract(): boolean {
-    if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun) {
-      return false;
-    }
-
-    const point = this.extractionPointsForCurrentMap().find(
-      (candidate) =>
-        candidate.position.x === this.currentTile.x && candidate.position.y === this.currentTile.y,
-    );
-    if (!point) {
+    const point = this.exitUnderPlayer();
+    if (!point || !this.runSession) {
       return false;
     }
 
@@ -2374,6 +2403,36 @@ export class WorldScene extends Phaser.Scene {
       return true;
     }
 
+    this.extractThrough(point);
+    return true;
+  }
+
+  /**
+   * An exit that opens under the player takes them, exactly as stepping onto it
+   * open would have. Waiting on a timed exit is the natural thing to do - its
+   * locked line counts the seconds down - and extraction used to be asked only
+   * when a step finished, so a raid was lost to the clock by someone standing on
+   * the Ferry Dock under a green EXTRACT OPEN. It is the rule for every exit
+   * rather than a timer's special case: the Outfitter's beacon opens on the
+   * insertion tile, and a battle can hand the raid back on one. `update()` asks
+   * only while the player is at rest with nothing on screen to read, so the
+   * locked line is never talked over.
+   *
+   * @returns Whether the raid ended.
+   */
+  private tryExtractWhereStanding(): boolean {
+    const point = this.exitUnderPlayer();
+    if (!point || !this.isExtractionOpen(point)) {
+      return false;
+    }
+    this.extractThrough(point);
+    return true;
+  }
+
+  private extractThrough(point: ExtractionPoint): void {
+    if (!this.runSession) {
+      return;
+    }
     this.runSession.manager.resolveEscape();
     this.destroyRunTimerHud();
     this.cameras.main.flash(240, 134, 239, 172, false);
@@ -2434,13 +2493,13 @@ export class WorldScene extends Phaser.Scene {
             contract: {
               description: contract.description,
               complete: banksContract,
-              reward: contractReportLine(
-                contract,
-                banksContract,
-                contractResult.granted,
-                areContractStopsComplete(contract, snapshot.contractSteps),
-                point.label,
-              ),
+              reward: contractReportLine(contract, {
+                banked: banksContract,
+                granted: contractResult.granted,
+                stopsComplete: areContractStopsComplete(contract, snapshot.contractSteps),
+                exitLabel: point.label,
+                progressAfter: this.progressAfterRaid(),
+              }),
             },
           }
           : {}),
@@ -2448,7 +2507,19 @@ export class WorldScene extends Phaser.Scene {
         saved: contractResult.saved,
       }),
     );
-    return true;
+  }
+
+  /**
+   * What the next board will be dealt from: the save as this raid left it, and
+   * where nothing can be saved, the bosses this raid is already acting on.
+   */
+  private progressAfterRaid(): StandingBoardProgress {
+    return (
+      new SaveManager().load()?.raidProgress ?? {
+        ...DEFAULT_RAID_PROGRESS,
+        defeatedBosses: this.defeatedBosses,
+      }
+    );
   }
 
   /**
@@ -2796,23 +2867,6 @@ function extractionIconKey(isOpen: boolean): string {
  * What the result screen says about the contract, including the case the whole
  * cordon ledger exists for: every stop made and the wrong gate taken.
  */
-function contractReportLine(
-  contract: RaidContract,
-  banked: boolean,
-  granted: boolean,
-  stopsComplete: boolean,
-  exitLabel: string,
-): string {
-  if (banked) {
-    return granted
-      ? contract.reward.summary
-      : 'Already banked on an earlier raid, so there is no new unlock this time.';
-  }
-  if (stopsComplete && contract.requiredExitLabel) {
-    return `You had it, and ${exitLabel} is not ${contract.requiredExitLabel}. It came home unpaid and stays on the board.`;
-  }
-  return 'Unfinished, so it stays on the board for the next raid.';
-}
 
 function manhattan(from: GridPosition, to: GridPosition): number {
   return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
@@ -2823,10 +2877,7 @@ function contractMarkerIcon(marker: ContractMarker): string {
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {
-  const horizontal = to.x === from.x ? '' : to.x > from.x ? 'E' : 'W';
-  const vertical = to.y === from.y ? '' : to.y > from.y ? 'S' : 'N';
-  const direction = `${vertical}${horizontal}`;
-  return direction || 'HERE';
+  return compassBearing(from, to) ?? 'HERE';
 }
 
 function formatPoiReward(poi: { readonly reward: readonly { readonly itemId: ItemId; readonly quantity: number }[] }): string {

@@ -36,7 +36,7 @@ try {
   const out = await page.evaluate(`(async () => { const m = await import('/src/game/ui/labelPlacement.ts'); const w = ${GAME}.scene.getScene('world');
     const v = w.cameras.main.worldView; const bounds = { x: v.left, y: v.top, width: v.width, height: v.height };
     const furniture = (w.raidHud?.occupied ?? []).map((c) => ({ x: c.x + v.left, y: c.y + v.top, width: c.width, height: c.height }));
-    const surroundings = { bounds, furniture, keepClear: [...w.captionKeepClear(), ...w.worldLabels.map((l) => l.request().subject)], canopy: w.canopyInView(bounds) };
+    const surroundings = { bounds, furniture, keepClear: [...w.captionKeepClear(), ...w.worldLabels.map((l) => l.request().subject)], canopy: w.canopyInView(bounds), player: w.captionPlayer() };
     const lines = [];
     // seated in the rule's own order: warnings before names
     const order = m.seatingOrder(w.worldLabels.map((l) => l.request())); const turn = (i) => order.indexOf(i);
@@ -56,7 +56,7 @@ try {
         lines.push('   >> least-bad seat: ' + fixable.seat + ' (canopy ' + fixable.underCanopy + '). crown tiles in it: ' + hit.map((c) => 'x' + (c.x / 16) + '..' + ((c.x + c.width) / 16 - 1) + ' y' + (c.y / 16)).join('  ')); }
       else lines.push('   >> no seat has only canopy wrong with it');
       for (const s of seats) lines.push('   ' + s.seat.padEnd(5) + ' view-xy ' + String(Math.round(s.x - v.left)).padStart(4) + ',' + String(Math.round(s.y - v.top)).padStart(4)
-        + '  offscreen ' + String(s.outsideView).padStart(5) + '  hud ' + String(s.underHud).padStart(4) + '  art/people ' + String(s.overMapArt).padStart(5) + '  canopy ' + String(s.underCanopy).padStart(5) + '  caption ' + String(s.againstCaption).padStart(5)); });
+        + '  offscreen ' + String(s.outsideView).padStart(5) + '  hud ' + String(s.underHud).padStart(4) + '  art/people ' + String(s.overMapArt).padStart(5) + '  canopy ' + String(s.underCanopy).padStart(5) + '  player ' + String(s.overPlayer).padStart(5) + '  caption ' + String(s.againstCaption).padStart(5)); });
     return lines.join('\\n'); })()`);
   console.log(out || '(no hidden on-screen captions here)');
 } finally { await browser.close(); }

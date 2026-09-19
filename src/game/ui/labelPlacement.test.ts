@@ -317,6 +317,77 @@ describe('where a map caption is allowed to sit', () => {
     expect(overlaps(rectOf(blocked), rectOf(below))).toBe(false);
   });
 
+  /**
+   * Playtest 4: `DROP-IN READ▼`, `▼ROP-IN POINT`, `TOLL BRIDGE / OPEN` through
+   * the hair, `EXTRACT OPEN` across the head. The figure wins the depth fight,
+   * so nobody was hidden - the caption was seated on its own reader.
+   */
+  describe('around the player', () => {
+    // Standing on the tile the caption names: taller than the tile, chevron over the head.
+    const subject = tile(152, 112);
+    const player: Rect = { x: 152, y: 94, width: 16, height: 35 };
+
+    it('gives up the seat over the head of someone standing on what it names', () => {
+      const placement = seat({ subject }, { player: [player] });
+      expect(placement.visible).toBe(true);
+      expect(placement.seat).toBe('below');
+      expect(overlaps(rectOf(placement), player)).toBe(false);
+    });
+
+    it('is clear of the player wherever they stand around it, while anywhere is', () => {
+      for (let dx = -3; dx <= 3; dx += 1) {
+        for (let dy = -3; dy <= 3; dy += 1) {
+          const walker: Rect = { ...player, x: player.x + dx * TILE, y: player.y + dy * TILE };
+          const placement = seat({ subject, height: 36, warns: true }, { player: [walker] });
+          expect(placement.visible).toBe(true);
+          expect(`${dx},${dy}: ${overlaps(rectOf(placement), walker)}`).toBe(`${dx},${dy}: false`);
+        }
+      }
+    });
+
+    it('moves once when walked under, and stays where it went', () => {
+      const before = seat({ subject });
+      expect(before.seat).toBe('above');
+      const under = seat({ subject, held: before.candidate }, { player: [player] });
+      expect(under.seat).toBe('below');
+      // The player has walked on: the seat it moved to is still clear, so it keeps it.
+      expect(seat({ subject, held: under.candidate }).candidate).toBe(under.candidate);
+    });
+
+    it('keeps a seat under the player rather than vanish, when that is the only one', () => {
+      // Hemmed in on every side but the one the player is standing on.
+      const walls: Rect[] = [
+        { x: 0, y: 131, width: 320, height: 109 },
+        { x: 0, y: 110, width: 149, height: 25 },
+        { x: 171, y: 110, width: 149, height: 25 },
+      ];
+      const placement = seat({ subject }, { keepClear: walls, player: [player] });
+      expect(placement.visible).toBe(true);
+      expect(placement.seat).toBe('above');
+    });
+
+    it('lifts over the head of a player beside it before it will sit on them', () => {
+      // The Radio Exit: forest to the west, its notice below, and the player
+      // in the lane to the east - every ordinary seat is taken or crosses them.
+      const beside: Rect = { ...player, x: player.x + TILE };
+      const walls: Rect[] = [
+        { x: 0, y: 0, width: 149, height: 240 },
+        { x: 152, y: 128, width: 16, height: 16 },
+      ];
+      const placement = seat({ subject, width: 81, height: 27 }, { keepClear: walls, player: [beside] });
+      expect(placement.visible).toBe(true);
+      expect(placement.seat).toBe('above');
+      expect(overlaps(rectOf(placement, 81, 27), beside)).toBe(false);
+      expect(placement.y + 27).toBeLessThanOrEqual(beside.y - SUBJECT_GAP);
+    });
+
+    it('says so when asked why a seat was refused', () => {
+      const seats = explainSeats(request({ subject }), around({ player: [player] }));
+      expect(seats[0].overPlayer).toBeGreaterThan(0);
+      expect(seats.find((one) => one.seat === 'below')!.overPlayer).toBe(0);
+    });
+  });
+
   it('rounds to whole pixels, because a half-pixel caption is a blurred caption', () => {
     const placement = seat({ subject: { x: 152.5, y: 112, width: 16, height: 16 }, width: 61, height: 15 });
 

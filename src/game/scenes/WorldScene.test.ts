@@ -69,12 +69,12 @@ describe('finishing a step on an extraction tile', () => {
   it('reports whether it took the step, so a locked exit also stops the tick', () => {
     const extract = sceneSource.slice(
       sceneSource.indexOf('private tryExtract('),
-      sceneSource.indexOf('private showRunResult('),
+      sceneSource.indexOf('private tryExtractWhereStanding('),
     );
 
     expect(extract).toContain('private tryExtract(): boolean {');
-    // The two ways out without an exit under the player, then the locked exit.
-    expect(extract.match(/return false;/g)).toHaveLength(2);
+    // No exit under the player; then the locked exit and the open one.
+    expect(extract.match(/return false;/g)).toHaveLength(1);
     expect(extract.match(/return true;/g)).toHaveLength(2);
   });
 });

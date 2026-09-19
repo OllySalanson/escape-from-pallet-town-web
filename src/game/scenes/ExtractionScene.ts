@@ -324,11 +324,14 @@ export class ExtractionScene extends Phaser.Scene {
     const escaped = report.outcome === 'ESCAPED';
     const rows = groupRows(report.ledger, escaped ? 'banked' : 'lost');
     const total = report.ledger.pokemon.length + report.ledger.items.length;
+    // Experience before the contract: the verdict window above has already said
+    // what became of the contract, while a level gained in the field is said
+    // nowhere else - and under a four-line contract row it was below the fold.
     const contract = report.contract
-      ? `<div class="px-row has-icon${report.contract.complete ? ' is-secured' : ''}">${objectiveIcon('Contract')}<span class="px-row-main"><strong class="px-wrap">Contract ${report.contract.complete ? 'complete' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small class="px-wrap${report.contract.complete ? '' : ' px-warning'}">${escapeHtml(report.contract.reward)}</small></span></div>`
+      ? `<h3 class="px-subheading">Contract</h3><div class="px-row has-icon${report.contract.complete ? ' is-secured' : ''}">${objectiveIcon('Contract')}<span class="px-row-main"><strong class="px-wrap">Contract ${report.contract.complete ? 'complete' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small class="px-wrap${report.contract.complete ? '' : ' px-warning'}">${escapeHtml(report.contract.reward)}</small></span></div>`
       : '';
     return pixelWindow(
-      `<div class="px-list px-scroll">${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${contract}${this.progressRows()}</div>`,
+      `<div class="px-list px-scroll">${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${this.progressRows()}${contract}</div>`,
       {
         className: 'extraction-ledger',
         heading: escapeHtml(report.ledgerHeading),

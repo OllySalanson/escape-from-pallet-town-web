@@ -44,3 +44,5 @@ export {
   STANDING_BANKS_PER_PRESSURE,
   type StandingBoardProgress,
 } from './standingBoard';
+
+export { contractReportLine, isStillOnBoard, type ContractOutcome } from './contractReport';

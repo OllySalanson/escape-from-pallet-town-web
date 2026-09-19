@@ -205,6 +205,8 @@ async function openPage(port, url, window, { save } = {}) {
 
   return {
     send,
+    /** Subscribes to one CDP event, e.g. `Fetch.requestPaused` to hold a request back. */
+    on: (method, handler) => listeners.set(method, handler),
     evaluate,
     keyDown,
     keyUp,

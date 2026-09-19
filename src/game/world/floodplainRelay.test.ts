@@ -154,8 +154,20 @@ describe('the Floodplain checkpoint', () => {
   });
 
   it('keeps the reeds a real way round her, at a real cost in tall grass', () => {
-    const roundHer = stepsFromInsertion(union(checkpoint, watch), southGate.position);
-    expect(roundHer).toBeGreaterThan(0);
+    // An open exit takes whoever steps on it, with no prompt, so it is a wall
+    // to anyone who is not leaving - and every one of them can be open. The
+    // Radio Exit once stood in the one-tile gap at the west end of the cut, so
+    // working the ranger station (which stands beside the kit) turned the way
+    // round her into the way out of the raid.
+    const otherExits = new Set(
+      EXTRACTION_POINTS.filter(
+        (point) => point.mapId === map.id && point.label !== southGate.label,
+      ).map((point) => key(point.position)),
+    );
+    const roundHer = stepsFromInsertion(union(checkpoint, watch, otherExits), southGate.position);
+    expect(`round her, past every open exit: ${roundHer > 0 ? 'a route' : 'no route'}`).toBe(
+      'round her, past every open exit: a route',
+    );
     // Slower than the road, which is what makes paying her a choice rather than
     // a tax. If this ever inverts, the road has stopped being the fast route.
     const dry = stepsFromInsertion(union(checkpoint, tallGrass), southGate.position);

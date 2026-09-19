@@ -1181,6 +1181,7 @@ button {
   --red: #b0201c;
   --red-wash: #f0d3bd;
   --px-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h1v1h1v1h-1v1h-1v1h-1z'/%3E%3C/svg%3E");
+  --px-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'%3E%3Cpath fill='%235d5c47' d='M0 0h5v1h-1v1h-1v1h-1v-1h-1v-1h-1z'/%3E%3C/svg%3E");
   --px-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 5' shape-rendering='crispEdges'%3E%3Cpath d='M6 0h1v1h-1zM5 1h1v1h-1zM4 2h1v1h-1zM0 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1z'/%3E%3C/svg%3E");
   overflow: hidden;
   /* Two-pixel bands, the way the party screen of the games this is dressed as
@@ -1421,6 +1422,27 @@ button {
     scrollbar-width: thin;
     scrollbar-color: var(--ink-soft) transparent;
   }
+}
+/* A pane with more below the fold says so: a strip of its own fill across its
+   foot, ruled off, with a drawn arrow. `MenuOverlay.markScrollCues()` sets
+   `data-more` while there is anything further down. The scrollbar alone was not
+   a cue - three pixels of soft ink, and none at all where a browser hides them -
+   so a row cut in half was the only sign that the result screen's FIELD
+   EXPERIENCE line existed. It overlays the last few pixels rather than taking a
+   row of its own, so a list that fits is not made to scroll by its own cue. */
+:where(.pixel-ui) .px-scroll[data-more]::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: block;
+  height: calc(var(--u) * 7);
+  margin-top: calc(var(--u) * -8);
+  pointer-events: none;
+  background:
+    var(--px-more) center calc(var(--u) * 3) / calc(var(--u) * 5) calc(var(--u) * 3) no-repeat,
+    linear-gradient(rgb(23 23 23 / 25%), rgb(23 23 23 / 25%)) 0 0 / 100% var(--u) no-repeat,
+    linear-gradient(var(--fill, var(--cream)), var(--fill, var(--cream)));
 }
 :where(.pixel-ui) .px-scroll::-webkit-scrollbar {
   width: calc(var(--u) * 3);
@@ -1696,6 +1718,9 @@ button {
   box-shadow: 0 0 0 var(--u) var(--frame);
   color: var(--cream-lit);
   text-transform: uppercase;
+  /* Centred, because the box is widened to the pixel grid after its words are
+     measured and, in the stash's portrait pane, stretched: FIRE sat hard left. */
+  text-align: center;
   margin: var(--u) calc(var(--u) * 3) var(--u) var(--u);
 }
 :where(.pixel-ui) .px-type-fire {
@@ -1877,8 +1902,20 @@ button {
 :where(.pixel-ui) .stash-portrait > div {
   min-width: 0;
   display: grid;
-  justify-items: start;
+  grid-template-columns: max-content;
+  gap: var(--u);
   padding-bottom: calc(var(--u) * 2);
+}
+/* Two types stack here, and stacked they are one block: the width of the longer
+   word, a pixel of ground between their frames. Each kept the width of its own
+   word, so GRASS over POISON had a ragged right edge and the two frames ran
+   together into a double line. A minimum rather than a width, because
+   `snapTextBoxes()` writes each tag's width inline: the longer word is snapped
+   to the pixel grid, it sets the column, and the shorter one is held out to it. */
+.pixel-ui .stash-portrait .px-type {
+  box-sizing: border-box;
+  min-width: 100%;
+  margin-right: var(--u);
 }
 :where(.pixel-ui) .swap-panel {
   display: grid;

@@ -293,8 +293,21 @@ export const levelLabel = (level: number): string => `Lv ${level}`;
  * edge, and YOUR POKeMON with two long types ran past the plate and, for the
  * longest pair, past the screen.
  */
+export type BannerRole = 'WILD' | 'FOE' | 'RIVAL' | 'YOURS';
+
+/**
+ * Whose Pokemon the enemy plate belongs to. RIVAL is the hunter's word - "A
+ * RIVAL HUNTER is on your trail" - and every trainer once fought under it, so
+ * the toll keeper's Pidgey read as the hunter's. An authored trainer is a FOE,
+ * short enough that two long types still end inside the plate.
+ */
+export const enemyBannerRole = (battle: {
+  readonly trainer: boolean;
+  readonly hunter: boolean;
+}): BannerRole => (battle.hunter ? 'RIVAL' : battle.trainer ? 'FOE' : 'WILD');
+
 export const combatantBanner = (
-  role: 'WILD' | 'RIVAL' | 'YOURS',
+  role: BannerRole,
   types: readonly PokemonType[],
 ): string => `${role}  ${formatTypeList(types)}`;
 

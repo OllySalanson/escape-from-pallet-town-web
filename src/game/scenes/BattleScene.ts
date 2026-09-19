@@ -69,6 +69,8 @@ import {
   describeItemGuidance,
   describeMoveGuidance,
   eventToMessage,
+  enemyBannerRole,
+  type BannerRole,
   formatHunterFleeCommand,
   formatItemCommand,
   formatItemRow,
@@ -434,6 +436,16 @@ export class BattleScene extends Phaser.Scene {
       .image(-50, 137, `pokemon-back-${this.state.player.pokemon.base.dexId}`)
       .setScale(1.55)
       .setDepth(2);
+    // Both slide in from outside the battlefield, and on a stage wider than the
+    // battle that is the letterbox: for the length of the entrance they were
+    // drawn on the margin, outside the bezel. They are clipped to the field, so
+    // they come in from behind its frame. The shape is never drawn itself.
+    const field = this.add.graphics().setVisible(false);
+    field.fillStyle(0xffffff, 1);
+    field.fillRect(0, 0, BATTLEFIELD_WIDTH, BATTLEFIELD_HEIGHT);
+    const clip = field.createGeometryMask();
+    this.enemySprite.setMask(clip);
+    this.playerSprite.setMask(clip);
     this.tweens.add({ targets: this.enemySprite, x: 245, duration: 650, ease: 'Quad.out' });
     this.tweens.add({
       targets: this.playerSprite,
@@ -452,7 +464,7 @@ export class BattleScene extends Phaser.Scene {
     // Both banners float over the battlefield art, so they carry a dark outline
     // rather than relying on whatever happens to be behind them.
     this.enemyBannerText = this.add
-      .text(16, 1, combatantBanner(this.trainer ? 'RIVAL' : 'WILD', getCombatantTypes(this.state.enemy)), BANNER_TEXT_STYLE)
+      .text(16, 1, combatantBanner(this.enemyRole(), getCombatantTypes(this.state.enemy)), BANNER_TEXT_STYLE)
       .setDepth(7);
     this.playerBannerText = this.add
       .text(150, 89, combatantBanner('YOURS', getCombatantTypes(this.state.player)), BANNER_TEXT_STYLE)
@@ -893,6 +905,10 @@ export class BattleScene extends Phaser.Scene {
     audioManager.play('cancel');
   }
 
+  private enemyRole(): BannerRole {
+    return enemyBannerRole({ trainer: this.trainer !== undefined, hunter: this.hunterBattle });
+  }
+
   private hunterFleeLabel(): string {
     const manager = this.runSession?.manager;
     const snapshot = manager?.snapshot();
@@ -1209,7 +1225,7 @@ export class BattleScene extends Phaser.Scene {
     this.enemyStatusBox.destroy();
     this.enemyStatusBox = this.createStatusBox(16, 16, this.state.enemy, false);
     this.enemyBannerText.setText(
-      combatantBanner(this.trainer ? 'RIVAL' : 'WILD', getCombatantTypes(this.state.enemy)),
+      combatantBanner(this.enemyRole(), getCombatantTypes(this.state.enemy)),
     );
     this.enemySprite
       .setTexture(`pokemon-front-${this.state.enemy.pokemon.base.dexId}`)

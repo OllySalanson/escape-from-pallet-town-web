@@ -616,7 +616,7 @@ describe('the hunter a loadout draws', () => {
 
     const finalCheck = finalCheckOf(hub);
     expect(finalCheck).toContain('data-hunter-tier="1"');
-    expect(finalCheck).toContain('nothing you are bringing out-levels it');
+    expect(finalCheck).toContain('nothing you bring out-levels it');
 
     deploy(hub, start);
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
@@ -1124,6 +1124,20 @@ describe('taking a status line down', () => {
     expect(renders()).toBe(rendersWhileShown);
     expect(removed).toHaveBeenCalledOnce();
     expect(statusOf(hub)).toBe('');
+  });
+
+  // Playtest 4: "Charmander recovered for 0:50 of raid time" was still in the
+  // help bar on the Outfitter, a screen that had said nothing.
+  it('leaves a status line on the screen that raised it', () => {
+    const { hub, internals, timers } = hubWithRenderCount();
+    const views = hub as unknown as { setView(view: string): void };
+    views.setView('stash');
+    internals.setStatus('Charmander recovered for 0:50 of raid time. Next raid clock: 4:10.');
+
+    views.setView('outfitter');
+
+    expect(statusOf(hub)).toBe('');
+    expect(timers[0].remove).toHaveBeenCalledOnce();
   });
 
   it('keeps one timer, so an old message cannot cut a new one short', () => {

@@ -380,6 +380,15 @@ export class HubScene extends Phaser.Scene {
   }
 
   private setView(view: HubView): void {
+    // A status line answers something done on the screen it was raised on, so
+    // it does not follow the player to another: the recovery bay's "recovered
+    // for 0:50 of raid time" was still in the Outfitter's help bar. A caller
+    // that changes screen *and* has something to say sets its status after.
+    if (view !== this.view) {
+      this.statusTimer?.remove();
+      this.statusTimer = undefined;
+      this.status = '';
+    }
     this.view = view;
     this.swapArmed = false;
     this.outfitterUpgradeId = undefined;
