@@ -53,6 +53,7 @@ import {
   LEDGE_HOP_RISE,
   ledgeCaption,
   ledgeHopAt,
+  ledgeHopTiles,
   ledgesForMap,
 } from '../world/ledges';
 import { PARTY_LIMIT, Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
@@ -265,6 +266,19 @@ const LABEL_TONES: Readonly<
 
 /** The landing pad drawn on a drop-in point, as filled pixel rects. */
 const DROP_IN_TINT = 0x5eead4;
+
+/**
+ * The chevrons painted on a ledge's brow, in the ledge caption's own stone.
+ *
+ * A caption cannot be relied on to teach this one: a name speaks only once the
+ * player has walked up to the thing, which on a brow is the tile they are
+ * standing on, and in a wood there is often no sky for it to sit in. Map art
+ * has neither problem - the drop-in point's landing pad is the same answer to
+ * the same question - and a mark on the ground is what a player reads as
+ * "something happens here" without being told.
+ */
+const LEDGE_MARK_TINT = 0xd6e4f0;
+const LEDGE_MARK_SHADE = 0x1c2733;
 
 /** How the ground a trainer is watching is shaded. */
 const WATCH_TINT = 0xf87171;
@@ -1341,23 +1355,69 @@ export class WorldScene extends Phaser.Scene {
    */
   private createLedgeLabels(): void {
     for (const ledge of ledgesForMap(this.currentMap.id)) {
-      const brow = ledge.brow;
-      const top = Math.min(...brow.map((tile) => tile.y));
+      for (const tile of ledge.brow) {
+        this.paintLedgeMark(tile, ledge.drop);
+      }
+      // The bank rather than the brow, because the brow is the tile the player
+      // is standing on when the caption speaks - and a caption gives the player
+      // room while any other seat is clear, so one named after the ground under
+      // their feet has nowhere left to sit. Seated on the far side of the drop,
+      // it is on the ground the hop lands on: exactly what it is about.
+      const tiles = [...ledge.brow, ...ledge.brow.flatMap((from) => ledgeHopTiles(ledge, from).slice(0, -1))];
+      const left = Math.min(...tiles.map((tile) => tile.x));
+      const top = Math.min(...tiles.map((tile) => tile.y));
       this.worldLabels.push(
         new WorldLabel(this, {
           subject: {
-            x: Math.min(...brow.map((tile) => tile.x)) * TILE_SIZE,
+            x: left * TILE_SIZE,
             y: top * TILE_SIZE,
-            width: (Math.max(...brow.map((tile) => tile.x)) - Math.min(...brow.map((tile) => tile.x)) + 1) * TILE_SIZE,
-            height: TILE_SIZE,
+            width: (Math.max(...tiles.map((tile) => tile.x)) - left + 1) * TILE_SIZE,
+            height: (Math.max(...tiles.map((tile) => tile.y)) - top + 1) * TILE_SIZE,
           },
           text: ledgeCaption(ledge),
           tone: LABEL_TONES.ledge,
           depth: atRow(CAPTION_BAND, top),
-          speech: { voice: 'name', tiles: brow },
+          placement: ledge.drop === 'up' ? 'above' : 'below',
+          speech: { voice: 'name', tiles: ledge.brow },
         }),
       );
     }
+  }
+
+  /**
+   * Two chevrons on the brow, pointing the way the drop goes.
+   *
+   * Painted a pixel at a time, as the player's own marker and the drop-in pad
+   * are, so it stays as crisp as the art it lies on. The dark row under each
+   * one is what keeps it readable on grass, which is the only ground a brow has
+   * been drawn on so far.
+   */
+  private paintLedgeMark(tile: GridPosition, drop: Direction): void {
+    const mark = this.add.graphics().setDepth(atRow(MARKER_BAND, tile.y));
+    const originX = tile.x * TILE_SIZE;
+    const originY = tile.y * TILE_SIZE;
+    // Tile-local pixels of a shallow V pointing down, drawn twice; every other
+    // direction is the same V turned.
+    const turn = (x: number, y: number): [number, number] =>
+      drop === 'down'
+        ? [x, y]
+        : drop === 'up'
+          ? [x, TILE_SIZE - 1 - y]
+          : drop === 'right'
+            ? [y, x]
+            : [TILE_SIZE - 1 - y, x];
+    for (const shade of [true, false]) {
+      mark.fillStyle(shade ? LEDGE_MARK_SHADE : LEDGE_MARK_TINT, shade ? 0.5 : 1);
+      for (const top of [6, 10]) {
+        for (let step = 0; step < 4; step += 1) {
+          for (const x of [4 + step, 11 - step]) {
+            const [px, py] = turn(x, top + step + (shade ? 1 : 0));
+            mark.fillRect(originX + px, originY + py, 1, 1);
+          }
+        }
+      }
+    }
+    this.mapObjects.push(mark);
   }
 
   /** Every raid boundary names where it leads, so no route has to be guessed. */
