@@ -34,7 +34,8 @@ import type { FloodTownPropName } from '../tileset/floodTownTileset';
  * `w` a ford you can wade, `.` grass, `"` mown turf, `g` reeds, `,` trodden
  * earth, `d` sand, `P` paving, `M` stone, `v` gravel, `#` hedge, `T` thicket,
  * `C` rock, `F` fence. And this map's own letters: `t` is a tree of the forest,
- * `o` one that stands in grass - an orchard row, a landmark - and `p` a pine, each drawn where its trunk stands - the two rows at and above
+ * `o` one that stands in grass - an orchard row, a landmark - `p` a pine and
+ * `b` a tall bush one tile wide, each drawn where its trunk stands - the two rows at and above
  * the letter are solid, and the crown above those is walked behind.
  */
 export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
@@ -56,6 +57,8 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
       // nothing is cut from under it.
       o: { prop: 'tree', anchor: [1, 2], ground: '.' },
       p: { prop: 'pine', anchor: [0, 2], ground: '.', blocks: [[0, -1], [1, -1], [1, 0]] },
+      // One tile wide, so it stands where nothing else will: in a hedge.
+      b: { prop: 'tallBush', anchor: [0, 2], ground: 'T' },
     },
   });
 
@@ -399,6 +402,79 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
 
   // The causeway from the vault to the south road. `gates.ts` owns the middle.
   map.draw(29, 54, ['MMMM', 'MMMM']);
+
+  // == WHAT GROWS IN THE HEDGES =============================================
+  // The lanes here are packed so close that the forest between them is only a
+  // hedge thick: a broadleaf needs three tiles by two and fits in thirty-one
+  // places on the whole map. Left alone that is a carpet of one round bush,
+  // which reads as generated just as a lattice of trees does. So what grows in
+  // it is what fits - pines, two tiles across, in small clumps where the hedge
+  // is widest, and tall bushes, one tile across, along the rest - placed by hand
+  // and unevenly, with undergrowth left between. The same pines are swapped in
+  // for some of the border's trees, so the frame stops reading as a fence.
+  map.draw(0, 2, [
+    '       p                 p                    p        p        ',
+    '                                                                ',
+    '                                                                ',
+    '                                       b      b                 ',
+    '    p                                       p                p  ',
+    '                                                                ',
+    ' p       p                                                      ',
+    '                                                                ',
+    '                                                                ',
+    '                                           p                    ',
+    '           p b                                                  ',
+    '                                             b  p   p           ',
+    '                                           p                    ',
+    '                                                                ',
+    '                                                             p  ',
+    '                                                                ',
+    '                                           p                    ',
+    '                          b                                     ',
+    '                                                                ',
+    '                                                                ',
+    ' p                 b                                            ',
+    '                                                                ',
+    '                    p                                           ',
+    '                                      b                         ',
+    '                                                                ',
+    '                                          b                     ',
+    '                                      b         b               ',
+    '       p                                                        ',
+    '                                                             p  ',
+    '                                                                ',
+    '     p                                                          ',
+    '       b          b                                             ',
+    '                                                                ',
+    '                                    p                           ',
+    ' p                                                              ',
+    '                                                                ',
+    '                                                                ',
+    '                                           p                    ',
+    '                                                          p     ',
+    '               b                                                ',
+    '                      p                                         ',
+    '                  b                 p                           ',
+    '                                                             p  ',
+    '               b                                                ',
+    '    p                                                           ',
+    '                                                                ',
+    '                                                                ',
+    '                                            p  p b              ',
+    ' p          p                    p                              ',
+    '                                                                ',
+    '                                     p                    p     ',
+    '           p                     p                              ',
+    '                 p                                              ',
+    '                   b                    p                       ',
+    '                                              p              p  ',
+    '                           p                                    ',
+    '    p                                                           ',
+    '                                                                ',
+    '                                                                ',
+    '                                                                ',
+    '             p                       p           p              ',
+  ]);
 
   return map;
 }
