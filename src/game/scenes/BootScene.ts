@@ -7,6 +7,13 @@ import {
   getWalkFrames,
 } from '../playerFrames';
 import { SPECIES_BY_ID } from '../pokemon/species';
+import {
+  CHARACTER_DESIGN_IDS,
+  CHARACTER_DESIGN_SHEET_COLUMNS,
+  characterDesignAssetPath,
+  characterDesignTextureKey,
+} from '../world/characterDesigns';
+import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import { isTestLabRequested } from '../dev/testLabAccess';
 import { FRLG_TILES_TEXTURE } from '../world/frlgSheet';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
@@ -20,10 +27,18 @@ export class BootScene extends Phaser.Scene {
   }
 
   public preload(): void {
-    this.load.spritesheet('character', 'assets/character.png', {
+    this.load.spritesheet(SHARED_CHARACTER_TEXTURE, 'assets/character.png', {
       frameWidth: CHARACTER_FRAME_WIDTH,
       frameHeight: CHARACTER_FRAME_HEIGHT,
     });
+    // Every registered design, at the same frame size as the shared sheet, so a
+    // figure that names one is a change of texture key and nothing else.
+    for (const design of CHARACTER_DESIGN_IDS) {
+      this.load.spritesheet(characterDesignTextureKey(design), characterDesignAssetPath(design), {
+        frameWidth: CHARACTER_FRAME_WIDTH,
+        frameHeight: CHARACTER_FRAME_HEIGHT,
+      });
+    }
     this.load.image('classicTiles', 'assets/tileset.png');
     // The second overworld sheet. It is loaded beside `classicTiles` rather
     // than instead of it: nothing draws from it yet, and every shipped map
@@ -56,6 +71,7 @@ export class BootScene extends Phaser.Scene {
 
   public create(): void {
     this.createPlayerAnimations();
+    this.createDesignAnimations();
     // The game font is an asset like any other, so it is waited for here rather
     // than hoped for later: Phaser paints canvas text with whatever face is
     // ready at that instant and never repaints it, so a battle drawn before the
@@ -68,12 +84,37 @@ export class BootScene extends Phaser.Scene {
   }
 
   private createPlayerAnimations(): void {
+    this.createWalkAnimations(SHARED_CHARACTER_TEXTURE, (direction) => ({
+      key: getWalkAnimationKey(direction),
+      frames: getWalkFrames(direction),
+    }));
+  }
+
+  /**
+   * The designs carry the same walk cycle as the shared sheet, so it is
+   * registered for each of them here even though nothing placed today walks:
+   * whoever first moves an NPC plays `getWalkAnimationKey(direction, textureKey)`
+   * and finds it there.
+   */
+  private createDesignAnimations(): void {
+    for (const design of CHARACTER_DESIGN_IDS) {
+      const textureKey = characterDesignTextureKey(design);
+      this.createWalkAnimations(textureKey, (direction) => ({
+        key: getWalkAnimationKey(direction, textureKey),
+        frames: getWalkFrames(direction, CHARACTER_DESIGN_SHEET_COLUMNS),
+      }));
+    }
+  }
+
+  private createWalkAnimations(
+    textureKey: string,
+    cycle: (direction: Direction) => { key: string; frames: number[] },
+  ): void {
     for (const direction of DIRECTIONS) {
+      const { key, frames } = cycle(direction);
       this.anims.create({
-        key: getWalkAnimationKey(direction),
-        frames: this.anims.generateFrameNumbers('character', {
-          frames: getWalkFrames(direction),
-        }),
+        key,
+        frames: this.anims.generateFrameNumbers(textureKey, { frames }),
         frameRate: 10,
         repeat: -1,
       });

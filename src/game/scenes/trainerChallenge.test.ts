@@ -102,6 +102,7 @@ function facingMaya() {
     collectedLootIds: new Set<string>(),
     activatedPoiIds: new Set<string>(),
     npcSprites: new Map(),
+    npcAppearances: new Map(),
     lootSprites: new Map(),
     poiSprites: new Map(),
     poiLabels: new Map(),

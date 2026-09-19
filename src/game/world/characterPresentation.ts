@@ -1,8 +1,17 @@
+import type { Direction } from '../movement/gridMovement';
 import {
   CHARACTER_FEET_PIXEL_Y,
   CHARACTER_FRAME_WIDTH,
   CHARACTER_HEAD_PIXEL_Y,
+  CHARACTER_SHEET_COLUMNS,
+  getIdleFrame,
 } from '../playerFrames';
+import {
+  CHARACTER_DESIGN_SHEET_COLUMNS,
+  characterDesignTextureKey,
+  isCastCharacterDesign,
+  type CharacterDesignId,
+} from './characterDesigns';
 
 /**
  * Every overworld figure - the player, townsfolk, trainers and the hunter - is
@@ -14,9 +23,20 @@ import {
  *  - role tinting: the player is the only figure in the sheet's true colours;
  *  - the player marker: the player is the only figure carrying it.
  *
+ * An authored figure can now name a design of its own from
+ * `characterDesigns.ts`, and one that does is drawn from that sheet in its own
+ * colours: a multiply tint over finished art only muddies it, and the design
+ * already says what the tint was standing in for. The first rule is unchanged
+ * where it matters - no other figure is ever the player's sheet in the player's
+ * colours - because a figure with no design is still tinted, and the designs
+ * cut for the player are refused on every other role.
+ *
  * The values live here rather than in `WorldScene` so the rules are assertable
  * without a running Phaser scene, the way `battlePresentation.ts` is.
  */
+
+/** The sheet every figure without a design of its own is drawn from. */
+export const SHARED_CHARACTER_TEXTURE = 'character';
 
 export const WORLD_CHARACTER_ROLES = ['player', 'npc', 'trainer', 'hunter'] as const;
 
@@ -27,6 +47,13 @@ export interface WorldCharacterLook {
   readonly tint: number | null;
   /** Whether the persistent "this is you" marker is drawn on this character. */
   readonly marked: boolean;
+}
+
+/** A look resolved against a design: everything a scene needs to draw the figure. */
+export interface WorldCharacterAppearance extends WorldCharacterLook {
+  readonly textureKey: string;
+  /** Frames across `textureKey`, which is what turns a facing into a frame. */
+  readonly sheetColumns: number;
 }
 
 /**
@@ -44,6 +71,40 @@ export const WORLD_CHARACTER_LOOKS: Record<WorldCharacterRole, WorldCharacterLoo
 
 export function getWorldCharacterLook(role: WorldCharacterRole): WorldCharacterLook {
   return WORLD_CHARACTER_LOOKS[role];
+}
+
+/**
+ * How a figure is drawn. With no design it is the shared sheet under its role's
+ * tint, exactly as before. With one it is that design untinted - and still
+ * unmarked, because the marker belongs to the role and not to the art.
+ */
+export function getWorldCharacterAppearance(
+  role: WorldCharacterRole,
+  design?: CharacterDesignId,
+): WorldCharacterAppearance {
+  const look = getWorldCharacterLook(role);
+  if (design === undefined) {
+    return { ...look, textureKey: SHARED_CHARACTER_TEXTURE, sheetColumns: CHARACTER_SHEET_COLUMNS };
+  }
+
+  if (role !== 'player' && !isCastCharacterDesign(design)) {
+    throw new Error(`${design} is the player's design and cannot be worn by a ${role}`);
+  }
+
+  return {
+    tint: null,
+    marked: look.marked,
+    textureKey: characterDesignTextureKey(design),
+    sheetColumns: CHARACTER_DESIGN_SHEET_COLUMNS,
+  };
+}
+
+/** The standing frame for a facing, on whichever sheet the figure is drawn from. */
+export function worldCharacterIdleFrame(
+  appearance: WorldCharacterAppearance,
+  facing: Direction,
+): number {
+  return getIdleFrame(facing, appearance.sheetColumns);
 }
 
 /** Phaser's identity multiply: the sheet drawn in its own colours. */

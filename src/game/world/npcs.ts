@@ -1,5 +1,6 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
+import type { CastCharacterDesignId } from './characterDesigns';
 
 export type WorldEntityKind = 'npc' | 'sign';
 
@@ -10,6 +11,11 @@ export interface WorldEntity {
   position: GridPosition;
   facing: Direction;
   dialogLines: readonly string[];
+  /**
+   * The character design an `npc` is drawn from. Omitted is the shared sheet
+   * under the townsfolk tint - see `characterPresentation.ts`. Signs ignore it.
+   */
+  design?: CastCharacterDesignId;
 }
 
 /**

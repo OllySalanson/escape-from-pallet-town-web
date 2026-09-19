@@ -7,6 +7,14 @@ import {
   CHARACTER_HEAD_PIXEL_Y,
 } from '../playerFrames';
 import {
+  CHARACTER_DESIGN_IDS,
+  getCharacterDesign,
+  isCastCharacterDesign,
+} from './characterDesigns';
+import { WORLD_ENTITIES } from './npcs';
+import { createRunTrainerEncounters } from './trainers';
+import {
+  getWorldCharacterAppearance,
   getWorldCharacterLook,
   NO_TINT,
   outlineRects,
@@ -14,6 +22,8 @@ import {
   PLAYER_MARKER_DEPTH,
   PLAYER_MARKER_GROUND_LAYERS,
   PLAYER_MARKER_HEAD_LAYERS,
+  SHARED_CHARACTER_TEXTURE,
+  worldCharacterIdleFrame,
   worldCharacterTint,
   WORLD_CHARACTER_ROLES,
   type MarkerRect,
@@ -78,6 +88,95 @@ describe('telling the player apart from the figures sharing their sprite sheet',
     expect(brightness(worldCharacterTint('npc'))).toBeGreaterThan(
       brightness(worldCharacterTint('hunter')),
     );
+  });
+});
+
+describe('a figure that names a design of its own', () => {
+  const CAST_DESIGNS = CHARACTER_DESIGN_IDS.filter(isCastCharacterDesign);
+  const PLAYER_DESIGNS = CHARACTER_DESIGN_IDS.filter((id) => !isCastCharacterDesign(id));
+
+  it('changes nothing for a figure that names none: shared sheet, role tint', () => {
+    for (const role of WORLD_CHARACTER_ROLES) {
+      expect(getWorldCharacterAppearance(role)).toMatchObject({
+        ...getWorldCharacterLook(role),
+        textureKey: SHARED_CHARACTER_TEXTURE,
+      });
+    }
+  });
+
+  it('is drawn from its own sheet in its own colours, not under a role tint', () => {
+    for (const role of OTHER_ROLES) {
+      for (const design of CAST_DESIGNS) {
+        const appearance = getWorldCharacterAppearance(role, design);
+
+        expect(appearance.tint, `${role} as ${design}`).toBeNull();
+        expect(appearance.textureKey, `${role} as ${design}`).not.toBe(SHARED_CHARACTER_TEXTURE);
+      }
+    }
+  });
+
+  it('never carries the player marker, whatever it is wearing', () => {
+    for (const role of OTHER_ROLES) {
+      for (const design of CAST_DESIGNS) {
+        expect(getWorldCharacterAppearance(role, design).marked).toBe(false);
+      }
+    }
+  });
+
+  it('still leaves the player the only figure drawn as the player is', () => {
+    const player = getWorldCharacterAppearance('player');
+    const others = OTHER_ROLES.flatMap((role) => [
+      getWorldCharacterAppearance(role),
+      ...CAST_DESIGNS.map((design) => getWorldCharacterAppearance(role, design)),
+    ]);
+
+    for (const other of others) {
+      expect(
+        other.textureKey === player.textureKey && other.tint === player.tint,
+        `${other.textureKey} is indistinguishable from the player`,
+      ).toBe(false);
+    }
+  });
+
+  it("refuses the player's own designs on anyone else, and keeps the marker on the player", () => {
+    expect(PLAYER_DESIGNS.length).toBeGreaterThan(0);
+
+    for (const design of PLAYER_DESIGNS) {
+      expect(getCharacterDesign(design).kind).toBe('protagonist');
+      expect(getWorldCharacterAppearance('player', design)).toMatchObject({
+        tint: null,
+        marked: true,
+      });
+      for (const role of OTHER_ROLES) {
+        expect(() => getWorldCharacterAppearance(role, design), `${role} as ${design}`).toThrow();
+      }
+    }
+  });
+
+  it('turns a facing into a frame on the sheet it is drawn from', () => {
+    const shared = getWorldCharacterAppearance('npc');
+    const designed = getWorldCharacterAppearance('npc', CAST_DESIGNS[0]);
+
+    // Same row for the same facing, counted across sheets of different widths.
+    for (const facing of ['down', 'right', 'up', 'left'] as const) {
+      expect(worldCharacterIdleFrame(shared, facing) / shared.sheetColumns).toBe(
+        worldCharacterIdleFrame(designed, facing) / designed.sheetColumns,
+      );
+    }
+  });
+
+  it('is in use: the Route 1 trainer is cast, and every authored design exists', () => {
+    const designed = [
+      ...createRunTrainerEncounters().map((encounter) => encounter.design),
+      ...WORLD_ENTITIES.map((entity) => entity.design),
+    ].filter((design) => design !== undefined);
+
+    expect(
+      createRunTrainerEncounters().find((encounter) => encounter.mapId === 'route-1')?.design,
+    ).toBeDefined();
+    for (const design of designed) {
+      expect(CAST_DESIGNS, design).toContain(design);
+    }
   });
 });
 
@@ -193,11 +292,17 @@ describe('the world scene draws what this module describes', () => {
   it('tints every non-player figure from the role table and marks only the player', async () => {
     const scene = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
 
+    // Every other figure is made by `createFigure`, which takes its sheet and
+    // its tint from `getWorldCharacterAppearance` and from nowhere else.
     for (const role of OTHER_ROLES) {
-      expect(scene).toContain(`worldCharacterTint('${role}')`);
+      expect(scene).toMatch(new RegExp(`createFigure\\([^;]*'${role}'`));
     }
+    expect(scene.match(/getWorldCharacterAppearance\(/g)).toHaveLength(1);
+    expect(scene.match(/\.setTint\(appearance\.tint \?\? NO_TINT\)/g)).toHaveLength(1);
+    // No figure is drawn from a sheet named by hand, so none can skip the rule.
+    expect(scene).not.toContain("'character'");
     // The player sprite is never tinted, and no figure but the player is marked.
-    expect(scene).not.toContain("worldCharacterTint('player')");
+    expect(scene).not.toContain("createFigure('player'");
     expect(scene.match(/paintPlayerMark\(/g)).toHaveLength(3);
   });
 
