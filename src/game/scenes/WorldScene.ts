@@ -128,6 +128,11 @@ import {
 } from '../world/gates';
 import { dropInCaption, dropInReachedLine } from '../world/dropIns';
 import { insertionAt, isDropInPoint, RUN_INSERTIONS } from '../run/runGeneration';
+import {
+  approachFrameAt,
+  planTrainerApproach,
+  type TrainerApproach,
+} from '../world/trainerApproach';
 import { findWatchingTrainer, trainerSightTiles } from '../world/trainerSight';
 import {
   trainerChallengePrompt,
@@ -242,6 +247,19 @@ const DROP_IN_TINT = 0x5eead4;
 const WATCH_TINT = 0xf87171;
 const WATCH_FILL_ALPHA = 0.16;
 const WATCH_EDGE_ALPHA = 0.42;
+/**
+ * When a beaten trainer's watch is lifted the shading is not just removed: it
+ * lets go tile by tile from the trainer's end, so the player sees the route open
+ * rather than infer it from a missing colour. Times are wall-clock tweens, which
+ * are frame-rate safe and touch no raid clock.
+ */
+const WATCH_LIFT_DELAY_MS = 260;
+const WATCH_LIFT_TILE_MS = 90;
+const WATCH_LIFT_FADE_MS = 520;
+/** The "!" over a trainer who has seen you: a cream bubble, ink border, red mark. */
+const SPOTTED_INK = 0x171717;
+const SPOTTED_CREAM = 0xfdf6e3;
+const SPOTTED_MARK = 0xdc2626;
 /**
  * Compass letters rather than arrow glyphs: the caption font is 7px, and an
  * arrow at that size renders as a tick with no head. The raid HUD already gives
@@ -383,6 +401,21 @@ export class WorldScene extends Phaser.Scene {
    * fight. It owns the keyboard while it is open, exactly as a dialogue does.
    */
   private trainerPrompt: ChoicePrompt | undefined;
+  /**
+   * The beat between a watch catching the player and the trainer speaking: the
+   * mark, the walk up, the arrival. Driven from `update()` by elapsed time - see
+   * `../world/trainerApproach`. Only one can be live, because it is only ever
+   * begun on the step that starts a fight.
+   */
+  private trainerApproach:
+    | {
+        readonly trainerId: string;
+        readonly plan: TrainerApproach;
+        readonly lines: readonly string[];
+        readonly mark: Phaser.GameObjects.Graphics;
+        elapsedMs: number;
+      }
+    | undefined;
   private pendingTrainerBattle:
     | {
         readonly trainer: RunTrainerEncounter['trainer'];
@@ -450,6 +483,7 @@ export class WorldScene extends Phaser.Scene {
     // flag that froze the second raid, and belongs on this list.
     this.pendingResultScreen = false;
     this.pendingTrainerBattle = undefined;
+    this.trainerApproach = undefined;
     this.unsolicitedDialog = false;
     // The box itself is rebuilt at the bottom by create(), so the note that it was moved goes too.
     this.dialogRaised = false;
@@ -543,6 +577,7 @@ export class WorldScene extends Phaser.Scene {
     this.createMap();
     this.applyPendingHunterBreakaway();
     this.createEntities();
+    this.liftBeatenWatches();
     this.createPlayer();
     this.createDialogBox();
     this.bindControls();
@@ -659,6 +694,13 @@ export class WorldScene extends Phaser.Scene {
     // including walking: the map must not move under an open question.
     if (this.trainerPrompt) {
       this.handleTrainerPromptInput();
+      return;
+    }
+
+    // A trainer coming for the player is not something to walk away from: the
+    // map is theirs until they have arrived and spoken.
+    if (this.trainerApproach) {
+      this.advanceTrainerApproach(deltaMs);
       return;
     }
 
@@ -1087,6 +1129,50 @@ export class WorldScene extends Phaser.Scene {
         speech: { voice: 'warning', tiles: [encounter.position, ...watched] },
       }),
     );
+  }
+
+  /**
+   * The payoff for a toll paid: a beaten trainer's watch lets go of the route.
+   *
+   * A beaten trainer is simply not rebuilt, so on the return from the fight the
+   * red ground was just gone - the player never saw the route open. The shading
+   * is redrawn here for one last moment and released tile by tile, trainer's end
+   * first, which is the direction they were looking. It is played once per
+   * trainer (`ActiveRunSession.watchesLifted`), on the return from the win.
+   */
+  private liftBeatenWatches(): void {
+    const session = this.runSession;
+    // The scene test doubles have no tween manager, as they have no scale one.
+    if (!session || !this.tweens) {
+      return;
+    }
+    const lifted = (session.watchesLifted ??= []);
+    for (const encounter of this.trainerEncounters) {
+      if (
+        encounter.mapId !== this.currentMap.id ||
+        !this.defeatedTrainerIds.has(encounter.trainer.id) ||
+        lifted.includes(encounter.trainer.id)
+      ) {
+        continue;
+      }
+      lifted.push(encounter.trainer.id);
+      const watched = trainerSightTiles(encounter, (tile) => this.isSightBlocked(tile));
+      watched.forEach((tile, index) => {
+        const shade = this.add
+          .graphics()
+          .setDepth(WATCH_SHADING_DEPTH)
+          .fillStyle(WATCH_TINT, WATCH_FILL_ALPHA * 2)
+          .fillRect(tile.x * TILE_SIZE, tile.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        this.mapObjects.push(shade);
+        this.tweens.add({
+          targets: shade,
+          alpha: 0,
+          delay: WATCH_LIFT_DELAY_MS + index * WATCH_LIFT_TILE_MS,
+          duration: WATCH_LIFT_FADE_MS,
+          onComplete: () => shade.destroy(),
+        });
+      });
+    }
   }
 
   /**
@@ -1822,8 +1908,86 @@ export class WorldScene extends Phaser.Scene {
       introLines: watcher.introLines,
       isHunter: false,
     };
-    this.interrupt([...lead, ...watcher.introLines], [watcher.position]);
+    const lines = [...lead, ...watcher.introLines];
+    const approach = planTrainerApproach(
+      watcher.position,
+      watcher.facing,
+      tile,
+      watcher.sightRange ?? 0,
+    );
+    if (approach) {
+      this.beginTrainerApproach(watcher, approach, lines);
+    } else {
+      this.interrupt(lines, [watcher.position]);
+    }
     return true;
+  }
+
+  /**
+   * The mark goes up over the trainer, and `advanceTrainerApproach` takes it
+   * from there. The player has already been turned to face them.
+   */
+  private beginTrainerApproach(
+    watcher: RunTrainerEncounter,
+    plan: TrainerApproach,
+    lines: readonly string[],
+  ): void {
+    const mark = this.add.graphics().setDepth(atRow(CANOPY_BAND, watcher.position.y) + 0.1);
+    this.mapObjects.push(mark);
+    this.trainerApproach = { trainerId: watcher.trainer.id, plan, lines, mark, elapsedMs: 0 };
+    this.paintSpottedMark(mark);
+    this.placeSpottedMark(mark, watcher.position.x, watcher.position.y, 0);
+  }
+
+  private advanceTrainerApproach(deltaMs: number): void {
+    const approach = this.trainerApproach;
+    if (!approach) {
+      return;
+    }
+    approach.elapsedMs += deltaMs;
+    const frame = approachFrameAt(approach.plan, approach.elapsedMs);
+    const sprite = this.npcSprites.get(approach.trainerId);
+    sprite?.setPosition(frame.x * TILE_SIZE, frame.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
+    sprite?.setDepth(atRow(FIGURE_BAND, frame.y));
+
+    if (frame.phase === 'alert') {
+      this.placeSpottedMark(approach.mark, frame.x, frame.y, approach.elapsedMs);
+      return;
+    }
+    approach.mark.setVisible(false);
+    if (frame.phase !== 'done') {
+      return;
+    }
+    this.trainerApproach = undefined;
+    approach.mark.destroy();
+    this.interrupt(approach.lines, [{ x: Math.round(frame.x), y: Math.round(frame.y) }]);
+  }
+
+  /** Drawn a pixel at a time, like the player's own marks, so it stays as crisp as the art. */
+  private paintSpottedMark(mark: Phaser.GameObjects.Graphics): void {
+    const box = (color: number, x: number, y: number, w: number, h: number) =>
+      mark.fillStyle(color, 1).fillRect(x, y, w, h);
+    box(SPOTTED_INK, 0, 0, 11, 13);
+    box(SPOTTED_CREAM, 1, 1, 9, 11);
+    box(SPOTTED_INK, 4, 13, 3, 1);
+    box(SPOTTED_CREAM, 5, 13, 1, 1);
+    box(SPOTTED_INK, 5, 14, 1, 1);
+    box(SPOTTED_MARK, 4, 2, 3, 5);
+    box(SPOTTED_MARK, 4, 8, 3, 2);
+  }
+
+  /** Over the trainer's head; it pops up three pixels high and settles. */
+  private placeSpottedMark(
+    mark: Phaser.GameObjects.Graphics,
+    tileX: number,
+    tileY: number,
+    elapsedMs: number,
+  ): void {
+    const pop = elapsedMs < 90 ? 3 : 0;
+    mark.setPosition(
+      tileX * TILE_SIZE + TILE_SIZE / 2 - 5,
+      tileY * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET - 14 - pop,
+    );
   }
 
   /**
