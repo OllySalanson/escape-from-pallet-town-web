@@ -101,6 +101,7 @@ describe('damage calculation', () => {
 
     expect(emberDamage).toEqual({
       damage: 20,
+      recoil: 0,
       isStab: true,
       isCritical: false,
       typeEffectiveness: 2,
@@ -113,6 +114,7 @@ describe('damage calculation', () => {
 
     expect(calculateDamage(charmander, bulbasaur, TACKLE, maximumRandom)).toEqual({
       damage: 7,
+      recoil: 0,
       isStab: false,
       isCritical: false,
       typeEffectiveness: 1,

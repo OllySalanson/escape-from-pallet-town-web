@@ -56,7 +56,7 @@ import {
   nextHunterProximity,
 } from '../audio/worldSounds';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
-import { Bag, ITEMS, type ItemId } from '../items';
+import { Bag, ITEMS, getItemById, type ItemId } from '../items';
 import {
   areContractStopsComplete,
   completedObjectiveRewards,
@@ -112,6 +112,7 @@ import type { RaidCarriage } from '../run/raidCarriage';
 import type { BattleSceneData } from './BattleScene';
 import {
   bossEncounters,
+  bossGearDropped,
   createRunTrainerEncounters,
   withoutDefeatedBosses,
   type RunTrainerEncounter,
@@ -593,7 +594,35 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const newlyBeaten = saveManager.recordDefeatedBosses(beatenThisRaid);
-    return gatesOpenedLines(WORLD_GATES.filter((gate) => newlyBeaten.includes(gate.bossId)));
+    return [
+      ...gatesOpenedLines(WORLD_GATES.filter((gate) => newlyBeaten.includes(gate.bossId))),
+      ...this.takeBossGear(newlyBeaten),
+    ];
+  }
+
+  /**
+   * Puts what a beaten boss was carrying into this raid's own pack, and says so.
+   *
+   * It is hung on `recordDefeatedBosses`, which answers with the bosses recorded
+   * for the *first* time and nothing else, so the gear is handed over exactly
+   * once per save however many times the scene is rebuilt - a battle return runs
+   * `create()` again, and a boss already in the save pays nothing.
+   *
+   * Into the pack rather than into the vault, because gear is meant to be
+   * carried out: from here it is one more thing in the bag, so the wipe ledger,
+   * the supply delta and the result screen all already know what to do with it.
+   */
+  private takeBossGear(newlyBeaten: readonly string[]): readonly string[] {
+    return bossGearDropped(this.trainerEncounters, newlyBeaten).flatMap((drop) => {
+      if (!this.bag.add(drop.itemId, 1)) {
+        return [];
+      }
+      const item = getItemById(drop.itemId);
+      return [
+        `${drop.name} was carrying a ${item?.displayName.toUpperCase() ?? 'PIECE OF GEAR'}. You take it.`,
+        `${item?.description ?? ''} Give it to a POKéMON from the party screen - and get it home.`,
+      ];
+    });
   }
 
   /** The map as it stands for this player: every gate their wins have opened, open. */
@@ -1684,7 +1713,7 @@ export class WorldScene extends Phaser.Scene {
   private openParty(): void {
     audioManager.play('menuOpen');
     this.scene.pause();
-    this.scene.launch('party', { party: this.party });
+    this.scene.launch('party', { party: this.party, bag: this.bag });
   }
 
   private openBag(): void {

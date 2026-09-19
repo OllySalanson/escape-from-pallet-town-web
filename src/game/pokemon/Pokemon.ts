@@ -1,3 +1,4 @@
+import { isHeldItemId, type HeldItemId } from '../items/items';
 import { Move } from './Move';
 import type { MoveBase } from './MoveBase';
 import type { PokemonBase, PokemonStats } from './PokemonBase';
@@ -73,6 +74,17 @@ export class Pokemon {
 
   public currentHp: number;
   public primaryStatus: PrimaryStatus | null = null;
+  /**
+   * The one piece of gear this Pokemon is carrying, or null for an empty slot.
+   *
+   * One item, never two: `giveHeldItem` returns whatever was already there, so
+   * the caller has to put it somewhere rather than the slot silently swallowing
+   * it. It is persisted (`SavedPokemon.heldItemId`) and it travels home from a
+   * raid on `RaidCondition`, so a Pokemon holds the same thing after a save, a
+   * battle, a faint and a swap - and loses it only with the Pokemon itself, on a
+   * wipe outside the secure slot.
+   */
+  public heldItemId: HeldItemId | null = null;
 
   public constructor(base: PokemonBase, level: number) {
     if (level < 1 || level > MAX_LEVEL) {
@@ -89,6 +101,23 @@ export class Pokemon {
 
   public get maxHp(): number {
     return this.stats.hp;
+  }
+
+  /**
+   * Puts gear in the slot and hands back whatever it displaced, so a give is
+   * always a swap the caller has to account for. An unknown id is refused
+   * rather than stored: a save holding an item this build no longer ships must
+   * leave the slot empty, not holding a name nothing can price.
+   */
+  public giveHeldItem(heldItemId: string | null): HeldItemId | null {
+    const displaced = this.heldItemId;
+    this.heldItemId = isHeldItemId(heldItemId) ? heldItemId : null;
+    return displaced;
+  }
+
+  /** Empties the slot and hands back what was in it. */
+  public takeHeldItem(): HeldItemId | null {
+    return this.giveHeldItem(null);
   }
 
   public get isFainted(): boolean {

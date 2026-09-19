@@ -449,3 +449,87 @@ describe('what the party earned', () => {
     expect(report.securedEmptyText).toBe('None of what you protected turned up in the raid.');
   });
 });
+
+/**
+ * Gear is the only thing a raid holds that is neither in the pack nor a Pokemon
+ * in its own right, so it has its own lines - and, because a piece comes off a
+ * boss once per save, the loss it can report is the one the screen must never
+ * round off.
+ */
+describe('what the result screen says about gear', () => {
+  it('names a piece that came out of the field and a piece that was already held', () => {
+    const carrier = new Pokemon(BULBASAUR, 5);
+    carrier.giveHeldItem('leftovers');
+    const finder = new Pokemon(CHARMANDER, 5);
+    const manager = startedRun({ party: [carrier, finder], items: [] });
+    // Found in the raid and given out on the spot, so the slot changed hands
+    // between deploy and extraction.
+    finder.giveHeldItem('quick-claw');
+    manager.tick(60_000);
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [] },
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.gear).toEqual([
+      { itemId: 'leftovers', label: 'Leftovers', holder: 'Bulbasaur', fate: 'kept' },
+      { itemId: 'quick-claw', label: 'Quick Claw', holder: 'Charmander', fate: 'found' },
+    ]);
+    expect(report.gearSummary).toContain("Charmander's Quick Claw");
+  });
+
+  it('says a lost piece is gone, and that the way to another is a boss', () => {
+    const secured = new Pokemon(BULBASAUR, 5);
+    const risked = new Pokemon(CHARMANDER, 5);
+    secured.giveHeldItem('focus-band');
+    risked.giveHeldItem('life-orb');
+    const manager = startedRun({
+      party: [secured, risked],
+      items: [],
+      secure: { pokemon: [secured] },
+    });
+    manager.tick(60_000);
+    manager.resolveWipe();
+
+    const report = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'defeated',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      lost: { pokemon: [risked], items: [] },
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.gear).toEqual([
+      { itemId: 'focus-band', label: 'Focus Band', holder: 'Bulbasaur', fate: 'kept' },
+      { itemId: 'life-orb', label: 'Life Orb', holder: 'Charmander', fate: 'lost' },
+    ]);
+    expect(report.gearSummary).toContain("Charmander's Life Orb went down with the raid");
+    expect(report.gearSummary).toContain('trainers holding the gates');
+  });
+
+  it('says nothing at all about gear when none was carried', () => {
+    const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+    manager.tick(1_000);
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [] },
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.gear).toEqual([]);
+    expect(report.gearSummary).toBeNull();
+  });
+});

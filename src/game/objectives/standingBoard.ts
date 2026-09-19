@@ -1,5 +1,5 @@
 import { outfitterMaterialKinds } from '../hub/outfitter';
-import { ITEMS, type ItemId } from '../items';
+import { ITEMS, type SupplyItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
@@ -358,7 +358,7 @@ const SEALED_SHARE = 0.5;
 const OPEN_GROUND_TEMPLATES: readonly StandingTemplate[] = ['survey', 'dispatch', 'resupply'];
 
 /** What a delivery asks for, and the grade up it is paid back in. */
-const DELIVERIES: readonly { readonly asks: ContractStack; readonly paysIn: ItemId }[] = [
+const DELIVERIES: readonly { readonly asks: ContractStack; readonly paysIn: SupplyItemId }[] = [
   { asks: { itemId: 'potion', quantity: 2 }, paysIn: 'super-potion' },
   { asks: { itemId: 'poke-ball', quantity: 3 }, paysIn: 'great-ball' },
 ];
@@ -367,7 +367,7 @@ const DELIVERIES: readonly { readonly asks: ContractStack; readonly paysIn: Item
  * How many of each supply is one share of pay. Every item is priced, so a new
  * one cannot be paid out at a quantity nobody chose.
  */
-const MATERIAL_SHARE: Readonly<Record<ItemId, number>> = {
+const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   potion: 2,
   'poke-ball': 2,
   antidote: 2,
@@ -443,7 +443,7 @@ interface Draft {
   readonly requiredExitLabel?: string;
   readonly sealedBehind?: RaidContract['sealedBehind'];
   /** The supply this contract is paid back in, when the template decides it. */
-  readonly paysIn?: ItemId;
+  readonly paysIn?: SupplyItemId;
   readonly briefing: readonly string[];
   readonly deploymentBriefing: string;
 }

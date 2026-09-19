@@ -331,7 +331,7 @@ export class ExtractionScene extends Phaser.Scene {
       ? `<h3 class="px-subheading">Contract</h3><div class="px-row has-icon${report.contract.complete ? ' is-secured' : ''}">${objectiveIcon('Contract')}<span class="px-row-main"><strong class="px-wrap">Contract ${report.contract.complete ? 'complete' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small class="px-wrap${report.contract.complete ? '' : ' px-warning'}">${escapeHtml(report.contract.reward)}</small></span></div>`
       : '';
     return pixelWindow(
-      `<div class="px-list px-scroll">${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${this.progressRows()}${contract}</div>`,
+      `<div class="px-list px-scroll">${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${this.gearRows()}${this.progressRows()}${contract}</div>`,
       {
         className: 'extraction-ledger',
         heading: escapeHtml(report.ledgerHeading),
@@ -357,6 +357,36 @@ export class ExtractionScene extends Phaser.Scene {
       `<div class="px-list px-scroll"><h3 class="px-subheading">Secure slot</h3>${securedRows || `<p class="px-empty">${escapeHtml(report.securedEmptyText)}</p>`}${risked}<p class="px-wrap gamble-verdict">${escapeHtml(report.gambleVerdict)}</p></div>`,
       { className: 'extraction-gamble', heading: 'The gamble' },
     );
+  }
+
+  /**
+   * What became of the gear, when any was carried: one row per piece, named with
+   * whoever was holding it.
+   *
+   * It goes above the experience rows because it is the one line on this screen
+   * that can be a loss on a raid that otherwise went well - gear comes off a
+   * boss once per save, so a piece that did not come home is not coming back,
+   * and that has to be read before the level-ups underneath it.
+   */
+  private gearRows(): string {
+    const { gear, gearSummary } = this.report;
+    if (gear.length === 0) {
+      return '';
+    }
+    const rows = gear
+      .map((piece) => {
+        const tag =
+          piece.fate === 'lost'
+            ? pixelTag('Gone', 'risk')
+            : piece.fate === 'found'
+              ? pixelTag('Carried out', 'good', true)
+              : pixelTag('Still held', 'plain', true);
+        return `<div class="px-row has-icon${piece.fate === 'lost' ? ' is-lost' : ''}">${itemIcon(piece.itemId, piece.label)}<span class="px-row-main"><strong>${escapeHtml(piece.label)}</strong><small>${escapeHtml(piece.holder)}</small></span>${tag}</div>`;
+      })
+      .join('');
+    return `<h3 class="px-subheading">Gear</h3>${rows}${
+      gearSummary ? `<p class="px-wrap gamble-verdict">${escapeHtml(gearSummary)}</p>` : ''
+    }`;
   }
 
   /**

@@ -1,4 +1,4 @@
-import { ITEM_DEFINITIONS, isMaterial, type BagContents } from '../items';
+import { ITEM_DEFINITIONS, heldItemName, isMaterial, type BagContents } from '../items';
 import { experienceForLevel, type Pokemon } from '../pokemon';
 import type { RunSnapshot } from './RunManager';
 import { hunterFleePenaltyMs } from './fleePenalty';
@@ -80,6 +80,24 @@ export interface ReportProgress {
   readonly experienceToNextLevel: number;
 }
 
+/**
+ * One piece of gear, and what became of it.
+ *
+ * Gear is the only thing a raid can hold that is neither in the pack nor a
+ * Pokemon in its own right, so neither the ledger nor the supplies line can
+ * account for it: it rides on a Pokemon, and it comes home, changes hands or is
+ * lost exactly as that Pokemon does. It gets its own lines for the same reason
+ * experience does - it is a thing that happened to a Pokemon, and the player
+ * thinks of it that way.
+ */
+export interface ReportGear {
+  readonly itemId: string;
+  readonly label: string;
+  /** Who carried it out of the raid, or who it went down with. */
+  readonly holder: string;
+  readonly fate: 'kept' | 'lost' | 'found';
+}
+
 export interface ReportContract {
   readonly description: string;
   readonly complete: boolean;
@@ -123,6 +141,14 @@ export interface ExtractionReport {
   readonly progress: readonly ReportProgress[];
   /** One sentence naming what the party earned, or null when it earned nothing. */
   readonly progressSummary: string | null;
+  /**
+   * Every piece of gear the raid ended holding, on the Pokemon holding it.
+   * Empty when nobody carried any, which is when the screen says nothing about
+   * it at all.
+   */
+  readonly gear: readonly ReportGear[];
+  /** One sentence naming what became of the gear, or null when there was none. */
+  readonly gearSummary: string | null;
   /** What the raid put the player through: escapes, fights, the clock. */
   readonly pressure: readonly string[];
   /**
@@ -212,9 +238,10 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   const contract = input.contract;
   const contractBanked = contract?.complete === true;
   const progress = partyProgress(snapshot, escaped);
+  const gear = partyGear(snapshot, escaped);
   const spent =
     input.carriedOut === undefined ? undefined : suppliesSpent(snapshot, input.carriedOut);
-  const haulTier = gradeHaul(ledger, contractBanked, escaped, progress);
+  const haulTier = gradeHaul(ledger, contractBanked, escaped, progress, gear);
 
   return {
     outcome,
@@ -224,7 +251,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       : 'Raid lost',
     headline: escaped ? escapeHeadline(haulTier) : wipeHeadline(input.cause, secured),
     summary: escaped
-      ? escapeSummary(ledger, risked, contractBanked, progress)
+      ? escapeSummary(ledger, risked, contractBanked, progress, gear)
       : wipeSummary(input.cause, ledger, secured),
     haulTier,
     clockLabel: `${formatRaidClock(snapshot.elapsedMs)} of ${formatRaidClock(input.durationMs)}`,
@@ -233,8 +260,13 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ledger,
     ledgerHeading: escaped ? 'Banked' : 'Gone for good',
     ledgerEmptyText: escaped
-      ? progress.length > 0
-        ? 'No new gear or Pokémon. What your party earned is below.'
+      ? gear.some((piece) => piece.fate === 'found')
+        // The pack is empty and the gear is on a Pokemon, which is exactly why
+        // gear has its own rows: "nothing new" is not true of a raid that walked
+        // a piece of gear out of the field.
+        ? 'Nothing new in the pack. What came out on your party is below.'
+        : progress.length > 0
+        ? 'Nothing new in the pack. What your party earned is below.'
         // "Exactly what you took in" is only true of a raid that drank nothing.
         : (spent ?? []).length > 0
           ? 'Nothing new. What the raid used up is counted below.'
@@ -257,6 +289,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ...(spent === undefined ? {} : { spent }),
     progress,
     progressSummary: progressSummary(progress),
+    gear,
+    gearSummary: gearSummary(gear, escaped),
     pressure: pressureLines(snapshot, escaped),
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
     saved: input.saved,
@@ -311,17 +345,23 @@ function escapeSummary(
   risked: ReportGroup,
   contractComplete: boolean,
   progress: readonly ReportProgress[],
+  gear: readonly ReportGear[],
 ): string {
   const haul = describeGroup(ledger);
+  const carried = gear.filter((piece) => piece.fate === 'found');
   const riskedCount = countGroup(risked);
   const riskLine =
     riskedCount === 0
       ? 'Nothing you took in was ever exposed.'
       : `${riskedCount === 1 ? 'One entry' : `${riskedCount} entries`} rode out unprotected and came home.`;
   if (haul === null) {
-    // A raid that levelled a Pokemon and banked no gear is not an empty raid,
-    // and saying "no new haul" about it was the screen's own contradiction.
-    const earned = progressSummary(progress);
+    // A raid that levelled a Pokemon, or walked a piece of gear out of the
+    // field, is not an empty raid - and saying "no new haul" about it was the
+    // screen's own contradiction.
+    const earned =
+      carried.length > 0
+        ? `${listNames(carried)} came out of the field with you.`
+        : progressSummary(progress);
     return earned === null ? `No new haul. ${riskLine}` : `${earned} ${riskLine}`;
   }
   return `${contractComplete ? 'Contract banked, plus ' : 'Banked '}${haul}. ${riskLine}`;
@@ -413,6 +453,62 @@ function pressureLines(snapshot: RunSnapshot, escaped: boolean): string[] {
  * secure slot, so reporting a level on a Pokemon the same screen says is gone
  * for good would be the cruellest possible way to be wrong.
  */
+/**
+ * The gear each deployed Pokemon is holding at the end of the raid, and whether
+ * it came home.
+ *
+ * A survived raid keeps everything, so every held piece is `kept` - and one the
+ * Pokemon was not carrying at deploy is `found`, because being handed a piece by
+ * a boss and walking it out is the whole moment. A lost raid keeps only what the
+ * secure slot protected; everything else went down with its holder and is named
+ * as lost, which is the one thing a result screen must never round off.
+ */
+function partyGear(snapshot: RunSnapshot, escaped: boolean): ReportGear[] {
+  const party = snapshot.loadout?.party ?? [];
+  return party.flatMap((member, index) => {
+    const label = heldItemName(member.heldItemId);
+    if (member.heldItemId === null || label === undefined) {
+      return [];
+    }
+    const kept = escaped || securedPokemon(snapshot).includes(member);
+    return [{
+      itemId: member.heldItemId,
+      label,
+      holder: member.base.name,
+      fate: !kept
+        ? ('lost' as const)
+        : snapshot.deployedHeldItems[index] === member.heldItemId
+          ? ('kept' as const)
+          : ('found' as const),
+    }];
+  });
+}
+
+/** What the gear did for this raid, in the voice the progress line uses. */
+function gearSummary(gear: readonly ReportGear[], escaped: boolean): string | null {
+  if (gear.length === 0) {
+    return null;
+  }
+  const lost = gear.filter((piece) => piece.fate === 'lost');
+  const found = gear.filter((piece) => piece.fate === 'found');
+  if (lost.length > 0) {
+    return `${listNames(lost)} went down with the raid. Gear is carried by the trainers holding the gates, and each of them has it once.`;
+  }
+  if (!escaped) {
+    return `${listNames(gear)} came home in the secure slot.`;
+  }
+  return found.length > 0
+    ? `${listNames(found)} came out of the field with you.`
+    : `${listNames(gear)} came home still held.`;
+}
+
+function listNames(gear: readonly ReportGear[]): string {
+  const names = gear.map((piece) => `${piece.holder}'s ${piece.label}`);
+  return names.length === 1
+    ? names[0]
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
 function partyProgress(snapshot: RunSnapshot, escaped: boolean): ReportProgress[] {
   const party = snapshot.loadout?.party ?? [];
   return party
@@ -479,6 +575,7 @@ function gradeHaul(
   contractComplete: boolean,
   escaped: boolean,
   progress: readonly ReportProgress[],
+  gear: readonly ReportGear[],
 ): HaulTier {
   if (!escaped) {
     return 'empty';
@@ -488,11 +585,15 @@ function gradeHaul(
   // level 7 - the level the whole early game is priced against - was graded
   // "You got out clean, and empty."
   const levelsGained = progress.reduce((total, entry) => total + entry.toLevel - entry.fromLevel, 0);
+  // Gear carried out of the field counts, and counts high: it comes off a boss
+  // once per save, so walking one home is the rarest thing a raid can do.
+  const carriedGear = gear.filter((piece) => piece.fate === 'found').length;
   const score =
     ledger.pokemon.length * 3 +
     ledger.items.reduce((total, item) => total + item.quantity, 0) +
     (contractComplete ? 4 : 0) +
     levelsGained * 2 +
+    carriedGear * 4 +
     (progress.length > 0 ? 1 : 0);
   if (score === 0) {
     return 'empty';

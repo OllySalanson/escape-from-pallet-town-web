@@ -296,6 +296,22 @@ export const SOUND_EFFECTS = {
     moment: 'A status or confusion costs HP',
     tones: [saw(233, 0.06, 0.06), noise(1500, 0.06, 0.04, 0.02)],
   },
+  // --- battle: the gear ----------------------------------------------------
+  // Two sounds, because two of the four gear effects happen to the player rather
+  // than being chosen by them: a Focus Band taking a blow, and Leftovers giving
+  // a little back. The other two ride on sounds the screen already has - a Quick
+  // Claw is a stat rising in every way that matters to the ear, and Life Orb
+  // recoil is self-inflicted damage, which is what `statusDamage` already is.
+  gearHeld: {
+    channel: 'battle',
+    moment: 'Held gear takes the blow: a Focus Band leaves its holder on 1 HP',
+    tones: [sq(147, 0.07, 0.07), sweep(tri(330, 0.2, 0.06, 0.06), 494)],
+  },
+  gearTick: {
+    channel: 'battle',
+    moment: 'Held gear pays out at the end of a turn: Leftovers',
+    tones: [tri(784, 0.06, 0.05), tri(1047, 0.09, 0.045, 0.06)],
+  },
   lowHp: {
     // Not `battle`: it fires on the same frame as the hit that caused it, and
     // on the hit's own channel it would cut the hit off.

@@ -264,8 +264,17 @@ export const combatPresentationSteps = (
         hpDelta: event.damage ?? 0,
       };
     }
-    if (event.type === 'confusion-self-hit' || event.type === 'status-damage') {
+    if (
+      event.type === 'confusion-self-hit' ||
+      event.type === 'status-damage' ||
+      event.type === 'gear-recoil'
+    ) {
       return { event, actor: event.user, target: event.user, hpDelta: event.damage };
+    }
+    // Gear that gives HP back moves the bar the other way, so the delta is
+    // negative damage: the bar animation is the same code either direction.
+    if (event.type === 'gear-heal') {
+      return { event, actor: event.user, target: event.user, hpDelta: -event.amount };
     }
     return { event, actor: null, target: null, hpDelta: 0 };
   });
@@ -280,6 +289,24 @@ export const combatantLabel = (user: 'player' | 'enemy'): string =>
  */
 export const combatantName = (who: { readonly user: 'player' | 'enemy'; readonly name: string }): string =>
   `${combatantLabel(who.user)} ${who.name.toUpperCase()}`;
+
+/**
+ * What the player's own plate says about the gear its Pokemon is carrying, or
+ * nothing at all when the slot is empty.
+ *
+ * A raid is fought with whatever was given out at base, and a fight is the one
+ * place that choice pays off or does not - so the item is named on screen for
+ * the whole fight rather than only in the line where it acts.
+ *
+ * The name and nothing else, because of where it has to go. The plate's bottom
+ * row has 65 pixels clear to the left of the HP numbers; the longest gear name
+ * is 51 of them at the caption size and `HOLDS FOCUS BAND` is 77. Under the
+ * plate there is no room at all - the band between it and the dialogue panel is
+ * twelve pixels, and a twelve-pixel line with its outline is fifteen, which is
+ * how the first attempt came out with its feet under the panel.
+ */
+export const heldGearLabel = (heldItemName: string | undefined): string =>
+  heldItemName === undefined ? '' : heldItemName.toUpperCase();
 
 /**
  * A level as every plate and list writes it. It was `:L6`, which Orange Kid
@@ -372,6 +399,17 @@ export const eventToMessage = (event: BattleEvent): string => {
       return "You can't catch a trainer's POKéMON!";
     case 'enemy-sent-out':
       return `Go, ${event.name.toUpperCase()}!`;
+    // Gear says what it did, in the words of the thing it did it to. A player who
+    // reads one of these lines once knows the whole rule, which is the bar every
+    // piece of gear in the catalogue is held to.
+    case 'gear-first-strike':
+      return `${combatantName(event)}'s ${event.item} let it move first!`;
+    case 'gear-endured':
+      return `${combatantName(event)} hung on with its ${event.item}!`;
+    case 'gear-recoil':
+      return `${combatantName(event)} paid ${event.damage} HP to its ${event.item}.`;
+    case 'gear-heal':
+      return `${combatantName(event)} took +${event.amount} HP from its ${event.item}.`;
   }
 };
 

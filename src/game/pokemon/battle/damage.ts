@@ -1,6 +1,7 @@
 import type { MoveBase } from '../MoveBase';
 import { MoveCategory } from '../MoveBase';
 import type { Pokemon } from '../Pokemon';
+import { attackMultiplier, attackRecoil } from './heldItems';
 import { getTypeEffectiveness } from './typeChart';
 import { createStatStages, getStagedStat, type StatStages } from './statStages';
 
@@ -14,6 +15,13 @@ export interface DamageResult {
   readonly isStab: boolean;
   readonly isCritical: boolean;
   readonly typeEffectiveness: number;
+  /**
+   * What landing this hit costs the attacker's own gear - Life Orb, and nothing
+   * else so far. It is reported rather than applied because HP belongs to the
+   * combatant while a battle is running, and the engine is the only thing that
+   * may write it.
+   */
+  readonly recoil: number;
 }
 
 const clampRandom = (random: RandomSource): number => Math.min(1, Math.max(0, random()));
@@ -35,7 +43,7 @@ export const calculateDamage = (
   const isStab = attacker.base.primaryType === move.type || attacker.base.secondaryType === move.type;
 
   if (move.category === MoveCategory.Status || move.power <= 0 || typeEffectiveness === 0) {
-    return { damage: 0, isStab, isCritical: false, typeEffectiveness };
+    return { damage: 0, isStab, isCritical: false, typeEffectiveness, recoil: 0 };
   }
 
   const attackStat = move.category === MoveCategory.Physical ? 'attack' : 'spAttack';
@@ -47,9 +55,23 @@ export const calculateDamage = (
     : 1;
   const stabMultiplier = isStab ? STAB_MULTIPLIER : 1;
   const baseDamage = ((2 * attacker.level + 10) / 250) * move.power * (attack / defense) + 2;
+  // The attacker's own gear is read straight off the Pokemon rather than passed
+  // in: an item is not a property of the swing, and a copy of it here would be
+  // one more thing to keep in step with the party.
   const damage = Math.floor(
-    baseDamage * randomModifier(random) * typeEffectiveness * stabMultiplier * criticalMultiplier,
+    baseDamage *
+      randomModifier(random) *
+      typeEffectiveness *
+      stabMultiplier *
+      criticalMultiplier *
+      attackMultiplier(attacker),
   );
 
-  return { damage, isStab, isCritical: criticalMultiplier === 2, typeEffectiveness };
+  return {
+    damage,
+    isStab,
+    isCritical: criticalMultiplier === 2,
+    typeEffectiveness,
+    recoil: attackRecoil(attacker, damage),
+  };
 };

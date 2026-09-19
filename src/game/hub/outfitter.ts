@@ -1,4 +1,4 @@
-import type { ItemId } from '../items';
+import type { SupplyItemId } from '../items';
 import type { ContractStack } from '../objectives/contracts';
 import { Stash, type StashedPokemon } from '../stash';
 
@@ -236,7 +236,7 @@ export function hasBeacon(builtIds: readonly string[]): boolean {
  * no other use, so a finished base is paid in the raid's own supplies, exactly
  * as it was before materials existed - no new faucet, only the old one kept.
  */
-export const FINISHED_BASE_PAY: readonly ItemId[] = ['antidote', 'great-ball', 'poke-ball', 'potion', 'super-potion'];
+export const FINISHED_BASE_PAY: readonly SupplyItemId[] = ['antidote', 'great-ball', 'poke-ball', 'potion', 'super-potion'];
 
 /**
  * The materials the ladder is still asking for: every kind an unbuilt rung
@@ -244,7 +244,7 @@ export const FINISHED_BASE_PAY: readonly ItemId[] = ['antidote', 'great-ball', '
  * a reward is always something the player has a use for. Once the whole ladder
  * stands nothing wants a material any more, and the board pays in supplies.
  */
-export function outfitterMaterialKinds(builtIds: readonly string[]): readonly ItemId[] {
+export function outfitterMaterialKinds(builtIds: readonly string[]): readonly SupplyItemId[] {
   const outstanding = [
     ...new Set(
       OUTFITTER_UPGRADES.filter((upgrade) => !builtIds.includes(upgrade.id)).flatMap((upgrade) =>

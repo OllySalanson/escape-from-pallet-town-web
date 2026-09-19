@@ -62,6 +62,10 @@ export function deployedRaidCondition(
       primaryStatus: party[index].primaryStatus,
       experience: party[index].experience,
       speciesId: party[index].base.id,
+      // Gear rides home on the Pokemon that carried it, which is the only way
+      // it can come home at all: it was never in the pack, so the supply delta
+      // knows nothing about it.
+      heldItemId: party[index].heldItemId,
     }));
 }
 

@@ -30,6 +30,8 @@ describe('the result screen ledger', () => {
       progress: [
         { name: 'Charmander', fromLevel: 5, toLevel: 6, experienceGained: 40, experienceToNextLevel: 20 },
       ],
+      gear: [],
+      gearSummary: null,
     } as unknown as ExtractionReport;
     Object.assign(scene as object, { report });
 

@@ -86,6 +86,16 @@ export interface RunSnapshot {
    * raid was worth without any scene keeping a private copy.
    */
   readonly deployedExperience: readonly number[];
+  /**
+   * What each deployed Pokemon was carrying at the moment of deploy, paired by
+   * position with `loadout.party`.
+   *
+   * Recorded for the same reason the experience is: the raid is played on the
+   * stash's own Pokemon, so by the time it resolves the slot holds whatever the
+   * raid left in it. Without the before, the result screen cannot tell gear that
+   * came home from gear that was given away mid-raid.
+   */
+  readonly deployedHeldItems: readonly (string | null)[];
   readonly isEnraged: boolean;
   /**
    * What is left of `ENRAGE_GRACE_MS` once the raid clock has run out, so the
@@ -130,6 +140,7 @@ export class RunManager {
   private defeatedTrainersValue = 0;
   private hunterFleesValue = 0;
   private deployedExperienceValue: number[] = [];
+  private deployedHeldItemsValue: (string | null)[] = [];
   private mapIdValue: string | null = null;
   private visitedMapIdsValue: string[] = [];
   private durationMs = 0;
@@ -175,6 +186,7 @@ export class RunManager {
 
     this.loadoutValue = copyLoadout(loadout);
     this.deployedExperienceValue = loadout.party.map((member) => member.experience);
+    this.deployedHeldItemsValue = loadout.party.map((member) => member.heldItemId);
     this.secureSlotValue = copySecureSlot(secureSlot);
     this.caughtPokemonValue = [];
     this.foundItemsValue = [];
@@ -372,6 +384,7 @@ export class RunManager {
       durationMs: this.durationMs,
       isEnraged: this.isEnragedValue,
       deployedExperience: [...this.deployedExperienceValue],
+      deployedHeldItems: [...this.deployedHeldItemsValue],
       enrageGraceRemainingMs: this.enrageGraceRemainingMs(),
     };
   }

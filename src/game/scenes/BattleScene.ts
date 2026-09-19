@@ -46,7 +46,7 @@ import {
   battleItemCount,
   usableBattleItems,
 } from '../pokemon/battle/battleItems';
-import { Bag, type ItemDefinition } from '../items';
+import { Bag, heldItemName, type ItemDefinition } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { GAME_FONT } from '../ui/gameFont';
@@ -76,6 +76,7 @@ import {
   formatItemRow,
   formatMoveCommand,
   formatWildEscapeCommand,
+  heldGearLabel,
   hunterFleeMessages,
   moveCommandLayout,
   moveGuidanceLayout,
@@ -566,6 +567,17 @@ export class BattleScene extends Phaser.Scene {
     hpBar.setDepth(6);
     container.add(hpBar);
     if (showNumbers) {
+      // The gear shares the bottom row with the HP numbers, in the guidance ink
+      // the panel below uses for anything that is not itself a number.
+      container.add(
+        this.add
+          .text(x + 9, y + 44, heldGearLabel(heldItemName(combatant.pokemon.heldItemId)), {
+            fontFamily: BATTLE_FONT,
+            fontSize: CAPTION_FONT_SIZE,
+            color: PANEL_GUIDANCE_INK,
+          })
+          .setDepth(6),
+      );
       this.playerHpBar = hpBar;
       this.playerHpText = this.add.text(x + 74, y + 43, '', {
         fontFamily: BATTLE_FONT,
@@ -1262,16 +1274,23 @@ export class BattleScene extends Phaser.Scene {
     this.refreshStatusLabels();
   }
 
+  /**
+   * Walks the health bar to where the step says it should be.
+   *
+   * `damage` is signed: gear that pays HP back at the end of a turn is negative
+   * damage, and it walks the same bar the other way rather than needing a second
+   * animation. The critical-HP alarm only ever fires on a loss.
+   */
   private animateHpDelta(user: 'player' | 'enemy', damage: number): void {
-    if (damage <= 0) {
+    if (damage === 0) {
       return;
     }
     const from = this.displayedHp[user];
-    const to = Math.max(0, from - damage);
-    this.displayedHp[user] = to;
     const pokemon =
       user === 'player' ? this.state.player.pokemon : (this.displayedEnemy ?? this.state.enemy.pokemon);
-    if (user === 'player' && from > pokemon.maxHp * 0.2 && to > 0 && to <= pokemon.maxHp * 0.2) {
+    const to = Math.min(pokemon.maxHp, Math.max(0, from - damage));
+    this.displayedHp[user] = to;
+    if (damage > 0 && user === 'player' && from > pokemon.maxHp * 0.2 && to > 0 && to <= pokemon.maxHp * 0.2) {
       audioManager.play('lowHp');
     }
     const bar = user === 'player' ? this.playerHpBar : this.enemyHpBar;
