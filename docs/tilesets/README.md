@@ -1,0 +1,45 @@
+# Reading a tileset
+
+A tile sheet is 16x16 squares in a grid. At its own size it is unreadable, and
+without the index printed on it there is no way to say which tile you mean. The
+two images here are those sheets made readable - a contact sheet, in the
+photographic sense - and they are the reference the catalogues in
+`src/game/world/tileset/` were written against.
+
+| Image | Sheet | Tiles |
+| --- | --- | ---: |
+| `overworld-contact-sheet.png` | `public/assets/Overworld.png` | 40 x 36 = 1440 slots, 1073 drawn, **1012 distinct** |
+| `classic-contact-sheet.png` | `public/assets/tileset.png` | 8 x 13 = **104** |
+
+Regenerate either, or print a sheet that is not committed here:
+
+```sh
+node tools/tileset/contactSheet.mjs public/assets/Overworld.png docs/tilesets/overworld-contact-sheet.png 4
+node tools/tileset/contactSheet.mjs public/assets/tileset.png    docs/tilesets/classic-contact-sheet.png    6
+```
+
+Two more tools answer the questions that come next:
+
+```sh
+# How much of a sheet is real? Blanks, exact duplicates, and where content lives.
+node tools/tileset/analyse.mjs public/assets/Overworld.png
+
+# What does the catalogue actually draw? Every material as a patch with its
+# corners, edges and one-tile runs - a wrong index is a thing you see here
+# rather than a thing you find in a map three hours later.
+npx vite-node tools/tileset/atlas.mts -- overworld atlas.png
+
+# And the maps themselves, exactly as the scene draws them.
+npx vite-node tools/tileset/renderMap.mts -- all maps.png 2 --grid --content
+```
+
+`renderMap` reads the real `WORLD_MAPS` through the real layer builder, so what
+it prints is what the game prints. Viridian Forest shipped with no forest in it
+because nobody could see what they had authored; this is the fix for that.
+
+## Why the sheets are not chopped up
+
+One image stays one image. Chopping a sheet into 1440 files destroys the grid
+relationship the whole catalogue is addressed by, costs either a build step or
+1440 requests, and produces a change nobody can review. The catalogue is the
+index; the contact sheet is how a person - or an agent that can see - reads it.

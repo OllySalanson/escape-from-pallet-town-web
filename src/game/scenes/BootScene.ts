@@ -15,9 +15,9 @@ import {
 } from '../world/characterDesigns';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import { isTestLabRequested } from '../dev/testLabAccess';
-import { FRLG_TILES_TEXTURE } from '../world/frlgSheet';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
 import { awaitGameFont } from '../ui/gameFont';
+import { TILE_SOURCES } from '../world/tileset/sheets';
 
 const DIRECTIONS: readonly Direction[] = ['down', 'left', 'up', 'right'];
 
@@ -39,14 +39,13 @@ export class BootScene extends Phaser.Scene {
         frameHeight: CHARACTER_FRAME_HEIGHT,
       });
     }
-    this.load.image('classicTiles', 'assets/tileset.png');
-    // The second overworld sheet. It is loaded beside `classicTiles` rather
-    // than instead of it: nothing draws from it yet, and every shipped map
-    // still reads the classic set. What it adds is transition art - eight
-    // ground materials with a complete edge set, which `classicTiles` has none
-    // of. `src/game/world/frlgSheet.ts` is how a caller addresses it, and it
-    // is on the same plain 16px grid, so it needs no loader of its own.
-    this.load.image(FRLG_TILES_TEXTURE, 'assets/frlg-tiles.png');
+    // Every sheet a map might be drawn from. A catalogue is chosen per map and
+    // may draw from more than one sheet at a time, so the loader takes the list
+    // rather than naming any of them: `frlg-tiles.png` for the ground, and
+    // ArMM1998's CC0 `Overworld.png` for the objects standing on it.
+    for (const source of TILE_SOURCES) {
+      this.load.image(source.textureKey, source.imagePath);
+    }
     this.load.image('battle-background-grass', 'assets/battle/background-grass.png');
 
     // The raid's markers are pixel art rather than tinted rectangles. They are

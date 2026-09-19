@@ -35,9 +35,51 @@ verified by Git blob SHA on 2026-09-08 against `main`.
 
 | File here | Upstream path | Blob SHA |
 | --- | --- | --- |
-| `Overworld.png` - town and route decoration sheet, not currently loaded by the web client | `Assets/Art/gfx/Overworld.png` | `c03c380c04a7e234c9cb681cc84ed2e097431706` |
-| `tileset.png` - the classic ground tileset (`classicTiles`) | `Assets/Art/gfx/tileset.png` | `05325c7e049e20c11e82256029cc7a35623a15a5` |
-| `character.png` - the walk and attack sheet every overworld figure is drawn from | `Assets/Art/gfx/character.png` | `a50ceb040f5ad2821d1b4976c19ef2a849dd8fb3` |
+| `Overworld.png` - the wide object sheet (`overworld`), **CC0, see below** | `Assets/Art/gfx/Overworld.png` | `c03c380c04a7e234c9cb681cc84ed2e097431706` |
+| `tileset.png` - the ground tileset every map is drawn on (`classicTiles`), **origin not established, see below** | `Assets/Art/gfx/tileset.png` | `05325c7e049e20c11e82256029cc7a35623a15a5` |
+| `character.png` - the walk and attack sheet every overworld figure is drawn from, **CC0, see below** | `Assets/Art/gfx/character.png` | `a50ceb040f5ad2821d1b4976c19ef2a849dd8fb3` |
+
+### `Overworld.png` and `character.png` are ArMM1998's, and they are CC0
+
+Both came through the Unity project, and both are traced past it to their real
+author. They are **byte-identical** to `gfx/Overworld.png` and `gfx/character.png`
+inside the author's own `gfx.zip` download:
+
+> **Zelda-like tilesets and sprites**, ArMM1998, OpenGameArt, 2017-02-16.
+> <https://opengameart.org/content/zelda-like-tilesets-and-sprites>
+> **Licence: CC0 1.0 Universal**, <https://creativecommons.org/publicdomain/zero/1.0/>.
+> The submission carries no Copyright/Attribution Notice: the author left no
+> requirement beyond CC0.
+
+```
+2172a3629161c3c4a8c319efa5584f77d2ec28d6bf498b1d04e3e548e7717697  Overworld.png
+```
+
+Verified by downloading the author's own distribution and comparing bytes
+(`curl -sSL https://opengameart.org/sites/default/files/gfx_3.zip`, then `cmp`).
+CC0 requires no attribution; the credit above is voluntary, and it is here
+because it is the only thing that makes the answer legible to the next person
+who asks. Corroborating detail: both PNGs carry a 2016 GIMP `tIME`/`iTXt` chunk
+matching the zip's own timestamps.
+
+**One caveat, stated rather than hidden.** A commenter on that page in 2017
+suggested the pack's *trees* were too close to Zelda: Minish Cap's, the author
+disagreed and identified himself, and the commenter withdrew the accusation
+("I take away my accusations"). Nobody has ever substantiated it, the pack has
+over 165,000 downloads in nine years with no takedown, and it is recorded here
+only so it is met knowingly rather than cold.
+
+**How it is used.** `src/game/world/tileset/pokemonGround.ts` takes ground from
+`tileset.png` and objects from this sheet, and that split is not a matter of
+taste. Counting exact GBA 15-bit colours (every channel divisible by 8),
+`tileset.png` is 30/33 = 91% and this sheet is 15/136 = 11%; their grass sits at
+hue 152 and hue 123 respectively - a different colour of green rather than a
+different shade - so the two **grounds cannot meet**. Objects travel between
+them perfectly well, which is not a theory: `character.png` is from this pack and
+every figure in the game has stood on `tileset.png` grass since the first commit.
+
+`docs/tilesets/overworld-contact-sheet.png` is this sheet rendered readable, and
+`tools/tileset/contactSheet.mjs` regenerates it for any sheet.
 
 **`tileset.png` is very probably not original work, and this file should say so.**
 30 of its 33 colours (91%) are exact GBA 15-bit values - multiples of 8 in every
@@ -224,6 +266,27 @@ stays visible rather than becoming an assumption.
 
 The file names describe what each figure looks like on screen. They are this
 repository's labels, not a claim about what the game calls that sprite.
+
+## Flagged: `tileset.png`, the sheet every map's ground is drawn from
+
+Its origin is **not established**, and it is the file with the most exposure
+because it is the one that ships in every frame of the overworld.
+
+- It is 128x208 - 8 x 13 = 104 tiles - and it is not in ArMM1998's pack; it was
+  compared against all nine files there.
+- It carries a Photoshop ICC profile where the two ArMM1998 files carry GIMP
+  metadata, and it arrived in the same unnamed "basic assets" Unity commit.
+- **The pixels say it is GBA Pokemon-family art**: 30 of its 33 colours (91%)
+  are exact GBA 15-bit values - every channel divisible by 8 - which art drawn
+  on a PC essentially never is by accident, and its grass base `#40b080` differs
+  from the FireRed/LeafGreen grass `#40b088` by 8 in one channel. It is not
+  byte-identical to any FRLG sheet, so it is a fan set drawn in the GBA palette
+  or a recolour rather than a straight rip - but it is not independent work in
+  an independent style, and no licence has been found for it.
+
+This is recorded so the decision is made deliberately rather than by omission.
+Replacing it is a change to `CLASSIC_TILESET`'s tile numbers and to nothing else:
+maps name materials and roles, never tiles.
 
 ## Flagged: one file that is not the owner's own work
 
