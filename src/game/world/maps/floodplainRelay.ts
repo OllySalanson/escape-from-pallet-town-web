@@ -351,6 +351,23 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(47, 3, 'tower');
   map.plant(53, 3, 'statue');
 
+  // The keep's own wood. The forest is one species from edge to edge, which is
+  // most of why its lattice reads as a lattice; round the court the nearest ring
+  // of it is pine. A pine is two tiles across where a broadleaf is three, so each
+  // leaves a tile of thicket showing beside it. The map's border stays broadleaf.
+  map.draw(46, 4, [
+    '         p  p ',
+    '              ',
+    '            p ',
+    '              ',
+    '            p ',
+    '              ',
+    '            p ',
+    '              ',
+    'p        p  p ',
+    '              ',
+  ]);
+
   // == THE VAULT - the south-east ==========================================
   // Behind the orchard's back fence, and the end of the chain. What is left of
   // the relay's store-house is its floor: stone, with a corner of rubble, and
