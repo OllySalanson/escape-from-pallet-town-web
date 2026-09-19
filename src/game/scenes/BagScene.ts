@@ -26,6 +26,28 @@ const SCREEN_WIDTH = 320;
 const SCREEN_HEIGHT = 240;
 const CATEGORIES = [ItemCategory.Medicine, ItemCategory.PokeBall, ItemCategory.Misc] as const;
 
+/**
+ * What a row's own button says. Three of the pocket's items do nothing to a
+ * Pokemon and say where they are spent instead - the scrip used to offer a live
+ * USE ITEM that could only ever refuse itself.
+ */
+const USELESS_IN_THE_FIELD = new Set(['capture-modifier', 'material', 'currency']);
+
+const useLabel = (item: ItemDefinition): string => {
+  switch (item.effect.type) {
+    case 'capture-modifier':
+      return 'Battle use only';
+    case 'material':
+      return 'For the Outfitter';
+    case 'currency':
+      return 'For the Ferryman';
+    case 'machine':
+      return 'Read to a Pokémon';
+    default:
+      return 'Use item';
+  }
+};
+
 interface BagSceneData {
   readonly bag: Bag;
   readonly party: PokemonParty;
@@ -100,7 +122,7 @@ export class BagScene extends Phaser.Scene {
     const drop = item
       ? `<button class="button" data-drop>Drop one</button>`
       : '';
-    const detail = item ? `<section class="bag-detail"><p class="eyebrow">${ITEM_CATEGORY_LABELS[item.category]}</p><h2>${item.displayName}</h2><p>${item.description}</p><div class="item-count">${this.bag.count(item.id)} carried · ${this.squareLabel(item.id)} each</div>${this.choosingPokemon ? `<h3>Choose a Pokémon</h3><div class="entity-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable" data-target="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${this.targetNote(item, pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('')}</div>` : `<div class="bag-actions"><button class="button primary-button" data-use ${item.effect.type === 'capture-modifier' || item.effect.type === 'material' ? 'disabled' : ''}>${item.effect.type === 'capture-modifier' ? 'Battle use only' : item.effect.type === 'material' ? 'For the Outfitter' : item.effect.type === 'machine' ? 'Read to a Pokémon' : 'Use item'}</button>${drop}</div>`}</section>` : '<section class="bag-detail"><p class="empty-state">Try another pocket.</p></section>';
+    const detail = item ? `<section class="bag-detail"><p class="eyebrow">${ITEM_CATEGORY_LABELS[item.category]}</p><h2>${item.displayName}</h2><p>${item.description}</p><div class="item-count">${this.bag.count(item.id)} carried · ${this.squareLabel(item.id)} each</div>${this.choosingPokemon ? `<h3>Choose a Pokémon</h3><div class="entity-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable" data-target="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${this.targetNote(item, pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('')}</div>` : `<div class="bag-actions"><button class="button primary-button" data-use ${USELESS_IN_THE_FIELD.has(item.effect.type) ? 'disabled' : ''}>${useLabel(item)}</button>${drop}</div>`}</section>` : '<section class="bag-detail"><p class="empty-state">Try another pocket.</p></section>';
     this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run supplies</p><h1>Bag</h1></div><p class="stash-count">${this.packLabel()}</p></header><main class="bag-layout">${this.packPanel(item?.id)}<section class="bag-list"><nav class="category-tabs">${CATEGORIES.map((category, index) => `<button class="${index === this.categoryIndex ? 'active' : ''}" data-category="${index}">${ITEM_CATEGORY_LABELS[category]}</button>`).join('')}</nav><div class="entity-list">${this.currentItems.map((entry, index) => `<button class="entity-row selectable ${index === this.selectedItemIndex ? 'selected' : ''}" data-item-index="${index}">${itemIcon(entry.id, entry.displayName)}<div><strong>${entry.displayName}</strong><small>${this.bag.count(entry.id)} carried · ${this.squareLabel(entry.id)}</small></div></button>`).join('') || '<p class="empty-state">Nothing in this pocket.</p>'}</div></section>${detail}</main>${message ? `<p class="menu-status">${message}</p>` : ''}</div>`;
     this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach((button) => button.onclick = () => { this.categoryIndex = Number(button.dataset.category); this.selectedItemIndex = 0; this.renderModernMenu(); });
