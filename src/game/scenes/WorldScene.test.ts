@@ -225,7 +225,13 @@ describe('hunter disengagement wiring', () => {
       sceneSource.indexOf('private refreshExtractionMarkers('),
     );
     expect(clock).toContain(
-      'const clockMs = this.pendingTrainerBattle || this.openingBriefingOpen ? 0 : deltaMs;',
+      'this.pendingTrainerBattle || this.openingBriefingOpen || cutsceneRunning ? 0 : deltaMs;',
+    );
+    // And the same rule for an authored beat: the raid is charged for time the
+    // player can spend and never for time the world spends on itself, so a
+    // cutscene running itself is free and one waiting on a line is billed.
+    expect(clock).toContain(
+      'const cutsceneRunning = this.cutscene !== undefined && !this.cutscene.waitingForPlayer;',
     );
   });
 
@@ -249,12 +255,12 @@ describe('hunter disengagement wiring', () => {
     expect(sceneSource).toContain('if (!this.isDialogAdvancePressed()) {');
     // Every interruption the hunter causes goes through it, and a sign does not.
     expect(sceneSource).toContain("this.interrupt(['A RIVAL HUNTER is on your trail!'], [position]);");
-    expect(sceneSource).toContain('this.interrupt(this.pendingTrainerBattle.introLines, [this.hunterState.position]);');
-    // A trainer's watch reaches the same interruption - straight away when the
-    // trainer is already beside the player, otherwise once they have walked up.
-    expect(sceneSource).toContain('const lines = [...lead, ...watcher.introLines];');
-    expect(sceneSource).toContain('this.interrupt(lines, [watcher.position]);');
-    expect(sceneSource).toContain('this.interrupt(approach.lines, [');
+    // Being caught, and being seen by a watch, are both authored beats now, and
+    // the line each of them ends on is still an interruption - raised once, by
+    // the one call the cutscene runner makes.
+    expect(sceneSource).toContain('hunterCatchCutscene(');
+    expect(sceneSource).toContain('trainerApproachCutscene(');
+    expect(sceneSource).toContain('this.interrupt(frame.speech.lines, frame.speech.about);');
     expect(sceneSource).toContain("this.dialogBox.showMessages([...entity!.dialogLines]);");
     // And it is on the per-raid reset list, because it outlives the scene otherwise.
     const reset = sceneSource.slice(

@@ -130,11 +130,14 @@ import {
 } from '../world/gates';
 import { dropInCaption, dropInReachedLine } from '../world/dropIns';
 import { insertionAt, isDropInPoint, RUN_INSERTIONS } from '../run/runGeneration';
+import { planTrainerApproach } from '../world/trainerApproach';
 import {
-  approachFrameAt,
-  planTrainerApproach,
-  type TrainerApproach,
-} from '../world/trainerApproach';
+  CutscenePlayer,
+  PLAYER_ACTOR,
+  type Cutscene,
+  type CutsceneActorFrame,
+} from '../cutscene/cutscene';
+import { hunterCatchCutscene, trainerApproachCutscene } from '../world/cutscenes';
 import { findWatchingTrainer, trainerSightTiles } from '../world/trainerSight';
 import {
   trainerChallengePrompt,
@@ -404,18 +407,18 @@ export class WorldScene extends Phaser.Scene {
    */
   private trainerPrompt: ChoicePrompt | undefined;
   /**
-   * The beat between a watch catching the player and the trainer speaking: the
-   * mark, the walk up, the arrival. Driven from `update()` by elapsed time - see
-   * `../world/trainerApproach`. Only one can be live, because it is only ever
-   * begun on the step that starts a fight.
+   * The authored beat playing over the map: a watch catching the player, the
+   * hunter running them down. Driven from `update()` by elapsed time - see
+   * `../cutscene/cutscene.ts` for the machine and `../world/cutscenes.ts` for
+   * every beat there is. Only one can be live: a cutscene owns the frame, so
+   * nothing that could start a second one runs while one is playing.
    */
-  private trainerApproach:
+  private cutscene:
     | {
-        readonly trainerId: string;
-        readonly plan: TrainerApproach;
-        readonly lines: readonly string[];
-        readonly mark: Phaser.GameObjects.Graphics;
-        elapsedMs: number;
+        readonly player: CutscenePlayer;
+        /** The mark graphics raised over each actor, by actor id. */
+        readonly marks: Map<string, Phaser.GameObjects.Graphics>;
+        waitingForPlayer: boolean;
       }
     | undefined;
   private pendingTrainerBattle:
@@ -485,7 +488,7 @@ export class WorldScene extends Phaser.Scene {
     // flag that froze the second raid, and belongs on this list.
     this.pendingResultScreen = false;
     this.pendingTrainerBattle = undefined;
-    this.trainerApproach = undefined;
+    this.endCutscene();
     this.unsolicitedDialog = false;
     // The box itself is rebuilt at the bottom by create(), so the note that it was moved goes too.
     this.dialogRaised = false;
@@ -706,10 +709,11 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    // A trainer coming for the player is not something to walk away from: the
-    // map is theirs until they have arrived and spoken.
-    if (this.trainerApproach) {
-      this.advanceTrainerApproach(deltaMs);
+    // A figure coming for the player is not something to walk away from: the
+    // map is theirs until they have arrived and spoken. While a cutscene waits
+    // on a line to be read it hands the frame back, so the dialogue box below
+    // answers the key exactly as it does for any other box.
+    if (this.cutscene && this.advanceCutscene(deltaMs)) {
       return;
     }
 
@@ -1937,67 +1941,135 @@ export class WorldScene extends Phaser.Scene {
       return false;
     }
 
-    this.facing = OPPOSITE_DIRECTION[watcher.facing];
-    this.showIdlePose();
-    audioManager.play('trainerSpotted');
     this.pendingTrainerBattle = {
       trainer: watcher.trainer,
       introLines: watcher.introLines,
       isHunter: false,
     };
-    const lines = [...lead, ...watcher.introLines];
-    const approach = planTrainerApproach(
-      watcher.position,
-      watcher.facing,
-      tile,
-      watcher.sightRange ?? 0,
+    this.playCutscene(
+      trainerApproachCutscene(
+        watcher.trainer.id,
+        watcher.position,
+        watcher.facing,
+        tile,
+        [...lead, ...watcher.introLines],
+        planTrainerApproach(watcher.position, watcher.facing, tile, watcher.sightRange ?? 0),
+      ),
     );
-    if (approach) {
-      this.beginTrainerApproach(watcher, approach, lines);
-    } else {
-      this.interrupt(lines, [watcher.position]);
-    }
     return true;
   }
 
   /**
-   * The mark goes up over the trainer, and `advanceTrainerApproach` takes it
-   * from there. The player has already been turned to face them.
+   * Starts an authored beat, on the tick that called for it.
+   *
+   * Nothing is posed here by hand: the cutscene's own first instant is played
+   * immediately, with no time passing, so the turn and the sting land on the
+   * tick the player was caught on rather than a frame later - and an opening
+   * pose can never disagree with the sequence that owns it. A second cutscene
+   * is refused rather than queued: there is no beat in this game a player can
+   * reach while another is playing, and a queue would be a way to hold the
+   * frame twice.
    */
-  private beginTrainerApproach(
-    watcher: RunTrainerEncounter,
-    plan: TrainerApproach,
-    lines: readonly string[],
-  ): void {
-    const mark = this.add.graphics().setDepth(atRow(CANOPY_BAND, watcher.position.y) + 0.1);
-    this.mapObjects.push(mark);
-    this.trainerApproach = { trainerId: watcher.trainer.id, plan, lines, mark, elapsedMs: 0 };
-    this.paintSpottedMark(mark);
-    this.placeSpottedMark(mark, watcher.position.x, watcher.position.y, 0);
+  private playCutscene(cutscene: Cutscene): boolean {
+    if (this.cutscene) {
+      return false;
+    }
+    this.cutscene = {
+      player: new CutscenePlayer(cutscene),
+      marks: new Map(),
+      waitingForPlayer: false,
+    };
+    this.advanceCutscene(0);
+    return true;
   }
 
-  private advanceTrainerApproach(deltaMs: number): void {
-    const approach = this.trainerApproach;
-    if (!approach) {
-      return;
+  /**
+   * Plays one tick of the live cutscene.
+   *
+   * @returns whether the cutscene still owns this frame. It gives it back while
+   * it waits on a line to be read, so `update()` falls through to the dialogue
+   * box, and for good once the last beat is done.
+   */
+  private advanceCutscene(deltaMs: number): boolean {
+    const running = this.cutscene;
+    if (!running) {
+      return false;
     }
-    approach.elapsedMs += deltaMs;
-    const frame = approachFrameAt(approach.plan, approach.elapsedMs);
-    const sprite = this.npcSprites.get(approach.trainerId);
-    sprite?.setPosition(frame.x * TILE_SIZE, frame.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
-    sprite?.setDepth(atRow(FIGURE_BAND, frame.y));
+    // The box the cutscene raised has been read and closed, which is the answer
+    // the waiting beat was waiting for.
+    if (running.waitingForPlayer && !this.dialogBox.visible) {
+      running.player.dialogueClosed();
+    }
+    const frame = running.player.advance(deltaMs);
+    for (const [actorId, actor] of frame.actors) {
+      this.placeCutsceneActor(running.marks, actorId, actor);
+    }
+    for (const effect of frame.sounds) {
+      audioManager.play(effect);
+    }
+    if (frame.fade) {
+      const { to, durationMs } = frame.fade;
+      if (to === 'black') {
+        this.cameras.main.fadeOut(durationMs, 0, 0, 0);
+      } else {
+        this.cameras.main.fadeIn(durationMs, 0, 0, 0);
+      }
+    }
+    if (frame.speech) {
+      this.interrupt(frame.speech.lines, frame.speech.about);
+    }
+    running.waitingForPlayer = frame.waitingForPlayer;
+    if (frame.done) {
+      this.endCutscene();
+      return false;
+    }
+    return !frame.waitingForPlayer;
+  }
 
-    if (frame.phase === 'alert') {
-      this.placeSpottedMark(approach.mark, frame.x, frame.y, approach.elapsedMs);
+  /** One actor, this instant: where it stands, which way it looks, its mark. */
+  private placeCutsceneActor(
+    marks: Map<string, Phaser.GameObjects.Graphics>,
+    actorId: string,
+    actor: CutsceneActorFrame,
+  ): void {
+    if (actorId === PLAYER_ACTOR) {
+      // A cutscene may only turn the player - see `checkCutscene` - so their
+      // tile is untouched here and only the pose changes.
+      this.facing = actor.facing;
+      this.showIdlePose();
+    } else {
+      this.npcSprites
+        .get(actorId)
+        ?.setPosition(actor.x * TILE_SIZE, actor.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
+        .setDepth(atRow(FIGURE_BAND, actor.y))
+        .setVisible(actor.visible);
+      this.faceFigure(actorId, actor.facing);
+    }
+    if (!actor.emote) {
+      marks.get(actorId)?.destroy();
+      marks.delete(actorId);
       return;
     }
-    approach.mark.setVisible(false);
-    if (frame.phase !== 'done') {
-      return;
+    let mark = marks.get(actorId);
+    if (!mark) {
+      mark = this.add.graphics().setDepth(atRow(CANOPY_BAND, actor.y) + 0.1);
+      this.mapObjects.push(mark);
+      this.paintSpottedMark(mark);
+      marks.set(actorId, mark);
     }
-    this.trainerApproach = undefined;
-    approach.mark.destroy();
-    this.interrupt(approach.lines, [{ x: Math.round(frame.x), y: Math.round(frame.y) }]);
+    this.placeSpottedMark(mark, actor.x, actor.y, actor.emote.elapsedMs);
+  }
+
+  /**
+   * The beat is over - or the thing it was leading to has taken over: a battle,
+   * the result screen, the next raid on this same scene instance. Either way
+   * the marks come down and nothing is left holding the frame.
+   */
+  private endCutscene(): void {
+    for (const mark of this.cutscene?.marks.values() ?? []) {
+      mark.destroy();
+    }
+    this.cutscene = undefined;
   }
 
   /** Drawn a pixel at a time, like the player's own marks, so it stays as crisp as the art. */
@@ -2285,6 +2357,9 @@ export class WorldScene extends Phaser.Scene {
    * written out per call site is how a wild fight came to forget the hunter.
    */
   private transitionToBattle(encounter: BattleEncounter): void {
+    // Whatever beat was playing has been overtaken by the fight it was leading
+    // to, so it lets go of the frame before the world is torn down.
+    this.endCutscene();
     const data: BattleSceneData = { ...this.raidCarriage(), ...encounter };
     this.isWarping = true;
     this.player.stop();
@@ -2876,8 +2951,19 @@ export class WorldScene extends Phaser.Scene {
     // because opening it is a choice; this box is raised by the raid itself on
     // its first frame, to teach the controls, and the chip read 4:58 before it
     // had finished typing. The raid starts when the player can first act in it.
+    //
+    // A cutscene is that argument a third time, and the rule it settles on is
+    // the one that cannot be gamed: the raid is charged for time the player can
+    // spend and never for time the world spends on itself. A beat that runs
+    // itself - a mark, a walk, a held breath - is bounded by its own authored
+    // duration (`CUTSCENE_TIMED_CAP_MS`) and the player cannot act inside it,
+    // so it is free. A beat that waits on a key is bounded by nothing, so it is
+    // billed exactly as any other dialogue is and there is no authored way to
+    // stop the clock.
     this.openingBriefingOpen = this.openingBriefingOpen && this.dialogBox.visible;
-    const clockMs = this.pendingTrainerBattle || this.openingBriefingOpen ? 0 : deltaMs;
+    const cutsceneRunning = this.cutscene !== undefined && !this.cutscene.waitingForPlayer;
+    const clockMs =
+      this.pendingTrainerBattle || this.openingBriefingOpen || cutsceneRunning ? 0 : deltaMs;
     const snapshot = this.runSession.manager.tick(clockMs);
     this.advanceHunterSearch(clockMs);
     this.placeHunterIfDue(snapshot.elapsedMs);
@@ -3171,8 +3257,15 @@ export class WorldScene extends Phaser.Scene {
       introLines: ['FOUND YOU.', 'There is nowhere left to run!'],
       isHunter: true,
     };
-    audioManager.play('hunterContact');
-    this.interrupt(this.pendingTrainerBattle.introLines, [this.hunterState.position]);
+    this.playCutscene(
+      hunterCatchCutscene(
+        HUNTER_FIGURE_ID,
+        this.hunterState.position,
+        this.currentTile,
+        this.facing,
+        this.pendingTrainerBattle.introLines,
+      ),
+    );
     return true;
   }
 }
