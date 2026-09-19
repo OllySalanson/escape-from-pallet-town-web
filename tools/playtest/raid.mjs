@@ -94,9 +94,10 @@ try {
     }
     await page.keyUp(code);
   };
+  // By the words on the button, whatever case the lobby is lettered in this week.
   const click = async (text) => {
     await until(
-      `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.innerText.includes(${JSON.stringify(text)}) && !b.disabled); if (!b) return false; b.click(); return true; })()`,
+      `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.innerText.toLowerCase().includes(${JSON.stringify(text.toLowerCase())}) && !b.disabled); if (!b) return false; b.click(); return true; })()`,
       `button "${text}"`,
     );
     await wait(350);

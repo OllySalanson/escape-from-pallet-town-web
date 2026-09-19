@@ -39,8 +39,10 @@ In either test mode `window.__escapeFromPalletTownGame__` gains:
 - `loopPaused`.
 
 A key event sent before `stepFrames` is processed by the first frame stepped. A
-press that is down and up again inside one frame still walks a tile
-(`src/game/movement/pressLatch.ts`); it used not to, at any frame rate.
+press that is down and up again inside one frame still counts, for every key the
+game polls (`src/game/input/KeyPresses.ts`); it used not to, at any frame rate -
+movement read `isDown`, and Phaser clears `JustDown` on key up. `raid.mjs --taps`
+plays the whole raid on such presses.
 
 ## Idle costs the machine, so do not idle live
 
