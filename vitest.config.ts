@@ -1,5 +1,14 @@
 import { defineConfig } from 'vitest/config';
 
+/**
+ * This suite is run by several agents on one machine at the same time, and
+ * vitest's default is a worker per core: eight suites each fanning out to twelve
+ * threads is what took a 12-core box to a load of 29 and had the kernel killing
+ * processes. Four is where the suite stops getting meaningfully faster anyway.
+ * A machine that has the box to itself - CI - raises it with `VITEST_MAX_WORKERS`.
+ */
+const MAX_WORKERS = Number(process.env.VITEST_MAX_WORKERS) || 4;
+
 export default defineConfig({
   test: {
     /**
@@ -12,5 +21,6 @@ export default defineConfig({
      * about the code. This bound is high enough that only a real hang trips it.
      */
     testTimeout: 30_000,
+    maxWorkers: MAX_WORKERS,
   },
 });
