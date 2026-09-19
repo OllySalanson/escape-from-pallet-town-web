@@ -8,6 +8,7 @@ import {
 } from '../playerFrames';
 import { SPECIES_BY_ID } from '../pokemon/species';
 import { isTestLabRequested } from '../dev/testLabAccess';
+import { FRLG_TILES_TEXTURE } from '../world/frlgSheet';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
 import { awaitGameFont } from '../ui/gameFont';
 
@@ -24,6 +25,13 @@ export class BootScene extends Phaser.Scene {
       frameHeight: CHARACTER_FRAME_HEIGHT,
     });
     this.load.image('classicTiles', 'assets/tileset.png');
+    // The second overworld sheet. It is loaded beside `classicTiles` rather
+    // than instead of it: nothing draws from it yet, and every shipped map
+    // still reads the classic set. What it adds is transition art - eight
+    // ground materials with a complete edge set, which `classicTiles` has none
+    // of. `src/game/world/frlgSheet.ts` is how a caller addresses it, and it
+    // is on the same plain 16px grid, so it needs no loader of its own.
+    this.load.image(FRLG_TILES_TEXTURE, 'assets/frlg-tiles.png');
     this.load.image('battle-background-grass', 'assets/battle/background-grass.png');
 
     // The raid's markers are pixel art rather than tinted rectangles. They are
@@ -38,7 +46,10 @@ export class BootScene extends Phaser.Scene {
     // block and covered the battle screen, so there is deliberately no escape
     // hatch here: new art must match, and `spriteAssets.test.ts` enforces it.
     for (const species of Object.values(SPECIES_BY_ID)) {
-      this.load.image(`pokemon-front-${species.dexId}`, `assets/pokemon/front/${species.dexId}.png`);
+      this.load.image(
+        `pokemon-front-${species.dexId}`,
+        `assets/pokemon/front/${species.dexId}.png`,
+      );
       this.load.image(`pokemon-back-${species.dexId}`, `assets/pokemon/back/${species.dexId}.png`);
     }
   }
