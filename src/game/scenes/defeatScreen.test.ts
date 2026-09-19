@@ -456,3 +456,34 @@ describe('moving the defeat sequence on', () => {
     expect(start).toHaveBeenCalledWith('hub');
   });
 });
+
+describe('the defeat sequence across raids', () => {
+  /**
+   * Phaser reuses one instance per scene key, so a second defeat is played by
+   * the object that already finished the first. A sequence that never replayed
+   * would be the same class of bug as the flags that froze the raid loop.
+   */
+  it('plays again on the same scene object after an earlier defeat has finished', () => {
+    const { scene, root, advance } = open(defeatReport());
+    readThrough(advance);
+    expect(root.html).toContain('data-continue');
+
+    scene.init({ report: defeatReport() });
+    scene.create();
+    const second = overlayRoots[overlayRoots.length - 1];
+
+    expect(second.html).toContain('defeat-stage');
+
+    // Through the lead-in rather than a press: the harness leaves the finished
+    // raid's overlay listening, so one press would reach both of them.
+    advance(300);
+    expect(second.stage.dataset.beat).toBe('fall');
+  });
+
+  it('leaves an extraction untouched: a survived raid still opens on its haul', () => {
+    const { root } = open(escapeReport());
+
+    expect(root.html).not.toContain('defeat-stage');
+    expect(root.html).toContain('extraction-won');
+  });
+});
