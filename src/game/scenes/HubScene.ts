@@ -1729,11 +1729,14 @@ export class HubScene extends Phaser.Scene {
     const cargo = this.flow.securedCargo;
     const free = gridCells(this.flow.secureGrid) - this.flow.secureCells.used;
     if (cargo.length === 0) {
-      const biggest = this.flow.party
+      // Nothing is protected. That is only worth a line when it is because
+      // nothing *can* be - an all-evolved party against a container that has
+      // not grown - because otherwise the player put the Pokemon out on purpose.
+      const smallest = this.flow.party
         .map((stored) => cargoCells(pokemonCargo(stored.id, stored.pokemon)))
         .sort((a, b) => a - b)[0];
-      return biggest !== undefined && biggest > gridCells(this.flow.secureGrid)
-        ? `<p class="px-note px-wrap">Nothing in this party fits: the container is ${this.flow.secureGrid.width}x${this.flow.secureGrid.height} and the smallest here needs ${cargoSquaresLabel(biggest)}. Grow it at the Outfitter, or bank a cordon ledger.</p>`
+      return smallest !== undefined && smallest > free
+        ? `<p class="px-note px-wrap">Nothing in this party fits: the container is ${this.flow.secureGrid.width}x${this.flow.secureGrid.height} and the smallest here needs ${cargoSquaresLabel(smallest)}. Grow it at the Outfitter, or bank a cordon ledger.</p>`
         : '';
     }
     const names = cargo.map((piece) => piece.name.toUpperCase()).join(' and ');
