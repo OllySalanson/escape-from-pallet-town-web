@@ -174,6 +174,7 @@ describe('damage calculation', () => {
       isStab: true,
       isCritical: false,
       typeEffectiveness: 2,
+      abilityNotes: [],
     });
   });
 
@@ -187,6 +188,8 @@ describe('damage calculation', () => {
       isStab: false,
       isCritical: false,
       typeEffectiveness: 1,
+      // No abilities were passed, so none were read: this is the formula on its own.
+      abilityNotes: [],
     });
   });
 
@@ -316,13 +319,22 @@ describe('battle turn resolution', () => {
 
     const result = resolveTurn(state, 2, maximumRandom);
 
-    expect(result.events.slice(0, 3)).toMatchObject([
+    expect(result.events.slice(0, 2)).toMatchObject([
       { type: 'used-move', user: 'player', move: 'Ember' },
       { type: 'effectiveness', multiplier: 2 },
-      { type: 'used-move', user: 'enemy' },
     ]);
+    expect(result.events.some((event) => event.type === 'used-move' && event.user === 'enemy')).toBe(
+      true,
+    );
     expect(result.state.enemy.currentHp).toBe(bulbasaur.maxHp - 20);
-    expect(result.state.player.currentHp).toBe(charmander.maxHp - 5);
+    // Ember leaves Bulbasaur on 4 of 24, which is inside the third that turns
+    // Overgrow on, so the Vine Whip that answers is 1.5x rather than 5 HP. The
+    // pinch ability is exactly this: the last of a Pokemon's health is its
+    // most dangerous.
+    expect(result.state.player.currentHp).toBe(charmander.maxHp - 8);
+    expect(
+      result.events.some((event) => event.type === 'ability' && event.effect === 'powered-up'),
+    ).toBe(true);
     expect(result.state.player.moves[2]?.pp).toBe(EMBER.pp - 1);
     expect(charmander.currentHp).toBe(charmander.maxHp);
     expect(charmander.moves[2]?.pp).toBe(EMBER.pp);
@@ -369,6 +381,8 @@ describe('battle turn resolution', () => {
     const powderEvents = result.events.slice(0, enemyReplyIndex);
 
     expect(powderEvents[0]).toMatchObject({ type: 'used-move', move: 'Poison Powder' });
+    // Butterfree's Compound Eyes introduces itself once, after the move it aimed.
+    expect(powderEvents[1]).toMatchObject({ type: 'ability', effect: 'sharpened' });
     expect(powderEvents.filter((event) => event.type === 'effectiveness')).toEqual([]);
     expect(powderEvents.some((event) => event.type === 'status-applied')).toBe(true);
   });
@@ -416,7 +430,7 @@ describe('battle turn resolution', () => {
     const enemy = new Pokemon(BULBASAUR, 10);
     const state = createBattleState(charmander, enemy);
 
-    const switchedState = replacePlayerPokemon(state, pidgey);
+    const switchedState = replacePlayerPokemon(state, pidgey).state;
     const result = resolveEnemyTurn(switchedState, maximumRandom);
 
     expect(result.state.player.pokemon).toBe(pidgey);
@@ -503,7 +517,7 @@ describe('battle turn resolution', () => {
     expect(player.moves[0]?.pp).toBe(afterTurn.player.moves[0]?.pp);
 
     const pidgey = new Pokemon(PIDGEY, 10);
-    const switched = replacePlayerPokemon(afterTurn, pidgey);
+    const switched = replacePlayerPokemon(afterTurn, pidgey).state;
     const afterSwitch = resolveEnemyTurn(switched, maximumRandom).state;
     persistCombatantToPokemon(afterSwitch.player);
     persistCombatantToPokemon(afterTurn.player);

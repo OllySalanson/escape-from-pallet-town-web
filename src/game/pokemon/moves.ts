@@ -11,6 +11,7 @@ export const TACKLE = new MoveBase({
   accuracy: 100,
   pp: 20,
   category: MoveCategory.Physical,
+  flags: [MoveFlag.Contact],
 });
 
 export const GROWL = new MoveBase({
@@ -22,6 +23,7 @@ export const GROWL = new MoveBase({
   pp: 30,
   category: MoveCategory.Status,
   effects: { boosts: [{ stat: 'attack', stages: -1 }] },
+  flags: [MoveFlag.Sound],
 });
 
 /**
@@ -51,6 +53,7 @@ export const SCRATCH = new MoveBase({
   accuracy: 100,
   pp: 35,
   category: MoveCategory.Physical,
+  flags: [MoveFlag.Contact],
 });
 
 export const EMBER = new MoveBase({
@@ -82,6 +85,7 @@ export const VINE_WHIP = new MoveBase({
   accuracy: 100,
   pp: 20,
   category: MoveCategory.Special,
+  flags: [MoveFlag.Contact],
 });
 
 export const POISON_POWDER = new MoveBase({
@@ -107,6 +111,7 @@ export const SING = new MoveBase({
   pp: 20,
   category: MoveCategory.Status,
   effects: { status: PrimaryStatus.Sleep },
+  flags: [MoveFlag.Sound],
 });
 
 export const SUPER_SONIC = new MoveBase({
@@ -118,6 +123,7 @@ export const SUPER_SONIC = new MoveBase({
   pp: 20,
   category: MoveCategory.Status,
   effects: { status: 'confusion' },
+  flags: [MoveFlag.Sound],
 });
 
 export const THUNDER_WAVE = new MoveBase({
@@ -224,6 +230,7 @@ export const SLASH = new MoveBase({
   pp: 20,
   category: MoveCategory.Physical,
   critStage: 1,
+  flags: [MoveFlag.Contact],
 });
 
 export const WING_ATTACK = new MoveBase({
@@ -234,6 +241,7 @@ export const WING_ATTACK = new MoveBase({
   accuracy: 100,
   pp: 35,
   category: MoveCategory.Physical,
+  flags: [MoveFlag.Contact],
 });
 
 export const GUST = new MoveBase({

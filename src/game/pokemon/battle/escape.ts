@@ -1,4 +1,5 @@
-import type { BattleCombatant } from './battleEngine';
+import { abilityCarrier, type BattleCombatant } from './battleEngine';
+import { abilityLabel, escapeAlwaysSucceeds, escapePrevented } from './abilityHooks';
 import type { RandomSource } from './damage';
 import { getStagedStat } from './statStages';
 
@@ -37,13 +38,33 @@ export const getWildEscapeChance = (
 export interface WildEscapeAttempt {
   readonly chance: number;
   readonly escaped: boolean;
+  /**
+   * The ability that decided it, if one did, so the line the player reads names
+   * the reason rather than reporting a roll that was never made.
+   */
+  readonly ability: { readonly holder: 'player' | 'enemy'; readonly label: string } | null;
 }
 
+/**
+ * Two abilities settle this before the speeds are asked, and both of them are
+ * certainties rather than adjustments - which is why they are read here as well
+ * as in `attemptWildEscape`: the command label shows the odds before the player
+ * commits, and a Run Away that shows 64% and then always works would be lying
+ * on the one screen that exists to tell the truth about a price.
+ */
 export const wildEscapeChanceFor = (
   player: BattleCombatant,
   enemy: BattleCombatant,
   previousAttempts: number,
-): number => getWildEscapeChance(combatantSpeed(player), combatantSpeed(enemy), previousAttempts);
+): number => {
+  if (escapeAlwaysSucceeds(abilityCarrier(player))) {
+    return 1;
+  }
+  if (escapePrevented(abilityCarrier(enemy), abilityCarrier(player))) {
+    return 0;
+  }
+  return getWildEscapeChance(combatantSpeed(player), combatantSpeed(enemy), previousAttempts);
+};
 
 export const attemptWildEscape = (
   player: BattleCombatant,
@@ -51,7 +72,17 @@ export const attemptWildEscape = (
   previousAttempts: number,
   random: RandomSource,
 ): WildEscapeAttempt => {
+  if (escapeAlwaysSucceeds(abilityCarrier(player))) {
+    return { chance: 1, escaped: true, ability: { holder: 'player', label: abilityLabel(abilityCarrier(player)) } };
+  }
+  if (escapePrevented(abilityCarrier(enemy), abilityCarrier(player))) {
+    return { chance: 0, escaped: false, ability: { holder: 'enemy', label: abilityLabel(abilityCarrier(enemy)) } };
+  }
   const chance = wildEscapeChanceFor(player, enemy, previousAttempts);
   const roll = random();
-  return { chance, escaped: (Number.isFinite(roll) ? Math.min(1, Math.max(0, roll)) : 0) < chance };
+  return {
+    chance,
+    escaped: (Number.isFinite(roll) ? Math.min(1, Math.max(0, roll)) : 0) < chance,
+    ability: null,
+  };
 };

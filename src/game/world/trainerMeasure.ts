@@ -106,7 +106,7 @@ export function playTrainerBattle(
         return lost;
       }
       index += 1 + next;
-      state = replacePlayerPokemon(state, party[index]);
+      state = replacePlayerPokemon(state, party[index]).state;
     }
     // A turn that changed nothing - everything out of PP - is a stalemate.
     if (state === before) {

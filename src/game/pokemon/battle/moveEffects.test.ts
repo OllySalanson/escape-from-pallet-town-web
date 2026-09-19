@@ -141,7 +141,11 @@ describe('status declared on the move', () => {
       }),
       10,
     );
-    const player = armed(PIKACHU, 20, THUNDER_WAVE);
+    // Charmander rather than Pikachu: Pikachu's Static would paralyse the
+    // Ground type from the other end when it tackled back, which is correct -
+    // an ability is not a move and a Ground type is not immune to one - and
+    // would prove nothing about the move's own type immunity.
+    const player = armed(CHARMANDER, 20, THUNDER_WAVE);
 
     const result = resolveTurn(createBattleState(player, diglett), 0, always);
 
@@ -202,7 +206,9 @@ describe('accuracy and evasion', () => {
 
   it('lowers the target’s accuracy and raises the user’s evasion', () => {
     const smoker = armed(CHARMANDER, 30, SMOKESCREEN);
-    const smoked = resolveTurn(createBattleState(smoker, armed(PIDGEY, 5, TACKLE)), 0, always);
+    // Not a Pidgey: its Keen Eye refuses the drop outright, which is its own
+    // test further down.
+    const smoked = resolveTurn(createBattleState(smoker, armed(BULBASAUR, 5, TACKLE)), 0, always);
     expect(smoked.state.enemy.statStages.accuracy).toBe(-1);
 
     const dodger = armed(PIKACHU, 30, DOUBLE_TEAM);

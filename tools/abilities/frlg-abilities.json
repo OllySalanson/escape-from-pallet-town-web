@@ -1,0 +1,1662 @@
+{
+ "species": [
+  {
+   "dexId": 1,
+   "name": "bulbasaur",
+   "abilities": [
+    "overgrow"
+   ]
+  },
+  {
+   "dexId": 2,
+   "name": "ivysaur",
+   "abilities": [
+    "overgrow"
+   ]
+  },
+  {
+   "dexId": 3,
+   "name": "venusaur",
+   "abilities": [
+    "overgrow"
+   ]
+  },
+  {
+   "dexId": 4,
+   "name": "charmander",
+   "abilities": [
+    "blaze"
+   ]
+  },
+  {
+   "dexId": 5,
+   "name": "charmeleon",
+   "abilities": [
+    "blaze"
+   ]
+  },
+  {
+   "dexId": 6,
+   "name": "charizard",
+   "abilities": [
+    "blaze"
+   ]
+  },
+  {
+   "dexId": 7,
+   "name": "squirtle",
+   "abilities": [
+    "torrent"
+   ]
+  },
+  {
+   "dexId": 8,
+   "name": "wartortle",
+   "abilities": [
+    "torrent"
+   ]
+  },
+  {
+   "dexId": 9,
+   "name": "blastoise",
+   "abilities": [
+    "torrent"
+   ]
+  },
+  {
+   "dexId": 10,
+   "name": "caterpie",
+   "abilities": [
+    "shield-dust"
+   ]
+  },
+  {
+   "dexId": 11,
+   "name": "metapod",
+   "abilities": [
+    "shed-skin"
+   ]
+  },
+  {
+   "dexId": 12,
+   "name": "butterfree",
+   "abilities": [
+    "compound-eyes"
+   ]
+  },
+  {
+   "dexId": 13,
+   "name": "weedle",
+   "abilities": [
+    "shield-dust"
+   ]
+  },
+  {
+   "dexId": 14,
+   "name": "kakuna",
+   "abilities": [
+    "shed-skin"
+   ]
+  },
+  {
+   "dexId": 15,
+   "name": "beedrill",
+   "abilities": [
+    "swarm"
+   ]
+  },
+  {
+   "dexId": 16,
+   "name": "pidgey",
+   "abilities": [
+    "keen-eye"
+   ]
+  },
+  {
+   "dexId": 17,
+   "name": "pidgeotto",
+   "abilities": [
+    "keen-eye"
+   ]
+  },
+  {
+   "dexId": 18,
+   "name": "pidgeot",
+   "abilities": [
+    "keen-eye"
+   ]
+  },
+  {
+   "dexId": 19,
+   "name": "rattata",
+   "abilities": [
+    "run-away",
+    "guts"
+   ]
+  },
+  {
+   "dexId": 20,
+   "name": "raticate",
+   "abilities": [
+    "run-away",
+    "guts"
+   ]
+  },
+  {
+   "dexId": 21,
+   "name": "spearow",
+   "abilities": [
+    "keen-eye"
+   ]
+  },
+  {
+   "dexId": 22,
+   "name": "fearow",
+   "abilities": [
+    "keen-eye"
+   ]
+  },
+  {
+   "dexId": 23,
+   "name": "ekans",
+   "abilities": [
+    "intimidate",
+    "shed-skin"
+   ]
+  },
+  {
+   "dexId": 24,
+   "name": "arbok",
+   "abilities": [
+    "intimidate",
+    "shed-skin"
+   ]
+  },
+  {
+   "dexId": 25,
+   "name": "pikachu",
+   "abilities": [
+    "static"
+   ]
+  },
+  {
+   "dexId": 26,
+   "name": "raichu",
+   "abilities": [
+    "static"
+   ]
+  },
+  {
+   "dexId": 27,
+   "name": "sandshrew",
+   "abilities": [
+    "sand-veil"
+   ]
+  },
+  {
+   "dexId": 28,
+   "name": "sandslash",
+   "abilities": [
+    "sand-veil"
+   ]
+  },
+  {
+   "dexId": 29,
+   "name": "nidoran-f",
+   "abilities": [
+    "poison-point"
+   ]
+  },
+  {
+   "dexId": 30,
+   "name": "nidorina",
+   "abilities": [
+    "poison-point"
+   ]
+  },
+  {
+   "dexId": 31,
+   "name": "nidoqueen",
+   "abilities": [
+    "poison-point"
+   ]
+  },
+  {
+   "dexId": 32,
+   "name": "nidoran-m",
+   "abilities": [
+    "poison-point"
+   ]
+  },
+  {
+   "dexId": 33,
+   "name": "nidorino",
+   "abilities": [
+    "poison-point"
+   ]
+  },
+  {
+   "dexId": 34,
+   "name": "nidoking",
+   "abilities": [
+    "poison-point"
+   ]
+  },
+  {
+   "dexId": 35,
+   "name": "clefairy",
+   "abilities": [
+    "cute-charm"
+   ]
+  },
+  {
+   "dexId": 36,
+   "name": "clefable",
+   "abilities": [
+    "cute-charm"
+   ]
+  },
+  {
+   "dexId": 37,
+   "name": "vulpix",
+   "abilities": [
+    "flash-fire"
+   ]
+  },
+  {
+   "dexId": 38,
+   "name": "ninetales",
+   "abilities": [
+    "flash-fire"
+   ]
+  },
+  {
+   "dexId": 39,
+   "name": "jigglypuff",
+   "abilities": [
+    "cute-charm"
+   ]
+  },
+  {
+   "dexId": 40,
+   "name": "wigglytuff",
+   "abilities": [
+    "cute-charm"
+   ]
+  },
+  {
+   "dexId": 41,
+   "name": "zubat",
+   "abilities": [
+    "inner-focus"
+   ]
+  },
+  {
+   "dexId": 42,
+   "name": "golbat",
+   "abilities": [
+    "inner-focus"
+   ]
+  },
+  {
+   "dexId": 43,
+   "name": "oddish",
+   "abilities": [
+    "chlorophyll"
+   ]
+  },
+  {
+   "dexId": 44,
+   "name": "gloom",
+   "abilities": [
+    "chlorophyll"
+   ]
+  },
+  {
+   "dexId": 45,
+   "name": "vileplume",
+   "abilities": [
+    "chlorophyll"
+   ]
+  },
+  {
+   "dexId": 46,
+   "name": "paras",
+   "abilities": [
+    "effect-spore"
+   ]
+  },
+  {
+   "dexId": 47,
+   "name": "parasect",
+   "abilities": [
+    "effect-spore"
+   ]
+  },
+  {
+   "dexId": 48,
+   "name": "venonat",
+   "abilities": [
+    "compound-eyes"
+   ]
+  },
+  {
+   "dexId": 49,
+   "name": "venomoth",
+   "abilities": [
+    "shield-dust"
+   ]
+  },
+  {
+   "dexId": 50,
+   "name": "diglett",
+   "abilities": [
+    "sand-veil",
+    "arena-trap"
+   ]
+  },
+  {
+   "dexId": 51,
+   "name": "dugtrio",
+   "abilities": [
+    "sand-veil",
+    "arena-trap"
+   ]
+  },
+  {
+   "dexId": 52,
+   "name": "meowth",
+   "abilities": [
+    "pickup"
+   ]
+  },
+  {
+   "dexId": 53,
+   "name": "persian",
+   "abilities": [
+    "limber"
+   ]
+  },
+  {
+   "dexId": 54,
+   "name": "psyduck",
+   "abilities": [
+    "damp",
+    "cloud-nine"
+   ]
+  },
+  {
+   "dexId": 55,
+   "name": "golduck",
+   "abilities": [
+    "damp",
+    "cloud-nine"
+   ]
+  },
+  {
+   "dexId": 56,
+   "name": "mankey",
+   "abilities": [
+    "vital-spirit"
+   ]
+  },
+  {
+   "dexId": 57,
+   "name": "primeape",
+   "abilities": [
+    "vital-spirit"
+   ]
+  },
+  {
+   "dexId": 58,
+   "name": "growlithe",
+   "abilities": [
+    "intimidate",
+    "flash-fire"
+   ]
+  },
+  {
+   "dexId": 59,
+   "name": "arcanine",
+   "abilities": [
+    "intimidate",
+    "flash-fire"
+   ]
+  },
+  {
+   "dexId": 60,
+   "name": "poliwag",
+   "abilities": [
+    "water-absorb",
+    "damp"
+   ]
+  },
+  {
+   "dexId": 61,
+   "name": "poliwhirl",
+   "abilities": [
+    "water-absorb",
+    "damp"
+   ]
+  },
+  {
+   "dexId": 62,
+   "name": "poliwrath",
+   "abilities": [
+    "water-absorb",
+    "damp"
+   ]
+  },
+  {
+   "dexId": 63,
+   "name": "abra",
+   "abilities": [
+    "synchronize",
+    "inner-focus"
+   ]
+  },
+  {
+   "dexId": 64,
+   "name": "kadabra",
+   "abilities": [
+    "synchronize",
+    "inner-focus"
+   ]
+  },
+  {
+   "dexId": 65,
+   "name": "alakazam",
+   "abilities": [
+    "synchronize",
+    "inner-focus"
+   ]
+  },
+  {
+   "dexId": 66,
+   "name": "machop",
+   "abilities": [
+    "guts"
+   ]
+  },
+  {
+   "dexId": 67,
+   "name": "machoke",
+   "abilities": [
+    "guts"
+   ]
+  },
+  {
+   "dexId": 68,
+   "name": "machamp",
+   "abilities": [
+    "guts"
+   ]
+  },
+  {
+   "dexId": 69,
+   "name": "bellsprout",
+   "abilities": [
+    "chlorophyll"
+   ]
+  },
+  {
+   "dexId": 70,
+   "name": "weepinbell",
+   "abilities": [
+    "chlorophyll"
+   ]
+  },
+  {
+   "dexId": 71,
+   "name": "victreebel",
+   "abilities": [
+    "chlorophyll"
+   ]
+  },
+  {
+   "dexId": 72,
+   "name": "tentacool",
+   "abilities": [
+    "clear-body",
+    "liquid-ooze"
+   ]
+  },
+  {
+   "dexId": 73,
+   "name": "tentacruel",
+   "abilities": [
+    "clear-body",
+    "liquid-ooze"
+   ]
+  },
+  {
+   "dexId": 74,
+   "name": "geodude",
+   "abilities": [
+    "rock-head",
+    "sturdy"
+   ]
+  },
+  {
+   "dexId": 75,
+   "name": "graveler",
+   "abilities": [
+    "rock-head",
+    "sturdy"
+   ]
+  },
+  {
+   "dexId": 76,
+   "name": "golem",
+   "abilities": [
+    "rock-head",
+    "sturdy"
+   ]
+  },
+  {
+   "dexId": 77,
+   "name": "ponyta",
+   "abilities": [
+    "run-away",
+    "flash-fire"
+   ]
+  },
+  {
+   "dexId": 78,
+   "name": "rapidash",
+   "abilities": [
+    "run-away",
+    "flash-fire"
+   ]
+  },
+  {
+   "dexId": 79,
+   "name": "slowpoke",
+   "abilities": [
+    "oblivious",
+    "own-tempo"
+   ]
+  },
+  {
+   "dexId": 80,
+   "name": "slowbro",
+   "abilities": [
+    "oblivious",
+    "own-tempo"
+   ]
+  },
+  {
+   "dexId": 81,
+   "name": "magnemite",
+   "abilities": [
+    "magnet-pull",
+    "sturdy"
+   ]
+  },
+  {
+   "dexId": 82,
+   "name": "magneton",
+   "abilities": [
+    "magnet-pull",
+    "sturdy"
+   ]
+  },
+  {
+   "dexId": 83,
+   "name": "farfetchd",
+   "abilities": [
+    "keen-eye",
+    "inner-focus"
+   ]
+  },
+  {
+   "dexId": 84,
+   "name": "doduo",
+   "abilities": [
+    "run-away",
+    "early-bird"
+   ]
+  },
+  {
+   "dexId": 85,
+   "name": "dodrio",
+   "abilities": [
+    "run-away",
+    "early-bird"
+   ]
+  },
+  {
+   "dexId": 86,
+   "name": "seel",
+   "abilities": [
+    "thick-fat"
+   ]
+  },
+  {
+   "dexId": 87,
+   "name": "dewgong",
+   "abilities": [
+    "thick-fat"
+   ]
+  },
+  {
+   "dexId": 88,
+   "name": "grimer",
+   "abilities": [
+    "stench",
+    "sticky-hold"
+   ]
+  },
+  {
+   "dexId": 89,
+   "name": "muk",
+   "abilities": [
+    "stench",
+    "sticky-hold"
+   ]
+  },
+  {
+   "dexId": 90,
+   "name": "shellder",
+   "abilities": [
+    "shell-armor"
+   ]
+  },
+  {
+   "dexId": 91,
+   "name": "cloyster",
+   "abilities": [
+    "shell-armor"
+   ]
+  },
+  {
+   "dexId": 92,
+   "name": "gastly",
+   "abilities": [
+    "levitate"
+   ]
+  },
+  {
+   "dexId": 93,
+   "name": "haunter",
+   "abilities": [
+    "levitate"
+   ]
+  },
+  {
+   "dexId": 94,
+   "name": "gengar",
+   "abilities": [
+    "levitate"
+   ]
+  },
+  {
+   "dexId": 95,
+   "name": "onix",
+   "abilities": [
+    "rock-head",
+    "sturdy"
+   ]
+  },
+  {
+   "dexId": 96,
+   "name": "drowzee",
+   "abilities": [
+    "insomnia"
+   ]
+  },
+  {
+   "dexId": 97,
+   "name": "hypno",
+   "abilities": [
+    "insomnia"
+   ]
+  },
+  {
+   "dexId": 98,
+   "name": "krabby",
+   "abilities": [
+    "hyper-cutter",
+    "shell-armor"
+   ]
+  },
+  {
+   "dexId": 99,
+   "name": "kingler",
+   "abilities": [
+    "hyper-cutter",
+    "shell-armor"
+   ]
+  },
+  {
+   "dexId": 100,
+   "name": "voltorb",
+   "abilities": [
+    "soundproof",
+    "static"
+   ]
+  },
+  {
+   "dexId": 101,
+   "name": "electrode",
+   "abilities": [
+    "soundproof",
+    "static"
+   ]
+  },
+  {
+   "dexId": 102,
+   "name": "exeggcute",
+   "abilities": [
+    "chlorophyll"
+   ]
+  },
+  {
+   "dexId": 103,
+   "name": "exeggutor",
+   "abilities": [
+    "chlorophyll"
+   ]
+  },
+  {
+   "dexId": 104,
+   "name": "cubone",
+   "abilities": [
+    "rock-head",
+    "lightning-rod"
+   ]
+  },
+  {
+   "dexId": 105,
+   "name": "marowak",
+   "abilities": [
+    "rock-head",
+    "lightning-rod"
+   ]
+  },
+  {
+   "dexId": 106,
+   "name": "hitmonlee",
+   "abilities": [
+    "limber"
+   ]
+  },
+  {
+   "dexId": 107,
+   "name": "hitmonchan",
+   "abilities": [
+    "keen-eye"
+   ]
+  },
+  {
+   "dexId": 108,
+   "name": "lickitung",
+   "abilities": [
+    "own-tempo",
+    "oblivious"
+   ]
+  },
+  {
+   "dexId": 109,
+   "name": "koffing",
+   "abilities": [
+    "levitate"
+   ]
+  },
+  {
+   "dexId": 110,
+   "name": "weezing",
+   "abilities": [
+    "levitate"
+   ]
+  },
+  {
+   "dexId": 111,
+   "name": "rhyhorn",
+   "abilities": [
+    "lightning-rod",
+    "rock-head"
+   ]
+  },
+  {
+   "dexId": 112,
+   "name": "rhydon",
+   "abilities": [
+    "lightning-rod",
+    "rock-head"
+   ]
+  },
+  {
+   "dexId": 113,
+   "name": "chansey",
+   "abilities": [
+    "natural-cure",
+    "serene-grace"
+   ]
+  },
+  {
+   "dexId": 114,
+   "name": "tangela",
+   "abilities": [
+    "chlorophyll"
+   ]
+  },
+  {
+   "dexId": 115,
+   "name": "kangaskhan",
+   "abilities": [
+    "early-bird"
+   ]
+  },
+  {
+   "dexId": 116,
+   "name": "horsea",
+   "abilities": [
+    "swift-swim"
+   ]
+  },
+  {
+   "dexId": 117,
+   "name": "seadra",
+   "abilities": [
+    "poison-point"
+   ]
+  },
+  {
+   "dexId": 118,
+   "name": "goldeen",
+   "abilities": [
+    "swift-swim",
+    "water-veil"
+   ]
+  },
+  {
+   "dexId": 119,
+   "name": "seaking",
+   "abilities": [
+    "swift-swim",
+    "water-veil"
+   ]
+  },
+  {
+   "dexId": 120,
+   "name": "staryu",
+   "abilities": [
+    "illuminate",
+    "natural-cure"
+   ]
+  },
+  {
+   "dexId": 121,
+   "name": "starmie",
+   "abilities": [
+    "illuminate",
+    "natural-cure"
+   ]
+  },
+  {
+   "dexId": 122,
+   "name": "mr-mime",
+   "abilities": [
+    "soundproof"
+   ]
+  },
+  {
+   "dexId": 123,
+   "name": "scyther",
+   "abilities": [
+    "swarm"
+   ]
+  },
+  {
+   "dexId": 124,
+   "name": "jynx",
+   "abilities": [
+    "oblivious"
+   ]
+  },
+  {
+   "dexId": 125,
+   "name": "electabuzz",
+   "abilities": [
+    "static"
+   ]
+  },
+  {
+   "dexId": 126,
+   "name": "magmar",
+   "abilities": [
+    "flame-body"
+   ]
+  },
+  {
+   "dexId": 127,
+   "name": "pinsir",
+   "abilities": [
+    "hyper-cutter"
+   ]
+  },
+  {
+   "dexId": 128,
+   "name": "tauros",
+   "abilities": [
+    "intimidate"
+   ]
+  },
+  {
+   "dexId": 129,
+   "name": "magikarp",
+   "abilities": [
+    "swift-swim"
+   ]
+  },
+  {
+   "dexId": 130,
+   "name": "gyarados",
+   "abilities": [
+    "intimidate"
+   ]
+  },
+  {
+   "dexId": 131,
+   "name": "lapras",
+   "abilities": [
+    "water-absorb",
+    "shell-armor"
+   ]
+  },
+  {
+   "dexId": 132,
+   "name": "ditto",
+   "abilities": [
+    "limber"
+   ]
+  },
+  {
+   "dexId": 133,
+   "name": "eevee",
+   "abilities": [
+    "run-away"
+   ]
+  },
+  {
+   "dexId": 134,
+   "name": "vaporeon",
+   "abilities": [
+    "water-absorb"
+   ]
+  },
+  {
+   "dexId": 135,
+   "name": "jolteon",
+   "abilities": [
+    "volt-absorb"
+   ]
+  },
+  {
+   "dexId": 136,
+   "name": "flareon",
+   "abilities": [
+    "flash-fire"
+   ]
+  },
+  {
+   "dexId": 137,
+   "name": "porygon",
+   "abilities": [
+    "trace"
+   ]
+  },
+  {
+   "dexId": 138,
+   "name": "omanyte",
+   "abilities": [
+    "swift-swim",
+    "shell-armor"
+   ]
+  },
+  {
+   "dexId": 139,
+   "name": "omastar",
+   "abilities": [
+    "swift-swim",
+    "shell-armor"
+   ]
+  },
+  {
+   "dexId": 140,
+   "name": "kabuto",
+   "abilities": [
+    "swift-swim",
+    "battle-armor"
+   ]
+  },
+  {
+   "dexId": 141,
+   "name": "kabutops",
+   "abilities": [
+    "swift-swim",
+    "battle-armor"
+   ]
+  },
+  {
+   "dexId": 142,
+   "name": "aerodactyl",
+   "abilities": [
+    "rock-head",
+    "pressure"
+   ]
+  },
+  {
+   "dexId": 143,
+   "name": "snorlax",
+   "abilities": [
+    "immunity",
+    "thick-fat"
+   ]
+  },
+  {
+   "dexId": 144,
+   "name": "articuno",
+   "abilities": [
+    "pressure"
+   ]
+  },
+  {
+   "dexId": 145,
+   "name": "zapdos",
+   "abilities": [
+    "pressure"
+   ]
+  },
+  {
+   "dexId": 146,
+   "name": "moltres",
+   "abilities": [
+    "pressure"
+   ]
+  },
+  {
+   "dexId": 147,
+   "name": "dratini",
+   "abilities": [
+    "shed-skin"
+   ]
+  },
+  {
+   "dexId": 148,
+   "name": "dragonair",
+   "abilities": [
+    "shed-skin"
+   ]
+  },
+  {
+   "dexId": 149,
+   "name": "dragonite",
+   "abilities": [
+    "inner-focus"
+   ]
+  },
+  {
+   "dexId": 150,
+   "name": "mewtwo",
+   "abilities": [
+    "pressure"
+   ]
+  },
+  {
+   "dexId": 151,
+   "name": "mew",
+   "abilities": [
+    "synchronize"
+   ]
+  }
+ ],
+ "abilities": [
+  {
+   "name": "arena-trap",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Prevents opponents from fleeing or switching out. Eluded by Flying-types and Pokémon in the air.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    }
+   ]
+  },
+  {
+   "name": "battle-armor",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Protects against critical hits.",
+   "pastEffects": []
+  },
+  {
+   "name": "blaze",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Strengthens Fire moves to inflict 1.5× damage at 1/3 max HP or less.",
+   "pastEffects": []
+  },
+  {
+   "name": "chlorophyll",
+   "carriers": 9,
+   "generation": "generation-iii",
+   "effect": "Doubles Speed during strong sunlight.",
+   "pastEffects": []
+  },
+  {
+   "name": "clear-body",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Prevents stats from being lowered by other Pokémon.",
+   "pastEffects": []
+  },
+  {
+   "name": "cloud-nine",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Negates all effects of weather, but does not prevent the weather itself.",
+   "pastEffects": []
+  },
+  {
+   "name": "compound-eyes",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Increases moves' accuracy to 1.3×.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    }
+   ]
+  },
+  {
+   "name": "cute-charm",
+   "carriers": 4,
+   "generation": "generation-iii",
+   "effect": "Has a 30% chance of infatuating attacking Pokémon on contact.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    }
+   ]
+  },
+  {
+   "name": "damp",
+   "carriers": 5,
+   "generation": "generation-iii",
+   "effect": "Prevents Self-Destruct, Explosion, and Aftermath from working while the Pokémon is in battle.",
+   "pastEffects": []
+  },
+  {
+   "name": "early-bird",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Makes sleep pass twice as quickly.",
+   "pastEffects": []
+  },
+  {
+   "name": "effect-spore",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Has a 30% chance of inflcting either paralysis, poison, or sleep on attacking Pokémon on contact.",
+   "pastEffects": []
+  },
+  {
+   "name": "flame-body",
+   "carriers": 1,
+   "generation": "generation-iii",
+   "effect": "Has a 30% chance of burning attacking Pokémon on contact.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    }
+   ]
+  },
+  {
+   "name": "flash-fire",
+   "carriers": 7,
+   "generation": "generation-iii",
+   "effect": "Protects against Fire moves. Once one has been blocked, the Pokémon's own Fire moves inflict 1.5× damage until it leaves battle.",
+   "pastEffects": [
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Will-O-Wisp does not trigger this ability for Pokémon immune to burns."
+    }
+   ]
+  },
+  {
+   "name": "guts",
+   "carriers": 5,
+   "generation": "generation-iii",
+   "effect": "Increases Attack to 1.5× with a major status ailment.",
+   "pastEffects": [
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Does not take effect during sleep."
+    }
+   ]
+  },
+  {
+   "name": "hyper-cutter",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Prevents Attack from being lowered by other Pokémon.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    },
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Doubles Cut's grass-cutting radius on the overworld if any party Pokémon has this ability."
+    }
+   ]
+  },
+  {
+   "name": "illuminate",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Doubles the wild encounter rate.",
+   "pastEffects": []
+  },
+  {
+   "name": "immunity",
+   "carriers": 1,
+   "generation": "generation-iii",
+   "effect": "Prevents poison.",
+   "pastEffects": []
+  },
+  {
+   "name": "inner-focus",
+   "carriers": 7,
+   "generation": "generation-iii",
+   "effect": "Prevents flinching.",
+   "pastEffects": []
+  },
+  {
+   "name": "insomnia",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Prevents sleep.",
+   "pastEffects": []
+  },
+  {
+   "name": "intimidate",
+   "carriers": 6,
+   "generation": "generation-iii",
+   "effect": "Lowers opponents' Attack one stage upon entering battle.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    },
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Does not take effect if acquired after entering battle."
+    }
+   ]
+  },
+  {
+   "name": "keen-eye",
+   "carriers": 7,
+   "generation": "generation-iii",
+   "effect": "Prevents accuracy from being lowered.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    }
+   ]
+  },
+  {
+   "name": "levitate",
+   "carriers": 5,
+   "generation": "generation-iii",
+   "effect": "Evades Ground moves.",
+   "pastEffects": []
+  },
+  {
+   "name": "lightning-rod",
+   "carriers": 4,
+   "generation": "generation-iii",
+   "effect": "Redirects single-target Electric moves to this Pokémon where possible. Absorbs Electric moves, raising Special Attack one stage.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    },
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Does not affect non-damaging Electric moves, i.e. Thunder Wave. Increases the frequency of Match Call calls on the overworld if any party Pokémon has this ability."
+    },
+    {
+     "versionGroup": "black-white",
+     "effect": "Redirects Electric moves without negating them or granting any Special Attack boost. Does not redirect Hidden Power."
+    }
+   ]
+  },
+  {
+   "name": "limber",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Prevents paralysis.",
+   "pastEffects": []
+  },
+  {
+   "name": "liquid-ooze",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Damages opponents using leeching moves for as much as they would heal.",
+   "pastEffects": []
+  },
+  {
+   "name": "magnet-pull",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Prevents Steel opponents from fleeing or switching out.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    }
+   ]
+  },
+  {
+   "name": "natural-cure",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Cures any major status ailment upon switching out.",
+   "pastEffects": []
+  },
+  {
+   "name": "oblivious",
+   "carriers": 4,
+   "generation": "generation-iii",
+   "effect": "Prevents infatuation and protects against Captivate.",
+   "pastEffects": []
+  },
+  {
+   "name": "overgrow",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Strengthens Grass moves to inflict 1.5× damage at 1/3 max HP or less.",
+   "pastEffects": []
+  },
+  {
+   "name": "own-tempo",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Prevents confusion.",
+   "pastEffects": []
+  },
+  {
+   "name": "pickup",
+   "carriers": 1,
+   "generation": "generation-iii",
+   "effect": "Picks up other Pokémon's used and Flung held items. May also pick up an item after battle.",
+   "pastEffects": [
+    {
+     "versionGroup": "black-white",
+     "effect": "Has no effect in battle."
+    }
+   ]
+  },
+  {
+   "name": "poison-point",
+   "carriers": 7,
+   "generation": "generation-iii",
+   "effect": "Has a 30% chance of poisoning attacking Pokémon on contact.",
+   "pastEffects": []
+  },
+  {
+   "name": "pressure",
+   "carriers": 5,
+   "generation": "generation-iii",
+   "effect": "Increases the PP cost of moves targetting the Pokémon by one.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    },
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Does not affect friendly Pokémon's moves that target all other Pokémon. This ability's presence is not announced upon entering battle."
+    }
+   ]
+  },
+  {
+   "name": "rock-head",
+   "carriers": 9,
+   "generation": "generation-iii",
+   "effect": "Protects against recoil damage.",
+   "pastEffects": []
+  },
+  {
+   "name": "run-away",
+   "carriers": 7,
+   "generation": "generation-iii",
+   "effect": "Ensures success fleeing from wild battles.",
+   "pastEffects": []
+  },
+  {
+   "name": "sand-veil",
+   "carriers": 4,
+   "generation": "generation-iii",
+   "effect": "Increases evasion to 1.25× during a sandstorm. Protects against sandstorm damage.",
+   "pastEffects": []
+  },
+  {
+   "name": "serene-grace",
+   "carriers": 1,
+   "generation": "generation-iii",
+   "effect": "Doubles the chance of moves' extra effects occurring.",
+   "pastEffects": []
+  },
+  {
+   "name": "shed-skin",
+   "carriers": 6,
+   "generation": "generation-iii",
+   "effect": "Has a 33% chance of curing any major status ailment after each turn.",
+   "pastEffects": [
+    {
+     "versionGroup": "black-white",
+     "effect": "Chance of taking effect is 30%."
+    },
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Chance of taking effect is 33%."
+    }
+   ]
+  },
+  {
+   "name": "shell-armor",
+   "carriers": 7,
+   "generation": "generation-iii",
+   "effect": "Protects against critical hits.",
+   "pastEffects": []
+  },
+  {
+   "name": "shield-dust",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Protects against incoming moves' extra effects.",
+   "pastEffects": []
+  },
+  {
+   "name": "soundproof",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Protects against sound-based moves.",
+   "pastEffects": [
+    {
+     "versionGroup": "black-white",
+     "effect": "Prevents Heal Bell from curing the Pokémon, whether or not it is in battle."
+    }
+   ]
+  },
+  {
+   "name": "static",
+   "carriers": 5,
+   "generation": "generation-iii",
+   "effect": "Has a 30% chance of paralyzing attacking Pokémon on contact.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    }
+   ]
+  },
+  {
+   "name": "stench",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Has a 10% chance of making target Pokémon flinch with each hit.",
+   "pastEffects": [
+    {
+     "versionGroup": "black-white",
+     "effect": "Has no effect in battle."
+    }
+   ]
+  },
+  {
+   "name": "sticky-hold",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Prevents a held item from being removed by other Pokémon.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    }
+   ]
+  },
+  {
+   "name": "sturdy",
+   "carriers": 6,
+   "generation": "generation-iii",
+   "effect": "Prevents being KOed from full HP, leaving 1 HP instead. Protects against the one-hit KO moves regardless of HP.",
+   "pastEffects": [
+    {
+     "versionGroup": "black-white",
+     "effect": "Does not prevent regular KOs from full HP."
+    }
+   ]
+  },
+  {
+   "name": "swarm",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Strengthens Bug moves to inflict 1.5× damage at 1/3 max HP or less.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    },
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Increases the frequency of cries heard on the overworld if any party Pokémon has this ability."
+    }
+   ]
+  },
+  {
+   "name": "swift-swim",
+   "carriers": 8,
+   "generation": "generation-iii",
+   "effect": "Doubles Speed during rain.",
+   "pastEffects": []
+  },
+  {
+   "name": "synchronize",
+   "carriers": 4,
+   "generation": "generation-iii",
+   "effect": "Copies burns, paralysis, and poison received onto the Pokémon that inflicted them.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    },
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Cannot influence the natures of Pokémon encountered by interacting with them on the overworld."
+    },
+    {
+     "versionGroup": "black-white",
+     "effect": "Passes back bad poison as regular poison."
+    }
+   ]
+  },
+  {
+   "name": "thick-fat",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Halves damage from Fire and Ice moves.",
+   "pastEffects": []
+  },
+  {
+   "name": "torrent",
+   "carriers": 3,
+   "generation": "generation-iii",
+   "effect": "Strengthens Water moves to inflict 1.5× damage at 1/3 max HP or less.",
+   "pastEffects": []
+  },
+  {
+   "name": "trace",
+   "carriers": 1,
+   "generation": "generation-iii",
+   "effect": "Copies an opponent's ability upon entering battle.",
+   "pastEffects": [
+    {
+     "versionGroup": "black-white",
+     "effect": "Can copy Flower Gift and Wonder Guard."
+    },
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Can copy Forecast and Trace."
+    }
+   ]
+  },
+  {
+   "name": "vital-spirit",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Prevents sleep.",
+   "pastEffects": [
+    {
+     "versionGroup": "emerald",
+     "effect": "Has no overworld effect."
+    }
+   ]
+  },
+  {
+   "name": "volt-absorb",
+   "carriers": 1,
+   "generation": "generation-iii",
+   "effect": "Absorbs Electric moves, healing for 1/4 max HP.",
+   "pastEffects": [
+    {
+     "versionGroup": "diamond-pearl",
+     "effect": "Does not absorb non-damaging Electric moves, i.e. Thunder Wave."
+    }
+   ]
+  },
+  {
+   "name": "water-absorb",
+   "carriers": 5,
+   "generation": "generation-iii",
+   "effect": "Absorbs Water moves, healing for 1/4 max HP.",
+   "pastEffects": []
+  },
+  {
+   "name": "water-veil",
+   "carriers": 2,
+   "generation": "generation-iii",
+   "effect": "Prevents burns.",
+   "pastEffects": []
+  }
+ ]
+}

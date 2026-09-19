@@ -7,6 +7,8 @@ re-implements what the game does can disagree with it, and this one cannot.
 
 - `tileset/` - reading a tile sheet, and drawing what the game draws. See
   `docs/tilesets/README.md`.
+- `abilities/` - what the engine can say about an ability, and what abilities
+  moved. See `abilities/README.md`.
 - `playtest/` - a headless browser for one verification session, and a whole raid
   played through it. See `playtest/README.md`.
 - `moves/` - how much of the 151's move list the engine can express, from a

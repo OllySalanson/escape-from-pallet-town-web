@@ -15,6 +15,7 @@ import {
   replacePlayerPokemon,
   resolveCatchAttempt,
   lockedMove,
+  openingAbilityEvents,
   resolveEnemyTurn,
   resolveTurn,
   getCombatantTypes,
@@ -83,6 +84,7 @@ import {
   combatPresentationSteps,
   describeItemGuidance,
   describeMoveGuidance,
+  escapeAbilityMessage,
   eventToMessage,
   enemyBannerRole,
   type BannerRole,
@@ -418,6 +420,9 @@ export class BattleScene extends Phaser.Scene {
     ]);
     this.input.keyboard!.on?.('keydown-M', () => audioManager.toggleMute());
     this.mode = 'events';
+    // An ability that acts the moment its Pokemon lands has already acted -
+    // `createBattleState` applied it - so these are the words for what is
+    // already true, read after the opening lines that named both sides.
     this.dialog.showMessages([
       ...(this.teachingBattle
         ? teachingBattleMessages(
@@ -433,6 +438,7 @@ export class BattleScene extends Phaser.Scene {
       // same words a move that brought it on would use. Nothing else announces
       // it: after this it speaks only when it takes HP off somebody.
       ...(this.state.weather ? [weatherSetMessage(this.state.weather.id, false)] : []),
+      ...openingAbilityEvents(this.state).map((event) => eventToMessage(event)),
     ]);
   }
 
@@ -1157,10 +1163,32 @@ export class BattleScene extends Phaser.Scene {
     );
     this.mode = 'events';
     this.commandContainer.setVisible(false);
+    // An ability that settled it says so, because the player was shown 100% or
+    // 0% on the command and is owed the reason for the number they committed to.
+    const abilityLine = attempt.ability
+      ? escapeAbilityMessage(
+          {
+            user: attempt.ability.holder,
+            name: (attempt.ability.holder === 'player' ? this.state.player : this.state.enemy)
+              .pokemon.base.name,
+          },
+          attempt.ability.label,
+          attempt.escaped,
+        )
+      : null;
     if (attempt.escaped) {
       this.pendingBattleExit = true;
       audioManager.play('flee');
-      this.dialog.showMessage(WILD_ESCAPE_SUCCESS_MESSAGE);
+      if (abilityLine) {
+        this.dialog.showMessages([abilityLine, WILD_ESCAPE_SUCCESS_MESSAGE]);
+      } else {
+        this.dialog.showMessage(WILD_ESCAPE_SUCCESS_MESSAGE);
+      }
+      return;
+    }
+    if (abilityLine) {
+      audioManager.play('denied');
+      this.dialog.showMessage(abilityLine);
       return;
     }
 
@@ -1373,7 +1401,8 @@ export class BattleScene extends Phaser.Scene {
     const outgoingName = this.state.player.pokemon.base.name.toUpperCase();
     const wasForcedReplacement = this.forcedReplacement;
     this.persistActivePokemonHp();
-    const switchedState = replacePlayerPokemon(this.state, pokemon);
+    const switchIn = replacePlayerPokemon(this.state, pokemon);
+    const switchedState = switchIn.state;
     this.state = switchedState;
     this.participatingPokemon.add(pokemon);
     this.forcedReplacement = false;
@@ -1385,7 +1414,7 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.showCombatEvents(result.events, [
+    this.showCombatEvents([...switchIn.events, ...result.events], [
       ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
       { message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' },
     ]);
@@ -1449,13 +1478,17 @@ export class BattleScene extends Phaser.Scene {
     this.aboutToUseSwitching = false;
     this.aboutToUse = null;
     this.persistActivePokemonHp();
-    this.state = replacePlayerPokemon(this.state, pokemon);
+    const switchIn = replacePlayerPokemon(this.state, pokemon);
+    this.state = switchIn.state;
     this.participatingPokemon.add(pokemon);
     this.refreshPlayerCombatant();
     this.refreshStatusLabels();
     this.pendingCombatMessages.unshift(
       stagedNote(`Come back, ${outgoingName}!`),
       stagedNote({ message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' }),
+      // Whatever the arrival did - a status shed on the way out, an Intimidate
+      // on the way in - is read after the two lines that name the swap.
+      ...switchIn.events.map((event) => stagedNote(eventToMessage(event))),
     );
     this.resumeCombatMessages();
   }

@@ -135,8 +135,13 @@ export function weatherChipDamage(
  *    any other weather, against 1/2 in clear. Synthesis ships (level 39).
  *  - Thunder never misses in rain and drops to 50% accuracy in harsh sunlight;
  *    Weather Ball changes type. Neither ships.
- *  - Abilities (Drought, Drizzle, Sand Stream, Chlorophyll, Swift Swim, Rain
- *    Dish, Ice Body) are not modelled at all - this engine has no abilities.
+ *  - Abilities that *set* weather (Drought, Drizzle, Sand Stream) and the two
+ *    that feed on it (Rain Dish, Ice Body) are not modelled; none of the three
+ *    setters is on the 151, and both feeders are generation IV. The four the
+ *    151 do carry - Chlorophyll, Swift Swim, Sand Veil, Cloud Nine - read this
+ *    table through `abilityHooks.ts` rather than restating any of it, and the
+ *    weather every rule here is asked about is the one the engine has already
+ *    put to Cloud Nine (`effectiveWeather` in `battleEngine.ts`).
  *
  * The first two are reachable by a player who levels a Bulbasaur past 39, and
  * are the natural next thing to add once a move can carry a weather clause of

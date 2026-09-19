@@ -1,0 +1,211 @@
+[
+ {
+  "name": "tackle",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "growl",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "tail-whip",
+  "flags": []
+ },
+ {
+  "name": "scratch",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "ember",
+  "flags": []
+ },
+ {
+  "name": "water-gun",
+  "flags": []
+ },
+ {
+  "name": "vine-whip",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "poison-powder",
+  "flags": []
+ },
+ {
+  "name": "sing",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "supersonic",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "thunder-wave",
+  "flags": []
+ },
+ {
+  "name": "sleep-powder",
+  "flags": []
+ },
+ {
+  "name": "razor-leaf",
+  "flags": []
+ },
+ {
+  "name": "scary-face",
+  "flags": []
+ },
+ {
+  "name": "flamethrower",
+  "flags": []
+ },
+ {
+  "name": "heat-wave",
+  "flags": []
+ },
+ {
+  "name": "slash",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "wing-attack",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "gust",
+  "flags": []
+ },
+ {
+  "name": "feather-dance",
+  "flags": []
+ },
+ {
+  "name": "bubble",
+  "flags": []
+ },
+ {
+  "name": "hydro-pump",
+  "flags": []
+ },
+ {
+  "name": "thunder-shock",
+  "flags": []
+ },
+ {
+  "name": "thunderbolt",
+  "flags": []
+ },
+ {
+  "name": "bite",
+  "flags": [
+   "bite",
+   "contact"
+  ]
+ },
+ {
+  "name": "metal-claw",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "quick-attack",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "double-slap",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "double-edge",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "agility",
+  "flags": []
+ },
+ {
+  "name": "smokescreen",
+  "flags": []
+ },
+ {
+  "name": "double-team",
+  "flags": []
+ },
+ {
+  "name": "synthesis",
+  "flags": []
+ },
+ {
+  "name": "solar-beam",
+  "flags": []
+ },
+ {
+  "name": "body-slam",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "psybeam",
+  "flags": []
+ },
+ {
+  "name": "bullet-seed",
+  "flags": []
+ },
+ {
+  "name": "ice-beam",
+  "flags": []
+ },
+ {
+  "name": "iron-tail",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "dig",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "aerial-ace",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "rock-smash",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "rain-dance",
+  "flags": []
+ }
+]

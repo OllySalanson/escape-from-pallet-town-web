@@ -107,6 +107,35 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
       return withLine('statusDamage');
     case 'weather-ended':
       return null;
+    // An ability borrows the voice of what it did, exactly as a move's extra
+    // effects do: something refused is a refusal, something gained is a gain.
+    case 'ability':
+      switch (event.effect) {
+        case 'absorbed':
+          return withLine(event.amount ? 'heal' : 'noEffect');
+        case 'blocked-status':
+        case 'blocked-boost':
+        case 'blocked-secondaries':
+        case 'hardened':
+        case 'no-recoil':
+          return withLine('denied');
+        case 'shed':
+        case 'cured-on-switch':
+          return withLine('heal');
+        case 'contact':
+        case 'reflected':
+          return withLine('statusApplied');
+        case 'sent-out':
+          return withLine('statDown');
+        case 'powered-up':
+        case 'sharpened':
+        case 'shrugged-off':
+        case 'quickened':
+        case 'hidden':
+          return withLine('statUp');
+        case 'weathered-out':
+          return withLine('statusMove');
+      }
   }
 }
 
