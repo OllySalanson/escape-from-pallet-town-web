@@ -126,3 +126,18 @@ describe('what a medicine refuses to do', () => {
     expect(charmander.primaryStatus).toBe(PrimaryStatus.Burn);
   });
 });
+
+describe('balls in the raid bag', () => {
+  it('counts every kind and reads each ball\'s own modifier', async () => {
+    const { Bag } = await import('../../items');
+    const { ballCount, ballModifierOf, carriedBalls } = await import('./battleItems');
+    const bag = new Bag({ 'great-ball': 2, 'poke-ball': 1, potion: 4 });
+
+    expect(ballCount(bag)).toBe(3);
+    expect(carriedBalls(bag).map((ball) => [ball.id, ballModifierOf(ball)])).toEqual([
+      ['poke-ball', 1],
+      ['great-ball', 1.5],
+    ]);
+    expect(ballCount(new Bag({ potion: 1 }))).toBe(0);
+  });
+});

@@ -218,6 +218,16 @@ export const describeMoveGuidance = (
  * balls: the count is on the command, so the loadout decision is legible from
  * inside the fight it was made for rather than only from the bag screen.
  */
+export const formatBallCommand = (count: number): string => `BALL x${count}`;
+
+/** What the highlighted ball does, on the line a move's numbers take. */
+export const describeBallGuidance = (ball: {
+  readonly effect: { readonly type: string; readonly multiplier?: number };
+}): string => {
+  const multiplier = ball.effect.type === 'capture-modifier' ? (ball.effect.multiplier ?? 1) : 1;
+  return multiplier === 1 ? 'Standard catch rate.' : `${multiplier}x catch rate.`;
+};
+
 export const formatItemCommand = (count: number): string => `ITEM x${count}`;
 
 /** One medicine row in the item submenu, counted the way the pocket counts it. */
