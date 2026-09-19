@@ -616,7 +616,7 @@ describe('the hunter a loadout draws', () => {
 
     const finalCheck = finalCheckOf(hub);
     expect(finalCheck).toContain('data-hunter-tier="1"');
-    expect(finalCheck).toContain('nothing you are bringing out-levels it');
+    expect(finalCheck).toContain('nothing you bring out-levels it');
 
     deploy(hub, start);
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;

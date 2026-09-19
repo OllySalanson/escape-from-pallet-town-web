@@ -49,6 +49,12 @@ the nearest one open from the first second: it stands beside the exit until its
 caption reads `EXTRACT OPEN`, then steps on. A timed exit is never chosen
 otherwise, so nothing else checks that one can be walked to.
 
+Battle HP numbers, HP bars and the sprite entrance are wall-clock tweens, so in a
+stepped check they lag the state badly (a plate read `16/16` for three turns of a
+Pokemon going 16 to 1) and the sprites sit half out of frame. Assert on
+`getScene('battle').state`, never on `playerHpText` or a sprite's position, and
+judge either by eye only at real speed.
+
 ## Idle costs the machine, so do not idle live
 
 - Thinking or editing with a game page open: `pauseLoop()` (or never resume -

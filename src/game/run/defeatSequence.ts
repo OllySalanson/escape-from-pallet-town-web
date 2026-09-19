@@ -139,10 +139,12 @@ export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | 
     {
       id: 'fall',
       headline: `${standing.name.toUpperCase()} FAINTED.`,
+      // Where you fell is not said: it was "in the grass", read by someone lying
+      // on the paving of a market square.
       detail:
         fallen.length === 1
-          ? 'The only one you brought. You went down in the grass beside it.'
-          : `The last of ${fallen.length} still standing. You went down in the grass beside it.`,
+          ? 'The only one you brought. You went down beside it.'
+          : `The last of ${fallen.length} still standing. You went down beside it.`,
       prompt: ADVANCE_PROMPT,
     },
     {

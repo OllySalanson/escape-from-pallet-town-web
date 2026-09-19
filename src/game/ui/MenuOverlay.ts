@@ -76,7 +76,12 @@ export class MenuOverlay {
         control.focus({ preventScroll: true });
       }
     };
-    this.resizeHandler = () => this.snapTextBoxes();
+    this.resizeHandler = () => {
+      this.snapTextBoxes();
+      this.markScrollCues();
+    };
+    // `scroll` does not bubble, so it is caught on the way down.
+    this.root.addEventListener('scroll', () => this.markScrollCues(), true);
     window.addEventListener('resize', this.resizeHandler);
     // A box is as wide as its words in the face they were measured in. Boot
     // waits for Orange Kid but not for ever (`GAME_FONT_TIMEOUT_MS`), and a
@@ -190,6 +195,7 @@ export class MenuOverlay {
 
   private showHelpFor(control: HTMLElement | null): void {
     this.showDetailFor(control);
+    this.markScrollCues();
     const line = this.root.querySelector<HTMLElement>('[data-help-text]');
     if (!line) {
       return;
@@ -197,6 +203,27 @@ export class MenuOverlay {
     line.textContent =
       control?.closest<HTMLElement>('[data-help]')?.dataset.help ?? line.dataset.helpDefault ?? '';
   }
+
+  /**
+   * Marks every scrolling pane that has more below the fold, which is what the
+   * stylesheet draws its MORE strip on. Asked whenever the cursor or the pointer
+   * lands on a control - the focus can scroll a row into view and a detail pane
+   * can change height - and whenever a pane scrolls or the screen is resized.
+   */
+  private markScrollCues(): void {
+    this.root.querySelectorAll<HTMLElement>('.px-scroll').forEach((pane) => {
+      pane.toggleAttribute('data-more', hasMoreBelow(pane));
+    });
+  }
+}
+
+/** Whether a scrolling pane still has content under its bottom edge. Half a pixel is rounding, not content. */
+export function hasMoreBelow(pane: {
+  readonly scrollHeight: number;
+  readonly clientHeight: number;
+  readonly scrollTop: number;
+}): boolean {
+  return pane.scrollHeight - pane.clientHeight - pane.scrollTop > 1;
 }
 
 /** Everything on a pixel-ui screen that takes its width from the words inside it. */

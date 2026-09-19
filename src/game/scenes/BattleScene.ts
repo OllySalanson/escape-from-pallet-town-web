@@ -436,6 +436,16 @@ export class BattleScene extends Phaser.Scene {
       .image(-50, 137, `pokemon-back-${this.state.player.pokemon.base.dexId}`)
       .setScale(1.55)
       .setDepth(2);
+    // Both slide in from outside the battlefield, and on a stage wider than the
+    // battle that is the letterbox: for the length of the entrance they were
+    // drawn on the margin, outside the bezel. They are clipped to the field, so
+    // they come in from behind its frame. The shape is never drawn itself.
+    const field = this.add.graphics().setVisible(false);
+    field.fillStyle(0xffffff, 1);
+    field.fillRect(0, 0, BATTLEFIELD_WIDTH, BATTLEFIELD_HEIGHT);
+    const clip = field.createGeometryMask();
+    this.enemySprite.setMask(clip);
+    this.playerSprite.setMask(clip);
     this.tweens.add({ targets: this.enemySprite, x: 245, duration: 650, ease: 'Quad.out' });
     this.tweens.add({
       targets: this.playerSprite,

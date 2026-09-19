@@ -186,7 +186,7 @@ describe('hunterThreatLine', () => {
   it('says plainly when the party has not raised it', () => {
     expect(hunterThreatLine(hunterThreatFor([new Pokemon(BULBASAUR, 5)]))).toEqual({
       heading: 'Hunter tier 1 of 3',
-      detail: 'Lv 6 team of 1 - nothing you are bringing out-levels it',
+      detail: 'It fields a Lv 6 team of 1 - nothing you bring out-levels it',
     });
   });
 });
