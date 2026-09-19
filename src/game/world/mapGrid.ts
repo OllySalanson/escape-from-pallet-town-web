@@ -146,6 +146,17 @@ export class MapSketch<PropName extends string = string> {
    * it. A space leaves the tile alone, so blocks can be drawn over each other.
    */
   public draw(x0: number, y0: number, rows: readonly string[]): this {
+    // A row that is short by one character shifts nothing and silently leaves
+    // water where a bank should be, which is invisible in review and obvious
+    // only in a render. A block is a rectangle or it is a mistake.
+    const width = rows[0]?.length ?? 0;
+    for (const [rowIndex, row] of rows.entries()) {
+      if (row.length !== width) {
+        throw new Error(
+          `drawn block is ragged: row ${rowIndex} is ${row.length} characters, row 0 is ${width}`,
+        );
+      }
+    }
     for (const [rowIndex, row] of rows.entries()) {
       for (let column = 0; column < row.length; column += 1) {
         const char = row[column];
