@@ -118,6 +118,41 @@ describe('the lobby as a screen of the game', () => {
     expect(stash).toContain('data-recover="charmander-1"');
   });
 
+  it('lists one box at a time, and every box when the loadout is chosen from', () => {
+    const { hub } = createHub();
+    hub.stash.addPokemon(new Pokemon(CHARMANDER, 3), 'shelved');
+    hub.stash.movePokemon('shelved', hub.stash.addBox());
+
+    hub.setView('stash');
+    const first = markupOf(hub);
+    expect(first).toContain('Box 1');
+    expect(first).toContain('data-box-step');
+    expect(first).not.toContain('data-recover="shelved"');
+    expect(first).not.toContain('data-fit="shelved"');
+
+    hub.stepBox(1);
+    expect(markupOf(hub)).toContain('data-fit="shelved"');
+
+    // The loadout is drawn from all of them, so nothing to spend or deploy hides.
+    hub.openDeployment();
+    expect(markupOf(hub)).toContain('data-pokemon="shelved"');
+  });
+
+  it('offers only the boxes that have room while a Pokemon is picked up, and puts it down', () => {
+    const { hub } = createHub();
+    hub.setView('stash');
+    hub.stash.addBox();
+
+    hub.pickUp('charmander-1');
+    const moving = markupOf(hub);
+    expect(moving).toContain('Put Charmander in');
+    expect(moving).toContain('data-box-drop="1"');
+
+    hub.putDown('1');
+    expect(hub.stash.boxIndexOf('charmander-1')).toBe(1);
+    expect(markupOf(hub)).not.toContain('Put Charmander in');
+  });
+
   it('keeps a fit save free of the recovery bay entirely', () => {
     const { hub } = createHub();
 
@@ -152,6 +187,9 @@ interface HubInternals {
   render(): void;
   recover(ids: readonly string[]): void;
   treat(pokemonId: string, itemId: string): void;
+  pickUp(pokemonId: string): void;
+  putDown(destination: string): void;
+  stepBox(direction: number): void;
   openDeployment(insertionId?: string): void;
   readonly flow: DeploymentFlow;
   readonly stash: Stash;

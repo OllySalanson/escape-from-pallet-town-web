@@ -70,6 +70,16 @@ import {
 } from '../objectives';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import {
+  searchPokemon,
+  sortPokemon,
+  nextStashSort,
+  STASH_SORT_HELP,
+  STASH_SORT_LABELS,
+  type StashSort,
+} from '../hub/stashBrowser';
+import {
+  BOX_CAPACITY,
+  MAX_BOX_NAME_LENGTH,
   getStarterSpecies,
   starterInConditionOf,
   type StarterSpeciesId,
@@ -127,6 +137,17 @@ export class HubScene extends Phaser.Scene {
    * the key that started the raid used to start it again and throw.
    */
   private deploying = false;
+  /**
+   * How the player is looking at their Pokemon: which box, in what order, and
+   * for whom. It is not saved - it is where the cursor is, not what is owned.
+   */
+  private boxScope: number | 'all' = 0;
+  private stashSort: StashSort = 'kept';
+  private stashSearch = '';
+  /** The one text field on screen, if any: naming a box or searching. */
+  private boxEditing: 'rename' | 'find' | undefined;
+  /** The Pokemon picked up to be put in another box, by stash id. */
+  private boxMoving: string | undefined;
   private status = '';
   /** The one pending removal of the status line; see `setStatus()`. */
   private statusTimer: Phaser.Time.TimerEvent | undefined;
@@ -170,6 +191,12 @@ export class HubScene extends Phaser.Scene {
     this.outfitterPayment = [];
     this.outfitterArmed = false;
     this.deploying = false;
+    // A fresh look at a freshly loaded vault: nothing narrowed, nothing picked up.
+    this.boxScope = 0;
+    this.stashSort = 'kept';
+    this.stashSearch = '';
+    this.boxEditing = undefined;
+    this.boxMoving = undefined;
     this.status = '';
     // The clock that owned it died with the last hub, so only the pointer is left.
     this.statusTimer = undefined;
@@ -214,6 +241,28 @@ export class HubScene extends Phaser.Scene {
 
   private get stashPokemon(): readonly StashedPokemon[] {
     return this.stash.listPokemon();
+  }
+
+  /**
+   * Every Pokemon at base in the order the player asked for and answering their
+   * search - across all boxes, which is what the loadout and the Outfitter's
+   * payment are drawn from. A Pokemon about to be spent or deployed is never
+   * hidden by the box it is kept in.
+   */
+  private get findablePokemon(): readonly StashedPokemon[] {
+    return sortPokemon(searchPokemon(this.stash.listPokemon(), this.stashSearch), this.stashSort);
+  }
+
+  /** The Pokemon the stash window lists: this box, or all of them while looking for one. */
+  private get shownPokemon(): readonly StashedPokemon[] {
+    const scope = this.boxScope === 'all' || this.stashSearch.trim() !== '' ? undefined : this.boxScope;
+    const list = scope === undefined ? this.stash.listPokemon() : this.stash.listBoxPokemon(scope);
+    return sortPokemon(searchPokemon(list, this.stashSearch), this.stashSort);
+  }
+
+  /** Where the stash window is looking, always a box that exists. */
+  private get scopeBox(): number | 'all' {
+    return this.boxScope === 'all' ? 'all' : Math.min(this.boxScope, this.stash.listBoxes().length - 1);
   }
 
   private get stashItems(): readonly ItemDefinition[] {
@@ -748,6 +797,14 @@ export class HubScene extends Phaser.Scene {
   }
 
   private handleKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && (this.boxMoving || this.boxEditing)) {
+      event.preventDefault();
+      audioManager.play('cancel');
+      this.boxMoving = undefined;
+      this.boxEditing = undefined;
+      this.render();
+      return;
+    }
     if (event.key === 'Escape' && this.view !== 'home') {
       event.preventDefault(); audioManager.play('cancel'); this.goBack(); return;
     }
@@ -827,6 +884,21 @@ export class HubScene extends Phaser.Scene {
         this.swapArmed = false;
       }),
     );
+    on('[data-box-step]', (button) => this.stepBox(Number(button.dataset.boxStep)));
+    on('[data-box-sort]', () => rerender(() => { this.stashSort = nextStashSort(this.stashSort); }));
+    on('[data-box-find]', () => rerender(() => { this.boxEditing = 'find'; }));
+    on('[data-box-clear]', () => rerender(() => { this.stashSearch = ''; }));
+    on('[data-box-rename]', () => rerender(() => { this.boxEditing = 'rename'; }));
+    on('[data-box-new]', () => this.addBoxAndShow());
+    on('[data-box-delete]', () => this.deleteBox());
+    on('[data-box-move]', (button) =>
+      this.boxMoving === button.dataset.boxMove
+        ? rerender(() => { this.boxMoving = undefined; })
+        : this.pickUp(button.dataset.boxMove!),
+    );
+    on('[data-box-drop]', (button) => this.putDown(button.dataset.boxDrop!));
+    on('[data-box-cancel]', () => rerender(() => { this.boxEditing = undefined; this.boxMoving = undefined; }));
+    this.wireBoxForm(root);
     on('[data-swap-arm]', () => rerender(() => { this.swapArmed = true; }));
     on('[data-swap-cancel]', () => rerender(() => { this.swapArmed = false; }));
     on('[data-swap-confirm]', () => this.confirmSwap());
@@ -880,7 +952,7 @@ export class HubScene extends Phaser.Scene {
     on('[data-advance]', () => this.answer(this.flow.advance(), 'confirm'));
     on('[data-start]', () => this.startRun());
     // The cursor starts on what the screen is for, never on the way out of it.
-    this.overlay.refocus('[data-cursor-start]', '.px-body button:not([disabled])', 'button');
+    this.overlay.refocus('.px-field', '[data-cursor-start]', '.loadout-entry .px-row', '.px-body button:not([disabled])', 'button');
   }
 
   /** Shows preparation as a route with a raid at the end of it. */
@@ -1029,10 +1101,10 @@ export class HubScene extends Phaser.Scene {
    * secure slot and the final check - and what a Pokemon takes into the raid is
    * exactly the thing the last two of those are asking about.
    */
-  private pokemonRowBody(stored: StashedPokemon, tag: string): string {
+  private pokemonRowBody(stored: StashedPokemon, tag: string, boxName?: string): string {
     const { pokemon } = stored;
     const held = getHeldItem(pokemon.heldItemId);
-    return `<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${this.conditionLine(stored)}${held ? ` \u00b7 holding ${held.displayName}` : ''}</small></span>${tag}`;
+    return `<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${this.conditionLine(stored)}${held ? ` \u00b7 holding ${held.displayName}` : ''}${boxName ? ` \u00b7 ${escapeAttribute(boxName)}` : ''}</small></span>${tag}`;
   }
 
   /**
@@ -1063,9 +1135,215 @@ export class HubScene extends Phaser.Scene {
     return `<button class="px-window px-chip" data-treat-pokemon="${pokemonId}" data-treat-item="${option.itemId}" data-help="${escapeAttribute(`${option.displayName}: ${option.effect}.`)}"${option.usable ? '' : ' aria-disabled="true"'}>${option.displayName} ×${option.held}</button>`;
   }
 
+  private saveStash(said: string, failed: string): void {
+    this.setStatus(this.saveManager.save({ ...this.savedGame, stash: this.stash }) ? said : failed);
+  }
+
+  private chip(attributes: string, help: string, label: string, disabled = false): string {
+    return `<button class="px-window px-chip" ${attributes} data-help="${escapeAttribute(help)}"${disabled ? ' aria-disabled="true"' : ''}>${label}</button>`;
+  }
+
+  /**
+   * The strip that leads every list of Pokemon at base: where you are looking
+   * (the stash only), the order, and a search. It is sticky at the top of its
+   * own scroll pane, so however long the list is the way to narrow it is on
+   * screen. A field replaces it while one is being typed into, and picking a
+   * Pokemon up replaces it with the boxes it could go to.
+   */
+  private browseBar(inStash: boolean): string {
+    const boxes = this.stash.listBoxes();
+    if (this.boxEditing) {
+      const renaming = this.boxEditing === 'rename';
+      const scope = this.scopeBox;
+      const value = renaming && scope !== 'all' ? boxes[scope].name : this.stashSearch;
+      return `<form class="box-bar box-form" data-box-form="${this.boxEditing}"><input class="px-window px-field" name="text" value="${escapeAttribute(value)}" maxlength="${renaming ? MAX_BOX_NAME_LENGTH : 16}" autocomplete="off" spellcheck="false" aria-label="${renaming ? 'Box name' : 'Find a Pokémon'}" placeholder="${renaming ? 'Box name' : 'A name, e.g. pika'}" /><button type="submit" class="px-window px-chip" data-help="${renaming ? 'Keep this name.' : 'Show only Pokémon whose name begins with this. Empty shows everyone.'}">${renaming ? 'Save' : 'Find'}</button><button type="button" class="px-window px-chip" data-box-cancel data-help="Leave it as it was.">Cancel</button></form>`;
+    }
+    const moving = this.boxMoving ? this.stash.listPokemon().find((entry) => entry.id === this.boxMoving) : undefined;
+    if (inStash && moving) {
+      const from = this.stash.boxIndexOf(moving.id);
+      const destinations = boxes
+        .map((box, index) => {
+          const here = index === from;
+          const full = !this.stash.boxHasRoom(index);
+          return this.chip(
+            `data-box-drop="${index}"`,
+            here
+              ? `${moving.pokemon.base.name} is already in ${box.name}.`
+              : full
+                ? `${box.name} is full (${BOX_CAPACITY}).`
+                : `Put ${moving.pokemon.base.name} in ${box.name}, which holds ${box.pokemonIds.length} of ${BOX_CAPACITY}.`,
+            box.name,
+            here || full,
+          );
+        })
+        .join('');
+      return `<div class="box-bar"><div class="box-line"><span class="box-title">Put ${moving.pokemon.base.name} in</span>${this.chip('data-box-cancel', 'Leave it where it is.', 'Cancel')}</div><div class="box-line">${destinations}${this.chip('data-box-drop="new"', `A new empty box, and ${moving.pokemon.base.name} goes in it.`, 'New box')}</div></div>`;
+    }
+    const sort = this.chip(
+      'data-box-sort',
+      `Ordered: ${STASH_SORT_LABELS[this.stashSort]}. ${STASH_SORT_HELP[this.stashSort]} Press for the next order.`,
+      `Sort: ${STASH_SORT_LABELS[this.stashSort]}`,
+    );
+    const searching = this.stashSearch.trim() !== '';
+    const find = this.chip(
+      'data-box-find',
+      searching ? 'Change what you are looking for.' : 'Find a Pokémon by name, in every box.',
+      searching ? `Find: ${escapeAttribute(this.stashSearch.trim())}` : 'Find',
+    );
+    const clear = searching ? this.chip('data-box-clear', 'Show everyone again.', 'Clear') : '';
+    if (!inStash) {
+      return `<div class="box-bar"><div class="box-line">${sort}${find}${clear}</div></div>`;
+    }
+    const scope = this.scopeBox;
+    const box = scope === 'all' ? undefined : boxes[scope];
+    const label = searching
+      ? `Found \u00b7 ${this.shownPokemon.length}`
+      : box
+        ? `${box.name} \u00b7 ${box.pokemonIds.length}/${BOX_CAPACITY}`
+        : `All boxes \u00b7 ${this.stashPokemon.length}`;
+    if (searching) {
+      // Looking for one across every box: the boxes themselves are not the
+      // question, so their controls give way to the ones that narrow it.
+      return `<div class="box-bar"><div class="box-line"><span class="box-title">${escapeAttribute(label)}</span></div><div class="box-line">${sort}${find}${clear}</div></div>`;
+    }
+    return `<div class="box-bar"><div class="box-line">${this.chip('data-box-step="-1"', 'The box before this one.', 'Prev')}<span class="box-title">${escapeAttribute(label)}</span>${this.chip('data-box-step="1"', 'The next box. After the last is every box at once.', 'Next')}</div><div class="box-line">${sort}${find}</div></div>`;
+  }
+
+  /**
+   * Naming, adding and taking away boxes. Rare next to finding and moving, so it
+   * scrolls with the list instead of holding a place on the strip that does not
+   * scroll - at the smallest stage that strip is what the list is short of.
+   */
+  private boxManage(): string {
+    const scope = this.scopeBox;
+    if (this.boxMoving || this.boxEditing || this.stashSearch.trim() !== '') {
+      return '';
+    }
+    const boxes = this.stash.listBoxes();
+    const box = scope === 'all' ? undefined : boxes[scope];
+    const rename = box ? this.chip('data-box-rename', `Give ${box.name} another name.`, 'Rename') : '';
+    const remove =
+      box && box.pokemonIds.length === 0 && boxes.length > 1
+        ? this.chip('data-box-delete', `${box.name} is empty. Take it away.`, 'Delete')
+        : '';
+    return `<div class="box-line box-manage">${rename}${this.chip('data-box-new', 'Add an empty box on the end.', 'New box')}${remove}</div>`;
+  }
+
+  /** Prev and Next walk the boxes and then a last stop that is all of them. */
+  private stepBox(direction: number): void {
+    const stops = this.stash.listBoxes().length + 1;
+    const at = this.scopeBox === 'all' ? stops - 1 : this.scopeBox;
+    const next = (at + direction + stops) % stops;
+    this.boxScope = next === stops - 1 ? 'all' : next;
+    this.render();
+  }
+
+  private pickUp(pokemonId: string): void {
+    this.boxMoving = pokemonId;
+    this.boxEditing = undefined;
+    audioManager.play('select');
+    this.render();
+  }
+
+  private putDown(destination: string): void {
+    const id = this.boxMoving;
+    const stored = this.stash.listPokemon().find((entry) => entry.id === id);
+    if (!id || !stored) {
+      return;
+    }
+    const index = destination === 'new' ? this.stash.addBox() : Number(destination);
+    if (!this.stash.movePokemon(id, index)) {
+      this.refuse(`${this.stash.listBoxes()[index]?.name ?? 'That box'} cannot take ${stored.pokemon.base.name}.`);
+      return;
+    }
+    this.boxMoving = undefined;
+    audioManager.play('confirm');
+    const name = this.stash.listBoxes()[index].name;
+    this.saveStash(
+      `${stored.pokemon.base.name} is in ${name}.`,
+      `${stored.pokemon.base.name} is in ${name}, but it could not be saved.`,
+    );
+  }
+
+  private addBoxAndShow(): void {
+    this.boxScope = this.stash.addBox();
+    audioManager.play('confirm');
+    this.saveStash(
+      `${this.stash.listBoxes()[this.boxScope].name} added.`,
+      'A box was added, but it could not be saved.',
+    );
+  }
+
+  private deleteBox(): void {
+    const scope = this.scopeBox;
+    if (scope === 'all') {
+      return;
+    }
+    const name = this.stash.listBoxes()[scope]?.name ?? 'That box';
+    if (!this.stash.removeBox(scope)) {
+      this.refuse(`${name} is not empty, or is the last box.`);
+      return;
+    }
+    this.boxScope = Math.max(0, scope - 1);
+    audioManager.play('cancel');
+    this.saveStash(`${name} taken away.`, `${name} was taken away, but it could not be saved.`);
+  }
+
+  private submitBoxForm(text: string): void {
+    const editing = this.boxEditing;
+    this.boxEditing = undefined;
+    if (editing === 'find') {
+      this.stashSearch = text.trim();
+      audioManager.play('select');
+      this.render();
+      return;
+    }
+    const scope = this.scopeBox;
+    if (scope === 'all') {
+      this.render();
+      return;
+    }
+    if (!this.stash.renameBox(scope, text)) {
+      this.refuse('That name is empty or another box already has it.');
+      return;
+    }
+    audioManager.play('confirm');
+    this.saveStash(
+      `Renamed to ${this.stash.listBoxes()[scope].name}.`,
+      'Renamed, but it could not be saved.',
+    );
+  }
+
+  /** Puts a text field's own keys back where the keyboard owner left them. */
+  private wireBoxForm(root: HTMLElement): void {
+    const form = root.querySelector<HTMLFormElement>('[data-box-form]');
+    const field = form?.querySelector<HTMLInputElement>('.px-field');
+    if (!form || !field) {
+      return;
+    }
+    form.onsubmit = (event) => {
+      event.preventDefault();
+      this.submitBoxForm(field.value);
+    };
+    // Key *up* is the one thing the overlay keyboard lets through to a field, so
+    // this is where a field hands the cursor back: Escape leaves it, and the
+    // arrows step off it to the controls around it.
+    field.onkeyup = (event) => {
+      if (event.key === 'Escape') {
+        this.boxEditing = undefined;
+        this.render();
+      } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        this.overlay.moveCursor(event.key);
+      }
+    };
+  }
+
   private stashView(): string {
     const pokemon = this.stashPokemon;
-    const rows = pokemon
+    const shown = this.shownPokemon;
+    const inBoxes = this.scopeBox === 'all' || this.stashSearch.trim() !== '';
+    const boxNames = this.stash.listBoxes().map((box) => box.name);
+    const rows = shown
       .map((stored) => {
         const hurt = needsRecovery(stored.pokemon);
         const wiring = hurt
@@ -1074,10 +1352,12 @@ export class HubScene extends Phaser.Scene {
         const tag = hurt
           ? pixelTag(this.recoveryPriceTag(stored), 'risk')
           : pixelTag('Fit', 'good', true);
-        return `<div class="loadout-entry"><button class="px-row" ${wiring} data-shows="${stored.id}">${this.pokemonRowBody(stored, tag)}</button>${this.gearStrip(stored)}</div>`;
+        const boxed = boxNames[this.stash.boxIndexOf(stored.id)];
+        const moving = this.boxMoving === stored.id;
+        return `<div class="loadout-entry stash-entry"><button class="px-row${moving ? ' is-selected' : ''}" ${wiring} data-shows="${stored.id}">${this.pokemonRowBody(stored, tag, inBoxes ? boxed : undefined)}</button>${this.chip(`data-box-move="${stored.id}" data-shows="${stored.id}"`, moving ? `Put ${escapeAttribute(stored.pokemon.base.name)} down again.` : `Move ${escapeAttribute(stored.pokemon.base.name)} to another box. It is in ${escapeAttribute(boxed ?? 'no box')}.`, 'Move')}${this.gearStrip(stored)}</div>`;
       })
       .join('');
-    const portraits = pokemon
+    const portraits = shown
       .map(
         (stored, index) =>
           // The sprite and its types only: the name, level and condition are the
@@ -1097,7 +1377,7 @@ export class HubScene extends Phaser.Scene {
       materialRows ? `<h3 class="px-subheading">Materials</h3>${materialRows}` : ''
     }`;
     return `<main class="px-body stash-layout">${pixelWindow(
-      `<div class="px-list px-scroll">${rows || '<p class="px-empty">No Pokémon in storage.</p>'}${this.swapPanel()}</div>`,
+      `<div class="px-list px-scroll">${this.browseBar(true)}${this.boxManage()}${rows || `<p class="px-empty">${this.stashSearch.trim() ? 'No Pokémon answers that.' : pokemon.length === 0 ? 'No Pokémon in storage.' : 'This box is empty.'}</p>`}${this.swapPanel()}</div>`,
       { heading: 'Pokémon', note: `${pokemon.length} stored` },
     )}<div class="stash-side">${portraits ? pixelWindow(portraits, { tag: 'div' }) : ''}${pixelWindow(
       `<div class="px-list px-scroll">${supplies || '<p class="px-empty">No supplies in storage.</p>'}</div>`,
@@ -1131,7 +1411,7 @@ export class HubScene extends Phaser.Scene {
     const summary = party.length === 0
       ? 'Nothing selected yet. Add a Pokémon from your stash.'
       : `${party.map((stored) => stored.pokemon.base.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${securedCount} protected`;
-    const pokemonRows = this.stashPokemon
+    const pokemonRows = this.findablePokemon
       .map((stored) => {
         const added = this.flow.includesPokemon(stored.id);
         const name = escapeAttribute(stored.pokemon.base.name);
@@ -1179,7 +1459,7 @@ export class HubScene extends Phaser.Scene {
     // at base - so it keeps the first column whole, and the pack stands over the
     // insertions in the second, where its own lid counts the squares.
     return `<main class="px-body loadout-layout">${pixelWindow(
-      `<div class="px-list px-scroll">${pokemonRows}<h3 class="px-subheading">Supplies</h3>${supplyRows || '<p class="px-empty">No supplies at base.</p>'}</div>`,
+      `<div class="px-list px-scroll">${this.browseBar(false)}${pokemonRows || '<p class="px-empty">No Pokémon answers that.</p>'}<h3 class="px-subheading">Supplies</h3>${supplyRows || '<p class="px-empty">No supplies at base.</p>'}</div>`,
       { heading: 'Stash', note: hurtCount ? `${hurtCount} hurt · treat them first` : '' },
     )}<div class="loadout-side">${pixelWindow(
       pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
@@ -1437,7 +1717,9 @@ export class HubScene extends Phaser.Scene {
   private paymentView(upgrade: OutfitterUpgrade): string {
     const candidates = paymentCandidates(this.outfitterVault);
     const chosen = this.stashPokemon.filter((stored) => this.outfitterPayment.includes(stored.id));
-    const rows = candidates
+    const ordered = sortPokemon(searchPokemon(candidates.map(({ stored }) => stored), this.stashSearch), this.stashSort);
+    const rows = ordered
+      .map((stored) => candidates.find((candidate) => candidate.stored === stored)!)
       .map(({ stored, refusal }) => {
         const picked = this.outfitterPayment.includes(stored.id);
         const name = escapeAttribute(stored.pokemon.base.name);
@@ -1459,7 +1741,7 @@ export class HubScene extends Phaser.Scene {
       )
       .join('');
     return `<main class="px-body loadout-layout">${pixelWindow(
-      `<div class="px-list px-scroll">${rows}</div>`,
+      `<div class="px-list px-scroll">${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>`,
       {
         className: 'px-tone-risk',
         heading: 'Pokémon to release',

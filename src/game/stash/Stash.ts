@@ -59,9 +59,33 @@ export interface StashedPokemon {
   readonly pokemon: Pokemon;
 }
 
+/** How many Pokemon one box holds, as in the games this is dressed as. */
+export const BOX_CAPACITY = 30;
+/** Longest box name; the game's face has to fit it in a chip at the smallest stage. */
+export const MAX_BOX_NAME_LENGTH = 12;
+
+/**
+ * A named box and the Pokemon in it. Boxes are only a way of *finding*: every
+ * Pokemon is still one entry in `Stash.listPokemon()`, which is what the
+ * Outfitter's payment, the swap-partner offer, the loadout and a wipe all read,
+ * so a boxed Pokemon is exactly as spendable and as deployable as it was in one
+ * flat list.
+ */
+export interface StashBox {
+  readonly name: string;
+  readonly pokemonIds: readonly string[];
+}
+
 export interface StashContents {
   readonly pokemon: readonly StashedPokemon[];
   readonly items: BagContents;
+  /**
+   * The boxes, in order. Absent on every save written before boxes existed,
+   * which reads as one box holding everything - so a flat stash is box one
+   * without anybody being asked. Ids that name no Pokemon are dropped and any
+   * Pokemon no box names is put in the first box with room.
+   */
+  readonly boxes?: readonly StashBox[];
 }
 
 /**
@@ -184,6 +208,8 @@ export const BASE_SECURE_SLOT_LIMITS: SecureSlotLimits = {
 export class Stash {
   private readonly storedPokemon: StashedPokemon[];
   private readonly bag: Bag;
+  /** Every stored Pokemon is in exactly one of these, and there is always one. */
+  private readonly boxes: { name: string; pokemonIds: string[] }[] = [];
 
   public constructor(contents: Partial<StashContents> = {}) {
     this.storedPokemon = [...(contents.pokemon ?? [])];
@@ -191,10 +217,87 @@ export class Stash {
     // player has banked is a warehouse, and capping it would make banking a
     // thing that can fail.
     this.bag = new Bag(contents.items, null);
+    this.arrangeBoxes(contents.boxes ?? []);
   }
 
+  /**
+   * Every Pokemon in the vault, whichever box it is in. Boxes are a view over
+   * this list, never a partition of it: anything that asks "what do I own"
+   * asks here.
+   */
   public listPokemon(): readonly StashedPokemon[] {
     return [...this.storedPokemon];
+  }
+
+  public listBoxes(): readonly StashBox[] {
+    return this.boxes.map((box) => ({ name: box.name, pokemonIds: [...box.pokemonIds] }));
+  }
+
+  /** The Pokemon in one box, in the order the box holds them. */
+  public listBoxPokemon(boxIndex: number): readonly StashedPokemon[] {
+    return (this.boxes[boxIndex]?.pokemonIds ?? [])
+      .map((id) => this.storedPokemon.find((stored) => stored.id === id))
+      .filter((stored): stored is StashedPokemon => stored !== undefined);
+  }
+
+  /** Which box holds this Pokemon, or -1 when it is not in the vault. */
+  public boxIndexOf(pokemonId: string): number {
+    return this.boxes.findIndex((box) => box.pokemonIds.includes(pokemonId));
+  }
+
+  public boxHasRoom(boxIndex: number): boolean {
+    const box = this.boxes[boxIndex];
+    return box !== undefined && box.pokemonIds.length < BOX_CAPACITY;
+  }
+
+  /**
+   * Moves a Pokemon into another box. Refused into a full box, into the box it
+   * is already in, and for anything not in the vault - nothing is ever created,
+   * removed or reordered in the flat list by it.
+   */
+  public movePokemon(pokemonId: string, boxIndex: number): boolean {
+    const from = this.boxIndexOf(pokemonId);
+    if (from < 0 || from === boxIndex || !this.boxHasRoom(boxIndex)) {
+      return false;
+    }
+    this.boxes[from].pokemonIds = this.boxes[from].pokemonIds.filter((id) => id !== pokemonId);
+    this.boxes[boxIndex].pokemonIds.push(pokemonId);
+    return true;
+  }
+
+  /**
+   * Names a box. The name is tidied (trimmed, runs of space collapsed, cut to
+   * `MAX_BOX_NAME_LENGTH`) and refused if it is empty or another box already
+   * wears it, because two boxes with one name are a place nobody can be sent to
+   * on purpose.
+   */
+  public renameBox(boxIndex: number, name: string): boolean {
+    const box = this.boxes[boxIndex];
+    const tidy = tidyBoxName(name);
+    if (!box || tidy.length === 0) {
+      return false;
+    }
+    if (this.boxes.some((other, index) => index !== boxIndex && sameName(other.name, tidy))) {
+      return false;
+    }
+    box.name = tidy;
+    return true;
+  }
+
+  /** Adds an empty box on the end and returns its index. */
+  public addBox(): number {
+    this.boxes.push({ name: this.nextBoxName(), pokemonIds: [] });
+    return this.boxes.length - 1;
+  }
+
+  /** Removes a box that holds nothing. The last box, and any box in use, stays. */
+  public removeBox(boxIndex: number): boolean {
+    const box = this.boxes[boxIndex];
+    if (!box || box.pokemonIds.length > 0 || this.boxes.length <= 1) {
+      return false;
+    }
+    this.boxes.splice(boxIndex, 1);
+    return true;
   }
 
   public listItems(): BagContents {
@@ -211,6 +314,7 @@ export class Stash {
     }
 
     this.storedPokemon.push({ id, pokemon });
+    this.placeInFirstBoxWithRoom(id);
     return id;
   }
 
@@ -220,6 +324,9 @@ export class Stash {
       return null;
     }
 
+    for (const box of this.boxes) {
+      box.pokemonIds = box.pokemonIds.filter((boxed) => boxed !== id);
+    }
     return this.storedPokemon.splice(index, 1)[0].pokemon;
   }
 
@@ -472,8 +579,11 @@ export class Stash {
     }
 
     const incoming = starterInConditionOf(outgoing.pokemon, starter);
-    this.storedPokemon.length = 0;
-    this.addPokemon(incoming);
+    const box = Math.max(0, this.boxIndexOf(outgoing.id));
+    this.removePokemon(outgoing.id);
+    const id = this.addPokemon(incoming);
+    // The partner stays where the old one was kept.
+    this.movePokemon(id, box);
     return true;
   }
 
@@ -535,7 +645,56 @@ export class Stash {
   }
 
   public toJSON(): StashContents {
-    return { pokemon: this.listPokemon(), items: this.listItems() };
+    return { pokemon: this.listPokemon(), items: this.listItems(), boxes: this.listBoxes() };
+  }
+
+  /**
+   * Builds the boxes from what a save names, then finds a home for everything it
+   * did not: a save from before boxes, a Pokemon a hand-edited save left out, or
+   * a box a save overfilled. There is always at least one box.
+   */
+  private arrangeBoxes(saved: readonly StashBox[]): void {
+    const known = new Set(this.storedPokemon.map((stored) => stored.id));
+    const placed = new Set<string>();
+    for (const savedBox of saved) {
+      const ids: string[] = [];
+      for (const id of savedBox.pokemonIds) {
+        if (known.has(id) && !placed.has(id) && ids.length < BOX_CAPACITY) {
+          ids.push(id);
+          placed.add(id);
+        }
+      }
+      const tidy = tidyBoxName(savedBox.name);
+      const name =
+        tidy.length > 0 && !this.boxes.some((box) => sameName(box.name, tidy)) ? tidy : this.nextBoxName();
+      this.boxes.push({ name, pokemonIds: ids });
+    }
+    if (this.boxes.length === 0) {
+      this.boxes.push({ name: this.nextBoxName(), pokemonIds: [] });
+    }
+    for (const { id } of this.storedPokemon) {
+      if (!placed.has(id)) {
+        this.placeInFirstBoxWithRoom(id);
+      }
+    }
+  }
+
+  private placeInFirstBoxWithRoom(id: string): void {
+    const box = this.boxes.find((candidate) => candidate.pokemonIds.length < BOX_CAPACITY);
+    if (box) {
+      box.pokemonIds.push(id);
+      return;
+    }
+    // Banking a raid can never fail for want of room: a full vault grows a box.
+    this.boxes.push({ name: this.nextBoxName(), pokemonIds: [id] });
+  }
+
+  private nextBoxName(): string {
+    let number = this.boxes.length + 1;
+    while (this.boxes.some((box) => sameName(box.name, `Box ${number}`))) {
+      number += 1;
+    }
+    return `Box ${number}`;
   }
 
   private nextPokemonId(pokemon: Pokemon): string {
@@ -619,6 +778,14 @@ function clampHp(value: number, maxHp: number): number {
     return maxHp;
   }
   return Math.min(maxHp, Math.max(0, Math.floor(value)));
+}
+
+function tidyBoxName(name: string): string {
+  return name.replace(/\s+/g, ' ').trim().slice(0, MAX_BOX_NAME_LENGTH).trim();
+}
+
+function sameName(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase();
 }
 
 function isPositiveInteger(value: number): boolean {

@@ -34,6 +34,7 @@ import {
   type RunResult,
   type SecureSlot,
   type StarterSpeciesId,
+  type StashBox,
 } from '../stash/Stash';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 
@@ -72,9 +73,22 @@ export interface SavedStashedPokemon {
   readonly pokemon: SavedPokemon;
 }
 
+export interface SavedStashBox {
+  readonly name: string;
+  readonly pokemonIds: readonly string[];
+}
+
 export interface SavedStash {
   readonly pokemon: readonly SavedStashedPokemon[];
   readonly items: BagContents;
+  /**
+   * The stash's boxes, in order. Absent on every save written before boxes
+   * existed, which reads as one box holding everything - so versions 1 to 6
+   * keep loading and a flat stash becomes box one - and so needs no version
+   * bump. Anything a box names that is not in `pokemon` is dropped on load, and
+   * anything no box names is put in the first box with room (`Stash`).
+   */
+  readonly boxes?: readonly SavedStashBox[];
 }
 
 export interface RaidProgress {
@@ -858,7 +872,22 @@ function serializeStash(stash: Stash): SavedStash {
   return {
     pokemon: stash.listPokemon().map(({ id, pokemon }) => ({ id, pokemon: serializePokemon(pokemon) })),
     items: stash.listItems(),
+    boxes: stash.listBoxes().map(({ name, pokemonIds }) => ({ name, pokemonIds: [...pokemonIds] })),
   };
+}
+
+function deserializeBoxes(value: unknown): StashBox[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+    .map((entry) => ({
+      name: typeof entry.name === 'string' ? entry.name : '',
+      pokemonIds: Array.isArray(entry.pokemonIds)
+        ? entry.pokemonIds.filter((id): id is string => typeof id === 'string')
+        : [],
+    }));
 }
 
 function deserializeStash(value: unknown, saveVersion: number): Stash {
@@ -883,7 +912,7 @@ function deserializeStash(value: unknown, saveVersion: number): Stash {
         .map((entry) => deserializeStashedPokemon(entry, saveVersion))
         .filter((entry): entry is { id: string; pokemon: Pokemon } => entry !== null)
     : [];
-  return new Stash({ pokemon, items: bagContents(value.items) });
+  return new Stash({ pokemon, items: bagContents(value.items), boxes: deserializeBoxes(value.boxes) });
 }
 
 function deserializeStashedPokemon(

@@ -20,6 +20,20 @@ describe('deployment flow', () => {
     expect(flow.isDeployable).toBe(false);
   });
 
+  it('deploys, and secures, a Pokemon kept in a later box exactly as one kept in the first', () => {
+    const { flow, stash } = seedFlow();
+    const shelf = stash.addBox();
+    stash.movePokemon('charmander-1', shelf);
+
+    expect(flow.togglePokemon('charmander-1')).toBeUndefined();
+    expect(flow.toggleSecurePokemon('charmander-1')).toBeUndefined();
+    flow.advance();
+    flow.advance();
+
+    expect(flow.deploy().party.map((stored) => stored.id)).toEqual(['charmander-1']);
+    expect(flow.securedPokemon.map((stored) => stored.id)).toEqual(['charmander-1']);
+  });
+
   it('refuses to reach the raid without a deliberate loadout confirmation', () => {
     const { flow } = seedFlow();
 

@@ -3,7 +3,7 @@ import { Bag } from '../items';
 import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
-import { MINIMUM_SUPPLIES, Stash, starterInConditionOf } from './Stash';
+import { BOX_CAPACITY, MAX_BOX_NAME_LENGTH, MINIMUM_SUPPLIES, Stash, starterInConditionOf } from './Stash';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -353,5 +353,101 @@ describe('Stash', () => {
     expect(stash.itemCount('radio-valve')).toBe(3);
     expect(stash.itemCount('potion')).toBe(0);
     expect(stash.itemCount('mooring-rope')).toBe(0);
+  });
+});
+
+describe('Stash boxes', () => {
+  const fill = (stash: Stash, count: number, prefix = 'p'): void => {
+    for (let index = 0; index < count; index += 1) {
+      stash.addPokemon(new Pokemon(PIDGEY, 3), `${prefix}-${index}`);
+    }
+  };
+
+  it('starts with one box, and a flat stash is box one', () => {
+    expect(new Stash().listBoxes()).toEqual([{ name: 'Box 1', pokemonIds: [] }]);
+    const flat = new Stash({ pokemon: [{ id: 'a', pokemon: new Pokemon(PIDGEY, 3) }] });
+    expect(flat.listBoxes()).toEqual([{ name: 'Box 1', pokemonIds: ['a'] }]);
+  });
+
+  it('opens a second box when the first is full, and never refuses to bank', () => {
+    const stash = new Stash();
+    fill(stash, BOX_CAPACITY + 2);
+    expect(stash.listBoxes().map((box) => box.pokemonIds.length)).toEqual([BOX_CAPACITY, 2]);
+    expect(stash.listBoxes()[1].name).toBe('Box 2');
+    expect(stash.listPokemon()).toHaveLength(BOX_CAPACITY + 2);
+  });
+
+  it('moves a Pokemon between boxes without touching the flat list', () => {
+    const stash = new Stash();
+    fill(stash, 3);
+    const before = stash.listPokemon().map(({ id }) => id);
+    const second = stash.addBox();
+
+    expect(stash.movePokemon('p-1', second)).toBe(true);
+    expect(stash.boxIndexOf('p-1')).toBe(second);
+    expect(stash.listBoxPokemon(0).map(({ id }) => id)).toEqual(['p-0', 'p-2']);
+    expect(stash.listPokemon().map(({ id }) => id)).toEqual(before);
+    expect(stash.movePokemon('p-1', second)).toBe(false);
+    expect(stash.movePokemon('nobody', second)).toBe(false);
+  });
+
+  it('refuses to move into a full box', () => {
+    const stash = new Stash();
+    fill(stash, BOX_CAPACITY);
+    const second = stash.addBox();
+    stash.addPokemon(new Pokemon(PIDGEY, 3), 'extra');
+    expect(stash.boxIndexOf('extra')).toBe(second);
+    expect(stash.movePokemon('extra', 0)).toBe(false);
+    expect(stash.boxIndexOf('extra')).toBe(second);
+  });
+
+  it('names boxes tidily and never twice', () => {
+    const stash = new Stash();
+    const second = stash.addBox();
+    expect(stash.renameBox(second, '  Water   team  ')).toBe(true);
+    expect(stash.listBoxes()[second].name).toBe('Water team');
+    expect(stash.renameBox(second, 'A name far too long to fit')).toBe(true);
+    expect(stash.listBoxes()[second].name).toHaveLength(MAX_BOX_NAME_LENGTH);
+    expect(stash.renameBox(second, 'box 1')).toBe(false);
+    expect(stash.renameBox(second, '   ')).toBe(false);
+  });
+
+  it('removes only an empty box, and never the last', () => {
+    const stash = new Stash();
+    fill(stash, 1);
+    const second = stash.addBox();
+    expect(stash.removeBox(0)).toBe(false);
+    expect(stash.removeBox(second)).toBe(true);
+    expect(stash.removeBox(0)).toBe(false);
+    expect(stash.listBoxes()).toHaveLength(1);
+  });
+
+  it('forgets a Pokemon that leaves the vault, and puts the swapped partner where the old one was', () => {
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 5), 'partner');
+    const second = stash.addBox();
+    stash.movePokemon('partner', second);
+    expect(stash.swapStarter(SQUIRTLE)).toBe(true);
+    const [id] = stash.listPokemon().map((entry) => entry.id);
+    expect(stash.listBoxes()[second].pokemonIds).toEqual([id]);
+    expect(stash.listBoxes()[0].pokemonIds).toEqual([]);
+
+    stash.removePokemon(id);
+    expect(stash.listBoxes().flatMap((box) => box.pokemonIds)).toEqual([]);
+  });
+
+  it('repairs a save that contradicts itself', () => {
+    const pokemon = ['a', 'b', 'c'].map((id) => ({ id, pokemon: new Pokemon(PIDGEY, 3) }));
+    const stash = new Stash({
+      pokemon,
+      boxes: [
+        { name: 'Mine', pokemonIds: ['b', 'ghost', 'b'] },
+        { name: 'mine', pokemonIds: ['a'] },
+      ],
+    });
+    const boxes = stash.listBoxes();
+    expect(boxes[0]).toEqual({ name: 'Mine', pokemonIds: ['b', 'c'] });
+    expect(boxes[1].pokemonIds).toEqual(['a']);
+    expect(boxes[1].name).not.toBe('mine');
   });
 });
