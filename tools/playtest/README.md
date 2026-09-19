@@ -81,6 +81,13 @@ that save opens on, by clicking the insertion's own row in the loadout.
   is a fight a fresh starter cannot win (`tools/trainers/report.mts` prints how
   unwinnable), so this is how a driver gets to what is behind one:
   `--insertion=town-square --level=20 --fight`.
+- `--starter=Charmander` - which of the picker's three cards is taken. Anything
+  measured per starter needs it; the default is Bulbasaur.
+- `--pack=itemId[:n],..` - puts supplies in the raid bag by the loadout row's own
+  stepper. **Nothing is packed by default** - the flow starts the pack empty,
+  because the loadout is the decision the game is built around - so a driver that
+  clicks through deploys with no medicine, and a fight priced in Potions (the
+  Floodplain checkpoint) cannot be played without this.
 - `--secure=itemId[:n],..` - takes the secure-slot detour on the way out and
   puts `n` (default one) squares of each kind into the container, by the row's
   own stepper. It is the only way the container is checked end to end, and the

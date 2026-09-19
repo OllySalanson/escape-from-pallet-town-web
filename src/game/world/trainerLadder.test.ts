@@ -14,8 +14,17 @@ import { partyOf, trainerWinRate, type MeasuredParty } from './trainerMeasure';
  * prints the whole grid while a party is being chosen; this holds the order it
  * settled on.
  *
- * Deliberately few trials and two reference parties: this is a guard against a
- * boss quietly changing rung, not a balance study.
+ * A rung is the **mean over four reference parties**, three of them one starter
+ * apiece, because a door's rung is what it costs a player and not what it costs
+ * a Charmander. Measured against a lone Fire lead the last two doors invert -
+ * Ember is three times over on Holt's Butterfree and half strength on Dane's
+ * Squirtle - and that is a type matchup, not a boss changing rung. Whether a
+ * door is inside reach of one starter at all is the second test below, and the
+ * checkpoint on the road to the first of them is `floodplainCheckpoint.test.ts`,
+ * which is the only fight measured at the level a fresh save meets it.
+ *
+ * Deliberately few trials: this is a guard against a boss quietly changing
+ * rung, not a balance study.
  */
 
 const trainerOf = (id: string): TrainerBattle =>
@@ -25,21 +34,39 @@ const trainerOf = (id: string): TrainerBattle =>
 const SOLO: MeasuredParty = partyOf('Charmander 14', ['charmander', 14]);
 const TEAM: MeasuredParty = partyOf('Charmander 12 + Pidgey 10', ['charmander', 12], ['pidgey', 10]);
 
+/** What a rung is averaged over: each starter alone, then the team. */
+const REFERENCES: readonly MeasuredParty[] = [
+  SOLO,
+  partyOf('Squirtle 14', ['squirtle', 14]),
+  partyOf('Bulbasaur 14', ['bulbasaur', 14]),
+  TEAM,
+];
+
 const TRIALS = 240;
+
+const rungOf = (trainer: TrainerBattle): number =>
+  REFERENCES.reduce((total, party) => total + trainerWinRate(party, trainer, TRIALS), 0) /
+  REFERENCES.length;
 
 /**
  * Front to back, easiest first. Briggs is the first door in the game and Holt
  * the last; the two small-map bosses sit between Route 1's warden and the
  * Floodplain's back half, which is where they are met.
  *
- * The last two are a tie and always were - 32% and 27% over 200 trials, which
- * is about two standard errors apart - so what is held is that no door is a
- * *rung* easier than the one before it, with `TIE` the width of a tie. Ranking
- * two doors that were never a rung apart is how this test failed the day the
- * move data model changed a damage roll: the order flipped, nothing about the
- * game got easier, and a real regression would have been a 17-point drop.
+ * What is held is that no door is a *rung* easier than the one before it, with
+ * `TIE` the width of a tie. Ranking two doors that were never a rung apart is
+ * how this test failed the day the move data model changed a damage roll: the
+ * order flipped, nothing about the game got easier, and a real regression would
+ * have been a 17-point drop.
+ *
+ * Two pairs are inside the tie rather than ordered. Vance and Pell unlock
+ * together - Pallet Town and Route 1 arrive on the same banked contract - so
+ * which of the two small-map doors is the harder is a choice the player makes,
+ * not a step they climb; measured with the same-type bonus played they are ten
+ * points apart the other way round from the note in `trainers.ts`. Dane and
+ * Holt were always a tie.
  */
-const TIE = 0.08;
+const TIE = 0.12;
 
 const LADDER: readonly [string, string][] = [
   ['floodplain-toll-keeper-briggs', 'TOLLMAN BRIGGS'],
@@ -52,10 +79,7 @@ const LADDER: readonly [string, string][] = [
 
 describe('the boss ladder, played out', () => {
   it('never lets a later boss be a rung easier than the one before it', () => {
-    const rates = LADDER.map(([id, name]) => ({
-      name,
-      rate: trainerWinRate(TEAM, trainerOf(id), TRIALS),
-    }));
+    const rates = LADDER.map(([id, name]) => ({ name, rate: rungOf(trainerOf(id)) }));
     const climbs = rates.slice(1).flatMap((boss, index) => {
       const before = rates[index];
       return boss.rate > before.rate + TIE

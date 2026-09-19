@@ -8,14 +8,15 @@
  *
  * Two questions, because weather lands on two very different fights.
  *
- * A **lead** is the same wild fight with the honest move choice: `bestMove`,
- * which both shared harnesses use, scores a move by power times type
- * effectiveness and **cannot see the same-type bonus**, so it answers a Pidgey
- * with Tackle where every player answers it with Water Gun - and a fight with
- * no Water move in it is a fight rain cannot touch. That is not a fault to fix
- * here (the shipped tables and the trainer ladder are measured through it and
- * hold floors on its numbers), so this half plays the lead's own typed move
- * instead and is the one that says what rain is worth.
+ * A **lead** is the same wild fight played with the lead's own typed move
+ * whatever the chart says about it, which is the half that says what rain is
+ * worth: weather bends Fire and Water, so a fight with no Water move in it is a
+ * fight rain cannot touch, and a lead that is *resisted* is exactly the case
+ * `bestDamagingMove` will correctly decline to play. It once had a second
+ * reason - the shared harnesses scored a move as power times effectiveness and
+ * could not see the same-type bonus, so every measured starter answered every
+ * fight with Tackle - and that is fixed: `world/bestPlay.ts` pays the bonus and
+ * both harnesses read it from there.
  *
  * A **wild** fight is short and one-sided: the shipped tables die to one swing
  * from anything that has learnt these moves, so the only thing weather can
