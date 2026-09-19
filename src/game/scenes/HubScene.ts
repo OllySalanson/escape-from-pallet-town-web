@@ -94,6 +94,8 @@ export class HubScene extends Phaser.Scene {
   /** A payment only runs from an explicit second click, exactly as a swap does. */
   private outfitterArmed = false;
   private status = '';
+  /** The one pending removal of the status line; see `setStatus()`. */
+  private statusTimer: Phaser.Time.TimerEvent | undefined;
 
   public constructor() {
     super('hub');
@@ -133,6 +135,8 @@ export class HubScene extends Phaser.Scene {
     this.outfitterPayment = [];
     this.outfitterArmed = false;
     this.status = '';
+    // The clock that owned it died with the last hub, so only the pointer is left.
+    this.statusTimer = undefined;
   }
 
   public create(): void {
@@ -967,15 +971,32 @@ export class HubScene extends Phaser.Scene {
     this.setStatus(undefined);
   }
 
+  /**
+   * Shows a status line, and takes it down again without touching the screen.
+   *
+   * Taking it down used to be a whole `render()` on a 2.2s timer, and a render
+   * replaces every button on the screen. One that fired between a mousedown and
+   * its mouseup left the press on a button that no longer existed, so the click
+   * never happened: "Enter the raid" took focus and did nothing, and the second
+   * click worked. It also threw the keyboard back to the first button on the
+   * screen under a player who was mid-way down a list. Timers stacked as well,
+   * so an old message's timer cut a newer message short. There is now at most
+   * one, and all it removes is the line it was started for.
+   */
   private setStatus(message: string | undefined): void {
-    if (message === undefined) {
-      this.status = '';
-      this.render();
-      return;
-    }
-    this.status = message;
+    this.statusTimer?.remove();
+    this.statusTimer = undefined;
+    this.status = message ?? '';
     this.render();
-    this.time.delayedCall(2200, () => { this.status = ''; this.render(); });
+    if (message !== undefined) {
+      this.statusTimer = this.time.delayedCall(2200, () => this.clearStatus());
+    }
+  }
+
+  private clearStatus(): void {
+    this.statusTimer = undefined;
+    this.status = '';
+    this.overlay.root.querySelector('.menu-status')?.remove();
   }
 }
 
