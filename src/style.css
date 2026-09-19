@@ -1781,6 +1781,25 @@ button {
 :where(.pixel-ui) .px-hp-fill.critical {
   background: #e0453a;
 }
+/* The experience bar: the health bar's frame, thinner and in the interface's
+   own blue, so it can never be misread as health at a glance. */
+:where(.pixel-ui) .px-xp {
+  flex: none;
+  align-self: flex-start;
+  display: block;
+  width: calc(var(--u) * 50);
+  height: calc(var(--u) * 4);
+  padding: var(--u);
+  background:
+    linear-gradient(#55554a, #55554a) content-box,
+    var(--frame);
+}
+:where(.pixel-ui) .px-xp-fill {
+  display: block;
+  height: 100%;
+  width: calc(var(--u) * var(--fill));
+  background: #4a86c8;
+}
 .pixel-ui .item-icon {
   flex: none;
   width: calc(var(--u) * 16);
@@ -2326,4 +2345,58 @@ button {
 }
 .pixel-ui .trader-shelf {
   grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+/* --- The summary: how far to the next level, and what a move does --------- */
+:where(.pixel-ui) .summary-layout {
+  grid-template-columns: calc(var(--u) * 132) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+}
+:where(.pixel-ui) .summary-layout > .px-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+}
+/* The moves window is a list with one detail pane under it, exactly as the
+   contract board and the Outfitter's ladder are. */
+:where(.pixel-ui) .summary-layout > .px-window:has(.px-detail) {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+:where(.pixel-ui) .summary-hero {
+  display: flex;
+  align-items: end;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
+}
+:where(.pixel-ui) .summary-facts {
+  min-width: 0;
+  display: grid;
+  gap: var(--u);
+  padding-bottom: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .summary-xp {
+  display: grid;
+  gap: calc(var(--u) * 2);
+  padding: 0 calc(var(--u) * 3);
+}
+/* One stat a line, the number hard right against the name, so the column of
+   figures can be read down without reading the words beside it. */
+:where(.pixel-ui) .summary-stats {
+  display: grid;
+  gap: var(--u);
+  margin: 0;
+  padding: 0 calc(var(--u) * 3);
+}
+:where(.pixel-ui) .summary-stats > div {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .summary-stats dt {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .summary-stats dd {
+  margin: 0;
 }

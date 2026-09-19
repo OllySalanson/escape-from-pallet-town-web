@@ -9,7 +9,15 @@ vi.mock('phaser', () => ({
 }));
 
 import { Bag } from '../items';
-import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
+import {
+  BULBASAUR,
+  CHARMANDER,
+  PIDGEY,
+  Pokemon,
+  PokemonParty,
+  SQUIRTLE,
+  experienceForLevel,
+} from '../pokemon';
 import { FIRST_CONTRACT_ID, RAID_CONTRACTS, standingBoard } from '../objectives';
 import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
@@ -182,7 +190,7 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
-  setView(view: 'home' | 'stash' | 'deploy' | 'reselect' | 'outfitter' | 'trader'): void;
+  setView(view: 'home' | 'stash' | 'summary' | 'deploy' | 'reselect' | 'outfitter' | 'trader'): void;
   startRun(): void;
   render(): void;
   recover(ids: readonly string[]): void;
@@ -1341,5 +1349,85 @@ describe('HubScene - the Ferryman', () => {
     const boat = markupOf(hub);
 
     expect(boat).not.toMatch(/[▶▲▼◀→←↑↓✓✔]/u);
+  });
+});
+
+/**
+ * Two questions a player could not ask anywhere in the game: how close is this
+ * Pokemon to its next level, and what does this move actually do.
+ */
+describe('the summary screen', () => {
+  function markupOf(hub: HubInternals): string {
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  }
+
+  function openSummaryOf(hub: HubInternals, pokemonId: string): string {
+    hub.setView('summary');
+    (hub as unknown as { summaryPokemonId: string }).summaryPokemonId = pokemonId;
+    return markupOf(hub);
+  }
+
+  it('is offered from every stash row, whatever that Pokémon is holding', () => {
+    const { hub } = createHub();
+
+    hub.setView('stash');
+    const stash = markupOf(hub);
+
+    // The chip used to come and go with the gear strip it sits in, which hid
+    // the only way to a Pokemon's moves behind what it happened to be carrying.
+    const rows = hub.stash.listPokemon();
+    expect(rows.length).toBeGreaterThan(0);
+    for (const stored of rows) {
+      expect(stash).toContain(`data-summary="${stored.id}"`);
+    }
+  });
+
+  it('says how far the next level is, and what each move does', () => {
+    const { hub } = createHub();
+    const stored = hub.stash.listPokemon().find(({ id }) => id === 'charmander-1')!;
+    const { pokemon } = stored;
+    const span = experienceForLevel(pokemon.level + 1) - experienceForLevel(pokemon.level);
+    pokemon.experience = experienceForLevel(pokemon.level) + Math.floor(span / 2);
+
+    const summary = openSummaryOf(hub, 'charmander-1');
+
+    expect(summary).toContain('px-xp-fill');
+    expect(summary).toContain(`${Math.ceil(span / 2).toLocaleString('en-GB')} XP to Lv ${pokemon.level + 1}`);
+    // Every move carries its numbers and the sentence that says what it is for,
+    // in the list's one detail pane.
+    for (const move of pokemon.moves) {
+      expect(summary).toContain(move.base.name);
+      expect(summary).toContain(`ACC ${move.base.accuracy}`);
+      expect(summary).toContain(move.base.description);
+    }
+    expect(summary).toContain(`${pokemon.moves.length} of 4 known`);
+  });
+
+  it('is read-only, and its way back is the stash it was opened from', () => {
+    const { hub } = createHub();
+
+    const summary = openSummaryOf(hub, 'charmander-1');
+
+    // Nothing on it commits anything: the only controls are the move rows,
+    // which swap the detail pane, and the way out.
+    expect(summary).not.toContain('data-recover');
+    expect(summary).not.toContain('data-pokemon=');
+    expect(summary).toContain('data-back');
+    expect(summary).toContain('>Stash<');
+
+    (hub as unknown as { goBack(): void }).goBack();
+    expect((hub as unknown as { view: string }).view).toBe('stash');
+    // Leaving lets go of whose summary it was, so a later summary cannot open
+    // on the Pokemon the last one was about.
+    expect((hub as unknown as { summaryPokemonId?: string }).summaryPokemonId).toBeUndefined();
+  });
+
+  it('says so rather than drawing an empty screen when the Pokémon has gone', () => {
+    const { hub } = createHub();
+
+    const summary = openSummaryOf(hub, 'nobody-here');
+
+    expect(summary).toContain('no longer at base');
   });
 });

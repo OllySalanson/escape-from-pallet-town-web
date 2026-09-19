@@ -110,10 +110,19 @@ import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
 import {
+  experienceBarFill,
+  experienceLine,
+  experienceProgress,
+  formatExperience,
+  moveSlotNote,
+  moveSummary,
+} from '../ui/pokemonSummary';
+import {
   escapeAttribute,
   pixelCommitBar,
   pixelHpBar,
   pixelPortrait,
+  pixelXpBar,
   pixelRail,
   pixelScreen,
   pixelGrid,
@@ -129,7 +138,7 @@ export interface HubSceneData {
 }
 
 /** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
-type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'outfitter' | 'trader';
+type HubView = 'home' | 'stash' | 'summary' | 'deploy' | 'reselect' | 'outfitter' | 'trader';
 
 export class HubScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
@@ -138,6 +147,8 @@ export class HubScene extends Phaser.Scene {
   private flow!: DeploymentFlow;
   private overlay!: MenuOverlay;
   private view: HubView = 'home';
+  /** Whose summary is on screen, while the summary view is the one showing. */
+  private summaryPokemonId: string | undefined;
   private reselectStarterId: StarterSpeciesId = 'bulbasaur';
   /** A swap only runs from an explicit second click, so a misclick cannot delete a survivor. */
   private swapArmed = false;
@@ -532,9 +543,6 @@ export class HubScene extends Phaser.Scene {
     const offers = HELD_ITEM_DEFINITIONS.filter(
       (item) => this.stash.itemCount(item.id) > 0 && item.id !== stored.pokemon.heldItemId,
     );
-    if (!held && offers.length === 0) {
-      return '';
-    }
     const take = held
       // The chip says the action, because the row above it already says what is
       // held: two lines for one fact is one of them going stale. No glyph on it
@@ -550,7 +558,11 @@ export class HubScene extends Phaser.Scene {
           `<button class="px-window px-chip" data-gear-give="${item.id}" data-gear-pokemon="${stored.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description} Lost with ${stored.pokemon.base.name} on a wipe.`)}">Give ${item.displayName} ×${this.stash.itemCount(item.id)}</button>`,
       )
       .join('');
-    return `<div class="care-strip"><div class="care-options">${take}${give}</div></div>`;
+    // The summary chip is always there, gear or no gear: it is the only way to
+    // a Pokemon's experience and its moves, and a row whose actions came and
+    // went with what it happened to be holding would hide that.
+    const summary = `<button class="px-window px-chip" data-summary="${stored.id}" data-help="${escapeAttribute(`Read ${stored.pokemon.base.name}'s experience, stats and moves.`)}">Summary</button>`;
+    return `<div class="care-strip"><div class="care-options">${summary}${take}${give}</div></div>`;
   }
 
   /** The lone Pokemon a swap would trade away, or undefined while a team remains. */
@@ -575,6 +587,9 @@ export class HubScene extends Phaser.Scene {
       this.status = '';
     }
     this.view = view;
+    if (view !== 'summary') {
+      this.summaryPokemonId = undefined;
+    }
     this.swapArmed = false;
     this.outfitterUpgradeId = undefined;
     this.outfitterPayment = [];
@@ -797,8 +812,14 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
-    // The swap is reached from the stash, so backing out of it returns there
-    // rather than dropping the player two screens out to the base.
+    // The summary and the swap are both reached from the stash, so backing out
+    // of either returns there rather than dropping the player two screens out
+    // to the base.
+    if (this.view === 'summary') {
+      this.setView('stash');
+      this.render();
+      return;
+    }
     if (this.view === 'reselect') {
       this.setView('stash');
       this.render();
@@ -833,6 +854,7 @@ export class HubScene extends Phaser.Scene {
   private get heading(): string {
     if (this.view === 'home') return 'Base';
     if (this.view === 'stash') return 'Your stash';
+    if (this.view === 'summary') return this.summaryPokemon?.pokemon.base.name ?? 'Summary';
     if (this.view === 'reselect') return 'Swap your partner';
     if (this.view === 'outfitter') return this.payingFor ? `Build ${this.payingFor.name}` : 'The Outfitter';
     if (this.view === 'trader') return 'The Ferryman';
@@ -842,6 +864,7 @@ export class HubScene extends Phaser.Scene {
 
   private get backLabel(): string {
     if (this.view === 'reselect') return 'Stash';
+    if (this.view === 'summary') return 'Stash';
     if (this.view === 'outfitter' && this.payingFor) return 'Outfitter';
     if (this.view !== 'deploy') return 'Base';
     if (this.flow.step === 'confirm') return 'Loadout';
@@ -885,7 +908,12 @@ export class HubScene extends Phaser.Scene {
               // that scrolls away from the row being priced.
               : this.view === 'trader'
                 ? `${scripHeld(this.stash)} scrip`
-                : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} items`,
+                // The summary is about one Pokemon, and its window heading
+                // already names that Pokemon and its level. A count of the
+                // whole stash beside it would be about something else.
+                : this.view === 'summary'
+                  ? undefined
+                  : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} items`,
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
@@ -942,6 +970,12 @@ export class HubScene extends Phaser.Scene {
     on('[data-recover]', (button) => this.recover([button.dataset.recover!]));
     on('[data-recover-all]', () => this.recover(this.injuredPokemon.map((stored) => stored.id)));
     on('[data-supply]', (button) => this.setStatus(button.dataset.help));
+    on('[data-summary]', (button) =>
+      rerender(() => {
+        this.setView('summary');
+        this.summaryPokemonId = button.dataset.summary;
+      }),
+    );
     on('[data-fit]', (button) => {
       const name = this.stashPokemon.find((stored) => stored.id === button.dataset.fit)?.pokemon.base.name;
       this.setStatus(`${name ?? 'That Pokémon'} is fit. There is nothing to recover.`);
@@ -990,6 +1024,7 @@ export class HubScene extends Phaser.Scene {
   private content(): string {
     if (this.view === 'home') return this.homeView();
     if (this.view === 'stash') return this.stashView();
+    if (this.view === 'summary') return this.summaryView();
     if (this.view === 'reselect') return this.reselectView();
     if (this.view === 'outfitter') return this.payingFor ? this.paymentView(this.payingFor) : this.outfitterView();
     if (this.view === 'trader') return this.traderView();
@@ -1411,6 +1446,70 @@ export class HubScene extends Phaser.Scene {
       `<div class="px-list px-scroll">${supplies || '<p class="px-empty">No supplies in storage.</p>'}</div>`,
       { heading: 'Supplies', note: `${this.stashItems.length} kinds` },
     )}</div>${this.recoveryPanel()}</main>`;
+  }
+
+  /** Whose summary the screen is showing, if that Pokemon is still at base. */
+  private get summaryPokemon(): StashedPokemon | undefined {
+    return this.stashPokemon.find((stored) => stored.id === this.summaryPokemonId);
+  }
+
+  /**
+   * The summary screen: how far a Pokemon is from its next level, and what each
+   * of its moves actually does.
+   *
+   * Both were unanswerable anywhere in the game. A level was a number with
+   * nothing behind it, and a move was a name and a PP count - the move menu in
+   * a fight describes the highlighted one, but only once the fight has started
+   * and only against the Pokemon standing opposite.
+   *
+   * Two windows, in the ranks PR #115 set: the window heading says what the
+   * panel is, a `px-subheading` bands each part of it, and a move's numbers and
+   * its sentence live in the list's one detail pane, which the cursor swaps as
+   * it walks the rows. Nothing here is a control except the move rows, so the
+   * screen can be read without changing anything.
+   */
+  private summaryView(): string {
+    const stored = this.summaryPokemon;
+    if (!stored) {
+      return `<main class="px-body summary-layout">${pixelWindow(
+        '<p class="px-empty">That Pokémon is no longer at base.</p>',
+        { heading: 'Summary' },
+      )}</main>`;
+    }
+    const { pokemon } = stored;
+    const progress = experienceProgress(pokemon);
+    const held = getHeldItem(pokemon.heldItemId);
+    const stats: readonly (readonly [string, number])[] = [
+      ['Attack', pokemon.stats.attack],
+      ['Defense', pokemon.stats.defense],
+      ['Sp. Atk', pokemon.stats.spAttack],
+      ['Sp. Def', pokemon.stats.spDefense],
+      ['Speed', pokemon.stats.speed],
+    ];
+    const profile = pixelWindow(
+      `<div class="summary-hero">${pixelPortrait(pokemon.base.dexId, pokemon.base.name)}<div class="summary-facts"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${this.conditionLine(stored)}</small><div>${pixelTypeBadge(pokemon.base.primaryType)}${pokemon.base.secondaryType ? pixelTypeBadge(pokemon.base.secondaryType) : ''}</div><small>${held ? `Holding ${held.displayName}` : 'Holding nothing'}</small></div></div><h3 class="px-subheading">Experience</h3><div class="summary-xp">${pixelXpBar(experienceBarFill(progress), `Experience ${formatExperience(progress.intoLevel)} of ${formatExperience(progress.levelSpan)}`)}<small>${experienceLine(progress)}</small></div><h3 class="px-subheading">Stats</h3><dl class="summary-stats">${stats
+        .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
+        .join('')}</dl>`,
+      { heading: pokemon.base.name, note: `Lv ${pokemon.level}` },
+    );
+    const summaries = pokemon.moves.map((move) => moveSummary(move));
+    const rows = summaries
+      .map(
+        (move, index) =>
+          `<button class="px-row" data-shows="move-${index}"${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(move.description)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${move.name}</strong>${pixelTypeBadge(move.type)}</span></span><span class="px-tag">${move.pp}/${move.maxPp} PP</span></button>`,
+      )
+      .join('');
+    const details = summaries
+      .map(
+        (move, index) =>
+          `<div class="px-detail" data-shown-by="move-${index}"${index === 0 ? '' : ' hidden'}><span class="px-wrap"><small>${move.detail}</small></span><span class="px-wrap">${move.description}</span></div>`,
+      )
+      .join('');
+    const moves = pixelWindow(
+      `<div class="px-list px-scroll">${rows || '<p class="px-empty">No moves known.</p>'}</div>${details}`,
+      { heading: 'Moves', note: moveSlotNote(pokemon.moves.length) },
+    );
+    return `<main class="px-body summary-layout">${profile}${moves}</main>`;
   }
 
   /**
