@@ -10,6 +10,8 @@ import { districtAt } from './districts';
 import { EXTRACTION_POINTS } from './extractionPoints';
 import { gateBossIds, gatesForMap, gateStatesToVerify } from './gates';
 import {
+  doorIndex,
+  doorsFrom,
   findHunterBreakawayTile,
   findHunterPursuitPath,
   findHunterSpawnTile,
@@ -431,6 +433,123 @@ describe('map structure', () => {
         (walk) => `with everyone off their mark: ${walk}`,
       ),
     ).toEqual([]);
+  });
+
+  /**
+   * Who may stand where, asked as one rule about doors.
+   *
+   * A figure is collision, so wherever one stops is a door, and a door in the
+   * neck of a pocket is a wall round whoever is inside it. The captain played
+   * into one on 2026-09-19: he fled, the hunter settled in the gap he had come
+   * through, and it would neither fight him nor move. So every figure that can
+   * stand on walkable ground is held to one of two things, and `doorsFrom` is
+   * what names the ground the question is about - a tile is a door when standing
+   * on it takes ground away from somebody beside it.
+   *
+   * - **A figure the player may walk into** may stand on a door, because walking
+   *   into them is the way through it. The hunter is caught by
+   *   (`WorldScene.tryWalkIntoHunter`), and a trainer is fought
+   *   (`askForTrainerChallenge`) - a beaten one is never rebuilt, so the tile
+   *   comes back for good. Both are a price; neither is a wall. What that needs
+   *   is that whoever is shut in can reach them, which is asked below.
+   * - **A figure the player may not walk into** - a sign, a townsperson keeping
+   *   a beat - may not stand on a door at all, at any tile of that beat. There
+   *   is nothing to pay and nothing to wait for, so a door they stop in is the
+   *   raid over.
+   *
+   * Every authored figure passes this today. Nothing held them to it, which is
+   * the whole reason for the rule: the answer to a class of fault is not the one
+   * fix, it is the test that fails the next map to draw it.
+   */
+  it.each(named(MAP_STATES))('%s never lets a figure stand where it would wall the player in', (_name, state) => {
+    const { map } = state;
+    const bounds = { width: map.width, height: map.height };
+    const isBlocked = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] !== false;
+    const beside = (tile: GridPosition): GridPosition[] =>
+      [
+        { x: tile.x + 1, y: tile.y },
+        { x: tile.x - 1, y: tile.y },
+        { x: tile.x, y: tile.y + 1 },
+        { x: tile.x, y: tile.y - 1 },
+      ].filter((step) => !isBlocked(step));
+
+    /**
+     * Asked from next door, which is where the player is when it matters, and
+     * which is also what keeps the answer honest: `doorsFrom` never names its
+     * own root, because that is the tile the person asking is standing on.
+     */
+    const isDoor = (tile: GridPosition): boolean => {
+      const asker = beside(tile)[0];
+      return asker !== undefined && doorsFrom(asker, bounds, isBlocked).doors.has(doorIndex(tile, bounds));
+    };
+
+    // Signs and townsfolk: every tile of every beat, which is stricter than any
+    // position the schedules can ever put them in.
+    for (const entity of map.entities) {
+      for (const tile of idleBeatTiles(entity)) {
+        expect(`${entity.id} stands on ${tile.x},${tile.y}: ${isDoor(tile) ? 'the only way through' : 'ground you can walk round'}`)
+          .toBe(`${entity.id} stands on ${tile.x},${tile.y}: ground you can walk round`);
+      }
+    }
+
+    // A trainer may hold a door - that is what a toll is - as long as whoever is
+    // shut in by them can walk up and be charged. Every region a trainer's tile
+    // separates touches that tile, so a trainer with a side to be approached
+    // from is a trainer everyone they shut in can challenge.
+    for (const trainer of trainersIn(state)) {
+      expect(`${trainer.trainer.id} can be challenged from ${beside(trainer.position).length} sides`)
+        .not.toBe(`${trainer.trainer.id} can be challenged from 0 sides`);
+    }
+  });
+
+  /**
+   * The hunter stands anywhere at all, so nothing can be asked of where it
+   * stops - only that its tile is one the player may enter, which is a fact
+   * about the scene and is held in `hunterWall.test.ts`. What belongs to the map
+   * is the escape that used to create the trap: a flee moves the hunter
+   * `HUNTER_BREAKAWAY_DISTANCE` walking steps back and holds it there, blind,
+   * and it used to choose that tile knowing nothing about where the player could
+   * still go. On the Floodplain that put it across the player's only route to
+   * every exit on 379 of the tile-and-heading pairs below. Asked for every tile
+   * of every map, in every gate state, for every way the player could have been
+   * walking when they broke contact.
+   */
+  it.each(named(MAP_STATES))('%s never lets a flee leave the hunter across the last way out', (_name, state) => {
+    const { map, mapId } = state;
+    const bounds = { width: map.width, height: map.height };
+    const isBlocked = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] !== false;
+    const exits = EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
+      (point) => point.position,
+    );
+    for (const player of walkableTiles(map.collision)) {
+      const contact = [
+        { x: player.x + 1, y: player.y },
+        { x: player.x - 1, y: player.y },
+        { x: player.x, y: player.y + 1 },
+        { x: player.x, y: player.y - 1 },
+      ].find((tile) => !isBlocked(tile));
+      if (!contact) {
+        continue;
+      }
+      // Only exits this player could have reached in the first place are exits a
+      // flee can take away; where a shut gate has already taken them all, that is
+      // the gate rules' business rather than this one's.
+      const { sealsIn } = doorsFrom(player, bounds, isBlocked, exits);
+      for (const heading of ['up', 'down', 'left', 'right'] as const) {
+        const away = findHunterBreakawayTile(
+          contact,
+          player,
+          bounds,
+          isBlocked,
+          HUNTER_BREAKAWAY_DISTANCE,
+          heading,
+          exits,
+        );
+        const verdict = sealsIn.has(doorIndex(away, bounds)) ? 'no way out' : 'a way out';
+        expect(`fled from ${player.x},${player.y} going ${heading}, hunter to ${away.x},${away.y}: ${verdict}`)
+          .toBe(`fled from ${player.x},${player.y} going ${heading}, hunter to ${away.x},${away.y}: a way out`);
+      }
+    }
   });
 
   it.each(named(MAP_STATES))('%s always gives the hunter somewhere fair to arrive', (_name, { map }) => {
