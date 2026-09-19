@@ -75,8 +75,16 @@ export function extractionCaption(point: ExtractionPoint, isOpen: boolean, elaps
   // An exit a landmark has to open says so on a line of its own. On one line it
   // was `EXTRACT ACTIVATE RANGER STATION` - two verbs in a row, and a caption
   // twelve tiles wide lying across the ground it was meant to be beside.
+  //
+  // `WORK` rather than the sentence's `ACTIVATE`, because it is the word the
+  // rest of the game uses for a landmark and it is four characters shorter:
+  // `ACTIVATE OAK'S FIELD STATION` made a 171px window, which is more than
+  // half the base stage, and on Route 1's station apron there was nowhere on
+  // the screen it fitted - so the one exit a player standing beside it most
+  // needed named went undrawn. Every line here is held to a caption's width in
+  // `extractionPoints.test.ts`.
   if (!isOpen && point.requirement?.kind === 'poi-activated') {
-    return `${point.label}\nEXTRACT SEALED\n${extractionRequirementText(point, elapsedMs)}`;
+    return `${point.label}\nEXTRACT SEALED\nWORK ${point.requirement.poiLabel}`;
   }
   return `${point.label}\nEXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, elapsedMs)}`;
 }

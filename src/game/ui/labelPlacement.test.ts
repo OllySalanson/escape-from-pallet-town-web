@@ -377,6 +377,94 @@ describe('where a map caption is allowed to sit', () => {
 
       expect(resolveGroups(asked, VIEW)).toEqual(asked.map((one) => [one]));
     });
+
+    it('names both even when only one of them has been walked up to', () => {
+      // Both doors are on screen, one near enough to have spoken
+      // (`captionReveal.ts`) and one not. Left to speak alone, the near door's
+      // caption has to win the ground its keeper's warning is already on, and
+      // on Route 1's east edge it loses; one sentence about both can be seated
+      // against the far door instead.
+      const [first, second, both] = placeCaptions(
+        [
+          request({ subject: gate, group: 'wren', speaks: false }),
+          request({ subject: steps, group: 'wren' }),
+          request({ subject: gate, width: 90, speaksFor: 'wren', speaks: true }),
+        ],
+        around(),
+      );
+
+      expect(first.visible).toBe(false);
+      expect(second.visible).toBe(false);
+      expect(both.visible).toBe(true);
+    });
+
+    it('says nothing at all about doors nobody has walked up to', () => {
+      const [first, second, both] = placeCaptions(
+        [
+          request({ subject: gate, group: 'wren', speaks: false }),
+          request({ subject: steps, group: 'wren', speaks: false }),
+          request({ subject: gate, width: 90, speaksFor: 'wren', speaks: false }),
+        ],
+        around(),
+      );
+
+      expect([first.visible, second.visible, both.visible]).toEqual([false, false, false]);
+    });
+
+    it('does not silence both doors when the joint caption is itself silent', () => {
+      const [first, second, both] = placeCaptions(
+        [
+          request({ subject: gate, group: 'wren' }),
+          request({ subject: steps, group: 'wren' }),
+          request({ subject: gate, width: 90, speaksFor: 'wren', speaks: false }),
+        ],
+        around(),
+      );
+
+      expect(both.visible).toBe(false);
+      expect(first.visible || second.visible).toBe(true);
+    });
+  });
+
+  /**
+   * Almost every caption is silent almost all the time - `captionReveal.ts` is
+   * the rule, and this is all the seating has to know about it. A permanent
+   * window over everything on the map is what a map editor draws; playing it,
+   * seven of them left no map on a 400x256 screen.
+   */
+  describe('a caption that is not speaking this frame', () => {
+    it('is not seated at all, however clear the ground around it is', () => {
+      expect(seat({ speaks: false }).visible).toBe(false);
+      expect(seat({ speaks: true }).visible).toBe(true);
+      expect(seat({}).visible).toBe(true);
+    });
+
+    it('still keeps every other caption off the thing it names', () => {
+      // The silent one names the tile a metre from the speaking one. Its
+      // subject is still drawn there, so it is still ground no caption may take.
+      const silent = request({ subject: tile(152, 112), speaks: false });
+      const speaking = request({ subject: tile(152, 150), width: 90 });
+
+      const [, spoken] = placeCaptions([silent, speaking], around());
+
+      expect(spoken.visible).toBe(true);
+      expect(overlaps(rectOf(spoken, 90), silent.subject)).toBe(false);
+    });
+
+    it('leaves the seat it was taking to a caption that is speaking', () => {
+      // Two names whose captions want the same band of screen between them.
+      // Seated first, the lower one takes it and the upper is pushed off its
+      // own preferred row; silence the lower one and the row is free again.
+      const below = request({ subject: tile(152, 150), width: 90 });
+      const above = request({ subject: tile(152, 112), width: 90, preferred: 'below' });
+
+      const [, crowded] = placeCaptions([below, above], around());
+      const [, alone] = placeCaptions([{ ...below, speaks: false }, above], around());
+
+      expect(alone.seat).toBe('below');
+      expect(alone.y).toBe(112 + TILE + SUBJECT_GAP);
+      expect(crowded.seat).not.toBe('below');
+    });
   });
 
   it('keeps the seat it holds while that seat is clear, so a walking camera cannot make it flicker', () => {
@@ -431,16 +519,30 @@ describe('where a map caption is allowed to sit', () => {
       expect(seat({ subject, held: under.candidate }).candidate).toBe(under.candidate);
     });
 
-    it('keeps a seat under the player rather than vanish, when that is the only one', () => {
-      // Hemmed in on every side but the one the player is standing on.
-      const walls: Rect[] = [
-        { x: 0, y: 131, width: 320, height: 109 },
-        { x: 0, y: 110, width: 149, height: 25 },
-        { x: 171, y: 110, width: 149, height: 25 },
-      ];
-      const placement = seat({ subject }, { keepClear: walls, player: [player] });
+    // Hemmed in everywhere a caption could go, including over the player's
+    // head, so the only seat left is the one across them.
+    const hemmedIn: Rect[] = [
+      { x: 0, y: 0, width: 320, height: 92 },
+      { x: 0, y: 131, width: 320, height: 109 },
+      { x: 0, y: 110, width: 149, height: 25 },
+      { x: 171, y: 110, width: 149, height: 25 },
+    ];
+
+    it('keeps a warning under the player rather than vanish, when that is the only seat', () => {
+      const placement = seat({ subject, warns: true }, { keepClear: hemmedIn, player: [player] });
       expect(placement.visible).toBe(true);
       expect(placement.seat).toBe('above');
+      expect(overlaps(rectOf(placement), player)).toBe(true);
+    });
+
+    it('hides a name with nowhere but the reader to sit, rather than write across them', () => {
+      // The same corner, but a name. On Route 1's station apron `STATION RELAY
+      // / EXTRACT SEALED / ACTIVATE OAK'S FIELD STATION` was drawn straight
+      // across the player standing beside it. A name only speaks once the
+      // player has walked up to the thing (`captionReveal.ts`), which is
+      // exactly when they are in its way, and stepping on it says what it is in
+      // a dialogue - so the seat under them has nothing left to buy.
+      expect(seat({ subject }, { keepClear: hemmedIn, player: [player] }).visible).toBe(false);
     });
 
     it('lifts over the head of a player beside it before it will sit on them', () => {
@@ -451,7 +553,10 @@ describe('where a map caption is allowed to sit', () => {
         { x: 0, y: 0, width: 149, height: 240 },
         { x: 152, y: 128, width: 16, height: 16 },
       ];
-      const placement = seat({ subject, width: 81, height: 27 }, { keepClear: walls, player: [beside] });
+      const placement = seat(
+        { subject, width: 81, height: 27, warns: true },
+        { keepClear: walls, player: [beside] },
+      );
       expect(placement.visible).toBe(true);
       expect(placement.seat).toBe('above');
       expect(overlaps(rectOf(placement, 81, 27), beside)).toBe(false);

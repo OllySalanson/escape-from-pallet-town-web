@@ -14,7 +14,7 @@ describe('raid objective overlay controls', () => {
     // The chip only spends a second line on the shortcut while an objective is
     // new, so the key it names has to be the key the world scene binds.
     expect(FIELD_GUIDE_HINT).toContain('O');
-    expect(objectiveChipLines('LOST KIT: SW', true)).toContain(FIELD_GUIDE_HINT);
+    expect(objectiveChipLines('LOST KIT: SW', true)[1]).toContain(FIELD_GUIDE_HINT);
   });
 
   it('pauses the world and suppresses its update input while the field guide is open', () => {

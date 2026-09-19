@@ -9,6 +9,7 @@ import {
   type CaptionSide,
   type Rect,
 } from './labelPlacement';
+import { captionSpeaks, type CaptionAudience, type CaptionSpeech } from './captionReveal';
 
 /**
  * A caption pinned to something on the map.
@@ -19,7 +20,10 @@ import {
  * annotation reads as quieter than screen furniture.
  *
  * Where it is allowed to sit is not decided here: `labelPlacement.ts` owns that
- * rule for every caption at once, and this only draws the answer.
+ * rule for every caption at once, and this only draws the answer. Nor is
+ * whether it speaks at all: `captionReveal.ts` owns that, and a caption carries
+ * the `speech` it is judged by - what kind of thing it is, and which tiles it
+ * is about - rather than the scene deciding per label.
  */
 
 export interface WorldLabelTone {
@@ -49,36 +53,41 @@ export interface WorldLabelGrouping {
   readonly speaksFor?: string;
 }
 
+/** Everything a caption is made of but its scene. */
+export interface WorldLabelSpec {
+  /**
+   * The rectangle of map the named thing is drawn on. The caption is seated
+   * around it and never over it.
+   */
+  readonly subject: Rect;
+  readonly text: string;
+  readonly tone: WorldLabelTone;
+  readonly depth: number;
+  readonly placement?: WorldLabelPlacement;
+  /** What kind of thing this caption is, and which tiles - see `captionReveal.ts`. */
+  readonly speech: CaptionSpeech;
+  /** A caption that is one sentence said twice - see `CaptionRequest.group`. */
+  readonly grouping?: WorldLabelGrouping;
+}
+
 export class WorldLabel {
   private readonly frame: Phaser.GameObjects.Graphics;
   private readonly label: Phaser.GameObjects.Text;
   private readonly subject: Rect;
   private readonly preferred: WorldLabelPlacement;
-  private readonly warns: boolean;
+  private speech: CaptionSpeech;
   private readonly grouping: WorldLabelGrouping;
   private tone: WorldLabelTone;
   private held: number | undefined;
+  /** Whether it speaks this frame, decided by `describe()` and read by `request()`. */
+  private speaking = true;
 
-  /**
-   * @param subject The rectangle of map the named thing is drawn on. The
-   * caption is seated around it and never over it.
-   * @param warns True for a caption that prices a step rather than naming a
-   * place. It is seated before every name - see `CaptionRequest.warns`.
-   */
-  public constructor(
-    scene: Phaser.Scene,
-    subject: Rect,
-    text: string,
-    tone: WorldLabelTone,
-    depth: number,
-    placement: WorldLabelPlacement = 'above',
-    warns = false,
-    grouping: WorldLabelGrouping = {},
-  ) {
+  public constructor(scene: Phaser.Scene, spec: WorldLabelSpec) {
+    const { subject, text, tone, depth, placement = 'above', speech, grouping = {} } = spec;
     this.grouping = grouping;
     this.subject = subject;
     this.preferred = placement;
-    this.warns = warns;
+    this.speech = speech;
     this.tone = tone;
     this.frame = scene.add.graphics().setDepth(depth);
     // Drawn from the top-left rather than centred: a centred caption whose text
@@ -103,6 +112,15 @@ export class WorldLabel {
     );
   }
 
+  /**
+   * An exit that has just opened is a different caption to `captionReveal.ts`:
+   * an open way out calls for itself once the clock goes red, and a sealed one
+   * never does.
+   */
+  public setOpen(open: boolean): void {
+    this.speech = { ...this.speech, open };
+  }
+
   public setText(text: string, tone: WorldLabelTone): void {
     this.label.setText(text);
     this.tone = tone;
@@ -110,7 +128,16 @@ export class WorldLabel {
     this.draw(this.windowX, this.windowY);
   }
 
-  /** What this caption asks of `placeCaptions`: what it names, and its size. */
+  /**
+   * Asks `captionReveal.ts` whether this caption speaks to this player, this
+   * frame. Called once per frame before the seating, because what speaks is
+   * what has to be seated.
+   */
+  public describe(audience: CaptionAudience): void {
+    this.speaking = captionSpeaks(this.speech, audience);
+  }
+
+  /** What this caption asks of `placeCaptions`: what it names, its size, and whether it speaks. */
   public request(): CaptionRequest {
     return {
       subject: this.subject,
@@ -118,7 +145,8 @@ export class WorldLabel {
       height: this.windowHeight(),
       preferred: this.preferred,
       held: this.held,
-      warns: this.warns,
+      warns: this.speech.voice === 'warning',
+      speaks: this.speaking,
       ...this.grouping,
     };
   }

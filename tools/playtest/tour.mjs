@@ -9,6 +9,13 @@
 // The player is placed, not walked, so it goes through shut gates: a stop inside
 // a sealed district shows that district as a fresh save would never see it.
 //
+// --look holds the look key for every shot, which is the map with every caption on it: the
+// map-editor view, which is what the game used to draw all the time. Without it a shot is what a
+// player walking there sees - see `src/game/ui/captionReveal.ts`.
+//
+// --remaining=SECONDS winds the raid clock on, for the screens that only exist late in a raid: an
+// open exit calls its own name once the clock goes red - see `src/game/ui/captionReveal.ts`.
+//
 // --insertion=id tours another map, or another part of this one (`town-square`,
 // `route-1`, `route-1-overlook`, `viridian-forest`, a Floodplain drop-in), and
 // --beaten=bossId,bossId tours it as a player who has beaten those bosses sees
@@ -36,6 +43,11 @@ try {
   console.log('gates open in this raid:', await page.evaluate(`${GAME}.scene.getScene('world').defeatedBosses.join(', ') || '(none)'`));
   // Clear the opening dialogue so it is not across every frame.
   for (let i = 0; i < 12; i += 1) { await press('Space'); await wait(200); }
+  if (args.includes('--look')) { await page.keyDown('KeyL'); await wait(200); }
+  const remaining = args.find((a) => a.startsWith('--remaining='));
+  if (remaining) { const s = Number(remaining.split('=')[1]);
+    await page.evaluate(`(() => { const m = ${GAME}.scene.getScene('world').runSession.manager; m.elapsedMsValue = m.durationMs - ${s} * 1000; })()`);
+    await wait(200); console.log('raid clock wound to', s, 'seconds left'); }
   for (const stop of stops) {
     const [name, wantX, wantY] = stop.split(':');
     const { x, y } = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const c = w.collisionData;
