@@ -75,7 +75,7 @@ describe('raid duration', () => {
     // the way a raid falls back on, so it too has to be walkable many times over.
     const longWayTiles =
       walkingDistance(relay, insertion, kit) + walkingDistance(relay, kit, southGate.position);
-    expect(longWayTiles).toBe(105);
+    expect(longWayTiles).toBe(99);
     expect(longWayTiles * STEP_COST_MS).toBeLessThan(RAID_DURATION_MS * 0.1);
   });
 

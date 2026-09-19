@@ -255,18 +255,21 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '           ,,        ..   ',
     '   .....   ,,        ..   ',
     '   .....   ,,,,,,,,, ..   ',
-    '   .....   ,,    ,,       ',
+    '   .....   ,,    ,,  ,,   ',
     '   .....   ,,    ,,,,,,,,,',
     '   .....   ,,         ,,,,',
     '    ,,,,,,,,,,            ',
-    '            ,,            ',
-    '            ,,,,,,,       ',
-    '                 ,,       ',
-    '              ,,,,,       ',
+    '            ,,,,          ',
+    '              ,,          ',
+    '              ,,          ',
+    '              ,,          ',
     '              ,,          ',
   ]);
   map.plant(6, 50, 'house');
   map.plant(24, 49, 'hut');
+  // The South Gate: the one way out of this map that is always open, and until
+  // now a road that stopped in a wood. The road runs through the arch.
+  map.plant(16, 57, 'stoneArch');
 
   // == MILL WEIR - the east bank, north ====================================
   // The towered bridge lands here. The road from it runs up to the towpath

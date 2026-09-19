@@ -277,8 +277,15 @@ const PROPS = {
       [1, 4], [2, 4], [3, 4],
     ],
   }),
-  /** A free-standing stone arch over a road, walked through down the middle. */
-  stoneArch: block('stone arch', 24, 31, 4, 3, { walkable: [[1, 2], [2, 2]] }),
+  /**
+   * A free-standing stone arch over a road. Its legs are solid; the opening is
+   * ground, and the crown of the arch is drawn over whoever is under it, so a
+   * road runs through it rather than up to it.
+   */
+  stoneArch: block('stone arch', 24, 31, 4, 3, {
+    walkable: [[1, 1], [2, 1], [1, 2], [2, 2]],
+    over: [[1, 0], [2, 0]],
+  }),
   /** A small columned shrine. Somewhere people left things. */
   shrine: block('shrine', 6, 22, 2, 2),
   /** A figure on a plinth, taller than anyone standing beside it. */

@@ -15,8 +15,8 @@
  * - The front door (13,9) to the ranger station (12,16) is 12 tiles, the station
  *   to the contract (13,24) is 25, and the contract to the Radio Exit the
  *   station opens is 11. The contract's own route is 48 tiles: about 7 seconds
- *   of walking. The always-open South Gate is the long way home, 105 tiles by
- *   way of the contract - about 16 seconds. (These were 53 tiles to a South
+ *   of walking. The always-open South Gate is the long way home, 99 tiles by
+ *   way of the contract - about 15 seconds. (These were 53 tiles to a South
  *   Gate 12 from the contract, before the map was redrawn as a vast one played
  *   a district at a time; the nearest exit to the contract is 11 away, not 12.)
  * - The greediest sensible first raid - ranger station, the yard's potion, the

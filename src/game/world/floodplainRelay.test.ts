@@ -134,7 +134,7 @@ describe('the Floodplain checkpoint', () => {
     // Dry: never a step in tall grass. This is the road, and it has to exist.
     const dry = stepsFromInsertion(union(checkpoint, tallGrass), southGate.position);
     expect(`SOUTH GATE by road: ${dry < 0 ? 'unreachable' : `${dry} steps`}`).toBe(
-      'SOUTH GATE by road: 85 steps',
+      'SOUTH GATE by road: 79 steps',
     );
   });
 
