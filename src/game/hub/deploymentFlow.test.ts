@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RAID_BAG_GRID } from '../items';
+import { blocksFor, RAID_BAG_GRID, stackSizeOf } from '../items';
 import { CHARMANDER, Pokemon, SQUIRTLE } from '../pokemon';
 import { createStartingStash, type Stash } from '../stash';
 import { DeploymentFlow } from './deploymentFlow';
@@ -152,6 +152,35 @@ describe('deployment flow', () => {
     expect(flow.adjustSecureItem('potion', 1)).toBeUndefined();
     expect(flow.adjustSecureItem('poke-ball', 1)).toBeUndefined();
     expect(flow.securedItems).toHaveLength(2);
+  });
+
+  /**
+   * A playtest found this and only a playtest could have: a raid that carried
+   * forty scrip out, with the scrip's own row in the container, came home with
+   * one note. The container is measured in squares and the scrip stacks a
+   * bundle to a square, so a press has to reserve the whole square.
+   */
+  it('reserves a whole square of a stacked kind, not one of it', () => {
+    const { flow } = seedFlow();
+    flow.togglePokemon('charmander-1');
+    flow.openSecureSlot();
+
+    expect(flow.adjustSecureItem('scrip', 1)).toBeUndefined();
+    expect(flow.secureQuantity('scrip')).toBe(stackSizeOf('scrip'));
+    expect(blocksFor('scrip', flow.secureQuantity('scrip'))).toBe(1);
+    // And it is still one square of the container, not a stack of them.
+    expect(flow.secureCells.used).toBe(1);
+
+    // A second press is a second square, and taking one out takes a square out.
+    expect(flow.adjustSecureItem('scrip', 1)).toBeUndefined();
+    expect(flow.secureCells.used).toBe(2);
+    flow.adjustSecureItem('scrip', -1);
+    expect(flow.secureQuantity('scrip')).toBe(stackSizeOf('scrip'));
+
+    // Everything a square holds one of is unchanged: a press is still one.
+    flow.adjustItem('potion', 2);
+    flow.adjustSecureItem('potion', 1);
+    expect(flow.secureQuantity('potion')).toBe(1);
   });
 
   it('drops protection when the protected Pokemon or supplies leave the loadout', () => {

@@ -61,6 +61,15 @@ export type ItemEffect =
    */
   | { readonly type: 'material' }
   /**
+   * Money. It does nothing at all in the field, in a fight or at the Outfitter:
+   * its only use is across the Ferryman's counter (`../hub/trader`), which is
+   * what keeps it loot rather than a score. It is found in a raid, never
+   * packed, carried in the pack and destroyed with it on a wipe unless the
+   * secure slot names it - the same shape as a material, and for the same
+   * reason.
+   */
+  | { readonly type: 'currency' }
+  /**
    * Evolves the Pokemon it is used on, if its line answers to this stone. The
    * stone is the item's own id rather than a field, because a second field
    * naming the same thing is a second answer waiting to disagree with the
@@ -103,8 +112,8 @@ export interface ItemDefinition {
    * ships, because a second Potion taking a second square is the whole point.
    *
    * It exists for the things that are counted in the hundreds rather than the
-   * handful - money is the one on its way - where one square per unit would be
-   * absurd and one square for the lot is what a player expects.
+   * handful - the scrip is the one - where one square per unit would be absurd
+   * and one square for the lot is what a player expects.
    */
   readonly stackSize?: number;
   readonly description: string;
@@ -206,6 +215,31 @@ export const ITEMS = {
     effect: { type: 'material' },
   },
   /**
+   * Money, and the whole of it. One item, one stack, a quantity - found in the
+   * field, spent only at the Ferryman's counter.
+   *
+   * It is deliberately in the same pocket and under the same found-only rules
+   * as a material rather than in a wallet of its own: a wallet is a number that
+   * survives everything, and the captain's ruling is that money is loot. In the
+   * pack it can be dropped by a wipe, protected by the secure slot, and - once
+   * the grid pack lands - it will cost cells like anything else.
+   */
+  scrip: {
+    id: 'scrip',
+    displayName: 'Scrip',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    // A bundle to a square. Money has to cost room or it is a score with an
+    // icon, and one square per note would be absurd - so it is counted in
+    // bundles the size of the Ferryman's berth, which is the thing a player is
+    // most often saving for. A raid that finds every note on the richest map
+    // carries a square of them; one that hoards four raids' worth gives up a
+    // fifth of its pack to do it.
+    stackSize: 250,
+    description: 'League notes, water-stained. The Ferryman still takes them; nobody else does.',
+    effect: { type: 'currency' },
+  },
+  /**
    * The one thing in the pack that is neither a supply nor a material: it is
    * spent on a Pokemon rather than at base. It is rare field loot, it is used
    * from the raid's own Bag on a Pokemon standing beside you, and it is
@@ -285,8 +319,57 @@ export const MATERIAL_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
   (item) => item.effect.type === 'material',
 ).map((item) => item.id as SupplyItemId);
 
+/** Money. One item, one id, and the only thing the Ferryman's stock is priced in. */
+export const CURRENCY_ITEM_ID = 'scrip';
+
+/**
+ * Everything that is found in a raid rather than packed for one: the materials
+ * and the money.
+ *
+ * They share one rule, not two. Neither may be carried into a raid, because
+ * neither does anything there; both arrive in the pack as loot; both are
+ * destroyed with it on a wipe unless room was reserved for their *kind* in the
+ * secure container, which is the only way squares can be set aside for
+ * something that does not exist yet. Every
+ * place that used to ask `isMaterial` for that reason asks this instead - and
+ * `isMaterial` still means only "the Outfitter takes it", which is a different
+ * question with a different answer.
+ */
+export const FOUND_ONLY_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
+  (item) => item.effect.type === 'material' || item.effect.type === 'currency',
+).map((item) => item.id as SupplyItemId);
+
 export function isMaterial(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'material';
+}
+
+/**
+ * An item's name for a quantity: "3 Potions", but "40 scrip".
+ *
+ * Money is a mass noun and every other item in the catalogue is a count noun,
+ * so the rule is read off the item rather than guessed by the caller that is
+ * printing it - the result screen said "Banked 40 Scrips" in a playtest, and
+ * the same sentence is built in three places.
+ */
+export function itemNameFor(itemId: string, quantity: number): string {
+  const item = getItemById(itemId);
+  if (!item) {
+    return itemId;
+  }
+  return item.effect.type === 'currency' || quantity === 1
+    ? item.displayName
+    : `${item.displayName}s`;
+}
+
+/** Money, by id. Nothing else in the catalogue answers to it. */
+export function isCurrency(itemId: string): boolean {
+  return getItemById(itemId)?.effect.type === 'currency';
+}
+
+/** Found in a raid, never packed for one: a material or money. */
+export function isFoundOnly(itemId: string): boolean {
+  const type = getItemById(itemId)?.effect.type;
+  return type === 'material' || type === 'currency';
 }
 
 /** Every piece of gear, in catalogue order: what a give menu offers. */
@@ -339,6 +422,8 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} can only be used in battle.` };
     case 'material':
       return { used: false, message: `${item.displayName} is for the Outfitter, not the field.` };
+    case 'currency':
+      return { used: false, message: `${item.displayName} is only good at the Ferryman's counter.` };
     case 'evolution-stone': {
       const species = evolutionByStone(pokemon.base.id, item.id);
       const evolution = species ? pokemon.evolveInto(species) : null;

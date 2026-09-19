@@ -137,6 +137,12 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'pallet-town-antidote', position: { x: 8, y: 37 }, itemId: 'antidote', quantity: 1 },
       { id: 'pallet-town-parts-crate', position: { x: 4, y: 26 }, itemId: 'parts-crate', quantity: 1 },
       { id: 'pallet-town-linen-roll', position: { x: 18, y: 33 }, itemId: 'linen-roll', quantity: 1 },
+      // Scrip. Two bundles a map on the small three and three on the vast one,
+      // in unequal amounts so a find is a find rather than a tick - and never
+      // more than a raid's worth of it, because the Ferryman's prices are set
+      // against what a raid actually brings home (`world/hub/trader.ts`).
+      { id: 'pallet-town-scrip-yard', position: { x: 11, y: 24 }, itemId: 'scrip', quantity: 25 },
+      { id: 'pallet-town-scrip-shed', position: { x: 26, y: 30 }, itemId: 'scrip', quantity: 40 },
     ],
   },
   'route-1': {
@@ -149,6 +155,8 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'route-1-great-ball', position: { x: 12, y: 15 }, itemId: 'great-ball', quantity: 1 },
       { id: 'route-1-cable-coil', position: { x: 8, y: 9 }, itemId: 'cable-coil', quantity: 1 },
       { id: 'route-1-radio-valve', position: { x: 22, y: 18 }, itemId: 'radio-valve', quantity: 1 },
+      { id: 'route-1-scrip-verge', position: { x: 17, y: 7 }, itemId: 'scrip', quantity: 30 },
+      { id: 'route-1-scrip-station', position: { x: 23, y: 18 }, itemId: 'scrip', quantity: 45 },
     ],
   },
   'viridian-forest': {
@@ -162,6 +170,8 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'forest-antidote', position: { x: 21, y: 30 }, itemId: 'antidote', quantity: 1 },
       { id: 'forest-lamp-oil', position: { x: 9, y: 12 }, itemId: 'lamp-oil', quantity: 1 },
       { id: 'forest-mooring-rope', position: { x: 24, y: 27 }, itemId: 'mooring-rope', quantity: 1 },
+      { id: 'forest-scrip-stand', position: { x: 13, y: 24 }, itemId: 'scrip', quantity: 35 },
+      { id: 'forest-scrip-ridge', position: { x: 26, y: 13 }, itemId: 'scrip', quantity: 50 },
       // The one evolution stone in the game, on the one map whose tall grass
       // holds a Pikachu - so the stone and the Pokemon it answers to are found
       // in the same place. One raid in five, rolled on its own rather than out
@@ -200,6 +210,9 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'floodplain-mill-lamp-oil', position: { x: 46, y: 22 }, itemId: 'lamp-oil', quantity: 1 },
       { id: 'floodplain-keep-cable-coil', position: { x: 54, y: 9 }, itemId: 'cable-coil', quantity: 1 },
       { id: 'floodplain-linen-roll', position: { x: 6, y: 30 }, itemId: 'linen-roll', quantity: 1 },
+      { id: 'floodplain-scrip-town', position: { x: 14, y: 25 }, itemId: 'scrip', quantity: 30 },
+      { id: 'floodplain-scrip-mill', position: { x: 46, y: 30 }, itemId: 'scrip', quantity: 45 },
+      { id: 'floodplain-scrip-keep', position: { x: 50, y: 12 }, itemId: 'scrip', quantity: 60 },
     ],
   },
 };

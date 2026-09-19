@@ -18,6 +18,7 @@ export const ITEM_ICONS = {
   'lamp-oil': 'lamp-oil',
   'mooring-rope': 'mooring-rope',
   'linen-roll': 'linen-roll',
+  scrip: 'scrip',
   'thunder-stone': 'thunder-stone',
   leftovers: 'leftovers',
   'focus-band': 'focus-band',

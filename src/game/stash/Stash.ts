@@ -4,7 +4,7 @@ import {
   fitsInGrid,
   getItemById,
   isHeldItemId,
-  isMaterial,
+  isFoundOnly,
   type BagContents,
   type GridSize,
 } from '../items';
@@ -634,11 +634,12 @@ export class Stash {
       securedItems.set(itemId, Math.max(0, (securedItems.get(itemId) ?? 0) - protectedQuantity));
       this.removeItem(itemId, quantity - protectedQuantity);
     }
-    // A material is found rather than brought, so the loop above never met it:
-    // the slot names its kind and the caller has already cut the quantity to
-    // what was still in the pack, which is the only place this stash learns it.
+    // A material, and the scrip beside it, are found rather than brought, so
+    // the loop above never met either: the container reserved room for the kind
+    // and the caller has already cut that room to what was still in the pack,
+    // which is the only place this stash learns it.
     for (const [itemId, quantity] of securedItems) {
-      if (isMaterial(itemId) && !broughtItems.some((item) => item.itemId === itemId) && quantity > 0) {
+      if (isFoundOnly(itemId) && !broughtItems.some((item) => item.itemId === itemId) && quantity > 0) {
         this.addItem(itemId, quantity);
       }
     }

@@ -77,6 +77,11 @@ that save opens on, by clicking the insertion's own row in the loadout.
   the next one: `--completed=survey-the-braid` puts the cordon ledger on Pallet
   Town and the warden's resupply on Viridian Forest.
 - `--hp=N` - the team came home with no more than N HP each.
+- `--secure=itemId[:n],..` - takes the secure-slot detour on the way out and
+  puts `n` (default one) squares of each kind into the container, by the row's
+  own stepper. It is the only way the container is checked end to end, and the
+  only way at all for a kind that is *found* rather than packed - a material, a
+  note of scrip - whose row is room reserved for something not held yet.
 
 `raid.mjs` has two more. `--work=LABEL` (`--work=sluice-wheel`) works a landmark
 before leaving - stood on where it is ground, faced and worked with the interact
@@ -84,6 +89,9 @@ key where it is not - which is the only way an exit a landmark opens is ever
 left by: `--insertion=town-square --work=sluice-wheel --exit=west-culvert`.
 `--via=x:y,x:y` walks through those tiles first, in order, for a walk that is not
 to anything - the way along a reveal, which an exit once stood in.
+`--grab=itemId,..` walks to every piece of that item **this** raid laid, read off
+the run plan: a map's authored loot position is only a fallback, so nothing else
+can send a driver to a thing on the ground.
 `--fight` stays in every fight instead of running from the wild ones.
 
 Nobody chooses the other two endings, so they are reached sideways. The clock

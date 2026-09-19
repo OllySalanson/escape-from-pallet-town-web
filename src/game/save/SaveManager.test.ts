@@ -1264,6 +1264,137 @@ describe('SaveManager', () => {
     return saves;
   }
 
+  /** A save that stands high enough with the Ferryman to be sold anything. */
+  function counterSave(storage: MemoryStorage, scrip = 1_000): SaveManager {
+    const saves = outfittedSave(storage);
+    const game = saves.load()!;
+    game.stash.addItem('scrip', scrip);
+    game.stash.addItem('cable-coil', 2);
+    game.stash.addItem('lamp-oil', 2);
+    saves.save({
+      ...game,
+      raidProgress: {
+        ...game.raidProgress,
+        completedContracts: ['recover-lost-field-kit', 'survey-the-braid'],
+        defeatedBosses: ['floodplain-toll-keeper', 'floodplain-sluice-keeper'],
+      },
+    });
+    return saves;
+  }
+
+  it('sells one thing off the shelf, takes the money and spends the ration', () => {
+    const storage = new MemoryStorage();
+    const saves = counterSave(storage);
+    const before = saves.load()!.stash;
+    const potions = before.itemCount('potion');
+
+    expect(saves.buyTraderStock('potion')).toMatchObject({ ok: true, saved: true });
+
+    const after = saves.load()!;
+    expect(after.stash.itemCount('potion')).toBe(potions + 1);
+    expect(after.stash.itemCount('scrip')).toBe(1_000 - 120);
+    // Turnover, which is the only thing standing is bought with.
+    expect(after.raidProgress.traderScripSpent).toBe(120);
+    expect(after.traderRationUsed).toBe(1);
+  });
+
+  it('refuses a second purchase on a one-a-trip ration, and costs nothing for refusing', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const seeded = counterSave(storage);
+    const game = seeded.load()!;
+    // Two contracts and one boss is seven points - a regular, and a regular's
+    // ration is one thing a trip however much money is on the table.
+    seeded.save({
+      ...game,
+      raidProgress: { ...game.raidProgress, defeatedBosses: ['floodplain-toll-keeper'] },
+    });
+
+    expect(saves.buyTraderStock('potion')).toMatchObject({ ok: true });
+    const held = saves.load()!.stash.itemCount('scrip');
+    const refused = saves.buyTraderStock('potion');
+    expect(refused.ok).toBe(false);
+    expect(refused.message).toContain('trip');
+    expect(saves.load()!.stash.itemCount('scrip')).toBe(held);
+  });
+
+  it('hands the ration back only once the raid it was spent before has resolved', () => {
+    const storage = new MemoryStorage();
+    const saves = counterSave(storage);
+    expect(saves.buyTraderStock('potion')).toMatchObject({ ok: true });
+
+    // A reload is not a resolution, exactly as with the ward's bed.
+    expect(new SaveManager(storage).load()?.traderRationUsed).toBe(1);
+    expect(saves.bankRun({ pokemon: [], items: [] })).toBe(true);
+    expect(saves.load()?.traderRationUsed).toBe(0);
+  });
+
+  it('barters found goods for gear without touching the money, and only once', () => {
+    const storage = new MemoryStorage();
+    const saves = counterSave(storage);
+    const before = saves.load()!.stash;
+    const crates = before.itemCount('parts-crate');
+    const coils = before.itemCount('cable-coil');
+
+    expect(saves.takeTraderBarter('barter-quick-claw')).toMatchObject({ ok: true });
+
+    const after = saves.load()!;
+    expect(after.stash.itemCount('quick-claw')).toBe(1);
+    expect(after.stash.itemCount('parts-crate')).toBe(crates - 2);
+    expect(after.stash.itemCount('cable-coil')).toBe(coils - 1);
+    // Not a penny: these are the things the captain's ruling puts beyond money,
+    // so a barter can never raise standing either.
+    expect(after.stash.itemCount('scrip')).toBe(1_000);
+    expect(after.raidProgress.traderScripSpent).toBe(0);
+    expect(after.raidProgress.traderBarters).toEqual(['barter-quick-claw']);
+
+    expect(saves.takeTraderBarter('barter-quick-claw').ok).toBe(false);
+    expect(saves.load()!.stash.itemCount('quick-claw')).toBe(1);
+  });
+
+  it('rents a berth that protects one more stack, and only for that raid', () => {
+    const storage = new MemoryStorage();
+    const saves = counterSave(storage);
+    expect(saves.buyTraderBerth()).toMatchObject({ ok: true });
+    expect(saves.load()!.traderBerthPaid).toBe(true);
+    expect(saves.load()!.stash.itemCount('scrip')).toBe(1_000 - 250);
+
+    // Three stacks come home instead of the two a fresh save protects.
+    const brought = [
+      { itemId: 'poke-ball', quantity: 2 },
+      { itemId: 'potion', quantity: 2 },
+      { itemId: 'antidote', quantity: 1 },
+    ];
+    const held = saves.load()!.stash.listItems();
+    expect(saves.applyWipeLoss(['bulbasaur-1'], brought, { items: brought })).toBe(true);
+    const after = saves.load()!;
+    for (const { itemId } of brought) {
+      expect(after.stash.itemCount(itemId)).toBe(held[itemId]);
+    }
+    // And the berth is gone with the raid, paid for or not.
+    expect(after.traderBerthPaid).toBe(false);
+  });
+
+  it('loses found money on a wipe, and keeps it when the slot names it', () => {
+    const lost = (secured: boolean): number => {
+      const storage = new MemoryStorage();
+      const saves = counterSave(storage, 40);
+      // 120 scrip found in the field, in a pack that also held a Potion.
+      return saves.applyWipeLoss(
+        ['bulbasaur-1'],
+        [{ itemId: 'potion', quantity: 1 }],
+        secured ? { items: [{ itemId: 'scrip', quantity: 120 }] } : {},
+      )
+        ? saves.load()!.stash.itemCount('scrip')
+        : -1;
+    };
+
+    // Money in the pack is money a wipe takes: the 40 already banked is all
+    // that is left. Named in the slot, the whole find comes home.
+    expect(lost(false)).toBe(40);
+    expect(lost(true)).toBe(40 + 120);
+  });
+
   it.each([1, 2, 3, 4, 5])(
     'opens a version %i save written before the Outfitter with nothing built and no ward bed used',
     (version) => {

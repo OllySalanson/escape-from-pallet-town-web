@@ -140,8 +140,9 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     id: 'secure-locker-1',
     icon: 'supply-crate',
     name: 'Secure locker I',
-    effect: 'One more protected item stack.',
-    detail: 'The secure slot protects one more item stack, so it comes home from every raid - even a lost one.',
+    effect: 'One more column of the secure container.',
+    detail:
+      'The secure container grows by a column, so more of what you carry comes home from every raid - even a lost one.',
     cost: {
       pokemon: 2,
       supplies: [{ itemId: 'parts-crate', quantity: 2 }],

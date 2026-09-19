@@ -211,19 +211,24 @@ describe('what a banked contract buys', () => {
   it('stacks the Outfitter\'s locker on top of the ledger\'s, from the two lists alone', () => {
     const ledger = [FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger'];
 
-    expect(secureGrid([], ['secure-locker-1'])).toEqual({ width: 3, height: 2 });
-    expect(secureGrid(ledger, ['secure-locker-1'])).toEqual({ width: 4, height: 2 });
+    expect(secureGrid([], ['secure-locker-1'], false)).toEqual({ width: 3, height: 2 });
+    expect(secureGrid(ledger, ['secure-locker-1'], false)).toEqual({ width: 4, height: 2 });
     // The second locker protects a Pokemon, not another column.
-    expect(secureGrid(ledger, ['secure-locker-1', 'secure-locker-2'])).toEqual({ width: 4, height: 2 });
+    expect(secureGrid(ledger, ['secure-locker-1', 'secure-locker-2'], false)).toEqual({ width: 4, height: 2 });
+    // And the Ferryman's berth is one more column for one raid, on the same
+    // total - rented rather than built, so it rides on its own argument and
+    // never on either banked list.
+    expect(secureGrid(ledger, ['secure-locker-1'], true)).toEqual({ width: 5, height: 2 });
+    expect(secureGrid([], [], true)).toEqual({ width: 3, height: 2 });
     expect(securePokemonLimit([])).toBe(1);
     expect(securePokemonLimit(['secure-locker-1'])).toBe(1);
     expect(securePokemonLimit(['secure-locker-1', 'secure-locker-2'])).toBe(2);
   });
 
   it('enlarges the secure slot when the cordon ledger is banked, and the raid honours it', () => {
-    expect(secureGrid([], [])).toEqual({ width: 2, height: 2 });
-    expect(secureGrid([FIRST_CONTRACT_ID, 'survey-the-braid'], [])).toEqual({ width: 2, height: 2 });
-    expect(secureGrid([FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger'], [])).toEqual({
+    expect(secureGrid([], [], false)).toEqual({ width: 2, height: 2 });
+    expect(secureGrid([FIRST_CONTRACT_ID, 'survey-the-braid'], [], false)).toEqual({ width: 2, height: 2 });
+    expect(secureGrid([FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger'], [], false)).toEqual({
       width: 3,
       height: 2,
     });
@@ -314,6 +319,7 @@ describe('saves written before contracts were a list', () => {
       secureGrid(
         loaded.raidProgress.completedContracts,
         loaded.raidProgress.outfitterUpgrades,
+        loaded.traderBerthPaid,
       ),
     ).toEqual({ width: 2, height: 2 });
   });
