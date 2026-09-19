@@ -37,6 +37,8 @@ import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { DialogBox } from '../ui/DialogBox';
 import { WORLD_ICONS, iconTextureKey } from '../ui/icons';
 import { rollEncounter } from '../world/wildEncounters';
+import { hasPlayerSetOff } from '../world/hunterArrival';
+import { SpentPresses } from '../world/spentPresses';
 import { consumeTeachingEncounter } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
 import {
@@ -325,6 +327,17 @@ export class WorldScene extends Phaser.Scene {
    * what lets a direction key get you out of the second kind.
    */
   private unsolicitedDialog = false;
+  /**
+   * True while the deployment briefing is still on screen. It is the one box
+   * the raid opens on its own first frame, before the player has touched a key,
+   * and the raid clock does not run behind it - see `advanceRunClock()`.
+   */
+  private openingBriefingOpen = false;
+  /**
+   * Direction presses already spent on answering a dialogue, which movement
+   * must not read again. See `spentPresses.ts` for the whole argument.
+   */
+  private spentPresses = new SpentPresses<Phaser.Input.Keyboard.Key>();
   private hunterState: HunterState = createHunterState();
   private timerThreat: 'normal' | 'urgent' | 'enraged' = 'normal';
   /**
@@ -364,6 +377,8 @@ export class WorldScene extends Phaser.Scene {
     this.pendingResultScreen = false;
     this.pendingTrainerBattle = undefined;
     this.unsolicitedDialog = false;
+    this.openingBriefingOpen = false;
+    this.spentPresses = new SpentPresses();
     // Phaser destroyed the object with the last raid's scene, so this only has
     // to stop pointing at it - and it does have to, or the first frame of the
     // next raid hands the keyboard to a dead panel.
@@ -1334,12 +1349,18 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private readInput(): GridInputState {
+    const held = (key: Phaser.Input.Keyboard.Key): boolean => this.spentPresses.isFreshlyDown(key);
     return {
-      up: this.controls.up.isDown || this.controls.w.isDown,
-      down: this.controls.down.isDown || this.controls.s.isDown,
-      left: this.controls.left.isDown || this.controls.a.isDown,
-      right: this.controls.right.isDown || this.controls.d.isDown,
+      up: held(this.controls.up) || held(this.controls.w),
+      down: held(this.controls.down) || held(this.controls.s),
+      left: held(this.controls.left) || held(this.controls.a),
+      right: held(this.controls.right) || held(this.controls.d),
     };
+  }
+
+  private get directionKeys(): readonly Phaser.Input.Keyboard.Key[] {
+    const { up, down, left, right, w, a, s, d } = this.controls;
+    return [up, down, left, right, w, a, s, d];
   }
 
   private isInteractionPressed(): boolean {
@@ -1359,16 +1380,7 @@ export class WorldScene extends Phaser.Scene {
     }
     return (
       this.unsolicitedDialog &&
-      [
-        this.controls.up,
-        this.controls.down,
-        this.controls.left,
-        this.controls.right,
-        this.controls.w,
-        this.controls.a,
-        this.controls.s,
-        this.controls.d,
-      ].some((key) => Phaser.Input.Keyboard.JustDown(key))
+      this.directionKeys.some((key) => Phaser.Input.Keyboard.JustDown(key))
     );
   }
 
@@ -1376,6 +1388,10 @@ export class WorldScene extends Phaser.Scene {
     if (!this.isDialogAdvancePressed()) {
       return;
     }
+
+    // The press that answers a dialogue is spent on answering it: a direction
+    // key still held when the box closes must not also walk a tile.
+    this.spentPresses.spendHeld(this.directionKeys);
 
     if (this.dialogBox.isCurrentMessageComplete) {
       audioManager.play('textAdvance');
@@ -1506,6 +1522,7 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     session.firstDeploymentBriefingShown = true;
+    this.openingBriefingOpen = true;
     // A contract that needs supplies out of the pack says so before the first
     // step, because arriving at the drop without them wastes the whole raid.
     const missing = missingCarryIn(contractCarryIn(contract), (itemId) => this.bag.count(itemId));
@@ -1686,6 +1703,9 @@ export class WorldScene extends Phaser.Scene {
     const steppedFrom = this.currentTile;
     this.currentTile = { ...this.targetTile };
     this.targetTile = null;
+    if (this.runSession) {
+      this.runSession.stepsTaken = (this.runSession.stepsTaken ?? 0) + 1;
+    }
     this.setPlayerPosition(this.stepEnd.x, this.stepEnd.y);
     this.showIdlePose();
     this.saveGame();
@@ -1750,13 +1770,17 @@ export class WorldScene extends Phaser.Scene {
       // The authored teaching fight replaces the first roll of a first-contract
       // raid, so a new player's opening battle is winnable and explicable.
       const teaching = consumeTeachingEncounter(this.runSession);
+      // The fight repeats while the contract is open; the lesson does not. A
+      // player who lost their first raid met the same Pidgey with the same
+      // three lines explaining a screen they had just spent a raid reading.
+      const teachingBattle = teaching !== null && new SaveManager().claimBattleLesson();
       const wild =
         teaching ?? rollEncounter(encounters, rng === undefined ? undefined : () => rng.next());
       if (wild) {
         audioManager.play('encounter');
         this.transitionToBattle({
           wild,
-          teachingBattle: teaching !== null,
+          teachingBattle,
           party: this.party,
           bag: this.bag,
           caughtPokemonStash: this.caughtPokemonStash,
@@ -2212,7 +2236,13 @@ export class WorldScene extends Phaser.Scene {
     // reading "FOUND YOU." is billing them for being caught twice: the hunter's
     // capture is not a dialogue they chose to open, they cannot walk out of it, and
     // watching the clock drain behind it is the only thing the box lets them do.
-    const clockMs = this.pendingTrainerBattle ? 0 : deltaMs;
+    //
+    // The deployment briefing is free for a plainer reason. Dialogue costs time
+    // because opening it is a choice; this box is raised by the raid itself on
+    // its first frame, to teach the controls, and the chip read 4:58 before it
+    // had finished typing. The raid starts when the player can first act in it.
+    this.openingBriefingOpen = this.openingBriefingOpen && this.dialogBox.visible;
+    const clockMs = this.pendingTrainerBattle || this.openingBriefingOpen ? 0 : deltaMs;
     const snapshot = this.runSession.manager.tick(clockMs);
     this.advanceHunterSearch(clockMs);
     this.placeHunterIfDue(snapshot.elapsedMs);
@@ -2330,6 +2360,7 @@ export class WorldScene extends Phaser.Scene {
     const awaitingSpawn =
       !this.hunterState.spawned &&
       this.isHunterEligible() &&
+      hasPlayerSetOff(this.runSession.stepsTaken) &&
       elapsedMs >= (this.runSession.plan?.hunter.spawnDelayMs ?? HUNTER_SPAWN_MS);
     const awaitingPlacement =
       this.hunterState.spawned &&

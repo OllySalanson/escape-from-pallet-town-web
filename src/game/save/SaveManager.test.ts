@@ -1201,4 +1201,37 @@ describe('SaveManager', () => {
     expect(saves.applyWipeLoss(['pidgey-1'], [])).toBe(true);
     expect(saves.load()?.wardTreatmentsUsed).toBe(0);
   });
+
+  /**
+   * Playtest 3, B6a: after a lost first raid, the second raid's first grass
+   * step replayed all three teaching lines. The fight may repeat while the
+   * contract is open; the lesson is owed once per save, and a wipe - which
+   * rewrites the save - must not forget it was given.
+   */
+  it('owes the battle lesson once per save, across a lost raid', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(SQUIRTLE, 5), 'starter');
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'floodplain-relay',
+      position: { x: 1, y: 1 },
+      stash,
+      starterSpeciesId: 'squirtle',
+    });
+
+    expect(saves.claimBattleLesson()).toBe(true);
+    expect(saves.claimBattleLesson()).toBe(false);
+
+    expect(saves.applyWipeLoss(['starter'], [], {}, [])).toBe(true);
+    expect(new SaveManager(storage).claimBattleLesson()).toBe(false);
+    // Banking a contract rebuilds the progress record, and must carry it too.
+    expect(saves.bankFirstContractRun({ pokemon: [], items: [] }).granted).toBe(true);
+    expect(saves.load()?.raidProgress.battleLessonGiven).toBe(true);
+  });
+
+  it('gives the lesson when there is no save to remember it in', () => {
+    expect(new SaveManager(new MemoryStorage()).claimBattleLesson()).toBe(true);
+  });
 });

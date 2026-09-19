@@ -88,6 +88,15 @@ export interface RaidProgress {
    * written before the Outfitter simply have none built.
    */
   readonly outfitterUpgrades: readonly string[];
+  /**
+   * Set once the authored opening fight has explained the battle screen. The
+   * fight itself repeats for as long as the first contract is open, because a
+   * raid carrying that contract still needs an opening it can win; the three
+   * lines that teach the screen are said once per save. Absent on every save
+   * written before it existed, which reads as "not yet" and costs such a player
+   * one more hearing at worst.
+   */
+  readonly battleLessonGiven?: boolean;
 }
 
 /**
@@ -309,6 +318,24 @@ export class SaveManager {
       saved: this.save({ ...game, raidProgress, ...RAID_RESOLVED }),
       granted: true,
     };
+  }
+
+  /**
+   * Whether the opening fight still owes this save its lesson, recording that
+   * it has now been given. Asked at the moment the fight is handed to the
+   * battle screen, so a raid lost inside that very fight does not buy the
+   * lecture a second time. With no save to remember it in, the lesson is given.
+   */
+  public claimBattleLesson(): boolean {
+    const game = this.load();
+    if (!game) {
+      return true;
+    }
+    if (game.raidProgress.battleLessonGiven === true) {
+      return false;
+    }
+    this.save({ ...game, raidProgress: { ...game.raidProgress, battleLessonGiven: true } });
+    return true;
   }
 
   /** The first contract's banking path, named for the one raid that uses it. */
@@ -630,6 +657,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     defeatedBosses: uniqueStrings(value.defeatedBosses),
     reachedInsertions: uniqueStrings(value.reachedInsertions),
     outfitterUpgrades,
+    ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now
