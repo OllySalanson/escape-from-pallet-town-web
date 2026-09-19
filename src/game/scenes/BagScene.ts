@@ -4,6 +4,7 @@ import { ItemCategory, useFieldItem, type Bag, type ItemDefinition } from '../it
 import type { PokemonParty } from '../pokemon';
 import { itemIcon } from '../ui/icons';
 import { MenuOverlay, hpBar, pokemonAvatar } from '../ui/MenuOverlay';
+import { bagFocusPreference } from '../ui/menuFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 
 const SCREEN_WIDTH = 320;
@@ -77,13 +78,13 @@ export class BagScene extends Phaser.Scene {
     this.renderModernMenu();
   }
 
-  private renderModernMenu(message?: string): void {
+  private renderModernMenu(message?: string, itemJustChosen = false): void {
     const item = this.selectedItem;
     const detail = item ? `<section class="bag-detail"><p class="eyebrow">${item.category}</p><h2>${item.displayName}</h2><p>${item.description}</p><div class="item-count">${this.bag.count(item.id)} available</div>${this.choosingPokemon ? `<h3>Choose a Pokémon</h3><div class="entity-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable" data-target="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${pokemon.currentHp}/${pokemon.maxHp} HP</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('')}</div>` : `<button class="button primary-button" data-use ${item.effect.type === 'capture-modifier' ? 'disabled' : ''}>${item.effect.type === 'capture-modifier' ? 'Battle use only' : 'Use item'}</button>`}</section>` : '<section class="bag-detail"><p class="empty-state">This pocket is empty.</p></section>';
     this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run supplies</p><h1>Bag</h1></div><p class="stash-count">${this.choosingPokemon ? 'Choose a recipient' : 'Choose an item'}</p></header><main class="bag-layout"><section class="bag-list"><nav class="category-tabs">${CATEGORIES.map((category, index) => `<button class="${index === this.categoryIndex ? 'active' : ''}" data-category="${index}">${category}</button>`).join('')}</nav><div class="entity-list">${this.currentItems.map((entry, index) => `<button class="entity-row selectable ${index === this.selectedItemIndex ? 'selected' : ''}" data-item-index="${index}">${itemIcon(entry.id, entry.displayName)}<div><strong>${entry.displayName}</strong><small>${this.bag.count(entry.id)} available</small></div></button>`).join('') || '<p class="empty-state">Nothing in this pocket.</p>'}</div></section>${detail}</main>${message ? `<p class="menu-status">${message}</p>` : ''}</div>`;
     this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach((button) => button.onclick = () => { this.categoryIndex = Number(button.dataset.category); this.selectedItemIndex = 0; this.renderModernMenu(); });
-    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-item-index]').forEach((button) => button.onclick = () => { this.selectedItemIndex = Number(button.dataset.itemIndex); this.renderModernMenu(); });
+    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-item-index]').forEach((button) => button.onclick = () => { this.selectedItemIndex = Number(button.dataset.itemIndex); this.renderModernMenu(undefined, true); });
     this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-use]')?.addEventListener('click', () => { this.choosingPokemon = true; this.renderModernMenu(); });
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-target]').forEach((button) => button.onclick = () => {
       const target = this.party.pokemon[Number(button.dataset.target)];
@@ -94,7 +95,7 @@ export class BagScene extends Phaser.Scene {
       if (result.used) { this.bag.remove(selectedItem.id); this.onItemUsed(); this.selectedItemIndex = Math.min(this.selectedItemIndex, Math.max(0, this.currentItems.length - 1)); }
       this.choosingPokemon = false; this.renderModernMenu(result.message);
     });
-    this.menuOverlay!.focus('[data-item-index], [data-close]');
+    this.menuOverlay!.focus(...bagFocusPreference({ choosingPokemon: this.choosingPokemon, itemJustChosen }));
   }
 
   private drawBackground(): void {

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { menuClickSound } from '../audio/menuSounds';
+import { firstMatching } from './menuFocus';
 import { claimOverlayKeyboard } from './overlayKeyboard';
 
 export class MenuOverlay {
@@ -62,8 +63,13 @@ export class MenuOverlay {
     this.root.remove();
   }
 
-  public focus(selector: string): void {
-    requestAnimationFrame(() => this.root.querySelector<HTMLElement>(selector)?.focus());
+  /**
+   * Focus the first of `preference` that is on screen, tried in the order
+   * given - see `menuFocus.ts` for why one comma-separated selector cannot.
+   */
+  public focus(...preference: string[]): void {
+    requestAnimationFrame(() =>
+      firstMatching((selector) => this.root.querySelector<HTMLElement>(selector), preference)?.focus());
   }
 }
 
