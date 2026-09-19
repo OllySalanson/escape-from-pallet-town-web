@@ -39,6 +39,15 @@ verified by Git blob SHA on 2026-09-08 against `main`.
 | `tileset.png` - the classic ground tileset (`classicTiles`) | `Assets/Art/gfx/tileset.png` | `05325c7e049e20c11e82256029cc7a35623a15a5` |
 | `character.png` - the walk and attack sheet every overworld figure is drawn from | `Assets/Art/gfx/character.png` | `a50ceb040f5ad2821d1b4976c19ef2a849dd8fb3` |
 
+**`tileset.png` is very probably not original work, and this file should say so.**
+30 of its 33 colours (91%) are exact GBA 15-bit values - multiples of 8 in every
+channel - which is the signature of art taken off a Game Boy Advance rather than
+drawn on a PC. Its grass is `#40b080`; FireRed/LeafGreen's grass shadow is
+`#40b088`, the same hue to within 2 degrees. `Overworld.png`, which is known-CC0
+PC art, scores 11% on the same test. This is not proof of a specific rip - no
+byte-identical source sheet was found - but "the owner's own work" above is not
+a safe reading of it either. The question is live, not closed.
+
 ### Battle
 
 | File here | Upstream path | Blob SHA |
@@ -57,22 +66,18 @@ SHA: it is a single grassland panel cropped out of the montage sheet
 `Assets/Art/Battle/Battle Backgrounds.png` in `c488ea6` ("Fix battle backdrop
 asset", #30).
 
-### Species sprites
+### Species sprites - replaced, see below
 
-`pokemon/front/<dexId>.png` and `pokemon/back/<dexId>.png` for dex IDs 1
-(Bulbasaur), 4 (Charmander), 7 (Squirtle), 12 (Butterfree), 16 (Pidgey), 25
-(Pikachu) and 39 (Jigglypuff), from `Assets/Art/Pokemons/Front/<dexId>.png` and
-`Assets/Art/Pokemons/Back/<dexId>.png`.
+The seven species sprites used to be carried over from
+`Assets/Art/Pokemons/{Front,Back}/<dexId>.png` in the Unity project. **They no
+longer are.** They were replaced wholesale on 2026-09-19 with the
+FireRed/LeafGreen sprites from PokeAPI - see "Ripped from commercial Pokemon
+titles, knowingly" below for the source and its terms.
 
-| Dex | Front blob SHA | Back blob SHA |
-| --- | --- | --- |
-| 1 | `33c520312c0184a8e919bab2b39054b19b4ded96` | `edb3c0c99065b541b49ac8bf71f046edacadb831` |
-| 4 | `97c4f28499ec2d970f4e23bb9a96dffabad2f88c` | `e800eeac4af10fbfd27ef853d2dece3d80cdc4de` |
-| 7 | `349758a22bca20669a9ff802f9d4665c18283ff2` | `0fc37c8eb4e01950e49a3207b6fc4748acd46d73` |
-| 12 | `6e272f86bacf283df0d5dde999579de27ccc3659` | `bfe45f28cf452d25be128f32c98da5f49b4614b4` |
-| 16 | `6d6d7baf045fb39dc340827b1a96716e6974bee5` | `6228af788171e91855a6651663ea0055879b086c` |
-| 25 | `dee4c3ef73fcbacc8a3878619f623f10ccbceeee` | `a4a753cf0ea66aaa547444480481edda7ff22b7e` |
-| 39 | `03f9d6424620e8fed5ea3fb055c12338a612b827` | `37687a76faec875f2e115063ddb5cb1911acd4b1` |
+The reason was consistency as much as coverage: the Unity sprites shipped at
+three different sizes (`front/1.png` was 64x64 while `front/4.png` was 36x44 and
+`front/7.png` was 37x35), because each had been cropped to its own art. The
+replacements are uniformly 64x64, which is what `spriteAssets.test.ts` bounds.
 
 ## `battle/orange-kid.woff2` - the UI typeface, CC0 from its designer
 
@@ -163,3 +168,79 @@ The montage sheet it was cropped from carries an attribution painted into the
 image itself: *"Pokémon Platinum Battle Backgrounds, ripped by Professor Valley,
 for use only at The Spriters Resource and Pokemon Valley"*. That is a commercial
 game's asset, and the stated permission does not cover this repository.
+
+## Ripped from commercial Pokemon titles, knowingly
+
+The repository owner ruled on 2026-09-19 that this is a personal fan game, that
+fan assets are acceptable for it, and that the repository stays public. **These
+files are therefore here on purpose, and this section is what "knowingly" means:
+the source and the publisher's own terms, quoted rather than summarised, so the
+position can be re-read rather than remembered.**
+
+This is not a new exposure. `tileset.png` and the previous species sprites were
+already Game Boy Advance Pokemon art - the GBA renders 15-bit colour, so every
+colour it can display lands on an exact multiple of 8 in 8-bit RGB, and 91% of
+`tileset.png`'s 33 colours and 100% of the old sprites' do. For contrast, 11% of
+`Overworld.png`'s do. That test is reproducible against any file here.
+
+### `frlg-tiles.png` - the second overworld sheet
+
+- **Source.** Pokemon FireRed/LeafGreen outdoor tileset, from The Spriters
+  Resource: <https://www.spriters-resource.com/game_boy_advance/pokemonfireredleafgreen/>,
+  asset 3863 ("Tileset 2", 477x800), submitted by **fabnt**. Downloaded
+  2026-09-19. That sheet carries the ripper's own note painted into the image:
+  *"Pokémon FireRed/LeafGreen outdoor tileset. Ripped by fabnt. No credit
+  needed."*
+- **Rights holder.** Nintendo / Creatures / Game Freak. The ripper's "no credit
+  needed" is the ripper's position, not a licence from them.
+- **Licence, exactly as The Spriters Resource states it**
+  (<https://www.spriters-resource.com/page/tou/>):
+
+  > "Content on these sites may not be used in any commercial works. These
+  > include, but are not limited to, paid games, free games with in-app purchases
+  > or advertisements, monetized videos, and other websites displaying
+  > advertisements."
+
+  > "Taking content in its original format from this website and distributing it
+  > elsewhere without prior consent or credit to its origin will also result in
+  > contact being made with those seen fit to have it removed as this is also
+  > viewed as theft."
+
+- **How this repository sits against those two clauses.** The first is satisfied:
+  this game is non-commercial and carries no advertising or purchases. The second
+  is why **no Spriters Resource sheet is committed here in its original format.**
+  `frlg-tiles.png` is a cut: the tiles this game needs, lifted individually and
+  rearranged onto a new 20x31 grid that matches nothing on the source sheet. The
+  source sheet is not in this repository and must not be added to it.
+- **What was cut.** Eight ground materials with a complete 13-tile edge set;
+  three 3x3 nine-slices (shallow water, deep water, tall grass); sixteen
+  multi-tile objects (trees, a ledge run, a cliff face, a bridge, a market stall,
+  a shop front, a plaza stair, boulders, crates); and fifteen single tiles.
+  `src/game/world/frlgSheet.ts` names every one of them and
+  `frlgSheet.test.ts` reads each coordinate back out of the PNG, so this list
+  cannot drift from the file.
+
+### `pokemon/{front,back}/<dexId>.png` - the species sprites
+
+- **Source.** <https://github.com/PokeAPI/sprites>, path
+  `sprites/pokemon/versions/generation-iii/firered-leafgreen/` and its `back/`
+  sibling. Dex IDs 1, 4, 7, 12, 16, 25 and 39, front and back, all 64x64.
+  Downloaded 2026-09-19.
+- **Licence - the first two lines of that repository's own `LICENCE.txt`,
+  verbatim:**
+
+  > "All image contents within are Copyright The Pokémon Company."
+
+  > "This repository is distributed under CC0 1.0 Universal"
+
+- **Read that as written.** The CC0 covers the repository; the repository itself
+  states the images are not the maintainers' to relicense. **These are not CC0
+  sprites, and this file must not describe them as such.**
+
+### If these are ever to be removed
+
+Both entries are self-contained. `frlg-tiles.png` is loaded by `BootScene` as
+`frlgTiles` and nothing draws from it yet, so deleting the file, `frlgSheet.ts`,
+its test and that one loader line removes it completely. The species sprites
+would need replacement art at 64x64 or smaller rather than deletion, because
+`spriteAssets.test.ts` requires a front and a back for every shipped species.
