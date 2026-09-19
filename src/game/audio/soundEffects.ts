@@ -147,6 +147,13 @@ export const SOUND_EFFECTS = {
     // The step that enters the grass is often the step that finds something in it.
     yields: true,
   },
+  ledgeHop: {
+    channel: 'world',
+    moment: 'Going over a ledge - the one route on a map the hunter cannot follow',
+    // Up and away, then down onto the ground: the shape of the jump, so the
+    // ear hears the drop the figure is taking rather than another footstep.
+    tones: [sweep(sq(392, 0.1, 0.05), 588), sweep(tri(294, 0.14, 0.055, 0.1), 165)],
+  },
   warp: {
     channel: 'world',
     moment: 'Passing through a door or a map edge',

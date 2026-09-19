@@ -48,6 +48,13 @@ import {
   type IdleFigure,
   type IdleStep,
 } from '../world/npcIdle';
+import {
+  LEDGE_HOP_DURATION_MS,
+  LEDGE_HOP_RISE,
+  ledgeCaption,
+  ledgeHopAt,
+  ledgesForMap,
+} from '../world/ledges';
 import { PARTY_LIMIT, Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { createGiftPokemon, giftGivenBy, isGiftSpoken, type PokemonGift } from '../world/gifts';
 import { DialogBox } from '../ui/DialogBox';
@@ -228,7 +235,8 @@ const LABEL_TONES: Readonly<
     | 'contract'
     | 'gateShut'
     | 'gateOpen'
-    | 'dropIn',
+    | 'dropIn'
+    | 'ledge',
     WorldLabelTone
   >
 > = {
@@ -250,6 +258,9 @@ const LABEL_TONES: Readonly<
   // A drop-in point is the one teal on the map: somewhere a later raid can
   // start, which no cache, exit or contract stop is.
   dropIn: { fill: 0x0f3a3d, border: 0x5eead4, ink: '#ccfbf1' },
+  // A ledge is the ground itself, so it is stone: not an exit's green or red,
+  // not a threat, not a place a raid is sent to.
+  ledge: { fill: 0x1c2733, border: 0x9fb3c8, ink: '#e2e8f0' },
 };
 
 /** The landing pad drawn on a drop-in point, as filled pixel rects. */
@@ -349,6 +360,14 @@ export class WorldScene extends Phaser.Scene {
   private readonly npcAppearances = new Map<string, WorldCharacterAppearance>();
   /** The townsfolk keeping a beat on this map, and where each of them stands now. */
   private idleFigures: IdleFigure[] = [];
+  /**
+   * What this step costs in game time. A walked tile is `STEP_DURATION_MS`; a
+   * ledge hop covers three tiles and takes longer than one of them, which is
+   * what makes it read as a jump and still be the quick way.
+   */
+  private stepDurationMs = STEP_DURATION_MS;
+  /** True while the step in progress is a ledge hop, so the figure arcs over it. */
+  private hopping = false;
   /**
    * The tile a figure is walking off, held until its step finishes drawing.
    * A figure owns both ends of its step for as long as it is between them, so
@@ -784,6 +803,11 @@ export class WorldScene extends Phaser.Scene {
     });
 
     const pushing = input.up || input.down || input.left || input.right;
+    // Before the bump: a ledge is solid, so walking into one is refused by the
+    // step planner, and the hop is what the refusal means on these tiles.
+    if (!decision.target && pushing && this.tryLedgeHop(decision.facing)) {
+      return;
+    }
     const bump = nextBump(this.pushingAgainst, !decision.target && pushing ? decision.facing : null);
     this.pushingAgainst = bump.pushingAgainst;
     if (bump.thud) {
@@ -1080,6 +1104,7 @@ export class WorldScene extends Phaser.Scene {
     this.createPois();
     this.createContractMarkers();
 
+    this.createLedgeLabels();
     this.idleFigures = createIdleFigures(this.currentMap.entities, Math.random);
     this.idleVacating.clear();
     for (const entity of this.currentMap.entities) {
@@ -1303,6 +1328,35 @@ export class WorldScene extends Phaser.Scene {
       this.poiLabels.set(poi.id, label);
       this.poiSprites.set(poi.id, station);
       this.mapObjects.push(station);
+    }
+  }
+
+  /**
+   * The one route on the map only the player has, named so it is not guessed at.
+   *
+   * A bank is drawn all over these maps and none of the others may be hopped,
+   * so the one that may says so - and says the only thing that matters about
+   * it, which is that there is no way back up. It speaks like any other name:
+   * within five walking steps, or on a held look.
+   */
+  private createLedgeLabels(): void {
+    for (const ledge of ledgesForMap(this.currentMap.id)) {
+      const brow = ledge.brow;
+      const top = Math.min(...brow.map((tile) => tile.y));
+      this.worldLabels.push(
+        new WorldLabel(this, {
+          subject: {
+            x: Math.min(...brow.map((tile) => tile.x)) * TILE_SIZE,
+            y: top * TILE_SIZE,
+            width: (Math.max(...brow.map((tile) => tile.x)) - Math.min(...brow.map((tile) => tile.x)) + 1) * TILE_SIZE,
+            height: TILE_SIZE,
+          },
+          text: ledgeCaption(ledge),
+          tone: LABEL_TONES.ledge,
+          depth: atRow(CAPTION_BAND, top),
+          speech: { voice: 'name', tiles: brow },
+        }),
+      );
     }
   }
 
@@ -2302,6 +2356,8 @@ export class WorldScene extends Phaser.Scene {
   private beginStep(targetTile: GridPosition): void {
     this.targetTile = targetTile;
     this.stepProgress = 0;
+    this.stepDurationMs = STEP_DURATION_MS;
+    this.hopping = false;
 
     this.stepStart.set(
       this.currentTile.x * TILE_SIZE,
@@ -2310,6 +2366,39 @@ export class WorldScene extends Phaser.Scene {
     this.stepEnd.set(targetTile.x * TILE_SIZE, targetTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
 
     this.player.play(getWalkAnimationKey(this.facing), true);
+  }
+
+  /**
+   * Goes over a ledge, if the player is standing on one facing the way down.
+   *
+   * It is a whole step of the raid - the clock is charged for the time it
+   * takes, the landing rolls tall grass and works whatever it lands on exactly
+   * as a walked tile does - and it is refused the moment anything is standing
+   * where it would land. What it is not is reversible: `ledgeHopAt` only ever
+   * answers the authored direction, so walking back up the bank is the wall it
+   * has always been.
+   */
+  private tryLedgeHop(facing: Direction): boolean {
+    const hop = ledgeHopAt(this.currentMap.id, this.currentTile, facing);
+    if (!hop) {
+      return false;
+    }
+    if (
+      hop.landing.x < 0 ||
+      hop.landing.y < 0 ||
+      hop.landing.x >= this.bounds.width ||
+      hop.landing.y >= this.bounds.height ||
+      this.isBlocked(hop.landing)
+    ) {
+      return false;
+    }
+    this.facing = facing;
+    this.pushingAgainst = null;
+    this.beginStep(hop.landing);
+    this.stepDurationMs = LEDGE_HOP_DURATION_MS;
+    this.hopping = true;
+    audioManager.play('ledgeHop');
+    return true;
   }
 
   /**
@@ -2332,12 +2421,16 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private advanceStep(deltaMs: number): void {
-    const tick = advanceStepClock(this.stepProgress, deltaMs);
+    const tick = advanceStepClock(this.stepProgress, deltaMs, this.stepDurationMs);
     this.stepProgress = tick.progress;
 
+    // A hop leaves the ground: the same straight line between the two tiles,
+    // lifted over its middle, so the figure goes over the bank rather than
+    // sliding through it.
+    const rise = this.hopping ? Math.sin(this.stepProgress * Math.PI) * LEDGE_HOP_RISE : 0;
     this.setPlayerPosition(
       Phaser.Math.Linear(this.stepStart.x, this.stepEnd.x, this.stepProgress),
-      Phaser.Math.Linear(this.stepStart.y, this.stepEnd.y, this.stepProgress),
+      Phaser.Math.Linear(this.stepStart.y, this.stepEnd.y, this.stepProgress) - rise,
     );
 
     if (this.stepProgress < 1 || !this.targetTile) {

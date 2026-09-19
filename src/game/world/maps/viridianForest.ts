@@ -196,9 +196,15 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
 
   // EAST RISE is a rise: the sheet's ledge runs under its brow, either side of
   // the trail that climbs to it, with a rail along the top as the Overlook has.
-  // Nothing hops down a ledge in this game, so the rail and the ledge stand on
-  // what was thicket, a row and two rows below the clearing, and nobody can get
-  // on top of either. Without the rail it read as a brown stripe in the hedge.
+  // The rail and the ledge stand on what was thicket, a row and two rows below
+  // the clearing; without the rail it read as a brown stripe in the hedge.
+  //
+  // This is the one ledge in the game that may be gone over, and it is
+  // authored as one in `../ledges.ts` rather than drawn: the brow at 26,22 and
+  // 27,22 drops south onto the trail at row 25. Nothing here changes to allow
+  // it - the ledge is solid and stays solid, which is exactly why the hunter
+  // cannot follow - so the way round is still the only way *up*, and still the
+  // only way anything but the player gets down.
   map.draw(23, 23, [
     '  FFF FF',
     '<===> <>',
