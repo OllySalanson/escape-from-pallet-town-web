@@ -2,11 +2,24 @@ import type { HunterTuning } from '../run/runGeneration';
 import { HUNTER_TIERS, type HunterTier } from './hunter';
 
 /**
- * How much sooner the hunter picks up the trail for each tier it opens above
- * the first. The seeded delay is 55-75s, so the hardest opening still leaves
- * 25s of raid before anything is hunting - a head start, never an ambush.
+ * The floor the arrival lead is derived from: however much hunter a party has
+ * bought itself, it gets this much raid before anything is hunting it. A head
+ * start, never an ambush - a player is still reading the insertion screen.
  */
-export const HUNTER_ARRIVAL_LEAD_PER_TIER_MS = 15_000;
+export const HUNTER_EARLIEST_ARRIVAL_MS = 25_000;
+
+/**
+ * How much sooner the hunter picks up the trail for each tier it opens above
+ * the first. It is the floor above divided by the rungs there are to climb, not
+ * a number of its own: the seeded delay is 55-75s at its shortest, three rungs
+ * stand above the first, and (55s - 25s) / 3 is ten seconds a rung. So the
+ * hardest opening still arrives no earlier than 25s, exactly as it did with
+ * three rungs and fifteen seconds each - adding a rung buys the ladder more
+ * hunter, never an earlier ambush. `hunterThreat.test.ts` recomputes it from
+ * `RUN_GENERATION_BOUNDS` and `HUNTER_TIERS`, so growing the ladder again fails
+ * there rather than in a raid that opens with the hunter already on you.
+ */
+export const HUNTER_ARRIVAL_LEAD_PER_TIER_MS = 10_000;
 
 /** The part of a deployed Pokemon the hunter reads. `Pokemon` satisfies it. */
 export interface HunterThreatSubject {
@@ -31,7 +44,8 @@ export interface HunterThreat {
   /**
    * Tiers of `tierOffset` the raid's contract added on top of the party's own.
    * Zero when the party had already drawn the top of the ladder: a contract
-   * takes away the discount a weak party buys, it never builds a fourth tier.
+   * takes away the discount a weak party buys, it never adds a rung the ladder
+   * does not have.
    */
   readonly contractTiers: number;
 }
@@ -40,7 +54,8 @@ export interface HunterThreat {
  * The hunter opens on the highest tier the strongest deployed Pokemon still
  * out-levels, so it is matched to the party and never above it: a level-5
  * starter out-levels nothing and meets the level-6 tutorial hunter, a level-10
- * lead meets the level-9 team, and a level-13 veteran meets the level-12 one.
+ * lead meets the level-9 team, a level-13 veteran meets the level-12 one, and a
+ * lead that has just evolved at 16 meets the four-strong team at the top.
  *
  * It reads the strongest Pokemon rather than the party's total because a total
  * would charge a recovering player for padding a weak team with weak catches,

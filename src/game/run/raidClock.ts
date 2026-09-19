@@ -33,19 +33,34 @@
  * fluently, and two to three minutes for a first-timer who still has to find the
  * kit. Eighteen minutes could not be spent; five can.
  *
- * Five minutes also lands the existing escalation on a clean curve, which is why
- * no hunter tier is retuned alongside it:
+ * Five minutes also lands the escalation on a clean curve:
  *
- * | at      | share  | what happens                               |
- * | ------- | ------ | ------------------------------------------ |
- * | 45s     | 15%    | Ferry Dock opens                           |
- * | 55-75s  | 18-25% | the hunter spawns (tier 1, level 6)        |
- * | 120s    | 40%    | hunter tier 2 (level 9, two Pokemon)       |
- * | 240s    | 80%    | hunter tier 3 (level 12, three Pokemon)    |
- * | 300s    | 100%   | enrage, then `ENRAGE_GRACE_MS` to get out  |
+ * | at      | share  | what happens                                     |
+ * | ------- | ------ | ------------------------------------------------ |
+ * | 45s     | 15%    | Ferry Dock opens                                 |
+ * | 55-75s  | 18-25% | the hunter spawns (tier 1, level 6)              |
+ * | 120s    | 40%    | hunter tier 2 (level 9, two Pokemon)             |
+ * | 180s    | 60%    | hunter tier 3 (level 12, three Pokemon)          |
+ * | 240s    | 80%    | hunter tier 4 (level 15, four Pokemon)           |
+ * | 300s    | 100%   | enrage, then `ENRAGE_GRACE_MS` to get out        |
+ *
+ * The fourth rung arrived with evolution, which begins at level 16 and put an
+ * evolved party above the whole ladder; it is pitched at 15 so that 16 opens it.
+ * Its level and its fourth Pokemon are measured over the battle engine, and why
+ * it grows the team rather than evolving the rival's is documented on
+ * `HUNTER_TIERS` in `src/game/world/hunter.ts`. What the *clock* decides is only
+ * the spacing, and that is read in hunted time rather than raid
+ * time, because the hunter is not on the map for the first 55-75s: tier 1 holds
+ * the board for 45-65s of hunting and each rung after it for 60s. Sixty seconds
+ * is the escape's own length - see below - so the schedule did not need a new
+ * number, only re-dividing between four rungs instead of three.
  *
  * And it prices the escapes from PR #66 properly: a first flee costs 40s, an
- * eighth of the raid, and the 120s cap is nearly half of it.
+ * eighth of the raid, and the 120s cap is nearly half of it. Against the rungs
+ * above, a first escape taken the instant a rung lands still leaves 20s of that
+ * rung to walk in - you are running from the hunter you fled, not from the next
+ * one - while the second escape costs 60s, exactly one rung, which is the
+ * escalation being felt rather than an accident of the numbers.
  *
  * `raidClock.test.ts` holds those relationships against the real hunter tiers,
  * extraction points and flee schedule, so shortening the raid again cannot

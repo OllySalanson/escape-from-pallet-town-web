@@ -1,6 +1,7 @@
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { describe, expect, it } from 'vitest';
 import { Pokemon } from '../pokemon';
+import { EVOLUTIONS } from '../pokemon/evolution';
 import { CHARMANDER } from '../pokemon/species';
 import { RunManager } from '../run/RunManager';
 import { RUN_INSERTIONS } from '../run/runGeneration';
@@ -19,6 +20,7 @@ import {
   HUNTER_MINIMUM_SPAWN_DISTANCE,
   HUNTER_SPAWN_DISTANCE,
   hunterTierFor,
+  HUNTER_TIERS,
   isHunterContactingPlayer,
   isHunterSearching,
   resolveHunterBattleLoss,
@@ -304,8 +306,66 @@ describe('hunterTierFor', () => {
   it('escalates with elapsed raid time and reaches its strongest team while enraged', () => {
     expect(hunterTierFor(0, false)).toMatchObject({ level: 6, party: [{ id: 'pidgey' }] });
     expect(hunterTierFor(120_000, false)).toMatchObject({ level: 9, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }] });
-    expect(hunterTierFor(240_000, false)).toMatchObject({ level: 12, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }] });
-    expect(hunterTierFor(10_000, true)).toMatchObject({ level: 15, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }] });
+    expect(hunterTierFor(180_000, false)).toMatchObject({ level: 12, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }] });
+    expect(hunterTierFor(240_000, false)).toMatchObject({
+      level: 15,
+      party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }, { id: 'jigglypuff' }],
+    });
+    expect(hunterTierFor(10_000, true)).toMatchObject({
+      level: 19,
+      party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }, { id: 'jigglypuff' }],
+    });
+  });
+
+  /**
+   * The fourth rung is a fourth body rather than the rival's team evolved, so
+   * nothing on the ladder is an evolved form today. The rule is kept anyway,
+   * because the evolved rung was written once and measured out again: a rung
+   * that does reach for one has to field a species the game's own rules could
+   * produce at that level, not a Pidgeotto at 17 invented for the hunter.
+   */
+  it('fields only species that are legal at the level the rung fields them at', () => {
+    for (const tier of HUNTER_TIERS) {
+      for (const species of tier.party) {
+        const rule = EVOLUTIONS.find((evolution) => evolution.to === species.id);
+        if (rule?.trigger.kind === 'level') {
+          expect(`${species.id} at Lv ${tier.level}`).toBe(
+            `${species.id} at Lv ${Math.max(tier.level, rule.trigger.level)}`,
+          );
+        }
+      }
+    }
+  });
+
+  /**
+   * The ladder's shape, and the reason the fourth rung is a body rather than a
+   * bigger number: team size is the one lever that does not scale with the party
+   * opposite, so it is the one that still bites at the top. Raising three levels
+   * was measured and leaves the opener better off than rung 3 does.
+   */
+  it('grows by one Pokemon a rung, and never shrinks', () => {
+    HUNTER_TIERS.forEach((tier, index) => {
+      expect(tier.party.length).toBe(index + 1);
+      if (index > 0) {
+        expect(tier.level).toBeGreaterThan(HUNTER_TIERS[index - 1].level);
+        // Each rung is the one below it plus one, so the ladder reads as one
+        // trainer catching Pokemon rather than four unrelated teams.
+        expect(tier.party.slice(0, index)).toEqual(HUNTER_TIERS[index - 1].party);
+      }
+    });
+  });
+
+  /**
+   * Nothing about the enrage is a rung, so it is held to the one thing it has to
+   * be: harder than everything the schedule can reach. An enrage below the top
+   * rung would make running out of clock a reprieve.
+   */
+  it('enrages into something above every scheduled rung', () => {
+    const enraged = hunterTierFor(0, true);
+    for (const tier of HUNTER_TIERS) {
+      expect(enraged.level).toBeGreaterThan(tier.level);
+      expect(enraged.party.length).toBeGreaterThanOrEqual(tier.party.length);
+    }
   });
 });
 

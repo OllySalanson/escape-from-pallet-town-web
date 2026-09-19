@@ -47,15 +47,25 @@ describe('the radio mast', () => {
     expect(hunterChipView({ ...FAR, distance: 3, direction: 'E', intel })).toEqual({
       label: 'HUNTER E 3',
       tone: 'closing',
-      detail: 'LV9 x2, LV12 x3 IN 1:50',
+      detail: 'LV9 x2, LV12 x3 IN 0:50',
+    });
+  });
+
+  it('names the fourth team the ladder grew, and then the enrage', () => {
+    // The mast reads the ladder rather than a list of its own, so the rung that
+    // arrived with evolution is announced by it without a change here.
+    expect(hunterIntelFor(200_000, 300_000, false).next).toEqual({
+      level: 15,
+      teamSize: 4,
+      inMs: 40_000,
     });
   });
 
   it('counts down to the enrage once the last scheduled team has landed', () => {
     const intel = hunterIntelFor(250_000, 300_000, false);
 
-    expect(intel.next).toEqual({ level: 15, teamSize: 3, inMs: 50_000 });
-    expect(hunterIntelLine(intel)).toBe('LV15 x3 IN 0:50');
+    expect(intel.next).toEqual({ level: 19, teamSize: 4, inMs: 50_000 });
+    expect(hunterIntelLine(intel)).toBe('LV19 x4 IN 0:50');
   });
 
   it('reports the enrage next on a raid recovery has shortened past a later team', () => {
@@ -63,13 +73,13 @@ describe('the radio mast', () => {
     const intel = hunterIntelFor(130_000, 150_000, false);
 
     expect(intel.level).toBe(9);
-    expect(intel.next).toEqual({ level: 15, teamSize: 3, inMs: 20_000 });
+    expect(intel.next).toEqual({ level: 19, teamSize: 4, inMs: 20_000 });
   });
 
   it('has nothing further to announce once the raid is enraged', () => {
     const intel = hunterIntelFor(300_000, 300_000, true);
 
-    expect(intel).toEqual({ level: 15, teamSize: 3, next: null });
+    expect(intel).toEqual({ level: 19, teamSize: 4, next: null });
     expect(hunterIntelLine(intel)).toBe('FINAL TEAM');
   });
 
