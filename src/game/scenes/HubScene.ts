@@ -23,6 +23,11 @@ import {
   recoveryCostMs,
   recoveryPriceShare,
   spendableSupply,
+  buildDropInBriefing,
+  gradeLine,
+  placePicture,
+  type DropInBriefing,
+  type DropInContext,
   TRADER_BERTH_PRICE,
   traderBarterOffers,
   traderStanding,
@@ -107,7 +112,8 @@ import {
 } from '../stash';
 import { iconMarkup, itemIcon, objectiveIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
-import { WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
+import { getWorldMap, WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
+import { MINIMAP_PALETTE, MINIMAP_TILE, type Minimap } from '../world/minimap';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -765,6 +771,10 @@ export class HubScene extends Phaser.Scene {
 
     this.deploying = true;
     audioManager.play('deploy');
+    // Counted where it is committed to rather than where it ends: a raid
+    // nobody came back from is still a raid you went on, and the difference
+    // between the two numbers is what the drop-in screen reads back.
+    this.saveManager.recordDeployment(RUN_INSERTIONS[deployment.insertionId].mapId);
     const items = deployment.items;
     activeRunManager.startRun(
       { party: deployment.party.map((stored) => stored.pokemon), items },
@@ -873,6 +883,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'outfitter') return this.payingFor ? `Build ${this.payingFor.name}` : 'The Outfitter';
     if (this.view === 'trader') return 'The Ferryman';
     if (this.flow.step === 'loadout') return 'Build your loadout';
+    if (this.flow.step === 'dropin') return 'Choose your drop-in';
     return this.flow.step === 'secure' ? 'Secure slot' : 'Final check';
   }
 
@@ -881,7 +892,8 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'summary') return 'Stash';
     if (this.view === 'outfitter' && this.payingFor) return 'Outfitter';
     if (this.view !== 'deploy') return 'Base';
-    if (this.flow.step === 'confirm') return 'Loadout';
+    if (this.flow.step === 'confirm') return 'Drop-in';
+    if (this.flow.step === 'dropin') return 'Loadout';
     if (this.flow.step === 'secure') {
       return this.flow.secureReturnStep === 'confirm' ? 'Final check' : 'Loadout';
     }
@@ -1034,13 +1046,58 @@ export class HubScene extends Phaser.Scene {
     on('[data-secure-slot]', () => rerender(() => this.flow.openSecureSlot()));
     on('[data-advance]', () => this.answer(this.flow.advance(), 'confirm'));
     on('[data-start]', () => this.startRun());
+    this.paintMinimaps(root);
     // The cursor starts on what the screen is for, never on the way out of it.
     this.overlay.refocus('.px-field', '[data-cursor-start]', '.loadout-entry .px-row', '.px-body button:not([disabled])', 'button');
   }
 
-  /** Shows preparation as a route with a raid at the end of it. */
+  /**
+   * Inks every bird's-eye map on the screen, after the markup is in the DOM.
+   *
+   * The picture is a grid of characters (`world/minimap.ts`) and the palette
+   * says what ink each one is, so this is the only part of it that touches a
+   * browser: one source pixel a tile, written straight into an ImageData. It is
+   * done here rather than in the markup because four thousand `<i>` elements is
+   * not a thumbnail, and as a canvas the whole map is one element the stylesheet
+   * scales by a whole number with `image-rendering: pixelated`.
+   */
+  private paintMinimaps(root: HTMLElement): void {
+    root.querySelectorAll<HTMLCanvasElement>('canvas[data-minimap]').forEach((canvas) => {
+      const insertionId = canvas.dataset.minimap as RunInsertionId;
+      if (!(insertionId in RUN_INSERTIONS)) {
+        return;
+      }
+      const picture = placePicture(insertionId, this.dropInContext(insertionId));
+      const context = canvas.getContext('2d');
+      if (!context) {
+        return;
+      }
+      const image = context.createImageData(picture.width, picture.height);
+      for (let y = 0; y < picture.height; y += 1) {
+        for (let x = 0; x < picture.width; x += 1) {
+          const ink = MINIMAP_PALETTE[picture.rows[y][x]] ?? '#000000';
+          const at = (y * picture.width + x) * 4;
+          image.data[at] = Number.parseInt(ink.slice(1, 3), 16);
+          image.data[at + 1] = Number.parseInt(ink.slice(3, 5), 16);
+          image.data[at + 2] = Number.parseInt(ink.slice(5, 7), 16);
+          image.data[at + 3] = 255;
+        }
+      }
+      context.putImageData(image, 0, 0);
+    });
+  }
+
+  /**
+   * Shows preparation as a route with a raid at the end of it. The secure slot
+   * is a detour rather than a step, so it keeps the rail on the step it was
+   * opened from.
+   */
   private progressRail(): string {
-    return pixelRail(['Loadout', 'Final check', 'Raid'], this.flow.step === 'confirm' ? 2 : 1);
+    const at = this.flow.step === 'secure' ? this.flow.secureReturnStep : this.flow.step;
+    return pixelRail(
+      ['Kit', 'Drop-in', 'Check', 'Raid'],
+      at === 'confirm' ? 3 : at === 'dropin' ? 2 : 1,
+    );
   }
 
   private content(): string {
@@ -1051,6 +1108,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'outfitter') return this.payingFor ? this.paymentView(this.payingFor) : this.outfitterView();
     if (this.view === 'trader') return this.traderView();
     if (this.flow.step === 'loadout') return this.loadoutView();
+    if (this.flow.step === 'dropin') return this.dropInView();
     return this.flow.step === 'secure' ? this.secureView() : this.confirmView();
   }
 
@@ -1592,21 +1650,12 @@ export class HubScene extends Phaser.Scene {
         return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${size} · ${held} at base</small></span><span class="px-stepper"><button class="px-window px-step" data-item="${item.id}" data-amount="-1" data-help="${help}" aria-label="Remove ${item.displayName}"${packed ? '' : ' disabled'}>−</button><b>${packed}</b><button class="px-window px-step" data-item="${item.id}" data-amount="1" data-help="${help}" aria-label="Add ${item.displayName}"${packed < held ? '' : ' aria-disabled="true"'}${room ? '' : ' aria-disabled="true"'}>+</button></span></div>`;
       })
       .join('');
-    const insertions = this.unlockedInsertions
-      .map(([id, insertion]) => {
-        const contract = this.contractFor(id);
-        const chosen = this.flow.insertionId === id;
-        return `<button class="px-row${chosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertion.description)}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${
-          // A drop-in point says which map it is on, because unlike a front door
-          // its name is not the map's.
-          isDropInPoint(insertion) ? `<small class="insertion-drop-in">DROP-IN · ${WORLD_MAP_NAMES[insertion.mapId]}</small>` : ''
-        }<small class="insertion-contract">${contract ? `${contract.name}${contract.hunterPressure ? ` · hunter +${contract.hunterPressure}` : ''}` : 'No contract'}</small></span>${chosen ? pixelTag('', 'good', true) : ''}</button>`;
-      })
-      .join('');
     const cells = this.flow.bagCells;
     // The stash list is the tall one - it holds every Pokemon and every supply
-    // at base - so it keeps the first column whole, and the pack stands over the
-    // insertions in the second, where its own lid counts the squares.
+    // at base - so it keeps the first column whole, and the pack stands beside
+    // it, where its own lid counts the squares. Where to drop in used to be the
+    // second window of this column; it is its own step now, because a place
+    // deserves more than a name in a list a third of a screen wide.
     return `<main class="px-body loadout-layout">${pixelWindow(
       `<div class="px-list px-scroll">${this.browseBar(false)}${pokemonRows || '<p class="px-empty">No Pokémon answers that.</p>'}<h3 class="px-subheading">Supplies</h3>${supplyRows || '<p class="px-empty">No supplies at base.</p>'}</div>`,
       { heading: 'Stash', note: hurtCount ? `${hurtCount} hurt · treat them first` : '' },
@@ -1619,17 +1668,203 @@ export class HubScene extends Phaser.Scene {
         heading: 'Pack',
         note: `${cells.used}/${cells.total} squares`,
       },
-    )}${pixelWindow(
-      `<div class="px-list">${insertions}</div>${this.firstContractActive ? '<p class="px-note px-wrap">Three more insertions unlock when you extract this contract.</p>' : ''}${this.carryInNote()}`,
-      { className: 'run-loadout px-scroll', heading: this.firstContractActive ? 'Contract area' : 'Drop in at' },
     )}</div>${pixelCommitBar({
       title: `${party.length}/6 Pokémon packed`,
       lines: [
         `<span class="px-wrap">${summary}</span>`,
         `<small class="px-wrap${allFainted ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : 'Everything here is lost on a wipe unless it is in the secure slot.'}</small>`,
       ],
-      actions: `<button class="px-window px-button" data-secure-slot data-help="${escapeAttribute(`The ${gridCells(this.flow.secureGrid)} squares that survive a wipe. It fills itself with your highest-level Pokémon first - a Pokémon costs 4, 6 or 9 squares by its stage - and you can change it.`)}">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Read back what this raid risks before you commit to it." ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy</button>`,
+      actions: `<button class="px-window px-button" data-secure-slot data-help="${escapeAttribute(`The ${gridCells(this.flow.secureGrid)} squares that survive a wipe. It fills itself with your highest-level Pokémon first - a Pokémon costs 4, 6 or 9 squares by its stage - and you can change it.`)}">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Choose where this raid drops in." ${this.flow.isDeployable ? '' : 'disabled'}>Choose drop-in</button>`,
     })}</main>`;
+  }
+
+  /**
+   * What the drop-in screen is looking at: the map in the gate state this save
+   * has earned, its record, and the ground it has walked. Asked once per render
+   * and handed to every part of the screen, so the picture, the grade and the
+   * lists cannot describe two different saves.
+   */
+  private dropInContext(insertionId: RunInsertionId): DropInContext {
+    const progress = this.savedGame.raidProgress;
+    return {
+      // The map as this raid would actually find it: a door the player has
+      // opened is open here, which is what makes a beaten boss visible at base.
+      map: getWorldMap(RUN_INSERTIONS[insertionId].mapId, progress.defeatedBosses),
+      defeatedBosses: progress.defeatedBosses,
+      raidRecord: progress.raidRecord,
+      surveyed: progress.surveyed,
+      insertionIds: this.unlockedInsertions.map(([id]) => id),
+      partyLevels: this.flow.party.map((stored) => stored.pokemon.level),
+      contract: this.contractFor(insertionId),
+    };
+  }
+
+  /**
+   * Choosing where to drop in, as its own step.
+   *
+   * The left window is the choice; the right is the place, and it leads with a
+   * picture of the map drawn one game pixel to the tile with everything nobody
+   * has walked still dark. That dark is the point: the vast maps are built so
+   * you drop in, see a piece and leave wondering, and a full bird's-eye view
+   * would hand that answer over for nothing. What fills in is what you walked,
+   * plus your own landings and the doors you have opened - so opening a gate
+   * changes something you can come back to base and look at.
+   *
+   * The picture is pinned and only the words under it scroll, because it is
+   * what the screen is for.
+   */
+  private dropInView(): string {
+    const chosen = this.flow.insertionId;
+    const context = this.dropInContext(chosen);
+    const briefing = buildDropInBriefing(chosen, context);
+    const picture = placePicture(chosen, context);
+    const rows = this.unlockedInsertions
+      .map(([id, insertion]) => {
+        const contract = this.contractFor(id);
+        const isChosen = chosen === id;
+        // One line unless the row has something to add, so the pane shows five
+        // ways in rather than two: a drop-in point says which map it is on,
+        // because unlike a front door its name is not the map's, and a place
+        // with a contract on it names the contract. "No contract" is not news.
+        const note = isDropInPoint(insertion)
+          ? `DROP-IN · ${WORLD_MAP_NAMES[insertion.mapId]}${contract ? ` · ${contract.name}` : ''}`
+          : contract
+            ? `${contract.name}${contract.hunterPressure ? ` · hunter +${contract.hunterPressure}` : ''}`
+            : '';
+        return `<button class="px-row${isChosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertion.description)}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${isChosen ? pixelTag('', 'good', true) : ''}</button>`;
+      })
+      .join('');
+
+    return `<main class="px-body dropin-layout">${pixelWindow(
+      this.placeHead(briefing, picture),
+      {
+        className: 'dropin-place',
+        heading: briefing.insertion.label,
+        note: `Grade ${briefing.grade.rung}/${briefing.grade.rungs}`,
+      },
+    )}${pixelWindow(
+      `<div class="px-list px-scroll">${rows}${this.firstContractActive ? '<p class="px-note px-wrap">Three more insertions unlock when you extract this contract.</p>' : ''}</div>`,
+      {
+        className: 'dropin-list',
+        heading: this.firstContractActive ? 'Contract area' : 'Drop in at',
+        note: this.firstContractActive ? '' : `${this.unlockedInsertions.length} known`,
+      },
+    )}${pixelWindow(
+      `<div class="px-list px-scroll dropin-brief">${this.placeBrief(briefing)}</div>`,
+      { className: 'dropin-about', heading: 'What is in there' },
+    )}${pixelCommitBar({
+      title: `Drop in at ${briefing.insertion.label}`,
+      // One line, because the banner above already states the place's levels,
+      // its doors and what it has cost you. A second row of the bar is 12
+      // pixels off what the place holds, at the stage every screen is authored
+      // against.
+      lines: [
+        `<span class="px-wrap">${briefing.contract ? `${briefing.contract.name}${briefing.contract.hunterPressure ? ` · hunter +${briefing.contract.hunterPressure}` : ''}` : 'No contract on this raid'}</span>`,
+        this.carryInNote(),
+      ].filter((line) => line !== ''),
+      actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-advance data-cursor-start data-help="Read back what this raid risks before you commit to it.">Review &amp; deploy</button>`,
+    })}</main>`;
+  }
+
+  /**
+   * The picture of the place, with the short facts beside it.
+   *
+   * The canvas carries the map's own tile dimensions, so one source pixel is
+   * one tile and one game pixel; `paintMinimaps()` fills it after the render,
+   * because the ink is data rather than markup and a few thousand `<i>`s would
+   * be. `--cols` is what the stylesheet measures its width in, exactly as
+   * the pack grid is measured.
+   */
+  private placeHead(briefing: DropInBriefing, picture: Minimap): string {
+    const { grade, record } = briefing;
+    const walked = Math.round(record.surveyed * 100);
+    return `<div class="dropin-head"><canvas class="px-minimap" data-minimap="${briefing.insertion.id}" width="${picture.width}" height="${picture.height}" style="--cols:${picture.width * MINIMAP_TILE}" role="img" aria-label="${escapeAttribute(`${briefing.mapName}, ${walked}% walked`)}"></canvas><dl class="dropin-facts">${
+      // A second entrance does not carry its map's name, so it says which map
+      // it is on. A front door is the map.
+      briefing.isDropIn ? `<div><dt>Map</dt><dd>${briefing.mapName}</dd></div>` : ''
+    }<div><dt>Wild</dt><dd>${grade.wild.max === 0 ? 'none' : `Lv ${grade.wild.min}-${grade.wild.max}`}</dd></div><div><dt>Fights</dt><dd>${grade.trainers === 0 ? 'none' : `${grade.trainers} · Lv ${grade.trainer}`}</dd></div><div><dt>Doors</dt><dd>${grade.bossesHeld === 0 ? (grade.bossesBeaten === 0 ? 'none' : 'all yours') : `${grade.bossesHeld} held`}</dd></div><div><dt>Raids</dt><dd>${record.deployed === 0 ? 'none yet' : `${record.deployed} · ${record.extracted} out`}</dd></div><div><dt>Known</dt><dd>${record.districts === 0 ? `${walked}%` : `${record.districtsKnown}/${record.districts} · ${walked}%`}</dd></div></dl></div>`;
+  }
+
+  /** A swatch in the same ink the map draws that thing in, so the list is the legend. */
+  private pip(char: string): string {
+    return `<i class="px-pip" style="--pip:${MINIMAP_PALETTE[char]}" aria-hidden="true"></i>`;
+  }
+
+  /**
+   * What is in there, under the picture: the contract, the ways out, the doors
+   * and who holds them, and what lives in each place you have walked.
+   *
+   * Wildlife is listed only for places the survey has reached. What lives
+   * somewhere you have never been is not something base could tell you, and
+   * printing it would hand over the answer the dark is there to ask. The count
+   * of places still unknown is said instead, which is the invitation.
+   */
+  private placeBrief(briefing: DropInBriefing): string {
+    const { grade } = briefing;
+    // Every row of this pane is a control the cursor can land on, even though
+    // none of them does anything: a pane with no controls in it cannot be
+    // scrolled with the arrow keys, and what a place holds would have been
+    // mouse-only on a keyboard-first screen. `aria-disabled` rather than
+    // `disabled` for the same reason it is everywhere else here - the cursor
+    // has to be able to reach a row for the help bar to speak for it.
+    const told = (body: string, help: string, className = ''): string =>
+      `<button class="px-row${className}" aria-disabled="true" data-help="${escapeAttribute(help)}">${body}</button>`;
+    const contract = briefing.contract
+      ? `<h3 class="px-subheading">Contract</h3>${told(
+          `<span class="px-row-main"><strong>${briefing.contract.name}</strong><small class="px-wrap">${briefing.contract.description}</small></span>`,
+          `${briefing.contract.name}: ${briefing.contract.description}`,
+          ' px-tall',
+        )}`
+      : '';
+    const exits = `<h3 class="px-subheading">Ways out</h3>${briefing.exits
+      .map((exit) =>
+        told(
+          `${this.pip('X')}<span class="px-row-main"><strong>${exit.label}</strong><small>${exit.opens === 'OPEN' ? 'open from the first second' : exit.opens.toLowerCase()}</small></span>`,
+          `${exit.label}: ${exit.opens === 'OPEN' ? 'open from the first second of the raid' : exit.opens.toLowerCase()}. Stepping on any open exit ends the raid.`,
+          ' has-pip',
+        ),
+      )
+      .join('')}`;
+    const doors = briefing.doors.length === 0
+      ? ''
+      : `<h3 class="px-subheading">Doors</h3>${briefing.doors
+          .map((door) =>
+            told(
+              `${this.pip(door.open ? 'O' : 'H')}<span class="px-row-main"><strong>${door.label}</strong><small>${door.open ? 'you opened this' : `held by ${door.bossName}`}</small></span>`,
+              door.open
+                ? `${door.label} stands open on every raid from now on, because you beat the keeper who held it.`
+                : `${door.label} is held by ${door.bossName}. Beat them once and it stays open for good.`,
+              ' has-pip' + (door.open ? ' is-selected' : ''),
+            ),
+          )
+          .join('')}`;
+    const seen = briefing.wildlife.filter((place) => place.known);
+    const unseen = briefing.wildlife.length - seen.length;
+    const wildlife = briefing.wildlife.length === 0
+      ? ''
+      : `<h3 class="px-subheading">Wildlife</h3>${seen
+          .map((place) => {
+            const living = place.species
+              .map((entry) => `${entry.name} ${entry.min}-${entry.max}`)
+              .join(' · ');
+            return told(
+              `<span class="px-row-main"><strong>${place.place}</strong><small class="px-wrap">${living}</small></span>`,
+              `${place.place}: ${living}. Rolled for on every step through that place's tall grass.`,
+              ' px-tall',
+            );
+          })
+          .join('')}${
+          seen.length === 0
+            ? '<p class="px-empty px-wrap">You have walked none of this map. Whatever lives here, nobody at base can tell you.</p>'
+            : unseen === 0
+              ? ''
+              : `<p class="px-note px-wrap">${unseen} more place${unseen === 1 ? '' : 's'} on this map nobody here has walked.</p>`
+        }`;
+    // How the place compares to the party is the one fact the banner beside the
+    // picture cannot state, because it is about the loadout rather than about
+    // the place. Everything else the banner already counts, and a screen this
+    // size cannot afford to say a number twice.
+    return `<p class="px-wrap dropin-blurb">${briefing.insertion.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${exits}${doors}${wildlife}`;
   }
 
   private secureView(): string {

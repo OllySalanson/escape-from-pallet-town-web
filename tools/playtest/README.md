@@ -125,6 +125,15 @@ against a snapshot: `npx vite build --outDir "$SCRATCH/dist"` (no
 `VITE_EPTW_TEST_MODE`: that build is in test mode at every URL) and
 `npx vite preview --outDir "$SCRATCH/dist" --port "$FREE_PORT" --strictPort`.
 
+`dropinShots.mjs <url> <dir> [--small] [--survey=path.json]` photographs the
+drop-in step at both stages, on a fresh save and on one that has walked a third
+of the Floodplain and beaten two of its keepers - the pair that shows the dark
+pulling back. It refuses to photograph a screen that puts a scrollbar down the
+side of the browser. The survey it draws is a real one: `raid.mjs
+--progress=path.json` writes what a raid left in the record at base, survey
+included, and `tools/tileset/minimap.mts --survey=` draws the same picture big
+enough to criticise without a browser.
+
 ## The stranger's memory test
 
 Whether a map reads as places is not something its author can judge: they know

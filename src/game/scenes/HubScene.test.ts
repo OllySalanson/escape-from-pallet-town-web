@@ -64,6 +64,9 @@ describe('the lobby as a screen of the game', () => {
     screens.push(markupOf(hub));
     hub.flow.advance();
     hub.flow.advance();
+    // The drop-in screen, then the final check behind it.
+    screens.push(markupOf(hub));
+    readyToDeploy(hub);
     screens.push(markupOf(hub));
     return screens;
   }
@@ -280,6 +283,20 @@ function statusOf(hub: HubInternals): string {
   return (hub as unknown as { status: string }).status;
 }
 
+/**
+ * Walks preparation from wherever it is to the confirmation, which is the only
+ * step a raid can start from. It is a loop rather than a count of `advance()`
+ * calls so a step added between the loadout and the final check - the drop-in
+ * screen was one - does not have to be counted again in twenty tests.
+ */
+function readyToDeploy(hub: HubInternals): void {
+  for (let step = 0; step < 8 && hub.flow.step !== 'confirm'; step += 1) {
+    if (hub.flow.advance() !== undefined) {
+      return;
+    }
+  }
+}
+
 function deploy(hub: HubInternals, start: ReturnType<typeof vi.fn>): void {
   hub.startRun();
   (start as unknown as { flushFade(): void }).flushFade();
@@ -339,7 +356,7 @@ describe('hub deployment route', () => {
       { id: 'charmander-1', pokemon: { currentHp: worn.pokemon.maxHp } },
     ]);
 
-    hub.flow.advance();
+    readyToDeploy(hub);
     deploy(hub, start);
     expect(hub.flow.party.map((stored) => stored.id)).toEqual(['charmander-1']);
     expect(activeRunManager.snapshot().remainingMs).toBe(
@@ -367,6 +384,7 @@ describe('hub deployment route', () => {
 
     expect(worn.pokemon.isFainted).toBe(false);
     expect(hub.flow.advance()).toBeUndefined();
+    readyToDeploy(hub);
     deploy(hub, start);
     expect(start).toHaveBeenCalledTimes(1);
   });
@@ -412,7 +430,7 @@ describe('hub deployment route', () => {
     expect(hub.flow.items).toEqual([{ itemId: 'potion', quantity: 2 }]);
     expect(hub.flow.securedItems).toEqual([{ itemId: 'potion', quantity: 2 }]);
 
-    hub.flow.advance();
+    readyToDeploy(hub);
     deploy(hub, start);
     const deployed = start.mock.calls[0][1] as WorldSceneData;
     expect(deployed.bag.count('potion')).toBe(2);
@@ -466,7 +484,7 @@ describe('hub deployment route', () => {
     expect(start).not.toHaveBeenCalled();
     expect(statusOf(hub)).toBe('Confirm your loadout before deploying.');
 
-    hub.flow.advance();
+    readyToDeploy(hub);
     deploy(hub, start);
     expect(start).toHaveBeenCalledTimes(1);
     expect(start.mock.calls[0][0]).toBe('world');
@@ -476,7 +494,7 @@ describe('hub deployment route', () => {
     const { hub, start } = createHub();
 
     hub.flow.togglePokemon('charmander-1');
-    hub.flow.advance();
+    readyToDeploy(hub);
     deploy(hub, start);
 
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
@@ -499,7 +517,7 @@ describe('hub deployment route', () => {
 
     hub.flow.togglePokemon('charmander-1');
     hub.flow.chooseInsertion('town-square');
-    hub.flow.advance();
+    readyToDeploy(hub);
     deploy(hub, start);
 
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
@@ -527,6 +545,7 @@ describe('hub deployment route', () => {
 
     hub.flow.togglePokemon('charmander-1');
     hub.setView('deploy');
+    hub.flow.advance();
     hub.render();
     const markup = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root
       .innerHTML;
@@ -534,7 +553,7 @@ describe('hub deployment route', () => {
     expect(markup).toContain('DROP-IN · Route 1');
 
     hub.flow.chooseInsertion('route-1-overlook');
-    hub.flow.advance();
+    readyToDeploy(hub);
     deploy(hub, start);
 
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
@@ -542,6 +561,67 @@ describe('hub deployment route', () => {
     expect(runSession.plan?.defeatedBosses).toEqual(['overlook-warden']);
     expect(runSession.plan?.trainers.some((trainer) => trainer.bossId === 'overlook-warden'))
       .toBe(false);
+  });
+
+  /**
+   * Where to drop in is its own step. The loadout is unchanged apart from
+   * losing that pane, and the raid still cannot start before the confirmation -
+   * `deploymentFlow.test.ts` holds the route itself; these are what the screen
+   * has to get right.
+   */
+  const markupOf = (hub: HubInternals): string => {
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  };
+
+  it('leaves the choice of place out of the loadout and puts it on its own step', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+
+    const loadout = markupOf(hub);
+    expect(loadout).toContain('Choose drop-in');
+    expect(loadout).not.toContain('data-insertion');
+    // And the pack, which is what the loadout is for, is still on it.
+    expect(loadout).toContain('squares');
+
+    hub.flow.advance();
+    const dropIn = markupOf(hub);
+    expect(hub.flow.step).toBe('dropin');
+    expect(dropIn).toContain('data-insertion="floodplain-relay"');
+    expect(() => hub.flow.deploy()).toThrow(/confirmed loadout/);
+  });
+
+  it('draws the place as a picture of the real map, dark where nobody has walked', () => {
+    const { hub } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+    hub.flow.advance();
+
+    const markup = markupOf(hub);
+    // The canvas carries the map's own tile dimensions: one source pixel is one
+    // tile, so a redrawn map draws a new picture with nothing stored.
+    expect(markup).toContain('<canvas class="px-minimap" data-minimap="floodplain-relay" width="64" height="64"');
+    expect(markup).toContain('0% walked');
+    // What a place holds is on the screen: its doors and who has them, its ways
+    // out, and the wildlife of nowhere at all until some of it has been walked.
+    expect(markup).toContain('TOLL BRIDGE');
+    expect(markup).toContain('SOUTH GATE');
+    expect(markup).toContain('You have walked none of this map');
+  });
+
+  it('shows a door as yours once its keeper is beaten', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      defeatedBosses: ['floodplain-toll-keeper'],
+    });
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+    hub.flow.advance();
+
+    const markup = markupOf(hub);
+    expect(markup).toContain('you opened this');
+    expect(markup).not.toContain('held by TOLLMAN BRIGGS');
   });
 
   it('does not offer a drop-in point nobody has walked to', () => {
@@ -553,6 +633,9 @@ describe('hub deployment route', () => {
     });
 
     hub.setView('deploy');
+    // Where to drop in is its own step, so the list lives past the loadout.
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.advance();
     hub.render();
     const markup = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root
       .innerHTML;
@@ -597,7 +680,7 @@ describe('hub deployment route', () => {
   it('starts one raid however many times the key that started it is pressed', () => {
     const { hub, start } = createHub();
     hub.flow.togglePokemon('charmander-1');
-    hub.flow.advance();
+    readyToDeploy(hub);
 
     // The screen keeps its cursor on `Enter the raid` for the length of the
     // fade, and the second press used to throw out of a raid already running.
@@ -614,8 +697,7 @@ describe('hub deployment route', () => {
     hub.flow.togglePokemon('charmander-1');
     hub.flow.adjustItem('potion', 2);
     hub.flow.openSecureSlot();
-    hub.flow.advance();
-    hub.flow.advance();
+    readyToDeploy(hub);
     deploy(hub, start);
 
     const data = start.mock.calls[0][1] as WorldSceneData;
@@ -639,7 +721,7 @@ describe('the hunter a loadout draws', () => {
 
   function finalCheckOf(hub: HubInternals): string {
     hub.setView('deploy');
-    hub.flow.advance();
+    readyToDeploy(hub);
     hub.render();
     return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
   }
@@ -732,7 +814,7 @@ describe('the standing board in the lobby', () => {
       hub.flow.togglePokemon('bulbasaur-1');
       hub.flow.chooseInsertion(insertion.id);
       hub.setView('deploy');
-      hub.flow.advance();
+    readyToDeploy(hub);
 
       const finalCheck = markupOf(hub);
       expect(finalCheck).toContain(`data-hunter-tier="${tier}"`);
@@ -1098,7 +1180,7 @@ describe('the Outfitter', () => {
     hub.flow.toggleSecurePokemon('charmander-1');
     hub.flow.toggleSecurePokemon('pidgey-2');
     hub.setView('deploy');
-    hub.flow.advance();
+    readyToDeploy(hub);
     expect(markupOf(hub)).toContain('2 secured · 8/8 squares');
 
     deploy(hub, start);
@@ -1116,7 +1198,7 @@ describe('the Outfitter', () => {
     const { hub, start } = createOutfittedHub();
     hub.flow.togglePokemon('charmander-1');
     hub.setView('deploy');
-    hub.flow.advance();
+    readyToDeploy(hub);
 
     deploy(hub, start);
 

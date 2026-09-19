@@ -50,6 +50,11 @@ describe('deployment flow', () => {
     expect(flow.advance()).toBeUndefined();
     expect(flow.step).toBe('loadout');
     expect(flow.advance()).toBeUndefined();
+    // Where to drop in is its own step now, and it stands between the loadout
+    // and the confirmation: a raid can no more start from it than from the kit.
+    expect(flow.step).toBe('dropin');
+    expect(() => flow.deploy()).toThrow(/confirmed loadout/);
+    expect(flow.advance()).toBeUndefined();
     expect(flow.step).toBe('confirm');
     expect(() => flow.deploy()).not.toThrow();
   });
@@ -69,7 +74,7 @@ describe('deployment flow', () => {
     expect(stash.recoverPokemon('charmander-1')).toBe(true);
     expect(flow.isDeployable).toBe(true);
     expect(flow.advance()).toBeUndefined();
-    expect(flow.step).toBe('confirm');
+    expect(flow.step).toBe('dropin');
   });
 
   it('still deploys a fainted Pokemon alongside one that can fight', () => {
@@ -81,6 +86,7 @@ describe('deployment flow', () => {
     flow.togglePokemon('bulbasaur-1');
 
     expect(flow.isDeployable).toBe(true);
+    expect(flow.advance()).toBeUndefined();
     expect(flow.advance()).toBeUndefined();
     expect(flow.deploy().party.map((stored) => stored.id)).toEqual(['charmander-1', 'bulbasaur-1']);
   });
@@ -102,6 +108,8 @@ describe('deployment flow', () => {
     flow.chooseInsertion('viridian-forest');
     flow.openSecureSlot();
     flow.adjustSecureItem('potion', 2);
+    // Out of the secure detour, on to the drop-in, then to the confirmation.
+    flow.advance();
     flow.advance();
     flow.advance();
 
@@ -136,6 +144,7 @@ describe('deployment flow', () => {
 
     flow.togglePokemon('bulbasaur-1');
     flow.togglePokemon('charmander-1');
+    flow.advance();
     flow.advance();
 
     // Charmander is level 7 against Bulbasaur's 5, and four squares fill the
@@ -310,6 +319,7 @@ describe('deployment flow', () => {
 
     flow.togglePokemon('bulbasaur-1');
     flow.advance();
+    flow.advance();
     expect(flow.step).toBe('confirm');
 
     flow.restart();
@@ -324,11 +334,14 @@ describe('deployment flow', () => {
 
     flow.togglePokemon('bulbasaur-1');
     flow.advance();
+    flow.advance();
     flow.openSecureSlot();
 
     expect(flow.secureReturnStep).toBe('confirm');
     expect(flow.retreat()).toBe(true);
     expect(flow.step).toBe('confirm');
+    expect(flow.retreat()).toBe(true);
+    expect(flow.step).toBe('dropin');
     expect(flow.retreat()).toBe(true);
     expect(flow.step).toBe('loadout');
     expect(flow.retreat()).toBe(false);
@@ -373,6 +386,7 @@ describe('deployment flow', () => {
     expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1', 'squirtle-1']);
 
     flow.advance();
+    flow.advance();
     const deployment = flow.deploy();
     expect(deployment.stashSecureSlot.pokemonIds).toEqual(['charmander-1', 'squirtle-1']);
     expect(deployment.secureSlot.pokemon).toHaveLength(2);
@@ -397,6 +411,7 @@ describe('deployment flow', () => {
     expect(flow.adjustSecureItem('radio-valve', 1)).toBeUndefined();
     expect(flow.securesItem('radio-valve')).toBe(true);
     expect(flow.securedItems).toEqual([{ itemId: 'radio-valve', quantity: 1 }]);
+    flow.advance();
     flow.advance();
     const deployment = flow.deploy();
     expect(deployment.items).toEqual([]);

@@ -46,12 +46,19 @@ export const BASE_LOADOUT_CAPACITY: LoadoutCapacity = {
 };
 
 /**
- * Preparation is a route, not a screen: a player picks what to risk, may detour
- * into the secure slot, and only then reaches the confirmation that starts the
- * raid. `deploy()` refuses to hand anything back from an earlier step, so a raid
- * can never begin with a loadout the player did not look at and confirm.
+ * Preparation is a route, not a screen: a player picks what to risk, chooses
+ * where to drop in, may detour into the secure slot, and only then reaches the
+ * confirmation that starts the raid. `deploy()` refuses to hand anything back
+ * from an earlier step, so a raid can never begin with a loadout the player did
+ * not look at and confirm.
+ *
+ * What to take and where to go used to be one screen, with the insertions a
+ * third pane beside the pack. They are two different decisions - one is about
+ * your vault, the other about a place - and the second had no room to say
+ * anything about the place at all. It is its own step now, and the loadout is
+ * otherwise unchanged.
  */
-export type DeploymentStep = 'loadout' | 'secure' | 'confirm';
+export type DeploymentStep = 'loadout' | 'dropin' | 'secure' | 'confirm';
 
 /** Everything a confirmed plan hands to the run manager and the raid scene. */
 export interface Deployment {
@@ -464,6 +471,10 @@ export class DeploymentFlow {
           ? 'Choose at least one Pokemon to take into the raid.'
           : 'Every Pokemon in this loadout has fainted. Recover one at base first.';
       }
+      this.currentStep = 'dropin';
+      return undefined;
+    }
+    if (this.currentStep === 'dropin') {
       this.currentStep = 'confirm';
     }
     return undefined;
@@ -481,6 +492,10 @@ export class DeploymentFlow {
       return true;
     }
     if (this.currentStep === 'confirm') {
+      this.currentStep = 'dropin';
+      return true;
+    }
+    if (this.currentStep === 'dropin') {
       this.currentStep = 'loadout';
       return true;
     }

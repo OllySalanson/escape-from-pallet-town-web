@@ -54,7 +54,11 @@ body {
   position: relative;
 }
 
-#app canvas {
+/* The game's own canvas, and only it: a direct child of the stage. The DOM
+   screens draw on canvases too now - the drop-in screen's bird's-eye map is one
+   - and `max-height: 100%` against a parent with no definite height resolved
+   that map to nothing at all. */
+#app > canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   /* A window too small for even 2x scales the canvas down rather than clipping
@@ -1300,7 +1304,7 @@ button {
 }
 /* Resets are `:where()`, so they weigh nothing and any class below can undo one
    without an arms race of specificity. */
-.pixel-ui :where(h1, h2, h3, p, ol, ul) {
+.pixel-ui :where(h1, h2, h3, p, ol, ul, dl) {
   margin: 0;
   padding: 0;
   font: inherit;
@@ -1916,6 +1920,95 @@ button {
   --fill: var(--red-wash);
 }
 
+/* --- Choosing where to drop in ------------------------------------------ */
+/* A banner across the top - the picture of the place, the facts beside it, the
+   ways in next to those - and everything the place holds underneath at the full
+   width of the screen. Side by side in two columns, what a place *holds* - its
+   contract, its doors, its wildlife - was two lines tall at the smallest stage,
+   and that is most of what the screen is for. */
+:where(.pixel-ui) .dropin-layout {
+  grid-template-columns: auto minmax(0, 1fr);
+  /* The banner is a fixed 88 pixels - the tallest map's picture at one pixel to
+     the tile, plus its lid and its frame - rather than `auto`, for two reasons: an `auto` row
+     takes its height from the *list* beside the picture, which is as tall as
+     however many ways in the player has found, and a banner that changed height
+     with the map would move the whole screen every time the cursor did. */
+  grid-template-rows: calc(var(--u) * 88) minmax(0, 1fr) auto;
+  height: 100%;
+}
+:where(.pixel-ui) .dropin-layout > .px-window {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+}
+:where(.pixel-ui) .dropin-about,
+:where(.pixel-ui) .dropin-layout .confirm-bar {
+  grid-column: 1 / -1;
+}
+/* The map, and the five short facts that fit beside it. */
+:where(.pixel-ui) .dropin-head {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 3);
+}
+/* One source pixel is one tile is one game pixel, scaled by nothing. The width
+   is the map's own tile count in game pixels; the height follows from the
+   canvas's own proportions, so a tall map is drawn tall without the stylesheet
+   being told twice how big it is. */
+:where(.pixel-ui) .px-minimap {
+  flex: none;
+  width: calc(var(--u) * var(--cols));
+  height: auto;
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 var(--u) var(--frame);
+  margin: var(--u);
+}
+:where(.pixel-ui) .dropin-facts {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 0;
+}
+:where(.pixel-ui) .dropin-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .dropin-facts dt {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .dropin-facts dd {
+  margin: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+:where(.pixel-ui) .dropin-brief {
+  padding-bottom: calc(var(--u) * 2);
+  box-shadow: 0 var(--u) 0 inset var(--frame);
+}
+:where(.pixel-ui) .dropin-blurb,
+:where(.pixel-ui) .dropin-brief > .px-note,
+:where(.pixel-ui) .dropin-brief > .px-empty {
+  padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
+}
+/* A swatch in the ink the map draws that thing in, so the list is the legend
+   and the picture needs no key of its own. */
+:where(.pixel-ui) .px-row.has-pip {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding-left: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .px-pip {
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 3);
+  background: var(--pip);
+  box-shadow: 0 0 0 var(--u) var(--frame);
+  margin-right: var(--u);
+}
+
 /* --- Pixel UI: text that is allowed to wrap ------------------------------ */
 :where(.pixel-ui) .px-wrap {
   display: block;
@@ -2039,9 +2132,16 @@ button {
 :where(.pixel-ui) .px-ready {
   color: #1d6a4f;
 }
-:where(.pixel-ui) .stash-layout,
-:where(.pixel-ui) .loadout-layout {
+:where(.pixel-ui) .stash-layout {
   grid-template-columns: minmax(0, 1fr) calc(var(--u) * 132);
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+}
+/* The loadout's second column is the pack and nothing else now that where to
+   drop in is its own step, so it is cut to the pack's own width - six squares
+   of sixteen pixels and its frame - and the stash list keeps the rest. */
+:where(.pixel-ui) .loadout-layout {
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 112);
   grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
 }

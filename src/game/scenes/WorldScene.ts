@@ -116,6 +116,7 @@ import {
 } from '../world/depths';
 import { districtAt, weatherAt } from '../world/districts';
 import type { WeatherId } from '../pokemon/battle/weather';
+import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
 import { WINDOW_CREAM } from '../ui/pixelWindow';
 import {
   OBJECTIVE_DETAIL_MS,
@@ -427,6 +428,8 @@ export class WorldScene extends Phaser.Scene {
   private objectiveDetailMs = 0;
   /** The district the player is standing in, and how long its arrival plate has left. */
   private districtId: string | null = null;
+  /** The tile the survey was last taken from, so it is taken once a step. */
+  private surveyedFrom: number | null = null;
   private placeName: string | null = null;
   private placePlateMs = 0;
   /** True when this build of the scene is a battle handing the raid back. */
@@ -562,6 +565,7 @@ export class WorldScene extends Phaser.Scene {
     // Where the last raid ended is not where this one starts, and the plate
     // that named it must not flash up over the next insertion.
     this.districtId = null;
+    this.surveyedFrom = null;
     this.placeName = null;
     this.placePlateMs = 0;
     this.arrivedFromBattle = false;
@@ -1707,6 +1711,7 @@ export class WorldScene extends Phaser.Scene {
     this.objectiveCue = '';
     this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
     this.noteDistrict(this.arrivedFromBattle);
+    this.surveyGround();
     this.refreshRunTimerHud();
   }
 
@@ -1729,6 +1734,51 @@ export class WorldScene extends Phaser.Scene {
   /** The weather of the district the player is standing in, or null. */
   private currentWeather(): WeatherId | null {
     return weatherAt(this.currentMap.id, this.currentTile);
+  }
+
+  /**
+   * Writes the ground round the player into this raid's survey, which is what
+   * the drop-in screen's picture of the map is drawn from.
+   *
+   * A disc rather than the camera's view: what the screen shows is most of a
+   * district at once, and a map uncovered a screen at a time is uncovered in
+   * two raids and never dark again. A disc the width of the shading a trainer
+   * watches follows the road the player actually took, which is what makes the
+   * picture at base a record of a journey rather than of a rectangle.
+   */
+  private surveyGround(): void {
+    const session = this.runSession;
+    if (!session || session.manager.phase !== RunPhase.InRun) {
+      return;
+    }
+    const index = this.currentTile.y * this.currentMap.width + this.currentTile.x;
+    if (this.surveyedFrom === index) {
+      return;
+    }
+    this.surveyedFrom = index;
+    const surveyed = session.surveyed ?? new Set<number>();
+    session.surveyed = surveyed;
+    for (const tile of tilesAround(
+      this.currentTile,
+      SURVEY_RADIUS,
+      this.currentMap.width,
+      this.currentMap.height,
+    )) {
+      surveyed.add(tile);
+    }
+  }
+
+  /**
+   * Closes this raid's entry in the record kept at base: how it ended, and the
+   * ground it walked. Called from every ending, because a raid lost on the last
+   * step surveyed exactly as much ground as one that got home.
+   */
+  private recordRaid(outcome: 'extracted' | 'wiped'): void {
+    this.surveyGround();
+    new SaveManager().recordRaidEnded(this.currentMap.id, outcome, {
+      width: this.currentMap.width,
+      walked: this.runSession?.surveyed ?? [],
+    });
   }
 
   /**
@@ -1763,6 +1813,7 @@ export class WorldScene extends Phaser.Scene {
       this.placePlateMs = Math.max(0, this.placePlateMs - deltaMs);
     }
     this.noteDistrict();
+    this.surveyGround();
 
     if (manager.isEnraged) {
       if (this.timerThreat !== 'enraged') {
@@ -3154,6 +3205,10 @@ export class WorldScene extends Phaser.Scene {
       snapshot,
       this.bag.toJSON(),
     );
+    // Written before the banking, which reloads the save it writes back: the
+    // record and the survey are part of what this raid did, and banking must
+    // carry them out rather than overwrite them.
+    this.recordRaid('extracted');
     const contractResult = banksContract
       ? new SaveManager().bankContract(contract, runResult, settlement)
       : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };
@@ -3305,6 +3360,7 @@ export class WorldScene extends Phaser.Scene {
     // supply still in it comes home, and only what is still in it was lost with
     // the raid. Anything missing from it was spent, and is reported as spent.
     const wipe = buildWipeSettlement(this.runSession.secureSlot.items ?? [], carriedOut);
+    this.recordRaid('wiped');
     const saved = new SaveManager().applyWipeLoss(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,

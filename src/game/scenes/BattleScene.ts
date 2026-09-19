@@ -35,6 +35,7 @@ import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { battleEventSound, battleNote, type BattleNote } from '../audio/battleSounds';
 import type { SoundEffectName } from '../audio/soundEffects';
+import { WORLD_MAPS } from '../worldMap';
 import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
@@ -2057,6 +2058,16 @@ export class BattleScene extends Phaser.Scene {
     // The pack is also what divides the loss: only a secured supply still in it
     // comes home, and only what is still in it was destroyed with the raid.
     const wipe = buildWipeSettlement(this.runSession.secureSlot.items ?? [], carriedOut);
+    // A raid lost in a fight walked exactly as much ground as one that got
+    // home, so its survey is written here too - and the map the record is
+    // against is the raid's own, which the plan names.
+    const raidMapId = this.runSession.plan?.insertion.mapId;
+    if (raidMapId) {
+      new SaveManager().recordRaidEnded(raidMapId, 'wiped', {
+        width: WORLD_MAPS[raidMapId].width,
+        walked: this.runSession.surveyed ?? [],
+      });
+    }
     const saved = new SaveManager().applyWipeLoss(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,
