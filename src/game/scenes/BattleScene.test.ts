@@ -380,6 +380,22 @@ describe('escaping the hunter', () => {
     ]);
   });
 
+  /**
+   * Playtest 3, D3: FLEE -60s with 1:24 on the clock left 24 seconds, and the
+   * raid ran out eight steps from the exit. The price was honest; nothing
+   * related it to what was left.
+   */
+  it('says what is left of the clock once the price is most of it', () => {
+    const runSession = startedRunSession();
+    runSession.manager.registerHunterFlee();
+    runSession.manager.tick(18 * 60 * 1_000 - 40_000 - 84_000);
+    const { scene, renderedTexts } = createBattleSceneHarness({ hunterBattle: true, runSession });
+
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+
+    expect(renderedTexts.map(({ text }) => text)).toContain('  FLEE -60s OF 84s');
+  });
+
   it('charges the raid clock, never rolls for it, and marks the hunter as having lost the trail', () => {
     const runSession = startedRunSession();
     const { scene, renderedTexts, dialog } = createBattleSceneHarness({

@@ -22,6 +22,8 @@ import {
   formatMoveCommand,
   moveCommandLayout,
   moveGuidanceLayout,
+  HUNTER_FLEE_WARNING_SHARE,
+  formatHunterFleeCommand,
 } from './battlePresentation';
 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
@@ -208,5 +210,23 @@ describe('battle presentation', () => {
         { type: 'confusion-self-hit', user: 'enemy', name: 'Bulbasaur', damage: 3 },
       ]),
     ).toMatchObject([{ actor: 'enemy', target: 'enemy', hpDelta: 3 }]);
+  });
+
+  describe('the price of fleeing the hunter', () => {
+    it('is the bare price while the clock can easily afford it', () => {
+      expect(formatHunterFleeCommand(40_000, 240_000)).toBe('FLEE -40s');
+      expect(formatHunterFleeCommand(40_000)).toBe('FLEE -40s');
+    });
+
+    it('carries the time left once the price is a large share of it', () => {
+      expect(formatHunterFleeCommand(60_000, 84_000)).toBe('FLEE -60s OF 84s');
+      expect(formatHunterFleeCommand(40_000, 40_000 / HUNTER_FLEE_WARNING_SHARE)).toBe('FLEE -40s OF 80s');
+      expect(formatHunterFleeCommand(40_000, 40_000 / HUNTER_FLEE_WARNING_SHARE + 1_000)).toBe('FLEE -40s');
+    });
+
+    it('says what the escape does when it costs everything that is left', () => {
+      expect(formatHunterFleeCommand(60_000, 60_000)).toBe('FLEE: CLOCK OUT');
+      expect(formatHunterFleeCommand(60_000, 24_000)).toBe('FLEE: CLOCK OUT');
+    });
   });
 });
