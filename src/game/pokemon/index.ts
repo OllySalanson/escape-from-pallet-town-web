@@ -1,3 +1,9 @@
+export type {
+  AbilityBase,
+  AbilityEffectKind,
+  AbilityHolder,
+} from './AbilityBase';
+export { ABILITIES, ABILITIES_BY_ID, getAbilityById } from './abilities';
 export { Move } from './Move';
 export { MoveBase, MoveCategory } from './MoveBase';
 export {

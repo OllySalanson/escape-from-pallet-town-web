@@ -480,6 +480,84 @@ export const eventToMessage = (event: BattleEvent): string => {
       return weatherEndedMessage(event.weather);
     case 'weather-damage':
       return `${combatantName(event)} is buffeted by the ${weatherLabel(event.weather).toLowerCase()}!`;
+    // An ability is never shown in a menu, so every one of these lines is the
+    // only teacher the player gets. Each says whose ability it was and what it
+    // just did, in the same voice the gear lines use - and the four that change
+    // a number every turn say it once a battle rather than once a turn.
+    case 'ability':
+      return abilityLine(event);
+  }
+};
+
+/**
+ * The two abilities that settle a wild escape outright.
+ *
+ * They are worded here rather than raised as a `BattleEvent` because an escape
+ * is not resolved by `resolveTurn` at all - it is its own roll, and these two
+ * replace the roll rather than adjust it.
+ */
+export const escapeAbilityMessage = (
+  who: { readonly user: 'player' | 'enemy'; readonly name: string },
+  ability: string,
+  escaped: boolean,
+): string =>
+  escaped
+    ? `${combatantName(who)}'s ${ability} took it clear away!`
+    : `${combatantName(who)}'s ${ability} will not let it go!`;
+
+const abilityLine = (event: {
+  readonly user: 'player' | 'enemy';
+  readonly name: string;
+  readonly ability: string;
+  readonly effect: string;
+  readonly status?: string;
+  readonly stat?: string;
+  readonly amount?: number;
+}): string => {
+  const who = `${combatantName(event)}'s ${event.ability}`;
+  switch (event.effect) {
+    case 'powered-up':
+      return `${who} is driving it harder!`;
+    case 'sharpened':
+      return `${who} has it in its sights!`;
+    case 'shrugged-off':
+      return `${who} is soaking that up!`;
+    case 'hardened':
+      return `${who} turned the critical hit aside!`;
+    case 'absorbed':
+      return event.amount
+        ? `${who} drank it in. +${event.amount} HP`
+        : `${who} let it straight past!`;
+    case 'blocked-status':
+      return event.status
+        ? `${who} kept ${statusLabel(event.status)} off it!`
+        : `${who} would not let it flinch!`;
+    case 'blocked-boost':
+      return `${who} would not let its ${statLabel(event.stat ?? '')} drop!`;
+    case 'blocked-secondaries':
+      return `${who} blocked the extra effect!`;
+    case 'no-recoil':
+      return `${who} took no recoil.`;
+    case 'shed':
+      return `${who} shed ${statusLabel(event.status ?? '')} with its skin!`;
+    case 'cured-on-switch':
+      return `${who} cleared up ${statusLabel(event.status ?? '')}!`;
+    case 'reflected':
+      return `${who} passed ${statusLabel(event.status ?? '')} straight back!`;
+    case 'contact':
+      return event.amount
+        ? `${who} tasted foul! -${event.amount} HP`
+        : `${who} caught whoever touched it!`;
+    case 'sent-out':
+      return `${who} sized up the other side!`;
+    case 'quickened':
+      return `${who} is racing the weather!`;
+    case 'hidden':
+      return `${who} is hard to make out in this!`;
+    case 'weathered-out':
+      return `${who} is holding the weather off!`;
+    default:
+      return `${who} did something.`;
   }
 };
 

@@ -103,7 +103,7 @@ export const PALLET_FLOOD_WILDLIFE = wildlife(0.08, [
 /** Sheds, hutches and wire: warm corners and things that like a cable. */
 export const PALLET_YARD_WILDLIFE = wildlife(0.08, [
   { speciesId: 'charmander', minLevel: 4, maxLevel: 6, weight: 3 },
-  { speciesId: 'pikachu', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'pikachu', minLevel: 4, maxLevel: 4, weight: 3 },
   { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 2 },
 ]);
 
@@ -200,7 +200,15 @@ export const FLOODPLAIN_TOWN_WILDLIFE = wildlife(0.08, [
 
 /** The vault's ground, behind a boss: the hardest grass on the map. */
 export const FLOODPLAIN_VAULT_WILDLIFE = wildlife(0.09, [
-  { speciesId: 'pikachu', minLevel: 4, maxLevel: 5, weight: 3 },
+  // Pikachu reached level 5 here until its Static was real. Measured over the
+  // engine, Static costs a level-5 starter 82% to 61% against a level-5 Pikachu
+  // and 77% to 47% for Charmander, which took this table - on the map a fresh
+  // save starts on - under the floor `districtEncounters.test.ts` holds the
+  // starting maps to. Capping it at four is the composition answer rather than
+  // a quieter ability: it is the same Pikachu the hunter brings and it should
+  // be the same fight, and the table is back where it was (55/55/63 to
+  // 54/58/63) with the ability doing all of it.
+  { speciesId: 'pikachu', minLevel: 4, maxLevel: 4, weight: 3 },
   { speciesId: 'butterfree', minLevel: 6, maxLevel: 6, weight: 1 },
   { speciesId: 'pidgey', minLevel: 4, maxLevel: 5, weight: 3 },
 ]);

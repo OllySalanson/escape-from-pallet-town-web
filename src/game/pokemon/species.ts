@@ -44,6 +44,7 @@ export const BULBASAUR = new PokemonBase({
   id: 'bulbasaur',
   dexId: 1,
   name: 'Bulbasaur',
+  abilityId: 'overgrow',
   primaryType: PokemonType.Grass,
   secondaryType: PokemonType.Poison,
   baseStats: {
@@ -70,6 +71,7 @@ export const CHARMANDER = new PokemonBase({
   id: 'charmander',
   dexId: 4,
   name: 'Charmander',
+  abilityId: 'blaze',
   primaryType: PokemonType.Fire,
   baseStats: {
     hp: 39,
@@ -97,6 +99,7 @@ export const SQUIRTLE = new PokemonBase({
   id: 'squirtle',
   dexId: 7,
   name: 'Squirtle',
+  abilityId: 'torrent',
   primaryType: PokemonType.Water,
   baseStats: {
     hp: 44,
@@ -131,6 +134,7 @@ export const BUTTERFREE = new PokemonBase({
   id: 'butterfree',
   dexId: 12,
   name: 'Butterfree',
+  abilityId: 'compound-eyes',
   primaryType: PokemonType.Bug,
   secondaryType: PokemonType.Flying,
   baseStats: {
@@ -154,6 +158,7 @@ export const PIKACHU = new PokemonBase({
   id: 'pikachu',
   dexId: 25,
   name: 'Pikachu',
+  abilityId: 'static',
   primaryType: PokemonType.Electric,
   baseStats: {
     hp: 35,
@@ -178,6 +183,10 @@ export const JIGGLYPUFF = new PokemonBase({
   id: 'jigglypuff',
   dexId: 39,
   name: 'Jigglypuff',
+  // Cute Charm is Jigglypuff's generation III ability, and it infatuates on
+  // contact - which needs a gender, and nothing in this game has one. It is on
+  // `tools/abilities/coverage.mjs`'s list of what is left, with the reason.
+  abilityId: null,
   primaryType: PokemonType.Normal,
   baseStats: {
     hp: 115,
@@ -203,6 +212,7 @@ export const PIDGEY = new PokemonBase({
   id: 'pidgey',
   dexId: 16,
   name: 'Pidgey',
+  abilityId: 'keen-eye',
   primaryType: PokemonType.Normal,
   secondaryType: PokemonType.Flying,
   baseStats: {
@@ -258,6 +268,7 @@ export const IVYSAUR = new PokemonBase({
   id: 'ivysaur',
   dexId: 2,
   name: 'Ivysaur',
+  abilityId: 'overgrow',
   primaryType: PokemonType.Grass,
   secondaryType: PokemonType.Poison,
   baseStats: {
@@ -286,6 +297,7 @@ export const VENUSAUR = new PokemonBase({
   id: 'venusaur',
   dexId: 3,
   name: 'Venusaur',
+  abilityId: 'overgrow',
   primaryType: PokemonType.Grass,
   secondaryType: PokemonType.Poison,
   baseStats: {
@@ -314,6 +326,7 @@ export const CHARMELEON = new PokemonBase({
   id: 'charmeleon',
   dexId: 5,
   name: 'Charmeleon',
+  abilityId: 'blaze',
   primaryType: PokemonType.Fire,
   baseStats: {
     hp: 58,
@@ -341,6 +354,7 @@ export const CHARIZARD = new PokemonBase({
   id: 'charizard',
   dexId: 6,
   name: 'Charizard',
+  abilityId: 'blaze',
   primaryType: PokemonType.Fire,
   secondaryType: PokemonType.Flying,
   baseStats: {
@@ -371,6 +385,7 @@ export const WARTORTLE = new PokemonBase({
   id: 'wartortle',
   dexId: 8,
   name: 'Wartortle',
+  abilityId: 'torrent',
   primaryType: PokemonType.Water,
   baseStats: {
     hp: 59,
@@ -397,6 +412,7 @@ export const BLASTOISE = new PokemonBase({
   id: 'blastoise',
   dexId: 9,
   name: 'Blastoise',
+  abilityId: 'torrent',
   primaryType: PokemonType.Water,
   baseStats: {
     hp: 79,
@@ -423,6 +439,7 @@ export const PIDGEOTTO = new PokemonBase({
   id: 'pidgeotto',
   dexId: 17,
   name: 'Pidgeotto',
+  abilityId: 'keen-eye',
   primaryType: PokemonType.Normal,
   secondaryType: PokemonType.Flying,
   baseStats: {
@@ -449,6 +466,7 @@ export const PIDGEOT = new PokemonBase({
   id: 'pidgeot',
   dexId: 18,
   name: 'Pidgeot',
+  abilityId: 'keen-eye',
   primaryType: PokemonType.Normal,
   secondaryType: PokemonType.Flying,
   baseStats: {
@@ -476,6 +494,7 @@ export const RAICHU = new PokemonBase({
   id: 'raichu',
   dexId: 26,
   name: 'Raichu',
+  abilityId: 'static',
   primaryType: PokemonType.Electric,
   baseStats: {
     hp: 60,
@@ -504,6 +523,10 @@ export const WIGGLYTUFF = new PokemonBase({
   id: 'wigglytuff',
   dexId: 40,
   name: 'Wigglytuff',
+  // Cute Charm is Jigglypuff's generation III ability, and it infatuates on
+  // contact - which needs a gender, and nothing in this game has one. It is on
+  // `tools/abilities/coverage.mjs`'s list of what is left, with the reason.
+  abilityId: null,
   primaryType: PokemonType.Normal,
   // Fairy is a generation VI type and this game has the seventeen that
   // generation III has, so Wigglytuff is Normal here exactly as Jigglypuff
