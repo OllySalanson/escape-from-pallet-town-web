@@ -59,6 +59,7 @@ import {
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import {
   getStarterSpecies,
+  starterInConditionOf,
   type StarterSpeciesId,
   type Stash,
   type StashedPokemon,
@@ -68,7 +69,7 @@ import { hunterThreatFor, hunterThreatLine } from '../world/hunterThreat';
 import { WORLD_MAP_NAMES } from '../worldMap';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
-import { starterCards, starterLoadoutSummary } from '../ui/starterPicker';
+import { starterCards } from '../ui/starterPicker';
 
 export interface HubSceneData {
   readonly savedGame?: RestoredGame;
@@ -921,7 +922,7 @@ export class HubScene extends Phaser.Scene {
   private swapPanel(): string {
     const spare = this.sparePartner;
     if (!spare) return '';
-    return `<section class="panel swap-panel"><div class="panel-heading"><div><p class="eyebrow">Down to one Pokémon</p><h2>Swap your partner</h2></div><small>Only while one Pokémon is left at base</small></div><p>${spare.pokemon.base.name} (Level ${spare.pokemon.level}) is all you have left. Trade it for a fresh level 5 Bulbasaur, Charmander or Squirtle - the species you settle on is the one you are re-issued after a wipe.</p><button class="button" data-view="reselect">Choose a new partner →</button></section>`;
+    return `<section class="panel swap-panel"><div class="panel-heading"><div><p class="eyebrow">Down to one Pokémon</p><h2>Swap your partner</h2></div><small>Only while one Pokémon is left at base</small></div><p>${spare.pokemon.base.name} (Level ${spare.pokemon.level}) is all you have left. Trade it for a level 5 Bulbasaur, Charmander or Squirtle, which arrives in the condition ${spare.pokemon.base.name} is in now - the species you settle on is the one you are re-issued after a wipe.</p><button class="button" data-view="reselect">Choose a new partner →</button></section>`;
   }
 
   private reselectView(): string {
@@ -929,7 +930,7 @@ export class HubScene extends Phaser.Scene {
     if (!spare) return '<main class="hub-home"><p class="empty-state">You have more than one Pokémon, so there is nothing to swap.</p></main>';
     const chosen = getStarterSpecies(this.reselectStarterId);
     const held = `${spare.pokemon.base.name} (Level ${spare.pokemon.level})`;
-    return `<main class="starter-shell reselect-shell"><header class="starter-header"><p class="eyebrow">Re-specialise</p><h1>Choose a new partner</h1><p>${held} is your last Pokémon. Swapping releases it for good and issues a fresh level 5 starter in its place, so this is never an upgrade - only a change of direction.</p></header><main class="starter-grid">${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectLabel: 'Swap to →' })}</main><footer class="starter-confirm ${this.swapArmed ? 'arming' : ''}">${this.swapFooter(spare, chosen)}</footer></main>`;
+    return `<main class="starter-shell reselect-shell"><header class="starter-header"><p class="eyebrow">Re-specialise</p><h1>Choose a new partner</h1><p>${held} is your last Pokémon. Swapping releases it for good and issues a level 5 starter as hurt as it is now, with no supplies - a change of direction, never an upgrade or a heal.</p></header><main class="starter-grid">${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectLabel: 'Swap to →' })}</main><footer class="starter-confirm ${this.swapArmed ? 'arming' : ''}">${this.swapFooter(spare, chosen)}</footer></main>`;
   }
 
   private swapFooter(spare: StashedPokemon, chosen: PokemonBase): string {
@@ -937,9 +938,18 @@ export class HubScene extends Phaser.Scene {
       return `<div><span class="eyebrow">Already yours</span><strong>${chosen.name}</strong><small>Pick a different starter to swap.</small></div><button class="button primary-button" disabled>Swap for ${chosen.name} →</button>`;
     }
     if (!this.swapArmed) {
-      return `<div><span class="eyebrow">Arrives as</span><strong>${chosen.name}</strong><small>${starterLoadoutSummary(chosen)}</small></div><button class="button primary-button" data-swap-arm>Swap for ${chosen.name} →</button>`;
+      return `<div><span class="eyebrow">Arrives as</span><strong>${chosen.name}</strong><small data-swap-condition>${this.swapArrival(spare, chosen)}</small></div><button class="button primary-button" data-swap-arm>Swap for ${chosen.name} →</button>`;
     }
-    return `<div><span class="eyebrow">This cannot be undone</span><strong>Release ${spare.pokemon.base.name} (Level ${spare.pokemon.level})?</strong><small>It is gone for good, and ${chosen.name} arrives at level 5.</small></div><div class="swap-actions"><button class="button" data-swap-cancel>Keep ${spare.pokemon.base.name}</button><button class="button danger-button" data-swap-confirm>Release and take ${chosen.name}</button></div>`;
+    return `<div><span class="eyebrow">This cannot be undone</span><strong>Release ${spare.pokemon.base.name} (Level ${spare.pokemon.level})?</strong><small data-swap-condition>It is gone for good. ${chosen.name} arrives as ${conditionLine(starterInConditionOf(spare.pokemon, chosen))}.</small></div><div class="swap-actions"><button class="button" data-swap-cancel>Keep ${spare.pokemon.base.name}</button><button class="button danger-button" data-swap-confirm>Release and take ${chosen.name}</button></div>`;
+  }
+
+  /**
+   * What the swap hands over, worded the way the stash will word it a click
+   * later: the old partner's condition on the new species, then its moves.
+   */
+  private swapArrival(spare: StashedPokemon, chosen: PokemonBase): string {
+    const incoming = starterInConditionOf(spare.pokemon, chosen);
+    return `${conditionLine(incoming)} · ${incoming.moves.map((move) => move.base.name).join(', ')}`;
   }
 
   private itemName(itemId: ItemId): string {

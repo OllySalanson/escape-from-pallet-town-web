@@ -9,12 +9,12 @@ vi.mock('phaser', () => ({
 }));
 
 import { Bag } from '../items';
-import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty } from '../pokemon';
+import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
 import { FIRST_CONTRACT_ID } from '../objectives';
 import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import type { ActiveRunSession } from '../run/RunSession';
-import { createStartingStash, type Stash, type StashedPokemon } from '../stash';
+import { createStartingStash, Stash, type StashedPokemon } from '../stash';
 import {
   FAINTED_TREATMENT_NOTE,
   MAX_PENDING_RECOVERY_MS,
@@ -545,6 +545,69 @@ describe('what the base screen leads with', () => {
     const hub = createFreshHub();
 
     expect(markupOf(hub)).toContain('swap your last partner');
+  });
+
+  /** Playtest 3, D1: home from an extraction at 1 HP with no Potions and four Poke Balls. */
+  function createSpentHub(): { hub: HubInternals; storage: MemoryStorage } {
+    const storage = new MemoryStorage();
+    const stash = new Stash({ items: { 'poke-ball': 4 } });
+    const squirtle = new Pokemon(SQUIRTLE, 5);
+    squirtle.takeDamage(squirtle.maxHp - 1);
+    stash.addPokemon(squirtle, 'squirtle-1');
+    new SaveManager(storage).save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'squirtle',
+    });
+    return { hub: createHub(DEFAULT_RAID_PROGRESS, storage).hub, storage };
+  }
+
+  function swapTo(hub: HubInternals, starterId: string): void {
+    const swapping = hub as unknown as { reselectStarterId: string; confirmSwap(): void };
+    hub.setView('reselect');
+    swapping.reselectStarterId = starterId;
+    swapping.confirmSwap();
+  }
+
+  it('does not let the swap stand in for the recovery bay or the restock', () => {
+    const { hub, storage } = createSpentHub();
+    hub.setView('stash');
+    const price = /data-recover="squirtle-1">Recover · ([^<]+)</.exec(markupOf(hub))?.[1];
+    expect(price).toBeDefined();
+
+    swapTo(hub, 'charmander');
+
+    const saved = new SaveManager(storage).load()!;
+    expect(saved.stash.listPokemon()).toMatchObject([
+      { id: 'charmander-1', pokemon: { base: { id: 'charmander' }, level: 5, currentHp: 1 } },
+    ]);
+    expect(saved.stash.listItems()).toEqual({ 'poke-ball': 4 });
+    expect(saved.pendingRecoveryMs).toBe(0);
+    // The screen shows the same vault, and the bay still wants its price.
+    expect(hub.stash.listPokemon()[0].pokemon.currentHp).toBe(1);
+    expect(markupOf(hub)).toContain(`data-recover="charmander-1">Recover · ${price}<`);
+
+    // Swapping back for the species you had is no way round it either.
+    swapTo(hub, 'squirtle');
+    expect(hub.stash.listPokemon()[0].pokemon.currentHp).toBe(1);
+    expect(hub.stash.listItems()).toEqual({ 'poke-ball': 4 });
+  });
+
+  it('states the condition the new partner arrives in before the swap is confirmed', () => {
+    const { hub } = createSpentHub();
+    const swapping = hub as unknown as { reselectStarterId: string; swapArmed: boolean };
+
+    hub.setView('reselect');
+    swapping.reselectStarterId = 'charmander';
+    expect(markupOf(hub)).toContain('Level 5 · 1/16 HP');
+
+    swapping.swapArmed = true;
+    const armed = markupOf(hub);
+    expect(armed).toContain('data-swap-confirm');
+    expect(armed).toContain('Level 5 · 1/16 HP');
   });
 
   it('drops the offer everywhere the moment a second Pokémon is banked', () => {

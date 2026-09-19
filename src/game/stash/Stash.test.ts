@@ -3,7 +3,7 @@ import { Bag } from '../items';
 import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
-import { MINIMUM_SUPPLIES, Stash } from './Stash';
+import { MINIMUM_SUPPLIES, Stash, starterInConditionOf } from './Stash';
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -111,7 +111,7 @@ describe('Stash', () => {
     expect(stash.supplyShortfall()).toEqual(MINIMUM_SUPPLIES);
   });
 
-  it.each([BULBASAUR, CHARMANDER, SQUIRTLE])('swaps a sole Pokemon for a fresh level 5 %s, with a usable supply', (starter) => {
+  it.each([BULBASAUR, CHARMANDER, SQUIRTLE])('swaps a sole Pokemon for a level 5 %s and hands over no supplies', (starter) => {
     const stash = new Stash({ items: { potion: 2 } });
     stash.addPokemon(new Pokemon(PIDGEY, 21), 'survivor');
 
@@ -120,7 +120,61 @@ describe('Stash', () => {
     expect(stash.listPokemon()).toMatchObject([
       { id: `${starter.id}-1`, pokemon: { base: { id: starter.id }, level: 5 } },
     ]);
-    expect(stash.listItems()).toEqual(MINIMUM_SUPPLIES);
+    // The kit is the wipe's guarantee, not the swap's: a vault short of it
+    // stays short, or every swap is a restock.
+    expect(stash.listItems()).toEqual({ potion: 2 });
+  });
+
+  it('is not a heal or a restock: the playtest-3 side door (1/17 HP, no Potions, 4 Poke Balls)', () => {
+    const stash = new Stash({ items: { 'poke-ball': 4 } });
+    const squirtle = new Pokemon(SQUIRTLE, 5);
+    squirtle.takeDamage(squirtle.maxHp - 1);
+    stash.addPokemon(squirtle, 'squirtle-1');
+
+    expect(stash.swapStarter(CHARMANDER)).toBe(true);
+
+    const [{ pokemon: charmander }] = stash.listPokemon();
+    expect(charmander.currentHp).toBe(1);
+    expect(stash.listItems()).toEqual({ 'poke-ball': 4 });
+
+    // Swapping back for the original species is no better.
+    expect(stash.swapStarter(SQUIRTLE)).toBe(true);
+    expect(stash.listPokemon()[0].pokemon.currentHp).toBe(1);
+    expect(stash.listItems()).toEqual({ 'poke-ball': 4 });
+  });
+
+  it('carries the status and the fainted state across a swap, so the bay is still owed', () => {
+    const poisoned = new Pokemon(BULBASAUR, 9);
+    poisoned.takeDamage(Math.floor(poisoned.maxHp / 2));
+    poisoned.primaryStatus = PrimaryStatus.Poison;
+    const incoming = starterInConditionOf(poisoned, CHARMANDER);
+    expect(incoming.primaryStatus).toBe(PrimaryStatus.Poison);
+    expect(incoming.currentHp / incoming.maxHp).toBeLessThanOrEqual(poisoned.currentHp / poisoned.maxHp);
+    expect(incoming.currentHp).toBeGreaterThan(0);
+
+    const fainted = new Pokemon(SQUIRTLE, 5);
+    fainted.takeDamage(fainted.maxHp);
+    expect(starterInConditionOf(fainted, BULBASAUR).isFainted).toBe(true);
+
+    const fit = new Pokemon(PIDGEY, 21);
+    const fresh = starterInConditionOf(fit, SQUIRTLE);
+    expect(fresh.currentHp).toBe(fresh.maxHp);
+    expect(fresh.primaryStatus).toBeNull();
+  });
+
+  it('never gains health however many times a partner is swapped', () => {
+    const stash = new Stash();
+    const bulbasaur = new Pokemon(BULBASAUR, 5);
+    bulbasaur.takeDamage(7);
+    stash.addPokemon(bulbasaur, 'bulbasaur-1');
+
+    let share = bulbasaur.currentHp / bulbasaur.maxHp;
+    for (const starter of [CHARMANDER, SQUIRTLE, BULBASAUR, SQUIRTLE, CHARMANDER, BULBASAUR]) {
+      expect(stash.swapStarter(starter)).toBe(true);
+      const { pokemon } = stash.listPokemon()[0];
+      expect(pokemon.currentHp / pokemon.maxHp).toBeLessThanOrEqual(share);
+      share = pokemon.currentHp / pokemon.maxHp;
+    }
   });
 
   it('refuses to swap a starter while more than one Pokemon remains', () => {

@@ -519,7 +519,8 @@ describe('extraction loop integration', () => {
     expect(saves.load()!.stash.listPokemon()).toMatchObject([
       { id: 'squirtle-1', pokemon: { base: { id: 'squirtle' }, level: 5 } },
     ]);
-    // Re-specialising hands over a usable kit too, not just a new species.
+    // The wipe restocked the kit before the swap was on offer, so a wiped
+    // player who re-specialises can still field a raid - the swap added none of it.
     expect(saves.load()!.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
 
     // Reload the page, then wipe again: the re-grant follows the new choice.
