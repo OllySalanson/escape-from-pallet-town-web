@@ -101,7 +101,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-rangers-log',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 4, y: 23 },
+    position: { x: 4, y: 24 },
     facing: 'right',
     dialogLines: [
       "RANGER'S LOG - nailed to a post",

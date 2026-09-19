@@ -175,7 +175,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   },
   {
     mapId: 'floodplain-relay',
-    position: { x: 5, y: 23 },
+    position: { x: 4, y: 23 },
     label: 'RADIO EXIT',
     unlockAtMs: 0,
     requirement: {

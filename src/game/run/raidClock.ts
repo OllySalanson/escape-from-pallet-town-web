@@ -14,7 +14,7 @@
  *   browser; the walking figures below were taken at the slower of those.
  * - The front door (13,9) to the ranger station (12,16) is 12 tiles, the station
  *   to the contract (11,20) is 5, and the contract to the Radio Exit the
- *   station opens is 15. The contract's own route is 32 tiles: about 5 seconds
+ *   station opens is 16. The contract's own route is 33 tiles: about 5 seconds
  *   of walking. The always-open South Gate is the long way home, 85 tiles by
  *   way of the contract - about 13 seconds. (These were 53 tiles to a South
  *   Gate 12 from the contract, before the map was redrawn as a vast one played
