@@ -2348,8 +2348,11 @@ button {
 }
 
 /* --- The summary: how far to the next level, and what a move does --------- */
+/* Two windows of the same width, because the smallest stage is 320 game pixels
+   wide and a fixed column for the portrait left the moves off the screen. Both
+   scroll inside their own frame; the screen never does. */
 :where(.pixel-ui) .summary-layout {
-  grid-template-columns: calc(var(--u) * 132) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   height: 100%;
 }
@@ -2364,35 +2367,61 @@ button {
 :where(.pixel-ui) .summary-layout > .px-window:has(.px-detail) {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
+:where(.pixel-ui) .summary-profile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: calc(var(--u) * 2);
+}
 :where(.pixel-ui) .summary-hero {
   display: flex;
   align-items: end;
-  gap: calc(var(--u) * 4);
-  padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
+  gap: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 3);
 }
-:where(.pixel-ui) .summary-facts {
+/* Stacked, and one block: the width of the longer word, as the stash's portrait
+   pane sets them. */
+.pixel-ui .summary-types {
   min-width: 0;
   display: grid;
+  grid-template-columns: max-content;
+  gap: var(--u);
+}
+.pixel-ui .summary-types .px-type {
+  box-sizing: border-box;
+  min-width: 100%;
+  margin-right: var(--u);
+}
+/* Everything true of the Pokemon right now, stacked beside the portrait rather
+   than under it: the portrait box is 64 pixels tall whatever the sprite in it
+   is, and filling that height is what lets the whole profile stand inside the
+   smallest stage. A bar is never on a line with words, because this column is
+   half of a 320-pixel screen and a name with a bar after it wrapped out of its
+   own window. */
+:where(.pixel-ui) .summary-state {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  align-content: end;
   gap: var(--u);
   padding-bottom: calc(var(--u) * 2);
 }
-:where(.pixel-ui) .summary-xp {
-  display: grid;
-  gap: calc(var(--u) * 2);
-  padding: 0 calc(var(--u) * 3);
-}
-/* One stat a line, the number hard right against the name, so the column of
-   figures can be read down without reading the words beside it. */
+/* Two stats a row, the number hard right against its name. One a line is the
+   shape this wants and is two rows too tall for the smallest stage, which is
+   the screen every layout here is authored against - and a stat block that
+   scrolls while the window beside it is half empty is not a summary. */
 :where(.pixel-ui) .summary-stats {
   display: grid;
-  gap: var(--u);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--u) calc(var(--u) * 4);
   margin: 0;
   padding: 0 calc(var(--u) * 3);
 }
 :where(.pixel-ui) .summary-stats > div {
+  min-width: 0;
   display: flex;
   justify-content: space-between;
-  gap: calc(var(--u) * 4);
+  gap: calc(var(--u) * 2);
 }
 :where(.pixel-ui) .summary-stats dt {
   color: var(--ink-soft);

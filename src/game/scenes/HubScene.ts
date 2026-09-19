@@ -854,7 +854,7 @@ export class HubScene extends Phaser.Scene {
   private get heading(): string {
     if (this.view === 'home') return 'Base';
     if (this.view === 'stash') return 'Your stash';
-    if (this.view === 'summary') return this.summaryPokemon?.pokemon.base.name ?? 'Summary';
+    if (this.view === 'summary') return 'Summary';
     if (this.view === 'reselect') return 'Swap your partner';
     if (this.view === 'outfitter') return this.payingFor ? `Build ${this.payingFor.name}` : 'The Outfitter';
     if (this.view === 'trader') return 'The Ferryman';
@@ -1487,9 +1487,9 @@ export class HubScene extends Phaser.Scene {
       ['Speed', pokemon.stats.speed],
     ];
     const profile = pixelWindow(
-      `<div class="summary-hero">${pixelPortrait(pokemon.base.dexId, pokemon.base.name)}<div class="summary-facts"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${this.conditionLine(stored)}</small><div>${pixelTypeBadge(pokemon.base.primaryType)}${pokemon.base.secondaryType ? pixelTypeBadge(pokemon.base.secondaryType) : ''}</div><small>${held ? `Holding ${held.displayName}` : 'Holding nothing'}</small></div></div><h3 class="px-subheading">Experience</h3><div class="summary-xp">${pixelXpBar(experienceBarFill(progress), `Experience ${formatExperience(progress.intoLevel)} of ${formatExperience(progress.levelSpan)}`)}<small>${experienceLine(progress)}</small></div><h3 class="px-subheading">Stats</h3><dl class="summary-stats">${stats
+      `<div class="px-scroll summary-profile"><div class="summary-hero">${pixelPortrait(pokemon.base.dexId, pokemon.base.name)}<div class="summary-state"><div class="summary-types">${pixelTypeBadge(pokemon.base.primaryType)}${pokemon.base.secondaryType ? pixelTypeBadge(pokemon.base.secondaryType) : ''}</div>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small class="px-wrap">${this.conditionLine(stored)}</small><small class="px-wrap">${held ? `Holding ${held.displayName}` : 'Holding nothing'}</small></div></div><h3 class="px-subheading">Experience</h3><div class="summary-state">${pixelXpBar(experienceBarFill(progress), `Experience ${formatExperience(progress.intoLevel)} of ${formatExperience(progress.levelSpan)}`)}<small class="px-wrap">${experienceLine(progress)}</small></div><h3 class="px-subheading">Stats</h3><dl class="summary-stats">${stats
         .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
-        .join('')}</dl>`,
+        .join('')}</dl></div>`,
       { heading: pokemon.base.name, note: `Lv ${pokemon.level}` },
     );
     const summaries = pokemon.moves.map((move) => moveSummary(move));
@@ -1502,7 +1502,7 @@ export class HubScene extends Phaser.Scene {
     const details = summaries
       .map(
         (move, index) =>
-          `<div class="px-detail" data-shown-by="move-${index}"${index === 0 ? '' : ' hidden'}><span class="px-wrap"><small>${move.detail}</small></span><span class="px-wrap">${move.description}</span></div>`,
+          `<div class="px-detail" data-shown-by="move-${index}"${index === 0 ? '' : ' hidden'}><span class="px-wrap">${move.detail}</span></div>`,
       )
       .join('');
     const moves = pixelWindow(
