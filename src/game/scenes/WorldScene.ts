@@ -8,12 +8,18 @@ import {
   type GridPosition,
 } from '../movement/gridMovement';
 import { CHARACTER_FEET_PIXEL_Y, getIdleFrame, getWalkAnimationKey } from '../playerFrames';
+import type { CharacterDesignId } from '../world/characterDesigns';
 import {
-  worldCharacterTint,
+  getWorldCharacterAppearance,
+  NO_TINT,
   PLAYER_MARKER_DEPTH,
   PLAYER_MARKER_GROUND_LAYERS,
   PLAYER_MARKER_HEAD_LAYERS,
+  SHARED_CHARACTER_TEXTURE,
+  worldCharacterIdleFrame,
   type MarkerLayer,
+  type WorldCharacterAppearance,
+  type WorldCharacterRole,
 } from '../world/characterPresentation';
 import {
   CLASSIC_TILE,
@@ -225,6 +231,7 @@ export class WorldScene extends Phaser.Scene {
   private currentMap: WorldMapDefinition = getWorldMap('pallet-town');
   private mapObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly npcSprites = new Map<string, Phaser.GameObjects.Sprite>();
+  private readonly npcAppearances = new Map<string, WorldCharacterAppearance>();
   private party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
   private caughtPokemonStash: Pokemon[] = [];
   private bag = new Bag({ potion: 3, antidote: 1, 'poke-ball': 5, 'great-ball': 1 });
@@ -564,33 +571,17 @@ export class WorldScene extends Phaser.Scene {
         continue;
       }
 
-      const sprite = this.add
-        .sprite(
-          entity.position.x * TILE_SIZE,
-          entity.position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
-          'character',
-          getIdleFrame(entity.facing),
-        )
-        .setOrigin(0, 0)
-        .setTint(worldCharacterTint('npc'))
-        .setDepth(atRow(FIGURE_BAND, entity.position.y));
-      this.npcSprites.set(entity.id, sprite);
-      this.mapObjects.push(sprite);
+      this.createFigure(entity.id, entity.position, entity.facing, 'npc', entity.design);
     }
 
     for (const encounter of this.trainersForCurrentMap()) {
-      const sprite = this.add
-        .sprite(
-          encounter.position.x * TILE_SIZE,
-          encounter.position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
-          'character',
-          getIdleFrame(encounter.facing),
-        )
-        .setOrigin(0, 0)
-        .setTint(worldCharacterTint('trainer'))
-        .setDepth(atRow(FIGURE_BAND, encounter.position.y));
-      this.npcSprites.set(encounter.trainer.id, sprite);
-      this.mapObjects.push(sprite);
+      this.createFigure(
+        encounter.trainer.id,
+        encounter.position,
+        encounter.facing,
+        'trainer',
+        encounter.design,
+      );
       this.createTrainerWatch(encounter);
     }
 
@@ -793,19 +784,43 @@ export class WorldScene extends Phaser.Scene {
     if (!this.isHunterOnCurrentMap()) {
       return;
     }
-    const position = this.hunterState.position!;
+    this.createFigure('rival-hunter', this.hunterState.position!, 'down', 'hunter');
+  }
+
+  /**
+   * Every figure that is not the player is made here, so which sheet it is
+   * drawn from and how its facing becomes a frame are decided once - by
+   * `getWorldCharacterAppearance` - and `faceFigure` can turn it later without
+   * knowing which sheet that was.
+   */
+  private createFigure(
+    id: string,
+    position: GridPosition,
+    facing: Direction,
+    role: WorldCharacterRole,
+    design?: CharacterDesignId,
+  ): void {
+    const appearance = getWorldCharacterAppearance(role, design);
     const sprite = this.add
       .sprite(
         position.x * TILE_SIZE,
         position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
-        'character',
-        getIdleFrame('down'),
+        appearance.textureKey,
+        worldCharacterIdleFrame(appearance, facing),
       )
       .setOrigin(0, 0)
-      .setTint(worldCharacterTint('hunter'))
+      .setTint(appearance.tint ?? NO_TINT)
       .setDepth(atRow(FIGURE_BAND, position.y));
-    this.npcSprites.set('rival-hunter', sprite);
+    this.npcSprites.set(id, sprite);
+    this.npcAppearances.set(id, appearance);
     this.mapObjects.push(sprite);
+  }
+
+  private faceFigure(id: string, facing: Direction): void {
+    const appearance = this.npcAppearances.get(id);
+    if (appearance) {
+      this.npcSprites.get(id)?.setFrame(worldCharacterIdleFrame(appearance, facing));
+    }
   }
 
   private createSign(entity: WorldEntity): void {
@@ -822,7 +837,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createPlayer(): void {
-    this.player = this.add.sprite(0, 0, 'character', getIdleFrame(this.facing)).setOrigin(0, 0);
+    this.player = this.add
+      .sprite(0, 0, SHARED_CHARACTER_TEXTURE, getIdleFrame(this.facing))
+      .setOrigin(0, 0);
     // Painted after the sprite so the ring covers the player's own feet while
     // still sorting behind anything standing in front of them.
     this.playerGroundMark = this.paintPlayerMark(PLAYER_MARKER_GROUND_LAYERS);
@@ -1136,15 +1153,13 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (trainer) {
-      this.npcSprites
-        .get(trainer.trainer.id)
-        ?.setFrame(getIdleFrame(OPPOSITE_DIRECTION[this.facing]));
+      this.faceFigure(trainer.trainer.id, OPPOSITE_DIRECTION[this.facing]);
       this.askForTrainerChallenge(trainer);
       return;
     }
 
     if (entity?.kind === 'npc') {
-      this.npcSprites.get(entity.id)?.setFrame(getIdleFrame(OPPOSITE_DIRECTION[this.facing]));
+      this.faceFigure(entity.id, OPPOSITE_DIRECTION[this.facing]);
     }
 
     this.dialogBox.showMessages([...entity!.dialogLines]);
@@ -1506,6 +1521,7 @@ export class WorldScene extends Phaser.Scene {
     this.worldLabels.forEach((label) => label.destroy());
     this.worldLabels = [];
     this.npcSprites.clear();
+    this.npcAppearances.clear();
     this.lootSprites.clear();
     this.poiSprites.clear();
     this.poiLabels.clear();

@@ -151,9 +151,79 @@ nothing for a Poke Ball, an extraction pad or a radio mast, so half the set woul
 have had to be drawn anyway and the result would not have read as one set.
 Nothing from it ships here.
 
+## `characters/*.png` - RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly
+
+The seventeen overworld character designs are **Pokemon FireRed/LeafGreen art,
+ripped from the commercial game**. The rights holders are Nintendo, Creatures and
+Game Freak. This is not the repository owner's work, it is not CC0, and no licence
+from the rights holder covers it. It ships because the owner ruled on 2026-09-19
+that ripped commercial Pokemon art is accepted knowingly for this personal,
+non-commercial fan game, with FireRed/LeafGreen as the adopted art direction
+(`eptw-adopt-art-direction`). It is recorded here in those words so the decision
+stays visible rather than becoming an assumption.
+
+- **Source.** The Spriters Resource, Pokemon FireRed / LeafGreen, "Overworld
+  NPCs" - <https://www.spriters-resource.com/game_boy_advance/pokemonfireredleafgreen/asset/3698/>,
+  uploaded by **FrenchOrange**, 238x2967, fetched 2026-09-19 from
+  `https://www.spriters-resource.com/media/assets/4/3698.png`. The two
+  protagonist designs are the Red and Leaf rows of that same sheet.
+- **The publisher's terms**, read at <https://www.spriters-resource.com/page/tou/>
+  on 2026-09-19 and quoted exactly:
+  > "Content on these sites may not be used in any commercial works. These
+  > include, but are not limited to, paid games, free games with in-app purchases
+  > or advertisements, monetized videos, and other websites displaying
+  > advertisements. This also includes anything 100% free being published to an
+  > established market place (e.g. Steam, Apple's App Store, or Google Play)."
+
+  and:
+  > "Taking content in its original format from this website and distributing it
+  > elsewhere without prior consent or credit to its origin will also result in
+  > contact being made with those seen fit to have it removed as this is also
+  > viewed as theft."
+
+  Those are the publisher's terms for their rips. They are not a licence from the
+  rights holder, and nothing here should be read as one.
+- **What that means here.** The game is non-commercial, carries no advertising
+  and is on no marketplace, which is inside the first clause - and putting it on
+  one would put it outside. The second clause is why **the source sheet is never
+  committed**: what ships is cut and rearranged frames, credited to their origin
+  in this entry. Do not add a sheet from that site in the format it was
+  downloaded in.
+- **How they were cut.** `scripts/cut-frlg-characters.mjs` is the whole method and
+  names the source row of every design. Each 16x24 cell is keyed out of the
+  sheet's orange ("used") or green ("unused") backing and placed on a 16x32 frame
+  with the soles on row 27, in the rows and columns `src/game/playerFrames.ts`
+  reads from `character.png`: a row each for down, right, up, left; columns idle,
+  step, idle, step. Every file is 64x128 RGBA. `characterDesigns.test.ts` holds
+  the file list, the size, the sole line and the absence of any backing colour.
+
+| File | Row on the source sheet (top edge, px) |
+| --- | --- |
+| `characters/protagonist-red.png` | 42 |
+| `characters/protagonist-leaf.png` | 67 |
+| `characters/lass.png` | 192 |
+| `characters/heavy-man.png` | 217 |
+| `characters/scientist.png` | 242 |
+| `characters/boy.png` | 267 |
+| `characters/youngster.png` | 292 |
+| `characters/woman.png` | 492 |
+| `characters/bald-man.png` | 642 |
+| `characters/old-man.png` | 725 |
+| `characters/old-woman.png` | 775 |
+| `characters/straw-hat.png` | 800 |
+| `characters/bug-catcher.png` | 825 |
+| `characters/hiker.png` | 875 |
+| `characters/cooltrainer.png` | 1184 |
+| `characters/beauty.png` | 1309 |
+| `characters/sailor.png` | 1334 |
+
+The file names describe what each figure looks like on screen. They are this
+repository's labels, not a claim about what the game calls that sprite.
+
 ## Flagged: one file that is not the owner's own work
 
-It came through the Unity project and is not settled. It is recorded here so the
+Unlike `characters/*.png` above, which the owner has ruled on, this one came
+through the Unity project and is not settled. It is recorded here so the
 decision gets made deliberately rather than by omission. The typeface used to sit
 beside it; that question is closed above.
 

@@ -10,7 +10,13 @@ export const CHARACTER_FRAME_HEIGHT = 32;
 export const CHARACTER_FEET_PIXEL_Y = 27;
 export const CHARACTER_HEAD_PIXEL_Y = 5;
 
-const CHARACTER_SHEET_COLUMNS = 17;
+/**
+ * `character.png` is 17 frames wide; the designs in `world/characterDesigns.ts`
+ * are cut to the same rows and the same first four columns on a sheet only four
+ * frames wide. The sheet width is therefore the one thing a frame index needs
+ * to be told, and everything below takes it rather than forking per sheet.
+ */
+export const CHARACTER_SHEET_COLUMNS = 17;
 const PLAYER_SHEET_COLUMN_START = 0;
 const PLAYER_SHEET_ROW_START = 0;
 
@@ -24,24 +30,35 @@ const PLAYER_DIRECTION_ROW_OFFSETS: Record<Direction, number> = {
   right: 1,
 };
 
-function toFrameIndex(column: number, row: number): number {
-  return row * CHARACTER_SHEET_COLUMNS + column;
+function toFrameIndex(column: number, row: number, sheetColumns: number): number {
+  return row * sheetColumns + column;
 }
 
-export function getWalkFrames(direction: Direction): number[] {
+export function getWalkFrames(
+  direction: Direction,
+  sheetColumns: number = CHARACTER_SHEET_COLUMNS,
+): number[] {
   const row = PLAYER_SHEET_ROW_START + PLAYER_DIRECTION_ROW_OFFSETS[direction];
 
   return PLAYER_WALK_FRAME_COLUMN_OFFSETS.map((columnOffset) =>
-    toFrameIndex(PLAYER_SHEET_COLUMN_START + columnOffset, row),
+    toFrameIndex(PLAYER_SHEET_COLUMN_START + columnOffset, row, sheetColumns),
   );
 }
 
-export function getIdleFrame(direction: Direction): number {
+export function getIdleFrame(
+  direction: Direction,
+  sheetColumns: number = CHARACTER_SHEET_COLUMNS,
+): number {
   const row = PLAYER_SHEET_ROW_START + PLAYER_DIRECTION_ROW_OFFSETS[direction];
 
-  return toFrameIndex(PLAYER_SHEET_COLUMN_START + PLAYER_IDLE_FRAME_COLUMN_OFFSET, row);
+  return toFrameIndex(
+    PLAYER_SHEET_COLUMN_START + PLAYER_IDLE_FRAME_COLUMN_OFFSET,
+    row,
+    sheetColumns,
+  );
 }
 
-export function getWalkAnimationKey(direction: Direction): string {
-  return `player-walk-${direction}`;
+/** `sheet` is the texture key the cycle is cut from; the player's own by default. */
+export function getWalkAnimationKey(direction: Direction, sheet: string = 'player'): string {
+  return `${sheet}-walk-${direction}`;
 }
