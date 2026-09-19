@@ -1254,6 +1254,7 @@ describe('SaveManager', () => {
         defeatedBosses: [],
         reachedInsertions: [],
         standingContractsBanked: 0,
+        giftsReceived: [],
       },
     });
     return saves;

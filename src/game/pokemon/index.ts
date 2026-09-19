@@ -18,7 +18,7 @@ export {
   evolvesInto,
 } from './evolution';
 export { type LearnableMove, PokemonBase, type PokemonBaseInit, type PokemonStats } from './PokemonBase';
-export { PokemonParty } from './PokemonParty';
+export { PARTY_LIMIT, PokemonParty } from './PokemonParty';
 export { PokemonType } from './PokemonType';
 export {
   BITE,

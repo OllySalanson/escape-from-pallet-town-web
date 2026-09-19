@@ -62,6 +62,8 @@ export interface StashContents {
 export interface RunResult {
   readonly pokemon: readonly Pokemon[];
   readonly items: readonly { readonly itemId: string; readonly quantity: number }[];
+  /** Gifts among `pokemon`, by gift id, for the save to record as received. */
+  readonly gifts?: readonly string[];
 }
 
 /** A quantity of one item. Negative quantities are only legal in a supply delta. */

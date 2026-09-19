@@ -1,5 +1,8 @@
 import type { Pokemon } from './Pokemon';
 
+/** How many Pokemon walk with the player; a catch or a gift past it rides in the pack. */
+export const PARTY_LIMIT = 6;
+
 export class PokemonParty {
   private readonly members: Pokemon[];
 

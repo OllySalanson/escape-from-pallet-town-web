@@ -768,6 +768,7 @@ describe('extraction loop integration', () => {
       defeatedBosses: [],
       reachedInsertions: [],
       outfitterUpgrades: [],
+      giftsReceived: [],
       // An authored contract is not a standing one and does not count as one.
       standingContractsBanked: 0,
     });

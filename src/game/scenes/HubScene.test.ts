@@ -907,6 +907,7 @@ describe('the Outfitter', () => {
         defeatedBosses: [],
         reachedInsertions: [],
         standingContractsBanked: 0,
+        giftsReceived: [],
       },
     });
     const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);

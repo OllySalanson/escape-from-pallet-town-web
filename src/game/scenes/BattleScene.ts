@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import {
   Pokemon,
+  PARTY_LIMIT,
   PokemonParty,
   experienceAwardForDefeat,
   type Pokemon as PokemonInstance,
@@ -111,7 +112,6 @@ const BATTLE_FONT = GAME_FONT;
 const STARTING_POKE_BALLS = 5;
 /** Long enough for the wipe flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
-const PARTY_LIMIT = 6;
 const BATTLEFIELD_WIDTH = BASE_STAGE_WIDTH;
 const BATTLEFIELD_HEIGHT = BASE_STAGE_HEIGHT;
 const GRASS_BACKDROP_WIDTH = 257;

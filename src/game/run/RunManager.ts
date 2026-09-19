@@ -55,6 +55,12 @@ export interface RunSnapshot {
   readonly loadout: RunLoadout | null;
   readonly secureSlot: SecureSlot;
   readonly caughtPokemon: readonly Pokemon[];
+  /**
+   * The gifts handed over this raid, by gift id. The gifted Pokemon is in
+   * `caughtPokemon` like any other, and at exactly the same risk; this list
+   * says which of them is a gift, so extraction can record it as received.
+   */
+  readonly giftIds: readonly string[];
   readonly foundItems: readonly ItemStack[];
   /**
    * Contract stops made this raid, by marker id. A contract is a list of stops
@@ -133,6 +139,7 @@ export class RunManager {
   private loadoutValue: RunLoadout | null = null;
   private secureSlotValue: SecureSlot = {};
   private caughtPokemonValue: Pokemon[] = [];
+  private giftIdsValue: string[] = [];
   private foundItemsValue: ItemStack[] = [];
   private contractStepsValue: string[] = [];
   private secureItemStackLimitValue = MAX_SECURE_ITEM_STACKS;
@@ -189,6 +196,7 @@ export class RunManager {
     this.deployedHeldItemsValue = loadout.party.map((member) => member.heldItemId);
     this.secureSlotValue = copySecureSlot(secureSlot);
     this.caughtPokemonValue = [];
+    this.giftIdsValue = [];
     this.foundItemsValue = [];
     this.contractStepsValue = [];
     this.defeatedTrainersValue = 0;
@@ -220,6 +228,20 @@ export class RunManager {
 
   public registerCaughtPokemon(pokemon: Pokemon): RunSnapshot {
     this.requirePhase('register a caught Pokemon', RunPhase.InRun);
+    this.caughtPokemonValue.push(pokemon);
+    return this.snapshot();
+  }
+
+  /**
+   * A Pokemon handed over by an NPC. It rides in the pack with everything else
+   * the raid picked up: banked on extraction, lost with the rest on a wipe.
+   */
+  public registerGiftedPokemon(giftId: string, pokemon: Pokemon): RunSnapshot {
+    this.requirePhase('register a gifted Pokemon', RunPhase.InRun);
+    if (this.giftIdsValue.includes(giftId)) {
+      return this.snapshot();
+    }
+    this.giftIdsValue.push(giftId);
     this.caughtPokemonValue.push(pokemon);
     return this.snapshot();
   }
@@ -372,6 +394,7 @@ export class RunManager {
       loadout: this.loadoutValue === null ? null : copyLoadout(this.loadoutValue),
       secureSlot: copySecureSlot(this.secureSlotValue),
       caughtPokemon: [...this.caughtPokemonValue],
+      giftIds: [...this.giftIdsValue],
       foundItems: [...this.foundItemsValue],
       contractSteps: [...this.contractStepsValue],
       recoveredFieldKit: this.contractStepsValue.includes(FIELD_KIT_STEP_ID),
