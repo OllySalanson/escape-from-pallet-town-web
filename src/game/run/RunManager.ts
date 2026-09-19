@@ -1,4 +1,4 @@
-import { BASE_SECURE_GRID, fitsInGrid, isFoundOnly, type GridSize, type ItemId } from '../items';
+import { BASE_SECURE_GRID, fitsInGrid, isFoundOnly, type GridCargo, type GridSize, type ItemId } from '../items';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import type { Pokemon } from '../pokemon';
 import { BASE_SECURE_POKEMON } from '../objectives/contracts';
@@ -143,6 +143,7 @@ export class RunManager {
   private giftIdsValue: string[] = [];
   private foundItemsValue: ItemStack[] = [];
   private contractStepsValue: string[] = [];
+  private secureFootprintsValue: readonly GridCargo[] = [];
   private secureGridValue: GridSize = DEFAULT_SECURE_GRID;
   private securePokemonLimitValue = MAX_SECURE_POKEMON;
   private defeatedTrainersValue = 0;
@@ -191,6 +192,11 @@ export class RunManager {
     this.secureGridValue = config.secureGrid ?? DEFAULT_SECURE_GRID;
     this.securePokemonLimitValue = config.securePokemonLimit ?? MAX_SECURE_POKEMON;
     validateSecureSlot(secureSlot, loadout.party, loadout.items, this.secureLimits());
+    // What the container accepted, measured once, here. See the note on
+    // `validateSecureSlot`'s own argument for why it is not measured again.
+    this.secureFootprintsValue = (secureSlot.pokemon ?? []).map((member, index) =>
+      pokemonCargo(`secured-${index}`, member),
+    );
 
     this.loadoutValue = copyLoadout(loadout);
     this.deployedExperienceValue = loadout.party.map((member) => member.experience);
@@ -370,7 +376,13 @@ export class RunManager {
     const allPokemon = this.allPokemon();
     const allItems = this.allItems();
     const resolvedSecureSlot = secureSlot ?? this.secureSlotValue;
-    validateSecureSlot(resolvedSecureSlot, allPokemon, allItems, this.secureLimits());
+    validateSecureSlot(
+      resolvedSecureSlot,
+      allPokemon,
+      allItems,
+      this.secureLimits(),
+      resolvedSecureSlot === this.secureSlotValue ? this.secureFootprintsValue : undefined,
+    );
     this.beginResolution();
 
     const bankedPokemon = [...(resolvedSecureSlot.pokemon ?? [])];
@@ -492,6 +504,17 @@ function validateSecureSlot(
   availablePokemon: readonly Pokemon[],
   availableItems: readonly ItemStack[],
   limits: SecureLimits,
+  /**
+   * The squares each secured Pokemon took when the container was filled, for
+   * the check made on the way home. A Pokemon is measured by its evolution
+   * stage, and one that evolved in the field is a stage taller than the room it
+   * was given - a Bulbasaur crossing 16 goes from four squares to six, which
+   * does not fit the 2x2 every save starts with. Re-measuring it at settlement
+   * threw, and the raid ended on an uncaught error rather than a result screen.
+   * The container was filled at the door and what it accepted is what it is
+   * holding: growing is not a reason to lose protection.
+   */
+  pokemonFootprints?: readonly GridCargo[],
 ): void {
   const securePokemon = secureSlot.pokemon ?? [];
   if (securePokemon.length > limits.pokemon) {
@@ -514,7 +537,8 @@ function validateSecureSlot(
     !fitsInGrid(
       Object.fromEntries(secureItems.map(({ itemId, quantity }) => [itemId, quantity])),
       limits.grid,
-      securePokemon.map((member, index) => pokemonCargo(`secured-${index}`, member)),
+      pokemonFootprints ??
+        securePokemon.map((member, index) => pokemonCargo(`secured-${index}`, member)),
     )
   ) {
     throw new Error(
