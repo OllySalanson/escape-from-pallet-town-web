@@ -76,8 +76,6 @@ const species = (init: Partial<PokemonBaseInit> & { readonly abilityId: string |
       speed: 50,
     },
     learnset: init.learnset ?? [{ level: 1, move: TACKLE }],
-    frontSprite: '',
-    backSprite: '',
     abilityId: init.abilityId,
   });
 

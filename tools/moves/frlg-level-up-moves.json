@@ -1,6 +1,7 @@
 [
  {
   "name": "absorb",
+  "displayName": "Absorb",
   "learners": 6,
   "type": "grass",
   "power": 20,
@@ -25,6 +26,7 @@
  },
  {
   "name": "acid",
+  "displayName": "Acid",
   "learners": 8,
   "type": "poison",
   "power": 40,
@@ -54,6 +56,7 @@
  },
  {
   "name": "acid-armor",
+  "displayName": "Acid Armor",
   "learners": 3,
   "type": "poison",
   "power": null,
@@ -83,6 +86,7 @@
  },
  {
   "name": "aerial-ace",
+  "displayName": "Aerial Ace",
   "learners": 1,
   "type": "flying",
   "power": 60,
@@ -107,6 +111,7 @@
  },
  {
   "name": "agility",
+  "displayName": "Agility",
   "learners": 28,
   "type": "psychic",
   "power": null,
@@ -136,6 +141,7 @@
  },
  {
   "name": "air-cutter",
+  "displayName": "Air Cutter",
   "learners": 2,
   "type": "flying",
   "power": 55,
@@ -160,6 +166,7 @@
  },
  {
   "name": "amnesia",
+  "displayName": "Amnesia",
   "learners": 4,
   "type": "psychic",
   "power": null,
@@ -189,6 +196,7 @@
  },
  {
   "name": "ancient-power",
+  "displayName": "Ancient Power",
   "learners": 6,
   "type": "rock",
   "power": 60,
@@ -234,6 +242,7 @@
  },
  {
   "name": "aromatherapy",
+  "displayName": "Aromatherapy",
   "learners": 3,
   "type": "grass",
   "power": null,
@@ -258,6 +267,7 @@
  },
  {
   "name": "astonish",
+  "displayName": "Astonish",
   "learners": 2,
   "type": "ghost",
   "power": 30,
@@ -282,6 +292,7 @@
  },
  {
   "name": "aurora-beam",
+  "displayName": "Aurora Beam",
   "learners": 5,
   "type": "ice",
   "power": 65,
@@ -311,6 +322,7 @@
  },
  {
   "name": "barrage",
+  "displayName": "Barrage",
   "learners": 2,
   "type": "normal",
   "power": 15,
@@ -335,6 +347,7 @@
  },
  {
   "name": "barrier",
+  "displayName": "Barrier",
   "learners": 4,
   "type": "psychic",
   "power": null,
@@ -364,6 +377,7 @@
  },
  {
   "name": "baton-pass",
+  "displayName": "Baton Pass",
   "learners": 2,
   "type": "normal",
   "power": null,
@@ -388,6 +402,7 @@
  },
  {
   "name": "belly-drum",
+  "displayName": "Belly Drum",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -412,6 +427,7 @@
  },
  {
   "name": "bind",
+  "displayName": "Bind",
   "learners": 3,
   "type": "normal",
   "power": 15,
@@ -436,6 +452,7 @@
  },
  {
   "name": "bite",
+  "displayName": "Bite",
   "learners": 21,
   "type": "dark",
   "power": 60,
@@ -460,6 +477,7 @@
  },
  {
   "name": "blizzard",
+  "displayName": "Blizzard",
   "learners": 2,
   "type": "ice",
   "power": 120,
@@ -484,6 +502,7 @@
  },
  {
   "name": "block",
+  "displayName": "Block",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -508,6 +527,7 @@
  },
  {
   "name": "body-slam",
+  "displayName": "Body Slam",
   "learners": 7,
   "type": "normal",
   "power": 85,
@@ -532,6 +552,7 @@
  },
  {
   "name": "bone-club",
+  "displayName": "Bone Club",
   "learners": 2,
   "type": "ground",
   "power": 65,
@@ -556,6 +577,7 @@
  },
  {
   "name": "bone-rush",
+  "displayName": "Bone Rush",
   "learners": 2,
   "type": "ground",
   "power": 25,
@@ -580,6 +602,7 @@
  },
  {
   "name": "bonemerang",
+  "displayName": "Bonemerang",
   "learners": 2,
   "type": "ground",
   "power": 50,
@@ -604,6 +627,7 @@
  },
  {
   "name": "bounce",
+  "displayName": "Bounce",
   "learners": 2,
   "type": "flying",
   "power": 85,
@@ -628,6 +652,7 @@
  },
  {
   "name": "brick-break",
+  "displayName": "Brick Break",
   "learners": 2,
   "type": "fighting",
   "power": 75,
@@ -652,6 +677,7 @@
  },
  {
   "name": "bubble",
+  "displayName": "Bubble",
   "learners": 9,
   "type": "water",
   "power": 20,
@@ -681,6 +707,7 @@
  },
  {
   "name": "bubble-beam",
+  "displayName": "Bubble Beam",
   "learners": 3,
   "type": "water",
   "power": 65,
@@ -710,6 +737,7 @@
  },
  {
   "name": "calm-mind",
+  "displayName": "Calm Mind",
   "learners": 1,
   "type": "psychic",
   "power": null,
@@ -743,6 +771,7 @@
  },
  {
   "name": "camouflage",
+  "displayName": "Camouflage",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -767,6 +796,7 @@
  },
  {
   "name": "charge",
+  "displayName": "Charge",
   "learners": 3,
   "type": "electric",
   "power": null,
@@ -796,6 +826,7 @@
  },
  {
   "name": "clamp",
+  "displayName": "Clamp",
   "learners": 1,
   "type": "water",
   "power": 35,
@@ -820,6 +851,7 @@
  },
  {
   "name": "comet-punch",
+  "displayName": "Comet Punch",
   "learners": 2,
   "type": "normal",
   "power": 18,
@@ -844,6 +876,7 @@
  },
  {
   "name": "confuse-ray",
+  "displayName": "Confuse Ray",
   "learners": 10,
   "type": "ghost",
   "power": null,
@@ -868,6 +901,7 @@
  },
  {
   "name": "confusion",
+  "displayName": "Confusion",
   "learners": 15,
   "type": "psychic",
   "power": 50,
@@ -892,6 +926,7 @@
  },
  {
   "name": "constrict",
+  "displayName": "Constrict",
   "learners": 5,
   "type": "normal",
   "power": 10,
@@ -921,6 +956,7 @@
  },
  {
   "name": "conversion",
+  "displayName": "Conversion",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -945,6 +981,7 @@
  },
  {
   "name": "conversion-2",
+  "displayName": "Conversion 2",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -969,6 +1006,7 @@
  },
  {
   "name": "cosmic-power",
+  "displayName": "Cosmic Power",
   "learners": 2,
   "type": "psychic",
   "power": null,
@@ -1002,6 +1040,7 @@
  },
  {
   "name": "counter",
+  "displayName": "Counter",
   "learners": 1,
   "type": "fighting",
   "power": null,
@@ -1026,6 +1065,7 @@
  },
  {
   "name": "covet",
+  "displayName": "Covet",
   "learners": 1,
   "type": "normal",
   "power": 40,
@@ -1050,6 +1090,7 @@
  },
  {
   "name": "crabhammer",
+  "displayName": "Crabhammer",
   "learners": 2,
   "type": "water",
   "power": 90,
@@ -1074,6 +1115,7 @@
  },
  {
   "name": "cross-chop",
+  "displayName": "Cross Chop",
   "learners": 5,
   "type": "fighting",
   "power": 100,
@@ -1098,6 +1140,7 @@
  },
  {
   "name": "crunch",
+  "displayName": "Crunch",
   "learners": 2,
   "type": "dark",
   "power": 80,
@@ -1127,6 +1170,7 @@
  },
  {
   "name": "curse",
+  "displayName": "Curse",
   "learners": 5,
   "type": "unknown",
   "power": null,
@@ -1151,6 +1195,7 @@
  },
  {
   "name": "defense-curl",
+  "displayName": "Defense Curl",
   "learners": 11,
   "type": "normal",
   "power": null,
@@ -1180,6 +1225,7 @@
  },
  {
   "name": "destiny-bond",
+  "displayName": "Destiny Bond",
   "learners": 5,
   "type": "ghost",
   "power": null,
@@ -1204,6 +1250,7 @@
  },
  {
   "name": "detect",
+  "displayName": "Detect",
   "learners": 2,
   "type": "fighting",
   "power": null,
@@ -1228,6 +1275,7 @@
  },
  {
   "name": "dig",
+  "displayName": "Dig",
   "learners": 2,
   "type": "ground",
   "power": 60,
@@ -1252,6 +1300,7 @@
  },
  {
   "name": "disable",
+  "displayName": "Disable",
   "learners": 16,
   "type": "normal",
   "power": null,
@@ -1276,6 +1325,7 @@
  },
  {
   "name": "dizzy-punch",
+  "displayName": "Dizzy Punch",
   "learners": 1,
   "type": "normal",
   "power": 70,
@@ -1300,6 +1350,7 @@
  },
  {
   "name": "double-edge",
+  "displayName": "Double-Edge",
   "learners": 8,
   "type": "normal",
   "power": 120,
@@ -1324,6 +1375,7 @@
  },
  {
   "name": "double-kick",
+  "displayName": "Double Kick",
   "learners": 8,
   "type": "fighting",
   "power": 30,
@@ -1348,6 +1400,7 @@
  },
  {
   "name": "double-slap",
+  "displayName": "Double Slap",
   "learners": 10,
   "type": "normal",
   "power": 15,
@@ -1372,6 +1425,7 @@
  },
  {
   "name": "double-team",
+  "displayName": "Double Team",
   "learners": 2,
   "type": "normal",
   "power": null,
@@ -1401,6 +1455,7 @@
  },
  {
   "name": "dragon-breath",
+  "displayName": "Dragon Breath",
   "learners": 1,
   "type": "dragon",
   "power": 60,
@@ -1425,6 +1480,7 @@
  },
  {
   "name": "dragon-dance",
+  "displayName": "Dragon Dance",
   "learners": 3,
   "type": "dragon",
   "power": null,
@@ -1458,6 +1514,7 @@
  },
  {
   "name": "dragon-rage",
+  "displayName": "Dragon Rage",
   "learners": 7,
   "type": "dragon",
   "power": null,
@@ -1482,6 +1539,7 @@
  },
  {
   "name": "dream-eater",
+  "displayName": "Dream Eater",
   "learners": 3,
   "type": "psychic",
   "power": 100,
@@ -1506,6 +1564,7 @@
  },
  {
   "name": "drill-peck",
+  "displayName": "Drill Peck",
   "learners": 5,
   "type": "flying",
   "power": 80,
@@ -1530,6 +1589,7 @@
  },
  {
   "name": "dynamic-punch",
+  "displayName": "Dynamic Punch",
   "learners": 3,
   "type": "fighting",
   "power": 100,
@@ -1554,6 +1614,7 @@
  },
  {
   "name": "earthquake",
+  "displayName": "Earthquake",
   "learners": 7,
   "type": "ground",
   "power": 100,
@@ -1578,6 +1639,7 @@
  },
  {
   "name": "egg-bomb",
+  "displayName": "Egg Bomb",
   "learners": 2,
   "type": "normal",
   "power": 100,
@@ -1602,6 +1664,7 @@
  },
  {
   "name": "ember",
+  "displayName": "Ember",
   "learners": 12,
   "type": "fire",
   "power": 40,
@@ -1626,6 +1689,7 @@
  },
  {
   "name": "encore",
+  "displayName": "Encore",
   "learners": 2,
   "type": "normal",
   "power": null,
@@ -1650,6 +1714,7 @@
  },
  {
   "name": "endeavor",
+  "displayName": "Endeavor",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -1674,6 +1739,7 @@
  },
  {
   "name": "endure",
+  "displayName": "Endure",
   "learners": 5,
   "type": "normal",
   "power": null,
@@ -1698,6 +1764,7 @@
  },
  {
   "name": "explosion",
+  "displayName": "Explosion",
   "learners": 7,
   "type": "normal",
   "power": 250,
@@ -1722,6 +1789,7 @@
  },
  {
   "name": "extreme-speed",
+  "displayName": "Extreme Speed",
   "learners": 1,
   "type": "normal",
   "power": 80,
@@ -1746,6 +1814,7 @@
  },
  {
   "name": "fake-out",
+  "displayName": "Fake Out",
   "learners": 3,
   "type": "normal",
   "power": 40,
@@ -1770,6 +1839,7 @@
  },
  {
   "name": "fake-tears",
+  "displayName": "Fake Tears",
   "learners": 1,
   "type": "dark",
   "power": null,
@@ -1799,6 +1869,7 @@
  },
  {
   "name": "false-swipe",
+  "displayName": "False Swipe",
   "learners": 4,
   "type": "normal",
   "power": 40,
@@ -1823,6 +1894,7 @@
  },
  {
   "name": "feather-dance",
+  "displayName": "Feather Dance",
   "learners": 3,
   "type": "flying",
   "power": null,
@@ -1852,6 +1924,7 @@
  },
  {
   "name": "feint-attack",
+  "displayName": "Feint Attack",
   "learners": 2,
   "type": "dark",
   "power": 60,
@@ -1876,6 +1949,7 @@
  },
  {
   "name": "fire-blast",
+  "displayName": "Fire Blast",
   "learners": 3,
   "type": "fire",
   "power": 120,
@@ -1900,6 +1974,7 @@
  },
  {
   "name": "fire-punch",
+  "displayName": "Fire Punch",
   "learners": 2,
   "type": "fire",
   "power": 75,
@@ -1924,6 +1999,7 @@
  },
  {
   "name": "fire-spin",
+  "displayName": "Fire Spin",
   "learners": 9,
   "type": "fire",
   "power": 15,
@@ -1948,6 +2024,7 @@
  },
  {
   "name": "fissure",
+  "displayName": "Fissure",
   "learners": 2,
   "type": "ground",
   "power": null,
@@ -1972,6 +2049,7 @@
  },
  {
   "name": "flail",
+  "displayName": "Flail",
   "learners": 5,
   "type": "normal",
   "power": null,
@@ -1996,6 +2074,7 @@
  },
  {
   "name": "flame-wheel",
+  "displayName": "Flame Wheel",
   "learners": 1,
   "type": "fire",
   "power": 60,
@@ -2020,6 +2099,7 @@
  },
  {
   "name": "flamethrower",
+  "displayName": "Flamethrower",
   "learners": 8,
   "type": "fire",
   "power": 95,
@@ -2044,6 +2124,7 @@
  },
  {
   "name": "flatter",
+  "displayName": "Flatter",
   "learners": 4,
   "type": "dark",
   "power": null,
@@ -2073,6 +2154,7 @@
  },
  {
   "name": "focus-energy",
+  "displayName": "Focus Energy",
   "learners": 15,
   "type": "normal",
   "power": null,
@@ -2097,6 +2179,7 @@
  },
  {
   "name": "follow-me",
+  "displayName": "Follow Me",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -2121,6 +2204,7 @@
  },
  {
   "name": "foresight",
+  "displayName": "Foresight",
   "learners": 6,
   "type": "normal",
   "power": null,
@@ -2145,6 +2229,7 @@
  },
  {
   "name": "fury-attack",
+  "displayName": "Fury Attack",
   "learners": 13,
   "type": "normal",
   "power": 15,
@@ -2169,6 +2254,7 @@
  },
  {
   "name": "fury-cutter",
+  "displayName": "Fury Cutter",
   "learners": 3,
   "type": "bug",
   "power": 10,
@@ -2193,6 +2279,7 @@
  },
  {
   "name": "fury-swipes",
+  "displayName": "Fury Swipes",
   "learners": 12,
   "type": "normal",
   "power": 18,
@@ -2217,6 +2304,7 @@
  },
  {
   "name": "future-sight",
+  "displayName": "Future Sight",
   "learners": 5,
   "type": "psychic",
   "power": 80,
@@ -2241,6 +2329,7 @@
  },
  {
   "name": "giga-drain",
+  "displayName": "Giga Drain",
   "learners": 2,
   "type": "grass",
   "power": 60,
@@ -2265,6 +2354,7 @@
  },
  {
   "name": "glare",
+  "displayName": "Glare",
   "learners": 2,
   "type": "normal",
   "power": null,
@@ -2289,6 +2379,7 @@
  },
  {
   "name": "growl",
+  "displayName": "Growl",
   "learners": 29,
   "type": "normal",
   "power": null,
@@ -2318,6 +2409,7 @@
  },
  {
   "name": "growth",
+  "displayName": "Growth",
   "learners": 8,
   "type": "normal",
   "power": null,
@@ -2351,6 +2443,7 @@
  },
  {
   "name": "grudge",
+  "displayName": "Grudge",
   "learners": 1,
   "type": "ghost",
   "power": null,
@@ -2375,6 +2468,7 @@
  },
  {
   "name": "guillotine",
+  "displayName": "Guillotine",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -2399,6 +2493,7 @@
  },
  {
   "name": "gust",
+  "displayName": "Gust",
   "learners": 6,
   "type": "flying",
   "power": 40,
@@ -2423,6 +2518,7 @@
  },
  {
   "name": "harden",
+  "displayName": "Harden",
   "learners": 11,
   "type": "normal",
   "power": null,
@@ -2452,6 +2548,7 @@
  },
  {
   "name": "haze",
+  "displayName": "Haze",
   "learners": 7,
   "type": "ice",
   "power": null,
@@ -2476,6 +2573,7 @@
  },
  {
   "name": "headbutt",
+  "displayName": "Headbutt",
   "learners": 9,
   "type": "normal",
   "power": 70,
@@ -2500,6 +2598,7 @@
  },
  {
   "name": "heat-wave",
+  "displayName": "Heat Wave",
   "learners": 2,
   "type": "fire",
   "power": 100,
@@ -2524,6 +2623,7 @@
  },
  {
   "name": "helping-hand",
+  "displayName": "Helping Hand",
   "learners": 9,
   "type": "normal",
   "power": null,
@@ -2548,6 +2648,7 @@
  },
  {
   "name": "high-jump-kick",
+  "displayName": "High Jump Kick",
   "learners": 1,
   "type": "fighting",
   "power": 85,
@@ -2572,6 +2673,7 @@
  },
  {
   "name": "horn-attack",
+  "displayName": "Horn Attack",
   "learners": 7,
   "type": "normal",
   "power": 65,
@@ -2596,6 +2698,7 @@
  },
  {
   "name": "horn-drill",
+  "displayName": "Horn Drill",
   "learners": 6,
   "type": "normal",
   "power": null,
@@ -2620,6 +2723,7 @@
  },
  {
   "name": "hydro-pump",
+  "displayName": "Hydro Pump",
   "learners": 17,
   "type": "water",
   "power": 120,
@@ -2644,6 +2748,7 @@
  },
  {
   "name": "hyper-beam",
+  "displayName": "Hyper Beam",
   "learners": 6,
   "type": "normal",
   "power": 150,
@@ -2668,6 +2773,7 @@
  },
  {
   "name": "hyper-fang",
+  "displayName": "Hyper Fang",
   "learners": 2,
   "type": "normal",
   "power": 80,
@@ -2692,6 +2798,7 @@
  },
  {
   "name": "hyper-voice",
+  "displayName": "Hyper Voice",
   "learners": 1,
   "type": "normal",
   "power": 90,
@@ -2716,6 +2823,7 @@
  },
  {
   "name": "hypnosis",
+  "displayName": "Hypnosis",
   "learners": 10,
   "type": "psychic",
   "power": null,
@@ -2740,6 +2848,7 @@
  },
  {
   "name": "ice-beam",
+  "displayName": "Ice Beam",
   "learners": 5,
   "type": "ice",
   "power": 95,
@@ -2764,6 +2873,7 @@
  },
  {
   "name": "ice-punch",
+  "displayName": "Ice Punch",
   "learners": 2,
   "type": "ice",
   "power": 75,
@@ -2788,6 +2898,7 @@
  },
  {
   "name": "icicle-spear",
+  "displayName": "Icicle Spear",
   "learners": 1,
   "type": "ice",
   "power": 10,
@@ -2812,6 +2923,7 @@
  },
  {
   "name": "icy-wind",
+  "displayName": "Icy Wind",
   "learners": 2,
   "type": "ice",
   "power": 55,
@@ -2841,6 +2953,7 @@
  },
  {
   "name": "imprison",
+  "displayName": "Imprison",
   "learners": 1,
   "type": "psychic",
   "power": null,
@@ -2865,6 +2978,7 @@
  },
  {
   "name": "ingrain",
+  "displayName": "Ingrain",
   "learners": 1,
   "type": "grass",
   "power": null,
@@ -2889,6 +3003,7 @@
  },
  {
   "name": "iron-tail",
+  "displayName": "Iron Tail",
   "learners": 1,
   "type": "steel",
   "power": 100,
@@ -2918,6 +3033,7 @@
  },
  {
   "name": "jump-kick",
+  "displayName": "Jump Kick",
   "learners": 1,
   "type": "fighting",
   "power": 70,
@@ -2942,6 +3058,7 @@
  },
  {
   "name": "karate-chop",
+  "displayName": "Karate Chop",
   "learners": 5,
   "type": "fighting",
   "power": 50,
@@ -2966,6 +3083,7 @@
  },
  {
   "name": "kinesis",
+  "displayName": "Kinesis",
   "learners": 2,
   "type": "psychic",
   "power": null,
@@ -2995,6 +3113,7 @@
  },
  {
   "name": "knock-off",
+  "displayName": "Knock Off",
   "learners": 2,
   "type": "dark",
   "power": 20,
@@ -3019,6 +3138,7 @@
  },
  {
   "name": "leech-life",
+  "displayName": "Leech Life",
   "learners": 6,
   "type": "bug",
   "power": 20,
@@ -3043,6 +3163,7 @@
  },
  {
   "name": "leech-seed",
+  "displayName": "Leech Seed",
   "learners": 4,
   "type": "grass",
   "power": null,
@@ -3067,6 +3188,7 @@
  },
  {
   "name": "leer",
+  "displayName": "Leer",
   "learners": 33,
   "type": "normal",
   "power": null,
@@ -3096,6 +3218,7 @@
  },
  {
   "name": "lick",
+  "displayName": "Lick",
   "learners": 5,
   "type": "ghost",
   "power": 20,
@@ -3120,6 +3243,7 @@
  },
  {
   "name": "light-screen",
+  "displayName": "Light Screen",
   "learners": 9,
   "type": "psychic",
   "power": null,
@@ -3144,6 +3268,7 @@
  },
  {
   "name": "lock-on",
+  "displayName": "Lock-On",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -3168,6 +3293,7 @@
  },
  {
   "name": "lovely-kiss",
+  "displayName": "Lovely Kiss",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -3192,6 +3318,7 @@
  },
  {
   "name": "low-kick",
+  "displayName": "Low Kick",
   "learners": 5,
   "type": "fighting",
   "power": null,
@@ -3216,6 +3343,7 @@
  },
  {
   "name": "mach-punch",
+  "displayName": "Mach Punch",
   "learners": 1,
   "type": "fighting",
   "power": 40,
@@ -3240,6 +3368,7 @@
  },
  {
   "name": "magical-leaf",
+  "displayName": "Magical Leaf",
   "learners": 1,
   "type": "grass",
   "power": 60,
@@ -3264,6 +3393,7 @@
  },
  {
   "name": "magnitude",
+  "displayName": "Magnitude",
   "learners": 5,
   "type": "ground",
   "power": null,
@@ -3288,6 +3418,7 @@
  },
  {
   "name": "mean-look",
+  "displayName": "Mean Look",
   "learners": 6,
   "type": "normal",
   "power": null,
@@ -3312,6 +3443,7 @@
  },
  {
   "name": "meditate",
+  "displayName": "Meditate",
   "learners": 4,
   "type": "psychic",
   "power": null,
@@ -3341,6 +3473,7 @@
  },
  {
   "name": "mega-drain",
+  "displayName": "Mega Drain",
   "learners": 4,
   "type": "grass",
   "power": 40,
@@ -3365,6 +3498,7 @@
  },
  {
   "name": "mega-kick",
+  "displayName": "Mega Kick",
   "learners": 1,
   "type": "normal",
   "power": 120,
@@ -3389,6 +3523,7 @@
  },
  {
   "name": "mega-punch",
+  "displayName": "Mega Punch",
   "learners": 3,
   "type": "normal",
   "power": 80,
@@ -3413,6 +3548,7 @@
  },
  {
   "name": "megahorn",
+  "displayName": "Megahorn",
   "learners": 5,
   "type": "bug",
   "power": 120,
@@ -3437,6 +3573,7 @@
  },
  {
   "name": "memento",
+  "displayName": "Memento",
   "learners": 4,
   "type": "dark",
   "power": null,
@@ -3470,6 +3607,7 @@
  },
  {
   "name": "metal-claw",
+  "displayName": "Metal Claw",
   "learners": 4,
   "type": "steel",
   "power": 50,
@@ -3499,6 +3637,7 @@
  },
  {
   "name": "metal-sound",
+  "displayName": "Metal Sound",
   "learners": 4,
   "type": "steel",
   "power": null,
@@ -3528,6 +3667,7 @@
  },
  {
   "name": "meteor-mash",
+  "displayName": "Meteor Mash",
   "learners": 1,
   "type": "steel",
   "power": 100,
@@ -3557,6 +3697,7 @@
  },
  {
   "name": "metronome",
+  "displayName": "Metronome",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -3581,6 +3722,7 @@
  },
  {
   "name": "mimic",
+  "displayName": "Mimic",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -3605,6 +3747,7 @@
  },
  {
   "name": "mind-reader",
+  "displayName": "Mind Reader",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -3629,6 +3772,7 @@
  },
  {
   "name": "minimize",
+  "displayName": "Minimize",
   "learners": 6,
   "type": "normal",
   "power": null,
@@ -3658,6 +3802,7 @@
  },
  {
   "name": "mirror-coat",
+  "displayName": "Mirror Coat",
   "learners": 2,
   "type": "psychic",
   "power": null,
@@ -3682,6 +3827,7 @@
  },
  {
   "name": "mirror-move",
+  "displayName": "Mirror Move",
   "learners": 5,
   "type": "flying",
   "power": null,
@@ -3706,6 +3852,7 @@
  },
  {
   "name": "mist",
+  "displayName": "Mist",
   "learners": 3,
   "type": "ice",
   "power": null,
@@ -3730,6 +3877,7 @@
  },
  {
   "name": "moonlight",
+  "displayName": "Moonlight",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -3754,6 +3902,7 @@
  },
  {
   "name": "mud-shot",
+  "displayName": "Mud Shot",
   "learners": 6,
   "type": "ground",
   "power": 55,
@@ -3783,6 +3932,7 @@
  },
  {
   "name": "mud-slap",
+  "displayName": "Mud-Slap",
   "learners": 2,
   "type": "ground",
   "power": 20,
@@ -3812,6 +3962,7 @@
  },
  {
   "name": "mud-sport",
+  "displayName": "Mud Sport",
   "learners": 3,
   "type": "ground",
   "power": null,
@@ -3836,6 +3987,7 @@
  },
  {
   "name": "night-shade",
+  "displayName": "Night Shade",
   "learners": 3,
   "type": "ghost",
   "power": null,
@@ -3860,6 +4012,7 @@
  },
  {
   "name": "nightmare",
+  "displayName": "Nightmare",
   "learners": 4,
   "type": "ghost",
   "power": null,
@@ -3884,6 +4037,7 @@
  },
  {
   "name": "odor-sleuth",
+  "displayName": "Odor Sleuth",
   "learners": 2,
   "type": "normal",
   "power": null,
@@ -3908,6 +4062,7 @@
  },
  {
   "name": "outrage",
+  "displayName": "Outrage",
   "learners": 3,
   "type": "dragon",
   "power": 90,
@@ -3932,6 +4087,7 @@
  },
  {
   "name": "pay-day",
+  "displayName": "Pay Day",
   "learners": 2,
   "type": "normal",
   "power": 40,
@@ -3956,6 +4112,7 @@
  },
  {
   "name": "peck",
+  "displayName": "Peck",
   "learners": 11,
   "type": "flying",
   "power": 35,
@@ -3980,6 +4137,7 @@
  },
  {
   "name": "perish-song",
+  "displayName": "Perish Song",
   "learners": 2,
   "type": "normal",
   "power": null,
@@ -4004,6 +4162,7 @@
  },
  {
   "name": "petal-dance",
+  "displayName": "Petal Dance",
   "learners": 3,
   "type": "grass",
   "power": 70,
@@ -4028,6 +4187,7 @@
  },
  {
   "name": "pin-missile",
+  "displayName": "Pin Missile",
   "learners": 2,
   "type": "bug",
   "power": 14,
@@ -4052,6 +4212,7 @@
  },
  {
   "name": "poison-fang",
+  "displayName": "Poison Fang",
   "learners": 2,
   "type": "poison",
   "power": 50,
@@ -4076,6 +4237,7 @@
  },
  {
   "name": "poison-gas",
+  "displayName": "Poison Gas",
   "learners": 6,
   "type": "poison",
   "power": null,
@@ -4100,6 +4262,7 @@
  },
  {
   "name": "poison-powder",
+  "displayName": "Poison Powder",
   "learners": 14,
   "type": "poison",
   "power": null,
@@ -4124,6 +4287,7 @@
  },
  {
   "name": "poison-sting",
+  "displayName": "Poison Sting",
   "learners": 13,
   "type": "poison",
   "power": 15,
@@ -4148,6 +4312,7 @@
  },
  {
   "name": "pound",
+  "displayName": "Pound",
   "learners": 9,
   "type": "normal",
   "power": 40,
@@ -4172,6 +4337,7 @@
  },
  {
   "name": "powder-snow",
+  "displayName": "Powder Snow",
   "learners": 2,
   "type": "ice",
   "power": 40,
@@ -4196,6 +4362,7 @@
  },
  {
   "name": "protect",
+  "displayName": "Protect",
   "learners": 9,
   "type": "normal",
   "power": null,
@@ -4220,6 +4387,7 @@
  },
  {
   "name": "psybeam",
+  "displayName": "Psybeam",
   "learners": 7,
   "type": "psychic",
   "power": 65,
@@ -4244,6 +4412,7 @@
  },
  {
   "name": "psych-up",
+  "displayName": "Psych Up",
   "learners": 7,
   "type": "normal",
   "power": null,
@@ -4268,6 +4437,7 @@
  },
  {
   "name": "psychic",
+  "displayName": "Psychic",
   "learners": 11,
   "type": "psychic",
   "power": 90,
@@ -4297,6 +4467,7 @@
  },
  {
   "name": "pursuit",
+  "displayName": "Pursuit",
   "learners": 10,
   "type": "dark",
   "power": 40,
@@ -4321,6 +4492,7 @@
  },
  {
   "name": "quick-attack",
+  "displayName": "Quick Attack",
   "learners": 17,
   "type": "normal",
   "power": 40,
@@ -4345,6 +4517,7 @@
  },
  {
   "name": "rage",
+  "displayName": "Rage",
   "learners": 9,
   "type": "normal",
   "power": 20,
@@ -4369,6 +4542,7 @@
  },
  {
   "name": "rain-dance",
+  "displayName": "Rain Dance",
   "learners": 7,
   "type": "water",
   "power": null,
@@ -4393,6 +4567,7 @@
  },
  {
   "name": "rapid-spin",
+  "displayName": "Rapid Spin",
   "learners": 5,
   "type": "normal",
   "power": 20,
@@ -4422,6 +4597,7 @@
  },
  {
   "name": "razor-leaf",
+  "displayName": "Razor Leaf",
   "learners": 6,
   "type": "grass",
   "power": 55,
@@ -4446,6 +4622,7 @@
  },
  {
   "name": "recover",
+  "displayName": "Recover",
   "learners": 6,
   "type": "normal",
   "power": null,
@@ -4470,6 +4647,7 @@
  },
  {
   "name": "recycle",
+  "displayName": "Recycle",
   "learners": 2,
   "type": "normal",
   "power": null,
@@ -4494,6 +4672,7 @@
  },
  {
   "name": "reflect",
+  "displayName": "Reflect",
   "learners": 5,
   "type": "psychic",
   "power": null,
@@ -4518,6 +4697,7 @@
  },
  {
   "name": "refresh",
+  "displayName": "Refresh",
   "learners": 2,
   "type": "normal",
   "power": null,
@@ -4542,6 +4722,7 @@
  },
  {
   "name": "rest",
+  "displayName": "Rest",
   "learners": 5,
   "type": "psychic",
   "power": null,
@@ -4566,6 +4747,7 @@
  },
  {
   "name": "revenge",
+  "displayName": "Revenge",
   "learners": 6,
   "type": "fighting",
   "power": 60,
@@ -4590,6 +4772,7 @@
  },
  {
   "name": "reversal",
+  "displayName": "Reversal",
   "learners": 2,
   "type": "fighting",
   "power": null,
@@ -4614,6 +4797,7 @@
  },
  {
   "name": "roar",
+  "displayName": "Roar",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -4638,6 +4822,7 @@
  },
  {
   "name": "rock-blast",
+  "displayName": "Rock Blast",
   "learners": 5,
   "type": "rock",
   "power": 25,
@@ -4662,6 +4847,7 @@
  },
  {
   "name": "rock-throw",
+  "displayName": "Rock Throw",
   "learners": 4,
   "type": "rock",
   "power": 50,
@@ -4686,6 +4872,7 @@
  },
  {
   "name": "role-play",
+  "displayName": "Role Play",
   "learners": 2,
   "type": "psychic",
   "power": null,
@@ -4710,6 +4897,7 @@
  },
  {
   "name": "rolling-kick",
+  "displayName": "Rolling Kick",
   "learners": 1,
   "type": "fighting",
   "power": 60,
@@ -4734,6 +4922,7 @@
  },
  {
   "name": "rollout",
+  "displayName": "Rollout",
   "learners": 7,
   "type": "rock",
   "power": 30,
@@ -4758,6 +4947,7 @@
  },
  {
   "name": "safeguard",
+  "displayName": "Safeguard",
   "learners": 12,
   "type": "normal",
   "power": null,
@@ -4782,6 +4972,7 @@
  },
  {
   "name": "sand-attack",
+  "displayName": "Sand Attack",
   "learners": 14,
   "type": "ground",
   "power": null,
@@ -4811,6 +5002,7 @@
  },
  {
   "name": "sand-tomb",
+  "displayName": "Sand Tomb",
   "learners": 4,
   "type": "ground",
   "power": 15,
@@ -4835,6 +5027,7 @@
  },
  {
   "name": "sandstorm",
+  "displayName": "Sandstorm",
   "learners": 3,
   "type": "rock",
   "power": null,
@@ -4859,6 +5052,7 @@
  },
  {
   "name": "scary-face",
+  "displayName": "Scary Face",
   "learners": 11,
   "type": "normal",
   "power": null,
@@ -4888,6 +5082,7 @@
  },
  {
   "name": "scratch",
+  "displayName": "Scratch",
   "learners": 20,
   "type": "normal",
   "power": 40,
@@ -4912,6 +5107,7 @@
  },
  {
   "name": "screech",
+  "displayName": "Screech",
   "learners": 20,
   "type": "normal",
   "power": null,
@@ -4941,6 +5137,7 @@
  },
  {
   "name": "seismic-toss",
+  "displayName": "Seismic Toss",
   "learners": 6,
   "type": "fighting",
   "power": null,
@@ -4965,6 +5162,7 @@
  },
  {
   "name": "self-destruct",
+  "displayName": "Self-Destruct",
   "learners": 7,
   "type": "normal",
   "power": 200,
@@ -4989,6 +5187,7 @@
  },
  {
   "name": "shadow-ball",
+  "displayName": "Shadow Ball",
   "learners": 3,
   "type": "ghost",
   "power": 80,
@@ -5018,6 +5217,7 @@
  },
  {
   "name": "shadow-punch",
+  "displayName": "Shadow Punch",
   "learners": 2,
   "type": "ghost",
   "power": 60,
@@ -5042,6 +5242,7 @@
  },
  {
   "name": "sharpen",
+  "displayName": "Sharpen",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -5071,6 +5272,7 @@
  },
  {
   "name": "sheer-cold",
+  "displayName": "Sheer Cold",
   "learners": 3,
   "type": "ice",
   "power": null,
@@ -5095,6 +5297,7 @@
  },
  {
   "name": "signal-beam",
+  "displayName": "Signal Beam",
   "learners": 1,
   "type": "bug",
   "power": 75,
@@ -5119,6 +5322,7 @@
  },
  {
   "name": "silver-wind",
+  "displayName": "Silver Wind",
   "learners": 2,
   "type": "bug",
   "power": 60,
@@ -5164,6 +5368,7 @@
  },
  {
   "name": "sing",
+  "displayName": "Sing",
   "learners": 6,
   "type": "normal",
   "power": null,
@@ -5188,6 +5393,7 @@
  },
  {
   "name": "skull-bash",
+  "displayName": "Skull Bash",
   "learners": 3,
   "type": "normal",
   "power": 100,
@@ -5212,6 +5418,7 @@
  },
  {
   "name": "sky-attack",
+  "displayName": "Sky Attack",
   "learners": 1,
   "type": "flying",
   "power": 140,
@@ -5236,6 +5443,7 @@
  },
  {
   "name": "sky-uppercut",
+  "displayName": "Sky Uppercut",
   "learners": 1,
   "type": "fighting",
   "power": 85,
@@ -5260,6 +5468,7 @@
  },
  {
   "name": "slam",
+  "displayName": "Slam",
   "learners": 9,
   "type": "normal",
   "power": 80,
@@ -5284,6 +5493,7 @@
  },
  {
   "name": "slash",
+  "displayName": "Slash",
   "learners": 14,
   "type": "normal",
   "power": 70,
@@ -5308,6 +5518,7 @@
  },
  {
   "name": "sleep-powder",
+  "displayName": "Sleep Powder",
   "learners": 13,
   "type": "grass",
   "power": null,
@@ -5332,6 +5543,7 @@
  },
  {
   "name": "sleep-talk",
+  "displayName": "Sleep Talk",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -5356,6 +5568,7 @@
  },
  {
   "name": "sludge",
+  "displayName": "Sludge",
   "learners": 4,
   "type": "poison",
   "power": 65,
@@ -5380,6 +5593,7 @@
  },
  {
   "name": "sludge-bomb",
+  "displayName": "Sludge Bomb",
   "learners": 2,
   "type": "poison",
   "power": 90,
@@ -5404,6 +5618,7 @@
  },
  {
   "name": "smog",
+  "displayName": "Smog",
   "learners": 4,
   "type": "poison",
   "power": 20,
@@ -5428,6 +5643,7 @@
  },
  {
   "name": "smokescreen",
+  "displayName": "Smokescreen",
   "learners": 8,
   "type": "normal",
   "power": null,
@@ -5457,6 +5673,7 @@
  },
  {
   "name": "snore",
+  "displayName": "Snore",
   "learners": 1,
   "type": "normal",
   "power": 40,
@@ -5481,6 +5698,7 @@
  },
  {
   "name": "soft-boiled",
+  "displayName": "Soft-Boiled",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -5505,6 +5723,7 @@
  },
  {
   "name": "solar-beam",
+  "displayName": "Solar Beam",
   "learners": 4,
   "type": "grass",
   "power": 120,
@@ -5529,6 +5748,7 @@
  },
  {
   "name": "sonic-boom",
+  "displayName": "Sonic Boom",
   "learners": 4,
   "type": "normal",
   "power": null,
@@ -5553,6 +5773,7 @@
  },
  {
   "name": "spark",
+  "displayName": "Spark",
   "learners": 4,
   "type": "electric",
   "power": 65,
@@ -5577,6 +5798,7 @@
  },
  {
   "name": "spike-cannon",
+  "displayName": "Spike Cannon",
   "learners": 2,
   "type": "normal",
   "power": 20,
@@ -5601,6 +5823,7 @@
  },
  {
   "name": "spikes",
+  "displayName": "Spikes",
   "learners": 1,
   "type": "ground",
   "power": null,
@@ -5625,6 +5848,7 @@
  },
  {
   "name": "spit-up",
+  "displayName": "Spit Up",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -5649,6 +5873,7 @@
  },
  {
   "name": "spite",
+  "displayName": "Spite",
   "learners": 3,
   "type": "ghost",
   "power": null,
@@ -5673,6 +5898,7 @@
  },
  {
   "name": "splash",
+  "displayName": "Splash",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -5697,6 +5923,7 @@
  },
  {
   "name": "spore",
+  "displayName": "Spore",
   "learners": 2,
   "type": "grass",
   "power": null,
@@ -5721,6 +5948,7 @@
  },
  {
   "name": "stockpile",
+  "displayName": "Stockpile",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -5754,6 +5982,7 @@
  },
  {
   "name": "stomp",
+  "displayName": "Stomp",
   "learners": 8,
   "type": "normal",
   "power": 65,
@@ -5778,6 +6007,7 @@
  },
  {
   "name": "string-shot",
+  "displayName": "String Shot",
   "learners": 2,
   "type": "bug",
   "power": null,
@@ -5807,6 +6037,7 @@
  },
  {
   "name": "stun-spore",
+  "displayName": "Stun Spore",
   "learners": 12,
   "type": "grass",
   "power": null,
@@ -5831,6 +6062,7 @@
  },
  {
   "name": "submission",
+  "displayName": "Submission",
   "learners": 5,
   "type": "fighting",
   "power": 80,
@@ -5855,6 +6087,7 @@
  },
  {
   "name": "substitute",
+  "displayName": "Substitute",
   "learners": 1,
   "type": "normal",
   "power": null,
@@ -5879,6 +6112,7 @@
  },
  {
   "name": "sunny-day",
+  "displayName": "Sunny Day",
   "learners": 1,
   "type": "fire",
   "power": null,
@@ -5903,6 +6137,7 @@
  },
  {
   "name": "super-fang",
+  "displayName": "Super Fang",
   "learners": 2,
   "type": "normal",
   "power": null,
@@ -5927,6 +6162,7 @@
  },
  {
   "name": "superpower",
+  "displayName": "Superpower",
   "learners": 1,
   "type": "fighting",
   "power": 120,
@@ -5960,6 +6196,7 @@
  },
  {
   "name": "supersonic",
+  "displayName": "Supersonic",
   "learners": 15,
   "type": "normal",
   "power": null,
@@ -5984,6 +6221,7 @@
  },
  {
   "name": "swagger",
+  "displayName": "Swagger",
   "learners": 7,
   "type": "normal",
   "power": null,
@@ -6013,6 +6251,7 @@
  },
  {
   "name": "swallow",
+  "displayName": "Swallow",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -6037,6 +6276,7 @@
  },
  {
   "name": "sweet-scent",
+  "displayName": "Sweet Scent",
   "learners": 8,
   "type": "normal",
   "power": null,
@@ -6066,6 +6306,7 @@
  },
  {
   "name": "swift",
+  "displayName": "Swift",
   "learners": 9,
   "type": "normal",
   "power": 60,
@@ -6090,6 +6331,7 @@
  },
  {
   "name": "swords-dance",
+  "displayName": "Swords Dance",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -6119,6 +6361,7 @@
  },
  {
   "name": "synthesis",
+  "displayName": "Synthesis",
   "learners": 3,
   "type": "grass",
   "power": null,
@@ -6143,6 +6386,7 @@
  },
  {
   "name": "tackle",
+  "displayName": "Tackle",
   "learners": 36,
   "type": "normal",
   "power": 35,
@@ -6167,6 +6411,7 @@
  },
  {
   "name": "tail-whip",
+  "displayName": "Tail Whip",
   "learners": 28,
   "type": "normal",
   "power": null,
@@ -6196,6 +6441,7 @@
  },
  {
   "name": "take-down",
+  "displayName": "Take Down",
   "learners": 10,
   "type": "normal",
   "power": 90,
@@ -6220,6 +6466,7 @@
  },
  {
   "name": "teleport",
+  "displayName": "Teleport",
   "learners": 3,
   "type": "psychic",
   "power": null,
@@ -6244,6 +6491,7 @@
  },
  {
   "name": "thrash",
+  "displayName": "Thrash",
   "learners": 7,
   "type": "normal",
   "power": 90,
@@ -6268,6 +6516,7 @@
  },
  {
   "name": "thunder",
+  "displayName": "Thunder",
   "learners": 4,
   "type": "electric",
   "power": 120,
@@ -6292,6 +6541,7 @@
  },
  {
   "name": "thunder-punch",
+  "displayName": "Thunder Punch",
   "learners": 2,
   "type": "electric",
   "power": 75,
@@ -6316,6 +6566,7 @@
  },
  {
   "name": "thunder-shock",
+  "displayName": "Thunder Shock",
   "learners": 6,
   "type": "electric",
   "power": 40,
@@ -6340,6 +6591,7 @@
  },
  {
   "name": "thunder-wave",
+  "displayName": "Thunder Wave",
   "learners": 8,
   "type": "electric",
   "power": null,
@@ -6364,6 +6616,7 @@
  },
  {
   "name": "thunderbolt",
+  "displayName": "Thunderbolt",
   "learners": 3,
   "type": "electric",
   "power": 95,
@@ -6388,6 +6641,7 @@
  },
  {
   "name": "tickle",
+  "displayName": "Tickle",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -6421,6 +6675,7 @@
  },
  {
   "name": "transform",
+  "displayName": "Transform",
   "learners": 2,
   "type": "normal",
   "power": null,
@@ -6445,6 +6700,7 @@
  },
  {
   "name": "tri-attack",
+  "displayName": "Tri Attack",
   "learners": 5,
   "type": "normal",
   "power": 80,
@@ -6469,6 +6725,7 @@
  },
  {
   "name": "trick",
+  "displayName": "Trick",
   "learners": 3,
   "type": "psychic",
   "power": null,
@@ -6493,6 +6750,7 @@
  },
  {
   "name": "twineedle",
+  "displayName": "Twineedle",
   "learners": 1,
   "type": "bug",
   "power": 25,
@@ -6517,6 +6775,7 @@
  },
  {
   "name": "twister",
+  "displayName": "Twister",
   "learners": 6,
   "type": "dragon",
   "power": 40,
@@ -6541,6 +6800,7 @@
  },
  {
   "name": "uproar",
+  "displayName": "Uproar",
   "learners": 3,
   "type": "normal",
   "power": 50,
@@ -6565,6 +6825,7 @@
  },
  {
   "name": "vice-grip",
+  "displayName": "Vise Grip",
   "learners": 3,
   "type": "normal",
   "power": 55,
@@ -6589,6 +6850,7 @@
  },
  {
   "name": "vine-whip",
+  "displayName": "Vine Whip",
   "learners": 7,
   "type": "grass",
   "power": 35,
@@ -6613,6 +6875,7 @@
  },
  {
   "name": "vital-throw",
+  "displayName": "Vital Throw",
   "learners": 3,
   "type": "fighting",
   "power": 70,
@@ -6637,6 +6900,7 @@
  },
  {
   "name": "water-gun",
+  "displayName": "Water Gun",
   "learners": 16,
   "type": "water",
   "power": 40,
@@ -6661,6 +6925,7 @@
  },
  {
   "name": "water-sport",
+  "displayName": "Water Sport",
   "learners": 4,
   "type": "water",
   "power": null,
@@ -6685,6 +6950,7 @@
  },
  {
   "name": "waterfall",
+  "displayName": "Waterfall",
   "learners": 2,
   "type": "water",
   "power": 80,
@@ -6709,6 +6975,7 @@
  },
  {
   "name": "whirlwind",
+  "displayName": "Whirlwind",
   "learners": 4,
   "type": "normal",
   "power": null,
@@ -6733,6 +7000,7 @@
  },
  {
   "name": "will-o-wisp",
+  "displayName": "Will-O-Wisp",
   "learners": 1,
   "type": "fire",
   "power": null,
@@ -6757,6 +7025,7 @@
  },
  {
   "name": "wing-attack",
+  "displayName": "Wing Attack",
   "learners": 10,
   "type": "flying",
   "power": 60,
@@ -6781,6 +7050,7 @@
  },
  {
   "name": "withdraw",
+  "displayName": "Withdraw",
   "learners": 8,
   "type": "water",
   "power": null,
@@ -6810,6 +7080,7 @@
  },
  {
   "name": "wrap",
+  "displayName": "Wrap",
   "learners": 10,
   "type": "normal",
   "power": 15,
@@ -6834,6 +7105,7 @@
  },
  {
   "name": "yawn",
+  "displayName": "Yawn",
   "learners": 3,
   "type": "normal",
   "power": null,
@@ -6858,6 +7130,7 @@
  },
  {
   "name": "zap-cannon",
+  "displayName": "Zap Cannon",
   "learners": 3,
   "type": "electric",
   "power": 100,

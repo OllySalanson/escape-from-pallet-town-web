@@ -1,115 +1,77 @@
 [
  {
-  "name": "tackle",
+  "name": "absorb",
+  "flags": []
+ },
+ {
+  "name": "acid",
+  "flags": []
+ },
+ {
+  "name": "acid-armor",
+  "flags": []
+ },
+ {
+  "name": "aerial-ace",
   "flags": [
    "contact"
   ]
  },
  {
-  "name": "growl",
-  "flags": [
-   "sound"
-  ]
- },
- {
-  "name": "tail-whip",
+  "name": "agility",
   "flags": []
  },
  {
-  "name": "scratch",
-  "flags": [
-   "contact"
-  ]
- },
- {
-  "name": "ember",
+  "name": "air-cutter",
   "flags": []
  },
  {
-  "name": "water-gun",
+  "name": "amnesia",
   "flags": []
  },
  {
-  "name": "vine-whip",
+  "name": "ancient-power",
+  "flags": []
+ },
+ {
+  "name": "aromatherapy",
+  "flags": []
+ },
+ {
+  "name": "astonish",
   "flags": [
    "contact"
   ]
  },
  {
-  "name": "poison-powder",
+  "name": "attract",
   "flags": []
  },
  {
-  "name": "sing",
-  "flags": [
-   "sound"
-  ]
- },
- {
-  "name": "supersonic",
-  "flags": [
-   "sound"
-  ]
- },
- {
-  "name": "thunder-wave",
+  "name": "aurora-beam",
   "flags": []
  },
  {
-  "name": "sleep-powder",
+  "name": "barrage",
   "flags": []
  },
  {
-  "name": "razor-leaf",
+  "name": "barrier",
   "flags": []
  },
  {
-  "name": "scary-face",
+  "name": "baton-pass",
   "flags": []
  },
  {
-  "name": "flamethrower",
+  "name": "belly-drum",
   "flags": []
  },
  {
-  "name": "heat-wave",
-  "flags": []
- },
- {
-  "name": "slash",
+  "name": "bind",
   "flags": [
    "contact"
   ]
- },
- {
-  "name": "wing-attack",
-  "flags": [
-   "contact"
-  ]
- },
- {
-  "name": "gust",
-  "flags": []
- },
- {
-  "name": "feather-dance",
-  "flags": []
- },
- {
-  "name": "bubble",
-  "flags": []
- },
- {
-  "name": "hydro-pump",
-  "flags": []
- },
- {
-  "name": "thunder-shock",
-  "flags": []
- },
- {
-  "name": "thunderbolt",
-  "flags": []
  },
  {
   "name": "bite",
@@ -119,13 +81,190 @@
   ]
  },
  {
-  "name": "metal-claw",
+  "name": "blizzard",
+  "flags": []
+ },
+ {
+  "name": "block",
+  "flags": []
+ },
+ {
+  "name": "body-slam",
   "flags": [
    "contact"
   ]
  },
  {
-  "name": "quick-attack",
+  "name": "bone-club",
+  "flags": []
+ },
+ {
+  "name": "bone-rush",
+  "flags": []
+ },
+ {
+  "name": "bonemerang",
+  "flags": []
+ },
+ {
+  "name": "bounce",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "brick-break",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "bubble",
+  "flags": []
+ },
+ {
+  "name": "bubble-beam",
+  "flags": []
+ },
+ {
+  "name": "bullet-seed",
+  "flags": []
+ },
+ {
+  "name": "calm-mind",
+  "flags": []
+ },
+ {
+  "name": "camouflage",
+  "flags": []
+ },
+ {
+  "name": "charge",
+  "flags": []
+ },
+ {
+  "name": "clamp",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "comet-punch",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "confuse-ray",
+  "flags": []
+ },
+ {
+  "name": "confusion",
+  "flags": []
+ },
+ {
+  "name": "constrict",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "conversion",
+  "flags": []
+ },
+ {
+  "name": "conversion-2",
+  "flags": []
+ },
+ {
+  "name": "cosmic-power",
+  "flags": []
+ },
+ {
+  "name": "counter",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "covet",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "crabhammer",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "cross-chop",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "crunch",
+  "flags": [
+   "bite",
+   "contact"
+  ]
+ },
+ {
+  "name": "curse",
+  "flags": []
+ },
+ {
+  "name": "cut",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "defense-curl",
+  "flags": []
+ },
+ {
+  "name": "destiny-bond",
+  "flags": []
+ },
+ {
+  "name": "detect",
+  "flags": []
+ },
+ {
+  "name": "dig",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "disable",
+  "flags": []
+ },
+ {
+  "name": "dive",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "dizzy-punch",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "double-edge",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "double-kick",
   "flags": [
    "contact"
   ]
@@ -137,47 +276,338 @@
   ]
  },
  {
-  "name": "double-edge",
-  "flags": [
-   "contact"
-  ]
- },
- {
-  "name": "agility",
-  "flags": []
- },
- {
-  "name": "smokescreen",
-  "flags": []
- },
- {
   "name": "double-team",
   "flags": []
  },
  {
-  "name": "synthesis",
+  "name": "dragon-breath",
   "flags": []
  },
  {
-  "name": "solar-beam",
-  "flags": []
- },
- {
-  "name": "body-slam",
+  "name": "dragon-claw",
   "flags": [
    "contact"
   ]
  },
  {
-  "name": "psybeam",
+  "name": "dragon-dance",
   "flags": []
  },
  {
-  "name": "bullet-seed",
+  "name": "dragon-rage",
+  "flags": []
+ },
+ {
+  "name": "dream-eater",
+  "flags": []
+ },
+ {
+  "name": "drill-peck",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "dynamic-punch",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "earthquake",
+  "flags": []
+ },
+ {
+  "name": "egg-bomb",
+  "flags": []
+ },
+ {
+  "name": "ember",
+  "flags": []
+ },
+ {
+  "name": "encore",
+  "flags": []
+ },
+ {
+  "name": "endeavor",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "endure",
+  "flags": []
+ },
+ {
+  "name": "explosion",
+  "flags": []
+ },
+ {
+  "name": "extreme-speed",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "facade",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "fake-out",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "fake-tears",
+  "flags": []
+ },
+ {
+  "name": "false-swipe",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "feather-dance",
+  "flags": []
+ },
+ {
+  "name": "feint-attack",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "fire-blast",
+  "flags": []
+ },
+ {
+  "name": "fire-punch",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "fire-spin",
+  "flags": []
+ },
+ {
+  "name": "fissure",
+  "flags": []
+ },
+ {
+  "name": "flail",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "flame-wheel",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "flamethrower",
+  "flags": []
+ },
+ {
+  "name": "flash",
+  "flags": []
+ },
+ {
+  "name": "flatter",
+  "flags": []
+ },
+ {
+  "name": "fly",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "focus-energy",
+  "flags": []
+ },
+ {
+  "name": "focus-punch",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "follow-me",
+  "flags": []
+ },
+ {
+  "name": "foresight",
+  "flags": []
+ },
+ {
+  "name": "frustration",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "fury-attack",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "fury-cutter",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "fury-swipes",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "future-sight",
+  "flags": []
+ },
+ {
+  "name": "giga-drain",
+  "flags": []
+ },
+ {
+  "name": "glare",
+  "flags": []
+ },
+ {
+  "name": "growl",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "growth",
+  "flags": []
+ },
+ {
+  "name": "grudge",
+  "flags": []
+ },
+ {
+  "name": "guillotine",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "gust",
+  "flags": []
+ },
+ {
+  "name": "hail",
+  "flags": []
+ },
+ {
+  "name": "harden",
+  "flags": []
+ },
+ {
+  "name": "haze",
+  "flags": []
+ },
+ {
+  "name": "headbutt",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "heat-wave",
+  "flags": []
+ },
+ {
+  "name": "helping-hand",
+  "flags": []
+ },
+ {
+  "name": "hidden-power",
+  "flags": []
+ },
+ {
+  "name": "high-jump-kick",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "horn-attack",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "horn-drill",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "hydro-pump",
+  "flags": []
+ },
+ {
+  "name": "hyper-beam",
+  "flags": []
+ },
+ {
+  "name": "hyper-fang",
+  "flags": [
+   "bite",
+   "contact"
+  ]
+ },
+ {
+  "name": "hyper-voice",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "hypnosis",
   "flags": []
  },
  {
   "name": "ice-beam",
+  "flags": []
+ },
+ {
+  "name": "ice-punch",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "icicle-spear",
+  "flags": []
+ },
+ {
+  "name": "icy-wind",
+  "flags": []
+ },
+ {
+  "name": "imprison",
+  "flags": []
+ },
+ {
+  "name": "ingrain",
   "flags": []
  },
  {
@@ -187,16 +617,350 @@
   ]
  },
  {
-  "name": "dig",
+  "name": "jump-kick",
   "flags": [
    "contact"
   ]
  },
  {
-  "name": "aerial-ace",
+  "name": "karate-chop",
   "flags": [
    "contact"
   ]
+ },
+ {
+  "name": "kinesis",
+  "flags": []
+ },
+ {
+  "name": "knock-off",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "leech-life",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "leech-seed",
+  "flags": []
+ },
+ {
+  "name": "leer",
+  "flags": []
+ },
+ {
+  "name": "lick",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "light-screen",
+  "flags": []
+ },
+ {
+  "name": "lock-on",
+  "flags": []
+ },
+ {
+  "name": "lovely-kiss",
+  "flags": []
+ },
+ {
+  "name": "low-kick",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "mach-punch",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "magical-leaf",
+  "flags": []
+ },
+ {
+  "name": "magnitude",
+  "flags": []
+ },
+ {
+  "name": "mean-look",
+  "flags": []
+ },
+ {
+  "name": "meditate",
+  "flags": []
+ },
+ {
+  "name": "mega-drain",
+  "flags": []
+ },
+ {
+  "name": "mega-kick",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "mega-punch",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "megahorn",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "memento",
+  "flags": []
+ },
+ {
+  "name": "metal-claw",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "metal-sound",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "meteor-mash",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "metronome",
+  "flags": []
+ },
+ {
+  "name": "mimic",
+  "flags": []
+ },
+ {
+  "name": "mind-reader",
+  "flags": []
+ },
+ {
+  "name": "minimize",
+  "flags": []
+ },
+ {
+  "name": "mirror-coat",
+  "flags": []
+ },
+ {
+  "name": "mirror-move",
+  "flags": []
+ },
+ {
+  "name": "mist",
+  "flags": []
+ },
+ {
+  "name": "moonlight",
+  "flags": []
+ },
+ {
+  "name": "mud-shot",
+  "flags": []
+ },
+ {
+  "name": "mud-slap",
+  "flags": []
+ },
+ {
+  "name": "mud-sport",
+  "flags": []
+ },
+ {
+  "name": "night-shade",
+  "flags": []
+ },
+ {
+  "name": "nightmare",
+  "flags": []
+ },
+ {
+  "name": "odor-sleuth",
+  "flags": []
+ },
+ {
+  "name": "outrage",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "overheat",
+  "flags": []
+ },
+ {
+  "name": "pay-day",
+  "flags": []
+ },
+ {
+  "name": "peck",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "perish-song",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "petal-dance",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "pin-missile",
+  "flags": []
+ },
+ {
+  "name": "poison-fang",
+  "flags": [
+   "bite",
+   "contact"
+  ]
+ },
+ {
+  "name": "poison-gas",
+  "flags": []
+ },
+ {
+  "name": "poison-powder",
+  "flags": []
+ },
+ {
+  "name": "poison-sting",
+  "flags": []
+ },
+ {
+  "name": "pound",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "powder-snow",
+  "flags": []
+ },
+ {
+  "name": "protect",
+  "flags": []
+ },
+ {
+  "name": "psybeam",
+  "flags": []
+ },
+ {
+  "name": "psych-up",
+  "flags": []
+ },
+ {
+  "name": "psychic",
+  "flags": []
+ },
+ {
+  "name": "pursuit",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "quick-attack",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "rage",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "rain-dance",
+  "flags": []
+ },
+ {
+  "name": "rapid-spin",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "razor-leaf",
+  "flags": []
+ },
+ {
+  "name": "recover",
+  "flags": []
+ },
+ {
+  "name": "recycle",
+  "flags": []
+ },
+ {
+  "name": "reflect",
+  "flags": []
+ },
+ {
+  "name": "refresh",
+  "flags": []
+ },
+ {
+  "name": "rest",
+  "flags": []
+ },
+ {
+  "name": "return",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "revenge",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "reversal",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "roar",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "rock-blast",
+  "flags": []
  },
  {
   "name": "rock-smash",
@@ -205,7 +969,462 @@
   ]
  },
  {
-  "name": "rain-dance",
+  "name": "rock-throw",
+  "flags": []
+ },
+ {
+  "name": "role-play",
+  "flags": []
+ },
+ {
+  "name": "rolling-kick",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "rollout",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "safeguard",
+  "flags": []
+ },
+ {
+  "name": "sand-attack",
+  "flags": []
+ },
+ {
+  "name": "sand-tomb",
+  "flags": []
+ },
+ {
+  "name": "sandstorm",
+  "flags": []
+ },
+ {
+  "name": "scary-face",
+  "flags": []
+ },
+ {
+  "name": "scratch",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "screech",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "secret-power",
+  "flags": []
+ },
+ {
+  "name": "seismic-toss",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "self-destruct",
+  "flags": []
+ },
+ {
+  "name": "shadow-ball",
+  "flags": []
+ },
+ {
+  "name": "shadow-punch",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "sharpen",
+  "flags": []
+ },
+ {
+  "name": "sheer-cold",
+  "flags": []
+ },
+ {
+  "name": "shock-wave",
+  "flags": []
+ },
+ {
+  "name": "signal-beam",
+  "flags": []
+ },
+ {
+  "name": "silver-wind",
+  "flags": []
+ },
+ {
+  "name": "sing",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "skill-swap",
+  "flags": []
+ },
+ {
+  "name": "skull-bash",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "sky-attack",
+  "flags": []
+ },
+ {
+  "name": "sky-uppercut",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "slam",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "slash",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "sleep-powder",
+  "flags": []
+ },
+ {
+  "name": "sleep-talk",
+  "flags": []
+ },
+ {
+  "name": "sludge",
+  "flags": []
+ },
+ {
+  "name": "sludge-bomb",
+  "flags": []
+ },
+ {
+  "name": "smog",
+  "flags": []
+ },
+ {
+  "name": "smokescreen",
+  "flags": []
+ },
+ {
+  "name": "snatch",
+  "flags": []
+ },
+ {
+  "name": "snore",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "soft-boiled",
+  "flags": []
+ },
+ {
+  "name": "solar-beam",
+  "flags": []
+ },
+ {
+  "name": "sonic-boom",
+  "flags": []
+ },
+ {
+  "name": "spark",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "spike-cannon",
+  "flags": []
+ },
+ {
+  "name": "spikes",
+  "flags": []
+ },
+ {
+  "name": "spit-up",
+  "flags": []
+ },
+ {
+  "name": "spite",
+  "flags": []
+ },
+ {
+  "name": "splash",
+  "flags": []
+ },
+ {
+  "name": "spore",
+  "flags": []
+ },
+ {
+  "name": "steel-wing",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "stockpile",
+  "flags": []
+ },
+ {
+  "name": "stomp",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "strength",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "string-shot",
+  "flags": []
+ },
+ {
+  "name": "stun-spore",
+  "flags": []
+ },
+ {
+  "name": "submission",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "substitute",
+  "flags": []
+ },
+ {
+  "name": "sunny-day",
+  "flags": []
+ },
+ {
+  "name": "super-fang",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "superpower",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "supersonic",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "surf",
+  "flags": []
+ },
+ {
+  "name": "swagger",
+  "flags": []
+ },
+ {
+  "name": "swallow",
+  "flags": []
+ },
+ {
+  "name": "sweet-scent",
+  "flags": []
+ },
+ {
+  "name": "swift",
+  "flags": []
+ },
+ {
+  "name": "swords-dance",
+  "flags": []
+ },
+ {
+  "name": "synthesis",
+  "flags": []
+ },
+ {
+  "name": "tackle",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "tail-whip",
+  "flags": []
+ },
+ {
+  "name": "take-down",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "teleport",
+  "flags": []
+ },
+ {
+  "name": "thief",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "thrash",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "thunder",
+  "flags": []
+ },
+ {
+  "name": "thunder-punch",
+  "flags": [
+   "contact",
+   "punch"
+  ]
+ },
+ {
+  "name": "thunder-shock",
+  "flags": []
+ },
+ {
+  "name": "thunder-wave",
+  "flags": []
+ },
+ {
+  "name": "thunderbolt",
+  "flags": []
+ },
+ {
+  "name": "tickle",
+  "flags": []
+ },
+ {
+  "name": "toxic",
+  "flags": []
+ },
+ {
+  "name": "transform",
+  "flags": []
+ },
+ {
+  "name": "tri-attack",
+  "flags": []
+ },
+ {
+  "name": "trick",
+  "flags": []
+ },
+ {
+  "name": "twineedle",
+  "flags": []
+ },
+ {
+  "name": "twister",
+  "flags": []
+ },
+ {
+  "name": "uproar",
+  "flags": [
+   "sound"
+  ]
+ },
+ {
+  "name": "vice-grip",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "vine-whip",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "vital-throw",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "water-gun",
+  "flags": []
+ },
+ {
+  "name": "water-pulse",
+  "flags": []
+ },
+ {
+  "name": "water-sport",
+  "flags": []
+ },
+ {
+  "name": "waterfall",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "whirlwind",
+  "flags": []
+ },
+ {
+  "name": "will-o-wisp",
+  "flags": []
+ },
+ {
+  "name": "wing-attack",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "withdraw",
+  "flags": []
+ },
+ {
+  "name": "wrap",
+  "flags": [
+   "contact"
+  ]
+ },
+ {
+  "name": "yawn",
+  "flags": []
+ },
+ {
+  "name": "zap-cannon",
   "flags": []
  }
 ]

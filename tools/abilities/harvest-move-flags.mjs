@@ -14,22 +14,30 @@
 // carry the *current* flag set and the contact flag has been revised since
 // FireRed, so a move added later is checked against its generation III entry
 // rather than trusted to this file.
-import { createInterface } from 'node:readline';
+import { readFileSync } from 'node:fs';
 
 const CSV = 'https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv';
 const WANTED = new Set(['contact', 'punch', 'bite', 'sound']);
 
-/** The moves `src/game/pokemon/moves.ts` ships, by PokeAPI identifier. */
+/**
+ * Every move the 151 learn by levelling, read off `tools/moves/frlg-level-up-moves.json`
+ * so the two snapshots cannot name different sets. It used to be the
+ * hand-kept list of what `moves.ts` had authored; the catalogue is generated
+ * from the level-up snapshot now, so the flag set has to cover all of it, plus
+ * the machines' own moves.
+ */
 const MOVES = [
-  'tackle', 'growl', 'tail-whip', 'scratch', 'ember', 'water-gun', 'vine-whip',
-  'poison-powder', 'sing', 'supersonic', 'thunder-wave', 'sleep-powder', 'razor-leaf',
-  'scary-face', 'flamethrower', 'heat-wave', 'slash', 'wing-attack', 'gust',
-  'feather-dance', 'bubble', 'hydro-pump', 'thunder-shock', 'thunderbolt', 'bite',
-  'metal-claw', 'quick-attack', 'double-slap', 'double-edge', 'agility', 'smokescreen',
-  'double-team', 'synthesis', 'solar-beam', 'body-slam', 'psybeam',
-  'bullet-seed', 'ice-beam', 'iron-tail', 'dig', 'aerial-ace', 'rock-smash',
-  'rain-dance',
-];
+  ...new Set([
+    ...JSON.parse(
+      readFileSync(new URL('../moves/frlg-level-up-moves.json', import.meta.url), 'utf8'),
+    ).map((row) => row.name),
+    // The machines teach six moves that are in no learnset, which is the whole
+    // point of a disc.
+    ...Object.keys(
+      JSON.parse(readFileSync(new URL('../moves/frlg-machines.json', import.meta.url), 'utf8')).machines,
+    ),
+  ]),
+].sort();
 
 const csv = async (name) => {
   const response = await fetch(`${CSV}/${name}.csv`);

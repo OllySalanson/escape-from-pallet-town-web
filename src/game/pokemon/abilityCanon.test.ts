@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { AbilityEffectKind } from './AbilityBase';
 import { ABILITIES, ABILITIES_BY_ID } from './abilities';
-import * as MOVES from './moves';
-import { MoveBase, MoveFlag } from './MoveBase';
+import { MOVE_CATALOGUE } from './moveCatalogue';
+import { MoveFlag } from './MoveBase';
 import { SPECIES_BY_ID } from './species';
 import { eventToMessage } from '../scenes/battlePresentation';
 import { battleEventSound } from '../audio/battleSounds';
@@ -56,27 +56,29 @@ describe('generation III abilities', () => {
         }
         continue;
       }
-      // Generation III gives a Pokemon one of its species' slots and a save
-      // records nothing about which, so the first slot is what every member of
-      // the species plays with.
-      expect(base.abilityId, base.id).toBe(canon![0]);
+      // Generation III gives a Pokemon **one of** its species' slots and a save
+      // records nothing about which, so every member of a species plays the
+      // same: the first slot this engine can express. Eight of the 151 play
+      // their second because their first is one of the ten abilities that have
+      // no hook - a Psyduck with Cloud Nine is a Psyduck canon allows, and it
+      // is a better answer than a Psyduck with nothing.
+      expect(canon, base.id).toContain(base.abilityId);
+      const skipped = canon!.slice(0, canon!.indexOf(base.abilityId));
+      for (const name of skipped) {
+        expect(ABILITIES_BY_ID[name], `${base.id} skipped ${name}, which is shipped`).toBeUndefined();
+      }
     }
   });
 
-  it('flags every shipped move the way its own entry flags it', () => {
-    const shipped = Object.values(MOVES).filter(
-      (value): value is MoveBase => value instanceof MoveBase,
-    );
-    const byName = new Map(
-      shipped.map((move) => [move.name.toLowerCase().replace(/[^a-z]+/g, '-'), move]),
-    );
-    expect(shipped).toHaveLength(MOVE_FLAGS.length);
-    for (const row of MOVE_FLAGS) {
-      // Super Sonic and Double-Edge are spelled differently here than in the
-      // source tables, so a miss is looked up by the snapshot's own name.
-      const move = byName.get(row.name) ?? byName.get(row.name.replace('supersonic', 'super-sonic'));
-      expect(move, row.name).toBeDefined();
-      expect([...move!.flags].sort(), row.name).toEqual([...row.flags].sort());
+  it('flags every move in the catalogue the way its own entry flags it', () => {
+    // The snapshot covers every move the 151 learn by levelling plus the six
+    // the machines teach, which is a superset of the catalogue: a move the
+    // engine cannot express has a row here and no `MoveBase`.
+    const flags = new Map(MOVE_FLAGS.map((row) => [row.name, row.flags]));
+    for (const [identifier, move] of Object.entries(MOVE_CATALOGUE)) {
+      const row = flags.get(identifier);
+      expect(row, `${identifier} has no row in the flag snapshot`).toBeDefined();
+      expect([...move.flags].sort(), identifier).toEqual([...row!].sort());
     }
   });
 
@@ -84,12 +86,16 @@ describe('generation III abilities', () => {
     // Static and the three like it read `MoveFlag.Contact` and nothing else, so
     // a physical move shipped without the flag is an ability quietly not
     // working - which is exactly how the older half of the catalogue shipped.
-    const contact = MOVE_FLAGS.filter((row) => row.flags.includes('contact')).map((row) => row.name);
-    expect(contact.length).toBeGreaterThan(12);
-    const shipped = Object.values(MOVES)
-      .filter((value): value is MoveBase => value instanceof MoveBase)
-      .filter((move) => move.flags.includes(MoveFlag.Contact));
-    expect(shipped).toHaveLength(contact.length);
+    const contact = new Set(
+      MOVE_FLAGS.filter((row) => row.flags.includes('contact')).map((row) => row.name),
+    );
+    expect(contact.size).toBeGreaterThan(12);
+    const shipped = Object.entries(MOVE_CATALOGUE).filter(([, move]) =>
+      move.flags.includes(MoveFlag.Contact),
+    );
+    expect(shipped.map(([identifier]) => identifier).sort()).toEqual(
+      Object.keys(MOVE_CATALOGUE).filter((identifier) => contact.has(identifier)).sort(),
+    );
   });
 });
 

@@ -125,13 +125,37 @@ describe('machines', () => {
     expect(canLearnFromMachine('bulbasaur', MACHINES['tm09-bullet-seed'].move)).toBe(true);
   });
 
-  it('is the only way any of these moves is ever reached', () => {
+  /**
+   * The six were chosen because no species *this game had* learned any of them,
+   * so a disc was the only way to reach one. The import made that a smaller
+   * claim and an exact one: FireRed teaches four of the six to nine species by
+   * levelling, and those nine are listed here rather than left to be
+   * rediscovered. Bullet Seed and Rock Smash are still in no learnset at all,
+   * and no starter, no trainer's Pokemon and nothing on a shipped wild table
+   * levels into any of the six - which is the part that matters, because it is
+   * what stops a machine being a slower way to get a move you were owed.
+   */
+  it('is the only way to these moves for all but the nine species canon teaches them to', () => {
     const taught = new Set(MACHINE_DEFINITIONS.map((machine) => machine.move));
+    const levelled: string[] = [];
     for (const species of Object.values(SPECIES_BY_ID)) {
       for (const entry of species.learnset) {
-        expect(taught.has(entry.move), `${species.id} levels into ${entry.move.name}`).toBe(false);
+        if (taught.has(entry.move)) {
+          levelled.push(`${species.id} ${entry.move.name} ${entry.level}`);
+        }
       }
     }
+    expect(levelled.sort()).toEqual([
+      'articuno Ice Beam 49',
+      'dewgong Ice Beam 51',
+      'diglett Dig 17',
+      'dugtrio Dig 17',
+      'lapras Ice Beam 31',
+      'onix Iron Tail 45',
+      'seel Ice Beam 41',
+      'shellder Ice Beam 50',
+      'spearow Aerial Ace 25',
+    ]);
   });
 
   it('names one disc per machine, and one machine per disc', () => {

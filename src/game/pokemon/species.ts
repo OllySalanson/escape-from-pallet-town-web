@@ -1,582 +1,104 @@
-import { PokemonBase } from './PokemonBase';
-import { PokemonType } from './PokemonType';
-import {
-  AGILITY,
-  BITE,
-  BODY_SLAM,
-  BUBBLE,
-  DOUBLE_EDGE,
-  DOUBLE_SLAP,
-  DOUBLE_TEAM,
-  EMBER,
-  FEATHER_DANCE,
-  FLAMETHROWER,
-  GROWL,
-  GUST,
-  HEAT_WAVE,
-  HYDRO_PUMP,
-  METAL_CLAW,
-  POISON_POWDER,
-  PSYBEAM,
-  QUICK_ATTACK,
-  RAIN_DANCE,
-  RAZOR_LEAF,
-  SCARY_FACE,
-  SCRATCH,
-  SING,
-  SLASH,
-  SLEEP_POWDER,
-  SMOKESCREEN,
-  SOLAR_BEAM,
-  SUPER_SONIC,
-  SYNTHESIS,
-  TACKLE,
-  TAIL_WHIP,
-  THUNDER_SHOCK,
-  THUNDER_WAVE,
-  THUNDERBOLT,
-  VINE_WHIP,
-  WATER_GUN,
-  WING_ATTACK,
-} from './moves';
+import { PokemonBase, type LearnableMove, type PokemonStats } from './PokemonBase';
+import { ABILITIES_BY_ID } from './abilities';
+import { GENERATED_SPECIES, type GeneratedSpecies } from './generated/speciesCatalogue';
+import { MOVE_CATALOGUE } from './moveCatalogue';
+import { SHIPPED_DEVIATIONS } from './shippedSpecies';
+import { GENERATION_III_STATS } from './statCorrections';
 
-export const BULBASAUR = new PokemonBase({
-  id: 'bulbasaur',
-  dexId: 1,
-  name: 'Bulbasaur',
-  abilityId: 'overgrow',
-  primaryType: PokemonType.Grass,
-  secondaryType: PokemonType.Poison,
-  baseStats: {
-    hp: 45,
-    attack: 49,
-    defense: 49,
-    spAttack: 65,
-    spDefense: 65,
-    speed: 45,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 1, move: SUPER_SONIC },
-    { level: 4, move: GROWL },
-    { level: 7, move: VINE_WHIP },
-    { level: 39, move: SYNTHESIS },
-    { level: 46, move: SOLAR_BEAM },
-  ],
-  frontSprite: 'sprites/pokemon/bulbasaur_front.png',
-  backSprite: 'sprites/pokemon/bulbasaur_back.png',
+/**
+ * Kanto's original 151, built from the import rather than written out.
+ *
+ * Four things go into a species and each is owned by exactly one file, which is
+ * what makes the roster reviewable at this size:
+ *
+ *  1. **canon**, `generated/speciesCatalogue.ts`, generated from the committed
+ *     PokeAPI snapshots by `node tools/species/generate.mjs`;
+ *  2. **the stats a later generation raised**, `statCorrections.ts`, which is
+ *     the one part of the import that came from neither source and says so;
+ *  3. **what this game decided differently**, `shippedSpecies.ts`, which is
+ *     every disagreement with canon in one place;
+ *  4. **what the engine can play**, which is asked here: a move canon teaches
+ *     that `MOVE_CATALOGUE` does not hold is left out of the learnset rather
+ *     than approximated, and an ability `abilities.ts` cannot express leaves
+ *     its species with none - which is what `abilityId: null` has meant since
+ *     Jigglypuff's Cute Charm needed a gender nothing here has.
+ *
+ * `docs/pokemon/roster.md` is the list of everything (4) drops, by species and
+ * with the reason, and `speciesImport.test.ts` holds the floor under it: a
+ * species can still field a damaging move at every level it can be met at.
+ */
+const applyStats = (row: GeneratedSpecies): PokemonStats => ({
+  ...row.baseStats,
+  ...GENERATION_III_STATS[row.id],
+  ...SHIPPED_DEVIATIONS[row.id]?.baseStats,
 });
 
-export const CHARMANDER = new PokemonBase({
-  id: 'charmander',
-  dexId: 4,
-  name: 'Charmander',
-  abilityId: 'blaze',
-  primaryType: PokemonType.Fire,
-  baseStats: {
-    hp: 39,
-    attack: 52,
-    defense: 43,
-    spAttack: 60,
-    spDefense: 50,
-    speed: 65,
-  },
-  learnset: [
-    { level: 1, move: SCRATCH },
-    { level: 4, move: GROWL },
-    { level: 7, move: EMBER },
-    // Charmander's own Steel move, at the level FireRed/LeafGreen teaches it.
-    // It is the earliest Dark or Steel move any starter gets, and the reason
-    // the type chart is seventeen wide rather than fifteen.
-    { level: 13, move: METAL_CLAW },
-    { level: 19, move: SMOKESCREEN },
-  ],
-  frontSprite: 'sprites/pokemon/charmander_front.png',
-  backSprite: 'sprites/pokemon/charmander_back.png',
-});
+const applyLearnset = (row: GeneratedSpecies): readonly LearnableMove[] =>
+  (SHIPPED_DEVIATIONS[row.id]?.learnset ?? row.learnset).flatMap((entry) => {
+    const move = MOVE_CATALOGUE[entry.move];
+    return move ? [{ level: entry.level, move }] : [];
+  });
 
-export const SQUIRTLE = new PokemonBase({
-  id: 'squirtle',
-  dexId: 7,
-  name: 'Squirtle',
-  abilityId: 'torrent',
-  primaryType: PokemonType.Water,
-  baseStats: {
-    hp: 44,
-    attack: 48,
-    defense: 65,
-    spAttack: 50,
-    spDefense: 64,
-    speed: 43,
-  },
-  // Bulbasaur has carried Super Sonic since Unity, so it alone had a level-5
-  // line other than "attack". Tail Whip gives the bulkiest starter its own, and
-  // one that suits it: it pays for itself in a long fight and loses tempo in a
-  // short one.
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 1, move: TAIL_WHIP },
-    { level: 4, move: GROWL },
-    { level: 7, move: WATER_GUN },
-    // Squirtle's Dark move. It evolves at 16, so in play the Bite arrives on
-    // the Wartortle below; this entry is what a Squirtle levelled past 16
-    // without evolving, or created outright above it, would know.
-    { level: 18, move: BITE },
-    // The only weather move anything in this roster learns by level. FireRed
-    // and LeafGreen teach it to the Squirtle line at 33, 37 and 42.
-    { level: 33, move: RAIN_DANCE },
-  ],
-  frontSprite: 'sprites/pokemon/squirtle_front.png',
-  backSprite: 'sprites/pokemon/squirtle_back.png',
-});
+/**
+ * The first of the species' generation III ability slots this engine can
+ * express. A generation III Pokemon is born into one of its species' one or two
+ * slots and nothing in a save records which, so every member of a species plays
+ * the same - and where the first slot is one the engine has no hook for, the
+ * second is asked before giving up on the species altogether.
+ */
+const abilityOf = (row: GeneratedSpecies): string | null =>
+  row.abilityIds.find((id) => ABILITIES_BY_ID[id]) ?? null;
 
-export const BUTTERFREE = new PokemonBase({
-  id: 'butterfree',
-  dexId: 12,
-  name: 'Butterfree',
-  abilityId: 'compound-eyes',
-  primaryType: PokemonType.Bug,
-  secondaryType: PokemonType.Flying,
-  baseStats: {
-    hp: 60,
-    attack: 45,
-    defense: 50,
-    spAttack: 90,
-    spDefense: 80,
-    speed: 70,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 10, move: POISON_POWDER },
-    { level: 34, move: PSYBEAM },
-  ],
-  frontSprite: 'sprites/pokemon/butterfree_front.png',
-  backSprite: 'sprites/pokemon/butterfree_back.png',
-});
+const build = (row: GeneratedSpecies): PokemonBase =>
+  new PokemonBase({
+    id: row.id,
+    dexId: row.dexId,
+    name: row.name,
+    abilityId: abilityOf(row),
+    primaryType: row.types[0],
+    secondaryType: row.types[1],
+    baseStats: applyStats(row),
+    learnset: applyLearnset(row),
+    catchRate: row.catchRate,
+    baseExperience: row.baseExperience,
+    growthRate: row.growthRate,
+  });
 
-export const PIKACHU = new PokemonBase({
-  id: 'pikachu',
-  dexId: 25,
-  name: 'Pikachu',
-  abilityId: 'static',
-  primaryType: PokemonType.Electric,
-  baseStats: {
-    hp: 35,
-    attack: 55,
-    defense: 40,
-    spAttack: 50,
-    spDefense: 50,
-    speed: 90,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 1, move: GROWL },
-    { level: 10, move: THUNDER_WAVE },
-    { level: 15, move: DOUBLE_TEAM },
-    { level: 33, move: AGILITY },
-  ],
-  frontSprite: 'sprites/pokemon/pikachu_front.png',
-  backSprite: 'sprites/pokemon/pikachu_back.png',
-});
+export const ALL_SPECIES: readonly PokemonBase[] = GENERATED_SPECIES.map(build);
 
-export const JIGGLYPUFF = new PokemonBase({
-  id: 'jigglypuff',
-  dexId: 39,
-  name: 'Jigglypuff',
-  // Cute Charm is Jigglypuff's generation III ability, and it infatuates on
-  // contact - which needs a gender, and nothing in this game has one. It is on
-  // `tools/abilities/coverage.mjs`'s list of what is left, with the reason.
-  abilityId: null,
-  primaryType: PokemonType.Normal,
-  baseStats: {
-    hp: 115,
-    attack: 45,
-    defense: 20,
-    spAttack: 45,
-    spDefense: 20,
-    speed: 20,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 1, move: GROWL },
-    { level: 10, move: SING },
-    { level: 24, move: DOUBLE_SLAP },
-    { level: 34, move: BODY_SLAM },
-    { level: 49, move: DOUBLE_EDGE },
-  ],
-  frontSprite: 'sprites/pokemon/jigglypuff_front.png',
-  backSprite: 'sprites/pokemon/jigglypuff_back.png',
-});
-
-export const PIDGEY = new PokemonBase({
-  id: 'pidgey',
-  dexId: 16,
-  name: 'Pidgey',
-  abilityId: 'keen-eye',
-  primaryType: PokemonType.Normal,
-  secondaryType: PokemonType.Flying,
-  baseStats: {
-    hp: 40,
-    attack: 45,
-    defense: 40,
-    spAttack: 35,
-    spDefense: 35,
-    speed: 56,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 13, move: QUICK_ATTACK },
-    { level: 39, move: AGILITY },
-  ],
-  frontSprite: 'sprites/pokemon/pidgey_front.png',
-  backSprite: 'sprites/pokemon/pidgey_back.png',
-});
-
-
-// ---------------------------------------------------------------------------
-// The evolved forms
-//
-// **Generation III - FireRed/LeafGreen - for every number below.** That is the
-// generation this game is: its damage formula, its flat 6.25% critical rate,
-// its separate Sp. Atk and Sp. Def, its catch formula and its art are all Gen
-// III, inherited through the tutorial the captain's Unity project was built
-// from. So where a modern dex and Gen III disagree, Gen III wins here, and the
-// three places they do are marked in line: Pidgeot's Speed, Raichu's Speed and
-// Wigglytuff's Sp. Atk were all raised in generation VI.
-//
-// The seven species above are Unity's own, ported verbatim, and three of them
-// are on modern numbers instead - Butterfree's Sp. Atk and Pikachu's Defence
-// and Sp. Def - with Jigglypuff's Sp. Def on no generation's. They are left
-// exactly as they are: changing a shipped species' stats is an early-balance
-// change, and AGENTS.md is clear that those are measured rather than ported.
-// The PR raising this file lists all four for the captain.
-//
-// Unity could not have supplied any of the species below in any case:
-// `Assets/Scripts/Pokemons/PokemonBase.cs` in `OllySalanson/escapeFromPalletTown`
-// has no evolution field at all, and its six `Pokemons/*.asset` files carry
-// none of them.
-//
-// Learnsets are the FireRed/LeafGreen level-up learnset, at its own levels,
-// restricted to the moves this engine can represent without inventing anything
-// - see `moves.ts` for that rule and `evolution.ts` for which moves it leaves
-// out and why. A pre-evolution's own moves are not repeated here: they come
-// home with the Pokemon, and `evolutionFamily()` is what lets a save restore
-// them onto the evolved form.
-// ---------------------------------------------------------------------------
-
-export const IVYSAUR = new PokemonBase({
-  id: 'ivysaur',
-  dexId: 2,
-  name: 'Ivysaur',
-  abilityId: 'overgrow',
-  primaryType: PokemonType.Grass,
-  secondaryType: PokemonType.Poison,
-  baseStats: {
-    hp: 60,
-    attack: 62,
-    defense: 63,
-    spAttack: 80,
-    spDefense: 80,
-    speed: 60,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 1, move: GROWL },
-    { level: 10, move: VINE_WHIP },
-    { level: 15, move: POISON_POWDER },
-    { level: 15, move: SLEEP_POWDER },
-    { level: 22, move: RAZOR_LEAF },
-    { level: 47, move: SYNTHESIS },
-    { level: 56, move: SOLAR_BEAM },
-  ],
-  frontSprite: 'sprites/pokemon/ivysaur_front.png',
-  backSprite: 'sprites/pokemon/ivysaur_back.png',
-});
-
-export const VENUSAUR = new PokemonBase({
-  id: 'venusaur',
-  dexId: 3,
-  name: 'Venusaur',
-  abilityId: 'overgrow',
-  primaryType: PokemonType.Grass,
-  secondaryType: PokemonType.Poison,
-  baseStats: {
-    hp: 80,
-    attack: 82,
-    defense: 83,
-    spAttack: 100,
-    spDefense: 100,
-    speed: 80,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 1, move: GROWL },
-    { level: 1, move: VINE_WHIP },
-    { level: 15, move: POISON_POWDER },
-    { level: 15, move: SLEEP_POWDER },
-    { level: 22, move: RAZOR_LEAF },
-    { level: 53, move: SYNTHESIS },
-    { level: 65, move: SOLAR_BEAM },
-  ],
-  frontSprite: 'sprites/pokemon/venusaur_front.png',
-  backSprite: 'sprites/pokemon/venusaur_back.png',
-});
-
-export const CHARMELEON = new PokemonBase({
-  id: 'charmeleon',
-  dexId: 5,
-  name: 'Charmeleon',
-  abilityId: 'blaze',
-  primaryType: PokemonType.Fire,
-  baseStats: {
-    hp: 58,
-    attack: 64,
-    defense: 58,
-    spAttack: 80,
-    spDefense: 65,
-    speed: 80,
-  },
-  learnset: [
-    { level: 1, move: SCRATCH },
-    { level: 1, move: GROWL },
-    { level: 1, move: EMBER },
-    { level: 13, move: METAL_CLAW },
-    { level: 20, move: SMOKESCREEN },
-    { level: 27, move: SCARY_FACE },
-    { level: 34, move: FLAMETHROWER },
-    { level: 41, move: SLASH },
-  ],
-  frontSprite: 'sprites/pokemon/charmeleon_front.png',
-  backSprite: 'sprites/pokemon/charmeleon_back.png',
-});
-
-export const CHARIZARD = new PokemonBase({
-  id: 'charizard',
-  dexId: 6,
-  name: 'Charizard',
-  abilityId: 'blaze',
-  primaryType: PokemonType.Fire,
-  secondaryType: PokemonType.Flying,
-  baseStats: {
-    hp: 78,
-    attack: 84,
-    defense: 78,
-    spAttack: 109,
-    spDefense: 85,
-    speed: 100,
-  },
-  learnset: [
-    { level: 1, move: SCRATCH },
-    { level: 1, move: GROWL },
-    { level: 1, move: EMBER },
-    { level: 1, move: HEAT_WAVE },
-    { level: 13, move: METAL_CLAW },
-    { level: 20, move: SMOKESCREEN },
-    { level: 27, move: SCARY_FACE },
-    { level: 34, move: FLAMETHROWER },
-    { level: 36, move: WING_ATTACK },
-    { level: 44, move: SLASH },
-  ],
-  frontSprite: 'sprites/pokemon/charizard_front.png',
-  backSprite: 'sprites/pokemon/charizard_back.png',
-});
-
-export const WARTORTLE = new PokemonBase({
-  id: 'wartortle',
-  dexId: 8,
-  name: 'Wartortle',
-  abilityId: 'torrent',
-  primaryType: PokemonType.Water,
-  baseStats: {
-    hp: 59,
-    attack: 63,
-    defense: 80,
-    spAttack: 65,
-    spDefense: 80,
-    speed: 58,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 1, move: TAIL_WHIP },
-    { level: 1, move: BUBBLE },
-    { level: 13, move: WATER_GUN },
-    { level: 19, move: BITE },
-    { level: 37, move: RAIN_DANCE },
-    { level: 53, move: HYDRO_PUMP },
-  ],
-  frontSprite: 'sprites/pokemon/wartortle_front.png',
-  backSprite: 'sprites/pokemon/wartortle_back.png',
-});
-
-export const BLASTOISE = new PokemonBase({
-  id: 'blastoise',
-  dexId: 9,
-  name: 'Blastoise',
-  abilityId: 'torrent',
-  primaryType: PokemonType.Water,
-  baseStats: {
-    hp: 79,
-    attack: 83,
-    defense: 100,
-    spAttack: 85,
-    spDefense: 105,
-    speed: 78,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 1, move: TAIL_WHIP },
-    { level: 1, move: BUBBLE },
-    { level: 13, move: WATER_GUN },
-    { level: 19, move: BITE },
-    { level: 42, move: RAIN_DANCE },
-    { level: 68, move: HYDRO_PUMP },
-  ],
-  frontSprite: 'sprites/pokemon/blastoise_front.png',
-  backSprite: 'sprites/pokemon/blastoise_back.png',
-});
-
-export const PIDGEOTTO = new PokemonBase({
-  id: 'pidgeotto',
-  dexId: 17,
-  name: 'Pidgeotto',
-  abilityId: 'keen-eye',
-  primaryType: PokemonType.Normal,
-  secondaryType: PokemonType.Flying,
-  baseStats: {
-    hp: 63,
-    attack: 60,
-    defense: 55,
-    spAttack: 50,
-    spDefense: 50,
-    speed: 71,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 1, move: GUST },
-    { level: 13, move: QUICK_ATTACK },
-    { level: 27, move: WING_ATTACK },
-    { level: 34, move: FEATHER_DANCE },
-    { level: 43, move: AGILITY },
-  ],
-  frontSprite: 'sprites/pokemon/pidgeotto_front.png',
-  backSprite: 'sprites/pokemon/pidgeotto_back.png',
-});
-
-export const PIDGEOT = new PokemonBase({
-  id: 'pidgeot',
-  dexId: 18,
-  name: 'Pidgeot',
-  abilityId: 'keen-eye',
-  primaryType: PokemonType.Normal,
-  secondaryType: PokemonType.Flying,
-  baseStats: {
-    hp: 83,
-    attack: 80,
-    defense: 75,
-    spAttack: 70,
-    spDefense: 70,
-    // 91, not the 101 a modern dex gives: generation VI raised it.
-    speed: 91,
-  },
-  learnset: [
-    { level: 1, move: TACKLE },
-    { level: 1, move: GUST },
-    { level: 13, move: QUICK_ATTACK },
-    { level: 27, move: WING_ATTACK },
-    { level: 34, move: FEATHER_DANCE },
-    { level: 48, move: AGILITY },
-  ],
-  frontSprite: 'sprites/pokemon/pidgeot_front.png',
-  backSprite: 'sprites/pokemon/pidgeot_back.png',
-});
-
-export const RAICHU = new PokemonBase({
-  id: 'raichu',
-  dexId: 26,
-  name: 'Raichu',
-  abilityId: 'static',
-  primaryType: PokemonType.Electric,
-  baseStats: {
-    hp: 60,
-    attack: 90,
-    defense: 55,
-    spAttack: 90,
-    spDefense: 80,
-    // 100, not the 110 a modern dex gives: generation VI raised it.
-    speed: 100,
-  },
-  // Raichu learns nothing at all by levelling in FireRed/LeafGreen: everything
-  // it knows, it knows on the turn the stone is used. That is what makes the
-  // stone a decision rather than a formality - a Pikachu kept unevolved keeps
-  // learning, and this does not.
-  learnset: [
-    { level: 1, move: TAIL_WHIP },
-    { level: 1, move: QUICK_ATTACK },
-    { level: 1, move: THUNDER_SHOCK },
-    { level: 1, move: THUNDERBOLT },
-  ],
-  frontSprite: 'sprites/pokemon/raichu_front.png',
-  backSprite: 'sprites/pokemon/raichu_back.png',
-});
-
-export const WIGGLYTUFF = new PokemonBase({
-  id: 'wigglytuff',
-  dexId: 40,
-  name: 'Wigglytuff',
-  // Cute Charm is Jigglypuff's generation III ability, and it infatuates on
-  // contact - which needs a gender, and nothing in this game has one. It is on
-  // `tools/abilities/coverage.mjs`'s list of what is left, with the reason.
-  abilityId: null,
-  primaryType: PokemonType.Normal,
-  // Fairy is a generation VI type and this game has the seventeen that
-  // generation III has, so Wigglytuff is Normal here exactly as Jigglypuff
-  // already is - which is also what both of them were in FireRed/LeafGreen.
-  baseStats: {
-    hp: 140,
-    attack: 70,
-    defense: 45,
-    // 75, not the 85 a modern dex gives: generation VI raised it.
-    spAttack: 75,
-    // Jigglypuff ships with 20 here. Canon is 25, in every generation, so that
-    // is Unity data entry rather than a design choice - left alone above
-    // because changing a shipped species' stats is a balance change, and not
-    // copied down here because the way to be consistent with a slip is not to
-    // repeat it.
-    spDefense: 50,
-    speed: 45,
-  },
-  // Like Raichu, Wigglytuff learns nothing by levelling in FireRed/LeafGreen,
-  // and of the four moves it knows on evolving only Sing is representable here:
-  // Defense Curl raises the user's own stat and every boost in this engine is
-  // applied to the target, Disable has no machinery, and Double Slap hits two
-  // to five times.
-  learnset: [
-    { level: 1, move: SING },
-    { level: 1, move: DOUBLE_SLAP },
-  ],
-  frontSprite: 'sprites/pokemon/wigglytuff_front.png',
-  backSprite: 'sprites/pokemon/wigglytuff_back.png',
-});
-
-export const SPECIES_BY_ID: Readonly<Record<string, PokemonBase>> = {
-  [BLASTOISE.id]: BLASTOISE,
-  [BULBASAUR.id]: BULBASAUR,
-  [BUTTERFREE.id]: BUTTERFREE,
-  [CHARIZARD.id]: CHARIZARD,
-  [CHARMANDER.id]: CHARMANDER,
-  [CHARMELEON.id]: CHARMELEON,
-  [IVYSAUR.id]: IVYSAUR,
-  [JIGGLYPUFF.id]: JIGGLYPUFF,
-  [PIDGEOT.id]: PIDGEOT,
-  [PIDGEOTTO.id]: PIDGEOTTO,
-  [PIDGEY.id]: PIDGEY,
-  [PIKACHU.id]: PIKACHU,
-  [RAICHU.id]: RAICHU,
-  [SQUIRTLE.id]: SQUIRTLE,
-  [VENUSAUR.id]: VENUSAUR,
-  [WARTORTLE.id]: WARTORTLE,
-  [WIGGLYTUFF.id]: WIGGLYTUFF,
-};
+export const SPECIES_BY_ID: Readonly<Record<string, PokemonBase>> = Object.freeze(
+  Object.fromEntries(ALL_SPECIES.map((species) => [species.id, species])),
+);
 
 export const getSpeciesById = (speciesId: string): PokemonBase | undefined =>
   SPECIES_BY_ID[speciesId];
+
+const named = (id: string): PokemonBase => {
+  const species = SPECIES_BY_ID[id];
+  if (!species) {
+    throw new Error(`${id} is not one of the 151`);
+  }
+  return species;
+};
+
+// The seventeen the game names directly - starters, their lines, and everything
+// a trainer, a gift or a wild table was authored against before the import.
+// Everything else is reached through `getSpeciesById`, because 151 exported
+// constants would be a list nobody reads.
+export const BULBASAUR = named('bulbasaur');
+export const IVYSAUR = named('ivysaur');
+export const VENUSAUR = named('venusaur');
+export const CHARMANDER = named('charmander');
+export const CHARMELEON = named('charmeleon');
+export const CHARIZARD = named('charizard');
+export const SQUIRTLE = named('squirtle');
+export const WARTORTLE = named('wartortle');
+export const BLASTOISE = named('blastoise');
+export const BUTTERFREE = named('butterfree');
+export const PIDGEY = named('pidgey');
+export const PIDGEOTTO = named('pidgeotto');
+export const PIDGEOT = named('pidgeot');
+export const PIKACHU = named('pikachu');
+export const RAICHU = named('raichu');
+export const JIGGLYPUFF = named('jigglypuff');
+export const WIGGLYTUFF = named('wigglytuff');

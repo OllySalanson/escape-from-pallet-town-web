@@ -1,4 +1,5 @@
 import type { PokemonBase } from './PokemonBase';
+import { GENERATED_EVOLUTIONS } from './generated/evolutionRules';
 import { getSpeciesById } from './species';
 
 /**
@@ -14,7 +15,17 @@ export type EvolutionTrigger =
    * `itemId` is a plain string rather than an `ItemId`: `items.ts` reads the
    * Pokemon module, so naming its type here would close the loop.
    */
-  | { readonly kind: 'stone'; readonly itemId: string };
+  | { readonly kind: 'stone'; readonly itemId: string }
+  /**
+   * Trading, which this game does not have and is not going to: Kadabra,
+   * Machoke, Graveler and Haunter therefore cannot evolve. The rule is carried
+   * anyway because it is what makes the *family* right - `evolutionFamily`
+   * reads it when a save looks a move up, and `pokemonCargo.ts` counts pack
+   * squares by how far along a line a species is, so dropping it would make an
+   * Alakazam a first-stage Pokemon. Nothing triggers it: `evolutionOnLevel` and
+   * `evolutionByStone` are the only two questions asked, and neither matches.
+   */
+  | { readonly kind: 'trade' };
 
 export interface EvolutionRule {
   readonly from: string;
@@ -23,69 +34,28 @@ export interface EvolutionRule {
 }
 
 /**
- * Every evolution the shipped species have, and where each one comes from.
+ * Every evolution among Kanto's original 151, as generation III had them.
  *
- * **Unity carries none of this.** `Assets/Scripts/Pokemons/PokemonBase.cs` in
- * `OllySalanson/escapeFromPalletTown` has fields for name, sprites, two types,
- * six base stats and a learnable-move list, and nothing else - there is no
- * evolution concept anywhere in that project, and none of the ten evolved
- * species exist in its six `Pokemons/*.asset` files. AGENTS.md makes Unity the
- * first place to look for a mechanical fact; it was looked in, and it is
- * silent, so every rule below is PokeAPI's `/evolution-chain/` data, read on
- * 2026-09-19:
+ * **The list is generated.** `generated/evolutionRules.ts` is written by
+ * `node tools/species/generate.mjs` from the committed PokeAPI snapshot in
+ * `tools/species/frlg-species.json`, and its header says what the filtering
+ * throws away - the baby forms, the later generations' additions, and the
+ * stones that did not exist yet. Unity carries no evolution data at all
+ * (`PokemonBase.cs` has no field for it), which is why PokeAPI is the whole
+ * source here.
  *
- * | Line | Rule | Chain |
- * | --- | --- | --- |
- * | Bulbasaur -> Ivysaur -> Venusaur | level 16, level 32 | `/evolution-chain/1` |
- * | Charmander -> Charmeleon -> Charizard | level 16, level 36 | `/evolution-chain/2` |
- * | Squirtle -> Wartortle -> Blastoise | level 16, level 36 | `/evolution-chain/3` |
- * | Pidgey -> Pidgeotto -> Pidgeot | level 18, level 36 | `/evolution-chain/6` |
- * | Pikachu -> Raichu | Thunder Stone | `/evolution-chain/10` |
- * | Jigglypuff -> Wigglytuff | Moon Stone | `/evolution-chain/14` |
+ * **Seventeen of these need a stone the game does not have.** Only the Thunder
+ * Stone is an item (`items.ts`); Fire, Water, Leaf and Moon Stones are named by
+ * rules here and nothing hands one out, so those lines are as unreachable as
+ * the trade ones until a stone is put somewhere a raid can find it. That is a
+ * question about loot and the Ferryman's shelf rather than about this table,
+ * and a stone that does nothing is a worse find than no stone.
  *
- * Butterfree is the seventh shipped species and has no evolution: it is already
- * the end of the Caterpie line (`/evolution-chain/4`).
- *
- * Two things the table deliberately does not carry. The baby forms - Pichu into
- * Pikachu, Cleffa into Clefairy - are friendship evolutions of species this
- * game does not have, and friendship is not a number anything here tracks. And
- * the Moon Stone rule ships **without a Moon Stone item**: Jigglypuff is only
- * ever a trainer's Pokemon today, so nothing a player can own would respond to
- * one, and a stone that does nothing is a worse find than no stone. The rule is
- * here so that the day a Jigglypuff can be caught, the item is the only thing
- * missing.
- *
- * This file used to carry a long list of moves these species learn in
- * FireRed/LeafGreen that the engine could not represent - healing, two-turn, a
- * stat boost on the user, an accuracy or evasion stage, priority, multi-hit,
- * a raised critical rate - "left out rather than approximated". **That list is
- * mostly gone.** `MoveBase` now carries each of those as a field and
- * `battleEngine.ts` reads them, so Synthesis, Solar Beam, Agility, Smokescreen,
- * Double Team, Quick Attack, Double Slap, Double-Edge, Body Slam and Psybeam
- * are ordinary data rows; Metal Claw and Bite came back when the type chart
- * grew to seventeen. `tools/moves/coverage.mjs` is the current count.
- *
- * What is still left out, and why: **Leech Seed, Fire Spin, Rapid Spin,
- * Whirlwind, Mirror Move, Disable, Protect, Rain Dance, Light Screen and
- * Safeguard** need per-combatant timed effects, a field, or a forced switch -
- * the tiers above this one. **Dragon Rage** is fixed damage. And **Withdraw,
- * Defense Curl, Growth, Sand Attack, Confusion and Sweet Scent** are all
- * expressible now but wait for the import, because their only canon slot is at
- * a level the shipped game actually fields, and AGENTS.md is explicit that a
- * learnset change to the early game is measured rather than assumed.
+ * **What a move a species cannot express does to a learnset** is
+ * `docs/pokemon/roster.md`, not this file. It used to be written out here; the
+ * import made it a generated list.
  */
-export const EVOLUTIONS: readonly EvolutionRule[] = [
-  { from: 'bulbasaur', to: 'ivysaur', trigger: { kind: 'level', level: 16 } },
-  { from: 'ivysaur', to: 'venusaur', trigger: { kind: 'level', level: 32 } },
-  { from: 'charmander', to: 'charmeleon', trigger: { kind: 'level', level: 16 } },
-  { from: 'charmeleon', to: 'charizard', trigger: { kind: 'level', level: 36 } },
-  { from: 'squirtle', to: 'wartortle', trigger: { kind: 'level', level: 16 } },
-  { from: 'wartortle', to: 'blastoise', trigger: { kind: 'level', level: 36 } },
-  { from: 'pidgey', to: 'pidgeotto', trigger: { kind: 'level', level: 18 } },
-  { from: 'pidgeotto', to: 'pidgeot', trigger: { kind: 'level', level: 36 } },
-  { from: 'pikachu', to: 'raichu', trigger: { kind: 'stone', itemId: 'thunder-stone' } },
-  { from: 'jigglypuff', to: 'wigglytuff', trigger: { kind: 'stone', itemId: 'moon-stone' } },
-];
+export const EVOLUTIONS: readonly EvolutionRule[] = GENERATED_EVOLUTIONS;
 
 /** The species this one turns into on reaching `level`, if any. */
 export function evolutionOnLevel(speciesId: string, level: number): PokemonBase | undefined {

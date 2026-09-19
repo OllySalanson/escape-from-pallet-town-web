@@ -14,85 +14,16 @@
 // split taken from the move's **type** rather than PokeAPI's Gen-IV
 // `damage_class` (38 of the 273 disagree), and `past_types` applied.
 //
-// The capability list below is the contract. It is what `MoveBase` declares and
-// `battleEngine.ts` reads, and nothing else - so a row moves out of `missing`
-// only when the engine really grew.
+// The capability list is `classify.mjs` beside this, which is also what
+// `tools/species/generate.mjs` builds the move catalogue with - so the number
+// printed here and the moves a Pokemon actually knows cannot disagree.
 import { readFileSync } from 'node:fs';
+import { classify } from './classify.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const moves = JSON.parse(readFileSync(join(here, 'frlg-level-up-moves.json'), 'utf8'));
-
-/**
- * The 42 moves the audit found that no generic mechanism covers: each needs its
- * own hand-written rule behind a named effect id, and several (Metronome, Mimic,
- * Mirror Move, Sleep Talk, Transform) need the engine to run a move it was not
- * given, which is a structural ask rather than a field.
- */
-const BESPOKE = new Set([
-  'aromatherapy', 'baton-pass', 'belly-drum', 'block', 'camouflage', 'conversion',
-  'conversion-2', 'curse', 'destiny-bond', 'detect', 'disable', 'encore', 'endure',
-  'focus-energy', 'follow-me', 'future-sight', 'grudge', 'helping-hand', 'imprison',
-  'lock-on', 'mean-look', 'memento', 'metronome', 'mimic', 'mind-reader', 'mirror-move',
-  'protect', 'psych-up', 'recycle', 'refresh', 'rest', 'role-play', 'sleep-talk', 'spite',
-  'splash', 'stockpile', 'substitute', 'teleport', 'transform', 'trick', 'roar', 'whirlwind',
-]);
-
-/** PokeAPI flags neither, so both are named by hand - the audit's own warning. */
-const CHARGE = new Set(['solar-beam', 'dig', 'fly', 'razor-wind', 'sky-attack', 'skull-bash', 'bounce']);
-const RECHARGE = new Set(['hyper-beam', 'blast-burn', 'frenzy-plant', 'hydro-cannon']);
-/** Repeats for two or three turns and then confuses the user. Not modelled. */
-const LOCK_IN = new Set(['thrash', 'petal-dance', 'outrage', 'rollout', 'ice-ball', 'uproar', 'bide']);
-
-/**
- * Weather is a whole-field effect PokeAPI cannot tell apart from Light Screen
- * or Spikes, so the four are named here. `MoveEffects.weather` expresses all of
- * them; of the 151, seven learn Rain Dance by level, three Sandstorm, one Sunny
- * Day and none Hail.
- */
-const WEATHER = new Set(['rain-dance', 'sunny-day', 'sandstorm', 'hail']);
-
-/** Volatile conditions with a lifetime of their own. Flinch is the one modelled. */
-const VOLATILE = new Set([
-  'trap', 'leech-seed', 'nightmare', 'perish-song', 'yawn', 'ingrain', 'disable',
-  'protect', 'no-type-immunity', 'unknown',
-]);
-
-const classify = (move) => {
-  if (BESPOKE.has(move.name)) return { ok: false, why: 'bespoke' };
-  if (LOCK_IN.has(move.name)) return { ok: false, why: 'lock-in' };
-  if (move.meta === 'ohko') return { ok: false, why: 'one-hit KO' };
-  if (WEATHER.has(move.name)) return { ok: true, why: 'weather' };
-  if (move.meta === 'whole-field-effect' || move.meta === 'field-effect') {
-    return { ok: false, why: 'field or side effect' };
-  }
-  if (move.meta === 'force-switch') return { ok: false, why: 'forced switch' };
-  if (VOLATILE.has(move.ailment)) return { ok: false, why: 'volatile status' };
-
-  // Everything below is a field on `MoveBase` and a branch in `applyMove`.
-  const needs = [];
-  if (CHARGE.has(move.name)) needs.push('two-turn charge');
-  if (RECHARGE.has(move.name)) needs.push('recharge');
-  if (move.priority !== 0) needs.push('priority');
-  if (move.min_hits) needs.push('multi-hit');
-  if (move.crit_rate > 0) needs.push('raised crit rate');
-  if (move.drain > 0) needs.push('drain');
-  if (move.drain < 0) needs.push('recoil');
-  if (move.healing > 0) needs.push('healing');
-  if (move.flinch_chance > 0) needs.push('flinch');
-  if (move.ailment !== 'none') {
-    needs.push(move.ailment_chance > 0 || move.effect_chance ? 'status on a chance' : 'status');
-  }
-  if (move.stat_changes.length > 0) {
-    const accuracy = move.stat_changes.some((s) => s.stat === 'accuracy' || s.stat === 'evasion');
-    needs.push(accuracy ? 'accuracy or evasion stage' : 'stat stage');
-    if (move.target === 'user') needs.push('stat stage on the user');
-    if (move.stat_chance > 0) needs.push('stat stage on a chance');
-  }
-  if (move.accuracy === null) needs.push('always hits');
-  return { ok: true, why: needs.length === 0 ? 'plain damage' : needs.join(' + ') };
-};
 
 const verdicts = moves.map((move) => ({ move, ...classify(move) }));
 const expressible = verdicts.filter((v) => v.ok);

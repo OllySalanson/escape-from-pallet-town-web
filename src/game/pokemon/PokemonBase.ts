@@ -1,5 +1,6 @@
 import type { PokemonType } from './PokemonType';
 import type { MoveBase } from './MoveBase';
+import type { GrowthRate } from './generated/speciesCatalogue';
 
 export interface PokemonStats {
   readonly hp: number;
@@ -35,8 +36,17 @@ export interface PokemonBaseInit {
   readonly secondaryType?: PokemonType;
   readonly baseStats: PokemonStats;
   readonly learnset: readonly LearnableMove[];
-  readonly frontSprite: string;
-  readonly backSprite: string;
+  /**
+   * Generation III's own capture rate, out of 255, and the modern experience
+   * yield and growth curve. All three are imported and **nothing spends any of
+   * them yet**: a throw is decided by the target's health, its status and the
+   * ball (`attemptCatch`), and every species climbs the one level-cubed curve
+   * in `experienceForLevel`. Wiring either in reprices every measured fight in
+   * the game, so it is its own change with its own measurements.
+   */
+  readonly catchRate?: number;
+  readonly baseExperience?: number;
+  readonly growthRate?: GrowthRate;
 }
 
 export class PokemonBase {
@@ -48,8 +58,9 @@ export class PokemonBase {
   public readonly secondaryType?: PokemonType;
   public readonly baseStats: PokemonStats;
   public readonly learnset: readonly LearnableMove[];
-  public readonly frontSprite: string;
-  public readonly backSprite: string;
+  public readonly catchRate: number;
+  public readonly baseExperience: number;
+  public readonly growthRate: GrowthRate;
 
   public constructor(init: PokemonBaseInit) {
     this.id = init.id;
@@ -60,7 +71,10 @@ export class PokemonBase {
     this.secondaryType = init.secondaryType;
     this.baseStats = init.baseStats;
     this.learnset = init.learnset;
-    this.frontSprite = init.frontSprite;
-    this.backSprite = init.backSprite;
+    // 255 is "caught by anything", which is what a species with no imported
+    // rate should be: the one place this could bite is a test fixture.
+    this.catchRate = init.catchRate ?? 255;
+    this.baseExperience = init.baseExperience ?? 0;
+    this.growthRate = init.growthRate ?? 'medium';
   }
 }

@@ -396,6 +396,14 @@ colour it can display lands on an exact multiple of 8 in 8-bit RGB, and 91% of
   Charizard, Wartortle, Blastoise, Pidgeotto, Pidgeot, Raichu and Wigglytuff -
   front and back, all 64x64, so the whole set is one rip of one generation's art
   rather than two. Everything below applies to them identically.
+- **The rest of Kanto's original 151, from the same two directories on the same
+  day**, when the roster was imported: dex IDs 1 to 151, front and back, 302
+  files, none larger than 64x64. `scripts/fetch-pokemon-sprites.mjs` is the
+  download - it checks the PNG signature and the size of every file as it lands,
+  which is the bound `spriteAssets.test.ts` holds the shipped set to - so the
+  whole set can be refetched without anybody choosing a file by hand. It is
+  still one rip of one generation's art, and everything below applies to all of
+  it identically.
 - **Licence - the first two lines of that repository's own `LICENCE.txt`,
   verbatim:**
 

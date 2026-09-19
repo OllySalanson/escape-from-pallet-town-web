@@ -19,8 +19,6 @@ const CRAMMED = new PokemonBase({
     { level: 1, move: EMBER },
     { level: 6, move: WATER_GUN },
   ],
-  frontSprite: '',
-  backSprite: '',
 });
 
 const levelToSix = (pokemon: Pokemon) =>
