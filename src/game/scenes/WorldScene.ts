@@ -55,19 +55,20 @@ import {
   nextBump,
   nextHunterProximity,
 } from '../audio/worldSounds';
-import { SaveManager, type RestoredGame } from '../save/SaveManager';
+import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
 import { Bag, ITEMS, type ItemId } from '../items';
 import {
   areContractStopsComplete,
   completedObjectiveRewards,
   contractCarryIn,
+  contractReportLine,
   formatStacks,
   isContractBankable,
   missingCarryIn,
   remainingMarkers,
   rewardPokemon,
   type ContractMarker,
-  type RaidContract,
+  type StandingBoardProgress,
 } from '../objectives';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
@@ -2472,19 +2473,32 @@ export class WorldScene extends Phaser.Scene {
             contract: {
               description: contract.description,
               complete: banksContract,
-              reward: contractReportLine(
-                contract,
-                banksContract,
-                contractResult.granted,
-                areContractStopsComplete(contract, snapshot.contractSteps),
-                point.label,
-              ),
+              reward: contractReportLine(contract, {
+                banked: banksContract,
+                granted: contractResult.granted,
+                stopsComplete: areContractStopsComplete(contract, snapshot.contractSteps),
+                exitLabel: point.label,
+                progressAfter: this.progressAfterRaid(),
+              }),
             },
           }
           : {}),
         carriedOut: this.bag.toJSON(),
         saved: contractResult.saved,
       }),
+    );
+  }
+
+  /**
+   * What the next board will be dealt from: the save as this raid left it, and
+   * where nothing can be saved, the bosses this raid is already acting on.
+   */
+  private progressAfterRaid(): StandingBoardProgress {
+    return (
+      new SaveManager().load()?.raidProgress ?? {
+        ...DEFAULT_RAID_PROGRESS,
+        defeatedBosses: this.defeatedBosses,
+      }
     );
   }
 
@@ -2833,23 +2847,6 @@ function extractionIconKey(isOpen: boolean): string {
  * What the result screen says about the contract, including the case the whole
  * cordon ledger exists for: every stop made and the wrong gate taken.
  */
-function contractReportLine(
-  contract: RaidContract,
-  banked: boolean,
-  granted: boolean,
-  stopsComplete: boolean,
-  exitLabel: string,
-): string {
-  if (banked) {
-    return granted
-      ? contract.reward.summary
-      : 'Already banked on an earlier raid, so there is no new unlock this time.';
-  }
-  if (stopsComplete && contract.requiredExitLabel) {
-    return `You had it, and ${exitLabel} is not ${contract.requiredExitLabel}. It came home unpaid and stays on the board.`;
-  }
-  return 'Unfinished, so it stays on the board for the next raid.';
-}
 
 function manhattan(from: GridPosition, to: GridPosition): number {
   return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
