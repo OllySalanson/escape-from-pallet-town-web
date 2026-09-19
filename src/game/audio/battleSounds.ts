@@ -1,4 +1,5 @@
-import { MoveCategory } from '../pokemon/MoveBase';
+import { MoveCategory, type MoveBase } from '../pokemon/MoveBase';
+import type { Pokemon } from '../pokemon/Pokemon';
 import type { BattleEvent } from '../pokemon/battle/battleEngine';
 import type { SoundEffectName } from './soundEffects';
 
@@ -88,11 +89,19 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
  * The sound rides on the line so it is heard when the line is read, however
  * long the player took over the ones before it.
  */
-export type BattleNote = string | { readonly message: string; readonly sound: SoundEffectName };
+export type BattleNote =
+  | string
+  | {
+      readonly message: string;
+      readonly sound?: SoundEffectName;
+      /** Once this line has been read, the player is asked which move to forget. */
+      readonly offerMove?: { readonly pokemon: Pokemon; readonly move: MoveBase };
+    };
 
 export function battleNote(note: BattleNote): {
   readonly message: string;
   readonly sound?: SoundEffectName;
+  readonly offerMove?: { readonly pokemon: Pokemon; readonly move: MoveBase };
 } {
   return typeof note === 'string' ? { message: note } : note;
 }

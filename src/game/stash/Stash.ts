@@ -113,6 +113,17 @@ export interface RaidCondition {
    * a secured Pokemon comes home holding what it held.
    */
   readonly heldItemId: string | null;
+  /**
+   * The moveset the raid ended with, by name. Battle asks the player what to
+   * forget and applies it to the raid's own Pokemon, which this settlement
+   * outlives; replaying experience alone would re-derive the level-up and lose
+   * the choice, so the answer travels with the condition. A settlement with no
+   * moveset (nobody was asked) keeps what the replay produced: the move is
+   * queued on the Pokemon, never forgotten, and the base asks.
+   */
+  readonly moves?: readonly string[];
+  /** Moves still waiting on a choice; the base asks about them (see `HubScene`). */
+  readonly pendingMoves?: readonly string[];
 }
 
 /**
@@ -247,6 +258,12 @@ export class Stash {
       const species = entry.speciesId ? getSpeciesById(entry.speciesId) : undefined;
       if (species) {
         stored.pokemon.evolveInto(species);
+      }
+      // The replay above re-derives what the level-up offered; what the player
+      // decided about it in the raid is the truth, so it overrides. After any
+      // evolution, so the moves resolve against the line it now belongs to.
+      if (entry.moves) {
+        stored.pokemon.restoreMoveset(entry.moves, entry.pendingMoves ?? []);
       }
       stored.pokemon.currentHp = clampHp(entry.currentHp, stored.pokemon.maxHp);
       stored.pokemon.primaryStatus = entry.primaryStatus;

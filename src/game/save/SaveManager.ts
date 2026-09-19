@@ -53,6 +53,8 @@ export interface SavedPokemon {
   readonly currentHp: number;
   readonly xp: number;
   readonly moves: readonly string[];
+  /** Moves waiting on the player's choice of what to forget. Absent in older saves. */
+  readonly pendingMoves?: readonly string[];
   readonly primaryStatus: PrimaryStatus | null;
   /**
    * The gear this Pokemon is carrying, or null for an empty slot.
@@ -751,6 +753,7 @@ function serializePokemon(pokemon: Pokemon): SavedPokemon {
     currentHp: pokemon.currentHp,
     xp: getPokemonXp(pokemon),
     moves: pokemon.moves.map((move) => move.base.name),
+    pendingMoves: pokemon.pendingMoves.map((move) => move.name),
     primaryStatus: pokemon.primaryStatus,
     heldItemId: pokemon.heldItemId,
   };
@@ -792,6 +795,13 @@ function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon
     if (savedMoves.length > 0) {
       pokemon.moves.splice(0, pokemon.moves.length, ...savedMoves.map((move) => new Move(move)));
     }
+  }
+
+  if (Array.isArray(value.pendingMoves)) {
+    pokemon.restoreMoveset(
+      pokemon.moves.map((move) => move.base.name),
+      value.pendingMoves.filter((name): name is string => typeof name === 'string'),
+    );
   }
 
   // Experience is floored at the level's own total rather than at zero. A save

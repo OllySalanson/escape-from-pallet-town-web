@@ -66,6 +66,8 @@ export function deployedRaidCondition(
       // it can come home at all: it was never in the pack, so the supply delta
       // knows nothing about it.
       heldItemId: party[index].heldItemId,
+      moves: party[index].moves.map((move) => move.base.name),
+      pendingMoves: party[index].pendingMoves.map((move) => move.name),
     }));
 }
 

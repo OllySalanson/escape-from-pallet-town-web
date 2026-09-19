@@ -24,6 +24,9 @@ import {
 import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle/battleFlow';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
+import { openMoveChooser } from '../ui/MoveChooserOverlay';
+import { moveChoiceMessage } from '../ui/moveChooser';
+import type { MoveBase } from '../pokemon/MoveBase';
 import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { battleEventSound, battleNote, type BattleNote } from '../audio/battleSounds';
@@ -164,7 +167,7 @@ type StagedNote =
 
 const stagedNote = (
   note: StagedNote,
-): { readonly message: string; readonly sound?: SoundEffectName; readonly onShow?: () => void } =>
+): ReturnType<typeof battleNote> & { readonly onShow?: () => void } =>
   typeof note === 'string' ? battleNote(note) : note;
 
 export class BattleScene extends Phaser.Scene {
@@ -245,7 +248,10 @@ export class BattleScene extends Phaser.Scene {
     readonly sound?: SoundEffectName;
     /** Run as the line is put up, for a line that is also a change on screen. */
     readonly onShow?: () => void;
+    readonly offerMove?: { readonly pokemon: PokemonInstance; readonly move: MoveBase };
   }[] = [];
+  /** The move the last line announced, waiting on the chooser before the next is read. */
+  private moveOffer: { readonly pokemon: PokemonInstance; readonly move: MoveBase } | null = null;
   private isPresentingCombatEvents = false;
 
   public constructor() {
@@ -295,6 +301,7 @@ export class BattleScene extends Phaser.Scene {
     // replay the last fight's leftover lines over the opening of this one.
     this.isPresentingCombatEvents = false;
     this.pendingCombatMessages = [];
+    this.moveOffer = null;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
@@ -1326,6 +1333,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.moveOffer) {
+      this.openMoveOffer(this.moveOffer);
+      return;
+    }
+
     if (this.isPresentingCombatEvents) {
       if (this.pendingCombatMessages.length > 0) {
         this.showNextCombatMessage();
@@ -1383,6 +1395,39 @@ export class BattleScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * Asks which move to forget, then says what happened and carries on reading.
+   * The fight is paused on the chooser: nothing else moves until it answers, and
+   * it has no answer that loses a move the player did not pick.
+   */
+  private openMoveOffer(offer: { readonly pokemon: PokemonInstance; readonly move: MoveBase }): void {
+    this.moveOffer = null;
+    openMoveChooser(
+      this,
+      { pokemon: offer.pokemon, incoming: offer.move, canDefer: false },
+      (choice) => {
+        const forgetIndex = choice.kind === 'forget' ? choice.index : null;
+        const result = offer.pokemon.resolvePendingMove(offer.move, forgetIndex);
+        if (result?.forgotten) {
+          audioManager.play('moveLearned');
+        }
+        if (offer.pokemon === this.state.player.pokemon) {
+          // The moves menu reads the combatant's snapshot, so the new move has to
+          // reach it or "learned" is followed by a menu that does not offer it.
+          this.state = refreshPlayerAfterLevelUp(this.state, this.state.player.pokemon.maxHp);
+        }
+        this.pendingCombatMessages.unshift({
+          message: moveChoiceMessage(
+            offer.pokemon.base.name,
+            offer.move,
+            result?.forgotten ?? null,
+          ),
+        });
+        this.showNextCombatMessage();
+      },
+    );
+  }
+
   private awardVictoryExperience(defeatedPokemon: PokemonInstance): StagedNote[] {
     const experience = experienceAwardForDefeat(defeatedPokemon.level);
     const messages: StagedNote[] = [];
@@ -1428,6 +1473,14 @@ export class BattleScene extends Phaser.Scene {
         ...result.learnedMoves.map((move) => ({
           message: `${pokemon.base.name.toUpperCase()} learned ${move.name.toUpperCase()}!`,
           sound: 'moveLearned' as const,
+        })),
+      );
+      // A full moveset never loses a move silently: the line announces it, and
+      // the chooser opens when the line has been read (`resolveMoveOffer`).
+      messages.push(
+        ...result.movesToChoose.map((move) => ({
+          message: `${pokemon.base.name.toUpperCase()} wants to learn ${move.name.toUpperCase()}, but already knows four moves.`,
+          offerMove: { pokemon, move },
         })),
       );
     }
@@ -1516,6 +1569,7 @@ export class BattleScene extends Phaser.Scene {
     if (next.sound) {
       audioManager.play(next.sound);
     }
+    this.moveOffer = next.offerMove ?? null;
     this.dialog.showMessage(next.message);
   }
 
