@@ -52,7 +52,6 @@ import {
   formatStacks,
   missingCarryIn,
   objectivesForContract,
-  contractRestockBonus,
   secureItemStackLimit,
   securePokemonLimit,
   type RaidContract,
@@ -60,7 +59,6 @@ import {
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
 import {
   getStarterSpecies,
-  minimumSupplies,
   type StarterSpeciesId,
   type Stash,
   type StashedPokemon,
@@ -388,9 +386,6 @@ export class HubScene extends Phaser.Scene {
     return {
       stash: this.stash,
       starterSpeciesId: this.savedGame.starterSpeciesId,
-      protectedSupplies: minimumSupplies(
-        contractRestockBonus(this.savedGame.raidProgress.completedContracts),
-      ),
     };
   }
 

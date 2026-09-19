@@ -20,7 +20,6 @@ import type { PrimaryStatus } from '../pokemon/battle/status';
 import type { GridPosition } from '../movement/gridMovement';
 import {
   getStarterSpecies,
-  minimumSupplies,
   Stash,
   type RaidCondition,
   type RaidSettlement,
@@ -415,9 +414,6 @@ export class SaveManager {
       {
         stash: game.stash,
         starterSpeciesId: game.starterSpeciesId,
-        protectedSupplies: minimumSupplies(
-          contractRestockBonus(game.raidProgress.completedContracts),
-        ),
       },
       game.raidProgress.outfitterUpgrades,
       upgradeId,

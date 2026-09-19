@@ -3,7 +3,6 @@ export {
   createStartingStash,
   getStarterSpecies,
   MINIMUM_SUPPLIES,
-  minimumSupplies,
   STARTER_SPECIES,
   Stash,
   type RaidCondition,

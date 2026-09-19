@@ -1010,6 +1010,8 @@ describe('SaveManager', () => {
         unlockedInsertions: ['floodplain-relay'],
         completedContracts: [...completedContracts],
         outfitterUpgrades: [],
+        defeatedBosses: [],
+        reachedInsertions: [],
       },
     });
     return saves;
@@ -1053,6 +1055,8 @@ describe('SaveManager', () => {
         stash: { pokemon: [], items: {} },
         raidProgress: {
           outfitterUpgrades: ['secure-locker-1', 'secure-locker-1', 'gear-tier-9', 7, 'beacon'],
+          defeatedBosses: [],
+          reachedInsertions: [],
         },
         wardTreatmentsUsed: -3,
       }),

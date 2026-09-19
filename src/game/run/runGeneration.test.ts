@@ -98,7 +98,7 @@ describe('run generation', () => {
     for (const insertionId of insertionIds) {
       const insertion = RUN_INSERTIONS[insertionId];
       const plain = generateRunPlan(27, undefined, insertionId);
-      const plan = generateRunPlan(27, undefined, insertionId, undefined, { beaconUnlockAtMs: 150_000 });
+      const plan = generateRunPlan(27, undefined, insertionId, undefined, undefined, [], { beaconUnlockAtMs: 150_000 });
       const beacons = plan.extractionPoints.filter((point) => point.label === BEACON_EXIT_LABEL);
 
       expect(plain.extractionPoints.some((point) => point.label === BEACON_EXIT_LABEL)).toBe(false);
@@ -118,7 +118,7 @@ describe('run generation', () => {
   it('never stacks the beacon on a tile that is already an exit or a contract stop', () => {
     for (const insertionId of insertionIds) {
       const insertion = RUN_INSERTIONS[insertionId];
-      const plan = generateRunPlan(1, undefined, insertionId, undefined, { beaconUnlockAtMs: 1 });
+      const plan = generateRunPlan(1, undefined, insertionId, undefined, undefined, [], { beaconUnlockAtMs: 1 });
       const onLanding = plan.extractionPoints.filter(
         (point) =>
           point.mapId === insertion.mapId &&

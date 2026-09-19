@@ -1,5 +1,5 @@
 import type { ContractStack } from '../objectives/contracts';
-import type { Stash, StashedPokemon } from '../stash';
+import { Stash, type StashedPokemon } from '../stash';
 
 /**
  * The Outfitter: permanent base upgrades, paid for out of the vault.
@@ -223,12 +223,6 @@ export interface OutfitterVault {
   readonly stash: Stash;
   /** The species this save is re-issued after a wipe. Never payment. */
   readonly starterSpeciesId: string | null;
-  /**
-   * Supplies the Outfitter may not take: the kit every recovery path tops the
-   * stash back up to. Spending into it would be refunded by the next wipe, which
-   * would make wiping a way to build a base for nothing.
-   */
-  readonly protectedSupplies: Readonly<Record<string, number>>;
 }
 
 export interface PaymentCandidate {
@@ -263,9 +257,34 @@ export function paymentCandidates(vault: OutfitterVault): readonly PaymentCandid
   });
 }
 
-/** How many of one supply the Outfitter may take from this vault. */
+/**
+ * How many of one supply the Outfitter may take from this vault: whatever is
+ * above the kit base restocks after a wipe. Spending into that kit would be
+ * refunded by the next wipe, which would make wiping a way to build a base for
+ * nothing. The kit is `Stash`'s rule, so this only asks it.
+ */
 export function spendableSupply(vault: OutfitterVault, itemId: string): number {
-  return Math.max(0, vault.stash.itemCount(itemId) - (vault.protectedSupplies[itemId] ?? 0));
+  return vault.stash.spareCount(itemId);
+}
+
+/**
+ * Whether the whole supply price can leave the vault without deepening any
+ * shortfall the restock would then make good. Asked of the price as a whole,
+ * because two stacks that serve the same need are spare together, not each.
+ */
+function canSpareSupplies(vault: OutfitterVault, supplies: readonly ContractStack[]): boolean {
+  const after: Record<string, number> = { ...vault.stash.listItems() };
+  for (const { itemId, quantity } of supplies) {
+    if ((after[itemId] ?? 0) < quantity) {
+      return false;
+    }
+    after[itemId] -= quantity;
+  }
+  const before = vault.stash.supplyShortfall();
+  const remaining = Object.fromEntries(Object.entries(after).filter(([, quantity]) => quantity > 0));
+  return Object.entries(new Stash({ items: remaining }).supplyShortfall()).every(
+    ([itemId, shortfall]) => shortfall <= (before[itemId] ?? 0),
+  );
 }
 
 /**
@@ -326,7 +345,11 @@ export function outfitterOffers(
       ...(requires === undefined ? {} : { requires }),
       pokemonShort,
       suppliesShort,
-      affordable: state === 'open' && pokemonShort === 0 && suppliesShort.length === 0,
+      affordable:
+        state === 'open' &&
+        pokemonShort === 0 &&
+        suppliesShort.length === 0 &&
+        canSpareSupplies(vault, upgrade.cost.supplies),
     };
   });
 }
@@ -402,10 +425,8 @@ export function checkPayment(
       'That would leave nobody at base fit to raid. Keep at least one.',
     );
   }
-  for (const { itemId, quantity } of upgrade.cost.supplies) {
-    if (spendableSupply(vault, itemId) < quantity) {
-      return refuse('supplies-short', `Not enough spare supplies at base for ${upgrade.name}.`);
-    }
+  if (!canSpareSupplies(vault, upgrade.cost.supplies)) {
+    return refuse('supplies-short', `Not enough spare supplies at base for ${upgrade.name}.`);
   }
   return { ok: true, upgrade, pokemon };
 }

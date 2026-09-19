@@ -289,6 +289,32 @@ export class Stash {
   }
 
   /**
+   * How many of one item could leave the vault without the restock having
+   * anything to hand back for it. The kit is a capability, so this is asked of
+   * everything that serves the same need: six Potions and no Super Potions is
+   * three spare, and so is three Potions beside three Super Potions. An item
+   * that serves no minimum - an Antidote - is spare in full.
+   *
+   * It exists for the Outfitter, the one place supplies are spent at base: a
+   * payment taken out of the kit would be refunded by the next wipe.
+   */
+  public spareCount(itemId: string): number {
+    const held = this.itemCount(itemId);
+    const serving = Object.entries(this.listItems());
+    let spare = held;
+    for (const [minimumItemId, minimum] of Object.entries(MINIMUM_SUPPLIES)) {
+      if (!servesAs(minimumItemId, itemId)) {
+        continue;
+      }
+      const total = serving
+        .filter(([heldItemId]) => servesAs(minimumItemId, heldItemId))
+        .reduce((sum, [, quantity]) => sum + quantity, 0);
+      spare = Math.min(spare, Math.max(0, total - minimum));
+    }
+    return spare;
+  }
+
+  /**
    * The last resort, not a standing allowance: it fires only for a player who
    * cannot attempt a raid on what they hold, and hands over only the shortfall,
    * so a player who kept supplies keeps exactly what they had and the restock

@@ -417,6 +417,8 @@ describe('hub deployment route', () => {
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
         outfitterUpgrades: [],
+        defeatedBosses: [],
+        reachedInsertions: [],
       },
     });
     const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
@@ -628,6 +630,8 @@ describe('the Outfitter', () => {
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
         outfitterUpgrades: [...outfitterUpgrades],
+        defeatedBosses: [],
+        reachedInsertions: [],
       },
     });
     const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);
