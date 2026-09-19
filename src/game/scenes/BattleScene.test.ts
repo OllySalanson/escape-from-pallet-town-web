@@ -185,6 +185,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
           setBackgroundColor: vi.fn().mockReturnThis(),
           setColor: vi.fn().mockReturnThis(),
           setDepth: vi.fn().mockReturnThis(),
+          setOrigin: vi.fn().mockReturnThis(),
         } satisfies RenderedText;
         renderedTexts.push(rendered);
         return rendered;
@@ -201,7 +202,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     // The level plate is held by the scene rather than painted once, because a
     // level reached mid-battle has to reach it.
     playerLevelText: {
-      text: `:L${player.level}`,
+      text: `Lv ${player.level}`,
       setText: vi.fn(function (this: { text: string }, value: string) {
         this.text = value;
       }),
@@ -258,16 +259,16 @@ describe('BattleScene command presentation', () => {
     // labels but left this masking layer eligible to cover them.
     expect(dialog.setVisible).toHaveBeenCalledWith(false);
     expect(renderedTexts.map(({ text, x, y }) => ({ text, x, y }))).toEqual([
-      { text: '▶ FIGHT', x: 18, y: 180 },
-      { text: '  BALL x5', x: 166, y: 180 },
-      { text: '  POKéMON', x: 18, y: 198 },
+      { text: '▶ FIGHT', x: 18, y: 185 },
+      { text: '  BALL x5', x: 112, y: 185 },
+      { text: '  POKéMON', x: 206, y: 185 },
       // What the loadout packed, counted on the command itself.
-      { text: '  ITEM x2', x: 166, y: 198 },
+      { text: '  ITEM x2', x: 18, y: 210 },
       // The escape command prices itself: Charmander outruns Bulbasaur 12 to 9.
-      { text: '  RUN 57%', x: 18, y: 216 },
+      { text: '  RUN 57%', x: 112, y: 210 },
     ]);
-    // Five commands are three rows, and the third row still has to be on a
-    // 240px screen: the panel ends at 238.
+    // Five commands are three columns of the same two rows four commands use:
+    // as a third row the last one sat six pixels off the panel's border.
     expect(renderedTexts.every(({ y }) => y >= 174 && y < 238)).toBe(true);
     expect(renderedTexts.every(({ style }) => !('fixedWidth' in style))).toBe(true);
 
@@ -309,7 +310,7 @@ describe('BattleScene command presentation', () => {
 
     expect(summaryLine.text).toBe('FIRE · SPECIAL · POWER 40 · PP 25/25 · SAME-TYPE x1.5');
     expect(matchupLine.text).toBe('vs BULBASAUR: SUPER EFFECTIVE x2');
-    expect(matchupLine.setColor).toHaveBeenLastCalledWith('#86efac');
+    expect(matchupLine.setColor).toHaveBeenLastCalledWith('#166534');
   });
 
   it('shows the Run outcome as visible dialogue and returns map control after it advances', () => {
@@ -513,7 +514,7 @@ describe('using an item in a battle', () => {
     clickLast(`${itemName} x`, beforeItemList);
     // Party rows are the only ones carrying a level, which is what makes them
     // the target picker rather than the item list.
-    clickLast(':L', beforeTargetList);
+    clickLast('Lv ', beforeTargetList);
   };
 
   it('is offered in an authored trainer battle, which is the fight that cannot be left', () => {
@@ -812,7 +813,7 @@ describe('a level reached in the middle of a trainer battle', () => {
     // The plate is rewritten as the level is awarded, not on the way out of the
     // battle: the rest of this fight is played against it.
     expect((scene as unknown as { playerLevelText: { text: string } }).playerLevelText.text).toBe(
-      ':L7',
+      'Lv 7',
     );
     readThroughNarration(scene, dialog);
     expect(dialog.shownMessages).toContain('SQUIRTLE grew to Lv 7!');

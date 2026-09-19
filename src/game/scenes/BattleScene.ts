@@ -51,7 +51,16 @@ import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../d
 import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { GAME_FONT } from '../ui/gameFont';
 import {
+  BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
+  PARTY_COLUMNS,
+  formatPartyRow,
+  levelLabel,
+  mainCommandColumns,
+  mainCommandLayout,
+  partyPrompt,
+  partyRowLayout,
+  partyPromptLayout,
   WILD_ESCAPE_SUCCESS_MESSAGE,
   combatantBanner,
   combatPresentationSteps,
@@ -64,7 +73,6 @@ import {
   formatMoveCommand,
   formatWildEscapeCommand,
   hunterFleeMessages,
-  itemTargetPrompt,
   moveCommandLayout,
   moveGuidanceLayout,
   wildEscapeFailureMessage,
@@ -84,7 +92,11 @@ type BattleAction =
   | { readonly type: 'use-item'; readonly partyIndex: number }
   | { readonly type: 'switch-pokemon'; readonly partyIndex: number };
 
-const COMMAND_Y = 174;
+const COMMAND_Y = BATTLE_PANEL.y;
+/** Ink for a row that cannot be chosen: a fainted Pokemon, an empty stack, a refusal. */
+const PANEL_REFUSAL_INK = '#9b1c1c';
+/** Guidance under a list: quieter than the rows it describes. */
+const PANEL_GUIDANCE_INK = '#475569';
 /** One name for the face, so nothing can drift from what BootScene waits on. */
 const BATTLE_FONT = GAME_FONT;
 /** What a battle launched outside a raid stocks its stand-in pack with. */
@@ -103,10 +115,11 @@ const BANNER_TEXT_STYLE = {
   strokeThickness: 3,
 } as const;
 const MATCHUP_COLORS: Readonly<Record<MatchupTone, string>> = {
-  good: '#86efac',
-  bad: '#fca5a5',
-  none: '#94a3b8',
-  neutral: '#e2e8f0',
+  // Read on the panel's cream, so these are the dark end of each hue.
+  good: '#166534',
+  bad: PANEL_REFUSAL_INK,
+  none: '#64748b',
+  neutral: PANEL_GUIDANCE_INK,
 };
 /**
  * The fight, plus the raid's carriage: everything the world needs handed back
@@ -279,10 +292,7 @@ export class BattleScene extends Phaser.Scene {
     };
     this.commandContainer = this.add.container(0, 0).setDepth(10);
     this.dialog = new DialogBox(this, {
-      x: 8,
-      y: COMMAND_Y,
-      width: 304,
-      height: 64,
+      ...BATTLE_PANEL,
       padding: 12,
       charsPerSecond: 55,
       indicatorText: 'SPACE ▼',
@@ -460,11 +470,14 @@ export class BattleScene extends Phaser.Scene {
         .setDepth(6),
     );
     const levelText = this.add
-      .text(x + 111, y + 8, `:L${combatant.pokemon.level}`, {
+      // Set from the plate's right edge, so a level of any length ends where
+      // the HP bar under it ends instead of starting at a guessed column.
+      .text(x + 135, y + 8, levelLabel(combatant.pokemon.level), {
         fontFamily: BATTLE_FONT,
         fontSize: '13px',
         color: '#202020',
       })
+      .setOrigin(1, 0)
       .setDepth(6);
     container.add(levelText);
     if (showNumbers) {
@@ -586,12 +599,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createCommandBox(labels: readonly string[]): void {
-    const panel = this.add.graphics();
-    panel.fillStyle(0x111827, 1);
-    panel.fillRect(0, COMMAND_Y, BATTLEFIELD_WIDTH, 64);
-    panel.lineStyle(2, 0x93c5fd, 1);
-    panel.strokeRect(1, COMMAND_Y + 1, BATTLEFIELD_WIDTH - 2, 62);
-    this.commandContainer.add(panel);
+    this.commandContainer.add(this.createPanelFrame());
     this.moveGuidanceTexts = this.isRowListMode
       ? [0, 1].map((line) => {
           const layout = moveGuidanceLayout(line);
@@ -599,30 +607,23 @@ export class BattleScene extends Phaser.Scene {
           const text = this.add.text(layout.x, COMMAND_Y + layout.y, '', {
             fontFamily: BATTLE_FONT,
             fontSize: '10px',
-            color: '#e2e8f0',
+            color: PANEL_GUIDANCE_INK,
           });
           this.commandContainer.add(text);
           return text;
         })
       : [];
-    // The wild command set is five entries, so the main grid is three rows deep
-    // and its spacing is measured from the panel rather than assumed: at the
-    // two-row pitch the last row fell off the bottom of a 240px screen.
-    const rows = Math.ceil(labels.length / 2);
-    const rowPitch = rows > 2 ? 18 : 25;
-    const firstRowY = rows > 2 ? 6 : 11;
     this.commandTexts = labels.map((label, index) => {
-      const column = index % 2;
-      const row = Math.floor(index / 2);
       const layout = this.isRowListMode ? moveCommandLayout(index) : undefined;
+      const position = layout ?? mainCommandLayout(index, labels.length);
       const text = this.add.text(
-        layout?.x ?? 18 + column * 148,
-        COMMAND_Y + (layout?.y ?? firstRowY + row * rowPitch),
+        position.x,
+        COMMAND_Y + position.y,
         label,
         {
           fontFamily: BATTLE_FONT,
           fontSize: this.isRowListMode ? '13px' : '16px',
-          color: isEmptyStackLabel(label) ? '#fca5a5' : '#f8fafc',
+          color: isEmptyStackLabel(label) ? PANEL_REFUSAL_INK : WINDOW_INK,
           ...(layout
             ? {
                 fixedWidth: layout.width,
@@ -648,37 +649,38 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  /** The frame every state of the bottom panel is drawn in: the dialogue's own. */
+  private createPanelFrame(): Phaser.GameObjects.Graphics {
+    const frame = this.add.graphics();
+    drawPixelWindow(frame, BATTLE_PANEL, { fill: WINDOW_CREAM });
+    return frame;
+  }
+
   private createPartyBox(): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
-    const panel = this.add.graphics();
-    panel.fillStyle(0x111827, 1);
-    panel.fillRect(0, 104, BATTLEFIELD_WIDTH, 136);
-    panel.lineStyle(2, 0x93c5fd, 1);
-    panel.strokeRect(1, 105, BATTLEFIELD_WIDTH - 2, 134);
-    container.add(panel);
+    container.add(this.createPanelFrame());
     container.add(
       this.add.text(
-        16,
-        108,
-        this.pendingItem
-          ? `${itemTargetPrompt(this.pendingItem)}  BACK: cancel`
-          : this.forcedReplacement
-            ? 'Choose a POKéMON!'
-            : 'Choose a POKéMON  BACK: cancel',
+        partyPromptLayout.x,
+        COMMAND_Y + partyPromptLayout.y,
+        partyPrompt({
+          item: this.pendingItem,
+          forced: this.forcedReplacement,
+          refusal: this.partyMessage,
+        }),
         {
           fontFamily: BATTLE_FONT,
-          fontSize: '12px',
-          color: '#f8fafc',
+          fontSize: '11px',
+          color: this.partyMessage ? PANEL_REFUSAL_INK : PANEL_GUIDANCE_INK,
         },
       ),
     );
     this.commandTexts = this.party.pokemon.map((pokemon, index) => {
-      const hp = `${pokemon.currentHp}/${pokemon.maxHp}`;
-      const label = `${pokemon.base.name.toUpperCase()} :L${pokemon.level} HP ${hp}${pokemon.isFainted ? ' FNT' : ''}`;
-      const text = this.add.text(16, 126 + index * 16, label, {
+      const layout = partyRowLayout(index);
+      const text = this.add.text(layout.x, COMMAND_Y + layout.y, formatPartyRow(pokemon), {
         fontFamily: BATTLE_FONT,
         fontSize: '11px',
-        color: pokemon.isFainted ? '#fca5a5' : '#f8fafc',
+        color: pokemon.isFainted ? PANEL_REFUSAL_INK : WINDOW_INK,
       });
       text
         .setInteractive({ useHandCursor: !pokemon.isFainted })
@@ -694,13 +696,6 @@ export class BattleScene extends Phaser.Scene {
       container.add(text);
       return text;
     });
-    container.add(
-      this.add.text(16, 224, this.partyMessage, {
-        fontFamily: BATTLE_FONT,
-        fontSize: '11px',
-        color: '#fca5a5',
-      }),
-    );
     this.selectedCommand = Math.min(this.selectedCommand, this.commandTexts.length - 1);
     this.updateSelection();
     return container;
@@ -712,7 +707,12 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const columns = this.mode === 'party' ? 1 : 2;
+    const columns =
+      this.mode === 'party'
+        ? PARTY_COLUMNS
+        : this.mode === 'main'
+          ? mainCommandColumns(count)
+          : 2;
     const row = Math.floor(this.selectedCommand / columns);
     const column = this.selectedCommand % columns;
     const rows = Math.ceil(count / columns);
@@ -735,13 +735,10 @@ export class BattleScene extends Phaser.Scene {
       text.setText(
         `${index === this.selectedCommand ? '▶ ' : '  '}${text.text.replace(/^[▶ ]{2}/, '')}`,
       );
-      text.setBackgroundColor(index === this.selectedCommand ? '#155e75' : '#111827');
+      // The cursor is the whole of the selection, as it is in the dialogue this
+      // panel shares a frame with: no row is boxed in a second colour.
       text.setColor(
-        index === this.selectedCommand
-          ? '#ffffff'
-          : text.text.includes('FNT') || isEmptyStackLabel(text.text)
-            ? '#fca5a5'
-            : '#f8fafc',
+        text.text.includes('FNT') || isEmptyStackLabel(text.text) ? PANEL_REFUSAL_INK : WINDOW_INK,
       );
     });
   }
@@ -753,8 +750,8 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.mode === 'items') {
       const item = usableBattleItems(this.bag)[this.selectedCommand];
-      this.moveGuidanceTexts[0]?.setText(item ? describeItemGuidance(item) : '').setColor('#cbd5f5');
-      this.moveGuidanceTexts[1]?.setText('').setColor('#e2e8f0');
+      this.moveGuidanceTexts[0]?.setText(item ? describeItemGuidance(item) : '').setColor(PANEL_GUIDANCE_INK);
+      this.moveGuidanceTexts[1]?.setText('').setColor(PANEL_GUIDANCE_INK);
       return;
     }
     if (this.mode !== 'moves') {
@@ -768,7 +765,7 @@ export class BattleScene extends Phaser.Scene {
       name: this.state.enemy.pokemon.base.name,
       types: getCombatantTypes(this.state.enemy),
     });
-    this.moveGuidanceTexts[0]?.setText(guidance.summary).setColor('#cbd5f5');
+    this.moveGuidanceTexts[0]?.setText(guidance.summary).setColor(PANEL_GUIDANCE_INK);
     this.moveGuidanceTexts[1]?.setText(guidance.matchup).setColor(MATCHUP_COLORS[guidance.tone]);
   }
 
@@ -1327,7 +1324,7 @@ export class BattleScene extends Phaser.Scene {
       });
       messages.push(
         ...result.levelsGained.map((level) => ({
-          message: `${pokemon.base.name.toUpperCase()} grew to Lv ${level}!`,
+          message: `${pokemon.base.name.toUpperCase()} grew to ${levelLabel(level)}!`,
           sound: 'levelUp' as const,
         })),
       );
@@ -1371,7 +1368,7 @@ export class BattleScene extends Phaser.Scene {
     if (currentHp > 0) {
       this.displayedHp.player = Math.min(pokemon.maxHp, this.displayedHp.player + gainedHp);
     }
-    this.playerLevelText.setText(`:L${pokemon.level}`);
+    this.playerLevelText.setText(levelLabel(pokemon.level));
     this.drawHpBar(this.playerHpBar, 189, 130, this.displayedHp.player / pokemon.maxHp);
     this.playerHpText.setText(`${this.displayedHp.player}/${pokemon.maxHp}`);
   }

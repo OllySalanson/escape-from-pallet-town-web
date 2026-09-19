@@ -51,16 +51,31 @@ export function snapOffset(inkLeft: number): number {
 }
 
 /**
+ * The side bearings of the game's face, as a fraction of the em: a lowercase
+ * `n` advances about 125 units further than its ink is wide.
+ */
+const ORANGE_KID_BEARINGS_EM = 0.125;
+
+/**
+ * Clear columns between one letter's ink and the next: what the face's own side
+ * bearings come to at this size, and never less than a pixel.
+ */
+export function letterGap(fontSizePx: number): number {
+  return Math.max(1, Math.round(fontSizePx * ORANGE_KID_BEARINGS_EM));
+}
+
+/**
  * The whole-pixel advance of a glyph.
  *
- * The outline's own advance, rounded - but never so short that the next
- * letter's ink can touch this one's. Rounding alone closed `RIVAL` up into a
- * single shape at 11px; one clear column after the last inked one is what keeps
- * letters letters.
+ * A glyph with ink is set tight: its own inked columns, then the gap. Rounding
+ * the outline's advance instead left every pair of letters zero, one or two
+ * pixels apart depending on where the fractions fell - `RIVAL` closed up into a
+ * single shape at 11px while `dependable` came out as `dependa ble` - and at
+ * these sizes a one-pixel difference is the whole of the letter spacing. A glyph
+ * with no ink is a space, and keeps the width the face gives it.
  */
-export function pixelAdvance(measuredWidth: number, lastInkColumn: number | null): number {
-  const rounded = Math.max(1, Math.round(measuredWidth));
-  return lastInkColumn === null ? rounded : Math.max(rounded, lastInkColumn + 2);
+export function pixelAdvance(measuredWidth: number, inkWidth: number | null, gap: number): number {
+  return inkWidth === null ? Math.max(1, Math.round(measuredWidth)) : inkWidth + gap;
 }
 
 /** The size a canvas `font` shorthand asks for, or null when it names none in px. */
@@ -74,6 +89,8 @@ type Pass = 'fill' | 'stroke';
 interface GlyphMetrics {
   /** Sub-pixel nudge that lands the ink on a column. */
   readonly dx: number;
+  /** The first inked column, relative to the glyph's origin: the pen is set against it. */
+  readonly inkLeft: number;
   readonly advance: number;
 }
 
@@ -130,7 +147,7 @@ function rasterise(
   pass: Pass,
   dx: number,
   threshold: number,
-): { bitmap: GlyphBitmap | null; lastInkColumn: number | null } {
+): { bitmap: GlyphBitmap | null; ink: { left: number; width: number } | null } {
   const measured = measureGlyph(context.font, char);
   const reach = BITMAP_MARGIN + (pass === 'stroke' ? Math.ceil(context.lineWidth) : 0);
   const left = Math.ceil(Math.max(0, measured.actualBoundingBoxLeft)) + reach;
@@ -145,7 +162,7 @@ function rasterise(
   canvas.height = height;
   const glyph = canvas.getContext('2d', { willReadFrequently: true });
   if (!glyph) {
-    return { bitmap: null, lastInkColumn: null };
+    return { bitmap: null, ink: null };
   }
   glyph.font = context.font;
   glyph.textBaseline = 'alphabetic';
@@ -163,20 +180,25 @@ function rasterise(
 
   const image = glyph.getImageData(0, 0, width, height);
   const pixels = image.data;
-  let lastInkColumn: number | null = null;
+  let firstInkColumn = width;
+  let lastInkColumn = -1;
   for (let index = 3; index < pixels.length; index += 4) {
     const inked = pixels[index] >= threshold;
     pixels[index] = inked ? 255 : 0;
     if (inked) {
       const column = ((index - 3) / 4) % width;
-      lastInkColumn = Math.max(lastInkColumn ?? column, column);
+      firstInkColumn = Math.min(firstInkColumn, column);
+      lastInkColumn = Math.max(lastInkColumn, column);
     }
   }
-  if (lastInkColumn === null) {
-    return { bitmap: null, lastInkColumn: null };
+  if (lastInkColumn < 0) {
+    return { bitmap: null, ink: null };
   }
   glyph.putImageData(image, 0, 0);
-  return { bitmap: { canvas, left, top: ascent }, lastInkColumn: lastInkColumn - left };
+  return {
+    bitmap: { canvas, left, top: ascent },
+    ink: { left: firstInkColumn - left, width: lastInkColumn - firstInkColumn + 1 },
+  };
 }
 
 function metricsFor(context: CanvasRenderingContext2D, char: string, threshold: number): GlyphMetrics {
@@ -187,10 +209,14 @@ function metricsFor(context: CanvasRenderingContext2D, char: string, threshold: 
   }
   const measured = measureGlyph(context.font, char);
   const dx = snapOffset(-measured.actualBoundingBoxLeft);
-  // The advance is decided by the filled glyph whichever pass is being drawn,
+  // The setting is decided by the filled glyph whichever pass is being drawn,
   // so an outline always sits exactly under the letter it outlines.
-  const { lastInkColumn } = rasterise(context, char, 'fill', dx, threshold);
-  const metrics = { dx, advance: pixelAdvance(measured.width, lastInkColumn) };
+  const { ink } = rasterise(context, char, 'fill', dx, threshold);
+  const metrics = {
+    dx,
+    inkLeft: ink?.left ?? 0,
+    advance: pixelAdvance(measured.width, ink?.width ?? null, letterGap(fontSizeOf(context.font) ?? 0)),
+  };
   if (isFontReady(context.font)) {
     metricsCache.set(key, metrics);
   }
@@ -247,7 +273,7 @@ export function hardenContext(context: CanvasRenderingContext2D): void {
       const metrics = metricsFor(context, char, threshold);
       const bitmap = bitmapFor(context, char, pass, metrics, threshold);
       if (bitmap) {
-        context.drawImage(bitmap.canvas, pen - bitmap.left, baseline - bitmap.top);
+        context.drawImage(bitmap.canvas, pen - metrics.inkLeft - bitmap.left, baseline - bitmap.top);
       }
       pen += metrics.advance;
     }
