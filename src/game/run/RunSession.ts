@@ -39,6 +39,12 @@ export interface ActiveRunSession {
   readonly objectives: readonly RunObjective[];
   /** The deterministic world configuration generated when this raid begins. */
   readonly plan?: RunPlan;
+  /**
+   * The Outfitter upgrades standing at base when this raid deployed. The raid
+   * derives what they mean from the ids, exactly as the lobby does, so the two
+   * cannot describe the same base differently.
+   */
+  readonly outfitterUpgrades: readonly string[];
   /** The seed and runtime stream keep world events reproducible after generation. */
   readonly seed?: number;
   readonly rng?: SeededRng;
@@ -56,8 +62,10 @@ export function createActiveRunSession(
   broughtItems: readonly ItemStack[],
   objectives: readonly RunObjective[] = [],
   plan?: RunPlan,
+  outfitterUpgrades: readonly string[] = [],
 ): ActiveRunSession {
   return {
+    outfitterUpgrades: [...outfitterUpgrades],
     manager,
     secureSlot,
     stashSecureSlot,

@@ -27,7 +27,7 @@ function wipedReport(
 ): ExtractionReport {
   const manager = new RunManager();
   const secureSlot = {
-    ...(options.secureIndex === undefined ? {} : { pokemon: party[options.secureIndex] }),
+    ...(options.secureIndex === undefined ? {} : { pokemon: [party[options.secureIndex]] }),
     ...(options.securedItems ? { items: options.securedItems } : {}),
   };
   manager.startRun({ party, items }, { mapId: 'floodplain-relay', durationMs: DURATION_MS }, secureSlot);

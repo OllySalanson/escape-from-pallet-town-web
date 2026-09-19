@@ -232,7 +232,7 @@ describe('Stash', () => {
           { itemId: 'potion', quantity: 2 },
         ],
         {
-          pokemonId: 'secured',
+          pokemonIds: ['secured'],
           items: [{ itemId: 'poke-ball', quantity: 1 }, { itemId: 'potion', quantity: 2 }],
         },
       ),
@@ -243,5 +243,26 @@ describe('Stash', () => {
     // Three unsecured Poke Balls are gone for good, then the wipe tops the
     // survivor back up to the minimum needed to attempt another run.
     expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
+  });
+
+  it('protects exactly as much on a wipe as the limits it is told, never a hard-coded two', () => {
+    const build = (): Stash => {
+      const stash = new Stash({ items: { potion: 2, 'poke-ball': 2, antidote: 2, 'great-ball': 2 } });
+      stash.addPokemon(new Pokemon(CHARMANDER, 5), 'first');
+      stash.addPokemon(new Pokemon(PIDGEY, 5), 'second');
+      return stash;
+    };
+    const brought = ['potion', 'poke-ball', 'antidote', 'great-ball'].map((itemId) => ({ itemId, quantity: 2 }));
+    const secureSlot = { pokemonIds: ['first', 'second'], items: brought };
+
+    const base = build();
+    base.applyWipeLoss(['first', 'second'], brought, secureSlot);
+    expect(base.listPokemon().map(({ id }) => id)).toEqual(['first']);
+    expect(base.listItems()).toEqual({ potion: 2, 'poke-ball': 2 });
+
+    const upgraded = build();
+    upgraded.applyWipeLoss(['first', 'second'], brought, secureSlot, { pokemon: 2, itemStacks: 4 });
+    expect(upgraded.listPokemon().map(({ id }) => id)).toEqual(['first', 'second']);
+    expect(upgraded.listItems()).toEqual({ potion: 2, 'poke-ball': 2, antidote: 2, 'great-ball': 2 });
   });
 });

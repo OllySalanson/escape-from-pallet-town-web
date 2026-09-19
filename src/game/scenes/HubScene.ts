@@ -3,17 +3,33 @@ import { audioManager } from '../audio/AudioManager';
 import type { SoundEffectName } from '../audio/soundEffects';
 import {
   applyRecovery,
+  beaconUnlockAtMs,
+  builtUpgrades,
+  checkPayment,
   DeploymentFlow,
   FAINTED_TREATMENT_NOTE,
   formatRecoveryClock,
+  getOutfitterUpgrade,
+  hasBeacon,
   needsRecovery,
+  OUTFITTER_UPGRADES,
+  outfitterOffers,
+  paymentCandidates,
   pokemonNeedingRecovery,
   quoteRecovery,
   raidClockAfterRecovery,
   recoveryCostMs,
+  recoveryPriceShare,
+  spendableSupply,
   treatmentOptions,
   treatWithItem,
+  wardBedIds,
+  wardTreatmentsPerRaid,
   type Deployment,
+  type OutfitterOffer,
+  type OutfitterUpgrade,
+  type OutfitterVault,
+  type RecoveryTerms,
   type TreatmentOption,
 } from '../hub';
 import { Bag, ITEM_DEFINITIONS, type ItemDefinition, type ItemId } from '../items';
@@ -37,6 +53,7 @@ import {
   missingCarryIn,
   objectivesForContract,
   secureItemStackLimit,
+  securePokemonLimit,
   type RaidContract,
 } from '../objectives';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
@@ -46,7 +63,7 @@ import {
   type Stash,
   type StashedPokemon,
 } from '../stash';
-import { itemIcon, objectiveIcon } from '../ui/icons';
+import { iconMarkup, itemIcon, objectiveIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine } from '../world/hunterThreat';
 import { WORLD_MAP_NAMES } from '../worldMap';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
@@ -58,7 +75,7 @@ export interface HubSceneData {
 }
 
 /** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
-type HubView = 'home' | 'stash' | 'deploy' | 'reselect';
+type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'outfitter';
 
 export class HubScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
@@ -70,6 +87,12 @@ export class HubScene extends Phaser.Scene {
   private reselectStarterId: StarterSpeciesId = 'bulbasaur';
   /** A swap only runs from an explicit second click, so a misclick cannot delete a survivor. */
   private swapArmed = false;
+  /** The upgrade being paid for, or undefined while the ladder is showing. */
+  private outfitterUpgradeId: string | undefined;
+  /** The Pokemon the player has named as payment, by stash id. */
+  private outfitterPayment: string[] = [];
+  /** A payment only runs from an explicit second click, exactly as a swap does. */
+  private outfitterArmed = false;
   private status = '';
 
   public constructor() {
@@ -96,14 +119,19 @@ export class HubScene extends Phaser.Scene {
     this.savedGame = loaded;
     this.stash = loaded.stash;
     // Nothing is pre-selected: the raid party is always something the player picked.
-    this.flow = new DeploymentFlow(
-      this.stash,
-      this.unlockedInsertions[0]?.[0],
-      secureItemStackLimit(loaded.raidProgress.completedContracts),
-    );
+    this.flow = new DeploymentFlow(this.stash, this.unlockedInsertions[0]?.[0], {
+      pokemon: securePokemonLimit(loaded.raidProgress.outfitterUpgrades),
+      itemStacks: secureItemStackLimit(
+        loaded.raidProgress.completedContracts,
+        loaded.raidProgress.outfitterUpgrades,
+      ),
+    });
     this.view = 'home';
     this.reselectStarterId = this.startingStarterId();
     this.swapArmed = false;
+    this.outfitterUpgradeId = undefined;
+    this.outfitterPayment = [];
+    this.outfitterArmed = false;
     this.status = '';
   }
 
@@ -214,20 +242,62 @@ export class HubScene extends Phaser.Scene {
     return raidClockAfterRecovery(RAID_DURATION_MS, this.pendingRecoveryMs);
   }
 
+  /** Every Outfitter upgrade standing at base, by id. */
+  private get builtUpgradeIds(): readonly string[] {
+    return this.savedGame.raidProgress.outfitterUpgrades;
+  }
+
+  /**
+   * What this base charges for recovery: the bay's discount, and however many of
+   * the ward's beds are still unused before the coming raid. Both are derived
+   * from the upgrade list on every read, so the lobby cannot quote a price the
+   * treatment does not charge.
+   */
+  private get recoveryTerms(): RecoveryTerms {
+    return {
+      priceShare: recoveryPriceShare(this.builtUpgradeIds),
+      wardTreatments: Math.max(
+        0,
+        wardTreatmentsPerRaid(this.builtUpgradeIds) - this.savedGame.wardTreatmentsUsed,
+      ),
+    };
+  }
+
+  /** Whether the ward's free bed would go to this Pokemon if it were treated now. */
+  private inWardBed(stored: StashedPokemon): boolean {
+    return wardBedIds(this.injuredPokemon, this.recoveryTerms).has(stored.id);
+  }
+
+  /** What treating this one Pokemon at the bay costs right now. */
+  private recoveryPriceMs(stored: StashedPokemon): number {
+    return recoveryCostMs(stored.pokemon, this.recoveryTerms, this.inWardBed(stored));
+  }
+
+  /** A recovery price as a button says it: a ward bed that costs nothing says so. */
+  private recoveryPriceLabel(stored: StashedPokemon): string {
+    const priceMs = this.recoveryPriceMs(stored);
+    const price = priceMs === 0 ? 'free' : `−${formatRecoveryClock(priceMs)}`;
+    return this.inWardBed(stored) ? `ward bed · ${price}` : price;
+  }
+
   /**
    * Restores Pokemon at base and books the time to the next raid clock. The
    * scene's own stash is the one treated, so a half-built loadout keeps pointing
    * at the same Pokemon it did before, now healed.
    */
   private recover(ids: readonly string[]): void {
-    const outcome = applyRecovery(this.stash, this.pendingRecoveryMs, ids);
+    const outcome = applyRecovery(this.stash, this.pendingRecoveryMs, ids, this.recoveryTerms);
     if (outcome.recoveredIds.length === 0) {
       this.refuse('Everyone there is already fit.');
       return;
     }
     audioManager.play('heal');
 
-    this.savedGame = { ...this.savedGame, pendingRecoveryMs: outcome.pendingRecoveryMs };
+    this.savedGame = {
+      ...this.savedGame,
+      pendingRecoveryMs: outcome.pendingRecoveryMs,
+      wardTreatmentsUsed: this.savedGame.wardTreatmentsUsed + outcome.wardTreatmentsUsed,
+    };
     const treated =
       outcome.recoveredIds.length === 1
         ? (this.stash.listPokemon().find((stored) => stored.id === outcome.recoveredIds[0])?.pokemon
@@ -280,6 +350,9 @@ export class HubScene extends Phaser.Scene {
   private setView(view: HubView): void {
     this.view = view;
     this.swapArmed = false;
+    this.outfitterUpgradeId = undefined;
+    this.outfitterPayment = [];
+    this.outfitterArmed = false;
     if (view === 'reselect') {
       this.reselectStarterId = this.startingStarterId();
     }
@@ -306,6 +379,82 @@ export class HubScene extends Phaser.Scene {
     this.setView('stash');
     audioManager.play('confirm');
     this.setStatus(`${getStarterSpecies(this.reselectStarterId).name} is your new partner.`);
+  }
+
+  /** What a payment may touch in this save. The rules live in `../hub/outfitter`. */
+  private get outfitterVault(): OutfitterVault {
+    return {
+      stash: this.stash,
+      starterSpeciesId: this.savedGame.starterSpeciesId,
+    };
+  }
+
+  private get payingFor(): OutfitterUpgrade | undefined {
+    return this.outfitterUpgradeId === undefined
+      ? undefined
+      : getOutfitterUpgrade(this.outfitterUpgradeId);
+  }
+
+  private choosePayment(upgradeId: string): void {
+    this.outfitterUpgradeId = upgradeId;
+    this.outfitterPayment = [];
+    this.outfitterArmed = false;
+    this.render();
+  }
+
+  /**
+   * Names or un-names one Pokemon as payment. Nothing is ever chosen for the
+   * player - not even when only one combination could pay - because what this
+   * screen spends is not interchangeable, and any change disarms the
+   * confirmation so the question asked is always about the Pokemon on screen.
+   */
+  private togglePayment(pokemonId: string): void {
+    const upgrade = this.payingFor;
+    if (!upgrade) {
+      return;
+    }
+    this.outfitterArmed = false;
+    if (this.outfitterPayment.includes(pokemonId)) {
+      this.outfitterPayment = this.outfitterPayment.filter((id) => id !== pokemonId);
+      this.render();
+      return;
+    }
+    if (this.outfitterPayment.length >= upgrade.cost.pokemon) {
+      this.setStatus(`${upgrade.name} takes ${upgrade.cost.pokemon} Pokémon. Un-pick one first.`);
+      return;
+    }
+    this.outfitterPayment = [...this.outfitterPayment, pokemonId];
+    this.render();
+  }
+
+  private confirmPayment(): void {
+    const upgrade = this.payingFor;
+    if (!upgrade || !this.outfitterArmed) {
+      return;
+    }
+    const released = this.stashPokemon
+      .filter((stored) => this.outfitterPayment.includes(stored.id))
+      .map((stored) => stored.pokemon.base.name);
+    const result = this.saveManager.buildOutfitterUpgrade(upgrade.id, this.outfitterPayment);
+    if (!result.ok) {
+      this.outfitterArmed = false;
+      this.setStatus(result.message);
+      return;
+    }
+    if (!result.saved) {
+      this.outfitterArmed = false;
+      this.setStatus(`${upgrade.name} could not be saved, so nothing was spent.`);
+      return;
+    }
+
+    const reloaded = this.saveManager.load();
+    if (reloaded) {
+      // Reloading rebuilds the deployment flow against the new vault and the new
+      // secure slot, so a released Pokemon can never linger in a half-built loadout.
+      this.applyLoadedGame(reloaded);
+    }
+    this.setView('outfitter');
+    this.setStatus(`${upgrade.name} built. ${formatNames(released)} released.`);
   }
 
   private openDeployment(): void {
@@ -339,6 +488,7 @@ export class HubScene extends Phaser.Scene {
         mapId: RUN_INSERTIONS[deployment.insertionId].mapId,
         durationMs: this.raidClockMs,
         secureItemStackLimit: this.flow.secureItemStacks,
+        securePokemonLimit: this.flow.securePokemonSlots,
       },
       deployment.secureSlot,
     );
@@ -352,6 +502,11 @@ export class HubScene extends Phaser.Scene {
       hunterThreatFor(deployment.party.map((stored) => stored.pokemon)),
       // Which gates stand open and which bosses are gone are both this list.
       this.savedGame.raidProgress.defeatedBosses,
+      // The beacon opens against the clock this raid actually deploys with, so
+      // booked recovery shortens the wait for it along with everything else.
+      hasBeacon(this.builtUpgradeIds)
+        ? { beaconUnlockAtMs: beaconUnlockAtMs(this.raidClockMs) }
+        : {},
     );
     const runSession = createActiveRunSession(
       activeRunManager,
@@ -361,6 +516,7 @@ export class HubScene extends Phaser.Scene {
       items,
       plan.contract ? objectivesForContract(plan.contract) : [],
       plan,
+      this.builtUpgradeIds,
     );
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
@@ -384,6 +540,12 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
+    // Backing out of a payment returns to the ladder it was chosen from.
+    if (this.view === 'outfitter' && this.outfitterUpgradeId !== undefined) {
+      this.setView('outfitter');
+      this.render();
+      return;
+    }
     this.leaveDeployment();
   }
 
@@ -403,12 +565,14 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'home') return 'Ready for a run?';
     if (this.view === 'stash') return 'Your stash';
     if (this.view === 'reselect') return 'Swap your partner';
+    if (this.view === 'outfitter') return this.payingFor ? `Build ${this.payingFor.name}` : 'The Outfitter';
     if (this.flow.step === 'loadout') return 'Build your loadout';
     return this.flow.step === 'secure' ? 'Secure slot' : 'Final check';
   }
 
   private get backLabel(): string {
     if (this.view === 'reselect') return '← Stash';
+    if (this.view === 'outfitter' && this.payingFor) return '← Outfitter';
     if (this.view !== 'deploy') return '← Base';
     if (this.flow.step === 'confirm') return '← Loadout';
     if (this.flow.step === 'secure') {
@@ -426,6 +590,11 @@ export class HubScene extends Phaser.Scene {
     this.overlay.root.querySelector<HTMLButtonElement>('[data-swap-arm]')?.addEventListener('click', () => { this.swapArmed = true; this.render(); });
     this.overlay.root.querySelector<HTMLButtonElement>('[data-swap-cancel]')?.addEventListener('click', () => { this.swapArmed = false; this.render(); });
     this.overlay.root.querySelector<HTMLButtonElement>('[data-swap-confirm]')?.addEventListener('click', () => this.confirmSwap());
+    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-outfit]').forEach((button) => button.onclick = () => this.choosePayment(button.dataset.outfit!));
+    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-pay-pokemon]').forEach((button) => button.onclick = () => this.togglePayment(button.dataset.payPokemon!));
+    this.overlay.root.querySelector<HTMLButtonElement>('[data-pay-arm]')?.addEventListener('click', () => { this.outfitterArmed = true; this.render(); });
+    this.overlay.root.querySelector<HTMLButtonElement>('[data-pay-cancel]')?.addEventListener('click', () => { this.outfitterArmed = false; this.render(); });
+    this.overlay.root.querySelector<HTMLButtonElement>('[data-pay-confirm]')?.addEventListener('click', () => this.confirmPayment());
     this.overlay.root.querySelector<HTMLButtonElement>('[data-deploy-flow]')?.addEventListener('click', () => this.openDeployment());
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-recover]').forEach((button) => button.onclick = () => this.recover([button.dataset.recover!]));
     this.overlay.root.querySelector<HTMLButtonElement>('[data-recover-all]')?.addEventListener('click', () => this.recover(this.injuredPokemon.map((stored) => stored.id)));
@@ -461,6 +630,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'home') return this.homeView();
     if (this.view === 'stash') return this.stashView();
     if (this.view === 'reselect') return this.reselectView();
+    if (this.view === 'outfitter') return this.payingFor ? this.paymentView(this.payingFor) : this.outfitterView();
     if (this.flow.step === 'loadout') return this.loadoutView();
     return this.flow.step === 'secure' ? this.secureView() : this.confirmView();
   }
@@ -475,7 +645,7 @@ export class HubScene extends Phaser.Scene {
    */
   private homeView(): string {
     const unlocked = this.savedGame.raidProgress.firstContractExtracted;
-    return `<main class="hub-home">${this.recoveryPanel()}<section class="hub-actions"><button class="action-card primary" data-deploy-flow><span>DEPLOY</span><h2>Start a raid</h2><p>${unlocked ? 'Pick the Pokémon and supplies you are willing to risk, choose where you drop in, then confirm. Where you drop in is which contract you take.' : 'Pick the Pokémon and supplies you are willing to risk, then confirm before you drop in. Recover the lost field kit at the Floodplain Relay, then pick an exit and get out.'}</p><b>Prepare loadout →</b></button><button class="action-card" data-view="stash"><span>STASH</span><h2>Review &amp; recover</h2><p>Check the Pokémon and supplies secured at base, treat anyone who came home hurt${this.sparePartner ? ', or trade your last partner for a different starter' : ''}.</p><b>Open stash →</b></button></section>${this.contractBoard()}</main>`;
+    return `<main class="hub-home">${this.recoveryPanel()}<section class="hub-actions"><button class="action-card primary" data-deploy-flow><span>DEPLOY</span><h2>Start a raid</h2><p>${unlocked ? 'Pick the Pokémon and supplies you are willing to risk, choose where you drop in, then confirm. Where you drop in is which contract you take.' : 'Pick the Pokémon and supplies you are willing to risk, then confirm. Recover the lost field kit at the Floodplain Relay, then pick an exit and get out.'}</p><b>Prepare loadout →</b></button><button class="action-card" data-view="stash"><span>STASH</span><h2>Your stash</h2><p>Check what is secured at base and treat anyone who came home hurt${this.sparePartner ? ', or swap your last partner' : ''}.</p><b>Open stash →</b></button>${this.outfitterCard()}</section>${this.contractBoard()}</main>`;
   }
 
   /**
@@ -512,11 +682,11 @@ export class HubScene extends Phaser.Scene {
     if (injured.length === 0 && pending === 0) {
       return '';
     }
-    const quotedMs = quoteRecovery(this.stash, pending, injured.map((stored) => stored.id));
+    const quotedMs = quoteRecovery(this.stash, pending, injured.map((stored) => stored.id), this.recoveryTerms);
     const rows = injured
       .map(
         (stored) =>
-          `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><button class="button" data-recover="${stored.id}">Recover · −${formatRecoveryClock(recoveryCostMs(stored.pokemon))}</button></article>`,
+          `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><button class="button" data-recover="${stored.id}">Recover · ${this.recoveryPriceLabel(stored)}</button></article>`,
       )
       .join('');
     return `<section class="panel recovery-panel"><div class="panel-heading"><div><p class="eyebrow">Between raids</p><h2>Recovery bay</h2></div><small>Paid for in raid time, never in supplies</small></div><p>${
@@ -529,7 +699,7 @@ export class HubScene extends Phaser.Scene {
   private recoveryBill(injured: readonly StashedPokemon[], quotedMs: number): string {
     const injuredCount = injured.length;
     // The cap can make treating everyone cheaper than the rows add up to, so say so.
-    const listedMs = injured.reduce((total, stored) => total + recoveryCostMs(stored.pokemon), 0);
+    const listedMs = injured.reduce((total, stored) => total + this.recoveryPriceMs(stored), 0);
     const capNote =
       listedMs > quotedMs
         ? `<small>Capped: only ${formatRecoveryClock(quotedMs)} of the ${formatRecoveryClock(listedMs)} listed above is charged.</small>`
@@ -542,7 +712,7 @@ export class HubScene extends Phaser.Scene {
     const action =
       injuredCount === 0
         ? ''
-        : `<button class="button primary-button" data-recover-all>Recover ${injuredCount === 1 ? 'them' : `all ${injuredCount}`} · −${formatRecoveryClock(quotedMs)} →</button>`;
+        : `<button class="button primary-button" data-recover-all>Recover ${injuredCount === 1 ? 'them' : `all ${injuredCount}`} · ${quotedMs === 0 ? 'free' : `−${formatRecoveryClock(quotedMs)}`} →</button>`;
     return `<div class="recovery-bill">${clock}${action}</div>`;
   }
 
@@ -572,7 +742,7 @@ export class HubScene extends Phaser.Scene {
     const medicine = options.length
       ? `<div class="care-options">${options.map((option) => this.careOption(stored.id, option)).join('')}</div>`
       : '<p class="care-empty">No medicine at base.</p>';
-    return `<div class="care-strip"><p class="care-lead">${lead}</p>${medicine}<button class="button" data-recover="${stored.id}">Recovery bay · full restore for −${formatRecoveryClock(recoveryCostMs(pokemon))} raid time</button></div>`;
+    return `<div class="care-strip"><p class="care-lead">${lead}</p>${medicine}<button class="button" data-recover="${stored.id}">Recovery bay · full restore · ${this.recoveryPriceLabel(stored)}${this.recoveryPriceMs(stored) === 0 ? '' : ' raid time'}</button></div>`;
   }
 
   private careOption(pokemonId: string, option: TreatmentOption): string {
@@ -580,7 +750,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   private stashView(): string {
-    return `<main class="stash-layout"><section><h2>Pokémon</h2><p class="confirm-note">Recovery costs raid time: your next raid clock is ${formatRecoveryClock(this.raidClockMs)}.</p><div class="entity-list">${this.stashPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><div>${typeBadge(stored.pokemon.base.primaryType)}${stored.pokemon.base.secondaryType ? typeBadge(stored.pokemon.base.secondaryType) : ''}</div>${needsRecovery(stored.pokemon) ? `<button class="button" data-recover="${stored.id}">Recover · −${formatRecoveryClock(recoveryCostMs(stored.pokemon))}</button>` : '<span class="fit-tag">Fit ✓</span>'}</article>`).join('') || '<p class="empty-state">No Pokémon in storage.</p>'}</div>${this.swapPanel()}</section><section><h2>Supplies</h2><div class="item-grid">${this.stashItems.map((item) => `<article class="item-card">${itemIcon(item.id, item.displayName)}<strong>${item.displayName}</strong><small>${item.category} · ${this.stash.itemCount(item.id)} available</small></article>`).join('') || '<p class="empty-state">No supplies in storage.</p>'}</div></section></main>`;
+    return `<main class="stash-layout"><section><h2>Pokémon</h2><p class="confirm-note">Recovery costs raid time: your next raid clock is ${formatRecoveryClock(this.raidClockMs)}.</p><div class="entity-list">${this.stashPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><div>${typeBadge(stored.pokemon.base.primaryType)}${stored.pokemon.base.secondaryType ? typeBadge(stored.pokemon.base.secondaryType) : ''}</div>${needsRecovery(stored.pokemon) ? `<button class="button" data-recover="${stored.id}">Recover · ${this.recoveryPriceLabel(stored)}</button>` : '<span class="fit-tag">Fit ✓</span>'}</article>`).join('') || '<p class="empty-state">No Pokémon in storage.</p>'}</div>${this.swapPanel()}</section><section><h2>Supplies</h2><div class="item-grid">${this.stashItems.map((item) => `<article class="item-card">${itemIcon(item.id, item.displayName)}<strong>${item.displayName}</strong><small>${item.category} · ${this.stash.itemCount(item.id)} available</small></article>`).join('') || '<p class="empty-state">No supplies in storage.</p>'}</div></section></main>`;
   }
 
   /**
@@ -594,7 +764,7 @@ export class HubScene extends Phaser.Scene {
    */
   private loadoutView(): string {
     const party = this.flow.party;
-    const securedCount = (this.flow.securedPokemon ? 1 : 0) + this.flow.securedItems.length;
+    const securedCount = this.flow.securedPokemon.length + this.flow.securedItems.length;
     const single = this.stashPokemon.length === 1;
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
     const allFainted = party.length > 0 && !this.flow.isDeployable;
@@ -611,14 +781,14 @@ export class HubScene extends Phaser.Scene {
   private secureView(): string {
     const party = this.flow.party;
     const returnLabel = this.flow.secureReturnStep === 'confirm' ? 'final check' : 'loadout';
-    return `<main class="secure-layout"><section class="secure-intro"><p class="eyebrow">Protected on a wipe</p><h2>SECURED</h2><p>One Pokémon and ${this.flow.secureItemStacks} item stacks survive. Everything else in your loadout is at risk.</p></section><section class="secure-group"><h2>Pokémon <small>1 slot</small></h2>${party.map((stored) => `<button class="entity-row selectable ${this.flow.securesPokemon(stored.id) ? 'secured' : ''}" data-secure-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong><span>${this.flow.securesPokemon(stored.id) ? 'Secured ✓' : 'Secure'}</span></button>`).join('') || '<p class="empty-state">Add a Pokémon to your loadout first.</p>'}</section><section class="secure-group"><h2>Item stacks <small>${this.flow.securedItems.length}/${this.flow.secureItemStacks} slots</small></h2>${this.flow.items.map((item) => `<button class="entity-row selectable ${this.flow.securesItem(item.itemId) ? 'secured' : ''}" data-secure-item="${item.itemId}">${itemIcon(item.itemId, this.itemName(item.itemId))}<strong>${this.itemName(item.itemId)} ×${item.quantity}</strong><span>${this.flow.securesItem(item.itemId) ? 'Secured ✓' : 'Secure'}</span></button>`).join('') || '<p class="empty-state">Add supplies to your loadout first.</p>'}<button class="button primary-button" data-advance>Back to ${returnLabel} →</button></section></main>`;
+    return `<main class="secure-layout"><section class="secure-intro"><p class="eyebrow">Protected on a wipe</p><h2>SECURED</h2><p>${this.flow.securePokemonSlots === 1 ? 'One Pokémon' : `${this.flow.securePokemonSlots} Pokémon`} and ${this.flow.secureItemStacks} item stacks survive. Everything else in your loadout is at risk.</p></section><section class="secure-group"><h2>Pokémon <small>${this.flow.securedPokemon.length}/${this.flow.securePokemonSlots} ${this.flow.securePokemonSlots === 1 ? 'slot' : 'slots'}</small></h2>${party.map((stored) => `<button class="entity-row selectable ${this.flow.securesPokemon(stored.id) ? 'secured' : ''}" data-secure-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<strong>${stored.pokemon.base.name}</strong><span>${this.flow.securesPokemon(stored.id) ? 'Secured ✓' : 'Secure'}</span></button>`).join('') || '<p class="empty-state">Add a Pokémon to your loadout first.</p>'}</section><section class="secure-group"><h2>Item stacks <small>${this.flow.securedItems.length}/${this.flow.secureItemStacks} slots</small></h2>${this.flow.items.map((item) => `<button class="entity-row selectable ${this.flow.securesItem(item.itemId) ? 'secured' : ''}" data-secure-item="${item.itemId}">${itemIcon(item.itemId, this.itemName(item.itemId))}<strong>${this.itemName(item.itemId)} ×${item.quantity}</strong><span>${this.flow.securesItem(item.itemId) ? 'Secured ✓' : 'Secure'}</span></button>`).join('') || '<p class="empty-state">Add supplies to your loadout first.</p>'}<button class="button primary-button" data-advance>Back to ${returnLabel} →</button></section></main>`;
   }
 
   private confirmView(): string {
     const insertion = RUN_INSERTIONS[this.flow.insertionId];
     const securedPokemon = this.flow.securedPokemon;
     const securedItems = this.flow.securedItems;
-    const riskedPokemon = this.flow.party.filter((stored) => stored.id !== securedPokemon?.id);
+    const riskedPokemon = this.flow.party.filter((stored) => !securedPokemon.includes(stored));
     const riskedItems = this.flow.items
       .map((item) => ({
         itemId: item.itemId,
@@ -626,14 +796,121 @@ export class HubScene extends Phaser.Scene {
       }))
       .filter((item) => item.quantity > 0);
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
-    const protectedCount = (securedPokemon ? 1 : 0) + securedItems.length;
+    const protectedCount = securedPokemon.length + securedItems.length;
     // The price of the party, on screen before the player commits to it - the
     // rule the trainer watch and the flee cost already follow. It sits in the
     // full-width bar beside the button that pays it: in the insertion column it
     // wrapped to six lines and pushed that button below the frame.
     const threat = hunterThreatFor(this.flow.party.map((stored) => stored.pokemon));
     const hunter = hunterThreatLine(threat);
-    return `<main class="confirm-layout"><section class="panel confirm-insertion"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${insertion.label}</h2></div></div><p class="confirm-note">${insertion.description}</p><p class="confirm-note"><strong>Raid clock ${formatRecoveryClock(this.raidClockMs)}</strong>${this.pendingRecoveryMs === 0 ? '' : ` · ${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery`}</p><button class="button" data-back-step>Change loadout</button></section><section class="panel confirm-risk"><div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Lost if you wipe</h2></div><b>${riskedPokemon.length + riskedItems.length} ${riskedPokemon.length + riskedItems.length === 1 ? 'entry' : 'entries'}</b></div><div class="entity-list">${riskedPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><span class="risk-tag">At risk</span></article>`).join('')}${riskedItems.map((item) => `<article class="entity-row">${itemIcon(item.itemId, this.itemName(item.itemId))}<div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="risk-tag">At risk</span></article>`).join('')}${riskedPokemon.length + riskedItems.length ? '' : '<p class="empty-state">Nothing extra is at risk. Your whole loadout is protected.</p>'}</div></section><section class="panel confirm-secure"><div class="panel-heading"><div><p class="eyebrow">Protected</p><h2>Secure slot</h2></div><b>${protectedCount}/${1 + this.flow.secureItemStacks}</b></div><div class="entity-list">${securedPokemon ? `<article class="entity-row secured">${pokemonAvatar(securedPokemon.pokemon.base.dexId, securedPokemon.pokemon.base.name)}<div><strong>${securedPokemon.pokemon.base.name}</strong><small>Level ${securedPokemon.pokemon.level}</small></div><span class="secure-tag">Comes home ✓</span></article>` : ''}${securedItems.map((item) => `<article class="entity-row secured">${itemIcon(item.itemId, this.itemName(item.itemId))}<div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="secure-tag">Comes home ✓</span></article>`).join('')}${protectedCount ? '' : '<p class="risk-note">Nothing is protected. A wipe costs you your whole loadout.</p>'}</div><button class="button" data-secure-slot>${protectedCount ? 'Change secure slot' : 'Set up secure slot'} →</button></section><section class="starter-confirm confirm-bar"><div><strong>Deploy to ${insertion.label}</strong><small>${this.flow.party.length} Pokémon · ${supplies} supplies packed · ${protectedCount} protected · ${formatRecoveryClock(this.raidClockMs)} on the clock</small><small class="hunter-price${threat.tierOffset > 0 ? ' raised' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small></div><button class="button primary-button" data-start>Enter the raid →</button></section></main>`;
+    return `<main class="confirm-layout"><section class="panel confirm-insertion"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${insertion.label}</h2></div></div><p class="confirm-note">${insertion.description}</p><p class="confirm-note"><strong>Raid clock ${formatRecoveryClock(this.raidClockMs)}</strong>${this.pendingRecoveryMs === 0 ? '' : ` · ${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery`}</p><button class="button" data-back-step>Change loadout</button></section><section class="panel confirm-risk"><div class="panel-heading"><div><p class="eyebrow">At risk</p><h2>Lost if you wipe</h2></div><b>${riskedPokemon.length + riskedItems.length} ${riskedPokemon.length + riskedItems.length === 1 ? 'entry' : 'entries'}</b></div><div class="entity-list">${riskedPokemon.map((stored) => `<article class="entity-row">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}</small>${hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp)}</div><span class="risk-tag">At risk</span></article>`).join('')}${riskedItems.map((item) => `<article class="entity-row">${itemIcon(item.itemId, this.itemName(item.itemId))}<div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="risk-tag">At risk</span></article>`).join('')}${riskedPokemon.length + riskedItems.length ? '' : '<p class="empty-state">Nothing extra is at risk. Your whole loadout is protected.</p>'}</div></section><section class="panel confirm-secure"><div class="panel-heading"><div><p class="eyebrow">Protected</p><h2>Secure slot</h2></div><b>${protectedCount}/${this.flow.securePokemonSlots + this.flow.secureItemStacks}</b></div><div class="entity-list">${securedPokemon.map((stored) => `<article class="entity-row secured">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div><strong>${stored.pokemon.base.name}</strong><small>Level ${stored.pokemon.level}</small></div><span class="secure-tag">Comes home ✓</span></article>`).join('')}${securedItems.map((item) => `<article class="entity-row secured">${itemIcon(item.itemId, this.itemName(item.itemId))}<div><strong>${this.itemName(item.itemId)}</strong><small>${item.quantity} packed</small></div><span class="secure-tag">Comes home ✓</span></article>`).join('')}${protectedCount ? '' : '<p class="risk-note">Nothing is protected. A wipe costs you your whole loadout.</p>'}</div><button class="button" data-secure-slot>${protectedCount ? 'Change secure slot' : 'Set up secure slot'} →</button></section><section class="starter-confirm confirm-bar"><div><strong>Deploy to ${insertion.label}</strong><small>${this.flow.party.length} Pokémon · ${supplies} supplies packed · ${protectedCount} protected · ${formatRecoveryClock(this.raidClockMs)} on the clock</small><small class="hunter-price${threat.tierOffset > 0 ? ' raised' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small></div><button class="button primary-button" data-start>Enter the raid →</button></section></main>`;
+  }
+
+  /**
+   * The third card on the base screen. It is a next step rather than a recovery
+   * route - it is what extraction is *for* - so it sits with the other two, and
+   * it says how far along the base is so the card is a standing goal rather
+   * than a door the player has to open to find out.
+   */
+  private outfitterCard(): string {
+    const built = builtUpgrades(this.builtUpgradeIds).length;
+    const ready = this.outfitterLadder.filter((offer) => offer.affordable).length;
+    return `<button class="action-card" data-view="outfitter"><span>OUTFITTER</span><h2>Base upgrades</h2><p>Spend banked Pokémon and spare supplies on permanent upgrades.</p><b>${built}/${OUTFITTER_UPGRADES.length} built${ready ? ` · ${ready} ready` : ''} →</b></button>`;
+  }
+
+  private get outfitterLadder(): readonly OutfitterOffer[] {
+    return outfitterOffers(this.outfitterVault, this.builtUpgradeIds);
+  }
+
+  /** "2 Pokémon + 2 Poké Balls, 1 Potion", the way every price here is said. */
+  private priceLine(upgrade: OutfitterUpgrade): string {
+    return `${upgrade.cost.pokemon} Pokémon + ${formatStacks(upgrade.cost.supplies)}`;
+  }
+
+  /**
+   * A rung's price with the parts this vault cannot yet pay picked out, so one
+   * line says both what it costs and what is still missing. A second "short"
+   * line per rung is what ran the ladder past the frame on the smallest stage.
+   */
+  private pricedAgainstVault(offer: OutfitterOffer): string {
+    const { cost } = offer.upgrade;
+    const mark = (text: string, short: boolean): string =>
+      short ? `<span class="cost-short" title="Not enough spare at base yet">${text}</span>` : text;
+    return [
+      mark(`${cost.pokemon} Pokémon`, offer.pokemonShort > 0),
+      ...cost.supplies.map((stack) =>
+        mark(
+          formatStacks([stack]),
+          offer.suppliesShort.some((short) => short.itemId === stack.itemId),
+        ),
+      ),
+    ].join(' + ');
+  }
+
+  /**
+   * The ladder. Every rung is listed whether or not it can be afforded, with
+   * what it still needs, because a goal the player cannot see is not a goal.
+   */
+  private outfitterView(): string {
+    const rows = this.outfitterLadder
+      .map((offer) => {
+        const { upgrade } = offer;
+        const action =
+          offer.state === 'built'
+            ? '<span class="secure-tag">Built ✓</span>'
+            : `<button class="button${offer.affordable ? ' primary-button' : ''}" data-outfit="${upgrade.id}"${offer.affordable ? '' : ' disabled'}>Build →</button>`;
+        const price =
+          offer.state === 'built'
+            ? ''
+            : `<small>${offer.state === 'locked' ? `After ${offer.requires?.name ?? 'an earlier upgrade'}: ` : 'Costs '}${this.pricedAgainstVault(offer)}</small>`;
+        return `<article class="entity-row outfitter-row ${offer.state === 'built' ? 'secured' : ''}">${iconMarkup(upgrade.icon, upgrade.name)}<div class="objective-copy"><strong>${upgrade.name}</strong><small>${upgrade.effect}</small>${price}</div>${action}</article>`;
+      })
+      .join('');
+    return `<main class="hub-home"><section class="panel objectives-panel"><div class="panel-heading"><div><p class="eyebrow">Permanent upgrades</p><h2>What extraction buys</h2></div><small>Paid in banked Pokémon and spare supplies · <span class="cost-short">marked</span> = not enough yet</small></div><div class="objective-list outfitter-list">${rows}</div></section></main>`;
+  }
+
+  /**
+   * The payment. It names every Pokemon it would release and every supply it
+   * would take before anything is armed, and the Pokemon are picked by the
+   * player one at a time - this game's contract with its player is that a
+   * Pokemon is not a coin, so the screen never reaches into the vault for them.
+   */
+  private paymentView(upgrade: OutfitterUpgrade): string {
+    const candidates = paymentCandidates(this.outfitterVault);
+    const chosen = this.stashPokemon.filter((stored) => this.outfitterPayment.includes(stored.id));
+    const rows = candidates
+      .map(({ stored, refusal }) => {
+        const picked = this.outfitterPayment.includes(stored.id);
+        return `<button class="entity-row selectable ${picked ? 'selected' : ''}" data-pay-pokemon="${stored.id}"${refusal === undefined ? '' : ' disabled'}>${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}${refusal === undefined ? '' : ` · ${refusal}`}</small></div><span>${refusal !== undefined ? 'Kept' : picked ? 'Releasing ✓' : 'Release'}</span></button>`;
+      })
+      .join('');
+    const supplies = upgrade.cost.supplies
+      .map(({ itemId, quantity }) => `<article class="entity-row">${itemIcon(itemId, this.itemName(itemId))}<div><strong>${this.itemName(itemId)} ×${quantity}</strong><small>${this.stash.itemCount(itemId)} at base · ${spendableSupply(this.outfitterVault, itemId)} spare</small></div><span class="risk-tag">Spent</span></article>`)
+      .join('');
+    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Payment · ${chosen.length}/${upgrade.cost.pokemon} chosen</p><h2>Pokémon to release</h2></div><small>Released Pokémon are gone for good</small></div><div class="entity-list">${rows}</div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Builds</p><h2>${upgrade.name}</h2></div></div><p class="confirm-note">${upgrade.detail} Only spare supplies are taken - the kit base restocks after a wipe is never payment.</p><div class="entity-list">${supplies}</div></section><section class="starter-confirm confirm-bar ${this.outfitterArmed ? 'arming' : ''}">${this.paymentFooter(upgrade, chosen)}</section></main>`;
+  }
+
+  private paymentFooter(upgrade: OutfitterUpgrade, chosen: readonly StashedPokemon[]): string {
+    const named = formatNames(chosen.map((stored) => `${stored.pokemon.base.name} (Level ${stored.pokemon.level})`));
+    const supplies = formatStacks(upgrade.cost.supplies);
+    const check = checkPayment(
+      this.outfitterVault,
+      this.builtUpgradeIds,
+      upgrade.id,
+      this.outfitterPayment,
+    );
+    if (!check.ok) {
+      const remaining = upgrade.cost.pokemon - chosen.length;
+      const prompt =
+        check.refusal === 'wrong-pokemon-count' && remaining > 0
+          ? `Choose ${remaining} more Pokémon to release.`
+          : check.message;
+      return `<div><span class="eyebrow">Costs ${this.priceLine(upgrade)}</span><strong>${prompt}</strong><small>${chosen.length ? `So far: ${named}.` : 'Nothing is spent until you confirm.'}</small></div><button class="button primary-button" disabled>Build ${upgrade.name} →</button>`;
+    }
+    if (!this.outfitterArmed) {
+      return `<div><span class="eyebrow">Costs ${this.priceLine(upgrade)}</span><strong>Release ${named} and spend ${supplies}</strong><small>Nothing is spent until you confirm.</small></div><button class="button primary-button" data-pay-arm>Build ${upgrade.name} →</button>`;
+    }
+    return `<div><span class="eyebrow">This cannot be undone</span><strong>Release ${named} and spend ${supplies}?</strong><small>${chosen.length === 1 ? 'It is' : 'They are'} gone for good, and ${upgrade.name} stands at base permanently.</small></div><div class="swap-actions"><button class="button" data-pay-cancel>Keep ${chosen.length === 1 ? 'it' : 'them'}</button><button class="button danger-button" data-pay-confirm>Release and build</button></div>`;
   }
 
   /**
@@ -700,4 +977,12 @@ export class HubScene extends Phaser.Scene {
     this.render();
     this.time.delayedCall(2200, () => { this.status = ''; this.render(); });
   }
+}
+
+/** "Pidgey", "Pidgey and Rattata", "Pidgey, Rattata and Caterpie". */
+function formatNames(names: readonly string[]): string {
+  if (names.length <= 1) {
+    return names[0] ?? 'Nothing';
+  }
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }

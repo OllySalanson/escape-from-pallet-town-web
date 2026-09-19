@@ -15,6 +15,7 @@ import {
   missingCarryIn,
   RAID_CONTRACTS,
   secureItemStackLimit,
+  securePokemonLimit,
   type RaidContract,
 } from './contracts';
 import { objectivesForContract } from './RunObjectives';
@@ -52,6 +53,7 @@ function seedSave(storage: StorageLike, completedContracts: readonly string[], s
       firstContractExtracted: completedContracts.includes(FIRST_CONTRACT_ID),
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
       completedContracts: [...completedContracts],
+      outfitterUpgrades: [],
     },
   });
   return saves;
@@ -202,10 +204,22 @@ describe('the cordon ledger only banks through its own exit', () => {
 });
 
 describe('what a banked contract buys', () => {
+  it('stacks the Outfitter\'s locker on top of the ledger\'s, from the two lists alone', () => {
+    const ledger = [FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger'];
+
+    expect(secureItemStackLimit([], ['secure-locker-1'])).toBe(3);
+    expect(secureItemStackLimit(ledger, ['secure-locker-1'])).toBe(4);
+    // The second locker protects a Pokemon, not another stack.
+    expect(secureItemStackLimit(ledger, ['secure-locker-1', 'secure-locker-2'])).toBe(4);
+    expect(securePokemonLimit([])).toBe(1);
+    expect(securePokemonLimit(['secure-locker-1'])).toBe(1);
+    expect(securePokemonLimit(['secure-locker-1', 'secure-locker-2'])).toBe(2);
+  });
+
   it('enlarges the secure slot when the cordon ledger is banked, and the raid honours it', () => {
-    expect(secureItemStackLimit([])).toBe(2);
-    expect(secureItemStackLimit([FIRST_CONTRACT_ID, 'survey-the-braid'])).toBe(2);
-    expect(secureItemStackLimit([FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger'])).toBe(3);
+    expect(secureItemStackLimit([], [])).toBe(2);
+    expect(secureItemStackLimit([FIRST_CONTRACT_ID, 'survey-the-braid'], [])).toBe(2);
+    expect(secureItemStackLimit([FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger'], [])).toBe(3);
 
     const party = [new Pokemon(BULBASAUR, 5)];
     const items = [
@@ -288,7 +302,12 @@ describe('saves written before contracts were a list', () => {
     expect(loaded.raidProgress.completedContracts).toEqual([]);
     expect(availableContracts(loaded.raidProgress.completedContracts).map(({ id }) => id))
       .toEqual([FIRST_CONTRACT_ID]);
-    expect(secureItemStackLimit(loaded.raidProgress.completedContracts)).toBe(2);
+    expect(
+      secureItemStackLimit(
+        loaded.raidProgress.completedContracts,
+        loaded.raidProgress.outfitterUpgrades,
+      ),
+    ).toBe(2);
   });
 });
 

@@ -1,11 +1,12 @@
 import type { ItemId } from '../items';
 import type { Pokemon } from '../pokemon';
-import { BASE_SECURE_ITEM_STACKS } from '../objectives/contracts';
+import { BASE_SECURE_ITEM_STACKS, BASE_SECURE_POKEMON } from '../objectives/contracts';
 import { hunterFleePenaltyMs } from './fleePenalty';
 
 /** The first contract's one stop, kept here so the snapshot can still name it. */
 const FIELD_KIT_STEP_ID = 'lost-field-kit';
 const MAX_SECURE_ITEM_STACKS = BASE_SECURE_ITEM_STACKS;
+const MAX_SECURE_POKEMON = BASE_SECURE_POKEMON;
 
 /** Time the player has to extract after the raid timer reaches zero. */
 export const ENRAGE_GRACE_MS = 15_000;
@@ -39,10 +40,13 @@ export interface RunConfig {
    * it permanently, so the limit belongs to the save, not to the code.
    */
   readonly secureItemStackLimit?: number;
+  /** How many Pokemon it protects, which the Outfitter's second locker raises. */
+  readonly securePokemonLimit?: number;
 }
 
 export interface SecureSlot {
-  readonly pokemon?: Pokemon;
+  /** The protected Pokemon, as many as the save's secure slot holds. */
+  readonly pokemon?: readonly Pokemon[];
   readonly items?: readonly ItemStack[];
 }
 
@@ -122,6 +126,7 @@ export class RunManager {
   private foundItemsValue: ItemStack[] = [];
   private contractStepsValue: string[] = [];
   private secureItemStackLimitValue = MAX_SECURE_ITEM_STACKS;
+  private securePokemonLimitValue = MAX_SECURE_POKEMON;
   private defeatedTrainersValue = 0;
   private hunterFleesValue = 0;
   private deployedExperienceValue: number[] = [];
@@ -165,7 +170,8 @@ export class RunManager {
     validateRunConfig(config);
     validateItemStacks(loadout.items);
     this.secureItemStackLimitValue = config.secureItemStackLimit ?? MAX_SECURE_ITEM_STACKS;
-    validateSecureSlot(secureSlot, loadout.party, loadout.items, this.secureItemStackLimitValue);
+    this.securePokemonLimitValue = config.securePokemonLimit ?? MAX_SECURE_POKEMON;
+    validateSecureSlot(secureSlot, loadout.party, loadout.items, this.secureLimits());
 
     this.loadoutValue = copyLoadout(loadout);
     this.deployedExperienceValue = loadout.party.map((member) => member.experience);
@@ -329,11 +335,10 @@ export class RunManager {
     const allPokemon = this.allPokemon();
     const allItems = this.allItems();
     const resolvedSecureSlot = secureSlot ?? this.secureSlotValue;
-    validateSecureSlot(resolvedSecureSlot, allPokemon, allItems, this.secureItemStackLimitValue);
+    validateSecureSlot(resolvedSecureSlot, allPokemon, allItems, this.secureLimits());
     this.beginResolution();
 
-    const bankedPokemon =
-      resolvedSecureSlot.pokemon === undefined ? [] : [resolvedSecureSlot.pokemon];
+    const bankedPokemon = [...(resolvedSecureSlot.pokemon ?? [])];
     const bankedItems = combineItems(resolvedSecureSlot.items ?? []);
     const lostPokemon = removePokemon(allPokemon, bankedPokemon);
     const lostItems = subtractItems(allItems, bankedItems);
@@ -368,6 +373,13 @@ export class RunManager {
       isEnraged: this.isEnragedValue,
       deployedExperience: [...this.deployedExperienceValue],
       enrageGraceRemainingMs: this.enrageGraceRemainingMs(),
+    };
+  }
+
+  private secureLimits(): SecureLimits {
+    return {
+      pokemon: this.securePokemonLimitValue,
+      itemStacks: this.secureItemStackLimitValue,
     };
   }
 
@@ -419,7 +431,7 @@ function copyLoadout(loadout: RunLoadout): RunLoadout {
 
 function copySecureSlot(secureSlot: SecureSlot): SecureSlot {
   return {
-    ...(secureSlot.pokemon === undefined ? {} : { pokemon: secureSlot.pokemon }),
+    ...(secureSlot.pokemon === undefined ? {} : { pokemon: [...secureSlot.pokemon] }),
     ...(secureSlot.items === undefined ? {} : { items: combineItems(secureSlot.items) }),
   };
 }
@@ -433,22 +445,31 @@ function validateRunConfig(config: RunConfig): void {
   }
 }
 
+interface SecureLimits {
+  readonly pokemon: number;
+  readonly itemStacks: number;
+}
+
 function validateSecureSlot(
   secureSlot: SecureSlot,
   availablePokemon: readonly Pokemon[],
   availableItems: readonly ItemStack[],
-  itemStackLimit: number = MAX_SECURE_ITEM_STACKS,
+  limits: SecureLimits,
 ): void {
-  if (
-    secureSlot.pokemon !== undefined &&
-    !availablePokemon.some((pokemon) => pokemon === secureSlot.pokemon)
-  ) {
+  const securePokemon = secureSlot.pokemon ?? [];
+  if (securePokemon.length > limits.pokemon) {
+    throw new Error(`A secure slot can protect at most ${limits.pokemon} Pokemon.`);
+  }
+  if (new Set(securePokemon).size !== securePokemon.length) {
+    throw new Error('A secure slot cannot protect the same Pokemon twice.');
+  }
+  if (securePokemon.some((secured) => !availablePokemon.includes(secured))) {
     throw new Error('The secure-slot Pokemon must come from the current run.');
   }
 
   const secureItems = secureSlot.items ?? [];
-  if (secureItems.length > itemStackLimit) {
-    throw new Error(`A secure slot can contain at most ${itemStackLimit} item stacks.`);
+  if (secureItems.length > limits.itemStacks) {
+    throw new Error(`A secure slot can contain at most ${limits.itemStacks} item stacks.`);
   }
   validateItemStacks(secureItems);
 

@@ -104,6 +104,8 @@ import {
   trainerDeclinedMessage,
   trainerWatchCaption,
 } from '../world/trainerEngagement';
+import { hasHunterIntel } from '../hub/outfitter';
+import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { tryActivatePoi } from '../world/pois';
 import {
@@ -128,6 +130,7 @@ import {
   isHunterEligibleForFirstContract,
   isHunterContactingPlayer,
   type HunterState,
+  hunterIntelFor,
 } from '../world/hunter';
 
 const STEP_DURATION_MS = 130;
@@ -135,6 +138,8 @@ const CAMERA_ZOOM = 1;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 /** Long enough for the extraction flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
+/** How far above its tile the beacon's caption sits: clear of a figure and its chevron. */
+const BEACON_CAPTION_LIFT = 30;
 
 /**
  * Map captions share the raid HUD's window, in a darker weight: screen furniture
@@ -792,10 +797,14 @@ export class WorldScene extends Phaser.Scene {
       const marker = this.add
         .image(x, y, extractionIconKey(isOpen))
         .setDepth(atRow(MARKER_BAND, point.position.y));
+      // The beacon stands on the landing, which is the one exit the player is
+      // guaranteed to be standing on when it is first drawn, so its caption is
+      // raised clear of a figure's head and chevron instead of lying across them.
+      const captionLift = point.label === BEACON_EXIT_LABEL ? BEACON_CAPTION_LIFT : 11;
       const label = new WorldLabel(
         this,
         x,
-        y - 11,
+        y - captionLift,
         `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}`,
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
         atRow(CAPTION_BAND, point.position.y),
@@ -1235,6 +1244,19 @@ export class WorldScene extends Phaser.Scene {
           searchRemainingMs: this.hunterState.searchRemainingMs,
           distance: this.hunterStepsAway(),
           direction: this.hunterBearing(),
+          // The radio mast reports on a hunter that is still coming or still
+          // here. One that has been beaten is out of the raid, and a line about
+          // its next team would be a warning about nothing.
+          ...(hasHunterIntel(session.outfitterUpgrades) && !this.hunterState.defeated
+            ? {
+              intel: hunterIntelFor(
+                snapshot.elapsedMs,
+                snapshot.durationMs,
+                manager.isEnraged,
+                session.plan?.hunter,
+              ),
+            }
+            : {}),
         }),
       },
       this.time.now,

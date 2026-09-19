@@ -106,14 +106,27 @@ export interface RaidSettlement {
 }
 
 export interface SecureSlot {
-  /** At most one stashed Pokemon ID. */
-  readonly pokemonId?: string;
+  /** Stashed Pokemon IDs, as many as the save's secure slot protects. */
+  readonly pokemonIds?: readonly string[];
   /**
-   * At most two item stacks. Quantities are capped to the matching quantity
-   * actually brought into the run.
+   * Protected item stacks, as many as the save's secure slot protects.
+   * Quantities are capped to the matching quantity actually brought into the run.
    */
   readonly items?: readonly { readonly itemId: string; readonly quantity: number }[];
 }
+
+/**
+ * How much a save's secure slot protects. It belongs to the save rather than to
+ * this class - contracts and the Outfitter both enlarge it - so a wipe is told
+ * the limits instead of assuming them.
+ */
+export interface SecureSlotLimits {
+  readonly pokemon: number;
+  readonly itemStacks: number;
+}
+
+/** The secure slot every save starts with: one Pokemon and two item stacks. */
+export const BASE_SECURE_SLOT_LIMITS: SecureSlotLimits = { pokemon: 1, itemStacks: 2 };
 
 /**
  * The persistent vault. Its methods only change in-memory state; persistence is
@@ -276,6 +289,32 @@ export class Stash {
   }
 
   /**
+   * How many of one item could leave the vault without the restock having
+   * anything to hand back for it. The kit is a capability, so this is asked of
+   * everything that serves the same need: six Potions and no Super Potions is
+   * three spare, and so is three Potions beside three Super Potions. An item
+   * that serves no minimum - an Antidote - is spare in full.
+   *
+   * It exists for the Outfitter, the one place supplies are spent at base: a
+   * payment taken out of the kit would be refunded by the next wipe.
+   */
+  public spareCount(itemId: string): number {
+    const held = this.itemCount(itemId);
+    const serving = Object.entries(this.listItems());
+    let spare = held;
+    for (const [minimumItemId, minimum] of Object.entries(MINIMUM_SUPPLIES)) {
+      if (!servesAs(minimumItemId, itemId)) {
+        continue;
+      }
+      const total = serving
+        .filter(([heldItemId]) => servesAs(minimumItemId, heldItemId))
+        .reduce((sum, [, quantity]) => sum + quantity, 0);
+      spare = Math.min(spare, Math.max(0, total - minimum));
+    }
+    return spare;
+  }
+
+  /**
    * The last resort, not a standing allowance: it fires only for a player who
    * cannot attempt a raid on what they hold, and hands over only the shortfall,
    * so a player who kept supplies keeps exactly what they had and the restock
@@ -338,27 +377,33 @@ export class Stash {
 
   /**
    * Permanently removes every Pokemon deployed for a wiped run, except the
-   * optional secured Pokemon. Removes deployed item quantities except the
-   * optional first two secure item stacks. Invalid or unavailable secure-slot
-   * entries do not protect anything.
+   * secured ones. Removes deployed item quantities except the secured stacks.
+   * Both are cut to `limits`, and invalid or unavailable secure-slot entries do
+   * not protect anything.
+   *
+   * The limits used to be a literal two stacks here, which silently destroyed
+   * the third stack the cordon ledger pays for while the result screen beside
+   * it reported that stack as safe.
    */
   public applyWipeLoss(
     broughtPokemonIds: readonly string[],
     broughtItems: readonly { readonly itemId: string; readonly quantity: number }[],
     secureSlot: SecureSlot = {},
+    limits: SecureSlotLimits = BASE_SECURE_SLOT_LIMITS,
   ): void {
-    const protectedPokemonId =
-      secureSlot.pokemonId && broughtPokemonIds.includes(secureSlot.pokemonId)
-        ? secureSlot.pokemonId
-        : undefined;
+    const protectedPokemonIds = new Set(
+      [...new Set(secureSlot.pokemonIds ?? [])]
+        .filter((pokemonId) => broughtPokemonIds.includes(pokemonId))
+        .slice(0, Math.max(0, limits.pokemon)),
+    );
     for (const pokemonId of new Set(broughtPokemonIds)) {
-      if (pokemonId !== protectedPokemonId) {
+      if (!protectedPokemonIds.has(pokemonId)) {
         this.removePokemon(pokemonId);
       }
     }
 
     const securedItems = new Map<string, number>();
-    for (const item of (secureSlot.items ?? []).slice(0, 2)) {
+    for (const item of (secureSlot.items ?? []).slice(0, Math.max(0, limits.itemStacks))) {
       if (isPositiveInteger(item.quantity)) {
         securedItems.set(item.itemId, (securedItems.get(item.itemId) ?? 0) + item.quantity);
       }

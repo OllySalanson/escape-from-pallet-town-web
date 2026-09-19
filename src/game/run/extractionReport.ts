@@ -174,7 +174,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       ? declaredSecureItems
       : survivingSecureItems(declaredSecureItems, input.carriedOut);
   const secured: ReportGroup = {
-    pokemon: snapshot.secureSlot.pokemon ? [toReportPokemon(snapshot.secureSlot.pokemon)] : [],
+    pokemon: securedPokemon(snapshot).map(toReportPokemon),
     items: toReportItems(securedItems),
   };
   // What rode out unprotected. A lost raid's answer is the ledger itself - what
@@ -184,7 +184,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   const risked: ReportGroup = escaped
     ? {
       pokemon: (snapshot.loadout?.party ?? [])
-        .filter((member) => member !== snapshot.secureSlot.pokemon)
+        .filter((member) => !securedPokemon(snapshot).includes(member))
         .map(toReportPokemon),
       items: toReportItems(subtractStacks(snapshot.loadout?.items ?? [], securedItems)),
     }
@@ -248,9 +248,14 @@ function fallenParty(snapshot: RunSnapshot, lastStand: Pokemon | undefined): Fal
   const standing = party.includes(lastStand as Pokemon) ? lastStand : party[party.length - 1];
   return party.map((member) => ({
     ...toReportPokemon(member),
-    secured: member === snapshot.secureSlot.pokemon,
+    secured: securedPokemon(snapshot).includes(member),
     lastStand: member === standing,
   }));
+}
+
+/** Every Pokemon the raid's secure slot protected. */
+function securedPokemon(snapshot: RunSnapshot): readonly Pokemon[] {
+  return snapshot.secureSlot.pokemon ?? [];
 }
 
 function escapeHeadline(tier: HaulTier): string {
@@ -387,7 +392,7 @@ function partyProgress(snapshot: RunSnapshot, escaped: boolean): ReportProgress[
     .filter(({ member, before }) =>
       before !== undefined &&
       member.experience > before &&
-      (escaped || member === snapshot.secureSlot.pokemon))
+      (escaped || securedPokemon(snapshot).includes(member)))
     .map(({ member, before }) => ({
       name: member.base.name,
       dexId: member.base.dexId,

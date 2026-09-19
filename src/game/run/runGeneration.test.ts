@@ -9,6 +9,7 @@ import { FIRST_CONTRACT, RAID_CONTRACTS } from '../objectives';
 import {
   availableInsertionIds,
   frontDoorFor,
+  BEACON_EXIT_LABEL,
   generateRunPlan,
   insertionAt,
   isDropInPoint,
@@ -91,6 +92,46 @@ describe('run generation', () => {
   it('is deterministic for a seed and varies across seeds', () => {
     expect(generateRunPlan(12345)).toEqual(generateRunPlan(12345));
     expect(generateRunPlan(12345)).not.toEqual(generateRunPlan(54321));
+  });
+
+  it('adds the Outfitter beacon as one late exit on the landing of every map', () => {
+    for (const insertionId of insertionIds) {
+      const insertion = RUN_INSERTIONS[insertionId];
+      const plain = generateRunPlan(27, undefined, insertionId);
+      const plan = generateRunPlan(27, undefined, insertionId, undefined, undefined, [], { beaconUnlockAtMs: 150_000 });
+      const beacons = plan.extractionPoints.filter((point) => point.label === BEACON_EXIT_LABEL);
+
+      expect(plain.extractionPoints.some((point) => point.label === BEACON_EXIT_LABEL)).toBe(false);
+      expect(beacons).toHaveLength(1);
+      expect(beacons[0]).toMatchObject({ mapId: insertion.mapId, position: insertion.position });
+      // It opens late and on the clock alone: nothing in the raid can open it early.
+      expect(isExtractionAvailable(beacons[0], 149_999, new Set())).toBe(false);
+      expect(isExtractionAvailable(beacons[0], 150_000, new Set())).toBe(true);
+      // The beacon is extra. It takes no authored exit's place and spends no
+      // randomness, so the same seed is the same raid with or without it.
+      expect(plan.extractionPoints.filter((point) => point.label !== BEACON_EXIT_LABEL))
+        .toEqual(plain.extractionPoints);
+      expect({ ...plan, extractionPoints: [] }).toEqual({ ...plain, extractionPoints: [] });
+    }
+  });
+
+  it('never stacks the beacon on a tile that is already an exit or a contract stop', () => {
+    for (const insertionId of insertionIds) {
+      const insertion = RUN_INSERTIONS[insertionId];
+      const plan = generateRunPlan(1, undefined, insertionId, undefined, undefined, [], { beaconUnlockAtMs: 1 });
+      const onLanding = plan.extractionPoints.filter(
+        (point) =>
+          point.mapId === insertion.mapId &&
+          point.position.x === insertion.position.x &&
+          point.position.y === insertion.position.y,
+      );
+      expect(onLanding).toHaveLength(1);
+      for (const contract of RAID_CONTRACTS.filter(({ mapId }) => mapId === insertion.mapId)) {
+        for (const marker of contract.markers) {
+          expect(marker.position).not.toEqual(insertion.position);
+        }
+      }
+    }
   });
 
   it('gives sessions a reproducible runtime stream derived from the plan seed', () => {

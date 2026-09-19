@@ -222,7 +222,7 @@ const DURATION_MS = 300_000;
 function defeatReport(secureSecond = true): ExtractionReport {
   const party = [new Pokemon(CHARMANDER, 12), new Pokemon(BULBASAUR, 9)];
   const manager = new RunManager();
-  const secureSlot = secureSecond ? { pokemon: party[1] } : {};
+  const secureSlot = secureSecond ? { pokemon: [party[1]] } : {};
   manager.startRun(
     { party, items: [{ itemId: 'potion', quantity: 2 }] },
     { mapId: 'floodplain-relay', durationMs: DURATION_MS },

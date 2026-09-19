@@ -9,7 +9,7 @@ vi.mock('phaser', () => ({
 }));
 
 import { Bag } from '../items';
-import { CHARMANDER, Pokemon, PokemonParty } from '../pokemon';
+import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty } from '../pokemon';
 import { FIRST_CONTRACT_ID } from '../objectives';
 import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
@@ -20,10 +20,12 @@ import {
   MAX_PENDING_RECOVERY_MS,
   raidClockAfterRecovery,
   recoveryCostMs,
+  recoveryPrices,
   type DeploymentFlow,
 } from '../hub';
 import {
   DEFAULT_RAID_PROGRESS,
+  SAVE_KEY,
   SaveManager,
   type RaidProgress,
   type StorageLike,
@@ -38,7 +40,7 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
-  setView(view: 'home' | 'stash' | 'deploy' | 'reselect'): void;
+  setView(view: 'home' | 'stash' | 'deploy' | 'reselect' | 'outfitter'): void;
   startRun(): void;
   render(): void;
   recover(ids: readonly string[]): void;
@@ -106,6 +108,7 @@ function createHub(
       raidProgress,
       starterSpeciesId: 'bulbasaur',
       pendingRecoveryMs: 0,
+      wardTreatmentsUsed: 0,
     },
   });
   return {
@@ -330,6 +333,7 @@ describe('hub deployment route', () => {
       ...DEFAULT_RAID_PROGRESS,
       firstContractExtracted: true,
       completedContracts: [FIRST_CONTRACT_ID],
+      outfitterUpgrades: [],
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     });
 
@@ -412,6 +416,9 @@ describe('hub deployment route', () => {
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+        outfitterUpgrades: [],
+        defeatedBosses: [],
+        reachedInsertions: [],
       },
     });
     const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
@@ -422,6 +429,7 @@ describe('hub deployment route', () => {
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+        outfitterUpgrades: [],
       });
   });
 
@@ -441,7 +449,7 @@ describe('hub deployment route', () => {
     expect(data.bag.toJSON()).toEqual({ potion: 2 });
     expect(data.runSession.broughtPokemonIds).toEqual(['charmander-1']);
     expect(data.runSession.broughtItems).toEqual([{ itemId: 'potion', quantity: 2 }]);
-    expect(data.runSession.stashSecureSlot).toEqual({ pokemonId: 'charmander-1', items: [] });
+    expect(data.runSession.stashSecureSlot).toEqual({ pokemonIds: ['charmander-1'], items: [] });
     expect(activeRunManager.snapshot().loadout?.party.map((pokemon) => pokemon.base.id)).toEqual([
       'charmander',
     ]);
@@ -536,7 +544,7 @@ describe('what the base screen leads with', () => {
   it('says the swap is there, so a wiped player is not left hunting for it', () => {
     const hub = createFreshHub();
 
-    expect(markupOf(hub)).toContain('trade your last partner for a different starter');
+    expect(markupOf(hub)).toContain('swap your last partner');
   });
 
   it('drops the offer everywhere the moment a second Pokémon is banked', () => {
@@ -575,3 +583,227 @@ describe('what the base screen leads with', () => {
     expect(bar).toContain('Charmander · 2 supplies packed · 0 protected');
   });
 });
+
+describe('the Outfitter', () => {
+  beforeEach(() => {
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+  });
+
+  interface OutfitterInternals extends HubInternals {
+    choosePayment(upgradeId: string): void;
+    togglePayment(pokemonId: string): void;
+    confirmPayment(): void;
+    outfitterArmed: boolean;
+  }
+
+  function markupOf(hub: HubInternals): string {
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  }
+
+  /** A stored mid-game save: a partner, three catches, spare kit, these upgrades. */
+  function createOutfittedHub(outfitterUpgrades: readonly string[] = []): {
+    hub: OutfitterInternals;
+    start: ReturnType<typeof vi.fn>;
+    storage: MemoryStorage;
+  } {
+    const storage = new MemoryStorage();
+    const stash = createStartingStash(CHARMANDER);
+    stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
+    stash.addPokemon(new Pokemon(PIDGEY, 5), 'pidgey-2');
+    stash.addPokemon(new Pokemon(BULBASAUR, 6), 'bulbasaur-9');
+    stash.addItem('poke-ball', 4);
+    stash.addItem('potion', 4);
+    stash.addItem('great-ball', 3);
+    stash.addItem('antidote', 3);
+    new SaveManager(storage).save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'charmander',
+      raidProgress: {
+        firstContractExtracted: true,
+        completedContracts: [FIRST_CONTRACT_ID],
+        unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+        outfitterUpgrades: [...outfitterUpgrades],
+        defeatedBosses: [],
+        reachedInsertions: [],
+      },
+    });
+    const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);
+    return { hub: hub as OutfitterInternals, start, storage };
+  }
+
+  it('is reached from base, beside the raid and the stash', () => {
+    const { hub } = createOutfittedHub();
+
+    const home = markupOf(hub);
+    expect(home).toContain('data-view="outfitter"');
+    expect(home).toContain('0/7 built');
+    expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('data-view="outfitter"'));
+  });
+
+  it('lists every rung with its price, and marks what this vault cannot pay yet', () => {
+    const { hub } = createOutfittedHub();
+
+    hub.setView('outfitter');
+    const ladder = markupOf(hub);
+    expect(ladder).toContain('Secure locker I');
+    expect(ladder).toContain('Costs 2 Pokémon + 2× Poke Ball + 1× Potion');
+    expect(ladder).toContain('After Secure locker I: ');
+    // Three spendable catches cannot pay the four the second locker asks.
+    expect(ladder).toContain('<span class="cost-short" title="Not enough spare at base yet">4 Pokémon</span>');
+    expect(ladder).toMatch(/data-outfit="secure-locker-1">Build/);
+    expect(ladder).toMatch(/data-outfit="secure-locker-2" disabled>Build/);
+  });
+
+  it('names the Pokémon and the supplies it is spending, and asks before it spends them', () => {
+    const { hub, storage } = createOutfittedHub();
+    const before = storage.getItem(SAVE_KEY);
+
+    hub.setView('outfitter');
+    hub.choosePayment('secure-locker-1');
+    const empty = markupOf(hub);
+    // Nothing is picked on the player's behalf, and the partner cannot be picked at all.
+    expect(empty).toContain('Choose 2 more Pokémon to release.');
+    expect(empty).toMatch(/data-pay-pokemon="charmander-1" disabled/);
+    expect(empty).toContain('Your partner is never payment');
+    expect(empty).not.toContain('data-pay-arm');
+
+    hub.togglePayment('pidgey-1');
+    hub.togglePayment('bulbasaur-9');
+    const chosen = markupOf(hub);
+    expect(chosen).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Poke Ball, 1× Potion');
+    expect(chosen).toContain('data-pay-arm');
+    expect(chosen).not.toContain('data-pay-confirm');
+
+    // A confirmation that was never armed does nothing at all.
+    hub.confirmPayment();
+    expect(storage.getItem(SAVE_KEY)).toBe(before);
+
+    hub.outfitterArmed = true;
+    const armed = markupOf(hub);
+    expect(armed).toContain('This cannot be undone');
+    expect(armed).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Poke Ball, 1× Potion?');
+    expect(armed).toContain('data-pay-confirm');
+    expect(armed).toContain('Keep them');
+  });
+
+  it('disarms the question whenever the payment it was asked about changes', () => {
+    const { hub } = createOutfittedHub();
+    hub.setView('outfitter');
+    hub.choosePayment('radio-mast');
+    hub.togglePayment('pidgey-1');
+    hub.outfitterArmed = true;
+
+    hub.togglePayment('pidgey-1');
+
+    expect(hub.outfitterArmed).toBe(false);
+  });
+
+  it('builds the locker, releases exactly what was named, and protects a third stack from then on', () => {
+    const { hub, storage } = createOutfittedHub();
+    expect(hub.flow.secureItemStacks).toBe(2);
+
+    hub.setView('outfitter');
+    hub.choosePayment('secure-locker-1');
+    hub.togglePayment('pidgey-1');
+    hub.togglePayment('pidgey-2');
+    hub.outfitterArmed = true;
+    hub.confirmPayment();
+
+    expect(statusOf(hub)).toBe('Secure locker I built. Pidgey and Pidgey released.');
+    expect(hub.stash.listPokemon().map(({ id }) => id)).toEqual(['charmander-1', 'bulbasaur-9']);
+    expect(hub.stash.itemCount('poke-ball')).toBe(7);
+    expect(hub.stash.itemCount('potion')).toBe(6);
+    expect(hub.flow.secureItemStacks).toBe(3);
+    expect(markupOf(hub)).toContain('Built ✓');
+    // The upgrade is in storage, not just on screen.
+    expect(new SaveManager(storage).load()?.raidProgress.outfitterUpgrades).toEqual(['secure-locker-1']);
+  });
+
+  it('offers a player with one Pokémon nothing to spend', () => {
+    const { hub } = createHub();
+    for (const stored of hub.stash.listPokemon().slice(1)) {
+      hub.stash.removePokemon(stored.id);
+    }
+    const outfitter = hub as OutfitterInternals;
+
+    hub.setView('outfitter');
+    expect(markupOf(hub)).not.toMatch(/data-outfit="[a-z0-9-]+">/);
+
+    outfitter.choosePayment('radio-mast');
+    const payment = markupOf(hub);
+    expect(payment).toMatch(/data-pay-pokemon="[a-z0-9-]+" disabled/);
+    expect(payment).not.toMatch(/data-pay-pokemon="[a-z0-9-]+">/);
+    expect(payment).not.toContain('data-pay-arm');
+  });
+
+  it('deploys with a second protected Pokémon, the beacon and the mast once they are built', () => {
+    const { hub, start } = createOutfittedHub([
+      'secure-locker-1',
+      'secure-locker-2',
+      'beacon',
+      'radio-mast',
+    ]);
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.togglePokemon('pidgey-1');
+    hub.flow.togglePokemon('pidgey-2');
+    hub.flow.toggleSecurePokemon('charmander-1');
+    hub.flow.toggleSecurePokemon('pidgey-2');
+    hub.setView('deploy');
+    hub.flow.advance();
+    expect(markupOf(hub)).toContain('<b>2/5</b>');
+
+    deploy(hub, start);
+
+    const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+    expect(runSession.stashSecureSlot.pokemonIds).toEqual(['charmander-1', 'pidgey-2']);
+    expect(runSession.secureSlot.pokemon).toHaveLength(2);
+    expect(runSession.outfitterUpgrades).toContain('radio-mast');
+    expect(runSession.plan?.extractionPoints.filter((point) => point.label === 'BEACON')).toMatchObject([
+      { mapId: 'floodplain-relay', unlockAtMs: RAID_DURATION_MS / 2 },
+    ]);
+  });
+
+  it('deploys from a base with nothing built exactly as before', () => {
+    const { hub, start } = createOutfittedHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+    hub.flow.advance();
+
+    deploy(hub, start);
+
+    const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+    expect(runSession.outfitterUpgrades).toEqual([]);
+    expect(runSession.plan?.extractionPoints.some((point) => point.label === 'BEACON')).toBe(false);
+  });
+
+  it('quotes the bay at this base\'s prices and spends the ward bed once', () => {
+    const { hub } = createOutfittedHub(['recovery-bay-1', 'quarantine-ward']);
+    const hurt = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-1')!;
+    const down = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-2')!;
+    hurt.pokemon.takeDamage(3);
+    down.pokemon.takeDamage(down.pokemon.maxHp);
+    const terms = { priceShare: 0.75, wardTreatments: 0 };
+
+    const home = markupOf(hub);
+    expect(home).toContain('ward bed');
+
+    // The bed goes to the worse case. It waives the refill; the revive is still
+    // charged, at the better bay's price.
+    hub.recover(['pidgey-2']);
+    expect(hub.pendingRecoveryMs).toBe(recoveryPrices(0.75).reviveMs);
+
+    // No bed left, so the second treatment is charged in full at the bay's discount.
+    const hurtPriceMs = recoveryCostMs(hurt.pokemon, terms);
+    hub.recover(['pidgey-1']);
+    expect(hub.pendingRecoveryMs).toBe(recoveryPrices(0.75).reviveMs + hurtPriceMs);
+    expect(markupOf(hub)).not.toContain('ward bed');
+  });
+});
+

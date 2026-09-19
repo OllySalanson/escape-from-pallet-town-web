@@ -149,6 +149,16 @@ export interface RunPlan {
   readonly hunter: HunterTuning;
 }
 
+/**
+ * What the base the raid deployed from adds to it. Only the Outfitter's beacon
+ * so far: an exit at the landing itself, sealed until `unlockAtMs`.
+ */
+export interface RunOutfitting {
+  readonly beaconUnlockAtMs?: number;
+}
+
+export const BEACON_EXIT_LABEL = 'BEACON';
+
 export interface RunGenerationContent {
   readonly maps: Readonly<Record<WorldMapId, WorldMapDefinition>>;
   readonly extractionPoints: readonly ExtractionPoint[];
@@ -190,6 +200,8 @@ export function generateRunPlan(
   // The bosses this save has already beaten: which gates stand open, and who
   // is no longer on the map. Empty is a fresh save, with every door shut.
   defeatedBosses: readonly string[] = [],
+  // What the base this raid deployed from adds to it: the Outfitter's beacon.
+  outfitting: RunOutfitting = {},
 ): RunPlan {
   const rng = createSeededRng(seed);
   const insertion = RUN_INSERTIONS[insertionId];
@@ -219,13 +231,10 @@ export function generateRunPlan(
   const walkable = stepDistances(insertionMap.collision, insertion.position);
   const isReachable = (mapId: WorldMapId, position: GridPosition): boolean =>
     mapId !== insertion.mapId || (walkable[position.y]?.[position.x] ?? -1) >= 0;
-  const extractionPoints = generateExtractionPoints(
-    content.extractionPoints,
-    rng,
-    insertion,
-    content.maps,
-    isReachable,
-  );
+  const extractionPoints = [
+    ...generateExtractionPoints(content.extractionPoints, rng, insertion, content.maps, isReachable),
+    ...beaconExit(insertion, content.extractionPoints, outfitting),
+  ];
   const reservedTiles = new Map<WorldMapId, Set<string>>();
   reserve(reservedTiles, insertion.mapId, insertion.position);
   // Every stop of the carried contract is reserved, so seeded loot and roaming
@@ -359,6 +368,51 @@ function generateExtractionPoints(
       ),
     };
   });
+}
+
+/**
+ * The Outfitter's beacon: the landing itself becomes a way out, late.
+ *
+ * It stands on the insertion tile rather than on a tile authored for it, which
+ * is what lets one upgrade serve every map without touching any of them - the
+ * landing is reachable by construction, `mapStructure.test.ts` already keeps
+ * every trainer watch off it, and it is reserved against loot and trainers a
+ * few lines above. It changes a route rather than shortening one: the way home
+ * can be the way you came, but only for a raid that stayed in long enough.
+ *
+ * It carries an authored `elapsed` requirement so the generator's timing
+ * variance passes it through untouched, and consumes no randomness, so a
+ * seed plays the same raid with or without it. A map that already authors an
+ * exit on its landing gets nothing, rather than two exits on one tile.
+ */
+function beaconExit(
+  insertion: RunInsertion,
+  points: readonly ExtractionPoint[],
+  outfitting: RunOutfitting,
+): ExtractionPoint[] {
+  const unlockAtMs = outfitting.beaconUnlockAtMs;
+  if (
+    unlockAtMs === undefined ||
+    !Number.isFinite(unlockAtMs) ||
+    points.some(
+      (point) =>
+        point.mapId === insertion.mapId &&
+        point.position.x === insertion.position.x &&
+        point.position.y === insertion.position.y,
+    )
+  ) {
+    return [];
+  }
+  const opensAtMs = Math.max(0, Math.floor(unlockAtMs));
+  return [
+    {
+      mapId: insertion.mapId,
+      position: { ...insertion.position },
+      label: BEACON_EXIT_LABEL,
+      unlockAtMs: opensAtMs,
+      requirement: { kind: 'elapsed', unlockAtMs: opensAtMs },
+    },
+  ];
 }
 
 /** The set of maps a raid can walk to from its insertion, following warps. */

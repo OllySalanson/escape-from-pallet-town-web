@@ -3,6 +3,7 @@ import {
   Pokemon,
   PokemonParty,
   CHARMANDER,
+  BULBASAUR,
   PIDGEY,
   SQUIRTLE,
   experienceForLevel,
@@ -985,5 +986,219 @@ describe('SaveManager', () => {
     const manager = new SaveManager(null);
     expect(manager.recordDefeatedBosses(['overlook-warden'])).toEqual([]);
     expect(manager.recordReachedInsertion('route-1-overlook')).toBe(false);
+  });
+
+  /** A vault that can afford the first locker: a partner, three catches, spare kit. */
+  function outfittedSave(storage: MemoryStorage, completedContracts: readonly string[] = []): SaveManager {
+    const saves = new SaveManager(storage);
+    const stash = new Stash({
+      items: { 'poke-ball': 9, potion: 7, 'super-potion': 4, 'great-ball': 5, antidote: 3 },
+    });
+    stash.addPokemon(new Pokemon(CHARMANDER, 9), 'partner');
+    stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
+    stash.addPokemon(new Pokemon(PIDGEY, 5), 'pidgey-2');
+    stash.addPokemon(new Pokemon(BULBASAUR, 6), 'bulbasaur-1');
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'charmander',
+      raidProgress: {
+        firstContractExtracted: completedContracts.length > 0,
+        unlockedInsertions: ['floodplain-relay'],
+        completedContracts: [...completedContracts],
+        outfitterUpgrades: [],
+        defeatedBosses: [],
+        reachedInsertions: [],
+      },
+    });
+    return saves;
+  }
+
+  it.each([1, 2, 3, 4, 5])(
+    'opens a version %i save written before the Outfitter with nothing built and no ward bed used',
+    (version) => {
+      const storage = new MemoryStorage();
+      storage.setItem(
+        SAVE_KEY,
+        JSON.stringify({
+          version,
+          party: [],
+          mapId: 'pallet-town',
+          position: { x: 1, y: 1 },
+          items: [],
+          bag: {},
+          stash: { pokemon: [], items: version === 1 ? [] : {} },
+          raidProgress: { firstContractExtracted: true, unlockedInsertions: ['floodplain-relay'] },
+        }),
+      );
+
+      const restored = new SaveManager(storage).load();
+      expect(restored).not.toBeNull();
+      expect(restored?.raidProgress.outfitterUpgrades).toEqual([]);
+      expect(restored?.wardTreatmentsUsed).toBe(0);
+    },
+  );
+
+  it('keeps only upgrades the ladder knows, once each, however the save lists them', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 5,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: {},
+        stash: { pokemon: [], items: {} },
+        raidProgress: {
+          outfitterUpgrades: ['secure-locker-1', 'secure-locker-1', 'gear-tier-9', 7, 'beacon'],
+          defeatedBosses: [],
+          reachedInsertions: [],
+        },
+        wardTreatmentsUsed: -3,
+      }),
+    );
+
+    const restored = new SaveManager(storage).load();
+    expect(restored?.raidProgress.outfitterUpgrades).toEqual(['secure-locker-1', 'beacon']);
+    expect(restored?.wardTreatmentsUsed).toBe(0);
+  });
+
+  it('builds an upgrade out of the named Pokemon and spare supplies, and keeps it across a reload', () => {
+    const storage = new MemoryStorage();
+    const saves = outfittedSave(storage);
+
+    const built = saves.buildOutfitterUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2']);
+    expect(built).toMatchObject({ ok: true, saved: true });
+
+    // A second manager over the same storage is a page reload.
+    const reloaded = new SaveManager(storage).load();
+    expect(reloaded?.raidProgress.outfitterUpgrades).toEqual(['secure-locker-1']);
+    expect(reloaded?.stash.listPokemon().map(({ id }) => id)).toEqual(['partner', 'bulbasaur-1']);
+    expect(reloaded?.stash.itemCount('poke-ball')).toBe(7);
+    expect(reloaded?.stash.itemCount('potion')).toBe(6);
+  });
+
+  it('charges nothing for a refused build, and never builds the same upgrade twice', () => {
+    const storage = new MemoryStorage();
+    const saves = outfittedSave(storage);
+    const before = storage.getItem(SAVE_KEY);
+
+    expect(saves.buildOutfitterUpgrade('secure-locker-1', ['partner', 'pidgey-1'])).toMatchObject({
+      ok: false,
+      refusal: 'pokemon-not-spendable',
+      saved: false,
+    });
+    expect(saves.buildOutfitterUpgrade('secure-locker-2', ['pidgey-1'])).toMatchObject({ ok: false });
+    expect(storage.getItem(SAVE_KEY)).toBe(before);
+
+    expect(saves.buildOutfitterUpgrade('radio-mast', ['pidgey-1'])).toMatchObject({ ok: true });
+    expect(saves.buildOutfitterUpgrade('radio-mast', ['pidgey-2'])).toMatchObject({
+      ok: false,
+      refusal: 'already-built',
+    });
+    expect(saves.load()?.stash.listPokemon().map(({ id }) => id)).toContain('pidgey-2');
+  });
+
+  it('cannot spend the only Pokemon a player has', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash({ items: { antidote: 9, 'poke-ball': 9, potion: 9 } });
+    stash.addPokemon(new Pokemon(PIDGEY, 12), 'only');
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'charmander',
+    });
+
+    expect(saves.buildOutfitterUpgrade('radio-mast', ['only'])).toMatchObject({ ok: false, saved: false });
+    expect(saves.load()?.stash.listPokemon()).toHaveLength(1);
+    expect(saves.load()?.raidProgress.outfitterUpgrades).toEqual([]);
+  });
+
+  it('never takes the kit a wipe would hand straight back', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash({ items: { 'poke-ball': 5, potion: 3, antidote: 9 } });
+    stash.addPokemon(new Pokemon(CHARMANDER, 9), 'partner');
+    stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
+    stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-2');
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      bag: new Bag(),
+      stash,
+      starterSpeciesId: 'charmander',
+    });
+
+    expect(saves.buildOutfitterUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2'])).toMatchObject({
+      ok: false,
+      refusal: 'supplies-short',
+    });
+  });
+
+  it('brings every stack the save protects home from a wipe, not just the first two', () => {
+    const storage = new MemoryStorage();
+    const saves = outfittedSave(storage, [
+      'recover-lost-field-kit',
+      'survey-the-braid',
+      'cordon-ledger',
+    ]);
+    expect(saves.buildOutfitterUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2'])).toMatchObject({ ok: true });
+    const held = saves.load()!.stash.listItems();
+
+    // The ledger's stack and the locker's stack: four protected, one at risk.
+    const brought = [
+      { itemId: 'poke-ball', quantity: 2 },
+      { itemId: 'potion', quantity: 2 },
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ];
+    expect(saves.applyWipeLoss(['bulbasaur-1'], brought, { items: brought.slice(0, 4) })).toBe(true);
+
+    const after = saves.load()!.stash;
+    for (const { itemId } of brought.slice(0, 4)) {
+      expect(after.itemCount(itemId)).toBe(held[itemId]);
+    }
+    expect(after.itemCount('antidote')).toBe(held.antidote - 1);
+  });
+
+  it('brings a second secured Pokemon home from a wipe only once the second locker is built', () => {
+    const wipe = (upgrades: readonly string[]): readonly string[] => {
+      const storage = new MemoryStorage();
+      const saves = outfittedSave(storage);
+      const game = saves.load()!;
+      saves.save({ ...game, raidProgress: { ...game.raidProgress, outfitterUpgrades: upgrades } });
+      saves.applyWipeLoss(['partner', 'pidgey-1', 'pidgey-2'], [], {
+        pokemonIds: ['partner', 'pidgey-1'],
+      });
+      return saves.load()!.stash.listPokemon().map(({ id }) => id);
+    };
+
+    expect(wipe([])).toEqual(['partner', 'bulbasaur-1']);
+    expect(wipe(['secure-locker-1', 'secure-locker-2'])).toEqual(['partner', 'pidgey-1', 'bulbasaur-1']);
+  });
+
+  it('hands the ward bed back only once the raid it was used before has resolved', () => {
+    const storage = new MemoryStorage();
+    const saves = outfittedSave(storage);
+    saves.save({ ...saves.load()!, wardTreatmentsUsed: 1, pendingRecoveryMs: 35_000 });
+
+    // A reload is not a resolution.
+    expect(new SaveManager(storage).load()?.wardTreatmentsUsed).toBe(1);
+    expect(saves.bankRun({ pokemon: [], items: [] })).toBe(true);
+    expect(saves.load()?.wardTreatmentsUsed).toBe(0);
+
+    saves.save({ ...saves.load()!, wardTreatmentsUsed: 1 });
+    expect(saves.applyWipeLoss(['pidgey-1'], [])).toBe(true);
+    expect(saves.load()?.wardTreatmentsUsed).toBe(0);
   });
 });

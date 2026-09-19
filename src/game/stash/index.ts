@@ -1,4 +1,5 @@
 export {
+  BASE_SECURE_SLOT_LIMITS,
   createStartingStash,
   getStarterSpecies,
   MINIMUM_SUPPLIES,
@@ -8,6 +9,7 @@ export {
   type RaidSettlement,
   type RunResult,
   type SecureSlot,
+  type SecureSlotLimits,
   type StarterSpeciesId,
   type StashContents,
   type StashedPokemon,

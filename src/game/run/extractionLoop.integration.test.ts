@@ -68,8 +68,8 @@ describe('extraction loop integration', () => {
         { itemId: 'potion', quantity: 3 },
       ],
     } as const;
-    const secureSlot = { pokemon: starter.pokemon, items: loadout.items };
-    const stashSecureSlot = { pokemonId: starter.id, items: loadout.items };
+    const secureSlot = { pokemon: [starter.pokemon], items: loadout.items };
+    const stashSecureSlot = { pokemonIds: [starter.id], items: loadout.items };
     const manager = new RunManager();
     manager.startRun(loadout, RUN_CONFIG, secureSlot);
     const session = createActiveRunSession(
@@ -211,13 +211,13 @@ describe('extraction loop integration', () => {
     // difference on the ground is only that the secured Pokemon walks away.
     const saves = seedNewPlayer(new MemoryStorage());
     const starter = saves.load()!.stash.listPokemon()[0];
-    const secureSlot = { pokemon: starter.pokemon };
+    const secureSlot = { pokemon: [starter.pokemon] };
     const manager = new RunManager();
     manager.startRun({ party: [starter.pokemon], items: [] }, RUN_CONFIG, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
-      { pokemonId: starter.id },
+      { pokemonIds: [starter.id] },
       [starter.id],
       [],
     );
@@ -249,13 +249,13 @@ describe('extraction loop integration', () => {
     // as it was, not demoted.
     const saves = seedNewPlayer(new MemoryStorage());
     const starter = saves.load()!.stash.listPokemon()[0];
-    const secureSlot = { pokemon: starter.pokemon };
+    const secureSlot = { pokemon: [starter.pokemon] };
     const manager = new RunManager();
     manager.startRun({ party: [starter.pokemon], items: [] }, RUN_CONFIG, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
-      { pokemonId: starter.id },
+      { pokemonIds: [starter.id] },
       [starter.id],
       [],
     );
@@ -342,13 +342,13 @@ describe('extraction loop integration', () => {
     const saves = seedNewPlayer(new MemoryStorage());
     const starter = saves.load()!.stash.listPokemon()[0];
     const loadout = { party: [starter.pokemon], items: [] } as const;
-    const secureSlot = { pokemon: starter.pokemon };
+    const secureSlot = { pokemon: [starter.pokemon] };
     const manager = new RunManager();
     manager.startRun(loadout, RUN_CONFIG, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
-      { pokemonId: starter.id },
+      { pokemonIds: [starter.id] },
       [starter.id],
       [],
     );
@@ -392,8 +392,8 @@ describe('extraction loop integration', () => {
         { itemId: 'potion', quantity: 3 },
       ],
     } as const;
-    const secureSlot = { pokemon: starter.pokemon, items: loadout.items };
-    const stashSecureSlot = { pokemonId: starter.id, items: loadout.items };
+    const secureSlot = { pokemon: [starter.pokemon], items: loadout.items };
+    const stashSecureSlot = { pokemonIds: [starter.id], items: loadout.items };
     const manager = new RunManager();
     manager.startRun(loadout, RUN_CONFIG, secureSlot);
     const session = createActiveRunSession(
@@ -467,8 +467,8 @@ describe('extraction loop integration', () => {
         { itemId: 'potion', quantity: 3 },
       ],
     } as const;
-    const secureSlot = { pokemon: starter.pokemon };
-    const stashSecureSlot = { pokemonId: starter.id };
+    const secureSlot = { pokemon: [starter.pokemon] };
+    const stashSecureSlot = { pokemonIds: [starter.id] };
     const manager = new RunManager();
     manager.startRun(loadout, RUN_CONFIG, secureSlot);
     const session = createActiveRunSession(
@@ -552,13 +552,13 @@ describe('extraction loop integration', () => {
         { itemId: 'potion', quantity: 3 },
       ],
     } as const;
-    const secureSlot = { pokemon: starter.pokemon, items: [loadout.items[1]] };
+    const secureSlot = { pokemon: [starter.pokemon], items: [loadout.items[1]] };
     const manager = new RunManager();
     manager.startRun(loadout, { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS }, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
-      { pokemonId: starter.id, items: [loadout.items[1]] },
+      { pokemonIds: [starter.id], items: [loadout.items[1]] },
       [starter.id],
       loadout.items,
     );
@@ -622,13 +622,13 @@ describe('extraction loop integration', () => {
       party: [starter.pokemon, partner],
       items: [{ itemId: 'poke-ball', quantity: 5 }],
     } as const;
-    const secureSlot = { pokemon: starter.pokemon };
+    const secureSlot = { pokemon: [starter.pokemon] };
     const manager = new RunManager();
     manager.startRun(loadout, { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS }, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
-      { pokemonId: starter.id },
+      { pokemonIds: [starter.id] },
       [starter.id, partnerId],
       loadout.items,
     );
@@ -675,13 +675,13 @@ describe('extraction loop integration', () => {
 
     const secured = [{ itemId: 'super-potion', quantity: 2 }] as const;
     const loadout = { party: [starter.pokemon], items: [...secured] };
-    const secureSlot = { pokemon: starter.pokemon, items: [...secured] };
+    const secureSlot = { pokemon: [starter.pokemon], items: [...secured] };
     const manager = new RunManager();
     manager.startRun(loadout, { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS }, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
-      { pokemonId: starter.id, items: [...secured] },
+      { pokemonIds: [starter.id], items: [...secured] },
       [starter.id],
       loadout.items,
     );
@@ -765,6 +765,7 @@ describe('extraction loop integration', () => {
       // Banking a contract beats no boss and reaches nowhere new.
       defeatedBosses: [],
       reachedInsertions: [],
+      outfitterUpgrades: [],
     });
     expect(saves.load()!.stash.itemCount('super-potion')).toBe(1);
 
