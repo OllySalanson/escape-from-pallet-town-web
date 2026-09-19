@@ -20,6 +20,14 @@ export const ITEM_ICONS = {
   'linen-roll': 'linen-roll',
   scrip: 'scrip',
   'thunder-stone': 'thunder-stone',
+  // One disc, six hues: a machine is drawn in the type colour of the move it
+  // teaches, which is how these games have always told one TM from another.
+  'tm09-bullet-seed': 'tm09-bullet-seed',
+  'tm13-ice-beam': 'tm13-ice-beam',
+  'tm23-iron-tail': 'tm23-iron-tail',
+  'tm28-dig': 'tm28-dig',
+  'tm40-aerial-ace': 'tm40-aerial-ace',
+  'hm06-rock-smash': 'hm06-rock-smash',
   leftovers: 'leftovers',
   'focus-band': 'focus-band',
   'life-orb': 'life-orb',

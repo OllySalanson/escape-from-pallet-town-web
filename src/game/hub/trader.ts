@@ -291,6 +291,25 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     once: false,
   },
   {
+    id: 'barter-hm06',
+    name: 'HM06 Rock Smash',
+    detail:
+      'The one machine that is never used up. It teaches a weak blow that lowers Defense half the time, and eleven of the seventeen can read it - including every starter.',
+    icon: 'hm06-rock-smash',
+    gives: { itemId: 'hm06-rock-smash', quantity: 1 },
+    takes: [
+      { itemId: 'parts-crate', quantity: 1 },
+      { itemId: 'cable-coil', quantity: 1 },
+      { itemId: 'radio-valve', quantity: 1 },
+    ],
+    standing: 'regular',
+    // Once, and once is enough: an HM survives being read, so a second copy
+    // would buy nothing. That is what lets the *reusable* machine be the one
+    // deal on the boat - a TM would be a machine faucet, and the five of those
+    // are found in the field or not at all.
+    once: true,
+  },
+  {
     id: 'barter-life-orb',
     name: 'Life Orb',
     detail:

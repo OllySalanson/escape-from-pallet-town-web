@@ -120,6 +120,10 @@ function refusalMessage(item: ItemDefinition, name: string): string {
     // already drawing both for a different species.
     case 'evolution-stone':
       return `A ${item.displayName.toUpperCase()} cannot be used in a battle.`;
+    // A machine is read in the field, for the same reason: teaching can open the
+    // move chooser, and a battle is no place to be asked what to forget.
+    case 'machine':
+      return `${item.displayName} cannot be read in a battle.`;
     case 'held':
       // The ITEM command only lists medicine, so this is the answer to a
       // question nothing asks - written out so the switch stays exhaustive and

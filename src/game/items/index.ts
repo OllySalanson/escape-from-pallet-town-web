@@ -27,8 +27,10 @@ export {
   ITEMS,
   CURRENCY_ITEM_ID,
   FOUND_ONLY_IDS,
+  MACHINE_ITEM_IDS,
   MATERIAL_IDS,
   isCurrency,
+  isMachine,
   isFoundOnly,
   itemNameFor,
   isMaterial,
@@ -48,3 +50,10 @@ export {
   type ItemId,
   type SupplyItemId,
 } from './items';
+export {
+  canBeTaught,
+  machineForItem,
+  machineForItemId,
+  teachFromMachine,
+  type TeachOutcome,
+} from './teaching';

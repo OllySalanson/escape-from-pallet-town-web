@@ -1,16 +1,21 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import {
+  canBeTaught,
   footprintOf,
   gridCells,
   ITEM_CATEGORY_LABELS,
   ItemCategory,
+  machineForItem,
+  teachFromMachine,
   useFieldItem,
   type Bag,
   type GridPacking,
   type ItemDefinition,
 } from '../items';
-import type { PokemonParty } from '../pokemon';
+import type { Pokemon, PokemonParty } from '../pokemon';
+import { moveChoiceMessage } from '../ui/moveChooser';
+import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { itemIcon } from '../ui/icons';
 import { MenuOverlay, hpBar, pokemonAvatar } from '../ui/MenuOverlay';
 import { bagFocusPreference } from '../ui/menuFocus';
@@ -95,7 +100,7 @@ export class BagScene extends Phaser.Scene {
     const drop = item
       ? `<button class="button" data-drop>Drop one</button>`
       : '';
-    const detail = item ? `<section class="bag-detail"><p class="eyebrow">${ITEM_CATEGORY_LABELS[item.category]}</p><h2>${item.displayName}</h2><p>${item.description}</p><div class="item-count">${this.bag.count(item.id)} carried · ${this.squareLabel(item.id)} each</div>${this.choosingPokemon ? `<h3>Choose a Pokémon</h3><div class="entity-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable" data-target="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${pokemon.currentHp}/${pokemon.maxHp} HP</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('')}</div>` : `<div class="bag-actions"><button class="button primary-button" data-use ${item.effect.type === 'capture-modifier' || item.effect.type === 'material' ? 'disabled' : ''}>${item.effect.type === 'capture-modifier' ? 'Battle use only' : item.effect.type === 'material' ? 'For the Outfitter' : 'Use item'}</button>${drop}</div>`}</section>` : '<section class="bag-detail"><p class="empty-state">Try another pocket.</p></section>';
+    const detail = item ? `<section class="bag-detail"><p class="eyebrow">${ITEM_CATEGORY_LABELS[item.category]}</p><h2>${item.displayName}</h2><p>${item.description}</p><div class="item-count">${this.bag.count(item.id)} carried · ${this.squareLabel(item.id)} each</div>${this.choosingPokemon ? `<h3>Choose a Pokémon</h3><div class="entity-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable" data-target="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${this.targetNote(item, pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('')}</div>` : `<div class="bag-actions"><button class="button primary-button" data-use ${item.effect.type === 'capture-modifier' || item.effect.type === 'material' ? 'disabled' : ''}>${item.effect.type === 'capture-modifier' ? 'Battle use only' : item.effect.type === 'material' ? 'For the Outfitter' : item.effect.type === 'machine' ? 'Read to a Pokémon' : 'Use item'}</button>${drop}</div>`}</section>` : '<section class="bag-detail"><p class="empty-state">Try another pocket.</p></section>';
     this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run supplies</p><h1>Bag</h1></div><p class="stash-count">${this.packLabel()}</p></header><main class="bag-layout">${this.packPanel(item?.id)}<section class="bag-list"><nav class="category-tabs">${CATEGORIES.map((category, index) => `<button class="${index === this.categoryIndex ? 'active' : ''}" data-category="${index}">${ITEM_CATEGORY_LABELS[category]}</button>`).join('')}</nav><div class="entity-list">${this.currentItems.map((entry, index) => `<button class="entity-row selectable ${index === this.selectedItemIndex ? 'selected' : ''}" data-item-index="${index}">${itemIcon(entry.id, entry.displayName)}<div><strong>${entry.displayName}</strong><small>${this.bag.count(entry.id)} carried · ${this.squareLabel(entry.id)}</small></div></button>`).join('') || '<p class="empty-state">Nothing in this pocket.</p>'}</div></section>${detail}</main>${message ? `<p class="menu-status">${message}</p>` : ''}</div>`;
     this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach((button) => button.onclick = () => { this.categoryIndex = Number(button.dataset.category); this.selectedItemIndex = 0; this.renderModernMenu(); });
@@ -106,12 +111,87 @@ export class BagScene extends Phaser.Scene {
       const target = this.party.pokemon[Number(button.dataset.target)];
       const selectedItem = this.selectedItem;
       if (!target || !selectedItem) return;
+      if (machineForItem(selectedItem)) { this.readMachine(selectedItem, target); return; }
       const result = useFieldItem(selectedItem, target);
       audioManager.play(result.used ? 'heal' : 'denied');
-      if (result.used) { this.bag.remove(selectedItem.id); this.onItemUsed(); this.selectedItemIndex = Math.min(this.selectedItemIndex, Math.max(0, this.currentItems.length - 1)); }
+      if (result.used) { this.spend(selectedItem); }
       this.choosingPokemon = false; this.renderModernMenu(result.message);
     });
     this.menuOverlay!.focus(...bagFocusPreference({ choosingPokemon: this.choosingPokemon, itemJustChosen }));
+  }
+
+  /**
+   * What the party row says under the name while a target is being chosen. For
+   * a machine that is not the HP - it is whether this Pokemon can read the disc
+   * at all, because that is the only question the screen is open to answer, and
+   * a refusal a player meets before committing is a refusal they can act on.
+   */
+  private targetNote(item: ItemDefinition, pokemon: Pokemon): string {
+    const machine = machineForItem(item);
+    if (!machine) {
+      return `${pokemon.currentHp}/${pokemon.maxHp} HP`;
+    }
+    if (pokemon.moves.some((known) => known.base === machine.move)) {
+      return `Already knows ${machine.move.name}`;
+    }
+    return canBeTaught(item, pokemon)
+      ? `Can learn ${machine.move.name}`
+      : `Cannot learn ${machine.move.name}`;
+  }
+
+  /**
+   * Reads a disc to one Pokemon.
+   *
+   * The rule is `teachFromMachine`; all this adds is the screen the third
+   * answer needs. A full moveset opens the move chooser from PR #118 - the same
+   * one a level-up opens, because it was written against a Pokemon and a move
+   * for exactly this - with no "decide later" on offer: the disc is in your hand
+   * now, and a queued move riding home with nothing spent would be a TM used up
+   * by a decision the player never made. Nothing is spent unless a move is
+   * actually learned, so backing out of the chooser leaves the disc in the pack.
+   */
+  private readMachine(item: ItemDefinition, target: Pokemon): void {
+    const outcome = teachFromMachine(item, target);
+    if (outcome.kind !== 'choose') {
+      this.settleTeaching(item, outcome.kind === 'learned', outcome.machineIsSpent, outcome.message);
+      return;
+    }
+    openMoveChooser(this, { pokemon: target, incoming: outcome.move, canDefer: false }, (choice) => {
+      const result = target.resolvePendingMove(
+        outcome.move,
+        choice.kind === 'forget' ? choice.index : null,
+      );
+      const forgotten = result?.forgotten ?? null;
+      this.settleTeaching(
+        item,
+        forgotten !== null,
+        forgotten !== null && !outcome.machine.reusable,
+        moveChoiceMessage(target.base.name, outcome.move, forgotten),
+      );
+    });
+  }
+
+  /**
+   * The end of a reading, whichever way it went. The disc leaves the pack only
+   * when a move was learned *and* the machine is used up by it, so an HM and a
+   * refusal both leave the pack as it was.
+   */
+  private settleTeaching(item: ItemDefinition, learned: boolean, spend: boolean, message: string): void {
+    audioManager.play(learned ? 'heal' : 'denied');
+    if (spend) {
+      this.spend(item);
+    } else if (learned) {
+      this.onItemUsed();
+    }
+    this.choosingPokemon = false;
+    this.renderModernMenu(message);
+  }
+
+  /** Takes one of an item out of the pack and keeps the cursor on a row that exists. */
+  private spend(item: ItemDefinition): void {
+    this.bag.remove(item.id);
+    this.onItemUsed();
+    this.selectedItemIndex = Math.min(this.selectedItemIndex, Math.max(0, this.currentItems.length - 1));
   }
 
   /**

@@ -384,6 +384,17 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   // the compiler ask what it is worth instead of a default answering for it.
   'thunder-stone': 1,
   'linen-roll': 1,
+  // Zero on purpose, all six, and they must stay zero. A machine is found in
+  // the field or bartered off the Ferryman, and a board that paid one out every
+  // few raids would turn the one permanent thing a raid can bring home into a
+  // subscription. The board cannot reach them anyway - it draws only from
+  // `outfitterMaterialKinds()` - so these exist to make the compiler ask.
+  'tm09-bullet-seed': 0,
+  'tm13-ice-beam': 0,
+  'tm23-iron-tail': 0,
+  'tm28-dig': 0,
+  'tm40-aerial-ace': 0,
+  'hm06-rock-smash': 0,
   // Zero on purpose, and it must stay zero. Money is found in a raid and lost
   // with the pack; a board that paid it out would be a faucet that repeats for
   // as long as the player keeps banking, which is the one thing the captain's

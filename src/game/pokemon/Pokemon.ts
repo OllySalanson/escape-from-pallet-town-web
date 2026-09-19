@@ -3,6 +3,7 @@ import { Move } from './Move';
 import type { MoveBase } from './MoveBase';
 import type { PokemonBase, PokemonStats } from './PokemonBase';
 import { evolutionFamily, evolutionOnLevel, evolvesInto } from './evolution';
+import { machineMovesFor } from './machines';
 import type { PrimaryStatus } from './battle/status';
 
 export type CombatStats = PokemonStats;
@@ -231,15 +232,21 @@ export class Pokemon {
   /**
    * Sets the moveset and the queue from move names, resolved through this
    * species' whole evolution line (a Bulbasaur-taught move outlives becoming an
-   * Ivysaur, as in the save loader). Names it cannot resolve are ignored, an
-   * empty moveset is refused, and a move already known is never queued, so
-   * corrupt input can only ever be a no-op. Moves that stay keep their PP; new
-   * ones start full.
+   * Ivysaur, as in the save loader) **and through everything the line can be
+   * taught from a machine**, which is the only home a TM move has - nothing
+   * learns one by levelling, so a resolver that read learnsets alone dropped a
+   * taught move on the next load and on every raid settlement. Names it cannot
+   * resolve are ignored, an empty moveset is refused, and a move already known
+   * is never queued, so corrupt input can only ever be a no-op. Moves that stay
+   * keep their PP; new ones start full.
    */
   public restoreMoveset(names: readonly string[], pendingNames: readonly string[]): void {
     const byName = new Map(
       [this.base, ...evolutionFamily(this.base.id)].flatMap((member) =>
-        member.learnset.map((entry) => [entry.move.name, entry.move] as const),
+        [
+          ...member.learnset.map((entry) => entry.move),
+          ...machineMovesFor(member.id),
+        ].map((move) => [move.name, move] as const),
       ),
     );
     const known: MoveBase[] = [];
@@ -266,6 +273,23 @@ export class Pokemon {
 
   public get hasFreeMoveSlot(): boolean {
     return this.moves.length < Pokemon.MAX_MOVE_COUNT;
+  }
+
+  /**
+   * Puts a move into a free slot, at full PP. Nothing is ever displaced: a full
+   * moveset is refused here and the caller queues the move on `pendingMoves`
+   * instead, which is the only road to `resolvePendingMove` and so the only way
+   * a move is ever forgotten.
+   *
+   * @returns Whether it was learned. False for a full moveset and for a move
+   * already known.
+   */
+  public learnMove(move: MoveBase): boolean {
+    if (!this.hasFreeMoveSlot || this.moves.some((known) => known.base === move)) {
+      return false;
+    }
+    this.moves.push(new Move(move));
+    return true;
   }
 
   /**
@@ -320,8 +344,7 @@ export class Pokemon {
 
       // A full moveset never loses a move silently: the new one waits for the
       // player's choice (see `resolvePendingMove`).
-      if (this.hasFreeMoveSlot) {
-        this.moves.push(new Move(entry.move));
+      if (this.learnMove(entry.move)) {
         learned.push(entry.move);
       } else {
         this.pendingMoves.push(entry.move);

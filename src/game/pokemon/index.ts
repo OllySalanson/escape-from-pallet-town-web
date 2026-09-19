@@ -17,12 +17,23 @@ export {
   evolutionOnLevel,
   evolvesInto,
 } from './evolution';
+export {
+  MACHINES,
+  MACHINE_DEFINITIONS,
+  canLearnFromMachine,
+  machineMovesFor,
+  type MachineDefinition,
+  type MachineId,
+} from './machines';
 export { type LearnableMove, PokemonBase, type PokemonBaseInit, type PokemonStats } from './PokemonBase';
 export { PARTY_LIMIT, PokemonParty } from './PokemonParty';
 export { PokemonType } from './PokemonType';
 export {
+  AERIAL_ACE,
   BITE,
   BUBBLE,
+  BULLET_SEED,
+  DIG,
   EMBER,
   FEATHER_DANCE,
   FLAMETHROWER,
@@ -30,9 +41,12 @@ export {
   GUST,
   HEAT_WAVE,
   HYDRO_PUMP,
+  ICE_BEAM,
+  IRON_TAIL,
   METAL_CLAW,
   POISON_POWDER,
   RAZOR_LEAF,
+  ROCK_SMASH,
   SCARY_FACE,
   SCRATCH,
   SING,
