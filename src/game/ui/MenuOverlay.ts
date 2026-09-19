@@ -231,11 +231,52 @@ export class MenuOverlay {
    * can change height - and whenever a pane scrolls or the screen is resized.
    */
   private markScrollCues(): void {
+    const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
     this.root.querySelectorAll<HTMLElement>('.px-scroll').forEach((pane) => {
-      pane.toggleAttribute('data-more', hasMoreBelow(pane));
+      const more = hasMoreBelow(pane);
+      pane.toggleAttribute('data-more', more);
+      if (!more || unit <= 0) {
+        pane.style.removeProperty('--more-cover');
+        return;
+      }
+      const box = pane.getBoundingClientRect();
+      const rows = [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].map((row) => row.getBoundingClientRect());
+      const cover = scrollCoverHeight(box, rows, unit);
+      pane.style.setProperty('--more-cover', `${cover}px`);
     });
   }
 }
+
+/** What a scrolling pane's rows are: the things a cut must never go through the middle of. */
+const SCROLL_ROWS = 'button, .px-row, .px-subheading, .px-empty, p';
+
+/**
+ * How tall the MORE strip on a pane's foot must be so that no row is left half
+ * drawn above it: from the top of the first row the pane's bottom edge (less the
+ * strip's own minimum) runs through, down to the edge, in whole game pixels. A
+ * row cut through its waist - a price with its top half missing, a button with
+ * no lower edge - reads as a fault rather than as "more below", and the strip is
+ * already the cue, so it takes the whole row rather than the bottom of it. A row
+ * taller than half the pane is left to be cut: covering it would hide the pane.
+ */
+export function scrollCoverHeight(
+  pane: { readonly top: number; readonly bottom: number },
+  rows: readonly { readonly top: number; readonly bottom: number }[],
+  unit: number,
+): number {
+  const minimum = MORE_STRIP_UNITS * unit;
+  const line = pane.bottom - minimum;
+  const cut = rows.filter((row) => row.top < line - 0.5 && row.bottom > line + 0.5 && row.top >= pane.top);
+  const top = Math.min(line, ...cut.map((row) => row.top));
+  const cover = pane.bottom - top;
+  if (cover > ((pane.bottom - pane.top) * 3) / 4) {
+    return minimum;
+  }
+  return Math.ceil(cover / unit - 0.001) * unit;
+}
+
+/** Height of the MORE strip in game pixels when nothing is cut: see `.px-scroll[data-more]::after`. */
+const MORE_STRIP_UNITS = 7;
 
 /** Whether a scrolling pane still has content under its bottom edge. Half a pixel is rounding, not content. */
 export function hasMoreBelow(pane: {
