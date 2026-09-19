@@ -72,10 +72,16 @@ describe('world POIs', () => {
   /**
    * Movement has no free turn onto walkable ground, so a landmark can only be
    * faced from beside it when some lane runs *into* that neighbouring tile
-   * pointing at it. The Sluice Wheel has no such lane - it sits between a hedge
-   * and the leat - so the West Culvert it opens had never been openable. Rather
-   * than reshape a signed-off map around an input rule, standing on a landmark
-   * now works it, which is also how loot and contract stops already behave.
+   * pointing at it. On the map Pallet Town first shipped with, the Sluice Wheel
+   * had no such lane - it sat between a hedge and the leat - so the West Culvert
+   * it opens had never been openable. Rather than reshape a signed-off map
+   * around an input rule, standing on a landmark now works it, which is also
+   * how loot and contract stops already behave.
+   *
+   * The redrawn town stands the wheel on the sluice's own stone with a way up
+   * to it, so today no landmark fails the facing rule. The list is still
+   * pinned, empty: a redraw that takes a lane away is told so here, and is
+   * told that standing on the landmark is what keeps it workable.
    */
   it('lets a landmark be worked by standing on it, not only by facing it', () => {
     const facedFromBeside = (poi: (typeof WORLD_POIS)[number]): boolean => {
@@ -88,7 +94,7 @@ describe('world POIs', () => {
     };
 
     expect(WORLD_POIS.filter((poi) => !facedFromBeside(poi)).map((poi) => poi.id))
-      .toEqual(['pallet-sluice-wheel']);
+      .toEqual([]);
     // Every landmark stands on ground the player can reach, so stepping on it
     // is an approach that no map geometry can take away.
     for (const poi of WORLD_POIS) {

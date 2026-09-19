@@ -71,8 +71,8 @@ export const RUN_INSERTIONS = {
     id: 'town-square',
     label: 'Town Square',
     mapId: 'pallet-town',
-    position: { x: 7, y: 6 },
-    description: 'A fenced market square with one gate on each side. Four gates, four different halves of the town.',
+    position: { x: 7, y: 9 },
+    description: 'The market square under the two houses. East for the north field and the mill, south for the green and the allotments - and the leat between you and every way out but one.',
   },
   'route-1': {
     id: 'route-1',
@@ -85,14 +85,14 @@ export const RUN_INSERTIONS = {
     id: 'route-1-overlook',
     label: 'Overlook Landing',
     mapId: 'route-1',
-    position: { x: 30, y: 3 },
-    description: 'Behind the Overlook Gate. A short loop with its own stile out, and the warden\'s spur the only way back to the braid.',
+    position: { x: 27, y: 4 },
+    description: 'On the bank above Oak\'s field station. Its own stile out, and two ways back to the braid: the warden\'s gate, and the steps down into the station yard.',
   },
   'viridian-forest': {
     id: 'viridian-forest',
     label: 'Viridian Forest',
     mapId: 'viridian-forest',
-    position: { x: 7, y: 2 },
+    position: { x: 7, y: 4 },
     description: 'North Landing. Eleven clearings, seventeen trails, and no fast lane anywhere on the map.',
   },
 } as const;
@@ -363,11 +363,19 @@ function generateExtractionPoints(
   const walkable = available.filter(
     (point) => point.mapId === insertion.mapId && isReachable(point.mapId, point.position),
   );
-  const guaranteed =
-    walkable.find((point) => point.requirement === undefined) ??
-    walkable[0] ??
-    available.find((point) => point.mapId === insertion.mapId) ??
-    available[0];
+  // Where the map already authors one - an exit that is always open, in reach -
+  // the promise is kept and nothing is forced. It used to force the first exit
+  // with no authored requirement regardless, and on every map but the
+  // Floodplain that is the *timed* one: the Mill Stair, the Route Outpost and
+  // the Forest Clearing read EXTRACT OPEN at 0:00 on every seed, under signs
+  // that say they open later.
+  const alreadyOpen = walkable.some((point) => point.requirement?.kind === 'always');
+  const guaranteed = alreadyOpen
+    ? undefined
+    : (walkable.find((point) => point.requirement === undefined) ??
+      walkable[0] ??
+      available.find((point) => point.mapId === insertion.mapId) ??
+      available[0]);
   // Exits this raid can walk to now are listed first. The field guide names the
   // first exit on the map, and naming one on the far side of a shut gate would
   // send the player to a door they cannot reach. Order is otherwise authored.

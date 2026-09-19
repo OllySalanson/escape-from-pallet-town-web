@@ -51,6 +51,7 @@ import { SaveManager } from './save/SaveManager';
 import { createStartingStash, Stash } from './stash';
 import { WorldScene } from './scenes/WorldScene';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from './display/stage';
+import { WORLD_MAPS } from './worldMap';
 import {
   CHARACTER_DESIGN_IDS,
   characterDesignAssetPath,
@@ -86,6 +87,16 @@ describe('game start flow', () => {
       frameWidth: 16,
       frameHeight: 32,
     });
+    // Every sheet a shipped map draws from is fetched before the world can ask
+    // for it. All four maps are on the town catalogue now - FireRed ground,
+    // CC0 buildings - so these are the two sheets a raid cannot start without.
+    for (const map of Object.values(WORLD_MAPS)) {
+      for (const source of map.tileset.sources) {
+        expect(image).toHaveBeenCalledWith(source.textureKey, source.imagePath);
+      }
+    }
+    // No shipped map draws from the classic sheet any more, but it is still the
+    // catalogue `worldMap.ts` gives a map that names none, so it is still loaded.
     expect(image).toHaveBeenCalledWith('classicTiles', 'assets/tileset.png');
     // Every registered character design is loaded on the same frame grid and
     // given the same four-facing walk cycle as the shared sheet.
@@ -195,8 +206,9 @@ describe('game start flow', () => {
       }),
     };
     Object.assign(world as unknown as Record<string, unknown>, {
-      currentTile: { x: 5, y: 8 },
-      facing: 'up',
+      // On the market square's paving, facing the guide who stands on it.
+      currentTile: { x: 8, y: 10 },
+      facing: 'right',
       dialogBox: dialog,
       npcSprites: new Map(),
     });
@@ -204,8 +216,8 @@ describe('game start flow', () => {
     (world as unknown as { tryInteract(): void }).tryInteract();
 
     expect(dialog.showMessages).toHaveBeenCalledWith([
-      'Four gates, four different mornings.',
-      'East for the orchard and the mill. South for the sheds and the allotments.',
+      'Two houses, one square, and the water between us and everywhere else.',
+      'East for the field and the mill. South for the sheds and the allotments.',
     ]);
     expect(dialog.visible).toBe(true);
   });

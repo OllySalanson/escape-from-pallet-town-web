@@ -190,4 +190,59 @@ describe('building a map from a sketch and a catalogue', () => {
       expect(layers.ground.tiles.every((row) => row.every((tile) => tile >= 0))).toBe(true);
     }
   });
+
+  /**
+   * A lane that turns a corner is whole on all four sides and missing only a
+   * diagonal. The sheet has a tile for exactly that, and for a whole map's life
+   * it was never drawn: only four neighbours were asked, so the corner came out
+   * as plain fill and the fringe either side of it stopped dead in a notch.
+   */
+  it('turns a path round an inside corner with the corner the sheet draws for it', () => {
+    const { ground } = buildMapLayers(
+      sketch([
+        '......',
+        '.,,,,.',
+        '.,,,,.',
+        '.,,...',
+        '.,,...',
+        '......',
+      ]),
+      FRLG_TILESET,
+    );
+    const earth = FRLG_TILESET.materials.earth.roles;
+    // 2,2 has earth on all four sides and grass only to its south-east.
+    expect(ground.tiles[2][2]).toBe(earth['inner-se']);
+    expect(ground.tiles[2][2]).not.toBe(earth.fill);
+    // And a tile whole on every side, diagonals included, is still plain fill.
+    const wide = buildMapLayers(sketch(['.....', '.,,,.', '.,,,.', '.,,,.', '.....']), FRLG_TILESET);
+    expect(wide.ground.tiles[2][2]).toBe(earth.fill);
+  });
+
+  /**
+   * A ford is a paler reach of the same river. Drawn with a bank against the
+   * deep water either side of it, it read as a pool of its own and cut the
+   * river into three; it is banked where it meets land and nowhere else.
+   */
+  it('draws no bank between a ford and the deep water it crosses', () => {
+    const { ground } = buildMapLayers(
+      sketch([
+        '.......',
+        'WWwwwWW',
+        'WWwwwWW',
+        'WWwwwWW',
+        '.......',
+      ]),
+      FRLG_TILESET,
+    );
+    const ford = FRLG_TILESET.materials.ford.roles;
+    const water = FRLG_TILESET.materials.water.roles;
+    // The ford's west column meets deep water: mid-river it is plain shallows,
+    // and at the banks an edge facing the land, never a corner.
+    expect(ground.tiles[2][2]).toBe(ford.fill);
+    expect(ground.tiles[1][2]).toBe(ford['edge-n']);
+    expect(ground.tiles[3][2]).toBe(ford['edge-s']);
+    // And the river beside it carries on as river.
+    expect(ground.tiles[2][1]).toBe(water.fill);
+    expect(ground.tiles[1][1]).toBe(water['edge-n']);
+  });
 });

@@ -38,8 +38,74 @@ describe('the named districts of a map', () => {
     }
   });
 
-  it('is undefined on a map that names none', () => {
-    expect(districtAt('pallet-town', { x: 5, y: 5 })).toBeUndefined();
+  it('names every map: the arrival plate works wherever a raid can start', () => {
+    const everyMap = [...new Set(Object.values(RUN_INSERTIONS).map((insertion) => insertion.mapId))];
+    expect([...DISTRICTED_MAPS].sort()).toEqual([...everyMap].sort());
+  });
+
+  it('is undefined off the ground a map names', () => {
+    expect(districtAt('pallet-town', { x: -1, y: 5 })).toBeUndefined();
+  });
+
+  /**
+   * The same sentence for the three smaller maps, one table each: every exit,
+   * every landing and every landmark, by the place a player would say it is in.
+   */
+  const placesOn = (mapId: WorldMapId) => {
+    const named = (tile: { x: number; y: number }): string | undefined => districtAt(mapId, tile)?.name;
+    return {
+      exits: Object.fromEntries(
+        EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => [point.label, named(point.position)]),
+      ),
+      landings: Object.fromEntries(
+        Object.values(RUN_INSERTIONS)
+          .filter((insertion) => insertion.mapId === mapId)
+          .map((insertion) => [insertion.label, named(insertion.position)]),
+      ),
+      landmarks: Object.fromEntries(
+        WORLD_POIS.filter((poi) => poi.mapId === mapId).map((poi) => [poi.label, named(poi.position)]),
+      ),
+    };
+  };
+
+  it('Pallet Town: puts every exit, landing and landmark in the place it is remembered as part of', () => {
+    expect(placesOn('pallet-town')).toEqual({
+      exits: { 'SOUTH GATE': 'THE STOCKYARD', 'MILL STAIR': 'THE MILLPOND', 'WEST CULVERT': 'THE FLOOD' },
+      landings: { 'Town Square': 'MARKET SQUARE' },
+      landmarks: { 'TOWN PUMP': 'THE GREEN', 'SLUICE WHEEL': 'THE STOCKYARD' },
+    });
+    // The water belongs to the bank it lands you on: each crossing is already
+    // the south, so the plate changes as the player commits to the leat.
+    expect(districtAt('pallet-town', { x: 7, y: 28 })?.name).toBe('THE FLOOD');
+    expect(districtAt('pallet-town', { x: 13, y: 28 })?.name).toBe('THE STOCKYARD');
+    expect(districtAt('pallet-town', { x: 20, y: 28 })?.name).toBe('THE STOCKYARD');
+  });
+
+  it('Route 1: puts every exit, landing and landmark in the place it is remembered as part of', () => {
+    expect(placesOn('route-1')).toEqual({
+      exits: {
+        'WEST GATE': 'WEST GATE',
+        'ROUTE OUTPOST': 'THE OUTPOST',
+        'STATION RELAY': "OAK'S FIELD STATION",
+        'OVERLOOK STILE': 'THE OVERLOOK',
+      },
+      landings: { 'Route 1': 'ROUTE HEAD', 'Overlook Landing': 'THE OVERLOOK' },
+      landmarks: { "OAK'S FIELD STATION": "OAK'S FIELD STATION" },
+    });
+    // Both of the warden's doors belong to the place they open.
+    for (const gate of gatesForMap('route-1')) {
+      for (const tile of gate.tiles) {
+        expect(`${gate.label}: ${districtAt('route-1', tile)?.name}`).toBe(`${gate.label}: THE OVERLOOK`);
+      }
+    }
+  });
+
+  it('Viridian Forest: puts every exit, landing and landmark in the clearing it is named for', () => {
+    expect(placesOn('viridian-forest')).toEqual({
+      exits: { 'BROOK FORD': 'BROOK HEAD', 'FOREST CLEARING': 'THE CLEARING', 'TOWER STEPS': 'TOWER STEPS' },
+      landings: { 'Viridian Forest': 'NORTH LANDING' },
+      landmarks: { 'FIRE TOWER': 'FIRE TOWER' },
+    });
   });
 
   /**

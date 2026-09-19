@@ -169,14 +169,15 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     ),
   },
   {
-    // The centre ford is the direct line from the allotments to the South Gate,
-    // and Lee stands on it: the fast crossing has a toll, the west and east
-    // fords do not, and they land you in different thirds of the south.
+    // The bridge is the direct line from the allotments to the South Gate, and
+    // Lee stands in the gap in the fence at its foot: the fast crossing has a
+    // toll, the fords either side of it do not, and the three land you in
+    // different thirds of the south.
     mapId: 'pallet-town',
-    position: { x: 15, y: 30 },
+    position: { x: 13, y: 31 },
     facing: 'up',
     fixedPosition: true,
-    introLines: ['HEY, RUNNER!', 'This is the quick ford. Quick costs.', 'Let me see your team!'],
+    introLines: ['HEY, RUNNER!', 'This is the quick way over. Quick costs.', 'Let me see your team!'],
     // Lee is the first authored trainer a new player meets. A Bulbasaur here
     // made the fight a starter lottery at level 7 - 9% for Bulbasaur against
     // 95% for Charmander - because Grass is resisted by the whole early roster.
@@ -189,15 +190,16 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     ),
   },
   {
-    // The third cross-link is the short way between the two roads. June holds
-    // it; the roads still go round her. She was a second RAIDER MAYA with the
+    // The third way across the braid is a gap one tile wide below the middle
+    // field's south door, and June stands in it: she holds the crossing and the
+    // door together, and the roads still go round her. She was a second RAIDER MAYA with the
     // checkpoint's own Pikachu and Pidgey, and a player who beats Maya on the
     // Floodplain and meets her again one map over reads it as a bug. The lead
     // is a Jigglypuff because no other trainer fields one and, at level 7, it
     // fights with the same Tackle and Growl the Pikachu did - a different
     // fight to look at, at the price the route was already measured against.
     mapId: 'route-1',
-    position: { x: 16, y: 20 },
+    position: { x: 16, y: 19 },
     facing: 'down',
     fixedPosition: true,
     design: 'lass',
@@ -216,7 +218,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     // the decision to fight. The party is longer and higher than anything else
     // on the route, which is what makes the door worth coming back for.
     mapId: 'route-1',
-    position: { x: 25, y: 5 },
+    position: { x: 25, y: 7 },
     facing: 'left',
     fixedPosition: true,
     sightRange: 1,

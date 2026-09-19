@@ -246,6 +246,32 @@ describe('run generation', () => {
     }
   });
 
+  /**
+   * The promise of an exit open from the first second is kept by forcing one
+   * open - but only where the map has not already authored one. It used to
+   * force the first exit with no authored requirement regardless, which on
+   * three maps out of four is the timed one: the Mill Stair, the Route Outpost
+   * and the Forest Clearing read EXTRACT OPEN at 0:00 on every seed, under town
+   * signs that say they open later, and a playtest driver told to wait for one
+   * never waited.
+   */
+  it('leaves a timed exit timed wherever the map already has one that is always open', () => {
+    const timed: Readonly<Record<string, string>> = {
+      'town-square': 'MILL STAIR',
+      'route-1': 'ROUTE OUTPOST',
+      'viridian-forest': 'FOREST CLEARING',
+    };
+    for (const [insertionId, label] of Object.entries(timed)) {
+      for (let seed = 1; seed <= SAMPLED_RUNS; seed += 1) {
+        const { extractionPoints } = generateRunPlan(seed, undefined, insertionId as RunInsertionId);
+        const exit = extractionPoints.find((point) => point.label === label)!;
+        expect(`${label} seed ${seed}: ${isOpenAtStart(exit) ? 'open at the start' : 'timed'}`).toBe(
+          `${label} seed ${seed}: timed`,
+        );
+      }
+    }
+  });
+
   it('puts the first contract and its map on a raid the default insertion can complete', () => {
     const plan = generateRunPlan(2024, undefined, 'floodplain-relay', FIRST_CONTRACT);
     const walkable = walkableFrom(plan.insertion.mapId, plan.insertion.position);

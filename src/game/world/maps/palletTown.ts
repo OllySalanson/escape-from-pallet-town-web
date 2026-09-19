@@ -1,276 +1,318 @@
 import { MapSketch } from '../mapGrid';
+import type { FloodTownPropName } from '../tileset/floodTownTileset';
 
 /**
- * Pallet Town - "The Cordon". 32x44, the shipped footprint, not one tile bigger.
+ * Pallet Town - the mill town on the leat.
  *
- * The rule of the map is fences. Water says no absolutely, a hedge says no, and
- * a fence says no *except at the gate* - so the gate is where the decision
- * lives. Tall grass goes inside the plots and never in the lanes, so every lane
- * is fast and clean and every plot costs encounters: the player reads the price
- * off the ground.
+ * 32x44, the shipped footprint and not a tile bigger: dense, not vast. One
+ * water runs through it and is the whole of its shape. The millpond stands in
+ * the east; its race runs south out of it; the race turns west as the leat and
+ * cuts the town in two; and the leat ends in the Flood, the pool in the
+ * south-west that the culvert drains. So the water is the wall between north
+ * and south, the ways over it are the prices of the map, and the sluice at the
+ * head of the leat is what the far end of it answers to.
  *
- * Authored skeleton-first. The map starts solid hedge, lanes are carved as
- * polylines so the network is connected by construction, then plots are cut off
- * them. `approvedDesign.test.ts` pins the result against the approved design.
+ * Seven places:
+ *
+ * - MARKET SQUARE (north-west) - the two houses side by side, as this town has
+ *   always been drawn, and the paved square in front of them. The front door.
+ * - THE NORTH FIELD (north-east) - meadow gone to tall grass round two old
+ *   trees, and the only way round the pond.
+ * - THE MILLPOND (east) - the mill on its west bank, and on the far bank the
+ *   stair cut into the rock: the one way out that never crosses the leat.
+ * - THE GREEN (west) - the town pump, the bench and the oak, under the square.
+ * - THE ALLOTMENTS (middle) - three sheds and their beds gone to seed. The
+ *   ledger is in there, and nothing in there is free.
+ * - THE STOCKYARD (south) - the bridge foot and who holds it, the paddocks, the
+ *   sluice at the east end of the bank, and the road down to the South Gate.
+ * - THE FLOOD (south-west) - the leat's drowned end, its reeds, and the culvert
+ *   mouth on the far shore.
+ *
+ * Three crossings, three prices (`palletTown.test.ts` holds them): the bridge is
+ * the quick way and Scout Lee stands in the one gap at its foot; the west ford
+ * lands in the Flood's reeds, where nothing is free; the east ford is dry all
+ * the way to the gate, and the long way round. A fourth way goes round the head
+ * of the water altogether, past the Mill Stair, and is twice as long again.
+ *
+ * Drawn as character art, one character per tile, in the Floodplain's hand: the
+ * base is solid wood with a tree on a lattice, and every place is cut out of
+ * it. Legend as `floodplainRelay.ts`: `W` deep water, `w` a ford, `.` grass,
+ * the double quote mown turf, `g` tall grass, `,` trodden earth, `P` paving,
+ * `M` stone, `#` hedge, `T` thicket, `C` rock, `F` fence; `t` a tree of the
+ * forest, `o` one that stands in grass, `p` a pine, `b` a tall bush. Earth and
+ * paving are laid two tiles wide or not at all - this sheet draws a lane's edge
+ * on one side of a tile, so a one-tile lane has a fringe down one side and a
+ * bare cut down the other - and what is one tile wide is grass, which has no
+ * edge to get wrong.
  */
-export function sketchPalletTown(): MapSketch {
-  const map = new MapSketch({ width: 32, height: 44, fill: 'T', sealBorder: true });
+export function sketchPalletTown(): MapSketch<FloodTownPropName> {
+  const map = new MapSketch<FloodTownPropName>({
+    width: 32,
+    height: 44,
+    fill: '.',
+    stamps: {
+      t: {
+        prop: 'tree',
+        anchor: [1, 2],
+        ground: '.',
+        bare: 'T',
+        blocks: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]],
+      },
+      o: { prop: 'tree', anchor: [1, 2], ground: '.' },
+      p: { prop: 'pine', anchor: [0, 2], ground: '.', blocks: [[0, -1], [1, -1], [1, 0]] },
+      b: { prop: 'tallBush', anchor: [0, 2], ground: 'T' },
+    },
+  });
 
-  // 1. Town Square and the Market Ring. The ring is a C, not a loop - its
-  // north-west corner is hedge - so the four gates are a real commitment
-  // rather than a rotation.
-  map.lane([[3, 2], [11, 2], [11, 10], [3, 10], [3, 3]]);
-  map.set(3, 2, 'T');
-  map.pen(4, 3, 10, 9, 'P');
-  map.set(8, 3, ',');
-  map.set(6, 9, ',');
-  map.set(4, 5, ',');
-  map.set(10, 7, ',');
-  map.set(7, 6, 'I');
-  map.set(6, 11, 'T');
-
-  // 2. The Well Verge: a pocket off the west gate holding the Town Pump.
-  map.rect(1, 4, 2, 9, '.');
-  map.set(2, 5, 'T');
-  map.set(1, 7, 'T');
-  map.set(2, 8, 'T');
-  map.set(1, 4, '*');
-
-  // 3. The Orchard: four tall-grass aisles with staggered gaps, so crossing it
-  // east is a four-turn zigzag. It is the only way east from the square.
-  map.rect(13, 2, 18, 9, 'g');
-  map.hLine(13, 18, 3, 'T');
-  map.set(17, 3, 'g');
-  map.hLine(13, 18, 5, 'T');
-  map.set(14, 5, 'g');
-  map.hLine(13, 18, 7, 'T');
-  map.set(17, 7, 'g');
-  map.hLine(13, 18, 9, '.');
-  map.set(14, 9, 'T');
-  map.set(16, 9, 'T');
-  map.vLine(12, 2, 10, 'F');
-  map.set(12, 6, ',');
-
-  // 4. The Millpond and its ledges.
-  map.rect(19, 2, 26, 8, 'W');
-  map.set(21, 9, 'W');
-  map.set(22, 9, 'W');
-  map.hLine(19, 20, 9, '.');
-  map.hLine(23, 26, 9, '.');
-
-  // 5. East Walk: a serpentine through the north-east.
-  map.lane(
-    [[27, 9], [27, 8], [28, 8], [28, 6], [27, 6], [27, 4], [28, 4], [28, 2], [30, 2], [30, 4], [29, 4]],
-    '.',
-  );
-  map.lane([[30, 4], [30, 9]], '.');
-  map.set(29, 6, '.');
-  map.set(29, 8, '.');
-
-  // 6. Mill Lane: the east-west artery, broken four times so it is a sequence
-  // of rooms rather than a corridor.
-  map.lane([[13, 10], [30, 10]]);
-  for (const x of [17, 21, 25, 29]) {
-    map.set(x, 10, 'T');
-  }
-  for (const x of [13, 15, 18, 19, 20, 23, 24, 26, 30]) {
-    map.lane([[x, 9], [x, 10]]);
-  }
-
-  // 7. The Sheds: two one-door caches and two two-door shortcuts. Reaching the
-  // Allotments without them costs 35 steps instead of 23.
-  map.lane([[1, 11], [9, 11]]);
-  for (const x of [1, 2, 3, 6]) {
-    map.set(x, 11, 'T');
-  }
-  map.lane([[4, 10], [4, 11]]);
-  map.lane([[5, 11], [5, 15]]);
-  map.lane([[1, 15], [9, 15]]);
-  map.set(1, 15, 'T');
-  map.set(2, 15, 'T');
-  map.pen(1, 12, 4, 14, '.');
-  map.set(4, 13, ',');
-  map.pen(6, 12, 9, 14, '.');
-  map.set(7, 12, ',');
-  map.set(9, 13, ',');
-  map.pen(1, 16, 4, 18, '.');
-  map.set(3, 16, ',');
-  map.pen(6, 16, 9, 18, '.');
-  map.set(7, 16, ',');
-  map.set(7, 18, ',');
-
-  // 8. Chapel Lane: a fast spine, cut once in the middle, so its two halves are
-  // different sides of the Green rather than a detour.
-  map.lane([[10, 11], [10, 19]]);
-  map.set(10, 13, 'T');
-  map.lane([[9, 11], [10, 11]]);
-  map.lane([[9, 15], [10, 15]]);
-
-  // 9. The Green: a fenced paddock with offset cells inside it.
-  map.rect(11, 11, 18, 18, 'F');
-  map.rect(12, 12, 17, 17, 'g');
-  map.hLine(12, 17, 14, 'F');
-  map.set(15, 14, 'g');
-  map.vLine(14, 15, 17, 'F');
-  map.set(14, 16, 'g');
-  map.set(13, 11, ',');
-  map.set(18, 13, ',');
-  map.set(11, 16, ',');
-  map.set(16, 18, ',');
-  map.set(12, 18, ',');
-  map.lane([[13, 10], [13, 11]]);
-
-  // 10. The East Pens.
-  map.lane([[19, 10], [19, 18]]);
-  map.lane([[19, 13], [18, 13]]);
-  map.lane([[19, 15], [30, 15]]);
-  map.set(27, 15, 'T');
-  map.lane([[24, 10], [24, 15]]);
-  map.lane([[30, 10], [30, 15]]);
-  map.set(30, 8, 'T');
-  map.pen(20, 11, 23, 14, 'g');
-  map.set(23, 13, ',');
-  map.pen(25, 11, 28, 14, 'g');
-  map.set(26, 10, ',');
-  map.set(26, 11, ',');
-  map.set(28, 14, ',');
-  map.pen(20, 16, 24, 18, 'g');
-  map.set(20, 17, ',');
-  map.pen(26, 16, 30, 18, 'g');
-  map.set(26, 17, ',');
-  map.set(28, 16, ',');
-
-  // 11. The Allotments: thirteen tall-grass strips with eleven staggered gaps,
-  // and all the caches. Same step count to the ford line as the East Copse and
-  // a completely different kind of walk.
-  map.rect(1, 19, 21, 27, 'F');
-  for (const y of [20, 22, 24, 26]) {
-    map.hLine(1, 20, y, 'g');
-  }
-  for (const [y, xs] of [
-    [20, [6, 14]],
-    [22, [3, 10, 17]],
-    [24, [6, 14]],
-    [26, [3, 10, 17]],
-  ] as const) {
-    for (const x of xs) {
-      map.set(x, y, 'F');
-    }
-  }
-  for (const [y, xs] of [
-    [21, [2, 8, 12, 19]],
-    [23, [2, 5, 9, 13, 18]],
-    [25, [2, 8, 12, 15, 19]],
-  ] as const) {
-    for (const x of xs) {
-      map.set(x, y, 'g');
-    }
-  }
-  for (const x of [7, 10, 12, 16]) {
-    map.set(x, 19, ',');
-  }
-  for (const x of [8, 16]) {
-    map.set(x, 27, ',');
-  }
-  map.set(21, 26, ',');
-
-  // 12. The East Copse: a winding track with no tall grass on it at all - and
-  // no cover either. The Mill Stair opens off its east loop.
-  map.lane([[22, 26], [22, 19], [25, 19], [25, 16]]);
-  map.lane([[25, 19], [25, 21], [27, 21], [27, 24], [25, 24], [25, 27]]);
-  map.lane([[22, 24], [25, 24]]);
-  map.lane([[27, 21], [30, 21]]);
-  map.raw(31, 20, 'X');
-  map.set(30, 20, 'X');
-  map.lane([[27, 24], [29, 24], [29, 26], [27, 26], [25, 26]]);
-
-  // 13. The Leat: water across the whole map with three staggered fords.
-  map.rect(1, 28, 30, 30, 'W');
-  map.lane([[8, 28], [8, 29], [7, 29], [7, 30], [7, 31]]);
-  map.lane([[16, 28], [16, 29], [15, 29], [15, 30], [15, 31]]);
-  map.lane([[25, 28], [25, 29], [24, 29], [24, 30], [24, 31]]);
-
-  // 14. The south bank, the Flood, and the west stairs.
-  map.lane([[2, 31], [30, 31]]);
-  for (const x of [10, 17, 21, 26, 29]) {
-    map.set(x, 31, 'T');
-  }
-  map.rect(1, 33, 5, 40, 'W');
-  map.raw(0, 32, 'X');
-  map.set(1, 32, 'X');
-  map.lane([[1, 32], [2, 32]]);
-  map.lane([[2, 32], [2, 31]]);
-  map.set(28, 31, '*');
-  map.lane([[6, 31], [6, 32], [7, 32], [7, 36], [6, 36], [6, 41], [7, 41], [7, 42]]);
-
-  // 15. The Stockyard: two staggered rows of pens. The only two lateral ways
-  // across it run through tall-grass pens.
-  map.lane([[6, 32], [28, 32]]);
-  for (const x of [11, 17, 23]) {
-    map.set(x, 32, 'T');
-  }
-  map.lane([[8, 37], [28, 37]]);
-  for (const x of [13, 24]) {
-    map.set(x, 37, 'F');
-  }
-  map.lane([[2, 42], [30, 42]]);
-  for (const x of [6, 12, 21, 26]) {
-    map.set(x, 42, 'T');
-  }
-  for (const x of [8, 14, 20, 26]) {
-    map.lane([[x, 32], [x, 37]]);
-  }
-  for (const x of [10, 16, 22, 28]) {
-    map.lane([[x, 37], [x, 42]]);
-  }
-  map.pen(9, 33, 13, 36, 'g');
-  map.set(9, 35, ',');
-  map.pen(15, 33, 19, 36, 'g');
-  map.set(15, 34, ',');
-  map.pen(21, 33, 25, 36, 'g');
-  map.set(21, 35, ',');
-  map.pen(11, 38, 15, 41, 'g');
-  map.set(11, 39, ',');
-  map.set(15, 39, ',');
-  map.pen(17, 38, 21, 41, 'g');
-  map.set(17, 40, ',');
-  map.pen(23, 38, 27, 41, 'g');
-  map.set(23, 39, ',');
-  map.set(27, 39, ',');
-  map.lane([[2, 41], [7, 41]]);
-
-  // 16. South Orchard: the south-east serpentine down to the South Gate.
-  map.lane([
-    [30, 31], [30, 33], [29, 33], [29, 35], [30, 35], [30, 38], [29, 38], [29, 40], [30, 40], [30, 42],
+  // == THE WATER, AND THE WOOD IT RUNS THROUGH ==============================
+  // Laid down first, because everything else is cut out of it: the pond, the
+  // race out of its south side, the leat the race turns into, and the Flood the
+  // leat ends in. One water, in long reaches with square bends - this sheet's
+  // bank is a lip that runs. The race is two tiles across where the leat is
+  // three, because a race is a cut and a leat is a stream, and no tree of the
+  // lattice is left standing where its crown would hang in water.
+  map.draw(0, 0, [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTTTTtTTTTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTWWWWWWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTWWWWWWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTTTTTWWTTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTT',
+    'TTWWWWWWWWWWWWWWWWWWWWWWWWTTTTTT',
+    'TTWWWWWWWWWWWWWWWWWWWWWWWWTTTtTT',
+    'TTWWWWWWWWWWWWWWWWWWWWWWWWTTTTTT',
+    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTWWWWWTtTTtTTtTTtTTtTTtTTtTTTTT',
+    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTWWWWWTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTTTTTTTTTTtTTtTTTTTTTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTTTTtTTtTTTTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ]);
-  map.raw(15, 43, 'X');
-  map.set(15, 42, 'X');
 
-  // 17. Surfacing: dirt on the arteries, grass everywhere else.
-  for (const region of [
-    [1, 11, 9, 18],
-    [27, 2, 30, 9],
-    [19, 9, 26, 9],
-    [22, 19, 30, 27],
-    [27, 31, 30, 42],
-    [1, 41, 7, 42],
-  ] as const) {
-    map.resurface(region, ',', '.');
-  }
+  //            0         1         2         3
+  //            01234567890123456789012345678901
 
-  // 18. Content: the objective, the caches, the landmarks and the townsfolk.
-  map.set(13, 24, 'O');
-  for (const [x, y] of [
-    [2, 13], [2, 17], [21, 12], [29, 17], [1, 20], [1, 26], [10, 34], [18, 39], [24, 39], [29, 25], [13, 2],
-  ] as const) {
-    map.set(x, y, 'L');
-  }
-  map.set(15, 30, 'H');
-  map.set(22, 21, 'H');
-  map.set(9, 4, 'S');
-  map.set(1, 5, 'S');
-  map.set(5, 7, 'N');
-  map.set(19, 9, 'N');
+  // == MARKET SQUARE, AND THE NORTH FIELD ===================================
+  // The two houses stand shoulder to shoulder under the wood with a pine
+  // between them, a planter either side of each door, and the square is what
+  // they look out on: the awning stall, the produce crates, a bench, a big
+  // pot by the road east - one tile square, because the flag that stood there
+  // first was two and, with the planter beside the door, shut the square's
+  // east side completely.
+  // It is paved and it is small - nothing in this town is a field to sprint
+  // across. The road leaves east and turns north into the field, which is tall
+  // grass round two old trees and a pair of rocks, with the way on down the
+  // pond's far bank leaving from its south-east corner.
+  map.draw(0, 3, [
+    '  .....TT.....   .ggg.##.gggg.  ',
+    '  .....TT.....  .ggTTT##gTTTg.  ',
+    '  .....TT.....  .gg...g.g...gg. ',
+    '  ............  ,,g.o.ggg.o.g.. ',
+    '  .....p......  ,,gggg.C.gggg,, ',
+    '  PPPPPPPPPPPP,,,,..ggC.ggg..,, ',
+    '  PPPPPPPPPPPP,,,,.....#.....,, ',
+    '  PPPPPPPPPPPP#              ,, ',
+    '  PPPPPPPPPPPP#    ........ .,, ',
+    '  PPPPPPPPPPPP#..............   ',
+  ]);
+  map.plant(2, 3, 'house');
+  map.plant(9, 3, 'house');
+  map.plant(3, 8, 'planter');
+  map.plant(5, 8, 'planter');
+  map.plant(10, 8, 'planter');
+  map.plant(12, 8, 'planter');
+  map.plant(2, 8, 'barrel');
+  map.plant(12, 9, 'pot');
+  map.plant(2, 10, 'marketStall');
+  map.plant(6, 11, 'produce');
+  map.plant(11, 11, 'bench');
+
+  // == THE GREEN, THE MILL AND ITS POND =====================================
+  // South of the square's hedge: the green, mown, with the pump in its corner,
+  // a bench, and the oak the lane goes round - bushes grown up behind it, so
+  // nobody walks under its crown. The lane steps down two rows on
+  // its way east so it is never one long run, passes the mill's door - sacks
+  // stacked against its west wall - and stops at the towpath. East of the pond
+  // the far bank's path runs down past the stair in the rock, which is the Mill
+  // Stair, and on to the head of the leat: the long way round everything.
+  map.draw(0, 13, [
+    '  ###,,#######......       ,,   ',
+    '  """,,,,,,,,#......       ,,,  ',
+    '  """,,,,,,,,#......        ,,  ',
+    '  #"""""TTT,,#......        ,,  ',
+    '  """"""...,,,,,,,,,        ,,  ',
+    '  .."""".o.,,,,,,,,,      ,,,,  ',
+    '                          ,,... ',
+    '                          ,,... ',
+    '                          ,,... ',
+    '                          ..... ',
+    '                          ..... ',
+    '                            ,,  ',
+    '                            ,,  ',
+    '                            ,,  ',
+    '                          ,,,,  ',
+    '                          ,,    ',
+    '                          ,,    ',
+  ]);
+  map.plant(15, 12, 'barn');
+  map.plant(14, 13, 'sack');
+  map.plant(14, 14, 'sack');
+  map.plant(2, 14, 'fountain');
+  map.plant(5, 17, 'bench');
+  map.plant(28, 19, 'rockStair');
+
+  // == THE ALLOTMENTS =======================================================
+  // Three sheds in a row, each with its bed beside it, and below them the
+  // plots nobody has dug since: tall grass between what is left of their
+  // hedges. It is a garden, so it is nearly regular, and it has gone to seed,
+  // so it is not. The ledger lies in the bed south of the middle shed. The one
+  // gap that leads straight down onto the bridge is two tiles east of it.
+  map.draw(0, 19, [
+    '  ,,...ggg#,,...ggg#...g        ',
+    '  ,,...ggg#,,...ggg#...g        ',
+    '  #....ggg......ggg.....        ',
+    '  ggg.....###..#........        ',
+    '  ggg#.##.ggg...##.g###.        ',
+    '  g#g#..g.ggg#....gg..g.        ',
+    '  ggg..gg.g#g#..#ggg..g.        ',
+    '  ..........    ........        ',
+  ]);
+  map.plant(4, 19, 'hut');
+  map.plant(13, 19, 'hut');
+  map.plant(21, 19, 'hut');
+
+  // == THE LEAT'S THREE CROSSINGS ===========================================
+  // Two fords and a bridge. A ford is the same river running pale over stones,
+  // banked only where it meets land (`joins`, in the catalogue); the bridge is
+  // the town's own, plank-decked, and lands in a fence with one gap in it.
+  map.draw(0, 27, [
+    '       ww           ww          ',
+    '       ww           ww          ',
+    '       ww           ww          ',
+  ]);
+  map.plant(12, 26, 'bridge');
+
+  // == THE SOUTH BANK =======================================================
+  // Each crossing lands in its own third of the south. The west ford comes up
+  // in the Flood's reeds, with the culvert mouth on the pool's far shore. The
+  // bridge comes down into the fence Scout Lee holds the gap in, and the road
+  // from there runs to the South Gate's arch. The east ford lands on the
+  // sluice's stone apron - the hatch at the head of the leat is the Sluice
+  // Wheel - above the stockyard's two paddocks, and its way to the gate road
+  // is the dry lane along the paddocks' south side: the quiet way, and the long
+  // one. The apron is three rows deep because the hatch is two: drawn two deep
+  // it walled the ford off from the sluice, and nothing but a measured route
+  // noticed.
+  map.draw(0, 30, [
+    '       ..gg#        ..MMMMM     ',
+    '       ..ggFF.FFF   ..MMMMM     ',
+    '       ##ggg#,,   FFFFMMMMM#    ',
+    '       gggg.#,,#  gggg.gggg.    ',
+    '       gCgg.#,,,,#gggg.gggg.    ',
+    '       gggC.g,,,,FFF.F.FF.F.    ',
+    '   ....ggg#g###,,#gggg.gg...    ',
+    '   ....g.gg####,,....#..gg.     ',
+    '     ......   #,,......         ',
+    '              .,,.              ',
+    '              .,,.              ',
+    '              .,,.              ',
+    '               ,,               ',
+  ]);
+  map.plant(3, 36, 'culvert');
+  map.plant(14, 39, 'stoneArch');
+  map.plant(23, 30, 'cellarDoors');
+
+
+
+
+
+  // == WHAT GROWS IN THE THICKET ===========================================
+  // The lanes are packed so close that the wood between them is mostly a hedge
+  // thick, and the lattice only fits a broadleaf where three tiles by two are
+  // left standing. Left alone that is a carpet of one round bush. So wherever
+  // the thicket is deep enough it is planted with what fits - a broadleaf off
+  // the lattice, a pine where there are two tiles, a tall bush where there is
+  // one - unevenly, with undergrowth left between. A crown here only ever hangs
+  // over thicket: a crown tile has grass baked into it, so over a road it is a
+  // green square, and over ground anyone walks it hides them. The lattice is
+  // held to the same rule, which is why some of its trees are down to a bush -
+  // and to one more: beside everything the map captions, one band of sky is
+  // left clear for the caption to sit in.
+  map.draw(0, 0, [
+    '                                ',
+    '                                ',
+    'b                               ',
+    '                                ',
+    '                                ',
+    'p      p      p                 ',
+    '                                ',
+    '                               b',
+    'p                               ',
+    '                                ',
+    '                                ',
+    'p                               ',
+    '                               b',
+    '                                ',
+    'p                             p ',
+    '                                ',
+    '                                ',
+    '                                ',
+    '                              p ',
+    '                                ',
+    'p                               ',
+    '                                ',
+    '                                ',
+    'p                               ',
+    '                                ',
+    '                                ',
+    'p                             p ',
+    '                                ',
+    '                                ',
+    'p                               ',
+    '                                ',
+    '                                ',
+    'p                              b',
+    '                                ',
+    '                                ',
+    'p                              b',
+    '                                ',
+    '                                ',
+    '                                ',
+    '                                ',
+    '            t          b       b',
+    '                     b          ',
+    'b                               ',
+    '                                ',
+  ]);
 
   return map;
 }

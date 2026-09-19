@@ -55,6 +55,48 @@ Pokemon going 16 to 1) and the sprites sit half out of frame. Assert on
 `getScene('battle').state`, never on `playerHpText` or a sprite's position, and
 judge either by eye only at real speed.
 
+## Any map, any ending
+
+A fresh save is offered one insertion, the Floodplain's front door. `deploy.mjs`
+is the way in for all three drivers (`raid.mjs`, `tour.mjs`, `whyHidden.mjs`),
+and it goes the way a player does: the game writes its own save, `raidProgress`
+is edited in it, the page is reloaded and the raid is deployed from the lobby
+that save opens on, by clicking the insertion's own row in the loadout.
+
+- `--insertion=id` - `town-square`, `route-1`, `route-1-overlook`,
+  `viridian-forest`, or a Floodplain drop-in. The save says the first contract
+  is banked (which is what unlocks the other maps' front doors) and that the
+  insertion has been stood on (which is what unlocks a drop-in).
+- `--beaten=bossId,..` - those bosses are gone and their gates stand open:
+  `--insertion=route-1-overlook --beaten=overlook-warden`.
+- `--completed=contractId,..` - those contracts are banked, so the board deals
+  the next one: `--completed=survey-the-braid` puts the cordon ledger on Pallet
+  Town and the warden's resupply on Viridian Forest.
+- `--hp=N` - the team came home with no more than N HP each.
+
+`raid.mjs` has two more. `--work=LABEL` (`--work=sluice-wheel`) works a landmark
+before leaving - stood on where it is ground, faced and worked with the interact
+key where it is not - which is the only way an exit a landmark opens is ever
+left by: `--insertion=town-square --work=sluice-wheel --exit=west-culvert`.
+`--fight` stays in every fight instead of running from the wild ones.
+
+Nobody chooses the other two endings, so they are reached sideways. The clock
+runs out on a driver sent to an exit that will not open - `--exit=west-culvert`
+with no `--work` stands beside it for the whole five minutes (stepped, that is
+ten seconds). The last Pokemon is lost by `--hp=1 --fight`. Either way the
+driver reads the defeat's beats through, waits for the report, and goes back to
+base, so every run ends on the lobby it would start the next raid from.
+
+Two things to know before believing a run. A landmark is worked by walking over
+it, so an exit is only sealed for a driver whose road does not cross its
+landmark: check that the road a driver takes does not cross the landmark before
+believing it met the exit sealed. And the dev server reloads the page whenever anyone saves a
+file under `src/`, which takes the raid with it - `raid.mjs` says so rather than
+failing somewhere odd. With another worker editing, play the real-speed pass
+against a snapshot: `npx vite build --outDir "$SCRATCH/dist"` (no
+`VITE_EPTW_TEST_MODE`: that build is in test mode at every URL) and
+`npx vite preview --outDir "$SCRATCH/dist" --port "$FREE_PORT" --strictPort`.
+
 ## Idle costs the machine, so do not idle live
 
 - Thinking or editing with a game page open: `pauseLoop()` (or never resume -

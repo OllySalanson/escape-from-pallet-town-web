@@ -84,40 +84,40 @@ export function extractionCaption(point: ExtractionPoint, isOpen: boolean, elaps
 export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   {
     mapId: 'pallet-town',
-    position: { x: 15, y: 43 },
+    position: { x: 15, y: 42 },
     label: 'SOUTH GATE',
     unlockAtMs: 0,
     requirement: { kind: 'always' },
   },
   {
     mapId: 'pallet-town',
-    position: { x: 31, y: 20 },
+    position: { x: 29, y: 21 },
     label: 'MILL STAIR',
     unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
   },
   {
     mapId: 'pallet-town',
-    position: { x: 0, y: 32 },
+    position: { x: 5, y: 37 },
     label: 'WEST CULVERT',
     unlockAtMs: 0,
     requirement: { kind: 'poi-activated', poiId: 'pallet-sluice-wheel', poiLabel: 'SLUICE WHEEL' },
   },
   {
     mapId: 'route-1',
-    position: { x: 0, y: 26 },
+    position: { x: 3, y: 29 },
     label: 'WEST GATE',
     unlockAtMs: 0,
     requirement: { kind: 'always' },
   },
   {
     mapId: 'route-1',
-    position: { x: 16, y: 31 },
+    position: { x: 16, y: 30 },
     label: 'ROUTE OUTPOST',
     unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
   },
   {
     mapId: 'route-1',
-    position: { x: 31, y: 13 },
+    position: { x: 30, y: 17 },
     label: 'STATION RELAY',
     unlockAtMs: 0,
     requirement: {
@@ -130,7 +130,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     // Behind the Overlook Gate, and open from the first second: a raid that
     // drops in at the Overlook Landing must never depend on a door to get home.
     mapId: 'route-1',
-    position: { x: 31, y: 5 },
+    position: { x: 30, y: 2 },
     label: 'OVERLOOK STILE',
     unlockAtMs: 0,
     requirement: { kind: 'always' },
@@ -150,7 +150,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   },
   {
     mapId: 'viridian-forest',
-    position: { x: 30, y: 8 },
+    position: { x: 29, y: 6 },
     label: 'TOWER STEPS',
     unlockAtMs: 0,
     requirement: { kind: 'poi-activated', poiId: 'forest-fire-tower', poiLabel: 'FIRE TOWER' },

@@ -28,46 +28,46 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'town-sign',
     mapId: 'pallet-town',
     kind: 'sign',
-    position: { x: 9, y: 4 },
+    position: { x: 9, y: 8 },
     facing: 'down',
     dialogLines: [
       'PALLET TOWN - MARKET SQUARE',
-      'One gate on each side. The ring does not join up in the north-west.',
-      'South Gate is always open. Mill Stair opens later. West Culvert needs the sluice.',
+      'East for the north field and the mill. South for the green, the allotments and the leat.',
+      'SOUTH GATE: always open, over the water. MILL STAIR: behind the millpond, later. WEST CULVERT: across the Flood, once the sluice is wound.',
     ],
   },
   {
     id: 'oak-route-board',
     mapId: 'pallet-town',
     kind: 'sign',
-    position: { x: 1, y: 5 },
+    position: { x: 4, y: 14 },
     facing: 'down',
     dialogLines: [
-      'WELL VERGE NOTICE',
-      'The pump is a dead end. Nothing comes through here but you.',
-      'The allotments hold the store. The copse holds nothing and hides you from nothing.',
+      'THE GREEN - PARISH NOTICE',
+      'Three ways over the leat. The west ford lands in the reeds; the bridge is held; the east ford is the quiet one, and the long one.',
+      'The allotments have gone to seed. Whatever was left in them is still in them.',
     ],
   },
   {
     id: 'route-guide',
     mapId: 'pallet-town',
     kind: 'npc',
-    position: { x: 5, y: 7 },
-    facing: 'right',
+    position: { x: 9, y: 10 },
+    facing: 'left',
     dialogLines: [
-      'Four gates, four different mornings.',
-      'East for the orchard and the mill. South for the sheds and the allotments.',
+      'Two houses, one square, and the water between us and everywhere else.',
+      'East for the field and the mill. South for the sheds and the allotments.',
     ],
   },
   {
     id: 'pond-watcher',
     mapId: 'pallet-town',
     kind: 'npc',
-    position: { x: 19, y: 9 },
-    facing: 'up',
+    position: { x: 22, y: 11 },
+    facing: 'down',
     dialogLines: [
       'I could watch the millpond ripple all day.',
-      'Mind the leat down south. Three fords and only one of them is quiet.',
+      'See the stair in the rock over the far bank? That is the quick way out, when they open it.',
     ],
   },
   {
@@ -78,8 +78,34 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     facing: 'down',
     dialogLines: [
       'ROUTE 1 - THE BRAID',
-      'Two roads, four crossings. The roads are quick and bare.',
-      'Every crossing is grass. West Gate is open now; the outpost opens later.',
+      'Two roads, and the meadows between them. The roads are quick and bare; every way across is grass.',
+      'WEST GATE: open now, south-west. ROUTE OUTPOST: south, later. STATION RELAY: east, once the field station is switched on.',
+    ],
+  },
+  // Two of this route's ways out are the whole map away from the Overlook and
+  // cannot see it, so each has a notice that says it is there and who has it -
+  // as the Floodplain's far exits do.
+  {
+    id: 'route-1-west-gate-notice',
+    mapId: 'route-1',
+    kind: 'sign',
+    position: { x: 9, y: 24 },
+    facing: 'down',
+    dialogLines: [
+      'WEST GATE - always open',
+      'The shelf of ground on the bank above Oak\'s field station is the OVERLOOK. It is fenced, and Warden Wren has the gate.',
+      'They say there was a way down the bank into the station yard, before the rock came down.',
+    ],
+  },
+  {
+    id: 'route-1-outpost-notice',
+    mapId: 'route-1',
+    kind: 'sign',
+    position: { x: 18, y: 26 },
+    facing: 'down',
+    dialogLines: [
+      'ROUTE OUTPOST - opens on the signal',
+      'Nobody has been up on the OVERLOOK since the warden shut it. You can see its fence from the field station\'s yard, north-east of here.',
     ],
   },
   {

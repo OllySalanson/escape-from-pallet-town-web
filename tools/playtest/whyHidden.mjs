@@ -3,32 +3,29 @@
 // screen and not drawn: off the view, under the HUD, over map art or a person, under a canopy, or
 // against a caption seated before it. For the seat that only canopy spoils it names the crown tiles.
 //
-//   nice -n 15 node tools/playtest/whyHidden.mjs <dev server url> name:x:y ["CAPTION TEXT"]
+//   nice -n 15 node tools/playtest/whyHidden.mjs <dev server url> name:x:y ["CAPTION TEXT"] [--insertion=id] [--beaten=bossId,..]
 //
 // Guessed at, a missing caption cost three felled trees that changed nothing. Read, the same case
 // turned out to be one's own planting, then a watched tile, then the caption of the gate next door.
 // Runs in the 3x PIXEL_WINDOW on purpose: the 1x window gives the game a smaller stage, and captions
 // that every player sees are reported hidden there.
 import { launchBrowser, PIXEL_WINDOW } from './browser.mjs';
-const [, , base, stop, asked] = process.argv;
+import { GAME, deploy, deployOptions } from './deploy.mjs';
+const [base, stop, asked] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 // A third argument names a caption that IS drawn, to ask why it sits where it does and not in a
 // better seat: `... holt:54:40 "ORCHARD FENCE"`.
 const ASKED = JSON.stringify(asked ?? null);
-const GAME = 'window.__escapeFromPalletTownGame__';
 const url = new URL(base); url.searchParams.set('testmode', 'pixels');
 const browser = await launchBrowser({ window: PIXEL_WINDOW });
 try {
   const page = await browser.openPage('about:blank');
   await page.send('Page.navigate', { url: url.href });
-  const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
   const wait = (ms) => page.evaluate(`${GAME}.stepFrames(${Math.max(1, Math.ceil(ms / 100))})`);
   const until = async (e, what = e) => { for (let i = 0; i < 300; i += 1) { if (await page.evaluate(e)) return; await wait(100); } throw new Error(`never saw ${what}`); };
   const press = async (code) => { await page.keyDown(code); await wait(60); await page.keyUp(code); };
   const click = async (text) => { await until(`(() => { const b = [...document.querySelectorAll('button')].find((b) => b.innerText.toLowerCase().includes(${JSON.stringify(text.toLowerCase())}) && !b.disabled); if (!b) return false; b.click(); return true; })()`, `button "${text}"`); await wait(350); };
-  await page.waitFor(sceneIs('title')); await page.evaluate(`${GAME}.pauseLoop()`);
-  await press('Space'); await until(sceneIs('starter'));
-  for (const label of ['Confirm Bulbasaur', 'Start a raid', 'Bulbasaur', 'Review & deploy', 'Enter the raid']) await click(label);
-  await until(sceneIs('world')); await wait(600);
+  await deploy(page, url.href, { press, click, until, paused: true, ...deployOptions(process.argv.slice(2)) });
+  await wait(600);
   for (let i = 0; i < 12; i += 1) { await press('Space'); await wait(200); }
   const [name, x, y] = stop.split(':');
   await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const off = w.player.y - w.currentTile.y * 16; w.currentTile = { x: ${x}, y: ${y} }; w.setPlayerPosition(${x} * 16, ${y} * 16 + off); })()`);

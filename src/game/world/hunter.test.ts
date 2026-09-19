@@ -133,11 +133,23 @@ describe('chooseHunterPursuitStep', () => {
 
   it('keeps closing on a player who steps back and forth on the spot', () => {
     const { bounds, isBlocked } = mapBlocker('pallet-town');
-    let hunter = { x: 10, y: 11 };
+    // The hunter on the north bank of the leat, between the bridge and the east
+    // ford; the player pacing the road down to the South Gate, across the
+    // water. The two crossings are the same walk from here, so every pace the
+    // player takes changes which of them is the short way round - and a pursuit
+    // that answered each pace by turning for the other crossing would walk the
+    // bank for ever. What the tiles mean is asserted, so a redrawn town fails
+    // here saying so rather than leaving this test strolling down an open road.
+    let hunter = { x: 18, y: 26 };
     const patrol = [
-      { x: 5, y: 2 },
-      { x: 6, y: 2 },
+      { x: 16, y: 36 },
+      { x: 16, y: 37 },
     ];
+    const [toTheBridge, toTheFord] = patrol.map(
+      (player) => chooseHunterPursuitStep(hunter, player, bounds, isBlocked)!,
+    );
+    expect(toTheBridge.x).toBeLessThan(hunter.x);
+    expect(toTheFord.x).toBeGreaterThan(hunter.x);
 
     for (let step = 0; step < 40; step += 1) {
       const player = patrol[step % patrol.length];
@@ -211,12 +223,18 @@ describe('chooseHunterPursuitStep', () => {
 
   it('is deterministic for the same map, hunter and player positions', () => {
     const { bounds, isBlocked } = mapBlocker('pallet-town');
-    const first = findHunterPursuitPath({ x: 15, y: 5 }, { x: 8, y: 18 }, bounds, isBlocked);
+    // From the North Field to the Green: close together on the map, and never a
+    // straight walk, because the square and its hedges stand between them.
+    const hunter = { x: 16, y: 5 };
+    const player = { x: 7, y: 16 };
+    const first = findHunterPursuitPath(hunter, player, bounds, isBlocked);
 
+    // A real route, or the same nothing five times over would pass this too.
+    expect(isBlocked(hunter)).toBe(false);
+    expect(isBlocked(player)).toBe(false);
+    expect(first.length).toBeGreaterThan(Math.abs(hunter.x - player.x) + Math.abs(hunter.y - player.y));
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      expect(findHunterPursuitPath({ x: 15, y: 5 }, { x: 8, y: 18 }, bounds, isBlocked)).toEqual(
-        first,
-      );
+      expect(findHunterPursuitPath(hunter, player, bounds, isBlocked)).toEqual(first);
     }
   });
 

@@ -44,6 +44,14 @@ npx vite-node tools/tileset/renderMap.mts -- all maps.png 2 --grid --content
 npx vite-node tools/tileset/mapReport.mts -- floodplain-relay --runs --clashes
 ```
 
+```sh
+# After cutting a map out of the forest: what to plant where the wood is only a
+# hedge thick, and which crowns then hang where one must not - over a road, over
+# ground somebody walks, or over the seat a caption needs.
+npx vite-node tools/tileset/plantThicket.mts -- pallet-town
+npx vite-node tools/tileset/crowns.mts -- pallet-town
+```
+
 `renderMap` reads the real `WORLD_MAPS` through the real layer builder, so what
 it prints is what the game prints - of the *ground*. It draws no captions, no
 watch shading, no gate barricades and no drop-in marks, and it cannot show what

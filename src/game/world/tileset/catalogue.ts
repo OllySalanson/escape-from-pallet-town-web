@@ -74,6 +74,14 @@ export interface MaterialTiles {
   readonly roles: Partial<Record<TileRole, number>>;
   /** Drawn on the overlay layer over whatever ground is beneath it. */
   readonly overlay?: boolean;
+  /**
+   * Other materials this one runs into without drawing an edge. A sheet's
+   * shallows are drawn with a bank round them, and a bank is right against
+   * land and wrong against the deep water the shallows are part of: a ford
+   * across a river came out as a pool of its own with a lip down both sides,
+   * and the river either side of it as two more.
+   */
+  readonly joins?: readonly Material[];
   /** Multiplied into the tile when drawn, the way Phaser tints. */
   readonly tint?: number;
 }

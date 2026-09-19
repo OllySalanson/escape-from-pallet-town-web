@@ -198,6 +198,13 @@ class MemoryStorage implements StorageLike {
 
 const GATE = WORLD_GATES.find((gate) => gate.mapId === 'route-1')!;
 const GATE_TILE = GATE.tiles[0];
+/**
+ * Every door the same boss holds. The Overlook's warden has two - the gate off
+ * the east road, and the steps down the bank into the station yard - and one
+ * won fight opens both.
+ */
+const BOSS_GATES = WORLD_GATES.filter((gate) => gate.bossId === GATE.bossId);
+const BOSS_GATE_TILES = BOSS_GATES.flatMap((gate) => gate.tiles);
 const BOSS = bossEncounters(createRunTrainerEncounters()).find(
   (boss) => boss.bossId === GATE.bossId,
 )!;
@@ -251,7 +258,7 @@ describe('a boss-held gate in a live raid', () => {
     new SaveManager(storage).save({
       party: new PokemonParty([]),
       mapId: 'pallet-town',
-      position: { x: 7, y: 6 },
+      position: { x: 7, y: 9 },
       raidProgress: { ...DEFAULT_RAID_PROGRESS, unlockedInsertions: ['floodplain-relay', 'route-1'] },
     });
   });
@@ -265,8 +272,11 @@ describe('a boss-held gate in a live raid', () => {
     attachSceneStubs(scene);
     scene.create(deploy('route-1').data);
 
-    expect(internalsOf(scene).isBlocked(GATE_TILE)).toBe(true);
-    expect(internalsOf(scene).isBlockedForHunter(GATE_TILE)).toBe(true);
+    expect(BOSS_GATE_TILES).toContainEqual(GATE_TILE);
+    for (const tile of BOSS_GATE_TILES) {
+      expect(internalsOf(scene).isBlocked(tile)).toBe(true);
+      expect(internalsOf(scene).isBlockedForHunter(tile)).toBe(true);
+    }
     // The boss is a body in the lane as well, like any trainer.
     expect(internalsOf(scene).isBlocked(BOSS.position)).toBe(true);
     expect(spoken).toEqual([]);
@@ -281,11 +291,17 @@ describe('a boss-held gate in a live raid', () => {
     const beside = { x: BOSS.position.x - 1, y: BOSS.position.y };
     scene.create(returnFromWinning(data, BOSS.trainer.id, beside));
 
-    expect(internalsOf(scene).isBlocked(GATE_TILE)).toBe(false);
-    expect(internalsOf(scene).isBlockedForHunter(GATE_TILE)).toBe(false);
+    for (const tile of BOSS_GATE_TILES) {
+      expect(internalsOf(scene).isBlocked(tile)).toBe(false);
+      expect(internalsOf(scene).isBlockedForHunter(tile)).toBe(false);
+    }
     // The boss has gone: the tile they held is lane again.
     expect(internalsOf(scene).isBlocked(BOSS.position)).toBe(false);
-    expect(spoken).toEqual([[`${GATE.label} is open - and stays open on every raid from now on.`]]);
+    // Both doors, named in one line and said once - not a line per door.
+    expect(BOSS_GATES.map((gate) => gate.label)).toEqual(['OVERLOOK GATE', 'OVERLOOK STEPS']);
+    expect(spoken).toEqual([
+      ['OVERLOOK GATE and OVERLOOK STEPS are open - and stay open on every raid from now on.'],
+    ]);
     expect(new SaveManager(storage).load()!.raidProgress.defeatedBosses).toEqual([GATE.bossId]);
 
     // Every later battle return carries the same beaten id. The door is already
@@ -363,7 +379,7 @@ describe('a drop-in point in a live raid', () => {
     new SaveManager(storage).save({
       party: new PokemonParty([]),
       mapId: 'pallet-town',
-      position: { x: 7, y: 6 },
+      position: { x: 7, y: 9 },
       raidProgress: { ...DEFAULT_RAID_PROGRESS, unlockedInsertions: ['floodplain-relay', 'route-1'] },
     });
   });
