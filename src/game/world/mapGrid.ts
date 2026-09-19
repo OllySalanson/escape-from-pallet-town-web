@@ -100,6 +100,14 @@ export interface PropStamp<PropName extends string = string> {
    * blocks nothing, and one hanging over a lane is what a wood's edge looks like.
    */
   readonly blocks?: readonly (readonly [number, number])[];
+  /**
+   * What the letter's tile goes back to when a cut takes the landmark away. A
+   * forest tree stands on a tile of grass in a sea of thicket; take the tree
+   * and leave the grass, and the wood has a one-tile hole in it that nobody
+   * drew. Left out, the tile stays as `ground` - right for an orchard tree,
+   * which stood in grass to begin with.
+   */
+  readonly bare?: TerrainChar;
 }
 
 export interface MapSketchOptions<PropName extends string = string> {
@@ -135,6 +143,8 @@ export class MapSketch<PropName extends string = string> {
   private readonly stamped = new Map<string, PlantedProp<PropName>>();
   /** For each tile a stamped landmark blocks, the letters of the landmarks that do. */
   private readonly blockedBy = new Map<string, Set<string>>();
+  /** What each stamped letter's tile reverts to if its landmark is cut away. */
+  private readonly bareUnder = new Map<string, TerrainChar>();
 
   public constructor(options: MapSketchOptions<PropName>) {
     this.width = options.width;
@@ -146,6 +156,9 @@ export class MapSketch<PropName extends string = string> {
         throw new Error(`'${char}' cannot be a stamp: it already means something in a drawing`);
       }
       materialFor(stamp.ground);
+      if (stamp.bare !== undefined) {
+        materialFor(stamp.bare);
+      }
     }
     materialFor(options.fill);
     this.terrain = Array.from({ length: this.height }, () =>
@@ -184,7 +197,11 @@ export class MapSketch<PropName extends string = string> {
       // And so does ground cut to be walked under any tile it blocks.
       if (!isSolidTerrain(char)) {
         for (const letter of this.blockedBy.get(`${x},${y}`) ?? []) {
-          this.stamped.delete(letter);
+          const bare = this.bareUnder.get(letter);
+          if (this.stamped.delete(letter) && bare !== undefined) {
+            const [lx, ly] = letter.split(',').map(Number);
+            this.terrain[ly][lx] = bare;
+          }
         }
         this.blockedBy.delete(`${x},${y}`);
       }
@@ -239,6 +256,9 @@ export class MapSketch<PropName extends string = string> {
             x: x - stamp.anchor[0],
             y: y - stamp.anchor[1],
           });
+          if (stamp.bare !== undefined) {
+            this.bareUnder.set(`${x},${y}`, stamp.bare);
+          }
           for (const [dx, dy] of stamp.blocks ?? []) {
             const tile = `${x + dx},${y + dy}`;
             const letters = this.blockedBy.get(tile) ?? new Set<string>();

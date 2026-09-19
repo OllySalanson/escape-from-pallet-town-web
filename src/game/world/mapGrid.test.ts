@@ -83,6 +83,26 @@ describe('stamping landmarks into a drawing', () => {
       expect(map.props()).toHaveLength(2);
     });
 
+    /**
+     * A forest tree stands on one tile of grass in a sea of thicket. Taking the
+     * tree and leaving the grass put a walkable hole in the wood wherever a cut
+     * passed - found as a scatter of one-tile stranded pieces of map.
+     */
+    it('gives the tile back to what the landmark stood in', () => {
+      const map = new MapSketch<'tree'>({
+        width: 7,
+        height: 5,
+        fill: 'T',
+        stamps: {
+          t: { prop: 'tree', anchor: [1, 2], ground: '.', bare: 'T', blocks: [[1, 0]] },
+        },
+      }).draw(0, 0, ['TTTTTTT', 'TTTTTTT', 'TTTtTTT', 'TTTTTTT', 'TTTTTTT']);
+      expect(map.terrainAt(3, 2)).toBe('.');
+      map.draw(4, 2, [',']);
+      expect(map.props()).toEqual([]);
+      expect(map.terrainAt(3, 2)).toBe('T');
+    });
+
     it('leaves it standing when the lane passes clear of it', () => {
       const map = woods().draw(5, 0, [',', ',', ',', ',', ',']);
       expect(map.props()).toHaveLength(1);
