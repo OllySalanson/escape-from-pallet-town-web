@@ -634,6 +634,10 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    if (this.tryExtractWhereStanding()) {
+      return;
+    }
+
     if (this.isInteractionPressed()) {
       this.tryInteract();
       return;
@@ -2349,20 +2353,24 @@ export class WorldScene extends Phaser.Scene {
     return `HUNTER FORECAST: trail enters this area in about ${seconds}s. Waiting for a timed exit may cost you.`;
   }
 
+  /** The exit the player is standing on, if this raid offers one there. */
+  private exitUnderPlayer(): ExtractionPoint | undefined {
+    if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun) {
+      return undefined;
+    }
+    return this.extractionPointsForCurrentMap().find(
+      (candidate) =>
+        candidate.position.x === this.currentTile.x && candidate.position.y === this.currentTile.y,
+    );
+  }
+
   /**
    * @returns Whether this step ended the raid, or was spent on a locked exit,
    *   so the caller stops rather than rolling anything else into the same tick.
    */
   private tryExtract(): boolean {
-    if (!this.runSession || this.runSession.manager.phase !== RunPhase.InRun) {
-      return false;
-    }
-
-    const point = this.extractionPointsForCurrentMap().find(
-      (candidate) =>
-        candidate.position.x === this.currentTile.x && candidate.position.y === this.currentTile.y,
-    );
-    if (!point) {
+    const point = this.exitUnderPlayer();
+    if (!point || !this.runSession) {
       return false;
     }
 
@@ -2374,6 +2382,36 @@ export class WorldScene extends Phaser.Scene {
       return true;
     }
 
+    this.extractThrough(point);
+    return true;
+  }
+
+  /**
+   * An exit that opens under the player takes them, exactly as stepping onto it
+   * open would have. Waiting on a timed exit is the natural thing to do - its
+   * locked line counts the seconds down - and extraction used to be asked only
+   * when a step finished, so a raid was lost to the clock by someone standing on
+   * the Ferry Dock under a green EXTRACT OPEN. It is the rule for every exit
+   * rather than a timer's special case: the Outfitter's beacon opens on the
+   * insertion tile, and a battle can hand the raid back on one. `update()` asks
+   * only while the player is at rest with nothing on screen to read, so the
+   * locked line is never talked over.
+   *
+   * @returns Whether the raid ended.
+   */
+  private tryExtractWhereStanding(): boolean {
+    const point = this.exitUnderPlayer();
+    if (!point || !this.isExtractionOpen(point)) {
+      return false;
+    }
+    this.extractThrough(point);
+    return true;
+  }
+
+  private extractThrough(point: ExtractionPoint): void {
+    if (!this.runSession) {
+      return;
+    }
     this.runSession.manager.resolveEscape();
     this.destroyRunTimerHud();
     this.cameras.main.flash(240, 134, 239, 172, false);
@@ -2448,7 +2486,6 @@ export class WorldScene extends Phaser.Scene {
         saved: contractResult.saved,
       }),
     );
-    return true;
   }
 
   /**

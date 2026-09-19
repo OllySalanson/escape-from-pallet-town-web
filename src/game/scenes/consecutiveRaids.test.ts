@@ -335,6 +335,69 @@ describe('two raids in a row on one WorldScene instance', () => {
   });
 
   /**
+   * Playtest 4, bug 2: a stranger walked to the Ferry Dock, read "OPENS IN 40s",
+   * stood on it while the caption turned to EXTRACT OPEN, kept standing, and lost
+   * the raid to the clock. Extraction was only asked when a step finished.
+   */
+  it('takes a player who is standing on an exit when it opens', () => {
+    const controls = makeControls();
+    const scene = new WorldScene();
+    attachSceneStubs(scene, controls);
+    const manager = new RunManager();
+    const session = startRaid(scene, manager, 'floodplain-relay', 1);
+    const dock = session.plan!.extractionPoints.find((point) => point.label === 'FERRY DOCK')!;
+    const opensAtMs = (dock.requirement as { unlockAtMs: number }).unlockAtMs;
+    const internals = scene as unknown as {
+      currentTile: { x: number; y: number };
+      dialogBox: { visible: boolean };
+      tryExtract(): boolean;
+    };
+
+    // The briefing is read, and the step onto the dock is spent on its locked line.
+    internals.dialogBox.visible = false;
+    internals.currentTile = { ...dock.position };
+    expect(internals.tryExtract()).toBe(true);
+    expect(manager.phase).toBe(RunPhase.InRun);
+    expect(internals.dialogBox.visible).toBe(true);
+    internals.dialogBox.visible = false;
+
+    // Standing still, a frame at a time, until the signal.
+    for (let elapsedMs = 0; elapsedMs < opensAtMs - 1_000; elapsedMs += 100) {
+      scene.update(0, 100);
+    }
+    expect(manager.phase).toBe(RunPhase.InRun);
+    for (let frame = 0; frame < 20; frame += 1) {
+      scene.update(0, 100);
+    }
+    expect(manager.phase).toBe(RunPhase.Escaped);
+  });
+
+  it('does not take a player off an open exit while they are still reading', () => {
+    const controls = makeControls();
+    const scene = new WorldScene();
+    attachSceneStubs(scene, controls);
+    const manager = new RunManager();
+    const session = startRaid(scene, manager, 'floodplain-relay', 1);
+    const dock = session.plan!.extractionPoints.find((point) => point.label === 'FERRY DOCK')!;
+    const internals = scene as unknown as {
+      currentTile: { x: number; y: number };
+      dialogBox: { visible: boolean };
+      advanceRunClock(deltaMs: number): void;
+    };
+
+    internals.dialogBox.visible = false;
+    internals.currentTile = { ...dock.position };
+    internals.advanceRunClock(60_000);
+    internals.dialogBox.visible = true;
+    scene.update(0, 100);
+    expect(manager.phase).toBe(RunPhase.InRun);
+
+    internals.dialogBox.visible = false;
+    scene.update(0, 100);
+    expect(manager.phase).toBe(RunPhase.Escaped);
+  });
+
+  /**
    * Playtest 3, D4: the raid chip already read 4:58 while the first "ARROW KEYS
    * / WASD" box was still typing. A box the raid raises on its own first frame
    * is not billed; the clock starts when the player can first act.
