@@ -43,161 +43,148 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     height: 64,
     fill: '.',
     stamps: {
-      t: { prop: 'tree', anchor: [1, 2], ground: '.' },
-      p: { prop: 'pine', anchor: [0, 2], ground: '.' },
+      t: {
+        prop: 'tree',
+        anchor: [1, 2],
+        ground: '.',
+        blocks: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]],
+      },
+      p: { prop: 'pine', anchor: [0, 2], ground: '.', blocks: [[0, -1], [1, -1], [1, 0]] },
     },
   });
 
-  // == THE RIVER ===========================================================
-  // Laid down first, because everything else is drawn against it. Long reaches
-  // and square bends: this sheet's bank is a lip that runs, and a shore drawn
-  // as a staircase reads as a staircase.
+  // == THE RIVER, AND THE FOREST IT RUNS THROUGH ============================
+  // Laid down first, because everything else is cut out of it. The river runs
+  // in long reaches with square bends - this sheet's bank is a lip that runs,
+  // and a shore drawn as a staircase reads as a staircase. Everything that is
+  // not river is wood: thicket, with a tree on every third column of every
+  // second row, as this kind of forest is planted. So a district is carved,
+  // not built - what nobody cut stays a wall, and no two pieces of map can
+  // meet along a seam that turns out to be a corridor.
   map.draw(0, 0, [
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T.......................................WWW....................T',
-    'T..........................WWWWWWWWWWWWWWWW....................T',
-    'T..........................WWWWWWWWWWWWWWWW....................T',
-    'T..........................WWWWWWWWWWWWWWWW....................T',
-    'T..........................WWW..........WWW....................T',
-    'T..........................WWW..........WWW.........WWWWWWW....T',
-    'T..........................WWW..........WWW.........WWWWWWW....T',
-    'T..........................WWW..........WWWWWWWWWWWWWWWWWWW....T',
-    'T..........................WWW..........WWWWWWWWWWWWWWWWWWW....T',
-    'T..........................WWW......................WWWWWWW....T',
-    'T..........................WWW......................WWWWWWW....T',
-    'T..........................WWW......................WWWWWWW....T',
-    'T..........................WWW.................................T',
-    'T..........................WWW.................................T',
-    'T..........................WWW.................................T',
-    'T..........................WWW.................................T',
-    'T..................WWWWWWWWWWWWWWWWWWWWWW......................T',
-    'T..................WWWWWWWWWWWWWWWWWWWWWW......................T',
-    'T..................WWWWWWWWWWWWWWWWWWWWWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWW................WWW......................T',
-    'T..................WWWWWWWWWWWWWWWWWWWWWW......................T',
-    'T..................WWWWWWWWWWWWWWWWWWWWWW......................T',
-    'T..................WWWWWWWWWWWWWWWWWWWWWW......................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
-    'T.............................WWW..............................T',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWWWWWWWWWWWWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWWWWWWWWWWWWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWWWWWWWWWWWWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTTTTTTTTTTWWWTTTtTTtTTWWWWWWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTWWWTTTTTTTTTWWWWWWWTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTWWWWWWWWWWWWWWWWWWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTWWWWWWWWWWWWWWWWWWWTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTTTTTTTTTTTTTWWWWWWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTWWWWWWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTTTTTTTTTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWWWWWWWWWWWWWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWWWWWWWWWWWWWWWWWWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWWWWWWWWWWWWWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTTTTTTTTTTTTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWWWWWWWWWWWWWWWWWWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWWWWWWWWWWWWWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWWWWWWWWWWWWWWWWWWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTTTTTTTTTTTTWWWTTTTTTTTTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ]);
 
-  // == THE WOODS ROUND IT ==================================================
-  // A tree's crown does not block, so the outermost ring stays thicket under
-  // the crowns: the edge is sealed by what it is made of, not by where a trunk
-  // happens to fall.
-  map.draw(0, 1, [
-    ' ......................................T   ....................T',
-    ' t..t..t..t..t..t..t..t..t..t..t..t..t.T   .t..t..t..t..t..t..t.',
-  ]);
-  map.draw(0, 61, [
-    ' .............................   ..............................T',
-    ' t..t..t..t..t..t..t..t..t..t.   .t..t..t..t..t..t..t..t..t..t.T',
-  ]);
-  map.draw(1, 3, [
-    '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't',
-    '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't',
-    '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't',
-  ]);
-  map.draw(62, 3, [
-    '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't',
-    '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't',
-    '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't', '.', 't',
-  ]);
-
   // == THE LANDING - the north-west quay ===================================
-  // The one place anyone still keeps up. The office faces the yard, the
-  // boathouse faces the bay the flood bit out of the quay, and the jetty runs
-  // out into it. East along the shore the old causeway goes under: three tiles
-  // of deep water, the stones showing, and the keep's tower on the far side.
-  map.draw(3, 3, [
-    '....................................C',
-    '.t..t..t..t..t..t..t..t..t..t..t..t.C',
-    '.............########...............C',
-    '.t..t..t.....########......t..t..t..C',
-    '.............,,,,,,,,....,MMMMMMMMMMM',
-    '.t..t..t.....,,,,,,,,....,MMMMMMMMMMM',
-    '....,,,,,,,,,,,,,,,,,....,MMMMMMMMMMM',
-    '....,,,,,,,,,,,,,,,,,,,,,,MMWWWWWWMMM',
-    '....,,.........t..........MMWWWWWWMMM',
-    '.t..,,.t..t..t....t..t..t.MMWWWWWWMMC',
-    '....,,....................CMWWWWWWMCC',
+  // A clearing that opens onto the water. The office is tucked under the wood
+  // with a hedge run from it to the boathouse, the yard is in front of both,
+  // and the stone quay wraps the bay the flood bit out of it, with the ferry
+  // jetty running out into that. East along the quay the old causeway goes
+  // under: three tiles of deep water, and the keep's tower on the far side.
+  map.draw(8, 5, [
+    '   ,,,,#######,,,,              ',
+    '  T,,,,#######,,,,              ',
+    '   ,,,,,,,,,,,,,,,,MMMMMMMMMMMMM',
+    '  T,,,,,,,,,,,,,,,,MMMMMMMMMMMMM',
+    ' ,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMM',
+    ' ,,,,,,,,,,,,,,,,,,MMMWWWWWWMMMM',
+    ' ,,        ,,,,,,,,MMMWWWWWWMMMM',
+    ' ,,        T  T  T MMMWWWWWWMMMM',
+    ' ,, ..             MMMWWWWWWMMMM',
   ]);
-  map.plant(12, 5, 'building');
-  map.plant(24, 5, 'barn');
+  map.plant(11, 5, 'building');
+  map.plant(22, 5, 'barn');
   map.plant(32, 10, 'jetty');
-  map.plant(33, 7, 'crateStack');
-  map.plant(17, 7, 'cratePair');
-  map.plant(20, 7, 'barrel');
-  map.plant(30, 8, 'barrelPair');
-  map.plant(37, 10, 'mooringPost');
-  map.plant(11, 9, 'signboard');
+  map.plant(32, 7, 'crateStack');
+  map.plant(29, 8, 'barrelPair');
+  map.plant(18, 7, 'cratePair');
+  map.plant(14, 9, 'sack');
+  map.plant(12, 10, 'sack');
+  map.plant(21, 9, 'barrel');
+  map.plant(37, 12, 'mooringPost');
+  map.plant(12, 13, 'hut');
 
   // == THE REEDBEDS - the west bank ========================================
-  // The shore road runs down the river side, straight enough to be quick and
-  // open enough to be watched. Inland of it the reeds stand in beds with lanes
-  // between them, and the ranger's hut sits where the two ways part.
+  // The road doglegs east past the ranger's hut and runs down the river side,
+  // quick and in plain view. Everything inland of it is reeds: one marsh, a
+  // lone tree standing in it to steer by, and no way through that is free.
   map.draw(3, 14, [
-    '....,,..................',
-    '.t..,,.t..t..t..t..t..t.',
-    '....,,,,,,,,,,..........',
-    '.ggg...ggg,,,,..t..t..t.',
-    'gggggCgggg..,,,.........',
-    'ggggg.ggggg.,,,,,,,,,,..',
-    '.gggg..gggggg.ggg...,,.C',
-    '.t.ggg..ggggggggg.C.,,..',
-    '...gggg...gggggg....,,.C',
-    '.C.ggggg.t..ggggg...,,,.',
-    '...ggggggg...gggg.C..,,.',
-    '.gggggggggg.ggggg....,,.',
-    '.ggggg.ggggggggg...t.,,.',
-    '...,,................,,.',
-    '.t.,,..t..t..t..t...,,,.',
+    '      ,, ..             ',
+    '      ,, ..             ',
+    '      ,,,,,,,,,,        ',
+    ' ggg.....gg...,,,       ',
+    'ggggg.ggggg...,,,,,,,,, ',
+    'gggggCgggggg..,,,,,,,,, ',
+    ' gggg.ggggggg.ggg...,,.C',
+    '  .ggg.ggggggggg..C.,,. ',
+    '  .gggg..ggggggg....,,.C',
+    ' C.ggggg....ggggg...,,, ',
+    '  .ggggggg...gggg.C..,, ',
+    ' gggggggggg.ggggg....,, ',
+    ' ggggg.ggggggggg.....,, ',
+    '   ,,                ,, ',
+    '   ,,              T,,, ',
   ]);
-  map.plant(12, 16, 'hut');
-  map.plant(21, 24, 'signboard');
+  map.plant(11, 20, 'tree');
 
   // == MARKET ISLE - the middle of the river ===============================
   // The square, paved and still standing. Two bridges leave its north shore
   // side by side - the plank one goes home, the towered one goes east and is
-  // held - and whoever comes off either finds the fountain in front of them.
+  // held, with a banner either hand of it - and whoever comes off either finds
+  // the fountain in front of them.
   map.draw(22, 32, [
     '.,,,,####,,,,,..',
     '.,,,,####,,,,,..',
@@ -208,95 +195,87 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ',,PPPPPPPPPPPP,,',
     '#.PPPPPPPPPPPP.#',
     '#..PPPPPPPPPP..#',
-    '.t...PPPPPP..t..',
-    '...............C',
-    '.t..t..t..t..t.C',
   ]);
   map.plant(23, 28, 'bridge');
   map.plant(31, 28, 'stoneBridge');
   map.plant(26, 34, 'stripedStall');
   map.plant(31, 37, 'stoneFountain');
-  map.plant(24, 39, 'produce');
-  map.plant(28, 40, 'bench');
+  map.plant(26, 38, 'produce');
+  map.plant(34, 39, 'bench');
   map.plant(34, 35, 'potPlant');
-  map.plant(36, 39, 'banner');
+  map.plant(31, 33, 'banner');
+  map.plant(35, 33, 'banner');
 
   // The ford to Old Town. The one to the orchard is `gates.ts`'s to open.
   map.draw(19, 37, ['www', 'www']);
 
   // == OLD TOWN - the south-west ===========================================
-  // The street the water came up: two houses with their front hedges, the old
-  // tree the street has always gone round, and the green with the shrine.
+  // The street the water came up: two houses behind their front hedges, the
+  // old tree the street has always gone round, and the green with the shrine.
   map.draw(3, 29, [
-    '...,,..........C',
-    '.t.,,..t..t..t.C',
-    '...C,..........#',
-    '.t.,,..........#',
-    '...,,..........#',
-    '.t.,C..........#',
-    '...,,..........#',
-    '...,,##,####,##.',
-    '...,,,,,...,,,,,',
-    '.t.,,,,,.t.,,,,,',
-    '.....,,,,,,,....',
-    '.....""""""..#..',
-    '.t...""""""..#..',
-    '................',
-    '.t..t..t..t..,,.',
+    '   ,,           ',
+    '   ,,           ',
+    '   C,.......... ',
+    '   ,,.......... ',
+    '   ,,.......... ',
+    '   ,C.......... ',
+    '   ,,.......... ',
+    '   ,,##,####,## ',
+    '   ,,,,,...,,,,,',
+    '   ,,,,,.t.,,,,,',
+    '     ,,,,,,, ,, ',
+    '    T""""""  ,, ',
+    '     """"""  ,, ',
+    '    T######  ,, ',
+    '             ,, ',
   ]);
   map.plant(8, 31, 'house');
   map.plant(13, 31, 'house');
-  map.plant(9, 40, 'shrine');
-  map.plant(12, 40, 'statue');
+  map.plant(10, 40, 'shrine');
 
-  // South of the river: the towpath in its reeds, the last houses, and the
+  // South of the river: the towpath in its reeds, the last house, and the
   // road down to the gate.
   map.draw(3, 44, [
-    '.............,,.          ',
-    '.t..t..t..t..,,.          ',
-    '.............,,.          ',
-    '.............,,.ggggCggggg',
-    '.t..t..#.....,,,ggggCggggg',
-    '.......#..,,,,,,..........',
-    '.t.....#..,,..,,.t..t..t..',
-    '..........,,..,,..........',
-    '.t..,,,,,,,,..,,,,,,,,,,,,',
-    '....,,....C...,,..C.....,,',
-    '.t..,,.t......,,.....t..,,',
-    '....,,....##..,,..........',
-    '.t..,,,,..##.,,,,.t..t..t.',
-    '.......,,....,,,,.........',
-    '.t..t..,,,,,,,,,,,.t..t...',
-    '...........,,,,...........',
-    '.t..t..t...,,,,..t..t..t..',
+    '             ,,           ',
+    '             ,,           ',
+    '             ,,           ',
+    '             ,,,ggggCggggg',
+    '           ,,,,,ggggCggggg',
+    '           ,,             ',
+    '   .....   ,,             ',
+    '   .....   ,,,,,,,,,      ',
+    '   .....         ,,       ',
+    '   .....         ,,,,,,,,,',
+    '   .....              ,,,,',
+    '   ,,,,,,,,,,,            ',
+    '            ,,            ',
+    '            ,,,,,,,       ',
+    '                 ,,       ',
+    '              ,,,,,       ',
+    '              ,,          ',
   ]);
-  map.plant(6, 45, 'house');
-  map.plant(21, 53, 'barn');
-  map.plant(9, 55, 'hut');
-  map.plant(13, 49, 'barrelPair');
-  map.plant(19, 58, 'signboard');
+  map.plant(6, 50, 'house');
+  map.plant(24, 49, 'hut');
 
   // == MILL WEIR - the east bank, north ====================================
-  // The mill stands on its pond with the race running back to the river. The
-  // towered bridge lands here, and the road from it forks: north to the
-  // gatehouse, east to the mill, south into the orchard.
+  // The towered bridge lands here, and the road from it forks at once: north
+  // to the gatehouse, east to the mill on its pond, south into the orchard.
   map.draw(30, 17, [
-    '..........   ..................',
-    '.t..t..t..   .t....,,,.       .',
-    '..........   ......,,,.       .',
-    '..,,,,,,,.                    .',
-    '..,,...,,.                    .',
-    '..,,.t.,,,,,,,,,,,,,,.       ..',
-    '..,,...,,..t..t..,,,,.       C.',
-    '.t,,.....,,.......,,,..........',
-    '..,,,,,,,,,..t..t.,,,,,,,,,,,..',
-    '.....C..,,........,,..t..t..,,.',
-    '.t..t...,,.t..t...,,........,,.',
-    '........,,........,,..t..t..,,.',
+    '                               ',
+    '                               ',
+    '              ,,,,,            ',
+    '              ,,,,,            ',
+    '              ,,,,,            ',
+    '    ,,,,,,,,,,,,,,,,,          ',
+    '    ,,       ,,   ,,,,,,.....  ',
+    '    ,,       ,,       ,,.....  ',
+    '  ,,,,,,,,   ,,       ,,.....  ',
+    '  ,,,        ,,       ,,.....  ',
+    '  ,,,        ,,       ,,.....  ',
+    '  ,,,        ,,                ',
   ]);
-  map.plant(53, 25, 'house');
-  map.plant(58, 26, 'haystack');
-  map.plant(45, 24, 'cratePair');
+  map.plant(53, 23, 'house');
+  map.plant(50, 26, 'haystack');
 
   // The gatehouse in the race, and the stone that runs under it.
   map.draw(46, 15, ['MMM', 'MMM', 'MMM', 'MMM', 'MMM', 'MMM', 'MMM']);
@@ -307,73 +286,66 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // the only straight lines on this map, and none runs far before a tree that
   // came down in the flood.
   map.draw(41, 29, [
-    '.,,..............,,.',
-    '.,,.t..t..t..t...,,.',
-    '.,,..............,,.',
-    '.,,,,,,,,,,,,,,,,,,.',
-    '.,,.t..t.....t...,,.',
-    '.,,..............,,.',
-    '.,,,,,,,,,..,,,,,,,.',
-    '..,.t..t..t..t...,..',
-    '..,..............,,.',
-    '.,,,,,,,,,,,,,,,,,,.',
-    '.,,.t.....t..t...,,.',
-    '.,,..............,,.',
-    '.,,,,,,,,,,,,,,,,,,.',
-    '..,.t..t..t......,,.',
-    '..,..............,,.',
-    '..,,,,,,,,,,,,,,,,,.',
+    '  ,,                ',
+    '  ,,,,,,,,,,,,,,,,, ',
+    '  ,,.t..t..t..t.,,  ',
+    '  ,,............,,  ',
+    '  ,,,,,,,..,,,,,,,  ',
+    '   ,.t..t.....t.,   ',
+    '   ,............,,  ',
+    '  ,,,,,,,,,,,,,,,,  ',
+    '  ,,.t.....t..t.,,  ',
+    '  ,,............,,  ',
+    '  ,,,,,,,,,,,,,,,,  ',
+    '   ,.t..t..t....,   ',
+    '   ,............,,  ',
+    '   ,,,,,,,,,,,,,,,  ',
+    '            ,,      ',
+    '            ,,      ',
     'FFFFFFFFFFFF,,FFFFFF',
   ]);
-  map.plant(51, 33, 'log');
-  map.plant(47, 39, 'haystack');
-  map.plant(55, 41, 'barn');
+  map.plant(50, 34, 'log');
+  map.plant(48, 37, 'haystack');
 
   // == BEACON KEEP - the north-east ========================================
   // Pine and rock, and the tower. Moated on two sides by the river and on the
   // third by the race, so the only dry way in is under the gatehouse - until
   // the water drops and the old causeway shows.
   map.draw(43, 3, [
-    '....C.....p..p..p.',
-    '.p........p..p..p.',
-    '..C.......,,,,....',
-    '..........,,,,.p..',
-    ',,,,......,,..C...',
-    ',,,,,,,,,,,,..p.C.',
-    '.C...p..,,........',
-    '........,,,,,,,.p.',
-    '.p..C.....p.,,....',
-    '..........p.,,,,C.',
-    '.p.......C....,,..',
-    '..C...........,,p.',
+    '    ...           ',
+    '    ...           ',
+    '    ...  ,,,,,,   ',
+    '    ...  ,,  ,,   ',
+    ',,,,...,,,,  ,,,  ',
+    ',,,,...,,     ,,  ',
+    '   ,...       ,,  ',
+    '   ,,,,,,,,,,,,,  ',
+    '   ,,       ,,    ',
+    '   ,,             ',
+    '   ,,             ',
+    '   ,,             ',
   ]);
   map.plant(47, 3, 'tower');
-  map.plant(55, 5, 'roundBoulder');
-  map.plant(57, 12, 'trapdoor');
+  map.plant(56, 12, 'trapdoor');
 
   // == THE VAULT - the south-east ==========================================
   // Behind the orchard's back fence. The trapdoor is open; somebody has been
   // here since the flood.
   map.draw(33, 46, [
-    '        ............,,......',
-    '.ggggCggg.t..t..t...,,.t..t.',
-    '.ggggCggg...........,,......',
-    '..,,,,,,,,,,,,,,,,,,,,,,,...',
-    '..,,..C.....,,....#....,,...',
-    '..,,.t..t...,,....#..t.,,...',
-    '..,,........,,,,,,,....,,.C.',
-    '.C,,..t..t..,,....,,...,,...',
-    'MM,,,,,,,,,,,,..t.,,,,,,,...',
-    'MM,,..t....,,.....,,........',
-    '..,,.......,,..t..,,..t..C..',
-    '..,,,,,,,,,,,.....,,........',
-    '.....t..t....t..t.,,,,,,,,..',
-    '..................,,........',
-    '.t..t..t..t..t..t.....t..t..',
+    '                    ,,      ',
+    ' ggggCggg           ,,      ',
+    ' ggggCggg   ,,,,,,,,,,      ',
+    '  ,,,,,,,,,,,,              ',
+    '  ,,      vvvvvvv           ',
+    '  ,,      vvvvvvv,,,,,,     ',
+    '  ,,      vvvvvvv    ,,     ',
+    '  ,,      vvvvvvv    ,,     ',
+    'MM,,                 ,,     ',
+    'MM,,,,,,,,,,,,,,,,,,,,,     ',
   ]);
-  map.plant(46, 51, 'trapdoorOpen');
-  map.plant(55, 50, 'cellarDoors');
-  map.plant(41, 56, 'crateTower');
+  map.plant(45, 51, 'trapdoorOpen');
+  map.plant(44, 50, 'barrel');
+  map.plant(49, 52, 'crateStack');
 
   // The causeway from the vault to the south road. `gates.ts` owns the middle.
   map.draw(29, 54, ['MMMM', 'MMMM']);

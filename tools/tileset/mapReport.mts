@@ -7,7 +7,7 @@
  * ground are joined to which, so a district drawn one tile short of its
  * neighbour shows up as a second component rather than as a mystery.
  *
- *   npx vite-node tools/tileset/mapReport.mts -- <map-id> [--components]
+ *   npx vite-node tools/tileset/mapReport.mts -- <map-id> [--components] [--clashes] [--runs]
  */
 import { WORLD_MAPS, getWorldMap, type WorldMapId } from '../../src/game/worldMap';
 import { gateBossIds, gatesForMap } from '../../src/game/world/gates';
@@ -18,6 +18,11 @@ import {
   walkableTiles,
 } from '../../src/game/world/mapStructure';
 import { EXTRACTION_POINTS } from '../../src/game/world/extractionPoints';
+import { isSolidTerrain } from '../../src/game/world/mapGrid';
+import { sketchFloodplainRelay } from '../../src/game/world/maps/floodplainRelay';
+import { sketchPalletTown } from '../../src/game/world/maps/palletTown';
+import { sketchRoute1 } from '../../src/game/world/maps/route1';
+import { sketchViridianForest } from '../../src/game/world/maps/viridianForest';
 import { RUN_INSERTIONS } from '../../src/game/run/runGeneration';
 
 const args = process.argv.slice(2);
@@ -81,7 +86,95 @@ for (const tile of walkable) {
 }
 if (runs.length) {
   console.log(`  runs over 9 (${runs.length}): ${runs.slice(0, 12).join('  ')}`);
+  if (args.includes('--runs')) {
+    // One line per offending lane rather than per tile in it: a corridor twelve
+    // long is one mistake, and listing it as twelve hides the other forty.
+    const lanes = new Map<string, number>();
+    for (const tile of walkable) {
+      for (const [dx, dy, name] of [[1, 0, 'row'], [0, 1, 'col']] as const) {
+        if (collision[tile.y - dy]?.[tile.x - dx] === false) continue;
+        const length = slideLength(collision, tile, dx, dy) + 1;
+        if (length > 10) lanes.set(`${name} from ${tile.x},${tile.y}`, length);
+      }
+    }
+    for (const [lane, length] of [...lanes].sort((a, b) => b[1] - a[1])) {
+      console.log(`    ${lane}: ${length} tiles`);
+    }
+  }
 }
+
+// Landmarks drawn over each other. A tree's crown is drawn above everything, so
+// a tree stamped one tile too close to a house eats the roof - invisible in the
+// drawing, obvious in the render, and a class of mistake rather than a mistake.
+// The one overlap that is meant is a crown over the trunk of the tree behind it,
+// which is how a wood interlocks; everything else is reported.
+const SKETCHES = {
+  'floodplain-relay': sketchFloodplainRelay,
+  'pallet-town': sketchPalletTown,
+  'route-1': sketchRoute1,
+  'viridian-forest': sketchViridianForest,
+} as const;
+const GROWTH = new Set(['tree', 'treeAlt', 'pine', 'pineAlt', 'treeWall', 'tallBush']);
+const planted = SKETCHES[id]().props();
+const drawnCells = planted.map((prop) => {
+  const definition = map.tileset.props[prop.name];
+  const cells = new Map<string, boolean>();
+  for (let row = 0; row < definition.height; row += 1) {
+    for (let column = 0; column < definition.width; column += 1) {
+      const cell = definition.cells[row * definition.width + column];
+      if (cell.tile >= 0) cells.set(key(prop.x + column, prop.y + row), cell.canopy === true);
+    }
+  }
+  return { prop, cells };
+});
+const clashes: string[] = [];
+for (let a = 0; a < drawnCells.length; a += 1) {
+  for (let b = a + 1; b < drawnCells.length; b += 1) {
+    const [first, second] = [drawnCells[a], drawnCells[b]];
+    const bothGrowth = GROWTH.has(first.prop.name) && GROWTH.has(second.prop.name);
+    for (const [cell, firstIsCrown] of first.cells) {
+      const secondIsCrown = second.cells.get(cell);
+      if (secondIsCrown === undefined) continue;
+      if (bothGrowth && firstIsCrown !== secondIsCrown) continue;
+      clashes.push(`${first.prop.name}@${first.prop.x},${first.prop.y} x ${second.prop.name}@${second.prop.x},${second.prop.y}`);
+      break;
+    }
+  }
+}
+// Growth standing on ground that was cut to be walked. A map carved out of a
+// forest leaves trees at the edge of every cut, and one whose trunk overhangs
+// the lane turns a two-wide road into a one-wide road nobody drew.
+const sketchForLint = SKETCHES[id]();
+const overhangs: string[] = [];
+for (const { prop } of drawnCells) {
+  if (!GROWTH.has(prop.name)) continue;
+  const definition = map.tileset.props[prop.name];
+  for (let row = 0; row < definition.height; row += 1) {
+    for (let column = 0; column < definition.width; column += 1) {
+      const cell = definition.cells[row * definition.width + column];
+      if (cell.tile < 0 || !cell.solid || cell.canopy) continue;
+      const x = prop.x + column;
+      const y = prop.y + row;
+      if (sketchForLint.terrainAt(x, y) === 't') continue;
+      // A tree standing in grass or reeds is a tree. The defect is a trunk on
+      // a road: earth, paving, stone or gravel that somebody laid to be walked.
+      if (!',PMv'.includes(sketchForLint.terrainAt(x, y) ?? 'T')) continue;
+      if (!isSolidTerrain(sketchForLint.terrainAt(x, y) ?? 'T')) overhangs.push(`${prop.name}@${prop.x},${prop.y} on ${x},${y}`);
+    }
+  }
+}
+// The trunk's own tile is grass by definition, so only its neighbours count.
+const realOverhangs = overhangs.filter((entry) => {
+  const [, at, on] = /@(\d+,\d+) on (\d+,\d+)/.exec(entry) ?? [];
+  const [px, py] = at.split(',').map(Number);
+  const [ox, oy] = on.split(',').map(Number);
+  return !(ox === px + 1 && oy === py + 2);
+});
+console.log(`  trees over lanes  ${realOverhangs.length}${realOverhangs.length ? `: ${realOverhangs.slice(0, 10).join('  ')}` : ''}`);
+if (args.includes('--clashes')) for (const entry of realOverhangs) console.log(`    over: ${entry}`);
+
+console.log(`  landmark clashes  ${clashes.length}${clashes.length ? `: ${clashes.slice(0, 14).join('  ')}` : ''}`);
+if (args.includes('--clashes')) for (const clash of clashes) console.log(`    ${clash}`);
 
 const edges: string[] = [];
 const gates = new Set(

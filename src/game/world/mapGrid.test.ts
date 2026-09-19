@@ -43,6 +43,45 @@ describe('stamping landmarks into a drawing', () => {
     expect(map.props()).toEqual([{ name: 'tree', x: 0, y: 1 }]);
   });
 
+  /**
+   * A district is cut out of a forest, and the forest's trees stand on a
+   * lattice that knows nothing about the cut. One left at the edge with its
+   * trunk over the lane narrows a road nobody drew narrow.
+   */
+  describe('cutting ground under a landmark', () => {
+    const woods = (): MapSketch<'tree'> =>
+      new MapSketch({
+        width: 7,
+        height: 5,
+        fill: 'T',
+        stamps: {
+          t: { prop: 'tree', anchor: [1, 2], ground: '.', blocks: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]] },
+        },
+      }).draw(0, 0, ['TTTTTTT', 'TTTTTTT', 'TTTtTTT', 'TTTTTTT', 'TTTTTTT']);
+
+    it('takes the landmark away when a lane is cut under a tile it blocks', () => {
+      const map = woods();
+      expect(map.props()).toHaveLength(1);
+      map.draw(4, 0, [',', ',', ',', ',', ',']);
+      expect(map.props()).toEqual([]);
+    });
+
+    it('leaves it standing when the lane passes clear of it', () => {
+      const map = woods().draw(5, 0, [',', ',', ',', ',', ',']);
+      expect(map.props()).toHaveLength(1);
+    });
+
+    it('leaves it standing when the lane runs under its crown, which blocks nothing', () => {
+      const map = woods().draw(2, 0, [',,,']);
+      expect(map.props()).toHaveLength(1);
+    });
+
+    it('leaves it standing when what is drawn beside it is another wall', () => {
+      const map = woods().draw(4, 0, ['W', 'W', 'W', 'W', 'W']);
+      expect(map.props()).toHaveLength(1);
+    });
+  });
+
   it('keeps landmarks planted by coordinate, which nothing drawn can remove', () => {
     const map = sketch().plant(4, 4, 'tree').draw(4, 4, ['W']);
     expect(map.props()).toEqual([{ name: 'tree', x: 4, y: 4 }]);

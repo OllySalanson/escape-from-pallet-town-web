@@ -91,6 +91,15 @@ export interface PropStamp<PropName extends string = string> {
   readonly anchor: readonly [number, number];
   /** What the letter's own tile is made of - a letter can only say one thing. */
   readonly ground: TerrainChar;
+  /**
+   * The other tiles the landmark blocks, as offsets from its letter. A map cut
+   * out of a forest leaves a tree at the edge of every cut, and one whose trunk
+   * overhangs the lane makes a two-wide road one wide without anyone drawing
+   * that. So walkable ground cut under any of these takes the landmark away,
+   * exactly as ground drawn over the letter does. A crown is not listed: it
+   * blocks nothing, and one hanging over a lane is what a wood's edge looks like.
+   */
+  readonly blocks?: readonly (readonly [number, number])[];
 }
 
 export interface MapSketchOptions<PropName extends string = string> {
@@ -124,6 +133,8 @@ export class MapSketch<PropName extends string = string> {
   private readonly stamps: Readonly<Record<string, PropStamp<PropName>>>;
   /** Stamped landmarks by the tile their letter was drawn on. */
   private readonly stamped = new Map<string, PlantedProp<PropName>>();
+  /** For each tile a stamped landmark blocks, the letters of the landmarks that do. */
+  private readonly blockedBy = new Map<string, Set<string>>();
 
   public constructor(options: MapSketchOptions<PropName>) {
     this.width = options.width;
@@ -170,6 +181,13 @@ export class MapSketch<PropName extends string = string> {
       // to be drawn over each other, and a tree left behind by the block under
       // it is a tree standing in whatever was painted on top - a river, usually.
       this.stamped.delete(`${x},${y}`);
+      // And so does ground cut to be walked under any tile it blocks.
+      if (!isSolidTerrain(char)) {
+        for (const letter of this.blockedBy.get(`${x},${y}`) ?? []) {
+          this.stamped.delete(letter);
+        }
+        this.blockedBy.delete(`${x},${y}`);
+      }
     }
     return this;
   }
@@ -209,6 +227,12 @@ export class MapSketch<PropName extends string = string> {
             x: x - stamp.anchor[0],
             y: y - stamp.anchor[1],
           });
+          for (const [dx, dy] of stamp.blocks ?? []) {
+            const tile = `${x + dx},${y + dy}`;
+            const letters = this.blockedBy.get(tile) ?? new Set<string>();
+            letters.add(`${x},${y}`);
+            this.blockedBy.set(tile, letters);
+          }
           continue;
         }
         this.raw(x0 + column, y0 + rowIndex, char);
