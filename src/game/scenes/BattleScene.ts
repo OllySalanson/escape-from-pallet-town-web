@@ -817,10 +817,15 @@ export class BattleScene extends Phaser.Scene {
       (line, index) => {
         const layout = aboutToUsePromptLayout(index);
         container.add(
+          // The trainer's own words, in the ink the dialogue that shares this
+          // panel is written in: the party list's prompt is a hint about a list,
+          // and this is a question. 12px rather than the dialogue's 14, because
+          // the longest of these lines is a trainer's name, five words and a
+          // ten-letter Pokemon, and at 14 it would run off the panel.
           this.add.text(layout.x, COMMAND_Y + layout.y, line, {
             fontFamily: BATTLE_FONT,
             fontSize: CAPTION_FONT_SIZE,
-            color: PANEL_GUIDANCE_INK,
+            color: WINDOW_INK,
           }),
         );
       },
