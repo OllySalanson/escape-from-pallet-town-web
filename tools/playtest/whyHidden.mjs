@@ -40,6 +40,9 @@ try {
       const seated = w.worldLabels.filter((o, j) => j < i && o.label.visible).map((o) => ({ x: o.windowX, y: o.windowY, width: o.request().width, height: o.request().height }));
       lines.push('HIDDEN: ' + l.label.text.replace(/\\n/g, ' / ') + '  (' + Math.round(r.width) + 'x' + Math.round(r.height) + ')');
       const seats = m.explainSeats(r, surroundings, seated);
+      // what it is competing with: the subject it names, then every caption seated before it
+      lines.push('   names view-xy ' + Math.round(r.subject.x - v.left) + ',' + Math.round(r.subject.y - v.top) + ' ' + Math.round(r.subject.width) + 'x' + Math.round(r.subject.height));
+      w.worldLabels.forEach((o, j) => { if (j < i && o.label.visible) lines.push('   seated view-xy ' + String(Math.round(o.windowX - v.left)).padStart(4) + ',' + String(Math.round(o.windowY - v.top)).padStart(4) + ' ' + Math.round(o.request().width) + 'x' + Math.round(o.request().height) + '  ' + o.label.text.split('\\n')[0]); });
       // the seat that only canopy is wrong with, and least of it: name the crowns in it, as tiles
       const fixable = seats.filter((s) => s.outsideView + s.underHud + s.overMapArt + s.againstCaption === 0).sort((a, b) => a.underCanopy - b.underCanopy)[0];
       if (fixable) { const rect = { x: fixable.x, y: fixable.y, width: r.width, height: r.height };

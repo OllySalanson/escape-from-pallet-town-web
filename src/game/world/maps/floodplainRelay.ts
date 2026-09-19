@@ -283,7 +283,9 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // == MILL WEIR - the east bank, north ====================================
   // The towered bridge lands here. The road from it runs up to the towpath
   // along the race, and the towpath forks: on to the gatehouse, or east past
-  // the mill on its pond and round into the orchard.
+  // the mill on its pond and round into the orchard. The toll road is a cart
+  // road, two wide with a passing place at the toll house door; the way down
+  // to the orchard is what pickers' feet wore, one tile and never straight.
   map.draw(30, 17, [
     '                               ',
     '                               ',
@@ -292,10 +294,10 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '                               ',
     '      ,,,,,,,,, ,,,,,          ',
     '      ,,     ,,,,,,,,          ',
-    '    T ,,  T  ,,    ,,          ',
-    '      ,,     ,,    ........    ',
+    '    T ,,, T   ,    ,,          ',
+    '      ,,,     ,    ........    ',
     '    T ,,     ,,    ........    ',
-    '  ,,,,,,     ,,    ........    ',
+    '  ,,,,,,     ,     ........    ',
     '  ,,,        ,,,,  ........    ',
   ]);
   // The mill's own doorstep, a row south of the rest of its yard.
@@ -452,7 +454,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ' p                 b                                            ',
     '                                                                ',
     '                    p                                           ',
-    '                                      b                         ',
+    '                                                                ',
     '                                                                ',
     '                                          b                     ',
     '                                      b         b               ',
