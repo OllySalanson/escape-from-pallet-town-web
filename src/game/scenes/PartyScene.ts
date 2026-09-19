@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
+import { Bag, HELD_ITEM_DEFINITIONS, getHeldItem, type ItemDefinition } from '../items';
+import { itemIcon } from '../ui/icons';
 import type { Pokemon, PokemonParty } from '../pokemon';
 import type { PokemonType } from '../pokemon/PokemonType';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
@@ -30,10 +32,19 @@ const TYPE_COLORS: Partial<Record<PokemonType, string>> = {
 
 interface PartySceneData {
   party: PokemonParty;
+  /**
+   * The raid's own pack. Gear is given and taken here rather than only at base,
+   * because a piece found halfway through a raid is no use to the fight it was
+   * found for if it has to be carried home first - and because taking it back
+   * off a Pokemon before the run for an exit is the other half of the same
+   * decision.
+   */
+  bag?: Bag;
 }
 
 export class PartyScene extends Phaser.Scene {
   private party!: PokemonParty;
+  private bag = new Bag();
   private selectedIndex = 0;
   private isReordering = false;
   private readonly cardBackgrounds: Phaser.GameObjects.Rectangle[] = [];
@@ -50,6 +61,9 @@ export class PartyScene extends Phaser.Scene {
 
   public init(data: PartySceneData): void {
     this.party = data.party;
+    // Phaser reuses this scene, so a pack from an earlier raid would otherwise
+    // still be the one this screen gives out of.
+    this.bag = data.bag ?? new Bag();
     this.selectedIndex = 0;
     this.isReordering = false;
   }
@@ -96,12 +110,71 @@ export class PartyScene extends Phaser.Scene {
   private renderModernMenu(): void {
     const selected = this.party.pokemon[this.selectedIndex];
     const detail = selected
-      ? `<section class="party-detail"><div class="detail-hero">${pokemonAvatar(selected.base.dexId, selected.base.name)}<div><p class="eyebrow">Party member</p><h2>${selected.base.name}</h2><p>${conditionLine(selected)}</p>${hpBar(selected.currentHp, selected.maxHp)}<div>${typeBadge(selected.base.primaryType)}${selected.base.secondaryType ? typeBadge(selected.base.secondaryType) : ''}</div></div></div><div class="stats-grid"><span><small>HP</small><b>${selected.stats.hp}</b></span><span><small>Attack</small><b>${selected.stats.attack}</b></span><span><small>Defense</small><b>${selected.stats.defense}</b></span><span><small>Speed</small><b>${selected.stats.speed}</b></span></div><h3>Moves</h3><div class="move-list">${selected.moves.map((move) => `<div><strong>${move.base.name}</strong>${typeBadge(move.base.type)}<small>${move.pp}/${move.base.pp} PP</small></div>`).join('') || '<p class="empty-state">No known moves.</p>'}</div></section>`
+      ? `<section class="party-detail"><div class="detail-hero">${pokemonAvatar(selected.base.dexId, selected.base.name)}<div><p class="eyebrow">Party member</p><h2>${selected.base.name}</h2><p>${conditionLine(selected)}</p>${hpBar(selected.currentHp, selected.maxHp)}<div>${typeBadge(selected.base.primaryType)}${selected.base.secondaryType ? typeBadge(selected.base.secondaryType) : ''}</div></div></div><div class="stats-grid"><span><small>HP</small><b>${selected.stats.hp}</b></span><span><small>Attack</small><b>${selected.stats.attack}</b></span><span><small>Defense</small><b>${selected.stats.defense}</b></span><span><small>Speed</small><b>${selected.stats.speed}</b></span></div>${this.gearSection(selected)}<h3>Moves</h3><div class="move-list">${selected.moves.map((move) => `<div><strong>${move.base.name}</strong>${typeBadge(move.base.type)}<small>${move.pp}/${move.base.pp} PP</small></div>`).join('') || '<p class="empty-state">No known moves.</p>'}</div></section>`
       : '<section class="party-detail"><p class="empty-state">No Pokémon in your party.</p></section>';
-    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run team</p><h1>Party</h1></div><p class="stash-count">Select a member to inspect</p></header><main class="party-layout"><section class="party-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable ${index === this.selectedIndex ? 'selected' : ''}" data-member="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${conditionLine(pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('') || '<p class="empty-state">No Pokémon in your party.</p>'}</section>${detail}</main></div>`;
+    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run team</p><h1>Party</h1></div><p class="stash-count">Select a member to inspect</p></header><main class="party-layout"><section class="party-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable ${index === this.selectedIndex ? 'selected' : ''}" data-member="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${conditionLine(pokemon)}${this.heldSuffix(pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('') || '<p class="empty-state">No Pokémon in your party.</p>'}</section>${detail}</main></div>`;
     this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-member]').forEach((button) => button.onclick = () => { this.selectedIndex = Number(button.dataset.member); this.renderModernMenu(); });
+    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-give-gear]').forEach((button) => button.onclick = () => this.giveGear(button.dataset.giveGear!));
+    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-take-gear]').forEach((button) => button.onclick = () => this.takeGear());
     this.menuOverlay!.focus('[data-member].selected', '[data-member]', '[data-close]');
+  }
+
+  /** What the list row says after the condition, when there is gear to say. */
+  private heldSuffix(pokemon: Pokemon): string {
+    const held = getHeldItem(pokemon.heldItemId);
+    return held ? ` · holding ${held.displayName}` : '';
+  }
+
+  /**
+   * The gear pocket for one Pokemon: what it is carrying, and what the pack
+   * could give it instead.
+   *
+   * One slot, so a give is always a swap - the piece already held goes back into
+   * the pack in the same action, and there is never a moment where the player
+   * owns two of something or none of it.
+   */
+  private gearSection(pokemon: Pokemon): string {
+    const held = getHeldItem(pokemon.heldItemId);
+    const offers = HELD_ITEM_DEFINITIONS.filter(
+      (item) => this.bag.count(item.id) > 0 && item.id !== pokemon.heldItemId,
+    );
+    const rows = [
+      ...(held
+        ? [`<button class="entity-row selectable" data-take-gear="${this.selectedIndex}">${itemIcon(held.id, held.displayName)}<div><strong>${held.displayName}</strong><small>${held.description} Press to take it back.</small></div></button>`]
+        : []),
+      ...offers.map(
+        (item: ItemDefinition) =>
+          `<button class="entity-row selectable" data-give-gear="${item.id}">${itemIcon(item.id, item.displayName)}<div><strong>Give ${item.displayName} ×${this.bag.count(item.id)}</strong><small>${item.description}</small></div></button>`,
+      ),
+    ];
+    return `<h3>Gear</h3><div class="move-list">${
+      rows.join('') ||
+      '<p class="empty-state">Nothing held, and no gear in the pack. Gear is carried by the trainers holding the gates.</p>'
+    }</div>`;
+  }
+
+  private giveGear(itemId: string): void {
+    const pokemon = this.party.pokemon[this.selectedIndex];
+    if (!pokemon || this.bag.count(itemId) <= 0 || !this.bag.remove(itemId, 1)) {
+      return;
+    }
+    const displaced = pokemon.giveHeldItem(itemId);
+    if (displaced) {
+      this.bag.add(displaced, 1);
+    }
+    audioManager.play('select');
+    this.renderModernMenu();
+  }
+
+  private takeGear(): void {
+    const taken = this.party.pokemon[this.selectedIndex]?.takeHeldItem();
+    if (!taken) {
+      return;
+    }
+    this.bag.add(taken, 1);
+    audioManager.play('cancel');
+    this.renderModernMenu();
   }
 
   private drawBackground(): void {

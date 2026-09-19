@@ -546,7 +546,7 @@ describe('SaveManager', () => {
         { pokemon: [], items: [] },
         {
           condition: [
-            { id: 'charmander-1', currentHp: 6, primaryStatus: 'burn', experience: 400 },
+            { id: 'charmander-1', currentHp: 6, primaryStatus: 'burn', experience: 400, heldItemId: null },
           ],
           supplies: [{ itemId: 'potion', quantity: -2 }],
         },
@@ -579,12 +579,14 @@ describe('SaveManager', () => {
               currentHp: 9_999,
               primaryStatus: null,
               experience: charmander.experience,
+              heldItemId: null,
             },
             {
               id: 'nobody-1',
               currentHp: 5,
               primaryStatus: 'burn',
               experience: charmander.experience,
+              heldItemId: null,
             },
           ],
           // More Potions spent than the vault holds, which can only clear it.
@@ -614,7 +616,7 @@ describe('SaveManager', () => {
 
     const settlement = {
       condition: [
-        { id: 'charmander-1', currentHp: 4, primaryStatus: null, experience: experienceForLevel(8) },
+        { id: 'charmander-1', currentHp: 4, primaryStatus: null, experience: experienceForLevel(8), heldItemId: null },
       ],
       supplies: [],
     } as const;
@@ -628,7 +630,7 @@ describe('SaveManager', () => {
         { pokemon: [], items: [] },
         {
           condition: [
-            { id: 'charmander-1', currentHp: 4, primaryStatus: null, experience: 0 },
+            { id: 'charmander-1', currentHp: 4, primaryStatus: null, experience: 0, heldItemId: null },
           ],
           supplies: [],
         },
@@ -661,6 +663,7 @@ describe('SaveManager', () => {
           primaryStatus: null,
           experience: experienceForLevel(16),
           speciesId: 'ivysaur',
+          heldItemId: null,
         },
         {
           id: 'pikachu-1',
@@ -668,6 +671,7 @@ describe('SaveManager', () => {
           primaryStatus: null,
           experience: experienceForLevel(12),
           speciesId: 'raichu',
+          heldItemId: null,
         },
       ],
       supplies: [],
@@ -698,6 +702,7 @@ describe('SaveManager', () => {
           primaryStatus: null,
           experience: experienceForLevel(12),
           speciesId: 'raichu',
+          heldItemId: null,
         },
       ],
       supplies: [],
@@ -718,6 +723,7 @@ describe('SaveManager', () => {
             primaryStatus: null,
             experience: experienceForLevel(12),
             speciesId: 'pikachu',
+            heldItemId: null,
           },
         ],
         supplies: [],
@@ -953,7 +959,7 @@ describe('SaveManager', () => {
    * missing list reads as. Every accepted version is pinned, because accepting
    * a version is a promise to keep loading it.
    */
-  it.each([1, 2, 3, 4, 5])(
+  it.each([1, 2, 3, 4, 5, 6])(
     'opens a version %i save written before gates existed with no boss beaten and nowhere reached',
     (version) => {
       const storage = new MemoryStorage();
@@ -979,6 +985,140 @@ describe('SaveManager', () => {
       expect(progress?.unlockedInsertions).toContain('route-1');
     },
   );
+
+  /**
+   * Version 6 is the held-item slot. It is a bump rather than a silent field
+   * because a save written by this build carries something no earlier build
+   * understands - but the field defaults, so every earlier version keeps loading
+   * with an empty slot rather than being refused.
+   */
+  it.each([1, 2, 3, 4, 5])(
+    'opens a version %i save written before held items with every slot empty',
+    (version) => {
+      const storage = new MemoryStorage();
+      const saved = { speciesId: 'bulbasaur', level: 7, currentHp: 9, moves: [], primaryStatus: null };
+      storage.setItem(
+        SAVE_KEY,
+        JSON.stringify({
+          version,
+          party: [],
+          mapId: 'pallet-town',
+          position: { x: 1, y: 1 },
+          bag: {},
+          stash: {
+            // Version 1 wrote the vault as bare Pokemon; every later version
+            // wraps each in its stash id.
+            pokemon: [
+              version === 1
+                ? saved
+                : { id: 'bulbasaur-1', pokemon: saved },
+            ],
+            items: {},
+          },
+        }),
+      );
+
+      const stored = new SaveManager(storage).load()?.stash.listPokemon() ?? [];
+
+      expect(stored).toHaveLength(1);
+      expect(stored[0].pokemon.heldItemId).toBeNull();
+    },
+  );
+
+  it('keeps what a Pokemon is holding across a save and a reload', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    const bulbasaur = new Pokemon(BULBASAUR, 7);
+    stash.addPokemon(bulbasaur);
+    stash.addItem('leftovers', 1);
+    expect(stash.giveHeldItem('bulbasaur-1', 'leftovers')).toBe(true);
+    // A give is a move: the piece is on the Pokemon and out of the supplies.
+    expect(stash.itemCount('leftovers')).toBe(0);
+    saves.save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      stash,
+    });
+
+    const reloaded = saves.load()!;
+    const restored = reloaded.stash.listPokemon()[0];
+
+    expect(restored.pokemon.heldItemId).toBe('leftovers');
+    expect(reloaded.stash.itemCount('leftovers')).toBe(0);
+
+    // And taking it back puts it in the supplies, still exactly one of it.
+    expect(reloaded.stash.takeHeldItem('bulbasaur-1')).toBe(true);
+    expect(reloaded.stash.listPokemon()[0].pokemon.heldItemId).toBeNull();
+    expect(reloaded.stash.itemCount('leftovers')).toBe(1);
+  });
+
+  it('refuses a held item the catalogue no longer knows rather than storing the name', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 6,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: {},
+        stash: {
+          pokemon: [
+            {
+              id: 'bulbasaur-1',
+              pokemon: {
+                speciesId: 'bulbasaur',
+                level: 7,
+                currentHp: 9,
+                moves: [],
+                primaryStatus: null,
+                // A Potion is not gear, and `everstone` was never shipped.
+                heldItemId: 'potion',
+              },
+            },
+          ],
+          items: {},
+        },
+      }),
+    );
+
+    expect(new SaveManager(storage).load()?.stash.listPokemon()[0].pokemon.heldItemId).toBeNull();
+  });
+
+  it('carries gear home on a wipe only for the Pokemon the secure slot protected', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    const kept = new Pokemon(BULBASAUR, 7);
+    const lost = new Pokemon(CHARMANDER, 7);
+    stash.addPokemon(kept);
+    stash.addPokemon(lost);
+    kept.giveHeldItem('leftovers');
+    lost.giveHeldItem('life-orb');
+    saves.save({ party: new PokemonParty([]), mapId: 'pallet-town', position: { x: 1, y: 1 }, stash });
+
+    expect(
+      saves.applyWipeLoss(
+        ['bulbasaur-1', 'charmander-1'],
+        [],
+        { pokemonIds: ['bulbasaur-1'] },
+        [
+          { id: 'bulbasaur-1', currentHp: 0, primaryStatus: null, experience: kept.experience, heldItemId: 'leftovers' },
+          { id: 'charmander-1', currentHp: 0, primaryStatus: null, experience: lost.experience, heldItemId: 'life-orb' },
+        ],
+      ),
+    ).toBe(true);
+
+    const after = saves.load()!.stash;
+    // The secured Pokemon comes home holding what it held; the other is gone,
+    // and so is the piece it was carrying. Gear comes off a boss once, so this
+    // is the whole of what a wipe can cost that a restock cannot give back.
+    expect(after.listPokemon().map((entry) => entry.id)).toEqual(['bulbasaur-1']);
+    expect(after.listPokemon()[0].pokemon.heldItemId).toBe('leftovers');
+    expect(after.itemCount('life-orb')).toBe(0);
+  });
 
   it('keeps beaten bosses and reached drop-in points across a reload, once each', () => {
     const storage = new MemoryStorage();

@@ -213,6 +213,7 @@ const ORDINARY_TRAINER = createRunTrainerEncounters().find(
 )!;
 
 interface Internals {
+  bag: { count(itemId: string): number };
   currentTile: { x: number; y: number };
   defeatedBosses: readonly string[];
   isBlocked(tile: { x: number; y: number }): boolean;
@@ -297,17 +298,26 @@ describe('a boss-held gate in a live raid', () => {
     }
     // The boss has gone: the tile they held is lane again.
     expect(internalsOf(scene).isBlocked(BOSS.position)).toBe(false);
-    // Both doors, named in one line and said once - not a line per door.
+    // Both doors, named in one line and said once - not a line per door - and
+    // then what the boss was carrying, in the same breath.
     expect(BOSS_GATES.map((gate) => gate.label)).toEqual(['OVERLOOK GATE', 'OVERLOOK STEPS']);
     expect(spoken).toEqual([
-      ['OVERLOOK GATE and OVERLOOK STEPS are open - and stay open on every raid from now on.'],
+      [
+        'OVERLOOK GATE and OVERLOOK STEPS are open - and stay open on every raid from now on.',
+        'WARDEN WREN was carrying a LIFE ORB. You take it.',
+        "The holder's hits land a third harder and cost it a tenth of its own HP. Give it to a POKéMON from the party screen - and get it home.",
+      ],
     ]);
+    // The gear is in the raid's own pack: it has to be carried out from here.
+    expect(internalsOf(scene).bag.count('life-orb')).toBe(1);
     expect(new SaveManager(storage).load()!.raidProgress.defeatedBosses).toEqual([GATE.bossId]);
 
     // Every later battle return carries the same beaten id. The door is already
-    // open and already recorded, so nothing is said or written again.
+    // open and already recorded, so nothing is said or written again - and the
+    // gear is handed over once, not once per return.
     scene.create(returnFromWinning(data, BOSS.trainer.id, beside));
     expect(spoken).toHaveLength(1);
+    expect(internalsOf(scene).bag.count('life-orb')).toBe(1);
     expect(new SaveManager(storage).load()!.raidProgress.defeatedBosses).toEqual([GATE.bossId]);
   });
 

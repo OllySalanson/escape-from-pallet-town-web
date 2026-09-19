@@ -64,6 +64,16 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
       return withLine('catchSuccess');
     case 'enemy-sent-out':
       return withLine('sendOut');
+    case 'gear-endured':
+      return withLine('gearHeld');
+    case 'gear-heal':
+      return withLine('gearTick');
+    case 'gear-first-strike':
+      // A claw that fires is the same news as a stat rising: something just went
+      // your way before the move that proves it.
+      return withLine('statUp');
+    case 'gear-recoil':
+      return withLine('statusDamage');
     case 'no-pp':
     case 'catch-disabled':
     case 'status-prevented':

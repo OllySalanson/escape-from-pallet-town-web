@@ -3,6 +3,12 @@ import { MoveCategory } from '../MoveBase';
 import type { Pokemon } from '../Pokemon';
 import type { PokemonType } from '../PokemonType';
 import { calculateDamage, type RandomSource } from './damage';
+import {
+  endOfTurnHeal,
+  gearLabel,
+  rollsFirstStrike,
+  survivesKnockout,
+} from './heldItems';
 import { PrimaryStatus, type PrimaryStatus as PrimaryStatusType } from './status';
 import {
   applyStatBoost,
@@ -26,6 +32,17 @@ export interface BattleCombatant {
   readonly sleepTurns: number;
   readonly confusionTurns: number;
   readonly statStages: StatStages;
+  /**
+   * Whether the gear this Pokemon carries has already done its one thing in this
+   * battle - a Focus Band that has taken its blow.
+   *
+   * *Which* item is held is not copied here: it is read through to
+   * `pokemon.heldItemId`, so the fight can never disagree with the party about
+   * what is being carried, the way a copied move list used to disagree after a
+   * level-up. What belongs to the fight is only this flag, and it resets when the
+   * Pokemon is sent out, exactly as sleep turns and stat stages do.
+   */
+  readonly heldItemSpent: boolean;
 }
 
 export interface TrainerBattle {
@@ -81,7 +98,14 @@ export type BattleEvent =
   | { readonly type: 'caught'; readonly name: string }
   | { readonly type: 'broke-free'; readonly name: string }
   | { readonly type: 'catch-disabled' }
-  | { readonly type: 'enemy-sent-out'; readonly name: string };
+  | { readonly type: 'enemy-sent-out'; readonly name: string }
+  // Gear. Each one is announced the moment it acts, because an item whose effect
+  // is only visible in the HP bar is an item the player has to be told about in
+  // a menu - and the whole point of these four is that they explain themselves.
+  | { readonly type: 'gear-first-strike'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string }
+  | { readonly type: 'gear-endured'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string }
+  | { readonly type: 'gear-recoil'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string; readonly damage: number }
+  | { readonly type: 'gear-heal'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string; readonly amount: number };
 
 export type StatusName = PrimaryStatusType | 'confusion';
 
@@ -140,6 +164,7 @@ const toCombatant = (pokemon: Pokemon): BattleCombatant => ({
   sleepTurns: 0,
   confusionTurns: 0,
   statStages: createStatStages(),
+  heldItemSpent: false,
 });
 
 export const createBattleState = (player: Pokemon, enemy: Pokemon): BattleState => {
@@ -197,15 +222,47 @@ export const resolveTurn = (
   }
 
   const enemyMoveIndex = chooseEnemyMove(state.enemy, random);
+  // Quick Claw is rolled before the order is decided, once for each side that
+  // carries one, so the claw is the reason the turn came out the way it did
+  // rather than an adjustment made afterwards. A claw that fires is announced
+  // before the move it let through.
+  const claws: BattleEvent[] = [];
+  const firstStrike = (user: 'player' | 'enemy', combatant: BattleCombatant): 1 | 0 => {
+    if (!rollsFirstStrike(combatant.pokemon, random)) {
+      return 0;
+    }
+    claws.push({
+      type: 'gear-first-strike',
+      user,
+      name: combatant.pokemon.base.name,
+      item: gearLabel(combatant.pokemon.heldItemId),
+    });
+    return 1;
+  };
   const actions = [
-    { user: 'player' as const, moveIndex: playerMoveIndex, speed: getStagedStat(state.player.pokemon.stats.speed, state.player.statStages.speed) },
+    {
+      user: 'player' as const,
+      moveIndex: playerMoveIndex,
+      speed: getStagedStat(state.player.pokemon.stats.speed, state.player.statStages.speed),
+      priority: firstStrike('player', state.player),
+    },
     ...(enemyMoveIndex === null
       ? []
-      : [{ user: 'enemy' as const, moveIndex: enemyMoveIndex, speed: getStagedStat(state.enemy.pokemon.stats.speed, state.enemy.statStages.speed) }]),
-  ].sort((left, right) => right.speed - left.speed || (left.user === 'player' ? -1 : 1));
+      : [{
+        user: 'enemy' as const,
+        moveIndex: enemyMoveIndex,
+        speed: getStagedStat(state.enemy.pokemon.stats.speed, state.enemy.statStages.speed),
+        priority: firstStrike('enemy', state.enemy),
+      }]),
+  ].sort(
+    (left, right) =>
+      right.priority - left.priority ||
+      right.speed - left.speed ||
+      (left.user === 'player' ? -1 : 1),
+  );
 
   let nextState = state;
-  const events: BattleEvent[] = [];
+  const events: BattleEvent[] = [...claws];
   for (const action of actions) {
     if (nextState.outcome !== 'active') {
       break;
@@ -362,9 +419,19 @@ const applyMove = (
     attackerAfterStatus.statStages,
     defenderAfterStatus.statStages,
   );
+  const defenderUser = user === 'player' ? ('enemy' as const) : ('player' as const);
+  // Focus Band, before the HP is written: the band only ever answers a blow that
+  // would have ended the fight for its holder, and it answers one.
+  const endured = survivesKnockout(
+    defenderAfterStatus.pokemon,
+    defenderAfterStatus.currentHp,
+    damage.damage,
+    defenderAfterStatus.heldItemSpent,
+  );
   const updatedDefender = {
     ...defenderAfterStatus,
-    currentHp: Math.max(0, defenderAfterStatus.currentHp - damage.damage),
+    currentHp: endured ? 1 : Math.max(0, defenderAfterStatus.currentHp - damage.damage),
+    heldItemSpent: defenderAfterStatus.heldItemSpent || endured,
   };
   let nextState = withCombatants(statusState, user, updatedAttacker, updatedDefender);
   const events: BattleEvent[] = [
@@ -383,15 +450,50 @@ const applyMove = (
     // A status move deals no damage, so its type effectiveness is not feedback
     // about anything the player just saw happen.
     ...(isDamagingMove(move) ? effectivenessEvents(damage.typeEffectiveness) : []),
+    ...(endured
+      ? [{
+        type: 'gear-endured' as const,
+        user: defenderUser,
+        name: defenderAfterStatus.pokemon.base.name,
+        item: gearLabel(defenderAfterStatus.pokemon.heldItemId),
+      }]
+      : []),
   ];
 
   const defenderFainted = updatedDefender.currentHp === 0;
   if (defenderFainted) {
-    const defenderUser = user === 'player' ? 'enemy' : 'player';
     nextState = resolveFaint(nextState, defenderUser);
     events.push({ type: 'fainted', user: defenderUser, name: defenderAfterStatus.pokemon.base.name });
     if (defenderUser === 'enemy' && nextState.outcome === 'active') {
       events.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
+    }
+  }
+
+  // Life Orb, after the hit has landed and after whatever it knocked out has
+  // fallen: the price is paid for a hit that connected, and it is paid second, so
+  // a holder that takes its last two HP paying for a knockout still wins the
+  // fight it just ended. The faint is only resolved while the battle is still
+  // running, for that reason.
+  if (damage.recoil > 0) {
+    const attackerNow = user === 'player' ? nextState.player : nextState.enemy;
+    const paid = Math.min(attackerNow.currentHp, damage.recoil);
+    if (paid > 0) {
+      const hurtAttacker = { ...attackerNow, currentHp: attackerNow.currentHp - paid };
+      nextState = updateCombatant(nextState, user, hurtAttacker);
+      events.push({
+        type: 'gear-recoil',
+        user,
+        name: attackerNow.pokemon.base.name,
+        item: gearLabel(attackerNow.pokemon.heldItemId),
+        damage: paid,
+      });
+      if (hurtAttacker.currentHp === 0 && nextState.outcome === 'active') {
+        nextState = resolveFaint(nextState, user);
+        events.push({ type: 'fainted', user, name: attackerNow.pokemon.base.name });
+        if (user === 'enemy' && nextState.outcome === 'active') {
+          events.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
+        }
+      }
     }
   }
 
@@ -471,32 +573,67 @@ const resolveStatusBeforeMove = (
   return { state, events: [], canAct: true };
 };
 
+/**
+ * The end of one combatant's turn: what its status costs it, then what its gear
+ * gives back.
+ *
+ * Leftovers is charged at exactly the point burn and poison are charged, which is
+ * what makes it read as their mirror - and it is charged after them, so a burned
+ * holder sees the burn take four and the food give one back rather than a single
+ * net number that explains neither.
+ */
 const applyEndOfAction = (
   state: BattleState,
   user: 'player' | 'enemy',
   events: readonly BattleEvent[],
 ): TurnResult => {
+  let nextState = state;
+  const nextEvents: BattleEvent[] = [...events];
   const combatant = user === 'player' ? state.player : state.enemy;
-  if (state.outcome !== 'active' || !combatant.primaryStatus || combatant.currentHp === 0) {
+  if (state.outcome !== 'active' || combatant.currentHp === 0) {
     return { state, events };
   }
-  const divisor = combatant.primaryStatus === PrimaryStatus.Poison ? 8 : combatant.primaryStatus === PrimaryStatus.Burn ? 16 : 0;
-  if (divisor === 0) {
-    return { state, events };
-  }
-  const damage = Math.floor(combatant.pokemon.maxHp / divisor);
-  const updated = { ...combatant, currentHp: Math.max(0, combatant.currentHp - damage) };
-  let nextState = updateCombatant(state, user, updated);
-  const nextEvents: BattleEvent[] = [
-    ...events,
-    { type: 'status-damage', user, name: combatant.pokemon.base.name, status: combatant.primaryStatus, damage },
-  ];
-  if (updated.currentHp === 0) {
-    nextState = resolveFaint(nextState, user);
-    nextEvents.push({ type: 'fainted', user, name: combatant.pokemon.base.name });
-    if (user === 'enemy' && nextState.outcome === 'active') {
-      nextEvents.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
+  const divisor =
+    combatant.primaryStatus === PrimaryStatus.Poison
+      ? 8
+      : combatant.primaryStatus === PrimaryStatus.Burn
+        ? 16
+        : 0;
+  if (divisor > 0) {
+    const damage = Math.floor(combatant.pokemon.maxHp / divisor);
+    const updated = { ...combatant, currentHp: Math.max(0, combatant.currentHp - damage) };
+    nextState = updateCombatant(nextState, user, updated);
+    nextEvents.push({
+      type: 'status-damage',
+      user,
+      name: combatant.pokemon.base.name,
+      status: combatant.primaryStatus!,
+      damage,
+    });
+    if (updated.currentHp === 0) {
+      nextState = resolveFaint(nextState, user);
+      nextEvents.push({ type: 'fainted', user, name: combatant.pokemon.base.name });
+      if (user === 'enemy' && nextState.outcome === 'active') {
+        nextEvents.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
+      }
+      return { state: nextState, events: nextEvents };
     }
+  }
+
+  const standing = user === 'player' ? nextState.player : nextState.enemy;
+  const healed = endOfTurnHeal(standing.pokemon, standing.currentHp);
+  if (healed > 0) {
+    nextState = updateCombatant(nextState, user, {
+      ...standing,
+      currentHp: standing.currentHp + healed,
+    });
+    nextEvents.push({
+      type: 'gear-heal',
+      user,
+      name: standing.pokemon.base.name,
+      item: gearLabel(standing.pokemon.heldItemId),
+      amount: healed,
+    });
   }
   return { state: nextState, events: nextEvents };
 };

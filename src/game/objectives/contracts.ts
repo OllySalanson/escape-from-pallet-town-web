@@ -1,4 +1,4 @@
-import type { ItemId } from '../items';
+import type { ItemId, SupplyItemId } from '../items';
 import { outfitterSecureItemStacks, outfitterSecurePokemon } from '../hub/outfitter';
 import type { GridPosition } from '../movement/gridMovement';
 import type { RunSnapshot } from '../run/RunManager';
@@ -24,8 +24,16 @@ import type { WorldMapId } from '../worldMap';
  * capability or supplies - never in currency, because the game has none.
  */
 
+/**
+ * A quantity of one supply, which is the only kind of item a contract deals in.
+ *
+ * `SupplyItemId` rather than `ItemId` on purpose: a contract that asked for or
+ * paid out gear would be a gear faucet, and the standing board deals for as long
+ * as the player keeps banking. Gear comes off a boss, once - see
+ * `../world/trainers.ts` - and this type is what stops the board undoing that.
+ */
 export interface ContractStack {
-  readonly itemId: ItemId;
+  readonly itemId: SupplyItemId;
   readonly quantity: number;
 }
 

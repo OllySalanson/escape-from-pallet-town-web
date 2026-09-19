@@ -32,7 +32,16 @@ import {
   type RecoveryTerms,
   type TreatmentOption,
 } from '../hub';
-import { Bag, ITEM_DEFINITIONS, MATERIAL_IDS, isMaterial, type ItemDefinition, type ItemId } from '../items';
+import {
+  Bag,
+  HELD_ITEM_DEFINITIONS,
+  ITEM_DEFINITIONS,
+  MATERIAL_IDS,
+  getHeldItem,
+  isMaterial,
+  type ItemDefinition,
+  type ItemId,
+} from '../items';
 import { PokemonParty, type PokemonBase } from '../pokemon';
 import { activeRunManager } from '../run';
 import { buildContractBoard } from '../hub/contractBoard';
@@ -366,6 +375,78 @@ export class HubScene extends Phaser.Scene {
         ? result.message
         : `${result.message} The treatment could not be saved.`,
     );
+  }
+
+  /**
+   * Gives one piece of gear out of the stash to a stashed Pokemon.
+   *
+   * The stash owns the move in both directions (`Stash.giveHeldItem`), so the
+   * piece is either in the supplies or on a Pokemon and never in both, and the
+   * loadout's own supply counts shrink with it exactly as a treatment's do.
+   */
+  private giveGear(pokemonId: string, itemId: string): void {
+    if (!this.stash.giveHeldItem(pokemonId, itemId)) {
+      this.refuse('That gear is not at base any more.');
+      return;
+    }
+    audioManager.play('select');
+    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.base.name;
+    const gear = this.itemName(itemId as ItemId);
+    this.setStatus(
+      this.saveManager.save({ ...this.savedGame, stash: this.stash })
+        ? `${name ?? 'Your Pokémon'} is holding the ${gear}. It rides into the raid, and a wipe takes it unless ${name ?? 'it'} is secured.`
+        : `${name ?? 'Your Pokémon'} is holding the ${gear}, but it could not be saved.`,
+    );
+  }
+
+  /** Takes a stashed Pokemon's gear back into the stash's supplies. */
+  private takeGear(pokemonId: string): void {
+    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.base.name;
+    if (!this.stash.takeHeldItem(pokemonId)) {
+      this.refuse('There is nothing to take.');
+      return;
+    }
+    audioManager.play('cancel');
+    this.setStatus(
+      this.saveManager.save({ ...this.savedGame, stash: this.stash })
+        ? `Took the gear back off ${name ?? 'your Pokémon'}. It stays at base.`
+        : `Took the gear back off ${name ?? 'your Pokémon'}, but it could not be saved.`,
+    );
+  }
+
+  /**
+   * The gear strip: what this Pokemon carries, and what the stash could give it
+   * instead.
+   *
+   * It sits under the Pokemon it acts on, as the care strip does, because gear
+   * is a fact about that Pokemon rather than a pocket of its own - and because
+   * what the player is really choosing is which Pokemon takes the piece into the
+   * raid. Nothing is `disabled`: the cursor is how this screen explains itself.
+   */
+  private gearStrip(stored: StashedPokemon): string {
+    const held = getHeldItem(stored.pokemon.heldItemId);
+    const offers = HELD_ITEM_DEFINITIONS.filter(
+      (item) => this.stash.itemCount(item.id) > 0 && item.id !== stored.pokemon.heldItemId,
+    );
+    if (!held && offers.length === 0) {
+      return '';
+    }
+    const take = held
+      // The chip says the action, because the row above it already says what is
+      // held: two lines for one fact is one of them going stale. No glyph on it
+      // either - the game's typeface has no cross, and a character it lacks is
+      // drawn in whatever face the browser falls back to.
+      ? `<button class="px-window px-chip" data-gear-take="${stored.id}" data-help="${escapeAttribute(`${held.displayName}: ${held.description} Press to take it back into storage.`)}">Take ${held.displayName}</button>`
+      : '';
+    const give = offers
+      .map(
+        (item) =>
+          // The verb, for the same reason the take chip carries one: a chip that
+          // is only a name reads as a label rather than something to press.
+          `<button class="px-window px-chip" data-gear-give="${item.id}" data-gear-pokemon="${stored.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description} Lost with ${stored.pokemon.base.name} on a wipe.`)}">Give ${item.displayName} ×${this.stash.itemCount(item.id)}</button>`,
+      )
+      .join('');
+    return `<div class="care-strip"><div class="care-options">${take}${give}</div></div>`;
   }
 
   /** The lone Pokemon a swap would trade away, or undefined while a team remains. */
@@ -725,6 +806,8 @@ export class HubScene extends Phaser.Scene {
     });
     on('[data-pokemon]', (button) => this.answer(this.flow.togglePokemon(button.dataset.pokemon!), 'select'));
     on('[data-treat-item]', (button) => this.treat(button.dataset.treatPokemon!, button.dataset.treatItem!));
+    on('[data-gear-give]', (button) => this.giveGear(button.dataset.gearPokemon!, button.dataset.gearGive!));
+    on('[data-gear-take]', (button) => this.takeGear(button.dataset.gearTake!));
     on('[data-item]', (button) =>
       rerender(() => this.flow.adjustItem(button.dataset.item as ItemId, Number(button.dataset.amount))),
     );
@@ -881,10 +964,19 @@ export class HubScene extends Phaser.Scene {
     return conditionLine(stored.pokemon);
   }
 
-  /** Name, health bar and state on one line; the condition in words under it. */
+  /**
+   * Name, health bar and state on one line; the condition in words under it,
+   * and the gear it is carrying on the end of that.
+   *
+   * The gear is said here rather than only in the stash, because this one line
+   * is every list a Pokemon appears in at base - the stash, the loadout, the
+   * secure slot and the final check - and what a Pokemon takes into the raid is
+   * exactly the thing the last two of those are asking about.
+   */
   private pokemonRowBody(stored: StashedPokemon, tag: string): string {
     const { pokemon } = stored;
-    return `<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${this.conditionLine(stored)}</small></span>${tag}`;
+    const held = getHeldItem(pokemon.heldItemId);
+    return `<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${this.conditionLine(stored)}${held ? ` \u00b7 holding ${held.displayName}` : ''}</small></span>${tag}`;
   }
 
   /**
@@ -926,7 +1018,7 @@ export class HubScene extends Phaser.Scene {
         const tag = hurt
           ? pixelTag(this.recoveryPriceTag(stored), 'risk')
           : pixelTag('Fit', 'good', true);
-        return `<button class="px-row" ${wiring} data-shows="${stored.id}">${this.pokemonRowBody(stored, tag)}</button>`;
+        return `<div class="loadout-entry"><button class="px-row" ${wiring} data-shows="${stored.id}">${this.pokemonRowBody(stored, tag)}</button>${this.gearStrip(stored)}</div>`;
       })
       .join('');
     const portraits = pokemon

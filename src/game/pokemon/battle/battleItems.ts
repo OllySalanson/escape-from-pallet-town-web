@@ -118,5 +118,10 @@ function refusalMessage(item: ItemDefinition, name: string): string {
     // already drawing both for a different species.
     case 'evolution-stone':
       return `A ${item.displayName.toUpperCase()} cannot be used in a battle.`;
+    case 'held':
+      // The ITEM command only lists medicine, so this is the answer to a
+      // question nothing asks - written out so the switch stays exhaustive and
+      // the refusal is never a blank line.
+      return `A ${item.displayName.toUpperCase()} is carried, not used.`;
   }
 }

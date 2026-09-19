@@ -1,5 +1,6 @@
 export { Bag, type BagContents } from './Bag';
 export {
+  HELD_ITEM_DEFINITIONS,
   ITEM_CATEGORY_LABELS,
   ITEM_DEFINITIONS,
   ITEMS,
@@ -7,10 +8,17 @@ export {
   SECURED_MATERIAL_QUANTITY,
   isMaterial,
   ItemCategory,
+  getHeldItem,
   getItemById,
+  heldItemEffect,
+  heldItemName,
+  isHeldItemId,
   useFieldItem,
   type FieldItemUseResult,
+  type HeldItemEffect,
+  type HeldItemId,
   type ItemDefinition,
   type ItemEffect,
   type ItemId,
+  type SupplyItemId,
 } from './items';

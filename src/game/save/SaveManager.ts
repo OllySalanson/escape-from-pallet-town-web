@@ -38,7 +38,7 @@ import {
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 6;
 const PRIMARY_STATUSES = new Set<PrimaryStatus>([
   'poison',
   'burn',
@@ -54,6 +54,15 @@ export interface SavedPokemon {
   readonly xp: number;
   readonly moves: readonly string[];
   readonly primaryStatus: PrimaryStatus | null;
+  /**
+   * The gear this Pokemon is carrying, or null for an empty slot.
+   *
+   * Absent on every save written before held items existed, which reads as an
+   * empty slot - so versions 1 to 5 keep loading exactly as they did. An id the
+   * catalogue no longer knows also reads as empty rather than as a name nothing
+   * can price (`Pokemon.giveHeldItem`).
+   */
+  readonly heldItemId?: string | null;
 }
 
 export interface SavedStashedPokemon {
@@ -146,6 +155,14 @@ const RETIRED_INSERTIONS: Readonly<Record<string, string>> = { 'south-verge': 't
  * vault with an empty one until it learned to carry it through.
  */
 const LAST_FREE_ROAM_SAVE_VERSION = 3;
+
+/**
+ * The last version that could write a Bulbasaur without its level-1 Tackle. It
+ * is pinned rather than compared against the current version: read as "anything
+ * older than today", every later version bump would quietly re-open the repair
+ * on saves that never had the fault.
+ */
+const LAST_MISSING_TACKLE_SAVE_VERSION = 4;
 
 export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   firstContractExtracted: false,
@@ -568,7 +585,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
   if (
     !isRecord(value) ||
     typeof value.version !== 'number' ||
-    ![1, 2, 3, 4, SAVE_VERSION].includes(value.version)
+    ![1, 2, 3, 4, 5, SAVE_VERSION].includes(value.version)
   ) {
     return null;
   }
@@ -735,6 +752,7 @@ function serializePokemon(pokemon: Pokemon): SavedPokemon {
     xp: getPokemonXp(pokemon),
     moves: pokemon.moves.map((move) => move.base.name),
     primaryStatus: pokemon.primaryStatus,
+    heldItemId: pokemon.heldItemId,
   };
 }
 
@@ -751,6 +769,7 @@ function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon
   const pokemon = new Pokemon(species, value.level);
   pokemon.currentHp = clampInteger(value.currentHp, 0, pokemon.maxHp, pokemon.maxHp);
   pokemon.primaryStatus = isPrimaryStatus(value.primaryStatus) ? value.primaryStatus : null;
+  pokemon.giveHeldItem(typeof value.heldItemId === 'string' ? value.heldItemId : null);
 
   if (Array.isArray(value.moves)) {
     // The whole line, not this species alone. An Ivysaur that evolved out of
@@ -843,7 +862,11 @@ function reconcileLegacyBulbasaurMoves(
   moves: MoveBase[],
   saveVersion: number,
 ): void {
-  if (saveVersion >= SAVE_VERSION || speciesId !== 'bulbasaur' || moves.length >= 4) {
+  if (
+    saveVersion > LAST_MISSING_TACKLE_SAVE_VERSION ||
+    speciesId !== 'bulbasaur' ||
+    moves.length >= 4
+  ) {
     return;
   }
 

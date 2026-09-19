@@ -29,6 +29,7 @@ describe('raid settlement', () => {
     starter.takeDamage(4);
     starter.primaryStatus = 'poison';
     starter.gainExperience(30);
+    starter.giveHeldItem('leftovers');
     partner.takeDamage(partner.maxHp);
 
     expect(deployedRaidCondition(['bulbasaur-1', 'charmander-1'], manager.snapshot())).toEqual([
@@ -40,6 +41,9 @@ describe('raid settlement', () => {
         experience: experienceForLevel(5) + 30,
         // And what it became, for the evolution that spends no experience.
         speciesId: 'bulbasaur',
+        // Gear was never in the pack, so the condition is the only way home for
+        // it - and the only reason a wipe can take it.
+        heldItemId: 'leftovers',
       },
       // A faint comes home as a faint. Deleting it here would charge the same
       // faint twice: losing deployed Pokemon is what a wipe is for.
@@ -51,6 +55,7 @@ describe('raid settlement', () => {
         // all is the wipe's decision, not this one's.
         experience: experienceForLevel(7),
         speciesId: 'charmander',
+        heldItemId: null,
       },
     ]);
   });
@@ -67,6 +72,7 @@ describe('raid settlement', () => {
         primaryStatus: null,
         experience: experienceForLevel(5),
         speciesId: 'bulbasaur',
+        heldItemId: null,
       },
     ]);
     expect(deployedRaidCondition([], manager.snapshot())).toEqual([]);
@@ -123,6 +129,7 @@ describe('raid settlement', () => {
           primaryStatus: null,
           experience: experienceForLevel(5),
           speciesId: 'bulbasaur',
+          heldItemId: null,
         },
       ],
       supplies: [{ itemId: 'potion', quantity: -2 }],

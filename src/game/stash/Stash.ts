@@ -1,4 +1,4 @@
-import { Bag, getItemById, isMaterial, type BagContents } from '../items';
+import { Bag, getItemById, isHeldItemId, isMaterial, type BagContents } from '../items';
 import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE, getSpeciesById, type PokemonBase } from '../pokemon';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 
@@ -103,6 +103,16 @@ export interface RaidCondition {
    * numbers for one fact are two answers waiting to disagree.
    */
   readonly experience: number;
+  /**
+   * The gear this Pokemon was carrying when the raid ended, or null for an
+   * empty slot.
+   *
+   * It travels home on the condition rather than in the supply delta because
+   * gear is not in the pack: it is on the Pokemon, which is what makes it
+   * something a wipe can take. Carried on every ending, including a lost one -
+   * a secured Pokemon comes home holding what it held.
+   */
+  readonly heldItemId: string | null;
 }
 
 /**
@@ -240,6 +250,7 @@ export class Stash {
       }
       stored.pokemon.currentHp = clampHp(entry.currentHp, stored.pokemon.maxHp);
       stored.pokemon.primaryStatus = entry.primaryStatus;
+      stored.pokemon.giveHeldItem(entry.heldItemId);
     }
   }
 
@@ -263,6 +274,44 @@ export class Stash {
 
   public addItem(itemId: string, quantity = 1): boolean {
     return this.bag.add(itemId, quantity);
+  }
+
+  /**
+   * Moves one piece of gear out of the vault's supplies and onto a Pokemon,
+   * putting whatever it displaced back in the supplies.
+   *
+   * It is a move rather than a copy in both directions, so the gear a save holds
+   * is always either on a Pokemon or in the bag and never in both - the one rule
+   * that keeps "one item per Pokemon, never two" honest across a give, a swap and
+   * a take.
+   *
+   * @returns Whether the gear changed hands.
+   */
+  public giveHeldItem(pokemonId: string, itemId: string): boolean {
+    const stored = this.storedPokemon.find((entry) => entry.id === pokemonId);
+    if (!stored || !isHeldItemId(itemId) || this.itemCount(itemId) <= 0) {
+      return false;
+    }
+    if (stored.pokemon.heldItemId === itemId) {
+      return false;
+    }
+    this.removeItem(itemId, 1);
+    const displaced = stored.pokemon.giveHeldItem(itemId);
+    if (displaced) {
+      this.addItem(displaced, 1);
+    }
+    return true;
+  }
+
+  /** Takes a Pokemon's gear back into the vault's supplies. */
+  public takeHeldItem(pokemonId: string): boolean {
+    const stored = this.storedPokemon.find((entry) => entry.id === pokemonId);
+    const taken = stored?.pokemon.takeHeldItem();
+    if (!taken) {
+      return false;
+    }
+    this.addItem(taken, 1);
+    return true;
   }
 
   public removeItem(itemId: string, quantity = 1): boolean {
@@ -482,6 +531,9 @@ export function starterInConditionOf(outgoing: Pokemon, starter: PokemonBase): P
     : Math.max(1, Math.floor((incoming.maxHp * outgoing.currentHp) / outgoing.maxHp));
   incoming.takeDamage(incoming.maxHp - carriedHp);
   incoming.primaryStatus = outgoing.primaryStatus;
+  // The gear comes across with the condition. A swap is a change of species; it
+  // is not a way to lose a piece of gear that can never be found twice.
+  incoming.giveHeldItem(outgoing.heldItemId);
   return incoming;
 }
 

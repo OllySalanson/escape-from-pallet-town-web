@@ -1,3 +1,4 @@
+import type { HeldItemId } from '../items';
 import { Pokemon } from '../pokemon';
 import { BUTTERFREE, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE } from '../pokemon/species';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
@@ -32,6 +33,26 @@ export interface RunTrainerEncounter extends TrainerWatch {
    * is what the save keeps, so it must never be reused for a different door.
    */
   readonly bossId?: string;
+  /**
+   * The gear this boss is carrying, handed to the player's pack the first time
+   * they beat them.
+   *
+   * Only a boss may carry gear, and that is the whole of where gear comes from.
+   * A boss is the one fight in the game that is already once per save - a beaten
+   * one is dropped by `withoutDefeatedBosses` and what is left is the open gate -
+   * so gear stays finite without a second list to keep it so. Everything else
+   * that hands the player items repeats: field loot is drawn fresh every raid,
+   * the standing board deals for as long as the player keeps banking, and the
+   * wipe restock refills the kit. Gear that any of those produced would stop
+   * being a decision by the fifth raid.
+   *
+   * It drops into the raid's own pack, not into the vault: the piece has to be
+   * carried out past whatever is left of the clock and the hunter, and a wipe on
+   * the way home loses it for good. That is the point of it - and it is why the
+   * gate opens on the win rather than on the extraction, so a raid lost carrying
+   * the gear still bought the door.
+   */
+  readonly carries?: HeldItemId;
   readonly introLines: readonly string[];
   readonly trainer: TrainerBattle;
 }
@@ -57,6 +78,27 @@ export const withoutDefeatedBosses = (
   trainers.filter(
     (trainer) => trainer.bossId === undefined || !defeatedBosses.includes(trainer.bossId),
   );
+
+/**
+ * What the bosses just beaten were carrying, and the line that says so.
+ *
+ * Read from the trainers the raid actually generated, so a boss whose gear is
+ * retired stops paying out without anything else changing, and returned as a
+ * list rather than added anywhere: the gear belongs in the raid's own pack, and
+ * only `WorldScene` holds that.
+ */
+export function bossGearDropped(
+  trainers: readonly RunTrainerEncounter[],
+  bossIds: readonly string[],
+): readonly { readonly bossId: string; readonly name: string; readonly itemId: HeldItemId }[] {
+  return bossEncounters(trainers)
+    .filter((boss) => bossIds.includes(boss.bossId) && boss.carries !== undefined)
+    .map((boss) => ({
+      bossId: boss.bossId,
+      name: boss.trainer.name,
+      itemId: boss.carries as HeldItemId,
+    }));
+}
 
 const createTrainer = (
   id: string,
@@ -110,6 +152,10 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     fixedPosition: true,
     sightRange: 1,
     bossId: 'floodplain-toll-keeper',
+    // The first door, so the first piece: a Quick Claw is the gentlest of the
+    // four to read - you either went first or you did not - and it changes a
+    // fight without changing how much of it you survive.
+    carries: 'quick-claw',
     design: 'sailor',
     introLines: [
       'TOLLMAN BRIGGS HOLDS THE BRIDGE.',
@@ -134,6 +180,10 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     fixedPosition: true,
     sightRange: 1,
     bossId: 'floodplain-sluice-keeper',
+    // The hardest of the three doors, and the piece that most changes a long
+    // raid: Leftovers is HP the recovery bay would otherwise charge raid time
+    // for.
+    carries: 'leftovers',
     design: 'hiker',
     introLines: [
       'SLUICE KEEPER DANE HOLDS THE GATEHOUSE.',
@@ -156,6 +206,10 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     fixedPosition: true,
     sightRange: 1,
     bossId: 'floodplain-orchard-warden',
+    // The warden keeps what is buried past her rows, and what she keeps is the
+    // one piece that answers a raid ending: a Focus Band is a Pokemon that does
+    // not come home in the ledger.
+    carries: 'focus-band',
     design: 'straw-hat',
     introLines: [
       'WARDEN HOLT HOLDS THE ORCHARD FENCE.',
@@ -223,6 +277,10 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     fixedPosition: true,
     sightRange: 1,
     bossId: 'overlook-warden',
+    // The only door off the Floodplain, and the only piece with a price on it.
+    // A Life Orb is carried by a player who has already decided a shorter fight
+    // is worth the HP, which is exactly who walks up to Wren's fence.
+    carries: 'life-orb',
     introLines: [
       'WARDEN WREN HOLDS THE OVERLOOK GATE.',
       'Nobody has seen the far side of this fence. Earn it.',
