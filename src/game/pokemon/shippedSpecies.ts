@@ -37,8 +37,9 @@ export interface SpeciesDeviation {
  * are measured over the real engine in `hunterThreat.test.ts`. AGENTS.md is
  * explicit that a learnset change to the early game is measured rather than
  * assumed, so adopting canon for these is its own change with its own
- * measurements; the diff is printed in `docs/pokemon/roster.md` so it can be
- * read rather than reconstructed. Three of them are worth naming:
+ * measurements; what canon teaches each of them is in
+ * `generated/speciesCatalogue.ts` beside this, so the two can be read against
+ * each other rather than reconstructed. Three of them are worth naming:
  *
  * - **Bulbasaur learns Vine Whip at 7**, not canon's 10, and canon's level-7
  *   slot is Leech Seed, which this engine cannot express. Every starter having
