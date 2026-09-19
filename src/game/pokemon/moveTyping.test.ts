@@ -31,8 +31,8 @@ describe('move typing', () => {
     expect(TAIL_WHIP.type).toBe(PokemonType.Normal);
     expect(TAIL_WHIP.category).toBe(MoveCategory.Status);
     expect(TAIL_WHIP.power).toBe(0);
-    expect(TAIL_WHIP.boosts).toEqual([{ stat: 'defense', stages: -1 }]);
-    expect(GROWL.boosts).toEqual([{ stat: 'attack', stages: -1 }]);
+    expect(TAIL_WHIP.effects.boosts).toEqual([{ stat: 'defense', stages: -1 }]);
+    expect(GROWL.effects.boosts).toEqual([{ stat: 'attack', stages: -1 }]);
     expect(TAIL_WHIP.description).not.toBe('');
   });
 });

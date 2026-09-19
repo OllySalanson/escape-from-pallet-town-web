@@ -10,6 +10,7 @@ import {
   VINE_WHIP,
 } from '../pokemon/moves';
 import { PokemonType } from '../pokemon/PokemonType';
+import type { PrimaryStatus, StatusName } from '../pokemon/battle/status';
 import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle/battleFlow';
 import { TypewriterQueue } from '../ui/TypewriterQueue';
 import {
@@ -85,7 +86,7 @@ describe('battle presentation', () => {
     expect(eventToMessage({ type: 'fainted', user: 'enemy', name: 'Pidgey' })).toBe('Foe PIDGEY fainted!');
     expect(
       eventToMessage({ type: 'status-applied', user: 'player', name: 'Squirtle', status: 'confusion' }),
-    ).toBe('Your SQUIRTLE is confused!');
+    ).toBe('Your SQUIRTLE became confused!');
     expect(formatPartyRow({ base: { name: 'Squirtle' }, level: 5, currentHp: 17, maxHp: 17, isFainted: false }))
       .toBe('SQUIRTLE Lv 5 HP 17/17');
     expect(formatPartyRow({ base: { name: 'Squirtle' }, level: 5, currentHp: 0, maxHp: 17, isFainted: true }))
@@ -291,5 +292,37 @@ describe('battle presentation', () => {
       expect(formatHunterFleeCommand(60_000, 60_000)).toBe('FLEE: CLOCK OUT');
       expect(formatHunterFleeCommand(60_000, 24_000)).toBe('FLEE: CLOCK OUT');
     });
+  });
+});
+
+describe('what a status condition reads like', () => {
+  // One noun cannot do all three jobs. These used to share a single label, which
+  // gave "is poison!" and "is paralysis and can't move!" - fine for sleep and
+  // wrong English for the other two. A burn or a paralysis now arrives on almost
+  // any Fire or Electric move rather than only on the two that spelled it out,
+  // so these lines are read far more often than they were.
+  it('says what happened, not what the condition is called', () => {
+    const applied = (status: StatusName): string =>
+      eventToMessage({ type: 'status-applied', user: 'enemy', name: 'Pidgey', status });
+    expect(applied('poison')).toBe('Foe PIDGEY was poisoned!');
+    expect(applied('burn')).toBe('Foe PIDGEY was burned!');
+    expect(applied('paralysis')).toBe('Foe PIDGEY was paralysed!');
+    expect(applied('sleep')).toBe('Foe PIDGEY fell asleep!');
+    expect(applied('freeze')).toBe('Foe PIDGEY was frozen solid!');
+    expect(applied('confusion')).toBe('Foe PIDGEY became confused!');
+  });
+
+  it('says why a turn was lost in the words of the condition that took it', () => {
+    const held = (status: PrimaryStatus): string =>
+      eventToMessage({ type: 'status-prevented', user: 'player', name: 'Squirtle', status });
+    expect(held('paralysis')).toBe("Your SQUIRTLE is fully paralysed and can't move!");
+    expect(held('sleep')).toBe('Your SQUIRTLE is fast asleep!');
+    expect(held('freeze')).toBe('Your SQUIRTLE is frozen solid!');
+  });
+
+  it('keeps the adjectival phrasing where the line names the condition in passing', () => {
+    expect(
+      eventToMessage({ type: 'status-damage', user: 'player', name: 'Squirtle', status: 'burn', damage: 4 }),
+    ).toBe('Your SQUIRTLE is hurt by a burn!');
   });
 });

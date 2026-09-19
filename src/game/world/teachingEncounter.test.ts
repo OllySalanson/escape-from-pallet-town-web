@@ -121,6 +121,6 @@ describe('teaching encounter', () => {
 
     expect(teacher.base).toBe(PIDGEY);
     expect(teacher.moves.map((move) => move.base.name)).toEqual(['Tackle']);
-    expect(teacher.moves.every((move) => move.base.boosts.length === 0)).toBe(true);
+    expect(teacher.moves.every((move) => !move.base.hasEffects)).toBe(true);
   });
 });

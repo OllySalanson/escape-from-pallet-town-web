@@ -80,6 +80,24 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
     case 'status-prevented':
     case 'status-already':
       return withLine('denied');
+    // What a move does beyond its damage. Each borrows the voice of the thing it
+    // most resembles rather than adding an effect nobody would recognise: a
+    // flinch is a turn refused, a drain and a heal are both HP arriving, and the
+    // extra hits of a multi-hit move are the same blow again.
+    case 'flinched':
+    case 'recharging':
+      return withLine('denied');
+    case 'multi-hit':
+      return withLine('hitPhysical');
+    case 'drained':
+    case 'healed':
+      return withLine('heal');
+    case 'heal-failed':
+      return withLine('denied');
+    case 'recoil':
+      return withLine('statusDamage');
+    case 'charging':
+      return withLine('statusMove');
   }
 }
 

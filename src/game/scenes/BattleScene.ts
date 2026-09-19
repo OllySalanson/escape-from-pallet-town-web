@@ -14,6 +14,7 @@ import {
   refreshPlayerAfterLevelUp,
   replacePlayerPokemon,
   resolveCatchAttempt,
+  lockedMove,
   resolveEnemyTurn,
   resolveTurn,
   getCombatantTypes,
@@ -1360,6 +1361,14 @@ export class BattleScene extends Phaser.Scene {
     if (this.state.outcome === 'active') {
       if (this.displayedEnemy !== this.state.enemy.pokemon) {
         this.refreshEnemyCombatant();
+      }
+      // A two-turn move takes the next turn with it. Opening the command menu
+      // here would offer a choice the engine is going to overrule, so the turn
+      // is resolved straight away and narrated as what it is.
+      const locked = lockedMove(this.state, 'player');
+      if (locked !== null) {
+        this.useMove(locked);
+        return;
       }
       this.mode = 'main';
       this.selectedCommand = 0;

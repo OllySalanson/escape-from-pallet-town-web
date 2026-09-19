@@ -7,8 +7,20 @@ import { createStatStages, getStagedStat, type StatStages } from './statStages';
 
 export type RandomSource = () => number;
 export const STAB_MULTIPLIER = 1.5;
-export const CRITICAL_HIT_CHANCE_PERCENT = 6.25;
+
+/**
+ * Generation III's critical-hit ladder, per cent, indexed by the move's own
+ * critical stage: 1/16, 1/8, 1/4, 1/3, then 1/2 for anything higher. Slash and
+ * Razor Leaf are stage 1, and there are seven such moves among the 273 that
+ * this engine used to round down to the flat 6.25% every move had.
+ */
+export const CRITICAL_HIT_CHANCE_PERCENT = [6.25, 12.5, 25, 100 / 3, 50] as const;
 export const CRITICAL_HIT_MULTIPLIER = 2;
+
+export const criticalHitChancePercent = (critStage: number): number =>
+  CRITICAL_HIT_CHANCE_PERCENT[
+    Math.max(0, Math.min(CRITICAL_HIT_CHANCE_PERCENT.length - 1, Math.trunc(critStage)))
+  ];
 
 export interface DamageResult {
   readonly damage: number;
@@ -50,9 +62,10 @@ export const calculateDamage = (
   const defenseStat = move.category === MoveCategory.Physical ? 'defense' : 'spDefense';
   const attack = getStagedStat(attacker.stats[attackStat], attackerStages[attackStat]);
   const defense = getStagedStat(defender.stats[defenseStat], defenderStages[defenseStat]);
-  const criticalMultiplier = clampRandom(random) * 100 <= CRITICAL_HIT_CHANCE_PERCENT
-    ? CRITICAL_HIT_MULTIPLIER
-    : 1;
+  const criticalMultiplier =
+    clampRandom(random) * 100 <= criticalHitChancePercent(move.critStage)
+      ? CRITICAL_HIT_MULTIPLIER
+      : 1;
   const stabMultiplier = isStab ? STAB_MULTIPLIER : 1;
   const baseDamage = ((2 * attacker.level + 10) / 250) * move.power * (attack / defense) + 2;
   // The attacker's own gear is read straight off the Pokemon rather than passed

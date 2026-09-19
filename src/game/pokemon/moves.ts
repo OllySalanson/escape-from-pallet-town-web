@@ -1,4 +1,5 @@
-import { MoveBase, MoveCategory } from './MoveBase';
+import { MoveBase, MoveCategory, MoveCharge, MoveFlag, MoveTarget } from './MoveBase';
+import { PrimaryStatus } from './battle/status';
 import { PokemonType } from './PokemonType';
 
 export const TACKLE = new MoveBase({
@@ -19,7 +20,7 @@ export const GROWL = new MoveBase({
   accuracy: 100,
   pp: 30,
   category: MoveCategory.Status,
-  boosts: [{ stat: 'attack', stages: -1 }],
+  effects: { boosts: [{ stat: 'attack', stages: -1 }] },
 });
 
 /**
@@ -38,7 +39,7 @@ export const TAIL_WHIP = new MoveBase({
   accuracy: 100,
   pp: 30,
   category: MoveCategory.Status,
-  boosts: [{ stat: 'defense', stages: -1 }],
+  effects: { boosts: [{ stat: 'defense', stages: -1 }] },
 });
 
 export const SCRATCH = new MoveBase({
@@ -53,12 +54,13 @@ export const SCRATCH = new MoveBase({
 
 export const EMBER = new MoveBase({
   name: 'Ember',
-  description: 'A small flame. No side effect.',
+  description: 'A small flame. May leave a burn.',
   type: PokemonType.Fire,
   power: 40,
   accuracy: 100,
   pp: 25,
   category: MoveCategory.Special,
+  secondaries: [{ chance: 10, status: PrimaryStatus.Burn }],
 });
 
 export const WATER_GUN = new MoveBase({
@@ -89,6 +91,7 @@ export const POISON_POWDER = new MoveBase({
   accuracy: 100,
   pp: 20,
   category: MoveCategory.Status,
+  effects: { status: PrimaryStatus.Poison },
 });
 
 export const SING = new MoveBase({
@@ -102,6 +105,7 @@ export const SING = new MoveBase({
   accuracy: 100,
   pp: 20,
   category: MoveCategory.Status,
+  effects: { status: PrimaryStatus.Sleep },
 });
 
 export const SUPER_SONIC = new MoveBase({
@@ -112,6 +116,7 @@ export const SUPER_SONIC = new MoveBase({
   accuracy: 100,
   pp: 20,
   category: MoveCategory.Status,
+  effects: { status: 'confusion' },
 });
 
 export const THUNDER_WAVE = new MoveBase({
@@ -122,6 +127,9 @@ export const THUNDER_WAVE = new MoveBase({
   accuracy: 100,
   pp: 20,
   category: MoveCategory.Status,
+  // Electric, so a Ground type is immune. That used to be true of the damage
+  // and false of the paralysis, because the status branch never asked.
+  effects: { status: PrimaryStatus.Paralysis },
 });
 
 // ---------------------------------------------------------------------------
@@ -143,14 +151,12 @@ export const THUNDER_WAVE = new MoveBase({
 // early-balance change, which AGENTS.md says to measure rather than port - and
 // the PR raising this file lists both for the captain.
 //
-// A move is here only if this engine can represent it without inventing
-// anything: plain damage, one of the six statuses, or a stat stage on the
-// target. Moves in the same learnsets that it cannot represent are left out
-// rather than approximated - see `evolution.ts` for the list and the reason.
-// Where a canon move carries a secondary effect on top of something
-// representable (Flamethrower's 10% burn, Thunderbolt's 10% paralysis, Slash's
-// raised critical ratio), the move ships without that secondary and its
-// description says only what it actually does.
+// Every one of these now carries the secondary effect it has in canon. They
+// shipped without one because the engine had nowhere to put it - Flamethrower's
+// 10% burn, Thunderbolt's 10% paralysis, Bubble's Speed drop and Slash's raised
+// critical ratio were all simply dropped, and two of them shipped a
+// player-facing description reading "No side effect." That was the engine's
+// limit being written into the fiction as though it were canon.
 // ---------------------------------------------------------------------------
 
 export const SLEEP_POWDER = new MoveBase({
@@ -161,16 +167,18 @@ export const SLEEP_POWDER = new MoveBase({
   accuracy: 75,
   pp: 15,
   category: MoveCategory.Status,
+  effects: { status: PrimaryStatus.Sleep },
 });
 
 export const RAZOR_LEAF = new MoveBase({
   name: 'Razor Leaf',
-  description: 'A volley of sharp leaves. No side effect.',
+  description: 'A volley of sharp leaves. Crits often.',
   type: PokemonType.Grass,
   power: 55,
   accuracy: 95,
   pp: 25,
   category: MoveCategory.Special,
+  critStage: 1,
 });
 
 export const SCARY_FACE = new MoveBase({
@@ -181,37 +189,40 @@ export const SCARY_FACE = new MoveBase({
   accuracy: 90,
   pp: 10,
   category: MoveCategory.Status,
-  boosts: [{ stat: 'speed', stages: -2 }],
+  effects: { boosts: [{ stat: 'speed', stages: -2 }] },
 });
 
 export const FLAMETHROWER = new MoveBase({
   name: 'Flamethrower',
-  description: 'A hard jet of fire. No side effect.',
+  description: 'A hard jet of fire. May leave a burn.',
   type: PokemonType.Fire,
   power: 95,
   accuracy: 100,
   pp: 15,
   category: MoveCategory.Special,
+  secondaries: [{ chance: 10, status: PrimaryStatus.Burn }],
 });
 
 export const HEAT_WAVE = new MoveBase({
   name: 'Heat Wave',
-  description: 'A blast of searing wind. No side effect.',
+  description: 'A blast of searing wind. May burn.',
   type: PokemonType.Fire,
   power: 100,
   accuracy: 90,
   pp: 10,
   category: MoveCategory.Special,
+  secondaries: [{ chance: 10, status: PrimaryStatus.Burn }],
 });
 
 export const SLASH = new MoveBase({
   name: 'Slash',
-  description: 'A raking cut with claws. No side effect.',
+  description: 'A raking cut with claws. Crits often.',
   type: PokemonType.Normal,
   power: 70,
   accuracy: 100,
   pp: 20,
   category: MoveCategory.Physical,
+  critStage: 1,
 });
 
 export const WING_ATTACK = new MoveBase({
@@ -242,17 +253,18 @@ export const FEATHER_DANCE = new MoveBase({
   accuracy: 100,
   pp: 15,
   category: MoveCategory.Status,
-  boosts: [{ stat: 'attack', stages: -2 }],
+  effects: { boosts: [{ stat: 'attack', stages: -2 }] },
 });
 
 export const BUBBLE = new MoveBase({
   name: 'Bubble',
-  description: 'A spray of bubbles. No side effect.',
+  description: "A spray of bubbles. May cut the target's Speed.",
   type: PokemonType.Water,
   power: 20,
   accuracy: 100,
   pp: 30,
   category: MoveCategory.Special,
+  secondaries: [{ chance: 10, boosts: [{ stat: 'speed', stages: -1 }] }],
 });
 
 export const HYDRO_PUMP = new MoveBase({
@@ -267,22 +279,24 @@ export const HYDRO_PUMP = new MoveBase({
 
 export const THUNDER_SHOCK = new MoveBase({
   name: 'Thunder Shock',
-  description: 'A weak jolt of electricity. No side effect.',
+  description: 'A weak jolt. May paralyse the target.',
   type: PokemonType.Electric,
   power: 40,
   accuracy: 100,
   pp: 30,
   category: MoveCategory.Special,
+  secondaries: [{ chance: 10, status: PrimaryStatus.Paralysis }],
 });
 
 export const THUNDERBOLT = new MoveBase({
   name: 'Thunderbolt',
-  description: 'A strong jolt of electricity. No side effect.',
+  description: 'A strong jolt. May paralyse the target.',
   type: PokemonType.Electric,
   power: 95,
   accuracy: 100,
   pp: 15,
   category: MoveCategory.Special,
+  secondaries: [{ chance: 10, status: PrimaryStatus.Paralysis }],
 });
 
 // ---------------------------------------------------------------------------
@@ -308,20 +322,178 @@ export const THUNDERBOLT = new MoveBase({
 
 export const BITE = new MoveBase({
   name: 'Bite',
-  description: 'A savage bite with sharp fangs.',
+  description: 'A savage bite. May make the target flinch.',
   type: PokemonType.Dark,
   power: 60,
   accuracy: 100,
   pp: 25,
   category: MoveCategory.Special,
+  flags: [MoveFlag.Contact, MoveFlag.Bite],
+  secondaries: [{ chance: 30, flinch: true }],
 });
 
 export const METAL_CLAW = new MoveBase({
   name: 'Metal Claw',
-  description: 'A rake with hardened steel claws.',
+  description: "A rake with steel claws. May raise the user's Attack.",
   type: PokemonType.Steel,
   power: 50,
   accuracy: 95,
   pp: 35,
   category: MoveCategory.Physical,
+  flags: [MoveFlag.Contact],
+  // The one secondary in the shipped set that lands on the **user**, which is
+  // why `MoveTarget` had to be ported before this move could be written down.
+  secondaries: [{ chance: 10, target: MoveTarget.Self, boosts: [{ stat: 'attack', stages: 1 }] }],
+});
+
+// ---------------------------------------------------------------------------
+// The moves the old shape could not hold
+//
+// Each one is a category `evolution.ts` used to list as "left out rather than
+// approximated", and each is now a data row and nothing else - no branch in the
+// engine knows any of their names.
+//
+// **Generation III numbers, and canon learnset levels.** They are placed only
+// where they cannot quietly change the balance of the shipped game: every level
+// below is **above the highest level anything is fielded at today** (a trainer's
+// twelve, the hunter's enraged fifteen), so nothing the player meets gains a
+// move it did not have. Where canon's only slot is lower - Pidgey's Sand Attack
+// at 5, Pikachu's Quick Attack at 11, Butterfree's Confusion at 1, Squirtle's
+// Withdraw at 10 - the move waits for the import, because AGENTS.md is explicit
+// that a learnset change to the early game is measured rather than assumed.
+//
+// Two categories the model expresses with no shipped move to show them: **drain**
+// (Absorb, Mega Drain, Leech Life - nothing in this seventeen-strong roster
+// learns one by level in FRLG) and **recharge** (Hyper Beam is a machine, not a
+// level-up move here). Both are held by `battleEngine.test.ts` instead.
+// ---------------------------------------------------------------------------
+
+/** Priority. Goes first whatever the Speed, which nothing could express before. */
+export const QUICK_ATTACK = new MoveBase({
+  name: 'Quick Attack',
+  description: 'A blindingly fast strike. Always goes first.',
+  type: PokemonType.Normal,
+  power: 40,
+  accuracy: 100,
+  pp: 30,
+  category: MoveCategory.Physical,
+  priority: 1,
+  flags: [MoveFlag.Contact],
+});
+
+/** Multi-hit. Two to five times, on generation III's own weighting. */
+export const DOUBLE_SLAP = new MoveBase({
+  name: 'Double Slap',
+  description: 'Slaps two to five times in one turn.',
+  type: PokemonType.Normal,
+  power: 15,
+  accuracy: 85,
+  pp: 10,
+  category: MoveCategory.Physical,
+  hits: { min: 2, max: 5 },
+  flags: [MoveFlag.Contact],
+});
+
+/** Recoil: a third of the damage dealt, back onto the user. */
+export const DOUBLE_EDGE = new MoveBase({
+  name: 'Double-Edge',
+  description: 'A reckless tackle. The user takes a third of it back.',
+  type: PokemonType.Normal,
+  power: 120,
+  accuracy: 100,
+  pp: 15,
+  category: MoveCategory.Physical,
+  recoil: 1 / 3,
+  flags: [MoveFlag.Contact],
+});
+
+/** A stat stage on the **user**, and a move that cannot miss. */
+export const AGILITY = new MoveBase({
+  name: 'Agility',
+  description: "Raises the user's own Speed by two stages.",
+  type: PokemonType.Psychic,
+  power: 0,
+  accuracy: 100,
+  pp: 30,
+  category: MoveCategory.Status,
+  target: MoveTarget.Self,
+  alwaysHits: true,
+  effects: { boosts: [{ stat: 'speed', stages: 2 }] },
+});
+
+/** An accuracy stage, which `StatStages` had no room for until now. */
+export const SMOKESCREEN = new MoveBase({
+  name: 'Smokescreen',
+  description: "Lowers the target's accuracy by one stage.",
+  type: PokemonType.Normal,
+  power: 0,
+  accuracy: 100,
+  pp: 20,
+  category: MoveCategory.Status,
+  effects: { boosts: [{ stat: 'accuracy', stages: -1 }] },
+});
+
+/** The other half of that pair: an evasion stage, on the user. */
+export const DOUBLE_TEAM = new MoveBase({
+  name: 'Double Team',
+  description: "Raises the user's own evasion by one stage.",
+  type: PokemonType.Normal,
+  power: 0,
+  accuracy: 100,
+  pp: 15,
+  category: MoveCategory.Status,
+  target: MoveTarget.Self,
+  alwaysHits: true,
+  effects: { boosts: [{ stat: 'evasion', stages: 1 }] },
+});
+
+/** Healing. Nothing but damage and the status tick used to write HP. */
+export const SYNTHESIS = new MoveBase({
+  name: 'Synthesis',
+  description: 'Restores half of the user’s maximum HP.',
+  type: PokemonType.Grass,
+  power: 0,
+  accuracy: 100,
+  pp: 5,
+  category: MoveCategory.Status,
+  target: MoveTarget.Self,
+  alwaysHits: true,
+  healing: 0.5,
+});
+
+/** Two-turn: one turn absorbing light, the next firing. */
+export const SOLAR_BEAM = new MoveBase({
+  name: 'Solar Beam',
+  description: 'Absorbs light for a turn, then fires on the next.',
+  type: PokemonType.Grass,
+  power: 120,
+  accuracy: 100,
+  pp: 10,
+  category: MoveCategory.Special,
+  charge: MoveCharge.Charge,
+});
+
+/** Effect chance at its most common weight, on a primary status. */
+export const BODY_SLAM = new MoveBase({
+  name: 'Body Slam',
+  description: 'A full-body drop. May paralyse the target.',
+  type: PokemonType.Normal,
+  power: 85,
+  accuracy: 100,
+  pp: 15,
+  category: MoveCategory.Physical,
+  flags: [MoveFlag.Contact],
+  secondaries: [{ chance: 30, status: PrimaryStatus.Paralysis }],
+});
+
+/** Confusion as a rolled secondary rather than a guaranteed one. */
+export const PSYBEAM = new MoveBase({
+  name: 'Psybeam',
+  description: 'A peculiar ray. May confuse the target.',
+  type: PokemonType.Psychic,
+  power: 65,
+  accuracy: 100,
+  pp: 20,
+  category: MoveCategory.Special,
+  secondaries: [{ chance: 10, status: 'confusion' }],
 });

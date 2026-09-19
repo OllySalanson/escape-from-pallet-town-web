@@ -191,7 +191,14 @@ describe('damage calculation', () => {
   });
 
   it('selects attack and defense for physical moves, special attack and defense for special moves', () => {
-    const physicalFireMove = new MoveBase({ ...EMBER, category: MoveCategory.Physical });
+    const physicalFireMove = new MoveBase({
+      name: EMBER.name,
+      type: EMBER.type,
+      power: EMBER.power,
+      accuracy: EMBER.accuracy,
+      pp: EMBER.pp,
+      category: MoveCategory.Physical,
+    });
     const charmander = new Pokemon(CHARMANDER, 10);
     const bulbasaur = new Pokemon(BULBASAUR, 10);
 

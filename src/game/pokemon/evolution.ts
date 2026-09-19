@@ -55,21 +55,24 @@ export interface EvolutionRule {
  * here so that the day a Jigglypuff can be caught, the item is the only thing
  * missing.
  *
- * Moves the evolved forms learn in FireRed/LeafGreen that this engine cannot
- * represent, left out rather than approximated: Leech Seed, Synthesis and Rest
- * (healing over turns), Solar Beam and Skull Bash (two-turn), Growth, Agility,
- * Withdraw and Defense Curl (every stat boost here is applied to the target),
- * Sweet Scent, Sand Attack and Smokescreen (no evasion or accuracy stage),
- * Dragon Rage (fixed damage), Fire Spin (trapping), Quick Attack (no move
- * priority), Whirlwind and Mirror Move, Rapid Spin, Protect, Rain Dance,
- * Disable, and Double Slap (multi-hit).
+ * This file used to carry a long list of moves these species learn in
+ * FireRed/LeafGreen that the engine could not represent - healing, two-turn, a
+ * stat boost on the user, an accuracy or evasion stage, priority, multi-hit,
+ * a raised critical rate - "left out rather than approximated". **That list is
+ * mostly gone.** `MoveBase` now carries each of those as a field and
+ * `battleEngine.ts` reads them, so Synthesis, Solar Beam, Agility, Smokescreen,
+ * Double Team, Quick Attack, Double Slap, Double-Edge, Body Slam and Psybeam
+ * are ordinary data rows; Metal Claw and Bite came back when the type chart
+ * grew to seventeen. `tools/moves/coverage.mjs` is the current count.
  *
- * Metal Claw and Bite were on that list, left out because Dark and Steel were
- * missing from the type chart on the false premise that they are later than
- * this generation. They are generation II types, and both moves are now
- * authored: the Charmander line's Metal Claw at 13 and the Squirtle line's Bite
- * at 18/19. Each still ships without its secondary - Metal Claw's 10% Attack
- * raise on the *user*, Bite's 30% flinch - which is a different gap.
+ * What is still left out, and why: **Leech Seed, Fire Spin, Rapid Spin,
+ * Whirlwind, Mirror Move, Disable, Protect, Rain Dance, Light Screen and
+ * Safeguard** need per-combatant timed effects, a field, or a forced switch -
+ * the tiers above this one. **Dragon Rage** is fixed damage. And **Withdraw,
+ * Defense Curl, Growth, Sand Attack, Confusion and Sweet Scent** are all
+ * expressible now but wait for the import, because their only canon slot is at
+ * a level the shipped game actually fields, and AGENTS.md is explicit that a
+ * learnset change to the early game is measured rather than assumed.
  */
 export const EVOLUTIONS: readonly EvolutionRule[] = [
   { from: 'bulbasaur', to: 'ivysaur', trigger: { kind: 'level', level: 16 } },
