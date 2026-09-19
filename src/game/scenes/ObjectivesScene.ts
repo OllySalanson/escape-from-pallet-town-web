@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { audioManager } from '../audio/AudioManager';
 import { buildObjectiveGuide } from '../objectives/ObjectiveGuide';
 import type { GridPosition } from '../movement/gridMovement';
 import type { ActiveRunSession } from '../run/RunSession';
@@ -87,6 +88,7 @@ export class ObjectivesScene extends Phaser.Scene {
     }
     const resumeWorld = this.pausedWorld && this.scene.isPaused('world');
     this.pausedWorld = false;
+    audioManager.play('menuClose');
     this.scene.stop();
     if (resumeWorld) {
       this.scene.resume('world');

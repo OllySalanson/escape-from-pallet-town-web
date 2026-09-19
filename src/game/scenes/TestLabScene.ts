@@ -1,4 +1,12 @@
 import Phaser from 'phaser';
+import { audioManager } from '../audio/AudioManager';
+import {
+  SOUND_EFFECTS,
+  SOUND_EFFECT_NAMES,
+  soundEffectLength,
+  type SoundChannel,
+  type SoundEffect,
+} from '../audio/soundEffects';
 import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
 import { createTestLabBattleScenario } from '../dev/testLabRoutes';
@@ -29,6 +37,8 @@ export class TestLabScene extends Phaser.Scene {
   private records: Record<string, TestLabRecord> = {};
   private selectedIndex = 0;
   private status = '';
+  private view: 'scenarios' | 'sounds' = 'scenarios';
+  private lastSound = '';
 
   public constructor() {
     super('test-lab');
@@ -42,6 +52,10 @@ export class TestLabScene extends Phaser.Scene {
   }
 
   private render(): void {
+    if (this.view === 'sounds') {
+      this.renderSoundBoard();
+      return;
+    }
     const scenario = TEST_LAB_SCENARIOS[this.selectedIndex];
     const record = this.records[scenario.id] ?? { result: 'not-tested', notes: '' };
     const completed = Object.values(this.records).filter((item) => item.result === 'pass').length;
@@ -49,6 +63,7 @@ export class TestLabScene extends Phaser.Scene {
       <header class="menu-header">
         <div><p class="eyebrow">LOCALHOST ONLY · DEVELOPMENT BUILD</p><h1>TEST LAB</h1></div>
         <div class="stash-count">${completed}/${TEST_LAB_SCENARIOS.length} passed</div>
+        <button class="button" data-sound-board>Sound board →</button>
       </header>
       <p class="test-lab-intro">Open <b>?test-lab=1</b> on localhost. This screen is not bundled into production builds.</p>
       <main class="test-lab-layout">
@@ -72,7 +87,62 @@ export class TestLabScene extends Phaser.Scene {
     this.bindControls();
   }
 
+  /**
+   * Every effect in the game, by name, one click each. A sound cannot be
+   * reviewed from a diff, so this is where one is: the list is read straight
+   * off `SOUND_EFFECTS`, so an effect cannot be added without appearing here.
+   * `menuClickSound` keeps the menu's own click off these buttons, so the only
+   * thing heard is the thing being auditioned.
+   */
+  private renderSoundBoard(): void {
+    const channels: readonly SoundChannel[] = ['ui', 'world', 'alert', 'battle', 'fanfare'];
+    const groups = channels
+      .map((channel) => {
+        const names = SOUND_EFFECT_NAMES.filter((name) => SOUND_EFFECTS[name].channel === channel);
+        return `<section class="panel sound-board-group"><p class="eyebrow">${channel} channel · ${names.length}</p><div class="sound-board-grid">${names
+          .map((name) => {
+            const effect: SoundEffect = SOUND_EFFECTS[name];
+            return `<button class="${name === this.lastSound ? 'selected' : ''}" data-sound="${name}"><strong>${name}</strong><small>${escapeHtml(effect.moment)}</small><small>${Math.round(soundEffectLength(effect) * 1000)} ms · ${effect.tones.length} voice${effect.tones.length === 1 ? '' : 's'}</small></button>`;
+          })
+          .join('')}</div></section>`;
+      })
+      .join('');
+    this.overlay.root.innerHTML = `<div class="menu-shell test-lab-shell">
+      <header class="menu-header">
+        <button class="back-button" data-back>← Test lab</button>
+        <div><p class="eyebrow">LOCALHOST ONLY · ${SOUND_EFFECT_NAMES.length} EFFECTS · MUSIC STAYS OFF</p><h1>SOUND BOARD</h1></div>
+        <div class="stash-count">${this.lastSound ? `Last played: ${this.lastSound}` : 'Click any effect to hear it'}</div>
+      </header>
+      <p class="test-lab-intro">One channel says one thing at a time: start an effect while another on its channel is sounding and the first is cut, exactly as in a raid.</p>
+      <main class="sound-board">${groups}</main>
+    </div>`;
+    this.overlay.root.querySelector<HTMLButtonElement>('[data-back]')!.onclick = () => {
+      this.view = 'scenarios';
+      this.render();
+    };
+    this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-sound]').forEach((button) => {
+      button.onclick = () => {
+        const name = button.dataset.sound as (typeof SOUND_EFFECT_NAMES)[number];
+        // The lab is reached without passing the title screen's key press, so
+        // this click is the gesture the browser needs before it will sound anything.
+        void audioManager.activate().then(() => audioManager.play(name));
+        this.lastSound = name;
+        this.overlay.root
+          .querySelectorAll('[data-sound]')
+          .forEach((other) => other.classList.toggle('selected', other === button));
+        const status = this.overlay.root.querySelector('.stash-count');
+        if (status) {
+          status.textContent = `Last played: ${name}`;
+        }
+      };
+    });
+  }
+
   private bindControls(): void {
+    this.overlay.root.querySelector<HTMLButtonElement>('[data-sound-board]')!.onclick = () => {
+      this.view = 'sounds';
+      this.render();
+    };
     this.overlay.root.querySelectorAll<HTMLButtonElement>('[data-scenario]').forEach((button) => {
       button.onclick = () => {
         this.selectedIndex = Number(button.dataset.scenario);
@@ -181,6 +251,11 @@ export class TestLabScene extends Phaser.Scene {
   }
 
   private handleKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && this.view === 'sounds') {
+      this.view = 'scenarios';
+      this.render();
+      return;
+    }
     if (event.key === 'Escape') {
       this.scene.start('title');
     }

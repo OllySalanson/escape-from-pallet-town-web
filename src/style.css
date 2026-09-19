@@ -886,6 +886,42 @@ button {
   color: #351818;
   background: var(--menu-danger);
 }
+.test-lab-menu {
+  scrollbar-color: #31566a transparent;
+  scrollbar-width: thin;
+}
+.sound-board {
+  display: grid;
+  gap: var(--space-3);
+  overflow-y: auto;
+  min-height: 0;
+}
+.sound-board-group {
+  display: grid;
+  gap: 8px;
+}
+.sound-board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15em, 1fr));
+  gap: 6px;
+}
+.sound-board-grid button {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--menu-raised);
+  padding: 9px;
+}
+.sound-board-grid button:hover,
+.sound-board-grid button.selected {
+  border-color: var(--menu-accent);
+  background: #1d3950;
+}
+.sound-board-grid small {
+  color: var(--menu-muted);
+}
 .test-lab-detail dl {
   display: grid;
   grid-template-columns: 70px 1fr;

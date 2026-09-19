@@ -1,4 +1,33 @@
+import {
+  SOUND_EFFECTS,
+  type SoundChannel,
+  type SoundEffect,
+  type SoundEffectName,
+  type SoundTone,
+} from './soundEffects';
+
 type AudioContextFactory = () => AudioContext | null;
+
+export interface PlayedSound {
+  readonly name: SoundEffectName;
+  /** AudioContext time, in seconds. */
+  readonly at: number;
+}
+
+/** One sounding effect: everything it scheduled, behind one gain so it can be cut as a unit. */
+interface Voice {
+  readonly channel: SoundChannel;
+  readonly gain: GainNode;
+  readonly sources: Set<AudioScheduledSourceNode>;
+  readonly logged: PlayedSound;
+}
+
+/** Two requests for the same effect closer together than this are one event. */
+export const RETRIGGER_GUARD_S = 0.05;
+const CUT_TIME_CONSTANT_S = 0.005;
+/** How far ahead of the audio clock a cursor blip is scheduled. See `play()`. */
+export const UI_LEAD_S = 0.04;
+const PLAY_LOG_LIMIT = 64;
 
 export type AudioTheme = 'title' | 'overworld' | 'battle';
 
@@ -43,7 +72,10 @@ export class AudioManager {
   private theme: AudioTheme = 'title';
   private nextThemeStart = 0;
   private readonly themeSources = new Set<AudioScheduledSourceNode>();
-  private readonly effectSources = new Set<AudioScheduledSourceNode>();
+  private readonly voices = new Set<Voice>();
+  private readonly lastPlayedAt = new Map<SoundEffectName, number>();
+  private readonly played: PlayedSound[] = [];
+  private noiseBuffer: AudioBuffer | null = null;
   private readonly contextFactory: AudioContextFactory;
   private themeTimer: number | null = null;
   private masterGain: GainNode | null = null;
@@ -147,74 +179,76 @@ export class AudioManager {
     this.themeSources.clear();
   }
 
-  public playSelect(): void {
-    this.playTone(659, 0.05, 'square', 0.06);
+  /**
+   * Plays one effect from `SOUND_EFFECTS` by name. This is the only way an
+   * effect is ever sounded, so the three rules that keep a busy moment from
+   * turning into noise are all here rather than at forty call sites:
+   *
+   * - a channel says one thing at a time, so starting an effect cuts whatever
+   *   its channel was still sounding;
+   * - the cursor never talks over the game: anything that is not `ui` cuts
+   *   `ui`, which is what keeps the blip of the key that advanced a line from
+   *   landing on top of the hit that line describes, and a fanfare cuts
+   *   everything because it is the last word on what just happened;
+   * - one event is one sound: the same effect asked for twice inside
+   *   `RETRIGGER_GUARD_S` sounds once.
+   *
+   * Returns whether it sounded.
+   */
+  public play(name: SoundEffectName): boolean {
+    const context = this.context;
+    if (this.muted || context === null || this.masterGain === null || context.state !== 'running') {
+      return false;
+    }
+
+    const now = context.currentTime;
+    const last = this.lastPlayedAt.get(name);
+    if (last !== undefined && now - last < RETRIGGER_GUARD_S) {
+      return false;
+    }
+    this.lastPlayedAt.set(name, now);
+
+    const effect: SoundEffect = SOUND_EFFECTS[name];
+    for (const voice of [...this.voices]) {
+      if (
+        voice.channel === effect.channel ||
+        (voice.channel === 'ui' && effect.channel !== 'ui') ||
+        effect.channel === 'fanfare'
+      ) {
+        this.cutVoice(voice, now);
+      }
+    }
+
+    // The cursor starts a breath late. The browser's audio clock runs ahead of
+    // the frame that is asking, so a blip started "now" has already sounded for
+    // a few milliseconds by the time the game effect that replaces it, later in
+    // the same frame, can cut it - which is a click. Started just ahead of the
+    // clock, it is cut before it begins.
+    const startsAt = now + (effect.channel === 'ui' || effect.yields ? UI_LEAD_S : 0);
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(1, now);
+    gain.connect(this.masterGain);
+    const logged: PlayedSound = { name, at: startsAt };
+    const voice: Voice = { channel: effect.channel, gain, sources: new Set(), logged };
+    this.voices.add(voice);
+    for (const tone of effect.tones) {
+      this.scheduleEffectTone(context, voice, tone, startsAt);
+    }
+
+    this.played.push(logged);
+    if (this.played.length > PLAY_LOG_LIMIT) {
+      this.played.shift();
+    }
+    return true;
   }
 
-  public playConfirm(): void {
-    this.playTone(523, 0.07, 'square', 0.07);
-    this.playTone(784, 0.12, 'square', 0.06, 0.06);
-  }
-
-  public playCancel(): void {
-    this.playTone(392, 0.06, 'square', 0.055);
-    this.playTone(294, 0.1, 'square', 0.05, 0.05);
-  }
-
-  public playBump(): void {
-    this.playTone(110, 0.08, 'triangle', 0.05);
-  }
-
-  public playAttackHit(): void {
-    this.playTone(180, 0.05, 'sawtooth', 0.08);
-    this.playTone(90, 0.1, 'square', 0.065, 0.025);
-  }
-
-  public playStrongHit(): void {
-    this.playTone(220, 0.06, 'sawtooth', 0.1);
-    this.playTone(440, 0.08, 'square', 0.075, 0.035);
-    this.playTone(110, 0.14, 'triangle', 0.075, 0.055);
-  }
-
-  public playFaint(): void {
-    [523, 440, 349, 262].forEach((frequency, index) =>
-      this.playTone(frequency, 0.13, 'square', 0.065, index * 0.1),
-    );
-  }
-
-  public playLowHpWarning(): void {
-    this.playTone(880, 0.08, 'square', 0.07);
-    this.playTone(880, 0.08, 'square', 0.07, 0.16);
-  }
-
-  public playLevelUp(): void {
-    [523, 659, 784, 1047].forEach((frequency, index) =>
-      this.playTone(frequency, 0.11, 'square', 0.07, index * 0.09),
-    );
-  }
-
-  public playEncounter(): void {
-    [262, 330, 392, 523].forEach((frequency, index) =>
-      this.playTone(frequency, 0.07, 'square', 0.07, index * 0.06),
-    );
-  }
-
-  public playLootPickup(): void {
-    [523, 659, 784].forEach((frequency, index) =>
-      this.playTone(frequency, 0.06, 'square', 0.06, index * 0.045),
-    );
-  }
-
-  public playExtract(): void {
-    [392, 523, 659, 784, 1047].forEach((frequency, index) =>
-      this.playTone(frequency, 0.1, 'square', 0.075, index * 0.055),
-    );
-  }
-
-  public playWipe(): void {
-    [330, 262, 196].forEach((frequency, index) =>
-      this.playTone(frequency, 0.14, 'sawtooth', 0.08, index * 0.09),
-    );
+  /**
+   * What has sounded lately, oldest first, in AudioContext seconds. It exists
+   * so "nothing plays twice for one event" can be checked against a played
+   * raid rather than argued from the code.
+   */
+  public get recentlyPlayed(): readonly PlayedSound[] {
+    return this.played;
   }
 
   private scheduleThemeMeasure(): void {
@@ -252,31 +286,93 @@ export class AudioManager {
   }
 
   private stopEffects(): void {
-    for (const source of this.effectSources) {
-      source.stop();
+    const now = this.context?.currentTime ?? 0;
+    for (const voice of [...this.voices]) {
+      this.cutVoice(voice, now);
     }
-    this.effectSources.clear();
   }
 
-  private playTone(
-    frequency: number,
-    duration: number,
-    wave: OscillatorType,
-    volume: number,
-    delay = 0,
+  /** Fades a voice out over a few milliseconds: an abrupt stop is a click. */
+  private cutVoice(voice: Voice, now: number): void {
+    this.voices.delete(voice);
+    // Cut before it began, it was never heard - and the log is a record of
+    // what was heard.
+    if (now < voice.logged.at) {
+      const index = this.played.indexOf(voice.logged);
+      if (index >= 0) {
+        this.played.splice(index, 1);
+      }
+    }
+    voice.gain.gain.cancelScheduledValues(now);
+    voice.gain.gain.setTargetAtTime(0, now, CUT_TIME_CONSTANT_S);
+    for (const source of voice.sources) {
+      source.onended = null;
+      source.stop(now + CUT_TIME_CONSTANT_S * 6);
+    }
+    voice.sources.clear();
+  }
+
+  private scheduleEffectTone(
+    context: AudioContext,
+    voice: Voice,
+    tone: SoundTone,
+    effectStart: number,
   ): void {
-    if (this.muted || this.context === null || this.context.state !== 'running') {
-      return;
+    const startTime = effectStart + (tone.delay ?? 0);
+    const endTime = startTime + tone.duration;
+    const envelope = context.createGain();
+    envelope.gain.setValueAtTime(0.0001, startTime);
+    envelope.gain.exponentialRampToValueAtTime(tone.volume, startTime + 0.01);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, endTime);
+    envelope.connect(voice.gain);
+
+    let source: AudioScheduledSourceNode;
+    if (tone.wave === 'noise') {
+      const noise = context.createBufferSource();
+      noise.buffer = this.noiseBufferFor(context);
+      noise.loop = true;
+      const filter = context.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(tone.frequency, startTime);
+      noise.connect(filter).connect(envelope);
+      source = noise;
+    } else {
+      const oscillator = context.createOscillator();
+      oscillator.type = tone.wave;
+      oscillator.frequency.setValueAtTime(tone.frequency, startTime);
+      if (tone.slideTo !== undefined) {
+        oscillator.frequency.exponentialRampToValueAtTime(tone.slideTo, endTime);
+      }
+      oscillator.connect(envelope);
+      source = oscillator;
     }
 
-    this.playToneAt(
-      frequency,
-      duration,
-      wave,
-      volume,
-      this.context.currentTime + delay,
-      this.effectSources,
-    );
+    source.onended = () => {
+      voice.sources.delete(source);
+      if (voice.sources.size === 0) {
+        this.voices.delete(voice);
+      }
+    };
+    voice.sources.add(source);
+    source.start(startTime);
+    source.stop(endTime + 0.01);
+  }
+
+  /** One second of white noise, made once: the fourth Game Boy voice. */
+  private noiseBufferFor(context: AudioContext): AudioBuffer {
+    if (this.noiseBuffer === null) {
+      const buffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
+      const samples = buffer.getChannelData(0);
+      // A fixed sequence rather than Math.random, so the rustle the captain
+      // auditions is the rustle that ships.
+      let seed = 0x2f6e2b1;
+      for (let index = 0; index < samples.length; index += 1) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) | 0;
+        samples[index] = seed / 0x80000000;
+      }
+      this.noiseBuffer = buffer;
+    }
+    return this.noiseBuffer;
   }
 
   private playToneAt(

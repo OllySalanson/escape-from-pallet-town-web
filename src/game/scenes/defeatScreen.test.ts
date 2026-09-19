@@ -20,7 +20,7 @@ vi.mock('phaser', () => ({
 }));
 
 vi.mock('../audio/AudioManager', () => ({
-  audioManager: { playFaint: vi.fn(), playConfirm: vi.fn() },
+  audioManager: { play: vi.fn() },
 }));
 
 const overlayRoots: FakeRoot[] = [];

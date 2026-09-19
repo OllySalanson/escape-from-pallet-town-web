@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { audioManager } from '../audio/AudioManager';
 import type { Pokemon, PokemonParty } from '../pokemon';
 import type { PokemonType } from '../pokemon/PokemonType';
 import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
@@ -210,6 +211,7 @@ export class PartyScene extends Phaser.Scene {
   }
 
   private close(): void {
+    audioManager.play('menuClose');
     this.scene.stop();
     this.scene.resume('world');
   }

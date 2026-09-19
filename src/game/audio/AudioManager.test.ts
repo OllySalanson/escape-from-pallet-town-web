@@ -1,53 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AudioManager } from './AudioManager';
-
-interface StubContext {
-  readonly context: AudioContext;
-  readonly oscillators: { frequency: number; started: boolean }[];
-}
-
-function createStubAudioContext(): StubContext {
-  const oscillators: { frequency: number; started: boolean }[] = [];
-
-  const createGain = () => {
-    const node = {
-      gain: {
-        setValueAtTime: () => undefined,
-        exponentialRampToValueAtTime: () => undefined,
-      },
-      connect: (target: unknown) => target,
-    };
-    return node;
-  };
-
-  const context = {
-    state: 'running',
-    currentTime: 0,
-    destination: {},
-    resume: () => Promise.resolve(),
-    createGain,
-    createOscillator: () => {
-      const record = { frequency: 0, started: false };
-      oscillators.push(record);
-      return {
-        type: 'square',
-        frequency: {
-          setValueAtTime: (value: number) => {
-            record.frequency = value;
-          },
-        },
-        connect: (target: unknown) => target,
-        onended: null,
-        start: () => {
-          record.started = true;
-        },
-        stop: () => undefined,
-      };
-    },
-  };
-
-  return { context: context as unknown as AudioContext, oscillators };
-}
+import { AudioManager, RETRIGGER_GUARD_S } from './AudioManager';
+import { createStubAudioContext } from './audioTestStub';
+import { SOUND_EFFECTS, SOUND_EFFECT_NAMES } from './soundEffects';
 
 describe('AudioManager', () => {
   it('tracks mute state without creating an AudioContext', () => {
@@ -92,7 +46,7 @@ describe('AudioManager', () => {
     await audio.startTheme('battle');
 
     expect(audio.currentTheme).toBe('battle');
-    expect(stub.oscillators).toHaveLength(0);
+    expect(stub.sources).toHaveLength(0);
   });
 
   it('still plays sound effects while background themes are silenced', async () => {
@@ -101,13 +55,13 @@ describe('AudioManager', () => {
 
     await audio.activate();
     await audio.startTheme('overworld');
-    audio.playLootPickup();
+    audio.play('lootPickup');
 
-    expect(stub.oscillators).toHaveLength(3);
-    expect(stub.oscillators.every((oscillator) => oscillator.started)).toBe(true);
+    expect(stub.sources).toHaveLength(3);
+    expect(stub.sources.every((oscillator) => oscillator.started)).toBe(true);
 
-    audio.playLowHpWarning();
-    expect(stub.oscillators).toHaveLength(5);
+    audio.play('lowHp');
+    expect(stub.sources).toHaveLength(5);
   });
 
   it('mutes sound effects when muted and resumes them when unmuted', async () => {
@@ -116,11 +70,117 @@ describe('AudioManager', () => {
 
     await audio.activate();
     audio.setMuted(true);
-    audio.playLootPickup();
-    expect(stub.oscillators).toHaveLength(0);
+    audio.play('lootPickup');
+    expect(stub.sources).toHaveLength(0);
 
     expect(audio.toggleMute()).toBe(false);
-    audio.playLootPickup();
-    expect(stub.oscillators).toHaveLength(3);
+    audio.play('lootPickup');
+    expect(stub.sources).toHaveLength(3);
+  });
+
+  it('sounds every effect in the vocabulary by name', async () => {
+    for (const name of SOUND_EFFECT_NAMES) {
+      const stub = createStubAudioContext();
+      const audio = new AudioManager(() => stub.context);
+      await audio.activate();
+
+      expect(audio.play(name), name).toBe(true);
+      expect(stub.sources, name).toHaveLength(SOUND_EFFECTS[name].tones.length);
+      expect(stub.sources.every((source) => source.started), name).toBe(true);
+      expect(audio.recentlyPlayed.map((played) => played.name)).toEqual([name]);
+    }
+  });
+
+  it('sounds one event once, however many times it is asked for', async () => {
+    const stub = createStubAudioContext();
+    const audio = new AudioManager(() => stub.context);
+    await audio.activate();
+
+    expect(audio.play('encounter')).toBe(true);
+    expect(audio.play('encounter')).toBe(false);
+    stub.advance(RETRIGGER_GUARD_S / 2);
+    expect(audio.play('encounter')).toBe(false);
+    expect(stub.sources).toHaveLength(SOUND_EFFECTS.encounter.tones.length);
+
+    // Later is a different event.
+    stub.advance(RETRIGGER_GUARD_S);
+    expect(audio.play('encounter')).toBe(true);
+  });
+
+  it('lets a channel say one thing at a time', async () => {
+    const stub = createStubAudioContext();
+    const audio = new AudioManager(() => stub.context);
+    await audio.activate();
+
+    audio.play('faint');
+    const faint = [...stub.sources];
+    const scheduledEnd = faint.map((source) => source.stopAt);
+    stub.advance(0.1);
+    audio.play('hitPhysical');
+
+    // Every voice of the faint was pulled in to stop now rather than when it was due.
+    faint.forEach((source, index) => {
+      if (scheduledEnd[index]! > 0.2) {
+        expect(source.stopAt).toBeLessThan(scheduledEnd[index]!);
+      }
+      expect(source.stopAt).toBeLessThan(0.2);
+    });
+  });
+
+  it('never lets the cursor talk over the game, and lets it talk under a fanfare', async () => {
+    const stub = createStubAudioContext();
+    const audio = new AudioManager(() => stub.context);
+    await audio.activate();
+
+    // The key that advanced the line, then the hit the line describes.
+    audio.play('confirm');
+    const confirm = [...stub.sources];
+    audio.play('hitPhysical');
+    expect(confirm.every((source) => source.stopAt! < 0.05)).toBe(true);
+    // Replaced before it was heard, so it is not on the record of what was.
+    expect(audio.recentlyPlayed.map((played) => played.name)).toEqual(['hitPhysical']);
+
+    stub.advance(1);
+    audio.play('levelUp');
+    const fanfare = stub.sources.slice(-SOUND_EFFECTS.levelUp.tones.length);
+    const due = fanfare.map((source) => source.stopAt);
+    audio.play('confirm');
+    expect(fanfare.map((source) => source.stopAt)).toEqual(due);
+  });
+
+  it('cuts everything for a fanfare', async () => {
+    const stub = createStubAudioContext();
+    const audio = new AudioManager(() => stub.context);
+    await audio.activate();
+
+    audio.play('hunterArrival');
+    const arrival = [...stub.sources];
+    audio.play('extract');
+    expect(arrival.every((source) => source.stopAt! < 0.05)).toBe(true);
+  });
+
+  it('cuts whatever is sounding when muted', async () => {
+    const stub = createStubAudioContext();
+    const audio = new AudioManager(() => stub.context);
+    await audio.activate();
+
+    audio.play('clockExpired');
+    audio.setMuted(true);
+    expect(stub.sources.every((source) => source.stopAt! < 0.05)).toBe(true);
+  });
+
+  it('lets the grass rustle give way to what the step found, unheard', async () => {
+    const stub = createStubAudioContext();
+    const audio = new AudioManager(() => stub.context);
+    await audio.activate();
+
+    audio.play('grassRustle');
+    audio.play('encounter');
+    expect(audio.recentlyPlayed.map((played) => played.name)).toEqual(['encounter']);
+
+    stub.advance(1);
+    audio.play('grassRustle');
+    stub.advance(1);
+    expect(audio.recentlyPlayed.map((played) => played.name)).toEqual(['encounter', 'grassRustle']);
   });
 });

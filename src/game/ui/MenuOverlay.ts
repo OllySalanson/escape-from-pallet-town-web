@@ -1,10 +1,13 @@
 import Phaser from 'phaser';
+import { audioManager } from '../audio/AudioManager';
+import { menuClickSound } from '../audio/menuSounds';
 import { claimOverlayKeyboard } from './overlayKeyboard';
 
 export class MenuOverlay {
   public readonly root: HTMLElement;
   private readonly releaseKeyboard: () => void;
   private readonly artworkErrorHandler: (event: Event) => void;
+  private readonly clickSoundHandler: (event: Event) => void;
 
   public constructor(
     scene: Phaser.Scene,
@@ -17,7 +20,28 @@ export class MenuOverlay {
     document.getElementById('app')?.append(this.root);
     // An overlay owns the keyboard for as long as it is on screen; see
     // `overlayKeyboard.ts` for why that ownership cannot live in the scenes.
-    this.releaseKeyboard = claimOverlayKeyboard(onKeyDown, window);
+    this.releaseKeyboard = claimOverlayKeyboard((event) => {
+      // Every screen moves its cursor by moving focus, so focus having moved is
+      // the one definition of "the cursor moved" that holds for all of them.
+      const focused = document.activeElement;
+      onKeyDown(event);
+      if (document.activeElement !== focused && event.key.startsWith('Arrow')) {
+        audioManager.play('select');
+      }
+    }, window);
+    // Capture, so the baseline sounds before the button's own handler runs and
+    // that handler's more specific effect is the one left standing.
+    this.clickSoundHandler = (event) => {
+      const button = (event.target as Element | null)?.closest?.('button');
+      if (!button || button.disabled) {
+        return;
+      }
+      const sound = menuClickSound(button.dataset);
+      if (sound) {
+        audioManager.play(sound);
+      }
+    };
+    this.root.addEventListener('click', this.clickSoundHandler, true);
     this.artworkErrorHandler = (event) => {
       const image = event.target;
       if (!(image instanceof HTMLImageElement) || !image.matches('.pokemon-avatar img')) {
@@ -34,6 +58,7 @@ export class MenuOverlay {
   public destroy(): void {
     this.releaseKeyboard();
     this.root.removeEventListener('error', this.artworkErrorHandler, true);
+    this.root.removeEventListener('click', this.clickSoundHandler, true);
     this.root.remove();
   }
 
