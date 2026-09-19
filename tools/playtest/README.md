@@ -78,6 +78,8 @@ that save opens on, by clicking the insertion's own row in the loadout.
 before leaving - stood on where it is ground, faced and worked with the interact
 key where it is not - which is the only way an exit a landmark opens is ever
 left by: `--insertion=town-square --work=sluice-wheel --exit=west-culvert`.
+`--via=x:y,x:y` walks through those tiles first, in order, for a walk that is not
+to anything - the way along a reveal, which an exit once stood in.
 `--fight` stays in every fight instead of running from the wild ones.
 
 Nobody chooses the other two endings, so they are reached sideways. The clock

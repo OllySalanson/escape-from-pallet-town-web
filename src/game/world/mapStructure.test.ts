@@ -6,6 +6,7 @@ import {
   type WorldMapDefinition,
   type WorldMapId,
 } from '../worldMap';
+import { districtAt } from './districts';
 import { EXTRACTION_POINTS } from './extractionPoints';
 import { gateBossIds, gatesForMap, gateStatesToVerify } from './gates';
 import {
@@ -23,6 +24,8 @@ import {
   straightWalk,
   unreachableTiles,
   walkableTiles,
+  walksLengthenedBy,
+  type NamedGround,
 } from './mapStructure';
 import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters, withoutDefeatedBosses } from './trainers';
@@ -39,19 +42,6 @@ import { RUN_INSERTIONS } from '../run/runGeneration';
 const LONGEST_STRAIGHT_WALK = 9;
 /** How far you may hold a direction from an insertion before something answers. */
 const INSERTION_DECISION_STEPS = 4;
-
-/**
- * Exits the rule below was written too late for. Both are on the Floodplain and
- * neither is this rule's to move: the Signal Fire stands in the one-tile neck
- * between the keep's court and the old causeway, so once the sluice keeper is
- * beaten the way along the reveal runs over an open exit; the Vault Culvert
- * only walls off the one dead-end tile past it. They are listed rather than
- * excused so the rule can hold every other exit on every map, and the test
- * beside it fails the day either is moved.
- */
-const EXITS_KNOWN_TO_STAND_IN_A_PASSAGE: Readonly<Partial<Record<WorldMapId, readonly string[]>>> = {
-  'floodplain-relay': ['SIGNAL FIRE', 'VAULT CULVERT'],
-};
 
 const MAP_IDS = Object.keys(WORLD_MAPS) as WorldMapId[];
 
@@ -131,6 +121,73 @@ function landmarksOn(map: WorldMapDefinition) {
       })),
     ),
   ];
+}
+
+/**
+ * The places a walk on this map runs between, for the rule that no such walk may
+ * cross an exit: where a raid starts and what it is sent to, every gate with the
+ * ground at its foot, and every doorway between two districts - a run of tiles
+ * on one side of a boundary, so a two-tile road is one doorway, not two.
+ */
+function placesOn(state: MapState): NamedGround[] {
+  const { map, mapId } = state;
+  const walkable = (tile: GridPosition): boolean => !isBlockedAt(map.collision, tile.x, tile.y);
+  const beside = (tile: GridPosition): GridPosition[] => [
+    { x: tile.x + 1, y: tile.y },
+    { x: tile.x - 1, y: tile.y },
+    { x: tile.x, y: tile.y + 1 },
+    { x: tile.x, y: tile.y - 1 },
+  ];
+  const exits = new Set(EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => point.label));
+
+  const doorways = new Map<string, GridPosition[]>();
+  for (const tile of walkableTiles(map.collision)) {
+    const here = districtAt(mapId, tile);
+    for (const next of beside(tile).filter(walkable)) {
+      const there = districtAt(mapId, next);
+      if (here && there && here.id !== there.id) {
+        const crossing = `${here.name} into ${there.name}`;
+        doorways.set(crossing, [...(doorways.get(crossing) ?? []), tile]);
+      }
+    }
+  }
+
+  return [
+    ...insertionsOn(mapId).map((insertion) => ({ what: insertion.id, tiles: [insertion.position] })),
+    ...landmarksOn(map)
+      .filter((landmark) => !exits.has(landmark.what))
+      .map((landmark) => ({ what: landmark.what, tiles: [landmark.position] })),
+    ...gatesForMap(mapId).map((gate) => ({
+      what: gate.label,
+      tiles: [...gate.tiles, ...gate.tiles.flatMap(beside)].filter(walkable),
+    })),
+    ...[...doorways].flatMap(([crossing, tiles]) =>
+      connectedRuns(tiles).map((run) => ({ what: `${crossing} at ${run[0].x},${run[0].y}`, tiles: run })),
+    ),
+  ];
+}
+
+/** Splits tiles into the runs that touch each other. */
+function connectedRuns(tiles: readonly GridPosition[]): GridPosition[][] {
+  const left = new Map(tiles.map((tile) => [`${tile.x},${tile.y}`, tile]));
+  const runs: GridPosition[][] = [];
+  while (left.size > 0) {
+    const [key, first] = left.entries().next().value!;
+    left.delete(key);
+    const run = [first];
+    for (let index = 0; index < run.length; index += 1) {
+      const { x, y } = run[index];
+      for (const near of [`${x + 1},${y}`, `${x - 1},${y}`, `${x},${y + 1}`, `${x},${y - 1}`]) {
+        const tile = left.get(near);
+        if (tile) {
+          left.delete(near);
+          run.push(tile);
+        }
+      }
+    }
+    runs.push(run);
+  }
+  return runs;
 }
 
 describe('map structure', () => {
@@ -250,9 +307,8 @@ describe('map structure', () => {
    */
   it.each(named(MAP_STATES))('%s never stands an exit in a passage', (_name, state) => {
     const { map, mapId } = state;
-    const known = EXITS_KNOWN_TO_STAND_IN_A_PASSAGE[mapId] ?? [];
     const exits = new Set(
-      EXTRACTION_POINTS.filter((point) => point.mapId === mapId && !known.includes(point.label)).map(
+      EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
         (point) => `${point.position.x},${point.position.y}`,
       ),
     );
@@ -269,27 +325,40 @@ describe('map structure', () => {
     }
   });
 
-  it('keeps the list of exits known to stand in a passage honest', () => {
-    // Each of these really does cut ground off in some gate state; when one is
-    // moved, this fails and the entry comes out of the list.
-    for (const [mapId, labels] of Object.entries(EXITS_KNOWN_TO_STAND_IN_A_PASSAGE)) {
-      for (const label of labels) {
-        const exit = EXTRACTION_POINTS.find((point) => point.mapId === mapId && point.label === label)!;
-        const shutTile = new Set([`${exit.position.x},${exit.position.y}`]);
-        const offends = MAP_STATES.filter((state) => state.mapId === mapId).some(({ map }) =>
-          insertionsOn(map.id).some((insertion) => {
-            const open = stepDistances(map.collision, insertion.position);
-            const shut = stepDistances(map.collision, insertion.position, shutTile);
-            return walkableTiles(map.collision).some(
-              (tile) =>
-                !shutTile.has(`${tile.x},${tile.y}`) && open[tile.y][tile.x] >= 0 && shut[tile.y][tile.x] < 0,
-            );
-          }),
-        );
-        expect(`${mapId} ${label}: ${offends ? 'still in a passage' : 'fixed - remove it from the list'}`).toBe(
-          `${mapId} ${label}: still in a passage`,
-        );
+  /**
+   * The same fact, asked of the ways a map is walked rather than of its ground:
+   * an exit that cuts nothing off can still stand in the way. The Floodplain's
+   * Signal Fire stood in the neck between Beacon Keep's court and the old
+   * causeway, so the walk the sluice keeper's fall opens - the map turning out to
+   * be a ring - ended the raid halfway along it. So no walk between two places
+   * may be shorter over an exit than round it: between one district's doorway
+   * and another's, between a gate and anything it opens onto, between any two
+   * things a raid is sent to - and again with each trainer's watched ground
+   * shut, because the way round a watch is a way somebody drew on purpose. An
+   * exit is a pocket a player steps into to leave, never a through-tile.
+   */
+  it.each(named(MAP_STATES))('%s never stands an exit on the way between two places', (_name, state) => {
+    const { map, mapId } = state;
+    const exits = new Set(
+      EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map(
+        (point) => `${point.position.x},${point.position.y}`,
+      ),
+    );
+    const places = placesOn(state);
+    expect(walksLengthenedBy(map.collision, exits, places)).toEqual([]);
+
+    const isSightBlocked = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] !== false;
+    for (const trainer of trainersIn(state)) {
+      const watched = trainerSightTiles(trainer, isSightBlocked);
+      if (watched.length === 0) {
+        continue;
       }
+      const detour = new Set([trainer.position, ...watched].map((tile) => `${tile.x},${tile.y}`));
+      expect(
+        walksLengthenedBy(map.collision, exits, places, detour).map(
+          (walk) => `round ${trainer.trainer.id}: ${walk}`,
+        ),
+      ).toEqual([]);
     }
   });
 
@@ -432,5 +501,41 @@ describe('map structure', () => {
       expect(`${mapId} ${spawn!.x},${spawn!.y} -> ${player.x},${player.y}: ends ${contact} away`)
         .toBe(`${mapId} ${spawn!.x},${spawn!.y} -> ${player.x},${player.y}: ends ${contact > 1 ? 'stranded' : contact} away`);
     }
+  });
+});
+
+describe('walks lengthened by an exit', () => {
+  const grid = (rows: readonly string[]) => rows.map((row) => [...row].map((cell) => cell === '#'));
+  const at = (what: string, ...tiles: [number, number][]) => ({ what, tiles: tiles.map(([x, y]) => ({ x, y })) });
+
+  it('fails an exit on the short side of a ring, which cuts nothing off', () => {
+    // The exit at 2,0 strands no ground - the long way round is still there -
+    // which is exactly what the passage rule cannot see.
+    const ring = grid(['.....', '.###.', '.###.', '.....']);
+    expect(walksLengthenedBy(ring, new Set(['2,0']), [at('west', [0, 0]), at('east', [4, 0])])).toEqual([
+      'west -> east: 4 steps, 10 without crossing an exit',
+    ]);
+  });
+
+  it('says so when the only way is over the exit', () => {
+    const neck = grid(['...']);
+    expect(walksLengthenedBy(neck, new Set(['1,0']), [at('court', [0, 0]), at('causeway', [2, 0])])).toEqual([
+      'court -> causeway: 2 steps, no way without crossing an exit',
+    ]);
+  });
+
+  it('lets an exit stand at the side of a two-tile lane, and in a pocket off one', () => {
+    const lane = grid(['..#', '...', '..#']);
+    const ends = [at('north', [0, 0], [1, 0]), at('south', [0, 2], [1, 2])];
+    expect(walksLengthenedBy(lane, new Set(['0,1']), ends)).toEqual([]);
+    expect(walksLengthenedBy(lane, new Set(['2,1']), ends)).toEqual([]);
+  });
+
+  it('asks again with a detour forced, where the way round is the only way', () => {
+    const lane = grid(['..#', '...', '..#']);
+    const ends = [at('north', [0, 0], [1, 0]), at('south', [0, 2], [1, 2])];
+    expect(walksLengthenedBy(lane, new Set(['0,1']), ends, new Set(['1,1']))).toEqual([
+      'north -> south: 2 steps, no way without crossing an exit',
+    ]);
   });
 });

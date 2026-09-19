@@ -7,7 +7,7 @@
 //   node tools/playtest/raid.mjs http://localhost:5173/ [--testmode] [--stepped] [--pixels]
 //        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
 //        [--insertion=id] [--beaten=bossId,..] [--completed=contractId,..] [--hp=N]
-//        [--work=LABEL] [--exit=LABEL] [--fight]
+//        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--fight]
 //
 // --seed pins `crypto.getRandomValues` and `Math.random` in the page, so two
 // runs roll the same raid and their event logs can be compared line for line.
@@ -243,6 +243,13 @@ try {
     }
   };
 
+  // --via=x:y,x:y walks through those tiles first, in order. It is how a walk
+  // that is not to anything is checked - the way along a reveal, which the
+  // Signal Fire once stood in, so the raid ended halfway across.
+  for (const tile of (option('via') ?? '').split(',').filter(Boolean)) {
+    const [x, y] = tile.split(':').map(Number);
+    await walkTo({ x, y }, `waypoint ${x},${y}`);
+  }
   for (const [index, marker] of plan.markers.entries()) {
     await walkTo(marker, `contract stop ${index + 1}`);
   }
