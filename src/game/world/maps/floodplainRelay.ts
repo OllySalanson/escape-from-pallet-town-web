@@ -262,7 +262,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '    ,,,,,,,,,,            ',
     '            ,,,,          ',
     '              ,,          ',
-    '              ,,          ',
+    '              ,,         T',
     '              ,,          ',
     '              ,,          ',
   ]);
@@ -379,7 +379,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.draw(33, 46, [
     '                    ,,      ',
     ' ggggCggg           ,,      ',
-    ' ggggCggg        ,,,,,      ',
+    ' ggggCggg T  T   ,,,,,      ',
     '  ,,,,,,,,,      ,,         ',
     '  ,,     CMMMMMv,,,         ',
     '  ,,     vMMMMMv            ',
@@ -389,7 +389,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     'MM,,,,     ,,               ',
     '    ,,,,,,,,,               ',
     '        gWWWWWWg            ',
-    '        gWWWWWWg            ',
+    ' T      gWWWWWWg            ',
     '        gggggggg            ',
   ]);
   map.plant(45, 51, 'trapdoorOpen');

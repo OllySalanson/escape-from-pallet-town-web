@@ -91,7 +91,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
   {
     id: 'floodplain-supply-vault',
     mapId: 'floodplain-relay',
-    position: { x: 45, y: 53 },
+    position: { x: 44, y: 50 },
     label: 'FLOODED SUPPLY VAULT',
     description: 'High-value cache under the open trapdoor. The causeway west is the short way out once the orchard warden is beaten. Extract to bank it.',
     reward: [
