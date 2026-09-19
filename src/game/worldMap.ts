@@ -143,6 +143,12 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       // against what a raid actually brings home (`world/hub/trader.ts`).
       { id: 'pallet-town-scrip-yard', position: { x: 11, y: 24 }, itemId: 'scrip', quantity: 25 },
       { id: 'pallet-town-scrip-shed', position: { x: 26, y: 30 }, itemId: 'scrip', quantity: 40 },
+      // TM28 Dig, in the town whose sheds have dug rows and produce beside
+      // them. A machine is rolled on its own like the stone below rather than
+      // drawn from the pool, for the same reason: at pool odds a permanent
+      // change to a Pokemon would be a formality, and the point of it is the
+      // raid you remember finding one on.
+      { id: 'pallet-town-tm-dig', position: { x: 7, y: 36 }, itemId: 'tm28-dig', quantity: 1, chance: 0.25 },
     ],
   },
   'route-1': {
@@ -157,6 +163,9 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'route-1-radio-valve', position: { x: 22, y: 18 }, itemId: 'radio-valve', quantity: 1 },
       { id: 'route-1-scrip-verge', position: { x: 17, y: 7 }, itemId: 'scrip', quantity: 30 },
       { id: 'route-1-scrip-station', position: { x: 23, y: 18 }, itemId: 'scrip', quantity: 45 },
+      // TM40 Aerial Ace, on the road the Pidgey flock is over. It is also the
+      // only machine the bug catcher's Butterfree can read.
+      { id: 'route-1-tm-aerial-ace', position: { x: 18, y: 5 }, itemId: 'tm40-aerial-ace', quantity: 1, chance: 0.25 },
     ],
   },
   'viridian-forest': {
@@ -184,6 +193,10 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
         quantity: 1,
         chance: 0.2,
       },
+      // TM09 Bullet Seed: the Grass move, in the wood, and the narrowest disc
+      // in the game - only the Bulbasaur line can read it. The forest is the
+      // map worth walking for a rarity, and it is now the map with two.
+      { id: 'forest-tm-bullet-seed', position: { x: 11, y: 7 }, itemId: 'tm09-bullet-seed', quantity: 1, chance: 0.25 },
     ],
   },
   // The first map drawn on the FireRed sheet, which is the only one with
@@ -213,6 +226,11 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'floodplain-scrip-town', position: { x: 14, y: 25 }, itemId: 'scrip', quantity: 30 },
       { id: 'floodplain-scrip-mill', position: { x: 46, y: 30 }, itemId: 'scrip', quantity: 45 },
       { id: 'floodplain-scrip-keep', position: { x: 50, y: 12 }, itemId: 'scrip', quantity: 60 },
+      // Two on the vast map, because it is played a district at a time and one
+      // rolled find across sixty-four tiles square is a find nobody meets.
+      // TM13 Ice Beam out of the drowned reach, TM23 Iron Tail out of the mill.
+      { id: 'floodplain-tm-ice-beam', position: { x: 25, y: 18 }, itemId: 'tm13-ice-beam', quantity: 1, chance: 0.25 },
+      { id: 'floodplain-tm-iron-tail', position: { x: 47, y: 23 }, itemId: 'tm23-iron-tail', quantity: 1, chance: 0.25 },
     ],
   },
 };

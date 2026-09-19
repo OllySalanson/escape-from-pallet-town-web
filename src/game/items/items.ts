@@ -76,6 +76,19 @@ export type ItemEffect =
    * first - `src/game/pokemon/evolution.ts` is the table both read.
    */
   | { readonly type: 'evolution-stone' }
+  /**
+   * A TM or an HM: one disc, one move, taught to a Pokemon that canon says can
+   * learn it. Which move and whether the disc survives being read live in
+   * `src/game/pokemon/machines.ts`, keyed by **this item's own id** - the same
+   * reason the evolution stone carries no field naming its stone. A second
+   * field naming the move would be a second answer waiting to disagree with the
+   * learner list it is checked against.
+   *
+   * It is not used through `useFieldItem`: teaching can need the player to
+   * choose a move to forget, which is a screen rather than a return value. See
+   * `./teaching.ts`.
+   */
+  | { readonly type: 'machine' }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
 /**
@@ -254,6 +267,64 @@ export const ITEMS = {
     description: 'A stone with a thunderbolt in it. Some Pokemon answer to it.',
     effect: { type: 'evolution-stone' },
   },
+  /**
+   * The machines. Six discs, five of them used up by the reading and one - the
+   * HM - that never is, which is the tutorial's own shape: one `reusable` flag,
+   * not two kinds of item.
+   *
+   * Every id here is also a key of `MACHINES` in `../pokemon/machines.ts`, and
+   * `machines.test.ts` fails a disc on either side without the other. A machine
+   * is found in the field or bartered off the Ferryman; nothing restocks one,
+   * and no contract, board or wipe hands one out.
+   */
+  'tm09-bullet-seed': {
+    id: 'tm09-bullet-seed',
+    displayName: 'TM09 Bullet Seed',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Bullet Seed: two to five seeds in one turn. Only the Bulbasaur line can read it.',
+    effect: { type: 'machine' },
+  },
+  'tm13-ice-beam': {
+    id: 'tm13-ice-beam',
+    displayName: 'TM13 Ice Beam',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Ice Beam: a beam of cold that may freeze. The only Ice move there is.',
+    effect: { type: 'machine' },
+  },
+  'tm23-iron-tail': {
+    id: 'tm23-iron-tail',
+    displayName: 'TM23 Iron Tail',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Iron Tail: heavy, inaccurate, and it often softens what it hits.',
+    effect: { type: 'machine' },
+  },
+  'tm28-dig': {
+    id: 'tm28-dig',
+    displayName: 'TM28 Dig',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Dig: a turn underground, then the hit.',
+    effect: { type: 'machine' },
+  },
+  'tm40-aerial-ace': {
+    id: 'tm40-aerial-ace',
+    displayName: 'TM40 Aerial Ace',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Aerial Ace: a sweep too fast to dodge. It never misses.',
+    effect: { type: 'machine' },
+  },
+  'hm06-rock-smash': {
+    id: 'hm06-rock-smash',
+    displayName: 'HM06 Rock Smash',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Rock Smash, and is never used up: a weak blow that often lowers Defense.',
+    effect: { type: 'machine' },
+  },
   // The gear. Four pieces, four different kinds of answer, and every
   // description is the whole rule: a player who carries one into one fight can
   // say what it did without opening a menu again.
@@ -343,6 +414,16 @@ export function isMaterial(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'material';
 }
 
+/** A TM or an HM, by id. What it teaches is `../pokemon/machines.ts`. */
+export function isMachine(itemId: string): boolean {
+  return getItemById(itemId)?.effect.type === 'machine';
+}
+
+/** Every machine in the catalogue, in catalogue order. */
+export const MACHINE_ITEM_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
+  (item) => item.effect.type === 'machine',
+).map((item) => item.id as SupplyItemId);
+
 /**
  * An item's name for a quantity: "3 Potions", but "40 scrip".
  *
@@ -424,6 +505,14 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} is for the Outfitter, not the field.` };
     case 'currency':
       return { used: false, message: `${item.displayName} is only good at the Ferryman's counter.` };
+    case 'machine':
+      // A machine is never spent here. Teaching can need a move chosen to be
+      // forgotten, which is a screen rather than a return value, so `./teaching`
+      // owns the whole of it and the bag asks that first. This line is the
+      // answer for the two screens that only ever offer medicine - the battle's
+      // ITEM command and the base treatment bench - if either is ever pointed
+      // at a disc.
+      return { used: false, message: `${item.displayName} is read to a Pokémon from the bag.` };
     case 'evolution-stone': {
       const species = evolutionByStone(pokemon.base.id, item.id);
       const evolution = species ? pokemon.evolveInto(species) : null;

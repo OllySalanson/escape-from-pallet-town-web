@@ -497,3 +497,101 @@ export const PSYBEAM = new MoveBase({
   category: MoveCategory.Special,
   secondaries: [{ chance: 10, status: 'confusion' }],
 });
+
+// ---------------------------------------------------------------------------
+// Taught from a machine
+//
+// The six moves no Pokemon in this game learns by levelling. They are reached
+// only through a TM or an HM (`./machines.ts` is which species may be taught
+// which, and `../items/items.ts` carries the discs themselves), and each one is
+// a different thing the move model of PR #130 made writable - multi-hit, a
+// rolled status, a rolled stat stage, a two-turn charge, an accuracy roll
+// skipped outright, and a guaranteed-odds stat drop on a move too weak to be
+// worth a slot without it.
+//
+// Every number is FireRed/LeafGreen's, out of the committed PokeAPI snapshot at
+// `tools/moves/frlg-machines.json`; `machines.test.ts` reads that file back and
+// fails any of these that drifts from it. Category follows the generation III
+// rule - by **type**, not per move - which is why Bullet Seed is Special here
+// and physical in a modern dex.
+// ---------------------------------------------------------------------------
+
+/** TM09. Grass, and Special: the per-move split is generation IV's. */
+export const BULLET_SEED = new MoveBase({
+  name: 'Bullet Seed',
+  description: 'Fires two to five seeds in one turn.',
+  type: PokemonType.Grass,
+  power: 10,
+  accuracy: 100,
+  pp: 30,
+  category: MoveCategory.Special,
+  hits: { min: 2, max: 5 },
+});
+
+/** TM13. The only Ice move in the game, and the only way to freeze anything. */
+export const ICE_BEAM = new MoveBase({
+  name: 'Ice Beam',
+  description: 'A beam of cold. May freeze the target.',
+  type: PokemonType.Ice,
+  power: 95,
+  accuracy: 100,
+  pp: 10,
+  category: MoveCategory.Special,
+  secondaries: [{ chance: 10, status: PrimaryStatus.Freeze }],
+});
+
+/** TM23. Hard and inaccurate, and it softens what it does connect with. */
+export const IRON_TAIL = new MoveBase({
+  name: 'Iron Tail',
+  description: "A heavy steel tail. May lower the target's Defense.",
+  type: PokemonType.Steel,
+  power: 100,
+  accuracy: 75,
+  pp: 15,
+  category: MoveCategory.Physical,
+  flags: [MoveFlag.Contact],
+  secondaries: [{ chance: 30, boosts: [{ stat: 'defense', stages: -1 }] }],
+});
+
+/** TM28. Two-turn, like Solar Beam - a turn underground, then the hit. */
+export const DIG = new MoveBase({
+  name: 'Dig',
+  description: 'Burrows on the first turn and strikes on the second.',
+  type: PokemonType.Ground,
+  power: 60,
+  accuracy: 100,
+  pp: 10,
+  category: MoveCategory.Physical,
+  charge: MoveCharge.Charge,
+  flags: [MoveFlag.Contact],
+});
+
+/** TM40. No accuracy roll at all: the one move here that cannot miss. */
+export const AERIAL_ACE = new MoveBase({
+  name: 'Aerial Ace',
+  description: 'A sweep too fast to dodge. It never misses.',
+  type: PokemonType.Flying,
+  power: 60,
+  accuracy: 100,
+  pp: 20,
+  category: MoveCategory.Physical,
+  alwaysHits: true,
+  flags: [MoveFlag.Contact],
+});
+
+/**
+ * HM06, and the one machine that is never used up. Twenty power is the whole
+ * reason that is safe: it is a lever rather than a weapon, and what earns it a
+ * slot is the coin-flip Defense drop in front of whatever hits next.
+ */
+export const ROCK_SMASH = new MoveBase({
+  name: 'Rock Smash',
+  description: "A blow that often lowers the target's Defense.",
+  type: PokemonType.Fighting,
+  power: 20,
+  accuracy: 100,
+  pp: 15,
+  category: MoveCategory.Physical,
+  flags: [MoveFlag.Contact],
+  secondaries: [{ chance: 50, boosts: [{ stat: 'defense', stages: -1 }] }],
+});

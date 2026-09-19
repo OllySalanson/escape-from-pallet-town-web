@@ -95,6 +95,10 @@ function describeEffect(
       return { effect: 'Battle use only', usable: false };
     case 'evolution-stone':
       return { effect: 'Field use only', usable: false };
+    case 'machine':
+      // A disc is read to a Pokemon out of the raid bag, which is the one place
+      // the move chooser can be opened over the Pokemon it is about.
+      return { effect: 'Read in the field', usable: false };
     case 'material':
       return { effect: 'Outfitter only', usable: false };
     case 'currency':

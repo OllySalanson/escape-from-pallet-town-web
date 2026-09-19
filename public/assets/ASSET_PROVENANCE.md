@@ -204,6 +204,13 @@ game.
   `#cfd8b6`, `#e8eed2`) and one warm seal (`#7d8a63` through `#c47a4e`). Flat and
   square-cornered on purpose - every shaded, rounded draft of it read as a tin
   or a jar, which is what every other icon in the Other pocket already is.
+  The six machines - `tm09-bullet-seed`, `tm13-ice-beam`, `tm23-iron-tail`,
+  `tm28-dig`, `tm40-aerial-ace` and `hm06-rock-smash` - are
+  `scripts/draw-machine-icons.mjs`: **one disc shape drawn six times**, lit from
+  the top left, in the type colour of the move each teaches (Grass, Ice, Steel,
+  Ground, Flying and Fighting), because that is how these games have always told
+  one disc from another. The HM's centre is a slot rather than the TM's pinhole,
+  so the one machine that is never used up does not read as the same object.
 
 ### Third-party packs considered and not used
 
