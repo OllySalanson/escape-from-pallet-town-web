@@ -1,5 +1,7 @@
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
+import * as wildlife from '../pokemon/encounters';
+import type { WildEncounterTable } from '../pokemon/encounters';
 
 /**
  * The named parts of a map big enough to have them.
@@ -32,6 +34,11 @@ export interface MapDistrict {
   readonly mapId: WorldMapId;
   readonly name: string;
   readonly areas: readonly DistrictArea[];
+  /**
+   * What the tall grass here holds, written beside the place it is in. A
+   * district with none rolls on its map's fallback table.
+   */
+  readonly encounters?: WildEncounterTable;
 }
 
 export const MAP_DISTRICTS: readonly MapDistrict[] = [
@@ -60,12 +67,14 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'floodplain-reedbeds',
     mapId: 'floodplain-relay',
     name: 'THE REEDBEDS',
+    encounters: wildlife.FLOODPLAIN_REED_WILDLIFE,
     areas: [{ x: 0, y: 14, width: 27, height: 15 }],
   },
   {
     id: 'floodplain-old-town',
     mapId: 'floodplain-relay',
     name: 'OLD TOWN',
+    encounters: wildlife.FLOODPLAIN_TOWN_WILDLIFE,
     // The street, the chapel, the last house and the road down to the gate:
     // one town, however much wood has grown up between its pieces.
     areas: [{ x: 0, y: 29, width: 30, height: 35 }],
@@ -91,6 +100,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'floodplain-vault',
     mapId: 'floodplain-relay',
     name: 'THE VAULT',
+    encounters: wildlife.FLOODPLAIN_VAULT_WILDLIFE,
     areas: [{ x: 30, y: 46, width: 34, height: 18 }],
   },
 
@@ -112,6 +122,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'pallet-north-field',
     mapId: 'pallet-town',
     name: 'THE NORTH FIELD',
+    encounters: wildlife.PALLET_FIELD_WILDLIFE,
     areas: [{ x: 16, y: 0, width: 16, height: 11 }],
   },
   {
@@ -135,6 +146,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'pallet-allotments',
     mapId: 'pallet-town',
     name: 'THE ALLOTMENTS',
+    encounters: wildlife.PALLET_ALLOTMENT_WILDLIFE,
     // Down to the leat's south lip: both fords and the bridge deck.
     areas: [{ x: 0, y: 19, width: 24, height: 11 }],
   },
@@ -142,12 +154,14 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'pallet-flood',
     mapId: 'pallet-town',
     name: 'THE FLOOD',
+    encounters: wildlife.PALLET_FLOOD_WILDLIFE,
     areas: [{ x: 0, y: 30, width: 12, height: 14 }],
   },
   {
     id: 'pallet-stockyard',
     mapId: 'pallet-town',
     name: 'THE STOCKYARD',
+    encounters: wildlife.PALLET_YARD_WILDLIFE,
     // The bridge foot, the paddocks, the sluice at the east end of the bank and
     // the road down to the South Gate: everything the bridge lands you in.
     areas: [{ x: 12, y: 30, width: 20, height: 14 }],
@@ -177,18 +191,21 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'route-1-meadows',
     mapId: 'route-1',
     name: 'THE MEADOWS',
+    encounters: wildlife.ROUTE_MEADOW_WILDLIFE,
     areas: [{ x: 10, y: 6, width: 10, height: 15 }],
   },
   {
     id: 'route-1-west-road',
     mapId: 'route-1',
     name: 'WEST ROAD',
+    encounters: wildlife.ROUTE_WEST_VERGE_WILDLIFE,
     areas: [{ x: 0, y: 6, width: 10, height: 17 }],
   },
   {
     id: 'route-1-east-road',
     mapId: 'route-1',
     name: 'EAST ROAD',
+    encounters: wildlife.ROUTE_EAST_VERGE_WILDLIFE,
     areas: [{ x: 20, y: 6, width: 12, height: 20 }],
   },
   {
@@ -213,36 +230,42 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'forest-tower-steps',
     mapId: 'viridian-forest',
     name: 'TOWER STEPS',
+    encounters: wildlife.FOREST_EDGE_WILDLIFE,
     areas: [{ x: 27, y: 0, width: 5, height: 10 }],
   },
   {
     id: 'forest-fire-tower',
     mapId: 'viridian-forest',
     name: 'FIRE TOWER',
+    encounters: wildlife.FOREST_FIRE_TOWER_WILDLIFE,
     areas: [{ x: 11, y: 0, width: 16, height: 8 }],
   },
   {
     id: 'forest-north-landing',
     mapId: 'viridian-forest',
     name: 'NORTH LANDING',
+    encounters: wildlife.FOREST_EDGE_WILDLIFE,
     areas: [{ x: 0, y: 0, width: 11, height: 8 }],
   },
   {
     id: 'forest-sap-pool',
     mapId: 'viridian-forest',
     name: 'SAP POOL',
+    encounters: wildlife.FOREST_WATERSIDE_WILDLIFE,
     areas: [{ x: 20, y: 8, width: 12, height: 9 }],
   },
   {
     id: 'forest-beetle-hollow',
     mapId: 'viridian-forest',
     name: 'BEETLE HOLLOW',
+    encounters: wildlife.FOREST_BEETLE_HOLLOW_WILDLIFE,
     areas: [{ x: 0, y: 8, width: 10, height: 9 }],
   },
   {
     id: 'forest-crossroads',
     mapId: 'viridian-forest',
     name: 'THE CROSSROADS',
+    encounters: wildlife.FOREST_TRAIL_WILDLIFE,
     // From x10: the west arm of the crossing is the Crossroads', all of it.
     areas: [{ x: 10, y: 8, width: 10, height: 9 }],
   },
@@ -256,18 +279,21 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'forest-deep-stand',
     mapId: 'viridian-forest',
     name: 'DEEP STAND',
+    encounters: wildlife.FOREST_DEEP_WILDLIFE,
     areas: [{ x: 3, y: 21, width: 14, height: 11 }],
   },
   {
     id: 'forest-brook-head',
     mapId: 'viridian-forest',
     name: 'BROOK HEAD',
+    encounters: wildlife.FOREST_WATERSIDE_WILDLIFE,
     areas: [{ x: 0, y: 17, width: 11, height: 19 }],
   },
   {
     id: 'forest-wardens-cut',
     mapId: 'viridian-forest',
     name: "WARDEN'S CUT",
+    encounters: wildlife.FOREST_WARDEN_WILDLIFE,
     // The cut, and the trail that leaves it south for The Clearing.
     areas: [
       { x: 11, y: 17, width: 14, height: 4 },
@@ -278,6 +304,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'forest-east-rise',
     mapId: 'viridian-forest',
     name: 'EAST RISE',
+    encounters: wildlife.FOREST_RISE_WILDLIFE,
     // The clearing, and the whole of the ledge under its brow.
     areas: [
       { x: 25, y: 17, width: 7, height: 10 },
@@ -288,6 +315,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'forest-clearing',
     mapId: 'viridian-forest',
     name: 'THE CLEARING',
+    encounters: wildlife.FOREST_CLEARING_WILDLIFE,
     areas: [{ x: 11, y: 27, width: 21, height: 9 }],
   },
 ];

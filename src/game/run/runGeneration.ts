@@ -8,6 +8,7 @@ import {
 } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
 import { stepDistances } from '../world/mapStructure';
+import { districtEncounterTables } from '../world/localEncounters';
 import { EXTRACTION_POINTS, type ExtractionPoint } from '../world/extractionPoints';
 import type { WorldLoot } from '../world/loot';
 import {
@@ -171,6 +172,12 @@ export interface RunPlan {
    */
   readonly defeatedBosses: readonly string[];
   readonly encounters: Readonly<Partial<Record<WorldMapId, WildEncounterTable>>>;
+  /**
+   * The wildlife of each named place, keyed by district id, varied per raid the
+   * way `encounters` is. A tile rolls on its district's table when it has one
+   * and on its map's otherwise (`encounterTableAt`).
+   */
+  readonly districtEncounters: Readonly<Record<string, WildEncounterTable>>;
   readonly loot: Readonly<Record<WorldMapId, readonly WorldLoot[]>>;
   readonly trainers: readonly RunTrainerEncounter[];
   readonly extractionPoints: readonly ExtractionPoint[];
@@ -248,6 +255,16 @@ export function generateRunPlan(
       .map((map) => [map.id, varyEncounterTable(map.encounters, rng)]),
   ) as Partial<Record<WorldMapId, WildEncounterTable>>;
 
+  // Districts are varied on a stream of their own, so giving a place its own
+  // wildlife does not move a single loot, trainer or hunter roll of any seed.
+  const districtRng = createSeededRng((seed ^ DISTRICT_ENCOUNTER_STREAM) >>> 0);
+  const districtEncounters = Object.fromEntries(
+    Object.entries(districtEncounterTables()).map(([id, table]) => [
+      id,
+      varyEncounterTable(table, districtRng),
+    ]),
+  );
+
   // A contract the insertion cannot walk to is worse than no contract, so the
   // generator refuses to attach one to a raid that starts on another map.
   const carriedContract = contract?.mapId === insertion.mapId ? contract : undefined;
@@ -292,6 +309,7 @@ export function generateRunPlan(
     ...(carriedContract ? { contract: carriedContract } : {}),
     defeatedBosses: [...defeatedBosses],
     encounters,
+    districtEncounters,
     loot,
     trainers,
     extractionPoints,
@@ -314,6 +332,8 @@ export function generateRunPlan(
     ),
   };
 }
+
+const DISTRICT_ENCOUNTER_STREAM = 0x9e3779b9;
 
 function varyEncounterTable(
   table: WildEncounterTable,
