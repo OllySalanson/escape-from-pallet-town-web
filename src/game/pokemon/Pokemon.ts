@@ -2,7 +2,7 @@ import { isHeldItemId, type HeldItemId } from '../items/items';
 import { Move } from './Move';
 import type { MoveBase } from './MoveBase';
 import type { PokemonBase, PokemonStats } from './PokemonBase';
-import { evolutionOnLevel, evolvesInto } from './evolution';
+import { evolutionFamily, evolutionOnLevel, evolvesInto } from './evolution';
 import type { PrimaryStatus } from './battle/status';
 
 export type CombatStats = PokemonStats;
@@ -46,6 +46,7 @@ export interface SpeciesEvolution {
 export interface ExperienceResult {
   readonly awarded: number;
   readonly levelsGained: readonly number[];
+  /** Moves learned into a free slot, with nothing given up. */
   readonly learnedMoves: readonly MoveBase[];
   /**
    * Evolutions crossed on the way, in order. A level-up evolution is the level
@@ -53,6 +54,11 @@ export interface ExperienceResult {
    * it came with and never on its own.
    */
   readonly evolutions: readonly SpeciesEvolution[];
+  /**
+   * Moves the Pokemon is ready to learn but has no room for. They are queued on
+   * `Pokemon.pendingMoves` and nothing is forgotten until the player chooses.
+   */
+  readonly movesToChoose: readonly MoveBase[];
 }
 
 export class Pokemon {
@@ -71,6 +77,12 @@ export class Pokemon {
   public experience: number;
   public stats: CombatStats;
   public moves: Move[];
+  /**
+   * Moves the Pokemon has reached the level for while its four slots were full.
+   * A level-up never deletes a move: it queues the new one here, and
+   * `resolvePendingMove` is the only thing that forgets or declines.
+   */
+  public pendingMoves: MoveBase[] = [];
 
   public currentHp: number;
   public primaryStatus: PrimaryStatus | null = null;
@@ -150,6 +162,7 @@ export class Pokemon {
     const levelsGained: number[] = [];
     const learnedMoves: MoveBase[] = [];
     const evolutions: SpeciesEvolution[] = [];
+    const movesToChoose: MoveBase[] = [];
 
     while (this.level < MAX_LEVEL && this.experience >= experienceForLevel(this.level + 1)) {
       const previousMaxHp = this.maxHp;
@@ -170,10 +183,12 @@ export class Pokemon {
       if (evolved) {
         evolutions.push(evolved);
       }
-      learnedMoves.push(...this.learnMovesAtLevel(this.level));
+      const atThisLevel = this.learnMovesAtLevel(this.level);
+      learnedMoves.push(...atThisLevel.learned);
+      movesToChoose.push(...atThisLevel.queued);
     }
 
-    return { awarded, levelsGained, learnedMoves, evolutions };
+    return { awarded, levelsGained, learnedMoves, evolutions, movesToChoose };
   }
 
   /**
@@ -213,6 +228,74 @@ export class Pokemon {
     return evolution ? { ...evolution, level: this.level } : null;
   }
 
+  /**
+   * Sets the moveset and the queue from move names, resolved through this
+   * species' whole evolution line (a Bulbasaur-taught move outlives becoming an
+   * Ivysaur, as in the save loader). Names it cannot resolve are ignored, an
+   * empty moveset is refused, and a move already known is never queued, so
+   * corrupt input can only ever be a no-op. Moves that stay keep their PP; new
+   * ones start full.
+   */
+  public restoreMoveset(names: readonly string[], pendingNames: readonly string[]): void {
+    const byName = new Map(
+      [this.base, ...evolutionFamily(this.base.id)].flatMap((member) =>
+        member.learnset.map((entry) => [entry.move.name, entry.move] as const),
+      ),
+    );
+    const known: MoveBase[] = [];
+    for (const name of names) {
+      const move = byName.get(name);
+      if (move && !known.includes(move) && known.length < Pokemon.MAX_MOVE_COUNT) {
+        known.push(move);
+      }
+    }
+    if (known.length === 0) {
+      return;
+    }
+    this.moves = known.map(
+      (base) => this.moves.find((existing) => existing.base === base) ?? new Move(base),
+    );
+    this.pendingMoves = [];
+    for (const name of pendingNames) {
+      const move = byName.get(name);
+      if (move && !known.includes(move) && !this.pendingMoves.includes(move)) {
+        this.pendingMoves.push(move);
+      }
+    }
+  }
+
+  public get hasFreeMoveSlot(): boolean {
+    return this.moves.length < Pokemon.MAX_MOVE_COUNT;
+  }
+
+  /**
+   * Settles a queued move: `forgetIndex` names the slot it takes, and `null`
+   * declines it. Returns what was given up (nothing on a decline), or
+   * `undefined` if the move was not queued or the slot does not exist, in which
+   * case nothing changes. The new move starts with full PP; every other move
+   * keeps its own.
+   */
+  public resolvePendingMove(
+    move: MoveBase,
+    forgetIndex: number | null,
+  ): { readonly forgotten: MoveBase | null } | undefined {
+    const queued = this.pendingMoves.indexOf(move);
+    if (queued < 0) {
+      return undefined;
+    }
+    if (forgetIndex === null) {
+      this.pendingMoves.splice(queued, 1);
+      return { forgotten: null };
+    }
+    if (!Number.isInteger(forgetIndex) || forgetIndex < 0 || forgetIndex >= this.moves.length) {
+      return undefined;
+    }
+    this.pendingMoves.splice(queued, 1);
+    const forgotten = this.moves[forgetIndex].base;
+    this.moves[forgetIndex] = new Move(move);
+    return { forgotten };
+  }
+
   private initializeMoves(): Move[] {
     return this.base.learnset
       .filter((entry) => entry.level <= this.level)
@@ -221,20 +304,30 @@ export class Pokemon {
       .map((entry) => new Move(entry.move));
   }
 
-  private learnMovesAtLevel(level: number): MoveBase[] {
+  private learnMovesAtLevel(level: number): {
+    readonly learned: MoveBase[];
+    readonly queued: MoveBase[];
+  } {
     const learned: MoveBase[] = [];
+    const queued: MoveBase[] = [];
     for (const entry of this.base.learnset.filter((learnable) => learnable.level === level)) {
-      if (this.moves.some((move) => move.base === entry.move)) {
+      if (
+        this.moves.some((move) => move.base === entry.move) ||
+        this.pendingMoves.includes(entry.move)
+      ) {
         continue;
       }
 
-      // When full, replace the oldest move. This matches initial move setup, which keeps the latest four.
-      if (this.moves.length === Pokemon.MAX_MOVE_COUNT) {
-        this.moves.shift();
+      // A full moveset never loses a move silently: the new one waits for the
+      // player's choice (see `resolvePendingMove`).
+      if (this.hasFreeMoveSlot) {
+        this.moves.push(new Move(entry.move));
+        learned.push(entry.move);
+      } else {
+        this.pendingMoves.push(entry.move);
+        queued.push(entry.move);
       }
-      this.moves.push(new Move(entry.move));
-      learned.push(entry.move);
     }
-    return learned;
+    return { learned, queued };
   }
 }

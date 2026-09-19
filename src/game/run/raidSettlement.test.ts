@@ -44,6 +44,8 @@ describe('raid settlement', () => {
         // Gear was never in the pack, so the condition is the only way home for
         // it - and the only reason a wipe can take it.
         heldItemId: 'leftovers',
+        moves: starter.moves.map((move) => move.base.name),
+        pendingMoves: [],
       },
       // A faint comes home as a faint. Deleting it here would charge the same
       // faint twice: losing deployed Pokemon is what a wipe is for.
@@ -56,6 +58,8 @@ describe('raid settlement', () => {
         experience: experienceForLevel(7),
         speciesId: 'charmander',
         heldItemId: null,
+        moves: partner.moves.map((move) => move.base.name),
+        pendingMoves: [],
       },
     ]);
   });
@@ -73,6 +77,8 @@ describe('raid settlement', () => {
         experience: experienceForLevel(5),
         speciesId: 'bulbasaur',
         heldItemId: null,
+        moves: starter.moves.map((move) => move.base.name),
+        pendingMoves: [],
       },
     ]);
     expect(deployedRaidCondition([], manager.snapshot())).toEqual([]);
@@ -130,6 +136,8 @@ describe('raid settlement', () => {
           experience: experienceForLevel(5),
           speciesId: 'bulbasaur',
           heldItemId: null,
+          moves: starter.moves.map((move) => move.base.name),
+          pendingMoves: [],
         },
       ],
       supplies: [{ itemId: 'potion', quantity: -2 }],

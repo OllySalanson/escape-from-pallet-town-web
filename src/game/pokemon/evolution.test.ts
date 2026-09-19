@@ -130,8 +130,13 @@ describe('evolving on a level', () => {
       computePokemonStats(BULBASAUR.baseStats, 16).spAttack,
     );
 
-    // And Razor Leaf is Ivysaur's to teach, not Bulbasaur's.
-    starter.gainExperience(experienceTo(starter, 22));
+    // And Razor Leaf is Ivysaur's to teach, not Bulbasaur's. All four slots are
+    // taken, so it waits for the player's choice instead of pushing one out.
+    const before = starter.moves.map((move) => move.base);
+    const result22 = starter.gainExperience(experienceTo(starter, 22));
+    expect(result22.movesToChoose).toContain(RAZOR_LEAF);
+    expect(starter.moves.map((move) => move.base)).toEqual(before);
+    starter.resolvePendingMove(RAZOR_LEAF, 0);
     expect(starter.moves.map((move) => move.base)).toContain(RAZOR_LEAF);
   });
 

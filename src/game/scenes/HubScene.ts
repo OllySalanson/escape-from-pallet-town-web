@@ -76,6 +76,8 @@ import {
 import { iconMarkup, itemIcon, objectiveIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
 import { WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
+import { openMoveChooser } from '../ui/MoveChooserOverlay';
+import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
 import {
@@ -172,6 +174,37 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.fadeIn?.(180, 0, 0, 0);
     this.overlay = new MenuOverlay(this, 'hub-menu pixel-ui', (event) => this.handleKey(event));
     this.render();
+    this.offerPendingMoves();
+  }
+
+  /**
+   * A level-up that found four moves already known queues the new one on the
+   * Pokemon instead of forgetting anything, and base is where the player is
+   * around to answer - a raid that settles has nobody watching. Asked one at a
+   * time; "decide later" leaves the rest until the next visit.
+   */
+  private offerPendingMoves(): void {
+    const waiting = this.stashPokemon.find(({ pokemon }) => pokemon.pendingMoves.length > 0);
+    if (!waiting) {
+      return;
+    }
+    const move = waiting.pokemon.pendingMoves[0];
+    openMoveChooser(this, { pokemon: waiting.pokemon, incoming: move, canDefer: true }, (choice) => {
+      if (choice.kind === 'later') {
+        return;
+      }
+      const result = waiting.pokemon.resolvePendingMove(
+        move,
+        choice.kind === 'forget' ? choice.index : null,
+      );
+      const said = moveChoiceMessage(waiting.pokemon.base.name, move, result?.forgotten ?? null);
+      this.setStatus(
+        this.saveManager.save({ ...this.savedGame, stash: this.stash })
+          ? said
+          : `${said} It could not be saved.`,
+      );
+      this.offerPendingMoves();
+    });
   }
 
   private get stashPokemon(): readonly StashedPokemon[] {
