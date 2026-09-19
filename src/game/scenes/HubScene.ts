@@ -35,6 +35,7 @@ import {
 import { Bag, ITEM_DEFINITIONS, type ItemDefinition, type ItemId } from '../items';
 import { PokemonParty, type PokemonBase } from '../pokemon';
 import { activeRunManager } from '../run';
+import { buildContractBoard } from '../hub/contractBoard';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { createActiveRunSession } from '../run/RunSession';
 import {
@@ -46,9 +47,8 @@ import {
   type RunInsertionId,
 } from '../run/runGeneration';
 import {
-  availableContracts,
+  boardContractForMap,
   contractCarryIn,
-  contractForMap,
   formatStacks,
   missingCarryIn,
   objectivesForContract,
@@ -65,8 +65,8 @@ import {
   type StashedPokemon,
 } from '../stash';
 import { iconMarkup, itemIcon, objectiveIcon } from '../ui/icons';
-import { hunterThreatFor, hunterThreatLine } from '../world/hunterThreat';
-import { WORLD_MAP_NAMES } from '../worldMap';
+import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
+import { WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
 import {
@@ -177,11 +177,6 @@ export class HubScene extends Phaser.Scene {
     return !this.savedGame.raidProgress.firstContractExtracted;
   }
 
-  /** Every contract the board is offering, in the order they unlock. */
-  private get openContracts(): readonly RaidContract[] {
-    return availableContracts(this.savedGame.raidProgress.completedContracts);
-  }
-
   /**
    * The contract a raid inserting here would carry. A contract belongs to its
    * map, so the insertion list *is* the contract board: choosing where to drop
@@ -189,9 +184,18 @@ export class HubScene extends Phaser.Scene {
    * fall out of step with it.
    */
   private contractFor(insertionId: RunInsertionId): RaidContract | undefined {
-    return contractForMap(
-      RUN_INSERTIONS[insertionId].mapId,
-      this.savedGame.raidProgress.completedContracts,
+    return boardContractForMap(RUN_INSERTIONS[insertionId].mapId, this.savedGame.raidProgress);
+  }
+
+  /**
+   * What the party costs in hunter on the raid this insertion would start: the
+   * loadout's own tier plus whatever the contract carried there adds. The final
+   * check prints it and the deploy spends it, so both ask here.
+   */
+  private hunterThreatAt(insertionId: RunInsertionId, party: readonly StashedPokemon[]): HunterThreat {
+    return hunterThreatFor(
+      party.map((stored) => stored.pokemon),
+      this.contractFor(insertionId)?.hunterPressure,
     );
   }
 
@@ -560,7 +564,7 @@ export class HubScene extends Phaser.Scene {
       deployment.insertionId,
       this.contractFor(deployment.insertionId),
       // The same derivation the final check printed, from the same party.
-      hunterThreatFor(deployment.party.map((stored) => stored.pokemon)),
+      this.hunterThreatAt(deployment.insertionId, deployment.party),
       // Which gates stand open and which bosses are gone are both this list.
       this.savedGame.raidProgress.defeatedBosses,
       // The beacon opens against the clock this raid actually deploys with, so
@@ -767,48 +771,46 @@ export class HubScene extends Phaser.Scene {
    * decided at the loadout screen is decided too late once the raid has started.
    */
   private contractBoard(): string {
-    const contracts = this.openContracts;
-    if (contracts.length === 0) {
+    // Worded in `contractBoard.ts`, so the authored chain and the standing board
+    // that follows it are one list in one voice, testable without the lobby.
+    const board = buildContractBoard(this.savedGame.raidProgress);
+    if (board.rows.length === 0) {
       return pixelWindow(
         '<p class="px-empty">Raids from here are for supplies, Pokémon and whatever the maps still hold.</p>',
         { className: 'objectives-panel', heading: 'Contract board', note: 'Every contract is banked' },
       );
     }
-    const asksOf = (contract: RaidContract): string => {
-      const carryIn = contractCarryIn(contract);
-      return [
-        ...(contract.requiredExitLabel ? [`Banks only through ${contract.requiredExitLabel}`] : []),
-        ...(carryIn.length ? [`Pack ${formatStacks(carryIn)}`] : []),
-      ].join(' · ');
-    };
-    const rows = contracts
-      .map((contract) => {
-        const insertion = this.insertionFor(contract);
-        const place = insertion?.[1].label ?? WORLD_MAP_NAMES[contract.mapId];
+    const rows = board.rows
+      .map((row) => {
+        const insertion = this.insertionFor(row.mapId);
+        const place = insertion?.[1].label ?? WORLD_MAP_NAMES[row.mapId];
         const wiring = insertion
-          ? `data-contract="${insertion[0]}" data-shows="${contract.id}" data-help="Prepare a raid that drops in at ${escapeAttribute(place)}."`
+          ? `data-contract="${insertion[0]}" data-shows="${row.contractId}" data-help="Prepare a raid that drops in at ${escapeAttribute(place)}."`
           : 'disabled';
-        return `<button class="px-row has-icon px-tall px-contract" ${wiring}>${objectiveIcon('Contract')}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${contract.name}</strong><small>${place}</small></span><span class="px-wrap">${contract.description}.</span></span></button>`;
+        // A raised contract says so on the row itself: the detail under the list
+        // only shows the row in hand, and the hunter is what is being chosen between.
+        const raised = row.hunterPressure > 0 ? pixelTag(`Hunter +${row.hunterPressure}`, 'risk') : '';
+        return `<button class="px-row has-icon px-tall px-contract" ${wiring}${row.hunterPressure > 0 ? ` data-hunter-pressure="${row.hunterPressure}"` : ''}>${objectiveIcon('Contract')}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${row.name}</strong><small>${place}</small></span><span class="px-wrap">${row.description}.</span></span>${raised}</button>`;
       })
       .join('');
-    const details = contracts
-      .map((contract, index) => {
-        const asks = asksOf(contract);
-        return `<div class="px-detail" data-shown-by="${contract.id}"${index === 0 ? '' : ' hidden'}>${asks ? `<span class="px-wrap px-warning">${asks}.</span>` : ''}<span class="px-wrap"><small>Reward</small> ${contract.reward.summary}</span></div>`;
-      })
+    const details = board.rows
+      .map(
+        (row, index) =>
+          `<div class="px-detail" data-shown-by="${row.contractId}"${index === 0 ? '' : ' hidden'}>${row.asks ? `<span class="px-wrap px-warning">${row.asks}.</span>` : ''}<span class="px-wrap"><small>Reward</small> ${row.reward}</span></div>`,
+      )
       .join('');
     return pixelWindow(`<div class="px-list px-scroll">${rows}</div>${details}`, {
       className: 'objectives-panel',
-      heading: 'Contract board',
-      note: `${contracts.length} open · rewards require extraction`,
+      heading: board.heading,
+      note: board.note,
     });
   }
 
   /** The unlocked insertion a contract is taken from, if the player can reach it yet. */
   private insertionFor(
-    contract: RaidContract,
+    mapId: WorldMapId,
   ): readonly [RunInsertionId, (typeof RUN_INSERTIONS)[RunInsertionId]] | undefined {
-    return this.unlockedInsertions.find(([, insertion]) => insertion.mapId === contract.mapId);
+    return this.unlockedInsertions.find(([, insertion]) => insertion.mapId === mapId);
   }
 
   /**
@@ -981,7 +983,7 @@ export class HubScene extends Phaser.Scene {
           // A drop-in point says which map it is on, because unlike a front door
           // its name is not the map's.
           isDropInPoint(insertion) ? `<small class="insertion-drop-in">DROP-IN · ${WORLD_MAP_NAMES[insertion.mapId]}</small>` : ''
-        }<small class="insertion-contract">${contract ? contract.name : 'No contract'}</small></span>${chosen ? pixelTag('', 'good', true) : ''}</button>`;
+        }<small class="insertion-contract">${contract ? `${contract.name}${contract.hunterPressure ? ` · hunter +${contract.hunterPressure}` : ''}` : 'No contract'}</small></span>${chosen ? pixelTag('', 'good', true) : ''}</button>`;
       })
       .join('');
     return `<main class="px-body loadout-layout">${pixelWindow(
@@ -1055,7 +1057,7 @@ export class HubScene extends Phaser.Scene {
     // The price of the party, on screen before the player commits to it - the
     // rule the trainer watch and the flee cost already follow. It sits in the
     // full-width bar beside the button that pays it.
-    const threat = hunterThreatFor(this.flow.party.map((stored) => stored.pokemon));
+    const threat = this.hunterThreatAt(this.flow.insertionId, this.flow.party);
     const hunter = hunterThreatLine(threat);
     // The window a row stands in is what says whether it is lost or comes home,
     // so the rows do not each say it again.

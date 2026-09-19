@@ -10,9 +10,10 @@ vi.mock('phaser', () => ({
 
 import { Bag } from '../items';
 import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
-import { FIRST_CONTRACT_ID } from '../objectives';
+import { FIRST_CONTRACT_ID, RAID_CONTRACTS, standingBoard } from '../objectives';
 import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
+import { RUN_INSERTIONS } from '../run/runGeneration';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash, Stash, type StashedPokemon } from '../stash';
 import {
@@ -527,6 +528,7 @@ describe('hub deployment route', () => {
         outfitterUpgrades: [],
         defeatedBosses: [],
         reachedInsertions: [],
+        standingContractsBanked: 0,
       },
     });
     const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
@@ -620,6 +622,78 @@ describe('the hunter a loadout draws', () => {
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
     expect(runSession.plan?.hunter.teamTierOffset).toBe(0);
   });
+});
+
+describe('the standing board in the lobby', () => {
+  beforeEach(() => {
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+  });
+
+  const chainBanked = (standingContractsBanked: number): RaidProgress => ({
+    ...DEFAULT_RAID_PROGRESS,
+    firstContractExtracted: true,
+    completedContracts: RAID_CONTRACTS.map((contract) => contract.id),
+    unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+    standingContractsBanked,
+  });
+  const markupOf = (hub: HubInternals): string => {
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  };
+
+  it('replaces "Every contract is banked" once the chain is banked, one row per map', () => {
+    const progress = chainBanked(2);
+    const { hub } = createHub(progress);
+    const home = markupOf(hub);
+    expect(home).not.toContain('Every contract is banked');
+    expect(home).toContain('Standing board');
+    expect(home).toContain('4 open · 2 banked');
+    for (const contract of standingBoard(progress)) {
+      expect(home).toContain(contract.description);
+      expect(home).toContain(`data-shows="${contract.id}"`);
+      expect(home).toContain(`data-shown-by="${contract.id}"`);
+    }
+  });
+
+  it('says what a contract costs before it is taken: the row opens its own insertion and the hunter is on it', () => {
+    const progress = chainBanked(2);
+    const raised = standingBoard(progress).find((contract) => contract.hunterPressure === 1)!;
+    const home = markupOf(createHub(progress).hub);
+    const insertion = Object.values(RUN_INSERTIONS).find((entry) => entry.mapId === raised.mapId)!;
+    expect(home).toContain(`data-contract="${insertion.id}" data-shows="${raised.id}"`);
+    expect(home).toContain('data-hunter-pressure="1"');
+    expect(home).toContain('Hunter +1 tier');
+    // The raised contract leads the board.
+    expect(home.indexOf(`data-shows="${raised.id}"`)).toBe(home.indexOf('data-shows="'));
+  });
+
+  it.each([
+    ['a raised contract', 1, 2],
+    ['a contract with no pressure on it', undefined, 1],
+  ] as const)(
+    'prices %s on the final check and sends that same hunter into the raid',
+    (_name, pressure, tier) => {
+      const progress = chainBanked(2);
+      const contract = standingBoard(progress).find((candidate) => candidate.hunterPressure === pressure)!;
+      const insertion = Object.values(RUN_INSERTIONS).find((entry) => entry.mapId === contract.mapId)!;
+      const { hub, start } = createHub(progress);
+      hub.flow.togglePokemon('bulbasaur-1');
+      hub.flow.chooseInsertion(insertion.id);
+      hub.setView('deploy');
+      hub.flow.advance();
+
+      const finalCheck = markupOf(hub);
+      expect(finalCheck).toContain(`data-hunter-tier="${tier}"`);
+      expect(finalCheck.includes('for the contract')).toBe(pressure !== undefined);
+
+      deploy(hub, start);
+      const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+      expect(runSession.plan?.contract?.id).toBe(contract.id);
+      expect(runSession.plan?.hunter.teamTierOffset).toBe(tier - 1);
+    },
+  );
 });
 
 describe('what the base screen leads with', () => {
@@ -821,6 +895,7 @@ describe('the Outfitter', () => {
         outfitterUpgrades: [...outfitterUpgrades],
         defeatedBosses: [],
         reachedInsertions: [],
+        standingContractsBanked: 0,
       },
     });
     const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);

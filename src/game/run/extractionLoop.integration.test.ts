@@ -768,6 +768,8 @@ describe('extraction loop integration', () => {
       defeatedBosses: [],
       reachedInsertions: [],
       outfitterUpgrades: [],
+      // An authored contract is not a standing one and does not count as one.
+      standingContractsBanked: 0,
     });
     expect(saves.load()!.stash.itemCount('super-potion')).toBe(1);
 

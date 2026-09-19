@@ -121,7 +121,61 @@ describe('a raid generated for a party', () => {
   });
 });
 
+describe('contract pressure', () => {
+  it('adds tiers on the party’s own ladder, so a weak party loses its discount', () => {
+    const rookie = [new Pokemon(BULBASAUR, 5)];
+    expect(hunterThreatFor(rookie, 0)).toEqual(hunterThreatFor(rookie));
+    expect(hunterThreatFor(rookie, 1)).toMatchObject({
+      tierOffset: 1,
+      contractTiers: 1,
+      openingTier: { level: 9 },
+      arrivesSoonerMs: HUNTER_ARRIVAL_LEAD_PER_TIER_MS,
+    });
+    // Nothing the player brought raised it, so no Pokemon is named for it.
+    expect(hunterThreatFor(rookie, 2).matchedTo).toBeUndefined();
+  });
+
+  it('never leaves the ladder: a veteran already at the top pays nothing more', () => {
+    const veteran = [new Pokemon(CHARMANDER, 16)];
+    for (const pressure of [1, 2, 9]) {
+      expect(hunterThreatFor(veteran, pressure)).toMatchObject({
+        tierOffset: HUNTER_TIERS.length - 1,
+        contractTiers: 0,
+        arrivesSoonerMs: hunterThreatFor(veteran).arrivesSoonerMs,
+      });
+    }
+    expect(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 5)).toMatchObject({
+      tierOffset: HUNTER_TIERS.length - 1,
+      contractTiers: 1,
+    });
+  });
+
+  it('still never arrives at the start of the raid, however much is stacked on it', () => {
+    for (let seed = 0; seed < 200; seed += 1) {
+      const plan = generateRunPlan(
+        seed,
+        undefined,
+        'floodplain-relay',
+        undefined,
+        hunterThreatFor([new Pokemon(CHARMANDER, 16)], 9),
+      );
+      expect(plan.hunter.spawnDelayMs).toBeGreaterThanOrEqual(20_000);
+    }
+  });
+});
+
 describe('hunterThreatLine', () => {
+  it('says what the contract added, beside what the party did', () => {
+    expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 1))).toEqual({
+      heading: 'Hunter tier 3 of 3',
+      detail: 'Lv 12 team of 3, arrives 30s sooner - your Lv 12 Charmander, +1 contract',
+    });
+    expect(hunterThreatLine(hunterThreatFor([new Pokemon(BULBASAUR, 5)], 1))).toEqual({
+      heading: 'Hunter tier 2 of 3',
+      detail: 'Lv 9 team of 2, arrives 15s sooner - +1 for the contract',
+    });
+  });
+
   it('names the tier, the team and the Pokemon that set it', () => {
     expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)]))).toEqual({
       heading: 'Hunter tier 2 of 3',

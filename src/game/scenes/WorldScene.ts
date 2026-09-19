@@ -57,6 +57,7 @@ import {
   isContractBankable,
   missingCarryIn,
   remainingMarkers,
+  rewardPokemon,
   type ContractMarker,
   type RaidContract,
 } from '../objectives';
@@ -2161,7 +2162,7 @@ export class WorldScene extends Phaser.Scene {
       this.bag.toJSON(),
     );
     const contractResult = banksContract
-      ? new SaveManager().bankContract(contract.id, runResult, settlement)
+      ? new SaveManager().bankContract(contract, runResult, settlement)
       : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };
     this.pendingHubTransition = true;
     this.showRunResult(
@@ -2177,7 +2178,12 @@ export class WorldScene extends Phaser.Scene {
         // stash no better off, and listing it as banked beside the line that
         // says it was spent is the screen disagreeing with itself.
         banked: {
-          pokemon: runResult.pokemon,
+          // A standing contract can pay in Pokemon, and those arrive at base
+          // beside the ones the raid caught.
+          pokemon: [
+            ...runResult.pokemon,
+            ...(contractResult.granted ? rewardPokemon(contract!.reward) : []),
+          ],
           items: [
             ...settlement.supplies.filter(({ quantity }) => quantity > 0),
             ...objectiveRewards,

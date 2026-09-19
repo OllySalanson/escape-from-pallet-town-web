@@ -28,6 +28,12 @@ export interface HunterThreat {
   readonly arrivesSoonerMs: number;
   /** The deployed Pokemon that set the tier; absent when nothing out-levels the hunter. */
   readonly matchedTo?: { readonly name: string; readonly level: number };
+  /**
+   * Tiers of `tierOffset` the raid's contract added on top of the party's own.
+   * Zero when the party had already drawn the top of the ladder: a contract
+   * takes away the discount a weak party buys, it never builds a fourth tier.
+   */
+  readonly contractTiers: number;
 }
 
 /**
@@ -43,27 +49,41 @@ export interface HunterThreat {
  * down to one low-level Pokemon is therefore back on the first tier with no
  * special case - the thresholds are `HUNTER_TIERS`' own levels, so retuning the
  * tiers retunes this with them.
+ *
+ * `contractPressure` is the standing board's escalation: tiers the contract
+ * carried on this raid opens the hunter above the party's own. It is added on
+ * the same ladder and clamped to it, so a standing contract is priced in exactly
+ * what a strong party is priced in - the safe raid on your worst Pokemon stops
+ * being safe - and the arrival lead can never exceed what a veteran already pays.
  */
-export function hunterThreatFor(party: readonly HunterThreatSubject[]): HunterThreat {
+export function hunterThreatFor(
+  party: readonly HunterThreatSubject[],
+  contractPressure = 0,
+): HunterThreat {
   const strongest = party
     .filter((pokemon) => !pokemon.isFainted)
     .reduce<HunterThreatSubject | undefined>(
       (best, pokemon) => (best === undefined || pokemon.level > best.level ? pokemon : best),
       undefined,
     );
-  const tierOffset = HUNTER_TIERS.reduce(
+  const partyOffset = HUNTER_TIERS.reduce(
     (selected, tier, index) => (strongest !== undefined && strongest.level > tier.level ? index : selected),
     0,
+  );
+  const tierOffset = Math.min(
+    HUNTER_TIERS.length - 1,
+    partyOffset + Math.max(0, Math.floor(contractPressure)),
   );
   return {
     tierOffset,
     openingTier: HUNTER_TIERS[tierOffset],
     arrivesSoonerMs: tierOffset * HUNTER_ARRIVAL_LEAD_PER_TIER_MS,
-    // A raised tier always has a Pokemon behind it; the first tier names none,
-    // because nothing the player could leave at base would lower it.
-    ...(strongest !== undefined && tierOffset > 0
+    // A tier the party raised always has a Pokemon behind it; the first tier
+    // names none, because nothing the player could leave at base would lower it.
+    ...(strongest !== undefined && partyOffset > 0
       ? { matchedTo: { name: strongest.base.name, level: strongest.level } }
       : {}),
+    contractTiers: tierOffset - partyOffset,
   };
 }
 
@@ -86,12 +106,22 @@ export function applyHunterThreat(tuning: HunterTuning, threat: HunterThreat): H
  * and leaves "bring less, face less" for the player to read out of that.
  */
 export function hunterThreatLine(threat: HunterThreat): { readonly heading: string; readonly detail: string } {
-  const { openingTier, matchedTo } = threat;
+  const { openingTier, matchedTo, contractTiers } = threat;
   const team = `Lv ${openingTier.level} team of ${openingTier.party.length}`;
+  const sooner = `arrives ${Math.round(threat.arrivesSoonerMs / 1_000)}s sooner`;
+  // Both reasons share the one row the confirm bar has, so the pair is worded
+  // shorter than either alone. Measured in the bar at its worst (top tier, a
+  // Lv 100 Jigglypuff): "matched to your ..., +1 for the contract" wrapped to a
+  // second row, and so did "+2 for the contract, whatever you bring".
+  const reason = matchedTo
+    ? contractTiers > 0
+      ? `your Lv ${matchedTo.level} ${matchedTo.name}, +${contractTiers} contract`
+      : `matched to your Lv ${matchedTo.level} ${matchedTo.name}`
+    : contractTiers > 0
+      ? `+${contractTiers} for the contract`
+      : undefined;
   return {
     heading: `Hunter tier ${threat.tierOffset + 1} of ${HUNTER_TIERS.length}`,
-    detail: matchedTo
-      ? `${team}, arrives ${Math.round(threat.arrivesSoonerMs / 1_000)}s sooner - matched to your Lv ${matchedTo.level} ${matchedTo.name}`
-      : `${team} - nothing you are bringing out-levels it`,
+    detail: reason ? `${team}, ${sooner} - ${reason}` : `${team} - nothing you are bringing out-levels it`,
   };
 }

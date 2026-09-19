@@ -6,7 +6,14 @@ import {
   getContract,
   secureItemStackLimit,
   securePokemonLimit,
+  type RaidContract,
 } from '../objectives/contracts';
+import {
+  isStandingBoardOpen,
+  isStandingContractId,
+  rewardPokemon,
+  standingRoundOf,
+} from '../objectives/standingBoard';
 import {
   Move,
   Pokemon,
@@ -97,6 +104,13 @@ export interface RaidProgress {
    * one more hearing at worst.
    */
   readonly battleLessonGiven?: boolean;
+  /**
+   * How many standing contracts have been banked. It is the only thing the save
+   * keeps about the standing board: which contracts are on offer, how much
+   * hunter they add and what they pay are all derived from it - see
+   * `../objectives/standingBoard` - so a generated contract is never stored.
+   */
+  readonly standingContractsBanked: number;
 }
 
 /**
@@ -139,6 +153,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   defeatedBosses: [],
   reachedInsertions: [],
   outfitterUpgrades: [],
+  standingContractsBanked: 0,
 };
 
 export interface SaveData {
@@ -280,9 +295,14 @@ export class SaveManager {
    * repeated extraction handling idempotent, and it is the same path for every
    * contract: the first one is not a special case, it is just the one whose
    * reward happens to be insertions.
+   *
+   * An authored contract is named by id and looked up here. A standing contract
+   * is handed over whole, because it was generated for the raid that carried it
+   * and that raid may have changed the progress it was generated from; what
+   * makes it pay once is the round in its id, which has to be the save's own.
    */
   public bankContract(
-    contractId: string,
+    carried: string | RaidContract,
     result: RunResult,
     settlement?: RaidSettlement,
   ): { readonly saved: boolean; readonly granted: boolean } {
@@ -293,6 +313,27 @@ export class SaveManager {
 
     applySettlement(game.stash, settlement);
     game.stash.bankRun(result);
+    const contractId = typeof carried === 'string' ? carried : carried.id;
+    if (typeof carried !== 'string' && isStandingContractId(contractId)) {
+      if (
+        !isStandingBoardOpen(game.raidProgress.completedContracts) ||
+        standingRoundOf(contractId) !== game.raidProgress.standingContractsBanked
+      ) {
+        return { saved: this.save({ ...game, ...RAID_RESOLVED }), granted: false };
+      }
+      for (const { itemId, quantity } of carried.reward.items) {
+        game.stash.addItem(itemId, quantity);
+      }
+      for (const pokemon of rewardPokemon(carried.reward)) {
+        game.stash.addPokemon(pokemon);
+      }
+      const raidProgress: RaidProgress = {
+        ...game.raidProgress,
+        standingContractsBanked: game.raidProgress.standingContractsBanked + 1,
+      };
+      return { saved: this.save({ ...game, raidProgress, ...RAID_RESOLVED }), granted: true };
+    }
+
     const contract = getContract(contractId);
     if (!contract || game.raidProgress.completedContracts.includes(contractId)) {
       return { saved: this.save({ ...game, ...RAID_RESOLVED }), granted: false };
@@ -658,6 +699,13 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     reachedInsertions: uniqueStrings(value.reachedInsertions),
     outfitterUpgrades,
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
+    // A save written before the standing board has banked none of it.
+    standingContractsBanked:
+      typeof value.standingContractsBanked === 'number' &&
+      Number.isSafeInteger(value.standingContractsBanked) &&
+      value.standingContractsBanked > 0
+        ? value.standingContractsBanked
+        : 0,
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now

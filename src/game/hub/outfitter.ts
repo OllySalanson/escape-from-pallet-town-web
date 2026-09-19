@@ -1,3 +1,4 @@
+import type { ItemId } from '../items';
 import type { ContractStack } from '../objectives/contracts';
 import { Stash, type StashedPokemon } from '../stash';
 
@@ -204,6 +205,21 @@ export function hasHunterIntel(builtIds: readonly string[]): boolean {
 
 export function hasBeacon(builtIds: readonly string[]): boolean {
   return builtUpgrades(builtIds).some((upgrade) => upgrade.beacon);
+}
+
+/**
+ * The supplies the ladder is still asking for: every kind an unbuilt rung
+ * costs, once each, in ladder order. It is what the standing board pays in, so
+ * a reward is always something the player has a use for - and once the whole
+ * ladder stands, it is every kind the ladder ever cost, because a finished base
+ * still spends supplies on raids.
+ */
+export function outfitterMaterialKinds(builtIds: readonly string[]): readonly ItemId[] {
+  const kindsOf = (upgrades: readonly OutfitterUpgrade[]): ItemId[] => [
+    ...new Set(upgrades.flatMap((upgrade) => upgrade.cost.supplies.map(({ itemId }) => itemId))),
+  ];
+  const outstanding = kindsOf(OUTFITTER_UPGRADES.filter((upgrade) => !builtIds.includes(upgrade.id)));
+  return outstanding.length > 0 ? outstanding : kindsOf(OUTFITTER_UPGRADES);
 }
 
 /**
