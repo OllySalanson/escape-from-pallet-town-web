@@ -52,14 +52,31 @@ describe('raid duration', () => {
     const southGate = EXTRACTION_POINTS.find(
       (point) => point.mapId === 'floodplain-relay' && point.label === 'SOUTH GATE',
     )!;
-    const beelineTiles =
-      walkingDistance(relay, insertion, FIRST_CONTRACT.markers[0].position) +
-      walkingDistance(relay, FIRST_CONTRACT.markers[0].position, southGate.position);
+    const kit = FIRST_CONTRACT.markers[0].position;
+    const station = relay.pois.find((poi) => poi.id === 'floodplain-ranger-radio')!.position;
+    const radioExit = EXTRACTION_POINTS.find(
+      (point) => point.mapId === 'floodplain-relay' && point.label === 'RADIO EXIT',
+    )!;
 
-    expect(beelineTiles).toBe(53);
+    // What the contract asks of a first raid: past the ranger station, which is
+    // on the way and opens the Radio Exit; into the reeds for the kit; and out
+    // by the exit just opened, which is the nearest one to it.
+    const contractTiles =
+      walkingDistance(relay, insertion, station) +
+      walkingDistance(relay, station, kit) +
+      walkingDistance(relay, kit, radioExit.position);
+    expect(contractTiles).toBe(49);
     // The objective route must never be a sprint: walking it costs a small part
     // of the raid, leaving the clock to price detours, reading and hesitation.
-    expect(beelineTiles * STEP_COST_MS).toBeLessThan(RAID_DURATION_MS * 0.05);
+    expect(contractTiles * STEP_COST_MS).toBeLessThan(RAID_DURATION_MS * 0.05);
+
+    // The map is vast now and the one exit that is always open is at the far
+    // end of it. That is the long way home, not the objective route - but it is
+    // the way a raid falls back on, so it too has to be walkable many times over.
+    const longWayTiles =
+      walkingDistance(relay, insertion, kit) + walkingDistance(relay, kit, southGate.position);
+    expect(longWayTiles).toBe(105);
+    expect(longWayTiles * STEP_COST_MS).toBeLessThan(RAID_DURATION_MS * 0.1);
   });
 
   it('is short enough that fleeing the hunter is a visible share of the raid', () => {

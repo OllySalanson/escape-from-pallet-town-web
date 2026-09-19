@@ -2,7 +2,9 @@ import { STEP_DURATION_MS } from '../movement/stepClock';
 import { describe, expect, it } from 'vitest';
 import { Pokemon } from '../pokemon';
 import { CHARMANDER } from '../pokemon/species';
+import { FIRST_CONTRACT } from '../objectives/contracts';
 import { RunManager } from '../run/RunManager';
+import { RUN_INSERTIONS } from '../run/runGeneration';
 import { createActiveRunSession } from '../run/RunSession';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 import {
@@ -177,17 +179,27 @@ describe('chooseHunterPursuitStep', () => {
   });
 
   it('reaches the player from the traced Floodplain Relay failure case', () => {
-    // Roadmap B1: greedy pursuit walked 200 steps from here, changed direction 187 times
-    // and never arrived, ending up bouncing between two tiles pinned against a wall.
+    // Roadmap B1: greedy pursuit walked 200 steps, changed direction 187 times and
+    // never arrived, ending up bouncing between two tiles pinned against a wall.
+    // The map has been redrawn since, so the case is restated on the ground that
+    // now sets the same trap, and sets it harder: a hunter at the front door with
+    // the player at the lost field kit is due north of its target with the
+    // flooded cut between them, and the only way round the cut is at its west
+    // end - away from the player. Anything that closes the distance greedily
+    // walks into the water and stays there.
     const { bounds, isBlocked } = mapBlocker('floodplain-relay');
-    const hunter = { x: 15, y: 5 };
-    const player = { x: 8, y: 18 };
+    const hunter = RUN_INSERTIONS['floodplain-relay'].position;
+    const player = FIRST_CONTRACT.markers[0].position;
+    expect(player.x).toBe(hunter.x);
+    expect(player.y).toBeGreaterThan(hunter.y);
     const pursuit = runPursuit(hunter, player, bounds, isBlocked);
 
     expect(pursuit.contacted).toBe(true);
-    // It walks the map's own shortest route - the doglegged road and a reed
-    // crossing - rather than wandering the length of it.
+    // It walks the map's own shortest route - round the head of the cut -
+    // rather than wandering the length of the marsh.
     expect(pursuit.steps).toBeLessThanOrEqual(walkDistance(hunter, player, bounds, isBlocked));
+    // And that route really does double back: it is far longer than the gap.
+    expect(pursuit.steps).toBeGreaterThan(2 * (player.y - hunter.y));
   });
 
   it('is deterministic for the same map, hunter and player positions', () => {
@@ -683,10 +695,11 @@ describe('findHunterSpawnTile', () => {
 
   it('offers a real spawn where the four straight lines are all walled off', () => {
     // On maps built out of lanes this is the common case, not the corner case:
-    // the Floodplain Relay landing jetty - where every raid starts - has nothing
-    // walkable five tiles due north, south, east or west of it.
+    // the Market Isle drop-in - a place raids start - has nothing walkable five
+    // tiles due north, south, east or west of it. Read from the data, because
+    // the last time this was a typed coordinate the map moved out from under it.
     const { bounds, isBlocked } = mapBlocker('floodplain-relay');
-    const player = { x: 15, y: 3 };
+    const player = RUN_INSERTIONS['floodplain-market-isle'].position;
     const straightLines = [
       { x: player.x - 5, y: player.y },
       { x: player.x + 5, y: player.y },

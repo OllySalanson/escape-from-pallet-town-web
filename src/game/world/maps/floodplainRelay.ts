@@ -355,8 +355,8 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '  ,,     vvvvvvv            ',
     '  ,,     vvvvvvv            ',
     '  ,,,,,,,vvvvvvv            ',
-    'MM                          ',
-    'MM,,                        ',
+    'MM  ,,                      ',
+    'MM,,,,                      ',
   ]);
   map.plant(45, 51, 'trapdoorOpen');
   map.plant(42, 52, 'barrel');

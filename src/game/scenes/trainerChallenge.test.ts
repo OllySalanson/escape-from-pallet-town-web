@@ -85,6 +85,11 @@ const stubKeys = () => {
  * unescapable fight without being told it was one.
  */
 function facingMaya() {
+  // Placed from her own data rather than typed: the map was redrawn once and
+  // this test went on standing the player next to where she used to be.
+  const maya = createRunTrainerEncounters().find(
+    (encounter) => encounter.trainer.id === 'floodplain-checkpoint-maya',
+  )!;
   const renderedTexts: RenderedText[] = [];
   const dialogBox = {
     shownMessages: [] as string[],
@@ -97,7 +102,7 @@ function facingMaya() {
   Object.assign(scene as object, {
     keyPresses: new KeyPresses(() => 0),
     currentMap: getWorldMap('floodplain-relay'),
-    currentTile: { x: 15, y: 18 },
+    currentTile: { x: maya.position.x, y: maya.position.y + 1 },
     facing: 'up',
     trainerEncounters: createRunTrainerEncounters(),
     defeatedTrainerIds: new Set<string>(),

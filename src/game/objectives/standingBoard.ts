@@ -262,10 +262,26 @@ function measureGround(mapId: WorldMapId, defeatedBosses: readonly string[]): Gr
   // A district is what one more boss would add to the walk from the front door.
   // Asked boss by boss, so a door behind another door is not offered before the
   // one in front of it: the board only ever points one gate ahead.
+  //
+  // "Adds ground" is not enough to say that on its own. One fight may open two
+  // doors, and the second can let onto ground the player already walks - the
+  // Floodplain's sluice keeper stands behind the toll bridge, but the causeway
+  // he also holds runs back to the Landing. Beaten alone he would add the keep
+  // to the walk, and the board would point a fresh save at a door whose keeper
+  // it cannot reach. So the keeper has to be someone you can walk up to today.
   const gates = gatesForMap(mapId);
   const trainers = createRunTrainerEncounters();
+  const canBeChallengedToday = (bossId: string): boolean => {
+    const boss = trainers.find((trainer) => trainer.bossId === bossId);
+    return (
+      boss !== undefined &&
+      [[0, 1], [0, -1], [1, 0], [-1, 0]].some(([dx, dy]) =>
+        reached(steps, { x: boss.position.x + dx, y: boss.position.y + dy }),
+      )
+    );
+  };
   const districts = gateBossIds(gates)
-    .filter((bossId) => !defeatedBosses.includes(bossId))
+    .filter((bossId) => !defeatedBosses.includes(bossId) && canBeChallengedToday(bossId))
     .flatMap((bossId): SealedDistrict[] => {
       const beyond = stepDistances(
         getWorldMap(mapId, [...defeatedBosses, bossId]).collision,

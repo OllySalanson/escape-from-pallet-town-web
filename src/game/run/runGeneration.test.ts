@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isExtractionAvailable, type ExtractionPoint } from '../world/extractionPoints';
-import { gateBossIds, WORLD_GATES } from '../world/gates';
+import { gateBossIds, gatesForMap, WORLD_GATES } from '../world/gates';
 import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunManager } from './RunManager';
@@ -255,8 +255,27 @@ describe('run generation', () => {
     for (const marker of plan.contract!.markers) {
       expect(walkable.has(`${plan.contract!.mapId}:${tileKey(marker.position)}`)).toBe(true);
     }
+    // The Floodplain has doors now, so "every landmark from the front door" is
+    // no longer one question. The ranger station opens the home bank's own exit
+    // and has to be walkable today; the supply vault is behind two bosses and
+    // must *not* be, or the doors seal nothing; and with every door open no
+    // landmark may be left walled off for good.
+    const reached = (from: ReadonlySet<string>, id: string): boolean => {
+      const poi = WORLD_MAPS['floodplain-relay'].pois.find((candidate) => candidate.id === id)!;
+      return from.has(`floodplain-relay:${tileKey(poi.position)}`);
+    };
+    expect(reached(walkable, 'floodplain-ranger-radio')).toBe(true);
+    expect(reached(walkable, 'floodplain-supply-vault')).toBe(false);
+
+    const everyDoorOpen = walkableFrom(
+      plan.insertion.mapId,
+      plan.insertion.position,
+      gateBossIds(gatesForMap('floodplain-relay')),
+    );
     for (const poi of WORLD_MAPS['floodplain-relay'].pois) {
-      expect(walkable.has(`floodplain-relay:${tileKey(poi.position)}`)).toBe(true);
+      expect(`${poi.label} reachable with every door open: ${reached(everyDoorOpen, poi.id)}`).toBe(
+        `${poi.label} reachable with every door open: true`,
+      );
     }
   });
 
