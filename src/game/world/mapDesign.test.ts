@@ -68,7 +68,7 @@ const DRAWN_PALLET_TOWN = [
   'TT""",,,,,,,,#......WWWWWWWT,,TT',
   'TT#"""""TTT,,#......WWWWWWWT,,TT',
   'TT""""""...,,,,,,,,,WWWWWWWT,,TT',
-  'TT..""""...,,,,,,,,,TTTTWW,,,,.T',
+  'TT..""""...,,,,,,,,,TTTTWW,,,,TT',
   'TT,,...ggg#,,...ggg#...gWW,,...T',
   '.T,,...ggg#,,...ggg#...gWW,,...T',
   'TT#....ggg......ggg.....WW,,...T',
@@ -76,7 +76,7 @@ const DRAWN_PALLET_TOWN = [
   '.Tggg#.##.ggg...##.g###.WW.....T',
   'TTg#g#..g.ggg#....gg..g.WWTT,,TT',
   'TTggg..gg.g#g#..#ggg..g.WWTT,,TT',
-  '.T..........TTTT........WWTT,,.T',
+  '.T..........TTTT........WWTT,,TT',
   'TTWWWWWwwWWWWWWWWWWWwwWWWW,,,,TT',
   'TTWWWWWwwWWWWWWWWWWWwwWWWW,,TTTT',
   '.TWWWWWwwWWWWWWWWWWWwwWWWW,,TTTT',
@@ -84,9 +84,9 @@ const DRAWN_PALLET_TOWN = [
   'TTWWWWW..ggFF.FFFTTT..MMMMMTTTTT',
   '.TWWWWW##ggg#,,TT.FFFFMMMMM#TTTT',
   'TTWWWWWgggg.#,,#TTgggg.gggg.TTTT',
-  'TTWWWWWgCgg.#,,,,#gggg.gggg.T.TT',
+  'TTWWWWWgCgg.#,,,,#gggg.gggg.TTTT',
   '.TWWWWWgggC.g,,,,FFF.F.FF.F.TTTT',
-  'TTT....ggg#g###,,#gggg.gg...T.TT',
+  'TTT....ggg#g###,,#gggg.gg...TTTT',
   'TTT....g.gg####,,....#..gg.TTTTT',
   'TTTTT......TTT#,,......TTTTTT.TT',
   'TTTTTTTTTTTTTT.,,.TTTTTTTTTTTTTT',
@@ -225,21 +225,27 @@ const DRAWN_FLOODPLAIN_RELAY = [
  * been approved. Nor has what a stranger's memory test added since: the earth
  * cross at the Crossroads, the rim ground the Hollow's and the Cut's stumps
  * stand on, the East Rise's ledge, and the Deep Stand's closed south-west nub.
+ *
+ * Newest of all, and the one piece of this map that is not forest: THE RIDGE,
+ * the rock shelf along the top of the wood from the nub at the fire tower's
+ * foot to the head of the Tower Steps, with the crest of it drawn as the map's
+ * own north edge. It is behind Lookout Pell's two doors and it is the only
+ * ground in the forest with no tall grass on it.
  */
 const DRAWN_VIRIDIAN_FOREST = [
-  'TTTTTTTTTTTTTTT...TTTTTTTTTTTTTT',
-  'TTTTTTTTTTTTTTT...TTTTTTTTTTTTTT',
-  'TT.T.T....T.T.T...TT.TT.TT.TT.TT',
-  'TTTTTT....TTTTT...TTTTTTTTTTTTTT',
-  'TT.TTTg.g.TTTT.....TTTT.TT.T...T',
-  'TTTT.TgTgTTggg.....TTTTTTTTT...T',
-  'TT.TgggTgTTgTT....ggggT.TT.T...T',
-  'TTT.gT.TggggTT..g..TTgTTTTTT...T',
+  'TTTTTTTTTTTTTTT...CCCCCCCCCCCCCC',
+  'TTTTTTTTTTTTTTT...TC...C....C..C',
+  'TT.T.T....T.T.T...T..C...C.....C',
+  'TTTTTT....TTTTT...T.CC.C...C.C.C',
+  'TT.TTTg.g.TTTT......CCCCC.CC...T',
+  'TTTT.TgTgTTggg.....TTTTTT.TT...T',
+  'TT.TgggTgTTgTT....ggggTTT.TT...T',
+  'TTT.gT.TggggTT..g..TTgTTT.TT...T',
   'TT..g..TTTTTTTTTgTTTTgTT.......T',
   '.T...gggTTTTT,,,,TTTTggg.WWgg..T',
   'TT.....g.TT.T,,,,T.TTTTggWW.TTTT',
   'TT...g.gggTTT,,TTTTTTTTT..g.TTTT',
-  'TT.T.gTTTgT.T,,..TTT.TTTTTgTT.TT',
+  'TT.T.gTTTgT.T,,..TTTTTTTTTgTTTTT',
   'TWWTTgTTTg,,,,,,,.TTTTTTTTgggTTT',
   'TWWgggT.TT,,,,,,,,gT.TT.TTTTgTTT',
   'TWWgTTTTTTTTT,,..TgTTTTTTTTTgT.T',

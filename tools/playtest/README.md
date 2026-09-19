@@ -77,6 +77,10 @@ that save opens on, by clicking the insertion's own row in the loadout.
   the next one: `--completed=survey-the-braid` puts the cordon ledger on Pallet
   Town and the warden's resupply on Viridian Forest.
 - `--hp=N` - the team came home with no more than N HP each.
+- `--level=N` - the team is at level N, with the moves that level knows. A boss
+  is a fight a fresh starter cannot win (`tools/trainers/report.mts` prints how
+  unwinnable), so this is how a driver gets to what is behind one:
+  `--insertion=town-square --level=20 --fight`.
 - `--secure=itemId[:n],..` - takes the secure-slot detour on the way out and
   puts `n` (default one) squares of each kind into the container, by the row's
   own stepper. It is the only way the container is checked end to end, and the

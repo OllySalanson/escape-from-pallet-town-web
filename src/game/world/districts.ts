@@ -126,6 +126,19 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     areas: [{ x: 16, y: 0, width: 16, height: 11 }],
   },
   {
+    // Behind the pond, and behind Miller Vance's two doors: the towpath from the
+    // head of it down to the sluice apron, with the Mill Stair cut in the rock
+    // half way along. Listed before THE MILLPOND, whose east side it is taken
+    // out of, because a place a boss holds shut has to say its own name the
+    // moment the door opens.
+    id: 'pallet-far-bank',
+    mapId: 'pallet-town',
+    name: 'THE FAR BANK',
+    // Down to the last step of the towpath: the apron below it is the
+    // Stockyard's, because a boundary at a crossing is the far step.
+    areas: [{ x: 26, y: 13, width: 6, height: 17 }],
+  },
+  {
     id: 'pallet-millpond',
     mapId: 'pallet-town',
     name: 'THE MILLPOND',
@@ -226,6 +239,22 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
   // notes knew their names. A wood is the one kind of map where every screen
   // looks like the last, so here the plate is most of how a player knows where
   // they are.
+  {
+    // The rock along the top of the wood, behind Lookout Pell's two doors, and
+    // the rake of steps down into the stair clearing. Listed before FIRE TOWER
+    // and TOWER STEPS, out of whose rectangles it is cut. No tall grass in it,
+    // which is what makes it the one dry road in this forest and the whole of
+    // what beating its keeper buys.
+    id: 'forest-ridge',
+    mapId: 'viridian-forest',
+    name: 'THE RIDGE',
+    // Row 4 stops at the rake, so the rock stair at 28,4 stays TOWER STEPS'.
+    areas: [
+      { x: 19, y: 0, width: 13, height: 4 },
+      { x: 19, y: 4, width: 7, height: 1 },
+      { x: 25, y: 5, width: 1, height: 3 },
+    ],
+  },
   {
     id: 'forest-tower-steps',
     mapId: 'viridian-forest',

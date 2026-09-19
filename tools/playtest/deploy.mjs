@@ -13,7 +13,7 @@ export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 export const GAME = 'window.__escapeFromPalletTownGame__';
 export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
 
-/** `--insertion=id --beaten=bossId,.. --completed=contractId,.. --hp=N --secure=itemId[:n],..`, out of a driver's arguments. */
+/** `--insertion=id --beaten=bossId,.. --completed=contractId,.. --hp=N --level=N --secure=itemId[:n],..`, out of a driver's arguments. */
 export function deployOptions(args) {
   const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
   const list = (name) => (option(name) ?? '').split(',').filter(Boolean);
@@ -22,6 +22,7 @@ export function deployOptions(args) {
     beaten: list('beaten'),
     completed: list('completed'),
     hp: option('hp'),
+    level: option('level'),
     secure: list('secure'),
   };
 }
@@ -31,12 +32,12 @@ export function deployOptions(args) {
  * are the driver's own, because only it knows whether the game is being stepped;
  * `paused` puts the loop to sleep on every load, for a driver that steps it.
  */
-export async function deploy(page, url, { press, click, until, paused = false, insertion, beaten = [], completed = [], hp, secure = [] }) {
+export async function deploy(page, url, { press, click, until, paused = false, insertion, beaten = [], completed = [], hp, level, secure = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   await press('Space'); await until(sceneIs('starter'));
   await click('Confirm Bulbasaur');
-  if (insertion || beaten.length > 0 || completed.length > 0 || hp !== undefined) {
+  if (insertion || beaten.length > 0 || completed.length > 0 || hp !== undefined || level !== undefined) {
     await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'the game to write its save');
     // Every other map's front door is what banking the first contract pays, and a
     // drop-in point is offered to whoever has stood on it. The tool cannot tell
@@ -47,6 +48,17 @@ export async function deploy(page, url, { press, click, until, paused = false, i
       p.completedContracts = [...new Set([...p.completedContracts, ...${JSON.stringify(completed)}])];
       if (${JSON.stringify(insertion ?? null)}) { p.firstContractExtracted = true; p.reachedInsertions = [...new Set([...p.reachedInsertions, ${JSON.stringify(insertion ?? '')}])]; }
       if (${hp !== undefined}) for (const stored of save.stash.pokemon) stored.pokemon.currentHp = Math.min(stored.pokemon.currentHp, ${Number(hp)});
+      // A boss is a fight a level-5 starter cannot win, so a driver that has to
+      // reach what is behind one deploys a team that could have got there. The
+      // saved move list goes with the level: kept, it would be a level-20
+      // partner still fighting with its level-1 kit, because the loader only
+      // falls back to the learnset when a save names no moves.
+      if (${level !== undefined}) for (const stored of save.stash.pokemon) {
+        stored.pokemon.level = ${Number(level)};
+        stored.pokemon.moves = [];
+        stored.pokemon.experience = 0;
+        stored.pokemon.currentHp = 9999;
+      }
       localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
     await page.send('Page.navigate', { url });
     await title();

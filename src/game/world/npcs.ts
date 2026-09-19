@@ -42,7 +42,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     dialogLines: [
       'PALLET TOWN - MARKET SQUARE',
       'East for the north field and the mill. South for the green, the allotments and the leat.',
-      'SOUTH GATE: always open, over the water. MILL STAIR: behind the millpond, later. WEST CULVERT: across the Flood, once the sluice is wound.',
+      'SOUTH GATE: always open, over the water. MILL STAIR: behind the millpond, later, and behind the miller. WEST CULVERT: across the Flood, once the sluice is wound.',
     ],
   },
   {
@@ -54,6 +54,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     dialogLines: [
       'THE GREEN - PARISH NOTICE',
       'Three ways over the leat. The west ford lands in the reeds; the bridge is held; the east ford is the quiet one, and the long one.',
+      'There were four. The towpath round the head of the water went from the pond to the sluice without wetting a boot, and the miller has both ends of it.',
       'The allotments have gone to seed. Whatever was left in them is still in them.',
     ],
   },
@@ -83,7 +84,23 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     idle: { roam: [{ x: 22, y: 12 }], glances: ['left', 'right'], beatMs: 3100 },
     dialogLines: [
       'I could watch the millpond ripple all day.',
-      'See the stair in the rock over the far bank? That is the quick way out, when they open it.',
+      'See the stair in the rock over the far bank? That is the quick way out - and the towpath to it is hurdled at the head and fallen in at the foot.',
+      'MILLER VANCE keeps both. Nobody has walked the far bank since he shut it.',
+    ],
+  },
+  {
+    // The South Gate is the whole town away from the far bank and cannot see a
+    // yard of it, so it says what is up there and who has it - as Route 1's two
+    // far exits do for the Overlook.
+    id: 'pallet-gate-road-notice',
+    mapId: 'pallet-town',
+    kind: 'sign',
+    position: { x: 17, y: 38 },
+    facing: 'left',
+    dialogLines: [
+      'SOUTH GATE ROAD - always open',
+      'The path along the far side of the millpond is the MILL STAIR, and it is the one way out of this town that never crosses the water.',
+      'MILLER VANCE has it hurdled at the pond end and fallen in above the sluice. Ask him yourself.',
     ],
   },
   {
@@ -122,6 +139,34 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     dialogLines: [
       'ROUTE OUTPOST - opens on the signal',
       'Nobody has been up on the OVERLOOK since the warden shut it. You can see its fence from the field station\'s yard, north-east of here.',
+    ],
+  },
+  // Viridian Forest had no writing on it at all, which on the one map where
+  // every screen looks like the last is the map with the least to go on. Two
+  // notices: the board you drop in beside, and one at the ford at the far end,
+  // because the ridge is a thing you can see and never reach.
+  {
+    id: 'forest-landing-board',
+    mapId: 'viridian-forest',
+    kind: 'sign',
+    position: { x: 9, y: 3 },
+    facing: 'down',
+    dialogLines: [
+      'VIRIDIAN FOREST - NORTH LANDING',
+      'Eleven clearings, seventeen trails, and every trail is grass. Nothing here is reached dry.',
+      'BROOK FORD: always open, west. FOREST CLEARING: south, later. TOWER STEPS: east, once the fire tower is lit.',
+    ],
+  },
+  {
+    id: 'forest-brook-notice',
+    mapId: 'viridian-forest',
+    kind: 'sign',
+    position: { x: 5, y: 19 },
+    facing: 'right',
+    dialogLines: [
+      'BROOK FORD - always open',
+      'The bare rock along the top of the wood is THE RIDGE. It runs from the fire tower to the head of the Tower Steps, and it is the only ground in this forest with no grass on it.',
+      'LOOKOUT PELL has the way up hurdled and the way down under rock. Nobody else has stood on it.',
     ],
   },
   {

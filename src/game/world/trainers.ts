@@ -244,6 +244,44 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     ),
   },
   {
+    // Pallet's one boss. The far bank of the millpond is the mill's own ground
+    // and Vance keeps it: he stands on the pond lane with the towpath gate at
+    // his shoulder, watching the single tile in front of it, so the lane east
+    // is free and stepping up to the hurdle is the decision to fight. Beating
+    // him opens the foot of the towpath as well, and the town turns out to be a
+    // ring - square to South Gate without crossing the leat at all.
+    //
+    // A miller in flour-white, and the only figure in the game drawn from that
+    // sheet: the survey caught two trainers being read as each other because
+    // they shared a sheet and a job title, so a new boss gets a design and a
+    // trade nobody else has.
+    mapId: 'pallet-town',
+    position: { x: 28, y: 12 },
+    facing: 'left',
+    fixedPosition: true,
+    sightRange: 1,
+    bossId: 'pallet-mill-keeper',
+    design: 'heavy-man',
+    introLines: [
+      'MILLER VANCE HOLDS THE TOWPATH.',
+      'Everything this side of the water turns my wheel. Walk on.',
+    ],
+    trainer: createTrainer(
+      'pallet-mill-keeper-vance',
+      'MILLER VANCE',
+      // Measured over the real engine against Wren's, because Pallet and Route
+      // 1 unlock together and their bosses are the same rung: seven party
+      // builds from a fresh starter to three at twelve, best damaging move
+      // every turn, no items. Vance wins 51% of them to Wren's 50%. The first
+      // try - Squirtle 10, Pidgey 11, Butterfree 12 - was harder than the
+      // Floodplain's last boss on the gentlest map in the game, which is what
+      // measuring rather than guessing caught. The mill's own, and the one
+      // party in the game with no Pidgey and no Pikachu in it.
+      [new Pokemon(JIGGLYPUFF, 9), new Pokemon(SQUIRTLE, 9), new Pokemon(BUTTERFREE, 11)],
+      'Towpath is yours, head and foot. Mind the stair - it is a long drop and a short way home.',
+    ),
+  },
+  {
     // The third way across the braid is a gap one tile wide below the middle
     // field's south door, and June stands in it: she holds the crossing and the
     // door together, and the roads still go round her. She was a second RAIDER MAYA with the
@@ -311,6 +349,42 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       'BUG CATCHER IVY',
       [new Pokemon(PIDGEY, 9), new Pokemon(BUTTERFREE, 10)],
       'The coastal trail is clear. Do not waste your second chance.',
+    ),
+  },
+  {
+    // Viridian's one boss. The rock the fire tower is built against runs east
+    // along the top of the wood, and Pell keeps the whole of it: he stands on
+    // the nub at the tower's foot - the one step of ground in this forest that
+    // went nowhere - with the ridge gate beside him, watching only the tile
+    // below. The trail east past the tower is free; turning up towards the gate
+    // is the decision. Beating him joins the tower to the stair it lights.
+    //
+    // Not another warden and not another bug catcher: the forest already has
+    // Ivy, and Route 1's Wren is a warden. A lookout in a climber's cap, drawn
+    // from a sheet nothing else in the game uses.
+    mapId: 'viridian-forest',
+    position: { x: 18, y: 4 },
+    facing: 'down',
+    fixedPosition: true,
+    sightRange: 1,
+    bossId: 'forest-ridge-keeper',
+    design: 'cooltrainer',
+    introLines: [
+      'LOOKOUT PELL HOLDS THE RIDGE.',
+      'Nobody walks the top of this wood but me. Prove otherwise.',
+    ],
+    trainer: createTrainer(
+      'forest-ridge-keeper-pell',
+      'LOOKOUT PELL',
+      // A rung above Vance and Wren and below the Floodplain's sluice keeper,
+      // measured the same way: 56% of those seven builds lost, against Wren's
+      // 50%. Viridian is the map that prices everything in fights, so its boss
+      // is the harder of the two small-map doors. No second Flying type on
+      // purpose - Pidgey and Butterfree together take a Bulbasaur to nil, and
+      // a fight only one starter can win is the lottery Scout Lee's Squirtle
+      // exists to avoid.
+      [new Pokemon(PIDGEY, 9), new Pokemon(PIKACHU, 11), new Pokemon(JIGGLYPUFF, 12)],
+      'Ridge is open, both ends. Light the tower and you are ten steps from the stair, not half a map.',
     ),
   },
 ];

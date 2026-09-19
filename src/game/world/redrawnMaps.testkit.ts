@@ -60,3 +60,43 @@ export function steps(mapId: WorldMapId, from: GridPosition, to: GridPosition, w
   }
   return stepDistances(map.collision, from, shut)[to.y][to.x];
 }
+
+/**
+ * The cheapest walk between two tiles, counted in tall-grass steps first and
+ * walking steps second - which is the currency Viridian Forest is priced in,
+ * where a longer road with no grass on it is the better road. A 0-1 BFS, so
+ * "cheapest in fights, then shortest" is one pass.
+ */
+export function cheapestWalk(
+  mapId: WorldMapId,
+  beaten: readonly string[],
+  from: GridPosition,
+  to: GridPosition,
+): { readonly grass: number; readonly steps: number } {
+  const map = getWorldMap(mapId, beaten);
+  const width = map.width;
+  const height = map.height;
+  const grass = Array.from({ length: height }, () => Array<number>(width).fill(Infinity));
+  const walked = Array.from({ length: height }, () => Array<number>(width).fill(Infinity));
+  grass[from.y][from.x] = 0;
+  walked[from.y][from.x] = 0;
+  const queue: GridPosition[] = [from];
+  while (queue.length > 0) {
+    const tile = queue.shift() as GridPosition;
+    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+      const next = { x: tile.x + dx, y: tile.y + dy };
+      if (next.x < 0 || next.y < 0 || next.x >= width || next.y >= height) continue;
+      if (map.collision[next.y][next.x]) continue;
+      const price = map.tallGrass[next.y][next.x] ? 1 : 0;
+      const cost = grass[tile.y][tile.x] + price;
+      const length = walked[tile.y][tile.x] + 1;
+      if (cost < grass[next.y][next.x] || (cost === grass[next.y][next.x] && length < walked[next.y][next.x])) {
+        grass[next.y][next.x] = cost;
+        walked[next.y][next.x] = length;
+        if (price === 0) queue.unshift(next);
+        else queue.push(next);
+      }
+    }
+  }
+  return { grass: grass[to.y][to.x], steps: walked[to.y][to.x] };
+}

@@ -268,6 +268,14 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
 
 
 
+  // Two lattice trees felled for the sluice's sake: their crowns hung in the
+  // band of sky the Sluice Wheel's caption has to sit in, and canopy is ground
+  // a caption may not take. Three of the thicket's own plantings below went the
+  // same way - the pines over the towpath gate and the far bank's landing, and
+  // the bush beside the miller. `tools/tileset/crowns.mts` names all five.
+  map.draw(29, 34, ['T']);
+  map.draw(29, 36, ['T']);
+
   // == WHAT GROWS IN THE THICKET ===========================================
   // The lanes are packed so close that the wood between them is mostly a hedge
   // thick, and the lattice only fits a broadleaf where three tiles by two are
@@ -293,13 +301,13 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
     '                                ',
     '                                ',
     'p                               ',
-    '                               b',
+    '                                ',
     '                                ',
     'p                             p ',
     '                                ',
     '                                ',
     '                                ',
-    '                              p ',
+    '                                ',
     '                                ',
     'p                               ',
     '                                ',
@@ -307,7 +315,7 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
     'p                               ',
     '                                ',
     '                                ',
-    'p                             p ',
+    'p                               ',
     '                                ',
     '                                ',
     'p                               ',
