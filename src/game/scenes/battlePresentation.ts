@@ -547,7 +547,7 @@ const abilityLine = (event: {
     case 'contact':
       return event.amount
         ? `${who} tasted foul! -${event.amount} HP`
-        : `${who} caught whoever touched it!`;
+        : `${who} answered the touch!`;
     case 'sent-out':
       return `${who} sized up the other side!`;
     case 'quickened':
