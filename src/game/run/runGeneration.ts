@@ -12,6 +12,7 @@ import {
   type RunTrainerEncounter,
 } from '../world/trainers';
 import type { RaidContract } from '../objectives/contracts';
+import { applyHunterThreat, hunterThreatFor, type HunterThreat } from '../world/hunterThreat';
 import { createSeededRng } from './rng';
 
 export { FIRST_CONTRACT } from '../objectives/contracts';
@@ -111,6 +112,10 @@ export function generateRunPlan(
   // first contract" reads as harmless and is not - `undefined` passed for "no
   // contract" would silently take the default and attach one anyway.
   contract?: RaidContract,
+  // What the deployed party costs in hunter. It is folded in here rather than by
+  // the caller so `plan.hunter` stays the one tuning the raid reads; the default
+  // is an empty party, which is the first tier and the seeded delay untouched.
+  hunterThreat: HunterThreat = hunterThreatFor([]),
 ): RunPlan {
   const rng = createSeededRng(seed);
   const insertion = RUN_INSERTIONS[insertionId];
@@ -152,20 +157,23 @@ export function generateRunPlan(
     loot,
     trainers,
     extractionPoints,
-    hunter: {
-      spawnDelayMs: rng.int(
-        RUN_GENERATION_BOUNDS.hunterSpawnDelayMinimumMs,
-        RUN_GENERATION_BOUNDS.hunterSpawnDelayMaximumMs,
-      ),
-      aggressionStepsPerPlayerStep: rng.int(
-        RUN_GENERATION_BOUNDS.hunterAggressionMinimum,
-        RUN_GENERATION_BOUNDS.hunterAggressionMaximum,
-      ),
-      teamTierOffset: rng.int(
-        RUN_GENERATION_BOUNDS.hunterTeamTierMinimum,
-        RUN_GENERATION_BOUNDS.hunterTeamTierMaximum,
-      ),
-    },
+    hunter: applyHunterThreat(
+      {
+        spawnDelayMs: rng.int(
+          RUN_GENERATION_BOUNDS.hunterSpawnDelayMinimumMs,
+          RUN_GENERATION_BOUNDS.hunterSpawnDelayMaximumMs,
+        ),
+        aggressionStepsPerPlayerStep: rng.int(
+          RUN_GENERATION_BOUNDS.hunterAggressionMinimum,
+          RUN_GENERATION_BOUNDS.hunterAggressionMaximum,
+        ),
+        teamTierOffset: rng.int(
+          RUN_GENERATION_BOUNDS.hunterTeamTierMinimum,
+          RUN_GENERATION_BOUNDS.hunterTeamTierMaximum,
+        ),
+      },
+      hunterThreat,
+    ),
   };
 }
 

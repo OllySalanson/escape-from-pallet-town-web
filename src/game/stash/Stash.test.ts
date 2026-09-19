@@ -71,15 +71,44 @@ describe('Stash', () => {
     expect(stash.listItems()).toEqual({ antidote: 1, ...MINIMUM_SUPPLIES });
   });
 
-  it('tops up to the minimum without ever reducing a larger hoard', () => {
-    const stash = new Stash({ items: { 'poke-ball': 12, potion: 1, 'super-potion': 4 } });
+  it('tops up only what the kit is short of, without ever reducing a larger hoard', () => {
+    const stash = new Stash({ items: { 'poke-ball': 12, potion: 1 } });
 
+    expect(stash.supplyShortfall()).toEqual({ potion: 2 });
     expect(stash.restockMinimumSupplies()).toBe(true);
-    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3, 'super-potion': 4 });
+    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3 });
 
     // Repeating it adds nothing, so the restock cannot be farmed.
+    expect(stash.supplyShortfall()).toEqual({});
     expect(stash.restockMinimumSupplies()).toBe(false);
-    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3, 'super-potion': 4 });
+    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3 });
+  });
+
+  /**
+   * The restock is for a player who cannot attempt a raid. One holding four
+   * Super Potions and a handful of Great Balls can, and used to be handed two
+   * Potions and five Poke Balls on every wipe regardless.
+   */
+  it('gives nothing to a player whose better supplies already cover the kit', () => {
+    const items = { potion: 1, 'super-potion': 4, 'great-ball': 3, 'poke-ball': 2 };
+    const stash = new Stash({ items });
+
+    expect(stash.supplyShortfall()).toEqual({});
+    expect(stash.restockMinimumSupplies()).toBe(false);
+    expect(stash.listItems()).toEqual(items);
+  });
+
+  it('counts a better item towards the kit, and only the shortfall is basic stock', () => {
+    const stash = new Stash({ items: { 'super-potion': 1, 'great-ball': 4 } });
+
+    expect(stash.restockMinimumSupplies()).toBe(true);
+    expect(stash.listItems()).toEqual({ 'super-potion': 1, potion: 2, 'great-ball': 4, 'poke-ball': 1 });
+  });
+
+  it('does not mistake an Antidote for a way to heal', () => {
+    const stash = new Stash({ items: { antidote: 9 } });
+
+    expect(stash.supplyShortfall()).toEqual(MINIMUM_SUPPLIES);
   });
 
   it.each([BULBASAUR, CHARMANDER, SQUIRTLE])('swaps a sole Pokemon for a fresh level 5 %s, with a usable supply', (starter) => {

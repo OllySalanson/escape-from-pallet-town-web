@@ -53,6 +53,12 @@ export interface WorldMapDefinition {
   readonly encounters?: WildEncounterTable;
   readonly warps: readonly MapWarp[];
   readonly entities: readonly WorldEntity[];
+  /**
+   * The pool a raid's loot is drawn from, not what lies on the ground: for each
+   * raid `generateLoot()` in `runGeneration.ts` takes half to all of it and
+   * re-seats every piece on a free tile, so a `position` here is only where it
+   * falls back to when a map has no free tile left.
+   */
   readonly loot: readonly WorldLoot[];
   /** Fixed landmarks are authored separately from randomised run loot. */
   readonly pois: readonly WorldPoi[];
