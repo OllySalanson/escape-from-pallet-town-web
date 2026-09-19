@@ -30,6 +30,7 @@ const around = (overrides: Partial<CaptionSurroundings> = {}): CaptionSurroundin
   bounds: VIEW,
   furniture: [],
   keepClear: [],
+  canopy: [],
   ...overrides,
 });
 
@@ -133,6 +134,59 @@ describe('where a map caption is allowed to sit', () => {
     expect(placement.visible).toBe(true);
     expect(overlaps(rectOf(placement), sign)).toBe(false);
     expect(overlaps(rectOf(placement), figure)).toBe(false);
+  });
+
+  /**
+   * Writing is drawn beneath figures and a canopy above them, so a caption
+   * seated under a crown or a roof is hidden by it. The Floodplain's gatehouse
+   * is walked under, and its shut gate's caption read `SLUICE GA` on one side
+   * of it and `PER DANE` on the other.
+   */
+  describe('under a canopy', () => {
+    const subject = tile(160, 120);
+    // Everything above the subject is roof, as it is over a gatehouse's arch.
+    const roof: Rect = { x: 96, y: 40, width: 144, height: 78 };
+
+    it('takes the other side rather than sit under a roof', () => {
+      const placement = seat({ subject }, { canopy: [roof] });
+      expect(placement.visible).toBe(true);
+      expect(placement.seat).toBe('below');
+      expect(overlaps(rectOf(placement), roof)).toBe(false);
+    });
+
+    it('goes beside its subject when a person stands below it and a roof is above', () => {
+      // The gate's own keeper, standing under the gate he holds.
+      const keeper: Rect = { x: 160, y: 138, width: 16, height: 23 };
+      const placement = seat({ subject, preferred: 'below' }, { canopy: [roof], keepClear: [keeper] });
+      expect(placement.visible).toBe(true);
+      expect(['left', 'right']).toContain(placement.seat);
+      expect(overlaps(rectOf(placement), roof)).toBe(false);
+      expect(overlaps(rectOf(placement), keeper)).toBe(false);
+    });
+
+    it('slides along its row to clear a single crown, rather than leave the row', () => {
+      // One tree's crown over the left of the row above. The centred seat runs
+      // under it; the seat slid to line up with the subject's left edge is clear.
+      const crown: Rect = { x: 120, y: 96, width: 30, height: 16 };
+      const centred = seat({ subject, width: 60 });
+      expect(overlaps(rectOf(centred), crown)).toBe(true);
+
+      const placement = seat({ subject, width: 60 }, { canopy: [crown] });
+      expect(placement.visible).toBe(true);
+      expect(placement.seat).toBe('above');
+      expect(placement.x).toBe(subject.x);
+      expect(overlaps(rectOf(placement), crown)).toBe(false);
+    });
+
+    it('is not drawn rather than cover a person, even when every other seat is under canopy', () => {
+      const everywhereElse: Rect[] = [
+        roof,
+        { x: 0, y: 118, width: 158, height: 40 },
+        { x: 178, y: 118, width: 142, height: 40 },
+      ];
+      const crowd: Rect = { x: 120, y: 138, width: 96, height: 60 };
+      expect(seat({ subject }, { canopy: everywhereElse, keepClear: [crowd] }).visible).toBe(false);
+    });
   });
 
   it('is never drawn cut by the edge of the screen, wherever the camera is', () => {

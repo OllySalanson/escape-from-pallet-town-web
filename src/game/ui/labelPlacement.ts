@@ -60,6 +60,17 @@ export interface CaptionSurroundings {
    * trainer is watching.
    */
   readonly keepClear: readonly Rect[];
+  /**
+   * Ground that is drawn *over* captions: a tree's crown, the span of an arch,
+   * anything a figure walks under. Writing sits beneath figures so that it never
+   * covers a person, and a canopy sits above them so that a wood has an inside -
+   * which leaves a caption seated here hidden by the very thing it is beside.
+   * The first map with a real canopy showed a shut gate's caption as `SLUICE GA`
+   * and `PER DANE` either side of its own gatehouse. So a canopy is ground a
+   * caption may not take, exactly as a person is, and the ordinary order of
+   * seats does the rest: the other row, slid along it, then beside the subject.
+   */
+  readonly canopy: readonly Rect[];
 }
 
 export interface CaptionPlacement {
@@ -156,8 +167,8 @@ function candidatesFor(request: CaptionRequest, bounds: Rect): Candidate[] {
 
 /**
  * How much of a seat is somewhere a caption may not be, in pixels of its own
- * area: outside the view, under the HUD, over map art or a person, or against a
- * caption already seated.
+ * area: outside the view, under the HUD, over map art or a person, under a
+ * canopy, or against a caption already seated.
  */
 function intrusion(rect: Rect, surroundings: CaptionSurroundings, seated: readonly Rect[]): number {
   const view = inflate(surroundings.bounds, -VIEW_INSET);
@@ -168,6 +179,7 @@ function intrusion(rect: Rect, surroundings: CaptionSurroundings, seated: readon
     outside +
     against(surroundings.furniture, NEIGHBOUR_GAP) +
     against(surroundings.keepClear, 0) +
+    against(surroundings.canopy, 0) +
     against(seated, NEIGHBOUR_GAP)
   );
 }
