@@ -1460,7 +1460,11 @@ button {
 :where(.pixel-ui) .px-row-line {
   display: flex;
   align-items: center;
-  gap: calc(var(--u) * 4);
+  /* What follows the name drops under it when the column is too narrow for
+     both, rather than running on: in the raid result's narrow "carried at
+     risk" column a CHARMANDER's health bar ran 62px under the MADE IT tag. */
+  flex-wrap: wrap;
+  gap: 0 calc(var(--u) * 4);
   min-width: 0;
   white-space: nowrap;
 }

@@ -53,10 +53,22 @@ export interface ContractMarker {
  * `summary` is the sentence the lobby, the field guide and the extraction report
  * all print, so the promise cannot drift between the three places it is made.
  */
+/** A Pokemon a contract pays in, by species and level. It arrives at base, fit. */
+export interface ContractPokemon {
+  readonly speciesId: string;
+  readonly level: number;
+}
+
 export interface ContractReward {
   readonly summary: string;
   /** Added to the stash the first time the contract is banked. */
   readonly items: readonly ContractStack[];
+  /**
+   * Pokemon added to the vault when the contract is banked. Only the standing
+   * board pays this way: the Outfitter's real price is Pokemon, so a reward that
+   * is meant to be spent there has to be able to be one.
+   */
+  readonly pokemon?: readonly ContractPokemon[];
   /** Insertions this contract opens for good. */
   readonly unlockedInsertionIds?: readonly string[];
   /** Adds one protected item stack to the secure slot, for every later raid. */
@@ -75,6 +87,18 @@ export interface RaidContract {
   readonly requiredExitLabel?: string;
   /** Contract that must already be banked before this one is offered. */
   readonly unlockedBy?: string;
+  /**
+   * Tiers the hunter opens above what the deployed party alone would draw. It
+   * is the standing board's escalation, and it is spent through
+   * `hunterThreatFor` so the raid has one difficulty system rather than two.
+   */
+  readonly hunterPressure?: number;
+  /**
+   * Set when every stop is behind a gate that was still shut when the contract
+   * was offered: the door, and who holds it. The contract is how the board
+   * points at a district the player has not seen.
+   */
+  readonly sealedBehind?: { readonly gateLabel: string; readonly bossName: string };
   readonly reward: ContractReward;
   /** What the raid actually asks of the player, in the field guide's own voice. */
   readonly briefing: readonly string[];
@@ -277,6 +301,9 @@ export function getContract(id: string | undefined): RaidContract | undefined {
  * The contracts on the board: every one whose prerequisite is banked and which
  * is not banked itself. A banked contract never comes back, so the board is a
  * queue of things still worth a raid rather than a repeatable chore list.
+ *
+ * When this is empty the chain is finished and `./standingBoard` takes the
+ * board over; `boardContracts()` there is what the lobby actually lists.
  */
 export function availableContracts(completedContractIds: readonly string[]): readonly RaidContract[] {
   const completed = new Set(completedContractIds);
