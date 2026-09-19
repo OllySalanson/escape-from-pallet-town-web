@@ -70,11 +70,20 @@ export interface DefeatSequence {
    * it. Without it the party is already on the ground when the screen opens and
    * there is nothing to recognise as having fallen.
    *
-   * It is the one duration left in the sequence, and it is the screen arriving
-   * rather than the screen proceeding: it carries no words, and a key pressed
-   * inside it lands the first beat instead of being swallowed.
+   * It is the screen arriving rather than the screen proceeding: it carries no
+   * words, and a key pressed inside it is swallowed - see `holdMs`.
    */
   readonly leadInMs: number;
+  /**
+   * How long a beat stands before a key can move it on, and before it says
+   * PRESS SPACE. The player arrives here pressing SPACE: it is how they read
+   * "Squirtle fainted!" off the battle screen a moment ago, and two ordinary
+   * presses of that same rhythm used to carry them from the faint to the final
+   * beat without having seen one. A beat that answers a press it was never
+   * shown for is not waiting for the player, so each one holds for a breath
+   * first, and the prompt appears when it has started listening - never before.
+   */
+  readonly holdMs: number;
   /**
    * The blinking glyph drawn after every prompt. It is the battle dialogue's own
    * continue indicator, kept separate from the words because only the glyph
@@ -103,6 +112,8 @@ const FINAL_PROMPT = 'PRESS SPACE FOR THE RESULT';
 const PROMPT_INDICATOR = '\u25bc';
 
 const LEAD_IN_MS = 260;
+
+const BEAT_HOLD_MS = 650;
 
 /** Past this many, the line-up stops reading as a line-up and starts as a list. */
 const MAX_FIGURES = 8;
@@ -154,7 +165,7 @@ export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | 
     },
   ];
 
-  return { figures, beats, leadInMs: LEAD_IN_MS, promptIndicator: PROMPT_INDICATOR };
+  return { figures, beats, leadInMs: LEAD_IN_MS, holdMs: BEAT_HOLD_MS, promptIndicator: PROMPT_INDICATOR };
 }
 
 /**
@@ -193,4 +204,32 @@ function toItemFigure(item: ReportItem, fate: DefeatFate): DefeatFigure {
 
 function capitalise(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/**
+ * Decides whether a press moves the sequence on. Phaser-free, so the rule that
+ * a carried-over press skips nothing is a test rather than a playtest.
+ *
+ * Two kinds of press are not the player answering the beat in front of them: a
+ * key still held down from the battle, which the browser repeats, and a press
+ * that lands before the beat has stood for `holdMs`.
+ */
+export interface BeatGate {
+  /** Call when a beat lands. */
+  beatEntered(nowMs: number): void;
+  /** True once the beat on screen is listening, which is when its prompt shows. */
+  isListening(nowMs: number): boolean;
+  accepts(press: { readonly nowMs: number; readonly repeat: boolean }): boolean;
+}
+
+export function createBeatGate(holdMs: number): BeatGate {
+  let listeningFrom = Number.POSITIVE_INFINITY;
+  const isListening = (nowMs: number): boolean => nowMs >= listeningFrom;
+  return {
+    beatEntered(nowMs) {
+      listeningFrom = nowMs + holdMs;
+    },
+    isListening,
+    accepts: ({ nowMs, repeat }) => !repeat && isListening(nowMs),
+  };
 }
