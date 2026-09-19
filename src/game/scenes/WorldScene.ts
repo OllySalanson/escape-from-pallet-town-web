@@ -45,6 +45,7 @@ import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { DialogBox } from '../ui/DialogBox';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter } from '../world/wildEncounters';
+import { encounterTableAt } from '../world/localEncounters';
 import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
 import { consumeTeachingEncounter } from '../world/teachingEncounter';
@@ -2189,7 +2190,7 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    const encounters = this.encountersForCurrentMap();
+    const encounters = this.encountersAtCurrentTile();
     if (isTallGrassInMap(this.currentMap, this.currentTile) && encounters) {
       const rng = this.runSession?.rng;
       // The authored teaching fight replaces the first roll of a first-contract
@@ -2618,8 +2619,14 @@ export class WorldScene extends Phaser.Scene {
     return this.runSession?.plan?.loot[this.currentMap.id] ?? this.currentMap.loot;
   }
 
-  private encountersForCurrentMap() {
-    return this.runSession?.plan?.encounters[this.currentMap.id] ?? this.currentMap.encounters;
+  /** The wildlife of the place being stood in, then of the map it is on. */
+  private encountersAtCurrentTile() {
+    return encounterTableAt(
+      this.currentMap.id,
+      this.currentTile,
+      this.runSession?.plan?.encounters[this.currentMap.id] ?? this.currentMap.encounters,
+      this.runSession?.plan?.districtEncounters,
+    );
   }
 
   private isExtractionOpen(point: ExtractionPoint): boolean {

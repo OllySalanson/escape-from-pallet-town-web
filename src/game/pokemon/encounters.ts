@@ -50,3 +50,157 @@ export const VIRIDIAN_FOREST_TALL_GRASS: WildEncounterTable = {
     { speciesId: 'pikachu', minLevel: 9, maxLevel: 10, weight: 2 },
   ],
 };
+
+/**
+ * Wildlife is authored per place. `PALLET_TALL_GRASS` and
+ * `VIRIDIAN_FOREST_TALL_GRASS` above are what a map falls back to; each table
+ * below is what one named district (`world/districts.ts`) rolls on, so the
+ * reeds of a drowned town and the meadows of Route 1 no longer offer the same
+ * wildlife. A place is described by what lives there, and a table is written
+ * in the same units as the fallbacks: weights out of the table's own total,
+ * levels before `varyEncounterTable` shifts them a level either way.
+ *
+ * Only species the game has are named. When the rest of Kanto's original 151
+ * arrives, adding one is adding an entry to the table of the place it lives in
+ * - nothing else reads this list. `districtEncounters.test.ts` asks each map
+ * for the two things that must survive that: every starter's signature move
+ * finds a target somewhere on the map, and no place drifts off its difficulty.
+ *
+ * The rates and levels of a place set its difficulty as surely as its layout
+ * does: Pallet Town and the Floodplain's reeds sit at or under the level-5
+ * partner, Route 1 reaches a level above it, and Viridian Forest climbs from
+ * its north landing to the deep stand. `tools/encounters/report.mts` prints
+ * what each place rolls and how a starter fares against it.
+ */
+const wildlife = (
+  stepEncounterRate: number,
+  entries: readonly WildEncounterEntry[],
+): WildEncounterTable => ({ stepEncounterRate, entries });
+
+// -- Pallet Town ------------------------------------------------------------
+
+/** Open pasture: the gentlest ground in the game. */
+export const PALLET_FIELD_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 4 },
+  { speciesId: 'jigglypuff', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'bulbasaur', minLevel: 4, maxLevel: 5, weight: 1 },
+]);
+
+/** Vegetable plots: Grass-types, and one butterfly that is the rare hard roll. */
+export const PALLET_ALLOTMENT_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'bulbasaur', minLevel: 4, maxLevel: 6, weight: 4 },
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'butterfree', minLevel: 6, maxLevel: 6, weight: 1 },
+]);
+
+/** The flooded lane: standing water and what came to it. */
+export const PALLET_FLOOD_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'squirtle', minLevel: 4, maxLevel: 6, weight: 4 },
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'bulbasaur', minLevel: 4, maxLevel: 5, weight: 1 },
+]);
+
+/** Sheds, hutches and wire: warm corners and things that like a cable. */
+export const PALLET_YARD_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'charmander', minLevel: 4, maxLevel: 6, weight: 3 },
+  { speciesId: 'pikachu', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 2 },
+]);
+
+// -- Route 1 ----------------------------------------------------------------
+
+/** The long meadows: a level above the partner is the rare roll. */
+export const ROUTE_MEADOW_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 5, weight: 4 },
+  { speciesId: 'jigglypuff', minLevel: 3, maxLevel: 5, weight: 2 },
+  { speciesId: 'bulbasaur', minLevel: 4, maxLevel: 6, weight: 2 },
+  { speciesId: 'butterfree', minLevel: 6, maxLevel: 7, weight: 1 },
+]);
+
+/** Roadside verge on the sunny side. */
+export const ROUTE_WEST_VERGE_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'charmander', minLevel: 4, maxLevel: 6, weight: 3 },
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 5, weight: 3 },
+]);
+
+/** Roadside verge along the ditch. */
+export const ROUTE_EAST_VERGE_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'squirtle', minLevel: 4, maxLevel: 6, weight: 3 },
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 5, weight: 3 },
+]);
+
+// -- Viridian Forest ---------------------------------------------------------
+// The forest runs from level 6 at its edge to level 10 in its deep stand.
+
+export const FOREST_EDGE_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'pidgey', minLevel: 6, maxLevel: 8, weight: 4 },
+  { speciesId: 'bulbasaur', minLevel: 7, maxLevel: 9, weight: 2 },
+]);
+
+export const FOREST_FIRE_TOWER_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'charmander', minLevel: 6, maxLevel: 8, weight: 2 },
+  { speciesId: 'pidgey', minLevel: 7, maxLevel: 8, weight: 3 },
+]);
+
+export const FOREST_BEETLE_HOLLOW_WILDLIFE = wildlife(0.11, [
+  { speciesId: 'butterfree', minLevel: 8, maxLevel: 9, weight: 3 },
+  { speciesId: 'bulbasaur', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'pidgey', minLevel: 7, maxLevel: 9, weight: 3 },
+]);
+
+export const FOREST_WATERSIDE_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'squirtle', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'bulbasaur', minLevel: 8, maxLevel: 9, weight: 2 },
+  { speciesId: 'pidgey', minLevel: 7, maxLevel: 8, weight: 1 },
+]);
+
+export const FOREST_TRAIL_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'pidgey', minLevel: 7, maxLevel: 9, weight: 4 },
+  { speciesId: 'jigglypuff', minLevel: 7, maxLevel: 9, weight: 2 },
+]);
+
+export const FOREST_WARDEN_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'pikachu', minLevel: 9, maxLevel: 10, weight: 3 },
+  { speciesId: 'bulbasaur', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'pidgey', minLevel: 7, maxLevel: 9, weight: 2 },
+]);
+
+export const FOREST_RISE_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'pidgey', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'pikachu', minLevel: 9, maxLevel: 10, weight: 1 },
+]);
+
+export const FOREST_DEEP_WILDLIFE = wildlife(0.12, [
+  { speciesId: 'butterfree', minLevel: 9, maxLevel: 10, weight: 2 },
+  { speciesId: 'pikachu', minLevel: 9, maxLevel: 10, weight: 2 },
+  { speciesId: 'bulbasaur', minLevel: 9, maxLevel: 10, weight: 2 },
+]);
+
+export const FOREST_CLEARING_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'jigglypuff', minLevel: 8, maxLevel: 10, weight: 3 },
+  { speciesId: 'pidgey', minLevel: 7, maxLevel: 9, weight: 2 },
+  { speciesId: 'pikachu', minLevel: 9, maxLevel: 9, weight: 1 },
+]);
+
+// -- Floodplain Relay -------------------------------------------------------
+
+/** The reeds: the first ground a new player walks, so at or under the partner. */
+export const FLOODPLAIN_REED_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'squirtle', minLevel: 4, maxLevel: 6, weight: 3 },
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 3 },
+  { speciesId: 'bulbasaur', minLevel: 4, maxLevel: 5, weight: 2 },
+]);
+
+/** Old Town: hearths, roofs and an empty market. */
+export const FLOODPLAIN_TOWN_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 3 },
+  { speciesId: 'jigglypuff', minLevel: 3, maxLevel: 5, weight: 2 },
+  { speciesId: 'charmander', minLevel: 4, maxLevel: 6, weight: 3 },
+]);
+
+/** The vault's ground, behind a boss: the hardest grass on the map. */
+export const FLOODPLAIN_VAULT_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'pikachu', minLevel: 4, maxLevel: 5, weight: 3 },
+  { speciesId: 'butterfree', minLevel: 6, maxLevel: 6, weight: 1 },
+  { speciesId: 'pidgey', minLevel: 4, maxLevel: 5, weight: 3 },
+]);
