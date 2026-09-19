@@ -92,12 +92,15 @@ import {
   WATCH_SHADING_DEPTH,
   atRow,
 } from '../world/depths';
+import { districtAt } from '../world/districts';
 import { WINDOW_CREAM } from '../ui/pixelWindow';
 import {
   OBJECTIVE_DETAIL_MS,
+  PLACE_PLATE_MS,
   openRaidCue,
   hunterChipView,
   objectiveChipLines,
+  placePlateLine,
   raidClockAlertTier,
   raidClockView,
 } from './raidHud';
@@ -125,6 +128,7 @@ import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { tryActivatePoi } from '../world/pois';
 import {
   EXTRACTION_POINTS,
+  extractionCaption,
   extractionRequirementText,
   isExtractionAvailable,
   type ExtractionPoint,
@@ -324,6 +328,7 @@ export class WorldScene extends Phaser.Scene {
   }> = [];
   /** Every map caption, so each one can be kept inside the view each frame. */
   private worldLabels: WorldLabel[] = [];
+  private canopyInViewCache: { readonly key: string; readonly runs: readonly Rect[] } | null = null;
   /** Ground a trainer is watching: shaded to be read, so no caption may sit on it. */
   private watchedGround: Rect[] = [];
   private raidHud: RaidHud | undefined;
@@ -331,6 +336,12 @@ export class WorldScene extends Phaser.Scene {
   private objectiveCue = '';
   /** Counts down the window in which a changed objective shows its extra line. */
   private objectiveDetailMs = 0;
+  /** The district the player is standing in, and how long its arrival plate has left. */
+  private districtId: string | null = null;
+  private placeName: string | null = null;
+  private placePlateMs = 0;
+  /** True when this build of the scene is a battle handing the raid back. */
+  private arrivedFromBattle = false;
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
   /** Set once a finished raid is on its way to the result screen. */
@@ -411,6 +422,7 @@ export class WorldScene extends Phaser.Scene {
    * scoped to a single raid belongs in this list, not in a guard at the point it is read.
    */
   private resetStateFromPreviousRaid(): void {
+    this.canopyInViewCache = null;
     this.pendingHubTransition = false;
     // Set on the way to the result screen, and read by handleRunResolutionComplete
     // to keep a dialogue from completing past it - so it is exactly the shape of
@@ -441,6 +453,12 @@ export class WorldScene extends Phaser.Scene {
     this.knownInsertionIds.clear();
     this.pushingAgainst = null;
     this.hunterNear = false;
+    // Where the last raid ended is not where this one starts, and the plate
+    // that named it must not flash up over the next insertion.
+    this.districtId = null;
+    this.placeName = null;
+    this.placePlateMs = 0;
+    this.arrivedFromBattle = false;
   }
 
   /**
@@ -476,6 +494,7 @@ export class WorldScene extends Phaser.Scene {
     if (!this.runSession) {
       this.restoreSavedGame(data.savedGame);
     } else if (data.returnLocation) {
+      this.arrivedFromBattle = true;
       this.currentMap = this.mapFor(data.returnLocation.mapId);
       this.currentTile = { ...data.returnLocation.position };
       this.facing = data.returnLocation.facing;
@@ -875,7 +894,7 @@ export class WorldScene extends Phaser.Scene {
       const label = new WorldLabel(
         this,
         point.label === BEACON_EXIT_LABEL ? landingRect(point.position) : tileRect(point.position),
-        `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}`,
+        extractionCaption(point, isOpen, this.runSession.manager.snapshot().elapsedMs),
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
         atRow(CAPTION_BAND, point.position.y),
       );
@@ -970,6 +989,9 @@ export class WorldScene extends Phaser.Scene {
         LABEL_TONES.watch,
         atRow(CAPTION_BAND, encounter.position.y),
         placement,
+        // The one caption that is a price rather than a name, so it is seated
+        // before the gate its keeper stands at and the exit beside that.
+        true,
       ),
     );
   }
@@ -1252,7 +1274,24 @@ export class WorldScene extends Phaser.Scene {
     this.raidHud = new RaidHud(this);
     this.objectiveCue = '';
     this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;
+    this.noteDistrict(this.arrivedFromBattle);
     this.refreshRunTimerHud();
+  }
+
+  /**
+   * Keeps track of the district the player is standing in, and raises its name
+   * when they walk into it. Dropping into a raid is an arrival; coming back
+   * from a fight is not - the scene is rebuilt after every battle, and a plate
+   * naming the place the player never left would be an announcement of nothing.
+   */
+  private noteDistrict(silently = false): void {
+    const district = districtAt(this.currentMap.id, this.currentTile);
+    if (!district || district.id === this.districtId) {
+      return;
+    }
+    this.districtId = district.id;
+    this.placeName = district.name;
+    this.placePlateMs = silently ? 0 : PLACE_PLATE_MS;
   }
 
   /**
@@ -1281,6 +1320,12 @@ export class WorldScene extends Phaser.Scene {
     } else {
       this.objectiveDetailMs = Math.max(0, this.objectiveDetailMs - deltaMs);
     }
+    // The plate's time is reading time. A raid opens on its briefing, and a
+    // plate that ran out behind that box had named the Landing to nobody.
+    if (deltaMs > 0 && !this.dialogBox.visible) {
+      this.placePlateMs = Math.max(0, this.placePlateMs - deltaMs);
+    }
+    this.noteDistrict();
 
     if (manager.isEnraged) {
       if (this.timerThreat !== 'enraged') {
@@ -1305,6 +1350,7 @@ export class WorldScene extends Phaser.Scene {
           snapshot.enrageGraceRemainingMs,
         ),
         objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0),
+        place: placePlateLine(this.placeName, this.placePlateMs),
         hunter: hunterChipView({
           searching: isHunterSearching(this.hunterState),
           searchRemainingMs: this.hunterState.searchRemainingMs,
@@ -2018,9 +2064,47 @@ export class WorldScene extends Phaser.Scene {
     }));
     const placements = placeCaptions(
       this.worldLabels.map((label) => label.request()),
-      { bounds, furniture, keepClear: this.captionKeepClear() },
+      { bounds, furniture, keepClear: this.captionKeepClear(), canopy: this.canopyInView(bounds) },
     );
     this.worldLabels.forEach((label, index) => label.seat(placements[index]));
+  }
+
+  /**
+   * The canopy a caption could end up under: every crown and walk-under span in
+   * the camera's view, as one rectangle per unbroken run along a row. A wooded
+   * map has hundreds of crowns and this is asked every frame, so it is worked
+   * out again only when the view crosses onto a different tile.
+   */
+  private canopyInView(view: Rect): readonly Rect[] {
+    const canopy = this.currentMap.layers.canopy.tiles;
+    const left = Math.max(0, Math.floor(view.x / TILE_SIZE));
+    const top = Math.max(0, Math.floor(view.y / TILE_SIZE));
+    const right = Math.min(this.currentMap.width - 1, Math.floor((view.x + view.width) / TILE_SIZE));
+    const bottom = Math.min(this.currentMap.height - 1, Math.floor((view.y + view.height) / TILE_SIZE));
+    const key = `${this.currentMap.id}|${this.defeatedBosses.join('+')}|${left},${top},${right},${bottom}`;
+    if (this.canopyInViewCache?.key === key) {
+      return this.canopyInViewCache.runs;
+    }
+    const runs: Rect[] = [];
+    for (let y = top; y <= bottom; y += 1) {
+      let start = -1;
+      for (let x = left; x <= right + 1; x += 1) {
+        const covered = x <= right && (canopy[y]?.[x] ?? -1) >= 0;
+        if (covered && start < 0) {
+          start = x;
+        } else if (!covered && start >= 0) {
+          runs.push({
+            x: start * TILE_SIZE,
+            y: y * TILE_SIZE,
+            width: (x - start) * TILE_SIZE,
+            height: TILE_SIZE,
+          });
+          start = -1;
+        }
+      }
+    }
+    this.canopyInViewCache = { key, runs };
+    return runs;
   }
 
   /**
@@ -2419,7 +2503,7 @@ export class WorldScene extends Phaser.Scene {
       const isOpen = this.isExtractionOpen(point);
       marker.setTexture(extractionIconKey(isOpen));
       label.setText(
-        `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession?.manager.snapshot().elapsedMs ?? 0)}`,
+        extractionCaption(point, isOpen, this.runSession?.manager.snapshot().elapsedMs ?? 0),
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
       );
     }

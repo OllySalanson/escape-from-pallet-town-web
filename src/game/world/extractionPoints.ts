@@ -62,6 +62,25 @@ export function extractionRequirementText(point: ExtractionPoint, elapsedMs: num
   return seconds === 0 ? 'OPEN' : `OPENS IN ${seconds}s`;
 }
 
+/**
+ * What the map says over an exit: its name, then whether it can be left by.
+ *
+ * Every exit used to be captioned `EXTRACT OPEN`, so six authored names - Mill
+ * Race, Signal Fire, Vault Culvert - were good names nobody playing ever read. A
+ * stranger asked to draw the Floodplain from memory placed all six exits and
+ * could name two, both from text elsewhere. A map lives in people's heads as the
+ * names of its ways out, so the name goes first, the way a gate's does.
+ */
+export function extractionCaption(point: ExtractionPoint, isOpen: boolean, elapsedMs: number): string {
+  // An exit a landmark has to open says so on a line of its own. On one line it
+  // was `EXTRACT ACTIVATE RANGER STATION` - two verbs in a row, and a caption
+  // twelve tiles wide lying across the ground it was meant to be beside.
+  if (!isOpen && point.requirement?.kind === 'poi-activated') {
+    return `${point.label}\nEXTRACT SEALED\n${extractionRequirementText(point, elapsedMs)}`;
+  }
+  return `${point.label}\nEXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, elapsedMs)}`;
+}
+
 export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   {
     mapId: 'pallet-town',
@@ -136,23 +155,27 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     unlockAtMs: 0,
     requirement: { kind: 'poi-activated', poiId: 'forest-fire-tower', poiLabel: 'FIRE TOWER' },
   },
+  // The Floodplain is played a piece at a time, so every piece has a way out
+  // inside it: three on the home bank on three different rules, and one behind
+  // each door a boss holds. `hunterFlee.test.ts` holds the other half of that -
+  // no tile on the map is further from its nearest exit than a flee buys.
   {
     mapId: 'floodplain-relay',
-    position: { x: 15, y: 28 },
+    position: { x: 17, y: 60 },
     label: 'SOUTH GATE',
     unlockAtMs: 0,
     requirement: { kind: 'always' },
   },
   {
     mapId: 'floodplain-relay',
-    position: { x: 7, y: 21 },
+    position: { x: 32, y: 12 },
     label: 'FERRY DOCK',
     unlockAtMs: 45_000,
     requirement: { kind: 'elapsed', unlockAtMs: 45_000 },
   },
   {
     mapId: 'floodplain-relay',
-    position: { x: 19, y: 8 },
+    position: { x: 5, y: 23 },
     label: 'RADIO EXIT',
     unlockAtMs: 0,
     requirement: {
@@ -160,5 +183,26 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
       poiId: 'floodplain-ranger-radio',
       poiLabel: 'RANGER STATION',
     },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 51, y: 25 },
+    label: 'MILL RACE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 48, y: 10 },
+    label: 'SIGNAL FIRE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 48, y: 58 },
+    label: 'VAULT CULVERT',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
   },
 ];

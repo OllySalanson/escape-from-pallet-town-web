@@ -142,9 +142,17 @@ function directionTo(from: GridPosition, to: GridPosition): string {
 function laterRunHints(context: ObjectiveGuideContext, currentExit: string | undefined): readonly string[] {
   if (context.currentMapId === 'floodplain-relay') {
     const radioActive = context.activatedPoiIds.has('floodplain-ranger-radio');
+    // The landmark is named from its own data here too. This line used to be a
+    // sentence about the supply vault written out by hand, which went on telling
+    // a fresh save to go to a cache that is now behind two bosses.
+    const landmark = poisForMap(context.currentMapId).find(
+      (poi) => poi.effect === undefined && !context.activatedPoiIds.has(poi.id),
+    );
     return [
-      'Floodplain Relay: Maya watches three tiles of the fast central road, and taking it means fighting her. The west reeds reconnect above and below her checkpoint.',
-      'Flooded Supply Vault: 2 Great Balls + 1 Super Potion. Its causeway is exposed, and the haul banks only on extraction.',
+      'Floodplain Relay: the shore road narrows to one tile where Maya is watching it, and walking that means fighting her. The reeds go round - straight on where the road turns at the hut - and come back to the road below her, but the flooded cut makes them the long way.',
+      landmark
+        ? `${landmark.label} is on this map. ${landmark.description}`
+        : 'Every marked cache on this map has been worked this raid.',
       radioActive
         ? 'Radio Exit is active at Ranger Station. South Gate is always open; Ferry Dock opens on its signal.'
         : 'Ranger Station gives a hunter forecast and activates the Radio Exit. South Gate is always open; Ferry Dock opens on its signal.',

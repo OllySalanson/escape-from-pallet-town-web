@@ -16,7 +16,7 @@ import { poisForMap, type WorldPoi } from './world/pois';
 import { buildMapLayers, type MapLayers } from './world/tiles';
 import type { TilesetCatalogue } from './world/tileset/catalogue';
 import { CLASSIC_TILESET } from './world/tileset/classicTileset';
-import { POKEMON_GROUND_TILESET } from './world/tileset/pokemonGround';
+import { FLOOD_TOWN_TILESET } from './world/tileset/floodTownTileset';
 
 export { CLASSIC_TILE } from './world/tileset/classicTileset';
 export type { MapLayers, TileLayer } from './world/tiles';
@@ -155,17 +155,24 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'forest-antidote', position: { x: 21, y: 30 }, itemId: 'antidote', quantity: 1 },
     ],
   },
-  // The one map drawn from the wide vocabulary: GBA-palette ground with the
-  // CC0 sheet's objects standing on it. The other three keep the plain classic
-  // catalogue until they are redrawn to the same standard - a catalogue is
-  // chosen per map precisely so that can happen one map at a time.
+  // The one map drawn on the FireRed sheet, which is the only one with
+  // transition art in it. The other three keep the classic catalogue until they
+  // are redrawn to the same standard - a catalogue is chosen per map precisely
+  // so that can happen one map at a time.
   'floodplain-relay': {
     sketch: sketchFloodplainRelay,
-    tileset: POKEMON_GROUND_TILESET,
+    tileset: FLOOD_TOWN_TILESET,
     encounters: PALLET_TALL_GRASS,
+    // A pool, not a layout: `generateLoot` draws half to all of it and re-seats
+    // every piece, so these are only where each falls back to. One for every
+    // district, so a raid that only ever sees a slice of the map still finds one.
     loot: [
-      { id: 'floodplain-potion', position: { x: 7, y: 12 }, itemId: 'potion', quantity: 1 },
-      { id: 'floodplain-antidote', position: { x: 11, y: 15 }, itemId: 'antidote', quantity: 1 },
+      { id: 'floodplain-potion', position: { x: 20, y: 10 }, itemId: 'potion', quantity: 1 },
+      { id: 'floodplain-antidote', position: { x: 5, y: 21 }, itemId: 'antidote', quantity: 1 },
+      { id: 'floodplain-poke-ball', position: { x: 16, y: 39 }, itemId: 'poke-ball', quantity: 2 },
+      { id: 'floodplain-mill-potion', position: { x: 49, y: 27 }, itemId: 'potion', quantity: 1 },
+      { id: 'floodplain-keep-super-potion', position: { x: 52, y: 7 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'floodplain-vault-great-ball', position: { x: 44, y: 53 }, itemId: 'great-ball', quantity: 1 },
     ],
   },
 };

@@ -9,6 +9,7 @@ import {
   isExtractionAvailable,
   EXTRACTION_POINTS,
 } from './extractionPoints';
+import { WORLD_GATES } from './gates';
 import { stepDistances } from './mapStructure';
 import { tryActivatePoi, WORLD_POIS } from './pois';
 import { trainerSightTiles } from './trainerSight';
@@ -102,8 +103,10 @@ const insertion = Object.values(RUN_INSERTIONS).find(
 const southGate = EXTRACTION_POINTS.find(
   (point) => point.mapId === 'floodplain-relay' && point.label === 'SOUTH GATE',
 )!;
+// Found by who she is: three bosses stand on this map as well, and "the first
+// trainer listed for it" only meant Maya while she was the only one.
 const maya = createRunTrainerEncounters().find(
-  (encounter) => encounter.mapId === 'floodplain-relay',
+  (encounter) => encounter.trainer.id === 'floodplain-checkpoint-maya',
 )!;
 
 const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
@@ -132,7 +135,7 @@ describe('the Floodplain checkpoint', () => {
     // Dry: never a step in tall grass. This is the road, and it has to exist.
     const dry = stepsFromInsertion(union(checkpoint, tallGrass), southGate.position);
     expect(`SOUTH GATE by road: ${dry < 0 ? 'unreachable' : `${dry} steps`}`).toBe(
-      'SOUTH GATE by road: 37 steps',
+      'SOUTH GATE by road: 79 steps',
     );
   });
 
@@ -141,10 +144,12 @@ describe('the Floodplain checkpoint', () => {
     const dodged = stepsFromInsertion(union(checkpoint, tallGrass, watch), southGate.position);
     expect(dodged).toBe(-1);
     // And she is on the through-line in both directions, not just from the north.
+    // The whole of the one-tile narrows, from its mouth in front of her to its head.
     expect(watchedTiles).toEqual([
-      { x: 15, y: 16 },
-      { x: 15, y: 15 },
-      { x: 15, y: 14 },
+      { x: 22, y: 25 },
+      { x: 22, y: 24 },
+      { x: 22, y: 23 },
+      { x: 22, y: 22 },
     ]);
   });
 
@@ -182,15 +187,155 @@ describe('the Floodplain checkpoint', () => {
   });
 
   it('is seen from a junction the player can still turn back at', () => {
-    // The vault turn is the last tile before the watch. From it the road south
-    // is a decision: go on and fight, or go back and take the reeds.
-    const junction = { x: 15, y: 13 };
+    // The head of the narrows is the last tile before the watch. From it the
+    // road south is a decision: go on and fight, or go back to the hut and
+    // carry straight on into the reeds.
+    const junction = { x: 22, y: 21 };
     expect(watch.has(key(junction))).toBe(false);
-    expect(watchedTiles[watchedTiles.length - 1]).toEqual({ x: 15, y: 14 });
+    expect(watchedTiles[watchedTiles.length - 1]).toEqual({ x: 22, y: 22 });
 
     const fromJunction = stepDistances(map.collision, junction, union(checkpoint, watch));
     expect(fromJunction[southGate.position.y][southGate.position.x]).toBeGreaterThan(0);
     const kit = FIRST_CONTRACT.markers[0].position;
     expect(fromJunction[kit.y][kit.x]).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * What a fresh save can walk to. Every other reachability rule on this map is
+ * asked with the gates open, and with them open anything can be reached from
+ * anywhere - which is how a bench two rows deep, in a yard two rows deep, sealed
+ * the front door off from its own quay for eleven commits: the Ferry Dock, the
+ * route board and the boathouse could still be reached, through three bosses
+ * and the keep. So this names the home bank, and walks to it with every gate
+ * shut; and names what is behind a door, and fails if a redraw lets you round.
+ */
+describe('a fresh save, from the front door', () => {
+  const shut = getWorldMap('floodplain-relay', []);
+  const steps = stepDistances(shut.collision, insertion.position, new Set());
+  const reaches = (tile: GridPosition): boolean => steps[tile.y][tile.x] >= 0;
+  /** A sign or a person is reached by standing next to them. */
+  const reachesBeside = (tile: GridPosition): boolean =>
+    [
+      { x: tile.x + 1, y: tile.y },
+      { x: tile.x - 1, y: tile.y },
+      { x: tile.x, y: tile.y + 1 },
+      { x: tile.x, y: tile.y - 1 },
+    ].some((beside) => shut.collision[beside.y]?.[beside.x] === false && reaches(beside));
+
+  it.each(['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT'])('walks to the %s', (label) => {
+    expect(reaches(floodplainExits.find((exit) => exit.label === label)!.position)).toBe(true);
+  });
+
+  it.each(['MILL RACE', 'SIGNAL FIRE', 'VAULT CULVERT'])('cannot walk to the %s', (label) => {
+    expect(reaches(floodplainExits.find((exit) => exit.label === label)!.position)).toBe(false);
+  });
+
+  it('walks to every landmark on the home bank, and not to the vault', () => {
+    const homeBank = WORLD_POIS.filter(
+      (poi) => poi.mapId === 'floodplain-relay' && poi.id !== vault.id,
+    );
+    expect(homeBank.map((poi) => poi.id).sort()).toEqual(
+      ['floodplain-drowned-chapel', 'floodplain-ranger-radio'].sort(),
+    );
+    for (const poi of homeBank) {
+      expect(`${poi.id}: ${reaches(poi.position)}`).toBe(`${poi.id}: true`);
+    }
+    expect(reaches(vault.position)).toBe(false);
+  });
+
+  it('walks to every stop of the first contract', () => {
+    for (const marker of FIRST_CONTRACT.markers) {
+      expect(reaches(marker.position)).toBe(true);
+    }
+  });
+
+  it('can stand beside every sign on the home bank', () => {
+    for (const sign of shut.entities.filter((entity) => entity.kind === 'sign')) {
+      expect(`${sign.id}: ${reachesBeside(sign.position)}`).toBe(`${sign.id}: true`);
+    }
+  });
+
+  it('walks to Market Isle, and to no drop-in behind a door', () => {
+    const dropIns = Object.values(RUN_INSERTIONS).filter(
+      (candidate) => candidate.mapId === 'floodplain-relay' && candidate.id !== insertion.id,
+    );
+    expect(
+      dropIns.filter((dropIn) => reaches(dropIn.position)).map((dropIn) => dropIn.id),
+    ).toEqual(['floodplain-market-isle']);
+  });
+
+  it('can reach the first boss, and only the first', () => {
+    const bosses = createRunTrainerEncounters().filter(
+      (encounter) => encounter.mapId === 'floodplain-relay' && encounter.bossId !== undefined,
+    );
+    expect(
+      bosses.filter((boss) => reachesBeside(boss.position)).map((boss) => boss.bossId),
+    ).toEqual(['floodplain-toll-keeper']);
+  });
+});
+
+/**
+ * The promise the Floodplain's doors are drawn to keep. Each boss holds two:
+ * the one in front of the player, and a second that lets onto ground they
+ * already know. So beating a boss is not only being let into a district - it is
+ * finding out the district was nearer home than the way round to it, and the
+ * keep's causeway is that turned into a reveal. A gate that only lengthens the
+ * map is filler; this fails the day a redraw makes one.
+ */
+describe('the way back from a won district', () => {
+  const TOLL = 'floodplain-toll-keeper';
+  const homeBankExits = EXTRACTION_POINTS.filter(
+    (point) =>
+      point.mapId === 'floodplain-relay' &&
+      ['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT'].includes(point.label),
+  );
+
+  /**
+   * The way in is the walk through the door the boss stood at - so it is
+   * measured with the district's other door left out, because on the day that
+   * walk was made the other door was what the fight was for.
+   */
+  const wayInBy = (
+    opened: readonly (readonly boolean[])[],
+    backDoorId: string,
+    to: GridPosition,
+  ): number => {
+    const backDoor = WORLD_GATES.find((gate) => gate.id === backDoorId)!;
+    return stepDistances(opened, insertion.position, new Set(backDoor.tiles.map(key)))[to.y][to.x];
+  };
+
+  it.each([
+    ['Mill Weir', 'floodplain-mill-weir', 'floodplain-orchard-ford', [TOLL]],
+    ['Beacon Keep', 'floodplain-beacon-keep', 'floodplain-relay-causeway', [TOLL, 'floodplain-sluice-keeper']],
+    ['The Vault', 'floodplain-vault', 'floodplain-vault-causeway', [TOLL, 'floodplain-orchard-warden']],
+  ] as const)('is shorter than the way in was: %s', (_name, dropInId, backDoorId, beaten) => {
+    const opened = getWorldMap('floodplain-relay', beaten).collision;
+    const dropIn = RUN_INSERTIONS[dropInId].position;
+    const wayIn = wayInBy(opened, backDoorId, dropIn);
+    const fromDistrict = stepDistances(opened, dropIn, new Set());
+    const wayBack = Math.min(
+      ...homeBankExits
+        .map((exit) => fromDistrict[exit.position.y][exit.position.x])
+        .filter((steps) => steps >= 0),
+    );
+
+    expect(wayIn).toBeGreaterThan(0);
+    expect(wayBack).toBeGreaterThan(0);
+    expect(wayBack).toBeLessThan(wayIn);
+  });
+
+  it('puts Beacon Keep less than half as far from home as the way round to it', () => {
+    // The reveal, as a number: the tower stared at from the front door turns
+    // out to be next door once the causeway is out of the water.
+    const opened = getWorldMap('floodplain-relay', [TOLL, 'floodplain-sluice-keeper']).collision;
+    const keep = RUN_INSERTIONS['floodplain-beacon-keep'].position;
+    const wayIn = wayInBy(opened, 'floodplain-relay-causeway', keep);
+    const fromKeep = stepDistances(opened, keep, new Set());
+    const ferry = homeBankExits.find((exit) => exit.label === 'FERRY DOCK')!.position;
+    expect(fromKeep[ferry.y][ferry.x] * 2).toBeLessThan(wayIn);
+    // And it is the front door it is next to, not only an exit: the quay the
+    // causeway lands on is the one the raid started from.
+    expect(fromKeep[insertion.position.y][insertion.position.x] * 1.5).toBeLessThan(wayIn);
   });
 });

@@ -7,16 +7,32 @@
  * something to see, not something to find in a map three hours later. Solid
  * cells are hatched red, cells you may stand on are left clear.
  *
- *   npx vite-node tools/tileset/props.mts -- <out.png> [zoom]
+ *   npx vite-node tools/tileset/props.mts -- <catalogue> <out.png> [zoom]
+ *
+ * `<catalogue>` is `frlg`, `overworld` or `flood-town`. A composed catalogue is
+ * the one worth looking at: it is where an object from one sheet first stands
+ * on another sheet's grass, and where a numbering clash between the two shows.
  */
 import { readPng, writePng, TILE_SIZE } from './tileSheet.mjs';
 import { box, canvas, drawTile, label, plot, upscale } from './draw.mjs';
 import { fillTile } from '../../src/game/world/tileset/catalogue';
+import type { TilesetCatalogue } from '../../src/game/world/tileset/catalogue';
+import { FLOOD_TOWN_TILESET } from '../../src/game/world/tileset/floodTownTileset';
 import { FRLG_TILESET } from '../../src/game/world/tileset/frlgTileset';
+import { OVERWORLD_TILESET } from '../../src/game/world/tileset/overworldTileset';
 
-const [, , target = 'props.png', zoomArgument = '3'] = process.argv;
+const CATALOGUES: Record<string, TilesetCatalogue<string>> = {
+  frlg: FRLG_TILESET,
+  overworld: OVERWORLD_TILESET,
+  'flood-town': FLOOD_TOWN_TILESET,
+};
+
+const [which = 'flood-town', target = 'props.png', zoomArgument = '3'] = process.argv
+  .slice(2)
+  .filter((value) => value !== '--');
 const zoom = Number(zoomArgument);
-const catalogue = FRLG_TILESET;
+const catalogue = CATALOGUES[which];
+if (!catalogue) throw new Error(`no catalogue '${which}': ${Object.keys(CATALOGUES).join(', ')}`);
 const spans = catalogue.sources.map((source) => ({
   sheet: readPng(`public/${source.imagePath}`),
   from: source.firstIndex,

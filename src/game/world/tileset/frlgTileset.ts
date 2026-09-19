@@ -39,7 +39,11 @@ const SHEET = tileReader(
     columns: FRLG_SHEET_COLUMNS,
     rows: FRLG_SHEET_ROWS,
   },
-  2000,
+  // Clear of `Overworld.png`, which is numbered from 1000 and is 1440 tiles
+  // long. This was 2000, which put every Overworld tile from row 25 down - the
+  // stone tower's base, the gatehouse, both stone bridges - inside this sheet's
+  // span, so they drew as sand and treetops the first time a map used both.
+  3000,
 );
 
 const index = (cell: SheetCell): number => SHEET.source.firstIndex + frlgTileIndex(cell);
@@ -211,17 +215,20 @@ export const FRLG_TILESET: TilesetCatalogue<FrlgPropName> = {
   materials: {
     grass: {
       roles: { fill: index(FRLG_TILES.GRASS) },
-      // Three accents, spent sparingly: a sheet's variants used evenly read as
-      // noise, which is its own kind of generated.
-      fillVariants: [
-        index(FRLG_TILES.GRASS_TUFTED),
-        index(FRLG_TILES.GRASS_FLOWERS),
-        index(FRLG_TILES.GRASS_PLANT),
-      ],
+      // Two accents, spent sparingly: a sheet's variants used evenly read as
+      // noise, which is its own kind of generated. The spiky plant is not one
+      // of them - see `tall-grass`.
+      fillVariants: [index(FRLG_TILES.GRASS_TUFTED), index(FRLG_TILES.GRASS_FLOWERS)],
       variantRarity: 11,
     },
     turf: ground(FRLG_MATERIALS.TURF),
-    'tall-grass': nineSlice(FRLG_NINE_SLICES.TALL_GRASS),
+    // The sheet's own tall-grass nine-slice is a raised bed with a clipped lip:
+    // standing in a map it reads as topiary, and nobody walks into a hedge. The
+    // spiky plant is what encounter grass looks like, and as a plain fill it
+    // takes any shape, so a marsh can be drawn as a marsh. It means this and
+    // nothing else - scattered on safe grass as an accent it would make safe
+    // ground look like ground that costs a fight.
+    'tall-grass': { roles: { fill: index(FRLG_TILES.GRASS_PLANT) } },
     earth: ground(FRLG_MATERIALS.DIRT),
     sand: ground(FRLG_MATERIALS.SAND),
     // Beach is drawn against surf rather than grass, so it belongs at the
@@ -231,33 +238,22 @@ export const FRLG_TILESET: TilesetCatalogue<FrlgPropName> = {
     stone: ground(FRLG_MATERIALS.STONE_BRICK),
     gravel: ground(FRLG_MATERIALS.GRAVEL),
     ford: nineSlice(FRLG_NINE_SLICES.WATER_SHALLOW),
-    water: nineSlice(FRLG_NINE_SLICES.WATER_DEEP, {
-      fillVariants: [index(FRLG_TILES.WATER_OPEN)],
-      variantRarity: 9,
-    }),
+    // No variant. The sheet's other open-water tile is a flatter blue than the
+    // nine-slice's fill, so spending it as an accent lays a visible lattice of
+    // dark diamonds across the whole river - which is the exact failure the
+    // last playtest called "one flat blue texture", arrived at from the other
+    // direction. The wave fill carries the surface on its own.
+    water: nineSlice(FRLG_NINE_SLICES.WATER_DEEP),
     // The sheet's hedges and tall grass are two-row beds, so there is no
     // one-tile hedge on it. The 1x1 bush is the stand-in, and a hedge is drawn
     // as a mass rather than as a line.
     hedge: { overlay: true, roles: { fill: index(FRLG_TILES.BUSH) } },
     tree: { overlay: true, roles: { fill: index(FRLG_TILES.BUSH) } },
-    cliff: (() => {
-      const face = FRLG_OBJECTS.CLIFF_FACE;
-      const at = (column: number, row: number): number =>
-        index({ column: face.column + column, row: face.row + row });
-      return {
-        roles: {
-          fill: at(1, 1),
-          'edge-n': at(1, 0),
-          'edge-s': at(1, 5),
-          'edge-w': at(0, 1),
-          'edge-e': at(2, 1),
-          'corner-nw': at(0, 0),
-          'corner-ne': at(2, 0),
-          'corner-sw': at(0, 5),
-          'corner-se': at(2, 5),
-        },
-      };
-    })(),
+    // The sheet's cliff is a 6x6 object with grass on top and a face below, not
+    // a material with an edge set, so it is a prop. What `cliff` draws is the
+    // single rock: always solid, always reads as stone, and it takes an edge
+    // from nothing - which is right, because rock on this sheet has no edges.
+    cliff: { overlay: true, roles: { fill: index(FRLG_TILES.ROCK) } },
     fence: { overlay: true, roles: { fill: index(FRLG_TILES.FENCE_WOOD) } },
     wall: (() => {
       const shop = FRLG_OBJECTS.BUILDING_SHOP;

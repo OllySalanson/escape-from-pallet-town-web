@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Pokemon } from '../pokemon';
 import { CHARMANDER } from '../pokemon/species';
 import { RunManager } from '../run/RunManager';
+import { RUN_INSERTIONS } from '../run/runGeneration';
 import { createActiveRunSession } from '../run/RunSession';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 import {
@@ -177,17 +178,35 @@ describe('chooseHunterPursuitStep', () => {
   });
 
   it('reaches the player from the traced Floodplain Relay failure case', () => {
-    // Roadmap B1: greedy pursuit walked 200 steps from here, changed direction 187 times
-    // and never arrived, ending up bouncing between two tiles pinned against a wall.
+    // Roadmap B1: greedy pursuit walked 200 steps, changed direction 187 times and
+    // never arrived, ending up bouncing between two tiles pinned against a wall.
+    // The map has been redrawn since, so the case is restated on the ground that
+    // now sets the same trap, and sets it harder: a hunter in the reeds with the
+    // player five tiles due south of it has the flooded cut between them, and the only way round the cut is at its west
+    // end - away from the player. Anything that closes the distance greedily
+    // walks into the water and stays there.
     const { bounds, isBlocked } = mapBlocker('floodplain-relay');
-    const hunter = { x: 15, y: 5 };
-    const player = { x: 8, y: 18 };
+    // The last tile of reeds north of the cut and the first tile south of it,
+    // in one column. Nothing in the map's data lies across the cut, so these
+    // are named - and what they mean is asserted, so that a redrawn marsh fails
+    // here saying so rather than leaving this test chasing across open ground.
+    const hunter = { x: 13, y: 19 };
+    const player = { x: 13, y: 24 };
+    expect(isBlocked(hunter)).toBe(false);
+    expect(isBlocked(player)).toBe(false);
+    for (let y = hunter.y + 1; y < player.y; y += 1) {
+      expect(`${hunter.x},${y} is in the way: ${isBlocked({ x: hunter.x, y })}`).toBe(
+        `${hunter.x},${y} is in the way: true`,
+      );
+    }
     const pursuit = runPursuit(hunter, player, bounds, isBlocked);
 
     expect(pursuit.contacted).toBe(true);
-    // It walks the map's own shortest route - the doglegged road and a reed
-    // crossing - rather than wandering the length of it.
+    // It walks the map's own shortest route - round the head of the cut -
+    // rather than wandering the length of the marsh.
     expect(pursuit.steps).toBeLessThanOrEqual(walkDistance(hunter, player, bounds, isBlocked));
+    // And that route really does double back: it is far longer than the gap.
+    expect(pursuit.steps).toBeGreaterThan(2 * (player.y - hunter.y));
   });
 
   it('is deterministic for the same map, hunter and player positions', () => {
@@ -683,10 +702,11 @@ describe('findHunterSpawnTile', () => {
 
   it('offers a real spawn where the four straight lines are all walled off', () => {
     // On maps built out of lanes this is the common case, not the corner case:
-    // the Floodplain Relay landing jetty - where every raid starts - has nothing
-    // walkable five tiles due north, south, east or west of it.
+    // the Market Isle drop-in - a place raids start - has nothing walkable five
+    // tiles due north, south, east or west of it. Read from the data, because
+    // the last time this was a typed coordinate the map moved out from under it.
     const { bounds, isBlocked } = mapBlocker('floodplain-relay');
-    const player = { x: 15, y: 3 };
+    const player = RUN_INSERTIONS['floodplain-market-isle'].position;
     const straightLines = [
       { x: player.x - 5, y: player.y },
       { x: player.x + 5, y: player.y },

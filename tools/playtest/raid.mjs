@@ -4,7 +4,7 @@
 // check that a raid plays the same at ten frames a second as at sixty.
 //
 //   node tools/playtest/raid.mjs http://localhost:5173/ [--testmode] [--stepped] [--pixels]
-//        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps]
+//        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch] [--exit=LABEL]
 //
 // --seed pins `crypto.getRandomValues` and `Math.random` in the page, so two
 // runs roll the same raid and their event logs can be compared line for line.
@@ -128,14 +128,29 @@ try {
       exits: p.extractionPoints.filter((e) => e.mapId === w.currentMap.id).map((e) => ({ label: e.label, position: e.position, open: (e.requirement?.kind ?? (e.unlockAtMs === 0 ? 'always' : 'elapsed')) === 'always' })) }; })()`);
   note(`seed ${plan.seed}, stops ${JSON.stringify(plan.markers)}`);
 
+  // --avoid-watch plays the player the map is drawn for: one who reads the shaded
+  // ground in front of a trainer and does not walk into it. Without it the driver
+  // takes the shortest way, and on a map whose fast road is priced with a fight
+  // nobody can run from, the shortest way is into that fight every time - which
+  // measures the driver, not the map.
+  const WATCHED = flag('avoid-watch')
+    ? `(() => { const w = ${GAME}.scene.getScene('world'); const out = new Set();
+        const step = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+        for (const t of w.trainerEncounters ?? []) { if (t.mapId !== w.currentMap.id || !t.sightRange || w.defeatedTrainerIds.has(t.trainer.id)) continue;
+          const [dx, dy] = step[t.facing]; let x = t.position.x, y = t.position.y;
+          for (let i = 0; i < t.sightRange; i += 1) { x += dx; y += dy; if (w.collisionData[y]?.[x] !== false) break; out.add(y * w.collisionData[0].length + x); } }
+        return out; })()`
+    : 'new Set()';
+
   /** The next key towards `goal` over the live collision, or a reason to stop. */
   const nextKey = (goal) => page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
     const c = w.collisionData, H = c.length, W = c[0].length, s = w.currentTile, id = (x, y) => y * W + x;
+    const watched = ${WATCHED};
     if (s.x === ${goal.x} && s.y === ${goal.y}) return { arrived: true };
     const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]];
     while (queue.length) { const [x, y] = queue.shift(); if (x === ${goal.x} && y === ${goal.y}) break;
       for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || w.isBlocked({ x: nx, y: ny })) continue;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny)) || watched.has(id(nx, ny)) || w.isBlocked({ x: nx, y: ny })) continue;
         prev.set(id(nx, ny), [x, y, k]); queue.push([nx, ny]); } }
     let cur = [${goal.x}, ${goal.y}], key = null; if (!prev.has(id(cur[0], cur[1]))) return { unreachable: true };
     for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; } return { key }; })()`);
@@ -230,12 +245,45 @@ try {
     await walkTo(marker, `contract stop ${index + 1}`);
   }
   if (!ended) {
-    const here = (await state()).world.tile;
-    // An exit that is open from the first second: the others are a wait or a detour.
-    const exit = plan.exits
-      .filter((e) => e.open)
-      .map((e) => ({ ...e, d: Math.abs(e.position.x - here.x) + Math.abs(e.position.y - here.y) }))
-      .sort((a, b) => a.d - b.d)[0];
+    // An exit that is open from the first second: the others are a wait or a
+    // detour. Nearest by the walk, not by the crow - on a map of rivers and shut
+    // gates an exit can be open by its own rule, ten tiles away in a straight
+    // line, and on the far side of a door nobody has opened yet.
+    const walked = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+      const c = w.collisionData, H = c.length, W = c[0].length, s = w.currentTile, id = (x, y) => y * W + x;
+      const watched = ${WATCHED};
+      const steps = new Map([[id(s.x, s.y), 0]]); const queue = [[s.x, s.y]];
+      while (queue.length) { const [x, y] = queue.shift();
+        for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) { const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H || steps.has(id(nx, ny)) || watched.has(id(nx, ny)) || w.isBlocked({ x: nx, y: ny })) continue;
+          steps.set(id(nx, ny), steps.get(id(x, y)) + 1); queue.push([nx, ny]); } }
+      return ${JSON.stringify(plan.exits.map((e) => e.position))}.map((p) => steps.get(id(p.x, p.y)) ?? null); })()`);
+    const reachable = plan.exits.map((e, index) => ({ ...e, d: walked[index] })).filter((e) => e.d !== null);
+    // --exit=LABEL leaves by a named exit instead, open yet or not: the driver
+    // stands beside it until the game says it is open, then steps on. It is how
+    // a timed exit is checked at all - the nearest-open rule never chooses one,
+    // which is how the Ferry Dock stayed walled off from the front door unseen.
+    const named = option('exit');
+    const exit = named
+      ? reachable.find((e) => e.label.toLowerCase() === named.toLowerCase().replace(/[-_]/g, ' '))
+      : reachable.filter((e) => e.open).sort((a, b) => a.d - b.d)[0];
+    if (!exit) {
+      throw new Error(named
+        ? `${named} cannot be walked to from here: ${JSON.stringify(plan.exits.map((e, index) => [e.label, walked[index]]))}`
+        : 'no exit that is open from the first second can be walked to from here');
+    }
+    if (named) {
+      const beside = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+        return [[0,-1],[0,1],[-1,0],[1,0]].map(([dx, dy]) => ({ x: ${exit.position.x} + dx, y: ${exit.position.y} + dy })).find((t) => !w.isBlocked(t)) ?? null; })()`);
+      await walkTo(beside, `the tile beside ${exit.label}`);
+      note(`waiting for ${exit.label} to open`);
+      for (let guard = 0; guard < 4000 && !ended; guard += 1) {
+        await clearInterruptions();
+        const open = await page.evaluate(`${GAME}.scene.getScene('world').worldLabels.some((l) => l.label.text.startsWith(${JSON.stringify(exit.label)}) && /EXTRACT OPEN$/.test(l.label.text))`);
+        if (open || ended) break;
+        await wait(500);
+      }
+    }
     await walkTo(exit.position, exit.label);
   }
   for (let guard = 0; guard < 100 && !ended; guard += 1) {

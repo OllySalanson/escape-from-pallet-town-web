@@ -3,8 +3,10 @@ import {
   NEIGHBOUR_GAP,
   SUBJECT_GAP,
   VIEW_INSET,
+  explainSeats,
   placeCaptions,
   placeDialog,
+  seatingOrder,
   type CaptionRequest,
   type CaptionSurroundings,
   type Rect,
@@ -30,6 +32,7 @@ const around = (overrides: Partial<CaptionSurroundings> = {}): CaptionSurroundin
   bounds: VIEW,
   furniture: [],
   keepClear: [],
+  canopy: [],
   ...overrides,
 });
 
@@ -135,6 +138,80 @@ describe('where a map caption is allowed to sit', () => {
     expect(overlaps(rectOf(placement), figure)).toBe(false);
   });
 
+  /**
+   * Writing is drawn beneath figures and a canopy above them, so a caption
+   * seated under a crown or a roof is hidden by it. The Floodplain's gatehouse
+   * is walked under, and its shut gate's caption read `SLUICE GA` on one side
+   * of it and `PER DANE` on the other.
+   */
+  describe('under a canopy', () => {
+    const subject = tile(160, 120);
+    // Everything above the subject is roof, as it is over a gatehouse's arch.
+    const roof: Rect = { x: 96, y: 40, width: 144, height: 78 };
+
+    it('takes the other side rather than sit under a roof', () => {
+      const placement = seat({ subject }, { canopy: [roof] });
+      expect(placement.visible).toBe(true);
+      expect(placement.seat).toBe('below');
+      expect(overlaps(rectOf(placement), roof)).toBe(false);
+    });
+
+    it('goes beside its subject when a person stands below it and a roof is above', () => {
+      // The gate's own keeper, standing under the gate he holds.
+      const keeper: Rect = { x: 160, y: 138, width: 16, height: 23 };
+      const placement = seat({ subject, preferred: 'below' }, { canopy: [roof], keepClear: [keeper] });
+      expect(placement.visible).toBe(true);
+      expect(['left', 'right']).toContain(placement.seat);
+      expect(overlaps(rectOf(placement), roof)).toBe(false);
+      expect(overlaps(rectOf(placement), keeper)).toBe(false);
+    });
+
+    it('slides along its row to clear a single crown, rather than leave the row', () => {
+      // One tree's crown over the left of the row above. The centred seat runs
+      // under it; the seat slid to line up with the subject's left edge is clear.
+      const crown: Rect = { x: 120, y: 96, width: 30, height: 16 };
+      const centred = seat({ subject, width: 60 });
+      expect(overlaps(rectOf(centred), crown)).toBe(true);
+
+      const placement = seat({ subject, width: 60 }, { canopy: [crown] });
+      expect(placement.visible).toBe(true);
+      expect(placement.seat).toBe('above');
+      expect(placement.x).toBe(subject.x);
+      expect(overlaps(rectOf(placement), crown)).toBe(false);
+    });
+
+    it('is not drawn rather than cover a person, even when every other seat is under canopy', () => {
+      const everywhereElse: Rect[] = [
+        roof,
+        { x: 0, y: 118, width: 158, height: 40 },
+        { x: 178, y: 118, width: 142, height: 40 },
+      ];
+      const crowd: Rect = { x: 120, y: 138, width: 96, height: 60 };
+      expect(seat({ subject }, { canopy: everywhereElse, keepClear: [crowd] }).visible).toBe(false);
+    });
+  });
+
+  it('can say why each seat was refused, so a missing caption is read rather than guessed at', () => {
+    const subject = tile(160, 120);
+    const roof: Rect = { x: 96, y: 40, width: 144, height: 78 };
+    const keeper: Rect = { x: 160, y: 138, width: 16, height: 23 };
+    const seats = explainSeats(request({ subject }), around({ canopy: [roof], keepClear: [keeper, subject] }));
+    expect(seats).toHaveLength(12);
+    // The authored side is under the roof and nothing else is wrong with it...
+    expect(seats[0].seat).toBe('above');
+    expect(seats[0].underCanopy).toBeGreaterThan(0);
+    expect(seats[0].overMapArt + seats[0].outsideView + seats[0].underHud).toBe(0);
+    // ...the other row is over the keeper, not under the roof...
+    const below = seats.find((one) => one.seat === 'below')!;
+    expect(below.overMapArt).toBeGreaterThan(0);
+    expect(below.underCanopy).toBe(0);
+    // ...and the seat that placeCaptions takes is the first with nothing against it.
+    const clear = seats.findIndex(
+      (one) => one.outsideView + one.underHud + one.overMapArt + one.underCanopy + one.againstCaption === 0,
+    );
+    expect(placeCaptions([request({ subject })], around({ canopy: [roof], keepClear: [keeper] }))[0].candidate).toBe(clear);
+  });
+
   it('is never drawn cut by the edge of the screen, wherever the camera is', () => {
     const subject = tile(400, 300);
     for (let x = 60; x <= 420; x += 7) {
@@ -161,6 +238,68 @@ describe('where a map caption is allowed to sit', () => {
 
     expect(seat({}, { furniture: [wall] }).visible).toBe(false);
     expect(seat({ width: 400 }).visible).toBe(false);
+  });
+
+  /**
+   * A boss stands at the gate they hold. Seated in the order they were made,
+   * the gate's name took the one clear seat and `CANNOT BE FLED` went undrawn -
+   * on two of the Floodplain's three doors.
+   */
+  describe('a warning and a name that want the same ground', () => {
+    // Two subjects side by side, walled in below and beside: the only clear
+    // ground is the row above them, and it holds one caption.
+    const gate = tile(136, 112);
+    const keeper = tile(168, 112);
+    const walledIn = { keepClear: [{ x: 0, y: 110, width: 320, height: 130 }] };
+
+    it('seats the warning first, whatever order they were asked for in', () => {
+      const [name, warning] = placeCaptions(
+        [request({ subject: gate }), request({ subject: keeper, warns: true })],
+        around(walledIn),
+      );
+
+      expect(warning.visible).toBe(true);
+      expect(warning.seat).toBe('above');
+      expect(name.visible).toBe(false);
+    });
+
+    it('is decided by order alone between two names, as it always was', () => {
+      const [first, second] = placeCaptions(
+        [request({ subject: gate }), request({ subject: keeper })],
+        around(walledIn),
+      );
+
+      expect(first.visible).toBe(true);
+      expect(second.visible).toBe(false);
+    });
+
+    it('hands the placements back in the order they were asked for', () => {
+      const [name, warning] = placeCaptions(
+        [request({ subject: gate }), request({ subject: keeper, warns: true })],
+        around(),
+      );
+
+      // The warning is centred over the keeper, and it is the name that gave
+      // up the row to fit around it - so each answer is its own request's.
+      expect(warning.seat).toBe('above');
+      expect(warning.x + 30).toBe(keeper.x + TILE / 2);
+      expect(name.seat).toBe('below');
+      expect(name.x + 30).toBe(gate.x + TILE / 2);
+      expect(overlaps(rectOf(name), grown(rectOf(warning), NEIGHBOUR_GAP))).toBe(false);
+    });
+
+    it('keeps the order they were asked for in within warnings and within names', () => {
+      const asked = [request(), request({ warns: true }), request(), request({ warns: true })];
+
+      expect(seatingOrder(asked)).toEqual([1, 3, 0, 2]);
+    });
+
+    it('buys a warning no ground a name could not have: it is still never drawn over a person', () => {
+      const everyone: Rect = { x: 0, y: 0, width: 320, height: 240 };
+
+      expect(seat({ warns: true }, { keepClear: [everyone] }).visible).toBe(false);
+      expect(seat({ warns: true }, { canopy: [everyone] }).visible).toBe(false);
+    });
   });
 
   it('keeps the seat it holds while that seat is clear, so a walking camera cannot make it flicker', () => {

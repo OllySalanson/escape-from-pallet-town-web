@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { gatesForMap } from '../world/gates';
 import { buildContractBoard, contractBoardRow } from '../hub/contractBoard';
 import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
@@ -107,8 +108,19 @@ describe('banking a standing contract', () => {
     const saves = seedSave(new MemoryStorage(), round);
     const contract = standingBoard(saves.load()!.raidProgress).find((candidate) => candidate.sealedBehind)!;
 
-    expect(saves.recordDefeatedBosses(['overlook-warden'])).toEqual(['overlook-warden']);
-    expect(standingBoard(saves.load()!.raidProgress).some((candidate) => candidate.sealedBehind)).toBe(false);
+    // The boss is read off the contract rather than named: more than one map
+    // has doors now, and beating one map's keeper rightly leaves another map's
+    // door on the board. What must go is *this* door.
+    const gate = gatesForMap(contract.mapId).find(
+      (candidate) => candidate.label === contract.sealedBehind!.gateLabel,
+    )!;
+    expect(saves.recordDefeatedBosses([gate.bossId])).toEqual([gate.bossId]);
+    expect(
+      standingBoard(saves.load()!.raidProgress).some(
+        (candidate) =>
+          candidate.mapId === contract.mapId && candidate.sealedBehind?.gateLabel === gate.label,
+      ),
+    ).toBe(false);
 
     expect(saves.bankContract(contract, NOTHING_CARRIED).granted).toBe(true);
     expect(saves.load()!.raidProgress.standingContractsBanked).toBe(round + 1);

@@ -44,6 +44,11 @@ game polls (`src/game/input/KeyPresses.ts`); it used not to, at any frame rate -
 movement read `isDown`, and Phaser clears `JustDown` on key up. `raid.mjs --taps`
 plays the whole raid on such presses.
 
+`raid.mjs --exit=LABEL` (`--exit=ferry-dock`) leaves by a named exit rather than
+the nearest one open from the first second: it stands beside the exit until its
+caption reads `EXTRACT OPEN`, then steps on. A timed exit is never chosen
+otherwise, so nothing else checks that one can be walked to.
+
 ## Idle costs the machine, so do not idle live
 
 - Thinking or editing with a game page open: `pauseLoop()` (or never resume -

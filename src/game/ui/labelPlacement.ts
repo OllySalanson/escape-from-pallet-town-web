@@ -47,6 +47,15 @@ export interface CaptionRequest {
    * one that re-decided every frame would flicker between two equal answers.
    */
   readonly held?: number;
+  /**
+   * True for a caption that prices a step rather than naming a place: a
+   * trainer's watch, whose third line is that the fight cannot be left. It is
+   * seated before every caption that only names something, whatever order they
+   * were asked for in. A boss stands at the gate they hold, so their warning
+   * and the gate's name want the same ground - and seated in the order they
+   * were created, the name took it and the warning went undrawn.
+   */
+  readonly warns?: boolean;
 }
 
 export interface CaptionSurroundings {
@@ -60,6 +69,17 @@ export interface CaptionSurroundings {
    * trainer is watching.
    */
   readonly keepClear: readonly Rect[];
+  /**
+   * Ground that is drawn *over* captions: a tree's crown, the span of an arch,
+   * anything a figure walks under. Writing sits beneath figures so that it never
+   * covers a person, and a canopy sits above them so that a wood has an inside -
+   * which leaves a caption seated here hidden by the very thing it is beside.
+   * The first map with a real canopy showed a shut gate's caption as `SLUICE GA`
+   * and `PER DANE` either side of its own gatehouse. So a canopy is ground a
+   * caption may not take, exactly as a person is, and the ordinary order of
+   * seats does the rest: the other row, slid along it, then beside the subject.
+   */
+  readonly canopy: readonly Rect[];
 }
 
 export interface CaptionPlacement {
@@ -156,8 +176,8 @@ function candidatesFor(request: CaptionRequest, bounds: Rect): Candidate[] {
 
 /**
  * How much of a seat is somewhere a caption may not be, in pixels of its own
- * area: outside the view, under the HUD, over map art or a person, or against a
- * caption already seated.
+ * area: outside the view, under the HUD, over map art or a person, under a
+ * canopy, or against a caption already seated.
  */
 function intrusion(rect: Rect, surroundings: CaptionSurroundings, seated: readonly Rect[]): number {
   const view = inflate(surroundings.bounds, -VIEW_INSET);
@@ -168,13 +188,70 @@ function intrusion(rect: Rect, surroundings: CaptionSurroundings, seated: readon
     outside +
     against(surroundings.furniture, NEIGHBOUR_GAP) +
     against(surroundings.keepClear, 0) +
+    against(surroundings.canopy, 0) +
     against(seated, NEIGHBOUR_GAP)
   );
 }
 
+/** Why one seat was refused, as the pixels of it that each kind of obstacle took. */
+export interface SeatRefusal {
+  readonly seat: CaptionSeat;
+  readonly x: number;
+  readonly y: number;
+  readonly outsideView: number;
+  readonly underHud: number;
+  readonly overMapArt: number;
+  readonly underCanopy: number;
+  readonly againstCaption: number;
+}
+
+/**
+ * Every seat a caption was offered and what was wrong with each, in the order
+ * they are tried. For the question a screenshot cannot answer: a caption is
+ * missing, so which of five things is in every one of its twelve seats? Guessed
+ * at, the answer was three trees, and felling them changed nothing.
+ */
+export function explainSeats(
+  request: CaptionRequest,
+  surroundings: CaptionSurroundings,
+  seated: readonly Rect[] = [],
+): SeatRefusal[] {
+  const view = inflate(surroundings.bounds, -VIEW_INSET);
+  const against = (rect: Rect, others: readonly Rect[], gap: number): number =>
+    others.reduce((total, one) => total + overlap(rect, inflate(one, gap)), 0);
+  return candidatesFor(request, surroundings.bounds).map((candidate) => {
+    const rect: Rect = { x: candidate.x, y: candidate.y, width: request.width, height: request.height };
+    return {
+      seat: candidate.seat,
+      x: candidate.x,
+      y: candidate.y,
+      outsideView: rect.width * rect.height - overlap(rect, view),
+      underHud: against(rect, surroundings.furniture, NEIGHBOUR_GAP),
+      overMapArt: against(rect, surroundings.keepClear, 0),
+      underCanopy: against(rect, surroundings.canopy, 0),
+      againstCaption: against(rect, seated, NEIGHBOUR_GAP),
+    };
+  });
+}
+
+/**
+ * The order captions are seated in, as indices into the requests: warnings
+ * first, then names, each in the order they were asked for. Exported so a tool
+ * explaining a missing caption can name what was seated before it.
+ */
+export function seatingOrder(requests: readonly CaptionRequest[]): number[] {
+  const asked = requests.map((_, index) => index);
+  return [
+    ...asked.filter((index) => requests[index].warns === true),
+    ...asked.filter((index) => requests[index].warns !== true),
+  ];
+}
+
 /**
  * Seats every caption on the screen. Order is priority: an earlier request is
- * seated first and a later one has to fit around it.
+ * seated first and a later one has to fit around it - and a warning is earlier
+ * than any name (`seatingOrder`). The placements come back in the order the
+ * requests were made.
  */
 export function placeCaptions(
   requests: readonly CaptionRequest[],
@@ -188,8 +265,9 @@ export function placeCaptions(
     keepClear: [...surroundings.keepClear, ...everySubject],
   };
   const seated: Rect[] = [];
+  const placements: CaptionPlacement[] = [];
 
-  return requests.map((request) => {
+  const place = (request: CaptionRequest): CaptionPlacement => {
     const candidates = candidatesFor(request, surroundings.bounds);
     const rectOf = (candidate: Candidate): Rect => ({
       x: candidate.x,
@@ -220,7 +298,12 @@ export function placeCaptions(
 
     seated.push(rectOf(candidates[index]));
     return { ...candidates[index], candidate: index, visible: true };
-  });
+  };
+
+  for (const index of seatingOrder(requests)) {
+    placements[index] = place(requests[index]);
+  }
+  return placements;
 }
 
 /**

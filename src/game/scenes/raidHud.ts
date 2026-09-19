@@ -82,6 +82,22 @@ export function objectiveChipLines(cue: string, showDetail: boolean): readonly s
 }
 
 /**
+ * How long a place's name stays up after the player walks into it. The games
+ * this one is dressed as name a place as you arrive and then get out of the
+ * way, and so does this: long enough to read two words without stopping, and
+ * gone before it is the thing being looked at instead of the road.
+ */
+export const PLACE_PLATE_MS = 3_500;
+
+/**
+ * The arrival plate: the name of the district just walked into, while it is
+ * news. Null once it has been read, and on a map that names no districts.
+ */
+export function placePlateLine(name: string | null, remainingMs: number): string | null {
+  return name !== null && remainingMs > 0 ? name : null;
+}
+
+/**
  * What the chip says once no objective is left to name. It said EXTRACT WITH
  * YOUR HAUL to a player carrying nothing, which is an instruction to bank an
  * empty pack; with nothing found yet the raid's business is still the finding.

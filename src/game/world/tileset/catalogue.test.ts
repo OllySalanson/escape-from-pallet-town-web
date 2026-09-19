@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fillTile, resolveTile, TILE_ROLES, type MaterialTiles } from './catalogue';
 import { CLASSIC_TILESET } from './classicTileset';
 import { OVERWORLD_TILESET } from './overworldTileset';
+import { FLOOD_TOWN_TILESET } from './floodTownTileset';
 import { FRLG_TILESET } from './frlgTileset';
 import { POKEMON_GROUND_TILESET } from './pokemonGround';
 import { TILE_SOURCES } from './sheets';
@@ -12,6 +13,7 @@ const CATALOGUES = {
   classic: CLASSIC_TILESET,
   overworld: OVERWORLD_TILESET,
   'pokemon ground': POKEMON_GROUND_TILESET,
+  'flood town': FLOOD_TOWN_TILESET,
 };
 
 describe('resolving a tile from a material and a role', () => {
@@ -128,6 +130,27 @@ describe('the shipped catalogues', () => {
       for (let index = 1; index < spans.length; index += 1) {
         expect(spans[index].from).toBeGreaterThanOrEqual(spans[index - 1].to);
       }
+    }
+  });
+
+  /**
+   * The rule above only sees the sheets a catalogue already combines. The
+   * FireRed sheet was numbered from 2000 while `Overworld.png` ran to 2439, and
+   * every catalogue passed, because none had yet put the two together - the
+   * first map that did drew a stone tower with a base made of sand. So the
+   * whole loader list is held to it, whatever anyone has composed so far.
+   */
+  it('keeps every loaded sheet clear of every other, combined yet or not', () => {
+    const spans = TILE_SOURCES.map((source) => ({
+      key: source.textureKey,
+      from: source.firstIndex,
+      to: source.firstIndex + source.columns * source.rows,
+    })).sort((a, b) => a.from - b.from);
+    for (let index = 1; index < spans.length; index += 1) {
+      const [before, after] = [spans[index - 1], spans[index]];
+      expect(`${after.key} starts at ${after.from}, clear of ${before.key}: ${after.from >= before.to}`).toBe(
+        `${after.key} starts at ${after.from}, clear of ${before.key}: true`,
+      );
     }
   });
 

@@ -63,6 +63,99 @@ export const WORLD_GATES: readonly MapGate[] = [
     closed: { material: 'fence' },
     open: { material: 'earth' },
   },
+
+  // -- Floodplain Relay ------------------------------------------------------
+  // Three bosses, two doors each. The first of each pair is the door in front
+  // of the player; the second is somewhere they have already stood, and opens
+  // onto it, so the way back from a won district is always shorter than the
+  // way in was - and one of them is the map turning out to be a ring.
+  {
+    // The towered bridge off Market Isle. Its deck is a landmark laid over the
+    // river, and a landmark is the last word on its own tiles, so a fence drawn
+    // under it would look shut and walk open: what shuts this door is the
+    // barricade standing on the deck, which is also the only way to see it.
+    id: 'floodplain-toll-bridge',
+    mapId: 'floodplain-relay',
+    bossId: 'floodplain-toll-keeper',
+    label: 'TOLL BRIDGE',
+    tiles: [
+      { x: 32, y: 30 }, { x: 33, y: 30 }, { x: 34, y: 30 },
+      { x: 32, y: 31 }, { x: 33, y: 31 }, { x: 34, y: 31 },
+    ],
+    closed: {
+      material: 'fence',
+      props: [
+        { name: 'cratePair', x: 32, y: 30 },
+        { name: 'barrel', x: 34, y: 30 },
+      ],
+    },
+    open: { material: 'stone' },
+  },
+  {
+    id: 'floodplain-orchard-ford',
+    mapId: 'floodplain-relay',
+    bossId: 'floodplain-toll-keeper',
+    label: 'ORCHARD FORD',
+    tiles: [{ x: 38, y: 37 }, { x: 39, y: 37 }, { x: 40, y: 37 }],
+    // Shut, a ford is deep water, and deep water with nothing in it is just
+    // river: a stranger touring the map read this door's caption as the
+    // fountain's. So the chain Briggs keeps across it hangs from a post at each
+    // end while it is shut, and goes with him.
+    closed: {
+      material: 'water',
+      props: [
+        { name: 'mooringPost', x: 38, y: 36 },
+        { name: 'mooringPost', x: 40, y: 36 },
+      ],
+    },
+    open: { material: 'ford' },
+  },
+  {
+    // The arch of the gatehouse. Its passage is drawn over whoever is under it
+    // and blocks nothing, so here the material is the door: bars in the arch.
+    id: 'floodplain-sluice-gate',
+    mapId: 'floodplain-relay',
+    bossId: 'floodplain-sluice-keeper',
+    label: 'SLUICE GATE',
+    tiles: [{ x: 46, y: 20 }, { x: 47, y: 20 }, { x: 48, y: 20 }],
+    closed: { material: 'fence' },
+    open: { material: 'stone' },
+  },
+  {
+    // The drowned causeway. Deep while the sluice is held shut; once it is let
+    // go the river drops and the stones are out of the water - the quay's own
+    // paving, running straight across to the keep. It was a ford at first, and
+    // in the game a ford is a small pool with a bank all round it: the reveal
+    // read as a pond appearing rather than as a way across.
+    id: 'floodplain-relay-causeway',
+    mapId: 'floodplain-relay',
+    bossId: 'floodplain-sluice-keeper',
+    label: 'RELAY CAUSEWAY',
+    tiles: [
+      { x: 40, y: 7 }, { x: 41, y: 7 }, { x: 42, y: 7 },
+      { x: 40, y: 8 }, { x: 41, y: 8 }, { x: 42, y: 8 },
+    ],
+    closed: { material: 'water' },
+    open: { material: 'stone' },
+  },
+  {
+    id: 'floodplain-vault-fence',
+    mapId: 'floodplain-relay',
+    bossId: 'floodplain-orchard-warden',
+    label: 'ORCHARD FENCE',
+    tiles: [{ x: 53, y: 45 }, { x: 54, y: 45 }],
+    closed: { material: 'fence' },
+    open: { material: 'earth' },
+  },
+  {
+    id: 'floodplain-vault-causeway',
+    mapId: 'floodplain-relay',
+    bossId: 'floodplain-orchard-warden',
+    label: 'VAULT CAUSEWAY',
+    tiles: [{ x: 31, y: 54 }, { x: 31, y: 55 }],
+    closed: { material: 'fence' },
+    open: { material: 'stone' },
+  },
 ];
 
 export function gatesForMap(mapId: WorldMapId): readonly MapGate[] {

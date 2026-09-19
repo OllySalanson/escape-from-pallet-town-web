@@ -73,10 +73,49 @@ export interface PlantedProp<PropName extends string = string> {
   readonly y: number;
 }
 
-export interface MapSketchOptions {
+/**
+ * A letter of a map's own, which stands a landmark where it is drawn.
+ *
+ * A wood is hundreds of trees, and a tree named by a coordinate in a list under
+ * the picture is a tree that drifts: move the river three tiles and the list
+ * still says where the bank used to be. A stamp puts the tree in the drawing,
+ * so the picture that is reviewed is the map that is built.
+ */
+export interface PropStamp<PropName extends string = string> {
+  readonly prop: PropName;
+  /**
+   * Which cell of the prop the letter marks, counted from its top-left. A tree
+   * is marked at its trunk rather than its corner, because the trunk is where
+   * it blocks and where the eye says it stands.
+   */
+  readonly anchor: readonly [number, number];
+  /** What the letter's own tile is made of - a letter can only say one thing. */
+  readonly ground: TerrainChar;
+  /**
+   * The other tiles the landmark blocks, as offsets from its letter. A map cut
+   * out of a forest leaves a tree at the edge of every cut, and one whose trunk
+   * overhangs the lane makes a two-wide road one wide without anyone drawing
+   * that. So walkable ground cut under any of these takes the landmark away,
+   * exactly as ground drawn over the letter does. A crown is not listed: it
+   * blocks nothing, and one hanging over a lane is what a wood's edge looks like.
+   */
+  readonly blocks?: readonly (readonly [number, number])[];
+  /**
+   * What the letter's tile goes back to when a cut takes the landmark away. A
+   * forest tree stands on a tile of grass in a sea of thicket; take the tree
+   * and leave the grass, and the wood has a one-tile hole in it that nobody
+   * drew. Left out, the tile stays as `ground` - right for an orchard tree,
+   * which stood in grass to begin with.
+   */
+  readonly bare?: TerrainChar;
+}
+
+export interface MapSketchOptions<PropName extends string = string> {
   readonly width: number;
   readonly height: number;
   readonly fill: TerrainChar;
+  /** This map's own letters. None may be a material's or a content mark's. */
+  readonly stamps?: Readonly<Record<string, PropStamp<PropName>>>;
   /**
    * When set, `set` refuses to write the outermost ring, so drawing a lane that
    * runs to the edge cannot punch a hole in the map boundary. `raw` still can,
@@ -99,11 +138,28 @@ export class MapSketch<PropName extends string = string> {
   private readonly terrain: TerrainChar[][];
   private readonly content: (ContentChar | null)[][];
   private readonly planted: PlantedProp<PropName>[] = [];
+  private readonly stamps: Readonly<Record<string, PropStamp<PropName>>>;
+  /** Stamped landmarks by the tile their letter was drawn on. */
+  private readonly stamped = new Map<string, PlantedProp<PropName>>();
+  /** For each tile a stamped landmark blocks, the letters of the landmarks that do. */
+  private readonly blockedBy = new Map<string, Set<string>>();
+  /** What each stamped letter's tile reverts to if its landmark is cut away. */
+  private readonly bareUnder = new Map<string, TerrainChar>();
 
-  public constructor(options: MapSketchOptions) {
+  public constructor(options: MapSketchOptions<PropName>) {
     this.width = options.width;
     this.height = options.height;
     this.sealBorder = options.sealBorder ?? false;
+    this.stamps = options.stamps ?? {};
+    for (const [char, stamp] of Object.entries(this.stamps)) {
+      if (char.length !== 1 || char === KEEP || isContentChar(char) || materialForChar(char)) {
+        throw new Error(`'${char}' cannot be a stamp: it already means something in a drawing`);
+      }
+      materialFor(stamp.ground);
+      if (stamp.bare !== undefined) {
+        materialFor(stamp.bare);
+      }
+    }
     materialFor(options.fill);
     this.terrain = Array.from({ length: this.height }, () =>
       Array<TerrainChar>(this.width).fill(options.fill),
@@ -134,6 +190,21 @@ export class MapSketch<PropName extends string = string> {
       materialFor(char);
       this.terrain[y][x] = char;
       this.content[y][x] = null;
+      // Ground drawn over a stamp takes the landmark with it. Blocks are meant
+      // to be drawn over each other, and a tree left behind by the block under
+      // it is a tree standing in whatever was painted on top - a river, usually.
+      this.stamped.delete(`${x},${y}`);
+      // And so does ground cut to be walked under any tile it blocks.
+      if (!isSolidTerrain(char)) {
+        for (const letter of this.blockedBy.get(`${x},${y}`) ?? []) {
+          const bare = this.bareUnder.get(letter);
+          if (this.stamped.delete(letter) && bare !== undefined) {
+            const [lx, ly] = letter.split(',').map(Number);
+            this.terrain[ly][lx] = bare;
+          }
+        }
+        this.blockedBy.delete(`${x},${y}`);
+      }
     }
     return this;
   }
@@ -146,13 +217,55 @@ export class MapSketch<PropName extends string = string> {
    * it. A space leaves the tile alone, so blocks can be drawn over each other.
    */
   public draw(x0: number, y0: number, rows: readonly string[]): this {
+    // A row that is short by one character shifts nothing and silently leaves
+    // water where a bank should be, which is invisible in review and obvious
+    // only in a render. A block is a rectangle or it is a mistake.
+    const width = rows[0]?.length ?? 0;
+    for (const [rowIndex, row] of rows.entries()) {
+      if (row.length !== width) {
+        throw new Error(
+          `drawn block is ragged: row ${rowIndex} is ${row.length} characters, row 0 is ${width}`,
+        );
+      }
+    }
+    // Ground first, then what stands on it. A block is one picture: the grass
+    // beside a tree in the same drawing is the grass that tree stands in, and
+    // laying it after the tree would cut the tree down with its own lawn. Only
+    // a *later* block cutting under a landmark takes it away.
+    for (const [rowIndex, row] of rows.entries()) {
+      for (let column = 0; column < row.length; column += 1) {
+        const char = row[column];
+        if (char !== KEEP && !this.stamps[char]) {
+          this.raw(x0 + column, y0 + rowIndex, char);
+        }
+      }
+    }
     for (const [rowIndex, row] of rows.entries()) {
       for (let column = 0; column < row.length; column += 1) {
         const char = row[column];
         if (char === KEEP) {
           continue;
         }
-        this.raw(x0 + column, y0 + rowIndex, char);
+        const stamp = this.stamps[char];
+        if (stamp) {
+          const x = x0 + column;
+          const y = y0 + rowIndex;
+          this.raw(x, y, stamp.ground);
+          this.stamped.set(`${x},${y}`, {
+            name: stamp.prop,
+            x: x - stamp.anchor[0],
+            y: y - stamp.anchor[1],
+          });
+          if (stamp.bare !== undefined) {
+            this.bareUnder.set(`${x},${y}`, stamp.bare);
+          }
+          for (const [dx, dy] of stamp.blocks ?? []) {
+            const tile = `${x + dx},${y + dy}`;
+            const letters = this.blockedBy.get(tile) ?? new Set<string>();
+            letters.add(`${x},${y}`);
+            this.blockedBy.set(tile, letters);
+          }
+        }
       }
     }
     return this;
@@ -165,7 +278,7 @@ export class MapSketch<PropName extends string = string> {
   }
 
   public props(): readonly PlantedProp<PropName>[] {
-    return this.planted;
+    return [...this.stamped.values(), ...this.planted];
   }
 
   public rect(x0: number, y0: number, x1: number, y1: number, char: MapChar): this {

@@ -45,12 +45,15 @@ export class WorldLabel {
   private readonly label: Phaser.GameObjects.Text;
   private readonly subject: Rect;
   private readonly preferred: WorldLabelPlacement;
+  private readonly warns: boolean;
   private tone: WorldLabelTone;
   private held: number | undefined;
 
   /**
    * @param subject The rectangle of map the named thing is drawn on. The
    * caption is seated around it and never over it.
+   * @param warns True for a caption that prices a step rather than naming a
+   * place. It is seated before every name - see `CaptionRequest.warns`.
    */
   public constructor(
     scene: Phaser.Scene,
@@ -59,9 +62,11 @@ export class WorldLabel {
     tone: WorldLabelTone,
     depth: number,
     placement: WorldLabelPlacement = 'above',
+    warns = false,
   ) {
     this.subject = subject;
     this.preferred = placement;
+    this.warns = warns;
     this.tone = tone;
     this.frame = scene.add.graphics().setDepth(depth);
     // Drawn from the top-left rather than centred: a centred caption whose text
@@ -101,6 +106,7 @@ export class WorldLabel {
       height: this.windowHeight(),
       preferred: this.preferred,
       held: this.held,
+      warns: this.warns,
     };
   }
 

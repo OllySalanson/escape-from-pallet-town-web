@@ -1,133 +1,518 @@
 import { MapSketch } from '../mapGrid';
+import type { FloodTownPropName } from '../tileset/floodTownTileset';
 
 /**
- * Floodplain Relay. 32x32, the shipped footprint. Water is the default here:
- * the flood is what says no.
+ * Floodplain Relay - the river town the flood took.
  *
- * Every coordinate the rest of the code depends on - the insertion, the three
- * exits, both landmarks, the first contract, the loot and the signs - keeps its
- * shipped position. The one thing that has moved since is the checkpoint: it
- * used to sit in the corner of the road, where a trainer who has to be spoken
- * to is a locked door rather than a price, and it now stands on a jetty beside
- * it and watches the approach instead.
+ * One river comes in from the north, turns west, runs south, splits round an
+ * island and leaves to the south. It is never more than three tiles across, so
+ * wherever you stand on a bank the other bank is on the screen with you: the
+ * water is the wall between every district and the next, the thing you steer
+ * by, and the sightline that shows you the place you cannot reach yet.
  *
- * It stays the smallest map in the game. Its job is to teach four things in
- * ninety seconds: the road is fast and exposed, the reeds are slow and covered,
- * the vault is a signposted dead end, and three exits work on three rules.
+ * Eight places, and what the river does to each:
+ *
+ * - THE LANDING (north-west) - the quay, the relay office, the boathouse and
+ *   the ferry jetty. The front door. Across the north reach stands the keep's
+ *   tower, three tiles of deep water away from your first step.
+ * - THE REEDBEDS (west) - the shore road south, fast and watched, with the
+ *   reeds inland of it: slower, costly, and the only cover on this bank.
+ * - MARKET ISLE (middle) - the square, its fountain and its stalls, ringed by
+ *   the river. Two bridges leave its north shore side by side: the plank one
+ *   home, and the towered one that somebody holds.
+ * - OLD TOWN (south-west) - the drowned street, the shrine and the way out
+ *   through the South Gate.
+ * - MILL WEIR and THE ORCHARD (east bank) - the mill on its pond, and the rows
+ *   the town's fruit came from. Behind the toll bridge.
+ * - BEACON KEEP (north-east) - moated by the mill race, entered through the
+ *   gatehouse that stands in it. Behind the sluice keeper - and one drowned
+ *   causeway from the Landing, which is the thing you find out when he falls.
+ * - THE VAULT (south-east) - what the relay kept, under a trapdoor behind the
+ *   orchard's back fence.
+ *
+ * Drawn as character art, one character per tile. Legend: `W` deep water,
+ * `w` a ford you can wade, `.` grass, `"` mown turf, `g` reeds, `,` trodden
+ * earth, `d` sand, `P` paving, `M` stone, `v` gravel, `#` hedge, `T` thicket,
+ * `C` rock, `F` fence. And this map's own letters: `t` is a tree of the forest,
+ * `o` one that stands in grass - an orchard row, a landmark - `p` a pine and
+ * `b` a tall bush one tile wide, each drawn where its trunk stands - the two rows at and above
+ * the letter are solid, and the crown above those is walked behind.
  */
-export function sketchFloodplainRelay(): MapSketch {
-  const map = new MapSketch({ width: 32, height: 32, fill: 'W' });
+export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
+  const map = new MapSketch<FloodTownPropName>({
+    width: 64,
+    height: 64,
+    fill: '.',
+    stamps: {
+      // A tree of the forest: cut the ground from under it and it goes, and
+      // its tile goes back to thicket.
+      t: {
+        prop: 'tree',
+        anchor: [1, 2],
+        ground: '.',
+        bare: 'T',
+        blocks: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]],
+      },
+      // A tree somebody planted, or one that stands alone: it is in grass, and
+      // nothing is cut from under it.
+      o: { prop: 'tree', anchor: [1, 2], ground: '.' },
+      p: { prop: 'pine', anchor: [0, 2], ground: '.', blocks: [[0, -1], [1, -1], [1, 0]] },
+      // One tile wide, so it stands where nothing else will: in a hedge.
+      b: { prop: 'tallBush', anchor: [0, 2], ground: 'T' },
+    },
+  });
 
-  // 1. The landing: the insertion jetty and the route board.
-  map.lane([[14, 3], [16, 3]], '.');
-  map.raw(15, 2, '.');
-  map.lane([[14, 4], [18, 4]], '.');
-  map.raw(13, 4, 'S');
-  map.lane([[14, 5], [12, 5]], 'g');
-  map.raw(15, 3, 'I');
+  // == THE RIVER, AND THE FOREST IT RUNS THROUGH ============================
+  // Laid down first, because everything else is cut out of it. The river runs
+  // in long reaches with square bends - this sheet's bank is a lip that runs,
+  // and a shore drawn as a staircase reads as a staircase. Everything that is
+  // not river is wood: thicket, with a tree on every third column of every
+  // second row, as this kind of forest is planted. So a district is carved,
+  // not built - what nobody cut stays a wall, and no two pieces of map can
+  // meet along a seam that turns out to be a corridor.
+  map.draw(0, 0, [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWWWWWWWWWWWWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWWWWWWWWWWWWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWWWWWWWWWWWWWWTTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTTTTTTTTTTWWWTTTtTTtTTWWWWWWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTWWWTTTTTTTTTWWWWWWWTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTWWWWWWWWWWWWWWWWWWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTWWWWWWWWWWWWWWWWWWWTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTTTTTTTTTTTTTWWWWWWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTWWWWWWWTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTTTTTTTTTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWWWWWWWWWWWWWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWWWWWWWWWWWWWWWWWWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWWWWWWWWWWWWWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTTTTTTTTTTTTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWTTTtTTtTTtTTtTTTWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWWWWWWWWWWWWWWWWWWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTWWWWWWWWWWWWWWWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTWWWWWWWWWWWWWWWWWWWWWWTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTTTTTTTTTTTTWWWTTTTTTTTTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTTTTTTTTTTtTTtTWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  ]);
 
-  // 2. The road: the same road, now doglegged five times. Its longest straight
-  // section is six tiles; it used to be a dead-straight column of twenty-seven.
-  map.lane([[15, 4], [15, 7]]);
-  map.lane([[15, 7], [13, 7]]);
-  map.lane([[13, 7], [13, 11]]);
-  map.lane([[13, 11], [15, 11]]);
-  map.lane([[15, 11], [15, 16]]);
-  map.lane([[15, 16], [13, 16]]);
-  map.lane([[13, 16], [13, 20]]);
-  map.lane([[13, 20], [15, 20]]);
-  map.lane([[15, 20], [15, 25]]);
+  // == THE LANDING - the north-west quay ===================================
+  // A clearing that opens onto the water. The office is tucked under the wood
+  // with a hedge run from it to the boathouse, the yard is in front of both,
+  // and the stone quay wraps the bay the flood bit out of it, with the ferry
+  // jetty running out into that. East along the quay the old causeway goes
+  // under: three tiles of deep water, and the keep's tower on the far side.
+  map.draw(8, 5, [
+    '   ,,,,#######,,,,              ',
+    '  T,,,,#######,,,,              ',
+    '   ,,,,,,,,,,,,,,,,MMMMMMMMMMMMM',
+    '  T,,,,,,,,,,,,,,,,MMMMMMMMMMMMM',
+    ' ,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMM',
+    ' ,,,,,,,,,,,,,,,,,,MMMWWWWWWMMMM',
+    ' ,,  ,,,,,  ,,,,,,,MMMWWWWWWMMMM',
+    ' ,,  T  T  T  T  T MMMWWWWWWMMMM',
+    ' ,, ..             MMMWWWWWWMMMM',
+  ]);
+  map.plant(11, 5, 'building');
+  map.plant(22, 5, 'barn');
+  map.plant(32, 10, 'jetty');
+  map.plant(32, 7, 'crateStack');
+  map.plant(29, 8, 'barrelPair');
+  map.plant(18, 7, 'cratePair');
+  // Where you wait for the ferry. It also stops the yard being a twelve-tile
+  // dash, which two sacks at the player's feet used to do and looked it. The
+  // yard is two rows deep here and so is a bench, so the way past is the path
+  // feet have worn round the end of it: for eleven commits there was none, and
+  // the front door was sealed off from its own quay, the route board and the
+  // Ferry Dock - unnoticed, because with every gate open the quay can still be
+  // reached the long way, through the keep. `floodplainRelay.test.ts` now
+  // walks a fresh save from the front door to everything on the home bank.
+  map.plant(14, 9, 'bench');
+  map.plant(21, 9, 'barrel');
+  map.plant(37, 12, 'mooringPost');
+  map.plant(37, 7, 'barrel');
+  map.plant(12, 13, 'hut');
 
-  // The checkpoint. RAIDER MAYA stands on a jetty hung off the corner rather
-  // than in the corner itself, so the road stays open and stays the fast route;
-  // what it costs is her watch, which runs north up the approach she is facing.
-  // A trainer standing in a one-tile lane is a locked door, not a price.
-  map.lane([[15, 16], [15, 17]]);
-  map.raw(15, 17, 'H');
+  // == THE REEDBEDS - the west bank ========================================
+  // The road doglegs east past the ranger's hut and runs down the river side,
+  // quick and in plain view. Carry straight on instead and you are in the
+  // reeds: one marsh, a lone tree standing in it to steer by, and the flooded
+  // cut lying right across it. The only way round the cut is at its west end,
+  // so the reeds are not a short cut that costs fights - they are the long way
+  // and they cost fights, which is what makes the road a price worth reading.
+  map.draw(3, 14, [
+    '      ,, ..             ',
+    '      ,, ..             ',
+    '      ,,,,,,,,,         ',
+    ' ggg....Cgg..,,,,       ',
+    'gggggCggggg..T,,,,,,,,, ',
+    'gggggWWWgggg.C,,,,,,,,, ',
+    ' ggggWWW.ggggCggT...,,.C',
+    '  .gWW.gg.o.ggggTTC.,,. ',
+    ' ggWWWWWWWWWWWWWT  ,    ',
+    ' ..WWWWWWWWWWWWWg  ,    ',
+    '  .ggCgggg..Cgggg  ,    ',
+    ' ggggggCggggggggT,,,,,, ',
+    ' gggggCggggCggggg...T,, ',
+    '   ,             gggg,, ',
+    '   ,            T  T,,, ',
+  ]);
 
-  // 3. The ranger station: a loop off the road holding the Radio Exit.
-  map.lane([[18, 4], [18, 7]], '.');
-  map.lane([[17, 7], [21, 7]], '.');
-  map.raw(18, 7, '*');
-  map.raw(19, 8, 'X');
-  map.lane([[16, 6], [17, 6]], '.');
-  map.raw(15, 6, ',');
+  // == MARKET ISLE - the middle of the river ===============================
+  // The square, paved and still standing. Two bridges leave its north shore
+  // side by side - the plank one goes home, the towered one goes east and is
+  // held, with a banner either hand of it - and whoever comes off either finds
+  // the fountain in front of them.
+  map.draw(22, 32, [
+    '.,,,,####,,,,,  ',
+    '.,,,,####,,,,,  ',
+    '..PPPPPPPPPPPP  ',
+    '#.PPPPPPPPPPPP  ',
+    '#.PPPPPPPPPPPP  ',
+    ',,PPPPPPPPPPPP,,',
+    ',,PPPPPPPPPPPP,,',
+    '#.PPPPPPPPPPPP.#',
+  ]);
+  map.plant(23, 28, 'bridge');
+  map.plant(31, 28, 'stoneBridge');
+  map.plant(26, 34, 'stripedStall');
+  map.plant(32, 37, 'stoneFountain');
+  map.plant(24, 35, 'cratePair');
+  map.plant(23, 38, 'sack');
+  map.plant(31, 33, 'banner');
+  map.plant(35, 33, 'banner');
 
-  // 4. The reeds: eight shelves with water between them and every crossing
-  // staggered, so no two shelves line up and moving through them is a zigzag.
-  for (const y of [9, 11, 13, 15, 17, 19, 21, 23]) {
-    map.rect(4, y, 11, y, 'g');
-  }
-  for (const [y, x] of [[9, 8], [11, 9], [13, 8], [15, 8], [17, 9], [19, 7], [21, 9], [23, 8]] as const) {
-    map.raw(x, y, 'W');
-  }
-  for (const [y, xs] of [
-    [10, [6, 10]],
-    [12, [7, 10]],
-    [14, [5, 9]],
-    [16, [6, 10]],
-    [18, [5, 8, 11]],
-    [20, [6, 8, 10]],
-    [22, [6, 10]],
-  ] as const) {
-    for (const x of xs) {
-      map.raw(x, y, 'g');
-    }
-  }
-  for (const y of [9, 11, 17, 19]) {
-    map.raw(12, y, 'g');
-  }
-  map.raw(7, 12, 'L');
-  map.raw(11, 15, 'L');
-  map.raw(7, 21, 'X');
-  map.raw(11, 23, 'O');
+  // The ford to Old Town. The one to the orchard is `gates.ts`'s to open; its
+  // far landing climbs the bank and comes into the orchard between two rows.
+  map.draw(19, 37, ['www', 'www']);
+  map.draw(41, 33, ['  ,,', '  , ', '  , ', '  , ', ',,, ']);
 
-  // 5. The south bank: the reeds' third mouth. There is no short way from the
-  // road to the contract - it is three shelves deep whichever way you come.
-  map.lane([[5, 24], [5, 26]], '.');
-  map.lane([[5, 26], [8, 26]], '.');
-  map.lane([[8, 26], [8, 25]], '.');
-  map.lane([[8, 25], [11, 25]], '.');
-  map.lane([[11, 25], [11, 27]], '.');
-  map.lane([[11, 27], [13, 27]], '.');
+  // == OLD TOWN - the south-west ===========================================
+  // The footpath down from the reeds wanders in through the trees behind the
+  // houses - it was never a road. Then the street the water came up, and still
+  // is up: the river's shallows do not stop at the bank, they run on between
+  // the houses and away down the lane south, so this is the one district that
+  // is waded through. Two houses behind their front hedges, the old tree the
+  // street has always gone round, and south of it the chapel - round, under a
+  // cone of a roof - standing in the pool that was the green.
+  map.draw(3, 29, [
+    '   ,            ',
+    ',,,,            ',
+    ',    .......... ',
+    ',    .......... ',
+    ',,,, .......... ',
+    '   , .......... ',
+    '   , .......... ',
+    '   ,,##P##PPPPPP',
+    '   ,PPPP...wwwwC',
+    '   ,PPPP.o.wwwww',
+    '    PPPPPPPPPwwP',
+    '     wwwwwwwwww ',
+    '     wwwwwwwwCw ',
+    '     wwwwwwwwPP ',
+    '     wwwwwwwwPP ',
+  ]);
+  map.plant(8, 31, 'house');
+  map.plant(13, 31, 'house');
+  // The town's chapel, round under a cone of a roof, standing in what was its
+  // green. It is the one building on this map shaped like that.
+  map.plant(9, 40, 'roundhouse');
+  // What says town, and says drowned. A second stranger placed every exit and
+  // every gate on this map from memory and still drew this district as "two
+  // barns" and "a chapel by a pond": the street was earth with a lipped pool
+  // beside it. So it is paved, with the pavement still showing along both
+  // sides of the water that has taken its east end; there is a mooring post on
+  // a street corner, which is the whole story in one object; and the
+  // churchyard's stones stand in the chapel's pool. Nothing else on the map
+  // has a gravestone on it.
+  map.plant(15, 38, 'mooringPost');
+  map.plant(12, 42, 'gravestone');
+  map.plant(14, 40, 'gravestoneWorn');
 
-  // 6. The vault causeway: east, exposed, and with a long north return. The
-  // return is deliberately longer than the way in; what it buys is ground the
-  // hunter is not already standing on.
-  map.lane([[15, 13], [20, 13]]);
-  map.raw(19, 14, 'S');
-  map.lane([[20, 13], [20, 15]]);
-  map.lane([[20, 15], [22, 15]]);
-  map.lane([[22, 15], [22, 16]]);
-  map.lane([[22, 16], [26, 16]]);
-  map.lane([[26, 16], [26, 15]]);
-  map.raw(27, 15, '*');
-  map.lane([[27, 14], [27, 12]], '.');
-  map.lane([[27, 12], [24, 12]], '.');
-  map.lane([[24, 12], [24, 10]], '.');
-  map.lane([[24, 10], [21, 10]], '.');
-  map.lane([[21, 10], [21, 8]], '.');
+  // South of the river: the towpath in its reeds, the last house, and the
+  // road down to the gate. The road is the town's own paving all the way from
+  // the drowned street to the arch - three screens of wood lie between the
+  // houses, the chapel, the last house and the gate, and the paving underfoot
+  // is what says they are one town.
+  map.draw(3, 44, [
+    '             PC           ',
+    '             PP           ',
+    '       T     PP           ',
+    '             PP,ggggCggggg',
+    '           PPPPTgggggggggg',
+    '           PP        ..   ',
+    '   .....   PP        ..   ',
+    '   .....   PP,,,,,,, ..   ',
+    '   .....   PP    ,,  ,,   ',
+    '   .....   PP    ,,,,,,,,,',
+    '   .....   PP         ,,,,',
+    '    PPPPPPPPPP            ',
+    '            PPPP          ',
+    '              PP          ',
+    '              PP         T',
+    '              PP          ',
+    '              PP          ',
+  ]);
+  map.plant(6, 50, 'house');
+  map.plant(24, 49, 'hut');
+  // The South Gate: the one way out of this map that is always open, and until
+  // now a road that stopped in a wood. The road runs through the arch.
+  map.plant(16, 57, 'stoneArch');
 
-  // 7. The south delta: two loops round the south gate, not one road end.
-  map.lane([[15, 25], [13, 25]]);
-  map.lane([[13, 25], [13, 27]]);
-  map.lane([[13, 27], [15, 27]]);
-  map.lane([[15, 25], [17, 25]]);
-  map.lane([[17, 25], [17, 27]]);
-  map.lane([[17, 27], [15, 27]]);
-  map.raw(15, 28, 'X');
+  // == MILL WEIR - the east bank, north ====================================
+  // The towered bridge lands here. The road from it runs up to the towpath
+  // along the race, and the towpath forks: on to the gatehouse, or east past
+  // the mill on its pond and round into the orchard. The toll road is a cart
+  // road, two wide with a passing place at the toll house door; the way down
+  // to the orchard is what pickers' feet wore, one tile and never straight.
+  map.draw(30, 17, [
+    '                               ',
+    '                               ',
+    '                               ',
+    '       T                       ',
+    '                               ',
+    '      ,,,,,,,,, ,,,,,          ',
+    '      ,,     ,,,,,,,,          ',
+    '    T ,,, T   ,    ,,          ',
+    '      ,,,     ,    ........    ',
+    '    T ,,  T  ,, T  ........    ',
+    '  ,,,,,,     ,  t  ........    ',
+    '  ,,,        ,,,,  ........    ',
+  ]);
+  // The mill's own doorstep, a row south of the rest of its yard.
+  map.draw(49, 29, ['........']);
+  map.plant(52, 25, 'house');
+  map.plant(50, 26, 'bigStump');
+  // What says mill: the weir the district is named for, set in the race between
+  // the gatehouse and the pond, and flour sacks stacked by the door. Without
+  // them this was a house by a square pond, and a stranger who toured the map
+  // once named the place after the gate instead.
+  map.plant(50, 20, 'wetRock');
+  map.plant(50, 28, 'sack');
+  map.plant(51, 28, 'sack');
+  // The toll house, door to the road, where the towered bridge lands. The road
+  // north of the isle had nothing on it to remember it by.
+  map.plant(34, 24, 'hut');
 
-  // 8. The north reedbank: the third door off the landing.
-  map.rect(5, 5, 11, 5, 'g');
-  map.rect(5, 7, 11, 7, 'g');
-  map.raw(9, 5, 'W');
-  map.raw(9, 7, 'W');
-  for (const x of [5, 8, 11]) {
-    map.raw(x, 6, 'g');
-  }
-  map.raw(12, 5, 'g');
-  map.raw(12, 7, 'g');
-  map.raw(5, 8, 'g');
+  // The gatehouse in the race, and the stone that runs under it. Nothing else
+  // crosses the race: the water either side of these three tiles is the wall.
+  map.draw(46, 15, ['MMM', 'MMM', 'MMM', 'MMM', 'MMM', 'MMM', 'MMM']);
+  map.plant(45, 15, 'gatehouse');
+
+  // == THE ORCHARD - the east bank, south ==================================
+  // Planted in rows, because an orchard is, and the rows are still there:
+  // fruit bushes on mown turf, a lane between each pair. It is the one place
+  // on this map that is regular on purpose, which is what says somebody
+  // planted it. Alternate rows are set half a step over, so no gap lines up
+  // with the next and the rows can be threaded but never run.
+  map.draw(41, 29, [
+    '    ,,              ',
+    '    ,,,,,,,,,,      ',
+    '    #"#"#"#"#"#"    ',
+    '      ,,,,,,,,,,    ',
+    '    "#"#"#"#"#"#    ',
+    '    ,,,,,,,,,,      ',
+    '    #"#"#"#"#"#"    ',
+    '      ,,,,,,,,,,    ',
+    '    "#"#"#"#"#"#    ',
+    '    ,,,,,,,,,,      ',
+    '    #"#"#"#"#"#"    ',
+    '  T   ,,,,,,,,,,    ',
+    '    "#"#"#"#"#"#    ',
+    '    ,,,,,,,,,,      ',
+    '            ,,      ',
+    '     T  T   ,,   T  ',
+    'FFFFFFFFFFFF,,FFFFFF',
+  ]);
+
+  // == BEACON KEEP - the north-east ========================================
+  // The tower, and the court it stood over. The court is laid in the same stone
+  // as the causeway and the passage under the gatehouse, so the three read as
+  // one built thing - which is what tells you, the day the causeway comes up,
+  // that it was always the keep's. Its wall is down to rubble with gaps in it,
+  // and the statue stands in one of the gaps, looking into the court. Moated on
+  // two sides by the river and on the third by the race, so the only dry way in
+  // is under the gatehouse - until the water drops.
+  map.draw(43, 3, [
+    '    ...           ',
+    '    ...  T        ',
+    '    ... CC CCCC   ',
+    '    ...CMMMMMMC   ',
+    'MMMM...MMMMMMMC   ',
+    'MMMM...MMMMMMM    ',
+    '   M...CMMMMMMC   ',
+    '   MMMMMMMM C     ',
+    '       MM         ',
+    '       MM         ',
+    '       MM         ',
+    '   MMMMMM         ',
+  ]);
+  map.plant(47, 3, 'tower');
+  map.plant(53, 3, 'statue');
+
+  // The keep's own wood. The forest is one species from edge to edge, which is
+  // most of why its lattice reads as a lattice; round the court the nearest ring
+  // of it is pine. A pine is two tiles across where a broadleaf is three, so each
+  // leaves a tile of thicket showing beside it. The map's border stays broadleaf.
+  map.draw(46, 4, [
+    '         p  p ',
+    '              ',
+    '            p ',
+    '              ',
+    '            p ',
+    '              ',
+    '            p ',
+    '              ',
+    'p        p  p ',
+    '              ',
+  ]);
+
+  // == THE VAULT - the south-east ==========================================
+  // Behind the orchard's back fence, and the end of the chain. What is left of
+  // the relay's store-house is its floor: stone, with a corner of rubble, and
+  // the cellar trapdoor in the middle of it thrown open - somebody has been
+  // here since the flood. The flood is still here too: south of the yard the
+  // ground is a pond in its reeds, with the culvert mouth on its bank that the
+  // water came in by and that the way out goes through. The path round to it
+  // leaves the yard by its own side, so the yard has two ways out. The way back
+  // west to the causeway is a footpath, one tile wide: no cart ever went there.
+  map.draw(33, 46, [
+    '          T  T  T   ,,      ',
+    ' ggggCggg           ,,      ',
+    ' ggggCggg T  T   ,,,,,   T  ',
+    '  ,,,,,,,,,      ,,         ',
+    '   ,     CMMMMMv,,,   T     ',
+    '   ,     vMMMMMv            ',
+    '   ,     vMMMMMv            ',
+    '  ,,,,,,,vvvvvvv            ',
+    'MM  ,,     ,,               ',
+    'MM,,,,     ,,               ',
+    '    ,,,,,,,,,               ',
+    '        gWWWWWWg            ',
+    ' T      gWWWWWWg            ',
+    '        gggggggg            ',
+  ]);
+  map.plant(45, 51, 'trapdoorOpen');
+  map.plant(42, 52, 'barrel');
+  map.plant(47, 52, 'crateStack');
+  map.plant(49, 57, 'culvert');
+
+  // The causeway from the vault to the south road. `gates.ts` owns the middle.
+  map.draw(29, 54, ['MMMM', 'MMMM']);
+
+  // == WHAT GROWS IN THE HEDGES =============================================
+  // The lanes here are packed so close that the forest between them is only a
+  // hedge thick: a broadleaf needs three tiles by two and fits in thirty-one
+  // places on the whole map. Left alone that is a carpet of one round bush,
+  // which reads as generated just as a lattice of trees does. So what grows in
+  // it is what fits - pines, two tiles across, in small clumps where the hedge
+  // is widest, and tall bushes, one tile across, along the rest - placed by hand
+  // and unevenly, with undergrowth left between. The same pines are swapped in
+  // for some of the border's trees, so the frame stops reading as a fence.
+  map.draw(0, 2, [
+    '       p                 p                    p        p        ',
+    '                                                                ',
+    '                                                                ',
+    '                                       b      b                 ',
+    '    p                                       p                p  ',
+    '                                                                ',
+    ' p       p                                                      ',
+    '                                                                ',
+    '                                                                ',
+    '                                           p                    ',
+    '           p                                                    ',
+    '                                             b  p   p           ',
+    '                                           p                    ',
+    '                                                                ',
+    '                                                             p  ',
+    '                                                                ',
+    '                                           p                    ',
+    '                          b                                     ',
+    '                                                                ',
+    '                                                                ',
+    ' p                 b                                            ',
+    '                                                                ',
+    '                    p                                           ',
+    '                                                                ',
+    '                                                                ',
+    '                                          b                     ',
+    '                                      b         b               ',
+    '       p                                                        ',
+    '                                                             p  ',
+    '                                                                ',
+    '     p                                                          ',
+    '       b          b                                             ',
+    '                                                                ',
+    '                                    p                           ',
+    ' p                                                              ',
+    '                                                                ',
+    '                                                                ',
+    '                                           p                    ',
+    '                                                          p     ',
+    '                                                                ',
+    '                      p                                         ',
+    '                  b                 p                           ',
+    '                                                             p  ',
+    '               b                                                ',
+    '    p                                                           ',
+    '                                                                ',
+    '                                                                ',
+    '                                                                ',
+    ' p          p                    p                              ',
+    '                                                                ',
+    '                                     p                    p     ',
+    '           p                                                    ',
+    '                 p                                              ',
+    '                   b                    p                       ',
+    '                                              p              p  ',
+    '                           p                                    ',
+    '    p                                                           ',
+    '                                                                ',
+    '                                                                ',
+    '                                                                ',
+    '             p                       p           p              ',
+  ]);
 
   return map;
 }
