@@ -19,8 +19,16 @@ import type { WorldEntity } from './npcs';
  * move the ground the player is being charged for.
  *
  * Nothing here knows about Phaser or about time of day: it is handed a frame's
- * milliseconds and answers with the beats that fell inside it, so the rules are
- * held in `npcIdle.test.ts` rather than watched on a screen.
+ * milliseconds and answers with where everybody now stands, so the rules are
+ * held in `npcIdle.test.ts` rather than watched on a screen. That is the same
+ * shape `cutscene/cutscene.ts` has, and deliberately so - but it is not a
+ * cutscene and could not be one. A cutscene is a finite authored list that owns
+ * the frame, locks the player out and stops the raid clock until it is `done`,
+ * and `checkCutscene` caps its self-running time at two seconds. A beat is
+ * endless, runs *while* the player walks, and must never take the frame or a
+ * millisecond of the clock. What the two do share is how a figure is put on the
+ * map: `idleFrames()` answers in fractional tiles exactly as `CutsceneActorFrame`
+ * does, and `WorldScene.placeFigure()` is the one place either of them is drawn.
  */
 
 export interface NpcIdle {
@@ -50,17 +58,34 @@ export interface IdleFigure {
   readonly glances: readonly Direction[];
   /** Milliseconds left before the next beat. */
   readonly untilBeatMs: number;
+  /**
+   * The step being walked: the tile behind the figure, and how far through the
+   * stride it is. A figure owns both ends of its step until it is over, which
+   * is what stops the player being let through the tile it is crossing.
+   */
+  readonly walk: { readonly from: GridPosition; readonly elapsedMs: number } | null;
 }
 
-/** One beat that fell inside a frame: where the figure went, and how it now looks. */
-export interface IdleStep {
+/**
+ * One figure this instant, in fractional tiles - the same answer
+ * `CutsceneActorFrame` gives, so the scene draws both the same way.
+ */
+export interface IdleFigureFrame {
   readonly id: string;
-  readonly from: GridPosition;
-  readonly to: GridPosition;
+  readonly x: number;
+  readonly y: number;
   readonly facing: Direction;
-  /** True when the figure stayed where it was and only turned. */
-  readonly turnedOnly: boolean;
+  /** True while the figure is between two tiles, so it is drawn mid-stride. */
+  readonly striding: boolean;
 }
+
+/**
+ * What a walked tile costs a townsperson, in game time.
+ *
+ * The player's own `STEP_DURATION_MS`, slowed by half: somebody drifting about
+ * their own square should never look like they are going anywhere.
+ */
+export const IDLE_STEP_MS = 300;
 
 export interface AdvanceIdleOptions {
   readonly deltaMs: number;
@@ -119,7 +144,33 @@ export function createIdleFigures(
       beat: idleBeatTiles(entity),
       glances: [entity.facing, ...(entity.idle.glances ?? []).filter((way) => way !== entity.facing)],
       untilBeatMs: Math.max(1, Math.round(entity.idle.beatMs * (0.3 + random() * 0.7))),
+      walk: null,
     }));
+}
+
+/** Where everybody stands this instant, for the scene to draw. */
+export function idleFrames(figures: readonly IdleFigure[]): IdleFigureFrame[] {
+  return figures.map((figure) => {
+    if (!figure.walk) {
+      return { id: figure.id, x: figure.position.x, y: figure.position.y, facing: figure.facing, striding: false };
+    }
+    const gone = Math.min(1, figure.walk.elapsedMs / IDLE_STEP_MS);
+    return {
+      id: figure.id,
+      x: figure.walk.from.x + (figure.position.x - figure.walk.from.x) * gone,
+      y: figure.walk.from.y + (figure.position.y - figure.walk.from.y) * gone,
+      facing: figure.facing,
+      striding: true,
+    };
+  });
+}
+
+/**
+ * The tiles a figure is standing on as far as anything walking into it is
+ * concerned: where it is, and where it is still leaving.
+ */
+export function idleHeldTiles(figure: IdleFigure): readonly GridPosition[] {
+  return figure.walk ? [figure.position, figure.walk.from] : [figure.position];
 }
 
 /**
@@ -134,29 +185,25 @@ export function createIdleFigures(
 export function advanceIdleFigures(
   figures: readonly IdleFigure[],
   options: AdvanceIdleOptions,
-): { readonly figures: IdleFigure[]; readonly steps: readonly IdleStep[] } {
+): IdleFigure[] {
   if (options.frozen || options.deltaMs <= 0) {
-    return { figures: [...figures], steps: [] };
+    return [...figures];
   }
-  const steps: IdleStep[] = [];
-  const next = figures.map((figure) => {
+  return figures.map((figure) => {
+    // A stride finishes whatever else is due: it is already under way, and a
+    // beat that landed on top of it would take the figure off two tiles at once.
+    if (figure.walk) {
+      const elapsedMs = figure.walk.elapsedMs + options.deltaMs;
+      return elapsedMs >= IDLE_STEP_MS
+        ? { ...figure, walk: null, untilBeatMs: figure.idle.beatMs }
+        : { ...figure, walk: { ...figure.walk, elapsedMs } };
+    }
     const untilBeatMs = figure.untilBeatMs - options.deltaMs;
-    if (untilBeatMs > 0) {
-      return { ...figure, untilBeatMs };
-    }
-    const beaten = beatFigure(figure, options);
-    if (beaten.step) {
-      steps.push(beaten.step);
-    }
-    return beaten.figure;
+    return untilBeatMs > 0 ? { ...figure, untilBeatMs } : beatFigure(figure, options);
   });
-  return { figures: next, steps };
 }
 
-function beatFigure(
-  figure: IdleFigure,
-  options: AdvanceIdleOptions,
-): { readonly figure: IdleFigure; readonly step: IdleStep | null } {
+function beatFigure(figure: IdleFigure, options: AdvanceIdleOptions): IdleFigure {
   // The whole interval again, not the overflow: a frame that ran long must not
   // make the next beat arrive early, and test mode hands the world 100ms frames.
   const untilBeatMs = figure.idle.beatMs;
@@ -173,19 +220,19 @@ function beatFigure(
     .map((facing) => ({ to: figure.position, facing }));
   const beat = pick([...steps, ...turns], options.random);
   if (!beat) {
-    // Hemmed in and already looking the only way it looks: nothing happened,
-    // so nothing is said about it.
-    return { figure: { ...figure, untilBeatMs }, step: null };
+    // Hemmed in and already looking the only way it looks: nothing happens.
+    return { ...figure, untilBeatMs };
   }
-  const turnedOnly = sameTile(beat.to, figure.position);
+  if (sameTile(beat.to, figure.position)) {
+    return { ...figure, facing: beat.facing, untilBeatMs };
+  }
+  // The next beat is counted from the far side of the stride, not from here,
+  // so a walk is never followed straight away by another one.
   return {
-    figure: { ...figure, position: beat.to, facing: beat.facing, untilBeatMs },
-    step: {
-      id: figure.id,
-      from: figure.position,
-      to: beat.to,
-      facing: beat.facing,
-      turnedOnly,
-    },
+    ...figure,
+    position: beat.to,
+    facing: beat.facing,
+    untilBeatMs,
+    walk: { from: figure.position, elapsedMs: 0 },
   };
 }

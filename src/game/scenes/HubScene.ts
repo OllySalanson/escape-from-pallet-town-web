@@ -560,8 +560,13 @@ export class HubScene extends Phaser.Scene {
       .join('');
     // The summary chip is always there, gear or no gear: it is the only way to
     // a Pokemon's experience and its moves, and a row whose actions came and
-    // went with what it happened to be holding would hide that.
-    const summary = `<button class="px-window px-chip" data-summary="${stored.id}" data-help="${escapeAttribute(`Read ${stored.pokemon.base.name}'s experience, stats and moves.`)}">Summary</button>`;
+    // went with what it happened to be holding would hide that. Built by
+    // `chip()`, as the boxes' own Move chip beside it is.
+    const summary = this.chip(
+      `data-summary="${stored.id}" data-shows="${stored.id}"`,
+      `Read ${stored.pokemon.base.name}'s experience, stats and moves.`,
+      'Summary',
+    );
     return `<div class="care-strip"><div class="care-options">${summary}${take}${give}</div></div>`;
   }
 

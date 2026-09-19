@@ -45,8 +45,9 @@ import { type WorldEntity } from '../world/npcs';
 import {
   advanceIdleFigures,
   createIdleFigures,
+  idleFrames,
+  idleHeldTiles,
   type IdleFigure,
-  type IdleStep,
 } from '../world/npcIdle';
 import {
   LEDGE_HOP_DURATION_MS,
@@ -382,12 +383,6 @@ export class WorldScene extends Phaser.Scene {
   private stepDurationMs = STEP_DURATION_MS;
   /** True while the step in progress is a ledge hop, so the figure arcs over it. */
   private hopping = false;
-  /**
-   * The tile a figure is walking off, held until its step finishes drawing.
-   * A figure owns both ends of its step for as long as it is between them, so
-   * the player can never be let through the half-vacated tile it is crossing.
-   */
-  private readonly idleVacating = new Map<string, GridPosition>();
   private party = new PokemonParty([new Pokemon(CHARMANDER, 5)]);
   private caughtPokemonStash: Pokemon[] = [];
   private bag = new Bag({ potion: 3, antidote: 1, 'poke-ball': 5, 'great-ball': 1 });
@@ -571,7 +566,6 @@ export class WorldScene extends Phaser.Scene {
     // through a step when it ended: `createEntities` stands them all back on
     // their marks, and a stale vacated tile would be a wall nobody was on.
     this.idleFigures = [];
-    this.idleVacating.clear();
   }
 
   /**
@@ -1120,7 +1114,6 @@ export class WorldScene extends Phaser.Scene {
 
     this.createLedgeLabels();
     this.idleFigures = createIdleFigures(this.currentMap.entities, Math.random);
-    this.idleVacating.clear();
     for (const entity of this.currentMap.entities) {
       if (entity.kind === 'sign') {
         this.createSign(entity);
@@ -1505,12 +1498,8 @@ export class WorldScene extends Phaser.Scene {
    */
   private entityHolds(entity: WorldEntity, tile: GridPosition): boolean {
     const figure = this.idleFigures.find((standing) => standing.id === entity.id);
-    const position = figure?.position ?? entity.position;
-    if (position.x === tile.x && position.y === tile.y) {
-      return true;
-    }
-    const vacating = this.idleVacating.get(entity.id);
-    return vacating !== undefined && vacating.x === tile.x && vacating.y === tile.y;
+    const held: readonly GridPosition[] = figure ? idleHeldTiles(figure) : [entity.position];
+    return held.some((stood) => stood.x === tile.x && stood.y === tile.y);
   }
 
   /**
@@ -1533,15 +1522,14 @@ export class WorldScene extends Phaser.Scene {
       this.pendingHubTransition ||
       this.trainerPrompt !== undefined ||
       this.dialogBox.visible;
-    const advanced = advanceIdleFigures(this.idleFigures, {
+    this.idleFigures = advanceIdleFigures(this.idleFigures, {
       deltaMs,
       frozen,
       isTileFree: (tile) => !this.isBlocked(tile) && !this.isPlayerOn(tile),
       random: Math.random,
     });
-    this.idleFigures = advanced.figures;
-    for (const step of advanced.steps) {
-      this.drawIdleStep(step);
+    for (const frame of idleFrames(this.idleFigures)) {
+      this.placeFigure(frame.id, frame.x, frame.y, frame.facing, { striding: frame.striding });
     }
   }
 
@@ -1553,35 +1541,41 @@ export class WorldScene extends Phaser.Scene {
     );
   }
 
-  private drawIdleStep(step: IdleStep): void {
-    const sprite = this.npcSprites.get(step.id);
+  /**
+   * Puts one figure on the map, in fractional tiles.
+   *
+   * The one place a figure that is not the player is positioned, sorted and
+   * posed, so a cutscene's actor and a townsperson keeping their own schedule
+   * are moved by the same code: both answer in fractional tiles, and both of
+   * them walk a tile on elapsed milliseconds rather than on a tween, which is
+   * what makes a 100ms test-mode frame play the same as six 16ms ones.
+   */
+  private placeFigure(
+    id: string,
+    x: number,
+    y: number,
+    facing: Direction,
+    options: { readonly visible?: boolean; readonly striding?: boolean } = {},
+  ): void {
+    const sprite = this.npcSprites.get(id);
     if (!sprite) {
       return;
     }
-    if (step.turnedOnly) {
-      this.faceFigure(step.id, step.facing);
+    sprite
+      .setPosition(x * TILE_SIZE, y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
+      .setDepth(atRow(FIGURE_BAND, y))
+      .setVisible(options.visible ?? true);
+    const appearance = this.npcAppearances.get(id);
+    if (!appearance) {
       return;
     }
-    const appearance = this.npcAppearances.get(step.id);
-    if (appearance) {
-      // Two frames, not an animation: a one-tile shift is a single stride, and
-      // a looping cycle on it reads as someone jogging on the spot.
-      sprite.setFrame(getWalkFrames(step.facing, appearance.sheetColumns)[0]);
-    }
-    this.idleVacating.set(step.id, step.from);
-    sprite.setDepth(atRow(FIGURE_BAND, Math.max(step.from.y, step.to.y)));
-    this.tweens.add({
-      targets: sprite,
-      x: step.to.x * TILE_SIZE,
-      y: step.to.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
-      duration: STEP_DURATION_MS,
-      ease: 'Linear',
-      onComplete: () => {
-        this.idleVacating.delete(step.id);
-        sprite.setDepth(atRow(FIGURE_BAND, step.to.y));
-        this.faceFigure(step.id, step.facing);
-      },
-    });
+    // One stride frame rather than an animation: a shift of a single tile is
+    // one pace, and a looping cycle on it reads as somebody jogging on the spot.
+    sprite.setFrame(
+      options.striding
+        ? getWalkFrames(facing, appearance.sheetColumns)[0]
+        : worldCharacterIdleFrame(appearance, facing),
+    );
   }
 
   private faceFigure(id: string, facing: Direction): void {
@@ -2660,7 +2654,6 @@ export class WorldScene extends Phaser.Scene {
     this.npcSprites.clear();
     this.npcAppearances.clear();
     this.idleFigures = [];
-    this.idleVacating.clear();
     this.lootSprites.clear();
     this.poiSprites.clear();
     this.poiLabels.clear();

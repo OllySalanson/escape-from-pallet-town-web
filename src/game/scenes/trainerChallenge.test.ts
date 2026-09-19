@@ -110,10 +110,9 @@ function facingMaya() {
     activatedPoiIds: new Set<string>(),
     npcSprites: new Map(),
     npcAppearances: new Map(),
-    // Townsfolk keeping a beat, and whoever is mid-step: class fields do not
-    // run for an Object.create'd scene, and collision reads both.
+    // Townsfolk keeping a beat: class fields do not run for an Object.create'd
+    // scene, and collision reads where each of them stands.
     idleFigures: [],
-    idleVacating: new Map(),
     lootSprites: new Map(),
     poiSprites: new Map(),
     poiLabels: new Map(),

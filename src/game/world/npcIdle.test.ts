@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { GridPosition } from '../movement/gridMovement';
 import {
+  IDLE_STEP_MS,
   advanceIdleFigures,
   createIdleFigures,
   idleBeatTiles,
+  idleFrames,
+  idleHeldTiles,
   stepDirection,
   type IdleFigure,
 } from './npcIdle';
@@ -76,32 +79,83 @@ describe('townsfolk keeping their own time', () => {
   });
 
   it('walks onto a beat tile and turns the way it went', () => {
-    const { figures, steps } = advanceIdleFigures(due(townsperson()), {
+    const figures = advanceIdleFigures(due(townsperson()), {
       deltaMs: 16,
       frozen: false,
       isTileFree: anywhere,
       random: () => 0,
     });
 
-    expect(steps).toEqual([
-      { id: 'walker', from: { x: 4, y: 4 }, to: { x: 5, y: 4 }, facing: 'right', turnedOnly: false },
-    ]);
     expect(figures[0].position).toEqual({ x: 5, y: 4 });
     expect(figures[0].facing).toBe('right');
-    // The whole interval again, not the leftover of the frame that was long:
-    // test mode hands the world 100ms frames and a beat must not creep early.
-    expect(figures[0].untilBeatMs).toBe(1000);
+    expect(figures[0].walk).toEqual({ from: { x: 4, y: 4 }, elapsedMs: 0 });
+  });
+
+  /**
+   * A stride is elapsed milliseconds, not a tween, so a 100ms test-mode frame
+   * covers exactly as much of it as six 16ms ones - the rule `stepClock.ts`
+   * holds the player's own walk to, and `cutscene.ts` its actors'.
+   */
+  it('walks a tile on elapsed time, at the same pace however the frames fall', () => {
+    const step = (figures: IdleFigure[], deltaMs: number, ticks: number): IdleFigure[] => {
+      let walked = figures;
+      for (let tick = 0; tick < ticks; tick += 1) {
+        walked = advanceIdleFigures(walked, { deltaMs, frozen: false, isTileFree: anywhere, random: () => 0 });
+      }
+      return walked;
+    };
+    const started = advanceIdleFigures(due(townsperson()), {
+      deltaMs: 0.0001,
+      frozen: false,
+      isTileFree: anywhere,
+      random: () => 0,
+    });
+
+    const coarse = idleFrames(step(started, 100, 1))[0];
+    const fine = idleFrames(step(started, 100 / 6, 6))[0];
+    expect(coarse.x).toBeCloseTo(fine.x, 6);
+    expect(coarse.striding).toBe(true);
+    // A third of the way across, so the figure is between its two tiles.
+    expect(coarse.x).toBeCloseTo(4 + 100 / IDLE_STEP_MS, 6);
+
+    // And it is over when the stride is, with the next beat counted from there.
+    const landed = step(started, IDLE_STEP_MS, 1);
+    expect(landed[0].walk).toBeNull();
+    expect(landed[0].untilBeatMs).toBe(1000);
+    expect(idleFrames(landed)[0]).toEqual({ id: 'walker', x: 5, y: 4, facing: 'right', striding: false });
+  });
+
+  /**
+   * A figure owns both ends of its step until it is over: the player must never
+   * be let through the tile it is crossing.
+   */
+  it('holds the tile it is leaving until the stride is done', () => {
+    const walking = advanceIdleFigures(due(townsperson()), {
+      deltaMs: 16,
+      frozen: false,
+      isTileFree: anywhere,
+      random: () => 0,
+    });
+
+    expect(idleHeldTiles(walking[0])).toEqual([{ x: 5, y: 4 }, { x: 4, y: 4 }]);
+    const landed = advanceIdleFigures(walking, {
+      deltaMs: IDLE_STEP_MS,
+      frozen: false,
+      isTileFree: anywhere,
+      random: () => 0,
+    });
+    expect(idleHeldTiles(landed[0])).toEqual([{ x: 5, y: 4 }]);
   });
 
   it('turns on the spot when the way is taken rather than forcing the step', () => {
-    const { figures, steps } = advanceIdleFigures(due(townsperson()), {
+    const figures = advanceIdleFigures(due(townsperson()), {
       deltaMs: 16,
       frozen: false,
       isTileFree: (tile: GridPosition) => !(tile.x === 5 && tile.y === 4),
       random: () => 0,
     });
 
-    expect(steps[0].turnedOnly).toBe(true);
+    expect(figures[0].walk).toBeNull();
     expect(figures[0].position).toEqual({ x: 4, y: 4 });
     expect(figures[0].facing).toBe('left');
   });
@@ -123,32 +177,32 @@ describe('townsfolk keeping their own time', () => {
         isTileFree: anywhere,
         random: () => rolls[index++ % rolls.length],
       });
-      figures = advanced.figures.map((figure) => ({ ...figure, untilBeatMs: 0 }));
-      beats.push(advanced.steps[0].turnedOnly ? `turned ${advanced.steps[0].facing}` : 'stepped');
+      beats.push(advanced[0].walk ? 'stepped' : `turned ${advanced[0].facing}`);
+      figures = advanced.map((figure) => ({ ...figure, walk: null, untilBeatMs: 0 }));
     }
 
     expect(beats.filter((beat) => beat === 'stepped').length).toBe(1);
     expect(beats.filter((beat) => beat.startsWith('turned')).length).toBe(2);
   });
 
-  it('says nothing at all for a figure hemmed in with only one way to look', () => {
-    const { steps, figures } = advanceIdleFigures(
+  it('does nothing at all for a figure hemmed in with only one way to look', () => {
+    const figures = advanceIdleFigures(
       due(townsperson({ idle: { roam: [{ x: 5, y: 4 }], beatMs: 1000 } })),
       { deltaMs: 16, frozen: false, isTileFree: () => false, random: () => 0 },
     );
 
-    expect(steps).toEqual([]);
+    expect(figures[0].walk).toBeNull();
     expect(figures[0].position).toEqual({ x: 4, y: 4 });
     expect(figures[0].untilBeatMs).toBe(1000);
   });
 
   it('turns on the spot for anyone with nowhere to drift', () => {
-    const { steps, figures } = advanceIdleFigures(
+    const figures = advanceIdleFigures(
       due(townsperson({ idle: { glances: ['up'], beatMs: 1000 } })),
       { deltaMs: 16, frozen: false, isTileFree: anywhere, random: () => 0 },
     );
 
-    expect(steps[0].turnedOnly).toBe(true);
+    expect(figures[0].walk).toBeNull();
     expect(figures[0].facing).toBe('up');
   });
 
@@ -156,26 +210,25 @@ describe('townsfolk keeping their own time', () => {
   it('stops dead while there is something on screen to read', () => {
     const before = due(townsperson());
 
-    const { figures, steps } = advanceIdleFigures(before, {
+    const figures = advanceIdleFigures(before, {
       deltaMs: 5000,
       frozen: true,
       isTileFree: anywhere,
       random: () => 0,
     });
 
-    expect(steps).toEqual([]);
     expect(figures).toEqual(before);
   });
 
   it('counts a frame down rather than beating on every one of them', () => {
-    const { figures, steps } = advanceIdleFigures(createIdleFigures([townsperson()], () => 1), {
+    const figures = advanceIdleFigures(createIdleFigures([townsperson()], () => 1), {
       deltaMs: 16,
       frozen: false,
       isTileFree: anywhere,
       random: () => 0,
     });
 
-    expect(steps).toEqual([]);
+    expect(figures[0].walk).toBeNull();
     expect(figures[0].untilBeatMs).toBe(1000 - 16);
   });
 });
