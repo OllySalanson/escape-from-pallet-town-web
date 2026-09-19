@@ -290,14 +290,14 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '                               ',
     '                               ',
     '                               ',
-    '                               ',
+    '       T                       ',
     '                               ',
     '      ,,,,,,,,, ,,,,,          ',
     '      ,,     ,,,,,,,,          ',
     '    T ,,, T   ,    ,,          ',
     '      ,,,     ,    ........    ',
-    '    T ,,     ,,    ........    ',
-    '  ,,,,,,     ,     ........    ',
+    '    T ,,  T  ,, T  ........    ',
+    '  ,,,,,,     ,  t  ........    ',
     '  ,,,        ,,,,  ........    ',
   ]);
   // The mill's own doorstep, a row south of the rest of its yard.
@@ -342,7 +342,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '    "#"#"#"#"#"#    ',
     '    ,,,,,,,,,,      ',
     '            ,,      ',
-    '        T   ,,   T  ',
+    '     T  T   ,,   T  ',
     'FFFFFFFFFFFF,,FFFFFF',
   ]);
 
@@ -402,7 +402,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ' ggggCggg           ,,      ',
     ' ggggCggg T  T   ,,,,,   T  ',
     '  ,,,,,,,,,      ,,         ',
-    '   ,     CMMMMMv,,,         ',
+    '   ,     CMMMMMv,,,   T     ',
     '   ,     vMMMMMv            ',
     '   ,     vMMMMMv            ',
     '  ,,,,,,,vvvvvvv            ',

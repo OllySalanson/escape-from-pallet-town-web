@@ -47,6 +47,15 @@ export interface CaptionRequest {
    * one that re-decided every frame would flicker between two equal answers.
    */
   readonly held?: number;
+  /**
+   * True for a caption that prices a step rather than naming a place: a
+   * trainer's watch, whose third line is that the fight cannot be left. It is
+   * seated before every caption that only names something, whatever order they
+   * were asked for in. A boss stands at the gate they hold, so their warning
+   * and the gate's name want the same ground - and seated in the order they
+   * were created, the name took it and the warning went undrawn.
+   */
+  readonly warns?: boolean;
 }
 
 export interface CaptionSurroundings {
@@ -226,8 +235,23 @@ export function explainSeats(
 }
 
 /**
+ * The order captions are seated in, as indices into the requests: warnings
+ * first, then names, each in the order they were asked for. Exported so a tool
+ * explaining a missing caption can name what was seated before it.
+ */
+export function seatingOrder(requests: readonly CaptionRequest[]): number[] {
+  const asked = requests.map((_, index) => index);
+  return [
+    ...asked.filter((index) => requests[index].warns === true),
+    ...asked.filter((index) => requests[index].warns !== true),
+  ];
+}
+
+/**
  * Seats every caption on the screen. Order is priority: an earlier request is
- * seated first and a later one has to fit around it.
+ * seated first and a later one has to fit around it - and a warning is earlier
+ * than any name (`seatingOrder`). The placements come back in the order the
+ * requests were made.
  */
 export function placeCaptions(
   requests: readonly CaptionRequest[],
@@ -241,8 +265,9 @@ export function placeCaptions(
     keepClear: [...surroundings.keepClear, ...everySubject],
   };
   const seated: Rect[] = [];
+  const placements: CaptionPlacement[] = [];
 
-  return requests.map((request) => {
+  const place = (request: CaptionRequest): CaptionPlacement => {
     const candidates = candidatesFor(request, surroundings.bounds);
     const rectOf = (candidate: Candidate): Rect => ({
       x: candidate.x,
@@ -273,7 +298,12 @@ export function placeCaptions(
 
     seated.push(rectOf(candidates[index]));
     return { ...candidates[index], candidate: index, visible: true };
-  });
+  };
+
+  for (const index of seatingOrder(requests)) {
+    placements[index] = place(requests[index]);
+  }
+  return placements;
 }
 
 /**

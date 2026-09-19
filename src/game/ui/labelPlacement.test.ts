@@ -6,6 +6,7 @@ import {
   explainSeats,
   placeCaptions,
   placeDialog,
+  seatingOrder,
   type CaptionRequest,
   type CaptionSurroundings,
   type Rect,
@@ -237,6 +238,68 @@ describe('where a map caption is allowed to sit', () => {
 
     expect(seat({}, { furniture: [wall] }).visible).toBe(false);
     expect(seat({ width: 400 }).visible).toBe(false);
+  });
+
+  /**
+   * A boss stands at the gate they hold. Seated in the order they were made,
+   * the gate's name took the one clear seat and `CANNOT BE FLED` went undrawn -
+   * on two of the Floodplain's three doors.
+   */
+  describe('a warning and a name that want the same ground', () => {
+    // Two subjects side by side, walled in below and beside: the only clear
+    // ground is the row above them, and it holds one caption.
+    const gate = tile(136, 112);
+    const keeper = tile(168, 112);
+    const walledIn = { keepClear: [{ x: 0, y: 110, width: 320, height: 130 }] };
+
+    it('seats the warning first, whatever order they were asked for in', () => {
+      const [name, warning] = placeCaptions(
+        [request({ subject: gate }), request({ subject: keeper, warns: true })],
+        around(walledIn),
+      );
+
+      expect(warning.visible).toBe(true);
+      expect(warning.seat).toBe('above');
+      expect(name.visible).toBe(false);
+    });
+
+    it('is decided by order alone between two names, as it always was', () => {
+      const [first, second] = placeCaptions(
+        [request({ subject: gate }), request({ subject: keeper })],
+        around(walledIn),
+      );
+
+      expect(first.visible).toBe(true);
+      expect(second.visible).toBe(false);
+    });
+
+    it('hands the placements back in the order they were asked for', () => {
+      const [name, warning] = placeCaptions(
+        [request({ subject: gate }), request({ subject: keeper, warns: true })],
+        around(),
+      );
+
+      // The warning is centred over the keeper, and it is the name that gave
+      // up the row to fit around it - so each answer is its own request's.
+      expect(warning.seat).toBe('above');
+      expect(warning.x + 30).toBe(keeper.x + TILE / 2);
+      expect(name.seat).toBe('below');
+      expect(name.x + 30).toBe(gate.x + TILE / 2);
+      expect(overlaps(rectOf(name), grown(rectOf(warning), NEIGHBOUR_GAP))).toBe(false);
+    });
+
+    it('keeps the order they were asked for in within warnings and within names', () => {
+      const asked = [request(), request({ warns: true }), request(), request({ warns: true })];
+
+      expect(seatingOrder(asked)).toEqual([1, 3, 0, 2]);
+    });
+
+    it('buys a warning no ground a name could not have: it is still never drawn over a person', () => {
+      const everyone: Rect = { x: 0, y: 0, width: 320, height: 240 };
+
+      expect(seat({ warns: true }, { keepClear: [everyone] }).visible).toBe(false);
+      expect(seat({ warns: true }, { canopy: [everyone] }).visible).toBe(false);
+    });
   });
 
   it('keeps the seat it holds while that seat is clear, so a walking camera cannot make it flicker', () => {

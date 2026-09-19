@@ -973,6 +973,9 @@ export class WorldScene extends Phaser.Scene {
         LABEL_TONES.watch,
         atRow(CAPTION_BAND, encounter.position.y),
         placement,
+        // The one caption that is a price rather than a name, so it is seated
+        // before the gate its keeper stands at and the exit beside that.
+        true,
       ),
     );
   }
