@@ -43,7 +43,7 @@ import {
 import { type WorldEntity } from '../world/npcs';
 import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { DialogBox } from '../ui/DialogBox';
-import { WORLD_ICONS, iconTextureKey } from '../ui/icons';
+import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter } from '../world/wildEncounters';
 import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
@@ -1132,7 +1132,7 @@ export class WorldScene extends Phaser.Scene {
         .image(
           loot.position.x * TILE_SIZE + TILE_SIZE / 2,
           loot.position.y * TILE_SIZE + TILE_SIZE / 2,
-          iconTextureKey(WORLD_ICONS.supplyCrate),
+          iconTextureKey(itemIconName(loot.itemId)),
         )
         .setDepth(atRow(MARKER_BAND, loot.position.y));
       this.lootSprites.set(loot.id, marker);
