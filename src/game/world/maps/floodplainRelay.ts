@@ -271,15 +271,17 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '                               ',
     '                               ',
     '      ,,,,,,,,, ,,,,,          ',
-    '      ,,     ,,,,,,,,,,.....   ',
-    '      ,,     ,,    .........   ',
-    '      ,,     ,,    .........   ',
-    '      ,,     ,,    .........   ',
-    '  ,,,,,,     ,,        .....   ',
-    '  ,,,        ,,,,              ',
+    '      ,,     ,,,,,,,,          ',
+    '      ,,     ,,    ,,          ',
+    '      ,,     ,,    ........    ',
+    '      ,,     ,,    ........    ',
+    '  ,,,,,,     ,,    ........    ',
+    '  ,,,        ,,,,  ........    ',
   ]);
-  map.plant(53, 23, 'house');
-  map.plant(50, 24, 'haystack');
+  // The mill's own doorstep, a row south of the rest of its yard.
+  map.draw(49, 29, ['........']);
+  map.plant(52, 25, 'house');
+  map.plant(50, 26, 'bigStump');
 
   // The gatehouse in the race, and the stone that runs under it. Nothing else
   // crosses the race: the water either side of these three tiles is the wall.
@@ -287,24 +289,26 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(45, 15, 'gatehouse');
 
   // == THE ORCHARD - the east bank, south ==================================
-  // Planted in rows, because an orchard is, and the rows are still there. One
-  // lane snakes down through them - out along a row, round its end, back
-  // along the next - so the only straight lines on this map never run far.
+  // Planted in rows, because an orchard is, and the rows are still there:
+  // fruit bushes on mown turf, a lane between each pair. It is the one place
+  // on this map that is regular on purpose, which is what says somebody
+  // planted it. Alternate rows are set half a step over, so no gap lines up
+  // with the next and the rows can be threaded but never run.
   map.draw(41, 29, [
     '    ,,              ',
     '    ,,,,,,,,,,      ',
-    '    ........,,      ',
-    '  T o..o..o.,,      ',
-    '      ,,,,,,,,      ',
-    '      ,,........    ',
-    '      ,,.o..o...    ',
+    '    #"#"#"#"#"#"    ',
     '      ,,,,,,,,,,    ',
-    '      ........,,    ',
-    '      o..o..o.,,    ',
-    '        ,,,,,,,,    ',
-    '        ,,......    ',
-    '        ,,.o..o.    ',
-    '        ,,,,,,,,    ',
+    '    "#"#"#"#"#"#    ',
+    '    ,,,,,,,,,,      ',
+    '    #"#"#"#"#"#"    ',
+    '      ,,,,,,,,,,    ',
+    '    "#"#"#"#"#"#    ',
+    '    ,,,,,,,,,,      ',
+    '    #"#"#"#"#"#"    ',
+    '      ,,,,,,,,,,    ',
+    '    "#"#"#"#"#"#    ',
+    '    ,,,,,,,,,,      ',
     '            ,,      ',
     '            ,,      ',
     'FFFFFFFFFFFF,,FFFFFF',

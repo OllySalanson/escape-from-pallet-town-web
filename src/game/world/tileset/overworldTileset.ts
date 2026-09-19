@@ -314,7 +314,8 @@ const PROPS = {
   produceStall: block('produce stall', 23, 20, 3, 2),
   /** Four crates of produce in a row - what a stall puts out the front. */
   produce: block('produce crates', 26, 20, 4, 2),
-  haystack: block('haystack', 31, 3, 2, 2),
+  /** A felled tree's stump, roots and all - two tiles across. */
+  bigStump: block('stump', 31, 3, 2, 2),
   /** A banner on a pole - the relay flew them along the causeway. */
   banner: block('banner', 5, 27, 1, 2),
   /** Two of them side by side, for either hand of a gate. */

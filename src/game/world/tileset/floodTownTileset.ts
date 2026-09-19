@@ -46,7 +46,7 @@ const CHOSEN = [
   'produce',
   'produceStall',
   'stallCounter',
-  'haystack',
+  'bigStump',
   'banner',
   'bannerPair',
   'flag',
