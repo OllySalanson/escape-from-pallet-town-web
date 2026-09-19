@@ -7,3 +7,5 @@ re-implements what the game does can disagree with it, and this one cannot.
 
 - `tileset/` - reading a tile sheet, and drawing what the game draws. See
   `docs/tilesets/README.md`.
+- `playtest/` - a headless browser for one verification session, and a whole raid
+  played through it. See `playtest/README.md`.

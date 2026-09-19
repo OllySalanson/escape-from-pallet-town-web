@@ -25,6 +25,19 @@ Then open the local Vite URL in your browser.
 
 CI runs those same checks on every push and pull request.
 
+The test suite runs on four workers so that several checkouts can run it at once
+on one machine; `VITEST_MAX_WORKERS=12 npm run test` gives it the whole box.
+
+### Test mode
+
+`?testmode=1` on the dev server runs the game on the Canvas renderer at ten frames
+a second and adds `pauseLoop()`, `stepFrames(n)` and `resumeLoop()` to
+`window.__escapeFromPalletTownGame__`, for automated checks that drive the game
+in a headless browser. `?testmode=pixels` keeps WebGL for screenshots. Neither
+changes a rule of the game, a production build ignores both, and
+[tools/playtest/README.md](tools/playtest/README.md) has the driver, the launch
+recipe and what each mode costs.
+
 ## Milestone roadmap
 
 - v1 (this PR): walkable overworld slice with reused original art assets

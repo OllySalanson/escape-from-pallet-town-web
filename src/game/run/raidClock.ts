@@ -8,9 +8,10 @@
  *
  * Measured on the Floodplain Relay, the area every new save deploys into:
  *
- * - A step is `STEP_DURATION_MS` of animation plus a frame to finish it and a
- *   frame to plan the next one, so a tile costs about 0.17s at 60fps, and
- *   measured about 0.23s in a headless browser.
+ * - A tile costs `STEP_DURATION_MS` (0.15s) of held walking at any frame rate -
+ *   `src/game/movement/stepClock.ts`. When this was measured a step could only
+ *   end on a frame, so it was 0.15s at 60fps and about 0.23s in a headless
+ *   browser; the walking figures below were taken at the slower of those.
  * - Insertion (15,3) to the contract (11,23) is 41 tiles, and the contract to the
  *   South Gate is 12. The whole beeline is 53 tiles: about 12 seconds of walking.
  *   (It was 33 tiles before the map was redrawn; the contract now sits three

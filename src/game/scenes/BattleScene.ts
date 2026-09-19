@@ -51,6 +51,7 @@ import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../d
 import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { GAME_FONT } from '../ui/gameFont';
 import { CAPTION_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
+import { KeyPresses } from '../input/KeyPresses';
 import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
@@ -171,6 +172,8 @@ export class BattleScene extends Phaser.Scene {
   private mode: CommandMode = 'main';
   private selectedCommand = 0;
   private commandContainer!: Phaser.GameObjects.Container;
+  /** Every `JustDown` this scene would ask goes through here - see `KeyPresses`. */
+  private readonly keyPresses = new KeyPresses(() => this.game.loop.frame);
   private confirmKey!: Phaser.Input.Keyboard.Key;
   private leftKey!: Phaser.Input.Keyboard.Key;
   private rightKey!: Phaser.Input.Keyboard.Key;
@@ -333,6 +336,14 @@ export class BattleScene extends Phaser.Scene {
     this.downKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
     this.backKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.BACKSPACE);
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.goBack());
+    this.keyPresses.watch([
+      this.confirmKey,
+      this.leftKey,
+      this.rightKey,
+      this.upKey,
+      this.downKey,
+      this.backKey,
+    ]);
     this.input.keyboard!.on?.('keydown-M', () => audioManager.toggleMute());
     this.mode = 'events';
     this.dialog.showMessages(
@@ -352,23 +363,23 @@ export class BattleScene extends Phaser.Scene {
   public update(_time: number, delta: number): void {
     this.dialog.update(delta);
     if (this.mode === 'events' || this.mode === 'finished') {
-      if (Phaser.Input.Keyboard.JustDown(this.confirmKey)) {
+      if (this.keyPresses.justPressed(this.confirmKey)) {
         this.confirm();
       }
       return;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.backKey)) {
+    if (this.keyPresses.justPressed(this.backKey)) {
       this.goBack();
-    } else if (Phaser.Input.Keyboard.JustDown(this.leftKey)) {
+    } else if (this.keyPresses.justPressed(this.leftKey)) {
       this.moveSelection('left');
-    } else if (Phaser.Input.Keyboard.JustDown(this.rightKey)) {
+    } else if (this.keyPresses.justPressed(this.rightKey)) {
       this.moveSelection('right');
-    } else if (Phaser.Input.Keyboard.JustDown(this.upKey)) {
+    } else if (this.keyPresses.justPressed(this.upKey)) {
       this.moveSelection('up');
-    } else if (Phaser.Input.Keyboard.JustDown(this.downKey)) {
+    } else if (this.keyPresses.justPressed(this.downKey)) {
       this.moveSelection('down');
-    } else if (Phaser.Input.Keyboard.JustDown(this.confirmKey)) {
+    } else if (this.keyPresses.justPressed(this.confirmKey)) {
       this.confirm();
     }
   }

@@ -12,6 +12,15 @@ import { describe, expect, it, vi } from 'vitest';
 class FakeKey {
   public isDown = false;
   public justDown = false;
+  private readonly listeners: Array<() => void> = [];
+  public on(_event: string, listener: () => void): this {
+    this.listeners.push(listener);
+    return this;
+  }
+  /** A press that is down and up again before any frame reads the key. */
+  public tap(): void {
+    this.listeners.forEach((listener) => listener());
+  }
 }
 
 vi.mock('phaser', () => ({
@@ -141,6 +150,7 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
         worldView: { left: 0, right: BASE_STAGE_WIDTH },
       },
     },
+    game: { loop: { frame: 0 } },
     input: {
       keyboard: {
         addCapture: vi.fn(),
@@ -536,4 +546,75 @@ describe('a raid carried through a battle and back', () => {
       expect(internals.dialogBox.visible).toBe(false);
     },
   );
+});
+
+/**
+ * Walking is the one thing the world times for itself, and it shares this file's
+ * harness: both rules below are about what a frame is allowed to lose.
+ */
+describe('walking at any frame rate', () => {
+  const enterTownSquare = (): {
+    scene: WorldScene;
+    controls: Record<string, FakeKey>;
+    internals: { currentTile: { x: number; y: number }; targetTile: { x: number; y: number } | null };
+    game: { loop: { frame: number } };
+  } => {
+    const controls = makeControls();
+    const scene = new WorldScene();
+    attachSceneStubs(scene, controls);
+    startRaid(scene, new RunManager(), 'town-square', 2);
+    return {
+      scene,
+      controls,
+      internals: scene as unknown as {
+        currentTile: { x: number; y: number };
+        targetTile: { x: number; y: number } | null;
+      },
+      game: (scene as unknown as { game: { loop: { frame: number } } }).game,
+    };
+  };
+
+  it('takes the step for a press that is already up again when the frame reads it', () => {
+    const { scene, controls, internals } = enterTownSquare();
+    const spawn = { ...internals.currentTile };
+
+    controls.right.tap();
+    expect(controls.right.isDown).toBe(false);
+    scene.update(0, 100);
+
+    expect(internals.targetTile).toEqual({ x: spawn.x + 1, y: spawn.y });
+  });
+
+  it('does not keep that press for a later frame to walk on', () => {
+    const { scene, controls, internals, game } = enterTownSquare();
+
+    controls.right.tap();
+    game.loop.frame += 1;
+    scene.update(0, 100);
+
+    expect(internals.targetTile).toBeNull();
+  });
+
+  it('charges a held walk the same game time at ten frames a second as at sixty', () => {
+    const gameTimeToWalk = (frameMs: number, tiles: number): number => {
+      const { scene, controls, internals, game } = enterTownSquare();
+      const goal = internals.currentTile.x + tiles;
+      controls.right.isDown = true;
+      let elapsedMs = 0;
+      while (internals.currentTile.x < goal && elapsedMs < 5_000) {
+        game.loop.frame += 1;
+        scene.update(0, frameMs);
+        elapsedMs += frameMs;
+      }
+      expect(internals.currentTile.x).toBe(goal);
+      return elapsedMs;
+    };
+
+    // One frame to take the key, then 150ms a tile, landing on the next frame.
+    // Before the overflow was carried, two tiles cost 500ms at ten frames a second.
+    const atSixty = gameTimeToWalk(1000 / 60, 2);
+    expect(atSixty).toBeGreaterThanOrEqual(300);
+    expect(atSixty).toBeLessThanOrEqual(300 + 2 * (1000 / 60) + 0.001);
+    expect(gameTimeToWalk(100, 2)).toBe(100 + 300);
+  });
 });

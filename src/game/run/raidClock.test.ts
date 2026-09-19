@@ -1,3 +1,4 @@
+import { STEP_DURATION_MS } from '../movement/stepClock';
 import { describe, expect, it } from 'vitest';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { HUNTER_TIERS } from '../world/hunter';
@@ -41,8 +42,8 @@ function walkingDistance(
   return Number.POSITIVE_INFINITY;
 }
 
-/** The step cadence the duration was measured against: animation plus two frames. */
-const STEP_COST_MS = 130 + 1000 / 60 * 2;
+/** What a walked tile costs the clock - at any frame rate, since `stepClock.ts`. */
+const STEP_COST_MS = STEP_DURATION_MS;
 
 describe('raid duration', () => {
   it('is long enough to walk the Floodplain Relay contract route several times over', () => {

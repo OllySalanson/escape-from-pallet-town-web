@@ -9,7 +9,7 @@ import { PartyScene } from './scenes/PartyScene';
 import { StarterScene } from './scenes/StarterScene';
 import { TitleScene } from './scenes/TitleScene';
 import { WorldScene } from './scenes/WorldScene';
-import { TEST_MODE_LOOP, isTestModeRequested } from './dev/testMode';
+import { TEST_MODE_LOOP, requestedTestMode, type TestMode } from './dev/testMode';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, computeStage } from './display/stage';
 
 const BASE_SCENES = [
@@ -27,7 +27,7 @@ const BASE_SCENES = [
 
 export function createGameConfig(
   developmentScenes: Phaser.Types.Scenes.SceneType[] = [],
-  testMode = isTestModeRequested(),
+  testMode: TestMode = requestedTestMode(),
 ): Phaser.Types.Core.GameConfig {
   // Sized once here so the first frame is already correct; `watchViewport` owns
   // it from then on. FIT is deliberately not used: it keeps one backing-store
@@ -41,9 +41,9 @@ export function createGameConfig(
   return {
     // Test mode changes how often and how the game is drawn, and nothing else. A
     // headless browser on a machine with no GPU runs WebGL in software, which was
-    // most of the cost of a frame; the Canvas renderer draws the same pixels.
-    type: testMode ? Phaser.CANVAS : Phaser.AUTO,
-    ...(testMode ? { fps: { ...TEST_MODE_LOOP } } : {}),
+    // most of the cost of a frame; `pixels` pays it, because Canvas draws no tints.
+    type: testMode === 'logic' ? Phaser.CANVAS : Phaser.AUTO,
+    ...(testMode === 'off' ? {} : { fps: { ...TEST_MODE_LOOP } }),
     parent: 'app',
     width: stage.width,
     height: stage.height,

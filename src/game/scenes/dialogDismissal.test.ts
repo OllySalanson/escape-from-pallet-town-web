@@ -1,3 +1,5 @@
+import { KeyPresses } from '../input/KeyPresses';
+import { PressLatch } from '../input/pressLatch';
 import { describe, expect, it, vi } from 'vitest';
 
 interface StubKey {
@@ -40,6 +42,10 @@ function sceneWithHunterWarning() {
     dialogBox,
     unsolicitedDialog: true,
     spentPresses: new SpentPresses(),
+    // `readInput` also honours a press latched for the frame that processed it.
+    directionPresses: new PressLatch(),
+    keyPresses: new KeyPresses(() => 0),
+    game: { loop: { frame: 0 } },
   });
   const internals = scene as unknown as {
     handleDialogInput(): void;
