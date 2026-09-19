@@ -374,6 +374,9 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // and the statue stands in one of the gaps, looking into the court. Moated on
   // two sides by the river and on the third by the race, so the only dry way in
   // is under the gatehouse - until the water drops.
+  // The one tile of stone south of the neck under the tower is the Signal Fire's:
+  // the exit stood in the neck itself, and an open exit takes whoever steps on
+  // it, so the walk from the court to the risen causeway ended the raid.
   map.draw(43, 3, [
     '    ...           ',
     '    ...  T        ',
@@ -383,7 +386,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     'MMMM...MMMMMMM    ',
     '   M...CMMMMMMC   ',
     '   MMMMMMMM C     ',
-    '       MM         ',
+    '     M MM         ',
     '       MM         ',
     '       MM         ',
     '   MMMMMM         ',
@@ -414,7 +417,8 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // the cellar trapdoor in the middle of it thrown open - somebody has been
   // here since the flood. The flood is still here too: south of the yard the
   // ground is a pond in its reeds, with the culvert mouth on its bank that the
-  // water came in by and that the way out goes through. The path round to it
+  // water came in by and that the way out goes through - the reeds stop at its
+  // mouth, so the exit is the end of them and nothing lies past it. The path round to it
   // leaves the yard by its own side, so the yard has two ways out. The way back
   // west to the causeway is a footpath, one tile wide: no cart ever went there.
   map.draw(33, 46, [
@@ -429,7 +433,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     'MM  ,,     ,,               ',
     'MM,,,,     ,,               ',
     '    ,,,,,,,,,               ',
-    '        gWWWWWWg            ',
+    '        gWWWWWW             ',
     ' T      gWWWWWWg            ',
     '        gggggggg            ',
   ]);

@@ -226,6 +226,57 @@ export function unreachableTiles(
   );
 }
 
+/** A named piece of a map: one tile, or a run of them that is one place - a gate, a doorway. */
+export interface NamedGround {
+  readonly what: string;
+  readonly tiles: readonly GridPosition[];
+}
+
+/**
+ * Every walk between two named places that is longer - or gone - once `shut` is
+ * taken off the map.
+ *
+ * It is the question to ask of a map's exits: an open exit takes whoever steps
+ * on it, so to a player who is not leaving it is a wall, and a way between two
+ * places that only exists over one is a way that ends the raid. A place of
+ * several tiles is as near as its nearest tile, which is what lets an exit stand
+ * at the side of a two-tile lane: the lane is still as short as it was.
+ */
+export function walksLengthenedBy(
+  collision: CollisionGrid,
+  shut: ReadonlySet<string>,
+  places: readonly NamedGround[],
+  alsoBlocked: ReadonlySet<string> = new Set(),
+): string[] {
+  const without = new Set([...shut, ...alsoBlocked]);
+  const nearest = (distances: readonly number[][][], tiles: readonly GridPosition[]): number => {
+    const reached = distances
+      .flatMap((from) => tiles.map((tile) => from[tile.y]?.[tile.x] ?? -1))
+      .filter((steps) => steps >= 0);
+    return reached.length === 0 ? -1 : Math.min(...reached);
+  };
+  // A place is stood on, so the part of one that is itself an exit is no part of it.
+  const grounds = places.map((place) => ({
+    what: place.what,
+    tiles: place.tiles.filter((tile) => !shut.has(`${tile.x},${tile.y}`)),
+  }));
+  const lengthened: string[] = [];
+  grounds.forEach((from, index) => {
+    const open = from.tiles.map((tile) => stepDistances(collision, tile, alsoBlocked));
+    const closed = from.tiles.map((tile) => stepDistances(collision, tile, without));
+    for (const to of grounds.slice(index + 1)) {
+      const steps = nearest(open, to.tiles);
+      const stepsRound = nearest(closed, to.tiles);
+      if (steps >= 0 && stepsRound !== steps) {
+        lengthened.push(
+          `${from.what} -> ${to.what}: ${steps} steps, ${stepsRound < 0 ? 'no way' : `${stepsRound}`} without crossing an exit`,
+        );
+      }
+    }
+  });
+  return lengthened;
+}
+
 /**
  * The furthest ring the hunter's spawn search can reach from a tile, capped at
  * `distance`. `findHunterSpawnTile` walks outwards and refuses to place the
