@@ -157,8 +157,9 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(32, 7, 'crateStack');
   map.plant(29, 8, 'barrelPair');
   map.plant(18, 7, 'cratePair');
-  map.plant(14, 9, 'sack');
-  map.plant(12, 10, 'sack');
+  // Where you wait for the ferry. It also stops the yard being a twelve-tile
+  // dash, which two sacks at the player's feet used to do and looked it.
+  map.plant(14, 9, 'bench');
   map.plant(21, 9, 'barrel');
   map.plant(37, 12, 'mooringPost');
   map.plant(37, 7, 'barrel');
