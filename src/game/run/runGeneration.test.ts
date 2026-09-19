@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { isExtractionAvailable, type ExtractionPoint } from '../world/extractionPoints';
-import { WORLD_MAPS, type WorldMapId } from '../worldMap';
+import { gateBossIds, WORLD_GATES } from '../world/gates';
+import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunManager } from './RunManager';
 import { createActiveRunSession } from './RunSession';
 import { FIRST_CONTRACT, RAID_CONTRACTS } from '../objectives';
 import {
+  availableInsertionIds,
+  frontDoorFor,
   generateRunPlan,
+  insertionAt,
+  isDropInPoint,
   RUN_GENERATION_BOUNDS,
   RUN_INSERTIONS,
   type RunInsertionId,
@@ -16,18 +21,24 @@ const seeds = [1, 27, 999_999];
 const insertionIds = Object.keys(RUN_INSERTIONS) as RunInsertionId[];
 /** The roadmap found the vanishing-exit defect by sampling this many runs. */
 const SAMPLED_RUNS = 500;
+/** Every gate on every map open: the most of the world a raid could walk. */
+const EVERY_BOSS = gateBossIds(WORLD_GATES);
 
 /**
  * Every tile a player can walk to from a starting tile, following warps between
  * maps. Signs block movement exactly as they do in WorldScene; trainers do not,
  * because a trainer standing in a corridor can be defeated and walked past.
  */
-function walkableFrom(mapId: WorldMapId, position: GridPosition): ReadonlySet<string> {
+function walkableFrom(
+  mapId: WorldMapId,
+  position: GridPosition,
+  defeatedBosses: readonly string[] = [],
+): ReadonlySet<string> {
   const visited = new Set<string>();
   const pending: { mapId: WorldMapId; position: GridPosition }[] = [{ mapId, position }];
   while (pending.length > 0) {
     const { mapId: currentMapId, position: tile } = pending.pop()!;
-    const map = WORLD_MAPS[currentMapId];
+    const map = getWorldMap(currentMapId, defeatedBosses);
     const key = `${currentMapId}:${tileKey(tile)}`;
     if (
       visited.has(key) ||
@@ -164,11 +175,18 @@ describe('run generation', () => {
    * conditions the product direction promises. The guarantee is now structural:
    * two or more exits, all of them walkable from the insertion, at least one
    * open immediately and at least one that has to be earned or waited for.
+   *
+   * A boss-held gate makes "walkable" a question with two answers. An exit behind
+   * a shut gate is still offered - the boss can be beaten and the door walked
+   * through in this same raid, and an exit seen across a fence is the reason to
+   * try - so every offered exit is held to the map with its doors open. The exit
+   * promised open from the first second is held to the map as it stands.
    */
   it('never generates a run with one exit, and every offered exit can be walked to', () => {
     for (const insertionId of insertionIds) {
       const insertion = RUN_INSERTIONS[insertionId];
-      const walkable = walkableFrom(insertion.mapId, insertion.position);
+      const walkable = walkableFrom(insertion.mapId, insertion.position, EVERY_BOSS);
+      const walkableNow = walkableFrom(insertion.mapId, insertion.position);
       for (let seed = 1; seed <= SAMPLED_RUNS; seed += 1) {
         const { extractionPoints } = generateRunPlan(seed, undefined, insertionId);
 
@@ -176,7 +194,12 @@ describe('run generation', () => {
         for (const point of extractionPoints) {
           expect(walkable.has(`${point.mapId}:${tileKey(point.position)}`)).toBe(true);
         }
-        expect(extractionPoints.some(isOpenAtStart)).toBe(true);
+        expect(
+          extractionPoints.some(
+            (point) =>
+              isOpenAtStart(point) && walkableNow.has(`${point.mapId}:${tileKey(point.position)}`),
+          ),
+        ).toBe(true);
         expect(extractionPoints.some((point) => !isOpenAtStart(point))).toBe(true);
       }
     }
@@ -256,5 +279,129 @@ describe('run generation', () => {
       expect(plan.hunter.teamTierOffset).toBeGreaterThanOrEqual(RUN_GENERATION_BOUNDS.hunterTeamTierMinimum);
       expect(plan.hunter.teamTierOffset).toBeLessThanOrEqual(RUN_GENERATION_BOUNDS.hunterTeamTierMaximum);
     }
+  });
+
+  /**
+   * A shut gate cuts the insertion's own map in two, so "on this map" stopped
+   * meaning "somewhere this raid can walk". Loot rolled behind a door the player
+   * has not opened is loot the raid was promised and cannot have.
+   */
+  describe('with a boss-held gate on the map', () => {
+    const gate = WORLD_GATES[0];
+    const gatedInsertions = insertionIds.filter(
+      (id) => RUN_INSERTIONS[id].mapId === gate.mapId,
+    );
+
+    it('only ever rolls loot this raid can walk to, whichever side of the gate it starts', () => {
+      for (const insertionId of gatedInsertions) {
+        const insertion = RUN_INSERTIONS[insertionId];
+        for (const defeatedBosses of [[], [gate.bossId]]) {
+          const walkable = walkableFrom(insertion.mapId, insertion.position, defeatedBosses);
+          for (let seed = 1; seed <= 100; seed += 1) {
+            const plan = generateRunPlan(seed, undefined, insertionId, undefined, undefined, defeatedBosses);
+            for (const loot of plan.loot[insertion.mapId]) {
+              expect(
+                `${insertionId} seed ${seed}: loot at ${tileKey(loot.position)} ${walkable.has(`${insertion.mapId}:${tileKey(loot.position)}`) ? 'reachable' : 'sealed off'}`,
+              ).toBe(`${insertionId} seed ${seed}: loot at ${tileKey(loot.position)} reachable`);
+            }
+          }
+        }
+      }
+    });
+
+    it('promises an exit that is open at once on this side of the gate', () => {
+      for (const insertionId of gatedInsertions) {
+        const insertion = RUN_INSERTIONS[insertionId];
+        const walkable = walkableFrom(insertion.mapId, insertion.position);
+        for (let seed = 1; seed <= 100; seed += 1) {
+          const { extractionPoints } = generateRunPlan(seed, undefined, insertionId);
+          const open = extractionPoints.filter(
+            (point) =>
+              isOpenAtStart(point) && walkable.has(`${point.mapId}:${tileKey(point.position)}`),
+          );
+          expect(open.length).toBeGreaterThanOrEqual(1);
+        }
+      }
+    });
+
+    it('lists the exits on this side of the gate first, so the field guide never names a sealed one', () => {
+      // Only a raid sealed behind the gate sees the difference: every exit but
+      // the Overlook's own is on the far side of the fence.
+      const sealed = RUN_INSERTIONS['route-1-overlook'];
+      const walkable = walkableFrom(sealed.mapId, sealed.position);
+      const { extractionPoints } = generateRunPlan(3, undefined, 'route-1-overlook');
+      const reachableFlags = extractionPoints
+        .filter((point) => point.mapId === sealed.mapId)
+        .map((point) => walkable.has(`${point.mapId}:${tileKey(point.position)}`));
+      expect(reachableFlags[0]).toBe(true);
+      expect(reachableFlags).toEqual([...reachableFlags].sort((a, b) => Number(b) - Number(a)));
+      // With the gate open nothing is sealed, and the authored order stands.
+      const open = generateRunPlan(3, undefined, 'route-1-overlook', undefined, undefined, [gate.bossId]);
+      const authored = generateRunPlan(3, undefined, 'route-1', undefined, undefined, [gate.bossId]);
+      expect(open.extractionPoints.map((point) => point.label))
+        .toEqual(authored.extractionPoints.map((point) => point.label));
+    });
+
+    it('never rolls a cache onto a drop-in point, so reaching one is never spoken over', () => {
+      for (const insertionId of insertionIds) {
+        for (let seed = 1; seed <= 100; seed += 1) {
+          const plan = generateRunPlan(seed, undefined, insertionId, undefined, undefined, EVERY_BOSS);
+          for (const dropIn of Object.values(RUN_INSERTIONS)) {
+            expect(plan.loot[dropIn.mapId].map((loot) => tileKey(loot.position)))
+              .not.toContain(tileKey(dropIn.position));
+          }
+        }
+      }
+    });
+
+    it('sends a boss into the raid until they are beaten, and never again', () => {
+      const fresh = generateRunPlan(7, undefined, 'route-1');
+      expect(fresh.defeatedBosses).toEqual([]);
+      expect(fresh.trainers.some((trainer) => trainer.bossId === gate.bossId)).toBe(true);
+
+      const after = generateRunPlan(7, undefined, 'route-1', undefined, undefined, [gate.bossId]);
+      expect(after.defeatedBosses).toEqual([gate.bossId]);
+      expect(after.trainers.some((trainer) => trainer.bossId === gate.bossId)).toBe(false);
+      // Everyone who is not a boss is still there.
+      expect(after.trainers.length).toBe(fresh.trainers.length - 1);
+    });
+  });
+
+  describe('drop-in points', () => {
+    it('offers what contracts unlocked plus what the player has walked to, in authored order', () => {
+      expect(
+        availableInsertionIds({ unlockedInsertions: ['floodplain-relay'], reachedInsertions: [] }),
+      ).toEqual(['floodplain-relay']);
+      expect(
+        availableInsertionIds({
+          unlockedInsertions: ['viridian-forest', 'floodplain-relay'],
+          reachedInsertions: ['route-1-overlook', 'an-insertion-that-was-retired'],
+        }),
+      ).toEqual(['floodplain-relay', 'route-1-overlook', 'viridian-forest']);
+    });
+
+    it('gives every map exactly one front door, and calls every other insertion a drop-in', () => {
+      for (const mapId of Object.keys(WORLD_MAPS) as WorldMapId[]) {
+        const onMap = Object.values(RUN_INSERTIONS).filter((insertion) => insertion.mapId === mapId);
+        expect(frontDoorFor(mapId)).toBe(onMap[0]);
+        expect(onMap.filter((insertion) => !isDropInPoint(insertion))).toEqual([onMap[0]]);
+      }
+      expect(isDropInPoint(RUN_INSERTIONS['route-1-overlook'])).toBe(true);
+    });
+
+    it('finds the insertion a tile belongs to, and nothing on any other tile', () => {
+      const overlook = RUN_INSERTIONS['route-1-overlook'];
+      expect(insertionAt('route-1', overlook.position)).toBe(overlook);
+      expect(insertionAt('pallet-town', overlook.position)).toBeUndefined();
+      expect(insertionAt('route-1', { x: overlook.position.x, y: overlook.position.y + 1 }))
+        .toBeUndefined();
+    });
+
+    it('never puts two insertions on one tile', () => {
+      const tiles = Object.values(RUN_INSERTIONS).map(
+        (insertion) => `${insertion.mapId}:${tileKey(insertion.position)}`,
+      );
+      expect(new Set(tiles).size).toBe(tiles.length);
+    });
   });
 });

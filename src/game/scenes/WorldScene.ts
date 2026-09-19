@@ -30,6 +30,7 @@ import {
   type MapWarp,
   type TileLayer,
   type WorldMapDefinition,
+  type WorldMapId,
 } from '../worldMap';
 import { type WorldEntity } from '../world/npcs';
 import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
@@ -82,7 +83,15 @@ import {
   raidClockView,
 } from './raidHud';
 import { createBattleReturnLocation, type ActiveRunSession, type RaidLocation } from '../run/RunSession';
-import { createRunTrainerEncounters, type RunTrainerEncounter } from '../world/trainers';
+import {
+  bossEncounters,
+  createRunTrainerEncounters,
+  withoutDefeatedBosses,
+  type RunTrainerEncounter,
+} from '../world/trainers';
+import { gateCaption, gatesOpenedLines, isGateOpen, WORLD_GATES } from '../world/gates';
+import { dropInCaption, dropInReachedLine } from '../world/dropIns';
+import { insertionAt, isDropInPoint, RUN_INSERTIONS } from '../run/runGeneration';
 import { findWatchingTrainer, trainerSightTiles } from '../world/trainerSight';
 import {
   trainerChallengePrompt,
@@ -127,7 +136,18 @@ const RUN_RESULT_DELAY_MS = 700;
  * keeps the colour the caption already carried, so nothing changes meaning.
  */
 const LABEL_TONES: Readonly<
-  Record<'station' | 'exitOpen' | 'exitShut' | 'route' | 'watch' | 'contract', WorldLabelTone>
+  Record<
+    | 'station'
+    | 'exitOpen'
+    | 'exitShut'
+    | 'route'
+    | 'watch'
+    | 'contract'
+    | 'gateShut'
+    | 'gateOpen'
+    | 'dropIn',
+    WorldLabelTone
+  >
 > = {
   station: { fill: 0x14243a, border: 0x7fb2e5, ink: '#dff0ff' },
   // Contract stops are the one thing on the map the raid was taken for, so they
@@ -139,7 +159,18 @@ const LABEL_TONES: Readonly<
   // A trainer's watch is the one caption that is a threat rather than a place,
   // so it borrows the hunter chip's red rather than the sealed exit's.
   watch: { fill: 0x3f1220, border: 0xf87171, ink: '#ffe4e6' },
+  // A boss-held gate is iron: neither an exit's red nor a threat's. Once it is
+  // open it fades to the quietest caption on the map - it is a fact about the
+  // fence now, not something to act on.
+  gateShut: { fill: 0x2a2a33, border: 0xe4e4e7, ink: '#fafafa' },
+  gateOpen: { fill: 0x1f2630, border: 0x8b95a5, ink: '#cbd5e1' },
+  // A drop-in point is the one teal on the map: somewhere a later raid can
+  // start, which no cache, exit or contract stop is.
+  dropIn: { fill: 0x0f3a3d, border: 0x5eead4, ink: '#ccfbf1' },
 };
+
+/** The landing pad drawn on a drop-in point, as filled pixel rects. */
+const DROP_IN_TINT = 0x5eead4;
 
 /** How the ground a trainer is watching is shaded. */
 const WATCH_TINT = 0xf87171;
@@ -285,6 +316,16 @@ export class WorldScene extends Phaser.Scene {
   private unsolicitedDialog = false;
   private hunterState: HunterState = createHunterState();
   private timerThreat: 'normal' | 'urgent' | 'enraged' = 'normal';
+  /**
+   * Every boss beaten as of this moment: the ones the save already held when
+   * the raid deployed, plus the ones beaten during it. It decides which gates
+   * stand open, so the map is always asked for through `mapFor()`.
+   */
+  private defeatedBosses: readonly string[] = [];
+  /** Insertions the lobby already offers, so the map only announces a new one. */
+  private readonly knownInsertionIds = new Set<string>();
+  /** The caption over each drop-in point, so reaching one can change what it says. */
+  private readonly dropInLabels = new Map<string, WorldLabel>();
 
   public constructor() {
     super('world');
@@ -319,19 +360,28 @@ export class WorldScene extends Phaser.Scene {
     this.caughtPokemonStash = [];
     this.extractionMarkers = [];
     this.timerThreat = 'normal';
+    // A gate opened in the last raid is in the save, and is read back from it;
+    // what must not survive is this instance's own copy of the list.
+    this.defeatedBosses = [];
+    this.knownInsertionIds.clear();
   }
 
   public create(data: WorldSceneData = {}): void {
     this.resetStateFromPreviousRaid();
     this.runSession = data.runSession;
+    // Trainers and who has been beaten come first: which gates are open is
+    // derived from them, and the map cannot be asked for until that is known.
+    this.defeatedTrainerIds.clear();
+    data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
+    const openedGates = this.settleBossProgress(data.savedGame);
     if (!this.runSession) {
       this.restoreSavedGame(data.savedGame);
     } else if (data.returnLocation) {
-      this.currentMap = getWorldMap(data.returnLocation.mapId);
+      this.currentMap = this.mapFor(data.returnLocation.mapId);
       this.currentTile = { ...data.returnLocation.position };
       this.facing = data.returnLocation.facing;
     } else if (this.runSession.plan) {
-      this.currentMap = getWorldMap(this.runSession.plan.insertion.mapId);
+      this.currentMap = this.mapFor(this.runSession.plan.insertion.mapId);
       this.currentTile = { ...this.runSession.plan.insertion.position };
     }
     this.cameras.main.fadeIn?.(180, 0, 0, 0);
@@ -345,15 +395,10 @@ export class WorldScene extends Phaser.Scene {
     if (data.caughtPokemonStash) {
       this.caughtPokemonStash = data.caughtPokemonStash;
     }
-    this.defeatedTrainerIds.clear();
-    data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
     this.collectedLootIds.clear();
     data.collectedLootIds?.forEach((id) => this.collectedLootIds.add(id));
     this.activatedPoiIds.clear();
     data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
-    this.trainerEncounters = this.runSession
-      ? (this.runSession.plan?.trainers ?? createRunTrainerEncounters())
-      : [];
     this.hunterState = data.hunterState ?? createHunterState();
     this.createMap();
     this.applyPendingHunterBreakaway();
@@ -373,6 +418,48 @@ export class WorldScene extends Phaser.Scene {
     );
     this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () => this.clearMap());
     this.showFirstDeploymentBriefing();
+    if (openedGates.length > 0) {
+      // Said on the return from the fight that won it, and raised as an
+      // interruption so the key already held walks the player at the door.
+      this.interrupt(openedGates);
+    }
+  }
+
+  /**
+   * Works out which bosses are beaten, writes any new win to the save, and
+   * returns what to say about the gates that win opened.
+   *
+   * A boss fight returns here like any trainer fight: the scene restarts with
+   * the beaten trainer's id in its payload. That is the moment the door opens,
+   * so it is also the moment it is recorded - a gate is the map changing, not
+   * loot being carried out, and a raid that beats the boss and is then lost has
+   * still opened it. The list this scene acts on is built from the raid's own
+   * data rather than read back from storage, so the door opens in the raid that
+   * won it even in a browser that cannot save.
+   */
+  private settleBossProgress(savedGame: RestoredGame | undefined): readonly string[] {
+    const saveManager = new SaveManager();
+    const stored = (saveManager.load() ?? savedGame)?.raidProgress;
+    const deployedWith = this.runSession?.plan?.defeatedBosses ?? stored?.defeatedBosses ?? [];
+    this.trainerEncounters = this.runSession
+      ? (this.runSession.plan?.trainers ??
+        withoutDefeatedBosses(createRunTrainerEncounters(), deployedWith))
+      : [];
+    const beatenThisRaid = bossEncounters(this.trainerEncounters)
+      .filter((boss) => this.defeatedTrainerIds.has(boss.trainer.id))
+      .map((boss) => boss.bossId);
+    this.defeatedBosses = [...new Set([...deployedWith, ...beatenThisRaid])];
+    for (const id of [...(stored?.unlockedInsertions ?? []), ...(stored?.reachedInsertions ?? [])]) {
+      this.knownInsertionIds.add(id);
+    }
+
+    const newlyBeaten = saveManager.recordDefeatedBosses(beatenThisRaid);
+    return gatesOpenedLines(WORLD_GATES.filter((gate) => newlyBeaten.includes(gate.bossId)));
+  }
+
+  /** The map as it stands for this player: every gate their wins have opened, open. */
+  private mapFor(mapId: WorldMapId): WorldMapDefinition {
+    return getWorldMap(mapId, this.defeatedBosses);
   }
 
   public update(_time: number, deltaMs: number): void {
@@ -507,6 +594,117 @@ export class WorldScene extends Phaser.Scene {
 
     this.createExtractionPoints();
     this.createRouteTransitionLabels();
+    this.createGateLabels();
+    this.createDropInMarkers();
+  }
+
+  /**
+   * Names every boss-held gate, in the state it is in. The tiles themselves are
+   * already drawn shut or open - the map was built that way - so this is only
+   * the sentence: who is holding a shut one, and that an open one is open. It
+   * hangs below the gate, because the boss and their watch caption stand level
+   * with it and a caption above would land on top of theirs.
+   */
+  private createGateLabels(): void {
+    if (!this.runSession) {
+      return;
+    }
+    for (const gate of this.currentMap.gates) {
+      const open = isGateOpen(gate, this.defeatedBosses);
+      const boss = bossEncounters(createRunTrainerEncounters()).find(
+        (candidate) => candidate.bossId === gate.bossId,
+      );
+      const left = Math.min(...gate.tiles.map((tile) => tile.x));
+      const right = Math.max(...gate.tiles.map((tile) => tile.x));
+      const bottom = Math.max(...gate.tiles.map((tile) => tile.y));
+      this.worldLabels.push(
+        new WorldLabel(
+          this,
+          Math.round(((left + right + 1) * TILE_SIZE) / 2),
+          (bottom + 1) * TILE_SIZE + 2,
+          gateCaption(gate, open, boss?.trainer.name),
+          open ? LABEL_TONES.gateOpen : LABEL_TONES.gateShut,
+          atRow(CAPTION_BAND, bottom),
+          'below',
+        ),
+      );
+    }
+  }
+
+  /**
+   * Marks every drop-in point on the map other than the one this raid started
+   * on. It is drawn whether or not it has been reached, because a landing seen
+   * across a fence is the reason to come back for the boss holding it.
+   */
+  private createDropInMarkers(): void {
+    const session = this.runSession;
+    if (!session) {
+      return;
+    }
+    for (const insertion of Object.values(RUN_INSERTIONS)) {
+      // A map's front door is not marked: it is where a raid on this map has
+      // always started, and a caption over it would announce nothing.
+      if (
+        insertion.mapId !== this.currentMap.id ||
+        insertion.id === session.plan?.insertion.id ||
+        !isDropInPoint(insertion)
+      ) {
+        continue;
+      }
+      const x = insertion.position.x * TILE_SIZE;
+      const y = insertion.position.y * TILE_SIZE;
+      // A landing pad: four corner brackets, so the ground shows through and
+      // the mark never reads as something to pick up.
+      const pad = this.add.graphics().setDepth(atRow(MARKER_BAND, insertion.position.y));
+      pad.fillStyle(DROP_IN_TINT, 1);
+      for (const [cx, cy, dx, dy] of [
+        [2, 2, 1, 1],
+        [13, 2, -1, 1],
+        [2, 13, 1, -1],
+        [13, 13, -1, -1],
+      ] as const) {
+        pad.fillRect(x + Math.min(cx, cx + dx * 3), y + cy, 4, 1);
+        pad.fillRect(x + cx, y + Math.min(cy, cy + dy * 3), 1, 4);
+      }
+      pad.fillRect(x + 7, y + 7, 2, 2);
+      this.mapObjects.push(pad);
+      const label = new WorldLabel(
+        this,
+        x + TILE_SIZE / 2,
+        y - 3,
+        dropInCaption(this.knownInsertionIds.has(insertion.id)),
+        LABEL_TONES.dropIn,
+        atRow(CAPTION_BAND, insertion.position.y),
+      );
+      this.worldLabels.push(label);
+      this.dropInLabels.set(insertion.id, label);
+    }
+  }
+
+  /**
+   * Standing on a drop-in point is what unlocks it, for good and at once: it is
+   * somewhere the player has been, not something they are carrying, so it does
+   * not wait on extraction. Returns the line to say, as a pickup does, so a
+   * landing on watched ground arrives in the same dialogue as the challenge.
+   */
+  private tryReachDropInAt(position: GridPosition): string | null {
+    const session = this.runSession;
+    const insertion = session ? insertionAt(this.currentMap.id, position) : undefined;
+    if (
+      !insertion ||
+      insertion.id === session?.plan?.insertion.id ||
+      this.knownInsertionIds.has(insertion.id)
+    ) {
+      return null;
+    }
+    this.knownInsertionIds.add(insertion.id);
+    if (!new SaveManager().recordReachedInsertion(insertion.id)) {
+      return null;
+    }
+    this.dropInLabels.get(insertion.id)?.setText(dropInCaption(true), LABEL_TONES.dropIn);
+    audioManager.playLootPickup();
+    this.cameras.main.flash(120, 94, 234, 212, false);
+    return dropInReachedLine(insertion.label);
   }
 
   private createTileLayer(
@@ -1421,7 +1619,9 @@ export class WorldScene extends Phaser.Scene {
     // standing on the correct side of it - and it is on the same footing as a
     // pickup here, so a watched landmark cannot be worked for free either.
     const pickup =
-      this.tryCollectLootAt(this.currentTile) ?? this.tryMakeContractStopAt(this.currentTile);
+      this.tryCollectLootAt(this.currentTile) ??
+      this.tryMakeContractStopAt(this.currentTile) ??
+      this.tryReachDropInAt(this.currentTile);
     const spoken = pickup === null ? this.tryActivatePoiAt(this.currentTile) : [pickup];
     if (spoken !== null && spoken.length > 0) {
       if (!this.tryTrainerChallengeAt(this.currentTile, spoken)) {
@@ -1489,7 +1689,7 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.clearMap();
-      this.currentMap = getWorldMap(warp.destinationMapId);
+      this.currentMap = this.mapFor(warp.destinationMapId);
       this.runSession?.manager.setMap(this.currentMap.id);
       this.currentTile = { ...warp.destination };
       this.facing = warp.facing;
@@ -1531,6 +1731,7 @@ export class WorldScene extends Phaser.Scene {
     this.poiSprites.clear();
     this.poiLabels.clear();
     this.contractMarkers.clear();
+    this.dropInLabels.clear();
     this.extractionMarkers = [];
   }
 
@@ -1660,7 +1861,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.party = savedGame.party;
     this.bag = savedGame.bag;
-    this.currentMap = getWorldMap(savedGame.mapId);
+    this.currentMap = this.mapFor(savedGame.mapId);
     this.currentTile = { ...savedGame.position };
   }
 

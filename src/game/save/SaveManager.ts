@@ -65,6 +65,19 @@ export interface RaidProgress {
    * nothing can disagree with it.
    */
   readonly completedContracts: readonly string[];
+  /**
+   * Every boss beaten, by `bossId`, for good. Which gates stand open and which
+   * bosses are still on the map are both derived from this list - see
+   * `getWorldMap()` and `withoutDefeatedBosses()` - so a door can never be
+   * recorded open while the boss who holds it is still standing in front of it.
+   */
+  readonly defeatedBosses: readonly string[];
+  /**
+   * Every insertion the player has stood on in any raid. Reaching a drop-in
+   * point is what makes it selectable at base; `availableInsertionIds()` adds
+   * these to the insertions contracts have unlocked.
+   */
+  readonly reachedInsertions: readonly string[];
 }
 
 /**
@@ -104,6 +117,8 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   firstContractExtracted: false,
   unlockedInsertions: ['floodplain-relay'],
   completedContracts: [],
+  defeatedBosses: [],
+  reachedInsertions: [],
 };
 
 export interface SaveData {
@@ -253,6 +268,7 @@ export class SaveManager {
 
     const completedContracts = [...game.raidProgress.completedContracts, contractId];
     const raidProgress: RaidProgress = {
+      ...game.raidProgress,
       firstContractExtracted:
         game.raidProgress.firstContractExtracted || contractId === FIRST_CONTRACT_ID,
       unlockedInsertions: [
@@ -278,6 +294,53 @@ export class SaveManager {
     settlement?: RaidSettlement,
   ): { readonly saved: boolean; readonly granted: boolean } {
     return this.bankContract(FIRST_CONTRACT_ID, result, settlement);
+  }
+
+  /**
+   * Records bosses beaten in the raid in progress, and reports which of them
+   * were new. It is written at the moment of the win rather than at extraction:
+   * a gate is the map changing, not loot being carried out, so a raid that beats
+   * the boss and is then lost to the hunter has still opened the door. Nothing
+   * but `raidProgress` is touched - the vault in storage is the pre-raid vault
+   * and has to stay that way until the raid settles.
+   */
+  public recordDefeatedBosses(bossIds: readonly string[]): readonly string[] {
+    const game = this.load();
+    if (!game) {
+      return [];
+    }
+    const fresh = [...new Set(bossIds)].filter(
+      (bossId) => !game.raidProgress.defeatedBosses.includes(bossId),
+    );
+    if (fresh.length === 0) {
+      return [];
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      defeatedBosses: [...game.raidProgress.defeatedBosses, ...fresh],
+    };
+    return this.save({ ...game, raidProgress }) ? fresh : [];
+  }
+
+  /**
+   * Records an insertion the player has just stood on, and reports whether that
+   * made it newly selectable - false for one a contract had already unlocked,
+   * so the map only ever announces a drop-in the lobby did not already offer.
+   */
+  public recordReachedInsertion(insertionId: string): boolean {
+    const game = this.load();
+    if (
+      !game ||
+      game.raidProgress.reachedInsertions.includes(insertionId) ||
+      game.raidProgress.unlockedInsertions.includes(insertionId)
+    ) {
+      return false;
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      reachedInsertions: [...game.raidProgress.reachedInsertions, insertionId],
+    };
+    return this.save({ ...game, raidProgress });
   }
 
   /**
@@ -476,6 +539,10 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
   return {
     firstContractExtracted,
     completedContracts,
+    // Saves written before gates and drop-in points existed have beaten no boss
+    // and reached nowhere, which is exactly what a missing list reads as.
+    defeatedBosses: uniqueStrings(value.defeatedBosses),
+    reachedInsertions: uniqueStrings(value.reachedInsertions),
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now
@@ -488,6 +555,12 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       ]),
     ],
   };
+}
+
+function uniqueStrings(value: unknown): string[] {
+  return Array.isArray(value)
+    ? [...new Set(value.filter((entry): entry is string => typeof entry === 'string'))]
+    : [];
 }
 
 function serializePokemon(pokemon: Pokemon): SavedPokemon {

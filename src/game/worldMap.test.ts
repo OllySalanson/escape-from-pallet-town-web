@@ -139,10 +139,12 @@ describe('worldMap', () => {
     }
   });
 
-  it('gives every map three exits on three different rules', () => {
+  // Three is the floor, not the count: a region behind a boss-held gate brings
+  // its own way out, so a gated map has more exits than rules.
+  it('gives every map at least three exits, on three different rules', () => {
     for (const map of Object.values(WORLD_MAPS)) {
       const exits = EXTRACTION_POINTS.filter((point) => point.mapId === map.id);
-      expect({ map: map.id, exits: exits.length }).toMatchObject({ exits: 3 });
+      expect({ map: map.id, enoughExits: exits.length >= 3 }).toMatchObject({ enoughExits: true });
       const kinds = exits.map((exit) => exit.requirement?.kind ?? 'elapsed');
       expect([...new Set(kinds)].sort()).toEqual(['always', 'elapsed', 'poi-activated']);
     }

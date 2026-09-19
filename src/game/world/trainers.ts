@@ -1,5 +1,5 @@
 import { Pokemon } from '../pokemon';
-import { BUTTERFREE, PIDGEY, PIKACHU, SQUIRTLE } from '../pokemon/species';
+import { BUTTERFREE, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE } from '../pokemon/species';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from './characterDesigns';
@@ -15,7 +15,7 @@ export interface RunTrainerEncounter extends TrainerWatch {
   /**
    * How far ahead this trainer challenges on sight. Omitted is the old
    * behaviour - the player has to walk up and speak to them - which is still
-   * what the three trainers outside the Floodplain route do. See
+   * what the three ordinary trainers outside the Floodplain route do. See
    * `trainerSight.ts` for why a watch and a body are not the same thing.
    */
   readonly sightRange?: number;
@@ -24,9 +24,39 @@ export interface RunTrainerEncounter extends TrainerWatch {
    * sheet under the amber trainer tint - see `characterPresentation.ts`.
    */
   readonly design?: CastCharacterDesignId;
+  /**
+   * Set on a boss: the trainer holding a gate shut. Beating one is recorded for
+   * good in `raidProgress.defeatedBosses` under this id, every `MapGate` naming
+   * it opens in that same raid, and the boss is not there on any later one - so
+   * unlike every other trainer, a boss may stand in the lane it guards. The id
+   * is what the save keeps, so it must never be reused for a different door.
+   */
+  readonly bossId?: string;
   readonly introLines: readonly string[];
   readonly trainer: TrainerBattle;
 }
+
+/** The trainers who hold gates, in authored order. */
+export const bossEncounters = (
+  trainers: readonly RunTrainerEncounter[],
+): readonly (RunTrainerEncounter & { readonly bossId: string })[] =>
+  trainers.filter(
+    (trainer): trainer is RunTrainerEncounter & { readonly bossId: string } =>
+      trainer.bossId !== undefined,
+  );
+
+/**
+ * A raid's trainers without the bosses already beaten. A boss is beaten once,
+ * for good: what is left where they stood is the open gate, which the map
+ * captions as open.
+ */
+export const withoutDefeatedBosses = (
+  trainers: readonly RunTrainerEncounter[],
+  defeatedBosses: readonly string[],
+): readonly RunTrainerEncounter[] =>
+  trainers.filter(
+    (trainer) => trainer.bossId === undefined || !defeatedBosses.includes(trainer.bossId),
+  );
 
 const createTrainer = (
   id: string,
@@ -96,6 +126,29 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       'RAIDER MAYA',
       [new Pokemon(PIKACHU, 7), new Pokemon(PIDGEY, 7)],
       'You earned your way past me. Keep moving!',
+    ),
+  },
+  {
+    // The first boss. Wren stands in the spur off the east road with the
+    // Overlook Gate at their back, and watches only the spur tile in front of
+    // them: the road itself stays free, and stepping off it towards the gate is
+    // the decision to fight. The party is longer and higher than anything else
+    // on the route, which is what makes the door worth coming back for.
+    mapId: 'route-1',
+    position: { x: 25, y: 5 },
+    facing: 'left',
+    fixedPosition: true,
+    sightRange: 1,
+    bossId: 'overlook-warden',
+    introLines: [
+      'WARDEN WREN HOLDS THE OVERLOOK GATE.',
+      'Nobody has seen the far side of this fence. Earn it.',
+    ],
+    trainer: createTrainer(
+      'overlook-warden-wren',
+      'WARDEN WREN',
+      [new Pokemon(PIDGEY, 9), new Pokemon(JIGGLYPUFF, 9), new Pokemon(PIKACHU, 11)],
+      'The gate is yours. It stays open - I am done holding it.',
     ),
   },
   {

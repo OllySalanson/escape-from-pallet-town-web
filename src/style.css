@@ -343,6 +343,15 @@ button {
   font-size: 0.75em;
   letter-spacing: 0.1em;
 }
+/* A drop-in point carries the teal the map marks it with, so the entry in this
+   list and the landing the player stood on read as the same thing. */
+.insertion-drop-in {
+  display: block;
+  color: #5eead4;
+  font-weight: 750;
+  font-size: 0.75em;
+  letter-spacing: 0.1em;
+}
 .secure-tag {
   color: #f6c969;
 }
@@ -518,6 +527,13 @@ button {
 }
 .run-loadout .entity-row + .entity-row {
   margin-top: 8px;
+}
+/* An insertion row is copy and nothing else, so its one block takes the whole
+   row. Without this the trailing-child rule pushes a row that is only a name to
+   the right-hand edge, which only went unseen while every row was a paragraph. */
+.run-loadout .entity-row > div {
+  flex: 1;
+  min-width: 0;
 }
 .run-loadout .panel-heading:not(:first-child) {
   margin-top: var(--space-3);

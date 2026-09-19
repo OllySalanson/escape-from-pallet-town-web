@@ -138,6 +138,7 @@ export class TestLabScene extends Phaser.Scene {
       stash,
       raidProgress: unlockEveryInsertion
         ? {
+          ...DEFAULT_RAID_PROGRESS,
           firstContractExtracted: true,
           unlockedInsertions: [...CONTRACT_REWARD_INSERTIONS],
           completedContracts: [FIRST_CONTRACT_ID],

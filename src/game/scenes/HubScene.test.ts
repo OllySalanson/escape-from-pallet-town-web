@@ -327,6 +327,7 @@ describe('hub deployment route', () => {
 
   it('reopens the legacy insertions only once the first contract has been banked', () => {
     const { hub, start } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
       firstContractExtracted: true,
       completedContracts: [FIRST_CONTRACT_ID],
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
@@ -344,6 +345,57 @@ describe('hub deployment route', () => {
     expect(runSession.objectives).toEqual([]);
   });
 
+  /**
+   * A drop-in point is unlocked by standing on it, not by a contract, so it has
+   * to arrive in the lobby by the same list the contract insertions do - and a
+   * raid that starts from one has to be built for the doors already open, or it
+   * drops the player behind a gate with the boss back on the far side of it.
+   */
+  it('offers a reached drop-in point and deploys it into the map as the player left it', () => {
+    const { hub, start } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      firstContractExtracted: true,
+      completedContracts: [FIRST_CONTRACT_ID],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+      defeatedBosses: ['overlook-warden'],
+      reachedInsertions: ['route-1-overlook'],
+    });
+
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+    hub.render();
+    const markup = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root
+      .innerHTML;
+    expect(markup).toContain('data-insertion="route-1-overlook"');
+    expect(markup).toContain('DROP-IN · Route 1');
+
+    hub.flow.chooseInsertion('route-1-overlook');
+    hub.flow.advance();
+    deploy(hub, start);
+
+    const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+    expect(runSession.plan?.insertion.id).toBe('route-1-overlook');
+    expect(runSession.plan?.defeatedBosses).toEqual(['overlook-warden']);
+    expect(runSession.plan?.trainers.some((trainer) => trainer.bossId === 'overlook-warden'))
+      .toBe(false);
+  });
+
+  it('does not offer a drop-in point nobody has walked to', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      firstContractExtracted: true,
+      completedContracts: [FIRST_CONTRACT_ID],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+    });
+
+    hub.setView('deploy');
+    hub.render();
+    const markup = (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root
+      .innerHTML;
+    expect(markup).toContain('data-insertion="route-1"');
+    expect(markup).not.toContain('route-1-overlook');
+  });
+
   it('re-reads the stored save, so a banked contract is not hidden by a stale start payload', () => {
     // Phaser hands a restarted scene its previous start payload, so returning
     // from a raid without one used to re-render the pre-raid snapshot.
@@ -356,6 +408,7 @@ describe('hub deployment route', () => {
       bag: new Bag(),
       stash: createStartingStash(),
       raidProgress: {
+        ...DEFAULT_RAID_PROGRESS,
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
@@ -365,6 +418,7 @@ describe('hub deployment route', () => {
 
     expect((hub as unknown as { savedGame: { raidProgress: RaidProgress } }).savedGame.raidProgress)
       .toEqual({
+        ...DEFAULT_RAID_PROGRESS,
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],

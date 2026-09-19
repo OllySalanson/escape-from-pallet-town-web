@@ -20,8 +20,10 @@ import { activeRunManager } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { createActiveRunSession } from '../run/RunSession';
 import {
+  availableInsertionIds,
   FIRST_CONTRACT,
   generateRunPlan,
+  isDropInPoint,
   RUN_INSERTIONS,
   type RunInsertionId,
 } from '../run/runGeneration';
@@ -166,11 +168,34 @@ export class HubScene extends Phaser.Scene {
       RunInsertionId,
       (typeof RUN_INSERTIONS)[RunInsertionId],
     ][];
+    // Unlocked by a contract or reached on foot: `availableInsertionIds` is the
+    // one rule, so a drop-in point the player has stood on is offered here the
+    // moment they are back at base.
+    const available = availableInsertionIds(this.savedGame.raidProgress);
     return entries.filter(
       ([id, insertion]) =>
-        this.savedGame.raidProgress.unlockedInsertions.includes(id) &&
+        available.includes(id) &&
         (!this.firstContractActive || insertion.mapId === FIRST_CONTRACT.mapId),
     );
+  }
+
+  /**
+   * One entry in the insertion list. Only the chosen entry spells out its
+   * description: drop-in points are added to this list for as long as the
+   * player keeps exploring, and a list that prints every paragraph pushes the
+   * later entries under the commitment bar. A drop-in point says which map it
+   * is on, because unlike a front door its name is not the map's.
+   */
+  private insertionRow(
+    id: RunInsertionId,
+    insertion: (typeof RUN_INSERTIONS)[RunInsertionId],
+  ): string {
+    const selected = this.flow.insertionId === id;
+    const contract = this.contractFor(id);
+    const dropIn = isDropInPoint(insertion)
+      ? `<small class="insertion-drop-in">DROP-IN · ${WORLD_MAP_NAMES[insertion.mapId]}</small>`
+      : '';
+    return `<button class="entity-row selectable ${selected ? 'selected' : ''}" data-insertion="${id}"><div><strong>${insertion.label}</strong>${dropIn}${contract ? `<small class="insertion-contract">CONTRACT · ${contract.name}</small>` : ''}${selected ? `<small>${insertion.description}</small>` : ''}</div></button>`;
   }
 
   /** Everyone at base who a recovery would actually change. */
@@ -319,6 +344,8 @@ export class HubScene extends Phaser.Scene {
       this.contractFor(deployment.insertionId),
       // The same derivation the final check printed, from the same party.
       hunterThreatFor(deployment.party.map((stored) => stored.pokemon)),
+      // Which gates stand open and which bosses are gone are both this list.
+      this.savedGame.raidProgress.defeatedBosses,
     );
     const runSession = createActiveRunSession(
       activeRunManager,
@@ -572,7 +599,7 @@ export class HubScene extends Phaser.Scene {
     const summary = party.length === 0
       ? 'Nothing selected yet. Add a Pokémon from your stash.'
       : `${party.map((stored) => stored.pokemon.base.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} packed · ${securedCount} protected`;
-    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove · treat anyone hurt before you go</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<div class="loadout-entry${needsRecovery(stored.pokemon) ? ' hurt' : ''}"><button class="entity-row selectable ${this.flow.includesPokemon(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}${single ? ' · your only Pokémon' : ''}</small>${needsRecovery(stored.pokemon) ? hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp) : ''}</div><span>${this.flow.includesPokemon(stored.id) ? 'Added ✓' : 'Add +'}</span></button>${this.careStrip(stored)}</div>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.flow.itemQuantity(item.id as ItemId)}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${this.firstContractActive ? 'Contract area' : 'Choose your entry'}</h2></div></div>${this.unlockedInsertions.map(([id, insertion]) => { const contract = this.contractFor(id); return `<button class="entity-row selectable ${this.flow.insertionId === id ? 'selected' : ''}" data-insertion="${id}"><div><strong>${insertion.label}</strong>${contract ? `<small class="insertion-contract">CONTRACT · ${contract.name}</small>` : ''}<small>${insertion.description}</small></div></button>`; }).join('')}${this.firstContractActive ? '<p class="confirm-note">Your active contract is here. Three more insertions unlock when you extract it.</p>' : ''}${this.carryInNote()}</section><section class="starter-confirm confirm-bar"><div><strong>${party.length}/6 Pokémon packed</strong><small>${summary}</small><small class="bar-warning">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : 'Everything here is lost on a wipe unless it is in the secure slot.'}</small></div><div class="bar-actions"><button class="button" data-secure-slot>Secure slot${securedCount ? ` · ${securedCount} protected` : ''} →</button><button class="button primary-button" data-advance ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy →</button></div></section></main>`;
+    return `<main class="loadout-layout"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">Available</p><h2>Stash</h2></div><small>Click to add or remove · treat anyone hurt before you go</small></div><div class="entity-list">${this.stashPokemon.map((stored) => `<div class="loadout-entry${needsRecovery(stored.pokemon) ? ' hurt' : ''}"><button class="entity-row selectable ${this.flow.includesPokemon(stored.id) ? 'selected' : ''}" data-pokemon="${stored.id}">${pokemonAvatar(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div class="entity-copy"><strong>${stored.pokemon.base.name}</strong><small>${this.conditionLine(stored)}${single ? ' · your only Pokémon' : ''}</small>${needsRecovery(stored.pokemon) ? hpBar(stored.pokemon.currentHp, stored.pokemon.maxHp) : ''}</div><span>${this.flow.includesPokemon(stored.id) ? 'Added ✓' : 'Add +'}</span></button>${this.careStrip(stored)}</div>`).join('')}<div class="item-grid compact">${this.stashItems.map((item) => `<article class="item-card"><strong>${item.displayName}</strong><small>${this.stash.itemCount(item.id)} available</small><div><button data-item="${item.id}" data-amount="-1" aria-label="Remove ${item.displayName}">−</button><b>${this.flow.itemQuantity(item.id as ItemId)}</b><button data-item="${item.id}" data-amount="1" aria-label="Add ${item.displayName}">+</button></div></article>`).join('')}</div></div></section><section class="panel run-loadout"><div class="panel-heading"><div><p class="eyebrow">Insertion</p><h2>${this.firstContractActive ? 'Contract area' : 'Choose your entry'}</h2></div></div>${this.unlockedInsertions.map(([id, insertion]) => this.insertionRow(id, insertion)).join('')}${this.firstContractActive ? '<p class="confirm-note">Your active contract is here. Three more insertions unlock when you extract it.</p>' : ''}${this.carryInNote()}</section><section class="starter-confirm confirm-bar"><div><strong>${party.length}/6 Pokémon packed</strong><small>${summary}</small><small class="bar-warning">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : 'Everything here is lost on a wipe unless it is in the secure slot.'}</small></div><div class="bar-actions"><button class="button" data-secure-slot>Secure slot${securedCount ? ` · ${securedCount} protected` : ''} →</button><button class="button primary-button" data-advance ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy →</button></div></section></main>`;
   }
 
   private secureView(): string {

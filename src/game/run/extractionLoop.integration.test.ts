@@ -762,6 +762,9 @@ describe('extraction loop integration', () => {
       firstContractExtracted: true,
       completedContracts: ['recover-lost-field-kit'],
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+      // Banking a contract beats no boss and reaches nowhere new.
+      defeatedBosses: [],
+      reachedInsertions: [],
     });
     expect(saves.load()!.stash.itemCount('super-potion')).toBe(1);
 

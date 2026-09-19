@@ -93,6 +93,19 @@ export function sketchRoute1(): MapSketch {
   map.raw(31, 13, 'X');
   map.set(30, 13, 'X');
 
+  // 7b. The Overlook: a loop in the north-east corner behind the one gate on
+  // the map. A two-tile spur leaves the east road, the warden stands in it, and
+  // the fence panel behind them is `route-1-overlook-gate` in `../gates.ts` -
+  // the gate owns that tile in both states, so what is drawn here is only what
+  // the lane looks like with the door open. The loop has its own landing and
+  // its own way out, so a raid that drops in behind a shut gate can still leave.
+  map.lane([[24, 5], [27, 5]]);
+  map.lane([[27, 5], [27, 1], [30, 1], [30, 5], [27, 5]]);
+  map.set(30, 3, 'I');
+  map.set(25, 5, 'H');
+  map.raw(31, 5, 'X');
+  map.set(30, 5, 'X');
+
   // 8. The tail: the two roads meet again on a doglegged south lane, with the
   // outpost gate in the middle of it.
   map.lane([[9, 29], [12, 29], [12, 30], [16, 30], [16, 29], [20, 29], [20, 30], [23, 30], [23, 29]]);
