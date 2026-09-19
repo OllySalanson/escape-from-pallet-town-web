@@ -42,6 +42,7 @@ vi.mock('phaser', () => {
   };
 });
 
+import { KeyPresses } from '../input/KeyPresses';
 import { Bag } from '../items';
 import { getWorldMap } from '../worldMap';
 import { createRunTrainerEncounters } from '../world/trainers';
@@ -94,6 +95,7 @@ function facingMaya() {
   const scene = Object.create(WorldScene.prototype) as WorldScene;
   const controls = stubKeys();
   Object.assign(scene as object, {
+    keyPresses: new KeyPresses(() => 0),
     currentMap: getWorldMap('floodplain-relay'),
     currentTile: { x: 15, y: 18 },
     facing: 'up',

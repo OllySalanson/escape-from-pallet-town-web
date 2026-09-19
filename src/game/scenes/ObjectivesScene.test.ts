@@ -18,7 +18,7 @@ describe('raid objective overlay controls', () => {
   });
 
   it('pauses the world and suppresses its update input while the field guide is open', () => {
-    expect(worldSource).toMatch(/JustDown\(this\.controls\.objectives\)[\s\S]*?this\.openObjectives\(\)[\s\S]*?return;/);
+    expect(worldSource).toMatch(/justPressed\(this\.controls\.objectives\)[\s\S]*?this\.openObjectives\(\)[\s\S]*?return;/);
     expect(worldSource).toMatch(/private openObjectives\(\)[\s\S]*?this\.scene\.pause\(\)[\s\S]*?pausedWorld: true/);
   });
 

@@ -17,4 +17,13 @@ describe('press latch', () => {
     latch.clear();
     expect(latch.wasPressedOn('left', 13)).toBe(false);
   });
+
+  it('answers a consumed press once', () => {
+    const latch = new PressLatch<'space'>();
+    latch.press('space', 4);
+    expect(latch.consume('space', 4)).toBe(true);
+    expect(latch.consume('space', 4)).toBe(false);
+    latch.press('space', 4);
+    expect(latch.consume('space', 5)).toBe(false);
+  });
 });

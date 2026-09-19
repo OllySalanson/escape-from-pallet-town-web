@@ -7,7 +7,8 @@ import {
   type GridInputState,
   type GridPosition,
 } from '../movement/gridMovement';
-import { PressLatch } from '../movement/pressLatch';
+import { KeyPresses } from '../input/KeyPresses';
+import { PressLatch } from '../input/pressLatch';
 import { advanceStepClock } from '../movement/stepClock';
 import {
   CHARACTER_FEET_PIXEL_Y,
@@ -313,6 +314,8 @@ export class WorldScene extends Phaser.Scene {
    */
   private stepCarryMs: number | null = null;
   private readonly directionPresses = new PressLatch<Direction>();
+  /** Every `JustDown` this scene would ask goes through here - see `KeyPresses`. */
+  private readonly keyPresses = new KeyPresses(() => this.currentFrame());
   private isWarping = false;
   private extractionMarkers: Array<{
     readonly point: ExtractionPoint;
@@ -563,7 +566,7 @@ export class WorldScene extends Phaser.Scene {
     const stepCarryMs = this.stepCarryMs;
     this.stepCarryMs = null;
     this.containWorldLabels();
-    if (Phaser.Input.Keyboard.JustDown(this.controls.objectives)) {
+    if (this.keyPresses.justPressed(this.controls.objectives)) {
       this.openObjectives();
       return;
     }
@@ -592,17 +595,17 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.controls.party)) {
+    if (this.keyPresses.justPressed(this.controls.party)) {
       this.openParty();
       return;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.controls.bag)) {
+    if (this.keyPresses.justPressed(this.controls.bag)) {
       this.openBag();
       return;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.controls.save)) {
+    if (this.keyPresses.justPressed(this.controls.save)) {
       this.saveGame();
       return;
     }
@@ -1385,6 +1388,14 @@ export class WorldScene extends Phaser.Scene {
       ],
     };
     this.latchDirectionPresses();
+    this.keyPresses.watch([
+      ...this.directionKeys,
+      ...this.controls.interact,
+      this.controls.party,
+      this.controls.bag,
+      this.controls.save,
+      this.controls.objectives,
+    ]);
   }
 
   private configureCamera(): void {
@@ -1438,7 +1449,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private isInteractionPressed(): boolean {
-    return this.controls.interact.some((key) => Phaser.Input.Keyboard.JustDown(key));
+    return this.controls.interact.some((key) => this.keyPresses.justPressed(key));
   }
 
   /**
@@ -1454,7 +1465,7 @@ export class WorldScene extends Phaser.Scene {
     }
     return (
       this.unsolicitedDialog &&
-      this.directionKeys.some((key) => Phaser.Input.Keyboard.JustDown(key))
+      this.directionKeys.some((key) => this.keyPresses.justPressed(key))
     );
   }
 
@@ -1720,20 +1731,20 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     if (
-      Phaser.Input.Keyboard.JustDown(this.controls.left) ||
-      Phaser.Input.Keyboard.JustDown(this.controls.a) ||
-      Phaser.Input.Keyboard.JustDown(this.controls.up) ||
-      Phaser.Input.Keyboard.JustDown(this.controls.w)
+      this.keyPresses.justPressed(this.controls.left) ||
+      this.keyPresses.justPressed(this.controls.a) ||
+      this.keyPresses.justPressed(this.controls.up) ||
+      this.keyPresses.justPressed(this.controls.w)
     ) {
       prompt.moveSelection(-1);
       audioManager.play('select');
       return;
     }
     if (
-      Phaser.Input.Keyboard.JustDown(this.controls.right) ||
-      Phaser.Input.Keyboard.JustDown(this.controls.d) ||
-      Phaser.Input.Keyboard.JustDown(this.controls.down) ||
-      Phaser.Input.Keyboard.JustDown(this.controls.s)
+      this.keyPresses.justPressed(this.controls.right) ||
+      this.keyPresses.justPressed(this.controls.d) ||
+      this.keyPresses.justPressed(this.controls.down) ||
+      this.keyPresses.justPressed(this.controls.s)
     ) {
       prompt.moveSelection(1);
       audioManager.play('select');

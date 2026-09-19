@@ -4,7 +4,7 @@
 // check that a raid plays the same at ten frames a second as at sixty.
 //
 //   node tools/playtest/raid.mjs http://localhost:5173/ [--testmode] [--stepped] [--pixels]
-//        [--window=logic|pixel] [--seed=N] [--shot=path.png]
+//        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps]
 //
 // --seed pins `crypto.getRandomValues` and `Math.random` in the page, so two
 // runs roll the same raid and their event logs can be compared line for line.
@@ -85,9 +85,13 @@ try {
     }
     throw new Error(`never saw ${what}`);
   };
-  const press = async (code, holdMs = 60) => {
+  // --taps sends every press as a down and an up back to back: the press that
+  // falls inside one frame, which the game must still see.
+  const press = async (code, holdMs = flag('taps') ? 0 : 60) => {
     await page.keyDown(code);
-    await wait(holdMs);
+    if (holdMs > 0) {
+      await wait(holdMs);
+    }
     await page.keyUp(code);
   };
   const click = async (text) => {
