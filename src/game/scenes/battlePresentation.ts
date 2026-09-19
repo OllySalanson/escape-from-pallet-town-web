@@ -370,11 +370,11 @@ export const eventToMessage = (event: BattleEvent): string => {
     case 'no-pp':
       return `No PP left for ${event.move}!`;
     case 'status-applied':
-      return `${combatantName(event)} is ${statusLabel(event.status)}!`;
+      return `${combatantName(event)} ${statusApplied(event.status)}!`;
     case 'status-already':
       return `${combatantName(event)} already has a status condition!`;
     case 'status-prevented':
-      return `${combatantName(event)} is ${statusLabel(event.status)} and can't move!`;
+      return `${combatantName(event)} ${statusHolds(event.status)}!`;
     case 'status-damage':
       return `${combatantName(event)} is hurt by ${statusLabel(event.status)}!`;
     case 'status-cured':
@@ -410,9 +410,57 @@ export const eventToMessage = (event: BattleEvent): string => {
       return `${combatantName(event)} paid ${event.damage} HP to its ${event.item}.`;
     case 'gear-heal':
       return `${combatantName(event)} took +${event.amount} HP from its ${event.item}.`;
+    // What a move does beyond its damage, in the same voice as everything else:
+    // the line says who it happened to and what it cost, so a turn can be read
+    // back from the log without watching the HP bar.
+    case 'flinched':
+      return `${combatantName(event)} flinched and couldn't move!`;
+    case 'multi-hit':
+      return `Hit ${event.hits} times!`;
+    case 'drained':
+      return `${combatantName(event)} drained +${event.amount} HP.`;
+    case 'recoil':
+      return `${combatantName(event)} was hurt by the recoil! -${event.damage} HP`;
+    case 'healed':
+      return `${combatantName(event)} restored +${event.amount} HP.`;
+    case 'heal-failed':
+      return `${combatantName(event)} is already at full HP.`;
+    case 'charging':
+      return `${combatantName(event)} is gathering itself...`;
+    case 'recharging':
+      return `${combatantName(event)} must recharge!`;
   }
 };
 
+/**
+ * Three phrasings, because one noun cannot do all three jobs. The status lines
+ * used to read them all off a single label, which gave "is poison!" and "is
+ * paralysis and can't move!" - fine for sleep, wrong English for the other two.
+ * A burn or a paralysis now arrives on almost any Fire or Electric move rather
+ * than only on the two moves that spelled it out, so these are read often.
+ */
+const statusApplied = (status: string): string =>
+  ({
+    poison: 'was poisoned',
+    burn: 'was burned',
+    paralysis: 'was paralysed',
+    sleep: 'fell asleep',
+    freeze: 'was frozen solid',
+    confusion: 'became confused',
+  })[status] ?? `is ${status}`;
+
+/** What it says when the status is the reason a turn was lost. */
+const statusHolds = (status: string): string =>
+  ({
+    poison: "is hurt and can't move",
+    burn: "is burned and can't move",
+    paralysis: "is fully paralysed and can't move",
+    sleep: 'is fast asleep',
+    freeze: 'is frozen solid',
+    confusion: "is too confused to move",
+  })[status] ?? `is ${status} and can't move`;
+
+/** The adjectival one, for the lines that name the condition in passing. */
 const statusLabel = (status: string): string =>
   ({
     poison: 'poison',
@@ -430,4 +478,8 @@ const statLabel = (stat: string): string =>
     spAttack: 'Sp. Attack',
     spDefense: 'Sp. Defense',
     speed: 'Speed',
+    // Neither of these is a number on a Pokemon - they exist only as stages -
+    // but they are named on the same line as the five that are.
+    accuracy: 'accuracy',
+    evasion: 'evasion',
   })[stat] ?? stat;

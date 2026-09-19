@@ -164,16 +164,25 @@ describe('gear in a real fight', () => {
   });
 
   it('hits harder for the Life Orb and charges the holder on the spot', () => {
+    // By name, not by slot: which four moves a level-20 Charmander knows is a
+    // property of its learnset, and a learnset entry added below 20 used to
+    // silently turn this into a test of Growl.
+    const attackIndex = (pokemon: Pokemon): number =>
+      pokemon.moves.findIndex((move) => move.base.name === 'Ember');
     const player = new Pokemon(CHARMANDER, 20);
     const enemy = new Pokemon(PIDGEY, 20);
-    const plain = resolveTurn(createBattleState(player, enemy), 0, rolls(0.5, 0.5, 0.5, 0.5, 0.5, 0.5));
+    const plain = resolveTurn(
+      createBattleState(player, enemy),
+      attackIndex(player),
+      rolls(0.5, 0.5, 0.5, 0.5, 0.5, 0.5),
+    );
     const plainDamage = enemy.maxHp - plain.state.enemy.currentHp;
 
     const armed = new Pokemon(CHARMANDER, 20);
     armed.giveHeldItem('life-orb');
     const orbed = resolveTurn(
       createBattleState(armed, new Pokemon(PIDGEY, 20)),
-      0,
+      attackIndex(armed),
       rolls(0.5, 0.5, 0.5, 0.5, 0.5, 0.5),
     );
 

@@ -241,7 +241,13 @@ describe('evolving with a stone', () => {
 
     // Nothing is learned by evolving - that is the games' own rule - so Raichu
     // fights on with what the Pikachu had...
-    expect(pikachu.moves.map((move) => move.base.name)).toEqual(['Tackle', 'Growl', 'Thunder Wave']);
+    // A Pikachu at 20 knows the last four of its own list, Double Team included.
+    expect(pikachu.moves.map((move) => move.base.name)).toEqual([
+      'Tackle',
+      'Growl',
+      'Thunder Wave',
+      'Double Team',
+    ]);
     // ...and learns nothing later either, because Raichu's learnset is level 1
     // only. That is the cost of using the stone early, and it is canon.
     expect(pikachu.gainExperience(experienceTo(pikachu, 50)).learnedMoves).toEqual([]);

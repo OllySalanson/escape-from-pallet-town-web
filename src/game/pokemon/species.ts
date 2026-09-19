@@ -1,8 +1,13 @@
 import { PokemonBase } from './PokemonBase';
 import { PokemonType } from './PokemonType';
 import {
+  AGILITY,
   BITE,
+  BODY_SLAM,
   BUBBLE,
+  DOUBLE_EDGE,
+  DOUBLE_SLAP,
+  DOUBLE_TEAM,
   EMBER,
   FEATHER_DANCE,
   FLAMETHROWER,
@@ -12,13 +17,18 @@ import {
   HYDRO_PUMP,
   METAL_CLAW,
   POISON_POWDER,
+  PSYBEAM,
+  QUICK_ATTACK,
   RAZOR_LEAF,
   SCARY_FACE,
   SCRATCH,
   SING,
   SLASH,
   SLEEP_POWDER,
+  SMOKESCREEN,
+  SOLAR_BEAM,
   SUPER_SONIC,
+  SYNTHESIS,
   TACKLE,
   TAIL_WHIP,
   THUNDER_SHOCK,
@@ -48,6 +58,8 @@ export const BULBASAUR = new PokemonBase({
     { level: 1, move: SUPER_SONIC },
     { level: 4, move: GROWL },
     { level: 7, move: VINE_WHIP },
+    { level: 39, move: SYNTHESIS },
+    { level: 46, move: SOLAR_BEAM },
   ],
   frontSprite: 'sprites/pokemon/bulbasaur_front.png',
   backSprite: 'sprites/pokemon/bulbasaur_back.png',
@@ -74,6 +86,7 @@ export const CHARMANDER = new PokemonBase({
     // It is the earliest Dark or Steel move any starter gets, and the reason
     // the type chart is seventeen wide rather than fifteen.
     { level: 13, move: METAL_CLAW },
+    { level: 19, move: SMOKESCREEN },
   ],
   frontSprite: 'sprites/pokemon/charmander_front.png',
   backSprite: 'sprites/pokemon/charmander_back.png',
@@ -127,6 +140,7 @@ export const BUTTERFREE = new PokemonBase({
   learnset: [
     { level: 1, move: TACKLE },
     { level: 10, move: POISON_POWDER },
+    { level: 34, move: PSYBEAM },
   ],
   frontSprite: 'sprites/pokemon/butterfree_front.png',
   backSprite: 'sprites/pokemon/butterfree_back.png',
@@ -149,6 +163,8 @@ export const PIKACHU = new PokemonBase({
     { level: 1, move: TACKLE },
     { level: 1, move: GROWL },
     { level: 10, move: THUNDER_WAVE },
+    { level: 15, move: DOUBLE_TEAM },
+    { level: 33, move: AGILITY },
   ],
   frontSprite: 'sprites/pokemon/pikachu_front.png',
   backSprite: 'sprites/pokemon/pikachu_back.png',
@@ -171,6 +187,9 @@ export const JIGGLYPUFF = new PokemonBase({
     { level: 1, move: TACKLE },
     { level: 1, move: GROWL },
     { level: 10, move: SING },
+    { level: 24, move: DOUBLE_SLAP },
+    { level: 34, move: BODY_SLAM },
+    { level: 49, move: DOUBLE_EDGE },
   ],
   frontSprite: 'sprites/pokemon/jigglypuff_front.png',
   backSprite: 'sprites/pokemon/jigglypuff_back.png',
@@ -190,7 +209,11 @@ export const PIDGEY = new PokemonBase({
     spDefense: 35,
     speed: 56,
   },
-  learnset: [{ level: 1, move: TACKLE }],
+  learnset: [
+    { level: 1, move: TACKLE },
+    { level: 13, move: QUICK_ATTACK },
+    { level: 39, move: AGILITY },
+  ],
   frontSprite: 'sprites/pokemon/pidgey_front.png',
   backSprite: 'sprites/pokemon/pidgey_back.png',
 });
@@ -248,6 +271,8 @@ export const IVYSAUR = new PokemonBase({
     { level: 15, move: POISON_POWDER },
     { level: 15, move: SLEEP_POWDER },
     { level: 22, move: RAZOR_LEAF },
+    { level: 47, move: SYNTHESIS },
+    { level: 56, move: SOLAR_BEAM },
   ],
   frontSprite: 'sprites/pokemon/ivysaur_front.png',
   backSprite: 'sprites/pokemon/ivysaur_back.png',
@@ -274,6 +299,8 @@ export const VENUSAUR = new PokemonBase({
     { level: 15, move: POISON_POWDER },
     { level: 15, move: SLEEP_POWDER },
     { level: 22, move: RAZOR_LEAF },
+    { level: 53, move: SYNTHESIS },
+    { level: 65, move: SOLAR_BEAM },
   ],
   frontSprite: 'sprites/pokemon/venusaur_front.png',
   backSprite: 'sprites/pokemon/venusaur_back.png',
@@ -297,6 +324,7 @@ export const CHARMELEON = new PokemonBase({
     { level: 1, move: GROWL },
     { level: 1, move: EMBER },
     { level: 13, move: METAL_CLAW },
+    { level: 20, move: SMOKESCREEN },
     { level: 27, move: SCARY_FACE },
     { level: 34, move: FLAMETHROWER },
     { level: 41, move: SLASH },
@@ -325,6 +353,7 @@ export const CHARIZARD = new PokemonBase({
     { level: 1, move: EMBER },
     { level: 1, move: HEAT_WAVE },
     { level: 13, move: METAL_CLAW },
+    { level: 20, move: SMOKESCREEN },
     { level: 27, move: SCARY_FACE },
     { level: 34, move: FLAMETHROWER },
     { level: 36, move: WING_ATTACK },
@@ -401,8 +430,10 @@ export const PIDGEOTTO = new PokemonBase({
   learnset: [
     { level: 1, move: TACKLE },
     { level: 1, move: GUST },
+    { level: 13, move: QUICK_ATTACK },
     { level: 27, move: WING_ATTACK },
     { level: 34, move: FEATHER_DANCE },
+    { level: 43, move: AGILITY },
   ],
   frontSprite: 'sprites/pokemon/pidgeotto_front.png',
   backSprite: 'sprites/pokemon/pidgeotto_back.png',
@@ -426,8 +457,10 @@ export const PIDGEOT = new PokemonBase({
   learnset: [
     { level: 1, move: TACKLE },
     { level: 1, move: GUST },
+    { level: 13, move: QUICK_ATTACK },
     { level: 27, move: WING_ATTACK },
     { level: 34, move: FEATHER_DANCE },
+    { level: 48, move: AGILITY },
   ],
   frontSprite: 'sprites/pokemon/pidgeot_front.png',
   backSprite: 'sprites/pokemon/pidgeot_back.png',
@@ -453,6 +486,7 @@ export const RAICHU = new PokemonBase({
   // learning, and this does not.
   learnset: [
     { level: 1, move: TAIL_WHIP },
+    { level: 1, move: QUICK_ATTACK },
     { level: 1, move: THUNDER_SHOCK },
     { level: 1, move: THUNDERBOLT },
   ],
@@ -487,7 +521,10 @@ export const WIGGLYTUFF = new PokemonBase({
   // Defense Curl raises the user's own stat and every boost in this engine is
   // applied to the target, Disable has no machinery, and Double Slap hits two
   // to five times.
-  learnset: [{ level: 1, move: SING }],
+  learnset: [
+    { level: 1, move: SING },
+    { level: 1, move: DOUBLE_SLAP },
+  ],
   frontSprite: 'sprites/pokemon/wigglytuff_front.png',
   backSprite: 'sprites/pokemon/wigglytuff_back.png',
 });
