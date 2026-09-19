@@ -1027,3 +1027,74 @@ describe('BattleScene about-to-use switch prompt', () => {
     expect(dialog.shownMessages).toContain('Go, PIDGEY!');
   });
 });
+
+describe('throwing a ball in a wild battle', () => {
+  const open = (bag: Bag) => {
+    const harness = createBattleSceneHarness({ bag });
+    (harness.scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    const press = (match: string, from = 0): void => {
+      const row = harness.renderedTexts.slice(from).filter(({ text }) => text.includes(match)).at(-1);
+      if (!row) {
+        throw new Error(`No command row matching ${match}`);
+      }
+      row.handlers.pointerdown();
+    };
+    return { ...harness, press };
+  };
+
+  it('counts and throws a Great Ball when it is the only ball carried', () => {
+    const bag = new Bag({ 'great-ball': 2 });
+    const { renderedTexts, press } = open(bag);
+
+    expect(renderedTexts.find(({ text }) => text.includes('BALL x'))?.text).toBe('  BALL x2');
+
+    press('BALL x');
+
+    expect(bag.count('great-ball')).toBe(1);
+  });
+
+  it('asks which ball when two kinds are carried, and spends only the one chosen', () => {
+    const bag = new Bag({ 'poke-ball': 2, 'great-ball': 1 });
+    const { scene, renderedTexts, press } = open(bag);
+
+    expect(renderedTexts.find(({ text }) => text.includes('BALL x'))?.text).toBe('  BALL x3');
+    const before = renderedTexts.length;
+    press('BALL x');
+
+    expect((scene as unknown as { mode: string }).mode).toBe('balls');
+    expect(bag.count('poke-ball')).toBe(2);
+    expect(bag.count('great-ball')).toBe(1);
+
+    press('POKÉ BALL x', before);
+
+    expect(bag.count('poke-ball')).toBe(1);
+    expect(bag.count('great-ball')).toBe(1);
+  });
+
+  it('refuses honestly with no ball of any kind', () => {
+    const { dialog, press } = open(new Bag({ potion: 1 }));
+
+    press('BALL x0');
+
+    expect(dialog.shownMessages).toEqual(['No POKé BALLS left!']);
+  });
+
+  it('applies the Great Ball\'s own 1.5 to the catch roll', () => {
+    // A full-health wild Pokemon is caught below 0.2 with a Poke Ball and below
+    // 0.3 with a Great Ball, so a roll of 0.25 is the one that tells them apart.
+    const roll = vi.spyOn(Math, 'random').mockReturnValue(0.25);
+    try {
+      const poke = new Bag({ 'poke-ball': 1 });
+      const great = new Bag({ 'great-ball': 1 });
+      const pokeThrow = open(poke);
+      pokeThrow.press('BALL x');
+      expect((pokeThrow.scene as unknown as { state: { outcome: string } }).state.outcome).not.toBe('caught');
+
+      const greatThrow = open(great);
+      greatThrow.press('BALL x');
+      expect((greatThrow.scene as unknown as { state: { outcome: string } }).state.outcome).toBe('caught');
+    } finally {
+      roll.mockRestore();
+    }
+  });
+});

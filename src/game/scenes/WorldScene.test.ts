@@ -319,7 +319,7 @@ describe('raid resolution hand-off', () => {
     // for everything else.
     expect(sceneSource).not.toContain('this.pokeBalls');
     expect(battleSceneSource).not.toContain('this.pokeBalls');
-    expect(battleSceneSource).toContain("this.bag.remove('poke-ball', 1)");
+    expect(battleSceneSource).toContain('this.bag.remove(ball.id, 1)');
     // Both lost endings divide that pack the same way: a secured supply comes
     // home only if it was still in it, and only what was still in it was lost.
     expect(sceneSource).toContain(

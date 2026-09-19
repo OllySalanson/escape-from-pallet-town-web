@@ -48,7 +48,10 @@ import {
 import { attemptWildEscape, wildEscapeChanceFor } from '../pokemon/battle/escape';
 import {
   applyBattleItem,
+  ballCount,
+  ballModifierOf,
   battleItemCount,
+  carriedBalls,
   usableBattleItems,
 } from '../pokemon/battle/battleItems';
 import { Bag, heldItemName, type ItemDefinition } from '../items';
@@ -85,6 +88,8 @@ import {
   formatHunterFleeCommand,
   formatItemCommand,
   formatItemRow,
+  describeBallGuidance,
+  formatBallCommand,
   formatMoveCommand,
   formatWildEscapeCommand,
   heldGearLabel,
@@ -95,11 +100,12 @@ import {
   type MatchupTone,
 } from './battlePresentation';
 
-type CommandMode = 'main' | 'moves' | 'items' | 'party' | 'about-to-use' | 'events' | 'finished';
+type CommandMode = 'main' | 'moves' | 'items' | 'balls' | 'party' | 'about-to-use' | 'events' | 'finished';
 
 type BattleAction =
   | { readonly type: 'choose-fight' }
-  | { readonly type: 'throw-ball' }
+  | { readonly type: 'choose-ball' }
+  | { readonly type: 'throw-ball'; readonly ballIndex: number }
   | { readonly type: 'choose-pokemon' }
   | { readonly type: 'choose-item' }
   | { readonly type: 'choose-run' }
@@ -666,6 +672,8 @@ export class BattleScene extends Phaser.Scene {
         ? this.mainCommandLabels()
         : this.mode === 'items'
           ? this.itemCommandLabels()
+          : this.mode === 'balls'
+            ? this.ballCommandLabels()
           : this.state.player.moves.map(formatMoveCommand);
     this.createCommandBox(labels);
     this.selectedCommand = Math.min(this.selectedCommand, labels.length - 1);
@@ -687,7 +695,7 @@ export class BattleScene extends Phaser.Scene {
         : ['FIGHT', 'POKéMON', item]
       : [
         'FIGHT',
-        `BALL x${this.bag.count('poke-ball')}`,
+        formatBallCommand(ballCount(this.bag)),
         'POKéMON',
         item,
         this.wildEscapeLabel(),
@@ -698,9 +706,13 @@ export class BattleScene extends Phaser.Scene {
     return usableBattleItems(this.bag).map((item) => formatItemRow(item, this.bag.count(item.id)));
   }
 
+  private ballCommandLabels(): readonly string[] {
+    return carriedBalls(this.bag).map((ball) => formatItemRow(ball, this.bag.count(ball.id)));
+  }
+
   /** The submenus that list rows with a guidance line under them. */
   private get isRowListMode(): boolean {
-    return this.mode === 'moves' || this.mode === 'items';
+    return this.mode === 'moves' || this.mode === 'items' || this.mode === 'balls';
   }
 
   private createCommandBox(labels: readonly string[]): void {
@@ -909,6 +921,12 @@ export class BattleScene extends Phaser.Scene {
       this.moveGuidanceTexts[1]?.setText('').setColor(PANEL_GUIDANCE_INK);
       return;
     }
+    if (this.mode === 'balls') {
+      const ball = carriedBalls(this.bag)[this.selectedCommand];
+      this.moveGuidanceTexts[0]?.setText(ball ? describeBallGuidance(ball) : '').setColor(PANEL_GUIDANCE_INK);
+      this.moveGuidanceTexts[1]?.setText('').setColor(PANEL_GUIDANCE_INK);
+      return;
+    }
     if (this.mode !== 'moves') {
       return;
     }
@@ -953,6 +971,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'balls') {
+      this.dispatchAction({ type: 'throw-ball', ballIndex: this.selectedCommand });
+      return;
+    }
+
     if (this.mode === 'about-to-use') {
       this.dispatchAction({
         type: 'answer-about-to-use',
@@ -979,8 +1002,11 @@ export class BattleScene extends Phaser.Scene {
         this.selectedCommand = 0;
         this.showCommands();
         return;
+      case 'choose-ball':
+        this.showBallSelection();
+        return;
       case 'throw-ball':
-        this.throwBall();
+        this.throwBall(action.ballIndex);
         return;
       case 'choose-pokemon':
         this.showPartySelection(false);
@@ -1020,7 +1046,7 @@ export class BattleScene extends Phaser.Scene {
         : [{ type: 'choose-fight' }, { type: 'choose-pokemon' }, { type: 'choose-item' }]
       : [
           { type: 'choose-fight' },
-          { type: 'throw-ball' },
+          { type: 'choose-ball' },
           { type: 'choose-pokemon' },
           { type: 'choose-item' },
           { type: 'choose-run' },
@@ -1042,7 +1068,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.mode === 'party' && this.forcedReplacement) {
       return;
     }
-    if (this.mode !== 'moves' && this.mode !== 'items' && this.mode !== 'party') {
+    if (this.mode !== 'moves' && this.mode !== 'items' && this.mode !== 'balls' && this.mode !== 'party') {
       return;
     }
     // Backing out of the target picker returns to the item list, not to the
@@ -1156,7 +1182,24 @@ export class BattleScene extends Phaser.Scene {
     this.showCombatEvents(result.events, [], rewardMessages);
   }
 
-  private throwBall(): void {
+  /**
+   * BALL with one kind carried throws it - there is nothing to choose, and no
+   * best ball to spend unasked. With two or more it opens the list, because the
+   * ball thrown is the player's decision: a Great Ball is worth saving for a
+   * Pokemon that matters.
+   */
+  private showBallSelection(): void {
+    const balls = carriedBalls(this.bag);
+    if (this.trainer || balls.length <= 1) {
+      this.throwBall(0);
+      return;
+    }
+    this.mode = 'balls';
+    this.selectedCommand = 0;
+    this.showCommands();
+  }
+
+  private throwBall(ballIndex: number): void {
     if (this.trainer) {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
@@ -1164,7 +1207,8 @@ export class BattleScene extends Phaser.Scene {
       this.dialog.showMessage("You can't catch a trainer's POKéMON!");
       return;
     }
-    if (!this.bag.remove('poke-ball', 1)) {
+    const ball = carriedBalls(this.bag)[ballIndex];
+    if (!ball || !this.bag.remove(ball.id, 1)) {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
       audioManager.play('denied');
@@ -1172,7 +1216,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const result = resolveCatchAttempt(this.state, () => Math.random());
+    const result = resolveCatchAttempt(this.state, () => Math.random(), ballModifierOf(ball));
     this.state = result.state;
     let events = result.events;
     if (this.state.outcome === 'caught') {

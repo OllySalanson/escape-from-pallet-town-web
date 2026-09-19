@@ -46,6 +46,21 @@ export function battleItemCount(bag: Bag): number {
   return usableBattleItems(bag).reduce((total, item) => total + bag.count(item.id), 0);
 }
 
+/** Every kind of Poke Ball the raid bag is carrying, in catalogue order. */
+export function carriedBalls(bag: Bag): readonly ItemDefinition[] {
+  return bag.itemsInCategory(ItemCategory.PokeBall);
+}
+
+/** How many balls of any kind are in the bag, which is what the BALL command counts. */
+export function ballCount(bag: Bag): number {
+  return carriedBalls(bag).reduce((total, ball) => total + bag.count(ball.id), 0);
+}
+
+/** The catch-rate multiplier a ball carries in its own catalogue row. */
+export function ballModifierOf(ball: ItemDefinition): number {
+  return ball.effect.type === 'capture-modifier' ? ball.effect.multiplier : 1;
+}
+
 /**
  * Uses one medicine on one party Pokemon.
  *
