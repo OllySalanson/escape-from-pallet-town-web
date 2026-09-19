@@ -2,7 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { MoveBase, MoveCategory } from '../MoveBase';
 import { Pokemon, experienceForLevel } from '../Pokemon';
 import { PokemonType } from '../PokemonType';
-import { EMBER, GROWL, POISON_POWDER, SING, SUPER_SONIC, TACKLE, TAIL_WHIP, THUNDER_WAVE } from '../moves';
+import {
+  BITE,
+  EMBER,
+  GROWL,
+  METAL_CLAW,
+  POISON_POWDER,
+  SING,
+  SUPER_SONIC,
+  TACKLE,
+  TAIL_WHIP,
+  THUNDER_WAVE,
+} from '../moves';
 import { BULBASAUR, BUTTERFREE, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE } from '../species';
 import {
   attemptCatch,
@@ -40,42 +51,57 @@ const typeOrder = [
   PokemonType.Rock,
   PokemonType.Ghost,
   PokemonType.Dragon,
+  PokemonType.Dark,
+  PokemonType.Steel,
 ] as const;
 
 /**
- * Generation III's chart for the fifteen types this game has, attacker rows and
- * defender columns in the order above.
+ * Generation III's whole chart for the seventeen types this game has, attacker
+ * rows and defender columns in the order above.
  *
- * It is `PokemonBase.cs`'s matrix with three cells put right, which the captain
- * ruled on 2026-09-19 should happen when the roster grew: Water into Electric,
- * Grass into Electric and Electric into Ice were all 2x here and are 1x in
- * canon. Two of them were live against a Pikachu, which is in the forest grass,
- * on Raider Maya's team and on the hunter's third tier.
+ * This is a second, independently typed copy of `typeChart.ts`'s matrix, so a
+ * mistyped cell in either one fails here rather than in a battle.
  *
- * Fifteen types is the whole chart for the original 151 and is not a gap: Dark,
- * Steel and Fairy arrived with later generations, and so did every species that
- * has one.
+ * The chart used to be fifteen wide, under a comment asserting that "fifteen
+ * types is the whole chart for the original 151". **That is true of generation
+ * I only.** Dark and Steel arrived in generation II and are live in
+ * FireRed/LeafGreen: Magnemite and Magneton are Electric/Steel, and twelve Dark
+ * and Steel moves are learnt by level by fifty of the 151 - Charmander's Metal
+ * Claw and Squirtle's Bite among them. Fairy is the one of the modern three
+ * that really is later (generation VI), so it stays out and this is seventeen.
+ *
+ * Fifteen of these rows are `PokemonBase.cs`'s matrix with three cells put
+ * right, which the captain ruled on 2026-09-19 should happen when the roster
+ * grew: Water into Electric, Grass into Electric and Electric into Ice were all
+ * 2x there and are 1x in canon. The two new rows and two new columns are
+ * generation III's, back-dated from PokeAPI's type damage relations rather than
+ * copied from a modern chart - which matters in two cells a modern chart gets
+ * differently: **Dark into Steel and Ghost into Steel are 0.5x here**, raised to
+ * neutral in generation VI.
  */
 const generationThreeTypeMatrix: readonly (readonly number[])[] = [
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5, 0, 1],
-  [1, 0.5, 0.5, 1, 2, 2, 1, 1, 1, 1, 1, 2, 0.5, 1, 0.5],
-  [1, 2, 0.5, 1, 0.5, 1, 1, 1, 2, 1, 1, 1, 2, 1, 0.5],
-  [1, 1, 2, 0.5, 0.5, 1, 1, 1, 0, 2, 1, 1, 1, 1, 0.5],
-  [1, 0.5, 2, 1, 0.5, 1, 1, 0.5, 2, 0.5, 1, 0.5, 2, 1, 0.5],
-  [1, 0.5, 0.5, 1, 2, 0.5, 1, 1, 2, 2, 1, 1, 1, 1, 2],
-  [2, 1, 1, 1, 1, 2, 1, 0.5, 1, 0.5, 0.5, 0.5, 2, 0, 1],
-  [1, 1, 1, 1, 2, 1, 1, 0.5, 0.5, 1, 1, 1, 0.5, 0.5, 1],
-  [1, 2, 1, 2, 0.5, 1, 1, 2, 1, 0, 1, 0.5, 2, 1, 1],
-  [1, 1, 1, 0.5, 2, 1, 2, 1, 1, 1, 1, 2, 0.5, 1, 1],
-  [1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 0.5, 1, 1, 1, 1],
-  [1, 0.5, 1, 1, 2, 1, 0.5, 0.5, 1, 0.5, 2, 1, 1, 0.5, 1],
-  [1, 2, 1, 1, 1, 2, 0.5, 1, 0.5, 2, 1, 2, 1, 1, 1],
-  [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+  //        nor  fir  wat  ele  gra  ice  fig  poi  gro  fly  psy  bug  roc  gho  dra  dar  ste
+  /* nor */ [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5, 0, 1, 1, 0.5],
+  /* fir */ [1, 0.5, 0.5, 1, 2, 2, 1, 1, 1, 1, 1, 2, 0.5, 1, 0.5, 1, 2],
+  /* wat */ [1, 2, 0.5, 1, 0.5, 1, 1, 1, 2, 1, 1, 1, 2, 1, 0.5, 1, 1],
+  /* ele */ [1, 1, 2, 0.5, 0.5, 1, 1, 1, 0, 2, 1, 1, 1, 1, 0.5, 1, 1],
+  /* gra */ [1, 0.5, 2, 1, 0.5, 1, 1, 0.5, 2, 0.5, 1, 0.5, 2, 1, 0.5, 1, 0.5],
+  /* ice */ [1, 0.5, 0.5, 1, 2, 0.5, 1, 1, 2, 2, 1, 1, 1, 1, 2, 1, 0.5],
+  /* fig */ [2, 1, 1, 1, 1, 2, 1, 0.5, 1, 0.5, 0.5, 0.5, 2, 0, 1, 2, 2],
+  /* poi */ [1, 1, 1, 1, 2, 1, 1, 0.5, 0.5, 1, 1, 1, 0.5, 0.5, 1, 1, 0],
+  /* gro */ [1, 2, 1, 2, 0.5, 1, 1, 2, 1, 0, 1, 0.5, 2, 1, 1, 1, 2],
+  /* fly */ [1, 1, 1, 0.5, 2, 1, 2, 1, 1, 1, 1, 2, 0.5, 1, 1, 1, 0.5],
+  /* psy */ [1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 0.5, 1, 1, 1, 1, 0, 0.5],
+  /* bug */ [1, 0.5, 1, 1, 2, 1, 0.5, 0.5, 1, 0.5, 2, 1, 1, 0.5, 1, 2, 0.5],
+  /* roc */ [1, 2, 1, 1, 1, 2, 0.5, 1, 0.5, 2, 1, 2, 1, 1, 1, 1, 0.5],
+  /* gho */ [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 0.5, 0.5],
+  /* dra */ [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 0.5],
+  /* dar */ [1, 1, 1, 1, 1, 1, 0.5, 1, 1, 1, 2, 1, 1, 2, 1, 0.5, 0.5],
+  /* ste */ [1, 0.5, 0.5, 0.5, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 0.5],
 ];
 
 describe('generation III type-chart regression', () => {
-  it('matches every value in the canonical 15 by 15 matrix', () => {
+  it('matches every value in the canonical 17 by 17 matrix', () => {
     for (const [attackerIndex, attackingType] of typeOrder.entries()) {
       for (const [defenderIndex, defendingType] of typeOrder.entries()) {
         expect(getTypeEffectiveness(attackingType, [defendingType])).toBe(
@@ -89,6 +115,49 @@ describe('generation III type-chart regression', () => {
     expect(getTypeEffectiveness(PokemonType.Electric, [PokemonType.Water, PokemonType.Flying])).toBe(4);
     expect(getTypeEffectiveness(PokemonType.Fire, [PokemonType.Grass, PokemonType.Poison])).toBe(2);
     expect(getTypeEffectiveness(PokemonType.Fire, [])).toBe(1);
+  });
+
+  it('covers every type in both directions, so none falls off the chart', () => {
+    expect(typeOrder).toHaveLength(17);
+    expect(generationThreeTypeMatrix).toHaveLength(17);
+    for (const row of generationThreeTypeMatrix) {
+      expect(row).toHaveLength(17);
+    }
+    // A type missing from the chart's own order resolves to index -1 and would
+    // silently read a neighbouring row. Every type in the enum must be in it.
+    for (const type of Object.values(PokemonType)) {
+      expect(typeOrder).toContain(type);
+    }
+  });
+
+  it('keeps Dark and Steel on generation III values rather than a modern chart', () => {
+    // Generation VI raised both of these to neutral. This game is generation III.
+    expect(getTypeEffectiveness(PokemonType.Dark, [PokemonType.Steel])).toBe(0.5);
+    expect(getTypeEffectiveness(PokemonType.Ghost, [PokemonType.Steel])).toBe(0.5);
+    // The matchups that put Dark and Steel in the game in the first place.
+    expect(getTypeEffectiveness(PokemonType.Dark, [PokemonType.Psychic])).toBe(2);
+    expect(getTypeEffectiveness(PokemonType.Psychic, [PokemonType.Dark])).toBe(0);
+    expect(getTypeEffectiveness(PokemonType.Steel, [PokemonType.Rock])).toBe(2);
+    expect(getTypeEffectiveness(PokemonType.Poison, [PokemonType.Steel])).toBe(0);
+    // Magnemite and Magneton are Electric/Steel in generation III, so a Ground
+    // move against one is 2x for the Electric half and 2x again for the Steel.
+    expect(getTypeEffectiveness(PokemonType.Ground, [PokemonType.Electric, PokemonType.Steel])).toBe(4);
+  });
+
+  it('prices the two Dark and Steel moves a starter actually carries', () => {
+    // Metal Claw is Steel and Physical; Bite is Dark and Special. Generation III
+    // decides physical against special by the move's *type*, so a modern dex
+    // disagrees about Bite - the per-move split is generation IV.
+    expect(METAL_CLAW.type).toBe(PokemonType.Steel);
+    expect(METAL_CLAW.category).toBe(MoveCategory.Physical);
+    expect(BITE.type).toBe(PokemonType.Dark);
+    expect(BITE.category).toBe(MoveCategory.Special);
+
+    // Charmander's own Metal Claw against another Fire type: Steel resists Fire.
+    expect(getTypeEffectiveness(METAL_CLAW.type, [CHARMANDER.primaryType])).toBe(0.5);
+    // Squirtle's Bite is neutral into everything this roster fields, which is
+    // the honest state of a seventeen-type chart with no Psychic or Ghost in it.
+    expect(getTypeEffectiveness(BITE.type, [BULBASAUR.primaryType, BULBASAUR.secondaryType!])).toBe(1);
   });
 });
 

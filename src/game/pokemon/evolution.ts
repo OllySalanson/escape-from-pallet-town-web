@@ -60,10 +60,16 @@ export interface EvolutionRule {
  * (healing over turns), Solar Beam and Skull Bash (two-turn), Growth, Agility,
  * Withdraw and Defense Curl (every stat boost here is applied to the target),
  * Sweet Scent, Sand Attack and Smokescreen (no evasion or accuracy stage),
- * Metal Claw and Bite (Steel and Dark are generation II types and this game has
- * fifteen), Dragon Rage (fixed damage), Fire Spin (trapping), Quick Attack (no
- * move priority), Whirlwind and Mirror Move, Rapid Spin, Protect, Rain Dance,
+ * Dragon Rage (fixed damage), Fire Spin (trapping), Quick Attack (no move
+ * priority), Whirlwind and Mirror Move, Rapid Spin, Protect, Rain Dance,
  * Disable, and Double Slap (multi-hit).
+ *
+ * Metal Claw and Bite were on that list, left out because Dark and Steel were
+ * missing from the type chart on the false premise that they are later than
+ * this generation. They are generation II types, and both moves are now
+ * authored: the Charmander line's Metal Claw at 13 and the Squirtle line's Bite
+ * at 18/19. Each still ships without its secondary - Metal Claw's 10% Attack
+ * raise on the *user*, Bite's 30% flinch - which is a different gap.
  */
 export const EVOLUTIONS: readonly EvolutionRule[] = [
   { from: 'bulbasaur', to: 'ivysaur', trigger: { kind: 'level', level: 16 } },

@@ -21,12 +21,18 @@ const CARD_START_Y = 29;
 
 const TYPE_COLORS: Partial<Record<PokemonType, string>> = {
   Bug: '#9cab47',
+  // Dark and Steel are live from the moment a Charmander reaches 13 or a
+  // Wartortle 19, so they need an ink of their own: without one the move row
+  // fell back to the same pale default every other listed thing uses, and the
+  // one typed move on the screen was the one that did not look typed.
+  Dark: '#6f5b52',
   Electric: '#e3c75f',
   Fire: '#d87856',
   Flying: '#9caed8',
   Grass: '#7db65b',
   Normal: '#aaa898',
   Poison: '#a060a8',
+  Steel: '#9098a8',
   Water: '#6096d0',
 };
 

@@ -284,3 +284,44 @@ export const THUNDERBOLT = new MoveBase({
   pp: 15,
   category: MoveCategory.Special,
 });
+
+// ---------------------------------------------------------------------------
+// Dark and Steel
+//
+// These two are the reason the type chart grew from fifteen to seventeen. They
+// are not exotic late-game moves: **Charmander learns Metal Claw at level 13
+// and Squirtle learns Bite at 18** in FireRed/LeafGreen, so two of the three
+// starters carry one within the first hours. Until the chart had Dark and Steel
+// in it they could not be authored at all, and `evolution.ts` listed both as
+// moves left out for that reason.
+//
+// Category follows the generation III rule - by *type*, not per move - which
+// makes **Bite Special** (Dark is a special type in generation III) and **Metal
+// Claw Physical**. A modern dex disagrees on Bite: the per-move physical/special
+// split arrived in generation IV.
+//
+// Both carry a secondary effect this engine cannot yet express - Bite flinches
+// on 30%, Metal Claw raises the user's own Attack on 10% - so they ship with
+// the numbers right and the secondary absent, and their descriptions say what
+// they actually do rather than claiming there is nothing more to them.
+// ---------------------------------------------------------------------------
+
+export const BITE = new MoveBase({
+  name: 'Bite',
+  description: 'A savage bite with sharp fangs.',
+  type: PokemonType.Dark,
+  power: 60,
+  accuracy: 100,
+  pp: 25,
+  category: MoveCategory.Special,
+});
+
+export const METAL_CLAW = new MoveBase({
+  name: 'Metal Claw',
+  description: 'A rake with hardened steel claws.',
+  type: PokemonType.Steel,
+  power: 50,
+  accuracy: 95,
+  pp: 35,
+  category: MoveCategory.Physical,
+});
