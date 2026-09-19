@@ -600,9 +600,9 @@ describe('extraction loop integration', () => {
     // gamble panel is the only place the risk is ever visible. One of the five
     // balls was thrown, so four made it back and the fifth is the spent line's.
     expect(report.risked.items).toEqual([
-      { itemId: 'poke-ball', label: 'Poke Ball', quantity: 4 },
+      { itemId: 'poke-ball', label: 'Poké Ball', quantity: 4 },
     ]);
-    expect(report.spent).toEqual([{ itemId: 'poke-ball', label: 'Poke Ball', quantity: 1 }]);
+    expect(report.spent).toEqual([{ itemId: 'poke-ball', label: 'Poké Ball', quantity: 1 }]);
     expect(report.clockLabel).toBe('1:34 of 5:00');
   });
 

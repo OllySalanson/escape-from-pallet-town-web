@@ -30,8 +30,23 @@ export function applyStage(
     // The DOM menus are absolutely positioned inside this element, so sizing it
     // to the canvas is what keeps the lobby, the field guide and the result
     // screen lined up with the game screen rather than with the window.
-    parent.style.width = `${stage.width * stage.zoom}px`;
-    parent.style.height = `${stage.height * stage.zoom}px`;
+    const width = stage.width * stage.zoom;
+    const height = stage.height * stage.zoom;
+    parent.style.width = `${width}px`;
+    parent.style.height = `${height}px`;
+    // Placed, not centred by the page: the room left over is odd as often as it
+    // is even, and half of an odd number put the whole screen - canvas and menus
+    // alike - on half a pixel, which the browser resolves by blurring all of it.
+    parent.style.position = 'absolute';
+    parent.style.left = `${Math.max(0, Math.floor((viewportWidth - width) / 2))}px`;
+    parent.style.top = `${Math.max(0, Math.floor((viewportHeight - height) / 2))}px`;
+    // One game pixel, in CSS pixels. The pixel-ui screens measure everything in
+    // it, so a DOM window's border is exactly as thick as a drawn one and every
+    // edge lands on the same grid the canvas under it is scaled to.
+    parent.style.setProperty('--px', `${stage.zoom}px`);
+    // The same number without its unit, for the one thing a length cannot do:
+    // scale a sprite of unknown size by exactly the zoom, with no resampling.
+    parent.style.setProperty('--zoom', `${stage.zoom}`);
   }
   return stage;
 }

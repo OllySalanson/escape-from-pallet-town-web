@@ -30,7 +30,113 @@ import {
   type RaidProgress,
   type StorageLike,
 } from '../save/SaveManager';
+import { PIXEL_STATUS_SELECTOR } from '../ui/pixelUi';
 import { HubScene, type HubSceneData } from './HubScene';
+
+describe('the lobby as a screen of the game', () => {
+  function markupOf(hub: HubInternals): string {
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  }
+
+  /** Every lobby screen, on a save worn enough to show its treatment surfaces. */
+  function everyScreen(): readonly string[] {
+    const { hub } = createWornHub();
+    const screens = [markupOf(hub)];
+    hub.setView('stash');
+    screens.push(markupOf(hub));
+    hub.setView('reselect');
+    screens.push(markupOf(hub));
+    hub.openDeployment();
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.adjustItem('potion', 1);
+    screens.push(markupOf(hub));
+    hub.flow.openSecureSlot();
+    screens.push(markupOf(hub));
+    hub.flow.advance();
+    hub.flow.advance();
+    screens.push(markupOf(hub));
+    return screens;
+  }
+
+  it('types nothing the typeface cannot draw', () => {
+    // Orange Kid has no arrows and no tick. A glyph it lacks is drawn in the
+    // browser's fallback face, which is a second typeface in one picture - so
+    // the cursor and the tick are drawn, and no screen may type one.
+    for (const screen of everyScreen()) {
+      expect(screen).not.toMatch(/[\u2190-\u21ff\u2713\u2714\u25b6\u25c0\u25b8\u25c2]/u);
+    }
+  });
+
+  it('builds every screen from the shared frame: title bar, body, help bar', () => {
+    for (const screen of everyScreen()) {
+      expect(screen).toContain('class="px-screen"');
+      expect(screen).toContain('class="px-title"');
+      expect(screen).toContain('class="px-help"');
+      // The modern-web vocabulary it replaced, which the raid's own screens still use.
+      expect(screen).not.toMatch(/class="[^"]*(?<![\w-])(panel|entity-row|button|menu-shell)(?![\w-])/);
+    }
+  });
+
+  it('points preparation at a contract\'s own insertion when its row is chosen', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      firstContractExtracted: true,
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+      completedContracts: [FIRST_CONTRACT_ID],
+    });
+
+    expect(markupOf(hub)).toContain('data-contract="route-1"');
+    hub.openDeployment('route-1');
+
+    expect(hub.flow.insertionId).toBe('route-1');
+    expect(hub.flow.step).toBe('loadout');
+    // Where you drop in is the one thing the board may choose. It never packs.
+    expect(hub.flow.party).toEqual([]);
+  });
+
+  it('will not be pointed at an insertion the save has not unlocked', () => {
+    const { hub } = createHub();
+
+    hub.openDeployment('viridian-forest');
+
+    expect(hub.flow.insertionId).toBe('floodplain-relay');
+  });
+
+  it('says on the base screen that someone is hurt, and bills it in the stash', () => {
+    const { hub } = createWornHub();
+
+    const home = markupOf(hub);
+    expect(home).toContain('1 Pokémon came home hurt');
+    expect(home).not.toContain('recovery-panel');
+
+    hub.setView('stash');
+    const stash = markupOf(hub);
+    expect(stash).toContain('recovery-panel');
+    expect(stash).toContain('data-recover-all');
+    expect(stash).toContain('data-recover="charmander-1"');
+  });
+
+  it('keeps a fit save free of the recovery bay entirely', () => {
+    const { hub } = createHub();
+
+    hub.setView('stash');
+
+    expect(markupOf(hub)).not.toContain('recovery-panel');
+  });
+
+  it('lets the cursor rest on a medicine that would do nothing, to be told why', () => {
+    const { hub } = createWornHub();
+
+    hub.openDeployment();
+    const loadout = markupOf(hub);
+
+    // `disabled` would make the reason unreachable: the help bar only speaks for
+    // the control the cursor is on.
+    expect(loadout).toMatch(/data-treat-item="potion"[^>]*data-help="Potion: Restores/);
+    expect(loadout).not.toMatch(/data-treat-item="[^"]*"[^>]* disabled/);
+  });
+});
 
 interface WorldSceneData {
   readonly party: PokemonParty;
@@ -45,6 +151,7 @@ interface HubInternals {
   render(): void;
   recover(ids: readonly string[]): void;
   treat(pokemonId: string, itemId: string): void;
+  openDeployment(insertionId?: string): void;
   readonly flow: DeploymentFlow;
   readonly stash: Stash;
   readonly raidClockMs: number;
@@ -95,6 +202,7 @@ function createHub(
         querySelectorAll: () => [],
       },
       focus: vi.fn(),
+      refocus: vi.fn(),
     },
   });
   hub.init({
@@ -433,6 +541,20 @@ describe('hub deployment route', () => {
       });
   });
 
+  it('starts one raid however many times the key that started it is pressed', () => {
+    const { hub, start } = createHub();
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.advance();
+
+    // The screen keeps its cursor on `Enter the raid` for the length of the
+    // fade, and the second press used to throw out of a raid already running.
+    hub.startRun();
+    expect(() => hub.startRun()).not.toThrow();
+    (start as unknown as { flushFade(): void }).flushFade();
+
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
   it('enters the raid with exactly the party, supplies and secure slot that were confirmed', () => {
     const { hub, start } = createHub();
 
@@ -544,7 +666,7 @@ describe('what the base screen leads with', () => {
   it('says the swap is there, so a wiped player is not left hunting for it', () => {
     const hub = createFreshHub();
 
-    expect(markupOf(hub)).toContain('swap your last partner');
+    expect(markupOf(hub)).toContain('Your last partner can be swapped here.');
   });
 
   /** Playtest 3, D1: home from an extraction at 1 HP with no Potions and four Poke Balls. */
@@ -575,7 +697,10 @@ describe('what the base screen leads with', () => {
   it('does not let the swap stand in for the recovery bay or the restock', () => {
     const { hub, storage } = createSpentHub();
     hub.setView('stash');
-    const price = /data-recover="squirtle-1">Recover · ([^<]+)</.exec(markupOf(hub))?.[1];
+    // The price is the tag on the hurt Pokémon's own row.
+    const priceOn = (id: string): string | undefined =>
+      new RegExp(`data-recover="${id}"[^>]*>.*?px-tag-risk">([^<]+)<`).exec(markupOf(hub))?.[1];
+    const price = priceOn('squirtle-1');
     expect(price).toBeDefined();
 
     swapTo(hub, 'charmander');
@@ -588,7 +713,7 @@ describe('what the base screen leads with', () => {
     expect(saved.pendingRecoveryMs).toBe(0);
     // The screen shows the same vault, and the bay still wants its price.
     expect(hub.stash.listPokemon()[0].pokemon.currentHp).toBe(1);
-    expect(markupOf(hub)).toContain(`data-recover="charmander-1">Recover · ${price}<`);
+    expect(priceOn('charmander-1')).toBe(price);
 
     // Swapping back for the species you had is no way round it either.
     swapTo(hub, 'squirtle');
@@ -659,6 +784,7 @@ describe('the Outfitter', () => {
     togglePayment(pokemonId: string): void;
     confirmPayment(): void;
     outfitterArmed: boolean;
+    outfitterPayment: string[];
   }
 
   function markupOf(hub: HubInternals): string {
@@ -716,12 +842,16 @@ describe('the Outfitter', () => {
     hub.setView('outfitter');
     const ladder = markupOf(hub);
     expect(ladder).toContain('Secure locker I');
-    expect(ladder).toContain('Costs 2 Pokémon + 2× Poke Ball + 1× Potion');
+    expect(ladder).toContain('Costs 2 Pokémon + 2× Poké Ball + 1× Potion');
     expect(ladder).toContain('After Secure locker I: ');
     // Three spendable catches cannot pay the four the second locker asks.
     expect(ladder).toContain('<span class="cost-short" title="Not enough spare at base yet">4 Pokémon</span>');
-    expect(ladder).toMatch(/data-outfit="secure-locker-1">Build/);
-    expect(ladder).toMatch(/data-outfit="secure-locker-2" disabled>Build/);
+    // A rung that cannot be built is still a control, so the cursor can reach it
+    // and the pane under the list can say what it does.
+    expect(ladder).toMatch(/data-outfit="secure-locker-1" data-shows/);
+    expect(ladder).toMatch(/data-outfit="secure-locker-2" aria-disabled="true"/);
+    expect(ladder).not.toMatch(/<button[^>]* disabled/);
+    expect(ladder).toContain('data-shown-by="secure-locker-2"');
   });
 
   it('names the Pokémon and the supplies it is spending, and asks before it spends them', () => {
@@ -733,14 +863,17 @@ describe('the Outfitter', () => {
     const empty = markupOf(hub);
     // Nothing is picked on the player's behalf, and the partner cannot be picked at all.
     expect(empty).toContain('Choose 2 more Pokémon to release.');
-    expect(empty).toMatch(/data-pay-pokemon="charmander-1" disabled/);
+    expect(empty).toMatch(/data-pay-pokemon="charmander-1" aria-disabled="true"/);
+    // Pointing at it says why, and choosing it changes nothing.
+    hub.togglePayment('charmander-1');
+    expect(hub.outfitterPayment).toEqual([]);
     expect(empty).toContain('Your partner is never payment');
     expect(empty).not.toContain('data-pay-arm');
 
     hub.togglePayment('pidgey-1');
     hub.togglePayment('bulbasaur-9');
     const chosen = markupOf(hub);
-    expect(chosen).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Poke Ball, 1× Potion');
+    expect(chosen).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Poké Ball, 1× Potion');
     expect(chosen).toContain('data-pay-arm');
     expect(chosen).not.toContain('data-pay-confirm');
 
@@ -751,7 +884,7 @@ describe('the Outfitter', () => {
     hub.outfitterArmed = true;
     const armed = markupOf(hub);
     expect(armed).toContain('This cannot be undone');
-    expect(armed).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Poke Ball, 1× Potion?');
+    expect(armed).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Poké Ball, 1× Potion?');
     expect(armed).toContain('data-pay-confirm');
     expect(armed).toContain('Keep them');
   });
@@ -784,7 +917,7 @@ describe('the Outfitter', () => {
     expect(hub.stash.itemCount('poke-ball')).toBe(7);
     expect(hub.stash.itemCount('potion')).toBe(6);
     expect(hub.flow.secureItemStacks).toBe(3);
-    expect(markupOf(hub)).toContain('Built ✓');
+    expect(markupOf(hub)).toMatch(/data-built="secure-locker-1"[\s\S]*?has-tick">Built</);
     // The upgrade is in storage, not just on screen.
     expect(new SaveManager(storage).load()?.raidProgress.outfitterUpgrades).toEqual(['secure-locker-1']);
   });
@@ -797,13 +930,14 @@ describe('the Outfitter', () => {
     const outfitter = hub as OutfitterInternals;
 
     hub.setView('outfitter');
-    expect(markupOf(hub)).not.toMatch(/data-outfit="[a-z0-9-]+">/);
+    expect(markupOf(hub)).not.toMatch(/data-outfit="[a-z0-9-]+"(?! aria-disabled="true")/);
 
+    // Choosing a rung that cannot be paid for is answered, and goes nowhere.
     outfitter.choosePayment('radio-mast');
-    const payment = markupOf(hub);
-    expect(payment).toMatch(/data-pay-pokemon="[a-z0-9-]+" disabled/);
-    expect(payment).not.toMatch(/data-pay-pokemon="[a-z0-9-]+">/);
-    expect(payment).not.toContain('data-pay-arm');
+    const refused = markupOf(hub);
+    expect(refused).toContain('Radio mast still needs');
+    expect(refused).not.toContain('data-pay-pokemon');
+    expect(refused).not.toContain('data-pay-arm');
   });
 
   it('deploys with a second protected Pokémon, the beacon and the mast once they are built', () => {
@@ -820,7 +954,7 @@ describe('the Outfitter', () => {
     hub.flow.toggleSecurePokemon('pidgey-2');
     hub.setView('deploy');
     hub.flow.advance();
-    expect(markupOf(hub)).toContain('<b>2/5</b>');
+    expect(markupOf(hub)).toContain('2/5 secured');
 
     deploy(hub, start);
 
@@ -854,8 +988,9 @@ describe('the Outfitter', () => {
     down.pokemon.takeDamage(down.pokemon.maxHp);
     const terms = { priceShare: 0.75, wardTreatments: 0 };
 
-    const home = markupOf(hub);
-    expect(home).toContain('ward bed');
+    // The bill is in the stash, beside the Pokémon it is for.
+    hub.setView('stash');
+    expect(markupOf(hub)).toContain('Ward bed: ');
 
     // The bed goes to the worse case. It waives the refill; the revive is still
     // charged, at the better bay's price.
@@ -866,7 +1001,7 @@ describe('the Outfitter', () => {
     const hurtPriceMs = recoveryCostMs(hurt.pokemon, terms);
     hub.recover(['pidgey-1']);
     expect(hub.pendingRecoveryMs).toBe(recoveryPrices(0.75).reviveMs + hurtPriceMs);
-    expect(markupOf(hub)).not.toContain('ward bed');
+    expect(markupOf(hub)).not.toContain('Ward bed: ');
   });
 });
 
@@ -886,12 +1021,12 @@ describe('taking a status line down', () => {
     const root = {
       get innerHTML() { return html; },
       set innerHTML(value: string) { html = value; renders += 1; },
-      querySelector: (selector: string) => (selector === '.menu-status' ? { remove: removed } : null),
+      querySelector: (selector: string) => (selector === PIXEL_STATUS_SELECTOR ? { remove: removed } : null),
       querySelectorAll: () => [],
     };
     const timers: { callback: () => void; remove: ReturnType<typeof vi.fn> }[] = [];
     Object.assign(hub as unknown as Record<string, unknown>, {
-      overlay: { root, focus: vi.fn() },
+      overlay: { root, focus: vi.fn(), refocus: vi.fn() },
       time: {
         delayedCall: (_ms: number, callback: () => void) => {
           const timer = { callback, remove: vi.fn() };

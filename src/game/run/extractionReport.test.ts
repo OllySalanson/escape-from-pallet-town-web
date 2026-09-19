@@ -76,15 +76,15 @@ describe('extraction report after a survived raid', () => {
     ]);
     expect(report.risked.pokemon).toEqual([]);
     expect(report.risked.items).toEqual([
-      { itemId: 'poke-ball', label: 'Poke Ball', quantity: 2 },
+      { itemId: 'poke-ball', label: 'Poké Ball', quantity: 2 },
     ]);
     expect(report.gambleVerdict).toBe(
-      'A wipe would have cost you 2 Poke Balls. It did not happen this time.',
+      'A wipe would have cost you 2 Poké Balls. It did not happen this time.',
     );
     // Spent is measured against the bag, so found supplies used up still count.
     expect(report.spent).toEqual([
       { itemId: 'potion', label: 'Potion', quantity: 2 },
-      { itemId: 'poke-ball', label: 'Poke Ball', quantity: 1 },
+      { itemId: 'poke-ball', label: 'Poké Ball', quantity: 1 },
     ]);
     expect(report.clockLabel).toBe('2:17 of 5:00');
     expect(report.contract?.complete).toBe(true);
@@ -119,13 +119,13 @@ describe('extraction report after a survived raid', () => {
     expect(report.ledgerEmptyText).toBe('Nothing new. What the raid used up is counted below.');
     expect(report.secured.items).toEqual([]);
     expect(report.securedEmptyText).toBe('Everything you protected was used up in the field.');
-    expect(report.risked.items).toEqual([{ itemId: 'poke-ball', label: 'Poke Ball', quantity: 1 }]);
+    expect(report.risked.items).toEqual([{ itemId: 'poke-ball', label: 'Poké Ball', quantity: 1 }]);
     expect(report.spent).toEqual([
       { itemId: 'potion', label: 'Potion', quantity: 3 },
-      { itemId: 'poke-ball', label: 'Poke Ball', quantity: 1 },
+      { itemId: 'poke-ball', label: 'Poké Ball', quantity: 1 },
     ]);
     expect(report.gambleVerdict).toBe(
-      'A wipe would have cost you Bulbasaur and 1 Poke Ball. It did not happen this time.',
+      'A wipe would have cost you Bulbasaur and 1 Poké Ball. It did not happen this time.',
     );
   });
 
@@ -278,7 +278,7 @@ describe('extraction report after a lost raid', () => {
     expect(report.ledgerHeading).toBe('Gone for good');
     expect(report.ledger.pokemon.map(({ name }) => name)).toEqual(['Bulbasaur']);
     expect(report.ledger.items).toEqual([
-      { itemId: 'poke-ball', label: 'Poke Ball', quantity: 3 },
+      { itemId: 'poke-ball', label: 'Poké Ball', quantity: 3 },
     ]);
     expect(report.secured.pokemon.map(({ name }) => name)).toEqual(['Pidgey']);
     // Three Potions were secured and only one was still in the pack, so only
@@ -287,7 +287,7 @@ describe('extraction report after a lost raid', () => {
     expect(report.secured.items).toEqual([{ itemId: 'potion', label: 'Potion', quantity: 1 }]);
     expect(report.spent).toEqual([{ itemId: 'potion', label: 'Potion', quantity: 2 }]);
     expect(report.gambleVerdict).toBe(
-      'The secure slot brought Pidgey and 1 Potion home. Bulbasaur and 3 Poke Balls did not make it.',
+      'The secure slot brought Pidgey and 1 Potion home. Bulbasaur and 3 Poké Balls did not make it.',
     );
     // A loss is never graded as a haul, whatever the secure slot rescued.
     expect(report.haulTier).toBe('empty');
@@ -312,7 +312,7 @@ describe('extraction report after a lost raid', () => {
     expect(report.summary).toContain('The raid ended where you fell.');
     expect(report.summary).toContain('Nothing was protected.');
     expect(report.gambleVerdict).toBe(
-      'The secure slot was empty, so Charmander and 2 Poke Balls went with the raid.',
+      'The secure slot was empty, so Charmander and 2 Poké Balls went with the raid.',
     );
     // No bag was available to the losing scene, which is not the same claim as
     // "nothing was spent", so the screen is given nothing to print.

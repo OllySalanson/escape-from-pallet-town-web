@@ -70,7 +70,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'route-1',
     position: { x: 28, y: 18 },
     label: "OAK'S FIELD STATION",
-    description: 'Marked supply cache: 2 Poke Balls and 1 Potion. Its relay opens the east spur.',
+    description: 'Marked supply cache: 2 Poké Balls and 1 Potion. Its relay opens the east spur.',
     reward: [
       { itemId: 'poke-ball', quantity: 2 },
       { itemId: 'potion', quantity: 1 },

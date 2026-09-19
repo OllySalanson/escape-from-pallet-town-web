@@ -9,6 +9,13 @@ export const ItemCategory = {
 
 export type ItemCategory = (typeof ItemCategory)[keyof typeof ItemCategory];
 
+/** What a pocket is called on screen. The category values themselves are save-file slugs. */
+export const ITEM_CATEGORY_LABELS: Readonly<Record<ItemCategory, string>> = {
+  medicine: 'Medicine',
+  pokeball: 'Poké Balls',
+  misc: 'Other',
+};
+
 export type ItemEffect =
   | { readonly type: 'heal'; readonly amount: number }
   | { readonly type: 'cure-status'; readonly status: PrimaryStatus }
@@ -51,7 +58,7 @@ export const ITEMS = {
   },
   'poke-ball': {
     id: 'poke-ball',
-    displayName: 'Poke Ball',
+    displayName: 'Poké Ball',
     category: ItemCategory.PokeBall,
     description: 'A device for catching wild Pokemon.',
     effect: { type: 'capture-modifier', multiplier: 1 },

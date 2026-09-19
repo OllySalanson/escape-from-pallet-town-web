@@ -134,144 +134,15 @@ button {
   color: var(--menu-muted);
   padding: 7px 0;
 }
-.hub-actions {
-  display: grid;
-  /* Three cards on one row: the raid leads, the stash and the Outfitter share
-     what is left. A third card on a second row is what put the contract board
-     past the fold. */
-  grid-template-columns: 1.45fr 1fr 1fr;
-  gap: var(--space-2);
-}
-.hub-home {
-  display: grid;
-  gap: var(--space-3);
-}
-.objectives-panel {
-  padding: var(--space-3);
-}
-.objective-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 8px;
-}
-/* The Outfitter's ladder: two fixed columns rather than the board's auto-fit,
-   because each rung ends in a control and an auto-fit column narrow enough to
-   fit four across left the copy one letter wide. */
-.outfitter-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  /* In em so the four rows keep fitting as the stage scales its type. */
-  gap: 0.45em;
-}
-.outfitter-row {
-  padding: 0.55em 0.7em;
-}
-/* An odd rung out takes the whole row rather than half of one. */
-.outfitter-row:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-.cost-short {
-  color: #ffd4c8;
-  font-weight: 700;
-}
-.outfitter-row .button {
-  margin: 0;
-  padding: 0.55em 0.8em;
-  flex: none;
-  white-space: nowrap;
-}
-.outfitter-row .secure-tag {
-  flex: none;
-  white-space: nowrap;
-}
-.objective-copy {
-  /* Grows into the row instead of being pushed to its right edge by the
-     trailing-child rule above, which only reads correctly on a narrow row. */
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.action-card {
-  text-align: left;
-  border: 1px solid var(--menu-border);
-  border-radius: var(--radius);
-  background: var(--menu-surface);
-  padding: var(--space-3);
-  box-shadow: var(--shadow);
-  /* In em rather than px: the lobby scales with the game screen, so a card
-     fixed at 225px ate two thirds of the fold on a 900x600 window while
-     looking sparse on a large one. */
-  min-height: 11em;
-  display: flex;
-  flex-direction: column;
-  transition:
-    transform 0.15s ease,
-    border-color 0.15s ease,
-    background 0.15s ease;
-}
-.action-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--menu-accent);
-  background: var(--menu-raised);
-}
-.action-card.primary {
-  background: linear-gradient(135deg, #17665f, #16354a);
-  border-color: var(--menu-accent);
-}
-.action-card span {
-  color: var(--menu-accent);
-  font-weight: 800;
-}
-/* The slack in a card goes above its call to action rather than above its
-   heading: with three cards in the row, copy of different lengths otherwise
-   starts each heading at a different height. */
-.action-card h2 {
-  font-size: 1.65em;
-  margin-top: 0.9em;
-}
-.action-card p {
-  color: var(--menu-muted);
-  margin: 8px 0 18px;
-}
-.action-card b {
-  color: var(--menu-accent);
-  margin-top: auto;
-}
-.stash-layout,
-.loadout-layout,
-.secure-layout {
-  display: grid;
-  gap: var(--space-3);
-}
-.stash-layout {
-  grid-template-columns: 1.6fr 1fr;
-}
-.panel,
-.stash-layout > section,
-.secure-intro,
-.secure-group {
+
+.panel{
   background: rgb(17 28 46 / 90%);
   border: 1px solid var(--menu-border);
   border-radius: var(--radius);
   padding: var(--space-3);
   box-shadow: var(--shadow);
 }
-.panel-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  /* A narrow panel must wrap its trailing note, never overlap the heading. */
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-2);
-}
-.panel-heading > * {
-  min-width: 0;
-}
-.panel-heading h2,
-.stash-layout h2,
-.secure-group h2 {
-  font-size: 1.25em;
-}
+
 .entity-list {
   display: grid;
   gap: 8px;
@@ -303,102 +174,12 @@ button {
 .entity-row > span:last-child {
   margin-left: auto;
 }
-/* Recovery rows keep their name block flexible so the trailing control, not the
-   copy, is what sits against the right edge of the row. */
-.entity-copy {
-  flex: 1;
-  min-width: 0;
-}
+
 /* A wide row must not stretch the health bar into a ribbon. */
 .entity-row .hp-track {
   max-width: 280px;
 }
-.recovery-panel {
-  border-color: #4f8f86;
-  background: linear-gradient(135deg, rgb(23 74 74 / 90%), rgb(17 28 46 / 92%));
-}
-.recovery-panel > p {
-  color: var(--menu-muted);
-  margin: 0 0 var(--space-2);
-  max-width: 74ch;
-}
-.recovery-panel .entity-list:empty {
-  display: none;
-}
-.recovery-bill {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--menu-border);
-}
-.recovery-bill strong,
-.recovery-bill small {
-  display: block;
-}
-.recovery-bill small {
-  color: var(--menu-muted);
-}
-.recovery-bill .button {
-  margin: 0;
-  white-space: nowrap;
-}
-.recovery-panel .entity-row .button,
-.stash-layout .entity-row .button {
-  margin: 0;
-  margin-left: auto;
-  padding: 8px 11px;
-  white-space: nowrap;
-}
-.fit-tag {
-  color: #9ddac9;
-  font-size: 0.85em;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.risk-tag,
-.secure-tag,
-.level-tag,
-.xp-tag {
-  font-size: 0.85em;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.risk-tag {
-  color: #ffb4a2;
-}
-/* An insertion that carries a contract says so in the accent, so the insertion
-   list reads as the contract board it now is. */
-.insertion-contract {
-  display: block;
-  color: var(--menu-accent);
-  font-weight: 750;
-  font-size: 0.75em;
-  letter-spacing: 0.1em;
-}
-/* A drop-in point carries the teal the map marks it with, so the entry in this
-   list and the landing the player stood on read as the same thing. */
-.insertion-drop-in {
-  display: block;
-  color: #5eead4;
-  font-weight: 750;
-  font-size: 0.75em;
-  letter-spacing: 0.1em;
-}
-.secure-tag {
-  color: #f6c969;
-}
-/* Gold is the secure slot's colour throughout, so a level uses the accent
-   instead: two meanings on one token is how a screen stops being readable. */
-.level-tag {
-  color: var(--menu-accent);
-}
-.xp-tag {
-  color: var(--menu-muted);
-}
+
 .selectable:hover,
 .selectable.selected {
   border-color: var(--menu-accent);
@@ -469,32 +250,7 @@ button {
 .type-water {
   background: #355f9a;
 }
-.item-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 8px;
-  margin-top: 12px;
-}
-.item-card {
-  background: var(--menu-raised);
-  border-radius: 10px;
-  padding: 12px;
-  display: grid;
-  gap: 3px;
-}
-.item-card > div {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 5px;
-}
-.item-card button {
-  border: 1px solid var(--menu-border);
-  background: #233752;
-  border-radius: 6px;
-  width: 26px;
-  height: 26px;
-}
+
 /*
  * Icons are 16x16 pixel art. The box is a whole multiple of that (32px, or 2x)
  * and the image fills it exactly, so every source pixel lands on four screen
@@ -526,208 +282,7 @@ button {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.loadout-layout {
-  grid-template-columns: 1.25fr 0.75fr;
-  align-items: start;
-}
-/* The commitment bar spans every column and sticks to the bottom of the scroll
-   area, so the primary action is on screen at every window size. The column
-   layout it replaced pushed `Review & deploy` below the fold at 1280x800 while
-   leaving half a column of empty space beside it. The final check shares the
-   rule: three entries at risk were enough to push `Enter the raid`, and the
-   hunter price beside it, under the frame. */
-.confirm-bar {
-  grid-column: 1 / -1;
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  box-shadow: var(--shadow);
-}
-.bar-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-.bar-actions .button {
-  margin: 0;
-  white-space: nowrap;
-}
-.bar-warning {
-  display: block;
-  color: #ffd4c8;
-}
-.run-loadout {
-  display: flex;
-  flex-direction: column;
-}
-.run-loadout .entity-row + .entity-row {
-  margin-top: 8px;
-}
-/* An insertion row is copy and nothing else, so its one block takes the whole
-   row. Without this the trailing-child rule pushes a row that is only a name to
-   the right-hand edge, which only went unseen while every row was a paragraph. */
-.run-loadout .entity-row > div {
-  flex: 1;
-  min-width: 0;
-}
-.run-loadout .panel-heading:not(:first-child) {
-  margin-top: var(--space-3);
-}
-/* A hurt Pokemon in the loadout carries its own treatment surface: the row that
-   adds it to the raid, and under it the two ways to fix it, priced. */
-.loadout-entry {
-  display: grid;
-  gap: 8px;
-  border-radius: 10px;
-}
-.loadout-entry.hurt {
-  border: 1px solid #7a4b46;
-  background: rgb(72 42 43 / 45%);
-  padding: 7px;
-}
-.loadout-entry.hurt > .entity-row {
-  background: var(--menu-raised);
-}
-.care-strip {
-  display: grid;
-  gap: 7px;
-  padding: 0 2px 2px;
-}
-.care-lead {
-  margin: 0;
-  color: #ffd0c5;
-  font-size: 0.85em;
-  font-weight: 700;
-}
-.care-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 7px;
-}
-.care-item {
-  display: grid;
-  gap: 2px;
-  text-align: left;
-  border: 1px solid var(--menu-border);
-  border-radius: 9px;
-  background: var(--menu-raised);
-  padding: 8px 10px;
-}
-.care-item small {
-  color: var(--menu-muted);
-}
-.care-item:disabled {
-  opacity: 0.45;
-}
-.care-item:not(:disabled):hover {
-  border-color: var(--menu-accent);
-}
-.care-empty {
-  margin: 0;
-  color: var(--menu-muted);
-  font-size: 0.85em;
-}
-.care-strip .button {
-  margin: 0;
-  justify-self: start;
-  padding: 7px 11px;
-  font-size: 0.85em;
-}
-.risk-note {
-  color: #ffd0c5;
-  background: #482a2b;
-  border-radius: 9px;
-  padding: 10px;
-  font-size: 0.9em;
-  margin: 14px 0;
-}
-.deploy-progress {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  list-style: none;
-  margin: calc(var(--space-3) * -1) 0 var(--space-3);
-  padding: 0;
-  color: var(--menu-muted);
-  font-weight: 650;
-}
-.deploy-progress li {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-.deploy-progress li + li::before {
-  content: '';
-  width: clamp(14px, 4vw, 48px);
-  height: 2px;
-  border-radius: 2px;
-  background: var(--menu-border);
-}
-.deploy-progress li span {
-  display: grid;
-  place-items: center;
-  width: 25px;
-  height: 25px;
-  border-radius: 50%;
-  border: 1px solid var(--menu-border);
-  background: var(--menu-surface);
-  font-size: 0.85em;
-}
-.deploy-progress .done,
-.deploy-progress .done span {
-  color: var(--menu-accent);
-  border-color: var(--menu-accent);
-}
-.deploy-progress .current {
-  color: var(--menu-text);
-}
-.deploy-progress .current span {
-  background: var(--menu-accent);
-  border-color: var(--menu-accent);
-  color: #082226;
-}
-.deploy-progress .done::before,
-.deploy-progress .current::before {
-  background: var(--menu-accent) !important;
-}
-.confirm-layout {
-  display: grid;
-  grid-template-columns: 0.85fr 1.15fr 1fr;
-  gap: var(--space-3);
-  align-items: start;
-}
-.confirm-layout .panel {
-  display: flex;
-  flex-direction: column;
-}
-.menu-overlay .confirm-note {
-  color: var(--menu-muted);
-  margin-bottom: var(--space-2);
-}
-.confirm-layout .panel .button {
-  display: block;
-  width: 100%;
-  margin-top: auto;
-}
-.confirm-layout .entity-list {
-  margin-bottom: var(--space-2);
-}
-.confirm-risk .entity-row {
-  box-shadow: inset 3px 0 0 #915249;
-}
-.hunter-price {
-  margin-top: 0.35em;
-  color: var(--menu-muted);
-}
-.hunter-price b {
-  color: var(--menu-text);
-}
-.hunter-price.raised,
-.hunter-price.raised b {
-  color: #ffd4c8;
-}
+
 .button {
   border: 1px solid var(--menu-border);
   background: var(--menu-raised);
@@ -745,26 +300,7 @@ button {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.secure-layout {
-  grid-template-columns: 0.75fr 1fr 1fr;
-  align-items: start;
-}
-.secure-intro {
-  background: linear-gradient(145deg, #5b4b26, #2d271d);
-  border-color: #edc568;
-}
-.secure-intro h2 {
-  font-size: 2.2em;
-  letter-spacing: -0.05em;
-  margin: 9px 0;
-}
-.secure-intro p:last-child {
-  color: #f7e4ae;
-}
-.secure-group small {
-  color: var(--menu-muted);
-  font-weight: 400;
-}
+
 .empty-state {
   padding: 18px 4px;
   color: var(--menu-muted);
@@ -1153,310 +689,21 @@ button {
     grid-template-columns: repeat(2, 1fr);
   }
 }
-.starter-shell { display: grid; align-content: center; gap: var(--space-3); }.starter-header { max-width: 640px; }.starter-header h1 { margin: 4px 0 8px; font-size: clamp(31px, 5vw, 50px); letter-spacing: -.05em; }.starter-header > p:last-child { color: var(--menu-muted); }.starter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }.starter-card { position: relative; min-height: 210px; display: flex; flex-direction: column; align-items: flex-start; gap: 13px; padding: 18px; text-align: left; color: var(--menu-text); background: var(--menu-surface); border: 1px solid var(--menu-border); border-radius: var(--radius); box-shadow: var(--shadow); transition: transform .15s ease, border-color .15s ease, background .15s ease; }.starter-card:hover, .starter-card.selected { transform: translateY(-3px); border-color: var(--menu-accent); background: #1d3950; }.starter-card .pokemon-avatar { width: 64px; height: 64px; flex-basis: 64px; }.starter-card h2 { font-size: 1.6em; }.starter-card p { color: var(--menu-muted); margin: 4px 0 8px; }.starter-card b { color: var(--menu-accent); margin-top: auto; }.starter-confirm { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); border: 1px solid #416a70; border-radius: var(--radius); background: linear-gradient(110deg, #153d45, #142438); }.starter-confirm strong, .starter-confirm small { display: block; }.starter-confirm strong { font-size: 1.3em; }.starter-confirm .button { margin: 0; white-space: nowrap; }
-.swap-panel {
-  border-color: #6f5aa8;
-  background: linear-gradient(135deg, rgb(58 44 96 / 90%), rgb(17 28 46 / 90%));
-  /* It sits inside the stash's Pokémon column, under the list it would trade
-     away from, so it needs the separation a top-level panel gets from the grid. */
-  margin-top: var(--space-3);
-}
-.swap-panel p {
-  color: var(--menu-muted);
-  margin: 0 0 var(--space-2);
-  max-width: 70ch;
-}
-.swap-panel .button {
-  margin: 0;
-}
-.reselect-shell .starter-header h1 {
-  font-size: clamp(28px, 4vw, 40px);
-}
-.starter-confirm.arming {
-  border-color: var(--menu-danger);
-  background: linear-gradient(110deg, #4a2530, #22161f);
-}
-.swap-actions {
-  display: flex;
-  gap: var(--space-1);
-  flex-wrap: wrap;
-}
-.swap-actions .button {
-  margin: 0;
-  white-space: nowrap;
-}
-.danger-button {
-  background: var(--menu-danger);
-  border-color: var(--menu-danger);
-  color: #2a0e07;
-  font-weight: 800;
-}
-.starter-card b {
-  white-space: nowrap;
-}
 
 @media (max-width: 650px) {
   .menu-header {
     align-items: flex-start;
     flex-wrap: wrap;
   }
-  .hub-actions,
-  .objective-list,
-  .outfitter-list,
-  .stash-layout,
-  .loadout-layout,
-  .secure-layout,
-  .confirm-layout,
-  .test-lab-layout,
-  .starter-grid {
+  .test-lab-layout {
     grid-template-columns: 1fr;
   }
-  .action-card {
-    min-height: 140px;
-  }
-  .starter-card {
-    min-height: 0;
-  }
-  .starter-confirm {
-    align-items: stretch;
-    flex-direction: column;
-  }
+
   .stash-count {
     width: 100%;
   }
   .menu-shell {
     padding: 18px;
-  }
-}
-
-/* Raid result screen. Built from the lobby's own panels, rows and tags so a
-   finished raid is accounted for in the same language the loadout was built in.
-   Winning leans on the accent; losing swaps to the danger ramp and never
-   celebrates. */
-.extraction-shell {
-  display: grid;
-  align-content: start;
-  gap: var(--space-1);
-  /* The result is the payoff of the raid, so a normal haul has to land whole on
-     the 720px stage rather than hiding its own "back to base" below a fold. */
-  padding: clamp(12px, 2.2vw, 22px);
-}
-.extraction-shell .entity-row {
-  gap: 9px;
-  padding: 7px;
-}
-.extraction-shell .entity-list {
-  gap: 6px;
-}
-.extraction-shell .panel {
-  padding: var(--space-2);
-}
-.extraction-shell .panel-heading {
-  margin-bottom: 9px;
-}
-.extraction-cost .panel-heading {
-  margin-bottom: 7px;
-}
-.extraction-shell .item-quantity {
-  color: var(--menu-muted);
-  font-weight: 500;
-}
-.extraction-shell .pokemon-avatar {
-  width: 32px;
-  height: 32px;
-  flex-basis: 32px;
-}
-.extraction-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--menu-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-.extraction-won .extraction-header,
-.extraction-won .extraction-footer {
-  border-color: #416a70;
-  background: linear-gradient(110deg, #153d45, #142438);
-}
-.extraction-lost .extraction-header {
-  border-color: #7d4038;
-  background: linear-gradient(110deg, #3d1a17, #1b1520);
-}
-.extraction-headline {
-  min-width: 0;
-}
-.extraction-headline h1 {
-  margin: 2px 0 6px;
-  font-size: clamp(23px, 3vw, 34px);
-  letter-spacing: -0.045em;
-  overflow-wrap: anywhere;
-}
-.extraction-lost .eyebrow {
-  /* Accent green is the game's "good news" colour. A lost raid keeps the same
-     hierarchy in a warm, desaturated tone so nothing on it reads as a reward. */
-  color: #d8a79c;
-}
-.extraction-summary {
-  color: var(--menu-muted);
-  max-width: 62ch;
-}
-.extraction-clock {
-  min-width: 168px;
-  display: grid;
-  gap: 5px;
-  justify-items: start;
-  padding: var(--space-2);
-  border: 1px solid var(--menu-border);
-  border-radius: 10px;
-  background: rgb(11 18 32 / 62%);
-}
-.extraction-clock strong {
-  font-size: 1.5em;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-.clock-track {
-  width: 100%;
-  height: 7px;
-  border-radius: 999px;
-  background: #0b1220;
-  overflow: hidden;
-}
-.clock-track span {
-  display: block;
-  height: 100%;
-  background: var(--menu-accent);
-}
-.extraction-lost .clock-track span {
-  background: var(--menu-danger);
-}
-.extraction-layout {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: var(--space-2);
-}
-.extraction-ledger .entity-row {
-  box-shadow: inset 3px 0 0 var(--menu-accent);
-}
-.extraction-lost .extraction-ledger .entity-row {
-  box-shadow: inset 3px 0 0 #915249;
-}
-/* A lost stack is drained of colour, so the ledger reads at a glance. */
-.extraction-lost .extraction-ledger .item-icon img {
-  filter: grayscale(1) brightness(0.72);
-}
-.extraction-contract {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  margin-top: 9px;
-  padding: 9px 11px;
-  border: 1px solid #f6c969;
-  border-radius: 10px;
-  background: #3e3420;
-}
-.extraction-contract small {
-  display: block;
-  color: #f7e4ae;
-}
-/* A contract carried out and not banked is a loss, and must not be dressed as
-   the reward panel beside it. */
-.extraction-contract.unpaid {
-  border-color: #7f4a4a;
-  background: rgba(127, 74, 74, 0.16);
-}
-.extraction-contract.unpaid small {
-  color: #ffc9bd;
-}
-.gamble-group + .gamble-group {
-  margin-top: 9px;
-}
-.gamble-group .eyebrow {
-  display: block;
-  margin-bottom: 7px;
-}
-.gamble-group .empty-state {
-  padding: 9px 4px;
-}
-.banked-tag {
-  color: var(--menu-accent);
-}
-.survived-tag {
-  color: var(--menu-muted);
-}
-.gamble-verdict {
-  margin-top: 9px !important;
-  padding-top: 9px;
-  border-top: 1px solid var(--menu-border);
-  color: var(--menu-text);
-  overflow-wrap: anywhere;
-}
-/* Experience is a reward, so it gets the ledger's accent stripe rather than the
-   cost panel's grey - and a levelled Pokemon gets the brighter one, because a
-   level is the thing the player came out for. */
-.extraction-progress {
-  /* Second row of the two-column layout, under the ledger it belongs beside. */
-  grid-column: 1;
-}
-.extraction-progress .entity-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 8px;
-}
-.extraction-progress .entity-row {
-  box-shadow: inset 3px 0 0 var(--menu-border);
-}
-.extraction-progress .entity-row.levelled {
-  box-shadow: inset 3px 0 0 var(--menu-accent);
-}
-.extraction-progress .gamble-verdict {
-  margin-top: var(--space-2);
-}
-.extraction-cost .cost-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  color: var(--menu-muted);
-}
-.extraction-cost li {
-  min-width: 0;
-  padding: 5px 10px;
-  border: 1px solid var(--menu-border);
-  border-radius: 999px;
-  background: var(--menu-raised);
-  overflow-wrap: anywhere;
-}
-.extraction-footer {
-  /* A long haul is allowed to scroll, but the way out of the screen never is. */
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  flex-wrap: wrap;
-  padding: var(--space-2) var(--space-3);
-}
-.extraction-footer .button {
-  margin-top: 0;
-}
-.extraction-lost .extraction-footer {
-  border-color: #7d4038;
-  background: linear-gradient(110deg, #3d1a17, #1b1520);
-}
-.extraction-lost .extraction-footer .primary-button {
-  background: #52211c;
-  border-color: #a8564a;
-  color: #ffd9d1;
-}
-@media (width <= 720px) {
-  .extraction-header,
-  .extraction-layout {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1881,4 +1128,862 @@ button {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* ==========================================================================
+   Pixel UI: the DOM screens drawn in the game's own visual language.
+
+   An overlay opts in with the `pixel-ui` class (see `MenuOverlay`), and its
+   markup comes from `src/game/ui/pixelUi.ts`. Three rules hold everywhere:
+
+   1. Every measurement is a whole number of game pixels. `--u` is one of them,
+      in CSS pixels, set on `#app` by `display/stageScaler.ts` - so a window's
+      border is exactly as thick as one drawn on the canvas, at every zoom, and
+      nothing here may be sized in `px`, `vw` or a fractional `--u`.
+   2. One typeface at one size. Orange Kid's stem is 0.08em, so 12.5 game pixels
+      is the size at which a stem is one game pixel - the same letters the raid
+      HUD draws. Hierarchy is caps, ink and position, never a second size.
+   3. One frame: `pixelWindow.ts`'s one-pixel `#171717` border with clear
+      corners over a cream fill, reproduced by `.px-window` as backgrounds so it
+      needs no clip and can carry a tone through `--fill`.
+
+   Orange Kid has no arrows and no tick, so none may be typed: the cursor and
+   the tick are drawn (`--px-cursor`, `--px-tick`), as `drawMenuCursor` is.
+   ========================================================================== */
+.menu-overlay.pixel-ui {
+  --u: var(--px, 2px);
+  --ink: #202020;
+  --ink-soft: #5d5c47;
+  --frame: #171717;
+  --cream: #ebeac5;
+  --cream-lit: #f8f7dd;
+  --cream-dim: #d3d2a9;
+  --backdrop: #183c52;
+  --backdrop-band: #1c455e;
+  --bar: #0b1220;
+  --bar-text: #ebeac5;
+  --bar-muted: #9cafc7;
+  --teal: #55d6be;
+  --teal-wash: #bfe6cf;
+  --gold: #f0c454;
+  --gold-wash: #f2e5ab;
+  --red: #b0201c;
+  --red-wash: #f0d3bd;
+  --px-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h1v1h1v1h-1v1h-1v1h-1z'/%3E%3C/svg%3E");
+  --px-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 5' shape-rendering='crispEdges'%3E%3Cpath d='M6 0h1v1h-1zM5 1h1v1h-1zM4 2h1v1h-1zM0 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM2 4h1v1h-1z'/%3E%3C/svg%3E");
+  overflow: hidden;
+  /* Two-pixel bands, the way the party screen of the games this is dressed as
+     is never one flat colour. */
+  background: repeating-linear-gradient(
+    0deg,
+    var(--backdrop) 0 calc(var(--u) * 2),
+    var(--backdrop-band) calc(var(--u) * 2) calc(var(--u) * 4)
+  );
+  color: var(--ink);
+  font-family: 'Orange Kid', monospace;
+  font-size: calc(var(--u) * 12.5);
+  line-height: calc(var(--u) * 12);
+  font-weight: 400;
+  font-kerning: none;
+  letter-spacing: 0;
+  cursor: default;
+  user-select: none;
+}
+/* Resets are `:where()`, so they weigh nothing and any class below can undo one
+   without an arms race of specificity. */
+.pixel-ui :where(h1, h2, h3, p, ol, ul) {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  list-style: none;
+}
+.pixel-ui strong,
+.pixel-ui b {
+  font-weight: 400;
+}
+.pixel-ui small {
+  font-size: inherit;
+  color: var(--ink-soft);
+}
+.pixel-ui img {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.pixel-ui :where(button) {
+  appearance: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* The cursor is the focus indicator, so the browser's ring is not drawn twice. */
+.pixel-ui button:focus,
+.pixel-ui button:focus-visible {
+  outline: none;
+}
+
+/* --- The screen: title bar, body, help bar ------------------------------ */
+:where(.pixel-ui) .px-screen {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* Its own transparent layer, which is what makes the browser antialias the
+     text in greys. On an opaque layer Windows and Linux use the LCD's colour
+     subpixels instead, and every stem of a pixel face grows an orange fringe on
+     one side and a blue one on the other. */
+  will-change: transform;
+}
+:where(.pixel-ui) .px-title {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 6);
+  height: calc(var(--u) * 16);
+  padding: 0 calc(var(--u) * 4);
+  background: var(--bar);
+  box-shadow: 0 var(--u) 0 var(--frame);
+  color: var(--bar-text);
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* Over the body, so its one-pixel underline is never painted out. */
+  position: relative;
+  z-index: 1;
+}
+:where(.pixel-ui) .px-title h1 {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: clip;
+}
+:where(.pixel-ui) .px-place {
+  color: var(--teal);
+  margin-right: calc(var(--u) * 6);
+}
+:where(.pixel-ui) .px-title-aside {
+  color: var(--bar-muted);
+}
+.pixel-ui .px-back {
+  position: relative;
+  padding: calc(var(--u) * 2) calc(var(--u) * 4) calc(var(--u) * 2) calc(var(--u) * 8);
+  color: var(--bar-muted);
+  text-transform: uppercase;
+}
+/* The way back points back: the same cursor, mirrored. */
+:where(.pixel-ui) .px-back::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--u) * 2);
+  top: calc(50% - var(--u) * 3);
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: currentColor;
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+  transform: scaleX(-1);
+}
+:where(.pixel-ui) .px-back:focus {
+  color: var(--bar);
+  background: var(--teal);
+}
+:where(.pixel-ui) .px-rail {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 5);
+  color: var(--bar-muted);
+}
+:where(.pixel-ui) .px-rail li {
+  position: relative;
+}
+:where(.pixel-ui) .px-rail li + li {
+  padding-left: calc(var(--u) * 8);
+}
+:where(.pixel-ui) .px-rail li + li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(50% - var(--u) * 3);
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: currentColor;
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .px-rail .done {
+  color: var(--teal);
+}
+:where(.pixel-ui) .px-rail .current {
+  color: var(--bar-text);
+}
+:where(.pixel-ui) .px-body {
+  min-height: 0;
+  padding: calc(var(--u) * 4);
+  display: grid;
+  gap: calc(var(--u) * 4);
+  align-content: start;
+}
+/* Two lines, always: the games this is dressed as keep a description box of a
+   fixed height under every list, because a bar that grew with its sentence
+   would move the whole screen each time the cursor did. */
+:where(.pixel-ui) .px-help {
+  height: calc(var(--u) * 26);
+  padding: var(--u) calc(var(--u) * 4) 0;
+  background: var(--bar);
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--frame);
+  color: var(--bar-text);
+  overflow: hidden;
+}
+/* A status line stands in for the help text until it is taken down. */
+:where(.pixel-ui) .px-status-line {
+  display: block;
+  color: var(--gold);
+}
+:where(.pixel-ui) .px-help.has-status [data-help-text] {
+  display: none;
+}
+
+/* --- The window --------------------------------------------------------- */
+/* Two classes deep, so a window that is also a button keeps its frame against
+   the reset above. */
+.pixel-ui .px-window {
+  --fill: var(--cream);
+  --edge: var(--frame);
+  min-width: 0;
+  min-height: 0;
+  padding: calc(var(--u) * 4);
+  background:
+    linear-gradient(var(--edge), var(--edge)) var(--u) 0 / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) var(--u) 100% / calc(100% - var(--u) * 2) var(--u) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) 0 var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) 100% var(--u) / var(--u) calc(100% - var(--u) * 2) no-repeat,
+    linear-gradient(var(--fill), var(--fill)) var(--u) var(--u) / calc(100% - var(--u) * 2)
+      calc(100% - var(--u) * 2) no-repeat;
+}
+.pixel-ui .px-tone-primary,
+.pixel-ui .px-tone-care {
+  --fill: var(--teal-wash);
+}
+.pixel-ui .px-tone-secure {
+  --fill: var(--gold-wash);
+}
+.pixel-ui .px-tone-risk {
+  --fill: var(--red-wash);
+}
+:where(.pixel-ui) .px-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--u) * 6);
+  margin-bottom: calc(var(--u) * 2);
+  padding-bottom: var(--u);
+  box-shadow: 0 var(--u) 0 var(--cream-dim);
+  white-space: nowrap;
+}
+:where(.pixel-ui) .px-heading h2 {
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .px-heading small {
+  min-width: 0;
+  overflow: hidden;
+}
+:where(.pixel-ui) .px-tone-risk .px-heading,
+:where(.pixel-ui) .px-tone-secure .px-heading,
+:where(.pixel-ui) .px-tone-primary .px-heading,
+:where(.pixel-ui) .px-tone-care .px-heading {
+  box-shadow: 0 var(--u) 0 rgb(23 23 23 / 25%);
+}
+/* A window whose contents can outgrow it scrolls inside its own frame; the
+   screen itself never does. The scrollbar is three game pixels of ink. */
+:where(.pixel-ui) .px-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* The standard properties win over the `::-webkit-scrollbar` rules wherever both
+   exist, and they cannot be sized in game pixels - so they are the fallback. */
+@supports not selector(::-webkit-scrollbar) {
+  :where(.pixel-ui) .px-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ink-soft) transparent;
+  }
+}
+:where(.pixel-ui) .px-scroll::-webkit-scrollbar {
+  width: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .px-scroll::-webkit-scrollbar-button {
+  display: none;
+}
+:where(.pixel-ui) .px-scroll::-webkit-scrollbar-thumb {
+  background: var(--ink-soft);
+}
+:where(.pixel-ui) .px-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+:where(.pixel-ui) .px-list {
+  display: grid;
+  gap: var(--u);
+  align-content: start;
+}
+:where(.pixel-ui) .px-note {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .px-warning {
+  color: var(--red);
+}
+:where(.pixel-ui) .px-empty {
+  padding: calc(var(--u) * 2) calc(var(--u) * 2);
+  color: var(--ink-soft);
+}
+
+/* --- Rows, and the one cursor ------------------------------------------- */
+.pixel-ui .px-row {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: calc(var(--u) * 4);
+  padding: var(--u) calc(var(--u) * 3) var(--u) calc(var(--u) * 8);
+}
+:where(.pixel-ui) .px-row.has-icon {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+:where(.pixel-ui) .px-row-main {
+  min-width: 0;
+  display: grid;
+}
+:where(.pixel-ui) .px-row-line {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  min-width: 0;
+  white-space: nowrap;
+}
+:where(.pixel-ui) .px-name {
+  /* Never squeezed: a name snapped to the grid and then shrunk by its line is
+     back between two pixels, and takes the health bar beside it along. */
+  flex: none;
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .px-row small {
+  display: block;
+  min-width: 0;
+}
+:where(.pixel-ui) .px-row.is-selected {
+  background: var(--teal-wash);
+}
+:where(.pixel-ui) .px-row.is-secured {
+  background: var(--gold-wash);
+}
+:where(.pixel-ui) .px-tone-secure .px-row.is-secured,
+:where(.pixel-ui) .px-tone-secure .px-row.is-selected {
+  background: var(--cream-lit);
+}
+.pixel-ui button.px-row:focus,
+.pixel-ui .px-chip:focus,
+.pixel-ui .px-step:focus {
+  background: var(--cream-lit);
+}
+.pixel-ui button.px-row.is-selected:focus {
+  background: #d5f2e0;
+}
+.pixel-ui button.px-row.is-secured:focus {
+  background: #f8edbd;
+}
+/* The cursor: `drawMenuCursor`'s five-pixel triangle, in whatever ink the
+   control is set in. It only exists on the focused control, so there is one. */
+.pixel-ui button.px-row:focus::before,
+.pixel-ui .px-button:focus::before,
+.pixel-ui .px-card:focus::before,
+.pixel-ui .px-chip:focus::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--u) * 3);
+  /* Level with the capitals of the control's first line: they stand from 3.5 to
+     11 pixels down a 12-pixel line, so the five-pixel cursor starts at 5, plus
+     whatever padding the control has above that line. */
+  top: calc(var(--u) * (5 + var(--pad-top, 1)));
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: currentColor;
+  mask: var(--px-cursor) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-cursor) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .px-tag {
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .px-tag-good {
+  color: #1d6a4f;
+}
+:where(.pixel-ui) .px-tag-risk {
+  color: var(--red);
+}
+:where(.pixel-ui) .px-tag-secure {
+  color: #7a5a00;
+}
+/* A tag that is a fact rather than an offer carries the drawn tick. */
+:where(.pixel-ui) .px-tag.has-tick::after {
+  content: '';
+  display: inline-block;
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 5);
+  margin-left: calc(var(--u) * 3);
+  background: currentColor;
+  mask: var(--px-tick) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
+}
+
+/* --- Buttons ------------------------------------------------------------ */
+.pixel-ui .px-button,
+.pixel-ui .px-chip {
+  --pad-top: 2;
+  position: relative;
+  padding: calc(var(--u) * 2) calc(var(--u) * 6) calc(var(--u) * 2) calc(var(--u) * 9);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pixel-ui .px-button {
+  --fill: var(--cream);
+}
+.pixel-ui .px-button.is-primary {
+  --fill: var(--teal);
+}
+.pixel-ui .px-button.is-danger {
+  --fill: var(--red);
+  color: var(--cream-lit);
+}
+.pixel-ui .px-button:focus {
+  --fill: var(--cream-lit);
+}
+.pixel-ui .px-button.is-primary:focus {
+  --fill: #8ff0dc;
+}
+.pixel-ui .px-button.is-danger:focus {
+  --fill: #d0302a;
+}
+.pixel-ui .px-button:disabled {
+  --fill: var(--cream-dim);
+  --edge: var(--ink-soft);
+  color: var(--ink-soft);
+  cursor: not-allowed;
+}
+.pixel-ui .px-chip {
+  --fill: var(--cream);
+  --pad-top: 1;
+  padding: var(--u) calc(var(--u) * 4) var(--u) calc(var(--u) * 8);
+}
+.pixel-ui .px-chip[aria-disabled='true'] {
+  --fill: var(--cream-dim);
+  --edge: var(--ink-soft);
+  color: var(--ink-soft);
+}
+/* The two ends of a supply stepper: square, because a minus sign has no width. */
+.pixel-ui .px-step {
+  --fill: var(--cream);
+  width: calc(var(--u) * 12);
+  height: calc(var(--u) * 12);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.pixel-ui .px-step:disabled {
+  --fill: var(--cream-dim);
+  --edge: var(--ink-soft);
+  color: var(--ink-soft);
+}
+.pixel-ui .px-step:focus {
+  --fill: var(--teal);
+}
+:where(.pixel-ui) .px-stepper {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .px-stepper b {
+  width: calc(var(--u) * 12);
+  text-align: center;
+}
+
+/* --- Parts -------------------------------------------------------------- */
+:where(.pixel-ui) .px-hp {
+  flex: none;
+  /* Placed down its line like the cursor is, level with the capitals. Centring
+     five pixels in a twelve-pixel line puts the bar on half of one. */
+  align-self: flex-start;
+  margin-top: calc(var(--u) * 5);
+  display: block;
+  width: calc(var(--u) * 50);
+  height: calc(var(--u) * 5);
+  padding: var(--u);
+  /* The frame, and inside it the empty part of the bar. */
+  background:
+    linear-gradient(#55554a, #55554a) content-box,
+    var(--frame);
+}
+:where(.pixel-ui) .px-hp-fill {
+  display: block;
+  height: 100%;
+  width: calc(var(--u) * var(--fill));
+  background: #3fb56b;
+}
+:where(.pixel-ui) .px-hp-fill.warning {
+  background: var(--gold);
+}
+:where(.pixel-ui) .px-hp-fill.critical {
+  background: #e0453a;
+}
+.pixel-ui .item-icon {
+  flex: none;
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.pixel-ui .item-icon img {
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+}
+/* A front sprite at its own size, standing on the floor of a 64-pixel box. */
+.pixel-ui .px-portrait {
+  flex: none;
+  width: calc(var(--u) * 64);
+  height: calc(var(--u) * 64);
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-soft);
+}
+.pixel-ui .px-portrait img {
+  /* Laid out at its own size and scaled by the whole-number zoom, because the
+     sprites are not all one size and a width in game pixels would have to know
+     which one this is. */
+  width: auto;
+  height: auto;
+  transform: scale(var(--zoom, 2));
+  transform-origin: 50% 100%;
+}
+:where(.pixel-ui) .px-type {
+  display: inline-block;
+  padding: 0 calc(var(--u) * 3);
+  background: #6d8c9c;
+  box-shadow: 0 0 0 var(--u) var(--frame);
+  color: var(--cream-lit);
+  text-transform: uppercase;
+  margin: var(--u) calc(var(--u) * 3) var(--u) var(--u);
+}
+:where(.pixel-ui) .px-type-fire {
+  background: #c8502c;
+}
+:where(.pixel-ui) .px-type-grass {
+  background: #3f8f4f;
+}
+:where(.pixel-ui) .px-type-water {
+  background: #3a6fc0;
+}
+:where(.pixel-ui) .px-type-electric {
+  background: #b98f12;
+}
+:where(.pixel-ui) .px-type-poison {
+  background: #8a4aa0;
+}
+:where(.pixel-ui) .px-type-flying {
+  background: #6f86c8;
+}
+:where(.pixel-ui) .px-type-bug {
+  background: #7d9a1e;
+}
+:where(.pixel-ui) .px-type-normal,
+:where(.pixel-ui) .px-type-fairy {
+  background: #8c8a6c;
+}
+
+/* --- The commitment bar: every screen that commits ends on it ----------- */
+:where(.pixel-ui) .confirm-bar.px-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+:where(.pixel-ui) .px-bar-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 2) calc(var(--u) * 6);
+  margin-bottom: var(--u);
+}
+:where(.pixel-ui) .px-bar-head > strong {
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .px-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 4);
+  margin-left: auto;
+}
+:where(.pixel-ui) .confirm-bar.is-arming {
+  --fill: var(--red-wash);
+}
+
+/* --- Pixel UI: text that is allowed to wrap ------------------------------ */
+:where(.pixel-ui) .px-wrap {
+  display: block;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+:where(.pixel-ui) .px-subheading {
+  margin-top: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 3) var(--u);
+  box-shadow: 0 var(--u) 0 var(--cream-dim);
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+/* A card is a window that is also a choice: a caps title and a line about it. */
+.pixel-ui .px-card {
+  --pad-top: 4;
+  position: relative;
+  display: grid;
+  align-content: start;
+  padding: calc(var(--u) * 4) calc(var(--u) * 5) calc(var(--u) * 4) calc(var(--u) * 10);
+}
+.pixel-ui .px-card > strong {
+  text-transform: uppercase;
+}
+.pixel-ui .px-card > p {
+  color: var(--ink-soft);
+}
+.pixel-ui .px-card > p.px-warning {
+  color: var(--red);
+}
+.pixel-ui .px-card:focus {
+  --fill: var(--cream-lit);
+}
+.pixel-ui .px-card.px-tone-primary:focus {
+  --fill: #d5f2e0;
+}
+
+/* --- The lobby ---------------------------------------------------------- */
+/* Every lobby layout is one fixed column beside one that takes what is left.
+   Two `fr` columns split an odd width into half game pixels, and a window
+   standing on half a pixel is a soft edge at every odd zoom. */
+:where(.pixel-ui) .hub-home {
+  height: 100%;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .hub-actions {
+  display: grid;
+  /* The raid leads and takes what is left; the stash and the Outfitter are the
+     same fixed card. */
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 96) calc(var(--u) * 96);
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .objectives-panel,
+:where(.pixel-ui) .stash-layout > .px-window,
+:where(.pixel-ui) .stash-side > .px-window,
+:where(.pixel-ui) .loadout-layout > .px-window,
+:where(.pixel-ui) .secure-layout > .px-window,
+:where(.pixel-ui) .confirm-layout > .px-window {
+  display: grid;
+  /* Named, or the implicit column is as wide as the longest unbroken line. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+}
+:where(.pixel-ui) .objectives-panel {
+  align-self: start;
+  max-height: 100%;
+}
+.pixel-ui .objectives-panel:has(.px-detail) {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+/* What the pointed-at row asks and pays - a contract on the board, a rung on
+   the Outfitter's ladder. One pane for the whole list, so a row stays two lines
+   however long its sentence is. */
+:where(.pixel-ui) .px-detail {
+  margin-top: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--cream-dim);
+}
+:where(.pixel-ui) .px-detail[hidden] {
+  display: none;
+}
+/* A row of two or more lines: everything hangs from its first. */
+.pixel-ui .px-tall {
+  --pad-top: 2;
+  align-items: start;
+  padding-top: calc(var(--u) * 2);
+  padding-bottom: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .px-contract .px-row-line {
+  justify-content: space-between;
+}
+/* The Outfitter's ladder is the whole screen: one window, as tall as it needs. */
+:where(.pixel-ui) .outfitter-layout {
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr);
+}
+/* What this vault cannot pay yet, in the ink a risk is written in. */
+:where(.pixel-ui) .cost-short {
+  color: var(--red);
+}
+:where(.pixel-ui) .px-ready {
+  color: #1d6a4f;
+}
+:where(.pixel-ui) .stash-layout,
+:where(.pixel-ui) .loadout-layout {
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 132);
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+}
+:where(.pixel-ui) .stash-side {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .stash-portrait {
+  display: flex;
+  align-items: end;
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .stash-portrait[hidden] {
+  display: none;
+}
+:where(.pixel-ui) .stash-portrait > div {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  padding-bottom: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .swap-panel {
+  display: grid;
+  justify-items: start;
+  gap: calc(var(--u) * 2);
+  padding: 0 calc(var(--u) * 3) calc(var(--u) * 2);
+}
+:where(.pixel-ui) .swap-panel .px-subheading {
+  justify-self: stretch;
+  margin-left: calc(var(--u) * -3);
+  margin-right: calc(var(--u) * -3);
+}
+.pixel-ui .run-loadout {
+  display: block;
+}
+:where(.pixel-ui) .carry-note {
+  margin-top: calc(var(--u) * 3);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--cream-dim);
+}
+:where(.pixel-ui) .run-loadout > .px-note {
+  padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
+}
+:where(.pixel-ui) .stash-layout .confirm-bar,
+:where(.pixel-ui) .loadout-layout .confirm-bar,
+:where(.pixel-ui) .secure-layout .confirm-bar,
+:where(.pixel-ui) .confirm-layout .confirm-bar {
+  grid-column: 1 / -1;
+}
+/* The two ways to fix a hurt Pokemon sit under its row, indented to its name. */
+:where(.pixel-ui) .care-strip {
+  display: grid;
+  gap: calc(var(--u) * 2);
+  padding: 0 calc(var(--u) * 3) calc(var(--u) * 2) calc(var(--u) * 8);
+}
+:where(.pixel-ui) .care-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .secure-layout,
+:where(.pixel-ui) .confirm-layout {
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 150);
+  height: 100%;
+}
+:where(.pixel-ui) .secure-layout {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+:where(.pixel-ui) .confirm-layout {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+/* --- Choosing a starter: first run, and the lobby's swap ----------------- */
+:where(.pixel-ui) .starter-shell {
+  height: 100%;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+:where(.pixel-ui) .starter-brief {
+  color: var(--bar-text);
+  padding: 0 calc(var(--u) * 2);
+}
+:where(.pixel-ui) .starter-grid {
+  display: grid;
+  /* Three fixed cards, centred: a third of the screen is not a whole number. */
+  grid-template-columns: repeat(3, calc(var(--u) * 100));
+  justify-content: center;
+  align-content: start;
+  gap: calc(var(--u) * 4);
+}
+.pixel-ui .starter-card {
+  /* Its own height, never the row's: a button centres what it holds, and a
+     stretched one centres it onto half a pixel. */
+  align-self: start;
+  justify-items: center;
+  text-align: center;
+  padding: calc(var(--u) * 4);
+}
+.pixel-ui .starter-card.is-selected {
+  --fill: var(--teal-wash);
+}
+.pixel-ui .starter-card.is-selected:focus {
+  --fill: #d5f2e0;
+}
+:where(.pixel-ui) .starter-number {
+  position: absolute;
+  top: calc(var(--u) * 3);
+  left: calc(var(--u) * 9);
+  color: var(--ink-soft);
+}
+.pixel-ui .starter-card .px-type {
+  margin-left: calc(var(--u) * 2);
+  margin-right: calc(var(--u) * 2);
+}
+
+/* --- The raid result: the lobby's screen, read after the raid ------------ */
+:where(.pixel-ui) .extraction-layout {
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 150);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+}
+:where(.pixel-ui) .extraction-layout > .extraction-verdict,
+:where(.pixel-ui) .extraction-layout > .confirm-bar {
+  grid-column: 1 / -1;
+}
+:where(.pixel-ui) .extraction-layout > .extraction-ledger,
+:where(.pixel-ui) .extraction-layout > .extraction-gamble {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .extraction-verdict {
+  display: grid;
+}
+/* A lost stack is drained of colour, so the ledger reads at a glance. */
+:where(.pixel-ui) .px-row.is-lost img {
+  filter: grayscale(1) brightness(0.8);
+}
+:where(.pixel-ui) .gamble-verdict {
+  margin-top: calc(var(--u) * 3);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3) 0;
+  box-shadow: 0 calc(var(--u) * -1) 0 var(--cream-dim);
 }
