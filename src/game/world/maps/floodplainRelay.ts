@@ -323,25 +323,29 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   ]);
 
   // == BEACON KEEP - the north-east ========================================
-  // Pine and rock, and the tower in its yard. Moated on two sides by the
-  // river and on the third by the race, so the only dry way in is under the
-  // gatehouse - until the water drops and the old causeway shows.
+  // The tower, and the court it stood over. The court is laid in the same stone
+  // as the causeway and the passage under the gatehouse, so the three read as
+  // one built thing - which is what tells you, the day the causeway comes up,
+  // that it was always the keep's. Its wall is down to rubble with gaps in it,
+  // and the statue stands in one of the gaps, looking into the court. Moated on
+  // two sides by the river and on the third by the race, so the only dry way in
+  // is under the gatehouse - until the water drops.
   map.draw(43, 3, [
     '    ...           ',
-    '    ...           ',
-    '    ...           ',
-    '    ... vvvvvv    ',
-    ',,,,...,vvvvvv    ',
-    ',,,,...,vvvvvv    ',
-    '   ,...  vvvvv    ',
-    '   ,,,,,,,,       ',
-    '       ,,         ',
-    '       ,,         ',
-    '       ,,         ',
-    '   ,,,,,,         ',
+    '    ...  T        ',
+    '    ... CC CCCC   ',
+    '    ...CMMMMMMC   ',
+    'MMMM...MMMMMMMC   ',
+    'MMMM...MMMMMMM    ',
+    '   M...CMMMMMMC   ',
+    '   MMMMMMMM C     ',
+    '       MM         ',
+    '       MM         ',
+    '       MM         ',
+    '   MMMMMM         ',
   ]);
   map.plant(47, 3, 'tower');
-  map.plant(56, 6, 'statue');
+  map.plant(53, 3, 'statue');
 
   // == THE VAULT - the south-east ==========================================
   // Behind the orchard's back fence. The yard is gravel, the trapdoor in the
