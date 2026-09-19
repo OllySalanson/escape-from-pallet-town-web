@@ -2,6 +2,7 @@ import { Pokemon } from '../pokemon';
 import { BUTTERFREE, PIDGEY, PIKACHU, SQUIRTLE } from '../pokemon/species';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import type { Direction, GridPosition } from '../movement/gridMovement';
+import type { CastCharacterDesignId } from './characterDesigns';
 import type { TrainerWatch } from './trainerSight';
 import type { WorldMapId } from '../worldMap';
 
@@ -18,6 +19,11 @@ export interface RunTrainerEncounter extends TrainerWatch {
    * `trainerSight.ts` for why a watch and a body are not the same thing.
    */
   readonly sightRange?: number;
+  /**
+   * The character design this trainer is drawn from. Omitted is the shared
+   * sheet under the amber trainer tint - see `characterPresentation.ts`.
+   */
+  readonly design?: CastCharacterDesignId;
   readonly introLines: readonly string[];
   readonly trainer: TrainerBattle;
 }
@@ -83,6 +89,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     position: { x: 16, y: 20 },
     facing: 'down',
     fixedPosition: true,
+    design: 'lass',
     introLines: ['NO ONE loots Route 1 for free!', 'My partner is ready!'],
     trainer: createTrainer(
       'route-raider-maya',

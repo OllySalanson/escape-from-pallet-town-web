@@ -33,4 +33,16 @@ describe('playerFrames', () => {
     expect(getWalkAnimationKey('up')).toBe('player-walk-up');
     expect(getWalkAnimationKey('right')).toBe('player-walk-right');
   });
+
+  it('reads the same rows and columns off a narrower sheet when told its width', () => {
+    expect(getIdleFrame('down', 4)).toBe(0);
+    expect(getIdleFrame('right', 4)).toBe(4);
+    expect(getIdleFrame('up', 4)).toBe(8);
+    expect(getIdleFrame('left', 4)).toBe(12);
+    expect(getWalkFrames('left', 4)).toEqual([13, 12, 15, 12]);
+  });
+
+  it('keys a walk cycle by the sheet it is cut from, leaving the player key alone', () => {
+    expect(getWalkAnimationKey('down', 'character-lass')).toBe('character-lass-walk-down');
+  });
 });

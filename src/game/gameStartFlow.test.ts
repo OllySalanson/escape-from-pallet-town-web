@@ -51,6 +51,11 @@ import { SaveManager } from './save/SaveManager';
 import { createStartingStash, Stash } from './stash';
 import { WorldScene } from './scenes/WorldScene';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from './display/stage';
+import {
+  CHARACTER_DESIGN_IDS,
+  characterDesignAssetPath,
+  characterDesignTextureKey,
+} from './world/characterDesigns';
 
 describe('game start flow', () => {
   it('auto-starts Boot so World prerequisites are ready before Title can start it', async () => {
@@ -82,7 +87,17 @@ describe('game start flow', () => {
       frameHeight: 32,
     });
     expect(image).toHaveBeenCalledWith('classicTiles', 'assets/tileset.png');
-    expect(create).toHaveBeenCalledTimes(4);
+    // Every registered character design is loaded on the same frame grid and
+    // given the same four-facing walk cycle as the shared sheet.
+    for (const design of CHARACTER_DESIGN_IDS) {
+      const textureKey = characterDesignTextureKey(design);
+      expect(spritesheet).toHaveBeenCalledWith(textureKey, characterDesignAssetPath(design), {
+        frameWidth: 16,
+        frameHeight: 32,
+      });
+      expect(animations).toContain(getWalkAnimationKey('left', textureKey));
+    }
+    expect(create).toHaveBeenCalledTimes(4 * (1 + CHARACTER_DESIGN_IDS.length));
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ key: getWalkAnimationKey('down') }),
     );
