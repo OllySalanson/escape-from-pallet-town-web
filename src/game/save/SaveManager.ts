@@ -1,5 +1,10 @@
 import { getOutfitterUpgrade, takePayment, type PaymentCheck } from '../hub/outfitter';
 import { clampPendingRecoveryMs, clampWardTreatmentsUsed } from '../hub/recovery';
+import {
+  DEFAULT_SECURE_PREFERENCE,
+  readSecurePreference,
+  type SecurePreference,
+} from '../hub/secureAutofill';
 import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID } from '../items';
 import {
   TRADER_BERTH_PRICE,
@@ -171,6 +176,18 @@ export interface RaidProgress {
    * taken none.
    */
   readonly traderBarters?: readonly string[];
+  /**
+   * What the secure container was filled with last time it was deployed: a flag
+   * for whether it leads with Pokemon, and whatever else was in it.
+   *
+   * The container fills itself now (`../hub/secureAutofill`), and this is what
+   * it fills itself *from* - so a player running raid after raid is not
+   * re-picking from scratch. It is a preference rather than a state: the
+   * Pokemon half is a policy ("lead with the highest level"), because the ids
+   * change every raid. Absent on every save written before it, which reads as
+   * the default, which is the policy anyway - so no version bump.
+   */
+  readonly securePreference?: SecurePreference;
 }
 
 /**
@@ -225,6 +242,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   giftsReceived: [],
   traderScripSpent: 0,
   traderBarters: [],
+  securePreference: DEFAULT_SECURE_PREFERENCE,
 };
 
 export interface SaveData {
@@ -535,6 +553,20 @@ export class SaveManager {
    * made it newly selectable - false for one a contract had already unlocked,
    * so the map only ever announces a drop-in the lobby did not already offer.
    */
+  /**
+   * Remembers what the secure container was filled with, at the moment a raid
+   * deploys. It is written on the way out rather than on the way home, because
+   * it is what the player *chose*, and a raid that wipes chose it too.
+   */
+  public recordSecurePreference(preference: SecurePreference): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const raidProgress: RaidProgress = { ...game.raidProgress, securePreference: preference };
+    return this.save({ ...game, raidProgress });
+  }
+
   public recordReachedInsertion(insertionId: string): boolean {
     const game = this.load();
     if (
@@ -957,6 +989,9 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // stranger who has banked whatever it banked.
     traderScripSpent: clampTraderCount(value.traderScripSpent),
     traderBarters: clampTraderBarters(value.traderBarters),
+    // A save written before the container filled itself has no preference, and
+    // the default is exactly what such a player wants: lead with the Pokemon.
+    securePreference: readSecurePreference(value.securePreference),
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now

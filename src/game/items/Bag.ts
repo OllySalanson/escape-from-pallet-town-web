@@ -1,6 +1,13 @@
 import { RAID_BAG_GRID, VAULT_GRID } from './containers';
 import { ITEM_DEFINITIONS, type ItemCategory, type ItemDefinition } from './items';
-import { fitsInGrid, packContents, roomFor, type GridPacking, type GridSize } from './itemGrid';
+import {
+  fitsInGrid,
+  packContents,
+  roomFor,
+  type GridCargo,
+  type GridPacking,
+  type GridSize,
+} from './itemGrid';
 
 export type BagContents = Readonly<Record<string, number>>;
 
@@ -16,6 +23,13 @@ export type BagContents = Readonly<Record<string, number>>;
  *
  * Where each piece sits is derived by `layout()` from the contents and the
  * capacity, never stored. See `./itemGrid` for why.
+ *
+ * A pack also carries **cargo**: the Pokemon a raid caught or was given, which
+ * take squares by evolution stage (`../pokemon/pokemonCargo.ts`). Cargo is not
+ * contents - it never enters `toJSON`, the supply delta or any save - it is a
+ * list of rectangles the pack is told about so that `add` and `fits` answer
+ * with the room that is actually left. The raid owns the Pokemon; the pack only
+ * owns the squares they stand on.
  */
 export class Bag {
   private readonly contents: Record<string, number>;
@@ -25,6 +39,8 @@ export class Bag {
    * has never had a size. A raid is what is carried; the stash is what is kept.
    */
   public readonly capacity: GridSize | null;
+  /** The Pokemon this pack is carrying home, as squares. Never persisted. */
+  private cargoValue: readonly GridCargo[] = [];
 
   public constructor(
     initialContents: BagContents = {},
@@ -40,6 +56,36 @@ export class Bag {
         this.contents[itemId] = quantity;
       }
     }
+  }
+
+  public get cargo(): readonly GridCargo[] {
+    return this.cargoValue;
+  }
+
+  /**
+   * Tells the pack what it is carrying home.
+   *
+   * The raid's own catch list is the truth, so this is re-derived from it on
+   * every scene that rebuilds the world rather than pushed a piece at a time:
+   * a battle tears the overworld down and hands the same `Bag` back, and a pack
+   * that had been told about a Pokemon twice would charge for it twice.
+   */
+  public setCargo(cargo: readonly GridCargo[]): void {
+    this.cargoValue = [...cargo];
+  }
+
+  /**
+   * Whether one more piece of cargo would go in beside everything already here.
+   *
+   * Asked *before* a ball is thrown, because a pack with no room must refuse
+   * the catch out loud: losing the Pokemon afterwards would be the same fact
+   * told dishonestly, and it would cost a ball to hear it.
+   */
+  public fitsCargo(piece: GridCargo): boolean {
+    return (
+      this.capacity === null ||
+      fitsInGrid(this.contents, this.capacity, [...this.cargoValue, piece])
+    );
   }
 
   /** @returns False when the pack has no room, having changed nothing. */
@@ -77,18 +123,24 @@ export class Bag {
   public fits(itemId: string, quantity = 1): boolean {
     return (
       this.capacity === null ||
-      fitsInGrid({ ...this.contents, [itemId]: this.count(itemId) + quantity }, this.capacity)
+      fitsInGrid(
+        { ...this.contents, [itemId]: this.count(itemId) + quantity },
+        this.capacity,
+        this.cargoValue,
+      )
     );
   }
 
   /** How many more of an id would go in, up to `limit`. */
   public room(itemId: string, limit = 99): number {
-    return this.capacity === null ? limit : roomFor(this.contents, this.capacity, itemId, limit);
+    return this.capacity === null
+      ? limit
+      : roomFor(this.contents, this.capacity, itemId, limit, this.cargoValue);
   }
 
   /** Where everything sits, recomputed from the contents every time it is asked. */
   public layout(): GridPacking {
-    return packContents(this.contents, this.capacity ?? VAULT_GRID);
+    return packContents(this.contents, this.capacity ?? VAULT_GRID, this.cargoValue);
   }
 
   public itemsInCategory(category: ItemCategory): readonly ItemDefinition[] {

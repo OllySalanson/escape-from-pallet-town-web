@@ -35,11 +35,48 @@ export interface GridPlacement extends ItemFootprint {
   readonly y: number;
 }
 
+/**
+ * A piece in a container that is not a supply: a Pokemon being carried home.
+ *
+ * It is a separate kind rather than a catalogue row because it is not one - a
+ * Pokemon has no id, no stack size and no icon in `items.ts`, and inventing one
+ * so the packer could count it would put a living thing in the supply ledger
+ * that settles a raid. What the packer needs is a rectangle and something to
+ * call it, and that is all this is. See `../pokemon/pokemonCargo.ts` for what
+ * decides the rectangle.
+ */
+export interface GridCargo extends ItemFootprint {
+  /** Identifies the piece to whoever holds the list it came from. */
+  readonly cargoId: string;
+  /** What a refusal or a square-count calls it: a species name. */
+  readonly name: string;
+  /**
+   * A picture for the square, when the thing has one. The grid does not care
+   * what it is a picture of; the screens that draw a container do, and this is
+   * how one code path draws the pack and the secure container alike.
+   */
+  readonly art?: string;
+}
+
+export interface GridCargoPlacement extends GridCargo {
+  readonly x: number;
+  readonly y: number;
+}
+
 export interface GridPacking {
   readonly size: GridSize;
   readonly placements: readonly GridPlacement[];
+  /**
+   * The cargo seated in this container, in the order it was seated. It is a
+   * list of its own rather than a placement with an empty `itemId`, so every
+   * screen that draws supplies keeps working and a screen that draws cargo has
+   * to say so.
+   */
+  readonly cargo: readonly GridCargoPlacement[];
   /** What would not go in, by id and quantity. Empty when everything fits. */
   readonly overflow: readonly { readonly itemId: string; readonly quantity: number }[];
+  /** Cargo that would not go in. Empty when everything fits. */
+  readonly cargoOverflow: readonly GridCargo[];
   readonly cellsUsed: number;
   readonly cellsTotal: number;
 }
@@ -96,14 +133,36 @@ interface Piece extends ItemFootprint {
  * with tweezers would find some. Every footprint in the catalogue is at most two
  * squares on a side and every container is an even number of squares wide, which
  * is the case greedy packs perfectly - and erring towards "full" is the safe
- * direction anyway: the pack never claims room it does not have.
+ * direction anyway: the pack never claims room it does not have. Cargo is the
+ * one piece bigger than that (a Pokemon is 2x2, 3x2 or 3x3), which is why it is
+ * seated first: seated last, a 3x3 in a six-wide pack would be turned away by
+ * four scattered Potions the packer could have seated around it.
  */
-export function packContents(contents: Readonly<Record<string, number>>, size: GridSize): GridPacking {
+export function packContents(
+  contents: Readonly<Record<string, number>>,
+  size: GridSize,
+  cargo: readonly GridCargo[] = [],
+): GridPacking {
   const width = Math.max(0, Math.trunc(size.width));
   const height = Math.max(0, Math.trunc(size.height));
   const occupied: boolean[] = Array.from({ length: width * height }, () => false);
   const placements: GridPlacement[] = [];
+  const seatedCargo: GridCargoPlacement[] = [];
+  const cargoOverflow: GridCargo[] = [];
   const overflow: { itemId: string; quantity: number }[] = [];
+
+  // Cargo is seated before any supply, and that ordering is the rule rather
+  // than an accident of size: what you are carrying home is the thing the raid
+  // was for, so the Potions pack around it and never the other way about.
+  for (const piece of cargo) {
+    const seat = firstFreeSeat(occupied, width, height, piece);
+    if (!seat) {
+      cargoOverflow.push(piece);
+      continue;
+    }
+    fill(occupied, width, seat, piece);
+    seatedCargo.push({ ...piece, x: seat.x, y: seat.y });
+  }
 
   for (const piece of piecesOf(contents)) {
     const seat = firstFreeSeat(occupied, width, height, piece);
@@ -116,26 +175,29 @@ export function packContents(contents: Readonly<Record<string, number>>, size: G
       }
       continue;
     }
-    for (let dy = 0; dy < piece.height; dy += 1) {
-      for (let dx = 0; dx < piece.width; dx += 1) {
-        occupied[(seat.y + dy) * width + seat.x + dx] = true;
-      }
-    }
+    fill(occupied, width, seat, piece);
     placements.push({ ...piece, x: seat.x, y: seat.y });
   }
 
   return {
     size: { width, height },
     placements,
+    cargo: seatedCargo,
     overflow,
+    cargoOverflow,
     cellsUsed: occupied.filter(Boolean).length,
     cellsTotal: width * height,
   };
 }
 
-/** Whether a whole set of contents goes into a container of this size. */
-export function fitsInGrid(contents: Readonly<Record<string, number>>, size: GridSize): boolean {
-  return packContents(contents, size).overflow.length === 0;
+/** Whether a whole set of contents, and any cargo, goes into a container. */
+export function fitsInGrid(
+  contents: Readonly<Record<string, number>>,
+  size: GridSize,
+  cargo: readonly GridCargo[] = [],
+): boolean {
+  const packing = packContents(contents, size, cargo);
+  return packing.overflow.length === 0 && packing.cargoOverflow.length === 0;
 }
 
 /**
@@ -150,17 +212,23 @@ export function roomFor(
   size: GridSize,
   itemId: string,
   limit = 99,
+  cargo: readonly GridCargo[] = [],
 ): number {
   let room = 0;
   const trial: Record<string, number> = { ...contents };
   while (room < limit) {
     trial[itemId] = (trial[itemId] ?? 0) + 1;
-    if (!fitsInGrid(trial, size)) {
+    if (!fitsInGrid(trial, size, cargo)) {
       return room;
     }
     room += 1;
   }
   return room;
+}
+
+/** The squares one piece of cargo takes up, whether or not they are free. */
+export function cargoCells(piece: ItemFootprint): number {
+  return piece.width * piece.height;
 }
 
 /** The pieces of a set of contents, in the order they are seated. */
@@ -186,6 +254,19 @@ function piecesOf(contents: Readonly<Record<string, number>>): readonly Piece[] 
       b.width - a.width ||
       a.itemId.localeCompare(b.itemId),
   );
+}
+
+function fill(
+  occupied: boolean[],
+  width: number,
+  seat: { readonly x: number; readonly y: number },
+  piece: ItemFootprint,
+): void {
+  for (let dy = 0; dy < piece.height; dy += 1) {
+    for (let dx = 0; dx < piece.width; dx += 1) {
+      occupied[(seat.y + dy) * width + seat.x + dx] = true;
+    }
+  }
 }
 
 function firstFreeSeat(

@@ -76,6 +76,12 @@ describe('the Outfitter ladder', () => {
     }
   });
 
+  /**
+   * One rung, one capability. The single exception is stated rather than
+   * implied: a Pokemon takes four squares of the container, so a rung that
+   * protects one more Pokemon has to bring the column to stand it in or it is
+   * a promise the container cannot keep - and nothing else may pair up.
+   */
   it('pays in capability or information, and every rung changes exactly one thing', () => {
     for (const upgrade of OUTFITTER_UPGRADES) {
       const effects = [
@@ -86,6 +92,11 @@ describe('the Outfitter ladder', () => {
         upgrade.hunterIntel,
         upgrade.beacon,
       ].filter(Boolean);
+      if (upgrade.securePokemon) {
+        expect(effects).toEqual([true, true]);
+        expect(upgrade.secureItemStack).toBe(true);
+        continue;
+      }
       expect(effects).toHaveLength(1);
     }
   });

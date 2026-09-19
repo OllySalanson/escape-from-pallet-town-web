@@ -92,7 +92,9 @@ describe('RunManager lifecycle', () => {
     const partyMember = makePokemon(BULBASAUR);
     manager.startRun(
       { party: [partyMember], items: [{ itemId: 'potion', quantity: 2 }] },
-      { mapId: 'pallet-town', durationMs: 60_000 },
+      // A Bulbasaur is four squares of the container and a Potion is a fifth,
+      // so protecting both needs a container a column wider than the base.
+      { mapId: 'pallet-town', durationMs: 60_000, secureGrid: { width: 3, height: 2 } },
       { pokemon: [partyMember], items: [{ itemId: 'potion', quantity: 1 }] },
     );
 
@@ -116,9 +118,9 @@ describe('RunManager lifecycle', () => {
     const caught = makePokemon(CHARMANDER);
     manager.startRun(
       { party: [partyMember], items: [{ itemId: 'potion', quantity: 2 }] },
-      // Five one-square things come home, so the container is a column wider
-      // than the one every save starts with.
-      { mapId: 'pallet-town', durationMs: 60_000, secureGrid: { width: 3, height: 2 } },
+      // A caught Bulbasaur is four squares and five one-square things come
+      // home beside it, so the container is three columns wider than the base.
+      { mapId: 'pallet-town', durationMs: 60_000, secureGrid: { width: 5, height: 2 } },
     );
     manager.registerCaughtPokemon(caught);
     manager.registerFoundItem('potion');
@@ -150,9 +152,9 @@ describe('RunManager lifecycle', () => {
           { itemId: 'poke-ball', quantity: 3 },
         ],
       },
-      // Five one-square things come home, so the container is a column wider
-      // than the one every save starts with.
-      { mapId: 'pallet-town', durationMs: 60_000, secureGrid: { width: 3, height: 2 } },
+      // A caught Bulbasaur is four squares and five one-square things come
+      // home beside it, so the container is three columns wider than the base.
+      { mapId: 'pallet-town', durationMs: 60_000, secureGrid: { width: 5, height: 2 } },
     );
     manager.registerCaughtPokemon(caught);
     manager.registerCaughtPokemon(secondCaught);
@@ -202,7 +204,7 @@ describe('RunManager lifecycle', () => {
     const partyMember = makePokemon(BULBASAUR);
     manager.startRun(
       { party: [partyMember], items: [{ itemId: 'potion', quantity: 2 }] },
-      { mapId: 'pallet-town', durationMs: 60_000 },
+      { mapId: 'pallet-town', durationMs: 60_000, secureGrid: { width: 3, height: 2 } },
       { pokemon: [partyMember], items: [{ itemId: 'potion', quantity: 1 }] },
     );
 
@@ -249,23 +251,37 @@ describe('RunManager lifecycle', () => {
     const second = makePokemon(BULBASAUR);
     const loadout = { party: [first, second, makePokemon(CHARMANDER)], items: [] };
 
+    // Two Pokemon are eight squares, so a two-slot container has to be four
+    // columns wide before the count is what limits it.
+    const twoSlots = {
+      mapId: 'route-1',
+      durationMs: 60_000,
+      securePokemonLimit: 2,
+      secureGrid: { width: 4, height: 2 },
+    };
+
     expect(() =>
-      new RunManager().startRun(loadout, { mapId: 'route-1', durationMs: 60_000 }, { pokemon: [first, second] }),
+      new RunManager().startRun(
+        loadout,
+        { ...twoSlots, securePokemonLimit: 1 },
+        { pokemon: [first, second] },
+      ),
     ).toThrow('at most 1 Pokemon');
+    expect(() =>
+      new RunManager().startRun(loadout, twoSlots, { pokemon: [first, first] }),
+    ).toThrow('same Pokemon twice');
+    // And the squares are the second cap: two Pokemon do not go into the base
+    // container however many slots it is configured for.
     expect(() =>
       new RunManager().startRun(
         loadout,
         { mapId: 'route-1', durationMs: 60_000, securePokemonLimit: 2 },
-        { pokemon: [first, first] },
+        { pokemon: [first, second] },
       ),
-    ).toThrow('same Pokemon twice');
+    ).toThrow(/2x2 cannot hold/);
 
     const manager = new RunManager();
-    manager.startRun(
-      loadout,
-      { mapId: 'route-1', durationMs: 60_000, securePokemonLimit: 2 },
-      { pokemon: [first, second] },
-    );
+    manager.startRun(loadout, twoSlots, { pokemon: [first, second] });
     expect(manager.resolveWipe()).toMatchObject({
       bankedPokemon: [first, second],
       lostPokemon: [loadout.party[2]],

@@ -39,6 +39,7 @@ import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
 import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlement';
+import { packFullForPokemonLine, packHasRoomForPokemon, syncPackCargo } from '../run/raidCargo';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { RaidCarriage } from '../run/raidCarriage';
 import {
@@ -314,6 +315,12 @@ export class BattleScene extends Phaser.Scene {
     this.pendingItem = undefined;
     this.caughtPokemonStash = data.caughtPokemonStash ?? [];
     this.runSession = data.runSession;
+    // The pack is told what the raid is already carrying home before its first
+    // question is asked of it, because the first question is "is there room for
+    // one more" and the world it came from packed the answer.
+    if (this.runSession) {
+      syncPackCargo(this.bag, this.runSession.manager.snapshot());
+    }
     this.trainer = data.trainer;
     this.hunterBattle = data.hunterBattle ?? false;
     this.teachingBattle = data.teachingBattle ?? false;
@@ -1247,6 +1254,19 @@ export class BattleScene extends Phaser.Scene {
       this.dialog.showMessage("You can't catch a trainer's POKéMON!");
       return;
     }
+    // Asked before the ball is spent, and before the roll: a Pokemon that will
+    // not fit in the pack must be refused out loud rather than caught and then
+    // quietly dropped, and finding out should not cost a ball - whichever ball
+    // was chosen.
+    if (!packHasRoomForPokemon(this.bag, this.state.enemy.pokemon)) {
+      this.mode = 'events';
+      this.commandContainer.setVisible(false);
+      audioManager.play('denied');
+      this.dialog.showMessage(
+        `${packFullForPokemonLine(this.state.enemy.pokemon)} Drop something from your BAG first.`,
+      );
+      return;
+    }
     const ball = carriedBalls(this.bag)[ballIndex];
     if (!ball || !this.bag.remove(ball.id, 1)) {
       this.mode = 'events';
@@ -1279,6 +1299,11 @@ export class BattleScene extends Phaser.Scene {
     caughtPokemon.currentHp = this.state.enemy.currentHp;
     caughtPokemon.primaryStatus = this.state.enemy.primaryStatus;
     this.runSession?.manager.registerCaughtPokemon(caughtPokemon);
+    // A catch is cargo whether it walks in the party or rides in the raid's
+    // stash - neither was deployed - so the squares are charged either way.
+    if (this.runSession) {
+      syncPackCargo(this.bag, this.runSession.manager.snapshot());
+    }
     if (this.party.pokemon.length < PARTY_LIMIT) {
       this.party.addPokemon(caughtPokemon);
       return;

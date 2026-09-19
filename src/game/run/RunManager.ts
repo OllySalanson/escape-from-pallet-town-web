@@ -1,4 +1,5 @@
 import { BASE_SECURE_GRID, fitsInGrid, isFoundOnly, type GridSize, type ItemId } from '../items';
+import { pokemonCargo } from '../pokemon/pokemonCargo';
 import type { Pokemon } from '../pokemon';
 import { BASE_SECURE_POKEMON } from '../objectives/contracts';
 import { hunterFleePenaltyMs } from './fleePenalty';
@@ -506,11 +507,14 @@ function validateSecureSlot(
   const secureItems = combineItems(secureSlot.items ?? []);
   validateItemStacks(secureItems);
   // Squares rather than a count of entries: what the container protects is what
-  // fits in it, and that is asked of the same packer the loadout screen drew.
+  // fits in it, and that is asked of the same packer the loadout screen drew -
+  // Pokemon included, because a Pokemon takes squares of this same container by
+  // its evolution stage and does not have an allowance of its own.
   if (
     !fitsInGrid(
       Object.fromEntries(secureItems.map(({ itemId, quantity }) => [itemId, quantity])),
       limits.grid,
+      securePokemon.map((member, index) => pokemonCargo(`secured-${index}`, member)),
     )
   ) {
     throw new Error(

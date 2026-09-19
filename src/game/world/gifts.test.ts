@@ -84,6 +84,20 @@ describe('the giver', () => {
     expect(REEDBEDS_PIKACHU.offer.at(-1)).toContain('PIKACHU');
     expect(REEDBEDS_PIKACHU.offerPackLine).toContain('PIKACHU');
   });
+
+  /**
+   * A gift takes pack squares like a catch, so a pack with none is the one case
+   * where the hand-over does not happen. It has to be said - a gift that
+   * vanished silently would be the cruellest bug in the game - and it has to
+   * leave the giver still holding it.
+   */
+  it('has something to say when the pack has no room for it', () => {
+    for (const gift of POKEMON_GIFTS) {
+      expect(gift.offerNoRoomLine.length).toBeGreaterThan(0);
+      expect(gift.offerNoRoomLine).not.toBe(gift.offerPackLine);
+      expect(gift.offerNoRoomLine).not.toBe(gift.offer.at(-1));
+    }
+  });
 });
 
 describe('a gift does not outclass the starter choice', () => {

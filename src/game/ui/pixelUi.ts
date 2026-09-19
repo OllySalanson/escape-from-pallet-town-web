@@ -170,7 +170,9 @@ export interface PixelGridOptions {
   readonly className?: string;
   /** What a screen reader is told the container is. */
   readonly label?: string;
-  /** Marks one id's squares, so a row and its blocks answer to each other. */
+  /** Marks one id's squares, so a row and its blocks answer to each other. It
+   * matches a cargo piece's `cargoId` too, so pointing at a Pokemon lights up
+   * the squares it is standing on. */
   readonly highlight?: string;
 }
 
@@ -186,6 +188,11 @@ export interface PixelGridOptions {
  * nothing here is ever resampled (`ui/icons.ts` holds that rule for the rest of
  * the game). A block wider or taller than one square spans the hairline between
  * them, so a parts crate reads as one object and not as four.
+ *
+ * Cargo - a Pokemon being carried home, which takes four squares, six or nine
+ * by its evolution stage - is drawn over the same squares from the same
+ * packing, in its own tone, so a player reading the pack for room sees at once
+ * what is taking it.
  */
 export function pixelGrid(packing: GridPacking, icon: (itemId: string) => string, options: PixelGridOptions = {}): string {
   const { width, height } = packing.size;
@@ -197,6 +204,16 @@ export function pixelGrid(packing: GridPacking, icon: (itemId: string) => string
       return `<span class="px-grid-block${marked}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}">${icon(placement.itemId)}${count}</span>`;
     })
     .join('');
+  const cargo = packing.cargo
+    .map(
+      (placement) =>
+        // The sprite and nothing else: a species name is eight to ten letters
+        // and the block is two squares wide, so writing it in there spilled
+        // over the frame and over the art. The name is the row the cursor is
+        // on, and the screen reader gets it from the label.
+        `<span class="px-grid-block is-cargo${options.highlight === placement.cargoId ? ' is-marked' : ''}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}" aria-label="${escapeAttribute(placement.name)}" role="img">${placement.art ? `<img src="${placement.art}" alt="" />` : `<em>${escapeAttribute(placement.name.slice(0, 1))}</em>`}</span>`,
+    )
+    .join('');
   const label = options.label ? ` aria-label="${escapeAttribute(options.label)}" role="img"` : '';
-  return `<div class="px-grid${options.className ? ` ${options.className}` : ''}" style="--cols:${width};--rows:${height}"${label}><div class="px-grid-cells" aria-hidden="true">${cells}</div><div class="px-grid-blocks">${blocks}</div></div>`;
+  return `<div class="px-grid${options.className ? ` ${options.className}` : ''}" style="--cols:${width};--rows:${height}"${label}><div class="px-grid-cells" aria-hidden="true">${cells}</div><div class="px-grid-blocks">${cargo}${blocks}</div></div>`;
 }

@@ -153,8 +153,9 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     id: 'secure-locker-2',
     icon: 'supply-crate',
     name: 'Secure locker II',
-    effect: 'A second protected Pokémon.',
-    detail: 'The secure slot protects a second Pokémon, so two of your party come home from a lost raid.',
+    effect: 'A second protected Pokémon, and the room for it.',
+    detail:
+      'The secure slot protects a second Pokémon, and grows another column to stand it in - a Pokémon takes four squares, so the slot alone would have been a promise the container could not keep.',
     requires: 'secure-locker-1',
     cost: {
       pokemon: 4,
@@ -164,6 +165,9 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
       ],
     },
     securePokemon: true,
+    // Both, and it has to be both: two first-stage Pokemon are eight squares,
+    // which is exactly a 4x2 container - locker I's one column and this one's.
+    secureItemStack: true,
   },
   {
     id: 'recovery-bay-1',

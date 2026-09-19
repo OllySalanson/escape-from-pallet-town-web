@@ -1,15 +1,23 @@
 import {
   BASE_SECURE_GRID,
+  cargoCells,
   fitsInGrid,
   gridCells,
   isFoundOnly,
   packContents,
   RAID_BAG_GRID,
   stackSizeOf,
+  type GridCargo,
   type GridPacking,
   type GridSize,
   type ItemId,
 } from '../items';
+import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
+import {
+  autofillSecureSlot,
+  DEFAULT_SECURE_PREFERENCE,
+  type SecurePreference,
+} from './secureAutofill';
 import { BASE_SECURE_POKEMON } from '../objectives/contracts';
 import type { ItemStack, SecureSlot as RunSecureSlot } from '../run';
 import type { RunInsertionId } from '../run/runGeneration';
@@ -52,6 +60,8 @@ export interface Deployment {
   readonly items: readonly ItemStack[];
   readonly secureSlot: RunSecureSlot;
   readonly stashSecureSlot: StashSecureSlot;
+  /** What the container was filled with, so the next raid can start from it. */
+  readonly securePreference: SecurePreference;
 }
 
 export class DeploymentFlow {
@@ -70,17 +80,28 @@ export class DeploymentFlow {
   public readonly bagGrid: GridSize;
   /** How many Pokemon the secure container protects. */
   public readonly securePokemonSlots: number;
+  /** What the container filled itself with last raid, and whether to lead with Pokemon. */
+  private readonly preference: SecurePreference;
+  /**
+   * Set the moment the player changes anything in the container. Until then the
+   * container refills itself as the loadout changes; afterwards it is theirs,
+   * because an auto-fill that overwrites a decision is not a default, it is a
+   * screen arguing with the person using it.
+   */
+  private secureTouched = false;
 
   public constructor(
     stash: Stash,
     insertionId: RunInsertionId = 'floodplain-relay',
     capacity: LoadoutCapacity = BASE_LOADOUT_CAPACITY,
+    preference: SecurePreference = DEFAULT_SECURE_PREFERENCE,
   ) {
     this.stash = stash;
     this.insertion = insertionId;
     this.secureGrid = capacity.secureGrid;
     this.bagGrid = capacity.bagGrid;
     this.securePokemonSlots = capacity.pokemon;
+    this.preference = preference;
   }
 
   public get step(): DeploymentStep {
@@ -147,9 +168,30 @@ export class DeploymentFlow {
     return Object.fromEntries(this.securedItems.map(({ itemId, quantity }) => [itemId, quantity]));
   }
 
+  /**
+   * The protected Pokemon as squares of the container.
+   *
+   * A Pokemon takes squares by evolution stage (`../pokemon/pokemonCargo.ts`),
+   * and they are the container's own squares rather than a second allowance, so
+   * the base 2x2 holds exactly one first-stage Pokemon and nothing else. That
+   * is the point: growing the container is then a real reward rather than more
+   * room for Potions.
+   */
+  public get securedCargo(): readonly GridCargo[] {
+    return this.securedPokemon.map((stored) => pokemonCargo(stored.id, stored.pokemon));
+  }
+
   /** Where the secure container's contents sit, for the screen that draws it. */
   public secureLayout(): GridPacking {
-    return packContents(this.securedContents, this.secureGrid);
+    return packContents(this.securedContents, this.secureGrid, this.securedCargo);
+  }
+
+  /** What the container was left holding, for the save to start next raid from. */
+  public get securePreference(): SecurePreference {
+    return {
+      pokemon: this.securedPokemon.length > 0,
+      items: this.securedItems.map(({ itemId, quantity }) => ({ itemId, quantity })),
+    };
   }
 
   /** The packed supplies as a record, for the packer and the view. */
@@ -207,13 +249,49 @@ export class DeploymentFlow {
     if (this.selectedPokemonIds.includes(id)) {
       this.selectedPokemonIds = this.selectedPokemonIds.filter((selected) => selected !== id);
       this.securedPokemonIds = this.securedPokemonIds.filter((secured) => secured !== id);
+      this.refillSecureSlot();
       return undefined;
     }
     if (this.selectedPokemonIds.length >= MAX_RUN_PARTY) {
       return `Your run party can hold up to ${MAX_RUN_PARTY} Pokemon.`;
     }
     this.selectedPokemonIds.push(id);
+    this.refillSecureSlot();
     return undefined;
+  }
+
+  /**
+   * Fills the container from the remembered preference: the highest-level
+   * Pokemon in the party first, then whatever else was in it last raid.
+   *
+   * It runs on every change to the loadout for as long as the player has not
+   * touched the container themselves, because the party it protects is chosen
+   * on the screen before it - a container filled once, when the loadout was
+   * empty, would protect nothing.
+   */
+  private refillSecureSlot(): void {
+    if (this.secureTouched) {
+      // Still drop anyone no longer in the party: a protected place nobody can
+      // see is the one thing an untouched container and a touched one agree on.
+      this.securedPokemonIds = this.securedPokemon.map((stored) => stored.id);
+      return;
+    }
+    const fill = autofillSecureSlot(
+      this.party.map((stored) => ({
+        id: stored.id,
+        level: stored.pokemon.level,
+        cargo: pokemonCargo(stored.id, stored.pokemon),
+      })),
+      this.preference,
+      this.secureGrid,
+      this.securePokemonSlots,
+      (itemId) => this.itemQuantity(itemId),
+    );
+    this.securedPokemonIds = [...fill.pokemonIds];
+    this.securedItemCounts.clear();
+    for (const { itemId, quantity } of fill.items) {
+      this.securedItemCounts.set(itemId as ItemId, quantity);
+    }
   }
 
   /**
@@ -242,9 +320,11 @@ export class DeploymentFlow {
     if (next === 0) {
       this.selectedItems.delete(itemId);
       this.securedItemCounts.delete(itemId);
+      this.refillSecureSlot();
       return undefined;
     }
     this.selectedItems.set(itemId, next);
+    this.refillSecureSlot();
     return undefined;
   }
 
@@ -257,16 +337,49 @@ export class DeploymentFlow {
    * Protecting one more Pokemon than the slot holds moves the protection rather
    * than refusing it: with a single slot that is "secure this one instead", and
    * with two it lets go of whichever was chosen first.
+   *
+   * The squares are the second, harder cap, and the one that has to be said out
+   * loud: a Pokemon takes four squares, six or nine by its evolution stage, so
+   * an Ivysaur does not go into a 2x2 container at all and the player is owed
+   * the reason rather than a control that does nothing.
+   *
+   * @returns A message when the container had no room, otherwise undefined.
    */
-  public toggleSecurePokemon(id: string): void {
+  public toggleSecurePokemon(id: string): string | undefined {
+    this.secureTouched = true;
     if (this.securedPokemonIds.includes(id)) {
       this.securedPokemonIds = this.securedPokemonIds.filter((secured) => secured !== id);
-      return;
+      return undefined;
     }
     // Only Pokemon still in the party count against the slot, so one removed
     // from the vault since it was secured cannot hold a place nobody can see.
     const held = this.securedPokemon.map((stored) => stored.id);
+    const previous = this.securedPokemonIds;
     this.securedPokemonIds = [...held, id].slice(-Math.max(1, this.securePokemonSlots));
+    if (fitsInGrid(this.securedContents, this.secureGrid, this.securedCargo)) {
+      return undefined;
+    }
+    this.securedPokemonIds = previous;
+    return this.noRoomForPokemonMessage(id);
+  }
+
+  /** Why one named Pokemon will not go into the container, in the player's terms. */
+  private noRoomForPokemonMessage(id: string): string {
+    const stored = this.party.find((member) => member.id === id);
+    if (!stored) {
+      return 'The secure container is full. Take something out of it first.';
+    }
+    const piece = pokemonCargo(stored.id, stored.pokemon);
+    const squares = cargoSquaresLabel(cargoCells(piece));
+    const total = gridCells(this.secureGrid);
+    const free = total - this.secureLayout().cellsUsed;
+    const room =
+      free === 0
+        ? 'the container is full'
+        : free === total
+          ? `the container is only ${this.secureGrid.width}x${this.secureGrid.height}`
+          : `only ${cargoSquaresLabel(free)} of it ${free === 1 ? 'is' : 'are'} free`;
+    return `${stored.pokemon.base.name.toUpperCase()} needs ${squares} - ${room}. Take something out, or grow the container.`;
   }
 
   /**
@@ -282,6 +395,7 @@ export class DeploymentFlow {
    * @returns A message when the container had no room, otherwise undefined.
    */
   public adjustSecureItem(itemId: ItemId, direction: number): string | undefined {
+    this.secureTouched = true;
     const step = stackSizeOf(itemId);
     const ceiling = isFoundOnly(itemId)
       ? gridCells(this.secureGrid) * step
@@ -296,8 +410,10 @@ export class DeploymentFlow {
       this.securedItemCounts.delete(itemId);
       return undefined;
     }
-    if (!fitsInGrid({ ...this.securedContents, [itemId]: next }, this.secureGrid)) {
-      return 'The secure container is full. Take something out of it first.';
+    if (!fitsInGrid({ ...this.securedContents, [itemId]: next }, this.secureGrid, this.securedCargo)) {
+      return this.securedCargo.length > 0
+        ? `No room - ${this.securedCargo.map((piece) => piece.name.toUpperCase()).join(' and ')} ${this.securedCargo.length === 1 ? 'is' : 'are'} taking the container. Unsecure a Pokémon, or grow it.`
+        : 'The secure container is full. Take something out of it first.';
     }
     this.securedItemCounts.set(itemId, next);
     return undefined;
@@ -314,6 +430,7 @@ export class DeploymentFlow {
       fitsInGrid(
         { ...this.securedContents, [itemId]: this.secureQuantity(itemId) + step },
         this.secureGrid,
+        this.securedCargo,
       )
     );
   }
@@ -412,6 +529,7 @@ export class DeploymentFlow {
           : { pokemonIds: securedPokemon.map((stored) => stored.id) }),
         items: securedItems.map(({ itemId, quantity }) => ({ itemId, quantity })),
       },
+      securePreference: this.securePreference,
     };
   }
 }

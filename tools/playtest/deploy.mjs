@@ -80,6 +80,19 @@ export async function deploy(page, url, { press, click, until, paused = false, i
     const [itemId, count = '1'] = entry.split(':');
     if (entry === secure[0]) {
       await click('Secure slot');
+      // The container fills itself with the party's best Pokemon, and a
+      // first-stage one is four squares of the four a save starts with - so a
+      // driver asking for gear has to take the Pokemon out first, exactly as a
+      // player choosing gear over protection would.
+      for (let guard = 0; guard < 6; guard += 1) {
+        const removed = await page.evaluate(
+          `(() => { const b = document.querySelector('button[data-secure-pokemon].is-secured'); if (!b) return false; b.click(); return true; })()`,
+        );
+        if (!removed) {
+          break;
+        }
+        await sleep(250);
+      }
     }
     for (let i = 0; i < Number(count); i += 1) {
       await until(

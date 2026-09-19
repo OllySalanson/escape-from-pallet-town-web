@@ -85,7 +85,10 @@ that save opens on, by clicking the insertion's own row in the loadout.
   puts `n` (default one) squares of each kind into the container, by the row's
   own stepper. It is the only way the container is checked end to end, and the
   only way at all for a kind that is *found* rather than packed - a material, a
-  note of scrip - whose row is room reserved for something not held yet.
+  note of scrip - whose row is room reserved for something not held yet. The
+  container fills itself with the party's best Pokemon now, and a first-stage
+  one takes all four squares a save starts with, so this first takes the
+  Pokemon back out - which is the choice a player asking for gear makes too.
 
 `raid.mjs` has two more. `--work=LABEL` (`--work=sluice-wheel`) works a landmark
 before leaving - stood on where it is ground, faced and worked with the interact

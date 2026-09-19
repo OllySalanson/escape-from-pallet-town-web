@@ -29,6 +29,15 @@ export interface PokemonGift {
   readonly offer: readonly string[];
   /** The hand-over line when the party has no room and the gift rides in the pack. */
   readonly offerPackLine: string;
+  /**
+   * What the giver says when the *pack* has no room for it.
+   *
+   * A gift is cargo like a catch, so it costs squares, and a pack with none is
+   * the one case where the hand-over cannot happen. It is said rather than
+   * silently swallowed, and the gift stays unspoken - come back with room and
+   * it is still here.
+   */
+  readonly offerNoRoomLine: string;
   /** What they say to anyone who has already been given it. */
   readonly after: readonly string[];
 }
@@ -61,6 +70,8 @@ export const REEDBEDS_PIKACHU: PokemonGift = {
   ],
   offerPackLine:
     'PIKACHU is in your pack - your party is full. It is only yours once you carry it out of the reeds.',
+  offerNoRoomLine:
+    'You have not the room for it. Put something down and come back - it is not going anywhere, and neither am I.',
   after: [
     'It has stopped watching the pylons. Good.',
     'Mind the shore road. Whatever is hunting out there does not care that it is small.',

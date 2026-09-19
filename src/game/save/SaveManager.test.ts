@@ -1634,6 +1634,77 @@ describe('SaveManager', () => {
     expect(new SaveManager(new MemoryStorage()).claimBattleLesson()).toBe(true);
   });
 
+  /**
+   * The secure container fills itself from what it held last raid. The field is
+   * optional with a default, so every accepted version keeps loading - and the
+   * default is the policy anyway, which is why there is no version bump.
+   */
+  describe('what the secure container remembers', () => {
+    const saveWithPreference = (version: number, securePreference?: unknown): string =>
+      JSON.stringify({
+        version,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: [],
+        bag: {},
+        stash: { pokemon: [], items: {} },
+        ...(securePreference === undefined ? {} : { raidProgress: { securePreference } }),
+      });
+
+    it.each([1, 2, 3, 4, 5, 6])(
+      'reads a version %i save that never wrote one as "lead with the Pokemon"',
+      (version) => {
+        const storage = new MemoryStorage();
+        storage.setItem(SAVE_KEY, saveWithPreference(version));
+
+        expect(new SaveManager(storage).load()?.raidProgress.securePreference).toEqual({
+          pokemon: true,
+          items: [],
+        });
+      },
+    );
+
+    it('carries a written preference back out of storage, entry by entry', () => {
+      const storage = new MemoryStorage();
+      storage.setItem(
+        SAVE_KEY,
+        saveWithPreference(6, { pokemon: false, items: [{ itemId: 'potion', quantity: 3 }] }),
+      );
+
+      expect(new SaveManager(storage).load()?.raidProgress.securePreference).toEqual({
+        pokemon: false,
+        items: [{ itemId: 'potion', quantity: 3 }],
+      });
+    });
+
+    it('records what a deploy left in the container, and survives the reload', () => {
+      const storage = new MemoryStorage();
+      const saves = new SaveManager(storage);
+      const stash = new Stash();
+      stash.addPokemon(new Pokemon(CHARMANDER, 5), 'partner');
+      saves.save({
+        party: new PokemonParty([]),
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: new Bag(),
+        stash,
+      });
+
+      expect(
+        saves.recordSecurePreference({
+          pokemon: false,
+          items: [{ itemId: 'super-potion', quantity: 1 }],
+        }),
+      ).toBe(true);
+
+      expect(new SaveManager(storage).load()?.raidProgress.securePreference).toEqual({
+        pokemon: false,
+        items: [{ itemId: 'super-potion', quantity: 1 }],
+      });
+    });
+  });
+
   describe('storage boxes', () => {
     const oldSave = (version: number): string =>
       JSON.stringify({

@@ -248,7 +248,16 @@ export class BagScene extends Phaser.Scene {
         return `<span class="raid-grid-block${marked}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}">${itemIcon(placement.itemId)}${count}</span>`;
       })
       .join('');
-    return `<div class="raid-grid" style="--cols:${layout.size.width};--rows:${layout.size.height}"><div class="raid-grid-cells" aria-hidden="true">${cells}</div><div class="raid-grid-blocks">${blocks}</div></div>`;
+    // What the raid is carrying home takes squares too, so it is drawn in them:
+    // the pack panel is opened to ask how much room is left, and a Pokemon is
+    // the biggest thing in it.
+    const cargo = layout.cargo
+      .map(
+        (placement) =>
+          `<span class="raid-grid-block cargo" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}" aria-label="${placement.name}" role="img">${placement.art ? `<img src="${placement.art}" alt="" />` : `<em>${placement.name.slice(0, 1)}</em>`}</span>`,
+      )
+      .join('');
+    return `<div class="raid-grid" style="--cols:${layout.size.width};--rows:${layout.size.height}"><div class="raid-grid-cells" aria-hidden="true">${cells}</div><div class="raid-grid-blocks">${cargo}${blocks}</div></div>`;
   }
 
   /** Puts one of the chosen item on the ground, and says the room it bought. */
