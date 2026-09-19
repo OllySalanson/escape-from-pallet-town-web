@@ -104,6 +104,12 @@ export interface ExtractionReport {
   readonly ledgerEmptyText: string;
   readonly contract?: ReportContract;
   readonly secured: ReportGroup;
+  /**
+   * What the secure-slot panel says when `secured` is empty. A slot that was
+   * filled and then drunk dry is not a slot that was left empty, and telling
+   * that player they protected nothing is wrong about the one choice they made.
+   */
+  readonly securedEmptyText: string;
   readonly risked: ReportGroup;
   /** What the secure-slot decision was worth, in this raid, in one sentence. */
   readonly gambleVerdict: string;
@@ -163,14 +169,15 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     items: toReportItems(ledgerSource.items),
   };
 
-  // A secure slot is a decision right up until the raid is lost, and then it is
-  // an outcome. A Potion declared secure and then drunk in the field did not
-  // come home, and a panel saying it did contradicts the supplies-spent line
-  // beside it. A survived raid keeps everything it carried either way, so there
-  // the slot is still reported as it was chosen.
+  // A secure slot is a decision right up until the raid ends, and then it is an
+  // outcome - on a survived raid as much as a lost one. A Potion declared secure
+  // and then drunk in the field did not come home, and a panel saying it did
+  // contradicts the supplies-spent line beside it, under a footer that says
+  // everything above is in the stash. Only a caller that could not see the pack
+  // falls back to the slot as it was chosen.
   const declaredSecureItems = snapshot.secureSlot.items ?? [];
   const securedItems =
-    escaped || input.carriedOut === undefined
+    input.carriedOut === undefined
       ? declaredSecureItems
       : survivingSecureItems(declaredSecureItems, input.carriedOut);
   const secured: ReportGroup = {
@@ -180,13 +187,21 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   // What rode out unprotected. A lost raid's answer is the ledger itself - what
   // actually failed to come home - rather than the loadout minus the secure
   // slot, which counts a drunk Potion as one the raid was still carrying and
-  // leaves found loot out of a loss it was part of.
+  // leaves found loot out of a loss it was part of. A survived raid's answer is
+  // what it deployed with that is still in the pack: found loot is already the
+  // banked ledger and what was drunk is already the spent line, so secured,
+  // risked, banked and spent add back up to everything the raid ever held.
   const risked: ReportGroup = escaped
     ? {
       pokemon: (snapshot.loadout?.party ?? [])
         .filter((member) => !securedPokemon(snapshot).includes(member))
         .map(toReportPokemon),
-      items: toReportItems(subtractStacks(snapshot.loadout?.items ?? [], securedItems)),
+      items: toReportItems(
+        subtractStacks(
+          survivingLoadoutItems(snapshot.loadout?.items ?? [], input.carriedOut),
+          securedItems,
+        ),
+      ),
     }
     : ledger;
 
@@ -197,6 +212,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   const contract = input.contract;
   const contractBanked = contract?.complete === true;
   const progress = partyProgress(snapshot, escaped);
+  const spent =
+    input.carriedOut === undefined ? undefined : suppliesSpent(snapshot, input.carriedOut);
   const haulTier = gradeHaul(ledger, contractBanked, escaped, progress);
 
   return {
@@ -218,15 +235,20 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     ledgerEmptyText: escaped
       ? progress.length > 0
         ? 'No new gear or Pokémon. What your party earned is below.'
-        : 'Nothing new. You leave with exactly what you took in.'
+        // "Exactly what you took in" is only true of a raid that drank nothing.
+        : (spent ?? []).length > 0
+          ? 'Nothing new. What the raid used up is counted below.'
+          : 'Nothing new. You leave with exactly what you took in.'
       : 'Nothing outside the secure slot was at stake.',
     ...(contract ? { contract } : {}),
     secured,
+    securedEmptyText:
+      declaredSecureItems.length > 0 || securedPokemon(snapshot).length > 0
+        ? 'Everything you protected was used up in the field.'
+        : 'You protected nothing.',
     risked,
     gambleVerdict: gambleVerdict(escaped, secured, risked),
-    ...(input.carriedOut === undefined
-      ? {}
-      : { spent: suppliesSpent(snapshot, input.carriedOut) }),
+    ...(spent === undefined ? {} : { spent }),
     progress,
     progressSummary: progressSummary(progress),
     pressure: pressureLines(snapshot, escaped),
@@ -528,6 +550,26 @@ function toReportItems(items: readonly Stack[]): ReportItem[] {
   return [...quantities]
     .filter(([, quantity]) => quantity > 0)
     .map(([itemId, quantity]) => ({ itemId, label: itemLabel(itemId), quantity }));
+}
+
+/**
+ * The deployed supplies that are still in the pack at the end of the raid.
+ *
+ * Capped per item by what was deployed, because anything beyond that was found
+ * in the field and is the ledger's to list. Without a pack to read, the loadout
+ * is reported as it was deployed.
+ */
+function survivingLoadoutItems(
+  loadout: readonly Stack[],
+  carriedOut: BagContents | undefined,
+): readonly Stack[] {
+  if (carriedOut === undefined) {
+    return loadout;
+  }
+  return toReportItems(loadout).map(({ itemId, quantity }) => ({
+    itemId,
+    quantity: Math.min(quantity, carriedOut[itemId] ?? 0),
+  }));
 }
 
 function subtractStacks(items: readonly Stack[], removed: readonly Stack[]): Stack[] {
