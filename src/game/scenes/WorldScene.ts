@@ -105,6 +105,7 @@ import {
   trainerWatchCaption,
 } from '../world/trainerEngagement';
 import { hasHunterIntel } from '../hub/outfitter';
+import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { tryActivatePoi } from '../world/pois';
 import {
@@ -137,6 +138,8 @@ const CAMERA_ZOOM = 1;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 /** Long enough for the extraction flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
+/** How far above its tile the beacon's caption sits: clear of a figure and its chevron. */
+const BEACON_CAPTION_LIFT = 30;
 
 /**
  * Map captions share the raid HUD's window, in a darker weight: screen furniture
@@ -794,10 +797,14 @@ export class WorldScene extends Phaser.Scene {
       const marker = this.add
         .image(x, y, extractionIconKey(isOpen))
         .setDepth(atRow(MARKER_BAND, point.position.y));
+      // The beacon stands on the landing, which is the one exit the player is
+      // guaranteed to be standing on when it is first drawn, so its caption is
+      // raised clear of a figure's head and chevron instead of lying across them.
+      const captionLift = point.label === BEACON_EXIT_LABEL ? BEACON_CAPTION_LIFT : 11;
       const label = new WorldLabel(
         this,
         x,
-        y - 11,
+        y - captionLift,
         `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}`,
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
         atRow(CAPTION_BAND, point.position.y),
