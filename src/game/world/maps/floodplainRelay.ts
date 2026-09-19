@@ -292,9 +292,9 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '                               ',
     '      ,,,,,,,,, ,,,,,          ',
     '      ,,     ,,,,,,,,          ',
-    '      ,,  T  ,,    ,,          ',
+    '    T ,,  T  ,,    ,,          ',
     '      ,,     ,,    ........    ',
-    '      ,,     ,,    ........    ',
+    '    T ,,     ,,    ........    ',
     '  ,,,,,,     ,,    ........    ',
     '  ,,,        ,,,,  ........    ',
   ]);
@@ -302,6 +302,16 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.draw(49, 29, ['........']);
   map.plant(52, 25, 'house');
   map.plant(50, 26, 'bigStump');
+  // What says mill: the weir the district is named for, set in the race between
+  // the gatehouse and the pond, and flour sacks stacked by the door. Without
+  // them this was a house by a square pond, and a stranger who toured the map
+  // once named the place after the gate instead.
+  map.plant(50, 20, 'wetRock');
+  map.plant(50, 28, 'sack');
+  map.plant(51, 28, 'sack');
+  // The toll house, door to the road, where the towered bridge lands. The road
+  // north of the isle had nothing on it to remember it by.
+  map.plant(34, 24, 'hut');
 
   // The gatehouse in the race, and the stone that runs under it. Nothing else
   // crosses the race: the water either side of these three tiles is the wall.
