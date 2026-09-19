@@ -1,6 +1,7 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import type { CastCharacterDesignId } from './characterDesigns';
+import { REEDBEDS_PIKACHU } from './gifts';
 
 export type WorldEntityKind = 'npc' | 'sign';
 
@@ -107,6 +108,18 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
       'ROUTE OUTPOST - opens on the signal',
       'Nobody has been up on the OVERLOOK since the warden shut it. You can see its fence from the field station\'s yard, north-east of here.',
     ],
+  },
+  {
+    // The one giver (`gifts.ts`): she stands in the nook at the head of the
+    // lane, so nobody passes through her, and she is what the entity's own
+    // lines say once there is nothing left to give.
+    id: REEDBEDS_PIKACHU.giverId,
+    mapId: 'floodplain-relay',
+    kind: 'npc',
+    position: { x: 19, y: 23 },
+    facing: 'down',
+    design: 'old-woman',
+    dialogLines: REEDBEDS_PIKACHU.after,
   },
   {
     id: 'floodplain-route-board',

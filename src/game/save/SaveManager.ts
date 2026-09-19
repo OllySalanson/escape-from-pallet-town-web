@@ -123,6 +123,13 @@ export interface RaidProgress {
    * `../objectives/standingBoard` - so a generated contract is never stored.
    */
   readonly standingContractsBanked: number;
+  /**
+   * Every gift an NPC has handed over and the raid has carried home, by gift id
+   * (`world/gifts.ts`). Whether a giver still has something to give is derived
+   * from it, so a save can never disagree. A gift lost with a wiped raid is not
+   * here, and is offered again.
+   */
+  readonly giftsReceived: readonly string[];
 }
 
 /**
@@ -174,6 +181,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   reachedInsertions: [],
   outfitterUpgrades: [],
   standingContractsBanked: 0,
+  giftsReceived: [],
 };
 
 export interface SaveData {
@@ -225,6 +233,27 @@ export interface SaveGameState {
   readonly starterSpeciesId?: StarterSpeciesId | null;
   readonly pendingRecoveryMs?: number;
   readonly wardTreatmentsUsed?: number;
+}
+
+/**
+ * A gift is received when it is banked, not when it is handed over: the
+ * Pokemon rides in the raid's pack, so a raid that loses it has not received it
+ * and the giver still has it to give. The record is the only thing the save
+ * keeps about a gift - the giver's lines and whether they have anything left to
+ * give are derived from it (`world/gifts.ts`).
+ */
+function withGiftsReceived(game: RestoredGame, result: RunResult): RestoredGame {
+  const gifts = result.gifts ?? [];
+  if (gifts.length === 0) {
+    return game;
+  }
+  return {
+    ...game,
+    raidProgress: {
+      ...game.raidProgress,
+      giftsReceived: [...new Set([...game.raidProgress.giftsReceived, ...gifts])],
+    },
+  };
 }
 
 /** What every raid ending clears: the recovery a resolved raid has now paid for. */
@@ -296,10 +325,11 @@ export class SaveManager {
    * stay honest rather than passing an invented one.
    */
   public bankRun(result: RunResult, settlement?: RaidSettlement): boolean {
-    const game = this.load();
-    if (!game) {
+    const loaded = this.load();
+    if (!loaded) {
       return false;
     }
+    const game = withGiftsReceived(loaded, result);
 
     applySettlement(game.stash, settlement);
     game.stash.bankRun(result);
@@ -326,10 +356,11 @@ export class SaveManager {
     result: RunResult,
     settlement?: RaidSettlement,
   ): { readonly saved: boolean; readonly granted: boolean } {
-    const game = this.load();
-    if (!game) {
+    const loaded = this.load();
+    if (!loaded) {
       return { saved: false, granted: false };
     }
+    const game = withGiftsReceived(loaded, result);
 
     applySettlement(game.stash, settlement);
     game.stash.bankRun(result);
@@ -718,6 +749,8 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     defeatedBosses: uniqueStrings(value.defeatedBosses),
     reachedInsertions: uniqueStrings(value.reachedInsertions),
     outfitterUpgrades,
+    // Saves written before gifts existed have received none.
+    giftsReceived: uniqueStrings(value.giftsReceived),
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
     // A save written before the standing board has banked none of it.
     standingContractsBanked:

@@ -41,7 +41,8 @@ import {
   type WorldMapId,
 } from '../worldMap';
 import { type WorldEntity } from '../world/npcs';
-import { Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
+import { PARTY_LIMIT, Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
+import { createGiftPokemon, giftGivenBy, isGiftSpoken, type PokemonGift } from '../world/gifts';
 import { DialogBox } from '../ui/DialogBox';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter } from '../world/wildEncounters';
@@ -1794,7 +1795,35 @@ export class WorldScene extends Phaser.Scene {
       this.faceFigure(entity.id, OPPOSITE_DIRECTION[this.facing]);
     }
 
+    const gift = entity ? giftGivenBy(entity.id) : undefined;
+    if (gift) {
+      this.dialogBox.showMessages([...this.speakForGift(gift, entity!.dialogLines)]);
+      return;
+    }
+
     this.dialogBox.showMessages([...entity!.dialogLines]);
+  }
+
+  /**
+   * What a giver says, handing the Pokemon over the first time. It goes into the
+   * raid's pack like a catch - into the party while there is room, otherwise
+   * the raid's stash - and is recorded as received only when the raid banks it.
+   */
+  private speakForGift(gift: PokemonGift, after: readonly string[]): readonly string[] {
+    const carried = this.runSession?.manager.snapshot().giftIds ?? [];
+    const banked = new SaveManager().load()?.raidProgress.giftsReceived ?? [];
+    if (!this.runSession || isGiftSpoken(gift, banked, carried)) {
+      return after;
+    }
+    const pokemon = createGiftPokemon(gift);
+    this.runSession.manager.registerGiftedPokemon(gift.id, pokemon);
+    audioManager.play('catchSuccess');
+    if (this.party.pokemon.length < PARTY_LIMIT) {
+      this.party.addPokemon(pokemon);
+      return gift.offer;
+    }
+    this.caughtPokemonStash.push(pokemon);
+    return [...gift.offer.slice(0, -1), gift.offerPackLine];
   }
 
   private openParty(): void {
@@ -2725,7 +2754,11 @@ export class WorldScene extends Phaser.Scene {
     // Loot found in the field is already in the bag, so it comes home through
     // the settlement's supply delta. Only rewards granted at base are banked
     // separately, or the same antidote would arrive twice.
-    const runResult = { pokemon: snapshot.caughtPokemon, items: objectiveRewards };
+    const runResult = {
+      pokemon: snapshot.caughtPokemon,
+      items: objectiveRewards,
+      gifts: snapshot.giftIds,
+    };
     // What the raid itself cost, settled the same way whichever ending fires.
     const settlement = buildRaidSettlement(
       this.runSession.broughtPokemonIds,
