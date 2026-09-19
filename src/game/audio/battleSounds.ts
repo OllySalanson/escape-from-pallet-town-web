@@ -28,6 +28,12 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
       if (event.category === undefined) {
         return null;
       }
+      // A spread move's line only names it. What it sounded like is each
+      // target's own `spread-damage`, so this line is silent rather than
+      // sounding a hit that has not happened to anybody yet.
+      if (event.spread) {
+        return null;
+      }
       if (event.category === MoveCategory.Status || !event.damage) {
         return withLine('statusMove');
       }
@@ -35,8 +41,22 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
         name: event.category === MoveCategory.Special ? 'hitSpecial' : 'hitPhysical',
         at: 'impact',
       };
+    // A spread move sounds once, on the line that names it, and then lands on
+    // each target: the impact is what the player hears, so it is heard per
+    // target - two leaves landing is two hits, not one.
+    case 'spread-damage':
+      if (!event.damage) {
+        return null;
+      }
+      return {
+        name: event.category === MoveCategory.Special ? 'hitSpecial' : 'hitPhysical',
+        at: 'impact',
+      };
     case 'missed':
       return withLine('miss');
+    // A move aimed at nobody is a turn refused, which is what `denied` says.
+    case 'no-target':
+      return withLine('denied');
     case 'critical-hit':
       return withLine('criticalHit');
     case 'effectiveness':

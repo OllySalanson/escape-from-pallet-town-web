@@ -1,15 +1,21 @@
 import { Pokemon } from '../pokemon';
 import {
   createTrainerBattleState,
+  engagedSlots,
+  playerCombatants,
   replacePlayerPokemon,
   resolveEnemyTurn,
   resolveTurn,
+  slotsOf,
+  unitAt,
+  type BattleState,
+  type SlotRef,
   type TrainerBattle,
 } from '../pokemon/battle/battleEngine';
 import { getSpeciesById } from '../pokemon/species';
 import type { WeatherId } from '../pokemon/battle/weather';
 import { createSeededRng } from '../run/rng';
-import { bestDamagingMove } from './bestPlay';
+import { bestPlayFor } from './bestPlay';
 
 /**
  * What an authored trainer costs, measured over the real engine rather than
@@ -92,51 +98,86 @@ export function playTrainerBattle(
   const rng = createSeededRng(seed);
   const random = (): number => rng.next();
   const maximum = party.reduce((total, pokemon) => total + pokemon.maxHp, 0);
-  let state = createTrainerBattleState(party[0], trainer, weather);
-  let index = 0;
+  // A trainer who fields two is fielded against two, because a raid deploys a
+  // party and the engine refuses the second slot when there is nobody for it.
+  let state = createTrainerBattleState(party[0], trainer, weather, party[1] ?? null);
+  const sentOut = new Set<Pokemon>(
+    playerCombatants(state).map((combatant) => combatant.pokemon),
+  );
   let left = potions;
   // A combatant owns its HP while it is out and this harness never writes it
-  // back to the Pokemon, so the party's own `currentHp` is not the fight's: the
-  // one out is read off the state, everyone already sent out is at zero (this
-  // harness only ever replaces a Pokemon that fainted), and everyone still on
-  // the bench is untouched. Reading the party object instead reported a wiped
-  // team as three quarters healthy.
-  const healthLeft = (): number =>
-    maximum === 0
-      ? 0
-      : (state.player.currentHp +
-          party.slice(index + 1).reduce((total, pokemon) => total + pokemon.maxHp, 0)) /
-        maximum;
+  // back to the Pokemon, so the party's own `currentHp` is not the fight's:
+  // whoever is out is read off the state, anyone who has been out and is not is
+  // at zero (this harness only ever replaces a Pokemon that fainted), and
+  // everyone still on the bench is untouched. Reading the party object instead
+  // reported a wiped team as three quarters healthy.
+  const healthLeft = (): number => {
+    if (maximum === 0) {
+      return 0;
+    }
+    const standing = playerCombatants(state).reduce(
+      (total, combatant) => total + combatant.currentHp,
+      0,
+    );
+    const bench = party
+      .filter((pokemon) => !sentOut.has(pokemon))
+      .reduce((total, pokemon) => total + pokemon.maxHp, 0);
+    return (standing + bench) / maximum;
+  };
   const lost = (): TrainerBattleResult => ({
     won: false,
     healthLeft: 0,
     potionsUsed: potions - left,
   });
+  /** Whoever on the field most wants the Potion, if anybody is worth one. */
+  const drinker = (): SlotRef | null => {
+    let worst: SlotRef | null = null;
+    let worstShare = 1;
+    for (const ref of engagedSlots(state, 'player')) {
+      const combatant = unitAt(state, ref)!;
+      const max = combatant.pokemon.maxHp;
+      const share = combatant.currentHp / max;
+      const wouldRestore = Math.min(POTION_HP, max - combatant.currentHp);
+      if (share <= DRINK_BELOW && wouldRestore >= max * DRINK_WORTH && share < worstShare) {
+        worst = ref;
+        worstShare = share;
+      }
+    }
+    return worst;
+  };
+
   for (let turn = 0; turn < 400 && state.outcome === 'active'; turn += 1) {
     const before = state;
-    const max = state.player.pokemon.maxHp;
-    const wouldRestore = Math.min(POTION_HP, max - state.player.currentHp);
-    if (
-      left > 0 &&
-      state.player.currentHp <= max * DRINK_BELOW &&
-      wouldRestore >= max * DRINK_WORTH
-    ) {
+    const thirsty = left > 0 ? drinker() : null;
+    if (thirsty) {
+      const combatant = unitAt(state, thirsty)!;
+      const max = combatant.pokemon.maxHp;
       left -= 1;
-      state = {
-        ...state,
-        player: { ...state.player, currentHp: Math.min(max, state.player.currentHp + POTION_HP) },
-      };
+      state = healSlot(state, thirsty, Math.min(max, combatant.currentHp + POTION_HP));
       state = resolveEnemyTurn(state, random).state;
     } else {
-      state = resolveTurn(state, bestDamagingMove(state), random).state;
+      const choices = engagedSlots(state, 'player').map((ref) => ({
+        slot: ref.slot,
+        ...bestPlayFor(state, ref),
+      }));
+      state = resolveTurn(state, choices, random).state;
     }
-    if (state.player.currentHp === 0 && state.outcome !== 'victory') {
-      const next = party.slice(index + 1).findIndex((pokemon) => !pokemon.isFainted);
-      if (next < 0) {
-        return lost();
+    // Anybody who went down is replaced from the bench, slot by slot. The
+    // battle is only lost once there is nobody for any empty slot.
+    for (const ref of slotsOf(state, 'player')) {
+      const combatant = unitAt(state, ref);
+      if (!combatant || combatant.currentHp > 0 || state.outcome === 'victory') {
+        continue;
       }
-      index += 1 + next;
-      state = replacePlayerPokemon(state, party[index]).state;
+      const next = party.find((pokemon) => !sentOut.has(pokemon) && !pokemon.isFainted);
+      if (!next) {
+        continue;
+      }
+      sentOut.add(next);
+      state = replacePlayerPokemon(state, next, ref.slot).state;
+    }
+    if (state.outcome === 'defeat') {
+      return lost();
     }
     // A turn that changed nothing - everything out of PP - is a stalemate.
     if (state === before) {
@@ -147,6 +188,15 @@ export function playTrainerBattle(
     ? { won: true, healthLeft: healthLeft(), potionsUsed: potions - left }
     : lost();
 }
+
+/** A Potion drunk, written straight onto the slot that drank it. */
+const healSlot = (state: BattleState, ref: SlotRef, currentHp: number): BattleState => {
+  const combatant = unitAt(state, ref)!;
+  const healed = { ...combatant, currentHp };
+  return ref.slot === 0
+    ? { ...state, player: healed }
+    : { ...state, playerPartner: healed };
+};
 
 /** The share of `trials` this party wins, seeded so the answer never moves. */
 export function trainerWinRate(

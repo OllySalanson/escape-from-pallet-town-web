@@ -230,7 +230,7 @@ describe('battle presentation', () => {
   });
 
   it('advances opening narration before presenting the actionable command menu', () => {
-    const narration = new TypewriterQueue(battleOpeningMessages(undefined, 'Bulbasaur', 'Pidgey'));
+    const narration = new TypewriterQueue(battleOpeningMessages(undefined, ['Bulbasaur'], ['Pidgey']));
     narration.skip();
 
     expect(narration.advance()).toBe(false);

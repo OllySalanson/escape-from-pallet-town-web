@@ -27,6 +27,8 @@ import {
 import {
   createBattleState,
   createTrainerBattleState,
+  slotRef,
+  unitAt,
   type BattleState,
 } from '../pokemon/battle/battleEngine';
 import { BULBASAUR, PIDGEY, SQUIRTLE } from '../pokemon/species';
@@ -147,6 +149,42 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     : createBattleState(player, enemy);
   const scene = Object.create(BattleScene.prototype) as BattleScene;
 
+  // The scene keeps one plate per slot, so the harness builds one per slot too.
+  // `playerLevelText` used to be a field of its own because a level reached
+  // mid-battle has to reach the plate; it is now the plate's own.
+  const plates = new Map<string, unknown>();
+  const sprites = new Map<string, unknown>();
+  const displayed = new Map<string, Pokemon>();
+  const displayedHp = new Map<string, number>();
+  for (const side of ['player', 'enemy'] as const) {
+    for (const slot of [0, 1]) {
+      const combatant = unitAt(state, slotRef(side, slot));
+      if (!combatant) {
+        continue;
+      }
+      const key = `${side}${slot}`;
+      plates.set(key, {
+        container: { destroy: vi.fn() },
+        hpBar: graphicsStub(),
+        barX: 0,
+        barY: 0,
+        barWidth: 88,
+        hpText: { setText: vi.fn() },
+        statusText: { setText: vi.fn() },
+        levelText: {
+          text: `Lv ${combatant.pokemon.level}`,
+          setText: vi.fn(function (this: { text: string }, value: string) {
+            this.text = value;
+          }),
+        },
+        banner: { setText: vi.fn(), destroy: vi.fn() },
+      });
+      sprites.set(key, spriteStub());
+      displayed.set(key, combatant.pokemon);
+      displayedHp.set(key, combatant.currentHp);
+    }
+  }
+
   Object.assign(scene as object, {
     add: {
       // The party screen - the target picker for an item as well as the switch
@@ -198,29 +236,17 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     },
     commandContainer,
     dialog,
-    displayedEnemy: state.enemy.pokemon,
-    displayedHp: { player: state.player.currentHp, enemy: state.enemy.currentHp },
+    // One plate and one sprite per occupied slot, keyed the way the scene keys
+    // them. A single battle is two of each; a double is four.
+    plates,
+    sprites,
+    displayed,
+    displayedHp,
     pendingCombatMessages: [],
-    playerHpBar: graphicsStub(),
-    enemyHpBar: graphicsStub(),
-    playerHpText: { setText: vi.fn() },
-    // The level plate is held by the scene rather than painted once, because a
-    // level reached mid-battle has to reach it.
-    playerLevelText: {
-      text: `Lv ${player.level}`,
-      setText: vi.fn(function (this: { text: string }, value: string) {
-        this.text = value;
-      }),
-    },
-    playerStatusText: { setText: vi.fn() },
-    enemyStatusText: { setText: vi.fn() },
-    playerSprite: spriteStub(),
-    enemySprite: spriteStub(),
-    // A trainer sending out its next Pokemon rebuilds the enemy plate.
-    playerStatusBox: { destroy: vi.fn() },
-    enemyStatusBox: { destroy: vi.fn() },
-    playerBannerText: { setText: vi.fn() },
-    enemyBannerText: { setText: vi.fn() },
+    pendingChoices: [],
+    choosingSlot: 0,
+    aimingMoveIndex: 0,
+    replacementSlot: 0,
     tweens: { add: vi.fn(), addCounter: vi.fn() },
     cameras: { main: { flash: vi.fn(), shake: vi.fn(), fadeOut: vi.fn(), once: vi.fn() } },
     // Raid resolution waits a beat before handing over; run it now.
@@ -830,10 +856,14 @@ describe('a level reached in the middle of a trainer battle', () => {
 
     expect(squirtle.level).toBe(7);
     // The plate is rewritten as the level is awarded, not on the way out of the
-    // battle: the rest of this fight is played against it.
-    expect((scene as unknown as { playerLevelText: { text: string } }).playerLevelText.text).toBe(
-      'Lv 7',
-    );
+    // battle: the rest of this fight is played against it. It is the plate of
+    // the slot that Pokemon is standing in, which in a single battle is the one
+    // plate there is.
+    expect(
+      (
+        scene as unknown as { plates: Map<string, { levelText: { text: string } }> }
+      ).plates.get('player0')!.levelText.text,
+    ).toBe('Lv 7');
     readThroughNarration(scene, dialog);
     expect(dialog.shownMessages).toContain('SQUIRTLE grew to Lv 7!');
   });

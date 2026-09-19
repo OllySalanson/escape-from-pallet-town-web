@@ -1,6 +1,6 @@
 import type { AbilityEffectKind } from '../AbilityBase';
 import type { MoveBase, NormalizedMoveEffects, NormalizedSecondaryEffect } from '../MoveBase';
-import { MoveCategory, MoveCharge, MoveTarget } from '../MoveBase';
+import { MoveCategory, MoveCharge, MoveTarget, targetsTheOtherSide } from '../MoveBase';
 import type { Pokemon } from '../Pokemon';
 import type { PokemonType } from '../PokemonType';
 import {
@@ -51,6 +51,61 @@ export interface BattleMove {
   readonly base: MoveBase;
   readonly pp: number;
 }
+
+/** Which team a Pokemon is fighting for. */
+export type BattleSide = 'player' | 'enemy';
+
+/**
+ * How many Pokemon a side may have on the field at once.
+ *
+ * Two, because this game is generation III and generation III's multi battle is
+ * the double battle: triples and rotations are generation V. The tutorial's
+ * `TrainerController.battleUnitCount` is a bare int with no ceiling; here the
+ * number has a reason, so it has a name and a cap.
+ */
+export const SLOTS_PER_SIDE = 2;
+
+/**
+ * One place on the field. `side` is whose it is and `slot` is which of that
+ * side's two, and every rule in this engine that used to say `'player'` now
+ * says `{ side: 'player', slot: 0 }` instead.
+ *
+ * A slot is addressed rather than held in an array because a slot is a *place*:
+ * it can be full, empty, or holding somebody who has fainted and is waiting to
+ * be carried off, and those are three different things. `unitAt` answers what
+ * is standing there and `isEngaged` whether it can still fight.
+ */
+export interface SlotRef {
+  readonly side: BattleSide;
+  readonly slot: number;
+}
+
+export const slotRef = (side: BattleSide, slot = 0): SlotRef => ({ side, slot });
+
+/** The slot every single battle is fought in, on either side. */
+export const leadOf = (side: BattleSide): SlotRef => slotRef(side, 0);
+
+export const sameSlot = (left: SlotRef, right: SlotRef): boolean =>
+  left.side === right.side && left.slot === right.slot;
+
+export const opposing = (side: BattleSide): BattleSide =>
+  side === 'player' ? 'enemy' : 'player';
+
+/**
+ * How a slot is written into an event: by number, and not at all when it is the
+ * lead.
+ *
+ * Every event's `slot` is optional and absent means slot 0, so a single battle
+ * emits exactly the events it emitted before there were slots - which is the
+ * one thing a change this wide has to be able to show rather than claim. The
+ * engine's own test file was not touched to make this pass.
+ */
+const inSlot = (ref: SlotRef): { readonly slot?: number } =>
+  ref.slot === 0 ? {} : { slot: ref.slot };
+
+/** The same, for the target side of a hit. */
+const atSlot = (ref: SlotRef): { readonly targetSlot?: number } =>
+  ref.slot === 0 ? {} : { targetSlot: ref.slot };
 
 export interface BattleCombatant {
   readonly pokemon: Pokemon;
@@ -117,6 +172,19 @@ export interface TrainerBattle {
   readonly sprite?: string;
   readonly defeatText?: string;
   readonly prize?: string;
+  /**
+   * How many Pokemon this trainer puts on the field at once - the tutorial's
+   * `TrainerController.battleUnitCount`. Absent is one, which is every fight
+   * this game shipped with.
+   *
+   * It is what the trainer *asks* for, not what they get: a double battle needs
+   * two able Pokemon on each side, so a trainer who declares two still fights a
+   * single battle against a player who has only one left. That is generation
+   * III's own rule and it is also the only one that is fair here - a lone
+   * starter facing two would be handed two actions a turn against its one, and
+   * this game's authored fights are priced on the party that walks up to them.
+   */
+  readonly unitCount?: number;
 }
 
 /**
@@ -132,11 +200,44 @@ export interface ActiveWeather {
 }
 
 export interface BattleState {
+  /** The player's lead - slot 0, and the whole of a single battle. */
   readonly player: BattleCombatant;
+  /** The enemy's lead - slot 0. */
   readonly enemy: BattleCombatant;
+  /**
+   * Slot 1 on each side: the double battle, and `null` in every single one.
+   *
+   * Each slot is one field and one field only, so nothing here can drift out of
+   * step with anything else here - which is why this is not an array with
+   * `player` mirroring its first entry. `unitAt` is how the engine reads a slot
+   * by reference and `withUnit` is how it writes one; only those two know the
+   * shape.
+   *
+   * A slot holding a fainted Pokemon is not the same as an empty one: the
+   * enemy's stays filled until the trainer sends the next body into it, and the
+   * player's until the scene asks who is going in.
+   */
+  readonly playerPartner: BattleCombatant | null;
+  readonly enemyPartner: BattleCombatant | null;
   readonly playerStatStages: ReadonlyMap<Pokemon, StatStages>;
   readonly trainer?: TrainerBattle;
+  /** Which of the trainer's party is in the enemy's lead slot. */
   readonly enemyPartyIndex: number;
+  /** Which of the trainer's party is in the enemy's second slot, if any. */
+  readonly enemyPartnerPartyIndex: number | null;
+  /**
+   * How much of the trainer's party has been sent out, which is the next index
+   * to draw from. With two slots drawing from one party, "the next one" can no
+   * longer be read off either slot's own index.
+   */
+  readonly enemySentOut: number;
+  /**
+   * How many Pokemon each side is fielding: one for every fight this game shipped
+   * with, two for a double. It is settled when the battle opens and never moves,
+   * because it is the shape of the screen as much as the shape of the turn - a
+   * double battle whose second slot has emptied is still a double battle.
+   */
+  readonly unitCount: number;
   readonly outcome: 'active' | 'victory' | 'defeat' | 'caught';
   /** The tutorial's `BattleField`, which is one field wide so far. */
   readonly weather: ActiveWeather | null;
@@ -152,7 +253,10 @@ export type BattleEvent =
   | {
       readonly type: 'used-move';
       readonly user: 'player' | 'enemy';
+      readonly slot?: number;
       readonly target?: 'player' | 'enemy';
+      /** Which of the target side's slots the hit landed in. */
+      readonly targetSlot?: number;
       readonly name: string;
       readonly move: string;
       /**
@@ -165,48 +269,98 @@ export type BattleEvent =
       readonly category?: MoveCategory;
       /** The web game's same-type bonus, reported so its 1.5x is not hidden. */
       readonly isStab?: boolean;
+      /**
+       * Set when this line only *names* the move, because it hit more than one
+       * Pokemon and each of them is reported in its own `spread-damage`. What
+       * the hit sounded and looked like belongs to those, not to this.
+       */
+      readonly spread?: boolean;
     }
-  | { readonly type: 'missed'; readonly user: 'player' | 'enemy' }
+  | { readonly type: 'missed'; readonly user: 'player' | 'enemy'; readonly slot?: number }
+  // What a move that hits more than one Pokemon took off each of them.
+  //
+  // `used-move` carries the damage when there is exactly one target, which is
+  // every hit in a single battle. A spread move has no one number to carry: a
+  // sum would explain neither hit, and the two are rarely even the same
+  // effectiveness. So the move names itself once and each target is then said
+  // in its own line, which is also the order a player reads the field in.
+  | {
+      readonly type: 'spread-damage';
+      readonly user: 'player' | 'enemy';
+      readonly slot?: number;
+      readonly target: 'player' | 'enemy';
+      readonly targetSlot?: number;
+      /** The Pokemon that took it. */
+      readonly name: string;
+      readonly damage: number;
+      readonly isStab?: boolean;
+      readonly category?: MoveCategory;
+    }
+  // A move aimed at somebody who is no longer standing there, with nobody else
+  // to aim it at. Only a double battle can reach it: in a single battle the one
+  // foe is the battle, and a battle with no foe has already ended.
+  | { readonly type: 'no-target'; readonly user: 'player' | 'enemy'; readonly slot?: number }
   | { readonly type: 'critical-hit' }
   | { readonly type: 'effectiveness'; readonly multiplier: number }
-  | { readonly type: 'fainted'; readonly user: 'player' | 'enemy'; readonly name: string }
-  | { readonly type: 'no-pp'; readonly user: 'player' | 'enemy'; readonly move: string }
-  | { readonly type: 'status-applied'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: StatusName }
-  | { readonly type: 'status-already'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: StatusName }
-  | { readonly type: 'status-prevented'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: PrimaryStatusType }
-  | { readonly type: 'status-damage'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: PrimaryStatusType; readonly damage: number }
-  | { readonly type: 'status-cured'; readonly user: 'player' | 'enemy'; readonly name: string; readonly status: 'sleep' | 'freeze' | 'confusion' }
-  | { readonly type: 'confusion-self-hit'; readonly user: 'player' | 'enemy'; readonly name: string; readonly damage: number }
-  | { readonly type: 'stat-stage-changed'; readonly user: 'player' | 'enemy'; readonly name: string; readonly stat: StageStat; readonly stages: number }
+  | { readonly type: 'fainted'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string }
+  | { readonly type: 'no-pp'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly move: string }
+  | { readonly type: 'status-applied'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly status: StatusName }
+  | { readonly type: 'status-already'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly status: StatusName }
+  | { readonly type: 'status-prevented'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly status: PrimaryStatusType }
+  | { readonly type: 'status-damage'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly status: PrimaryStatusType; readonly damage: number }
+  | { readonly type: 'status-cured'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly status: 'sleep' | 'freeze' | 'confusion' }
+  | { readonly type: 'confusion-self-hit'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly damage: number }
+  | { readonly type: 'stat-stage-changed'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly stat: StageStat; readonly stages: number }
   // What a move does beyond its damage, each announced where it happens, so the
   // battle log explains a turn without the player having to read the HP bar.
-  | { readonly type: 'flinched'; readonly user: 'player' | 'enemy'; readonly name: string }
+  | { readonly type: 'flinched'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string }
   | { readonly type: 'multi-hit'; readonly hits: number }
-  | { readonly type: 'drained'; readonly user: 'player' | 'enemy'; readonly name: string; readonly amount: number }
-  | { readonly type: 'recoil'; readonly user: 'player' | 'enemy'; readonly name: string; readonly damage: number }
-  | { readonly type: 'healed'; readonly user: 'player' | 'enemy'; readonly name: string; readonly amount: number }
-  | { readonly type: 'heal-failed'; readonly user: 'player' | 'enemy'; readonly name: string }
-  | { readonly type: 'charging'; readonly user: 'player' | 'enemy'; readonly name: string; readonly move: string }
-  | { readonly type: 'recharging'; readonly user: 'player' | 'enemy'; readonly name: string }
+  | { readonly type: 'drained'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly amount: number }
+  | { readonly type: 'recoil'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly damage: number }
+  | { readonly type: 'healed'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly amount: number }
+  | { readonly type: 'heal-failed'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string }
+  | { readonly type: 'charging'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly move: string }
+  | { readonly type: 'recharging'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string }
   | { readonly type: 'ball-thrown'; readonly name: string }
   | { readonly type: 'catch-shake'; readonly count: number }
   | { readonly type: 'caught'; readonly name: string }
   | { readonly type: 'broke-free'; readonly name: string }
   | { readonly type: 'catch-disabled' }
-  | { readonly type: 'enemy-sent-out'; readonly name: string }
+  | { readonly type: 'enemy-sent-out'; readonly name: string; readonly slot?: number }
   // Gear. Each one is announced the moment it acts, because an item whose effect
   // is only visible in the HP bar is an item the player has to be told about in
   // a menu - and the whole point of these four is that they explain themselves.
-  | { readonly type: 'gear-first-strike'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string }
-  | { readonly type: 'gear-endured'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string }
-  | { readonly type: 'gear-recoil'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string; readonly damage: number }
-  | { readonly type: 'gear-heal'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string; readonly amount: number }
+  | { readonly type: 'gear-first-strike'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly item: string }
+  | { readonly type: 'gear-endured'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly item: string }
+  | { readonly type: 'gear-recoil'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly item: string; readonly damage: number }
+  | { readonly type: 'gear-heal'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly item: string; readonly amount: number }
   // Weather. It is the one thing in a fight that belongs to neither side, so
   // each of these names the field rather than a combatant - except the chip,
   // which is the weather taking HP off someone and says whose.
   | { readonly type: 'weather-set'; readonly weather: WeatherId; readonly byMove: boolean }
   | { readonly type: 'weather-ended'; readonly weather: WeatherId }
-  | { readonly type: 'weather-damage'; readonly user: 'player' | 'enemy'; readonly name: string; readonly weather: WeatherId; readonly damage: number }
+  | { readonly type: 'weather-damage'; readonly user: 'player' | 'enemy';
+      readonly slot?: number; readonly name: string; readonly weather: WeatherId; readonly damage: number }
   // Abilities. A player is never shown their ability in a menu, so the only way
   // to learn what it does is to watch it happen - which is why everything an
   // ability does arrives as one of these, and `battlePresentation.ts` has a
@@ -214,6 +368,7 @@ export type BattleEvent =
   | {
       readonly type: 'ability';
       readonly user: 'player' | 'enemy';
+      readonly slot?: number;
       readonly name: string;
       /** In capitals, as the log names gear and moves. */
       readonly ability: string;
@@ -288,6 +443,51 @@ const toCombatant = (pokemon: Pokemon): BattleCombatant => ({
 });
 
 /**
+ * What is standing in a slot, or `null` when nothing is.
+ *
+ * This and `withUnit` are the only two things in the engine that know how
+ * `BattleState` stores its four places; everything else addresses a slot by
+ * reference. That is what made the double battle a change to this file rather
+ * than a change to every file that reads a battle.
+ */
+export const unitAt = (state: BattleState, ref: SlotRef): BattleCombatant | null =>
+  ref.side === 'player'
+    ? ref.slot === 0
+      ? state.player
+      : state.playerPartner
+    : ref.slot === 0
+      ? state.enemy
+      : state.enemyPartner;
+
+const withUnit = (state: BattleState, ref: SlotRef, combatant: BattleCombatant): BattleState => {
+  if (ref.side === 'player') {
+    const stages = new Map(state.playerStatStages).set(combatant.pokemon, combatant.statStages);
+    return ref.slot === 0
+      ? { ...state, player: combatant, playerStatStages: stages }
+      : { ...state, playerPartner: combatant, playerStatStages: stages };
+  }
+  return ref.slot === 0 ? { ...state, enemy: combatant } : { ...state, enemyPartner: combatant };
+};
+
+/** Whether what is standing in a slot can still act and still be aimed at. */
+export const isEngaged = (combatant: BattleCombatant | null): combatant is BattleCombatant =>
+  combatant !== null && combatant.currentHp > 0;
+
+/** Every slot this battle fields for a side, whether or not anyone is in it. */
+export const slotsOf = (state: BattleState, side: BattleSide): readonly SlotRef[] =>
+  Array.from({ length: state.unitCount }, (_, slot) => slotRef(side, slot));
+
+/** The slots on a side with somebody in them who is still standing. */
+export const engagedSlots = (state: BattleState, side: BattleSide): readonly SlotRef[] =>
+  slotsOf(state, side).filter((ref) => isEngaged(unitAt(state, ref)));
+
+/** Every slot in the battle with a body in it at all, player side first. */
+const occupiedSlots = (state: BattleState): readonly SlotRef[] =>
+  [...slotsOf(state, 'player'), ...slotsOf(state, 'enemy')].filter(
+    (ref) => unitAt(state, ref) !== null,
+  );
+
+/**
  * A combatant as `abilityHooks.ts` reads one: the numbers the *fight* has left
  * it on rather than the ones its Pokemon was saved with, because a pinch
  * ability is about the HP it is standing on now.
@@ -314,10 +514,9 @@ export const effectiveWeather = (state: BattleState): WeatherId | null => {
   if (state.weather === null) {
     return null;
   }
-  return suppressesWeather(abilityCarrier(state.player)) ||
-    suppressesWeather(abilityCarrier(state.enemy))
-    ? null
-    : state.weather.id;
+  // Every body on the field is asked, not both leads: one Cloud Nine holds the
+  // weather off the whole field whichever of the four slots it is standing in.
+  return weatherStilledBy(state) === null ? state.weather.id : null;
 };
 
 /**
@@ -347,11 +546,14 @@ const CONTINUOUS_ABILITY_EFFECTS: ReadonlySet<AbilityEffectKind> = new Set([
 
 const announceAbility = (
   state: BattleState,
-  user: 'player' | 'enemy',
+  ref: SlotRef,
   effect: AbilityEffectKind,
   detail: { readonly status?: StatusName; readonly stat?: StageStat; readonly amount?: number } = {},
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
-  const combatant = user === 'player' ? state.player : state.enemy;
+  const combatant = unitAt(state, ref);
+  if (!combatant) {
+    return { state, events: [] };
+  }
   const ability = abilityLabel(abilityCarrier(combatant));
   if (!ability) {
     return { state, events: [] };
@@ -361,12 +563,20 @@ const announceAbility = (
     if (combatant.abilityAnnounced) {
       return { state, events: [] };
     }
-    nextState = updateCombatant(state, user, { ...combatant, abilityAnnounced: true });
+    nextState = withUnit(state, ref, { ...combatant, abilityAnnounced: true });
   }
   return {
     state: nextState,
     events: [
-      { type: 'ability', user, name: combatant.pokemon.base.name, ability, effect, ...detail },
+      {
+        type: 'ability',
+        user: ref.side,
+        ...inSlot(ref),
+        name: combatant.pokemon.base.name,
+        ability,
+        effect,
+        ...detail,
+      },
     ],
   };
 };
@@ -374,23 +584,33 @@ const announceAbility = (
 /**
  * Intimidate, and anything else that happens because a Pokemon has arrived.
  *
- * The boost is applied to the *other* side, and it is applied through
- * `applyStatBoosts` like every other, so the foe's Clear Body refuses it and
- * says so. Both sides are asked, in the order they are sent out.
+ * The boost is applied to the *other side*, and it is applied through
+ * `applyStatBoosts` like every other, so each foe's own Clear Body refuses it
+ * and says so. In a double battle it lands on **both** foes, which is canon and
+ * also the only reading that makes sense: the Pokemon is glaring across the
+ * field, not at one of the two things on it.
  */
 const applySendOut = (
   state: BattleState,
-  user: 'player' | 'enemy',
+  ref: SlotRef,
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
-  const combatant = user === 'player' ? state.player : state.enemy;
+  const combatant = unitAt(state, ref);
+  if (!combatant) {
+    return { state, events: [] };
+  }
   const boosts = sendOutBoosts(abilityCarrier(combatant));
   if (boosts.length === 0) {
     return { state, events: [] };
   }
-  const announced = announceAbility(state, user, 'sent-out');
-  const foe = user === 'player' ? ('enemy' as const) : ('player' as const);
-  const boosted = applyStatBoosts(announced.state, foe, boosts, user);
-  return { state: boosted.state, events: [...announced.events, ...boosted.events] };
+  const announced = announceAbility(state, ref, 'sent-out');
+  let nextState = announced.state;
+  const events: BattleEvent[] = [...announced.events];
+  for (const foe of engagedSlots(nextState, opposing(ref.side))) {
+    const boosted = applyStatBoosts(nextState, foe, boosts, ref);
+    nextState = boosted.state;
+    events.push(...boosted.events);
+  }
+  return { state: nextState, events };
 };
 
 /**
@@ -403,34 +623,48 @@ const applySendOut = (
  * only because nothing has moved a stage yet: it is the *opening*, and a switch
  * mid-battle gets its events from `replacePlayerPokemon` instead.
  */
-export const openingAbilityEvents = (state: BattleState): readonly BattleEvent[] => [
-  ...openingEventsFor(state, 'player'),
-  ...openingEventsFor(state, 'enemy'),
-];
+export const openingAbilityEvents = (state: BattleState): readonly BattleEvent[] =>
+  occupiedSlots(state).flatMap((ref) => openingEventsFor(state, ref));
 
-const openingEventsFor = (state: BattleState, user: 'player' | 'enemy'): readonly BattleEvent[] => {
-  const combatant = user === 'player' ? state.player : state.enemy;
-  const foe = user === 'player' ? state.enemy : state.player;
+const openingEventsFor = (state: BattleState, ref: SlotRef): readonly BattleEvent[] => {
+  const combatant = unitAt(state, ref);
+  if (!combatant) {
+    return [];
+  }
   const boosts = sendOutBoosts(abilityCarrier(combatant));
   if (boosts.length === 0) {
     return [];
   }
   const ability = abilityLabel(abilityCarrier(combatant));
   return [
-    { type: 'ability', user, name: combatant.pokemon.base.name, ability, effect: 'sent-out' },
-    ...boosts.flatMap((boost): BattleEvent[] =>
-      foe.statStages[boost.stat] === 0
-        ? []
-        : [
-            {
-              type: 'stat-stage-changed',
-              user: user === 'player' ? 'enemy' : 'player',
-              name: foe.pokemon.base.name,
-              stat: boost.stat,
-              stages: foe.statStages[boost.stat],
-            },
-          ],
-    ),
+    {
+      type: 'ability',
+      user: ref.side,
+      ...inSlot(ref),
+      name: combatant.pokemon.base.name,
+      ability,
+      effect: 'sent-out',
+    },
+    ...engagedSlots(state, opposing(ref.side)).flatMap((foeRef): BattleEvent[] => {
+      const foe = unitAt(state, foeRef);
+      if (!foe) {
+        return [];
+      }
+      return boosts.flatMap((boost): BattleEvent[] =>
+        foe.statStages[boost.stat] === 0
+          ? []
+          : [
+              {
+                type: 'stat-stage-changed',
+                user: foeRef.side,
+                ...inSlot(foeRef),
+                name: foe.pokemon.base.name,
+                stat: boost.stat,
+                stages: foe.statStages[boost.stat],
+              },
+            ],
+      );
+    }),
   ];
 };
 
@@ -439,41 +673,77 @@ const openingEventsFor = (state: BattleState, user: 'player' | 'enemy'): readonl
  * raid is the district the player was standing in. It has no duration: it is
  * the field until a move covers it, and it comes back when that move lapses.
  */
+/** The second Pokemon each side puts on the field, where a battle has one. */
+export interface BattlePartners {
+  readonly player?: Pokemon | null;
+  readonly enemy?: Pokemon | null;
+}
+
 export const createBattleState = (
   player: Pokemon,
   enemy: Pokemon,
   weather: WeatherId | null = null,
+  partners: BattlePartners = {},
 ): BattleState => {
   const playerCombatant = toCombatant(player);
+  // Two a side or one a side, never one and two: a double battle wants a second
+  // body on each side, and half of one is the handicap match this game has no
+  // fight for. Whichever side is short decides it for both.
+  const playerPartner = partners.player && !partners.player.isFainted ? partners.player : null;
+  const enemyPartner = partners.enemy && !partners.enemy.isFainted ? partners.enemy : null;
+  const double = playerPartner !== null && enemyPartner !== null;
+  const playerPartnerCombatant = double && playerPartner ? toCombatant(playerPartner) : null;
+  const stages = new Map<Pokemon, StatStages>([[player, playerCombatant.statStages]]);
+  if (playerPartnerCombatant) {
+    stages.set(playerPartnerCombatant.pokemon, playerPartnerCombatant.statStages);
+  }
   const opening: BattleState = {
     player: playerCombatant,
     enemy: toCombatant(enemy),
-    playerStatStages: new Map([[player, playerCombatant.statStages]]),
+    playerPartner: playerPartnerCombatant,
+    enemyPartner: double && enemyPartner ? toCombatant(enemyPartner) : null,
+    playerStatStages: stages,
     enemyPartyIndex: 0,
+    enemyPartnerPartyIndex: double ? 1 : null,
+    enemySentOut: double ? 2 : 1,
+    unitCount: double ? 2 : 1,
     outcome: player.isFainted ? 'defeat' : enemy.isFainted ? 'victory' : 'active',
     weather: weather === null ? null : { id: weather, turnsRemaining: null },
     ambientWeather: weather,
   };
-  // Both sides have arrived, so both sides' arrivals are already owed: a state
-  // is never handed out with one outstanding, and `openingAbilityEvents` is the
+  // Everyone has arrived, so everyone's arrival is already owed: a state is
+  // never handed out with one outstanding, and `openingAbilityEvents` is the
   // words for what this has already made true.
   if (opening.outcome !== 'active') {
     return opening;
   }
-  return applySendOut(applySendOut(opening, 'player').state, 'enemy').state;
+  return occupiedSlots(opening).reduce(
+    (state, ref) => applySendOut(state, ref).state,
+    opening,
+  );
 };
 
+/**
+ * `playerPartner` is the second Pokemon the player is fielding, and it is what
+ * decides whether a double-battle trainer actually gets one: see
+ * `TrainerBattle.unitCount`.
+ */
 export const createTrainerBattleState = (
   player: Pokemon,
   trainer: TrainerBattle,
   weather: WeatherId | null = null,
+  playerPartner: Pokemon | null = null,
 ): BattleState => {
   const firstEnemy = trainer.party[0];
   if (!firstEnemy) {
     throw new Error('A trainer battle requires at least one Pokemon.');
   }
+  const wantsTwo = (trainer.unitCount ?? 1) > 1 && trainer.party.length > 1;
   return {
-    ...createBattleState(player, firstEnemy, weather),
+    ...createBattleState(player, firstEnemy, weather, {
+      player: wantsTwo ? playerPartner : null,
+      enemy: wantsTwo ? trainer.party[1] : null,
+    }),
     trainer,
   };
 };
@@ -497,59 +767,143 @@ export const chooseEnemyMove = (combatant: BattleCombatant, random: RandomSource
  * opens the command menu, because a turn the player did not choose still has to
  * be narrated as a turn.
  */
-export const lockedMove = (state: BattleState, user: 'player' | 'enemy'): number | null => {
-  const pending = (user === 'player' ? state.player : state.enemy).pendingMove;
+export const lockedMove = (state: BattleState, side: BattleSide, slot = 0): number | null => {
+  const pending = unitAt(state, slotRef(side, slot))?.pendingMove;
   return pending ? pending.moveIndex : null;
 };
 
+/**
+ * One of the player's slots and what it is doing this turn.
+ *
+ * `target` is which foe the move is aimed at, and it is only ever read by a
+ * move that aims at one foe: a move that hits both foes hits both of them, and
+ * a move a Pokemon uses on itself has nowhere else to go. Left out, the aim
+ * falls on the first foe still standing, which is what a single battle has
+ * always meant and what `resolveTurn(state, 0, rng)` still means.
+ */
+export interface PlayerMoveChoice {
+  readonly slot?: number;
+  readonly moveIndex: number;
+  readonly target?: SlotRef;
+}
+
+/**
+ * What the player chose this turn: a move index for a single battle, or one
+ * choice per slot for a double. The number is not a shorthand kept for the old
+ * call sites - it is what "the player's move" means when there is one Pokemon
+ * out, and a fight with one Pokemon out is still most of this game.
+ */
+export type PlayerTurnChoice = number | readonly PlayerMoveChoice[];
+
+/** One action waiting to be taken, before the turn is put in order. */
+interface QueuedAction {
+  readonly ref: SlotRef;
+  readonly moveIndex: number;
+  readonly target?: SlotRef;
+  readonly speed: number;
+  readonly priority: number;
+  readonly claw: 0 | 1;
+}
+
+/**
+ * Everything that happens between the player choosing and the player being
+ * asked again.
+ *
+ * **How a turn is put in order, over however many units are on the field.**
+ * Every action is sorted on four keys, in this order, and the first three are
+ * exactly the two a single battle already used:
+ *
+ *  1. the **move's own priority** - a Quick Attack goes before everything with
+ *     a lower number whatever the Speed;
+ *  2. **Quick Claw**, rolled per holder before the order is settled, which
+ *     breaks the tie *inside* a priority bracket rather than outranking it;
+ *  3. **Speed**, read through the stat stages and through Chlorophyll and Swift
+ *     Swim; then
+ *  4. a **fixed** tie-break: the player's side first, and within a side the
+ *     lead before the partner.
+ *
+ * Generation III breaks a true Speed tie with a coin. This does not, and the
+ * reason is that a seed here has to replay: `trainerMeasure.ts`,
+ * `encounterMeasure.ts` and the whole boss ladder are numbers measured over
+ * this engine, and a coin in the ordering would move them without anything
+ * changing. A tie is decided the same way every time instead, and the direction
+ * it falls is stated rather than incidental.
+ */
 export const resolveTurn = (
   state: BattleState,
-  playerMoveIndex: number,
+  playerChoice: PlayerTurnChoice,
   random: RandomSource,
 ): TurnResult => {
   if (state.outcome !== 'active') {
     return { state, events: [] };
   }
 
-  // A pending charge or recharge overrides whatever was chosen: the move is no
-  // longer the player's to pick until the two-turn action has finished.
-  const forcedPlayerMove = lockedMove(state, 'player');
-  if (forcedPlayerMove !== null) {
-    playerMoveIndex = forcedPlayerMove;
+  const playerSlots = engagedSlots(state, 'player');
+  const choices: readonly PlayerMoveChoice[] =
+    typeof playerChoice === 'number' ? [{ slot: 0, moveIndex: playerChoice }] : playerChoice;
+
+  // Every chosen move is checked before any of them is taken. A turn half of
+  // which cannot be played is not a turn: the scene asks again, and the one
+  // thing it must never do is spend the other slot's action on the question.
+  const playerActions: { readonly ref: SlotRef; readonly moveIndex: number; readonly target?: SlotRef }[] = [];
+  for (const ref of playerSlots) {
+    const choice = choices.find((candidate) => (candidate.slot ?? 0) === ref.slot);
+    if (!choice) {
+      continue;
+    }
+    const forced = lockedMove(state, 'player', ref.slot);
+    const moveIndex = forced ?? choice.moveIndex;
+    const move = unitAt(state, ref)?.moves[moveIndex];
+    if (!move) {
+      return { state, events: [] };
+    }
+    if (move.pp <= 0 && forced === null) {
+      return {
+        state,
+        events: [{ type: 'no-pp', user: 'player', ...inSlot(ref), move: move.base.name }],
+      };
+    }
+    playerActions.push({ ref, moveIndex, target: choice.target });
+  }
+  if (playerActions.length === 0) {
+    return { state, events: [] };
   }
 
-  const playerMove = state.player.moves[playerMoveIndex];
-  if (!playerMove || (playerMove.pp <= 0 && forcedPlayerMove === null)) {
-    return {
-      state,
-      events: playerMove
-        ? [{ type: 'no-pp', user: 'player', move: playerMove.base.name }]
-        : [],
-    };
+  // The enemy chooses next, exactly as it did when there was one of it: a move,
+  // and - only where there is more than one thing to aim at - who to aim it at.
+  // A single battle draws no target roll at all, so a seeded fight plays the
+  // same sequence it always did.
+  const enemyActions: { readonly ref: SlotRef; readonly moveIndex: number; readonly target?: SlotRef }[] = [];
+  for (const ref of engagedSlots(state, 'enemy')) {
+    const combatant = unitAt(state, ref);
+    if (!combatant) {
+      continue;
+    }
+    const moveIndex = lockedMove(state, 'enemy', ref.slot) ?? chooseEnemyMove(combatant, random);
+    if (moveIndex === null) {
+      continue;
+    }
+    enemyActions.push({ ref, moveIndex, target: chooseTarget(state, 'player', random) });
   }
 
-  const enemyMoveIndex = lockedMove(state, 'enemy') ?? chooseEnemyMove(state.enemy, random);
-  // Quick Claw is rolled before the order is decided, once for each side that
-  // carries one, so the claw is the reason the turn came out the way it did
-  // rather than an adjustment made afterwards. A claw that fires is announced
-  // before the move it let through.
+  // Quick Claw is rolled before the order is decided, once for each holder, so
+  // the claw is the reason the turn came out the way it did rather than an
+  // adjustment made afterwards. A claw that fires is announced before the move
+  // it let through.
   const claws: BattleEvent[] = [];
-  const firstStrike = (user: 'player' | 'enemy', combatant: BattleCombatant): 1 | 0 => {
+  const firstStrike = (ref: SlotRef, combatant: BattleCombatant): 1 | 0 => {
     if (!rollsFirstStrike(combatant.pokemon, random)) {
       return 0;
     }
     claws.push({
       type: 'gear-first-strike',
-      user,
+      user: ref.side,
+      ...inSlot(ref),
       name: combatant.pokemon.base.name,
       item: gearLabel(combatant.pokemon.heldItemId),
     });
     return 1;
   };
-  // Two orderings, and the move's own is the outer one. A priority move goes
-  // first whatever the Speed, and Quick Claw breaks the tie *inside* that
-  // bracket rather than outranking it - a claw has never let a Pokemon cut in
-  // front of a Quick Attack.
   const movePriority = (combatant: BattleCombatant, moveIndex: number): number =>
     combatant.moves[moveIndex]?.base.priority ?? 0;
   // Chlorophyll and Swift Swim are read here, where the order is settled, and
@@ -561,45 +915,45 @@ export const resolveTurn = (
       getStagedStat(combatant.pokemon.stats.speed, combatant.statStages.speed) *
         speedMultiplier(abilityCarrier(combatant), field),
     );
-  const actions = [
-    {
-      user: 'player' as const,
-      moveIndex: playerMoveIndex,
-      speed: speedOf(state.player),
-      priority: movePriority(state.player, playerMoveIndex),
-      claw: firstStrike('player', state.player),
-    },
-    ...(enemyMoveIndex === null
-      ? []
-      : [{
-        user: 'enemy' as const,
-        moveIndex: enemyMoveIndex,
-        speed: speedOf(state.enemy),
-        priority: movePriority(state.enemy, enemyMoveIndex),
-        claw: firstStrike('enemy', state.enemy),
-      }]),
-  ].sort(
+  const actions: QueuedAction[] = [...playerActions, ...enemyActions].flatMap((action) => {
+    const combatant = unitAt(state, action.ref);
+    return combatant
+      ? [
+          {
+            ...action,
+            speed: speedOf(combatant),
+            priority: movePriority(combatant, action.moveIndex),
+            claw: firstStrike(action.ref, combatant),
+          },
+        ]
+      : [];
+  });
+  actions.sort(
     (left, right) =>
       right.priority - left.priority ||
       right.claw - left.claw ||
       right.speed - left.speed ||
-      (left.user === 'player' ? -1 : 1),
+      (left.ref.side === right.ref.side
+        ? left.ref.slot - right.ref.slot
+        : left.ref.side === 'player'
+          ? -1
+          : 1),
   );
 
-  // Flinch is cleared for both sides before anyone acts, so the only flinch a
-  // combatant can be carrying when its turn comes is one the other side set
-  // this turn - which is exactly the rule that a flinch needs you to be faster.
+  // Flinch is cleared for everybody before anyone acts, so the only flinch a
+  // combatant can be carrying when its turn comes is one somebody set this
+  // turn - which is exactly the rule that a flinch needs you to be faster.
   let nextState = clearFlinching(state);
   const events: BattleEvent[] = [...claws];
   // A Speed the weather doubled is announced before the turn it decided, in the
   // same place and for the same reason Quick Claw's line is: the order came out
   // the way it did *because* of it.
-  for (const side of ['player', 'enemy'] as const) {
-    const combatant = side === 'player' ? nextState.player : nextState.enemy;
-    if (speedMultiplier(abilityCarrier(combatant), field) === 1) {
+  for (const ref of occupiedSlots(nextState)) {
+    const combatant = unitAt(nextState, ref);
+    if (!combatant || speedMultiplier(abilityCarrier(combatant), field) === 1) {
       continue;
     }
-    const raced = announceAbility(nextState, side, 'quickened');
+    const raced = announceAbility(nextState, ref, 'quickened');
     nextState = raced.state;
     events.push(...raced.events);
   }
@@ -607,26 +961,48 @@ export const resolveTurn = (
     if (nextState.outcome !== 'active') {
       break;
     }
-    const result = applyMove(nextState, action.user, action.moveIndex, random);
+    // A Pokemon that has already fallen this turn does not take the action it
+    // had queued - the tutorial's `action.IsInvalid`, and the reason a double
+    // battle rewards going first with more than the first hit.
+    if (!isEngaged(unitAt(nextState, action.ref))) {
+      continue;
+    }
+    const result = applyMove(nextState, action.ref, action.moveIndex, random, action.target);
     nextState = result.state;
     events.push(...result.events);
   }
 
-  // The weather is charged once for the whole turn, after both sides have acted
-  // - it is the field's turn, not either combatant's, which is why it does not
-  // hang off `applyEndOfAction` the way burn and Leftovers do.
+  // The weather is charged once for the whole turn, after everybody has acted -
+  // it is the field's turn, not any combatant's, which is why it does not hang
+  // off `applyEndOfAction` the way burn and Leftovers do, and why four units on
+  // the field are still one weather.
   const weathered = applyWeather(clearFlinching(nextState));
   return { state: weathered.state, events: [...events, ...weathered.events] };
 };
 
+/**
+ * Who a side's move lands on when the side did not say, and who the enemy aims
+ * at. Uniform among whoever is still standing, as the tutorial picks, and it
+ * spends no randomness at all where there is only one of them - which is every
+ * single battle in the game.
+ */
+const chooseTarget = (
+  state: BattleState,
+  side: BattleSide,
+  random: RandomSource,
+): SlotRef | undefined => {
+  const candidates = engagedSlots(state, side);
+  if (candidates.length <= 1) {
+    return candidates[0];
+  }
+  return candidates[Math.floor(clampRandom(random()) * candidates.length)];
+};
+
 const clearFlinching = (state: BattleState): BattleState =>
-  state.player.flinching || state.enemy.flinching
-    ? {
-        ...state,
-        player: { ...state.player, flinching: false },
-        enemy: { ...state.enemy, flinching: false },
-      }
-    : state;
+  occupiedSlots(state).reduce((carried, ref) => {
+    const combatant = unitAt(carried, ref);
+    return combatant?.flinching ? withUnit(carried, ref, { ...combatant, flinching: false }) : carried;
+  }, state);
 
 /**
  * The player calls one back and sends another out, with everything that hangs
@@ -639,35 +1015,40 @@ const clearFlinching = (state: BattleState): BattleState =>
  * the status being cured belongs to the Pokemon now, not to the fight, because
  * the fight is done with it.
  */
-export const replacePlayerPokemon = (state: BattleState, pokemon: Pokemon): TurnResult => {
-  const outgoing = state.player;
+export const replacePlayerPokemon = (
+  state: BattleState,
+  pokemon: Pokemon,
+  slot = 0,
+): TurnResult => {
+  const ref = slotRef('player', slot);
+  const outgoing = unitAt(state, ref);
   const events: BattleEvent[] = [];
   let withdrawn = state;
-  if (outgoing.primaryStatus && curesOnSwitchOut(abilityCarrier(outgoing))) {
+  if (outgoing && outgoing.primaryStatus && curesOnSwitchOut(abilityCarrier(outgoing))) {
     const status = outgoing.primaryStatus;
-    withdrawn = updateCombatant(state, 'player', {
-      ...outgoing,
-      primaryStatus: null,
-      sleepTurns: 0,
-    });
+    withdrawn = withUnit(state, ref, { ...outgoing, primaryStatus: null, sleepTurns: 0 });
     outgoing.pokemon.primaryStatus = null;
-    const said = announceAbility(withdrawn, 'player', 'cured-on-switch', { status });
+    const said = announceAbility(withdrawn, ref, 'cured-on-switch', { status });
     withdrawn = said.state;
     events.push(...said.events);
   }
 
   const statStages = withdrawn.playerStatStages.get(pokemon) ?? createStatStages();
-  const player = { ...toCombatant(pokemon), statStages };
+  const arriving = { ...toCombatant(pokemon), statStages };
   const switched: BattleState = {
-    ...withdrawn,
-    player,
-    playerStatStages: new Map(withdrawn.playerStatStages).set(pokemon, statStages),
-    outcome: pokemon.isFainted ? 'defeat' : withdrawn.enemy.currentHp === 0 ? 'victory' : 'active',
+    ...withUnit(withdrawn, ref, arriving),
+    outcome: pokemon.isFainted
+      ? engagedSlots(withdrawn, 'player').some((other) => !sameSlot(other, ref))
+        ? 'active'
+        : 'defeat'
+      : engagedSlots(withdrawn, 'enemy').length === 0
+        ? 'victory'
+        : 'active',
   };
   if (switched.outcome !== 'active') {
     return { state: switched, events };
   }
-  const arrived = applySendOut(switched, 'player');
+  const arrived = applySendOut(switched, ref);
   return { state: arrived.state, events: [...events, ...arrived.events] };
 };
 
@@ -708,8 +1089,28 @@ export const refreshCombatantAfterLevelUp = (
 };
 
 /** `refreshCombatantAfterLevelUp` for the side that can gain experience. */
-export const refreshPlayerAfterLevelUp = (state: BattleState, previousMaxHp: number): BattleState =>
-  updateCombatant(state, 'player', refreshCombatantAfterLevelUp(state.player, previousMaxHp));
+export const refreshPlayerAfterLevelUp = (
+  state: BattleState,
+  previousMaxHp: number,
+  slot = 0,
+): BattleState => {
+  const ref = slotRef('player', slot);
+  const combatant = unitAt(state, ref);
+  return combatant
+    ? withUnit(state, ref, refreshCombatantAfterLevelUp(combatant, previousMaxHp))
+    : state;
+};
+
+/** Which of the player's slots, if any, this Pokemon is standing in. */
+export const playerSlotOf = (state: BattleState, pokemon: Pokemon): SlotRef | null =>
+  slotsOf(state, 'player').find((ref) => unitAt(state, ref)?.pokemon === pokemon) ?? null;
+
+/** Everything the player has on the field, in slot order. */
+export const playerCombatants = (state: BattleState): readonly BattleCombatant[] =>
+  slotsOf(state, 'player').flatMap((ref) => {
+    const combatant = unitAt(state, ref);
+    return combatant ? [combatant] : [];
+  });
 
 /** Writes bounded, battle-owned state back to the matching party Pokemon. */
 export const persistCombatantToPokemon = (combatant: BattleCombatant): void => {
@@ -732,13 +1133,29 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
   // A turn the player spent on an item, a switch or a ball is still a turn, so
   // the weather is charged for it here too. Every path that resolves one ends
   // in exactly one of this function or `resolveTurn`, so nothing is charged twice.
-  const enemyMoveIndex = lockedMove(state, 'enemy') ?? chooseEnemyMove(state.enemy, random);
-  const acted =
-    enemyMoveIndex === null
-      ? { state, events: [] as readonly BattleEvent[] }
-      : applyMove(state, 'enemy', enemyMoveIndex, random);
-  const weathered = applyWeather(acted.state);
-  return { state: weathered.state, events: [...acted.events, ...weathered.events] };
+  // Both of the other side's slots take theirs: a turn the player spent on the
+  // bag is a turn each of them got for nothing, which is what the bag costs.
+  let nextState = state;
+  const events: BattleEvent[] = [];
+  for (const ref of engagedSlots(state, 'enemy')) {
+    if (nextState.outcome !== 'active' || !isEngaged(unitAt(nextState, ref))) {
+      break;
+    }
+    const combatant = unitAt(nextState, ref);
+    if (!combatant) {
+      continue;
+    }
+    const moveIndex = lockedMove(nextState, 'enemy', ref.slot) ?? chooseEnemyMove(combatant, random);
+    if (moveIndex === null) {
+      continue;
+    }
+    const target = chooseTarget(nextState, 'player', random);
+    const acted = applyMove(nextState, ref, moveIndex, random, target);
+    nextState = acted.state;
+    events.push(...acted.events);
+  }
+  const weathered = applyWeather(nextState);
+  return { state: weathered.state, events: [...events, ...weathered.events] };
 };
 
 /**
@@ -771,15 +1188,18 @@ const applyWeather = (state: BattleState): TurnResult => {
       events.push(...said.events);
     }
   }
-  // Player first, then enemy, exactly as the tutorial walks its units. Speed
-  // order would matter only for which of two simultaneous knockouts is printed
-  // first, and a fixed order is the one that replays the same way every time.
-  for (const side of ['player', 'enemy'] as const) {
+  // Every slot in turn, player side first, exactly as the tutorial walks its
+  // units. It is charged **once per unit per turn**, not once per attacker:
+  // this is the field's own turn, taken after everybody has acted, so four
+  // Pokemon on the field are four chips and never eight. Speed order would
+  // matter only for which of two simultaneous knockouts is printed first, and a
+  // fixed order is the one that replays the same way every time.
+  for (const ref of occupiedSlots(nextState)) {
     if (nextState.outcome !== 'active') {
       break;
     }
-    const combatant = side === 'player' ? nextState.player : nextState.enemy;
-    if (combatant.currentHp === 0) {
+    const combatant = unitAt(nextState, ref);
+    if (!isEngaged(combatant)) {
       continue;
     }
     if (shelteredFromWeather(abilityCarrier(combatant), weather.id)) {
@@ -790,20 +1210,22 @@ const applyWeather = (state: BattleState): TurnResult => {
       continue;
     }
     const buffeted = { ...combatant, currentHp: Math.max(0, combatant.currentHp - damage) };
-    nextState = updateCombatant(nextState, side, buffeted);
+    nextState = withUnit(nextState, ref, buffeted);
     events.push({
       type: 'weather-damage',
-      user: side,
+      user: ref.side,
+      ...inSlot(ref),
       name: combatant.pokemon.base.name,
       weather: weather.id,
       damage: combatant.currentHp - buffeted.currentHp,
     });
     if (buffeted.currentHp === 0) {
-      nextState = resolveFaint(nextState, side);
-      events.push({ type: 'fainted', user: side, name: combatant.pokemon.base.name });
-      if (side === 'enemy' && nextState.outcome === 'active') {
-        events.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
-      }
+      const fallen = resolveFaint(nextState, ref);
+      nextState = fallen.state;
+      events.push(
+        { type: 'fainted', user: ref.side, ...inSlot(ref), name: combatant.pokemon.base.name },
+        ...fallen.events,
+      );
     }
   }
 
@@ -866,29 +1288,45 @@ export const resolveCatchAttempt = (
  *  3. status that forbids the action (paralysis, freeze, sleep, confusion);
  *  4. PP;
  *  5. a charge move's first turn, which ends here;
- *  6. one accuracy roll, read through accuracy and evasion stages;
- *  7. one to five hits;
- *  8. the move's own drain, recoil and healing;
+ *  6. who the move is actually landing on;
+ *  7. then, **per target**: one accuracy roll, one to five hits, and what
+ *     touching it cost;
+ *  8. the move's own drain, recoil and healing, off the total it dealt;
  *  9. its guaranteed `effects`, then each of its `secondaries` on its own roll;
  * 10. held-item recoil, then end-of-action status and gear.
+ *
+ * **Who a move lands on.** A move that names one foe lands on the one it was
+ * aimed at; if that foe fell earlier in this same turn it is re-aimed at
+ * whoever else is standing, which is generation III's redirection and the thing
+ * that stops a double battle punishing you for choosing first. A move that
+ * names `BothFoes` lands on everything still standing opposite, each with its
+ * own accuracy roll, its own damage roll and its own effectiveness - and each at
+ * `SPREAD_DAMAGE_MULTIPLIER` while there is more than one of them. The
+ * same-type bonus is the one term that cannot vary between targets: it is a
+ * fact about the attacker and the move, so it is the same 1.5 against both.
  */
 const applyMove = (
   state: BattleState,
-  user: 'player' | 'enemy',
+  ref: SlotRef,
   moveIndex: number,
   random: RandomSource,
+  chosenTarget?: SlotRef,
 ): TurnResult => {
-  const attacker = user === 'player' ? state.player : state.enemy;
+  const user = ref.side;
+  const attacker = unitAt(state, ref);
+  if (!attacker) {
+    return { state, events: [] };
+  }
   const pending = attacker.pendingMove;
 
   // 1. A recharge is the whole action. The pending move is spent either way, so
   // a Hyper Beam can never cost two turns in a row.
   if (pending?.kind === MoveCharge.Recharge) {
-    const rested = updateCombatant(state, user, { ...attacker, pendingMove: null });
+    const rested = withUnit(state, ref, { ...attacker, pendingMove: null });
     return applyEndOfAction(
       rested,
-      user,
-      [{ type: 'recharging', user, name: attacker.pokemon.base.name }],
+      ref,
+      [{ type: 'recharging', user, ...inSlot(ref), name: attacker.pokemon.base.name }],
       random,
     );
   }
@@ -898,39 +1336,47 @@ const applyMove = (
   // PP was already spent on the winding-up turn, so a released charge never
   // checks it - otherwise a Solar Beam on its last PP would fizzle halfway.
   if (!move || (!releasingCharge && move.pp <= 0)) {
-    return { state, events: move ? [{ type: 'no-pp', user, move: move.base.name }] : [] };
+    return {
+      state,
+      events: move ? [{ type: 'no-pp', user, ...inSlot(ref), move: move.base.name }] : [],
+    };
   }
 
   // 2. Flinch, before any of the ordinary status rolls: it is the other side's
   // move that took this turn away, not this side's condition.
   if (attacker.flinching) {
-    const shaken = updateCombatant(state, user, { ...attacker, flinching: false, pendingMove: null });
+    const shaken = withUnit(state, ref, { ...attacker, flinching: false, pendingMove: null });
     return applyEndOfAction(
       shaken,
-      user,
-      [{ type: 'flinched', user, name: attacker.pokemon.base.name }],
+      ref,
+      [{ type: 'flinched', user, ...inSlot(ref), name: attacker.pokemon.base.name }],
       random,
     );
   }
 
   // 3.
-  const attempted = resolveStatusBeforeMove(state, user, random);
+  const attempted = resolveStatusBeforeMove(state, ref, random);
   if (!attempted.canAct) {
-    return applyEndOfAction(attempted.state, user, attempted.events, random);
+    return applyEndOfAction(attempted.state, ref, attempted.events, random);
   }
 
   let nextState = attempted.state;
-  const attackerAfterStatus = user === 'player' ? nextState.player : nextState.enemy;
-  const defenderUser = user === 'player' ? ('enemy' as const) : ('player' as const);
+  const attackerAfterStatus = unitAt(nextState, ref)!;
   const attackerName = attackerAfterStatus.pokemon.base.name;
 
-  // 4. PP, and the charge that is being released is now spent. Pressure is read
-  // off whoever the move is aimed at, so a move a Pokemon uses on itself costs
-  // its own PP and no more however heavily the other side leans on it.
-  const pressure =
-    move.base.target === MoveTarget.Self
-      ? 0
-      : extraPpCost(abilityCarrier(user === 'player' ? nextState.enemy : nextState.player));
+  // 6. Who this lands on, settled before the PP is spent because Pressure is
+  // read off whoever it is aimed at. A move a Pokemon uses on itself costs its
+  // own PP and no more however heavily the other side leans on it; a move aimed
+  // at two Pressure holders is leaned on by both, which is generation III's rule.
+  const targets = resolveTargets(nextState, ref, move.base, chosenTarget);
+  const pressure = targetsTheOtherSide(move.base.target)
+    ? targets.reduce((total, targetRef) => {
+        const target = unitAt(nextState, targetRef);
+        return total + (target ? extraPpCost(abilityCarrier(target)) : 0);
+      }, 0)
+    : 0;
+
+  // 4. PP, and the charge that is being released is now spent.
   const spentAttacker: BattleCombatant = {
     ...attackerAfterStatus,
     pendingMove: null,
@@ -940,231 +1386,344 @@ const applyMove = (
           index === chosenIndex ? { ...known, pp: Math.max(0, known.pp - 1 - pressure) } : known,
         ),
   };
-  nextState = updateCombatant(nextState, user, spentAttacker);
+  nextState = withUnit(nextState, ref, spentAttacker);
   const events: BattleEvent[] = [...attempted.events];
 
   // 5. A charge move's first turn announces itself and stops. The move is
   // remembered on the combatant, which is the one piece of state that has to
   // outlive this call.
   if (move.base.charge === MoveCharge.Charge && !releasingCharge) {
-    nextState = updateCombatant(nextState, user, {
+    nextState = withUnit(nextState, ref, {
       ...spentAttacker,
       pendingMove: { moveIndex: chosenIndex, kind: MoveCharge.Charge },
     });
     events.push(
-      { type: 'used-move', user, name: attackerName, move: move.base.name },
-      { type: 'charging', user, name: attackerName, move: move.base.name },
+      { type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name },
+      { type: 'charging', user, ...inSlot(ref), name: attackerName, move: move.base.name },
     );
-    return applyEndOfAction(nextState, user, events, random);
+    return applyEndOfAction(nextState, ref, events, random);
   }
 
-  const defenderNow = (): BattleCombatant => (user === 'player' ? nextState.enemy : nextState.player);
-  const attackerNow = (): BattleCombatant => (user === 'player' ? nextState.player : nextState.enemy);
-  const defenderName = defenderNow().pokemon.base.name;
-
-  // 6a. A move the other side's ability simply will not take. It is asked
-  // before the accuracy roll because none of these five is a miss - Levitate is
-  // not dodging, and a Soundproof Pokemon does not hear the move go past - and
-  // before the hit loop because three of them give something back instead.
-  if (move.base.target !== MoveTarget.Self) {
-    const absorption = absorbs(abilityCarrier(defenderNow()), move.base);
-    if (absorption) {
-      events.push({ type: 'used-move', user, name: attackerName, move: move.base.name });
-      const healed = absorbedHeal(abilityCarrier(defenderNow()), absorption);
-      if (healed > 0) {
-        const soaked = defenderNow();
-        nextState = updateCombatant(nextState, defenderUser, {
-          ...soaked,
-          currentHp: soaked.currentHp + healed,
-        });
-      }
-      if (absorption.charges) {
-        nextState = updateCombatant(nextState, defenderUser, {
-          ...defenderNow(),
-          abilityCharged: true,
-        });
-      }
-      const said = announceAbility(nextState, defenderUser, 'absorbed', { amount: healed });
-      nextState = said.state;
-      events.push(...said.events);
-      return applyEndOfAction(nextState, user, events, random);
-    }
-  }
-
-  // 6b. One accuracy roll for the whole action, read through both stages and
-  // through the attacker's own ability. A move with `alwaysHits` skips it,
-  // which is the only way Swift can exist.
-  // Compound Eyes is read here and said after the move is named, because a line
-  // about taking aim before anyone knows what is being aimed reads backwards.
-  const abilityAccuracy = accuracyMultiplier(abilityCarrier(attackerNow()), move.base);
-  const sayAccuracy = (): void => {
-    if (abilityAccuracy === 1) {
-      return;
-    }
-    const sharpened = announceAbility(nextState, user, 'sharpened');
-    nextState = sharpened.state;
-    events.push(...sharpened.events);
-  };
-  // Sand Veil moves the *move's* accuracy rather than an evasion stage, because
-  // a quarter is not a step on generation III's evasion ladder.
-  const veiled = incomingAccuracyMultiplier(abilityCarrier(defenderNow()), effectiveWeather(nextState));
-  if (veiled !== 1) {
-    const hidden = announceAbility(nextState, defenderUser, 'hidden');
-    nextState = hidden.state;
-    events.push(...hidden.events);
-  }
-  const accuracy = stagedAccuracy(
-    move.base.accuracy * abilityAccuracy * veiled,
-    attackerNow().statStages.accuracy,
-    defenderNow().statStages.evasion,
-  );
-  if (!move.base.alwaysHits && clampRandom(random()) * 100 >= accuracy) {
-    events.push({ type: 'used-move', user, name: attackerName, move: move.base.name });
-    sayAccuracy();
-    events.push({ type: 'missed', user });
-    return applyEndOfAction(nextState, user, events, random);
-  }
-
-  // 7. Hits. A single-hit move runs this loop once, so there is one path.
-  const hitCount = rollHitCount(move.base, random);
-  let totalDamage = 0;
-  let landedHits = 0;
-  let critical = false;
-  let stab = false;
-  let effectiveness = 1;
-  let heldItemRecoil = 0;
-  let defenderFainted = false;
-  let endured = false;
-  let immune = false;
-  const abilityNotes = new Set<string>();
-
-  for (let hit = 0; hit < hitCount && !defenderFainted; hit += 1) {
-    const defender = defenderNow();
-    const result = calculateDamage(
-      attackerNow().pokemon,
-      defender.pokemon,
-      move.base,
-      random,
-      attackerNow().statStages,
-      defender.statStages,
-      effectiveWeather(nextState),
-      damageAbilities(attackerNow(), defender),
+  // A move aimed at a side with nobody left standing on it. Only a double
+  // battle can reach this: it is the co-target falling to the faster ally's
+  // swing between the choice and the action.
+  if (targets.length === 0) {
+    events.push(
+      { type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name },
+      { type: 'no-target', user, ...inSlot(ref) },
     );
-    for (const note of result.abilityNotes) {
-      abilityNotes.add(`${note.side}:${note.effect}`);
-    }
-    stab = result.isStab;
-    effectiveness = result.typeEffectiveness;
-    critical = critical || result.isCritical;
-    heldItemRecoil += result.recoil;
-    // A move the defender is immune to does nothing at all, secondaries
-    // included: a Normal move cannot make a Ghost flinch on the way past.
-    if (result.typeEffectiveness === 0 && move.base.category !== MoveCategory.Status) {
-      immune = true;
-      break;
-    }
-    if (result.damage <= 0 && move.base.category === MoveCategory.Status) {
-      break;
-    }
-    const survived = survivesKnockout(
-      defender.pokemon,
-      defender.currentHp,
-      result.damage,
-      defender.heldItemSpent,
-    );
-    endured = endured || survived;
-    const hurt: BattleCombatant = {
-      ...defender,
-      currentHp: survived ? 1 : Math.max(0, defender.currentHp - result.damage),
-      heldItemSpent: defender.heldItemSpent || survived,
-    };
-    totalDamage += defender.currentHp - hurt.currentHp;
-    landedHits += 1;
-    nextState = updateCombatant(nextState, defenderUser, hurt);
-    defenderFainted = hurt.currentHp === 0;
+    return applyEndOfAction(nextState, ref, events, random);
   }
 
-  events.push({
-    type: 'used-move',
-    user,
-    target: defenderUser,
-    name: attackerName,
-    move: move.base.name,
-    damage: totalDamage,
-    category: move.base.category,
-    isStab: stab,
-  });
-  // Which ability changed the swing, said once each and after the line that
-  // names the move, so the log reads "used X" and then why it landed as it did.
-  sayAccuracy();
-  for (const note of abilityNotes) {
-    const [side, effect] = note.split(':');
-    const said = announceAbility(
-      nextState,
-      side === 'attacker' ? user : defenderUser,
-      effect as AbilityEffectKind,
-    );
-    nextState = said.state;
-    events.push(...said.events);
-  }
-  if (critical) {
-    events.push({ type: 'critical-hit' });
-  }
-  if (landedHits > 1) {
-    events.push({ type: 'multi-hit', hits: landedHits });
-  }
-  if (isDamagingMove(move)) {
-    events.push(...effectivenessEvents(effectiveness));
-  }
-  if (endured) {
+  const attackerNow = (): BattleCombatant => unitAt(nextState, ref)!;
+  const spread = targets.length > 1;
+  // The same-type bonus is the attacker's business and the move's, so it is the
+  // same figure against every target and is known before a single roll.
+  const isStab =
+    move.base.type === attackerNow().pokemon.base.primaryType ||
+    move.base.type === attackerNow().pokemon.base.secondaryType;
+  if (spread) {
+    // A spread move names itself once and then says what it took off each
+    // target in that target's own line - see the `spread-damage` event.
     events.push({
-      type: 'gear-endured',
-      user: defenderUser,
-      name: defenderName,
-      item: gearLabel(defenderNow().pokemon.heldItemId),
+      type: 'used-move',
+      user,
+      ...inSlot(ref),
+      name: attackerName,
+      move: move.base.name,
+      category: move.base.category,
+      isStab,
+      spread: true,
     });
   }
 
-  // 7b. What touching it cost. Static and the three like it need the move to
-  // have made contact and the holder to still be standing: a Pokemon knocked
-  // out by the blow does not answer it, which is generation III's rule and also
-  // the only one that reads right.
-  if (landedHits > 0 && totalDamage > 0 && !defenderFainted && !immune) {
-    const shock = contactStatus(abilityCarrier(defenderNow()), move.base, random);
-    if (shock) {
-      const said = announceAbility(nextState, defenderUser, 'contact', { status: shock });
-      nextState = said.state;
-      const struck = applyStatus(nextState, user, shock, random, defenderUser);
-      nextState = struck.state;
-      events.push(...said.events, ...struck.events);
+  /** What one target took, and whether it is still standing afterwards. */
+  interface Struck {
+    readonly ref: SlotRef;
+    readonly damage: number;
+    readonly landedHits: number;
+    readonly immune: boolean;
+    readonly missed: boolean;
+    readonly fainted: boolean;
+    readonly absorbed: boolean;
+    readonly recoil: number;
+  }
+  const struck: Struck[] = [];
+  let totalDamage = 0;
+
+  for (const targetRef of targets) {
+    const defenderNow = (): BattleCombatant => unitAt(nextState, targetRef)!;
+    if (!isEngaged(unitAt(nextState, targetRef))) {
+      continue;
     }
+    const defenderName = defenderNow().pokemon.base.name;
+
+    // 6a. A move the other side's ability simply will not take. It is asked
+    // before the accuracy roll because none of these five is a miss - Levitate
+    // is not dodging, and a Soundproof Pokemon does not hear the move go past -
+    // and before the hit loop because three of them give something back instead.
+    if (targetsTheOtherSide(move.base.target)) {
+      const absorption = absorbs(abilityCarrier(defenderNow()), move.base);
+      if (absorption) {
+        if (!spread) {
+          events.push({ type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name });
+        }
+        const healed = absorbedHeal(abilityCarrier(defenderNow()), absorption);
+        if (healed > 0) {
+          const soaked = defenderNow();
+          nextState = withUnit(nextState, targetRef, {
+            ...soaked,
+            currentHp: soaked.currentHp + healed,
+          });
+        }
+        if (absorption.charges) {
+          nextState = withUnit(nextState, targetRef, {
+            ...defenderNow(),
+            abilityCharged: true,
+          });
+        }
+        const said = announceAbility(nextState, targetRef, 'absorbed', { amount: healed });
+        nextState = said.state;
+        events.push(...said.events);
+        struck.push({
+          ref: targetRef,
+          damage: 0,
+          landedHits: 0,
+          immune: false,
+          missed: false,
+          fainted: false,
+          absorbed: true,
+          recoil: 0,
+        });
+        continue;
+      }
+    }
+
+    // 6b. One accuracy roll per target, read through both stages and through
+    // the attacker's own ability. A move with `alwaysHits` skips it, which is
+    // the only way Swift can exist. Compound Eyes is read here and said after
+    // the move is named, because a line about taking aim before anyone knows
+    // what is being aimed reads backwards.
+    const abilityAccuracy = accuracyMultiplier(abilityCarrier(attackerNow()), move.base);
+    const sayAccuracy = (): void => {
+      if (abilityAccuracy === 1) {
+        return;
+      }
+      const sharpened = announceAbility(nextState, ref, 'sharpened');
+      nextState = sharpened.state;
+      events.push(...sharpened.events);
+    };
+    // Sand Veil moves the *move's* accuracy rather than an evasion stage,
+    // because a quarter is not a step on generation III's evasion ladder.
+    const veiled = incomingAccuracyMultiplier(
+      abilityCarrier(defenderNow()),
+      effectiveWeather(nextState),
+    );
+    if (veiled !== 1) {
+      const hidden = announceAbility(nextState, targetRef, 'hidden');
+      nextState = hidden.state;
+      events.push(...hidden.events);
+    }
+    const accuracy = stagedAccuracy(
+      move.base.accuracy * abilityAccuracy * veiled,
+      attackerNow().statStages.accuracy,
+      defenderNow().statStages.evasion,
+    );
+    if (!move.base.alwaysHits && clampRandom(random()) * 100 >= accuracy) {
+      if (!spread) {
+        events.push({ type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name });
+      }
+      sayAccuracy();
+      events.push({ type: 'missed', user, ...inSlot(ref) });
+      struck.push({
+        ref: targetRef,
+        damage: 0,
+        landedHits: 0,
+        immune: false,
+        missed: true,
+        fainted: false,
+        absorbed: false,
+        recoil: 0,
+      });
+      continue;
+    }
+
+    // 7. Hits. A single-hit move runs this loop once, so there is one path.
+    const hitCount = rollHitCount(move.base, random);
+    let damageHere = 0;
+    let landedHits = 0;
+    let critical = false;
+    let effectiveness = 1;
+    let recoilHere = 0;
+    let defenderFainted = false;
+    let endured = false;
+    let immune = false;
+    const abilityNotes = new Set<string>();
+
+    for (let hit = 0; hit < hitCount && !defenderFainted; hit += 1) {
+      const defender = defenderNow();
+      const result = calculateDamage(
+        attackerNow().pokemon,
+        defender.pokemon,
+        move.base,
+        random,
+        attackerNow().statStages,
+        defender.statStages,
+        effectiveWeather(nextState),
+        damageAbilities(attackerNow(), defender),
+        spread,
+      );
+      for (const note of result.abilityNotes) {
+        abilityNotes.add(`${note.side}:${note.effect}`);
+      }
+      effectiveness = result.typeEffectiveness;
+      critical = critical || result.isCritical;
+      recoilHere += result.recoil;
+      // A move the defender is immune to does nothing at all, secondaries
+      // included: a Normal move cannot make a Ghost flinch on the way past.
+      if (result.typeEffectiveness === 0 && move.base.category !== MoveCategory.Status) {
+        immune = true;
+        break;
+      }
+      if (result.damage <= 0 && move.base.category === MoveCategory.Status) {
+        break;
+      }
+      const survived = survivesKnockout(
+        defender.pokemon,
+        defender.currentHp,
+        result.damage,
+        defender.heldItemSpent,
+      );
+      endured = endured || survived;
+      const hurt: BattleCombatant = {
+        ...defender,
+        currentHp: survived ? 1 : Math.max(0, defender.currentHp - result.damage),
+        heldItemSpent: defender.heldItemSpent || survived,
+      };
+      damageHere += defender.currentHp - hurt.currentHp;
+      landedHits += 1;
+      nextState = withUnit(nextState, targetRef, hurt);
+      defenderFainted = hurt.currentHp === 0;
+    }
+
+    totalDamage += damageHere;
+    // Only a hit that actually took HP is reported per target. A spread
+    // *status* move takes none from anybody, and a line saying so for each of
+    // them is two presses that tell the player nothing - what a Growl did is
+    // the Attack that fell, and that line follows on its own.
+    if (spread && damageHere > 0) {
+      events.push({
+        type: 'spread-damage',
+        user,
+        ...inSlot(ref),
+        target: targetRef.side,
+        ...atSlot(targetRef),
+        name: defenderName,
+        damage: damageHere,
+        isStab,
+        category: move.base.category,
+      });
+    } else if (!spread) {
+      events.push({
+        type: 'used-move',
+        user,
+        ...inSlot(ref),
+        target: targetRef.side,
+        ...atSlot(targetRef),
+        name: attackerName,
+        move: move.base.name,
+        damage: damageHere,
+        category: move.base.category,
+        isStab,
+      });
+    }
+    // Which ability changed the swing, said once each and after the line that
+    // names the move, so the log reads "used X" and then why it landed as it did.
+    sayAccuracy();
+    for (const note of abilityNotes) {
+      const [side, effect] = note.split(':');
+      const said = announceAbility(
+        nextState,
+        side === 'attacker' ? ref : targetRef,
+        effect as AbilityEffectKind,
+      );
+      nextState = said.state;
+      events.push(...said.events);
+    }
+    if (critical) {
+      events.push({ type: 'critical-hit' });
+    }
+    if (landedHits > 1) {
+      events.push({ type: 'multi-hit', hits: landedHits });
+    }
+    if (isDamagingMove(move)) {
+      events.push(...effectivenessEvents(effectiveness));
+    }
+    if (endured) {
+      events.push({
+        type: 'gear-endured',
+        user: targetRef.side,
+        ...inSlot(targetRef),
+        name: defenderName,
+        item: gearLabel(defenderNow().pokemon.heldItemId),
+      });
+    }
+
+    // 7b. What touching it cost. Static and the three like it need the move to
+    // have made contact and the holder to still be standing: a Pokemon knocked
+    // out by the blow does not answer it, which is generation III's rule and
+    // also the only one that reads right. It is asked once per target, so two
+    // Pokemon that both answer a spread move both answer it - and a Pokemon hit
+    // twice in one turn by two different attackers answers each of them, because
+    // each is its own action.
+    if (landedHits > 0 && damageHere > 0 && !defenderFainted && !immune) {
+      const shock = contactStatus(abilityCarrier(defenderNow()), move.base, random);
+      if (shock) {
+        const said = announceAbility(nextState, targetRef, 'contact', { status: shock });
+        nextState = said.state;
+        const strike = applyStatus(nextState, ref, shock, random, targetRef);
+        nextState = strike.state;
+        events.push(...said.events, ...strike.events);
+      }
+    }
+
+    struck.push({
+      ref: targetRef,
+      damage: damageHere,
+      landedHits,
+      immune,
+      missed: false,
+      fainted: defenderFainted,
+      absorbed: false,
+      recoil: recoilHere,
+    });
   }
 
   // 8. What the swing gives back and what it costs, in that order: a drain that
   // takes the attacker to full and a recoil that then takes HP off it read as
-  // two things, and netting them would explain neither.
+  // two things, and netting them would explain neither. Both are figured off
+  // everything the move dealt, across every target, which is what a share of
+  // the damage means.
   if (move.base.drain > 0 && totalDamage > 0) {
     const healer = attackerNow();
     const taste = Math.max(1, Math.floor(totalDamage * move.base.drain));
-    if (drainBackfires(abilityCarrier(defenderNow()))) {
+    const oozing = struck.find((hit) => hit.damage > 0 && drainBackfires(abilityCarrier(unitAt(nextState, hit.ref)!)));
+    if (oozing) {
       // Liquid Ooze: the same figure, taken off the drainer instead of given to
       // it. It is announced by the Pokemon that was drained, because it is that
       // Pokemon's ability that did it.
-      const said = announceAbility(nextState, defenderUser, 'contact', { amount: taste });
+      const said = announceAbility(nextState, oozing.ref, 'contact', { amount: taste });
       nextState = said.state;
       events.push(...said.events);
       const sickened = attackerNow();
       const paid = Math.min(sickened.currentHp, taste);
-      nextState = updateCombatant(nextState, user, {
-        ...sickened,
-        currentHp: sickened.currentHp - paid,
-      });
-      events.push({ type: 'recoil', user, name: attackerName, damage: paid });
+      nextState = withUnit(nextState, ref, { ...sickened, currentHp: sickened.currentHp - paid });
+      events.push({ type: 'recoil', user, ...inSlot(ref), name: attackerName, damage: paid });
     } else {
       const drained = Math.min(healer.pokemon.maxHp - healer.currentHp, taste);
       if (drained > 0) {
-        nextState = updateCombatant(nextState, user, { ...healer, currentHp: healer.currentHp + drained });
-        events.push({ type: 'drained', user, name: attackerName, amount: drained });
+        nextState = withUnit(nextState, ref, { ...healer, currentHp: healer.currentHp + drained });
+        events.push({ type: 'drained', user, ...inSlot(ref), name: attackerName, amount: drained });
       }
     }
   }
@@ -1175,83 +1734,123 @@ const applyMove = (
       Math.max(1, Math.floor(healer.pokemon.maxHp * move.base.healing)),
     );
     if (healer.currentHp >= healer.pokemon.maxHp) {
-      events.push({ type: 'heal-failed', user, name: attackerName });
+      events.push({ type: 'heal-failed', user, ...inSlot(ref), name: attackerName });
     } else {
-      nextState = updateCombatant(nextState, user, { ...healer, currentHp: healer.currentHp + restored });
-      events.push({ type: 'healed', user, name: attackerName, amount: restored });
+      nextState = withUnit(nextState, ref, { ...healer, currentHp: healer.currentHp + restored });
+      events.push({ type: 'healed', user, ...inSlot(ref), name: attackerName, amount: restored });
     }
   }
   if (move.base.recoil > 0 && totalDamage > 0) {
     if (blocksRecoil(abilityCarrier(attackerNow()))) {
-      const said = announceAbility(nextState, user, 'no-recoil');
+      const said = announceAbility(nextState, ref, 'no-recoil');
       nextState = said.state;
       events.push(...said.events);
     } else {
       const hurt = attackerNow();
       const paid = Math.min(hurt.currentHp, Math.max(1, Math.floor(totalDamage * move.base.recoil)));
-      nextState = updateCombatant(nextState, user, { ...hurt, currentHp: hurt.currentHp - paid });
-      events.push({ type: 'recoil', user, name: attackerName, damage: paid });
+      nextState = withUnit(nextState, ref, { ...hurt, currentHp: hurt.currentHp - paid });
+      events.push({ type: 'recoil', user, ...inSlot(ref), name: attackerName, damage: paid });
     }
   }
 
-  if (defenderFainted) {
-    nextState = resolveFaint(nextState, defenderUser);
-    events.push({ type: 'fainted', user: defenderUser, name: defenderName });
-    if (defenderUser === 'enemy' && nextState.outcome === 'active') {
-      events.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
-      const arrived = applySendOut(nextState, 'enemy');
-      nextState = arrived.state;
-      events.push(...arrived.events);
+  for (const hit of struck) {
+    if (!hit.fainted) {
+      continue;
     }
+    const fallen = unitAt(nextState, hit.ref);
+    const resolved = resolveFaint(nextState, hit.ref);
+    nextState = resolved.state;
+    events.push(
+      {
+        type: 'fainted',
+        user: hit.ref.side,
+        ...inSlot(hit.ref),
+        name: fallen?.pokemon.base.name ?? '',
+      },
+      ...resolved.events,
+    );
   }
 
-  // 9. The move's own effects, then its secondaries. Both are skipped once the
-  // target is down or the battle is over - a flinch on a fainted Pokemon is a
-  // line of log about nothing.
-  const missedEntirely = landedHits === 0 && move.base.category !== MoveCategory.Status;
-  if (!immune && !missedEntirely && nextState.outcome === 'active' && !defenderFainted) {
-    const guaranteed = applyMoveEffects(nextState, user, move.base.effects, move.base.target, move.base, random);
-    nextState = guaranteed.state;
-    events.push(...guaranteed.events);
-    // Shield Dust refuses the extra effect of a move aimed at it, and nothing
-    // about a move's effect on its *own* user - Metal Claw still raises its own
-    // Attack through a Shield Dust.
-    const dusted = blocksSecondaries(abilityCarrier(defenderNow()));
-    let dustSaid = false;
-    for (const secondary of move.base.secondaries) {
-      if (nextState.outcome !== 'active') {
-        break;
+  // 9. The move's own effects, then its secondaries, on each target that took
+  // the move and is still standing. Both are skipped once a target is down or
+  // the battle is over - a flinch on a fainted Pokemon is a line of log about
+  // nothing - and a move a Pokemon uses on itself runs them once whatever it hit.
+  // Whoever the move actually reached and is still standing - and that is read
+  // off what happened rather than off the move's target, so a move a Pokemon
+  // uses on *itself* and misses with does not land its own boost either. The
+  // single-target path used to get that right by returning early on a miss.
+  const effectTargets: readonly SlotRef[] = struck
+    .filter((hit) => !hit.fainted && !hit.immune && !hit.absorbed && !hit.missed)
+    .map((hit) => hit.ref);
+  const landedSomewhere = struck.some(
+    (hit) => hit.landedHits > 0 || move.base.category === MoveCategory.Status,
+  );
+  if (landedSomewhere && nextState.outcome === 'active') {
+    for (const targetRef of effectTargets) {
+      if (nextState.outcome !== 'active' || !isEngaged(unitAt(nextState, targetRef))) {
+        continue;
       }
-      if (dusted && secondary.target !== MoveTarget.Self) {
-        if (!dustSaid) {
-          dustSaid = true;
-          const said = announceAbility(nextState, defenderUser, 'blocked-secondaries');
-          nextState = said.state;
-          events.push(...said.events);
+      const guaranteed = applyMoveEffects(
+        nextState,
+        ref,
+        move.base.effects,
+        move.base.target,
+        targetRef,
+        move.base,
+        random,
+      );
+      nextState = guaranteed.state;
+      events.push(...guaranteed.events);
+      // Shield Dust refuses the extra effect of a move aimed at it, and nothing
+      // about a move's effect on its *own* user - Metal Claw still raises its
+      // own Attack through a Shield Dust.
+      const defender = unitAt(nextState, targetRef);
+      const dusted = defender !== null && blocksSecondaries(abilityCarrier(defender));
+      let dustSaid = false;
+      for (const secondary of move.base.secondaries) {
+        if (nextState.outcome !== 'active') {
+          break;
         }
-        continue;
+        if (dusted && secondary.target !== MoveTarget.Self) {
+          if (!dustSaid) {
+            dustSaid = true;
+            const said = announceAbility(nextState, targetRef, 'blocked-secondaries');
+            nextState = said.state;
+            events.push(...said.events);
+          }
+          continue;
+        }
+        // Each secondary rolls on its own, exactly as the tutorial does it: a
+        // move with two of them can land both, one, or neither, and a move that
+        // hit two Pokemon rolls for each of them. Serene Grace doubles the
+        // chance and never the number of rolls, so a seeded battle draws the
+        // same sequence with it or without it.
+        if (
+          clampRandom(random()) * 100 >=
+          secondaryChance(abilityCarrier(attackerNow()), secondary.chance)
+        ) {
+          continue;
+        }
+        const rolled = applyMoveEffects(
+          nextState,
+          ref,
+          secondary,
+          secondary.target,
+          targetRef,
+          move.base,
+          random,
+        );
+        nextState = rolled.state;
+        events.push(...rolled.events);
       }
-      // Each secondary rolls on its own, exactly as the tutorial does it: a
-      // move with two of them can land both, one, or neither. Serene Grace
-      // doubles the chance and never the number of rolls, so a seeded battle
-      // draws the same sequence with it or without it.
-      if (
-        clampRandom(random()) * 100 >=
-        secondaryChance(abilityCarrier(attackerNow()), secondary.chance)
-      ) {
-        continue;
-      }
-      const rolled = applyMoveEffects(nextState, user, secondary, secondary.target, move.base, random);
-      nextState = rolled.state;
-      events.push(...rolled.events);
     }
   }
 
   // 10. A recharge is booked now, on the turn the move landed.
   if (move.base.charge === MoveCharge.Recharge && nextState.outcome === 'active') {
-    const spent = attackerNow();
-    if (spent.currentHp > 0) {
-      nextState = updateCombatant(nextState, user, {
+    const spent = unitAt(nextState, ref);
+    if (spent && spent.currentHp > 0) {
+      nextState = withUnit(nextState, ref, {
         ...spent,
         pendingMove: { moveIndex: chosenIndex, kind: MoveCharge.Recharge },
       });
@@ -1259,18 +1858,21 @@ const applyMove = (
   }
 
   // Life Orb, after the hit has landed and after whatever it knocked out has
-  // fallen: the price is paid for a hit that connected, and it is paid second, so
-  // a holder that takes its last two HP paying for a knockout still wins the
-  // fight it just ended.
+  // fallen: the price is paid for a hit that connected, and it is paid second,
+  // so a holder that takes its last two HP paying for a knockout still wins the
+  // fight it just ended. It is the **largest** of what the targets cost rather
+  // than their sum, because the price is what the swing cost the holder and a
+  // holder swings once however many Pokemon are standing in front of it.
+  const heldItemRecoil = struck.reduce((worst, hit) => Math.max(worst, hit.recoil), 0);
   if (heldItemRecoil > 0) {
-    const holder = attackerNow();
-    const paid = Math.min(holder.currentHp, heldItemRecoil);
-    if (paid > 0) {
-      const hurtHolder = { ...holder, currentHp: holder.currentHp - paid };
-      nextState = updateCombatant(nextState, user, hurtHolder);
+    const holder = unitAt(nextState, ref);
+    const paid = holder ? Math.min(holder.currentHp, heldItemRecoil) : 0;
+    if (holder && paid > 0) {
+      nextState = withUnit(nextState, ref, { ...holder, currentHp: holder.currentHp - paid });
       events.push({
         type: 'gear-recoil',
         user,
+        ...inSlot(ref),
         name: attackerName,
         item: gearLabel(holder.pokemon.heldItemId),
         damage: paid,
@@ -1278,19 +1880,43 @@ const applyMove = (
     }
   }
 
-  const standing = attackerNow();
-  if (standing.currentHp === 0 && nextState.outcome === 'active') {
-    nextState = resolveFaint(nextState, user);
-    events.push({ type: 'fainted', user, name: attackerName });
-    if (user === 'enemy' && nextState.outcome === 'active') {
-      events.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
-      const arrived = applySendOut(nextState, 'enemy');
-      nextState = arrived.state;
-      events.push(...arrived.events);
-    }
+  const standing = unitAt(nextState, ref);
+  if (standing && standing.currentHp === 0 && nextState.outcome === 'active') {
+    const fallen = resolveFaint(nextState, ref);
+    nextState = fallen.state;
+    events.push(
+      { type: 'fainted', user, ...inSlot(ref), name: attackerName },
+      ...fallen.events,
+    );
   }
 
-  return applyEndOfAction(nextState, user, events, random);
+  return applyEndOfAction(nextState, ref, events, random);
+};
+
+/**
+ * Who this move is actually landing on.
+ *
+ * A move aimed at one foe keeps its aim while that foe is standing and is
+ * re-aimed at whoever else is if it is not - the choice was made before the
+ * turn was ordered, and a faster ally clearing the slot must not cost the
+ * slower one its action. `BothFoes` takes everything still standing opposite,
+ * and a move a Pokemon uses on itself takes itself.
+ */
+const resolveTargets = (
+  state: BattleState,
+  ref: SlotRef,
+  move: MoveBase,
+  chosen?: SlotRef,
+): readonly SlotRef[] => {
+  if (!targetsTheOtherSide(move.target)) {
+    return [ref];
+  }
+  const foes = engagedSlots(state, opposing(ref.side));
+  if (move.target === MoveTarget.BothFoes) {
+    return foes;
+  }
+  const aimed = chosen && foes.find((foe) => sameSlot(foe, chosen));
+  return aimed ? [aimed] : foes.slice(0, 1);
 };
 
 /**
@@ -1324,21 +1950,27 @@ export const rollHitCount = (move: MoveBase, random: RandomSource): number => {
  * unconditionally, so a move could lower a Defence but never raise its own
  * Attack. Metal Claw's 10% Attack raise is a secondary with `target: Self`, and
  * nothing else about it is special.
+ *
+ * `against` is which foe this bundle is landing on. It is passed in rather than
+ * worked out here because `applyMove` has already decided who the move hit, and
+ * a bundle landing on somebody the move missed would be a second answer to the
+ * same question.
  */
 const applyMoveEffects = (
   state: BattleState,
-  user: 'player' | 'enemy',
+  ref: SlotRef,
   effects: NormalizedMoveEffects | NormalizedSecondaryEffect,
   target: MoveTarget,
+  against: SlotRef,
   move: MoveBase,
   random: RandomSource,
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
-  const side = target === MoveTarget.Self ? user : user === 'player' ? ('enemy' as const) : ('player' as const);
+  const side = target === MoveTarget.Self ? ref : against;
   let nextState = state;
   const events: BattleEvent[] = [];
 
   if (effects.boosts.length > 0) {
-    const boosted = applyStatBoosts(nextState, side, effects.boosts, user);
+    const boosted = applyStatBoosts(nextState, side, effects.boosts, ref);
     nextState = boosted.state;
     events.push(...boosted.events);
   }
@@ -1346,11 +1978,13 @@ const applyMoveEffects = (
     // A move that cannot touch the target at all cannot poison it either:
     // Thunder Wave used to paralyse a Ground type, because the status branch
     // never asked the type chart the damage branch was already asking.
-    const receiver = side === 'player' ? nextState.player : nextState.enemy;
+    const receiver = unitAt(nextState, side);
     const immune =
-      side !== user && getTypeEffectiveness(move.type, getCombatantTypes(receiver)) === 0;
+      !sameSlot(side, ref) &&
+      receiver !== null &&
+      getTypeEffectiveness(move.type, getCombatantTypes(receiver)) === 0;
     if (!immune) {
-      const applied = applyStatus(nextState, side, effects.status, random, user);
+      const applied = applyStatus(nextState, side, effects.status, random, ref);
       nextState = applied.state;
       events.push(...applied.events);
     } else {
@@ -1358,24 +1992,27 @@ const applyMoveEffects = (
     }
   }
   if (effects.flinch) {
-    const victim = side === 'player' ? nextState.player : nextState.enemy;
-    if (victim.currentHp > 0) {
+    const victim = unitAt(nextState, side);
+    if (victim && victim.currentHp > 0) {
       // Inner Focus is the same refusal as Insomnia's, asked of a flinch - which
       // is why flinch is one of `AbilityBlockedCondition`'s values rather than a
       // second gate of its own.
-      if (side !== user && blocksCondition(abilityCarrier(victim), 'flinch')) {
+      if (!sameSlot(side, ref) && blocksCondition(abilityCarrier(victim), 'flinch')) {
         const held = announceAbility(nextState, side, 'blocked-status');
         nextState = held.state;
         events.push(...held.events);
       } else {
-        nextState = updateCombatant(nextState, side, { ...victim, flinching: true });
+        nextState = withUnit(nextState, side, { ...victim, flinching: true });
       }
     }
   }
   if (effects.weather) {
-    // The one effect that lands on neither side: `side` is not consulted. It
-    // replaces whatever was over the field, its own weather included - a second
-    // Rain Dance is five fresh turns of rain, as it is in the source material.
+    // The one effect that lands on nobody: `side` is not consulted. It replaces
+    // whatever was over the field, its own weather included - a second Rain
+    // Dance is five fresh turns of rain, as it is in the source material. A
+    // spread move that brought weather on would set it once per target, so this
+    // is written as a replacement rather than an addition and setting it twice
+    // is setting it.
     nextState = {
       ...nextState,
       weather: { id: effects.weather, turnsRemaining: WEATHER_MOVE_TURNS },
@@ -1388,22 +2025,36 @@ const applyMoveEffects = (
 
 const resolveStatusBeforeMove = (
   state: BattleState,
-  user: 'player' | 'enemy',
+  ref: SlotRef,
   random: RandomSource,
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[]; readonly canAct: boolean } => {
-  const combatant = user === 'player' ? state.player : state.enemy;
+  const combatant = unitAt(state, ref)!;
+  const user = ref.side;
+  const slot = inSlot(ref);
   const name = combatant.pokemon.base.name;
   const primary = combatant.primaryStatus;
 
   if (primary === PrimaryStatus.Paralysis && clampRandom(random()) < 0.25) {
-    return { state, events: [{ type: 'status-prevented', user, name, status: primary }], canAct: false };
+    return {
+      state,
+      events: [{ type: 'status-prevented', user, ...slot, name, status: primary }],
+      canAct: false,
+    };
   }
   if (primary === PrimaryStatus.Freeze) {
     if (clampRandom(random()) >= 0.25) {
-      return { state, events: [{ type: 'status-prevented', user, name, status: primary }], canAct: false };
+      return {
+        state,
+        events: [{ type: 'status-prevented', user, ...slot, name, status: primary }],
+        canAct: false,
+      };
     }
-    state = updateCombatant(state, user, { ...combatant, primaryStatus: null });
-    return { state, events: [{ type: 'status-cured', user, name, status: 'freeze' }], canAct: true };
+    state = withUnit(state, ref, { ...combatant, primaryStatus: null });
+    return {
+      state,
+      events: [{ type: 'status-cured', user, ...slot, name, status: 'freeze' }],
+      canAct: true,
+    };
   }
   if (primary === PrimaryStatus.Sleep) {
     if (combatant.sleepTurns > 0) {
@@ -1415,41 +2066,43 @@ const resolveStatusBeforeMove = (
         sleepTurns: Math.max(0, combatant.sleepTurns - sleepTurnsPerTurn(abilityCarrier(combatant))),
       };
       return {
-        state: updateCombatant(state, user, asleep),
-        events: [{ type: 'status-prevented', user, name, status: primary }],
+        state: withUnit(state, ref, asleep),
+        events: [{ type: 'status-prevented', user, ...slot, name, status: primary }],
         canAct: false,
       };
     }
-    state = updateCombatant(state, user, { ...combatant, primaryStatus: null });
-    return { state, events: [{ type: 'status-cured', user, name, status: 'sleep' }], canAct: true };
+    state = withUnit(state, ref, { ...combatant, primaryStatus: null });
+    return {
+      state,
+      events: [{ type: 'status-cured', user, ...slot, name, status: 'sleep' }],
+      canAct: true,
+    };
   }
   if (combatant.confusionTurns > 0) {
     const confused = { ...combatant, confusionTurns: combatant.confusionTurns - 1 };
-    state = updateCombatant(state, user, confused);
+    state = withUnit(state, ref, confused);
     const events: BattleEvent[] = [];
     if (clampRandom(random()) >= 0.5) {
       const damage = Math.floor(combatant.pokemon.maxHp / 8);
       const hurt = { ...confused, currentHp: Math.max(0, confused.currentHp - damage) };
-      state = updateCombatant(state, user, hurt);
-      events.push({ type: 'confusion-self-hit', user, name, damage });
+      state = withUnit(state, ref, hurt);
+      events.push({ type: 'confusion-self-hit', user, ...slot, name, damage });
       if (hurt.currentHp === 0) {
-        state = resolveFaint(state, user);
-        events.push({ type: 'fainted', user, name });
-        if (user === 'enemy' && state.outcome === 'active') {
-          events.push({ type: 'enemy-sent-out', name: state.enemy.pokemon.base.name });
-          const arrived = applySendOut(state, 'enemy');
-          state = arrived.state;
-          events.push(...arrived.events);
-        }
+        const fallen = resolveFaint(state, ref);
+        state = fallen.state;
+        events.push({ type: 'fainted', user, ...slot, name }, ...fallen.events);
       }
       if (confused.confusionTurns === 0) {
-        state = updateCombatant(state, user, { ...hurt, confusionTurns: 0 });
-        events.push({ type: 'status-cured', user, name, status: 'confusion' });
+        const still = unitAt(state, ref);
+        if (still && still.pokemon === hurt.pokemon) {
+          state = withUnit(state, ref, { ...still, confusionTurns: 0 });
+        }
+        events.push({ type: 'status-cured', user, ...slot, name, status: 'confusion' });
       }
       return { state, events, canAct: false };
     }
     if (confused.confusionTurns === 0) {
-      events.push({ type: 'status-cured', user, name, status: 'confusion' });
+      events.push({ type: 'status-cured', user, ...slot, name, status: 'confusion' });
     }
     return { state, events, canAct: true };
   }
@@ -1464,17 +2117,25 @@ const resolveStatusBeforeMove = (
  * what makes it read as their mirror - and it is charged after them, so a burned
  * holder sees the burn take four and the food give one back rather than a single
  * net number that explains neither.
+ *
+ * It hangs off an **action** rather than off the turn, which is what keeps it
+ * from double-applying when there are four Pokemon on the field: each unit takes
+ * exactly one action a turn, so each is charged its burn and paid its Leftovers
+ * exactly once. The weather is the other way round - it is the field's, so it is
+ * charged once for the whole turn in `applyWeather`.
  */
 const applyEndOfAction = (
   state: BattleState,
-  user: 'player' | 'enemy',
+  ref: SlotRef,
   events: readonly BattleEvent[],
   random: RandomSource,
 ): TurnResult => {
   let nextState = state;
   const nextEvents: BattleEvent[] = [...events];
-  const combatant = user === 'player' ? state.player : state.enemy;
-  if (state.outcome !== 'active' || combatant.currentHp === 0) {
+  const combatant = unitAt(state, ref);
+  const user = ref.side;
+  const slot = inSlot(ref);
+  if (state.outcome !== 'active' || !isEngaged(combatant)) {
     return { state, events };
   }
   const divisor =
@@ -1486,23 +2147,22 @@ const applyEndOfAction = (
   if (divisor > 0) {
     const damage = Math.floor(combatant.pokemon.maxHp / divisor);
     const updated = { ...combatant, currentHp: Math.max(0, combatant.currentHp - damage) };
-    nextState = updateCombatant(nextState, user, updated);
+    nextState = withUnit(nextState, ref, updated);
     nextEvents.push({
       type: 'status-damage',
       user,
+      ...slot,
       name: combatant.pokemon.base.name,
       status: combatant.primaryStatus!,
       damage,
     });
     if (updated.currentHp === 0) {
-      nextState = resolveFaint(nextState, user);
-      nextEvents.push({ type: 'fainted', user, name: combatant.pokemon.base.name });
-      if (user === 'enemy' && nextState.outcome === 'active') {
-        nextEvents.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
-        const arrived = applySendOut(nextState, 'enemy');
-        nextState = arrived.state;
-        nextEvents.push(...arrived.events);
-      }
+      const fallen = resolveFaint(nextState, ref);
+      nextState = fallen.state;
+      nextEvents.push(
+        { type: 'fainted', user, ...slot, name: combatant.pokemon.base.name },
+        ...fallen.events,
+      );
       return { state: nextState, events: nextEvents };
     }
   }
@@ -1510,28 +2170,29 @@ const applyEndOfAction = (
   // Shed Skin, after what the status cost and before what the food gives back:
   // the turn's damage is paid first, and only then does the skin come off - so
   // a poisoned holder is never healed of a poison that had not yet hurt it.
-  const shedding = user === 'player' ? nextState.player : nextState.enemy;
-  if (shedding.primaryStatus && shedsStatus(abilityCarrier(shedding), random)) {
-    nextState = updateCombatant(nextState, user, {
+  const shedding = unitAt(nextState, ref);
+  if (shedding && shedding.primaryStatus && shedsStatus(abilityCarrier(shedding), random)) {
+    nextState = withUnit(nextState, ref, {
       ...shedding,
       primaryStatus: null,
       sleepTurns: 0,
     });
-    const said = announceAbility(nextState, user, 'shed', { status: shedding.primaryStatus });
+    const said = announceAbility(nextState, ref, 'shed', { status: shedding.primaryStatus });
     nextState = said.state;
     nextEvents.push(...said.events);
   }
 
-  const standing = user === 'player' ? nextState.player : nextState.enemy;
-  const healed = endOfTurnHeal(standing.pokemon, standing.currentHp);
-  if (healed > 0) {
-    nextState = updateCombatant(nextState, user, {
+  const standing = unitAt(nextState, ref);
+  const healed = standing ? endOfTurnHeal(standing.pokemon, standing.currentHp) : 0;
+  if (standing && healed > 0) {
+    nextState = withUnit(nextState, ref, {
       ...standing,
       currentHp: standing.currentHp + healed,
     });
     nextEvents.push({
       type: 'gear-heal',
       user,
+      ...slot,
       name: standing.pokemon.base.name,
       item: gearLabel(standing.pokemon.heldItemId),
       amount: healed,
@@ -1540,86 +2201,121 @@ const applyEndOfAction = (
   return { state: nextState, events: nextEvents };
 };
 
+/** Which slot, if any, is holding the weather off the field. */
+const weatherStilledBy = (state: BattleState): SlotRef | null =>
+  occupiedSlots(state).find((ref) => {
+    const combatant = unitAt(state, ref);
+    return combatant !== null && suppressesWeather(abilityCarrier(combatant));
+  }) ?? null;
+
 /**
- * One status landing on one side.
+ * One status landing on one slot.
  *
  * `source` is who caused it, and it does two things: an ability only refuses a
  * condition the *other side* is inflicting, and Synchronize only has somebody
  * to pass one back to when there is somebody. A status a Pokemon gives itself -
  * Rest, a confusion off its own move - passes straight through both.
  */
-/** Which side, if either, is holding the weather off. */
-const weatherStilledBy = (state: BattleState): 'player' | 'enemy' | null =>
-  suppressesWeather(abilityCarrier(state.player))
-    ? 'player'
-    : suppressesWeather(abilityCarrier(state.enemy))
-      ? 'enemy'
-      : null;
-
 const applyStatus = (
   state: BattleState,
-  user: 'player' | 'enemy',
+  ref: SlotRef,
   status: StatusName,
   random: RandomSource,
-  source: 'player' | 'enemy' = user,
+  source: SlotRef = ref,
 ): TurnResult => {
-  const combatant = user === 'player' ? state.player : state.enemy;
+  const combatant = unitAt(state, ref);
+  if (!combatant) {
+    return { state, events: [] };
+  }
+  const user = ref.side;
+  const slot = inSlot(ref);
   const name = combatant.pokemon.base.name;
-  if (source !== user && blocksCondition(abilityCarrier(combatant), status)) {
-    const refused = announceAbility(state, user, 'blocked-status', { status });
+  const fromElsewhere = !sameSlot(source, ref);
+  if (fromElsewhere && blocksCondition(abilityCarrier(combatant), status)) {
+    const refused = announceAbility(state, ref, 'blocked-status', { status });
     return { state: refused.state, events: [...refused.events] };
   }
   if (status === 'confusion') {
     if (combatant.confusionTurns > 0) {
-      return { state, events: [{ type: 'status-already', user, name, status }] };
+      return { state, events: [{ type: 'status-already', user, ...slot, name, status }] };
     }
     const updated = { ...combatant, confusionTurns: randomTurnCount(random, 4) };
-    return { state: updateCombatant(state, user, updated), events: [{ type: 'status-applied', user, name, status }] };
+    return {
+      state: withUnit(state, ref, updated),
+      events: [{ type: 'status-applied', user, ...slot, name, status }],
+    };
   }
   if (combatant.primaryStatus) {
-    return { state, events: [{ type: 'status-already', user, name, status }] };
+    return { state, events: [{ type: 'status-already', user, ...slot, name, status }] };
   }
   const updated = {
     ...combatant,
     primaryStatus: status,
     sleepTurns: status === PrimaryStatus.Sleep ? randomTurnCount(random, 3) : 0,
   };
-  let nextState = updateCombatant(state, user, updated);
-  const events: BattleEvent[] = [{ type: 'status-applied', user, name, status }];
+  let nextState = withUnit(state, ref, updated);
+  const events: BattleEvent[] = [{ type: 'status-applied', user, ...slot, name, status }];
   // Synchronize hands it straight back, and the return trip goes through this
   // same function - so the other side's own Limber can refuse it and say so.
   // Two Synchronizes cannot rally: the second pass finds the first holder
   // already carrying the status and stops on `status-already`.
-  if (source !== user && reflectsStatus(abilityCarrier(updated), status)) {
-    const announced = announceAbility(nextState, user, 'reflected', { status });
+  if (fromElsewhere && reflectsStatus(abilityCarrier(updated), status)) {
+    const announced = announceAbility(nextState, ref, 'reflected', { status });
     nextState = announced.state;
-    const passed = applyStatus(nextState, source, status, random, user);
+    const passed = applyStatus(nextState, source, status, random, ref);
     return { state: passed.state, events: [...events, ...announced.events, ...passed.events] };
   }
   return { state: nextState, events };
 };
 
-const updateCombatant = (state: BattleState, user: 'player' | 'enemy', combatant: BattleCombatant): BattleState =>
-  user === 'player'
-    ? { ...state, player: combatant, playerStatStages: new Map(state.playerStatStages).set(combatant.pokemon, combatant.statStages) }
-    : { ...state, enemy: combatant };
-
-const resolveFaint = (state: BattleState, faintedUser: 'player' | 'enemy'): BattleState => {
-  if (faintedUser !== 'enemy' || !state.trainer) {
-    return { ...state, outcome: faintedUser === 'enemy' ? 'victory' : 'defeat' };
+/**
+ * Somebody has gone down. Whoever is waiting takes their place, and the side has
+ * lost only when nobody is left standing on it.
+ *
+ * In a single battle the trainer's next Pokemon walks into the one slot there
+ * is, which is exactly what this did before. In a double it walks into the slot
+ * that emptied, and the *other* slot goes on fighting meanwhile - which is why
+ * the next body is drawn from `enemySentOut` rather than from either slot's own
+ * party index. A player's empty slot is left empty: who goes into it is a
+ * decision, and `BattleScene` is where decisions are asked for.
+ */
+const resolveFaint = (
+  state: BattleState,
+  ref: SlotRef,
+): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
+  if (ref.side === 'enemy' && state.trainer) {
+    const party = state.trainer.party;
+    let index = state.enemySentOut;
+    while (index < party.length && party[index].isFainted) {
+      index += 1;
+    }
+    const next = party[index];
+    if (next) {
+      const filled: BattleState = {
+        ...withUnit(state, ref, toCombatant(next)),
+        enemySentOut: index + 1,
+        ...(ref.slot === 0
+          ? { enemyPartyIndex: index }
+          : { enemyPartnerPartyIndex: index }),
+        outcome: 'active',
+      };
+      const arrived = applySendOut(filled, ref);
+      return {
+        state: arrived.state,
+        events: [
+          { type: 'enemy-sent-out', name: next.base.name, ...inSlot(ref) },
+          ...arrived.events,
+        ],
+      };
+    }
   }
 
-  const nextPartyIndex = state.enemyPartyIndex + 1;
-  const nextPokemon = state.trainer.party[nextPartyIndex];
-  if (!nextPokemon) {
-    return { ...state, outcome: 'victory' };
+  if (engagedSlots(state, ref.side).length > 0) {
+    return { state, events: [] };
   }
-
   return {
-    ...state,
-    enemy: toCombatant(nextPokemon),
-    enemyPartyIndex: nextPartyIndex,
-    outcome: 'active',
+    state: { ...state, outcome: ref.side === 'enemy' ? 'victory' : 'defeat' },
+    events: [],
   };
 };
 
@@ -1638,16 +2334,20 @@ const randomTurnCount = (random: RandomSource, maximum: number): number =>
  */
 const applyStatBoosts = (
   state: BattleState,
-  user: 'player' | 'enemy',
+  ref: SlotRef,
   boosts: readonly StatBoost[],
-  source: 'player' | 'enemy' = user,
+  source: SlotRef = ref,
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
   let nextState = state;
   const events: BattleEvent[] = [];
+  const fromElsewhere = !sameSlot(source, ref);
   for (const boost of boosts) {
-    const combatant = user === 'player' ? nextState.player : nextState.enemy;
-    if (boost.stages < 0 && source !== user && blocksBoost(abilityCarrier(combatant), boost.stat)) {
-      const refused = announceAbility(nextState, user, 'blocked-boost', { stat: boost.stat });
+    const combatant = unitAt(nextState, ref);
+    if (!combatant) {
+      break;
+    }
+    if (boost.stages < 0 && fromElsewhere && blocksBoost(abilityCarrier(combatant), boost.stat)) {
+      const refused = announceAbility(nextState, ref, 'blocked-boost', { stat: boost.stat });
       nextState = refused.state;
       events.push(...refused.events);
       continue;
@@ -1657,10 +2357,11 @@ const applyStatBoosts = (
     if (change === 0) {
       continue;
     }
-    nextState = updateCombatant(nextState, user, { ...combatant, statStages: updatedStages });
+    nextState = withUnit(nextState, ref, { ...combatant, statStages: updatedStages });
     events.push({
       type: 'stat-stage-changed',
-      user,
+      user: ref.side,
+      ...inSlot(ref),
       name: combatant.pokemon.base.name,
       stat: boost.stat,
       stages: change,

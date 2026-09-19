@@ -100,8 +100,14 @@ const describe = (move, effects) => {
   } else {
     sentences.push(`A ${type} ${move.category.toLowerCase()} attack.`);
   }
+  // A move that lands on both foes says so wherever it names who it lands on.
+  // The player reads this line in the move list before choosing, and "the
+  // target" is the wrong noun for a move that has two of them.
+  const spread = move.target === 'all-opponents';
+  const them = spread ? 'both foes' : 'the target';
+  if (spread) sentences.push(move.category === 'Status' ? 'Lands on both foes.' : 'Hits both foes.');
   const boostLine = (boosts, self, chance) => {
-    const whose = self ? "the user's" : "the target's";
+    const whose = self ? "the user's" : spread ? "both foes'" : "the target's";
     const grouped = boosts.map((boost) => readableStat(boost.stat)).join(', ');
     const stages = STAGES[Math.abs(boosts[0].stages)] ?? `${Math.abs(boosts[0].stages)} stages`;
     const up = boosts[0].stages > 0;
@@ -116,7 +122,7 @@ const describe = (move, effects) => {
   if (effects.guaranteed) {
     const { boosts, status, weather } = effects.guaranteed;
     if (boosts.length > 0) sentences.push(boostLine(boosts, move.target === 'user', null));
-    if (status) sentences.push(`Leaves the target ${statusWord[move.ailment]}.`);
+    if (status) sentences.push(`Leaves ${them} ${statusWord[move.ailment]}.`);
     if (weather) {
       sentences.push(
         { 'rain-dance': 'Brings on rain.', 'sunny-day': 'Brings out harsh sunlight.',
@@ -125,8 +131,8 @@ const describe = (move, effects) => {
     }
   }
   for (const secondary of effects.secondaries) {
-    if (secondary.status) sentences.push(`${secondary.chance}% chance to leave the target ${statusWord[move.ailment]}.`);
-    if (secondary.flinch) sentences.push(`${secondary.chance}% chance to make the target flinch.`);
+    if (secondary.status) sentences.push(`${secondary.chance}% chance to leave ${them} ${statusWord[move.ailment]}.`);
+    if (secondary.flinch) sentences.push(`${secondary.chance}% chance to make ${them} flinch.`);
     if (secondary.boosts) sentences.push(boostLine(secondary.boosts, secondary.self, secondary.chance));
   }
   if (move.min_hits) sentences.push(`Hits ${move.min_hits} to ${move.max_hits} times.`);
@@ -167,6 +173,15 @@ const renderMove = (move) => {
   if (move.priority !== 0) lines.push(`  priority: ${move.priority},`);
   if (move.accuracy === null) lines.push('  alwaysHits: true,');
   if (move.category === 'Status' && move.target === 'user') lines.push('  target: MoveTarget.Self,');
+  // PokeAPI's `all-opponents` is the double battle's spread move. It means
+  // nothing at all with one foe on the field - which is why this could be left
+  // flat until there could be two - and it has no `past_values`, so the
+  // generation III target is the modern one for every move in this snapshot;
+  // `tools/moves/README.md` says so. `all-other-pokemon` (Earthquake and the
+  // three like it) also hits your own partner and has no `MoveTarget`, so those
+  // four are left aiming at one foe rather than silently made into something
+  // this engine cannot say.
+  if (move.target === 'all-opponents') lines.push('  target: MoveTarget.BothFoes,');
   if (move.min_hits) lines.push(`  hits: { min: ${move.min_hits}, max: ${move.max_hits} },`);
   if (move.crit_rate > 0) lines.push(`  critStage: ${move.crit_rate},`);
   if (move.drain < 0) lines.push(`  recoil: ${share(-move.drain)},`);

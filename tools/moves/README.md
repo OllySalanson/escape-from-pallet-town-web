@@ -28,6 +28,12 @@ re-harvest must handle them again:
 - **`past_types`** gives generation III typing (Clefairy is Normal, not
   Normal/Fairy; Magnemite is Electric/Steel).
 
+- **`target` has no `past_values` at all**, so a move's generation III target has
+  to be checked by hand. The five shipped moves that carry `all-opponents` -
+  Growl, Tail Whip, Razor Leaf, Heat Wave and Bubble - were each checked against
+  generation III, where all five were already all-adjacent-foes. It is the field
+  `MoveTarget.BothFoes` is read from; see `moves.ts`.
+
 PokeAPI flags charge and recharge moves **not at all**, and `min_turns`/
 `max_turns` is usually the *ailment's* duration rather than the move's, so Dig
 and Hyper Beam are named by hand in the script or they read as plain damage.

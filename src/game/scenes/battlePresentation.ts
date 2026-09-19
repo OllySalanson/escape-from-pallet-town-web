@@ -34,6 +34,14 @@ export interface CombatPresentationStep {
   readonly event: BattleEvent;
   readonly actor: 'player' | 'enemy' | null;
   readonly target: 'player' | 'enemy' | null;
+  /**
+   * Which of the actor's and the target's two slots this step is about. A
+   * single battle only ever has slot 0, which is why both default to it rather
+   * than being optional everywhere downstream: the scene animates a plate, and
+   * a plate is a place on the screen whether there are one or four of them.
+   */
+  readonly actorSlot: number;
+  readonly targetSlot: number;
   readonly hpDelta: number;
 }
 
@@ -139,6 +147,165 @@ export const aboutToUseOptionLayout = (index: number): { x: number; y: number } 
   x: BATTLE_PANEL.x + PANEL_INSET_X + index * MOVE_COLUMN_WIDTH,
   y: 38,
 });
+
+/**
+ * Where a Pokemon's plate and sprite sit, for one and for two a side.
+ *
+ * A single battle's numbers are exactly the ones this screen was authored with
+ * and are not derived from anything: the double battle is a second layout, not
+ * a generalisation of the first, because a generalisation would have moved the
+ * screen every player has already seen.
+ *
+ * **The double battle does not fit the single battle's furniture, and this is
+ * what was given up.** Four plates at 144x58 are 232 pixels of plate in a field
+ * 174 tall, before a single sprite. So a double battle's plates are one band
+ * across the top and one across the bottom - 148 wide and three rows deep
+ * instead of 144 and four - and what came off is the floating banner that says
+ * WILD, FOE or RIVAL. Nothing is set below `CHIP_FONT_SIZE`: the names, the
+ * levels, the HP numbers and the typing are all still 12px, which is the size
+ * the rest of the raid is read at. The typing is what a player reads to know
+ * what a move will do, so it stays, moved down onto the plate itself; the role
+ * word is the one thing position already says - the pair across the field is
+ * the pair at the top - and the log goes on saying "Foe PIDGEY" on every line.
+ */
+export interface PlateLayout {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  /** Where the name, the bar and the bottom row sit inside the plate. */
+  readonly nameY: number;
+  readonly barY: number;
+  readonly detailY: number;
+  /** Where the HP bar starts, measured from the plate's own left edge. */
+  readonly barX: number;
+  readonly barWidth: number;
+  /** A double battle's plate carries the typing; a single battle's banner does. */
+  readonly showsTyping: boolean;
+}
+
+const SINGLE_ENEMY_PLATE: PlateLayout = {
+  x: 16,
+  y: 16,
+  width: 144,
+  height: 47,
+  nameY: 7,
+  barY: 26,
+  detailY: 44,
+  barX: 39,
+  barWidth: 88,
+  showsTyping: false,
+};
+
+const SINGLE_PLAYER_PLATE: PlateLayout = { ...SINGLE_ENEMY_PLATE, x: 150, y: 104, height: 58 };
+
+/** The double battle's plate: two of these a side, side by side. */
+const DOUBLE_PLATE_WIDTH = 148;
+// Deep enough for the typing's descenders to clear the frame: at 42 the tail
+// of the G in GRASS/POISON was drawn on the plate's own bottom border.
+const DOUBLE_PLATE_HEIGHT = 44;
+const DOUBLE_PLATE_PITCH = 156;
+/** The top band, clear of the field; and the bottom one, just over the panel. */
+const DOUBLE_ENEMY_BAND_Y = 2;
+const DOUBLE_PLAYER_BAND_Y = 126;
+
+export const statusPlateLayout = (
+  side: 'player' | 'enemy',
+  slot: number,
+  unitCount: number,
+): PlateLayout => {
+  if (unitCount < 2) {
+    return side === 'player' ? SINGLE_PLAYER_PLATE : SINGLE_ENEMY_PLATE;
+  }
+  return {
+    x: 4 + slot * DOUBLE_PLATE_PITCH,
+    y: side === 'enemy' ? DOUBLE_ENEMY_BAND_Y : DOUBLE_PLAYER_BAND_Y,
+    width: DOUBLE_PLATE_WIDTH,
+    height: DOUBLE_PLATE_HEIGHT,
+    nameY: 4,
+    barY: 19,
+    detailY: 30,
+    barX: 30,
+    // The player's plate has to fit its HP numbers on the same row as the bar,
+    // because the row below is carrying the typing and the gear - so the bar is
+    // shorter on that side and the numbers sit off the plate's right edge. Set
+    // out with the numbers under the bar instead, "GRASS/POISON" and "41/41"
+    // were drawn on top of each other.
+    barWidth: side === 'player' ? 60 : 88,
+    showsTyping: true,
+  };
+};
+
+export interface SpotLayout {
+  readonly x: number;
+  readonly y: number;
+  readonly scale: number;
+}
+
+/**
+ * Where a combatant stands. In a double battle all four are inside the band
+ * between the two plate rows, at their own scale - the single battle's 1.45 and
+ * 1.55 are 93 and 99 pixels tall, and two of either will not stand side by side
+ * in 76 pixels of field.
+ */
+export const combatantSpot = (
+  side: 'player' | 'enemy',
+  slot: number,
+  unitCount: number,
+): SpotLayout => {
+  if (unitCount < 2) {
+    return side === 'player' ? { x: 75, y: 137, scale: 1.55 } : { x: 245, y: 68, scale: 1.45 };
+  }
+  // Inside the 80 pixels of field between the two plate rows. A 64-pixel sprite
+  // at the single battle's 1.45 is 93 tall and two of them will not go, so both
+  // pairs are smaller - and the player's pair is drawn larger and lower than the
+  // foe's, which is the only depth cue a field this shallow has room for.
+  if (side === 'enemy') {
+    return slot === 0 ? { x: 202, y: 76, scale: 0.9 } : { x: 264, y: 86, scale: 0.9 };
+  }
+  return slot === 0 ? { x: 58, y: 90, scale: 1.1 } : { x: 128, y: 80, scale: 1.1 };
+};
+
+/** Where a combatant slides in from, so it comes in past the field's frame. */
+export const combatantEntryX = (side: 'player' | 'enemy'): number =>
+  side === 'player' ? -50 : 370;
+
+/**
+ * The prompt over the list of who a move could be aimed at.
+ *
+ * Only a double battle ever shows it, and only for a move that lands on one
+ * foe: a move that hits both of them has nothing to ask, and neither has a
+ * field with one Pokemon standing on it.
+ */
+export const TARGET_PROMPT = 'Aim at which POKéMON?';
+
+export const formatTargetRow = (target: {
+  readonly name: string;
+  readonly level: number;
+}): string => `${target.name.toUpperCase()} ${levelLabel(target.level)}`;
+
+/** The two rows of the target list, in the same columns the party list uses. */
+export const targetRowLayout = (index: number): { x: number; y: number } => ({
+  x: BATTLE_PANEL.x + PANEL_INSET_X + index * MOVE_COLUMN_WIDTH,
+  y: 26,
+});
+
+export const targetPromptLayout = { x: BATTLE_PANEL.x + PANEL_INSET_X, y: 6 } as const;
+
+/**
+ * Whose move is being chosen, said on the panel while it is being chosen.
+ *
+ * A double battle asks twice before it resolves anything, and without this the
+ * second question looks exactly like the first. It leads the guidance line the
+ * move list already has rather than taking a row of its own: the panel is 64
+ * pixels and it is already holding two move rows and two lines about the move
+ * the cursor is on, and the one of those worth losing is none of them.
+ */
+export const moveGuidanceFor = (
+  summary: string,
+  chooser: { readonly name: string } | undefined,
+  unitCount: number,
+): string => (unitCount < 2 || !chooser ? summary : `${chooser.name.toUpperCase()} · ${summary}`);
 
 /** The guidance lines sit under the two move rows, inside the same panel. */
 export const moveGuidanceLayout = (line: number): MoveCommandLayout => ({
@@ -302,8 +469,23 @@ export const combatPresentationSteps = (
       return {
         event,
         actor: event.user,
+        actorSlot: event.slot ?? 0,
         target: event.target ?? null,
+        targetSlot: event.targetSlot ?? 0,
         hpDelta: event.damage ?? 0,
+      };
+    }
+    // One target of a move that hit more than one. It is the same step as a
+    // plain hit - a lunge is already on screen from the line that named the
+    // move, and this is the bar it moved.
+    if (event.type === 'spread-damage') {
+      return {
+        event,
+        actor: event.user,
+        actorSlot: event.slot ?? 0,
+        target: event.target,
+        targetSlot: event.targetSlot ?? 0,
+        hpDelta: event.damage,
       };
     }
     if (
@@ -311,14 +493,41 @@ export const combatPresentationSteps = (
       event.type === 'status-damage' ||
       event.type === 'gear-recoil'
     ) {
-      return { event, actor: event.user, target: event.user, hpDelta: event.damage };
+      return {
+        event,
+        actor: event.user,
+        actorSlot: event.slot ?? 0,
+        target: event.user,
+        targetSlot: event.slot ?? 0,
+        hpDelta: event.damage,
+      };
     }
     // Gear that gives HP back moves the bar the other way, so the delta is
     // negative damage: the bar animation is the same code either direction.
     if (event.type === 'gear-heal') {
-      return { event, actor: event.user, target: event.user, hpDelta: -event.amount };
+      return {
+        event,
+        actor: event.user,
+        actorSlot: event.slot ?? 0,
+        target: event.user,
+        targetSlot: event.slot ?? 0,
+        hpDelta: -event.amount,
+      };
     }
-    return { event, actor: null, target: null, hpDelta: 0 };
+    // The weather takes HP off one named unit, which is a bar to walk like any
+    // other. It used to be read off the log alone and the plate caught up on
+    // the next redraw, which in a double battle would be three plates wrong.
+    if (event.type === 'weather-damage') {
+      return {
+        event,
+        actor: null,
+        actorSlot: 0,
+        target: event.user,
+        targetSlot: event.slot ?? 0,
+        hpDelta: event.damage,
+      };
+    }
+    return { event, actor: null, actorSlot: 0, target: null, targetSlot: 0, hpDelta: 0 };
   });
 
 export const combatantLabel = (user: 'player' | 'enemy'): string =>
@@ -398,8 +607,18 @@ export const eventToMessage = (event: BattleEvent): string => {
       const stab = event.isStab ? ` · SAME-TYPE ${formatMultiplier(STAB_MULTIPLIER)}` : '';
       return `${opening} -${event.damage} HP${stab}`;
     }
+    case 'spread-damage': {
+      // The move named itself on the line above; this says what it took off
+      // this one. One number could only be a sum of the two hits, and a sum
+      // explains neither. It is only ever emitted for a hit that took HP, so
+      // there is no "and nothing happened to the other one" line to read.
+      const stab = event.isStab ? ` · SAME-TYPE ${formatMultiplier(STAB_MULTIPLIER)}` : '';
+      return `${combatantName({ user: event.target, name: event.name })} -${event.damage} HP${stab}`;
+    }
     case 'missed':
       return 'The attack missed!';
+    case 'no-target':
+      return 'But there was no target!';
     case 'critical-hit':
       return 'A critical hit!';
     case 'effectiveness':

@@ -105,7 +105,9 @@ const createTrainer = (
   name: string,
   party: readonly Pokemon[],
   defeatText: string,
-): TrainerBattle => ({ id, name, party, defeatText });
+  /** Two puts a pair on the field at once - see `TrainerBattle.unitCount`. */
+  unitCount = 1,
+): TrainerBattle => ({ id, name, party, defeatText, unitCount });
 
 /**
  * These encounters are created for each WorldScene so defeated trainers and
@@ -245,6 +247,39 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     // Holds the gap in the orchard's back fence, with the vault behind it.
     // Beating her also unbars the causeway from the vault to the South Gate
     // road, so what is carried out of the vault has a short way home.
+    //
+    // **The one double battle in the game, and this is why it is here.**
+    // A double battle is two decisions a turn instead of one, and in a raid
+    // measured in the player's patience that has to be bought. Every other
+    // authored fight is the wrong place for it: Maya and the three route
+    // trainers are *tolls*, paid on a route you can walk round, and a toll that
+    // takes twice the thinking is a toll nobody pays twice; Briggs is the first
+    // door in the game and is met by whoever walks east first. Holt is the last
+    // door in walking order on the vast map - she is behind Briggs, so no fresh
+    // save can meet her - she is the top of the measured ladder already, and
+    // what is behind her fence is the vault, which is the largest permanent
+    // thing this map hands out. A fight worth two decisions a turn is a fight
+    // you only have once, with the biggest door behind it.
+    //
+    // Three things were measured rather than argued
+    // (`tools/trainers/report.mts`, 300 seeded fights):
+    //
+    //  - **It costs nothing to a player who brought one Pokemon.** A double
+    //    battle needs two able Pokemon a side and the engine refuses the second
+    //    slot when the player has nobody for it, so a lone Charmander, Squirtle
+    //    or Bulbasaur fights exactly the fight it fought before - 24%, 12%, 0%,
+    //    unmoved to the point.
+    //  - **It is harder for the player who brought a team**, which is who
+    //    actually reaches it: a Charmander 12 with a Pidgey 10 goes from 73% to
+    //    48%, which puts the last door level with Dane instead of a third
+    //    easier than him. A party of three barely notices (78% to 77%), because
+    //    depth is the answer to two at once, and that is the lesson the door is
+    //    there to teach.
+    //  - **It is shorter, not longer.** The party is the same three Pokemon and
+    //    both of yours swing every turn, so the same fight takes 3.8 turns
+    //    instead of 8.8 and puts 25 lines of log on screen instead of 33. What
+    //    doubles is the decisions, not the reading - which is the only version
+    //    of this mechanic a five-minute raid can afford.
     mapId: 'floodplain-relay',
     position: { x: 53, y: 44 },
     facing: 'up',
@@ -259,12 +294,14 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     introLines: [
       'WARDEN HOLT HOLDS THE ORCHARD FENCE.',
       'The rows are mine and so is what is buried past them.',
+      'And I do not work these rows on my own. Both of mine, at once.',
     ],
     trainer: createTrainer(
       'floodplain-orchard-warden-holt',
       'WARDEN HOLT',
       [new Pokemon(BUTTERFREE, 11), new Pokemon(PIDGEY, 11), new Pokemon(JIGGLYPUFF, 12)],
       'Go on through. The causeway out the far side is unbarred - it lands you on the gate road.',
+      2,
     ),
   },
   {

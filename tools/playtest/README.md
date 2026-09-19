@@ -81,6 +81,11 @@ that save opens on, by clicking the insertion's own row in the loadout.
   is a fight a fresh starter cannot win (`tools/trainers/report.mts` prints how
   unwinnable), so this is how a driver gets to what is behind one:
   `--insertion=town-square --level=20 --fight`.
+- `--team=speciesId:level,..` - more Pokemon in the vault beside the starter, and
+  every one of them added to the raid party. Nothing else here deploys with two,
+  and a double battle needs two: the engine refuses the second slot when the
+  player has nobody for it, so a driver with one Pokemon plays WARDEN HOLT as a
+  single battle and never sees the thing it was sent to look at.
 - `--starter=Charmander` - which of the picker's three cards is taken. Anything
   measured per starter needs it; the default is Bulbasaur.
 - `--pack=itemId[:n],..` - puts supplies in the raid bag by the loadout row's own
