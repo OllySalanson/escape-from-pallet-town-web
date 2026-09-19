@@ -1,8 +1,11 @@
-import { clampPendingRecoveryMs } from '../hub/recovery';
+import { getOutfitterUpgrade, takePayment, type PaymentCheck } from '../hub/outfitter';
+import { clampPendingRecoveryMs, clampWardTreatmentsUsed } from '../hub/recovery';
 import {
   contractUnlockedInsertionIds,
   FIRST_CONTRACT_ID,
   getContract,
+  secureItemStackLimit,
+  securePokemonLimit,
 } from '../objectives/contracts';
 import {
   Move,
@@ -17,6 +20,7 @@ import type { PrimaryStatus } from '../pokemon/battle/status';
 import type { GridPosition } from '../movement/gridMovement';
 import {
   getStarterSpecies,
+  minimumSupplies,
   Stash,
   type RaidCondition,
   type RaidSettlement,
@@ -78,6 +82,13 @@ export interface RaidProgress {
    * these to the insertions contracts have unlocked.
    */
   readonly reachedInsertions: readonly string[];
+  /**
+   * Every Outfitter upgrade built at base, by id. Like `completedContracts` it
+   * is the whole record: every effect an upgrade has is derived from this list
+   * by the system that owns it, so no effect is ever stored beside it. Saves
+   * written before the Outfitter simply have none built.
+   */
+  readonly outfitterUpgrades: readonly string[];
 }
 
 /**
@@ -119,6 +130,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   completedContracts: [],
   defeatedBosses: [],
   reachedInsertions: [],
+  outfitterUpgrades: [],
 };
 
 export interface SaveData {
@@ -137,6 +149,13 @@ export interface SaveData {
    * debt, so they keep loading unchanged and need no version bump.
    */
   readonly pendingRecoveryMs: number;
+  /**
+   * Quarantine ward beds already used before the coming raid. It is cleared
+   * with `pendingRecoveryMs`, when that raid resolves, for the same reason: a
+   * page reload must not hand the bed back. Absent on older saves, which have
+   * used none.
+   */
+  readonly wardTreatmentsUsed: number;
 }
 
 export interface RestoredGame {
@@ -149,6 +168,7 @@ export interface RestoredGame {
   readonly raidProgress: RaidProgress;
   readonly starterSpeciesId: StarterSpeciesId | null;
   readonly pendingRecoveryMs: number;
+  readonly wardTreatmentsUsed: number;
 }
 
 export interface SaveGameState {
@@ -161,7 +181,11 @@ export interface SaveGameState {
   readonly raidProgress?: RaidProgress;
   readonly starterSpeciesId?: StarterSpeciesId | null;
   readonly pendingRecoveryMs?: number;
+  readonly wardTreatmentsUsed?: number;
 }
+
+/** What every raid ending clears: the recovery a resolved raid has now paid for. */
+const RAID_RESOLVED = { pendingRecoveryMs: 0, wardTreatmentsUsed: 0 } as const;
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -239,7 +263,7 @@ export class SaveManager {
     // The raid this debt paid for has now resolved, so it is settled. Charging
     // on resolution rather than on deployment is what stops a player healing,
     // deploying into the shortened raid and reloading the page to shed the bill.
-    return this.save({ ...game, pendingRecoveryMs: 0 });
+    return this.save({ ...game, ...RAID_RESOLVED });
   }
 
   /**
@@ -263,7 +287,7 @@ export class SaveManager {
     game.stash.bankRun(result);
     const contract = getContract(contractId);
     if (!contract || game.raidProgress.completedContracts.includes(contractId)) {
-      return { saved: this.save({ ...game, pendingRecoveryMs: 0 }), granted: false };
+      return { saved: this.save({ ...game, ...RAID_RESOLVED }), granted: false };
     }
 
     const completedContracts = [...game.raidProgress.completedContracts, contractId];
@@ -283,7 +307,7 @@ export class SaveManager {
       game.stash.addItem(itemId, quantity);
     }
     return {
-      saved: this.save({ ...game, raidProgress, pendingRecoveryMs: 0 }),
+      saved: this.save({ ...game, raidProgress, ...RAID_RESOLVED }),
       granted: true,
     };
   }
@@ -363,8 +387,56 @@ export class SaveManager {
   }
 
   /**
+   * Builds one Outfitter upgrade, paying for it with exactly the Pokemon the
+   * player named and the supplies it lists. This is the only path that spends:
+   * it reloads the vault, so the payment is checked against what is really
+   * banked rather than against whatever a screen was showing, and it records
+   * the upgrade in the same write that removes the payment, so a save can never
+   * hold one without the other.
+   *
+   * An upgrade already built is refused rather than charged again, which makes
+   * a repeated click a no-op instead of a second payment.
+   */
+  public buildOutfitterUpgrade(
+    upgradeId: string,
+    pokemonIds: readonly string[],
+  ): PaymentCheck & { readonly saved: boolean } {
+    const game = this.load();
+    if (!game) {
+      return {
+        ok: false,
+        refusal: 'unknown-upgrade',
+        message: 'There is no saved game to build on.',
+        saved: false,
+      };
+    }
+
+    const payment = takePayment(
+      {
+        stash: game.stash,
+        starterSpeciesId: game.starterSpeciesId,
+        protectedSupplies: minimumSupplies(
+          contractRestockBonus(game.raidProgress.completedContracts),
+        ),
+      },
+      game.raidProgress.outfitterUpgrades,
+      upgradeId,
+      pokemonIds,
+    );
+    if (!payment.ok) {
+      return { ...payment, saved: false };
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      outfitterUpgrades: [...game.raidProgress.outfitterUpgrades, payment.upgrade.id],
+    };
+    return { ...payment, saved: this.save({ ...game, raidProgress }) };
+  }
+
+  /**
    * Persists a wipe after permanently deleting deployed assets outside the
-   * secure slot. SecureSlot allows one Pokemon ID and at most two item stacks.
+   * secure slot. How much the slot protects is read from the save itself - the
+   * contracts banked and the upgrades built - so no caller can under-report it.
    *
    * Only the condition half of a settlement applies here: a secured Pokemon
    * comes home in the state the raid left it in, usually fainted, while every
@@ -383,7 +455,13 @@ export class SaveManager {
     }
 
     game.stash.applyRaidCondition(condition);
-    game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot);
+    game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot, {
+      pokemon: securePokemonLimit(game.raidProgress.outfitterUpgrades),
+      itemStacks: secureItemStackLimit(
+        game.raidProgress.completedContracts,
+        game.raidProgress.outfitterUpgrades,
+      ),
+    });
     // A wipe must never hand the player back a run they cannot attempt: a fresh
     // starter when none survived, and whatever the kit is short of either way,
     // including when the secure slot saved a Pokemon but no items. It is the
@@ -392,7 +470,7 @@ export class SaveManager {
       game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined,
     );
     game.stash.restockMinimumSupplies();
-    return this.save({ ...game, pendingRecoveryMs: 0 });
+    return this.save({ ...game, ...RAID_RESOLVED });
   }
 }
 
@@ -417,6 +495,7 @@ export function serializeGame(state: SaveGameState): SaveData {
     raidProgress: state.raidProgress ?? DEFAULT_RAID_PROGRESS,
     starterSpeciesId: state.starterSpeciesId ?? inferStarterSpeciesId(state.stash),
     pendingRecoveryMs: clampPendingRecoveryMs(state.pendingRecoveryMs),
+    wardTreatmentsUsed: clampWardTreatmentsUsed(state.wardTreatmentsUsed),
   };
 }
 
@@ -471,6 +550,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     raidProgress: deserializeRaidProgress(value.raidProgress),
     starterSpeciesId: deserializeStarterSpeciesId(value.starterSpeciesId) ?? inferStarterSpeciesId(stash),
     pendingRecoveryMs: clampPendingRecoveryMs(value.pendingRecoveryMs),
+    wardTreatmentsUsed: clampWardTreatmentsUsed(value.wardTreatmentsUsed),
   };
 }
 
@@ -536,6 +616,16 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
   const completedContracts = [
     ...new Set([...(firstContractExtracted ? [FIRST_CONTRACT_ID] : []), ...savedContracts]),
   ];
+  // Only upgrades the ladder still knows are kept, once each: an id nothing
+  // derives an effect from is not an upgrade, and a duplicate must not be able
+  // to count a locker twice.
+  const outfitterUpgrades = [
+    ...new Set(
+      (Array.isArray(value.outfitterUpgrades) ? value.outfitterUpgrades : []).filter(
+        (id): id is string => typeof id === 'string' && getOutfitterUpgrade(id) !== undefined,
+      ),
+    ),
+  ];
   return {
     firstContractExtracted,
     completedContracts,
@@ -543,6 +633,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // and reached nowhere, which is exactly what a missing list reads as.
     defeatedBosses: uniqueStrings(value.defeatedBosses),
     reachedInsertions: uniqueStrings(value.reachedInsertions),
+    outfitterUpgrades,
     // The starting area is never lost, so a save written before Floodplain Relay
     // became the first raid still opens on an insertion the player can use, and
     // a save that already banked the contract gets every level the contract now

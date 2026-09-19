@@ -95,11 +95,11 @@ describe('deployment flow', () => {
       { itemId: 'poke-ball', quantity: 1 },
     ]);
     expect(deployment.secureSlot).toEqual({
-      pokemon: stash.listPokemon().find(({ id }) => id === 'charmander-1')?.pokemon,
+      pokemon: [stash.listPokemon().find(({ id }) => id === 'charmander-1')?.pokemon],
       items: [{ itemId: 'potion', quantity: 2 }],
     });
     expect(deployment.stashSecureSlot).toEqual({
-      pokemonId: 'charmander-1',
+      pokemonIds: ['charmander-1'],
       items: [{ itemId: 'potion', quantity: 2 }],
     });
   });
@@ -133,7 +133,7 @@ describe('deployment flow', () => {
     flow.openSecureSlot();
     flow.toggleSecurePokemon(ids[0]);
     flow.toggleSecurePokemon(ids[1]);
-    expect(flow.securedPokemon?.id).toBe(ids[1]);
+    expect(flow.securedPokemon.map(({ id }) => id)).toEqual([ids[1]]);
     expect(flow.toggleSecureItem('potion')).toBeUndefined();
     expect(flow.toggleSecureItem('poke-ball')).toBeUndefined();
     expect(flow.securedItems).toHaveLength(2);
@@ -152,7 +152,7 @@ describe('deployment flow', () => {
     flow.togglePokemon('charmander-1');
     flow.adjustItem('potion', -2);
 
-    expect(flow.securedPokemon).toBeUndefined();
+    expect(flow.securedPokemon).toEqual([]);
     expect(flow.securedItems).toEqual([]);
     expect(flow.isDeployable).toBe(false);
   });
@@ -194,5 +194,34 @@ describe('deployment flow', () => {
     flow.adjustItem('potion', -9);
     expect(flow.itemQuantity('potion')).toBe(0);
     expect(flow.items).toEqual([]);
+  });
+
+  it('moves a single protected slot, and holds two once the second locker is built', () => {
+    const single = seedFlow().flow;
+    single.togglePokemon('bulbasaur-1');
+    single.togglePokemon('charmander-1');
+    single.toggleSecurePokemon('bulbasaur-1');
+    single.toggleSecurePokemon('charmander-1');
+    expect(single.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
+
+    const stash = createStartingStash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
+    stash.addPokemon(new Pokemon(SQUIRTLE, 6), 'squirtle-1');
+    const flow = new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 2, itemStacks: 3 });
+    for (const id of ['bulbasaur-1', 'charmander-1', 'squirtle-1']) {
+      flow.togglePokemon(id);
+      flow.toggleSecurePokemon(id);
+    }
+    // A third pick lets go of the first rather than refusing the click.
+    expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1', 'squirtle-1']);
+
+    flow.advance();
+    const deployment = flow.deploy();
+    expect(deployment.stashSecureSlot.pokemonIds).toEqual(['charmander-1', 'squirtle-1']);
+    expect(deployment.secureSlot.pokemon).toHaveLength(2);
+
+    // A secured Pokemon that leaves the party stops holding a slot.
+    flow.togglePokemon('squirtle-1');
+    expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
   });
 });

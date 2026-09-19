@@ -136,7 +136,10 @@ button {
 }
 .hub-actions {
   display: grid;
-  grid-template-columns: 1.45fr 1fr;
+  /* Three cards on one row: the raid leads, the stash and the Outfitter share
+     what is left. A third card on a second row is what put the contract board
+     past the fold. */
+  grid-template-columns: 1.45fr 1fr 1fr;
   gap: var(--space-2);
 }
 .hub-home {
@@ -150,6 +153,35 @@ button {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 8px;
+}
+/* The Outfitter's ladder: two fixed columns rather than the board's auto-fit,
+   because each rung ends in a control and an auto-fit column narrow enough to
+   fit four across left the copy one letter wide. */
+.outfitter-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* In em so the four rows keep fitting as the stage scales its type. */
+  gap: 0.45em;
+}
+.outfitter-row {
+  padding: 0.55em 0.7em;
+}
+/* An odd rung out takes the whole row rather than half of one. */
+.outfitter-row:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.cost-short {
+  color: #ffd4c8;
+  font-weight: 700;
+}
+.outfitter-row .button {
+  margin: 0;
+  padding: 0.55em 0.8em;
+  flex: none;
+  white-space: nowrap;
+}
+.outfitter-row .secure-tag {
+  flex: none;
+  white-space: nowrap;
 }
 .objective-copy {
   /* Grows into the row instead of being pushed to its right edge by the
@@ -189,9 +221,12 @@ button {
   color: var(--menu-accent);
   font-weight: 800;
 }
+/* The slack in a card goes above its call to action rather than above its
+   heading: with three cards in the row, copy of different lengths otherwise
+   starts each heading at a different height. */
 .action-card h2 {
   font-size: 1.65em;
-  margin-top: auto;
+  margin-top: 0.9em;
 }
 .action-card p {
   color: var(--menu-muted);
@@ -199,6 +234,7 @@ button {
 }
 .action-card b {
   color: var(--menu-accent);
+  margin-top: auto;
 }
 .stash-layout,
 .loadout-layout,
@@ -1166,6 +1202,7 @@ button {
   }
   .hub-actions,
   .objective-list,
+  .outfitter-list,
   .stash-layout,
   .loadout-layout,
   .secure-layout,

@@ -95,6 +95,52 @@ export const hunterTierFor = (
   return HUNTER_TIERS[tierIndex];
 };
 
+/** What the Outfitter's radio mast reads off the hunter, before it is worded. */
+export interface HunterIntel {
+  readonly level: number;
+  readonly teamSize: number;
+  /** The next team to land and how much raid clock is left before it does. */
+  readonly next: { readonly level: number; readonly teamSize: number; readonly inMs: number } | null;
+}
+
+/**
+ * The hunter's team right now, and the next change to it.
+ *
+ * It asks `hunterTierFor` rather than reading `HUNTER_TIERS` itself, so a raid
+ * whose tuning shifts the tiers is reported as it will actually be fought. The
+ * enrage is the last entry on the schedule: a raid shortened by booked recovery
+ * can run out before a later tier ever starts, and then the enraged team is
+ * what lands next.
+ */
+export const hunterIntelFor = (
+  elapsedMs: number,
+  raidDurationMs: number,
+  isEnraged: boolean,
+  tuning: HunterTuning = DEFAULT_HUNTER_TUNING,
+): HunterIntel => {
+  const current = hunterTierFor(elapsedMs, isEnraged, tuning);
+  const describe = (tier: HunterTier): { level: number; teamSize: number } => ({
+    level: tier.level,
+    teamSize: tier.party.length,
+  });
+  if (isEnraged) {
+    return { ...describe(current), next: null };
+  }
+  const changes = [
+    ...HUNTER_TIERS.map((tier) => tier.startsAtMs).filter(
+      (startsAtMs) => startsAtMs > elapsedMs && startsAtMs < raidDurationMs,
+    ),
+    raidDurationMs,
+  ];
+  for (const atMs of changes) {
+    const tier = hunterTierFor(atMs, atMs >= raidDurationMs, tuning);
+    if (tier !== current) {
+      return { ...describe(current), next: { ...describe(tier), inMs: Math.max(0, atMs - elapsedMs) } };
+    }
+  }
+  return { ...describe(current), next: null };
+};
+
 export const createHunterTrainer = (
   elapsedMs: number,
   isEnraged: boolean,

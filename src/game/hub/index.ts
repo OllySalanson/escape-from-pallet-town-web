@@ -1,15 +1,18 @@
 export {
+  BASE_SECURE_SLOT_CAPACITY,
   DeploymentFlow,
   MAX_RUN_PARTY,
   MAX_SECURE_ITEM_STACKS,
   type Deployment,
   type DeploymentStep,
+  type SecureSlotCapacity,
 } from './deploymentFlow';
 
 export {
   applyRecovery,
   chargeRecovery,
   clampPendingRecoveryMs,
+  clampWardTreatmentsUsed,
   formatRecoveryClock,
   MAX_PENDING_RECOVERY_MS,
   needsRecovery,
@@ -21,7 +24,12 @@ export {
   RECOVERY_STATUS_MS,
   RECOVERY_STEP_MS,
   recoveryCostMs,
+  recoveryPrices,
+  STANDARD_RECOVERY_TERMS,
+  wardBedIds,
   type RecoveryOutcome,
+  type RecoveryPrices,
+  type RecoveryTerms,
 } from './recovery';
 
 export {
@@ -31,3 +39,31 @@ export {
   type TreatmentOption,
   type TreatmentResult,
 } from './treatment';
+
+export {
+  beaconUnlockAtMs,
+  BEACON_UNLOCK_SHARE,
+  builtUpgrades,
+  checkPayment,
+  getOutfitterUpgrade,
+  hasBeacon,
+  hasHunterIntel,
+  LAST_FIT_REFUSAL,
+  OUTFITTER_UPGRADES,
+  outfitterOffers,
+  PARTNER_REFUSAL,
+  payablePokemonCount,
+  paymentCandidates,
+  recoveryPriceShare,
+  spendableSupply,
+  takePayment,
+  wardTreatmentsPerRaid,
+  type OutfitterCost,
+  type OutfitterOffer,
+  type OutfitterOfferState,
+  type OutfitterUpgrade,
+  type OutfitterVault,
+  type PaymentCandidate,
+  type PaymentCheck,
+  type PaymentRefusal,
+} from './outfitter';

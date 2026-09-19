@@ -1,5 +1,5 @@
 import type { ItemId } from '../items';
-import { BASE_SECURE_ITEM_STACKS } from '../objectives/contracts';
+import { BASE_SECURE_ITEM_STACKS, BASE_SECURE_POKEMON } from '../objectives/contracts';
 import type { ItemStack, SecureSlot as RunSecureSlot } from '../run';
 import type { RunInsertionId } from '../run/runGeneration';
 import type { SecureSlot as StashSecureSlot, Stash, StashedPokemon } from '../stash';
@@ -7,6 +7,17 @@ import type { SecureSlot as StashSecureSlot, Stash, StashedPokemon } from '../st
 export const MAX_RUN_PARTY = 6;
 /** The secure slot every save starts with; the cordon ledger adds to it. */
 export const MAX_SECURE_ITEM_STACKS = BASE_SECURE_ITEM_STACKS;
+
+/** What this save's secure slot protects; contracts and the Outfitter enlarge it. */
+export interface SecureSlotCapacity {
+  readonly pokemon: number;
+  readonly itemStacks: number;
+}
+
+export const BASE_SECURE_SLOT_CAPACITY: SecureSlotCapacity = {
+  pokemon: BASE_SECURE_POKEMON,
+  itemStacks: BASE_SECURE_ITEM_STACKS,
+};
 
 /**
  * Preparation is a route, not a screen: a player picks what to risk, may detour
@@ -29,22 +40,25 @@ export class DeploymentFlow {
   private readonly stash: Stash;
   private selectedPokemonIds: string[] = [];
   private readonly selectedItems = new Map<ItemId, number>();
-  private securedPokemonId: string | undefined;
+  private securedPokemonIds: string[] = [];
   private securedItemIds: ItemId[] = [];
   private insertion: RunInsertionId;
   private currentStep: DeploymentStep = 'loadout';
   private secureReturn: Exclude<DeploymentStep, 'secure'> = 'loadout';
   /** How many item stacks this save's secure slot protects. */
   public readonly secureItemStacks: number;
+  /** How many Pokemon it protects. */
+  public readonly securePokemonSlots: number;
 
   public constructor(
     stash: Stash,
     insertionId: RunInsertionId = 'floodplain-relay',
-    secureItemStacks: number = MAX_SECURE_ITEM_STACKS,
+    capacity: SecureSlotCapacity = BASE_SECURE_SLOT_CAPACITY,
   ) {
     this.stash = stash;
     this.insertion = insertionId;
-    this.secureItemStacks = secureItemStacks;
+    this.secureItemStacks = capacity.itemStacks;
+    this.securePokemonSlots = capacity.pokemon;
   }
 
   public get step(): DeploymentStep {
@@ -82,8 +96,9 @@ export class DeploymentFlow {
       .filter((item) => item.quantity > 0);
   }
 
-  public get securedPokemon(): StashedPokemon | undefined {
-    return this.party.find((stored) => stored.id === this.securedPokemonId);
+  /** The protected Pokemon, in party order, resolved against the live party. */
+  public get securedPokemon(): readonly StashedPokemon[] {
+    return this.party.filter((stored) => this.securedPokemonIds.includes(stored.id));
   }
 
   public get securedItems(): readonly ItemStack[] {
@@ -108,7 +123,7 @@ export class DeploymentFlow {
   }
 
   public securesPokemon(id: string): boolean {
-    return this.securedPokemonId === id;
+    return this.securedPokemonIds.includes(id);
   }
 
   public securesItem(itemId: ItemId): boolean {
@@ -119,9 +134,7 @@ export class DeploymentFlow {
   public togglePokemon(id: string): string | undefined {
     if (this.selectedPokemonIds.includes(id)) {
       this.selectedPokemonIds = this.selectedPokemonIds.filter((selected) => selected !== id);
-      if (this.securedPokemonId === id) {
-        this.securedPokemonId = undefined;
-      }
+      this.securedPokemonIds = this.securedPokemonIds.filter((secured) => secured !== id);
       return undefined;
     }
     if (this.selectedPokemonIds.length >= MAX_RUN_PARTY) {
@@ -144,8 +157,20 @@ export class DeploymentFlow {
     this.selectedItems.set(itemId, next);
   }
 
+  /**
+   * Protecting one more Pokemon than the slot holds moves the protection rather
+   * than refusing it: with a single slot that is "secure this one instead", and
+   * with two it lets go of whichever was chosen first.
+   */
   public toggleSecurePokemon(id: string): void {
-    this.securedPokemonId = this.securedPokemonId === id ? undefined : id;
+    if (this.securedPokemonIds.includes(id)) {
+      this.securedPokemonIds = this.securedPokemonIds.filter((secured) => secured !== id);
+      return;
+    }
+    // Only Pokemon still in the party count against the slot, so one removed
+    // from the vault since it was secured cannot hold a place nobody can see.
+    const held = this.securedPokemon.map((stored) => stored.id);
+    this.securedPokemonIds = [...held, id].slice(-Math.max(1, this.securePokemonSlots));
   }
 
   /** @returns A message when the change was refused, otherwise undefined. */
@@ -234,18 +259,22 @@ export class DeploymentFlow {
     if (!this.isDeployable) {
       throw new Error('A raid needs at least one Pokemon that has not fainted.');
     }
-    const securedPokemon = this.securedPokemon;
+    const securedPokemon = this.securedPokemon.slice(0, this.securePokemonSlots);
     const securedItems = this.securedItems.slice(0, this.secureItemStacks);
     return {
       insertionId: this.insertion,
       party,
       items: this.items,
       secureSlot: {
-        ...(securedPokemon === undefined ? {} : { pokemon: securedPokemon.pokemon }),
+        ...(securedPokemon.length === 0
+          ? {}
+          : { pokemon: securedPokemon.map((stored) => stored.pokemon) }),
         items: securedItems,
       },
       stashSecureSlot: {
-        ...(securedPokemon === undefined ? {} : { pokemonId: securedPokemon.id }),
+        ...(securedPokemon.length === 0
+          ? {}
+          : { pokemonIds: securedPokemon.map((stored) => stored.id) }),
         items: securedItems.map(({ itemId, quantity }) => ({ itemId, quantity })),
       },
     };

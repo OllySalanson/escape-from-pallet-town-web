@@ -16,6 +16,9 @@ import {
   RECOVERY_STATUS_MS,
   RECOVERY_STEP_MS,
   recoveryCostMs,
+  recoveryPrices,
+  wardBedIds,
+  type RecoveryTerms,
 } from './recovery';
 
 function hurtStash(): { stash: Stash; charmander: Pokemon } {
@@ -193,3 +196,102 @@ describe('recovery against the raid clock', () => {
     expect(formatRecoveryClock(210_000)).toBe('3:30');
   });
 });
+
+describe('what the Outfitter changes about recovery', () => {
+  const WARD: RecoveryTerms = { priceShare: 1, wardTreatments: 1 };
+
+  function downed(level = 5): Pokemon {
+    const pokemon = new Pokemon(CHARMANDER, level);
+    pokemon.takeDamage(pokemon.maxHp);
+    return pokemon;
+  }
+
+  it('prices a better bay as a smaller share of the raid, never as a fixed time', () => {
+    for (const share of [1, 0.75, 0.5]) {
+      const prices = recoveryPrices(share);
+      expect(prices.fullBarMs).toBe(
+        Math.round((RAID_DURATION_MS * 0.22 * share) / RECOVERY_STEP_MS) * RECOVERY_STEP_MS,
+      );
+      expect(prices.fullBarMs % RECOVERY_STEP_MS).toBe(0);
+    }
+    expect(recoveryPrices(1)).toEqual({
+      fullBarMs: RECOVERY_FULL_BAR_MS,
+      reviveMs: RECOVERY_REVIVE_MS,
+      statusMs: RECOVERY_STATUS_MS,
+    });
+  });
+
+  it('makes every treatment cheaper with each bay, and never free', () => {
+    const pokemon = downed();
+    pokemon.primaryStatus = PrimaryStatus.Poison;
+    const full = recoveryCostMs(pokemon);
+    const bayOne = recoveryCostMs(pokemon, { priceShare: 0.75, wardTreatments: 0 });
+    const bayTwo = recoveryCostMs(pokemon, { priceShare: 0.5, wardTreatments: 0 });
+
+    expect(bayOne).toBeLessThan(full);
+    expect(bayTwo).toBeLessThan(bayOne);
+    expect(bayTwo).toBeGreaterThanOrEqual(full / 2);
+    // A price that rounded away would make the bay a free heal, which is the ward's offer.
+    expect(recoveryPrices(0.01).statusMs).toBe(RECOVERY_STEP_MS);
+    expect(recoveryPrices(Number.NaN)).toEqual(recoveryPrices(1));
+  });
+
+  it('keeps a faint the worst outcome at every bay level', () => {
+    for (const priceShare of [1, 0.75, 0.5]) {
+      const terms = { priceShare, wardTreatments: 0 };
+      const nearlyDown = new Pokemon(CHARMANDER, 5);
+      nearlyDown.takeDamage(nearlyDown.maxHp - 1);
+      expect(recoveryCostMs(downed(), terms)).toBeGreaterThan(recoveryCostMs(nearlyDown, terms));
+    }
+  });
+
+  it('heals and cures in a ward bed for nothing, but still charges the revive', () => {
+    const hurt = new Pokemon(CHARMANDER, 5);
+    hurt.takeDamage(hurt.maxHp - 1);
+    hurt.primaryStatus = PrimaryStatus.Burn;
+
+    expect(recoveryCostMs(hurt, WARD, true)).toBe(0);
+    expect(recoveryCostMs(downed(), WARD, true)).toBe(RECOVERY_REVIVE_MS);
+  });
+
+  it('gives the bed to whoever it saves the most on, so the listed price is the price', () => {
+    const stash = new Stash();
+    const scratched = new Pokemon(PIDGEY, 5);
+    scratched.takeDamage(1);
+    stash.addPokemon(scratched, 'scratched');
+    stash.addPokemon(downed(), 'down');
+
+    expect([...wardBedIds(pokemonNeedingRecovery(stash), WARD)]).toEqual(['down']);
+    // Treating the scratch alone does not take the bed from the worse case...
+    expect(quoteRecovery(stash, 0, ['scratched'], WARD)).toBe(recoveryCostMs(scratched));
+    const first = applyRecovery(stash, 0, ['scratched'], WARD);
+    expect(first.wardTreatmentsUsed).toBe(0);
+    // ...which then gets it, and pays only for the revive.
+    const second = applyRecovery(stash, first.pendingRecoveryMs, ['down'], WARD);
+    expect(second.wardTreatmentsUsed).toBe(1);
+    expect(second.chargedMs).toBe(RECOVERY_REVIVE_MS);
+  });
+
+  it('charges in full once the bed for this raid is used', () => {
+    const stash = new Stash();
+    stash.addPokemon(downed(), 'down');
+    const used: RecoveryTerms = { priceShare: 1, wardTreatments: 0 };
+
+    expect(quoteRecovery(stash, 0, ['down'], used)).toBe(RECOVERY_FULL_BAR_MS + RECOVERY_REVIVE_MS);
+    expect(applyRecovery(stash, 0, ['down'], used).wardTreatmentsUsed).toBe(0);
+  });
+
+  it('quotes "recover all" as exactly what it then charges, with one bed between them', () => {
+    const stash = new Stash();
+    stash.addPokemon(downed(), 'down-1');
+    stash.addPokemon(downed(), 'down-2');
+    const ids = ['down-1', 'down-2'];
+
+    const quoted = quoteRecovery(stash, 0, ids, WARD);
+    const outcome = applyRecovery(stash, 0, ids, WARD);
+    expect(outcome.chargedMs).toBe(quoted);
+    expect(outcome.wardTreatmentsUsed).toBe(1);
+    expect(quoted).toBe(RECOVERY_FULL_BAR_MS + 2 * RECOVERY_REVIVE_MS);
+  });
+});
+

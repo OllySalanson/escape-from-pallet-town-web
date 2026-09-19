@@ -279,13 +279,13 @@ describe('resolveHunterBattleLoss', () => {
       party: [securePokemon, lostPokemon],
       items: [{ itemId: 'potion' as const, quantity: 2 }],
     };
-    const secureSlot = { pokemon: securePokemon, items: [{ itemId: 'potion' as const, quantity: 1 }] };
+    const secureSlot = { pokemon: [securePokemon], items: [{ itemId: 'potion' as const, quantity: 1 }] };
     const manager = new RunManager();
     manager.startRun(loadout, { mapId: 'pallet-town', durationMs: 60_000 }, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
-      { pokemonId: 'charmander-1', items: secureSlot.items },
+      { pokemonIds: ['charmander-1'], items: secureSlot.items },
       ['charmander-1', 'charmander-2'],
       loadout.items,
     );

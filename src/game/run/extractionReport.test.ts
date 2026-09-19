@@ -26,7 +26,7 @@ describe('extraction report after a survived raid', () => {
         { itemId: 'potion', quantity: 3 },
         { itemId: 'poke-ball', quantity: 3 },
       ],
-      secure: { pokemon: starter, items: [{ itemId: 'potion', quantity: 3 }] },
+      secure: { pokemon: [starter], items: [{ itemId: 'potion', quantity: 3 }] },
     });
     const caught = new Pokemon(PIDGEY, 4);
     manager.tick(137_000);
@@ -181,7 +181,7 @@ describe('extraction report after a lost raid', () => {
         { itemId: 'potion', quantity: 3 },
         { itemId: 'poke-ball', quantity: 3 },
       ],
-      secure: { pokemon: partner, items: [{ itemId: 'potion', quantity: 3 }] },
+      secure: { pokemon: [partner], items: [{ itemId: 'potion', quantity: 3 }] },
     });
     manager.tick(RAID_DURATION_MS);
     const result = manager.resolveWipe();
@@ -335,7 +335,7 @@ describe('what the party earned', () => {
     const secured = new Pokemon(CHARMANDER, 5);
     const lost = new Pokemon(BULBASAUR, 5);
     const manager = new RunManager();
-    manager.startRun({ party: [secured, lost], items: [] }, RUN_CONFIG, { pokemon: secured });
+    manager.startRun({ party: [secured, lost], items: [] }, RUN_CONFIG, { pokemon: [secured] });
     manager.tick(120_000);
     secured.gainExperience(experienceForLevel(7) - experienceForLevel(5));
     lost.gainExperience(experienceForLevel(8) - experienceForLevel(5));

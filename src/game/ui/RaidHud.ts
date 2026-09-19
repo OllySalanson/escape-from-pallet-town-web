@@ -48,6 +48,9 @@ const CLOCK_STYLES: Readonly<Record<RaidClockTone, ChipStyle>> = {
 const HUNTER_STYLES: Readonly<Record<HunterChipTone, ChipStyle>> = {
   'lost-you': { fill: 0x9bc48f, ink: 0x16290f },
   closing: { fill: 0xb0201c, ink: 0xffe8d8 },
+  // The radio mast's standing report is furniture, not a warning, so it is the
+  // same cream as the clock it sits under until the hunter is actually near.
+  intel: { fill: WINDOW_CREAM, ink: WINDOW_INK_VALUE },
 };
 
 export interface RaidHudState {
@@ -111,7 +114,7 @@ export class RaidHud {
     if (state.hunter) {
       this.placeChip(
         this.hunterText,
-        [state.hunter.label],
+        state.hunter.detail ? [state.hunter.label, state.hunter.detail] : [state.hunter.label],
         HUNTER_STYLES[state.hunter.tone],
         1,
         (width) => ({

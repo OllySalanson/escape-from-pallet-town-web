@@ -1,4 +1,5 @@
 import type { ItemId } from '../items';
+import { outfitterSecureItemStacks, outfitterSecurePokemon } from '../hub/outfitter';
 import type { GridPosition } from '../movement/gridMovement';
 import type { RunSnapshot } from '../run/RunManager';
 import type { WorldMapId } from '../worldMap';
@@ -355,18 +356,36 @@ export function missingCarryIn(
     .filter(({ quantity }) => quantity > 0);
 }
 
-/** The secure slot before any contract has enlarged it. */
+/** The secure slot before any contract or upgrade has enlarged it. */
 export const BASE_SECURE_ITEM_STACKS = 2;
+export const BASE_SECURE_POKEMON = 1;
 
 /**
  * How many item stacks the secure slot protects for this save. The cordon
- * ledger's whole reward is this number, so it is derived from banked contracts
- * rather than stored, and a save can never disagree with the contract list.
+ * ledger's whole reward is this number, and the Outfitter's first locker is the
+ * same number again, so it is derived from what the save has banked and built
+ * rather than stored, and a save can never disagree with either list.
+ *
+ * Both sources are required. A defaulted second list reads as harmless and is
+ * not: a caller that forgot it would silently price the player's locker at
+ * nothing, and the wipe that followed would destroy a stack they paid for.
  */
-export function secureItemStackLimit(completedContractIds: readonly string[]): number {
-  return RAID_CONTRACTS.filter(
-    (contract) => contract.reward.secureItemStack && completedContractIds.includes(contract.id),
-  ).length + BASE_SECURE_ITEM_STACKS;
+export function secureItemStackLimit(
+  completedContractIds: readonly string[],
+  outfitterUpgradeIds: readonly string[],
+): number {
+  return (
+    RAID_CONTRACTS.filter(
+      (contract) => contract.reward.secureItemStack && completedContractIds.includes(contract.id),
+    ).length +
+    outfitterSecureItemStacks(outfitterUpgradeIds) +
+    BASE_SECURE_ITEM_STACKS
+  );
+}
+
+/** How many Pokemon the secure slot protects for this save. */
+export function securePokemonLimit(outfitterUpgradeIds: readonly string[]): number {
+  return BASE_SECURE_POKEMON + outfitterSecurePokemon(outfitterUpgradeIds);
 }
 
 /** Insertions every banked contract has opened, in the order they were listed. */

@@ -84,11 +84,20 @@ export function objectiveChipLines(cue: string, showDetail: boolean): readonly s
 /** Tiles between the player and the hunter at which the hunter chip appears. */
 export const HUNTER_ALERT_DISTANCE = 8;
 
-export type HunterChipTone = 'lost-you' | 'closing';
+export type HunterChipTone = 'lost-you' | 'closing' | 'intel';
 
 export interface HunterChipView {
   readonly label: string;
   readonly tone: HunterChipTone;
+  /** The radio mast's line, under whatever the chip was already saying. */
+  readonly detail?: string;
+}
+
+/** What the radio mast knows. Mirrors `HunterIntel` in `../world/hunter`. */
+export interface HunterChipIntel {
+  readonly level: number;
+  readonly teamSize: number;
+  readonly next: { readonly level: number; readonly teamSize: number; readonly inMs: number } | null;
 }
 
 export interface HunterChipInput {
@@ -99,6 +108,29 @@ export interface HunterChipInput {
   readonly distance: number | null;
   /** Compass letters from the player toward the hunter, e.g. `NW`. */
   readonly direction: string;
+  /**
+   * Present only on a raid deployed from a base with the radio mast, and only
+   * while there is still a hunter to report on.
+   */
+  readonly intel?: HunterChipIntel;
+}
+
+/** One hunter team in the fewest characters that still name it: `LV9 x2`. */
+function hunterTeamLabel(team: { readonly level: number; readonly teamSize: number }): string {
+  return `LV${team.level} x${team.teamSize}`;
+}
+
+/**
+ * The mast's one line: the next team and when, or that this is the last.
+ *
+ * It is information and nothing else - it does not slow the hunter or soften
+ * its team - so what it changes is routing: whether there is time for one more
+ * stop before the fight waiting outside gets worse.
+ */
+export function hunterIntelLine(intel: HunterChipIntel): string {
+  return intel.next === null
+    ? 'FINAL TEAM'
+    : `${hunterTeamLabel(intel.next)} IN ${formatRaidClock(intel.next.inMs)}`;
 }
 
 /**
@@ -109,6 +141,24 @@ export interface HunterChipInput {
  * quiet. This shows it whenever it is actually near, and says which way.
  */
 export function hunterChipView(input: HunterChipInput): HunterChipView | null {
+  const view = hunterContactView(input);
+  if (!input.intel) {
+    return view;
+  }
+  // With the mast the chip is never empty while a hunter is in the raid: when
+  // there is nothing nearer to say, it says who is coming. The mast's line
+  // rides under a contact warning rather than replacing it, because which way
+  // the hunter is matters more than what it is carrying.
+  return view
+    ? { ...view, detail: `${hunterTeamLabel(input.intel)}, ${hunterIntelLine(input.intel)}` }
+    : {
+      label: `HUNTER ${hunterTeamLabel(input.intel)}`,
+      tone: 'intel',
+      detail: hunterIntelLine(input.intel),
+    };
+}
+
+function hunterContactView(input: HunterChipInput): HunterChipView | null {
   if (input.searching) {
     // The subject of this chip is the hunter, not the player. `OFF TRAIL` named
     // neither and read as a warning about where the player had wandered to, when

@@ -104,6 +104,7 @@ import {
   trainerDeclinedMessage,
   trainerWatchCaption,
 } from '../world/trainerEngagement';
+import { hasHunterIntel } from '../hub/outfitter';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { tryActivatePoi } from '../world/pois';
 import {
@@ -128,6 +129,7 @@ import {
   isHunterEligibleForFirstContract,
   isHunterContactingPlayer,
   type HunterState,
+  hunterIntelFor,
 } from '../world/hunter';
 
 const STEP_DURATION_MS = 130;
@@ -1235,6 +1237,19 @@ export class WorldScene extends Phaser.Scene {
           searchRemainingMs: this.hunterState.searchRemainingMs,
           distance: this.hunterStepsAway(),
           direction: this.hunterBearing(),
+          // The radio mast reports on a hunter that is still coming or still
+          // here. One that has been beaten is out of the raid, and a line about
+          // its next team would be a warning about nothing.
+          ...(hasHunterIntel(session.outfitterUpgrades) && !this.hunterState.defeated
+            ? {
+              intel: hunterIntelFor(
+                snapshot.elapsedMs,
+                snapshot.durationMs,
+                manager.isEnraged,
+                session.plan?.hunter,
+              ),
+            }
+            : {}),
         }),
       },
       this.time.now,

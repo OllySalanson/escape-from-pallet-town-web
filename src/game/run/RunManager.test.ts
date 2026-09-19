@@ -93,7 +93,7 @@ describe('RunManager lifecycle', () => {
     manager.startRun(
       { party: [partyMember], items: [{ itemId: 'potion', quantity: 2 }] },
       { mapId: 'pallet-town', durationMs: 60_000 },
-      { pokemon: partyMember, items: [{ itemId: 'potion', quantity: 1 }] },
+      { pokemon: [partyMember], items: [{ itemId: 'potion', quantity: 1 }] },
     );
 
     manager.tick(60_000 + ENRAGE_GRACE_MS - 1);
@@ -157,7 +157,7 @@ describe('RunManager lifecycle', () => {
 
     expect(
       manager.resolveWipe({
-        pokemon: caught,
+        pokemon: [caught],
         items: [
           { itemId: 'potion', quantity: 4 },
           { itemId: 'great-ball', quantity: 1 },
@@ -187,11 +187,11 @@ describe('RunManager lifecycle', () => {
     manager.startRun(
       { party: [partyMember], items: [{ itemId: 'potion', quantity: 2 }] },
       { mapId: 'pallet-town', durationMs: 60_000 },
-      { pokemon: partyMember, items: [{ itemId: 'potion', quantity: 1 }] },
+      { pokemon: [partyMember], items: [{ itemId: 'potion', quantity: 1 }] },
     );
 
     expect(manager.snapshot().secureSlot).toEqual({
-      pokemon: partyMember,
+      pokemon: [partyMember],
       items: [{ itemId: 'potion', quantity: 1 }],
     });
     expect(manager.resolveWipe()).toMatchObject({
@@ -207,7 +207,7 @@ describe('RunManager lifecycle', () => {
     manager.startRun(
       { party: [activePokemon, securedPokemon], items: [{ itemId: 'poke-ball', quantity: 2 }] },
       { mapId: 'route-1', durationMs: 60_000 },
-      { pokemon: securedPokemon },
+      { pokemon: [securedPokemon] },
     );
 
     // BattleScene delegates any in-run all-party faint, trainer or wild, here.
@@ -224,7 +224,35 @@ describe('RunManager lifecycle', () => {
     startRun(manager);
 
     expect(() =>
-      manager.resolveWipe({ pokemon: makePokemon(CHARMANDER), items: [] }),
+      manager.resolveWipe({ pokemon: [makePokemon(CHARMANDER)], items: [] }),
     ).toThrow('secure-slot Pokemon');
+  });
+
+  it('protects as many Pokemon as the raid was configured for, and no more', () => {
+    const first = makePokemon(CHARMANDER);
+    const second = makePokemon(BULBASAUR);
+    const loadout = { party: [first, second, makePokemon(CHARMANDER)], items: [] };
+
+    expect(() =>
+      new RunManager().startRun(loadout, { mapId: 'route-1', durationMs: 60_000 }, { pokemon: [first, second] }),
+    ).toThrow('at most 1 Pokemon');
+    expect(() =>
+      new RunManager().startRun(
+        loadout,
+        { mapId: 'route-1', durationMs: 60_000, securePokemonLimit: 2 },
+        { pokemon: [first, first] },
+      ),
+    ).toThrow('same Pokemon twice');
+
+    const manager = new RunManager();
+    manager.startRun(
+      loadout,
+      { mapId: 'route-1', durationMs: 60_000, securePokemonLimit: 2 },
+      { pokemon: [first, second] },
+    );
+    expect(manager.resolveWipe()).toMatchObject({
+      bankedPokemon: [first, second],
+      lostPokemon: [loadout.party[2]],
+    });
   });
 });
