@@ -125,10 +125,11 @@ export function createIdleFigures(
 /**
  * Advances every figure by one frame.
  *
- * A beat is a step onto a neighbouring tile of the beat, or - where there is
- * nowhere to go, or the way is taken - a turn on the spot. Nothing is ever
- * forced: a figure whose only roam tile has the player standing on it simply
- * looks somewhere else and tries again next time.
+ * A beat is a step onto a neighbouring tile of the beat or a turn on the spot,
+ * drawn from the two together: a person who steps on every beat is a
+ * metronome, and one who turns as often as they walk reads as somebody waiting.
+ * Nothing is ever forced - a figure whose only roam tile has the player
+ * standing on it simply looks somewhere else and tries again next time.
  */
 export function advanceIdleFigures(
   figures: readonly IdleFigure[],
@@ -159,36 +160,32 @@ function beatFigure(
   // The whole interval again, not the overflow: a frame that ran long must not
   // make the next beat arrive early, and test mode hands the world 100ms frames.
   const untilBeatMs = figure.idle.beatMs;
-  const ways = figure.beat
+  const steps = figure.beat
     .filter((tile) => !sameTile(tile, figure.position))
     .map((tile) => ({ tile, direction: stepDirection(figure.position, tile) }))
     .filter(
       (way): way is { tile: GridPosition; direction: Direction } =>
         way.direction !== null && options.isTileFree(way.tile),
-    );
-  const way = pick(ways, options.random);
-  if (way) {
-    return {
-      figure: { ...figure, position: way.tile, facing: way.direction, untilBeatMs },
-      step: {
-        id: figure.id,
-        from: figure.position,
-        to: way.tile,
-        facing: way.direction,
-        turnedOnly: false,
-      },
-    };
+    )
+    .map((way) => ({ to: way.tile, facing: way.direction }));
+  const turns = figure.glances
+    .filter((glance) => glance !== figure.facing)
+    .map((facing) => ({ to: figure.position, facing }));
+  const beat = pick([...steps, ...turns], options.random);
+  if (!beat) {
+    // Hemmed in and already looking the only way it looks: nothing happened,
+    // so nothing is said about it.
+    return { figure: { ...figure, untilBeatMs }, step: null };
   }
-  const elsewhere = figure.glances.filter((glance) => glance !== figure.facing);
-  const facing = pick(elsewhere, options.random) ?? figure.facing;
+  const turnedOnly = sameTile(beat.to, figure.position);
   return {
-    figure: { ...figure, facing, untilBeatMs },
+    figure: { ...figure, position: beat.to, facing: beat.facing, untilBeatMs },
     step: {
       id: figure.id,
       from: figure.position,
-      to: figure.position,
-      facing,
-      turnedOnly: true,
+      to: beat.to,
+      facing: beat.facing,
+      turnedOnly,
     },
   };
 }

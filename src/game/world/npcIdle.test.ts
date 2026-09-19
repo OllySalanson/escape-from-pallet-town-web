@@ -106,6 +106,42 @@ describe('townsfolk keeping their own time', () => {
     expect(figures[0].facing).toBe('left');
   });
 
+  /**
+   * A person who steps on every beat is a metronome. Steps and turns are drawn
+   * from the same list, so a figure with one roam tile and two glances walks
+   * one beat in three.
+   */
+  it('draws its walking and its looking about from the same list', () => {
+    const rolls = [0, 0.5, 0.9];
+    let index = 0;
+    let figures = due(townsperson());
+    const beats: string[] = [];
+    for (let beat = 0; beat < rolls.length; beat += 1) {
+      const advanced = advanceIdleFigures(figures, {
+        deltaMs: 16,
+        frozen: false,
+        isTileFree: anywhere,
+        random: () => rolls[index++ % rolls.length],
+      });
+      figures = advanced.figures.map((figure) => ({ ...figure, untilBeatMs: 0 }));
+      beats.push(advanced.steps[0].turnedOnly ? `turned ${advanced.steps[0].facing}` : 'stepped');
+    }
+
+    expect(beats.filter((beat) => beat === 'stepped').length).toBe(1);
+    expect(beats.filter((beat) => beat.startsWith('turned')).length).toBe(2);
+  });
+
+  it('says nothing at all for a figure hemmed in with only one way to look', () => {
+    const { steps, figures } = advanceIdleFigures(
+      due(townsperson({ idle: { roam: [{ x: 5, y: 4 }], beatMs: 1000 } })),
+      { deltaMs: 16, frozen: false, isTileFree: () => false, random: () => 0 },
+    );
+
+    expect(steps).toEqual([]);
+    expect(figures[0].position).toEqual({ x: 4, y: 4 });
+    expect(figures[0].untilBeatMs).toBe(1000);
+  });
+
   it('turns on the spot for anyone with nowhere to drift', () => {
     const { steps, figures } = advanceIdleFigures(
       due(townsperson({ idle: { glances: ['up'], beatMs: 1000 } })),
