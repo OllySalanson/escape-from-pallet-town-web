@@ -230,10 +230,19 @@ const PROPS = {
   hut: block('hut', 13, 5, 2, 3),
   /** A round stone tower, open at the top. The beacon on the rocks. */
   tower: block('stone tower', 0, 21, 3, 7),
-  /** A roundhouse under a conical roof: the relay's own signal house. */
-  roundhouse: block('roundhouse', 3, 22, 3, 6),
-  /** A stone gatehouse with a passage through it. The way into a walled yard. */
-  gatehouse: block('gatehouse', 26, 22, 4, 6, { walkable: [[1, 5], [2, 5]] }),
+  /**
+   * A roundhouse under a conical roof: the relay's own signal house. Five rows,
+   * not six - the row beneath it on the sheet is the top of a banner.
+   */
+  roundhouse: block('roundhouse', 3, 22, 3, 5),
+  /**
+   * A stone gatehouse, towered at both ends, with an arch through it. Its piers
+   * are drawn with the water already breaking round them, so it stands in a
+   * channel rather than on a lawn - which is the only kind of gate a flooded
+   * town would have left. The arch is three wide and one deep; the wall above
+   * it is solid, so this is a door in a wall and not a tunnel through one.
+   */
+  gatehouse: block('gatehouse', 25, 22, 5, 7, { walkable: [[1, 5], [2, 5], [3, 5]] }),
   /** A cellar mouth in a stone frame: the vault's own door. */
   cellarDoors: block('cellar doors', 31, 5, 2, 2),
   /** A tunnel driven into rock. */
@@ -241,9 +250,25 @@ const PROPS = {
   /** A stone arch over a road. The south gate itself. */
   gateArch: block('gate arch', 10, 31, 4, 3, { walkable: [[1, 2], [2, 2]] }),
   /** The old stone bridge, towered at both ends, crossed down the middle. */
-  stoneBridge: block('stone bridge', 20, 29, 4, 4, {
-    walkable: [[1, 0], [2, 0], [1, 1], [2, 1], [1, 2], [2, 2], [1, 3], [2, 3]],
+  stoneBridge: block('stone bridge', 19, 28, 5, 5, {
+    // The top row is only the far parapet's crenellations: drawn over the deck
+    // they would read as a wall across the way, so the deck's three are left out.
+    holes: [[1, 0], [2, 0], [3, 0]],
+    walkable: [
+      [1, 1], [2, 1], [3, 1],
+      [1, 2], [2, 2], [3, 2],
+      [1, 3], [2, 3], [3, 3],
+      [1, 4], [2, 4], [3, 4],
+    ],
   }),
+  /** A free-standing stone arch over a road, walked through down the middle. */
+  stoneArch: block('stone arch', 24, 31, 4, 3, { walkable: [[1, 2], [2, 2]] }),
+  /** A small columned shrine. Somewhere people left things. */
+  shrine: block('shrine', 6, 22, 2, 2),
+  /** A figure on a plinth, taller than anyone standing beside it. */
+  statue: block('statue', 10, 22, 1, 4),
+  /** A timber-framed mouth driven into a bank. */
+  mineMouth: block('mine mouth', 7, 27, 2, 2),
 
   // --- Structures -----------------------------------------------------------
   /** A footbridge you walk across, laid north to south. */
@@ -254,17 +279,30 @@ const PROPS = {
   bridgeHorizontal: block('footbridge', 8, 6, 3, 3, {
     walkable: [[1, 1], [1, 2], [2, 1], [2, 2]],
   }),
-  fountain: block('fountain', 26, 9, 3, 3),
-  wellHead: block('well', 33, 3, 2, 2),
+  // An animation strip of 3x3 frames at columns 22, 25 and 28; starting on 26
+  // drew the right two thirds of one frame and the left third of the next.
+  fountain: block('fountain', 25, 9, 3, 3),
+  /** A trapdoor in a stone frame, flat on the ground, with a ring to lift it by. */
+  trapdoor: block('cellar trapdoor', 33, 3, 2, 2),
+  /** The same trapdoor thrown open on the dark under it. */
+  trapdoorOpen: block('open trapdoor', 35, 3, 2, 2),
+  /** A plank jetty, walked out along. */
+  jetty: block('jetty', 26, 5, 2, 3, {
+    walkable: [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [1, 2]],
+  }),
   /** A market stall under a striped awning, open at the front. */
   marketStall: block('market stall', 18, 22, 5, 4, {
     holes: [[1, 3], [2, 3], [3, 3]],
   }),
   stallCounter: block('stall counter', 21, 20, 5, 2),
   produceStall: block('produce stall', 23, 20, 3, 2),
+  /** Four crates of produce in a row - what a stall puts out the front. */
+  produce: block('produce crates', 26, 20, 4, 2),
   haystack: block('haystack', 31, 3, 2, 2),
   /** A banner on a pole - the relay flew them along the causeway. */
-  banner: block('banner', 5, 27, 2, 2),
+  banner: block('banner', 5, 27, 1, 2),
+  /** Two of them side by side, for either hand of a gate. */
+  bannerPair: block('banners', 5, 27, 2, 2),
   flag: block('flag', 4, 29, 2, 2),
 
   // --- Growing things -------------------------------------------------------
@@ -291,16 +329,20 @@ const PROPS = {
 
   // --- Things people left ---------------------------------------------------
   signpost: block('sign', 34, 2, 1, 1),
-  signboard: block('notice board', 35, 2, 2, 1),
-  barrel: block('barrel', 33, 1, 1, 1),
-  barrelPair: block('barrels', 33, 1, 2, 1),
+  signboard: block('notice board', 35, 2, 1, 1),
+  // Two tall on the sheet - a lid over a body. One row of it is a barrel with
+  // its top sawn off.
+  barrel: block('barrel', 33, 0, 1, 2),
+  barrelPair: block('barrels', 33, 0, 2, 2),
   crate: block('crate', 30, 0, 1, 2),
   cratePair: block('crates', 30, 0, 2, 2),
   crateStack: block('crates', 35, 8, 2, 2),
+  // Three crates, not four: the sheet's fourth cell is a piece of stone wall.
+  crateTower: block('crates', 30, 0, 2, 3, { holes: [[0, 2]] }),
   sack: block('sack', 32, 0, 1, 1),
   mooringPost: block('mooring post', 36, 0, 1, 2, { holes: [[0, 0]] }),
   bench: block('bench', 28, 4, 3, 2),
-  potPlant: block('planter', 32, 1, 1, 1),
+  potPlant: block('planter', 32, 1, 1, 2),
   flowersWhite: block('flowers', 3, 11, 1, 1, { walkable: [[0, 0]] }),
   flowersWide: block('flowers', 3, 12, 1, 1, { walkable: [[0, 0]] }),
 } as const satisfies Record<string, PropDefinition>;

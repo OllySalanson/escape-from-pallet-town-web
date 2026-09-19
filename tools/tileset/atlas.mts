@@ -16,6 +16,7 @@ import { OVERWORLD_TILESET } from '../../src/game/world/tileset/overworldTileset
 import { CLASSIC_TILESET } from '../../src/game/world/tileset/classicTileset';
 import { POKEMON_GROUND_TILESET } from '../../src/game/world/tileset/pokemonGround';
 import { FRLG_TILESET } from '../../src/game/world/tileset/frlgTileset';
+import { FLOOD_TOWN_TILESET } from '../../src/game/world/tileset/floodTownTileset';
 import { MATERIALS, type Material } from '../../src/game/world/tileset/materials';
 
 const CATALOGUES = {
@@ -23,6 +24,7 @@ const CATALOGUES = {
   overworld: OVERWORLD_TILESET,
   classic: CLASSIC_TILESET,
   'pokemon-ground': POKEMON_GROUND_TILESET,
+  'flood-town': FLOOD_TOWN_TILESET,
 } as const;
 
 const [, , which = 'overworld', target = 'atlas.png'] = process.argv;

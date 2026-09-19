@@ -30,8 +30,10 @@ export const OVERWORLD = tileReader(
 /**
  * Every image the loader has to fetch, whatever any one map uses.
  *
- * The FireRed/LeafGreen sheet numbers itself from 2000, declared beside its own
- * catalogue because that is where its dimensions are known.
+ * The FireRed/LeafGreen sheet numbers itself, declared beside its own catalogue
+ * because that is where its dimensions are known. Any catalogue may compose any
+ * of these, so no two spans here may overlap - `catalogue.test.ts` holds that
+ * for the whole list rather than for the catalogues that happen to exist.
  */
 export const TILE_SOURCES: readonly TileSource[] = [
   CLASSIC.source,

@@ -39,7 +39,11 @@ const SHEET = tileReader(
     columns: FRLG_SHEET_COLUMNS,
     rows: FRLG_SHEET_ROWS,
   },
-  2000,
+  // Clear of `Overworld.png`, which is numbered from 1000 and is 1440 tiles
+  // long. This was 2000, which put every Overworld tile from row 25 down - the
+  // stone tower's base, the gatehouse, both stone bridges - inside this sheet's
+  // span, so they drew as sand and treetops the first time a map used both.
+  3000,
 );
 
 const index = (cell: SheetCell): number => SHEET.source.firstIndex + frlgTileIndex(cell);
