@@ -7,6 +7,8 @@ import {
   type GridInputState,
   type GridPosition,
 } from '../movement/gridMovement';
+import { PressLatch } from '../movement/pressLatch';
+import { advanceStepClock } from '../movement/stepClock';
 import {
   CHARACTER_FEET_PIXEL_Y,
   CHARACTER_HEAD_PIXEL_Y,
@@ -145,7 +147,6 @@ import {
   hunterIntelFor,
 } from '../world/hunter';
 
-const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 /** Hair to soles, inclusive: the part of a figure's frame that is drawn on. */
@@ -304,6 +305,14 @@ export class WorldScene extends Phaser.Scene {
   private targetTile: GridPosition | null = null;
   private facing: Direction = 'down';
   private stepProgress = 0;
+  /**
+   * Game time the last finished step did not need, or null when the last frame
+   * finished no step. It belongs to the step the very next frame begins and to
+   * nothing else, so `update` takes it on entry and any frame that does something
+   * other than walk on lets it go.
+   */
+  private stepCarryMs: number | null = null;
+  private readonly directionPresses = new PressLatch<Direction>();
   private isWarping = false;
   private extractionMarkers: Array<{
     readonly point: ExtractionPoint;
@@ -417,6 +426,8 @@ export class WorldScene extends Phaser.Scene {
     this.isWarping = false;
     this.targetTile = null;
     this.stepProgress = 0;
+    this.stepCarryMs = null;
+    this.directionPresses.clear();
     this.facing = 'down';
     this.caughtPokemonStash = [];
     this.extractionMarkers = [];
@@ -549,6 +560,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   public update(_time: number, deltaMs: number): void {
+    const stepCarryMs = this.stepCarryMs;
+    this.stepCarryMs = null;
     this.containWorldLabels();
     if (Phaser.Input.Keyboard.JustDown(this.controls.objectives)) {
       this.openObjectives();
@@ -604,15 +617,15 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    const input = this.readInput();
     const decision = planNextGridStep({
       position: this.currentTile,
       facing: this.facing,
-      input: this.readInput(),
+      input,
       bounds: this.bounds,
       isBlocked: (tile) => this.isBlocked(tile),
     });
 
-    const input = this.readInput();
     const pushing = input.up || input.down || input.left || input.right;
     const bump = nextBump(this.pushingAgainst, !decision.target && pushing ? decision.facing : null);
     this.pushingAgainst = bump.pushingAgainst;
@@ -623,6 +636,11 @@ export class WorldScene extends Phaser.Scene {
 
     if (decision.target) {
       this.beginStep(decision.target);
+      // Walking on from a step that ended part-way through the last frame: this
+      // one started then, not now. A step begun from rest starts from nothing.
+      if (stepCarryMs !== null) {
+        this.advanceStep(deltaMs + stepCarryMs);
+      }
       return;
     }
 
@@ -1366,6 +1384,7 @@ export class WorldScene extends Phaser.Scene {
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
       ],
     };
+    this.latchDirectionPresses();
   }
 
   private configureCamera(): void {
@@ -1378,19 +1397,44 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true);
   }
 
+  /**
+   * A direction counts if its key is down, or went down in the events this frame
+   * processed - see `PressLatch` for the tap that was otherwise never seen.
+   */
   private readInput(): GridInputState {
+    const frame = this.currentFrame();
     const held = (key: Phaser.Input.Keyboard.Key): boolean => this.spentPresses.isFreshlyDown(key);
+    const tapped = (direction: Direction): boolean =>
+      this.directionPresses.wasPressedOn(direction, frame);
     return {
-      up: held(this.controls.up) || held(this.controls.w),
-      down: held(this.controls.down) || held(this.controls.s),
-      left: held(this.controls.left) || held(this.controls.a),
-      right: held(this.controls.right) || held(this.controls.d),
+      up: held(this.controls.up) || held(this.controls.w) || tapped('up'),
+      down: held(this.controls.down) || held(this.controls.s) || tapped('down'),
+      left: held(this.controls.left) || held(this.controls.a) || tapped('left'),
+      right: held(this.controls.right) || held(this.controls.d) || tapped('right'),
     };
   }
 
   private get directionKeys(): readonly Phaser.Input.Keyboard.Key[] {
     const { up, down, left, right, w, a, s, d } = this.controls;
     return [up, down, left, right, w, a, s, d];
+  }
+
+  private currentFrame(): number {
+    return this.game.loop.frame;
+  }
+
+  private latchDirectionPresses(): void {
+    const keys: Record<Direction, readonly Phaser.Input.Keyboard.Key[]> = {
+      up: [this.controls.up, this.controls.w],
+      down: [this.controls.down, this.controls.s],
+      left: [this.controls.left, this.controls.a],
+      right: [this.controls.right, this.controls.d],
+    };
+    for (const direction of Object.keys(keys) as Direction[]) {
+      for (const key of keys[direction]) {
+        key.on('down', () => this.directionPresses.press(direction, this.currentFrame()));
+      }
+    }
   }
 
   private isInteractionPressed(): boolean {
@@ -1748,7 +1792,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private advanceStep(deltaMs: number): void {
-    this.stepProgress = Math.min(1, this.stepProgress + deltaMs / STEP_DURATION_MS);
+    const tick = advanceStepClock(this.stepProgress, deltaMs);
+    this.stepProgress = tick.progress;
 
     this.setPlayerPosition(
       Phaser.Math.Linear(this.stepStart.x, this.stepEnd.x, this.stepProgress),
@@ -1759,6 +1804,7 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    this.stepCarryMs = tick.overflowMs;
     const steppedFrom = this.currentTile;
     this.currentTile = { ...this.targetTile };
     this.targetTile = null;

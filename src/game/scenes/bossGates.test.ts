@@ -13,6 +13,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 class FakeKey {
   public isDown = false;
   public justDown = false;
+  private readonly listeners: Array<() => void> = [];
+  public on(_event: string, listener: () => void): this {
+    this.listeners.push(listener);
+    return this;
+  }
+  /** A press that is down and up again before any frame reads the key. */
+  public tap(): void {
+    this.listeners.forEach((listener) => listener());
+  }
 }
 
 vi.mock('phaser', () => ({
@@ -143,6 +152,7 @@ const attachSceneStubs = (scene: WorldScene): void => {
         worldView: { left: 0, right: BASE_STAGE_WIDTH },
       },
     },
+    game: { loop: { frame: 0 } },
     input: {
       keyboard: {
         addCapture: vi.fn(),

@@ -118,6 +118,7 @@ describe('game start flow', () => {
       setDepth: vi.fn().mockReturnThis(),
       setPosition: vi.fn().mockReturnThis(),
     };
+    const key = (): { isDown: boolean; on: () => void } => ({ isDown: false, on: vi.fn() });
     const world = new WorldScene();
     Object.assign(world as unknown as Record<string, unknown>, {
       add: {
@@ -159,9 +160,9 @@ describe('game start flow', () => {
       input: {
         keyboard: {
           addCapture: vi.fn(),
-          addKey: vi.fn(),
-          addKeys: vi.fn(() => ({})),
-          createCursorKeys: vi.fn(() => ({})),
+          addKey: vi.fn(key),
+          addKeys: vi.fn(() => ({ W: key(), A: key(), S: key(), D: key() })),
+          createCursorKeys: vi.fn(() => ({ up: key(), down: key(), left: key(), right: key() })),
         },
       },
       make: {

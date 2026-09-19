@@ -41,8 +41,9 @@ const GATE_STATES: readonly (readonly [string, WorldMapId, readonly string[]])[]
 );
 
 /**
- * The pessimistic tile cost. `raidClock.ts` records ~0.17s at 60fps and ~0.23s
- * measured in a headless browser; the window has to hold at the slower one.
+ * The pessimistic tile cost. A held walk is `STEP_DURATION_MS` (0.15s) a tile; a
+ * player who taps their way out, or turns at every corner, pays about half as
+ * much again, and the window has to hold for them.
  */
 const SLOW_STEP_MS = 230;
 

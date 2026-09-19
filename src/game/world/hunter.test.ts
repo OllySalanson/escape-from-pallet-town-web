@@ -1,3 +1,4 @@
+import { STEP_DURATION_MS } from '../movement/stepClock';
 import { describe, expect, it } from 'vitest';
 import { Pokemon } from '../pokemon';
 import { CHARMANDER } from '../pokemon/species';
@@ -445,10 +446,10 @@ describe('breaking contact with the hunter', () => {
 
 /**
  * One overworld step, in the exact order WorldScene.advanceStep runs it: contact check,
- * pursuit, contact check. The 130ms is STEP_DURATION_MS, so the search window is spent
+ * pursuit, contact check. A step is STEP_DURATION_MS, so the search window is spent
  * at the rate a walking player actually spends it.
  */
-const WORLD_STEP_MS = 130;
+const WORLD_STEP_MS = STEP_DURATION_MS;
 
 const simulateWorldSteps = (
   initialState: ReturnType<typeof createHunterState>,
@@ -525,7 +526,9 @@ describe('a raid where the player flees and then walks', () => {
       open,
     );
 
-    expect(windowSteps).toBe(115);
+    // 15s at the 0.15s a walked tile really costs. This read 115 while the step was
+    // timed at its 130ms of animation alone, which no frame rate ever delivered.
+    expect(windowSteps).toBe(100);
     expect(held.engagedAtStep).toBeNull();
   });
 
@@ -559,7 +562,8 @@ describe('a raid where the player flees and then walks', () => {
       2,
     );
 
-    expect(chase.engagedAtStep).toBe(windowSteps + 2);
+    // The step the window runs out on, and one more to cross the breakaway gap.
+    expect(chase.engagedAtStep).toBe(Math.ceil(HUNTER_SEARCH_MS / WORLD_STEP_MS) + 1);
   });
 
   it('does not make the hunter permanently harmless', () => {
