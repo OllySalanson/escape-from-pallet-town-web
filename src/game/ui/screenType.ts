@@ -20,11 +20,18 @@
  * 11px matches 8px, to the pixel.
  */
 
+/**
+ * They are also sizes the face survives at as hard-edged pixels. `pixelText.ts`
+ * sets every glyph as a one-bit bitmap, and below 12px Orange Kid's strokes are
+ * too thin to come through that whole: at 11px a `W` read as a `V` and `whom` as
+ * `vhcm`. Nothing on a canvas is set smaller than `CHIP_FONT_SIZE`.
+ */
+
 /** The raid clock: the one number that has to be readable at a glance. */
-export const CLOCK_FONT_SIZE = '12px';
+export const CLOCK_FONT_SIZE = '14px';
 
 /** Screen furniture - the objective and hunter chips. */
-export const CHIP_FONT_SIZE = '11px';
+export const CHIP_FONT_SIZE = '12px';
 
 /** World annotation. The same size as a chip, because it is read the same way. */
 export const CAPTION_FONT_SIZE = CHIP_FONT_SIZE;

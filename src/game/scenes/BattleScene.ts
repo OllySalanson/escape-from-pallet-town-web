@@ -50,6 +50,7 @@ import { Bag, type ItemDefinition } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { GAME_FONT } from '../ui/gameFont';
+import { CAPTION_FONT_SIZE } from '../ui/screenType';
 import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
@@ -109,7 +110,9 @@ const BATTLEFIELD_HEIGHT = BASE_STAGE_HEIGHT;
 const GRASS_BACKDROP_WIDTH = 257;
 const BANNER_TEXT_STYLE = {
   fontFamily: BATTLE_FONT,
-  fontSize: '8px',
+  // The smallest size the face survives as hard-edged pixels: at 8px its stems
+  // are under two thirds of a pixel and `WILD NORMAL` came out `WILC NCRMAL`.
+  fontSize: CAPTION_FONT_SIZE,
   color: '#f8fafc',
   stroke: '#0f172a',
   strokeThickness: 3,
@@ -314,7 +317,7 @@ export class BattleScene extends Phaser.Scene {
       },
       indicatorStyle: {
         fontFamily: BATTLE_FONT,
-        fontSize: '10px',
+        fontSize: CAPTION_FONT_SIZE,
         color: WINDOW_INK,
       },
       onComplete: () => this.onMessagesComplete(),
@@ -438,10 +441,10 @@ export class BattleScene extends Phaser.Scene {
     // Both banners float over the battlefield art, so they carry a dark outline
     // rather than relying on whatever happens to be behind them.
     this.enemyBannerText = this.add
-      .text(16, 4, combatantBanner(this.trainer ? 'RIVAL' : 'WILD', getCombatantTypes(this.state.enemy)), BANNER_TEXT_STYLE)
+      .text(16, 1, combatantBanner(this.trainer ? 'RIVAL' : 'WILD', getCombatantTypes(this.state.enemy)), BANNER_TEXT_STYLE)
       .setDepth(7);
     this.playerBannerText = this.add
-      .text(150, 96, combatantBanner('YOUR POKéMON', getCombatantTypes(this.state.player)), BANNER_TEXT_STYLE)
+      .text(150, 89, combatantBanner('YOUR POKéMON', getCombatantTypes(this.state.player)), BANNER_TEXT_STYLE)
       .setDepth(7);
   }
 
@@ -490,7 +493,7 @@ export class BattleScene extends Phaser.Scene {
         statusAbbreviation(combatant.primaryStatus, combatant.confusionTurns) ?? '',
         {
           fontFamily: BATTLE_FONT,
-          fontSize: '10px',
+          fontSize: CAPTION_FONT_SIZE,
           color: '#9b1c1c',
         },
       )
@@ -606,7 +609,7 @@ export class BattleScene extends Phaser.Scene {
           // No fixed width here: guidance must never be silently truncated.
           const text = this.add.text(layout.x, COMMAND_Y + layout.y, '', {
             fontFamily: BATTLE_FONT,
-            fontSize: '10px',
+            fontSize: CAPTION_FONT_SIZE,
             color: PANEL_GUIDANCE_INK,
           });
           this.commandContainer.add(text);
@@ -670,7 +673,7 @@ export class BattleScene extends Phaser.Scene {
         }),
         {
           fontFamily: BATTLE_FONT,
-          fontSize: '11px',
+          fontSize: CAPTION_FONT_SIZE,
           color: this.partyMessage ? PANEL_REFUSAL_INK : PANEL_GUIDANCE_INK,
         },
       ),
@@ -679,7 +682,7 @@ export class BattleScene extends Phaser.Scene {
       const layout = partyRowLayout(index);
       const text = this.add.text(layout.x, COMMAND_Y + layout.y, formatPartyRow(pokemon), {
         fontFamily: BATTLE_FONT,
-        fontSize: '11px',
+        fontSize: CAPTION_FONT_SIZE,
         color: pokemon.isFainted ? PANEL_REFUSAL_INK : WINDOW_INK,
       });
       text

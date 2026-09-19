@@ -82,7 +82,7 @@ export class TitleScene extends Phaser.Scene {
         align: 'center',
         color: '#9bb4c6',
         fontFamily: GAME_FONT,
-        fontSize: '11px',
+        fontSize: '12px',
       })
       .setOrigin(0.5);
   }
