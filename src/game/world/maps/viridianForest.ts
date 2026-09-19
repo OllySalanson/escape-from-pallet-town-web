@@ -149,27 +149,31 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
   // of it moves a trail: what is planted stands on the thicket round a
   // clearing, never in the way through it.
   //
-  // THE CROSSROADS is the one place in the wood where worn ground crosses: a
-  // cross of trodden earth, two wide as the sheet requires, its arms reaching
-  // up each trail as far as they can while every trail still ends in grass -
-  // the forest's rule is that nothing is reached dry, and the arms stop short
-  // of breaking it.
-  map.draw(10, 10, [
+  // THE CROSSROADS is the one place in the wood where worn ground crosses:
+  // trodden earth, two wide as the sheet requires, and each arm sets off up its
+  // own trail - the north one turning east for the tower as the trail does -
+  // for as far as it can while every trail still ends in grass. The forest's
+  // rule is that nothing is reached dry, and the arms stop short of breaking
+  // it. Drawn first as a square plus, a second stranger called it a helipad:
+  // a crossing has to be seen going somewhere.
+  map.draw(10, 9, [
+    '   ,,,, ',
+    '   ,,,, ',
     '   ,,   ',
     '   ,,   ',
-    '   ,,   ',
-    ' ,,,,,, ',
-    ' ,,,,,, ',
+    ',,,,,,,,',
+    ',,,,,,,,',
     '   ,,   ',
     '   ,,   ',
   ]);
 
   // BEETLE HOLLOW is a rotten trunk lying across the hollow with the stumps of
   // what fell round it - the log leaves the east side open, where the trails
-  // pass. WARDEN'S CUT is what the warden cut: the great stump (it stood one
-  // clearing south, under DEEP STAND's plate, and the stranger filed it here
-  // anyway) and the small ones on the rim. They stand on the rim so that Ivy's
-  // hub keeps every way round her.
+  // pass. WARDEN'S CUT is what the warden cut: the great stump, which stood one
+  // clearing south under DEEP STAND's plate and was filed here by everyone who
+  // saw it anyway. It stands on the rim so that Ivy's hub keeps every way round
+  // her, and alone: small stumps on that rim read as rocks, one of them
+  // sitting on the head of anybody walking the east trail.
   map.draw(1, 7, [
     '  .  .',
     '     .',
@@ -187,22 +191,18 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
   map.plant(2, 12, 'stump');
   map.plant(4, 12, 'deadStump');
 
-  map.draw(15, 16, [
-    '  .  . ',
-    '      .',
-    '..     ',
-    '..    .',
-  ]);
+  map.draw(15, 18, ['..', '..']);
   map.plant(15, 18, 'bigStump');
-  map.plant(17, 16, 'stump');
-  map.plant(20, 16, 'deadStump');
-  map.plant(21, 17, 'stump');
-  map.plant(21, 19, 'deadStump');
 
   // EAST RISE is a rise: the sheet's ledge runs under its brow, either side of
-  // the trail that climbs to it. Nothing hops down a ledge in this game, so it
-  // stands a row below the clearing with the thicket left along its top.
-  map.draw(23, 24, ['<===> <>']);
+  // the trail that climbs to it, with a rail along the top as the Overlook has.
+  // Nothing hops down a ledge in this game, so the rail and the ledge stand on
+  // what was thicket, a row and two rows below the clearing, and nobody can get
+  // on top of either. Without the rail it read as a brown stripe in the hedge.
+  map.draw(23, 23, [
+    '  FFF FF',
+    '<===> <>',
+  ]);
 
   // DEEP STAND is the solid stand of broadleaves south-west of its clearing -
   // what a player calls deep whatever a plate says, so `../districts.ts` puts

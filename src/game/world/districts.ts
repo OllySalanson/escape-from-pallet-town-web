@@ -237,13 +237,14 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'forest-beetle-hollow',
     mapId: 'viridian-forest',
     name: 'BEETLE HOLLOW',
-    areas: [{ x: 0, y: 8, width: 11, height: 9 }],
+    areas: [{ x: 0, y: 8, width: 10, height: 9 }],
   },
   {
     id: 'forest-crossroads',
     mapId: 'viridian-forest',
     name: 'THE CROSSROADS',
-    areas: [{ x: 11, y: 8, width: 9, height: 9 }],
+    // From x10: the west arm of the crossing is the Crossroads', all of it.
+    areas: [{ x: 10, y: 8, width: 10, height: 9 }],
   },
   {
     // The name stands on the ground that looks it: the solid block of
