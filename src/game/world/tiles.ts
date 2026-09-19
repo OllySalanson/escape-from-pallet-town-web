@@ -188,7 +188,7 @@ export function buildMapLayers(
   }
 
   applyShoreline(sketch, catalogue, surface, ground);
-  plantProps(sketch, catalogue, detail, canopy, collision);
+  plantProps(sketch, catalogue, detail, canopy, collision, tallGrass);
 
   return { ground, overlay, detail, canopy, collision, tallGrass };
 }
@@ -247,6 +247,7 @@ function plantProps(
   detail: TileLayer,
   canopy: TileLayer,
   collision: boolean[][],
+  tallGrass: boolean[][],
 ): void {
   for (const planted of sketch.props()) {
     const prop = catalogue.props[planted.name];
@@ -269,8 +270,18 @@ function plantProps(
         // A canopy is drawn *over* the figures, so a figure can be under it:
         // the crown of a tree may never also be a wall. Enforced here rather
         // than trusted to each catalogue, because the two contradict silently.
-        if (cell.solid && !cell.canopy) {
-          collision[y][x] = true;
+        if (cell.canopy) {
+          continue;
+        }
+        // Anything else a landmark draws is the last word on its own tile. A
+        // solid cell is a wall; a cell the catalogue marks as one you may stand
+        // on is ground, whatever is under it - the deck of a bridge is laid
+        // over water, and a deck the river still blocked is a drawing of a
+        // bridge. Crowns are left out above for the opposite reason: they hang
+        // over things, and a tree on the map's edge must not open the edge.
+        collision[y][x] = cell.solid;
+        if (!cell.solid) {
+          tallGrass[y][x] = false;
         }
       }
     }

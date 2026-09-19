@@ -215,17 +215,20 @@ export const FRLG_TILESET: TilesetCatalogue<FrlgPropName> = {
   materials: {
     grass: {
       roles: { fill: index(FRLG_TILES.GRASS) },
-      // Three accents, spent sparingly: a sheet's variants used evenly read as
-      // noise, which is its own kind of generated.
-      fillVariants: [
-        index(FRLG_TILES.GRASS_TUFTED),
-        index(FRLG_TILES.GRASS_FLOWERS),
-        index(FRLG_TILES.GRASS_PLANT),
-      ],
+      // Two accents, spent sparingly: a sheet's variants used evenly read as
+      // noise, which is its own kind of generated. The spiky plant is not one
+      // of them - see `tall-grass`.
+      fillVariants: [index(FRLG_TILES.GRASS_TUFTED), index(FRLG_TILES.GRASS_FLOWERS)],
       variantRarity: 11,
     },
     turf: ground(FRLG_MATERIALS.TURF),
-    'tall-grass': nineSlice(FRLG_NINE_SLICES.TALL_GRASS),
+    // The sheet's own tall-grass nine-slice is a raised bed with a clipped lip:
+    // standing in a map it reads as topiary, and nobody walks into a hedge. The
+    // spiky plant is what encounter grass looks like, and as a plain fill it
+    // takes any shape, so a marsh can be drawn as a marsh. It means this and
+    // nothing else - scattered on safe grass as an accent it would make safe
+    // ground look like ground that costs a fight.
+    'tall-grass': { roles: { fill: index(FRLG_TILES.GRASS_PLANT) } },
     earth: ground(FRLG_MATERIALS.DIRT),
     sand: ground(FRLG_MATERIALS.SAND),
     // Beach is drawn against surf rather than grass, so it belongs at the

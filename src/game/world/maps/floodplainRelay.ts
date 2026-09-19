@@ -148,25 +148,27 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // out into it. East along the shore the old causeway goes under: three tiles
   // of deep water, the stones showing, and the keep's tower on the far side.
   map.draw(3, 3, [
-    '.....................................',
-    '..t..t...........t.........t..t..t...',
-    '....................,,,..............',
-    '.##......,,,,.......,,,.#..C.........',
-    '.##.t....,,,,,,,,,,,,,,.#.....MMMMMMM',
-    '.....#...,,,#,,,,#,,,,,,,,,,,,MMMMMMM',
-    '..t..#.,,,,,#,,,,#,,..t..MMMMMMM.t...',
-    '.....#.,,..........,,....MWWWWWWM....',
-    '.##....,,.t..##..t.,,.#..MWWWWWWM.t..',
-    '.##.t..,,....##....,,.#..MWWWWWWM....',
-    '.......,,..........,,....MWWWWWWM....',
+    '....................................C',
+    '.t..t..t..t..t..t..t..t..t..t..t..t.C',
+    '.............########...............C',
+    '.t..t..t.....########......t..t..t..C',
+    '.............,,,,,,,,....,MMMMMMMMMMM',
+    '.t..t..t.....,,,,,,,,....,MMMMMMMMMMM',
+    '....,,,,,,,,,,,,,,,,,....,MMMMMMMMMMM',
+    '....,,,,,,,,,,,,,,,,,,,,,,MMWWWWWWMMM',
+    '....,,.........t..........MMWWWWWWMMM',
+    '.t..,,.t..t..t....t..t..t.MMWWWWWWMMC',
+    '....,,....................CMWWWWWWMCC',
   ]);
-  map.plant(10, 3, 'building');
-  map.plant(23, 3, 'barn');
+  map.plant(12, 5, 'building');
+  map.plant(24, 5, 'barn');
   map.plant(32, 10, 'jetty');
-  map.plant(14, 9, 'cratePair');
-  map.plant(25, 10, 'barrelPair');
-  map.plant(36, 11, 'mooringPost');
-  map.plant(11, 8, 'signboard');
+  map.plant(33, 7, 'crateStack');
+  map.plant(17, 7, 'cratePair');
+  map.plant(20, 7, 'barrel');
+  map.plant(30, 8, 'barrelPair');
+  map.plant(37, 10, 'mooringPost');
+  map.plant(11, 9, 'signboard');
 
   // == THE REEDBEDS - the west bank ========================================
   // The shore road runs down the river side, straight enough to be quick and
@@ -174,200 +176,207 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // between them, and the ranger's hut sits where the two ways part.
   map.draw(3, 14, [
     '....,,..................',
-    '.t..,,...t..##..t..,,,..',
-    '....,,......##.....,,,..',
-    '.gggg,,,,,,,,,,,,,,,,,..',
-    '.gggg.....#....t...,,.C.',
-    '.gggg.##..#........,,...',
-    '......##.gggg.##...,,,..',
-    '..t......gggg.##.t..,,..',
-    '.....ggg.gggg.......,,.C',
-    '.##..ggg......#.ggg.,,..',
-    '.##..ggg..t...#.ggg.,,..',
-    '..........#...#.ggg.,,,.',
-    '.gggg.##..#.........,,,.',
-    '.gggg.##....t..##..,,,..',
-    '.gggg.......#..##..,,...',
+    '.t..,,.t..t..t..t..t..t.',
+    '....,,,,,,,,,,..........',
+    '.ggg...ggg,,,,..t..t..t.',
+    'gggggCgggg..,,,.........',
+    'ggggg.ggggg.,,,,,,,,,,..',
+    '.gggg..gggggg.ggg...,,.C',
+    '.t.ggg..ggggggggg.C.,,..',
+    '...gggg...gggggg....,,.C',
+    '.C.ggggg.t..ggggg...,,,.',
+    '...ggggggg...gggg.C..,,.',
+    '.gggggggggg.ggggg....,,.',
+    '.ggggg.ggggggggg...t.,,.',
+    '...,,................,,.',
+    '.t.,,..t..t..t..t...,,,.',
   ]);
-  map.plant(9, 18, 'hut');
+  map.plant(12, 16, 'hut');
   map.plant(21, 24, 'signboard');
 
   // == MARKET ISLE - the middle of the river ===============================
-  // The square, paved and still standing. The fountain is what you steer by
-  // from any shore, and the two bridges leave the north side together: the
-  // plank one goes home, the towered one goes east and is held.
+  // The square, paved and still standing. Two bridges leave its north shore
+  // side by side - the plank one goes home, the towered one goes east and is
+  // held - and whoever comes off either finds the fountain in front of them.
   map.draw(22, 32, [
-    '.,,..#....MMM...',
-    '.,,..#.PPPMMMP#.',
-    '.,,PPPPPPPPPPP#.',
-    '#.PPPPPPPPPPPP..',
-    '#.PP...PPPP.PP.#',
-    'wwPP...PPPP.PPww',
-    'wwPPPPPPPPPPPPww',
-    '#.PPPPP.PPPPPP.#',
-    '#..PPPP.PPPP....',
-    '.t...PPPPP...t..',
-    '......PPP.......',
-    '.##...,,,...##..',
+    '.,,,,####,,,,,..',
+    '.,,,,####,,,,,..',
+    '..PPPPPPPPPPPP..',
+    '#.PPPPPPPPPPPP.#',
+    '#.PPPPPPPPPPPP.#',
+    ',,PPPPPPPPPPPP,,',
+    ',,PPPPPPPPPPPP,,',
+    '#.PPPPPPPPPPPP.#',
+    '#..PPPPPPPPPP..#',
+    '.t...PPPPPP..t..',
+    '...............C',
+    '.t..t..t..t..t.C',
   ]);
   map.plant(23, 28, 'bridge');
   map.plant(31, 28, 'stoneBridge');
-  map.plant(26, 36, 'stoneFountain');
-  map.plant(30, 33, 'marketStall');
-  map.plant(33, 36, 'produce');
-  map.plant(29, 40, 'bench');
-  map.plant(24, 39, 'barrel');
-  map.plant(36, 40, 'banner');
+  map.plant(26, 34, 'stripedStall');
+  map.plant(31, 37, 'stoneFountain');
+  map.plant(24, 39, 'produce');
+  map.plant(28, 40, 'bench');
+  map.plant(34, 35, 'potPlant');
+  map.plant(36, 39, 'banner');
 
-  // The fords either side of the isle, carried across the arms.
+  // The ford to Old Town. The one to the orchard is `gates.ts`'s to open.
   map.draw(19, 37, ['www', 'www']);
-  map.draw(38, 37, ['www', 'www']);
 
   // == OLD TOWN - the south-west ===========================================
-  // The street the water came up. Houses either side of it, the green with
-  // the shrine on it, and the road on south to the gate.
+  // The street the water came up: two houses with their front hedges, the old
+  // tree the street has always gone round, and the green with the shrine.
   map.draw(3, 29, [
-    '..,,............',
-    '.t.,,..t...##.t.',
-    '...,,......##...',
-    '.#.,,,,,,,,,,,,.',
-    '.#.,,.......,,,,',
-    '...,,.......,,..',
-    '.t.,,..t....,,#.',
-    '...,,,,,,,,,,,#.',
-    '.#.,,""""..,,,,,',
-    '.#.,,""""..,,..,',
-    '...,,""""#.,,.t.',
-    '.t.,,....#.,,...',
-    '...,,,,,,,,,,.#.',
-    '.#..,,...,,...#.',
-    '.#..,,.t.,,.....',
+    '...,,..........C',
+    '.t.,,..t..t..t.C',
+    '...C,..........#',
+    '.t.,,..........#',
+    '...,,..........#',
+    '.t.,C..........#',
+    '...,,..........#',
+    '...,,##,####,##.',
+    '...,,,,,...,,,,,',
+    '.t.,,,,,.t.,,,,,',
+    '.....,,,,,,,....',
+    '.....""""""..#..',
+    '.t...""""""..#..',
+    '................',
+    '.t..t..t..t..,,.',
   ]);
+  map.plant(8, 31, 'house');
+  map.plant(13, 31, 'house');
+  map.plant(9, 40, 'shrine');
+  map.plant(12, 40, 'statue');
+
+  // South of the river: the towpath in its reeds, the last houses, and the
+  // road down to the gate.
   map.draw(3, 44, [
-    '....,,...,,...............',
-    '.t..,,...,,,,,,,,,,..t..#.',
-    '....,,.......#..,,,.....#.',
-    '.##.,,,,,,,..#...,,,,,....',
-    '.##....#,,,.......#.,,..t.',
-    '....t..#.,,,,,,...#.,,....',
-    '.........,,..,,,,,,,,,.##.',
-    '.#..##...,,.....t...,,.##.',
-    '.#..##.t.,,,,,......,,....',
-    '.........,,..,,..##.,,,.t.',
-    '.t..#....,,..,,..##..,,...',
-    '....#..t.,,,,,,.......,,..',
-    '..........,,..,,,,,,,,,,..',
-    '.##..t....,,......t...,,..',
-    '.##.......,,,,,,,,,,,,,,..',
-    '....t..t.....,,...........',
-    '.............,,...........',
+    '.............,,.          ',
+    '.t..t..t..t..,,.          ',
+    '.............,,.          ',
+    '.............,,.ggggCggggg',
+    '.t..t..#.....,,,ggggCggggg',
+    '.......#..,,,,,,..........',
+    '.t.....#..,,..,,.t..t..t..',
+    '..........,,..,,..........',
+    '.t..,,,,,,,,..,,,,,,,,,,,,',
+    '....,,....C...,,..C.....,,',
+    '.t..,,.t......,,.....t..,,',
+    '....,,....##..,,..........',
+    '.t..,,,,..##.,,,,.t..t..t.',
+    '.......,,....,,,,.........',
+    '.t..t..,,,,,,,,,,,.t..t...',
+    '...........,,,,...........',
+    '.t..t..t...,,,,..t..t..t..',
   ]);
-  map.plant(8, 32, 'house');
-  map.plant(8, 40, 'house');
-  map.plant(9, 37, 'shrine');
-  map.plant(17, 33, 'statue');
-  map.plant(12, 50, 'house');
-  map.plant(21, 52, 'barn');
-  map.plant(14, 47, 'barrel');
+  map.plant(6, 45, 'house');
+  map.plant(21, 53, 'barn');
+  map.plant(9, 55, 'hut');
+  map.plant(13, 49, 'barrelPair');
+  map.plant(19, 58, 'signboard');
 
   // == MILL WEIR - the east bank, north ====================================
   // The mill stands on its pond with the race running back to the river. The
-  // race is also the keep's moat, and the gatehouse stands in it.
+  // towered bridge lands here, and the road from it forks: north to the
+  // gatehouse, east to the mill, south into the orchard.
   map.draw(30, 17, [
     '..........   ..................',
-    '.t..##..t.   .t..,,,..         ',
-    '....##....   ....,,,..         ',
-    '..,,,,,,..                     ',
-    '..,,..,,..                     ',
-    '..,,..,,,,,,,,,,,,,,,.         ',
-    '.#,,.....,,,.....,,,,.         ',
-    '.#,,.t...,,,..t...,,,.         ',
-    '..,,.....,,,......,,,,,,,,,,,,,',
-    '..,,,,,,,,,,..##...,,..t....,,.',
-    '.....#....,,..##...,,.......,,.',
-    '.t...#....,,.......,,..##...,,.',
+    '.t..t..t..   .t....,,,.       .',
+    '..........   ......,,,.       .',
+    '..,,,,,,,.                    .',
+    '..,,...,,.                    .',
+    '..,,.t.,,,,,,,,,,,,,,.       ..',
+    '..,,...,,..t..t..,,,,.       C.',
+    '.t,,.....,,.......,,,..........',
+    '..,,,,,,,,,..t..t.,,,,,,,,,,,..',
+    '.....C..,,........,,..t..t..,,.',
+    '.t..t...,,.t..t...,,........,,.',
+    '........,,........,,..t..t..,,.',
   ]);
-  map.plant(46, 22, 'house');
-  map.plant(55, 25, 'haystack');
-  map.plant(59, 19, 'crateStack');
+  map.plant(53, 25, 'house');
+  map.plant(58, 26, 'haystack');
+  map.plant(45, 24, 'cratePair');
 
-  // The gatehouse in the race, and the stone that runs under its arch.
-  map.draw(46, 17, ['MMM', 'MMM', 'MMM', 'MMM', 'MMM']);
+  // The gatehouse in the race, and the stone that runs under it.
+  map.draw(46, 15, ['MMM', 'MMM', 'MMM', 'MMM', 'MMM', 'MMM', 'MMM']);
   map.plant(45, 15, 'gatehouse');
 
   // == THE ORCHARD - the east bank, south ==================================
-  // Planted in rows, because an orchard is, and the rows are still there. The
-  // lanes between them are the only straight things on this map, and none of
-  // them runs far before a tree that came down.
+  // Planted in rows, because an orchard is, and the rows are still there -
+  // the only straight lines on this map, and none runs far before a tree that
+  // came down in the flood.
   map.draw(41, 29, [
-    '..,,.........,,.....',
-    '..,,..t..t...,,.t...',
-    '..,,.........,,.....',
-    '..,,,,,,,,,,,,,,,,..',
-    '..,,..t..t..t.,,....',
-    '..,,..........,,.t..',
-    '..,,,,,,,,,,..,,....',
-    '.....t..t..,..,,,,,.',
-    'ww.........,..,,..,.',
-    'ww,,,,,,,,,,.t..t.,.',
-    '..,,...........,,,,.',
-    '..,,.t..t..t...,,...',
-    '..,,...........,,.t.',
-    '..,,,,,,,,,,,,,,,...',
-    '.....t..t...,,......',
-    '............,,..t...',
+    '.,,..............,,.',
+    '.,,.t..t..t..t...,,.',
+    '.,,..............,,.',
+    '.,,,,,,,,,,,,,,,,,,.',
+    '.,,.t..t.....t...,,.',
+    '.,,..............,,.',
+    '.,,,,,,,,,..,,,,,,,.',
+    '..,.t..t..t..t...,..',
+    '..,..............,,.',
+    '.,,,,,,,,,,,,,,,,,,.',
+    '.,,.t.....t..t...,,.',
+    '.,,..............,,.',
+    '.,,,,,,,,,,,,,,,,,,.',
+    '..,.t..t..t......,,.',
+    '..,..............,,.',
+    '..,,,,,,,,,,,,,,,,,.',
     'FFFFFFFFFFFF,,FFFFFF',
   ]);
-  map.plant(55, 37, 'barn');
-  map.plant(45, 43, 'haystack');
+  map.plant(51, 33, 'log');
+  map.plant(47, 39, 'haystack');
+  map.plant(55, 41, 'barn');
 
   // == BEACON KEEP - the north-east ========================================
-  // Rock and pine, and the tower. Moated on two sides by the river and on the
-  // third by the race, so the only dry way in is under the gatehouse.
+  // Pine and rock, and the tower. Moated on two sides by the river and on the
+  // third by the race, so the only dry way in is under the gatehouse - until
+  // the water drops and the old causeway shows.
   map.draw(43, 3, [
-    '..................',
-    '..p..C....p..C..p.',
-    '......,,,,........',
-    '.C....,,,,,,,.C...',
-    '......,,..,,,.....',
-    '......,,..,,,,,,..',
-    '.p....,,..C..,,,..',
-    '......,,,,,,,,,..C',
-    '.C..p...,,,...p...',
-    '........,,,.......',
-    '..C.....,,,..C..p.',
-    '.....p..,,,.......',
+    '....C.....p..p..p.',
+    '.p........p..p..p.',
+    '..C.......,,,,....',
+    '..........,,,,.p..',
+    ',,,,......,,..C...',
+    ',,,,,,,,,,,,..p.C.',
+    '.C...p..,,........',
+    '........,,,,,,,.p.',
+    '.p..C.....p.,,....',
+    '..........p.,,,,C.',
+    '.p.......C....,,..',
+    '..C...........,,p.',
   ]);
-  map.plant(44, 3, 'tower');
-  map.plant(54, 6, 'roundBoulder');
-  map.plant(58, 12, 'trapdoor');
-
-  // The drowned causeway between the Landing and the keep. `gates.ts` owns
-  // these tiles: deep while the sluice is held, a ford once it is not.
-  map.draw(40, 7, ['WWW', 'WWW']);
+  map.plant(47, 3, 'tower');
+  map.plant(55, 5, 'roundBoulder');
+  map.plant(57, 12, 'trapdoor');
 
   // == THE VAULT - the south-east ==========================================
   // Behind the orchard's back fence. The trapdoor is open; somebody has been
   // here since the flood.
-  map.draw(33, 47, [
-    '...............,,...........',
-    '.t..##..t..C...,,..t..##..t.',
-    '....##.........,,.....##....',
+  map.draw(33, 46, [
+    '        ............,,......',
+    '.ggggCggg.t..t..t...,,.t..t.',
+    '.ggggCggg...........,,......',
     '..,,,,,,,,,,,,,,,,,,,,,,,...',
-    '..,,...C....,,....#....,,...',
-    '..,,.t......,,....#..t.,,...',
-    '..,,....##..,,,,,,,....,,.C.',
-    '.C,,....##..,,....,,...,,...',
-    '..,,,,,,,,,,,,..t.,,,,,,,...',
-    '..,,..t....,,.....,,........',
-    '..,,.......,,..##.,,..t..C..',
-    '..,,,,,,,,,,,..##.,,........',
-    '.....t..C....t....,,,,,,,,..',
+    '..,,..C.....,,....#....,,...',
+    '..,,.t..t...,,....#..t.,,...',
+    '..,,........,,,,,,,....,,.C.',
+    '.C,,..t..t..,,....,,...,,...',
+    'MM,,,,,,,,,,,,..t.,,,,,,,...',
+    'MM,,..t....,,.....,,........',
+    '..,,.......,,..t..,,..t..C..',
+    '..,,,,,,,,,,,.....,,........',
+    '.....t..t....t..t.,,,,,,,,..',
     '..................,,........',
+    '.t..t..t..t..t..t.....t..t..',
   ]);
-  map.plant(46, 52, 'trapdoorOpen');
-  map.plant(52, 49, 'cellarDoors');
-  map.plant(40, 56, 'crateTower');
+  map.plant(46, 51, 'trapdoorOpen');
+  map.plant(55, 50, 'cellarDoors');
+  map.plant(41, 56, 'crateTower');
+
+  // The causeway from the vault to the south road. `gates.ts` owns the middle.
+  map.draw(29, 54, ['MMMM', 'MMMM']);
 
   return map;
 }

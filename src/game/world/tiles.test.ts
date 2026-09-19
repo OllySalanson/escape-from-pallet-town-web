@@ -136,6 +136,45 @@ describe('building a map from a sketch and a catalogue', () => {
       }
     });
 
+    /**
+     * A landmark used only ever to add walls, so a bridge laid over a river was
+     * a drawing of a bridge: the deck was marked as somewhere to stand and the
+     * water under it still said no. Every crossing on the Floodplain was a
+     * stranded piece of map until this was the rule.
+     */
+    it('makes the deck of a bridge ground, whatever it is laid over', () => {
+      const map = sketch(['....', 'WWWW', 'WWWW', 'WWWW', '....']);
+      map.plant(0, 0, 'bridge');
+      const { collision } = buildMapLayers(map, FRLG_TILESET);
+      for (let y = 0; y < 5; y += 1) {
+        expect(`rail at 0,${y} is solid: ${collision[y][0]}`).toBe(`rail at 0,${y} is solid: true`);
+        expect(`deck at 1,${y} is solid: ${collision[y][1]}`).toBe(`deck at 1,${y} is solid: false`);
+        expect(`deck at 2,${y} is solid: ${collision[y][2]}`).toBe(`deck at 2,${y} is solid: false`);
+        expect(`rail at 3,${y} is solid: ${collision[y][3]}`).toBe(`rail at 3,${y} is solid: true`);
+      }
+    });
+
+    /**
+     * The other half of that rule. A crown is not solid either, but it hangs
+     * over things rather than standing on them - if it cleared what was under
+     * it, every tree on a map's edge would open the edge.
+     */
+    it('never lets a crown open the water or the thicket it hangs over', () => {
+      const map = sketch(['WWWTTT', '......', '......']);
+      map.plant(0, 0, 'tree');
+      map.plant(3, 0, 'tree');
+      const { collision } = buildMapLayers(map, FRLG_TILESET);
+      expect(collision[0]).toEqual([true, true, true, true, true, true]);
+    });
+
+    it('rolls no encounters on a deck laid over tall grass', () => {
+      const map = sketch(['gggg', 'gggg', 'gggg', 'gggg', 'gggg']);
+      map.plant(0, 0, 'bridge');
+      const { tallGrass } = buildMapLayers(map, FRLG_TILESET);
+      expect(tallGrass[2][1]).toBe(false);
+      expect(tallGrass[2][2]).toBe(false);
+    });
+
     it('refuses a prop that runs off the map rather than losing half of it', () => {
       const map = sketch(['...']);
       map.plant(2, 0, 'tree');

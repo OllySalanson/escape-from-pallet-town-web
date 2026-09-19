@@ -198,8 +198,11 @@ function block(
     readonly walkable?: readonly (readonly [number, number])[];
     /** Rows drawn over the figures, so the player passes behind them. */
     readonly canopyRows?: number;
+    /** Single cells drawn over the figures - the span of an arch, not a whole row. */
+    readonly over?: readonly (readonly [number, number])[];
   } = {},
 ): PropDefinition {
+  const over = new Set((options.over ?? []).map(([x, y]) => `${x},${y}`));
   const holes = new Set((options.holes ?? []).map(([x, y]) => `${x},${y}`));
   const walkable = new Set((options.walkable ?? []).map(([x, y]) => `${x},${y}`));
   const cells: PropCell[] = [];
@@ -213,7 +216,9 @@ function block(
       cells.push({
         tile: at(column + x, row + y),
         solid: !walkable.has(key),
-        ...(options.canopyRows !== undefined && y < options.canopyRows ? { canopy: true } : {}),
+        ...((options.canopyRows !== undefined && y < options.canopyRows) || over.has(key)
+          ? { canopy: true }
+          : {}),
       });
     }
   }
@@ -239,10 +244,21 @@ const PROPS = {
    * A stone gatehouse, towered at both ends, with an arch through it. Its piers
    * are drawn with the water already breaking round them, so it stands in a
    * channel rather than on a lawn - which is the only kind of gate a flooded
-   * town would have left. The arch is three wide and one deep; the wall above
-   * it is solid, so this is a door in a wall and not a tunnel through one.
+   * town would have left. The towers are solid; everything between them is
+   * drawn over whoever is under it, so the way through is walked: in at the
+   * arch, out of sight beneath the wall walk, and out the far side.
    */
-  gatehouse: block('gatehouse', 25, 22, 5, 7, { walkable: [[1, 5], [2, 5], [3, 5]] }),
+  gatehouse: block('gatehouse', 25, 22, 5, 7, {
+    walkable: [[1, 6], [2, 6], [3, 6]],
+    over: [
+      [1, 0], [2, 0], [3, 0],
+      [1, 1], [2, 1], [3, 1],
+      [1, 2], [2, 2], [3, 2],
+      [1, 3], [2, 3], [3, 3],
+      [1, 4], [2, 4], [3, 4],
+      [1, 5], [2, 5], [3, 5],
+    ],
+  }),
   /** A cellar mouth in a stone frame: the vault's own door. */
   cellarDoors: block('cellar doors', 31, 5, 2, 2),
   /** A tunnel driven into rock. */
