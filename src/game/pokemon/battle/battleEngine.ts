@@ -53,6 +53,11 @@ export type BattleEvent =
       readonly target?: 'player' | 'enemy';
       readonly name: string;
       readonly move: string;
+      /**
+       * The HP the hit actually took, which is what the battle log prints. A
+       * hit that rolled 5 into a target on 2 HP cost it 2: reporting the roll
+       * made the log claim more HP than the bar had ever shown.
+       */
       readonly damage?: number;
       /** What kind of move it was, so the hit can sound like one. */
       readonly category?: MoveCategory;
@@ -370,7 +375,7 @@ const applyMove = (
       target: user === 'player' ? 'enemy' : 'player',
       name: attackerAfterStatus.pokemon.base.name,
       move: move.base.name,
-      damage: damage.damage,
+      damage: defenderAfterStatus.currentHp - updatedDefender.currentHp,
       category: move.base.category,
       isStab: damage.isStab,
     },

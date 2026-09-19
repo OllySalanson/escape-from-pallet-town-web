@@ -251,6 +251,20 @@ describe('battle turn resolution', () => {
     expect(scratch).toMatchObject({ isStab: false });
   });
 
+  /**
+   * Playtest 3, B6b: at 2 HP, "Foe BULBASAUR used TACKLE! -5 HP". The line
+   * promises the HP the hit cost, and a hit cannot cost more than was there.
+   */
+  it('reports the HP a finishing hit took rather than the damage it rolled', () => {
+    const bulbasaur = new Pokemon(BULBASAUR, 10);
+    bulbasaur.takeDamage(bulbasaur.maxHp - 2);
+    const result = resolveTurn(createBattleState(new Pokemon(CHARMANDER, 10), bulbasaur), 0, maximumRandom);
+    const scratch = result.events.find((event) => event.type === 'used-move' && event.move === 'Scratch');
+
+    expect(scratch).toMatchObject({ damage: 2 });
+    expect(result.state.enemy.currentHp).toBe(0);
+  });
+
   it('does not narrate type effectiveness for a move that deals no damage', () => {
     // Poison Powder is Poison and Bulbasaur is part Grass, so the old code
     // announced "It's super effective!" for a status move that dealt nothing.
