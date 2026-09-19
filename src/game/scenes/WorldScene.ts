@@ -7,7 +7,12 @@ import {
   type GridInputState,
   type GridPosition,
 } from '../movement/gridMovement';
-import { CHARACTER_FEET_PIXEL_Y, getIdleFrame, getWalkAnimationKey } from '../playerFrames';
+import {
+  CHARACTER_FEET_PIXEL_Y,
+  CHARACTER_HEAD_PIXEL_Y,
+  getIdleFrame,
+  getWalkAnimationKey,
+} from '../playerFrames';
 import type { CharacterDesignId } from '../world/characterDesigns';
 import {
   getWorldCharacterAppearance,
@@ -71,7 +76,7 @@ import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
-import type { Rect } from '../ui/labelPlacement';
+import { placeCaptions, type Rect } from '../ui/labelPlacement';
 import { GAME_FONT } from '../ui/gameFont';
 import {
   CAPTION_BAND,
@@ -140,10 +145,35 @@ import {
 const STEP_DURATION_MS = 130;
 const CAMERA_ZOOM = 1;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
+/** Hair to soles, inclusive: the part of a figure's frame that is drawn on. */
+const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
+const HUNTER_FIGURE_ID = 'rival-hunter';
+
+/** The rectangle of map a tile covers - what a caption naming that tile is seated around. */
+const tileRect = (tile: GridPosition): Rect => ({
+  x: tile.x * TILE_SIZE,
+  y: tile.y * TILE_SIZE,
+  width: TILE_SIZE,
+  height: TILE_SIZE,
+});
+
+/** The rectangle a figure standing on a tile is drawn on: taller than the tile, soles just under it. */
+const figureRect = (tile: GridPosition): Rect => ({
+  x: tile.x * TILE_SIZE,
+  y: tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET + CHARACTER_HEAD_PIXEL_Y,
+  width: TILE_SIZE,
+  height: FIGURE_HEIGHT,
+});
 /** Long enough for the extraction flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
-/** How far above its tile the beacon's caption sits: clear of a figure and its chevron. */
-const BEACON_CAPTION_LIFT = 30;
+/** The player's chevron stands this far above their hair. */
+const CHEVRON_HEIGHT = 6;
+
+/** A tile the player is expected to be standing on: the figure, and the chevron over it. */
+const landingRect = (tile: GridPosition): Rect => {
+  const figure = figureRect(tile);
+  return { ...figure, y: figure.y - CHEVRON_HEIGHT, height: figure.height + CHEVRON_HEIGHT };
+};
 
 /**
  * Map captions share the raid HUD's window, in a darker weight: screen furniture
@@ -279,6 +309,8 @@ export class WorldScene extends Phaser.Scene {
   }> = [];
   /** Every map caption, so each one can be kept inside the view each frame. */
   private worldLabels: WorldLabel[] = [];
+  /** Ground a trainer is watching: shaded to be read, so no caption may sit on it. */
+  private watchedGround: Rect[] = [];
   private raidHud: RaidHud | undefined;
   /** The cue the objective chip is currently showing, so a change can be noticed. */
   private objectiveCue = '';
@@ -670,12 +702,18 @@ export class WorldScene extends Phaser.Scene {
       );
       const left = Math.min(...gate.tiles.map((tile) => tile.x));
       const right = Math.max(...gate.tiles.map((tile) => tile.x));
+      const top = Math.min(...gate.tiles.map((tile) => tile.y));
       const bottom = Math.max(...gate.tiles.map((tile) => tile.y));
       this.worldLabels.push(
         new WorldLabel(
           this,
-          Math.round(((left + right + 1) * TILE_SIZE) / 2),
-          (bottom + 1) * TILE_SIZE + 2,
+          // A gate is named as the whole door, however many tiles it spans.
+          {
+            x: left * TILE_SIZE,
+            y: top * TILE_SIZE,
+            width: (right - left + 1) * TILE_SIZE,
+            height: (bottom - top + 1) * TILE_SIZE,
+          },
           gateCaption(gate, open, boss?.trainer.name),
           open ? LABEL_TONES.gateOpen : LABEL_TONES.gateShut,
           atRow(CAPTION_BAND, bottom),
@@ -724,8 +762,7 @@ export class WorldScene extends Phaser.Scene {
       this.mapObjects.push(pad);
       const label = new WorldLabel(
         this,
-        x + TILE_SIZE / 2,
-        y - 3,
+        tileRect(insertion.position),
         dropInCaption(this.knownInsertionIds.has(insertion.id)),
         LABEL_TONES.dropIn,
         atRow(CAPTION_BAND, insertion.position.y),
@@ -806,12 +843,10 @@ export class WorldScene extends Phaser.Scene {
         .setDepth(atRow(MARKER_BAND, point.position.y));
       // The beacon stands on the landing, which is the one exit the player is
       // guaranteed to be standing on when it is first drawn, so its caption is
-      // raised clear of a figure's head and chevron instead of lying across them.
-      const captionLift = point.label === BEACON_EXIT_LABEL ? BEACON_CAPTION_LIFT : 11;
+      // seated around a marked figure instead of lying across their head and chevron.
       const label = new WorldLabel(
         this,
-        x,
-        y - captionLift,
+        point.label === BEACON_EXIT_LABEL ? landingRect(point.position) : tileRect(point.position),
         `EXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, this.runSession.manager.snapshot().elapsedMs)}`,
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
         atRow(CAPTION_BAND, point.position.y),
@@ -891,6 +926,7 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     this.mapObjects.push(shading);
+    this.watchedGround.push(...watched.map(tileRect));
 
     // The caption hangs on the trainer's blind side, so it never covers the
     // shaded ground it is there to explain.
@@ -898,10 +934,7 @@ export class WorldScene extends Phaser.Scene {
     this.worldLabels.push(
       new WorldLabel(
         this,
-        encounter.position.x * TILE_SIZE + TILE_SIZE / 2,
-        placement === 'below'
-          ? encounter.position.y * TILE_SIZE + TILE_SIZE + 4
-          : encounter.position.y * TILE_SIZE - 4,
+        figureRect(encounter.position),
         // The third line is the price the shading cannot show: this fight has no
         // exit, and the player has to know that before the step into the lane,
         // not from inside the battle.
@@ -933,8 +966,7 @@ export class WorldScene extends Phaser.Scene {
         .setDepth(atRow(MARKER_BAND, marker.position.y));
       const label = new WorldLabel(
         this,
-        x,
-        y - 12,
+        tileRect(marker.position),
         marker.label,
         LABEL_TONES.contract,
         atRow(CAPTION_BAND, marker.position.y),
@@ -989,8 +1021,7 @@ export class WorldScene extends Phaser.Scene {
       );
       const label = new WorldLabel(
         this,
-        x,
-        y - 12,
+        tileRect(poi.position),
         // Oak's Field Station is both a sealed exit and a cache, so the label
         // has to say so - the mast art can only show one of the two.
         `${poi.label}\n${poi.effect === 'unlock-extraction'
@@ -1027,8 +1058,8 @@ export class WorldScene extends Phaser.Scene {
       this.worldLabels.push(
         new WorldLabel(
           this,
-          warp.source.x * TILE_SIZE + TILE_SIZE,
-          warp.source.y * TILE_SIZE - 1,
+          // A boundary is two tiles wide and is named from between them.
+          { ...tileRect(warp.source), width: TILE_SIZE * 2 },
           `${WORLD_MAP_NAMES[warp.destinationMapId].toUpperCase()} ${this.warpArrow(warp)}`,
           LABEL_TONES.route,
           atRow(CAPTION_BAND, warp.source.y),
@@ -1047,7 +1078,7 @@ export class WorldScene extends Phaser.Scene {
     if (!this.isHunterOnCurrentMap()) {
       return;
     }
-    this.createFigure('rival-hunter', this.hunterState.position!, 'down', 'hunter');
+    this.createFigure(HUNTER_FIGURE_ID, this.hunterState.position!, 'down', 'hunter');
   }
 
   /**
@@ -1847,6 +1878,7 @@ export class WorldScene extends Phaser.Scene {
     this.mapObjects = [];
     this.worldLabels.forEach((label) => label.destroy());
     this.worldLabels = [];
+    this.watchedGround = [];
     this.npcSprites.clear();
     this.npcAppearances.clear();
     this.lootSprites.clear();
@@ -1867,9 +1899,10 @@ export class WorldScene extends Phaser.Scene {
 
   /**
    * A caption belongs to a thing on the map, but it is read on a screen, and
-   * the screen has other tenants. Every caption is put back inside the camera
-   * view and out from under the raid HUD's chips every frame, because both of
-   * those move under it while the player walks.
+   * the screen has other tenants. Every caption is seated again every frame -
+   * inside the camera view, out from under the raid HUD's chips, clear of the
+   * map art and the people around it, and clear of each other - because the
+   * view and the chips move under them while the player walks.
    */
   private containWorldLabels(): void {
     if (this.worldLabels.length === 0) {
@@ -1884,15 +1917,45 @@ export class WorldScene extends Phaser.Scene {
     };
     // The HUD is pinned to the screen and the captions live in the world, so
     // the chips are translated into world space before they are avoided.
-    const obstacles = (this.raidHud?.occupied ?? []).map((chip) => ({
+    const furniture = (this.raidHud?.occupied ?? []).map((chip) => ({
       x: chip.x + view.left,
       y: chip.y + view.top,
       width: chip.width,
       height: chip.height,
     }));
-    for (const label of this.worldLabels) {
-      label.contain(bounds, obstacles);
-    }
+    const placements = placeCaptions(
+      this.worldLabels.map((label) => label.request()),
+      { bounds, furniture, keepClear: this.captionKeepClear() },
+    );
+    this.worldLabels.forEach((label, index) => label.seat(placements[index]));
+  }
+
+  /**
+   * What stands on this map that a caption may not cover, beyond the things the
+   * captions themselves name: signs, crates, the ground a trainer watches, and
+   * everyone standing still. The player and the hunter are left out on purpose.
+   * They walk, a caption that dodged them would chase around the screen, and
+   * `depths.ts` already draws every figure over every caption.
+   */
+  private captionKeepClear(): Rect[] {
+    const signs = this.currentMap.entities
+      .filter((entity) => entity.kind === 'sign')
+      .map((entity) => tileRect(entity.position));
+    const crates = [...this.lootSprites.values()].map((crate) => ({
+      x: crate.x - TILE_SIZE / 2,
+      y: crate.y - TILE_SIZE / 2,
+      width: TILE_SIZE,
+      height: TILE_SIZE,
+    }));
+    const standing = [...this.npcSprites.entries()]
+      .filter(([id]) => id !== HUNTER_FIGURE_ID)
+      .map(([, sprite]) => ({
+        x: sprite.x,
+        y: sprite.y + CHARACTER_HEAD_PIXEL_Y,
+        width: TILE_SIZE,
+        height: FIGURE_HEIGHT,
+      }));
+    return [...signs, ...crates, ...standing, ...this.watchedGround];
   }
 
   private isLootAvailable(): boolean {
@@ -2452,7 +2515,7 @@ export class WorldScene extends Phaser.Scene {
     if (proximity.warn && !isHunterContactingPlayer(position, this.currentTile)) {
       audioManager.play('hunterNear');
     }
-    const sprite = this.npcSprites.get('rival-hunter');
+    const sprite = this.npcSprites.get(HUNTER_FIGURE_ID);
     sprite
       ?.setPosition(position.x * TILE_SIZE, position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
       .setDepth(atRow(FIGURE_BAND, position.y));
