@@ -166,8 +166,11 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
 
   // == THE REEDBEDS - the west bank ========================================
   // The road doglegs east past the ranger's hut and runs down the river side,
-  // quick and in plain view. Everything inland of it is reeds: one marsh, a
-  // lone tree standing in it to steer by, and no way through that is free.
+  // quick and in plain view. Carry straight on instead and you are in the
+  // reeds: one marsh, a lone tree standing in it to steer by, and the flooded
+  // cut lying right across it. The only way round the cut is at its west end,
+  // so the reeds are not a short cut that costs fights - they are the long way
+  // and they cost fights, which is what makes the road a price worth reading.
   map.draw(3, 14, [
     '      ,, ..             ',
     '      ,, ..             ',
@@ -175,15 +178,15 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ' ggg....Cgg..,,,,       ',
     'gggggCggggg..T,,,,,,,,, ',
     'gggggWWWgggg.C,,,,,,,,, ',
-    ' ggggWWWgggggCggg...,,.C',
-    '  .gWW.gg.o.gggg..C.,,. ',
-    '  CgWWg..ggggWWgT  ,    ',
-    ' ..CgggCg...gWWgg  ,    ',
+    ' ggggWWWgggggCggT...,,.C',
+    '  .gWW.gg.o.ggggTTC.,,. ',
+    ' ggWWWWWWWWWWWWWT  ,    ',
+    ' ..WWWWWWWWWWWWWg  ,    ',
     '  .ggCgggg..Cgggg  ,    ',
     ' ggggggggggCggggT,,,,,, ',
     ' gggggCggggCggggg...T,, ',
-    '   ,,            gggg,, ',
-    '   ,C              T,,, ',
+    '   ,             gggg,, ',
+    '   ,               T,,, ',
   ]);
 
   // == MARKET ISLE - the middle of the river ===============================
@@ -216,16 +219,18 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.draw(41, 33, ['  ,,', '  , ', '  , ', '  , ', ',,, ']);
 
   // == OLD TOWN - the south-west ===========================================
-  // The street the water came up: two houses behind their front hedges, the
-  // old tree the street has always gone round, and the green with the shrine.
+  // The footpath down from the reeds wanders in through the trees behind the
+  // houses - it was never a road. Then the street the water came up: two
+  // houses behind their front hedges, the old tree the street has always gone
+  // round, and the green with the shrine.
   map.draw(3, 29, [
-    '   ,,           ',
-    '   ,,           ',
-    '   C,.......... ',
-    '   ,,.......... ',
-    '   ,,.......... ',
-    '   ,C.......... ',
-    '   ,,.......... ',
+    '   ,            ',
+    ',,,,            ',
+    ',    .......... ',
+    ',    .......... ',
+    ',,,, .......... ',
+    '   , .......... ',
+    '   , .......... ',
     '   ,,##,####,## ',
     '   ,,,,,...,,,,C',
     '   ,,,,,.o.,,,,,',

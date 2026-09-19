@@ -102,8 +102,10 @@ const insertion = Object.values(RUN_INSERTIONS).find(
 const southGate = EXTRACTION_POINTS.find(
   (point) => point.mapId === 'floodplain-relay' && point.label === 'SOUTH GATE',
 )!;
+// Found by who she is: three bosses stand on this map as well, and "the first
+// trainer listed for it" only meant Maya while she was the only one.
 const maya = createRunTrainerEncounters().find(
-  (encounter) => encounter.mapId === 'floodplain-relay',
+  (encounter) => encounter.trainer.id === 'floodplain-checkpoint-maya',
 )!;
 
 const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
@@ -132,7 +134,7 @@ describe('the Floodplain checkpoint', () => {
     // Dry: never a step in tall grass. This is the road, and it has to exist.
     const dry = stepsFromInsertion(union(checkpoint, tallGrass), southGate.position);
     expect(`SOUTH GATE by road: ${dry < 0 ? 'unreachable' : `${dry} steps`}`).toBe(
-      'SOUTH GATE by road: 37 steps',
+      'SOUTH GATE by road: 85 steps',
     );
   });
 
@@ -141,10 +143,12 @@ describe('the Floodplain checkpoint', () => {
     const dodged = stepsFromInsertion(union(checkpoint, tallGrass, watch), southGate.position);
     expect(dodged).toBe(-1);
     // And she is on the through-line in both directions, not just from the north.
+    // The whole of the one-tile narrows, from its mouth in front of her to its head.
     expect(watchedTiles).toEqual([
-      { x: 15, y: 16 },
-      { x: 15, y: 15 },
-      { x: 15, y: 14 },
+      { x: 22, y: 25 },
+      { x: 22, y: 24 },
+      { x: 22, y: 23 },
+      { x: 22, y: 22 },
     ]);
   });
 
@@ -182,11 +186,12 @@ describe('the Floodplain checkpoint', () => {
   });
 
   it('is seen from a junction the player can still turn back at', () => {
-    // The vault turn is the last tile before the watch. From it the road south
-    // is a decision: go on and fight, or go back and take the reeds.
-    const junction = { x: 15, y: 13 };
+    // The head of the narrows is the last tile before the watch. From it the
+    // road south is a decision: go on and fight, or go back to the hut and
+    // carry straight on into the reeds.
+    const junction = { x: 22, y: 21 };
     expect(watch.has(key(junction))).toBe(false);
-    expect(watchedTiles[watchedTiles.length - 1]).toEqual({ x: 15, y: 14 });
+    expect(watchedTiles[watchedTiles.length - 1]).toEqual({ x: 22, y: 22 });
 
     const fromJunction = stepDistances(map.collision, junction, union(checkpoint, watch));
     expect(fromJunction[southGate.position.y][southGate.position.x]).toBeGreaterThan(0);

@@ -43,7 +43,7 @@ export const RUN_INSERTIONS = {
     id: 'floodplain-market-isle',
     label: 'Market Isle',
     mapId: 'floodplain-relay',
-    position: { x: 29, y: 38 },
+    position: { x: 27, y: 39 },
     description: 'The square in the middle of the river. Home is the plank bridge; the towered one beside it is the way east, and it is held.',
   },
   'floodplain-mill-weir': {

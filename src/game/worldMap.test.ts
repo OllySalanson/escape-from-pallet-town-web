@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CLASSIC_TILE, getWorldMap, isTallGrassInMap, WORLD_MAPS } from './worldMap';
 import { EXTRACTION_POINTS } from './world/extractionPoints';
 import { CLASSIC_TILESET } from './world/tileset/classicTileset';
-import { POKEMON_GROUND_TILESET } from './world/tileset/pokemonGround';
+import { FLOOD_TOWN_TILESET } from './world/tileset/floodTownTileset';
 import { createRunTrainerEncounters } from './world/trainers';
 
 describe('worldMap', () => {
@@ -17,7 +17,9 @@ describe('worldMap', () => {
     expect(getWorldMap('pallet-town').height).toBe(44);
     expect(getWorldMap('route-1').height).toBe(32);
     expect(getWorldMap('viridian-forest').height).toBe(36);
-    expect(getWorldMap('floodplain-relay').height).toBe(32);
+    // The Floodplain is the vast one: it is played a district at a time.
+    expect(getWorldMap('floodplain-relay').width).toBe(64);
+    expect(getWorldMap('floodplain-relay').height).toBe(64);
   });
 
   it('builds complete layers for every map', () => {
@@ -38,8 +40,8 @@ describe('worldMap', () => {
    * A sheet is chosen per map, which is what lets one map be redrawn to the
    * wide vocabulary without dragging three others through the same change.
    */
-  it('draws the Floodplain from the wide catalogue and the rest from the classic one', () => {
-    expect(getWorldMap('floodplain-relay').tileset).toBe(POKEMON_GROUND_TILESET);
+  it('draws the Floodplain from the town catalogue and the rest from the classic one', () => {
+    expect(getWorldMap('floodplain-relay').tileset).toBe(FLOOD_TOWN_TILESET);
     for (const id of ['pallet-town', 'route-1', 'viridian-forest'] as const) {
       expect(getWorldMap(id).tileset).toBe(CLASSIC_TILESET);
     }
@@ -92,11 +94,14 @@ describe('worldMap', () => {
     expect(pallet.layers.ground.tiles[5][19]).toBe(CLASSIC_TILE.POND_BANK_WEST);
     expect(pallet.layers.ground.tiles[5][22]).toBe(CLASSIC_TILE.POND_WATER);
 
-    // The Floodplain is water to its edges, so its corner has no shoreline
-    // painted on it and its landing jetty is dry.
+    // The Floodplain is cut out of a forest, so its corner is a wall; the
+    // river runs off its north edge as water, which is a wall too; and its
+    // front door, in the Landing's yard, is dry ground.
     const flood = getWorldMap('floodplain-relay');
-    expect(flood.layers.ground.tiles[0][0]).toBe(CLASSIC_TILE.POND_WATER);
-    expect(flood.collision[3][15]).toBe(false);
+    expect(flood.collision[0][0]).toBe(true);
+    expect(flood.collision[0][41]).toBe(true);
+    expect(isTallGrassInMap(flood, { x: 13, y: 9 })).toBe(false);
+    expect(flood.collision[9][13]).toBe(false);
   });
 
   it('records tall grass tile by tile, not as rectangles', () => {
