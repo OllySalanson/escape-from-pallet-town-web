@@ -68,6 +68,12 @@ import {
   partyRowLayout,
   partyPromptLayout,
   WILD_ESCAPE_SUCCESS_MESSAGE,
+  ABOUT_TO_USE_DECLINE,
+  ABOUT_TO_USE_OPTIONS,
+  ABOUT_TO_USE_QUESTION,
+  aboutToUseLine,
+  aboutToUseOptionLayout,
+  aboutToUsePromptLayout,
   combatantBanner,
   combatPresentationSteps,
   describeItemGuidance,
@@ -88,7 +94,7 @@ import {
   type MatchupTone,
 } from './battlePresentation';
 
-type CommandMode = 'main' | 'moves' | 'items' | 'party' | 'events' | 'finished';
+type CommandMode = 'main' | 'moves' | 'items' | 'party' | 'about-to-use' | 'events' | 'finished';
 
 type BattleAction =
   | { readonly type: 'choose-fight' }
@@ -99,7 +105,8 @@ type BattleAction =
   | { readonly type: 'use-move'; readonly moveIndex: number }
   | { readonly type: 'select-item'; readonly itemIndex: number }
   | { readonly type: 'use-item'; readonly partyIndex: number }
-  | { readonly type: 'switch-pokemon'; readonly partyIndex: number };
+  | { readonly type: 'switch-pokemon'; readonly partyIndex: number }
+  | { readonly type: 'answer-about-to-use'; readonly switching: boolean };
 
 const COMMAND_Y = BATTLE_PANEL.y;
 /** Ink for a row that cannot be chosen: a fainted Pokemon, an empty stack, a refusal. */
@@ -253,6 +260,21 @@ export class BattleScene extends Phaser.Scene {
   /** The move the last line announced, waiting on the chooser before the next is read. */
   private moveOffer: { readonly pokemon: PokemonInstance; readonly move: MoveBase } | null = null;
   private isPresentingCombatEvents = false;
+  /**
+   * The trainer Pokemon whose send-out is being held back while the player is
+   * asked whether to switch. The send-out line itself is still at the head of
+   * `pendingCombatMessages`, so answering either way simply carries on reading.
+   */
+  private aboutToUse: string | null = null;
+  /**
+   * Which of the trainer's party the question has already been asked for. A
+   * fight can pause and resume on this panel - a party list opened from it, a
+   * refusal read and backed out of - and the offer is one per Pokemon, not one
+   * per time the queue is picked up again.
+   */
+  private aboutToUseOffered = new Set<number>();
+  /** Set while the party list is answering the prompt rather than a main command. */
+  private aboutToUseSwitching = false;
 
   public constructor() {
     super('battle');
@@ -302,6 +324,12 @@ export class BattleScene extends Phaser.Scene {
     this.isPresentingCombatEvents = false;
     this.pendingCombatMessages = [];
     this.moveOffer = null;
+    // Phaser reuses this scene: an unanswered question from the last fight
+    // would otherwise hold this one's first send-out back, and a party index
+    // already offered for would silence the question in the fight after it.
+    this.aboutToUse = null;
+    this.aboutToUseOffered = new Set();
+    this.aboutToUseSwitching = false;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
@@ -627,6 +655,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'about-to-use') {
+      this.commandContainer.add(this.createAboutToUseBox());
+      return;
+    }
+
     const labels =
       this.mode === 'main'
         ? this.mainCommandLabels()
@@ -772,6 +805,51 @@ export class BattleScene extends Phaser.Scene {
     return container;
   }
 
+  /**
+   * The question itself: who is coming, and the free switch offered against it.
+   * Drawn in the panel's own frame beside the dialogue it interrupts, because
+   * the bottom of the battle screen is one surface.
+   */
+  private createAboutToUseBox(): Phaser.GameObjects.Container {
+    const container = this.add.container(0, 0);
+    container.add(this.createPanelFrame());
+    [aboutToUseLine(this.trainer?.name ?? '', this.aboutToUse ?? ''), ABOUT_TO_USE_QUESTION].forEach(
+      (line, index) => {
+        const layout = aboutToUsePromptLayout(index);
+        container.add(
+          this.add.text(layout.x, COMMAND_Y + layout.y, line, {
+            fontFamily: BATTLE_FONT,
+            fontSize: CAPTION_FONT_SIZE,
+            color: PANEL_GUIDANCE_INK,
+          }),
+        );
+      },
+    );
+    this.commandTexts = ABOUT_TO_USE_OPTIONS.map((label, index) => {
+      const layout = aboutToUseOptionLayout(index);
+      const text = this.add.text(layout.x, COMMAND_Y + layout.y, label, {
+        fontFamily: BATTLE_FONT,
+        fontSize: DIALOG_FONT_SIZE,
+        color: WINDOW_INK,
+      });
+      text
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+          this.selectedCommand = index;
+          this.updateSelection();
+        })
+        .on('pointerdown', () => {
+          this.selectedCommand = index;
+          this.updateSelection();
+          this.confirm();
+        });
+      container.add(text);
+      return text;
+    });
+    this.updateSelection();
+    return container;
+  }
+
   private moveSelection(direction: 'left' | 'right' | 'up' | 'down'): void {
     const count = this.commandTexts.length;
     if (count === 0) {
@@ -869,6 +947,14 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'about-to-use') {
+      this.dispatchAction({
+        type: 'answer-about-to-use',
+        switching: this.selectedCommand !== ABOUT_TO_USE_DECLINE,
+      });
+      return;
+    }
+
     if (this.mode === 'party') {
       // The party screen is the target picker as well as the switch menu, so
       // which one it is answering is the item waiting to be handed over.
@@ -910,6 +996,9 @@ export class BattleScene extends Phaser.Scene {
         return;
       case 'switch-pokemon':
         this.switchPokemon(action.partyIndex);
+        return;
+      case 'answer-about-to-use':
+        this.answerAboutToUse(action.switching);
     }
   }
 
@@ -933,6 +1022,17 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private goBack(): void {
+    // Backing out of the list the question opened returns to the question, not
+    // to the main commands: the trainer's Pokemon has still not landed, and
+    // there is no turn to take until it has.
+    if (this.mode === 'party' && this.aboutToUseSwitching) {
+      this.aboutToUseSwitching = false;
+      this.mode = 'about-to-use';
+      this.selectedCommand = ABOUT_TO_USE_DECLINE;
+      this.showCommands();
+      audioManager.play('cancel');
+      return;
+    }
     if (this.mode === 'party' && this.forcedReplacement) {
       return;
     }
@@ -1203,6 +1303,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.aboutToUseSwitching) {
+      this.completeAboutToUseSwitch(pokemon);
+      return;
+    }
+
     const outgoingName = this.state.player.pokemon.base.name.toUpperCase();
     const wasForcedReplacement = this.forcedReplacement;
     this.persistActivePokemonHp();
@@ -1222,6 +1327,88 @@ export class BattleScene extends Phaser.Scene {
       ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
       { message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' },
     ]);
+  }
+
+  /**
+   * Holds a trainer's next Pokemon at the door while the player is asked
+   * whether to switch.
+   *
+   * The engine has already swapped the combatant in - that is what the
+   * `enemy-sent-out` line at the head of the queue is about to announce - so
+   * this is a pause in the reading rather than a change to the fight. Answering
+   * either way puts the same line back up. Nothing is offered where there is
+   * nothing to decide: a bench with nobody standing on it, a replacement the
+   * player is already being forced to make, or a Pokemon this fight has already
+   * asked about.
+   */
+  private offerAboutToUseSwitch(enemyName: string): boolean {
+    if (!this.trainer || this.forcedReplacement || this.aboutToUseSwitching) {
+      return false;
+    }
+    if (this.state.player.currentHp === 0) {
+      return false;
+    }
+    if (this.aboutToUseOffered.has(this.state.enemyPartyIndex)) {
+      return false;
+    }
+    const hasBench = this.party.pokemon.some(
+      (pokemon) => pokemon !== this.state.player.pokemon && !pokemon.isFainted,
+    );
+    if (!hasBench) {
+      return false;
+    }
+    this.aboutToUseOffered.add(this.state.enemyPartyIndex);
+    this.aboutToUse = enemyName;
+    this.mode = 'about-to-use';
+    this.selectedCommand = ABOUT_TO_USE_DECLINE;
+    this.showCommands();
+    return true;
+  }
+
+  /** YES opens the bench; NO simply carries on reading. */
+  private answerAboutToUse(switching: boolean): void {
+    if (switching) {
+      this.aboutToUseSwitching = true;
+      this.showPartySelection(false);
+      return;
+    }
+    this.aboutToUse = null;
+    this.resumeCombatMessages();
+  }
+
+  /**
+   * The free switch. `switchPokemon` spends the enemy's turn on a swap, which
+   * is the price of changing your mind in the middle of a fight; there is no
+   * turn to spend here, because the Pokemon the swap is being made against has
+   * not been sent out yet.
+   */
+  private completeAboutToUseSwitch(pokemon: PokemonInstance): void {
+    const outgoingName = this.state.player.pokemon.base.name.toUpperCase();
+    this.aboutToUseSwitching = false;
+    this.aboutToUse = null;
+    this.persistActivePokemonHp();
+    this.state = replacePlayerPokemon(this.state, pokemon);
+    this.participatingPokemon.add(pokemon);
+    this.refreshPlayerCombatant();
+    this.refreshStatusLabels();
+    this.pendingCombatMessages.unshift(
+      stagedNote(`Come back, ${outgoingName}!`),
+      stagedNote({ message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' }),
+    );
+    this.resumeCombatMessages();
+  }
+
+  /** Puts the panel back on the queue the question interrupted. */
+  private resumeCombatMessages(): void {
+    this.mode = 'events';
+    this.commandContainer.setVisible(false);
+    if (this.pendingCombatMessages.length === 0) {
+      this.isPresentingCombatEvents = false;
+      this.dialog.showMessages([]);
+      return;
+    }
+    this.isPresentingCombatEvents = true;
+    this.showNextCombatMessage();
   }
 
   /** Every line shown here is a refusal: already out, fainted, nothing to heal. */
@@ -1330,6 +1517,13 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.mode === 'finished') {
+      return;
+    }
+
+    // The panel is holding a question about the Pokemon that is about to land.
+    // Nothing advances until it is answered, exactly as nothing advances while
+    // the move chooser is open.
+    if (this.mode === 'about-to-use') {
       return;
     }
 
@@ -1556,6 +1750,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private showNextCombatMessage(): void {
+    const upcoming = this.pendingCombatMessages[0];
+    if (
+      upcoming?.event?.type === 'enemy-sent-out' &&
+      this.offerAboutToUseSwitch(upcoming.event.name)
+    ) {
+      return;
+    }
     const next = this.pendingCombatMessages.shift();
     if (!next) {
       return;

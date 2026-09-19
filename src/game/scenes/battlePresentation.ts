@@ -108,6 +108,37 @@ export const partyPrompt = (state: {
       ? 'Choose a POKéMON!'
       : `Choose a POKéMON  ${CANCEL_HINT}`);
 
+/**
+ * The beat before a trainer's next Pokemon lands.
+ *
+ * A knockout in a trainer fight used to be a cutscene: the next one arrived and
+ * the player read about it. Named first, it is a decision - the Pokemon that
+ * just won is often the wrong answer to what is coming next, and the switch is
+ * free because nothing has moved yet.
+ *
+ * Two lines and two options, in the same panel every other battle menu is drawn
+ * in. The options are written in the order the question is asked, and the cursor
+ * starts on the one that changes nothing: this prompt opens on the key that
+ * finished the previous line, exactly as `trainerChallengePrompt` does, so the
+ * committing answer may never be the one under the finger already.
+ */
+export const ABOUT_TO_USE_QUESTION = 'Will you switch POKéMON?';
+export const ABOUT_TO_USE_OPTIONS = ['YES', 'NO'] as const;
+export const ABOUT_TO_USE_DECLINE = ABOUT_TO_USE_OPTIONS.indexOf('NO');
+
+export const aboutToUseLine = (trainerName: string, pokemonName: string): string =>
+  `${trainerName} is about to use ${pokemonName.toUpperCase()}.`;
+
+export const aboutToUsePromptLayout = (line: number): { x: number; y: number } => ({
+  x: BATTLE_PANEL.x + PANEL_INSET_X,
+  y: 4 + line * 14,
+});
+
+export const aboutToUseOptionLayout = (index: number): { x: number; y: number } => ({
+  x: BATTLE_PANEL.x + PANEL_INSET_X + index * MOVE_COLUMN_WIDTH,
+  y: 38,
+});
+
 /** The guidance lines sit under the two move rows, inside the same panel. */
 export const moveGuidanceLayout = (line: number): MoveCommandLayout => ({
   x: 18,

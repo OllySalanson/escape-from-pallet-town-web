@@ -239,6 +239,11 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     activatedPoiIds: new Set(),
     forcedReplacement: false,
     isPresentingCombatEvents: false,
+    // The question held over a trainer's next Pokemon, and which of its party
+    // has already been asked about.
+    aboutToUse: null,
+    aboutToUseOffered: new Set<number>(),
+    aboutToUseSwitching: false,
     // Class fields do not run for an Object.create'd scene, and experience is
     // awarded by walking this set.
     participatingPokemon: new Set([player]),
@@ -786,12 +791,21 @@ describe('a level reached in the middle of a trainer battle', () => {
     return { ...harness, squirtle };
   };
 
-  /** Plays the queued narration out the way pressing through it does. */
+  /**
+   * Plays the queued narration out the way pressing through it does - including
+   * the one thing pressing through it can run into, the question asked before a
+   * trainer's next Pokemon lands. Declining is what a player holding the key
+   * gets, because the cursor starts on NO.
+   */
   const readThroughNarration = (scene: BattleScene, dialog: { isCurrentMessageComplete: boolean }): void => {
     dialog.isCurrentMessageComplete = true;
     for (let step = 0; step < 40; step += 1) {
       if ((scene as unknown as { mode: string }).mode === 'main') {
         return;
+      }
+      if ((scene as unknown as { mode: string }).mode === 'about-to-use') {
+        (scene as unknown as { confirm(): void }).confirm();
+        continue;
       }
       (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     }
@@ -891,5 +905,125 @@ describe('a level reached in the middle of a trainer battle', () => {
     expect(benched.level).toBe(7);
     expect(player.pokemon).toBe(benched);
     expect(player.moves.map(({ base }) => base.name)).toContain('Water Gun');
+  });
+});
+
+/**
+ * A knockout in a trainer fight used to be a cutscene: the next Pokemon arrived
+ * and the player read about it. Named before it lands, it is a decision - and
+ * the switch is free, because nothing has moved yet.
+ */
+describe('BattleScene about-to-use switch prompt', () => {
+  /** A trainer on their last point of HP with a second Pokemon, and a bench to answer it with. */
+  const fightWithABench = () => {
+    const squirtle = new Pokemon(SQUIRTLE, 8);
+    const benched = new Pokemon(BULBASAUR, 8);
+    const lead = new Pokemon(PIDGEY, 3);
+    lead.takeDamage(lead.maxHp - 1);
+    const harness = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [lead, new Pokemon(PIDGEY, 5)],
+      party: new PokemonParty([squirtle, benched]),
+    });
+    return { ...harness, squirtle, benched };
+  };
+
+  /** Knocks the lead out and reads up to the question the send-out is held behind. */
+  const readUpToTheQuestion = (
+    scene: BattleScene,
+    renderedTexts: RenderedText[],
+    dialog: { isCurrentMessageComplete: boolean },
+  ): void => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    renderedTexts.filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40; step += 1) {
+      if ((scene as unknown as { mode: string }).mode === 'about-to-use') {
+        return;
+      }
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    throw new Error('The battle never offered the switch.');
+  };
+
+  it('names the Pokemon that is coming and starts the cursor on the answer that costs nothing', () => {
+    const { scene, renderedTexts, dialog } = fightWithABench();
+
+    readUpToTheQuestion(scene, renderedTexts, dialog);
+
+    const panel = renderedTexts.slice(renderedTexts.findLastIndex(({ text }) => text.includes('is about to use')));
+    expect(panel[0].text).toBe('RAIDER MAYA is about to use PIDGEY.');
+    expect(panel[1].text).toBe('Will you switch POKéMON?');
+    expect(panel.slice(2).map(({ text }) => text)).toEqual(['  YES', '▶ NO']);
+    // Every line of it is inside the one panel the rest of the fight is drawn in.
+    expect(panel.every(({ y }) => y >= 174 && y < 238)).toBe(true);
+    // The send-out it is holding back has not been read yet.
+    expect(dialog.shownMessages).not.toContain('Go, PIDGEY!');
+  });
+
+  it('carries straight on to the send-out when the offer is declined', () => {
+    const { scene, renderedTexts, dialog, squirtle } = fightWithABench();
+
+    readUpToTheQuestion(scene, renderedTexts, dialog);
+    (scene as unknown as { confirm(): void }).confirm();
+
+    expect(dialog.shownMessages).toContain('Go, PIDGEY!');
+    expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(squirtle);
+  });
+
+  it('switches for free: the bench lands before the trainer does, and nothing moves in return', () => {
+    const { scene, renderedTexts, dialog, benched } = fightWithABench();
+
+    readUpToTheQuestion(scene, renderedTexts, dialog);
+    const yes = renderedTexts.findLast(({ text }) => text.includes('YES'))!;
+    yes.handlers.pointerover();
+    yes.handlers.pointerdown();
+    expect((scene as unknown as { mode: string }).mode).toBe('party');
+    renderedTexts.findLast(({ text }) => text.includes('BULBASAUR'))!.handlers.pointerdown();
+
+    const { state } = scene as unknown as { state: BattleState };
+    expect(state.player.pokemon).toBe(benched);
+    // A switch taken from the main commands spends the enemy's turn. This one
+    // cannot: the Pokemon it is made against has not been sent out yet.
+    expect(state.player.currentHp).toBe(benched.maxHp);
+    for (let step = 0; step < 40 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    const shown = dialog.shownMessages;
+    // The switch lands in front of the send-out it was offered against, and the
+    // turn that was already queued behind it carries on unchanged.
+    expect(shown.slice(shown.indexOf('Come back, SQUIRTLE!'), shown.indexOf('Come back, SQUIRTLE!') + 3)).toEqual([
+      'Come back, SQUIRTLE!',
+      'Go, BULBASAUR!',
+      'Go, PIDGEY!',
+    ]);
+  });
+
+  it('asks once per Pokemon, and never when there is nobody to switch to', () => {
+    const squirtle = new Pokemon(SQUIRTLE, 8);
+    const lead = new Pokemon(PIDGEY, 3);
+    lead.takeDamage(lead.maxHp - 1);
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [lead, new Pokemon(PIDGEY, 5)],
+      party: new PokemonParty([squirtle]),
+    });
+
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    renderedTexts.filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40; step += 1) {
+      if ((scene as unknown as { mode: string }).mode === 'main') {
+        break;
+      }
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+
+    expect(renderedTexts.some(({ text }) => text.includes('is about to use'))).toBe(false);
+    expect(dialog.shownMessages).toContain('Go, PIDGEY!');
   });
 });
