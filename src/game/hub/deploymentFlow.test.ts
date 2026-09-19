@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { blocksFor, RAID_BAG_GRID, stackSizeOf } from '../items';
-import { CHARMANDER, Pokemon, SQUIRTLE } from '../pokemon';
+import { blocksFor, BASE_SECURE_GRID, RAID_BAG_GRID, stackSizeOf } from '../items';
+import { CHARMANDER, IVYSAUR, Pokemon, SQUIRTLE } from '../pokemon';
 import { createStartingStash, type Stash } from '../stash';
 import { DeploymentFlow } from './deploymentFlow';
 
@@ -26,11 +26,12 @@ describe('deployment flow', () => {
     stash.movePokemon('charmander-1', shelf);
 
     expect(flow.togglePokemon('charmander-1')).toBeUndefined();
-    expect(flow.toggleSecurePokemon('charmander-1')).toBeUndefined();
     flow.advance();
     flow.advance();
 
     expect(flow.deploy().party.map((stored) => stored.id)).toEqual(['charmander-1']);
+    // Nobody pressed anything: the container fills itself with the party's
+    // best, which is the whole point of it filling itself.
     expect(flow.securedPokemon.map((stored) => stored.id)).toEqual(['charmander-1']);
   });
 
@@ -85,7 +86,14 @@ describe('deployment flow', () => {
   });
 
   it('deploys exactly the party, supplies, insertion and secure slot that were confirmed', () => {
-    const { flow, stash } = seedFlow();
+    const { stash } = seedFlow();
+    // A grown container, because a 2x2 one holds a first-stage Pokemon and
+    // nothing else - which is its own test, below.
+    const flow = new DeploymentFlow(stash, 'floodplain-relay', {
+      pokemon: 1,
+      secureGrid: { width: 3, height: 2 },
+      bagGrid: RAID_BAG_GRID,
+    });
 
     flow.togglePokemon('charmander-1');
     flow.togglePokemon('bulbasaur-1');
@@ -93,7 +101,6 @@ describe('deployment flow', () => {
     flow.adjustItem('poke-ball', 1);
     flow.chooseInsertion('viridian-forest');
     flow.openSecureSlot();
-    flow.toggleSecurePokemon('charmander-1');
     flow.adjustSecureItem('potion', 2);
     flow.advance();
     flow.advance();
@@ -119,14 +126,98 @@ describe('deployment flow', () => {
     });
   });
 
-  it('leaves nothing protected when the player never opens the secure slot', () => {
+  /**
+   * The captain's addition of 2026-09-19: the container fills itself, Pokemon
+   * first and by level, so nobody ever deploys with their best unprotected
+   * because they did not open a screen.
+   */
+  it('fills itself with the highest-level Pokemon when the player never opens the secure slot', () => {
     const { flow } = seedFlow();
 
     flow.togglePokemon('bulbasaur-1');
+    flow.togglePokemon('charmander-1');
     flow.advance();
 
-    expect(flow.deploy().secureSlot).toEqual({ items: [] });
-    expect(flow.deploy().stashSecureSlot).toEqual({ items: [] });
+    // Charmander is level 7 against Bulbasaur's 5, and four squares fill the
+    // base container, so it is the one and only thing protected.
+    expect(flow.deploy().stashSecureSlot).toEqual({
+      pokemonIds: ['charmander-1'],
+      items: [],
+    });
+    expect(flow.secureCells).toEqual({ used: 4, total: 4 });
+    expect(flow.securePreference).toEqual({ pokemon: true, items: [] });
+  });
+
+  it('is a default and not a cage: letting the Pokemon go frees the container for gear', () => {
+    const { flow } = seedFlow();
+
+    flow.togglePokemon('charmander-1');
+    flow.adjustItem('potion', 3);
+    expect(flow.securesPokemon('charmander-1')).toBe(true);
+    // Four squares of four: nothing else goes in, and the refusal says why.
+    expect(flow.adjustSecureItem('potion', 1)).toMatch(/CHARMANDER/);
+
+    expect(flow.toggleSecurePokemon('charmander-1')).toBeUndefined();
+    expect(flow.adjustSecureItem('potion', 1)).toBeUndefined();
+    // And the choice is what is remembered for next raid, not the default.
+    expect(flow.securePreference).toEqual({
+      pokemon: false,
+      items: [{ itemId: 'potion', quantity: 1 }],
+    });
+  });
+
+  it('says in squares why an evolved Pokemon will not go into a container that has not grown', () => {
+    const stash = createStartingStash();
+    stash.addPokemon(new Pokemon(IVYSAUR, 16), 'ivysaur-1');
+    const flow = new DeploymentFlow(stash);
+
+    flow.togglePokemon('ivysaur-1');
+    // Six squares against four: the auto-fill leaves it out rather than
+    // pretending, and pressing it says the number.
+    expect(flow.securedPokemon).toEqual([]);
+    expect(flow.toggleSecurePokemon('ivysaur-1')).toMatch(/IVYSAUR needs 6 squares/);
+
+    const grown = new DeploymentFlow(stash, 'floodplain-relay', {
+      pokemon: 1,
+      secureGrid: { width: 3, height: 2 },
+      bagGrid: RAID_BAG_GRID,
+    });
+    grown.togglePokemon('ivysaur-1');
+    expect(grown.securedPokemon.map(({ id }) => id)).toEqual(['ivysaur-1']);
+  });
+
+  it('starts the next raid from what the container held last time', () => {
+    const { stash } = seedFlow();
+    const flow = new DeploymentFlow(
+      stash,
+      'floodplain-relay',
+      { pokemon: 1, secureGrid: { width: 3, height: 2 }, bagGrid: RAID_BAG_GRID },
+      { pokemon: true, items: [{ itemId: 'potion', quantity: 2 }] },
+    );
+
+    flow.togglePokemon('charmander-1');
+    flow.adjustItem('potion', 3);
+
+    // Pokemon first, then the remembered Potions in what is left.
+    expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
+    expect(flow.securedItems).toEqual([{ itemId: 'potion', quantity: 2 }]);
+  });
+
+  it('never lets a remembered supply keep a Pokemon out', () => {
+    const { flow } = seedFlow();
+    const remembered = new DeploymentFlow(
+      createStartingStash(),
+      'floodplain-relay',
+      { pokemon: 1, secureGrid: BASE_SECURE_GRID, bagGrid: RAID_BAG_GRID },
+      { pokemon: true, items: [{ itemId: 'potion', quantity: 4 }] },
+    );
+
+    remembered.adjustItem('potion', 3);
+    remembered.togglePokemon('bulbasaur-1');
+
+    expect(remembered.securedPokemon.map(({ id }) => id)).toEqual(['bulbasaur-1']);
+    expect(remembered.securedItems).toEqual([]);
+    expect(flow.securedItems).toEqual([]);
   });
 
   it('caps the party at six and the secure slot at one Pokemon and two stacks', () => {
@@ -135,7 +226,13 @@ describe('deployment flow', () => {
     for (let index = 0; index < 6; index += 1) {
       ids.push(stash.addPokemon(new Pokemon(SQUIRTLE, 5)));
     }
-    const flow = new DeploymentFlow(stash);
+    // A container two columns grown, so one Pokemon and two stacks all fit and
+    // the caps under test are the caps rather than the squares.
+    const flow = new DeploymentFlow(stash, 'floodplain-relay', {
+      pokemon: 1,
+      secureGrid: { width: 4, height: 2 },
+      bagGrid: RAID_BAG_GRID,
+    });
 
     for (const id of ids.slice(0, 6)) {
       expect(flow.togglePokemon(id)).toBeUndefined();
@@ -164,6 +261,9 @@ describe('deployment flow', () => {
     const { flow } = seedFlow();
     flow.togglePokemon('charmander-1');
     flow.openSecureSlot();
+    // The container filled itself with the Charmander; this test is about the
+    // squares a stacked kind takes, so the player takes it back out first.
+    flow.toggleSecurePokemon('charmander-1');
 
     expect(flow.adjustSecureItem('scrip', 1)).toBeUndefined();
     expect(flow.secureQuantity('scrip')).toBe(stackSizeOf('scrip'));
@@ -184,12 +284,16 @@ describe('deployment flow', () => {
   });
 
   it('drops protection when the protected Pokemon or supplies leave the loadout', () => {
-    const { flow } = seedFlow();
+    const { stash } = seedFlow();
+    const flow = new DeploymentFlow(stash, 'floodplain-relay', {
+      pokemon: 1,
+      secureGrid: { width: 3, height: 2 },
+      bagGrid: RAID_BAG_GRID,
+    });
 
     flow.togglePokemon('charmander-1');
     flow.adjustItem('potion', 2);
     flow.openSecureSlot();
-    flow.toggleSecurePokemon('charmander-1');
     flow.adjustSecureItem('potion', 1);
     flow.advance();
 
@@ -251,9 +355,18 @@ describe('deployment flow', () => {
     const stash = createStartingStash();
     stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
     stash.addPokemon(new Pokemon(SQUIRTLE, 6), 'squirtle-1');
-    const flow = new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 2, secureGrid: { width: 3, height: 2 }, bagGrid: RAID_BAG_GRID });
+    // Two Pokemon are eight squares, so the two-slot locker needs the columns
+    // to go with it: 4x2 is the smallest container that can use both.
+    const flow = new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 2, secureGrid: { width: 4, height: 2 }, bagGrid: RAID_BAG_GRID });
     for (const id of ['bulbasaur-1', 'charmander-1', 'squirtle-1']) {
       flow.togglePokemon(id);
+    }
+    // The container filled itself; this test is about the slot moving under
+    // the player's own presses, so it starts from an empty one.
+    for (const stored of [...flow.securedPokemon]) {
+      flow.toggleSecurePokemon(stored.id);
+    }
+    for (const id of ['bulbasaur-1', 'charmander-1', 'squirtle-1']) {
       flow.toggleSecurePokemon(id);
     }
     // A third pick lets go of the first rather than refusing the click.
@@ -273,6 +386,8 @@ describe('deployment flow', () => {
     const { flow, stash } = seedFlow();
     stash.addItem('radio-valve', 2);
     flow.togglePokemon('bulbasaur-1');
+    // Squares for a material means squares the Pokemon is not standing on.
+    flow.toggleSecurePokemon('bulbasaur-1');
 
     flow.adjustItem('radio-valve', 1);
     expect(flow.items).toEqual([]);

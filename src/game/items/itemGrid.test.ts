@@ -122,3 +122,60 @@ describe('the containers a save starts with', () => {
     expect(gridCells(VAULT_GRID)).toBeGreaterThan(gridCells(RAID_BAG_GRID) * 10);
   });
 });
+
+/**
+ * Cargo is the one piece in a container that is not a supply: a Pokemon being
+ * carried home, four squares, six or nine by its evolution stage. It is packed
+ * by the same packer and drawn on the same squares.
+ */
+describe('a pack carrying a Pokemon home', () => {
+  const pidgey = { cargoId: 'a', name: 'Pidgey', width: 2, height: 2 };
+  const ivysaur = { cargoId: 'b', name: 'Ivysaur', width: 3, height: 2 };
+  const venusaur = { cargoId: 'c', name: 'Venusaur', width: 3, height: 3 };
+
+  it('seats cargo before any supply, so Potions never crowd a Pokemon out', () => {
+    // Fourteen one-square Potions leave four squares, but scattered ones: the
+    // 3x3 only fits because it is seated first.
+    const packed = packContents({ potion: 9 }, RAID_BAG_GRID, [venusaur]);
+    expect(packed.cargoOverflow).toEqual([]);
+    expect(packed.cargo[0]).toMatchObject({ cargoId: 'c', x: 0, y: 0 });
+    expect(packed.cellsUsed).toBe(18);
+    expect(packed.overflow).toEqual([]);
+  });
+
+  it('counts three first-stage catches as twelve of the pack\'s eighteen squares', () => {
+    const three = [pidgey, { ...pidgey, cargoId: 'b' }, { ...pidgey, cargoId: 'c' }];
+    const packed = packContents({}, RAID_BAG_GRID, three);
+    expect(packed.cargoOverflow).toEqual([]);
+    expect(packed.cellsUsed).toBe(12);
+    expect(roomFor({}, RAID_BAG_GRID, 'potion', 99, three)).toBe(6);
+    // A fourth does not go in: three catches is the pack's limit on its own.
+    expect(fitsInGrid({}, RAID_BAG_GRID, [...three, { ...pidgey, cargoId: 'd' }])).toBe(false);
+  });
+
+  /**
+   * A full pack and one more Pokemon is one question with one answer, and the
+   * answer is no whichever list the packer happens to put the overflow in -
+   * cargo is seated first, so it is the Potions that will not go back.
+   */
+  it('answers no when a full pack is asked to take one more Pokemon', () => {
+    expect(fitsInGrid({ potion: 18 }, RAID_BAG_GRID, [pidgey])).toBe(false);
+    expect(fitsInGrid({ potion: 14 }, RAID_BAG_GRID, [pidgey])).toBe(true);
+    // And no when nothing is packed but the cargo itself will not go in.
+    const packed = packContents({}, { width: 2, height: 2 }, [pidgey, ivysaur]);
+    expect(packed.cargo.map(({ cargoId }) => cargoId)).toEqual(['a']);
+    expect(packed.cargoOverflow).toEqual([ivysaur]);
+  });
+
+  it('holds exactly one first-stage Pokemon in the container every save starts with', () => {
+    expect(fitsInGrid({}, BASE_SECURE_GRID, [pidgey])).toBe(true);
+    // And nothing else: four squares of four.
+    expect(fitsInGrid({ potion: 1 }, BASE_SECURE_GRID, [pidgey])).toBe(false);
+    // An evolved one does not go in at all until the container has grown.
+    expect(fitsInGrid({}, BASE_SECURE_GRID, [ivysaur])).toBe(false);
+    expect(fitsInGrid({}, { width: 3, height: 2 }, [ivysaur])).toBe(true);
+    // A fully evolved one is three squares tall, and the container never is:
+    // it grows by columns, so a Venusaur can never be secured.
+    expect(fitsInGrid({}, { width: 9, height: 2 }, [venusaur])).toBe(false);
+  });
+});

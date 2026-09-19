@@ -32,6 +32,13 @@ class MemoryStorage implements StorageLike {
 }
 
 const RUN_CONFIG = { mapId: 'pallet-town', durationMs: 60_000 };
+/**
+ * A container grown past the 2x2 every save starts with. A Pokemon takes four
+ * squares of it by evolution stage, so the starting container protects a
+ * Pokemon *or* supplies; these tests are about what happens to both at once,
+ * and the squares themselves are `RunManager`'s own test.
+ */
+const GROWN_SECURE_GRID = { width: 6, height: 2 };
 
 /** Reads the field straight out of storage, so persistence is proven, not inferred. */
 function persistedStarterSpeciesId(storage: StorageLike): unknown {
@@ -68,13 +75,13 @@ describe('extraction loop integration', () => {
         { itemId: 'potion', quantity: 3 },
       ],
     } as const;
-    // The base container is four squares, so it holds the Potions and not the
-    // balls as well - the choice the grid exists to make.
+    // The container holds the starter - four squares of it - and the Potions,
+    // and not the balls as well: the choice the grid exists to make.
     const securedItems = [{ itemId: 'potion', quantity: 3 }] as const;
     const secureSlot = { pokemon: [starter.pokemon], items: securedItems };
     const stashSecureSlot = { pokemonIds: [starter.id], items: securedItems };
     const manager = new RunManager();
-    manager.startRun(loadout, RUN_CONFIG, secureSlot);
+    manager.startRun(loadout, { ...RUN_CONFIG, secureGrid: GROWN_SECURE_GRID }, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
@@ -347,7 +354,7 @@ describe('extraction loop integration', () => {
     const loadout = { party: [starter.pokemon], items: [] } as const;
     const secureSlot = { pokemon: [starter.pokemon] };
     const manager = new RunManager();
-    manager.startRun(loadout, RUN_CONFIG, secureSlot);
+    manager.startRun(loadout, { ...RUN_CONFIG, secureGrid: GROWN_SECURE_GRID }, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
@@ -395,13 +402,13 @@ describe('extraction loop integration', () => {
         { itemId: 'potion', quantity: 3 },
       ],
     } as const;
-    // The base container is four squares, so it holds the Potions and not the
-    // balls as well - the choice the grid exists to make.
+    // The container holds the starter - four squares of it - and the Potions,
+    // and not the balls as well: the choice the grid exists to make.
     const securedItems = [{ itemId: 'potion', quantity: 3 }] as const;
     const secureSlot = { pokemon: [starter.pokemon], items: securedItems };
     const stashSecureSlot = { pokemonIds: [starter.id], items: securedItems };
     const manager = new RunManager();
-    manager.startRun(loadout, RUN_CONFIG, secureSlot);
+    manager.startRun(loadout, { ...RUN_CONFIG, secureGrid: GROWN_SECURE_GRID }, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
@@ -476,7 +483,7 @@ describe('extraction loop integration', () => {
     const secureSlot = { pokemon: [starter.pokemon] };
     const stashSecureSlot = { pokemonIds: [starter.id] };
     const manager = new RunManager();
-    manager.startRun(loadout, RUN_CONFIG, secureSlot);
+    manager.startRun(loadout, { ...RUN_CONFIG, secureGrid: GROWN_SECURE_GRID }, secureSlot);
     const session = createActiveRunSession(
       manager,
       secureSlot,
@@ -561,7 +568,11 @@ describe('extraction loop integration', () => {
     } as const;
     const secureSlot = { pokemon: [starter.pokemon], items: [loadout.items[1]] };
     const manager = new RunManager();
-    manager.startRun(loadout, { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS }, secureSlot);
+    manager.startRun(
+      loadout,
+      { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS, secureGrid: GROWN_SECURE_GRID },
+      secureSlot,
+    );
     const session = createActiveRunSession(
       manager,
       secureSlot,
@@ -632,7 +643,11 @@ describe('extraction loop integration', () => {
     } as const;
     const secureSlot = { pokemon: [starter.pokemon] };
     const manager = new RunManager();
-    manager.startRun(loadout, { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS }, secureSlot);
+    manager.startRun(
+      loadout,
+      { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS, secureGrid: GROWN_SECURE_GRID },
+      secureSlot,
+    );
     const session = createActiveRunSession(
       manager,
       secureSlot,
@@ -685,7 +700,11 @@ describe('extraction loop integration', () => {
     const loadout = { party: [starter.pokemon], items: [...secured] };
     const secureSlot = { pokemon: [starter.pokemon], items: [...secured] };
     const manager = new RunManager();
-    manager.startRun(loadout, { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS }, secureSlot);
+    manager.startRun(
+      loadout,
+      { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS, secureGrid: GROWN_SECURE_GRID },
+      secureSlot,
+    );
     const session = createActiveRunSession(
       manager,
       secureSlot,
@@ -779,6 +798,9 @@ describe('extraction loop integration', () => {
       standingContractsBanked: 0,
       traderScripSpent: 0,
       traderBarters: [],
+      // A raid deployed from a test never wrote a container preference, so the
+      // save keeps the default: lead with the Pokemon, carry nothing else.
+      securePreference: { pokemon: true, items: [] },
     });
     expect(saves.load()!.stash.itemCount('super-potion')).toBe(1);
 

@@ -1214,6 +1214,24 @@ button {
   background: rgb(240 196 84 / 28%);
   border-color: var(--menu-accent-2, #f0c454);
 }
+/* What the raid is carrying home. It is the one block in the pack that is not a
+   supply, so it is the one that does not use the supply tone. */
+.raid-grid-block.cargo {
+  background: rgb(240 196 84 / 22%);
+  border-color: #f0c454;
+  align-content: center;
+  justify-items: center;
+}
+.raid-grid-block.cargo > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.raid-grid-block.cargo > em {
+  font-style: normal;
+  color: var(--menu-accent);
+}
 .bag-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2227,6 +2245,28 @@ button {
 }
 :where(.pixel-ui) .px-grid.is-secure .px-grid-block {
   background: var(--teal-wash);
+}
+/* Cargo: a Pokemon being carried home, four squares, six or nine by how far
+   along its line it is. It is drawn in the gold the marked block uses because
+   it is the thing in the container the player is reading it for, and its name
+   sits under the sprite so a block is legible at a glance and at 1x. */
+:where(.pixel-ui) .px-grid-block.is-cargo,
+:where(.pixel-ui) .px-grid.is-secure .px-grid-block.is-cargo {
+  background: var(--gold-wash);
+  box-shadow: inset 0 0 0 var(--u) var(--frame);
+  align-content: center;
+  justify-items: center;
+  gap: 0;
+}
+:where(.pixel-ui) .px-grid-block.is-cargo > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .px-grid-block.is-cargo > em {
+  font-style: normal;
+  color: var(--ink-soft);
 }
 /* The pack, stacked over the insertions in the loadout's second column. */
 :where(.pixel-ui) .loadout-side {

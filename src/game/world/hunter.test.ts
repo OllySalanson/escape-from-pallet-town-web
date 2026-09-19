@@ -379,7 +379,13 @@ describe('resolveHunterBattleLoss', () => {
     };
     const secureSlot = { pokemon: [securePokemon], items: [{ itemId: 'potion' as const, quantity: 1 }] };
     const manager = new RunManager();
-    manager.startRun(loadout, { mapId: 'pallet-town', durationMs: 60_000 }, secureSlot);
+    // A Charmander is four squares and the Potion a fifth, so the container is
+    // a column wider than the one a save starts with.
+    manager.startRun(
+      loadout,
+      { mapId: 'pallet-town', durationMs: 60_000, secureGrid: { width: 3, height: 2 } },
+      secureSlot,
+    );
     const session = createActiveRunSession(
       manager,
       secureSlot,

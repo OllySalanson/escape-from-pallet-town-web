@@ -213,8 +213,10 @@ describe('what a banked contract buys', () => {
 
     expect(secureGrid([], ['secure-locker-1'], false)).toEqual({ width: 3, height: 2 });
     expect(secureGrid(ledger, ['secure-locker-1'], false)).toEqual({ width: 4, height: 2 });
-    // The second locker protects a Pokemon, not another column.
-    expect(secureGrid(ledger, ['secure-locker-1', 'secure-locker-2'], false)).toEqual({ width: 4, height: 2 });
+    // The second locker protects a Pokemon *and* brings the column to stand it
+    // in: a Pokemon is four squares, so the slot alone would be unusable.
+    expect(secureGrid(ledger, ['secure-locker-1', 'secure-locker-2'], false)).toEqual({ width: 5, height: 2 });
+    expect(secureGrid([], ['secure-locker-1', 'secure-locker-2'], false)).toEqual({ width: 4, height: 2 });
     // And the Ferryman's berth is one more column for one raid, on the same
     // total - rented rather than built, so it rides on its own argument and
     // never on either banked list.

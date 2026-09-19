@@ -30,7 +30,14 @@ function wipedReport(
     ...(options.secureIndex === undefined ? {} : { pokemon: [party[options.secureIndex]] }),
     ...(options.securedItems ? { items: options.securedItems } : {}),
   };
-  manager.startRun({ party, items }, { mapId: 'floodplain-relay', durationMs: DURATION_MS }, secureSlot);
+  manager.startRun(
+    { party, items },
+    // A Pokemon takes four squares of the container and a supply beside it
+    // takes more, so these reports are built against a container that has been
+    // grown - the squares are `RunManager`'s own test, not this one's.
+    { mapId: 'floodplain-relay', durationMs: DURATION_MS, secureGrid: { width: 6, height: 2 } },
+    secureSlot,
+  );
   manager.tick(60_000);
   for (const member of party) {
     member.takeDamage(member.maxHp);

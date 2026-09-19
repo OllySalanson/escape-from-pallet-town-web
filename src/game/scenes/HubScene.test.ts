@@ -399,6 +399,9 @@ describe('hub deployment route', () => {
     const { hub, start, storage } = createWornHub((maxHp) => maxHp - 3);
     hub.flow.togglePokemon('charmander-1');
     hub.flow.adjustItem('potion', 3);
+    // The container filled itself with the Charmander, which is four squares
+    // of four: the Potions are protected in its place.
+    hub.flow.toggleSecurePokemon('charmander-1');
     hub.flow.adjustSecureItem('potion', 3);
     expect(hub.flow.items).toEqual([{ itemId: 'potion', quantity: 3 }]);
 
@@ -611,7 +614,6 @@ describe('hub deployment route', () => {
     hub.flow.togglePokemon('charmander-1');
     hub.flow.adjustItem('potion', 2);
     hub.flow.openSecureSlot();
-    hub.flow.toggleSecurePokemon('charmander-1');
     hub.flow.advance();
     hub.flow.advance();
     deploy(hub, start);
@@ -898,7 +900,8 @@ describe('what the base screen leads with', () => {
 
     expect(bar).toContain('1/6 Pokémon packed');
     // The bar's own title says "packed", so the summary under it does not.
-    expect(bar).toContain('Charmander · 2 supplies · 0 protected');
+    // The container filled itself with the one Pokemon in the loadout.
+    expect(bar).toContain('Charmander · 2 supplies · 1 protected');
   });
 });
 
@@ -1086,11 +1089,17 @@ describe('the Outfitter', () => {
     hub.flow.togglePokemon('charmander-1');
     hub.flow.togglePokemon('pidgey-1');
     hub.flow.togglePokemon('pidgey-2');
+    // Both lockers together are a 4x2 container, which is exactly two
+    // first-stage Pokemon at four squares each - the second slot and the room
+    // for it arrive on the same rung, or the slot would be unusable.
+    for (const stored of [...hub.flow.securedPokemon]) {
+      hub.flow.toggleSecurePokemon(stored.id);
+    }
     hub.flow.toggleSecurePokemon('charmander-1');
     hub.flow.toggleSecurePokemon('pidgey-2');
     hub.setView('deploy');
     hub.flow.advance();
-    expect(markupOf(hub)).toContain('2 secured · 0/6 squares');
+    expect(markupOf(hub)).toContain('2 secured · 8/8 squares');
 
     deploy(hub, start);
 

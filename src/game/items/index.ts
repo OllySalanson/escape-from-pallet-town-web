@@ -7,6 +7,7 @@ export {
 } from './containers';
 export {
   blocksFor,
+  cargoCells,
   cellsFor,
   fitsInGrid,
   footprintOf,
@@ -16,6 +17,8 @@ export {
   packContents,
   roomFor,
   stackSizeOf,
+  type GridCargo,
+  type GridCargoPlacement,
   type GridPacking,
   type GridPlacement,
   type GridSize,

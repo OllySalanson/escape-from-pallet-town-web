@@ -91,6 +91,7 @@ import {
 import { RunPhase } from '../run/RunManager';
 import { compassBearing } from '../world/bearing';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
+import { packFullForPokemonLine, packHasRoomForPokemon, syncPackCargo } from '../run/raidCargo';
 import {
   buildRaidSettlement,
   buildWipeSettlement,
@@ -621,6 +622,11 @@ export class WorldScene extends Phaser.Scene {
     }
     if (data.caughtPokemonStash) {
       this.caughtPokemonStash = data.caughtPokemonStash;
+    }
+    // The world is rebuilt after every fight, so the pack is re-told what the
+    // raid is carrying rather than trusting a count it kept across the tear-down.
+    if (this.runSession) {
+      syncPackCargo(this.bag, this.runSession.manager.snapshot());
     }
     this.collectedLootIds.clear();
     data.collectedLootIds?.forEach((id) => this.collectedLootIds.add(id));
@@ -2059,7 +2065,18 @@ export class WorldScene extends Phaser.Scene {
       return after;
     }
     const pokemon = createGiftPokemon(gift);
+    // A gift costs pack squares exactly as a catch does. With none to spare the
+    // hand-over does not happen at all: the giver says so, nothing is recorded,
+    // and they still have it when the player comes back with room.
+    if (!packHasRoomForPokemon(this.bag, pokemon)) {
+      audioManager.play('denied');
+      return [
+        ...gift.offer.slice(0, -1),
+        `${packFullForPokemonLine(pokemon)} ${gift.offerNoRoomLine}`,
+      ];
+    }
     this.runSession.manager.registerGiftedPokemon(gift.id, pokemon);
+    syncPackCargo(this.bag, this.runSession.manager.snapshot());
     audioManager.play('catchSuccess');
     if (this.party.pokemon.length < PARTY_LIMIT) {
       this.party.addPokemon(pokemon);

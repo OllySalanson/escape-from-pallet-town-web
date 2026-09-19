@@ -54,6 +54,7 @@ import {
   ITEM_DEFINITIONS,
   FOUND_ONLY_IDS,
   blocksFor,
+  cargoCells,
   footprintOf,
   getHeldItem,
   gridCells,
@@ -61,6 +62,8 @@ import {
   type ItemDefinition,
   type ItemId,
 } from '../items';
+import { DEFAULT_SECURE_PREFERENCE } from '../hub/secureAutofill';
+import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
 import { PokemonParty, type PokemonBase } from '../pokemon';
 import { activeRunManager } from '../run';
 import { buildContractBoard } from '../hub/contractBoard';
@@ -211,7 +214,10 @@ export class HubScene extends Phaser.Scene {
         loaded.traderBerthPaid,
       ),
       bagGrid: raidBagGridFor(loaded.raidProgress.outfitterUpgrades),
-    });
+    },
+    // The container fills itself from what it held last raid, so a player
+    // deploying again and again is not re-picking from scratch.
+    loaded.raidProgress.securePreference ?? DEFAULT_SECURE_PREFERENCE);
     this.view = 'home';
     this.reselectStarterId = this.startingStarterId();
     this.swapArmed = false;
@@ -771,6 +777,9 @@ export class HubScene extends Phaser.Scene {
       },
       deployment.secureSlot,
     );
+    // Remembered on the way out rather than on the way home, because it is what
+    // the player chose and a raid that goes badly chose it too.
+    new SaveManager().recordSecurePreference(deployment.securePreference);
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
     const plan = generateRunPlan(
       seed,
@@ -997,9 +1006,17 @@ export class HubScene extends Phaser.Scene {
       }
       rerender(() => undefined);
     });
-    on('[data-secure-pokemon]', (button) =>
-      rerender(() => this.flow.toggleSecurePokemon(button.dataset.securePokemon!)),
-    );
+    on('[data-secure-pokemon]', (button) => {
+      // It refuses by the squares now, so the message is the whole point of the
+      // press: an Ivysaur that will not go into a 2x2 container says why, on
+      // the same status line every other refusal on this screen uses.
+      const refusal = this.flow.toggleSecurePokemon(button.dataset.securePokemon!);
+      if (refusal) {
+        this.answer(refusal, 'select');
+        return;
+      }
+      rerender(() => undefined);
+    });
     on('[data-secure-item]', (button) => {
       const refusal = this.flow.adjustSecureItem(
         button.dataset.secureItem as ItemId,
@@ -1611,7 +1628,7 @@ export class HubScene extends Phaser.Scene {
         `<span class="px-wrap">${summary}</span>`,
         `<small class="px-wrap${allFainted ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : 'Everything here is lost on a wipe unless it is in the secure slot.'}</small>`,
       ],
-      actions: `<button class="px-window px-button" data-secure-slot data-help="Choose the ${this.flow.securePokemonSlots === 1 ? 'one Pokémon' : `${this.flow.securePokemonSlots} Pokémon`} and the ${gridCells(this.flow.secureGrid)} squares of gear that survive a wipe.">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Read back what this raid risks before you commit to it." ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy</button>`,
+      actions: `<button class="px-window px-button" data-secure-slot data-help="${escapeAttribute(`The ${gridCells(this.flow.secureGrid)} squares that survive a wipe. It fills itself with your highest-level Pokémon first - a Pokémon costs 4, 6 or 9 squares by its stage - and you can change it.`)}">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Read back what this raid risks before you commit to it." ${this.flow.isDeployable ? '' : 'disabled'}>Review &amp; deploy</button>`,
     })}</main>`;
   }
 
@@ -1619,10 +1636,20 @@ export class HubScene extends Phaser.Scene {
     const party = this.flow.party;
     const returnLabel = this.flow.secureReturnStep === 'confirm' ? 'final check' : 'loadout';
     const slots = this.flow.securePokemonSlots;
+    // A Pokemon costs squares of the same container its supplies do, four, six
+    // or nine by how far along its line it is, so the row says the price before
+    // the press and the help bar says what it would buy or cost.
     const pokemonRows = party
       .map((stored) => {
         const secured = this.flow.securesPokemon(stored.id);
-        return `<button class="px-row${secured ? ' is-secured' : ''}" data-secure-pokemon="${stored.id}" data-help="${secured ? 'Secured: it comes home even if you wipe.' : 'Secure this Pokémon so a wipe cannot take it.'}">${this.pokemonRowBody(stored, secured ? pixelTag('', 'secure', true) : '')}</button>`;
+        const squares = cargoSquaresLabel(cargoCells(pokemonCargo(stored.id, stored.pokemon)));
+        const help = secured
+          ? `Secured: it comes home even if you wipe. It is taking ${squares} of the container.`
+          : `Secure this Pokémon so a wipe cannot take it. It needs ${squares} of the container.`;
+        // The price is on the row whether or not it is paid: a secured Pokemon
+        // still says what it is taking, because the next question the screen is
+        // asked is what would fit if it came out.
+        return `<button class="px-row${secured ? ' is-secured' : ''}" data-secure-pokemon="${stored.id}" data-shows="${stored.id}" data-help="${escapeAttribute(help)}">${this.pokemonRowBody(stored, `${pixelTag(squares.toUpperCase(), 'plain')}${secured ? pixelTag('', 'secure', true) : ''}`)}</button>`;
       })
       .join('');
     // One stepper a kind, exactly as the loadout packs: the container is squares
@@ -1663,14 +1690,14 @@ export class HubScene extends Phaser.Scene {
     ).join('');
     const cells = this.flow.secureCells;
     return `<main class="px-body secure-layout">${pixelWindow(
-      `<div class="px-list px-scroll">${pokemonRows || '<p class="px-empty">Add a Pokémon to your loadout first.</p>'}</div>`,
+      `<div class="px-list px-scroll">${pokemonRows || '<p class="px-empty">Add a Pokémon to your loadout first.</p>'}</div>${this.secureRoomNote()}`,
       { className: 'secure-group', heading: 'Pokémon', note: `${this.flow.securedPokemon.length}/${slots} ${slots === 1 ? 'slot' : 'slots'}` },
     )}${pixelWindow(
       // The squares and the list are one child of the window, or the window's
       // second row takes both and the container scrolls away with the list.
       `<div class="secure-body">${pixelGrid(this.flow.secureLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         className: 'is-secure',
-        label: `Secure container, ${cells.used} of ${cells.total} squares full`,
+        label: `Secure container, ${cells.used} of ${cells.total} squares full${this.flow.securedCargo.length ? `, holding ${this.flow.securedCargo.map((piece) => piece.name).join(' and ')}` : ''}`,
       })}<div class="px-list px-scroll">${itemRows ? `${itemRows}<h3 class="px-subheading">Found goods</h3>` : ''}${materialRows}</div></div>`,
       {
         className: 'secure-group',
@@ -1687,6 +1714,32 @@ export class HubScene extends Phaser.Scene {
       ],
       actions: `<button class="px-window px-button is-primary" data-advance data-help="Keep these choices and go back to the ${returnLabel}.">Back to ${returnLabel}</button>`,
     })}</main>`;
+  }
+
+  /**
+   * Why the container holds what it holds, said rather than left to be deduced.
+   *
+   * The base container is four squares and a first-stage Pokemon is four
+   * squares, so filling itself with your best Pokemon fills it completely -
+   * that is the design, but a player who finds the plus buttons dead deserves
+   * the sentence rather than the silence. The same line says what would change
+   * it: a bigger container, or letting the Pokemon go.
+   */
+  private secureRoomNote(): string {
+    const cargo = this.flow.securedCargo;
+    const free = gridCells(this.flow.secureGrid) - this.flow.secureCells.used;
+    if (cargo.length === 0) {
+      const biggest = this.flow.party
+        .map((stored) => cargoCells(pokemonCargo(stored.id, stored.pokemon)))
+        .sort((a, b) => a - b)[0];
+      return biggest !== undefined && biggest > gridCells(this.flow.secureGrid)
+        ? `<p class="px-note px-wrap">Nothing in this party fits: the container is ${this.flow.secureGrid.width}x${this.flow.secureGrid.height} and the smallest here needs ${cargoSquaresLabel(biggest)}. Grow it at the Outfitter, or bank a cordon ledger.</p>`
+        : '';
+    }
+    const names = cargo.map((piece) => piece.name.toUpperCase()).join(' and ');
+    return free === 0
+      ? `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'fills' : 'fill'} the container - there is no room left for supplies. Let ${cargo.length === 1 ? 'it' : 'them'} go to carry gear instead, or grow the container.</p>`
+      : `<p class="px-note px-wrap">${names} ${cargo.length === 1 ? 'leaves' : 'leave'} ${cargoSquaresLabel(free)} for supplies.</p>`;
   }
 
   private confirmView(): string {

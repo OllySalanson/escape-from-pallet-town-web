@@ -5,7 +5,17 @@ import { RunManager, type ItemStack, type SecureSlot } from './RunManager';
 import { buildExtractionReport } from './extractionReport';
 import { RAID_DURATION_MS } from './raidClock';
 
-const RUN_CONFIG = { mapId: 'floodplain-relay', durationMs: RAID_DURATION_MS };
+/**
+ * A container that has been grown. A Pokemon takes four squares of it by
+ * evolution stage, so the 2x2 one a save starts with holds a Pokemon *or* some
+ * supplies - the squares are `RunManager`'s test, and these reports are about
+ * what the screen says once both are in it.
+ */
+const RUN_CONFIG = {
+  mapId: 'floodplain-relay',
+  durationMs: RAID_DURATION_MS,
+  secureGrid: { width: 6, height: 2 },
+};
 
 function startedRun(options: {
   readonly party: readonly Pokemon[];

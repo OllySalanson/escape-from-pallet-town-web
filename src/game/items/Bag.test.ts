@@ -77,3 +77,44 @@ describe('Bag', () => {
     expect(pokemon.primaryStatus).toBeNull();
   });
 });
+
+describe('a pack carrying Pokemon home', () => {
+  const pidgey = { cargoId: 'a', name: 'Pidgey', width: 2, height: 2 };
+
+  it('charges the squares a Pokemon stands on against the room left for supplies', () => {
+    const bag = new Bag({ potion: 4 });
+    expect(bag.room('potion')).toBe(14);
+
+    bag.setCargo([pidgey, { ...pidgey, cargoId: 'b' }, { ...pidgey, cargoId: 'c' }]);
+
+    // Three catches is twelve squares of eighteen: two Potions have to go.
+    expect(bag.room('potion')).toBe(2);
+    expect(bag.layout().cargo).toHaveLength(3);
+    expect(bag.layout().cellsUsed).toBe(16);
+  });
+
+  it('refuses one more Pokemon when the pack is full, and says so before a ball is thrown', () => {
+    const bag = new Bag({ potion: 18 });
+    expect(bag.fitsCargo(pidgey)).toBe(false);
+
+    bag.remove('potion', 4);
+    expect(bag.fitsCargo(pidgey)).toBe(true);
+    bag.setCargo([pidgey]);
+    expect(bag.add('potion', 1)).toBe(false);
+  });
+
+  it('keeps cargo out of the contents a raid is settled from', () => {
+    const bag = new Bag({ potion: 1 });
+    bag.setCargo([pidgey]);
+    // The Pokemon is the raid's, never the supply ledger's: the settlement, the
+    // wipe division and every save field count exactly what they counted.
+    expect(bag.toJSON()).toEqual({ potion: 1 });
+  });
+
+  it('gives the vault no size, so banking a raid can never fail on squares', () => {
+    const vault = new Bag({}, null);
+    vault.setCargo(Array.from({ length: 30 }, (_, index) => ({ ...pidgey, cargoId: `${index}` })));
+    expect(vault.fitsCargo(pidgey)).toBe(true);
+    expect(vault.add('potion', 99)).toBe(true);
+  });
+});
