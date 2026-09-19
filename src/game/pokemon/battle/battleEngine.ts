@@ -11,6 +11,7 @@ import {
 } from './heldItems';
 import { PrimaryStatus, type PrimaryStatus as PrimaryStatusType, type StatusName } from './status';
 import { getTypeEffectiveness } from './typeChart';
+import { WEATHER_MOVE_TURNS, weatherChipDamage, type WeatherId } from './weather';
 import {
   applyStatBoost,
   createStatStages,
@@ -76,6 +77,18 @@ export interface TrainerBattle {
   readonly prize?: string;
 }
 
+/**
+ * The weather over this fight: which, and how many turns it has left.
+ *
+ * `turnsRemaining` is null for weather that has no clock - the weather a
+ * *place* has, which is the field for as long as the fight is fought there.
+ * Weather a move brings on carries `WEATHER_MOVE_TURNS` and counts down.
+ */
+export interface ActiveWeather {
+  readonly id: WeatherId;
+  readonly turnsRemaining: number | null;
+}
+
 export interface BattleState {
   readonly player: BattleCombatant;
   readonly enemy: BattleCombatant;
@@ -83,6 +96,14 @@ export interface BattleState {
   readonly trainer?: TrainerBattle;
   readonly enemyPartyIndex: number;
   readonly outcome: 'active' | 'victory' | 'defeat' | 'caught';
+  /** The tutorial's `BattleField`, which is one field wide so far. */
+  readonly weather: ActiveWeather | null;
+  /**
+   * The weather this *place* has, if any. A move covers it for five turns and
+   * then hands it back, because a squall does not stop a fight being outdoors
+   * in a sandstorm - see `weather.ts`.
+   */
+  readonly ambientWeather: WeatherId | null;
 }
 
 export type BattleEvent =
@@ -137,7 +158,13 @@ export type BattleEvent =
   | { readonly type: 'gear-first-strike'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string }
   | { readonly type: 'gear-endured'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string }
   | { readonly type: 'gear-recoil'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string; readonly damage: number }
-  | { readonly type: 'gear-heal'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string; readonly amount: number };
+  | { readonly type: 'gear-heal'; readonly user: 'player' | 'enemy'; readonly name: string; readonly item: string; readonly amount: number }
+  // Weather. It is the one thing in a fight that belongs to neither side, so
+  // each of these names the field rather than a combatant - except the chip,
+  // which is the weather taking HP off someone and says whose.
+  | { readonly type: 'weather-set'; readonly weather: WeatherId; readonly byMove: boolean }
+  | { readonly type: 'weather-ended'; readonly weather: WeatherId }
+  | { readonly type: 'weather-damage'; readonly user: 'player' | 'enemy'; readonly name: string; readonly weather: WeatherId; readonly damage: number };
 
 export type { StatusName } from './status';
 
@@ -201,7 +228,16 @@ const toCombatant = (pokemon: Pokemon): BattleCombatant => ({
   pendingMove: null,
 });
 
-export const createBattleState = (player: Pokemon, enemy: Pokemon): BattleState => {
+/**
+ * `weather` is the weather of the *place* the fight is happening in, which on a
+ * raid is the district the player was standing in. It has no duration: it is
+ * the field until a move covers it, and it comes back when that move lapses.
+ */
+export const createBattleState = (
+  player: Pokemon,
+  enemy: Pokemon,
+  weather: WeatherId | null = null,
+): BattleState => {
   const playerCombatant = toCombatant(player);
   return {
     player: playerCombatant,
@@ -209,16 +245,22 @@ export const createBattleState = (player: Pokemon, enemy: Pokemon): BattleState 
     playerStatStages: new Map([[player, playerCombatant.statStages]]),
     enemyPartyIndex: 0,
     outcome: player.isFainted ? 'defeat' : enemy.isFainted ? 'victory' : 'active',
+    weather: weather === null ? null : { id: weather, turnsRemaining: null },
+    ambientWeather: weather,
   };
 };
 
-export const createTrainerBattleState = (player: Pokemon, trainer: TrainerBattle): BattleState => {
+export const createTrainerBattleState = (
+  player: Pokemon,
+  trainer: TrainerBattle,
+  weather: WeatherId | null = null,
+): BattleState => {
   const firstEnemy = trainer.party[0];
   if (!firstEnemy) {
     throw new Error('A trainer battle requires at least one Pokemon.');
   }
   return {
-    ...createBattleState(player, firstEnemy),
+    ...createBattleState(player, firstEnemy, weather),
     trainer,
   };
 };
@@ -336,7 +378,11 @@ export const resolveTurn = (
     events.push(...result.events);
   }
 
-  return { state: clearFlinching(nextState), events };
+  // The weather is charged once for the whole turn, after both sides have acted
+  // - it is the field's turn, not either combatant's, which is why it does not
+  // hang off `applyEndOfAction` the way burn and Leftovers do.
+  const weathered = applyWeather(clearFlinching(nextState));
+  return { state: weathered.state, events: [...events, ...weathered.events] };
 };
 
 const clearFlinching = (state: BattleState): BattleState =>
@@ -417,8 +463,88 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
     return { state, events: [] };
   }
 
+  // A turn the player spent on an item, a switch or a ball is still a turn, so
+  // the weather is charged for it here too. Every path that resolves one ends
+  // in exactly one of this function or `resolveTurn`, so nothing is charged twice.
   const enemyMoveIndex = lockedMove(state, 'enemy') ?? chooseEnemyMove(state.enemy, random);
-  return enemyMoveIndex === null ? { state, events: [] } : applyMove(state, 'enemy', enemyMoveIndex, random);
+  const acted =
+    enemyMoveIndex === null
+      ? { state, events: [] as readonly BattleEvent[] }
+      : applyMove(state, 'enemy', enemyMoveIndex, random);
+  const weathered = applyWeather(acted.state);
+  return { state: weathered.state, events: [...acted.events, ...weathered.events] };
+};
+
+/**
+ * The end of a turn for the field itself: what the weather takes, and whether
+ * it is still there next turn.
+ *
+ * The order is the tutorial's and generation III's - the chip lands first and
+ * the clock is read afterwards, so weather set on turn one chips on turn one
+ * and on each of the four after it. A place's weather has no clock and so is
+ * never spent; weather a move brought on lapses back into the place's, which is
+ * why the field is two fields and not one.
+ */
+const applyWeather = (state: BattleState): TurnResult => {
+  const weather = state.weather;
+  if (!weather || state.outcome !== 'active') {
+    return { state, events: [] };
+  }
+
+  let nextState = state;
+  const events: BattleEvent[] = [];
+  // Player first, then enemy, exactly as the tutorial walks its units. Speed
+  // order would matter only for which of two simultaneous knockouts is printed
+  // first, and a fixed order is the one that replays the same way every time.
+  for (const side of ['player', 'enemy'] as const) {
+    if (nextState.outcome !== 'active') {
+      break;
+    }
+    const combatant = side === 'player' ? nextState.player : nextState.enemy;
+    if (combatant.currentHp === 0) {
+      continue;
+    }
+    const damage = weatherChipDamage(weather.id, getCombatantTypes(combatant), combatant.pokemon.maxHp);
+    if (damage === 0) {
+      continue;
+    }
+    const buffeted = { ...combatant, currentHp: Math.max(0, combatant.currentHp - damage) };
+    nextState = updateCombatant(nextState, side, buffeted);
+    events.push({
+      type: 'weather-damage',
+      user: side,
+      name: combatant.pokemon.base.name,
+      weather: weather.id,
+      damage: combatant.currentHp - buffeted.currentHp,
+    });
+    if (buffeted.currentHp === 0) {
+      nextState = resolveFaint(nextState, side);
+      events.push({ type: 'fainted', user: side, name: combatant.pokemon.base.name });
+      if (side === 'enemy' && nextState.outcome === 'active') {
+        events.push({ type: 'enemy-sent-out', name: nextState.enemy.pokemon.base.name });
+      }
+    }
+  }
+
+  if (weather.turnsRemaining === null) {
+    return { state: nextState, events };
+  }
+  const remaining = weather.turnsRemaining - 1;
+  if (remaining > 0) {
+    return { state: { ...nextState, weather: { ...weather, turnsRemaining: remaining } }, events };
+  }
+  events.push({ type: 'weather-ended', weather: weather.id });
+  const ambient = nextState.ambientWeather;
+  if (ambient !== null) {
+    events.push({ type: 'weather-set', weather: ambient, byMove: false });
+  }
+  return {
+    state: {
+      ...nextState,
+      weather: ambient === null ? null : { id: ambient, turnsRemaining: null },
+    },
+    events,
+  };
 };
 
 export const resolveCatchAttempt = (
@@ -576,6 +702,7 @@ const applyMove = (
       random,
       attackerNow().statStages,
       defender.statStages,
+      nextState.weather?.id ?? null,
     );
     stab = result.isStab;
     effectiveness = result.typeEffectiveness;
@@ -813,6 +940,16 @@ const applyMoveEffects = (
     if (victim.currentHp > 0) {
       nextState = updateCombatant(nextState, side, { ...victim, flinching: true });
     }
+  }
+  if (effects.weather) {
+    // The one effect that lands on neither side: `side` is not consulted. It
+    // replaces whatever was over the field, its own weather included - a second
+    // Rain Dance is five fresh turns of rain, as it is in the source material.
+    nextState = {
+      ...nextState,
+      weather: { id: effects.weather, turnsRemaining: WEATHER_MOVE_TURNS },
+    };
+    events.push({ type: 'weather-set', weather: effects.weather, byMove: true });
   }
 
   return { state: nextState, events };

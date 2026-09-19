@@ -45,6 +45,14 @@ const RECHARGE = new Set(['hyper-beam', 'blast-burn', 'frenzy-plant', 'hydro-can
 /** Repeats for two or three turns and then confuses the user. Not modelled. */
 const LOCK_IN = new Set(['thrash', 'petal-dance', 'outrage', 'rollout', 'ice-ball', 'uproar', 'bide']);
 
+/**
+ * Weather is a whole-field effect PokeAPI cannot tell apart from Light Screen
+ * or Spikes, so the four are named here. `MoveEffects.weather` expresses all of
+ * them; of the 151, seven learn Rain Dance by level, three Sandstorm, one Sunny
+ * Day and none Hail.
+ */
+const WEATHER = new Set(['rain-dance', 'sunny-day', 'sandstorm', 'hail']);
+
 /** Volatile conditions with a lifetime of their own. Flinch is the one modelled. */
 const VOLATILE = new Set([
   'trap', 'leech-seed', 'nightmare', 'perish-song', 'yawn', 'ingrain', 'disable',
@@ -55,6 +63,7 @@ const classify = (move) => {
   if (BESPOKE.has(move.name)) return { ok: false, why: 'bespoke' };
   if (LOCK_IN.has(move.name)) return { ok: false, why: 'lock-in' };
   if (move.meta === 'ohko') return { ok: false, why: 'one-hit KO' };
+  if (WEATHER.has(move.name)) return { ok: true, why: 'weather' };
   if (move.meta === 'whole-field-effect' || move.meta === 'field-effect') {
     return { ok: false, why: 'field or side effect' };
   }

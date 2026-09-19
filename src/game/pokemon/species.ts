@@ -19,6 +19,7 @@ import {
   POISON_POWDER,
   PSYBEAM,
   QUICK_ATTACK,
+  RAIN_DANCE,
   RAZOR_LEAF,
   SCARY_FACE,
   SCRATCH,
@@ -118,6 +119,9 @@ export const SQUIRTLE = new PokemonBase({
     // the Wartortle below; this entry is what a Squirtle levelled past 16
     // without evolving, or created outright above it, would know.
     { level: 18, move: BITE },
+    // The only weather move anything in this roster learns by level. FireRed
+    // and LeafGreen teach it to the Squirtle line at 33, 37 and 42.
+    { level: 33, move: RAIN_DANCE },
   ],
   frontSprite: 'sprites/pokemon/squirtle_front.png',
   backSprite: 'sprites/pokemon/squirtle_back.png',
@@ -382,6 +386,7 @@ export const WARTORTLE = new PokemonBase({
     { level: 1, move: BUBBLE },
     { level: 13, move: WATER_GUN },
     { level: 19, move: BITE },
+    { level: 37, move: RAIN_DANCE },
     { level: 53, move: HYDRO_PUMP },
   ],
   frontSprite: 'sprites/pokemon/wartortle_front.png',
@@ -407,6 +412,7 @@ export const BLASTOISE = new PokemonBase({
     { level: 1, move: BUBBLE },
     { level: 13, move: WATER_GUN },
     { level: 19, move: BITE },
+    { level: 42, move: RAIN_DANCE },
     { level: 68, move: HYDRO_PUMP },
   ],
   frontSprite: 'sprites/pokemon/blastoise_front.png',

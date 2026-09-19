@@ -4,6 +4,8 @@ import type { Pokemon } from '../Pokemon';
 import { attackMultiplier, attackRecoil } from './heldItems';
 import { getTypeEffectiveness } from './typeChart';
 import { createStatStages, getStagedStat, type StatStages } from './statStages';
+import { weatherDamageMultiplier } from './weather';
+import type { WeatherId } from './weather';
 
 export type RandomSource = () => number;
 export const STAB_MULTIPLIER = 1.5;
@@ -47,6 +49,12 @@ export const calculateDamage = (
   random: RandomSource,
   attackerStages: StatStages = createStatStages(),
   defenderStages: StatStages = createStatStages(),
+  /**
+   * The field this swing is taken in. It is passed rather than read off the
+   * attacker because weather belongs to neither side - it is the one term in
+   * this formula that is a property of *where* the fight is happening.
+   */
+  weather: WeatherId | null = null,
 ): DamageResult => {
   const typeEffectiveness = getTypeEffectiveness(move.type, [
     defender.base.primaryType,
@@ -77,6 +85,7 @@ export const calculateDamage = (
       typeEffectiveness *
       stabMultiplier *
       criticalMultiplier *
+      weatherDamageMultiplier(weather, move.type) *
       attackMultiplier(attacker),
   );
 

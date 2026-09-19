@@ -1,4 +1,5 @@
 import { formatRaidClock } from '../run/raidClock';
+import { weatherLabel, type WeatherId } from '../pokemon/battle/weather';
 
 /**
  * What the in-raid overlays say, as data.
@@ -117,6 +118,26 @@ export function placePlateLine(name: string | null, remainingMs: number): string
  */
 export function openRaidCue(carried: { readonly items: number; readonly pokemon: number }): string {
   return carried.items + carried.pokemon > 0 ? 'EXTRACT WITH YOUR HAUL' : 'FIND LOOT, THEN EXTRACT';
+}
+
+/**
+ * The weather of the place the player is standing in, or null.
+ *
+ * It is its own chip rather than a second line on the arrival plate because the
+ * two answer different questions and last for different lengths of time: the
+ * plate says where you have just arrived and is gone in three and a half
+ * seconds, and the weather is a thing you need to know when you walk into tall
+ * grass a minute later. Map captions cannot do this job either - a caption now
+ * speaks only within five steps of the thing it names (`ui/captionReveal.ts`),
+ * and weather is not a thing on the map with tiles to stand near; it is the
+ * whole district.
+ *
+ * It is the name and nothing else. What rain does to a Fire move is a battle's
+ * business and the battle says it in words; the chip's job is to make sure the
+ * player was never surprised by it.
+ */
+export function weatherChipLine(weather: WeatherId | null): string | null {
+  return weather === null ? null : weatherLabel(weather);
 }
 
 /** Tiles between the player and the hunter at which the hunter chip appears. */

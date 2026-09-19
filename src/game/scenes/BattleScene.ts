@@ -24,6 +24,7 @@ import {
   type TrainerBattle,
 } from '../pokemon/battle/battleEngine';
 import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle/battleFlow';
+import type { WeatherId } from '../pokemon/battle/weather';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
@@ -91,6 +92,7 @@ import {
   hunterFleeMessages,
   moveCommandLayout,
   moveGuidanceLayout,
+  weatherSetMessage,
   wildEscapeFailureMessage,
   type MatchupTone,
 } from './battlePresentation';
@@ -152,6 +154,12 @@ export interface BattleSceneData extends Partial<RaidCarriage> {
   hunterBattle?: boolean;
   /** A development route can return to its launcher after a complete battle. */
   returnScene?: string;
+  /**
+   * The weather of the place the fight started in - the district the player was
+   * standing in when it began. It is not part of `RaidCarriage` because it is
+   * not the raid's state to carry: the world reads it off the tile every time.
+   */
+  weather?: WeatherId | null;
 }
 
 /**
@@ -336,8 +344,8 @@ export class BattleScene extends Phaser.Scene {
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
     this.launchedFromWorld = Boolean((data.wild || data.trainer) && data.party);
     this.state = data.trainer
-      ? createTrainerBattleState(playerPokemon, data.trainer)
-      : createBattleState(playerPokemon, wildPokemon);
+      ? createTrainerBattleState(playerPokemon, data.trainer, data.weather ?? null)
+      : createBattleState(playerPokemon, wildPokemon, data.weather ?? null);
     this.participatingPokemon.add(playerPokemon);
     this.cameras.main.setBackgroundColor('#0b1220');
     this.centreComposition();
@@ -404,8 +412,8 @@ export class BattleScene extends Phaser.Scene {
     ]);
     this.input.keyboard!.on?.('keydown-M', () => audioManager.toggleMute());
     this.mode = 'events';
-    this.dialog.showMessages(
-      this.teachingBattle
+    this.dialog.showMessages([
+      ...(this.teachingBattle
         ? teachingBattleMessages(
             this.state.player.pokemon.base.name,
             this.state.enemy.pokemon.base.name,
@@ -414,8 +422,12 @@ export class BattleScene extends Phaser.Scene {
             data.trainer?.name,
             this.state.player.pokemon.base.name,
             this.state.enemy.pokemon.base.name,
-          ),
-    );
+          )),
+      // The weather the fight is already in is said once, on the way in, in the
+      // same words a move that brought it on would use. Nothing else announces
+      // it: after this it speaks only when it takes HP off somebody.
+      ...(this.state.weather ? [weatherSetMessage(this.state.weather.id, false)] : []),
+    ]);
   }
 
   public update(_time: number, delta: number): void {

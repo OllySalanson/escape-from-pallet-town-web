@@ -1,6 +1,7 @@
 import type { PokemonType } from './PokemonType';
 import type { StatBoost } from './battle/statStages';
 import type { StatusName } from './battle/status';
+import type { WeatherId } from './battle/weather';
 
 export const MoveCategory = {
   Physical: 'Physical',
@@ -61,12 +62,14 @@ export type MoveCharge = (typeof MoveCharge)[keyof typeof MoveCharge];
  * landed at 100% - which is why Thunderbolt and Flamethrower shipped with
  * descriptions reading "No side effect."
  *
- * Two differences from the port, both because of what this engine already has.
- * The tutorial's `volatileStatus` is a second status id; here confusion is
- * already one of `StatusName`'s values and flinch is the only other volatile
- * modelled, so flinch is its own flag. And there is no `weather` field, because
- * `BattleState` has no field to put weather on - that is named here as the next
- * thing this shape wants rather than left as a silent gap.
+ * One difference from the port: the tutorial's `volatileStatus` is a second
+ * status id, while here confusion is already one of `StatusName`'s values and
+ * flinch is the only other volatile modelled, so flinch is its own flag.
+ *
+ * `weather` was named here as the gap this shape wanted and is now filled:
+ * `BattleState` carries the field, and a weather move is a data row like any
+ * other effect. It is the one effect that lands on neither side - it is the
+ * field both sides are standing in - so `target` says nothing about it.
  */
 export interface MoveEffects {
   readonly boosts?: readonly StatBoost[];
@@ -74,6 +77,11 @@ export interface MoveEffects {
   readonly status?: StatusName;
   /** The target loses its action this turn, if it has not acted yet. */
   readonly flinch?: boolean;
+  /**
+   * Weather brought on over the whole field, for `WEATHER_MOVE_TURNS`. It
+   * belongs to neither side, so `target` does not apply to it.
+   */
+  readonly weather?: WeatherId;
 }
 
 /**
@@ -136,6 +144,7 @@ export interface NormalizedMoveEffects {
   readonly boosts: readonly StatBoost[];
   readonly status?: StatusName;
   readonly flinch: boolean;
+  readonly weather?: WeatherId;
 }
 
 export type NormalizedSecondaryEffect = NormalizedMoveEffects & {
@@ -147,6 +156,7 @@ const normalizeEffects = (effects: MoveEffects | undefined): NormalizedMoveEffec
   boosts: effects?.boosts ?? [],
   status: effects?.status,
   flinch: effects?.flinch ?? false,
+  weather: effects?.weather,
 });
 
 export class MoveBase {
@@ -205,6 +215,7 @@ export class MoveBase {
       this.effects.boosts.length > 0 ||
       this.effects.status !== undefined ||
       this.effects.flinch ||
+      this.effects.weather !== undefined ||
       this.secondaries.length > 0
     );
   }

@@ -3,6 +3,7 @@ import { MoveCategory, type MoveBase } from '../pokemon/MoveBase';
 import type { PokemonType } from '../pokemon/PokemonType';
 import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
 import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
+import { WeatherId, weatherLabel } from '../pokemon/battle/weather';
 
 export const BATTLE_SCREEN_WIDTH = 320;
 export const MOVE_COLUMN_WIDTH = 148;
@@ -460,8 +461,50 @@ export const eventToMessage = (event: BattleEvent): string => {
       return `${combatantName(event)} is gathering itself...`;
     case 'recharging':
       return `${combatantName(event)} must recharge!`;
+    // Weather speaks about the field rather than about either side, so these
+    // lines name no one - except the chip, which is the weather taking HP off
+    // somebody and is worded exactly as a burn or a poison is.
+    case 'weather-set':
+      return weatherSetMessage(event.weather, event.byMove);
+    case 'weather-ended':
+      return weatherEndedMessage(event.weather);
+    case 'weather-damage':
+      return `${combatantName(event)} is buffeted by the ${weatherLabel(event.weather).toLowerCase()}!`;
   }
 };
+
+/**
+ * What the field is doing, in two voices: what a move just did to it, and what
+ * the place has been doing since before the fight started.
+ *
+ * The second is also the battle's opening line when the fight is in a district
+ * with weather of its own, which is why it is one function - the sandstorm the
+ * raid walked into and the sandstorm a move brought on are the same sandstorm,
+ * and a player who has read one line knows what the other means.
+ */
+export const weatherSetMessage = (weather: WeatherId, byMove: boolean): string => {
+  const started: Readonly<Record<WeatherId, string>> = {
+    [WeatherId.Sandstorm]: 'A sandstorm brewed!',
+    [WeatherId.Hail]: 'It started to hail!',
+    [WeatherId.Rain]: 'It started to rain!',
+    [WeatherId.HarshSunlight]: 'The sunlight turned harsh!',
+  };
+  const standing: Readonly<Record<WeatherId, string>> = {
+    [WeatherId.Sandstorm]: 'A sandstorm is raging.',
+    [WeatherId.Hail]: 'It is hailing.',
+    [WeatherId.Rain]: 'It is raining.',
+    [WeatherId.HarshSunlight]: 'The sunlight is harsh.',
+  };
+  return byMove ? started[weather] : standing[weather];
+};
+
+export const weatherEndedMessage = (weather: WeatherId): string =>
+  ({
+    [WeatherId.Sandstorm]: 'The sandstorm subsided.',
+    [WeatherId.Hail]: 'The hail stopped.',
+    [WeatherId.Rain]: 'The rain stopped.',
+    [WeatherId.HarshSunlight]: 'The sunlight faded.',
+  })[weather];
 
 /**
  * Three phrasings, because one noun cannot do all three jobs. The status lines

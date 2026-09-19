@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { getWorldMap, type WorldMapId } from '../worldMap';
-import { districtAt, districtsForMap, MAP_DISTRICTS } from './districts';
+import {
+  districtAt,
+  districtsForMap,
+  weatherAt,
+  MAP_DISTRICTS,
+  WEATHER_WITHOUT_A_CHIP,
+} from './districts';
+import { WEATHER_CONDITIONS, WeatherId } from '../pokemon/battle/weather';
 import { EXTRACTION_POINTS } from './extractionPoints';
 import { gatesForMap } from './gates';
 import { sketchViridianForest } from './maps/viridianForest';
@@ -12,6 +19,48 @@ const DISTRICTED_MAPS = [...new Set(MAP_DISTRICTS.map((district) => district.map
 /** Every door open, so ground behind a gate is asked about too. */
 const openMap = (mapId: WorldMapId) =>
   getWorldMap(mapId, gatesForMap(mapId).map((gate) => gate.bossId));
+
+describe('the weather a place has', () => {
+  /**
+   * The rule and its reason are in `districts.ts`: weather chips a flat one HP
+   * a turn at the levels this game is played at, and a flat charge is paid by
+   * whoever has the fewest Pokemon - which in the hunter fight is always the
+   * player. Measured, the top rung falls from 49% to 17% in a sandstorm
+   * (`tools/weather/measure.mts --hunter`). The hunter arrives wherever the
+   * player is standing, so a chipping district would reprice the one fight a
+   * raid cannot decline, with nothing said about it before the insertion.
+   */
+  it('never chips: a place may bend damage, and may not take HP', () => {
+    const chipping = MAP_DISTRICTS.filter(
+      (district) => district.weather && WEATHER_CONDITIONS[district.weather].chipFraction > 0,
+    );
+    expect(chipping.map((district) => district.name)).toEqual([]);
+    expect(WEATHER_WITHOUT_A_CHIP).toEqual([WeatherId.Rain, WeatherId.HarshSunlight]);
+  });
+
+  it('is the exception, not the map: only where the place is made of water', () => {
+    const weathered = Object.fromEntries(
+      MAP_DISTRICTS.filter((district) => district.weather).map((district) => [
+        district.name,
+        district.weather,
+      ]),
+    );
+    expect(weathered).toEqual({
+      'THE REEDBEDS': WeatherId.Rain,
+      'THE FLOOD': WeatherId.Rain,
+      'BROOK HEAD': WeatherId.Rain,
+    });
+    // Three of twenty. Weather that changed every dozen steps would be weather
+    // nobody reads, and weather on every map would be a tax rather than a place.
+    expect(Object.keys(weathered).length * 6).toBeLessThan(MAP_DISTRICTS.length * 2);
+  });
+
+  it('is read off the tile, so the chip and the fight cannot disagree', () => {
+    expect(weatherAt('pallet-town', { x: 4, y: 35 })).toBe(WeatherId.Rain);
+    expect(weatherAt('pallet-town', { x: 20, y: 35 })).toBeNull();
+    expect(weatherAt('route-1', { x: 14, y: 12 })).toBeNull();
+  });
+});
 
 describe('the named districts of a map', () => {
   it.each(DISTRICTED_MAPS)('%s leaves no ground a player can stand on nameless', (mapId) => {

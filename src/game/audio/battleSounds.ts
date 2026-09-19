@@ -98,6 +98,15 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
       return withLine('statusDamage');
     case 'charging':
       return withLine('statusMove');
+    // Weather. Setting it is a status move by any other name; the chip it takes
+    // every turn is the same news as a burn, and the one soundless event is the
+    // weather stopping, because nothing happens to anybody when it does.
+    case 'weather-set':
+      return withLine('statusMove');
+    case 'weather-damage':
+      return withLine('statusDamage');
+    case 'weather-ended':
+      return null;
   }
 }
 

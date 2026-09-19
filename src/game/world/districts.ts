@@ -2,6 +2,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import * as wildlife from '../pokemon/encounters';
 import type { WildEncounterTable } from '../pokemon/encounters';
+import { WEATHER_CONDITIONS, WeatherId } from '../pokemon/battle/weather';
 
 /**
  * The named parts of a map big enough to have them.
@@ -39,7 +40,61 @@ export interface MapDistrict {
    * district with none rolls on its map's fallback table.
    */
   readonly encounters?: WildEncounterTable;
+  /**
+   * The weather every fight in this place is fought in. It carries no duration
+   * because it is not an event: it is the reason the place looks the way it
+   * does, and it is still doing it when you come back.
+   *
+   * Only `WEATHER_WITHOUT_A_CHIP` may be authored here, and that is a measured
+   * rule rather than a taste - see `PLACE_WEATHER` below and
+   * `tools/weather/measure.mts` for the numbers.
+   */
+  readonly weather?: WeatherId;
 }
+
+/**
+ * Why a place may bend damage but may never chip HP.
+ *
+ * Weather takes a sixteenth of maximum HP a turn, with a floor of one, and at
+ * the levels this game is played at the floor is what binds: everything on both
+ * sides has under 80 HP, so a sandstorm is a **flat one HP a turn to everyone**.
+ * A flat charge is not neutral - it is paid by whoever has the fewest Pokemon,
+ * and in the fight that decides a raid that is always the player. Measured over
+ * the real engine (`tools/weather/measure.mts --hunter`, 300 fights a cell), a
+ * sandstorm *helps* the party at the bottom of the hunter ladder (rung 2, 94% ->
+ * 99%) and destroys it at the top (rung 4, four Pokemon against three: 49% ->
+ * 17%, and the health kept on a win 19% -> 9%). The hunter arrives wherever the
+ * player happens to be standing, so a chipping district would silently reprice
+ * the one fight a raid cannot decline, by a factor of three, with nothing said
+ * about it on the deployment screen - and `hunterThreatFor` promises that the
+ * hunter is priced by the party deployed against it and by nothing else.
+ *
+ * Rain and harsh sunlight have no chip at all. They bend Fire and Water, which
+ * is a cost the player can read off the HUD chip, lead a different Pokemon
+ * into, or walk out of - a district is a place you can leave. Of the two, only
+ * rain is authored: harsh sunlight measured as a 14-point *gift* on the top rung
+ * (49% -> 63%) against rain's 10-point cost (49% -> 39%), because the hunter's
+ * team carries no Water and the player's Fire starter does. A place that makes
+ * the hardest fight in the game easier is not a place with weather in it.
+ *
+ * What rain is worth is measured with the lead using its own signature move
+ * (`measure.mts --lead`), because the shared harness scores a move by power
+ * times effectiveness and cannot see the same-type bonus - through it a Squirtle
+ * answers a Pidgey with Tackle, and a fight with no Water move in it is a fight
+ * rain cannot touch. Played honestly, a Water lead comes out of these places
+ * with 94% of its health against 82% clear and wins Brook Head 77% against 69%;
+ * a Fire lead pays for it, 70% against 90% and 44% against 88%; a Grass lead is
+ * untouched. That is the whole of what a rainy place is: the type the place is
+ * about is worth more in it, and the type it is not is worth less.
+ *
+ * Sandstorm and hail therefore ship as engine rules with no place that has them,
+ * reachable only by a move. That is not a gap: no Kanto species learns either by
+ * level in FireRed/LeafGreen, and a map that wants one - a desert, an ice cave -
+ * is free to author it once the hunter ladder has been re-measured under it.
+ */
+export const WEATHER_WITHOUT_A_CHIP: readonly WeatherId[] = Object.values(WeatherId).filter(
+  (weather) => WEATHER_CONDITIONS[weather].chipFraction === 0,
+);
 
 export const MAP_DISTRICTS: readonly MapDistrict[] = [
   {
@@ -68,6 +123,12 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     mapId: 'floodplain-relay',
     name: 'THE REEDBEDS',
     encounters: wildlife.FLOODPLAIN_REED_WILDLIFE,
+    // The reeds are the way round the checkpoint, and the flooded cut through
+    // them is why they are reeds. The reeds hold Squirtles, and in the rain
+    // they are the wrong place to bring a Fire lead: 70% of its health out
+    // against 90% on a dry day. It costs the checkpoint fight nothing, measured
+    // - Maya fields Electric and Normal/Flying, and rain touches neither.
+    weather: WeatherId.Rain,
     areas: [{ x: 0, y: 14, width: 27, height: 15 }],
   },
   {
@@ -168,6 +229,9 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     mapId: 'pallet-town',
     name: 'THE FLOOD',
     encounters: wildlife.PALLET_FLOOD_WILDLIFE,
+    // The field the river took, and it has not stopped raining on it since.
+    // Pallet's one water place, holding Pallet's one Water table.
+    weather: WeatherId.Rain,
     areas: [{ x: 0, y: 30, width: 12, height: 14 }],
   },
   {
@@ -316,6 +380,13 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     mapId: 'viridian-forest',
     name: 'BROOK HEAD',
     encounters: wildlife.FOREST_WATERSIDE_WILDLIFE,
+    // Where the brook starts, under the only canopy on the map that drips, and
+    // the one place in the game where rain decides a wild fight outright: the
+    // waterside's Squirtles are level 7-9, so they have Water Gun, and in the
+    // rain it hits a Fire lead for half again - 44% wins against 88% clear.
+    // Sap Pool shares that table and is deliberately left dry: two rainy
+    // clearings in one wood is weather every dozen steps, which nobody reads.
+    weather: WeatherId.Rain,
     areas: [{ x: 0, y: 17, width: 11, height: 19 }],
   },
   {
@@ -363,4 +434,12 @@ export function districtsForMap(mapId: WorldMapId): readonly MapDistrict[] {
 /** The district a tile is in, or undefined on a map that names none. */
 export function districtAt(mapId: WorldMapId, tile: GridPosition): MapDistrict | undefined {
   return districtsForMap(mapId).find((district) => district.areas.some((area) => holds(area, tile)));
+}
+
+/**
+ * The weather a fight starting on this tile is fought in. Null everywhere a
+ * place has not authored one, which is most of every map.
+ */
+export function weatherAt(mapId: WorldMapId, tile: GridPosition): WeatherId | null {
+  return districtAt(mapId, tile)?.weather ?? null;
 }
