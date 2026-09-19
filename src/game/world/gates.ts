@@ -250,6 +250,54 @@ export function gateCaption(gate: MapGate, open: boolean, bossName: string | und
   return bossName ? `${gate.label}\nHELD BY ${bossName}` : `${gate.label}\nSHUT`;
 }
 
+/**
+ * The doors of a map, keeper by keeper, in authored order - which is front door
+ * first. A keeper with one door is a group of one.
+ */
+export function gatesByKeeper(gates: readonly MapGate[]): readonly (readonly MapGate[])[] {
+  return gateBossIds(gates).map((bossId) => gates.filter((gate) => gate.bossId === bossId));
+}
+
+/**
+ * Several doors named in one breath. Doors that share their first words say
+ * them once - OVERLOOK GATE + STEPS - and doors that share none take a line
+ * each, because a caption is read at a glance and TOLL BRIDGE + ORCHARD FORD on
+ * one line is wider than the ground either door has beside it.
+ */
+export function jointGateLabel(gates: readonly MapGate[]): string {
+  const [first, ...rest] = gates.map((gate) => gate.label.split(' '));
+  if (!first) {
+    return '';
+  }
+  let shared = 0;
+  while (
+    shared < first.length - 1 &&
+    rest.every((words) => shared < words.length - 1 && words[shared] === first[shared])
+  ) {
+    shared += 1;
+  }
+  const names = [first.join(' '), ...rest.map((words) => words.slice(shared).join(' '))];
+  return names.join(shared > 0 ? ' + ' : ' +\n');
+}
+
+/**
+ * What the map says when two or more of one keeper's doors are on screen at
+ * once: one caption naming them all, in place of each door's own. One boss per
+ * gate and one fight for all of that boss's gates, so they are always in the
+ * same state.
+ */
+export function jointGateCaption(
+  gates: readonly MapGate[],
+  open: boolean,
+  bossName: string | undefined,
+): string {
+  const label = jointGateLabel(gates);
+  if (open) {
+    return `${label}\nOPEN`;
+  }
+  return bossName ? `${label}\nHELD BY ${bossName}` : `${label}\nSHUT`;
+}
+
 /** The line spoken once, on the return from the fight that opened these gates. */
 export function gatesOpenedLines(opened: readonly MapGate[]): readonly string[] {
   if (opened.length === 0) {

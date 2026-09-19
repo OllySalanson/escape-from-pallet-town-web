@@ -56,6 +56,20 @@ export interface CaptionRequest {
    * were created, the name took it and the warning went undrawn.
    */
   readonly warns?: boolean;
+  /**
+   * Captions that are one sentence said twice: the two doors one boss holds.
+   * Each door is a `group` member under the boss's key and is captioned alone
+   * while it is the only one of them on screen. When two or more are on screen
+   * together, the members say nothing and the one request that `speaksFor` the
+   * group is seated instead, against the first member in view - one window
+   * naming both doors. Seated separately they wanted the same ground their
+   * keeper's warning had already taken, and the second door lost: a stranger
+   * who toured Route 1 drew the Overlook Steps as a wall, because from the road
+   * nothing on the screen said the bank had a door in it.
+   */
+  readonly group?: string;
+  /** The key of the group this caption names all of. Its own `subject` is only a fallback. */
+  readonly speaksFor?: string;
 }
 
 export interface CaptionSurroundings {
@@ -293,6 +307,42 @@ export function seatingOrder(requests: readonly CaptionRequest[]): number[] {
 }
 
 /**
+ * Which captions speak this frame, and about what, as the requests to try in
+ * order: none for one that is silent because its group is spoken for - or, for
+ * a group's joint caption, because fewer than two of its members are in view.
+ * A joint caption that does speak is offered each member on screen as its
+ * subject, in the order the members were asked for, which is how a map says
+ * which door is the front one: it sits by the first that has a clear seat, so
+ * a keeper's warning across the front door moves the sentence to the back door
+ * rather than off the screen. Exported so a tool explaining a missing caption
+ * asks about the same requests `placeCaptions` seated.
+ */
+export function resolveGroups(
+  requests: readonly CaptionRequest[],
+  bounds: Rect,
+): (readonly CaptionRequest[])[] {
+  const inView = new Map<string, Rect[]>();
+  for (const request of requests) {
+    if (request.group !== undefined && isOnScreen(request.subject, bounds)) {
+      inView.set(request.group, [...(inView.get(request.group) ?? []), request.subject]);
+    }
+  }
+  const together = (key: string | undefined): readonly Rect[] => {
+    const subjects = key === undefined ? [] : (inView.get(key) ?? []);
+    return subjects.length >= 2 ? subjects : [];
+  };
+  return requests.map((request) => {
+    if (request.speaksFor !== undefined) {
+      return together(request.speaksFor).map((subject) => ({ ...request, subject }));
+    }
+    return together(request.group).length > 0 ? [] : [request];
+  });
+}
+
+/** Room in `CaptionPlacement.candidate` for one subject's seats, so a joint caption's held seat says whose it is. */
+const SEATS_PER_SUBJECT = 32;
+
+/**
  * Seats every caption on the screen. Order is priority: an earlier request is
  * seated first and a later one has to fit around it - and a warning is earlier
  * than any name (`seatingOrder`). The placements come back in the order the
@@ -304,15 +354,18 @@ export function placeCaptions(
 ): CaptionPlacement[] {
   // No caption may cover any subject, its own included, so they are all
   // obstacles before the first caption is seated.
+  // A caption silenced by its group still names something that is drawn there.
   const everySubject = requests.map((request) => request.subject);
+  const speaking = resolveGroups(requests, surroundings.bounds);
   const around: CaptionSurroundings = {
     ...surroundings,
     keepClear: [...surroundings.keepClear, ...everySubject],
   };
   const seated: Rect[] = [];
   const placements: CaptionPlacement[] = [];
+  const silent: CaptionPlacement = { x: 0, y: 0, seat: 'above', candidate: 0, visible: false };
 
-  const place = (request: CaptionRequest): CaptionPlacement => {
+  const place = (request: CaptionRequest, held: number | undefined): CaptionPlacement => {
     const candidates = candidatesFor(request, surroundings.bounds, surroundings.player);
     const rectOf = (candidate: Candidate): Rect => ({
       x: candidate.x,
@@ -336,8 +389,8 @@ export function placeCaptions(
     const seatClearOf = (ground: CaptionSurroundings): number => {
       const isClear = (index: number): boolean =>
         intrusion(rectOf(candidates[index]), ground, seated) === 0;
-      return request.held !== undefined && request.held < candidates.length && isClear(request.held)
-        ? request.held
+      return held !== undefined && held < candidates.length && isClear(held)
+        ? held
         : candidates.findIndex((_, at) => isClear(at));
     };
     const clearOfPlayer = seatClearOf(around);
@@ -350,8 +403,25 @@ export function placeCaptions(
     return { ...candidates[index], candidate: index, visible: true };
   };
 
+  // One subject for almost every caption; a joint caption is offered each of
+  // its doors in turn, the one it holds a seat by first.
+  const placeBySubject = (tries: readonly CaptionRequest[], held: number | undefined): CaptionPlacement => {
+    const heldBy = held === undefined ? -1 : Math.floor(held / SEATS_PER_SUBJECT);
+    const order = tries.map((_, at) => at).sort((a, b) => Number(b === heldBy) - Number(a === heldBy));
+    let unseated = silent;
+    for (const at of order) {
+      const seatHeld = held !== undefined && at === heldBy ? held % SEATS_PER_SUBJECT : undefined;
+      const placement = place(tries[at], seatHeld);
+      if (placement.visible) {
+        return { ...placement, candidate: at * SEATS_PER_SUBJECT + placement.candidate };
+      }
+      unseated = placement;
+    }
+    return unseated;
+  };
+
   for (const index of seatingOrder(requests)) {
-    placements[index] = place(requests[index]);
+    placements[index] = placeBySubject(speaking[index], requests[index].held);
   }
   return placements;
 }

@@ -37,7 +37,9 @@ try {
     const lines = [];
     // seated in the rule's own order: warnings before names
     const order = m.seatingOrder(w.worldLabels.map((l) => l.request())); const turn = (i) => order.indexOf(i);
-    w.worldLabels.forEach((l, i) => { const r = l.request(); const cx = r.subject.x + r.subject.width / 2, cy = r.subject.y + r.subject.height / 2;
+    // a caption silenced by its group (one keeper's doors named together) is not a missing one
+    const speaking = m.resolveGroups(w.worldLabels.map((l) => l.request()), bounds);
+    w.worldLabels.forEach((l, i) => { const r = speaking[i][0]; if (!r) return; const cx = r.subject.x + r.subject.width / 2, cy = r.subject.y + r.subject.height / 2;
       const wanted = ${ASKED} !== null && l.label.text.includes(${ASKED});
       if ((l.label.visible && !wanted) || cx < v.left || cx > v.right || cy < v.top || cy > v.bottom) return;
       const seated = w.worldLabels.filter((o, j) => turn(j) < turn(i) && o.label.visible).map((o) => ({ x: o.windowX, y: o.windowY, width: o.request().width, height: o.request().height }));

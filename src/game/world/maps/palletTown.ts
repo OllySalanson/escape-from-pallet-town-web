@@ -209,6 +209,19 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
   map.plant(4, 19, 'hut');
   map.plant(13, 19, 'hut');
   map.plant(21, 19, 'hut');
+  // What says allotment rather than kennel: a stranger toured the town, saw
+  // three small huts in grass pens and called the band the Stockyard, because
+  // there was not a vegetable in it and the produce was all up in the market.
+  // So each shed has a dug row down its open side - something up in most of
+  // it - and two plots still have a crate of the year's crop standing in their
+  // hedge. The rows lie on ground that was already open and are walked over,
+  // and the crates stand where hedge stood, so no way through has changed.
+  const rows = ['bedSeedlings', 'bedYellowCrop', 'bedRedCrop'] as const;
+  for (const [x, order] of [[6, [0, 1, 2]], [15, [1, 2, 0]], [20, [2, 0, 1]]] as const) {
+    order.forEach((row, index) => map.plant(x, 19 + index, rows[row]));
+  }
+  map.plant(5, 23, 'produceCrate');
+  map.plant(13, 24, 'produceCrate');
 
   // == THE LEAT'S THREE CROSSINGS ===========================================
   // Two fords and a bridge. A ford is the same river running pale over stones,

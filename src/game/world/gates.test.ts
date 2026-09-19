@@ -9,6 +9,9 @@ import {
   applyGates,
   gateBossIds,
   gateCaption,
+  gatesByKeeper,
+  jointGateCaption,
+  jointGateLabel,
   gatesForMap,
   gatesOpenedLines,
   gateStateKey,
@@ -341,6 +344,35 @@ describe('gate state', () => {
     expect(gateCaption(gate, false, 'WARDEN WREN')).toBe('TEST GATE\nHELD BY WARDEN WREN');
     expect(gateCaption(gate, false, undefined)).toBe('TEST GATE\nSHUT');
     expect(gateCaption(gate, true, 'WARDEN WREN')).toBe('TEST GATE\nOPEN');
+  });
+
+  it('names one keeper\'s doors in one caption, saying shared words once', () => {
+    const doorsOf = (bossId: string) => WORLD_GATES.filter((one) => one.bossId === bossId);
+
+    expect(jointGateCaption(doorsOf('overlook-warden'), false, 'WARDEN WREN')).toBe(
+      'OVERLOOK GATE + STEPS\nHELD BY WARDEN WREN',
+    );
+    expect(jointGateCaption(doorsOf('overlook-warden'), true, 'WARDEN WREN')).toBe(
+      'OVERLOOK GATE + STEPS\nOPEN',
+    );
+    // Doors with no word in common take a line each: on one line the caption
+    // is wider than the ground either door has beside it.
+    expect(jointGateCaption(doorsOf('floodplain-toll-keeper'), false, undefined)).toBe(
+      'TOLL BRIDGE +\nORCHARD FORD\nSHUT',
+    );
+    // A shared word is only dropped from the front, and never the whole label.
+    expect(jointGateLabel([gate, { ...gate, label: 'TEST' }])).toBe('TEST GATE +\nTEST');
+  });
+
+  it('groups a map\'s doors by keeper, front door first', () => {
+    for (const mapId of ['route-1', 'floodplain-relay'] as const) {
+      const groups = gatesByKeeper(gatesForMap(mapId));
+      expect(groups.flat()).toHaveLength(gatesForMap(mapId).length);
+      for (const doors of groups) {
+        expect(new Set(doors.map((door) => door.bossId)).size).toBe(1);
+        expect(doors).toHaveLength(2);
+      }
+    }
   });
 
   it('announces the doors a win opened, and says they stay open', () => {

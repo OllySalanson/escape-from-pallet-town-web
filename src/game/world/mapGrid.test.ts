@@ -103,6 +103,30 @@ describe('stamping landmarks into a drawing', () => {
       expect(map.terrainAt(3, 2)).toBe('T');
     });
 
+    /**
+     * A felled tree's claims used to outlive it. Viridian's ledge was drawn
+     * along a row of the lattice, its west end on a trunk's own tile: the ledge
+     * piece replaced the tree, the next piece was laid on the tile that tree
+     * had blocked, and the west end was taken away as though it were the tree.
+     */
+    it('forgets what a landmark blocked once something else is stamped where it stood', () => {
+      const map = new MapSketch({
+        width: 7,
+        height: 5,
+        fill: 'T',
+        stamps: {
+          t: { prop: 'tree', anchor: [1, 2], ground: '.', bare: 'T', blocks: [[-1, 0], [1, 0]] },
+          '<': { prop: 'bankWest', anchor: [0, 0], ground: '.' },
+          '=': { prop: 'bank', anchor: [0, 0], ground: '.' },
+        },
+      }).draw(0, 0, ['TTTTTTT', 'TTTTTTT', 'TTTtTTT', 'TTTTTTT', 'TTTTTTT']);
+
+      map.draw(3, 2, ['<=']);
+
+      expect(map.props().map((prop) => prop.name)).toEqual(['bankWest', 'bank']);
+      expect(map.terrainAt(3, 2)).toBe('.');
+    });
+
     it('leaves it standing when the lane passes clear of it', () => {
       const map = woods().draw(5, 0, [',', ',', ',', ',', ',']);
       expect(map.props()).toHaveLength(1);

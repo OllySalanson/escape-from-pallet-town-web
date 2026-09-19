@@ -97,8 +97,11 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
   // -- Pallet Town -----------------------------------------------------------
   // A small map, so its places are small: a plate every dozen steps is right
   // for a town, where it would be noise on the Floodplain. The leat is the one
-  // boundary that matters, and it is drawn so that stepping onto a crossing is
-  // stepping into the south - the water belongs to the bank it lands you on.
+  // boundary that matters, and its crossings belong to the north bank: the
+  // south is named on the far step of the bridge, where the south bank starts.
+  // The water used to belong to the bank it landed you on, so THE STOCKYARD
+  // went up on the bridge head with three quarters of the screen still the
+  // allotments - and a stranger learned that name for the hut band.
   {
     id: 'pallet-market-square',
     mapId: 'pallet-town',
@@ -132,13 +135,14 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'pallet-allotments',
     mapId: 'pallet-town',
     name: 'THE ALLOTMENTS',
-    areas: [{ x: 0, y: 19, width: 24, height: 8 }],
+    // Down to the leat's south lip: both fords and the bridge deck.
+    areas: [{ x: 0, y: 19, width: 24, height: 11 }],
   },
   {
     id: 'pallet-flood',
     mapId: 'pallet-town',
     name: 'THE FLOOD',
-    areas: [{ x: 0, y: 27, width: 12, height: 17 }],
+    areas: [{ x: 0, y: 30, width: 12, height: 14 }],
   },
   {
     id: 'pallet-stockyard',
@@ -146,7 +150,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     name: 'THE STOCKYARD',
     // The bridge foot, the paddocks, the sluice at the east end of the bank and
     // the road down to the South Gate: everything the bridge lands you in.
-    areas: [{ x: 12, y: 27, width: 20, height: 17 }],
+    areas: [{ x: 12, y: 30, width: 20, height: 14 }],
   },
 
   // -- Route 1 ---------------------------------------------------------------
@@ -242,6 +246,18 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     areas: [{ x: 11, y: 8, width: 9, height: 9 }],
   },
   {
+    // The name stands on the ground that looks it: the solid block of
+    // broadleaves in the south-west, with the clearing at its north-east corner
+    // and the trails along its north and east sides. It used to name a
+    // rectangle east of here that was the same hedge and grass as everywhere
+    // else, and a stranger who was shown the plate once pinned the name on the
+    // tree block anyway. Listed before BROOK HEAD, whose column it is cut from.
+    id: 'forest-deep-stand',
+    mapId: 'viridian-forest',
+    name: 'DEEP STAND',
+    areas: [{ x: 3, y: 21, width: 14, height: 11 }],
+  },
+  {
     id: 'forest-brook-head',
     mapId: 'viridian-forest',
     name: 'BROOK HEAD',
@@ -251,19 +267,21 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'forest-wardens-cut',
     mapId: 'viridian-forest',
     name: "WARDEN'S CUT",
-    areas: [{ x: 11, y: 17, width: 14, height: 4 }],
+    // The cut, and the trail that leaves it south for The Clearing.
+    areas: [
+      { x: 11, y: 17, width: 14, height: 4 },
+      { x: 17, y: 21, width: 6, height: 6 },
+    ],
   },
   {
     id: 'forest-east-rise',
     mapId: 'viridian-forest',
     name: 'EAST RISE',
-    areas: [{ x: 25, y: 17, width: 7, height: 10 }],
-  },
-  {
-    id: 'forest-deep-stand',
-    mapId: 'viridian-forest',
-    name: 'DEEP STAND',
-    areas: [{ x: 11, y: 21, width: 14, height: 6 }],
+    // The clearing, and the whole of the ledge under its brow.
+    areas: [
+      { x: 25, y: 17, width: 7, height: 10 },
+      { x: 23, y: 21, width: 2, height: 6 },
+    ],
   },
   {
     id: 'forest-clearing',

@@ -162,10 +162,11 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
   // The Overlook is a small shelf of grass round a great stump, with the fence
   // along its brow and the bank below that. The rock in the fence and in the
   // bank, at their east end, is the steps, which `../gates.ts` owns in both
-  // states. Its four captioned things stand at its four corners on purpose -
-  // the gate west, the stile north-east, the steps south-east, the landing on
-  // the west side - because drawn closer together their captions fought for
-  // the same seats and the gate went unnamed from the road. Under the bank
+  // states. Its four captioned things stand apart on purpose - the gate west,
+  // the stile on the north edge (two tiles clear of the corner, which is the
+  // raid clock's), the steps south-east, the landing on the west side -
+  // because drawn closer together their captions fought for the same seats
+  // and the gate went unnamed from the road. Under the bank
   // a strip of grass runs along its foot and round the station - the one
   // building on the route, door to its paved yard, crates stacked where the
   // relay's spur leaves east.

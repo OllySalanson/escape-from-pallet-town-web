@@ -59,7 +59,7 @@ describe('Route 1', () => {
     // Shut, the Overlook is its own place: nothing on the route reaches it.
     expect(steps(MAP, head, landing, { standing: [WREN] })).toBe(-1);
     // And a raid that drops in there is never trapped: the stile is always open.
-    expect(steps(MAP, landing, exitTile(MAP, 'OVERLOOK STILE'))).toBe(5);
+    expect(steps(MAP, landing, exitTile(MAP, 'OVERLOOK STILE'))).toBe(3);
 
     expect({
       inByTheGate: steps(MAP, station, landing, { beaten: WON, without: stepsDown }),

@@ -6,6 +6,7 @@ import {
   explainSeats,
   placeCaptions,
   placeDialog,
+  resolveGroups,
   seatingOrder,
   type CaptionRequest,
   type CaptionSurroundings,
@@ -299,6 +300,82 @@ describe('where a map caption is allowed to sit', () => {
 
       expect(seat({ warns: true }, { keepClear: [everyone] }).visible).toBe(false);
       expect(seat({ warns: true }, { canopy: [everyone] }).visible).toBe(false);
+    });
+  });
+
+  /**
+   * One boss, two doors, one screen. Seated separately the second door's name
+   * lost its ground to the first door's and to their keeper's warning, so a
+   * stranger drew Route 1's Overlook Steps as a wall.
+   */
+  describe('two doors held by one keeper', () => {
+    const gate = tile(136, 112);
+    const steps = tile(184, 128);
+    const doors = (overrides: Partial<CaptionRequest> = {}): CaptionRequest[] => [
+      request({ subject: gate, group: 'wren' }),
+      request({ subject: steps, group: 'wren' }),
+      request({ subject: gate, width: 90, speaksFor: 'wren', ...overrides }),
+    ];
+
+    it('names both in one caption, seated against the first of them, while both are on screen', () => {
+      const [first, second, both] = placeCaptions(doors(), around());
+
+      expect(first.visible).toBe(false);
+      expect(second.visible).toBe(false);
+      expect(both.visible).toBe(true);
+      expect(both.x + 45).toBe(gate.x + TILE / 2);
+      expect(both.y).toBe(gate.y - SUBJECT_GAP - 14);
+    });
+
+    it('lets each door speak for itself while it is the only one in view', () => {
+      const scrolled: Rect = { ...VIEW, x: 176 };
+      const [first, second, both] = placeCaptions(doors(), around({ bounds: scrolled }));
+
+      expect(first.visible).toBe(false);
+      expect(second.visible).toBe(true);
+      expect(both.visible).toBe(false);
+    });
+
+    it('is seated against whichever door is in view first, not against the one it was made beside', () => {
+      const third = tile(280, 128);
+      const scrolled: Rect = { ...VIEW, x: 176 };
+      const asked = [...doors(), request({ subject: third, group: 'wren' })];
+      const resolved = resolveGroups(asked, scrolled);
+
+      expect(resolved.map((tries) => tries.map((one) => one.subject))).toEqual([[], [], [steps, third], []]);
+    });
+
+    it('sits by the back door when the keeper\'s warning has the front door walled in', () => {
+      // Everything round the gate is taken; the steps have open ground.
+      const walled = { keepClear: [{ x: 60, y: 60, width: 110, height: 120 }] };
+      const [, , both] = placeCaptions(doors(), around(walled));
+
+      expect(both.visible).toBe(true);
+      // Slid along the steps' own row, its left end on theirs: a seat the gate never offers.
+      expect(both.x).toBe(steps.x);
+      expect(both.y).toBe(steps.y - SUBJECT_GAP - 14);
+
+      // And it stays by the door it chose, rather than flicker back, while that seat is clear.
+      const [, , again] = placeCaptions(doors({ held: both.candidate }), around());
+      expect(rectOf(again, 90)).toEqual(rectOf(both, 90));
+    });
+
+    it('still keeps every caption off a door whose own caption is silent', () => {
+      const [, , both, other] = placeCaptions(
+        [...doors(), request({ subject: tile(184, 150), width: 60 })],
+        around(),
+      );
+
+      expect(both.visible).toBe(true);
+      expect(other.visible).toBe(true);
+      expect(overlaps(rectOf(other), steps)).toBe(false);
+      expect(overlaps(rectOf(both, 90), steps)).toBe(false);
+    });
+
+    it('leaves captions in no group exactly as they were', () => {
+      const asked = [request(), request({ subject: tile(40, 40) })];
+
+      expect(resolveGroups(asked, VIEW)).toEqual(asked.map((one) => [one]));
     });
   });
 

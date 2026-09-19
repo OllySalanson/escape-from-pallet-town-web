@@ -40,12 +40,22 @@ export type WorldLabelPlacement = CaptionSide;
 const PADDING_X = 3;
 const PADDING_Y = 2;
 
+/**
+ * A caption's part in a group that is named together when it is on screen
+ * together - see `CaptionRequest.group`.
+ */
+export interface WorldLabelGrouping {
+  readonly group?: string;
+  readonly speaksFor?: string;
+}
+
 export class WorldLabel {
   private readonly frame: Phaser.GameObjects.Graphics;
   private readonly label: Phaser.GameObjects.Text;
   private readonly subject: Rect;
   private readonly preferred: WorldLabelPlacement;
   private readonly warns: boolean;
+  private readonly grouping: WorldLabelGrouping;
   private tone: WorldLabelTone;
   private held: number | undefined;
 
@@ -63,7 +73,9 @@ export class WorldLabel {
     depth: number,
     placement: WorldLabelPlacement = 'above',
     warns = false,
+    grouping: WorldLabelGrouping = {},
   ) {
+    this.grouping = grouping;
     this.subject = subject;
     this.preferred = placement;
     this.warns = warns;
@@ -107,6 +119,7 @@ export class WorldLabel {
       preferred: this.preferred,
       held: this.held,
       warns: this.warns,
+      ...this.grouping,
     };
   }
 

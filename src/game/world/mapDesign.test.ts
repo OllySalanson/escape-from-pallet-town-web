@@ -222,7 +222,9 @@ const DRAWN_FLOODPLAIN_RELAY = [
  * signed off - but the wood they are cut from is new, and so are the glade
  * under the fire tower, the rock stair in the north-east, the pool in the east
  * and the brook down the west edge with the ford in it, and none of that has
- * been approved.
+ * been approved. Nor has what a stranger's memory test added since: the earth
+ * cross at the Crossroads, the rim ground the Hollow's and the Cut's stumps
+ * stand on, the East Rise's ledge, and the Deep Stand's closed south-west nub.
  */
 const DRAWN_VIRIDIAN_FOREST = [
   'TTTTTTTTTTTTTTT...TTTTTTTTTTTTTT',
@@ -232,26 +234,26 @@ const DRAWN_VIRIDIAN_FOREST = [
   'TT.TTTg.g.TTTT.....TTTT.TT.T...T',
   'TTTT.TgTgTTggg.....TTTTTTTTT...T',
   'TT.TgggTgTTgTT....ggggT.TT.T...T',
-  'TTTTgTTTggggTT..g..TTgTTTTTT...T',
-  'TT..g.TTTTTTTTTTgTTTTgTT.......T',
+  'TTT.gT.TggggTT..g..TTgTTTTTT...T',
+  'TT..g..TTTTTTTTTgTTTTgTT.......T',
   '.T...gggTTTTTTgggTTTTggg.WWgg..T',
-  'TT....Tg.TT.TTgTTT.TTTTggWW.TTTT',
-  'TT...gTgggTTTTgTTTTTTTTT..g.TTTT',
-  'TTTTTgTTTgT.T.g..TTT.TTTTTgTT.TT',
-  'TWWTTgTTTgggg.....TTTTTTTTgggTTT',
-  'TWWgggT.TTTTT...gggT.TT.TTTTgTTT',
-  'TWWgTTTTTTTTTg...TgTTTTTTTTTgT.T',
-  'TWWggTTT.TT.TgTTTTggTTT.T.TggTTT',
-  'TWW.g.TTTTTgggTTT..g.TTTTTTgTTTT',
-  'TWW..gggTTTgTTT.T...ggggTTTggT.T',
-  'Tww...TgTTTgTTTTT....TTgTT..g.TT',
-  'Tww...TgggTgTT.TT...gTTgggg...TT',
+  'TT.....g.TT.T,,TTT.TTTTggWW.TTTT',
+  'TT...g.gggTTT,,TTTTTTTTT..g.TTTT',
+  'TT.T.gTTTgT.T,,..TTT.TTTTTgTT.TT',
+  'TWWTTgTTTgg,,,,,,.TTTTTTTTgggTTT',
+  'TWWgggT.TTT,,,,,,ggT.TT.TTTTgTTT',
+  'TWWgTTTTTTTTT,,..TgTTTTTTTTTgT.T',
+  'TWWggTTT.TTTT,,TT.gg.TT.T.TggTTT',
+  'TWW.g.TTTTTgggTTT..g..TTTTTgTTTT',
+  'TWW..gggTTTgTTT.....ggggTTTggT.T',
+  'Tww...TgTTTgTTT.......TgTT..g.TT',
+  'Tww...TgggTgTTTTT...gTTgggg...TT',
   'TWWTTTTTTgTgg...TTTTgTTTTT....TT',
   'TWWTTTTTTgTT....TTTTgTTTTT..g..T',
   'TWWTTTT.Tgggg...TTTTgggT.TTTgTTT',
-  'TWWTT.TTTTTT..g.T.TTTTgTTTTTgTTT',
-  'TWWTTTTTTTTTTTgTTTTTTggTTTgggT.T',
-  'TWWTT.TT.TT.TTggggg.TgTT.TgTTTTT',
+  'TWWTT.TTTTTTT.g.T.TTTTg.....g..T',
+  'TWWTTTTTTTTTTTgTTTTTTggTTTgggTTT',
+  'TWWTT.TT.TT.TTggggg.TgTTTTgTTTTT',
   'TWWTTTTTTTTTTTTTTTgTTgTggggTTTTT',
   'TTTTT.TT.TT.TTTTTTg..gggTTTTT.TT',
   'TTTTTTTTTTTTTTTTTT.....TTTTTTTTT',
