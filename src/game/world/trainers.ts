@@ -113,8 +113,13 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     ),
   },
   {
-    // The third cross-link is the short way between the two roads. Maya holds
-    // it; the roads still go round her.
+    // The third cross-link is the short way between the two roads. June holds
+    // it; the roads still go round her. She was a second RAIDER MAYA with the
+    // checkpoint's own Pikachu and Pidgey, and a player who beats Maya on the
+    // Floodplain and meets her again one map over reads it as a bug. The lead
+    // is a Jigglypuff because no other trainer fields one and, at level 7, it
+    // fights with the same Tackle and Growl the Pikachu did - a different
+    // fight to look at, at the price the route was already measured against.
     mapId: 'route-1',
     position: { x: 16, y: 20 },
     facing: 'down',
@@ -122,9 +127,9 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     design: 'lass',
     introLines: ['NO ONE loots Route 1 for free!', 'My partner is ready!'],
     trainer: createTrainer(
-      'route-raider-maya',
-      'RAIDER MAYA',
-      [new Pokemon(PIKACHU, 7), new Pokemon(PIDGEY, 7)],
+      'route-lass-june',
+      'LASS JUNE',
+      [new Pokemon(JIGGLYPUFF, 7), new Pokemon(PIDGEY, 7)],
       'You earned your way past me. Keep moving!',
     ),
   },

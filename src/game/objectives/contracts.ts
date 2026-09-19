@@ -165,7 +165,7 @@ const SURVEY_THE_BRAID: RaidContract = {
   },
   briefing: [
     'Three stakes: west road, middle field, east road. No single road passes two of them.',
-    'The middle field is fenced. Its north doors open off the second cross-link; its south door and the third cross-link are behind Maya, and she only steps aside once you have beaten her.',
+    'The middle field is fenced. Its north doors open off the second cross-link; its south door and the third cross-link are behind June, and she only steps aside once you have beaten her.',
     'Every cross-link is tall grass, so each crossing of the braid is a fight you are choosing to take.',
   ],
   deploymentBriefing:

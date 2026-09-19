@@ -47,4 +47,21 @@ describe('authored trainers', () => {
 
     expect(first[0].trainer.party[0]).not.toBe(second[0].trainer.party[0]);
   });
+
+  /**
+   * Playtest 3, D5: RAIDER MAYA led the same Pikachu and Pidgey on the
+   * Floodplain checkpoint and on Route 1. Beaten on one map and met again on
+   * the next, a trainer who is two people reads as a bug.
+   */
+  it('never puts one trainer in two places', () => {
+    const encounters = createRunTrainerEncounters();
+    const names = encounters.map(({ trainer }) => trainer.name);
+    const ids = encounters.map(({ trainer }) => trainer.id);
+    const teams = encounters.map(({ trainer }) =>
+      trainer.party.map((member) => `${member.base.id}:${member.level}`).join(','));
+
+    expect(new Set(names).size).toBe(names.length);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(new Set(teams).size).toBe(teams.length);
+  });
 });
