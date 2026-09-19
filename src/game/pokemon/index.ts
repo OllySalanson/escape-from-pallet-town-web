@@ -21,6 +21,7 @@ export { type LearnableMove, PokemonBase, type PokemonBaseInit, type PokemonStat
 export { PokemonParty } from './PokemonParty';
 export { PokemonType } from './PokemonType';
 export {
+  BITE,
   BUBBLE,
   EMBER,
   FEATHER_DANCE,
@@ -29,6 +30,7 @@ export {
   GUST,
   HEAT_WAVE,
   HYDRO_PUMP,
+  METAL_CLAW,
   POISON_POWDER,
   RAZOR_LEAF,
   SCARY_FACE,

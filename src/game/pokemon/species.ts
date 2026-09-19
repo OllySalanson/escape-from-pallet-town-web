@@ -1,6 +1,7 @@
 import { PokemonBase } from './PokemonBase';
 import { PokemonType } from './PokemonType';
 import {
+  BITE,
   BUBBLE,
   EMBER,
   FEATHER_DANCE,
@@ -9,6 +10,7 @@ import {
   GUST,
   HEAT_WAVE,
   HYDRO_PUMP,
+  METAL_CLAW,
   POISON_POWDER,
   RAZOR_LEAF,
   SCARY_FACE,
@@ -68,6 +70,10 @@ export const CHARMANDER = new PokemonBase({
     { level: 1, move: SCRATCH },
     { level: 4, move: GROWL },
     { level: 7, move: EMBER },
+    // Charmander's own Steel move, at the level FireRed/LeafGreen teaches it.
+    // It is the earliest Dark or Steel move any starter gets, and the reason
+    // the type chart is seventeen wide rather than fifteen.
+    { level: 13, move: METAL_CLAW },
   ],
   frontSprite: 'sprites/pokemon/charmander_front.png',
   backSprite: 'sprites/pokemon/charmander_back.png',
@@ -95,6 +101,10 @@ export const SQUIRTLE = new PokemonBase({
     { level: 1, move: TAIL_WHIP },
     { level: 4, move: GROWL },
     { level: 7, move: WATER_GUN },
+    // Squirtle's Dark move. It evolves at 16, so in play the Bite arrives on
+    // the Wartortle below; this entry is what a Squirtle levelled past 16
+    // without evolving, or created outright above it, would know.
+    { level: 18, move: BITE },
   ],
   frontSprite: 'sprites/pokemon/squirtle_front.png',
   backSprite: 'sprites/pokemon/squirtle_back.png',
@@ -286,6 +296,7 @@ export const CHARMELEON = new PokemonBase({
     { level: 1, move: SCRATCH },
     { level: 1, move: GROWL },
     { level: 1, move: EMBER },
+    { level: 13, move: METAL_CLAW },
     { level: 27, move: SCARY_FACE },
     { level: 34, move: FLAMETHROWER },
     { level: 41, move: SLASH },
@@ -313,6 +324,7 @@ export const CHARIZARD = new PokemonBase({
     { level: 1, move: GROWL },
     { level: 1, move: EMBER },
     { level: 1, move: HEAT_WAVE },
+    { level: 13, move: METAL_CLAW },
     { level: 27, move: SCARY_FACE },
     { level: 34, move: FLAMETHROWER },
     { level: 36, move: WING_ATTACK },
@@ -340,6 +352,7 @@ export const WARTORTLE = new PokemonBase({
     { level: 1, move: TAIL_WHIP },
     { level: 1, move: BUBBLE },
     { level: 13, move: WATER_GUN },
+    { level: 19, move: BITE },
     { level: 53, move: HYDRO_PUMP },
   ],
   frontSprite: 'sprites/pokemon/wartortle_front.png',
@@ -364,6 +377,7 @@ export const BLASTOISE = new PokemonBase({
     { level: 1, move: TAIL_WHIP },
     { level: 1, move: BUBBLE },
     { level: 13, move: WATER_GUN },
+    { level: 19, move: BITE },
     { level: 68, move: HYDRO_PUMP },
   ],
   frontSprite: 'sprites/pokemon/blastoise_front.png',
@@ -451,9 +465,9 @@ export const WIGGLYTUFF = new PokemonBase({
   dexId: 40,
   name: 'Wigglytuff',
   primaryType: PokemonType.Normal,
-  // Fairy is a generation VI type and this game has fifteen types, so
-  // Wigglytuff is Normal here exactly as Jigglypuff already is - which is also
-  // what both of them were in FireRed/LeafGreen.
+  // Fairy is a generation VI type and this game has the seventeen that
+  // generation III has, so Wigglytuff is Normal here exactly as Jigglypuff
+  // already is - which is also what both of them were in FireRed/LeafGreen.
   baseStats: {
     hp: 140,
     attack: 70,
