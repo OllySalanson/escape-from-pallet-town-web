@@ -60,8 +60,6 @@ export interface ContractReward {
   readonly unlockedInsertionIds?: readonly string[];
   /** Adds one protected item stack to the secure slot, for every later raid. */
   readonly secureItemStack?: boolean;
-  /** Raises the kit every recovery path tops the stash back up to. */
-  readonly restockFloor?: Readonly<Record<string, number>>;
 }
 
 export interface RaidContract {
@@ -241,13 +239,15 @@ const WARDENS_RESUPPLY: RaidContract = {
     },
   ],
   reward: {
+    // Paid once. This used to raise the kit base restocks after a wipe as well,
+    // which made the last contract a subscription: supplies that refill
+    // themselves are supplies no extraction has to bring home.
     summary:
-      'The warden keeps your kit stocked: base now restocks two Great Balls and a Super Potion on top of the standing minimum, and a set is waiting there now.',
+      'The warden pays the delivery back a grade up: two Super Potions and two Great Balls are waiting at base now.',
     items: [
+      { itemId: 'super-potion', quantity: 2 },
       { itemId: 'great-ball', quantity: 2 },
-      { itemId: 'super-potion', quantity: 1 },
     ],
-    restockFloor: { 'great-ball': 2, 'super-potion': 1 },
   },
   briefing: [
     'Pack the two Potions at base. Nothing in this forest replaces them.',
@@ -367,25 +367,6 @@ export function secureItemStackLimit(completedContractIds: readonly string[]): n
   return RAID_CONTRACTS.filter(
     (contract) => contract.reward.secureItemStack && completedContractIds.includes(contract.id),
   ).length + BASE_SECURE_ITEM_STACKS;
-}
-
-/**
- * Supplies banked contracts have added to the kit every recovery path tops the
- * stash back up to, on top of `MINIMUM_SUPPLIES`.
- */
-export function contractRestockBonus(
-  completedContractIds: readonly string[],
-): Readonly<Record<string, number>> {
-  const bonus: Record<string, number> = {};
-  for (const contract of RAID_CONTRACTS) {
-    if (!completedContractIds.includes(contract.id)) {
-      continue;
-    }
-    for (const [itemId, quantity] of Object.entries(contract.reward.restockFloor ?? {})) {
-      bonus[itemId] = (bonus[itemId] ?? 0) + quantity;
-    }
-  }
-  return bonus;
 }
 
 /** Insertions every banked contract has opened, in the order they were listed. */

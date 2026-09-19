@@ -91,6 +91,44 @@ describe('run generation', () => {
     expect([first.rng!.next(), first.rng!.next()]).toEqual([second.rng!.next(), second.rng!.next()]);
   });
 
+  /**
+   * Field loot is a faucet, and a faucet on the same tiles every raid is a
+   * route the player memorises once and walks for ever. The authored table is
+   * only the pool: each raid draws which of it is live and where it lies, so
+   * what is on the ground has to be found again. Held here because the design
+   * review of the supply economy read the authored table and took it for what
+   * the player sees.
+   */
+  it('never lays the same loot on the same tiles raid after raid', () => {
+    for (const insertionId of insertionIds) {
+      const mapId = RUN_INSERTIONS[insertionId].mapId;
+      const pool = WORLD_MAPS[mapId].loot;
+      const layouts = new Map<string, number>();
+      const liveCounts = new Set<number>();
+      for (let seed = 0; seed < SAMPLED_RUNS; seed += 1) {
+        const loot = generateRunPlan(seed, undefined, insertionId).loot[mapId];
+        liveCounts.add(loot.length);
+        // Only the map's own pool is ever drawn from, each entry at most once.
+        expect(new Set(loot.map((item) => item.id)).size).toBe(loot.length);
+        loot.forEach((item) => expect(pool.map(({ id }) => id)).toContain(item.id));
+        const layout = loot.map((item) => `${item.id}@${tileKey(item.position)}`).sort().join('|');
+        layouts.set(layout, (layouts.get(layout) ?? 0) + 1);
+      }
+      // How much is live varies, from half the pool to all of it...
+      expect([...liveCounts].sort()).toEqual(
+        Array.from(
+          { length: pool.length - Math.ceil(pool.length / 2) + 1 },
+          (_, index) => Math.ceil(pool.length / 2) + index,
+        ),
+      );
+      // ...and no one layout is what a player can expect to find twice.
+      const commonest = Math.max(...layouts.values());
+      expect(`${insertionId}: commonest layout in ${commonest} of ${SAMPLED_RUNS} raids`).toBe(
+        `${insertionId}: commonest layout in ${Math.min(commonest, SAMPLED_RUNS / 50)} of ${SAMPLED_RUNS} raids`,
+      );
+    }
+  });
+
   it('keeps generated loot, trainers, and extraction points on valid tiles', () => {
     for (const seed of seeds) {
       const plan = generateRunPlan(seed, undefined, 'floodplain-relay', FIRST_CONTRACT);

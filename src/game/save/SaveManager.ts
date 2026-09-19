@@ -1,6 +1,5 @@
 import { clampPendingRecoveryMs } from '../hub/recovery';
 import {
-  contractRestockBonus,
   contractUnlockedInsertionIds,
   FIRST_CONTRACT_ID,
   getContract,
@@ -292,10 +291,7 @@ export class SaveManager {
     const game = this.load();
     if (
       !game ||
-      !game.stash.swapStarter(
-        getStarterSpecies(starterId),
-        contractRestockBonus(game.raidProgress.completedContracts),
-      )
+      !game.stash.swapStarter(getStarterSpecies(starterId))
     ) {
       return false;
     }
@@ -326,14 +322,13 @@ export class SaveManager {
     game.stash.applyRaidCondition(condition);
     game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot);
     // A wipe must never hand the player back a run they cannot attempt: a fresh
-    // starter when none survived, and supplies topped up to the minimum either
-    // way, including when the secure slot saved a Pokemon but no items.
-    const restockBonus = contractRestockBonus(game.raidProgress.completedContracts);
+    // starter when none survived, and whatever the kit is short of either way,
+    // including when the secure slot saved a Pokemon but no items. It is the
+    // last resort and adds nothing to a vault that can already field a raid.
     game.stash.ensurePlayable(
       game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined,
-      restockBonus,
     );
-    game.stash.restockMinimumSupplies(restockBonus);
+    game.stash.restockMinimumSupplies();
     return this.save({ ...game, pendingRecoveryMs: 0 });
   }
 }

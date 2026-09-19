@@ -394,6 +394,50 @@ describe('hub deployment route', () => {
   });
 });
 
+describe('the hunter a loadout draws', () => {
+  beforeEach(() => {
+    if (activeRunManager.phase === RunPhase.InRun) {
+      activeRunManager.resolveEscape();
+    }
+  });
+
+  function finalCheckOf(hub: HubInternals): string {
+    hub.setView('deploy');
+    hub.flow.advance();
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  }
+
+  it('prices the veteran on the final check and sends that same hunter into the raid', () => {
+    const { hub, start } = createHub();
+    hub.stash.addPokemon(new Pokemon(CHARMANDER, 16), 'veteran-1');
+    hub.flow.togglePokemon('veteran-1');
+
+    const finalCheck = finalCheckOf(hub);
+    expect(finalCheck).toContain('data-hunter-tier="3"');
+    expect(finalCheck).toContain('matched to your Lv 16 Charmander');
+
+    deploy(hub, start);
+    const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+    expect(runSession.plan?.hunter.teamTierOffset).toBe(2);
+  });
+
+  it('prices the same save a tier-one hunter when the veteran stays at base', () => {
+    const { hub, start } = createHub();
+    hub.stash.addPokemon(new Pokemon(CHARMANDER, 16), 'veteran-1');
+    hub.flow.togglePokemon('bulbasaur-1');
+    expect(hub.flow.party.map((stored) => stored.pokemon.level)).toEqual([5]);
+
+    const finalCheck = finalCheckOf(hub);
+    expect(finalCheck).toContain('data-hunter-tier="1"');
+    expect(finalCheck).toContain('nothing you are bringing out-levels it');
+
+    deploy(hub, start);
+    const { runSession } = start.mock.calls[0][1] as WorldSceneData;
+    expect(runSession.plan?.hunter.teamTierOffset).toBe(0);
+  });
+});
+
 describe('what the base screen leads with', () => {
   /** The markup the lobby actually renders, for the view it is currently on. */
   function markupOf(hub: HubInternals): string {

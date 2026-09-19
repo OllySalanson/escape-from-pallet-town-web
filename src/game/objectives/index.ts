@@ -4,7 +4,6 @@ export {
   BASE_SECURE_ITEM_STACKS,
   contractCarryIn,
   contractForMap,
-  contractRestockBonus,
   contractStopsDone,
   contractUnlockedInsertionIds,
   FIRST_CONTRACT,

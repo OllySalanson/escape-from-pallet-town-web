@@ -5,12 +5,11 @@ import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { SaveManager, type StorageLike } from '../save/SaveManager';
-import { createStartingStash, Stash } from '../stash';
+import { createStartingStash, MINIMUM_SUPPLIES, Stash } from '../stash';
 import {
   availableContracts,
   contractCarryIn,
   contractForMap,
-  contractRestockBonus,
   FIRST_CONTRACT_ID,
   isContractBankable,
   missingCarryIn,
@@ -226,32 +225,20 @@ describe('what a banked contract buys', () => {
     ).not.toThrow();
   });
 
-  it('raises the restock floor when the warden’s resupply is banked', () => {
-    expect(contractRestockBonus([FIRST_CONTRACT_ID])).toEqual({});
-    const bonus = contractRestockBonus([...RAID_CONTRACTS.map(({ id }) => id)]);
-    expect(bonus).toEqual({ 'great-ball': 2, 'super-potion': 1 });
-
-    const before = new Stash();
-    before.restockMinimumSupplies();
-    expect(before.itemCount('great-ball')).toBe(0);
-
-    const after = new Stash();
-    after.restockMinimumSupplies(bonus);
-    expect(after.itemCount('great-ball')).toBe(2);
-    expect(after.itemCount('super-potion')).toBe(1);
-    // The floor is still a floor: a player who kept more keeps it.
-    const rich = new Stash();
-    rich.addItem('great-ball', 5);
-    rich.restockMinimumSupplies(bonus);
-    expect(rich.itemCount('great-ball')).toBe(5);
-  });
-
-  it('restocks a wipe to the raised floor once the resupply is banked', () => {
-    const storage = new MemoryStorage();
-    const stash = createStartingStash();
-    const saves = seedSave(storage, RAID_CONTRACTS.map(({ id }) => id), stash);
-    saves.applyWipeLoss([], []);
-    expect(saves.load()!.stash.itemCount('great-ball')).toBeGreaterThanOrEqual(2);
+  /**
+   * The warden's contract used to raise the kit base restocks after a wipe, so
+   * banking it made Great Balls and a Super Potion refill themselves for good.
+   * A contract pays once; the last resort is the same kit for every save.
+   */
+  it('restocks a wipe to the same kit whatever contracts are banked', () => {
+    const wipedWith = (completed: readonly string[]) => {
+      const storage = new MemoryStorage();
+      const saves = seedSave(storage, completed, new Stash());
+      saves.applyWipeLoss([], []);
+      return saves.load()!.stash.listItems();
+    };
+    expect(wipedWith(RAID_CONTRACTS.map(({ id }) => id))).toEqual(wipedWith([]));
+    expect(wipedWith([])).toEqual(MINIMUM_SUPPLIES);
   });
 });
 
@@ -332,7 +319,6 @@ describe('what makes each contract a contract rather than a waypoint', () => {
         reward.items.length > 0 ||
         reward.unlockedInsertionIds !== undefined ||
         reward.secureItemStack === true ||
-        reward.restockFloor !== undefined ||
         // The survey pays in access: it is what puts the last two on the board.
         RAID_CONTRACTS.some((later) => later.unlockedBy === contract.id);
       expect(`${contract.id} pays: ${pays}`).toBe(`${contract.id} pays: true`);

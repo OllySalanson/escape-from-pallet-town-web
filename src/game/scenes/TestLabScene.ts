@@ -13,6 +13,7 @@ import {
   type RestoredGame,
 } from '../save/SaveManager';
 import { createStartingStash } from '../stash';
+import { hunterThreatFor } from '../world/hunterThreat';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import {
   TEST_LAB_SCENARIOS,
@@ -160,7 +161,7 @@ export class TestLabScene extends Phaser.Scene {
       RUN_INSERTIONS[insertion].mapId,
       game.raidProgress.completedContracts,
     );
-    const plan = generateRunPlan(0x5eed1234, undefined, insertion, contract);
+    const plan = generateRunPlan(0x5eed1234, undefined, insertion, contract, hunterThreatFor(party));
     const runSession = createActiveRunSession(
       activeRunManager,
       {},

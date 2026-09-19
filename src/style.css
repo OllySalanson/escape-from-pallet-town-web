@@ -485,11 +485,13 @@ button {
   grid-template-columns: 1.25fr 0.75fr;
   align-items: start;
 }
-/* The commitment bar spans both columns and sticks to the bottom of the scroll
+/* The commitment bar spans every column and sticks to the bottom of the scroll
    area, so the primary action is on screen at every window size. The column
    layout it replaced pushed `Review & deploy` below the fold at 1280x800 while
-   leaving half a column of empty space beside it. */
-.loadout-layout .confirm-bar {
+   leaving half a column of empty space beside it. The final check shares the
+   rule: three entries at risk were enough to push `Enter the raid`, and the
+   hunter price beside it, under the frame. */
+.confirm-bar {
   grid-column: 1 / -1;
   position: sticky;
   bottom: 0;
@@ -663,8 +665,16 @@ button {
 .confirm-risk .entity-row {
   box-shadow: inset 3px 0 0 #915249;
 }
-.confirm-bar {
-  grid-column: 1 / -1;
+.hunter-price {
+  margin-top: 0.35em;
+  color: var(--menu-muted);
+}
+.hunter-price b {
+  color: var(--menu-text);
+}
+.hunter-price.raised,
+.hunter-price.raised b {
+  color: #ffd4c8;
 }
 .button {
   border: 1px solid var(--menu-border);

@@ -1,4 +1,4 @@
-import { Bag, type BagContents } from '../items';
+import { Bag, getItemById, type BagContents } from '../items';
 import { BULBASAUR, CHARMANDER, Pokemon, SQUIRTLE, type PokemonBase } from '../pokemon';
 import type { PrimaryStatus } from '../pokemon/battle/status';
 
@@ -23,15 +23,22 @@ export const MINIMUM_SUPPLIES: Readonly<Record<string, number>> = {
   potion: 3,
 };
 
-/** The standing minimum plus whatever banked contracts have added to it. */
-export function minimumSupplies(
-  extraSupplies: Readonly<Record<string, number>> = {},
-): Readonly<Record<string, number>> {
-  const floor: Record<string, number> = { ...MINIMUM_SUPPLIES };
-  for (const [itemId, quantity] of Object.entries(extraSupplies)) {
-    floor[itemId] = (floor[itemId] ?? 0) + quantity;
-  }
-  return floor;
+/**
+ * Whether holding `itemId` answers the need `minimumItemId` stands for. The kit
+ * is a capability - a way to heal, a way to catch - so a Super Potion is a
+ * Potion and a Great Ball is a Poke Ball, while an Antidote, which restores no
+ * HP, is neither. Read from the item's own category and effect, so a new tier
+ * of either counts the day it is added to the catalogue.
+ */
+function servesAs(minimumItemId: string, itemId: string): boolean {
+  const needed = getItemById(minimumItemId);
+  const held = getItemById(itemId);
+  return (
+    needed !== undefined &&
+    held !== undefined &&
+    needed.category === held.category &&
+    needed.effect.type === held.effect.type
+  );
 }
 
 export function getStarterSpecies(starterId: StarterSpeciesId): PokemonBase {
@@ -235,36 +242,57 @@ export class Stash {
    *
    * @returns Whether a starter was granted.
    */
-  public ensurePlayable(
-    starter = BULBASAUR,
-    extraSupplies: Readonly<Record<string, number>> = {},
-  ): boolean {
+  public ensurePlayable(starter = BULBASAUR): boolean {
     if (this.storedPokemon.length > 0) {
       return false;
     }
 
     this.addPokemon(new Pokemon(starter, 5));
-    this.restockMinimumSupplies(extraSupplies);
+    this.restockMinimumSupplies();
     return true;
   }
 
   /**
-   * Tops the vault up to MINIMUM_SUPPLIES. Only the shortfall is added, so a
-   * player who kept supplies keeps exactly what they had and the restock
+   * How far short of MINIMUM_SUPPLIES the vault is, per kit item. Empty when
+   * the player can attempt a raid on what they already hold.
+   *
+   * Anything that does the same job counts towards a line, so a vault of Super
+   * Potions is not short of Potions. Counting the named item alone handed a
+   * well-stocked player three free Potions on every wipe - the opposite of a
+   * last resort.
+   */
+  public supplyShortfall(): Readonly<Record<string, number>> {
+    const held = Object.entries(this.listItems());
+    const shortfall: Record<string, number> = {};
+    for (const [minimumItemId, minimum] of Object.entries(MINIMUM_SUPPLIES)) {
+      const serving = held
+        .filter(([itemId]) => servesAs(minimumItemId, itemId))
+        .reduce((total, [, quantity]) => total + quantity, 0);
+      if (serving < minimum) {
+        shortfall[minimumItemId] = minimum - serving;
+      }
+    }
+    return shortfall;
+  }
+
+  /**
+   * The last resort, not a standing allowance: it fires only for a player who
+   * cannot attempt a raid on what they hold, and hands over only the shortfall,
+   * so a player who kept supplies keeps exactly what they had and the restock
    * cannot be farmed by wiping on purpose. Nothing is ever removed, and
    * unrelated items the player kept are left alone.
    *
-   * `extraSupplies` is what banked contracts have added to that floor - the
-   * warden's resupply pays in exactly this - so the guarantee is one rule with
-   * a per-save kit rather than two competing restocks.
+   * The kit is the same for every save. A banked contract used to raise it,
+   * which turned a reward into a subscription: supplies the player never had to
+   * bring home, refilled on every wipe, are supplies no extraction can make
+   * feel earned.
    *
    * @returns Whether anything was added.
    */
-  public restockMinimumSupplies(extraSupplies: Readonly<Record<string, number>> = {}): boolean {
+  public restockMinimumSupplies(): boolean {
     let restocked = false;
-    for (const [itemId, minimum] of Object.entries(minimumSupplies(extraSupplies))) {
-      const shortfall = minimum - this.itemCount(itemId);
-      if (shortfall > 0 && this.addItem(itemId, shortfall)) {
+    for (const [itemId, shortfall] of Object.entries(this.supplyShortfall())) {
+      if (this.addItem(itemId, shortfall)) {
         restocked = true;
       }
     }
@@ -286,10 +314,7 @@ export class Stash {
    *
    * @returns Whether the swap happened.
    */
-  public swapStarter(
-    starter: PokemonBase,
-    extraSupplies: Readonly<Record<string, number>> = {},
-  ): boolean {
+  public swapStarter(starter: PokemonBase): boolean {
     if (!this.canSwapStarter()) {
       return false;
     }
@@ -298,7 +323,7 @@ export class Stash {
     this.addPokemon(new Pokemon(starter, 5));
     // The swap is only ever reachable while recovering, so it carries the same
     // supply guarantee as a re-grant.
-    this.restockMinimumSupplies(extraSupplies);
+    this.restockMinimumSupplies();
     return true;
   }
 
