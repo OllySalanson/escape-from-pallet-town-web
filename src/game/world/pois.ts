@@ -89,6 +89,16 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     unlockedExtractionLabel: 'TOWER STEPS',
   },
   {
+    // The home bank's own cache. The supply vault was this map's only one, and
+    // it is behind two bosses now; a fresh save had nothing left to detour for.
+    id: 'floodplain-drowned-chapel',
+    mapId: 'floodplain-relay',
+    position: { x: 12, y: 41 },
+    label: 'DROWNED CHAPEL',
+    description: "Old Town's chapel, standing in what was its green. Somebody left a Poke Ball on the sill above the waterline.",
+    reward: [{ itemId: 'poke-ball', quantity: 1 }],
+  },
+  {
     id: 'floodplain-supply-vault',
     mapId: 'floodplain-relay',
     position: { x: 44, y: 50 },

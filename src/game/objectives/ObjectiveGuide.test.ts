@@ -180,9 +180,23 @@ describe('objective field guide', () => {
     });
 
     expect(before.hints.join(' ')).toContain('Maya');
-    expect(before.hints.join(' ')).toContain('Flooded Supply Vault');
     expect(before.hints.join(' ')).toContain('activates the Radio Exit');
     expect(after.hints.join(' ')).toContain('Radio Exit is active');
+
+    // The cache it points at is read from the map's own landmarks, in order: the
+    // one a fresh save can walk to first, and the next once that is worked. It
+    // used to be a sentence about the supply vault typed out by hand, which went
+    // on sending a fresh save to a cache that is now behind two bosses.
+    const caches = poisForMap('floodplain-relay').filter((poi) => poi.effect === undefined);
+    expect(caches.map((poi) => poi.label)).toEqual(['DROWNED CHAPEL', 'FLOODED SUPPLY VAULT']);
+    expect(before.hints.join(' ')).toContain(caches[0].label);
+    expect(before.hints.join(' ')).not.toContain(caches[1].label);
+    const chapelWorked = buildObjectiveGuide(session, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: caches[0].position,
+      activatedPoiIds: new Set([caches[0].id]),
+    });
+    expect(chapelWorked.hints.join(' ')).toContain(caches[1].label);
   });
 
   it('names the landmark the map actually has, on every map', () => {

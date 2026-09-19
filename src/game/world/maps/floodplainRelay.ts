@@ -224,9 +224,12 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
 
   // == OLD TOWN - the south-west ===========================================
   // The footpath down from the reeds wanders in through the trees behind the
-  // houses - it was never a road. Then the street the water came up: two
-  // houses behind their front hedges, the old tree the street has always gone
-  // round, and the green with the shrine.
+  // houses - it was never a road. Then the street the water came up, and still
+  // is up: the river's shallows do not stop at the bank, they run on between
+  // the houses and away down the lane south, so this is the one district that
+  // is waded through. Two houses behind their front hedges, the old tree the
+  // street has always gone round, and south of it the chapel - round, under a
+  // cone of a roof - standing in the pool that was the green.
   map.draw(3, 29, [
     '   ,            ',
     ',,,,            ',
@@ -236,24 +239,26 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '   , .......... ',
     '   , .......... ',
     '   ,,##,####,## ',
-    '   ,,,,,...,,,,C',
-    '   ,,,,,.o.,,,,,',
-    '     ,,,,,,, ,, ',
-    '    T""""""  ,, ',
-    '     """"""  C, ',
-    '    T######  ,, ',
-    '             ,, ',
+    '   ,,,,,...wwwwC',
+    '   ,,,,,.o.wwwww',
+    '     ,,,,,,, ww ',
+    '     wwwwww  ww ',
+    '     wwwwww  Cw ',
+    '     wwwwww  ,, ',
+    '     wwwwww  ,, ',
   ]);
   map.plant(8, 31, 'house');
   map.plant(13, 31, 'house');
-  map.plant(10, 40, 'shrine');
+  // The town's chapel, round under a cone of a roof, standing in what was its
+  // green. It is the one building on this map shaped like that.
+  map.plant(9, 40, 'roundhouse');
 
   // South of the river: the towpath in its reeds, the last house, and the
   // road down to the gate.
   map.draw(3, 44, [
     '             ,C           ',
     '             ,,           ',
-    '             ,,           ',
+    '       T     ,,           ',
     '             ,,,ggggCggggg',
     '           ,,,,Tgggggggggg',
     '           ,,        ..   ',
