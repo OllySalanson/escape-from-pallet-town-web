@@ -181,7 +181,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   },
   {
     mapId: 'floodplain-relay',
-    position: { x: 50, y: 48 },
+    position: { x: 48, y: 58 },
     label: 'VAULT CULVERT',
     unlockAtMs: 0,
     requirement: { kind: 'always' },

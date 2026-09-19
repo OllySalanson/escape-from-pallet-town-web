@@ -348,23 +348,33 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(53, 3, 'statue');
 
   // == THE VAULT - the south-east ==========================================
-  // Behind the orchard's back fence. The yard is gravel, the trapdoor in the
-  // middle of it is open, and somebody has been here since the flood.
+  // Behind the orchard's back fence, and the end of the chain. What is left of
+  // the relay's store-house is its floor: stone, with a corner of rubble, and
+  // the cellar trapdoor in the middle of it thrown open - somebody has been
+  // here since the flood. The flood is still here too: south of the yard the
+  // ground is a pond in its reeds, with the culvert mouth on its bank that the
+  // water came in by and that the way out goes through. The path round to it
+  // leaves the yard by its own side, so the yard has two ways out.
   map.draw(33, 46, [
     '                    ,,      ',
     ' ggggCggg           ,,      ',
     ' ggggCggg        ,,,,,      ',
     '  ,,,,,,,,,      ,,         ',
-    '  ,,     vvvvvvv,,,         ',
-    '  ,,     vvvvvvv            ',
-    '  ,,     vvvvvvv            ',
+    '  ,,     CMMMMMv,,,         ',
+    '  ,,     vMMMMMv            ',
+    '  ,,     vMMMMMv            ',
     '  ,,,,,,,vvvvvvv            ',
-    'MM  ,,                      ',
-    'MM,,,,                      ',
+    'MM  ,,     ,,               ',
+    'MM,,,,     ,,               ',
+    '    ,,,,,,,,,               ',
+    '        gWWWWWWg            ',
+    '        gWWWWWWg            ',
+    '        gggggggg            ',
   ]);
   map.plant(45, 51, 'trapdoorOpen');
   map.plant(42, 52, 'barrel');
   map.plant(47, 52, 'crateStack');
+  map.plant(49, 57, 'culvert');
 
   // The causeway from the vault to the south road. `gates.ts` owns the middle.
   map.draw(29, 54, ['MMMM', 'MMMM']);
