@@ -49,7 +49,9 @@ export function buildObjectiveGuide(
 
   return {
     isFirstContract,
-    contractLabel: contract ? contractLabel(contract, isFirstContract) : 'Raid field guide',
+    // Never the screen's own name: the guide's eyebrow already says that, and
+    // a heading that repeats the line above it is a rank of nothing.
+    contractLabel: contract ? contractLabel(contract, isFirstContract) : 'No contract on this raid',
     objectives,
     hints: contract
       ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)

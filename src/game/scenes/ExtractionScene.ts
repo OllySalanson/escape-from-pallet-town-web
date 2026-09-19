@@ -335,7 +335,10 @@ export class ExtractionScene extends Phaser.Scene {
       {
         className: 'extraction-ledger',
         heading: escapeHtml(report.ledgerHeading),
-        note: `${total} ${total === 1 ? 'entry' : 'entries'} · ${escaped ? 'to your stash' : 'deleted'}`,
+        // Where it went is the heading's own word - BANKED or GONE FOR GOOD -
+        // so the note only counts. Spelled out as well, it was the one lid
+        // long enough to clip itself at the smallest stage.
+        note: `${total} ${total === 1 ? 'entry' : 'entries'}`,
       },
     );
   }
