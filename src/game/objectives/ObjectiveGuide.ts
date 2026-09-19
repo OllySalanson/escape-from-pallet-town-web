@@ -143,8 +143,8 @@ function laterRunHints(context: ObjectiveGuideContext, currentExit: string | und
   if (context.currentMapId === 'floodplain-relay') {
     const radioActive = context.activatedPoiIds.has('floodplain-ranger-radio');
     return [
-      'Floodplain Relay: Maya watches three tiles of the fast central road, and taking it means fighting her. The west reeds reconnect above and below her checkpoint.',
-      'Flooded Supply Vault: 2 Great Balls + 1 Super Potion. Its causeway is exposed, and the haul banks only on extraction.',
+      'Floodplain Relay: the shore road narrows to one tile where Maya is watching it, and walking that means fighting her. The reeds go round - straight on where the road turns at the hut - and come back to the road below her, but the flooded cut makes them the long way.',
+      'Flooded Supply Vault: 2 Great Balls + 1 Super Potion. It is behind the toll bridge and the orchard fence, and the haul banks only on extraction.',
       radioActive
         ? 'Radio Exit is active at Ranger Station. South Gate is always open; Ferry Dock opens on its signal.'
         : 'Ranger Station gives a hunter forecast and activates the Radio Exit. South Gate is always open; Ferry Dock opens on its signal.',

@@ -65,7 +65,7 @@ describe('raid duration', () => {
       walkingDistance(relay, insertion, station) +
       walkingDistance(relay, station, kit) +
       walkingDistance(relay, kit, radioExit.position);
-    expect(contractTiles).toBe(48);
+    expect(contractTiles).toBe(32);
     // The objective route must never be a sprint: walking it costs a small part
     // of the raid, leaving the clock to price detours, reading and hesitation.
     expect(contractTiles * STEP_COST_MS).toBeLessThan(RAID_DURATION_MS * 0.05);
@@ -75,7 +75,7 @@ describe('raid duration', () => {
     // the way a raid falls back on, so it too has to be walkable many times over.
     const longWayTiles =
       walkingDistance(relay, insertion, kit) + walkingDistance(relay, kit, southGate.position);
-    expect(longWayTiles).toBe(99);
+    expect(longWayTiles).toBe(85);
     expect(longWayTiles * STEP_COST_MS).toBeLessThan(RAID_DURATION_MS * 0.1);
   });
 

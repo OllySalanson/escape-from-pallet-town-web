@@ -120,7 +120,7 @@ const RECOVER_LOST_FIELD_KIT: RaidContract = {
   markers: [
     {
       id: 'lost-field-kit',
-      position: { x: 13, y: 24 },
+      position: { x: 11, y: 20 },
       label: 'LOST FIELD KIT',
       cue: 'LOST KIT',
       icon: 'field-kit',

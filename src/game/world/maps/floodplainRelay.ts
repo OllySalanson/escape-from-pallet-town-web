@@ -178,7 +178,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ' ggg....Cgg..,,,,       ',
     'gggggCggggg..T,,,,,,,,, ',
     'gggggWWWgggg.C,,,,,,,,, ',
-    ' ggggWWWgggggCggT...,,.C',
+    ' ggggWWW.ggggCggT...,,.C',
     '  .gWW.gg.o.ggggTTC.,,. ',
     ' ggWWWWWWWWWWWWWT  ,    ',
     ' ..WWWWWWWWWWWWWg  ,    ',

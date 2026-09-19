@@ -13,15 +13,18 @@
  *   end on a frame, so it was 0.15s at 60fps and about 0.23s in a headless
  *   browser; the walking figures below were taken at the slower of those.
  * - The front door (13,9) to the ranger station (12,16) is 12 tiles, the station
- *   to the contract (13,24) is 25, and the contract to the Radio Exit the
- *   station opens is 11. The contract's own route is 48 tiles: about 7 seconds
- *   of walking. The always-open South Gate is the long way home, 99 tiles by
- *   way of the contract - about 15 seconds. (These were 53 tiles to a South
+ *   to the contract (11,20) is 5, and the contract to the Radio Exit the
+ *   station opens is 15. The contract's own route is 32 tiles: about 5 seconds
+ *   of walking. The always-open South Gate is the long way home, 85 tiles by
+ *   way of the contract - about 13 seconds. (These were 53 tiles to a South
  *   Gate 12 from the contract, before the map was redrawn as a vast one played
- *   a district at a time; the nearest exit to the contract is 11 away, not 12.)
+ *   a district at a time.) The contract stands three tiles of reeds from dry
+ *   ground on purpose: it was first drawn south of the flooded cut, where the
+ *   cheapest approach from anywhere crossed nine, and one playtest raid in ten
+ *   lost its level-5 starter to the reeds before it ever reached the kit.
  * - The greediest sensible first raid - ranger station, the yard's potion, the
- *   contract, the marsh's antidote, out by the Radio Exit - is 89 tiles: about
- *   13 seconds. The flooded vault is no longer on it: it is behind two bosses.
+ *   contract, the marsh's antidote, out by the Radio Exit - is 70 tiles: about
+ *   10 seconds. The flooded vault is no longer on it: it is behind two bosses.
  * - Authored dialogue types at 40 characters a second. Both signs, the radio, the
  *   vault cache, two loot pickups, the kit and the hunter warning come to about
  *   25 seconds of reading.

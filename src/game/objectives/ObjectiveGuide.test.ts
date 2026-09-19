@@ -6,6 +6,7 @@ import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/run
 import { FIRST_CONTRACT } from './contracts';
 import { objectivesForContract } from './RunObjectives';
 import { buildObjectiveGuide } from './ObjectiveGuide';
+import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { WORLD_POIS, poisForMap } from '../world/pois';
 import type { WorldMapId } from '../worldMap';
 
@@ -129,20 +130,27 @@ describe('objective field guide', () => {
   it('names the current area and keeps the first-contract direction live', () => {
     const session = createFirstContractSession();
 
+    // Two places a first raid really stands, read from the data: the front door,
+    // with the kit down in the reeds to the south-west of it, and the Radio Exit
+    // out at the head of the flooded cut, with the kit back to the north-east.
+    const frontDoor = RUN_INSERTIONS['floodplain-relay'].position;
+    const radioExit = EXTRACTION_POINTS.find(
+      (point) => point.mapId === 'floodplain-relay' && point.label === 'RADIO EXIT',
+    )!.position;
     const insertionGuide = buildObjectiveGuide(session, {
       currentMapId: 'floodplain-relay',
-      currentPosition: { x: 15, y: 3 },
+      currentPosition: frontDoor,
       activatedPoiIds: new Set(),
     });
     const reedGuide = buildObjectiveGuide(session, {
       currentMapId: 'floodplain-relay',
-      currentPosition: { x: 7, y: 22 },
+      currentPosition: radioExit,
       activatedPoiIds: new Set(),
     });
 
     expect(insertionGuide.hints[0]).toContain('Floodplain Relay');
     expect(insertionGuide.hints[0]).toContain('south-west');
-    expect(reedGuide.hints[0]).toContain('south-east');
+    expect(reedGuide.hints[0]).toContain('north-east');
     expect(insertionGuide.hints.join(' ')).not.toContain('Viridian');
   });
 
