@@ -9,6 +9,7 @@ import {
   isExtractionAvailable,
   EXTRACTION_POINTS,
 } from './extractionPoints';
+import { WORLD_GATES } from './gates';
 import { stepDistances } from './mapStructure';
 import { tryActivatePoi, WORLD_POIS } from './pois';
 import { trainerSightTiles } from './trainerSight';
@@ -201,6 +202,80 @@ describe('the Floodplain checkpoint', () => {
 });
 
 /**
+ * What a fresh save can walk to. Every other reachability rule on this map is
+ * asked with the gates open, and with them open anything can be reached from
+ * anywhere - which is how a bench two rows deep, in a yard two rows deep, sealed
+ * the front door off from its own quay for eleven commits: the Ferry Dock, the
+ * route board and the boathouse could still be reached, through three bosses
+ * and the keep. So this names the home bank, and walks to it with every gate
+ * shut; and names what is behind a door, and fails if a redraw lets you round.
+ */
+describe('a fresh save, from the front door', () => {
+  const shut = getWorldMap('floodplain-relay', []);
+  const steps = stepDistances(shut.collision, insertion.position, new Set());
+  const reaches = (tile: GridPosition): boolean => steps[tile.y][tile.x] >= 0;
+  /** A sign or a person is reached by standing next to them. */
+  const reachesBeside = (tile: GridPosition): boolean =>
+    [
+      { x: tile.x + 1, y: tile.y },
+      { x: tile.x - 1, y: tile.y },
+      { x: tile.x, y: tile.y + 1 },
+      { x: tile.x, y: tile.y - 1 },
+    ].some((beside) => shut.collision[beside.y]?.[beside.x] === false && reaches(beside));
+
+  it.each(['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT'])('walks to the %s', (label) => {
+    expect(reaches(floodplainExits.find((exit) => exit.label === label)!.position)).toBe(true);
+  });
+
+  it.each(['MILL RACE', 'SIGNAL FIRE', 'VAULT CULVERT'])('cannot walk to the %s', (label) => {
+    expect(reaches(floodplainExits.find((exit) => exit.label === label)!.position)).toBe(false);
+  });
+
+  it('walks to every landmark on the home bank, and not to the vault', () => {
+    const homeBank = WORLD_POIS.filter(
+      (poi) => poi.mapId === 'floodplain-relay' && poi.id !== vault.id,
+    );
+    expect(homeBank.map((poi) => poi.id).sort()).toEqual(
+      ['floodplain-drowned-chapel', 'floodplain-ranger-radio'].sort(),
+    );
+    for (const poi of homeBank) {
+      expect(`${poi.id}: ${reaches(poi.position)}`).toBe(`${poi.id}: true`);
+    }
+    expect(reaches(vault.position)).toBe(false);
+  });
+
+  it('walks to every stop of the first contract', () => {
+    for (const marker of FIRST_CONTRACT.markers) {
+      expect(reaches(marker.position)).toBe(true);
+    }
+  });
+
+  it('can stand beside every sign on the home bank', () => {
+    for (const sign of shut.entities.filter((entity) => entity.kind === 'sign')) {
+      expect(`${sign.id}: ${reachesBeside(sign.position)}`).toBe(`${sign.id}: true`);
+    }
+  });
+
+  it('walks to Market Isle, and to no drop-in behind a door', () => {
+    const dropIns = Object.values(RUN_INSERTIONS).filter(
+      (candidate) => candidate.mapId === 'floodplain-relay' && candidate.id !== insertion.id,
+    );
+    expect(
+      dropIns.filter((dropIn) => reaches(dropIn.position)).map((dropIn) => dropIn.id),
+    ).toEqual(['floodplain-market-isle']);
+  });
+
+  it('can reach the first boss, and only the first', () => {
+    const bosses = createRunTrainerEncounters().filter(
+      (encounter) => encounter.mapId === 'floodplain-relay' && encounter.bossId !== undefined,
+    );
+    expect(
+      bosses.filter((boss) => reachesBeside(boss.position)).map((boss) => boss.bossId),
+    ).toEqual(['floodplain-toll-keeper']);
+  });
+});
+
+/**
  * The promise the Floodplain's doors are drawn to keep. Each boss holds two:
  * the one in front of the player, and a second that lets onto ground they
  * already know. So beating a boss is not only being let into a district - it is
@@ -216,14 +291,28 @@ describe('the way back from a won district', () => {
       ['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT'].includes(point.label),
   );
 
+  /**
+   * The way in is the walk through the door the boss stood at - so it is
+   * measured with the district's other door left out, because on the day that
+   * walk was made the other door was what the fight was for.
+   */
+  const wayInBy = (
+    opened: readonly (readonly boolean[])[],
+    backDoorId: string,
+    to: GridPosition,
+  ): number => {
+    const backDoor = WORLD_GATES.find((gate) => gate.id === backDoorId)!;
+    return stepDistances(opened, insertion.position, new Set(backDoor.tiles.map(key)))[to.y][to.x];
+  };
+
   it.each([
-    ['Mill Weir', 'floodplain-mill-weir', [TOLL]],
-    ['Beacon Keep', 'floodplain-beacon-keep', [TOLL, 'floodplain-sluice-keeper']],
-    ['The Vault', 'floodplain-vault', [TOLL, 'floodplain-orchard-warden']],
-  ] as const)('is shorter than the way in was: %s', (_name, dropInId, beaten) => {
+    ['Mill Weir', 'floodplain-mill-weir', 'floodplain-orchard-ford', [TOLL]],
+    ['Beacon Keep', 'floodplain-beacon-keep', 'floodplain-relay-causeway', [TOLL, 'floodplain-sluice-keeper']],
+    ['The Vault', 'floodplain-vault', 'floodplain-vault-causeway', [TOLL, 'floodplain-orchard-warden']],
+  ] as const)('is shorter than the way in was: %s', (_name, dropInId, backDoorId, beaten) => {
     const opened = getWorldMap('floodplain-relay', beaten).collision;
     const dropIn = RUN_INSERTIONS[dropInId].position;
-    const wayIn = stepDistances(opened, insertion.position, new Set())[dropIn.y][dropIn.x];
+    const wayIn = wayInBy(opened, backDoorId, dropIn);
     const fromDistrict = stepDistances(opened, dropIn, new Set());
     const wayBack = Math.min(
       ...homeBankExits
@@ -241,9 +330,12 @@ describe('the way back from a won district', () => {
     // out to be next door once the causeway is out of the water.
     const opened = getWorldMap('floodplain-relay', [TOLL, 'floodplain-sluice-keeper']).collision;
     const keep = RUN_INSERTIONS['floodplain-beacon-keep'].position;
-    const wayIn = stepDistances(opened, insertion.position, new Set())[keep.y][keep.x];
+    const wayIn = wayInBy(opened, 'floodplain-relay-causeway', keep);
+    const fromKeep = stepDistances(opened, keep, new Set());
     const ferry = homeBankExits.find((exit) => exit.label === 'FERRY DOCK')!.position;
-    const wayBack = stepDistances(opened, keep, new Set())[ferry.y][ferry.x];
-    expect(wayBack * 2).toBeLessThan(wayIn + 3);
+    expect(fromKeep[ferry.y][ferry.x] * 2).toBeLessThan(wayIn);
+    // And it is the front door it is next to, not only an exit: the quay the
+    // causeway lands on is the one the raid started from.
+    expect(fromKeep[insertion.position.y][insertion.position.x] * 1.5).toBeLessThan(wayIn);
   });
 });

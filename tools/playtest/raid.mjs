@@ -4,7 +4,7 @@
 // check that a raid plays the same at ten frames a second as at sixty.
 //
 //   node tools/playtest/raid.mjs http://localhost:5173/ [--testmode] [--stepped] [--pixels]
-//        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
+//        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch] [--exit=LABEL]
 //
 // --seed pins `crypto.getRandomValues` and `Math.random` in the page, so two
 // runs roll the same raid and their event logs can be compared line for line.
@@ -258,12 +258,31 @@ try {
           if (nx < 0 || ny < 0 || nx >= W || ny >= H || steps.has(id(nx, ny)) || watched.has(id(nx, ny)) || w.isBlocked({ x: nx, y: ny })) continue;
           steps.set(id(nx, ny), steps.get(id(x, y)) + 1); queue.push([nx, ny]); } }
       return ${JSON.stringify(plan.exits.map((e) => e.position))}.map((p) => steps.get(id(p.x, p.y)) ?? null); })()`);
-    const exit = plan.exits
-      .map((e, index) => ({ ...e, d: walked[index] }))
-      .filter((e) => e.open && e.d !== null)
-      .sort((a, b) => a.d - b.d)[0];
+    const reachable = plan.exits.map((e, index) => ({ ...e, d: walked[index] })).filter((e) => e.d !== null);
+    // --exit=LABEL leaves by a named exit instead, open yet or not: the driver
+    // stands beside it until the game says it is open, then steps on. It is how
+    // a timed exit is checked at all - the nearest-open rule never chooses one,
+    // which is how the Ferry Dock stayed walled off from the front door unseen.
+    const named = option('exit');
+    const exit = named
+      ? reachable.find((e) => e.label.toLowerCase() === named.toLowerCase().replace(/[-_]/g, ' '))
+      : reachable.filter((e) => e.open).sort((a, b) => a.d - b.d)[0];
     if (!exit) {
-      throw new Error('no exit that is open from the first second can be walked to from here');
+      throw new Error(named
+        ? `${named} cannot be walked to from here: ${JSON.stringify(plan.exits.map((e, index) => [e.label, walked[index]]))}`
+        : 'no exit that is open from the first second can be walked to from here');
+    }
+    if (named) {
+      const beside = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+        return [[0,-1],[0,1],[-1,0],[1,0]].map(([dx, dy]) => ({ x: ${exit.position.x} + dx, y: ${exit.position.y} + dy })).find((t) => !w.isBlocked(t)) ?? null; })()`);
+      await walkTo(beside, `the tile beside ${exit.label}`);
+      note(`waiting for ${exit.label} to open`);
+      for (let guard = 0; guard < 4000 && !ended; guard += 1) {
+        await clearInterruptions();
+        const open = await page.evaluate(`${GAME}.scene.getScene('world').worldLabels.some((l) => l.label.text.startsWith(${JSON.stringify(exit.label)}) && /EXTRACT OPEN$/.test(l.label.text))`);
+        if (open || ended) break;
+        await wait(500);
+      }
     }
     await walkTo(exit.position, exit.label);
   }

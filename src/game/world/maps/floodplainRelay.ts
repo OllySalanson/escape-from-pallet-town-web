@@ -150,7 +150,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '  T,,,,,,,,,,,,,,,,MMMMMMMMMMMMM',
     ' ,,,,,,,,,,,,,,,,,,MMMMMMMMMMMMM',
     ' ,,,,,,,,,,,,,,,,,,MMMWWWWWWMMMM',
-    ' ,,         ,,,,,,,MMMWWWWWWMMMM',
+    ' ,,  ,,,,,  ,,,,,,,MMMWWWWWWMMMM',
     ' ,,  T  T  T  T  T MMMWWWWWWMMMM',
     ' ,, ..             MMMWWWWWWMMMM',
   ]);
@@ -161,7 +161,13 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(29, 8, 'barrelPair');
   map.plant(18, 7, 'cratePair');
   // Where you wait for the ferry. It also stops the yard being a twelve-tile
-  // dash, which two sacks at the player's feet used to do and looked it.
+  // dash, which two sacks at the player's feet used to do and looked it. The
+  // yard is two rows deep here and so is a bench, so the way past is the path
+  // feet have worn round the end of it: for eleven commits there was none, and
+  // the front door was sealed off from its own quay, the route board and the
+  // Ferry Dock - unnoticed, because with every gate open the quay can still be
+  // reached the long way, through the keep. `floodplainRelay.test.ts` now
+  // walks a fresh save from the front door to everything on the home bank.
   map.plant(14, 9, 'bench');
   map.plant(21, 9, 'barrel');
   map.plant(37, 12, 'mooringPost');
@@ -441,7 +447,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '                                                                ',
     '                                                                ',
     '                                           p                    ',
-    '           p b                                                  ',
+    '           p                                                    ',
     '                                             b  p   p           ',
     '                                           p                    ',
     '                                                                ',
