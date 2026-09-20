@@ -13,9 +13,11 @@ export {
   STARTING_PACK_ID,
 } from './packs';
 export {
+  arrangementOf,
   blocksFor,
   cargoCells,
   cellsFor,
+  EMPTY_ARRANGEMENT,
   fitsInGrid,
   footprintOf,
   gridCells,
@@ -23,12 +25,31 @@ export {
   packContents,
   roomFor,
   stackSizeOf,
+  tidyArrangement,
+  tidyWouldFit,
+  type CargoSeat,
+  type GridArrangement,
   type GridCargo,
   type GridCargoPlacement,
   type GridPacking,
   type GridPlacement,
+  type GridSeat,
   type GridSize,
+  type ItemSeat,
 } from './itemGrid';
+export {
+  canSeat,
+  itemRefAt,
+  parsePieceRef,
+  pieceAt,
+  pieceRefKey,
+  placementOf,
+  readArrangement,
+  seatPiece,
+  shapeOf,
+  turnPiece,
+  type GridPieceRef,
+} from './gridArrange';
 export {
   HELD_ITEM_DEFINITIONS,
   ITEM_CATEGORY_LABELS,

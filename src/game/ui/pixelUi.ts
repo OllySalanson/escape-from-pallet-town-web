@@ -1,4 +1,4 @@
-import type { GridPacking } from '../items';
+import { itemRefAt, pieceRefKey, type GridPacking } from '../items';
 import { describeKey } from './hoverDescribe';
 
 /**
@@ -226,6 +226,31 @@ export interface PixelGridOptions {
    * matches a cargo piece's `cargoId` too, so pointing at a Pokemon lights up
    * the squares it is standing on. */
   readonly highlight?: string;
+  /**
+   * Makes the container one the player arranges: every block becomes a control
+   * they can pick up, carry and put down. Without it the squares are a picture,
+   * which is what every read-only container stays.
+   */
+  readonly arrange?: PixelGridArranging;
+}
+
+/** What the screen is carrying over this container, if anything. */
+export interface PixelGridGhost {
+  readonly key: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  /** False when the square under it would not take it: the red outline. */
+  readonly valid: boolean;
+}
+
+export interface PixelGridArranging {
+  /** Names this container to the controller, and to the markup that finds it. */
+  readonly name: string;
+  readonly ghost?: PixelGridGhost;
+  /** What the help bar says while the cursor is on a block. */
+  readonly help?: string;
 }
 
 /**
@@ -248,28 +273,70 @@ export interface PixelGridOptions {
  */
 export function pixelGrid(packing: GridPacking, icon: (itemId: string) => string, options: PixelGridOptions = {}): string {
   const { width, height } = packing.size;
+  const arranging = options.arrange;
+  const held = arranging?.ghost;
   const cells = new Array(Math.max(0, width * height)).fill('<i></i>').join('');
+  // A block is a `<span>` on a container that is only a picture and a `<button>`
+  // on one the player arranges, because a control the cursor cannot land on can
+  // never be picked up - and a screen with no mouse is the one that has to work.
+  // The block says what is in it, in the same key its row carries
+  // (`ui/hoverDescribe.ts`), so pointing at either answers the same question
+  // and lights the other - and a screen can light the squares the cursor is
+  // over without re-rendering the container.
+  const block = (
+    key: string,
+    className: string,
+    describes: string,
+    placement: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+    body: string,
+    extra = '',
+  ): string => {
+    const seat = `grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}`;
+    const carried = held?.key === key ? ' is-carried' : '';
+    const says = ` data-describes="${escapeAttribute(describes)}"`;
+    if (!arranging) {
+      return `<span class="${className}${carried}"${says} style="${seat}"${extra}>${body}</span>`;
+    }
+    return `<button type="button" class="${className}${carried}"${says} style="${seat}" data-grid-piece="${escapeAttribute(key)}" data-grid-owner="${escapeAttribute(arranging.name)}"${extra}${arranging.help ? ` data-help="${escapeAttribute(arranging.help)}"` : ''}>${body}</button>`;
+  };
   const blocks = packing.placements
-    .map((placement) => {
+    .map((placement, index) => {
       const marked = options.highlight === placement.itemId ? ' is-marked' : '';
       const count = placement.quantity > 1 ? `<b>${placement.quantity}</b>` : '';
-      // The block says what is in it, in the same key its row carries
-      // (`ui/hoverDescribe.ts`), so pointing at either answers the same
-      // question and lights the other - and a screen can light the squares the
-      // cursor is over without re-rendering the container.
-      return `<span class="px-grid-block${marked}" data-describes="${escapeAttribute(describeKey('item', placement.itemId))}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}">${icon(placement.itemId)}${count}</span>`;
+      return block(
+        pieceRefKey(itemRefAt(packing, index)),
+        `px-grid-block${marked}${placement.rotated ? ' is-turned' : ''}`,
+        describeKey('item', placement.itemId),
+        placement,
+        `${icon(placement.itemId)}${count}`,
+      );
     })
     .join('');
   const cargo = packing.cargo
-    .map(
-      (placement) =>
+    .map((placement) =>
+      block(
+        pieceRefKey({ kind: 'cargo', cargoId: placement.cargoId }),
+        `px-grid-block is-cargo${options.highlight === placement.cargoId ? ' is-marked' : ''}`,
+        describeKey('cargo', placement.cargoId),
+        placement,
         // The sprite and nothing else: a species name is eight to ten letters
         // and the block is two squares wide, so writing it in there spilled
         // over the frame and over the art. The name is the row the cursor is
         // on, and the screen reader gets it from the label.
-        `<span class="px-grid-block is-cargo${options.highlight === placement.cargoId ? ' is-marked' : ''}" data-describes="${escapeAttribute(describeKey('cargo', placement.cargoId))}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}" aria-label="${escapeAttribute(placement.name)}" role="img">${placement.art ? `<img src="${placement.art}" alt="" />` : `<em>${escapeAttribute(placement.name.slice(0, 1))}</em>`}</span>`,
+        placement.art ? `<img src="${placement.art}" alt="" />` : `<em>${escapeAttribute(placement.name.slice(0, 1))}</em>`,
+        // A picture of a Pokemon is a picture; the same block on a container
+        // the player arranges is a button, and a button is not an image.
+        ` aria-label="${escapeAttribute(placement.name)}"${arranging ? '' : ' role="img"'}`,
+      ),
     )
     .join('');
+  // The ghost is what the player is carrying, drawn where it would land. It is
+  // the whole of the "will this go here" answer, which is why it is a shape on
+  // the grid and not a line of text under it.
+  const ghost = held
+    ? `<span class="px-grid-ghost${held.valid ? '' : ' is-bad'}" aria-hidden="true" style="grid-column:${held.x + 1}/span ${held.width};grid-row:${held.y + 1}/span ${held.height}"></span>`
+    : '';
   const label = options.label ? ` aria-label="${escapeAttribute(options.label)}" role="img"` : '';
-  return `<div class="px-grid${options.className ? ` ${options.className}` : ''}" style="--cols:${width};--rows:${height}"${label}><div class="px-grid-cells" aria-hidden="true">${cells}</div><div class="px-grid-blocks">${cargo}${blocks}</div></div>`;
+  const grid = arranging ? ` data-grid="${escapeAttribute(arranging.name)}" data-grid-cols="${width}" data-grid-rows="${height}"` : '';
+  return `<div class="px-grid${options.className ? ` ${options.className}` : ''}${arranging ? ' is-arranging' : ''}" style="--cols:${width};--rows:${height}"${label}${grid}><div class="px-grid-cells" aria-hidden="true">${cells}</div><div class="px-grid-blocks">${cargo}${blocks}${ghost}</div></div>`;
 }

@@ -1983,6 +1983,99 @@ describe('SaveManager', () => {
     });
   });
 
+  /**
+   * A pack the player laid out comes back the way they left it - across
+   * screens, across a save and across a raid. It is seats rather than a grid,
+   * optional with an empty default, so every accepted version keeps loading and
+   * a save that never opened the grid reads as one nobody has arranged.
+   */
+  describe('how a container was laid out', () => {
+    const saveWithArrangement = (version: number, raidProgress?: unknown): string =>
+      JSON.stringify({
+        version,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        items: [],
+        bag: {},
+        stash: { pokemon: [], items: {} },
+        ...(raidProgress === undefined ? {} : { raidProgress }),
+      });
+
+    it.each([1, 2, 3, 4, 5, 6])(
+      'reads a version %i save that never arranged one as a container nobody touched',
+      (version) => {
+        const storage = new MemoryStorage();
+        storage.setItem(SAVE_KEY, saveWithArrangement(version));
+        const progress = new SaveManager(storage).load()?.raidProgress;
+
+        expect(progress?.packArrangement).toEqual({ items: [], cargo: [] });
+        expect(progress?.secureArrangement).toEqual({ items: [], cargo: [] });
+      },
+    );
+
+    it('carries seats back out of storage and drops anything that is not one', () => {
+      const storage = new MemoryStorage();
+      storage.setItem(
+        SAVE_KEY,
+        saveWithArrangement(6, {
+          packArrangement: {
+            items: [
+              { itemId: 'super-potion', x: 4, y: 2, rotated: true },
+              { itemId: 'potion', x: -1, y: 0, rotated: false },
+              { x: 0, y: 0, rotated: false },
+              'nonsense',
+            ],
+            cargo: [{ cargoId: 'carried-0', x: 0, y: 0 }],
+          },
+        }),
+      );
+
+      expect(new SaveManager(storage).load()?.raidProgress.packArrangement).toEqual({
+        items: [{ itemId: 'super-potion', x: 4, y: 2, rotated: true }],
+        cargo: [{ cargoId: 'carried-0', x: 0, y: 0, rotated: false }],
+      });
+    });
+
+    it('records a layout and hands it back after a reload', () => {
+      const storage = new MemoryStorage();
+      const saves = new SaveManager(storage);
+      const stash = new Stash();
+      stash.addPokemon(new Pokemon(CHARMANDER, 5), 'partner');
+      saves.save({
+        party: new PokemonParty([]),
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: new Bag(),
+        stash,
+      });
+
+      expect(
+        saves.recordContainerArrangements(
+          { items: [{ itemId: 'potion', x: 5, y: 2, rotated: false }], cargo: [] },
+          { items: [{ itemId: 'scrip', x: 1, y: 1, rotated: false }], cargo: [] },
+        ),
+      ).toBe(true);
+
+      const progress = new SaveManager(storage).load()?.raidProgress;
+      expect(progress?.packArrangement?.items).toEqual([
+        { itemId: 'potion', x: 5, y: 2, rotated: false },
+      ]);
+      expect(progress?.secureArrangement?.items).toEqual([
+        { itemId: 'scrip', x: 1, y: 1, rotated: false },
+      ]);
+
+      // A raid ending writes only the pack, so the container the player set at
+      // base is not overwritten by a raid that never opened it.
+      expect(saves.recordContainerArrangements({ items: [], cargo: [] })).toBe(true);
+      const after = new SaveManager(storage).load()?.raidProgress;
+      expect(after?.packArrangement?.items).toEqual([]);
+      expect(after?.secureArrangement?.items).toEqual([
+        { itemId: 'scrip', x: 1, y: 1, rotated: false },
+      ]);
+    });
+  });
+
   describe('storage boxes', () => {
     const oldSave = (version: number): string =>
       JSON.stringify({

@@ -1,8 +1,10 @@
 import {
+  arrangementOf,
   BASE_SECURE_GRID,
   bestPackIn,
   blocksFor,
   cargoCells,
+  EMPTY_ARRANGEMENT,
   fitsInGrid,
   gridCells,
   isFoundOnly,
@@ -14,6 +16,8 @@ import {
   RAID_BAG_GRID,
   roomFor,
   stackSizeOf,
+  tidyArrangement,
+  type GridArrangement,
   type GridCargo,
   type GridPacking,
   type GridSize,
@@ -91,7 +95,22 @@ export interface Deployment {
   readonly stashSecureSlot: StashSecureSlot;
   /** What the container was filled with, so the next raid can start from it. */
   readonly securePreference: SecurePreference;
+  /** How the player laid the pack out, so the raid deploys the pack they packed. */
+  readonly bagArrangement: GridArrangement;
+  /** How the player laid the secure container out, remembered the same way. */
+  readonly secureArrangement: GridArrangement;
 }
+
+/** What a save remembers about how the two containers were laid out. */
+export interface LoadoutArrangements {
+  readonly bag: GridArrangement;
+  readonly secure: GridArrangement;
+}
+
+export const EMPTY_LOADOUT_ARRANGEMENTS: LoadoutArrangements = {
+  bag: EMPTY_ARRANGEMENT,
+  secure: EMPTY_ARRANGEMENT,
+};
 
 export class DeploymentFlow {
   private readonly stash: Stash;
@@ -125,12 +144,27 @@ export class DeploymentFlow {
    * screen arguing with the person using it.
    */
   private secureTouched = false;
+  /**
+   * The seats the player chose in each container, carried in from the save and
+   * out again on deploy. Empty means nothing has been arranged, which is the
+   * automatic pack exactly as it was - see `../items/itemGrid`.
+   */
+  private bagSeats: GridArrangement;
+  private secureSeats: GridArrangement;
+  /**
+   * Set once either container has been laid out by hand. After that the whole
+   * layout is written down again on every change, so packing one more Potion
+   * cannot shuffle what the player placed.
+   */
+  private bagArranged: boolean;
+  private secureArranged: boolean;
 
   public constructor(
     stash: Stash,
     insertionId: RunInsertionId = 'floodplain-relay',
     capacity: LoadoutCapacity = BASE_LOADOUT_CAPACITY,
     preference: SecurePreference = DEFAULT_SECURE_PREFERENCE,
+    arrangements: LoadoutArrangements = EMPTY_LOADOUT_ARRANGEMENTS,
   ) {
     this.stash = stash;
     this.insertion = insertionId;
@@ -138,6 +172,61 @@ export class DeploymentFlow {
     this.securePokemonSlots = capacity.pokemon;
     this.preference = preference;
     this.packItemIdValue = bestPackIn(stash.listItems());
+    this.bagSeats = arrangements.bag;
+    this.secureSeats = arrangements.secure;
+    this.bagArranged = arrangements.bag.items.length > 0 || arrangements.bag.cargo.length > 0;
+    this.secureArranged =
+      arrangements.secure.items.length > 0 || arrangements.secure.cargo.length > 0;
+  }
+
+  /** The seats the player chose in the pack. */
+  public get bagArrangement(): GridArrangement {
+    return this.bagSeats;
+  }
+
+  /** The seats the player chose in the secure container. */
+  public get secureArrangement(): GridArrangement {
+    return this.secureSeats;
+  }
+
+  /** Lays the pack out as the player asked, and freezes what actually packed. */
+  public arrangeBag(arrangement: GridArrangement): void {
+    this.bagSeats = arrangement;
+    this.bagArranged = true;
+    this.bagSeats = arrangementOf(this.bagLayout());
+  }
+
+  /** The same for the container a wipe cannot touch. */
+  public arrangeSecure(arrangement: GridArrangement): void {
+    this.secureSeats = arrangement;
+    this.secureArranged = true;
+    this.secureSeats = arrangementOf(this.secureLayout());
+  }
+
+  /** Packs the pack again from scratch, rotation allowed: the TIDY control. */
+  public tidyBag(): void {
+    this.bagSeats = tidyArrangement(this.packedContents, this.bagGrid);
+    this.bagArranged = true;
+  }
+
+  public tidySecure(): void {
+    this.secureSeats = tidyArrangement(this.securedContents, this.secureGrid, this.securedCargo);
+    this.secureArranged = true;
+  }
+
+  /**
+   * Writes both layouts down again after the loadout changed.
+   *
+   * Only for a container the player has arranged: one they have not still packs
+   * itself every time, which is every save that never opens the grid.
+   */
+  private holdLayouts(): void {
+    if (this.bagArranged) {
+      this.bagSeats = arrangementOf(this.bagLayout());
+    }
+    if (this.secureArranged) {
+      this.secureSeats = arrangementOf(this.secureLayout());
+    }
   }
 
   /** The pack this raid is packed into, or undefined when the vault holds none. */
@@ -204,6 +293,7 @@ export class DeploymentFlow {
     }
     this.packItemIdValue = itemId;
     this.refillSecureSlot();
+    this.holdLayouts();
     return undefined;
   }
 
@@ -286,7 +376,7 @@ export class DeploymentFlow {
 
   /** Where the secure container's contents sit, for the screen that draws it. */
   public secureLayout(): GridPacking {
-    return packContents(this.securedContents, this.secureGrid, this.securedCargo);
+    return packContents(this.securedContents, this.secureGrid, this.securedCargo, this.secureSeats);
   }
 
   /** What the container was left holding, for the save to start next raid from. */
@@ -304,7 +394,7 @@ export class DeploymentFlow {
 
   /** Where the packed supplies sit in the raid pack. */
   public bagLayout(): GridPacking {
-    return packContents(this.packedContents, this.bagGrid);
+    return packContents(this.packedContents, this.bagGrid, [], this.bagSeats);
   }
 
   /** Squares filled and squares there are, for the line that reads the pack back. */
@@ -395,6 +485,7 @@ export class DeploymentFlow {
     for (const { itemId, quantity } of fill.items) {
       this.securedItemCounts.set(itemId as ItemId, quantity);
     }
+    this.holdLayouts();
   }
 
   /**
@@ -433,10 +524,12 @@ export class DeploymentFlow {
       this.selectedItems.delete(itemId);
       this.securedItemCounts.delete(itemId);
       this.refillSecureSlot();
+      this.holdLayouts();
       return undefined;
     }
     this.selectedItems.set(itemId, next);
     this.refillSecureSlot();
+    this.holdLayouts();
     return undefined;
   }
 
@@ -450,12 +543,34 @@ export class DeploymentFlow {
     }
     const others = { ...this.packedContents };
     delete others[itemId];
+    return roomFor(others, this.bagGrid, itemId, this.stash.itemCount(itemId), [], this.bagSeats);
+  }
+
+  /**
+   * The most of a supply the pack would take if it were packed again from
+   * scratch, which is never less than `packLimit`.
+   *
+   * The difference between the two is the sentence a row owes the player: a
+   * plus that stops at four when a tidy would take six is not full, it is
+   * arranged, and those are different facts.
+   */
+  public packLimitTidied(itemId: ItemId): number {
+    if (isFoundOnly(itemId)) {
+      return 0;
+    }
+    const others = { ...this.packedContents };
+    delete others[itemId];
     return roomFor(others, this.bagGrid, itemId, this.stash.itemCount(itemId));
   }
 
   /** Whether one more of a supply would go into the pack beside what is packed. */
   public packHasRoomFor(itemId: ItemId): boolean {
-    return fitsInGrid({ ...this.packedContents, [itemId]: this.itemQuantity(itemId) + 1 }, this.bagGrid);
+    return fitsInGrid(
+      { ...this.packedContents, [itemId]: this.itemQuantity(itemId) + 1 },
+      this.bagGrid,
+      [],
+      this.bagSeats,
+    );
   }
 
   /**
@@ -474,6 +589,7 @@ export class DeploymentFlow {
     this.secureTouched = true;
     if (this.securedPokemonIds.includes(id)) {
       this.securedPokemonIds = this.securedPokemonIds.filter((secured) => secured !== id);
+      this.holdLayouts();
       return undefined;
     }
     // Only Pokemon still in the party count against the slot, so one removed
@@ -481,7 +597,8 @@ export class DeploymentFlow {
     const held = this.securedPokemon.map((stored) => stored.id);
     const previous = this.securedPokemonIds;
     this.securedPokemonIds = [...held, id].slice(-Math.max(1, this.securePokemonSlots));
-    if (fitsInGrid(this.securedContents, this.secureGrid, this.securedCargo)) {
+    if (fitsInGrid(this.securedContents, this.secureGrid, this.securedCargo, this.secureSeats)) {
+      this.holdLayouts();
       return undefined;
     }
     this.securedPokemonIds = previous;
@@ -547,9 +664,11 @@ export class DeploymentFlow {
     }
     if (next === 0) {
       this.securedItemCounts.delete(itemId);
+      this.holdLayouts();
       return undefined;
     }
     this.securedItemCounts.set(itemId, next);
+    this.holdLayouts();
     return undefined;
   }
 
@@ -569,6 +688,7 @@ export class DeploymentFlow {
         { ...others, [itemId]: Math.min(ceiling, (squares + 1) * step) },
         this.secureGrid,
         this.securedCargo,
+        this.secureSeats,
       )
     ) {
       squares += 1;
@@ -601,6 +721,7 @@ export class DeploymentFlow {
         { ...this.securedContents, [itemId]: this.secureQuantity(itemId) + step },
         this.secureGrid,
         this.securedCargo,
+        this.secureSeats,
       )
     );
   }
@@ -712,6 +833,10 @@ export class DeploymentFlow {
         items: securedItems.map(({ itemId, quantity }) => ({ itemId, quantity })),
       },
       securePreference: this.securePreference,
+      // The pack deploys laid out the way the player left it, so what they
+      // arranged at base is the pack they open in the field.
+      bagArrangement: this.bagSeats,
+      secureArrangement: this.secureSeats,
     };
   }
 }

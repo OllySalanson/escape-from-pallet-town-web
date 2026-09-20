@@ -51,6 +51,7 @@ import { buildExtractionReport } from '../run/extractionReport';
 import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlement';
 import {
   packFullForPokemonLine,
+  clearPackRoomForPokemon,
   packHasRoomForPokemon,
   packRoomChoices,
   syncPackCargo,
@@ -1800,7 +1801,10 @@ export class BattleScene extends Phaser.Scene {
     // BAG first", which a battle has no door to: the only obedient move was to
     // flee, and fleeing loses the Pokemon the refusal was about. Now the ball is
     // held and the panel asks what to put down, so the answer is here.
-    if (!packHasRoomForPokemon(this.bag, this.state.enemy.pokemon)) {
+    // Only the arrangement in the way is not "no room": the pack re-packs
+    // itself and the ball is thrown, because a refusal a player cannot act on
+    // from inside a fight is the whole fault this screen exists to answer.
+    if (!clearPackRoomForPokemon(this.bag, this.state.enemy.pokemon).fits) {
       const choices = this.makeRoomChoices(carriedBalls(this.bag)[ballIndex]?.id);
       this.mode = 'events';
       this.commandContainer.setVisible(false);
@@ -2744,6 +2748,11 @@ export class BattleScene extends Phaser.Scene {
         walked: this.runSession.surveyed ?? [],
       });
     }
+    // And how the pack was laid out, for the same reason and in the same
+    // breath: a raid lost in a fight arranged its pack exactly as much as one
+    // that got home, and a layout that came back only from the endings that
+    // happen in the overworld would be a promise kept three times in four.
+    new SaveManager().recordContainerArrangements(this.bag.arrangement);
     const saved = new SaveManager().applyWipeLoss(
       this.runSession.broughtPokemonIds,
       this.runSession.broughtItems,

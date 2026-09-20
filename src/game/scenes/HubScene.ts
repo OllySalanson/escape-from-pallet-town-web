@@ -61,6 +61,7 @@ import {
 import {
   Bag,
   CURRENCY_ITEM_ID,
+  EMPTY_ARRANGEMENT,
   HELD_ITEM_DEFINITIONS,
   ITEM_DEFINITIONS,
   FOUND_ONLY_IDS,
@@ -75,6 +76,7 @@ import {
   type ItemId,
   type PackItemId,
 } from '../items';
+import { GridArranging } from '../ui/gridArranging';
 import { DEFAULT_SECURE_PREFERENCE } from '../hub/secureAutofill';
 import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
 import { PokemonParty, type PokemonBase } from '../pokemon';
@@ -156,6 +158,16 @@ import {
 import { starterCards } from '../ui/starterPicker';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP } from '../ui/countSelector';
 
+/**
+ * What the help bar says while the cursor is on a block of a container.
+ *
+ * It is one line because it is read while the player is looking at the squares
+ * rather than at the words, and it names the three keys that do anything:
+ * taking, turning and putting down. The pointer needs no instructions.
+ */
+const ARRANGE_HELP =
+  'ENTER picks this up and puts it down · arrows carry it · R turns it · ESC puts it back.';
+
 export interface HubSceneData {
   readonly savedGame?: RestoredGame;
 }
@@ -173,6 +185,15 @@ export class HubScene extends Phaser.Scene {
   private flow!: DeploymentFlow;
   private overlay!: MenuOverlay;
   private view: HubView = 'home';
+  /**
+   * Picking a piece up and putting it down, in both containers.
+   *
+   * The two grids on this screen are one controller because only one piece is
+   * ever in the player's hand: the pack and the secure container are two
+   * containers, not two cursors. What the rules are lives in
+   * `items/gridArrange.ts`; what is being carried lives here.
+   */
+  private arrangingValue: GridArranging | undefined;
   /** Whose summary is on screen, while the summary view is the one showing. */
   private reselectStarterId: StarterSpeciesId = 'bulbasaur';
   /** A swap only runs from an explicit second click, so a misclick cannot delete a survivor. */
@@ -256,7 +277,14 @@ export class HubScene extends Phaser.Scene {
     },
     // The container fills itself from what it held last raid, so a player
     // deploying again and again is not re-picking from scratch.
-    loaded.raidProgress.securePreference ?? DEFAULT_SECURE_PREFERENCE);
+    loaded.raidProgress.securePreference ?? DEFAULT_SECURE_PREFERENCE,
+    // The pack comes back laid out the way it was left, at base and in the
+    // field alike; an empty pair is a save that has never arranged one.
+    {
+      bag: loaded.raidProgress.packArrangement ?? EMPTY_ARRANGEMENT,
+      secure: loaded.raidProgress.secureArrangement ?? EMPTY_ARRANGEMENT,
+    });
+    this.arranging.release();
     this.view = 'home';
     this.reselectStarterId = this.startingStarterId();
     this.swapArmed = false;
@@ -625,6 +653,48 @@ export class HubScene extends Phaser.Scene {
     return heldId === 'charmander' || heldId === 'squirtle' ? heldId : 'bulbasaur';
   }
 
+  /**
+   * The strip under a container: what is in your hand, and the way out of it.
+   *
+   * TIDY is the automatic pack made into a deed rather than the only behaviour
+   * there is - the packer will turn a piece on its side to make a mix fit, and
+   * a player who does not want to fiddle should have that without fiddling. It
+   * says what it will do, because it throws away an arrangement somebody made.
+   */
+  private arrangeBar(name: 'pack' | 'secure'): string {
+    const what = name === 'pack' ? 'pack' : 'container';
+    // The chip and nothing else. What the keys do is the help bar's line, said
+    // while the cursor is on a block - which is the only moment it is wanted,
+    // and the only place on this screen with room for a sentence: the pack
+    // stands in a column a third of the stage wide, where a line of
+    // instructions wrapped to three rows and clipped the chip in half.
+    return `<div class="px-grid-bar"><button class="px-window px-chip" data-tidy="${name}" data-help="${escapeAttribute(`Pack the ${what} again from scratch, turning pieces on their side where that is what makes the mix fit. It replaces how you have laid it out.`)}">Tidy</button></div>`;
+  }
+
+  /**
+   * Built on first use rather than as a field, because a scene is a Phaser
+   * scene: nothing guarantees the constructor ran before `init` does, and the
+   * suite drives this one off the prototype.
+   */
+  private get arranging(): GridArranging {
+    this.arrangingValue ??= new GridArranging({
+      packing: (name) => (name === 'secure' ? this.flow.secureLayout() : this.flow.bagLayout()),
+      commit: (name, arrangement) => {
+        if (name === 'secure') {
+          this.flow.arrangeSecure(arrangement);
+        } else {
+          this.flow.arrangeBag(arrangement);
+        }
+        this.render();
+      },
+      redraw: () => this.render(),
+      say: (message) => this.setStatus(message),
+      sound: (kind) =>
+        audioManager.play(kind === 'refused' ? 'denied' : kind === 'take' ? 'menuOpen' : 'select'),
+    });
+    return this.arrangingValue;
+  }
+
   private setView(view: HubView): void {
     // A status line answers something done on the screen it was raised on, so
     // it does not follow the player to another: the recovery bay's "recovered
@@ -826,6 +896,12 @@ export class HubScene extends Phaser.Scene {
     // Remembered on the way out rather than on the way home, because it is what
     // the player chose and a raid that goes badly chose it too.
     new SaveManager().recordSecurePreference(deployment.securePreference);
+    // The same moment, for the same reason: it is what the player chose, and a
+    // raid that goes badly chose it too.
+    new SaveManager().recordContainerArrangements(
+      deployment.bagArrangement,
+      deployment.secureArrangement,
+    );
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
     const plan = generateRunPlan(
       seed,
@@ -868,6 +944,7 @@ export class HubScene extends Phaser.Scene {
         bag: new Bag(
           Object.fromEntries(items.map(({ itemId, quantity }) => [itemId, quantity])),
           this.flow.bagGrid,
+          deployment.bagArrangement,
         ),
         runSession,
       });
@@ -896,6 +973,13 @@ export class HubScene extends Phaser.Scene {
   }
 
   private handleKey(event: KeyboardEvent): void {
+    // A piece in the player's hand owns the arrow keys, R, ENTER and ESC, so it
+    // is asked before the cursor is: carrying something and pressing Left has
+    // exactly one meaning, and it is not "move to the pane on the left".
+    if (this.arranging.handleKey(event, document.activeElement)) {
+      event.preventDefault();
+      return;
+    }
     if (event.key === 'Escape' && (this.boxMoving || this.boxEditing)) {
       event.preventDefault();
       audioManager.play('cancel');
@@ -1041,6 +1125,17 @@ export class HubScene extends Phaser.Scene {
       change();
       this.render();
     };
+    this.arranging.attach(root);
+    on('[data-tidy]', (button) => {
+      if (button.dataset.tidy === 'secure') {
+        this.flow.tidySecure();
+      } else {
+        this.flow.tidyBag();
+      }
+      this.arranging.release();
+      audioManager.play('select');
+      this.render();
+    });
     on('[data-back]', () => this.goBack());
     on('[data-view]', (button) => rerender(() => this.setView(button.dataset.view as HubView)));
     on('[data-starter]', (button) =>
@@ -1734,8 +1829,14 @@ export class HubScene extends Phaser.Scene {
         // that would not fit is left reachable and refuses out loud, because a
         // control the cursor cannot land on can never say why.
         const limit = this.flow.packLimit(item.id as ItemId);
+        // A plus that stops short because of how the pack is *laid out* is not
+        // the same fact as a pack that is full, and the row owes the difference:
+        // one of them has Tidy as its answer and the other has nothing.
+        const tidied = this.flow.packLimitTidied(item.id as ItemId);
         const limitReason = limit < held
-          ? `The pack has room for ${limit} ${item.displayName} beside what else is packed.`
+          ? tidied > limit
+            ? `The pack has room for ${limit} ${item.displayName} as you have laid it out - ${tidied} if it is packed again. Tidy is under the squares.`
+            : `The pack has room for ${limit} ${item.displayName} beside what else is packed.`
           : `All ${held} at base are packed.`;
         return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${size} · ${held} at base</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
       })
@@ -1753,7 +1854,8 @@ export class HubScene extends Phaser.Scene {
     )}<div class="loadout-side">${pixelWindow(
       `<div class="pack-body px-scroll">${pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         label: `Pack, ${cells.used} of ${cells.total} squares full`,
-      })}${this.packRows()}</div>`,
+        arrange: { name: 'pack', ghost: this.arranging.ghostFor('pack'), help: ARRANGE_HELP },
+      })}${this.arrangeBar('pack')}${this.packRows()}</div>`,
       {
         className: 'pack-window',
         heading: 'Pack',
@@ -2078,7 +2180,8 @@ export class HubScene extends Phaser.Scene {
       `<div class="secure-body">${pixelGrid(this.flow.secureLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         className: 'is-secure',
         label: `Secure container, ${cells.used} of ${cells.total} squares full${this.flow.securedCargo.length ? `, holding ${this.flow.securedCargo.map((piece) => piece.name).join(' and ')}` : ''}`,
-      })}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${itemRows ? `${itemRows}<h3 class="px-subheading">Found goods</h3>` : ''}${materialRows}</div></div>`,
+        arrange: { name: 'secure', ghost: this.arranging.ghostFor('secure'), help: ARRANGE_HELP },
+      })}${this.arrangeBar('secure')}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${itemRows ? `${itemRows}<h3 class="px-subheading">Found goods</h3>` : ''}${materialRows}</div></div>`,
       {
         className: 'secure-group',
         heading: 'Container',
