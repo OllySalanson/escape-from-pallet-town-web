@@ -690,6 +690,14 @@ export const findHunterBreakawayTile = (
   breakawayDistance: number = HUNTER_BREAKAWAY_DISTANCE,
   heading: Direction | null = null,
   mustReach: readonly GridPosition[] = [],
+  /**
+   * The doors of the map as seen from the player, where the caller already has
+   * them. This is the only whole-map search in the function that does not
+   * depend on where the hunter is, so a caller asking what four headings would
+   * do from one tile - which is what the structure rules ask of every tile of
+   * every map - hands over one answer instead of paying for it four times.
+   */
+  doors: MapDoors | null = null,
 ): GridPosition => {
   if (!isInsideBounds(hunter, bounds)) {
     return hunter;
@@ -748,7 +756,7 @@ export const findHunterBreakawayTile = (
    * walked comes before it so a tie can never be settled by a tile across the
    * map, and the tile it reaches soonest settles what is left, deterministically.
    */
-  const { sealsIn } = doorsFrom(player, bounds, isBlocked, mustReach);
+  const { sealsIn } = doors ?? doorsFrom(player, bounds, isBlocked, mustReach);
   const rank = (index: number): readonly number[] => [
     -separation(reached[index]),
     sealsIn.has(tileIndex(reached[index], bounds)) ? 1 : 0,
@@ -758,14 +766,23 @@ export const findHunterBreakawayTile = (
     walk[index],
   ];
 
+  // Compared in place rather than sorted: `reached` is every tile the hunter
+  // can walk to, so on a map 128 tiles square building a rank for each of them
+  // is six thousand arrays a call, and this is called from every tile of every
+  // map in every gate state by `mapStructure.test.ts`.
   let best = 0;
   let bestRank = rank(0);
   for (let index = 1; index < reached.length; index += 1) {
     const candidate = rank(index);
-    const decided = candidate.findIndex((value, place) => value !== bestRank[place]);
-    if (decided !== -1 && candidate[decided] < bestRank[decided]) {
-      best = index;
-      bestRank = candidate;
+    for (let place = 0; place < candidate.length; place += 1) {
+      if (candidate[place] === bestRank[place]) {
+        continue;
+      }
+      if (candidate[place] < bestRank[place]) {
+        best = index;
+        bestRank = candidate;
+      }
+      break;
     }
   }
 

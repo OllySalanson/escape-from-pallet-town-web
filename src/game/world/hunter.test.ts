@@ -287,7 +287,13 @@ describe('chooseHunterPursuitStep', () => {
       const player = walkableTiles[Math.floor(walkableTiles.length / 2)];
       const reachable = tilesConnectedTo(player, bounds, isBlocked);
 
-      for (let index = 0; index < walkableTiles.length; index += 37) {
+      // Sampled, and sampled to a count rather than a stride: walking a route
+      // to its end is a search per step, so a fixed stride asks the vast map
+      // for a hundred and eighty walks and the small ones for a dozen. Every
+      // tile of every map is covered by the test above, which computes each
+      // route once; this is the one that proves the walk actually converges.
+      const stride = Math.max(37, Math.ceil(walkableTiles.length / 24));
+      for (let index = 0; index < walkableTiles.length; index += stride) {
         const start = walkableTiles[index];
         const pursuit = runPursuit(start, player, bounds, isBlocked, bounds.width * bounds.height);
         expect({ mapId, start, contacted: pursuit.contacted }).toEqual({

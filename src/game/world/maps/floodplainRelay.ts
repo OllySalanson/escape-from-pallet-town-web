@@ -1006,28 +1006,28 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // house and the store on the only paving east of the river that is not the
   // keep's, and the cart road that carried it all out to the drove.
   map.draw(61, 34, [
-    '""#"""""""#""#TT#""#""""#""#"""#""""',
-    '""#""g#"g"#g"#TT"g""g""g#"g""g"#g""g',
-    '""##"####"#""#TT#""#""""##"###"##"##',
-    '""#""g#"g"#g""TT#g"#g""g#TT#"g"#g""g',
-    '#"""""#"""###"###"#######TT#"""#""""',
-    'TT#""g""g""g""#""g#"g#"g#TT#"g""g""g',
-    ',,#,####,##,,,#,,,#,,,,,####,#,###,#',
+    '""#""""TTT#""#""#""#TTTT#""#"""#""""',
+    '"""""g#TTT#g"#g""g""TTTT#"g""g""g""g',
+    '""##"####"#""#""#""#TTTT##"###"##"##',
+    '""#""g#"g"#g""g"#g"#TTTT#TT#"g"#TTTT',
+    '#"#"""#"""###"###########TT#"""#TTTT',
+    'TT#""g""g""g""#""g#"g#"g#TT#"g""TTTT',
+    ',,#,####,##,,,#,,,#,,,,,,,,,,#,#####',
     ',,,,,,,,,,#,,,#,,,#,,#,,#,,#,,,#,,,,',
-    '""#""""#""#""""""""""#"""""#"""#""""',
-    '"""""g"#g"###"#######"####"##"#"g""g',
-    '#"#"#######""""#""#TT#"""""#"""##"##',
-    '""#TTTT#g"#g""g""g#TT#"g#"g#"g"#g"""',
-    '"""TTTT#""#""""#""#TT#""#""""""#""""',
-    '""#TT"T"g""g""g#"g#TT""g######"####"',
-    '#"###"#########"#########TT#"""#""""',
-    '""#""g#"g"#g""g#"g"#g""g#TT""g"#g""g',
-    '""#"""#"""#""""#"""#""""#####"####"#',
-    '""#""g#"g"#g""g##"#"g""g""g"""""#TTT',
-    '#"##"###"###"###"""##"###""""#""#TTT',
-    '"""""g#"g"#g""g#"g"#g""g####"##"##"#',
-    '""#"""#"""#""""""""#""""#""""#""#"""',
-    '""#""g""g""g""g#"g"#g""g#"g""#"""""g',
+    '""#""""#""#""""""""""#""#""#""""""""',
+    '"""""g"#g"###"#####"#""###"##"#"g""g',
+    '###"#######""""#TT#""#TT#""#TTT##"#"',
+    'TT#""g"#g"#g""g"TT#"g#TT#"g#TTT#TTT"',
+    'TT"""""#""#""""#TT#""#TT#"""TTT#TTT"',
+    'TT#"""""g"#g""g#TT#"g"TT######"####"',
+    '#####"########""#########""#""""""""',
+    '""#""g#"g"#g""g#"g"#g""g#"g""g"#g""g',
+    '""#"""#""""""""""""#""""#####"####"#',
+    '""#""g#"g"#g""g##"#"g""g""g"""TT#""g',
+    '#""#"###"###"###TTT##"###""""#TT#"""',
+    'TT"""g#TTT#g""g#TTT#g""g####"##"##"#',
+    'TT#"""#TTT#"""""TTT#""""#""""#""#"""',
+    'TT#""g"TTT"g""g#TTT#g""g#"g""#"""""g',
   ]);
 
 
@@ -1035,24 +1035,28 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // out east to the culvert over the cut. South of it the ground goes rough -
   // nothing was ever built there, because the water gets to it.
   map.draw(61, 45, [
-    'PP#PPPPPPP#PP#""g#"""""g"#""""g""#""',
-    'PP#PPPP#PP#PPP""""g"#""""""""#""g#""',
-    'P####P#PPPPPP#"""#""#""""##"##"##""#',
+    'PP#PPPP#PP#PP#""g#""#TTTT#""""g""#""',
+    'PP#PPPP#PP#PP#""""g""""""""""#""g#""',
+    'P####P#PPPPPP#"""#""#TT"T##"##"##""#',
     'PP#PPPP###P#######"####"##TTT#"""#""',
-    '"""g"""#""""""TTT#""#"""g"TTT""g""""',
+    '"""g"""#"""""""""#""#"""g"TTT""g""""',
     ',##,,###,,#,,,,,,,,,#,,,,######,,###',
-    ',,,,,,,#,,#,,#,###,,,,#,##,,,,,#,,,,',
-    '""g#"""##""###""g#""#""g"#""#"g#""""',
-    '"""#g""#""#g"#"""#g"#""""#""#""#g"""',
-    '#"###"##""#""#"######"########"#"###',
-    'TTT#"""#g""""""g""""#"g""#"""g""""""',
-    'TTT#"""#""#""#"""#""#"""g#""#""#""""',
+    ',,,,,,,,,,#,,#,###,#,,#,##,,,,,#,,,,',
+    '""g#"""###""##TTT#""#""g"#TT#"g#""""',
+    '"""#g""#TT#g"#TTT#g"#""""#TT#"""g"""',
+    '#"###"##TT#""#"######"########"#"###',
+    '"g"#T"T#TT"""""g""""#"g""#"""g""TTTT',
+    '"""#T""#TT#""#"""#""#"""g#""#""#TTTT',
   ]);
 
-  // The gap in the orchard's back hedge, and the cart road through it.
-  map.draw(57, 40, [
-    ',,,,',
-    ',,,,',
+
+  // The gap in the orchard's back hedge, and the cart road through it. It
+  // takes the orchard's hedge row as well as its lane, so that a gate post can
+  // stand in the lane: a lane that runs straight on into another lane is a
+  // lane a player crosses the map down with one key held.
+  map.draw(56, 40, [
+    ',,,,,',
+    ',,,,,',
   ]);
 
   // The track down out of the beck into the head of the yard.
@@ -1088,26 +1092,26 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     'vvvCvvvvvvvvCvvvvvvvvCvvvvvvvv',
     'vvvvvCvvvvvvvvCvvvvvvvvCvvvvvv',
     'vCvvvvvvvvCvvvvvvvvCvvvvvvvvCv',
-    '""g"#g"#g"###"############"###',
-    '""g"#g"""##g""g#"g#"g""g"#g""g',
+    'TT"T#g"#g"###"########"###"###',
+    'TT"T#g"""##TTTT#"g#"g""g"#g""g',
     '##"#####g"#"####"g#"g#"g"#g""g',
-    '"""""g"#g"#g""g#"g""g###"###"#',
-    '""g#"g"#g"#g""g####"##"g"#g""g',
-    '#######"########"g""g#"g""g""g',
-    '""#""#""#""g""g##"########"###',
-    '""#""#""#""g#"g#"g""g#"g""g""g',
-    '""#"""""#"######"g#"g#"g#"g#"g',
-    '"""###"##""g""g#############"#',
-    '""#""#""#"###"##"g#"g""#""g""g',
-    '"""""""""""g#"g#"g#"g""#""g#"g',
+    '""""TTT#g""g""g#"g""g###"###"#',
+    '""g#TTT#g"#g""g#"##"##TTT#g""g',
+    '#######""#######"g"TT#TTT"g""g',
+    '""#TT#""#TTT""g##"########"##"',
+    '""#TT#""#TTT#"g""g""g#"g"TT""g',
+    '""#TT"""#"######"g#"g""g#TT#"g',
+    '"#""##"##""g"TT#############"#',
+    '""#""#""#"##""##"g#TTTT#""g""g',
+    '"""""""""""g#"g#"g#TTTT#""g#"g',
     '""#""#""#""g#"g#"##"########"#',
-    '#############"##"g#"g""#""g""g',
-    '""g#"g""g""g#"g#"g""g"""""g#"g',
-    '""g""g#"g#"g#"g#####"#######"#',
-    '""g#"g#"g#"g#"g""g#"g""#""g""g',
-    '##"####"##"##"##"####"###"##"#',
-    '""g""g#"g#"g""g#"g""g""#""g#"g',
-    '""g#"g#"g#"g#"g#"g#"g""#""g#"g',
+    '######"######"##"g#"g""#TTT""g',
+    '""g#"g""g"TT#"g#"g""g"""TTT#"g',
+    '""g""g#"g#TT#"g##"##"#######"#',
+    '""g#"g#"g#TT#"g""g#TTTT#""g"TT',
+    '##"#"##"##"##"##"####"###"##"#',
+    'TTT""g#"g#"g""g#"g""g""#""g#"g',
+    'TTT#"g#"g#"g#"g#"g#"g"""""g""g',
   ]);
 
   // The head of the drove, where the kilns' heath runs out onto the levels.
@@ -1124,83 +1128,83 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // the way to the edge of the map. It is the quick way south on this side of
   // the river, and every step off the drove is fen.
   map.draw(100, 32, [
-    'T,,"ggg#"gggg"gg#g"gggg"gTT',
-    ',,,g#gg"gggg"#ggg"gggg#ggTT',
-    ',,,ggg"#ggg"gggg#gggg"gggTT',
+    'T,,#ggg#"g#gg"gg##"gggg"#TT',
+    ',,,g#g#"gggg"#ggg"gg#g#ggTT',
+    ',,,ggg"#g#g"gggg#gggg"g#gTT',
     ',T,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,g"ggg#"gggg"gg#g"gggg"TT',
-    ',,,"g#gg"gggg"#ggg"gggg#gTT',
-    ',,Tgggg"#ggg"gggg#gggg"ggTT',
+    ',,,g"ggg#"gggg"#g#g"gg#g"TT',
+    ',,,"##gg"gg#g"#ggg#gggg#gTT',
+    ',,Tgggg##ggg"g#gg#ggg#"ggTT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,gg"ggg#"gggg"gg#g"ggggTT',
-    'T,,g"g#gg"gggg"#ggg"gggg#TT',
-    ',,,"gggg"#ggg"gggg#gggg"gTT',
+    ',,,gg"#gg#"gg#g"gg#g#ggggTT',
+    'T,,g"g#gg#gggg"##gg"ggg##TT',
+    ',,,"g#gg"#gg#"gggg##ggg"gTT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',T,ggg"#ggg"gggg#gggg"gggTT',
-    ',,,g#"gggg"gg#g"gggg"g#ggTT',
-    ',,,g"gg#g"gggg"g#gg"gggg"TT',
+    ',T,g#g"#ggg#gggg#g#gg"gggTT',
+    ',,,g#"g#gg"gg##"gggg"##ggTT',
+    ',,,#"gg#g"#ggg"g##g"gggg#TT',
     ',,TWWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,gggg"#ggg"gggg#gggg"ggTT',
-    ',,,gg#"gggg"gg#g"gggg"g#gTT',
-    'T,,gg"gg#g"gggg"g#gg"ggggTT',
+    ',,,gggg"##gg"ggg##gggg"#gTT',
+    ',,,gg#"gggg"#g#g"gg#g"g#gTT',
+    'T,,gg"gg#g"gggg#g#gg"g#ggTT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,"gggg"#ggg"gggg#gggg"gTT',
-    ',T,ggg#"gggg"gg#g"gggg"g#TT',
-    ',,,ggg"gg#g"gggg"g#gg"gggTT',
+    ',,,"ggg#"#ggg"#ggg#gg#g"gTT',
+    ',T,#gg#"gg#g"gg#g#gggg"g#TT',
+    ',,,ggg#gg#g"g#gg"g#g#"gggTT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,Tg"gg#g"gggg"g#gg"gggg"TT',
-    ',,,"#ggg"gggg#gggg"ggg#"gTT',
-    ',,,gggg#gggg"ggg#"gggg"ggTT',
+    ',,Tg"#g#g"gg#g"g#gg#gggg"TT',
+    ',,,"#ggg#gggg#g#gg"ggg#"gTT',
+    ',,,g#gg#ggg#"ggg#"#ggg"ggTT',
     'T,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,gg"gg#g"gggg"g#gg"ggggTT',
-    ',,,g"#ggg"gggg#gggg"ggg#"TT',
-    ',T,"gggg#gggg"ggg#"gggg"gTT',
+    ',,,#g"gg#g#gggg"g#gg"ggg#TT',
+    ',,,g"##gg"ggg##gggg"#gg#"TT',
+    ',T,"gggg##ggg"gg##"gggg#gTT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,ggg"gg#g"gggg"g#gg"gggTT',
-    ',,Tgg"#ggg"gggg#gggg"ggg#TT',
-    ',,,g"gggg#gggg"ggg#"gggg"TT',
+    ',,,ggg"g##g"ggg#"g#gg"#ggTT',
+    ',,Tg#"#ggg"#ggg#gg#g"ggg#TT',
+    ',,,g"gg#g#gggg#ggg#"g#gg"TT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    'T,,gggg#gggg"ggg#"gggg"ggTT',
-    ',,,g#g"gggg"g#gg"gggg"#ggTT',
-    ',,,gg"g#gg"gggg"#ggg"ggggTT',
+    'T,,ggg##gggg"#gg#"gg#g"ggTT',
+    ',,,g#g"gg#g"g#gg#gggg"##gTT',
+    ',,,gg#g#gg"g#gg"#gg#"ggggTT',
     ',T,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,"gggg#gggg"ggg#"gggg"gTT',
-    ',,,gg#g"gggg"g#gg"gggg"#gTT',
-    ',,Tggg"g#gg"gggg"#ggg"gggTT',
+    ',,,"#ggg#gg#g"ggg##gggg"gTT',
+    ',,,gg#g#gggg"g#gg"ggg#"#gTT',
+    ',,T#gg"g#g#"gggg"#ggg"gg#TT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,g"gggg#gggg"ggg#"gggg"TT',
-    'T,,"gg#g"gggg"g#gg"gggg"#TT',
-    ',,,gggg"g#gg"gggg"#ggg"ggTT',
+    ',,,g"gggg#gggg"g#g#"ggg#"TT',
+    'T,,"g##g"ggg#"g#gg"#ggg"#TT',
+    ',,,gggg"##gg"gg#g"#ggg#ggTT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',T,gg"g#gg"gggg"#ggg"ggggTT',
-    ',,,g#gggg"ggg#"gggg"gg#g"TT',
-    ',,,"ggg#"gggg"gg#g"gggg"gTT',
+    ',T,gg"g#gg"ggg#"#ggg"#gggTT',
+    ',,,##gggg"#gg#"gg#g"gg#g#TT',
+    ',,,"gg##"gggg#gg#g"g#gg"gTT',
     ',,TWWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,ggg"g#gg"gggg"#ggg"gggTT',
-    ',,,gg#gggg"ggg#"gggg"gg#gTT',
-    'T,,g"ggg#"gggg"gg#g"gggg"TT',
+    ',,,gg#"g#gg"#ggg"#g#g"gggTT',
+    ',,,gg#gg#g"ggg##gggg"g##gTT',
+    'T,,g#ggg#"g#gg"gg##"gggg"TT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,gggg"g#gg"gggg"#ggg"ggTT',
-    ',T,ggg#gggg"ggg#"gggg"gg#TT',
-    ',,,gg"ggg#"gggg"gg#g"ggggTT',
+    ',,,#ggg"g##g"gggg##ggg"g#TT',
+    ',T,ggg#gggg"g#g#"ggg#"gg#TT',
+    ',,,gg"ggg#"gggg"#g#g"gg#gTT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,T"ggg#"gggg"gg#g"gggg"gTT',
-    ',,,g#gg"gggg"#ggg"gggg#ggTT',
-    ',,,ggg"#ggg"gggg#gggg"gggTT',
+    ',,T"ggg##gggg"g##g"ggg#"gTT',
+    ',,,g#gg"ggg#"#ggg"#ggg#ggTT',
+    ',,,ggg"#ggg"gg#g#gggg#gggTT',
     'T,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,g"ggg#"gggg"gg#g"gggg"TT',
-    ',,,"g#gg"gggg"#ggg"gggg#gTT',
-    ',T,gggg"#ggg"gggg#gggg"ggTT',
+    ',,,g"g#g#"ggg#"gg#g"#ggg"TT',
+    ',,,"g#gg"#ggg"#g#g"gggg#gTT',
+    ',T,gg#g"#ggg#gggg#g#gg"ggTT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,gg"ggg#"gggg"gg#g"ggggTT',
-    ',,Tg"g#gg"gggg"#ggg"gggg#TT',
-    ',,,"gggg"#ggg"gggg#gggg"gTT',
+    ',,,g#"ggg#"#ggg"gg#g"ggggTT',
+    ',,Tg"g##g"gggg##ggg"g#gg#TT',
+    ',,,#gggg"##gg"ggg##gggg"#TT',
     ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
-    'T,,ggg"#ggg"gggg#gggg"gggTT',
-    ',,,g#"gggg"gg#g"gggg"g#ggTT',
-    ',,,g"gg#g"gggg"g#gg"gggg"TT',
+    'T,,ggg"#g#g"gggg#gggg"g#gTT',
+    ',,,g##gggg"g##g"ggg#"g#ggTT',
+    ',,,g"gg##"gggg"##gg"gg#g"TT',
     ',T,WWWWWWWWWWWWWWWWWWWWWWWW',
-    ',,,gggg"#ggg"gggg#gggg"ggTT',
+    ',,,gggg##ggg"g#gg#ggg#"ggTT',
   ]);
 
 
@@ -1290,21 +1294,21 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // the bottom-left corner of the map, and until somebody opens the hard in
   // the quay wall it is where the west side of the world stops.
   map.draw(2, 96, [
-    'PPPPP#PPP###PP"#P"#####"P#"PPPPPPPCPPP',
-    '#PP#PP#PP#P###P##P##P###PPP##P##P#PPPP',
-    'PP#PPPPP#PP"#P"#P"#P"P#"P#####PP#PPCPP',
-    'PP#PPPPPPPP"#P"PP"PP"PP"P#####PPPPPPPP',
-    '#P###P###########P######P###P####PPPCP',
-    '###PPPPPPPP"#P"#P"#####"P####"P#"PPPPP',
-    '###PP#PP#PP"#P"PP"PPP##"P####"P#"PPPPC',
-    '###PP#PP#PP"##P####P###"P###P"PP"PCPPP',
-    '###P#########P"#P"PP"PP########P##PPPP',
-    '#####"PP"#P"#P"#P"#P"PP"PP#PP#####PCPP',
-    '#####"PP"PP"PP"#P"#P"P#"PP#PP#####PPPP',
-    '#P####P###P###P##########P##P##P##PPCP',
-    'PP"PP"PP"####P"P#"P####"PP#PPPPP"PPPPP',
-    'PP"P#"PP"####P"PP"P####"PP#PP#PP"PPPPC',
-    'PP"P#"PP"P###P"P#"PP##PPPPPPP#PP"PCPPP',
+    'PP#PP"PPPPP"P#"PP"P#"PP#PP"PPP#P"#CPPP',
+    'PPPPP"P####"PP"P#"PP"PPPPP"#P"PP"PPPPP',
+    'P##P#####P#####P####P##P####P##P#PPCPP',
+    '###PP"P#"PP####PP"P####P###PP"P##PPPPP',
+    '##PPP"PP"P#######"P####P####P"###PPPCP',
+    '##P##############P########PPP####PPPPP',
+    'PP"PP"PPPPPP###PP"PPPPP####PP"#P"#PPPC',
+    'PP"#P####P##P##PP"P#"PP#####P"#P##CPPP',
+    'P#######PPP#PPPPP"P#P#PP##P####P"PPPPP',
+    '#########PP#PP#P####"PP#PP"P###P"#PCPP',
+    '#########P##P#######"PPPPP"####P##PPPP',
+    '###PP"PPPPP#########P##########P##PPCP',
+    'P##P##P##P##P####P##"PP#PP"P###P##PPPP',
+    'PP"P#####PPPPP#PP"P#"PPPPP"###PP"#PPPC',
+    'PP"######PP#PPPPP"P#"PPPPP"####P"#CPPP',
     'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
   ]);
 
@@ -1315,31 +1319,31 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // there to be read and walked, gateway by gateway, and that is the only way
   // through. It is waded, not swum; what makes it slow is the reed.
   map.draw(33, 64, [
-    'www#wwwwwwwww#ww####www#wwww',
-    'ggg#gggg#gggg#gg#####gg#gggg',
-    'wwwwwwww#wwwwwwww##w###wwwww',
-    '##w###w##w####gg#gggwgg###w#',
-    'www#wwww#wwww#ww#www#ww#wwww',
-    'ggg#gggg#gggg##w##w#####w###',
+    'www#wwwww#####ww####www#####',
+    'ggg#gggg######gg#####gg#####',
+    'wwwwwwwwwwwwwwwww##w##ww####',
+    'w#w###w##w####gg#gggw#w###w#',
+    'w###wwww#wwww#ww#www##w#wwww',
+    'w###gggg#gggg##w##w###w#w###',
     'w#########w###wwwwwwwww#wwww',
-    'gg#ggwgg#gggg#gggg#gggg#gggg',
+    'gg#ggwggwgggg#gggg#gggg#gggg',
     'w####w#####w#######w####w###',
-    '##wggwggwgggg#####wggwgggwgg',
-    '###ww#ww#wwww######ww#www#ww',
-    '#######w##########w########w',
-    'www#wwww#wwww###wwwwwwwwwwww',
-    'ggg#gggg#gggg####gg#w#####w#',
-    'www#wwwwwwwww####ww#wwwww###',
-    '##w###w##w######ww##gg#gg###',
-    'wwwwwwww######wwwww###w#####',
-    'ggg#gggg######gg#gg#gggwgggg',
-    '#####w########ww#ww#www#wwww',
-    'ggwgggwgggwgg#####w###w#####',
-    'ww#www#www#ww#wwww#ww#wwwwww',
-    'gg#ggg#ggg#gg#gggg#ggwggg#gg',
+    '##wwwwggw#########wggwgggw##',
+    '##w###ww###########ww#www##w',
+    '##w###############ww#######w',
+    'www######wwww###wwwwwwwwwwww',
+    'ggg######gggg####gg#w###w#w#',
+    'www###wwwwwww####ww###www###',
+    '##w###w##w######ww#####gg###',
+    'wwwwwwww######www#####ww####',
+    'ggg#gggg######gg####gggwgggg',
+    'w####w#w######ww####www#wwww',
+    'ggw###wgggw#######www#######',
+    'ww#####www#########ww#wwwwww',
+    'gg#####ggg#########ggwggg#gg',
     'w###w######w##w####w##w###w#',
-    'gg#ggg#gggwggwggggwgg####wgg',
-    'ww#www#www#wwwwwww#ww#####ww',
+    'gg#ggg#gggwggwggggww#####wgg',
+    'wwwwww#www#wwwwwww########ww',
   ]);
 
 
@@ -1349,38 +1353,38 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // standing water. The lanes between the beds are ankle deep, and a bed
   // itself is a wall you can see over and not walk through.
   map.draw(61, 64, [
-    'www##www#www###wwww#wwwwwwwwwww##www',
-    '#w##www##w##w#####www##w#w##gg####gg',
-    'wwwww###www#www####www#w####w#w#####',
-    'ggg#g####ggwggg#####gg#g####gggwg#gg',
-    '####w####w#############w####www#www#',
-    'ggwggwggwgg####wgg####gg#gg##w###wgg',
-    'w##ww#ww#ww##w##w#####ww#ww####w##ww',
-    'gg##w#w##ggwggg######wggwggww###w##w',
-    'ww####ww#w##www######w###w##www##www',
-    'w##w##w##ggw####w##ggw##wgg#ggg###gg',
-    'w##www###wwwwwwwww#ww####ww#####w###',
-    'wwwggw###gg#ggg#gg#######w##gggwwwgg',
-    '##w##w###w######w#####wwwwwwwww#w#ww',
-    '#wgg####wgg#####gg#####g#gg##w##w##w',
-    '##ww#####ww#####wwww#####w##www#w#ww',
-    'w########gg#####gg###wgg#gg#ggg#w#w#',
-    'ww#####w#w##w###w#####wwwww#w####www',
-    'g####ggg####gggw######gg#gg#######gw',
-    'w####www####www########w#w###w##w#w#',
-    'w#####w##w######w######gw###ggg##wgg',
-    'wwww#wwwwwwwwwwwww#####w####wwww##ww',
-    'g#ggwggg#gg#ggg#gg#######w######w#w#',
-    '##w####w######w######www#w##wwwwwwww',
-    '###gggwggw####g####ggg#w#w##gggwg#gg',
-    '###www#ww#####w####www#wwww##w####w#',
-    '###ggg#gg#####gw###ggg#g#gg######wgg',
-    'w##w###w##w#####w##w######w#######ww',
-    'ggw####gg#gggwgwggwggw##wgg#######w#',
-    'ww#####ww#www#w#ww#ww####wwwwwwwwww#',
-    'w#######w######w###w######w#w##w##w#',
-    'wwww#wwwwwww###wwwwww###wwww##www#ww',
-    'ggww##gg#gg#####g#gg#####gg####gg#gg',
+    'wwwwwwwwwwwwwwwwwww#wwwwwwwwwwwwww##',
+    '#w##w#w##w##w##w##www##w#w#####gg###',
+    '#w#ww###ww#####w###w###w######ww####',
+    '#w#######w#####w#######w####ggg#####',
+    '#w#######w#####w#######w####wwwww#w#',
+    'gg###wggww#####w######gg#####w##gwgg',
+    'w#####ww#####w#ww#####ww#######ww#ww',
+    '####www#####gggwgg###wgg####w###w##w',
+    '#########w##www#ww###w###w##www##www',
+    'w##w##w##ggww###w####wggwggwggg###gg',
+    'ww#wwwwwwww####www####ww#ww###w#w###',
+    'wgwgg#gg#gg#####gg#####w#w####wwgw##',
+    '##w##ww##w######w#####www#######w###',
+    '#wgg####ww#############g########w###',
+    '##ww###############w###w####wwwww###',
+    'www################ggwww#gg#ggg#w#w#',
+    '#www###www##w###w##ww##wwww#w###wwww',
+    '##ggwggg#gg#gggwgg#gg####gg#####g#gw',
+    '##ww#www#wwwwww#ww#######w###w##w###',
+    'www######w######w#######wgg#ggg#wwgg',
+    '#www####www####www#######wwwwwww##ww',
+    '##ggw####gg#####gg#######w#####ww###',
+    '##w#w####w#######w###ww##w#####wwwww',
+    '####www##w######ggwggg#w#w#####w##gg',
+    '#####w##########ww#www#wwww##w####w#',
+    '#####w#########wgg#ggg#g#ggwggg##wgg',
+    'w##w#w#w##w#####w##w###w####www###ww',
+    'ggwgggwgg#gggwwwggw##wggw#########w#',
+    'ww#www#ww#www###ww####ww#########ww#',
+    'w#######w######ww###########w##w##w#',
+    'wwww#wwww##wwwwwwwwww###wwwwwwwww#ww',
+    'ggww##gg####ggg###gg#####gg#gg#ggwgg',
   ]);
 
 
@@ -1405,19 +1409,19 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // onto the crest, because the crest is the only dry road along the bottom of
   // this map and the only way down onto the sands.
   map.draw(44, 96, [
-    '"""""""g""T""g"Tg"T"""g""T""""""""gT"g"Tg""T""gT"g""g""""""""',
-    '"g""gT"g"""""g""g"Tg"Tg"""""T""T""g""g""g"""""g""TTTT"TT"TT"T',
-    '"gT"gT"g""T""gWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTTTg""T"""TT',
-    'TTTT"TTT"TT"TTWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTTTg""T"""TT',
-    '"g""gT"g"""TTTWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTTTTTTT"T"TT',
-    '"gT"gT"g""TTTTWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"gT"gT"g""TTT',
-    'T"TTTTTTTTTTT"WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"gT"g""g""TTT',
-    '"gTTTT"gT"g"TgWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"gT"gT"g"""TT',
-    '"gTTTT"gT"g"TgWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW""TT""TTTTTTTT',
-    '"g"TTT"gT"g""gWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"g""g""g"""""',
+    '"""""""""""""g""g"T"""""""""""""""gT"g"TTTTT""gT"g""g""""""""',
+    '"g""gTTTTTT""g"Tg"Tg"TTTT"""TTTT""g""g""""""""g""TTTT"TT"TT"T',
+    '"gT"gTTTTTT""gWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTTTg""T"""TT',
+    'TTTT"TTT"TT"TTWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTTTg""T""TTT',
+    'TT""gT"g"""TTTWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTTTTTTTT""TT',
+    'TTT"g""g""TTTTWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"gT"gT"g""TTT',
+    'T"""TTTTTTTTT"WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"gT"g""g""TTT',
+    '"gTTTT"gTTTTTgWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"gT"gT"g"""TT',
+    '"gTTTT"gTTTTTgWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW""TT""TTTTTTTT',
+    '"g"TTT"gTTTT"gWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"g""g""TT""""',
     'T"TTTT"TT"TTTTWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"TTTT"TT""T"T',
-    '"g""gT"g""g""TWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"gT"g"Tg""TTT',
-    '"gT"g""gT"g"TTWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT""T"g"""""TTT',
+    '"g""gT"g""g""TWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTT"g"Tg""TTT',
+    '"gT"g""gT"g"TTWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTT"""g"""""TTT',
   ]);
 
   // The crest, the groynes set in it, and the gap the sea comes through.
@@ -1455,20 +1459,20 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // where the map stops and the sea starts. The keep's tower is the first
   // thing a raid ever looks at; this is the last thing it finds.
   map.draw(105, 98, [
-    '"g""T""T""gT"gT"g"Tg""',
-    '"g""T"""""g""g""g""g""',
+    '"g""TTTT""gT"gT"g"Tg""',
+    '"g""TT""""g""g""g""g""',
     'T"TTTT"TTTTTTTTTT"TT"T',
-    '"g""T""TTTTT"gT"g"TTTT',
-    '"g""T"""TTTT"gT"g"TTTT',
-    '"g"""""TTTT""g""g"TTTT',
-    '"TTTTTTTT"TTTTTT"TTTTT',
+    '"g""T""TTTTTTTT"g"TTTT',
+    '"g""T"""TTTTTTT"g"TTTT',
+    '"g"""""TTTT"""""g"TTTT',
+    '"TTTTTTTT"""TTTT"TTTTT',
     '"gTTTT"gT"gTT"TTg"TTTT',
-    '"gTT""T""T""""TTg""TTT',
-    'T"T"gT"gT"gT"g"TTTT"TT',
-    '"g""gT"gT"gT""""g"Tg""',
-    '"gTTTT"TTTTTTTTTT"T"TT',
+    '"gTT""T"""""""TTg""TTT',
+    'T"T"gTTTT"gT"g"TTT""TT',
+    '"g""gTTTT"gT""""g"TTTT',
+    '"gTT"T"TTTTTTTTTT"T"TT',
     '"gT"g""T""TTTTTTg"Tg""',
-    'T"""g""""""TTTTTg""g""',
+    'T"T"g""""""TTTTTg""g""',
     'WWWWWWWCMMMWWWWWWWWWWW',
     'WWWWWWWMMMMWWWWWWWWWWW',
     'WWWWWWWMMMCWWWWWWWWWWW',
@@ -1670,6 +1674,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // smallest thing that answers it where it stands: a gate hung across a
   // drove, spoil come down off a face, a groyne head set in a sea wall,
   // bramble over a track nobody has cut since the water came.
+  map.set(57, 40, 'C');                  // the gate post at the orchard's back gap
   map.set(111, 102, '"');                // a gap worn through a hedge bank
   map.set(97, 14, '"');                  // a gap worn through a hedge bank
   map.set(102, 14, '"');                 // a gap worn through a hedge bank
@@ -1723,6 +1728,88 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.set(61, 41, 'C');                  // a stone set in the way
   map.set(86, 70, '#');                  // thorn grown across it
   map.set(46, 87, '#');                  // thorn grown across it
+  map.set(95, 10, 'C');                  // a stone set in the way
+  map.set(125, 26, '#');                 // thorn grown across it
+  map.set(37, 83, '#');                  // thorn grown across it
+  map.set(74, 84, '#');                  // thorn grown across it
+  map.set(65, 11, 'C');                  // a stone set in the way
+  map.set(60, 26, '#');                  // thorn grown across it
+  map.set(102, 23, '#');                 // thorn grown across it
+  map.set(73, 26, '#');                  // thorn grown across it
+  map.set(100, 46, 'C');                 // a stone set in the way
+  map.set(66, 59, '#');                  // thorn grown across it
+  map.set(74, 55, '#');                  // thorn grown across it
+  map.set(86, 82, '#');                  // thorn grown across it
+  map.set(45, 92, '#');                  // thorn grown across it
+  map.set(72, 91, '#');                  // thorn grown across it
+  map.set(33, 96, 'C');                  // a stone set in the way
+  map.set(52, 97, '#');                  // thorn grown across it
+  map.set(95, 110, 'C');                 // a stone set in the way
+  map.set(108, 110, 'C');                // a stone set in the way
+  map.set(118, 26, '#');                 // thorn grown across it
+  map.set(91, 37, '#');                  // thorn grown across it
+  map.set(69, 39, '#');                  // thorn grown across it
+  map.set(67, 57, '#');                  // thorn grown across it
+  map.set(9, 65, 'C');                   // a stone set in the way
+  map.set(91, 64, '#');                  // thorn grown across it
+  map.set(100, 12, '"');                 // a gap worn through a hedge bank
+  map.set(98, 14, '"');                  // a gap worn through a hedge bank
+  map.set(126, 27, '"');                 // a gap worn through a hedge bank
+  map.set(115, 36, 'g');                 // reed grown through a gap in a bank
+  map.set(117, 36, 'g');                 // reed grown through a gap in a bank
+  map.set(106, 40, 'g');                 // reed grown through a gap in a bank
+  map.set(109, 40, '"');                 // a gap worn through a hedge bank
+  map.set(104, 44, 'g');                 // reed grown through a gap in a bank
+  map.set(107, 44, 'g');                 // reed grown through a gap in a bank
+  map.set(68, 45, 'P');                  // a step cut through a wall
+  map.set(123, 48, 'g');                 // reed grown through a gap in a bank
+  map.set(107, 52, '"');                 // a gap worn through a hedge bank
+  map.set(109, 52, 'g');                 // reed grown through a gap in a bank
+  map.set(118, 52, 'g');                 // reed grown through a gap in a bank
+  map.set(62, 55, '"');                  // a gap worn through a hedge bank
+  map.set(105, 56, 'g');                 // reed grown through a gap in a bank
+  map.set(107, 56, 'g');                 // reed grown through a gap in a bank
+  map.set(116, 56, 'g');                 // reed grown through a gap in a bank
+  map.set(123, 61, '"');                 // a gap worn through a hedge bank
+  map.set(91, 64, 'w');                  // a shallow worn through a bed
+  map.set(115, 64, '"');                 // a gap worn through a hedge bank
+  map.set(118, 64, 'g');                 // reed grown through a gap in a bank
+  map.set(95, 67, 'w');                  // a shallow worn through a bed
+  map.set(113, 68, 'g');                 // reed grown through a gap in a bank
+  map.set(116, 68, '"');                 // a gap worn through a hedge bank
+  map.set(108, 72, 'g');                 // reed grown through a gap in a bank
+  map.set(116, 76, 'g');                 // reed grown through a gap in a bank
+  map.set(118, 76, '"');                 // a gap worn through a hedge bank
+  map.set(123, 76, '"');                 // a gap worn through a hedge bank
+  map.set(114, 80, '"');                 // a gap worn through a hedge bank
+  map.set(116, 80, 'g');                 // reed grown through a gap in a bank
+  map.set(105, 84, '"');                 // a gap worn through a hedge bank
+  map.set(108, 84, 'g');                 // reed grown through a gap in a bank
+  map.set(96, 88, 'g');                  // reed grown through a gap in a bank
+  map.set(123, 90, 'g');                 // reed grown through a gap in a bank
+  map.set(122, 92, '"');                 // a gap worn through a hedge bank
+  map.set(10, 97, 'P');                  // a step cut through a wall
+  map.set(10, 101, 'P');                 // a step cut through a wall
+  map.set(120, 100, '"');                // a gap worn through a hedge bank
+  map.set(56, 106, '"');                 // a gap worn through a hedge bank
+  map.set(27, 106, 'P');                 // a step cut through a wall
+  map.set(28, 107, 'P');                 // a step cut through a wall
+  map.set(116, 104, '"');                // a gap worn through a hedge bank
+  map.set(5, 110, 'P');                  // a step cut through a wall
+  map.set(14, 107, 'P');                 // a step cut through a wall
+  map.set(70, 64, '#');                  // thorn grown across it
+  map.set(71, 65, 'w');                  // a shallow worn through a bed
+  map.set(52, 96, '#');                  // thorn grown across it
+  map.set(39, 66, '#');                  // thorn grown across it
+  map.set(40, 67, 'w');                  // a shallow worn through a bed
+  map.set(70, 96, '#');                  // thorn grown across it
+  map.set(117, 76, '#');                 // thorn grown across it
+  map.set(104, 52, '#');                 // thorn grown across it
+  map.set(93, 64, '#');                  // thorn grown across it
+  map.set(94, 65, 'w');                  // a shallow worn through a bed
+  map.set(112, 36, '#');                 // thorn grown across it
+  map.set(104, 40, '#');                 // thorn grown across it
+  map.set(111, 80, '#');                 // thorn grown across it
 
 
   // == WHAT STANDS ON THE NEW GROUND =======================================

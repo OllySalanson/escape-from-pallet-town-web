@@ -518,6 +518,42 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     ],
   },
   {
+    id: 'floodplain-church-farm',
+    mapId: 'floodplain-relay',
+    position: { x: 45, y: 76 },
+    label: 'CHURCH FARM',
+    description:
+      'The farm that stood by the church, with a foot of water in its yard and its kitchen door still on the latch.',
+    reward: [
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'poke-ball', quantity: 2 },
+    ],
+  },
+  {
+    id: 'floodplain-decoy',
+    mapId: 'floodplain-relay',
+    position: { x: 44, y: 98 },
+    label: 'THE DECOY',
+    description:
+      'A duck decoy: a pond with curved pipes of netting off it, and the fowler\'s kit still in the screen at the end of one.',
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    id: 'floodplain-wreck',
+    mapId: 'floodplain-relay',
+    position: { x: 81, y: 122 },
+    label: 'THE WRECK',
+    description:
+      'A trading smack driven onto the bar and left there. What was worth taking went a year ago; what was not is still in her.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'potion', quantity: 2 },
+    ],
+  },
+  {
     id: 'floodplain-ranger-radio',
     mapId: 'floodplain-relay',
     position: { x: 12, y: 16 },
