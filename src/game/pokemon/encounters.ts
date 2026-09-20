@@ -150,6 +150,49 @@ export const ROUTE_EAST_VERGE_WILDLIFE = wildlife(0.08, [
   { speciesId: 'squirtle', minLevel: 4, maxLevel: 6, weight: 1 },
 ]);
 
+/**
+ * The steading's fenced fields, north of the farmyard: warm corners, a fence to
+ * sit on and whatever gets in under it. The short way south from the orchard
+ * runs between them, and the tall grass inside is what a player pays to cut the
+ * corner rather than walk round by the road.
+ */
+export const ROUTE_PADDOCK_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 4 },
+  { speciesId: 'meowth', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 5, weight: 2 },
+  { speciesId: 'jigglypuff', minLevel: 3, maxLevel: 4, weight: 1 },
+]);
+
+/** The old stock pen off the road, gone to seed and holding what a pen holds. */
+export const ROUTE_POUND_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'rattata', minLevel: 4, maxLevel: 5, weight: 4 },
+  { speciesId: 'meowth', minLevel: 3, maxLevel: 5, weight: 2 },
+  { speciesId: 'diglett', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'spearow', minLevel: 3, maxLevel: 4, weight: 1 },
+]);
+
+/**
+ * The common between the two southern roads: gorse, rock and open sky, which is
+ * the same bargain THE MEADOWS makes at the other end of the map and a
+ * different set of birds making it.
+ */
+export const ROUTE_COMMON_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'spearow', minLevel: 3, maxLevel: 5, weight: 4 },
+  { speciesId: 'pidgey', minLevel: 4, maxLevel: 5, weight: 3 },
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 2 },
+  { speciesId: 'jigglypuff', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'caterpie', minLevel: 3, maxLevel: 5, weight: 1 },
+]);
+
+/** Reed and standing water below the brook: the wet end of the route. */
+export const ROUTE_WATER_MEADOW_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'psyduck', minLevel: 4, maxLevel: 5, weight: 3 },
+  { speciesId: 'poliwag', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'magikarp', minLevel: 4, maxLevel: 6, weight: 2 },
+  { speciesId: 'caterpie', minLevel: 3, maxLevel: 5, weight: 2 },
+  { speciesId: 'squirtle', minLevel: 4, maxLevel: 5, weight: 1 },
+]);
+
 // -- Viridian Forest ---------------------------------------------------------
 // The forest runs from level 6 at its edge to level 10 in its deep stand, and
 // it is the one map that is mostly Bug - which is what Viridian Forest is.

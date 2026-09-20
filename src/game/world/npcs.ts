@@ -141,6 +141,73 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
       'Nobody has been up on the OVERLOOK since the warden shut it. You can see its fence from the field station\'s yard, north-east of here.',
     ],
   },
+  {
+    // A milestone on each of the two southern roads. They are the only two
+    // places on this map that are a road and nothing else, and a stranger who
+    // toured the four maps once placed every district that held an object and
+    // none that was only a name - so each of them holds one.
+    id: 'route-1-drove-milestone',
+    mapId: 'route-1',
+    kind: 'sign',
+    position: { x: 10, y: 40 },
+    facing: 'right',
+    dialogLines: [
+      'THE DROVE - milestone',
+      'SOUTH GATE 3 furlongs, over the plank bridge and down the west side of the common.',
+      'Back the way you came: the OUTPOST, and the braid.',
+    ],
+  },
+  {
+    id: 'route-1-old-road-milestone',
+    mapId: 'route-1',
+    kind: 'sign',
+    position: { x: 26, y: 40 },
+    facing: 'left',
+    dialogLines: [
+      'THE OLD ROAD - milestone',
+      'The ford is below. It is the quick way south and somebody sits on it.',
+      'Bear east at the brook for the STEADING and the burn beyond it.',
+    ],
+  },
+  {
+    // The south half needs its own board: a player who walks past the Outpost
+    // is on a map twice as long again as the one they know, with nothing that
+    // says so.
+    id: 'route-1-brook-board',
+    mapId: 'route-1',
+    kind: 'sign',
+    position: { x: 14, y: 50 },
+    facing: 'down',
+    dialogLines: [
+      'THE BROOK - three crossings',
+      'Plank bridge here on the drove. The ford is on the OLD ROAD, east, and DROVER GIL sits on it.',
+      'The stepping stones below the steading are the third, and nobody tolls those.',
+    ],
+  },
+  {
+    id: 'route-1-south-gate-notice',
+    mapId: 'route-1',
+    kind: 'sign',
+    position: { x: 26, y: 65 },
+    facing: 'left',
+    dialogLines: [
+      'SOUTH GATE - always open',
+      'The road goes on to Viridian from here. THE COMMON is behind you and both roads run down either side of it.',
+      'East along the hollow way is the CHARCOAL BURN. The kiln there opens the cart road out of it.',
+    ],
+  },
+  {
+    id: 'route-1-orchard-notice',
+    mapId: 'route-1',
+    kind: 'sign',
+    position: { x: 35, y: 10 },
+    facing: 'down',
+    dialogLines: [
+      'THE ORCHARD - keep to the turf',
+      'Gate in every wall. North is the arch out; east is the ride; south is the lane down to the steading, and ORCHARDIST NELL stands in it.',
+      'There is a ride up into the wood off the east lane. It has been grown shut since before my time - it would take a CUT.',
+    ],
+  },
   // Viridian Forest had no writing on it at all, which on the one map where
   // every screen looks like the last is the map with the least to go on. Two
   // notices: the board you drop in beside, and one at the ford at the far end,

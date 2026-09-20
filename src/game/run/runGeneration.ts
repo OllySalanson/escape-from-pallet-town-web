@@ -98,6 +98,27 @@ export const RUN_INSERTIONS = {
     position: { x: 27, y: 4 },
     description: 'On the bank above Oak\'s field station. Its own stile out, and two ways back to the braid: the warden\'s gate, and the steps down into the station yard.',
   },
+  'route-1-orchard': {
+    id: 'route-1-orchard',
+    label: 'The Orchard',
+    mapId: 'route-1',
+    position: { x: 42, y: 16 },
+    description: 'Inside the walled garden east of the field station. Its own arch out at the north, the packing shed below you, and a gate in every wall - the lane south is the short way to the steading and the only one that is not grass.',
+  },
+  'route-1-steading': {
+    id: 'route-1-steading',
+    label: 'The Steading',
+    mapId: 'route-1',
+    position: { x: 51, y: 35 },
+    description: 'The farmyard between the barn and the house, halfway down the map. A gate out the back of the yard, the drove north into the paddocks, and the steading\u2019s own track down to the stepping stones.',
+  },
+  'route-1-common': {
+    id: 'route-1-common',
+    label: 'The Common',
+    mapId: 'route-1',
+    position: { x: 17, y: 52 },
+    description: 'A bare spot in the gorse, with a road down either side of you and neither of them within reach that is not grass. South Gate is open from the first second; the brook is behind you.',
+  },
   'viridian-forest': {
     id: 'viridian-forest',
     label: 'Viridian Forest',

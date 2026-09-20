@@ -97,48 +97,98 @@ const DRAWN_PALLET_TOWN = [
 ];
 
 /**
- * Route 1 as redrawn: the braid, in the shipped 32x32 footprint, and NOT yet
- * signed off. It had no grid here while it was built out of polylines, so
- * there is no approved drawing it replaces; it is pinned now for the reason
- * the others are.
+ * Route 1 as redrawn and then extended: the long braid, 64x72, and NOT yet
+ * signed off.
+ *
+ * The shipped 32x32 map is the top-left quarter of this grid and nothing
+ * inside its old sealed border changes at all. Twenty-one tiles OF that border
+ * do: the two south roads out of the Outpost, the grass path east out of the
+ * station yard, and the Overlook's shelf, fence and bank carrying east onto
+ * ground that used to be the edge of the world. Everything from row 32 down and
+ * from column 32 across is new.
  *
  * Two roads run from the Route Head to the Outpost apron with the Meadows
- * between them, the fenced Middle Field in the middle of those, and Oak's
- * Field Station in the east under the rock bank the Overlook stands on.
+ * between them and the fenced Middle Field in the middle of those, and Oak's
+ * Field Station in the east under the rock bank the Overlook stands on. Below
+ * the Outpost the same two roads become THE DROVE and THE OLD ROAD either side
+ * of THE COMMON, cross THE BROOK by a plank bridge and a ford, and meet again
+ * on the South Gate apron. East of the station are the walled ORCHARD, the
+ * grown-shut THORN DELL, THE PADDOCKS and THE STEADING that works them; below
+ * the steading's stepping stones is THE CHARCOAL BURN.
  */
 const DRAWN_ROUTE_1 = [
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'TT.TT.TT.TT.T.T...T.TTTTTTT....T',
-  'TTTTTTTTTTTTTT.....TTTTTTTT....T',
-  'TT.TT.TT.TT.TT,,,,,,,,,,TTT....T',
-  'TTTTTTTT,,,,,,,,,T,,,,,,TTT....T',
-  'TT.TT.TT,,gggggTTTTTTT,,TTT....T',
-  'TTTTTTTT,,TggTTTgggTTT,,..T....T',
-  'TT.TT.TT,,Tgg...ggggggg,TTTFFCFT',
-  'TTTTT,,,,,Tg.....ggT,,,,TT...C.T',
-  'TT.TT,,,,,Tgggg.gCgg,,,,T......T',
-  'TTTTT,,TTTTgggg.gggT,,TTT......T',
-  'TT.TT,,gggggggCggggT,,TTT......T',
-  'TTggg,,TTTTFF.FFF.FF,,TTT......T',
-  'TTgg.,,TTTT#ggg.ggg#,,TTT......T',
-  '.TTTT,,T.TT#g.gggCg#,,,,TPPPP..T',
-  'TTTTT,,,,,T#gggg.gg#,,,,,PPPPP.T',
-  'TTTTT,,,,,T#gg.gggg#TT,,TPPPPP.T',
-  'TT.TTTTT,,TFFFFF.FFFTT,,TTTTTTTT',
-  'TTTTTTTT,,Tggggg.ggTTT,,TTTTTTTT',
-  'TT.TT.TT,,gggg.gTggggg,,TTTTTTTT',
-  'TTTTTTTT,,TTTTTTTTTT,,,,TTTTTTTT',
-  'TTTTTTTT,,TTTTTTTTTT,,,,TTTTTTTT',
-  'T.T,,,,,,,TTTTTT.TTT,,TTTTTTTTTT',
-  'TTT,,,,,,,TTTTTTTTTT,,TTTTTTTTTT',
-  'TTT,,T,,TTTTTTTTT.TT,,,,TTTTTTTT',
-  'TTT,,T,,TT,,,,PPPPPT,,,,TT.TT.TT',
-  'TTT,,T,,TT,,,,PPPPPTTT,,TTTTTTTT',
-  'TTT,,T,,,,,,TTPPPPP,,,,,TT.TT.TT',
-  'TTT,,T,,,,,,TTPPPPP,,,,,TTTTTTTT',
-  'TTTTTTTTTTTTTTTTPPTTTTTTTT.TT.TT',
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TT.TT.TT.TT.T.T...T.TTTTTTT........C......TT.TT.TT.TT.TT.TT.TT.T',
+  'TTTTTTTTTTTTTT.....TTTTTTTT...............TTTTTTTTTTTTTTTTTTTTTT',
+  'TT.TT.TT.TT.TT,,,,,,,,,,TTT...............TT.TT.T......T.TT.TT.T',
+  'TTTTTTTT,,,,,,,,,T,,,,,,TTT.........C.....TTTTTTT......TTTTTTTTT',
+  'TT.TT.TT,,gggggTTTTTTT,,TTT......C...FFFFFTTTTTTT......T.TT.TT.T',
+  'TTTTTTTT,,TggTTTgggTTT,,..T....FFFFFF.....TT..TTT......TTTTTTTTT',
+  'TT.TT.TT,,Tgg...ggggggg,TTTFFCF......TTTTTTT..TTT......T.TT.TT.T',
+  'TTTTT,,,,,Tg.....ggT,,,,TT...C.TTTFFFFFFFFFF.FFTTTTTTTTTTTTTTTTT',
+  'TT.TT,,,,,Tgggg.gCgg,,,,T.........F...........FTTTT.T.TT.TT.TT.T',
+  'TTTTT,,TTTTgggg.gggT,,TTT......TT.F...........FTTTT.TTTTTTTTTTTT',
+  'TT.TT,,gggggggCggggT,,TTT......TT.............F.TT..T.TT.TT.TT.T',
+  'TTggg,,TTTTFF.FFF.FF,,TTT......TTTF...........FTTT.TTTTTTTTTTTTT',
+  'TTgg.,,TTTT#ggg.ggg#,,TTT......T.TF...........F.TT.TT.TT.TT.TT.T',
+  '.TTTT,,T.TT#g.gggCg#,,,,TPPPP..TTTF...........FT...TTTTTTTTTTTTT',
+  'TTTTT,,,,,T#gggg.gg#,,,,,PPPPP.TTTF...........FT.TTTT.TT.TT.TT.T',
+  'TTTTT,,,,,T#gg.gggg#TT,,TPPPPP.TTTF...........FT.TTTTTTTTTTTTTTT',
+  'TT.TTTTT,,TFFFFF.FFFTT,,TTTTTTTTTTF..........."...TTT.TT.TT.TT.T',
+  'TTTTTTTT,,Tggggg.ggTTT,,TTTTTTTTTTF...........FT..TTTTTTTTTTTTTT',
+  'TT.TT.TT,,gggg.gTggggg,,TTTTTTTT.TF...........FT..FFFFFFFFFFFFFT',
+  'TTTTTTTT,,TTTTTTTTTT,,,,TTTTTTTTTTF...........FT..FgggggFgggggFT',
+  'TTTTTTTT,,TTTTTTTTTT,,,,TTTTTTTT.TF....PP.....FTT.ggg.ggFgggggFT',
+  'T.T,,,,,,,TTTTTT.TTT,,TTTTTTTTTTTTF....PP.....FT..FgggggggggggFT',
+  'TTT,,,,,,,TTTTTTTTTT,,TTTTTTTTTT.TF....PP.....FT..FgggggFgg.ggFT',
+  'TTT,,T,,TTTTTTTTT.TT,,,,TTTTTTTTTTFFFFFF.FFFFFFT..FFFFFFFFFFFFFT',
+  'TTT,,T,,TT,,,,PPPPPT,,,,TT.TT.TT.TTTTTTT.TTT.TTT.TFgggggggggggFT',
+  'TTT,,T,,TT,,,,PPPPPTTT,,TTTTTTTTTTTTTTTT..TTTTTT..Fggg.ggg.gggFT',
+  'TTT,,T,,,,,,TTPPPPP,,,,,TT.TT.TT.TT.TT.TT.TT.TTT..ggggggggggggFT',
+  'TTT,,T,,,,,,TTPPPPP,,,,,TTTTTTTTTTTTTTTTT..TTTTT..FgggggggggggFT',
+  'TTTTTT,,TTTTTTTTPPTTTT,,TT.TT.TT.TT.TT.TTT.T.TTTT.FgggggggggggFT',
+  'TTTTTT,,,,TTTTTTTTTTTT,,,,TTTTTTTTTTTTTTTT.TTTTT..FFFFFFFFFFFFFT',
+  'TT.TTTTT,,T.TT.TT.TT.TTT,,TTT.TT.TT.TT.TTT..TTTT..TTTTTTTTT.TT.T',
+  'TTTTTTTT,,TTTTTTTTFFFFFF,,TTTTTTTTTTTTTTTTT.TvvvvvvvvvvvvvvvvTTT',
+  'TT.TT.TT,,T.TT.TT.FggggF,,TTT.TT.TT.TT.TT.T.TvvvvvvvvvvvvvvvvT.T',
+  'TTTTTTTT,,TTTTTTTTFggggF,,TTTTTTTTT......TT.TvvvvvvvvvvvvvvvvTTT',
+  'TT.TT.TT,,T.TT.TT.Fggggg,,TTT.TT.TT.T....T..TvvvvvvvvvvvvvvvvT.T',
+  'TTTTTTTT,,TTTTTTTTFggggF,,TTTTTTTTT......T.TTvvvvvvvvvvvvvvvvTTT',
+  'TT.TT.TT,,,,TT.TT.FggggF,,,,T.TT.TT......T.TTvvvvvvvvvvvvvvvvT.T',
+  'TTTTTTTTTT,,TTTTTTFggggFTT,,TTTTTTT....T.T..TvvvvvvvvvvvvvvvvTTT',
+  'TT.TT.TT.T,,TT.TT.FFFFFFTT,,T.TT.TT......TT.TvvvvvvvvvvvvvvvvT.T',
+  'TTTTTTTTTT,,TTTTTTTTTTTTTT,,TTTTTTTTTTTT.TT.TTvT.TTTTTT..TTTTTTT',
+  'TT.TT.TT.T,,TT.TT.TT.TT.TT,,,,TT.TT.TT.T.......T.TTTT.T..TT.TT.T',
+  'TTTTTTTTTT,,,,TTTTTTTTTTTTTT,,..TTTT......TTTTTTTTTTTTT..TTTTTTT',
+  'TT.TT.TT.TTT,,TTT.TTWWWWWW.T,,T......TTTTTTT.TT.TT.TT.T..TT.TT.T',
+  'TTTTTTTTTTTTWWWWWWWWWWWWWWWWwwWWTTTTTTTTTTTTTTTTTTTTT....TTTTTTT',
+  'TT.TT.TTWWWWWWWWWWWWWWWWWWWWwwWWWWWWWWWTT.TT.TT.TT.TT..TTTT.TT.T',
+  'TWWWWWWWWWWWWWWWWWWWTTTTTTWWwwWWWWWWWWWWWWWWWWWTTTTTTwwWWTTTTTTT',
+  'TWWWWWWWWWWW,,TTT.TT.TT.TT.T,,TTWWWWWWWWWWWWWWWWWWWWWwwWWWWWWWWT',
+  'TWWWWWWWTTTT,,TTggggCgggTgTT,,TTTTTTTTTWWWWWWWWWWWWWWwwWWWWWWWWT',
+  'TT.TT.TT.TTT,,,,gTggggCggg,,,,TT.TT.TT.TT.TT.TTWWWWWW..T.WWWWWWT',
+  'TTTTTTTTTTTTTT,,gggCgg.ggT,,TTTTTTT....TTTTTTTTTTTTTT..TTTTTTTTT',
+  'TT.TT.TT......,,T.gggCggCg,,T.TT.T......T.TT.TT.TT.TT..T.TT.TT.T',
+  'TggTgggC.gTTTT,,ggCggggT.g,,TTTTT.....T.TTTTTTvvvTvvvCvvvvTvvvTT',
+  'TCgggW.g.TT.TT,,CggggggggT,,..TTT.......T.TT.TvC.vvvTvCvvCvvvTTT',
+  'Tg....ggTgTTTT,,ggTgggCggg,,T...T.T.....TTTTTTvvvvTvvvvCv.vTvvTT',
+  'Tg....gWggT.TT,,gCg.gTggCg,,TTT........TT.TT.TCvvvvvvvvvvvCvvCTT',
+  'Tg.....ggTTT,,,,gggTgggggC,,TTTTTT....TTTTTTTTvvTvvvvvvvvvv.TvTT',
+  'TgW.gggCggTT,,TTggCgggTg,,,,T.TT.TTTTTTTT.TT.Tv.vvCvvvTvvvvCvvTT',
+  'TgggggCggTTT,,g.CgggTggC,,TTTTTTTTTTTTTTTTTTTTvvvvvvCvvvvvvvvCTT',
+  'TggCgggW.TTT,,TgggCggCgg,,TTT.TT.TT.TT.TT.TT.Tvvvvvvvv.TvvvvvvTT',
+  'TggggTggggTT,,ggTggCgggT,,TTTTTTTTTTTTTTTTTTTTvCvvvvvvvvCvvTvvTT',
+  'T.WggggCggTT,,gCgT.ggCgg,,TTT.TT.TT.TT.TT.TT.Tvvvv.vvTvvvvCvvTTT',
+  'TgggCgggTgTT,,,,,,,,,TTT,,TTTTTTTTTTTTTTTTTT....TTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTT,,,,,,,,,TTT,,TTT.TT.TTT.........TTTTT.TT.TT.TT.TT.T',
+  'TTTTTTTTTTTTTTTTTTTTPPPPPPPT.........TTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TT.TT.TT.TT.TT.TT.TTPPPPPPP..TTTTTTTTT.TT.TT.TT.TT.TT.TT.TT.TT.T',
+  'TTTTTTTTTTTTTTTTTTTTTTPPTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TT.TT.TT.TT.TT.TT.TTTTPPTT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.T',
+  'TTTTTTTTTTTTTTTTTTTTTTPPTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TT.TT.TT.TT.TT.TT.TTTTTTTT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.TT.T',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
 ];
 
 /**

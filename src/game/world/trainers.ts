@@ -413,6 +413,65 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     ),
   },
   {
+    // The drove between the steading's two paddocks is the third way south -
+    // parallel to both roads and shorter than either from the orchard - and a
+    // thorn narrows it to one tile where Nell stands. She is the same kind of
+    // price LASS JUNE is at the other end of the map: a locked door with a way
+    // round, and the way round is the orchard's own south lane, which is
+    // twenty-two steps longer (`route1.test.ts`). Spoken to rather than
+    // watched, because the narrows is hers and a watch would charge for a step
+    // the player had no way to read before taking it.
+    mapId: 'route-1',
+    position: { x: 48, y: 26 },
+    facing: 'up',
+    fixedPosition: true,
+    design: 'woman',
+    introLines: ['This is a WORKING drove.', 'Nobody walks it for nothing.'],
+    trainer: createTrainer(
+      'route-orchardist-nell',
+      'ORCHARDIST NELL',
+      [new Pokemon(getSpeciesById('oddish')!, 7), new Pokemon(getSpeciesById('meowth')!, 8)],
+      'Go on then. Mind the gates on your way down.',
+    ),
+  },
+  {
+    // The toll on the east road, and the one watch on this map. Gil stands on
+    // the ford itself and watches the tile beside him, so the crossing is two
+    // tiles wide and he covers both of them - which is a wall only if the map
+    // has one road. It has two: the whole west road, the plank bridge and the
+    // drove are the way round, and they are the longer way. That is what makes
+    // him a toll rather than a door.
+    mapId: 'route-1',
+    position: { x: 28, y: 44 },
+    facing: 'right',
+    fixedPosition: true,
+    sightRange: 1,
+    design: 'bald-man',
+    introLines: ['FORD TOLL. Beasts and people both.', 'Or take the bridge, three minutes back the way you came.'],
+    trainer: createTrainer(
+      'route-drover-gil',
+      'DROVER GIL',
+      [new Pokemon(getSpeciesById('spearow')!, 7), new Pokemon(getSpeciesById('rattata')!, 8)],
+      'Paid in full. Watch the bank, it gives.',
+    ),
+  },
+  {
+    // In the burn, a step off the kiln. The clearing has four ways out of it,
+    // so he is passable and being caught here is never forced.
+    mapId: 'route-1',
+    position: { x: 50, y: 57 },
+    facing: 'down',
+    fixedPosition: true,
+    design: 'old-man',
+    introLines: ['You came a long way for a cold kiln.', 'Earn the road out.'],
+    trainer: createTrainer(
+      'route-collier-osk',
+      'COLLIER OSK',
+      [new Pokemon(getSpeciesById('vulpix')!, 7), new Pokemon(getSpeciesById('diglett')!, 8)],
+      'Road out is east, in the rock. Draw the kiln first or it stays shut.',
+    ),
+  },
+  {
     // Ivy stands in the middle of a three-trail hub, so she is passable: her
     // clearing has other ways out and being caught here is never forced. She
     // was WARDEN IVY in the shared sheet's orange, which is exactly what Route

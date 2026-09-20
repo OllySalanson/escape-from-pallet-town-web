@@ -84,6 +84,83 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     unlockedExtractionLabel: 'STATION RELAY',
   },
   {
+    // The store at the packing shed door, inside the orchard wall. The one
+    // cache on this map a player can reach without leaving mown ground.
+    id: 'route-1-orchard-store',
+    mapId: 'route-1',
+    position: { x: 39, y: 23 },
+    label: 'ORCHARD STORE',
+    description: "The picker's store built into the orchard wall. A Great Ball and an Antidote on the shelf inside the door.",
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    // Behind the THORN GATE, and the whole of what that door is worth. Nothing
+    // else is in the hollow, which is the point: a Cut here shortens no walk
+    // the map already had.
+    id: 'route-1-thorn-cache',
+    mapId: 'route-1',
+    position: { x: 52, y: 6 },
+    label: 'THORN DELL',
+    description: 'A hollow in the wood that the thorn closed over. Somebody left a kit in it and never came back for it.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    // The map's second sealed exit, at the far end of it from the first. The
+    // kiln is at the west side of the burn and the cart road out is a nook in
+    // the rock at the east, so working it is the errand rather than the reward.
+    id: 'route-1-charcoal-kiln',
+    mapId: 'route-1',
+    position: { x: 54, y: 56 },
+    label: 'THE CHARCOAL KILN',
+    description: 'The burner\u2019s kiln, still warm. Drawing it opens the KILN ROAD, the cart track out of the east side of the burn.',
+    reward: [],
+    effect: 'unlock-extraction',
+    unlockedExtractionLabel: 'KILN ROAD',
+  },
+  {
+    // A clearing off the steading track that is on the way to nothing.
+    id: 'route-1-hollow-oak',
+    mapId: 'route-1',
+    position: { x: 38, y: 39 },
+    label: 'THE HOLLOW OAK',
+    description: 'The stump of an oak nobody could shift, in a clearing off the steading track. A Poke Ball and a Super Potion in the hollow of it.',
+    reward: [
+      { itemId: 'poke-ball', quantity: 1 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    // The clearing off the Old Road that is on the way to nothing.
+    id: 'route-1-wayside-shrine',
+    mapId: 'route-1',
+    position: { x: 34, y: 54 },
+    label: 'THE WAYSIDE SHRINE',
+    description: 'A shrine in a clearing off the Old Road, with a bench in front of it. Travellers leave things here; not all of them come back for them.',
+    reward: [
+      { itemId: 'poke-ball', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    // On the common, in the tall grass between the two roads: the one cache on
+    // this map you cannot reach without paying for it in fights.
+    id: 'route-1-drovers-cairn',
+    mapId: 'route-1',
+    position: { x: 19, y: 55 },
+    label: "DROVER'S CAIRN",
+    description: 'The cairn the drovers pile on the common, out in the gorse with a road either side of it and grass all the way to both.',
+    reward: [
+      { itemId: 'poke-ball', quantity: 2 },
+      { itemId: 'potion', quantity: 1 },
+    ],
+  },
+  {
     id: 'forest-fire-tower',
     mapId: 'viridian-forest',
     position: { x: 14, y: 4 },

@@ -137,15 +137,65 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   {
     // Behind the Overlook Gate, and open from the first second: a raid that
     // drops in at the Overlook Landing must never depend on a door to get home.
-    // It stands two tiles in from the map's corner, not in it: the raid clock
-    // owns the screen's top-right corner, the camera stops at the map's edge,
-    // and in the corner every seat its caption had was the clock's or off the
-    // screen - a stranger placed it from the road and never learned its name.
+    // It stands two tiles in from the map's north edge, not in its corner: a
+    // caption seated hard against an edge the camera stops at has nowhere to
+    // go, and a stranger placed this one from the road and never learned its
+    // name.
     mapId: 'route-1',
     position: { x: 28, y: 2 },
     label: 'OVERLOOK STILE',
     unlockAtMs: 0,
     requirement: { kind: 'always' },
+  },
+  {
+    // The arch in the orchard's north wall, in a pocket of its own off the
+    // garden. The Orchard landing's own door: a drop-in is never more than a
+    // dozen steps from a way home it does not have to wait for.
+    mapId: 'route-1',
+    position: { x: 45, y: 7 },
+    label: 'ORCHARD GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The gate out the back of the steading's yard, a step off its gravel.
+    mapId: 'route-1',
+    position: { x: 48, y: 42 },
+    label: 'STEADING YARD',
+    unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
+  },
+  {
+    // The rake of steps cut into the bank at the top of the water meadows, on
+    // the wet side of the drove. The whole south-west's way home.
+    mapId: 'route-1',
+    position: { x: 3, y: 57 },
+    label: 'BROOK STAIR',
+    unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
+  },
+  {
+    // Where the two roads meet again and the route goes on to Viridian. Always
+    // open, and the length of the map from the Route Head: the south country's
+    // own front door, and the reason a raid can commit to going that far.
+    mapId: 'route-1',
+    position: { x: 22, y: 69 },
+    label: 'SOUTH GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The cart road out of the charcoal burn, in a nook in the rock at its east
+    // side. Sealed until the kiln is drawn, which is at the other end of the
+    // burn - the same bargain Oak's field station makes at the other end of the
+    // map.
+    mapId: 'route-1',
+    position: { x: 61, y: 57 },
+    label: 'KILN ROAD',
+    unlockAtMs: 0,
+    requirement: {
+      kind: 'poi-activated',
+      poiId: 'route-1-charcoal-kiln',
+      poiLabel: 'THE CHARCOAL KILN',
+    },
   },
   {
     mapId: 'viridian-forest',
