@@ -1608,9 +1608,23 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '""""',
   ]);
 
-  // The drove, off the levels onto the wall road.
-  map.draw(100, 107, [
+
+  // The last thirteen rods of the drove, which the saltmarsh behind the wall
+  // is drawn over: the marsh is one block and the drove is another, and the
+  // road has to be the last word on its own tiles or it stops in a field.
+  map.draw(100, 96, [
     ',,,',
+    ',,,',
+    ',T,',
+    ',,,',
+    ',,,',
+    ',,T',
+    ',,,',
+    ',,,',
+    'T,,',
+    ',,,',
+    ',,,',
+    ',T,',
     ',,,',
   ]);
 

@@ -783,9 +783,11 @@ describe('a raid where the player flees and then walks', () => {
       open,
     );
 
-    // 15s at the 0.15s a walked tile really costs. This read 115 while the step was
-    // timed at its 130ms of animation alone, which no frame rate ever delivered.
-    expect(windowSteps).toBe(100);
+    // 20s at the 0.15s a walked tile really costs. It read 100 while the window
+    // was fifteen seconds, and fifteen was what the 64x64 maps needed; the
+    // Floodplain at 128 has a tile 82 steps from its nearest way out, and the
+    // window is sized to that walk (see `HUNTER_SEARCH_MS`).
+    expect(windowSteps).toBe(133);
     expect(held.engagedAtStep).toBeNull();
   });
 
