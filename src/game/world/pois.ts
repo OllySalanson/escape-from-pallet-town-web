@@ -136,6 +136,34 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     ],
   },
   {
+    // The paddocks' far pen is a dead end behind a gate in the middle of the
+    // fence, so it needed the thing worth going in for rather than another
+    // stretch of grass to walk through.
+    id: 'route-1-stock-trough',
+    mapId: 'route-1',
+    position: { x: 59, y: 22 },
+    label: 'THE STOCK TROUGH',
+    description: 'The stone trough in the steading\u2019s far field. Somebody keeps a kit dry under the lip of it.',
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'poke-ball', quantity: 1 },
+    ],
+  },
+  {
+    // The far corner of the steading's yard, behind the house: reachable only
+    // the long way round, and the furthest ground on this map from anything
+    // authored until the well went in it.
+    id: 'route-1-farm-well',
+    mapId: 'route-1',
+    position: { x: 59, y: 35 },
+    label: 'THE FARM WELL',
+    description: 'The well at the back of the farmhouse, out of the way of everything. There is a kit on the sill of it.',
+    reward: [
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'great-ball', quantity: 1 },
+    ],
+  },
+  {
     // The clearing off the Old Road that is on the way to nothing.
     id: 'route-1-wayside-shrine',
     mapId: 'route-1',

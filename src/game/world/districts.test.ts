@@ -164,6 +164,8 @@ describe('the named districts of a map', () => {
         'THE CHARCOAL KILN': 'THE CHARCOAL BURN',
         'THE HOLLOW OAK': 'THE HOLLOW OAK',
         'THE WAYSIDE SHRINE': 'THE WAYSIDE SHRINE',
+        'THE STOCK TROUGH': 'THE PADDOCKS',
+        'THE FARM WELL': 'THE STEADING',
         "DROVER'S CAIRN": 'THE COMMON',
       },
     });

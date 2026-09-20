@@ -142,6 +142,46 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     ],
   },
   {
+    // Three notices in the three places the density measure calls thinnest -
+    // the paddocks, the steading's yard and the old pound. The measure is the
+    // one Viridian Forest set: walking steps from anywhere to the nearest
+    // permanent authored thing, loot excluded because it moves every raid.
+    id: 'route-1-drove-notice',
+    mapId: 'route-1',
+    kind: 'sign',
+    position: { x: 48, y: 19 },
+    facing: 'right',
+    dialogLines: [
+      'THE DROVE - keep the gates shut',
+      'Two fields off this lane and a third below. The far one has the trough in it.',
+      'ORCHARDIST NELL works the narrows further down. She will want something off you.',
+    ],
+  },
+  {
+    id: 'route-1-steading-notice',
+    mapId: 'route-1',
+    kind: 'sign',
+    position: { x: 46, y: 39 },
+    facing: 'right',
+    dialogLines: [
+      'THE STEADING',
+      'Gate out the back of the yard. The track west joins the OLD ROAD; the track south drops to the stepping stones.',
+      'Over the stones is the CHARCOAL BURN, and the cart road out of it is shut until the kiln is drawn.',
+    ],
+  },
+  {
+    id: 'route-1-pound-notice',
+    mapId: 'route-1',
+    kind: 'sign',
+    position: { x: 21, y: 37 },
+    facing: 'down',
+    dialogLines: [
+      'THE POUND - strays held here',
+      'Nothing has been claimed out of this pen in years. Whatever is in it now let itself in.',
+      'The ford is south on the OLD ROAD. Mind who is sitting on it.',
+    ],
+  },
+  {
     // A milestone on each of the two southern roads. They are the only two
     // places on this map that are a road and nothing else, and a stranger who
     // toured the four maps once placed every district that held an object and

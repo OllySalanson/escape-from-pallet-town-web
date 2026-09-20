@@ -288,7 +288,7 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
     '  F...........F ..FgggggFgggggF ',
     '  F....PP.....F b.gggoggFgggggF ',
     '  F....PP.....F ..FgggggggggggF ',
-    '  F....PP.....F ..FgggggFggoggF ',
+    '  F....PP.....F ..FgggggFgggggF ',
     '  FFFFFF.FFFFFF ..FFFFFFFFFFFFF ',
     '   T  T .       .bFgggggggggggF ',
     '        ..      ..FgggogggogggF ',
@@ -373,6 +373,7 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
   map.plant(50, 5, 'boulder');
   map.plant(53, 7, 'deadStump');
   map.plant(57, 28, 'log');
+  map.plant(59, 23, 'fountain');
   map.plant(54, 29, 'wetRock');
 
   // The steading: barn and house either side of its gravel, the hut on the
@@ -381,7 +382,7 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
   map.plant(53, 33, 'house');
   map.plant(50, 38, 'hut');
   map.plant(58, 38, 'crateStack');
-  map.plant(59, 33, 'cratePair');
+  map.plant(59, 33, 'fountain');
   map.plant(49, 34, 'crate');
 
   map.plant(37, 37, 'bigStump');
