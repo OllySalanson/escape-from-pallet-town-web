@@ -196,9 +196,9 @@ export function stepDistances(
 ): readonly Int32Array[] {
   const height = collision.length;
   const width = collision[0]?.length ?? 0;
-  const distances: Int32Array[] = new Array(height);
+  const distances: Int32Array[] = [];
   for (let y = 0; y < height; y += 1) {
-    distances[y] = new Int32Array(width).fill(-1);
+    distances.push(new Int32Array(width).fill(-1));
   }
   const passable = (x: number, y: number): boolean =>
     !isBlockedAt(collision, x, y) && !extraBlocked.has(`${x},${y}`);

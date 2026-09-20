@@ -175,7 +175,7 @@ describe('what an escape buys', () => {
       // tiles (four headings and the heading-blind one) against fifteen places
       // a raid is walking to, and on a 64x72 map the difference is the whole
       // test running or timing out.
-      const detourCache = new Map<string, number[][]>();
+      const detourCache = new Map<string, readonly Int32Array[]>();
       // And one escape worked out per heading rather than per destination: the
       // fallback is a search of its own and it does not know where the player
       // was going, only which way they were facing.
@@ -191,7 +191,7 @@ describe('what an escape buys', () => {
         escapes.set(heading ?? 'blind', away);
         return away;
       };
-      const around = (tile: GridPosition): number[][] => {
+      const around = (tile: GridPosition): readonly Int32Array[] => {
         const key = `${tile.x},${tile.y}`;
         const known = detourCache.get(key);
         if (known) {
