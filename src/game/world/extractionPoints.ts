@@ -475,7 +475,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   },
   {
     mapId: 'floodplain-relay',
-    position: { x: 78, y: 18 },
+    position: { x: 93, y: 19 },
     label: 'QUARRY SUMP',
     unlockAtMs: 0,
     requirement: { kind: 'always' },

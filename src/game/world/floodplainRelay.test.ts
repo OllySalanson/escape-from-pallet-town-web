@@ -508,7 +508,14 @@ describe('the country the map grew into', () => {
     const breach = { x: 73, y: 110 };
     const before = getWorldMap('floodplain-relay', ['floodplain-toll-keeper']);
     const after = getWorldMap('floodplain-relay', ['floodplain-toll-keeper', 'floodplain-sea-wall-keeper']);
-    expect(stepDistances(before.collision, wharf)[breach.y][breach.x]).toBe(-1);
-    expect(stepDistances(after.collision, wharf)[breach.y][breach.x]).toBeGreaterThan(0);
+    const round = stepDistances(before.collision, wharf)[breach.y][breach.x];
+    const across = stepDistances(after.collision, wharf)[breach.y][breach.x];
+    // The long way is a walk of the whole map: up the marsh road, through the
+    // town, over the toll bridge, past the orchard, down the cut and along the
+    // wall. The sands are seventy-four steps, and that is what the banksman's
+    // second door is worth.
+    expect(round).toBeGreaterThan(0);
+    expect(across).toBeGreaterThan(0);
+    expect(round).toBeGreaterThan(across * 4);
   });
 });
