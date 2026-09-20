@@ -188,6 +188,33 @@ export const WORLD_GATES: readonly MapGate[] = [
     open: { material: 'earth' },
   },
 
+  // The headland is a place of its own: one neck onto it from the old fields,
+  // and a flight of steps cut down its west face onto the hard. Salter Cobb
+  // keeps the neck, standing on it; beating her opens the steps as well, and
+  // the whole south turns out to be a ring - the Gate Lane down through the
+  // meadows, the marsh, the strand, the hard, the headland, the old fields and
+  // the drove back up to the sluice apron, without going through the town once.
+  {
+    id: 'pallet-cobb-gate',
+    mapId: 'pallet-town',
+    bossId: 'pallet-salt-keeper',
+    label: 'COBB GATE',
+    tiles: [{ x: 54, y: 67 }, { x: 55, y: 67 }],
+    closed: { material: 'fence' },
+    open: { material: 'earth' },
+  },
+  {
+    id: 'pallet-cobb-steps',
+    mapId: 'pallet-town',
+    bossId: 'pallet-salt-keeper',
+    label: 'COBB STEPS',
+    // Cut down the headland's west face onto the stone of the hard - ground a
+    // player coming the long way round has already walked.
+    tiles: [{ x: 44, y: 72 }, { x: 45, y: 72 }],
+    closed: { material: 'cliff' },
+    open: { material: 'turf' },
+  },
+
   // -- Viridian Forest -------------------------------------------------------
   // The rock the fire tower is built against runs east along the top of the
   // wood to the head of the Tower Steps. The way up is the nub at the tower's

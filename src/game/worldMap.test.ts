@@ -22,8 +22,11 @@ describe('worldMap', () => {
       'viridian-forest',
       'floodplain-relay',
     ]);
-    expect(getWorldMap('pallet-town').width).toBe(32);
-    expect(getWorldMap('pallet-town').height).toBe(44);
+    // Pallet Town is the valley one: the town it shipped as is its north-west
+    // quarter and the parish round it is the rest, up to the ceiling the
+    // lobby's banner sets on a picture drawn at one pixel to the tile.
+    expect(getWorldMap('pallet-town').width).toBe(64);
+    expect(getWorldMap('pallet-town').height).toBe(76);
     // Route 1 and Viridian Forest are the long ones now: each is four and a
     // half times the footprint it shipped in, played the way the Floodplain is
     // - a district at a time, with more of it left unwalked at the end of a
@@ -185,9 +188,31 @@ describe('worldMap', () => {
     // read over the gate. Asked of the exits themselves, so one added or
     // renamed fails here rather than leaving the board a gate short.
     const exits = EXTRACTION_POINTS.filter((point) => point.mapId === 'pallet-town');
-    expect(exits.map((exit) => exit.label).sort()).toEqual(['MILL STAIR', 'SOUTH GATE', 'WEST CULVERT']);
-    for (const exit of exits) {
+    expect(exits.map((exit) => exit.label).sort()).toEqual([
+      'FERRY HARD',
+      'HEADLAND STEPS',
+      'LIME ROAD',
+      'MILL STAIR',
+      'QUARRY TRACK',
+      'SOUTH GATE',
+      'WEST CULVERT',
+    ]);
+    // The board names the three a player standing in the square can act on -
+    // the ones out of the town itself. The other four are a valley away and are
+    // named by the board that stands where they can be walked to from: a sign
+    // that listed all seven would be a list nobody reads, and the map's own
+    // rule is that a caption speaks where the thing it names can be seen.
+    const outOfTheTown = new Set(['SOUTH GATE', 'MILL STAIR', 'WEST CULVERT']);
+    for (const exit of exits.filter((point) => outOfTheTown.has(point.label))) {
       expect(message).toContain(exit.label);
+    }
+    const boards = getWorldMap('pallet-town')
+      .entities.filter((entity) => entity.kind === 'sign')
+      .flatMap((entity) => entity.dialogLines)
+      .join(' ');
+    for (const exit of exits) {
+      expect(`some board names ${exit.label}: ${boards.includes(exit.label)}`)
+        .toBe(`some board names ${exit.label}: true`);
     }
   });
 });

@@ -120,9 +120,35 @@ describe('the named districts of a map', () => {
 
   it('Pallet Town: puts every exit, landing and landmark in the place it is remembered as part of', () => {
     expect(placesOn('pallet-town')).toEqual({
-      exits: { 'SOUTH GATE': 'THE STOCKYARD', 'MILL STAIR': 'THE FAR BANK', 'WEST CULVERT': 'THE FLOOD' },
-      landings: { 'Town Square': 'MARKET SQUARE', 'The Far Bank': 'THE FAR BANK' },
-      landmarks: { 'TOWN PUMP': 'THE GREEN', 'SLUICE WHEEL': 'THE STOCKYARD' },
+      exits: {
+        'SOUTH GATE': 'THE STOCKYARD',
+        'MILL STAIR': 'THE FAR BANK',
+        'WEST CULVERT': 'THE FLOOD',
+        'QUARRY TRACK': 'THE QUARRY',
+        'LIME ROAD': 'THE KILNS',
+        'FERRY HARD': 'THE HARD',
+        'HEADLAND STEPS': 'THE BEACON',
+      },
+      landings: {
+        'Town Square': 'MARKET SQUARE',
+        'The Far Bank': 'THE FAR BANK',
+        'The Quarry': 'THE QUARRY',
+        'The Hard': 'THE HARD',
+      },
+      landmarks: {
+        'TOWN PUMP': 'THE GREEN',
+        'SLUICE WHEEL': 'THE STOCKYARD',
+        'CHARCOAL HEARTH': 'THE HIGH WOOD',
+        'THE ADIT': 'THE QUARRY',
+        'THE SALT PANS': 'THE SALTINGS',
+        'BEACON LIGHT': 'THE BEACON',
+        'SPRING HOUSE': 'THE HANGER',
+        'THE STAITHE': 'THE SALTINGS',
+        'THE SCARE POST': 'THE NORTH FIELD',
+        'THE DECOY': 'THE WATER MEADOWS',
+        'THE POWDER STORE': 'THE QUARRY',
+        'THE MEADOW HATCH': 'THE WATER MEADOWS',
+      },
     });
     // The south is named where the south bank starts: on the far step of each
     // crossing, never on the near one. Named on the bridge head, THE STOCKYARD

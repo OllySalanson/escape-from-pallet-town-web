@@ -71,6 +71,133 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     unlockedExtractionLabel: 'WEST CULVERT',
   },
   {
+    // The charcoal burner's floor in the high wood, off the first turn of the
+    // ride. Whatever he was cutting for, he left the hut standing.
+    id: 'pallet-charcoal-hearth',
+    mapId: 'pallet-town',
+    position: { x: 38, y: 4 },
+    label: 'CHARCOAL HEARTH',
+    description: 'The burner\'s floor in the high wood, a short climb east of the north field. Two Poke Balls in the hut and a Potion on the stump.',
+    reward: [
+      { itemId: 'poke-ball', quantity: 2 },
+      { itemId: 'potion', quantity: 1 },
+    ],
+  },
+  {
+    // The level driven into the quarry's west face. The quarry is a raid's
+    // whole width from the town, so what is in it pays for the walk.
+    id: 'pallet-quarry-adit',
+    mapId: 'pallet-town',
+    position: { x: 53, y: 17 },
+    label: 'THE ADIT',
+    description: 'The level driven into the quarry face, still shored and still stocked. A Great Ball and a Super Potion, a whole valley east of the square.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    // The salt works in the middle of the marsh: the one thing on the saltings
+    // anybody kept up, and the only reason to leave the causeway.
+    id: 'pallet-salt-pans',
+    mapId: 'pallet-town',
+    position: { x: 8, y: 67 },
+    label: 'THE SALT PANS',
+    description: 'The pans worked between the two creeks, and the barrels stacked on the walk between them. A Potion and an Antidote.',
+    reward: [
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    // Behind both of Salter Cobb's doors, on the seaward side of the light.
+    // The only cache on this map that costs a boss.
+    id: 'pallet-beacon-light',
+    mapId: 'pallet-town',
+    position: { x: 57, y: 71 },
+    label: 'BEACON LIGHT',
+    description: 'The lamp store on the seaward side of the beacon, behind the salter\'s two doors. Two Great Balls and a Super Potion.',
+    reward: [
+      { itemId: 'great-ball', quantity: 2 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    // The spring the millpond is fed by, under a stone house in the hanger.
+    // The mill's own water, half a valley from the mill.
+    id: 'pallet-spring-house',
+    mapId: 'pallet-town',
+    position: { x: 37, y: 22 },
+    label: 'SPRING HOUSE',
+    description: 'The stone house over the spring in the hanger, where the millpond starts. Somebody keeps a Potion and an Antidote on the sill.',
+    reward: [
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    // The quarry's south bay is a dead end four tiles wide and seven deep, and
+    // a dead end is only worth walking if there is something at the end of it.
+    id: 'pallet-powder-store',
+    mapId: 'pallet-town',
+    position: { x: 56, y: 28 },
+    label: 'THE POWDER STORE',
+    description: 'The blasting store cut into the back of the quarry, well away from the face. A Super Potion and a Poke Ball on the shelf.',
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'poke-ball', quantity: 1 },
+    ],
+  },
+  {
+    // The meadow corner north of the withy beds, the last pocket of the map
+    // with nothing in it. The hatch is what makes a water meadow one.
+    id: 'pallet-meadow-hatch',
+    mapId: 'pallet-town',
+    position: { x: 28, y: 46 },
+    label: 'THE MEADOW HATCH',
+    description: 'The hatch that used to flood the meadows off the carrier, seized open since the flood. A Potion left in the frame of it.',
+    reward: [{ itemId: 'potion', quantity: 1 }],
+  },
+  {
+    // The top of the north field is the first tall grass out of the square and
+    // was the emptiest ground on the map - nineteen steps from anything
+    // authored, further than any tile of the new valley. The bird-scarer's post
+    // is what the field is worked from, so it is what stands in it.
+    id: 'pallet-scare-post',
+    mapId: 'pallet-town',
+    position: { x: 17, y: 7 },
+    label: 'THE SCARE POST',
+    description: 'The bird-scarer\'s post at the head of the north field, with the lad\'s tin and a spare Poke Ball wedged in the crook of it.',
+    reward: [{ itemId: 'poke-ball', quantity: 1 }],
+  },
+  {
+    // The wet pocket east of the rickyard is a dead end, and a dead end is
+    // only worth walking if something is at the end of it. The decoy pipe is
+    // the reason a fowler ever came out this far.
+    id: 'pallet-decoy-pond',
+    mapId: 'pallet-town',
+    position: { x: 35, y: 59 },
+    label: 'THE DECOY',
+    description: 'The duck decoy in the wet corner of the water meadows, its pipe still netted. An Antidote and a Potion in the hide.',
+    reward: [
+      { itemId: 'antidote', quantity: 1 },
+      { itemId: 'potion', quantity: 1 },
+    ],
+  },
+  {
+    // The old landing stage out in the marsh, from when the saltings were
+    // worked by boat rather than walked. The one thing to make for out there.
+    id: 'pallet-staithe',
+    mapId: 'pallet-town',
+    position: { x: 19, y: 71 },
+    label: 'THE STAITHE',
+    description: 'The old landing stage out on the saltings, between the two creeks. A Poke Ball and a Potion in what is left of the locker.',
+    reward: [
+      { itemId: 'poke-ball', quantity: 1 },
+      { itemId: 'potion', quantity: 1 },
+    ],
+  },
+  {
     id: 'oak-field-station-relay',
     mapId: 'route-1',
     position: { x: 26, y: 15 },

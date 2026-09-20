@@ -111,6 +111,46 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     requirement: { kind: 'poi-activated', poiId: 'pallet-sluice-wheel', poiLabel: 'SLUICE WHEEL' },
   },
   {
+    // The stone road out of the east hills, in a nook off the quarry floor.
+    // Always open, because a raid that drops into the quarry is the whole
+    // valley from every other way home.
+    mapId: 'pallet-town',
+    position: { x: 62, y: 15 },
+    label: 'QUARRY TRACK',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The pier head off the hard. It is a boat, so it is not there yet: the
+    // one timed exit in the south, and the nearest way home from the shore.
+    mapId: 'pallet-town',
+    position: { x: 35, y: 75 },
+    label: 'FERRY HARD',
+    unlockAtMs: 45_000,
+    requirement: { kind: 'elapsed', unlockAtMs: 45_000 },
+  },
+  {
+    // The south tip of the headland, behind both of Salter Cobb's doors and
+    // open from the first second - a way out you have to beat somebody for.
+    mapId: 'pallet-town',
+    position: { x: 52, y: 74 },
+    label: 'HEADLAND STEPS',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The cart road the burnt lime went out by, in the corner of the kiln
+    // floor under the quarry's rock. The whole east arm of the valley - the drove, the
+    // kilns, the old fields and the headland - had no way out of its own, so
+    // its far corner was a hundred and four tiles from one and a flee bought a
+    // player less than the walk home (`hunterFlee.test.ts` is what said so).
+    mapId: 'pallet-town',
+    position: { x: 51, y: 33 },
+    label: 'LIME ROAD',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
     mapId: 'route-1',
     position: { x: 3, y: 29 },
     label: 'WEST GATE',

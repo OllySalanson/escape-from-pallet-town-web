@@ -7,6 +7,18 @@ import type { CastCharacterDesignId } from './characterDesigns';
 import type { TrainerWatch } from './trainerSight';
 import type { WorldMapId } from '../worldMap';
 
+/**
+ * The few of the 151 a trainer names that are not one of the seventeen
+ * `species.ts` exports by name. Reached by id rather than exported there,
+ * because 151 constants would be a list nobody reads.
+ */
+const KRABBY = getSpeciesById('krabby')!;
+const PSYDUCK = getSpeciesById('psyduck')!;
+const MEOWTH = getSpeciesById('meowth')!;
+const SPEAROW = getSpeciesById('spearow')!;
+const RATTATA = getSpeciesById('rattata')!;
+const DIGLETT = getSpeciesById('diglett')!;
+
 export interface RunTrainerEncounter extends TrainerWatch {
   readonly mapId: WorldMapId;
   readonly position: GridPosition;
@@ -361,6 +373,86 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // party in the game with no Pidgey and no Pikachu in it.
       [new Pokemon(JIGGLYPUFF, 9), new Pokemon(SQUIRTLE, 9), new Pokemon(BUTTERFREE, 11)],
       'Towpath is yours, head and foot. Mind the stair - it is a long drop and a short way home.',
+    ),
+  },
+  {
+    // The quarry is the far end of the valley from the square, so the fight in
+    // it is an opportunity rather than a toll: Finn stands on the floor beside
+    // the pool, off the track, and has to be spoken to.
+    mapId: 'pallet-town',
+    position: { x: 58, y: 19 },
+    facing: 'left',
+    fixedPosition: true,
+    design: 'heavy-man',
+    introLines: ['You came up the RIDE for this?', 'There is nothing in that level worth a bruise.', 'Prove me wrong.'],
+    trainer: createTrainer(
+      'pallet-quarry-breaker-finn',
+      'BREAKER FINN',
+      [new Pokemon(DIGLETT, 7), new Pokemon(RATTATA, 8)],
+      'Level is yours. Mind the pit - it is deeper than it looks.',
+    ),
+  },
+  {
+    // On the green lane through the old fields, where the drove comes down.
+    // The lane is two tiles wide, so he is a fight rather than a door.
+    mapId: 'pallet-town',
+    position: { x: 44, y: 56 },
+    facing: 'left',
+    fixedPosition: true,
+    design: 'lass',
+    introLines: ['These closes are mine to walk.', 'You want the sea road? It goes past me.'],
+    trainer: createTrainer(
+      'pallet-drover-ash',
+      'DROVER ASH',
+      [new Pokemon(MEOWTH, 7), new Pokemon(JIGGLYPUFF, 8)],
+      'Go on down. The salter will not be so soft.',
+    ),
+  },
+  {
+    // On the hard, above the tide line. The ferry is the exit behind him and
+    // he is beside the route to it rather than on it.
+    mapId: 'pallet-town',
+    position: { x: 39, y: 72 },
+    facing: 'left',
+    fixedPosition: true,
+    introLines: ['Waiting on the boat as well?', 'It comes when it comes. Time for one, then.'],
+    trainer: createTrainer(
+      'pallet-netter-pike',
+      'NETTER PIKE',
+      [new Pokemon(KRABBY, 8), new Pokemon(SPEAROW, 8)],
+      'Tide is out and so am I. Deck is yours till the boat comes.',
+    ),
+  },
+  {
+    // Pallet's second boss, and the far end of the map from the first. Cobb
+    // keeps the neck onto the headland, standing on it with the gate at her
+    // back; beating her opens the steps down its west face onto the hard, so
+    // the south turns out to be a ring exactly as the town does.
+    //
+    // Her party is the water she works in, and it was chosen over the real
+    // engine rather than guessed (`tools/trainers/report.mts`, 160 fights a
+    // cell). The first try - a Psyduck and a Krabby a level higher - measured
+    // 3% for a levelled Charmander and 98% for a Bulbasaur, which is a lottery
+    // rather than a door. What it settled on is a Normal lead so a Fire starter
+    // has something to hit, and two Waters behind it: 19% / 63% / 99% for the
+    // three lone starters and 86% for the small team, which is a boss you bring
+    // a second Pokemon to. A Grass lead walks it, and that is a type matchup
+    // against three Water-and-Normal rather than a boss changing rung.
+    mapId: 'pallet-town',
+    position: { x: 55, y: 66 },
+    facing: 'down',
+    fixedPosition: true,
+    bossId: 'pallet-salt-keeper',
+    design: 'lass',
+    introLines: [
+      'SALTER COBB KEEPS THE NESS.',
+      'Pans, wall and light. Nobody walks out there on my say-so.',
+    ],
+    trainer: createTrainer(
+      'pallet-salt-keeper-cobb',
+      'SALTER COBB',
+      [new Pokemon(MEOWTH, 10), new Pokemon(PSYDUCK, 11), new Pokemon(KRABBY, 11)],
+      'Ness is yours, gate and steps. The light is still lit - mind what is under it.',
     ),
   },
   {
