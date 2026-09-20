@@ -1,6 +1,33 @@
 import { ItemCategory, useFieldItem, type Bag, type ItemDefinition } from '../../items';
 import type { Pokemon } from '../Pokemon';
-import type { BattleState } from './battleEngine';
+import { playerSlotOf, unitAt, type BattleState, type SlotRef } from './battleEngine';
+
+/**
+ * The battle with one slot's HP and status read back off the Pokemon the item
+ * just changed.
+ *
+ * It writes the two fields rather than rebuilding the combatant, because
+ * everything else about it - PP, stat stages, its counters - belongs to the
+ * fight and the item did not touch any of it.
+ */
+const withHealedUnit = (state: BattleState, ref: SlotRef, healed: Pokemon): BattleState => {
+  const combatant = unitAt(state, ref);
+  if (!combatant) {
+    return state;
+  }
+  const updated = {
+    ...combatant,
+    currentHp: healed.currentHp,
+    primaryStatus: healed.primaryStatus,
+  };
+  return ref.side === 'player'
+    ? ref.slot === 0
+      ? { ...state, player: updated }
+      : { ...state, playerPartner: updated }
+    : ref.slot === 0
+      ? { ...state, enemy: updated }
+      : { ...state, enemyPartner: updated };
+};
 
 /**
  * Spending a medicine out of the raid bag during a fight.
@@ -77,10 +104,13 @@ export function applyBattleItem(
   target: Pokemon,
 ): BattleItemUse {
   const name = target.base.name.toUpperCase();
-  const isActive = target === state.player.pokemon;
-  if (isActive) {
-    target.currentHp = state.player.currentHp;
-    target.primaryStatus = state.player.primaryStatus;
+  // Whichever slot it is standing in, because a double battle has two of them
+  // and the second one is as healable as the first.
+  const slot = playerSlotOf(state, target);
+  const active = slot ? unitAt(state, slot) : null;
+  if (active) {
+    target.currentHp = active.currentHp;
+    target.primaryStatus = active.primaryStatus;
   }
 
   if (target.isFainted) {
@@ -96,16 +126,10 @@ export function applyBattleItem(
 
   const restored = target.currentHp - healedFrom;
   return {
-    state: isActive
-      ? {
-          ...state,
-          player: {
-            ...state.player,
-            currentHp: target.currentHp,
-            primaryStatus: target.primaryStatus,
-          },
-        }
-      : state,
+    state:
+      slot && active
+        ? withHealedUnit(state, slot, target)
+        : state,
     used: true,
     message:
       restored > 0

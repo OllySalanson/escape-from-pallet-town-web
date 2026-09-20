@@ -24,6 +24,7 @@ export function deployOptions(args) {
     hp: option('hp'),
     level: option('level'),
     starter: option('starter'),
+    team: list('team'),
     pack: list('pack'),
     secure: list('secure'),
   };
@@ -34,7 +35,7 @@ export function deployOptions(args) {
  * are the driver's own, because only it knows whether the game is being stepped;
  * `paused` puts the loop to sleep on every load, for a driver that steps it.
  */
-export async function deploy(page, url, { press, click, until, paused = false, insertion, beaten = [], completed = [], hp, level, starter = 'Bulbasaur', pack = [], secure = [] }) {
+export async function deploy(page, url, { press, click, until, paused = false, insertion, beaten = [], completed = [], hp, level, starter = 'Bulbasaur', team = [], pack = [], secure = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   await press('Space'); await until(sceneIs('starter'));
@@ -49,7 +50,7 @@ export async function deploy(page, url, { press, click, until, paused = false, i
     `the picker to offer ${starter}`,
   );
   await click(`Confirm ${starter}`);
-  if (insertion || beaten.length > 0 || completed.length > 0 || hp !== undefined || level !== undefined) {
+  if (insertion || beaten.length > 0 || completed.length > 0 || hp !== undefined || level !== undefined || team.length > 0) {
     await until(`localStorage.getItem('${SAVE_KEY}') !== null`, 'the game to write its save');
     // Every other map's front door is what banking the first contract pays, and a
     // drop-in point is offered to whoever has stood on it. The tool cannot tell
@@ -71,6 +72,19 @@ export async function deploy(page, url, { press, click, until, paused = false, i
         stored.pokemon.experience = 0;
         stored.pokemon.currentHp = 9999;
       }
+      // --team=speciesId:level,.. puts more Pokemon in the vault beside the
+      // starter, and every one of them is then added to the raid party below.
+      // Nothing else here can deploy with two, and a double battle needs two:
+      // the engine refuses the second slot when the player has nobody for it,
+      // so a driver with one Pokemon plays Holt as a single battle and never
+      // sees the thing it was sent to look at. They are appended after the
+      // level pass so each keeps the level it was asked for.
+      ${JSON.stringify(team)}.forEach((entry, index) => {
+        const [speciesId, memberLevel = '10'] = entry.split(':');
+        const id = 'playtest-team-' + index;
+        save.stash.pokemon.push({ id, pokemon: { speciesId, level: Number(memberLevel), currentHp: 9999, xp: 0, moves: [], pendingMoves: [], primaryStatus: null, heldItemId: null } });
+        if (Array.isArray(save.stash.boxes) && save.stash.boxes[0]) { save.stash.boxes[0].pokemonIds.push(id); }
+      });
       localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
     await page.send('Page.navigate', { url });
     await title();
@@ -79,6 +93,18 @@ export async function deploy(page, url, { press, click, until, paused = false, i
   }
   await click('Start a raid');
   await click(starter);
+  // Everybody else the vault holds, so a `--team` deploys as a team. The rows
+  // carry the stash id they are for, and one already in the raid is
+  // `is-selected` - clicking it again would take it back out.
+  for (let guard = 0; guard < 6 && team.length > 0; guard += 1) {
+    const added = await page.evaluate(
+      `(() => { const b = document.querySelector('button[data-pokemon]:not(.is-selected)'); if (!b || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
+    );
+    if (!added) {
+      break;
+    }
+    await sleep(150);
+  }
   // --pack=itemId[:n],.. puts supplies in the raid bag by the loadout row's own
   // stepper. Nothing is packed by default - the loadout is the decision the game
   // is built around, and the flow starts it empty - so a driver that clicks

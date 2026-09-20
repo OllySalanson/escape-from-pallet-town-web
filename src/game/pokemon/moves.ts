@@ -14,6 +14,20 @@ export const TACKLE = new MoveBase({
   flags: [MoveFlag.Contact],
 });
 
+/**
+ * The five shipped moves that hit **both** foes.
+ *
+ * `MoveTarget.BothFoes` is PokeAPI's `all-opponents`, read off the committed
+ * FireRed/LeafGreen snapshot in `tools/moves/` rather than chosen here: of the
+ * 273 moves the 151 learn by level, seventeen carry it and five of them are
+ * shipped - Growl, Tail Whip, Razor Leaf, Heat Wave and Bubble. PokeAPI has no
+ * `past_values` for a move's target, so each of the five was checked by hand
+ * against generation III, where all five were already all-adjacent-foes.
+ *
+ * In a single battle the value means nothing at all: one foe is one foe. It is
+ * declared here so the double battle reads it rather than being handed a second
+ * list of move names somewhere else.
+ */
 export const GROWL = new MoveBase({
   name: 'Growl',
   description: "Lowers the target's Attack by one stage.",
@@ -22,6 +36,7 @@ export const GROWL = new MoveBase({
   accuracy: 100,
   pp: 30,
   category: MoveCategory.Status,
+  target: MoveTarget.BothFoes,
   effects: { boosts: [{ stat: 'attack', stages: -1 }] },
   flags: [MoveFlag.Sound],
 });
@@ -42,6 +57,7 @@ export const TAIL_WHIP = new MoveBase({
   accuracy: 100,
   pp: 30,
   category: MoveCategory.Status,
+  target: MoveTarget.BothFoes,
   effects: { boosts: [{ stat: 'defense', stages: -1 }] },
 });
 
@@ -185,6 +201,7 @@ export const RAZOR_LEAF = new MoveBase({
   accuracy: 95,
   pp: 25,
   category: MoveCategory.Special,
+  target: MoveTarget.BothFoes,
   critStage: 1,
 });
 
@@ -218,6 +235,7 @@ export const HEAT_WAVE = new MoveBase({
   accuracy: 90,
   pp: 10,
   category: MoveCategory.Special,
+  target: MoveTarget.BothFoes,
   secondaries: [{ chance: 10, status: PrimaryStatus.Burn }],
 });
 
@@ -273,6 +291,7 @@ export const BUBBLE = new MoveBase({
   accuracy: 100,
   pp: 30,
   category: MoveCategory.Special,
+  target: MoveTarget.BothFoes,
   secondaries: [{ chance: 10, boosts: [{ stat: 'speed', stages: -1 }] }],
 });
 

@@ -19,9 +19,18 @@ import {
   resolveEnemyTurn,
   resolveTurn,
   getCombatantTypes,
+  engagedSlots,
+  playerCombatants,
+  slotRef,
+  playerSlotOf,
+  slotsOf,
+  unitAt,
   type BattleCombatant,
   type BattleEvent,
+  type BattleSide,
   type BattleState,
+  type PlayerMoveChoice,
+  type SlotRef,
   type TrainerBattle,
 } from '../pokemon/battle/battleEngine';
 import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle/battleFlow';
@@ -30,7 +39,7 @@ import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
-import type { MoveBase } from '../pokemon/MoveBase';
+import { MoveTarget, type MoveBase } from '../pokemon/MoveBase';
 import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { battleEventSound, battleNote, type BattleNote } from '../audio/battleSounds';
@@ -101,12 +110,30 @@ import {
   hunterFleeMessages,
   moveCommandLayout,
   moveGuidanceLayout,
+  moveGuidanceFor,
+  combatantSpot,
+  combatantEntryX,
+  statusPlateLayout,
+  formatTargetRow,
+  targetRowLayout,
+  targetPromptLayout,
+  TARGET_PROMPT,
+  formatTypeList,
   weatherSetMessage,
   wildEscapeFailureMessage,
   type MatchupTone,
 } from './battlePresentation';
 
-type CommandMode = 'main' | 'moves' | 'items' | 'balls' | 'party' | 'about-to-use' | 'events' | 'finished';
+type CommandMode =
+  | 'main'
+  | 'moves'
+  | 'target'
+  | 'items'
+  | 'balls'
+  | 'party'
+  | 'about-to-use'
+  | 'events'
+  | 'finished';
 
 type BattleAction =
   | { readonly type: 'choose-fight' }
@@ -116,6 +143,7 @@ type BattleAction =
   | { readonly type: 'choose-item' }
   | { readonly type: 'choose-run' }
   | { readonly type: 'use-move'; readonly moveIndex: number }
+  | { readonly type: 'aim-at'; readonly targetIndex: number }
   | { readonly type: 'select-item'; readonly itemIndex: number }
   | { readonly type: 'use-item'; readonly partyIndex: number }
   | { readonly type: 'switch-pokemon'; readonly partyIndex: number }
@@ -196,28 +224,56 @@ const stagedNote = (
 ): ReturnType<typeof battleNote> & { readonly onShow?: () => void } =>
   typeof note === 'string' ? battleNote(note) : note;
 
+/**
+ * One Pokemon's plate on screen: everything about it that can change without
+ * the Pokemon itself changing.
+ *
+ * There is one of these per slot, and in a single battle there are two of them
+ * - which is why the scene holds them in a map keyed by slot rather than in the
+ * eight separate fields it used to hold for its two. A double battle is four
+ * plates, and four times two fields is how a screen ends up out of step with
+ * the fight it is drawing.
+ */
+interface CombatantPlate {
+  readonly container: Phaser.GameObjects.Container;
+  readonly hpBar: Phaser.GameObjects.Graphics;
+  readonly barX: number;
+  readonly barY: number;
+  readonly barWidth: number;
+  readonly hpText?: Phaser.GameObjects.Text;
+  readonly statusText: Phaser.GameObjects.Text;
+  readonly levelText: Phaser.GameObjects.Text;
+  readonly typeText?: Phaser.GameObjects.Text;
+  readonly banner?: Phaser.GameObjects.Text;
+}
+
+/** How a slot is keyed on screen, which is the only thing the map needs. */
+const plateKey = (side: BattleSide, slot: number): string => `${side}${slot}`;
+
 export class BattleScene extends Phaser.Scene {
   private state!: BattleState;
   private dialog!: DialogBox;
-  private playerHpBar!: Phaser.GameObjects.Graphics;
-  private enemyHpBar!: Phaser.GameObjects.Graphics;
-  private playerHpText!: Phaser.GameObjects.Text;
+  private plates = new Map<string, CombatantPlate>();
+  private sprites = new Map<string, Phaser.GameObjects.Image>();
+  private fieldMask?: Phaser.Display.Masks.GeometryMask;
+  /**
+   * The moves chosen so far this turn, one per slot. A double battle asks each
+   * slot in turn and only resolves once both have answered, so this is what is
+   * being built up while the second one is being asked.
+   */
+  private pendingChoices: PlayerMoveChoice[] = [];
+  /** Which of the player's slots is being asked, and what it has picked. */
+  private choosingSlot = 0;
+  private aimingMoveIndex = 0;
+  /** Which slot a forced replacement is going into. */
+  private replacementSlot = 0;
   /**
    * The player's level plate. It is held rather than painted once because a
    * level reached mid-battle has to appear on it - see
    * `applyMidBattleLevelUp`.
    */
-  private playerLevelText!: Phaser.GameObjects.Text;
-  private playerStatusText!: Phaser.GameObjects.Text;
-  private enemyStatusText!: Phaser.GameObjects.Text;
-  private playerSprite!: Phaser.GameObjects.Image;
-  private enemySprite!: Phaser.GameObjects.Image;
-  private playerStatusBox!: Phaser.GameObjects.Container;
-  private enemyStatusBox!: Phaser.GameObjects.Container;
   private commandTexts: Phaser.GameObjects.Text[] = [];
   private moveGuidanceTexts: Phaser.GameObjects.Text[] = [];
-  private enemyBannerText!: Phaser.GameObjects.Text;
-  private playerBannerText!: Phaser.GameObjects.Text;
   private mode: CommandMode = 'main';
   private selectedCommand = 0;
   private commandContainer!: Phaser.GameObjects.Container;
@@ -262,12 +318,14 @@ export class BattleScene extends Phaser.Scene {
   private readonly activatedPoiIds = new Set<string>();
   private returnLocation: BattleSceneData['returnLocation'];
   private returnScene: BattleSceneData['returnScene'];
-  private displayedEnemy: PokemonInstance | undefined;
+  /** Which Pokemon each slot's plate is currently drawn for. */
+  private displayed = new Map<string, PokemonInstance>();
   private isTransitioning = false;
   private pendingBattleExit = false;
   /** Failed wild escapes so far in this battle; each one improves the next roll. */
   private wildEscapeAttempts = 0;
-  private displayedHp = { player: 0, enemy: 0 };
+  /** The HP each plate's bar is currently showing, which the tweens walk. */
+  private displayedHp = new Map<string, number>();
   private pendingCombatMessages: {
     readonly event?: BattleEvent;
     readonly message: string;
@@ -356,13 +414,20 @@ export class BattleScene extends Phaser.Scene {
     this.aboutToUseOffered = new Set();
     this.aboutToUseSwitching = false;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
+    // The second Pokemon this party can field, which is what decides whether a
+    // trainer who asks for a double battle gets one. It is offered to the
+    // engine whatever the trainer asked for, and the engine is what refuses it.
+    const playerPartner =
+      this.party.pokemon.find((pokemon) => pokemon !== playerPokemon && !pokemon.isFainted) ?? null;
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
     this.launchedFromWorld = Boolean((data.wild || data.trainer) && data.party);
     this.state = data.trainer
-      ? createTrainerBattleState(playerPokemon, data.trainer, data.weather ?? null)
+      ? createTrainerBattleState(playerPokemon, data.trainer, data.weather ?? null, playerPartner)
       : createBattleState(playerPokemon, wildPokemon, data.weather ?? null);
-    this.participatingPokemon.add(playerPokemon);
+    playerCombatants(this.state).forEach((combatant) =>
+      this.participatingPokemon.add(combatant.pokemon),
+    );
     this.cameras.main.setBackgroundColor('#0b1220');
     this.centreComposition();
     this.cameras.main.fadeIn(180, 0, 0, 0);
@@ -372,12 +437,15 @@ export class BattleScene extends Phaser.Scene {
     this.events?.once?.(Phaser.Scenes.Events.SHUTDOWN, () =>
       this.scale.off?.(Phaser.Scale.Events.RESIZE, recentre),
     );
+    this.plates.clear();
+    this.sprites.clear();
+    this.displayed.clear();
+    this.displayedHp.clear();
+    this.pendingChoices = [];
+    this.choosingSlot = 0;
+    this.replacementSlot = 0;
     this.drawCombatants();
     this.drawStatusBoxes();
-    this.displayedHp = {
-      player: this.state.player.currentHp,
-      enemy: this.state.enemy.currentHp,
-    };
     this.commandContainer = this.add.container(0, 0).setDepth(10);
     this.dialog = new DialogBox(this, {
       ...BATTLE_PANEL,
@@ -439,8 +507,14 @@ export class BattleScene extends Phaser.Scene {
           )
         : battleOpeningMessages(
             data.trainer?.name,
-            this.state.player.pokemon.base.name,
-            this.state.enemy.pokemon.base.name,
+            slotsOf(this.state, 'player').flatMap((ref) => {
+              const combatant = unitAt(this.state, ref);
+              return combatant ? [combatant.pokemon.base.name] : [];
+            }),
+            slotsOf(this.state, 'enemy').flatMap((ref) => {
+              const combatant = unitAt(this.state, ref);
+              return combatant ? [combatant.pokemon.base.name] : [];
+            }),
           )),
       // The weather the fight is already in is said once, on the way in, in the
       // same words a move that brought it on would use. Nothing else announces
@@ -515,77 +589,101 @@ export class BattleScene extends Phaser.Scene {
     this.centreComposition();
   }
 
+  /**
+   * Every Pokemon on the field, each in its own spot.
+   *
+   * A single battle is one a side and the coordinates are the ones this screen
+   * was authored with; a double is two a side, smaller and inside the band
+   * between the two plate rows - see `combatantSpot`.
+   */
   private drawCombatants(): void {
-    this.enemySprite = this.add
-      .image(370, 68, `pokemon-front-${this.state.enemy.pokemon.base.dexId}`)
-      .setScale(1.45)
-      .setDepth(2);
-    this.playerSprite = this.add
-      .image(-50, 137, `pokemon-back-${this.state.player.pokemon.base.dexId}`)
-      .setScale(1.55)
-      .setDepth(2);
-    // Both slide in from outside the battlefield, and on a stage wider than the
-    // battle that is the letterbox: for the length of the entrance they were
-    // drawn on the margin, outside the bezel. They are clipped to the field, so
-    // they come in from behind its frame. The shape is never drawn itself.
+    // Both sides slide in from outside the battlefield, and on a stage wider
+    // than the battle that is the letterbox: for the length of the entrance
+    // they were drawn on the margin, outside the bezel. They are clipped to the
+    // field, so they come in from behind its frame. The shape is never drawn.
     const field = this.add.graphics().setVisible(false);
     field.fillStyle(0xffffff, 1);
     field.fillRect(0, 0, BATTLEFIELD_WIDTH, BATTLEFIELD_HEIGHT);
-    const clip = field.createGeometryMask();
-    this.enemySprite.setMask(clip);
-    this.playerSprite.setMask(clip);
-    this.tweens.add({ targets: this.enemySprite, x: 245, duration: 650, ease: 'Quad.out' });
-    this.tweens.add({
-      targets: this.playerSprite,
-      x: 75,
-      duration: 650,
-      ease: 'Quad.out',
-      delay: 180,
-    });
+    this.fieldMask = field.createGeometryMask();
+
+    let delay = 0;
+    for (const side of ['enemy', 'player'] as const) {
+      for (const ref of slotsOf(this.state, side)) {
+        const combatant = unitAt(this.state, ref);
+        if (!combatant) {
+          continue;
+        }
+        const sprite = this.createCombatantSprite(ref, combatant);
+        const spot = combatantSpot(side, ref.slot, this.state.unitCount);
+        this.tweens.add({
+          targets: sprite,
+          x: spot.x,
+          duration: 650,
+          ease: 'Quad.out',
+          delay,
+        });
+        delay += 180;
+      }
+    }
+  }
+
+  /** One sprite, placed off the field and masked to it, ready to slide in. */
+  private createCombatantSprite(ref: SlotRef, combatant: BattleCombatant): Phaser.GameObjects.Image {
+    const spot = combatantSpot(ref.side, ref.slot, this.state.unitCount);
+    const facing = ref.side === 'player' ? 'back' : 'front';
+    const sprite = this.add
+      .image(combatantEntryX(ref.side), spot.y, `pokemon-${facing}-${combatant.pokemon.base.dexId}`)
+      .setScale(spot.scale)
+      // The pair nearer the front of the field is drawn over the pair behind
+      // it, exactly as the plates are ordered: a slot is a place on the ground.
+      .setDepth(2 + ref.slot * 0.001);
+    if (this.fieldMask) {
+      sprite.setMask(this.fieldMask);
+    }
+    this.sprites.set(plateKey(ref.side, ref.slot), sprite);
+    return sprite;
   }
 
   private drawStatusBoxes(): void {
-    this.enemyStatusBox = this.createStatusBox(16, 16, this.state.enemy, false);
-    this.displayedEnemy = this.state.enemy.pokemon;
-    this.playerStatusBox = this.createStatusBox(150, 104, this.state.player, true);
-    // Typing sits in the banners so incoming damage is readable before it lands.
-    // Both banners float over the battlefield art, so they carry a dark outline
-    // rather than relying on whatever happens to be behind them.
-    this.enemyBannerText = this.add
-      .text(16, 1, combatantBanner(this.enemyRole(), getCombatantTypes(this.state.enemy)), BANNER_TEXT_STYLE)
-      .setDepth(7);
-    this.playerBannerText = this.add
-      .text(150, 89, combatantBanner('YOURS', getCombatantTypes(this.state.player)), BANNER_TEXT_STYLE)
-      .setDepth(7);
+    for (const side of ['enemy', 'player'] as const) {
+      for (const ref of slotsOf(this.state, side)) {
+        const combatant = unitAt(this.state, ref);
+        if (combatant) {
+          this.createStatusBox(ref, combatant);
+        }
+      }
+    }
   }
 
-  private createStatusBox(
-    x: number,
-    y: number,
-    combatant: BattleCombatant,
-    showNumbers: boolean,
-  ): Phaser.GameObjects.Container {
-    // Depth 6, between the combatants at 2 and the type banner at 7. The
-    // container's own depth is what decides this - a child's `setDepth` only
-    // orders it against its siblings inside the container - so without it the
-    // plate sat at depth 0, under both sprites: a Pokemon fainting slides its
-    // sprite 34 pixels down as it fades, and on the way it crossed the other
-    // side's name and level. Spotted on an evolution, but it happened on every
-    // won battle.
+  /**
+   * One plate, drawn for one slot.
+   *
+   * Depth 6, between the combatants at 2 and the type banner at 7. The
+   * container's own depth is what decides this - a child's `setDepth` only
+   * orders it against its siblings inside the container - so without it the
+   * plate sat at depth 0, under both sprites: a Pokemon fainting slides its
+   * sprite 34 pixels down as it fades, and on the way it crossed the other
+   * side's name and level. Spotted on an evolution, but it happened on every
+   * won battle.
+   */
+  private createStatusBox(ref: SlotRef, combatant: BattleCombatant): CombatantPlate {
+    const showNumbers = ref.side === 'player';
+    const layout = statusPlateLayout(ref.side, ref.slot, this.state.unitCount);
+    const { x, y } = layout;
     const container = this.add.container(0, 0).setDepth(6);
-    const height = showNumbers ? 58 : 47;
     // Drawn, not stretched. `hud-box.png` is 32x32 with a one-pixel border, so
     // at 144 wide that border came out four pixels down the left and eight
     // along the bottom - the same smear the dialogue panel below had, on the
     // panel directly above it.
     const frame = this.add.graphics().setDepth(5);
-    drawPixelWindow(frame, { x, y, width: 144, height }, { fill: WINDOW_CREAM });
+    drawPixelWindow(frame, { x, y, width: layout.width, height: layout.height }, { fill: WINDOW_CREAM });
     container.add(frame);
+    const nameSize = layout.showsTyping ? CAPTION_FONT_SIZE : '14px';
     container.add(
       this.add
-        .text(x + 9, y + 7, combatant.pokemon.base.name.toUpperCase(), {
+        .text(x + 9, y + layout.nameY, combatant.pokemon.base.name.toUpperCase(), {
           fontFamily: BATTLE_FONT,
-          fontSize: '14px',
+          fontSize: nameSize,
           color: '#202020',
         })
         .setDepth(6),
@@ -593,21 +691,18 @@ export class BattleScene extends Phaser.Scene {
     const levelText = this.add
       // Set from the plate's right edge, so a level of any length ends where
       // the HP bar under it ends instead of starting at a guessed column.
-      .text(x + 135, y + 8, levelLabel(combatant.pokemon.level), {
+      .text(x + layout.width - 9, y + layout.nameY + 1, levelLabel(combatant.pokemon.level), {
         fontFamily: BATTLE_FONT,
-        fontSize: '13px',
+        fontSize: layout.showsTyping ? CAPTION_FONT_SIZE : '13px',
         color: '#202020',
       })
       .setOrigin(1, 0)
       .setDepth(6);
     container.add(levelText);
-    if (showNumbers) {
-      this.playerLevelText = levelText;
-    }
     const statusText = this.add
       .text(
-        x + 82,
-        y + 8,
+        x + (layout.showsTyping ? 82 : 82),
+        y + layout.nameY + 1,
         statusAbbreviation(combatant.primaryStatus, combatant.confusionTurns) ?? '',
         {
           fontFamily: BATTLE_FONT,
@@ -617,14 +712,9 @@ export class BattleScene extends Phaser.Scene {
       )
       .setDepth(6);
     container.add(statusText);
-    if (showNumbers) {
-      this.playerStatusText = statusText;
-    } else {
-      this.enemyStatusText = statusText;
-    }
     container.add(
       this.add
-        .text(x + 15, y + 25, 'HP:', {
+        .text(x + 15, y + layout.barY - 1, 'HP:', {
           fontFamily: BATTLE_FONT,
           fontSize: '12px',
           color: '#202020',
@@ -634,32 +724,103 @@ export class BattleScene extends Phaser.Scene {
     const hpBar = this.add.graphics();
     hpBar.setDepth(6);
     container.add(hpBar);
+    const barX = x + layout.barX;
+    const barY = y + layout.barY;
+    this.drawHpBar(hpBar, barX, barY, combatant.currentHp / combatant.pokemon.maxHp, layout.barWidth);
+
+    let hpText: Phaser.GameObjects.Text | undefined;
     if (showNumbers) {
-      // The gear shares the bottom row with the HP numbers, in the guidance ink
-      // the panel below uses for anything that is not itself a number.
+      // On the compact plate the numbers share the bar's row, off the plate's
+      // right edge, because the row below is carrying the typing and the gear.
+      hpText = this.add
+        .text(
+          x + (layout.showsTyping ? layout.width - 9 : 74),
+          y + (layout.showsTyping ? layout.barY - 1 : layout.detailY - 1),
+          `${combatant.currentHp}/${combatant.pokemon.maxHp}`,
+          {
+            fontFamily: BATTLE_FONT,
+            fontSize: layout.showsTyping ? CAPTION_FONT_SIZE : '13px',
+            color: '#202020',
+          },
+        )
+        .setOrigin(layout.showsTyping ? 1 : 0, 0);
+      container.add(hpText);
+      // The gear shares the bottom row - with the HP numbers on the full plate
+      // and with the typing on the compact one - in the guidance ink the panel
+      // below uses for anything that is not itself a number.
       container.add(
         this.add
-          .text(x + 9, y + 44, heldGearLabel(heldItemName(combatant.pokemon.heldItemId)), {
-            fontFamily: BATTLE_FONT,
-            fontSize: CAPTION_FONT_SIZE,
-            color: PANEL_GUIDANCE_INK,
-          })
+          .text(
+            x + (layout.showsTyping ? layout.width - 9 : 9),
+            y + layout.detailY,
+            heldGearLabel(heldItemName(combatant.pokemon.heldItemId)),
+            {
+              fontFamily: BATTLE_FONT,
+              fontSize: CAPTION_FONT_SIZE,
+              color: PANEL_GUIDANCE_INK,
+            },
+          )
+          .setOrigin(layout.showsTyping ? 1 : 0, 0)
           .setDepth(6),
       );
-      this.playerHpBar = hpBar;
-      this.playerHpText = this.add.text(x + 74, y + 43, '', {
-        fontFamily: BATTLE_FONT,
-        fontSize: '13px',
-        color: '#202020',
-      });
-      container.add(this.playerHpText);
-      this.drawHpBar(hpBar, x + 39, y + 26, combatant.currentHp / combatant.pokemon.maxHp);
-      this.playerHpText.setText(`${combatant.currentHp}/${combatant.pokemon.maxHp}`);
-    } else {
-      this.enemyHpBar = hpBar;
-      this.drawHpBar(hpBar, x + 39, y + 26, combatant.currentHp / combatant.pokemon.maxHp);
     }
-    return container;
+
+    // A double battle has no room for a floating banner over four plates, so
+    // the typing that banner carried is on the plate itself; a single battle
+    // keeps the banner it was authored with.
+    let typeText: Phaser.GameObjects.Text | undefined;
+    let banner: Phaser.GameObjects.Text | undefined;
+    if (layout.showsTyping) {
+      typeText = this.add
+        .text(x + 9, y + layout.detailY, formatTypeList(getCombatantTypes(combatant)), {
+          fontFamily: BATTLE_FONT,
+          fontSize: CAPTION_FONT_SIZE,
+          color: PANEL_GUIDANCE_INK,
+        })
+        .setDepth(6);
+      container.add(typeText);
+    } else {
+      // Typing sits in the banner so incoming damage is readable before it
+      // lands. It floats over the battlefield art, so it carries a dark outline
+      // rather than relying on whatever happens to be behind it.
+      banner = this.add
+        .text(
+          x,
+          y - 15,
+          combatantBanner(
+            showNumbers ? 'YOURS' : this.enemyRole(),
+            getCombatantTypes(combatant),
+          ),
+          BANNER_TEXT_STYLE,
+        )
+        .setDepth(7);
+    }
+
+    const plate: CombatantPlate = {
+      container,
+      hpBar,
+      barX,
+      barY,
+      barWidth: layout.barWidth,
+      hpText,
+      statusText,
+      levelText,
+      typeText,
+      banner,
+    };
+    this.plates.set(plateKey(ref.side, ref.slot), plate);
+    this.displayed.set(plateKey(ref.side, ref.slot), combatant.pokemon);
+    this.displayedHp.set(plateKey(ref.side, ref.slot), combatant.currentHp);
+    return plate;
+  }
+
+  /** The plate a slot is drawn on, if it has one. */
+  private plateFor(ref: SlotRef): CombatantPlate | undefined {
+    return this.plates.get(plateKey(ref.side, ref.slot));
+  }
+
+  private spriteFor(ref: SlotRef): Phaser.GameObjects.Image | undefined {
+    return this.sprites.get(plateKey(ref.side, ref.slot));
   }
 
   private drawHpBar(
@@ -667,13 +828,14 @@ export class BattleScene extends Phaser.Scene {
     x: number,
     y: number,
     ratio: number,
+    width = 88,
   ): void {
     graphics.clear();
     graphics.fillStyle(0x303030, 1);
-    graphics.fillRect(x, y, 88, 8);
+    graphics.fillRect(x, y, width, 8);
     const color = ratio > 0.5 ? 0x40a850 : ratio > 0.2 ? 0xd8b840 : 0xd05040;
     graphics.fillStyle(color, 1);
-    graphics.fillRect(x + 2, y + 2, Math.round(84 * Math.max(0, ratio)), 4);
+    graphics.fillRect(x + 2, y + 2, Math.round((width - 4) * Math.max(0, ratio)), 4);
   }
 
   private showCommands(): void {
@@ -693,6 +855,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'target') {
+      this.commandContainer.add(this.createTargetBox());
+      return;
+    }
+
     const labels =
       this.mode === 'main'
         ? this.mainCommandLabels()
@@ -700,7 +867,7 @@ export class BattleScene extends Phaser.Scene {
           ? this.itemCommandLabels()
           : this.mode === 'balls'
             ? this.ballCommandLabels()
-          : this.state.player.moves.map(formatMoveCommand);
+          : (this.chooser()?.moves ?? []).map(formatMoveCommand);
     this.createCommandBox(labels);
     this.selectedCommand = Math.min(this.selectedCommand, labels.length - 1);
     this.updateSelection();
@@ -849,6 +1016,81 @@ export class BattleScene extends Phaser.Scene {
    * Drawn in the panel's own frame beside the dialogue it interrupts, because
    * the bottom of the battle screen is one surface.
    */
+  /**
+   * Who this move is being aimed at.
+   *
+   * It is only ever asked in a double battle, and only for a move that lands on
+   * one foe: a move that hits both of them has nothing to ask, and a field with
+   * one Pokemon standing on it has nothing to choose between. The cursor starts
+   * on the foe opposite the chooser, which is the answer a player who does not
+   * care would want, and ESC goes back to the move list rather than losing the
+   * choice of move with it.
+   */
+  private createTargetBox(): Phaser.GameObjects.Container {
+    const container = this.add.container(0, 0);
+    container.add(this.createPanelFrame());
+    container.add(
+      this.add.text(targetPromptLayout.x, COMMAND_Y + targetPromptLayout.y, TARGET_PROMPT, {
+        fontFamily: BATTLE_FONT,
+        fontSize: CAPTION_FONT_SIZE,
+        color: PANEL_GUIDANCE_INK,
+      }),
+    );
+    this.commandTexts = this.aimableTargets().map((ref, index) => {
+      const combatant = unitAt(this.state, ref)!;
+      const layout = targetRowLayout(index);
+      const text = this.add.text(
+        layout.x,
+        COMMAND_Y + layout.y,
+        formatTargetRow({ name: combatant.pokemon.base.name, level: combatant.pokemon.level }),
+        { fontFamily: BATTLE_FONT, fontSize: DIALOG_FONT_SIZE, color: WINDOW_INK },
+      );
+      text
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+          this.selectedCommand = index;
+          this.updateSelection();
+        })
+        .on('pointerdown', () => {
+          this.selectedCommand = index;
+          this.updateSelection();
+          this.confirm();
+        });
+      container.add(text);
+      return text;
+    });
+    this.selectedCommand = Math.min(this.selectedCommand, this.commandTexts.length - 1);
+    this.updateSelection();
+    return container;
+  }
+
+  /** The foes a single-target move could be aimed at, in slot order. */
+  private aimableTargets(): readonly SlotRef[] {
+    return engagedSlots(this.state, 'enemy');
+  }
+
+  /** The slot whose move is being chosen right now. */
+  private chooserRef(): SlotRef {
+    return slotRef('player', this.choosingSlot);
+  }
+
+  private chooser(): BattleCombatant | null {
+    return unitAt(this.state, this.chooserRef());
+  }
+
+  /** The slots the player still has to answer for this turn, in order. */
+  private choosingSlots(): readonly SlotRef[] {
+    return engagedSlots(this.state, 'player');
+  }
+
+  /** The slots whose move this turn is not theirs to pick - a charge or a recharge. */
+  private lockedChoices(): PlayerMoveChoice[] {
+    return this.choosingSlots().flatMap((ref) => {
+      const moveIndex = lockedMove(this.state, 'player', ref.slot);
+      return moveIndex === null ? [] : [{ slot: ref.slot, moveIndex }];
+    });
+  }
+
   private createAboutToUseBox(): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
     container.add(this.createPanelFrame());
@@ -956,15 +1198,30 @@ export class BattleScene extends Phaser.Scene {
     if (this.mode !== 'moves') {
       return;
     }
-    const move = this.state.player.moves[this.selectedCommand];
-    if (!move) {
+    const chooser = this.chooser();
+    const move = chooser?.moves[this.selectedCommand];
+    if (!chooser || !move) {
       return;
     }
-    const guidance = describeMoveGuidance(move, getCombatantTypes(this.state.player), {
-      name: this.state.enemy.pokemon.base.name,
-      types: getCombatantTypes(this.state.enemy),
+    // The matchup is read against whoever this move would land on first, which
+    // in a double battle is the foe opposite the chooser until they say
+    // otherwise. A move that hits both is read against the nearer of the two:
+    // the other one's line is on its own plate.
+    const aim = this.aimableTargets();
+    const against = unitAt(this.state, aim[Math.min(this.choosingSlot, aim.length - 1)] ?? aim[0]);
+    const guidance = describeMoveGuidance(move, getCombatantTypes(chooser), {
+      name: against?.pokemon.base.name ?? '',
+      types: against ? getCombatantTypes(against) : [],
     });
-    this.moveGuidanceTexts[0]?.setText(guidance.summary).setColor(PANEL_GUIDANCE_INK);
+    this.moveGuidanceTexts[0]
+      ?.setText(
+        moveGuidanceFor(
+          guidance.summary,
+          { name: chooser.pokemon.base.name },
+          this.state.unitCount,
+        ),
+      )
+      .setColor(PANEL_GUIDANCE_INK);
     this.moveGuidanceTexts[1]?.setText(guidance.matchup).setColor(MATCHUP_COLORS[guidance.tone]);
   }
 
@@ -989,6 +1246,11 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.mode === 'moves') {
       this.dispatchAction({ type: 'use-move', moveIndex: this.selectedCommand });
+      return;
+    }
+
+    if (this.mode === 'target') {
+      this.dispatchAction({ type: 'aim-at', targetIndex: this.selectedCommand });
       return;
     }
 
@@ -1024,6 +1286,12 @@ export class BattleScene extends Phaser.Scene {
   private dispatchAction(action: BattleAction): void {
     switch (action.type) {
       case 'choose-fight':
+        // A slot already locked into a two-turn move has nothing to be asked.
+        this.pendingChoices = this.lockedChoices();
+        this.choosingSlot =
+          this.choosingSlots().find(
+            (ref) => !this.pendingChoices.some((choice) => (choice.slot ?? 0) === ref.slot),
+          )?.slot ?? 0;
         this.mode = 'moves';
         this.selectedCommand = 0;
         this.showCommands();
@@ -1044,7 +1312,10 @@ export class BattleScene extends Phaser.Scene {
         this.flee();
         return;
       case 'use-move':
-        this.useMove(action.moveIndex);
+        this.chooseMove(action.moveIndex);
+        return;
+      case 'aim-at':
+        this.aimAt(action.targetIndex);
         return;
       case 'select-item':
         this.selectItem(action.itemIndex);
@@ -1092,6 +1363,26 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     if (this.mode === 'party' && this.forcedReplacement) {
+      return;
+    }
+    // Backing out of the aim returns to the move list: the player is changing
+    // who it lands on, not whether to fight.
+    if (this.mode === 'target') {
+      this.mode = 'moves';
+      this.selectedCommand = this.aimingMoveIndex;
+      this.showCommands();
+      audioManager.play('cancel');
+      return;
+    }
+    // In a double battle, backing out of the second Pokemon's move list goes to
+    // the first one's, not to the main commands: the turn is one decision made
+    // twice, and undoing half of it is what B is for.
+    if (this.mode === 'moves' && this.pendingChoices.length > 0) {
+      const previous = this.pendingChoices.pop()!;
+      this.choosingSlot = previous.slot ?? 0;
+      this.selectedCommand = previous.moveIndex;
+      this.showCommands();
+      audioManager.play('cancel');
       return;
     }
     if (this.mode !== 'moves' && this.mode !== 'items' && this.mode !== 'balls' && this.mode !== 'party') {
@@ -1214,8 +1505,63 @@ export class BattleScene extends Phaser.Scene {
     ]);
   }
 
-  private useMove(moveIndex: number): void {
-    const result = resolveTurn(this.state, moveIndex, () => Math.random());
+  /**
+   * One of the player's Pokemon has picked a move.
+   *
+   * In a single battle this is the whole turn and it resolves at once. In a
+   * double it is half of one: the move may need an aim, and the other slot has
+   * still to be asked, so the choice is put on `pendingChoices` and the turn
+   * only runs once every slot has answered.
+   */
+  private chooseMove(moveIndex: number): void {
+    const chooser = this.chooser();
+    const move = chooser?.moves[moveIndex];
+    if (!chooser || !move) {
+      return;
+    }
+    // A move that lands on one foe, with two foes standing, is the one case
+    // there is anything to ask.
+    if (move.base.target === MoveTarget.Foe && this.aimableTargets().length > 1) {
+      this.aimingMoveIndex = moveIndex;
+      this.mode = 'target';
+      this.selectedCommand = Math.min(this.choosingSlot, this.aimableTargets().length - 1);
+      this.showCommands();
+      return;
+    }
+    this.recordChoice({ slot: this.choosingSlot, moveIndex });
+  }
+
+  /** The answer to the aim question, which completes this slot's choice. */
+  private aimAt(targetIndex: number): void {
+    const target = this.aimableTargets()[targetIndex];
+    if (!target) {
+      return;
+    }
+    this.recordChoice({ slot: this.choosingSlot, moveIndex: this.aimingMoveIndex, target });
+  }
+
+  /**
+   * Books one slot's action and either asks the next slot or takes the turn.
+   */
+  private recordChoice(choice: PlayerMoveChoice): void {
+    this.pendingChoices = [
+      ...this.pendingChoices.filter((existing) => (existing.slot ?? 0) !== (choice.slot ?? 0)),
+      choice,
+    ];
+    const answered = new Set(this.pendingChoices.map((existing) => existing.slot ?? 0));
+    const next = this.choosingSlots().find((ref) => !answered.has(ref.slot));
+    if (next) {
+      this.choosingSlot = next.slot;
+      this.mode = 'moves';
+      this.selectedCommand = 0;
+      this.showCommands();
+      return;
+    }
+    this.useMove(this.pendingChoices);
+  }
+
+  private useMove(choice: number | readonly PlayerMoveChoice[]): void {
+    const result = resolveTurn(this.state, choice, () => Math.random());
     if (result.events.length === 0) {
       return;
     }
@@ -1224,6 +1570,8 @@ export class BattleScene extends Phaser.Scene {
     this.persistActivePokemonHp();
     this.refreshStatusLabels();
     const rewardMessages = this.awardTrainerDefeatExperience(previousState, result.events);
+    this.pendingChoices = [];
+    this.choosingSlot = 0;
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
@@ -1382,7 +1730,12 @@ export class BattleScene extends Phaser.Scene {
     this.pendingItem = undefined;
     this.state = use.state;
     this.persistActivePokemonHp();
-    this.refreshPlayerHpDisplay();
+    // Whichever slot the medicine was drunk in - the plate that has to move is
+    // the one the Pokemon is standing on.
+    const healedSlot = playerSlotOf(this.state, target);
+    if (healedSlot) {
+      this.refreshPlayerHpDisplay(healedSlot);
+    }
     this.refreshStatusLabels();
     const enemyResult = resolveEnemyTurn(this.state, () => Math.random());
     this.state = enemyResult.state;
@@ -1395,14 +1748,24 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /**
-   * Puts the player's HP bar back in step with the battle state after it moved
+   * Puts a plate's HP bar back in step with the battle state after it moved
    * upwards. `animateHpDelta` only ever counts down, so healing needs this.
    */
-  private refreshPlayerHpDisplay(): void {
-    const { currentHp, pokemon } = this.state.player;
-    this.displayedHp.player = currentHp;
-    this.drawHpBar(this.playerHpBar, 189, 130, currentHp / pokemon.maxHp);
-    this.playerHpText.setText(`${currentHp}/${pokemon.maxHp}`);
+  private refreshPlayerHpDisplay(ref: SlotRef = slotRef('player', 0)): void {
+    const combatant = unitAt(this.state, ref);
+    const plate = this.plateFor(ref);
+    if (!combatant || !plate) {
+      return;
+    }
+    this.displayedHp.set(plateKey(ref.side, ref.slot), combatant.currentHp);
+    this.drawHpBar(
+      plate.hpBar,
+      plate.barX,
+      plate.barY,
+      combatant.currentHp / combatant.pokemon.maxHp,
+      plate.barWidth,
+    );
+    plate.hpText?.setText(`${combatant.currentHp}/${combatant.pokemon.maxHp}`);
   }
 
   private switchPokemon(partyIndex: number): void {
@@ -1410,7 +1773,9 @@ export class BattleScene extends Phaser.Scene {
     if (!pokemon) {
       return;
     }
-    if (pokemon === this.state.player.pokemon) {
+    // Already out means out in *either* slot: a double battle can otherwise be
+    // asked to put the same Pokemon on the field twice.
+    if (playerCombatants(this.state).some((combatant) => combatant.pokemon === pokemon)) {
       this.showPartyMessage(`${pokemon.base.name.toUpperCase()} is already out!`);
       return;
     }
@@ -1424,15 +1789,18 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const outgoingName = this.state.player.pokemon.base.name.toUpperCase();
+    // A forced replacement goes into the slot that emptied; a switch the player
+    // chose is the lead's, because the main commands are the lead's.
+    const into = slotRef('player', this.forcedReplacement ? this.replacementSlot : 0);
+    const outgoingName = unitAt(this.state, into)?.pokemon.base.name.toUpperCase() ?? '';
     const wasForcedReplacement = this.forcedReplacement;
     this.persistActivePokemonHp();
-    const switchIn = replacePlayerPokemon(this.state, pokemon);
+    const switchIn = replacePlayerPokemon(this.state, pokemon, into.slot);
     const switchedState = switchIn.state;
     this.state = switchedState;
     this.participatingPokemon.add(pokemon);
     this.forcedReplacement = false;
-    this.refreshPlayerCombatant();
+    this.refreshPlayerCombatant(into);
     const result = resolveEnemyTurn(switchedState, () => Math.random());
     this.state = result.state;
     this.persistActivePokemonHp();
@@ -1460,6 +1828,13 @@ export class BattleScene extends Phaser.Scene {
    */
   private offerAboutToUseSwitch(enemyName: string): boolean {
     if (!this.trainer || this.forcedReplacement || this.aboutToUseSwitching) {
+      return false;
+    }
+    // Never in a double battle: the question is about a field with nothing on
+    // it, and in a double the other slot is still standing there. There is also
+    // no free turn to spend - the Pokemon the swap would be made against has
+    // landed beside somebody who is already swinging.
+    if (this.state.unitCount > 1) {
       return false;
     }
     if (this.state.player.currentHp === 0) {
@@ -1540,76 +1915,123 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private persistActivePokemonHp(): void {
-    persistCombatantToPokemon(this.state.player);
+    // Everything the player has on the field, because a double battle has two
+    // of them and the one that was not acting still took the weather.
+    playerCombatants(this.state).forEach(persistCombatantToPokemon);
   }
 
   private refreshStatusLabels(): void {
-    this.playerStatusText.setText(
-      statusAbbreviation(this.state.player.primaryStatus, this.state.player.confusionTurns) ?? '',
-    );
-    this.enemyStatusText.setText(
-      statusAbbreviation(this.state.enemy.primaryStatus, this.state.enemy.confusionTurns) ?? '',
-    );
+    for (const side of ['player', 'enemy'] as const) {
+      for (const ref of slotsOf(this.state, side)) {
+        const combatant = unitAt(this.state, ref);
+        this.plateFor(ref)?.statusText.setText(
+          combatant
+            ? (statusAbbreviation(combatant.primaryStatus, combatant.confusionTurns) ?? '')
+            : '',
+        );
+      }
+    }
   }
 
+  /**
+   * Whether anybody has to be sent in before the fight can go on, and into
+   * which slot.
+   *
+   * In a single battle this is the whole party's last stand; in a double it is
+   * one slot of two, and the other goes on fighting while it is answered - so
+   * the battle is only lost when nothing is left to send into either.
+   */
   private prepareForcedReplacement(): void {
-    if (this.state.player.currentHp !== 0 || this.party.isAllFainted()) {
+    if (this.party.isAllFainted()) {
       return;
     }
+    const empty = slotsOf(this.state, 'player').find((ref) => {
+      const combatant = unitAt(this.state, ref);
+      return combatant !== null && combatant.currentHp === 0;
+    });
+    if (!empty) {
+      return;
+    }
+    const bench = this.party.pokemon.some(
+      (pokemon) =>
+        !pokemon.isFainted &&
+        !playerCombatants(this.state).some((combatant) => combatant.pokemon === pokemon),
+    );
+    if (!bench) {
+      return;
+    }
+    this.replacementSlot = empty.slot;
     this.state = { ...this.state, outcome: 'active' };
     this.forcedReplacement = true;
   }
 
-  private refreshPlayerCombatant(): void {
-    this.playerStatusBox.destroy();
-    this.playerStatusBox = this.createStatusBox(150, 104, this.state.player, true);
-    this.playerBannerText.setText(
-      combatantBanner('YOURS', getCombatantTypes(this.state.player)),
-    );
-    this.refreshStatusLabels();
-    this.playerSprite
-      .setTexture(`pokemon-back-${this.state.player.pokemon.base.dexId}`)
-      .setPosition(75, 137)
+  /** Redraws one slot's plate and sprite for whoever is standing in it now. */
+  private refreshCombatant(ref: SlotRef): void {
+    const combatant = unitAt(this.state, ref);
+    if (!combatant) {
+      return;
+    }
+    const plate = this.plateFor(ref);
+    plate?.container.destroy();
+    plate?.banner?.destroy();
+    this.createStatusBox(ref, combatant);
+    const spot = combatantSpot(ref.side, ref.slot, this.state.unitCount);
+    const facing = ref.side === 'player' ? 'back' : 'front';
+    this.spriteFor(ref)
+      ?.setTexture(`pokemon-${facing}-${combatant.pokemon.base.dexId}`)
+      .setPosition(spot.x, spot.y)
       .setAlpha(1);
-    this.displayedHp.player = this.state.player.currentHp;
+    this.refreshStatusLabels();
   }
 
-  private refreshEnemyCombatant(): void {
-    this.enemyStatusBox.destroy();
-    this.enemyStatusBox = this.createStatusBox(16, 16, this.state.enemy, false);
-    this.enemyBannerText.setText(
-      combatantBanner(this.enemyRole(), getCombatantTypes(this.state.enemy)),
-    );
-    this.enemySprite
-      .setTexture(`pokemon-front-${this.state.enemy.pokemon.base.dexId}`)
-      .setPosition(245, 68)
-      .setAlpha(1);
-    this.displayedEnemy = this.state.enemy.pokemon;
-    this.displayedHp.enemy = this.state.enemy.currentHp;
-    this.refreshStatusLabels();
+  private refreshPlayerCombatant(ref: SlotRef = slotRef('player', 0)): void {
+    this.refreshCombatant(ref);
+  }
+
+  private refreshEnemyCombatant(ref: SlotRef = slotRef('enemy', 0)): void {
+    this.refreshCombatant(ref);
+  }
+
+  /** Every enemy slot whose plate is drawn for somebody who has been replaced. */
+  private refreshReplacedEnemies(): void {
+    for (const ref of slotsOf(this.state, 'enemy')) {
+      const combatant = unitAt(this.state, ref);
+      if (combatant && this.displayed.get(plateKey(ref.side, ref.slot)) !== combatant.pokemon) {
+        this.refreshEnemyCombatant(ref);
+      }
+    }
   }
 
   /**
-   * Walks the health bar to where the step says it should be.
+   * Walks one plate's health bar to where the step says it should be.
    *
    * `damage` is signed: gear that pays HP back at the end of a turn is negative
    * damage, and it walks the same bar the other way rather than needing a second
-   * animation. The critical-HP alarm only ever fires on a loss.
+   * animation. The critical-HP alarm only ever fires on a loss, and only for
+   * one of the player's own.
    */
-  private animateHpDelta(user: 'player' | 'enemy', damage: number): void {
+  private animateHpDelta(ref: SlotRef, damage: number): void {
     if (damage === 0) {
       return;
     }
-    const from = this.displayedHp[user];
-    const pokemon =
-      user === 'player' ? this.state.player.pokemon : (this.displayedEnemy ?? this.state.enemy.pokemon);
+    const key = plateKey(ref.side, ref.slot);
+    const plate = this.plateFor(ref);
+    const pokemon = this.displayed.get(key) ?? unitAt(this.state, ref)?.pokemon;
+    if (!plate || !pokemon) {
+      return;
+    }
+    const from = this.displayedHp.get(key) ?? pokemon.currentHp;
     const to = Math.min(pokemon.maxHp, Math.max(0, from - damage));
-    this.displayedHp[user] = to;
-    if (damage > 0 && user === 'player' && from > pokemon.maxHp * 0.2 && to > 0 && to <= pokemon.maxHp * 0.2) {
+    this.displayedHp.set(key, to);
+    if (
+      damage > 0 &&
+      ref.side === 'player' &&
+      from > pokemon.maxHp * 0.2 &&
+      to > 0 &&
+      to <= pokemon.maxHp * 0.2
+    ) {
       audioManager.play('lowHp');
     }
-    const bar = user === 'player' ? this.playerHpBar : this.enemyHpBar;
-    const showNumbers = user === 'player';
     if (from === to) {
       return;
     }
@@ -1619,12 +2041,19 @@ export class BattleScene extends Phaser.Scene {
       duration: 400,
       ease: 'Linear',
       onUpdate: (tween) => {
-        const hp = Math.round(tween.getValue() ?? to);
-        const ratio = hp / pokemon.maxHp;
-        this.drawHpBar(bar, showNumbers ? 189 : 55, showNumbers ? 130 : 42, ratio);
-        if (showNumbers) {
-          this.playerHpText.setText(`${hp}/${pokemon.maxHp}`);
+        // The bar walks on wall-clock time, and the plate under it can be torn
+        // down and rebuilt while it is walking - a Pokemon that fell, and the
+        // next one sent into the same slot. The new plate is drawn correct the
+        // moment it is made, so a tween that outlived its own plate has nothing
+        // left to say: without this it went on writing to a destroyed Text, and
+        // a boss fight died on `drawImage of null` the first time anything was
+        // knocked out.
+        if (this.plateFor(ref) !== plate) {
+          return;
         }
+        const hp = Math.round(tween.getValue() ?? to);
+        this.drawHpBar(plate.hpBar, plate.barX, plate.barY, hp / pokemon.maxHp, plate.barWidth);
+        plate.hpText?.setText(`${hp}/${pokemon.maxHp}`);
       },
     });
   }
@@ -1673,14 +2102,14 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.state.outcome === 'active') {
-      if (this.displayedEnemy !== this.state.enemy.pokemon) {
-        this.refreshEnemyCombatant();
-      }
+      this.refreshReplacedEnemies();
       // A two-turn move takes the next turn with it. Opening the command menu
       // here would offer a choice the engine is going to overrule, so the turn
-      // is resolved straight away and narrated as what it is.
-      const locked = lockedMove(this.state, 'player');
-      if (locked !== null) {
+      // is resolved straight away and narrated as what it is. In a double
+      // battle that only holds while *every* slot is locked: one Pokemon
+      // halfway through a Solar Beam does not take the other one's turn away.
+      const locked = this.lockedChoices();
+      if (locked.length > 0 && locked.length === this.choosingSlots().length) {
         this.useMove(locked);
         return;
       }
@@ -1734,10 +2163,11 @@ export class BattleScene extends Phaser.Scene {
         if (result?.forgotten) {
           audioManager.play('moveLearned');
         }
-        if (offer.pokemon === this.state.player.pokemon) {
+        const slot = playerSlotOf(this.state, offer.pokemon);
+        if (slot) {
           // The moves menu reads the combatant's snapshot, so the new move has to
           // reach it or "learned" is followed by a menu that does not offer it.
-          this.state = refreshPlayerAfterLevelUp(this.state, this.state.player.pokemon.maxHp);
+          this.state = refreshPlayerAfterLevelUp(this.state, offer.pokemon.maxHp, slot.slot);
         }
         this.pendingCombatMessages.unshift({
           message: moveChoiceMessage(
@@ -1754,13 +2184,20 @@ export class BattleScene extends Phaser.Scene {
   private awardVictoryExperience(defeatedPokemon: PokemonInstance): StagedNote[] {
     const experience = experienceAwardForDefeat(defeatedPokemon.level);
     const messages: StagedNote[] = [];
-    const active = this.state.player.pokemon;
-    const activeMaxHpBeforeAward = active.maxHp;
-    let activeLevelledUp = false;
+    // Everyone the player has on the field, not just the lead: in a double
+    // battle both of them are looking at a plate that has to keep up.
+    const onField = slotsOf(this.state, 'player').flatMap((ref) => {
+      const combatant = unitAt(this.state, ref);
+      return combatant ? [{ ref, pokemon: combatant.pokemon, maxHpBefore: combatant.pokemon.maxHp }] : [];
+    });
+    const levelled: typeof onField = [];
 
     for (const pokemon of this.participatingPokemon) {
       const result = pokemon.gainExperience(experience);
-      activeLevelledUp ||= pokemon === active && result.levelsGained.length > 0;
+      const standing = onField.find((entry) => entry.pokemon === pokemon);
+      if (standing && result.levelsGained.length > 0) {
+        levelled.push(standing);
+      }
       // The species may already have changed under it, so the name every line
       // below is written with is read once, before any of them are said. A
       // Bulbasaur that levelled into an Ivysaur grew as a Bulbasaur and learns
@@ -1786,8 +2223,9 @@ export class BattleScene extends Phaser.Scene {
           // one call is the whole change, and it is deliberately tied to this
           // line rather than to the moment the experience was awarded.
           onShow: () => {
-            if (pokemon === this.state.player.pokemon) {
-              this.refreshPlayerCombatant();
+            const slot = playerSlotOf(this.state, pokemon);
+            if (slot) {
+              this.refreshPlayerCombatant(slot);
             }
           },
         })),
@@ -1808,8 +2246,8 @@ export class BattleScene extends Phaser.Scene {
       );
     }
 
-    if (activeLevelledUp) {
-      this.applyMidBattleLevelUp(activeMaxHpBeforeAward);
+    for (const entry of levelled) {
+      this.applyMidBattleLevelUp(entry.ref, entry.maxHpBefore);
     }
 
     return messages;
@@ -1830,19 +2268,30 @@ export class BattleScene extends Phaser.Scene {
    * still running, which is why this went unseen: a wild battle ends on the
    * knockout that awarded the experience.
    */
-  private applyMidBattleLevelUp(previousMaxHp: number): void {
-    const gainedHp = Math.max(0, this.state.player.pokemon.maxHp - previousMaxHp);
-    this.state = refreshPlayerAfterLevelUp(this.state, previousMaxHp);
-    const { currentHp, pokemon } = this.state.player;
+  private applyMidBattleLevelUp(ref: SlotRef, previousMaxHp: number): void {
+    const before = unitAt(this.state, ref);
+    if (!before) {
+      return;
+    }
+    const gainedHp = Math.max(0, before.pokemon.maxHp - previousMaxHp);
+    this.state = refreshPlayerAfterLevelUp(this.state, previousMaxHp, ref.slot);
+    const combatant = unitAt(this.state, ref);
+    const plate = this.plateFor(ref);
+    if (!combatant || !plate) {
+      return;
+    }
+    const key = plateKey(ref.side, ref.slot);
+    const { currentHp, pokemon } = combatant;
     // This turn's HP events have not been drawn yet and each one animates down
     // from `displayedHp`, so the gain has to move that starting point too or
     // the bar would settle a couple of points below the state it is showing.
     if (currentHp > 0) {
-      this.displayedHp.player = Math.min(pokemon.maxHp, this.displayedHp.player + gainedHp);
+      this.displayedHp.set(key, Math.min(pokemon.maxHp, (this.displayedHp.get(key) ?? 0) + gainedHp));
     }
-    this.playerLevelText.setText(levelLabel(pokemon.level));
-    this.drawHpBar(this.playerHpBar, 189, 130, this.displayedHp.player / pokemon.maxHp);
-    this.playerHpText.setText(`${this.displayedHp.player}/${pokemon.maxHp}`);
+    const shown = this.displayedHp.get(key) ?? currentHp;
+    plate.levelText.setText(levelLabel(pokemon.level));
+    this.drawHpBar(plate.hpBar, plate.barX, plate.barY, shown / pokemon.maxHp, plate.barWidth);
+    plate.hpText?.setText(`${shown}/${pokemon.maxHp}`);
   }
 
   private awardTrainerDefeatExperience(
@@ -1913,38 +2362,53 @@ export class BattleScene extends Phaser.Scene {
       audioManager.play(cue.name);
     }
     if (event.type === 'caught') {
+      const caught = this.spriteFor(slotRef('enemy', 0));
       this.cameras.main.flash(180, 255, 255, 255, false);
-      this.tweens.add({
-        targets: this.enemySprite,
-        scaleX: this.enemySprite.scaleX * 0.7,
-        scaleY: this.enemySprite.scaleY * 0.7,
-        alpha: 0,
-        duration: 320,
-        ease: 'Quad.in',
-      });
+      if (caught) {
+        this.tweens.add({
+          targets: caught,
+          scaleX: caught.scaleX * 0.7,
+          scaleY: caught.scaleY * 0.7,
+          alpha: 0,
+          duration: 320,
+          ease: 'Quad.in',
+        });
+      }
       return;
     }
 
     if (event.type === 'fainted') {
-      const sprite = event.user === 'player' ? this.playerSprite : this.enemySprite;
-      this.tweens.add({
-        targets: sprite,
-        y: sprite.y + 34,
-        alpha: 0,
-        duration: 500,
-        ease: 'Quad.in',
-      });
+      const sprite = this.spriteFor(slotRef(event.user, event.slot ?? 0));
+      if (sprite) {
+        this.tweens.add({
+          targets: sprite,
+          y: sprite.y + 34,
+          alpha: 0,
+          duration: 500,
+          ease: 'Quad.in',
+        });
+      }
       return;
     }
 
     if (event.type === 'enemy-sent-out') {
-      this.refreshEnemyCombatant();
+      this.refreshEnemyCombatant(slotRef('enemy', event.slot ?? 0));
       return;
     }
 
-    if (event.type === 'used-move') {
-      const attacker = event.user === 'player' ? this.playerSprite : this.enemySprite;
-      const target = event.user === 'player' ? this.enemySprite : this.playerSprite;
+    // A move that names itself and nothing else - a spread move's opening line -
+    // has no target to lunge at yet: each target's own `spread-damage` carries
+    // the lunge, so the naming line is left to be read.
+    if (event.type === 'used-move' && event.spread) {
+      return;
+    }
+
+    if (event.type === 'used-move' || event.type === 'spread-damage') {
+      const attacker = this.spriteFor(slotRef(step.actor ?? 'player', step.actorSlot));
+      const target = step.target ? this.spriteFor(slotRef(step.target, step.targetSlot)) : undefined;
+      if (!attacker) {
+        return;
+      }
       const direction = event.user === 'player' ? 16 : -16;
       this.tweens.add({
         targets: attacker,
@@ -1956,18 +2420,20 @@ export class BattleScene extends Phaser.Scene {
           if (cue?.at === 'impact') {
             audioManager.play(cue.name);
           }
-          target.setTintFill(0xffffff);
-          this.tweens.add({
-            targets: target,
-            alpha: 0.35,
-            yoyo: true,
-            duration: 90,
-            repeat: 1,
-            onComplete: () => target.clearTint(),
-          });
+          if (target) {
+            target.setTintFill(0xffffff);
+            this.tweens.add({
+              targets: target,
+              alpha: 0.35,
+              yoyo: true,
+              duration: 90,
+              repeat: 1,
+              onComplete: () => target.clearTint(),
+            });
+          }
           this.cameras.main.shake(60, 0.003);
           if (step.target) {
-            this.animateHpDelta(step.target, step.hpDelta);
+            this.animateHpDelta(slotRef(step.target, step.targetSlot), step.hpDelta);
           }
         },
       });
@@ -1975,7 +2441,7 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (step.target) {
-      this.animateHpDelta(step.target, step.hpDelta);
+      this.animateHpDelta(slotRef(step.target, step.targetSlot), step.hpDelta);
     }
   }
 

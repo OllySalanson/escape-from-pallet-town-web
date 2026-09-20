@@ -16,13 +16,28 @@ export type MoveCategory = (typeof MoveCategory)[keyof typeof MoveCategory];
  * single field that unlocks the most: every stat boost in this engine used to be
  * applied to the *other* side unconditionally, so Swords Dance, Agility, Amnesia
  * and Harden - anything a Pokemon does to itself - could not be written down.
+ *
+ * `BothFoes` is the one value the tutorial has no equivalent of, and it is not
+ * an invention: it is PokeAPI's `all-opponents`, which seventeen of the 273
+ * moves the 151 learn by level carry and five of the moves this game ships do
+ * (see `moves.ts`). It means nothing at all in a single battle - one foe is one
+ * foe - so it is a field a move may declare today and a double battle reads.
+ *
+ * `all-other-pokemon` (Earthquake, Explosion, Magnitude, Self-Destruct - the
+ * four that also hit your own partner) is deliberately absent: none of them is
+ * shipped, and a target nothing uses is a rule nothing tests.
  */
 export const MoveTarget = {
   Foe: 'foe',
+  BothFoes: 'both-foes',
   Self: 'self',
 } as const;
 
 export type MoveTarget = (typeof MoveTarget)[keyof typeof MoveTarget];
+
+/** Whether a target names the other side at all, as opposed to the user. */
+export const targetsTheOtherSide = (target: MoveTarget): boolean =>
+  target === MoveTarget.Foe || target === MoveTarget.BothFoes;
 
 /**
  * What a move is, beyond its type and power. Ported from the tutorial's

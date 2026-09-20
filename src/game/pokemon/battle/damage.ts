@@ -18,6 +18,17 @@ export type RandomSource = () => number;
 export const STAB_MULTIPLIER = 1.5;
 
 /**
+ * What a move that actually hits more than one Pokemon is worth against each of
+ * them: generation III's own halving, and the reason a spread move is a
+ * different decision rather than a free extra hit.
+ *
+ * It is charged on the swing rather than on the move, because the same Razor
+ * Leaf is full strength against one target and half against two - so a double
+ * battle in which the partner has already fallen pays the full figure again.
+ */
+export const SPREAD_DAMAGE_MULTIPLIER = 0.5;
+
+/**
  * Generation III's critical-hit ladder, per cent, indexed by the move's own
  * critical stage: 1/16, 1/8, 1/4, 1/3, then 1/2 for anything higher. Slash and
  * Razor Leaf are stage 1, and there are seven such moves among the 273 that
@@ -89,6 +100,8 @@ export const calculateDamage = (
    */
   weather: WeatherId | null = null,
   abilities?: DamageAbilities,
+  /** True when this same swing is landing on more than one Pokemon. */
+  spread = false,
 ): DamageResult => {
   const typeEffectiveness = getTypeEffectiveness(move.type, [
     defender.base.primaryType,
@@ -141,6 +154,7 @@ export const calculateDamage = (
       weatherDamageMultiplier(weather, move.type) *
       abilityAttack *
       abilityDefence *
+      (spread ? SPREAD_DAMAGE_MULTIPLIER : 1) *
       attackMultiplier(attacker),
   );
 
