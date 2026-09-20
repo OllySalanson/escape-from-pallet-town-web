@@ -15,7 +15,12 @@ import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle
 import { TypewriterQueue } from '../ui/TypewriterQueue';
 import {
   BATTLE_SCREEN_WIDTH,
+  MAKE_ROOM_PAGE,
   MOVE_COMMAND_HEIGHT,
+  formatPackRoomRow,
+  makeRoomPromptLayout,
+  makeRoomRowLayout,
+  packRoomPrompt,
   combatantBanner,
   enemyBannerRole,
   combatPresentationSteps,
@@ -324,5 +329,34 @@ describe('what a status condition reads like', () => {
     expect(
       eventToMessage({ type: 'status-damage', user: 'player', name: 'Squirtle', status: 'burn', damage: 4 }),
     ).toBe('Your SQUIRTLE is hurt by a burn!');
+  });
+});
+
+describe('making room for a catch from inside the fight', () => {
+  it('prices a row in squares and answers it above the list', () => {
+    expect(formatPackRoomRow({ displayName: 'Super Potion', carried: 2, squares: 2 })).toBe(
+      'SUPER POTION x2 · 2sq',
+    );
+    // What one costs, and whether it is the end of it: the player cannot see
+    // the packing, so the panel has to say whether one more drop is coming.
+    expect(packRoomPrompt({ squares: 1, freesEnough: false })).toBe(
+      'Frees 1 square - not enough yet.',
+    );
+    expect(packRoomPrompt({ squares: 4, freesEnough: true })).toBe(
+      'Frees 4 squares - the ball follows.',
+    );
+    // The row that changes nothing says so in the same place.
+    expect(packRoomPrompt()).toBe('Keep everything. The catch is off.');
+  });
+
+  it('seats its prompt and every row inside the one battle panel', () => {
+    const seats = [
+      makeRoomPromptLayout,
+      ...Array.from({ length: MAKE_ROOM_PAGE }, (_, index) => makeRoomRowLayout(index)),
+    ];
+    expect(seats.every(({ y }) => y >= 0 && y + 12 <= BATTLE_PANEL.height)).toBe(true);
+    expect(
+      seats.every(({ x }) => x >= BATTLE_PANEL.x && x < BATTLE_PANEL.x + BATTLE_PANEL.width),
+    ).toBe(true);
   });
 });

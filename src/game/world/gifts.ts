@@ -70,8 +70,10 @@ export const REEDBEDS_PIKACHU: PokemonGift = {
   ],
   offerPackLine:
     'PIKACHU is in your pack - your party is full. It is only yours once you carry it out of the reeds.',
+  // It is said after `packFullForPokemonLine`, which has already counted the
+  // squares, so it adds what only she can say: nothing is lost by waiting.
   offerNoRoomLine:
-    'You have not the room for it. Put something down and come back - it is not going anywhere, and neither am I.',
+    'Put something down and come back - it is not going anywhere, and neither am I.',
   after: [
     'It has stopped watching the pylons. Good.',
     'Mind the shore road. Whatever is hunting out there does not care that it is small.',

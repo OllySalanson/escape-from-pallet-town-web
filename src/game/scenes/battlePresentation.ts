@@ -419,6 +419,77 @@ export const describeItemGuidance = (item: { readonly description: string }): st
 /** Said when the ITEM command is chosen with nothing in the medicine pocket. */
 export const NO_BATTLE_ITEMS_MESSAGE = 'No medicine in your pack!';
 
+/**
+ * Making room for a catch, from inside the fight that refused it.
+ *
+ * A pack with no room used to refuse the ball and tell the player to drop
+ * something from the bag - a screen a battle has no door to, so the only way to
+ * obey was to flee, which loses the Pokemon the refusal was about. The refusal
+ * is now the doorway: the panel lists what is in the pack and what each piece
+ * stands on, and the ball is thrown the moment one of them has bought the room.
+ *
+ * It is the panel's own frame and the party list's own pitch, because the
+ * bottom of the battle screen is one surface and this is one more question
+ * asked in it. Six kinds fit; a pack holding more is paged.
+ */
+export const MAKE_ROOM_COLUMNS = 2;
+export const MAKE_ROOM_ROWS = 3;
+/** How many rows the panel shows at once, the last of which may be the way out. */
+export const MAKE_ROOM_PAGE = MAKE_ROOM_COLUMNS * MAKE_ROOM_ROWS;
+
+export const makeRoomPromptLayout = { x: BATTLE_PANEL.x + PANEL_INSET_X, y: 4 } as const;
+export const makeRoomRowLayout = (index: number): { x: number; y: number } => ({
+  x: BATTLE_PANEL.x + PANEL_INSET_X + (index % MAKE_ROOM_COLUMNS) * MOVE_COLUMN_WIDTH,
+  y: 19 + Math.floor(index / MAKE_ROOM_COLUMNS) * 14,
+});
+
+/**
+ * The row that changes nothing, spelled out rather than left to Escape.
+ *
+ * Declining has to be as visible as dropping: it is the answer for a player who
+ * would rather keep the Potion than the Pokemon, and a choice reachable only by
+ * a key nobody was told about is not a choice.
+ */
+export const KEEP_PACK_ROW = 'KEEP THE PACK';
+
+/** What the refusal says before the panel opens: the price, and what it buys. */
+export const MAKE_ROOM_INVITE = 'Choose what to put down - what you drop stays here.';
+
+/**
+ * Said when the pack is full and none of it is yours to put down: everything in
+ * it is already being carried home. It is a statement rather than an
+ * instruction, because there is nothing here the player could do about it.
+ */
+export const NOTHING_TO_DROP_MESSAGE =
+  'Nothing in the pack can be put down - it is all POKéMON.';
+
+/** One kind in the pack: what it is, how many, and the squares one stands on. */
+export const formatPackRoomRow = (choice: {
+  readonly displayName: string;
+  readonly carried: number;
+  readonly squares: number;
+}): string => `${choice.displayName.toUpperCase()} x${choice.carried} · ${choice.squares}sq`;
+
+/**
+ * The line above the rows, answering whichever one the cursor is on.
+ *
+ * It says what putting one down buys and whether that is the end of it, because
+ * four free squares scattered around a Potion are not a seat for a Pidgey and
+ * the player cannot see the packing. Undefined is the KEEP THE PACK row.
+ */
+export const packRoomPrompt = (choice?: {
+  readonly squares: number;
+  readonly freesEnough: boolean;
+}): string => {
+  if (!choice) {
+    return 'Keep everything. The catch is off.';
+  }
+  const freed = choice.squares === 1 ? '1 square' : `${choice.squares} squares`;
+  return choice.freesEnough
+    ? `Frees ${freed} - the ball follows.`
+    : `Frees ${freed} - not enough yet.`;
+};
+
 /** Whole seconds, so a cost printed on a command reads the same as the raid timer. */
 export const formatSeconds = (ms: number): string => `${Math.round(ms / 1_000)}s`;
 

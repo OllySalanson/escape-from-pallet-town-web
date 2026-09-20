@@ -88,6 +88,10 @@ that save opens on, by clicking the insertion's own row in the loadout.
   single battle and never sees the thing it was sent to look at.
 - `--starter=Charmander` - which of the picker's three cards is taken. Anything
   measured per starter needs it; the default is Bulbasaur.
+- `--stash=itemId[:n],..` - a player who has banked supplies, written into the
+  save's vault before the lobby opens. The loadout's stepper cannot pack more
+  than the vault holds, so this is what makes a pack filled to its **last
+  square** reachable - which is the only state the pack-full refusals happen in.
 - `--pack=itemId[:n],..` - puts supplies in the raid bag by the loadout row's own
   stepper. **Nothing is packed by default** - the flow starts the pack empty,
   because the loadout is the decision the game is built around - so a driver that
@@ -112,6 +116,14 @@ to anything - the way along a reveal, which an exit once stood in.
 the run plan: a map's authored loot position is only a fallback, so nothing else
 can send a driver to a thing on the ground.
 `--fight` stays in every fight instead of running from the wild ones.
+
+`packFull.mjs <url> <out dir>` is the pack filled to its last square and walked
+into each refusal that fullness causes: the catch a fight has to make room for
+(`--drop`, the default, or `--keep`), the ground loot that will not go in
+(`--loot`) and the gift the giver holds on to (`--gift`). `--potions=` and
+`--balls=` are what fills the pack, `--plain` is the real-speed pass on a plain
+URL. It is the only driver that reaches any of them, because a full pack needs a
+vault that could fill it (`--stash`) and then a wild fight to be standing in.
 
 Nobody chooses the other two endings, so they are reached sideways. The clock
 runs out on a driver sent to an exit that will not open - `--exit=west-culvert`

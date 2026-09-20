@@ -167,7 +167,7 @@ import {
 import { hasHunterIntel } from '../hub/outfitter';
 import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
-import { tryActivatePoi } from '../world/pois';
+import { cacheRefusalLine, tryActivatePoi } from '../world/pois';
 import {
   isLandmarkWorked,
   withWorkedExitsOpen,
@@ -450,6 +450,12 @@ export class WorldScene extends Phaser.Scene {
   private pendingResultScreen = false;
   private trainerEncounters: readonly RunTrainerEncounter[] = [];
   private readonly defeatedTrainerIds = new Set<string>();
+  /**
+   * Gear a beaten boss dropped that the pack had no room for. It waits here
+   * rather than being destroyed - see `claimBossGear` - and rides through a
+   * fight in the carriage.
+   */
+  private unclaimedBossGear: RaidCarriage['unclaimedBossGear'] = [];
   private readonly collectedLootIds = new Set<string>();
   private readonly lootSprites = new Map<string, Phaser.GameObjects.Image>();
   private readonly activatedPoiIds = new Set<string>();
@@ -571,6 +577,7 @@ export class WorldScene extends Phaser.Scene {
     this.directionPresses.clear();
     this.facing = 'down';
     this.caughtPokemonStash = [];
+    this.unclaimedBossGear = [];
     this.extractionMarkers = [];
     this.timerThreat = 'normal';
     // A gate opened in the last raid is in the save, and is read back from it;
@@ -622,6 +629,9 @@ export class WorldScene extends Phaser.Scene {
     // derived from them, and the map cannot be asked for until that is known.
     this.defeatedTrainerIds.clear();
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
+    // Gear still owed from a boss beaten earlier in this raid comes back before
+    // the new wins are settled, so one list is claimed in the order it was won.
+    this.unclaimedBossGear = data.unclaimedBossGear ?? [];
     const openedGates = this.settleBossProgress(data.savedGame);
     if (!this.runSession) {
       this.restoreSavedGame(data.savedGame);
@@ -732,23 +742,51 @@ export class WorldScene extends Phaser.Scene {
    * the supply delta and the result screen all already know what to do with it.
    */
   private takeBossGear(newlyBeaten: readonly string[]): readonly string[] {
-    return bossGearDropped(this.trainerEncounters, newlyBeaten).flatMap((drop) => {
-      if (!this.bag.add(drop.itemId, 1)) {
-        // Gear comes off a boss once per save and the win is already written,
-        // so a full pack loses it for good. That is said out loud rather than
-        // swallowed: a player who packed to the last square is owed the reason.
-        const gear = getItemById(drop.itemId);
-        return [
-          `${drop.name} was carrying a ${gear?.displayName.toUpperCase() ?? 'PIECE OF GEAR'} - and your pack has no room for it.`,
-          'It stays where it fell. Deploy with a square to spare next time.',
-        ];
-      }
+    this.unclaimedBossGear = [
+      ...this.unclaimedBossGear,
+      ...bossGearDropped(this.trainerEncounters, newlyBeaten).map(({ itemId, name }) => ({
+        itemId,
+        name,
+      })),
+    ];
+    return this.claimBossGear();
+  }
+
+  /**
+   * Hands over whatever gear is waiting and the pack now has room for.
+   *
+   * Gear comes off a boss once per save, at the moment the win is written, and
+   * a full pack used to destroy it: the player was told after the fact, with
+   * nothing they could have done from where they stood. It waits instead - in
+   * the carriage, so it survives the next fight - and `update()` asks again
+   * whenever the pack has changed, so the answer to "make room" is simply to
+   * make room. Nothing is claimed twice: a piece leaves this list only when the
+   * pack has actually taken it.
+   */
+  private claimBossGear(): readonly string[] {
+    if (this.unclaimedBossGear.length === 0) {
+      return [];
+    }
+    const waiting: { itemId: string; name: string }[] = [];
+    const lines: string[] = [];
+    for (const drop of this.unclaimedBossGear) {
       const item = getItemById(drop.itemId);
-      return [
-        `${drop.name} was carrying a ${item?.displayName.toUpperCase() ?? 'PIECE OF GEAR'}. You take it.`,
+      const gearName = item?.displayName.toUpperCase() ?? 'PIECE OF GEAR';
+      if (!this.bag.add(drop.itemId, 1)) {
+        waiting.push({ ...drop });
+        lines.push(
+          `${drop.name} was carrying a ${gearName} - and your pack has no room for it.`,
+          'It is yours the moment you make room: drop something from the BAG.',
+        );
+        continue;
+      }
+      lines.push(
+        `${drop.name} was carrying a ${gearName}. You take it.`,
         `${item?.description ?? ''} Give it to a POKéMON from the party screen - and get it home.`,
-      ];
-    });
+      );
+    }
+    this.unclaimedBossGear = waiting;
+    return lines;
   }
 
   /** The map as it stands for this player: every gate their wins have opened, open. */
@@ -825,6 +863,15 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (this.tryExtractWhereStanding()) {
+      return;
+    }
+
+    // Gear a boss dropped into a pack that had no room for it is handed over
+    // the moment there is room, whatever bought it - a Potion drunk, a crate
+    // put down. Asked here because this is where the player is at rest with
+    // nothing on screen to read, and guarded by an empty list, which is what it
+    // holds on every frame of almost every raid.
+    if (this.unclaimedBossGear.length > 0 && this.tryClaimWaitingBossGear()) {
       return;
     }
 
@@ -2762,6 +2809,7 @@ export class WorldScene extends Phaser.Scene {
       caughtPokemonStash: this.caughtPokemonStash,
       runSession: this.runSession,
       defeatedTrainerIds: [...this.defeatedTrainerIds],
+      unclaimedBossGear: this.unclaimedBossGear,
       collectedLootIds: [...this.collectedLootIds],
       activatedPoiIds: [...this.activatedPoiIds],
       hunterState: this.hunterState,
@@ -2986,13 +3034,26 @@ export class WorldScene extends Phaser.Scene {
       this.isLootAvailable(),
       this.activatedPoiIds,
       (itemId, quantity) => this.collectRunItem(itemId, quantity),
+      (reward) => this.bag.fitsAll(reward),
     );
     if (result === 'unavailable') {
       return null;
     }
     if (result === 'bag-full') {
       audioManager.play('denied');
-      return ['Bag is full. The marked cache remains sealed.'];
+      // Nothing is taken and nothing is worked, so the landmark is still here:
+      // the pack is one key away, and the way forward is to put something down
+      // and walk back on to it. The message has to say all of that, including
+      // the part a player cannot see - that the exit this landmark opens has
+      // not opened either.
+      return [
+        `${cacheRefusalLine(poi!)} Drop something from the BAG and work it again.`,
+        ...(poi!.effect === 'unlock-extraction'
+          ? [
+              `${poi!.unlockedExtractionLabel ?? 'The exit it opens'} stays shut until the cache is taken.`,
+            ]
+          : []),
+      ];
     }
 
     this.poiSprites.get(poi!.id)?.destroy();
@@ -3206,6 +3267,20 @@ export class WorldScene extends Phaser.Scene {
       return false;
     }
     this.extractThrough(point);
+    return true;
+  }
+
+  /** @returns Whether a waiting piece of gear was handed over and spoken for. */
+  private tryClaimWaitingBossGear(): boolean {
+    const owed = this.unclaimedBossGear.length;
+    const lines = this.claimBossGear();
+    if (this.unclaimedBossGear.length === owed) {
+      return false;
+    }
+    audioManager.play('lootPickup');
+    // An interruption, because the player did not ask for it and the key they
+    // are already holding has to be able to answer it.
+    this.interrupt(lines);
     return true;
   }
 

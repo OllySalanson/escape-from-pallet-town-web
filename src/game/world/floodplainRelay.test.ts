@@ -40,24 +40,36 @@ describe('Floodplain Relay', () => {
     const grants: string[] = [];
 
     expect(
-      tryActivatePoi(rangerStation, true, activated, (itemId, quantity) => {
-        grants.push(`${itemId}:${quantity}`);
-        return true;
-      }),
+      tryActivatePoi(
+        rangerStation,
+        true,
+        activated,
+        (itemId, quantity) => {
+          grants.push(`${itemId}:${quantity}`);
+          return true;
+        },
+        () => true,
+      ),
     ).toBe('activated');
     expect(grants).toEqual([]);
     expect(activated).toEqual(new Set([rangerStation.id]));
-    expect(tryActivatePoi(rangerStation, true, activated, () => true)).toBe('unavailable');
+    expect(tryActivatePoi(rangerStation, true, activated, () => true, () => true)).toBe('unavailable');
   });
 
   it('only banks the Flooded Supply Vault reward after extraction', () => {
     const extracted = new RunManager();
     extracted.startRun({ party: [], items: [] }, { mapId: 'floodplain-relay', durationMs: 60_000 });
     expect(
-      tryActivatePoi(vault, true, new Set(), (itemId, quantity) => {
-        extracted.registerFoundItem(itemId, quantity);
-        return true;
-      }),
+      tryActivatePoi(
+        vault,
+        true,
+        new Set(),
+        (itemId, quantity) => {
+          extracted.registerFoundItem(itemId, quantity);
+          return true;
+        },
+        () => true,
+      ),
     ).toBe('activated');
     expect(extracted.resolveEscape().bankedItems).toEqual([
       { itemId: 'great-ball', quantity: 2 },
@@ -66,10 +78,16 @@ describe('Floodplain Relay', () => {
 
     const wiped = new RunManager();
     wiped.startRun({ party: [], items: [] }, { mapId: 'floodplain-relay', durationMs: 60_000 });
-    tryActivatePoi(vault, true, new Set(), (itemId, quantity) => {
-      wiped.registerFoundItem(itemId, quantity);
-      return true;
-    });
+    tryActivatePoi(
+      vault,
+      true,
+      new Set(),
+      (itemId, quantity) => {
+        wiped.registerFoundItem(itemId, quantity);
+        return true;
+      },
+      () => true,
+    );
     const wipeResult = wiped.resolveWipe();
     expect(wipeResult.bankedItems).toEqual([]);
     expect(wipeResult.lostItems).toEqual([

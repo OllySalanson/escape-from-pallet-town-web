@@ -131,6 +131,27 @@ export class Bag {
     );
   }
 
+  /**
+   * Whether a whole set of additions goes in **together**.
+   *
+   * Asked as one question rather than one id at a time, because a cache is
+   * taken whole or not at all: two Poke Balls that fit and a Potion that does
+   * not used to leave the balls in the pack and the cache still sealed, which
+   * is a cache that can be opened twice.
+   */
+  public fitsAll(
+    additions: readonly { readonly itemId: string; readonly quantity: number }[],
+  ): boolean {
+    if (this.capacity === null) {
+      return true;
+    }
+    const trial: Record<string, number> = { ...this.contents };
+    for (const { itemId, quantity } of additions) {
+      trial[itemId] = (trial[itemId] ?? 0) + quantity;
+    }
+    return fitsInGrid(trial, this.capacity, this.cargoValue);
+  }
+
   /** How many more of an id would go in, up to `limit`. */
   public room(itemId: string, limit = 99): number {
     return this.capacity === null

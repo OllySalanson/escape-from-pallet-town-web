@@ -32,6 +32,7 @@ import {
   type BattleState,
 } from '../pokemon/battle/battleEngine';
 import { BULBASAUR, PIDGEY, SQUIRTLE } from '../pokemon/species';
+import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
@@ -1126,5 +1127,160 @@ describe('throwing a ball in a wild battle', () => {
     } finally {
       roll.mockRestore();
     }
+  });
+});
+
+/**
+ * The captain, 2026-09-20: "I'm just battling a Magikarp and it says that I need
+ * to make space in my bag to catch a Magikarp - but there's no bag management."
+ *
+ * The pack refuses the catch and names the squares, which is right, and then
+ * tells the player to do a thing the fight gives them no way to do: the bag
+ * cannot be opened from a battle, and the only obedient move is to flee, which
+ * loses the Pokemon the refusal was about. The refusal is now the doorway.
+ */
+describe('a catch the pack has no room for', () => {
+  /** A pack packed to its last square, with one ball still in it. */
+  const fullPack = () => new Bag({ potion: 17, 'poke-ball': 1 });
+
+  const open = (bag: Bag) => {
+    const harness = createBattleSceneHarness({ bag });
+    (harness.scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    const press = (match: string, from = 0): void => {
+      const row = harness.renderedTexts
+        .slice(from)
+        .filter(({ text }) => text.includes(match))
+        .at(-1);
+      if (!row) {
+        throw new Error(`No command row matching ${match}`);
+      }
+      row.handlers.pointerdown();
+    };
+    const readPanel = (from: number): string[] =>
+      harness.renderedTexts.slice(from).map(({ text }) => text);
+    return { ...harness, press, readPanel };
+  };
+
+  it('spends no ball, and opens the choice of what to put down', () => {
+    const bag = fullPack();
+    const { scene, dialog, press, renderedTexts } = open(bag);
+    const before = renderedTexts.length;
+
+    press('BALL x1');
+
+    // Nothing is spent to find out, whichever ball was chosen.
+    expect(bag.count('poke-ball')).toBe(1);
+    expect(dialog.shownMessages[0]).toContain('BULBASAUR needs 4 squares');
+    // The refusal is read, and then the panel asks the question it raises.
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    expect((scene as unknown as { mode: string }).mode).toBe('make-room');
+    const panel = renderedTexts.slice(before).map(({ text }) => text);
+    expect(panel.some((text) => text.includes('POTION x17 \u00b7 1sq'))).toBe(true);
+    // The one ball left is what the room is being made for, so it is not on
+    // the table: inviting the player to put it down would be a second trap in
+    // the same breath as the first.
+    expect(panel.some((text) => text.includes('POKÉ BALL'))).toBe(false);
+    expect(panel.some((text) => text.includes('KEEP THE PACK'))).toBe(true);
+  });
+
+  it('throws the held ball the moment a drop has bought the room', () => {
+    const roll = vi.spyOn(Math, 'random').mockReturnValue(0.01);
+    try {
+      const bag = fullPack();
+      const { scene, press, renderedTexts } = open(bag);
+
+      const before = renderedTexts.length;
+      press('BALL x1');
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      // Four Potions is four squares, and a 2x2 Bulbasaur needs all four of
+      // them together - so the first three drops leave the panel open.
+      for (let drop = 0; drop < 4; drop += 1) {
+        press('POTION x', before);
+      }
+
+      expect(bag.count('potion')).toBe(13);
+      // The ball held over the refusal is the ball thrown, and only then.
+      expect(bag.count('poke-ball')).toBe(0);
+      expect((scene as unknown as { state: { outcome: string } }).state.outcome).toBe('caught');
+    } finally {
+      roll.mockRestore();
+    }
+  });
+
+  it('keeps the pack, spends nothing, and hands the fight back whole', () => {
+    const bag = fullPack();
+    const { scene, press, renderedTexts } = open(bag);
+
+    const before = renderedTexts.length;
+    press('BALL x1');
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    press('KEEP THE PACK', before);
+
+    expect(bag.count('potion')).toBe(17);
+    expect(bag.count('poke-ball')).toBe(1);
+    // Every command is back: fighting on is a way forward, and fleeing is only
+    // one of five.
+    expect((scene as unknown as { mode: string }).mode).toBe('main');
+    expect(renderedTexts.slice(-5).map(({ text }) => text)).toEqual([
+      '\u25b6 FIGHT',
+      '  BALL x1',
+      '  POKéMON',
+      '  ITEM x17',
+      expect.stringContaining('RUN'),
+    ]);
+  });
+
+  it('Escape is the same answer as the row, so the panel is never a trap', () => {
+    const bag = fullPack();
+    const { scene, press } = open(bag);
+
+    press('BALL x1');
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    (scene as unknown as { goBack(): void }).goBack();
+
+    expect((scene as unknown as { mode: string }).mode).toBe('main');
+    expect(bag.count('potion')).toBe(17);
+  });
+
+  it('throws the ball that was chosen, not the one that ends up in its place', () => {
+    const roll = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      // A Great Ball was chosen; putting down the last Poke Ball renumbers the
+      // list, and the throw must still be the Great Ball.
+      const bag = new Bag({ potion: 15, 'poke-ball': 1, 'great-ball': 2 });
+      const { scene, press, renderedTexts } = open(bag);
+      const before = renderedTexts.length;
+
+      press('BALL x3');
+      press('GREAT BALL x', before);
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      const panelFrom = renderedTexts.length;
+      press('POKÉ BALL x1', before);
+      for (let drop = 0; drop < 3; drop += 1) {
+        press('POTION x', panelFrom);
+      }
+
+      expect(bag.count('poke-ball')).toBe(0);
+      expect(bag.count('great-ball')).toBe(1);
+    } finally {
+      roll.mockRestore();
+    }
+  });
+
+  it('says so plainly when there is nothing in the pack to put down', () => {
+    // Every square is a Pokemon already being carried home, so there is nothing
+    // here the player could trade - which is a fact, not an instruction.
+    const bag = new Bag({ 'poke-ball': 1 });
+    bag.setCargo(
+      [0, 1, 2, 3].map((index) => pokemonCargo(`carried-${index}`, new Pokemon(PIDGEY, 4))),
+    );
+    const { scene, dialog, press } = open(bag);
+
+    press('BALL x1');
+
+    expect(dialog.shownMessages[0]).toContain('it is all POKéMON');
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    expect((scene as unknown as { mode: string }).mode).toBe('main');
+    expect(bag.count('poke-ball')).toBe(1);
   });
 });
