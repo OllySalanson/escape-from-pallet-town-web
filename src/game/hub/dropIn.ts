@@ -10,6 +10,7 @@ import { HUNTER_TIERS } from '../world/hunter';
 import { buildMinimap, type Minimap, type MinimapMark } from '../world/minimap';
 import { surveyedTiles, type SurveyRecord } from '../world/survey';
 import { bossEncounters, createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
+import { exitsOpenForGood, withWorkedExitsOpen, workedLandmarksOn } from '../world/workedLandmarks';
 import { WORLD_MAP_NAMES, type WorldMapDefinition, type WorldMapId } from '../worldMap';
 
 /**
@@ -70,6 +71,8 @@ export interface ExitLine {
   readonly label: string;
   /** OPEN, OPENS IN 25s, WORK THE SLUICE WHEEL - the map's own words. */
   readonly opens: string;
+  /** Open because a contract finished the landmark that used to seal it. */
+  readonly worked?: boolean;
 }
 
 export interface WildlifeLine {
@@ -113,6 +116,8 @@ export interface DropInBriefing {
 export interface DropInContext {
   readonly map: WorldMapDefinition;
   readonly defeatedBosses: readonly string[];
+  /** Contracts banked, which is what keeps a landmark worked (`workedLandmarks`). */
+  readonly completedContracts: readonly string[];
   readonly raidRecord: Readonly<Record<string, MapRaidRecord>> | undefined;
   readonly surveyed: SurveyRecord | undefined;
   readonly insertionIds: readonly RunInsertionId[];
@@ -193,6 +198,7 @@ export function buildDropInBriefing(
   const bosses = bossEncounters(createRunTrainerEncounters()).filter((boss) => boss.mapId === mapId);
   const beaten = bosses.filter((boss) => context.defeatedBosses.includes(boss.bossId));
 
+  const openedByWork = exitsOpenForGood(mapId, context.completedContracts);
   const districts = districtsForMap(mapId);
   const walked = surveyedTiles(context.surveyed?.[mapId], context.map.width);
   // Asked through `districtAt`, not off the rectangles: districts overlap and
@@ -254,9 +260,15 @@ export function buildDropInBriefing(
       bossName: bosses.find((boss) => boss.bossId === gate.bossId)?.trainer.name ?? 'SOMEBODY',
       open: isGateOpen(gate, context.defeatedBosses),
     })),
-    exits: EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => ({
+    exits: withWorkedExitsOpen(
+      EXTRACTION_POINTS.filter((point) => point.mapId === mapId),
+      context.completedContracts,
+    ).map((point) => ({
       label: point.label,
       opens: extractionRequirementText(point, 0),
+      // Named apart from an exit that was always open, because this one is the
+      // player's own work and this screen is where they come to see it.
+      ...(openedByWork.includes(point.label) ? { worked: true } : {}),
     })),
     wildlife: tables.map(({ district, table }) => ({
       place: district?.name ?? WORLD_MAP_NAMES[mapId].toUpperCase(),
@@ -326,6 +338,12 @@ export function placePicture(
     .map((id) => RUN_INSERTIONS[id])
     .filter((entry) => entry.mapId === mapId);
   const opened = gatesForMap(mapId).filter((gate) => isGateOpen(gate, context.defeatedBosses));
+  // A landmark this save finished with. It is lit and glyphed whether or not
+  // the survey has reached it, for the same reason a door you opened is: it is
+  // yours, and watching the map carry your own work is what this screen is for.
+  const worked = workedLandmarksOn(mapId, context.completedContracts)
+    .map((work) => context.map.pois.find((poi) => poi.id === work.poiId))
+    .filter((poi): poi is (typeof context.map.pois)[number] => poi !== undefined);
   const marks: MinimapMark[] = [
     ...ours.map((entry) => ({
       position: entry.position,
@@ -343,6 +361,7 @@ export function placePicture(
       position: point.position,
       char: 'X',
     })),
+    ...worked.map((poi) => ({ position: poi.position, char: 'K', always: true })),
   ];
   return buildMinimap({
     map: context.map,
@@ -350,6 +369,7 @@ export function placePicture(
     lit: [
       ...ours.map((entry) => entry.position),
       ...opened.flatMap((gate) => gate.tiles),
+      ...worked.map((poi) => poi.position),
     ],
     marks,
   });

@@ -40,6 +40,8 @@ export const WORLD_ICONS = {
   supplyCrate: 'supply-crate',
   supplyCache: 'supply-cache',
   radioMast: 'radio-mast',
+  /** A landmark a banked contract finished with: the mast, standing, switched on. */
+  landmarkWorked: 'landmark-worked',
   signPost: 'sign-post',
   extractionOpen: 'extraction-open',
   extractionLocked: 'extraction-locked',

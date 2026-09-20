@@ -1,4 +1,5 @@
 import type { RaidContract } from './contracts';
+import { workLeftByContract } from '../world/workedLandmarks';
 import { boardContracts, type StandingBoardProgress } from './standingBoard';
 
 /** What became of the contract a raid carried, as its result screen needs it. */
@@ -42,8 +43,12 @@ export function isStillOnBoard(contract: RaidContract, progressAfter: StandingBo
  */
 export function contractReportLine(contract: RaidContract, outcome: ContractOutcome): string {
   if (outcome.banked) {
+    // What the world keeps is said on the raid that bought it and never again:
+    // it is a change to the map, so a player who reads it once knows to expect
+    // it, and `world/workedLandmarks.ts` derives it from this same list.
+    const kept = workLeftByContract(contract.id);
     return outcome.granted
-      ? contract.reward.summary
+      ? `${contract.reward.summary}${kept ? ` ${kept.note}` : ''}`
       : 'Already banked on an earlier raid, so there is no new unlock this time.';
   }
   const stays = isStillOnBoard(contract, outcome.progressAfter);

@@ -10,6 +10,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import { stepDistances } from '../world/mapStructure';
 import { districtEncounterTables } from '../world/localEncounters';
 import { EXTRACTION_POINTS, type ExtractionPoint } from '../world/extractionPoints';
+import { withWorkedExitsOpen } from '../world/workedLandmarks';
 import type { WorldLoot } from '../world/loot';
 import {
   createRunTrainerEncounters,
@@ -185,6 +186,14 @@ export interface RunPlan {
    * opens in the raid that won it even where nothing can be written to storage.
    */
   readonly defeatedBosses: readonly string[];
+  /**
+   * The contracts already banked when this raid deployed. A contract banks on
+   * the way out, so unlike a boss it can never be finished mid-raid: this is
+   * the whole of what the world keeps worked for this raid, and `WorldScene`
+   * reads it rather than storage so a browser that cannot save still walks out
+   * through the culvert the ledger opened.
+   */
+  readonly completedContracts: readonly string[];
   readonly encounters: Readonly<Partial<Record<WorldMapId, WildEncounterTable>>>;
   /**
    * The wildlife of each named place, keyed by district id, varied per raid the
@@ -220,12 +229,17 @@ export interface RunGenerationContent {
  * loot may land, which exit is guaranteed - so it has to be this raid's
  * collision and not a fresh save's.
  */
-function authoredContent(defeatedBosses: readonly string[]): RunGenerationContent {
+function authoredContent(
+  defeatedBosses: readonly string[],
+  completedContracts: readonly string[],
+): RunGenerationContent {
   return {
     maps: Object.fromEntries(
       (Object.keys(WORLD_MAPS) as WorldMapId[]).map((id) => [id, getWorldMap(id, defeatedBosses)]),
     ) as Record<WorldMapId, WorldMapDefinition>,
-    extractionPoints: EXTRACTION_POINTS,
+    // A landmark this save has finished with holds its exit open from the first
+    // second, so the generator's timing variance never meets it.
+    extractionPoints: withWorkedExitsOpen(EXTRACTION_POINTS, completedContracts),
     trainers: createRunTrainerEncounters(),
   };
 }
@@ -251,10 +265,13 @@ export function generateRunPlan(
   defeatedBosses: readonly string[] = [],
   // What the base this raid deployed from adds to it: the Outfitter's beacon.
   outfitting: RunOutfitting = {},
+  // The contracts this save has banked: which landmarks the world keeps worked,
+  // and which of their exits therefore stand open. Empty is a fresh save.
+  completedContracts: readonly string[] = [],
 ): RunPlan {
   const rng = createSeededRng(seed);
   const insertion = RUN_INSERTIONS[insertionId];
-  const authored = suppliedContent ?? authoredContent(defeatedBosses);
+  const authored = suppliedContent ?? authoredContent(defeatedBosses, completedContracts);
   // A beaten boss is gone for good, so they are dropped before anything is
   // reserved for them: the tile they stood on is ordinary ground again.
   const content: RunGenerationContent = {
@@ -322,6 +339,7 @@ export function generateRunPlan(
     insertion,
     ...(carriedContract ? { contract: carriedContract } : {}),
     defeatedBosses: [...defeatedBosses],
+    completedContracts: [...completedContracts],
     encounters,
     districtEncounters,
     loot,

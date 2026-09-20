@@ -811,6 +811,9 @@ export class HubScene extends Phaser.Scene {
       hasBeacon(this.builtUpgradeIds)
         ? { beaconUnlockAtMs: beaconUnlockAtMs(this.raidClockMs) }
         : {},
+      // Which landmarks the world keeps worked, and whose exits therefore
+      // stand open from the first second - the same list the lobby's map read.
+      this.savedGame.raidProgress.completedContracts,
     );
     const runSession = createActiveRunSession(
       activeRunManager,
@@ -1741,6 +1744,10 @@ export class HubScene extends Phaser.Scene {
       // opened is open here, which is what makes a beaten boss visible at base.
       map: getWorldMap(RUN_INSERTIONS[insertionId].mapId, progress.defeatedBosses),
       defeatedBosses: progress.defeatedBosses,
+      // What this save has finished with out there: a landmark worked for good
+      // holds its exit open, and this screen has to say so or the exits it
+      // lists disagree with the raid it is about to send the player on.
+      completedContracts: progress.completedContracts,
       raidRecord: progress.raidRecord,
       surveyed: progress.surveyed,
       insertionIds: this.unlockedInsertions.map(([id]) => id),
@@ -1866,12 +1873,17 @@ export class HubScene extends Phaser.Scene {
           ' px-tall',
         )}`
       : '';
+    // An exit a banked contract holds open for good is said apart from one that
+    // was always open: it is the player's own work, and this screen is where
+    // they come to look at what the world kept.
     const exits = `<h3 class="px-subheading">Ways out</h3>${briefing.exits
       .map((exit) =>
         told(
-          `${this.pip('X')}<span class="px-row-main"><strong>${exit.label}</strong><small>${exit.opens === 'OPEN' ? 'open from the first second' : exit.opens.toLowerCase()}</small></span>`,
-          `${exit.label}: ${exit.opens === 'OPEN' ? 'open from the first second of the raid' : exit.opens.toLowerCase()}. Stepping on any open exit ends the raid.`,
-          ' has-pip',
+          `${this.pip(exit.worked ? 'K' : 'X')}<span class="px-row-main"><strong>${exit.label}</strong><small>${exit.worked ? 'open for good - you finished the landmark' : exit.opens === 'OPEN' ? 'open from the first second' : exit.opens.toLowerCase()}</small></span>`,
+          exit.worked
+            ? `${exit.label} is open from the first second of every raid from now on, because you finished the landmark that used to seal it.`
+            : `${exit.label}: ${exit.opens === 'OPEN' ? 'open from the first second of the raid' : exit.opens.toLowerCase()}. Stepping on any open exit ends the raid.`,
+          ' has-pip' + (exit.worked ? ' is-selected' : ''),
         ),
       )
       .join('')}`;
