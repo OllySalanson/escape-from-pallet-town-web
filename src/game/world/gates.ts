@@ -220,6 +220,34 @@ export const WORLD_GATES: readonly MapGate[] = [
     },
   },
 
+  {
+    // The quarry mouth, and the only way in from the wood. Quarryman Mott
+    // stands in the lane above it - which a boss may, because a beaten one is
+    // never rebuilt and the tile comes back for good.
+    id: 'forest-quarry-gate',
+    mapId: 'viridian-forest',
+    bossId: 'forest-quarry-keeper',
+    label: 'QUARRY GATE',
+    tiles: [{ x: 37, y: 51 }],
+    closed: { material: 'fence' },
+    open: { material: 'gravel' },
+  },
+  {
+    // His second door, and the same shape every boss in this game holds: the
+    // stair cut out of the floor at the back of the working, coming out on
+    // Beech Flat - which is a dozen steps from the road out, where the way in
+    // by the gate is thirty-eight from the sawpit. Beaten, the quarry stops
+    // being a pocket you have to come back out of and becomes the short way
+    // from the south of the wood to the SOUTH GATE.
+    id: 'forest-quarry-stair',
+    mapId: 'viridian-forest',
+    bossId: 'forest-quarry-keeper',
+    label: 'QUARRY STAIR',
+    tiles: [{ x: 38, y: 64 }],
+    closed: { material: 'cliff' },
+    open: { material: 'gravel' },
+  },
+
   // -- Floodplain Relay ------------------------------------------------------
   // Three bosses, two doors each. The first of each pair is the door in front
   // of the player; the second is somewhere they have already stood, and opens

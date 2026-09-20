@@ -25,8 +25,11 @@ describe('worldMap', () => {
     expect(getWorldMap('pallet-town').width).toBe(32);
     expect(getWorldMap('pallet-town').height).toBe(44);
     expect(getWorldMap('route-1').height).toBe(32);
-    expect(getWorldMap('viridian-forest').height).toBe(36);
-    // The Floodplain is the vast one: it is played a district at a time.
+    // Viridian Forest is the vast one now: four times the footprint it shipped
+    // in, played the way the Floodplain is - a district at a time, with more
+    // of it left unwalked at the end of a raid than walked.
+    expect(getWorldMap('viridian-forest').width).toBe(64);
+    expect(getWorldMap('viridian-forest').height).toBe(72);
     expect(getWorldMap('floodplain-relay').width).toBe(64);
     expect(getWorldMap('floodplain-relay').height).toBe(64);
   });

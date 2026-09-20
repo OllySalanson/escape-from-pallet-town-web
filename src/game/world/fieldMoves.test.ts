@@ -112,7 +112,10 @@ describe('a move that is also a route', () => {
           'krabby',
           'meowth',
           'oddish',
+          // The forest's east and south, added with the ground they live on.
+          'paras',
           'rattata',
+          'sandshrew',
         ]);
       } else {
         expect(catchable).toEqual(['krabby', 'poliwag', 'psyduck', 'squirtle']);

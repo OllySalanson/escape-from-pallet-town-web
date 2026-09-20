@@ -59,6 +59,10 @@ const rungOf = (trainer: TrainerBattle): number =>
  * order flipped, nothing about the game got easier, and a real regression would
  * have been a 17-point drop.
  *
+ * Quarryman Mott is the deepest door on Viridian Forest and the second of its
+ * two, so he is measured after Pell and before the Floodplain's back half -
+ * which is where he lands, at 63% against Pell's 74% and Dane's 60%.
+ *
  * Two pairs are inside the tie rather than ordered. Vance and Pell unlock
  * together - Pallet Town and Route 1 arrive on the same banked contract - so
  * which of the two small-map doors is the harder is a choice the player makes,
@@ -73,6 +77,7 @@ const LADDER: readonly [string, string][] = [
   ['overlook-warden-wren', 'WARDEN WREN'],
   ['pallet-mill-keeper-vance', 'MILLER VANCE'],
   ['forest-ridge-keeper-pell', 'LOOKOUT PELL'],
+  ['forest-quarry-keeper-mott', 'QUARRYMAN MOTT'],
   ['floodplain-sluice-keeper-dane', 'SLUICE KEEPER DANE'],
   ['floodplain-orchard-warden-holt', 'WARDEN HOLT'],
 ];
@@ -92,11 +97,11 @@ describe('the boss ladder, played out', () => {
   /**
    * A boss every starter can lose to is a hard fight; a boss only one starter
    * can win is a lottery, which is why Scout Lee fields a Squirtle rather than
-   * a Bulbasaur. Neither new boss may be out of reach of a lone levelled
-   * starter, and neither may be a walkover for the team.
+   * a Bulbasaur. None of the three new bosses may be out of reach of a lone
+   * levelled starter, and none may be a walkover for the team.
    */
-  it('keeps both new bosses inside the band the other doors sit in', () => {
-    for (const id of ['pallet-mill-keeper-vance', 'forest-ridge-keeper-pell']) {
+  it('keeps every new boss inside the band the other doors sit in', () => {
+    for (const id of ['pallet-mill-keeper-vance', 'forest-ridge-keeper-pell', 'forest-quarry-keeper-mott']) {
       const trainer = trainerOf(id);
       const solo = trainerWinRate(SOLO, trainer, TRIALS);
       const team = trainerWinRate(TEAM, trainer, TRIALS);

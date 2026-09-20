@@ -238,6 +238,138 @@ export const FOREST_COPPICE_WILDLIFE = wildlife(0.1, [
   { speciesId: 'pikachu', minLevel: 9, maxLevel: 10, weight: 1 },
 ]);
 
+/**
+ * The east and south of the wood, added when the forest turned out to be four
+ * times the size anybody had walked. Everything here obeys the two rules the
+ * old tables set: it is mostly Bug, and nothing on this map goes over level 10
+ * (`districtEncounters.test.ts` holds both). What changes place to place is
+ * what the *ground* is - burnt earth, still water, fallen timber, worked rock -
+ * because on a wood the table is most of what tells one screen from the next.
+ */
+
+/** Twenty years of scrub on burnt ground: birds, rats, and one thing with fire. */
+export const FOREST_BURN_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'spearow', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'rattata', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'vulpix', minLevel: 7, maxLevel: 9, weight: 2 },
+  { speciesId: 'growlithe', minLevel: 8, maxLevel: 9, weight: 1 },
+]);
+
+/** Still water under trees. */
+export const FOREST_TARN_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'poliwag', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'psyduck', minLevel: 7, maxLevel: 9, weight: 2 },
+  { speciesId: 'magikarp', minLevel: 7, maxLevel: 10, weight: 2 },
+  { speciesId: 'venonat', minLevel: 8, maxLevel: 10, weight: 1 },
+]);
+
+/** The split oak. The one place on the map where the hornets are the table. */
+export const FOREST_HORNET_WILDLIFE = wildlife(0.12, [
+  { speciesId: 'weedle', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'kakuna', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'beedrill', minLevel: 9, maxLevel: 10, weight: 2 },
+  { speciesId: 'venonat', minLevel: 8, maxLevel: 10, weight: 1 },
+]);
+
+/** Ten acres of fallen timber: what lives in rotten wood. */
+export const FOREST_BLOWDOWN_WILDLIFE = wildlife(0.11, [
+  { speciesId: 'caterpie', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'paras', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'metapod', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'venonat', minLevel: 8, maxLevel: 10, weight: 1 },
+]);
+
+/** A yard somebody keeps: the things that come to a camp. */
+export const FOREST_KILN_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'rattata', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'meowth', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'vulpix', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'spearow', minLevel: 7, maxLevel: 9, weight: 1 },
+]);
+
+/** The crag the birds nest on. */
+export const FOREST_ROOKERY_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'spearow', minLevel: 8, maxLevel: 10, weight: 4 },
+  { speciesId: 'pidgey', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'zubat', minLevel: 8, maxLevel: 10, weight: 2 },
+]);
+
+/** Sawdust, cut ends and the things that live in a timber yard. */
+export const FOREST_SAWPIT_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'caterpie', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'rattata', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'meowth', minLevel: 7, maxLevel: 9, weight: 2 },
+  { speciesId: 'pikachu', minLevel: 9, maxLevel: 10, weight: 1 },
+]);
+
+/** The last clearing on the brook. */
+export const FOREST_BROOK_FOOT_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'psyduck', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'poliwag', minLevel: 7, maxLevel: 9, weight: 2 },
+  { speciesId: 'pidgey', minLevel: 7, maxLevel: 9, weight: 2 },
+  { speciesId: 'caterpie', minLevel: 7, maxLevel: 9, weight: 2 },
+]);
+
+/** The wall, and the stony ground it was built out of. */
+export const FOREST_STONE_ROW_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'rattata', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'spearow', minLevel: 7, maxLevel: 9, weight: 2 },
+  { speciesId: 'sandshrew', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'geodude', minLevel: 8, maxLevel: 10, weight: 1 },
+]);
+
+/**
+ * Worked rock. The one place in this forest that is not a wood at all, and the
+ * only table on the map with Geodude as the common roll - which is also what
+ * makes it the place a Fire starter brings somebody else to.
+ */
+export const FOREST_QUARRY_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'geodude', minLevel: 8, maxLevel: 10, weight: 3 },
+  { speciesId: 'sandshrew', minLevel: 8, maxLevel: 10, weight: 3 },
+  { speciesId: 'zubat', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'machop', minLevel: 8, maxLevel: 10, weight: 1 },
+]);
+
+/** A lane worn down between banks: out of the wind and out of the light. */
+export const FOREST_HOLLOW_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'rattata', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'zubat', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'meowth', minLevel: 7, maxLevel: 9, weight: 2 },
+  { speciesId: 'pikachu', minLevel: 9, maxLevel: 10, weight: 1 },
+]);
+
+/** Where the brook spreads out. */
+export const FOREST_MERE_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'poliwag', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'psyduck', minLevel: 7, maxLevel: 9, weight: 2 },
+  { speciesId: 'magikarp', minLevel: 7, maxLevel: 10, weight: 2 },
+  { speciesId: 'oddish', minLevel: 8, maxLevel: 10, weight: 1 },
+]);
+
+/** A sand scarp riddled with burrows, and what dug them. */
+export const FOREST_WARREN_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'sandshrew', minLevel: 8, maxLevel: 10, weight: 3 },
+  { speciesId: 'rattata', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'diglett', minLevel: 7, maxLevel: 9, weight: 2 },
+  { speciesId: 'meowth', minLevel: 7, maxLevel: 9, weight: 1 },
+]);
+
+/** The made road, and the verges either side of it. */
+export const FOREST_SOUTH_ROAD_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'pidgey', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'rattata', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'jigglypuff', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'meowth', minLevel: 7, maxLevel: 9, weight: 1 },
+]);
+
+/** Big smooth trunks and nothing under them. */
+export const FOREST_BEECH_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'caterpie', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'butterfree', minLevel: 9, maxLevel: 10, weight: 2 },
+  { speciesId: 'oddish', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'clefairy', minLevel: 8, maxLevel: 10, weight: 1 },
+]);
+
 // -- Floodplain Relay -------------------------------------------------------
 
 /** The reeds: the first ground a new player walks, so at or under the partner. */

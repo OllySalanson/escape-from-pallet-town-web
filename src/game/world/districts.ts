@@ -433,6 +433,149 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
       { x: 23, y: 21, width: 2, height: 6 },
     ],
   },
+  // -- Viridian Forest, the east and the south -------------------------------
+  // The wood turned out to be four times the size anybody had walked. What is
+  // below names the new ground the same way the old ground is named: one place
+  // per thing you would say to somebody describing the way you came.
+  {
+    // The rock runs the whole top of the wood. Listed after THE RIDGE, whose
+    // rectangle it carries on from, and dry the length of it.
+    id: 'forest-cinder-ridge',
+    mapId: 'viridian-forest',
+    name: 'CINDER RIDGE',
+    areas: [{ x: 32, y: 0, width: 21, height: 6 }],
+  },
+  {
+    id: 'forest-raven-crag',
+    mapId: 'viridian-forest',
+    name: 'RAVEN CRAG',
+    areas: [{ x: 53, y: 0, width: 11, height: 12 }],
+  },
+  {
+    id: 'forest-tarn',
+    mapId: 'viridian-forest',
+    name: 'THE TARN',
+    encounters: wildlife.FOREST_TARN_WILDLIFE,
+    areas: [{ x: 49, y: 12, width: 15, height: 15 }],
+  },
+  {
+    id: 'forest-burn',
+    mapId: 'viridian-forest',
+    name: 'THE BURN',
+    encounters: wildlife.FOREST_BURN_WILDLIFE,
+    areas: [{ x: 32, y: 6, width: 17, height: 15 }],
+  },
+  {
+    id: 'forest-hornet-glade',
+    mapId: 'viridian-forest',
+    name: 'HORNET GLADE',
+    encounters: wildlife.FOREST_HORNET_WILDLIFE,
+    areas: [{ x: 32, y: 21, width: 16, height: 10 }],
+  },
+  {
+    id: 'forest-blowdown',
+    mapId: 'viridian-forest',
+    name: 'THE BLOWDOWN',
+    encounters: wildlife.FOREST_BLOWDOWN_WILDLIFE,
+    areas: [{ x: 33, y: 31, width: 15, height: 12 }],
+  },
+  {
+    id: 'forest-charcoal-burn',
+    mapId: 'viridian-forest',
+    name: 'CHARCOAL BURN',
+    encounters: wildlife.FOREST_KILN_WILDLIFE,
+    areas: [{ x: 48, y: 27, width: 16, height: 15 }],
+  },
+  {
+    // The ride is beaten earth end to end, so it holds no tall grass and rolls
+    // nothing: the fastest ground in the south and the most exposed.
+    id: 'forest-long-drive',
+    mapId: 'viridian-forest',
+    name: 'THE LONG DRIVE',
+    areas: [{ x: 50, y: 42, width: 14, height: 15 }],
+  },
+  {
+    // Two rectangles rather than one: the quarry's east benches are inside
+    // x45-50 down to y64, and a quarry bench called THE ROOKERY would be the
+    // plate telling the player they had left a place they are standing in.
+    id: 'forest-rookery',
+    mapId: 'viridian-forest',
+    name: 'THE ROOKERY',
+    encounters: wildlife.FOREST_ROOKERY_WILDLIFE,
+    areas: [
+      { x: 51, y: 57, width: 13, height: 8 },
+      { x: 45, y: 65, width: 19, height: 7 },
+    ],
+  },
+  {
+    id: 'forest-sawpit',
+    mapId: 'viridian-forest',
+    name: 'THE SAWPIT',
+    encounters: wildlife.FOREST_SAWPIT_WILDLIFE,
+    areas: [{ x: 16, y: 36, width: 11, height: 12 }],
+  },
+  {
+    id: 'forest-brook-foot',
+    mapId: 'viridian-forest',
+    name: 'BROOK FOOT',
+    encounters: wildlife.FOREST_BROOK_FOOT_WILDLIFE,
+    areas: [{ x: 0, y: 36, width: 16, height: 12 }],
+  },
+  {
+    id: 'forest-stone-row',
+    mapId: 'viridian-forest',
+    name: 'STONE ROW',
+    encounters: wildlife.FOREST_STONE_ROW_WILDLIFE,
+    areas: [{ x: 27, y: 43, width: 21, height: 7 }],
+  },
+  {
+    id: 'forest-hollow-way',
+    mapId: 'viridian-forest',
+    name: 'THE HOLLOW WAY',
+    encounters: wildlife.FOREST_HOLLOW_WILDLIFE,
+    areas: [{ x: 17, y: 47, width: 15, height: 15 }],
+  },
+  {
+    id: 'forest-quarry',
+    mapId: 'viridian-forest',
+    name: 'THE QUARRY',
+    encounters: wildlife.FOREST_QUARRY_WILDLIFE,
+    areas: [{ x: 32, y: 49, width: 19, height: 16 }],
+  },
+  {
+    id: 'forest-mere',
+    mapId: 'viridian-forest',
+    name: 'THE MERE',
+    encounters: wildlife.FOREST_MERE_WILDLIFE,
+    // The fourth rainy place in the game and the second in this wood, which is
+    // the same rule BROOK HEAD is: a place made of water. It is the foot of the
+    // same brook and twenty-five steps south of BROOK HEAD's nearest tile, so
+    // it is a second place rather than weather every dozen steps - and BROOK
+    // FOOT between them is deliberately dry for exactly that reason.
+    weather: WeatherId.Rain,
+    areas: [{ x: 0, y: 48, width: 17, height: 11 }],
+  },
+  {
+    id: 'forest-warren',
+    mapId: 'viridian-forest',
+    name: 'THE WARREN',
+    encounters: wildlife.FOREST_WARREN_WILDLIFE,
+    areas: [{ x: 0, y: 59, width: 17, height: 13 }],
+  },
+  {
+    id: 'forest-south-road',
+    mapId: 'viridian-forest',
+    name: 'THE SOUTH ROAD',
+    encounters: wildlife.FOREST_SOUTH_ROAD_WILDLIFE,
+    areas: [{ x: 17, y: 62, width: 14, height: 10 }],
+  },
+  {
+    id: 'forest-beech-flat',
+    mapId: 'viridian-forest',
+    name: 'BEECH FLAT',
+    encounters: wildlife.FOREST_BEECH_WILDLIFE,
+    areas: [{ x: 31, y: 62, width: 14, height: 10 }],
+  },
   {
     id: 'forest-clearing',
     mapId: 'viridian-forest',
