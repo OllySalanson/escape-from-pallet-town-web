@@ -51,6 +51,13 @@ npx vite-node tools/tileset/mapReport.mts -- floodplain-relay --runs --clashes
 ```
 
 ```sh
+# Is there anything IN it? Steps from every tile to the nearest permanent
+# authored thing, by place, thinnest first - and `--old=` to hold an expanded
+# map's new ground against the ground it shipped with.
+npx vite-node tools/tileset/density.mts -- route-1 --old=0,0,31,31
+```
+
+```sh
 # After cutting a map out of the forest: what to plant where the wood is only a
 # hedge thick, and which crowns then hang where one must not - over a road, over
 # ground somebody walks, or over the seat a caption needs.
