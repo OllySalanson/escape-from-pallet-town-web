@@ -19,8 +19,18 @@ export default defineConfig({
      * against vitest's 5s default they tipped over whenever the parallel run
      * happened to schedule two of them together - a timeout that says nothing
      * about the code. This bound is high enough that only a real hang trips it.
+     *
+     * It went from thirty seconds to two minutes when the Floodplain grew to
+     * 128 tiles square. Those sweeps are quadratic in a map's area - a search
+     * per walkable tile over the whole grid - so sixteen times the area of the
+     * smallest map is a real cost, and it was paid down first rather than
+     * waved through: `stepDistances` now walks typed arrays, `MapSketch` no
+     * longer rescans every landmark's claims on every tile written (three
+     * seconds a build, which was also a raid starting with a stutter), and the
+     * flee sweep asks for the map's doors once per tile instead of once per
+     * heading. What is left is honest work, and the bound is what it needs.
      */
-    testTimeout: 30_000,
+    testTimeout: 120_000,
     maxWorkers: MAX_WORKERS,
   },
 });
