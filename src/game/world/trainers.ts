@@ -339,7 +339,8 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // had: every other door is Normal, Flying, Water and Electric. Measured
       // over the real engine with `tools/trainers/report.mts` against the four
       // reference parties and held on the ladder in `trainerLadder.test.ts` -
-      // he is met after the sluice keeper, so he may not be a rung easier.
+      // this door is met after the sluice keeper, so it may not be a rung
+      // easier.
       [new Pokemon(getSpeciesById('geodude')!, 11), new Pokemon(getSpeciesById('machop')!, 11), new Pokemon(getSpeciesById('sandshrew')!, 12)],
       'Take it down, then. The level through the hill is open too - it comes out on the beck.',
     ),
@@ -369,9 +370,9 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
   },
   {
     // A toll on the drove, the way Maya is a toll on the shore road: the fen
-    // either side of it is a way round that costs encounters instead. He stands
-    // below the mouth of the narrows between two pollards, off the road, so the
-    // price is read from a junction the player can still turn at.
+    // either side of it is a way round that costs encounters instead. Quill
+    // stands below the mouth of the narrows between two pollards, off the road,
+    // so the price is read from a junction the player can still turn at.
     mapId: 'floodplain-relay',
     position: { x: 101, y: 61 },
     facing: 'up',

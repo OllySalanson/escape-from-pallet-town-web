@@ -1891,7 +1891,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(106, 5, 'mineMouth');       // the second
   map.plant(112, 5, 'mineMouth');       // the third
   map.plant(118, 5, 'mineMouth');       // and the fourth, at the east end of the bank
-  map.plant(99, 15, 'hut');             // the burner's own house, behind his kilns
+  map.plant(99, 15, 'hut');             // the burner's own house, behind the kilns
   map.plant(110, 9, 'crateTower');      // lime stacked on the kiln floor
   map.plant(104, 10, 'log');            // cordwood off the tramway
   map.plant(116, 10, 'sack');           // and a sack of it nobody carried in
