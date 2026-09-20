@@ -147,7 +147,11 @@ ten seconds). The last Pokemon is lost by `--hp=1 --fight`. Either way the
 driver reads the defeat's beats through, waits for the report, and goes back to
 base, so every run ends on the lobby it would start the next raid from.
 
-Two things to know before believing a run. A landmark is worked by walking over
+Three things to know before believing a run. **The hunter only moves when the
+player does** - it takes `aggressionStepsPerPlayerStep` of a step for every step
+the player takes, spent in `WorldScene.advanceStep` - so a driver that stands
+still to be caught will never be caught, and will report a hunter that closes to
+three tiles and stops. A landmark is worked by walking over
 it, so an exit is only sealed for a driver whose road does not cross its
 landmark: check that the road a driver takes does not cross the landmark before
 believing it met the exit sealed. And the dev server reloads the page whenever anyone saves a
