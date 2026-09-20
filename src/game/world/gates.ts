@@ -134,6 +134,29 @@ export const WORLD_GATES: readonly MapGate[] = [
     closed: { material: 'cliff' },
     open: { material: 'grass' },
   },
+  {
+    // The second door on Route 1, and the only one no fight opens. The mouth of
+    // a ride into a hollow in the wood above the orchard, grown shut: what is
+    // behind it is the hollow and nothing else, so a Cut here shortens no walk
+    // the map already had and what it buys is twenty-five tiles nobody has
+    // stood on. A dead stool either side of the mouth in both states, as the
+    // forest's own Cut door has, because a hedge tile in a lattice of broadleaf
+    // is the same green as the wall it is in and a door nobody can see is a
+    // wall.
+    id: 'route-1-thorn-gate',
+    mapId: 'route-1',
+    fieldMove: 'cut',
+    label: 'THORN GATE',
+    tiles: [{ x: 51, y: 9 }],
+    closed: {
+      material: 'hedge',
+      props: [{ name: 'deadStump', x: 50, y: 9 }, { name: 'deadStump', x: 52, y: 9 }],
+    },
+    open: {
+      material: 'grass',
+      props: [{ name: 'deadStump', x: 50, y: 9 }, { name: 'deadStump', x: 52, y: 9 }],
+    },
+  },
 
   // -- Pallet Town -----------------------------------------------------------
   // The far bank of the millpond is a towpath with an end at each end: the head

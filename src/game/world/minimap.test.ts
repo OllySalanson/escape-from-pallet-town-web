@@ -123,7 +123,8 @@ describe('the bird\'s-eye picture of a map', () => {
     // The drop-in screen's banner is a fixed 100 game pixels tall (the
     // `.dropin-layout` rows in style.css), of which the picture's own lid and
     // frame take 24. So a map may be 76 tiles tall at one pixel to the tile,
-    // and Viridian Forest at 72 draws 96 pixels of banner inside that 100.
+    // and Viridian Forest and Route 1 at 72 each draw 96 pixels of banner
+    // inside that 100.
     // Wider than the pane is the other way it would be clipped rather than
     // scaled, and nothing is drawn at less than one pixel to the tile on
     // purpose - see `MINIMAP_TILE`.

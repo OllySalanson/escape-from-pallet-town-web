@@ -2,40 +2,51 @@ import { MapSketch } from '../mapGrid';
 import type { FloodTownPropName } from '../tileset/floodTownTileset';
 
 /**
- * Route 1 - the braid.
+ * Route 1 - the long braid.
  *
- * 32x32, the shipped footprint. Two roads leave the Route Head and run the
- * length of the map, stepping west and east as they go so that no leg of
- * either is a sprint, and meet again on the Outpost's apron. They are quick and
- * bare. Everything between them is the Meadows, and every way across is tall
- * grass, so crossing the braid is always the shorter way and always the one
- * that costs fights.
+ * 64x72. The shipped 32x32 map is the top-left quarter of this one and is
+ * unchanged tile for tile: the Route Head, the two roads, the Meadows with the
+ * fenced Middle Field in them, Oak's field station and the Overlook on its
+ * bank are all exactly where players learned them. What is new is what the old
+ * map's sealed border was standing in the way of - the country east of the
+ * station and the whole of the route south of the Outpost - and the braid is
+ * the thing that carries into it.
  *
- * Eight places: ROUTE HEAD (the front door, and the fork), WEST ROAD, EAST
- * ROAD, THE MEADOWS (the north meadow, the fenced middle field with its two
- * north doors, and the gap south of it where Lass June stands - one tile wide,
- * so she is both the third way across and the field's south door), OAK'S FIELD
- * STATION in its paved yard, THE OVERLOOK on the bank above it, WEST GATE
- * through its arch, and THE OUTPOST.
+ * The idea is unchanged and is repeated at the new scale. Two roads run the
+ * length of the map, quick and bare, stepping sideways every eight or nine
+ * tiles so neither is a sprint; everything between them is grass, so crossing
+ * from one to the other is always the shorter way and always the one that
+ * costs fights. Above the Outpost that is the Meadows. Below it the roads
+ * become THE DROVE and THE OLD ROAD, and what they run either side of is THE
+ * COMMON - the same bargain, a map further on.
  *
- * The Overlook is the sealed place, and it is drawn to be looked at: it stands
- * on a bank over the station yard, fenced along its brow, in plain view of
- * anyone who walks up to the station. Warden Wren holds both its doors
- * (`../gates.ts`): the gate in the spur off the east road, and the steps down
- * the bank, choked with rock until the warden gives the place up. So the way
- * back from the Overlook lands in the yard the player already knows.
+ * Across the middle is the one thing the old map had none of: water. THE BROOK
+ * runs the full width of the map and is never more than three tiles wide, so
+ * the far bank is always in view and the crossings are the decisions. There
+ * are three, and they are deliberately unlike each other - the plank bridge
+ * carries the west road, the ford carries the east one, and the stepping
+ * stones below the steading are a private crossing for whoever went that way.
  *
- * The bank is this sheet's ledge, and nothing in this game hops down one: it
- * is only ever stood where nobody can get on top of it, with a fence along its
- * brow, so that it reads as the wall it is.
+ * Nineteen places. Eight are the shipped map's: ROUTE HEAD (the front door and
+ * the fork), WEST ROAD, EAST ROAD, THE MEADOWS, OAK'S FIELD STATION, THE
+ * OVERLOOK on its bank, WEST GATE and THE OUTPOST. Eleven are new: THE ORCHARD
+ * walled on the turf east of the station, the THORN DELL grown shut in the wood
+ * above it, THE PADDOCKS below, THE STEADING that works them, THE POUND on the
+ * old road, THE DROVE and THE OLD ROAD themselves, THE BROOK, THE WATER
+ * MEADOWS in the wet west, THE COMMON, THE CHARCOAL BURN in the south-east and
+ * SOUTH GATE where the two roads meet again and the route goes on to Viridian.
+ *
+ * The bank the Overlook stands on is this sheet's ledge, and nothing in this
+ * game hops down one: it is only ever stood where nobody can get on top of it,
+ * with a fence along its brow, so that it reads as the wall it is.
  *
  * Drawn in the Floodplain's hand; legend as `floodplainRelay.ts`, plus `<`, `=`
  * and `>` for the west end, the run and the east end of a bank.
  */
 export function sketchRoute1(): MapSketch<FloodTownPropName> {
   const map = new MapSketch<FloodTownPropName>({
-    width: 32,
-    height: 32,
+    width: 64,
+    height: 72,
     fill: '.',
     stamps: {
       t: {
@@ -54,40 +65,82 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
     },
   });
 
-
+  // == THE WOOD THE WHOLE ROUTE IS CUT OUT OF ===============================
+  // A lattice of broadleaf, thinned where a caption needs a band of sky. Every
+  // place below is carved out of this rather than built up on it.
   map.draw(0, 0, [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTTTTTTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTTTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTTTTtTTtTTtTTtTTTTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTTTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTtTTTTTTTTTTTtTTtTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTTTTTTTTTTtTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTTTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTTTTtTTtTTtTTtTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTTTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTtTTTTTTTTTTTtTTtTTTTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTTTTTTTTTTtTTTTTTTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ]);
 
   //            0         1         2         3
@@ -188,12 +241,167 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
     '                         PPPPP. ',
     '                         PPPPP. ',
   ]);
+
+  // == THE WAYS OUT OF THE OLD FOOTPRINT ===================================
+  // The shipped map was a 32x32 arena with a sealed forest border, and that
+  // border is the only part of it this change touches - twenty-one tiles of it,
+  // every one in the east column or the two south rows, and nothing inside them.
+  // The Outpost's two roads run on south, a grass path leaves the station yard
+  // east, and the Overlook's shelf, its fence and its bank carry east onto
+  // ground that was the edge of the world. The Outpost apron keeps its own dead
+  // end, so the exit standing in it is still a pocket a player steps into rather
+  // than a tile the road runs over.
+  map.draw(6, 30, [
+    ',,              ,,  ',
+    ',,,,            ,,,,',
+  ]);
+  map.draw(31, 2, ['.', '.', '.', '.', '.', 'F', '<', ' ', '.']);
+
+  // == THE EAST COUNTRY: THE ORCHARD, THE THORN DELL, THE PADDOCKS =========
+  // A walled fruit garden on mown turf, reached by the grass path out of the
+  // station yard, with its own arch out at the north; a hollow in the wood
+  // above it that the growth closed and a Cut opens; and below both, the
+  // steading's fenced fields either side of the drove lane, whose tall grass is
+  // the price of the short way south.
+  map.draw(32, 0, [
+    '                                ',
+    '                                ',
+    '...C......                      ',
+    '........o.                      ',
+    '.o........       ......         ',
+    '....C.....       ......         ',
+    '.C...FFFFF  TT T ......         ',
+    'FFFFF<===>  ..   ......         ',
+    '====>       .. T ......         ',
+    '  FFFFFFFFFF.FF    T            ',
+    '..F...........FT   .            ',
+    ' .F..o...o....F    .            ',
+    ' .............F   ..            ',
+    '  F...........F   .             ',
+    '  F.........o.F   .             ',
+    '  F...........F ...             ',
+    'T F.o...o.....F .               ',
+    '  F...........F .               ',
+    'T F..........."...              ',
+    '  F...........F ..              ',
+    '  F..o....o...F ..FFFFFFFFFFFFF ',
+    '  F...........F ..FgggggFgggggF ',
+    '  F....PP.....F b.gggoggFgggggF ',
+    '  F....PP.....F ..FgggggggggggF ',
+    '  F....PP.....F ..FgggggFggoggF ',
+    '  FFFFFF.FFFFFF ..FFFFFFFFFFFFF ',
+    '   T  T .       .bFgggggggggggF ',
+    '        ..      ..FgggogggogggF ',
+    '         .      ..ggggggggggggF ',
+    '         ..     ..FgggggggggggF ',
+    '          .     b.FgggggggggggF ',
+    '          .     ..FFFFFFFFFFFFF ',
+  ]);
+
+  // == THE SOUTH COUNTRY ===================================================
+  // The braid again, a map further on. The two roads leave the Outpost and run
+  // the length of this half, stepping sideways as they go; THE COMMON lies
+  // between them and every crossing of it is grass. THE BROOK cuts the whole
+  // width and has three crossings, none of them like another. West of the
+  // drove the ground goes wet; east of the old road the steading's track drops
+  // over the stepping stones into the charcoal burn. The two roads meet again
+  // on the South Gate apron, under the arch the route goes on through.
+  map.draw(0, 32, [
+    '        ,,              ,,                ..    ..   T  T       ',
+    '        ,,        FFFFFF,,                 . vvvvvvvvvvvvvvvv   ',
+    '        ,,        FggggF,,                 . vvvvvvvvvvvvvvvv   ',
+    '        ,,        FggggF,,         ......  . vvvvvvvvvvvvvvvv   ',
+    '        ,,        Fggggg,,         .T.... .. vvvvvvvvvvvvvvvv   ',
+    '        ,,        FggggF,,         ...... .  vvvvvvvvvvvvvvvv   ',
+    '        ,,,,      FggggF,,,,       ...... .  vvvvvvvvvvvvvvvv   ',
+    '          ,,      FggggF  ,,       ....T. .. vvvvvvvvvvvvvvvv   ',
+    '          ,,      FFFFFF  ,,       ......  . vvvvvvvvvvvvvvvv   ',
+    '          ,,              ,,            .  .  v .      ..       ',
+    '          ,,              ,,,,          ....... . T    ..       ',
+    '          ,,,,              ,,..    ......             ..       ',
+    '            ,,      WWWWWW  ,, ......                  ..       ',
+    '            WWWWWWWWWWWWWWWWwwWW                     ....       ',
+    '        WWWWWWWWWWWWWWWWWWWWwwWWWWWWWWW              ..         ',
+    ' WWWWWWWWWWWWWWWWWWW      WWwwWWWWWWWWWWWWWWWWW      wwWW       ',
+    ' WWWWWWWWWWW,,              ,,  WWWWWWWWWWWWWWWWWWWWWwwWWWWWWWW ',
+    ' WWWWWWW    ,,  ggggCgggTg  ,,         WWWWWWWWWWWWWWwwWWWWWWWW ',
+    '            ,,,,gTggggCggg,,,,                 WWWWWW..  WWWWWW ',
+    '              ,,gggCgg.ggT,,       ....              ..         ',
+    '        ......,,T.gggCggCg,,      ......             ..         ',
+    ' ggTgggC.g    ,,ggCggggT.g,,     .....T.      vvvTvvvCvvvvTvvv  ',
+    ' CgggW.g.T    ,,CggggggggT,,..   .......      vC.vvvTvCvvCvvvT  ',
+    ' g....ggTg    ,,ggTgggCggg,, ... .T.....      vvvvTvvvvCv.vTvv  ',
+    ' g....gWgg    ,,gCg.gTggCg,,   ........       CvvvvvvvvvvvCvvC  ',
+    ' g.....ggT  ,,,,gggTgggggC,,      ....        vvTvvvvvvvvvv.Tv  ',
+    ' gW.gggCgg  ,,TTggCgggTg,,,,                  v.vvCvvvTvvvvCvv  ',
+    ' gggggCggT  ,,g.CgggTggC,,                    vvvvvvCvvvvvvvvC  ',
+    ' ggCgggW.T  ,,TgggCggCgg,,                    vvvvvvvv.Tvvvvvv  ',
+    ' ggggTgggg  ,,ggTggCgggT,,                    vCvvvvvvvvCvvTvv  ',
+    ' .WggggCgg  ,,gCgT.ggCgg,,                    vvvv.vvTvvvvCvvT  ',
+    ' gggCgggTg  ,,,,,,,,,   ,,                  ....                ',
+    '            ,,,,,,,,,   ,,          .........                   ',
+    '                    PPPPPPP .........                           ',
+    '                    PPPPPPP..                                   ',
+    '                      PP                                        ',
+    '                    T PP                                        ',
+    '                      PP                                        ',
+    '                    T                                           ',
+    '                                                                ',
+  ]);
+
   map.plant(25, 11, 'building');
   map.plant(28, 4, 'bigStump');
   map.plant(2, 26, 'stoneArch');
   map.plant(12, 27, 'hut');
   map.plant(28, 16, 'crateStack');
   map.plant(19, 26, 'banner');
+
+  // The orchard: the arch over its north gate, the packing shed built into its
+  // south wall, and the crop standing about its turf. Each of these is also a
+  // break in a row or a column of it, because eleven tiles of mown turf with
+  // nothing in them is a lawn you can cross at a run.
+  map.plant(43, 6, 'stoneArch');
+  map.plant(35, 21, 'barn');
+  map.plant(38, 12, 'produceCrate');
+  map.plant(41, 22, 'produce');
+  map.plant(42, 17, 'crate');
+  map.plant(44, 18, 'crate');
+  map.plant(40, 21, 'crate');
+  map.plant(45, 21, 'potPlant');
+
+  // The thorn dell, and the paddocks below the orchard.
+  map.plant(50, 5, 'boulder');
+  map.plant(53, 7, 'deadStump');
+  map.plant(57, 28, 'log');
+  map.plant(54, 29, 'wetRock');
+
+  // The steading: barn and house either side of its gravel, the hut on the
+  // south side, and what nobody has put away.
+  map.plant(45, 33, 'barn');
+  map.plant(53, 33, 'house');
+  map.plant(50, 38, 'hut');
+  map.plant(58, 38, 'crateStack');
+  map.plant(59, 33, 'cratePair');
+  map.plant(49, 34, 'crate');
+
+  map.plant(37, 37, 'bigStump');
+
+  // The three crossings. The plank bridge carries the west road over the
+  // brook; the other two are the water itself.
+  map.plant(11, 44, 'bridge');
+
+  // The water meadows, the cairn on the common, and the burn.
+  map.plant(2, 55, 'rockStair');
+  map.plant(20, 54, 'boulder');
+  map.plant(52, 56, 'mineMouth');
+  map.plant(49, 60, 'log');
+  map.plant(55, 57, 'log');
+  map.plant(46, 59, 'deadStump');
+  map.plant(57, 59, 'deadStump');
+  map.plant(51, 61, 'deadStump');
+  map.plant(35, 52, 'shrine');
+  map.plant(36, 55, 'bench');
+  map.plant(21, 67, 'stoneArch');
 
 
 

@@ -261,7 +261,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     mapId: 'route-1',
     name: 'THE OVERLOOK',
     // Both of the warden's doors are the Overlook's: its gate and its steps.
-    areas: [{ x: 26, y: 0, width: 6, height: 10 }],
+    areas: [{ x: 26, y: 0, width: 16, height: 10 }],
   },
   {
     id: 'route-1-head',
@@ -307,6 +307,109 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     mapId: 'route-1',
     name: 'THE OUTPOST',
     areas: [{ x: 10, y: 21, width: 22, height: 11 }],
+  },
+  // The east country, and then the south. Every one of these is cut out of the
+  // same wood the shipped map was, and each is listed before the ground it is
+  // cut out of so a boundary is drawn once, by order.
+  {
+    id: 'route-1-orchard',
+    mapId: 'route-1',
+    name: 'THE ORCHARD',
+    // The walled garden, the grass path in from the station yard, the arch out
+    // at the north, and the lane down from its south gate.
+    areas: [{ x: 32, y: 6, width: 15, height: 26 }],
+  },
+  {
+    id: 'route-1-thorn-dell',
+    mapId: 'route-1',
+    name: 'THE THORN DELL',
+    // The hollow and the ride up to it. Named for the door rather than for the
+    // wood, because the door is the only thing in it anybody remembers.
+    areas: [{ x: 47, y: 0, width: 17, height: 17 }],
+  },
+  {
+    id: 'route-1-paddocks',
+    mapId: 'route-1',
+    name: 'THE PADDOCKS',
+    encounters: wildlife.ROUTE_PADDOCK_WILDLIFE,
+    areas: [{ x: 47, y: 17, width: 17, height: 15 }],
+  },
+  {
+    id: 'route-1-pound',
+    mapId: 'route-1',
+    name: 'THE POUND',
+    encounters: wildlife.ROUTE_POUND_WILDLIFE,
+    areas: [{ x: 16, y: 32, width: 8, height: 10 }],
+  },
+  {
+    id: 'route-1-drove',
+    mapId: 'route-1',
+    name: 'THE DROVE',
+    areas: [{ x: 0, y: 32, width: 16, height: 12 }],
+  },
+  {
+    id: 'route-1-old-road',
+    mapId: 'route-1',
+    name: 'THE OLD ROAD',
+    areas: [{ x: 16, y: 32, width: 16, height: 12 }],
+  },
+  {
+    id: 'route-1-hollow-oak',
+    mapId: 'route-1',
+    name: 'THE HOLLOW OAK',
+    areas: [{ x: 30, y: 33, width: 12, height: 12 }],
+  },
+  {
+    id: 'route-1-steading',
+    mapId: 'route-1',
+    name: 'THE STEADING',
+    areas: [{ x: 42, y: 32, width: 22, height: 15 }],
+  },
+  {
+    // The water, its three crossings and the ground that runs down to them.
+    // Listed after the steading so the farm keeps its own tracks and the brook
+    // takes only what is on the bank.
+    id: 'route-1-brook',
+    mapId: 'route-1',
+    name: 'THE BROOK',
+    areas: [
+      { x: 0, y: 44, width: 39, height: 5 },
+      { x: 39, y: 47, width: 25, height: 6 },
+    ],
+  },
+  {
+    id: 'route-1-water-meadows',
+    mapId: 'route-1',
+    name: 'THE WATER MEADOWS',
+    encounters: wildlife.ROUTE_WATER_MEADOW_WILDLIFE,
+    areas: [{ x: 0, y: 49, width: 12, height: 23 }],
+  },
+  {
+    id: 'route-1-common',
+    mapId: 'route-1',
+    name: 'THE COMMON',
+    encounters: wildlife.ROUTE_COMMON_WILDLIFE,
+    areas: [{ x: 12, y: 49, width: 20, height: 14 }],
+  },
+  {
+    id: 'route-1-south-gate',
+    mapId: 'route-1',
+    name: 'SOUTH GATE',
+    areas: [{ x: 12, y: 63, width: 24, height: 9 }],
+  },
+  {
+    // A clearing off the Old Road that is on the way to nothing at all, which
+    // is the whole of why it is worth turning aside into.
+    id: 'route-1-wayside-shrine',
+    mapId: 'route-1',
+    name: 'THE WAYSIDE SHRINE',
+    areas: [{ x: 32, y: 49, width: 10, height: 10 }],
+  },
+  {
+    id: 'route-1-charcoal-burn',
+    mapId: 'route-1',
+    name: 'THE CHARCOAL BURN',
+    areas: [{ x: 32, y: 53, width: 32, height: 19 }],
   },
 
   // -- Viridian Forest -------------------------------------------------------

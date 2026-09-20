@@ -180,6 +180,28 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'route-1-radio-valve', position: { x: 22, y: 18 }, itemId: 'radio-valve', quantity: 1 },
       { id: 'route-1-scrip-verge', position: { x: 17, y: 7 }, itemId: 'scrip', quantity: 30 },
       { id: 'route-1-scrip-station', position: { x: 23, y: 18 }, itemId: 'scrip', quantity: 45 },
+      // The south half. A pool is re-seated every raid (`generateLoot`), so
+      // these positions are a fallback rather than a layout - what they set is
+      // how much there is to find and in roughly which country, and the route
+      // is four and a half times the map it was.
+      { id: 'route-1-orchard-potion', position: { x: 44, y: 16 }, itemId: 'potion', quantity: 1 },
+      { id: 'route-1-paddock-poke-ball', position: { x: 53, y: 23 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'route-1-paddock-antidote', position: { x: 59, y: 22 }, itemId: 'antidote', quantity: 1 },
+      { id: 'route-1-steading-parts-crate', position: { x: 47, y: 39 }, itemId: 'parts-crate', quantity: 1 },
+      { id: 'route-1-steading-mooring-rope', position: { x: 60, y: 36 }, itemId: 'mooring-rope', quantity: 1 },
+      { id: 'route-1-pound-poke-ball', position: { x: 20, y: 37 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'route-1-common-super-potion', position: { x: 23, y: 55 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'route-1-common-great-ball', position: { x: 15, y: 61 }, itemId: 'great-ball', quantity: 1 },
+      { id: 'route-1-meadow-potion', position: { x: 6, y: 61 }, itemId: 'potion', quantity: 1 },
+      { id: 'route-1-meadow-linen-roll', position: { x: 3, y: 59 }, itemId: 'linen-roll', quantity: 1 },
+      { id: 'route-1-burn-lamp-oil', position: { x: 48, y: 55 }, itemId: 'lamp-oil', quantity: 1 },
+      { id: 'route-1-burn-cable-coil', position: { x: 59, y: 60 }, itemId: 'cable-coil', quantity: 1 },
+      { id: 'route-1-shrine-potion', position: { x: 37, y: 54 }, itemId: 'potion', quantity: 1 },
+      { id: 'route-1-dell-antidote', position: { x: 52, y: 4 }, itemId: 'antidote', quantity: 1 },
+      { id: 'route-1-drove-poke-ball', position: { x: 49, y: 30 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'route-1-burn-radio-valve', position: { x: 50, y: 54 }, itemId: 'radio-valve', quantity: 1 },
+      { id: 'route-1-scrip-steading', position: { x: 52, y: 40 }, itemId: 'scrip', quantity: 35 },
+      { id: 'route-1-scrip-burn', position: { x: 48, y: 61 }, itemId: 'scrip', quantity: 55 },
       // TM40 Aerial Ace, on the road the Pidgey flock is over. It is also the
       // only machine the bug catcher's Butterfree can read.
       { id: 'route-1-tm-aerial-ace', position: { x: 18, y: 5 }, itemId: 'tm40-aerial-ace', quantity: 1, chance: 0.25 },

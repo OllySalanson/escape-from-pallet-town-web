@@ -144,14 +144,39 @@ describe('the named districts of a map', () => {
         'ROUTE OUTPOST': 'THE OUTPOST',
         'STATION RELAY': "OAK'S FIELD STATION",
         'OVERLOOK STILE': 'THE OVERLOOK',
+        'ORCHARD GATE': 'THE ORCHARD',
+        'STEADING YARD': 'THE STEADING',
+        'BROOK STAIR': 'THE WATER MEADOWS',
+        'SOUTH GATE': 'SOUTH GATE',
+        'KILN ROAD': 'THE CHARCOAL BURN',
       },
-      landings: { 'Route 1': 'ROUTE HEAD', 'Overlook Landing': 'THE OVERLOOK' },
-      landmarks: { "OAK'S FIELD STATION": "OAK'S FIELD STATION" },
+      landings: {
+        'Route 1': 'ROUTE HEAD',
+        'Overlook Landing': 'THE OVERLOOK',
+        'The Orchard': 'THE ORCHARD',
+        'The Steading': 'THE STEADING',
+        'The Common': 'THE COMMON',
+      },
+      landmarks: {
+        "OAK'S FIELD STATION": "OAK'S FIELD STATION",
+        'ORCHARD STORE': 'THE ORCHARD',
+        'THORN DELL': 'THE THORN DELL',
+        'THE CHARCOAL KILN': 'THE CHARCOAL BURN',
+        'THE HOLLOW OAK': 'THE HOLLOW OAK',
+        'THE WAYSIDE SHRINE': 'THE WAYSIDE SHRINE',
+        "DROVER'S CAIRN": 'THE COMMON',
+      },
     });
-    // Both of the warden's doors belong to the place they open.
+    // Every door belongs to the place it opens: both of the warden's to the
+    // Overlook, and the grown-shut ride to the dell behind it.
+    const doors: Record<string, string> = {
+      'OVERLOOK GATE': 'THE OVERLOOK',
+      'OVERLOOK STEPS': 'THE OVERLOOK',
+      'THORN GATE': 'THE THORN DELL',
+    };
     for (const gate of gatesForMap('route-1')) {
       for (const tile of gate.tiles) {
-        expect(`${gate.label}: ${districtAt('route-1', tile)?.name}`).toBe(`${gate.label}: THE OVERLOOK`);
+        expect(`${gate.label}: ${districtAt('route-1', tile)?.name}`).toBe(`${gate.label}: ${doors[gate.label]}`);
       }
     }
   });
