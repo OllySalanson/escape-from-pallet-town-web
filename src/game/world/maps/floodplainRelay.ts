@@ -1432,6 +1432,25 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   ]);
 
 
+  // The hedge banks of the hundred, standing out of the lagoon. A hedge and
+  // deep water are both walls, so this changes nothing anybody can walk - it is
+  // the whole of what the lagoon is *for*: the field pattern of a drowned
+  // parish, still there to be read, with a sheet of sea lying over it.
+  map.draw(58, 98, [
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWW#WWWWWW#WWWWWW#WWWWWW#WWWWWW#W',
+    '#W################W##############',
+    'WWW#WWWWWW#WWWWWW#WWWWWW#WWWWWW#W',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWW#WWWWWW#WWWWWW#WWWWWW#WWWWWW#W',
+    '##W################W#############',
+    'WWW#WWWWWW#WWWWWW#WWWWWW#WWWWWW#W',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWW#WWWWWW#WWWWWW#WWWWWW#WWWWWW#W',
+    '####################W############',
+  ]);
+
+
   // == THE MUDS - what the tide goes off ===================================
   // Sand bars and the gutways between them: every bar is cut through where a
   // gutway crossed it, and joined to the next at one shallow. It is the only
