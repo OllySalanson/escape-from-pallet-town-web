@@ -40,6 +40,15 @@ function fakeLayer(): { style: Record<string, string> & { setProperty(name: stri
 }
 
 describe('the menu screens are laid out against the window', () => {
+  it('spends the whole of the captain\'s window rather than capping the measure', () => {
+    // 1920 less the inset, at 2x: the screen holds 952 game pixels across, and
+    // what fills them is columns. At 720 - the cap while a body was one column
+    // - a quarter of that window was backdrop either side of a thin list.
+    const menu = computeMenuStage(1920, 950);
+    expect(menu.width).toBe(952);
+    expect(menu.width * menu.scale).toBe(1920 - 8 * 2);
+  });
+
   it('is not the canvas box: the same window gives the two different screens', () => {
     // The captain's own window. The canvas is capped at 400x256 because the
     // world view is a deliberate size; a menu on the same display has no such
@@ -51,7 +60,7 @@ describe('the menu screens are laid out against the window', () => {
     expect(menu.width).toBeGreaterThan(canvas.width);
     expect(menu.height).toBeGreaterThan(canvas.height);
     // The screen is bigger on the glass as well as in game pixels: the canvas
-    // leaves 720 pixels of the window unused and the menu leaves 480.
+    // leaves 720 pixels of the window unused and the menu leaves none of it.
     expect(menu.width * menu.scale).toBeGreaterThan(canvas.width * canvas.zoom);
   });
 
@@ -96,7 +105,10 @@ describe('the menu screens are laid out against the window', () => {
       // Nothing is ever laid out in less room than every screen is authored for.
       expect(stage.width).toBeGreaterThanOrEqual(MENU_MIN_WIDTH);
       expect(stage.height).toBeGreaterThanOrEqual(MENU_MIN_HEIGHT);
-      // And no row is ever run across a metre of glass.
+      // And no screen is ever run across a metre of glass. A *row* is now a
+      // column wide rather than a screen wide - see `ui/columnLayout.ts` - so
+      // this is the ceiling on how far a pane at one edge can be from the pane
+      // at the other, not on the measure of a line.
       expect(stage.width).toBeLessThanOrEqual(MENU_MAX_WIDTH);
       // The box fits the window, except in one smaller than the game's own
       // floor - where the canvas overflows too rather than shrink below 2x.

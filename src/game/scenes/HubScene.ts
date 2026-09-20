@@ -131,7 +131,9 @@ import {
   moveSummary,
 } from '../ui/pokemonSummary';
 import {
+  COLUMN_MEASURES,
   escapeAttribute,
+  pixelColumns,
   pixelCommitBar,
   pixelHpBar,
   pixelPortrait,
@@ -152,7 +154,7 @@ export interface HubSceneData {
 }
 
 /** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
-type HubView = 'home' | 'stash' | 'summary' | 'deploy' | 'reselect' | 'outfitter' | 'trader';
+type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'outfitter' | 'trader';
 
 export class HubScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
@@ -162,7 +164,6 @@ export class HubScene extends Phaser.Scene {
   private overlay!: MenuOverlay;
   private view: HubView = 'home';
   /** Whose summary is on screen, while the summary view is the one showing. */
-  private summaryPokemonId: string | undefined;
   private reselectStarterId: StarterSpeciesId = 'bulbasaur';
   /** A swap only runs from an explicit second click, so a misclick cannot delete a survivor. */
   private swapArmed = false;
@@ -549,15 +550,14 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * The gear strip: what this Pokemon carries, and what the stash could give it
-   * instead.
+   * What this Pokemon carries, and what the stash could give it instead.
    *
-   * It sits under the Pokemon it acts on, as the care strip does, because gear
-   * is a fact about that Pokemon rather than a pocket of its own - and because
-   * what the player is really choosing is which Pokemon takes the piece into the
-   * raid. Nothing is `disabled`: the cursor is how this screen explains itself.
+   * The chips live in the pane about the Pokemon they act on rather than under
+   * every row in the list: gear is a fact about one Pokemon, and repeated on
+   * twenty rows it was most of what the stash had on screen. Nothing is
+   * `disabled` - the cursor is how this screen explains itself.
    */
-  private gearStrip(stored: StashedPokemon): string {
+  private gearChips(stored: StashedPokemon, shows: string): string {
     const held = getHeldItem(stored.pokemon.heldItemId);
     const offers = HELD_ITEM_DEFINITIONS.filter(
       (item) => this.stash.itemCount(item.id) > 0 && item.id !== stored.pokemon.heldItemId,
@@ -567,26 +567,17 @@ export class HubScene extends Phaser.Scene {
       // held: two lines for one fact is one of them going stale. No glyph on it
       // either - the game's typeface has no cross, and a character it lacks is
       // drawn in whatever face the browser falls back to.
-      ? `<button class="px-window px-chip" data-gear-take="${stored.id}" data-help="${escapeAttribute(`${held.displayName}: ${held.description} Press to take it back into storage.`)}">Take ${held.displayName}</button>`
+      ? `<button class="px-window px-chip" data-gear-take="${stored.id}" ${shows} data-help="${escapeAttribute(`${held.displayName}: ${held.description} Press to take it back into storage.`)}">Take ${held.displayName}</button>`
       : '';
     const give = offers
       .map(
         (item) =>
           // The verb, for the same reason the take chip carries one: a chip that
           // is only a name reads as a label rather than something to press.
-          `<button class="px-window px-chip" data-gear-give="${item.id}" data-gear-pokemon="${stored.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description} Lost with ${stored.pokemon.base.name} on a wipe.`)}">Give ${item.displayName} ×${this.stash.itemCount(item.id)}</button>`,
+          `<button class="px-window px-chip" data-gear-give="${item.id}" data-gear-pokemon="${stored.id}" ${shows} data-help="${escapeAttribute(`${item.displayName}: ${item.description} Lost with ${stored.pokemon.base.name} on a wipe.`)}">Give ${item.displayName} ×${this.stash.itemCount(item.id)}</button>`,
       )
       .join('');
-    // The summary chip is always there, gear or no gear: it is the only way to
-    // a Pokemon's experience and its moves, and a row whose actions came and
-    // went with what it happened to be holding would hide that. Built by
-    // `chip()`, as the boxes' own Move chip beside it is.
-    const summary = this.chip(
-      `data-summary="${stored.id}" data-shows="${stored.id}"`,
-      `Read ${stored.pokemon.base.name}'s experience, stats and moves.`,
-      'Summary',
-    );
-    return `<div class="care-strip"><div class="care-options">${summary}${take}${give}</div></div>`;
+    return `${take}${give}${take || give ? '' : '<span class="px-note">No gear at base to give.</span>'}`;
   }
 
   /** The lone Pokemon a swap would trade away, or undefined while a team remains. */
@@ -611,9 +602,6 @@ export class HubScene extends Phaser.Scene {
       this.status = '';
     }
     this.view = view;
-    if (view !== 'summary') {
-      this.summaryPokemonId = undefined;
-    }
     this.swapArmed = false;
     this.outfitterUpgradeId = undefined;
     this.outfitterPayment = [];
@@ -849,14 +837,8 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
-    // The summary and the swap are both reached from the stash, so backing out
-    // of either returns there rather than dropping the player two screens out
-    // to the base.
-    if (this.view === 'summary') {
-      this.setView('stash');
-      this.render();
-      return;
-    }
+    // The swap is reached from the stash, so backing out of it returns there
+    // rather than dropping the player two screens out to the base.
     if (this.view === 'reselect') {
       this.setView('stash');
       this.render();
@@ -940,7 +922,6 @@ export class HubScene extends Phaser.Scene {
   private get heading(): string {
     if (this.view === 'home') return 'Base';
     if (this.view === 'stash') return 'Your stash';
-    if (this.view === 'summary') return 'Summary';
     if (this.view === 'reselect') return 'Swap your partner';
     if (this.view === 'outfitter') return this.payingFor ? `Build ${this.payingFor.name}` : 'The Outfitter';
     if (this.view === 'trader') return 'The Ferryman';
@@ -951,7 +932,6 @@ export class HubScene extends Phaser.Scene {
 
   private get backLabel(): string {
     if (this.view === 'reselect') return 'Stash';
-    if (this.view === 'summary') return 'Stash';
     if (this.view === 'outfitter' && this.payingFor) return 'Outfitter';
     if (this.view !== 'deploy') return 'Base';
     if (this.flow.step === 'confirm') return 'Drop-in';
@@ -996,12 +976,7 @@ export class HubScene extends Phaser.Scene {
               // that scrolls away from the row being priced.
               : this.view === 'trader'
                 ? `${scripHeld(this.stash)} scrip`
-                // The summary is about one Pokemon, and its window heading
-                // already names that Pokemon and its level. A count of the
-                // whole stash beside it would be about something else.
-                : this.view === 'summary'
-                  ? undefined
-                  : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} items`,
+                : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} items`,
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
@@ -1069,12 +1044,6 @@ export class HubScene extends Phaser.Scene {
     on('[data-recover]', (button) => this.recover([button.dataset.recover!]));
     on('[data-recover-all]', () => this.recover(this.injuredPokemon.map((stored) => stored.id)));
     on('[data-supply]', (button) => this.setStatus(button.dataset.help));
-    on('[data-summary]', (button) =>
-      rerender(() => {
-        this.setView('summary');
-        this.summaryPokemonId = button.dataset.summary;
-      }),
-    );
     on('[data-fit]', (button) => {
       const name = this.stashPokemon.find((stored) => stored.id === button.dataset.fit)?.pokemon.base.name;
       this.setStatus(`${name ?? 'That Pokémon'} is fit. There is nothing to recover.`);
@@ -1157,7 +1126,6 @@ export class HubScene extends Phaser.Scene {
   private content(): string {
     if (this.view === 'home') return this.homeView();
     if (this.view === 'stash') return this.stashView();
-    if (this.view === 'summary') return this.summaryView();
     if (this.view === 'reselect') return this.reselectView();
     if (this.view === 'outfitter') return this.payingFor ? this.paymentView(this.payingFor) : this.outfitterView();
     if (this.view === 'trader') return this.traderView();
@@ -1190,7 +1158,7 @@ export class HubScene extends Phaser.Scene {
       ? `<p class="px-warning">${hurt === 1 ? '1 Pokémon' : `${hurt} Pokémon`} came home hurt. Treat them here.</p>`
       : '<p>What is secured at base.</p>';
     const stash = `<button class="px-window px-card" data-view="stash" data-help="Everything secured at base, and the recovery bay.${swap}"><strong>Stash</strong>${stashLead}</button>`;
-    return `<main class="px-body hub-home"><section class="hub-actions">${deploy}${stash}${this.outfitterCard()}${this.traderCard()}</section>${this.contractBoard()}</main>`;
+    return `<main class="px-body hub-home"><section class="hub-actions" ${pixelColumns(96, { maximum: 3 })}>${deploy}${stash}${this.outfitterCard()}${this.traderCard()}</section>${this.contractBoard()}</main>`;
   }
 
   /**
@@ -1230,7 +1198,7 @@ export class HubScene extends Phaser.Scene {
           `<div class="px-detail" data-shown-by="${row.contractId}"${index === 0 ? '' : ' hidden'}>${row.asks ? `<span class="px-wrap px-warning">${row.asks}.</span>` : ''}<span class="px-wrap"><small>Reward</small> ${row.reward}</span></div>`,
       )
       .join('');
-    return pixelWindow(`<div class="px-list px-scroll">${rows}</div>${details}`, {
+    return pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${rows}</div>${details}`, {
       className: 'objectives-panel',
       heading: board.heading,
       note: board.note,
@@ -1305,31 +1273,35 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * The treatment surface. It only appears on a Pokemon a raid actually hurt,
-   * and it offers both prices side by side before either is paid: one medicine
-   * out of the stash, or a full restore at the recovery bay for raid time. What
+   * The treatment surface, in the pane about the Pokemon it would treat.
+   *
+   * It offers both prices side by side before either is paid: one medicine out
+   * of the stash, or a full restore at the recovery bay for raid time. What
    * each would do is in the help bar the moment the cursor is on it, and a
    * medicine that would do nothing can still be pointed at to be told why - a
    * player should never have to spend a Potion to find out what it does.
+   *
+   * It used to be a strip under every hurt row, which on a stash of two dozen
+   * made half the rows three lines tall and the list unscannable - and it is
+   * about the one Pokemon the cursor is on, which is what a detail pane is.
    */
-  private careStrip(stored: StashedPokemon): string {
+  private careChips(stored: StashedPokemon, shows: string): string {
     const { pokemon } = stored;
     if (!needsRecovery(pokemon)) {
-      return '';
+      return '<span class="px-note">Fit to raid.</span>';
     }
-
     const options = treatmentOptions(this.stash, pokemon);
     const medicine = options.length
-      ? options.map((option) => this.careOption(stored.id, option)).join('')
+      ? options.map((option) => this.careOption(stored.id, option, shows)).join('')
       : '<span class="px-note">No medicine at base.</span>';
-    const bay = `<button class="px-window px-chip" data-recover="${stored.id}" data-help="${this.recoveryHelp(stored)}">${this.recoveryPriceLabel(stored)}</button>`;
-    return `<div class="care-strip">${pokemon.isFainted ? `<p class="px-warning">${FAINTED_TREATMENT_NOTE}</p>` : ''}<div class="care-options">${medicine}${bay}</div></div>`;
+    const bay = `<button class="px-window px-chip" data-recover="${stored.id}" ${shows} data-help="${this.recoveryHelp(stored)}">${this.recoveryPriceLabel(stored)}</button>`;
+    return `${pokemon.isFainted ? `<span class="px-note px-wrap">${FAINTED_TREATMENT_NOTE}</span>` : ''}${medicine}${bay}`;
   }
 
-  private careOption(pokemonId: string, option: TreatmentOption): string {
+  private careOption(pokemonId: string, option: TreatmentOption, shows = ''): string {
     // Not `disabled`: a disabled control cannot take the cursor, and the cursor
     // is how this screen says why a medicine would do nothing.
-    return `<button class="px-window px-chip" data-treat-pokemon="${pokemonId}" data-treat-item="${option.itemId}" data-help="${escapeAttribute(`${option.displayName}: ${option.effect}.`)}"${option.usable ? '' : ' aria-disabled="true"'}>${option.displayName} ×${option.held}</button>`;
+    return `<button class="px-window px-chip" data-treat-pokemon="${pokemonId}" data-treat-item="${option.itemId}" ${shows} data-help="${escapeAttribute(`${option.displayName}: ${option.effect}.`)}"${option.usable ? '' : ' aria-disabled="true"'}>${option.displayName} ×${option.held}</button>`;
   }
 
   private saveStash(said: string, failed: string): void {
@@ -1347,7 +1319,7 @@ export class HubScene extends Phaser.Scene {
    * screen. A field replaces it while one is being typed into, and picking a
    * Pokemon up replaces it with the boxes it could go to.
    */
-  private browseBar(inStash: boolean): string {
+  private browseBar(inStash: boolean, manage = ''): string {
     const boxes = this.stash.listBoxes();
     if (this.boxEditing) {
       const renaming = this.boxEditing === 'rename';
@@ -1403,13 +1375,15 @@ export class HubScene extends Phaser.Scene {
       // question, so their controls give way to the ones that narrow it.
       return `<div class="box-bar"><div class="box-line"><span class="box-title">${escapeAttribute(label)}</span></div><div class="box-line">${sort}${find}${clear}</div></div>`;
     }
-    return `<div class="box-bar"><div class="box-line">${this.chip('data-box-step="-1"', 'The box before this one.', 'Prev')}<span class="box-title">${escapeAttribute(label)}</span>${this.chip('data-box-step="1"', 'The next box. After the last is every box at once.', 'Next')}</div><div class="box-line">${sort}${find}</div></div>`;
+    // Naming and adding boxes is the third line of the one strip rather than a
+    // row of the list under it: outside the strip it scrolled, and a strip that
+    // sticks to the top of the pane then clipped it through the middle.
+    return `<div class="box-bar"><div class="box-line">${this.chip('data-box-step="-1"', 'The box before this one.', 'Prev')}<span class="box-title">${escapeAttribute(label)}</span>${this.chip('data-box-step="1"', 'The next box. After the last is every box at once.', 'Next')}</div><div class="box-line">${sort}${find}</div>${manage}</div>`;
   }
 
   /**
-   * Naming, adding and taking away boxes. Rare next to finding and moving, so it
-   * scrolls with the list instead of holding a place on the strip that does not
-   * scroll - at the smallest stage that strip is what the list is short of.
+   * Naming, adding and taking away boxes: the last line of the strip that leads
+   * the list, beside where you are looking and how it is ordered.
    */
   private boxManage(): string {
     const scope = this.scopeBox;
@@ -1535,13 +1509,28 @@ export class HubScene extends Phaser.Scene {
     };
   }
 
+  /**
+   * The stash: every Pokemon at base as a grid you read at a glance, and
+   * everything about the one under the cursor in a single pane beneath it.
+   *
+   * This was five things behind one another. The list was one column however
+   * wide the window was, every row carried three to five chips of its own -
+   * MOVE, SUMMARY, TAKE, GIVE - and the one that mattered opened a whole second
+   * screen, so twenty Pokemon were a scroll wheel of clutter with the answer
+   * hidden a layer down. It is the PC box instead: the collection fills the
+   * width it has (`ui/columnLayout.ts`), a row is the two lines that tell one
+   * Pokemon from another, and what you came for - its condition, its
+   * experience, its stats, its moves and everything you can do to it - is the
+   * detail pane the cursor fills as it walks, the same pane the contract board
+   * and the Outfitter's ladder already use.
+   */
   private stashView(): string {
     const pokemon = this.stashPokemon;
     const shown = this.shownPokemon;
     const inBoxes = this.scopeBox === 'all' || this.stashSearch.trim() !== '';
     const boxNames = this.stash.listBoxes().map((box) => box.name);
     const rows = shown
-      .map((stored) => {
+      .map((stored, index) => {
         const hurt = needsRecovery(stored.pokemon);
         const wiring = hurt
           ? `data-recover="${stored.id}" data-help="${this.recoveryHelp(stored)}"`
@@ -1551,16 +1540,15 @@ export class HubScene extends Phaser.Scene {
           : pixelTag('Fit', 'good', true);
         const boxed = boxNames[this.stash.boxIndexOf(stored.id)];
         const moving = this.boxMoving === stored.id;
-        return `<div class="loadout-entry stash-entry"><button class="px-row${moving ? ' is-selected' : ''}" ${wiring} data-shows="${stored.id}">${this.pokemonRowBody(stored, tag, inBoxes ? boxed : undefined)}</button>${this.chip(`data-box-move="${stored.id}" data-shows="${stored.id}"`, moving ? `Put ${escapeAttribute(stored.pokemon.base.name)} down again.` : `Move ${escapeAttribute(stored.pokemon.base.name)} to another box. It is in ${escapeAttribute(boxed ?? 'no box')}.`, 'Move')}${this.gearStrip(stored)}</div>`;
+        return `<button class="px-row${moving ? ' is-selected' : ''}" ${wiring} data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''}>${this.pokemonRowBody(stored, tag, inBoxes ? boxed : undefined)}</button>`;
       })
       .join('');
-    const portraits = shown
-      .map(
-        (stored, index) =>
-          // The sprite and its types only: the name, level and condition are the
-          // row the cursor is on, and a ten-letter name does not fit beside a
-          // 64-pixel portrait in this column.
-          `<div class="stash-portrait" data-shown-by="${stored.id}"${index === 0 ? '' : ' hidden'}>${pixelPortrait(stored.pokemon.base.dexId, stored.pokemon.base.name)}<div>${pixelTypeBadge(stored.pokemon.base.primaryType)}${stored.pokemon.base.secondaryType ? pixelTypeBadge(stored.pokemon.base.secondaryType) : ''}</div></div>`,
+    const details = shown
+      .map((stored, index) =>
+        this.pokemonDetail(stored, index === 0, {
+          label: 'Keeping',
+          chips: (shows) => `${this.boxChip(stored, shows)}${this.gearChips(stored, shows)}`,
+        }),
       )
       .join('');
     const supplyRow = (item: ItemDefinition): string =>
@@ -1574,45 +1562,37 @@ export class HubScene extends Phaser.Scene {
       materialRows ? `<h3 class="px-subheading">Found goods</h3>${materialRows}` : ''
     }`;
     return `<main class="px-body stash-layout">${pixelWindow(
-      `<div class="px-list px-scroll">${this.browseBar(true)}${this.boxManage()}${rows || `<p class="px-empty">${this.stashSearch.trim() ? 'No Pokémon answers that.' : pokemon.length === 0 ? 'No Pokémon in storage.' : 'This box is empty.'}</p>`}${this.swapPanel()}</div>`,
-      { heading: 'Pokémon', note: `${pokemon.length} stored` },
-    )}<div class="stash-side">${portraits ? pixelWindow(portraits, { tag: 'div' }) : ''}${pixelWindow(
-      `<div class="px-list px-scroll">${supplies || '<p class="px-empty">No supplies in storage.</p>'}</div>`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(true, this.boxManage())}${rows || `<p class="px-empty">${this.stashSearch.trim() ? 'No Pokémon answers that.' : pokemon.length === 0 ? 'No Pokémon in storage.' : 'This box is empty.'}</p>`}${this.swapPanel()}</div>${details}`,
+      { className: 'stash-roster', heading: 'Pokémon', note: `${pokemon.length} stored` },
+    )}<div class="stash-side">${pixelWindow(
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${supplies || '<p class="px-empty">No supplies in storage.</p>'}</div>`,
       { heading: 'Supplies', note: `${this.stashItems.length} kinds` },
     )}</div>${this.recoveryPanel()}</main>`;
   }
 
-  /** Whose summary the screen is showing, if that Pokemon is still at base. */
-  private get summaryPokemon(): StashedPokemon | undefined {
-    return this.stashPokemon.find((stored) => stored.id === this.summaryPokemonId);
-  }
-
   /**
-   * The summary screen: how far a Pokemon is from its next level, and what each
-   * of its moves actually does.
+   * Everything about one Pokemon, in the pane under the list.
    *
-   * Both were unanswerable anywhere in the game. A level was a number with
-   * nothing behind it, and a move was a name and a PP count - the move menu in
-   * a fight describes the highlighted one, but only once the fight has started
-   * and only against the Pokemon standing opposite.
+   * It holds what the summary screen used to be a whole screen for - the
+   * portrait, its condition, how far it is from its next level, its stats and
+   * its moves - and the deeds that used to be chips on every row: which box it
+   * is in, and the one piece of gear it can carry. Five blocks laid across the
+   * pane, which wrap and then scroll on a screen too narrow for them; on the
+   * windows this game is actually played in they stand on one line.
    *
-   * Two windows, in the ranks PR #115 set: the window heading says what the
-   * panel is, a `px-subheading` bands each part of it, and a move's numbers and
-   * its sentence live in the list's one detail pane, which the cursor swaps as
-   * it walks the rows. Nothing here is a control except the move rows, so the
-   * screen can be read without changing anything.
+   * Every control in here carries the pane's own `data-shows`, because the
+   * cursor moving into the pane must not swap the pane out from under itself -
+   * and because a re-render puts the cursor back on the control it was on.
    */
-  private summaryView(): string {
-    const stored = this.summaryPokemon;
-    if (!stored) {
-      return `<main class="px-body summary-layout">${pixelWindow(
-        '<p class="px-empty">That Pokémon is no longer at base.</p>',
-        { heading: 'Summary' },
-      )}</main>`;
-    }
+  private pokemonDetail(
+    stored: StashedPokemon,
+    first: boolean,
+    deeds: { readonly label: string; readonly chips: (shows: string) => string },
+  ): string {
     const { pokemon } = stored;
     const progress = experienceProgress(pokemon);
     const held = getHeldItem(pokemon.heldItemId);
+    const shows = `data-shows="${stored.id}"`;
     const stats: readonly (readonly [string, number])[] = [
       ['Attack', pokemon.stats.attack],
       ['Defense', pokemon.stats.defense],
@@ -1620,30 +1600,38 @@ export class HubScene extends Phaser.Scene {
       ['Sp. Def', pokemon.stats.spDefense],
       ['Speed', pokemon.stats.speed],
     ];
-    const profile = pixelWindow(
-      `<div class="px-scroll summary-profile"><div class="summary-hero">${pixelPortrait(pokemon.base.dexId, pokemon.base.name)}<div class="summary-state"><div class="summary-types">${pixelTypeBadge(pokemon.base.primaryType)}${pokemon.base.secondaryType ? pixelTypeBadge(pokemon.base.secondaryType) : ''}</div>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small class="px-wrap">${this.conditionLine(stored)}</small><small class="px-wrap">${held ? `Holding ${held.displayName}` : 'Holding nothing'}</small></div></div><h3 class="px-subheading">Experience</h3><div class="summary-state">${pixelXpBar(experienceBarFill(progress), `Experience ${formatExperience(progress.intoLevel)} of ${formatExperience(progress.levelSpan)}`)}<small class="px-wrap">${experienceLine(progress)}</small></div><h3 class="px-subheading">Stats</h3><dl class="summary-stats">${stats
-        .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
-        .join('')}</dl></div>`,
-      { heading: pokemon.base.name, note: `Lv ${pokemon.level}` },
+    const figure = `<div class="stash-figure">${pixelPortrait(pokemon.base.dexId, pokemon.base.name)}<div class="summary-types">${pixelTypeBadge(pokemon.base.primaryType)}${pokemon.base.secondaryType ? pixelTypeBadge(pokemon.base.secondaryType) : ''}</div></div>`;
+    const vitals = `<div class="stash-vitals"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong><small>Lv ${pokemon.level}</small></span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small class="px-wrap">${this.conditionLine(stored)}</small><small class="px-wrap">${held ? `Holding ${held.displayName}` : 'Holding nothing'}</small></div>`;
+    const growth = `<div class="stash-growth"><small class="px-label">Experience</small>${pixelXpBar(experienceBarFill(progress), `Experience ${formatExperience(progress.intoLevel)} of ${formatExperience(progress.levelSpan)}`)}<small class="px-wrap">${experienceLine(progress)}</small><small class="px-label">Stats</small><dl class="summary-stats">${stats
+      .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
+      .join('')}</dl></div>`;
+    // A move is a row the cursor can rest on and nothing else: it says what it
+    // does in the help bar, which is where every row on these screens explains
+    // itself, rather than in a second detail pane inside a detail pane.
+    const moves = pokemon.moves.length
+      ? pokemon.moves
+          .map((move) => {
+            const summary = moveSummary(move);
+            return `<button class="px-row" ${shows} aria-disabled="true" data-help="${escapeAttribute(`${summary.detail}. ${summary.description}`)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${summary.name}</strong>${pixelTypeBadge(summary.type)}</span></span><span class="px-tag">${summary.pp}/${summary.maxPp}</span></button>`;
+          })
+          .join('')
+      : '<p class="px-empty">No moves known.</p>';
+    const moveList = `<div class="stash-moves"><small class="px-label">Moves · ${moveSlotNote(pokemon.moves.length)}</small><div class="px-list">${moves}</div></div>`;
+    return `<div class="px-detail px-scroll stash-detail" data-shown-by="${stored.id}"${first ? '' : ' hidden'}><div class="stash-detail-body">${figure}${vitals}${growth}${moveList}<div class="stash-deeds"><small class="px-label">${deeds.label}</small><div class="care-options">${deeds.chips(shows)}</div></div></div></div>`;
+  }
+
+  /** Where this Pokemon is kept, and the press that moves it somewhere else. */
+  private boxChip(stored: StashedPokemon, shows: string): string {
+    const boxed = this.stash.listBoxes()[this.stash.boxIndexOf(stored.id)]?.name;
+    const moving = this.boxMoving === stored.id;
+    const name = escapeAttribute(stored.pokemon.base.name);
+    return this.chip(
+      `data-box-move="${stored.id}" ${shows}`,
+      moving ? `Put ${name} down again.` : `Move ${name} to another box. It is in ${escapeAttribute(boxed ?? 'no box')}.`,
+      // The verb first, then where it is now: a chip that is only a name reads
+      // as a label rather than as something to press.
+      moving ? 'Putting down' : `Move · ${escapeAttribute(boxed ?? 'no box')}`,
     );
-    const summaries = pokemon.moves.map((move) => moveSummary(move));
-    const rows = summaries
-      .map(
-        (move, index) =>
-          `<button class="px-row" data-shows="move-${index}"${index === 0 ? ' data-cursor-start' : ''} data-help="${escapeAttribute(move.description)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${move.name}</strong>${pixelTypeBadge(move.type)}</span></span><span class="px-tag">${move.pp}/${move.maxPp} PP</span></button>`,
-      )
-      .join('');
-    const details = summaries
-      .map(
-        (move, index) =>
-          `<div class="px-detail" data-shown-by="move-${index}"${index === 0 ? '' : ' hidden'}><span class="px-wrap">${move.detail}</span></div>`,
-      )
-      .join('');
-    const moves = pixelWindow(
-      `<div class="px-list px-scroll">${rows || '<p class="px-empty">No moves known.</p>'}</div>${details}`,
-      { heading: 'Moves', note: moveSlotNote(pokemon.moves.length) },
-    );
-    return `<main class="px-body summary-layout">${profile}${moves}</main>`;
   }
 
   /**
@@ -1676,13 +1664,21 @@ export class HubScene extends Phaser.Scene {
       .map((stored) => {
         const added = this.flow.includesPokemon(stored.id);
         const name = escapeAttribute(stored.pokemon.base.name);
-        return `<div class="loadout-entry"><button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-help="${added ? `Take ${name} back out of the raid.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
+        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}" data-help="${added ? `Take ${name} back out of the raid.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
           stored,
           // A tick, as every chosen row on these screens is marked: a ten-letter
           // name and its health bar leave no room for a word beside them.
           added ? pixelTag('', 'good', true) : pixelTag('Add'),
-        )}</button>${this.careStrip(stored)}</div>`;
+        )}</button>`;
       })
+      .join('');
+    const details = this.findablePokemon
+      .map((stored, index) =>
+        this.pokemonDetail(stored, index === 0, {
+          label: 'Condition',
+          chips: (shows) => this.careChips(stored, shows),
+        }),
+      )
       .join('');
     const supplyRows = this.stashItems
       .filter((item) => !isFoundOnly(item.id))
@@ -1708,14 +1704,15 @@ export class HubScene extends Phaser.Scene {
       })
       .join('');
     const cells = this.flow.bagCells;
-    // The stash list is the tall one - it holds every Pokemon and every supply
-    // at base - so it keeps the first column whole, and the pack stands beside
-    // it, where its own lid counts the squares. Where to drop in used to be the
-    // second window of this column; it is its own step now, because a place
-    // deserves more than a name in a list a third of a screen wide.
+    // The stash list is the tall one - every Pokemon and every supply at base -
+    // so it keeps the first column whole and the pack stands beside it, where
+    // its own lid counts the squares. What is wrong with a Pokemon, and the two
+    // ways to fix it, are the pane under the list rather than a strip under
+    // every hurt row: twenty-four rows of different heights is a list nobody
+    // can scan, and the treatment is about the one Pokemon being looked at.
     return `<main class="px-body loadout-layout">${pixelWindow(
-      `<div class="px-list px-scroll">${this.browseBar(false)}${pokemonRows || '<p class="px-empty">No Pokémon answers that.</p>'}<h3 class="px-subheading">Supplies</h3>${supplyRows || '<p class="px-empty">No supplies at base.</p>'}</div>`,
-      { heading: 'Stash', note: hurtCount ? `${hurtCount} hurt · treat them first` : '' },
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${this.browseBar(false)}${pokemonRows || '<p class="px-empty">No Pokémon answers that.</p>'}<h3 class="px-subheading">Supplies</h3>${supplyRows || '<p class="px-empty">No supplies at base.</p>'}</div>${details}`,
+      { className: 'loadout-stash', heading: 'Stash', note: hurtCount ? `${hurtCount} hurt · treat them first` : '' },
     )}<div class="loadout-side">${pixelWindow(
       pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         label: `Pack, ${cells.used} of ${cells.total} squares full`,
@@ -1805,14 +1802,14 @@ export class HubScene extends Phaser.Scene {
         note: `Grade ${briefing.grade.rung}/${briefing.grade.rungs}`,
       },
     )}${pixelWindow(
-      `<div class="px-list px-scroll">${rows}${this.firstContractActive ? '<p class="px-note px-wrap">Three more insertions unlock when you extract this contract.</p>' : ''}</div>`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.line)}>${rows}${this.firstContractActive ? '<p class="px-note px-wrap">Three more insertions unlock when you extract this contract.</p>' : ''}</div>`,
       {
         className: 'dropin-list',
         heading: this.firstContractActive ? 'Contract area' : 'Drop in at',
         note: this.firstContractActive ? '' : `${this.unlockedInsertions.length} known`,
       },
     )}${pixelWindow(
-      `<div class="px-list px-scroll dropin-brief">${this.placeBrief(briefing)}</div>`,
+      `<div class="px-list px-scroll dropin-brief" ${pixelColumns(COLUMN_MEASURES.line)}>${this.placeBrief(briefing)}</div>`,
       { className: 'dropin-about', heading: 'What is in there' },
     )}${pixelCommitBar({
       title: `Drop in at ${briefing.insertion.label}`,
@@ -2002,7 +1999,7 @@ export class HubScene extends Phaser.Scene {
     ).join('');
     const cells = this.flow.secureCells;
     return `<main class="px-body secure-layout">${pixelWindow(
-      `<div class="px-list px-scroll">${pokemonRows || '<p class="px-empty">Add a Pokémon to your loadout first.</p>'}</div>${this.secureRoomNote()}`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${pokemonRows || '<p class="px-empty">Add a Pokémon to your loadout first.</p>'}</div>${this.secureRoomNote()}`,
       { className: 'secure-group', heading: 'Pokémon', note: `${this.flow.securedPokemon.length}/${slots} ${slots === 1 ? 'slot' : 'slots'}` },
     )}${pixelWindow(
       // The squares and the list are one child of the window, or the window's
@@ -2010,7 +2007,7 @@ export class HubScene extends Phaser.Scene {
       `<div class="secure-body">${pixelGrid(this.flow.secureLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         className: 'is-secure',
         label: `Secure container, ${cells.used} of ${cells.total} squares full${this.flow.securedCargo.length ? `, holding ${this.flow.securedCargo.map((piece) => piece.name).join(' and ')}` : ''}`,
-      })}<div class="px-list px-scroll">${itemRows ? `${itemRows}<h3 class="px-subheading">Found goods</h3>` : ''}${materialRows}</div></div>`,
+      })}<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${itemRows ? `${itemRows}<h3 class="px-subheading">Found goods</h3>` : ''}${materialRows}</div></div>`,
       {
         className: 'secure-group',
         heading: 'Container',
@@ -2088,14 +2085,14 @@ export class HubScene extends Phaser.Scene {
       .map((stored) => `<div class="px-row is-secured">${this.pokemonRowBody(stored, '')}</div>`)
       .join('')}${securedItems.map((item) => itemRow(item, true)).join('')}`;
     return `<main class="px-body confirm-layout">${pixelWindow(
-      `<div class="px-list px-scroll">${risked || '<p class="px-empty">Nothing extra is at risk. Your whole loadout is protected.</p>'}</div>`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${risked || '<p class="px-empty">Nothing extra is at risk. Your whole loadout is protected.</p>'}</div>`,
       {
         className: 'confirm-risk px-tone-risk',
         heading: 'Lost if you wipe',
         note: `${riskedCount} ${riskedCount === 1 ? 'entry' : 'entries'}`,
       },
     )}${pixelWindow(
-      `<div class="px-list px-scroll">${secured || '<p class="px-empty px-warning">Nothing is protected. A wipe costs you your whole loadout.</p>'}</div>`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${secured || '<p class="px-empty px-warning">Nothing is protected. A wipe costs you your whole loadout.</p>'}</div>`,
       {
         className: 'confirm-secure px-tone-secure',
         heading: 'Comes home',
@@ -2200,7 +2197,7 @@ export class HubScene extends Phaser.Scene {
       })
       .join('');
     const shelfPane = pixelWindow(
-      `<div class="px-list px-scroll">${shelf}</div>${this.berthRow(counter)}`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${shelf}</div>${this.berthRow(counter)}`,
       {
         className: 'objectives-panel trader-shelf',
         heading: 'Off the deck',
@@ -2245,7 +2242,7 @@ export class HubScene extends Phaser.Scene {
           `<div class="px-detail" data-shown-by="${offer.barter.id}"${offer === shown ? '' : ' hidden'}><span class="px-wrap">${offer.barter.detail}</span></div>`,
       )
       .join('');
-    const tablePane = pixelWindow(`<div class="px-list px-scroll">${table}</div>${details}`, {
+    const tablePane = pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${table}</div>${details}`, {
       className: 'objectives-panel trader-table',
       heading: 'Out of the hold',
       // Short, because a heading bar's note clips: "Found goods only · no scrip
@@ -2388,7 +2385,7 @@ export class HubScene extends Phaser.Scene {
       )
       .join('');
     return `<main class="px-body outfitter-layout">${pixelWindow(
-      `<div class="px-list px-scroll">${rows}</div>${details}`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${rows}</div>${details}`,
       {
         className: 'objectives-panel',
         heading: 'What extraction buys',
@@ -2430,14 +2427,14 @@ export class HubScene extends Phaser.Scene {
       )
       .join('');
     return `<main class="px-body loadout-layout">${pixelWindow(
-      `<div class="px-list px-scroll">${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(false)}${rows || '<p class="px-empty">No Pokémon answers that.</p>'}</div>`,
       {
         className: 'px-tone-risk',
         heading: 'Pokémon to release',
         note: `${chosen.length}/${upgrade.cost.pokemon} chosen`,
       },
     )}${pixelWindow(
-      `<div class="px-list">${supplies}</div><p class="px-note px-wrap carry-note">Materials are spent here and nowhere else.</p>`,
+      `<div class="px-list" ${pixelColumns(COLUMN_MEASURES.supply)}>${supplies}</div><p class="px-note px-wrap carry-note">Materials are spent here and nowhere else.</p>`,
       { className: 'run-loadout px-scroll', heading: 'Materials spent' },
     )}${this.paymentFooter(upgrade, chosen)}</main>`;
   }
@@ -2497,7 +2494,7 @@ export class HubScene extends Phaser.Scene {
     if (!spare) return '<main class="px-body"><p class="px-window px-empty">You have more than one Pokémon, so there is nothing to swap.</p></main>';
     const chosen = getStarterSpecies(this.reselectStarterId);
     const held = `${spare.pokemon.base.name} (Level ${spare.pokemon.level})`;
-    return `<main class="px-body starter-shell reselect-shell"><p class="starter-brief">${held} is your last Pokémon. Swapping releases it for good for a level 5 starter as hurt as it is now, with no supplies: a change of direction, never an upgrade or a heal.</p><div class="starter-grid">${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectHelp: 'Swap to this starter.' })}</div>${this.swapFooter(spare, chosen)}</main>`;
+    return `<main class="px-body starter-shell reselect-shell"><p class="starter-brief">${held} is your last Pokémon. Swapping releases it for good for a level 5 starter as hurt as it is now, with no supplies: a change of direction, never an upgrade or a heal.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectHelp: 'Swap to this starter.' })}</div>${this.swapFooter(spare, chosen)}</main>`;
   }
 
   private swapFooter(spare: StashedPokemon, chosen: PokemonBase): string {

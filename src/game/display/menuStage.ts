@@ -20,9 +20,13 @@
  *   that fits its own small composition, which is why a 4K display used to draw
  *   the stash at 6x with exactly the rows a laptop gets; here the same display
  *   spends the difference on rows and steps the type up once.
- * - `MENU_MAX_WIDTH` is how many game pixels a screen may hold across, so the
- *   measure of a row is the same handful of words at every scale - what grows
- *   with the scale is how big those words are drawn, not how far apart they are.
+ * - `MENU_MAX_WIDTH` is how many game pixels a screen may hold across. It used
+ *   to be 720 - about the measure of one comfortable row - because a body was
+ *   one column and a row run across a metre of glass is unreadable. A
+ *   collection is now laid out in columns (`ui/columnLayout.ts`), so the
+ *   measure is the *column's* and the screen's width is free to be spent on
+ *   more of them; what this number stops is a screen so wide that the panes
+ *   beside a list are lost at the far edge of an ultrawide display.
  * - `MENU_INSET` keeps the backdrop showing all round, so a screen still reads
  *   as a screen with a frame rather than as a web page filling the browser.
  * - Height is deliberately uncapped. Rows are what a taller window buys, and a
@@ -30,7 +34,7 @@
  */
 export const MENU_MIN_WIDTH = 320;
 export const MENU_MIN_HEIGHT = 240;
-export const MENU_MAX_WIDTH = 720;
+export const MENU_MAX_WIDTH = 1120;
 
 /**
  * The screen a window must be able to hold at the next scale up before it is

@@ -8,7 +8,7 @@ import {
   type StarterSpeciesId,
 } from '../stash';
 import { MenuOverlay } from '../ui/MenuOverlay';
-import { pixelCommitBar, pixelScreen } from '../ui/pixelUi';
+import { pixelColumns, pixelCommitBar, pixelScreen } from '../ui/pixelUi';
 import { starterCards, starterLoadoutSummary } from '../ui/starterPicker';
 
 export class StarterScene extends Phaser.Scene {
@@ -37,7 +37,7 @@ export class StarterScene extends Phaser.Scene {
       place: 'First raid briefing',
       title: 'Choose your partner',
       hints: 'ARROWS move · ENTER choose',
-      body: `<main class="px-body starter-shell"><p class="starter-brief">Your partner enters the lost field kit raid with you. Choose carefully.</p><div class="starter-grid">${starterCards(this.selectedStarterId)}</div>${pixelCommitBar({
+      body: `<main class="px-body starter-shell"><p class="starter-brief">Your partner enters the lost field kit raid with you. Choose carefully.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.selectedStarterId)}</div>${pixelCommitBar({
         title: selected.name,
         // The bar's title is the name and the button confirms it by name, so
         // the line is only what the name does not say.
