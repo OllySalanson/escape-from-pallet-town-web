@@ -1290,25 +1290,28 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // == THE STAITHE - the wharf at the river's mouth ========================
   // Where the barges loaded before the flood: a stone quay down the river's
   // west bank, a lime kiln, a crane bed, and two rows of cottages behind them
-  // with the lanes running between. It is the far end of the marsh road and
+  // with the lanes running between. It is the one place on the new ground
+  // built of WALL rather than hedge: a wharf drawn in the sheet's hedge is a
+  // bush maze with paving in it, which is what it looked like in a playtest,
+  // and a yard behind a quay is walled. It is the far end of the marsh road and
   // the bottom-left corner of the map, and until somebody opens the hard in
   // the quay wall it is where the west side of the world stops.
   map.draw(2, 96, [
-    'PP#PP"PPPPP"P#"PP"P#"PP#PP"PPP#P"#CPPP',
-    'PPPPP"P####"PP"P#"PP"PPPPP"#P"PP"PPPPP',
-    'P##P#####P#####P####P##P####P##P#PPCPP',
-    '###PP"P#"PP####PP"P####P###PP"P##PPPPP',
-    '##PPP"PP"P#######"P####P####P"###PPPCP',
-    '##P##############P########PPP####PPPPP',
-    'PP"PP"PPPPPP###PP"PPPPP####PP"#P"#PPPC',
-    'PP"#P####P##P##PP"P#"PP#####P"#P##CPPP',
-    'P#######PPP#PPPPP"P#P#PP##P####P"PPPPP',
-    '#########PP#PP#P####"PP#PP"P###P"#PCPP',
-    '#########P##P#######"PPPPP"####P##PPPP',
-    '###PP"PPPPP#########P##########P##PPCP',
-    'P##P##P##P##P####P##"PP#PP"P###P##PPPP',
-    'PP"P#####PPPPP#PP"P#"PPPPP"###PP"#PPPC',
-    'PP"######PP#PPPPP"P#"PPPPP"####P"#CPPP',
+    'PPBPP"PPPPP"PB"PP"PB"PPBPP"PPPBP"BCPPP',
+    'PPPPP"PBBBB"PP"PB"PP"PPPPP"BP"PP"PPPPP',
+    'PBBPBBBBBPBBBBBPBBBBPBBPBBBBPBBPBPPCPP',
+    'BBBPP"PB"PPBBBBPP"PBBBBPBBBPP"PBBPPPPP',
+    'BBPPP"PP"PBBBBBBB"PBBBBPBBBBP"BBBPPPCP',
+    'BBPBBBBBBBBBBBBBBPBBBBBBBBPPPBBBBPPPPP',
+    'PP"PP"PPPPPPBBBPP"PPPPPBBBBPP"BP"BPPPC',
+    'PP"BPBBBBPBBPBBPP"PB"PPBBBBBP"BPBBCPPP',
+    'PBBBBBBBPPPBPPPPP"PBPBPPBBPBBBBP"PPPPP',
+    'BBBBBBBBBPPBPPBPBBBB"PPBPP"PBBBP"BPCPP',
+    'BBBBBBBBBPBBPBBBBBBB"PPPPP"BBBBPBBPPPP',
+    'BBBPP"PPPPPBBBBBBBBBPBBBBBBBBBBPBBPPCP',
+    'PBBPBBPBBPBBPBBBBPBB"PPBPP"PBBBPBBPPPP',
+    'PP"PBBBBBPPPPPBPP"PB"PPPPP"BBBPP"BPPPC',
+    'PP"BBBBBBPPBPPPPP"PB"PPPPP"BBBBP"BCPPP',
     'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
   ]);
 

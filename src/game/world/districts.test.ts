@@ -363,6 +363,7 @@ describe('the named districts of a map', () => {
         'BANK STEPS': 'THE LEVELS',
         'MARSH GATE': 'THE SEA WALL',
         'THE GUTWAY': 'THE MUDS',
+        'THE GRIDIRON': 'THE MUDS',
       });
     });
 
