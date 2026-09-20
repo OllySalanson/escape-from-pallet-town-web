@@ -4,13 +4,14 @@ import { FIRST_CONTRACT, RAID_CONTRACTS } from '../objectives';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import type { GridPosition } from '../movement/gridMovement';
 import { getWorldMap } from '../worldMap';
+import { RAID_DURATION_MS } from '../run/raidClock';
 import {
   extractionRequirementText,
   isExtractionAvailable,
   EXTRACTION_POINTS,
 } from './extractionPoints';
 import { WORLD_GATES } from './gates';
-import { stepDistances } from './mapStructure';
+import { stepDistances, walkableTiles } from './mapStructure';
 import { tryActivatePoi, WORLD_POIS } from './pois';
 import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters } from './trainers';
@@ -408,5 +409,99 @@ describe('the way back from a won district', () => {
     // And it is the front door it is next to, not only an exit: the quay the
     // causeway lands on is the one the raid started from.
     expect(fromKeep[insertion.position.y][insertion.position.x] * 1.5).toBeLessThan(wayIn);
+  });
+});
+
+/**
+ * What four times the ground was for.
+ *
+ * The clock did not move when the map did, so "bigger" has to mean something
+ * other than "further to walk", and these are the facts that say what: a raid
+ * can still get home from anywhere with most of its five minutes unspent, a
+ * fresh save has somewhere new it can actually reach, each new keeper opens a
+ * way back that is shorter than the way in, and there is a great deal of the
+ * map that one raid cannot see. If a redraw ever makes the map merely longer,
+ * one of these is what fails.
+ */
+describe('the country the map grew into', () => {
+  const open = getWorldMap('floodplain-relay', WORLD_GATES.filter((gate) => gate.mapId === 'floodplain-relay').map((gate) => gate.bossId ?? gate.id));
+  const exits = EXTRACTION_POINTS.filter((point) => point.mapId === 'floodplain-relay');
+  /** The slower of the two measured step costs: a player who taps their way out. */
+  const SLOW_STEP_MS = 230;
+
+  const insertions = Object.values(RUN_INSERTIONS).filter(
+    (candidate) => candidate.mapId === 'floodplain-relay',
+  );
+
+  it('is sixteen times the smallest map and four times what it was', () => {
+    expect(open.width * open.height).toBe(128 * 128);
+  });
+
+  it('gives every landing a way out well inside the clock', () => {
+    // Measured, not eyeballed: from each of the ten landings, the walk to the
+    // nearest way out that needs no condition, at the slower step cost, has to
+    // leave most of the raid for the raid.
+    for (const insertion of insertions) {
+      const steps = stepDistances(open.collision, insertion.position);
+      const walks = exits
+        .filter((exit) => (exit.requirement?.kind ?? 'always') === 'always')
+        .map((exit) => steps[exit.position.y][exit.position.x])
+        .filter((walk) => walk >= 0);
+      expect(`${insertion.id}: ${walks.length > 0 ? 'has an open way out' : 'none'}`).toBe(
+        `${insertion.id}: has an open way out`,
+      );
+      const share = (Math.min(...walks) * SLOW_STEP_MS) / RAID_DURATION_MS;
+      expect(`${insertion.id}: ${(share * 100).toFixed(0)}% of the clock to walk out`).toBe(
+        `${insertion.id}: ${(Math.min(share, 0.25) * 100).toFixed(0)}% of the clock to walk out`,
+      );
+    }
+  });
+
+  it('is far more map than one raid can walk', () => {
+    // The whole point of the size, as a number. A raid is five minutes; from
+    // the front door the far corner of the map is most of that in walking
+    // alone, before a fight, a cache or a contract - so a raid sees a slice.
+    const fromDoor = stepDistances(open.collision, insertion.position);
+    const furthest = Math.max(
+      ...walkableTiles(open.collision).map((tile) => fromDoor[tile.y][tile.x]),
+    );
+    expect(furthest * SLOW_STEP_MS).toBeGreaterThan(RAID_DURATION_MS * 0.6);
+  });
+
+  it('opens the marsh and the wharf to a save that has beaten nobody', () => {
+    // The drove out of Old Town is the one arm of the new ground with no door
+    // on it, and it is a long way: a fresh save has somewhere left to wonder
+    // about that it can actually get to.
+    const shut = getWorldMap('floodplain-relay', []);
+    const steps = stepDistances(shut.collision, insertion.position);
+    const staithe = RUN_INSERTIONS['floodplain-staithe'].position;
+    expect(steps[staithe.y][staithe.x]).toBeGreaterThan(120);
+  });
+
+  it('makes the quarry a ring: in past the keep, out through the adit', () => {
+    // Every keeper on this map holds two doors, and the second opens onto
+    // ground the player already walked. The foreman's level comes out on the
+    // beck, which is the mill's own water.
+    const beaten = ['floodplain-toll-keeper', 'floodplain-sluice-keeper', 'floodplain-quarry-foreman'];
+    const map = getWorldMap('floodplain-relay', beaten);
+    const adit = WORLD_GATES.find((gate) => gate.id === 'floodplain-quarry-adit')!;
+    const floor = RUN_INSERTIONS['floodplain-quarry'].position;
+    const wayIn = stepDistances(map.collision, insertion.position, new Set(adit.tiles.map(key)))[floor.y][floor.x];
+    const home = stepDistances(map.collision, floor)[insertion.position.y][insertion.position.x];
+    expect(wayIn).toBeGreaterThan(0);
+    expect(home).toBeLessThan(wayIn);
+  });
+
+  it('makes the sands the one thing that touches both sides of the river', () => {
+    // The banksman's two doors are at opposite ends of the bottom of the map.
+    // Until both are open the wharf is where the west side stops, and after
+    // them the sands are a way from the breach back to ground a fresh save
+    // knows - which is this map's own rule about second doors, kept at scale.
+    const wharf = RUN_INSERTIONS['floodplain-staithe'].position;
+    const breach = { x: 73, y: 110 };
+    const before = getWorldMap('floodplain-relay', ['floodplain-toll-keeper']);
+    const after = getWorldMap('floodplain-relay', ['floodplain-toll-keeper', 'floodplain-sea-wall-keeper']);
+    expect(stepDistances(before.collision, wharf)[breach.y][breach.x]).toBe(-1);
+    expect(stepDistances(after.collision, wharf)[breach.y][breach.x]).toBeGreaterThan(0);
   });
 });

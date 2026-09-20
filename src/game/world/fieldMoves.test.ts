@@ -114,7 +114,8 @@ describe('a move that is also a route', () => {
           // Pallet's hay closes, which is where a Nidoran would be.
           'nidoran-f',
           'oddish',
-          // The forest's east and south, added with the ground they live on.
+          // The forest's east and south, the kilns' heath and the levels'
+          // fen: four maps grew, and these two came with the ground.
           'paras',
           'rattata',
           'sandshrew',

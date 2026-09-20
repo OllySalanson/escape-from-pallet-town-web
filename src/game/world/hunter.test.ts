@@ -832,37 +832,49 @@ describe('a raid where the player flees and then walks', () => {
   });
 });
 
-/** Every walkable tile's distance from an origin, so a candidate can be checked in O(1). */
+/**
+ * Every walkable tile's distance from an origin, so a candidate can be checked
+ * in O(1). It is kept in one `Int32Array` rather than a `Map` of "x,y" keys
+ * because the tests below run it from every tile of every map: on a map 128
+ * tiles square that is fifty million strings, and it was half a minute of the
+ * suite before it was a typed array.
+ */
 const walkDistancesFrom = (
   origin: { x: number; y: number },
   bounds: { width: number; height: number },
   isBlocked: (tile: { x: number; y: number }) => boolean,
-): Map<string, number> => {
-  const distances = new Map([[`${origin.x},${origin.y}`, 0]]);
-  const frontier = [origin];
-  for (let head = 0; head < frontier.length; head += 1) {
-    const tile = frontier[head];
-    const distance = distances.get(`${tile.x},${tile.y}`)!;
-    for (const delta of [
-      { x: 0, y: -1 },
-      { x: 0, y: 1 },
-      { x: -1, y: 0 },
-      { x: 1, y: 0 },
-    ]) {
-      const neighbour = { x: tile.x + delta.x, y: tile.y + delta.y };
-      const key = `${neighbour.x},${neighbour.y}`;
-      if (
-        neighbour.x < 0 || neighbour.y < 0 ||
-        neighbour.x >= bounds.width || neighbour.y >= bounds.height ||
-        distances.has(key) || isBlocked(neighbour)
-      ) {
+): ((tile: { x: number; y: number }) => number | undefined) => {
+  const { width, height } = bounds;
+  const distances = new Int32Array(width * height).fill(-1);
+  distances[origin.y * width + origin.x] = 0;
+  const frontierX = new Int32Array(width * height);
+  const frontierY = new Int32Array(width * height);
+  frontierX[0] = origin.x;
+  frontierY[0] = origin.y;
+  let tail = 1;
+  for (let head = 0; head < tail; head += 1) {
+    const x = frontierX[head];
+    const y = frontierY[head];
+    const next = distances[y * width + x] + 1;
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]] as [number, number][]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
         continue;
       }
-      distances.set(key, distance + 1);
-      frontier.push(neighbour);
+      if (distances[ny * width + nx] !== -1 || isBlocked({ x: nx, y: ny })) {
+        continue;
+      }
+      distances[ny * width + nx] = next;
+      frontierX[tail] = nx;
+      frontierY[tail] = ny;
+      tail += 1;
     }
   }
-  return distances;
+  return (tile) => {
+    const at = distances[tile.y * width + tile.x];
+    return at < 0 ? undefined : at;
+  };
 };
 
 /**
@@ -898,7 +910,7 @@ describe('findHunterSpawnTile', () => {
     for (const player of walkableTiles) {
       const distances = walkDistancesFrom(player, bounds, isBlocked);
       for (const candidate of spawnCandidates(player, bounds, isBlocked)) {
-        const distance = distances.get(`${candidate.x},${candidate.y}`);
+        const distance = distances(candidate);
         if (distance === undefined || distance < HUNTER_MINIMUM_SPAWN_DISTANCE) {
           tooClose.push(`${player.x},${player.y} -> ${candidate.x},${candidate.y}`);
         }
@@ -922,7 +934,7 @@ describe('findHunterSpawnTile', () => {
       if (
         candidates.length === 0 ||
         candidates.some(
-          (tile) => distances.get(`${tile.x},${tile.y}`) !== HUNTER_SPAWN_DISTANCE,
+          (tile) => distances(tile) !== HUNTER_SPAWN_DISTANCE,
         )
       ) {
         short.push(`${player.x},${player.y}`);

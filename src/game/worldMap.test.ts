@@ -36,9 +36,12 @@ describe('worldMap', () => {
     expect(getWorldMap('route-1').height).toBe(72);
     expect(getWorldMap('viridian-forest').width).toBe(64);
     expect(getWorldMap('viridian-forest').height).toBe(72);
-    // The Floodplain is the vast one: it is played a district at a time.
-    expect(getWorldMap('floodplain-relay').width).toBe(64);
-    expect(getWorldMap('floodplain-relay').height).toBe(64);
+    // The Floodplain is the vast one: four times the river town it grew out
+    // of, and eleven times Pallet Town's footprint. That is on purpose - it is
+    // played a district at a time, and the town that used to be the whole of
+    // it is now its top-left quarter, tile for tile.
+    expect(getWorldMap('floodplain-relay').width).toBe(128);
+    expect(getWorldMap('floodplain-relay').height).toBe(128);
   });
 
   it('builds complete layers for every map', () => {
