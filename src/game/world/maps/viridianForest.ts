@@ -216,6 +216,52 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
   // stand's nearest crown, which hid whoever stood on it; it is thicket again.
   map.draw(12, 24, ['T']);
 
+  // == THE COPPICE =========================================================
+  // The one clearing in this wood nobody has walked, and the only way in is
+  // through the growth that closed it - the mouth of an old ride off the trail
+  // below DEEP STAND, grown over shoulder high (`../gates.ts`, the CUT gate at
+  // 15,27). Cut it and it stays cut, on this raid and every raid after.
+  //
+  // It is a **place**, not a short cut, and that was measured rather than
+  // chosen: this wood is two-connected throughout, so the best a single cut
+  // anywhere in it could buy is four steps and the best a run of four could buy
+  // is eight (see the PR). A field move that saved eight steps of a five-minute
+  // raid would be a move nobody would carry. So what Cut opens is ground -
+  // twenty tiles the survey has never lit, wildlife of its own, and the
+  // coppicer's store standing in the hollow.
+  //
+  // It is a hollow with the **haul road** running out of it, not a room: a room
+  // is a pocket in which the hunter has nowhere fair to arrive (it needs five
+  // walking steps from wherever you stand, `hunter.test.ts`), and this map's own
+  // standard is a network of passages rather than ground. So the ride comes in
+  // at the top, the hollow is four by three, and the road it was hauled out by
+  // runs south and then west along the foot of the wood.
+  //
+  // Sealed on every side but the ride: the trail at row 26 passes over its head,
+  // THE CLEARING lies one tile east of the hollow's east wall, and the road's
+  // far end stops one row short of the map's own edge. Every structural rule is
+  // asked of the wood with this shut and again with it open.
+  //            111111 1
+  //            901234 5 6
+  // The hollow is dry and the road out of it is not, which is this map's own
+  // rule everywhere else: a clearing is grass, a trail is tall grass, so
+  // distance in this wood is priced in fights rather than steps.
+  map.draw(9, 27, [
+    '      . ',
+    '    ....',
+    '    ....',
+    '    ....',
+    '    g   ',
+    '    g   ',
+    'ggggg   ',
+  ]);
+  // Stools on the rim: what coppicing leaves, standing on thicket that is solid
+  // either way, so the hollow keeps every one of its own tiles.
+  map.plant(13, 27, 'stump');
+  map.plant(17, 31, 'deadStump');
+  map.plant(12, 30, 'stump');
+  map.plant(9, 32, 'deadStump');
+
   // == THE RIDGE ===========================================================
   // The rock the fire tower is built against does not stop at the tower: it
   // runs east along the top of the wood and comes out over the head of the

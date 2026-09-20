@@ -1,5 +1,6 @@
 import type { MoveBase } from './MoveBase';
-import { AERIAL_ACE, BULLET_SEED, DIG, ICE_BEAM, IRON_TAIL, ROCK_SMASH } from './moves';
+import { GENERATED_MACHINE_LEARNERS } from './generated/machineLearners';
+import { AERIAL_ACE, BULLET_SEED, CUT, DIG, ICE_BEAM, IRON_TAIL, ROCK_SMASH, SURF } from './moves';
 
 /**
  * What a machine is, and which species answer to it.
@@ -9,15 +10,17 @@ import { AERIAL_ACE, BULLET_SEED, DIG, ICE_BEAM, IRON_TAIL, ROCK_SMASH } from '.
  * nowhere else to put it; here a machine is already a thing with a name, a
  * number and a move, so the list of who can be taught belongs beside it. It is
  * the same fact either way - `machineMovesFor()` reads it back per species, the
- * way the tutorial's field is read - and it means a seventh machine is one row
- * in this file rather than an edit to seventeen species.
+ * way the tutorial's field is read - and it means an eighth machine is one row
+ * in this file rather than an edit to a hundred and fifty species.
  *
- * **Nothing here is invented.** `learners` is lifted out of
- * `tools/moves/frlg-machines.json`, a committed PokeAPI snapshot of what the
- * shipped roster can be taught by machine in FireRed/LeafGreen, and
- * `machines.test.ts` reads that file back and fails a list that drifts from it.
- * That is the whole point of the check the player meets: a TM refused is canon
- * refusing it, not a designer's guess.
+ * **Nothing here is invented.** The compatibility list is
+ * `generated/machineLearners.ts`, written by `node tools/species/generate.mjs`
+ * out of `tools/moves/frlg-machines.json` - a committed PokeAPI snapshot of
+ * what FireRed/LeafGreen lets each of the 151 be taught - and
+ * `machines.test.ts` reads that snapshot back and fails a catalogue that has
+ * drifted from it. That is the whole point of the check the player meets: a TM
+ * refused is canon refusing it, not a designer's guess. It was seventeen
+ * hand-written lists until the roster became the 151.
  *
  * The number on the disc is generation III's own. TM numbers are per version
  * group - number 39 is Rock Tomb here and Swagger in generation II - so the
@@ -37,66 +40,36 @@ export interface MachineDefinition {
   readonly learners: readonly string[];
 }
 
-const STARTER_LINES = {
-  bulbasaur: ['bulbasaur', 'ivysaur', 'venusaur'],
-  charmander: ['charmander', 'charmeleon', 'charizard'],
-  squirtle: ['squirtle', 'wartortle', 'blastoise'],
-} as const;
+/** The identifier both snapshots know a move by: its name, lowercased and hyphenated. */
+const identifierOf = (move: MoveBase): string => move.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-const PIDGEY_LINE = ['pidgey', 'pidgeotto', 'pidgeot'];
-const PIKACHU_LINE = ['pikachu', 'raichu'];
-const JIGGLYPUFF_LINE = ['jigglypuff', 'wigglytuff'];
+/** Canon's compatibility list for a move, or nothing where FireRed has no disc for it. */
+const learnersOf = (move: MoveBase): readonly string[] =>
+  GENERATED_MACHINE_LEARNERS[identifierOf(move)] ?? [];
+
+const machine = (number: string, move: MoveBase, reusable = false): MachineDefinition => ({
+  number,
+  move,
+  reusable,
+  learners: learnersOf(move),
+});
 
 export const MACHINES: Readonly<Record<string, MachineDefinition>> = {
-  'tm09-bullet-seed': {
-    number: 'TM09',
-    move: BULLET_SEED,
-    reusable: false,
-    // The narrowest list in the game: the Grass starter and nobody else.
-    learners: [...STARTER_LINES.bulbasaur],
-  },
-  'tm13-ice-beam': {
-    number: 'TM13',
-    move: ICE_BEAM,
-    reusable: false,
-    learners: [...STARTER_LINES.squirtle, ...JIGGLYPUFF_LINE],
-  },
-  'tm23-iron-tail': {
-    number: 'TM23',
-    move: IRON_TAIL,
-    reusable: false,
-    learners: [...STARTER_LINES.charmander, ...STARTER_LINES.squirtle, ...PIKACHU_LINE],
-  },
-  'tm28-dig': {
-    number: 'TM28',
-    move: DIG,
-    reusable: false,
-    learners: [
-      ...STARTER_LINES.charmander,
-      ...STARTER_LINES.squirtle,
-      ...PIKACHU_LINE,
-      ...JIGGLYPUFF_LINE,
-    ],
-  },
-  'tm40-aerial-ace': {
-    number: 'TM40',
-    move: AERIAL_ACE,
-    reusable: false,
-    learners: [...STARTER_LINES.charmander, 'butterfree', ...PIDGEY_LINE],
-  },
-  'hm06-rock-smash': {
-    number: 'HM06',
-    move: ROCK_SMASH,
-    reusable: true,
-    // The widest, which is what an HM is for: eleven of the seventeen, every
-    // starter line among them.
-    learners: [
-      ...STARTER_LINES.bulbasaur,
-      ...STARTER_LINES.charmander,
-      ...STARTER_LINES.squirtle,
-      ...PIKACHU_LINE,
-    ],
-  },
+  // The narrowest disc in the game: fifteen of the 151, and among the starters
+  // only the Grass line.
+  'tm09-bullet-seed': machine('TM09', BULLET_SEED),
+  'tm13-ice-beam': machine('TM13', ICE_BEAM),
+  'tm23-iron-tail': machine('TM23', IRON_TAIL),
+  'tm28-dig': machine('TM28', DIG),
+  'tm40-aerial-ace': machine('TM40', AERIAL_ACE),
+  // The three HMs. An HM is never used up, which is what makes it safe for one
+  // to be a permanent capability rather than a consumable: the two below are
+  // doors as well as moves (`world/fieldMoves.ts`), and a door opened by a disc
+  // that could run out would be a door that could be lost.
+  'hm01-cut': machine('HM01', CUT, true),
+  'hm03-surf': machine('HM03', SURF, true),
+  // The widest of the three, which is what an HM is for.
+  'hm06-rock-smash': machine('HM06', ROCK_SMASH, true),
 };
 
 export type MachineId = keyof typeof MACHINES;
@@ -109,7 +82,7 @@ export const MACHINE_DEFINITIONS: readonly MachineDefinition[] = Object.values(M
  */
 export function canLearnFromMachine(speciesId: string, move: MoveBase): boolean {
   return MACHINE_DEFINITIONS.some(
-    (machine) => machine.move === move && machine.learners.includes(speciesId),
+    (candidate) => candidate.move === move && candidate.learners.includes(speciesId),
   );
 }
 
@@ -122,7 +95,7 @@ export function canLearnFromMachine(speciesId: string, move: MoveBase): boolean 
  * learnset, so a move taught from a TM was silently dropped by the next load.
  */
 export function machineMovesFor(speciesId: string): readonly MoveBase[] {
-  return MACHINE_DEFINITIONS.filter((machine) => machine.learners.includes(speciesId)).map(
-    (machine) => machine.move,
+  return MACHINE_DEFINITIONS.filter((candidate) => candidate.learners.includes(speciesId)).map(
+    (candidate) => candidate.move,
   );
 }

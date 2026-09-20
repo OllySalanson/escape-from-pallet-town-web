@@ -11,9 +11,10 @@
  *
  * `--survey=path.json` takes a real save's `raidProgress.surveyed`
  * (`tools/playtest/raid.mjs --progress=...` writes one), so what is drawn is
- * ground a raid actually walked. `--beaten=bossId,..` opens those gates and
- * `--completed=contractId,..` banks those contracts, which are the other two
- * halves of what lights a map up.
+ * ground a raid actually walked. `--beaten=key,..` opens those gates - a boss
+ * id, or a field-move gate's own id, which is the same list `getWorldMap` takes
+ * - and `--completed=contractId,..` banks those contracts, which are the other
+ * two halves of what lights a map up.
  */
 import { readFileSync } from 'node:fs';
 import { writePng } from './tileSheet.mjs';

@@ -27,6 +27,7 @@ const read = (path) => JSON.parse(readFileSync(join(repo, path), 'utf8'));
 
 const SPECIES = read('tools/species/frlg-species.json');
 const MOVES = read('tools/moves/frlg-level-up-moves.json');
+const MACHINES = read('tools/moves/frlg-machines.json');
 const FLAGS = new Map(read('tools/abilities/frlg-move-flags.json').map((row) => [row.name, row.flags]));
 const ABILITIES = new Map(read('tools/abilities/frlg-abilities.json').species.map((row) => [row.name, row.abilities]));
 
@@ -380,6 +381,39 @@ ${evolutionRows.map(renderEvolution).join('\n')}
 ];
 `;
 
+// -- who may be taught what -------------------------------------------------
+
+const machineMoveNames = [...new Set(Object.values(MACHINES.learners).flat())].sort();
+const learnersOf = (move) =>
+  Object.entries(MACHINES.learners)
+    .filter(([, moves]) => moves.includes(move))
+    .map(([species]) => species);
+const machineLearnerRows = machineMoveNames
+  .map((move) => `  ${quote(move)}: [${learnersOf(move).map(quote).join(', ')}],`)
+  .join('\n');
+
+const machineLearners = `${header('tools/species/generate.mjs')}
+/**
+ * Which of the 151 FireRed/LeafGreen lets read which machine, by the move's own
+ * PokeAPI identifier.
+ *
+ * \`../machines.ts\` is the catalogue - a number, a move, and whether the disc
+ * survives being read - and this is the half of it that is canon rather than
+ * design, so a disc this game refuses is FireRed refusing it. It was written by
+ * hand while the game fielded seventeen species; at 151 it is ${Object.keys(MACHINES.learners).length} rows of
+ * compatibility nobody should be typing, and it is the same fact either way -
+ * \`machines.test.ts\` reads the snapshot straight back and fails a list that
+ * has drifted from it.
+ *
+ * Every machine FireRed has is here, not only the ones this game ships a disc
+ * for: the table is a fact about the roster, and which discs exist is a choice
+ * about the game.
+ */
+export const GENERATED_MACHINE_LEARNERS: Readonly<Record<string, readonly string[]>> = {
+${machineLearnerRows}
+};
+`;
+
 // -- the report --------------------------------------------------------------
 
 const missingBySpecies = SPECIES.species.map((species) => ({
@@ -467,6 +501,7 @@ const outputs = [
   ['src/game/pokemon/generated/moveCatalogue.ts', moveCatalogue],
   ['src/game/pokemon/generated/speciesCatalogue.ts', speciesCatalogue],
   ['src/game/pokemon/generated/evolutionRules.ts', evolutionRules],
+  ['src/game/pokemon/generated/machineLearners.ts', machineLearners],
   ['docs/pokemon/roster.md', roster],
 ];
 

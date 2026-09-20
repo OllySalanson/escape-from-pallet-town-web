@@ -518,5 +518,43 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '             p                       p           p              ',
   ]);
 
+  // == THE SHOAL ===========================================================
+  // The flood took a bar of sand out of the wood's foot and left it standing in
+  // the great reach below Old Town, with three tiles of deep water between it
+  // and the reeds and the whole width of the river either side. You can see it
+  // from the bank on your first raid and there is no way to it on foot: the
+  // wood behind it was never cut, and this map's own rule is that water is the
+  // wall, the landmark and the sightline that shows the place you cannot reach.
+  //
+  // `../gates.ts` authors the two rows of water at 25-26, 45-46 as the SURF
+  // door. Swim it once and it stays a known crossing - drawn as a ford, which
+  // is what a shoal shelving under you is - on this raid and every raid after.
+  //
+  // It is a place and not a short cut. Every straight crossing this river has
+  // was measured (see the PR): the best of them saves twenty-two steps, which
+  // is three seconds of a five-minute raid, so nothing a field move opens here
+  // could be worth carrying for the walk. What it opens is ground nobody has
+  // stood on, its own wildlife, and what the flood left on the bar.
+  //            2222222
+  //            3456789
+  // Two offset rows rather than a rectangle, for the same reason the coppice
+  // in Viridian Forest is not a room: the hunter needs five walking steps of
+  // ground from wherever the player stands, and a seven-by-two bar holds four.
+  // A strand with two ends is also what a bar in a river looks like.
+  // The south row also stops short of 27, which is five tiles due south of the
+  // Market Isle landing: `hunter.test.ts` holds that landing up as the case
+  // where all four straight lines from a drop-in are walled off, and a bar tile
+  // there would have made that true by accident rather than by drawing.
+  //            2222222222
+  //            2345678901
+  map.draw(22, 43, [
+    ' gdddddddd',
+    'ggddd     ',
+  ]);
+  // What the lighter was carrying, at the bar's east end. One tile, and at the
+  // end rather than in the middle: a two-tile prop across the middle of a bar
+  // two rows deep cuts it into two islands, and the cache was on the far one.
+  map.plant(31, 43, 'crate');
+
   return map;
 }

@@ -30,7 +30,7 @@ import { sketchPalletTown } from '../../src/game/world/maps/palletTown';
 import { sketchRoute1 } from '../../src/game/world/maps/route1';
 import { sketchViridianForest } from '../../src/game/world/maps/viridianForest';
 import { getWorldMap } from '../../src/game/worldMap';
-import { gateBossIds, gatesForMap, WORLD_GATES } from '../../src/game/world/gates';
+import { gateKeys, gatesForMap, WORLD_GATES } from '../../src/game/world/gates';
 import { EXTRACTION_POINTS } from '../../src/game/world/extractionPoints';
 import { WORLD_POIS } from '../../src/game/world/pois';
 import { RUN_INSERTIONS } from '../../src/game/run/runGeneration';
@@ -40,7 +40,7 @@ import { createRunTrainerEncounters } from '../../src/game/world/trainers';
 const id = process.argv.slice(2).find((a) => a !== '--')! as 'pallet-town';
 const sketch = { 'pallet-town': sketchPalletTown, 'route-1': sketchRoute1, 'viridian-forest': sketchViridianForest }[id]!();
 const grid = sketch.toGrid();
-const map = getWorldMap(id, gateBossIds(gatesForMap(id)));
+const map = getWorldMap(id, gateKeys(gatesForMap(id)));
 const W = sketch.width, H = sketch.height;
 const CLEAR_SKY: Record<string, number[][]> = {
   'route-1': [[18, 16, 31, 22], [21, 0, 31, 11], [0, 22, 9, 31]],

@@ -6,7 +6,14 @@ import { getSpeciesById } from '../pokemon/species';
 import { createSeededRng, type SeededRng } from '../run/rng';
 import { RUN_INSERTIONS, availableInsertionIds, frontDoorFor } from '../run/runGeneration';
 import { EXTRACTION_POINTS, type ExtractionPoint } from '../world/extractionPoints';
-import { gateBossIds, gateStateKey, gatesForMap, isGateOpen, type MapGate } from '../world/gates';
+import {
+  gateBossIds,
+  gateStateKey,
+  gatesForMap,
+  isGateOpen,
+  openedDoors,
+  type MapGate,
+} from '../world/gates';
 import { HUNTER_TIERS } from '../world/hunter';
 import { stepDistances } from '../world/mapStructure';
 import { createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
@@ -59,6 +66,14 @@ export interface StandingBoardProgress {
   readonly completedContracts: readonly string[];
   readonly standingContractsBanked: number;
   readonly defeatedBosses: readonly string[];
+  /**
+   * Field-move doors already worked open. The board measures its stops off the
+   * map in the gate state the save has earned, and a cut wood is as much a part
+   * of that as a beaten boss's gate - so a stake can be set on ground a field
+   * move opened, and never on ground still shut. Optional with an empty
+   * default, as the save field is.
+   */
+  readonly openedGates?: readonly string[];
   readonly outfitterUpgrades: readonly string[];
   readonly unlockedInsertions: readonly string[];
   readonly reachedInsertions: readonly string[];
@@ -130,7 +145,7 @@ export function standingOffers(seed: number, progress: StandingBoardProgress): r
     seed >>> 0,
     round,
     mapIds,
-    [...progress.defeatedBosses].sort(),
+    [...openedDoors(progress)].sort(),
     outfitterMaterialKinds(progress.outfitterUpgrades),
   ]);
   const remembered = boards.get(key);
@@ -239,20 +254,34 @@ interface Ground {
 const grounds = new Map<string, Ground | undefined>();
 
 /** The ground is the map's and the gates', never the seed's, so it is measured once per gate state. */
-function surveyGround(mapId: WorldMapId, defeatedBosses: readonly string[]): Ground | undefined {
-  const key = `${mapId}|${gateStateKey(gatesForMap(mapId), defeatedBosses)}`;
+function surveyGround(
+  mapId: WorldMapId,
+  defeatedBosses: readonly string[],
+  opened: readonly string[],
+): Ground | undefined {
+  const key = `${mapId}|${gateStateKey(gatesForMap(mapId), opened)}`;
   if (!grounds.has(key)) {
-    grounds.set(key, measureGround(mapId, defeatedBosses));
+    grounds.set(key, measureGround(mapId, defeatedBosses, opened));
   }
   return grounds.get(key);
 }
 
-function measureGround(mapId: WorldMapId, defeatedBosses: readonly string[]): Ground | undefined {
+/**
+ * `opened` is every door this save has opened and `defeatedBosses` only the
+ * fights it has won. The first decides the ground - which tiles a stake may be
+ * set on, and how far each is from the landing - and the second decides who is
+ * still standing on the map and which keeper the board may point one gate at.
+ */
+function measureGround(
+  mapId: WorldMapId,
+  defeatedBosses: readonly string[],
+  opened: readonly string[],
+): Ground | undefined {
   const frontDoor = frontDoorFor(mapId);
   if (!frontDoor) {
     return undefined;
   }
-  const map = getWorldMap(mapId, defeatedBosses);
+  const map = getWorldMap(mapId, opened);
   const steps = stepDistances(map.collision, frontDoor.position);
   const taken = takenTiles(map, defeatedBosses);
   const free = (tile: GridPosition): boolean => !taken.has(tileKey(tile));
@@ -284,12 +313,12 @@ function measureGround(mapId: WorldMapId, defeatedBosses: readonly string[]): Gr
     .filter((bossId) => !defeatedBosses.includes(bossId) && canBeChallengedToday(bossId))
     .flatMap((bossId): SealedDistrict[] => {
       const beyond = stepDistances(
-        getWorldMap(mapId, [...defeatedBosses, bossId]).collision,
+        getWorldMap(mapId, [...opened, bossId]).collision,
         frontDoor.position,
       );
       const newlyWalkable = (tile: GridPosition): boolean => reached(beyond, tile) && !reached(steps, tile);
       const gate = gates.find(
-        (candidate) => candidate.bossId === bossId && !isGateOpen(candidate, defeatedBosses),
+        (candidate) => candidate.bossId === bossId && !isGateOpen(candidate, opened),
       );
       const boss = trainers.find((trainer) => trainer.bossId === bossId);
       const tiles = allTiles(map).filter((tile) => newlyWalkable(tile) && free(tile));
@@ -384,7 +413,7 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   // the compiler ask what it is worth instead of a default answering for it.
   'thunder-stone': 1,
   'linen-roll': 1,
-  // Zero on purpose, all six, and they must stay zero. A machine is found in
+  // Zero on purpose, all eight, and they must stay zero. A machine is found in
   // the field or bartered off the Ferryman, and a board that paid one out every
   // few raids would turn the one permanent thing a raid can bring home into a
   // subscription. The board cannot reach them anyway - it draws only from
@@ -394,6 +423,8 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   'tm23-iron-tail': 0,
   'tm28-dig': 0,
   'tm40-aerial-ace': 0,
+  'hm01-cut': 0,
+  'hm03-surf': 0,
   'hm06-rock-smash': 0,
   // Zero on purpose, and it must stay zero. Money is found in a raid and lost
   // with the pack; a board that paid it out would be a faucet that repeats for
@@ -421,7 +452,7 @@ function draftContract(
   templates: readonly StandingTemplate[],
   progress: StandingBoardProgress,
 ): RaidContract | undefined {
-  const ground = surveyGround(mapId, progress.defeatedBosses);
+  const ground = surveyGround(mapId, progress.defeatedBosses, openedDoors(progress));
   if (!ground) {
     return undefined;
   }

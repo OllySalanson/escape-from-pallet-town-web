@@ -12,10 +12,12 @@ function contextFor(
   over: Partial<DropInContext> = {},
 ): DropInContext {
   const defeatedBosses = over.defeatedBosses ?? [];
+  const openedGates = over.openedGates ?? [];
   return {
-    map: getWorldMap(RUN_INSERTIONS[insertionId].mapId, defeatedBosses),
+    map: getWorldMap(RUN_INSERTIONS[insertionId].mapId, [...defeatedBosses, ...openedGates]),
     defeatedBosses,
     completedContracts: [],
+    openedGates,
     raidRecord: undefined,
     surveyed: undefined,
     insertionIds: [insertionId],

@@ -7,6 +7,7 @@ import {
   type WorldMapId,
 } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
+import { openedDoors } from '../world/gates';
 import { stepDistances } from '../world/mapStructure';
 import { districtEncounterTables } from '../world/localEncounters';
 import { EXTRACTION_POINTS, type ExtractionPoint } from '../world/extractionPoints';
@@ -194,6 +195,12 @@ export interface RunPlan {
    * through the culvert the ledger opened.
    */
   readonly completedContracts: readonly string[];
+  /**
+   * The field-move doors this save had already opened when the raid deployed.
+   * `WorldScene` adds the ones opened during it, exactly as it does for bosses,
+   * so a door opens in the raid that cut it even where nothing can be saved.
+   */
+  readonly openedGates: readonly string[];
   readonly encounters: Readonly<Partial<Record<WorldMapId, WildEncounterTable>>>;
   /**
    * The wildlife of each named place, keyed by district id, varied per raid the
@@ -225,17 +232,17 @@ export interface RunGenerationContent {
 
 /**
  * The authored world as it stands for this player: every map in the gate state
- * their beaten bosses have earned. Everything below reads collision - where
- * loot may land, which exit is guaranteed - so it has to be this raid's
- * collision and not a fresh save's.
+ * their beaten bosses and opened field-move doors have earned. Everything below
+ * reads collision - where loot may land, which exit is guaranteed - so it has
+ * to be this raid's collision and not a fresh save's.
  */
 function authoredContent(
-  defeatedBosses: readonly string[],
+  opened: readonly string[],
   completedContracts: readonly string[],
 ): RunGenerationContent {
   return {
     maps: Object.fromEntries(
-      (Object.keys(WORLD_MAPS) as WorldMapId[]).map((id) => [id, getWorldMap(id, defeatedBosses)]),
+      (Object.keys(WORLD_MAPS) as WorldMapId[]).map((id) => [id, getWorldMap(id, opened)]),
     ) as Record<WorldMapId, WorldMapDefinition>,
     // A landmark this save has finished with holds its exit open from the first
     // second, so the generator's timing variance never meets it.
@@ -268,10 +275,15 @@ export function generateRunPlan(
   // The contracts this save has banked: which landmarks the world keeps worked,
   // and which of their exits therefore stand open. Empty is a fresh save.
   completedContracts: readonly string[] = [],
+  // The field-move doors this save has already opened, by gate id. The other
+  // half of the door state: everything below reads the collision this raid is
+  // actually played on, and a cut wood is as open as a beaten boss's gate.
+  openedGates: readonly string[] = [],
 ): RunPlan {
   const rng = createSeededRng(seed);
   const insertion = RUN_INSERTIONS[insertionId];
-  const authored = suppliedContent ?? authoredContent(defeatedBosses, completedContracts);
+  const openedDoorKeys = openedDoors({ defeatedBosses, openedGates });
+  const authored = suppliedContent ?? authoredContent(openedDoorKeys, completedContracts);
   // A beaten boss is gone for good, so they are dropped before anything is
   // reserved for them: the tile they stood on is ordinary ground again.
   const content: RunGenerationContent = {
@@ -340,6 +352,7 @@ export function generateRunPlan(
     ...(carriedContract ? { contract: carriedContract } : {}),
     defeatedBosses: [...defeatedBosses],
     completedContracts: [...completedContracts],
+    openedGates: [...openedGates],
     encounters,
     districtEncounters,
     loot,

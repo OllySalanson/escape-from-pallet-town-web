@@ -170,10 +170,14 @@ describe('machines', () => {
     }
   });
 
-  it('is five TMs used up by the reading and one HM that never is', () => {
+  it('is five TMs used up by the reading and three HMs that never are', () => {
     const reusable = MACHINE_DEFINITIONS.filter((machine) => machine.reusable);
 
-    expect(reusable.length).toBe(1);
+    // Three, and the two that were added are the two that are also doors:
+    // `world/fieldMoves.ts` opens a gate with Cut and with Surf, and a door
+    // opened by a disc that could run out would be a capability a player could
+    // lose. Reusability is what makes a field move safe to be permanent.
+    expect(reusable.map((machine) => machine.number)).toEqual(['HM01', 'HM03', 'HM06']);
     for (const machine of MACHINE_DEFINITIONS) {
       expect(machine.number).toMatch(machine.reusable ? /^HM\d\d$/ : /^TM\d\d$/);
     }
@@ -182,9 +186,30 @@ describe('machines', () => {
   it('reads back per species, which is what a saved moveset is resolved through', () => {
     expect(machineMovesFor('bulbasaur').map((move) => move.name).sort()).toEqual([
       'Bullet Seed',
+      'Cut',
       'Rock Smash',
     ]);
     expect(machineMovesFor('butterfree').map((move) => move.name)).toEqual(['Aerial Ace']);
     expect(machineMovesFor('pidgey').map((move) => move.name)).toEqual(['Aerial Ace']);
+    // The two field moves, read off the same table: every catchable species
+    // that FireRed lets read HM01 or HM03, so neither door is a starter
+    // lottery. A Squirtle player cuts with a Rattata off any verge; a
+    // Charmander player surfs on a Psyduck out of the reeds.
+    expect(machineMovesFor('squirtle').map((move) => move.name).sort()).toEqual([
+      'Dig',
+      'Ice Beam',
+      'Iron Tail',
+      'Rock Smash',
+      'Surf',
+    ]);
+    expect(machineMovesFor('rattata').map((move) => move.name)).toContain('Cut');
+    expect(machineMovesFor('psyduck').map((move) => move.name)).toContain('Surf');
+    expect(machineMovesFor('krabby').map((move) => move.name).sort()).toEqual([
+      'Cut',
+      'Dig',
+      'Ice Beam',
+      'Rock Smash',
+      'Surf',
+    ]);
   });
 });

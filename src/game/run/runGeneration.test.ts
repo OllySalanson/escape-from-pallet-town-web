@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isExtractionAvailable, type ExtractionPoint } from '../world/extractionPoints';
-import { gateBossIds, gatesForMap, WORLD_GATES } from '../world/gates';
+import { gateBossIds, gateKeys, gatesForMap, WORLD_GATES, type BossGate } from '../world/gates';
 import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
 import type { GridPosition } from '../movement/gridMovement';
 import { RunManager } from './RunManager';
@@ -312,10 +312,12 @@ describe('run generation', () => {
     expect(reached(walkable, 'floodplain-ranger-radio')).toBe(true);
     expect(reached(walkable, 'floodplain-supply-vault')).toBe(false);
 
+    // Every door, not every boss: one of this map's is a field-move door, and
+    // "with every door open" has to mean the same thing to it.
     const everyDoorOpen = walkableFrom(
       plan.insertion.mapId,
       plan.insertion.position,
-      gateBossIds(gatesForMap('floodplain-relay')),
+      gateKeys(gatesForMap('floodplain-relay')),
     );
     for (const poi of WORLD_MAPS['floodplain-relay'].pois) {
       expect(`${poi.label} reachable with every door open: ${reached(everyDoorOpen, poi.id)}`).toBe(
@@ -392,7 +394,8 @@ describe('run generation', () => {
    * has not opened is loot the raid was promised and cannot have.
    */
   describe('with a boss-held gate on the map', () => {
-    const gate = WORLD_GATES[0];
+    // The proving-ground boss gate, whose key is the boss's own id.
+    const gate = WORLD_GATES[0] as BossGate;
     const gatedInsertions = insertionIds.filter(
       (id) => RUN_INSERTIONS[id].mapId === gate.mapId,
     );

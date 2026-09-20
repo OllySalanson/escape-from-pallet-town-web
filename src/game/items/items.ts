@@ -317,6 +317,26 @@ export const ITEMS = {
     description: 'Teaches Aerial Ace: a sweep too fast to dodge. It never misses.',
     effect: { type: 'machine' },
   },
+  // The two HMs that are a route as well as a move. Read to a Pokemon that
+  // FireRed lets read them, they open the doors `world/fieldMoves.ts` authors -
+  // and being reusable is what makes that safe, because a door opened by a disc
+  // that could run out would be a capability a player could lose.
+  'hm01-cut': {
+    id: 'hm01-cut',
+    displayName: 'HM01 Cut',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Cut, and is never used up. A Pokemon that knows it can clear growth in the field.',
+    effect: { type: 'machine' },
+  },
+  'hm03-surf': {
+    id: 'hm03-surf',
+    displayName: 'HM03 Surf',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Surf, and is never used up. A Pokemon that knows it can carry you over deep water.',
+    effect: { type: 'machine' },
+  },
   'hm06-rock-smash': {
     id: 'hm06-rock-smash',
     displayName: 'HM06 Rock Smash',

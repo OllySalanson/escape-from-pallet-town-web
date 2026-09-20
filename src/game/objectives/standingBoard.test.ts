@@ -28,7 +28,7 @@ import {
 
 const CHAIN = RAID_CONTRACTS.map((contract) => contract.id);
 const EVERY_FRONT_DOOR = ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'];
-const EVERY_BOSS = [...new Set(WORLD_GATES.map((gate) => gate.bossId))];
+const EVERY_BOSS = gateBossIds(WORLD_GATES);
 const SEEDS = Array.from({ length: 300 }, (_, index) => Math.imul(index + 1, 0x9e3779b1) >>> 0);
 
 const progressWith = (overrides: Partial<StandingBoardProgress> = {}): StandingBoardProgress => ({
@@ -303,7 +303,7 @@ describe('the sealed district', () => {
     for (const seed of SEEDS) {
       for (const contract of standingOffers(seed, progressWith()).filter((c) => c.sealedBehind)) {
         const gate = gatesForMap(contract.mapId).find((c) => c.label === contract.sealedBehind!.gateLabel)!;
-        const opened = walkFromFrontDoor(contract.mapId, [gate.bossId]);
+        const opened = walkFromFrontDoor(contract.mapId, [gate.bossId!]);
         for (const marker of contract.markers) {
           expect(reaches(opened, marker.position)).toBe(true);
         }

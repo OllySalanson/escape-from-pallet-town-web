@@ -5,7 +5,8 @@ import { isDropInPoint, RUN_INSERTIONS, type RunInsertion, type RunInsertionId }
 import type { MapRaidRecord } from '../save/SaveManager';
 import { districtAt, districtsForMap, type MapDistrict } from '../world/districts';
 import { EXTRACTION_POINTS, extractionRequirementText, type ExtractionPoint } from '../world/extractionPoints';
-import { gatesForMap, isGateOpen, type MapGate } from '../world/gates';
+import { FIELD_MOVES } from '../world/fieldMoves';
+import { gatesForMap, isGateOpen, openedDoors, type MapGate } from '../world/gates';
 import { HUNTER_TIERS } from '../world/hunter';
 import { buildMinimap, type Minimap, type MinimapMark } from '../world/minimap';
 import { surveyedTiles, type SurveyRecord } from '../world/survey';
@@ -63,7 +64,10 @@ export interface PlaceGrade {
 
 export interface DoorLine {
   readonly label: string;
+  /** Who or what holds it: a keeper's name, or the move that opens it. */
   readonly bossName: string;
+  /** Which of the two that name is, so the row can word it. */
+  readonly heldBy: 'boss' | 'move';
   readonly open: boolean;
 }
 
@@ -118,6 +122,13 @@ export interface DropInContext {
   readonly defeatedBosses: readonly string[];
   /** Contracts banked, which is what keeps a landmark worked (`workedLandmarks`). */
   readonly completedContracts: readonly string[];
+  /**
+   * The field-move doors this save has worked open. Kept beside the boss list
+   * rather than merged into it because the screen names a keeper for one and a
+   * move for the other; `openedDoors()` is what turns the two into the one list
+   * the gate rules read.
+   */
+  readonly openedGates: readonly string[];
   readonly raidRecord: Readonly<Record<string, MapRaidRecord>> | undefined;
   readonly surveyed: SurveyRecord | undefined;
   readonly insertionIds: readonly RunInsertionId[];
@@ -175,6 +186,7 @@ export function buildDropInBriefing(
   const insertion = RUN_INSERTIONS[insertionId];
   const mapId = insertion.mapId;
   const gates = gatesForMap(mapId);
+  const opened = openedDoors(context);
   const standing = withoutDefeatedBosses(createRunTrainerEncounters(), context.defeatedBosses).filter(
     (trainer) => trainer.mapId === mapId,
   );
@@ -257,8 +269,14 @@ export function buildDropInBriefing(
     },
     doors: gates.map((gate) => ({
       label: gate.label,
-      bossName: bosses.find((boss) => boss.bossId === gate.bossId)?.trainer.name ?? 'SOMEBODY',
-      open: isGateOpen(gate, context.defeatedBosses),
+      // A field-move door has no keeper: what it wants is a move, and the row
+      // says so in the same place a boss's name would have gone.
+      bossName:
+        gate.fieldMove !== undefined
+          ? FIELD_MOVES[gate.fieldMove].label
+          : (bosses.find((boss) => boss.bossId === gate.bossId)?.trainer.name ?? 'SOMEBODY'),
+      heldBy: gate.fieldMove !== undefined ? ('move' as const) : ('boss' as const),
+      open: isGateOpen(gate, opened),
     })),
     exits: withWorkedExitsOpen(
       EXTRACTION_POINTS.filter((point) => point.mapId === mapId),
@@ -337,7 +355,8 @@ export function placePicture(
   const ours = context.insertionIds
     .map((id) => RUN_INSERTIONS[id])
     .filter((entry) => entry.mapId === mapId);
-  const opened = gatesForMap(mapId).filter((gate) => isGateOpen(gate, context.defeatedBosses));
+  const open = openedDoors(context);
+  const opened = gatesForMap(mapId).filter((gate) => isGateOpen(gate, open));
   // A landmark this save finished with. It is lit and glyphed whether or not
   // the survey has reached it, for the same reason a door you opened is: it is
   // yours, and watching the map carry your own work is what this screen is for.
@@ -353,8 +372,8 @@ export function placePicture(
     ...gatesForMap(mapId).flatMap((gate) =>
       gate.tiles.map((tile) => ({
         position: tile,
-        char: isGateOpen(gate, context.defeatedBosses) ? 'O' : 'H',
-        always: isGateOpen(gate, context.defeatedBosses),
+        char: isGateOpen(gate, open) ? 'O' : 'H',
+        always: isGateOpen(gate, open),
       })),
     ),
     ...EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => ({

@@ -112,6 +112,17 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     areas: [{ x: 40, y: 0, width: 24, height: 20 }],
   },
   {
+    // The bar in the great reach, and the two rows of water that are the only
+    // way onto it. Listed before MARKET ISLE, whose river it is standing in:
+    // the isle's rectangle reaches down over the whole reach, and the shoal is
+    // a place of its own the moment anybody can stand on it.
+    id: 'floodplain-shoal',
+    mapId: 'floodplain-relay',
+    name: 'THE SHOAL',
+    encounters: wildlife.FLOODPLAIN_SHOAL_WILDLIFE,
+    areas: [{ x: 22, y: 43, width: 10, height: 4 }],
+  },
+  {
     id: 'floodplain-market-isle',
     mapId: 'floodplain-relay',
     name: 'MARKET ISLE',
@@ -361,6 +372,17 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     encounters: wildlife.FOREST_TRAIL_WILDLIFE,
     // From x10: the west arm of the crossing is the Crossroads', all of it.
     areas: [{ x: 10, y: 8, width: 10, height: 9 }],
+  },
+  {
+    // Behind the CUT door, and nothing else touches it: the trail at row 26
+    // passes over its head and THE CLEARING lies one tile east of its east
+    // wall. Listed before DEEP STAND, whose block it is cut out of, and before
+    // THE CLEARING, whose rectangle reaches over it.
+    id: 'forest-coppice',
+    mapId: 'viridian-forest',
+    name: 'THE COPPICE',
+    encounters: wildlife.FOREST_COPPICE_WILDLIFE,
+    areas: [{ x: 9, y: 27, width: 9, height: 8 }],
   },
   {
     // The name stands on the ground that looks it: the solid block of
