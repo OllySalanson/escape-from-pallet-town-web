@@ -15,6 +15,19 @@
  *
  * Phaser-free and DOM-free: the rules are held in `hoverDescribe.test.ts`
  * rather than eyeballed in a browser.
+ *
+ * **What the pixel-ui pass (#155) changed about this.** Those three screens
+ * kept a selection of their own, and the three sources exist because pointing
+ * had to be able to overrule one without moving it. On a pixel-ui screen there
+ * is no selection: the cursor *is* the answer, the pointer moves the cursor
+ * (`MenuOverlay`'s hover handler), and moving it commits nothing - so `pointer`
+ * and `cursor` are the same source and `selected` has nothing to hold. What is
+ * still load-bearing is the **key**: `describeKey` is what lets a pocket row
+ * and the square it occupies in the pack say the same thing, which is the one
+ * part of this a layout cannot answer on its own. `describedKey`,
+ * `isPreviewing`, `previewAfterPointer`, `POINTER_ONLY` and `cursorMayDescribe`
+ * are kept with their reasoning intact against a screen that grows a selection
+ * again; nothing ships calling them today.
  */
 
 /** Where each of a screen's three answers currently points. */

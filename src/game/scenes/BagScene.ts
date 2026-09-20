@@ -59,17 +59,20 @@ const POCKETS = [
 const USELESS_IN_THE_FIELD = new Set(['capture-modifier', 'material', 'currency']);
 
 /**
- * What pressing a row does, in the words of the help bar - and it names the
- * item it would spend rather than saying "use item", because the line is read
- * about whatever the cursor is on and a bare verb under somebody else's name
- * is a sentence that can be misread.
+ * What pressing a row does, in the words of the help bar.
+ *
+ * A **live** action names the item it would spend - `Use Potion`, never `use
+ * item` - because the line is read about whatever the cursor is on and a bare
+ * verb is a sentence that can be misread. A refusal does not: the line already
+ * leads with the item's own name, and saying it twice in one breath reads as a
+ * fault rather than as emphasis.
  */
 const useLabel = (item: ItemDefinition): string => {
   switch (item.effect.type) {
     case 'capture-modifier':
-      return `${item.displayName} is thrown in a battle, from the BALL command. Nothing to do with it here.`;
+      return 'Thrown in a battle, from the BALL command. Nothing to do with it here.';
     case 'material':
-      return `Carry it home: the Outfitter is the only thing that takes a ${item.displayName}.`;
+      return 'Carry it home: the Outfitter is the only thing that takes one.';
     case 'currency':
       return 'Carry it home: the Ferryman is the only one who takes it.';
     case 'machine':
@@ -342,7 +345,7 @@ export class BagScene extends Phaser.Scene {
     }
     if (USELESS_IN_THE_FIELD.has(item.effect.type)) {
       audioManager.play('denied');
-      this.status = useLabel(item);
+      this.status = `${item.displayName}: ${useLabel(item)}`;
       this.render();
       return;
     }
