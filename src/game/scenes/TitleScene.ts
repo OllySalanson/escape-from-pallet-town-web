@@ -1,9 +1,18 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
-import { SaveManager } from '../save/SaveManager';
+import { SaveManager, type SaveSummary } from '../save/SaveManager';
 import { getStarterSpecies } from '../stash';
 import { GAME_FONT } from '../ui/gameFont';
-import { drawPixelWindow, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
+import { drawMenuCursor, drawPixelWindow, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
+import {
+  eraseMenu,
+  layoutTitleMenu,
+  moveTitleChoice,
+  needsEraseConfirmation,
+  titleMenu,
+  type TitleChoiceId,
+  type TitleMenu,
+} from '../ui/titleMenu';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { TILE_SIZE, WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
 
@@ -25,15 +34,23 @@ const MINT = 0x8ed4c2;
 const TITLE_TOP = '#8ed4c2';
 const TITLE_MAIN = '#f8f5d7';
 const TAGLINE = '#9bb4c6';
+/** A choice that would do nothing: dimmer than the cream window, and its words with it. */
+const DISABLED_FILL = 0xc3c29d;
+const DISABLED_INK = '#75745f';
 
 /** One row of the plate: what it says and the size it is set at. */
 const TITLE_LINE_SIZE = '37px';
 
 export class TitleScene extends Phaser.Scene {
   private hasStarted = false;
+  /** The key hint under the menu; it pulses until something is chosen. */
   private prompt!: Phaser.GameObjects.Text;
   private built: Phaser.GameObjects.GameObject[] = [];
   private readonly saveManager = new SaveManager();
+  private summary: SaveSummary = { kind: 'none' };
+  private menu: TitleMenu = titleMenu({ kind: 'none' });
+  private choice: TitleChoiceId = 'new';
+  private redrawPending = false;
 
   public constructor() {
     super('title');
@@ -41,16 +58,27 @@ export class TitleScene extends Phaser.Scene {
 
   public create(): void {
     this.hasStarted = false;
+    this.redrawPending = false;
+    // Asked once per visit, not per frame: the summary reads the whole save.
+    this.summary = this.saveManager.describe();
+    this.menu = titleMenu(this.summary);
+    this.choice = this.menu.initial;
     this.build();
 
     const relayout = () => this.rebuild();
     this.scale.on?.(Phaser.Scale.Events.RESIZE, relayout);
-    this.input.keyboard?.once('keydown-ENTER', () => this.startGame());
-    this.input.keyboard?.once('keydown-SPACE', () => this.startGame());
-    this.input.keyboard?.on('keydown-M', () => audioManager.toggleMute());
-    this.input.once(Phaser.Input.Events.POINTER_DOWN, () => this.startGame());
+    const keyboard = this.input.keyboard;
+    keyboard?.on('keydown-ENTER', () => this.chooseSelected());
+    keyboard?.on('keydown-SPACE', () => this.chooseSelected());
+    keyboard?.on('keydown-UP', () => this.moveCursor(-1));
+    keyboard?.on('keydown-DOWN', () => this.moveCursor(1));
+    keyboard?.on('keydown-W', () => this.moveCursor(-1));
+    keyboard?.on('keydown-S', () => this.moveCursor(1));
+    keyboard?.on('keydown-ESC', () => this.backOut());
+    keyboard?.on('keydown-M', () => audioManager.toggleMute());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off?.(Phaser.Scale.Events.RESIZE, relayout);
+      keyboard?.removeAllListeners();
       audioManager.stopTheme();
     });
   }
@@ -81,7 +109,7 @@ export class TitleScene extends Phaser.Scene {
     const height = this.scale.height;
     this.drawBackdrop(width, height);
     const plateBottom = this.createTitle(width, height);
-    this.createPrompt(width, height, plateBottom);
+    this.createMenu(width, height, plateBottom);
   }
 
   private track<T extends Phaser.GameObjects.GameObject>(object: T): T {
@@ -190,29 +218,167 @@ export class TitleScene extends Phaser.Scene {
     return top + plateHeight;
   }
 
-  /** The one key, said out loud, on the game's cream window. */
-  private createPrompt(width: number, height: number, plateBottom: number): void {
-    const barHeight = 22;
-    const barWidth = Math.min(width - 32, 200);
-    const left = Math.floor((width - barWidth) / 2);
-    const top = Math.min(height - 24 - barHeight, Math.max(plateBottom + 16, Math.round(height * 0.8)));
-    const bar = this.add.graphics().setDepth(10);
-    drawPixelWindow(bar, { x: left, y: top, width: barWidth, height: barHeight }, { fill: WINDOW_CREAM });
-    this.track(bar);
+  /**
+   * The choices, on the game's cream window, with the drawn menu cursor beside
+   * the one the keys are on. What each says and where it sits is
+   * `ui/titleMenu.ts`; this only paints it. A choice that would do nothing is
+   * drawn dim and gives the cursor nothing to land on, so a first-time player
+   * sees CONTINUE is not there rather than being offered it.
+   */
+  private createMenu(width: number, height: number, plateBottom: number): void {
+    const layout = layoutTitleMenu(this.menu, width, height, plateBottom);
+    if (this.menu.question && layout.question) {
+      this.track(
+        this.add
+          .text(layout.question.x, layout.question.y, this.menu.question, {
+            align: 'center',
+            color: TITLE_MAIN,
+            fontFamily: GAME_FONT,
+            fontSize: DIALOG_FONT_SIZE,
+          })
+          .setOrigin(0.5)
+          .setDepth(11),
+      );
+    }
+    for (const row of layout.rows) {
+      const choice = this.menu.choices.find((candidate) => candidate.id === row.id)!;
+      const selected = row.id === this.choice && choice.enabled;
+      const bar = this.add.graphics().setDepth(10);
+      drawPixelWindow(bar, row, { fill: !choice.enabled ? DISABLED_FILL : selected ? MINT : WINDOW_CREAM });
+      this.track(bar);
+      if (selected) {
+        const cursor = this.add.graphics().setDepth(11);
+        drawMenuCursor(cursor, row.x + 6, row.y + Math.round(row.height / 2) - 2, 0x202020);
+        this.track(cursor);
+      }
+      const ink = choice.enabled ? WINDOW_INK : DISABLED_INK;
+      const labelY = choice.detail ? row.y + 11 : row.y + Math.round(row.height / 2);
+      this.track(
+        this.add
+          .text(row.x + Math.round(row.width / 2), labelY, choice.label, {
+            align: 'center',
+            color: ink,
+            fontFamily: GAME_FONT,
+            fontSize: DIALOG_FONT_SIZE,
+          })
+          .setOrigin(0.5)
+          .setDepth(11),
+      );
+      if (choice.detail) {
+        this.track(
+          this.add
+            .text(row.x + Math.round(row.width / 2), row.y + 24, choice.detail, {
+              align: 'center',
+              color: ink,
+              fontFamily: GAME_FONT,
+              fontSize: CHIP_FONT_SIZE,
+            })
+            .setOrigin(0.5)
+            .setDepth(11),
+        );
+      }
+      if (choice.enabled) {
+        const hit = this.add
+          .zone(row.x, row.y, row.width, row.height)
+          .setOrigin(0, 0)
+          .setDepth(12)
+          .setInteractive({ useHandCursor: true });
+        hit.on(Phaser.Input.Events.POINTER_OVER, () => this.pointTo(row.id));
+        hit.on(Phaser.Input.Events.POINTER_DOWN, () => {
+          this.choice = row.id;
+          this.chooseSelected();
+        });
+        this.track(hit);
+      }
+    }
     this.prompt = this.track(
       this.add
-        .text(Math.floor(width / 2), top + Math.round(barHeight / 2), 'PRESS SPACE TO BEGIN', {
+        .text(layout.hint.x, layout.hint.y, this.menu.question ? 'ESC KEEPS IT' : 'UP DOWN CHOOSE · SPACE SELECT', {
           align: 'center',
-          color: WINDOW_INK,
+          color: TAGLINE,
           fontFamily: GAME_FONT,
-          fontSize: DIALOG_FONT_SIZE,
+          fontSize: CHIP_FONT_SIZE,
         })
         .setOrigin(0.5)
         .setDepth(11),
     );
   }
 
-  private startGame(): void {
+  private pointTo(choice: TitleChoiceId): void {
+    if (this.hasStarted || this.choice === choice) {
+      return;
+    }
+    this.choice = choice;
+    this.redraw();
+  }
+
+  /**
+   * Draws the menu again on the next tick. It is asked for from a pointer
+   * handler, and a redraw destroys the very zone that raised the event - so it
+   * waits for the handler to finish rather than pulling the object out from
+   * under it.
+   */
+  private redraw(): void {
+    if (this.redrawPending) {
+      return;
+    }
+    this.redrawPending = true;
+    this.time.delayedCall(0, () => {
+      this.redrawPending = false;
+      this.rebuild();
+    });
+  }
+
+  private moveCursor(step: -1 | 1): void {
+    if (this.hasStarted) {
+      return;
+    }
+    const next = moveTitleChoice(this.menu, this.choice, step);
+    if (next !== this.choice) {
+      this.choice = next;
+      audioManager.play('select');
+      this.redraw();
+    }
+  }
+
+  /** Escape on the erase question is the answer that keeps the save. */
+  private backOut(): void {
+    if (this.hasStarted || !this.menu.question) {
+      return;
+    }
+    this.showMenu(titleMenu(this.summary), 'new');
+  }
+
+  private showMenu(menu: TitleMenu, choice: TitleChoiceId): void {
+    this.menu = menu;
+    this.choice = choice;
+    this.redraw();
+  }
+
+  private chooseSelected(): void {
+    if (this.hasStarted) {
+      return;
+    }
+    if (this.choice === 'continue') {
+      this.startGame('continue');
+    } else if (this.choice === 'new') {
+      if (needsEraseConfirmation(this.summary)) {
+        // The key that opened the game is still held down, so the question
+        // starts on the answer that changes nothing.
+        audioManager.play('confirm');
+        const menu = eraseMenu();
+        this.showMenu(menu, menu.initial);
+      } else {
+        this.startGame('new');
+      }
+    } else if (this.choice === 'keep') {
+      this.backOut();
+    } else {
+      this.startGame('new');
+    }
+  }
+
+  private startGame(mode: 'continue' | 'new'): void {
     if (this.hasStarted) {
       return;
     }
@@ -221,6 +387,13 @@ export class TitleScene extends Phaser.Scene {
     void this.playStartAudio();
     this.prompt.setText('READY!');
     this.time.delayedCall(180, () => {
+      if (mode === 'new') {
+        // Only reached once the erase question has been answered, or when there
+        // was nothing to erase.
+        this.saveManager.clear();
+        this.scene.start('starter');
+        return;
+      }
       const savedGame = this.loadOrCreateGame();
       this.scene.start(savedGame ? 'hub' : 'starter', savedGame ? { savedGame } : undefined);
     });

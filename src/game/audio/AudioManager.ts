@@ -1,5 +1,7 @@
 import {
+  ducksMusic,
   SOUND_EFFECTS,
+  soundEffectLength,
   type SoundChannel,
   type SoundEffect,
   type SoundEffectName,
@@ -20,6 +22,8 @@ interface Voice {
   readonly gain: GainNode;
   readonly sources: Set<AudioScheduledSourceNode>;
   readonly logged: PlayedSound;
+  /** When the music may come back, if this voice is holding it down. */
+  readonly duckUntil?: number;
 }
 
 /** Two requests for the same effect closer together than this are one event. */
@@ -28,6 +32,17 @@ const CUT_TIME_CONSTANT_S = 0.005;
 /** How far ahead of the audio clock a cursor blip is scheduled. See `play()`. */
 export const UI_LEAD_S = 0.04;
 const PLAY_LOG_LIMIT = 64;
+
+/**
+ * How far the music drops while a sting sounds, as a share of its own level.
+ * Low enough that the sting is the loudest thing in the mix by a clear margin,
+ * high enough that the music is still there and is heard coming back rather
+ * than starting over.
+ */
+export const DUCK_LEVEL = 0.25;
+/** Time constants, in seconds: quick in, so the sting's first note is clear, slower out. */
+export const DUCK_ATTACK_S = 0.02;
+export const DUCK_RELEASE_S = 0.15;
 
 export type AudioTheme = 'title' | 'overworld' | 'battle';
 
@@ -79,6 +94,8 @@ export class AudioManager {
   private readonly contextFactory: AudioContextFactory;
   private themeTimer: number | null = null;
   private masterGain: GainNode | null = null;
+  /** Everything the themes sound goes through this, so a sting can duck it as one. */
+  private musicGain: GainNode | null = null;
 
   public constructor(contextFactory: AudioContextFactory = createBrowserAudioContext) {
     this.contextFactory = contextFactory;
@@ -229,10 +246,21 @@ export class AudioManager {
     gain.gain.setValueAtTime(1, now);
     gain.connect(this.masterGain);
     const logged: PlayedSound = { name, at: startsAt };
-    const voice: Voice = { channel: effect.channel, gain, sources: new Set(), logged };
+    const ducks = ducksMusic(effect);
+    const voice: Voice = {
+      channel: effect.channel,
+      gain,
+      sources: new Set(),
+      logged,
+      ...(ducks ? { duckUntil: startsAt + soundEffectLength(effect) } : {}),
+    };
     this.voices.add(voice);
     for (const tone of effect.tones) {
       this.scheduleEffectTone(context, voice, tone, startsAt);
+    }
+
+    if (ducks) {
+      this.duckMusic(startsAt);
     }
 
     this.played.push(logged);
@@ -249,6 +277,50 @@ export class AudioManager {
    */
   public get recentlyPlayed(): readonly PlayedSound[] {
     return this.played;
+  }
+
+  /**
+   * The music's level right now, 1 when it is not ducked. Read off the gain
+   * itself rather than off the bookkeeping, so it is what the ear gets.
+   */
+  public get musicLevel(): number {
+    return this.musicGain?.gain.value ?? 1;
+  }
+
+  /**
+   * Ducks the music from `from` until every voice holding it down is done: it
+   * falls to `DUCK_LEVEL`, holds for the sting, and comes back. A second sting
+   * inside the first extends the hold rather than releasing between them, so
+   * two fanfares in a row are one quiet stretch and not a pump.
+   *
+   * This is the tutorial's `PlaySfx(id, pauseMusic)` as data: the effect says
+   * whether it wants the room (`ducksMusic`) and the length it needs is the
+   * effect's own. Music is off by design (`SILENCE_BACKGROUND_THEMES`); this
+   * works on whatever is on the music bus, so the day a theme is wanted it
+   * already ducks.
+   */
+  private duckMusic(from: number): void {
+    const gain = this.musicGain?.gain;
+    if (!gain || this.context === null) {
+      return;
+    }
+    const holdUntil = Math.max(
+      from,
+      ...[...this.voices].map((voice) => voice.duckUntil ?? 0),
+    );
+    gain.cancelScheduledValues(this.context.currentTime);
+    gain.setTargetAtTime(DUCK_LEVEL, from, DUCK_ATTACK_S);
+    gain.setTargetAtTime(1, holdUntil, DUCK_RELEASE_S);
+  }
+
+  /** Puts the music back at once, for whatever cut the sting that was holding it down. */
+  private releaseMusic(now: number): void {
+    const gain = this.musicGain?.gain;
+    if (!gain) {
+      return;
+    }
+    gain.cancelScheduledValues(now);
+    gain.setTargetAtTime(1, now, DUCK_RELEASE_S);
   }
 
   private scheduleThemeMeasure(): void {
@@ -287,6 +359,7 @@ export class AudioManager {
 
   private stopEffects(): void {
     const now = this.context?.currentTime ?? 0;
+    this.releaseMusic(now);
     for (const voice of [...this.voices]) {
       this.cutVoice(voice, now);
     }
@@ -396,7 +469,7 @@ export class AudioManager {
     gain.gain.setValueAtTime(0.0001, startTime);
     gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
-    oscillator.connect(gain).connect(this.masterGain);
+    oscillator.connect(gain).connect(this.musicGain ?? this.masterGain);
     oscillator.onended = () => sources.delete(oscillator);
     sources.add(oscillator);
     oscillator.start(startTime);
@@ -410,6 +483,8 @@ export class AudioManager {
 
     this.masterGain = this.context.createGain();
     this.masterGain.connect(this.context.destination);
+    this.musicGain = this.context.createGain();
+    this.musicGain.connect(this.masterGain);
     this.updateMasterGain();
   }
 

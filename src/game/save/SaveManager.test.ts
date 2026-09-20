@@ -11,7 +11,7 @@ import {
 } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
 import { Bag } from '../items';
-import { SAVE_KEY, SaveManager } from './SaveManager';
+import { DEFAULT_RAID_PROGRESS, SAVE_KEY, SaveManager } from './SaveManager';
 import { applyRecovery, MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
 import { Stash } from '../stash';
 import { RUN_INSERTIONS } from '../run/runGeneration';
@@ -48,6 +48,45 @@ function freshSave(storage: MemoryStorage): SaveManager {
 }
 
 describe('SaveManager', () => {
+  describe('describing the save for the title screen', () => {
+    it('says there is nothing to continue on a fresh browser, and with no storage at all', () => {
+      expect(new SaveManager(new MemoryStorage()).describe()).toEqual({ kind: 'none' });
+      expect(new SaveManager(null).describe()).toEqual({ kind: 'none' });
+    });
+
+    it('recognises a game by what is in it', () => {
+      const storage = new MemoryStorage();
+      const saves = new SaveManager(storage);
+      const stash = new Stash();
+      stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+      stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
+      saves.save({
+        party: new PokemonParty(),
+        mapId: 'pallet-town',
+        position: { x: 6, y: 8 },
+        bag: new Bag(),
+        stash,
+        starterSpeciesId: 'charmander',
+        raidProgress: {
+          ...DEFAULT_RAID_PROGRESS,
+          completedContracts: ['recover-lost-field-kit'],
+          standingContractsBanked: 1,
+          raidRecord: { 'floodplain-relay': { deployed: 3, extracted: 2, wiped: 1 } },
+        },
+      });
+
+      expect(saves.describe()).toEqual({ kind: 'game', pokemon: 2, contracts: 2, raids: 3 });
+    });
+
+    it('does not call a file it cannot read empty', () => {
+      const storage = new MemoryStorage();
+      storage.setItem(SAVE_KEY, '{not json');
+      expect(new SaveManager(storage).describe()).toEqual({ kind: 'unreadable' });
+      storage.setItem(SAVE_KEY, JSON.stringify({ version: 999 }));
+      expect(new SaveManager(storage).describe()).toEqual({ kind: 'unreadable' });
+    });
+  });
+
   it('round-trips party state and world position', () => {
     const charmander = new Pokemon(CHARMANDER, 12);
     charmander.takeDamage(9);
@@ -1401,6 +1440,36 @@ describe('SaveManager', () => {
     // Turnover, which is the only thing standing is bought with.
     expect(after.raidProgress.traderScripSpent).toBe(120);
     expect(after.traderRationUsed).toBe(1);
+  });
+
+  it('buys several in one deal, charging money and ration for every one', () => {
+    const storage = new MemoryStorage();
+    const saves = counterSave(storage);
+    // A trusted-or-better standing, whose ration is more than one a trip.
+    const seeded = saves.load()!;
+    saves.save({
+      ...seeded,
+      raidProgress: {
+        ...seeded.raidProgress,
+        completedContracts: [...seeded.raidProgress.completedContracts, 'cordon-ledger', 'wardens-resupply'],
+        defeatedBosses: [...seeded.raidProgress.defeatedBosses, 'floodplain-orchard-warden'],
+      },
+    });
+    const potions = saves.load()!.stash.itemCount('potion');
+    const ration = saves.load()!.traderRationUsed;
+
+    const bought = saves.buyTraderStock('potion', 2);
+    expect(bought.message).toBe('Bought 2 for 240 scrip.');
+
+    const after = saves.load()!;
+    expect(after.stash.itemCount('potion')).toBe(potions + 2);
+    expect(after.stash.itemCount('scrip')).toBe(1_000 - 240);
+    expect(after.raidProgress.traderScripSpent).toBe(240);
+    expect(after.traderRationUsed).toBe(ration + 2);
+    // More than the ration allows is refused whole, and costs nothing.
+    const refused = saves.buyTraderStock('potion', 99);
+    expect(refused.ok).toBe(false);
+    expect(saves.load()!.stash.itemCount('scrip')).toBe(1_000 - 240);
   });
 
   it('refuses a second purchase on a one-a-trip ration, and costs nothing for refusing', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AudioManager, RETRIGGER_GUARD_S } from './AudioManager';
+import { AudioManager, DUCK_LEVEL, RETRIGGER_GUARD_S } from './AudioManager';
 import { createStubAudioContext } from './audioTestStub';
-import { SOUND_EFFECTS, SOUND_EFFECT_NAMES } from './soundEffects';
+import { SOUND_EFFECTS, SOUND_EFFECT_NAMES, soundEffectLength } from './soundEffects';
 
 describe('AudioManager', () => {
   it('tracks mute state without creating an AudioContext', () => {
@@ -182,5 +182,97 @@ describe('AudioManager', () => {
     audio.play('grassRustle');
     stub.advance(1);
     expect(audio.recentlyPlayed.map((played) => played.name)).toEqual(['encounter', 'grassRustle']);
+  });
+
+  describe('ducking', () => {
+    /** The music bus's own automation: the second gain made, after the master. */
+    const musicBus = (stub: ReturnType<typeof createStubAudioContext>) => stub.gains[1];
+    const targets = (stub: ReturnType<typeof createStubAudioContext>) =>
+      musicBus(stub).events.filter((event) => event.kind === 'target');
+
+    it('puts the music on a bus of its own, under the master', async () => {
+      const stub = createStubAudioContext();
+      const audio = new AudioManager(() => stub.context);
+      await audio.activate();
+
+      expect(stub.gains[0].connectedTo).toBe(stub.context.destination);
+      expect(musicBus(stub).connectedTo).toBeDefined();
+      expect(audio.musicLevel).toBe(1);
+    });
+
+    it('ducks the music for the length of a fanfare and brings it back', async () => {
+      const stub = createStubAudioContext();
+      const audio = new AudioManager(() => stub.context);
+      await audio.activate();
+      stub.advance(2);
+
+      audio.play('levelUp');
+
+      const [down, up] = targets(stub);
+      expect(down).toMatchObject({ value: DUCK_LEVEL, at: 2 });
+      expect(up).toMatchObject({ value: 1 });
+      expect(up.at).toBeCloseTo(2 + soundEffectLength(SOUND_EFFECTS.levelUp), 5);
+    });
+
+    it('leaves the music alone for the cursor, the world and battle noises', async () => {
+      const stub = createStubAudioContext();
+      const audio = new AudioManager(() => stub.context);
+      await audio.activate();
+
+      for (const name of ['confirm', 'bump', 'hitPhysical', 'hunterNear', 'lowHp'] as const) {
+        stub.advance(1);
+        audio.play(name);
+      }
+
+      expect(targets(stub)).toHaveLength(0);
+    });
+
+    it('ducks for the alerts that are one-off stings', async () => {
+      const stub = createStubAudioContext();
+      const audio = new AudioManager(() => stub.context);
+      await audio.activate();
+
+      audio.play('hunterArrival');
+
+      expect(targets(stub)[0]).toMatchObject({ value: DUCK_LEVEL });
+    });
+
+    it('holds one quiet stretch through two stings in a row, and ends it with the last', async () => {
+      const stub = createStubAudioContext();
+      const audio = new AudioManager(() => stub.context);
+      await audio.activate();
+
+      audio.play('levelUp');
+      stub.advance(0.2);
+      audio.play('victory');
+
+      const releases = targets(stub).filter((event) => event.value === 1);
+      // The first sting's release was cancelled and replaced: only the second's stands.
+      expect(musicBus(stub).events.filter((event) => event.kind === 'cancel').length).toBeGreaterThanOrEqual(2);
+      expect(releases.at(-1)!.at).toBeCloseTo(0.2 + soundEffectLength(SOUND_EFFECTS.victory), 5);
+    });
+
+    it('lets go of the music at once when everything is muted', async () => {
+      const stub = createStubAudioContext();
+      const audio = new AudioManager(() => stub.context);
+      await audio.activate();
+
+      audio.play('clockExpired');
+      stub.advance(0.1);
+      audio.setMuted(true);
+
+      expect(targets(stub).at(-1)).toMatchObject({ value: 1, at: 0.1 });
+    });
+
+    it('never plays a theme, whatever ducks: music stays off by design', async () => {
+      const stub = createStubAudioContext();
+      const audio = new AudioManager(() => stub.context);
+      await audio.activate();
+      await audio.startTheme('overworld');
+      audio.play('victory');
+
+      expect(stub.sources.filter((source) => source.kind === 'oscillator' && source.frequency === 392)).toHaveLength(0);
+      expect(stub.sources).toHaveLength(SOUND_EFFECTS.victory.tones.length);
+    });
   });
 });

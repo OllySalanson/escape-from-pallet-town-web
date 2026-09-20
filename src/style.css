@@ -1632,6 +1632,18 @@ button {
 :where(.pixel-ui) .px-row.has-icon {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
+/* A row with a count selector beside it: the row is still the one control that
+   acts, and the selector says how many. The pair is a grid so the selector
+   keeps its own width and the row takes the rest. */
+:where(.pixel-ui) .px-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding-right: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .px-pair > .px-row {
+  width: auto;
+}
 :where(.pixel-ui) .px-row-main {
   min-width: 0;
   display: grid;
@@ -1777,7 +1789,8 @@ button {
   place-items: center;
   text-align: center;
 }
-.pixel-ui .px-step:disabled {
+.pixel-ui .px-step:disabled,
+.pixel-ui .px-step[aria-disabled='true'] {
   --fill: var(--cream-dim);
   --edge: var(--ink-soft);
   color: var(--ink-soft);

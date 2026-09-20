@@ -244,6 +244,7 @@ function createHub(
     },
     scene: { start },
     saveManager: new SaveManager(storage),
+    counterCounts: new Map<string, number>(),
     time: { delayedCall: vi.fn() },
     overlay: {
       root: {

@@ -380,6 +380,26 @@ export interface StorageLike {
   removeItem(key: string): void;
 }
 
+/**
+ * What the title screen needs to know about the one save there is, without
+ * handing it the game: whether there is one to continue, and enough of it to
+ * recognise it as theirs.
+ *
+ * `unreadable` is its own answer rather than `none` because the two are told
+ * apart by what is in storage, not by what parses - a file the loader refuses
+ * is still somebody's game, and a title that called it empty would offer to
+ * start over it without a word.
+ */
+export type SaveSummary =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'unreadable' }
+  | {
+      readonly kind: 'game';
+      readonly pokemon: number;
+      readonly contracts: number;
+      readonly raids: number;
+    };
+
 export class SaveManager {
   private readonly storage: StorageLike | null;
 
@@ -389,6 +409,28 @@ export class SaveManager {
 
   public hasSave(): boolean {
     return this.load() !== null;
+  }
+
+  /** See `SaveSummary`. Reads the save once and keeps none of it. */
+  public describe(): SaveSummary {
+    try {
+      if (!this.storage?.getItem(SAVE_KEY)) {
+        return { kind: 'none' };
+      }
+    } catch {
+      return { kind: 'none' };
+    }
+    const game = this.load();
+    if (!game) {
+      return { kind: 'unreadable' };
+    }
+    const progress = game.raidProgress;
+    return {
+      kind: 'game',
+      pokemon: game.stash.listPokemon().length,
+      contracts: progress.completedContracts.length + progress.standingContractsBanked,
+      raids: Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.deployed, 0),
+    };
   }
 
   public save(state: SaveGameState): boolean {
@@ -746,31 +788,32 @@ export class SaveManager {
    * and the price is added to turnover, which is what raises standing: money
    * spent is the only kind he counts.
    */
-  public buyTraderStock(itemId: string): TraderPurchaseResult {
+  public buyTraderStock(itemId: string, quantity = 1): TraderPurchaseResult {
     const game = this.load();
     if (!game) {
       return { ok: false, message: 'There is no saved game to deal on.', saved: false };
     }
-    const offer = checkPurchase(traderCounterFor(game), itemId);
+    const offer = checkPurchase(traderCounterFor(game), itemId, quantity);
     if (!offer) {
       return { ok: false, message: 'He does not stock that.', saved: false };
     }
     if (offer.refusal !== undefined) {
       return { ok: false, message: offer.message ?? 'He will not deal.', saved: false };
     }
-    game.stash.removeItem(TRADER_CURRENCY_ITEM_ID, offer.item.price);
-    game.stash.addItem(offer.item.itemId, 1);
+    const total = offer.item.price * quantity;
+    game.stash.removeItem(TRADER_CURRENCY_ITEM_ID, total);
+    game.stash.addItem(offer.item.itemId, quantity);
     const raidProgress: RaidProgress = {
       ...game.raidProgress,
-      traderScripSpent: clampTraderCount(game.raidProgress.traderScripSpent) + offer.item.price,
+      traderScripSpent: clampTraderCount(game.raidProgress.traderScripSpent) + total,
     };
     return {
       ok: true,
-      message: `Bought one for ${offer.item.price} scrip.`,
+      message: quantity === 1 ? `Bought one for ${total} scrip.` : `Bought ${quantity} for ${total} scrip.`,
       saved: this.save({
         ...game,
         raidProgress,
-        traderRationUsed: clampTraderCount(game.traderRationUsed) + 1,
+        traderRationUsed: clampTraderCount(game.traderRationUsed) + quantity,
       }),
     };
   }
@@ -783,22 +826,23 @@ export class SaveManager {
    * touches turnover. A barter offered once is recorded the moment it is taken,
    * which is what stops the boat becoming a gear faucet.
    */
-  public takeTraderBarter(barterId: string): TraderPurchaseResult {
+  public takeTraderBarter(barterId: string, quantity = 1): TraderPurchaseResult {
     const game = this.load();
     if (!game) {
       return { ok: false, message: 'There is no saved game to deal on.', saved: false };
     }
-    const offer = checkBarter(traderCounterFor(game), barterId);
+    const offer = checkBarter(traderCounterFor(game), barterId, quantity);
     if (!offer) {
       return { ok: false, message: 'He has nothing like that.', saved: false };
     }
     if (offer.refusal !== undefined) {
       return { ok: false, message: offer.message ?? 'He will not deal.', saved: false };
     }
+    const times = quantity;
     for (const { itemId, quantity } of offer.barter.takes) {
-      game.stash.removeItem(itemId, quantity);
+      game.stash.removeItem(itemId, quantity * times);
     }
-    game.stash.addItem(offer.barter.gives.itemId, offer.barter.gives.quantity);
+    game.stash.addItem(offer.barter.gives.itemId, offer.barter.gives.quantity * times);
     const raidProgress: RaidProgress = {
       ...game.raidProgress,
       traderBarters: offer.barter.once
@@ -807,7 +851,10 @@ export class SaveManager {
     };
     return {
       ok: true,
-      message: `Traded ${formatTraderStacks(offer.barter.takes)} for a ${offer.barter.name}.`,
+      message:
+        times === 1
+          ? `Traded ${formatTraderStacks(offer.barter.takes)} for a ${offer.barter.name}.`
+          : `Traded ${formatTraderStacks(offer.barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * times })))} for ${times} ${offer.barter.name}s.`,
       saved: this.save({ ...game, raidProgress }),
     };
   }

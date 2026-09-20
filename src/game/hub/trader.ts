@@ -401,9 +401,12 @@ export function traderStockOffers(counter: TraderCounter): readonly TraderStockO
   return TRADER_STOCK.map((item) => ({ item, ...judgePurchase(counter, item) }));
 }
 
-function judgePurchase(counter: TraderCounter, item: TraderStockItem): TraderOffer {
+function judgePurchase(counter: TraderCounter, item: TraderStockItem, quantity = 1): TraderOffer {
   if (!meetsStanding(counter.progress, item.standing)) {
     return standingRefusal(item.standing);
+  }
+  if (quantity > rationLeft(counter) && rationLeft(counter) > 0) {
+    return refuse('ration-spent', `He has ${rationLeft(counter)} left to sell you this trip, not ${quantity}.`);
   }
   if (rationLeft(counter) <= 0) {
     const ration = traderStanding(counter.progress).ration;
@@ -414,16 +417,47 @@ function judgePurchase(counter: TraderCounter, item: TraderStockItem): TraderOff
         : `He sells ${ration} ${ration === 1 ? 'thing' : 'things'} a trip, and this trip is spent. Raid, and come back.`,
     );
   }
-  if (scripHeld(counter.stash) < item.price) {
-    return refuse('scrip-short', `${item.price} scrip, and you have ${scripHeld(counter.stash)}.`);
+  if (scripHeld(counter.stash) < item.price * quantity) {
+    return refuse('scrip-short', `${item.price * quantity} scrip, and you have ${scripHeld(counter.stash)}.`);
   }
   return {};
 }
 
 /** Whether this purchase may be made exactly as it stands. */
-export function checkPurchase(counter: TraderCounter, itemId: string): TraderStockOffer | undefined {
+export function checkPurchase(
+  counter: TraderCounter,
+  itemId: string,
+  quantity = 1,
+): TraderStockOffer | undefined {
   const item = TRADER_STOCK.find((candidate) => candidate.itemId === itemId);
-  return item === undefined ? undefined : { item, ...judgePurchase(counter, item) };
+  return item === undefined || !Number.isInteger(quantity) || quantity < 1
+    ? undefined
+    : { item, ...judgePurchase(counter, item, quantity) };
+}
+
+/**
+ * The most of a shelf item this counter will sell right now: what is left of
+ * the ration or what the purse covers, whichever is smaller - the ceiling a
+ * count selector on the shelf stops at. Zero when standing shuts the item.
+ */
+export function traderStockLimit(counter: TraderCounter, item: TraderStockItem): number {
+  if (!meetsStanding(counter.progress, item.standing)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(rationLeft(counter), Math.floor(scripHeld(counter.stash) / item.price)));
+}
+
+/**
+ * Which of the two things is the shorter, said for the shelf's plus: a selector
+ * stopped at three by the purse and one stopped at three by the ration are
+ * different sentences.
+ */
+export function traderStockLimitReason(counter: TraderCounter, item: TraderStockItem): string {
+  const ration = rationLeft(counter);
+  const affordable = Math.floor(scripHeld(counter.stash) / item.price);
+  return affordable <= ration
+    ? `${affordable} is what your ${scripHeld(counter.stash)} scrip covers at ${item.price} each.`
+    : `${ration} left on this trip's ration.`;
 }
 
 /** Every barter, in the order he brings them up, judged against this counter. */
@@ -431,14 +465,17 @@ export function traderBarterOffers(counter: TraderCounter): readonly TraderBarte
   return TRADER_BARTERS.map((barter) => ({ barter, ...judgeBarter(counter, barter) }));
 }
 
-function judgeBarter(counter: TraderCounter, barter: TraderBarter): TraderOffer {
+function judgeBarter(counter: TraderCounter, barter: TraderBarter, quantity = 1): TraderOffer {
+  if (barter.once && quantity > 1) {
+    return refuse('already-taken', `He only has the one ${barter.name}.`);
+  }
   if (barter.once && counter.progress.traderBarters.includes(barter.id)) {
     return refuse('already-taken', `He only had the one ${barter.name}.`);
   }
   if (!meetsStanding(counter.progress, barter.standing)) {
     return standingRefusal(barter.standing);
   }
-  const short = barterShortfall(counter.stash, barter);
+  const short = barterShortfall(counter.stash, barter, quantity);
   if (short.length > 0) {
     return refuse('goods-short', `Still short ${formatTraderStacks(short)}.`);
   }
@@ -446,15 +483,39 @@ function judgeBarter(counter: TraderCounter, barter: TraderBarter): TraderOffer 
 }
 
 /** What a barter still needs, given what the vault holds. Empty when it is covered. */
-export function barterShortfall(stash: Stash, barter: TraderBarter): readonly TraderStack[] {
+export function barterShortfall(stash: Stash, barter: TraderBarter, times = 1): readonly TraderStack[] {
   return barter.takes
-    .map(({ itemId, quantity }) => ({ itemId, quantity: quantity - stash.itemCount(itemId) }))
+    .map(({ itemId, quantity }) => ({ itemId, quantity: quantity * times - stash.itemCount(itemId) }))
     .filter(({ quantity }) => quantity > 0);
 }
 
-export function checkBarter(counter: TraderCounter, barterId: string): TraderBarterOffer | undefined {
+export function checkBarter(
+  counter: TraderCounter,
+  barterId: string,
+  quantity = 1,
+): TraderBarterOffer | undefined {
   const barter = TRADER_BARTERS.find((candidate) => candidate.id === barterId);
-  return barter === undefined ? undefined : { barter, ...judgeBarter(counter, barter) };
+  return barter === undefined || !Number.isInteger(quantity) || quantity < 1
+    ? undefined
+    : { barter, ...judgeBarter(counter, barter, quantity) };
+}
+
+/**
+ * How many times over this barter can be struck now: as many as the vault's
+ * goods cover for one that repeats, one for a barter offered once, none while
+ * it is shut. The ceiling a count selector on the table stops at.
+ */
+export function traderBarterLimit(counter: TraderCounter, barter: TraderBarter): number {
+  if (!meetsStanding(counter.progress, barter.standing)) {
+    return 0;
+  }
+  if (barter.once && counter.progress.traderBarters.includes(barter.id)) {
+    return 0;
+  }
+  const covered = Math.min(
+    ...barter.takes.map(({ itemId, quantity }) => Math.floor(counter.stash.itemCount(itemId) / quantity)),
+  );
+  return barter.once ? Math.min(1, covered) : covered;
 }
 
 /** Whether a berth may be taken for the coming raid. */
