@@ -1403,6 +1403,36 @@ describe('SaveManager', () => {
     expect(after.traderRationUsed).toBe(1);
   });
 
+  it('buys several in one deal, charging money and ration for every one', () => {
+    const storage = new MemoryStorage();
+    const saves = counterSave(storage);
+    // A trusted-or-better standing, whose ration is more than one a trip.
+    const seeded = saves.load()!;
+    saves.save({
+      ...seeded,
+      raidProgress: {
+        ...seeded.raidProgress,
+        completedContracts: [...seeded.raidProgress.completedContracts, 'cordon-ledger', 'wardens-resupply'],
+        defeatedBosses: [...seeded.raidProgress.defeatedBosses, 'floodplain-orchard-warden'],
+      },
+    });
+    const potions = saves.load()!.stash.itemCount('potion');
+    const ration = saves.load()!.traderRationUsed;
+
+    const bought = saves.buyTraderStock('potion', 2);
+    expect(bought.message).toBe('Bought 2 for 240 scrip.');
+
+    const after = saves.load()!;
+    expect(after.stash.itemCount('potion')).toBe(potions + 2);
+    expect(after.stash.itemCount('scrip')).toBe(1_000 - 240);
+    expect(after.raidProgress.traderScripSpent).toBe(240);
+    expect(after.traderRationUsed).toBe(ration + 2);
+    // More than the ration allows is refused whole, and costs nothing.
+    const refused = saves.buyTraderStock('potion', 99);
+    expect(refused.ok).toBe(false);
+    expect(saves.load()!.stash.itemCount('scrip')).toBe(1_000 - 240);
+  });
+
   it('refuses a second purchase on a one-a-trip ration, and costs nothing for refusing', () => {
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);

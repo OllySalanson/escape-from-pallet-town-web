@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blocksFor, BASE_SECURE_GRID, RAID_BAG_GRID, stackSizeOf } from '../items';
+import { blocksFor, BASE_SECURE_GRID, gridCells, RAID_BAG_GRID, stackSizeOf } from '../items';
 import { CHARMANDER, IVYSAUR, Pokemon, SQUIRTLE } from '../pokemon';
 import { createStartingStash, type Stash } from '../stash';
 import { DeploymentFlow } from './deploymentFlow';
@@ -466,5 +466,54 @@ describe('deployment flow', () => {
     }
     expect(flow.bagCells).toEqual({ used: 18, total: 18 });
     expect(flow.adjustItem('potion', 1)).toMatch(/No room/);
+  });
+
+  describe('counts', () => {
+    it('packs a whole number at once, and stops at what the pack will hold', () => {
+      const { flow, stash } = seedFlow();
+      stash.addItem('potion', 60);
+      const limit = flow.packLimit('potion');
+
+      expect(limit).toBeGreaterThan(0);
+      expect(limit).toBeLessThan(stash.itemCount('potion'));
+      expect(flow.setItemQuantity('potion', 3)).toBeUndefined();
+      expect(flow.itemQuantity('potion')).toBe(3);
+      // Asking for more than fits is met as far as it can be, never refused
+      // outright, and never past the number the selector showed.
+      expect(flow.setItemQuantity('potion', 999)).toBeUndefined();
+      expect(flow.itemQuantity('potion')).toBe(limit);
+      expect(flow.adjustItem('potion', 1)).toMatch(/No room in the pack/);
+      expect(flow.setItemQuantity('potion', 0)).toBeUndefined();
+      expect(flow.itemQuantity('potion')).toBe(0);
+    });
+
+    it('cuts a supply\'s limit by what else is packed, and never above what the base holds', () => {
+      const { flow, stash } = seedFlow();
+      const held = stash.itemCount('poke-ball');
+      expect(flow.packLimit('poke-ball')).toBeLessThanOrEqual(held);
+      stash.addItem('potion', 60);
+      const alone = flow.packLimit('potion');
+      flow.setItemQuantity('poke-ball', held);
+      expect(flow.packLimit('potion')).toBeLessThanOrEqual(alone);
+    });
+
+    it('seats a number of squares in the container, or as many as fit', () => {
+      const { flow, stash } = seedFlow();
+      stash.addItem('potion', 60);
+      flow.setItemQuantity('potion', flow.packLimit('potion'));
+      const limit = flow.secureLimit('potion');
+
+      expect(limit).toBeLessThanOrEqual(gridCells(flow.secureGrid));
+      expect(flow.setSecureSquares('potion', 999)).toBeUndefined();
+      expect(blocksFor('potion', flow.secureQuantity('potion'))).toBe(limit);
+      expect(flow.setSecureSquares('potion', 0)).toBeUndefined();
+      expect(flow.secureQuantity('potion')).toBe(0);
+    });
+
+    it('will not secure what was never packed, and says why', () => {
+      const { flow } = seedFlow();
+      expect(flow.secureLimit('potion')).toBe(0);
+      expect(flow.setSecureSquares('potion', 2)).toMatch(/Pack some of this first/);
+    });
   });
 });

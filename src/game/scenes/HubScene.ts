@@ -29,7 +29,10 @@ import {
   type DropInBriefing,
   type DropInContext,
   TRADER_BERTH_PRICE,
+  traderBarterLimit,
   traderBarterOffers,
+  traderStockLimit,
+  traderStockLimitReason,
   traderStanding,
   traderStandingPoints,
   traderStockOffers,
@@ -141,6 +144,7 @@ import {
   takeDownPixelStatus,
 } from '../ui/pixelUi';
 import { starterCards } from '../ui/starterPicker';
+import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP } from '../ui/countSelector';
 
 export interface HubSceneData {
   readonly savedGame?: RestoredGame;
@@ -180,6 +184,8 @@ export class HubScene extends Phaser.Scene {
   private boxScope: number | 'all' = 0;
   private stashSort: StashSort = 'kept';
   private stashSearch = '';
+  /** How many the Ferryman's counter is being asked for, by `buy:` or `barter:` and id. Never saved. */
+  private counterCounts = new Map<string, number>();
   /** The one text field on screen, if any: naming a box or searching. */
   private boxEditing: 'rename' | 'find' | undefined;
   /** The Pokemon picked up to be put in another box, by stash id. */
@@ -870,9 +876,58 @@ export class HubScene extends Phaser.Scene {
     if (event.key === 'Escape' && this.view !== 'home') {
       event.preventDefault(); audioManager.play('cancel'); this.goBack(); return;
     }
+    const group = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('.px-count');
+    if (group) {
+      const value = Number(group.dataset.countValue);
+      const min = Number(group.dataset.countMin);
+      const max = Number(group.dataset.countMax);
+      const target = countKeyTarget(event.key, event.shiftKey, value, min, max);
+      if (target !== undefined) {
+        event.preventDefault();
+        this.stepCount(group, target - value + (target === value && (event.key === 'ArrowRight' || event.key === 'PageUp') ? 1 : 0));
+        return;
+      }
+    }
     if (this.overlay.moveCursor(event.key)) {
       event.preventDefault();
     }
+  }
+
+  /**
+   * Moves one count selector by `delta`, wherever it stands. A selector's
+   * ceiling is already every real limit cut down, so a move that lands is
+   * accepted as asked and one that cannot go anywhere says why on the status
+   * line rather than doing nothing - the same words the plus carries when it
+   * is inert.
+   */
+  private stepCount(group: HTMLElement | null, delta: number): void {
+    if (!group) {
+      return;
+    }
+    const [kind, ...rest] = (group.dataset.count ?? '').split(':');
+    const id = rest.join(':');
+    const value = Number(group.dataset.countValue);
+    const min = Number(group.dataset.countMin);
+    const max = Number(group.dataset.countMax);
+    const target = clampCount(value + delta, min, max);
+    if (target === value) {
+      if (delta > 0) {
+        const plus = group.querySelector<HTMLElement>('[data-count-dir="1"]');
+        this.refuse(plus?.dataset.help ?? 'That is as many as there is room for.');
+      }
+      return;
+    }
+    if (kind === 'item') {
+      this.answer(this.flow.setItemQuantity(id as ItemId, target), 'select');
+    } else if (kind === 'secure') {
+      this.answer(this.flow.setSecureSquares(id as ItemId, target), 'select');
+    } else if (kind === 'buy' || kind === 'barter') {
+      this.counterCounts.set(`${kind}:${id}`, target);
+      audioManager.play('select');
+    } else {
+      return;
+    }
+    this.render();
   }
 
   private get heading(): string {
@@ -944,9 +999,9 @@ export class HubScene extends Phaser.Scene {
       hints: this.hints,
       status: this.status || undefined,
     });
-    const on = (selector: string, handler: (button: HTMLButtonElement) => void): void => {
+    const on = (selector: string, handler: (button: HTMLButtonElement, event: MouseEvent) => void): void => {
       root.querySelectorAll<HTMLButtonElement>(selector).forEach((button) => {
-        button.onclick = () => handler(button);
+        button.onclick = (event) => handler(button, event);
       });
     };
     const rerender = (change: () => void): void => {
@@ -987,8 +1042,19 @@ export class HubScene extends Phaser.Scene {
     on('[data-pay-arm]', () => rerender(() => { this.outfitterArmed = true; }));
     on('[data-pay-cancel]', () => rerender(() => { this.outfitterArmed = false; }));
     on('[data-pay-confirm]', () => this.confirmPayment());
-    on('[data-buy]', (button) => this.dealAtCounter(() => this.saveManager.buyTraderStock(button.dataset.buy!)));
-    on('[data-barter]', (button) => this.dealAtCounter(() => this.saveManager.takeTraderBarter(button.dataset.barter!)));
+    on('[data-buy]', (button) => {
+      const count = this.counterCounts.get(`buy:${button.dataset.buy}`) ?? 1;
+      this.counterCounts.delete(`buy:${button.dataset.buy}`);
+      this.dealAtCounter(() => this.saveManager.buyTraderStock(button.dataset.buy!, count));
+    });
+    on('[data-barter]', (button) => {
+      const count = this.counterCounts.get(`barter:${button.dataset.barter}`) ?? 1;
+      this.counterCounts.delete(`barter:${button.dataset.barter}`);
+      this.dealAtCounter(() => this.saveManager.takeTraderBarter(button.dataset.barter!, count));
+    });
+    on('[data-count-dir]', (button, event) =>
+      this.stepCount(button.closest<HTMLElement>('.px-count'), Number(button.dataset.countDir) * (event.shiftKey ? COUNT_BIG_STEP : 1)),
+    );
     on('[data-berth]', () => this.dealAtCounter(() => this.saveManager.buyTraderBerth()));
     on('[data-refused]', (button) => this.setStatus(button.dataset.refused));
     on('[data-deploy-flow]', () => this.openDeployment());
@@ -1010,30 +1076,11 @@ export class HubScene extends Phaser.Scene {
     on('[data-treat-item]', (button) => this.treat(button.dataset.treatPokemon!, button.dataset.treatItem!));
     on('[data-gear-give]', (button) => this.giveGear(button.dataset.gearPokemon!, button.dataset.gearGive!));
     on('[data-gear-take]', (button) => this.takeGear(button.dataset.gearTake!));
-    on('[data-item]', (button) => {
-      const refusal = this.flow.adjustItem(button.dataset.item as ItemId, Number(button.dataset.amount));
-      if (refusal) {
-        this.answer(refusal, 'select');
-        return;
-      }
-      rerender(() => undefined);
-    });
     on('[data-secure-pokemon]', (button) => {
       // It refuses by the squares now, so the message is the whole point of the
       // press: an Ivysaur that will not go into a 2x2 container says why, on
       // the same status line every other refusal on this screen uses.
       const refusal = this.flow.toggleSecurePokemon(button.dataset.securePokemon!);
-      if (refusal) {
-        this.answer(refusal, 'select');
-        return;
-      }
-      rerender(() => undefined);
-    });
-    on('[data-secure-item]', (button) => {
-      const refusal = this.flow.adjustSecureItem(
-        button.dataset.secureItem as ItemId,
-        Number(button.dataset.secureAmount),
-      );
       if (refusal) {
         this.answer(refusal, 'select');
         return;
@@ -1639,7 +1686,6 @@ export class HubScene extends Phaser.Scene {
         const size = footprint.width === 1 && footprint.height === 1
           ? '1 square'
           : `${footprint.width * footprint.height} squares`;
-        const room = this.flow.packHasRoomFor(item.id as ItemId);
         const help = escapeAttribute(
           `${item.displayName}: ${item.description} ${size} each, ${held} at base.`,
         );
@@ -1647,7 +1693,11 @@ export class HubScene extends Phaser.Scene {
         // it costs in squares, and how many of it the base still holds. A plus
         // that would not fit is left reachable and refuses out loud, because a
         // control the cursor cannot land on can never say why.
-        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${size} · ${held} at base</small></span><span class="px-stepper"><button class="px-window px-step" data-item="${item.id}" data-amount="-1" data-help="${help}" aria-label="Remove ${item.displayName}"${packed ? '' : ' disabled'}>−</button><b>${packed}</b><button class="px-window px-step" data-item="${item.id}" data-amount="1" data-help="${help}" aria-label="Add ${item.displayName}"${packed < held ? '' : ' aria-disabled="true"'}${room ? '' : ' aria-disabled="true"'}>+</button></span></div>`;
+        const limit = this.flow.packLimit(item.id as ItemId);
+        const limitReason = limit < held
+          ? `The pack has room for ${limit} ${item.displayName} beside what else is packed.`
+          : `All ${held} at base are packed.`;
+        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${size} · ${held} at base</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
       })
       .join('');
     const cells = this.flow.bagCells;
@@ -1901,9 +1951,19 @@ export class HubScene extends Phaser.Scene {
       const held = blocksFor(itemId, this.flow.secureQuantity(itemId));
       const footprint = footprintOf(itemId);
       const size = footprint.width * footprint.height;
-      const room = this.flow.secureHasRoomFor(itemId);
-      const label = escapeAttribute(this.itemName(itemId));
-      return `<div class="px-row has-icon${held ? ' is-secured' : ''}">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong>${this.itemName(itemId)}</strong><small>${size === 1 ? '1 square' : `${size} squares`}</small></span><span class="px-stepper"><button class="px-window px-step" data-secure-item="${itemId}" data-secure-amount="-1" data-help="${escapeAttribute(help)}" aria-label="Take ${label} out of the container"${held ? '' : ' disabled'}>−</button><b>${held}</b><button class="px-window px-step" data-secure-item="${itemId}" data-secure-amount="1" data-help="${escapeAttribute(help)}" aria-label="Put ${label} in the container"${room ? '' : ' aria-disabled="true"'}>+</button></span></div>`;
+      const limit = this.flow.secureLimit(itemId);
+      const packed = this.flow.itemQuantity(itemId);
+      const roomLine = held >= limit
+        ? 'The container cannot seat any more of this beside what is in it.'
+        : `The container has room for ${limit} square${limit === 1 ? '' : 's'} of this beside what is in it.`;
+      const limitReason = isFoundOnly(itemId)
+        ? roomLine
+        : packed === 0
+          ? 'Pack some of this first - the container protects what you carry.'
+          : limit >= blocksFor(itemId, packed)
+            ? 'Everything you packed of this is already in the container.'
+            : roomLine;
+      return `<div class="px-row has-icon${held ? ' is-secured' : ''}">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong>${this.itemName(itemId)}</strong><small>${size === 1 ? '1 square' : `${size} squares`}</small></span>${countSelector({ kind: 'secure', id: itemId, label: this.itemName(itemId), value: held, max: limit, help, limit: limitReason })}</div>`;
     };
     const itemRows = this.flow.items
       .map((item) =>
@@ -2108,16 +2168,18 @@ export class HubScene extends Phaser.Scene {
     const shelf = stock
       .map((offer) => {
         const name = this.itemName(offer.item.itemId);
-        const tag =
-          offer.refusal === undefined
-            ? pixelTag('Buy', 'good')
-            : pixelTag(offer.refusal === 'scrip-short' ? 'Short' : offer.refusal === 'ration-spent' ? 'Spent' : 'Locked');
+        const limit = traderStockLimit(counter, offer.item);
+        if (offer.refusal === undefined && limit > 0) {
+          const count = clampCount(this.counterCounts.get(`buy:${offer.item.itemId}`) ?? 1, 1, limit);
+          const help = `Buy ${count} ${name} for ${offer.item.price * count} scrip. ${limit === 1 ? 'That is all this trip allows' : `Up to ${limit} this trip`}.`;
+          // The row is a pair now, because a quantity is a control of its own:
+          // the row still buys, and the selector beside it says how many.
+          return `<div class="px-pair"><button class="px-row has-icon" data-buy="${offer.item.itemId}" data-help="${escapeAttribute(help)}"${offer === first ? ' data-cursor-start' : ''}>${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}</strong><small>Buy${count > 1 ? ` ${count}` : ''} · ${offer.item.price * count} scrip</small></span></button>${countSelector({ kind: 'buy', id: offer.item.itemId, label: name, value: count, min: 1, max: limit, help, limit: traderStockLimitReason(counter, offer.item) })}</div>`;
+        }
+        const tag = pixelTag(offer.refusal === 'scrip-short' ? 'Short' : offer.refusal === 'ration-spent' ? 'Spent' : 'Locked');
         // Never `disabled`: the cursor has to reach a row to say why it is shut.
-        const wiring =
-          offer.refusal === undefined
-            ? `data-buy="${offer.item.itemId}" data-help="${escapeAttribute(`Buy one ${name} for ${offer.item.price} scrip. One of this trip's ${standing.ration}.`)}"`
-            : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
-        return `<button class="px-row has-icon" ${wiring}${offer === first ? ' data-cursor-start' : ''}>${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}</strong><small>${offer.item.price} scrip</small></span>${tag}</button>`;
+        const wiring = `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
+        return `<button class="px-row has-icon" ${wiring}>${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}</strong><small>${offer.item.price} scrip</small></span>${tag}</button>`;
       })
       .join('');
     const shelfPane = pixelWindow(
@@ -2137,6 +2199,16 @@ export class HubScene extends Phaser.Scene {
       .map((offer) => {
         const { barter } = offer;
         const taken = offer.refusal === 'already-taken';
+        const limit = traderBarterLimit(counter, barter);
+        if (offer.refusal === undefined && !barter.once && limit > 1) {
+          // A barter that repeats can be struck several times over, as many as
+          // the vault's goods cover.
+          const count = clampCount(this.counterCounts.get(`barter:${barter.id}`) ?? 1, 1, limit);
+          const takes = formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })));
+          const help = `Hand over ${takes} for ${count} ${barter.name}${count === 1 ? '' : 's'}. No scrip changes hands.`;
+          const goods = barter.takes.map(({ itemId }) => this.itemName(itemId).toLowerCase()).join(' and ');
+          return `<div class="px-pair"><button class="px-row has-icon px-tall" data-barter="${barter.id}" data-shows="${barter.id}" data-help="${escapeAttribute(help)}"${offer === first ? ' data-cursor-start' : ''}>${iconMarkup(barter.icon, barter.name)}<span class="px-row-main"><strong class="px-name">${barter.name}</strong><small class="px-wrap">${takes}</small></span></button>${countSelector({ kind: 'barter', id: barter.id, label: barter.name, value: count, min: 1, max: limit, help, limit: `Your ${goods} cover ${limit} at most.` })}</div>`;
+        }
         const tag = taken
           ? pixelTag('Traded', 'secure', true)
           : offer.refusal === undefined

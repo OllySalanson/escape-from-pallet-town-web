@@ -19,6 +19,9 @@ import {
   checkBarter,
   checkBerth,
   checkPurchase,
+  traderBarterLimit,
+  traderStockLimit,
+  traderStockLimitReason,
   clampTraderBarters,
   clampTraderCount,
   meetsStanding,
@@ -203,6 +206,39 @@ describe('the shelf', () => {
   it('refuses a stranger before it looks at the money', () => {
     const offer = checkPurchase(counter(), 'potion');
     expect(offer?.refusal).toBe('standing-short');
+  });
+
+  it('sells several at once, up to the smaller of the ration and the purse', () => {
+    const trusted = progress({ completedContracts: ['a', 'b', 'c', 'd'], defeatedBosses: ['x', 'y'] });
+    const stash = new Stash();
+    stash.addItem('scrip', 500);
+    const rich = counter({ progress: trusted, stash });
+    const potion = TRADER_STOCK.find((item) => item.itemId === 'potion')!;
+    const limit = traderStockLimit(rich, potion);
+
+    expect(limit).toBe(Math.min(rationLeft(rich), Math.floor(500 / potion.price)));
+    expect(checkPurchase(rich, 'potion', limit)?.refusal).toBeUndefined();
+    expect(checkPurchase(rich, 'potion', limit + 1)?.refusal).toBeDefined();
+    expect(checkPurchase(rich, 'potion', 0)).toBeUndefined();
+    expect(traderStockLimitReason(rich, potion)).toMatch(/scrip covers|ration/);
+    expect(traderStockLimit(counter(), potion)).toBe(0);
+  });
+
+  it('offers a barter as many times as the goods cover, and a once-only one just once', () => {
+    const stash = new Stash();
+    const stone = TRADER_BARTERS.find((barter) => !barter.once)!;
+    const once = TRADER_BARTERS.find((barter) => barter.once)!;
+    for (const { itemId, quantity } of [...stone.takes, ...once.takes]) {
+      stash.addItem(itemId, quantity * 3);
+    }
+    const table = counter({ progress: PARTNER, stash });
+
+    expect(traderBarterLimit(table, stone)).toBe(3);
+    expect(checkBarter(table, stone.id, 3)?.refusal).toBeUndefined();
+    expect(checkBarter(table, stone.id, 4)?.refusal).toBe('goods-short');
+    expect(traderBarterLimit(table, once)).toBe(1);
+    expect(checkBarter(table, once.id, 2)?.refusal).toBe('already-taken');
+    expect(traderBarterLimit(counter({ progress: NO_PROGRESS, stash }), stone)).toBe(0);
   });
 
   it('sells to a regular, and only what the tier has opened', () => {

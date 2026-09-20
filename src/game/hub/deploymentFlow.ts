@@ -1,11 +1,13 @@
 import {
   BASE_SECURE_GRID,
+  blocksFor,
   cargoCells,
   fitsInGrid,
   gridCells,
   isFoundOnly,
   packContents,
   RAID_BAG_GRID,
+  roomFor,
   stackSizeOf,
   type GridCargo,
   type GridPacking,
@@ -309,20 +311,29 @@ export class DeploymentFlow {
    *   deploys with what fits in the squares.
    */
   public adjustItem(itemId: ItemId, direction: number): string | undefined {
+    return this.setItemQuantity(itemId, this.itemQuantity(itemId) + direction);
+  }
+
+  /**
+   * Packs a supply up to `target`, or as near it as the pack allows.
+   *
+   * A count selector asks for whole numbers at a time, so a request the pack
+   * cannot hold is met as far as it can be rather than refused outright - the
+   * selector shows `packLimit` as its ceiling, so what lands is what it said
+   * would. Only a request that moves nothing answers with a reason.
+   */
+  public setItemQuantity(itemId: ItemId, target: number): string | undefined {
     // Materials are for the Outfitter and scrip is for the Ferryman: neither
     // does anything in a raid, so packing one only puts it at risk.
     if (isFoundOnly(itemId)) {
       return undefined;
     }
-    const next = Math.max(
-      0,
-      Math.min(this.stash.itemCount(itemId), this.itemQuantity(itemId) + direction),
-    );
-    if (next === this.itemQuantity(itemId)) {
-      return undefined;
-    }
-    if (next > 0 && !fitsInGrid({ ...this.packedContents, [itemId]: next }, this.bagGrid)) {
-      return 'No room in the pack. Take something out first.';
+    const current = this.itemQuantity(itemId);
+    const next = Math.max(0, Math.min(this.packLimit(itemId), target));
+    if (next === current) {
+      return target > current && this.packLimit(itemId) < this.stash.itemCount(itemId)
+        ? 'No room in the pack. Take something out first.'
+        : undefined;
     }
     if (next === 0) {
       this.selectedItems.delete(itemId);
@@ -333,6 +344,19 @@ export class DeploymentFlow {
     this.selectedItems.set(itemId, next);
     this.refillSecureSlot();
     return undefined;
+  }
+
+  /**
+   * The most of a supply the pack can carry: what the base holds, cut to what
+   * the squares will take beside everything else already packed.
+   */
+  public packLimit(itemId: ItemId): number {
+    if (isFoundOnly(itemId)) {
+      return 0;
+    }
+    const others = { ...this.packedContents };
+    delete others[itemId];
+    return roomFor(others, this.bagGrid, itemId, this.stash.itemCount(itemId));
   }
 
   /** Whether one more of a supply would go into the pack beside what is packed. */
@@ -402,28 +426,73 @@ export class DeploymentFlow {
    * @returns A message when the container had no room, otherwise undefined.
    */
   public adjustSecureItem(itemId: ItemId, direction: number): string | undefined {
+    return this.setSecureSquares(itemId, blocksFor(itemId, this.secureQuantity(itemId)) + direction);
+  }
+
+  /**
+   * Sets how many squares of a kind the secure container holds, or as many as
+   * it can. A count selector asks in whole numbers, so a request the container
+   * cannot seat is met as far as it can be (`secureLimit` is the ceiling the
+   * selector shows) and only one that moves nothing answers with a reason.
+   */
+  public setSecureSquares(itemId: ItemId, squares: number): string | undefined {
     this.secureTouched = true;
     const step = stackSizeOf(itemId);
-    const ceiling = isFoundOnly(itemId)
-      ? gridCells(this.secureGrid) * step
-      : this.itemQuantity(itemId);
-    const next = Math.max(0, Math.min(ceiling, this.secureQuantity(itemId) + direction * step));
-    if (next === this.secureQuantity(itemId)) {
-      return direction > 0 && ceiling === 0
-        ? 'Pack some of this first - the container protects what you carry.'
-        : undefined;
+    const ceiling = this.secureCeiling(itemId);
+    const current = this.secureQuantity(itemId);
+    const wanted = Math.max(0, Math.min(this.secureLimit(itemId), squares));
+    const next = Math.min(ceiling, wanted * step);
+    if (next === current) {
+      if (squares > blocksFor(itemId, current)) {
+        if (ceiling === 0) {
+          return 'Pack some of this first - the container protects what you carry.';
+        }
+        return this.noRoomInContainerMessage();
+      }
+      return undefined;
     }
     if (next === 0) {
       this.securedItemCounts.delete(itemId);
       return undefined;
     }
-    if (!fitsInGrid({ ...this.securedContents, [itemId]: next }, this.secureGrid, this.securedCargo)) {
-      return this.securedCargo.length > 0
-        ? `No room - ${this.securedCargo.map((piece) => piece.name.toUpperCase()).join(' and ')} ${this.securedCargo.length === 1 ? 'is' : 'are'} taking the container. Unsecure a Pokémon, or grow it.`
-        : 'The secure container is full. Take something out of it first.';
-    }
     this.securedItemCounts.set(itemId, next);
     return undefined;
+  }
+
+  /**
+   * The most squares of a kind the container can seat, beside everything else
+   * in it - the number a count selector stops at.
+   */
+  public secureLimit(itemId: ItemId): number {
+    const step = stackSizeOf(itemId);
+    const ceiling = this.secureCeiling(itemId);
+    const others = { ...this.securedContents };
+    delete others[itemId];
+    let squares = 0;
+    while (
+      squares * step < ceiling &&
+      fitsInGrid(
+        { ...others, [itemId]: Math.min(ceiling, (squares + 1) * step) },
+        this.secureGrid,
+        this.securedCargo,
+      )
+    ) {
+      squares += 1;
+    }
+    return squares;
+  }
+
+  /** The most units of a kind the container could ever hold, room aside. */
+  private secureCeiling(itemId: ItemId): number {
+    return isFoundOnly(itemId)
+      ? gridCells(this.secureGrid) * stackSizeOf(itemId)
+      : this.itemQuantity(itemId);
+  }
+
+  private noRoomInContainerMessage(): string {
+    return this.securedCargo.length > 0
+      ? `No room - ${this.securedCargo.map((piece) => piece.name.toUpperCase()).join(' and ')} ${this.securedCargo.length === 1 ? 'is' : 'are'} taking the container. Unsecure a Pokémon, or grow it.`
+      : 'The secure container is full. Take something out of it first.';
   }
 
   /** Whether one more square of a kind would go into the secure container. */
