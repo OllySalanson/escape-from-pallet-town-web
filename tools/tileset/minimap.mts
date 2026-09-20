@@ -11,8 +11,9 @@
  *
  * `--survey=path.json` takes a real save's `raidProgress.surveyed`
  * (`tools/playtest/raid.mjs --progress=...` writes one), so what is drawn is
- * ground a raid actually walked. `--beaten=bossId,..` opens those gates, which
- * is the other half of what lights a map up.
+ * ground a raid actually walked. `--beaten=bossId,..` opens those gates and
+ * `--completed=contractId,..` banks those contracts, which are the other two
+ * halves of what lights a map up.
  */
 import { readFileSync } from 'node:fs';
 import { writePng } from './tileSheet.mjs';
@@ -22,12 +23,14 @@ import { buildMinimap, MINIMAP_PALETTE } from '../../src/game/world/minimap';
 import { surveyedTiles } from '../../src/game/world/survey';
 import { RUN_INSERTIONS } from '../../src/game/run/runGeneration';
 import { gatesForMap, isGateOpen } from '../../src/game/world/gates';
+import { workedLandmarksOn } from '../../src/game/world/workedLandmarks';
 
 const args = process.argv.slice(2);
 const option = (name: string) => args.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3);
 const [which = 'all', target = 'minimap.png', zoomArgument = '6'] = args.filter((v) => !v.startsWith('--'));
 const zoom = Number(zoomArgument);
 const beaten = (option('beaten') ?? '').split(',').filter(Boolean);
+const completed = (option('completed') ?? '').split(',').filter(Boolean);
 const survey = option('survey')
   ? (JSON.parse(readFileSync(option('survey')!, 'utf8')).surveyed ?? JSON.parse(readFileSync(option('survey')!, 'utf8')))
   : {};
@@ -46,10 +49,19 @@ const pictures = ids.map((id) => {
   const map = getWorldMap(id, beaten);
   const ours = Object.values(RUN_INSERTIONS).filter((entry) => entry.mapId === id);
   const open = gatesForMap(id).filter((gate) => isGateOpen(gate, beaten));
+  // A landmark this save finished with is lit and glyphed exactly as a door it
+  // opened is - see `hub/dropIn.ts`, which is what the lobby actually paints.
+  const worked = workedLandmarksOn(id, completed)
+    .map((work) => getWorldMap(id, beaten).pois.find((poi) => poi.id === work.poiId)!)
+    .filter(Boolean);
   return buildMinimap({
     map,
     surveyed: surveyedTiles(survey[id], map.width),
-    lit: [...ours.map((entry) => entry.position), ...open.flatMap((gate) => gate.tiles)],
+    lit: [
+      ...ours.map((entry) => entry.position),
+      ...open.flatMap((gate) => gate.tiles),
+      ...worked.map((poi) => poi.position),
+    ],
     marks: [
       ...ours.map((entry) => ({ position: entry.position, char: 'I', always: true })),
       ...gatesForMap(id).flatMap((gate) =>
@@ -59,6 +71,7 @@ const pictures = ids.map((id) => {
           always: isGateOpen(gate, beaten),
         })),
       ),
+      ...worked.map((poi) => ({ position: poi.position, char: 'K', always: true })),
     ],
   });
 });

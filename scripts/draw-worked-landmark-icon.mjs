@@ -27,19 +27,23 @@ const C = {
   o: hex('241f2e'), // the set's one outline
   L: hex('9be27a'), // the lit beacon: the green a door you opened is drawn in
   l: hex('dcfce7'), // its highlight
-  s: hex('86e6d6'), // the signal coming off it
+  S: hex('9be27a'), // the signal, solid where the sealed mast's is a thin arc
+  s: hex('4d9e3f'), // its shade
   D: hex('9db0c4'), // the mast's steel, as radio-mast.png draws it
 };
 
+// At 16px a silhouette this close to `radio-mast.png` only reads as a different
+// object if the colour mass does, so the signal is two solid blocks rather than
+// that icon's thin broken arcs, and the lamp is three pixels of lit green
+// rather than one of dark red.
 const rows = [
-  '.....olo........',
-  '.....oLo........',
-  '......o.........',
-  '.s.....o.....s..',
-  's.s....o....s.s.',
-  's.s...oDo...s.s.',
-  '.s....oDo....s..',
-  '......oDo.......',
+  '.....olLlo......',
+  '.....oLLLo......',
+  '......oLo.......',
+  'ooooo..o..ooooo.',
+  'oSSSo.oDo.oSSSo.',
+  'oSsso.oDo.ossso.',
+  'ooooo.oDo.ooooo.',
   '.....oD.Do......',
   '.....oD.Do......',
   '....oDDDDDo.....',
@@ -48,6 +52,7 @@ const rows = [
   '...oDDDDDDDo....',
   '..oD.......Do...',
   '..oDDDDDDDDDo...',
+  '................',
 ];
 
 const grid = rows.map((row, y) => {

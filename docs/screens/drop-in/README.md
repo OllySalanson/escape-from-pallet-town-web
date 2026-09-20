@@ -23,7 +23,10 @@ What fills in:
 - **your own landings**, lit whether you have been to them or not, which is what
   makes a fresh save an invitation rather than a black square;
 - **the doors you have opened**, derived from `defeatedBosses`, so beating a
-  keeper visibly enlarges the map you can look at back at base.
+  keeper visibly enlarges the map you can look at back at base;
+- **the landmarks you have finished with**, derived from `completedContracts`,
+  which also turn the exit each of them sealed into one that reads "open for
+  good - you finished the landmark" - see `docs/screens/worked-landmarks/`.
 
 The dark is not blank. It is shaded a block of four tiles at a time by what is
 mostly in that block - open country lightest, wood and rock darkest, water in a
