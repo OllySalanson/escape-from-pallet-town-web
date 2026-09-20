@@ -365,4 +365,56 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     unlockAtMs: 0,
     requirement: { kind: 'always' },
   },
+  // The ground the map grew into. Six more ways out, one for each region the
+  // new districts make, because an exit is what stops a piece of a vast map
+  // being somewhere you can only leave by dying: the quarry's old road, the
+  // kilns' stair, the cider yard's cart lodge, the drove's west gate, the
+  // steps off the wharf and the head of the light's pier.
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 93, y: 3 },
+    label: 'QUARRY ROAD',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 121, y: 3 },
+    label: 'KILN ROAD',
+    unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 73, y: 58 },
+    label: 'CIDER ROAD',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 1, y: 84 },
+    label: 'DROVE GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The second landmark-held door on this map, and the first that a fresh
+    // save can walk to: the crane is at the far end of the quay from the steps.
+    mapId: 'floodplain-relay',
+    position: { x: 30, y: 92 },
+    label: 'STAITHE STEPS',
+    unlockAtMs: 0,
+    requirement: {
+      kind: 'poi-activated',
+      poiId: 'floodplain-staithe-crane',
+      poiLabel: 'STAITHE CRANE',
+    },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 114, y: 124 },
+    label: 'PIER HEAD',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
 ];

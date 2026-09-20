@@ -40,8 +40,8 @@ import type { FloodTownPropName } from '../tileset/floodTownTileset';
  */
 export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   const map = new MapSketch<FloodTownPropName>({
-    width: 64,
-    height: 64,
+    width: 128,
+    height: 128,
     fill: '.',
     stamps: {
       // A tree of the forest: cut the ground from under it and it goes, and
@@ -444,6 +444,1274 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
 
   // The causeway from the vault to the south road. `gates.ts` owns the middle.
   map.draw(29, 54, ['MMMM', 'MMMM']);
+
+  // <<<NEWGROUND>>>
+
+  // == THE WOOD, CARRIED ON ================================================
+  // The same forest over the ground the flood reached. It is two more blocks
+  // rather than one bigger one on purpose: the 64x64 picture above is still
+  // the picture that was drawn and reviewed, and everything below this line is
+  // ground added beside it, so a diff says which is which.
+  map.draw(64, 0, [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  ]);
+
+
+  map.draw(0, 64, [
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  ]);
+
+
+  // == THE RIVER BELOW THE TOWN ============================================
+  // It leaves between Old Town and the isle and keeps going, and what it does
+  // on the way down is the whole shape of the south: one reach south, one
+  // square bend east, one reach south into the tide. West of it is the
+  // grazing marsh and the wharf the barges loaded at; east of it the fields
+  // the water never gave back. The two sides do not meet again until the sands
+  // at the very bottom of the map, and that crossing is a door somebody holds.
+  map.draw(30, 64, [
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+  ]);
+
+  // The square bend. A shore drawn as a staircase reads as a staircase.
+  map.draw(30, 86, [
+    'WWWWWWWWWWWWW',
+    'WWWWWWWWWWWWW',
+    'WWWWWWWWWWWWW',
+  ]);
+
+  // The last reach, down to the tide.
+  map.draw(40, 89, [
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+  ]);
+
+
+  // == THE TIDE ============================================================
+  // The bottom of the map is salt water and the sand it goes off at low water.
+  // The banks are drawn over this in THE MUDS; what is laid here is the water
+  // they stand in, so a bank nudged by a tile cannot leave a seam.
+  map.draw(2, 112, [
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  ]);
+
+
+  // The lagoon. The sea came through the wall and has not gone back, so the
+  // hundred behind it is a sheet of water with its own hedge banks standing in
+  // it - which is what tells a player, before anything says so, what the flood
+  // that took the relay actually was.
+  map.draw(58, 98, [
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  ]);
+
+  // The breach: four rows of sea wall simply gone.
+  map.draw(71, 108, [
+    'WWWWW',
+    'WWWWW',
+    'WWWWW',
+    'WWWWW',
+  ]);
+
+
+  // == THE CUT =============================================================
+  // The one water here nobody's flood made: a drain taken dead straight from
+  // the kilns to the wall to keep the levels dry, culverted twice and not a
+  // third time. Everything east of it is reached over one of those two.
+  map.draw(97, 34, [
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+    'WWW',
+  ]);
+
+
+  // == HOLLOW BECK =========================================================
+  // Where the mill's water comes from: off the levels, west under the quarry
+  // and north into the mill pond - so the pond, the race, the gatehouse and
+  // the weir turn out to be one thing with a beginning.
+  map.draw(70, 28, [
+    'WWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWW',
+  ]);
+
+  // The leg north to the pond, two tiles wide under the quarry wall.
+  map.draw(68, 21, [
+    'WW',
+    'WW',
+    'WW',
+    'WW',
+    'WW',
+    'WW',
+    'WW',
+    'WW',
+  ]);
+
+  // And in at the pond's east end, under the wood.
+  map.draw(59, 20, [
+    'WWWWWWWWWWW',
+    'WWWWWWWWWWW',
+  ]);
+
+
+  // The quarry's own water: the pit the diggers stopped at, full to the brim
+  // since the day the river came up.
+  map.draw(68, 13, [
+    'WWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWW',
+  ]);
+
+
+  // == THE QUARRY - east of the keep =======================================
+  // Where the keep, the gatehouse, the causeway and the quay were all cut
+  // from. The haul road leaves the back of the court and climbs to the top
+  // bench; everything under that is face, and the only way down is the
+  // self-acting incline FOREMAN RUDD stands at the head of. The benches are
+  // stepped and littered, so no run along one is the same two rows twice.
+  map.draw(57, 7, [
+    'vCvvvvv    ',
+    'vvvCvvv    ',
+    '   vvvv    ',
+    '   vvvvvvvv',
+    '   vvvvvvvv',
+  ]);
+
+  // The rim, the top bench, and the spoil that has come down onto it.
+  map.draw(64, 9, [
+    'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+    'vvvvvvCvvvvvCvvvvvCvvvvvCvvvvvvvv',
+    'vvvvvvvvvCvvvvvCvvvvvCvvvvvCvvvvv',
+  ]);
+
+
+  // The face, the incline down it, and the floor round the pit. Shut, the
+  // incline is bare rock and the whole of the workings below is a place a
+  // player can look into and not get to.
+  map.draw(64, 12, [
+    ',,CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+    ',,CCWWWWWWWWWWWWWWWWWWWWWWWCCCCCC',
+    ',,CCWWWWWWWWWWWWWWWWWWWWWWWCCCCCC',
+    ',,CCWWWWWWWWWWWWWWWWWWWWWWWCCCCCC',
+    ',,CCWWWWWWWWWWWWWWWWWWWWWWWCCCCCC',
+    ',,CCWWWWWWWWWWWWWWWWWWWWWWWvvvvvv',
+    'vvvvvvCvvvvvvCvvvvvCvvvvvvvvvCvvv',
+    'vvvCvvvvvCvvvvvvCvvvvvCvvvvvCvvvv',
+  ]);
+
+
+  // The hillside the quarry is cut into, and the level driven through it. The
+  // adit is the foreman's second door: six tiles of dark that come out on the
+  // beck, which is the mill's own water and a road the player already walked -
+  // so the long way in past the keep is never the way back.
+  map.draw(71, 20, [
+    'CCCCCCCCCCCCCCCCCCCCCCCCCC',
+    'CCCCCCCCCCCCCCCCCCCCCCCCCC',
+    'CCCCCCCCCCCCCCCCCCCCCCCCCC',
+    'CCCCCCCCCCCCCCCCCCCCCCCCCC',
+    'CCCCCCCCCCCCCCCCCCCCCCCCCC',
+    'CCCCCCCCCCCCCCCCCCCCCCCCCC',
+  ]);
+
+  // The level, two tiles wide, with a mouth cut at each end.
+  map.draw(88, 20, [
+    'MM',
+    'MM',
+    'MM',
+    'MM',
+    'MM',
+    'MM',
+  ]);
+
+
+  // The cart track off the top bench to the old quarry road, and the pocket at
+  // the head of it the QUARRY ROAD exit stands in.
+  map.draw(92, 3, [
+    'vv',
+    'vv',
+    'vv',
+    'vv',
+    'vv',
+    'vv',
+    'vv',
+  ]);
+
+
+  // == HOLLOW BECK - the cleft under the workings ==========================
+  // A wooded valley with the beck in the bottom of it, the quarry's rock along
+  // the north side and the adit's mouth halfway up that. The track from the
+  // mill yard comes in at the west end, which is what makes the whole east
+  // bank a ring rather than a spur. It is thicket and rough grass with the
+  // trees left where the stone was never worth taking, so it is walked along
+  // and not across.
+  // The valley's west floor, between the beck's leg and the mill's wood.
+  map.draw(59, 22, [
+    '.g..T..g.',
+    '.g.....g.',
+    '.g..T..g.',
+    'T.TTTTTT.',
+    '.g.....g.',
+    '.g..T..g.',
+    '.g..T..g.',
+    'TT.TT.TTT',
+    '.g..T..g.',
+    '.g..T..g.',
+    '.g.....g.',
+    'TTT.TT.TT',
+  ]);
+
+  // The shelf the adit comes out on, and the head of the beck round it.
+  map.draw(71, 26, [
+    '..g..g..gT.g.....g.Tg..g.',
+    '..g.Tg..g..g..T..g..g..gT',
+  ]);
+
+
+  map.draw(95, 26, [
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+  ]);
+
+  // The south bank, which is the way west to the mill and east to the cut.
+  map.draw(59, 30, [
+    '.g..T..g.Tg..g..g..T..g.Tg..g..g..T..g',
+    '.g.....g.Tg..gT.g.....g.Tg..gT.g.....g',
+    '.g..T..g..g..gT.g..T..g..g..gT.g..T..g',
+    '.TTTTTT.TT.TTTTTT.TT.TTTTTT.TT.TTTTTT.',
+  ]);
+
+
+  // == THE CIDER YARD - behind the orchard =================================
+  // Where the orchard's fruit went, and the reason the orchard is there at
+  // all. Old standards planted wide in hedged closes - which is what makes the
+  // warden's tight rows read as the young planting they are - then the press
+  // house and the store on the only paving east of the river that is not the
+  // keep's, and the cart road that carried it all out to the drove.
+  map.draw(61, 34, [
+    '""""#""""#TTTT#""""#""""#TTTT#""""#"',
+    'g""g#"g""#TTTT#g""g#"g""#TTTT#g""g""',
+    '""""#""""#TTTT#"""""""""#TTTT#""""#"',
+    'g""g""g""#TTTT#g""g#"g""#TTTT#g""g#"',
+    '###"##"#########"######"#########"##',
+    'g""g#"g""#""g"#g""g""g""#""g"#g""g#"',
+    ',,,,,,,,,#,,,,#,,,,#,,,,,,,,,#,,,,#,',
+    ',,,,#,,,,,,,,,#,,,,#,,,,#,,,,,,,,,#,',
+    '""""#""""#"""""""""#""""#""""#""""""',
+    '"######"##"######"##"######"##"#####',
+    '""""#"""""""""#""""#""""#"""""""""#"',
+    'g""g#"g""#""g""g""g#"g""#""g"#g""g""',
+    '""""#""""#""""#"""""""""#""""#""""#"',
+    'g""g""g""#""g"#g""g#"g"""""g"#g""g#"',
+    '########"##"#########"######"#######',
+    'TTTT#"g""#""g"#TTTT#"g""#""g"#TTTT#"',
+    'TTTT#""""#""""#TTTT#"""""""""#TTTT#"',
+    'TTTT#"g"""""g"#TTTT#"g""#""g"#TTTT#"',
+    'TTTT#""""#""""#TTTT#""""#""""#TTTT#"',
+    '#####"######"#########"##"#########"',
+    '""""#"""""""""#""""#""""#"""""""""#"',
+    'g""g#"g""#""g""g""g#"g""#""g"#g""g""',
+  ]);
+
+
+  // The yard: the press house on the paving, the store beside it, and the road
+  // out east to the culvert over the cut. South of it the ground goes rough -
+  // nothing was ever built there, because the water gets to it.
+  map.draw(61, 45, [
+    'PPPP#PPPP#PPPP#g""""""g"#""""#""""#"',
+    'PPPPPPPPP#PPPP#""g"#"""""""""#"g""#"',
+    'PPPP#PPPP#PPPP#""""#""""#"g""""""g#"',
+    'PPPP#PPPP#PPPP#""""#"g""#"""g#"""""g',
+    '#"######"#########"#########"##"####',
+    ',,,,,,,,,,,,,,#,,,,#,,,,#,,,,,,,,,#,',
+    ',,,,#,,,,#,,,,,,,,,#,,,,#,,,,#,,,,,,',
+    '"g""#"""g#""""#g"""#TTTT#""""#""""#"',
+    '"""g"""""#g"""#""g"#TTTT#""""#"g""#"',
+    '##"##"######"##"#########"#########"',
+    'g"""#""g"#""""#""""""g""#"""g#TTTT#g',
+    '""g""""""#""""#"g""#"""g"""""#TTTT#"',
+  ]);
+
+  // The gap in the orchard's back hedge, and the cart road through it.
+  map.draw(57, 40, [
+    ',,,,',
+    ',,,,',
+  ]);
+
+  // The track down out of the beck into the head of the yard.
+  map.draw(66, 32, [
+    '..',
+    '..',
+  ]);
+
+  // And the track on south through the wood to the withy beds.
+  map.draw(66, 56, [
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+    '..',
+  ]);
+
+
+  // == THE KILNS - the heath above the levels ==============================
+  // Where the quarry's stone was burnt. A bank of draw kilns cut into the
+  // hillside with the tramway running along their floor from the quarry's top
+  // bench, the burner's yard behind them, and heath in closes the rest of the
+  // way down to the head of the cut. It is the top of the east side, and the
+  // one place on this map that looks out over the whole of it.
+  map.draw(97, 5, [
+    'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+    'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+    'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+    'vvvvvvvCvvvvvvvvCvvvvvvvvCvvvv',
+    'vvvCvvvvvvvvCvvvvvvvvCvvvvvvvv',
+    'vvvvvCvvvvvvvvCvvvvvvvvCvvvvvv',
+    'vCvvvvvvvvCvvvvvvvvCvvvvvvvvCv',
+    '######"######"#########"##"###',
+    '""g""g""g#"g""#TTTT#g""g#"g""#',
+    '""g"#g""g""g""#TTTT#g""g""g""#',
+    '""g"#g""g#"g""#TTTT#g""g#"g"""',
+    '"######"##"#########"######"##',
+    '""g"#g""g""g""#""g"#g""g""g""#',
+    '""g"#g""g#"g"""""g"#g""g#"g""#',
+    '""g""g""g#"g""#""g""g""g#"g""#',
+    '#"######"#########"##"######"#',
+    '""g"#g""g#TTTT#""g"#g""g#"g"""',
+    '""g""g""g#TTTT#""g""g""g#"g""#',
+    '""g"#g""g#TTTT#""g"#g""g""g""#',
+    '##"##"#########"######"#######',
+    '""g""g""g#"g""#""g""g""g#TTTT#',
+    '""g"#g""g""g""#""g"#g""g#TTTT#',
+    '""g"#g""g#"g"""""g"#g""g#TTTT#',
+    '###"#########"##"######"######',
+    '""g"#TTTT#"g""#""g"#g""g""g""#',
+    '""g"#TTTT#"g"""""g"#g""g#"g"""',
+    '""g"#TTTT#"g""#""g""g""g#"g""#',
+  ]);
+
+  // The head of the drove, where the kilns' heath runs out onto the levels.
+  map.draw(97, 32, [
+    ',,,',
+    ',,,',
+  ]);
+
+
+  // == THE LEVELS - the drained fen east of the cut ========================
+  // The one part of this map somebody laid out with a ruler, and it shows: a
+  // drove road down the cut's east bank with a pollard willow standing in it
+  // every third rod, and fields three rows deep between one-tile drains all
+  // the way to the edge of the map. It is the quick way south on this side of
+  // the river, and every step off the drove is fen.
+  map.draw(100, 32, [
+    'T,,"ggg#"gggg"gg#g"gggg"gTT',
+    ',,,g#gg"gggg"#ggg"gggg#ggTT',
+    ',,,ggg"#ggg"gggg#gggg"gggTT',
+    ',T,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,g"ggg#"gggg"gg#g"gggg"TT',
+    ',,,"g#gg"gggg"#ggg"gggg#gTT',
+    ',,Tgggg"#ggg"gggg#gggg"ggTT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,gg"ggg#"gggg"gg#g"ggggTT',
+    'T,,g"g#gg"gggg"#ggg"gggg#TT',
+    ',,,"gggg"#ggg"gggg#gggg"gTT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',T,ggg"#ggg"gggg#gggg"gggTT',
+    ',,,g#"gggg"gg#g"gggg"g#ggTT',
+    ',,,g"gg#g"gggg"g#gg"gggg"TT',
+    ',,TWWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,gggg"#ggg"gggg#gggg"ggTT',
+    ',,,gg#"gggg"gg#g"gggg"g#gTT',
+    'T,,gg"gg#g"gggg"g#gg"ggggTT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,"gggg"#ggg"gggg#gggg"gTT',
+    ',T,ggg#"gggg"gg#g"gggg"g#TT',
+    ',,,ggg"gg#g"gggg"g#gg"gggTT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,Tg"gg#g"gggg"g#gg"gggg"TT',
+    ',,,"#ggg"gggg#gggg"ggg#"gTT',
+    ',,,gggg#gggg"ggg#"gggg"ggTT',
+    'T,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,gg"gg#g"gggg"g#gg"ggggTT',
+    ',,,g"#ggg"gggg#gggg"ggg#"TT',
+    ',T,"gggg#gggg"ggg#"gggg"gTT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,ggg"gg#g"gggg"g#gg"gggTT',
+    ',,Tgg"#ggg"gggg#gggg"ggg#TT',
+    ',,,g"gggg#gggg"ggg#"gggg"TT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    'T,,gggg#gggg"ggg#"gggg"ggTT',
+    ',,,g#g"gggg"g#gg"gggg"#ggTT',
+    ',,,gg"g#gg"gggg"#ggg"ggggTT',
+    ',T,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,"gggg#gggg"ggg#"gggg"gTT',
+    ',,,gg#g"gggg"g#gg"gggg"#gTT',
+    ',,Tggg"g#gg"gggg"#ggg"gggTT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,g"gggg#gggg"ggg#"gggg"TT',
+    'T,,"gg#g"gggg"g#gg"gggg"#TT',
+    ',,,gggg"g#gg"gggg"#ggg"ggTT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',T,gg"g#gg"gggg"#ggg"ggggTT',
+    ',,,g#gggg"ggg#"gggg"gg#g"TT',
+    ',,,"ggg#"gggg"gg#g"gggg"gTT',
+    ',,TWWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,ggg"g#gg"gggg"#ggg"gggTT',
+    ',,,gg#gggg"ggg#"gggg"gg#gTT',
+    'T,,g"ggg#"gggg"gg#g"gggg"TT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,gggg"g#gg"gggg"#ggg"ggTT',
+    ',T,ggg#gggg"ggg#"gggg"gg#TT',
+    ',,,gg"ggg#"gggg"gg#g"ggggTT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,T"ggg#"gggg"gg#g"gggg"gTT',
+    ',,,g#gg"gggg"#ggg"gggg#ggTT',
+    ',,,ggg"#ggg"gggg#gggg"gggTT',
+    'T,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,g"ggg#"gggg"gg#g"gggg"TT',
+    ',,,"g#gg"gggg"#ggg"gggg#gTT',
+    ',T,gggg"#ggg"gggg#gggg"ggTT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,gg"ggg#"gggg"gg#g"ggggTT',
+    ',,Tg"g#gg"gggg"#ggg"gggg#TT',
+    ',,,"gggg"#ggg"gggg#gggg"gTT',
+    ',,,WWWWWWWWWWWWWWWWWWWWWWWW',
+    'T,,ggg"#ggg"gggg#gggg"gggTT',
+    ',,,g#"gggg"gg#g"gggg"g#ggTT',
+    ',,,g"gg#g"gggg"g#gg"gggg"TT',
+    ',T,WWWWWWWWWWWWWWWWWWWWWWWW',
+    ',,,gggg"#ggg"gggg#gggg"ggTT',
+  ]);
+
+
+  // Where the cut is culverted and the cart road and the drove are one road.
+  // Two crossings - one off the cider yard, one off the withy beds - and
+  // nothing else gets over this drain at all.
+  map.draw(97, 45, [
+    'PPP',
+    'PPP',
+  ]);
+
+
+  map.draw(97, 80, [
+    'PPP',
+    'PPP',
+  ]);
+
+
+  // == THE DROVE - out of Old Town, south ==================================
+  // The road to the South Gate forks at the last house, and the other arm of
+  // it is this: a drove, hedged and two carts wide, going down to the grazing
+  // marsh. It is the one piece of the new ground a raid that has beaten
+  // nobody can walk to, which is on purpose - a fresh save should be left
+  // somewhere to wonder about that it can actually get to.
+  map.draw(7, 56, [
+    ',,  ',
+    ',,  ',
+    ',,  ',
+    ',,  ',
+    ',,,,',
+  ]);
+
+
+  map.draw(9, 61, [
+    ',,',
+    ',,',
+    ',,',
+    ',,',
+  ]);
+
+
+  // == THE SALTINGS - the grazing marsh ====================================
+  // Level grazing cut to pieces by creeks that fill on every tide and fenced
+  // into closes nobody has mended since the flood, with the drove going
+  // straight down the middle of it. Each creek is crossed in one place and
+  // one only, so the marsh is walked in bands and never across.
+  map.draw(2, 64, [
+    '"g""F"",,Fg""g""g""F""g"Fg""',
+    '"g""""",,Fg""gF"g"""""g"Fg""',
+    '"g""F"",,"g""gF"g""F""g""g""',
+    'WWWWWWWwwWWWWWWWWWWWWWWWWWWW',
+    '"g""""",,Fg""gF"g"""""g"Fg""',
+    '"g""F"",,"g""gF"g""F""g""g""',
+    '"g""F"",,Fg""g""g""F""g"Fg""',
+    'FF"FF"FF,FFF"FF"FFFFFF"FF"FF',
+    '"g""F"",,"g""gF"g""F""g""g""',
+    '"g""F"",,Fg""g""g""F""g"Fg""',
+    '"g""""",,Fg""gF"g"""""g"Fg""',
+    'WWWWWWWwwWWWWWWWWWWWWWWWWWWW',
+    '"g""F"",,Fg""g""g""F""g"Fg""',
+    '"g""""",,Fg""gF"g"""""g"Fg""',
+    '"g""F"",,"g""gF"g""F""g""g""',
+    '"FFFFFFF,F"FFFFFF"FF"FFFFFF"',
+    '"g""""",,Fg""gF"g"""""g"Fg""',
+    '"g""F"",,"g""gF"g""F""g""g""',
+    '"g""F"",,Fg""g""g""F""g"Fg""',
+    'WWWWWWWwwWWWWWWWWWWWWWWWWWWW',
+    '"g""F"",,"g""gF"g""F""g""g""',
+    '"g""F"",,Fg""g""g""F""g"Fg""',
+    '"g""""",,Fg""gF"g"""""g"Fg""',
+    'FF"FF"FF,FFF"FF"FFFFFF"FF"FF',
+    '"g""F"",,Fg""g""g""F""g"Fg""',
+    '"g""""",,Fg""gF"g"""""g"Fg""',
+    '"g""F"",,"g""gF"g""F""g""g""',
+    'WWWWWWWwwWWWWWWWWWWWWWWWWWWW',
+    '"g""""",,Fg""gF"g"""""g"Fg""',
+    '"g""F"",,"g""gF"g""F""g""g""',
+    '"g""F"",,Fg""g""g""F""g"Fg""',
+    '"FFFFFFF,F"FFFFFF"FF"FFFFFF"',
+  ]);
+
+
+  // == THE STAITHE - the wharf at the river's mouth ========================
+  // Where the barges loaded before the flood: a stone quay down the river's
+  // west bank, a lime kiln, a crane bed, and two rows of cottages behind them
+  // with the lanes running between. It is the far end of the marsh road and
+  // the bottom-left corner of the map, and until somebody opens the hard in
+  // the quay wall it is where the west side of the world stops.
+  map.draw(2, 96, [
+    '"PP"PP"PP#PP"P######P"PP#PP"P#"PP"CPPP',
+    '"PP"#P"PPPPP"P######P"PPPPP"P#"PP"PPPP',
+    '"PP"#P"PP#PP"P######P"PP#PP"PP"PP"PCPP',
+    '##P##P######P#########P##P######P#PPPP',
+    '"PP"#P"PPPPP"P######P"PPPPP"P#"PP"PPCP',
+    '"PP"#P"PP#PP"P######P"PP#PP"PP"PP"PPPP',
+    '"PP"PP"PP#PP"P######P"PP#PP"P#"PP"PPPC',
+    '###P##P######P#########P##P######PCPPP',
+    '"PP"#P"PP#PP"P######P"PP#PP"PP"PP"PPPP',
+    '"PP"PP"PP#PP"P######P"PP#PP"P#"PP"PCPP',
+    '"PP"#P"PPPPP"P######P"PPPPP"P#"PP"PPPP',
+    'P######P##P#########P######P##P###PPCP',
+    '"PP"PP"PP#PP"P######P"PP#PP"P#"PP"PPPP',
+    '"PP"#P"PPPPP"P######P"PPPPP"P#"PP"PPPC',
+    '"PP"#P"PP#PP"P######P"PP#PP"PP"PP"CPPP',
+    'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+  ]);
+
+
+  // == THE DROWNED HUNDRED - the fields under the water ====================
+  // A whole parish of small fields with a foot of water standing in them and
+  // nothing above it but the hedge banks - so the field pattern is still
+  // there to be read and walked, gateway by gateway, and that is the only way
+  // through. It is waded, not swum; what makes it slow is the reed.
+  map.draw(33, 64, [
+    'wwwwwwwww######wwwwwwwww####',
+    'gggg#gggg######gggg#gggg####',
+    'wwww#wwww######wwww#wwww####',
+    '###w##w#########w######w####',
+    'wwww#wwwwwwwww#wwww#wwwwwwww',
+    'gggg#gggg#ggggwgggg#gggg#ggg',
+    'wwwwwwwww#wwww#wwwwwwwww#www',
+    'w######w##w######w##w######w',
+    'wwww#wwww#wwwwwwwww#wwww#www',
+    'ggggwgggg#gggg#ggggwgggg#ggg',
+    'wwww#wwwwwwwww#wwww#wwwwwwww',
+    '########w##w#########w######',
+    '#####wwww#wwww######wwww#www',
+    '#####ggggwgggg######ggggwggg',
+    '#####wwww#wwww######wwww#www',
+    '#####w######w#########w##w##',
+    'wwww#wwwwwwwww#wwww#wwwwwwww',
+    'gggg#gggg#ggggwgggg#gggg#ggg',
+    'wwwwwwwww#wwww#wwwwwwwww#www',
+    '###w##w######w##w######w##w#',
+    'wwww#wwww#wwwwwwwww#wwww#www',
+    'ggggwgggg#gggg#ggggwgggg#ggg',
+    'wwww#wwwwwwwww#wwww#wwwwwwww',
+    'w#########w######w#########w',
+    'wwww######wwww#wwww######www',
+  ]);
+
+
+  // == THE WITHY BEDS - the osier grounds ==================================
+  // Willow grown on purpose, in beds, and cut on a rotation - so it is rows
+  // again, like the orchard and the levels, but rows of something planted in
+  // standing water. The lanes between the beds are ankle deep, and a bed
+  // itself is a wall you can see over and not walk through.
+  map.draw(61, 64, [
+    'www#www#www#####www#wwwwwww#www#####',
+    'gggwggg#ggg#####ggg#ggg#gggwggg#####',
+    'www#wwwwwww#####wwwwwww#www#www#####',
+    '#w##w#####w#####w#####w##w##w#######',
+    'wwwwwww#www#####www#www#wwwwwww#####',
+    'ggg#gggwggg#####gggwggg#ggg#ggg#####',
+    'www#www#www#####www#wwwwwww#www#####',
+    '##w##w##w########w##w#####w##w######',
+    'www#wwwwwww#####wwwwwww#www#www#####',
+    'ggg#ggg#ggg#####ggg#gggwggg#ggg#####',
+    'wwwwwww#www#####www#www#wwwwwww#####',
+    'w#####w##w########w##w##w#####w#####',
+    'www#www#www#####www#wwwwwww#www#####',
+    'gggwggg#ggg#####ggg#ggg#gggwggg#####',
+    'www#wwwwwww#####wwwwwww#www#www#####',
+    '#w##w#####w#####w#####w##w##w#######',
+    'wwwwwww#www#####www#www#wwwwwww#####',
+    'ggg#gggwggg#####gggwggg#ggg#ggg#####',
+    'www#www#www#####www#wwwwwww#www#####',
+    '##w##w##w########w##w#####w##w######',
+    'www#wwwwwww#####wwwwwww#www#www#####',
+    'ggg#ggg#ggg#####ggg#gggwggg#ggg#####',
+    'wwwwwww#www#####www#www#wwwwwww#####',
+    'w#####w##w########w##w##w#####w#####',
+    'www#www#www#####www#wwwwwww#www#####',
+    'gggwggg#ggg#####ggg#ggg#gggwggg#####',
+    'www#wwwwwww#####wwwwwww#www#www#####',
+    '#w##w#####w#####w#####w##w##w#######',
+    'wwwwwww#www#####www#www#wwwwwww#####',
+    'ggg#gggwggg#####gggwggg#ggg#ggg#####',
+    'www#www#www#####www#wwwwwww#www#####',
+    '##w##w##w########w##w#####w##w######',
+  ]);
+
+
+  // One bed at the beds' south-east corner that nothing gets into: the ride
+  // into it grew over, and what a coppicer left in it is still there. It is
+  // `../gates.ts`'s CUT door, and a dead end on purpose - a field move on this
+  // map opens ground, never a short cut.
+  map.draw(90, 85, [
+    '######',
+    '#ww"w#',
+    '#w"ww#',
+    '#ww"w#',
+    '######',
+  ]);
+
+
+  // == THE SEA WALL and THE BREACH =========================================
+  // The bank that was supposed to keep all of this dry. Behind it is rough
+  // saltmarsh grazing on both sides of a hole in the world: the lagoon the sea
+  // made when the wall went, open to the tide through the gap still, with the
+  // hedge banks of the hundred standing out of it. BANKSMAN NYE has the stile
+  // onto the crest, because the crest is the only dry road along the bottom of
+  // this map and the only way down onto the sands.
+  map.draw(44, 96, [
+    '""g"Tg""g""g""T""g"Tg""g""g""T""g"Tg""g""g""T""g"Tg""g""g""T"',
+    '""g"Tg""gT"g"""""g"Tg""gT"g"""""g"Tg""gT"g"""""g"Tg""gT"g""""',
+    '""g""g""gT"g""WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWg""g""gT"g""T"',
+    'T"TTTTTT"TT"TTWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWT"TT"TTTTTT"TT',
+    '""g"Tg""gT"g""WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWg"Tg""gT"g""""',
+    '""g""g""gT"g""WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWg""g""gT"g""T"',
+    '""g"Tg""g""g""WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWg"Tg""g""g""T"',
+    'TT"TTTTTTTTT"TWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTTT"TTTTTTTT',
+    '""g"TTTTTT"g""WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTg""gTTTTTT"',
+    '""g"TTTTTT"g""WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTg""gTTTTTT"',
+    '""g"TTTTTT"g""WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTg""gTTTTTT"',
+    'TTT"TTTTTTTTT"WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWTTTTTT"TTTTTTT',
+    '""g"Tg""g""g""WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWg"Tg""g""g""T"',
+  ]);
+
+  // The crest, the groynes set in it, and the gap the sea comes through.
+  map.draw(44, 109, [
+    ',,,,C,,,,,,,,C,,,,,,,,C,,,,wwwww,,,,,,,,C,,,,,,,,C,,,,,,,,C,,,',
+    'C,,,,,,,,C,,,,,,,,C,,,,,,,,wwwww,,,,C,,,,,,,,C,,,,,,,,C,,,,,,,',
+    'CCCCCCCCCCCCCCCCCCCCCCCCCCCwwwwwCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+  ]);
+
+
+  // == THE MUDS - what the tide goes off ===================================
+  // Sand banks and the gutways between them, which is what the bottom of an
+  // estuary is: every bank is joined to the next at one shallow and nowhere
+  // else. It is the only ground here that touches both sides of the river, so
+  // with the hard open it is the way from the wharf to the breach - and until
+  // the banksman falls there is no way onto it at all.
+  map.draw(6, 112, [
+    'ddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWdddd',
+    'ddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWdddd',
+    'ddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwdddd',
+    'WWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWW',
+    'ddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWdddd',
+    'ddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwdddd',
+    'ddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWdddd',
+    'WWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWW',
+    'ddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwdddd',
+    'ddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWdddd',
+    'ddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWdddd',
+    'wWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwWWwWWWWWWwW',
+    'ddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWdddd',
+    'ddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWdddd',
+    'ddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwddddWddddWddddwdddd',
+  ]);
+
+
+  // == THE LIGHT - the point, and the pier =================================
+  // The far corner. A stone pier out into the tide with the light on the head
+  // of it, the keeper's house behind, and nothing past that but water: this is
+  // where the map stops and the sea starts. The keep's tower is the first
+  // thing a raid ever looks at; this is the last thing it finds.
+  map.draw(105, 98, [
+    '"g""T""g"Tg""g""g""T""',
+    '"g"""""g"Tg""gT"g"""""',
+    '"g""T""g""g""gT"g""T""',
+    'TTTTTT"TTTTTTTTT"TTTTT',
+    'TTTTT""g"TTTTTT"g""TTT',
+    'TTTTT""g"TTTTTT"g""TTT',
+    'TTTTT""g"TTTTTT"g""TTT',
+    'TTTTTTT"TTTTTTTTT"TTTT',
+    '"g""T""g""g""gT"g""T""',
+    '"g""T""g"Tg""g""g""T""',
+    '"g"""""g"Tg""gT"g"""""',
+    'T"TTTTTT"TT"TTTTTT"TT"',
+    '"g""T""g"Tg""g""g""T""',
+    '"g"""""g"Tg""gT"g"""""',
+    'WWWWWWWCMMMWWWWWWWWWWW',
+    'WWWWWWWMMMMWWWWWWWWWWW',
+    'WWWWWWWMMMCWWWWWWWWWWW',
+    'WWWWWWWMCMMWWWWWWWWWWW',
+    'WWWWWWWMMMMWWWWWWWWWWW',
+    'WWWWWWWMMMMWWWWWWWWWWW',
+    'WWWWWWWMMCMWWWWWWWWWWW',
+    'WWWWWWWCMMMWWWWWWWWWWW',
+    'WWWWWWWMMMMWWWWWWWWWWW',
+    'WWWWWWWMMMCWWWWWWWWWWW',
+    'WWWWWWWMCMMWWWWWWWWWWW',
+    'WWWWWWWMMMMWWWWWWWWWWW',
+    'WWWWWWWMMMMWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWW',
+  ]);
+
+  // The wall's east end, and the road along it to the pier.
+  map.draw(100, 109, [
+    ',,,,,',
+    ',,,,,',
+  ]);
+
+
+  // == THE WAYS THROUGH ====================================================
+  // The track out of the mill yard, east under the beck's leg into the cleft.
+  map.draw(57, 26, [
+    'T.',
+    '..',
+  ]);
+
+  // The quarry's haul road, out of the back of the keep's court.
+  map.draw(96, 10, [
+    'v',
+    'v',
+  ]);
+
+  // The tramway off the top bench onto the kilns' floor.
+  map.draw(97, 8, [
+    'vvv',
+    'vvv',
+    'vvv',
+    'vvv',
+  ]);
+
+  // The cart road over the first culvert, out of the cider yard.
+  map.draw(96, 45, [
+    'P',
+    'P',
+  ]);
+
+  // And the second, up out of the withy beds onto the drove.
+  map.draw(96, 80, [
+    'w',
+    'w',
+  ]);
+
+
+  // The hundred's east hedge, and the one gateway through it. Without it the
+  // fields and the beds are one place with nothing between them, which is the
+  // opposite of what a hedge bank is for.
+  map.draw(59, 64, [
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    'ww',
+    'ww',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+    '##',
+  ]);
+
+
+  // Off the beds and the hundred onto the saltmarsh behind the wall. The
+  // whole bottom of the map is reached through these four tiles and no other,
+  // which is what makes the crest worth holding.
+  map.draw(63, 94, [
+    'ww',
+    'ww',
+  ]);
+
+  // And the hundred's own way south, west of the beds.
+  map.draw(45, 89, [
+    '""""',
+    '""""',
+    '""""',
+    '""""',
+    '""""',
+    '""""',
+    '""""',
+  ]);
+
+  // The drove, off the levels onto the wall road.
+  map.draw(100, 107, [
+    ',,,',
+    ',,,',
+  ]);
+
+  // And the wall road east to the pier and the light.
+  map.draw(105, 109, [
+    ',,,,,,,,',
+    ',,,,,,,,',
+  ]);
+
+  // The hard: the slipway cut through the quay wall onto the sands.
+  map.draw(24, 111, [
+    'dd',
+  ]);
+
+  // The drove, off the marsh road into the saltings.
+  map.draw(9, 64, [
+    ',,',
+    ',,',
+  ]);
+
+
+  // == THE POCKETS A RAID LEAVES BY ========================================
+  // An open exit takes whoever steps on it with no prompt, so it is a wall to
+  // anybody who is not leaving: every one of these is a nub of ground with
+  // nothing on the far side of it, off the lane rather than in it.
+  // The cart lodge behind the cider yard - the CIDER ROAD.
+  map.draw(73, 56, [
+    '""',
+    '""',
+    '""',
+  ]);
+
+  // The lane west off the marsh, and the gate at the end of it - DROVE GATE.
+  map.draw(1, 84, [
+    ',,,,,',
+    ',,,,,',
+  ]);
+
+  // The steps up off the wharf onto the old road - STAITHE STEPS.
+  map.draw(30, 92, [
+    'PP',
+    'PP',
+    'PP',
+    'PP',
+  ]);
+
+  // The stair cut through the kiln bank, and the road away - KILN ROAD.
+  map.draw(121, 3, [
+    'MM',
+    'MM',
+    'MM',
+    'MM',
+    'MM',
+  ]);
+
+
+  // The light keeper's yard: three tiles of paving, a wall round it and one
+  // way in. It is the only built thing on the point and the only place on it
+  // a raid can be dropped into.
+  map.draw(116, 104, [
+    'TTTTT',
+    'TPPPT',
+    'TPPPT',
+    'TTPTT',
+  ]);
+
+  // And the marsh road on into the wharf lanes.
+  map.draw(9, 94, [
+    ',,',
+    ',,',
+    ',,',
+  ]);
+
+
+  // == GATE POSTS, STILES AND WHAT FELL IN THE ROAD ========================
+  // A lane a player can hold one direction down for ever is a lane nobody has
+  // to think in, and a patch of ground with nothing within three steps of it
+  // is a field. Every tile below was found by walking the finished map
+  // (`tools/tileset/mapReport.mts -- floodplain-relay --runs`) and is the
+  // smallest thing that answers it where it stands: a gate hung across a
+  // drove, spoil come down off a face, a groyne head set in a sea wall,
+  // bramble over a track nobody has cut since the water came.
+  map.set(58, 88, '#');                  // the last of a hedge bank, standing on its own in the bend
+  map.set(82, 49, ',');                  // the gateway out of the yard's fourth close, which was hedged in
+  map.set(103, 46, '#');                 // a thorn in the drove where the culvert road joins it
+  map.set(33, 101, 'C');                 // a bollard set in the wharf's top lane
+  map.set(33, 104, 'C');                 // and another, two lanes down
+  map.set(46, 93, '#');                  // thorn in the hundred's own way south
+  map.set(67, 36, '#');                  // a hedge stub in the track down out of the beck
+  map.set(9, 65, 'F');                   // a field gate hung across the drove
+  map.set(10, 69, 'F');                  // and the next, hung the other side of the road
+  map.set(10, 79, 'F');                  // and the next
+  map.set(10, 89, 'F');                  // and the last, above the wharf lanes
+  map.set(9, 93, 'F');                   // the marsh road's own gate
+  map.set(57, 40, 'C');                  // a stone set in the orchard's back road
+  map.set(67, 50, 'C');                  // a staddle stone left standing in the cider yard
+  map.set(66, 59, '#');                  // bramble grown across the track down to the beds
+  map.set(67, 57, '#');                  // and more of it, a few paces up
+  map.set(66, 11, 'C');                  // spoil come down onto the top bench
+  map.set(95, 10, 'C');                  // and more of it, at the bench's east end
+  map.set(99, 11, 'C');                  // a fallen block left lying on the tramway
+  map.set(99, 19, '#');                  // thorn grown up through the kilns' floor
+  map.set(93, 27, '#');                  // a fallen tree across the adit's shelf
+  map.set(96, 31, '#');                  // and another, down on the beck
+  map.set(60, 74, '#');                  // the hundred's own hedge, grown back over its gateway
+  map.set(45, 96, '#');                  // thicket on the saltmarsh
+  map.set(96, 108, '#');                 // and more of it, under the wall
+  map.set(71, 110, 'C');                 // a groyne head standing in the breach
+  map.set(75, 109, 'C');                 // and its pair, on the far side of the gap
+  map.set(103, 109, 'C');                // a groyne head set in the wall road
+  map.set(96, 110, 'C');                 // a groyne head west of the stile, on the crest itself
+  map.set(106, 110, 'C');                // and the last of them, short of the pier
+
+
+  // == WHAT STANDS ON THE NEW GROUND =======================================
+  // The landmarks. Every one was tried against the finished collision before
+  // it went in (`tools/tileset/props.mts` draws what each one is; the map's
+  // own structure rules say where one may stand), because a building is solid
+  // and a building in the wrong place is a lane that stops being one.
+  // -- THE QUARRY
+  map.plant(86, 20, 'mineMouth');       // a level driven into the south face, west of the adit
+  map.plant(90, 20, 'mineMouth');       // and its pair, east of it - three ways into the hill and one of them open
+  map.plant(76, 19, 'boulders');        // spoil on the floor, where it came off the face
+  map.plant(72, 11, 'crates');          // stone cut and stacked on the top bench, waiting for a cart
+  // -- THE KILNS
+  map.plant(100, 5, 'mineMouth');       // the first of the draw kilns, cut into the bank
+  map.plant(106, 5, 'mineMouth');       // the second
+  map.plant(112, 5, 'mineMouth');       // the third
+  map.plant(118, 5, 'mineMouth');       // and the fourth, at the east end of the bank
+  map.plant(99, 15, 'hut');             // the burner's own house, behind his kilns
+  map.plant(110, 9, 'crateTower');      // lime stacked on the kiln floor
+  map.plant(104, 10, 'log');            // cordwood off the tramway
+  map.plant(116, 10, 'sack');           // and a sack of it nobody carried in
+  // -- THE CIDER YARD
+  map.plant(67, 46, 'barn');                 // the press house, on the yard's own paving
+  map.plant(71, 45, 'house');           // the store, on the yard's own paving
+  map.plant(66, 52, 'barrelPair');      // casks stood out in the rough ground behind it
+  map.plant(78, 47, 'produceCrate');    // and the picking crates, still where the last cart left them
+  map.plant(83, 46, 'sack');            // a sack of pomace that never went on the heap
+  // -- THE SALTINGS
+  map.plant(17, 80, 'hut');             // the shepherd's hut, on its wheels in the middle of the grazing
+  map.plant(6, 72, 'log');              // driftwood the tide left in a close
+  // -- THE STAITHE
+  map.plant(5, 97, 'house');            // the top row of cottages
+  map.plant(11, 97, 'house');           // and the second of them
+  map.plant(3, 108, 'mineMouth');       // the lime kiln at the bottom of the lanes
+  map.plant(38, 105, 'jetty');          // the loading stage, out over the river
+  map.plant(36, 99, 'mooringPost');     // a bollard on the quay
+  map.plant(26, 104, 'crateTower');     // cargo stacked in a lane and never fetched
+  map.plant(16, 107, 'barrelPair');     // and casks against a wall
+  // -- THE DROWNED HUNDRED and THE WITHY BEDS
+  map.plant(46, 70, 'wetRock');         // a stone in a flooded field, which is all that is left of a gatepost
+  map.plant(64, 72, 'stump');           // a withy stool cut off at the water
+  map.plant(70, 90, 'log');             // and a bundle of cut osier, left where it was tied
+  // -- THE SEA WALL and THE BREACH
+  map.plant(50, 99, 'deadStump');       // a thorn the salt killed on the marsh behind the wall
+  map.plant(96, 105, 'signboard');      // the board at the foot of the stile, which nobody has read in a year
+  // -- THE MUDS
+  map.plant(40, 117, 'wetRock');        // a rock on the sand that the tide goes round
+  map.plant(60, 114, 'mooringPost');    // a mooring post standing on dry sand, which is the whole story
+  map.plant(80, 120, 'log');            // and a baulk of timber the sea put down
+  // -- THE LIGHT
+  map.plant(109, 102, 'tower');              // the light itself, on the point - the last thing this map has to find
+  map.plant(122, 100, 'hut');                // the keeper's house, behind its own yard
+  map.plant(112, 120, 'mooringPost');        // and a bollard half way out the pier
+  map.plant(114, 116, 'mooringPost');        // and its pair   // and a bollard half way out the pier
+  // <<<ENDNEWGROUND>>>
 
   // == WHAT GROWS IN THE HEDGES =============================================
   // The lanes here are packed so close that the forest between them is only a

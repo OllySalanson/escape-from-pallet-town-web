@@ -152,6 +152,16 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     areas: [{ x: 0, y: 29, width: 30, height: 35 }],
   },
   {
+    // Listed before MILL WEIR, whose rectangle reaches over the head of the
+    // cleft: everything in the cleft is the beck's, including the pond's east
+    // end and the track the mill's own yard lets out onto.
+    id: 'floodplain-hollow-beck',
+    mapId: 'floodplain-relay',
+    name: 'HOLLOW BECK',
+    encounters: wildlife.FLOODPLAIN_BECK_WILDLIFE,
+    areas: [{ x: 57, y: 20, width: 40, height: 14 }],
+  },
+  {
     id: 'floodplain-mill-weir',
     mapId: 'floodplain-relay',
     name: 'MILL WEIR',
@@ -162,6 +172,105 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
       { x: 47, y: 29, width: 17, height: 1 },
     ],
   },
+  // -- and the ground it grew into -------------------------------------------
+  // East of the keep and the orchard, and south of the town, on the same rule
+  // the first nine were drawn to: a place is one or more rectangles, the first
+  // listed wins an overlap, and a boundary at a crossing is the far step.
+  {
+    id: 'floodplain-quarry',
+    mapId: 'floodplain-relay',
+    name: 'THE QUARRY',
+    // No tall grass anywhere in it: it is bare rock, gravel and water, which
+    // is the one thing this map has nothing else of.
+    areas: [{ x: 64, y: 0, width: 33, height: 20 }],
+  },
+  {
+    id: 'floodplain-kilns',
+    mapId: 'floodplain-relay',
+    name: 'THE KILNS',
+    encounters: wildlife.FLOODPLAIN_HEATH_WILDLIFE,
+    areas: [{ x: 97, y: 0, width: 31, height: 32 }],
+  },
+  {
+    id: 'floodplain-cider-yard',
+    mapId: 'floodplain-relay',
+    name: 'THE CIDER YARD',
+    encounters: wildlife.FLOODPLAIN_ORCHARD_WILDLIFE,
+    areas: [{ x: 57, y: 34, width: 40, height: 30 }],
+  },
+  {
+    id: 'floodplain-levels',
+    mapId: 'floodplain-relay',
+    name: 'THE LEVELS',
+    encounters: wildlife.FLOODPLAIN_FEN_WILDLIFE,
+    areas: [{ x: 97, y: 32, width: 31, height: 66 }],
+  },
+  {
+    id: 'floodplain-staithe',
+    mapId: 'floodplain-relay',
+    name: 'THE STAITHE',
+    // Paving, stone and the quay: the one place south of the river anybody
+    // built anything, and the only new ground with no tall grass on it at all.
+    // Listed before THE SALTINGS, which the marsh road comes down out of: the
+    // wharf starts at the foot of its own steps, and a boundary at a crossing
+    // is the far step.
+    areas: [
+      { x: 29, y: 92, width: 14, height: 4 },
+      { x: 0, y: 96, width: 43, height: 16 },
+    ],
+  },
+  {
+    id: 'floodplain-saltings',
+    mapId: 'floodplain-relay',
+    name: 'THE SALTINGS',
+    encounters: wildlife.FLOODPLAIN_MARSH_WILDLIFE,
+    areas: [{ x: 0, y: 64, width: 33, height: 32 }],
+  },
+  {
+    id: 'floodplain-hundred',
+    mapId: 'floodplain-relay',
+    name: 'THE DROWNED HUNDRED',
+    encounters: wildlife.FLOODPLAIN_MARSH_WILDLIFE,
+    areas: [{ x: 33, y: 64, width: 28, height: 32 }],
+  },
+  {
+    id: 'floodplain-withy-beds',
+    mapId: 'floodplain-relay',
+    name: 'THE WITHY BEDS',
+    encounters: wildlife.FLOODPLAIN_FEN_WILDLIFE,
+    areas: [{ x: 61, y: 64, width: 36, height: 32 }],
+  },
+  {
+    // Listed before THE SEA WALL, out of whose rectangle it is cut: the gap
+    // and the water behind it are a place of their own the moment anybody can
+    // stand in them, and it is the one a player will remember.
+    id: 'floodplain-breach',
+    mapId: 'floodplain-relay',
+    name: 'THE BREACH',
+    areas: [{ x: 58, y: 98, width: 33, height: 14 }],
+  },
+  {
+    id: 'floodplain-sea-wall',
+    mapId: 'floodplain-relay',
+    name: 'THE SEA WALL',
+    encounters: wildlife.FLOODPLAIN_MARSH_WILDLIFE,
+    areas: [{ x: 43, y: 96, width: 62, height: 16 }],
+  },
+  {
+    id: 'floodplain-muds',
+    mapId: 'floodplain-relay',
+    name: 'THE MUDS',
+    // Sand and salt water: nothing grows on it, so nothing lives in it.
+    areas: [{ x: 0, y: 112, width: 105, height: 16 }],
+  },
+  {
+    id: 'floodplain-light',
+    mapId: 'floodplain-relay',
+    name: 'THE LIGHT',
+    encounters: wildlife.FLOODPLAIN_HEATH_WILDLIFE,
+    areas: [{ x: 105, y: 96, width: 23, height: 32 }],
+  },
+
   {
     id: 'floodplain-orchard',
     mapId: 'floodplain-relay',

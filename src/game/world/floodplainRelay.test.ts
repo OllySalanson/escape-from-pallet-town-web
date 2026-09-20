@@ -253,11 +253,23 @@ describe('a fresh save, from the front door', () => {
       { x: tile.x, y: tile.y - 1 },
     ].some((beside) => shut.collision[beside.y]?.[beside.x] === false && reaches(beside));
 
-  it.each(['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT'])('walks to the %s', (label) => {
+  // The drove out of Old Town is the one piece of the ground added east and
+  // south that a raid which has beaten nobody can walk to, and it is a long
+  // walk: the marsh, the wharf and two more ways out, all of them past the
+  // last house rather than behind a door.
+  it.each(['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT', 'DROVE GATE', 'STAITHE STEPS'])('walks to the %s', (label) => {
     expect(reaches(floodplainExits.find((exit) => exit.label === label)!.position)).toBe(true);
   });
 
-  it.each(['MILL RACE', 'SIGNAL FIRE', 'VAULT CULVERT'])('cannot walk to the %s', (label) => {
+  it.each([
+    'MILL RACE',
+    'SIGNAL FIRE',
+    'VAULT CULVERT',
+    'QUARRY ROAD',
+    'KILN ROAD',
+    'CIDER ROAD',
+    'PIER HEAD',
+  ])('cannot walk to the %s', (label) => {
     expect(reaches(floodplainExits.find((exit) => exit.label === label)!.position)).toBe(false);
   });
 
@@ -268,17 +280,33 @@ describe('a fresh save, from the front door', () => {
     // is named here rather than filtered out, because "what a fresh save can
     // walk to" is the whole point of this file.
     const shoal = WORLD_POIS.find((poi) => poi.id === 'floodplain-shoal-cache')!;
+    const behindADoor = new Set([
+      vault.id,
+      shoal.id,
+      'floodplain-powder-house',
+      'floodplain-press-house',
+      'floodplain-pumping-engine',
+      'floodplain-osier-store',
+      'floodplain-stranded-barge',
+    ]);
     const homeBank = WORLD_POIS.filter(
-      (poi) => poi.mapId === 'floodplain-relay' && poi.id !== vault.id && poi.id !== shoal.id,
+      (poi) => poi.mapId === 'floodplain-relay' && !behindADoor.has(poi.id),
     );
     expect(homeBank.map((poi) => poi.id).sort()).toEqual(
-      ['floodplain-drowned-chapel', 'floodplain-ranger-radio'].sort(),
+      [
+        'floodplain-drowned-chapel',
+        'floodplain-ranger-radio',
+        'floodplain-shepherds-hut',
+        'floodplain-staithe-crane',
+      ].sort(),
     );
     for (const poi of homeBank) {
       expect(`${poi.id}: ${reaches(poi.position)}`).toBe(`${poi.id}: true`);
     }
-    expect(reaches(vault.position)).toBe(false);
-    expect(reaches(shoal.position)).toBe(false);
+    for (const id of behindADoor) {
+      const poi = WORLD_POIS.find((candidate) => candidate.id === id)!;
+      expect(`${id}: ${reaches(poi.position)}`).toBe(`${id}: false`);
+    }
   });
 
   it('walks to every stop of the first contract', () => {
@@ -288,18 +316,24 @@ describe('a fresh save, from the front door', () => {
   });
 
   it('can stand beside every sign on the home bank', () => {
+    // The boards east of the river are behind their own doors, and saying so
+    // here is the point: a notice is put where a player first arrives, so the
+    // list of the ones a fresh save can read is the list of places it has.
+    const behindADoor = new Set(['floodplain-quarry-board', 'floodplain-kilns-notice', 'floodplain-wall-notice']);
     for (const sign of shut.entities.filter((entity) => entity.kind === 'sign')) {
-      expect(`${sign.id}: ${reachesBeside(sign.position)}`).toBe(`${sign.id}: true`);
+      expect(`${sign.id}: ${reachesBeside(sign.position)}`).toBe(
+        `${sign.id}: ${!behindADoor.has(sign.id)}`,
+      );
     }
   });
 
-  it('walks to Market Isle, and to no drop-in behind a door', () => {
+  it('walks to the isle, the marsh and the wharf, and to no drop-in behind a door', () => {
     const dropIns = Object.values(RUN_INSERTIONS).filter(
       (candidate) => candidate.mapId === 'floodplain-relay' && candidate.id !== insertion.id,
     );
     expect(
-      dropIns.filter((dropIn) => reaches(dropIn.position)).map((dropIn) => dropIn.id),
-    ).toEqual(['floodplain-market-isle']);
+      dropIns.filter((dropIn) => reaches(dropIn.position)).map((dropIn) => dropIn.id).sort(),
+    ).toEqual(['floodplain-market-isle', 'floodplain-saltings', 'floodplain-staithe'].sort());
   });
 
   it('can reach the first boss, and only the first', () => {

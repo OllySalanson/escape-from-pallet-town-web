@@ -44,10 +44,10 @@ const progressWith = (overrides: Partial<StandingBoardProgress> = {}): StandingB
 /** Every gate state a board can be drawn in: all shut, each boss alone, all open. */
 const GATE_STATES: readonly (readonly string[])[] = [[], ...EVERY_BOSS.map((boss) => [boss]), EVERY_BOSS];
 
-const reaches = (grid: number[][], tile: { x: number; y: number }): boolean => (grid[tile.y]?.[tile.x] ?? -1) >= 0;
+const reaches = (grid: readonly Int32Array[], tile: { x: number; y: number }): boolean => (grid[tile.y]?.[tile.x] ?? -1) >= 0;
 
-const walks = new Map<string, number[][]>();
-const walkFromFrontDoor = (mapId: WorldMapId, defeatedBosses: readonly string[]): number[][] => {
+const walks = new Map<string, readonly Int32Array[]>();
+const walkFromFrontDoor = (mapId: WorldMapId, defeatedBosses: readonly string[]): readonly Int32Array[] => {
   const key = `${mapId}|${defeatedBosses.join('+')}`;
   if (!walks.has(key)) {
     walks.set(key, stepDistances(getWorldMap(mapId, defeatedBosses).collision, frontDoorFor(mapId)!.position));
@@ -220,7 +220,7 @@ describe('every standing contract', () => {
         continue;
       }
       const steps = walkFromFrontDoor(contract.mapId, defeatedBosses);
-      const longest = Math.max(...steps.flat());
+      const longest = Math.max(...steps.flatMap((row) => [...row]));
       for (const marker of contract.markers) {
         expect(steps[marker.position.y][marker.position.x], contract.id).toBeGreaterThanOrEqual(longest * 0.45);
       }

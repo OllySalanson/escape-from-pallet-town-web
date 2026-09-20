@@ -395,6 +395,74 @@ export const WORLD_GATES: readonly MapGate[] = [
     open: { material: 'ford' },
   },
   {
+    // The self-acting incline down the quarry face. Shut it is bare rock, and
+    // the whole of the workings below - the floor, the pit, the level through
+    // the hill - is a place a player can stand on the bench and look into.
+    id: 'floodplain-quarry-incline',
+    mapId: 'floodplain-relay',
+    bossId: 'floodplain-quarry-foreman',
+    label: 'INCLINE HEAD',
+    tiles: [{ x: 64, y: 12 }, { x: 65, y: 12 }],
+    closed: { material: 'cliff' },
+    open: { material: 'gravel' },
+  },
+  {
+    // The foreman's second door, and the reason the quarry is not a spur: the
+    // level driven through the hillside comes out on Hollow Beck, which is the
+    // mill's own water and a road the player walked to get here.
+    id: 'floodplain-quarry-adit',
+    mapId: 'floodplain-relay',
+    bossId: 'floodplain-quarry-foreman',
+    label: 'THE ADIT',
+    tiles: [{ x: 88, y: 23 }, { x: 89, y: 23 }],
+    closed: { material: 'cliff' },
+    open: { material: 'stone' },
+  },
+  {
+    // The stile onto the crest of the sea wall. The crest is the only dry road
+    // along the bottom of the map and the only way down onto the sands, so one
+    // panel of fence holds the breach, the muds and the whole south shore.
+    id: 'floodplain-wall-stile',
+    mapId: 'floodplain-relay',
+    bossId: 'floodplain-sea-wall-keeper',
+    label: 'WALL STILE',
+    tiles: [{ x: 98, y: 109 }, { x: 98, y: 110 }],
+    closed: { material: 'fence' },
+    open: { material: 'earth' },
+  },
+  {
+    // And the banksman's second door, at the other end of the sands: the ferry
+    // hard cut through the wharf's quay wall. Beaten, the walk from the breach
+    // back to the Staithe is along the bottom of the map at low water, and the
+    // Staithe is ground a fresh save already knows.
+    id: 'floodplain-ferry-hard',
+    mapId: 'floodplain-relay',
+    bossId: 'floodplain-sea-wall-keeper',
+    label: 'FERRY HARD',
+    tiles: [{ x: 24, y: 111 }, { x: 25, y: 111 }],
+    closed: { material: 'cliff' },
+    open: { material: 'sand' },
+  },
+  {
+    // The second CUT door in the game, and the same shape as the first: one
+    // bed at the corner of the withy grounds whose ride grew over, with the
+    // cutter's store still standing in it. A dead end on purpose - a field
+    // move on this map opens ground, never a short cut.
+    id: 'floodplain-osier-ride',
+    mapId: 'floodplain-relay',
+    fieldMove: 'cut',
+    label: 'OSIER RIDE',
+    tiles: [{ x: 90, y: 88 }],
+    closed: {
+      material: 'hedge',
+      props: [{ name: 'stump', x: 90, y: 87 }, { name: 'stump', x: 90, y: 89 }],
+    },
+    open: {
+      material: 'ford',
+      props: [{ name: 'stump', x: 90, y: 87 }, { name: 'stump', x: 90, y: 89 }],
+    },
+  },
+  {
     id: 'floodplain-vault-fence',
     mapId: 'floodplain-relay',
     bossId: 'floodplain-orchard-warden',

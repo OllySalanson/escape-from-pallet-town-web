@@ -497,6 +497,61 @@ export const FLOODPLAIN_VAULT_WILDLIFE = wildlife(0.09, [
  * the reeds have, a level or two up, because a place you can only reach on a
  * Pokemon's back is a place a player arrives at with one.
  */
+/**
+ * The ground the map grew into, east and south of the town. Five tables for
+ * eight new places, because two places that are the same ground should hold the
+ * same wildlife: the kilns and the point are both dry upland, and the saltings,
+ * the hundred and the saltmarsh behind the wall are all grazing with the tide
+ * in it. Every one is measured at the level a level-5 starter meets it
+ * (`districtEncounters.test.ts`), because this is still the map a fresh save
+ * deploys onto however far from the Landing the ground is.
+ */
+
+/** The kilns' heath and the point: the only dry upland east of the river. */
+export const FLOODPLAIN_HEATH_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'spearow', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'geodude', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'meowth', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'sandshrew', minLevel: 3, maxLevel: 4, weight: 1 },
+]);
+
+/** Hollow Beck: a wooded cleft with running water in the bottom of it. */
+export const FLOODPLAIN_BECK_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'caterpie', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'psyduck', minLevel: 3, maxLevel: 4, weight: 3 },
+  { speciesId: 'zubat', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'poliwag', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'oddish', minLevel: 3, maxLevel: 4, weight: 1 },
+]);
+
+/** The cider yard: what an orchard gets when nobody picks it for a year. */
+export const FLOODPLAIN_ORCHARD_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'caterpie', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'weedle', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'bellsprout', minLevel: 3, maxLevel: 4, weight: 1 },
+]);
+
+/** The levels and the withy beds: drained fen, and cut willow standing in it. */
+export const FLOODPLAIN_FEN_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'venonat', minLevel: 3, maxLevel: 4, weight: 3 },
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'poliwag', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'paras', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'bellsprout', minLevel: 3, maxLevel: 4, weight: 1 },
+]);
+
+/** The saltings, the hundred and the saltmarsh: grazing with the tide in it. */
+export const FLOODPLAIN_MARSH_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 3 },
+  { speciesId: 'psyduck', minLevel: 3, maxLevel: 4, weight: 3 },
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 2 },
+  { speciesId: 'poliwag', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'krabby', minLevel: 3, maxLevel: 4, weight: 1 },
+]);
+
 export const FLOODPLAIN_SHOAL_WILDLIFE = wildlife(0.09, [
   { speciesId: 'magikarp', minLevel: 4, maxLevel: 6, weight: 3 },
   { speciesId: 'poliwag', minLevel: 3, maxLevel: 5, weight: 2 },

@@ -349,6 +349,12 @@ describe('the named districts of a map', () => {
         'MILL RACE': 'MILL WEIR',
         'SIGNAL FIRE': 'BEACON KEEP',
         'VAULT CULVERT': 'THE VAULT',
+        'QUARRY ROAD': 'THE QUARRY',
+        'KILN ROAD': 'THE KILNS',
+        'CIDER ROAD': 'THE CIDER YARD',
+        'DROVE GATE': 'THE SALTINGS',
+        'STAITHE STEPS': 'THE STAITHE',
+        'PIER HEAD': 'THE LIGHT',
       });
     });
 
@@ -364,6 +370,11 @@ describe('the named districts of a map', () => {
         'Mill Weir': 'MILL WEIR',
         'Beacon Keep': 'BEACON KEEP',
         'The Vault': 'THE VAULT',
+        'The Quarry': 'THE QUARRY',
+        'The Cider Yard': 'THE CIDER YARD',
+        'The Saltings': 'THE SALTINGS',
+        'The Staithe': 'THE STAITHE',
+        'The Light': 'THE LIGHT',
       });
     });
 
@@ -379,6 +390,13 @@ describe('the named districts of a map', () => {
         'FLOODED SUPPLY VAULT': 'THE VAULT',
         'RANGER STATION': 'THE REEDBEDS',
         'STRANDED LIGHTER': 'THE SHOAL',
+        'POWDER HOUSE': 'THE QUARRY',
+        'THE PRESS HOUSE': 'THE CIDER YARD',
+        'STAITHE CRANE': 'THE STAITHE',
+        "SHEPHERD'S HUT": 'THE SALTINGS',
+        "OSIER CUTTER'S STORE": 'THE WITHY BEDS',
+        'PUMPING ENGINE': 'THE LEVELS',
+        'STRANDED BARGE': 'THE MUDS',
       });
     });
 

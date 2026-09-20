@@ -701,6 +701,69 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
       'The reeds go round. Nothing in them is free.',
     ],
   },
+  // The ground the map grew into. Every one of these stands where a player
+  // first arrives in a place, and every one of them names somewhere they
+  // cannot get to yet - which is the whole of what this map is for.
+  {
+    id: 'floodplain-quarry-board',
+    mapId: 'floodplain-relay',
+    kind: 'sign',
+    position: { x: 70, y: 11 },
+    facing: 'down',
+    dialogLines: [
+      'THE QUARRY - TOP BENCH',
+      'Everything you can see under this face came out of it: the keep, the gatehouse, the causeway, the quay.',
+      'FOREMAN RUDD has the incline, and the incline is the only way down. The road out is east along the bench.',
+    ],
+  },
+  {
+    id: 'floodplain-kilns-notice',
+    mapId: 'floodplain-relay',
+    kind: 'sign',
+    position: { x: 104, y: 13 },
+    facing: 'down',
+    dialogLines: [
+      'THE KILNS - draw kilns, six, cold',
+      'The tramway runs back west to the quarry. The drove runs south down the cut, and the cut is culverted twice and nowhere else.',
+      'Follow it far enough and you come out on the sea wall. Nobody has been past that in a year.',
+    ],
+  },
+  {
+    id: 'floodplain-drove-notice',
+    mapId: 'floodplain-relay',
+    kind: 'sign',
+    position: { x: 12, y: 65 },
+    facing: 'down',
+    dialogLines: [
+      'THE SALTINGS - grazing, and the drove through it',
+      'Every creek on this marsh is crossed in one place. Keep to the drove and you will find them; leave it and you will not.',
+      'The wharf is at the end of it. The DROVE GATE is west, and it is always open.',
+    ],
+  },
+  {
+    id: 'floodplain-staithe-notice',
+    mapId: 'floodplain-relay',
+    kind: 'sign',
+    position: { x: 22, y: 102 },
+    facing: 'down',
+    dialogLines: [
+      'THE STAITHE - the last wharf on the river',
+      'The crane has been barred since the flood. Swing it and the old STAITHE STEPS at the top of the lanes come clear.',
+      'The hard in the quay wall goes down onto the sands. It is barred from the far side, and the far side is the breach.',
+    ],
+  },
+  {
+    id: 'floodplain-wall-notice',
+    mapId: 'floodplain-relay',
+    kind: 'sign',
+    position: { x: 96, y: 104 },
+    facing: 'down',
+    dialogLines: [
+      'THE SEA WALL - do not walk the crest',
+      'There is a gap in it nine rods wide and the tide still comes through. Everything behind you was dry land before that.',
+      'BANKSMAN NYE has the stile. Past him the crest runs west to the breach, and the sands run west from there to the wharf.',
+    ],
+  },
 ];
 
 export function entitiesForMap(mapId: WorldMapId): readonly WorldEntity[] {

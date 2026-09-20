@@ -317,6 +317,79 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     ),
   },
   {
+    // Holds the head of the quarry incline, which is the only way down off the
+    // top bench: the floor, the pit and the level through the hill are all
+    // behind him, and so is the short way home, because the level comes out on
+    // Hollow Beck a few steps from the mill.
+    mapId: 'floodplain-relay',
+    position: { x: 65, y: 11 },
+    facing: 'down',
+    fixedPosition: true,
+    sightRange: 1,
+    bossId: 'floodplain-quarry-foreman',
+    design: 'heavy-man',
+    introLines: [
+      'FOREMAN RUDD IS AT THE INCLINE HEAD.',
+      'Nothing goes down that face without me on the brake. Nothing.',
+    ],
+    trainer: createTrainer(
+      'floodplain-quarry-foreman-rudd',
+      'FOREMAN RUDD',
+      // Rock and Ground, which is the one thing this map's ladder has never
+      // had: every other door is Normal, Flying, Water and Electric. Measured
+      // over the real engine with `tools/trainers/report.mts` against the four
+      // reference parties and held on the ladder in `trainerLadder.test.ts` -
+      // he is met after the sluice keeper, so he may not be a rung easier.
+      [new Pokemon(getSpeciesById('geodude')!, 11), new Pokemon(getSpeciesById('machop')!, 11), new Pokemon(getSpeciesById('sandshrew')!, 12)],
+      'Take it down, then. The level through the hill is open too - it comes out on the beck.',
+    ),
+  },
+  {
+    // The last door on the map in walking order, and the one that joins its two
+    // halves: the crest of the sea wall is the only dry road along the bottom
+    // and the only way down onto the sands, and the sands are how the wharf and
+    // the breach turn out to be the same place at low water.
+    mapId: 'floodplain-relay',
+    position: { x: 99, y: 109 },
+    facing: 'left',
+    fixedPosition: true,
+    sightRange: 1,
+    bossId: 'floodplain-sea-wall-keeper',
+    design: 'bald-man',
+    introLines: [
+      'BANKSMAN NYE HAS THE WALL STILE.',
+      'The wall is mine to walk and the gap is mine to watch. You are neither.',
+    ],
+    trainer: createTrainer(
+      'floodplain-sea-wall-keeper-nye',
+      'BANKSMAN NYE',
+      [new Pokemon(getSpeciesById('krabby')!, 12), new Pokemon(getSpeciesById('psyduck')!, 12), new Pokemon(getSpeciesById('poliwhirl')!, 13)],
+      'Go on over, then. The hard in the wharf wall is unbarred - you can walk the sands back at low water.',
+    ),
+  },
+  {
+    // A toll on the drove, the way Maya is a toll on the shore road: the fen
+    // either side of it is a way round that costs encounters instead. He stands
+    // below the mouth of the narrows between two pollards, off the road, so the
+    // price is read from a junction the player can still turn at.
+    mapId: 'floodplain-relay',
+    position: { x: 101, y: 61 },
+    facing: 'up',
+    fixedPosition: true,
+    sightRange: 4,
+    design: 'youngster',
+    introLines: [
+      'LENGTHSMAN QUILL HAS THE DROVE IN SIGHT.',
+      'Banks, drains and the road between them. All three of them are mine.',
+    ],
+    trainer: createTrainer(
+      'floodplain-levels-lengthsman-quill',
+      'LENGTHSMAN QUILL',
+      [new Pokemon(getSpeciesById('bellsprout')!, 7), new Pokemon(getSpeciesById('venonat')!, 8)],
+      'Road is yours. Mind the drains - they are deeper than they look.',
+    ),
+  },
+  {
     // The bridge is the direct line from the allotments to the South Gate, and
     // Lee stands in the gap in the fence at its foot: the fast crossing has a
     // toll, the fords either side of it do not, and the three land you in
