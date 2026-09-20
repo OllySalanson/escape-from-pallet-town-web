@@ -238,6 +238,9 @@ describe('what may be spent', () => {
       'super-potion': 1,
       antidote: 2,
       'parts-crate': 2,
+      // A pack answers the kit's pack line, so the shortfall below is about
+      // supplies alone rather than about a vault with nothing to carry in.
+      'raid-pack': 1,
     });
     expect(spendableSupply(vault, 'poke-ball')).toBe(2);
     expect(spendableSupply(vault, 'potion')).toBe(1);

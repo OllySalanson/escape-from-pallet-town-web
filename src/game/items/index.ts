@@ -1,10 +1,17 @@
 export { Bag, type BagContents } from './Bag';
+export { BASE_SECURE_GRID, RAID_BAG_GRID, SECURE_COLUMNS_PER_UPGRADE } from './containers';
 export {
-  BASE_SECURE_GRID,
-  RAID_BAG_GRID,
-  RAID_BAG_ROWS_PER_UPGRADE,
-  SECURE_COLUMNS_PER_UPGRADE,
-} from './containers';
+  bestPackIn,
+  FALLBACK_PACK_ID,
+  isPackId,
+  PACK_IDS,
+  packGrid,
+  packGridFor,
+  packName,
+  packsIn,
+  packSquares,
+  STARTING_PACK_ID,
+} from './packs';
 export {
   blocksFor,
   cargoCells,
@@ -13,7 +20,6 @@ export {
   footprintOf,
   gridCells,
   growGridColumns,
-  growGridRows,
   packContents,
   roomFor,
   stackSizeOf,
@@ -32,6 +38,8 @@ export {
   FOUND_ONLY_IDS,
   MACHINE_ITEM_IDS,
   MATERIAL_IDS,
+  PACK_ITEM_IDS,
+  isPack,
   isCurrency,
   isMachine,
   isFoundOnly,
@@ -51,6 +59,7 @@ export {
   type ItemEffect,
   type ItemFootprint,
   type ItemId,
+  type PackItemId,
   type SupplyItemId,
 } from './items';
 export {

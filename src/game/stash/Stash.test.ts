@@ -43,7 +43,8 @@ describe('Stash', () => {
     expect(stash.ensurePlayable(starter)).toBe(true);
     expect(stash.ensurePlayable(starter)).toBe(false);
     expect(stash.listPokemon()).toMatchObject([{ pokemon: { base: { id: starter.id }, level: 5 } }]);
-    expect(stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
+    // The kit, and something to carry it in: a vault with no pack cannot raid.
+    expect(stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3, satchel: 1 });
   });
 
   it('leaves existing Pokemon and supplies completely unchanged', () => {
@@ -74,14 +75,14 @@ describe('Stash', () => {
   it('tops up only what the kit is short of, without ever reducing a larger hoard', () => {
     const stash = new Stash({ items: { 'poke-ball': 12, potion: 1 } });
 
-    expect(stash.supplyShortfall()).toEqual({ potion: 2 });
+    expect(stash.supplyShortfall()).toEqual({ potion: 2, satchel: 1 });
     expect(stash.restockMinimumSupplies()).toBe(true);
-    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3 });
+    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3, satchel: 1 });
 
     // Repeating it adds nothing, so the restock cannot be farmed.
     expect(stash.supplyShortfall()).toEqual({});
     expect(stash.restockMinimumSupplies()).toBe(false);
-    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3 });
+    expect(stash.listItems()).toEqual({ 'poke-ball': 12, potion: 3, satchel: 1 });
   });
 
   /**
@@ -90,7 +91,7 @@ describe('Stash', () => {
    * Potions and five Poke Balls on every wipe regardless.
    */
   it('gives nothing to a player whose better supplies already cover the kit', () => {
-    const items = { potion: 1, 'super-potion': 4, 'great-ball': 3, 'poke-ball': 2 };
+    const items = { potion: 1, 'super-potion': 4, 'great-ball': 3, 'poke-ball': 2, 'ranger-pack': 1 };
     const stash = new Stash({ items });
 
     expect(stash.supplyShortfall()).toEqual({});
@@ -99,10 +100,18 @@ describe('Stash', () => {
   });
 
   it('counts a better item towards the kit, and only the shortfall is basic stock', () => {
-    const stash = new Stash({ items: { 'super-potion': 1, 'great-ball': 4 } });
+    const stash = new Stash({ items: { 'super-potion': 1, 'great-ball': 4, 'hauler-frame': 1 } });
 
     expect(stash.restockMinimumSupplies()).toBe(true);
-    expect(stash.listItems()).toEqual({ 'super-potion': 1, potion: 2, 'great-ball': 4, 'poke-ball': 1 });
+    // A Hauler frame answers the kit's pack line, so no Satchel is handed out:
+    // the kit is a capability, and that is as true of the pack as of the balls.
+    expect(stash.listItems()).toEqual({
+      'super-potion': 1,
+      potion: 2,
+      'great-ball': 4,
+      'poke-ball': 1,
+      'hauler-frame': 1,
+    });
   });
 
   it('does not mistake an Antidote for a way to heal', () => {
@@ -258,7 +267,8 @@ describe('Stash', () => {
       { id: 'starter', pokemon: { base: { id: 'charmander' } } },
       { pokemon: { base: { id: 'pidgey' }, level: 4 } },
     ]);
-    expect(restored?.stash.listItems()).toEqual({ potion: 1, 'poke-ball': 2 });
+    // The Raid pack every save is issued on load, beside the banked haul.
+    expect(restored?.stash.listItems()).toEqual({ potion: 1, 'poke-ball': 2, 'raid-pack': 1 });
   });
 
   it('keeps only secured deployed assets on a wipe', () => {
@@ -295,8 +305,9 @@ describe('Stash', () => {
     const restored = saves.load();
     expect(restored?.stash.listPokemon().map(({ id }) => id)).toEqual(['secured', 'home']);
     // Three unsecured Poké Balls are gone for good, then the wipe tops the
-    // survivor back up to the minimum needed to attempt another run.
-    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
+    // survivor back up to the minimum needed to attempt another run - which
+    // includes a pack, because a vault with none cannot deploy at all.
+    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3, 'raid-pack': 1 });
   });
 
   it('protects exactly as much on a wipe as the limits it is told, never a hard-coded two', () => {

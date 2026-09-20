@@ -31,6 +31,12 @@ export const ITEM_ICONS = {
   'hm01-cut': 'hm01-cut',
   'hm03-surf': 'hm03-surf',
   'hm06-rock-smash': 'hm06-rock-smash',
+  // Four sizes of one silhouette: which pack you are wearing has to be legible
+  // at a glance on the loadout, because it is the decision that screen is for.
+  satchel: 'satchel',
+  'raid-pack': 'raid-pack',
+  'ranger-pack': 'ranger-pack',
+  'hauler-frame': 'hauler-frame',
   leftovers: 'leftovers',
   'focus-band': 'focus-band',
   'life-orb': 'life-orb',

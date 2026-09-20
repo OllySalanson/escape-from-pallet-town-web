@@ -186,7 +186,8 @@ game.
   palette is what keeps the set looking like a set.
 - **Contents.** `potion`, `super-potion`, `antidote`, `poke-ball`, `great-ball`,
   `field-kit`, `supply-crate`, `supply-cache`, `radio-mast`, `sign-post`,
-  `extraction-open`, `extraction-locked`, `landmark-worked`, plus the six
+  `extraction-open`, `extraction-locked`, `landmark-worked`, the four packs
+  `satchel`, `raid-pack`, `ranger-pack` and `hauler-frame`, plus the six
   Outfitter materials
   `radio-valve`, `cable-coil`, `parts-crate`, `lamp-oil`, `mooring-rope` and
   `linen-roll`, the four held items `leftovers`, `focus-band`, `life-orb` and
@@ -213,6 +214,14 @@ game.
   games have always told one disc from another. An HM's centre is a slot rather
   than the TM's pinhole, so the three machines that are never used up do not
   read as the same object as the five that are.
+  The four packs - `satchel`, `raid-pack`, `ranger-pack` and `hauler-frame` - are
+  `scripts/draw-pack-icons.mjs`: **one silhouette drawn four times**, each a
+  little taller and a little more built than the last, in oilcloth
+  (`#5b4e39`, `#7a6a4f`, `#9c8a68`), canvas (`#3a5c44`, `#4f7d5c`, `#6fa37c`),
+  ranger blue (`#2d5069`, `#3f6f8d`, `#5f97b6`) and steel (`#454c58`, `#6d7684`,
+  `#9aa4b2`), over one shared strap and buckle brown. Which pack you are wearing
+  is the decision the loadout screen exists to ask, so the four have to be
+  legible against each other at 16px and without reading the word beside them.
   `landmark-worked` is `scripts/draw-worked-landmark-icon.mjs`: the same mast
   `radio-mast` draws, with the one difference a player has to read at 16px and
   at a glance - the beacon lit green (`#9be27a`, the colour a door you opened is

@@ -3599,6 +3599,10 @@ export class WorldScene extends Phaser.Scene {
       { ...this.runSession.stashSecureSlot, items: wipe.securedItems },
       // A secured Pokemon comes home in the state the raid left it in.
       deployedRaidCondition(this.runSession.broughtPokemonIds, snapshot),
+      // The pack the clock ran out on goes with the raid. It was never in the bag -
+      // it is the bag - so nothing in the accounting above can name it, and the
+      // secure container cannot protect it either.
+      this.runSession.packItemId,
     );
     this.pendingHubTransition = true;
     this.showRunResult(

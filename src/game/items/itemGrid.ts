@@ -85,11 +85,6 @@ export function gridCells(size: GridSize): number {
   return Math.max(0, size.width) * Math.max(0, size.height);
 }
 
-/** A container one row taller, for the rungs that grow one. */
-export function growGridRows(size: GridSize, rows: number): GridSize {
-  return { width: size.width, height: size.height + Math.max(0, rows) };
-}
-
 /** A container one column wider. */
 export function growGridColumns(size: GridSize, columns: number): GridSize {
   return { width: size.width + Math.max(0, columns), height: size.height };

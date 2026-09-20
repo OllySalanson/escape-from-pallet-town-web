@@ -21,9 +21,18 @@ function startedRun(options: {
   readonly party: readonly Pokemon[];
   readonly items: readonly ItemStack[];
   readonly secure?: SecureSlot;
+  readonly packItemId?: string;
 }): RunManager {
   const manager = new RunManager();
-  manager.startRun({ party: options.party, items: options.items }, RUN_CONFIG, options.secure);
+  manager.startRun(
+    {
+      party: options.party,
+      items: options.items,
+      ...(options.packItemId === undefined ? {} : { packItemId: options.packItemId }),
+    },
+    RUN_CONFIG,
+    options.secure,
+  );
   return manager;
 }
 
@@ -541,5 +550,58 @@ describe('what the result screen says about gear', () => {
 
     expect(report.gear).toEqual([]);
     expect(report.gearSummary).toBeNull();
+  });
+});
+
+/**
+ * The pack is its own line because it is not part of the haul: it is the thing
+ * the haul was in, and a lost raid takes it whatever the secure container held.
+ */
+describe('what the result screen says about the pack', () => {
+  const reportWearing = (packItemId: string | undefined, outcome: 'ESCAPED' | 'WIPED') => {
+    const manager = startedRun({
+      party: [new Pokemon(BULBASAUR, 5)],
+      items: [],
+      ...(packItemId === undefined ? {} : { packItemId }),
+    });
+    manager.tick(60_000);
+    if (outcome === 'ESCAPED') {
+      manager.resolveEscape();
+    } else {
+      manager.resolveWipe({});
+    }
+    return buildExtractionReport({
+      outcome,
+      ...(outcome === 'WIPED' ? { cause: 'timer' as const } : {}),
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      carriedOut: {},
+      saved: true,
+    });
+  };
+
+  it('names the pack and its squares when the raid came home', () => {
+    const report = reportWearing('ranger-pack', 'ESCAPED');
+    expect(report.pack).toEqual({
+      itemId: 'ranger-pack',
+      name: 'Ranger pack',
+      squares: 24,
+      fate: 'kept',
+    });
+    expect(report.packSummary).toContain('Ranger pack came home');
+  });
+
+  it('says the pack went down with the raid, and how much of it', () => {
+    const report = reportWearing('hauler-frame', 'WIPED');
+    expect(report.pack).toMatchObject({ itemId: 'hauler-frame', fate: 'lost', squares: 30 });
+    expect(report.packSummary).toContain('30 squares, gone');
+    // And it is never in the ledger: the ledger is the haul, not the thing the
+    // haul was in.
+    expect(report.ledger.items.map((item) => item.itemId)).not.toContain('hauler-frame');
+  });
+
+  it('says nothing at all about a raid that named no pack', () => {
+    expect(reportWearing(undefined, 'WIPED').pack).toBeNull();
+    expect(reportWearing(undefined, 'WIPED').packSummary).toBeNull();
   });
 });

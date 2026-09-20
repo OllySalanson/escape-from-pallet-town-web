@@ -1,11 +1,16 @@
 import {
   BASE_SECURE_GRID,
+  bestPackIn,
   blocksFor,
   cargoCells,
   fitsInGrid,
   gridCells,
   isFoundOnly,
   packContents,
+  packGridFor,
+  packName,
+  packsIn,
+  packSquares,
   RAID_BAG_GRID,
   roomFor,
   stackSizeOf,
@@ -13,6 +18,7 @@ import {
   type GridPacking,
   type GridSize,
   type ItemId,
+  type PackItemId,
 } from '../items';
 import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
 import {
@@ -28,24 +34,36 @@ import type { SecureSlot as StashSecureSlot, Stash, StashedPokemon } from '../st
 export const MAX_RUN_PARTY = 6;
 
 /**
- * What this save carries a raid in: the pack it packs into, the container the
- * wipe cannot touch, and how many Pokemon that container holds.
+ * What the *base* has built: the container a wipe cannot touch, and how many
+ * Pokemon it protects.
  *
- * All three belong to the save rather than to this class - contracts and the
- * Outfitter enlarge two of them - so preparation is told its capacities instead
- * of assuming them.
+ * Both belong to the save rather than to this class - contracts, the Outfitter
+ * and a rented berth enlarge them - so preparation is told its capacities
+ * instead of assuming them. The pack is deliberately not here: it is gear out
+ * of the vault rather than a capacity of the base, so it is chosen on the
+ * loadout and read off the chosen pack (`../items/packs`).
  */
 export interface LoadoutCapacity {
   readonly pokemon: number;
   readonly secureGrid: GridSize;
-  readonly bagGrid: GridSize;
 }
 
 export const BASE_LOADOUT_CAPACITY: LoadoutCapacity = {
   pokemon: BASE_SECURE_POKEMON,
   secureGrid: BASE_SECURE_GRID,
-  bagGrid: RAID_BAG_GRID,
 };
+
+/** One pack the vault holds, as the loadout lists it. */
+export interface PackChoice {
+  readonly itemId: PackItemId;
+  readonly name: string;
+  readonly squares: number;
+  /** How many of this pack are in the vault, this raid's one included. */
+  readonly held: number;
+  readonly chosen: boolean;
+  /** Set when choosing this pack would not hold what is already packed. */
+  readonly wouldNotHold?: string;
+}
 
 /**
  * Preparation is a route, not a screen: a player picks what to risk, chooses
@@ -67,6 +85,8 @@ export interface Deployment {
   readonly insertionId: RunInsertionId;
   readonly party: readonly StashedPokemon[];
   readonly items: readonly ItemStack[];
+  /** The pack worn into this raid, which a lost raid destroys with its contents. */
+  readonly packItemId?: PackItemId;
   readonly secureSlot: RunSecureSlot;
   readonly stashSecureSlot: StashSecureSlot;
   /** What the container was filled with, so the next raid can start from it. */
@@ -85,8 +105,15 @@ export class DeploymentFlow {
   private secureReturn: Exclude<DeploymentStep, 'secure'> = 'loadout';
   /** The squares the secure container has. */
   public readonly secureGrid: GridSize;
-  /** The squares the raid pack has. */
-  public readonly bagGrid: GridSize;
+  /**
+   * The pack being worn this raid, or undefined for a vault with none.
+   *
+   * It opens on the biggest pack in the vault and is the player's from the
+   * moment they touch it, exactly as the secure container is - a default, never
+   * a cage. Nothing about it is stored: which packs are owned is the vault's
+   * item counts, and which one is worn is this raid's decision.
+   */
+  private packItemIdValue: PackItemId | undefined;
   /** How many Pokemon the secure container protects. */
   public readonly securePokemonSlots: number;
   /** What the container filled itself with last raid, and whether to lead with Pokemon. */
@@ -108,9 +135,76 @@ export class DeploymentFlow {
     this.stash = stash;
     this.insertion = insertionId;
     this.secureGrid = capacity.secureGrid;
-    this.bagGrid = capacity.bagGrid;
     this.securePokemonSlots = capacity.pokemon;
     this.preference = preference;
+    this.packItemIdValue = bestPackIn(stash.listItems());
+  }
+
+  /** The pack this raid is packed into, or undefined when the vault holds none. */
+  public get packItemId(): PackItemId | undefined {
+    return this.packItemIdValue !== undefined && this.stash.itemCount(this.packItemIdValue) > 0
+      ? this.packItemIdValue
+      : bestPackIn(this.stash.listItems());
+  }
+
+  /** The squares this raid's pack has - the one number the loadout packs against. */
+  public get bagGrid(): GridSize {
+    return this.packItemId === undefined ? RAID_BAG_GRID : packGridFor(this.packItemId);
+  }
+
+  /** What a lost raid takes with it besides the party and the supplies. */
+  public get packName(): string {
+    return packName(this.packItemId);
+  }
+
+  /**
+   * Every pack in the vault, smallest first, with the one being worn marked and
+   * a reason beside any that would not hold what is already packed.
+   *
+   * The reason is shown rather than the row being hidden: a player who packed
+   * nineteen squares and then wants the Satchel is owed "it holds twelve" and
+   * not a control that has quietly gone away.
+   */
+  public get packChoices(): readonly PackChoice[] {
+    const chosen = this.packItemId;
+    return packsIn(this.stash.listItems()).map(({ itemId, held }) => {
+      const squares = packSquares(itemId);
+      const holds = fitsInGrid(this.packedContents, packGridFor(itemId));
+      return {
+        itemId,
+        name: packName(itemId),
+        squares,
+        held,
+        chosen: itemId === chosen,
+        ...(holds
+          ? {}
+          : { wouldNotHold: `${packName(itemId)} holds ${squares} squares - take something out first.` }),
+      };
+    });
+  }
+
+  /**
+   * Wears a different pack.
+   *
+   * A smaller pack is refused outright rather than spilling what is packed,
+   * because the player packed it: this game never silently puts something of
+   * theirs down. Taking things out first is the decision, and the row says so.
+   *
+   * @returns A message when the change was refused, otherwise undefined.
+   */
+  public choosePack(itemId: PackItemId): string | undefined {
+    if (this.stash.itemCount(itemId) <= 0) {
+      return `There is no ${packName(itemId)} at base.`;
+    }
+    if (itemId === this.packItemId) {
+      return undefined;
+    }
+    if (!fitsInGrid(this.packedContents, packGridFor(itemId))) {
+      return `${packName(itemId)} holds ${packSquares(itemId)} squares and you have packed ${this.bagCells.used}. Take something out first.`;
+    }
+    this.packItemIdValue = itemId;
+    this.refillSecureSlot();
+    return undefined;
   }
 
   public get step(): DeploymentStep {
@@ -601,6 +695,10 @@ export class DeploymentFlow {
       insertionId: this.insertion,
       party,
       items: this.items,
+      // The pack is named on the deployment because the raid has to be able to
+      // destroy it: it never enters the bag, so nothing else on this object
+      // knows it was risked.
+      ...(this.packItemId === undefined ? {} : { packItemId: this.packItemId }),
       secureSlot: {
         ...(securedPokemon.length === 0
           ? {}

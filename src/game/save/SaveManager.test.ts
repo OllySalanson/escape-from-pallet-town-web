@@ -10,7 +10,7 @@ import {
   experienceForLevel,
 } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
-import { Bag } from '../items';
+import { Bag, STARTING_PACK_ID } from '../items';
 import { DEFAULT_RAID_PROGRESS, SAVE_KEY, SaveManager } from './SaveManager';
 import { applyRecovery, MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
 import { Stash } from '../stash';
@@ -46,6 +46,19 @@ function freshSave(storage: MemoryStorage): SaveManager {
   });
   return saves;
 }
+
+/**
+ * The items a vault holds, plus the pack every save is issued on load.
+ *
+ * A save written before packs were gear holds none, and the loader repairs that
+ * with the starting Raid pack so nobody loses squares to the change. It is a
+ * vault item like any other, so it turns up in every `listItems()` - naming it
+ * here keeps each assertion about the thing it is actually testing.
+ */
+const withPack = (items: Readonly<Record<string, number>>): Record<string, number> => ({
+  ...items,
+  [STARTING_PACK_ID]: 1,
+});
 
 describe('SaveManager', () => {
   describe('describing the save for the title screen', () => {
@@ -117,7 +130,7 @@ describe('SaveManager', () => {
     expect(restored?.position).toEqual({ x: 7, y: 21 });
     expect(restored?.items).toEqual(['potion']);
     expect(restored?.bag.toJSON()).toEqual({ potion: 2, antidote: 1, 'poke-ball': 5 });
-    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 3 });
+    expect(restored?.stash.listItems()).toEqual(withPack({ 'poke-ball': 3 }));
     expect(restored?.stash.listPokemon()).toMatchObject([
       { id: 'stash-pidgey', pokemon: { base: { id: 'pidgey' }, level: 6 } },
     ]);
@@ -162,7 +175,7 @@ describe('SaveManager', () => {
 
     expect(saves.load()?.stash.toJSON()).toEqual({
       pokemon: [],
-      items: {},
+      items: { [STARTING_PACK_ID]: 1 },
       boxes: [{ name: 'Box 1', pokemonIds: [] }],
     });
   });
@@ -201,7 +214,7 @@ describe('SaveManager', () => {
       'Vine Whip',
     ]);
     // The supplies were carried in the same dead field and go the same way.
-    expect(restored?.stash.listItems()).toEqual({ potion: 3, 'poke-ball': 5 });
+    expect(restored?.stash.listItems()).toEqual(withPack({ potion: 3, 'poke-ball': 5 }));
     // Moved, not copied: leaving the team in both places would let a later save
     // write bank the same Pokemon twice.
     expect(restored?.party.pokemon).toEqual([]);
@@ -233,7 +246,7 @@ describe('SaveManager', () => {
     expect(saves.load()?.stash.listPokemon()).toMatchObject([
       { pokemon: { base: { id: 'bulbasaur' }, level: 9 } },
     ]);
-    expect(saves.load()?.stash.listItems()).toEqual({ potion: 3 });
+    expect(saves.load()?.stash.listItems()).toEqual(withPack({ potion: 3 }));
   });
 
   it.each([2, 3])('carries a version %i free-roam party into the vault as well', (version) => {
@@ -255,7 +268,7 @@ describe('SaveManager', () => {
     expect(restored?.stash.listPokemon()).toMatchObject([
       { pokemon: { base: { id: 'squirtle' }, level: 11, experience: 1331 } },
     ]);
-    expect(restored?.stash.listItems()).toEqual({ potion: 1 });
+    expect(restored?.stash.listItems()).toEqual(withPack({ potion: 1 }));
     expect(restored?.party.pokemon).toEqual([]);
   });
 
@@ -283,7 +296,7 @@ describe('SaveManager', () => {
     // The vault is the vault of record here, and this party came out of it, so
     // merging it would put the same Squirtle in twice.
     expect(restored?.stash.listPokemon()).toHaveLength(1);
-    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 2 });
+    expect(restored?.stash.listItems()).toEqual(withPack({ 'poke-ball': 2 }));
     expect(restored?.party.pokemon).toMatchObject([{ base: { id: 'squirtle' }, level: 11 }]);
   });
 
@@ -330,6 +343,7 @@ describe('SaveManager', () => {
     );
 
     expect(new SaveManager(storage).load()?.stash.listItems()).toEqual({
+      [STARTING_PACK_ID]: 1,
       potion: 3,
       antidote: 1,
       'poke-ball': 4,
@@ -558,7 +572,7 @@ describe('SaveManager', () => {
     ]);
     // A swap changes the species and nothing else: the kit is the wipe's to
     // restore, so the Poke Balls this legacy save has none of arrive there.
-    expect(swapped?.stash.listItems()).toEqual({ potion: 3 });
+    expect(swapped?.stash.listItems()).toEqual(withPack({ potion: 3 }));
 
     expect(saves.applyWipeLoss(['charmander-1'], [{ itemId: 'potion', quantity: 3 }])).toBe(true);
     expect(saves.load()?.stash.listPokemon()).toMatchObject([
@@ -615,7 +629,7 @@ describe('SaveManager', () => {
     expect(settled?.stash.listPokemon()).toMatchObject([
       { id: 'charmander-1', pokemon: { currentHp: 6, primaryStatus: 'burn' } },
     ]);
-    expect(settled?.stash.listItems()).toEqual({ potion: 1 });
+    expect(settled?.stash.listItems()).toEqual(withPack({ potion: 1 }));
   });
 
   it('never lets a settlement invent HP or supplies the vault cannot hold', () => {
@@ -657,7 +671,7 @@ describe('SaveManager', () => {
     expect(settled?.stash.listPokemon()).toMatchObject([
       { id: 'charmander-1', pokemon: { currentHp: charmander.maxHp } },
     ]);
-    expect(settled?.stash.listItems()).toEqual({});
+    expect(settled?.stash.listItems()).toEqual(withPack({}));
   });
 
   it('never demotes a Pokemon on a stale or replayed settlement', () => {
@@ -849,7 +863,7 @@ describe('SaveManager', () => {
       { id: 'charmander-1', pokemon: { currentHp: charmander.maxHp, primaryStatus: null } },
     ]);
     // Healing is bought with raid time, so a reload must not show new supplies.
-    expect(restored?.stash.listItems()).toEqual({ potion: 2, 'poke-ball': 5 });
+    expect(restored?.stash.listItems()).toEqual(withPack({ potion: 2, 'poke-ball': 5 }));
   });
 
   it('settles booked recovery time only once the raid it paid for resolves', () => {
@@ -975,7 +989,7 @@ describe('SaveManager', () => {
       { pokemon: { base: { id: 'charmander' }, level: 5 } },
     ]);
     expect(restored?.stash.listPokemon()).toHaveLength(1);
-    expect(restored?.stash.listItems()).toEqual({ 'poke-ball': 5, potion: 3 });
+    expect(restored?.stash.listItems()).toEqual(withPack({ 'poke-ball': 5, potion: 3 }));
   });
 
   it('turns a save that unlocked the retired south-verge insertion into Town Square', () => {
@@ -1634,6 +1648,96 @@ describe('SaveManager', () => {
     expect(reloaded?.stash.itemCount('parts-crate')).toBe(2);
     expect(reloaded?.stash.itemCount('poke-ball')).toBe(9);
     expect(reloaded?.stash.itemCount('potion')).toBe(7);
+  });
+
+  /**
+   * The whole of what makes a pack gear rather than an upgrade: a raid you do
+   * not walk out of takes it, and nothing the secure container holds can save
+   * it - the container is something the pack is carried past, not something the
+   * pack is inside.
+   */
+  describe('the pack a raid is lost in', () => {
+    /**
+     * A wipe wearing `pack`, out of a vault holding `held`.
+     *
+     * `secured` is the slot as the real path hands it over - already cut to what
+     * was still in the pack (`survivingSecureItems`) - so a kind named there was
+     * *found in the field*, never carried in from the vault.
+     */
+    const wipeWearing = (
+      pack: string,
+      held: Readonly<Record<string, number>>,
+      secured: readonly { readonly itemId: string; readonly quantity: number }[] = [],
+    ) => {
+      const storage = new MemoryStorage();
+      const saves = new SaveManager(storage);
+      const stash = new Stash({ items: { ...held, 'poke-ball': 5, potion: 3 } });
+      stash.addPokemon(new Pokemon(CHARMANDER, 9), 'partner');
+      stash.addPokemon(new Pokemon(PIDGEY, 4), 'lost');
+      saves.save({
+        party: new PokemonParty([]),
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: new Bag(),
+        stash,
+        starterSpeciesId: 'charmander',
+      });
+      expect(
+        saves.applyWipeLoss(
+          ['lost'],
+          [{ itemId: 'potion', quantity: 1 }],
+          { pokemonIds: ['lost'], items: secured },
+          [],
+          pack,
+        ),
+      ).toBe(true);
+      return saves.load()!.stash.listItems();
+    };
+
+    it('destroys the pack it was worn into', () => {
+      expect(wipeWearing('hauler-frame', { 'hauler-frame': 1 })['hauler-frame']).toBeUndefined();
+    });
+
+    /**
+     * The one case where the two meanings of one id meet. A *spare* pack found
+     * in the field is ordinary loot - it is in the bag, it takes four squares,
+     * and the container protects its kind exactly as it does a material's. The
+     * pack being *worn* is none of those things, so it is still gone.
+     */
+    it('keeps a spare it found and secured, and still loses the one it wore', () => {
+      const after = wipeWearing('ranger-pack', { 'ranger-pack': 1 }, [
+        { itemId: 'ranger-pack', quantity: 1 },
+      ]);
+      expect(after['ranger-pack']).toBe(1);
+    });
+
+    it('takes one of them, so a spare of the same pack is still at base', () => {
+      expect(wipeWearing('ranger-pack', { 'ranger-pack': 2 })['ranger-pack']).toBe(1);
+    });
+
+    it('hands back the Satchel, and only the Satchel, to a player left with none', () => {
+      const after = wipeWearing('hauler-frame', { 'hauler-frame': 1 });
+      // The last resort is the smallest pack: losing a Hauler frame has to cost
+      // something, or the pack would not be the decision this is all for.
+      expect(after).toMatchObject({ satchel: 1 });
+      expect(after['raid-pack']).toBeUndefined();
+      expect(after['hauler-frame']).toBeUndefined();
+    });
+
+    it('hands back nothing when a bigger pack is still at base', () => {
+      const after = wipeWearing('satchel', { satchel: 1, 'ranger-pack': 1 });
+      expect(after.satchel).toBeUndefined();
+      expect(after['ranger-pack']).toBe(1);
+    });
+
+    it('leaves the pack alone on a raid that was not lost', () => {
+      const storage = new MemoryStorage();
+      const saves = outfittedSave(storage);
+      saves.load()!.stash.addItem('hauler-frame', 1);
+      const before = saves.load()!.stash.itemCount(STARTING_PACK_ID);
+      expect(saves.bankRun({ pokemon: [], items: [] })).toBe(true);
+      expect(saves.load()!.stash.itemCount(STARTING_PACK_ID)).toBe(before);
+    });
   });
 
   it('charges nothing for a refused build, and never builds the same upgrade twice', () => {

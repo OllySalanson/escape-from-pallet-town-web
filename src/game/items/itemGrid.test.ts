@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RAID_BAG_GRID, BASE_SECURE_GRID, VAULT_GRID } from './containers';
-import { ITEM_DEFINITIONS } from './items';
+import { ITEM_DEFINITIONS, isPack } from './items';
+import { FALLBACK_PACK_ID, packGridFor } from './packs';
 import { cellsFor, fitsInGrid, footprintOf, gridCells, packContents, roomFor } from './itemGrid';
 import { MINIMUM_SUPPLIES } from '../stash/Stash';
 
@@ -101,13 +102,25 @@ describe('the containers a save starts with', () => {
    * The wipe restock is the game's promise that a player can always attempt a
    * raid. A kit that would not fit the pack it deploys in breaks it in the one
    * place the player has nothing left to trade.
+   *
+   * The kit's own pack is not packed into itself - it is worn - so what has to
+   * fit is the supplies, and the container they have to fit is the *Satchel*,
+   * because that is the pack a player who has nothing else is handed.
    */
   it('holds the whole wipe restock kit in the starting pack, with room to spare', () => {
-    expect(fitsInGrid(MINIMUM_SUPPLIES, RAID_BAG_GRID)).toBe(true);
-    const packed = packContents(MINIMUM_SUPPLIES, RAID_BAG_GRID);
+    const kit = Object.fromEntries(
+      Object.entries(MINIMUM_SUPPLIES).filter(([itemId]) => !isPack(itemId)),
+    );
+    expect(fitsInGrid(kit, RAID_BAG_GRID)).toBe(true);
+    const packed = packContents(kit, RAID_BAG_GRID);
     expect(packed.overflow).toEqual([]);
     expect(packed.cellsUsed).toBe(8);
     expect(gridCells(RAID_BAG_GRID) - packed.cellsUsed).toBe(10);
+
+    // And in the last-resort pack, which is the one the restock hands out.
+    const satchel = packGridFor(FALLBACK_PACK_ID);
+    expect(fitsInGrid(kit, satchel)).toBe(true);
+    expect(gridCells(satchel) - packContents(kit, satchel).cellsUsed).toBe(4);
   });
 
   it('starts the secure container at one parts crate, or four Potions', () => {

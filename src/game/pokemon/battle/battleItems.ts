@@ -163,6 +163,8 @@ function refusalMessage(item: ItemDefinition, name: string): string {
     // move chooser, and a battle is no place to be asked what to forget.
     case 'machine':
       return `${item.displayName} cannot be read in a battle.`;
+    case 'pack':
+      return `${item.displayName} is chosen at base, before you deploy.`;
     case 'held':
       // The ITEM command only lists medicine, so this is the answer to a
       // question nothing asks - written out so the switch stays exhaustive and

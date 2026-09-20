@@ -923,7 +923,7 @@ describe('what the base screen leads with', () => {
     expect(saved.stash.listPokemon()).toMatchObject([
       { id: 'charmander-1', pokemon: { base: { id: 'charmander' }, level: 5, currentHp: 1 } },
     ]);
-    expect(saved.stash.listItems()).toEqual({ 'poke-ball': 4 });
+    expect(saved.stash.listItems()).toEqual({ 'poke-ball': 4, 'raid-pack': 1 });
     expect(saved.pendingRecoveryMs).toBe(0);
     // The screen shows the same vault, and the bay still wants its price.
     expect(hub.stash.listPokemon()[0].pokemon.currentHp).toBe(1);
@@ -932,7 +932,7 @@ describe('what the base screen leads with', () => {
     // Swapping back for the species you had is no way round it either.
     swapTo(hub, 'squirtle');
     expect(hub.stash.listPokemon()[0].pokemon.currentHp).toBe(1);
-    expect(hub.stash.listItems()).toEqual({ 'poke-ball': 4 });
+    expect(hub.stash.listItems()).toEqual({ 'poke-ball': 4, 'raid-pack': 1 });
   });
 
   it('states the condition the new partner arrives in before the swap is confirmed', () => {

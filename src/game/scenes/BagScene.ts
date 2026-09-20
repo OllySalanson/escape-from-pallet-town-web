@@ -43,11 +43,15 @@ import {
  *
  * Gear is one of them now. It was in no pocket at all, so a Quick Claw taken
  * off a boss was carried out of the raid without ever appearing in the bag.
+ * A spare pack found in the field is another: it is loot like any other and has
+ * to be findable in the pocket it lands in, even though which pack you are
+ * *wearing* is chosen at base (`items/packs.ts`).
  */
 const POCKETS = [
   ItemCategory.Medicine,
   ItemCategory.PokeBall,
   ItemCategory.Held,
+  ItemCategory.Pack,
   ItemCategory.Misc,
 ] as const;
 

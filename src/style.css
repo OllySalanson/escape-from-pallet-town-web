@@ -2087,9 +2087,24 @@ button {
   grid-template-rows: auto minmax(0, 1fr);
   gap: calc(var(--u) * 4);
 }
-/* The squares are centred under the lid; the lid itself still bleeds out to the
+/* The squares and the list of packs scroll together, as one pane.
+
+   They cannot be two rows that share the column: a Hauler frame's squares are
+   half the height of the smallest screen on their own, so giving the list its
+   own row left it nothing at all and a player on a small window could not
+   change their pack. Scrolling them together keeps the squares at their full
+   size - a square is sixteen game pixels and shrinking one resamples the icons
+   in it - and the pane's own MORE strip says the list is below.
+
+   The squares are centred under the lid; the lid itself still bleeds out to the
    window's frame, as every heading on these screens does. */
-:where(.pixel-ui) .pack-window > .px-grid {
+:where(.pixel-ui) .pack-body {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  align-content: start;
+}
+:where(.pixel-ui) .pack-body > .px-grid {
   justify-self: center;
   margin: calc(var(--u) * 3) 0;
 }

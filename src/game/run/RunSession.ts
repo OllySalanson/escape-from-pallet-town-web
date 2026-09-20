@@ -36,6 +36,15 @@ export interface ActiveRunSession {
   readonly stashSecureSlot: StashSecureSlot;
   readonly broughtPokemonIds: readonly string[];
   readonly broughtItems: readonly ItemStack[];
+  /**
+   * The pack worn into this raid, which a lost raid destroys along with
+   * everything that was in it.
+   *
+   * It rides on the session for the same reason `broughtPokemonIds` does: the
+   * pack is never in the bag - it *is* the bag - so nothing in the supply
+   * accounting can name it, and only the session remembers what was risked.
+   */
+  readonly packItemId?: string;
   readonly objectives: readonly RunObjective[];
   /** The deterministic world configuration generated when this raid begins. */
   readonly plan?: RunPlan;
@@ -87,6 +96,7 @@ export function createActiveRunSession(
   objectives: readonly RunObjective[] = [],
   plan?: RunPlan,
   outfitterUpgrades: readonly string[] = [],
+  packItemId?: string,
 ): ActiveRunSession {
   return {
     outfitterUpgrades: [...outfitterUpgrades],
@@ -95,6 +105,7 @@ export function createActiveRunSession(
     stashSecureSlot,
     broughtPokemonIds: [...broughtPokemonIds],
     broughtItems: [...broughtItems],
+    ...(packItemId === undefined ? {} : { packItemId }),
     objectives: [...objectives],
     ...(plan === undefined
       ? {}

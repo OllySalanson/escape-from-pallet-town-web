@@ -963,6 +963,7 @@ export class SaveManager {
     broughtItems: readonly { readonly itemId: string; readonly quantity: number }[],
     secureSlot: SecureSlot = {},
     condition: readonly RaidCondition[] = [],
+    packItemId?: string,
   ): boolean {
     const game = this.load();
     if (!game) {
@@ -981,6 +982,18 @@ export class SaveManager {
         game.traderBerthPaid,
       ),
     });
+    // The pack the raid was lost in goes with it, and it is taken *after* the
+    // accounting above rather than before, because the two are about different
+    // objects that share an id. The pack being worn was never in the bag - it
+    // *is* the bag - so nothing above can see it and the secure container
+    // cannot protect it: the container is something the pack is carried past,
+    // not something the pack is inside. A *spare* pack found in the field is
+    // ordinary loot, is in the bag, and is protected by the container exactly
+    // as a material is - so a player who wore a Ranger pack and found another
+    // keeps the one they secured and loses the one they wore.
+    if (packItemId !== undefined) {
+      game.stash.removeItem(packItemId, 1);
+    }
     // A wipe must never hand the player back a run they cannot attempt: a fresh
     // starter when none survived, and whatever the kit is short of either way,
     // including when the secure slot saved a Pokemon but no items. It is the
@@ -1077,6 +1090,13 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     addBagContents(bagContents(value.bag), stringArrayToBagContents(value.items)),
     stash,
   );
+  // A save written before the pack was gear holds no pack at all, and would
+  // load into a loadout with nothing to pack into. It is issued the starting
+  // one - eighteen squares, exactly what that save was played with - so the
+  // change costs nobody a square. It cannot be farmed: every wipe restocks the
+  // Satchel (`MINIMUM_SUPPLIES`), so a vault that has ever been loaded since is
+  // never packless again.
+  stash.ensureAPack();
   return {
     party: new PokemonParty(carriedIntoVault ? [] : pokemon),
     mapId,

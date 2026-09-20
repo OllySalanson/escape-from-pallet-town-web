@@ -166,6 +166,13 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       // change to a Pokemon would be a formality, and the point of it is the
       // raid you remember finding one on.
       { id: 'pallet-town-tm-dig', position: { x: 7, y: 36 }, itemId: 'tm28-dig', quantity: 1, chance: 0.25 },
+      // A pack, rolled on its own like the machines above rather than drawn
+      // from the pool: a pack is gear you own, choose and lose, so finding one
+      // has to be the raid you remember rather than a tick on a list. It is
+      // four squares of whatever you are already wearing to carry out.
+      // The gentlest map holds the workaday pack: this is where a player who
+      // went down in their last one comes to stop being in a Satchel.
+      { id: 'pallet-town-raid-pack', position: { x: 21, y: 28 }, itemId: 'raid-pack', quantity: 1, chance: 0.3 },
     ],
   },
   'route-1': {
@@ -205,6 +212,10 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       // TM40 Aerial Ace, on the road the Pidgey flock is over. It is also the
       // only machine the bug catcher's Butterfree can read.
       { id: 'route-1-tm-aerial-ace', position: { x: 18, y: 5 }, itemId: 'tm40-aerial-ace', quantity: 1, chance: 0.25 },
+      // The road out: a spare of the workaday pack at its top, and the first
+      // pack bigger than the one the game starts you in, deep in the south.
+      { id: 'route-1-raid-pack', position: { x: 26, y: 10 }, itemId: 'raid-pack', quantity: 1, chance: 0.25 },
+      { id: 'route-1-ranger-pack', position: { x: 55, y: 58 }, itemId: 'ranger-pack', quantity: 1, chance: 0.2 },
     ],
   },
   'viridian-forest': {
@@ -256,6 +267,11 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'forest-rookery-super-potion', position: { x: 55, y: 62 }, itemId: 'super-potion', quantity: 1 },
       { id: 'forest-beech-poke-ball', position: { x: 39, y: 68 }, itemId: 'poke-ball', quantity: 1 },
       { id: 'forest-drive-scrip', position: { x: 58, y: 46 }, itemId: 'scrip', quantity: 45 },
+      // Two of the four maps are vast, and both of them hold the big packs -
+      // the walk is the price. The charcoal burn is somebody's working camp and
+      // the quarry is the far south-east of the wood.
+      { id: 'forest-kiln-ranger-pack', position: { x: 56, y: 32 }, itemId: 'ranger-pack', quantity: 1, chance: 0.22 },
+      { id: 'forest-quarry-hauler-frame', position: { x: 43, y: 58 }, itemId: 'hauler-frame', quantity: 1, chance: 0.12 },
     ],
   },
   // The first map drawn on the FireRed sheet, which is the only one with
@@ -290,6 +306,11 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       // TM13 Ice Beam out of the drowned reach, TM23 Iron Tail out of the mill.
       { id: 'floodplain-tm-ice-beam', position: { x: 25, y: 18 }, itemId: 'tm13-ice-beam', quantity: 1, chance: 0.25 },
       { id: 'floodplain-tm-iron-tail', position: { x: 47, y: 23 }, itemId: 'tm23-iron-tail', quantity: 1, chance: 0.25 },
+      // The starting map is also a vast one, so it holds the whole range: the
+      // quay's stores, the mill, and the keep nobody reaches on a first raid.
+      { id: 'floodplain-quay-raid-pack', position: { x: 16, y: 26 }, itemId: 'raid-pack', quantity: 1, chance: 0.25 },
+      { id: 'floodplain-mill-ranger-pack', position: { x: 49, y: 24 }, itemId: 'ranger-pack', quantity: 1, chance: 0.22 },
+      { id: 'floodplain-keep-hauler-frame', position: { x: 52, y: 10 }, itemId: 'hauler-frame', quantity: 1, chance: 0.12 },
     ],
   },
 };

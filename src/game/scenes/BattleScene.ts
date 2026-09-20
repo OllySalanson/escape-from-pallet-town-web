@@ -2751,6 +2751,10 @@ export class BattleScene extends Phaser.Scene {
       // A secured Pokemon comes home in the state this battle left it in, which
       // after a lost raid is almost always fainted.
       deployedRaidCondition(this.runSession.broughtPokemonIds, snapshot),
+      // The pack the party ran out in goes with the raid. It was never in the bag -
+      // it is the bag - so nothing in the accounting above can name it, and the
+      // secure container cannot protect it either.
+      this.runSession.packItemId,
     );
     this.cameras.main.flash(220, 239, 68, 68, false);
     this.cameras.main.shake(180, 0.009);
