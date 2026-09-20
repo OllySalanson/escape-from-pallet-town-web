@@ -905,7 +905,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-withy-frame',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 70, y: 80 },
+    position: { x: 71, y: 81 },
     facing: 'left',
     dialogLines: [
       'A BUNDLING FRAME - two posts and a rail',
@@ -1256,7 +1256,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-fieldnumber-north',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 124, y: 40 },
+    position: { x: 124, y: 38 },
     facing: 'left',
     dialogLines: [
       'FIELD 14 - a numbered post at the head of a drain',
@@ -1324,7 +1324,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-eel-house',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 124, y: 78 },
+    position: { x: 123, y: 78 },
     facing: 'left',
     dialogLines: [
       'THE EEL HOUSE - a hut over a trap in the cut',
