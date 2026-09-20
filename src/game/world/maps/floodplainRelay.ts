@@ -1870,7 +1870,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // caught at this end of the muds was 118 steps from any way out, which is
   // half again what the hunter's blind window covers at the slow step cost; an
   // exit may not stand in a passage, and a nub is a pocket by construction.
-  map.set(5, 122, 'M');                  // the gridiron, off the west bar
+  map.set(5, 121, 'M');                  // the gridiron, off the west bar
 
 
   // == WHAT STANDS ON THE NEW GROUND =======================================

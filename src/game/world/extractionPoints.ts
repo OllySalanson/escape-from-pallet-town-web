@@ -486,7 +486,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     // which is half again what the hunter's blind window covers - so the walk
     // out of the muds is shortened by a door rather than by a longer window.
     mapId: 'floodplain-relay',
-    position: { x: 5, y: 122 },
+    position: { x: 5, y: 121 },
     label: 'THE GRIDIRON',
     unlockAtMs: 0,
     requirement: { kind: 'always' },
