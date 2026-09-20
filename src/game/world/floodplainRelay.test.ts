@@ -317,6 +317,7 @@ describe('a fresh save, from the front door', () => {
       'floodplain-saltings-creekmark',
       'floodplain-staithe-gauge',
       'floodplain-staithe-lodging',
+      'floodplain-saltings-plank',
     ];
     for (const sign of shut.entities.filter((entity) => entity.kind === 'sign')) {
       expect(`${sign.id}: ${reachesBeside(sign.position)}`).toBe(

@@ -238,6 +238,18 @@ describe('what an escape buys', () => {
         }
 
         function isDetour(tile: GridPosition): boolean {
+          // A tile that is on no shortest path cannot lengthen one, and the
+          // check is two lookups against a walk of the whole map: the player's
+          // own distances and the destination's, which are both already here.
+          // On a 128x128 map that is the difference between this sweep taking
+          // three minutes and taking twenty seconds, and it is exact rather
+          // than a sample - blocking a tile the shortest path never used
+          // leaves that path standing.
+          const out = clean[tile.y]?.[tile.x] ?? -1;
+          const back = toDestination[index][tile.y]?.[tile.x] ?? -1;
+          if (out < 0 || back < 0 || out + back !== direct) {
+            return false;
+          }
           const detoured = around(tile)[destination.y]?.[destination.x] ?? -1;
           return detoured < 0 || detoured > direct;
         }

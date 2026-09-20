@@ -1864,6 +1864,13 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.set(123, 54, 'P');                 // a step cut through a wall
   map.set(100, 45, 'C');                 // a stone set in the way
   map.set(102, 51, 'C');                 // a stone set in the way
+  // A gridiron is a frame laid on the foreshore for a boat to dry out on, and
+  // this one is a nub of stone off the westernmost bar - the only structure on
+  // the sands and the only tile out here that is not part of a bar. A raid
+  // caught at this end of the muds was 118 steps from any way out, which is
+  // half again what the hunter's blind window covers at the slow step cost; an
+  // exit may not stand in a passage, and a nub is a pocket by construction.
+  map.set(5, 122, 'M');                  // the gridiron, off the west bar
 
 
   // == WHAT STANDS ON THE NEW GROUND =======================================
