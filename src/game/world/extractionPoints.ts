@@ -417,4 +417,67 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     unlockAtMs: 0,
     requirement: { kind: 'always' },
   },
+  // And seven more for the ground the map grew into, which is the part of this
+  // that is a number rather than a taste. A flee buys the player a blind window
+  // and the window has to cover the walk to a way out from the worst tile on
+  // the map (`hunterFlee.test.ts`); on four times the ground that is not a
+  // longer window - `raidClock.test.ts` caps it at what a hunter rung can
+  // spare - it is more doors. Each of these is the tile that most shortened
+  // that walk when it was put there, which is why two of them are on the same
+  // fen: the drove is long and the fields either side of it are longer.
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 41, y: 64 },
+    label: 'HUNDRED GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 81, y: 64 },
+    label: 'WITHY GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 123, y: 50 },
+    label: 'FEN LANE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 124, y: 62 },
+    label: 'BANK STEPS',
+    unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 51, y: 96 },
+    label: 'MARSH GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 96, y: 114 },
+    label: 'THE GUTWAY',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 89, y: 71 },
+    label: 'CUTTER\'S GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 78, y: 18 },
+    label: 'QUARRY SUMP',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
 ];

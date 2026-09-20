@@ -322,7 +322,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     // behind him, and so is the short way home, because the level comes out on
     // Hollow Beck a few steps from the mill.
     mapId: 'floodplain-relay',
-    position: { x: 65, y: 11 },
+    position: { x: 65, y: 10 },
     facing: 'down',
     fixedPosition: true,
     sightRange: 1,

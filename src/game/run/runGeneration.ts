@@ -88,7 +88,7 @@ export const RUN_INSERTIONS = {
     id: 'floodplain-saltings',
     label: 'The Saltings',
     mapId: 'floodplain-relay',
-    position: { x: 13, y: 69 },
+    position: { x: 13, y: 68 },
     description: 'Grazing marsh south of Old Town, cut into bands by creeks that fill on the tide. The drove runs the length of it to the wharf, and each creek is crossed in one place only.',
   },
   'floodplain-staithe': {
@@ -102,8 +102,8 @@ export const RUN_INSERTIONS = {
     id: 'floodplain-light',
     label: 'The Light',
     mapId: 'floodplain-relay',
-    position: { x: 118, y: 105 },
-    description: "The keeper's yard on the point, at the far end of the wall road. The pier runs out into the tide from here, and there is nothing past it but water.",
+    position: { x: 115, y: 104 },
+    description: "The point, at the far end of the wall road, with the keeper's yard behind you. The pier runs out into the tide from here and there is nothing past it but water.",
   },
   'town-square': {
     id: 'town-square',

@@ -1674,6 +1674,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // smallest thing that answers it where it stands: a gate hung across a
   // drove, spoil come down off a face, a groyne head set in a sea wall,
   // bramble over a track nobody has cut since the water came.
+  map.set(63, 54, '"');                  // a gap out of the last close in the cider yard
   map.set(57, 40, 'C');                  // the gate post at the orchard's back gap
   map.set(111, 102, '"');                // a gap worn through a hedge bank
   map.set(97, 14, '"');                  // a gap worn through a hedge bank
@@ -1810,6 +1811,18 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.set(112, 36, '#');                 // thorn grown across it
   map.set(104, 40, '#');                 // thorn grown across it
   map.set(111, 80, '#');                 // thorn grown across it
+  map.set(82, 64, '#');                  // thorn grown across it
+  map.set(69, 65, 'w');                  // a shallow worn through a bed
+  map.set(111, 64, '#');                 // thorn grown across it
+  map.set(109, 68, '#');                 // thorn grown across it
+  map.set(63, 76, '#');                  // thorn grown across it
+  map.set(62, 76, 'w');                  // a shallow worn through a bed
+  map.set(101, 84, 'C');                 // a stone set in the way
+  map.set(30, 93, 'C');                  // a stone set in the way
+  map.set(3, 102, 'C');                  // a stone set in the way
+  map.set(117, 31, '#');                 // thorn grown across it
+  map.set(87, 35, '#');                  // thorn grown across it
+  map.set(88, 36, '"');                  // a gap worn through a hedge bank
 
 
   // == WHAT STANDS ON THE NEW GROUND =======================================

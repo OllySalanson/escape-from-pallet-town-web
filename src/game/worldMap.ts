@@ -328,7 +328,7 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'floodplain-quarry-potion', position: { x: 74, y: 10 }, itemId: 'potion', quantity: 1 },
       { id: 'floodplain-quarry-parts-crate', position: { x: 84, y: 19 }, itemId: 'parts-crate', quantity: 1 },
       { id: 'floodplain-kilns-lamp-oil', position: { x: 108, y: 14 }, itemId: 'lamp-oil', quantity: 1 },
-      { id: 'floodplain-kilns-antidote', position: { x: 116, y: 23 }, itemId: 'antidote', quantity: 1 },
+      { id: 'floodplain-kilns-antidote', position: { x: 114, y: 23 }, itemId: 'antidote', quantity: 1 },
       { id: 'floodplain-beck-potion', position: { x: 63, y: 32 }, itemId: 'potion', quantity: 1 },
       { id: 'floodplain-cider-super-potion', position: { x: 70, y: 45 }, itemId: 'super-potion', quantity: 1 },
       { id: 'floodplain-cider-linen-roll', position: { x: 86, y: 42 }, itemId: 'linen-roll', quantity: 1 },
@@ -337,15 +337,15 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'floodplain-saltings-potion', position: { x: 21, y: 77 }, itemId: 'potion', quantity: 1 },
       { id: 'floodplain-saltings-mooring-rope', position: { x: 5, y: 86 }, itemId: 'mooring-rope', quantity: 1 },
       { id: 'floodplain-staithe-great-ball', position: { x: 26, y: 106 }, itemId: 'great-ball', quantity: 1 },
-      { id: 'floodplain-staithe-radio-valve', position: { x: 13, y: 105 }, itemId: 'radio-valve', quantity: 1 },
+      { id: 'floodplain-staithe-radio-valve', position: { x: 12, y: 104 }, itemId: 'radio-valve', quantity: 1 },
       { id: 'floodplain-hundred-antidote', position: { x: 44, y: 78 }, itemId: 'antidote', quantity: 1 },
-      { id: 'floodplain-withy-super-potion', position: { x: 72, y: 71 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'floodplain-withy-super-potion', position: { x: 73, y: 71 }, itemId: 'super-potion', quantity: 1 },
       { id: 'floodplain-wall-potion', position: { x: 50, y: 100 }, itemId: 'potion', quantity: 1 },
       { id: 'floodplain-light-great-ball', position: { x: 122, y: 99 }, itemId: 'great-ball', quantity: 1 },
       // Two more bundles of scrip, and no more: the whole map has to stay
       // short of one berth (`hub/trader.test.ts` recomputes that from here).
       { id: 'floodplain-scrip-quarry', position: { x: 90, y: 18 }, itemId: 'scrip', quantity: 20 },
-      { id: 'floodplain-scrip-staithe', position: { x: 35, y: 103 }, itemId: 'scrip', quantity: 35 },
+      { id: 'floodplain-scrip-staithe', position: { x: 34, y: 102 }, itemId: 'scrip', quantity: 35 },
       { id: 'floodplain-tm-ice-beam', position: { x: 25, y: 18 }, itemId: 'tm13-ice-beam', quantity: 1, chance: 0.25 },
       { id: 'floodplain-tm-iron-tail', position: { x: 47, y: 23 }, itemId: 'tm23-iron-tail', quantity: 1, chance: 0.25 },
       // The starting map is also a vast one, so it holds the whole range: the

@@ -28,16 +28,22 @@ export const HUNTER_BREAKAWAY_DISTANCE = 6;
  *
  * The length is not a feel: it is the walk it has to cover. An escape is bought
  * because the player cannot win the fight, so the least it can promise is the
- * walk to a way out. On the rebuilt maps the furthest any tile sits from its
- * nearest extraction point is 47 tiles (Pallet Town), and a tile costs about
- * 0.23s of clock at the rate measured in a headless browser - 10.8s of walking,
- * which the old 10s window did not cover. Fifteen seconds covers it with room to
- * route around whatever is in the way, and is still only a twentieth of the raid
- * against an escape priced at an eighth of it. `hunterFlee.test.ts` recomputes
- * that walk from the maps themselves, so redrawing one that strands a corner
- * fails there rather than in a playtest.
+ * walk to a way out. A tile costs about 0.23s of clock at the rate measured in
+ * a headless browser, and the furthest any tile of any map sits from its
+ * nearest extraction point is 82 (the Floodplain's fen, since that map grew to
+ * 128 tiles square) - nineteen seconds of walking, which the old fifteen did
+ * not cover. `hunterFlee.test.ts` recomputes that walk from the maps
+ * themselves, so redrawing one that strands a corner fails there rather than in
+ * a playtest.
+ *
+ * Twenty is the ceiling as well as the answer, and that is the point: what a
+ * rung of the hunter ladder can spare after an escape has been paid for is
+ * sixty seconds less the forty an escape costs, and `raidClock.test.ts` holds
+ * the window to it. So a map cannot buy coverage by making the window longer -
+ * a vast one buys it by having more doors, which is why the Floodplain has
+ * twenty and the small maps have three apiece.
  */
-export const HUNTER_SEARCH_MS = 15_000;
+export const HUNTER_SEARCH_MS = 20_000;
 export const DEFAULT_HUNTER_TUNING: HunterTuning = {
   spawnDelayMs: HUNTER_SPAWN_MS,
   aggressionStepsPerPlayerStep: 1,

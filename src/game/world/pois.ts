@@ -496,7 +496,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
   {
     id: 'floodplain-pumping-engine',
     mapId: 'floodplain-relay',
-    position: { x: 106, y: 61 },
+    position: { x: 106, y: 60 },
     label: 'PUMPING ENGINE',
     description: 'The engine that kept the levels dry, standing over its own drain with the fire long out and the stores beside it untouched.',
     reward: [
