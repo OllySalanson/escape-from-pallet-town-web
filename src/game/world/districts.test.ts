@@ -144,6 +144,10 @@ describe('the named districts of a map', () => {
         'BEACON LIGHT': 'THE BEACON',
         'SPRING HOUSE': 'THE HANGER',
         'THE STAITHE': 'THE SALTINGS',
+        'THE SCARE POST': 'THE NORTH FIELD',
+        'THE DECOY': 'THE WATER MEADOWS',
+        'THE POWDER STORE': 'THE QUARRY',
+        'THE MEADOW HATCH': 'THE WATER MEADOWS',
       },
     });
     // The south is named where the south bank starts: on the far step of each

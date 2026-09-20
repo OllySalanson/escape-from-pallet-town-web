@@ -136,6 +136,55 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     ],
   },
   {
+    // The quarry's south bay is a dead end four tiles wide and seven deep, and
+    // a dead end is only worth walking if there is something at the end of it.
+    id: 'pallet-powder-store',
+    mapId: 'pallet-town',
+    position: { x: 56, y: 28 },
+    label: 'THE POWDER STORE',
+    description: 'The blasting store cut into the back of the quarry, well away from the face. A Super Potion and a Poke Ball on the shelf.',
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'poke-ball', quantity: 1 },
+    ],
+  },
+  {
+    // The meadow corner north of the withy beds, the last pocket of the map
+    // with nothing in it. The hatch is what makes a water meadow one.
+    id: 'pallet-meadow-hatch',
+    mapId: 'pallet-town',
+    position: { x: 28, y: 46 },
+    label: 'THE MEADOW HATCH',
+    description: 'The hatch that used to flood the meadows off the carrier, seized open since the flood. A Potion left in the frame of it.',
+    reward: [{ itemId: 'potion', quantity: 1 }],
+  },
+  {
+    // The top of the north field is the first tall grass out of the square and
+    // was the emptiest ground on the map - nineteen steps from anything
+    // authored, further than any tile of the new valley. The bird-scarer's post
+    // is what the field is worked from, so it is what stands in it.
+    id: 'pallet-scare-post',
+    mapId: 'pallet-town',
+    position: { x: 17, y: 7 },
+    label: 'THE SCARE POST',
+    description: 'The bird-scarer\'s post at the head of the north field, with the lad\'s tin and a spare Poke Ball wedged in the crook of it.',
+    reward: [{ itemId: 'poke-ball', quantity: 1 }],
+  },
+  {
+    // The wet pocket east of the rickyard is a dead end, and a dead end is
+    // only worth walking if something is at the end of it. The decoy pipe is
+    // the reason a fowler ever came out this far.
+    id: 'pallet-decoy-pond',
+    mapId: 'pallet-town',
+    position: { x: 35, y: 59 },
+    label: 'THE DECOY',
+    description: 'The duck decoy in the wet corner of the water meadows, its pipe still netted. An Antidote and a Potion in the hide.',
+    reward: [
+      { itemId: 'antidote', quantity: 1 },
+      { itemId: 'potion', quantity: 1 },
+    ],
+  },
+  {
     // The old landing stage out in the marsh, from when the saltings were
     // worked by boat rather than walked. The one thing to make for out there.
     id: 'pallet-staithe',

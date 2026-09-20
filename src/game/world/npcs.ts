@@ -389,6 +389,22 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     ],
   },
   {
+    // The allotments were the second-thinnest ground on the map: a whole band
+    // of dug rows between the millpond and the gate road with nobody working
+    // them. She is what the rows are for, and she points at both crossings.
+    id: 'pallet-allotment-holder',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 18, y: 22 },
+    facing: 'down',
+    design: 'old-woman',
+    dialogLines: [
+      'Forty years on this plot and the flood has had it twice.',
+      'Rows run down to the leat. Stepping stones at the end of this one, the bridge two along.',
+      'North of me is the NORTH FIELD, and nothing north of that but grass.',
+    ],
+  },
+  {
     id: 'route-1-board',
     mapId: 'route-1',
     kind: 'sign',
