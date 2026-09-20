@@ -193,7 +193,7 @@ describe('objective field guide', () => {
       'DROWNED CHAPEL',
       'FLOODED SUPPLY VAULT',
       'STRANDED LIGHTER',
-      // And one for each place the map grew into, so a raid dropped at any of
+      // And one for every place the map grew into, so a raid dropped at any of
       // its ten landings has something to detour for without crossing it.
       'POWDER HOUSE',
       'THE PRESS HOUSE',
@@ -201,6 +201,9 @@ describe('objective field guide', () => {
       "OSIER CUTTER'S STORE",
       'PUMPING ENGINE',
       'STRANDED BARGE',
+      'CHURCH FARM',
+      'THE DECOY',
+      'THE WRECK',
     ]);
     expect(before.hints.join(' ')).toContain(caches[0].label);
     expect(before.hints.join(' ')).not.toContain(caches[1].label);

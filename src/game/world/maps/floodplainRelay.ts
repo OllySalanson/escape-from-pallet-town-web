@@ -1674,6 +1674,10 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // smallest thing that answers it where it stands: a gate hung across a
   // drove, spoil come down off a face, a groyne head set in a sea wall,
   // bramble over a track nobody has cut since the water came.
+  map.set(75, 18, 'v');                  // the quarry floor, which two stones had cut in three
+  map.set(73, 18, 'C');                  // a block left standing on the floor, with the lane going round it
+  map.set(73, 19, 'v');                  // and the lane round it
+  map.set(77, 18, 'v');                  // the quarry floor, which a stone had cut in two
   map.set(63, 54, '"');                  // a gap out of the last close in the cider yard
   map.set(57, 40, 'C');                  // the gate post at the orchard's back gap
   map.set(111, 102, '"');                // a gap worn through a hedge bank

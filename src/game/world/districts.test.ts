@@ -350,11 +350,19 @@ describe('the named districts of a map', () => {
         'SIGNAL FIRE': 'BEACON KEEP',
         'VAULT CULVERT': 'THE VAULT',
         'QUARRY ROAD': 'THE QUARRY',
+        'QUARRY SUMP': 'THE QUARRY',
         'KILN ROAD': 'THE KILNS',
         'CIDER ROAD': 'THE CIDER YARD',
         'DROVE GATE': 'THE SALTINGS',
         'STAITHE STEPS': 'THE STAITHE',
         'PIER HEAD': 'THE LIGHT',
+        'HUNDRED GATE': 'THE DROWNED HUNDRED',
+        'WITHY GATE': 'THE WITHY BEDS',
+        "CUTTER'S GATE": 'THE WITHY BEDS',
+        'FEN LANE': 'THE LEVELS',
+        'BANK STEPS': 'THE LEVELS',
+        'MARSH GATE': 'THE SEA WALL',
+        'THE GUTWAY': 'THE MUDS',
       });
     });
 
@@ -388,8 +396,8 @@ describe('the named districts of a map', () => {
       expect(landmarks).toEqual({
         'DROWNED CHAPEL': 'OLD TOWN',
         'FLOODED SUPPLY VAULT': 'THE VAULT',
-        'RANGER STATION': 'THE REEDBEDS',
         'STRANDED LIGHTER': 'THE SHOAL',
+        'RANGER STATION': 'THE REEDBEDS',
         'POWDER HOUSE': 'THE QUARRY',
         'THE PRESS HOUSE': 'THE CIDER YARD',
         'STAITHE CRANE': 'THE STAITHE',
@@ -397,6 +405,9 @@ describe('the named districts of a map', () => {
         "OSIER CUTTER'S STORE": 'THE WITHY BEDS',
         'PUMPING ENGINE': 'THE LEVELS',
         'STRANDED BARGE': 'THE MUDS',
+        'CHURCH FARM': 'THE DROWNED HUNDRED',
+        'THE DECOY': 'THE SEA WALL',
+        'THE WRECK': 'THE MUDS',
       });
     });
 

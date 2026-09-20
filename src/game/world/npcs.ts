@@ -1154,7 +1154,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-milestone-south',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 122, y: 80 },
+    position: { x: 121, y: 79 },
     facing: 'left',
     dialogLines: [
       'A MILESTONE - on the drove',
@@ -1267,7 +1267,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-wildfowler',
     mapId: 'floodplain-relay',
     kind: 'npc',
-    position: { x: 114, y: 42 },
+    position: { x: 113, y: 41 },
     facing: 'down',
     design: 'old-man',
     dialogLines: [
