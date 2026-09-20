@@ -22,8 +22,8 @@ export default defineConfig({
      *
      * It went from thirty seconds to two minutes when the Floodplain grew to
      * 128 tiles square. Those sweeps are quadratic in a map's area - a search
-     * per walkable tile over the whole grid - so sixteen times the area of the
-     * smallest map is a real cost, and it was paid down first rather than
+     * per walkable tile over the whole grid - so a map three times the area of
+     * any other is a real cost, and it was paid down first rather than
      * waved through: `stepDistances` now walks typed arrays, `MapSketch` no
      * longer rescans every landmark's claims on every tile written (three
      * seconds a build, which was also a raid starting with a stutter), and the
