@@ -160,6 +160,23 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       // against what a raid actually brings home (`world/hub/trader.ts`).
       { id: 'pallet-town-scrip-yard', position: { x: 11, y: 24 }, itemId: 'scrip', quantity: 25 },
       { id: 'pallet-town-scrip-shed', position: { x: 26, y: 30 }, itemId: 'scrip', quantity: 40 },
+      // The valley above the town and the valley below it. Loot is a pool
+      // rather than a layout - `generateLoot` re-seats every piece each raid -
+      // so these positions are where a piece sits when nothing moves it, and
+      // the point of them is that the new ground pays as well as the old.
+      { id: 'pallet-town-wood-poke-ball', position: { x: 47, y: 7 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'pallet-town-hanger-potion', position: { x: 40, y: 21 }, itemId: 'potion', quantity: 1 },
+      { id: 'pallet-town-quarry-parts', position: { x: 57, y: 27 }, itemId: 'parts-crate', quantity: 1 },
+      { id: 'pallet-town-kiln-lamp-oil', position: { x: 51, y: 37 }, itemId: 'lamp-oil', quantity: 1 },
+      { id: 'pallet-town-drove-antidote', position: { x: 37, y: 37 }, itemId: 'antidote', quantity: 1 },
+      { id: 'pallet-town-meadow-poke-ball', position: { x: 19, y: 45 }, itemId: 'poke-ball', quantity: 2 },
+      { id: 'pallet-town-rickyard-potion', position: { x: 30, y: 52 }, itemId: 'potion', quantity: 1 },
+      { id: 'pallet-town-withy-great-ball', position: { x: 10, y: 49 }, itemId: 'great-ball', quantity: 1 },
+      { id: 'pallet-town-saltings-mooring-rope', position: { x: 25, y: 72 }, itemId: 'mooring-rope', quantity: 1 },
+      { id: 'pallet-town-strand-super-potion', position: { x: 13, y: 79 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'pallet-town-hard-cable-coil', position: { x: 32, y: 80 }, itemId: 'cable-coil', quantity: 1 },
+      { id: 'pallet-town-fields-potion', position: { x: 46, y: 62 }, itemId: 'potion', quantity: 1 },
+      { id: 'pallet-town-scrip-quarry', position: { x: 60, y: 16 }, itemId: 'scrip', quantity: 55 },
       // TM28 Dig, in the town whose sheds have dug rows and produce beside
       // them. A machine is rolled on its own like the stone below rather than
       // drawn from the pool, for the same reason: at pool odds a permanent

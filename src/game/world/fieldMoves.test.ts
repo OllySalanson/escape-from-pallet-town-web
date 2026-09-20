@@ -111,6 +111,8 @@ describe('a move that is also a route', () => {
           // discs - the place a Surf opens is where the next Cut is standing.
           'krabby',
           'meowth',
+          // Pallet's hay closes, which is where a Nidoran would be.
+          'nidoran-f',
           'oddish',
           // The forest's east and south, added with the ground they live on.
           'paras',
@@ -118,7 +120,9 @@ describe('a move that is also a route', () => {
           'sandshrew',
         ]);
       } else {
-        expect(catchable).toEqual(['krabby', 'poliwag', 'psyduck', 'squirtle']);
+        // Shellder is Pallet's tide line: the shore is the one place a Surf
+        // learner turns up that is not fresh water.
+        expect(catchable).toEqual(['krabby', 'poliwag', 'psyduck', 'shellder', 'squirtle']);
       }
     }
   });

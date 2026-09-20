@@ -568,10 +568,21 @@ describe('a raid carried through a battle and back', () => {
       internals.activatedPoiIds.add('a-landmark-already-worked');
 
       if (kind === 'wild') {
-        internals.currentTile = { ...from };
-        internals.targetTile = { ...grass };
-        internals.stepProgress = 0;
-        internals.advanceStep(60_000);
+        // A step into tall grass is a *roll*, not an encounter: the authored
+        // teaching fight replaces the first roll that lands rather than the
+        // first step taken. Walking in until one does is what a player does and
+        // is the only version of this that does not depend on the seed happening
+        // to fire on step one - which it stopped doing the day a map grew and
+        // moved every draw after its own loot.
+        for (let attempt = 0; attempt < 400; attempt += 1) {
+          internals.currentTile = { ...from };
+          internals.targetTile = { ...grass };
+          internals.stepProgress = 0;
+          internals.advanceStep(60_000);
+          if (startsOf(world).mock.calls.some(([started]) => started === 'battle')) {
+            break;
+          }
+        }
       } else {
         internals.currentTile = { ...grass };
         internals.pendingTrainerBattle = {

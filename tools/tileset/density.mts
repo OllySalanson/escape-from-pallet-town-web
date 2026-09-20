@@ -10,7 +10,7 @@
  * The measure, set when Viridian Forest was made vast and kept so the four maps
  * compare: for every walkable tile, the walking steps to the nearest
  * **permanent** authored thing - an exit, a drop-in, a landmark, a sign or
- * townsperson, a gate tile, a trainer. Loot is deliberately NOT counted: it is
+ * townsperson, a gate tile, a trainer, a contract stop. Loot is deliberately NOT counted: it is
  * re-seated map-wide every raid (`generateLoot`), so counting it flatters a map
  * that has nothing standing in it.
  *
@@ -31,6 +31,7 @@ import { RUN_INSERTIONS } from '../../src/game/run/runGeneration';
 import { createRunTrainerEncounters } from '../../src/game/world/trainers';
 import { stepDistances, walkableTiles } from '../../src/game/world/mapStructure';
 import { districtAt } from '../../src/game/world/districts';
+import { RAID_CONTRACTS } from '../../src/game/objectives/contracts';
 
 const args = process.argv.slice(2);
 const option = (name: string) => args.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -44,6 +45,9 @@ const things = [
   ...map.entities.map((entity) => entity.position),
   ...gatesForMap(mapId).flatMap((gate) => gate.tiles),
   ...createRunTrainerEncounters().filter((trainer) => trainer.mapId === mapId).map((trainer) => trainer.position),
+  ...RAID_CONTRACTS.filter((contract) => contract.mapId === mapId).flatMap((contract) =>
+    contract.markers.map((marker) => marker.position),
+  ),
 ];
 
 // One walk out of each thing, kept as the best so far: the same answer as a

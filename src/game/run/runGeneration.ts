@@ -84,6 +84,20 @@ export const RUN_INSERTIONS = {
     position: { x: 27, y: 22 },
     description: 'The towpath behind the millpond, past the miller’s gate. The Mill Stair is cut in the rock beside you, and the foot of the path comes out on the sluice apron.',
   },
+  'pallet-quarry': {
+    id: 'pallet-quarry',
+    label: 'The Quarry',
+    mapId: 'pallet-town',
+    position: { x: 56, y: 18 },
+    description: 'The quarry floor in the east hills, its pit flooded and its adit open. Its own track out to the north-east, and the whole valley between you and the town.',
+  },
+  'pallet-strand': {
+    id: 'pallet-strand',
+    label: 'The Hard',
+    mapId: 'pallet-town',
+    position: { x: 35, y: 80 },
+    description: 'The stone slip at the foot of the valley. The ferry comes in on the tide; west is the strand and the salt marsh, east is the headland and whoever is keeping its gate.',
+  },
   'route-1': {
     id: 'route-1',
     label: 'Route 1',

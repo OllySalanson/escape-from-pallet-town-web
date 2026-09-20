@@ -104,6 +104,291 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     ],
   },
   {
+    // In the nook at the head of the quarry track, which is the far end of the
+    // valley from anything the town's own signs name.
+    id: 'pallet-quarry-board',
+    mapId: 'pallet-town',
+    kind: 'sign',
+    position: { x: 62, y: 16 },
+    facing: 'left',
+    dialogLines: [
+      'QUARRY TRACK - always open',
+      'Stone went out this way and never came back through the town. The RIDE west through the high wood is the long walk home.',
+      'The bench above the kilns is a drop, not a path. Go down it and you are not coming back up - and the LIME ROAD out of the kiln floor is the way home from down there.',
+    ],
+  },
+  {
+    // On the Gate Lane's own stub, where the road out of the stockyard turns
+    // south. The town's other boards all face the water; this one faces away.
+    id: 'pallet-gate-lane-board',
+    mapId: 'pallet-town',
+    kind: 'sign',
+    position: { x: 25, y: 42 },
+    facing: 'left',
+    dialogLines: [
+      'GATE LANE - to the hay meadows and the tide',
+      'South for the closes, the rickyard and the brook. Keep the brook on your left and you come out on the saltings.',
+      'FERRY HARD is at the foot of it, and the boat comes when it comes.',
+    ],
+  },
+  {
+    // On the hard, where a player who has walked the whole valley arrives.
+    id: 'pallet-hard-board',
+    mapId: 'pallet-town',
+    kind: 'sign',
+    position: { x: 29, y: 79 },
+    facing: 'down',
+    dialogLines: [
+      'THE HARD - ferry lies off',
+      'West is the strand and the marsh behind it. East is the NESS, and SALTER COBB keeps the gate across its neck.',
+      'Beat her and the COBB STEPS down the headland come out here, which makes the whole south a ring - and the HEADLAND STEPS off its south tip are a way home nobody who has not beaten her has.',
+    ],
+  },
+  // -- The valley the town stands in ----------------------------------------
+  // A parish is people working it, and on a map four times the size that is
+  // also what stops the new ground reading as trail-through-trees: the walk
+  // from any tile to the nearest permanent authored thing is the number
+  // `tools/tileset/density.mts` prints, and these are most of what moved it.
+  // Each one says where they are and what is the next way on from it, because
+  // on a valley this long the thing a player most needs is a bearing.
+  {
+    id: 'pallet-hanger-woodman',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 40, y: 25 },
+    facing: 'left',
+    design: 'old-man',
+    dialogLines: [
+      'Beech, this. Cut it in winter and it burns in the same winter.',
+      'Spring rises above you and goes under the rock. Nobody has ever traced it, and the mill has never gone short.',
+      'Up the slope for the quarry. There is no way down to the towpath from here - that is what the rock is for.',
+    ],
+  },
+  {
+    id: 'pallet-lime-burner',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 60, y: 35 },
+    facing: 'left',
+    design: 'heavy-man',
+    dialogLines: [
+      'Two mouths, both drawing. Stand upwind of them.',
+      'Stone comes off the bench up there, lime goes out by the LIME ROAD behind me.',
+      'The bench is a drop, not a road. Breaker Finn will tell you what it costs to find that out.',
+    ],
+  },
+  {
+    id: 'pallet-drove-board',
+    mapId: 'pallet-town',
+    kind: 'sign',
+    position: { x: 41, y: 40 },
+    facing: 'left',
+    dialogLines: [
+      'THE DROVE - stock road, sluice apron to the old fields',
+      'Six short reaches down the hill. The kilns are off the fourth of them, and the LIME ROAD out of the kiln floor.',
+      'Keep on down for the old fields and the sea wall.',
+    ],
+  },
+  {
+    id: 'pallet-fields-shepherd',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 56, y: 47 },
+    facing: 'down',
+    design: 'straw-hat',
+    dialogLines: [
+      'Nobody has had a plough through these closes since the flood.',
+      'Gate to gate is the quickest way down - the lane zig-zags because the closes do.',
+      'The fold is still standing at the bottom of it, and past that the NESS.',
+    ],
+  },
+  {
+    id: 'pallet-fields-board',
+    mapId: 'pallet-town',
+    kind: 'sign',
+    position: { x: 48, y: 52 },
+    facing: 'left',
+    dialogLines: [
+      'THE OLD FIELDS - green lane to the sea wall',
+      'Four closes and a lane that turns at every one of them. Every close has one gate and it is never where you are standing.',
+      'At the foot: the NESS, and SALTER COBB across the neck of it.',
+    ],
+  },
+  {
+    id: 'pallet-fields-lad',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 46, y: 64 },
+    facing: 'right',
+    design: 'boy',
+    dialogLines: [
+      'You going out to the light? She will not have it.',
+      'There is a way down her wall onto the hard, but you have to beat her for it first.',
+    ],
+  },
+  {
+    id: 'pallet-hayward',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 22, y: 60 },
+    facing: 'right',
+    design: 'woman',
+    dialogLines: [
+      'Brook rises under the rickyard and runs out on the marsh. It is fresh this far and salt a hundred steps on.',
+      'Ford is on your left. Keep the water on your right after it and you come out on the strand.',
+    ],
+  },
+  {
+    id: 'pallet-withy-cutter',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 12, y: 54 },
+    facing: 'left',
+    design: 'bald-man',
+    dialogLines: [
+      'Osier. Cut every third year and it keeps the whole parish in baskets.',
+      'Causeway is the only dry line through here and it turns four times. Off it is water.',
+      'It comes out on the saltings, same as the Gate Lane does - just slower, and nobody watching.',
+    ],
+  },
+  {
+    id: 'pallet-withy-loft',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 7, y: 52 },
+    facing: 'down',
+    design: 'old-woman',
+    dialogLines: [
+      'Dry them a year before you weave them. Everyone is in too much of a hurry.',
+      'North is the FLOOD and the town. South is the beds, then the marsh, then the sea.',
+    ],
+  },
+  {
+    id: 'pallet-withy-board',
+    mapId: 'pallet-town',
+    kind: 'sign',
+    position: { x: 11, y: 58 },
+    facing: 'left',
+    dialogLines: [
+      'THE WITHY BEDS - causeway only',
+      'Water either side for twenty steps. The beds are cut in plots and the plots are not paths.',
+      'South for THE SALTINGS and the pans. North for the Flood and the town.',
+    ],
+  },
+  {
+    id: 'pallet-withy-boy',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 12, y: 62 },
+    facing: 'left',
+    design: 'youngster',
+    dialogLines: [
+      'Foot of the beds. Salt starts about where the reeds stop.',
+      'Mind the creeks down there - two of them, and one ford each.',
+    ],
+  },
+  {
+    id: 'pallet-salt-hand',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 11, y: 71 },
+    facing: 'right',
+    design: 'heavy-man',
+    dialogLines: [
+      'Pans. Tide fills them, sun empties them, and Cobb counts what is left.',
+      'Walk on the stone. The rest of this is creek with a skin of grass over it.',
+    ],
+  },
+  {
+    id: 'pallet-marsh-board',
+    mapId: 'pallet-town',
+    kind: 'sign',
+    position: { x: 18, y: 66 },
+    facing: 'left',
+    dialogLines: [
+      'THE SALTINGS - two creeks, one ford each',
+      'The tide comes up both of them. What looks like a way over is a way in.',
+      'South for the strand and THE HARD. East for the brook and the meadows.',
+    ],
+  },
+  {
+    id: 'pallet-marsh-fowler',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 14, y: 76 },
+    facing: 'down',
+    design: 'hiker',
+    dialogLines: [
+      'Everything on this marsh is here for the same reason I am.',
+      'Sand starts under you. Groynes run down it - you go round them, not over.',
+    ],
+  },
+  {
+    id: 'pallet-strand-board',
+    mapId: 'pallet-town',
+    kind: 'sign',
+    position: { x: 4, y: 80 },
+    facing: 'down',
+    dialogLines: [
+      'THE STRAND - west end',
+      'The ribs in the sand were a Pallet boat. Nobody has moved her and nobody is going to.',
+      'East along the tide line for THE HARD, and the ferry lies off it.',
+    ],
+  },
+  {
+    // In the glade off the ride's second turn, where the wood was last worked.
+    id: 'pallet-wood-burner',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 48, y: 8 },
+    facing: 'left',
+    design: 'bald-man',
+    dialogLines: [
+      'Hearth is back west along the ride. That one is mine; this one blew down on its own.',
+      'East and the ride runs out at the quarry gate. There is a track off the quarry that is not the way you came.',
+    ],
+  },
+  {
+    // In the rickyard, at the end of the meadow lane. The pound is the one
+    // thing east of here and nobody walks to it by accident.
+    id: 'pallet-rickyard-hand',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 31, y: 55 },
+    facing: 'up',
+    design: 'youngster',
+    dialogLines: [
+      'Hay comes down the Gate Lane and stops here.',
+      'Spur east goes to the pound and nowhere else. If something has been shut in it, it is still in it.',
+    ],
+  },
+  {
+    // The top close of the old fields, where the drove comes off the hill.
+    id: 'pallet-fields-gate-board',
+    mapId: 'pallet-town',
+    kind: 'sign',
+    position: { x: 45, y: 47 },
+    facing: 'left',
+    dialogLines: [
+      'CLOSES - one gate each, and mind which',
+      'The drove comes in at the head of the lane. Everything below is walled.',
+      'THE LIME ROAD is back up the drove; the sea is down the lane.',
+    ],
+  },
+  {
+    // The foot of the old fields, above the neck of the headland.
+    id: 'pallet-fold-keeper',
+    mapId: 'pallet-town',
+    kind: 'npc',
+    position: { x: 59, y: 62 },
+    facing: 'left',
+    design: 'woman',
+    dialogLines: [
+      'Bottom close. The fold is still standing and the sheep are not.',
+      'Lane goes on south to the NESS. That is as far as anybody gets.',
+    ],
+  },
+  {
     id: 'route-1-board',
     mapId: 'route-1',
     kind: 'sign',

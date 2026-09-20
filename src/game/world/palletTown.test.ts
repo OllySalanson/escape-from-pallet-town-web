@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { RAID_CONTRACTS } from '../objectives';
 import { RUN_INSERTIONS } from '../run/runGeneration';
+import { RAID_DURATION_MS } from '../run/raidClock';
+import { STEP_DURATION_MS } from '../movement/stepClock';
 import { getWorldMap } from '../worldMap';
 import { EXTRACTION_POINTS } from './extractionPoints';
 import { gatesForMap } from './gates';
@@ -10,8 +12,28 @@ import { exitTile, steps } from './redrawnMaps.testkit';
 const MAP = 'pallet-town';
 const LEE = 'grass-scout-lee';
 const VANCE = 'pallet-mill-keeper-vance';
+const COBB = 'pallet-salt-keeper-cobb';
+const FINN = 'pallet-quarry-breaker-finn';
+const ASH = 'pallet-drover-ash';
+const PIKE = 'pallet-netter-pike';
+/** Every trainer on the map still standing: a fresh save's collision. */
+const STANDING = [LEE, VANCE, COBB, FINN, ASH, PIKE];
 /** The miller beaten: both ends of the towpath open. */
 const WON = ['pallet-mill-keeper'];
+/** Both keepers beaten: the town is a ring and so is the south. */
+const ALL_WON = ['pallet-mill-keeper', 'pallet-salt-keeper'];
+const quarry = RUN_INSERTIONS['pallet-quarry'].position;
+const hard = RUN_INSERTIONS['pallet-strand'].position;
+const ferryHard = exitTile(MAP, 'FERRY HARD');
+const quarryTrack = exitTile(MAP, 'QUARRY TRACK');
+const headland = exitTile(MAP, 'HEADLAND STEPS');
+/** The neck of the headland, one step above Salter Cobb's gate. */
+const NESS = { x: 56, y: 70 };
+/** The Flood's south shore, where the withy causeway leaves the town. */
+const FLOOD_SHORE = { x: 8, y: 38 };
+/** The head of the Gate Lane, where the other road south leaves the stockyard. */
+const GATE_LANE = [{ x: 19, y: 39 }, { x: 20, y: 39 }];
+const WITHY_PATH = [{ x: 7, y: 39 }, { x: 8, y: 39 }];
 const square = RUN_INSERTIONS['town-square'].position;
 const farBank = RUN_INSERTIONS['pallet-far-bank'].position;
 const ledger = RAID_CONTRACTS.find((contract) => contract.id === 'cordon-ledger')!.markers[0].position;
@@ -91,21 +113,114 @@ describe('Pallet Town', () => {
     }).toEqual({ eastDoor: 10, southDoor: 6 });
   });
 
-  it('lets a fresh raid walk to every landmark and to both unheld exits with Lee still standing', () => {
-    const walk = { standing: [LEE, VANCE] };
+  /**
+   * What a fresh save can walk to, and what each keeper is worth.
+   *
+   * The map is four times what it was and is entered at one corner of it, so
+   * "can a raid reach the thing it was sent for" is no longer obvious by
+   * looking. Two keepers hold two places between them - the far bank behind
+   * the miller, the headland behind the salter - and everything else is open
+   * from the first second, however far away it is.
+   */
+  it('lets a fresh raid walk to everything but the two places a keeper holds', () => {
+    const walk = { standing: STANDING };
+    const held = new Set(['MILL STAIR', 'HEADLAND STEPS', 'BEACON LIGHT']);
     for (const point of EXTRACTION_POINTS.filter((candidate) => candidate.mapId === MAP)) {
-      // The Mill Stair is on the far bank, which is what the miller holds. A
-      // fresh save still has two ways out: the gate road and the culvert.
-      const reachable = point.label !== 'MILL STAIR';
-      expect(`${point.label}: ${steps(MAP, square, point.position, walk) > 0}`).toBe(
-        `${point.label}: ${reachable}`,
-      );
-      expect(`${point.label} once he is beaten: ${steps(MAP, square, point.position, { ...walk, beaten: WON }) > 0}`)
-        .toBe(`${point.label} once he is beaten: true`);
+      expect(`${point.label}: ${steps(MAP, square, point.position, walk) > 0}`)
+        .toBe(`${point.label}: ${!held.has(point.label)}`);
+      expect(`${point.label} with both keepers beaten: ${steps(MAP, square, point.position, { ...walk, beaten: ALL_WON }) > 0}`)
+        .toBe(`${point.label} with both keepers beaten: true`);
     }
     for (const poi of getWorldMap(MAP).pois) {
-      expect(`${poi.label}: ${steps(MAP, square, poi.position, walk) > 0}`).toBe(`${poi.label}: true`);
+      expect(`${poi.label}: ${steps(MAP, square, poi.position, walk) > 0}`)
+        .toBe(`${poi.label}: ${!held.has(poi.label)}`);
+      expect(`${poi.label} with both keepers beaten: ${steps(MAP, square, poi.position, { ...walk, beaten: ALL_WON }) > 0}`)
+        .toBe(`${poi.label} with both keepers beaten: true`);
     }
+  });
+
+  /**
+   * The one thing a map four times the size can get wrong that a small one
+   * cannot: a raid that drops in somewhere and cannot get home before the
+   * clock runs out. Every landing is pinned against the clock rather than
+   * against a number typed here, so shortening the raid fails this rather than
+   * quietly stranding somebody - the same discipline `recovery.ts` follows.
+   *
+   * The worst of them is the front door, and it is seven seconds of walking
+   * out of five minutes. That is the design: the valley is long, and what it
+   * spends the clock on is everything you stopped for on the way.
+   */
+  it('gives every landing a way home inside a tenth of the clock', () => {
+    const walk = { standing: STANDING };
+    const home = Object.fromEntries(
+      Object.values(RUN_INSERTIONS)
+        .filter((insertion) => insertion.mapId === MAP)
+        .map((insertion) => {
+          const reachable = EXTRACTION_POINTS.filter((point) => point.mapId === MAP)
+            // An exit a landmark has to open is not a way home until it is open.
+            .filter((point) => point.requirement?.kind !== 'poi-activated')
+            .map((point) => steps(MAP, insertion.position, point.position, walk))
+            .filter((count) => count > 0);
+          return [insertion.label, Math.min(...reachable)];
+        }),
+    );
+    expect(home).toEqual({ 'Town Square': 49, 'The Far Bank': 3, 'The Quarry': 9, 'The Hard': 4 });
+    for (const [label, count] of Object.entries(home)) {
+      expect(`${label}: ${((count * STEP_DURATION_MS) / RAID_DURATION_MS) < 0.1}`).toBe(`${label}: true`);
+    }
+  });
+
+  /**
+   * And the other half of the same fact: the map is genuinely long. The two
+   * landings furthest apart are the quarry in the east hills and the hard at
+   * the mouth of the valley, and walking between them is a quarter of a minute
+   * of a five-minute raid - far enough that a raid is one end of the valley or
+   * the other, and never both.
+   */
+  it('is a valley you cannot see the far end of, and can still walk out of', () => {
+    const acrossTheValley = steps(MAP, quarry, hard, { beaten: ALL_WON });
+    expect(acrossTheValley).toBe(171);
+    const share = (acrossTheValley * STEP_DURATION_MS) / RAID_DURATION_MS;
+    expect(`crossing the valley is ${(share * 100).toFixed(0)}% of the clock`)
+      .toBe('crossing the valley is 9% of the clock');
+    expect({
+      squareToTheFerry: steps(MAP, square, ferryHard, { standing: STANDING }),
+      squareToTheQuarryTrack: steps(MAP, square, quarryTrack, { standing: STANDING }),
+    }).toEqual({ squareToTheFerry: 127, squareToTheQuarryTrack: 75 });
+  });
+
+  /**
+   * Two roads out of the town's south bank, and they are two different
+   * countries. The Gate Lane leaves the stockyard into hedged hay meadows; the
+   * withy causeway drops off the Flood's shore into osier beds with standing
+   * water either side of it. They meet again on the saltings, so shutting
+   * either one still leaves a way to the sea - which is what stops the south
+   * being one corridor with the whole map behind it.
+   */
+  it('gives the south two heads that meet on the marsh', () => {
+    expect({
+      byTheWithyBeds: steps(MAP, FLOOD_SHORE, hard, { without: GATE_LANE }),
+      byTheGateLane: steps(MAP, FLOOD_SHORE, hard, { without: WITHY_PATH }),
+    }).toEqual({ byTheWithyBeds: 83, byTheGateLane: 109 });
+  });
+
+  /**
+   * Salter Cobb is the far end of the map from Miller Vance and holds the same
+   * shape of door: the gate across the headland's neck, and the steps down its
+   * west face onto the hard. Shut, the headland is the one place on the south
+   * that nothing reaches; open, the whole south is a ring - the Gate Lane down
+   * through the meadows, the marsh, the strand, the hard, the headland, the old
+   * fields and the drove back up to the sluice apron.
+   */
+  it('turns the south into a ring once the salter is beaten', () => {
+    expect(steps(MAP, hard, headland, { standing: STANDING })).toBe(-1);
+    expect({
+      roundByTheDrove: steps(MAP, hard, NESS, {}),
+      overTheSteps: steps(MAP, hard, NESS, { beaten: ALL_WON }),
+    }).toEqual({ roundByTheDrove: 181, overTheSteps: 33 });
+    // The steps land on ground a player coming the long way round has already
+    // walked, which is what every second door in this game is for.
+    expect(steps(MAP, hard, headland, { beaten: ALL_WON })).toBe(31);
   });
 
   /**

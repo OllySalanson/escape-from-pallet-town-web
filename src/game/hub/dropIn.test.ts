@@ -68,11 +68,13 @@ describe('what the drop-in screen says about a place', () => {
       contextFor('town-square', { defeatedBosses: ['pallet-mill-keeper'] }),
     );
 
-    expect(before.grade.bossesHeld).toBe(1);
-    expect(after.grade.bossesHeld).toBe(0);
+    // Two keepers on this map now: the miller at the millpond and the salter
+    // at the other end of the valley, so beating one leaves one standing.
+    expect(before.grade.bossesHeld).toBe(2);
+    expect(after.grade.bossesHeld).toBe(1);
     expect(after.grade.bossesBeaten).toBe(1);
     expect(after.grade.trainers).toBeLessThan(before.grade.trainers);
-    expect(after.doors.every((door) => door.open)).toBe(true);
+    expect(after.doors.filter((door) => door.open)).toHaveLength(2);
     expect(before.doors.every((door) => !door.open)).toBe(true);
   });
 

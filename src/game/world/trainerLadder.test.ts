@@ -76,6 +76,7 @@ const LADDER: readonly [string, string][] = [
   ['floodplain-toll-keeper-briggs', 'TOLLMAN BRIGGS'],
   ['overlook-warden-wren', 'WARDEN WREN'],
   ['pallet-mill-keeper-vance', 'MILLER VANCE'],
+  ['pallet-salt-keeper-cobb', 'SALTER COBB'],
   ['forest-ridge-keeper-pell', 'LOOKOUT PELL'],
   ['forest-quarry-keeper-mott', 'QUARRYMAN MOTT'],
   ['floodplain-sluice-keeper-dane', 'SLUICE KEEPER DANE'],
@@ -97,11 +98,16 @@ describe('the boss ladder, played out', () => {
   /**
    * A boss every starter can lose to is a hard fight; a boss only one starter
    * can win is a lottery, which is why Scout Lee fields a Squirtle rather than
-   * a Bulbasaur. None of the three new bosses may be out of reach of a lone
+   * a Bulbasaur. None of the four new bosses may be out of reach of a lone
    * levelled starter, and none may be a walkover for the team.
    */
   it('keeps every new boss inside the band the other doors sit in', () => {
-    for (const id of ['pallet-mill-keeper-vance', 'forest-ridge-keeper-pell', 'forest-quarry-keeper-mott']) {
+    for (const id of [
+      'pallet-mill-keeper-vance',
+      'pallet-salt-keeper-cobb',
+      'forest-ridge-keeper-pell',
+      'forest-quarry-keeper-mott',
+    ]) {
       const trainer = trainerOf(id);
       const solo = trainerWinRate(SOLO, trainer, TRIALS);
       const team = trainerWinRate(TEAM, trainer, TRIALS);

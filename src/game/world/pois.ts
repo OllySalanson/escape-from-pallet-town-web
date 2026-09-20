@@ -71,6 +71,84 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     unlockedExtractionLabel: 'WEST CULVERT',
   },
   {
+    // The charcoal burner's floor in the high wood, off the first turn of the
+    // ride. Whatever he was cutting for, he left the hut standing.
+    id: 'pallet-charcoal-hearth',
+    mapId: 'pallet-town',
+    position: { x: 38, y: 4 },
+    label: 'CHARCOAL HEARTH',
+    description: 'The burner\'s floor in the high wood, a short climb east of the north field. Two Poke Balls in the hut and a Potion on the stump.',
+    reward: [
+      { itemId: 'poke-ball', quantity: 2 },
+      { itemId: 'potion', quantity: 1 },
+    ],
+  },
+  {
+    // The level driven into the quarry's west face. The quarry is a raid's
+    // whole width from the town, so what is in it pays for the walk.
+    id: 'pallet-quarry-adit',
+    mapId: 'pallet-town',
+    position: { x: 53, y: 17 },
+    label: 'THE ADIT',
+    description: 'The level driven into the quarry face, still shored and still stocked. A Great Ball and a Super Potion, a whole valley east of the square.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    // The salt works in the middle of the marsh: the one thing on the saltings
+    // anybody kept up, and the only reason to leave the causeway.
+    id: 'pallet-salt-pans',
+    mapId: 'pallet-town',
+    position: { x: 8, y: 71 },
+    label: 'THE SALT PANS',
+    description: 'The pans worked between the two creeks, and the barrels stacked on the walk between them. A Potion and an Antidote.',
+    reward: [
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    // Behind both of Salter Cobb's doors, on the seaward side of the light.
+    // The only cache on this map that costs a boss.
+    id: 'pallet-beacon-light',
+    mapId: 'pallet-town',
+    position: { x: 61, y: 80 },
+    label: 'BEACON LIGHT',
+    description: 'The lamp store on the seaward side of the beacon, behind the salter\'s two doors. Two Great Balls and a Super Potion.',
+    reward: [
+      { itemId: 'great-ball', quantity: 2 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    // The spring the millpond is fed by, under a stone house in the hanger.
+    // The mill's own water, half a valley from the mill.
+    id: 'pallet-spring-house',
+    mapId: 'pallet-town',
+    position: { x: 37, y: 22 },
+    label: 'SPRING HOUSE',
+    description: 'The stone house over the spring in the hanger, where the millpond starts. Somebody keeps a Potion and an Antidote on the sill.',
+    reward: [
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    // The old landing stage out in the marsh, from when the saltings were
+    // worked by boat rather than walked. The one thing to make for out there.
+    id: 'pallet-staithe',
+    mapId: 'pallet-town',
+    position: { x: 25, y: 70 },
+    label: 'THE STAITHE',
+    description: 'The old landing stage out on the saltings, between the two creeks. A Poke Ball and a Potion in what is left of the locker.',
+    reward: [
+      { itemId: 'poke-ball', quantity: 1 },
+      { itemId: 'potion', quantity: 1 },
+    ],
+  },
+  {
     id: 'oak-field-station-relay',
     mapId: 'route-1',
     position: { x: 26, y: 15 },

@@ -119,6 +119,47 @@ export const PALLET_YARD_WILDLIFE = wildlife(0.08, [
   { speciesId: 'charmander', minLevel: 4, maxLevel: 5, weight: 1 },
 ]);
 
+/**
+ * The wood above the valley - the ride, the charcoal hearth and the hanger.
+ * A deer wood in a farming parish is caterpillars and birds and nothing that
+ * would frighten a level-5 partner, which is the whole of what Pallet is for.
+ */
+export const PALLET_WOOD_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'caterpie', minLevel: 3, maxLevel: 5, weight: 4 },
+  { speciesId: 'weedle', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'spearow', minLevel: 3, maxLevel: 4, weight: 1 },
+]);
+
+/** Hay meadows and hedged closes: grazing, and what lives in a hedge bottom. */
+export const PALLET_MEADOW_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 4 },
+  { speciesId: 'jigglypuff', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'nidoran-f', minLevel: 3, maxLevel: 4, weight: 2 },
+  { speciesId: 'caterpie', minLevel: 3, maxLevel: 4, weight: 1 },
+]);
+
+/**
+ * Osier beds and salt marsh - standing water all the way to the tide. It is
+ * the Flood's own mix moved down the valley and thinned: a Poliwag takes a
+ * Charmander to nil, so the marsh is the one southern place a Fire lead has to
+ * read before it walks in.
+ */
+export const PALLET_MARSH_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'poliwag', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'venonat', minLevel: 3, maxLevel: 4, weight: 3 },
+  { speciesId: 'psyduck', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'magikarp', minLevel: 4, maxLevel: 5, weight: 2 },
+]);
+
+/** The hard and the tide line: gulls, cats on the quay, and what the sea puts up. */
+export const PALLET_SHORE_WILDLIFE = wildlife(0.08, [
+  { speciesId: 'spearow', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'meowth', minLevel: 3, maxLevel: 4, weight: 3 },
+  { speciesId: 'krabby', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'shellder', minLevel: 4, maxLevel: 5, weight: 1 },
+]);
+
 // -- Route 1 ----------------------------------------------------------------
 
 /** The long meadows: Kanto's own roadside pair, and a level above is the rare roll. */

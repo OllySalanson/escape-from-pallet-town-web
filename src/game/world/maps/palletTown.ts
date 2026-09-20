@@ -2,53 +2,112 @@ import { MapSketch } from '../mapGrid';
 import type { FloodTownPropName } from '../tileset/floodTownTileset';
 
 /**
- * Pallet Town - the mill town on the leat.
+ * Pallet Town - the mill town on the leat, and the valley it stands in.
  *
- * 32x44, the shipped footprint and not a tile bigger: dense, not vast. One
- * water runs through it and is the whole of its shape. The millpond stands in
- * the east; its race runs south out of it; the race turns west as the leat and
- * cuts the town in two; and the leat ends in the Flood, the pool in the
- * south-west that the culvert drains. So the water is the wall between north
- * and south, the ways over it are the prices of the map, and the sluice at the
- * head of the leat is what the far end of it answers to.
+ * 64x88. It was 32x44 and it was the town alone; the town is unchanged, tile
+ * for tile, and everything round it is new. What the extra ground is *for* is
+ * the thing a five-minute raid on a vast map is for: you drop in at one corner
+ * of a parish, walk a part of it, and leave knowing what you did not get to.
+ * Crossing the whole valley - the quarry in the east hills to the hard at the
+ * mouth - is 171 steps, a ninth of the clock, so a raid is one end of it or the
+ * other and never both.
  *
- * Seven places:
+ * **One water, from the spring to the tide.** The old map's promise was that
+ * the water is the whole of its shape, and it still is, only longer: the spring
+ * rises in the hanger above the far bank, the millpond it feeds runs the mill,
+ * the race carries it south, the leat cuts the town in two, and the Flood is
+ * where the leat dies and the culvert takes it under the ridge. Below the ridge
+ * nothing is fresh: the tide comes up the creeks into the saltings, the salt
+ * pans are worked between them, and the strand and the hard are the sea's.
+ * Salt and fresh never meet on this map, which is why the south is entered by
+ * two roads over dry land rather than by following the water down.
  *
- * - MARKET SQUARE (north-west) - the two houses side by side, as this town has
- *   always been drawn, and the paved square in front of them. The front door.
- * - THE NORTH FIELD (north-east) - meadow gone to tall grass round two old
- *   trees, and the only way round the pond.
- * - THE MILLPOND (east) - the mill on its west bank, and on the far bank the
- *   stair cut into the rock: the one way out that never crosses the leat.
+ * **Twenty-one places.** The seven the town always had:
+ *
+ * - MARKET SQUARE (north-west) - the two houses and the paved square. The front door.
+ * - THE NORTH FIELD (north) - tall grass round two old trees; the way round the pond.
+ * - THE MILLPOND (east) - the mill, and the stair cut in the rock on the far bank.
  * - THE GREEN (west) - the town pump, the bench and the oak, under the square.
- * - THE ALLOTMENTS (middle) - three sheds and their beds gone to seed. The
- *   ledger is in there, and nothing in there is free.
- * - THE STOCKYARD (south) - the bridge foot and who holds it, the paddocks, the
- *   sluice at the east end of the bank, and the road down to the South Gate.
- * - THE FLOOD (south-west) - the leat's drowned end, its reeds, and the culvert
- *   mouth on the far shore.
+ * - THE ALLOTMENTS (middle) - three sheds gone to seed. The ledger is in there.
+ * - THE STOCKYARD (south) - the bridge foot, the paddocks, the sluice, the gate road.
+ * - THE FLOOD (south-west) - the leat's drowned end, and the culvert on its shore.
  *
- * Three crossings, three prices (`palletTown.test.ts` holds them): the bridge is
- * the quick way and Scout Lee stands in the one gap at its foot; the west ford
- * lands in the Flood's reeds, where nothing is free; the east ford is dry all
- * the way to the gate, and the long way round. A fourth way goes round the head
- * of the water altogether, past the Mill Stair, and is twice as long again.
+ * Five up the valley, east of the town, reached by the ride out of the north
+ * field and by the kiln road off the sluice apron - and the two are separate
+ * countries, because the wood between them stands on the rock the Mill Stair is
+ * cut into:
+ *
+ * - THE HIGH WOOD (north-east) - the ride in three short reaches, the charcoal
+ *   hearth off its first turn, a glade with a fallen tree off its second.
+ * - THE HANGER (east) - beech wood on the slope, and the spring house in it.
+ * - THE QUARRY (far east) - the stone the town is built of, its pit flooded, its
+ *   adit open, and its own track out to the north-east.
+ * - THE DROVE (south-east) - the walled road off the apron, stepping east down
+ *   the hill in six short reaches.
+ * - THE KILNS (far east, below the quarry) - lime kilns cut into the rock, and
+ *   the lime road out. The quarry's south bench stands over them, and the drop
+ *   off it is the one route only the player has (`ledges.ts`).
+ *
+ * And nine down the valley, south of the town, entered by the Gate Lane out of
+ * the stockyard or by the withy causeway off the Flood's shore:
+ *
+ * - THE WITHY BEDS (south-west) - osier cut in wet plots, standing water either
+ *   side of the causeway for twenty steps.
+ * - THE WATER MEADOWS (south) - hedged hay closes off the Gate Lane, the
+ *   rickyard at the foot of them, and the brook rising under it.
+ * - THE POUND (south, in the wood) - the parish pound at the head of a green
+ *   spur, and a dead end on purpose.
+ * - THE OLD FIELDS (south-east) - small closes nobody has ploughed since the
+ *   flood, off a green lane that zig-zags down to the sea wall.
+ * - THE SALTINGS (far south-west) - salt marsh, two creeks with one ford each,
+ *   and the pans worked between them.
+ * - THE STRAND (far south) - groyned sand between the marsh and the sea.
+ * - THE HARD (far south) - the stone slip the ferry lies off.
+ * - THE NESS (far south-east) - the neck of the headland, and the gate across it.
+ * - THE BEACON (far south-east) - the headland: bare turf, a rock spine, the light.
+ *
+ * **Two keepers, two doors each.** Miller Vance holds the far bank as he always
+ * did; Salter Cobb holds the headland at the other end of the map, with the
+ * gate across the ness and the steps down its west face onto the hard. Each is
+ * the same shape: the door in front of you, and a second that opens onto ground
+ * you already walked. Beaten, the town is a ring and so is the south.
+ *
+ * **Seven ways out**, because the valley is long and a raid that drops into one
+ * end of it must never be stranded there: SOUTH GATE and WEST CULVERT and MILL
+ * STAIR in the town, QUARRY TRACK above and LIME ROAD below in the east hills,
+ * FERRY HARD on the shore and HEADLAND STEPS behind the salter's doors. From
+ * every landing the nearest of them is under a tenth of the clock away, which
+ * `palletTown.test.ts` holds against `RAID_DURATION_MS` rather than a number.
+ *
+ * Three crossings of the leat, three prices (`palletTown.test.ts` holds them):
+ * the bridge is the quick way and Scout Lee stands in the one gap at its foot;
+ * the west ford lands in the Flood's reeds, where nothing is free; the east ford
+ * is dry all the way to the gate, and the long way round. A fourth way goes
+ * round the head of the water altogether, past the Mill Stair, and is twice as
+ * long again. None of the new ground adds a fifth: everything east of the town
+ * is either north of the water or south of it and never both.
  *
  * Drawn as character art, one character per tile, in the Floodplain's hand: the
  * base is solid wood with a tree on a lattice, and every place is cut out of
  * it. Legend as `floodplainRelay.ts`: `W` deep water, `w` a ford, `.` grass,
  * the double quote mown turf, `g` tall grass, `,` trodden earth, `P` paving,
- * `M` stone, `#` hedge, `T` thicket, `C` rock, `F` fence; `t` a tree of the
- * forest, `o` one that stands in grass, `p` a pine, `b` a tall bush. Earth and
- * paving are laid two tiles wide or not at all - this sheet draws a lane's edge
- * on one side of a tile, so a one-tile lane has a fringe down one side and a
- * bare cut down the other - and what is one tile wide is grass, which has no
- * edge to get wrong.
+ * `M` stone, `v` gravel, `d` dry sand, `~` beach at the waterline, `#` hedge,
+ * `T` thicket, `C` rock, `F` fence; `t` a tree of the forest, `a` the other
+ * broadleaf, `o` one that stands in grass, `p` and `q` the two pines, `b` a tall
+ * bush. Earth and paving are laid two tiles wide or not at all - this sheet
+ * draws a lane's edge on one side of a tile, so a one-tile lane has a fringe
+ * down one side and a bare cut down the other - and what is one tile wide is
+ * grass, which has no edge to get wrong.
+ *
+ * The blocks below are in drawing order and the order matters twice: the ground
+ * comes before what grows on it, and the planting pass comes before the two
+ * places cut *after* it, so a pine the planting stood in the pound is felled by
+ * the pound's own ground rather than left standing in a hurdle ring.
  */
 export function sketchPalletTown(): MapSketch<FloodTownPropName> {
   const map = new MapSketch<FloodTownPropName>({
-    width: 32,
-    height: 44,
+    width: 64,
+    height: 88,
     fill: '.',
     stamps: {
       t: {
@@ -58,6 +117,17 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
         bare: 'T',
         blocks: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]],
       },
+      // A second broadleaf and a second pine, so a wood is not one crown
+      // repeated: the lattice is regular by construction and the planting pass
+      // below is what stops it reading as a printed pattern.
+      a: {
+        prop: 'treeAlt',
+        anchor: [1, 2],
+        ground: '.',
+        bare: 'T',
+        blocks: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]],
+      },
+      q: { prop: 'pineAlt', anchor: [0, 2], ground: '.', blocks: [[0, -1], [1, -1], [1, 0]] },
       o: { prop: 'tree', anchor: [1, 2], ground: '.' },
       p: { prop: 'pine', anchor: [0, 2], ground: '.', blocks: [[0, -1], [1, -1], [1, 0]] },
       b: { prop: 'tallBush', anchor: [0, 2], ground: 'T' },
@@ -72,50 +142,94 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
   // three, because a race is a cut and a leat is a stream, and no tree of the
   // lattice is left standing where its crown would hang in water.
   map.draw(0, 0, [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTTTTtTTTTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTWWWWWWWTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTWWWWWWWTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTTTTTWWTTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTT',
-    'TTWWWWWWWWWWWWWWWWWWWWWWWWTTTTTT',
-    'TTWWWWWWWWWWWWWWWWWWWWWWWWTTTtTT',
-    'TTWWWWWWWWWWWWWWWWWWWWWWWWTTTTTT',
-    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTWWWWWTtTTtTTtTTtTTtTTtTTtTTTTT',
-    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTWWWWWTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTTTTTTTTTTtTTtTTTTTTTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTTTTtTTtTTTTTtTTtTTtTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTTTTtTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTWWWWWWWTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTWWWWWWWTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTTTTTWWTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTTWWTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTWWWWWWWWWWWWWWWWWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTWWWWWWWWWWWWWWWWWWWWWWWWTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTWWWWWWWWWWWWWWWWWWWWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTWWWWWTtTTtTTtTTtTTtTTtTTtTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTWWWWWTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTWWWWWTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTTTTTTTTTTtTTtTTTTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTTTTtTTtTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ]);
 
   //            0         1         2         3
@@ -276,6 +390,384 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
   map.draw(29, 34, ['T']);
   map.draw(29, 36, ['T']);
 
+
+  // == THE HIGH WOOD ========================================================
+  // The ride leaves the north field by a gap in the wood bank and climbs east
+  // in three short reaches, never one run - the same staircase the mill lane
+  // makes down in the town. Off its first turn is the charcoal hearth: a burnt
+  // floor with the burner's hut on it, cordwood stacked and a ring of stumps.
+  // Off its second is a glade of tall grass with a fallen tree across it. The
+  // third reach ends at the wood gate and the quarry's own track.
+  map.draw(29, 3, [
+    '       vvvvvv                      ',
+    '       vvvvvv                      ',
+    '  ,,,, vvvvvv                      ',
+    '  ,,,, vvvvvv g.ggg.               ',
+    '    ,,,,,,,,  .gg.g.               ',
+    '    ,,,,,,,,  gg..g.               ',
+    '          ,,,,,,,,                 ',
+    '          ,,,,,,,,                 ',
+    '                ,,,,,,,,           ',
+    '                ,,,,,,,,           ',
+  ]);
+  map.plant(36, 3, 'hut');
+  map.plant(40, 3, 'crateStack');
+  map.plant(40, 5, 'bigStump');
+  map.plant(44, 7, 'log');
+  map.plant(47, 6, 'deadStump');
+
+  // == THE SCARP, THE HANGER AND THE QUARRY =================================
+  // The rock the Mill Stair is cut into does not stop at the stair: it runs the
+  // whole length of the far bank and turns the corner, so the towpath below and
+  // the wood above never meet. On top of it is the hanger - a beech wood on the
+  // slope, with the spring the millpond is fed by rising in the middle of it
+  // and going under the scarp - and east of that the quarry the town is built
+  // out of, its floor flooded at the deep end and its track out to the
+  // north-east. The quarry's south bench stands over the kilns and is the only
+  // way down that is not the whole valley round: see `ledges.ts`.
+  map.draw(31, 13, [
+    '                  ,,,,,,,        ',
+    '                  ,,  vvvvvvvv   ',
+    '                  ,,  vvCCvvvvv. ',
+    '                  ,,  vCCCvvvvv. ',
+    '             ,,,,,,,  vvvvvv     ',
+    '       ,,,,,,,        vvvvvv     ',
+    '       ,,ggg..        vvWWWvv    ',
+    '      .gg..g..       vvvWWWvvv   ',
+    '      ..g.gg.        vvvWWWWvv   ',
+    '     .gg..g..        CCvWWWWvv   ',
+    '     .g.WW.g.        CCvvWWvvv   ',
+    '     ..gWW..g         Cvvvvvvv   ',
+    '      .g..gg.         CCvvvvv    ',
+    '       .ggg.          CCvvvv     ',
+    '                       Cvvvv     ',
+    '                       CCvvv     ',
+    '                       CCvvv     ',
+    '                         vvv     ',
+    '                         CCC     ',
+  ]);
+  map.plant(38, 22, 'shrine');
+  map.plant(56, 14, 'mineMouth');
+  map.plant(59, 17, 'crateTower');
+  map.plant(53, 26, 'boulder');
+  map.plant(59, 24, 'boulder');
+  map.plant(60, 21, 'barrelPair');
+
+  // == THE KILN ROAD ========================================================
+  // East off the sluice apron, under the scarp: the road the lime went out by.
+  map.draw(27, 30, [
+    ',,,,,,,,',
+    ',,,,,,,,',
+  ]);
+
+  // == THE DROVE AND THE KILNS ==============================================
+  // Below the scarp the ground is the town's other trade: the lime kilns cut
+  // into the bank, their burnt floor, and the walled drove road that the stone
+  // and the stock both came down. The drove runs south out of the valley.
+  map.draw(31, 32, [
+    '  ,,                             ',
+    '  ,,                vvvvCCvvvvvv ',
+    '  ,,                vvCCCCCCvvvv ',
+    '  ,,,,,,          vvvvCCCCCCvvvv ',
+    '      ,,          vvvvCCCCvvvvvv ',
+    '      ,,          vvvvvvCCvvvvv  ',
+    '      ,,,,,,      vvvvvvvCCvvv   ',
+    '          ,,      vvvvvvCvvvv    ',
+    '          ,,,,,,  vvvvvCCvvv     ',
+    '              ,,    vvvvvvv      ',
+    '              ,,,,,,,,           ',
+    '                  ,,             ',
+    '                  ,,             ',
+  ]);
+
+
+  // == THE WITHY BEDS AND THE WATER MEADOWS =================================
+  // Two ways out of the town's south bank, and two different countries. The
+  // west one drops off the Flood's shore into the withy beds - osier cut in
+  // wet plots with a causeway between them, standing water either side of you
+  // for twenty steps. The east one is the Gate Lane out of the stockyard, into
+  // hedged hay meadows with a rickyard at the foot of them, and past the
+  // rickyard the brook rises and runs south to the tide.
+  map.draw(0, 39, [
+    '       ..          ,,               ',
+    '    .....          ,,               ',
+    '    ,,gWWg#       g,,g              ',
+    '    ,,gWWg.       g,,,,,,g          ',
+    '    ,,g.gg#      ######,,#######    ',
+    '    ,,##WW##     #.gg.#,,#gg.g.#    ',
+    '    ,,,,,,,g     #..g.#,,#.gg..#    ',
+    '    WWW..,,#g    #g..g.,,#g..gg#    ',
+    '    WWWg.,,g.    #.g.g#,,.g...g#    ',
+    '    #WWg.,,gg    ######,,#######    ',
+    '    #WWg.,,g.          ,,,,,,,      ',
+    '    WW.g.,,gg               ,,      ',
+    '    #####,,###              ,,vvvvvv',
+    '    ,,,,,,,gg               ,,vvvvvv',
+    '    ,,gg.WWgg               ,,vvvvvv',
+    '    ,,g.gWWg.               ,,vvvvvv',
+    '    ,,gWWg.gg             ,,,,vvvv  ',
+    '    ,,gWWg.g.           WW,,        ',
+    '    ,,########          WW,,        ',
+    '    ,,,,,,,g.        .g.WW,,        ',
+    '    ##WW.,,gg        g..WW,,        ',
+    '    .ggWW,,g.        ..wwww,        ',
+    '    gg.g.,,gg        .g.WW,,        ',
+    '    .gg.g,,g.        gg.WW,,        ',
+    '    g.gg.,,gg        g..WW,,        ',
+  ]);
+  map.plant(32, 51, 'barn');
+  map.plant(30, 53, 'crateStack');
+  map.plant(30, 51, 'sack');
+  map.plant(9, 44, 'deadStump');
+
+  // == THE OLD FIELDS =======================================================
+  // East of the meadows the hill is walled into small closes that nobody has
+  // taken a plough through since the flood - a green lane between them, the
+  // sheep fold still standing at the top of it, and the lane going on south to
+  // the sea wall. The drove off the kiln road comes in at the head of it.
+  map.draw(36, 44, [
+    '       ######,,#########    ',
+    '       #.gg.#,,#g.g..g.#    ',
+    '       #g..g#,,..g..g.g#    ',
+    '       #.g.g#,,#.gg.g.g#    ',
+    '       #g.gg.,,#g..g.g.#    ',
+    '       ######,,#########    ',
+    '       ,,,,,,,,             ',
+    '       ,,######             ',
+    '       ,,#.g.g#             ',
+    '       ,,#g..g#             ',
+    '       ,,..gg.#             ',
+    '       ,,#g.g.#             ',
+    '       ,,#..g.#             ',
+    '       ,,#g.gg#             ',
+    '       ,,,,,,,,             ',
+    '             ,,,,,          ',
+    '        ########,,########  ',
+    '        #.g.g.##,,#g..g.g#  ',
+    '        #g.g...#,,#.g.gg.#  ',
+    '        #.gg.g,,,,#g.g..g#  ',
+    '        #g..g.##,,.gg.g.g#  ',
+    '        #.g.gg##,,#g.g..g#  ',
+    '        ########,,########  ',
+    '                ,,,,,,      ',
+    '                    ,,      ',
+  ]);
+  map.plant(57, 62, 'hut');
+  map.plant(45, 56, 'boulder');
+
+
+
+  // == THE SALTINGS, THE STRAND, THE HARD AND THE BEACON ====================
+  // Where the valley ends. Salt and fresh never meet on this map: the leat's
+  // water goes under the ridge at the Flood and is gone, and everything from
+  // here down belongs to the tide. The marsh is cut by two creeks with one ford
+  // each, the salt pans are worked in the middle of it, the strand below is
+  // groyned, and the stone hard east of it is where the ferry lies off. The
+  // headland is a place of its own behind SALTER COBB's two doors.
+  map.draw(0, 64, [
+    '        gg.g        .g.gg..g                                    ',
+    '      g.ggWWg.     g.g.gggWW                                    ',
+    '     .gg.gWWg.gg.g.ggWWg.g.g                                    ',
+    '    g.WWgg.g.g.g.gWWg.g.gg.g                                    ',
+    '    WWWWWWWWwwWWWWWWWWWWWWWW                                    ',
+    '    WWWWWWWWwwWWWWWWWWWWWWWW                            ,,      ',
+    '    g.g.MMMM.WWg.WW.g.g.gg.g                            ,,      ',
+    '    g.g.MWWM.g.gWWg.gMWWM.g.                          ,,,,      ',
+    '    .gg.MWWM.WWg.g.g.MWWM.g.                          ,,        ',
+    '    g.g.MMMM.WW.g.WW.gMMMM.g                          ,,        ',
+    '    WWWWWWWWWWWWWWWwwWWWWWWW                          ,,,,      ',
+    '    WWWWWWWWWWWWWWWwwWWWWWWW                     """"""",,      ',
+    '    .gg.WWg.gg.g.gWWg.g.gg.g g.gg.g             C""""CC",,""""" ',
+    '    g.g.gg.WW.g.g.g.WW.g.WWg.gg.g.gg           CC""""CCC""""""" ',
+    '    .g.ggWW.gg.g.gWWg.g.g.g. .g.gg.g         C"""""""CC"""""""" ',
+    '  ddddFdddddddddFddddddddddF MMMMMMMCMMMMMMMCC"CC"""""CC""""""" ',
+    '  dddddddddFdddddddddFdddddddMMCMMMMMCMMMMMMCC"C""""""CC""""""" ',
+    '  ddddFdddddddddFddddddddddF MMMMCCMMMMMCMMMCCCC"""""CC"""""""" ',
+    '  ~~~~~~~~~F~~~~~~~~~F~~~~~~~~~C~~~~~~~C~~~~ CCC""""""CC""""""" ',
+    '  WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW CCCCC""""""CC""""" ',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW""""""""WWWW ',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW""""""WWWW ',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+  ]);
+
+  map.plant(58, 77, 'tower');
+  // What stands on the new ground. A place is remembered as the things in it,
+  // so every one of these is something somebody left: the hanger's felled
+  // timber, the kilns' own mouths, the salt house on its pan walk, the boat
+  // shed above the hard, and the pier the ferry comes to.
+  map.plant(41, 20, 'log');
+  map.plant(43, 25, 'deadStump');
+  map.plant(59, 28, 'cratePair');
+  map.plant(53, 35, 'mineMouth');
+  map.plant(55, 37, 'mineMouth');
+  map.plant(50, 39, 'crateStack');
+  map.plant(6, 61, 'stump');
+  map.plant(8, 79, 'log');
+  map.plant(33, 82, 'mooringPost');
+  map.plant(35, 82, 'jetty');
+  map.plant(9, 70, 'barrelPair');
+  map.plant(22, 70, 'crateStack');
+  map.plant(23, 80, 'boulder');
+  map.plant(17, 81, 'mooringPost');
+  map.plant(33, 76, 'crateStack');
+  map.plant(29, 74, 'hut');
+  map.plant(51, 84, 'gravestoneWorn');
+
+
+  // == WHAT GROWS IN THE NEW GROUND ========================================
+  // The lattice under everything above is a regular grid of one broadleaf, and
+  // left alone that is what it reads as - a printed pattern, not a wood. This
+  // thins it in clumps, stands pines on the dry high ground where a pine
+  // belongs, puts a second crown among the broadleaves, and sets tall bushes
+  // along the edges people walk past. Same hand as the town's own thicket pass
+  // above, over four times the ground: every letter here stands on ground
+  // nobody walks, so the wood changes and the map does not.
+  map.draw(32, 0, [
+    '                                ',
+    '                                ',
+    '            p  q        q  p    ',
+    '                                ',
+    '         T     p           a    ',
+    '                                ',
+    '                  q           p ',
+    '                                ',
+    '                     a     q    ',
+    '                                ',
+    '               p  T     a       ',
+    '                                ',
+    '                                ',
+    '                                ',
+    '               q                ',
+    '                                ',
+    '         T  p                   ',
+    '                                ',
+    '                                ',
+    '                                ',
+    '         T        p             ',
+    '                                ',
+    '               p                ',
+    '                                ',
+    '            q     a             ',
+    '                                ',
+    '               a                ',
+    '                                ',
+    '            p     q             ',
+    '                                ',
+    '         q                      ',
+    '                                ',
+    '      p     T                   ',
+    '                                ',
+    '            a                   ',
+    '                                ',
+    '         p                      ',
+    '                                ',
+    '            q                 p ',
+    '                                ',
+    '   a                            ',
+    '                                ',
+    '      p                    a    ',
+    '                                ',
+  ]);
+  map.draw(0, 44, [
+    '                                                                ',
+    '                                                                ',
+    '  q                             a  q                            ',
+    '                                                                ',
+    '                                q     a                         ',
+    '                                            T                   ',
+    '  p                                p     q                      ',
+    '                                                                ',
+    '                                      q                         ',
+    '                                   T                            ',
+    '  a                                                             ',
+    '                                                                ',
+    '                                      p                         ',
+    '                                         T                      ',
+    '  q                          p     q                            ',
+    '                                                                ',
+    '                                q     a                       p ',
+    '                             T                                  ',
+    '  p                          a     p                          q ',
+    '                                                                ',
+    '                                p     q                         ',
+    '                                                                ',
+    '  a                          q     a     p                      ',
+    '                                                                ',
+    '                                a     p     q     a             ',
+    '                                   T                            ',
+    '  q                          p     q     a     p                ',
+    '                                                                ',
+    '                                q     a     p                   ',
+    '                                            T                   ',
+    '  p                          a     p     q                      ',
+    '                                                                ',
+    '                                      q     a                   ',
+    '                                                                ',
+    '  a                                                             ',
+    '                                                                ',
+    '                                                                ',
+    '                                                                ',
+    '                                                                ',
+    '                                                                ',
+    '                                                                ',
+    '                                                                ',
+    '                                                                ',
+    '                                                                ',
+  ]);
+
+  // == THE POUND ===========================================================
+  // A green spur east off the meadow lane, into the wood between the meadows
+  // and the old fields, and at the head of it the parish pound: a hurdle ring
+  // where strays off the drove were shut up until somebody claimed them. It is
+  // the one reason to leave the lane on that stretch, and it is a dead end on
+  // purpose - a vast map needs somewhere you went and came back from.
+  map.draw(28, 56, [
+    '   FFFFFF',
+    '   Fg.ggF',
+    '....g.g.F',
+    '   F.gg.F',
+    '   Fg..gF',
+    '   FFFFFF',
+  ]);
+  map.plant(33, 57, 'barrelPair');
+
+  // What is growing in the closes, what is lying in the creeks, and what the
+  // sea has put up the strand. Beds and lilies are walked over, and a rock in
+  // a creek stands in water that was already a wall, so none of this moves a
+  // tile of the map - it is the difference between a hedged square and a field
+  // somebody works.
+  map.plant(44, 45, 'bedYellowCrop');
+  map.plant(44, 46, 'bedRedCrop');
+  map.plant(44, 47, 'bedSeedlings');
+  map.plant(53, 45, 'bedRedCrop');
+  map.plant(53, 46, 'bedSeedlings');
+  map.plant(53, 47, 'bedYellowCrop');
+  map.plant(47, 62, 'bedSeedlings');
+  map.plant(47, 63, 'bedYellowCrop');
+  map.plant(47, 64, 'bedRedCrop');
+  map.plant(51, 61, 'produceCrate');
+  map.plant(16, 68, 'wetRock');
+  map.plant(22, 68, 'wetRock');
+  map.plant(6, 74, 'wetRock');
+  map.plant(24, 74, 'wetRock');
+  map.plant(7, 80, 'boulder');
+
+  // == THE LATTICE, THINNED ================================================
+  // Eight trees of the lattice stood where the new ground put something else:
+  // over the Mill Stair's rock, in the quarry, under the rickyard's barn.
+  // A tree is felled by cutting the ground its letter stands on.
+  map.draw(29, 74, ['T']);
+  map.draw(29, 60, ['T']);
+  map.draw(32, 14, ['T']);
+  map.draw(32, 20, ['T']);
+  map.draw(32, 22, ['T']);
+  map.draw(62, 22, ['T']);
+  map.draw(62, 24, ['T']);
+  map.draw(53, 28, ['T']);
+  map.draw(32, 40, ['T']);
+  map.draw(35, 56, ['T']);
+
   // == WHAT GROWS IN THE THICKET ===========================================
   // The lanes are packed so close that the wood between them is mostly a hedge
   // thick, and the lattice only fits a broadleaf where three tiles by two are
@@ -296,7 +788,7 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
     '                                ',
     'p      p      p                 ',
     '                                ',
-    '                               b',
+    '                                ',
     'p                               ',
     '                                ',
     '                                ',
@@ -321,7 +813,7 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
     'p                               ',
     '                                ',
     '                                ',
-    'p                              b',
+    'p                               ',
     '                                ',
     '                                ',
     'p                              b',

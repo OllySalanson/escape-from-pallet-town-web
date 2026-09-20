@@ -255,6 +255,110 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     areas: [{ x: 12, y: 30, width: 20, height: 14 }],
   },
 
+  // -- Pallet Town: the valley above the town, and the valley below it -------
+  // The town is the head of a parish that runs from the quarry in the east
+  // hills down to the tide. Nothing here is named after the town: a player who
+  // has walked to the kilns or the saltings has been somewhere else.
+  {
+    id: 'pallet-high-wood',
+    mapId: 'pallet-town',
+    name: 'THE HIGH WOOD',
+    encounters: wildlife.PALLET_WOOD_WILDLIFE,
+    // The ride out of the north field, the charcoal hearth off its first turn,
+    // and the glade off its second.
+    areas: [{ x: 32, y: 0, width: 32, height: 13 }],
+  },
+  {
+    id: 'pallet-hanger',
+    mapId: 'pallet-town',
+    name: 'THE HANGER',
+    encounters: wildlife.PALLET_WOOD_WILDLIFE,
+    // The beech wood on the slope above the far bank, and the spring in it.
+    areas: [{ x: 32, y: 13, width: 16, height: 15 }],
+  },
+  {
+    id: 'pallet-quarry',
+    mapId: 'pallet-town',
+    name: 'THE QUARRY',
+    // The stone the town is built of, its flooded pit, its adit and its track.
+    areas: [{ x: 48, y: 11, width: 16, height: 20 }],
+  },
+  {
+    id: 'pallet-drove',
+    mapId: 'pallet-town',
+    name: 'THE DROVE',
+    // The walled road off the sluice apron, stepping east down the hill.
+    areas: [{ x: 32, y: 28, width: 12, height: 18 }],
+  },
+  {
+    id: 'pallet-kilns',
+    mapId: 'pallet-town',
+    name: 'THE KILNS',
+    // The lime kilns cut into the foot of the quarry's rock.
+    areas: [{ x: 44, y: 31, width: 20, height: 13 }],
+  },
+  {
+    id: 'pallet-withy-beds',
+    mapId: 'pallet-town',
+    name: 'THE WITHY BEDS',
+    encounters: wildlife.PALLET_MARSH_WILDLIFE,
+    // Osier cut in wet plots below the Flood, with a causeway through them.
+    areas: [{ x: 0, y: 44, width: 17, height: 20 }],
+  },
+  {
+    id: 'pallet-water-meadows',
+    mapId: 'pallet-town',
+    name: 'THE WATER MEADOWS',
+    encounters: wildlife.PALLET_MEADOW_WILDLIFE,
+    // The hay closes off the Gate Lane, the rickyard, and the brook's head.
+    areas: [{ x: 17, y: 44, width: 19, height: 20 }],
+  },
+  {
+    id: 'pallet-old-fields',
+    mapId: 'pallet-town',
+    name: 'THE OLD FIELDS',
+    encounters: wildlife.PALLET_MEADOW_WILDLIFE,
+    // Small closes nobody has ploughed since the flood, off a green lane.
+    areas: [{ x: 36, y: 44, width: 28, height: 25 }],
+  },
+  {
+    id: 'pallet-saltings',
+    mapId: 'pallet-town',
+    name: 'THE SALTINGS',
+    encounters: wildlife.PALLET_MARSH_WILDLIFE,
+    // Salt marsh, two creeks with one ford each, and the pans worked between.
+    areas: [{ x: 0, y: 64, width: 28, height: 15 }],
+  },
+  {
+    id: 'pallet-hard',
+    mapId: 'pallet-town',
+    name: 'THE HARD',
+    encounters: wildlife.PALLET_SHORE_WILDLIFE,
+    // The stone slip the ferry lies off, and the grass above it.
+    areas: [{ x: 28, y: 69, width: 16, height: 19 }],
+  },
+  {
+    id: 'pallet-strand',
+    mapId: 'pallet-town',
+    name: 'THE STRAND',
+    // Groyned sand between the marsh and the sea.
+    areas: [{ x: 0, y: 79, width: 28, height: 9 }],
+  },
+  {
+    id: 'pallet-ness',
+    mapId: 'pallet-town',
+    name: 'THE NESS',
+    // The neck of the headland, and the gate the salter keeps across it.
+    areas: [{ x: 44, y: 69, width: 20, height: 6 }],
+  },
+  {
+    id: 'pallet-beacon',
+    mapId: 'pallet-town',
+    name: 'THE BEACON',
+    // The headland itself: bare turf, a rock spine, and the light on it.
+    areas: [{ x: 44, y: 75, width: 20, height: 13 }],
+  },
+
   // -- Route 1 ---------------------------------------------------------------
   {
     id: 'route-1-overlook',
