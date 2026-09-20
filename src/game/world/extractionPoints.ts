@@ -365,4 +365,130 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     unlockAtMs: 0,
     requirement: { kind: 'always' },
   },
+  // The ground the map grew into. Six more ways out, one for each region the
+  // new districts make, because an exit is what stops a piece of a vast map
+  // being somewhere you can only leave by dying: the quarry's old road, the
+  // kilns' stair, the cider yard's cart lodge, the drove's west gate, the
+  // steps off the wharf and the head of the light's pier.
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 93, y: 3 },
+    label: 'QUARRY ROAD',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 121, y: 3 },
+    label: 'KILN ROAD',
+    unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 73, y: 58 },
+    label: 'CIDER ROAD',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 1, y: 84 },
+    label: 'DROVE GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The second landmark-held door on this map, and the first that a fresh
+    // save can walk to: the crane is at the far end of the quay from the steps.
+    mapId: 'floodplain-relay',
+    position: { x: 30, y: 92 },
+    label: 'STAITHE STEPS',
+    unlockAtMs: 0,
+    requirement: {
+      kind: 'poi-activated',
+      poiId: 'floodplain-staithe-crane',
+      poiLabel: 'STAITHE CRANE',
+    },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 114, y: 124 },
+    label: 'PIER HEAD',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  // And seven more for the ground the map grew into, which is the part of this
+  // that is a number rather than a taste. A flee buys the player a blind window
+  // and the window has to cover the walk to a way out from the worst tile on
+  // the map (`hunterFlee.test.ts`); on four times the ground that is not a
+  // longer window - `raidClock.test.ts` caps it at what a hunter rung can
+  // spare - it is more doors. Each of these is the tile that most shortened
+  // that walk when it was put there, which is why two of them are on the same
+  // fen: the drove is long and the fields either side of it are longer.
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 41, y: 64 },
+    label: 'HUNDRED GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 81, y: 64 },
+    label: 'WITHY GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 122, y: 55 },
+    label: 'FEN LANE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 124, y: 62 },
+    label: 'BANK STEPS',
+    unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 51, y: 96 },
+    label: 'MARSH GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 96, y: 114 },
+    label: 'THE GUTWAY',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 89, y: 71 },
+    label: 'CUTTER\'S GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    mapId: 'floodplain-relay',
+    position: { x: 93, y: 19 },
+    label: 'QUARRY SUMP',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The far end of the sands, and the only thing standing on them. With the
+    // wharf hard shut this corner is 118 steps from anything else that opens,
+    // which is half again what the hunter's blind window covers - so the walk
+    // out of the muds is shortened by a door rather than by a longer window.
+    mapId: 'floodplain-relay',
+    position: { x: 5, y: 121 },
+    label: 'THE GRIDIRON',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
 ];

@@ -4,13 +4,14 @@ import { FIRST_CONTRACT, RAID_CONTRACTS } from '../objectives';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import type { GridPosition } from '../movement/gridMovement';
 import { getWorldMap } from '../worldMap';
+import { RAID_DURATION_MS } from '../run/raidClock';
 import {
   extractionRequirementText,
   isExtractionAvailable,
   EXTRACTION_POINTS,
 } from './extractionPoints';
 import { WORLD_GATES } from './gates';
-import { stepDistances } from './mapStructure';
+import { stepDistances, walkableTiles } from './mapStructure';
 import { tryActivatePoi, WORLD_POIS } from './pois';
 import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters } from './trainers';
@@ -253,11 +254,23 @@ describe('a fresh save, from the front door', () => {
       { x: tile.x, y: tile.y - 1 },
     ].some((beside) => shut.collision[beside.y]?.[beside.x] === false && reaches(beside));
 
-  it.each(['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT'])('walks to the %s', (label) => {
+  // The drove out of Old Town is the one piece of the ground added east and
+  // south that a raid which has beaten nobody can walk to, and it is a long
+  // walk: the marsh, the wharf and two more ways out, all of them past the
+  // last house rather than behind a door.
+  it.each(['SOUTH GATE', 'FERRY DOCK', 'RADIO EXIT', 'DROVE GATE', 'STAITHE STEPS'])('walks to the %s', (label) => {
     expect(reaches(floodplainExits.find((exit) => exit.label === label)!.position)).toBe(true);
   });
 
-  it.each(['MILL RACE', 'SIGNAL FIRE', 'VAULT CULVERT'])('cannot walk to the %s', (label) => {
+  it.each([
+    'MILL RACE',
+    'SIGNAL FIRE',
+    'VAULT CULVERT',
+    'QUARRY ROAD',
+    'KILN ROAD',
+    'CIDER ROAD',
+    'PIER HEAD',
+  ])('cannot walk to the %s', (label) => {
     expect(reaches(floodplainExits.find((exit) => exit.label === label)!.position)).toBe(false);
   });
 
@@ -268,14 +281,15 @@ describe('a fresh save, from the front door', () => {
     // is named here rather than filtered out, because "what a fresh save can
     // walk to" is the whole point of this file.
     const shoal = WORLD_POIS.find((poi) => poi.id === 'floodplain-shoal-cache')!;
-    const homeBank = WORLD_POIS.filter(
-      (poi) => poi.mapId === 'floodplain-relay' && poi.id !== vault.id && poi.id !== shoal.id,
-    );
-    expect(homeBank.map((poi) => poi.id).sort()).toEqual(
-      ['floodplain-drowned-chapel', 'floodplain-ranger-radio'].sort(),
-    );
-    for (const poi of homeBank) {
-      expect(`${poi.id}: ${reaches(poi.position)}`).toBe(`${poi.id}: true`);
+    // Named rather than counted, because "what a fresh save can walk to" is
+    // the whole point of this file: four caches on the home bank and on the
+    // marsh road out of it, and every other one on the map behind a door.
+    const homeBank = ['floodplain-drowned-chapel', 'floodplain-ranger-radio',
+      'floodplain-shepherds-hut', 'floodplain-staithe-crane'];
+    for (const poi of WORLD_POIS.filter((entry) => entry.mapId === 'floodplain-relay')) {
+      expect(`${poi.id}: ${reaches(poi.position)}`).toBe(
+        `${poi.id}: ${homeBank.includes(poi.id)}`,
+      );
     }
     expect(reaches(vault.position)).toBe(false);
     expect(reaches(shoal.position)).toBe(false);
@@ -288,18 +302,37 @@ describe('a fresh save, from the front door', () => {
   });
 
   it('can stand beside every sign on the home bank', () => {
+    // The boards east of the river are behind their own doors, and saying so
+    // here is the point: a notice is put where a player first arrives, so the
+    // list of the ones a fresh save can read is the list of places it has.
+    const onTheHomeBank = [
+      'floodplain-route-board',
+      'floodplain-rangers-log',
+      'floodplain-south-gate-notice',
+      'floodplain-old-town-sign',
+      'floodplain-shore-road-sign',
+      'floodplain-drove-notice',
+      'floodplain-staithe-notice',
+      'floodplain-saltings-wash',
+      'floodplain-saltings-creekmark',
+      'floodplain-staithe-gauge',
+      'floodplain-staithe-lodging',
+      'floodplain-saltings-plank',
+    ];
     for (const sign of shut.entities.filter((entity) => entity.kind === 'sign')) {
-      expect(`${sign.id}: ${reachesBeside(sign.position)}`).toBe(`${sign.id}: true`);
+      expect(`${sign.id}: ${reachesBeside(sign.position)}`).toBe(
+        `${sign.id}: ${onTheHomeBank.includes(sign.id)}`,
+      );
     }
   });
 
-  it('walks to Market Isle, and to no drop-in behind a door', () => {
+  it('walks to the isle, the marsh and the wharf, and to no drop-in behind a door', () => {
     const dropIns = Object.values(RUN_INSERTIONS).filter(
       (candidate) => candidate.mapId === 'floodplain-relay' && candidate.id !== insertion.id,
     );
     expect(
-      dropIns.filter((dropIn) => reaches(dropIn.position)).map((dropIn) => dropIn.id),
-    ).toEqual(['floodplain-market-isle']);
+      dropIns.filter((dropIn) => reaches(dropIn.position)).map((dropIn) => dropIn.id).sort(),
+    ).toEqual(['floodplain-market-isle', 'floodplain-saltings', 'floodplain-staithe'].sort());
   });
 
   it('can reach the first boss, and only the first', () => {
@@ -374,5 +407,116 @@ describe('the way back from a won district', () => {
     // And it is the front door it is next to, not only an exit: the quay the
     // causeway lands on is the one the raid started from.
     expect(fromKeep[insertion.position.y][insertion.position.x] * 1.5).toBeLessThan(wayIn);
+  });
+});
+
+/**
+ * What four times the ground was for.
+ *
+ * The clock did not move when the map did, so "bigger" has to mean something
+ * other than "further to walk", and these are the facts that say what: a raid
+ * can still get home from anywhere with most of its five minutes unspent, a
+ * fresh save has somewhere new it can actually reach, each new keeper opens a
+ * way back that is shorter than the way in, and there is a great deal of the
+ * map that one raid cannot see. If a redraw ever makes the map merely longer,
+ * one of these is what fails.
+ */
+describe('the country the map grew into', () => {
+  const open = getWorldMap('floodplain-relay', WORLD_GATES.filter((gate) => gate.mapId === 'floodplain-relay').map((gate) => gate.bossId ?? gate.id));
+  const exits = EXTRACTION_POINTS.filter((point) => point.mapId === 'floodplain-relay');
+  /** The slower of the two measured step costs: a player who taps their way out. */
+  const SLOW_STEP_MS = 230;
+
+  const insertions = Object.values(RUN_INSERTIONS).filter(
+    (candidate) => candidate.mapId === 'floodplain-relay',
+  );
+
+  it('is sixteen times the smallest map and four times what it was', () => {
+    expect(open.width * open.height).toBe(128 * 128);
+  });
+
+  it('gives every landing a way out well inside the clock', () => {
+    // Measured, not eyeballed: from each of the ten landings, the walk to the
+    // nearest way out that needs no condition, at the slower step cost, has to
+    // leave most of the raid for the raid.
+    for (const insertion of insertions) {
+      const steps = stepDistances(open.collision, insertion.position);
+      const walks = exits
+        .filter((exit) => (exit.requirement?.kind ?? 'always') === 'always')
+        .map((exit) => steps[exit.position.y][exit.position.x])
+        .filter((walk) => walk >= 0);
+      expect(`${insertion.id}: ${walks.length > 0 ? 'has an open way out' : 'none'}`).toBe(
+        `${insertion.id}: has an open way out`,
+      );
+      const share = (Math.min(...walks) * SLOW_STEP_MS) / RAID_DURATION_MS;
+      expect(`${insertion.id}: ${(share * 100).toFixed(0)}% of the clock to walk out`).toBe(
+        `${insertion.id}: ${(Math.min(share, 0.25) * 100).toFixed(0)}% of the clock to walk out`,
+      );
+    }
+  });
+
+  it('is far more map than one raid walks', () => {
+    // The whole point of the size, as two numbers. A raid is five minutes and
+    // the clock did not move: from the front door the far corner of the map is
+    // a quarter of it in walking alone, one way, before a fight or a cache or
+    // a contract - and the ground inside a walk of twenty-two seconds is a
+    // third of the map. A raid sees a slice and goes home wondering.
+    const fromDoor = stepDistances(open.collision, insertion.position);
+    const reached = walkableTiles(open.collision).map((tile) => fromDoor[tile.y][tile.x]);
+    const furthest = Math.max(...reached);
+    expect(furthest * SLOW_STEP_MS).toBeGreaterThan(RAID_DURATION_MS * 0.25);
+    const nearby = reached.filter((steps) => steps >= 0 && steps <= 150).length;
+    expect(nearby / reached.length).toBeLessThan(0.5);
+  });
+
+  it('opens the marsh and the wharf to a save that has beaten nobody', () => {
+    // The drove out of Old Town is the one arm of the new ground with no door
+    // on it, and it is a long way: a fresh save has somewhere left to wonder
+    // about that it can actually get to.
+    const shut = getWorldMap('floodplain-relay', []);
+    const steps = stepDistances(shut.collision, insertion.position);
+    const staithe = RUN_INSERTIONS['floodplain-staithe'].position;
+    expect(steps[staithe.y][staithe.x]).toBeGreaterThan(120);
+  });
+
+  it('makes the workings a ring rather than a spur', () => {
+    // Every keeper on this map holds two doors, and the second is what stops
+    // the place behind the first being a corridor walked twice. The incline is
+    // the way down off the bench; the level through the hill comes out on the
+    // beck, which is the mill's own water and a road the player already knows.
+    // Shut either one and the quarry floor is still joined to the map; shut
+    // both and it is a place you can look into and not get to.
+    const beaten = ['floodplain-toll-keeper', 'floodplain-sluice-keeper', 'floodplain-quarry-foreman'];
+    const map = getWorldMap('floodplain-relay', beaten);
+    const shut = (id: string) =>
+      new Set(WORLD_GATES.find((gate) => gate.id === id)!.tiles.map(key));
+    const floor = { x: 84, y: 19 };
+    const door = insertion.position;
+    const byIncline = stepDistances(map.collision, floor, shut('floodplain-quarry-adit'))[door.y][door.x];
+    const byAdit = stepDistances(map.collision, floor, shut('floodplain-quarry-incline'))[door.y][door.x];
+    expect(`by the incline: ${byIncline > 0 ? 'a way home' : 'none'}`).toBe('by the incline: a way home');
+    expect(`by the adit: ${byAdit > 0 ? 'a way home' : 'none'}`).toBe('by the adit: a way home');
+    const both = new Set([...shut('floodplain-quarry-adit'), ...shut('floodplain-quarry-incline')]);
+    expect(stepDistances(map.collision, floor, both)[door.y][door.x]).toBe(-1);
+  });
+
+  it('makes the sands the one thing that touches both sides of the river', () => {
+    // The banksman's two doors are at opposite ends of the bottom of the map.
+    // Until both are open the wharf is where the west side stops, and after
+    // them the sands are a way from the breach back to ground a fresh save
+    // knows - which is this map's own rule about second doors, kept at scale.
+    const wharf = RUN_INSERTIONS['floodplain-staithe'].position;
+    const breach = { x: 73, y: 110 };
+    const before = getWorldMap('floodplain-relay', ['floodplain-toll-keeper']);
+    const after = getWorldMap('floodplain-relay', ['floodplain-toll-keeper', 'floodplain-sea-wall-keeper']);
+    const round = stepDistances(before.collision, wharf)[breach.y][breach.x];
+    const across = stepDistances(after.collision, wharf)[breach.y][breach.x];
+    // The long way is a walk of the whole map: up the marsh road, through the
+    // town, over the toll bridge, past the orchard, down the cut and along the
+    // wall. The sands are seventy-four steps, and that is what the banksman's
+    // second door is worth.
+    expect(round).toBeGreaterThan(0);
+    expect(across).toBeGreaterThan(0);
+    expect(round).toBeGreaterThan(across * 4);
   });
 });

@@ -89,6 +89,8 @@ describe('what the drop-in screen says about a place', () => {
       'floodplain-toll-keeper',
       'floodplain-sluice-keeper',
       'floodplain-orchard-warden',
+      'floodplain-quarry-foreman',
+      'floodplain-sea-wall-keeper',
     ];
     const held = buildDropInBriefing('floodplain-relay', contextFor('floodplain-relay'));
     const cleared = buildDropInBriefing(

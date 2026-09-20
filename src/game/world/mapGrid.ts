@@ -143,6 +143,13 @@ export class MapSketch<PropName extends string = string> {
   private readonly stamped = new Map<string, PlantedProp<PropName>>();
   /** For each tile a stamped landmark blocks, the letters of the landmarks that do. */
   private readonly blockedBy = new Map<string, Set<string>>();
+  /**
+   * And the same the other way about: the tiles each letter claims. Without it
+   * forgetting one landmark means walking every claim on the map, which is a
+   * whole-map scan per tile written - three seconds of a 128x128 sketch, and
+   * three seconds is a raid starting with a stutter rather than a map.
+   */
+  private readonly claims = new Map<string, string[]>();
   /** What each stamped letter's tile reverts to if its landmark is cut away. */
   private readonly bareUnder = new Map<string, TerrainChar>();
 
@@ -217,12 +224,14 @@ export class MapSketch<PropName extends string = string> {
   private forgetStamp(letter: string): void {
     this.stamped.delete(letter);
     this.bareUnder.delete(letter);
-    for (const [tile, letters] of this.blockedBy) {
-      letters.delete(letter);
-      if (letters.size === 0) {
+    for (const tile of this.claims.get(letter) ?? []) {
+      const letters = this.blockedBy.get(tile);
+      letters?.delete(letter);
+      if (letters && letters.size === 0) {
         this.blockedBy.delete(tile);
       }
     }
+    this.claims.delete(letter);
   }
 
   /**
@@ -275,12 +284,16 @@ export class MapSketch<PropName extends string = string> {
           if (stamp.bare !== undefined) {
             this.bareUnder.set(`${x},${y}`, stamp.bare);
           }
+          const letter = `${x},${y}`;
+          const claimed: string[] = [];
           for (const [dx, dy] of stamp.blocks ?? []) {
             const tile = `${x + dx},${y + dy}`;
             const letters = this.blockedBy.get(tile) ?? new Set<string>();
-            letters.add(`${x},${y}`);
+            letters.add(letter);
             this.blockedBy.set(tile, letters);
+            claimed.push(tile);
           }
+          this.claims.set(letter, claimed);
         }
       }
     }

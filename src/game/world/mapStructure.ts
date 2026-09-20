@@ -180,15 +180,26 @@ export function openGround(collision: CollisionGrid, clearance = 3): OpenGroundS
   return { tiles, percentOfWalkable: walkable === 0 ? 0 : (100 * tiles) / walkable, blobs };
 }
 
-/** Step distance from `from` to every reachable tile; -1 where unreachable. */
+/**
+ * Step distance from `from` to every reachable tile; -1 where unreachable.
+ *
+ * The rows are `Int32Array`s and the queue is two flat ones, which reads the
+ * same at every call site (`field[y][x]`) and matters because this is the
+ * hot loop of every rule a map is held to: the structure suite alone runs it
+ * a few hundred thousand times over a 128x128 map, and a typed row clears in
+ * one memset where an array of numbers clears a cell at a time.
+ */
 export function stepDistances(
   collision: CollisionGrid,
   from: GridPosition,
   extraBlocked: ReadonlySet<string> = new Set(),
-): number[][] {
+): readonly Int32Array[] {
   const height = collision.length;
   const width = collision[0]?.length ?? 0;
-  const distances = Array.from({ length: height }, () => Array<number>(width).fill(-1));
+  const distances: Int32Array[] = [];
+  for (let y = 0; y < height; y += 1) {
+    distances.push(new Int32Array(width).fill(-1));
+  }
   const passable = (x: number, y: number): boolean =>
     !isBlockedAt(collision, x, y) && !extraBlocked.has(`${x},${y}`);
   if (!passable(from.x, from.y)) {
@@ -196,20 +207,30 @@ export function stepDistances(
   }
 
   distances[from.y][from.x] = 0;
-  const queue: GridPosition[] = [from];
-  for (let index = 0; index < queue.length; index += 1) {
-    const tile = queue[index];
+  const queueX = new Int32Array(width * height);
+  const queueY = new Int32Array(width * height);
+  queueX[0] = from.x;
+  queueY[0] = from.y;
+  let head = 0;
+  let tail = 1;
+  while (head < tail) {
+    const x = queueX[head];
+    const y = queueY[head];
+    head += 1;
+    const next = distances[y][x] + 1;
     for (const [dx, dy] of ORTHOGONAL) {
-      const nx = tile.x + dx;
-      const ny = tile.y + dy;
+      const nx = x + dx;
+      const ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
         continue;
       }
-      if (!passable(nx, ny) || distances[ny][nx] !== -1) {
+      if (distances[ny][nx] !== -1 || !passable(nx, ny)) {
         continue;
       }
-      distances[ny][nx] = distances[tile.y][tile.x] + 1;
-      queue.push({ x: nx, y: ny });
+      distances[ny][nx] = next;
+      queueX[tail] = nx;
+      queueY[tail] = ny;
+      tail += 1;
     }
   }
   return distances;
@@ -249,7 +270,10 @@ export function walksLengthenedBy(
   alsoBlocked: ReadonlySet<string> = new Set(),
 ): string[] {
   const without = new Set([...shut, ...alsoBlocked]);
-  const nearest = (distances: readonly number[][][], tiles: readonly GridPosition[]): number => {
+  const nearest = (
+    distances: readonly (readonly Int32Array[])[],
+    tiles: readonly GridPosition[],
+  ): number => {
     const reached = distances
       .flatMap((from) => tiles.map((tile) => from[tile.y]?.[tile.x] ?? -1))
       .filter((steps) => steps >= 0);

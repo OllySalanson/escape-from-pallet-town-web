@@ -432,6 +432,128 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     ],
   },
   {
+    // The quarry's magazine, cut into the bench behind the crane bed. It is
+    // the one cache on the top of the workings, and it is there whether or not
+    // the foreman has let anybody down the incline.
+    id: 'floodplain-powder-house',
+    mapId: 'floodplain-relay',
+    position: { x: 68, y: 10 },
+    label: 'POWDER HOUSE',
+    description: 'The magazine cut into the quarry bench. Locked when the water came up, and nobody has been back for what is in it.',
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'poke-ball', quantity: 1 },
+    ],
+  },
+  {
+    id: 'floodplain-press-house',
+    mapId: 'floodplain-relay',
+    position: { x: 66, y: 47 },
+    label: 'THE PRESS HOUSE',
+    description: "The cider press behind the orchard, with the pickers' kit still stacked against the wall where they left it.",
+    reward: [
+      { itemId: 'potion', quantity: 2 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    // The second landmark on this map that opens a way out, and the only one a
+    // fresh save can reach: swinging the crane drops the old steps at the top
+    // of the wharf, which is the whole length of the quay away from it.
+    id: 'floodplain-staithe-crane',
+    mapId: 'floodplain-relay',
+    position: { x: 37, y: 101 },
+    label: 'STAITHE CRANE',
+    description: 'The hand crane on the wharf, still barred. Swinging the jib back clears the old steps at the top of the lanes and opens them as a way out.',
+    reward: [],
+    effect: 'unlock-extraction',
+    unlockedExtractionLabel: 'STAITHE STEPS',
+  },
+  {
+    id: 'floodplain-shepherds-hut',
+    mapId: 'floodplain-relay',
+    position: { x: 19, y: 81 },
+    label: "SHEPHERD'S HUT",
+    description: 'A hut on wheels in the middle of the grazing, with a lambing kit in it that somebody kept stocked for a season nobody came back for.',
+    reward: [
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'poke-ball', quantity: 1 },
+    ],
+  },
+  {
+    // Behind the CUT door, exactly as Viridian's store is: the ride into this
+    // bed grew over and what was cut and stacked in it is still stacked.
+    id: 'floodplain-osier-store',
+    mapId: 'floodplain-relay',
+    position: { x: 92, y: 87 },
+    label: "OSIER CUTTER'S STORE",
+    description: 'A withy bed nobody has cut since the ride into it grew shut, and the cutter\'s own store still standing in the middle of it.',
+    reward: [
+      { itemId: 'great-ball', quantity: 2 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    id: 'floodplain-pumping-engine',
+    mapId: 'floodplain-relay',
+    position: { x: 106, y: 60 },
+    label: 'PUMPING ENGINE',
+    description: 'The engine that kept the levels dry, standing over its own drain with the fire long out and the stores beside it untouched.',
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    // Behind the banksman, out on the sands. Nothing else on this map is
+    // reached by walking out onto the bed of an estuary at low water.
+    id: 'floodplain-stranded-barge',
+    mapId: 'floodplain-relay',
+    position: { x: 28, y: 116 },
+    label: 'STRANDED BARGE',
+    description: 'A relay barge left on the sand when the tide went out and never floated again, with what it was carrying still under its hatches.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'super-potion', quantity: 2 },
+    ],
+  },
+  {
+    id: 'floodplain-church-farm',
+    mapId: 'floodplain-relay',
+    position: { x: 45, y: 76 },
+    label: 'CHURCH FARM',
+    description:
+      'The farm that stood by the church, with a foot of water in its yard and its kitchen door still on the latch.',
+    reward: [
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'poke-ball', quantity: 2 },
+    ],
+  },
+  {
+    id: 'floodplain-decoy',
+    mapId: 'floodplain-relay',
+    position: { x: 44, y: 98 },
+    label: 'THE DECOY',
+    description:
+      'A duck decoy: a pond with curved pipes of netting off it, and the fowler\'s kit still in the screen at the end of one.',
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    id: 'floodplain-wreck',
+    mapId: 'floodplain-relay',
+    position: { x: 81, y: 122 },
+    label: 'THE WRECK',
+    description:
+      'A trading smack driven onto the bar and left there. What was worth taking went a year ago; what was not is still in her.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'potion', quantity: 2 },
+    ],
+  },
+  {
     id: 'floodplain-ranger-radio',
     mapId: 'floodplain-relay',
     position: { x: 12, y: 16 },

@@ -538,7 +538,11 @@ describe('map structure', () => {
       // Only exits this player could have reached in the first place are exits a
       // flee can take away; where a shut gate has already taken them all, that is
       // the gate rules' business rather than this one's.
-      const { sealsIn } = doorsFrom(player, bounds, isBlocked, exits);
+      // Asked once and handed to all four headings: the doors of the map seen
+      // from this tile are the same whichever way the player was walking, and
+      // this runs from every tile of every map in every gate state.
+      const doors = doorsFrom(player, bounds, isBlocked, exits);
+      const { sealsIn } = doors;
       for (const heading of ['up', 'down', 'left', 'right'] as const) {
         const away = findHunterBreakawayTile(
           contact,
@@ -548,6 +552,7 @@ describe('map structure', () => {
           HUNTER_BREAKAWAY_DISTANCE,
           heading,
           exits,
+          doors,
         );
         const verdict = sealsIn.has(doorIndex(away, bounds)) ? 'no way out' : 'a way out';
         expect(`fled from ${player.x},${player.y} going ${heading}, hunter to ${away.x},${away.y}: ${verdict}`)

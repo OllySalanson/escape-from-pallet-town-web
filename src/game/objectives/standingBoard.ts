@@ -234,7 +234,7 @@ interface SealedDistrict {
   readonly gate: MapGate;
   readonly bossName: string;
   /** Walking steps from the landing with this door open - the only map its distances mean anything on. */
-  readonly steps: number[][];
+  readonly steps: readonly Int32Array[];
   readonly tiles: readonly GridPosition[];
   readonly exits: readonly ExtractionPoint[];
 }
@@ -243,7 +243,7 @@ interface Ground {
   readonly map: WorldMapDefinition;
   readonly landing: { readonly label: string; readonly position: GridPosition };
   /** Walking steps from the landing, as the gates stand for this player. */
-  readonly steps: number[][];
+  readonly steps: readonly Int32Array[];
   readonly longestWalk: number;
   /** Tiles a stop may stand on that the player can walk to today. */
   readonly open: readonly GridPosition[];
@@ -285,7 +285,7 @@ function measureGround(
   const steps = stepDistances(map.collision, frontDoor.position);
   const taken = takenTiles(map, defeatedBosses);
   const free = (tile: GridPosition): boolean => !taken.has(tileKey(tile));
-  const reached = (grid: number[][], tile: GridPosition): boolean => (grid[tile.y]?.[tile.x] ?? -1) >= 0;
+  const reached = (grid: readonly Int32Array[], tile: GridPosition): boolean => (grid[tile.y]?.[tile.x] ?? -1) >= 0;
   const mapExits = EXTRACTION_POINTS.filter((point) => point.mapId === mapId);
 
   // A district is what one more boss would add to the walk from the front door.
@@ -667,7 +667,7 @@ function spreadTiles(
 ): readonly GridPosition[] {
   const shuffled = rng.shuffle(candidates);
   for (let spread = ground.longestWalk * SPREAD_SHARE; ; spread *= 0.75) {
-    const chosen: { readonly tile: GridPosition; readonly from: number[][] }[] = [];
+    const chosen: { readonly tile: GridPosition; readonly from: readonly Int32Array[] }[] = [];
     for (const tile of shuffled) {
       if (chosen.length === count) {
         break;

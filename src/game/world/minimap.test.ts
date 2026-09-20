@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildMinimap, HINT_BLOCK, LIT_RADIUS, MINIMAP_PALETTE, tilesAround } from './minimap';
+import { buildMinimap, HINT_BLOCK, LIT_RADIUS, MINIMAP_MAX_HEIGHT, MINIMAP_MAX_WIDTH, MINIMAP_PALETTE, tilesAround } from './minimap';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import type { Material } from './tileset/materials';
@@ -122,15 +122,38 @@ describe('the bird\'s-eye picture of a map', () => {
   it('draws every shipped map inside the banner the lobby gives it', () => {
     // The drop-in screen's banner is a fixed 100 game pixels tall (the
     // `.dropin-layout` rows in style.css), of which the picture's own lid and
-    // frame take 24. So a map may be 76 tiles tall at one pixel to the tile,
-    // and Viridian Forest and Route 1 at 72 each draw 96 pixels of banner
-    // inside that 100.
-    // Wider than the pane is the other way it would be clipped rather than
-    // scaled, and nothing is drawn at less than one pixel to the tile on
-    // purpose - see `MINIMAP_TILE`.
+    // frame take 24 - so a picture may be 76 pixels tall, and wider than the
+    // pane is the other way it would be clipped rather than scaled.
+    // It is the *picture* that is held to the banner, not the map: a map too
+    // big for it is drawn at two tiles to the pixel, which is what keeps a
+    // 128-tile map inside the frame without making it the same size on screen
+    // as a 32-tile one. Nothing is ever drawn at less than one pixel to the
+    // tile - see `MINIMAP_TILE`.
     for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
-      expect(WORLD_MAPS[id].width).toBeLessThanOrEqual(64);
-      expect(WORLD_MAPS[id].height).toBeLessThanOrEqual(76);
+      const picture = buildMinimap({ map: WORLD_MAPS[id] });
+      expect(picture.width, id).toBeLessThanOrEqual(MINIMAP_MAX_WIDTH);
+      expect(picture.height, id).toBeLessThanOrEqual(MINIMAP_MAX_HEIGHT);
+      expect(picture.rows).toHaveLength(picture.height);
+      expect(picture.width).toBe(Math.ceil(WORLD_MAPS[id].width / picture.tilesPerPixel));
+    }
+  });
+
+  it('coarsens only the map that cannot fit, and draws the rest tile for tile', () => {
+    // Four maps have grown and only one of them outgrew the banner: Route 1
+    // and Viridian Forest at 64x72 still fit it, so their pictures are the
+    // ground itself, and only the Floodplain at 128 square is halved.
+    //
+    // The price of that is stated rather than hidden: halved, the vast map
+    // draws 64x64 against Route 1's 64x72, so the lobby's biggest map is not
+    // its biggest picture. The alternative is scaling every map to fill the
+    // box, which would make them all the same size and say nothing at all.
+    const vast = buildMinimap({ map: WORLD_MAPS['floodplain-relay'] });
+    expect(vast.tilesPerPixel).toBe(2);
+    for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
+      if (id === 'floodplain-relay') {
+        continue;
+      }
+      expect(buildMinimap({ map: WORLD_MAPS[id] }).tilesPerPixel, id).toBe(1);
     }
   });
 

@@ -100,8 +100,11 @@ export interface MinimapRequest {
 }
 
 export interface Minimap {
+  /** The picture's size in game pixels, which is the map's size in tiles / `tilesPerPixel`. */
   readonly width: number;
   readonly height: number;
+  /** How many tiles of the map each pixel of the picture stands for. */
+  readonly tilesPerPixel: number;
   /** One character a tile, top row first. */
   readonly rows: readonly string[];
   /** Tiles of the map that are known, and how many there are to know. */
@@ -252,16 +255,97 @@ export function buildMinimap(request: MinimapRequest): Minimap {
     rows.push(row);
   }
 
-  return { width, height, rows, known: known.size, walkable, knownWalkable };
+  const step = tilesPerPixel(map);
+  const picture = step === 1 ? rows : condense(rows, step);
+  return {
+    width: picture[0]?.length ?? 0,
+    height: picture.length,
+    tilesPerPixel: step,
+    rows: picture,
+    known: known.size,
+    walkable,
+    knownWalkable,
+  };
 }
 
 /**
- * One game pixel to the tile, on every map, always.
+ * The banner the lobby draws this in is a fixed size, and a picture bigger than
+ * it would be clipped rather than scaled - so a map too big for it is drawn at
+ * two tiles to the pixel, or four, until it fits.
+ *
+ * It is not a scale chosen per map to fill the box: the first thing a player
+ * should read off these pictures is that one map is four times another, and
+ * sizing them all alike would take that away. What it is instead is the
+ * coarsest step that keeps the biggest map inside the frame - and the dark is
+ * already quantised into blocks of `HINT_BLOCK` tiles, so at two tiles to the
+ * pixel nothing in the picture was ever finer than the picture is. The two
+ * sides are asked separately because the banner is not square: a route is
+ * taller than it is wide and the pane is wider than it is tall.
+ */
+export function tilesPerPixel(map: { readonly width: number; readonly height: number }): number {
+  return Math.max(
+    1,
+    Math.ceil(map.width / MINIMAP_MAX_WIDTH),
+    Math.ceil(map.height / MINIMAP_MAX_HEIGHT),
+  );
+}
+
+/**
+ * What a block of tiles is drawn as when several of them share a pixel: the
+ * one thing in it a player most needs to see. A way in or a way out is never
+ * lost to the ground beside it, known ground beats the dark, and water beats
+ * the rest of the dark, because a coastline is what the dark is for.
+ */
+const CONDENSE_ORDER: readonly MinimapChar[] = [
+  'i', 'I', 'X', 'O', 'K', 'H', '*',
+  'W', 'w', 'P', 'B', 'C', ',', 'g', '.', 'T',
+  '+', '4', '3', '2', '1', '0',
+];
+
+function condense(rows: readonly string[], step: number): string[] {
+  const rank = new Map(CONDENSE_ORDER.map((char, index) => [char, index]));
+  const out: string[] = [];
+  for (let y = 0; y < rows.length; y += step) {
+    let row = '';
+    for (let x = 0; x < rows[y].length; x += step) {
+      let best = rows[y][x];
+      for (let dy = 0; dy < step; dy += 1) {
+        for (let dx = 0; dx < step; dx += 1) {
+          const char = rows[y + dy]?.[x + dx];
+          if (char === undefined) {
+            continue;
+          }
+          if ((rank.get(char) ?? 99) < (rank.get(best) ?? 99)) {
+            best = char;
+          }
+        }
+      }
+      row += best;
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+/**
+ * One game pixel to the tile wherever a map fits in the banner, and two where
+ * it does not.
  *
  * Scaling each map to fill the same box would make the Floodplain and Route 1
  * the same size on screen, and the first thing a player should read off these
- * pictures is that one of them is four times the other. At this scale the
- * Floodplain is 64 pixels square and the smallest map is 32 by 32 - the size a
- * town map is in the games this is dressed as, and the size the screen has.
+ * pictures is that one of them is four times the other. So the step is the
+ * same for every map that fits and only coarsens for one that cannot: Pallet
+ * Town, Route 1 and Viridian Forest are all drawn tile for tile, and only the
+ * Floodplain at 128 tiles square goes to two, coming out 64 pixels square -
+ * the size it was when it was 64 tiles across, and still visibly the biggest
+ * picture in the lobby.
  */
 export const MINIMAP_TILE = 1;
+
+/**
+ * What the lobby's banner can draw without clipping. It is 100 game pixels
+ * tall (the `.dropin-layout` rows in `style.css`), of which the picture's own
+ * lid and frame take 24, and the pane it sits in is 64 across.
+ */
+export const MINIMAP_MAX_WIDTH = 64;
+export const MINIMAP_MAX_HEIGHT = 76;
