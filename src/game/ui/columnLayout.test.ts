@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { columnTracks, planColumns, roomFor } from './columnLayout';
 
@@ -88,7 +89,9 @@ describe('how much room a screen has', () => {
       Object.entries(STAGES).map(([window, [width, height]]) => [window, roomFor(width, height)]),
     );
     expect(rooms).toEqual({
-      '640x480': 'narrow',
+      // `BASE_STAGE` itself, where a list, the band that answers for the row it
+      // is on and a second band under that cannot share one pane at all.
+      '640x480': 'tight',
       '1024x640': 'narrow',
       '1280x720': 'narrow',
       // A 1366 laptop is 674 game pixels across: wide enough for two columns of
@@ -103,7 +106,27 @@ describe('how much room a screen has', () => {
   });
 
   it('needs both dimensions, because either can be the one that runs out', () => {
-    expect(roomFor(2000, 200)).toBe('narrow');
+    expect(roomFor(2000, 200)).toBe('tight');
     expect(roomFor(700, 2000)).toBe('narrow');
+    expect(roomFor(300, 2000)).toBe('tight');
+  });
+
+  /**
+   * Three rungs and no fourth: a rule written for the smaller of two screens is
+   * written for both of the smaller two, so every `[data-room='narrow']` rule in
+   * the stylesheet carries a `[data-room='tight']` twin. Held here rather than
+   * left to be remembered, because the failure is silent - the stash's band
+   * would simply stand at its laptop height on a 320x240 screen.
+   */
+  it('is a ladder, so a rule for less room than wide is written for both rungs', async () => {
+    const css = await readFile(new URL('../../style.css', import.meta.url), 'utf8');
+    const narrow = [...css.matchAll(/\[data-room='narrow'\]\)\s*([^,{]+)[,{]/g)].map((match) =>
+      match[1].trim(),
+    );
+    const tight = [...css.matchAll(/\[data-room='tight'\]\)\s*([^,{]+)[,{]/g)].map((match) =>
+      match[1].trim(),
+    );
+    expect(narrow.length).toBeGreaterThan(4);
+    expect(narrow.filter((selector) => !tight.includes(selector))).toEqual([]);
   });
 });

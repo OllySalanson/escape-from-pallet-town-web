@@ -1063,16 +1063,71 @@ describe('the Outfitter', () => {
     hub.setView('outfitter');
     const ladder = markupOf(hub);
     expect(ladder).toContain('Secure locker I');
-    expect(ladder).toContain('Costs 2 Pokémon + 2× Parts crate');
-    expect(ladder).toContain('After Secure locker I: ');
+    // The price is a column of its own on the row, one line a part.
+    expect(ladder).toContain('<span class="px-price"><small>2 Pokémon</small><small>2× Parts crate</small></span>');
     // Three spendable catches cannot pay the four the second locker asks.
-    expect(ladder).toContain('<span class="cost-short" title="Not enough spare at base yet">4 Pokémon</span>');
+    expect(ladder).toContain('<small class="cost-short">4 Pokémon</small>');
     // A rung that cannot be built is still a control, so the cursor can reach it
     // and the pane under the list can say what it does.
     expect(ladder).toMatch(/data-outfit="secure-locker-1"(?![^>]*aria-disabled)[^>]* data-shows/);
     expect(ladder).toMatch(/data-outfit="secure-locker-2" aria-disabled="true"/);
     expect(ladder).not.toMatch(/<button[^>]* disabled/);
     expect(ladder).toContain('data-shown-by="secure-locker-2"');
+  });
+
+  /**
+   * The fault this screen was rebuilt for. A rung's own line used to be its
+   * price until it was built and its effect afterwards, so the one moment a
+   * player needed to know what a thing did - deciding whether to buy it - was
+   * the moment it was hidden, and the screen explained the purchase only once
+   * the money was gone.
+   */
+  it('says what every rung does, bought or not, and never in place of its price', () => {
+    const { hub } = createOutfittedHub(['secure-locker-1']);
+
+    hub.setView('outfitter');
+    const ladder = markupOf(hub);
+    const rowOf = (id: string): string =>
+      /<button[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g
+        .exec(ladder.slice(ladder.indexOf(`data-shows="${id}"`) - 400))![0];
+
+    // Unbought: the row says what it does, and the price is beside it.
+    const unbought = rowOf('quarantine-ward');
+    expect(unbought).toContain('One heal per raid, free of clock.');
+    expect(unbought).toContain('<span class="px-price">');
+    // Built: the same line, still there, and the price column says it is paid.
+    const built = rowOf('secure-locker-1');
+    expect(built).toContain('One more column of the secure container.');
+    expect(built).toContain('<span class="px-price is-paid"><small>Paid</small></span>');
+    expect(built).toContain('is-secured');
+  });
+
+  it('prices the pointed-at rung against what this base actually holds', () => {
+    const { hub } = createOutfittedHub();
+
+    hub.setView('outfitter');
+    const ladder = markupOf(hub);
+    const pane = ladder.slice(ladder.indexOf('data-shown-by="secure-locker-2"'));
+
+    // What it does, before anything is bought.
+    expect(pane).toContain('A second protected Pokémon, and the room for it.');
+    // The price, each part against what the vault can actually spend on it.
+    expect(pane).toContain('4 Pokémon');
+    expect(pane).toContain('3 you can release');
+    expect(pane).toContain('2× Mooring rope');
+    expect(pane).toContain('1 spare at base');
+    // And the door it is behind, by name.
+    expect(pane).toContain('Built only after Secure locker I');
+  });
+
+  it('says what a rung still needs rather than leaving it to be worked out', () => {
+    const { hub } = createOutfittedHub();
+
+    hub.setView('outfitter');
+    const pane = markupOf(hub).slice(markupOf(hub).indexOf('data-shown-by="beacon"'));
+
+    // Three Pokemon it can release, but no lamp oil at all.
+    expect(pane).toContain('<span class="px-wrap px-warning">Beacon still needs 2× Lamp oil, 2× Cable coil.</span>');
   });
 
   it('names the Pokémon and the supplies it is spending, and asks before it spends them', () => {
@@ -1375,7 +1430,7 @@ describe('HubScene - the Ferryman', () => {
     expect(boat).toContain('data-buy="potion"');
     expect(boat).toContain('120 scrip');
     expect(boat).toContain('data-barter="barter-quick-claw"');
-    expect(boat).toContain('2× Parts crate, 1× Cable coil');
+    expect(boat).toContain('<small>2× Parts crate</small><small>1× Cable coil</small>');
     // Nothing on the shelf is gear, at any standing.
     expect(boat).not.toContain('data-buy="quick-claw"');
     expect(boat).not.toContain('data-buy="leftovers"');
@@ -1425,7 +1480,9 @@ describe('HubScene - the Ferryman', () => {
     const boat = markupOf(hub);
 
     expect(boat).toContain('data-berth');
-    expect(boat).toContain('Berth · 250 scrip');
+    // The price is the row's own price column, as every price on the two
+    // shelves now is; the row's line is kept for what the berth *does*.
+    expect(boat).toContain('<span class="px-price"><small>250 scrip</small></span>');
     // The one sentence that tells the two places apart, on the row itself.
     // The squares come from the grid rather than a number typed beside it.
     expect(boat).toMatch(/\+\d+ protected squares, this raid\./);
@@ -1433,6 +1490,106 @@ describe('HubScene - the Ferryman', () => {
     // row it wrapped to three lines and ate the shelf above it.
     expect(boat).toMatch(/data-help="[^"]*The Outfitter builds one for good/);
     expect(boat).not.toMatch(/<small[^>]*>[^<]*The Outfitter builds one for good/);
+  });
+
+  /**
+   * The same fault the Outfitter had, and worse on the barter table: a row
+   * that named only what it took said nothing about what it handed back, so
+   * QUICK CLAW, FOCUS BAND and LIFE ORB were three prices and three names.
+   */
+  it('says what every deal hands over and what it hands back, both on the row', () => {
+    const { hub } = createTraderHub();
+    hub.setView('trader');
+    const boat = markupOf(hub);
+
+    // The shelf: what a Potion does, and its price beside it.
+    expect(boat).toContain('<strong class="px-name">Potion</strong><small class="px-wrap">Restores 20 HP.</small>');
+    expect(boat).toContain('<span class="px-price"><small>120 scrip</small></span>');
+    // The table: what the gear does, from the item's own catalogue line.
+    expect(boat).toContain('Sometimes the holder strikes first, whatever the Speed says.');
+    expect(boat).toContain("The holder's hits land a third harder and cost it a tenth of its own HP.");
+  });
+
+  it('prices both counters against what the vault is actually holding', () => {
+    const { hub } = createTraderHub(200);
+    hub.setView('trader');
+    const boat = markupOf(hub);
+
+    const shelf = boat.slice(boat.indexOf('data-shown-by="super-potion"'));
+    // 260 scrip against 200 held, so the held half is the one written in red.
+    expect(shelf).toContain('<div class="is-short"><dt>');
+    expect(shelf).toContain('<dd>200 in the vault</dd>');
+    expect(shelf).toContain('<dt><span class="shop-price-nib" aria-hidden="true"></span><span>1 of his ration</span></dt>');
+
+    const table = boat.slice(boat.indexOf('data-shown-by="barter-hm03"'));
+    expect(table).toContain('2× Mooring rope');
+    expect(table).toContain('<dd>2 in the vault</dd>');
+  });
+
+  it('names the standing a shut deal is waiting on rather than only shutting it', () => {
+    const { hub } = createTraderHub();
+    hub.setView('trader');
+    const boat = markupOf(hub);
+    const pane = boat.slice(boat.indexOf('data-shown-by="barter-life-orb"'));
+
+    expect(pane).toContain('<span class="px-wrap px-warning">He keeps that back until you are partner.</span>');
+  });
+
+  /**
+   * Found goods are gone for good, so a barter is never one press. The second
+   * press is a different button with the cursor on the one that changes
+   * nothing, because the key that armed the deal is still under the finger -
+   * the same rule `trainerChallengePrompt` opens on BACK AWAY for.
+   */
+  it('asks again before it takes found goods, with the cursor on keeping them', () => {
+    const { hub } = createTraderHub();
+    const armed = hub as unknown as { traderArmed: string | undefined };
+    hub.setView('trader');
+
+    // Unarmed, the row is the question and nothing on screen strikes the deal.
+    const offered = markupOf(hub);
+    expect(offered).toContain('data-barter="barter-quick-claw"');
+    expect(offered).not.toContain('data-barter-confirm');
+    expect(offered).toMatch(/data-barter="barter-quick-claw"[^>]*data-help="[^"]*He asks again/);
+
+    armed.traderArmed = 'barter-quick-claw';
+    const asking = markupOf(hub);
+
+    expect(asking).toContain('Hand over 2× Parts crate, 1× Cable coil for good?');
+    expect(asking).toMatch(/data-deal-cancel[^>]*data-cursor-start/);
+    expect(asking).toContain('data-barter-confirm="barter-quick-claw"');
+    // The armed row is no longer the one-press deal it replaced.
+    expect(asking).not.toContain('data-barter="barter-quick-claw"');
+    // Keeping them is offered ahead of handing them over, so the first control
+    // the cursor can reach is the one that costs nothing.
+    expect(asking.indexOf('data-deal-cancel')).toBeLessThan(asking.indexOf('data-barter-confirm'));
+  });
+
+  it('asks again before it rents a berth, which is a raid of scavenging in scrip', () => {
+    const { hub } = createTraderHub();
+    const armed = hub as unknown as { traderArmed: string | undefined };
+    hub.setView('trader');
+
+    armed.traderArmed = 'berth';
+    const asking = markupOf(hub);
+
+    expect(asking).toContain('Pay 250 scrip for one raid, used or not?');
+    expect(asking).toContain('data-berth-confirm');
+    expect(asking).toMatch(/data-deal-cancel[^>]*data-cursor-start/);
+    expect(asking).not.toMatch(/data-berth(?![-\w])/);
+  });
+
+  it('forgets a deal it had asked about the moment the screen changes', () => {
+    const { hub } = createTraderHub();
+    const armed = hub as unknown as { traderArmed: string | undefined };
+    hub.setView('trader');
+    armed.traderArmed = 'barter-quick-claw';
+
+    hub.setView('home');
+    hub.setView('trader');
+
+    expect(armed.traderArmed).toBeUndefined();
+    expect(markupOf(hub)).not.toContain('data-barter-confirm');
   });
 
   it('types no arrow and no tick, exactly as every other pixel screen', () => {

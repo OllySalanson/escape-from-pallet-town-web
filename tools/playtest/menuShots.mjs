@@ -81,7 +81,7 @@ const AUDIT = `(() => {
     if (node.closest('.px-scroll, .menu-scroll')) return false;
     const r = node.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && (r.right > box.right + 0.5 || r.left < box.left - 0.5 || r.bottom > box.bottom + 0.5 || r.top < box.top - 0.5);
-  }).map((node) => node.className || node.tagName);
+  }).map((node) => (node.className || node.tagName) + ' [' + node.textContent.replace(/\s+/g, ' ').trim().slice(0, 40) + ']');
   // What would actually resample the art: a game pixel that is not a whole
   // number of screen pixels, a screen standing on half of one, or a picture
   // drawn at anything but a whole multiple of its own size. A grid track that
