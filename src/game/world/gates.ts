@@ -198,16 +198,26 @@ export const WORLD_GATES: readonly MapGate[] = [
     // cut here buys four steps at most (the wood is two-connected throughout),
     // so what it is worth is the twelve tiles of clearing nobody has walked.
     //
-    // Hedge rather than thicket, because hedge is the material this game draws
-    // as shoulder-high growth and thicket is what the whole wood is: a door has
-    // to look different from the wall it is in.
+    // A stool either side of the mouth, in **both** states, and the growth
+    // between them is the door. The same answer the Orchard Ford needed and for
+    // the same reason: this wood is drawn as a lattice of bushes, so a hedge
+    // tile in it is the same green as the wall it is in, and a door nobody can
+    // see is a wall. Two brown stumps are the one thing on that row that is an
+    // object - the mark a coppicer leaves - and after the cut they are what the
+    // gap is still between.
     id: 'forest-coppice-ride',
     mapId: 'viridian-forest',
     fieldMove: 'cut',
     label: 'COPPICE RIDE',
     tiles: [{ x: 15, y: 27 }],
-    closed: { material: 'hedge' },
-    open: { material: 'grass' },
+    closed: {
+      material: 'hedge',
+      props: [{ name: 'stump', x: 14, y: 27 }, { name: 'stump', x: 16, y: 27 }],
+    },
+    open: {
+      material: 'grass',
+      props: [{ name: 'stump', x: 14, y: 27 }, { name: 'stump', x: 16, y: 27 }],
+    },
   },
 
   // -- Floodplain Relay ------------------------------------------------------
@@ -285,11 +295,11 @@ export const WORLD_GATES: readonly MapGate[] = [
     open: { material: 'stone' },
   },
   {
-    // The one door on this map that no fight opens. The bar in the great reach
-    // below Old Town can be seen from the reeds on a fresh save's first raid
-    // and there is no way to it on foot at all - two rows of deep water, and
-    // the unfelled wood at its back. Swum once, the shoal is a crossing the
-    // player knows, and the map draws the shelf it shelves on.
+    // The one door on this map that no fight opens. The bar under Market Isle's
+    // south treeline can be seen from Old Town's reeds on a fresh save's first
+    // raid and there is no way to it on foot at all - two rows of deep water in
+    // front of it, and the unfelled wood at its back. Swum once, the shoal is a
+    // crossing the player knows, and the map draws the shallow it shelves on.
     //
     // Deep water shut and a ford open is the same pair the Relay Causeway
     // uses, and for the same reason: shut, a ford reads as somewhere you could

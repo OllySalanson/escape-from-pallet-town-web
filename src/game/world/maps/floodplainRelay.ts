@@ -519,12 +519,12 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   ]);
 
   // == THE SHOAL ===========================================================
-  // The flood took a bar of sand out of the wood's foot and left it standing in
-  // the great reach below Old Town, with three tiles of deep water between it
-  // and the reeds and the whole width of the river either side. You can see it
-  // from the bank on your first raid and there is no way to it on foot: the
-  // wood behind it was never cut, and this map's own rule is that water is the
-  // wall, the landmark and the sightline that shows the place you cannot reach.
+  // The flood took a bar of sand out of the wood under Market Isle's south
+  // shore and left it standing in the great reach, with deep water in front of
+  // it and the unfelled wood at its back. You can see it from Old Town's reeds
+  // on your first raid and there is no way to it on foot at all, which is this
+  // map's own rule: water is the wall, the landmark, and the sightline that
+  // shows the place you cannot reach yet.
   //
   // `../gates.ts` authors the two rows of water at 25-26, 45-46 as the SURF
   // door. Swim it once and it stays a known crossing - drawn as a ford, which

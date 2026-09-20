@@ -256,8 +256,9 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
     'ggggg   ',
   ]);
   // Stools on the rim: what coppicing leaves, standing on thicket that is solid
-  // either way, so the hollow keeps every one of its own tiles.
-  map.plant(13, 27, 'stump');
+  // either way, so the hollow keeps every one of its own tiles. The pair at the
+  // mouth belongs to the door rather than to the drawing - see `../gates.ts` -
+  // because they are what makes the growth between them read as a way through.
   map.plant(17, 31, 'deadStump');
   map.plant(12, 30, 'stump');
   map.plant(9, 32, 'deadStump');
