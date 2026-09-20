@@ -8,6 +8,13 @@ import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay'
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { GAME_FONT } from '../ui/gameFont';
 import { conditionLine } from '../ui/condition';
+import {
+  cursorMayDescribe,
+  describeKey,
+  describedKey,
+  POINTER_ONLY,
+  previewAfterPointer,
+} from '../ui/hoverDescribe';
 
 const SCREEN_WIDTH = 320;
 const SCREEN_HEIGHT = 240;
@@ -52,6 +59,13 @@ export class PartyScene extends Phaser.Scene {
   private party!: PokemonParty;
   private bag = new Bag();
   private selectedIndex = 0;
+  /**
+   * What the pointer is on and what the keyboard cursor is on - see
+   * `ui/hoverDescribe.ts`. Neither is a selection: pointing at a party member
+   * shows their card, and the member the player chose is still the chosen one.
+   */
+  private pointerDescribe: string | null = null;
+  private cursorDescribe: string | null = null;
   private isReordering = false;
   private readonly cardBackgrounds: Phaser.GameObjects.Rectangle[] = [];
   private readonly cardSprites: Phaser.GameObjects.Image[] = [];
@@ -72,6 +86,8 @@ export class PartyScene extends Phaser.Scene {
     this.bag = data.bag ?? new Bag();
     this.selectedIndex = 0;
     this.isReordering = false;
+    this.pointerDescribe = null;
+    this.cursorDescribe = null;
   }
 
   public create(): void {
@@ -103,27 +119,108 @@ export class PartyScene extends Phaser.Scene {
         this.close();
         return;
       }
-      const buttons = [...this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('button')];
+      // Only the controls that are drawn: every member has a card now and all
+      // but one is hidden, and focus refuses a hidden control silently - so a
+      // cursor that counted them stopped dead on the row above the first one.
+      const buttons = [...this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('button:not([disabled])')]
+        .filter((button) => button.offsetParent !== null);
       const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key) && buttons.length) {
         event.preventDefault();
         buttons[(current + (event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1) + buttons.length) % buttons.length]?.focus();
       }
     });
+    this.watchDescribing();
     this.renderModernMenu();
   }
 
+  /**
+   * The pointer and the keyboard cursor, each saying which member it is on.
+   * Both listeners sit on the overlay root, because every render replaces the
+   * rows. See `BagScene.watchDescribing` for the same rule on the same screen's
+   * sibling.
+   */
+  private watchDescribing(): void {
+    const root = this.menuOverlay!.root;
+    root.addEventListener('mouseover', (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      this.setDescribing(
+        previewAfterPointer(this.pointerDescribe, {
+          on: target?.closest<HTMLElement>('[data-describes]')?.dataset.describes ?? null,
+          withinGroup: Boolean(target?.closest('[data-describe-group]')),
+        }),
+        this.cursorDescribe,
+      );
+    });
+    root.addEventListener('mouseleave', () => this.setDescribing(null, this.cursorDescribe));
+    root.addEventListener('focusin', (event) => {
+      const control = event.target instanceof Element ? event.target : null;
+      const described = control?.closest<HTMLElement>('[data-describes]');
+      this.setDescribing(
+        this.pointerDescribe,
+        described && cursorMayDescribe(described.dataset.describesOn)
+          ? described.dataset.describes ?? null
+          : null,
+      );
+    });
+  }
+
+  private setDescribing(pointer: string | null, cursor: string | null): void {
+    if (pointer === this.pointerDescribe && cursor === this.cursorDescribe) {
+      return;
+    }
+    this.pointerDescribe = pointer;
+    this.cursorDescribe = cursor;
+    this.showDescribedCard();
+  }
+
   private renderModernMenu(): void {
-    const selected = this.party.pokemon[this.selectedIndex];
-    const detail = selected
-      ? `<section class="party-detail"><div class="detail-hero">${pokemonAvatar(selected.base.dexId, selected.base.name)}<div><p class="eyebrow">Party member</p><h2>${selected.base.name}</h2><p>${conditionLine(selected)}</p>${hpBar(selected.currentHp, selected.maxHp)}<div>${typeBadge(selected.base.primaryType)}${selected.base.secondaryType ? typeBadge(selected.base.secondaryType) : ''}</div></div></div><div class="stats-grid"><span><small>HP</small><b>${selected.stats.hp}</b></span><span><small>Attack</small><b>${selected.stats.attack}</b></span><span><small>Defense</small><b>${selected.stats.defense}</b></span><span><small>Speed</small><b>${selected.stats.speed}</b></span></div>${this.gearSection(selected)}<h3>Moves</h3><div class="move-list">${selected.moves.map((move) => `<div><strong>${move.base.name}</strong>${typeBadge(move.base.type)}<small>${move.pp}/${move.base.pp} PP</small></div>`).join('') || '<p class="empty-state">No known moves.</p>'}</div></section>`
-      : '<section class="party-detail"><p class="empty-state">No Pokémon in your party.</p></section>';
-    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run team</p><h1>Party</h1></div><p class="stash-count">Select a member to inspect</p></header><main class="party-layout"><section class="party-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable ${index === this.selectedIndex ? 'selected' : ''}" data-member="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${conditionLine(pokemon)}${this.heldSuffix(pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('') || '<p class="empty-state">No Pokémon in your party.</p>'}</section>${detail}</main></div>`;
+    // Every member's card is built and all but one hidden, rather than one card
+    // rebuilt whenever the answer changes: pointing at a row must not replace
+    // markup the pointer could be about to click, and a rebuilt card re-fetches
+    // its portrait and flashes.
+    const cards = this.party.pokemon
+      .map((member, index) => `<section class="party-detail" data-detail-for="${index}" data-describe-group hidden><div class="detail-hero">${pokemonAvatar(member.base.dexId, member.base.name)}<div><p class="eyebrow">Party member</p><h2>${member.base.name}</h2><p>${conditionLine(member)}</p>${hpBar(member.currentHp, member.maxHp)}<div>${typeBadge(member.base.primaryType)}${member.base.secondaryType ? typeBadge(member.base.secondaryType) : ''}</div></div></div><div class="stats-grid"><span><small>HP</small><b>${member.stats.hp}</b></span><span><small>Attack</small><b>${member.stats.attack}</b></span><span><small>Defense</small><b>${member.stats.defense}</b></span><span><small>Speed</small><b>${member.stats.speed}</b></span></div>${this.gearSection(member, index)}<h3>Moves</h3><div class="move-list">${member.moves.map((move) => `<div><strong>${move.base.name}</strong>${typeBadge(move.base.type)}<small>${move.pp}/${move.base.pp} PP</small></div>`).join('') || '<p class="empty-state">No known moves.</p>'}</div></section>`)
+      .join('') || '<section class="party-detail"><p class="empty-state">No Pokémon in your party.</p></section>';
+    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run team</p><h1>Party</h1></div><p class="stash-count">Point at a member to read them</p></header><main class="party-layout"><section class="party-list" data-describe-group>${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable ${index === this.selectedIndex ? 'selected' : ''}" data-member="${index}" data-describes="${describeKey('member', index)}" ${POINTER_ONLY}>${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${conditionLine(pokemon)}${this.heldSuffix(pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('') || '<p class="empty-state">No Pokémon in your party.</p>'}</section>${cards}</main></div>`;
     this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-member]').forEach((button) => button.onclick = () => { this.selectedIndex = Number(button.dataset.member); this.renderModernMenu(); });
-    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-give-gear]').forEach((button) => button.onclick = () => this.giveGear(button.dataset.giveGear!));
-    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-take-gear]').forEach((button) => button.onclick = () => this.takeGear());
+    // A gear row names the member whose card it is on rather than reading the
+    // selection, so a card shown because the pointer is on its row can never
+    // hand its gear to somebody else.
+    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-give-gear]').forEach((button) => button.onclick = () => this.giveGear(Number(button.dataset.gearMember), button.dataset.giveGear!));
+    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-take-gear]').forEach((button) => button.onclick = () => this.takeGear(Number(button.dataset.gearMember)));
+    this.showDescribedCard();
     this.menuOverlay!.focus('[data-member].selected', '[data-member]', '[data-close]');
+  }
+
+  /** The member the player chose, which pointing and arrowing never move. */
+  private get selectedDescribeKey(): string | null {
+    return this.party.pokemon.length ? describeKey('member', this.selectedIndex) : null;
+  }
+
+  /**
+   * Shows the card for whatever the screen is about now. Nothing is rebuilt -
+   * every card is already on the screen and this only says which one is drawn.
+   */
+  private showDescribedCard(): void {
+    const root = this.menuOverlay?.root;
+    if (!root) {
+      return;
+    }
+    const cards = [...root.querySelectorAll<HTMLElement>('[data-detail-for]')];
+    const known = (key: string | null): string | null =>
+      key !== null && cards.some((card) => describeKey('member', card.dataset.detailFor ?? '') === key)
+        ? key
+        : null;
+    const key = describedKey({
+      pointer: known(this.pointerDescribe),
+      cursor: known(this.cursorDescribe),
+      selected: known(this.selectedDescribeKey),
+    });
+    cards.forEach((card) => {
+      card.hidden = describeKey('member', card.dataset.detailFor ?? '') !== key;
+    });
   }
 
   /** What the list row says after the condition, when there is gear to say. */
@@ -136,22 +233,28 @@ export class PartyScene extends Phaser.Scene {
    * The gear pocket for one Pokemon: what it is carrying, and what the pack
    * could give it instead.
    *
+   * Every control on a card carries that card's own describe key, exactly as a
+   * pixel-ui detail pane's controls carry its `data-shows`: without it the
+   * cursor landing on a gear button would say "on nothing", the card would go
+   * back to the chosen member, and the button the cursor had just reached would
+   * be hidden out from under it.
+   *
    * One slot, so a give is always a swap - the piece already held goes back into
    * the pack in the same action, and there is never a moment where the player
    * owns two of something or none of it.
    */
-  private gearSection(pokemon: Pokemon): string {
+  private gearSection(pokemon: Pokemon, memberIndex: number): string {
     const held = getHeldItem(pokemon.heldItemId);
     const offers = HELD_ITEM_DEFINITIONS.filter(
       (item) => this.bag.count(item.id) > 0 && item.id !== pokemon.heldItemId,
     );
     const rows = [
       ...(held
-        ? [`<button class="entity-row selectable" data-take-gear="${this.selectedIndex}">${itemIcon(held.id, held.displayName)}<div><strong>${held.displayName}</strong><small>${held.description} Press to take it back.</small></div></button>`]
+        ? [`<button class="entity-row selectable" data-take-gear="${held.id}" data-gear-member="${memberIndex}" data-describes="${describeKey('member', memberIndex)}">${itemIcon(held.id, held.displayName)}<div><strong>${held.displayName}</strong><small>${held.description} Press to take it back.</small></div></button>`]
         : []),
       ...offers.map(
         (item: ItemDefinition) =>
-          `<button class="entity-row selectable" data-give-gear="${item.id}">${itemIcon(item.id, item.displayName)}<div><strong>Give ${item.displayName} ×${this.bag.count(item.id)}</strong><small>${item.description}</small></div></button>`,
+          `<button class="entity-row selectable" data-give-gear="${item.id}" data-gear-member="${memberIndex}" data-describes="${describeKey('member', memberIndex)}">${itemIcon(item.id, item.displayName)}<div><strong>Give ${item.displayName} ×${this.bag.count(item.id)}</strong><small>${item.description}</small></div></button>`,
       ),
     ];
     return `<h3>Gear</h3><div class="move-list">${
@@ -160,8 +263,8 @@ export class PartyScene extends Phaser.Scene {
     }</div>`;
   }
 
-  private giveGear(itemId: string): void {
-    const pokemon = this.party.pokemon[this.selectedIndex];
+  private giveGear(memberIndex: number, itemId: string): void {
+    const pokemon = this.party.pokemon[memberIndex];
     if (!pokemon || this.bag.count(itemId) <= 0 || !this.bag.remove(itemId, 1)) {
       return;
     }
@@ -173,8 +276,8 @@ export class PartyScene extends Phaser.Scene {
     this.renderModernMenu();
   }
 
-  private takeGear(): void {
-    const taken = this.party.pokemon[this.selectedIndex]?.takeHeldItem();
+  private takeGear(memberIndex: number): void {
+    const taken = this.party.pokemon[memberIndex]?.takeHeldItem();
     if (!taken) {
       return;
     }
