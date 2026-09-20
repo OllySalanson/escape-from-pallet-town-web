@@ -3,8 +3,9 @@ import type { GridPacking } from '../items';
 /**
  * Markup for the DOM screens drawn in the game's own visual language.
  *
- * A screen built from these is laid out in game pixels (`--px`, set on `#app` by
- * `display/stageScaler.ts`), framed by the same one-pixel window `pixelWindow.ts`
+ * A screen built from these is laid out in game pixels (`--px`, set on the menu
+ * layer by `display/menuStage.ts` - the screens are sized against the browser
+ * window, not against the canvas), framed by the same one-pixel window `pixelWindow.ts`
  * draws on the canvas, and set in the one typeface. The styling is the
  * `.pixel-ui` block of `src/style.css`; an overlay opts in by carrying that
  * class, and everything here is a pure string so the wording and structure are

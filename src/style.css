@@ -41,10 +41,6 @@ body {
   /* A frame drawn outside the layout box: a border here would eat pixels off
      the canvas and put the art back on a fractional scale. */
   box-shadow: 0 0 0 2px #253d55;
-  /* The DOM screens live inside this element and size themselves against it, so
-     the lobby scales with the game screen rather than with the browser window.
-     Without this, growing the screen made the menus proportionally smaller. */
-  container-type: inline-size;
   width: 640px;
   height: 480px;
   max-width: 100vw;
@@ -52,6 +48,37 @@ body {
   display: grid;
   place-items: center;
   position: relative;
+}
+
+/* The layer every DOM screen is appended to, sized in script against the
+   browser window rather than against the canvas - see display/menuStage.ts for
+   why the two boxes are separate, and what each of them is for. It is a sibling
+   of `#app`, not a child: `container-type` makes an element the containing
+   block even for a fixed position, so a child could never have escaped the
+   canvas box. Everything world-anchored - the dialogue box, a world label, the
+   raid HUD - is drawn on the canvas and is untouched by any of this. */
+#screens {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 640px;
+  height: 480px;
+  z-index: 2;
+  /* The container the older rounded screens measure their `cqw` against, now
+     the window's width rather than the canvas's. */
+  container-type: inline-size;
+  /* Empty, it is not there: the canvas underneath keeps its own pointer events.
+     A screen takes them back for itself. */
+  pointer-events: none;
+}
+/* The same frame the canvas carries, drawn outside the layout box so it costs
+   the screen no pixels - `MENU_INSET` is the room kept for it - and only while
+   a screen is in the layer, or an empty one drew a rectangle round the raid. */
+#screens:not(:empty) {
+  box-shadow: 0 0 0 2px #253d55;
+}
+#screens .menu-overlay {
+  pointer-events: auto;
 }
 
 /* The game's own canvas, and only it: a direct child of the stage. The DOM
@@ -1249,7 +1276,7 @@ button {
    markup comes from `src/game/ui/pixelUi.ts`. Three rules hold everywhere:
 
    1. Every measurement is a whole number of game pixels. `--u` is one of them,
-      in CSS pixels, set on `#app` by `display/stageScaler.ts` - so a window's
+      in CSS pixels, set on the menu layer by `display/menuStage.ts` - so a window's
       border is exactly as thick as one drawn on the canvas, at every zoom, and
       nothing here may be sized in `px`, `vw` or a fractional `--u`.
    2. One typeface at one size. Orange Kid's stem is 0.08em, so 12.5 game pixels
@@ -1555,7 +1582,13 @@ button {
 :where(.pixel-ui) .px-scroll {
   min-height: 0;
   /* A row the cursor scrolls into view stops above the MORE strip, not under it. */
-  scroll-padding-bottom: calc(var(--u) * 8);
+  scroll-padding-bottom: calc(var(--u) * 14);
+  /* And none of its own at the foot: the strip below sticks to the content edge
+     rather than the padding edge, so a pane with bottom padding showed the last
+     few pixels of the next row under its own cue - a row cut through its waist,
+     which is the one thing the strip exists to stop. The drop-in brief had two
+     pixels of it and half a trainer's name below the words `8 MORE`. */
+  padding-bottom: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -1564,43 +1597,62 @@ button {
 @supports not selector(::-webkit-scrollbar) {
   :where(.pixel-ui) .px-scroll {
     scrollbar-width: thin;
-    scrollbar-color: var(--ink-soft) transparent;
+    /* Thumb and track both drawn, for the same reason the webkit rules draw a
+       track: a thumb over nothing says how far down you are, not how far there
+       is left to go. */
+    scrollbar-color: var(--ink-soft) var(--cream-dim);
   }
 }
-/* A pane with more below the fold says so: a strip of its own fill across its
-   foot, ruled off, with a drawn arrow. `MenuOverlay.markScrollCues()` sets
-   `data-more` while there is anything further down. The scrollbar alone was not
-   a cue - three pixels of soft ink, and none at all where a browser hides them -
-   so a row cut in half was the only sign that the result screen's FIELD
-   EXPERIENCE line existed. It overlays the last few pixels rather than taking a
-   row of its own, so a list that fits is not made to scroll by its own cue. */
+/* A pane with more below the fold says so, in words: a strip of its own fill
+   across its foot, ruled off, reading `7 MORE` with a drawn arrow after it.
+   `MenuOverlay.markScrollCues()` writes that count into `data-more` and this
+   draws it. The scrollbar alone was not a cue - three pixels of soft ink, and
+   none at all where a browser hides them - so a row cut in half was the only
+   sign that the result screen's FIELD EXPERIENCE line existed; and an arrow
+   alone still left "is the thing I want one row down, or thirty?" unanswered,
+   which is what a list hidden behind a scroll wheel actually costs a player. It
+   overlays the last line of the pane rather than taking a row of its own, so a
+   list that fits is not made to scroll by its own cue. */
 :where(.pixel-ui) .px-scroll[data-more]::after {
-  content: '';
+  content: attr(data-more);
   position: sticky;
   bottom: 0;
   z-index: 1;
-  display: block;
   /* `MenuOverlay.markScrollCues()` sets `--more-cover` when a row would
      otherwise be cut through by the strip: the strip then takes the whole row. */
-  height: var(--more-cover, calc(var(--u) * 7));
-  margin-top: calc(var(--more-cover, calc(var(--u) * 7)) * -1 - var(--u));
+  height: var(--more-cover, calc(var(--u) * 13));
+  margin-top: calc(var(--more-cover, calc(var(--u) * 13)) * -1 - var(--u));
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 calc(var(--u) * 10) 0 calc(var(--u) * 3);
+  line-height: calc(var(--u) * 12);
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  white-space: nowrap;
   pointer-events: none;
   background:
-    var(--px-more) center bottom var(--u) / calc(var(--u) * 5) calc(var(--u) * 3) no-repeat,
+    var(--px-more) right calc(var(--u) * 3) bottom calc(var(--u) * 5) / calc(var(--u) * 5)
+      calc(var(--u) * 3) no-repeat,
     linear-gradient(rgb(23 23 23 / 25%), rgb(23 23 23 / 25%)) 0 0 / 100% var(--u) no-repeat,
     linear-gradient(var(--fill, var(--cream)), var(--fill, var(--cream)));
 }
+/* The track is drawn, not implied: a thumb on a transparent track says how far
+   down you are only if you can see how far down there is to go. */
 :where(.pixel-ui) .px-scroll::-webkit-scrollbar {
-  width: calc(var(--u) * 3);
+  width: calc(var(--u) * 4);
 }
 :where(.pixel-ui) .px-scroll::-webkit-scrollbar-button {
   display: none;
 }
 :where(.pixel-ui) .px-scroll::-webkit-scrollbar-thumb {
   background: var(--ink-soft);
+  border: var(--u) solid transparent;
+  background-clip: content-box;
 }
 :where(.pixel-ui) .px-scroll::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--cream-dim);
+  box-shadow: inset var(--u) 0 0 var(--frame);
 }
 :where(.pixel-ui) .px-list {
   display: grid;
@@ -1961,12 +2013,15 @@ button {
    and that is most of what the screen is for. */
 :where(.pixel-ui) .dropin-layout {
   grid-template-columns: auto minmax(0, 1fr);
-  /* The banner is a fixed 88 pixels - the tallest map's picture at one pixel to
-     the tile, plus its lid and its frame - rather than `auto`, for two reasons: an `auto` row
-     takes its height from the *list* beside the picture, which is as tall as
-     however many ways in the player has found, and a banner that changed height
-     with the map would move the whole screen every time the cursor did. */
-  grid-template-rows: calc(var(--u) * 88) minmax(0, 1fr) auto;
+  /* The banner is a fixed 100 pixels rather than `auto`, for two reasons: an
+     `auto` row takes its height from the *list* beside the picture, which is as
+     tall as however many ways in the player has found, and a banner that changed
+     height with the map would move the whole screen every time the cursor did.
+     It is 100 and not the tallest map's own 88 (its picture at one pixel to the
+     tile, plus its lid and its frame) because the list beside the picture is the
+     choice this screen exists for: at 88 the fourth way in was always under the
+     MORE strip, at every window size the game runs in. */
+  grid-template-rows: calc(var(--u) * 100) minmax(0, 1fr) auto;
   height: 100%;
 }
 :where(.pixel-ui) .dropin-layout > .px-window {
@@ -2020,7 +2075,6 @@ button {
   white-space: nowrap;
 }
 :where(.pixel-ui) .dropin-brief {
-  padding-bottom: calc(var(--u) * 2);
   box-shadow: 0 var(--u) 0 inset var(--frame);
 }
 :where(.pixel-ui) .dropin-blurb,
@@ -2125,6 +2179,12 @@ button {
   grid-template-rows: auto minmax(0, 1fr);
   align-content: start;
 }
+/* The board is as tall as the contracts on it and no taller, even on a display
+   that could stretch it half a screen further: what fills the room below is the
+   desk, not a noticeboard with six hundred pixels of cream between a row and
+   the reward line describing it. Tried the other way round on a 2560 window and
+   the detail pane, pinned to the foot of a stretched panel, read as belonging
+   to nothing. */
 :where(.pixel-ui) .objectives-panel {
   align-self: start;
   max-height: 100%;

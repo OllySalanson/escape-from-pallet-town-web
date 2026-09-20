@@ -35,7 +35,9 @@ function removePreviousGameDom(): void {
   if (typeof document === 'undefined') {
     return;
   }
-  document.getElementById('app')?.querySelectorAll('canvas, .menu-overlay').forEach((element) => {
-    element.remove();
-  });
+  // The canvas lives in `#app` and the DOM screens in the menu layer beside it,
+  // so a remount has two places to sweep rather than one.
+  document
+    .querySelectorAll('#app > canvas, .menu-overlay')
+    .forEach((element) => element.remove());
 }

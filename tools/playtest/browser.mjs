@@ -58,13 +58,16 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * worker's driver came to attach to another worker's tab: port 0 cannot collide.
  * `EPTW_CHROME_LIBS` is the scratch directory `ensure-libs.sh` filled.
  */
-export async function launchBrowser({ window = LOGIC_WINDOW, libs = process.env.EPTW_CHROME_LIBS } = {}) {
+export async function launchBrowser({ window = LOGIC_WINDOW, libs = process.env.EPTW_CHROME_LIBS, scrollbars = false } = {}) {
   const profile = mkdtempSync(join(tmpdir(), 'eptw-chrome-'));
   const child = spawn(
     findChromium(),
     [
       '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
-      `--window-size=${window.width},${window.height}`, '--hide-scrollbars', '--mute-audio',
+      `--window-size=${window.width},${window.height}`, '--mute-audio',
+      // Hidden by default so a screenshot is the game and not the browser; a
+      // driver checking a pane's own scrollbar asks for them back.
+      ...(scrollbars ? [] : ['--hide-scrollbars']),
       '--no-first-run', '--no-default-browser-check', '--disable-extensions',
       '--disable-background-networking', '--disable-gpu',
       // A tab opened over CDP is a background tab, and Chromium runs a background
