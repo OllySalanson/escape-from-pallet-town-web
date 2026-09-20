@@ -1,4 +1,5 @@
 import type { GridPacking } from '../items';
+import { describeKey } from './hoverDescribe';
 
 /**
  * Markup for the DOM screens drawn in the game's own visual language.
@@ -241,7 +242,11 @@ export function pixelGrid(packing: GridPacking, icon: (itemId: string) => string
     .map((placement) => {
       const marked = options.highlight === placement.itemId ? ' is-marked' : '';
       const count = placement.quantity > 1 ? `<b>${placement.quantity}</b>` : '';
-      return `<span class="px-grid-block${marked}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}">${icon(placement.itemId)}${count}</span>`;
+      // The block says what is in it, in the same key its row carries
+      // (`ui/hoverDescribe.ts`), so pointing at either answers the same
+      // question and lights the other - and a screen can light the squares the
+      // cursor is over without re-rendering the container.
+      return `<span class="px-grid-block${marked}" data-describes="${escapeAttribute(describeKey('item', placement.itemId))}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}">${icon(placement.itemId)}${count}</span>`;
     })
     .join('');
   const cargo = packing.cargo
@@ -251,7 +256,7 @@ export function pixelGrid(packing: GridPacking, icon: (itemId: string) => string
         // and the block is two squares wide, so writing it in there spilled
         // over the frame and over the art. The name is the row the cursor is
         // on, and the screen reader gets it from the label.
-        `<span class="px-grid-block is-cargo${options.highlight === placement.cargoId ? ' is-marked' : ''}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}" aria-label="${escapeAttribute(placement.name)}" role="img">${placement.art ? `<img src="${placement.art}" alt="" />` : `<em>${escapeAttribute(placement.name.slice(0, 1))}</em>`}</span>`,
+        `<span class="px-grid-block is-cargo${options.highlight === placement.cargoId ? ' is-marked' : ''}" data-describes="${escapeAttribute(describeKey('cargo', placement.cargoId))}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}" aria-label="${escapeAttribute(placement.name)}" role="img">${placement.art ? `<img src="${placement.art}" alt="" />` : `<em>${escapeAttribute(placement.name.slice(0, 1))}</em>`}</span>`,
     )
     .join('');
   const label = options.label ? ` aria-label="${escapeAttribute(options.label)}" role="img"` : '';

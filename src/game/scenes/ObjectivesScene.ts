@@ -6,6 +6,14 @@ import type { ActiveRunSession } from '../run/RunSession';
 import type { WorldMapId } from '../worldMap';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
+import {
+  COLUMN_MEASURES,
+  pixelColumns,
+  pixelScreen,
+  pixelTag,
+  pixelWindow,
+} from '../ui/pixelUi';
+import { objectiveIcon } from '../ui/icons';
 
 export interface ObjectivesSceneData {
   readonly runSession: ActiveRunSession;
@@ -17,8 +25,18 @@ export interface ObjectivesSceneData {
 }
 
 /**
- * A scene-owned overlay lets the world remain fully paused while preserving
- * its active raid state for a clean resume.
+ * The raid field guide, in the game's own visual language.
+ *
+ * A scene-owned overlay lets the world remain fully paused while preserving its
+ * active raid state for a clean resume.
+ *
+ * It used to be a third look again - a green terminal with its own header, its
+ * own panels and its own footer - beside a rounded bag and a pixel-ui lobby.
+ * It is two windows of rows now, like every other screen: what the contract
+ * still wants, and what to do about it. Every row is a control the cursor can
+ * rest on even though none of them does anything, because a pane with nothing
+ * focusable in it cannot be scrolled with the arrow keys, and this is the one
+ * screen in a raid whose panes are made of sentences.
  */
 export class ObjectivesScene extends Phaser.Scene {
   private menuOverlay!: MenuOverlay;
@@ -44,42 +62,62 @@ export class ObjectivesScene extends Phaser.Scene {
   }
 
   private createOverlay(guide: ReturnType<typeof buildObjectiveGuide>): void {
-    this.menuOverlay = new MenuOverlay(this, 'objectives-menu', (event) => {
+    this.menuOverlay = new MenuOverlay(this, 'objectives-menu pixel-ui', (event) => {
       if (isOverlayDismissKey(event, 'o')) {
         event.preventDefault();
         this.close();
+        return;
+      }
+      if (this.menuOverlay.moveCursor(event.key)) {
+        event.preventDefault();
       }
     });
     this.menuOverlay.root.setAttribute('aria-label', 'Raid field guide');
-    this.menuOverlay.root.innerHTML = `<div class="field-guide-shell">
-      <header class="field-guide-header">
-        <div>
-          <p class="eyebrow">Raid field guide</p>
-          <h1>${guide.contractLabel}</h1>
-        </div>
-        <button class="field-guide-close" data-close aria-label="Close field guide">Close <kbd>O</kbd></button>
-      </header>
-      <main class="field-guide-layout">
-        <section class="field-guide-panel" aria-labelledby="objectives-heading">
-          <div class="field-guide-heading"><p class="eyebrow">Active objectives</p><h2 id="objectives-heading">Contract status</h2></div>
-          <div class="field-guide-objectives">
-            ${guide.objectives.length
-              ? guide.objectives.map((objective) => `<article class="field-guide-objective ${objective.complete ? 'complete' : ''}">
-                <span aria-hidden="true">${objective.complete ? '✓' : '○'}</span>
-                <div><strong>${escapeHtml(objective.description)}</strong><small>${objective.progress} complete · Reward: ${escapeHtml(objective.reward)}</small></div>
-              </article>`).join('')
-              : '<p class="field-guide-empty">No contract objective is active. Your loot is still only safe after extraction.</p>'}
-          </div>
-        </section>
-        <section class="field-guide-panel field-guide-notes" aria-labelledby="notes-heading">
-          <div class="field-guide-heading"><p class="eyebrow">${guide.isFirstContract ? 'First run briefing' : 'Field notes'}</p><h2 id="notes-heading">What to do next</h2></div>
-          <ol>${guide.hints.map((hint) => `<li>${escapeHtml(hint)}</li>`).join('')}</ol>
-        </section>
-      </main>
-      <footer>GAME PAUSED · Press <kbd>O</kbd> or <kbd>Esc</kbd> to return</footer>
-    </div>`;
+    const done = guide.objectives.filter((objective) => objective.complete).length;
+    const objectives = guide.objectives.length
+      ? guide.objectives
+          .map(
+            (objective) =>
+              // No `data-help`: the row is the whole sentence already, and the
+              // help bar is two lines - a long note put in both places spilled
+              // out of the bar it was written into.
+              `<button class="px-row has-icon px-tall" aria-disabled="true">${objectiveIcon('Contract')}<span class="px-row-main"><span class="px-wrap">${escapeHtml(
+                objective.description,
+              )}</span><small class="px-wrap">Reward: ${escapeHtml(objective.reward)}</small></span>${
+                objective.complete
+                  ? pixelTag('Done', 'good', true)
+                  : pixelTag(objective.progress, 'plain')
+              }</button>`,
+          )
+          .join('')
+      : '<p class="px-empty px-wrap">No contract objective is active. Your loot is still only safe after extraction.</p>';
+    // Numbered, because the notes are a route read in order and the typeface
+    // has no list marker: the number stands in a gutter of its own.
+    const notes = guide.hints
+      .map(
+        (hint, index) =>
+          `<button class="px-row has-number px-tall" aria-disabled="true"><span class="px-number">${index + 1}</span><span class="px-row-main"><span class="px-wrap">${escapeHtml(hint)}</span></span></button>`,
+      )
+      .join('');
+    const body = `<main class="px-body raid-guide-layout">${pixelWindow(
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${objectives}</div>`,
+      {
+        heading: 'Contract status',
+        note: guide.objectives.length ? `${done} of ${guide.objectives.length} done` : 'nothing owed',
+      },
+    )}${pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${notes}</div>`, {
+      heading: 'What to do next',
+      note: guide.isFirstContract ? 'first run briefing' : 'field notes',
+    })}</main>`;
+    this.menuOverlay.root.innerHTML = pixelScreen({
+      title: escapeHtml(guide.contractLabel),
+      back: { label: 'Raid', attribute: 'data-close' },
+      aside: 'Raid paused',
+      body,
+      hints: 'ARROWS read · O or ESC back to the raid',
+    });
     this.menuOverlay.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
-    this.menuOverlay.focus('[data-close]');
+    this.menuOverlay.focus('.px-list button', '[data-close]');
   }
 
   private close(): void {

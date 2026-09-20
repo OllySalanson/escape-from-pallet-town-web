@@ -174,52 +174,6 @@ button {
   box-shadow: var(--shadow);
 }
 
-.entity-list {
-  display: grid;
-  gap: 8px;
-}
-.entity-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  text-align: left;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: var(--menu-raised);
-  padding: 9px;
-}
-/* The block of copy after a row's icon takes up the slack. Without this the
-   trailing-child rule below pushes the name itself to the far right of a wide
-   row, which only looked right while every row was narrow. */
-.entity-row > div:nth-child(2) {
-  flex: 1;
-  min-width: 0;
-}
-.entity-row > div:nth-last-child(1) {
-  margin-left: auto;
-}
-.entity-row small {
-  display: block;
-}
-.entity-row > span:last-child {
-  margin-left: auto;
-}
-
-/* A wide row must not stretch the health bar into a ribbon. */
-.entity-row .hp-track {
-  max-width: 280px;
-}
-
-.selectable:hover,
-.selectable.selected {
-  border-color: var(--menu-accent);
-  background: #1d3950;
-}
-.entity-row.secured {
-  border-color: #f6c969;
-  background: #3e3420;
-}
 .pokemon-avatar {
   width: 38px;
   height: 38px;
@@ -241,47 +195,6 @@ button {
 .pokemon-avatar:not(.artwork-unavailable) > span {
   display: none;
 }
-.hp-track {
-  width: 100%;
-  height: 5px;
-  background: #26374c;
-  border-radius: 4px;
-  margin-top: 5px;
-  overflow: hidden;
-}
-.hp-track span {
-  height: 100%;
-  display: block;
-  background: #62d58a;
-}
-.hp-track .warning {
-  background: #f6c969;
-}
-.hp-track .critical {
-  background: var(--menu-danger);
-}
-.type-badge {
-  display: inline-block;
-  background: #2b5675;
-  padding: 3px 6px;
-  margin-left: 4px;
-  border-radius: 20px;
-  font-size: 0.7em;
-  font-weight: 700;
-}
-.type-fire {
-  background: #873f38;
-}
-.type-grass {
-  background: #3a704c;
-}
-.type-electric {
-  background: #806d26;
-}
-.type-water {
-  background: #355f9a;
-}
-
 /*
  * Icons are 16x16 pixel art. The box is a whole multiple of that (32px, or 2x)
  * and the image fills it exactly, so every source pixel lands on four screen
@@ -332,10 +245,6 @@ button {
   cursor: not-allowed;
 }
 
-.empty-state {
-  padding: 18px 4px;
-  color: var(--menu-muted);
-}
 /* The status line is the last thing in a long screen, so it sticks to the
    bottom of the scroll area: an action's confirmation must never be off-screen. */
 .menu-status {
@@ -348,94 +257,6 @@ button {
   background: var(--menu-raised);
   box-shadow: var(--shadow);
   color: #ffd4c8;
-}
-.party-layout,
-.bag-layout {
-  display: grid;
-  grid-template-columns: 0.8fr 1.2fr;
-  gap: var(--space-3);
-}
-.party-list,
-.bag-list,
-.party-detail,
-.bag-detail {
-  background: rgb(17 28 46 / 90%);
-  border: 1px solid var(--menu-border);
-  border-radius: var(--radius);
-  padding: var(--space-3);
-  box-shadow: var(--shadow);
-}
-.party-detail h2,
-.bag-detail h2 {
-  font-size: 2em;
-}
-.detail-hero {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-.detail-hero .pokemon-avatar {
-  width: 88px;
-  height: 88px;
-  flex-basis: 88px;
-}
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin: 22px 0;
-}
-.stats-grid span {
-  border-radius: 9px;
-  background: var(--menu-raised);
-  padding: 10px;
-  display: grid;
-}
-.stats-grid b {
-  font-size: 1.25em;
-}
-.party-detail h3,
-.bag-detail h3 {
-  margin: 18px 0 9px;
-}
-.move-list {
-  display: grid;
-  gap: 7px;
-}
-.move-list > div {
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--menu-raised);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.move-list small {
-  margin-left: auto;
-}
-.category-tabs {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 14px;
-  overflow-x: auto;
-}
-.category-tabs button {
-  white-space: nowrap;
-  border: 1px solid var(--menu-border);
-  background: transparent;
-  color: var(--menu-muted);
-  padding: 7px 9px;
-  border-radius: 7px;
-}
-.category-tabs .active {
-  color: var(--menu-text);
-  border-color: var(--menu-accent);
-  background: var(--menu-accent-dark);
-}
-.item-count {
-  margin: 18px 0;
-  color: var(--menu-accent);
-  font-weight: 800;
 }
 .test-lab-shell {
   max-width: 79em;
@@ -590,142 +411,6 @@ button {
 .reset-button {
   color: var(--menu-danger);
 }
-.objectives-menu {
-  /* The screen is now as tall as the browser window, so the guide is centred in
-     it rather than pinned to the top of a much taller box. `safe` keeps a guide
-     too tall to fit scrollable from its own top edge. */
-  display: grid;
-  align-content: safe center;
-  justify-items: center;
-  background:
-    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 4px),
-    #07151b;
-  font-family: "Orange Kid", monospace;
-  letter-spacing: 0.025em;
-}
-.field-guide-shell {
-  /* Same measure as the lobby's `.menu-shell`, so the guide is a page of the
-     same game rather than a small card floating in a large screen. */
-  width: min(70em, calc(100% - 28px));
-  min-height: min(44em, calc(100% - 28px));
-  margin: 14px auto;
-  padding: clamp(18px, 3vw, 34px);
-  border: 4px solid #b7e7d0;
-  outline: 3px solid #1c5260;
-  outline-offset: -10px;
-  background:
-    linear-gradient(90deg, rgb(87 214 190 / 0.08) 1px, transparent 1px) 0 0 / 12px 12px,
-    linear-gradient(#102a33, #091a22);
-  box-shadow: 0 0 0 6px #061016, 12px 12px 0 rgb(0 0 0 / 45%);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.field-guide-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-/* A panel heading is a kicker over its title, both on the left edge the
-   content under them starts from. It shared the header's space-between row,
-   which pushed each title to the right over left-aligned content. */
-.field-guide-heading {
-  display: block;
-}
-.field-guide-header h1 {
-  margin: 2px 0 0;
-  color: #f4f0cb;
-  font-size: clamp(30px, 5vw, 48px);
-  line-height: 0.9;
-  text-transform: uppercase;
-}
-.field-guide-close {
-  border: 2px solid #83cdbb;
-  background: #153b43;
-  padding: 8px 10px;
-  font-weight: bold;
-}
-.field-guide-close:hover {
-  background: #1d5660;
-}
-.objectives-menu kbd {
-  border: 1px solid #b7e7d0;
-  background: #07151b;
-  padding: 1px 4px;
-  color: #f4f0cb;
-  font: inherit;
-}
-.field-guide-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-.field-guide-panel {
-  border: 2px solid #376b70;
-  background: rgb(3 16 23 / 78%);
-  padding: var(--space-3);
-}
-.field-guide-heading h2 {
-  margin: 2px 0 0;
-  color: #d9f4dc;
-  font-size: 1.5em;
-  text-transform: uppercase;
-}
-.field-guide-objectives {
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
-}
-.field-guide-objective {
-  display: flex;
-  gap: 10px;
-  padding: 9px;
-  border-left: 4px solid #f1bf63;
-  background: #142e39;
-}
-.field-guide-objective.complete {
-  border-color: #72d895;
-  color: #bdf7ca;
-}
-.field-guide-objective > span {
-  color: #f1bf63;
-  font-size: 1.35em;
-}
-.field-guide-objective.complete > span {
-  color: #72d895;
-}
-.field-guide-objective small {
-  display: block;
-  margin-top: 3px;
-}
-.field-guide-notes ol {
-  display: grid;
-  gap: 11px;
-  margin: 12px 0 0;
-  padding-left: 23px;
-  color: #d9f4dc;
-}
-.field-guide-empty {
-  color: var(--menu-muted);
-}
-.field-guide-shell footer {
-  margin-top: auto;
-  color: #9ddac9;
-  text-align: center;
-  font-size: 0.9em;
-}
-@media (max-width: 650px) {
-  .party-layout,
-  .bag-layout,
-  .field-guide-layout {
-    grid-template-columns: 1fr;
-  }
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 650px) {
   .menu-header {
     align-items: flex-start;
@@ -1170,103 +855,6 @@ button {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
   }
-}
-
-/* --- The raid pack, on the in-raid bag screen ----------------------------
-   The same squares the loadout packs into, in the rounded language the in-raid
-   screens are still written in. Cells are the icon box's own 38px, so nothing
-   is resampled here either. ------------------------------------------------ */
-.bag-pack {
-  grid-column: 1 / -1;
-  background: rgb(17 28 46 / 90%);
-  border: 1px solid var(--menu-border);
-  border-radius: var(--radius);
-  padding: var(--space-3);
-  box-shadow: var(--shadow);
-  display: grid;
-  justify-items: center;
-  gap: var(--space-2);
-}
-.bag-pack header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-.bag-pack h2 {
-  font-size: 1.2em;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.bag-pack header p {
-  color: var(--menu-accent);
-  font-weight: 800;
-}
-.raid-grid {
-  display: grid;
-  padding: 2px;
-  border-radius: 6px;
-  background: #0b1220;
-}
-.raid-grid > * {
-  grid-area: 1 / 1;
-  display: grid;
-  grid-template-columns: repeat(var(--cols), 38px);
-  grid-template-rows: repeat(var(--rows), 38px);
-  gap: 2px;
-}
-.raid-grid-cells > i {
-  border-radius: 8px;
-  background: rgb(255 255 255 / 6%);
-}
-.raid-grid-block {
-  position: relative;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: rgb(142 212 194 / 18%);
-  border: 1px solid var(--menu-accent);
-}
-/* A block already carries its own icon box, so the one inside it is stripped
-   back to the art: two rounded frames a pixel apart read as a mistake. */
-.raid-grid-block .item-icon {
-  width: auto;
-  height: auto;
-  border: 0;
-  background: none;
-}
-.raid-grid-block > b {
-  position: absolute;
-  right: 3px;
-  bottom: 0;
-  font-size: 0.8em;
-  color: var(--menu-accent);
-}
-.raid-grid-block.marked {
-  background: rgb(240 196 84 / 28%);
-  border-color: var(--menu-accent-2, #f0c454);
-}
-/* What the raid is carrying home. It is the one block in the pack that is not a
-   supply, so it is the one that does not use the supply tone. */
-.raid-grid-block.cargo {
-  background: rgb(240 196 84 / 22%);
-  border-color: #f0c454;
-  align-content: center;
-  justify-items: center;
-}
-.raid-grid-block.cargo > img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  image-rendering: pixelated;
-}
-.raid-grid-block.cargo > em {
-  font-style: normal;
-  color: var(--menu-accent);
-}
-.bag-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
 }
 
 /* ==========================================================================
@@ -2201,7 +1789,11 @@ button {
 :where(.pixel-ui) .loadout-layout > .px-window,
 :where(.pixel-ui) .loadout-side > .px-window,
 :where(.pixel-ui) .secure-layout > .px-window,
-:where(.pixel-ui) .confirm-layout > .px-window {
+:where(.pixel-ui) .confirm-layout > .px-window,
+:where(.pixel-ui) .raid-bag-layout > .px-window,
+:where(.pixel-ui) .raid-bag-side > .px-window,
+:where(.pixel-ui) .raid-party-layout > .px-window,
+:where(.pixel-ui) .raid-guide-layout > .px-window {
   display: grid;
   /* Named, or the implicit column is as wide as the longest unbroken line. */
   grid-template-columns: minmax(0, 1fr);
@@ -2224,13 +1816,19 @@ button {
 :where(.pixel-ui) .kit-layout > .loadout-side > .px-window,
 :where(.pixel-ui) .loadout-layout > .px-window,
 :where(.pixel-ui) .secure-layout > .px-window,
-:where(.pixel-ui) .confirm-layout > .px-window {
+:where(.pixel-ui) .confirm-layout > .px-window,
+:where(.pixel-ui) .raid-bag-layout > .px-window,
+:where(.pixel-ui) .raid-bag-side > .px-window,
+:where(.pixel-ui) .raid-party-layout > .px-window,
+:where(.pixel-ui) .raid-guide-layout > .px-window {
   align-self: start;
   max-height: 100%;
 }
 .pixel-ui .objectives-panel:has(.px-detail),
 .pixel-ui .stash-layout > .px-window:has(.px-detail),
-.pixel-ui .loadout-layout > .px-window:has(.px-detail) {
+.pixel-ui .loadout-layout > .px-window:has(.px-detail),
+.pixel-ui .raid-bag-layout > .px-window:has(.px-detail),
+.pixel-ui .raid-party-layout > .px-window:has(.px-detail) {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 /* What the pointed-at row asks and pays - a contract on the board, a rung on
@@ -2603,7 +2201,50 @@ button {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
-/* --- The stash's detail pane: one Pokemon, whole ------------------------- */
+/* --- The three screens a raid opens over the world ----------------------- *
+   The pack, the party and the field guide. They are the same screens as the
+   ones at base and are laid out by the same rules, with one difference that is
+   the whole point of them: they are read under the clock with the hunter
+   somewhere on the map, so nothing here is behind a tab, a chip or a second
+   view, and every list fills the width before it scrolls. */
+/* The pack: what is carried on the left, the squares it is carried in on the
+   right, cut to the container's own width - six squares of sixteen pixels and
+   the frame round them, exactly as the loadout's is. */
+:where(.pixel-ui) .raid-bag-layout {
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 112);
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+}
+:where(.pixel-ui) .raid-bag-side {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: calc(var(--u) * 4);
+}
+/* The party is one list and the dossier under it, so it takes the screen. */
+:where(.pixel-ui) .raid-party-layout {
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+}
+/* The guide is two panes of sentences, side by side while there is room for
+   two columns of them and stacked when there is not. */
+:where(.pixel-ui) .raid-guide-layout {
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 260), 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+}
+/* A numbered note in the field guide: the route is read in order, and the
+   typeface has no list marker, so the number is drawn in a gutter of its own. */
+:where(.pixel-ui) .px-row.has-number {
+  /* The cursor still owns the left gutter, so the number starts after it. */
+  grid-template-columns: auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .px-number {
+  width: calc(var(--u) * 8);
+  color: var(--ink-soft);
+}
+
+/* --- The dossier: one Pokemon, whole ------------------------------------ */
 /* What used to be a screen of its own, reached by a chip on every row. It is
    the pane under the list instead - the same `.px-detail` the contract board
    and the Outfitter's ladder use - so the collection and the answer about the
@@ -2612,51 +2253,60 @@ button {
    Five blocks across the pane: the figure, its condition, its growth, its
    moves, and what you can do to it. They wrap when the screen is too narrow for
    five, and the pane is capped and scrolls rather than eating the list it
-   belongs to - on the windows this game is played in they stand on one line. */
+   belongs to - on the windows this game is played in they stand on one line.
+
+   It is the same pane at base and in a raid: the stash's list and the raid
+   party's are two lists of the same kind of thing, and `ui/pokemonDossier.ts`
+   is the one place either of them is drawn from. */
 /* A fixed height, and it scrolls: the list above it has to know what it is
    left with, and a pane that grew with whatever Pokemon the cursor was on
    would move the whole list every time the cursor moved - the same reason the
    help bar along the bottom of every screen is two lines whatever it says. */
-:where(.pixel-ui) .stash-detail {
+:where(.pixel-ui) .px-dossier {
   min-height: 0;
   height: calc(var(--u) * 80);
-  /* The rule above it is the `.px-detail` box shadow; this is its own foot. */
-  padding-bottom: calc(var(--u) * 2);
 }
 /* At the smallest stage five blocks stacked are the whole screen, so the pane
    is the four lines that say which Pokemon this is and how it is, with the
    rest of it a scroll away. It is the floor, not the target: a 1024-wide
    browser window is already `wide`. */
-:where(.pixel-ui[data-room='narrow']) .stash-detail {
+:where(.pixel-ui[data-room='narrow']) .px-dossier {
   /* Three lines of the vitals block and the MORE strip under them. Four would
      be the whole block, and at 640x480 those twelve pixels are the difference
-     between the list showing one Pokemon and showing none. */
-  height: calc(var(--u) * 48);
+     between the list showing one Pokemon and showing none. Measured rather
+     than chosen: at 48 the strip takes the whole condition line to avoid
+     cutting it, and the pane is then a name and a bar. */
+  height: calc(var(--u) * 52);
 }
 /* One block to a line there, rather than as many as the width happens to hold:
    wrapped, the four narrow blocks fitted on the first line and the portrait -
    64 game pixels tall on its own - was cut through the middle by the foot of a
    band four lines deep. Stacked, the band shows one whole block and says how
    many more are under it, which is what every other pane here does. */
-:where(.pixel-ui[data-room='narrow']) .stash-detail-body {
+:where(.pixel-ui[data-room='narrow']) .px-dossier-body {
   flex-direction: column;
   flex-wrap: nowrap;
 }
 /* And it leads with which Pokemon this is, how it is, and what can be done
    about it; the portrait, the stats and the moves are the scroll. */
-:where(.pixel-ui[data-room='narrow']) .stash-vitals {
+:where(.pixel-ui[data-room='narrow']) .px-dossier-vitals {
   order: -2;
 }
-:where(.pixel-ui[data-room='narrow']) .stash-deeds {
+:where(.pixel-ui[data-room='narrow']) .px-dossier-deeds {
   order: -1;
 }
-:where(.pixel-ui) .stash-detail-body {
+/* The foot is on what scrolls, never on the pane: `.px-scroll` sets its own
+   bottom padding to nothing because a sticky MORE strip sticks to the content
+   edge and leaves a pane's bottom padding showing the tops of the next line's
+   letters under its own cue. This pane re-added it and had exactly that. */
+:where(.pixel-ui) .px-dossier-body {
+  padding-bottom: calc(var(--u) * 2);
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
   gap: calc(var(--u) * 2) calc(var(--u) * 4);
 }
-:where(.pixel-ui) .stash-detail-body > * {
+:where(.pixel-ui) .px-dossier-body > * {
   min-width: 0;
 }
 /* A small caps label in soft ink: quieter than a `.px-subheading` band, which
@@ -2669,33 +2319,33 @@ button {
 /* The types stand beside the sprite rather than under it: the sprite's box is
    64 game pixels tall and two stacked badges under it made the figure the
    tallest block in the pane by half again, which the list above it paid for. */
-:where(.pixel-ui) .stash-figure {
+:where(.pixel-ui) .px-dossier-figure {
   flex: none;
   display: flex;
   align-items: flex-end;
   gap: var(--u);
 }
-:where(.pixel-ui) .stash-vitals {
+:where(.pixel-ui) .px-dossier-vitals {
   flex: 0 1 calc(var(--u) * 100);
   display: grid;
   justify-items: start;
   align-content: start;
   gap: var(--u);
 }
-:where(.pixel-ui) .stash-growth {
+:where(.pixel-ui) .px-dossier-growth {
   flex: 0 1 calc(var(--u) * 156);
   display: grid;
   justify-items: start;
   align-content: start;
   gap: var(--u);
 }
-:where(.pixel-ui) .stash-moves {
+:where(.pixel-ui) .px-dossier-moves {
   /* Never wider than the four moves need: a `.px-row` puts its tag hard right,
      and stretched across what was left of the pane the PP count ended up a
      hand's breadth from the move it belongs to. */
   flex: 0 1 calc(var(--u) * 160);
 }
-:where(.pixel-ui) .stash-deeds {
+:where(.pixel-ui) .px-dossier-deeds {
   /* The last block takes whatever the others leave, so the five stand on one
      line at every width that can hold them: at 2560 the screen is drawn at 3x
      and holds 848 game pixels rather than 952, and a block that insisted on
@@ -2705,7 +2355,7 @@ button {
 /* A move in here is a row the cursor rests on to be told what it does, so it
    sits flush with its label rather than indented for a cursor that has nowhere
    else to be. */
-:where(.pixel-ui) .stash-moves .px-row {
+:where(.pixel-ui) .px-dossier-moves .px-row {
   padding-top: 0;
   padding-bottom: 0;
 }

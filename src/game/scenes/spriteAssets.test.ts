@@ -55,8 +55,10 @@ describe('Pokemon sprite assets', () => {
     expect(source).not.toContain('svg');
   });
 
-  it('draws menu avatars from the same PNGs, so no hub screen requests a deleted file', async () => {
-    const source = await readFile(new URL('../ui/MenuOverlay.ts', import.meta.url), 'utf8');
+  it('draws menu portraits from the same PNGs, so no screen requests a deleted file', async () => {
+    // Every DOM screen draws a species through `pixelPortrait` now; the older
+    // rounded avatar the in-raid screens used went with those screens.
+    const source = await readFile(new URL('../ui/pixelUi.ts', import.meta.url), 'utf8');
 
     expect(source).toContain('/assets/pokemon/front/${dexId}.png');
     expect(source).not.toMatch(/dexId === \d/);

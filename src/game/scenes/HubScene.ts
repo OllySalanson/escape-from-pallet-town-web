@@ -127,27 +127,17 @@ import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { conditionLine } from '../ui/condition';
-import {
-  experienceBarFill,
-  experienceLine,
-  experienceProgress,
-  formatExperience,
-  moveSlotNote,
-  moveSummary,
-} from '../ui/pokemonSummary';
+import { pokemonDossier } from '../ui/pokemonDossier';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
   pixelColumns,
   pixelCommitBar,
   pixelHpBar,
-  pixelPortrait,
-  pixelXpBar,
   pixelRail,
   pixelScreen,
   pixelGrid,
   pixelTag,
-  pixelTypeBadge,
   pixelWindow,
   takeDownPixelStatus,
 } from '../ui/pixelUi';
@@ -1604,51 +1594,25 @@ export class HubScene extends Phaser.Scene {
   /**
    * Everything about one Pokemon, in the pane under the list.
    *
-   * It holds what the summary screen used to be a whole screen for - the
-   * portrait, its condition, how far it is from its next level, its stats and
-   * its moves - and the deeds that used to be chips on every row: which box it
-   * is in, and the one piece of gear it can carry. Five blocks laid across the
-   * pane, which wrap and then scroll on a screen too narrow for them; on the
-   * windows this game is actually played in they stand on one line.
-   *
-   * Every control in here carries the pane's own `data-shows`, because the
-   * cursor moving into the pane must not swap the pane out from under itself -
-   * and because a re-render puts the cursor back on the control it was on.
+   * It holds what the summary screen used to be a whole screen for, and the
+   * deeds that used to be chips on every row: which box it is in, and the one
+   * piece of gear it can carry. The pane itself is `ui/pokemonDossier.ts`,
+   * shared with the raid's own party screen, so the two cannot drift.
    */
   private pokemonDetail(
     stored: StashedPokemon,
     first: boolean,
     deeds: { readonly label: string; readonly chips: (shows: string) => string },
   ): string {
-    const { pokemon } = stored;
-    const progress = experienceProgress(pokemon);
-    const held = getHeldItem(pokemon.heldItemId);
-    const shows = `data-shows="${stored.id}"`;
-    const stats: readonly (readonly [string, number])[] = [
-      ['Attack', pokemon.stats.attack],
-      ['Defense', pokemon.stats.defense],
-      ['Sp. Atk', pokemon.stats.spAttack],
-      ['Sp. Def', pokemon.stats.spDefense],
-      ['Speed', pokemon.stats.speed],
-    ];
-    const figure = `<div class="stash-figure">${pixelPortrait(pokemon.base.dexId, pokemon.base.name)}<div class="summary-types">${pixelTypeBadge(pokemon.base.primaryType)}${pokemon.base.secondaryType ? pixelTypeBadge(pokemon.base.secondaryType) : ''}</div></div>`;
-    const vitals = `<div class="stash-vitals"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong><small>Lv ${pokemon.level}</small></span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small class="px-wrap">${this.conditionLine(stored)}</small><small class="px-wrap">${held ? `Holding ${held.displayName}` : 'Holding nothing'}</small></div>`;
-    const growth = `<div class="stash-growth"><small class="px-label">Experience</small>${pixelXpBar(experienceBarFill(progress), `Experience ${formatExperience(progress.intoLevel)} of ${formatExperience(progress.levelSpan)}`)}<small class="px-wrap">${experienceLine(progress)}</small><small class="px-label">Stats</small><dl class="summary-stats">${stats
-      .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
-      .join('')}</dl></div>`;
-    // A move is a row the cursor can rest on and nothing else: it says what it
-    // does in the help bar, which is where every row on these screens explains
-    // itself, rather than in a second detail pane inside a detail pane.
-    const moves = pokemon.moves.length
-      ? pokemon.moves
-          .map((move) => {
-            const summary = moveSummary(move);
-            return `<button class="px-row" ${shows} aria-disabled="true" data-help="${escapeAttribute(`${summary.detail}. ${summary.description}`)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${summary.name}</strong>${pixelTypeBadge(summary.type)}</span></span><span class="px-tag">${summary.pp}/${summary.maxPp}</span></button>`;
-          })
-          .join('')
-      : '<p class="px-empty">No moves known.</p>';
-    const moveList = `<div class="stash-moves"><small class="px-label">Moves · ${moveSlotNote(pokemon.moves.length)}</small><div class="px-list">${moves}</div></div>`;
-    return `<div class="px-detail px-scroll stash-detail" data-shown-by="${stored.id}"${first ? '' : ' hidden'}><div class="stash-detail-body">${figure}${vitals}${growth}${moveList}<div class="stash-deeds"><small class="px-label">${deeds.label}</small><div class="care-options">${deeds.chips(shows)}</div></div></div></div>`;
+    const held = getHeldItem(stored.pokemon.heldItemId);
+    return pokemonDossier({
+      pokemon: stored.pokemon,
+      id: stored.id,
+      first,
+      condition: this.conditionLine(stored),
+      holding: held ? `Holding ${held.displayName}` : 'Holding nothing',
+      deeds,
+    });
   }
 
   /** Where this Pokemon is kept, and the press that moves it somewhere else. */

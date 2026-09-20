@@ -150,6 +150,21 @@ describe('the pixel-ui stylesheet', () => {
     expect(track).toMatch(/background:\s*var\(--cream-dim\);/);
   });
 
+  it('gives no scrolling pane a foot of its own, whatever else it is', () => {
+    // `.px-scroll` sets `padding-bottom: 0` because a sticky MORE strip sticks
+    // to the *content* edge: a pane with bottom padding draws the tops of the
+    // next line's letters in the gap under its own cue. The dossier re-added
+    // two pixels of it further down the file and had exactly that at 640x480.
+    // Anything with the class is held to it, so the rule cannot be undone by
+    // a later one the way it was.
+    const dossier = /:where\(\.pixel-ui\) \.px-dossier \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
+    expect(dossier.length).toBeGreaterThan(0);
+    expect(dossier).not.toMatch(/padding-bottom/);
+    expect(/:where\(\.pixel-ui\) \.px-scroll \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '').toMatch(
+      /padding-bottom:\s*0;/,
+    );
+  });
+
   it('lets wrapped copy break inside a narrow window instead of widening it', () => {
     expect(pixelUi).toMatch(
       /\.px-wrap\s*\{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*break-word;[^}]*\}/,

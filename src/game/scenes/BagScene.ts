@@ -3,7 +3,6 @@ import { audioManager } from '../audio/AudioManager';
 import {
   canBeTaught,
   footprintOf,
-  getItemById,
   gridCells,
   ITEM_CATEGORY_LABELS,
   ItemCategory,
@@ -11,59 +10,78 @@ import {
   teachFromMachine,
   useFieldItem,
   type Bag,
-  type GridPacking,
   type ItemDefinition,
 } from '../items';
 import type { Pokemon, PokemonParty } from '../pokemon';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { itemIcon } from '../ui/icons';
-import { MenuOverlay, hpBar, pokemonAvatar } from '../ui/MenuOverlay';
+import { MenuOverlay } from '../ui/MenuOverlay';
 import { bagFocusPreference } from '../ui/menuFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
-import { GAME_FONT } from '../ui/gameFont';
 import { conditionLine } from '../ui/condition';
+import { describeKey, splitDescribeKey } from '../ui/hoverDescribe';
 import {
-  cursorMayDescribe,
-  describeKey,
-  describedKey,
-  POINTER_ONLY,
-  previewAfterPointer,
-  splitDescribeKey,
-  type DescribedThing,
-} from '../ui/hoverDescribe';
-
-const SCREEN_WIDTH = 320;
-const SCREEN_HEIGHT = 240;
-const CATEGORIES = [ItemCategory.Medicine, ItemCategory.PokeBall, ItemCategory.Misc] as const;
+  COLUMN_MEASURES,
+  escapeAttribute,
+  pixelColumns,
+  pixelGrid,
+  pixelHpBar,
+  pixelScreen,
+  pixelTag,
+  pixelWindow,
+} from '../ui/pixelUi';
 
 /**
- * What a row's own button says. Three of the pocket's items do nothing to a
- * Pokemon and say where they are spent instead - the scrip used to offer a live
- * USE ITEM that could only ever refuse itself.
+ * The pockets, in the order they are read, and all of them at once.
  *
- * A live action **names the item it would spend**, because the panel above it
- * answers whatever the pointer is on: hovering one row while another is chosen
- * left a bare USE ITEM under somebody else's name. The pointer has to leave the
- * row to reach the button, so what is clicked was never in doubt - but what it
- * would do was, and a button that says POTION cannot be misread.
+ * There used to be a row of tabs above the list and one pocket on screen, which
+ * is a layer between the player and the Potion at exactly the moment they have
+ * least time for one. The pack holds eighteen squares: everything in it fits on
+ * one screen laid out across the width (`ui/columnLayout.ts`), with a band
+ * naming each pocket, so finding a thing is looking rather than tabbing.
+ *
+ * Gear is one of them now. It was in no pocket at all, so a Quick Claw taken
+ * off a boss was carried out of the raid without ever appearing in the bag.
+ */
+const POCKETS = [
+  ItemCategory.Medicine,
+  ItemCategory.PokeBall,
+  ItemCategory.Held,
+  ItemCategory.Misc,
+] as const;
+
+/**
+ * What a row's Enter does nothing about. Three kinds of thing in the pocket do
+ * nothing to a Pokemon and say where they are spent instead - the scrip used to
+ * offer a live USE ITEM that could only ever refuse itself.
  */
 const USELESS_IN_THE_FIELD = new Set(['capture-modifier', 'material', 'currency']);
 
+/**
+ * What pressing a row does, in the words of the help bar - and it names the
+ * item it would spend rather than saying "use item", because the line is read
+ * about whatever the cursor is on and a bare verb under somebody else's name
+ * is a sentence that can be misread.
+ */
 const useLabel = (item: ItemDefinition): string => {
   switch (item.effect.type) {
     case 'capture-modifier':
-      return 'Battle use only';
+      return `${item.displayName} is thrown in a battle, from the BALL command. Nothing to do with it here.`;
     case 'material':
-      return 'For the Outfitter';
+      return `Carry it home: the Outfitter is the only thing that takes a ${item.displayName}.`;
     case 'currency':
-      return 'For the Ferryman';
+      return 'Carry it home: the Ferryman is the only one who takes it.';
     case 'machine':
-      return `Read ${item.displayName}`;
+      return `Read ${item.displayName} to a Pokémon. A move learned is learned for good.`;
     default:
-      return `Use ${item.displayName}`;
+      return `Use ${item.displayName} on a Pokémon.`;
   }
 };
+
+/** The short word on the end of a row, when a row has one to carry. */
+const pocketTag = (item: ItemDefinition): string =>
+  item.category === ItemCategory.Held ? pixelTag('Gear', 'plain') : '';
 
 interface BagSceneData {
   readonly bag: Bag;
@@ -71,25 +89,29 @@ interface BagSceneData {
   readonly onItemUsed: () => void;
 }
 
+/**
+ * The raid's pack, in the game's own visual language.
+ *
+ * The screen a player opens under the clock with the hunter somewhere on the
+ * map, so it is the one shape every other screen in the game already is (see
+ * the `Pixel UI` block of `src/style.css`) and is read in one look: every
+ * pocket at once on the left, filling the width it has, and the squares the
+ * pack actually is on the right, with the pointed-at item's own blocks lit.
+ *
+ * The cursor is the selection, as it is everywhere else here - there is no
+ * second highlighted row - so the whole of using a Potion is four presses:
+ * open, point, Enter, point, Enter.
+ */
 export class BagScene extends Phaser.Scene {
   private bag!: Bag;
   private party!: PokemonParty;
   private onItemUsed!: () => void;
-  private categoryIndex = 0;
-  private selectedItemIndex = 0;
-  private selectedPokemonIndex = 0;
-  private choosingPokemon = false;
-  /**
-   * What the pointer is on and what the keyboard cursor is on. Neither is a
-   * selection - see `ui/hoverDescribe.ts` for the rule they are read by.
-   */
-  private pointerDescribe: string | null = null;
-  private cursorDescribe: string | null = null;
-  private itemText!: Phaser.GameObjects.Text;
-  private detailText!: Phaser.GameObjects.Text;
-  private partyText!: Phaser.GameObjects.Text;
-  private footerText!: Phaser.GameObjects.Text;
+  /** The item whose recipient list is open, if one is. */
+  private usingItemId?: string;
+  /** Said once, over the help bar, about what just happened. */
+  private status?: string;
   private menuOverlay?: MenuOverlay;
+  private markHandler?: (event: Event) => void;
 
   public constructor() {
     super('bag');
@@ -99,229 +121,205 @@ export class BagScene extends Phaser.Scene {
     this.bag = data.bag;
     this.party = data.party;
     this.onItemUsed = data.onItemUsed;
-    this.categoryIndex = 0;
-    this.selectedItemIndex = 0;
-    this.selectedPokemonIndex = 0;
-    this.choosingPokemon = false;
-    this.pointerDescribe = null;
-    this.cursorDescribe = null;
+    this.usingItemId = undefined;
+    this.status = undefined;
   }
 
   public create(): void {
-    this.createModernMenu();
-    return;
-    this.drawBackground();
-    this.itemText = this.add.text(14, 46, '', this.textStyle());
-    this.detailText = this.add.text(166, 47, '', this.textStyle('9px'));
-    this.partyText = this.add.text(166, 125, '', this.textStyle('9px'));
-    this.footerText = this.add.text(SCREEN_WIDTH / 2, 228, '', {
-      ...this.textStyle('8px'),
-      align: 'center',
-    }).setOrigin(0.5);
-    this.bindInput();
-    this.refresh();
+    this.menuOverlay = new MenuOverlay(this, 'bag-menu pixel-ui', (event) => this.handleKey(event));
+    this.menuOverlay.root.setAttribute('aria-label', 'Raid pack');
+    // Lighting the pointed-at item's squares is a class on a block, not a
+    // render: the cursor moves on every arrow key and a rebuilt screen would
+    // cost the player a beat each time.
+    this.markHandler = (event) => {
+      const control = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-item]') : null;
+      this.markPack(control?.dataset.item);
+    };
+    this.menuOverlay.root.addEventListener('focusin', this.markHandler);
+    // A square in the pack and the row above it are the same thing asked about
+    // two ways (`ui/hoverDescribe.ts`), so pointing at one answers for the
+    // other: an item's square moves the cursor to its row, and a Pokemon being
+    // carried home - which has no row, because it is not a supply - says what
+    // it is on the help line and lights its own blocks.
+    this.menuOverlay.root.addEventListener('mouseover', (event) => this.pointAtPack(event));
+    this.render();
   }
 
-  private createModernMenu(): void {
-    this.menuOverlay = new MenuOverlay(this, 'bag-menu', (event) => {
-      // B is what opened this, so B is what the player will press to leave it.
-      if (isOverlayDismissKey(event, 'b', 'Backspace')) {
-        event.preventDefault();
-        if (this.choosingPokemon) { this.choosingPokemon = false; this.renderModernMenu(); } else this.close();
-        return;
+  private handleKey(event: KeyboardEvent): void {
+    // B is what opened this, so B is what the player will press to leave it.
+    if (isOverlayDismissKey(event, 'b', 'Backspace')) {
+      event.preventDefault();
+      if (this.usingItemId) {
+        audioManager.play('cancel');
+        this.stopUsing();
+      } else {
+        this.close();
       }
-      const buttons = [...this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('button:not([disabled])')];
-      const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key) && buttons.length) {
-        event.preventDefault();
-        buttons[(current + (event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1) + buttons.length) % buttons.length]?.focus();
-      }
-    });
-    this.watchDescribing();
-    this.renderModernMenu();
+      return;
+    }
+    if (this.menuOverlay?.moveCursor(event.key)) {
+      event.preventDefault();
+    }
   }
 
   /**
-   * The pointer and the keyboard cursor, each saying what it is on.
-   *
-   * Both listeners sit on the overlay root rather than on the rows, because
-   * every render replaces the markup and the rows do not survive it. Nothing
-   * here writes a selection: the panel is refilled in place, so pointing at a
-   * row costs no re-render and cannot drop the control under the cursor.
+   * `prefer` is where the cursor should land when the control it was on has
+   * gone - the last Potion used up, the recipient list closing again. The
+   * cursor is otherwise put straight back where it was.
    */
-  private watchDescribing(): void {
+  private render(prefer: readonly string[] = []): void {
     const root = this.menuOverlay!.root;
-    root.addEventListener('mouseover', (event) => {
-      const target = event.target instanceof Element ? event.target : null;
-      this.setDescribing(
-        previewAfterPointer(this.pointerDescribe, {
-          on: target?.closest<HTMLElement>('[data-describes]')?.dataset.describes ?? null,
-          withinGroup: Boolean(target?.closest('[data-describe-group]')),
-        }),
-        this.cursorDescribe,
-      );
+    const using = this.usingItem;
+    // A message is about the press that caused this render and is spent on it:
+    // the next press is answered by the help bar again, as everywhere else.
+    const status = this.status;
+    this.status = undefined;
+    root.innerHTML = pixelScreen({
+      title: 'Pack',
+      back: { label: 'Raid', attribute: 'data-close' },
+      // No aside: the one number this screen turns on is the squares, and the
+      // container itself carries it on the lid over the picture of them.
+      body: using ? this.recipientBody(using) : this.pocketBody(),
+      hints: using
+        ? 'ARROWS move · ENTER give it · ESC back to the pack'
+        : 'ARROWS move · ENTER use · ESC back to the raid',
+      status,
     });
-    root.addEventListener('mouseleave', () => this.setDescribing(null, this.cursorDescribe));
-    root.addEventListener('focusin', (event) => {
-      const control = event.target instanceof Element ? event.target : null;
-      const described = control?.closest<HTMLElement>('[data-describes]');
-      this.setDescribing(
-        this.pointerDescribe,
-        described && cursorMayDescribe(described.dataset.describesOn)
-          ? described.dataset.describes ?? null
-          : null,
-      );
-    });
+    const on = (selector: string, handler: (button: HTMLButtonElement) => void): void => {
+      root.querySelectorAll<HTMLButtonElement>(selector).forEach((button) => {
+        button.onclick = () => handler(button);
+      });
+    };
+    on('[data-close]', () => this.close());
+    on('[data-item]', (button) => this.pressItem(button.dataset.item!));
+    on('[data-drop]', (button) => this.dropOne(button.dataset.drop!));
+    on('[data-target]', (button) => this.giveTo(Number(button.dataset.target)));
+    this.menuOverlay!.refocus(...prefer, ...bagFocusPreference({ choosingPokemon: Boolean(using) }));
   }
 
-  private setDescribing(pointer: string | null, cursor: string | null): void {
-    if (pointer === this.pointerDescribe && cursor === this.cursorDescribe) {
-      return;
-    }
-    this.pointerDescribe = pointer;
-    this.cursorDescribe = cursor;
-    this.applyDescription();
+  /** Every pocket at once, and the squares they are packed into beside them. */
+  private pocketBody(): string {
+    const rows = POCKETS.flatMap((pocket) => {
+      const items = this.bag.itemsInCategory(pocket);
+      return items.length === 0
+        ? []
+        : [
+            `<h3 class="px-subheading">${ITEM_CATEGORY_LABELS[pocket]}</h3>`,
+            ...items.map((item) => this.itemRow(item)),
+          ];
+    }).join('');
+    const details = POCKETS.flatMap((pocket) => this.bag.itemsInCategory(pocket))
+      .map((item, index) => this.itemDetail(item, index === 0))
+      .join('');
+    const carried = pixelWindow(
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${
+        rows || '<p class="px-empty">The pack is empty. Whatever is on the ground out there is all you have.</p>'
+      }</div>${details}`,
+      { className: 'raid-pockets', heading: 'Carried', note: `${this.kinds} kinds` },
+    );
+    return `<main class="px-body raid-bag-layout">${carried}<div class="raid-bag-side">${this.packWindow()}</div></main>`;
   }
 
-  private renderModernMenu(message?: string, itemJustChosen = false): void {
-    const item = this.selectedItem;
-    // Dropping is the other half of a pack with a size: a crate on the ground
-    // is only a decision if something in here can come out to make room for it.
-    const drop = item
-      ? `<button class="button" data-drop>Drop one ${item.displayName}</button>`
-      : '';
-    // The four lines are always here and always empty in the markup: what they
-    // say is written into them by `applyDescription`, so answering "what is
-    // that" costs no render and nothing under the pointer is replaced.
-    const describeBlock = `<p class="eyebrow" data-detail-eyebrow></p><h2 data-detail-name></h2><p data-detail-description></p><div class="item-count" data-detail-note></div>`;
-    const body = !item
-      ? ''
-      : this.choosingPokemon
-        ? `<h3>Choose a Pokémon</h3><div class="entity-list" data-describe-group>${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable" data-target="${index}" data-describes="${describeKey('pokemon', index)}" ${POINTER_ONLY}>${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${this.targetNote(item, pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('')}</div>`
-        : `<div class="bag-actions"><button class="button primary-button" data-use ${USELESS_IN_THE_FIELD.has(item.effect.type) ? 'disabled' : ''}>${useLabel(item)}</button>${drop}</div>`;
-    const detail = `<section class="bag-detail">${describeBlock}${body}</section>`;
-    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run supplies</p><h1>Bag</h1></div><p class="stash-count">${this.packLabel()}</p></header><main class="bag-layout">${this.packPanel()}<section class="bag-list"><nav class="category-tabs">${CATEGORIES.map((category, index) => `<button class="${index === this.categoryIndex ? 'active' : ''}" data-category="${index}">${ITEM_CATEGORY_LABELS[category]}</button>`).join('')}</nav><div class="entity-list" data-describe-group>${this.currentItems.map((entry, index) => `<button class="entity-row selectable ${index === this.selectedItemIndex ? 'selected' : ''}" data-item-index="${index}" data-describes="${describeKey('item', entry.id)}">${itemIcon(entry.id, entry.displayName)}<div><strong>${entry.displayName}</strong><small>${this.bag.count(entry.id)} carried · ${this.squareLabel(entry.id)}</small></div></button>`).join('') || '<p class="empty-state">Nothing in this pocket.</p>'}</div></section>${detail}</main>${message ? `<p class="menu-status">${message}</p>` : ''}</div>`;
-    this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
-    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach((button) => button.onclick = () => { this.categoryIndex = Number(button.dataset.category); this.selectedItemIndex = 0; this.renderModernMenu(); });
-    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-item-index]').forEach((button) => button.onclick = () => { this.selectedItemIndex = Number(button.dataset.itemIndex); this.renderModernMenu(undefined, true); });
-    this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-use]')?.addEventListener('click', () => { this.choosingPokemon = true; this.renderModernMenu(); });
-    this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-drop]')?.addEventListener('click', () => this.dropSelected());
-    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-target]').forEach((button) => button.onclick = () => {
-      const target = this.party.pokemon[Number(button.dataset.target)];
-      const selectedItem = this.selectedItem;
-      if (!target || !selectedItem) return;
-      if (machineForItem(selectedItem)) { this.readMachine(selectedItem, target); return; }
-      const result = useFieldItem(selectedItem, target);
-      audioManager.play(result.used ? 'heal' : 'denied');
-      if (result.used) { this.spend(selectedItem); }
-      this.choosingPokemon = false; this.renderModernMenu(result.message);
-    });
-    this.applyDescription();
-    this.menuOverlay!.focus(...bagFocusPreference({ choosingPokemon: this.choosingPokemon, itemJustChosen }));
-  }
-
-  /** The key of the item the player has actually chosen, which pointing never moves. */
-  private get selectedDescribeKey(): string | null {
-    const item = this.selectedItem;
-    return item ? describeKey('item', item.id) : null;
+  private itemRow(item: ItemDefinition): string {
+    const help = `${item.displayName}: ${item.description} ${useLabel(item)}`;
+    return `<button class="px-row has-icon" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong class="px-name">${item.displayName}</strong></span>${pocketTag(item)}<span class="px-tag">×${this.bag.count(item.id)}</span></button>`;
   }
 
   /**
-   * Fills the detail panel with whatever the screen is about now, and lights
-   * that thing's own blocks in the pack grid.
-   *
-   * Written into the panel's four boxes rather than rendered, because the
-   * pointer is resting on a row while this runs: replacing the markup under it
-   * would flicker, and would drop the button it was about to be clicked on.
+   * What the pointed-at thing is, under the list: the sentence on the item and
+   * the room it is taking, which is the pack's own currency, plus the one deed
+   * that is not the row's own Enter.
    */
-  private applyDescription(): void {
+  private itemDetail(item: ItemDefinition, first: boolean): string {
+    const shows = `data-shows="${item.id}"`;
+    const squares = this.squares(item.id);
+    const freed = squares === 1 ? '1 square' : `${squares} squares`;
+    const drop = `<button class="px-window px-chip" data-drop="${item.id}" ${shows} data-help="${escapeAttribute(
+      `Put one ${item.displayName} on the ground for good. It frees ${freed}.`,
+    )}">Drop one</button>`;
+    return `<div class="px-detail" data-shown-by="${item.id}"${first ? '' : ' hidden'}><span class="px-wrap">${item.description}</span><div class="care-options"><small class="px-label">${this.bag.count(item.id)} carried · ${freed} each</small>${drop}</div></div>`;
+  }
+
+  /**
+   * Who is getting it. The pocket list gives way to the party rather than
+   * standing beside it, because at this point there is exactly one question on
+   * the screen and the pack is still drawn alongside to answer the other one.
+   */
+  private recipientBody(item: ItemDefinition): string {
+    const rows = this.party.pokemon
+      .map((pokemon, index) => {
+        const note = this.targetNote(item, pokemon);
+        return `<button class="px-row" data-target="${index}" data-item="${item.id}" data-help="${escapeAttribute(
+          `${machineForItem(item) ? 'Read' : 'Use'} ${item.displayName} on ${pokemon.base.name}. ${note}`,
+        )}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}</small></span><span class="px-tag">${note}</span></button>`;
+      })
+      .join('');
+    const list = pixelWindow(
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${
+        rows || '<p class="px-empty">Nobody is deployed.</p>'
+      }</div>`,
+      {
+        className: 'raid-pockets',
+        heading: `${machineForItem(item) ? 'Read' : 'Use'} ${item.displayName} on`,
+        note: `${this.bag.count(item.id)} carried`,
+      },
+    );
+    return `<main class="px-body raid-bag-layout">${list}<div class="raid-bag-side">${this.packWindow()}</div></main>`;
+  }
+
+  /**
+   * The pack, drawn as the squares it is. It stands beside the list rather than
+   * over it because the question it answers - how much room is left - is the
+   * one the screen is opened with when there is a crate on the ground outside.
+   */
+  private packWindow(): string {
+    return pixelWindow(
+      pixelGrid(this.bag.layout(), (itemId) => itemIcon(itemId), { label: 'The raid pack' }),
+      { className: 'pack-window', heading: 'Pack', note: this.packLabel() },
+    );
+  }
+
+  /** Lights the blocks one thing is standing on, without rebuilding the screen. */
+  private markPack(itemId: string | undefined, kind = 'item'): void {
+    const key = itemId === undefined ? null : describeKey(kind, itemId);
+    this.menuOverlay?.root.querySelectorAll<HTMLElement>('.px-grid-block').forEach((block) => {
+      block.classList.toggle('is-marked', key !== null && block.dataset.describes === key);
+    });
+  }
+
+  /**
+   * The pointer resting on a square of the pack. An item's square hands the
+   * question to its row, which is the screen's one cursor; a piece of cargo has
+   * no row to hand it to, so it answers on the help line itself.
+   */
+  private pointAtPack(event: Event): void {
     const root = this.menuOverlay?.root;
-    if (!root) {
+    const block = event.target instanceof Element ? event.target.closest<HTMLElement>('.px-grid-block') : null;
+    if (!root || !block?.dataset.describes) {
       return;
     }
-    // A spent item leaves the pointer resting on a row that no longer exists,
-    // so an answer that has stopped being one is forgotten rather than shown.
-    if (this.pointerDescribe !== null && !this.describe(this.pointerDescribe)) {
-      this.pointerDescribe = null;
-    }
-    if (this.cursorDescribe !== null && !this.describe(this.cursorDescribe)) {
-      this.cursorDescribe = null;
-    }
-    const key = describedKey({
-      pointer: this.pointerDescribe,
-      cursor: this.cursorDescribe,
-      selected: this.selectedDescribeKey,
-    });
-    const described = key === null ? null : this.describe(key);
-    writeDetail(root, '[data-detail-eyebrow]', described?.eyebrow ?? '');
-    writeDetail(root, '[data-detail-name]', described?.name ?? '');
-    writeDetail(root, '[data-detail-description]', described?.description ?? 'Try another pocket.');
-    writeDetail(root, '[data-detail-note]', described?.note ?? '');
-    root
-      .querySelectorAll<HTMLElement>('.raid-grid-block')
-      .forEach((block) => block.classList.toggle('marked', block.dataset.describes === key));
-  }
-
-  /**
-   * What one describable thing on this screen is. A pocket row and the block it
-   * takes up in the pack grid carry the same key, so pointing at either answers
-   * the same question and lights the other.
-   */
-  private describe(key: string): DescribedThing | null {
-    const { kind, id } = splitDescribeKey(key);
+    const { kind, id } = splitDescribeKey(block.dataset.describes);
     if (kind === 'item') {
-      const item = getItemById(id);
-      return item && this.bag.count(item.id) > 0
-        ? {
-            eyebrow: ITEM_CATEGORY_LABELS[item.category],
-            name: item.displayName,
-            description: item.description,
-            note: `${this.bag.count(item.id)} carried · ${this.squareLabel(item.id)} each`,
-          }
-        : null;
+      root.querySelector<HTMLElement>(`[data-item="${CSS.escape(id)}"]`)?.focus();
+      return;
     }
-    if (kind === 'cargo') {
-      const piece = this.bag.layout().cargo.find((placement) => placement.cargoId === id);
-      return piece
-        ? {
-            eyebrow: 'Carried home',
-            name: piece.name,
-            // Cargo is the one thing in the pack that is not a supply, and the
-            // one whose squares a player cannot get back by using it.
-            description: 'Riding home in your pack. It is only yours once the raid banks.',
-            note: `${piece.width * piece.height} squares`,
-          }
-        : null;
+    const piece = this.bag.layout().cargo.find((placement) => placement.cargoId === id);
+    if (!piece) {
+      return;
     }
-    if (kind === 'pokemon') {
-      const pokemon = this.party.pokemon[Number(id)];
-      const item = this.selectedItem;
-      return pokemon
-        ? {
-            eyebrow: 'Party member',
-            name: pokemon.base.name,
-            description: conditionLine(pokemon),
-            // The condition has already said their HP, so the note says the
-            // thing the recipient list is open to decide instead - which for a
-            // disc is whether they can read it, and otherwise is what they
-            // would be given, so the item is not off the screen while the
-            // pointer is on somebody.
-            note: !item
-              ? ''
-              : machineForItem(item)
-                ? this.targetNote(item, pokemon)
-                : `Would receive ${item.displayName}`,
-          }
-        : null;
+    this.markPack(id, 'cargo');
+    const line = root.querySelector<HTMLElement>('[data-help-text]');
+    if (line) {
+      const squares = piece.width * piece.height;
+      line.textContent = `${piece.name} is riding home in your pack, and is only yours once the raid banks. ${squares} squares.`;
     }
-    return null;
   }
 
   /**
-   * What the party row says under the name while a target is being chosen. For
-   * a machine that is not the HP - it is whether this Pokemon can read the disc
-   * at all, because that is the only question the screen is open to answer, and
-   * a refusal a player meets before committing is a refusal they can act on.
+   * What the row on the recipient list says on its end. For a machine that is
+   * not the HP - it is whether this Pokemon can read the disc at all, because
+   * that is the only question the screen is open to answer, and a refusal a
+   * player meets before committing is a refusal they can act on.
    */
   private targetNote(item: ItemDefinition, pokemon: Pokemon): string {
     const machine = machineForItem(item);
@@ -329,11 +327,61 @@ export class BagScene extends Phaser.Scene {
       return `${pokemon.currentHp}/${pokemon.maxHp} HP`;
     }
     if (pokemon.moves.some((known) => known.base === machine.move)) {
-      return `Already knows ${machine.move.name}`;
+      return `Knows ${machine.move.name}`;
     }
     return canBeTaught(item, pokemon)
       ? `Can learn ${machine.move.name}`
       : `Cannot learn ${machine.move.name}`;
+  }
+
+  /** The row's own press: open the recipient list, or say why there is nobody to open it for. */
+  private pressItem(itemId: string): void {
+    const item = this.itemById(itemId);
+    if (!item) {
+      return;
+    }
+    if (USELESS_IN_THE_FIELD.has(item.effect.type)) {
+      audioManager.play('denied');
+      this.status = useLabel(item);
+      this.render();
+      return;
+    }
+    if (item.category === ItemCategory.Held) {
+      audioManager.play('denied');
+      this.status = `Gear is given on the PARTY screen, where the Pokémon that would carry it is.`;
+      this.render();
+      return;
+    }
+    this.usingItemId = itemId;
+    this.status = undefined;
+    this.render();
+  }
+
+  private stopUsing(): void {
+    const wasUsing = this.usingItemId;
+    this.usingItemId = undefined;
+    this.status = undefined;
+    this.render(wasUsing ? [`[data-item="${wasUsing}"]`] : []);
+  }
+
+  private giveTo(index: number): void {
+    const target = this.party.pokemon[index];
+    const item = this.usingItem;
+    if (!target || !item) {
+      return;
+    }
+    if (machineForItem(item)) {
+      this.readMachine(item, target);
+      return;
+    }
+    const result = useFieldItem(item, target);
+    audioManager.play(result.used ? 'heal' : 'denied');
+    if (result.used) {
+      this.spend(item);
+    }
+    this.usingItemId = undefined;
+    this.status = result.message;
+    this.render([`[data-item="${item.id}"]`]);
   }
 
   /**
@@ -380,26 +428,50 @@ export class BagScene extends Phaser.Scene {
     } else if (learned) {
       this.onItemUsed();
     }
-    this.choosingPokemon = false;
-    this.renderModernMenu(message);
+    this.usingItemId = undefined;
+    this.status = message;
+    this.render([`[data-item="${item.id}"]`]);
   }
 
-  /** Takes one of an item out of the pack and keeps the cursor on a row that exists. */
+  /** Takes one of an item out of the pack. */
   private spend(item: ItemDefinition): void {
     this.bag.remove(item.id);
     this.onItemUsed();
-    this.selectedItemIndex = Math.min(this.selectedItemIndex, Math.max(0, this.currentItems.length - 1));
   }
 
-  /**
-   * The pack itself, drawn as the squares it is, with the pointed-at item's own
-   * blocks marked. It is above the pockets rather than beside them because the
-   * question it answers - how much room is left - is the one the whole screen is
-   * opened to ask when a crate is on the ground outside.
-   */
-  private packPanel(): string {
-    const layout = this.bag.layout();
-    return `<section class="bag-pack"><header><h2>Pack</h2><p>${this.packLabel()}</p></header>${this.gridMarkup(layout)}</section>`;
+  /** Puts one of the chosen item on the ground, and says the room it bought. */
+  private dropOne(itemId: string): void {
+    const item = this.itemById(itemId);
+    if (!item || !this.bag.remove(item.id)) {
+      return;
+    }
+    audioManager.play('menuClose');
+    this.onItemUsed();
+    this.status = `Dropped ${item.displayName}. ${this.packLabel()}.`;
+    this.render([`[data-item="${item.id}"]`]);
+  }
+
+  private close(): void {
+    audioManager.play('menuClose');
+    this.menuOverlay?.root.removeEventListener('focusin', this.markHandler!);
+    this.scene.stop();
+    this.scene.resume('world');
+  }
+
+  private get carried(): readonly ItemDefinition[] {
+    return POCKETS.flatMap((pocket) => this.bag.itemsInCategory(pocket));
+  }
+
+  private get kinds(): number {
+    return this.carried.length;
+  }
+
+  private itemById(itemId: string): ItemDefinition | undefined {
+    return this.carried.find((item) => item.id === itemId);
+  }
+
+  private get usingItem(): ItemDefinition | undefined {
+    return this.usingItemId === undefined ? undefined : this.itemById(this.usingItemId);
   }
 
   private packLabel(): string {
@@ -408,223 +480,8 @@ export class BagScene extends Phaser.Scene {
     return `${layout.cellsUsed}/${total} squares`;
   }
 
-  private squareLabel(itemId: string): string {
+  private squares(itemId: string): number {
     const footprint = footprintOf(itemId);
-    const squares = footprint.width * footprint.height;
-    return squares === 1 ? '1 square' : `${squares} squares`;
+    return footprint.width * footprint.height;
   }
-
-  private gridMarkup(layout: GridPacking): string {
-    const cells = new Array(layout.size.width * layout.size.height).fill('<i></i>').join('');
-    // A block carries the same describe key as its pocket row, so pointing at
-    // the square in the pack says what is in it and pointing at the row lights
-    // the square. Which block is `marked` is decided in `applyDescription`.
-    const blocks = layout.placements
-      .map((placement) => {
-        const count = placement.quantity > 1 ? `<b>${placement.quantity}</b>` : '';
-        return `<span class="raid-grid-block" data-describes="${describeKey('item', placement.itemId)}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}">${itemIcon(placement.itemId)}${count}</span>`;
-      })
-      .join('');
-    // What the raid is carrying home takes squares too, so it is drawn in them:
-    // the pack panel is opened to ask how much room is left, and a Pokemon is
-    // the biggest thing in it.
-    const cargo = layout.cargo
-      .map(
-        (placement) =>
-          `<span class="raid-grid-block cargo" data-describes="${describeKey('cargo', placement.cargoId)}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}" aria-label="${placement.name}" role="img">${placement.art ? `<img src="${placement.art}" alt="" />` : `<em>${placement.name.slice(0, 1)}</em>`}</span>`,
-      )
-      .join('');
-    return `<div class="raid-grid" data-describe-group style="--cols:${layout.size.width};--rows:${layout.size.height}"><div class="raid-grid-cells" aria-hidden="true">${cells}</div><div class="raid-grid-blocks">${cargo}${blocks}</div></div>`;
-  }
-
-  /** Puts one of the chosen item on the ground, and says the room it bought. */
-  private dropSelected(): void {
-    const item = this.selectedItem;
-    if (!item || !this.bag.remove(item.id)) {
-      return;
-    }
-    audioManager.play('menuClose');
-    this.onItemUsed();
-    this.selectedItemIndex = Math.min(this.selectedItemIndex, Math.max(0, this.currentItems.length - 1));
-    this.renderModernMenu(`Dropped ${item.displayName}. ${this.packLabel()}.`);
-  }
-
-  private drawBackground(): void {
-    const graphics = this.add.graphics();
-    graphics.fillStyle(0x09172a);
-    graphics.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    graphics.fillStyle(0x122d45);
-    graphics.fillRect(0, 20, SCREEN_WIDTH, SCREEN_HEIGHT - 20);
-    graphics.lineStyle(2, 0x8ed4c2);
-    graphics.strokeRect(6, 6, SCREEN_WIDTH - 12, SCREEN_HEIGHT - 12);
-    graphics.lineStyle(1, 0x31566a);
-    graphics.strokeRect(157, 37, 150, 178);
-    this.add.text(14, 11, 'BAG', this.headingStyle());
-    this.add.text(166, 11, 'ITEM INFO', this.headingStyle());
-  }
-
-  private bindInput(): void {
-    if (!this.input.keyboard) {
-      throw new Error('Keyboard input is not available.');
-    }
-
-    this.input.keyboard.addCapture([
-      Phaser.Input.Keyboard.KeyCodes.UP,
-      Phaser.Input.Keyboard.KeyCodes.DOWN,
-      Phaser.Input.Keyboard.KeyCodes.LEFT,
-      Phaser.Input.Keyboard.KeyCodes.RIGHT,
-      Phaser.Input.Keyboard.KeyCodes.ENTER,
-      Phaser.Input.Keyboard.KeyCodes.SPACE,
-      Phaser.Input.Keyboard.KeyCodes.ESC,
-      Phaser.Input.Keyboard.KeyCodes.BACKSPACE,
-    ]);
-    this.input.keyboard.on('keydown-UP', () => this.moveSelection(-1));
-    this.input.keyboard.on('keydown-DOWN', () => this.moveSelection(1));
-    this.input.keyboard.on('keydown-LEFT', () => this.changeCategory(-1));
-    this.input.keyboard.on('keydown-RIGHT', () => this.changeCategory(1));
-    this.input.keyboard.on('keydown-ENTER', () => this.confirm());
-    this.input.keyboard.on('keydown-SPACE', () => this.confirm());
-    this.input.keyboard.on('keydown-ESC', () => this.close());
-    this.input.keyboard.on('keydown-BACKSPACE', () => this.close());
-  }
-
-  private changeCategory(direction: number): void {
-    if (this.choosingPokemon) {
-      return;
-    }
-    this.categoryIndex = (this.categoryIndex + direction + CATEGORIES.length) % CATEGORIES.length;
-    this.selectedItemIndex = 0;
-    this.refresh();
-  }
-
-  private moveSelection(direction: number): void {
-    if (this.choosingPokemon) {
-      const count = this.party.pokemon.length;
-      if (count > 0) {
-        this.selectedPokemonIndex = (this.selectedPokemonIndex + direction + count) % count;
-      }
-    } else {
-      const count = this.currentItems.length;
-      if (count > 0) {
-        this.selectedItemIndex = (this.selectedItemIndex + direction + count) % count;
-      }
-    }
-    this.refresh();
-  }
-
-  private confirm(): void {
-    const item = this.selectedItem;
-    if (!item) {
-      return;
-    }
-
-    if (!this.choosingPokemon) {
-      if (item.effect.type === 'capture-modifier') {
-        this.detailText.setText(`${item.displayName}\n\n${item.description}\n\nIt can only be used\nin battle.`);
-        return;
-      }
-      if (item.effect.type === 'material') {
-        this.detailText.setText(`${item.displayName}\n\n${item.description}\n\nBring it home:\nit is for the Outfitter.`);
-        return;
-      }
-      this.choosingPokemon = true;
-      this.selectedPokemonIndex = 0;
-      this.refresh();
-      return;
-    }
-
-    const pokemon = this.party.pokemon[this.selectedPokemonIndex];
-    if (!pokemon) {
-      return;
-    }
-    const result = useFieldItem(item, pokemon);
-    if (result.used) {
-      this.bag.remove(item.id);
-      this.onItemUsed();
-      this.selectedItemIndex = Math.min(this.selectedItemIndex, Math.max(0, this.currentItems.length - 1));
-    }
-    this.choosingPokemon = false;
-    this.refresh(result.message);
-  }
-
-  private close(): void {
-    audioManager.play('menuClose');
-    this.scene.stop();
-    this.scene.resume('world');
-  }
-
-  private get currentCategory(): ItemCategory {
-    return CATEGORIES[this.categoryIndex];
-  }
-
-  private get currentItems(): readonly ItemDefinition[] {
-    return this.bag.itemsInCategory(this.currentCategory);
-  }
-
-  private get selectedItem(): ItemDefinition | undefined {
-    return this.currentItems[this.selectedItemIndex];
-  }
-
-  private refresh(message?: string): void {
-    const item = this.selectedItem;
-    this.itemText.setText(
-      CATEGORIES.map((category, index) => `${index === this.categoryIndex ? '▶' : ' '} ${ITEM_CATEGORY_LABELS[category].toUpperCase()}`)
-        .concat('')
-        .concat(
-          this.currentItems.length === 0
-            ? ['  (empty)']
-            : this.currentItems.map(
-                (entry, index) =>
-                  `${!this.choosingPokemon && index === this.selectedItemIndex ? '▶' : ' '} ${entry.displayName} x${this.bag.count(entry.id)}`,
-              ),
-        )
-        .join('\n'),
-    );
-
-    this.detailText.setText(
-      message ??
-        (item
-          ? `${item.displayName}\n\n${item.description}\n\n${this.choosingPokemon ? 'Choose a Pokemon.' : 'Select to use.'}`
-          : 'No items in this pocket.'),
-    );
-    this.partyText.setText(
-      this.choosingPokemon
-        ? `PARTY\n${this.party.pokemon
-            .map(
-              (pokemon, index) =>
-                `${index === this.selectedPokemonIndex ? '▶' : ' '} ${pokemon.base.name}\n   HP ${pokemon.currentHp}/${pokemon.maxHp}`,
-            )
-            .join('\n')}`
-        : '',
-    );
-    this.footerText.setText(
-      this.choosingPokemon
-        ? 'UP/DOWN: CHOOSE  ENTER: USE  ESC: BACK'
-        : 'LEFT/RIGHT: POCKET  UP/DOWN: SELECT  ENTER: USE  ESC: BACK',
-    );
-  }
-
-  private textStyle(fontSize = '10px'): Phaser.Types.GameObjects.Text.TextStyle {
-    return { color: '#f8f5d7', fontFamily: GAME_FONT, fontSize, lineSpacing: 3 };
-  }
-
-  private headingStyle(): Phaser.Types.GameObjects.Text.TextStyle {
-    return { color: '#8ed4c2', fontFamily: GAME_FONT, fontSize: '12px', fontStyle: 'bold' };
-  }
-}
-
-/**
- * One line of the detail panel, written as text rather than as markup: this
- * runs while the pointer is resting on a row, so nothing may be replaced. A
- * line with nothing to say is hidden outright, because an empty box still
- * carries its own margins and the panel would breathe in and out as the
- * pointer crossed the list.
- */
-function writeDetail(root: HTMLElement, selector: string, text: string): void {
-  const box = root.querySelector<HTMLElement>(selector);
-  if (!box) {
-    return;
-  }
-  box.textContent = text;
-  box.hidden = text === '';
 }

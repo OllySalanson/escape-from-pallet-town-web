@@ -296,26 +296,19 @@ try {
     await press('KeyB');
     await until(`document.querySelectorAll('.menu-overlay').length > 0`, 'the bag');
     await wait(200);
-    // The pocket it is in, then the row, then Read, then who reads it. Every
-    // one of those is a button a player clicks, found by what it says.
+    // The row, then who reads it. Every pocket is on screen at once, so there
+    // is no tab to find first: the row is a button a player clicks, found by
+    // what it says, and pressing it is what asks who it is for.
     await until(
-      `(() => { const t = [...document.querySelectorAll('[data-category]')]; for (const tab of t) { tab.click();
-        if ([...document.querySelectorAll('[data-item-index]')].some((r) => r.innerText.toLowerCase().includes(${JSON.stringify(itemId.slice(0, 4))}))) return true; } return false; })()`,
-      `the pocket holding ${itemId}`,
-    );
-    await wait(150);
-    await until(
-      `(() => { const r = [...document.querySelectorAll('[data-item-index]')].find((r) => r.innerText.toLowerCase().includes(${JSON.stringify(itemId.slice(0, 4))})); if (!r) return false; r.click(); return true; })()`,
+      `(() => { const r = [...document.querySelectorAll('[data-item]')].find((r) => r.innerText.toLowerCase().includes(${JSON.stringify(itemId.slice(0, 4))})); if (!r) return false; r.click(); return true; })()`,
       `a bag row for ${itemId}`,
     );
-    await wait(150);
-    await until(`(() => { const b = document.querySelector('[data-use]'); if (!b || b.disabled) return false; b.click(); return true; })()`, 'the Read button');
     await wait(150);
     // The first row the bag does not already call a refusal: canon decides who
     // may read a disc, and the driver is not allowed to argue with it.
     await until(
       `(() => { const rows = [...document.querySelectorAll('[data-target]')];
-        const ok = rows.find((r) => !/cannot learn|already knows/i.test(r.innerText)); if (!ok) return false; ok.click(); return true; })()`,
+        const ok = rows.find((r) => !/cannot learn|\\bknows\\b/i.test(r.innerText)); if (!ok) return false; ok.click(); return true; })()`,
       `somebody who can read ${itemId}`,
     );
     await wait(250);
@@ -335,7 +328,7 @@ try {
         if (!(await page.evaluate(`Boolean(document.querySelector('[data-forget]'))`))) break;
       }
     }
-    note(`bag says: ${await page.evaluate(`document.querySelector('.menu-status')?.innerText ?? '(nothing)'`)}`);
+    note(`bag says: ${await page.evaluate(`document.querySelector('.px-status-line')?.innerText ?? '(nothing)'`)}`);
     // Its own back button rather than the key that opened it: the chooser is an
     // overlay of its own on top of the bag, and the topmost overlay is the one
     // a key reaches (`ui/overlayKeyboard.ts`).

@@ -1,47 +1,20 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { Bag, HELD_ITEM_DEFINITIONS, getHeldItem, type ItemDefinition } from '../items';
-import { itemIcon } from '../ui/icons';
 import type { Pokemon, PokemonParty } from '../pokemon';
-import type { PokemonType } from '../pokemon/PokemonType';
-import { MenuOverlay, hpBar, pokemonAvatar, typeBadge } from '../ui/MenuOverlay';
+import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
-import { GAME_FONT } from '../ui/gameFont';
 import { conditionLine } from '../ui/condition';
+import { pokemonDossier } from '../ui/pokemonDossier';
 import {
-  cursorMayDescribe,
-  describeKey,
-  describedKey,
-  POINTER_ONLY,
-  previewAfterPointer,
-} from '../ui/hoverDescribe';
-
-const SCREEN_WIDTH = 320;
-const SCREEN_HEIGHT = 240;
-const LIST_X = 8;
-const LIST_WIDTH = 142;
-const DETAIL_X = 156;
-const DETAIL_WIDTH = 156;
-const CARD_HEIGHT = 31;
-const CARD_GAP = 3;
-const CARD_START_Y = 29;
-
-const TYPE_COLORS: Partial<Record<PokemonType, string>> = {
-  Bug: '#9cab47',
-  // Dark and Steel are live from the moment a Charmander reaches 13 or a
-  // Wartortle 19, so they need an ink of their own: without one the move row
-  // fell back to the same pale default every other listed thing uses, and the
-  // one typed move on the screen was the one that did not look typed.
-  Dark: '#6f5b52',
-  Electric: '#e3c75f',
-  Fire: '#d87856',
-  Flying: '#9caed8',
-  Grass: '#7db65b',
-  Normal: '#aaa898',
-  Poison: '#a060a8',
-  Steel: '#9098a8',
-  Water: '#6096d0',
-};
+  COLUMN_MEASURES,
+  escapeAttribute,
+  pixelColumns,
+  pixelHpBar,
+  pixelScreen,
+  pixelTag,
+  pixelWindow,
+} from '../ui/pixelUi';
 
 interface PartySceneData {
   party: PokemonParty;
@@ -55,24 +28,27 @@ interface PartySceneData {
   bag?: Bag;
 }
 
+/**
+ * The raid party, in the game's own visual language.
+ *
+ * The same shape as the stash it will be settled back into: the list fills the
+ * width it has, a row is the two lines that tell one Pokemon from another, and
+ * everything else about the one under the cursor - portrait, types, condition,
+ * experience, stats, moves and what can be done to it - is the dossier under
+ * the list (`ui/pokemonDossier.ts`, shared with the lobby so the two cannot
+ * drift). What used to be a fixed detail column half the screen wide, with a
+ * Gear list of its own inside it, is the one pane every other list here uses.
+ *
+ * The order of the party is the order Pokemon are sent out in, so it is a
+ * decision this screen has to be able to make: Enter picks one up and the next
+ * Enter puts it in the slot the cursor is on.
+ */
 export class PartyScene extends Phaser.Scene {
   private party!: PokemonParty;
   private bag = new Bag();
-  private selectedIndex = 0;
-  /**
-   * What the pointer is on and what the keyboard cursor is on - see
-   * `ui/hoverDescribe.ts`. Neither is a selection: pointing at a party member
-   * shows their card, and the member the player chose is still the chosen one.
-   */
-  private pointerDescribe: string | null = null;
-  private cursorDescribe: string | null = null;
-  private isReordering = false;
-  private readonly cardBackgrounds: Phaser.GameObjects.Rectangle[] = [];
-  private readonly cardSprites: Phaser.GameObjects.Image[] = [];
-  private readonly cardTexts: Phaser.GameObjects.Text[] = [];
-  private readonly cardHpBars: Phaser.GameObjects.Rectangle[] = [];
-  private detailContent!: Phaser.GameObjects.Container;
-  private footerText!: Phaser.GameObjects.Text;
+  /** The member picked up for a swap, by its position when it was picked up. */
+  private movingIndex?: number;
+  private status?: string;
   private menuOverlay?: MenuOverlay;
 
   public constructor() {
@@ -84,187 +60,173 @@ export class PartyScene extends Phaser.Scene {
     // Phaser reuses this scene, so a pack from an earlier raid would otherwise
     // still be the one this screen gives out of.
     this.bag = data.bag ?? new Bag();
-    this.selectedIndex = 0;
-    this.isReordering = false;
-    this.pointerDescribe = null;
-    this.cursorDescribe = null;
+    this.movingIndex = undefined;
+    this.status = undefined;
   }
 
   public create(): void {
-    this.createModernMenu();
-    return;
-    this.cardBackgrounds.length = 0;
-    this.cardSprites.length = 0;
-    this.cardTexts.length = 0;
-    this.cardHpBars.length = 0;
-    this.drawBackground();
-    this.createHeading();
-    this.createPartyCards();
-    this.detailContent = this.add.container(DETAIL_X, 30);
-    this.footerText = this.add.text(SCREEN_WIDTH / 2, 231, '', {
-      align: 'center',
-      color: '#d6e7ed',
-      fontFamily: GAME_FONT,
-      fontSize: '8px',
-    }).setOrigin(0.5);
-    this.bindInput();
-    this.refresh();
+    this.menuOverlay = new MenuOverlay(this, 'party-menu pixel-ui', (event) => this.handleKey(event));
+    this.menuOverlay.root.setAttribute('aria-label', 'Raid party');
+    this.render();
   }
 
-  private createModernMenu(): void {
-    this.menuOverlay = new MenuOverlay(this, 'party-menu', (event) => {
-      // P is what opened this, so P is what the player will press to leave it.
-      if (isOverlayDismissKey(event, 'p', 'Backspace')) {
-        event.preventDefault();
+  private handleKey(event: KeyboardEvent): void {
+    // P is what opened this, so P is what the player will press to leave it.
+    if (isOverlayDismissKey(event, 'p', 'Backspace')) {
+      event.preventDefault();
+      if (this.movingIndex !== undefined) {
+        audioManager.play('cancel');
+        this.movingIndex = undefined;
+        this.render();
+      } else {
         this.close();
-        return;
       }
-      // Only the controls that are drawn: every member has a card now and all
-      // but one is hidden, and focus refuses a hidden control silently - so a
-      // cursor that counted them stopped dead on the row above the first one.
-      const buttons = [...this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('button:not([disabled])')]
-        .filter((button) => button.offsetParent !== null);
-      const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key) && buttons.length) {
-        event.preventDefault();
-        buttons[(current + (event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1) + buttons.length) % buttons.length]?.focus();
-      }
-    });
-    this.watchDescribing();
-    this.renderModernMenu();
+      return;
+    }
+    if (this.menuOverlay?.moveCursor(event.key)) {
+      event.preventDefault();
+    }
   }
 
-  /**
-   * The pointer and the keyboard cursor, each saying which member it is on.
-   * Both listeners sit on the overlay root, because every render replaces the
-   * rows. See `BagScene.watchDescribing` for the same rule on the same screen's
-   * sibling.
-   */
-  private watchDescribing(): void {
+  private render(prefer: readonly string[] = []): void {
     const root = this.menuOverlay!.root;
-    root.addEventListener('mouseover', (event) => {
-      const target = event.target instanceof Element ? event.target : null;
-      this.setDescribing(
-        previewAfterPointer(this.pointerDescribe, {
-          on: target?.closest<HTMLElement>('[data-describes]')?.dataset.describes ?? null,
-          withinGroup: Boolean(target?.closest('[data-describe-group]')),
-        }),
-        this.cursorDescribe,
-      );
+    const status = this.status;
+    this.status = undefined;
+    root.innerHTML = pixelScreen({
+      title: 'Party',
+      back: { label: 'Raid', attribute: 'data-close' },
+      // No aside: the window's own lid says how many are standing, and saying
+      // it twice on one screen is one of the two going stale.
+      body: this.body(),
+      hints:
+        this.movingIndex === undefined
+          ? 'ARROWS move · ENTER pick up · ESC back to the raid'
+          : 'ARROWS move · ENTER put it here · ESC leave it where it was',
+      status,
     });
-    root.addEventListener('mouseleave', () => this.setDescribing(null, this.cursorDescribe));
-    root.addEventListener('focusin', (event) => {
-      const control = event.target instanceof Element ? event.target : null;
-      const described = control?.closest<HTMLElement>('[data-describes]');
-      this.setDescribing(
-        this.pointerDescribe,
-        described && cursorMayDescribe(described.dataset.describesOn)
-          ? described.dataset.describes ?? null
-          : null,
-      );
-    });
+    const on = (selector: string, handler: (button: HTMLButtonElement) => void): void => {
+      root.querySelectorAll<HTMLButtonElement>(selector).forEach((button) => {
+        button.onclick = () => handler(button);
+      });
+    };
+    on('[data-close]', () => this.close());
+    on('[data-member]', (button) => this.pressMember(Number(button.dataset.member)));
+    on('[data-gear-give]', (button) =>
+      this.giveGear(button.dataset.gearGive!, Number(button.dataset.gearMember)),
+    );
+    on('[data-gear-take]', (button) => this.takeGear(Number(button.dataset.gearTake)));
+    this.menuOverlay!.refocus(...prefer, '[data-member]', '[data-close]');
   }
 
-  private setDescribing(pointer: string | null, cursor: string | null): void {
-    if (pointer === this.pointerDescribe && cursor === this.cursorDescribe) {
-      return;
-    }
-    this.pointerDescribe = pointer;
-    this.cursorDescribe = cursor;
-    this.showDescribedCard();
+  private body(): string {
+    const rows = this.party.pokemon.map((pokemon, index) => this.memberRow(pokemon, index)).join('');
+    const details = this.party.pokemon
+      .map((pokemon, index) => this.memberDossier(pokemon, index))
+      .join('');
+    return `<main class="px-body raid-party-layout">${pixelWindow(
+      // No ceiling on the columns, as the stash has none: a party of six is a
+      // collection like any other and fills the width it is given. Which one
+      // leads is said by the row's own tag rather than by where it sits, so
+      // the order survives being read across columns.
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${
+        rows || '<p class="px-empty">Nobody is deployed.</p>'
+      }</div>${details}`,
+      { className: 'raid-roster', heading: 'Deployed', note: this.partyLabel() },
+    )}</main>`;
   }
 
-  private renderModernMenu(): void {
-    // Every member's card is built and all but one hidden, rather than one card
-    // rebuilt whenever the answer changes: pointing at a row must not replace
-    // markup the pointer could be about to click, and a rebuilt card re-fetches
-    // its portrait and flashes.
-    const cards = this.party.pokemon
-      .map((member, index) => `<section class="party-detail" data-detail-for="${index}" data-describe-group hidden><div class="detail-hero">${pokemonAvatar(member.base.dexId, member.base.name)}<div><p class="eyebrow">Party member</p><h2>${member.base.name}</h2><p>${conditionLine(member)}</p>${hpBar(member.currentHp, member.maxHp)}<div>${typeBadge(member.base.primaryType)}${member.base.secondaryType ? typeBadge(member.base.secondaryType) : ''}</div></div></div><div class="stats-grid"><span><small>HP</small><b>${member.stats.hp}</b></span><span><small>Attack</small><b>${member.stats.attack}</b></span><span><small>Defense</small><b>${member.stats.defense}</b></span><span><small>Speed</small><b>${member.stats.speed}</b></span></div>${this.gearSection(member, index)}<h3>Moves</h3><div class="move-list">${member.moves.map((move) => `<div><strong>${move.base.name}</strong>${typeBadge(move.base.type)}<small>${move.pp}/${move.base.pp} PP</small></div>`).join('') || '<p class="empty-state">No known moves.</p>'}</div></section>`)
-      .join('') || '<section class="party-detail"><p class="empty-state">No Pokémon in your party.</p></section>';
-    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run team</p><h1>Party</h1></div><p class="stash-count">Point at a member to read them</p></header><main class="party-layout"><section class="party-list" data-describe-group>${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable ${index === this.selectedIndex ? 'selected' : ''}" data-member="${index}" data-describes="${describeKey('member', index)}" ${POINTER_ONLY}>${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${conditionLine(pokemon)}${this.heldSuffix(pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('') || '<p class="empty-state">No Pokémon in your party.</p>'}</section>${cards}</main></div>`;
-    this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
-    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-member]').forEach((button) => button.onclick = () => { this.selectedIndex = Number(button.dataset.member); this.renderModernMenu(); });
-    // A gear row names the member whose card it is on rather than reading the
-    // selection, so a card shown because the pointer is on its row can never
-    // hand its gear to somebody else.
-    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-give-gear]').forEach((button) => button.onclick = () => this.giveGear(Number(button.dataset.gearMember), button.dataset.giveGear!));
-    this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-take-gear]').forEach((button) => button.onclick = () => this.takeGear(Number(button.dataset.gearMember)));
-    this.showDescribedCard();
-    this.menuOverlay!.focus('[data-member].selected', '[data-member]', '[data-close]');
-  }
-
-  /** The member the player chose, which pointing and arrowing never move. */
-  private get selectedDescribeKey(): string | null {
-    return this.party.pokemon.length ? describeKey('member', this.selectedIndex) : null;
-  }
-
-  /**
-   * Shows the card for whatever the screen is about now. Nothing is rebuilt -
-   * every card is already on the screen and this only says which one is drawn.
-   */
-  private showDescribedCard(): void {
-    const root = this.menuOverlay?.root;
-    if (!root) {
-      return;
-    }
-    const cards = [...root.querySelectorAll<HTMLElement>('[data-detail-for]')];
-    const known = (key: string | null): string | null =>
-      key !== null && cards.some((card) => describeKey('member', card.dataset.detailFor ?? '') === key)
-        ? key
-        : null;
-    const key = describedKey({
-      pointer: known(this.pointerDescribe),
-      cursor: known(this.cursorDescribe),
-      selected: known(this.selectedDescribeKey),
-    });
-    cards.forEach((card) => {
-      card.hidden = describeKey('member', card.dataset.detailFor ?? '') !== key;
-    });
-  }
-
-  /** What the list row says after the condition, when there is gear to say. */
-  private heldSuffix(pokemon: Pokemon): string {
+  /** Name, health and the order it is in; everything else is the pane below. */
+  private memberRow(pokemon: Pokemon, index: number): string {
+    const moving = this.movingIndex === index;
     const held = getHeldItem(pokemon.heldItemId);
-    return held ? ` · holding ${held.displayName}` : '';
+    const name = escapeAttribute(pokemon.base.name);
+    const help =
+      this.movingIndex === undefined
+        ? `Pick ${name} up to move it. The first in the list is the one sent out first.`
+        : moving
+          ? `Put ${name} back down where it was.`
+          : `Put the Pokémon you are holding here, and ${name} where it was.`;
+    const tag = moving ? pixelTag('Holding', 'risk') : index === 0 ? pixelTag('Leads', 'good', true) : '';
+    return `<button class="px-row${moving ? ' is-selected' : ''}" data-member="${index}" data-shows="member-${index}" data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}${held ? ` · holding ${held.displayName}` : ''}</small></span>${tag}</button>`;
+  }
+
+  private memberDossier(pokemon: Pokemon, index: number): string {
+    const held = getHeldItem(pokemon.heldItemId);
+    return pokemonDossier({
+      pokemon,
+      id: `member-${index}`,
+      first: index === 0,
+      holding: held ? `Holding ${held.displayName}` : 'Holding nothing',
+      deeds: { label: 'Gear', chips: (shows) => this.gearChips(pokemon, index, shows) },
+    });
   }
 
   /**
    * The gear pocket for one Pokemon: what it is carrying, and what the pack
    * could give it instead.
    *
-   * Every control on a card carries that card's own describe key, exactly as a
-   * pixel-ui detail pane's controls carry its `data-shows`: without it the
-   * cursor landing on a gear button would say "on nothing", the card would go
-   * back to the chosen member, and the button the cursor had just reached would
-   * be hidden out from under it.
-   *
    * One slot, so a give is always a swap - the piece already held goes back into
    * the pack in the same action, and there is never a moment where the player
    * owns two of something or none of it.
    */
-  private gearSection(pokemon: Pokemon, memberIndex: number): string {
+  private gearChips(pokemon: Pokemon, index: number, shows: string): string {
     const held = getHeldItem(pokemon.heldItemId);
     const offers = HELD_ITEM_DEFINITIONS.filter(
       (item) => this.bag.count(item.id) > 0 && item.id !== pokemon.heldItemId,
     );
-    const rows = [
-      ...(held
-        ? [`<button class="entity-row selectable" data-take-gear="${held.id}" data-gear-member="${memberIndex}" data-describes="${describeKey('member', memberIndex)}">${itemIcon(held.id, held.displayName)}<div><strong>${held.displayName}</strong><small>${held.description} Press to take it back.</small></div></button>`]
-        : []),
-      ...offers.map(
+    const take = held
+      ? `<button class="px-window px-chip" data-gear-take="${index}" ${shows} data-help="${escapeAttribute(
+          `${held.displayName}: ${held.description} Press to take it back into the pack.`,
+        )}">Take ${held.displayName}</button>`
+      : '';
+    const give = offers
+      .map(
         (item: ItemDefinition) =>
-          `<button class="entity-row selectable" data-give-gear="${item.id}" data-gear-member="${memberIndex}" data-describes="${describeKey('member', memberIndex)}">${itemIcon(item.id, item.displayName)}<div><strong>Give ${item.displayName} ×${this.bag.count(item.id)}</strong><small>${item.description}</small></div></button>`,
-      ),
-    ];
-    return `<h3>Gear</h3><div class="move-list">${
-      rows.join('') ||
-      '<p class="empty-state">Nothing held, and no gear in the pack. Gear is carried by the trainers holding the gates.</p>'
-    }</div>`;
+          `<button class="px-window px-chip" data-gear-give="${item.id}" data-gear-member="${index}" ${shows} data-help="${escapeAttribute(
+            `${item.displayName}: ${item.description} Lost with ${pokemon.base.name} on a wipe.`,
+          )}">Give ${item.displayName} ×${this.bag.count(item.id)}</button>`,
+      )
+      .join('');
+    return `${take}${give}${
+      take || give
+        ? ''
+        : '<span class="px-note">Nothing held, and no gear in the pack. Gear is carried by the trainers holding the gates.</span>'
+    }`;
   }
 
-  private giveGear(memberIndex: number, itemId: string): void {
-    const pokemon = this.party.pokemon[memberIndex];
+  /** Picks a member up, or puts the one being held into this slot. */
+  private pressMember(index: number): void {
+    if (this.movingIndex === undefined) {
+      if (this.party.pokemon.length < 2) {
+        audioManager.play('denied');
+        this.status = 'There is nobody to swap with.';
+        this.render();
+        return;
+      }
+      this.movingIndex = index;
+      audioManager.play('select');
+      this.render();
+      return;
+    }
+    const from = this.movingIndex;
+    const led = this.party.pokemon[0];
+    this.movingIndex = undefined;
+    if (from === index || !this.party.movePokemon(from, index)) {
+      audioManager.play('cancel');
+      this.render([`[data-member="${from}"]`]);
+      return;
+    }
+    audioManager.play('confirm');
+    // Only the lead is worth a line: it is the one thing the order decides that
+    // the list does not already show, and it is decided by a move made three
+    // rows away from the row that changed.
+    const leads = this.party.pokemon[0];
+    this.status = leads && leads !== led ? `${leads.base.name} is sent out first now.` : undefined;
+    this.render([`[data-member="${index}"]`]);
+  }
+
+  private giveGear(itemId: string, index: number): void {
+    const pokemon = this.party.pokemon[index];
     if (!pokemon || this.bag.count(itemId) <= 0 || !this.bag.remove(itemId, 1)) {
       return;
     }
@@ -273,251 +235,27 @@ export class PartyScene extends Phaser.Scene {
       this.bag.add(displaced, 1);
     }
     audioManager.play('select');
-    this.renderModernMenu();
+    this.render();
   }
 
-  private takeGear(memberIndex: number): void {
-    const taken = this.party.pokemon[memberIndex]?.takeHeldItem();
+  private takeGear(index: number): void {
+    const taken = this.party.pokemon[index]?.takeHeldItem();
     if (!taken) {
       return;
     }
     this.bag.add(taken, 1);
     audioManager.play('cancel');
-    this.renderModernMenu();
+    this.render();
   }
 
-  private drawBackground(): void {
-    const graphics = this.add.graphics();
-    graphics.fillStyle(0x09172a);
-    graphics.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    graphics.fillStyle(0x122d45);
-    graphics.fillRect(0, 20, SCREEN_WIDTH, SCREEN_HEIGHT - 20);
-    graphics.lineStyle(2, 0x8ed4c2);
-    graphics.strokeRect(6, 6, SCREEN_WIDTH - 12, SCREEN_HEIGHT - 12);
-    graphics.lineStyle(1, 0x31566a);
-    graphics.strokeRect(DETAIL_X - 4, 24, DETAIL_WIDTH + 4, 199);
-  }
-
-  private createHeading(): void {
-    this.add.text(LIST_X, 11, 'PARTY', {
-      color: '#f8f5d7',
-      fontFamily: GAME_FONT,
-      fontSize: '12px',
-      fontStyle: 'bold',
-    });
-    this.add.text(DETAIL_X, 11, 'SUMMARY', {
-      color: '#8ed4c2',
-      fontFamily: GAME_FONT,
-      fontSize: '12px',
-      fontStyle: 'bold',
-    });
-  }
-
-  private createPartyCards(): void {
-    this.party.pokemon.forEach((pokemon, index) => {
-      const y = CARD_START_Y + index * (CARD_HEIGHT + CARD_GAP);
-      const background = this.add
-        .rectangle(LIST_X, y, LIST_WIDTH, CARD_HEIGHT, 0x1e3650)
-        .setOrigin(0)
-        .setStrokeStyle(1, 0x50758a)
-        .setInteractive({ useHandCursor: true })
-        .on(Phaser.Input.Events.POINTER_DOWN, () => {
-          this.selectedIndex = index;
-          this.isReordering = false;
-          this.refresh();
-        });
-      const sprite = this.add
-        .image(LIST_X + 4, y + CARD_HEIGHT / 2, `pokemon-front-${pokemon.base.dexId}`)
-        .setDisplaySize(26, 26)
-        .setOrigin(0, 0.5);
-      const text = this.add.text(LIST_X + 34, y + 4, '', {
-        color: '#f8f5d7',
-        fontFamily: GAME_FONT,
-        fontSize: '8px',
-        lineSpacing: 2,
-      });
-      const hpBar = this.add.rectangle(LIST_X + 35, y + 24, 0, 4, 0x63b76c).setOrigin(0, 0);
-
-      this.cardBackgrounds.push(background);
-      this.cardSprites.push(sprite);
-      this.cardTexts.push(text);
-      this.cardHpBars.push(hpBar);
-    });
-  }
-
-  private bindInput(): void {
-    if (!this.input.keyboard) {
-      throw new Error('Keyboard input is not available.');
-    }
-
-    this.input.keyboard.addCapture([
-      Phaser.Input.Keyboard.KeyCodes.UP,
-      Phaser.Input.Keyboard.KeyCodes.DOWN,
-      Phaser.Input.Keyboard.KeyCodes.ENTER,
-      Phaser.Input.Keyboard.KeyCodes.SPACE,
-      Phaser.Input.Keyboard.KeyCodes.ESC,
-      Phaser.Input.Keyboard.KeyCodes.BACKSPACE,
-    ]);
-    this.input.keyboard.on('keydown-UP', () => this.handleVerticalInput(-1));
-    this.input.keyboard.on('keydown-DOWN', () => this.handleVerticalInput(1));
-    this.input.keyboard.on('keydown-ENTER', () => this.toggleReorder());
-    this.input.keyboard.on('keydown-SPACE', () => this.toggleReorder());
-    this.input.keyboard.on('keydown-ESC', () => this.close());
-    this.input.keyboard.on('keydown-BACKSPACE', () => this.close());
-  }
-
-  private handleVerticalInput(direction: number): void {
-    const nextIndex = this.selectedIndex + direction;
-    if (nextIndex < 0 || nextIndex >= this.party.pokemon.length) {
-      return;
-    }
-
-    if (this.isReordering) {
-      if (this.party.movePokemon(this.selectedIndex, nextIndex)) {
-        this.selectedIndex = nextIndex;
-        this.refresh();
-      }
-      return;
-    }
-
-    this.selectedIndex = nextIndex;
-    this.refresh();
-  }
-
-  private toggleReorder(): void {
-    if (this.party.pokemon.length < 2) {
-      return;
-    }
-
-    this.isReordering = !this.isReordering;
-    this.refresh();
+  private partyLabel(): string {
+    const standing = this.party.pokemon.filter((pokemon) => !pokemon.isFainted).length;
+    return `${standing} of ${this.party.pokemon.length} standing`;
   }
 
   private close(): void {
     audioManager.play('menuClose');
     this.scene.stop();
     this.scene.resume('world');
-  }
-
-  private refresh(): void {
-    this.refreshPartyCards();
-    this.refreshDetail();
-    this.footerText.setText(
-      this.isReordering
-        ? 'MOVE MODE: UP/DOWN SWAPS  ENTER: DONE  ESC: BACK'
-        : 'UP/DOWN: SELECT  ENTER: MOVE  ESC: BACK',
-    );
-  }
-
-  private refreshPartyCards(): void {
-    this.party.pokemon.forEach((pokemon, index) => {
-      const isSelected = index === this.selectedIndex;
-      const background = this.cardBackgrounds[index];
-      const sprite = this.cardSprites[index];
-      const text = this.cardTexts[index];
-      const hpBar = this.cardHpBars[index];
-      const hpRatio = pokemon.maxHp === 0 ? 0 : pokemon.currentHp / pokemon.maxHp;
-
-      background.setFillStyle(isSelected ? (this.isReordering ? 0x86525d : 0x31566a) : 0x1e3650);
-      background.setStrokeStyle(isSelected ? 2 : 1, isSelected ? 0xf8f5d7 : 0x50758a);
-      sprite.setTexture(`pokemon-front-${pokemon.base.dexId}`);
-      text.setText(
-        `${isSelected ? '▶ ' : '  '}${pokemon.base.name}\n  Lv.${pokemon.level}  HP ${pokemon.currentHp}/${pokemon.maxHp}`,
-      );
-      hpBar.setSize(93 * hpRatio, 4).setFillStyle(this.getHpColor(hpRatio));
-    });
-  }
-
-  private refreshDetail(): void {
-    this.detailContent.removeAll(true);
-    const pokemon = this.party.pokemon[this.selectedIndex];
-    if (!pokemon) {
-      this.detailContent.add(
-        this.add.text(8, 12, 'No Pokemon\nin your party.', this.detailTextStyle('12px')),
-      );
-      return;
-    }
-
-    this.detailContent.add(
-      this.add
-        .image(122, 20, `pokemon-front-${pokemon.base.dexId}`)
-        .setDisplaySize(42, 42)
-        .setOrigin(0.5),
-    );
-    this.detailContent.add(this.add.text(7, 2, pokemon.base.name.toUpperCase(), this.detailTextStyle('12px')));
-    this.detailContent.add(
-      this.add.text(7, 19, `Lv.${pokemon.level}  HP ${pokemon.currentHp}/${pokemon.maxHp}`, this.detailTextStyle()),
-    );
-    this.detailContent.add(
-      this.add.text(7, 34, this.getTypesText(pokemon), {
-        ...this.detailTextStyle('8px'),
-        color: TYPE_COLORS[pokemon.base.primaryType] ?? '#d6e7ed',
-      }),
-    );
-    this.detailContent.add(this.add.text(7, 53, 'STATS', this.labelTextStyle()));
-    this.detailContent.add(
-      this.add.text(
-        7,
-        65,
-        `HP  ${pokemon.stats.hp}    ATK ${pokemon.stats.attack}\nDEF ${pokemon.stats.defense}    SPA ${pokemon.stats.spAttack}\nSPD ${pokemon.stats.spDefense}    SPE ${pokemon.stats.speed}`,
-        this.detailTextStyle('8px'),
-      ),
-    );
-    this.detailContent.add(this.add.text(7, 105, 'MOVES', this.labelTextStyle()));
-
-    if (pokemon.moves.length === 0) {
-      this.detailContent.add(this.add.text(7, 119, 'No known moves', this.detailTextStyle('8px')));
-      return;
-    }
-
-    pokemon.moves.forEach((move, index) => {
-      const y = 118 + index * 17;
-      this.detailContent.add(
-        this.add.text(7, y, move.base.name, this.detailTextStyle('8px')),
-      );
-      this.detailContent.add(
-        this.add.text(70, y, move.base.type.toUpperCase(), {
-          ...this.detailTextStyle('7px'),
-          color: TYPE_COLORS[move.base.type] ?? '#d6e7ed',
-        }),
-      );
-      this.detailContent.add(
-        this.add.text(148, y, `${move.pp}/${move.base.pp}`, this.detailTextStyle('7px')).setOrigin(1, 0),
-      );
-    });
-  }
-
-  private getTypesText(pokemon: Pokemon): string {
-    return pokemon.base.secondaryType
-      ? `${pokemon.base.primaryType.toUpperCase()} / ${pokemon.base.secondaryType.toUpperCase()}`
-      : pokemon.base.primaryType.toUpperCase();
-  }
-
-  private getHpColor(hpRatio: number): number {
-    if (hpRatio > 0.5) {
-      return 0x63b76c;
-    }
-    if (hpRatio > 0.2) {
-      return 0xe3c75f;
-    }
-    return 0xd87856;
-  }
-
-  private detailTextStyle(fontSize = '9px'): Phaser.Types.GameObjects.Text.TextStyle {
-    return {
-      color: '#f8f5d7',
-      fontFamily: GAME_FONT,
-      fontSize,
-      lineSpacing: 2,
-    };
-  }
-
-  private labelTextStyle(): Phaser.Types.GameObjects.Text.TextStyle {
-    return {
-      color: '#8ed4c2',
-      fontFamily: GAME_FONT,
-      fontSize: '8px',
-      fontStyle: 'bold',
-    };
   }
 }

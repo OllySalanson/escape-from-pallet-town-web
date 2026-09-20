@@ -88,8 +88,8 @@ const AUDIT = `(() => {
   // splits three ways into a width ending in a third does not - the browser
   // paints a background-drawn frame on whole device pixels either way, which is
   // why this asks about the pictures and the unit rather than about every box.
-  // Only of a pixel-ui screen: the in-raid party, bag and field guide are still
-  // the older rounded language, which measures in ems and has no game pixel.
+  // Only of a pixel-ui screen, which since #152 is every screen the game has -
+  // the in-raid party, bag and field guide included.
   const pixel = screen.classList.contains('pixel-ui');
   const unit = Number.parseFloat(getComputedStyle(screen).getPropertyValue('--u')) || 0;
   const layer = screen.parentElement.getBoundingClientRect();
