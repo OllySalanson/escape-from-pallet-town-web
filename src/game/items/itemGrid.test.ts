@@ -10,9 +10,9 @@ describe('what an item takes up', () => {
     for (const item of ITEM_DEFINITIONS) {
       expect(item.footprint.width, item.id).toBeGreaterThanOrEqual(1);
       expect(item.footprint.height, item.id).toBeGreaterThanOrEqual(1);
-      // The greedy packer is exact for pieces this size in an even-width
-      // container. A three-wide item is a change to `packContents`, not a row
-      // in the catalogue.
+      // The exact search only runs on the pieces first-fit turned away, and it
+      // is budgeted; a three-wide item is a change to `packContents` and to the
+      // squares a screen draws, not a row in the catalogue.
       expect(item.footprint.width, item.id).toBeLessThanOrEqual(2);
       expect(item.footprint.height, item.id).toBeLessThanOrEqual(2);
     }

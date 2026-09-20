@@ -17,6 +17,7 @@ import { moveChoiceMessage } from '../ui/moveChooser';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { itemIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
+import { GridArranging } from '../ui/gridArranging';
 import { bagFocusPreference } from '../ui/menuFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { conditionLine } from '../ui/condition';
@@ -90,6 +91,14 @@ const useLabel = (item: ItemDefinition): string => {
 const pocketTag = (item: ItemDefinition): string =>
   item.category === ItemCategory.Held ? pixelTag('Gear', 'plain') : '';
 
+/**
+ * What the keys do, said while the cursor is on a block. It is the help bar's
+ * line rather than a strip of instructions under the grid, because the pack
+ * stands in a column beside the pockets and a sentence there wraps.
+ */
+const ARRANGE_HELP =
+  'ENTER picks this up and puts it down · arrows carry it · R turns it · ESC puts it back.';
+
 interface BagSceneData {
   readonly bag: Bag;
   readonly party: PokemonParty;
@@ -118,6 +127,32 @@ export class BagScene extends Phaser.Scene {
   /** Said once, over the help bar, about what just happened. */
   private status?: string;
   private menuOverlay?: MenuOverlay;
+  /**
+   * The pack is the player's to lay out here too: a coil of rope found in a
+   * wood is the one moment the room in the bag is a decision, and the bag is
+   * one key away from it. Built on first use rather than as a field, because a
+   * Phaser scene is not guaranteed to have been constructed before `init`.
+   */
+  private arrangingValue: GridArranging | undefined;
+
+  private get arranging(): GridArranging {
+    this.arrangingValue ??= new GridArranging({
+      packing: () => this.bag.layout(),
+      commit: (_name, arrangement) => {
+        this.bag.arrange(arrangement);
+        this.onItemUsed();
+        this.render();
+      },
+      redraw: () => this.render(),
+      say: (message) => {
+        this.status = message;
+        this.render();
+      },
+      sound: (kind) =>
+        audioManager.play(kind === 'refused' ? 'denied' : kind === 'take' ? 'menuOpen' : 'select'),
+    });
+    return this.arrangingValue;
+  }
 
   public constructor() {
     super('bag');
@@ -129,6 +164,7 @@ export class BagScene extends Phaser.Scene {
     this.onItemUsed = data.onItemUsed;
     this.usingItemId = undefined;
     this.status = undefined;
+    this.arranging.release();
   }
 
   public create(): void {
@@ -154,6 +190,12 @@ export class BagScene extends Phaser.Scene {
   }
 
   private handleKey(event: KeyboardEvent): void {
+    // A piece in the player's hand owns the arrow keys, R, ENTER and ESC: ESC
+    // puts it back where it came from rather than shutting the bag on it.
+    if (this.arranging.handleKey(event, document.activeElement)) {
+      event.preventDefault();
+      return;
+    }
     // B is what opened this, so B is what the player will press to leave it.
     if (isOverlayDismissKey(event, 'b', 'Backspace')) {
       event.preventDefault();
@@ -198,7 +240,15 @@ export class BagScene extends Phaser.Scene {
         button.onclick = () => handler(button);
       });
     };
+    this.arranging.attach(root);
     on('[data-close]', () => this.close());
+    on('[data-tidy]', () => {
+      this.bag.tidy();
+      this.arranging.release();
+      this.onItemUsed();
+      audioManager.play('select');
+      this.render();
+    });
     on('[data-item]', (button) => this.pressItem(button.dataset.item!));
     on('[data-drop]', (button) => this.dropOne(button.dataset.drop!));
     on('[data-target]', (button) => this.giveTo(Number(button.dataset.target)));
@@ -281,10 +331,21 @@ export class BagScene extends Phaser.Scene {
    * one the screen is opened with when there is a crate on the ground outside.
    */
   private packWindow(): string {
-    return pixelWindow(
-      pixelGrid(this.bag.layout(), (itemId) => itemIcon(itemId), { label: 'The raid pack' }),
-      { className: 'pack-window', heading: 'Pack', note: this.packLabel() },
-    );
+    const grid = pixelGrid(this.bag.layout(), (itemId) => itemIcon(itemId), {
+      label: 'The raid pack',
+      arrange: { name: 'pack', ghost: this.arranging.ghostFor('pack'), help: ARRANGE_HELP },
+    });
+    // TIDY is the automatic pack made into a deed rather than the only
+    // behaviour there is, and it says what it will do because it throws away an
+    // arrangement somebody made.
+    const tidy = `<div class="px-grid-bar"><button class="px-window px-chip" data-tidy data-help="${escapeAttribute(
+      'Pack the bag again from scratch, turning pieces on their side where that is what makes the mix fit. It replaces how you have laid it out.',
+    )}">Tidy</button></div>`;
+    return pixelWindow(`${grid}${tidy}`, {
+      className: 'pack-window',
+      heading: 'Pack',
+      note: this.packLabel(),
+    });
   }
 
   /** Lights the blocks one thing is standing on, without rebuilding the screen. */
@@ -304,6 +365,12 @@ export class BagScene extends Phaser.Scene {
     const root = this.menuOverlay?.root;
     const block = event.target instanceof Element ? event.target.closest<HTMLElement>('.px-grid-block') : null;
     if (!root || !block?.dataset.describes) {
+      return;
+    }
+    // A piece in the hand owns the cursor: handing the question to a pocket row
+    // while one is being carried would take the focus off the block the arrow
+    // keys are moving, and a pointer resting on the grid would end the carry.
+    if (this.arranging.held) {
       return;
     }
     const { kind, id } = splitDescribeKey(block.dataset.describes);

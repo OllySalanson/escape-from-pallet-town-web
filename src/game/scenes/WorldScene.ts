@@ -92,7 +92,7 @@ import {
 import { RunPhase } from '../run/RunManager';
 import { compassBearing } from '../world/bearing';
 import { buildExtractionReport, type ExtractionReport } from '../run/extractionReport';
-import { packFullForPokemonLine, packHasRoomForPokemon, syncPackCargo } from '../run/raidCargo';
+import { clearPackRoomForPokemon, packFullForPokemonLine, syncPackCargo } from '../run/raidCargo';
 import {
   buildRaidSettlement,
   buildWipeSettlement,
@@ -584,6 +584,7 @@ export class WorldScene extends Phaser.Scene {
     this.pendingTrainerBattle = undefined;
     this.endCutscene();
     this.unsolicitedDialog = false;
+    this.packReseated = false;
     // The box itself is rebuilt at the bottom by create(), so the note that it was moved goes too.
     this.dialogRaised = false;
     this.openingBriefingOpen = false;
@@ -801,7 +802,7 @@ export class WorldScene extends Phaser.Scene {
     for (const drop of this.unclaimedBossGear) {
       const item = getItemById(drop.itemId);
       const gearName = item?.displayName.toUpperCase() ?? 'PIECE OF GEAR';
-      if (!this.bag.add(drop.itemId, 1)) {
+      if (this.bag.takeFind(drop.itemId, 1) === 'refused') {
         waiting.push({ ...drop });
         lines.push(
           `${drop.name} was carrying a ${gearName} - and your pack has no room for it.`,
@@ -810,7 +811,7 @@ export class WorldScene extends Phaser.Scene {
         continue;
       }
       lines.push(
-        `${drop.name} was carrying a ${gearName}. You take it.`,
+        `${drop.name} was carrying a ${gearName}. You take it.${this.reseatNote()}`,
         `${item?.description ?? ''} Give it to a POKéMON from the party screen - and get it home.`,
       );
     }
@@ -963,12 +964,32 @@ export class WorldScene extends Phaser.Scene {
    * beside the inventory mutation prevents found loot from being lost at
    * extraction.
    */
+  /** Set while a find has just made the pack re-seat itself, so the line says so. */
+  private packReseated = false;
+
   public collectRunItem(itemId: ItemId, quantity = 1): boolean {
-    if (!this.bag.add(itemId, quantity)) {
+    // A find is not on a screen the player can rearrange from: it is on the
+    // ground in front of them, and "no room, the way you have packed it" is a
+    // refusal they cannot act on without walking away from it. So the pack
+    // re-seats itself around a find when that is the only way it goes in - and
+    // says so, because changing somebody's arrangement silently would be the
+    // one promise this cannot break.
+    const taken = this.bag.takeFind(itemId, quantity);
+    if (taken === 'refused') {
       return false;
     }
+    this.packReseated = this.packReseated || taken === 'reseated';
     this.runSession?.manager.registerFoundItem(itemId, quantity);
     return true;
+  }
+
+  /** What is added to a pickup's line when the pack shuffled to take it. */
+  private reseatNote(): string {
+    if (!this.packReseated) {
+      return '';
+    }
+    this.packReseated = false;
+    return ' Your pack re-packed itself to fit it.';
   }
 
   private createMap(): void {
@@ -1894,6 +1915,11 @@ export class WorldScene extends Phaser.Scene {
       width: this.currentMap.width,
       walked: this.runSession?.surveyed ?? [],
     });
+    // The pack is laid out in the field as much as at base - a find is seated
+    // in the room that is left and moved where the player wants it - so the
+    // layout comes home with the raid, however the raid ended. It is seats and
+    // never contents: a wipe still takes what it takes.
+    new SaveManager().recordContainerArrangements(this.bag.arrangement);
   }
 
   /**
@@ -2287,7 +2313,10 @@ export class WorldScene extends Phaser.Scene {
     // A gift costs pack squares exactly as a catch does. With none to spare the
     // hand-over does not happen at all: the giver says so, nothing is recorded,
     // and they still have it when the player comes back with room.
-    if (!packHasRoomForPokemon(this.bag, pokemon)) {
+    // Where only the arrangement was in the way the pack re-packs itself rather
+    // than turning the gift away: a refusal has to mean there is no room.
+    const room = clearPackRoomForPokemon(this.bag, pokemon);
+    if (!room.fits) {
       audioManager.play('denied');
       return [
         ...gift.offer.slice(0, -1),
@@ -2295,11 +2324,14 @@ export class WorldScene extends Phaser.Scene {
       ];
     }
     this.runSession.manager.registerGiftedPokemon(gift.id, pokemon);
+    this.packReseated = this.packReseated || room.reseated;
     syncPackCargo(this.bag, this.runSession.manager.snapshot());
     audioManager.play('catchSuccess');
     if (this.party.pokemon.length < PARTY_LIMIT) {
       this.party.addPokemon(pokemon);
-      return gift.offer;
+      return room.reseated
+        ? [...gift.offer.slice(0, -1), `${gift.offer[gift.offer.length - 1]}${this.reseatNote()}`]
+        : gift.offer;
     }
     this.caughtPokemonStash.push(pokemon);
     return [...gift.offer.slice(0, -1), gift.offerPackLine];
@@ -3124,7 +3156,7 @@ export class WorldScene extends Phaser.Scene {
     this.lootSprites.delete(loot!.id);
     const item = ITEMS[loot!.itemId];
     const quantity = loot!.quantity > 1 ? ` x${loot!.quantity}` : '';
-    return `Found ${item.displayName}${quantity}!`;
+    return `Found ${item.displayName}${quantity}!${this.reseatNote()}`;
   }
 
   /**
@@ -3148,7 +3180,20 @@ export class WorldScene extends Phaser.Scene {
       this.isLootAvailable(),
       this.activatedPoiIds,
       (itemId, quantity) => this.collectRunItem(itemId, quantity),
-      (reward) => this.bag.fitsAll(reward),
+      // Whole or not at all, and the pack will re-seat itself to take the
+      // whole of it: a cache refused for the way the pack happens to be packed
+      // would be a seal the player could not open from where they stand.
+      (reward) => {
+        if (this.bag.fitsAll(reward)) {
+          return true;
+        }
+        if (!this.bag.tidyWouldFitAll(reward)) {
+          return false;
+        }
+        this.bag.tidy();
+        this.packReseated = true;
+        return true;
+      },
     );
     if (result === 'unavailable') {
       return null;
@@ -3187,10 +3232,12 @@ export class WorldScene extends Phaser.Scene {
       return [
         `${poi!.label}: ${exit} is open.`,
         this.rangerForecast(),
-        ...(reward ? [`${reward} secured. Extract to bank it.`] : []),
+        ...(reward ? [`${reward} secured. Extract to bank it.${this.reseatNote()}`] : []),
       ];
     }
-    return [`${poi!.label}: ${reward} secured. Detour reward is LOST ON WIPE - extract to bank it.`];
+    return [
+      `${poi!.label}: ${reward} secured. Detour reward is LOST ON WIPE - extract to bank it.${this.reseatNote()}`,
+    ];
   }
 
   private restoreSavedGame(savedGame: RestoredGame | undefined): void {

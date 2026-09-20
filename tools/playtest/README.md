@@ -132,6 +132,16 @@ the run plan: a map's authored loot position is only a fallback, so nothing else
 can send a driver to a thing on the ground.
 `--fight` stays in every fight instead of running from the wild ones.
 
+`raid.mjs --arrange` lays the pack out by hand in the middle of the raid - the
+cursor on a block, ENTER to take it, the arrow keys to carry it, ENTER to put it
+down - and prints what the save was left holding when the raid ended. It is the
+only thing that plays the whole promise a laid-out pack makes: arranged in the
+field, carried through every fight, and still that way next time.
+`packArrange.mjs <url> <out dir> [--plain]` is the other end of it, at base:
+the loadout's pack and the secure container arranged by keyboard *and* by
+pointer drag, turned with R, carried into a raid and read back there. Both are
+how the captain's case of 2026-09-20 is walked rather than reasoned about.
+
 `packFull.mjs <url> <out dir>` is the pack filled to its last square and walked
 into each refusal that fullness causes: the catch a fight has to make room for
 (`--drop`, the default, or `--keep`), the ground loot that will not go in

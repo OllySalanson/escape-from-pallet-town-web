@@ -5,7 +5,12 @@ import {
   readSecurePreference,
   type SecurePreference,
 } from '../hub/secureAutofill';
-import { CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID } from '../items';
+import {
+  CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID,
+  EMPTY_ARRANGEMENT,
+  readArrangement,
+  type GridArrangement,
+} from '../items';
 import {
   TRADER_BERTH_PRICE,
   checkBarter,
@@ -204,6 +209,22 @@ export interface RaidProgress {
    */
   readonly securePreference?: SecurePreference;
   /**
+   * How the player last laid the two containers out, as lists of seats
+   * (`items/itemGrid.ts`). A pack somebody arranged by hand comes back the way
+   * they left it - across screens, across a save and across a raid - because an
+   * auto-tidy that undoes that work is worse than no arranging at all (the
+   * captain's ruling, 2026-09-20).
+   *
+   * They are seats and never a grid, for the reason every other permanent
+   * effect in this save is a list of ids: a blob can disagree with the contents
+   * it describes. A seat names a piece and a square, the packer drops any seat
+   * that no longer works, and whatever is left over is packed automatically.
+   * Absent on every save written before it, which reads as a container nobody
+   * has arranged - which is the automatic pack, so no version bump.
+   */
+  readonly packArrangement?: GridArrangement;
+  readonly secureArrangement?: GridArrangement;
+  /**
    * How many raids each map has seen, by map id: deployed, and how each of
    * those ended. It is a record of what the player has done rather than a
    * reward - the drop-in screen reads it back so choosing where to go is made
@@ -287,6 +308,8 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   traderScripSpent: 0,
   traderBarters: [],
   securePreference: DEFAULT_SECURE_PREFERENCE,
+  packArrangement: EMPTY_ARRANGEMENT,
+  secureArrangement: EMPTY_ARRANGEMENT,
   raidRecord: {},
   surveyed: {},
 };
@@ -744,6 +767,30 @@ export class SaveManager {
       return false;
     }
     const raidProgress: RaidProgress = { ...game.raidProgress, securePreference: preference };
+    return this.save({ ...game, raidProgress });
+  }
+
+  /**
+   * Remembers how the two containers were laid out.
+   *
+   * Written on the way out of the lobby, as the secure preference is, and again
+   * when a raid ends - because the pack is arranged in the field as much as at
+   * base, and a layout that did not survive the raid it was made in would be
+   * the one promise this feature cannot break.
+   */
+  public recordContainerArrangements(
+    pack: GridArrangement,
+    secure?: GridArrangement,
+  ): boolean {
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      packArrangement: pack,
+      ...(secure ? { secureArrangement: secure } : {}),
+    };
     return this.save({ ...game, raidProgress });
   }
 
@@ -1214,6 +1261,8 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // A save written before the container filled itself has no preference, and
     // the default is exactly what such a player wants: lead with the Pokemon.
     securePreference: readSecurePreference(value.securePreference),
+    packArrangement: readArrangement(value.packArrangement),
+    secureArrangement: readArrangement(value.secureArrangement),
     // A save written before the record was kept has been nowhere, which is
     // what an empty record says: the drop-in screen reads that as "you have
     // not been here" rather than as a raid that went badly.

@@ -811,6 +811,10 @@ describe('extraction loop integration', () => {
       // A raid deployed from a test never wrote a container preference, so the
       // save keeps the default: lead with the Pokemon, carry nothing else.
       securePreference: { pokemon: true, items: [] },
+      // Nor did it lay a container out by hand, so both are unarranged - which
+      // is the automatic pack, exactly as it was before either was stored.
+      packArrangement: { items: [], cargo: [] },
+      secureArrangement: { items: [], cargo: [] },
       // Banking a raid records nothing about where it was: a deployment is
       // counted where it is committed to, and the survey is written by the
       // raid itself. Neither goes through this path.

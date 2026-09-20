@@ -30,6 +30,33 @@ export function packHasRoomForPokemon(bag: Bag, pokemon: Pokemon): boolean {
 }
 
 /**
+ * Makes room for one more Pokemon where the squares are there and only the
+ * arrangement is in the way.
+ *
+ * A refusal has to mean "there is no room", never "there is no room the way you
+ * have packed it" - the second is a wall the player cannot get over from inside
+ * a battle, which is the fault the make-room screen exists to answer and which
+ * a re-pack answers for free. The pack gives up its arrangement rather than
+ * keeping it, because the Pokemon is not in the contents the packer could seat
+ * around yet; `reseated` is what the caller says out loud.
+ *
+ * @returns Whether the pack can now take it, and whether it had to re-pack.
+ */
+export function clearPackRoomForPokemon(
+  bag: Bag,
+  pokemon: Pokemon,
+): { readonly fits: boolean; readonly reseated: boolean } {
+  if (packHasRoomForPokemon(bag, pokemon)) {
+    return { fits: true, reseated: false };
+  }
+  if (!bag.tidyWouldFitCargo(pokemonCargo('incoming', pokemon))) {
+    return { fits: false, reseated: false };
+  }
+  bag.unarrange();
+  return { fits: packHasRoomForPokemon(bag, pokemon), reseated: true };
+}
+
+/**
  * What the raid says when the pack has no room for a Pokemon.
  *
  * It names the Pokemon and its price in squares, because the grid's whole

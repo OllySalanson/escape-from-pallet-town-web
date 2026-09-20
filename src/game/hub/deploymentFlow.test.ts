@@ -547,11 +547,13 @@ describe('deployment flow', () => {
 
   /**
    * A Super Potion is one square wide and two tall, and the pack is three rows
-   * deep - so six of them stand a column apiece and leave the bottom row, which
-   * only one-square things can use. Twice the heal for twice the room is the
-   * rule; the leftover row is the shape of the pack answering back.
+   * deep - so six of them stand a column apiece and the bottom row is left.
+   * That row used to be the end of it: only one-square things could use it, and
+   * the seventh Super Potion was refused with six squares free. It can lie down
+   * now, so the pack fills exactly, which is what twice the heal for twice the
+   * room ought to have meant all along.
    */
-  it('measures a Super Potion at two squares, and leaves a row only singles can fill', () => {
+  it('measures a Super Potion at two squares, and lets it lie down to use the last row', () => {
     const { flow, stash } = seedFlow();
     stash.addItem('super-potion', 20);
     stash.addItem('potion', 20);
@@ -559,12 +561,13 @@ describe('deployment flow', () => {
       expect(flow.adjustItem('super-potion', 1)).toBeUndefined();
     }
     expect(flow.bagCells).toEqual({ used: 12, total: 18 });
-    expect(flow.adjustItem('super-potion', 1)).toMatch(/No room/);
 
-    for (let index = 0; index < 6; index += 1) {
-      expect(flow.adjustItem('potion', 1)).toBeUndefined();
+    // Three more lie flat across the bottom row, and the tenth has nowhere.
+    for (let index = 0; index < 3; index += 1) {
+      expect(flow.adjustItem('super-potion', 1)).toBeUndefined();
     }
     expect(flow.bagCells).toEqual({ used: 18, total: 18 });
+    expect(flow.adjustItem('super-potion', 1)).toMatch(/No room/);
     expect(flow.adjustItem('potion', 1)).toMatch(/No room/);
   });
 

@@ -7,7 +7,7 @@
 //   node tools/playtest/raid.mjs http://localhost:5173/ [--testmode] [--stepped] [--pixels]
 //        [--window=logic|pixel|WxH] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
 //        [--insertion=id] [--beaten=bossId,..] [--opened=gateId,..] [--completed=contractId,..]
-//        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL]
+//        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--grab=itemId,..] [--fight]
 //        [--progress=path.json]
 //
@@ -341,6 +341,50 @@ try {
     await readDisc(itemId);
   }
 
+  // --arrange lays the pack out by hand in the middle of the raid, with the
+  // arrow keys and nothing else, and reports what the save was left holding
+  // when the raid ended. It is the only thing that plays the whole of the
+  // promise a laid-out pack makes (`items/gridArrange.ts`): arranged in the
+  // field, carried through every fight, and still that way next time.
+  const arrangeInTheField = async () => {
+    // The raid opens on its briefing, and the world reads no other key while a
+    // box is up: the bag is one key away only once there is nothing to read.
+    await clearInterruptions();
+    note('arranging the pack');
+    await press('KeyB');
+    await until(`document.querySelectorAll('.menu-overlay').length > 0`, 'the bag');
+    await wait(200);
+    const layout = () =>
+      page.evaluate(
+        `[...document.querySelectorAll('[data-grid="pack"] [data-grid-piece]')].map((b) => b.dataset.gridPiece + '@' + b.style.gridColumn + '/' + b.style.gridRow).sort().join(' | ')`,
+      );
+    note(`pack as packed: ${await layout()}`);
+    // The cursor is put on a block the way an arrow key would put it there,
+    // and everything after it is a real key: take, carry, put down.
+    if (!(await page.evaluate(`(() => { const b = document.querySelector('[data-grid="pack"] [data-grid-piece]'); if (!b) return false; b.focus(); return true; })()`))) {
+      note('nothing in the pack to arrange');
+      await press('KeyB');
+      return;
+    }
+    await press('Enter');
+    for (let step = 0; step < 6; step += 1) {
+      await press('ArrowRight');
+    }
+    for (let step = 0; step < 3; step += 1) {
+      await press('ArrowDown');
+    }
+    await press('Enter');
+    await wait(200);
+    note(`pack as arranged: ${await layout()}`);
+    await press('KeyB');
+    await until(`document.querySelectorAll('.menu-overlay').length === 0`, 'the world back');
+    await wait(200);
+    note(`the raid pack now holds ${await page.evaluate(`${GAME}.scene.getScene('world').bag.arrangement.items.length`)} seats`);
+  };
+  if (flag('arrange') && !ended) {
+    await arrangeInTheField();
+  }
+
   // --open=LABEL works a field-move door: the other way a gate opens, and the
   // only one that happens on a keypress in the middle of a raid rather than in
   // the hand-off out of a won fight. The driver walks to a tile beside it,
@@ -413,7 +457,8 @@ try {
     await walkTo(piece.position, `${piece.quantity}x ${piece.itemId}`);
   }
   if (grab.length > 0) {
-    note(`pack now ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').bag.toJSON()`))}`);
+    note(`seats the pack is still holding: ${ended ? 'n/a' : await page.evaluate(`${GAME}.scene.getScene('world').bag.arrangement.items.length`)}`);
+  note(`pack now ${JSON.stringify(await page.evaluate(`${GAME}.scene.getScene('world').bag.toJSON()`))}`);
   }
   for (const [index, marker] of plan.markers.entries()) {
     await walkTo(marker, `contract stop ${index + 1}`);
@@ -535,6 +580,9 @@ try {
     // of the drop-in screen is taken against a survey a raid actually made.
     const progress = await page.evaluate(`JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1')).raidProgress`);
     note(`recorded: ${JSON.stringify(progress.raidRecord)}, surveyed ${Object.keys(progress.surveyed ?? {}).join(', ') || 'nothing'}`);
+    // What a pack laid out by hand left behind. The raid writes it on every
+    // ending, so this is the last link in "it comes back the way you left it".
+    note(`pack layout kept: ${JSON.stringify(progress.packArrangement?.items ?? [])}`);
     if (option('progress')) {
       writeFileSync(option('progress'), JSON.stringify(progress));
     }
