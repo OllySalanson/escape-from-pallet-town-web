@@ -10,6 +10,7 @@ import {
 import { KeyPresses } from '../input/KeyPresses';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
+import { isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
 import {
   CHARACTER_FEET_PIXEL_Y,
   CHARACTER_HEAD_PIXEL_Y,
@@ -356,6 +357,12 @@ interface ControlKeys {
   objectives: Phaser.Input.Keyboard.Key;
   /** The look: every name on the screen while it is held - see `captionReveal.ts`. */
   look: Phaser.Input.Keyboard.Key;
+  /**
+   * Held, it walks an explorer run three times faster. It does nothing at all
+   * in an ordinary raid: the raid clock is spent on walking, so a run key would
+   * be a difficulty setting rather than a convenience (`dev/playtestMode.ts`).
+   */
+  run: Phaser.Input.Keyboard.Key;
   interact: Phaser.Input.Keyboard.Key[];
 }
 
@@ -1944,8 +1951,9 @@ export class WorldScene extends Phaser.Scene {
           snapshot.remainingMs,
           manager.isEnraged,
           snapshot.enrageGraceRemainingMs,
+          isPlaytestRun(),
         ),
-        objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0),
+        objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun()),
         place: placePlateLine(this.placeName, this.placePlateMs),
         // Read off the tile rather than remembered with the district name: the
         // chip and the fight that is about to start have to be reading the same
@@ -2029,6 +2037,8 @@ export class WorldScene extends Phaser.Scene {
       save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
       objectives: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O),
       look: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L),
+      // Never captured: an overlay above the world must keep its own shift.
+      run: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT, false),
       interact: [
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
@@ -2644,10 +2654,21 @@ export class WorldScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * Whether this step is a run. Only ever true in an explorer run: a map that
+   * is 64 by 72 is a long way at 150ms a tile when what you are there to do is
+   * look at the far corner of it, and the raid clock is charged for the time
+   * either way - so outside that mode this is a lever on difficulty and is not
+   * offered.
+   */
+  private isRunning(): boolean {
+    return isPlaytestRun() && this.controls?.run?.isDown === true;
+  }
+
   private beginStep(targetTile: GridPosition): void {
     this.targetTile = targetTile;
     this.stepProgress = 0;
-    this.stepDurationMs = STEP_DURATION_MS;
+    this.stepDurationMs = this.isRunning() ? STEP_DURATION_MS / PLAYTEST_RUN_DIVISOR : STEP_DURATION_MS;
     this.hopping = false;
 
     this.stepStart.set(
@@ -3291,6 +3312,11 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private isExtractionOpen(point: ExtractionPoint): boolean {
+    // Everything is open in an explorer run, doors included: what is being
+    // looked at is the ground behind them.
+    if (isPlaytestRun()) {
+      return true;
+    }
     return isExtractionAvailable(
       point,
       this.runSession?.manager.snapshot().elapsedMs ?? 0,

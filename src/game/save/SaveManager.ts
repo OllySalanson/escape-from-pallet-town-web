@@ -55,6 +55,7 @@ import {
 } from '../stash/Stash';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 import { mergeSurvey, type SurveyRecord } from '../world/survey';
+import { activeSaveSlot, PLAYTEST_SAVE_KEY, type SaveSlot } from '../dev/playtestMode';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 const SAVE_VERSION = 6;
@@ -416,9 +417,27 @@ export type SaveSummary =
 
 export class SaveManager {
   private readonly storage: StorageLike | null;
+  /**
+   * Which of the two games this manager is reading and writing, or null for
+   * "whichever is being played" - see `dev/playtestMode.ts`. Every scene
+   * constructs a manager with no arguments and so follows the live slot, which
+   * is what lets the explorer run be a whole second save without a single call
+   * site learning there are two. A slot is named only by the title screen,
+   * which has to describe the other game without switching into it.
+   */
+  private readonly slot: SaveSlot | null;
 
-  public constructor(storage: StorageLike | null = getBrowserStorage()) {
+  public constructor(
+    storage: StorageLike | null = getBrowserStorage(),
+    slot: SaveSlot | null = null,
+  ) {
     this.storage = storage;
+    this.slot = slot;
+  }
+
+  /** Resolved per call, never cached: the slot can change between two reads. */
+  private get key(): string {
+    return (this.slot ?? activeSaveSlot()) === 'playtest' ? PLAYTEST_SAVE_KEY : SAVE_KEY;
   }
 
   public hasSave(): boolean {
@@ -428,7 +447,7 @@ export class SaveManager {
   /** See `SaveSummary`. Reads the save once and keeps none of it. */
   public describe(): SaveSummary {
     try {
-      if (!this.storage?.getItem(SAVE_KEY)) {
+      if (!this.storage?.getItem(this.key)) {
         return { kind: 'none' };
       }
     } catch {
@@ -453,7 +472,7 @@ export class SaveManager {
     }
 
     try {
-      this.storage.setItem(SAVE_KEY, JSON.stringify(serializeGame(state)));
+      this.storage.setItem(this.key, JSON.stringify(serializeGame(state)));
       return true;
     } catch {
       return false;
@@ -466,7 +485,7 @@ export class SaveManager {
     }
 
     try {
-      const rawSave = this.storage.getItem(SAVE_KEY);
+      const rawSave = this.storage.getItem(this.key);
       if (!rawSave) {
         return null;
       }
@@ -479,7 +498,7 @@ export class SaveManager {
 
   public clear(): void {
     try {
-      this.storage?.removeItem(SAVE_KEY);
+      this.storage?.removeItem(this.key);
     } catch {
       // Browser storage can be unavailable or full. A failed clear must not break play.
     }

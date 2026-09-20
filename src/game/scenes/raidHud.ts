@@ -1,4 +1,5 @@
 import { formatRaidClock } from '../run/raidClock';
+import { PLAYTEST_CLOCK_LABEL } from '../dev/playtestMode';
 import { weatherLabel, type WeatherId } from '../pokemon/battle/weather';
 
 /**
@@ -35,7 +36,15 @@ export function raidClockView(
   remainingMs: number,
   isEnraged: boolean,
   enrageGraceRemainingMs: number,
+  playtest = false,
 ): RaidClockView {
+  // An explorer run's clock is eight hours long, which is a number nobody
+  // wants counted down in the corner of a map they are looking at. The chip
+  // says which game this is instead - the one thing about the corner of the
+  // screen that is still worth saying in that mode.
+  if (playtest) {
+    return { label: PLAYTEST_CLOCK_LABEL, tone: 'calm', pulses: false };
+  }
   if (isEnraged) {
     // The raid clock is spent, but the grace period is the number that now
     // decides whether the player gets out, so it is what the chip counts down.
@@ -84,6 +93,12 @@ export const LOOK_HINT = '[L] LOOK';
 export const RAID_KEY_HINTS = `${FIELD_GUIDE_HINT}  ${LOOK_HINT}`;
 
 /**
+ * The explorer run's third key. It is taught here for the same reason the look
+ * is: a key nothing on the screen names is a key nobody presses.
+ */
+export const RUN_HINT = '[SHIFT] RUN';
+
+/**
  * The objective chip is one line by default and only opens up when the thing it
  * says has just changed - which is the only moment the extra line is news.
  *
@@ -91,8 +106,13 @@ export const RAID_KEY_HINTS = `${FIELD_GUIDE_HINT}  ${LOOK_HINT}`;
  * because every arrow glyph a browser might substitute for `►` at eight pixels
  * came out as a dash.
  */
-export function objectiveChipLines(cue: string, showDetail: boolean): readonly string[] {
-  return showDetail ? [cue, RAID_KEY_HINTS] : [cue];
+export function objectiveChipLines(
+  cue: string,
+  showDetail: boolean,
+  playtest = false,
+): readonly string[] {
+  const hints = playtest ? `${RAID_KEY_HINTS}  ${RUN_HINT}` : RAID_KEY_HINTS;
+  return showDetail ? [cue, hints] : [cue];
 }
 
 /**

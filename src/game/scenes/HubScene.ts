@@ -76,6 +76,11 @@ import { PokemonParty, type PokemonBase } from '../pokemon';
 import { activeRunManager } from '../run';
 import { buildContractBoard } from '../hub/contractBoard';
 import { RAID_DURATION_MS } from '../run/raidClock';
+import {
+  isPlaytestRun,
+  PLAYTEST_PLACE_LABEL,
+  PLAYTEST_RAID_DURATION_MS,
+} from '../dev/playtestMode';
 import { createActiveRunSession } from '../run/RunSession';
 import {
   availableInsertionIds,
@@ -219,6 +224,15 @@ export class HubScene extends Phaser.Scene {
   private applyLoadedGame(loaded: RestoredGame): void {
     this.savedGame = loaded;
     this.stash = loaded.stash;
+    // An explorer run comes home whole. Its Pokemon cannot be knocked out, so
+    // they come back from every raid on one hit point; charging raid time to
+    // undo that would make the one mode built for wandering the slowest one to
+    // set off again in.
+    if (isPlaytestRun()) {
+      for (const stored of this.stash.listPokemon()) {
+        this.stash.recoverPokemon(stored.id);
+      }
+    }
     // Nothing is pre-selected: the raid party is always something the player picked.
     this.flow = new DeploymentFlow(this.stash, this.unlockedInsertions[0]?.[0], {
       pokemon: securePokemonLimit(loaded.raidProgress.outfitterUpgrades),
@@ -390,9 +404,17 @@ export class HubScene extends Phaser.Scene {
     return this.savedGame.pendingRecoveryMs;
   }
 
-  /** The clock the next raid starts with, once recovery is taken out of it. */
+  /**
+   * The clock the next raid starts with, once recovery is taken out of it.
+   *
+   * An explorer run gets `PLAYTEST_RAID_DURATION_MS` instead, and gets it
+   * whole: recovery is priced as a share of a raid, and a mode whose point is
+   * an unhurried look at a map must not be able to be pulled out of one.
+   */
   private get raidClockMs(): number {
-    return raidClockAfterRecovery(RAID_DURATION_MS, this.pendingRecoveryMs);
+    return isPlaytestRun()
+      ? PLAYTEST_RAID_DURATION_MS
+      : raidClockAfterRecovery(RAID_DURATION_MS, this.pendingRecoveryMs);
   }
 
   /** Every Outfitter upgrade standing at base, by id. */
@@ -957,7 +979,16 @@ export class HubScene extends Phaser.Scene {
       // all five of them only spent the one line of the screen that is short of
       // room - at the smallest stage the Outfitter's payment screen had a back
       // label, a place, a title and a count on 320 pixels.
-      place: this.view === 'home' ? 'Pallet Town' : undefined,
+      // Which of the two games this is, on every view of it, because the one
+      // thing a player must never be unsure of is whether what they are about
+      // to spend is real (`dev/playtestMode.ts`).
+      place: isPlaytestRun()
+        ? this.view === 'home'
+          ? `${PLAYTEST_PLACE_LABEL} · Pallet Town`
+          : PLAYTEST_PLACE_LABEL
+        : this.view === 'home'
+          ? 'Pallet Town'
+          : undefined,
       title: this.heading,
       back: this.view === 'home' ? undefined : { label: this.backLabel, attribute: 'data-back' },
       aside:

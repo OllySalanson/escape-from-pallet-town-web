@@ -5,7 +5,9 @@ import {
   layoutTitleMenu,
   moveTitleChoice,
   needsEraseConfirmation,
+  playtestMenu,
   saveDetail,
+  titleHint,
   titleMenu,
 } from './titleMenu';
 
@@ -61,12 +63,51 @@ describe('the title menu', () => {
   it('moves the cursor over enabled choices only, and stops at the ends', () => {
     const fresh = titleMenu(NONE);
     expect(moveTitleChoice(fresh, 'new', -1)).toBe('new');
-    expect(moveTitleChoice(fresh, 'new', 1)).toBe('new');
+    expect(moveTitleChoice(fresh, 'new', 1)).toBe('playtest');
+    expect(moveTitleChoice(fresh, 'playtest', 1)).toBe('playtest');
 
     const played = titleMenu(GAME);
     expect(moveTitleChoice(played, 'continue', 1)).toBe('new');
-    expect(moveTitleChoice(played, 'new', 1)).toBe('new');
+    expect(moveTitleChoice(played, 'new', 1)).toBe('playtest');
     expect(moveTitleChoice(played, 'new', -1)).toBe('continue');
+  });
+
+  it('always offers the explorer run, and never starts the cursor on it', () => {
+    for (const summary of [NONE, GAME, BROKEN]) {
+      const menu = titleMenu(summary);
+      const playtest = menu.choices.find((choice) => choice.id === 'playtest')!;
+
+      expect(playtest.enabled).toBe(true);
+      // A row, never a detail line: the sentence about it is the hint below.
+      expect(playtest.detail).toBeUndefined();
+      expect(menu.initial).not.toBe('playtest');
+    }
+  });
+
+  it('offers to carry the explorer run on once there is one', () => {
+    expect(titleMenu(GAME, NONE).choices[2].label).toBe('PLAYTEST');
+    expect(titleMenu(GAME, GAME).choices[2].label).toBe('RESUME PLAYTEST');
+  });
+
+  it('promises the saved game is untouched, where the promise fits', () => {
+    const menu = titleMenu(GAME, GAME);
+
+    expect(titleHint(menu, 'playtest')).toMatch(/UNTOUCHED/);
+    expect(titleHint(menu, 'continue')).toBe('UP DOWN CHOOSE · SPACE SELECT');
+    expect(titleHint(eraseMenu(), 'keep')).toBe('ESC KEEPS IT');
+    expect(titleHint(playtestMenu(), 'resume-playtest')).toBe('ESC GOES BACK');
+  });
+
+  it('asks which explorer run, starting on the one already going', () => {
+    const menu = playtestMenu();
+
+    expect(menu.initial).toBe('resume-playtest');
+    expect(menu.choices.map((choice) => choice.id)).toEqual([
+      'resume-playtest',
+      'fresh-playtest',
+    ]);
+    // Neither answer can reach the ordinary save, so neither is a warning.
+    expect(menu.question).not.toMatch(/ERASE/);
   });
 });
 
@@ -78,7 +119,15 @@ describe('the title menu layout', () => {
 
   it.each(stages)('fits under the name plate on %s, whatever it is asking', (_name, width, height) => {
     const plateBottom = Math.round(height * 0.07) + Math.round(height * 0.38);
-    for (const menu of [titleMenu(NONE), titleMenu(GAME), titleMenu(BROKEN), eraseMenu()]) {
+    const menus = [
+      titleMenu(NONE),
+      titleMenu(GAME),
+      titleMenu(GAME, GAME),
+      titleMenu(BROKEN),
+      eraseMenu(),
+      playtestMenu(),
+    ];
+    for (const menu of menus) {
       const layout = layoutTitleMenu(menu, width, height, plateBottom);
 
       let previousBottom = plateBottom;

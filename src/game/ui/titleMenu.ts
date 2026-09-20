@@ -12,11 +12,25 @@ import type { SaveSummary } from '../save/SaveManager';
  * starts on BACK AWAY - the title is where the key that woke the game up is
  * still held.
  *
+ * The third row is the explorer run (`dev/playtestMode.ts`): a whole second
+ * game, in its own save, for walking the maps rather than surviving them. It is
+ * a row of its own rather than a switch on New Game because the two games are
+ * separate files, and it carries no detail line - the hint under the menu says
+ * what it does while the cursor is on it, which is the one place on a 320x240
+ * screen there is still room for a sentence.
+ *
  * Pure, like `raidHud.ts`, so the wording and the layout are held by tests that
  * never open a canvas; `TitleScene` only draws what it is handed.
  */
 
-export type TitleChoiceId = 'continue' | 'new' | 'keep' | 'erase';
+export type TitleChoiceId =
+  | 'continue'
+  | 'new'
+  | 'keep'
+  | 'erase'
+  | 'playtest'
+  | 'resume-playtest'
+  | 'fresh-playtest';
 
 export interface TitleChoice {
   readonly id: TitleChoiceId;
@@ -48,7 +62,7 @@ export function saveDetail(summary: SaveSummary): string {
   return `${summary.pokemon} POKEMON · ${plural(summary.contracts, 'CONTRACT', 'CONTRACTS')}`;
 }
 
-export function titleMenu(summary: SaveSummary): TitleMenu {
+export function titleMenu(summary: SaveSummary, playtest: SaveSummary = { kind: 'none' }): TitleMenu {
   const canContinue = summary.kind === 'game';
   return {
     initial: canContinue ? 'continue' : 'new',
@@ -60,6 +74,7 @@ export function titleMenu(summary: SaveSummary): TitleMenu {
         ...(summary.kind === 'none' ? {} : { detail: summary.kind === 'unreadable' ? 'REPLACES THE SAVE' : 'ERASES THE SAVE' }),
         enabled: true,
       },
+      { id: 'playtest', label: playtest.kind === 'game' ? 'RESUME PLAYTEST' : 'PLAYTEST', enabled: true },
     ],
   };
 }
@@ -76,9 +91,40 @@ export function eraseMenu(): TitleMenu {
   };
 }
 
+/**
+ * The explorer run's own second question, asked only when there is already one
+ * to come back to. Neither answer can touch the ordinary save, so unlike the
+ * erase question this one starts on the answer the player most likely wants.
+ */
+export function playtestMenu(): TitleMenu {
+  return {
+    question: 'PLAYTEST RUN',
+    initial: 'resume-playtest',
+    choices: [
+      { id: 'resume-playtest', label: 'CARRY ON', enabled: true },
+      { id: 'fresh-playtest', label: 'START A FRESH ONE', enabled: true },
+    ],
+  };
+}
+
 /** Whether choosing New Game has to ask first. */
 export function needsEraseConfirmation(summary: SaveSummary): boolean {
   return summary.kind !== 'none';
+}
+
+/**
+ * The line under the menu. It speaks for the choice the cursor is on, because
+ * the one thing that has to be said about the explorer run - that it leaves the
+ * ordinary game alone - is a sentence, and a sentence does not fit on a row.
+ */
+export function titleHint(menu: TitleMenu, choice: TitleChoiceId): string {
+  if (menu.question) {
+    return menu.choices[0].id === 'keep' ? 'ESC KEEPS IT' : 'ESC GOES BACK';
+  }
+  if (choice === 'playtest') {
+    return 'EXPLORE FREELY · YOUR SAVED GAME IS UNTOUCHED';
+  }
+  return 'UP DOWN CHOOSE · SPACE SELECT';
 }
 
 /** Moves the cursor one enabled choice up or down, stopping at the ends. */
