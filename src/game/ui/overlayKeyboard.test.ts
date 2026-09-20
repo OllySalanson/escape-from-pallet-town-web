@@ -103,15 +103,21 @@ class FakeWindow {
 
 /** Enough element for `MenuOverlay` to build and tear down its root. */
 class FakeElement {
+  public id = '';
   public className = '';
   public readonly attributes = new Map<string, string>();
+  public readonly children: unknown[] = [];
+  public readonly appended: unknown[] = [];
   public removed = false;
   public setAttribute(name: string, value: string): void {
     this.attributes.set(name, value);
   }
   public addEventListener(): void {}
   public removeEventListener(): void {}
-  public append(): void {}
+  public append(child: unknown): void {
+    this.children.push(child);
+    this.appended.push(child);
+  }
   public remove(): void {
     this.removed = true;
   }
@@ -143,9 +149,11 @@ class FakePhaserKeyboard {
 
 let fakeWindow: FakeWindow;
 let phaser: FakePhaserKeyboard;
+let body: FakeElement;
 
 beforeEach(() => {
   fakeWindow = new FakeWindow();
+  body = new FakeElement();
   phaser = new FakePhaserKeyboard();
   // Registered before any overlay exists, as Phaser's is registered at boot.
   phaser.attach(fakeWindow);
@@ -154,7 +162,12 @@ beforeEach(() => {
     configurable: true,
     value: {
       createElement: () => new FakeElement(),
-      getElementById: () => null,
+      // Every screen is appended to the menu layer, which is made on the body
+      // the first time one is opened and then found by its id - see
+      // `display/menuStage.ts`. Two screens therefore share one layer here as
+      // they do in a browser.
+      getElementById: (id: string) => body.children.find((child) => (child as FakeElement).id === id) ?? null,
+      body,
     },
   });
 });
@@ -167,14 +180,27 @@ afterEach(() => {
 const { MenuOverlay } = await import('./MenuOverlay');
 const { isOverlayDismissKey, overlayKeyboardDepth } = await import('./overlayKeyboard');
 
-function openOverlay(): { keys: string[]; destroy: () => void } {
+function openOverlay(): { keys: string[]; root: unknown; destroy: () => void } {
   const keys: string[] = [];
   const scene = { events: { once: () => {} } } as never;
   const overlay = new MenuOverlay(scene, 'test-menu', (event) => keys.push(event.key));
-  return { keys, destroy: () => overlay.destroy() };
+  return { keys, root: overlay.root, destroy: () => overlay.destroy() };
 }
 
 describe('an open overlay owns the keyboard', () => {
+  it('is appended to the menu layer, not to the box the canvas is sized to', () => {
+    // A screen laid out inside `#app` could only ever be as big as the world
+    // view - see `display/menuStage.ts`. The layer is made on the body the
+    // first time a screen is opened, and every screen goes into it.
+    const overlay = openOverlay();
+
+    expect(body.children).toHaveLength(1);
+    const layer = body.children[0] as FakeElement;
+    expect(layer.id).toBe('screens');
+    expect(layer.children).toContain(overlay.root);
+    overlay.destroy();
+  });
+
   it('receives the key that opened it and the Escape that should close it', () => {
     const overlay = openOverlay();
 

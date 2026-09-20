@@ -157,6 +157,23 @@ against a snapshot: `npx vite build --outDir "$SCRATCH/dist"` (no
 `VITE_EPTW_TEST_MODE`: that build is in test mode at every URL) and
 `npx vite preview --outDir "$SCRATCH/dist" --port "$FREE_PORT" --strictPort`.
 
+`menuShots.mjs <url> <dir> [--window=1920x950] [--raid] [--resize] [--scrollbars]`
+photographs every DOM screen at a real window size and prints, per scrolling
+pane, how many rows it holds and how many of them a player can actually see -
+the number the menus-against-the-window change (`src/game/display/menuStage.ts`)
+is judged by. It fails the run on a row cut through its waist, anything drawn
+outside its screen, a scrollbar down the side of the browser, a game pixel that
+is not a whole number of screen pixels, a screen standing on half of one, or a
+picture drawn at anything but a whole multiple of its own size. `--raid` adds
+the three screens only reachable inside a raid, `--resize` drags one screen
+through every window size without reloading, and `--scrollbars` gives Chromium
+its scrollbars back so a pane's own track can be seen.
+
+`worldAnchors.mjs <url> [--window=WxH]` prints the canvas box, the stage, the
+dialogue box and every caption the world has on screen, so the one thing the two
+boxes must never change - where anything anchored to a tile sits - is diffed
+rather than eyeballed.
+
 `dropinShots.mjs <url> <dir> [--small] [--survey=path.json]` photographs the
 drop-in step at both stages, on a fresh save and on one that has walked a third
 of the Floodplain and beaten two of its keepers - the pair that shows the dark

@@ -10,6 +10,38 @@ const pixelUi = stylesheet.slice(
 /** The drawn cursor and tick are SVG data, which is full of numbers that are not lengths. */
 const pixelUiRules = pixelUi.replace(/url\("data:[^"]*"\)/g, 'url()').replace(/\/\*[\s\S]*?\*\//g, '');
 
+describe('the two boxes', () => {
+  const rule = (selector: string): string =>
+    new RegExp(`\\n${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{([^}]*)\\}`).exec(stylesheet)?.[1] ?? '';
+
+  it('lays the DOM screens out against the window, not against the canvas', () => {
+    // The whole fault this split exists for: `#app` was a container and the
+    // screens measured themselves against it, so a stash on a 4K display got
+    // exactly the room a stash gets on a laptop, only magnified.
+    expect(rule('#app')).not.toMatch(/container-type/);
+    const screens = rule('#screens');
+    expect(screens).toMatch(/position:\s*fixed;/);
+    expect(screens).toMatch(/container-type:\s*inline-size;/);
+  });
+
+  it('leaves the canvas its own box, so nothing anchored to a tile moves', () => {
+    const app = rule('#app');
+    expect(app).toMatch(/position:\s*relative;/);
+    // The canvas is still the only thing sized to the stage, and the frame is
+    // still drawn outside the layout box so it costs the art no pixels.
+    expect(app).toMatch(/box-shadow:\s*0 0 0 2px/);
+    expect(rule('#app > canvas')).toMatch(/image-rendering:\s*pixelated;/);
+  });
+
+  it('gives the empty layer back to whatever is under it', () => {
+    expect(rule('#screens')).toMatch(/pointer-events:\s*none;/);
+    expect(rule('#screens .menu-overlay')).toMatch(/pointer-events:\s*auto;/);
+    // Including its frame: an empty layer drew a rectangle round the raid.
+    expect(rule('#screens')).not.toMatch(/box-shadow/);
+    expect(rule('#screens:not(:empty)')).toMatch(/box-shadow:\s*0 0 0 2px/);
+  });
+});
+
 describe('the pixel-ui stylesheet', () => {
   it('is there at all', () => {
     expect(pixelUi.length).toBeGreaterThan(1000);
@@ -100,6 +132,19 @@ describe('the pixel-ui stylesheet', () => {
     const aside = /:where\(\.pixel-ui\) \.px-title-aside \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
     expect(aside).toMatch(/min-width:\s*0;/);
     expect(aside).toMatch(/overflow:\s*hidden;/);
+  });
+
+  it('says how much is below the fold of a pane, in words, over a drawn track', () => {
+    // "There is more" and "there are fifteen more" are different answers, and
+    // only the second tells a player whether what they want is one row down or
+    // off the end of a list they cannot see the size of.
+    const strip = /:where\(\.pixel-ui\) \.px-scroll\[data-more\]::after \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
+    expect(strip).toMatch(/content:\s*attr\(data-more\);/);
+    // A whole line of the one type size, so the count is never half drawn.
+    expect(strip).toMatch(/height:\s*var\(--more-cover, calc\(var\(--u\) \* 13\)\);/);
+    const track = /::-webkit-scrollbar-track \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
+    expect(track).not.toMatch(/background:\s*transparent;/);
+    expect(track).toMatch(/background:\s*var\(--cream-dim\);/);
   });
 
   it('lets wrapped copy break inside a narrow window instead of widening it', () => {

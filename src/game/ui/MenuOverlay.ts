@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { menuClickSound } from '../audio/menuSounds';
+import { menuLayer } from '../display/menuStage';
 import { firstMatching } from './menuFocus';
 import { claimOverlayKeyboard } from './overlayKeyboard';
 import { focusDirectionForKey, nextFocusIndex } from './spatialFocus';
@@ -24,7 +25,10 @@ export class MenuOverlay {
     this.root = document.createElement('section');
     this.root.className = `menu-overlay ${className}`;
     this.root.setAttribute('aria-label', 'Game menu');
-    document.getElementById('app')?.append(this.root);
+    // The menu layer, not the canvas box: a screen is laid out against the
+    // browser window so that room on a big display becomes rows a player can
+    // see rather than the same list magnified. See `display/menuStage.ts`.
+    menuLayer().append(this.root);
     // An overlay owns the keyboard for as long as it is on screen; see
     // `overlayKeyboard.ts` for why that ownership cannot live in the scenes.
     this.releaseKeyboard = claimOverlayKeyboard((event) => {
@@ -233,9 +237,8 @@ export class MenuOverlay {
   private markScrollCues(): void {
     const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
     this.root.querySelectorAll<HTMLElement>('.px-scroll').forEach((pane) => {
-      const more = hasMoreBelow(pane);
-      pane.toggleAttribute('data-more', more);
-      if (!more || unit <= 0) {
+      if (unit <= 0 || !hasMoreBelow(pane, unit)) {
+        pane.removeAttribute('data-more');
         pane.style.removeProperty('--more-cover');
         return;
       }
@@ -243,12 +246,31 @@ export class MenuOverlay {
       const rows = [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].map((row) => row.getBoundingClientRect());
       const cover = scrollCoverHeight(box, rows, unit);
       pane.style.setProperty('--more-cover', `${cover}px`);
+      // The strip says how much is down there, because "there is more" is not
+      // the same answer as "there are nine more": the first leaves a player
+      // guessing whether the thing they want is one row down or off the end of
+      // a list they cannot see the size of.
+      const entries = [...pane.querySelectorAll<HTMLElement>(SCROLL_ENTRIES)].map((row) => row.getBoundingClientRect());
+      pane.setAttribute('data-more', moreLabel(entries, box.bottom - cover));
     });
   }
 }
 
+/**
+ * What the MORE strip says: how many of a pane's entries are not wholly above
+ * it. An entry is a row a player could put the cursor on - a heading in a list
+ * is not one of them, because nobody is looking for a heading.
+ */
+export function moreLabel(entries: readonly { readonly bottom: number }[], fold: number): string {
+  const hidden = entries.filter((entry) => entry.bottom > fold + 0.5).length;
+  return hidden > 0 ? `${hidden} MORE` : 'MORE';
+}
+
 /** What a scrolling pane's rows are: the things a cut must never go through the middle of. */
 const SCROLL_ROWS = 'button, .px-row, .px-subheading, .px-empty, p';
+
+/** What the strip counts: the entries a player is looking for, not the bands between them. */
+const SCROLL_ENTRIES = 'button, .px-empty';
 
 /**
  * How tall the MORE strip on a pane's foot must be so that no row is left half
@@ -275,16 +297,32 @@ export function scrollCoverHeight(
   return Math.ceil(cover / unit - 0.001) * unit;
 }
 
-/** Height of the MORE strip in game pixels when nothing is cut: see `.px-scroll[data-more]::after`. */
-const MORE_STRIP_UNITS = 7;
+/**
+ * Height of the MORE strip in game pixels when nothing is cut: one line of the
+ * one type size, plus the rule above it. It carries a count now, so it is a line
+ * of writing rather than an arrow in the margin - see `.px-scroll[data-more]::after`.
+ */
+const MORE_STRIP_UNITS = 13;
 
-/** Whether a scrolling pane still has content under its bottom edge. Half a pixel is rounding, not content. */
-export function hasMoreBelow(pane: {
-  readonly scrollHeight: number;
-  readonly clientHeight: number;
-  readonly scrollTop: number;
-}): boolean {
-  return pane.scrollHeight - pane.clientHeight - pane.scrollTop > 1;
+/**
+ * Whether a scrolling pane still has content under its bottom edge.
+ *
+ * Measured in *game* pixels, because that is the size of the smallest thing
+ * that can be down there: rows are laid out from text, so a pane routinely
+ * overflows itself by a fraction of a game pixel, and asking whether that is
+ * more than one *screen* pixel gave a different answer at every scale - the
+ * Ferryman's shelf fitted its five rows at 2x and grew a MORE strip over the
+ * fifth at 4x, off half a game pixel of rounding.
+ */
+export function hasMoreBelow(
+  pane: {
+    readonly scrollHeight: number;
+    readonly clientHeight: number;
+    readonly scrollTop: number;
+  },
+  unit = 1,
+): boolean {
+  return pane.scrollHeight - pane.clientHeight - pane.scrollTop > Math.max(1, unit);
 }
 
 /** Everything on a pixel-ui screen that takes its width from the words inside it. */

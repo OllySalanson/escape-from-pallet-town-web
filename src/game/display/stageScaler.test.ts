@@ -13,7 +13,20 @@ function fakeParent(): { style: Record<string, string> & { setProperty(name: str
 const game = () => ({ scale: { setZoom: vi.fn(), resize: vi.fn() } });
 
 describe('applyStage', () => {
-  it('hands the DOM screens one game pixel, as a length and as a bare number', () => {
+  it('sizes the canvas box and nothing else: the DOM screens have their own', () => {
+    // `applyMenuStage` is what lays a screen out now (`menuStage.ts`), so this
+    // one must go on describing the canvas exactly as it always did - anything
+    // anchored to a tile or a sprite is drawn in it.
+    const parent = fakeParent();
+
+    const stage = applyStage(game(), parent as unknown as HTMLElement, 1920, 950);
+
+    expect([stage.width, stage.height, stage.zoom]).toEqual([400, 256, 3]);
+    expect(parent.style.width).toBe('1200px');
+    expect(parent.style.height).toBe('768px');
+  });
+
+  it('hands the canvas box one game pixel, as a length and as a bare number', () => {
     const parent = fakeParent();
 
     const stage = applyStage(game(), parent as unknown as HTMLElement, 1440, 897);

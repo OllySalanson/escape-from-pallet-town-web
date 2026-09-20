@@ -1,3 +1,4 @@
+import { applyMenuStage, menuLayer } from './menuStage';
 import { computeStage, type StageSize } from './stage';
 
 /**
@@ -27,9 +28,6 @@ export function applyStage(
   game.scale.setZoom(stage.zoom);
   game.scale.resize(stage.width, stage.height);
   if (parent) {
-    // The DOM menus are absolutely positioned inside this element, so sizing it
-    // to the canvas is what keeps the lobby, the field guide and the result
-    // screen lined up with the game screen rather than with the window.
     const width = stage.width * stage.zoom;
     const height = stage.height * stage.zoom;
     parent.style.width = `${width}px`;
@@ -40,9 +38,10 @@ export function applyStage(
     parent.style.position = 'absolute';
     parent.style.left = `${Math.max(0, Math.floor((viewportWidth - width) / 2))}px`;
     parent.style.top = `${Math.max(0, Math.floor((viewportHeight - height) / 2))}px`;
-    // One game pixel, in CSS pixels. The pixel-ui screens measure everything in
-    // it, so a DOM window's border is exactly as thick as a drawn one and every
-    // edge lands on the same grid the canvas under it is scaled to.
+    // One game pixel, in CSS pixels. Anything the scenes hang off the canvas
+    // box - the frame around it, and a driver measuring it - reads the same
+    // grid the canvas is scaled to. The DOM screens have a box and a pixel of
+    // their own; see `menuStage.ts` for why the two are no longer one.
     parent.style.setProperty('--px', `${stage.zoom}px`);
     // The same number without its unit, for the one thing a length cannot do:
     // scale a sprite of unknown size by exactly the zoom, with no resampling.
@@ -52,12 +51,17 @@ export function applyStage(
 }
 
 /**
- * Applies the stage now and on every window resize. Returns a teardown so a hot
- * reload cannot leave a second listener resizing a destroyed game.
+ * Applies both stages now and on every window resize - the canvas box and the
+ * menu box, which are sized by different rules and laid out independently.
+ * Returns a teardown so a hot reload cannot leave a second listener resizing a
+ * destroyed game.
  */
 export function watchViewport(game: ScalableGame, parentId = 'app'): () => void {
   const parent = () => document.getElementById(parentId);
-  const update = () => applyStage(game, parent(), window.innerWidth, window.innerHeight);
+  const update = () => {
+    applyStage(game, parent(), window.innerWidth, window.innerHeight);
+    applyMenuStage(menuLayer(), window.innerWidth, window.innerHeight);
+  };
   update();
   window.addEventListener('resize', update);
   return () => window.removeEventListener('resize', update);

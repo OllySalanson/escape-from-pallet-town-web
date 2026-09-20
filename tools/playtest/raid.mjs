@@ -5,7 +5,7 @@
 // check that a raid plays the same at ten frames a second as at sixty.
 //
 //   node tools/playtest/raid.mjs http://localhost:5173/ [--testmode] [--stepped] [--pixels]
-//        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
+//        [--window=logic|pixel|WxH] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
 //        [--insertion=id] [--beaten=bossId,..] [--opened=gateId,..] [--completed=contractId,..]
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--grab=itemId,..] [--fight]
@@ -75,7 +75,15 @@ const SEEDED = (n) => `(() => {
   crypto.getRandomValues = (array) => { for (let i = 0; i < array.length; i += 1) array[i] = Math.floor(next() * 2 ** 32); return array; };
 })();`;
 
-const browser = await launchBrowser({ window: option('window') === 'pixel' ? PIXEL_WINDOW : LOGIC_WINDOW });
+// `--window=1920x950` as well as the two named ones, because the DOM screens
+// are laid out against the browser window now (`src/game/display/menuStage.ts`)
+// and the result screen at the end of a raid is one of them.
+const sized = /^(\d+)x(\d+)$/.exec(option('window') ?? '');
+const browser = await launchBrowser({
+  window: sized
+    ? { width: Number(sized[1]), height: Number(sized[2]) }
+    : option('window') === 'pixel' ? PIXEL_WINDOW : LOGIC_WINDOW,
+});
 const log = [];
 const note = (line) => {
   log.push(line);
