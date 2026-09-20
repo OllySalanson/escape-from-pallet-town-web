@@ -186,7 +186,7 @@ describe('AudioManager', () => {
 
   describe('ducking', () => {
     /** The music bus's own automation: the second gain made, after the master. */
-    const musicBus = (stub: ReturnType<typeof createStubAudioContext>) => stub.gains[1]!;
+    const musicBus = (stub: ReturnType<typeof createStubAudioContext>) => stub.gains[1];
     const targets = (stub: ReturnType<typeof createStubAudioContext>) =>
       musicBus(stub).events.filter((event) => event.kind === 'target');
 
@@ -195,7 +195,7 @@ describe('AudioManager', () => {
       const audio = new AudioManager(() => stub.context);
       await audio.activate();
 
-      expect(stub.gains[0]!.connectedTo).toBe(stub.context.destination);
+      expect(stub.gains[0].connectedTo).toBe(stub.context.destination);
       expect(musicBus(stub).connectedTo).toBeDefined();
       expect(audio.musicLevel).toBe(1);
     });
@@ -211,7 +211,7 @@ describe('AudioManager', () => {
       const [down, up] = targets(stub);
       expect(down).toMatchObject({ value: DUCK_LEVEL, at: 2 });
       expect(up).toMatchObject({ value: 1 });
-      expect(up!.at).toBeCloseTo(2 + soundEffectLength(SOUND_EFFECTS.levelUp), 5);
+      expect(up.at).toBeCloseTo(2 + soundEffectLength(SOUND_EFFECTS.levelUp), 5);
     });
 
     it('leaves the music alone for the cursor, the world and battle noises', async () => {

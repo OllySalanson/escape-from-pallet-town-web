@@ -380,6 +380,26 @@ export interface StorageLike {
   removeItem(key: string): void;
 }
 
+/**
+ * What the title screen needs to know about the one save there is, without
+ * handing it the game: whether there is one to continue, and enough of it to
+ * recognise it as theirs.
+ *
+ * `unreadable` is its own answer rather than `none` because the two are told
+ * apart by what is in storage, not by what parses - a file the loader refuses
+ * is still somebody's game, and a title that called it empty would offer to
+ * start over it without a word.
+ */
+export type SaveSummary =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'unreadable' }
+  | {
+      readonly kind: 'game';
+      readonly pokemon: number;
+      readonly contracts: number;
+      readonly raids: number;
+    };
+
 export class SaveManager {
   private readonly storage: StorageLike | null;
 
@@ -389,6 +409,28 @@ export class SaveManager {
 
   public hasSave(): boolean {
     return this.load() !== null;
+  }
+
+  /** See `SaveSummary`. Reads the save once and keeps none of it. */
+  public describe(): SaveSummary {
+    try {
+      if (!this.storage?.getItem(SAVE_KEY)) {
+        return { kind: 'none' };
+      }
+    } catch {
+      return { kind: 'none' };
+    }
+    const game = this.load();
+    if (!game) {
+      return { kind: 'unreadable' };
+    }
+    const progress = game.raidProgress;
+    return {
+      kind: 'game',
+      pokemon: game.stash.listPokemon().length,
+      contracts: progress.completedContracts.length + progress.standingContractsBanked,
+      raids: Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.deployed, 0),
+    };
   }
 
   public save(state: SaveGameState): boolean {
