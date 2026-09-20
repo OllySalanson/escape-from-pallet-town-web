@@ -3,6 +3,7 @@ import { audioManager } from '../audio/AudioManager';
 import {
   canBeTaught,
   footprintOf,
+  getItemById,
   gridCells,
   ITEM_CATEGORY_LABELS,
   ItemCategory,
@@ -21,6 +22,16 @@ import { MenuOverlay, hpBar, pokemonAvatar } from '../ui/MenuOverlay';
 import { bagFocusPreference } from '../ui/menuFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { GAME_FONT } from '../ui/gameFont';
+import { conditionLine } from '../ui/condition';
+import {
+  cursorMayDescribe,
+  describeKey,
+  describedKey,
+  POINTER_ONLY,
+  previewAfterPointer,
+  splitDescribeKey,
+  type DescribedThing,
+} from '../ui/hoverDescribe';
 
 const SCREEN_WIDTH = 320;
 const SCREEN_HEIGHT = 240;
@@ -30,6 +41,12 @@ const CATEGORIES = [ItemCategory.Medicine, ItemCategory.PokeBall, ItemCategory.M
  * What a row's own button says. Three of the pocket's items do nothing to a
  * Pokemon and say where they are spent instead - the scrip used to offer a live
  * USE ITEM that could only ever refuse itself.
+ *
+ * A live action **names the item it would spend**, because the panel above it
+ * answers whatever the pointer is on: hovering one row while another is chosen
+ * left a bare USE ITEM under somebody else's name. The pointer has to leave the
+ * row to reach the button, so what is clicked was never in doubt - but what it
+ * would do was, and a button that says POTION cannot be misread.
  */
 const USELESS_IN_THE_FIELD = new Set(['capture-modifier', 'material', 'currency']);
 
@@ -42,9 +59,9 @@ const useLabel = (item: ItemDefinition): string => {
     case 'currency':
       return 'For the Ferryman';
     case 'machine':
-      return 'Read to a Pokémon';
+      return `Read ${item.displayName}`;
     default:
-      return 'Use item';
+      return `Use ${item.displayName}`;
   }
 };
 
@@ -62,6 +79,12 @@ export class BagScene extends Phaser.Scene {
   private selectedItemIndex = 0;
   private selectedPokemonIndex = 0;
   private choosingPokemon = false;
+  /**
+   * What the pointer is on and what the keyboard cursor is on. Neither is a
+   * selection - see `ui/hoverDescribe.ts` for the rule they are read by.
+   */
+  private pointerDescribe: string | null = null;
+  private cursorDescribe: string | null = null;
   private itemText!: Phaser.GameObjects.Text;
   private detailText!: Phaser.GameObjects.Text;
   private partyText!: Phaser.GameObjects.Text;
@@ -80,6 +103,8 @@ export class BagScene extends Phaser.Scene {
     this.selectedItemIndex = 0;
     this.selectedPokemonIndex = 0;
     this.choosingPokemon = false;
+    this.pointerDescribe = null;
+    this.cursorDescribe = null;
   }
 
   public create(): void {
@@ -112,7 +137,50 @@ export class BagScene extends Phaser.Scene {
         buttons[(current + (event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 1) + buttons.length) % buttons.length]?.focus();
       }
     });
+    this.watchDescribing();
     this.renderModernMenu();
+  }
+
+  /**
+   * The pointer and the keyboard cursor, each saying what it is on.
+   *
+   * Both listeners sit on the overlay root rather than on the rows, because
+   * every render replaces the markup and the rows do not survive it. Nothing
+   * here writes a selection: the panel is refilled in place, so pointing at a
+   * row costs no re-render and cannot drop the control under the cursor.
+   */
+  private watchDescribing(): void {
+    const root = this.menuOverlay!.root;
+    root.addEventListener('mouseover', (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      this.setDescribing(
+        previewAfterPointer(this.pointerDescribe, {
+          on: target?.closest<HTMLElement>('[data-describes]')?.dataset.describes ?? null,
+          withinGroup: Boolean(target?.closest('[data-describe-group]')),
+        }),
+        this.cursorDescribe,
+      );
+    });
+    root.addEventListener('mouseleave', () => this.setDescribing(null, this.cursorDescribe));
+    root.addEventListener('focusin', (event) => {
+      const control = event.target instanceof Element ? event.target : null;
+      const described = control?.closest<HTMLElement>('[data-describes]');
+      this.setDescribing(
+        this.pointerDescribe,
+        described && cursorMayDescribe(described.dataset.describesOn)
+          ? described.dataset.describes ?? null
+          : null,
+      );
+    });
+  }
+
+  private setDescribing(pointer: string | null, cursor: string | null): void {
+    if (pointer === this.pointerDescribe && cursor === this.cursorDescribe) {
+      return;
+    }
+    this.pointerDescribe = pointer;
+    this.cursorDescribe = cursor;
+    this.applyDescription();
   }
 
   private renderModernMenu(message?: string, itemJustChosen = false): void {
@@ -120,10 +188,19 @@ export class BagScene extends Phaser.Scene {
     // Dropping is the other half of a pack with a size: a crate on the ground
     // is only a decision if something in here can come out to make room for it.
     const drop = item
-      ? `<button class="button" data-drop>Drop one</button>`
+      ? `<button class="button" data-drop>Drop one ${item.displayName}</button>`
       : '';
-    const detail = item ? `<section class="bag-detail"><p class="eyebrow">${ITEM_CATEGORY_LABELS[item.category]}</p><h2>${item.displayName}</h2><p>${item.description}</p><div class="item-count">${this.bag.count(item.id)} carried · ${this.squareLabel(item.id)} each</div>${this.choosingPokemon ? `<h3>Choose a Pokémon</h3><div class="entity-list">${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable" data-target="${index}">${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${this.targetNote(item, pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('')}</div>` : `<div class="bag-actions"><button class="button primary-button" data-use ${USELESS_IN_THE_FIELD.has(item.effect.type) ? 'disabled' : ''}>${useLabel(item)}</button>${drop}</div>`}</section>` : '<section class="bag-detail"><p class="empty-state">Try another pocket.</p></section>';
-    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run supplies</p><h1>Bag</h1></div><p class="stash-count">${this.packLabel()}</p></header><main class="bag-layout">${this.packPanel(item?.id)}<section class="bag-list"><nav class="category-tabs">${CATEGORIES.map((category, index) => `<button class="${index === this.categoryIndex ? 'active' : ''}" data-category="${index}">${ITEM_CATEGORY_LABELS[category]}</button>`).join('')}</nav><div class="entity-list">${this.currentItems.map((entry, index) => `<button class="entity-row selectable ${index === this.selectedItemIndex ? 'selected' : ''}" data-item-index="${index}">${itemIcon(entry.id, entry.displayName)}<div><strong>${entry.displayName}</strong><small>${this.bag.count(entry.id)} carried · ${this.squareLabel(entry.id)}</small></div></button>`).join('') || '<p class="empty-state">Nothing in this pocket.</p>'}</div></section>${detail}</main>${message ? `<p class="menu-status">${message}</p>` : ''}</div>`;
+    // The four lines are always here and always empty in the markup: what they
+    // say is written into them by `applyDescription`, so answering "what is
+    // that" costs no render and nothing under the pointer is replaced.
+    const describeBlock = `<p class="eyebrow" data-detail-eyebrow></p><h2 data-detail-name></h2><p data-detail-description></p><div class="item-count" data-detail-note></div>`;
+    const body = !item
+      ? ''
+      : this.choosingPokemon
+        ? `<h3>Choose a Pokémon</h3><div class="entity-list" data-describe-group>${this.party.pokemon.map((pokemon, index) => `<button class="entity-row selectable" data-target="${index}" data-describes="${describeKey('pokemon', index)}" ${POINTER_ONLY}>${pokemonAvatar(pokemon.base.dexId, pokemon.base.name)}<div><strong>${pokemon.base.name}</strong><small>${this.targetNote(item, pokemon)}</small>${hpBar(pokemon.currentHp, pokemon.maxHp)}</div></button>`).join('')}</div>`
+        : `<div class="bag-actions"><button class="button primary-button" data-use ${USELESS_IN_THE_FIELD.has(item.effect.type) ? 'disabled' : ''}>${useLabel(item)}</button>${drop}</div>`;
+    const detail = `<section class="bag-detail">${describeBlock}${body}</section>`;
+    this.menuOverlay!.root.innerHTML = `<div class="menu-shell"><header class="menu-header"><button class="back-button" data-close>← Back to game</button><div><p class="eyebrow">Run supplies</p><h1>Bag</h1></div><p class="stash-count">${this.packLabel()}</p></header><main class="bag-layout">${this.packPanel()}<section class="bag-list"><nav class="category-tabs">${CATEGORIES.map((category, index) => `<button class="${index === this.categoryIndex ? 'active' : ''}" data-category="${index}">${ITEM_CATEGORY_LABELS[category]}</button>`).join('')}</nav><div class="entity-list" data-describe-group>${this.currentItems.map((entry, index) => `<button class="entity-row selectable ${index === this.selectedItemIndex ? 'selected' : ''}" data-item-index="${index}" data-describes="${describeKey('item', entry.id)}">${itemIcon(entry.id, entry.displayName)}<div><strong>${entry.displayName}</strong><small>${this.bag.count(entry.id)} carried · ${this.squareLabel(entry.id)}</small></div></button>`).join('') || '<p class="empty-state">Nothing in this pocket.</p>'}</div></section>${detail}</main>${message ? `<p class="menu-status">${message}</p>` : ''}</div>`;
     this.menuOverlay!.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach((button) => button.onclick = () => { this.categoryIndex = Number(button.dataset.category); this.selectedItemIndex = 0; this.renderModernMenu(); });
     this.menuOverlay!.root.querySelectorAll<HTMLButtonElement>('[data-item-index]').forEach((button) => button.onclick = () => { this.selectedItemIndex = Number(button.dataset.itemIndex); this.renderModernMenu(undefined, true); });
@@ -139,7 +216,105 @@ export class BagScene extends Phaser.Scene {
       if (result.used) { this.spend(selectedItem); }
       this.choosingPokemon = false; this.renderModernMenu(result.message);
     });
+    this.applyDescription();
     this.menuOverlay!.focus(...bagFocusPreference({ choosingPokemon: this.choosingPokemon, itemJustChosen }));
+  }
+
+  /** The key of the item the player has actually chosen, which pointing never moves. */
+  private get selectedDescribeKey(): string | null {
+    const item = this.selectedItem;
+    return item ? describeKey('item', item.id) : null;
+  }
+
+  /**
+   * Fills the detail panel with whatever the screen is about now, and lights
+   * that thing's own blocks in the pack grid.
+   *
+   * Written into the panel's four boxes rather than rendered, because the
+   * pointer is resting on a row while this runs: replacing the markup under it
+   * would flicker, and would drop the button it was about to be clicked on.
+   */
+  private applyDescription(): void {
+    const root = this.menuOverlay?.root;
+    if (!root) {
+      return;
+    }
+    // A spent item leaves the pointer resting on a row that no longer exists,
+    // so an answer that has stopped being one is forgotten rather than shown.
+    if (this.pointerDescribe !== null && !this.describe(this.pointerDescribe)) {
+      this.pointerDescribe = null;
+    }
+    if (this.cursorDescribe !== null && !this.describe(this.cursorDescribe)) {
+      this.cursorDescribe = null;
+    }
+    const key = describedKey({
+      pointer: this.pointerDescribe,
+      cursor: this.cursorDescribe,
+      selected: this.selectedDescribeKey,
+    });
+    const described = key === null ? null : this.describe(key);
+    writeDetail(root, '[data-detail-eyebrow]', described?.eyebrow ?? '');
+    writeDetail(root, '[data-detail-name]', described?.name ?? '');
+    writeDetail(root, '[data-detail-description]', described?.description ?? 'Try another pocket.');
+    writeDetail(root, '[data-detail-note]', described?.note ?? '');
+    root
+      .querySelectorAll<HTMLElement>('.raid-grid-block')
+      .forEach((block) => block.classList.toggle('marked', block.dataset.describes === key));
+  }
+
+  /**
+   * What one describable thing on this screen is. A pocket row and the block it
+   * takes up in the pack grid carry the same key, so pointing at either answers
+   * the same question and lights the other.
+   */
+  private describe(key: string): DescribedThing | null {
+    const { kind, id } = splitDescribeKey(key);
+    if (kind === 'item') {
+      const item = getItemById(id);
+      return item && this.bag.count(item.id) > 0
+        ? {
+            eyebrow: ITEM_CATEGORY_LABELS[item.category],
+            name: item.displayName,
+            description: item.description,
+            note: `${this.bag.count(item.id)} carried · ${this.squareLabel(item.id)} each`,
+          }
+        : null;
+    }
+    if (kind === 'cargo') {
+      const piece = this.bag.layout().cargo.find((placement) => placement.cargoId === id);
+      return piece
+        ? {
+            eyebrow: 'Carried home',
+            name: piece.name,
+            // Cargo is the one thing in the pack that is not a supply, and the
+            // one whose squares a player cannot get back by using it.
+            description: 'Riding home in your pack. It is only yours once the raid banks.',
+            note: `${piece.width * piece.height} squares`,
+          }
+        : null;
+    }
+    if (kind === 'pokemon') {
+      const pokemon = this.party.pokemon[Number(id)];
+      const item = this.selectedItem;
+      return pokemon
+        ? {
+            eyebrow: 'Party member',
+            name: pokemon.base.name,
+            description: conditionLine(pokemon),
+            // The condition has already said their HP, so the note says the
+            // thing the recipient list is open to decide instead - which for a
+            // disc is whether they can read it, and otherwise is what they
+            // would be given, so the item is not off the screen while the
+            // pointer is on somebody.
+            note: !item
+              ? ''
+              : machineForItem(item)
+                ? this.targetNote(item, pokemon)
+                : `Would receive ${item.displayName}`,
+          }
+        : null;
+    }
+    return null;
   }
 
   /**
@@ -222,9 +397,9 @@ export class BagScene extends Phaser.Scene {
    * question it answers - how much room is left - is the one the whole screen is
    * opened to ask when a crate is on the ground outside.
    */
-  private packPanel(highlight?: string): string {
+  private packPanel(): string {
     const layout = this.bag.layout();
-    return `<section class="bag-pack"><header><h2>Pack</h2><p>${this.packLabel()}</p></header>${this.gridMarkup(layout, highlight)}</section>`;
+    return `<section class="bag-pack"><header><h2>Pack</h2><p>${this.packLabel()}</p></header>${this.gridMarkup(layout)}</section>`;
   }
 
   private packLabel(): string {
@@ -239,13 +414,15 @@ export class BagScene extends Phaser.Scene {
     return squares === 1 ? '1 square' : `${squares} squares`;
   }
 
-  private gridMarkup(layout: GridPacking, highlight?: string): string {
+  private gridMarkup(layout: GridPacking): string {
     const cells = new Array(layout.size.width * layout.size.height).fill('<i></i>').join('');
+    // A block carries the same describe key as its pocket row, so pointing at
+    // the square in the pack says what is in it and pointing at the row lights
+    // the square. Which block is `marked` is decided in `applyDescription`.
     const blocks = layout.placements
       .map((placement) => {
-        const marked = highlight === placement.itemId ? ' marked' : '';
         const count = placement.quantity > 1 ? `<b>${placement.quantity}</b>` : '';
-        return `<span class="raid-grid-block${marked}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}">${itemIcon(placement.itemId)}${count}</span>`;
+        return `<span class="raid-grid-block" data-describes="${describeKey('item', placement.itemId)}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}">${itemIcon(placement.itemId)}${count}</span>`;
       })
       .join('');
     // What the raid is carrying home takes squares too, so it is drawn in them:
@@ -254,10 +431,10 @@ export class BagScene extends Phaser.Scene {
     const cargo = layout.cargo
       .map(
         (placement) =>
-          `<span class="raid-grid-block cargo" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}" aria-label="${placement.name}" role="img">${placement.art ? `<img src="${placement.art}" alt="" />` : `<em>${placement.name.slice(0, 1)}</em>`}</span>`,
+          `<span class="raid-grid-block cargo" data-describes="${describeKey('cargo', placement.cargoId)}" style="grid-column:${placement.x + 1}/span ${placement.width};grid-row:${placement.y + 1}/span ${placement.height}" aria-label="${placement.name}" role="img">${placement.art ? `<img src="${placement.art}" alt="" />` : `<em>${placement.name.slice(0, 1)}</em>`}</span>`,
       )
       .join('');
-    return `<div class="raid-grid" style="--cols:${layout.size.width};--rows:${layout.size.height}"><div class="raid-grid-cells" aria-hidden="true">${cells}</div><div class="raid-grid-blocks">${cargo}${blocks}</div></div>`;
+    return `<div class="raid-grid" data-describe-group style="--cols:${layout.size.width};--rows:${layout.size.height}"><div class="raid-grid-cells" aria-hidden="true">${cells}</div><div class="raid-grid-blocks">${cargo}${blocks}</div></div>`;
   }
 
   /** Puts one of the chosen item on the ground, and says the room it bought. */
@@ -434,4 +611,20 @@ export class BagScene extends Phaser.Scene {
   private headingStyle(): Phaser.Types.GameObjects.Text.TextStyle {
     return { color: '#8ed4c2', fontFamily: GAME_FONT, fontSize: '12px', fontStyle: 'bold' };
   }
+}
+
+/**
+ * One line of the detail panel, written as text rather than as markup: this
+ * runs while the pointer is resting on a row, so nothing may be replaced. A
+ * line with nothing to say is hidden outright, because an empty box still
+ * carries its own margins and the panel would breathe in and out as the
+ * pointer crossed the list.
+ */
+function writeDetail(root: HTMLElement, selector: string, text: string): void {
+  const box = root.querySelector<HTMLElement>(selector);
+  if (!box) {
+    return;
+  }
+  box.textContent = text;
+  box.hidden = text === '';
 }

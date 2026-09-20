@@ -34,8 +34,10 @@ describe('the condition line a Pokemon carries', () => {
   it('is the same line at base and mid-raid', () => {
     // HP and status survive a raid, so the in-raid party screen is a preview of
     // what the stash will hold. Two phrasings of that would be two answers.
+    // Both the list row and the member's own card, which is now built for
+    // every member so that pointing at one can show it without a re-render.
     expect(partySceneSource).toContain('conditionLine(pokemon)');
-    expect(partySceneSource).toContain('conditionLine(selected)');
+    expect(partySceneSource).toContain('conditionLine(member)');
     expect(hubSceneSource).toContain('return conditionLine(stored.pokemon);');
   });
 });
