@@ -16,7 +16,7 @@
  * Phaser-free and DOM-free: the rules are held in `hoverDescribe.test.ts`
  * rather than eyeballed in a browser.
  *
- * **What the pixel-ui pass (#155) changed about this.** Those three screens
+ * **What the pixel-ui pass (#156) changed about this.** Those three screens
  * kept a selection of their own, and the three sources exist because pointing
  * had to be able to overrule one without moving it. On a pixel-ui screen there
  * is no selection: the cursor *is* the answer, the pointer moves the cursor
