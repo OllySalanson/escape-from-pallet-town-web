@@ -1290,7 +1290,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-plank',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 117, y: 58 },
+    position: { x: 117, y: 57 },
     facing: 'down',
     dialogLines: [
       'A PLANK BRIDGE - one board, no rail',
@@ -1301,7 +1301,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-field-south',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 122, y: 68 },
+    position: { x: 122, y: 67 },
     facing: 'left',
     dialogLines: [
       'FIELD 31 - and the drain that drowned it',
@@ -1312,7 +1312,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-cutside',
     mapId: 'floodplain-relay',
     kind: 'npc',
-    position: { x: 115, y: 73 },
+    position: { x: 115, y: 72 },
     facing: 'left',
     design: 'boy',
     dialogLines: [
@@ -1346,7 +1346,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-wallhead',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 109, y: 96 },
+    position: { x: 109, y: 95 },
     facing: 'down',
     dialogLines: [
       'THE WALL ROAD - east to the pier, west to the stile',
@@ -1435,7 +1435,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-gaugeboard',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 123, y: 50 },
+    position: { x: 123, y: 49 },
     facing: 'left',
     dialogLines: [
       'A GAUGE BOARD - feet above the outfall',
