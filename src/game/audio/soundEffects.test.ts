@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   SOUND_EFFECTS,
   SOUND_EFFECT_NAMES,
+  ducksMusic,
   soundEffectLength,
   type SoundChannel,
   type SoundEffect,
@@ -123,6 +124,22 @@ describe('the sound-effect vocabulary', () => {
     for (const path of sourceFiles(join(__dirname, '..', 'scenes'))) {
       const source = readFileSync(path, 'utf8');
       expect(source, path).not.toMatch(/createOscillator|new AudioContext/);
+    }
+  });
+
+  it('ducks the music only for a fanfare and the one-off alert stings', () => {
+    const ducking = effects.filter(([, effect]) => ducksMusic(effect)).map(([name]) => name);
+    for (const [name, effect] of effects) {
+      if (effect.channel === 'fanfare') {
+        expect(ducking, name).toContain(name);
+      }
+      if (effect.channel === 'ui' || effect.channel === 'world' || effect.channel === 'battle') {
+        expect(ducking, `${name} would duck the music on every step`).not.toContain(name);
+      }
+    }
+    // The rhythmic alerts would hold the music down for a whole chase.
+    for (const name of ['hunterNear', 'clockUrgent', 'lowHp'] as const) {
+      expect(ducking).not.toContain(name);
     }
   });
 });

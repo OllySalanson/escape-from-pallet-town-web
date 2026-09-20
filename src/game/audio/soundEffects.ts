@@ -44,6 +44,19 @@ export interface SoundEffect {
    * `ui` effect does; this is for the rare game sound that is only a default.
    */
   readonly yields?: boolean;
+  /**
+   * Whether the music gives way while this sounds. A fanfare does by default -
+   * it is the last word on something - and the four alerts that are one-off
+   * stings opt in; the rhythmic ones (the hunter's footfall, the clock's
+   * beeps, low HP) must not, or the music would be ducked for the whole of a
+   * chase. See `ducksMusic()` and `AudioManager.play()`.
+   */
+  readonly ducksMusic?: boolean;
+}
+
+/** Whether the music is ducked for the length of this effect. */
+export function ducksMusic(effect: SoundEffect): boolean {
+  return effect.ducksMusic ?? effect.channel === 'fanfare';
 }
 
 const sq = (frequency: number, duration: number, volume: number, delay = 0): SoundTone => ({
@@ -198,11 +211,13 @@ export const SOUND_EFFECTS = {
   // --- alert: things that are coming for you -----------------------------
   trainerSpotted: {
     channel: 'alert',
+    ducksMusic: true,
     moment: 'A trainer sees you, or you accept their challenge',
     tones: [sq(988, 0.06, 0.07), sq(1319, 0.18, 0.07, 0.06)],
   },
   hunterArrival: {
     channel: 'alert',
+    ducksMusic: true,
     moment: 'The rival hunter enters the raid',
     tones: [saw(147, 0.16, 0.07), saw(139, 0.16, 0.07, 0.16), sq(110, 0.3, 0.065, 0.32)],
   },
@@ -213,6 +228,7 @@ export const SOUND_EFFECTS = {
   },
   hunterContact: {
     channel: 'alert',
+    ducksMusic: true,
     moment: 'The hunter catches you',
     tones: [saw(220, 0.07, 0.08), saw(220, 0.07, 0.08, 0.09), sq(165, 0.24, 0.07, 0.18)],
   },
@@ -228,6 +244,7 @@ export const SOUND_EFFECTS = {
   },
   clockEnraged: {
     channel: 'alert',
+    ducksMusic: true,
     moment: 'The clock runs out of patience and the raid turns hostile',
     tones: run([880, 831, 880, 831], 0.08, 0.06, 0.1, 'sawtooth'),
   },

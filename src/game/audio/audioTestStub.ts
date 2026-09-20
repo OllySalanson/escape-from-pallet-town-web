@@ -10,9 +10,18 @@ export interface StubSource {
   stopAt: number | null;
 }
 
+/** One gain node's automation, in the order it was asked for. */
+export interface StubGain {
+  readonly events: { readonly kind: 'set' | 'target' | 'cancel'; readonly value: number; readonly at: number }[];
+  /** The node's own `connect` target, so a test can tell the music bus from the master. */
+  connectedTo: unknown;
+}
+
 export interface StubContext {
   readonly context: AudioContext;
   readonly sources: StubSource[];
+  /** Every gain node made, in creation order: master, then music, then a voice each. */
+  readonly gains: StubGain[];
   /** Moves the context clock, in seconds. */
   advance(seconds: number): void;
 }
@@ -25,7 +34,24 @@ export function createStubAudioContext(): StubContext {
     setTargetAtTime: () => undefined,
     cancelScheduledValues: () => undefined,
   });
+  const gains: StubGain[] = [];
   const node = () => ({ connect: (target: unknown) => target });
+  const gainNode = () => {
+    const record: StubGain = { events: [], connectedTo: undefined };
+    gains.push(record);
+    return {
+      connect: (target: unknown) => {
+        record.connectedTo = target;
+        return target;
+      },
+      gain: {
+        setValueAtTime: (value: number, at: number) => record.events.push({ kind: 'set', value, at }),
+        exponentialRampToValueAtTime: () => undefined,
+        setTargetAtTime: (value: number, at: number) => record.events.push({ kind: 'target', value, at }),
+        cancelScheduledValues: (at: number) => record.events.push({ kind: 'cancel', value: 0, at }),
+      },
+    };
+  };
   const source = (kind: StubSource['kind']) => {
     const record: StubSource = { kind, frequency: 0, started: false, stopAt: null };
     sources.push(record);
@@ -53,7 +79,7 @@ export function createStubAudioContext(): StubContext {
     sampleRate: 8000,
     destination: {},
     resume: () => Promise.resolve(),
-    createGain: () => ({ ...node(), gain: param() }),
+    createGain: gainNode,
     createBiquadFilter: () => ({ ...node(), type: 'lowpass', frequency: param() }),
     createBuffer: (_channels: number, length: number) => ({
       getChannelData: () => new Float32Array(length),
@@ -65,6 +91,7 @@ export function createStubAudioContext(): StubContext {
   return {
     context: context as unknown as AudioContext,
     sources,
+    gains,
     advance: (seconds) => {
       context.currentTime += seconds;
     },
