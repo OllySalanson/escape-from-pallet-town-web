@@ -482,7 +482,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
   },
   {
     // The far end of the sands, and the only thing standing on them. With the
-    // ferry hard shut this corner is 118 steps from anything else that opens,
+    // wharf hard shut this corner is 118 steps from anything else that opens,
     // which is half again what the hunter's blind window covers - so the walk
     // out of the muds is shortened by a door rather than by a longer window.
     mapId: 'floodplain-relay',

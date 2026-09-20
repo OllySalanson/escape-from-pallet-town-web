@@ -431,14 +431,17 @@ export const WORLD_GATES: readonly MapGate[] = [
     open: { material: 'earth' },
   },
   {
-    // And the banksman's second door, at the other end of the sands: the ferry
-    // hard cut through the wharf's quay wall. Beaten, the walk from the breach
-    // back to the Staithe is along the bottom of the map at low water, and the
-    // Staithe is ground a fresh save already knows.
-    id: 'floodplain-ferry-hard',
+    // And the banksman's second door, at the other end of the sands: the hard
+    // cut through the wharf's quay wall. Beaten, the walk from the breach back
+    // to the Staithe is along the bottom of the map at low water, and the
+    // Staithe is ground a fresh save already knows. Called the WHARF HARD and
+    // not the ferry hard because Pallet Town's valley has a FERRY HARD of its
+    // own, and two things with one name in one game is a thing a player
+    // notices before a reviewer does.
+    id: 'floodplain-wharf-hard',
     mapId: 'floodplain-relay',
     bossId: 'floodplain-sea-wall-keeper',
-    label: 'FERRY HARD',
+    label: 'WHARF HARD',
     tiles: [{ x: 24, y: 111 }, { x: 25, y: 111 }],
     closed: { material: 'cliff' },
     open: { material: 'sand' },
