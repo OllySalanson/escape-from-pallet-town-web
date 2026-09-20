@@ -65,7 +65,9 @@ describe('in-run objective HUD layout', () => {
     expect(objectiveChipLines('LOST KIT: SW', false)).toEqual(['LOST KIT: SW']);
     expect(objectiveChipLines('LOST KIT: SW', true)).toHaveLength(2);
     expect(sceneSource).toContain('this.objectiveDetailMs = OBJECTIVE_DETAIL_MS;');
-    expect(sceneSource).toContain('objectiveChipLines(navigationCue, this.objectiveDetailMs > 0)');
+    expect(sceneSource).toContain(
+      'objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun())',
+    );
   });
 
   it('keeps the active contract destination visible and direction-aware', () => {

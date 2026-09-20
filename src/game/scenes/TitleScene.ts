@@ -9,10 +9,14 @@ import {
   layoutTitleMenu,
   moveTitleChoice,
   needsEraseConfirmation,
+  playtestMenu,
+  titleHint,
   titleMenu,
   type TitleChoiceId,
   type TitleMenu,
 } from '../ui/titleMenu';
+import { setActiveSaveSlot } from '../dev/playtestMode';
+import { createPlaytestGame } from '../dev/playtestSave';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { TILE_SIZE, WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
 
@@ -48,6 +52,13 @@ export class TitleScene extends Phaser.Scene {
   private built: Phaser.GameObjects.GameObject[] = [];
   private readonly saveManager = new SaveManager();
   private summary: SaveSummary = { kind: 'none' };
+  /**
+   * The explorer run's save, read through a manager pinned to that slot: the
+   * title has to say whether there is one to carry on without switching the
+   * game into it.
+   */
+  private readonly playtestSaveManager = new SaveManager(undefined, 'playtest');
+  private playtestSummary: SaveSummary = { kind: 'none' };
   private menu: TitleMenu = titleMenu({ kind: 'none' });
   private choice: TitleChoiceId = 'new';
   private redrawPending = false;
@@ -59,9 +70,15 @@ export class TitleScene extends Phaser.Scene {
   public create(): void {
     this.hasStarted = false;
     this.redrawPending = false;
+    // The title is the one screen both games are reached from, so it is where
+    // the slot is set - every ordinary path leaves it on the ordinary save, and
+    // only the playtest row moves it. That is what makes an explorer run
+    // unreachable by accident rather than merely unlikely.
+    setActiveSaveSlot('normal');
     // Asked once per visit, not per frame: the summary reads the whole save.
     this.summary = this.saveManager.describe();
-    this.menu = titleMenu(this.summary);
+    this.playtestSummary = this.playtestSaveManager.describe();
+    this.menu = titleMenu(this.summary, this.playtestSummary);
     this.choice = this.menu.initial;
     this.build();
 
@@ -293,7 +310,7 @@ export class TitleScene extends Phaser.Scene {
     }
     this.prompt = this.track(
       this.add
-        .text(layout.hint.x, layout.hint.y, this.menu.question ? 'ESC KEEPS IT' : 'UP DOWN CHOOSE · SPACE SELECT', {
+        .text(layout.hint.x, layout.hint.y, titleHint(this.menu, this.choice), {
           align: 'center',
           color: TAGLINE,
           fontFamily: GAME_FONT,
@@ -341,12 +358,13 @@ export class TitleScene extends Phaser.Scene {
     }
   }
 
-  /** Escape on the erase question is the answer that keeps the save. */
+  /** Escape on either second question is the answer that changes nothing. */
   private backOut(): void {
     if (this.hasStarted || !this.menu.question) {
       return;
     }
-    this.showMenu(titleMenu(this.summary), 'new');
+    const wasErasing = this.menu.choices[0]?.id === 'keep';
+    this.showMenu(titleMenu(this.summary, this.playtestSummary), wasErasing ? 'new' : 'playtest');
   }
 
   private showMenu(menu: TitleMenu, choice: TitleChoiceId): void {
@@ -371,14 +389,24 @@ export class TitleScene extends Phaser.Scene {
       } else {
         this.startGame('new');
       }
+    } else if (this.choice === 'playtest') {
+      if (this.playtestSummary.kind === 'game') {
+        audioManager.play('confirm');
+        const menu = playtestMenu();
+        this.showMenu(menu, menu.initial);
+      } else {
+        this.startGame('fresh-playtest');
+      }
     } else if (this.choice === 'keep') {
       this.backOut();
+    } else if (this.choice === 'resume-playtest' || this.choice === 'fresh-playtest') {
+      this.startGame(this.choice);
     } else {
       this.startGame('new');
     }
   }
 
-  private startGame(mode: 'continue' | 'new'): void {
+  private startGame(mode: 'continue' | 'new' | 'resume-playtest' | 'fresh-playtest'): void {
     if (this.hasStarted) {
       return;
     }
@@ -387,6 +415,10 @@ export class TitleScene extends Phaser.Scene {
     void this.playStartAudio();
     this.prompt.setText('READY!');
     this.time.delayedCall(180, () => {
+      if (mode === 'resume-playtest' || mode === 'fresh-playtest') {
+        this.startPlaytestRun(mode === 'fresh-playtest');
+        return;
+      }
       if (mode === 'new') {
         // Only reached once the erase question has been answered, or when there
         // was nothing to erase.
@@ -397,6 +429,31 @@ export class TitleScene extends Phaser.Scene {
       const savedGame = this.loadOrCreateGame();
       this.scene.start(savedGame ? 'hub' : 'starter', savedGame ? { savedGame } : undefined);
     });
+  }
+
+  /**
+   * Into the explorer run. Everything after this reads and writes the playtest
+   * slot, because `SaveManager` resolves its key through the active slot - and
+   * the ordinary save is never opened on this path, so nothing about it can be
+   * changed by anything the player does in here.
+   */
+  private startPlaytestRun(fresh: boolean): void {
+    setActiveSaveSlot('playtest');
+    if (fresh) {
+      this.playtestSaveManager.clear();
+    }
+    let savedGame = this.playtestSaveManager.load();
+    if (!savedGame) {
+      this.playtestSaveManager.save(createPlaytestGame());
+      savedGame = this.playtestSaveManager.load();
+    }
+    if (!savedGame) {
+      // Storage is unavailable or full. The run is still playable; it simply
+      // will not be there next time, which is better than refusing to start.
+      this.scene.start('hub', { savedGame: createPlaytestGame() });
+      return;
+    }
+    this.scene.start('hub', { savedGame });
   }
 
   private loadOrCreateGame() {

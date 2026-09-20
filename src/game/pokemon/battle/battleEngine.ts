@@ -1,3 +1,4 @@
+import { isPlaytestRun } from '../../dev/playtestMode';
 import type { AbilityEffectKind } from '../AbilityBase';
 import type { MoveBase, NormalizedMoveEffects, NormalizedSecondaryEffect } from '../MoveBase';
 import { MoveCategory, MoveCharge, MoveTarget, targetsTheOtherSide } from '../MoveBase';
@@ -1159,6 +1160,24 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
 };
 
 /**
+ * What a combatant's HP becomes after taking damage.
+ *
+ * Nothing but the explorer run makes this anything other than the subtraction
+ * it has always been: in a playtest run (`dev/playtestMode.ts`) the player's
+ * side is floored at one hit point, so no move, status, weather, recoil or
+ * confusion can knock it out and the run cannot be lost. It is asked here, in
+ * the one function every path that takes HP goes through, rather than by a
+ * scene - HP reaches nothing inside the engine, and a faint is emitted the
+ * instant it does. The flag is false everywhere else, which is why the measured
+ * ladders (`trainerMeasure.ts`, `encounterMeasure.ts`) read exactly what they
+ * always read.
+ */
+function hpAfterDamage(side: 'player' | 'enemy', currentHp: number, damage: number): number {
+  const floor = side === 'player' && isPlaytestRun() ? Math.min(1, currentHp) : 0;
+  return Math.max(floor, currentHp - damage);
+}
+
+/**
  * The end of a turn for the field itself: what the weather takes, and whether
  * it is still there next turn.
  *
@@ -1209,7 +1228,7 @@ const applyWeather = (state: BattleState): TurnResult => {
     if (damage === 0) {
       continue;
     }
-    const buffeted = { ...combatant, currentHp: Math.max(0, combatant.currentHp - damage) };
+    const buffeted = { ...combatant, currentHp: hpAfterDamage(ref.side, combatant.currentHp, damage) };
     nextState = withUnit(nextState, ref, buffeted);
     events.push({
       type: 'weather-damage',
@@ -1597,7 +1616,7 @@ const applyMove = (
       endured = endured || survived;
       const hurt: BattleCombatant = {
         ...defender,
-        currentHp: survived ? 1 : Math.max(0, defender.currentHp - result.damage),
+        currentHp: survived ? 1 : hpAfterDamage(targetRef.side, defender.currentHp, result.damage),
         heldItemSpent: defender.heldItemSpent || survived,
       };
       damageHere += defender.currentHp - hurt.currentHp;
@@ -1747,8 +1766,10 @@ const applyMove = (
       events.push(...said.events);
     } else {
       const hurt = attackerNow();
-      const paid = Math.min(hurt.currentHp, Math.max(1, Math.floor(totalDamage * move.base.recoil)));
-      nextState = withUnit(nextState, ref, { ...hurt, currentHp: hurt.currentHp - paid });
+      const owed = Math.min(hurt.currentHp, Math.max(1, Math.floor(totalDamage * move.base.recoil)));
+      const left = hpAfterDamage(ref.side, hurt.currentHp, owed);
+      const paid = hurt.currentHp - left;
+      nextState = withUnit(nextState, ref, { ...hurt, currentHp: left });
       events.push({ type: 'recoil', user, ...inSlot(ref), name: attackerName, damage: paid });
     }
   }
@@ -2084,9 +2105,15 @@ const resolveStatusBeforeMove = (
     const events: BattleEvent[] = [];
     if (clampRandom(random()) >= 0.5) {
       const damage = Math.floor(combatant.pokemon.maxHp / 8);
-      const hurt = { ...confused, currentHp: Math.max(0, confused.currentHp - damage) };
+      const hurt = { ...confused, currentHp: hpAfterDamage(ref.side, confused.currentHp, damage) };
       state = withUnit(state, ref, hurt);
-      events.push({ type: 'confusion-self-hit', user, ...slot, name, damage });
+      events.push({
+        type: 'confusion-self-hit',
+        user,
+        ...slot,
+        name,
+        damage: confused.currentHp - hurt.currentHp,
+      });
       if (hurt.currentHp === 0) {
         const fallen = resolveFaint(state, ref);
         state = fallen.state;
@@ -2146,7 +2173,7 @@ const applyEndOfAction = (
         : 0;
   if (divisor > 0) {
     const damage = Math.floor(combatant.pokemon.maxHp / divisor);
-    const updated = { ...combatant, currentHp: Math.max(0, combatant.currentHp - damage) };
+    const updated = { ...combatant, currentHp: hpAfterDamage(ref.side, combatant.currentHp, damage) };
     nextState = withUnit(nextState, ref, updated);
     nextEvents.push({
       type: 'status-damage',
@@ -2154,7 +2181,7 @@ const applyEndOfAction = (
       ...slot,
       name: combatant.pokemon.base.name,
       status: combatant.primaryStatus!,
-      damage,
+      damage: combatant.currentHp - updated.currentHp,
     });
     if (updated.currentHp === 0) {
       const fallen = resolveFaint(nextState, ref);
