@@ -317,7 +317,7 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'floodplain-linen-roll', position: { x: 6, y: 30 }, itemId: 'linen-roll', quantity: 1 },
       { id: 'floodplain-scrip-town', position: { x: 14, y: 25 }, itemId: 'scrip', quantity: 30 },
       { id: 'floodplain-scrip-mill', position: { x: 46, y: 30 }, itemId: 'scrip', quantity: 45 },
-      { id: 'floodplain-scrip-keep', position: { x: 50, y: 12 }, itemId: 'scrip', quantity: 60 },
+      { id: 'floodplain-scrip-keep', position: { x: 51, y: 12 }, itemId: 'scrip', quantity: 60 },
       // Two on the vast map, because it is played a district at a time and one
       // rolled find across sixty-four tiles square is a find nobody meets.
       // TM13 Ice Beam out of the drowned reach, TM23 Iron Tail out of the mill.

@@ -708,7 +708,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-quarry-board',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 70, y: 11 },
+    position: { x: 76, y: 11 },
     facing: 'down',
     dialogLines: [
       'THE QUARRY - TOP BENCH',
@@ -744,7 +744,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-staithe-notice',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 22, y: 102 },
+    position: { x: 25, y: 100 },
     facing: 'down',
     dialogLines: [
       'THE STAITHE - the last wharf on the river',
@@ -1064,7 +1064,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-muds-bell',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 81, y: 122 },
+    position: { x: 78, y: 121 },
     facing: 'down',
     dialogLines: [
       'A BELL BUOY - lying on the sand',
@@ -1301,7 +1301,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-field-south',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 122, y: 67 },
+    position: { x: 124, y: 66 },
     facing: 'left',
     dialogLines: [
       'FIELD 31 - and the drain that drowned it',
@@ -1312,7 +1312,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-cutside',
     mapId: 'floodplain-relay',
     kind: 'npc',
-    position: { x: 115, y: 72 },
+    position: { x: 117, y: 73 },
     facing: 'left',
     design: 'boy',
     dialogLines: [
@@ -1446,7 +1446,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'floodplain-levels-dolestone',
     mapId: 'floodplain-relay',
     kind: 'sign',
-    position: { x: 124, y: 62 },
+    position: { x: 123, y: 61 },
     facing: 'left',
     dialogLines: [
       'A DOLE STONE - where one man\'s length ended and the next began',
