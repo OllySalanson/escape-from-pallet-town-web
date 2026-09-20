@@ -49,9 +49,17 @@ export interface OutfitterCost {
 export interface OutfitterUpgrade {
   readonly id: string;
   readonly name: string;
-  /** What it does, in the one short line the ladder has room for. */
+  /**
+   * What it does, in the one short line the ladder has room for. It is the
+   * rung's own line on the ladder, built or not: what a thing does is its
+   * identity, and identity does not change when you pay for it.
+   */
   readonly effect: string;
-  /** The same promise in full, read on the payment screen before it is paid for. */
+  /**
+   * What `effect` leaves out, read in the pane under the ladder and again on
+   * the payment screen. Never a restatement of `effect`, which is printed
+   * directly above it.
+   */
   readonly detail: string;
   /** One of the shared 16x16 icons in `../ui/icons`, by file name. */
   readonly icon: string;
@@ -116,7 +124,7 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     icon: 'extraction-open',
     name: 'Beacon',
     effect: 'Your landing is a late extra exit.',
-    detail: 'A beacon marks where you land on every map. Halfway through the raid clock it opens as an extra exit.',
+    detail: 'It marks where you land on every map, and opens halfway through the raid clock.',
     cost: {
       pokemon: 3,
       supplies: [
@@ -131,8 +139,7 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     icon: 'supply-crate',
     name: 'Secure locker I',
     effect: 'One more column of the secure container.',
-    detail:
-      'The secure container grows by a column, so more of what you carry comes home from every raid - even a lost one.',
+    detail: 'More of what you carry comes home from every raid - even a lost one.',
     cost: {
       pokemon: 2,
       supplies: [{ itemId: 'parts-crate', quantity: 2 }],
@@ -145,7 +152,7 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     name: 'Secure locker II',
     effect: 'A second protected Pokémon, and the room for it.',
     detail:
-      'The secure slot protects a second Pokémon, and grows another column to stand it in - a Pokémon takes four squares, so the slot alone would have been a promise the container could not keep.',
+      'A Pokémon takes four squares, so the slot alone would have been a promise the container could not keep: it brings a column with it.',
     requires: 'secure-locker-1',
     cost: {
       pokemon: 4,

@@ -1857,9 +1857,161 @@ button {
   height: 100%;
   grid-template-rows: minmax(0, 1fr);
 }
-/* What this vault cannot pay yet, in the ink a risk is written in. */
-:where(.pixel-ui) .cost-short {
+/* What this vault cannot pay yet, in the ink a risk is written in. The element
+   selector is load-bearing: `.pixel-ui small` is soft ink at a higher
+   specificity than a bare class, so a price part marked short inside a `small`
+   came out the same grey as the parts that are covered. */
+:where(.pixel-ui) .cost-short,
+:where(.pixel-ui) small.cost-short {
   color: var(--red);
+}
+
+/* --- A shelf: the thing on the left, the price on the right ------------- */
+/* The Outfitter's ladder and the Ferryman's two lists. A row's own line says
+   what the thing *does* - it used to say the price instead until the thing was
+   bought, which hid what it was at exactly the moment the player was deciding
+   whether to buy it - so the price needs a place of its own that still reads as
+   a price. That is a column on the right, which is what a shelf has always
+   done. See `ui/shopDetail.ts` for the whole of the reasoning. */
+:where(.pixel-ui) .px-row.px-priced {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+:where(.pixel-ui) .px-row.px-priced.has-icon {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+:where(.pixel-ui) .px-price {
+  display: grid;
+  justify-items: end;
+  text-align: right;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+/* A price is read against the name beside it, so it hangs from the same line
+   the name does rather than centring itself against a wrapped sentence. */
+:where(.pixel-ui) .px-tall > .px-price {
+  align-self: start;
+}
+:where(.pixel-ui) .px-price.is-paid {
+  color: #7a5a00;
+}
+
+
+/* --- What the pointed-at deal is, whole --------------------------------- */
+/* Two blocks: what it does, and what it costs against what this base holds.
+   They stand side by side where there is room and stack where there is not,
+   exactly as the stash's detail pane behaves - and the pane is a fixed height
+   and scrolls, because one that grew with whatever the cursor was on would
+   move the list every time the cursor moved. */
+:where(.pixel-ui) .shop-detail {
+  min-height: 0;
+  /* Deep enough for the longest promise the ladder makes beside the longest
+     price it charges, both measured off the rows rather than guessed at. */
+  height: calc(var(--u) * 88);
+  padding-bottom: calc(var(--u) * 2);
+}
+/* The Ferryman's shelf is the narrow half of his screen and its rows have
+   already said what the thing does, so its pane is the price and the gates. */
+:where(.pixel-ui) .trader-shelf .shop-detail {
+  height: calc(var(--u) * 62);
+}
+/* A narrower screen makes a narrower pane, so the same words take more lines:
+   the height goes *up* where the room goes down, and what is left over is the
+   scroll the MORE strip announces. The two blocks still stand side by side,
+   because the price against the vault is the half the row could not say and
+   hiding it under the half the row already said would undo the whole fix. */
+:where(.pixel-ui[data-room='narrow']) .trader-shelf .shop-detail {
+  height: calc(var(--u) * 74);
+}
+/* At `BASE_STAGE` the band is the shallowest it is anywhere, and it is the
+   Ferryman's shelf that sets the number: a list, this band and the berth share
+   one pane there, and a band sized for a laptop left the list with no rows in
+   it and pushed the berth off the bottom of the screen. Two price lines and
+   the ink that says which of them is short, and the rest is the scroll. */
+:where(.pixel-ui[data-room='tight']) .shop-detail {
+  height: calc(var(--u) * 46);
+}
+/* And there the Ferryman has no band at all, on either counter. His screen is
+   four things deep already - his standing, his shelf, the berth and the table -
+   and at that stage a band on top of them left both lists with no rows in them.
+   Nothing is lost that the screen does not already say: the title bar is the
+   purse, the heading is the ration, the row is what the thing does and what it
+   costs, and the help bar is the refusal. The room goes to rows. */
+:where(.pixel-ui[data-room='tight']) .trader-shelf .shop-detail,
+:where(.pixel-ui[data-room='tight']) .trader-table .shop-detail {
+  display: none;
+}
+/* The two blocks share the pane half and half and never wrap onto two lines,
+   at any width this game is played at. They are not given a basis to wrap
+   below, because wrapping is the one thing this pane must not do: stacked, the
+   price falls under the fold, and the price against this vault is the half the
+   row could not say - hiding it under the half the row already said undoes the
+   whole fix. A pane too narrow for the words wraps *them* and scrolls. */
+:where(.pixel-ui) .shop-detail-body {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: calc(var(--u) * 2) calc(var(--u) * 6);
+}
+:where(.pixel-ui) .shop-does,
+:where(.pixel-ui) .shop-price {
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  gap: var(--u);
+  align-content: start;
+}
+/* The price is a list of asks and what is held towards each: the ask on the
+   left with its icon, what the vault has on the right, so the two columns can
+   be read down rather than sentence by sentence. */
+:where(.pixel-ui) .shop-price-list {
+  display: grid;
+  gap: var(--u);
+}
+/* The ask on the left and what is held on the right while both fit on the line,
+   and the held half on a line of its own when they do not. Two columns held by
+   a grid instead put "260 in the vault" down the right-hand edge a word at a
+   time on a 1024 window, which is four lines saying one thing. */
+:where(.pixel-ui) .shop-price-list > div {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: calc(var(--u) * 4);
+  align-items: center;
+}
+:where(.pixel-ui) .shop-price-list dt {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  min-width: 0;
+}
+/* The empty icon slot on a price with no icon of its own, so every ask on the
+   list starts on the same pixel. */
+:where(.pixel-ui) .shop-price-nib {
+  flex: none;
+  width: calc(var(--u) * 16);
+}
+:where(.pixel-ui) .shop-price-list dd {
+  margin-left: auto;
+  text-align: right;
+  color: var(--ink-soft);
+  min-width: 0;
+}
+/* Short of it, in the same ink the row's own price column uses - and only the
+   half that is actually short. The ask is never wrong; what the base holds
+   towards it is, and reddening both read as "this price is a mistake". */
+:where(.pixel-ui) .shop-price-list > div.is-short dd {
+  color: var(--red);
+}
+
+/* --- A deal asked again before it is struck ----------------------------- */
+/* The row becomes the question and two buttons, with the cursor on the one
+   that changes nothing. It is not a screen of its own, because a modal over a
+   shelf is friction; it is the row saying the thing out loud before it spends
+   something that cannot be got back. */
+:where(.pixel-ui) .px-arming {
+  background: var(--red-wash);
+}
+:where(.pixel-ui) .px-arming > .px-bar-actions {
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
 }
 :where(.pixel-ui) .px-ready {
   color: #1d6a4f;
@@ -2177,7 +2329,8 @@ button {
    game pixels tall, so pinning it to the top of the list costs more than it
    gives: there it scrolls away with the list like any other row, and comes
    back the moment the player scrolls up. */
-:where(.pixel-ui[data-room='narrow']) .box-bar {
+:where(.pixel-ui[data-room='narrow']) .box-bar,
+:where(.pixel-ui[data-room='tight']) .box-bar {
   position: static;
 }
 :where(.pixel-ui) .box-manage {
@@ -2193,6 +2346,36 @@ button {
   height: 100%;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
+}
+/* Two windows still, one above the other: at `BASE_STAGE` half the screen is
+   160 game pixels and a row of his that says what a thing does as well as what
+   it costs came out one word to a line. Stacked, each counter has the width of
+   the screen and its rows read; what it costs is the rows below the fold, which
+   is what the MORE strip is for. They must never become one list - the shelf is
+   money for supplies and the table is found goods for what money cannot buy. */
+:where(.pixel-ui[data-room='tight']) .trader-layout {
+  grid-template-columns: minmax(0, 1fr);
+  /* Seven to six, measured rather than chosen: the shelf has the berth standing
+     in it as well as its stock, so an even split left it short of a whole row
+     and the fold ran through one. A row of stock is 28 game pixels and the MORE
+     strip is 13, so its list needs 41 before it shows anything whole. */
+  grid-template-rows: auto minmax(0, 7fr) minmax(0, 6fr);
+}
+/* And his standing is its heading strip alone: the strip already names the tier
+   and counts the points to the next, so his two sentences about it are the
+   first thing to go when a screen this size has four bands to fit and the two
+   lists under them have no rows to show. */
+:where(.pixel-ui[data-room='tight']) .trader-standing {
+  padding: 0;
+}
+:where(.pixel-ui[data-room='tight']) .trader-standing > p {
+  display: none;
+}
+/* The berth keeps its own row and loses the band naming it: the row says BERTH.
+   Fourteen pixels, and they are the difference between the shelf above showing
+   a whole row and showing the top half of one. */
+:where(.pixel-ui[data-room='tight']) .trader-shelf .px-subheading {
+  display: none;
 }
 :where(.pixel-ui) .trader-standing {
   grid-column: 1 / -1;
@@ -2211,6 +2394,13 @@ button {
 :where(.pixel-ui) .trader-table {
   align-self: start;
   max-height: 100%;
+}
+/* Four bands, not three: the heading, the shelf, the pane that says what the
+   pointed-at row is, and the berth along the bottom. Written against the
+   `:has(.px-detail)` rule above, which would otherwise fold the berth into the
+   pane's band and leave the shelf nothing. */
+.pixel-ui .objectives-panel.trader-shelf:has(.px-detail) {
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
 }
 .pixel-ui .trader-shelf {
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -2285,7 +2475,8 @@ button {
    is the four lines that say which Pokemon this is and how it is, with the
    rest of it a scroll away. It is the floor, not the target: a 1024-wide
    browser window is already `wide`. */
-:where(.pixel-ui[data-room='narrow']) .px-dossier {
+:where(.pixel-ui[data-room='narrow']) .px-dossier,
+:where(.pixel-ui[data-room='tight']) .px-dossier {
   /* Three lines of the vitals block and the MORE strip under them. Four would
      be the whole block, and at 640x480 those twelve pixels are the difference
      between the list showing one Pokemon and showing none. Measured rather
@@ -2298,16 +2489,19 @@ button {
    64 game pixels tall on its own - was cut through the middle by the foot of a
    band four lines deep. Stacked, the band shows one whole block and says how
    many more are under it, which is what every other pane here does. */
-:where(.pixel-ui[data-room='narrow']) .px-dossier-body {
+:where(.pixel-ui[data-room='narrow']) .px-dossier-body,
+:where(.pixel-ui[data-room='tight']) .px-dossier-body {
   flex-direction: column;
   flex-wrap: nowrap;
 }
 /* And it leads with which Pokemon this is, how it is, and what can be done
    about it; the portrait, the stats and the moves are the scroll. */
-:where(.pixel-ui[data-room='narrow']) .px-dossier-vitals {
+:where(.pixel-ui[data-room='narrow']) .px-dossier-vitals,
+:where(.pixel-ui[data-room='tight']) .px-dossier-vitals {
   order: -2;
 }
-:where(.pixel-ui[data-room='narrow']) .px-dossier-deeds {
+:where(.pixel-ui[data-room='narrow']) .px-dossier-deeds,
+:where(.pixel-ui[data-room='tight']) .px-dossier-deeds {
   order: -1;
 }
 /* The foot is on what scrolls, never on the pane: `.px-scroll` sets its own

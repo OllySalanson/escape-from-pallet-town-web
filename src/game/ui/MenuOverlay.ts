@@ -293,14 +293,21 @@ export class MenuOverlay {
    * A control can own a detail pane: `data-shows="x"` on the control, and
    * `data-shown-by="x"` on the pane. Focusing the control swaps the pane in, so
    * a list can stay one line a row and still show the Pokemon it is naming.
+   *
+   * The swap is scoped to the control's own window, because a screen may hold
+   * two lists that each answer for themselves - the Ferryman's shelf and his
+   * barter table are one screen and two counters. Swept across the whole
+   * screen, pointing at a Potion on the shelf blanked the pane under the barter
+   * table, and the table's answer only came back by pointing at the table.
    */
   private showDetailFor(control: HTMLElement | null): void {
     const shows = control?.closest<HTMLElement>('[data-shows]')?.dataset.shows;
     if (shows === undefined) {
       return;
     }
+    const group = detailGroupOf(control, this.root);
     let changed = false;
-    this.root.querySelectorAll<HTMLElement>('[data-shown-by]').forEach((pane) => {
+    group.querySelectorAll<HTMLElement>('[data-shown-by]').forEach((pane) => {
       const hidden = pane.dataset.shownBy !== shows;
       changed ||= pane.hidden !== hidden;
       pane.hidden = hidden;
@@ -380,6 +387,31 @@ const SCROLL_ENTRIES = 'button, .px-empty';
  * already the cue, so it takes the whole row rather than the bottom of it. A row
  * taller than half the pane is left to be cut: covering it would hide the pane.
  */
+/**
+ * The window a control's detail pane lives in - the nearest `.px-window` that
+ * actually holds one, not simply the nearest one.
+ *
+ * `.px-window` is the frame, and a button or a chip wears it too (a window that
+ * is also a button keeps its frame). So `closest('.px-window')` from a chip or
+ * from the KEEP THEM button on the Ferryman's armed deal returns *that control*,
+ * whose own subtree holds no panes at all - and the pane under the list stopped
+ * answering for the thing being asked about. Walking up until a window with a
+ * pane in it is found skips the control-shaped ones; a screen with no panes at
+ * all falls back to the root, where there is nothing to swap either way.
+ */
+function detailGroupOf(control: HTMLElement | null, root: HTMLElement): HTMLElement {
+  for (
+    let node = control?.closest<HTMLElement>('.px-window') ?? null;
+    node !== null;
+    node = node.parentElement?.closest<HTMLElement>('.px-window') ?? null
+  ) {
+    if (node.querySelector('[data-shown-by]')) {
+      return node;
+    }
+  }
+  return root;
+}
+
 export function scrollCoverHeight(
   pane: { readonly top: number; readonly bottom: number },
   rows: readonly { readonly top: number; readonly bottom: number }[],

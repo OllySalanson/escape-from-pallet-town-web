@@ -96,14 +96,31 @@ export function columnTracks(plan: ColumnPlan, unit: number): string {
  * having to share a screen. A window narrower or shorter than either wraps the
  * band onto a second line and cuts it through the middle, which is worse than
  * the four-line band it falls back to.
+ *
+ * **Tight** is the floor under that, and it is `BASE_STAGE` itself: a screen
+ * where a list, the band that answers for the row it is on, *and* a second band
+ * under that cannot share a pane at all. The Ferryman's shelf is the layout
+ * that runs out - a list of stock, the pane that prices the pointed-at row and
+ * the berth along the bottom - and at 320x240 a band sized for a laptop left
+ * the list with no rows in it and pushed the berth off the screen. A tight
+ * screen therefore gets the shallowest band of the three, and everything that
+ * will not fit in it is the scroll its MORE strip announces. The numbers are
+ * measured off that pane rather than chosen: below 420 across, a priced row's
+ * two columns stop reading, and below 300 down there is nothing left for a
+ * list once a title, a help bar, a heading, a band and a berth have been paid.
  */
 export const WIDE_MENU_WIDTH = 820;
 export const WIDE_MENU_HEIGHT = 370;
+export const TIGHT_MENU_WIDTH = 420;
+export const TIGHT_MENU_HEIGHT = 300;
 
-export type MenuRoom = 'narrow' | 'wide';
+export type MenuRoom = 'tight' | 'narrow' | 'wide';
 
 export function roomFor(gamePixelsWide: number, gamePixelsHigh: number): MenuRoom {
-  return gamePixelsWide >= WIDE_MENU_WIDTH && gamePixelsHigh >= WIDE_MENU_HEIGHT
-    ? 'wide'
-    : 'narrow';
+  if (gamePixelsWide >= WIDE_MENU_WIDTH && gamePixelsHigh >= WIDE_MENU_HEIGHT) {
+    return 'wide';
+  }
+  return gamePixelsWide >= TIGHT_MENU_WIDTH && gamePixelsHigh >= TIGHT_MENU_HEIGHT
+    ? 'narrow'
+    : 'tight';
 }

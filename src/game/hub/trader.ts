@@ -219,7 +219,12 @@ export const TRADER_STOCK: readonly TraderStockItem[] = [
 export interface TraderBarter {
   readonly id: string;
   readonly name: string;
-  /** What it is, in the one pane the list has for the deal in hand. */
+  /**
+   * What the *deal* is, in the pane under the list. Never what the item does -
+   * that is the item's own `description` in `../items`, which the row carries
+   * and this pane leads with, so a detail that restated it said the same thing
+   * twice under two headings.
+   */
   readonly detail: string;
   /** One of the shared 16x16 icons in `../ui/icons`, by file name. */
   readonly icon: string;
@@ -235,8 +240,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
   {
     id: 'barter-quick-claw',
     name: 'Quick Claw',
-    detail:
-      'A second Quick Claw, off the boat rather than off a boss. Sometimes the holder strikes first, whatever the Speed says.',
+    detail: 'A second Quick Claw, off the boat rather than off a boss. He only has the one.',
     icon: 'quick-claw',
     gives: { itemId: 'quick-claw', quantity: 1 },
     takes: [
@@ -250,7 +254,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     id: 'barter-focus-band',
     name: 'Focus Band',
     detail:
-      'A second Focus Band. Once a battle, the holder survives a knockout blow on 1 HP - the piece that most often decides whether a party comes home.',
+      'A second Focus Band, and the piece that most often decides whether a party comes home.',
     icon: 'focus-band',
     gives: { itemId: 'focus-band', quantity: 1 },
     takes: [
@@ -264,7 +268,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     id: 'barter-leftovers',
     name: 'Leftovers',
     detail:
-      'A second set of Leftovers. The holder recovers a little HP at the end of every turn, which is the nearest thing to a Potion a raid does not have to carry.',
+      'A second set of Leftovers, which is the nearest thing to a Potion a raid does not have to carry.',
     icon: 'leftovers',
     gives: { itemId: 'leftovers', quantity: 1 },
     takes: [
@@ -279,7 +283,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     id: 'barter-thunder-stone',
     name: 'Thunder Stone',
     detail:
-      'A stone with a thunderbolt in it. The only one outside Viridian Forest, and the only deal on the boat he will make twice.',
+      'The only one outside Viridian Forest, and the only deal on the boat he will make twice.',
     icon: 'thunder-stone',
     gives: { itemId: 'thunder-stone', quantity: 1 },
     takes: [
@@ -293,8 +297,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
   {
     id: 'barter-hm06',
     name: 'HM06 Rock Smash',
-    detail:
-      'A machine that is never used up. It teaches a weak blow that lowers Defense half the time, and seventy-four of the 151 can read it - including every starter.',
+    detail: 'Seventy-four of the 151 can read it, including every starter.',
     icon: 'hm06-rock-smash',
     gives: { itemId: 'hm06-rock-smash', quantity: 1 },
     takes: [
@@ -319,7 +322,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     id: 'barter-hm01',
     name: 'HM01 Cut',
     detail:
-      'Clears the growth the forest has grown across its own rides. Forty-three of the 151 read it - both the Grass and Fire starter lines, and a Rattata off any verge.',
+      'It opens the coppice ride in Viridian Forest for good. Forty-three of the 151 read it - both the Grass and Fire starter lines, and a Rattata off any verge.',
     icon: 'hm01-cut',
     gives: { itemId: 'hm01-cut', quantity: 1 },
     takes: [
@@ -333,7 +336,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     id: 'barter-hm03',
     name: 'HM03 Surf',
     detail:
-      'Carries its user over deep water, and hits like nothing else in the pack. Forty-two of the 151 read it - the Water starter line, and the Psyduck and Poliwag that live in the reeds.',
+      'It opens the shoal crossing on the Floodplain for good. Forty-two of the 151 read it - the Water starter line, and the Psyduck and Poliwag that live in the reeds.',
     icon: 'hm03-surf',
     gives: { itemId: 'hm03-surf', quantity: 1 },
     takes: [
@@ -346,8 +349,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
   {
     id: 'barter-life-orb',
     name: 'Life Orb',
-    detail:
-      "A second Life Orb, and the last thing he brings up. The holder's hits land a third harder and cost it a tenth of its own HP.",
+    detail: 'A second Life Orb, and the last thing he brings up.',
     icon: 'life-orb',
     gives: { itemId: 'life-orb', quantity: 1 },
     takes: [

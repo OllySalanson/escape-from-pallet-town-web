@@ -15,6 +15,7 @@ import {
   needsRecovery,
   OUTFITTER_UPGRADES,
   outfitterOffers,
+  payablePokemonCount,
   paymentCandidates,
   pokemonNeedingRecovery,
   quoteRecovery,
@@ -48,7 +49,9 @@ import {
   wardTreatmentsPerRaid,
   berthSquares,
   type Deployment,
+  type TraderBarterOffer,
   type TraderCounter,
+  type TraderStockOffer,
   type OutfitterOffer,
   type OutfitterUpgrade,
   type OutfitterVault,
@@ -57,6 +60,7 @@ import {
 } from '../hub';
 import {
   Bag,
+  CURRENCY_ITEM_ID,
   HELD_ITEM_DEFINITIONS,
   ITEM_DEFINITIONS,
   FOUND_ONLY_IDS,
@@ -64,6 +68,7 @@ import {
   cargoCells,
   footprintOf,
   getHeldItem,
+  getItemById,
   gridCells,
   isFoundOnly,
   type ItemDefinition,
@@ -141,6 +146,13 @@ import {
   pixelWindow,
   takeDownPixelStatus,
 } from '../ui/pixelUi';
+import {
+  pricePart,
+  shopDetailPane,
+  shopPaidColumn,
+  shopPriceColumn,
+  type ShopPricePart,
+} from '../ui/shopDetail';
 import { starterCards } from '../ui/starterPicker';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP } from '../ui/countSelector';
 
@@ -150,6 +162,9 @@ export interface HubSceneData {
 
 /** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
 type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'outfitter' | 'trader';
+
+/** What `traderArmed` holds for the berth, which is the one deal with no id. */
+const BERTH_DEAL = 'berth';
 
 export class HubScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
@@ -168,6 +183,13 @@ export class HubScene extends Phaser.Scene {
   private outfitterPayment: string[] = [];
   /** A payment only runs from an explicit second click, exactly as a swap does. */
   private outfitterArmed = false;
+  /**
+   * The deal on the boat asked but not yet struck: a barter id, or `BERTH_DEAL`.
+   *
+   * Found goods and a berth are spent for good, so neither goes through on one
+   * press. It is one at a time, because arming a second disarms the first.
+   */
+  private traderArmed: string | undefined;
   /**
    * Set once a raid has been committed to. The screen stays up and keeps its
    * cursor on `Enter the raid` for the length of the fade, so a second press of
@@ -241,6 +263,7 @@ export class HubScene extends Phaser.Scene {
     this.outfitterUpgradeId = undefined;
     this.outfitterPayment = [];
     this.outfitterArmed = false;
+    this.traderArmed = undefined;
     this.deploying = false;
     // A fresh look at a freshly loaded vault: nothing narrowed, nothing picked up.
     this.boxScope = 0;
@@ -617,6 +640,7 @@ export class HubScene extends Phaser.Scene {
     this.outfitterUpgradeId = undefined;
     this.outfitterPayment = [];
     this.outfitterArmed = false;
+    this.traderArmed = undefined;
     if (view === 'reselect') {
       this.reselectStarterId = this.startingStarterId();
     }
@@ -1056,15 +1080,26 @@ export class HubScene extends Phaser.Scene {
       this.counterCounts.delete(`buy:${button.dataset.buy}`);
       this.dealAtCounter(() => this.saveManager.buyTraderStock(button.dataset.buy!, count));
     });
-    on('[data-barter]', (button) => {
-      const count = this.counterCounts.get(`barter:${button.dataset.barter}`) ?? 1;
-      this.counterCounts.delete(`barter:${button.dataset.barter}`);
-      this.dealAtCounter(() => this.saveManager.takeTraderBarter(button.dataset.barter!, count));
+    // Found goods are gone for good, so the row asks before it takes them: the
+    // first press arms the deal and the second is a different button, with the
+    // cursor on the one that keeps them (`armedDeal`).
+    on('[data-barter]', (button) => rerender(() => { this.traderArmed = button.dataset.barter; }));
+    on('[data-deal-cancel]', () => rerender(() => { this.traderArmed = undefined; }));
+    on('[data-barter-confirm]', (button) => {
+      const barterId = button.dataset.barterConfirm!;
+      const count = this.counterCounts.get(`barter:${barterId}`) ?? 1;
+      this.counterCounts.delete(`barter:${barterId}`);
+      this.traderArmed = undefined;
+      this.dealAtCounter(() => this.saveManager.takeTraderBarter(barterId, count));
     });
     on('[data-count-dir]', (button, event) =>
       this.stepCount(button.closest<HTMLElement>('.px-count'), Number(button.dataset.countDir) * (event.shiftKey ? COUNT_BIG_STEP : 1)),
     );
-    on('[data-berth]', () => this.dealAtCounter(() => this.saveManager.buyTraderBerth()));
+    on('[data-berth]', () => rerender(() => { this.traderArmed = BERTH_DEAL; }));
+    on('[data-berth-confirm]', () => {
+      this.traderArmed = undefined;
+      this.dealAtCounter(() => this.saveManager.buyTraderBerth());
+    });
     on('[data-refused]', (button) => this.setStatus(button.dataset.refused));
     on('[data-deploy-flow]', () => this.openDeployment());
     on('[data-contract]', (button) => this.openDeployment(button.dataset.contract as RunInsertionId));
@@ -2204,9 +2239,15 @@ export class HubScene extends Phaser.Scene {
     const left = rationLeft(counter);
     const stock = traderStockOffers(counter);
     const barters = traderBarterOffers(counter);
+    // Where the cursor lands on this screen - and nowhere, while a deal is
+    // asking: `refocus` takes the *first* `data-cursor-start` in the document,
+    // so a shelf row still carrying one took the cursor off the armed strip and
+    // the second press of the key that armed the deal bought a Poke Ball.
     const first =
-      stock.find((offer) => offer.refusal === undefined) ??
-      barters.find((offer) => offer.refusal === undefined);
+      this.traderArmed !== undefined
+        ? undefined
+        : (stock.find((offer) => offer.refusal === undefined) ??
+          barters.find((offer) => offer.refusal === undefined));
 
     const standingNote = next
       ? `${traderStandingPoints(counter.progress)} with him · ${next.pointsShort} more for ${next.tier.name}`
@@ -2228,21 +2269,35 @@ export class HubScene extends Phaser.Scene {
       .map((offer) => {
         const name = this.itemName(offer.item.itemId);
         const limit = traderStockLimit(counter, offer.item);
-        if (offer.refusal === undefined && limit > 0) {
-          const count = clampCount(this.counterCounts.get(`buy:${offer.item.itemId}`) ?? 1, 1, limit);
+        const what = getItemById(offer.item.itemId)?.description ?? '';
+        const open = offer.refusal === undefined && limit > 0;
+        const count = open ? clampCount(this.counterCounts.get(`buy:${offer.item.itemId}`) ?? 1, 1, limit) : 1;
+        const price = shopPriceColumn([
+          {
+            ask: `${offer.item.price * count} scrip`,
+            short: offer.refusal === 'scrip-short' || scripHeld(this.stash) < offer.item.price * count,
+          },
+        ]);
+        if (open) {
           const help = `Buy ${count} ${name} for ${offer.item.price * count} scrip. ${limit === 1 ? 'That is all this trip allows' : `Up to ${limit} this trip`}.`;
-          // The row is a pair now, because a quantity is a control of its own:
-          // the row still buys, and the selector beside it says how many.
-          return `<div class="px-pair"><button class="px-row has-icon" data-buy="${offer.item.itemId}" data-help="${escapeAttribute(help)}"${offer === first ? ' data-cursor-start' : ''}>${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}</strong><small>Buy${count > 1 ? ` ${count}` : ''} · ${offer.item.price * count} scrip</small></span></button>${countSelector({ kind: 'buy', id: offer.item.itemId, label: name, value: count, min: 1, max: limit, help, limit: traderStockLimitReason(counter, offer.item) })}</div>`;
+          // The row is a pair, because a quantity is a control of its own: the
+          // row still buys, and the selector beside it says how many. What the
+          // thing *does* is the row's own line either way - a shelf that only
+          // priced its stock told a player nothing they did not already know.
+          return `<div class="px-pair"><button class="px-row has-icon px-tall px-priced" data-buy="${offer.item.itemId}" data-shows="${offer.item.itemId}" data-help="${escapeAttribute(help)}"${offer === first ? ' data-cursor-start' : ''}>${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}${count > 1 ? ` ×${count}` : ''}</strong><small class="px-wrap">${what}</small></span>${price}</button>${countSelector({ kind: 'buy', id: offer.item.itemId, label: name, value: count, min: 1, max: limit, help, limit: traderStockLimitReason(counter, offer.item) })}</div>`;
         }
         const tag = pixelTag(offer.refusal === 'scrip-short' ? 'Short' : offer.refusal === 'ration-spent' ? 'Spent' : 'Locked');
         // Never `disabled`: the cursor has to reach a row to say why it is shut.
         const wiring = `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
-        return `<button class="px-row has-icon" ${wiring}>${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}</strong><small>${offer.item.price} scrip</small></span>${tag}</button>`;
+        return `<button class="px-row has-icon px-tall px-priced" ${wiring} data-shows="${offer.item.itemId}">${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}</strong><small class="px-wrap">${what}</small></span>${price}${tag}</button>`;
       })
       .join('');
+    const shelfShown = stock.find((offer) => offer.refusal === undefined) ?? stock[0];
+    const shelfDetails = stock
+      .map((offer) => this.stockDetail(counter, offer, offer === shelfShown))
+      .join('');
     const shelfPane = pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${shelf}</div>${this.berthRow(counter)}`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pricedCounted)}>${shelf}</div>${shelfDetails}${this.berthRow(counter)}`,
       {
         className: 'objectives-panel trader-shelf',
         heading: 'Off the deck',
@@ -2259,35 +2314,56 @@ export class HubScene extends Phaser.Scene {
         const { barter } = offer;
         const taken = offer.refusal === 'already-taken';
         const limit = traderBarterLimit(counter, barter);
-        if (offer.refusal === undefined && !barter.once && limit > 1) {
-          // A barter that repeats can be struck several times over, as many as
-          // the vault's goods cover.
-          const count = clampCount(this.counterCounts.get(`barter:${barter.id}`) ?? 1, 1, limit);
-          const takes = formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })));
-          const help = `Hand over ${takes} for ${count} ${barter.name}${count === 1 ? '' : 's'}. No scrip changes hands.`;
-          const goods = barter.takes.map(({ itemId }) => this.itemName(itemId).toLowerCase()).join(' and ');
-          return `<div class="px-pair"><button class="px-row has-icon px-tall" data-barter="${barter.id}" data-shows="${barter.id}" data-help="${escapeAttribute(help)}"${offer === first ? ' data-cursor-start' : ''}>${iconMarkup(barter.icon, barter.name)}<span class="px-row-main"><strong class="px-name">${barter.name}</strong><small class="px-wrap">${takes}</small></span></button>${countSelector({ kind: 'barter', id: barter.id, label: barter.name, value: count, min: 1, max: limit, help, limit: `Your ${goods} cover ${limit} at most.` })}</div>`;
+        const what = getItemById(barter.gives.itemId)?.description ?? barter.detail;
+        const repeats = offer.refusal === undefined && !barter.once && limit > 1;
+        const count = repeats ? clampCount(this.counterCounts.get(`barter:${barter.id}`) ?? 1, 1, limit) : 1;
+        if (this.traderArmed === barter.id) {
+          return this.armedDeal({
+            id: barter.id,
+            icon: iconMarkup(barter.icon, barter.name),
+            name: count > 1 ? `${barter.name} ×${count}` : barter.name,
+            question: `Hand over ${formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for good?`,
+            confirm: `data-barter-confirm="${barter.id}"`,
+            confirmLabel: 'Hand it over',
+            confirmHelp: `Spends ${escapeAttribute(formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }))))} for good.`,
+          });
         }
+        const price = shopPriceColumn(
+          taken
+            ? [{ ask: 'Traded' }]
+            : barter.takes.map(({ itemId, quantity }) =>
+                pricePart(
+                  formatTraderStacks([{ itemId, quantity: quantity * count }]),
+                  this.stash.itemCount(itemId),
+                  quantity * count,
+                  'in the vault',
+                  itemIcon(itemId, this.itemName(itemId)),
+                ),
+              ),
+        );
         const tag = taken
           ? pixelTag('Traded', 'secure', true)
           : offer.refusal === undefined
             ? pixelTag('Trade', 'good')
             : pixelTag(offer.refusal === 'goods-short' ? 'Short' : 'Locked');
+        const goods = barter.takes.map(({ itemId }) => this.itemName(itemId).toLowerCase()).join(' and ');
+        const help =
+          offer.refusal === undefined
+            ? `Hand over ${formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count })))} for ${count === 1 ? `a ${barter.name}` : `${count} ${barter.name}s`}. He asks again.`
+            : offer.message ?? '';
         const wiring =
           offer.refusal === undefined
-            ? `data-barter="${barter.id}" data-help="${escapeAttribute(`Hand over ${formatTraderStacks(barter.takes)} for a ${barter.name}. No scrip changes hands.`)}"`
-            : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
-        return `<button class="px-row has-icon px-tall${taken ? ' is-secured' : ''}" ${wiring} data-shows="${barter.id}"${offer === first ? ' data-cursor-start' : ''}>${iconMarkup(barter.icon, barter.name)}<span class="px-row-main"><strong class="px-name">${barter.name}</strong><small class="px-wrap">${formatTraderStacks(barter.takes)}</small></span>${tag}</button>`;
+            ? `data-barter="${barter.id}" data-help="${escapeAttribute(help)}"`
+            : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(help)}"`;
+        const row = `<button class="px-row has-icon px-tall px-priced${taken ? ' is-secured' : ''}" ${wiring} data-shows="${barter.id}"${offer === first ? ' data-cursor-start' : ''}>${iconMarkup(barter.icon, barter.name)}<span class="px-row-main"><strong class="px-name">${barter.name}</strong><small class="px-wrap">${what}</small></span>${price}${taken ? tag : repeats ? '' : tag}</button>`;
+        return repeats
+          ? `<div class="px-pair">${row}${countSelector({ kind: 'barter', id: barter.id, label: barter.name, value: count, min: 1, max: limit, help, limit: `Your ${goods} cover ${limit} at most.` })}</div>`
+          : row;
       })
       .join('');
     const shown = barters.find((offer) => offer.refusal === undefined) ?? barters[0];
-    const details = barters
-      .map(
-        (offer) =>
-          `<div class="px-detail" data-shown-by="${offer.barter.id}"${offer === shown ? '' : ' hidden'}><span class="px-wrap">${offer.barter.detail}</span></div>`,
-      )
-      .join('');
-    const tablePane = pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${table}</div>${details}`, {
+    const details = barters.map((offer) => this.barterDetail(offer, offer === shown)).join('');
+    const tablePane = pixelWindow(`<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pricedCounted)}>${table}</div>${details}`, {
       className: 'objectives-panel trader-table',
       heading: 'Out of the hold',
       // Short, because a heading bar's note clips: "Found goods only · no scrip
@@ -2307,23 +2383,128 @@ export class HubScene extends Phaser.Scene {
    * itself - the words that keep it distinct from the Outfitter's locker, which
    * is the same stack for good. That comparison is the help bar's, not the
    * row's: spelled out on the row it wrapped to three lines and took the shelf
-   * above it down to two and a half.
+   * above it down to two and a half. Its price is the row's own price column,
+   * as every other price on these two screens now is.
    */
   private berthRow(counter: TraderCounter): string {
     const offer = checkBerth(counter);
     const paid = offer.refusal === 'already-paid';
     const squares = berthSquares(this.flow.secureGrid);
+    const heading = '<h3 class="px-subheading">A berth in the hold</h3>';
+    if (this.traderArmed === BERTH_DEAL) {
+      return `<div class="px-list">${heading}${this.armedDeal({
+        id: BERTH_DEAL,
+        icon: iconMarkup('supply-crate', 'Berth'),
+        name: 'Berth',
+        question: `Pay ${TRADER_BERTH_PRICE} scrip for one raid, used or not?`,
+        confirm: 'data-berth-confirm',
+        confirmLabel: 'Pay for it',
+        confirmHelp: `Spends ${TRADER_BERTH_PRICE} scrip on the coming raid.`,
+      })}</div>`;
+    }
     const wiring = paid
       ? `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`
       : offer.refusal === undefined
-        ? `data-berth data-help="${escapeAttribute(`Pay ${TRADER_BERTH_PRICE} scrip for one more protected stack on the next raid, used or not. The Outfitter builds one for good.`)}"`
+        ? `data-berth data-help="${escapeAttribute(`One more protected stack for one raid. The Outfitter builds one for good.`)}"`
         : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
     const tag = paid
       ? pixelTag('Paid', 'secure', true)
       : offer.refusal === undefined
         ? pixelTag('Rent', 'good')
         : pixelTag(offer.refusal === 'scrip-short' ? 'Short' : 'Locked');
-    return `<div class="px-list"><h3 class="px-subheading">A berth in the hold</h3><button class="px-row has-icon px-tall${paid ? ' is-secured' : ''}" ${wiring}>${iconMarkup('supply-crate', 'Berth')}<span class="px-row-main"><strong class="px-name">Berth · ${TRADER_BERTH_PRICE} scrip</strong><small class="px-wrap">+${squares} protected squares, this raid.</small></span>${tag}</button></div>`;
+    const price = paid
+      ? shopPaidColumn(`${TRADER_BERTH_PRICE} scrip`)
+      : shopPriceColumn([
+          { ask: `${TRADER_BERTH_PRICE} scrip`, short: offer.refusal === 'scrip-short' },
+        ]);
+    return `<div class="px-list">${heading}<button class="px-row has-icon px-tall px-priced${paid ? ' is-secured' : ''}" ${wiring}>${iconMarkup('supply-crate', 'Berth')}<span class="px-row-main"><strong class="px-name">Berth</strong><small class="px-wrap">+${squares} protected squares, this raid.</small></span>${price}${tag}</button></div>`;
+  }
+
+  /** What the shelf's pointed-at row is, what it costs, and what is shutting it. */
+  private stockDetail(counter: TraderCounter, offer: TraderStockOffer, shown: boolean): string {
+    const { item } = offer;
+    const held = scripHeld(this.stash);
+    const left = rationLeft(counter);
+    const ration = traderStanding(counter.progress).ration;
+    const footprint = footprintOf(item.itemId);
+    const squares = footprint.width * footprint.height;
+    return shopDetailPane({
+      id: item.itemId,
+      shown,
+      effect: getItemById(item.itemId)?.description ?? this.itemName(item.itemId),
+      // Short on purpose: this pane stands in the narrow half of the screen,
+      // under a list of five, and the row above it has already said what the
+      // thing does. What it adds is the room it takes and the two gates.
+      detail: `${squares} ${squares === 1 ? 'square' : 'squares'} in the pack.`,
+      priceLabel: 'Price',
+      price: [
+        pricePart(`${item.price} scrip`, held, item.price, 'in the vault', itemIcon(CURRENCY_ITEM_ID, 'Scrip')),
+        {
+          ask: '1 of his ration',
+          held: ration === 0 ? 'he sells you nothing yet' : `${left} of ${ration} left this trip`,
+          short: left <= 0,
+        },
+      ],
+      ...(offer.refusal === undefined
+        ? { note: 'A ration not spent is gone with the trip.' }
+        : { blocked: offer.message ?? '' }),
+    });
+  }
+
+  /** What one barter hands over and what it hands back, before either is spent. */
+  private barterDetail(offer: TraderBarterOffer, shown: boolean): string {
+    const { barter } = offer;
+    const taken = offer.refusal === 'already-taken';
+    const count = barter.once
+      ? 1
+      : clampCount(this.counterCounts.get(`barter:${barter.id}`) ?? 1, 1, Math.max(1, traderBarterLimit(this.traderCounter, barter)));
+    return shopDetailPane({
+      id: barter.id,
+      shown,
+      effect: getItemById(barter.gives.itemId)?.description ?? barter.name,
+      detail: barter.detail,
+      priceLabel: taken ? 'What it took' : 'You hand over',
+      price: barter.takes.map(({ itemId, quantity }) =>
+        taken
+          ? { ask: formatTraderStacks([{ itemId, quantity }]), icon: itemIcon(itemId, this.itemName(itemId)) }
+          : pricePart(
+              formatTraderStacks([{ itemId, quantity: quantity * count }]),
+              this.stash.itemCount(itemId),
+              quantity * count,
+              'in the vault',
+              itemIcon(itemId, this.itemName(itemId)),
+            ),
+      ),
+      ...(taken
+        ? { note: 'Traded, and he only had the one.' }
+        : offer.refusal === undefined
+          ? { note: 'No scrip changes hands, and found goods are the only thing that buys this.' }
+          : { blocked: offer.message ?? '' }),
+    });
+  }
+
+  /**
+   * A deal asked again before it is struck.
+   *
+   * Found goods and a berth are both spent for good on one press, and the
+   * Outfitter has asked twice since it existed. This is the same promise on the
+   * boat, kept without a screen of its own: the row becomes the question and
+   * two buttons, with the cursor on the one that changes nothing - because the
+   * key that armed the deal is still under the player's finger, which is why
+   * `trainerChallengePrompt` opens on BACK AWAY and the payment bar opens on
+   * KEEP. Nothing about the shelf is armed: a Potion for scrip is an ordinary
+   * purchase, already rationed, and asking twice for one would be friction.
+   */
+  private armedDeal(deal: {
+    readonly id: string;
+    readonly icon: string;
+    readonly name: string;
+    readonly question: string;
+    readonly confirm: string;
+    readonly confirmLabel: string;
+    readonly confirmHelp: string;
+  }): string {
+    return `<div class="px-pair px-arming" data-shows="${deal.id}"><div class="px-row has-icon px-tall">${deal.icon}<span class="px-row-main"><strong class="px-name">${deal.name}</strong><small class="px-wrap px-warning">${deal.question}</small></span></div><div class="px-bar-actions"><button class="px-window px-button" data-deal-cancel data-cursor-start data-shows="${deal.id}" data-help="Nothing changes.">Keep them</button><button class="px-window px-button is-danger" ${deal.confirm} data-shows="${deal.id}" data-help="${deal.confirmHelp}">${deal.confirmLabel}</button></div></div>`;
   }
 
   /**
@@ -2363,23 +2544,41 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * A rung's price with the parts this vault cannot yet pay picked out, so one
-   * line says both what it costs and what is still missing. A second "short"
-   * line per rung is what ran the ladder past the frame on the smallest stage.
+   * A rung's price against this vault: one part a line, each carrying what the
+   * base actually holds towards it, and red on whatever it cannot cover.
+   *
+   * Both halves are counted the way they are *spent* rather than owned - the
+   * Pokemon by `payablePokemonCount`, which never offers the last one fit to
+   * raid, and the supplies by `spendableSupply`, which is what stands above the
+   * wipe kit. A price beside a number the player cannot spend is worse than no
+   * number at all.
    */
-  private pricedAgainstVault(offer: OutfitterOffer): string {
+  private pricedAgainstVault(offer: OutfitterOffer): readonly ShopPricePart[] {
     const { cost } = offer.upgrade;
-    const mark = (text: string, short: boolean): string =>
-      short ? `<span class="cost-short" title="Not enough spare at base yet">${text}</span>` : text;
+    const payable = payablePokemonCount(this.outfitterVault);
     return [
-      mark(`${cost.pokemon} Pokémon`, offer.pokemonShort > 0),
-      ...cost.supplies.map((stack) =>
-        mark(
-          formatStacks([stack]),
-          offer.suppliesShort.some((short) => short.itemId === stack.itemId),
+      pricePart(`${cost.pokemon} Pokémon`, payable, cost.pokemon, 'you can release'),
+      ...cost.supplies.map(({ itemId, quantity }) =>
+        pricePart(
+          formatStacks([{ itemId, quantity }]),
+          spendableSupply(this.outfitterVault, itemId),
+          quantity,
+          'spare at base',
+          itemIcon(itemId, this.itemName(itemId)),
         ),
       ),
-    ].join(' + ');
+    ];
+  }
+
+  /** The same price with nothing said about the vault: what a built rung cost. */
+  private priceAsPaid(upgrade: OutfitterUpgrade): readonly ShopPricePart[] {
+    return [
+      { ask: `${upgrade.cost.pokemon} Pokémon` },
+      ...upgrade.cost.supplies.map(({ itemId, quantity }) => ({
+        ask: formatStacks([{ itemId, quantity }]),
+        icon: itemIcon(itemId, this.itemName(itemId)),
+      })),
+    ];
   }
 
   /** Why a rung cannot be built yet, as the status line says it when one is chosen. */
@@ -2396,9 +2595,16 @@ export class HubScene extends Phaser.Scene {
 
   /**
    * The ladder. Every rung is listed whether or not it can be afforded, with
-   * what it still needs, because a goal the player cannot see is not a goal. A
-   * rung is a name and a price, the way a shop shelf is; what the pointed-at
-   * rung does is one pane under the list, so seven rungs stay two lines each.
+   * what it still needs, because a goal the player cannot see is not a goal.
+   *
+   * A rung's own line is **what it does**, built or not. It used to be the
+   * price while unbought and the effect once built, which hid what a thing was
+   * at exactly the moment a player was deciding whether to buy it and explained
+   * the purchase only once the money was gone. The price is a column of its own
+   * on the right, the way a shop shelf has always answered both questions at
+   * once, and the whole picture - the longer promise, the price against this
+   * vault, and whatever is stopping it - is the pane under the list, which
+   * follows the cursor. See `ui/shopDetail.ts`.
    */
   private outfitterView(): string {
     const ladder = this.outfitterLadder;
@@ -2412,31 +2618,64 @@ export class HubScene extends Phaser.Scene {
           : offer.affordable
             ? pixelTag('Build', 'good')
             : pixelTag(offer.state === 'locked' ? 'Locked' : 'Short');
-        const line = built
-          ? upgrade.effect
-          : `${offer.state === 'locked' ? `After ${offer.requires?.name ?? 'an earlier upgrade'}: ` : 'Costs '}${this.pricedAgainstVault(offer)}`;
+        // A locked rung says which door it is behind on the row as well as in
+        // the pane: "Locked" alone sends the player looking for the answer.
+        const gate =
+          offer.state === 'locked'
+            ? `<small class="px-wrap px-note">After ${offer.requires?.name ?? 'an earlier upgrade'}</small>`
+            : '';
+        const price = built
+          ? shopPaidColumn('Paid')
+          : shopPriceColumn(this.pricedAgainstVault(offer));
         // Not `disabled`: the cursor has to reach a rung to say what it does.
         const wiring = built
           ? `data-built="${upgrade.id}"`
           : `data-outfit="${upgrade.id}"${offer.affordable ? '' : ' aria-disabled="true"'}`;
-        return `<button class="px-row has-icon px-tall${built ? ' is-secured' : ''}" ${wiring}${offer === first ? ' data-cursor-start' : ''} data-shows="${upgrade.id}" data-help="${escapeAttribute(upgrade.effect)}">${iconMarkup(upgrade.icon, upgrade.name)}<span class="px-row-main"><strong class="px-name">${upgrade.name}</strong><small class="px-wrap">${line}</small></span>${tag}</button>`;
+        // One line of the help bar, which is 26 game pixels deep and clips: at
+        // the smallest stage a second line hangs a pixel over its own bar. The
+        // price is on the row and the whole of it is in the pane, so the bar
+        // says what pressing this does and nothing else.
+        const help = built
+          ? `${upgrade.name} already stands at base.`
+          : offer.affordable
+            ? `Build ${upgrade.name}: you name the Pokémon it releases.`
+            : this.shortfallLine(offer);
+        return `<button class="px-row has-icon px-tall px-priced${built ? ' is-secured' : ''}" ${wiring}${offer === first ? ' data-cursor-start' : ''} data-shows="${upgrade.id}" data-help="${escapeAttribute(help)}">${iconMarkup(upgrade.icon, upgrade.name)}<span class="px-row-main"><strong class="px-name">${upgrade.name}</strong><small class="px-wrap">${upgrade.effect}</small>${gate}</span>${price}${tag}</button>`;
       })
       .join('');
     const shown = first ?? ladder[0];
-    const details = ladder
-      .map(
-        ({ upgrade }) =>
-          `<div class="px-detail" data-shown-by="${upgrade.id}"${upgrade === shown?.upgrade ? '' : ' hidden'}><span class="px-wrap">${upgrade.detail}</span></div>`,
-      )
-      .join('');
+    const details = ladder.map((offer) => this.outfitterDetail(offer, offer === shown)).join('');
     return `<main class="px-body outfitter-layout">${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.brief)}>${rows}</div>${details}`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.priced)}>${rows}</div>${details}`,
       {
         className: 'objectives-panel',
         heading: 'What extraction buys',
         note: 'Red is not yet spare at base',
       },
     )}</main>`;
+  }
+
+  /** One rung, whole: what it does, what it costs against this vault, and its gate. */
+  private outfitterDetail(offer: OutfitterOffer, shown: boolean): string {
+    const { upgrade } = offer;
+    const built = offer.state === 'built';
+    return shopDetailPane({
+      id: upgrade.id,
+      shown,
+      effect: upgrade.effect,
+      detail: upgrade.detail,
+      priceLabel: built ? 'What it cost' : 'Price',
+      price: built ? this.priceAsPaid(upgrade) : this.pricedAgainstVault(offer),
+      ...(built
+        ? { note: 'Built. It stands at base for good, on every raid from here.' }
+        : offer.state === 'locked'
+          ? {
+              blocked: `Built only after ${offer.requires?.name ?? 'an earlier upgrade'}, which is still unbuilt.`,
+            }
+          : offer.affordable
+            ? { note: 'You can pay for this now. Building names the Pokémon you release.' }
+            : { blocked: this.shortfallLine(offer) }),
+    });
   }
 
   /**

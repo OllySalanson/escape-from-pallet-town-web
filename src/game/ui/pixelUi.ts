@@ -38,6 +38,17 @@ export const COLUMN_MEASURES = {
   countedSupply: 196,
   /** A name over a wrapped sentence: a contract, an Outfitter rung, a deal. */
   brief: 260,
+  /**
+   * The same, with a price in a column of its own on the right: the shelves.
+   *
+   * Wider than `brief` by exactly what a price of two materials takes - "2×
+   * Mooring rope" is the longest one the game ships - because the price is
+   * beside the name rather than under it (`ui/shopDetail.ts`), and a column
+   * that dropped it onto a second line would put the shelf back where it was.
+   */
+  priced: 340,
+  /** A priced row with a +/- selector beside it, which is 32 pixels wider. */
+  pricedCounted: 372,
   /** One line: a way in, a move, an exit, a door, a species on a table. */
   line: 176,
 } as const;

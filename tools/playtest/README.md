@@ -164,10 +164,22 @@ the number the menus-against-the-window change (`src/game/display/menuStage.ts`)
 is judged by. It fails the run on a row cut through its waist, anything drawn
 outside its screen, a scrollbar down the side of the browser, a game pixel that
 is not a whole number of screen pixels, a screen standing on half of one, or a
-picture drawn at anything but a whole multiple of its own size. `--raid` adds
+picture drawn at anything but a whole multiple of its own size. What escaped is
+named with the first of its text, because a class name alone never said which of
+five `SPAN`s it was. `--raid` adds
 the three screens only reachable inside a raid, `--resize` drags one screen
 through every window size without reloading, and `--scrollbars` gives Chromium
 its scrollbars back so a pane's own track can be seen.
+
+`shopScreens.mjs <url> <dir> [--window=1600x900]` stands in front of a rung you
+can afford, one you cannot and one behind a door, and asks the screen the four
+questions a player asks before spending: what is it, what does it cost, what do
+I hold, and what is stopping me. It walks the cursor with the **arrow keys**,
+because the pane under the list has to follow the cursor and not the mouse, and
+it does the same at the Ferryman's shelf and his barter table. It fails a row
+that says only one of those four, a price in the pane whose asks do not line up,
+anything drawn off the screen, and a barter whose *first* press spends the goods
+- which is the one promise of that screen a screenshot cannot show.
 
 `worldAnchors.mjs <url> [--window=WxH]` prints the canvas box, the stage, the
 dialogue box and every caption the world has on screen, so the one thing the two
