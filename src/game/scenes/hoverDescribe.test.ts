@@ -10,7 +10,7 @@ vi.mock('phaser', () => ({
 
 import { Bag } from '../items';
 import { CHARMANDER, PIDGEY, Pokemon, PokemonParty } from '../pokemon';
-import { describeKey, POINTER_ONLY } from '../ui/hoverDescribe';
+import { describeKey } from '../ui/hoverDescribe';
 import { BagScene } from './BagScene';
 import { PartyScene } from './PartyScene';
 
@@ -18,224 +18,136 @@ import { PartyScene } from './PartyScene';
  * The captain's complaint, held as a test: pointing at a thing in the raid bag
  * has to tell him what it is, and it must not cost him the row he had chosen.
  *
+ * PR #153 answered it with three sources - pointer, then keyboard cursor, then
+ * the thing the player had chosen - because those screens kept a selection of
+ * their own. On a pixel-ui screen there is no second thing: **the cursor is the
+ * selection**, the pointer moves it (`MenuOverlay`'s hover handler), and moving
+ * it commits nothing, so finding out what a RADIO VALVE is cannot cost anything
+ * at all. What is still true either way is held here, against the new markup:
+ * the key a row and its squares share, the answer the help line gives, and the
+ * pane per member with all but one hidden.
+ *
  * There is no DOM in this suite - the project runs vitest on node - so the
- * overlay root is faked down to the two things these screens ask of it: the
- * boxes the detail panel writes into, and the blocks it lights.
+ * overlay root is faked down to the one thing these screens ask of it while
+ * rendering: somewhere to put their markup.
  */
-
-class FakeBox {
-  public textContent = '';
-  public hidden = false;
-  public onclick: (() => void) | null = null;
-  public readonly dataset: Record<string, string | undefined> = {};
-  public readonly classes = new Set<string>();
-  public addEventListener(): void {}
-  public readonly classList = {
-    toggle: (name: string, on: boolean) => {
-      if (on) {
-        this.classes.add(name);
-      } else {
-        this.classes.delete(name);
-      }
-    },
-  };
-}
 
 class FakeRoot {
   public innerHTML = '';
-  private readonly singles = new Map<string, FakeBox>();
-  private readonly lists = new Map<string, FakeBox[]>();
-
-  public seed(selector: string, boxes: readonly FakeBox[]): void {
-    this.lists.set(selector, [...boxes]);
+  public readonly dataset: Record<string, string | undefined> = {};
+  public addEventListener(): void {}
+  public setAttribute(): void {}
+  public querySelector(): null {
+    return null;
   }
-
-  public box(selector: string): FakeBox {
-    const existing = this.singles.get(selector);
-    if (existing) {
-      return existing;
-    }
-    const box = new FakeBox();
-    this.singles.set(selector, box);
-    return box;
-  }
-
-  public addEventListener(): void {
-    // The listeners only ever call `setDescribing`, which the tests call directly.
-  }
-
-  public querySelector(selector: string): FakeBox {
-    return this.box(selector);
-  }
-
-  public querySelectorAll(selector: string): readonly FakeBox[] {
-    return this.lists.get(selector) ?? [];
+  public querySelectorAll(): readonly never[] {
+    return [];
   }
 }
 
-interface BagInternals {
-  init(data: unknown): void;
-  renderModernMenu(): void;
-  choosingPokemon: boolean;
-  setDescribing(pointer: string | null, cursor: string | null): void;
-  applyDescription(): void;
-  selectedItemIndex: number;
-  selectedItem: { readonly id: string } | undefined;
+function render(scene: object, data: unknown): string {
+  const root = new FakeRoot();
+  Object.assign(scene as Record<string, unknown>, {
+    menuOverlay: { root, focus: vi.fn(), refocus: vi.fn() },
+  });
+  (scene as { init(data: unknown): void }).init(data);
+  Object.assign(scene as Record<string, unknown>, {
+    menuOverlay: { root, focus: vi.fn(), refocus: vi.fn() },
+  });
+  (scene as { render(): void }).render();
+  return root.innerHTML;
 }
 
-function createBag(): { scene: BagInternals; root: FakeRoot; potion: FakeBox; antidote: FakeBox } {
+function bagMarkup(over: { readonly using?: string } = {}): string {
   const bag = new Bag();
   bag.add('potion', 2);
   bag.add('antidote', 1);
-  const root = new FakeRoot();
-  const potion = new FakeBox();
-  potion.dataset.describes = describeKey('item', 'potion');
-  const antidote = new FakeBox();
-  antidote.dataset.describes = describeKey('item', 'antidote');
-  root.seed('.raid-grid-block', [potion, antidote]);
-  const scene = Object.create(BagScene.prototype) as BagInternals;
-  Object.assign(scene as unknown as Record<string, unknown>, {
-    menuOverlay: { root, focus: vi.fn() },
-  });
-  scene.init({ bag, party: new PokemonParty(), onItemUsed: vi.fn() });
-  Object.assign(scene as unknown as Record<string, unknown>, {
+  const scene = Object.create(BagScene.prototype) as object;
+  const markup = render(scene, {
     bag,
-    party: new PokemonParty(),
+    party: new PokemonParty([new Pokemon(CHARMANDER, 7)]),
     onItemUsed: vi.fn(),
   });
-  return { scene, root, potion, antidote };
-}
-
-describe('pointing at something in the raid bag', () => {
-  it('tells you what it is without choosing it', () => {
-    const { scene, root } = createBag();
-    scene.applyDescription();
-    expect(root.box('[data-detail-name]').textContent).toBe('Potion');
-
-    scene.setDescribing(describeKey('item', 'antidote'), null);
-    expect(root.box('[data-detail-name]').textContent).toBe('Antidote');
-    expect(root.box('[data-detail-description]').textContent).toContain('poison');
-    // The whole point: the row the player chose is still the row they chose.
-    expect(scene.selectedItemIndex).toBe(0);
-    expect(scene.selectedItem?.id).toBe('potion');
-  });
-
-  it('gives the panel back to the chosen item when the pointer leaves', () => {
-    const { scene, root } = createBag();
-    scene.setDescribing(describeKey('item', 'antidote'), null);
-    scene.setDescribing(null, null);
-    expect(root.box('[data-detail-name]').textContent).toBe('Potion');
-    expect(scene.selectedItemIndex).toBe(0);
-  });
-
-  it('lights that item where it sits in the pack', () => {
-    const { scene, potion, antidote } = createBag();
-    scene.applyDescription();
-    expect(potion.classes.has('marked')).toBe(true);
-    expect(antidote.classes.has('marked')).toBe(false);
-
-    scene.setDescribing(describeKey('item', 'antidote'), null);
-    expect(antidote.classes.has('marked')).toBe(true);
-    expect(potion.classes.has('marked')).toBe(false);
-  });
-
-  it('answers the keyboard cursor too, and lets the pointer overrule it', () => {
-    const { scene, root } = createBag();
-    scene.setDescribing(null, describeKey('item', 'antidote'));
-    expect(root.box('[data-detail-name]').textContent).toBe('Antidote');
-    scene.setDescribing(describeKey('item', 'potion'), describeKey('item', 'antidote'));
-    expect(root.box('[data-detail-name]').textContent).toBe('Potion');
-    expect(scene.selectedItemIndex).toBe(0);
-  });
-
-  it('forgets an answer about something the pack no longer holds', () => {
-    const { scene, root } = createBag();
-    scene.setDescribing(describeKey('item', 'super-potion'), null);
-    expect(root.box('[data-detail-name]').textContent).toBe('Potion');
-  });
-
-  it('writes the describe keys onto the rows and the pack blocks', () => {
-    const { scene, root } = createBag();
-    scene.renderModernMenu();
-    expect(root.innerHTML).toContain(`data-describes="${describeKey('item', 'potion')}"`);
-    expect(root.innerHTML).toContain(`data-describes="${describeKey('item', 'antidote')}"`);
-    // The pocket row and the square in the pack carry the same key, which is
-    // what makes pointing at either answer the same question.
-    expect(root.innerHTML).toContain('data-item-index="0" data-describes="item:potion"');
-    expect(root.innerHTML).toContain('class="raid-grid-block" data-describes="item:potion"');
-    // And the group that keeps the answer steady while the pointer crosses the
-    // gap between two rows.
-    expect(root.innerHTML).toContain('data-describe-group');
-  });
-});
-
-describe('a recipient list', () => {
-  it('answers the pointer only, so arrowing through it keeps the item on screen', () => {
-    const { scene, root } = createBag();
-    scene.renderModernMenu();
-    (scene as unknown as { choosingPokemon: boolean }).choosingPokemon = true;
-    Object.assign(scene as unknown as Record<string, unknown>, {
-      party: new PokemonParty([new Pokemon(CHARMANDER, 7)]),
-    });
-    scene.renderModernMenu();
-    expect(root.innerHTML).toContain(`data-describes="${describeKey('pokemon', 0)}" ${POINTER_ONLY}`);
-  });
-});
-
-interface PartyInternals {
-  init(data: unknown): void;
-  renderModernMenu(): void;
-  setDescribing(pointer: string | null, cursor: string | null): void;
-  showDescribedCard(): void;
-  selectedIndex: number;
-}
-
-function createParty(): { scene: PartyInternals; cards: readonly FakeBox[]; root: FakeRoot } {
-  const party = new PokemonParty([new Pokemon(CHARMANDER, 7), new Pokemon(PIDGEY, 5)]);
+  if (over.using === undefined) {
+    return markup;
+  }
+  Object.assign(scene as Record<string, unknown>, { usingItemId: over.using });
   const root = new FakeRoot();
-  const cards = [new FakeBox(), new FakeBox()];
-  cards.forEach((card, index) => { card.dataset.detailFor = String(index); });
-  root.seed('[data-detail-for]', cards);
-  const scene = Object.create(PartyScene.prototype) as PartyInternals;
-  Object.assign(scene as unknown as Record<string, unknown>, {
-    menuOverlay: { root, focus: vi.fn() },
+  Object.assign(scene as Record<string, unknown>, {
+    menuOverlay: { root, focus: vi.fn(), refocus: vi.fn() },
   });
-  scene.init({ party });
-  Object.assign(scene as unknown as Record<string, unknown>, { party, bag: new Bag() });
-  return { scene, cards, root };
+  (scene as { render(): void }).render();
+  return root.innerHTML;
 }
+
+describe('pointing at something in the raid pack', () => {
+  it('is the same question as pointing at its squares', () => {
+    const markup = bagMarkup();
+    // The pocket row and the block it occupies carry one key, which is what
+    // lets a pointer on either answer for the other and light it.
+    expect(markup).toContain(`data-describes="${describeKey('item', 'potion')}"`);
+    expect(markup).toContain(`data-describes="${describeKey('item', 'antidote')}"`);
+    // Once on the row and once on each square the item is seated in - two
+    // Potions are two blocks, because a square holds one of them.
+    expect(markup.match(/px-row[^>]*data-describes="item:potion"/g)?.length).toBe(1);
+    expect(markup.match(/px-grid-block[^>]*data-describes="item:potion"/g)?.length).toBe(2);
+  });
+
+  it('tells you what it is and what pressing it would do, naming the item', () => {
+    const markup = bagMarkup();
+    expect(markup).toContain('Restores 20 HP.');
+    // Never a bare `use item`: the help line is read about whatever the cursor
+    // is on, and the verb has to say what it would spend.
+    expect(markup).toContain('Use Potion on a Pokémon.');
+    expect(markup).toContain('Use Antidote on a Pokémon.');
+  });
+
+  it('costs nothing, because the cursor is the only selection there is', async () => {
+    const source = await import('node:fs/promises').then((fs) =>
+      fs.readFile(new URL('./BagScene.ts', import.meta.url), 'utf8'),
+    );
+    // The fault PR #153 fixed cannot come back in a shape that has no second
+    // highlighted row to lose: there is no chosen index on this screen.
+    expect(source).not.toContain('selectedItemIndex');
+    expect(source).not.toContain('selectedPokemonIndex');
+  });
+
+  it('keeps the item on screen while its recipients are being arrowed through', () => {
+    const markup = bagMarkup({ using: 'potion' });
+    // PR #153's `POINTER_ONLY`, answered by the layout instead: the item is the
+    // window's own lid, so nothing the cursor does inside the list can take it
+    // off the screen.
+    expect(markup).toContain('Use Potion on');
+    expect(markup).toContain('data-target="0"');
+  });
+});
 
 describe('pointing at a member of the raid party', () => {
-  it('shows that member without choosing them', () => {
-    const { scene, cards } = createParty();
-    scene.showDescribedCard();
-    expect(cards[0].hidden).toBe(false);
-    expect(cards[1].hidden).toBe(true);
-
-    scene.setDescribing(describeKey('member', 1), null);
-    expect(cards[1].hidden).toBe(false);
-    expect(cards[0].hidden).toBe(true);
-    expect(scene.selectedIndex).toBe(0);
+  it('builds a pane for every member and shows one, so pointing swaps no markup', () => {
+    const party = new PokemonParty([new Pokemon(CHARMANDER, 7), new Pokemon(PIDGEY, 5)]);
+    const markup = render(Object.create(PartyScene.prototype) as object, { party });
+    expect(markup).toContain('data-shown-by="member-0"');
+    expect(markup).toContain('data-shown-by="member-1" hidden');
+    expect(markup).toContain('data-shows="member-0"');
+    expect(markup).toContain('data-shows="member-1"');
   });
 
-  /**
-   * A card carries gear rows, so a cursor that swapped cards as it passed each
-   * member would move its own next step - which made the first member's gear
-   * unreachable by the arrow keys. See POINTER_ONLY.
-   */
-  it('is a question for the pointer, and every control on a card names its card', () => {
-    const { scene, root } = createParty();
-    scene.renderModernMenu();
-    expect(root.innerHTML).toContain(`data-describes="${describeKey('member', 1)}" ${POINTER_ONLY}`);
-    expect(root.innerHTML).toContain('data-detail-for="1" data-describe-group hidden');
+  it('gives every control on a pane that pane\'s own key', async () => {
+    const source = await import('node:fs/promises').then((fs) =>
+      fs.readFile(new URL('./PartyScene.ts', import.meta.url), 'utf8'),
+    );
+    // A cursor that swapped the pane out from under itself left the first
+    // member's gear unreachable by the arrow keys altogether (PR #153).
+    expect(source).toContain('data-gear-take="${index}" ${shows}');
+    expect(source).toContain('data-gear-member="${index}" ${shows}');
   });
 
-  it('gives the card back to the chosen member when the pointer leaves', () => {
-    const { scene, cards } = createParty();
-    scene.setDescribing(describeKey('member', 1), null);
-    scene.setDescribing(null, null);
-    expect(cards[0].hidden).toBe(false);
-    expect(cards[1].hidden).toBe(true);
-    expect(scene.selectedIndex).toBe(0);
+  it('never leaves the cursor on a control nobody can see', async () => {
+    const source = await import('node:fs/promises').then((fs) =>
+      fs.readFile(new URL('../ui/MenuOverlay.ts', import.meta.url), 'utf8'),
+    );
+    // Every hidden pane is full of buttons, and a hidden one refuses focus in
+    // silence: the cursor reaches it, nothing happens, and it stops dead.
+    expect(source).toContain('control.offsetParent !== null');
   });
 });

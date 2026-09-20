@@ -30,22 +30,18 @@ export function firstMatching<T>(
 export interface BagFocusState {
   /** The recipient list is on screen: the next Enter is meant for a Pokemon. */
   readonly choosingPokemon: boolean;
-  /** This render was caused by picking an item, so its action is what is next. */
-  readonly itemJustChosen: boolean;
 }
 
 /**
  * The raid bag's focus, by what the player is in the middle of.
  *
- * The back button is only ever the last resort - an empty pocket - because it
- * is the one control whose Enter costs something: it resumes the raid clock.
+ * The back button is only ever the last resort - an empty pack - because it is
+ * the one control whose Enter costs something: it resumes the raid clock. The
+ * cursor is otherwise put back on the row it was on by `MenuOverlay.refocus`,
+ * which is why this only has to answer "where does a fresh screen start".
  */
 export function bagFocusPreference(state: BagFocusState): readonly string[] {
-  const selectedItem = '[data-item-index].selected';
-  if (state.choosingPokemon) {
-    return ['[data-target]', selectedItem, '[data-close]'];
-  }
-  return state.itemJustChosen
-    ? ['[data-use]:not([disabled])', selectedItem, '[data-close]']
-    : [selectedItem, '[data-item-index]', '[data-category].active', '[data-close]'];
+  return state.choosingPokemon
+    ? ['[data-target]', '[data-close]']
+    : ['[data-item]', '[data-close]'];
 }

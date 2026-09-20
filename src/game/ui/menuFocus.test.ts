@@ -14,11 +14,11 @@ function menu(controlsInDocumentOrder: readonly string[]): (selector: string) =>
   };
 }
 
-const BAG_CHOOSING = ['[data-close]', '[data-item-index].selected', '[data-target]'];
+const BAG_CHOOSING = ['[data-close]', '[data-item]', '[data-target]'];
 
 describe('menu focus', () => {
   it('reproduces playtest 3 B4: a selector list lands on the back button', () => {
-    expect(menu(BAG_CHOOSING)('[data-item-index].selected, [data-close]')).toBe('[data-close]');
+    expect(menu(BAG_CHOOSING)('[data-item], [data-close]')).toBe('[data-close]');
   });
 
   it('tries a preference one selector at a time, so document order cannot outvote it', () => {
@@ -28,16 +28,14 @@ describe('menu focus', () => {
   });
 
   it('puts the keyboard on the first recipient after "Use item"', () => {
-    const preference = bagFocusPreference({ choosingPokemon: true, itemJustChosen: false });
+    const preference = bagFocusPreference({ choosingPokemon: true });
     expect(firstMatching(menu(BAG_CHOOSING), preference)).toBe('[data-target]');
   });
 
   it('only ever offers the back button as a last resort', () => {
     for (const choosingPokemon of [true, false]) {
-      for (const itemJustChosen of [true, false]) {
-        const preference = bagFocusPreference({ choosingPokemon, itemJustChosen });
-        expect(preference.indexOf('[data-close]')).toBe(preference.length - 1);
-      }
+      const preference = bagFocusPreference({ choosingPokemon });
+      expect(preference.indexOf('[data-close]')).toBe(preference.length - 1);
     }
   });
 
@@ -47,7 +45,7 @@ describe('menu focus', () => {
     for (const scene of ['BagScene', 'PartyScene']) {
       const source = await readFile(new URL(`../scenes/${scene}.ts`, import.meta.url), 'utf8');
       // A comma inside one focus selector is the fault coming back.
-      expect(source).not.toMatch(/\.focus\('[^']*,[^']*'\)/);
+      expect(source).not.toMatch(/\.(?:re)?focus\('[^']*,[^']*'\)/);
     }
   });
 });

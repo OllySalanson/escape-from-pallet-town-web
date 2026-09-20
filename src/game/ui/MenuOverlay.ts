@@ -125,7 +125,7 @@ export class MenuOverlay {
    */
   public refocus(...selectors: string[]): void {
     requestAnimationFrame(() => {
-      const controls = [...this.root.querySelectorAll<HTMLElement>(CURSOR_CONTROLS)];
+      const controls = this.cursorControls();
       const remembered = controls.find((control) => focusKeyOf(control) === this.lastFocusKey);
       this.moveCursorTo(remembered ?? this.firstMatch(selectors));
     });
@@ -141,7 +141,7 @@ export class MenuOverlay {
     if (!direction) {
       return false;
     }
-    const controls = [...this.root.querySelectorAll<HTMLElement>(CURSOR_CONTROLS)];
+    const controls = this.cursorControls();
     const current = controls.indexOf(document.activeElement as HTMLElement);
     const panes: HTMLElement[] = [];
     const rects = controls.map((control) => {
@@ -154,6 +154,21 @@ export class MenuOverlay {
     });
     controls[nextFocusIndex(rects, current, direction)]?.focus();
     return true;
+  }
+
+  /**
+   * Every control the cursor may rest on, *shown*.
+   *
+   * A screen that keeps a pane per row and hides all but one - the stash, the
+   * raid party - has a hidden control for every row of every other pane, and a
+   * hidden one refuses focus silently: the cursor reaches it, nothing happens,
+   * and it stops dead on the row above. `offsetParent` is null for anything
+   * inside `display: none`, which is what `[hidden]` resolves to here.
+   */
+  private cursorControls(): HTMLElement[] {
+    return [...this.root.querySelectorAll<HTMLElement>(CURSOR_CONTROLS)].filter(
+      (control) => control.offsetParent !== null,
+    );
   }
 
   /** Tried one selector at a time - see `menuFocus.ts` for why a list cannot be. */
@@ -344,8 +359,14 @@ export function moreLabel(entries: readonly { readonly bottom: number }[], fold:
   return hidden > 0 ? `${hidden} MORE` : 'MORE';
 }
 
-/** What a scrolling pane's rows are: the things a cut must never go through the middle of. */
-const SCROLL_ROWS = 'button, .px-row, .px-subheading, .px-empty, p';
+/**
+ * What a scrolling pane's rows are: the things a cut must never go through the
+ * middle of. A line of a dossier is one of them - the pane under a list of
+ * Pokemon is made of single lines rather than of rows, and at the smallest
+ * stage the fold ran through `Level 5 · 17/17 HP` and left its top half drawn
+ * with no bottom edge.
+ */
+const SCROLL_ROWS = 'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body small';
 
 /** What the strip counts: the entries a player is looking for, not the bands between them. */
 const SCROLL_ENTRIES = 'button, .px-empty';
@@ -422,20 +443,6 @@ function focusKeyOf(control: HTMLElement): string | null {
   return entries.length === 0
     ? null
     : entries.map(([name, value]) => `${name}=${value}`).sort().join('|');
-}
-
-export function pokemonAvatar(dexId: number, name: string): string {
-  return `<span class="pokemon-avatar" aria-label="${name}"><img src="/assets/pokemon/front/${dexId}.png" alt="${name} artwork" /><span aria-hidden="true">${name.slice(0, 1)}</span></span>`;
-}
-
-export function hpBar(current: number, max: number): string {
-  const ratio = max === 0 ? 0 : Math.max(0, Math.min(1, current / max));
-  const state = ratio > 0.5 ? 'healthy' : ratio > 0.2 ? 'warning' : 'critical';
-  return `<div class="hp-track" aria-label="HP ${current} of ${max}"><span class="${state}" style="width:${ratio * 100}%"></span></div>`;
-}
-
-export function typeBadge(type: string): string {
-  return `<span class="type-badge type-${type.toLowerCase()}">${type}</span>`;
 }
 
 /**
