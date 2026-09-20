@@ -118,7 +118,14 @@ try {
         for (let read = 0; read < 30; read += 1) {
           if (await page.evaluate(sceneIs('world'))) break;
           const mode = await page.evaluate(`${GAME}.scene.getScene('battle')?.mode`);
-          if (mode === 'main') await choose('RUN');
+          if (mode === 'main') {
+            // A trainer fight cannot be left - the checkpoint on the way to
+            // the reeds is one - so the driver fights whatever will not let go.
+            const commands = await page.evaluate(
+              `JSON.stringify(${GAME}.scene.getScene('battle').commandTexts.map((t) => t.text))`,
+            );
+            await choose(String(commands).includes('RUN') ? 'RUN' : 'FIGHT');
+          } else if (mode === 'moves') await choose('\u25b6');
           else await press('Space');
           await wait(250);
         }
