@@ -1446,33 +1446,36 @@ describe('HubScene - the Ferryman', () => {
 
 /**
  * Two questions a player could not ask anywhere in the game: how close is this
- * Pokemon to its next level, and what does this move actually do.
+ * Pokemon to its next level, and what does this move actually do. They used to
+ * be a screen of their own, opened by a chip on every stash row; they are the
+ * stash's own detail pane now, so the collection and the answer about the thing
+ * in it are one screen.
  */
-describe('the summary screen', () => {
+describe('what the stash says about the Pokémon under the cursor', () => {
   function markupOf(hub: HubInternals): string {
     hub.render();
     return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
   }
 
-  function openSummaryOf(hub: HubInternals, pokemonId: string): string {
-    hub.setView('summary');
-    (hub as unknown as { summaryPokemonId: string }).summaryPokemonId = pokemonId;
+  function stashMarkup(hub: HubInternals): string {
+    hub.setView('stash');
     return markupOf(hub);
   }
 
-  it('is offered from every stash row, whatever that Pokémon is holding', () => {
+  it('holds a pane for every Pokémon in the list, not a chip that opens a screen', () => {
     const { hub } = createHub();
 
-    hub.setView('stash');
-    const stash = markupOf(hub);
+    const stash = stashMarkup(hub);
 
-    // The chip used to come and go with the gear strip it sits in, which hid
-    // the only way to a Pokemon's moves behind what it happened to be carrying.
     const rows = hub.stash.listPokemon();
     expect(rows.length).toBeGreaterThan(0);
     for (const stored of rows) {
-      expect(stash).toContain(`data-summary="${stored.id}"`);
+      // The row points at its own pane, and the pane is on the same screen.
+      expect(stash).toContain(`data-shows="${stored.id}"`);
+      expect(stash).toContain(`data-shown-by="${stored.id}"`);
     }
+    // Nothing on a row opens a second screen about the thing the row is.
+    expect(stash).not.toContain('data-summary=');
   });
 
   it('says how far the next level is, and what each move does', () => {
@@ -1482,44 +1485,42 @@ describe('the summary screen', () => {
     const span = experienceForLevel(pokemon.level + 1) - experienceForLevel(pokemon.level);
     pokemon.experience = experienceForLevel(pokemon.level) + Math.floor(span / 2);
 
-    const summary = openSummaryOf(hub, 'charmander-1');
+    const stash = stashMarkup(hub);
 
-    expect(summary).toContain('px-xp-fill');
-    expect(summary).toContain(`${Math.ceil(span / 2).toLocaleString('en-GB')} XP to Lv ${pokemon.level + 1}`);
+    expect(stash).toContain('px-xp-fill');
+    expect(stash).toContain(`${Math.ceil(span / 2).toLocaleString('en-GB')} XP to Lv ${pokemon.level + 1}`);
     // Every move carries its numbers and the sentence that says what it is for,
-    // in the list's one detail pane.
+    // in the help bar the cursor fills when it rests on the move.
     for (const move of pokemon.moves) {
-      expect(summary).toContain(move.base.name);
-      expect(summary).toContain(`ACC ${move.base.accuracy}`);
-      expect(summary).toContain(move.base.description);
+      expect(stash).toContain(move.base.name);
+      expect(stash).toContain(`ACC ${move.base.accuracy}`);
+      expect(stash).toContain(move.base.description);
     }
-    expect(summary).toContain(`${pokemon.moves.length} of 4 known`);
+    expect(stash).toContain(`${pokemon.moves.length} of 4 known`);
   });
 
-  it('is read-only, and its way back is the stash it was opened from', () => {
+  it('shows one pane at a time: the first, until the cursor says otherwise', () => {
     const { hub } = createHub();
 
-    const summary = openSummaryOf(hub, 'charmander-1');
+    const stash = stashMarkup(hub);
 
-    // Nothing on it commits anything: the only controls are the move rows,
-    // which swap the detail pane, and the way out.
-    expect(summary).not.toContain('data-recover');
-    expect(summary).not.toContain('data-pokemon=');
-    expect(summary).toContain('data-back');
-    expect(summary).toContain('>Stash<');
-
-    (hub as unknown as { goBack(): void }).goBack();
-    expect((hub as unknown as { view: string }).view).toBe('stash');
-    // Leaving lets go of whose summary it was, so a later summary cannot open
-    // on the Pokemon the last one was about.
-    expect((hub as unknown as { summaryPokemonId?: string }).summaryPokemonId).toBeUndefined();
+    const panes = [...stash.matchAll(/data-shown-by="([^"]+)"([^>]*)>/g)];
+    expect(panes.length).toBe(hub.stash.listPokemon().length);
+    expect(panes.filter(([, , rest]) => !rest.includes('hidden')).length).toBe(1);
   });
 
-  it('says so rather than drawing an empty screen when the Pokémon has gone', () => {
+  it('keeps the pane on its own Pokémon while the cursor is inside it', () => {
     const { hub } = createHub();
 
-    const summary = openSummaryOf(hub, 'nobody-here');
+    const stash = stashMarkup(hub);
+    const id = hub.stash.listPokemon()[0].id;
+    const pane = stash.slice(stash.indexOf(`data-shown-by="${id}"`));
 
-    expect(summary).toContain('no longer at base');
+    // `MenuOverlay.showDetailFor` reads the focused control's nearest
+    // `data-shows`, so a control in the pane that carried none would leave the
+    // pane it lives in showing somebody else after a re-render.
+    for (const control of pane.slice(0, pane.indexOf('data-shown-by=', 1)).matchAll(/<button[^>]*>/g)) {
+      expect(control[0]).toContain(`data-shows="${id}"`);
+    }
   });
 });

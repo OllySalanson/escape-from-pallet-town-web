@@ -88,7 +88,10 @@ describe('the pixel-ui stylesheet', () => {
       .flatMap((list) => list.split(/,(?![^()]*\))/))
       .map((selector) => selector.trim());
     expect(selectors.length).toBeGreaterThan(100);
-    expect(selectors.filter((selector) => !/^(:where\(\.pixel-ui\)|\.pixel-ui|\.menu-overlay\.pixel-ui)[ .:]/.test(`${selector} `))).toEqual([]);
+    // The scope may carry a state - `:where(.pixel-ui[data-room='narrow'])` is
+    // how the one rule that needs to know how much room the screen has asks -
+    // but it is still the screen's own class that it hangs from.
+    expect(selectors.filter((selector) => !/^(:where\(\.pixel-ui(\[[^\]]*\])?\)|\.pixel-ui|\.menu-overlay\.pixel-ui)[ .:]/.test(`${selector} `))).toEqual([]);
   });
 
   it('ranks a heading above its own body: the face has no bold cut and one size', () => {

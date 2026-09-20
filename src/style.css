@@ -1618,6 +1618,10 @@ button {
   position: sticky;
   bottom: 0;
   z-index: 1;
+  /* A pane laid out in columns is a grid, and a generated box in a grid takes
+     one cell: the strip was a column wide, drew its rule across a third of the
+     pane and left the rows either side of it cut in half and legible. */
+  grid-column: 1 / -1;
   /* `MenuOverlay.markScrollCues()` sets `--more-cover` when a row would
      otherwise be cut through by the strip: the strip then takes the whole row. */
   height: var(--more-cover, calc(var(--u) * 13));
@@ -1658,6 +1662,30 @@ button {
   display: grid;
   gap: var(--u);
   align-content: start;
+}
+/* --- A collection laid out across the width it has ----------------------- *
+   A list of twenty things on a wide screen is a grid, not a column of twenty.
+   A pane says the narrowest a column of it may be in `data-columns` and
+   `MenuOverlay.layoutColumns()` writes the tracks - counted out in whole game
+   pixels by `ui/columnLayout.ts`, never `1fr`, which divides the room into
+   thirds of a pixel and draws every frame in the list soft. With one column
+   nothing is written at all, so a narrow window is exactly the screen it was.
+   ------------------------------------------------------------------------ */
+:where(.pixel-ui) [data-columns] {
+  column-gap: calc(var(--u) * 4);
+}
+/* Each row of a *list* keeps its own height rather than being stretched to the
+   tallest beside it: a Pokemon with a care strip under it would otherwise put a
+   band of cream inside the frame of every row in its line. A row of cards is
+   the opposite - three doors at base are the same kind of thing and read as
+   equal only if they are the same size - so they are left to stretch. */
+:where(.pixel-ui) .px-list[data-columns] {
+  align-items: start;
+}
+/* Everything in a collection that is not one of its entries runs the whole
+   width: a heading band, an empty line, the strip that narrows the list. */
+:where(.pixel-ui) [data-columns] > :not(button, .px-row, .px-pair, .loadout-entry) {
+  grid-column: 1 / -1;
 }
 :where(.pixel-ui) .px-note {
   color: var(--ink-soft);
@@ -2169,6 +2197,7 @@ button {
 :where(.pixel-ui) .objectives-panel,
 :where(.pixel-ui) .stash-layout > .px-window,
 :where(.pixel-ui) .stash-side > .px-window,
+:where(.pixel-ui) .kit-layout > .px-window,
 :where(.pixel-ui) .loadout-layout > .px-window,
 :where(.pixel-ui) .loadout-side > .px-window,
 :where(.pixel-ui) .secure-layout > .px-window,
@@ -2179,17 +2208,29 @@ button {
   grid-template-rows: auto minmax(0, 1fr);
   align-content: start;
 }
-/* The board is as tall as the contracts on it and no taller, even on a display
-   that could stretch it half a screen further: what fills the room below is the
-   desk, not a noticeboard with six hundred pixels of cream between a row and
-   the reward line describing it. Tried the other way round on a 2560 window and
-   the detail pane, pinned to the foot of a stretched panel, read as belonging
-   to nothing. */
-:where(.pixel-ui) .objectives-panel {
+/* A window is as tall as what is in it and no taller, even on a display that
+   could stretch it half a screen further: what fills the room below is the
+   backdrop, not a noticeboard with six hundred pixels of cream between a row
+   and the line describing it. Tried the other way round on a 2560 window and
+   the contract board's detail pane, pinned to the foot of a stretched panel,
+   read as belonging to nothing - and the final check drew an empty pink field
+   eight hundred pixels tall over the words "nothing extra is at risk".
+   It is a maximum as well as a hug: a window with more in it than the screen
+   holds still stops at the screen and scrolls inside its own frame. */
+:where(.pixel-ui) .objectives-panel,
+:where(.pixel-ui) .stash-layout > .px-window,
+:where(.pixel-ui) .stash-side > .px-window,
+:where(.pixel-ui) .kit-layout > .px-window,
+:where(.pixel-ui) .kit-layout > .loadout-side > .px-window,
+:where(.pixel-ui) .loadout-layout > .px-window,
+:where(.pixel-ui) .secure-layout > .px-window,
+:where(.pixel-ui) .confirm-layout > .px-window {
   align-self: start;
   max-height: 100%;
 }
-.pixel-ui .objectives-panel:has(.px-detail) {
+.pixel-ui .objectives-panel:has(.px-detail),
+.pixel-ui .stash-layout > .px-window:has(.px-detail),
+.pixel-ui .loadout-layout > .px-window:has(.px-detail) {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 /* What the pointed-at row asks and pays - a contract on the board, a rung on
@@ -2225,14 +2266,17 @@ button {
 :where(.pixel-ui) .px-ready {
   color: #1d6a4f;
 }
+/* The roster takes the room and the supplies keep a lane of their own: what the
+   screen is for is finding one Pokemon among many, and the supplies are a list
+   of eight things that never needed half a screen. */
 :where(.pixel-ui) .stash-layout {
-  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 132);
+  grid-template-columns: minmax(0, 1fr) calc(var(--u) * 140);
   grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
 }
-/* The loadout's second column is the pack and nothing else now that where to
-   drop in is its own step, so it is cut to the pack's own width - six squares
-   of sixteen pixels and its frame - and the stash list keeps the rest. */
+/* Building a loadout, and the Outfitter's payment screen: what to choose from
+   on the left, the container on the right, cut to the pack's own width - six
+   squares of sixteen pixels and its own frame. */
 :where(.pixel-ui) .loadout-layout {
   grid-template-columns: minmax(0, 1fr) calc(var(--u) * 112);
   grid-template-rows: minmax(0, 1fr) auto;
@@ -2241,34 +2285,8 @@ button {
 :where(.pixel-ui) .stash-side {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: calc(var(--u) * 4);
-}
-:where(.pixel-ui) .stash-portrait {
-  display: flex;
-  align-items: end;
-  gap: calc(var(--u) * 4);
-}
-:where(.pixel-ui) .stash-portrait[hidden] {
-  display: none;
-}
-:where(.pixel-ui) .stash-portrait > div {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: max-content;
-  gap: var(--u);
-  padding-bottom: calc(var(--u) * 2);
-}
-/* Two types stack here, and stacked they are one block: the width of the longer
-   word, a pixel of ground between their frames. Each kept the width of its own
-   word, so GRASS over POISON had a ragged right edge and the two frames ran
-   together into a double line. A minimum rather than a width, because
-   `snapTextBoxes()` writes each tag's width inline: the longer word is snapped
-   to the pixel grid, it sets the column, and the shorter one is held out to it. */
-.pixel-ui .stash-portrait .px-type {
-  box-sizing: border-box;
-  min-width: 100%;
-  margin-right: var(--u);
 }
 :where(.pixel-ui) .swap-panel {
   display: grid;
@@ -2333,7 +2351,10 @@ button {
 }
 :where(.pixel-ui) .starter-grid {
   display: grid;
-  /* Three fixed cards, centred: a third of the screen is not a whole number. */
+  /* Three cards, centred, each a whole number of game pixels wide and never
+     wider than `data-columns-widest`: a third of a 4K screen is neither. The
+     tracks are written by `MenuOverlay.layoutColumns()`; this is the narrow
+     window's own three-across, which is exactly what the smallest stage holds. */
   grid-template-columns: repeat(3, calc(var(--u) * 100));
   justify-content: center;
   align-content: start;
@@ -2493,7 +2514,12 @@ button {
   position: sticky;
   top: 0;
   z-index: 1;
-  display: grid;
+  /* Flex rather than a grid of rows: where the box, the order and the search
+     fit on one line they take one line, and they stack again in a narrow
+     window. Three stacked strips were three rows of a list that had room. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: calc(var(--u) * 2);
   padding-bottom: calc(var(--u) * 2);
   margin-bottom: var(--u);
@@ -2534,15 +2560,12 @@ button {
   color: var(--ink-soft);
   opacity: 1;
 }
-/* A Pokemon's row and the chip that moves it share a line. */
-:where(.pixel-ui) .stash-entry {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: calc(var(--u) * 2);
-}
-:where(.pixel-ui) .stash-entry > .care-strip {
-  grid-column: 1 / -1;
+/* At the smallest stage the strip is three lines of chips in a pane eighty
+   game pixels tall, so pinning it to the top of the list costs more than it
+   gives: there it scrolls away with the list like any other row, and comes
+   back the moment the player scrolls up. */
+:where(.pixel-ui[data-room='narrow']) .box-bar {
+  position: static;
 }
 :where(.pixel-ui) .box-manage {
   padding: 0 calc(var(--u) * 3) calc(var(--u) * 2);
@@ -2580,40 +2603,118 @@ button {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
-/* --- The summary: how far to the next level, and what a move does --------- */
-/* Two windows of the same width, because the smallest stage is 320 game pixels
-   wide and a fixed column for the portrait left the moves off the screen. Both
-   scroll inside their own frame; the screen never does. */
-:where(.pixel-ui) .summary-layout {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-  height: 100%;
+/* --- The stash's detail pane: one Pokemon, whole ------------------------- */
+/* What used to be a screen of its own, reached by a chip on every row. It is
+   the pane under the list instead - the same `.px-detail` the contract board
+   and the Outfitter's ladder use - so the collection and the answer about the
+   thing in it are on one screen, which is what a PC box has always been.
+
+   Five blocks across the pane: the figure, its condition, its growth, its
+   moves, and what you can do to it. They wrap when the screen is too narrow for
+   five, and the pane is capped and scrolls rather than eating the list it
+   belongs to - on the windows this game is played in they stand on one line. */
+/* A fixed height, and it scrolls: the list above it has to know what it is
+   left with, and a pane that grew with whatever Pokemon the cursor was on
+   would move the whole list every time the cursor moved - the same reason the
+   help bar along the bottom of every screen is two lines whatever it says. */
+:where(.pixel-ui) .stash-detail {
+  min-height: 0;
+  height: calc(var(--u) * 80);
+  /* The rule above it is the `.px-detail` box shadow; this is its own foot. */
+  padding-bottom: calc(var(--u) * 2);
 }
-:where(.pixel-ui) .summary-layout > .px-window {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
-  align-content: start;
+/* At the smallest stage five blocks stacked are the whole screen, so the pane
+   is the four lines that say which Pokemon this is and how it is, with the
+   rest of it a scroll away. It is the floor, not the target: a 1024-wide
+   browser window is already `wide`. */
+:where(.pixel-ui[data-room='narrow']) .stash-detail {
+  /* Three lines of the vitals block and the MORE strip under them. Four would
+     be the whole block, and at 640x480 those twelve pixels are the difference
+     between the list showing one Pokemon and showing none. */
+  height: calc(var(--u) * 48);
 }
-/* The moves window is a list with one detail pane under it, exactly as the
-   contract board and the Outfitter's ladder are. */
-:where(.pixel-ui) .summary-layout > .px-window:has(.px-detail) {
-  grid-template-rows: auto minmax(0, 1fr) auto;
+/* One block to a line there, rather than as many as the width happens to hold:
+   wrapped, the four narrow blocks fitted on the first line and the portrait -
+   64 game pixels tall on its own - was cut through the middle by the foot of a
+   band four lines deep. Stacked, the band shows one whole block and says how
+   many more are under it, which is what every other pane here does. */
+:where(.pixel-ui[data-room='narrow']) .stash-detail-body {
+  flex-direction: column;
+  flex-wrap: nowrap;
 }
-:where(.pixel-ui) .summary-profile {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: start;
-  gap: calc(var(--u) * 2);
+/* And it leads with which Pokemon this is, how it is, and what can be done
+   about it; the portrait, the stats and the moves are the scroll. */
+:where(.pixel-ui[data-room='narrow']) .stash-vitals {
+  order: -2;
 }
-:where(.pixel-ui) .summary-hero {
+:where(.pixel-ui[data-room='narrow']) .stash-deeds {
+  order: -1;
+}
+:where(.pixel-ui) .stash-detail-body {
   display: flex;
-  align-items: end;
-  gap: calc(var(--u) * 3);
-  padding: 0 calc(var(--u) * 3);
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 2) calc(var(--u) * 4);
 }
-/* Stacked, and one block: the width of the longer word, as the stash's portrait
-   pane sets them. */
+:where(.pixel-ui) .stash-detail-body > * {
+  min-width: 0;
+}
+/* A small caps label in soft ink: quieter than a `.px-subheading` band, which
+   is a rank for a part of a *list* and would put five dark bars in one pane. */
+:where(.pixel-ui) .px-label {
+  display: block;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+/* The types stand beside the sprite rather than under it: the sprite's box is
+   64 game pixels tall and two stacked badges under it made the figure the
+   tallest block in the pane by half again, which the list above it paid for. */
+:where(.pixel-ui) .stash-figure {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--u);
+}
+:where(.pixel-ui) .stash-vitals {
+  flex: 0 1 calc(var(--u) * 100);
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: var(--u);
+}
+:where(.pixel-ui) .stash-growth {
+  flex: 0 1 calc(var(--u) * 156);
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: var(--u);
+}
+:where(.pixel-ui) .stash-moves {
+  /* Never wider than the four moves need: a `.px-row` puts its tag hard right,
+     and stretched across what was left of the pane the PP count ended up a
+     hand's breadth from the move it belongs to. */
+  flex: 0 1 calc(var(--u) * 160);
+}
+:where(.pixel-ui) .stash-deeds {
+  /* The last block takes whatever the others leave, so the five stand on one
+     line at every width that can hold them: at 2560 the screen is drawn at 3x
+     and holds 848 game pixels rather than 952, and a block that insisted on
+     its own width there wrapped the band onto a second line. */
+  flex: 1 1 calc(var(--u) * 112);
+}
+/* A move in here is a row the cursor rests on to be told what it does, so it
+   sits flush with its label rather than indented for a cursor that has nowhere
+   else to be. */
+:where(.pixel-ui) .stash-moves .px-row {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+/* Two types stack here, and stacked they are one block: the width of the longer
+   word, a pixel of ground between their frames. Each kept the width of its own
+   word, so GRASS over POISON had a ragged right edge and the two frames ran
+   together into a double line. A minimum rather than a width, because
+   `snapTextBoxes()` writes each tag's width inline: the longer word is snapped
+   to the pixel grid, it sets the column, and the shorter one is held out to it. */
 .pixel-ui .summary-types {
   min-width: 0;
   display: grid;
@@ -2625,30 +2726,14 @@ button {
   min-width: 100%;
   margin-right: var(--u);
 }
-/* Everything true of the Pokemon right now, stacked beside the portrait rather
-   than under it: the portrait box is 64 pixels tall whatever the sprite in it
-   is, and filling that height is what lets the whole profile stand inside the
-   smallest stage. A bar is never on a line with words, because this column is
-   half of a 320-pixel screen and a name with a bar after it wrapped out of its
-   own window. */
-:where(.pixel-ui) .summary-state {
-  min-width: 0;
-  display: grid;
-  justify-items: start;
-  align-content: end;
-  gap: var(--u);
-  padding-bottom: calc(var(--u) * 2);
-}
-/* Two stats a row, the number hard right against its name. One a line is the
-   shape this wants and is two rows too tall for the smallest stage, which is
-   the screen every layout here is authored against - and a stat block that
-   scrolls while the window beside it is half empty is not a summary. */
+/* Three stats a row, the number hard right against its name: one a line is the
+   shape this wants and is four rows too tall for a pane that must not starve
+   the list above it. */
 :where(.pixel-ui) .summary-stats {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--u) calc(var(--u) * 4);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 calc(var(--u) * 4);
   margin: 0;
-  padding: 0 calc(var(--u) * 3);
 }
 :where(.pixel-ui) .summary-stats > div {
   min-width: 0;

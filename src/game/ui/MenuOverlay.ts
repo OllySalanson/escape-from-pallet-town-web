@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import { menuClickSound } from '../audio/menuSounds';
 import { menuLayer } from '../display/menuStage';
+import { columnTracks, planColumns, roomFor } from './columnLayout';
 import { firstMatching } from './menuFocus';
 import { claimOverlayKeyboard } from './overlayKeyboard';
 import { focusDirectionForKey, nextFocusIndex } from './spatialFocus';
@@ -81,7 +82,7 @@ export class MenuOverlay {
       }
     };
     this.resizeHandler = () => {
-      this.snapTextBoxes();
+      this.relayout();
       this.markScrollCues();
     };
     // `scroll` does not bubble, so it is caught on the way down.
@@ -161,6 +162,83 @@ export class MenuOverlay {
   }
 
   /**
+   * Everything about a screen that can only be decided once it has been
+   * measured, in the one order that works: how many columns each collection
+   * takes, and then - inside the columns that answer settled - how wide each
+   * box of words is.
+   */
+  private relayout(): void {
+    this.layoutColumns();
+    this.clearStickyHeads();
+    this.snapTextBoxes();
+  }
+
+  /**
+   * Keeps a pane from scrolling a row under its own sticky head.
+   *
+   * The strip that leads a list of Pokemon sticks to the top of its pane, and
+   * the browser's own "bring the focused control into view" knows nothing about
+   * it: at the smallest stage the strip is three lines, the cursor started on
+   * the first row, the pane scrolled 24 pixels and drew that row's name behind
+   * the strip. `scroll-padding-top` is what says how much of a pane is spoken
+   * for, and it has to be written before the cursor is placed - which is why
+   * this is in the relayout rather than beside the MORE strips, which are
+   * marked after.
+   */
+  private clearStickyHeads(): void {
+    this.root.querySelectorAll<HTMLElement>('.px-scroll').forEach((pane) => {
+      const head = [...pane.children].find(
+        (child): child is HTMLElement =>
+          child instanceof HTMLElement && getComputedStyle(child).position === 'sticky',
+      );
+      pane.style.scrollPaddingTop = head ? `${head.offsetHeight}px` : '';
+    });
+  }
+
+  /**
+   * Lays every collection on the screen out across the width it has.
+   *
+   * A pane opts in with `data-columns`, the narrowest a column of it may be in
+   * game pixels; `data-columns-max` caps the count and `data-columns-widest`
+   * caps a column's width, for a row of cards rather than a list of rows. The
+   * tracks are counted out in `columnLayout.ts` and written here, because how
+   * much room a pane has is a question only the browser can answer - and they
+   * are written as whole game pixels rather than left to `1fr`, which divides
+   * the room into thirds of a pixel and draws every frame in the list soft.
+   */
+  private layoutColumns(): void {
+    const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
+    // How much room the screen has, as a word the stylesheet can key off. It is
+    // for the one thing columns cannot say - whether a layout fits at all - and
+    // exactly one rule uses it; see `roomFor`.
+    if (unit > 0) {
+      this.root.dataset.room = roomFor(this.root.clientWidth / unit, this.root.clientHeight / unit);
+    }
+    this.root.querySelectorAll<HTMLElement>('[data-columns]').forEach((pane) => {
+      // Cleared first, so the room measured is the room the pane would have
+      // with no columns in it - otherwise last render's tracks decide this one's.
+      pane.style.removeProperty('grid-template-columns');
+      const measure = Number(pane.dataset.columns) || 0;
+      if (unit <= 0 || measure <= 0) {
+        return;
+      }
+      const room = pane.clientWidth / unit;
+      const plan = planColumns(room, {
+        measure,
+        gap: COLUMN_GAP_UNITS,
+        maximum: pane.dataset.columnsMax === undefined ? undefined : Number(pane.dataset.columnsMax),
+        widest: pane.dataset.columnsWidest === undefined ? undefined : Number(pane.dataset.columnsWidest),
+      });
+      // One column is the layout the stylesheet already draws, and saying so in
+      // an inline style would stop a row stretching to the pane the way it does
+      // on the narrow screen every list is still authored against.
+      if (plan.columns > 1) {
+        pane.style.gridTemplateColumns = columnTracks(plan, unit);
+      }
+    });
+  }
+
+  /**
    * Widens every box that is as wide as its words to a whole number of game
    * pixels. Text is the one thing on a pixel-ui screen whose size is not a
    * multiple of the unit, and whatever is laid out after it - a health bar
@@ -190,7 +268,7 @@ export class MenuOverlay {
   }
 
   private moveCursorTo(control: HTMLElement | null): void {
-    this.snapTextBoxes();
+    this.relayout();
     control?.focus();
     // Focus that did not move fires no event, and the help bar was just rebuilt.
     this.showHelpFor(control);
@@ -213,7 +291,7 @@ export class MenuOverlay {
       pane.hidden = hidden;
     });
     if (changed) {
-      this.snapTextBoxes();
+      this.relayout();
     }
   }
 
@@ -330,6 +408,13 @@ export function hasMoreBelow(
 const CURSOR_CONTROLS = 'button:not([disabled]), input:not([disabled])';
 
 const TEXT_SIZED_BOXES = '.px-name, .px-tag, .px-button, .px-chip, .px-back, .px-type, .px-place, .px-rail li';
+
+/**
+ * Game pixels between two columns of a list. Four, as every gap on these
+ * screens is: it is the stylesheet's own `--u * 4` and the width of the space
+ * a window leaves round what is in it.
+ */
+export const COLUMN_GAP_UNITS = 4;
 
 /** A control is the same control across renders if it carries the same wiring. */
 function focusKeyOf(control: HTMLElement): string | null {

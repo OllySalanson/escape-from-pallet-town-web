@@ -15,6 +15,45 @@ import type { GridPacking } from '../items';
 /** The width of a health bar's fill, in game pixels. `.px-hp` is this plus its frame. */
 export const HP_BAR_WIDTH = 48;
 
+/**
+ * How narrow a column of a given kind of row may be before a list drops one.
+ *
+ * A list is laid out across the width it has (`ui/columnLayout.ts`), and the
+ * one thing it has to be told is the *measure* of its own rows: the width at
+ * which the longest name, its bar and its tag still stand on one line. These
+ * are those widths, in game pixels, measured off the rows as they are drawn -
+ * a name at ten letters, a health bar at 50, the cursor's own 8 of padding.
+ *
+ * They are here rather than typed into each screen so that two lists of the
+ * same kind of thing - the stash's Pokemon and the loadout's - cannot drift
+ * into different shapes on the same display.
+ */
+export const COLUMN_MEASURES = {
+  /** Name, health bar, a state tag, and a line of condition under them. */
+  pokemon: 200,
+  /** A 16-pixel icon, a name, and a count or a stepper on the end. */
+  supply: 168,
+  /** A supply row with a +/- selector beside it, which is 30 pixels wider. */
+  countedSupply: 196,
+  /** A name over a wrapped sentence: a contract, an Outfitter rung, a deal. */
+  brief: 260,
+  /** One line: a way in, a move, an exit, a door, a species on a table. */
+  line: 176,
+} as const;
+
+/**
+ * The attributes that lay a collection out across its width. `measure` is one
+ * of `COLUMN_MEASURES`; `maximum` caps the count where the set is fixed (three
+ * starters are three at any width) and `widest` caps a column, which together
+ * make a centred row of cards rather than a list stretched to the frame.
+ */
+export function pixelColumns(
+  measure: number,
+  options: { readonly maximum?: number; readonly widest?: number } = {},
+): string {
+  return `data-columns="${measure}"${options.maximum === undefined ? '' : ` data-columns-max="${options.maximum}"`}${options.widest === undefined ? '' : ` data-columns-widest="${options.widest}"`}`;
+}
+
 export const escapeAttribute = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
