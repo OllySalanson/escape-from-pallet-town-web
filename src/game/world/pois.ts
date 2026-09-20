@@ -1,4 +1,4 @@
-import type { ItemId } from '../items';
+import { ITEMS, cellsFor, type ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 
@@ -30,14 +30,19 @@ export function tryActivatePoi(
   isRunActive: boolean,
   activatedPoiIds: Set<string>,
   collectRunItem: (itemId: ItemId, quantity: number) => boolean,
+  hasRoomForAll: (reward: WorldPoi['reward']) => boolean,
 ): PoiActivationResult {
   if (!poi || !isRunActive || activatedPoiIds.has(poi.id)) {
     return 'unavailable';
   }
 
-  if (!poi.reward.every((item) => collectRunItem(item.itemId, item.quantity))) {
+  // Whole or not at all. Taken a piece at a time, two Poke Balls that fit and a
+  // Potion that does not left the balls in the pack with the landmark still
+  // unworked - so walking over it again paid the balls out a second time.
+  if (!hasRoomForAll(poi.reward)) {
     return 'bag-full';
   }
+  poi.reward.forEach((item) => collectRunItem(item.itemId, item.quantity));
 
   activatedPoiIds.add(poi.id);
   return 'activated';
@@ -123,4 +128,25 @@ export const WORLD_POIS: readonly WorldPoi[] = [
 
 export function poisForMap(mapId: WorldMapId): readonly WorldPoi[] {
   return WORLD_POIS.filter((poi) => poi.mapId === mapId);
+}
+
+/**
+ * What a landmark says when its cache will not go into the pack.
+ *
+ * It names the cache and the squares it needs, exactly as ground loot does:
+ * "bag is full" on its own is a wall, and the grid's promise is that a refusal
+ * hands the player the decision. Nothing is taken and nothing is worked, so
+ * the answer is to put something down and step back on to it.
+ */
+export function cacheRefusalLine(poi: WorldPoi): string {
+  const squares = poi.reward.reduce(
+    (total, { itemId, quantity }) => total + cellsFor(itemId, quantity),
+    0,
+  );
+  const names = poi.reward
+    .map(({ itemId, quantity }) => `${quantity}\u00d7 ${ITEMS[itemId].displayName.toUpperCase()}`)
+    .join(' and ');
+  return `No room for ${names} - the cache needs ${
+    squares === 1 ? '1 square' : `${squares} squares`
+  }.`;
 }

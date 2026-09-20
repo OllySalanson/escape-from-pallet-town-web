@@ -1,4 +1,4 @@
-import type { Bag, GridCargo } from '../items';
+import { ITEM_DEFINITIONS, fitsInGrid, type Bag, type GridCargo } from '../items';
 import type { Pokemon } from '../pokemon';
 import { cargoSquaresLabel, pokemonCargo, pokemonCargoCells } from '../pokemon/pokemonCargo';
 import type { RunSnapshot } from './RunManager';
@@ -39,4 +39,60 @@ export function packHasRoomForPokemon(bag: Bag, pokemon: Pokemon): boolean {
 export function packFullForPokemonLine(pokemon: Pokemon): string {
   const squares = cargoSquaresLabel(pokemonCargoCells(pokemon.base.id));
   return `No room in the pack! ${pokemon.base.name.toUpperCase()} needs ${squares}.`;
+}
+
+/**
+ * One thing in the pack that could be put down to make room, priced in squares.
+ *
+ * `freesEnough` is asked of the packer rather than reasoned about: four free
+ * squares scattered around a Potion are not a seat for a 2x2 Pidgey, so whether
+ * one Potion is the answer can only be found by taking it out and re-packing.
+ */
+export interface PackRoomChoice {
+  readonly itemId: string;
+  /** What the row calls it, in the catalogue's own words. */
+  readonly displayName: string;
+  readonly carried: number;
+  /** The squares one of these stands on. */
+  readonly squares: number;
+  /** Whether putting down one of these is room enough on its own. */
+  readonly freesEnough: boolean;
+}
+
+/**
+ * What the pack could put down to make room for a Pokemon, in catalogue order.
+ *
+ * Only supplies: what is already being carried home is what the raid was for,
+ * and letting a fight talk a player out of a Pokemon they have already caught
+ * is a decision for a screen with more room than a battle panel. An empty list
+ * therefore means there is genuinely nothing here to trade, which is a fact the
+ * refusal has to be able to state rather than a case it can ignore.
+ *
+ * `keepOne` is the thing the room is being made *for* - the ball waiting to be
+ * thrown. The last of it is never offered, because a list that invites the
+ * player to put down the ball that would make the catch is a second trap in
+ * the same breath as the first.
+ */
+export function packRoomChoices(
+  bag: Bag,
+  pokemon: Pokemon,
+  keepOne?: string,
+): readonly PackRoomChoice[] {
+  const incoming = pokemonCargo('incoming', pokemon);
+  const contents = bag.toJSON();
+  const capacity = bag.capacity;
+  return ITEM_DEFINITIONS.filter(
+    (item) => (contents[item.id] ?? 0) > (item.id === keepOne ? 1 : 0),
+  ).map((item) => {
+    const carried = contents[item.id];
+    return {
+      itemId: item.id,
+      displayName: item.displayName,
+      carried,
+      squares: item.footprint.width * item.footprint.height,
+      freesEnough:
+        capacity === null ||
+        fitsInGrid({ ...contents, [item.id]: carried - 1 }, capacity, [...bag.cargo, incoming]),
+    };
+  });
 }

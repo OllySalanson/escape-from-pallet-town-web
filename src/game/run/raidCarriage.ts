@@ -34,6 +34,16 @@ export interface RaidCarriage {
   readonly runSession: ActiveRunSession | undefined;
   /** Trainer victories, loot pickups and landmark activations last one raid. */
   readonly defeatedTrainerIds: readonly string[];
+  /**
+   * Gear a beaten boss dropped that the pack had no room for, still waiting.
+   *
+   * A boss drops its gear once per save, at the moment the win is recorded, so
+   * a full pack used to destroy it with nothing the player could do: they were
+   * told after the fact. It waits here instead, and the raid hands it over the
+   * moment there is room for it - which means it has to survive the next fight,
+   * like every other fact about a raid in progress.
+   */
+  readonly unclaimedBossGear: readonly { readonly itemId: string; readonly name: string }[];
   readonly collectedLootIds: readonly string[];
   readonly activatedPoiIds: readonly string[];
   /** Spawned, beaten, searching: the hunter is the same hunter after a fight. */
@@ -53,6 +63,7 @@ export const RAID_CARRIAGE_KEYS = [
   'caughtPokemonStash',
   'runSession',
   'defeatedTrainerIds',
+  'unclaimedBossGear',
   'collectedLootIds',
   'activatedPoiIds',
   'hunterState',

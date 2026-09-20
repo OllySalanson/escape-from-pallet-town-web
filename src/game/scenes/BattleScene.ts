@@ -49,7 +49,13 @@ import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
 import { buildWipeSettlement, deployedRaidCondition } from '../run/raidSettlement';
-import { packFullForPokemonLine, packHasRoomForPokemon, syncPackCargo } from '../run/raidCargo';
+import {
+  packFullForPokemonLine,
+  packHasRoomForPokemon,
+  packRoomChoices,
+  syncPackCargo,
+  type PackRoomChoice,
+} from '../run/raidCargo';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { RaidCarriage } from '../run/raidCarriage';
 import {
@@ -105,6 +111,7 @@ import {
   describeBallGuidance,
   formatBallCommand,
   formatMoveCommand,
+  formatPackRoomRow,
   formatWildEscapeCommand,
   heldGearLabel,
   hunterFleeMessages,
@@ -119,6 +126,14 @@ import {
   targetPromptLayout,
   TARGET_PROMPT,
   formatTypeList,
+  packRoomPrompt,
+  KEEP_PACK_ROW,
+  MAKE_ROOM_COLUMNS,
+  MAKE_ROOM_INVITE,
+  MAKE_ROOM_PAGE,
+  makeRoomPromptLayout,
+  makeRoomRowLayout,
+  NOTHING_TO_DROP_MESSAGE,
   weatherSetMessage,
   wildEscapeFailureMessage,
   type MatchupTone,
@@ -131,6 +146,7 @@ type CommandMode =
   | 'items'
   | 'balls'
   | 'party'
+  | 'make-room'
   | 'about-to-use'
   | 'events'
   | 'finished';
@@ -147,7 +163,8 @@ type BattleAction =
   | { readonly type: 'select-item'; readonly itemIndex: number }
   | { readonly type: 'use-item'; readonly partyIndex: number }
   | { readonly type: 'switch-pokemon'; readonly partyIndex: number }
-  | { readonly type: 'answer-about-to-use'; readonly switching: boolean };
+  | { readonly type: 'answer-about-to-use'; readonly switching: boolean }
+  | { readonly type: 'drop-for-room'; readonly choiceIndex: number };
 
 const COMMAND_Y = BATTLE_PANEL.y;
 /** Ink for a row that cannot be chosen: a fainted Pokemon, an empty stack, a refusal. */
@@ -304,6 +321,20 @@ export class BattleScene extends Phaser.Scene {
   private bag = new Bag({ 'poke-ball': STARTING_POKE_BALLS });
   /** The medicine chosen from the ITEM list, waiting on a Pokemon to use it on. */
   private pendingItem: ItemDefinition | undefined;
+  /**
+   * The ball the player chose and the pack had no room to throw, held while
+   * they decide what to put down. Set is what makes the refusal a doorway
+   * rather than a wall: the throw is finished the moment the room exists.
+   *
+   * By id, not by position: putting down the last of another kind of ball
+   * renumbers the list, and an index would then throw a different ball than
+   * the one the player chose - or none at all.
+   */
+  private heldBallId: string | undefined;
+  /** Set while the refusal is being read, so the panel opens behind the line. */
+  private pendingMakeRoom = false;
+  /** Which page of the pack's kinds the make-room panel is showing. */
+  private makeRoomPage = 0;
   private caughtPokemonStash: PokemonInstance[] = [];
   private runSession: ActiveRunSession | undefined;
   private pendingHubTransition = false;
@@ -314,6 +345,8 @@ export class BattleScene extends Phaser.Scene {
   private teachingBattle = false;
   private hunterState: HunterState | undefined;
   private readonly defeatedTrainerIds = new Set<string>();
+  /** A beaten boss's gear the pack had no room for, carried back to the world. */
+  private unclaimedBossGear: RaidCarriage['unclaimedBossGear'] = [];
   private readonly collectedLootIds = new Set<string>();
   private readonly activatedPoiIds = new Set<string>();
   private returnLocation: BattleSceneData['returnLocation'];
@@ -370,8 +403,12 @@ export class BattleScene extends Phaser.Scene {
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
     this.bag = data.bag ?? new Bag({ 'poke-ball': STARTING_POKE_BALLS });
     // Phaser reuses this scene, so a medicine chosen in the last fight and never
-    // handed to anyone would still be waiting for a target in this one.
+    // handed to anyone would still be waiting for a target in this one - and a
+    // ball held over a pack that had no room would be thrown at the next one.
     this.pendingItem = undefined;
+    this.heldBallId = undefined;
+    this.pendingMakeRoom = false;
+    this.makeRoomPage = 0;
     this.caughtPokemonStash = data.caughtPokemonStash ?? [];
     this.runSession = data.runSession;
     // The pack is told what the raid is already carrying home before its first
@@ -388,6 +425,7 @@ export class BattleScene extends Phaser.Scene {
     this.returnScene = data.returnScene;
     this.defeatedTrainerIds.clear();
     data.defeatedTrainerIds?.forEach((id) => this.defeatedTrainerIds.add(id));
+    this.unclaimedBossGear = data.unclaimedBossGear ?? [];
     this.collectedLootIds.clear();
     data.collectedLootIds?.forEach((id) => this.collectedLootIds.add(id));
     this.activatedPoiIds.clear();
@@ -860,6 +898,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'make-room') {
+      this.commandContainer.add(this.createMakeRoomBox());
+      return;
+    }
+
     const labels =
       this.mode === 'main'
         ? this.mainCommandLabels()
@@ -1136,8 +1179,125 @@ export class BattleScene extends Phaser.Scene {
     return container;
   }
 
+  /**
+   * What is in the pack and what each piece stands on, so the player can buy
+   * the squares a catch needs without leaving the fight.
+   *
+   * The last row is always KEEP THE PACK: declining has to be as visible as
+   * dropping, because it is the right answer for anyone who would rather keep
+   * the Potion. Only the page the cursor is on is drawn - six kinds fit the
+   * panel and a pack can hold more - and the prompt above answers the row the
+   * cursor is on, the way the party list's own prompt does.
+   */
+  private createMakeRoomBox(): Phaser.GameObjects.Container {
+    const container = this.add.container(0, 0);
+    container.add(this.createPanelFrame());
+    const rows = this.makeRoomRows();
+    this.selectedCommand = Math.max(0, Math.min(this.selectedCommand, rows.length - 1));
+    this.makeRoomPage = Math.floor(this.selectedCommand / MAKE_ROOM_PAGE);
+    const start = this.makeRoomPage * MAKE_ROOM_PAGE;
+    container.add(
+      this.add.text(
+        makeRoomPromptLayout.x,
+        COMMAND_Y + makeRoomPromptLayout.y,
+        packRoomPrompt(rows[this.selectedCommand]),
+        {
+          fontFamily: BATTLE_FONT,
+          fontSize: CAPTION_FONT_SIZE,
+          color: PANEL_GUIDANCE_INK,
+        },
+      ),
+    );
+    this.commandTexts = rows.slice(start, start + MAKE_ROOM_PAGE).map((choice, offset) => {
+      const layout = makeRoomRowLayout(offset);
+      const text = this.add.text(
+        layout.x,
+        COMMAND_Y + layout.y,
+        choice ? formatPackRoomRow(choice) : KEEP_PACK_ROW,
+        {
+          fontFamily: BATTLE_FONT,
+          fontSize: CAPTION_FONT_SIZE,
+          color: WINDOW_INK,
+        },
+      );
+      text
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+          this.selectedCommand = start + offset;
+          this.showCommands();
+        })
+        .on('pointerdown', () => {
+          this.selectedCommand = start + offset;
+          this.confirm();
+        });
+      container.add(text);
+      return text;
+    });
+    this.updateSelection();
+    return container;
+  }
+
+  /**
+   * The pack's kinds, then the way out. Undefined is KEEP THE PACK, which is a
+   * row rather than a hint so that a mouse can reach it and the cursor can
+   * explain it.
+   */
+  private makeRoomRows(): readonly (PackRoomChoice | undefined)[] {
+    return [...this.makeRoomChoices(this.heldBallId), undefined];
+  }
+
+  /** What the pack could put down, keeping the ball the throw is waiting on. */
+  private makeRoomChoices(keepOne: string | undefined): readonly PackRoomChoice[] {
+    return packRoomChoices(this.bag, this.state.enemy.pokemon, keepOne);
+  }
+
+  /**
+   * Puts one piece of the pack down and finishes the throw it was blocking.
+   *
+   * Nothing is ever dropped that was not chosen, and one drop may not be
+   * enough - four free squares scattered around a Potion are not a seat for a
+   * Pidgey - so the panel stays open on the pack as it now stands until there
+   * is room, and the ball is thrown the moment there is. The drop costs no turn
+   * of its own: the throw that follows is the turn, which is the one the player
+   * meant to spend.
+   */
+  private dropForRoom(choiceIndex: number): void {
+    const choice = this.makeRoomRows()[choiceIndex];
+    if (!choice) {
+      this.keepThePack();
+      return;
+    }
+    if (!this.bag.remove(choice.itemId, 1)) {
+      return;
+    }
+    audioManager.play('menuClose');
+    if (packHasRoomForPokemon(this.bag, this.state.enemy.pokemon)) {
+      const ballIndex = Math.max(
+        0,
+        carriedBalls(this.bag).findIndex((ball) => ball.id === this.heldBallId),
+      );
+      this.heldBallId = undefined;
+      this.throwBall(ballIndex);
+      return;
+    }
+    this.selectedCommand = Math.min(this.selectedCommand, this.makeRoomRows().length - 1);
+    this.showCommands();
+  }
+
+  /** Declining: nothing is put down, no ball is spent, and the fight goes on. */
+  private keepThePack(): void {
+    this.heldBallId = undefined;
+    this.pendingMakeRoom = false;
+    this.mode = 'main';
+    this.selectedCommand = 0;
+    this.showCommands();
+    audioManager.play('cancel');
+  }
+
   private moveSelection(direction: 'left' | 'right' | 'up' | 'down'): void {
-    const count = this.commandTexts.length;
+    // The make-room panel draws one page of a longer list, so what the cursor
+    // walks is the list rather than the rows on screen.
+    const count = this.mode === 'make-room' ? this.makeRoomRows().length : this.commandTexts.length;
     if (count === 0) {
       return;
     }
@@ -1147,7 +1307,9 @@ export class BattleScene extends Phaser.Scene {
         ? PARTY_COLUMNS
         : this.mode === 'main'
           ? mainCommandColumns(count)
-          : 2;
+          : this.mode === 'make-room'
+            ? MAKE_ROOM_COLUMNS
+            : 2;
     const row = Math.floor(this.selectedCommand / columns);
     const column = this.selectedCommand % columns;
     const rows = Math.ceil(count / columns);
@@ -1160,15 +1322,27 @@ export class BattleScene extends Phaser.Scene {
           ? (column + 1) % columns
           : column;
     this.selectedCommand = Math.min(nextRow * columns + nextColumn, count - 1);
-    this.updateSelection();
+    if (this.mode === 'make-room') {
+      // The prompt answers the row the cursor is on and the page follows it, so
+      // the panel is redrawn rather than re-inked.
+      this.showCommands();
+    } else {
+      this.updateSelection();
+    }
     audioManager.play('select');
   }
 
   private updateSelection(): void {
     this.refreshMoveGuidance();
+    // Which of the rows on screen the cursor is on. They are the whole list
+    // everywhere but the make-room panel, which draws one page of a longer one.
+    const cursor =
+      this.mode === 'make-room'
+        ? this.selectedCommand - this.makeRoomPage * MAKE_ROOM_PAGE
+        : this.selectedCommand;
     this.commandTexts.forEach((text, index) => {
       text.setText(
-        `${index === this.selectedCommand ? '▶ ' : '  '}${text.text.replace(/^[▶ ]{2}/, '')}`,
+        `${index === cursor ? '▶ ' : '  '}${text.text.replace(/^[▶ ]{2}/, '')}`,
       );
       // The cursor is the whole of the selection, as it is in the dialogue this
       // panel shares a frame with: no row is boxed in a second colour.
@@ -1264,6 +1438,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'make-room') {
+      this.dispatchAction({ type: 'drop-for-room', choiceIndex: this.selectedCommand });
+      return;
+    }
+
     if (this.mode === 'about-to-use') {
       this.dispatchAction({
         type: 'answer-about-to-use',
@@ -1328,6 +1507,9 @@ export class BattleScene extends Phaser.Scene {
         return;
       case 'answer-about-to-use':
         this.answerAboutToUse(action.switching);
+        return;
+      case 'drop-for-room':
+        this.dropForRoom(action.choiceIndex);
     }
   }
 
@@ -1363,6 +1545,12 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     if (this.mode === 'party' && this.forcedReplacement) {
+      return;
+    }
+    // Escape out of the make-room panel is the KEEP THE PACK row by another
+    // name: nothing is put down and the fight is handed back whole.
+    if (this.mode === 'make-room') {
+      this.keepThePack();
       return;
     }
     // Backing out of the aim returns to the move list: the player is changing
@@ -1607,12 +1795,23 @@ export class BattleScene extends Phaser.Scene {
     // not fit in the pack must be refused out loud rather than caught and then
     // quietly dropped, and finding out should not cost a ball - whichever ball
     // was chosen.
+    //
+    // The refusal is also the doorway. It used to say "drop something from your
+    // BAG first", which a battle has no door to: the only obedient move was to
+    // flee, and fleeing loses the Pokemon the refusal was about. Now the ball is
+    // held and the panel asks what to put down, so the answer is here.
     if (!packHasRoomForPokemon(this.bag, this.state.enemy.pokemon)) {
+      const choices = this.makeRoomChoices(carriedBalls(this.bag)[ballIndex]?.id);
       this.mode = 'events';
       this.commandContainer.setVisible(false);
       audioManager.play('denied');
+      this.heldBallId = choices.length > 0 ? carriedBalls(this.bag)[ballIndex]?.id : undefined;
+      this.pendingMakeRoom = choices.length > 0;
+      this.makeRoomPage = 0;
       this.dialog.showMessage(
-        `${packFullForPokemonLine(this.state.enemy.pokemon)} Drop something from your BAG first.`,
+        `${packFullForPokemonLine(this.state.enemy.pokemon)} ${
+          choices.length > 0 ? MAKE_ROOM_INVITE : NOTHING_TO_DROP_MESSAGE
+        }`,
       );
       return;
     }
@@ -2077,6 +2276,16 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    // The refusal has been read; the question it raises is the panel's.
+    if (this.pendingMakeRoom) {
+      this.pendingMakeRoom = false;
+      this.mode = 'make-room';
+      this.selectedCommand = 0;
+      this.makeRoomPage = 0;
+      this.showCommands();
+      return;
+    }
+
     if (this.moveOffer) {
       this.openMoveOffer(this.moveOffer);
       return;
@@ -2495,6 +2704,7 @@ export class BattleScene extends Phaser.Scene {
         caughtPokemonStash: this.caughtPokemonStash,
         runSession: this.runSession,
         defeatedTrainerIds: [...this.defeatedTrainerIds],
+        unclaimedBossGear: this.unclaimedBossGear,
         collectedLootIds: [...this.collectedLootIds],
         activatedPoiIds: [...this.activatedPoiIds],
         returnLocation: this.returnLocation,

@@ -213,7 +213,10 @@ const ORDINARY_TRAINER = createRunTrainerEncounters().find(
 )!;
 
 interface Internals {
-  bag: { count(itemId: string): number };
+  bag: Bag;
+  unclaimedBossGear: readonly { readonly itemId: string; readonly name: string }[];
+  tryClaimWaitingBossGear(): boolean;
+  raidCarriage(): { unclaimedBossGear: readonly { readonly itemId: string }[] };
   currentTile: { x: number; y: number };
   defeatedBosses: readonly string[];
   isBlocked(tile: { x: number; y: number }): boolean;
@@ -319,6 +322,44 @@ describe('a boss-held gate in a live raid', () => {
     expect(spoken).toHaveLength(1);
     expect(internalsOf(scene).bag.count('life-orb')).toBe(1);
     expect(new SaveManager(storage).load()!.raidProgress.defeatedBosses).toEqual([GATE.bossId]);
+  });
+
+  /**
+   * Gear comes off a boss once per save, at the moment the win is written, so a
+   * pack with no room for it used to destroy it: the player was told after the
+   * fact, with nothing they could have done from where they stood. It waits
+   * instead, and the raid hands it over the moment there is room.
+   */
+  it('holds a boss\'s gear over a full pack rather than destroying it', () => {
+    const scene = new WorldScene();
+    attachSceneStubs(scene);
+    const { data } = deploy('route-1');
+    // Eighteen squares, eighteen Potions: the Life Orb has nowhere to stand.
+    const bag = new Bag({ potion: 18 });
+    scene.create({ ...data, bag });
+
+    const beside = { x: BOSS.position.x - 1, y: BOSS.position.y };
+    scene.create(returnFromWinning({ ...data, bag }, BOSS.trainer.id, beside));
+
+    expect(bag.count('life-orb')).toBe(0);
+    expect(spoken[0]).toContain(
+      'It is yours the moment you make room: drop something from the BAG.',
+    );
+    expect(internalsOf(scene).unclaimedBossGear.map(({ itemId }) => itemId)).toEqual(['life-orb']);
+    // It rides through the next fight, or the raid would forget it.
+    expect(internalsOf(scene).raidCarriage().unclaimedBossGear.map(({ itemId }) => itemId)).toEqual(
+      ['life-orb'],
+    );
+    // Nothing is handed over until the room is there, and it is not claimed twice.
+    expect(internalsOf(scene).tryClaimWaitingBossGear()).toBe(false);
+
+    bag.remove('potion', 1);
+
+    expect(internalsOf(scene).tryClaimWaitingBossGear()).toBe(true);
+    expect(bag.count('life-orb')).toBe(1);
+    expect(internalsOf(scene).unclaimedBossGear).toEqual([]);
+    expect(internalsOf(scene).tryClaimWaitingBossGear()).toBe(false);
+    expect(bag.count('life-orb')).toBe(1);
   });
 
   it('stays shut when the fight that was won was not the boss', () => {
