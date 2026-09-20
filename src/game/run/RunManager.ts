@@ -30,6 +30,12 @@ export interface ItemStack {
 export interface RunLoadout {
   readonly party: readonly Pokemon[];
   readonly items: readonly ItemStack[];
+  /**
+   * The pack this raid is carried in, by item id. It is part of the loadout
+   * rather than the config because it is a thing out of the vault that the
+   * player chose and can lose - see `../items/packs`.
+   */
+  readonly packItemId?: string;
 }
 
 export interface RunConfig {
@@ -475,6 +481,7 @@ function copyLoadout(loadout: RunLoadout): RunLoadout {
   return {
     party: [...loadout.party],
     items: combineItems(loadout.items),
+    ...(loadout.packItemId === undefined ? {} : { packItemId: loadout.packItemId }),
   };
 }
 

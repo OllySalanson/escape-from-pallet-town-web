@@ -103,6 +103,8 @@ function describeEffect(
       return { effect: 'Outfitter only', usable: false };
     case 'currency':
       return { effect: 'The Ferryman only', usable: false };
+    case 'pack':
+      return { effect: 'Chosen on the loadout', usable: false };
     case 'held':
       // Unreachable while `isMedicine` is the filter above, and answered anyway:
       // gear is given, never used, so there is no treatment to describe.

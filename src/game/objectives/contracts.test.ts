@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Bag } from '../items';
+import { Bag, FALLBACK_PACK_ID, STARTING_PACK_ID } from '../items';
 import { BULBASAUR, Pokemon, PokemonParty } from '../pokemon';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
@@ -268,7 +268,13 @@ describe('what a banked contract buys', () => {
       return saves.load()!.stash.listItems();
     };
     expect(wipedWith(RAID_CONTRACTS.map(({ id }) => id))).toEqual(wipedWith([]));
-    expect(wipedWith([])).toEqual(MINIMUM_SUPPLIES);
+    // The supplies are the kit exactly. The pack line of the kit is answered by
+    // the Raid pack the vault already holds, because the kit is read as a
+    // capability and a player who still has a pack is never handed another.
+    const supplies = Object.fromEntries(
+      Object.entries(MINIMUM_SUPPLIES).filter(([itemId]) => itemId !== FALLBACK_PACK_ID),
+    );
+    expect(wipedWith([])).toEqual({ ...supplies, [STARTING_PACK_ID]: 1 });
   });
 });
 

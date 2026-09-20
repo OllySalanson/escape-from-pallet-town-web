@@ -198,7 +198,12 @@ describe('run generation', () => {
         `${insertionId}: commonest layout in ${Math.min(commonest, SAMPLED_RUNS / 50)} of ${SAMPLED_RUNS} raids`,
       );
     }
-  });
+  // Sixty seconds rather than the default thirty: this samples five hundred
+  // raids on four maps, two of which are 64x72, and `generateLoot` shuffles
+  // every walkable tile of every map for each of them. It ran at about twenty
+  // seconds alone and timed out under a loaded four-worker suite, which is the
+  // second test in this repo to meet that wall (see `hunterFlee.test.ts`).
+  }, 60_000);
 
   it('keeps generated loot, trainers, and extraction points on valid tiles', () => {
     for (const seed of seeds) {

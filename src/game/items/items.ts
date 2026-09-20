@@ -10,6 +10,13 @@ export const ItemCategory = {
    * with it - into the fight, and into the wipe that can take it away.
    */
   Held: 'held',
+  /**
+   * The pack a raid is carried in. It is a pocket of its own rather than a
+   * corner of Other because it is the one kind of item a player *wears*: one of
+   * them is chosen before every raid, and that one is lost with everything in
+   * it if the raid is.
+   */
+  Pack: 'pack',
   Misc: 'misc',
 } as const;
 
@@ -20,6 +27,7 @@ export const ITEM_CATEGORY_LABELS: Readonly<Record<ItemCategory, string>> = {
   medicine: 'Medicine',
   pokeball: 'Poké Balls',
   held: 'Gear',
+  pack: 'Packs',
   misc: 'Other',
 };
 
@@ -89,6 +97,17 @@ export type ItemEffect =
    * `./teaching.ts`.
    */
   | { readonly type: 'machine' }
+  /**
+   * A pack: the squares a raid is carried in, and the whole of what one is.
+   *
+   * The grid is authored here beside the pack's own name for the same reason a
+   * Potion's 20 HP is - how much a thing carries is what the player is told
+   * about it - and it is the *only* place a pack size is written down. The
+   * loadout, the raid bag, the wipe and the result screen all read it back
+   * through `./packs`, so nothing can hold a second opinion about how big a
+   * Ranger pack is.
+   */
+  | { readonly type: 'pack'; readonly grid: ItemFootprint }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
 /**
@@ -383,6 +402,53 @@ export const ITEMS = {
     description: 'Sometimes the holder strikes first, whatever the Speed says.',
     effect: { type: 'held', held: { type: 'first-strike', chance: 0.25 } },
   },
+
+  /* --- The packs -----------------------------------------------------------
+     Four sizes, six squares apart, and one of them is chosen before every
+     raid. A pack is not an upgrade: it is a thing you own, and a raid you do
+     not walk out of takes the one you wore and everything that was in it.
+
+     The ladder is 12, 18, 24, 30 rather than a doubling, because each step is
+     exactly one more row of the picture the player already reads - a parts
+     crate and two Potions, or two thirds of a Pokemon carried home - and a
+     pack that doubled would make the step before it worthless.
+
+     Every one is two squares on a side as *loot*, because that is what finding
+     one in the field costs to carry out: four squares of the pack you are
+     already wearing, which on the Satchel is a third of it.
+     --------------------------------------------------------------------- */
+  satchel: {
+    id: 'satchel',
+    displayName: 'Satchel',
+    category: ItemCategory.Pack,
+    footprint: { width: 2, height: 2 },
+    description: 'Twelve squares of oilcloth. The last pack anyone wants, and the one nobody is ever without.',
+    effect: { type: 'pack', grid: { width: 4, height: 3 } },
+  },
+  'raid-pack': {
+    id: 'raid-pack',
+    displayName: 'Raid pack',
+    category: ItemCategory.Pack,
+    footprint: { width: 2, height: 2 },
+    description: 'Eighteen squares, the pack every raider learns on. Enough for the kit and a little of what you find.',
+    effect: { type: 'pack', grid: { width: 6, height: 3 } },
+  },
+  'ranger-pack': {
+    id: 'ranger-pack',
+    displayName: 'Ranger pack',
+    category: ItemCategory.Pack,
+    footprint: { width: 2, height: 2 },
+    description: 'Twenty-four squares on a canvas frame. A whole row more than the raid pack, and a whole row more to lose.',
+    effect: { type: 'pack', grid: { width: 6, height: 4 } },
+  },
+  'hauler-frame': {
+    id: 'hauler-frame',
+    displayName: 'Hauler frame',
+    category: ItemCategory.Pack,
+    footprint: { width: 2, height: 2 },
+    description: 'Thirty squares of steel and strap. Carries a fortune home, and is a fortune to go down with.',
+    effect: { type: 'pack', grid: { width: 6, height: 5 } },
+  },
 } as const satisfies Record<string, ItemDefinition>;
 
 export type ItemId = keyof typeof ITEMS;
@@ -401,7 +467,20 @@ export type HeldItemId = {
   [K in ItemId]: (typeof ITEMS)[K]['category'] extends typeof ItemCategory.Held ? K : never;
 }[ItemId];
 
-export type SupplyItemId = Exclude<ItemId, HeldItemId>;
+export type PackItemId = {
+  [K in ItemId]: (typeof ITEMS)[K]['category'] extends typeof ItemCategory.Pack ? K : never;
+}[ItemId];
+
+/**
+ * Everything that is neither gear nor a pack: what may be packed, priced,
+ * bartered for or handed out by something that repeats.
+ *
+ * A pack is excluded for exactly the reason gear is. Gear must be carried out
+ * of a raid to be owned, and a pack must be *survived* to be kept; either one
+ * handed out on a loop by a contract, the standing board or the Outfitter would
+ * stop being the thing the loop is about.
+ */
+export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId>;
 
 export const ITEM_DEFINITIONS: readonly ItemDefinition[] = Object.values(ITEMS);
 
@@ -413,22 +492,36 @@ export const MATERIAL_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
 /** Money. One item, one id, and the only thing the Ferryman's stock is priced in. */
 export const CURRENCY_ITEM_ID = 'scrip';
 
+/** Every pack in the catalogue, smallest first. What one holds is `./packs`. */
+export const PACK_ITEM_IDS: readonly PackItemId[] = ITEM_DEFINITIONS.filter(
+  (item) => item.effect.type === 'pack',
+).map((item) => item.id as PackItemId);
+
+export function isPack(itemId: string): boolean {
+  return getItemById(itemId)?.effect.type === 'pack';
+}
+
 /**
- * Everything that is found in a raid rather than packed for one: the materials
- * and the money.
+ * Everything that is found in a raid rather than packed for one: the materials,
+ * the money, and a spare pack.
  *
- * They share one rule, not two. Neither may be carried into a raid, because
- * neither does anything there; both arrive in the pack as loot; both are
- * destroyed with it on a wipe unless room was reserved for their *kind* in the
- * secure container, which is the only way squares can be set aside for
- * something that does not exist yet. Every
+ * They share one rule, not three. None may be carried *into* a raid - a
+ * material and a note do nothing there, and you are already wearing a pack, so
+ * a second one in the loadout is only a thing to lose. All of them arrive in
+ * the pack as loot; all of them are destroyed with it on a wipe unless room was
+ * reserved for their *kind* in the secure container, which is the only way
+ * squares can be set aside for something that does not exist yet. Every
  * place that used to ask `isMaterial` for that reason asks this instead - and
  * `isMaterial` still means only "the Outfitter takes it", which is a different
  * question with a different answer.
+ *
+ * The pack you are *wearing* is not in this list and is not in the bag at all:
+ * it is the bag. See `./packs`.
  */
-export const FOUND_ONLY_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
-  (item) => item.effect.type === 'material' || item.effect.type === 'currency',
-).map((item) => item.id as SupplyItemId);
+export const FOUND_ONLY_IDS: readonly ItemId[] = ITEM_DEFINITIONS.filter(
+  (item) =>
+    item.effect.type === 'material' || item.effect.type === 'currency' || item.effect.type === 'pack',
+).map((item) => item.id as ItemId);
 
 export function isMaterial(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'material';
@@ -467,10 +560,10 @@ export function isCurrency(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'currency';
 }
 
-/** Found in a raid, never packed for one: a material or money. */
+/** Found in a raid, never packed for one: a material, money, or a spare pack. */
 export function isFoundOnly(itemId: string): boolean {
   const type = getItemById(itemId)?.effect.type;
-  return type === 'material' || type === 'currency';
+  return type === 'material' || type === 'currency' || type === 'pack';
 }
 
 /** Every piece of gear, in catalogue order: what a give menu offers. */
@@ -540,6 +633,13 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
         ? { used: true, message: `${evolution.from.name} evolved into ${evolution.to.name}!` }
         : { used: false, message: `It will not have any effect.` };
     }
+    case 'pack':
+      // A spare pack found in the field is cargo, nothing more. Which one is
+      // worn is chosen at base, before the raid it is risked on.
+      return {
+        used: false,
+        message: `${item.displayName} is chosen at base, before you deploy.`,
+      };
     case 'held':
       // Gear is never spent out of the bag. It is given to one Pokemon and
       // carried, which is what makes it something a raid can take away.

@@ -1,10 +1,4 @@
-import {
-  growGridRows,
-  RAID_BAG_GRID,
-  RAID_BAG_ROWS_PER_UPGRADE,
-  type GridSize,
-  type SupplyItemId,
-} from '../items';
+import type { SupplyItemId } from '../items';
 import type { ContractStack } from '../objectives/contracts';
 import { Stash, type StashedPokemon } from '../stash';
 
@@ -27,6 +21,12 @@ import { Stash, type StashedPokemon } from '../stash';
  * It is a sink, not a shop. There is no currency, no vendor and no goods: it
  * never hands back an item or a Pokemon, only capability or information, and
  * never raw power - nothing here makes a Pokemon hit harder.
+ *
+ * It builds the *base*, and only the base. The raid pack is deliberately not on
+ * this ladder and can never be: a pack is gear a player owns, chooses and loses
+ * (`../items/packs`), and an Outfitter rung is permanent and cannot be lost, so
+ * a rung that grew the pack would have quietly made the one container a wipe
+ * destroys into one it could not.
  *
  * Like a contract's reward, an upgrade is never stored beside its effect. The
  * save records which upgrades were built (`raidProgress.outfitterUpgrades`) and
@@ -60,16 +60,6 @@ export interface OutfitterUpgrade {
   readonly cost: OutfitterCost;
   /** Adds one column to the secure container. */
   readonly secureItemStack?: boolean;
-  /**
-   * Adds one row of squares to the raid pack.
-   *
-   * Nothing on the ladder sells this yet - the rungs that exist were priced and
-   * measured before the pack had a size. It is wired because a bigger pack is
-   * the obvious next rung and the pack must be able to grow *before* one is
-   * written, or the rung would arrive as a change to the save, the loadout and
-   * the raid rather than one row in this table.
-   */
-  readonly bagRow?: boolean;
   /** Adds one protected Pokemon to the secure slot. */
   readonly securePokemon?: boolean;
   /**
@@ -224,16 +214,6 @@ export function builtUpgrades(builtIds: readonly string[]): readonly OutfitterUp
 /** Columns the Outfitter has added to the secure container. */
 export function outfitterSecureItemStacks(builtIds: readonly string[]): number {
   return builtUpgrades(builtIds).filter((upgrade) => upgrade.secureItemStack).length;
-}
-
-/**
- * How big this base's raid pack is: the starting grid plus a row for every rung
- * built that grows it. Derived from the built list like every other Outfitter
- * effect, so the save stores the ladder and nothing else.
- */
-export function raidBagGridFor(builtIds: readonly string[]): GridSize {
-  const rows = builtUpgrades(builtIds).filter((upgrade) => upgrade.bagRow).length;
-  return growGridRows(RAID_BAG_GRID, rows * RAID_BAG_ROWS_PER_UPGRADE);
 }
 
 /** Protected Pokemon the Outfitter has added to the secure slot. */

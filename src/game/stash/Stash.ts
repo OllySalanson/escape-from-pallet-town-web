@@ -1,10 +1,13 @@
 import {
   Bag,
   BASE_SECURE_GRID,
+  FALLBACK_PACK_ID,
   fitsInGrid,
   getItemById,
   isHeldItemId,
   isFoundOnly,
+  isPack,
+  STARTING_PACK_ID,
   type BagContents,
   type GridSize,
 } from '../items';
@@ -26,10 +29,19 @@ export type StarterSpeciesId = (typeof STARTER_SPECIES)[number]['id'];
  * certain. Three Potions is the supply every balance simulation of the raid
  * gauntlet was measured with; the same runs carrying none wipe about 99% of
  * the time even as Charmander.
+ *
+ * And **something to carry them in**. A pack is gear now, so a raid lost takes
+ * the pack with it, and a player who went down in their only one would have
+ * nothing to deploy with at all. The line is the *smallest* pack on purpose -
+ * twelve squares, eight of them the kit - because the restock is a last resort
+ * and not a refund. `servesAs` reads the kit as a capability, so any pack at
+ * all answers this line: a player who still holds a Hauler frame is never
+ * handed a Satchel, and a player who holds none always is.
  */
 export const MINIMUM_SUPPLIES: Readonly<Record<string, number>> = {
   'poke-ball': 5,
   potion: 3,
+  [FALLBACK_PACK_ID]: 1,
 };
 
 /**
@@ -478,6 +490,23 @@ export class Stash {
   }
 
   /**
+   * Issues the pack a fresh save is given, unless this vault already holds one.
+   *
+   * It is separate from the restock because the two answer different questions.
+   * The restock is the last resort and hands out the *smallest* pack; this is
+   * what a new game starts with, and what a save written before packs were gear
+   * is repaired to, so nothing a player already had gets smaller.
+   *
+   * @returns Whether a pack was issued.
+   */
+  public ensureAPack(): boolean {
+    if (holdsAPack(this)) {
+      return false;
+    }
+    return this.addItem(STARTING_PACK_ID, 1);
+  }
+
+  /**
    * How far short of MINIMUM_SUPPLIES the vault is, per kit item. Empty when
    * the player can attempt a raid on what they already hold.
    *
@@ -754,8 +783,22 @@ export function starterInConditionOf(outgoing: Pokemon, starter: PokemonBase): P
 }
 
 /** Provides a playable first vault for a player with no existing save. */
+/**
+ * Whether this vault holds any pack at all. A save from before packs were gear
+ * holds none, and is issued the starting one on load (`../save/SaveManager`) -
+ * nobody loses squares to the change.
+ */
+export function holdsAPack(stash: Stash): boolean {
+  return Object.entries(stash.listItems()).some(([itemId, quantity]) => isPack(itemId) && quantity > 0);
+}
+
 export function createStartingStash(starter = BULBASAUR): Stash {
   const stash = new Stash();
+  // The pack first, and that order is the point: a new game is issued the
+  // eighteen-square Raid pack this game was designed around, and the restock
+  // below then sees a pack and does not hand out the Satchel it would give a
+  // player who had lost everything.
+  stash.ensureAPack();
   stash.ensurePlayable(starter);
   return stash;
 }

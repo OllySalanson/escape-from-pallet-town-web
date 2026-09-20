@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { blocksFor, BASE_SECURE_GRID, gridCells, RAID_BAG_GRID, stackSizeOf } from '../items';
+import { blocksFor, BASE_SECURE_GRID, gridCells, packGridFor, RAID_BAG_GRID, stackSizeOf } from '../items';
 import { CHARMANDER, IVYSAUR, Pokemon, SQUIRTLE } from '../pokemon';
-import { createStartingStash, type Stash } from '../stash';
+import { createStartingStash, Stash } from '../stash';
 import { DeploymentFlow } from './deploymentFlow';
 
 function seedFlow(): { flow: DeploymentFlow; stash: Stash } {
@@ -9,6 +9,110 @@ function seedFlow(): { flow: DeploymentFlow; stash: Stash } {
   stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
   return { flow: new DeploymentFlow(stash), stash };
 }
+
+describe('the pack a raid is worn into', () => {
+  /** A vault holding one of each pack, plus a Pokemon to deploy with. */
+  function packedVault(): Stash {
+    const { stash } = seedFlow();
+    for (const itemId of ['satchel', 'ranger-pack', 'hauler-frame']) {
+      stash.addItem(itemId, 1);
+    }
+    return stash;
+  }
+
+  it('opens on the biggest pack at base, and packs against its squares', () => {
+    const flow = new DeploymentFlow(packedVault());
+
+    expect(flow.packItemId).toBe('hauler-frame');
+    expect(flow.bagGrid).toEqual(packGridFor('hauler-frame'));
+    expect(flow.bagCells.total).toBe(30);
+    expect(flow.packName).toBe('Hauler frame');
+  });
+
+  it('falls back to the starting squares for a vault that holds no pack at all', () => {
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
+    const flow = new DeploymentFlow(stash);
+
+    expect(flow.packItemId).toBeUndefined();
+    expect(flow.bagGrid).toEqual(RAID_BAG_GRID);
+    expect(flow.packChoices).toEqual([]);
+    expect(flow.deploy.bind(flow)).toThrow();
+  });
+
+  it('wears a different pack, and re-measures the loadout against it', () => {
+    const stash = packedVault();
+    stash.addItem('potion', 20);
+    const flow = new DeploymentFlow(stash);
+
+    expect(flow.choosePack('satchel')).toBeUndefined();
+    expect(flow.bagCells.total).toBe(12);
+    expect(flow.packLimit('potion')).toBe(12);
+
+    expect(flow.choosePack('ranger-pack')).toBeUndefined();
+    expect(flow.bagCells.total).toBe(24);
+  });
+
+  /**
+   * A smaller pack is refused rather than spilling what is packed: the player
+   * packed it, and this game never silently puts something of theirs down.
+   */
+  it('refuses a pack too small for what is already packed, and says what it holds', () => {
+    const stash = packedVault();
+    stash.addItem('potion', 20);
+    const flow = new DeploymentFlow(stash);
+    flow.setItemQuantity('potion', 20);
+
+    expect(flow.bagCells.used).toBe(20);
+    expect(flow.choosePack('satchel')).toMatch(/Satchel holds 12 squares and you have packed 20/);
+    expect(flow.packItemId).toBe('hauler-frame');
+    // The row is still listed, with the reason on it, because a control the
+    // cursor cannot reach can never say why it would do nothing.
+    const satchel = flow.packChoices.find((choice) => choice.itemId === 'satchel')!;
+    expect(satchel.wouldNotHold).toMatch(/holds 12 squares/);
+    expect(satchel.chosen).toBe(false);
+  });
+
+  it('refuses a pack the vault does not hold', () => {
+    const { flow } = seedFlow();
+    expect(flow.choosePack('hauler-frame')).toMatch(/no Hauler frame at base/);
+    expect(flow.packItemId).toBe('raid-pack');
+  });
+
+  it('lists every pack at base, smallest first, with how many there are', () => {
+    const stash = packedVault();
+    stash.addItem('satchel', 2);
+    const flow = new DeploymentFlow(stash);
+
+    expect(flow.packChoices.map(({ itemId, squares, held, chosen }) => ({ itemId, squares, held, chosen }))).toEqual([
+      { itemId: 'satchel', squares: 12, held: 3, chosen: false },
+      { itemId: 'raid-pack', squares: 18, held: 1, chosen: false },
+      { itemId: 'ranger-pack', squares: 24, held: 1, chosen: false },
+      { itemId: 'hauler-frame', squares: 30, held: 1, chosen: true },
+    ]);
+  });
+
+  it('names the pack on the deployment, because nothing else can', () => {
+    const flow = new DeploymentFlow(packedVault());
+    flow.togglePokemon('charmander-1');
+    flow.choosePack('ranger-pack');
+    flow.advance();
+    flow.advance();
+
+    const deployment = flow.deploy();
+    expect(deployment.packItemId).toBe('ranger-pack');
+    // It is never one of the packed supplies: it is not in the bag, it is the bag.
+    expect(deployment.items.map(({ itemId }) => itemId)).not.toContain('ranger-pack');
+  });
+
+  it('never packs a spare pack into the pack you are wearing', () => {
+    const flow = new DeploymentFlow(packedVault());
+
+    expect(flow.setItemQuantity('satchel', 1)).toBeUndefined();
+    expect(flow.itemQuantity('satchel')).toBe(0);
+    expect(flow.packLimit('satchel')).toBe(0);
+  });
+});
 
 describe('deployment flow', () => {
   it('starts preparation with nothing selected, so no partner is chosen for the player', () => {
@@ -98,7 +202,6 @@ describe('deployment flow', () => {
     const flow = new DeploymentFlow(stash, 'floodplain-relay', {
       pokemon: 1,
       secureGrid: { width: 3, height: 2 },
-      bagGrid: RAID_BAG_GRID,
     });
 
     flow.togglePokemon('charmander-1');
@@ -189,7 +292,6 @@ describe('deployment flow', () => {
     const grown = new DeploymentFlow(stash, 'floodplain-relay', {
       pokemon: 1,
       secureGrid: { width: 3, height: 2 },
-      bagGrid: RAID_BAG_GRID,
     });
     grown.togglePokemon('ivysaur-1');
     expect(grown.securedPokemon.map(({ id }) => id)).toEqual(['ivysaur-1']);
@@ -200,7 +302,7 @@ describe('deployment flow', () => {
     const flow = new DeploymentFlow(
       stash,
       'floodplain-relay',
-      { pokemon: 1, secureGrid: { width: 3, height: 2 }, bagGrid: RAID_BAG_GRID },
+      { pokemon: 1, secureGrid: { width: 3, height: 2 } },
       { pokemon: true, items: [{ itemId: 'potion', quantity: 2 }] },
     );
 
@@ -217,7 +319,7 @@ describe('deployment flow', () => {
     const remembered = new DeploymentFlow(
       createStartingStash(),
       'floodplain-relay',
-      { pokemon: 1, secureGrid: BASE_SECURE_GRID, bagGrid: RAID_BAG_GRID },
+      { pokemon: 1, secureGrid: BASE_SECURE_GRID },
       { pokemon: true, items: [{ itemId: 'potion', quantity: 4 }] },
     );
 
@@ -240,7 +342,6 @@ describe('deployment flow', () => {
     const flow = new DeploymentFlow(stash, 'floodplain-relay', {
       pokemon: 1,
       secureGrid: { width: 4, height: 2 },
-      bagGrid: RAID_BAG_GRID,
     });
 
     for (const id of ids.slice(0, 6)) {
@@ -297,7 +398,6 @@ describe('deployment flow', () => {
     const flow = new DeploymentFlow(stash, 'floodplain-relay', {
       pokemon: 1,
       secureGrid: { width: 3, height: 2 },
-      bagGrid: RAID_BAG_GRID,
     });
 
     flow.togglePokemon('charmander-1');
@@ -370,7 +470,7 @@ describe('deployment flow', () => {
     stash.addPokemon(new Pokemon(SQUIRTLE, 6), 'squirtle-1');
     // Two Pokemon are eight squares, so the two-slot locker needs the columns
     // to go with it: 4x2 is the smallest container that can use both.
-    const flow = new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 2, secureGrid: { width: 4, height: 2 }, bagGrid: RAID_BAG_GRID });
+    const flow = new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 2, secureGrid: { width: 4, height: 2 } });
     for (const id of ['bulbasaur-1', 'charmander-1', 'squirtle-1']) {
       flow.togglePokemon(id);
     }

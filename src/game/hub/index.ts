@@ -61,7 +61,6 @@ export {
   LAST_FIT_REFUSAL,
   OUTFITTER_UPGRADES,
   outfitterOffers,
-  raidBagGridFor,
   PARTNER_REFUSAL,
   payablePokemonCount,
   paymentCandidates,

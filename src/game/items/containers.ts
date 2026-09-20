@@ -1,35 +1,40 @@
 import type { GridSize } from './itemGrid';
+import { packGridFor, STARTING_PACK_ID } from './packs';
 
 /**
- * The two containers a raid is played with, at the size every save starts them.
+ * The two containers a raid is played with, and where each one's size is
+ * decided.
  *
- * They are sizes rather than counts on purpose: the Outfitter grows one and
- * contracts grow the other, and both grow by adding squares to a shape the
- * player has already learned to read. The growth itself is derived where the
- * thing that pays for it lives - `raidBagGridFor` in `../hub/outfitter` and
- * `secureGrid` in `../objectives/contracts` - so neither list can be silently
- * defaulted past.
+ * They are opposites on purpose, and that is the design. The **secure
+ * container** is the base: it grows permanently and never shrinks, by the
+ * column, paid for at the Outfitter or with a banked contract, and a wipe
+ * cannot touch what is in it - `secureGrid` in `../objectives/contracts` is
+ * where that size is derived. The **pack** is gear: its size is whichever pack
+ * the player chose to wear this raid (`./packs`), it is lost with everything in
+ * it if the raid is lost, and so it is a decision made fresh every time rather
+ * than a number that only ever goes up.
  */
 
 /**
- * Six squares across and three down: eighteen.
+ * The pack a fresh save is issued: six squares across and three down, eighteen.
  *
- * Two numbers set it. The wipe restock kit - five Poké Balls and three Potions -
- * is eight squares, so a player handed the last-resort kit can always carry it
- * and still have ten squares to fill; and a good raid finds four or five pieces
- * of loot averaging nearly three squares each, so those ten do not cover a good
- * raid. That is the decision the whole grid exists to create: pack harder and
- * you bring less home, and somewhere in the field you put something down.
+ * It is a *default*, not the size of the pack - since packs became gear the
+ * squares come from whichever pack the player chose for this raid, and
+ * `packGridFor` in `./packs` is the only thing that answers that question. This
+ * is the shape a container falls back to when nobody has said which pack: a
+ * `Bag` built with no capacity, and the tests and tools that want "the pack the
+ * game was played with".
  *
- * It is also as tall as the loadout screen can draw at 320x240 and still leave
- * the insertion list readable - a square is sixteen game pixels because that is
- * the icon set's size, so a row of the pack is a real share of the stage. Four
- * rows crushed the pane beside it to a sliver; that was measured, not supposed.
+ * Two numbers set that starting size, and they still set it. The wipe restock
+ * kit - five Poke Balls and three Potions - is eight squares, so a player handed
+ * the last-resort kit can always carry it and still have ten squares to fill;
+ * and a good raid finds four or five pieces of loot averaging nearly three
+ * squares each, so those ten do not cover a good raid. That is the decision the
+ * whole grid exists to create: pack harder and you bring less home, and
+ * somewhere in the field you put something down. A bigger pack buys room out of
+ * that tension and pays for it in what a lost raid costs.
  */
-export const RAID_BAG_GRID: GridSize = { width: 6, height: 3 };
-
-/** Each rung that grows the pack adds one row of six. */
-export const RAID_BAG_ROWS_PER_UPGRADE = 1;
+export const RAID_BAG_GRID: GridSize = packGridFor(STARTING_PACK_ID);
 
 /**
  * Two by two. It is small because it is meant to be: the secure container is

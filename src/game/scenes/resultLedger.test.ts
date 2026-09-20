@@ -32,6 +32,8 @@ describe('the result screen ledger', () => {
       ],
       gear: [],
       gearSummary: null,
+      pack: null,
+      packSummary: null,
     } as unknown as ExtractionReport;
     Object.assign(scene as object, { report });
 

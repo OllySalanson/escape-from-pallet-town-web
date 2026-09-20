@@ -18,7 +18,6 @@ import {
   paymentCandidates,
   pokemonNeedingRecovery,
   quoteRecovery,
-  raidBagGridFor,
   raidClockAfterRecovery,
   recoveryCostMs,
   recoveryPriceShare,
@@ -69,6 +68,7 @@ import {
   isFoundOnly,
   type ItemDefinition,
   type ItemId,
+  type PackItemId,
 } from '../items';
 import { DEFAULT_SECURE_PREFERENCE } from '../hub/secureAutofill';
 import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
@@ -231,7 +231,6 @@ export class HubScene extends Phaser.Scene {
         loaded.raidProgress.outfitterUpgrades,
         loaded.traderBerthPaid,
       ),
-      bagGrid: raidBagGridFor(loaded.raidProgress.outfitterUpgrades),
     },
     // The container fills itself from what it held last raid, so a player
     // deploying again and again is not re-picking from scratch.
@@ -784,7 +783,13 @@ export class HubScene extends Phaser.Scene {
     this.saveManager.recordDeployment(RUN_INSERTIONS[deployment.insertionId].mapId);
     const items = deployment.items;
     activeRunManager.startRun(
-      { party: deployment.party.map((stored) => stored.pokemon), items },
+      {
+        party: deployment.party.map((stored) => stored.pokemon),
+        items,
+        // The pack is part of the loadout because it is the one thing out of
+        // the vault that is risked without ever being in the bag.
+        ...(deployment.packItemId === undefined ? {} : { packItemId: deployment.packItemId }),
+      },
       // The base clock, less whatever recovery has already been booked against it.
       {
         mapId: RUN_INSERTIONS[deployment.insertionId].mapId,
@@ -828,6 +833,7 @@ export class HubScene extends Phaser.Scene {
       plan.contract ? objectivesForContract(plan.contract) : [],
       plan,
       this.builtUpgradeIds,
+      deployment.packItemId,
     );
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
@@ -1070,6 +1076,7 @@ export class HubScene extends Phaser.Scene {
       this.setStatus(`${name ?? 'That Pokémon'} is fit. There is nothing to recover.`);
     });
     on('[data-pokemon]', (button) => this.answer(this.flow.togglePokemon(button.dataset.pokemon!), 'select'));
+    on('[data-pack]', (button) => this.answer(this.flow.choosePack(button.dataset.pack! as PackItemId), 'select'));
     on('[data-treat-item]', (button) => this.treat(button.dataset.treatPokemon!, button.dataset.treatItem!));
     on('[data-gear-give]', (button) => this.giveGear(button.dataset.gearPokemon!, button.dataset.gearGive!));
     on('[data-gear-take]', (button) => this.takeGear(button.dataset.gearTake!));
@@ -1709,9 +1716,9 @@ export class HubScene extends Phaser.Scene {
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${this.browseBar(false)}${pokemonRows || '<p class="px-empty">No Pokémon answers that.</p>'}<h3 class="px-subheading">Supplies</h3>${supplyRows || '<p class="px-empty">No supplies at base.</p>'}</div>${details}`,
       { className: 'loadout-stash', heading: 'Stash', note: hurtCount ? `${hurtCount} hurt · treat them first` : '' },
     )}<div class="loadout-side">${pixelWindow(
-      pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
+      `<div class="pack-body px-scroll">${pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         label: `Pack, ${cells.used} of ${cells.total} squares full`,
-      }),
+      })}${this.packRows()}</div>`,
       {
         className: 'pack-window',
         heading: 'Pack',
@@ -1721,10 +1728,44 @@ export class HubScene extends Phaser.Scene {
       title: `${party.length}/6 Pokémon packed`,
       lines: [
         `<span class="px-wrap">${summary}</span>`,
-        `<small class="px-wrap${allFainted ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : 'Everything here is lost on a wipe unless it is in the secure slot.'}</small>`,
+        `<small class="px-wrap${allFainted ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : `Everything here is lost on a wipe unless it is in the secure slot - and the ${this.flow.packName} goes either way.`}</small>`,
       ],
       actions: `<button class="px-window px-button" data-secure-slot data-help="${escapeAttribute(`The ${gridCells(this.flow.secureGrid)} squares that survive a wipe. It fills itself with your highest-level Pokémon first - a Pokémon costs 4, 6 or 9 squares by its stage - and you can change it.`)}">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Choose where this raid drops in." ${this.flow.isDeployable ? '' : 'disabled'}>Choose drop-in</button>`,
     })}</main>`;
+  }
+
+  /**
+   * The packs at base, under the squares they would give you.
+   *
+   * It is a list of rows rather than a cycling control because the choice is
+   * the point: a Hauler frame carries a fortune home and is a fortune to lose,
+   * a Satchel risks almost nothing because it holds almost nothing, and the row
+   * says both numbers before anything is chosen. A pack too small for what is
+   * already packed is still reachable and refuses out loud - a control the
+   * cursor cannot land on can never say why.
+   */
+  private packRows(): string {
+    const choices = this.flow.packChoices;
+    if (choices.length === 0) {
+      return '<p class="px-empty">No pack at base.</p>';
+    }
+    const rows = choices
+      .map((choice) => {
+        const spare = choice.held - 1;
+        const help = escapeAttribute(
+          `${choice.name}: ${choice.squares} squares. ${
+            choice.wouldNotHold ??
+            (spare > 0
+              ? `${spare} spare at base, so losing this one is not losing them all.`
+              : 'Your only one. Lose this raid and it is gone.')
+          }`,
+        );
+        return `<button class="px-row has-icon${choice.chosen ? ' is-selected' : ''}" data-pack="${choice.itemId}" data-help="${help}">${itemIcon(choice.itemId, choice.name)}<span class="px-row-main"><strong class="px-name">${choice.name}</strong><small>${choice.squares} squares${choice.held > 1 ? ` · ${choice.held} at base` : ''}</small></span>${
+          choice.chosen ? pixelTag('', 'good', true) : pixelTag(choice.wouldNotHold ? 'Full' : 'Wear')
+        }</button>`;
+      })
+      .join('');
+    return `<h3 class="px-subheading">Wearing</h3><div class="px-list pack-choices">${rows}</div>`;
   }
 
   /**
@@ -2063,7 +2104,9 @@ export class HubScene extends Phaser.Scene {
       .filter((item) => item.quantity > 0);
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
     const riskedCount =
-      riskedPokemon.length + riskedItems.reduce((total, item) => total + item.quantity, 0);
+      (this.flow.packItemId === undefined ? 0 : 1) +
+      riskedPokemon.length +
+      riskedItems.reduce((total, item) => total + item.quantity, 0);
     // The price of the party, on screen before the player commits to it - the
     // rule the trainer watch and the flee cost already follow. It sits in the
     // full-width bar beside the button that pays it.
@@ -2073,7 +2116,14 @@ export class HubScene extends Phaser.Scene {
     // so the rows do not each say it again.
     const itemRow = (item: { readonly itemId: ItemId; readonly quantity: number }, secured: boolean): string =>
       `<div class="px-row has-icon${secured ? ' is-secured' : ''}">${itemIcon(item.itemId, this.itemName(item.itemId))}<span class="px-row-main"><strong>${this.itemName(item.itemId)} ×${item.quantity}</strong>${isFoundOnly(item.itemId) ? '<small>room kept for what you find</small>' : ''}</span></div>`;
-    const risked = `${riskedPokemon
+    // The pack leads the list, because it is the biggest single thing a wipe
+    // takes and the one nothing in the container beside it can protect: the
+    // container is something the pack is carried past, not something it is in.
+    const packItemId = this.flow.packItemId;
+    const packRow = packItemId === undefined
+      ? ''
+      : `<div class="px-row has-icon">${itemIcon(packItemId, this.flow.packName)}<span class="px-row-main"><strong>${this.flow.packName}</strong><small>the pack itself · ${gridCells(this.flow.bagGrid)} squares</small></span></div>`;
+    const risked = `${packRow}${riskedPokemon
       .map((stored) => `<div class="px-row">${this.pokemonRowBody(stored, '')}</div>`)
       .join('')}${riskedItems.map((item) => itemRow(item, false)).join('')}`;
     const secured = `${securedPokemon
@@ -2099,7 +2149,7 @@ export class HubScene extends Phaser.Scene {
       title: `Deploy to ${insertion.label}`,
       lines: [
         `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · raid clock ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}</span>`,
-        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} supplies · pack ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
+        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} supplies · ${this.flow.packName} ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
         `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
       ],
       actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-start data-cursor-start data-help="There is no way back from here: the raid starts.">Enter the raid</button>`,

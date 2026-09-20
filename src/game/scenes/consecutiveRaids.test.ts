@@ -89,7 +89,7 @@ vi.mock('../ui/DialogBox', () => ({
 import { Bag } from '../items';
 import { BULBASAUR, Pokemon, PokemonParty } from '../pokemon';
 import { RunManager, RunPhase } from '../run/RunManager';
-import { createActiveRunSession } from '../run/RunSession';
+import { createActiveRunSession, type ActiveRunSession } from '../run/RunSession';
 import { ENRAGE_GRACE_MS } from '../run/RunManager';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { FIRST_CONTRACT } from '../objectives';
@@ -501,21 +501,34 @@ describe('a raid carried through a battle and back', () => {
   }
 
   /** A walkable tile outside the tall grass, and the tall grass one step from it. */
-  const stepIntoTallGrass = (world: WorldInternals) => {
+  /**
+   * A step from bare ground into tall grass with nothing else on either tile.
+   *
+   * The loot this raid laid is skipped deliberately: `generateLoot` re-seats
+   * every piece on its own seed, so the first tall-grass tile on the map is a
+   * different thing from raid to raid, and a step that lands on a Cable coil
+   * picks it up instead of rolling the encounter this is about. Adding one
+   * piece to a map's pool used to be enough to break this test.
+   */
+  const stepIntoTallGrass = (world: WorldInternals, session: ActiveRunSession) => {
     const { currentMap: map, collisionData } = world;
     const open = (x: number, y: number) => collisionData[y]?.[x] === false;
+    const busy = new Set(
+      (session.plan?.loot[map.id] ?? []).map(({ position }) => `${position.x},${position.y}`),
+    );
+    const clear = (x: number, y: number) => open(x, y) && !busy.has(`${x},${y}`);
     for (let y = 0; y < collisionData.length; y += 1) {
       for (let x = 0; x < collisionData[y].length; x += 1) {
-        if (!open(x, y) || isTallGrassInMap(map, { x, y })) continue;
+        if (!clear(x, y) || isTallGrassInMap(map, { x, y })) continue;
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const grass = { x: x + dx, y: y + dy };
-          if (open(grass.x, grass.y) && isTallGrassInMap(map, grass)) {
+          if (clear(grass.x, grass.y) && isTallGrassInMap(map, grass)) {
             return { from: { x, y }, grass };
           }
         }
       }
     }
-    throw new Error(`${map.id} has no tall grass to walk into`);
+    throw new Error(`${map.id} has no empty tall grass to walk into`);
   };
 
   const startsOf = (scene: object) =>
@@ -540,7 +553,7 @@ describe('a raid carried through a battle and back', () => {
       const internals = world as unknown as WorldInternals;
       internals.dialogBox.visible = false;
 
-      const { from, grass } = stepIntoTallGrass(internals);
+      const { from, grass } = stepIntoTallGrass(internals, runSession);
       // The hunter has arrived, been beaten, and is standing where it fell.
       const hunter: HunterState = {
         ...createHunterState(),

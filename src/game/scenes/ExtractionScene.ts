@@ -331,7 +331,7 @@ export class ExtractionScene extends Phaser.Scene {
       ? `<h3 class="px-subheading">Contract</h3><div class="px-row has-icon${report.contract.complete ? ' is-secured' : ''}">${objectiveIcon('Contract')}<span class="px-row-main"><strong class="px-wrap">Contract ${report.contract.complete ? 'complete' : 'unpaid'}: ${escapeHtml(report.contract.description)}</strong><small class="px-wrap${report.contract.complete ? '' : ' px-warning'}">${escapeHtml(report.contract.reward)}</small></span></div>`
       : '';
     return pixelWindow(
-      `<div class="px-list px-scroll">${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${this.gearRows()}${this.progressRows()}${contract}</div>`,
+      `<div class="px-list px-scroll">${rows || `<p class="px-empty">${escapeHtml(report.ledgerEmptyText)}</p>`}${this.packRow()}${this.gearRows()}${this.progressRows()}${contract}</div>`,
       {
         className: 'extraction-ledger',
         heading: escapeHtml(report.ledgerHeading),
@@ -357,6 +357,27 @@ export class ExtractionScene extends Phaser.Scene {
       `<div class="px-list px-scroll"><h3 class="px-subheading">Secure slot</h3>${securedRows || `<p class="px-empty">${escapeHtml(report.securedEmptyText)}</p>`}${risked}<p class="px-wrap gamble-verdict">${escapeHtml(report.gambleVerdict)}</p></div>`,
       { className: 'extraction-gamble', heading: 'The gamble' },
     );
+  }
+
+  /**
+   * The pack the raid was carried in, and what became of it.
+   *
+   * It is its own row above the gear because it is not part of the haul: it is
+   * the thing the haul was in, and on a lost raid it is gone whatever the
+   * secure container held. A player who went down in a Hauler frame needs to
+   * read that here, not work it out from a smaller grid next raid.
+   */
+  private packRow(): string {
+    const { pack, packSummary } = this.report;
+    if (pack === null) {
+      return '';
+    }
+    const tag = pack.fate === 'lost' ? pixelTag('Gone', 'risk') : pixelTag('Came home', 'good', true);
+    return `<h3 class="px-subheading">Pack</h3><div class="px-row has-icon${
+      pack.fate === 'lost' ? ' is-lost' : ''
+    }">${itemIcon(pack.itemId, pack.name)}<span class="px-row-main"><strong>${escapeHtml(pack.name)}</strong><small>${pack.squares} squares</small></span>${tag}</div>${
+      packSummary ? `<p class="px-wrap gamble-verdict">${escapeHtml(packSummary)}</p>` : ''
+    }`;
   }
 
   /**

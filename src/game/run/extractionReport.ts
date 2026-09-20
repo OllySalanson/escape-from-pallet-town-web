@@ -1,4 +1,13 @@
-import { ITEM_DEFINITIONS, heldItemName, isFoundOnly, itemNameFor, type BagContents } from '../items';
+import {
+  ITEM_DEFINITIONS,
+  heldItemName,
+  isFoundOnly,
+  isPackId,
+  itemNameFor,
+  packName,
+  packSquares,
+  type BagContents,
+} from '../items';
 import { experienceForLevel, type Pokemon } from '../pokemon';
 import type { RunSnapshot } from './RunManager';
 import { hunterFleePenaltyMs } from './fleePenalty';
@@ -98,6 +107,21 @@ export interface ReportGear {
   readonly fate: 'kept' | 'lost' | 'found';
 }
 
+/**
+ * What became of the pack the raid was carried in.
+ *
+ * It is its own line rather than an entry in the ledger because it is not a
+ * haul: it is the thing the haul was in. A lost raid takes it, whatever the
+ * secure container held, and that is the sentence the player is owed on the
+ * screen where they find out.
+ */
+export interface ReportPack {
+  readonly itemId: string;
+  readonly name: string;
+  readonly squares: number;
+  readonly fate: 'kept' | 'lost';
+}
+
 export interface ReportContract {
   readonly description: string;
   readonly complete: boolean;
@@ -149,6 +173,10 @@ export interface ExtractionReport {
   readonly gear: readonly ReportGear[];
   /** One sentence naming what became of the gear, or null when there was none. */
   readonly gearSummary: string | null;
+  /** The pack the raid was carried in, and whether it came home. */
+  readonly pack: ReportPack | null;
+  /** One sentence naming what became of the pack, or null when there was none. */
+  readonly packSummary: string | null;
   /** What the raid put the player through: escapes, fights, the clock. */
   readonly pressure: readonly string[];
   /**
@@ -187,6 +215,7 @@ export interface ExtractionReportInput {
 export function buildExtractionReport(input: ExtractionReportInput): ExtractionReport {
   const { snapshot, outcome } = input;
   const escaped = outcome === 'ESCAPED';
+  const pack = raidPack(snapshot, escaped);
   const banked = input.banked ?? { pokemon: [], items: [] };
   const lost = input.lost ?? { pokemon: [], items: [] };
   const ledgerSource = escaped ? banked : lost;
@@ -291,6 +320,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     progressSummary: progressSummary(progress),
     gear,
     gearSummary: gearSummary(gear, escaped),
+    pack,
+    packSummary: packSummary(pack),
     pressure: pressureLines(snapshot, escaped),
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
     saved: input.saved,
@@ -485,6 +516,36 @@ function partyGear(snapshot: RunSnapshot, escaped: boolean): ReportGear[] {
 }
 
 /** What the gear did for this raid, in the voice the progress line uses. */
+/**
+ * The pack the raid was carried in, read off the loadout the raid deployed with.
+ *
+ * Nothing but the loadout knows it: the pack never enters the bag, so the
+ * supply accounting cannot see it, and the secure container cannot protect it -
+ * the container is something the pack is carried *past*, not something the pack
+ * is inside.
+ */
+function raidPack(snapshot: RunSnapshot, escaped: boolean): ReportPack | null {
+  const itemId = snapshot.loadout?.packItemId;
+  if (!isPackId(itemId)) {
+    return null;
+  }
+  return {
+    itemId,
+    name: packName(itemId),
+    squares: packSquares(itemId),
+    fate: escaped ? 'kept' : 'lost',
+  };
+}
+
+function packSummary(pack: ReportPack | null): string | null {
+  if (pack === null) {
+    return null;
+  }
+  return pack.fate === 'kept'
+    ? `Your ${pack.name} came home, all ${pack.squares} squares of it.`
+    : `Your ${pack.name} went down with the raid - ${pack.squares} squares, gone. Whatever else you own is still at base.`;
+}
+
 function gearSummary(gear: readonly ReportGear[], escaped: boolean): string | null {
   if (gear.length === 0) {
     return null;
