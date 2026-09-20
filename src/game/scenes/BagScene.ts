@@ -114,7 +114,6 @@ export class BagScene extends Phaser.Scene {
   /** Said once, over the help bar, about what just happened. */
   private status?: string;
   private menuOverlay?: MenuOverlay;
-  private markHandler?: (event: Event) => void;
 
   public constructor() {
     super('bag');
@@ -134,11 +133,13 @@ export class BagScene extends Phaser.Scene {
     // Lighting the pointed-at item's squares is a class on a block, not a
     // render: the cursor moves on every arrow key and a rebuilt screen would
     // cost the player a beat each time.
-    this.markHandler = (event) => {
+    // Both listeners sit on the overlay root and die with it: `MenuOverlay`
+    // removes itself from the page on the scene's own shutdown, so there is
+    // nothing here for a `close()` to take down by hand.
+    this.menuOverlay.root.addEventListener('focusin', (event) => {
       const control = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-item]') : null;
       this.markPack(control?.dataset.item);
-    };
-    this.menuOverlay.root.addEventListener('focusin', this.markHandler);
+    });
     // A square in the pack and the row above it are the same thing asked about
     // two ways (`ui/hoverDescribe.ts`), so pointing at one answers for the
     // other: an item's square moves the cursor to its row, and a Pokemon being
@@ -456,7 +457,6 @@ export class BagScene extends Phaser.Scene {
 
   private close(): void {
     audioManager.play('menuClose');
-    this.menuOverlay?.root.removeEventListener('focusin', this.markHandler!);
     this.scene.stop();
     this.scene.resume('world');
   }
