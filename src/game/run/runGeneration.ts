@@ -95,7 +95,7 @@ export const RUN_INSERTIONS = {
     id: 'pallet-strand',
     label: 'The Hard',
     mapId: 'pallet-town',
-    position: { x: 35, y: 80 },
+    position: { x: 32, y: 72 },
     description: 'The stone slip at the foot of the valley. The ferry comes in on the tide; west is the strand and the salt marsh, east is the headland and whoever is keeping its gate.',
   },
   'route-1': {

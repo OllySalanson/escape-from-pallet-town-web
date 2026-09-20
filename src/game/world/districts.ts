@@ -319,7 +319,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     name: 'THE OLD FIELDS',
     encounters: wildlife.PALLET_MEADOW_WILDLIFE,
     // Small closes nobody has ploughed since the flood, off a green lane.
-    areas: [{ x: 36, y: 44, width: 28, height: 25 }],
+    areas: [{ x: 36, y: 44, width: 28, height: 22 }],
   },
   {
     id: 'pallet-saltings',
@@ -327,7 +327,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     name: 'THE SALTINGS',
     encounters: wildlife.PALLET_MARSH_WILDLIFE,
     // Salt marsh, two creeks with one ford each, and the pans worked between.
-    areas: [{ x: 0, y: 64, width: 28, height: 15 }],
+    areas: [{ x: 0, y: 64, width: 28, height: 8 }],
   },
   {
     id: 'pallet-hard',
@@ -335,28 +335,28 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     name: 'THE HARD',
     encounters: wildlife.PALLET_SHORE_WILDLIFE,
     // The stone slip the ferry lies off, and the grass above it.
-    areas: [{ x: 28, y: 69, width: 16, height: 19 }],
+    areas: [{ x: 28, y: 68, width: 16, height: 8 }],
   },
   {
     id: 'pallet-strand',
     mapId: 'pallet-town',
     name: 'THE STRAND',
     // Groyned sand between the marsh and the sea.
-    areas: [{ x: 0, y: 79, width: 28, height: 9 }],
+    areas: [{ x: 0, y: 72, width: 28, height: 4 }],
   },
   {
     id: 'pallet-ness',
     mapId: 'pallet-town',
     name: 'THE NESS',
     // The neck of the headland, and the gate the salter keeps across it.
-    areas: [{ x: 44, y: 69, width: 20, height: 6 }],
+    areas: [{ x: 44, y: 66, width: 20, height: 3 }],
   },
   {
     id: 'pallet-beacon',
     mapId: 'pallet-town',
     name: 'THE BEACON',
     // The headland itself: bare turf, a rock spine, and the light on it.
-    areas: [{ x: 44, y: 75, width: 20, height: 13 }],
+    areas: [{ x: 44, y: 69, width: 20, height: 7 }],
   },
 
   // -- Route 1 ---------------------------------------------------------------

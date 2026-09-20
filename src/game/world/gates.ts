@@ -199,7 +199,7 @@ export const WORLD_GATES: readonly MapGate[] = [
     mapId: 'pallet-town',
     bossId: 'pallet-salt-keeper',
     label: 'COBB GATE',
-    tiles: [{ x: 54, y: 72 }, { x: 55, y: 72 }],
+    tiles: [{ x: 54, y: 67 }, { x: 55, y: 67 }],
     closed: { material: 'fence' },
     open: { material: 'earth' },
   },
@@ -210,7 +210,7 @@ export const WORLD_GATES: readonly MapGate[] = [
     label: 'COBB STEPS',
     // Cut down the headland's west face onto the stone of the hard - ground a
     // player coming the long way round has already walked.
-    tiles: [{ x: 44, y: 80 }, { x: 45, y: 80 }],
+    tiles: [{ x: 44, y: 72 }, { x: 45, y: 72 }],
     closed: { material: 'cliff' },
     open: { material: 'turf' },
   },

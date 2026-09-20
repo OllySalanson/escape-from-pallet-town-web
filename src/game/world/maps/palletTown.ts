@@ -107,7 +107,7 @@ import type { FloodTownPropName } from '../tileset/floodTownTileset';
 export function sketchPalletTown(): MapSketch<FloodTownPropName> {
   const map = new MapSketch<FloodTownPropName>({
     width: 64,
-    height: 88,
+    height: 76,
     fill: '.',
     stamps: {
       t: {
@@ -185,18 +185,6 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
     'TTtTTTTTTTTTTTtTTtTTTTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTtTTtTTtTTTTTtTTtTTTTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
@@ -546,11 +534,6 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
     '        #.g.g.##,,#g..g.g#  ',
     '        #g.g...#,,#.g.gg.#  ',
     '        #.gg.g,,,,#g.g..g#  ',
-    '        #g..g.##,,.gg.g.g#  ',
-    '        #.g.gg##,,#g.g..g#  ',
-    '        ########,,########  ',
-    '                ,,,,,,      ',
-    '                    ,,      ',
   ]);
   map.plant(57, 62, 'hut');
   map.plant(45, 56, 'boulder');
@@ -565,33 +548,21 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
   // groyned, and the stone hard east of it is where the ferry lies off. The
   // headland is a place of its own behind SALTER COBB's two doors.
   map.draw(0, 64, [
-    '        gg.g        .g.gg..g                                    ',
-    '      g.ggWWg.     g.g.gggWW                                    ',
-    '     .gg.gWWg.gg.g.ggWWg.g.g                                    ',
-    '    g.WWgg.g.g.g.gWWg.g.gg.g                                    ',
-    '    WWWWWWWWwwWWWWWWWWWWWWWW                                    ',
-    '    WWWWWWWWwwWWWWWWWWWWWWWW                            ,,      ',
-    '    g.g.MMMM.WWg.WW.g.g.gg.g                            ,,      ',
-    '    g.g.MWWM.g.gWWg.gMWWM.g.                          ,,,,      ',
-    '    .gg.MWWM.WWg.g.g.MWWM.g.                          ,,        ',
-    '    g.g.MMMM.WW.g.WW.gMMMM.g                          ,,        ',
-    '    WWWWWWWWWWWWWWWwwWWWWWWW                          ,,,,      ',
-    '    WWWWWWWWWWWWWWWwwWWWWWWW                     """"""",,      ',
-    '    .gg.WWg.gg.g.gWWg.g.gg.g g.gg.g             C""""CC",,""""" ',
-    '    g.g.gg.WW.g.g.g.WW.g.WWg.gg.g.gg           CC""""CCC""""""" ',
-    '    .g.ggWW.gg.g.gWWg.g.g.g. .g.gg.g         C"""""""CC"""""""" ',
-    '  ddddFdddddddddFddddddddddF MMMMMMMCMMMMMMMCC"CC"""""CC""""""" ',
-    '  dddddddddFdddddddddFdddddddMMCMMMMMCMMMMMMCC"C""""""CC""""""" ',
-    '  ddddFdddddddddFddddddddddF MMMMCCMMMMMCMMMCCCC"""""CC"""""""" ',
-    '  ~~~~~~~~~F~~~~~~~~~F~~~~~~~~~C~~~~~~~C~~~~ CCC""""""CC""""""" ',
-    '  WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW CCCCC""""""CC""""" ',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW""""""""WWWW ',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW""""""WWWW ',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    '    g.g.gggWWWWWWWWWWg.g.gg.                #g.g.g##,,..g.gg.#  ',
+    '    WWWWWwwWWWWWWWWWwwWWWWWW                ########,,########  ',
+    '    WWWWWwwWWWWWWWWWwwWWWWWW                        ,,,,        ',
+    '    g.g.MMMMWWg.g.gg..WMMMMW                          ,,        ',
+    '    .gg.MWWMg..g.Wg.gggMWWMW                        ,,,,,,      ',
+    '    WWWWWWWWWWWWWWWWwwWWWWWW                  CC""""""CC""""""" ',
+    '    WWWWWWWWWWWWWWWWwwWWWWWW                 CCC""""""CC""""""" ',
+    '    .gg.WWg.gg.gWWg.g.gWWg.gg.gCgg.g        CC"""""""""CC"""""" ',
+    '  ddddFdddddddddFddddddddddFMMMMMMMCMMMMCMMMCC""C""""""CC"""""" ',
+    '  dddddddddFdddddddddFddddddMMCMMMMCMCMMMMMMCCCC"""""""CC"""""" ',
+    '  ~~~~~~~~~C~~~~~~~~~C~~~~~~~~~C~~~~~~~C~~~~WWWWWW""""""WWWWWWWW',
+    '  WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
   ]);
 
-  map.plant(58, 77, 'tower');
+  map.plant(60, 69, 'roundhouse');
   // What stands on the new ground. A place is remembered as the things in it,
   // so every one of these is something somebody left: the hanger's felled
   // timber, the kilns' own mouths, the salt house on its pan walk, the boat
@@ -603,16 +574,17 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
   map.plant(55, 37, 'mineMouth');
   map.plant(50, 39, 'crateStack');
   map.plant(6, 61, 'stump');
-  map.plant(8, 79, 'log');
-  map.plant(33, 82, 'mooringPost');
-  map.plant(35, 82, 'jetty');
-  map.plant(9, 70, 'barrelPair');
-  map.plant(22, 70, 'crateStack');
-  map.plant(23, 80, 'boulder');
-  map.plant(17, 81, 'mooringPost');
-  map.plant(33, 76, 'crateStack');
-  map.plant(29, 74, 'hut');
-  map.plant(51, 84, 'gravestoneWorn');
+  map.plant(31, 73, 'mooringPost');
+  map.plant(35, 73, 'jetty');
+  map.plant(36, 74, 'mooringPost');
+  map.plant(36, 69, 'barrelPair');
+  map.plant(25, 67, 'crateStack');
+  map.plant(23, 70, 'boulder');
+  map.plant(26, 74, 'mooringPost');
+  map.plant(21, 62, 'stump');
+  map.plant(33, 69, 'crateStack');
+  map.plant(30, 68, 'hut');
+  map.plant(48, 73, 'gravestoneWorn');
 
 
   // == WHAT GROWS IN THE NEW GROUND ========================================
@@ -690,21 +662,7 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
     '                             T                                  ',
     '  p                          a     p                          q ',
     '                                                                ',
-    '                                p     q                         ',
     '                                                                ',
-    '  a                          q     a     p                      ',
-    '                                                                ',
-    '                                a     p     q     a             ',
-    '                                   T                            ',
-    '  q                          p     q     a     p                ',
-    '                                                                ',
-    '                                q     a     p                   ',
-    '                                            T                   ',
-    '  p                          a     p     q                      ',
-    '                                                                ',
-    '                                      q     a                   ',
-    '                                                                ',
-    '  a                                                             ',
     '                                                                ',
     '                                                                ',
     '                                                                ',
@@ -747,18 +705,24 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
   map.plant(47, 63, 'bedYellowCrop');
   map.plant(47, 64, 'bedRedCrop');
   map.plant(51, 61, 'produceCrate');
-  map.plant(16, 68, 'wetRock');
-  map.plant(22, 68, 'wetRock');
-  map.plant(6, 74, 'wetRock');
-  map.plant(24, 74, 'wetRock');
-  map.plant(7, 80, 'boulder');
+  map.plant(13, 65, 'wetRock');
+  map.plant(22, 65, 'wetRock');
+  map.plant(6, 65, 'wetRock');
+  map.plant(24, 65, 'wetRock');
 
   // == THE LATTICE, THINNED ================================================
   // Eight trees of the lattice stood where the new ground put something else:
   // over the Mill Stair's rock, in the quarry, under the rickyard's barn.
   // A tree is felled by cutting the ground its letter stands on.
-  map.draw(29, 74, ['T']);
   map.draw(29, 60, ['T']);
+  map.draw(29, 68, ['T']);
+  map.draw(32, 68, ['T']);
+  map.draw(29, 70, ['T']);
+  map.draw(32, 70, ['T']);
+  map.draw(35, 70, ['T']);
+  map.draw(38, 70, ['T']);
+  map.draw(47, 66, ['T']);
+  map.draw(59, 66, ['T']);
   map.draw(32, 14, ['T']);
   map.draw(32, 20, ['T']);
   map.draw(32, 22, ['T']);

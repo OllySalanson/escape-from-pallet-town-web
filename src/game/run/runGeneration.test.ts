@@ -151,8 +151,8 @@ describe('run generation', () => {
    * review of the supply economy read the authored table and took it for what
    * the player sees.
    */
-  it('never lays the same loot on the same tiles raid after raid', () => {
-    for (const insertionId of insertionIds) {
+  it.each(insertionIds)('never lays the same loot on the same tiles raid after raid: %s', (insertionId) => {
+    {
       const mapId = RUN_INSERTIONS[insertionId].mapId;
       // Only the ordinary pool: a piece with its own `chance` is rolled
       // separately and so is neither part of the half-the-pool floor nor able
@@ -247,8 +247,8 @@ describe('run generation', () => {
    * try - so every offered exit is held to the map with its doors open. The exit
    * promised open from the first second is held to the map as it stands.
    */
-  it('never generates a run with one exit, and every offered exit can be walked to', () => {
-    for (const insertionId of insertionIds) {
+  it.each(insertionIds)('never generates a run with one exit, and every offered exit can be walked to: %s', (insertionId) => {
+    {
       const insertion = RUN_INSERTIONS[insertionId];
       const walkable = walkableFrom(insertion.mapId, insertion.position, EVERY_BOSS);
       const walkableNow = walkableFrom(insertion.mapId, insertion.position);

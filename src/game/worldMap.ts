@@ -172,9 +172,9 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'pallet-town-meadow-poke-ball', position: { x: 19, y: 45 }, itemId: 'poke-ball', quantity: 2 },
       { id: 'pallet-town-rickyard-potion', position: { x: 30, y: 52 }, itemId: 'potion', quantity: 1 },
       { id: 'pallet-town-withy-great-ball', position: { x: 10, y: 49 }, itemId: 'great-ball', quantity: 1 },
-      { id: 'pallet-town-saltings-mooring-rope', position: { x: 25, y: 72 }, itemId: 'mooring-rope', quantity: 1 },
-      { id: 'pallet-town-strand-super-potion', position: { x: 13, y: 79 }, itemId: 'super-potion', quantity: 1 },
-      { id: 'pallet-town-hard-cable-coil', position: { x: 32, y: 80 }, itemId: 'cable-coil', quantity: 1 },
+      { id: 'pallet-town-saltings-mooring-rope', position: { x: 21, y: 68 }, itemId: 'mooring-rope', quantity: 1 },
+      { id: 'pallet-town-strand-super-potion', position: { x: 13, y: 72 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'pallet-town-hard-cable-coil', position: { x: 37, y: 72 }, itemId: 'cable-coil', quantity: 1 },
       { id: 'pallet-town-fields-potion', position: { x: 46, y: 62 }, itemId: 'potion', quantity: 1 },
       { id: 'pallet-town-scrip-quarry', position: { x: 60, y: 16 }, itemId: 'scrip', quantity: 55 },
       // TM28 Dig, in the town whose sheds have dug rows and produce beside

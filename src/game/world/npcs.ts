@@ -136,7 +136,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'pallet-hard-board',
     mapId: 'pallet-town',
     kind: 'sign',
-    position: { x: 29, y: 79 },
+    position: { x: 29, y: 71 },
     facing: 'down',
     dialogLines: [
       'THE HARD - ferry lies off',
@@ -291,7 +291,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'pallet-salt-hand',
     mapId: 'pallet-town',
     kind: 'npc',
-    position: { x: 11, y: 71 },
+    position: { x: 6, y: 67 },
     facing: 'right',
     design: 'heavy-man',
     dialogLines: [
@@ -303,7 +303,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'pallet-marsh-board',
     mapId: 'pallet-town',
     kind: 'sign',
-    position: { x: 18, y: 66 },
+    position: { x: 18, y: 68 },
     facing: 'left',
     dialogLines: [
       'THE SALTINGS - two creeks, one ford each',
@@ -315,7 +315,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'pallet-marsh-fowler',
     mapId: 'pallet-town',
     kind: 'npc',
-    position: { x: 14, y: 76 },
+    position: { x: 12, y: 71 },
     facing: 'down',
     design: 'hiker',
     dialogLines: [
@@ -327,7 +327,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     id: 'pallet-strand-board',
     mapId: 'pallet-town',
     kind: 'sign',
-    position: { x: 4, y: 80 },
+    position: { x: 4, y: 72 },
     facing: 'down',
     dialogLines: [
       'THE STRAND - west end',

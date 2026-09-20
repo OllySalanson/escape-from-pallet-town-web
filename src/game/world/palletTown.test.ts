@@ -28,7 +28,7 @@ const ferryHard = exitTile(MAP, 'FERRY HARD');
 const quarryTrack = exitTile(MAP, 'QUARRY TRACK');
 const headland = exitTile(MAP, 'HEADLAND STEPS');
 /** The neck of the headland, one step above Salter Cobb's gate. */
-const NESS = { x: 56, y: 70 };
+const NESS = { x: 53, y: 66 };
 /** The Flood's south shore, where the withy causeway leaves the town. */
 const FLOOD_SHORE = { x: 8, y: 38 };
 /** The head of the Gate Lane, where the other road south leaves the stockyard. */
@@ -164,7 +164,7 @@ describe('Pallet Town', () => {
           return [insertion.label, Math.min(...reachable)];
         }),
     );
-    expect(home).toEqual({ 'Town Square': 49, 'The Far Bank': 3, 'The Quarry': 9, 'The Hard': 4 });
+    expect(home).toEqual({ 'Town Square': 49, 'The Far Bank': 3, 'The Quarry': 9, 'The Hard': 6 });
     for (const [label, count] of Object.entries(home)) {
       expect(`${label}: ${((count * STEP_DURATION_MS) / RAID_DURATION_MS) < 0.1}`).toBe(`${label}: true`);
     }
@@ -179,14 +179,14 @@ describe('Pallet Town', () => {
    */
   it('is a valley you cannot see the far end of, and can still walk out of', () => {
     const acrossTheValley = steps(MAP, quarry, hard, { beaten: ALL_WON });
-    expect(acrossTheValley).toBe(171);
+    expect(acrossTheValley).toBe(144);
     const share = (acrossTheValley * STEP_DURATION_MS) / RAID_DURATION_MS;
     expect(`crossing the valley is ${(share * 100).toFixed(0)}% of the clock`)
-      .toBe('crossing the valley is 9% of the clock');
+      .toBe('crossing the valley is 7% of the clock');
     expect({
       squareToTheFerry: steps(MAP, square, ferryHard, { standing: STANDING }),
       squareToTheQuarryTrack: steps(MAP, square, quarryTrack, { standing: STANDING }),
-    }).toEqual({ squareToTheFerry: 127, squareToTheQuarryTrack: 75 });
+    }).toEqual({ squareToTheFerry: 118, squareToTheQuarryTrack: 75 });
   });
 
   /**
@@ -201,7 +201,7 @@ describe('Pallet Town', () => {
     expect({
       byTheWithyBeds: steps(MAP, FLOOD_SHORE, hard, { without: GATE_LANE }),
       byTheGateLane: steps(MAP, FLOOD_SHORE, hard, { without: WITHY_PATH }),
-    }).toEqual({ byTheWithyBeds: 83, byTheGateLane: 109 });
+    }).toEqual({ byTheWithyBeds: 76, byTheGateLane: 82 });
   });
 
   /**
@@ -217,10 +217,10 @@ describe('Pallet Town', () => {
     expect({
       roundByTheDrove: steps(MAP, hard, NESS, {}),
       overTheSteps: steps(MAP, hard, NESS, { beaten: ALL_WON }),
-    }).toEqual({ roundByTheDrove: 181, overTheSteps: 33 });
+    }).toEqual({ roundByTheDrove: 147, overTheSteps: 33 });
     // The steps land on ground a player coming the long way round has already
     // walked, which is what every second door in this game is for.
-    expect(steps(MAP, hard, headland, { beaten: ALL_WON })).toBe(31);
+    expect(steps(MAP, hard, headland, { beaten: ALL_WON })).toBe(28);
   });
 
   /**

@@ -101,7 +101,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     // anybody kept up, and the only reason to leave the causeway.
     id: 'pallet-salt-pans',
     mapId: 'pallet-town',
-    position: { x: 8, y: 71 },
+    position: { x: 8, y: 67 },
     label: 'THE SALT PANS',
     description: 'The pans worked between the two creeks, and the barrels stacked on the walk between them. A Potion and an Antidote.',
     reward: [
@@ -114,7 +114,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     // The only cache on this map that costs a boss.
     id: 'pallet-beacon-light',
     mapId: 'pallet-town',
-    position: { x: 61, y: 80 },
+    position: { x: 57, y: 71 },
     label: 'BEACON LIGHT',
     description: 'The lamp store on the seaward side of the beacon, behind the salter\'s two doors. Two Great Balls and a Super Potion.',
     reward: [
@@ -140,7 +140,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     // worked by boat rather than walked. The one thing to make for out there.
     id: 'pallet-staithe',
     mapId: 'pallet-town',
-    position: { x: 25, y: 70 },
+    position: { x: 19, y: 71 },
     label: 'THE STAITHE',
     description: 'The old landing stage out on the saltings, between the two creeks. A Poke Ball and a Potion in what is left of the locker.',
     reward: [

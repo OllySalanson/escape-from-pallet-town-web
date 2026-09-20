@@ -412,7 +412,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     // On the hard, above the tide line. The ferry is the exit behind him and
     // he is beside the route to it rather than on it.
     mapId: 'pallet-town',
-    position: { x: 40, y: 79 },
+    position: { x: 39, y: 72 },
     facing: 'left',
     fixedPosition: true,
     introLines: ['Waiting on the boat as well?', 'It comes when it comes. Time for one, then.'],
@@ -439,7 +439,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     // a second Pokemon to. A Grass lead walks it, and that is a type matchup
     // against three Water-and-Normal rather than a boss changing rung.
     mapId: 'pallet-town',
-    position: { x: 55, y: 71 },
+    position: { x: 55, y: 66 },
     facing: 'down',
     fixedPosition: true,
     bossId: 'pallet-salt-keeper',

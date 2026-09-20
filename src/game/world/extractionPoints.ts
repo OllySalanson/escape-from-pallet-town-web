@@ -124,7 +124,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     // The pier head off the hard. It is a boat, so it is not there yet: the
     // one timed exit in the south, and the nearest way home from the shore.
     mapId: 'pallet-town',
-    position: { x: 35, y: 84 },
+    position: { x: 35, y: 75 },
     label: 'FERRY HARD',
     unlockAtMs: 45_000,
     requirement: { kind: 'elapsed', unlockAtMs: 45_000 },
@@ -133,7 +133,7 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     // The south tip of the headland, behind both of Salter Cobb's doors and
     // open from the first second - a way out you have to beat somebody for.
     mapId: 'pallet-town',
-    position: { x: 55, y: 85 },
+    position: { x: 52, y: 74 },
     label: 'HEADLAND STEPS',
     unlockAtMs: 0,
     requirement: { kind: 'always' },
