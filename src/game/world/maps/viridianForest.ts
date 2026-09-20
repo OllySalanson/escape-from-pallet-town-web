@@ -865,8 +865,8 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
     '    gg..gg     ',
     '     gggg      ',
   ]);
-  map.plant(4, 63, 'boulder');
-  map.plant(7, 62, 'boulder');
+  map.plant(4, 63, 'wetRock');
+  map.plant(7, 62, 'wetRock');
   map.plant(10, 61, 'deadStump');
   map.plant(6, 65, 'deadStump');
 
@@ -994,8 +994,8 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
     '     CvCCCCCCC     ',
   ]);
   map.plant(44, 61, 'mineMouth');
-  map.plant(45, 55, 'boulder');
-  map.plant(35, 59, 'boulder');
+  map.plant(45, 55, 'wetRock');
+  map.plant(35, 59, 'wetRock');
 
   // The trail down the wood between Stone Row and the hollow way, so the two
   // halves of the south are a ring rather than a fork: it comes out at the
