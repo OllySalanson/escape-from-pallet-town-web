@@ -608,6 +608,44 @@ export const AERIAL_ACE = new MoveBase({
 });
 
 /**
+ * HM01, and the first of the two machines that are a **route** as well as a
+ * move. A Pokemon that knows Cut can take down the growth a map authored as a
+ * door (`world/fieldMoves.ts`), and fifty power on a ninety-five accuracy is
+ * what FireRed charges for carrying it: a little under Vine Whip's damage on
+ * the turn it is thrown, and a slot that is not a signature move.
+ */
+export const CUT = new MoveBase({
+  name: 'Cut',
+  description: 'A slash with a claw or a blade. It also clears growth in the field.',
+  type: PokemonType.Normal,
+  power: 50,
+  accuracy: 95,
+  pp: 30,
+  category: MoveCategory.Physical,
+  flags: [MoveFlag.Contact],
+});
+
+/**
+ * HM03, and the other one. Ninety-five power puts it level with Ice Beam and
+ * under Iron Tail, which is where a machine's damage sits in this game; what
+ * makes it worth a slot is that it is the only Water move in the catalogue with
+ * the same-type bonus behind it for the Water starter, and that carrying it
+ * makes an authored reach walkable.
+ *
+ * Canon's target is every other Pokemon on the field. This engine fights one a
+ * side, so it is the foe, and `MoveTarget` has nothing else to say about it.
+ */
+export const SURF = new MoveBase({
+  name: 'Surf',
+  description: 'A wave that sweeps the field. It also carries its user over deep water.',
+  type: PokemonType.Water,
+  power: 95,
+  accuracy: 100,
+  pp: 15,
+  category: MoveCategory.Special,
+});
+
+/**
  * HM06, and the one machine that is never used up. Twenty power is the whole
  * reason that is safe: it is a lever rather than a weapon, and what earns it a
  * slot is the coin-flip Defense drop in front of whatever hits next.

@@ -1,5 +1,6 @@
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
+import { FIELD_MOVES, type FieldMoveId } from './fieldMoves';
 import type { MapSketch, PlantedProp } from './mapGrid';
 import { MATERIAL_CHARS, type Material } from './tileset/materials';
 
@@ -24,23 +25,36 @@ export interface GateAppearance {
 }
 
 /**
- * A door in the map that a boss holds shut.
+ * A door in the map, and what opens it.
  *
  * A gate is plain authored data, like a landmark: a set of tiles that are solid
- * until the boss named by `bossId` has been beaten, and ground for good after
- * that. The author supplies both states - what the door is made of and what is
- * left when it is gone - and the gate, not the sketch, is the authority for its
- * own tiles in both, so nothing drawn underneath it can leave a door that looks
- * shut and walks open.
+ * until the door has been opened and ground for good after that. The author
+ * supplies both states - what the door is made of and what is left when it is
+ * gone - and the gate, not the sketch, is the authority for its own tiles in
+ * both, so nothing drawn underneath it can leave a door that looks shut and
+ * walks open.
  *
- * One boss per gate. Several gates may name the same boss, which is how one
- * fight opens a door at each end of a region.
+ * **Two keys, one door.** A gate is either held by a boss, whose defeat opens
+ * it, or by a **field move** - a `MapGate` with a `fieldMove` instead of a
+ * `bossId`, opened by walking up to it with a Pokemon that knows Cut or Surf
+ * and pressing the interact key (`fieldMoves.ts`, `WorldScene.tryFieldMove`).
+ * The two are one type rather than two because everything downstream of a gate
+ * - the collision it writes, the map `getWorldMap` builds per state, the
+ * caption, the structure rules, the drop-in screen's dark - cares only that a
+ * door is shut or open and never about which key turned it. A sibling type
+ * would have meant a second `applyGates`, a second `gateStateKey`, a second
+ * list in every rule that walks a map in every state, and the first thing
+ * anybody would have written is a function that turned one into the other.
+ *
+ * So what a gate carries is a **key**: a string that has to be in the list of
+ * doors this save has opened. For a boss gate it is the `bossId`, which is why
+ * one fight opens a door at each end of a region and why nothing about the boss
+ * half changed; for a field-move gate it is the gate's own id, recorded in
+ * `raidProgress.openedGates` on the step that opened it.
  */
-export interface MapGate {
+interface MapGateBase {
   readonly id: string;
   readonly mapId: WorldMapId;
-  /** The `bossId` of the trainer whose defeat opens this gate. */
-  readonly bossId: string;
   /** What the door is called on the map, in the capitals every caption uses. */
   readonly label: string;
   readonly tiles: readonly GridPosition[];
@@ -48,6 +62,49 @@ export interface MapGate {
   readonly closed: GateAppearance;
   /** Every tile of the gate must come out walkable in this state. */
   readonly open: GateAppearance;
+}
+
+/**
+ * One boss per gate. Several gates may name the same boss, which is how one
+ * fight opens a door at each end of a region.
+ */
+export interface BossGate extends MapGateBase {
+  /** The `bossId` of the trainer whose defeat opens this gate. */
+  readonly bossId: string;
+  readonly fieldMove?: undefined;
+}
+
+/**
+ * A door opened by what a Pokemon knows. One gate per door here - a field move
+ * is spent on the lock in front of it and nothing else - and the gate's own id
+ * is the key, so two doors of the same kind on one map are two separate things
+ * to go and open.
+ */
+export interface FieldMoveGate extends MapGateBase {
+  readonly fieldMove: FieldMoveId;
+  readonly bossId?: undefined;
+}
+
+export type MapGate = BossGate | FieldMoveGate;
+
+/**
+ * What has to have been done for this door to stand open, as one string: the
+ * boss's id, or the gate's own. Everything that asks whether a door is open
+ * asks it of one flat list of these, so a save's beaten bosses and its opened
+ * field gates are the same kind of fact by the time a map is built.
+ */
+export function gateKey(gate: MapGate): string {
+  return gate.bossId ?? gate.id;
+}
+
+/** The field-move door on these tiles, if one of them is a tile of one. */
+export function fieldMoveGateAt(
+  gates: readonly MapGate[],
+  tile: GridPosition,
+): FieldMoveGate | undefined {
+  return gates
+    .filter((gate): gate is FieldMoveGate => gate.fieldMove !== undefined)
+    .find((gate) => gate.tiles.some((own) => own.x === tile.x && own.y === tile.y));
 }
 
 export const WORLD_GATES: readonly MapGate[] = [
@@ -135,6 +192,34 @@ export const WORLD_GATES: readonly MapGate[] = [
     open: { material: 'grass' },
   },
 
+  {
+    // The mouth of an old ride off the trail under DEEP STAND, grown shut.
+    // Nothing is behind it but the coppice it leads to, which is the point: a
+    // cut here buys four steps at most (the wood is two-connected throughout),
+    // so what it is worth is the twelve tiles of clearing nobody has walked.
+    //
+    // A stool either side of the mouth, in **both** states, and the growth
+    // between them is the door. The same answer the Orchard Ford needed and for
+    // the same reason: this wood is drawn as a lattice of bushes, so a hedge
+    // tile in it is the same green as the wall it is in, and a door nobody can
+    // see is a wall. Two brown stumps are the one thing on that row that is an
+    // object - the mark a coppicer leaves - and after the cut they are what the
+    // gap is still between.
+    id: 'forest-coppice-ride',
+    mapId: 'viridian-forest',
+    fieldMove: 'cut',
+    label: 'COPPICE RIDE',
+    tiles: [{ x: 15, y: 27 }],
+    closed: {
+      material: 'hedge',
+      props: [{ name: 'stump', x: 14, y: 27 }, { name: 'stump', x: 16, y: 27 }],
+    },
+    open: {
+      material: 'grass',
+      props: [{ name: 'stump', x: 14, y: 27 }, { name: 'stump', x: 16, y: 27 }],
+    },
+  },
+
   // -- Floodplain Relay ------------------------------------------------------
   // Three bosses, two doors each. The first of each pair is the door in front
   // of the player; the second is somewhere they have already stood, and opens
@@ -210,6 +295,28 @@ export const WORLD_GATES: readonly MapGate[] = [
     open: { material: 'stone' },
   },
   {
+    // The one door on this map that no fight opens. The bar under Market Isle's
+    // south treeline can be seen from Old Town's reeds on a fresh save's first
+    // raid and there is no way to it on foot at all - two rows of deep water in
+    // front of it, and the unfelled wood at its back. Swum once, the shoal is a
+    // crossing the player knows, and the map draws the shallow it shelves on.
+    //
+    // Deep water shut and a ford open is the same pair the Relay Causeway
+    // uses, and for the same reason: shut, a ford reads as somewhere you could
+    // already wade, and open, plain water would look like a door that had not
+    // moved.
+    id: 'floodplain-shoal-crossing',
+    mapId: 'floodplain-relay',
+    fieldMove: 'surf',
+    label: 'SHOAL CROSSING',
+    tiles: [
+      { x: 25, y: 45 }, { x: 26, y: 45 },
+      { x: 25, y: 46 }, { x: 26, y: 46 },
+    ],
+    closed: { material: 'water' },
+    open: { material: 'ford' },
+  },
+  {
     id: 'floodplain-vault-fence',
     mapId: 'floodplain-relay',
     bossId: 'floodplain-orchard-warden',
@@ -229,12 +336,43 @@ export const WORLD_GATES: readonly MapGate[] = [
   },
 ];
 
+/**
+ * The two lists a save keeps about doors, which every caller reads as one.
+ *
+ * Structural rather than `RaidProgress` so `gates.ts` stays at the bottom of
+ * the import graph; `SaveManager`'s record satisfies it, and so does a run
+ * plan's own copy of both lists.
+ */
+export interface OpenedDoorRecord {
+  readonly defeatedBosses: readonly string[];
+  readonly openedGates?: readonly string[];
+}
+
+/**
+ * Every door this save has opened, as one flat list of gate keys.
+ *
+ * A beaten boss and a cut tree are the same fact by the time a map is built -
+ * see `gateKey` - so this is what goes into `getWorldMap`, `isGateOpen` and
+ * `gateStateKey`, and no caller downstream of it has to carry two lists.
+ */
+export function openedDoors(record: OpenedDoorRecord): readonly string[] {
+  return [...record.defeatedBosses, ...(record.openedGates ?? [])];
+}
+
 export function gatesForMap(mapId: WorldMapId): readonly MapGate[] {
   return WORLD_GATES.filter((gate) => gate.mapId === mapId);
 }
 
-export function isGateOpen(gate: MapGate, defeatedBosses: readonly string[]): boolean {
-  return defeatedBosses.includes(gate.bossId);
+/**
+ * Whether this door stands open for a player who has done these things.
+ *
+ * `opened` is one flat list of gate keys - beaten boss ids and the ids of field
+ * gates already worked open - because by the time a map is built the two are
+ * the same fact. `openedDoors()` in `SaveManager` is what puts a save's two
+ * lists together; nothing here needs to know which half a key came from.
+ */
+export function isGateOpen(gate: MapGate, opened: readonly string[]): boolean {
+  return opened.includes(gateKey(gate));
 }
 
 /**
@@ -247,10 +385,10 @@ export function isGateOpen(gate: MapGate, defeatedBosses: readonly string[]): bo
 export function applyGates(
   sketch: MapSketch,
   gates: readonly MapGate[],
-  defeatedBosses: readonly string[],
+  opened: readonly string[],
 ): MapSketch {
   for (const gate of gates) {
-    const appearance = isGateOpen(gate, defeatedBosses) ? gate.open : gate.closed;
+    const appearance = isGateOpen(gate, opened) ? gate.open : gate.closed;
     for (const tile of gate.tiles) {
       sketch.raw(tile.x, tile.y, MATERIAL_CHARS[appearance.material]);
     }
@@ -262,47 +400,65 @@ export function applyGates(
 }
 
 /**
- * Which of a map's gates are open, as one string. Two lists of beaten bosses
- * that open the same doors are the same map, so this - and not the boss list -
+ * Which of a map's gates are open, as one string. Two sets of opened doors that
+ * leave the same gates open are the same map, so this - and not the key list -
  * is what a built map is remembered under.
  */
-export function gateStateKey(gates: readonly MapGate[], defeatedBosses: readonly string[]): string {
+export function gateStateKey(gates: readonly MapGate[], opened: readonly string[]): string {
   return gates
-    .filter((gate) => isGateOpen(gate, defeatedBosses))
+    .filter((gate) => isGateOpen(gate, opened))
     .map((gate) => gate.id)
     .sort()
     .join('+');
 }
 
-/** Every boss that holds a gate on these gates' map, once each, in authored order. */
+/**
+ * Every boss that holds a gate on these gates' map, once each, in authored
+ * order. Bosses only: this is what the standing board draws a sealed contract
+ * from and what a tool means by "open this map up", and a field-move door has
+ * no keeper to name.
+ */
 export function gateBossIds(gates: readonly MapGate[]): readonly string[] {
-  return [...new Set(gates.map((gate) => gate.bossId))];
+  return [...new Set(gates.flatMap((gate) => (gate.bossId === undefined ? [] : [gate.bossId])))];
+}
+
+/** Every key that opens something on this map, once each, in authored order. */
+export function gateKeys(gates: readonly MapGate[]): readonly string[] {
+  return [...new Set(gates.map(gateKey))];
 }
 
 /**
- * The gate states a map is tested in: every door shut, each boss beaten alone,
+ * The gate states a map is tested in: every door shut, each key turned alone,
  * and every door open. A map with no gates has the one state it always had.
+ *
+ * A field-move door is a state here exactly as a boss is, which is the whole
+ * reason the two are one type: every rule a map is held to is asked again with
+ * the wood cut and the reach swum, and again with neither.
  */
 export function gateStatesToVerify(gates: readonly MapGate[]): readonly (readonly string[])[] {
-  const bosses = gateBossIds(gates);
-  if (bosses.length === 0) {
+  const keys = gateKeys(gates);
+  if (keys.length === 0) {
     return [[]];
   }
-  const states: (readonly string[])[] = [[], ...bosses.map((boss) => [boss])];
-  if (bosses.length > 1) {
-    states.push(bosses);
+  const states: (readonly string[])[] = [[], ...keys.map((key) => [key])];
+  if (keys.length > 1) {
+    states.push(keys);
   }
   return states;
 }
 
 /**
- * What the map says over a gate. A shut door names who is holding it, because
- * that is the whole instruction; an open one says so, because a door the player
- * opened three raids ago is otherwise one more gap in a fence.
+ * What the map says over a gate. A shut door says what would open it, because
+ * that is the whole instruction - a keeper's name, or the move it wants; an
+ * open one says so, because a door the player opened three raids ago is
+ * otherwise one more gap in a fence.
  */
 export function gateCaption(gate: MapGate, open: boolean, bossName: string | undefined): string {
   if (open) {
     return `${gate.label}\nOPEN`;
+  }
+  if (gate.fieldMove) {
+    return `${gate.label}\n${FIELD_MOVES[gate.fieldMove].doorNote}`;
   }
   return bossName ? `${gate.label}\nHELD BY ${bossName}` : `${gate.label}\nSHUT`;
 }
@@ -312,7 +468,7 @@ export function gateCaption(gate: MapGate, open: boolean, bossName: string | und
  * first. A keeper with one door is a group of one.
  */
 export function gatesByKeeper(gates: readonly MapGate[]): readonly (readonly MapGate[])[] {
-  return gateBossIds(gates).map((bossId) => gates.filter((gate) => gate.bossId === bossId));
+  return gateKeys(gates).map((key) => gates.filter((gate) => gateKey(gate) === key));
 }
 
 /**

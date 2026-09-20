@@ -261,9 +261,15 @@ describe('a fresh save, from the front door', () => {
     expect(reaches(floodplainExits.find((exit) => exit.label === label)!.position)).toBe(false);
   });
 
-  it('walks to every landmark on the home bank, and not to the vault', () => {
+  it('walks to every landmark on the home bank, and not to the vault or the shoal', () => {
+    // The shoal's cache is behind the SURF door, which is not a door a fresh
+    // save can open: nothing it fields knows the move, and the disc is a
+    // barter it has not stood long enough with the Ferryman to be offered. It
+    // is named here rather than filtered out, because "what a fresh save can
+    // walk to" is the whole point of this file.
+    const shoal = WORLD_POIS.find((poi) => poi.id === 'floodplain-shoal-cache')!;
     const homeBank = WORLD_POIS.filter(
-      (poi) => poi.mapId === 'floodplain-relay' && poi.id !== vault.id,
+      (poi) => poi.mapId === 'floodplain-relay' && poi.id !== vault.id && poi.id !== shoal.id,
     );
     expect(homeBank.map((poi) => poi.id).sort()).toEqual(
       ['floodplain-drowned-chapel', 'floodplain-ranger-radio'].sort(),
@@ -272,6 +278,7 @@ describe('a fresh save, from the front door', () => {
       expect(`${poi.id}: ${reaches(poi.position)}`).toBe(`${poi.id}: true`);
     }
     expect(reaches(vault.position)).toBe(false);
+    expect(reaches(shoal.position)).toBe(false);
   });
 
   it('walks to every stop of the first contract', () => {

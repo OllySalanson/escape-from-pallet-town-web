@@ -114,7 +114,7 @@ describe('banking a standing contract', () => {
     const gate = gatesForMap(contract.mapId).find(
       (candidate) => candidate.label === contract.sealedBehind!.gateLabel,
     )!;
-    expect(saves.recordDefeatedBosses([gate.bossId])).toEqual([gate.bossId]);
+    expect(saves.recordDefeatedBosses([gate.bossId!])).toEqual([gate.bossId!]);
     expect(
       standingBoard(saves.load()!.raidProgress).some(
         (candidate) =>

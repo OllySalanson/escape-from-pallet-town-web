@@ -189,7 +189,11 @@ describe('objective field guide', () => {
     // used to be a sentence about the supply vault typed out by hand, which went
     // on sending a fresh save to a cache that is now behind two bosses.
     const caches = poisForMap('floodplain-relay').filter((poi) => poi.effect === undefined);
-    expect(caches.map((poi) => poi.label)).toEqual(['DROWNED CHAPEL', 'FLOODED SUPPLY VAULT']);
+    expect(caches.map((poi) => poi.label)).toEqual([
+      'DROWNED CHAPEL',
+      'FLOODED SUPPLY VAULT',
+      'STRANDED LIGHTER',
+    ]);
     expect(before.hints.join(' ')).toContain(caches[0].label);
     expect(before.hints.join(' ')).not.toContain(caches[1].label);
     const chapelWorked = buildObjectiveGuide(session, {

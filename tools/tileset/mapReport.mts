@@ -10,7 +10,7 @@
  *   npx vite-node tools/tileset/mapReport.mts -- <map-id> [--components] [--clashes] [--runs]
  */
 import { WORLD_MAPS, getWorldMap, type WorldMapId } from '../../src/game/worldMap';
-import { gateBossIds, gatesForMap } from '../../src/game/world/gates';
+import { gateKeys, gatesForMap } from '../../src/game/world/gates';
 import {
   openGround,
   slideLength,
@@ -27,7 +27,8 @@ import { RUN_INSERTIONS } from '../../src/game/run/runGeneration';
 
 const args = process.argv.slice(2);
 const id = (args.find((value) => !value.startsWith('--')) ?? 'floodplain-relay') as WorldMapId;
-const bosses = gateBossIds(gatesForMap(id));
+// Every door open - a boss's and a field move's alike.
+const bosses = gateKeys(gatesForMap(id));
 const map = getWorldMap(id, bosses);
 const collision = map.collision;
 

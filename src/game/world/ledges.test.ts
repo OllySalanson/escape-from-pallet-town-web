@@ -15,14 +15,14 @@ import { stepDistances } from './mapStructure';
 import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters } from './trainers';
 import { WORLD_MAPS, getWorldMap, type WorldMapDefinition } from '../worldMap';
-import { WORLD_GATES } from './gates';
+import { WORLD_GATES, gateKeys } from './gates';
 
 const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
 
 /** Every gate state a raid can be played in, as `mapStructure.test.ts` builds them. */
 function statesFor(mapId: MapLedge['mapId']): WorldMapDefinition[] {
-  const bosses = [...new Set(WORLD_GATES.filter((gate) => gate.mapId === mapId).map((gate) => gate.bossId))];
-  return [WORLD_MAPS[mapId], ...bosses.map((boss) => getWorldMap(mapId, [boss])), getWorldMap(mapId, bosses)];
+  const keys = gateKeys(WORLD_GATES.filter((gate) => gate.mapId === mapId));
+  return [WORLD_MAPS[mapId], ...keys.map((key) => getWorldMap(mapId, [key])), getWorldMap(mapId, keys)];
 }
 
 describe('a one-way ledge', () => {

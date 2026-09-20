@@ -220,6 +220,24 @@ export const FOREST_CLEARING_WILDLIFE = wildlife(0.08, [
   { speciesId: 'pikachu', minLevel: 9, maxLevel: 9, weight: 1 },
 ]);
 
+/**
+ * THE COPPICE, behind the CUT door: wood that was cut once and grew back, so it
+ * is the one place on this map that is mostly *growth* rather than bugs or
+ * birds. Oddish and Bellsprout are here because a coppice is exactly where they
+ * would be, and because they are two of the eight catchable species FireRed
+ * lets read HM01 - the clearing a Cut opens is where the next Cut is standing.
+ * They are still the minority of the table: AGENTS.md records that both take a
+ * Squirtle to nil before it has a Water move, and this is a place a Water
+ * starter has to come to on somebody else's legs.
+ */
+export const FOREST_COPPICE_WILDLIFE = wildlife(0.1, [
+  { speciesId: 'caterpie', minLevel: 7, maxLevel: 9, weight: 3 },
+  { speciesId: 'oddish', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'venonat', minLevel: 8, maxLevel: 10, weight: 2 },
+  { speciesId: 'bellsprout', minLevel: 8, maxLevel: 10, weight: 1 },
+  { speciesId: 'pikachu', minLevel: 9, maxLevel: 10, weight: 1 },
+]);
+
 // -- Floodplain Relay -------------------------------------------------------
 
 /** The reeds: the first ground a new player walks, so at or under the partner. */
@@ -254,4 +272,18 @@ export const FLOODPLAIN_VAULT_WILDLIFE = wildlife(0.09, [
   { speciesId: 'magnemite', minLevel: 4, maxLevel: 5, weight: 2 },
   { speciesId: 'spearow', minLevel: 4, maxLevel: 5, weight: 2 },
   { speciesId: 'butterfree', minLevel: 6, maxLevel: 6, weight: 1 },
+]);
+
+/**
+ * THE SHOAL, across the SURF door: a sand bar standing in open river, so what
+ * lives on it came up the water. Krabby is the shoal's own - it is the one
+ * catchable species FireRed lets read both HM01 and HM03 - and the rest is what
+ * the reeds have, a level or two up, because a place you can only reach on a
+ * Pokemon's back is a place a player arrives at with one.
+ */
+export const FLOODPLAIN_SHOAL_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'magikarp', minLevel: 4, maxLevel: 6, weight: 3 },
+  { speciesId: 'poliwag', minLevel: 3, maxLevel: 5, weight: 2 },
+  { speciesId: 'krabby', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'psyduck', minLevel: 4, maxLevel: 5, weight: 1 },
 ]);

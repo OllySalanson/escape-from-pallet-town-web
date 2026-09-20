@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { GridPosition } from '../movement/gridMovement';
 import { RAID_CONTRACTS } from '../objectives';
+import { MACHINE_DEFINITIONS } from '../pokemon/machines';
+import { FIELD_MOVES, FIELD_MOVE_IDS } from './fieldMoves';
 import { frontDoorFor, RUN_INSERTIONS } from '../run/runGeneration';
 import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
 import { dropInCaption, dropInReachedLine } from './dropIns';
@@ -8,6 +10,7 @@ import { EXTRACTION_POINTS } from './extractionPoints';
 import {
   applyGates,
   gateBossIds,
+  gateKey,
   gateCaption,
   gatesByKeeper,
   jointGateCaption,
@@ -94,7 +97,7 @@ describe('authored gates', () => {
   it('is solid when shut and ground when open, however the author drew the two states', () => {
     for (const gate of WORLD_GATES) {
       const shut = getWorldMap(gate.mapId);
-      const open = getWorldMap(gate.mapId, [gate.bossId]);
+      const open = getWorldMap(gate.mapId, [gateKey(gate)]);
       // Read off the built collision rather than the material, because a state
       // may be a walkable material with a solid landmark planted across it.
       for (const tile of gate.tiles) {
@@ -163,10 +166,24 @@ describe('authored gates', () => {
     }
   });
 
-  it('gives every gate a boss on its own map, and every boss a gate', () => {
+  it('gives every gate a boss on its own map or a field move, and every boss a gate', () => {
     const bossIds = BOSSES.map((boss) => boss.bossId);
     expect(new Set(bossIds).size).toBe(bossIds.length);
     for (const gate of WORLD_GATES) {
+      // Exactly one key per door. The type already refuses both and neither;
+      // this is the half of it that says what a key has to be attached to - a
+      // boss standing on the same map, or a move this game actually ships a
+      // disc for.
+      if (gate.fieldMove !== undefined) {
+        expect(FIELD_MOVE_IDS, `${gate.id} wants a move nobody has`).toContain(gate.fieldMove);
+        expect(
+          MACHINE_DEFINITIONS.some(
+            (machine) => machine.move === FIELD_MOVES[gate.fieldMove].move,
+          ),
+          `${gate.id} wants ${gate.fieldMove}, which no disc teaches`,
+        ).toBe(true);
+        continue;
+      }
       const boss = BOSSES.find((candidate) => candidate.bossId === gate.bossId);
       expect(`${gate.id} is held by ${boss?.trainer.id ?? 'nobody'}`)
         .not.toBe(`${gate.id} is held by nobody`);
@@ -272,7 +289,7 @@ describe('gate state', () => {
   });
 
   it('hands back the very same built map for the same doors', () => {
-    const boss = WORLD_GATES[0].bossId;
+    const boss = gateKey(WORLD_GATES[0]);
     const mapId = WORLD_GATES[0].mapId;
     expect(getWorldMap(mapId, [boss])).toBe(getWorldMap(mapId, [boss, 'someone-else']));
     expect(getWorldMap(mapId, ['someone-else'])).toBe(WORLD_MAPS[mapId]);
@@ -366,15 +383,17 @@ describe('gate state', () => {
   });
 
   it('groups a map\'s doors by keeper, front door first', () => {
-    // Every gated map now, which is every map but none: two doors per keeper
-    // is the shape, and a keeper with one door would be a boss who opens no
-    // way back.
+    // Every gated map, which is every map: two doors per boss is the shape, and
+    // a boss with one door would be a keeper who opens no way back. A field
+    // move is its own group of one on purpose - it is spent on the lock in
+    // front of it and opens nothing else, so there is no second door to name in
+    // the same breath.
     for (const mapId of GATED_MAP_IDS) {
       const groups = gatesByKeeper(gatesForMap(mapId));
       expect(groups.flat()).toHaveLength(gatesForMap(mapId).length);
       for (const doors of groups) {
-        expect(new Set(doors.map((door) => door.bossId)).size).toBe(1);
-        expect(doors).toHaveLength(2);
+        expect(new Set(doors.map(gateKey)).size).toBe(1);
+        expect(doors).toHaveLength(doors[0].fieldMove === undefined ? 2 : 1);
       }
     }
   });

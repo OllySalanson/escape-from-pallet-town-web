@@ -10,15 +10,14 @@ import {
 } from './districts';
 import { WEATHER_CONDITIONS, WeatherId } from '../pokemon/battle/weather';
 import { EXTRACTION_POINTS } from './extractionPoints';
-import { gatesForMap } from './gates';
+import { gateKeys, gatesForMap } from './gates';
 import { sketchViridianForest } from './maps/viridianForest';
 import { WORLD_POIS } from './pois';
 
 const DISTRICTED_MAPS = [...new Set(MAP_DISTRICTS.map((district) => district.mapId))];
 
-/** Every door open, so ground behind a gate is asked about too. */
-const openMap = (mapId: WorldMapId) =>
-  getWorldMap(mapId, gatesForMap(mapId).map((gate) => gate.bossId));
+/** Every door open - a boss's and a field move's alike - so ground behind a gate is asked about too. */
+const openMap = (mapId: WorldMapId) => getWorldMap(mapId, gateKeys(gatesForMap(mapId)));
 
 describe('the weather a place has', () => {
   /**
@@ -165,7 +164,7 @@ describe('the named districts of a map', () => {
         'RIDGE GAP': 'THE RIDGE',
       },
       landings: { 'Viridian Forest': 'NORTH LANDING', 'The Ridge': 'THE RIDGE' },
-      landmarks: { 'FIRE TOWER': 'FIRE TOWER' },
+      landmarks: { 'FIRE TOWER': 'FIRE TOWER', "COPPICER'S STORE": 'THE COPPICE' },
     });
   });
 
@@ -188,6 +187,14 @@ describe('the named districts of a map', () => {
     expect(planted('rockStair')).toEqual(['TOWER STEPS']);
     expect(planted('log').sort()).toEqual(['BEETLE HOLLOW', 'THE CLEARING']);
     expect(planted('bigStump')).toEqual(["WARDEN'S CUT"]);
+    // THE COPPICE is the one place in the wood that was cut and grew back, so
+    // it is the one with stools standing round its rim.
+    expect(new Set(planted('stump'))).toEqual(
+      new Set(['BEETLE HOLLOW', 'NORTH LANDING', 'THE COPPICE']),
+    );
+    expect(new Set(planted('deadStump'))).toEqual(
+      new Set(['BEETLE HOLLOW', 'NORTH LANDING', 'THE COPPICE']),
+    );
     expect(new Set(planted('sack'))).toEqual(new Set(['EAST RISE']));
     expect(new Set(['bankWest', 'bank', 'bankEast'].flatMap(planted))).toEqual(new Set(['EAST RISE']));
     // The one worn ground in the wood is the crossing, and all of it is.
@@ -257,6 +264,7 @@ describe('the named districts of a map', () => {
         'DROWNED CHAPEL': 'OLD TOWN',
         'FLOODED SUPPLY VAULT': 'THE VAULT',
         'RANGER STATION': 'THE REEDBEDS',
+        'STRANDED LIGHTER': 'THE SHOAL',
       });
     });
 

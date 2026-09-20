@@ -94,6 +94,22 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     unlockedExtractionLabel: 'TOWER STEPS',
   },
   {
+    // Behind the CUT door, and the whole of what that door is worth. A cache
+    // rather than a route: the wood is two-connected, so a cut anywhere in it
+    // saves four steps, and what makes an HM worth carrying is the clearing on
+    // the other side of one.
+    id: 'forest-coppice-store',
+    mapId: 'viridian-forest',
+    position: { x: 13, y: 29 },
+    label: "COPPICER'S STORE",
+    description:
+      'The store in the old coppice, behind the growth that closed the ride. Nobody has been in since the wood grew over it.',
+    reward: [
+      { itemId: 'great-ball', quantity: 2 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
     // The home bank's own cache. The supply vault was this map's only one, and
     // it is behind two bosses now; a fresh save had nothing left to detour for.
     id: 'floodplain-drowned-chapel',
@@ -112,6 +128,20 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     reward: [
       { itemId: 'great-ball', quantity: 2 },
       { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    // On the bar in the great reach, across the SURF door. What the flood took
+    // off the quay and put down again where nobody could follow it.
+    id: 'floodplain-shoal-cache',
+    mapId: 'floodplain-relay',
+    position: { x: 28, y: 43 },
+    label: 'STRANDED LIGHTER',
+    description:
+      'A relay lighter left on the bar when the water dropped, still holding what it was carrying when the flood took it.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'super-potion', quantity: 2 },
     ],
   },
   {

@@ -45,7 +45,7 @@ describe('the result screen\'s line for a contract that was not banked', () => {
     const { progress, sealed } = firstSealedBoard();
     const keeper = gatesForMap(sealed.mapId).find(
       (gate) => gate.label === sealed.sealedBehind!.gateLabel,
-    )!.bossId;
+    )!.bossId!;
     expect(isStillOnBoard(sealed, progress)).toBe(true);
 
     // Beating the boss is what finishing it takes, and is written at the win.

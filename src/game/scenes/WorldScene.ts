@@ -140,14 +140,22 @@ import {
   type RunTrainerEncounter,
 } from '../world/trainers';
 import {
+  fieldMoveGateAt,
   gateCaption,
+  gateKey,
   gatesByKeeper,
   gatesOpenedLines,
   isGateOpen,
   jointGateCaption,
+  openedDoors,
   WORLD_GATES,
   type MapGate,
 } from '../world/gates';
+import {
+  fieldMoveLines,
+  fieldMoveOpenedLine,
+  fieldMoveUser,
+} from '../world/fieldMoves';
 import { dropInCaption, dropInReachedLine } from '../world/dropIns';
 import { insertionAt, isDropInPoint, RUN_INSERTIONS } from '../run/runGeneration';
 import { planTrainerApproach } from '../world/trainerApproach';
@@ -528,6 +536,13 @@ export class WorldScene extends Phaser.Scene {
    * for the same reason `defeatedBosses` is.
    */
   private completedContracts: readonly string[] = [];
+  /**
+   * Every field-move door open as of this moment: the ones the save already
+   * held when the raid deployed, plus the ones cut or swum during it. The other
+   * half of `defeatedBosses`, and read through `openedDoors()` for the same
+   * reason - a door is a door.
+   */
+  private openedGates: readonly string[] = [];
   /** Insertions the lobby already offers, so the map only announces a new one. */
   private readonly knownInsertionIds = new Set<string>();
   /** The caption over each drop-in point, so reaching one can change what it says. */
@@ -584,6 +599,7 @@ export class WorldScene extends Phaser.Scene {
     // what must not survive is this instance's own copy of the list.
     this.defeatedBosses = [];
     this.completedContracts = [];
+    this.openedGates = [];
     this.knownInsertionIds.clear();
     this.pushingAgainst = null;
     this.hunterNear = false;
@@ -708,6 +724,10 @@ export class WorldScene extends Phaser.Scene {
     const saveManager = new SaveManager();
     const stored = (saveManager.load() ?? savedGame)?.raidProgress;
     const deployedWith = this.runSession?.plan?.defeatedBosses ?? stored?.defeatedBosses ?? [];
+    // The doors a field move already opened travel the same way: off the plan
+    // in a raid, off the save outside one. Nothing opens one on this path -
+    // that happens on the step that works it - so it is only restored here.
+    this.openedGates = this.runSession?.plan?.openedGates ?? stored?.openedGates ?? [];
     this.trainerEncounters = this.runSession
       ? (this.runSession.plan?.trainers ??
         withoutDefeatedBosses(createRunTrainerEncounters(), deployedWith))
@@ -724,7 +744,9 @@ export class WorldScene extends Phaser.Scene {
 
     const newlyBeaten = saveManager.recordDefeatedBosses(beatenThisRaid);
     return [
-      ...gatesOpenedLines(WORLD_GATES.filter((gate) => newlyBeaten.includes(gate.bossId))),
+      ...gatesOpenedLines(
+        WORLD_GATES.filter((gate) => gate.bossId !== undefined && newlyBeaten.includes(gate.bossId)),
+      ),
       ...this.takeBossGear(newlyBeaten),
     ];
   }
@@ -789,9 +811,17 @@ export class WorldScene extends Phaser.Scene {
     return lines;
   }
 
-  /** The map as it stands for this player: every gate their wins have opened, open. */
+  /**
+   * The map as it stands for this player: every door they have opened, open -
+   * the gates their wins took and the ones a field move cut or swam.
+   */
   private mapFor(mapId: WorldMapId): WorldMapDefinition {
-    return getWorldMap(mapId, this.defeatedBosses);
+    return getWorldMap(mapId, this.openedDoorKeys());
+  }
+
+  /** Both halves of the door state as the one list every gate rule reads. */
+  private openedDoorKeys(): readonly string[] {
+    return openedDoors({ defeatedBosses: this.defeatedBosses, openedGates: this.openedGates });
   }
 
   public update(_time: number, deltaMs: number): void {
@@ -1012,12 +1042,12 @@ export class WorldScene extends Phaser.Scene {
     };
     for (const doors of gatesByKeeper(this.currentMap.gates)) {
       const [front] = doors;
-      const open = isGateOpen(front, this.defeatedBosses);
+      const open = isGateOpen(front, this.openedDoorKeys());
       const tone = open ? LABEL_TONES.gateOpen : LABEL_TONES.gateShut;
       const boss = bossEncounters(createRunTrainerEncounters()).find(
         (candidate) => candidate.bossId === front.bossId,
       );
-      const group = doors.length > 1 ? `gates:${front.bossId}` : undefined;
+      const group = doors.length > 1 ? `gates:${gateKey(front)}` : undefined;
       for (const gate of doors) {
         const { rect, bottom } = spanOf(gate);
         this.worldLabels.push(
@@ -2158,6 +2188,11 @@ export class WorldScene extends Phaser.Scene {
       this.dialogBox.showMessages([...worked]);
       return;
     }
+    const opened = this.tryFieldMoveAt(targetTile);
+    if (opened !== null) {
+      this.dialogBox.showMessages([...opened]);
+      return;
+    }
 
     const entity = this.currentMap.entities.find((candidate) =>
       this.entityHolds(candidate, targetTile),
@@ -2186,6 +2221,45 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.dialogBox.showMessages([...entity!.dialogLines]);
+  }
+
+  /**
+   * The field-move door in front of the player, worked or refused.
+   *
+   * Null when the tile is not one - every other reading of the interact key is
+   * unaffected - and a pair of lines otherwise: what is in the way, and either
+   * who moved it or why nobody could. An already-open door is not one of these,
+   * because there is nothing left to do to it and the caption over it says OPEN.
+   *
+   * **The door opens for good, here, on this press.** It is written to the save
+   * the moment it is worked rather than at extraction, exactly as a boss's win
+   * is (`SaveManager.recordOpenedGates`), because a gate is the map changing and
+   * not loot being carried out - a raid that cuts the wood and is then lost to
+   * the hunter has still cut it. The list the scene then acts on is its own,
+   * never a read-back from storage, so the door opens in the raid that opened it
+   * even in a browser that cannot save.
+   */
+  private tryFieldMoveAt(tile: GridPosition): readonly string[] | null {
+    const gate = fieldMoveGateAt(this.currentMap.gates, tile);
+    if (!gate || isGateOpen(gate, this.openedDoorKeys())) {
+      return null;
+    }
+    const user = fieldMoveUser(this.party.pokemon, gate.fieldMove);
+    const lines = fieldMoveLines(gate.fieldMove, user);
+    if (!user) {
+      audioManager.play('denied');
+      return lines;
+    }
+    this.openedGates = [...new Set([...this.openedGates, gate.id])];
+    new SaveManager().recordOpenedGates([gate.id]);
+    // The same sound a landmark makes: the world changed because the player
+    // did something to it, which is the whole of what these two events share.
+    audioManager.play('landmarkWorked');
+    // The map is a different map now: rebuilt from its sketch in the new gate
+    // state, with the player left standing exactly where they were.
+    this.currentMap = this.mapFor(this.currentMap.id);
+    this.rebuildMapInPlace();
+    return [...lines, fieldMoveOpenedLine(gate.label)];
   }
 
   /**
@@ -2817,6 +2891,25 @@ export class WorldScene extends Phaser.Scene {
     };
   }
 
+  /**
+   * Redraws the map the player is already standing on, in the gate state it has
+   * just changed into.
+   *
+   * The same three calls a warp makes, minus everything about arriving
+   * somewhere: the player keeps their tile, their facing and their step, and
+   * the hunter, the loot already taken and the beaten trainers are all rebuilt
+   * from the lists the scene is holding. A field move is the one thing that
+   * changes a map's collision without a battle or a warp between, so this is
+   * the one place that has to say so.
+   */
+  private rebuildMapInPlace(): void {
+    this.clearMap();
+    this.createMap();
+    this.createEntities();
+    this.liftBeatenWatches();
+    this.configureCamera();
+  }
+
   private clearMap(): void {
     this.mapObjects.forEach((object) => object.destroy());
     this.mapObjects = [];
@@ -2902,7 +2995,7 @@ export class WorldScene extends Phaser.Scene {
     const top = Math.max(0, Math.floor(view.y / TILE_SIZE));
     const right = Math.min(this.currentMap.width - 1, Math.floor((view.x + view.width) / TILE_SIZE));
     const bottom = Math.min(this.currentMap.height - 1, Math.floor((view.y + view.height) / TILE_SIZE));
-    const key = `${this.currentMap.id}|${this.defeatedBosses.join('+')}|${left},${top},${right},${bottom}`;
+    const key = `${this.currentMap.id}|${this.openedDoorKeys().join('+')}|${left},${top},${right},${bottom}`;
     if (this.canopyInViewCache?.key === key) {
       return this.canopyInViewCache.runs;
     }

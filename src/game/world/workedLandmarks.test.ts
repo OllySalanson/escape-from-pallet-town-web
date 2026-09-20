@@ -218,6 +218,7 @@ describe('what the rest of the game reads off it', () => {
       const context: DropInContext = {
         map: getWorldMap(mapId),
         defeatedBosses: [],
+        openedGates: [],
         completedContracts: [work.contractId],
         raidRecord: undefined,
         surveyed: undefined,

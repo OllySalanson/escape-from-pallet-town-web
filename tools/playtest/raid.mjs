@@ -6,7 +6,8 @@
 //
 //   node tools/playtest/raid.mjs http://localhost:5173/ [--testmode] [--stepped] [--pixels]
 //        [--window=logic|pixel] [--seed=N] [--shot=path.png] [--taps] [--avoid-watch]
-//        [--insertion=id] [--beaten=bossId,..] [--completed=contractId,..] [--hp=N]
+//        [--insertion=id] [--beaten=bossId,..] [--opened=gateId,..] [--completed=contractId,..]
+//        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--grab=itemId,..] [--fight]
 //        [--progress=path.json]
 //
@@ -276,6 +277,124 @@ try {
     }
   };
 
+  // --read=itemId reads a disc to the first party Pokemon FireRed lets read it,
+  // through the raid's own bag - which is the only place a machine is ever
+  // used (`items/teaching.ts`, `BagScene.readMachine`). It is how the key to a
+  // field-move door is put in a Pokemon's head in a driver run, and it is the
+  // only thing that checks the disc end to end: the loadout packs it, the bag
+  // spends it, and an HM comes out of the raid still in the pack.
+  const readDisc = async (itemId) => {
+    note(`reading ${itemId} in the bag`);
+    await press('KeyB');
+    await until(`document.querySelectorAll('.menu-overlay').length > 0`, 'the bag');
+    await wait(200);
+    // The pocket it is in, then the row, then Read, then who reads it. Every
+    // one of those is a button a player clicks, found by what it says.
+    await until(
+      `(() => { const t = [...document.querySelectorAll('[data-category]')]; for (const tab of t) { tab.click();
+        if ([...document.querySelectorAll('[data-item-index]')].some((r) => r.innerText.toLowerCase().includes(${JSON.stringify(itemId.slice(0, 4))}))) return true; } return false; })()`,
+      `the pocket holding ${itemId}`,
+    );
+    await wait(150);
+    await until(
+      `(() => { const r = [...document.querySelectorAll('[data-item-index]')].find((r) => r.innerText.toLowerCase().includes(${JSON.stringify(itemId.slice(0, 4))})); if (!r) return false; r.click(); return true; })()`,
+      `a bag row for ${itemId}`,
+    );
+    await wait(150);
+    await until(`(() => { const b = document.querySelector('[data-use]'); if (!b || b.disabled) return false; b.click(); return true; })()`, 'the Read button');
+    await wait(150);
+    // The first row the bag does not already call a refusal: canon decides who
+    // may read a disc, and the driver is not allowed to argue with it.
+    await until(
+      `(() => { const rows = [...document.querySelectorAll('[data-target]')];
+        const ok = rows.find((r) => !/cannot learn|already knows/i.test(r.innerText)); if (!ok) return false; ok.click(); return true; })()`,
+      `somebody who can read ${itemId}`,
+    );
+    await wait(250);
+    // A full moveset is a question, not a refusal: the disc queues the move and
+    // the same chooser a level-up opens asks which of the four to give up
+    // (`ui/MoveChooserOverlay.ts`). The driver gives up the first, which is the
+    // only answer a script has any business giving.
+    if (await page.evaluate(`Boolean(document.querySelector('[data-forget]'))`)) {
+      note(`move chooser: forgetting ${await page.evaluate(`document.querySelector('[data-forget]')?.innerText.split('\\n')[0] ?? ''`)}`);
+      // The chooser ignores everything for `MOVE_CHOOSER_ARMING_MS` of *wall*
+      // time, because it opens on the key that finished the last line and a
+      // release would forget a move nobody chose. A stepped driver moves game
+      // time and not wall time, so this waits on the clock the guard uses.
+      for (let guard = 0; guard < 20; guard += 1) {
+        await sleep(120);
+        await page.evaluate(`document.querySelector('[data-forget]')?.click()`);
+        if (!(await page.evaluate(`Boolean(document.querySelector('[data-forget]'))`))) break;
+      }
+    }
+    note(`bag says: ${await page.evaluate(`document.querySelector('.menu-status')?.innerText ?? '(nothing)'`)}`);
+    // Its own back button rather than the key that opened it: the chooser is an
+    // overlay of its own on top of the bag, and the topmost overlay is the one
+    // a key reaches (`ui/overlayKeyboard.ts`).
+    await until(`(() => { const b = document.querySelector('[data-close]'); if (!b) return false; b.click(); return true; })()`, 'the bag to close');
+    await until(`document.querySelectorAll('.menu-overlay').length === 0`, 'the world back');
+    await wait(200);
+    note(`party moves: ${await page.evaluate(`JSON.stringify(${GAME}.scene.getScene('world').party.pokemon.map((p) => p.moves.map((m) => m.base.name)))`)}`);
+  };
+  for (const itemId of (option('read') ?? '').split(',').filter(Boolean)) {
+    await readDisc(itemId);
+  }
+
+  // --open=LABEL works a field-move door: the other way a gate opens, and the
+  // only one that happens on a keypress in the middle of a raid rather than in
+  // the hand-off out of a won fight. The driver walks to a tile beside it,
+  // turns into it - movement turns in place against a blocked tile, which is
+  // what makes a door faceable at all - and presses the interact key.
+  const opening = option('open')?.toLowerCase().replace(/[-_]/g, ' ');
+  if (opening && !ended) {
+    const door = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+      const g = w.currentMap.gates.find((g) => g.fieldMove && g.label.toLowerCase().includes(${JSON.stringify(opening)})); if (!g) return null;
+      const beside = g.tiles.flatMap((t) => [[0,1,'ArrowUp'],[0,-1,'ArrowDown'],[1,0,'ArrowLeft'],[-1,0,'ArrowRight']]
+        .map(([dx, dy, key]) => ({ x: t.x + dx, y: t.y + dy, key }))).filter((t) => !w.isBlocked(t));
+      return { id: g.id, label: g.label, move: g.fieldMove, beside, shut: w.isBlocked(g.tiles[0]) }; })()`);
+    if (!door) {
+      throw new Error(`no field-move door called ${opening} on this map`);
+    }
+    note(`${door.label} wants ${door.move.toUpperCase()}, and is ${door.shut ? 'shut' : 'already open'}`);
+    for (const side of door.beside) {
+      if ((await nextKey(side)).unreachable) {
+        continue;
+      }
+      await walkTo(side, `the tile beside ${door.label}`);
+      await press(side.key);
+      await wait(200);
+      // Turned into the door and not yet pressed: the caption says what it
+      // wants, which is the whole of the instruction a player gets.
+      if (option('shot')) {
+        await page.screenshot(option('shot').replace(/\.png$/, `-${door.move}-shut.png`));
+      }
+      await press('Space');
+      await wait(300);
+      // Whatever the door said - the refusal is two lines and the opening three.
+      for (let guard = 0; guard < 12; guard += 1) {
+        const line = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); return w.dialogBox.visible ? (w.dialogBox.textObject?.text ?? '') : null; })()`);
+        if (line === null) break;
+        if (line) note(`${door.label}: ${line}`);
+        // The last line, whole: the refusal's second, or the promise that the
+        // door stays open. Overwritten each time round, so what lands is the end.
+        if (option('shot') && line) {
+          await page.screenshot(option('shot').replace(/\.png$/, `-${door.move}-said.png`));
+        }
+        await press('Space');
+        await wait(250);
+      }
+      break;
+    }
+    await clearInterruptions();
+    const state = await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world');
+      const g = w.currentMap.gates.find((g) => g.id === ${JSON.stringify(door.id)});
+      return { shut: w.isBlocked(g.tiles[0]), saved: JSON.parse(localStorage.getItem('escape-from-pallet-town.save.v1')).raidProgress.openedGates ?? [] }; })()`);
+    note(`${door.label} is now ${state.shut ? 'STILL SHUT' : 'OPEN'}; the save has ${JSON.stringify(state.saved)}`);
+    if (option('shot')) {
+      await page.screenshot(option('shot').replace(/\.png$/, `-${door.move}-open.png`));
+    }
+  }
+
   // --via=x:y,x:y walks through those tiles first, in order. It is how a walk
   // that is not to anything is checked - the way along a reveal, which the
   // Signal Fire once stood in, so the raid ended halfway across.
@@ -328,6 +447,9 @@ try {
     await clearInterruptions();
     const worked = await page.evaluate(`${GAME}.scene.getScene('world').activatedPoiIds.has(${JSON.stringify(poi.id)})`);
     note(`${poi.label} ${worked ? 'worked' : 'NOT worked'}`);
+    if (option('shot')) {
+      await page.screenshot(option('shot').replace(/\.png$/, '-worked.png'));
+    }
     // The exit it opens is open from now on, so the nearest-open rule may take it.
     plan.exits.forEach((e) => { e.open ||= worked && e.opens === poi.id; });
   }

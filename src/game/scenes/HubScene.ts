@@ -115,6 +115,7 @@ import {
 } from '../stash';
 import { iconMarkup, itemIcon, objectiveIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
+import { openedDoors } from '../world/gates';
 import { getWorldMap, WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
 import { MINIMAP_PALETTE, MINIMAP_TILE, type Minimap } from '../world/minimap';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
@@ -804,7 +805,7 @@ export class HubScene extends Phaser.Scene {
       this.contractFor(deployment.insertionId),
       // The same derivation the final check printed, from the same party.
       this.hunterThreatAt(deployment.insertionId, deployment.party),
-      // Which gates stand open and which bosses are gone are both this list.
+      // Which bosses are gone, and which of their gates stand open.
       this.savedGame.raidProgress.defeatedBosses,
       // The beacon opens against the clock this raid actually deploys with, so
       // booked recovery shortens the wait for it along with everything else.
@@ -814,6 +815,9 @@ export class HubScene extends Phaser.Scene {
       // Which landmarks the world keeps worked, and whose exits therefore
       // stand open from the first second - the same list the lobby's map read.
       this.savedGame.raidProgress.completedContracts,
+      // And the doors a field move has already opened, which are as much a part
+      // of this raid's collision as a beaten boss's are.
+      this.savedGame.raidProgress.openedGates ?? [],
     );
     const runSession = createActiveRunSession(
       activeRunManager,
@@ -1742,12 +1746,13 @@ export class HubScene extends Phaser.Scene {
     return {
       // The map as this raid would actually find it: a door the player has
       // opened is open here, which is what makes a beaten boss visible at base.
-      map: getWorldMap(RUN_INSERTIONS[insertionId].mapId, progress.defeatedBosses),
+      map: getWorldMap(RUN_INSERTIONS[insertionId].mapId, openedDoors(progress)),
       defeatedBosses: progress.defeatedBosses,
       // What this save has finished with out there: a landmark worked for good
       // holds its exit open, and this screen has to say so or the exits it
       // lists disagree with the raid it is about to send the player on.
       completedContracts: progress.completedContracts,
+      openedGates: progress.openedGates ?? [],
       raidRecord: progress.raidRecord,
       surveyed: progress.surveyed,
       insertionIds: this.unlockedInsertions.map(([id]) => id),

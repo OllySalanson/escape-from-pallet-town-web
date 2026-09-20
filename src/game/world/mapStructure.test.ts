@@ -8,7 +8,7 @@ import {
 } from '../worldMap';
 import { districtAt } from './districts';
 import { EXTRACTION_POINTS } from './extractionPoints';
-import { gateBossIds, gatesForMap, gateStatesToVerify } from './gates';
+import { gateKeys, gatesForMap, gateStatesToVerify } from './gates';
 import {
   doorIndex,
   doorsFrom,
@@ -59,6 +59,7 @@ const MAP_IDS = Object.keys(WORLD_MAPS) as WorldMapId[];
 interface MapState {
   readonly name: string;
   readonly mapId: WorldMapId;
+  /** Every key turned so far: beaten boss ids, and field-move gates worked open. */
   readonly defeatedBosses: readonly string[];
   readonly map: WorldMapDefinition;
   /** Every gate open: the one state in which the map has to be a single place. */
@@ -67,16 +68,19 @@ interface MapState {
 
 const MAP_STATES: readonly MapState[] = MAP_IDS.flatMap((mapId) => {
   const gates = gatesForMap(mapId);
-  const bosses = gateBossIds(gates);
+  const keys = gateKeys(gates);
   return gateStatesToVerify(gates).map((defeatedBosses) => ({
     name:
-      bosses.length === 0
+      keys.length === 0
         ? mapId
         : `${mapId} with ${defeatedBosses.length === 0 ? 'every gate shut' : `${defeatedBosses.join(' and ')} beaten`}`,
     mapId,
     defeatedBosses,
     map: getWorldMap(mapId, defeatedBosses),
-    fullyOpen: bosses.every((boss) => defeatedBosses.includes(boss)),
+    // Every key, not every boss: a field-move door is one of a map's doors, so
+    // the state that has to be a single connected place is the one with the
+    // wood cut and the reach swum as well as every keeper beaten.
+    fullyOpen: keys.every((key) => defeatedBosses.includes(key)),
   }));
 });
 const OPEN_STATES = MAP_STATES.filter((state) => state.fullyOpen);

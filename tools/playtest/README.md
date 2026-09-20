@@ -73,6 +73,13 @@ that save opens on, by clicking the insertion's own row in the loadout.
   insertion has been stood on (which is what unlocks a drop-in).
 - `--beaten=bossId,..` - those bosses are gone and their gates stand open:
   `--insertion=route-1-overlook --beaten=overlook-warden`.
+- `--opened=gateId,..` - field-move doors already worked open, the other half of
+  a save's door state (`world/gates.ts`): `--opened=forest-coppice-ride` deploys
+  into a wood somebody has already cut, with a party that could not have cut it.
+- `--stash=itemId[:n],..` - puts something in the vault. It is the only way to
+  pack anything a fresh save does not own - an HM off the Ferryman's table, say,
+  which is the key to a field-move door - because `--pack` can only reach what
+  the loadout is offering.
 - `--completed=contractId,..` - those contracts are banked, so the board deals
   the next one: `--completed=survey-the-braid` puts the cordon ledger on Pallet
   Town and the warden's resupply on Viridian Forest.
@@ -106,7 +113,15 @@ that save opens on, by clicking the insertion's own row in the loadout.
   one takes all four squares a save starts with, so this first takes the
   Pokemon back out - which is the choice a player asking for gear makes too.
 
-`raid.mjs` has two more. `--work=LABEL` (`--work=sluice-wheel`) works a landmark
+`raid.mjs` has four more. `--read=itemId` reads a disc in the raid's own bag -
+the only place a machine is ever used - to the first party Pokemon FireRed lets
+read it, answering the move chooser by giving up the first move where the
+moveset is full. `--open=LABEL` works a **field-move door** (`--open=coppice-ride`,
+`--open=shoal-crossing`): it walks to a tile beside the door, turns into it and
+presses the interact key, and prints what the door said and whether the save
+recorded it. Both run before the waypoints, because a disc and a door are
+preparation for the walk rather than part of it - `--read=hm01-cut --open=coppice-ride
+--work=coppicer` is the whole of a field move, played. `--work=LABEL` (`--work=sluice-wheel`) works a landmark
 before leaving - stood on where it is ground, faced and worked with the interact
 key where it is not - which is the only way an exit a landmark opens is ever
 left by: `--insertion=town-square --work=sluice-wheel --exit=west-culvert`.

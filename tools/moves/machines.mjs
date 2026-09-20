@@ -35,16 +35,16 @@ const here = dirname(fileURLToPath(import.meta.url));
 const snapshotPath = join(here, 'frlg-machines.json');
 const VERSION_GROUP = 'firered-leafgreen';
 
-/** The roster this game ships, by National Dex number. `species.ts` is the list. */
-const SHIPPED = [
-  ['bulbasaur', 1], ['ivysaur', 2], ['venusaur', 3],
-  ['charmander', 4], ['charmeleon', 5], ['charizard', 6],
-  ['squirtle', 7], ['wartortle', 8], ['blastoise', 9],
-  ['butterfree', 12],
-  ['pidgey', 16], ['pidgeotto', 17], ['pidgeot', 18],
-  ['pikachu', 25], ['raichu', 26],
-  ['jigglypuff', 39], ['wigglytuff', 40],
-];
+/**
+ * The roster this game ships, read off the species snapshot beside this one
+ * rather than typed here. It was a list of seventeen while seventeen were all
+ * the game had; the 151 import (PR #143) made that stale, and a stale roster
+ * here is a machine that quietly refuses a species the game now fields - which
+ * is the one thing this snapshot exists to stop.
+ */
+const SHIPPED = JSON.parse(
+  readFileSync(join(here, '..', 'species', 'frlg-species.json'), 'utf8'),
+).species.map((species) => [species.name, species.dexId]);
 
 const api = async (path) => {
   const response = await fetch(`https://pokeapi.co/api/v2/${path}`);

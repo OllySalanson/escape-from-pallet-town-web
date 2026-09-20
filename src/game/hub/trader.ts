@@ -294,7 +294,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     id: 'barter-hm06',
     name: 'HM06 Rock Smash',
     detail:
-      'The one machine that is never used up. It teaches a weak blow that lowers Defense half the time, and eleven of the seventeen can read it - including every starter.',
+      'A machine that is never used up. It teaches a weak blow that lowers Defense half the time, and seventy-four of the 151 can read it - including every starter.',
     icon: 'hm06-rock-smash',
     gives: { itemId: 'hm06-rock-smash', quantity: 1 },
     takes: [
@@ -304,9 +304,43 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     ],
     standing: 'regular',
     // Once, and once is enough: an HM survives being read, so a second copy
-    // would buy nothing. That is what lets the *reusable* machine be the one
-    // deal on the boat - a TM would be a machine faucet, and the five of those
-    // are found in the field or not at all.
+    // would buy nothing. That is what lets the *reusable* machines be the deals
+    // on the boat - a TM would be a machine faucet, and the five of those are
+    // found in the field or not at all.
+    once: true,
+  },
+  // The two machines that are a route as well as a move. They are the boat's
+  // own goods for the same reason HM06 is: a field move opens a door for good
+  // (`world/fieldMoves.ts`), so it must not be a roll of the loot pool, and it
+  // must not be buyable with money either - the Ferryman takes what a raid
+  // found and nothing else. A player who wants the wood open goes and finds
+  // the parts for it.
+  {
+    id: 'barter-hm01',
+    name: 'HM01 Cut',
+    detail:
+      'Clears the growth the forest has grown across its own rides. Forty-three of the 151 read it - both the Grass and Fire starter lines, and a Rattata off any verge.',
+    icon: 'hm01-cut',
+    gives: { itemId: 'hm01-cut', quantity: 1 },
+    takes: [
+      { itemId: 'linen-roll', quantity: 1 },
+      { itemId: 'parts-crate', quantity: 1 },
+    ],
+    standing: 'regular',
+    once: true,
+  },
+  {
+    id: 'barter-hm03',
+    name: 'HM03 Surf',
+    detail:
+      'Carries its user over deep water, and hits like nothing else in the pack. Forty-two of the 151 read it - the Water starter line, and the Psyduck and Poliwag that live in the reeds.',
+    icon: 'hm03-surf',
+    gives: { itemId: 'hm03-surf', quantity: 1 },
+    takes: [
+      { itemId: 'mooring-rope', quantity: 2 },
+      { itemId: 'lamp-oil', quantity: 1 },
+    ],
+    standing: 'trusted',
     once: true,
   },
   {

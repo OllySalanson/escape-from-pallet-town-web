@@ -127,6 +127,19 @@ export interface RaidProgress {
    */
   readonly defeatedBosses: readonly string[];
   /**
+   * Every field-move door worked open, by gate id, for good (`world/gates.ts`).
+   *
+   * It is the other half of `defeatedBosses`: a door is a door, and which
+   * gates stand open is derived from the two lists together - see
+   * `openedDoors()` below, which is what every caller hands to `getWorldMap`.
+   * It is written the moment the move is used rather than at extraction, for
+   * the same reason a boss's win is: a gate is the map changing, not loot being
+   * carried out, so a raid that cuts the wood and is then lost has still cut
+   * it. Absent on every save written before field moves, which reads as a
+   * player who has opened none - true of every such save.
+   */
+  readonly openedGates?: readonly string[];
+  /**
    * Every insertion the player has stood on in any raid. Reaching a drop-in
    * point is what makes it selectable at base; `availableInsertionIds()` adds
    * these to the insertions contracts have unlocked.
@@ -265,6 +278,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   unlockedInsertions: ['floodplain-relay'],
   completedContracts: [],
   defeatedBosses: [],
+  openedGates: [],
   reachedInsertions: [],
   outfitterUpgrades: [],
   standingContractsBanked: 0,
@@ -617,6 +631,33 @@ export class SaveManager {
     const raidProgress: RaidProgress = {
       ...game.raidProgress,
       defeatedBosses: [...game.raidProgress.defeatedBosses, ...fresh],
+    };
+    return this.save({ ...game, raidProgress }) ? fresh : [];
+  }
+
+  /**
+   * Records field-move doors opened in the raid in progress, and reports which
+   * of them were new.
+   *
+   * The same promise `recordDefeatedBosses` makes, for the same reason: the
+   * door is written at the moment the move is used, not at extraction, so a
+   * raid that opens the wood and is then lost to the hunter has still opened
+   * it. Nothing but `raidProgress` is touched - the vault in storage is the
+   * pre-raid vault and has to stay that way until the raid settles.
+   */
+  public recordOpenedGates(gateIds: readonly string[]): readonly string[] {
+    const game = this.load();
+    if (!game) {
+      return [];
+    }
+    const already = game.raidProgress.openedGates ?? [];
+    const fresh = [...new Set(gateIds)].filter((gateId) => !already.includes(gateId));
+    if (fresh.length === 0) {
+      return [];
+    }
+    const raidProgress: RaidProgress = {
+      ...game.raidProgress,
+      openedGates: [...already, ...fresh],
     };
     return this.save({ ...game, raidProgress }) ? fresh : [];
   }
@@ -1113,6 +1154,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // Saves written before gates and drop-in points existed have beaten no boss
     // and reached nowhere, which is exactly what a missing list reads as.
     defeatedBosses: uniqueStrings(value.defeatedBosses),
+    openedGates: uniqueStrings(value.openedGates),
     reachedInsertions: uniqueStrings(value.reachedInsertions),
     outfitterUpgrades,
     // Saves written before gifts existed have received none.

@@ -205,13 +205,14 @@ game.
   `#cfd8b6`, `#e8eed2`) and one warm seal (`#7d8a63` through `#c47a4e`). Flat and
   square-cornered on purpose - every shaded, rounded draft of it read as a tin
   or a jar, which is what every other icon in the Other pocket already is.
-  The six machines - `tm09-bullet-seed`, `tm13-ice-beam`, `tm23-iron-tail`,
-  `tm28-dig`, `tm40-aerial-ace` and `hm06-rock-smash` - are
-  `scripts/draw-machine-icons.mjs`: **one disc shape drawn six times**, lit from
-  the top left, in the type colour of the move each teaches (Grass, Ice, Steel,
-  Ground, Flying and Fighting), because that is how these games have always told
-  one disc from another. The HM's centre is a slot rather than the TM's pinhole,
-  so the one machine that is never used up does not read as the same object.
+  The eight machines - `tm09-bullet-seed`, `tm13-ice-beam`, `tm23-iron-tail`,
+  `tm28-dig`, `tm40-aerial-ace`, `hm01-cut`, `hm03-surf` and `hm06-rock-smash` -
+  are `scripts/draw-machine-icons.mjs`: **one disc shape drawn eight times**, lit
+  from the top left, in the type colour of the move each teaches (Grass, Ice,
+  Steel, Ground, Flying, Normal, Water and Fighting), because that is how these
+  games have always told one disc from another. An HM's centre is a slot rather
+  than the TM's pinhole, so the three machines that are never used up do not
+  read as the same object as the five that are.
   `landmark-worked` is `scripts/draw-worked-landmark-icon.mjs`: the same mast
   `radio-mast` draws, with the one difference a player has to read at 16px and
   at a glance - the beacon lit green (`#9be27a`, the colour a door you opened is

@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * Drives the real WorldScene through a boss fight's return.
+ * Drives the real WorldScene through both ways a door opens.
  *
- * A gate is only worth anything if the door opens in the raid that won it, and
- * stays open for the next one - and both of those happen in the hand-off between
- * two scenes that the unit tests around `gates.ts` never see. A trainer fight
- * returns by restarting WorldScene with the beaten trainer's id in its payload,
- * so that payload is what these tests send.
+ * A gate is only worth anything if the door opens in the raid that opened it and
+ * stays open for the next one, and neither of those is visible to the unit tests
+ * around `gates.ts`. A boss's gate opens in the hand-off between two scenes - a
+ * trainer fight returns by restarting WorldScene with the beaten trainer's id in
+ * its payload, so that payload is what those tests send - and a field-move gate
+ * opens on a keypress in the middle of a raid, with the map rebuilt under a
+ * player who has not moved.
  */
 
 class FakeKey {
@@ -98,14 +100,16 @@ vi.mock('../audio/AudioManager', () => ({
 }));
 
 import { Bag } from '../items';
-import { BULBASAUR, Pokemon, PokemonParty } from '../pokemon';
+import { BULBASAUR, Pokemon, PokemonParty, SQUIRTLE } from '../pokemon';
+import { CUT } from '../pokemon/moves';
 import { RunManager } from '../run/RunManager';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { createActiveRunSession, type ActiveRunSession } from '../run/RunSession';
 import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type StorageLike } from '../save/SaveManager';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
-import { WORLD_GATES } from '../world/gates';
+import { WORLD_GATES, type BossGate } from '../world/gates';
+import { stepDistances } from '../world/mapStructure';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
 import { WorldScene, type WorldSceneData } from './WorldScene';
 
@@ -169,6 +173,10 @@ const attachSceneStubs = (scene: WorldScene): void => {
           putTilesAt: vi.fn(),
           setDepth: vi.fn(),
           forEachTile: vi.fn(),
+          // A layer is torn down with the rest of the map when a field move
+          // rebuilds it under the player, which is the one thing that clears
+          // the map without a warp or a battle between.
+          destroy: vi.fn(),
         })),
       })),
     },
@@ -196,7 +204,7 @@ class MemoryStorage implements StorageLike {
   }
 }
 
-const GATE = WORLD_GATES.find((gate) => gate.mapId === 'route-1')!;
+const GATE = WORLD_GATES.find((gate) => gate.mapId === 'route-1')! as BossGate;
 const GATE_TILE = GATE.tiles[0];
 /**
  * Every door the same boss holds. The Overlook's warden has two - the gate off
@@ -219,9 +227,12 @@ interface Internals {
   raidCarriage(): { unclaimedBossGear: readonly { readonly itemId: string }[] };
   currentTile: { x: number; y: number };
   defeatedBosses: readonly string[];
+  openedGates: readonly string[];
   isBlocked(tile: { x: number; y: number }): boolean;
   isBlockedForHunter(tile: { x: number; y: number }): boolean;
   tryReachDropInAt(tile: { x: number; y: number }): string | null;
+  tryFieldMoveAt(tile: { x: number; y: number }): readonly string[] | null;
+  collisionData: readonly boolean[][];
 }
 
 const internalsOf = (scene: WorldScene): Internals => scene as unknown as Internals;
@@ -229,14 +240,25 @@ const internalsOf = (scene: WorldScene): Internals => scene as unknown as Intern
 const deploy = (
   insertionId: RunInsertionId,
   defeatedBosses: readonly string[] = [],
+  options: { readonly party?: PokemonParty; readonly openedGates?: readonly string[] } = {},
 ): { session: ActiveRunSession; data: WorldSceneData } => {
-  const party = new PokemonParty([new Pokemon(BULBASAUR, 5)]);
+  const party = options.party ?? new PokemonParty([new Pokemon(BULBASAUR, 5)]);
   const manager = new RunManager();
   manager.startRun(
     { party: party.pokemon, items: [] },
     { mapId: RUN_INSERTIONS[insertionId].mapId, durationMs: RAID_DURATION_MS },
   );
-  const plan = generateRunPlan(11, undefined, insertionId, undefined, undefined, defeatedBosses);
+  const plan = generateRunPlan(
+    11,
+    undefined,
+    insertionId,
+    undefined,
+    undefined,
+    defeatedBosses,
+    {},
+    [],
+    options.openedGates ?? [],
+  );
   const session = createActiveRunSession(manager, {}, {}, [], [], [], plan);
   return { session, data: { party, bag: new Bag(), runSession: session } };
 };
@@ -465,5 +487,119 @@ describe('a drop-in point in a live raid', () => {
     // The front door was already offered by the lobby, so walking over it is not news.
     expect(internalsOf(scene).tryReachDropInAt(RUN_INSERTIONS['route-1'].position)).toBeNull();
     expect(new SaveManager(storage).load()!.raidProgress.reachedInsertions).toEqual([]);
+  });
+});
+
+/**
+ * The other key. A field-move gate is the same door with the same promise - it
+ * opens for good and changes the map you come back to - and the only difference
+ * is that it is turned by what a Pokemon knows rather than by a fight.
+ *
+ * Viridian Forest's COPPICE RIDE is the one under test because it is the plainer
+ * of the two: one tile of growth off the trail below Deep Stand, with the
+ * coppice and its cache behind it.
+ */
+describe('a field-move gate in a live raid', () => {
+  let storage: MemoryStorage;
+
+  const RIDE = WORLD_GATES.find((gate) => gate.id === 'forest-coppice-ride')!;
+  const RIDE_TILE = RIDE.tiles[0];
+  /**
+   * A tile of the coppice. It is ground in both states - only the ride's own
+   * tile changes - so what the door decides is whether it can be *walked to*,
+   * which is what the scene is asked here.
+   */
+  const BEHIND = { x: RIDE_TILE.x, y: RIDE_TILE.y + 1 };
+  const reachesCoppice = (scene: WorldScene): boolean => {
+    const internals = internalsOf(scene);
+    const steps = stepDistances(internals.collisionData, internals.currentTile);
+    return (steps[BEHIND.y]?.[BEHIND.x] ?? -1) >= 0;
+  };
+
+  const withoutCut = (): PokemonParty => new PokemonParty([new Pokemon(SQUIRTLE, 8)]);
+  const withCut = (): PokemonParty => {
+    // Level 4, because a Bulbasaur at 8 already knows four moves and a disc
+    // that finds no free slot asks a question this test is not about.
+    const cutter = new Pokemon(BULBASAUR, 4);
+    cutter.learnMove(CUT);
+    expect(cutter.moves.map((move) => move.base)).toContain(CUT);
+    return new PokemonParty([cutter]);
+  };
+
+  beforeEach(() => {
+    spoken.length = 0;
+    storage = new MemoryStorage();
+    vi.stubGlobal('window', { localStorage: storage });
+    new SaveManager(storage).save({
+      party: new PokemonParty([]),
+      mapId: 'pallet-town',
+      position: { x: 7, y: 9 },
+      raidProgress: {
+        ...DEFAULT_RAID_PROGRESS,
+        unlockedInsertions: ['floodplain-relay', 'viridian-forest'],
+      },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('refuses a party with nothing that can do it, and spends nothing', () => {
+    const scene = new WorldScene();
+    attachSceneStubs(scene);
+    scene.create(deploy('viridian-forest', [], { party: withoutCut() }).data);
+
+    expect(internalsOf(scene).isBlocked(RIDE_TILE)).toBe(true);
+    expect(reachesCoppice(scene)).toBe(false);
+    expect(internalsOf(scene).tryFieldMoveAt(RIDE_TILE)).toEqual([
+      'Growth has closed the ride. Thick, old and shoulder high.',
+      'Nothing in the party can cut it. Something that reads HM01 could.',
+    ]);
+    // Refused and still shut, and nothing written: a door the player could not
+    // open is not a door they have opened.
+    expect(internalsOf(scene).isBlocked(RIDE_TILE)).toBe(true);
+    expect(internalsOf(scene).openedGates).toEqual([]);
+    expect(new SaveManager(storage).load()!.raidProgress.openedGates).toEqual([]);
+  });
+
+  it('opens on the press, under a player who has not moved, and writes it to the save', () => {
+    const scene = new WorldScene();
+    attachSceneStubs(scene);
+    const stood = { ...internalsOf(scene).currentTile };
+    scene.create(deploy('viridian-forest', [], { party: withCut() }).data);
+    const before = { ...internalsOf(scene).currentTile };
+    expect(before).not.toEqual(stood);
+    expect(reachesCoppice(scene)).toBe(false);
+
+    expect(internalsOf(scene).tryFieldMoveAt(RIDE_TILE)).toEqual([
+      'Growth has closed the ride. Thick, old and shoulder high.',
+      'BULBASAUR cut the growth away.',
+      'COPPICE RIDE is open - and stays open on every raid from now on.',
+    ]);
+
+    // The map is a different map, rebuilt where the player was standing.
+    expect(internalsOf(scene).currentTile).toEqual(before);
+    expect(internalsOf(scene).isBlocked(RIDE_TILE)).toBe(false);
+    expect(reachesCoppice(scene)).toBe(true);
+    expect(new SaveManager(storage).load()!.raidProgress.openedGates).toEqual([RIDE.id]);
+
+    // A second press finds an open door and nothing to say about it.
+    expect(internalsOf(scene).tryFieldMoveAt(RIDE_TILE)).toBeNull();
+  });
+
+  it('is open from the first step of every later raid, whoever is deployed', () => {
+    const scene = new WorldScene();
+    attachSceneStubs(scene);
+    // The next raid, from a save that has it - and with a party that could not
+    // have opened it. The key was spent on the lock; the door is the map now.
+    scene.create(
+      deploy('viridian-forest', [], { party: withoutCut(), openedGates: [RIDE.id] }).data,
+    );
+
+    expect(internalsOf(scene).isBlocked(RIDE_TILE)).toBe(false);
+    expect(reachesCoppice(scene)).toBe(true);
+    expect(internalsOf(scene).isBlockedForHunter(RIDE_TILE)).toBe(false);
+    expect(internalsOf(scene).tryFieldMoveAt(RIDE_TILE)).toBeNull();
   });
 });

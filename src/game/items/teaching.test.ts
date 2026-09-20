@@ -147,15 +147,23 @@ describe('where machines come from', () => {
     }
   });
 
-  it('is bartered only as the HM, and only once', () => {
+  it('is bartered only as an HM, and only once each', () => {
     const bartered = TRADER_BARTERS.filter((barter) => isMachine(barter.gives.itemId));
 
-    expect(bartered.map((barter) => barter.gives.itemId)).toEqual(['hm06-rock-smash']);
-    expect(bartered[0].once).toBe(true);
-    // Never for money: a taught move cannot be taken off a Pokemon even by a
-    // wipe, which makes it the last thing on the boat that scrip should reach.
-    for (const takes of bartered[0].takes) {
-      expect(takes.itemId).not.toBe('scrip');
+    // Every reusable machine and nothing else: a TM on his table would be a
+    // machine faucet, and the two that are also doors (`world/fieldMoves.ts`)
+    // have to be somewhere a player can go and get them on purpose rather than
+    // wait for a loot roll.
+    expect(bartered.map((barter) => barter.gives.itemId).sort()).toEqual(
+      MACHINE_ITEM_IDS.filter((id) => machineForItemId(id)!.reusable).sort(),
+    );
+    for (const barter of bartered) {
+      expect(barter.once, `${barter.id} repeats`).toBe(true);
+      // Never for money: a taught move cannot be taken off a Pokemon even by a
+      // wipe, which makes it the last thing on the boat that scrip should reach.
+      for (const takes of barter.takes) {
+        expect(takes.itemId).not.toBe('scrip');
+      }
     }
   });
 
