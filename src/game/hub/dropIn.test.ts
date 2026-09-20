@@ -15,6 +15,7 @@ function contextFor(
   return {
     map: getWorldMap(RUN_INSERTIONS[insertionId].mapId, defeatedBosses),
     defeatedBosses,
+    completedContracts: [],
     raidRecord: undefined,
     surveyed: undefined,
     insertionIds: [insertionId],

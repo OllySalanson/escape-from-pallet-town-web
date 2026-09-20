@@ -106,7 +106,8 @@ export async function deploy(page, url, { press, click, until, paused = false, i
     await sleep(150);
   }
   // --pack=itemId[:n],.. puts supplies in the raid bag by the loadout row's own
-  // stepper. Nothing is packed by default - the loadout is the decision the game
+  // count selector - the plus of the `item` group, once per unit, so the
+  // driver is stopped by exactly what stops a player (`ui/countSelector.ts`). Nothing is packed by default - the loadout is the decision the game
   // is built around, and the flow starts it empty - so a driver that clicks
   // straight through deploys with nothing, and a fight priced in Potions
   // (`world/floodplainCheckpoint.test.ts`) cannot be played without this.
@@ -114,7 +115,7 @@ export async function deploy(page, url, { press, click, until, paused = false, i
     const [itemId, count = '1'] = entry.split(':');
     for (let i = 0; i < Number(count); i += 1) {
       await until(
-        `(() => { const b = document.querySelector('button[data-item=${JSON.stringify(itemId)}][data-amount="1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
+        `(() => { const b = document.querySelector('button[data-count-kind="item"][data-count-id=${JSON.stringify(itemId)}][data-count-dir="1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
         `the pack to take one more ${itemId}`,
       );
       await sleep(150);
@@ -145,7 +146,7 @@ export async function deploy(page, url, { press, click, until, paused = false, i
     }
     for (let i = 0; i < Number(count); i += 1) {
       await until(
-        `(() => { const b = document.querySelector('button[data-secure-item=${JSON.stringify(itemId)}][data-secure-amount="1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
+        `(() => { const b = document.querySelector('button[data-count-kind="secure"][data-count-id=${JSON.stringify(itemId)}][data-count-dir="1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
         `the container to take one more ${itemId}`,
       );
       await sleep(250);

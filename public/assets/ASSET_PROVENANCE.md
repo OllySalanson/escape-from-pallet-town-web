@@ -186,7 +186,8 @@ game.
   palette is what keeps the set looking like a set.
 - **Contents.** `potion`, `super-potion`, `antidote`, `poke-ball`, `great-ball`,
   `field-kit`, `supply-crate`, `supply-cache`, `radio-mast`, `sign-post`,
-  `extraction-open`, `extraction-locked`, plus the six Outfitter materials
+  `extraction-open`, `extraction-locked`, `landmark-worked`, plus the six
+  Outfitter materials
   `radio-valve`, `cable-coil`, `parts-crate`, `lamp-oil`, `mooring-rope` and
   `linen-roll`, the four held items `leftovers`, `focus-band`, `life-orb` and
   `quick-claw`, the one evolution stone `thunder-stone`, and the money `scrip`.
@@ -211,6 +212,11 @@ game.
   Ground, Flying and Fighting), because that is how these games have always told
   one disc from another. The HM's centre is a slot rather than the TM's pinhole,
   so the one machine that is never used up does not read as the same object.
+  `landmark-worked` is `scripts/draw-worked-landmark-icon.mjs`: the same mast
+  `radio-mast` draws, with the one difference a player has to read at 16px and
+  at a glance - the beacon lit green (`#9be27a`, the colour a door you opened is
+  already drawn in) with the signal coming off both sides of it, instead of one
+  dark red lamp and a broken pair of arcs.
 
 ### Third-party packs considered and not used
 

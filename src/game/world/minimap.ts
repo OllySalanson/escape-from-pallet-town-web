@@ -79,6 +79,7 @@ export const MINIMAP_PALETTE: Readonly<Record<MinimapChar, string>> = {
   X: '#ff8f6b', // a way out
   O: '#9be27a', // a door you opened
   H: '#b0201c', // a door somebody is holding
+  K: '#8fd8ff', // a landmark you finished with, and the world kept
 };
 
 /** A mark stood on one tile of the picture, over whatever ground is there. */

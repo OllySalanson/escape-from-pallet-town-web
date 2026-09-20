@@ -169,6 +169,11 @@ import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { tryActivatePoi } from '../world/pois';
 import {
+  isLandmarkWorked,
+  withWorkedExitsOpen,
+  workedLandmarkCaption,
+} from '../world/workedLandmarks';
+import {
   EXTRACTION_POINTS,
   extractionCaption,
   extractionRequirementText,
@@ -241,12 +246,17 @@ const LABEL_TONES: Readonly<
     | 'contract'
     | 'gateShut'
     | 'gateOpen'
+    | 'worked'
     | 'dropIn'
     | 'ledge',
     WorldLabelTone
   >
 > = {
   station: { fill: 0x14243a, border: 0x7fb2e5, ink: '#dff0ff' },
+  // A landmark this save finished with for good. It is the station's own blue
+  // gone quiet, the way an open gate is an iron one gone quiet: still a place,
+  // no longer something to act on.
+  worked: { fill: 0x16222c, border: 0x6f97b4, ink: '#c6dced' },
   // Contract stops are the one thing on the map the raid was taken for, so they
   // are the only violet on it and cannot be mistaken for a cache or a gate.
   contract: { fill: 0x281a3d, border: 0xc4b5fd, ink: '#ede9fe' },
@@ -505,6 +515,13 @@ export class WorldScene extends Phaser.Scene {
    * stand open, so the map is always asked for through `mapFor()`.
    */
   private defeatedBosses: readonly string[] = [];
+  /**
+   * The contracts this save had banked when the raid deployed - which landmarks
+   * the world keeps worked. A contract banks on the way out, so unlike a boss
+   * this can never change mid-raid; it is read off the plan rather than storage
+   * for the same reason `defeatedBosses` is.
+   */
+  private completedContracts: readonly string[] = [];
   /** Insertions the lobby already offers, so the map only announces a new one. */
   private readonly knownInsertionIds = new Set<string>();
   /** The caption over each drop-in point, so reaching one can change what it says. */
@@ -559,6 +576,7 @@ export class WorldScene extends Phaser.Scene {
     // A gate opened in the last raid is in the save, and is read back from it;
     // what must not survive is this instance's own copy of the list.
     this.defeatedBosses = [];
+    this.completedContracts = [];
     this.knownInsertionIds.clear();
     this.pushingAgainst = null;
     this.hunterNear = false;
@@ -688,6 +706,8 @@ export class WorldScene extends Phaser.Scene {
       .filter((boss) => this.defeatedTrainerIds.has(boss.trainer.id))
       .map((boss) => boss.bossId);
     this.defeatedBosses = [...new Set([...deployedWith, ...beatenThisRaid])];
+    this.completedContracts =
+      this.runSession?.plan?.completedContracts ?? stored?.completedContracts ?? [];
     for (const id of [...(stored?.unlockedInsertions ?? []), ...(stored?.reachedInsertions ?? [])]) {
       this.knownInsertionIds.add(id);
     }
@@ -1323,6 +1343,11 @@ export class WorldScene extends Phaser.Scene {
       if (this.activatedPoiIds.has(poi.id)) {
         continue;
       }
+      // A landmark a banked contract finished with for good. It still stands -
+      // taking it off the map would leave the player nothing to read their own
+      // work off - but it is drawn done: the finished icon, the quiet tone, and
+      // a caption saying what it is now rather than what working it would open.
+      const worked = isLandmarkWorked(poi.id, this.completedContracts);
       const x = poi.position.x * TILE_SIZE + TILE_SIZE / 2;
       const y = poi.position.y * TILE_SIZE + TILE_SIZE / 2;
       const station = this.add.container(x, y).setDepth(atRow(MARKER_BAND, poi.position.y));
@@ -1334,7 +1359,11 @@ export class WorldScene extends Phaser.Scene {
           0,
           0,
           iconTextureKey(
-            poi.effect === 'unlock-extraction' ? WORLD_ICONS.radioMast : WORLD_ICONS.supplyCache,
+            worked
+              ? WORLD_ICONS.landmarkWorked
+              : poi.effect === 'unlock-extraction'
+                ? WORLD_ICONS.radioMast
+                : WORLD_ICONS.supplyCache,
           ),
         ),
       );
@@ -1342,10 +1371,12 @@ export class WorldScene extends Phaser.Scene {
         subject: tileRect(poi.position),
         // Oak's Field Station is both a sealed exit and a cache, so the label
         // has to say so - the mast art can only show one of the two.
-        text: `${poi.label}\n${poi.effect === 'unlock-extraction'
-          ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED${poi.reward.length > 0 ? ' + CACHE' : ''}`
-          : `CACHE: ${formatPoiReward(poi)}`}`,
-        tone: LABEL_TONES.station,
+        text: worked
+          ? workedLandmarkCaption(poi, worked)
+          : `${poi.label}\n${poi.effect === 'unlock-extraction'
+            ? `${poi.unlockedExtractionLabel ?? 'EXIT'}: SEALED${poi.reward.length > 0 ? ' + CACHE' : ''}`
+            : `CACHE: ${formatPoiReward(poi)}`}`,
+        tone: worked ? LABEL_TONES.worked : LABEL_TONES.station,
         depth: atRow(CAPTION_BAND, poi.position.y),
         speech: { voice: 'name', tiles: [poi.position] },
       });
@@ -2942,7 +2973,13 @@ export class WorldScene extends Phaser.Scene {
    */
   private tryActivatePoiAt(position: GridPosition): readonly string[] | null {
     const poi = this.currentMap.pois.find(
-      (candidate) => candidate.position.x === position.x && candidate.position.y === position.y,
+      (candidate) =>
+        candidate.position.x === position.x &&
+        candidate.position.y === position.y &&
+        // A landmark this save finished with hands out nothing and opens
+        // nothing: its exit is already open and its cache is already empty, so
+        // standing on it must not say either of those things again.
+        !isLandmarkWorked(candidate.id, this.completedContracts),
     );
     const result = tryActivatePoi(
       poi,
@@ -3072,9 +3109,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private extractionPointsForCurrentMap(): readonly ExtractionPoint[] {
-    return (this.runSession?.plan?.extractionPoints ?? EXTRACTION_POINTS).filter(
-      (point) => point.mapId === this.currentMap.id,
-    );
+    return (
+      this.runSession?.plan?.extractionPoints ??
+      withWorkedExitsOpen(EXTRACTION_POINTS, this.completedContracts)
+    ).filter((point) => point.mapId === this.currentMap.id);
   }
 
   private trainersForCurrentMap(): readonly RunTrainerEncounter[] {
