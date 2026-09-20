@@ -31,8 +31,8 @@ import type { FloodTownPropName } from '../tileset/floodTownTileset';
  */
 export function sketchViridianForest(): MapSketch<FloodTownPropName> {
   const map = new MapSketch<FloodTownPropName>({
-    width: 32,
-    height: 36,
+    width: 64,
+    height: 72,
     fill: '.',
     stamps: {
       t: {
@@ -83,6 +83,136 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
     'TTTTTtTTtTTtTTTTTtTTtTTtTTtTTtTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTtTTtTTtTTtTTTTTtTTtTTtTTTTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  ]);
+
+  // == THE WOOD THE NEW GROUND IS CUT OUT OF ===============================
+  // The forest carried on east and south of the old footprint, and until now
+  // the map simply stopped at it. These are the two strips of lattice the rest
+  // of this file carves: the same thicket with a broadleaf on every third
+  // column of every second row that the north-west quarter is cut from, laid
+  // so the rows line up across the seam - a wood does not change its planting
+  // at a map boundary nobody drew.
+  //
+  // Everything after this block takes ground *away* from the wood. Nothing is
+  // built up out of blocks that have to meet, which is what stops a walkable
+  // seam appearing down a join (see `../mapGrid.ts`). Three trees are missing
+  // from the first column: the old drawing already stands a tall bush at x31 on
+  // those rows, and a broadleaf drawn over a bush is two plants in one tile.
+  //            3         4         5         6
+  //            23456789012345678901234567890123
+  map.draw(32, 0, [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'tTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  ]);
+  //            0         1         2         3
+  //            01234567890123456789012345678901
+  map.draw(0, 36, [
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
@@ -353,6 +483,627 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
     '                                ',
     '                               b',
   ]);
+
+  // ========================================================================
+  // ==  THE EAST WOOD                                                     ==
+  // ========================================================================
+
+  // == CINDER RIDGE ========================================================
+  // The rock does not stop at the Tower Steps. It runs the whole top of the
+  // wood, and everything said about THE RIDGE holds the length of it: two rows
+  // of bare shelf between knuckles, the crest drawn as the map's own north
+  // edge, and not one tile of tall grass. Beating the lookout used to buy a
+  // dozen steps between two doors; now it buys the only dry road in a forest
+  // twice as wide, and the one place you can look down on ground you have not
+  // walked yet.
+  //            3         4         5
+  //            1234567890123456789012
+  map.draw(31, 0, [
+    'CCCCCCCCCCCCCCCCCCCCCC',
+    '..C....C...C..C....C..',
+    'C...C....C...C...C....',
+    '.C....C..C.C....C..C.C',
+    'CCCCCCCCCCCCCCCCCCCCCC',
+    '                      ',
+  ]);
+
+  // == RAVEN CRAG ==========================================================
+  // Where the shelf ends: a head of rock standing out over the east wood, and
+  // the far end of the longest walk in the game that costs no fights. The path
+  // off it is a notch in the point (`../extractionPoints.ts`, CRAG PATH) - the
+  // ridge is a road with a door at each end and no way down in between, so
+  // dropping in on it is a raid played entirely above the forest.
+  //            5         6
+  //            34567890123
+  map.draw(53, 0, [
+    'CCCCCCCCCCC',
+    '..C....C..C',
+    '...C.....CC',
+    '.C....C...C',
+    'CCCCC...C.C',
+    'CCCCCC..CCC',
+    'CCCCCC..CCC',
+    'CCCCCCC..CC',
+    'CCCCCCCC.CC',
+    'CCCCCCCCCCC',
+  ]);
+
+  // == THE BURN ============================================================
+  // Why there is a fire tower. The east of this wood went up a generation ago
+  // and has not closed since: bare earth where the fire ran, ash gravel lying
+  // in the hollows, the black snags still standing in it, and bramble coming
+  // back along the south edge where the wood is winning. It is the one part of
+  // this forest you can see across, which after twenty clearings the size of a
+  // room is the whole point of it.
+  //
+  // The way in is the firebreak east out of the Tower Steps clearing and
+  // nothing else: unburnt wood on every other side, and it stays a wall.
+  //            3         4         5
+  //            2345678901234567890
+  map.draw(32, 6, [
+    'vvvv               ',
+    'vvvv               ',
+    'vvvvvv             ',
+    ' vvvv,vvv          ',
+    '  vvv,,vvvv        ',
+    '  vvv,,vv vvvv     ',
+    ' gvvv,v vvvvvv     ',
+    ' ggvvvv  vvvvvvv   ',
+    '  gvvv   vvvvvvvvv ',
+    '   vvvv  vvvvvvvvg ',
+    '   vvvvv vvvv vvg  ',
+    '    gvvvvv vvvvg   ',
+    '     ggvvvv  ggg   ',
+    '       gggggggg    ',
+    '          ggg      ',
+  ]);
+  // The firebreak somebody cut and failed to hold: two rows, as this sheet's
+  // earth has to be, joining the burn to the  ower Steps clearing.
+  map.draw(31, 6, [',', ',']);
+  // The snags. A burn is open ground with dead trees standing in it - and that
+  // is also what keeps it from being the one field on a map whose whole rule is
+  // that it has none, so the picture and the structure are the same decision.
+  map.plant(35, 11, 'deadStump');
+  map.plant(37, 13, 'deadStump');
+  map.plant(41, 10, 'deadStump');
+  map.plant(44, 13, 'deadStump');
+  map.plant(39, 16, 'deadStump');
+  map.plant(46, 15, 'deadStump');
+
+  // == THE TARN ============================================================
+  // Still black water under the trees, and the one thing in this forest that
+  // is not a clearing, a trail or a rock. The wood stands to the waterline on
+  // the east side and there is no way round it: you come in over the shingle
+  // at the north cove, walk the west shore, and leave by the bay at the foot.
+  // A tarn is a landmark you steer by precisely because you cannot cross it.
+  //            4         5         6
+  //            901234567890123456789012
+  map.draw(49, 12, [
+    '               ',
+    '    ~~~~       ',
+    'g  ~~WWWWW     ',
+    'g~~~WWWWWWW    ',
+    'g~~WWWWWWWWW   ',
+    ' ~~WWWWWWWWWW  ',
+    ' ~~WWWWWWWWWW  ',
+    ' g~~WWWWWWWWW  ',
+    '  g~~WWWWWWW   ',
+    '   g~~~WWWW    ',
+    '    g~~~~~~    ',
+    '     g....g    ',
+    '      g..g     ',
+    '       ggg     ',
+    '        g      ',
+  ]);
+
+  // == HORNET GLADE ========================================================
+  // The one clearing in the east wood, and the reason the burn has a south
+  // door. A split oak went over in it and never rotted; what lives in it now
+  // is in `../districts.ts`. Two trails leave the foot rather than one, which
+  // is what keeps this a junction rather than a room.
+  //            3         4
+  //            67890123456
+  map.draw(36, 21, [
+    '      ggg  ',
+    '    gg...g ',
+    '  g.....gg ',
+    '  g.....g  ',
+    ' g......g  ',
+    ' g.....gg  ',
+    '  g....g   ',
+    '   gg.gg   ',
+    '    gg ggg ',
+    '   g    g  ',
+  ]);
+  map.plant(41, 24, 'bigStump');
+  map.plant(39, 26, 'log');
+  map.plant(43, 22, 'stump');
+
+  // == THE SEAMS INTO THE OLD WOOD =========================================
+  // Two more ways east, so the burn's firebreak is not the only one and the
+  // east wood is a part of this forest rather than a wing off it. The first
+  // leaves EAST RISE under its brow; the second winds out of THE CLEARING's
+  // north-east corner, turning twice, because a trail in this wood never runs
+  // more than a few steps before it turns.
+  //            3
+  //            01234567
+  map.draw(30, 21, [
+    'gggg    ',
+    '   g    ',
+    '   ggg  ',
+    '     g  ',
+    '     gg ',
+  ]);
+  //            2         3
+  //            3456789012
+  map.draw(23, 27, [
+    '    gg    ',
+    '  ggggg   ',
+    'ggg   gggg',
+  ]);
+  // And on into the wood: the middle way east, which is what stops the burn's
+  // firebreak being the only door between the old forest and the new.
+  //            3
+  //            234567
+  map.draw(32, 29, [
+    'gg    ',
+    ' gg   ',
+    '  gg  ',
+    '   gg ',
+    '    g ',
+  ]);
+
+  // == THE BLOWDOWN ========================================================
+  // A gale took the canopy off ten acres of this wood and the timber was never
+  // taken out. What is left is the one place in Viridian you cannot walk in a
+  // straight line for other than the usual reason: the ground is open and it is
+  // full of fallen trees, so the logs are the walls and the gaps between them
+  // are the map. It is drawn as a clearing and it plays as a maze.
+  //            3         4
+  //            334444444444
+  //            345678901234
+  map.draw(33, 30, [
+    '      g    g   ',
+    '     gg.g..gg  ',
+    '    gg...g..g  ',
+    '   g....g...g  ',
+    '  g.....g...g  ',
+    '  g..g...g..g  ',
+    '  gg.g...g.gg  ',
+    '   g.g...g.g   ',
+    '   gg.g.gg.g   ',
+    '    gg.g..gg   ',
+    '     gg..gg    ',
+    '      ggggg    ',
+  ]);
+  // The timber itself. A log lies across three tiles, so where one fell is
+  // where the way round starts - these are the walls of the maze, and every one
+  // of them is also the thing that stops the clearing being open ground.
+  map.plant(41, 32, 'log');
+  map.plant(37, 34, 'log');
+  map.plant(43, 35, 'log');
+  map.plant(39, 36, 'log');
+  map.plant(36, 38, 'log');
+  map.plant(41, 39, 'log');
+  map.plant(43, 33, 'bigStump');
+
+  // == CHARCOAL BURN =======================================================
+  // Somebody still works this wood. The pitsteads are the two circles of burnt
+  // ground the kilns stood on, the yard between them is beaten earth, and the
+  // hut, the stacked cordwood and the sacks are what a collier leaves between
+  // burns. It is the only place in this forest that is *kept*, which is what
+  // makes it worth dropping into and worth walking to.
+  //            4         5         6
+  //            890123456789012
+  map.draw(48, 27, [
+    '        ggg    ',
+    '      gg...g   ',
+    '     gg.....g  ',
+    '    gg..MM...g ',
+    '   gg...MM.... ',
+    '   g....,,,... ',
+    '  g.....,,,..g ',
+    '  g.....,,,.gg ',
+    '  gg....,,,.g  ',
+    '   g....,,,,g  ',
+    '   gg...,,,g   ',
+    '    gg..,,g    ',
+    '     ggggg     ',
+    '       gg      ',
+  ]);
+  map.plant(54, 31, 'hut');
+  map.plant(53, 34, 'crateStack');
+  map.plant(56, 33, 'crateStack');
+  map.plant(58, 34, 'sack');
+  map.plant(59, 35, 'sack');
+  map.plant(55, 38, 'stump');
+  map.plant(51, 29, 'log');
+  map.plant(58, 30, 'barrelPair');
+  // A rock standing in the shallows at the foot of the tarn.
+  map.plant(57, 23, 'wetRock');
+
+  // The haul between the two: the collier's own path west to the timber.
+  //            444444
+  //            567890
+  map.draw(45, 33, [
+    'ggg   ',
+    '  gg  ',
+    '   ggg',
+  ]);
+
+  // ========================================================================
+  // ==  THE SOUTH WOOD                                                    ==
+  // ========================================================================
+
+  // The way down out of THE CLEARING, which until the wood got bigger was a
+  // two-tile pocket in its south-east corner that went nowhere.
+  //            2
+  //            0123
+  map.draw(20, 32, [
+    ' gg ',
+    '  g ',
+    ' gg ',
+    ' g  ',
+    ' g  ',
+  ]);
+
+  // == THE BROOK, CARRIED ON ===============================================
+  // It used to stop at the old map's foot because the map did. It runs on down
+  // the west edge and ends in the mere - which is what a brook does, and which
+  // gives the whole west side of this forest one thing to steer by.
+  map.draw(0, 28, [
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+    ' WW ',
+  ]);
+
+  // == BROOK FOOT ==========================================================
+  // The last clearing on the brook before the water spreads out, and the way
+  // west off the sawpit's track.
+  //            0
+  //            3456789012
+  map.draw(3, 38, [
+    '  ...     ',
+    ' .....    ',
+    ' .....g   ',
+    ' ....g    ',
+    '  ...g    ',
+    '   ..g    ',
+    '    gg    ',
+  ]);
+  map.draw(9, 40, [
+    'gg       ',
+    ' ggg     ',
+    '   gggggg',
+  ]);
+  // The timber landing. The sawpit's cut went down the brook from here, and
+  // what is left is what was waiting for the water the day it stopped: this is
+  // the thing that makes BROOK FOOT a place rather than a clearing on the way.
+  map.plant(4, 39, 'log');
+  map.plant(4, 41, 'barrelPair');
+
+  // == THE SAWPIT ==========================================================
+  // Where the timber off this wood was cut up. The floor is beaten earth two
+  // rows wide as the sheet requires, the saw bench still stands over the pit,
+  // and the cordwood is stacked where it was left. It is the busiest-looking
+  // place in the forest and nobody has been here for years.
+  //            1111111222
+  //            7890123456
+  map.draw(17, 37, [
+    '    gg    ',
+    '   g..g   ',
+    '  g....gg ',
+    ' g,,,,,.g ',
+    'g.,,,,,,g ',
+    'gg,,,,,,,g',
+    ' g,,,,,.g ',
+    '  gg...g  ',
+    '   g..g   ',
+    '    g     ',
+  ]);
+  map.plant(21, 41, 'bigStump');
+  map.plant(19, 41, 'crateStack');
+  map.plant(23, 43, 'log');
+  map.plant(20, 39, 'stump');
+
+  // == THE MERE ============================================================
+  // The brook's foot: still water under the trees with a shingle strand round
+  // the south of it, and the plank jetty somebody floated timber off. The wood
+  // stands to the waterline everywhere else, so like the tarn it is a wall you
+  // steer by rather than a place you cross.
+  //            0         1
+  //            12345678901234
+  map.draw(1, 47, [
+    'WW            ',
+    'WWW           ',
+    'WWWW          ',
+    'WWWWWW        ',
+    'WWWWWWW       ',
+    'WWWWWWW~g     ',
+    'WWWWWW~~gg    ',
+    'WWWWW~~~~g    ',
+    'WWW~~~~~~g    ',
+    'W~~~~~~~gg    ',
+    '   ...ggg.    ',
+    '   ggggg..    ',
+  ]);
+  map.plant(5, 55, 'jetty');
+  map.plant(6, 58, 'log');
+  map.plant(8, 56, 'wetRock');
+
+  // == THE WARREN ==========================================================
+  // A sand scarp in the south-west corner, riddled with burrows and standing
+  // out of the wood because sand in a forest is a thing you remember. Nothing
+  // here is laid: this is the bank falling away, which is why it is the one
+  // ground on the map with no straight edge anywhere in it.
+  //            0         1
+  //            234567890123456
+  map.draw(2, 59, [
+    '   gggg.gg     ',
+    '  dddd...gg    ',
+    ' ddddd....g    ',
+    ' dddd.....g    ',
+    '  ddd....gg    ',
+    '   dd..gg.g    ',
+    '    g..g..g    ',
+    '    gg..gg     ',
+    '     gggg      ',
+  ]);
+  map.plant(4, 63, 'wetRock');
+  map.plant(7, 62, 'wetRock');
+  map.plant(10, 61, 'deadStump');
+  map.plant(6, 65, 'deadStump');
+
+  // == THE HOLLOW WAY ======================================================
+  // A lane worn down between rock banks - two tiles wide the whole way, which
+  // is the point: the hunter cannot corner anybody in it and nothing standing
+  // in it is a door. It is the one route on this map you can see the whole
+  // length of, and it runs from the sawpit's foot to the road out.
+  //            1         2         3
+  //            78901234567890
+  map.draw(17, 47, [
+    '    g         ',
+    '   CggC       ',
+    '   C..C       ',
+    '   C..C       ',
+    '   CC..C      ',
+    '    C..C      ',
+    '    C...g     ',
+    '    CC..C     ',
+    '     C..C     ',
+    '     C..CC    ',
+    '     CC..C    ',
+    '      C..C    ',
+    '      C...C   ',
+    '      CC..C   ',
+    '       C..C   ',
+  ]);
+
+  // The fork above the hollow way's head: west, the long way down to the mere
+  // and the sand, turning at every other step as a trail in this wood does.
+  //            1         2
+  //            11111111112
+  //            12345678901
+  map.draw(11, 47, [
+    '        ggg',
+    '        g  ',
+    '      ggg  ',
+    '      g    ',
+    '    ggg    ',
+    '    g      ',
+    '  ggg      ',
+    '  g        ',
+    ' gg        ',
+    ' g         ',
+    ' g         ',
+    'gg         ',
+  ]);
+
+  // == THE SOUTH ROAD ======================================================
+  // The made road out of the forest, and the only paving on the map. It is laid
+  // two tiles wide because the sheet draws it that way, it runs out through the
+  // gap in the wall at the wood's foot, and the SOUTH GATE is the one tile of
+  // this map's own edge anybody may stand on.
+  //            2         3
+  //            2345678901234
+  map.draw(22, 62, [
+    '   PP        ',
+    '   PP        ',
+    '   PP        ',
+    '   PPPPP     ',
+    '      PP     ',
+    '      PP     ',
+    '      PP     ',
+    '  CCCCPPCCCC ',
+    '      PP     ',
+    '      P      ',
+  ]);
+  map.plant(30, 66, 'signboard');
+
+  // The way along the foot of the wood, joining the sand banks to the road: it
+  // steps between two rows the whole way rather than running along one, which
+  // is how every trail on this map has been drawn since the first of them.
+  //            1         2
+  //            111111111122222222
+  //            234567890123456789
+  map.draw(12, 65, [
+    ' gg               ',
+    '  ggg ggg ggg     ',
+    '    ggg ggg gggg  ',
+  ]);
+
+  // == STONE ROW ===========================================================
+  // Somebody walled this wood once. What is left of it is a line of tumbled
+  // rock running east across the middle of the south, with a gateway in it and
+  // one gap where the stones went. It is the only straight thing in the forest
+  // and it is the thing everybody steers by: north of the wall is the sawpit
+  // and the timber, south of it is the quarry.
+  //            2         3         4
+  //            6789012345678901234
+  map.draw(26, 42, [
+    'g              g   ',
+    'ggg           gg   ',
+    '  gg.....    gg    ',
+    '   g.....  ggg     ',
+    '   CC..CCCCgCCCC   ',
+    '   g....gggg       ',
+    '    ggg    g       ',
+    '     g     g       ',
+    '     g             ',
+  ]);
+  map.plant(35, 45, 'gravestoneWorn');
+
+  // == THE QUARRY ==========================================================
+  // Where the wall's stone came from. A bowl cut into the rock with benches
+  // and spoil heaps left in it, the adit at the back, and one gateway at the
+  // top - Quarryman Mott holds it (`../gates.ts`), and what beating him opens
+  // is the stair down the west face onto the hollow way you walked in by.
+  //            3         4         5
+  //            2345678901234567890
+  map.draw(32, 50, [
+    '     g             ',
+    '  CCCgCCCCCCCCCCC  ',
+    ' CCvvvvvCCCvvvvCC  ',
+    ' CvvvvvvvCCvvvvvC  ',
+    ' CvvCCvvvvvvvvvvC  ',
+    ' CvvCCCvvvvCCvvvCC ',
+    ' CvvvCCvvvvCCvvvCC ',
+    ' CvvvvCCvvvvvvvvC  ',
+    ' CCvvvCCvvvvvvvvC  ',
+    '  CvvCCCvvvvCCvvC  ',
+    '  CvvvCvvvvvCCvvC  ',
+    '  CCvvvvvvvvvvvCC  ',
+    '   CCvvvCCvvvvvC   ',
+    '    CCvvCCCvvCC    ',
+    '     CvCCCCCCC     ',
+  ]);
+  map.plant(44, 61, 'mineMouth');
+  map.plant(45, 55, 'wetRock');
+  map.plant(35, 59, 'wetRock');
+
+  // The trail down the wood between Stone Row and the hollow way, so the two
+  // halves of the south are a ring rather than a fork: it comes out at the
+  // hollow way's east door, which is the one gap in its banks.
+  //            2         3
+  //            567890123
+  map.draw(25, 48, [
+    '      g  ',
+    '     gg  ',
+    '     g   ',
+    '    gg   ',
+    '    g    ',
+    'ggggg    ',
+  ]);
+
+  // And the path off the quarry stair, which is the door Mott's fall opens: it
+  // drops out of the floor of the working onto Beech Flat, so the way home from
+  // the deepest cache on the map is the road rather than the way you came in.
+  //            33
+  //            78
+  map.draw(37, 65, [
+    ' g',
+    'gg',
+    'g ',
+  ]);
+
+  // == THE LONG DRIVE ======================================================
+  // A ride cut through the east wood to bring the charcoal out: two rows of
+  // beaten earth, because that is the only width this sheet draws a lane at,
+  // dog-legging four times on its way south so that nothing about it is a
+  // straight run. It is the fastest ground in the south and the most exposed.
+  //            5         6
+  //            0123456789012
+  map.draw(50, 41, [
+    '     ,,      ',
+    '     ,,      ',
+    '     ,,      ',
+    '     ,,,,    ',
+    '       ,,    ',
+    '       ,,    ',
+    '       ,,    ',
+    '     ,,,,    ',
+    '     ,,      ',
+    '     ,,      ',
+    '     ,,      ',
+    '     ,,,,,   ',
+    '        ,,   ',
+    '        ,,   ',
+    '        ,,   ',
+    '        ,,   ',
+  ]);
+
+  // == THE ROOKERY =========================================================
+  // The south-east corner, and the last thing this wood shows you: a knuckle
+  // of rock standing clear of the canopy with the birds on it. The drive comes
+  // down into it from the kilns and the beech flat goes out of it west, so it
+  // is a corner you pass through rather than a corner you end up in.
+  //            4         5         6
+  //            90123456789012
+  map.draw(49, 57, [
+    '        g..g  ',
+    '       g....g ',
+    '      g.....g ',
+    '     g...CC.g ',
+    '    g...CCC.g ',
+    '    g...CC..g ',
+    '     g.....gg ',
+    '     g....g   ',
+    '    gg...gg   ',
+    '   g...gg     ',
+    '  g...gg      ',
+    ' gg..gg       ',
+    ' g..gg        ',
+    ' ggg          ',
+  ]);
+  map.plant(57, 61, 'deadStump');
+  // The one beech that came down, and the reason the flat is not a lawn.
+  map.plant(40, 69, 'bigStump');
+
+  // == BEECH FLAT ==========================================================
+  // Big smooth trunks and nothing under them, which after the blowdown and the
+  // sand is the calmest ground on the map - and it is the spur that makes the
+  // south a ring: road, flat, rookery, drive, kilns.
+  //            3         4         5
+  //            012345678901234567890
+  map.draw(30, 65, [
+    'gg                   ',
+    ' ggg                 ',
+    '   ggg               ',
+    '     gg.....gg       ',
+    '      g......gg      ',
+    '       gg...ggg      ',
+  ]);
+  //            4444444
+  //            4567890
+  map.draw(44, 68, [
+    '       ',
+    ' gg    ',
+    '  ggggg',
+  ]);
+
+  // == THE TWO NEW DOORS OUT ===============================================
+  // A cart nook off the kiln yard, and the stone staith the mere's timber was
+  // floated off. Both are pockets a player steps into on purpose: an open exit
+  // takes whoever stands on it, so none of them may be a tile on the way to
+  // anywhere (`../extractionPoints.ts`, and the rule in `mapStructure.test.ts`).
+  map.draw(62, 31, ['.']);
+  map.draw(3, 58, ['.']);
 
   return map;
 }

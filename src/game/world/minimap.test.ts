@@ -120,12 +120,16 @@ describe('the bird\'s-eye picture of a map', () => {
   });
 
   it('draws every shipped map inside the banner the lobby gives it', () => {
-    // The drop-in screen's banner is sized in whole game pixels for the tallest
-    // map at one pixel to the tile (see the `.dropin-layout` rows in style.css).
-    // A map drawn bigger than this would be clipped rather than scaled.
+    // The drop-in screen's banner is a fixed 100 game pixels tall (the
+    // `.dropin-layout` rows in style.css), of which the picture's own lid and
+    // frame take 24. So a map may be 76 tiles tall at one pixel to the tile,
+    // and Viridian Forest at 72 draws 96 pixels of banner inside that 100.
+    // Wider than the pane is the other way it would be clipped rather than
+    // scaled, and nothing is drawn at less than one pixel to the tile on
+    // purpose - see `MINIMAP_TILE`.
     for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
       expect(WORLD_MAPS[id].width).toBeLessThanOrEqual(64);
-      expect(WORLD_MAPS[id].height).toBeLessThanOrEqual(64);
+      expect(WORLD_MAPS[id].height).toBeLessThanOrEqual(76);
     }
   });
 

@@ -170,6 +170,53 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     ],
   },
   {
+    // Halfway along the ridge, which is fifty steps of bare rock with two doors
+    // on it and, until this, nothing else: the one place in the game you are
+    // above the canopy, so what it says is what you can see from up here and
+    // cannot get to from up here.
+    id: 'forest-ridge-board',
+    mapId: 'viridian-forest',
+    kind: 'sign',
+    // In the nub off the shelf, not on it: three tiles east the shelf is one
+    // tile through, and a sign is a figure the player cannot walk into, so one
+    // standing there would wall the whole east ridge off (`mapStructure.test.ts`).
+    position: { x: 41, y: 3 },
+    facing: 'down',
+    dialogLines: [
+      'CINDER RIDGE - the lookout\u2019s board',
+      'Below you, west to east: the burn where the fire ran, the black tarn, and the collier\u2019s smoke beyond it. South of the wall in the middle distance, the quarry.',
+      'There is no way down off this rock between the fire tower and the crag. Walk it or go back.',
+    ],
+  },
+  {
+    // At the wall's gateway, which is the middle of the south and the place a
+    // player first has to choose between the quarry and the road.
+    id: 'forest-stone-row-notice',
+    mapId: 'viridian-forest',
+    kind: 'sign',
+    position: { x: 32, y: 45 },
+    facing: 'down',
+    dialogLines: [
+      'STONE ROW - the wall at the middle of the wood',
+      'North of the wall is the sawpit and the way you came. South of it the quarry, and past the quarry the road out.',
+      'SOUTH GATE: always open, at the foot of the road. QUARRY ADIT: inside the working, behind whoever is holding the gate.',
+    ],
+  },
+  {
+    // The kilns are a drop-in of their own, so the board there says what a
+    // player landing in the far east can reach without crossing the whole map.
+    id: 'forest-kiln-board',
+    mapId: 'viridian-forest',
+    kind: 'sign',
+    position: { x: 54, y: 29 },
+    facing: 'down',
+    dialogLines: [
+      'CHARCOAL BURN - the collier’s yard',
+      'KILN ROAD: the cart nook east of the pitsteads, once the raid has run a while. CRAG PATH: north, over the tarn and up, and there is no way up.',
+      'The ride south is quick and it is watched. The timber road west is neither.',
+    ],
+  },
+  {
     // The one giver (`gifts.ts`): she stands in the nook at the head of the
     // lane, so nobody passes through her, and she is what the entity's own
     // lines say once there is nothing left to give.

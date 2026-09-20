@@ -214,6 +214,26 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       // in the game - only the Bulbasaur line can read it. The forest is the
       // map worth walking for a rarity, and it is now the map with two.
       { id: 'forest-tm-bullet-seed', position: { x: 11, y: 7 }, itemId: 'tm09-bullet-seed', quantity: 1, chance: 0.25 },
+      // The east and the south. A pool, not a layout - `generateLoot` re-seats
+      // every piece each raid - so these are one per place rather than a trail
+      // of crumbs, which is what keeps a map four times the size worth walking.
+      { id: 'forest-burn-potion', position: { x: 42, y: 12 }, itemId: 'potion', quantity: 1 },
+      { id: 'forest-burn-radio-valve', position: { x: 36, y: 16 }, itemId: 'radio-valve', quantity: 1 },
+      { id: 'forest-tarn-poke-ball', position: { x: 51, y: 18 }, itemId: 'poke-ball', quantity: 2 },
+      { id: 'forest-glade-antidote', position: { x: 41, y: 23 }, itemId: 'antidote', quantity: 1 },
+      { id: 'forest-blowdown-super-potion', position: { x: 39, y: 37 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'forest-kiln-parts-crate', position: { x: 57, y: 36 }, itemId: 'parts-crate', quantity: 1 },
+      { id: 'forest-kiln-scrip', position: { x: 53, y: 30 }, itemId: 'scrip', quantity: 40 },
+      { id: 'forest-sawpit-cable-coil', position: { x: 22, y: 40 }, itemId: 'cable-coil', quantity: 1 },
+      { id: 'forest-brook-foot-poke-ball', position: { x: 6, y: 41 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'forest-stone-row-potion', position: { x: 32, y: 47 }, itemId: 'potion', quantity: 1 },
+      { id: 'forest-hollow-way-great-ball', position: { x: 24, y: 55 }, itemId: 'great-ball', quantity: 1 },
+      { id: 'forest-quarry-linen-roll', position: { x: 40, y: 57 }, itemId: 'linen-roll', quantity: 1 },
+      { id: 'forest-mere-antidote', position: { x: 9, y: 54 }, itemId: 'antidote', quantity: 1 },
+      { id: 'forest-warren-potion', position: { x: 6, y: 62 }, itemId: 'potion', quantity: 1 },
+      { id: 'forest-rookery-super-potion', position: { x: 55, y: 62 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'forest-beech-poke-ball', position: { x: 39, y: 68 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'forest-drive-scrip', position: { x: 58, y: 46 }, itemId: 'scrip', quantity: 45 },
     ],
   },
   // The first map drawn on the FireRed sheet, which is the only one with

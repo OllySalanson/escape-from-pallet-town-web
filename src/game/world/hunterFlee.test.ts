@@ -170,6 +170,37 @@ describe('what an escape buys', () => {
       if (!contact) {
         continue;
       }
+      // One walk of the map per tile the hunter could fall back to, rather than
+      // one per destination: for a given player there are at most five such
+      // tiles (four headings and the heading-blind one) against fifteen places
+      // a raid is walking to, and on a 64x72 map the difference is the whole
+      // test running or timing out.
+      const detourCache = new Map<string, number[][]>();
+      // And one escape worked out per heading rather than per destination: the
+      // fallback is a search of its own and it does not know where the player
+      // was going, only which way they were facing.
+      const escapes = new Map<string, GridPosition>();
+      const fallBack = (heading: Direction | null): GridPosition => {
+        const known = escapes.get(heading ?? 'blind');
+        if (known) {
+          return known;
+        }
+        const away = heading
+          ? findHunterBreakawayTile(contact, player, bounds, isBlocked, HUNTER_BREAKAWAY_DISTANCE, heading)
+          : findHunterBreakawayTile(contact, player, bounds, isBlocked);
+        escapes.set(heading ?? 'blind', away);
+        return away;
+      };
+      const around = (tile: GridPosition): number[][] => {
+        const key = `${tile.x},${tile.y}`;
+        const known = detourCache.get(key);
+        if (known) {
+          return known;
+        }
+        const field = stepDistances(collision, player, new Set([key]));
+        detourCache.set(key, field);
+        return field;
+      };
       const clean = stepDistances(collision, player);
       for (const [index, destination] of destinations.entries()) {
         const direct = clean[destination.y]?.[destination.x] ?? -1;
@@ -193,14 +224,7 @@ describe('what an escape buys', () => {
           x: player.x + HEADING_DELTA[heading].x,
           y: player.y + HEADING_DELTA[heading].y,
         };
-        const breakaway = findHunterBreakawayTile(
-          contact,
-          player,
-          bounds,
-          isBlocked,
-          HUNTER_BREAKAWAY_DISTANCE,
-          heading,
-        );
+        const breakaway = fallBack(heading);
         if (breakaway.x === ahead.x && breakaway.y === ahead.y) {
           intoTheNextStep += 1;
         }
@@ -209,13 +233,12 @@ describe('what an escape buys', () => {
         }
         // The same escape with nothing said about where the player was walking,
         // which is what the hunter did before, measured on the same scenario.
-        if (isDetour(findHunterBreakawayTile(contact, player, bounds, isBlocked))) {
+        if (isDetour(fallBack(null))) {
           lengthenedBlind += 1;
         }
 
         function isDetour(tile: GridPosition): boolean {
-          const around = stepDistances(collision, player, new Set([`${tile.x},${tile.y}`]));
-          const detoured = around[destination.y]?.[destination.x] ?? -1;
+          const detoured = around(tile)[destination.y]?.[destination.x] ?? -1;
           return detoured < 0 || detoured > direct;
         }
       }
@@ -236,7 +259,9 @@ describe('what an escape buys', () => {
     expect(`${mapId}: ${(share * 100).toFixed(0)}% lengthened against ${(blindShare * 100).toFixed(0)}% heading-blind`)
       .toBe(`${mapId}: ${(Math.min(share, blindShare * 0.6) * 100).toFixed(0)}% lengthened against ${(blindShare * 100).toFixed(0)}% heading-blind`);
     expect(share).toBeLessThan(0.2);
-  });
+    // Four thousand six hundred tiles times four headings times a search each:
+    // the default thirty seconds is a limit on the suite, not on this.
+  }, 180_000);
 
   it('backs away down the corridor the player is leaving, not the one ahead of them', () => {
     // A straight east-west lane, the player walking east with the hunter beside

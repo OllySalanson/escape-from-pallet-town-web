@@ -1,6 +1,6 @@
 import type { HeldItemId } from '../items';
 import { Pokemon } from '../pokemon';
-import { BUTTERFREE, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE } from '../pokemon/species';
+import { BUTTERFREE, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from './characterDesigns';
@@ -467,6 +467,90 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // exists to avoid.
       [new Pokemon(PIDGEY, 9), new Pokemon(PIKACHU, 11), new Pokemon(JIGGLYPUFF, 12)],
       'Ridge is open, both ends. Light the tower and you are ten steps from the stair, not half a map.',
+    ),
+  },
+  {
+    // The toll on the long drive. She stands at the east end of the dog-leg,
+    // off the lane with the road running across in front of her, so the watch
+    // prices the fast ground rather than shutting it - the way round is the
+    // whole west of the map, which is exactly what the drive is worth.
+    mapId: 'viridian-forest',
+    position: { x: 59, y: 52 },
+    facing: 'left',
+    fixedPosition: true,
+    sightRange: 4,
+    design: 'lass',
+    introLines: [
+      'CARTER DILL WORKS THE DRIVE.',
+      'Nobody uses my road for nothing. Battle is the toll.',
+    ],
+    trainer: createTrainer(
+      'forest-drive-carter-dill',
+      'CARTER DILL',
+      [new Pokemon(getSpeciesById('spearow')!, 9), new Pokemon(getSpeciesById('meowth')!, 9)],
+      'Road is yours today. Mind the kilns - the collier is not so friendly.',
+    ),
+  },
+  {
+    // Spoken to, not watched: she stands in the middle of the blowdown, which
+    // is a knot of ways round rather than a lane, so being caught here is never
+    // forced. The forest's other passable trainer is Ivy, on the other side of
+    // the map and half its levels below.
+    mapId: 'viridian-forest',
+    position: { x: 40, y: 34 },
+    facing: 'down',
+    fixedPosition: true,
+    design: 'youngster',
+    introLines: [
+      'FORAGER NELL IS WORKING THE FALLEN TIMBER.',
+      'Everything good in this wood is under a log. Mine first.',
+    ],
+    trainer: createTrainer(
+      'forest-blowdown-forager-nell',
+      'FORAGER NELL',
+      [new Pokemon(getSpeciesById('paras')!, 9), new Pokemon(getSpeciesById('venonat')!, 10)],
+      'Take the logs slowly. The quarryman does not take anything slowly.',
+    ),
+  },
+  {
+    // Viridian's second boss, and the deepest door on the map. Mott stands in
+    // the lane above the quarry mouth with the gate below him: there is no
+    // watch, because a boss who is the door does not need one - you walk up to
+    // him or you do not go in.
+    //
+    // Not another lookout and not another warden: a quarryman in a hiker's
+    // hat, and the only trainer in the game who fields rock.
+    mapId: 'viridian-forest',
+    position: { x: 37, y: 50 },
+    facing: 'down',
+    fixedPosition: true,
+    bossId: 'forest-quarry-keeper',
+    design: 'hiker',
+    introLines: [
+      'QUARRYMAN MOTT HOLDS THE QUARRY GATE.',
+      'Nothing comes out of my hole that I did not carry out. Try it.',
+    ],
+    trainer: createTrainer(
+      'forest-quarry-keeper-mott',
+      'QUARRYMAN MOTT',
+      // Measured over the real engine like every other door
+      // (`tools/trainers/report.mts`): 63% over the four reference parties,
+      // which puts him between Lookout Pell and the Floodplain's sluice keeper
+      // - the deepest door on this map and the harder of its two.
+      //
+      // Rock and Ground alone is a lottery in the wrong direction: Geodude is
+      // four times over to both Water and Grass, and a party of three of them
+      // measured 48/100/100 against the three starters. The Zubat is what
+      // flattens it - Poison and Flying quarters a Grass move and is neutral to
+      // Water - and it is what lives in an adit. Machop is the anchor, and the
+      // level it is pitched at is the whole fight: at 13 it learns its way to a
+      // 51% door and at 12 it is a 63% one.
+      [
+        new Pokemon(getSpeciesById('geodude')!, 12),
+        new Pokemon(getSpeciesById('zubat')!, 13),
+        new Pokemon(getSpeciesById('machop')!, 12),
+      ],
+      'Gate is open, and so is the stair down the west face. The adit at the back takes you home.',
     ),
   },
 ];

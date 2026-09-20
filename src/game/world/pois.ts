@@ -110,6 +110,61 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     ],
   },
   {
+    // The east half's own cache. Between the firebreak and the collier's yard
+    // there was nothing to turn aside for, and the quietest ground on the map
+    // by a distance was the shingle at the head of the tarn - so what stands on
+    // it is a hide, which is the one thing anybody builds on a pool like that.
+    id: 'forest-tarn-hide',
+    mapId: 'viridian-forest',
+    position: { x: 54, y: 13 },
+    label: 'THE TARN HIDE',
+    description: 'A watcher\u2019s hide on the shingle at the head of the tarn, with the box of tackle whoever built it left under the bench.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'potion', quantity: 1 },
+    ],
+  },
+  {
+    // The south's own cache, in the timber yard everybody walks through on the
+    // way to the hollow way. Nothing seals behind it: it is the ordinary kind
+    // of landmark, which a map this size needs more than one of.
+    id: 'forest-sawyers-store',
+    mapId: 'viridian-forest',
+    position: { x: 20, y: 44 },
+    label: "SAWYER'S STORE",
+    description: 'The lean-to at the foot of the sawpit, still holding what the sawyers left when the wood stopped being worked.',
+    reward: [
+      { itemId: 'poke-ball', quantity: 2 },
+      { itemId: 'potion', quantity: 1 },
+    ],
+  },
+  {
+    // Behind Quarryman Mott, beside the adit that is also the way home. The
+    // best cache on the map because it is behind the deepest door on it.
+    id: 'forest-adit-store',
+    mapId: 'viridian-forest',
+    position: { x: 42, y: 62 },
+    label: 'ADIT STORE',
+    description: "The quarrymen's store at the back of the working, under the adit mouth. Nobody has been down here since the gate was hung.",
+    reward: [
+      { itemId: 'great-ball', quantity: 2 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    // The far south-west corner, which is the longest walk on the map from any
+    // landing. What is out there has to be worth the walk out there.
+    id: 'forest-warren-dig',
+    mapId: 'viridian-forest',
+    position: { x: 9, y: 62 },
+    label: 'THE OLD DIG',
+    description: 'Somebody dug into the sand bank a long time ago and roofed it with a board. Whatever they were keeping out of the wet is still in it.',
+    reward: [
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
     // The home bank's own cache. The supply vault was this map's only one, and
     // it is behind two bosses now; a fresh save had nothing left to detour for.
     id: 'floodplain-drowned-chapel',

@@ -216,7 +216,7 @@ const DRAWN_FLOODPLAIN_RELAY = [
 ];
 
 /**
- * Viridian Forest as redrawn, in the shipped 32x36 footprint, and NOT yet
+ * Viridian Forest, four times the footprint it shipped in - 64x72 - and NOT yet
  * signed off. The approved design's clearings and one-tile trails are kept
  * where they were, so this is the nearest of the four to a drawing that was
  * signed off - but the wood they are cut from is new, and so are the glade
@@ -231,44 +231,92 @@ const DRAWN_FLOODPLAIN_RELAY = [
  * foot to the head of the Tower Steps, with the crest of it drawn as the map's
  * own north edge. It is behind Lookout Pell's two doors and it is the only
  * ground in the forest with no tall grass on it.
+ *
+ * The north-west quarter of the grid below is the drawing that stood here
+ * before, tile for tile: every clearing, every trail and every authored fact on
+ * the old map is where it was, so a player who knows this forest still knows
+ * it. What is new is everything east of x31 and everything south of y35 - the
+ * ridge carried on to RAVEN CRAG, THE BURN, THE TARN, HORNET GLADE, THE
+ * BLOWDOWN and the CHARCOAL BURN in the east; THE SAWPIT, BROOK FOOT, THE MERE,
+ * THE WARREN, STONE ROW, THE HOLLOW WAY, THE QUARRY, THE LONG DRIVE, THE
+ * ROOKERY, BEECH FLAT and THE SOUTH ROAD in the south - plus the four seams
+ * that join the two: the firebreak east of the Tower Steps, the trail east
+ * under East Rise's brow, the middle way out of The Clearing's north-east
+ * corner, and the way down out of its south-east pocket.
  */
 const DRAWN_VIRIDIAN_FOREST = [
-  'TTTTTTTTTTTTTTT...CCCCCCCCCCCCCC',
-  'TTTTTTTTTTTTTTT...TC...C....C..C',
-  'TT.T.T....T.T.T...T..C...C.....C',
-  'TTTTTT....TTTTT...T.CC.C...C.C.C',
-  'TT.TTTg.g.TTTT......CCCCC.CC...T',
-  'TTTT.TgTgTTggg.....TTTTTT.TT...T',
-  'TT.TgggTgTTgTT....ggggTTT.TT...T',
-  'TTT.gT.TggggTT..g..TTgTTT.TT...T',
-  'TT..g..TTTTTTTTTgTTTTgTT.......T',
-  '.T...gggTTTTT,,,,TTTTggg.WWgg..T',
-  'TT.....g.TT.T,,,,T.TTTTggWW.TTTT',
-  'TT...g.gggTTT,,TTTTTTTTT..g.TTTT',
-  'TT.T.gTTTgT.T,,..TTTTTTTTTgTTTTT',
-  'TWWTTgTTTg,,,,,,,.TTTTTTTTgggTTT',
-  'TWWgggT.TT,,,,,,,,gT.TT.TTTTgTTT',
-  'TWWgTTTTTTTTT,,..TgTTTTTTTTTgT.T',
-  'TWWggTTT.TTTT,,TTTggTTT.T.TggTTT',
-  'TWW.g.TTTTTgggTTT..g.TTTTTTgTTTT',
-  'TWW..gggTTTgTTT.....ggggTTTggT.T',
-  'Tww...TgTTTgTTT......TTgTT..g.TT',
-  'Tww...TgggTgTTTTT...gTTgggg...TT',
-  'TWWTTTTTTgTgg...TTTTgTTTTT....TT',
-  'TWWTTTTTTgTT....TTTTgTTTTT..g..T',
-  'TWWTTTT.Tgggg...TTTTgggT.FFFgFFT',
-  'TWWTT.TTTTTTT.g.T.TTTTg.....g..T',
-  'TWWTTTTTTTTTTTgTTTTTTggTTTgggTTT',
-  'TWWTT.TT.TT.TTggggg.TgTTTTgTTTTT',
-  'TWWTTTTTTTTTTTT.TTgTTgTggggTTTTT',
-  'TTTTT.TT.TT.T....Tg..gggTTTTT.TT',
-  'TTTTTTTTTTTTT....T.....TTTTTTTTT',
-  'TT.TT.TT.TT.T....T.....TTTTTT.TT',
-  'TTTTTTTTTTTTTgTTTT.....TTTTTTTTT',
-  'TT.TT.TT.TT.TgTT.TTTTTTTTT.TT.TT',
-  'TTTTTTTTTgggggTTTTTTTTTTTTTTTTTT',
-  'TT.TT.TTTTTTTTTTT.TT.TT.TT.TT.TT',
-  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+  'TTTTTTTTTTTTTTT...CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
+  'TTTTTTTTTTTTTTT...TC...C....C....C....C...C..C....C....C....C..C',
+  'TT.T.T....T.T.T...T..C...C.....C...C....C...C...C.......C.....CC',
+  'TTTTTT....TTTTT...T.CC.C...C.C..C....C..C.C....C..C.C.C....C...C',
+  'TT.TTTg.g.TTTT......CCCCC.CC...CCCCCCCCCCCCCCCCCCCCCCCCCCC...C.C',
+  'TTTT.TgTgTTggg.....TTTTTT.TT...TTTTTTTTTTTTTTTTTTTTTTCCCCCC..CCC',
+  'TT.TgggTgTTgTT....ggggTTT.TT...,vvvvTT.TT.TT.TT.TT.TTCCCCCC..CCC',
+  'TTT.gT.TggggTT..g..TTgTTT.TT...,vvvvTTTTTTTTTTTTTTTTTCCCCCCC..CC',
+  'TT..g..TTTTTTTTTgTTTTgTT.......TvvvvvvTTT.TT.TT.TT.TTCCCCCCCC.CC',
+  '.T...gggTTTTT,,,,TTTTggg.WWgg..TTvvvv,vvvTTTTTTTTTTTTCCCCCCCCCCC',
+  'TT.....g.TT.T,,,,T.TTTTggWW.TTTTTTvvv,,vvvvT.TT.TT.TT.TT.TT.TT.T',
+  'TT...g.gggTTT,,TTTTTTTTT..g.TTTTTTvvv,,vvTvvvvTTTTTTTTTTTTTTTTTT',
+  'TT.T.gTTTgT.T,,..TTTTTTTTTgTTTTTTgvvv,vTvvvvvvT.TT.TT.TT.TT.TT.T',
+  'TWWTTgTTTg,,,,,,,.TTTTTTTTgggTTTTggvvvvTTvvvvvvvTTTTT~~~~TTTTTTT',
+  'TWWgggT.TT,,,,,,,,gT.TT.TTTTgTTTTTgvvvTTTvvvvvvvvgTT~~WWWWW.TT.T',
+  'TWWgTTTTTTTTT,,..TgTTTTTTTTTgT.TTTTvvvvTTvvvvvvvvg~~~WWWWWWWTTTT',
+  'TWWggTTT.TTTT,,TTTggTTT.T.TggTTT.TTvvvvvTvvvvTvvgg~~WWWWWWWWWT.T',
+  'TWW.g.TTTTTgggTTT..g.TTTTTTgTTTTTTTTgvvvvvTvvvvgTT~~WWWWWWWWWWTT',
+  'TWW..gggTTTgTTT.....ggggTTTggT.T.TTTTggvvvvTTgggTT~~WWWWWWWWWW.T',
+  'Tww...TgTTTgTTT......TTgTT..g.TTTTTTTTTggggggggTTTg~~WWWWWWWWWTT',
+  'Tww...TgggTgTTTTT...gTTgggg...TT.TT.TTTTTTgggTTTTTTg~~WWWWWWWT.T',
+  'TWWTTTTTTgTgg...TTTTgTTTTT....ggggTTTTTTTTgggTTTTTTTg~~~WWWWTTTT',
+  'TWWTTTTTTgTT....TTTTgTTTTT..g..TTgT.TT.Tgg...gT.TT.TTg~~~~~~TT.T',
+  'TWWTTTT.Tgggg...TTTTgggT.FFFgFFTTgggTTg.....ggTTTTTTTTg....gTTTT',
+  'TWWTT.TTTTTTT.g.T.TTTTg.....g..TTTTgTTg.....gTT.TT.TTTTg..gTTT.T',
+  'TWWTTTTTTTTTTTgTTTTTTggTTTgggTTTTTTggg......gTTTTTTTTTTTgggTTTTT',
+  'TWWTT.TT.TT.TTggggg.TgTTTTgTTTTT.TTTTg.....ggTT.TT.TT.TTTgTTTT.T',
+  'TWWTTTTTTTTTTTT.TTgTTgTggggggTTTTTTTTTg....gTTTTTTTTTTTTgggTTTTT',
+  'TWWTT.TT.TT.T....Tg..gggTgggggTT.TT.TTTgg.ggTTT.TT.TTTgg...gTT.T',
+  'TWWTTTTTTTTTT....T.....gggTTTgggggTTTTTTggTgggTTTTTTTgg.....gTTT',
+  'TWWTT.TT.TT.T....T.....TTTTTTTTTTggTTTTgTTTTgTT.TT.Tgg..MM...gTT',
+  'TWWTTTTTTTTTTgTTTT.....TTTTTTTTTTTggTTgg.g..ggTTTTTgg...MM.....T',
+  'TWWTT.TT.TT.TgTT.TTTTggTTT.TT.TTTTTgggg...g..gT.TTTg....,,,...TT',
+  'TWWTTTTTTgggggTTTTTTTTgTTTTTTTTTTTTTg....g...gggTTg.....,,,..gTT',
+  'TWWTT.TTTTTTTTTTT.TTTggTTT.TT.TTTTTg.....g...gTggTg.....,,,.ggTT',
+  'TWWTTTTTTTTTTTTTTTTTTgTTTTTTTTTTTTTg..g...g..gTTgggg....,,,.gTTT',
+  'TWWTT.TT.TT.TT.TT.TTTgT.TT.TT.TTTTTgg.g...g.ggTTTTTg....,,,,gT.T',
+  'TWWTTTTTTTTTTTTTTTTTTggTTTTTTTTTTTTTg.g...g.gTTTTTTgg...,,,gTTTT',
+  'TWWTT...TTT.TT.TT.TTg..gTT.TT.TT.TTTgg.g.gg.gTT.TTTTgg..,,gTTT.T',
+  'TWWT.....TTTTTTTTTTg....ggTTTTTTTTTTTgg.g..ggTTTTTTTTgggggTTTTTT',
+  'TWWT.....ggTTT.TTTg,,,,,.gTTT.TT.TT.TTgg..ggTTT.TT.TTTTggTT.TT.T',
+  'TWWT....gTgggTTTTg.,,,,,,gTTTTTTTTTTTTTgggggTTTTTTTTTTT,,TTTTTTT',
+  'TWWTT...gTTTggggggg,,,,,,,gTT.TT.TT.TTTTTgTTTTT.TT.TT.T,,TT.TT.T',
+  'TWWTTT..gTTTTTTTTTg,,,,,.ggggTTTTTTTTTTTggTTTTTTTTTTTTT,,TTTTTTT',
+  'TWWTTTTggTT.TT.TTTTgg...gTTTgg.....TTTTggTTT.TT.TT.TT.T,,,,TTT.T',
+  'TWWTTTTTTTTTTTTTTTTTg..gTTTTTg.....TTgggTTTTTTTTTTTTTTTTT,,TTTTT',
+  'TWWTT.TT.TT.TT.TT.TTTgTTTT.TTCC..CCCCgCCCCTT.TT.TT.TT.TTT,,TTT.T',
+  'TWWTTTTTTTTTTTTTTTTgggTTTTTTTg....ggggTTTTTTTTTTTTTTTTTTT,,TTTTT',
+  'TWWWT.TT.TT.TT.TT.TgCggCTT.TTTgggTTTTgTTT.TT.TT.TT.TT.T,,,,TTT.T',
+  'TWWWWTTTTTTTTTTTTgggC..CTTTTTTggTTTTTgTTTTTTTTTTTTTTTTT,,TTTTTTT',
+  'TWWWWWWT.TT.TT.TTgTTC..CTT.TTTggTTT.TgTTT.TT.TT.TT.TT.T,,TT.TT.T',
+  'TWWWWWWWTTTTTTTgggTTCC..CTTTTggTTTCCCgCCCCCCCCCCCTTTTTT,,TTTTTTT',
+  'TWWWWWWW~gT.TTTgTTTT.C..CT.TTgTT.CCvvvvvCCCvvvvCCT.TT.T,,,,,TT.T',
+  'TWWWWWW~~ggTTgggTTTTTC...gggggTTTCvvvvvvvCCvvvvvCTTTTTTTTT,,TTTT',
+  'TWWWWW~~~~gTTgTTT.TT.CC..CTTTTTT.CvvCCvvvvvvvvvvCT.TT.TT.T,,TT.T',
+  'TWWW~~~~~~gTggTTTTTTTTC..CTTTTTTTCvvCCCvvvvCCvvvCCTTTTTTTT,,TTTT',
+  'TW~~~~~~~ggTgTTTT.TT.TC..CCTT.TT.CvvvCCvvvvCCvvvCC.TT.TT.T,,TT.T',
+  'TTTT...ggg.TgTTTTTTTTTCC..CTTTTTTCvvvvCCvvvvvvvvCTTTTTTTTg..gTTT',
+  'TTT.ggggg..ggT.TT.TT.TTC..CTT.TT.CCvvvCCvvvvvvvvCT.TT.TTg....gTT',
+  'TTTTTgggg.ggTTTTTTTTTTTC...CTTTTTTCvvCCCvvvvCCvvCTTTTTTg.....gTT',
+  'TT.Tdddd...ggT.TT.TT.TTCC..CT.TT.TCvvvCvvvvvCCvvCT.TTTg...CC.gTT',
+  'TTTddddd....gTTTTTTTTTTTC..CTTTTTTCCvvvvvvvvvvvCCTTTTg...CCC.gTT',
+  'TTTdddd.....gT.TT.TT.TT.TPPTT.TT.TTCCvvvCCvvvvvCTT.TTg...CC..gTT',
+  'TTTTddd....ggTTTTTTTTTTTTPPTTTTTTTTTCCvvCCCvvCCTTTTTTTg.....ggTT',
+  'TT.TTdd..gg.gT.TT.TT.TT.TPPTT.TT.TT.TCvCCCCCCCT.TT.TTTg....gTTTT',
+  'TTTTTTg..g..gggTTTTTTTTTTPPPPPggTTTTTTgTTTTTTTTTTTTTTgg...ggTTTT',
+  'TT.TTTgg..ggTTgggTgggTgggTTTPPTgggT.TggTT.TT.TT.TT.Tg...ggTTTT.T',
+  'TTTTTTTggggTTTTTgggTgggTggggPPTTTgggTgTTTTTTTTTTTTTg...ggTTTTTTT',
+  'TT.TT.TTTTTTTT.TTTTTTTTTTTTTPPTTTTTgg.....ggTTT.TTgg..ggTTT.TT.T',
+  'TTTTTTTTTTTTTTTTTTTTTTTTCCCCPPCCCCTTg......ggggTTTg..ggTTTTTTTTT',
+  'TT.TT.TT.TT.TT.TT.TT.TT.TT.TPPTT.TTTTgg...gggTgggggggTTT.TT.TT.T',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTPTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
 ];
 
 describe('map designs, as drawn', () => {

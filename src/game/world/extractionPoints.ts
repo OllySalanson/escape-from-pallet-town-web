@@ -179,6 +179,52 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     unlockAtMs: 0,
     requirement: { kind: 'always' },
   },
+  {
+    // The far end of the ridge, on the point of Raven Crag. The ridge is a road
+    // with a door at each end and no way down in between, so this is what makes
+    // dropping in on top of the wood a raid rather than a one-way walk.
+    mapId: 'viridian-forest',
+    position: { x: 61, y: 8 },
+    label: 'CRAG PATH',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The cart nook off the collier's yard. Timed, because the kilns are a
+    // drop-in of their own and a landing must never also be an instant exit.
+    mapId: 'viridian-forest',
+    position: { x: 62, y: 31 },
+    label: 'KILN ROAD',
+    unlockAtMs: EXTRACTION_UNLOCK_DELAY_MS,
+  },
+  {
+    // The stone staith the mere's timber was floated off, in the south-west.
+    mapId: 'viridian-forest',
+    position: { x: 3, y: 58 },
+    label: 'MERE STAITH',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The way to Viridian City, and the one tile of this map's own edge anybody
+    // may stand on. Always open: the south of the wood is a long way from the
+    // north landing and nothing down there may depend on a door.
+    mapId: 'viridian-forest',
+    position: { x: 28, y: 71 },
+    label: 'SOUTH GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The adit at the back of the quarry, behind Quarryman Mott. The same shape
+    // the Ridge Gap has: an exit inside a boss's ground, so beating him buys a
+    // way home as well as the ground itself.
+    mapId: 'viridian-forest',
+    position: { x: 44, y: 63 },
+    label: 'QUARRY ADIT',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
   // The Floodplain is played a piece at a time, so every piece has a way out
   // inside it: three on the home bank on three different rules, and one behind
   // each door a boss holds. `hunterFlee.test.ts` holds the other half of that -

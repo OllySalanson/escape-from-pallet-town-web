@@ -112,6 +112,27 @@ export const RUN_INSERTIONS = {
     position: { x: 26, y: 2 },
     description: 'On top of the wood, past the lookout. Bare rock, its own way off at the east end, and the stair the fire tower lights a dozen steps down the rake.',
   },
+  'viridian-burn': {
+    id: 'viridian-burn',
+    label: 'The Burn',
+    mapId: 'viridian-forest',
+    position: { x: 35, y: 12 },
+    description: 'The fire scar east of the tower. Open ground you can see across, the tarn beyond it, and the ridge overhead with no way up to it.',
+  },
+  'viridian-sawpit': {
+    id: 'viridian-sawpit',
+    label: 'The Sawpit',
+    mapId: 'viridian-forest',
+    position: { x: 26, y: 43 },
+    description: 'The gate of the old timber yard, in the south. Stone Row runs east from here and the hollow way runs south to the road out.',
+  },
+  'viridian-kilns': {
+    id: 'viridian-kilns',
+    label: 'Charcoal Burn',
+    mapId: 'viridian-forest',
+    position: { x: 50, y: 33 },
+    description: "The collier's gate in the far east. The only kept ground in this forest, with the ride south out of it and the tarn above.",
+  },
 } as const;
 
 export type RunInsertionId = keyof typeof RUN_INSERTIONS;
