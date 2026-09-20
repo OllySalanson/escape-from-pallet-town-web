@@ -182,6 +182,7 @@ describe('the named districts of a map', () => {
         "SAWYER'S STORE": 'THE SAWPIT',
         'ADIT STORE': 'THE QUARRY',
         'THE OLD DIG': 'THE WARREN',
+        'THE TARN HIDE': 'THE TARN',
       },
     });
   });

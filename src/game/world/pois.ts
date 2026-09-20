@@ -110,6 +110,21 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     ],
   },
   {
+    // The east half's own cache. Between the firebreak and the collier's yard
+    // there was nothing to turn aside for, and the quietest ground on the map
+    // by a distance was the shingle at the head of the tarn - so what stands on
+    // it is a hide, which is the one thing anybody builds on a pool like that.
+    id: 'forest-tarn-hide',
+    mapId: 'viridian-forest',
+    position: { x: 54, y: 13 },
+    label: 'THE TARN HIDE',
+    description: 'A watcher\u2019s hide on the shingle at the head of the tarn, with the box of tackle whoever built it left under the bench.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'potion', quantity: 1 },
+    ],
+  },
+  {
     // The south's own cache, in the timber yard everybody walks through on the
     // way to the hollow way. Nothing seals behind it: it is the ordinary kind
     // of landmark, which a map this size needs more than one of.

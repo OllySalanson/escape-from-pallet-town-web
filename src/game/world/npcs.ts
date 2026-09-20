@@ -170,6 +170,25 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     ],
   },
   {
+    // Halfway along the ridge, which is fifty steps of bare rock with two doors
+    // on it and, until this, nothing else: the one place in the game you are
+    // above the canopy, so what it says is what you can see from up here and
+    // cannot get to from up here.
+    id: 'forest-ridge-board',
+    mapId: 'viridian-forest',
+    kind: 'sign',
+    // In the nub off the shelf, not on it: three tiles east the shelf is one
+    // tile through, and a sign is a figure the player cannot walk into, so one
+    // standing there would wall the whole east ridge off (`mapStructure.test.ts`).
+    position: { x: 41, y: 3 },
+    facing: 'down',
+    dialogLines: [
+      'CINDER RIDGE - the lookout\u2019s board',
+      'Below you, west to east: the burn where the fire ran, the black tarn, and the collier\u2019s smoke beyond it. South of the wall in the middle distance, the quarry.',
+      'There is no way down off this rock between the fire tower and the crag. Walk it or go back.',
+    ],
+  },
+  {
     // At the wall's gateway, which is the middle of the south and the place a
     // player first has to choose between the quarry and the road.
     id: 'forest-stone-row-notice',
