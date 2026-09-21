@@ -1,4 +1,10 @@
 import { itemRefAt, pieceRefKey, type GridPacking } from '../items';
+import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
+import {
+  characterDesignAssetPath,
+  getCharacterDesign,
+  type CharacterDesignId,
+} from '../world/characterDesigns';
 import { describeKey } from './hoverDescribe';
 
 /**
@@ -36,7 +42,7 @@ export const COLUMN_MEASURES = {
   supply: 168,
   /** A supply row with a +/- selector beside it, which is 30 pixels wider. */
   countedSupply: 196,
-  /** A name over a wrapped sentence: a contract, an Outfitter rung, a deal. */
+  /** A name over a wrapped sentence: a contract, a workshop rung, a deal. */
   brief: 260,
   /**
    * The same, with a price in a column of its own on the right: the shelves.
@@ -162,6 +168,31 @@ export function pixelXpBar(fill: number, label: string): string {
   return `<span class="px-xp" role="img" aria-label="${escapeAttribute(label)}"><span class="px-xp-fill" style="--fill:${fill}"></span></span>`;
 }
 
+/**
+ * One of the base's four people, standing at their own size: Professor Oak,
+ * Nurse Joy, Brock or Bill, drawn from the very sheet the overworld draws a
+ * figure from (`world/characterDesigns.ts`) so a person on a screen and a
+ * person on a map are the same art at the same scale.
+ *
+ * It is the design's down-idle frame and nothing else - the one a figure stands
+ * in when it is looking at you - cropped to the ink: a frame is 32 pixels deep
+ * with a head at `headPixelY` and soles on `CHARACTER_FEET_PIXEL_Y`, so the
+ * blank rows above and below are taken off here rather than left as a gap a
+ * layout has to guess at. The crop is read off the registry, so a design with a
+ * taller hat needs nothing written here.
+ */
+export function pixelFigure(design: CharacterDesignId, name: string): string {
+  const top = Math.max(0, getCharacterDesign(design).headPixelY - 1);
+  const height = CHARACTER_FEET_PIXEL_Y + 2 - top;
+  // The sheet is the element's own background rather than an `<img>` inside it:
+  // a child four times the width of its clipping box is a box, and every audit
+  // that asks "is anything drawn outside this screen?" answers yes on the card
+  // nearest the edge. A background is clipped by the box it is on and has no
+  // box of its own - the same reason `pixelWindow.ts` draws a frame this way.
+  const style = `--figure-top:${top};--figure-height:${height};--figure-sheet:url('/${characterDesignAssetPath(design)}')`;
+  return `<span class="px-figure" role="img" aria-label="${escapeAttribute(name)}" style="${style}"></span>`;
+}
+
 /** A species' front sprite at its own size: one source pixel is one game pixel. */
 export function pixelPortrait(dexId: number, name: string): string {
   return `<span class="px-portrait pokemon-avatar" aria-label="${escapeAttribute(name)}"><img src="/assets/pokemon/front/${dexId}.png" alt="" /><span aria-hidden="true">${name.slice(0, 1)}</span></span>`;
@@ -198,6 +229,8 @@ export function pixelRail(labels: readonly string[], current: number): string {
 export interface CommitBarOptions {
   /** What this bar commits, in caps, on the same line as the actions. */
   readonly title: string;
+  /** Drawn ahead of the title on the same line: the figure whose counter this is. */
+  readonly lead?: string;
   /** Lines under the title, already marked up. They run the full width of the bar. */
   readonly lines?: readonly string[];
   /** The buttons. The committing one goes last, so it is the one on the right. */
@@ -212,7 +245,7 @@ export interface CommitBarOptions {
  */
 export function pixelCommitBar(options: CommitBarOptions): string {
   return pixelWindow(
-    `<div class="px-bar-head"><strong>${options.title}</strong><div class="px-bar-actions">${options.actions}</div></div>${(options.lines ?? []).join('')}`,
+    `<div class="px-bar-head">${options.lead ?? ''}<strong>${options.title}</strong><div class="px-bar-actions">${options.actions}</div></div>${(options.lines ?? []).join('')}`,
     { className: `confirm-bar${options.className ? ` ${options.className}` : ''}`, tag: 'div' },
   );
 }

@@ -156,7 +156,7 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'pallet-town-linen-roll', position: { x: 18, y: 33 }, itemId: 'linen-roll', quantity: 1 },
       // Scrip. Two bundles a map on the small three and three on the vast one,
       // in unequal amounts so a find is a find rather than a tick - and never
-      // more than a raid's worth of it, because the Ferryman's prices are set
+      // more than a raid's worth of it, because Bill's prices are set
       // against what a raid actually brings home (`world/hub/trader.ts`).
       { id: 'pallet-town-scrip-yard', position: { x: 11, y: 24 }, itemId: 'scrip', quantity: 25 },
       { id: 'pallet-town-scrip-shed', position: { x: 26, y: 30 }, itemId: 'scrip', quantity: 40 },

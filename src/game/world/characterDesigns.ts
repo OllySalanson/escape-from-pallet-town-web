@@ -17,8 +17,12 @@
  * `characterPresentation.ts` exists to prevent, so `getWorldCharacterLook`
  * refuses one on any other role. `trainer` and `townsfolk` are a casting note
  * for whoever places people, not a rule - nothing stops a hiker being scenery.
+ * `named` is the fifth: a figure who is somebody in particular - Professor Oak,
+ * Nurse Joy, Bill, Brock - rather than a class of person, which is why the base
+ * screens name one by id (`ui/pixelUi.ts`'s `pixelFigure`) and a map never
+ * should cast one as scenery.
  */
-export type CharacterDesignKind = 'protagonist' | 'townsfolk' | 'trainer';
+export type CharacterDesignKind = 'protagonist' | 'townsfolk' | 'trainer' | 'named';
 
 export interface CharacterDesign {
   readonly kind: CharacterDesignKind;
@@ -31,26 +35,42 @@ export interface CharacterDesign {
    * thing that varies and anything placed over a head must read it from here.
    */
   readonly headPixelY: number;
+  /**
+   * False where the source sheet draws this figure standing and gives it no
+   * walk cycle at all: every frame of every facing is the one cell, so the
+   * figure turns and never steps. It is a fact about the art rather than a
+   * rule - `characterDesigns.test.ts` holds a walker to taking a step and a
+   * standing figure to being still - and it is how the game this art comes
+   * from draws the two of them who stand at a counter all day.
+   */
+  readonly walks: boolean;
 }
 
 export const CHARACTER_DESIGNS = {
-  'protagonist-red': { kind: 'protagonist', description: 'red cap and vest', headPixelY: 9 },
-  'protagonist-leaf': { kind: 'protagonist', description: 'white hat, long hair', headPixelY: 9 },
-  lass: { kind: 'trainer', description: 'girl with pigtails in a pink skirt', headPixelY: 9 },
-  youngster: { kind: 'trainer', description: 'boy in a yellow cap', headPixelY: 9 },
-  'bug-catcher': { kind: 'trainer', description: 'boy in a green cap and shorts', headPixelY: 9 },
-  hiker: { kind: 'trainer', description: 'broad man in a brimmed hat with a pack', headPixelY: 8 },
-  cooltrainer: { kind: 'trainer', description: 'man in a red and white cap', headPixelY: 8 },
-  beauty: { kind: 'trainer', description: 'woman with long blonde hair', headPixelY: 8 },
-  sailor: { kind: 'trainer', description: 'sailor in whites', headPixelY: 8 },
-  boy: { kind: 'townsfolk', description: 'boy in a green shirt', headPixelY: 9 },
-  woman: { kind: 'townsfolk', description: 'woman in a purple dress', headPixelY: 9 },
-  'heavy-man': { kind: 'townsfolk', description: 'heavy-set man in white', headPixelY: 8 },
-  'bald-man': { kind: 'townsfolk', description: 'balding man in a white shirt', headPixelY: 9 },
-  scientist: { kind: 'townsfolk', description: 'man in glasses and a lab coat', headPixelY: 8 },
-  'old-man': { kind: 'townsfolk', description: 'stooped old man with a beard', headPixelY: 10 },
-  'old-woman': { kind: 'townsfolk', description: 'grey-haired woman in pink', headPixelY: 9 },
-  'straw-hat': { kind: 'townsfolk', description: 'gardener in a straw hat', headPixelY: 9 },
+  'protagonist-red': { kind: 'protagonist', description: 'red cap and vest', headPixelY: 9, walks: true },
+  'protagonist-leaf': { kind: 'protagonist', description: 'white hat, long hair', headPixelY: 9, walks: true },
+  lass: { kind: 'trainer', description: 'girl with pigtails in a pink skirt', headPixelY: 9, walks: true },
+  youngster: { kind: 'trainer', description: 'boy in a yellow cap', headPixelY: 9, walks: true },
+  'bug-catcher': { kind: 'trainer', description: 'boy in a green cap and shorts', headPixelY: 9, walks: true },
+  hiker: { kind: 'trainer', description: 'broad man in a brimmed hat with a pack', headPixelY: 8, walks: true },
+  cooltrainer: { kind: 'trainer', description: 'man in a red and white cap', headPixelY: 8, walks: true },
+  beauty: { kind: 'trainer', description: 'woman with long blonde hair', headPixelY: 8, walks: true },
+  sailor: { kind: 'trainer', description: 'sailor in whites', headPixelY: 8, walks: true },
+  boy: { kind: 'townsfolk', description: 'boy in a green shirt', headPixelY: 9, walks: true },
+  woman: { kind: 'townsfolk', description: 'woman in a purple dress', headPixelY: 9, walks: true },
+  'heavy-man': { kind: 'townsfolk', description: 'heavy-set man in white', headPixelY: 8, walks: true },
+  'bald-man': { kind: 'townsfolk', description: 'balding man in a white shirt', headPixelY: 9, walks: true },
+  scientist: { kind: 'townsfolk', description: 'man in glasses and a lab coat', headPixelY: 8, walks: true },
+  'old-man': { kind: 'townsfolk', description: 'stooped old man with a beard', headPixelY: 10, walks: true },
+  'old-woman': { kind: 'townsfolk', description: 'grey-haired woman in pink', headPixelY: 9, walks: true },
+  'straw-hat': { kind: 'townsfolk', description: 'gardener in a straw hat', headPixelY: 9, walks: true },
+  // The four the base is made of. Each is the person the game this art comes
+  // from draws under that name, not a lookalike: see `ASSET_PROVENANCE.md` for
+  // the row of the sheet each was cut from and how it was identified.
+  'prof-oak': { kind: 'named', description: 'Professor Oak, white coat over a red shirt', headPixelY: 8, walks: true },
+  'nurse-joy': { kind: 'named', description: 'Nurse Joy, pink hair and a white apron', headPixelY: 8, walks: false },
+  bill: { kind: 'named', description: 'Bill, fair hair and a lilac shirt', headPixelY: 8, walks: true },
+  brock: { kind: 'named', description: 'Brock, spiked hair and a green work vest', headPixelY: 8, walks: false },
 } as const satisfies Record<string, CharacterDesign>;
 
 export type CharacterDesignId = keyof typeof CHARACTER_DESIGNS;

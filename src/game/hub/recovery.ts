@@ -54,9 +54,9 @@ export const RECOVERY_REVIVE_MS = shareOfRaid(REVIVE_SHARE);
 export const RECOVERY_STATUS_MS = shareOfRaid(STATUS_SHARE);
 
 /**
- * What this base charges, which the Outfitter can improve.
+ * What this base charges, which Brock can improve.
  *
- * `priceShare` is the recovery bay upgrades: it multiplies the *share of a raid*
+ * `priceShare` is the Pokemon Center upgrades: it multiplies the *share of a raid*
  * each price is, before that share is turned into time, so a cheaper bay is
  * still priced against `RAID_DURATION_MS` and moves with it like every other
  * price here. No price ever rounds down to nothing - a treatment that costs no

@@ -194,7 +194,7 @@ export const SOUND_EFFECTS = {
   },
   heal: {
     channel: 'world',
-    moment: 'Medicine used, or the recovery bay restores a Pokemon',
+    moment: 'Medicine used, or the Pokemon Center restores a Pokemon',
     tones: [sweep(tri(523, 0.22, 0.06), 1047), sq(1319, 0.06, 0.04, 0.2), sq(1568, 0.1, 0.04, 0.26)],
   },
   deploy: {

@@ -571,7 +571,7 @@ try {
   }
   if (ended) {
     // And home, which is where a second raid starts from.
-    await click('Back to base');
+    await click('Back to the lab');
     await until(sceneIs('hub'), 'the lobby');
     await wait(400);
     note(`lobby: ${await page.evaluate(`document.querySelector('.menu-overlay')?.innerText.replace(/\\n+/g, ' | ').slice(0, 160)`)}`);

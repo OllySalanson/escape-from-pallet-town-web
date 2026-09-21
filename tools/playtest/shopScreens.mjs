@@ -9,7 +9,7 @@
 // every state it stops in. It also arms a barter and checks that the first
 // press spends nothing, which is the one promise a screenshot cannot show.
 //
-// The two counters on the Ferryman's screen each answer for themselves: this
+// The two counters on Bill's screen each answer for themselves: this
 // fails if pointing at the shelf blanks the pane under the barter table, which
 // is exactly what a screen-wide detail swap used to do.
 import { mkdirSync } from 'node:fs';
@@ -25,7 +25,7 @@ mkdirSync(out, { recursive: true });
 
 /**
  * A save standing mid-way through both shelves: enough parts for the first
- * locker, nothing like enough for the second, and the Ferryman opened as far
+ * locker, nothing like enough for the second, and Bill opened as far
  * as TRUSTED so his table has an affordable deal, a short one and a shut one.
  */
 const SEED = `(() => {
@@ -141,8 +141,8 @@ try {
   const times = (key, count) => Array.from({ length: count }, () => key);
   const walk = [...times('ArrowDown', 8), 'ArrowRight', ...times('ArrowUp', 8), ...times('ArrowDown', 8)];
 
-  console.log('The Outfitter, one rung at a time:');
-  await clickSel('button[data-view="outfitter"]');
+  console.log('Brock, one rung at a time:');
+  await clickSel('button[data-view="workshop"]');
   await sleep(400);
   const seen = new Map();
   for (const key of ['', ...walk]) {
@@ -169,7 +169,7 @@ try {
         fail(`${reading.on} is short and never says of what`);
       }
     }
-    await shoot(`outfitter-${String(reading.on).toLowerCase().replace(/\W+/g, '-')}`);
+    await shoot(`workshop-${String(reading.on).toLowerCase().replace(/\W+/g, '-')}`);
   }
   if (seen.size < 6) fail(`the arrow keys reached only ${seen.size} of the seven rungs`);
   for (const wanted of ['BUILD', 'SHORT', 'LOCKED']) {
@@ -178,14 +178,14 @@ try {
     }
   }
 
-  console.log('The Ferryman:');
+  console.log('Bill:');
   await press('Escape');
   await sleep(300);
   await clickSel('button[data-view="trader"]');
   await sleep(400);
   const shelfReading = await read();
   say(shelfReading);
-  await shoot('ferryman-shelf');
+  await shoot('bill-shelf');
   if (!shelfReading.does) fail(`${shelfReading.on} on the shelf says nothing about what it does`);
   if (!shelfReading.price) fail(`${shelfReading.on} on the shelf shows no price`);
   for (const pane of shelfReading.open) {
@@ -213,7 +213,7 @@ try {
   if (!deal) fail('no barter this vault can strike was reachable by the arrow keys');
   else {
     say(deal);
-    await shoot('ferryman-table');
+    await shoot('bill-table');
     if (!deal.does) fail(`${deal.on} says nothing about what it hands back`);
     if (!deal.price) fail(`${deal.on} says nothing about what it takes`);
     const pane = deal.open.find((open) => open.id === deal.shows);
@@ -227,7 +227,7 @@ try {
     await sleep(340);
     const armed = await read();
     say(armed);
-    await shoot('ferryman-armed');
+    await shoot('bill-armed');
     if ((await page.evaluate(`localStorage.getItem('${SAVE_KEY}')`)) !== before) {
       fail('one press on a barter spent the goods');
     }
@@ -248,7 +248,7 @@ try {
     if ((await page.evaluate(`localStorage.getItem('${SAVE_KEY}')`)) !== before) {
       fail('keeping them spent them anyway');
     }
-    await shoot('ferryman-kept');
+    await shoot('bill-kept');
   }
 
   console.log(bad === 0 ? `clean at ${tag}` : `${bad} fault(s) at ${tag}`);

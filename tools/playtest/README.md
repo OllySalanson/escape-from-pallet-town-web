@@ -77,7 +77,7 @@ that save opens on, by clicking the insertion's own row in the loadout.
   a save's door state (`world/gates.ts`): `--opened=forest-coppice-ride` deploys
   into a wood somebody has already cut, with a party that could not have cut it.
 - `--stash=itemId[:n],..` - puts something in the vault. It is the only way to
-  pack anything a fresh save does not own - an HM off the Ferryman's table, say,
+  pack anything a fresh save does not own - an HM off Bill's table, say,
   which is the key to a field-move door - because `--pack` can only reach what
   the loadout is offering.
 - `--completed=contractId,..` - those contracts are banked, so the board deals
@@ -190,7 +190,7 @@ can afford, one you cannot and one behind a door, and asks the screen the four
 questions a player asks before spending: what is it, what does it cost, what do
 I hold, and what is stopping me. It walks the cursor with the **arrow keys**,
 because the pane under the list has to follow the cursor and not the mouse, and
-it does the same at the Ferryman's shelf and his barter table. It fails a row
+it does the same at Bill's shelf and his barter table. It fails a row
 that says only one of those four, a price in the pane whose asks do not line up,
 anything drawn off the screen, and a barter whose *first* press spends the goods
 - which is the one promise of that screen a screenshot cannot show.

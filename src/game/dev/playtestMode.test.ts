@@ -141,7 +141,7 @@ describe('the explorer run it deals', () => {
     expect(partner.pokemon.moves.some((move) => move.base.power > 0)).toBe(true);
   });
 
-  it('arrives as the Ferryman\'s partner, so his whole boat can be looked at', () => {
+  it('arrives as Bill\'s partner, so his whole boat can be looked at', () => {
     expect(
       traderStanding({
         ...progress,

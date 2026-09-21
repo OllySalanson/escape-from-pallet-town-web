@@ -15,7 +15,15 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 
-/** Top edge of each design's row of cells on the source sheet. */
+/**
+ * Top edge of each design's row of cells on the source sheet.
+ *
+ * A row is twelve cells - a walk cycle each way - unless the design is one of
+ * the sheet's standing figures, which is four: one cell a facing and no walk at
+ * all, because the game never moves them. `STANDING_DESIGNS` names those, and
+ * the cut gives such a figure the same frame in its idle and its step columns
+ * so the animation code does not have to know which kind it is holding.
+ */
 const DESIGN_ROWS = {
   'protagonist-red': 42,
   'protagonist-leaf': 67,
@@ -34,7 +42,33 @@ const DESIGN_ROWS = {
   cooltrainer: 1184,
   beauty: 1309,
   sailor: 1334,
+  // The four people the base is made of. They are named characters rather than
+  // a trainer class, so each one is the row The Spriters Resource's sheet lays
+  // that person on and nothing else will do: the four were picked out of the
+  // sheet by matching them against `pret/pokefirered`'s own named object-event
+  // graphics (`graphics/object_events/pics/people/{prof_oak,nurse,bill,brock}`),
+  // which is how a guess about which blond man is Bill became a fact.
+  'prof-oak': 117,
+  'nurse-joy': 342,
+  bill: 984,
+  brock: 1709,
 };
+
+/**
+ * Designs the sheet draws as one cell a facing. Brock stands in his gym and
+ * Nurse Joy behind her counter in the game this art is from too, so neither was
+ * ever given a walk cycle to rip.
+ *
+ * The sheet also draws them a pixel higher inside their 24-row cell than it
+ * draws a walker - their soles are on cell row 22 where everybody else's are on
+ * 23 - so `STANDING_LIFT` is given back on the way out and all twenty-one
+ * designs stand on `CHARACTER_FEET_PIXEL_Y`. That is not a guess: every one of
+ * these four was checked frame for frame against `pret/pokefirered`'s own
+ * object-event graphics, where all four sprites are the same height and stand
+ * on the same row.
+ */
+const STANDING_DESIGNS = new Set(['nurse-joy', 'brock']);
+const STANDING_LIFT = 1;
 
 // The sheet lays 16x24 cells on a 17px pitch from x=9, twelve to a design:
 // down, up, left, right, each as idle, step A, step B.
@@ -156,7 +190,10 @@ for (const [design, rowY] of Object.entries(DESIGN_ROWS)) {
   const output = Buffer.alloc(outputWidth * outputHeight * 4);
   OUTPUT_FACING_ORDER.forEach((facing, outputRow) => {
     OUTPUT_COLUMN_SOURCES.forEach((sourceStep, outputColumn) => {
-      const cell = SOURCE_FACING_ORDER.indexOf(facing) * 3 + sourceStep;
+      const facingIndex = SOURCE_FACING_ORDER.indexOf(facing);
+      const standing = STANDING_DESIGNS.has(design);
+      const cell = standing ? facingIndex : facingIndex * 3 + sourceStep;
+      const offsetY = CELL_OFFSET_Y + (standing ? STANDING_LIFT : 0);
       const cellX = CELL_ORIGIN_X + CELL_PITCH * cell;
       for (let y = 0; y < CELL_HEIGHT; y += 1) {
         for (let x = 0; x < CELL_WIDTH; x += 1) {
@@ -164,7 +201,7 @@ for (const [design, rowY] of Object.entries(DESIGN_ROWS)) {
           const [r, g, b] = sheet.pixels.subarray(from, from + 3);
           if (BACKINGS.has(`${r},${g},${b}`)) continue;
           const to =
-            ((outputRow * FRAME_HEIGHT + CELL_OFFSET_Y + y) * outputWidth +
+            ((outputRow * FRAME_HEIGHT + offsetY + y) * outputWidth +
               outputColumn * FRAME_WIDTH +
               x) *
             4;

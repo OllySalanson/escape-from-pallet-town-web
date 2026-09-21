@@ -4,7 +4,7 @@ import { gridCells, type GridSize } from './itemGrid';
 /**
  * The pack a raid is carried in, and everything that is asked about one.
  *
- * **A pack is gear, not an upgrade.** The stash grows for good - the Outfitter's
+ * **A pack is gear, not an upgrade.** The stash grows for good - Brock's
  * ladder and the secure container are that, and they are untouched - but the
  * thing you carry a raid's haul in is an item you own, choose before every raid
  * and *lose with its contents* if you do not walk out. So the decision is made
@@ -13,7 +13,7 @@ import { gridCells, type GridSize } from './itemGrid';
  * nothing.
  *
  * The consequence for the code is that pack size is **derived and never
- * stored**, exactly as every Outfitter effect is derived from a list of ids.
+ * stored**, exactly as every Brock effect is derived from a list of ids.
  * The save records which packs are in the vault, because they are items and the
  * vault already counts items; how many squares one of them has lives in the
  * catalogue beside its name (`./items`), and every screen, the raid bag, the

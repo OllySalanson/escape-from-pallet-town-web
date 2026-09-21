@@ -31,9 +31,9 @@ window, reused.
 ## Read the pairs
 
 `<view>-before-1200x768.png` / `<view>-after-1200x768.png` is 3x under
-`?testmode=pixels`. `base`, `outfitter-pay` and `result` also have a
+`?testmode=pixels`. `base`, `workshop-pay` and `result` also have a
 `640x480` pair: that is the smallest stage the game presents (320x240 logical at
-`MIN_STAGE_ZOOM`), where `outfitter-pay` shows the other fault this pass found -
+`MIN_STAGE_ZOOM`), where `workshop-pay` shows the other fault this pass found -
 the title bar's `nowrap` aside was sizing the whole screen, so the lobby pushed
 itself 19 pixels past the canvas and clipped its own count off the right edge.
 `.px-screen` now has a `minmax(0, 1fr)` column and nothing inside a screen can
@@ -46,7 +46,7 @@ the shipped tools were not changed for it.
 
 "Overwhelmed by the information" is not only a hierarchy fault, so where a panel
 said the same thing twice it now says it once: the stash's next-raid clock (the
-Pokémon lid *and* the recovery bay's line), the secure slot's slot counts (both
+Pokémon lid *and* the Pokemon Center's line), the secure slot's slot counts (both
 lids *and* the bar), "packed" and "protected" in the loadout and final-check
 bars, "Pallet Town" on all five sub-screens that are reached from the one that
 names it, and the field guide's eyebrow over a title that repeated it.

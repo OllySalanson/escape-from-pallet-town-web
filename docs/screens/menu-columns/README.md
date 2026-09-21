@@ -44,7 +44,7 @@ It is the PC box instead: the collection fills the width, a row is the two lines
 that tell one Pokemon from another, and everything about the one under the
 cursor - portrait, types, condition, gear, experience, stats, moves, and every
 deed the screen offers - is the detail pane beneath the list, the same
-`.px-detail` the contract board and the Outfitter's ladder already use. The
+`.px-detail` the contract board and Brock's ladder already use. The
 loadout's treatment chips moved there too, for the same reason.
 
 The `summary` view is gone. Nothing is behind anything.
@@ -61,8 +61,8 @@ of rows in the pane, printed by that tool.
 | stash | supplies | 12/12 | 12/12 |
 | loadout | stash | 10/29 | **29/29** |
 | drop-in | what is in there | 6/14 | **14/14** |
-| Ferryman | shelf, table | 5/5, 8/8 | 5/5, 8/8 |
-| Outfitter | ladder | 7/7 | 7/7 |
+| Bill | shelf, table | 5/5, 8/8 | 5/5, 8/8 |
+| Brock | ladder | 7/7 | 7/7 |
 
 Before, a stash row was two controls (the Pokemon and its MOVE chip) and carried
 a care strip under it, which is why the pane held 50 rows for 24 Pokemon; after,

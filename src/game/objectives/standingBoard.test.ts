@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { isMaterial } from '../items';
-import { OUTFITTER_UPGRADES, outfitterMaterialKinds } from '../hub/outfitter';
+import { WORKSHOP_UPGRADES, workshopMaterialKinds } from '../hub/workshop';
 import { generateRunPlan, RUN_INSERTIONS, frontDoorFor } from '../run/runGeneration';
 import { EXTRACTION_POINTS } from '../world/extractionPoints';
 import { WORLD_GATES, gateBossIds, gatesForMap } from '../world/gates';
@@ -35,7 +35,7 @@ const progressWith = (overrides: Partial<StandingBoardProgress> = {}): StandingB
   completedContracts: CHAIN,
   standingContractsBanked: 0,
   defeatedBosses: [],
-  outfitterUpgrades: [],
+  workshopUpgrades: [],
   unlockedInsertions: EVERY_FRONT_DOOR,
   reachedInsertions: [],
   ...overrides,
@@ -227,8 +227,8 @@ describe('every standing contract', () => {
     }
   });
 
-  it('pays only in what the Outfitter consumes, and always pays something', () => {
-    const ladderKinds = outfitterMaterialKinds([]);
+  it('pays only in what Brock consumes, and always pays something', () => {
+    const ladderKinds = workshopMaterialKinds([]);
     for (const { contract } of everyBoard()) {
       expect(contract.reward.items.length + (contract.reward.pokemon?.length ?? 0)).toBeGreaterThan(0);
       for (const { itemId, quantity } of contract.reward.items) {
@@ -379,10 +379,10 @@ describe('escalation', () => {
 
 describe('what it pays in', () => {
   it('prefers the materials the unbuilt rungs still cost', () => {
-    const allButMast = OUTFITTER_UPGRADES.filter((upgrade) => upgrade.id !== 'radio-mast').map((upgrade) => upgrade.id);
-    expect(outfitterMaterialKinds(allButMast)).toEqual(['radio-valve', 'mooring-rope']);
+    const allButMast = WORKSHOP_UPGRADES.filter((upgrade) => upgrade.id !== 'radio-mast').map((upgrade) => upgrade.id);
+    expect(workshopMaterialKinds(allButMast)).toEqual(['radio-valve', 'mooring-rope']);
     for (const seed of SEEDS.slice(0, 60)) {
-      for (const contract of standingOffers(seed, progressWith({ outfitterUpgrades: allButMast }))) {
+      for (const contract of standingOffers(seed, progressWith({ workshopUpgrades: allButMast }))) {
         if (contractCarryIn(contract).length === 0) {
           expect(['radio-valve', 'mooring-rope']).toContain(contract.reward.items[0].itemId);
         }
@@ -391,10 +391,10 @@ describe('what it pays in', () => {
   });
 
   it('still pays once the whole ladder stands, in supplies because nothing wants a material any more', () => {
-    const everything = OUTFITTER_UPGRADES.map((upgrade) => upgrade.id);
-    expect(outfitterMaterialKinds(everything).length).toBeGreaterThan(1);
-    expect(outfitterMaterialKinds(everything).some((itemId) => isMaterial(itemId))).toBe(false);
-    expect(standingBoard(progressWith({ outfitterUpgrades: everything })).length).toBe(4);
+    const everything = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
+    expect(workshopMaterialKinds(everything).length).toBeGreaterThan(1);
+    expect(workshopMaterialKinds(everything).some((itemId) => isMaterial(itemId))).toBe(false);
+    expect(standingBoard(progressWith({ workshopUpgrades: everything })).length).toBe(4);
   });
 });
 

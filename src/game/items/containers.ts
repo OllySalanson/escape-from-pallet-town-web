@@ -7,7 +7,7 @@ import { packGridFor, STARTING_PACK_ID } from './packs';
  *
  * They are opposites on purpose, and that is the design. The **secure
  * container** is the base: it grows permanently and never shrinks, by the
- * column, paid for at the Outfitter or with a banked contract, and a wipe
+ * column, paid for at Brock's Workshop or with a banked contract, and a wipe
  * cannot touch what is in it - `secureGrid` in `../objectives/contracts` is
  * where that size is derived. The **pack** is gear: its size is whichever pack
  * the player chose to wear this raid (`./packs`), it is lost with everything in

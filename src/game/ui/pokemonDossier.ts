@@ -46,7 +46,7 @@ export interface DossierView {
   readonly id: string;
   /** The first pane of a list is the one drawn before the cursor has moved. */
   readonly first: boolean;
-  /** One line under the health bar. The stash says what the recovery bay would charge. */
+  /** One line under the health bar. The stash says what the Pokemon Center would charge. */
   readonly condition?: string;
   /** What is carried, said in words. Defaults to the Pokemon's own held item. */
   readonly holding: string;

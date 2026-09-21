@@ -1537,6 +1537,64 @@ button {
   height: calc(var(--u) * 16);
 }
 /* A front sprite at its own size, standing on the floor of a 64-pixel box. */
+/* One of the base's four people, from the overworld character sheet: the
+   down-idle frame of a 64x128 sheet, cropped to the ink by `pixelFigure`. The
+   image is laid out in game pixels and clipped by its own box, so one source
+   pixel is one game pixel at every zoom and nothing is resampled. */
+.pixel-ui .px-figure {
+  /* Two game pixels a source pixel. A figure at one is 16 pixels across a
+     screen that is 800 wide, which reads as a speck beside a 64-pixel species
+     portrait; two keeps every edge on the grid and gives the person a face. */
+  --figure-scale: 2;
+  flex: none;
+  align-self: center;
+  width: calc(var(--u) * 16 * var(--figure-scale));
+  height: calc(var(--u) * var(--figure-height, 32) * var(--figure-scale));
+  background-image: var(--figure-sheet);
+  background-repeat: no-repeat;
+  background-size: calc(var(--u) * 64 * var(--figure-scale)) calc(var(--u) * 128 * var(--figure-scale));
+  background-position: 0 calc(var(--u) * var(--figure-top, 0) * var(--figure-scale) * -1);
+  image-rendering: pixelated;
+}
+/* At the smallest stage the words are the screen: a figure beside them would
+   take a fifth of a lobby card off `BROCK'S WORKSHOP`. `data-room` is the one
+   thing the stylesheet keys off how much room the screen has (`roomFor`). */
+:where(.pixel-ui[data-room='tight']) .px-figure {
+  display: none;
+}
+/* A card that carries one keeps its text in the first column and stands the
+   figure on the right, clear of the cursor triangle on the left. */
+/* A card that carries a figure stands it in the corner rather than in a column
+   of the grid: a spanning grid item stretches the rows it spans, which opened a
+   gap between a card's name and the line under it. Out of flow, the lines keep
+   the spacing every other card has and the card only has to be deep enough to
+   hold the figure. */
+/* Only where the figure is actually drawn: at the smallest stage it is not, and
+   a card still holding room for it is a card whose words have a fifth less
+   space than they had. */
+.pixel-ui:not([data-room='tight']) .px-card.has-figure {
+  min-height: calc(var(--u) * 52);
+  padding-right: calc(var(--u) * 42);
+}
+.pixel-ui .px-card.has-figure > .px-figure {
+  position: absolute;
+  top: calc(var(--u) * 3);
+  right: calc(var(--u) * 4);
+}
+/* Brock's own line above his ladder, for the same reason: at the smallest stage
+   the rungs are the screen and the title bar has already named the place. */
+:where(.pixel-ui[data-room='tight']) .workshop-lead {
+  display: none;
+}
+/* A pane or bar led by a figure: the person, then what they say. */
+.pixel-ui .px-lead {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 6);
+}
+.pixel-ui .px-bar-head > .px-figure {
+  margin-right: calc(var(--u) * 5);
+}
 .pixel-ui .px-portrait {
   flex: none;
   width: calc(var(--u) * 64);
@@ -1773,7 +1831,7 @@ button {
   /* The raid across the top, then the three places at base beneath it. A fourth
      96-pixel card on the old single row left the raid about forty pixels wide at
      the smallest stage - narrower than the words `Start a raid` - and two rows
-     of two left the Outfitter in a wide card with two short lines in it. This
+     of two left Brock in a wide card with two short lines in it. This
      way the raid still leads and is the widest thing on the screen, and the
      three doors are equal because they are the same kind of thing. */
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1832,7 +1890,7 @@ button {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 /* What the pointed-at row asks and pays - a contract on the board, a rung on
-   the Outfitter's ladder. One pane for the whole list, so a row stays two lines
+   Brock's ladder. One pane for the whole list, so a row stays two lines
    however long its sentence is. */
 :where(.pixel-ui) .px-detail {
   margin-top: calc(var(--u) * 2);
@@ -1852,10 +1910,12 @@ button {
 :where(.pixel-ui) .px-contract .px-row-line {
   justify-content: space-between;
 }
-/* The Outfitter's ladder is the whole screen: one window, as tall as it needs. */
-:where(.pixel-ui) .outfitter-layout {
+/* Brock's ladder is the whole screen: one window, as tall as it needs. */
+:where(.pixel-ui) .workshop-layout {
   height: 100%;
-  grid-template-rows: minmax(0, 1fr);
+  /* Brock across the top, then the ladder taking what is left - the same two
+     rows Bill's counter stands in, so the two shops read as one kind of place. */
+  grid-template-rows: auto minmax(0, 1fr);
 }
 /* What this vault cannot pay yet, in the ink a risk is written in. The element
    selector is load-bearing: `.pixel-ui small` is soft ink at a higher
@@ -1867,7 +1927,7 @@ button {
 }
 
 /* --- A shelf: the thing on the left, the price on the right ------------- */
-/* The Outfitter's ladder and the Ferryman's two lists. A row's own line says
+/* Brock's ladder and Bill's two lists. A row's own line says
    what the thing *does* - it used to say the price instead until the thing was
    bought, which hid what it was at exactly the moment the player was deciding
    whether to buy it - so the price needs a place of its own that still reads as
@@ -1909,7 +1969,7 @@ button {
   height: calc(var(--u) * 88);
   padding-bottom: calc(var(--u) * 2);
 }
-/* The Ferryman's shelf is the narrow half of his screen and its rows have
+/* Bill's shelf is the narrow half of his screen and its rows have
    already said what the thing does, so its pane is the price and the gates. */
 :where(.pixel-ui) .trader-shelf .shop-detail {
   height: calc(var(--u) * 62);
@@ -1923,14 +1983,14 @@ button {
   height: calc(var(--u) * 74);
 }
 /* At `BASE_STAGE` the band is the shallowest it is anywhere, and it is the
-   Ferryman's shelf that sets the number: a list, this band and the berth share
+   Bill's shelf that sets the number: a list, this band and the berth share
    one pane there, and a band sized for a laptop left the list with no rows in
    it and pushed the berth off the bottom of the screen. Two price lines and
    the ink that says which of them is short, and the rest is the scroll. */
 :where(.pixel-ui[data-room='tight']) .shop-detail {
   height: calc(var(--u) * 46);
 }
-/* And there the Ferryman has no band at all, on either counter. His screen is
+/* And there Bill has no band at all, on either counter. His screen is
    four things deep already - his standing, his shelf, the berth and the table -
    and at that stage a band on top of them left both lists with no rows in them.
    Nothing is lost that the screen does not already say: the title bar is the
@@ -2024,7 +2084,7 @@ button {
   grid-template-rows: minmax(0, 1fr) auto;
   height: 100%;
 }
-/* Building a loadout, and the Outfitter's payment screen: what to choose from
+/* Building a loadout, and Brock's payment screen: what to choose from
    on the left, the container on the right, cut to the pack's own width - six
    squares of sixteen pixels and its own frame. */
 :where(.pixel-ui) .loadout-layout {
@@ -2399,7 +2459,7 @@ button {
   padding: 0 calc(var(--u) * 3) calc(var(--u) * 2);
 }
 
-/* --- The Ferryman ------------------------------------------------------- */
+/* --- Bill ------------------------------------------------------- */
 /* Standing across the top, then the shelf and the barter table side by side,
    because the whole design is the difference between the two: one is money and
    supplies and is rationed, the other is found goods for what money may not
@@ -2430,7 +2490,11 @@ button {
 :where(.pixel-ui[data-room='tight']) .trader-standing {
   padding: 0;
 }
-:where(.pixel-ui[data-room='tight']) .trader-standing > p {
+:where(.pixel-ui[data-room='tight']) .trader-standing > p,
+/* The line he says it in is inside the band that stands him beside it now, and
+   the band goes with it: a sentence that survived its own rule by being wrapped
+   cost his shelf a whole row at this size. */
+:where(.pixel-ui[data-room='tight']) .trader-standing > .px-lead {
   display: none;
 }
 /* The berth keeps its own row and loses the band naming it: the row says BERTH.
@@ -2514,7 +2578,7 @@ button {
 /* --- The dossier: one Pokemon, whole ------------------------------------ */
 /* What used to be a screen of its own, reached by a chip on every row. It is
    the pane under the list instead - the same `.px-detail` the contract board
-   and the Outfitter's ladder use - so the collection and the answer about the
+   and Brock's ladder use - so the collection and the answer about the
    thing in it are on one screen, which is what a PC box has always been.
 
    Five blocks across the pane: the figure, its condition, its growth, its

@@ -197,7 +197,7 @@ describe('recovery against the raid clock', () => {
   });
 });
 
-describe('what the Outfitter changes about recovery', () => {
+describe('what Brock changes about recovery', () => {
   const WARD: RecoveryTerms = { priceShare: 1, wardTreatments: 1 };
 
   function downed(level = 5): Pokemon {

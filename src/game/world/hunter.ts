@@ -174,7 +174,7 @@ export const hunterTierFor = (
   return HUNTER_TIERS[tierIndex];
 };
 
-/** What the Outfitter's radio mast reads off the hunter, before it is worded. */
+/** What Brock's radio mast reads off the hunter, before it is worded. */
 export interface HunterIntel {
   readonly level: number;
   readonly teamSize: number;

@@ -41,7 +41,7 @@ export const MAX_RUN_PARTY = 6;
  * What the *base* has built: the container a wipe cannot touch, and how many
  * Pokemon it protects.
  *
- * Both belong to the save rather than to this class - contracts, the Outfitter
+ * Both belong to the save rather than to this class - contracts, Brock
  * and a rented berth enlarge them - so preparation is told its capacities
  * instead of assuming them. The pack is deliberately not here: it is gear out
  * of the vault rather than a capacity of the base, so it is chosen on the
@@ -508,7 +508,7 @@ export class DeploymentFlow {
    * would. Only a request that moves nothing answers with a reason.
    */
   public setItemQuantity(itemId: ItemId, target: number): string | undefined {
-    // Materials are for the Outfitter and scrip is for the Ferryman: neither
+    // Materials are for Brock and scrip is for Bill: neither
     // does anything in a raid, so packing one only puts it at risk.
     if (isFoundOnly(itemId)) {
       return undefined;

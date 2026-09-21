@@ -188,7 +188,7 @@ game.
   `field-kit`, `supply-crate`, `supply-cache`, `radio-mast`, `sign-post`,
   `extraction-open`, `extraction-locked`, `landmark-worked`, the four packs
   `satchel`, `raid-pack`, `ranger-pack` and `hauler-frame`, plus the six
-  Outfitter materials
+  Brock materials
   `radio-valve`, `cable-coil`, `parts-crate`, `lamp-oil`, `mooring-rope` and
   `linen-roll`, the four held items `leftovers`, `focus-band`, `life-orb` and
   `quick-claw`, the one evolution stone `thunder-stone`, and the money `scrip`.
@@ -240,7 +240,7 @@ Nothing from it ships here.
 
 ## `characters/*.png` - RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly
 
-The seventeen overworld character designs are **Pokemon FireRed/LeafGreen art,
+The twenty-one overworld character designs are **Pokemon FireRed/LeafGreen art,
 ripped from the commercial game**. The rights holders are Nintendo, Creatures and
 Game Freak. This is not the repository owner's work, it is not CC0, and no licence
 from the rights holder covers it. It ships because the owner ruled on 2026-09-19
@@ -303,9 +303,31 @@ stays visible rather than becoming an assumption.
 | `characters/cooltrainer.png` | 1184 |
 | `characters/beauty.png` | 1309 |
 | `characters/sailor.png` | 1334 |
+| `characters/prof-oak.png` | 117 |
+| `characters/nurse-joy.png` | 342 (standing) |
+| `characters/bill.png` | 984 |
+| `characters/brock.png` | 1709 (standing) |
 
-The file names describe what each figure looks like on screen. They are this
-repository's labels, not a claim about what the game calls that sprite.
+Seventeen of the file names describe what the figure looks like on screen. They
+are this repository's labels, not a claim about what the game calls that sprite.
+
+The last four are the exception, and they are a claim: Professor Oak, Nurse Joy,
+Bill and Brock are the base's four people (`src/game/world/characterDesigns.ts`,
+kind `named`), so casting a lookalike would have been worse than no art. Which
+row of an unlabelled sheet holds which person was settled against
+`pret/pokefirered`, the FireRed decompilation, whose object-event graphics are
+one file per character and named (`graphics/object_events/pics/people/`):
+`prof_oak`, `nurse`, `bill` and `brock` were each matched frame for frame
+against the sheet, and the match is exact. **Nothing was taken from the
+decompilation** - it was read to identify a row and no pixel of it ships; every
+byte here is cut from the sheet above by `scripts/cut-frlg-characters.mjs`, as
+the other seventeen are.
+
+Two of the four are marked *standing*: the sheet gives them four cells, one a
+facing, and no walk cycle, because the game draws them at a counter all day. The
+cut repeats each cell across that facing's idle and step columns, and gives back
+the one pixel the sheet draws a standing figure higher inside its cell, so all
+twenty-one stand on the same sole line.
 
 ## Flagged: `tileset.png`, the sheet every map's ground is drawn from
 

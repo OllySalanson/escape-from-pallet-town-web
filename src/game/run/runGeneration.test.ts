@@ -94,7 +94,7 @@ describe('run generation', () => {
     expect(generateRunPlan(12345)).not.toEqual(generateRunPlan(54321));
   });
 
-  it('adds the Outfitter beacon as one late exit on the landing of every map', () => {
+  it('adds Brock beacon as one late exit on the landing of every map', () => {
     for (const insertionId of insertionIds) {
       const insertion = RUN_INSERTIONS[insertionId];
       const plain = generateRunPlan(27, undefined, insertionId);

@@ -164,7 +164,7 @@ describe('the lobby as a screen of the game', () => {
     expect(markupOf(hub)).not.toContain('Put Charmander in');
   });
 
-  it('keeps a fit save free of the recovery bay entirely', () => {
+  it('keeps a fit save free of the Pokemon Center entirely', () => {
     const { hub } = createHub();
 
     hub.setView('stash');
@@ -193,7 +193,7 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
-  setView(view: 'home' | 'stash' | 'summary' | 'deploy' | 'reselect' | 'outfitter' | 'trader'): void;
+  setView(view: 'home' | 'stash' | 'summary' | 'deploy' | 'reselect' | 'workshop' | 'trader'): void;
   startRun(): void;
   render(): void;
   recover(ids: readonly string[]): void;
@@ -393,7 +393,7 @@ describe('hub deployment route', () => {
   it('heals a worn Pokemon with a stash Potion, and both the heal and the cost survive a reload', () => {
     // The other price for raid damage: an item instead of raid time. It has to
     // be a real trade, so the Potion has to actually leave the vault and stay
-    // gone, and it must never touch the recovery bay's clock.
+    // gone, and it must never touch the Pokemon Center's clock.
     const { hub, storage, worn } = createWornHub((maxHp) => maxHp - 3);
     const before = worn.pokemon.currentHp;
     expect(hub.stash.itemCount('potion')).toBe(3);
@@ -439,7 +439,7 @@ describe('hub deployment route', () => {
     expect(new SaveManager(storage).load()?.stash.itemCount('potion')).toBe(2);
   });
 
-  it('leaves a fainted Pokemon to the recovery bay rather than letting a Potion revive it', () => {
+  it('leaves a fainted Pokemon to the Pokemon Center rather than letting a Potion revive it', () => {
     // Reviving stays the bay's premium, which is what keeps a faint the worst
     // outcome of a fight rather than a three-Potion inconvenience.
     const { hub, worn } = createWornHub((maxHp) => maxHp);
@@ -512,7 +512,7 @@ describe('hub deployment route', () => {
       ...DEFAULT_RAID_PROGRESS,
       firstContractExtracted: true,
       completedContracts: [FIRST_CONTRACT_ID],
-      outfitterUpgrades: [],
+      workshopUpgrades: [],
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
     });
 
@@ -660,7 +660,7 @@ describe('hub deployment route', () => {
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
-        outfitterUpgrades: [],
+        workshopUpgrades: [],
         defeatedBosses: [],
         reachedInsertions: [],
         standingContractsBanked: 0,
@@ -674,7 +674,7 @@ describe('hub deployment route', () => {
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
-        outfitterUpgrades: [],
+        workshopUpgrades: [],
       });
   });
 
@@ -908,7 +908,7 @@ describe('what the base screen leads with', () => {
     swapping.confirmSwap();
   }
 
-  it('does not let the swap stand in for the recovery bay or the restock', () => {
+  it('does not let the swap stand in for the Pokemon Center or the restock', () => {
     const { hub, storage } = createSpentHub();
     hub.setView('stash');
     // The price is the tag on the hurt Pokémon's own row.
@@ -988,19 +988,19 @@ describe('what the base screen leads with', () => {
   });
 });
 
-describe('the Outfitter', () => {
+describe('Brock', () => {
   beforeEach(() => {
     if (activeRunManager.phase === RunPhase.InRun) {
       activeRunManager.resolveEscape();
     }
   });
 
-  interface OutfitterInternals extends HubInternals {
+  interface WorkshopInternals extends HubInternals {
     choosePayment(upgradeId: string): void;
     togglePayment(pokemonId: string): void;
     confirmPayment(): void;
-    outfitterArmed: boolean;
-    outfitterPayment: string[];
+    workshopArmed: boolean;
+    workshopPayment: string[];
   }
 
   function markupOf(hub: HubInternals): string {
@@ -1009,8 +1009,8 @@ describe('the Outfitter', () => {
   }
 
   /** A stored mid-game save: a partner, three catches, spare kit, these upgrades. */
-  function createOutfittedHub(outfitterUpgrades: readonly string[] = []): {
-    hub: OutfitterInternals;
+  function createWorkshopHub(workshopUpgrades: readonly string[] = []): {
+    hub: WorkshopInternals;
     start: ReturnType<typeof vi.fn>;
     storage: MemoryStorage;
   } {
@@ -1037,7 +1037,7 @@ describe('the Outfitter', () => {
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
-        outfitterUpgrades: [...outfitterUpgrades],
+        workshopUpgrades: [...workshopUpgrades],
         defeatedBosses: [],
         reachedInsertions: [],
         standingContractsBanked: 0,
@@ -1045,22 +1045,22 @@ describe('the Outfitter', () => {
       },
     });
     const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);
-    return { hub: hub as OutfitterInternals, start, storage };
+    return { hub: hub as WorkshopInternals, start, storage };
   }
 
   it('is reached from base, beside the raid and the stash', () => {
-    const { hub } = createOutfittedHub();
+    const { hub } = createWorkshopHub();
 
     const home = markupOf(hub);
-    expect(home).toContain('data-view="outfitter"');
+    expect(home).toContain('data-view="workshop"');
     expect(home).toContain('0/7 built');
-    expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('data-view="outfitter"'));
+    expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('data-view="workshop"'));
   });
 
   it('lists every rung with its price, and marks what this vault cannot pay yet', () => {
-    const { hub } = createOutfittedHub();
+    const { hub } = createWorkshopHub();
 
-    hub.setView('outfitter');
+    hub.setView('workshop');
     const ladder = markupOf(hub);
     expect(ladder).toContain('Secure locker I');
     // The price is a column of its own on the row, one line a part.
@@ -1083,9 +1083,9 @@ describe('the Outfitter', () => {
    * the money was gone.
    */
   it('says what every rung does, bought or not, and never in place of its price', () => {
-    const { hub } = createOutfittedHub(['secure-locker-1']);
+    const { hub } = createWorkshopHub(['secure-locker-1']);
 
-    hub.setView('outfitter');
+    hub.setView('workshop');
     const ladder = markupOf(hub);
     const rowOf = (id: string): string =>
       /<button[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g
@@ -1103,9 +1103,9 @@ describe('the Outfitter', () => {
   });
 
   it('prices the pointed-at rung against what this base actually holds', () => {
-    const { hub } = createOutfittedHub();
+    const { hub } = createWorkshopHub();
 
-    hub.setView('outfitter');
+    hub.setView('workshop');
     const ladder = markupOf(hub);
     const pane = ladder.slice(ladder.indexOf('data-shown-by="secure-locker-2"'));
 
@@ -1121,9 +1121,9 @@ describe('the Outfitter', () => {
   });
 
   it('says what a rung still needs rather than leaving it to be worked out', () => {
-    const { hub } = createOutfittedHub();
+    const { hub } = createWorkshopHub();
 
-    hub.setView('outfitter');
+    hub.setView('workshop');
     const pane = markupOf(hub).slice(markupOf(hub).indexOf('data-shown-by="beacon"'));
 
     // Three Pokemon it can release, but no lamp oil at all.
@@ -1131,10 +1131,10 @@ describe('the Outfitter', () => {
   });
 
   it('names the Pokémon and the supplies it is spending, and asks before it spends them', () => {
-    const { hub, storage } = createOutfittedHub();
+    const { hub, storage } = createWorkshopHub();
     const before = storage.getItem(SAVE_KEY);
 
-    hub.setView('outfitter');
+    hub.setView('workshop');
     hub.choosePayment('secure-locker-1');
     const empty = markupOf(hub);
     // Nothing is picked on the player's behalf, and the partner cannot be picked at all.
@@ -1142,7 +1142,7 @@ describe('the Outfitter', () => {
     expect(empty).toMatch(/data-pay-pokemon="charmander-1" aria-disabled="true"/);
     // Pointing at it says why, and choosing it changes nothing.
     hub.togglePayment('charmander-1');
-    expect(hub.outfitterPayment).toEqual([]);
+    expect(hub.workshopPayment).toEqual([]);
     expect(empty).toContain('Your partner is never payment');
     expect(empty).not.toContain('data-pay-arm');
 
@@ -1157,7 +1157,7 @@ describe('the Outfitter', () => {
     hub.confirmPayment();
     expect(storage.getItem(SAVE_KEY)).toBe(before);
 
-    hub.outfitterArmed = true;
+    hub.workshopArmed = true;
     const armed = markupOf(hub);
     expect(armed).toContain('This cannot be undone');
     expect(armed).toContain('Release Pidgey (Level 4) and Bulbasaur (Level 6) and spend 2× Parts crate?');
@@ -1166,26 +1166,26 @@ describe('the Outfitter', () => {
   });
 
   it('disarms the question whenever the payment it was asked about changes', () => {
-    const { hub } = createOutfittedHub();
-    hub.setView('outfitter');
+    const { hub } = createWorkshopHub();
+    hub.setView('workshop');
     hub.choosePayment('radio-mast');
     hub.togglePayment('pidgey-1');
-    hub.outfitterArmed = true;
+    hub.workshopArmed = true;
 
     hub.togglePayment('pidgey-1');
 
-    expect(hub.outfitterArmed).toBe(false);
+    expect(hub.workshopArmed).toBe(false);
   });
 
   it('builds the locker, releases exactly what was named, and protects a wider container from then on', () => {
-    const { hub, storage } = createOutfittedHub();
+    const { hub, storage } = createWorkshopHub();
     expect(hub.flow.secureGrid).toEqual({ width: 2, height: 2 });
 
-    hub.setView('outfitter');
+    hub.setView('workshop');
     hub.choosePayment('secure-locker-1');
     hub.togglePayment('pidgey-1');
     hub.togglePayment('pidgey-2');
-    hub.outfitterArmed = true;
+    hub.workshopArmed = true;
     hub.confirmPayment();
 
     expect(statusOf(hub)).toBe('Secure locker I built. Pidgey and Pidgey released.');
@@ -1196,7 +1196,7 @@ describe('the Outfitter', () => {
     expect(hub.flow.secureGrid).toEqual({ width: 3, height: 2 });
     expect(markupOf(hub)).toMatch(/data-built="secure-locker-1"[\s\S]*?has-tick">Built</);
     // The upgrade is in storage, not just on screen.
-    expect(new SaveManager(storage).load()?.raidProgress.outfitterUpgrades).toEqual(['secure-locker-1']);
+    expect(new SaveManager(storage).load()?.raidProgress.workshopUpgrades).toEqual(['secure-locker-1']);
   });
 
   it('offers a player with one Pokémon nothing to spend', () => {
@@ -1204,13 +1204,13 @@ describe('the Outfitter', () => {
     for (const stored of hub.stash.listPokemon().slice(1)) {
       hub.stash.removePokemon(stored.id);
     }
-    const outfitter = hub as OutfitterInternals;
+    const workshop = hub as WorkshopInternals;
 
-    hub.setView('outfitter');
+    hub.setView('workshop');
     expect(markupOf(hub)).not.toMatch(/data-outfit="[a-z0-9-]+"(?! aria-disabled="true")/);
 
     // Choosing a rung that cannot be paid for is answered, and goes nowhere.
-    outfitter.choosePayment('radio-mast');
+    workshop.choosePayment('radio-mast');
     const refused = markupOf(hub);
     expect(refused).toContain('Radio mast still needs');
     expect(refused).not.toContain('data-pay-pokemon');
@@ -1218,7 +1218,7 @@ describe('the Outfitter', () => {
   });
 
   it('deploys with a second protected Pokémon, the beacon and the mast once they are built', () => {
-    const { hub, start } = createOutfittedHub([
+    const { hub, start } = createWorkshopHub([
       'secure-locker-1',
       'secure-locker-2',
       'beacon',
@@ -1244,14 +1244,14 @@ describe('the Outfitter', () => {
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
     expect(runSession.stashSecureSlot.pokemonIds).toEqual(['charmander-1', 'pidgey-2']);
     expect(runSession.secureSlot.pokemon).toHaveLength(2);
-    expect(runSession.outfitterUpgrades).toContain('radio-mast');
+    expect(runSession.workshopUpgrades).toContain('radio-mast');
     expect(runSession.plan?.extractionPoints.filter((point) => point.label === 'BEACON')).toMatchObject([
       { mapId: 'floodplain-relay', unlockAtMs: RAID_DURATION_MS / 2 },
     ]);
   });
 
   it('deploys from a base with nothing built exactly as before', () => {
-    const { hub, start } = createOutfittedHub();
+    const { hub, start } = createWorkshopHub();
     hub.flow.togglePokemon('charmander-1');
     hub.setView('deploy');
     readyToDeploy(hub);
@@ -1259,12 +1259,12 @@ describe('the Outfitter', () => {
     deploy(hub, start);
 
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
-    expect(runSession.outfitterUpgrades).toEqual([]);
+    expect(runSession.workshopUpgrades).toEqual([]);
     expect(runSession.plan?.extractionPoints.some((point) => point.label === 'BEACON')).toBe(false);
   });
 
   it('quotes the bay at this base\'s prices and spends the ward bed once', () => {
-    const { hub } = createOutfittedHub(['recovery-bay-1', 'quarantine-ward']);
+    const { hub } = createWorkshopHub(['recovery-bay-1', 'quarantine-ward']);
     const hurt = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-1')!;
     const down = hub.stash.listPokemon().find(({ id }) => id === 'pidgey-2')!;
     hurt.pokemon.takeDamage(3);
@@ -1335,14 +1335,14 @@ describe('taking a status line down', () => {
   });
 
   // Playtest 4: "Charmander recovered for 0:50 of raid time" was still in the
-  // help bar on the Outfitter, a screen that had said nothing.
+  // help bar on Brock, a screen that had said nothing.
   it('leaves a status line on the screen that raised it', () => {
     const { hub, internals, timers } = hubWithRenderCount();
     const views = hub as unknown as { setView(view: string): void };
     views.setView('stash');
     internals.setStatus('Charmander recovered for 0:50 of raid time. Next raid clock: 4:10.');
 
-    views.setView('outfitter');
+    views.setView('workshop');
 
     expect(statusOf(hub)).toBe('');
     expect(timers[0].remove).toHaveBeenCalledOnce();
@@ -1360,13 +1360,13 @@ describe('taking a status line down', () => {
 });
 
 /**
- * The Ferryman's counter, as the lobby draws it.
+ * Bill's counter, as the lobby draws it.
  *
  * The screen is held to the thing the whole design rests on: two panes, never
  * one, because a shelf priced in money and a barter table that money cannot
  * touch read as a shop the moment they are one list.
  */
-describe('HubScene - the Ferryman', () => {
+describe('HubScene - Bill', () => {
   function markupOf(hub: HubInternals): string {
     hub.render();
     return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
@@ -1395,7 +1395,7 @@ describe('HubScene - the Ferryman', () => {
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger', 'wardens-resupply'],
         unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
-        outfitterUpgrades: [],
+        workshopUpgrades: [],
         defeatedBosses: ['floodplain-toll-keeper', 'floodplain-sluice-keeper', 'floodplain-orchard-warden'],
         reachedInsertions: [],
         standingContractsBanked: 2,
@@ -1406,12 +1406,12 @@ describe('HubScene - the Ferryman', () => {
     return { hub, storage };
   }
 
-  it('stands beside the Outfitter on the base screen, so the pair reads as two places', () => {
+  it('stands beside Brock on the base screen, so the pair reads as two places', () => {
     const { hub } = createTraderHub();
     const home = markupOf(hub);
 
     expect(home).toContain('data-view="trader"');
-    expect(home).toContain('data-view="outfitter"');
+    expect(home).toContain('data-view="workshop"');
     // The raid still leads; the two sinks are the row under it.
     expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('data-view="trader"'));
     // Money is on the card, because it is the one number found rather than earned.
@@ -1474,7 +1474,7 @@ describe('HubScene - the Ferryman', () => {
     expect(boat).toMatch(/aria-disabled="true"/);
   });
 
-  it("rents a berth in the shelf, and names it against the Outfitter's locker", () => {
+  it("rents a berth in the shelf, and names it against Brock's locker", () => {
     const { hub } = createTraderHub();
     hub.setView('trader');
     const boat = markupOf(hub);
@@ -1488,12 +1488,12 @@ describe('HubScene - the Ferryman', () => {
     expect(boat).toMatch(/\+\d+ protected squares, this raid\./);
     // The comparison with the built locker is the help bar's, because on the
     // row it wrapped to three lines and ate the shelf above it.
-    expect(boat).toMatch(/data-help="[^"]*The Outfitter builds one for good/);
-    expect(boat).not.toMatch(/<small[^>]*>[^<]*The Outfitter builds one for good/);
+    expect(boat).toMatch(/data-help="[^"]*Brock builds one for good/);
+    expect(boat).not.toMatch(/<small[^>]*>[^<]*Brock builds one for good/);
   });
 
   /**
-   * The same fault the Outfitter had, and worse on the barter table: a row
+   * The same fault Brock had, and worse on the barter table: a row
    * that named only what it took said nothing about what it handed back, so
    * QUICK CLAW, FOCUS BAND and LIFE ORB were three prices and three names.
    */

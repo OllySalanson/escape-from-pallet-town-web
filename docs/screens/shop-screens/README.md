@@ -1,8 +1,8 @@
 # What a thing does is not something you buy
 
-The captain, playing, in the Outfitter:
+The captain, playing, in Brock:
 
-> also I'm just in the outfitter and it tells me what things cost but only after
+> also I'm just in the workshop and it tells me what things cost but only after
 > I buy them does it actually tell me what they do So I've just managed to buy
 > this secure locker one and now instead of the subtitle being the cost it says
 > one more column of the secure container Now that we've got more screen space
@@ -17,7 +17,7 @@ deciding whether to buy it - was precisely the moment it was hidden, and the
 screen explained the purchase only after the money was gone. He bought Secure
 locker I without knowing what it was.
 
-Nothing needed writing. Every rung in `hub/outfitter.ts` already carried both an
+Nothing needed writing. Every rung in `hub/workshop.ts` already carried both an
 `effect` one-liner and a longer `detail`, and every item in the catalogue
 already carried a `description`. The screens simply did not show them at the
 moment they mattered.
@@ -38,7 +38,7 @@ render it.
   what it was: the gold wash and the BUILT tick stay, and the price column says
   PAID.
 
-`docs/screens/shop-screens/outfitter-before.png` and `-after.png`, both at
+`docs/screens/shop-screens/workshop-before.png` and `-after.png`, both at
 1600x900. Before, seven rows saying `Costs 2 Pokémon + 2× Parts crate`; after,
 seven rows saying what each one does, with its price beside it.
 
@@ -53,15 +53,15 @@ this base can actually spend**, and whatever is stopping it.
   offers the last Pokemon fit to raid, and `spendableSupply` is only what stands
   above the wipe kit. A price beside a number the player cannot spend is worse
   than no number at all.
-- A locked rung names the door it is behind (`outfitter-locked-rung.png`), a
+- A locked rung names the door it is behind (`workshop-locked-rung.png`), a
   short one names what it is short of, and a shut deal on the boat names the
   standing it is waiting for - each in the ink a refusal is written in.
 - The two blocks never wrap onto two lines at any width: stacked, the price
   falls under the fold, and the price is the half the row could not say.
 
-## The Ferryman, both counters
+## Bill, both counters
 
-`ferryman-before.png` and `-after.png`. Before, QUICK CLAW, FOCUS BAND and LIFE
+`bill-before.png` and `-after.png`. Before, QUICK CLAW, FOCUS BAND and LIFE
 ORB were three names and three prices and nothing about what any of them did;
 after, each row carries the item's own catalogue line and the goods it takes.
 The shelf gets the same treatment from the item's `description`, and his
@@ -84,9 +84,9 @@ written down, and the armed strip has room for neither.
 
 Found goods and a berth are spent for good, so neither goes through on one
 press. The row becomes the question and two buttons, with the cursor on the one
-that changes nothing - `ferryman-asks-again.png` - because the key that armed
+that changes nothing - `bill-asks-again.png` - because the key that armed
 the deal is still under the player's finger, which is why
-`trainerChallengePrompt` opens on BACK AWAY and the Outfitter's payment bar
+`trainerChallengePrompt` opens on BACK AWAY and Brock's payment bar
 opens on KEEP. Nothing on the shelf is armed: a Potion for scrip is an ordinary
 purchase and already rationed. While a deal is asking, no other row carries
 `data-cursor-start` - `refocus` takes the first in the document, and a shelf row
@@ -97,12 +97,12 @@ with the second press.
 
 `roomFor` in `ui/columnLayout.ts` gained a **tight** rung: `BASE_STAGE` itself,
 where a list, the band that answers for the row it is on *and* a second band
-under that cannot share one pane. The Ferryman is the layout that runs out - his
+under that cannot share one pane. Bill is the layout that runs out - his
 standing, his shelf, the berth and his table - and at 320x240 a band sized for a
 laptop left both lists with no rows in them. There his two counters stack, his
 standing is its heading strip alone and neither list has a band at all: nothing
 is lost that the screen does not already say, and the room goes to rows
-(`ferryman-smallest-stage.png`). Every `[data-room='narrow']` rule in the
+(`bill-smallest-stage.png`). Every `[data-room='narrow']` rule in the
 stylesheet carries a `[data-room='tight']` twin, which `columnLayout.test.ts`
 holds - the failure would otherwise be silent.
 

@@ -1,4 +1,4 @@
-// Draws the six Outfitter material icons into public/assets/icons.
+// Draws the six Brock material icons into public/assets/icons.
 //
 //   node scripts/draw-material-icons.mjs
 //

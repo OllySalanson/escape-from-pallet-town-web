@@ -64,13 +64,13 @@ export type ItemEffect =
   | { readonly type: 'cure-status'; readonly status: PrimaryStatus }
   | { readonly type: 'capture-modifier'; readonly multiplier: number }
   /**
-   * Nothing to use: the item exists to be spent at the Outfitter, and no raid,
+   * Nothing to use: the item exists to be spent at Brock's Workshop, and no raid,
    * battle or bag screen may do anything with it.
    */
   | { readonly type: 'material' }
   /**
-   * Money. It does nothing at all in the field, in a fight or at the Outfitter:
-   * its only use is across the Ferryman's counter (`../hub/trader`), which is
+   * Money. It does nothing at all in the field, in a fight or at Brock's Workshop:
+   * its only use is across Bill's counter (`../hub/trader`), which is
    * what keeps it loot rather than a score. It is found in a raid, never
    * packed, carried in the pack and destroyed with it on a wipe unless the
    * secure slot names it - the same shape as a material, and for the same
@@ -203,7 +203,7 @@ export const ITEMS = {
     displayName: 'Radio valve',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 2 },
-    description: 'A glass valve pulled from a dead set. The Outfitter wants it for the radio mast.',
+    description: 'A glass valve pulled from a dead set. Brock wants it for the radio mast.',
     effect: { type: 'material' },
   },
   'cable-coil': {
@@ -211,7 +211,7 @@ export const ITEMS = {
     displayName: 'Cable coil',
     category: ItemCategory.Misc,
     footprint: { width: 2, height: 2 },
-    description: 'Copper cable, still good. The Outfitter wires the beacon and the bay with it.',
+    description: 'Copper cable, still good. Brock wires the beacon and the bay with it.',
     effect: { type: 'material' },
   },
   'parts-crate': {
@@ -219,7 +219,7 @@ export const ITEMS = {
     displayName: 'Parts crate',
     category: ItemCategory.Misc,
     footprint: { width: 2, height: 2 },
-    description: 'Hinges, bolts and hasps. The Outfitter builds the secure lockers out of them.',
+    description: 'Hinges, bolts and hasps. Brock builds the secure lockers out of them.',
     effect: { type: 'material' },
   },
   'lamp-oil': {
@@ -227,7 +227,7 @@ export const ITEMS = {
     displayName: 'Lamp oil',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 2 },
-    description: 'A sealed tin of lamp oil. The Outfitter burns it in the beacon and the ward.',
+    description: 'A sealed tin of lamp oil. Brock burns it in the beacon and the ward.',
     effect: { type: 'material' },
   },
   'mooring-rope': {
@@ -235,7 +235,7 @@ export const ITEMS = {
     displayName: 'Mooring rope',
     category: ItemCategory.Misc,
     footprint: { width: 2, height: 2 },
-    description: 'Tarred rope off a ferry post. The Outfitter guys the mast and lashes the second locker with it.',
+    description: 'Tarred rope off a ferry post. Brock guys the mast and lashes the second locker with it.',
     effect: { type: 'material' },
   },
   'linen-roll': {
@@ -243,12 +243,12 @@ export const ITEMS = {
     displayName: 'Linen roll',
     category: ItemCategory.Misc,
     footprint: { width: 2, height: 1 },
-    description: 'Clean linen for beds and bandages. The Outfitter fits the recovery bay and the ward with it.',
+    description: 'Clean linen for beds and bandages. Brock fits the Pokemon Center and the ward with it.',
     effect: { type: 'material' },
   },
   /**
    * Money, and the whole of it. One item, one stack, a quantity - found in the
-   * field, spent only at the Ferryman's counter.
+   * field, spent only at Bill's counter.
    *
    * It is deliberately in the same pocket and under the same found-only rules
    * as a material rather than in a wallet of its own: a wallet is a number that
@@ -263,12 +263,12 @@ export const ITEMS = {
     footprint: { width: 1, height: 1 },
     // A bundle to a square. Money has to cost room or it is a score with an
     // icon, and one square per note would be absurd - so it is counted in
-    // bundles the size of the Ferryman's berth, which is the thing a player is
+    // bundles the size of Bill's berth, which is the thing a player is
     // most often saving for. A raid that finds every note on the richest map
     // carries a square of them; one that hoards four raids' worth gives up a
     // fifth of its pack to do it.
     stackSize: 250,
-    description: 'League notes, water-stained. The Ferryman still takes them; nobody else does.',
+    description: 'League notes, water-stained. Bill still takes them; nobody else does.',
     effect: { type: 'currency' },
   },
   /**
@@ -293,7 +293,7 @@ export const ITEMS = {
    *
    * Every id here is also a key of `MACHINES` in `../pokemon/machines.ts`, and
    * `machines.test.ts` fails a disc on either side without the other. A machine
-   * is found in the field or bartered off the Ferryman; nothing restocks one,
+   * is found in the field or bartered off Bill; nothing restocks one,
    * and no contract, board or wipe hands one out.
    */
   'tm09-bullet-seed': {
@@ -458,7 +458,7 @@ export type ItemId = keyof typeof ITEMS;
  * beside it - a second list is a second answer waiting to disagree with this
  * one.
  *
- * `SupplyItemId` earns its keep immediately: the Outfitter's prices and the
+ * `SupplyItemId` earns its keep immediately: Brock's prices and the
  * standing board's payouts are typed with it, so neither can ever ask for or
  * hand out gear. Gear that a contract handed out on a loop would not be gear
  * worth protecting.
@@ -477,19 +477,19 @@ export type PackItemId = {
  *
  * A pack is excluded for exactly the reason gear is. Gear must be carried out
  * of a raid to be owned, and a pack must be *survived* to be kept; either one
- * handed out on a loop by a contract, the standing board or the Outfitter would
+ * handed out on a loop by a contract, the standing board or Brock would
  * stop being the thing the loop is about.
  */
 export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId>;
 
 export const ITEM_DEFINITIONS: readonly ItemDefinition[] = Object.values(ITEMS);
 
-/** Materials are the Other pocket: found in a raid, spent only at the Outfitter. */
+/** Materials are the Other pocket: found in a raid, spent only at Brock's Workshop’s Workshop. */
 export const MATERIAL_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
   (item) => item.effect.type === 'material',
 ).map((item) => item.id as SupplyItemId);
 
-/** Money. One item, one id, and the only thing the Ferryman's stock is priced in. */
+/** Money. One item, one id, and the only thing Bill's stock is priced in. */
 export const CURRENCY_ITEM_ID = 'scrip';
 
 /** Every pack in the catalogue, smallest first. What one holds is `./packs`. */
@@ -512,7 +512,7 @@ export function isPack(itemId: string): boolean {
  * reserved for their *kind* in the secure container, which is the only way
  * squares can be set aside for something that does not exist yet. Every
  * place that used to ask `isMaterial` for that reason asks this instead - and
- * `isMaterial` still means only "the Outfitter takes it", which is a different
+ * `isMaterial` still means only "Brock takes it", which is a different
  * question with a different answer.
  *
  * The pack you are *wearing* is not in this list and is not in the bag at all:
@@ -615,9 +615,9 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
     case 'capture-modifier':
       return { used: false, message: `${item.displayName} can only be used in battle.` };
     case 'material':
-      return { used: false, message: `${item.displayName} is for the Outfitter, not the field.` };
+      return { used: false, message: `${item.displayName} is for Brock’s Workshop, not the field.` };
     case 'currency':
-      return { used: false, message: `${item.displayName} is only good at the Ferryman's counter.` };
+      return { used: false, message: `${item.displayName} is only good at Bill's counter.` };
     case 'machine':
       // A machine is never spent here. Teaching can need a move chosen to be
       // forgotten, which is a screen rather than a return value, so `./teaching`

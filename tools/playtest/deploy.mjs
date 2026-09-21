@@ -73,7 +73,7 @@ export async function deploy(page, url, { press, click, until, paused = false, i
       // pack filled to its last square has to start from a vault that could
       // fill it - which is how the pack-full refusals are reached at all, and
       // the only way to pack anything a fresh save does not own: an HM off the
-      // Ferryman's table, say, which is the key to a field-move door.
+      // Bill's table, say, which is the key to a field-move door.
       for (const entry of ${JSON.stringify(stash)}) { const [itemId, count = '1'] = entry.split(':'); save.stash.items[itemId] = Number(count); }
       // A boss is a fight a level-5 starter cannot win, so a driver that has to
       // reach what is behind one deploys a team that could have got there. The

@@ -240,7 +240,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     sightRange: 1,
     bossId: 'floodplain-sluice-keeper',
     // The hardest of the three doors, and the piece that most changes a long
-    // raid: Leftovers is HP the recovery bay would otherwise charge raid time
+    // raid: Leftovers is HP the Pokemon Center would otherwise charge raid time
     // for.
     carries: 'leftovers',
     design: 'hiker',

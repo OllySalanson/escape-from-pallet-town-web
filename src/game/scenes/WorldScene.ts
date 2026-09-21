@@ -173,7 +173,7 @@ import {
   trainerDeclinedMessage,
   trainerWatchCaption,
 } from '../world/trainerEngagement';
-import { hasHunterIntel } from '../hub/outfitter';
+import { hasHunterIntel } from '../hub/workshop';
 import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import { getVisibleLoot, tryCollectLoot } from '../world/loot';
 import { cacheRefusalLine, tryActivatePoi } from '../world/pois';
@@ -1993,7 +1993,7 @@ export class WorldScene extends Phaser.Scene {
           // The radio mast reports on a hunter that is still coming or still
           // here. One that has been beaten is out of the raid, and a line about
           // its next team would be a warning about nothing.
-          ...(hasHunterIntel(session.outfitterUpgrades) && !this.hunterState.defeated
+          ...(hasHunterIntel(session.workshopUpgrades) && !this.hunterState.defeated
             ? {
               intel: hunterIntelFor(
                 snapshot.elapsedMs,
@@ -3420,7 +3420,7 @@ export class WorldScene extends Phaser.Scene {
    * locked line counts the seconds down - and extraction used to be asked only
    * when a step finished, so a raid was lost to the clock by someone standing on
    * the Ferry Dock under a green EXTRACT OPEN. It is the rule for every exit
-   * rather than a timer's special case: the Outfitter's beacon opens on the
+   * rather than a timer's special case: Brock's beacon opens on the
    * insertion tile, and a battle can hand the raid back on one. `update()` asks
    * only while the player is at rest with nothing on screen to read, so the
    * locked line is never talked over.

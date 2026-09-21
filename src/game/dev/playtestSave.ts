@@ -95,7 +95,7 @@ export function playtestRaidProgress(): RaidProgress {
     defeatedBosses: [],
     openedGates: [...new Set(WORLD_GATES.map((gate) => gateKey(gate)))],
     battleLessonGiven: true,
-    // The Ferryman deals with whoever has turned scrip over his counter, so an
+    // Bill deals with whoever has turned scrip over his counter, so an
     // explorer run arrives as a partner rather than a stranger with an empty
     // shelf - derived from his own top tier, so a retuned ladder moves with it.
     traderScripSpent: STANDING_PER_SCRIP * (TRADER_STANDINGS.at(-1)?.points ?? 0),

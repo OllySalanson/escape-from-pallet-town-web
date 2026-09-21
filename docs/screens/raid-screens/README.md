@@ -80,7 +80,7 @@ appearing in the bag.
 
 **The row is the act.** Enter on a Potion opens the recipient list, so using one
 is four presses: open, point, Enter, point, Enter. What the item *is*, and the
-drop, are the pane under the list, where the contract board and the Outfitter's
+drop, are the pane under the list, where the contract board and Brock's
 ladder already put what the cursor is on. The squares that item is standing on
 light up in the container beside it - by a class on a block, not a re-render,
 because the cursor moves on every arrow key and this screen is read under a

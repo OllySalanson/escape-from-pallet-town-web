@@ -1,7 +1,7 @@
 # Packs
 
 The pack is **gear, not an upgrade**. The stash grows for good - that is the
-Outfitter's ladder and the secure container, and they are untouched - but the
+Brock's ladder and the secure container, and they are untouched - but the
 thing a raid's haul is carried in is an item you own, choose before every raid,
 and lose with everything in it if you do not walk out.
 
@@ -11,7 +11,7 @@ pack 24, Hauler frame 30. A Hauler frame brings a fortune home and is a fortune
 to go down with; a Satchel risks almost nothing because it holds almost nothing.
 That decision is made fresh every raid, which is the whole point of it.
 
-Pack size is **derived and never stored**, like every Outfitter effect: the save
+Pack size is **derived and never stored**, like every Brock effect: the save
 records which packs are in the vault, because they are items and the vault
 already counts items, and how big one is lives in the catalogue beside its name
 (`src/game/items/items.ts`, read back through `src/game/items/packs.ts`).
@@ -45,8 +45,8 @@ workaday packs; the two vast maps hold the big ones, because the walk is the
 price. Carrying one out costs four squares of the pack you are already wearing,
 which on a Satchel is a third of it.
 
-Nothing that repeats may hand one out - not a contract, not the Ferryman's shelf,
-not an Outfitter rung. `SupplyItemId` excludes packs exactly as it excludes gear,
+Nothing that repeats may hand one out - not a contract, not Bill's shelf,
+not a workshop rung. `SupplyItemId` excludes packs exactly as it excludes gear,
 so the compiler refuses it, and `packs.test.ts` says so out loud as well.
 
 ## What a wipe takes

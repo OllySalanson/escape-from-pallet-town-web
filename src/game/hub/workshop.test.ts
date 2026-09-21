@@ -9,10 +9,10 @@ import {
   hasBeacon,
   hasHunterIntel,
   LAST_FIT_REFUSAL,
-  OUTFITTER_UPGRADES,
-  outfitterOffers,
-  outfitterSecureItemStacks,
-  outfitterSecurePokemon,
+  WORKSHOP_UPGRADES,
+  workshopOffers,
+  workshopSecureItemStacks,
+  workshopSecurePokemon,
   PARTNER_REFUSAL,
   payablePokemonCount,
   paymentCandidates,
@@ -20,10 +20,10 @@ import {
   spendableSupply,
   takePayment,
   wardTreatmentsPerRaid,
-  type OutfitterVault,
-} from './outfitter';
+  type WorkshopVault,
+} from './workshop';
 
-const EVERY_UPGRADE = OUTFITTER_UPGRADES.map((upgrade) => upgrade.id);
+const EVERY_UPGRADE = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
 
 /** A vault with a level-9 partner, plenty of spare supplies and these catches. */
 function vaultWith(
@@ -41,7 +41,7 @@ function vaultWith(
     'mooring-rope': 4,
     'linen-roll': 6,
   },
-): OutfitterVault {
+): WorkshopVault {
   const stash = new Stash({ items });
   stash.addPokemon(new Pokemon(CHARMANDER, 9), 'partner');
   catches.forEach((pokemon, index) => stash.addPokemon(pokemon, `catch-${index + 1}`));
@@ -53,10 +53,10 @@ function fainted(pokemon: Pokemon): Pokemon {
   return pokemon;
 }
 
-describe('the Outfitter ladder', () => {
+describe('the workshop ladder', () => {
   it('names every upgrade once and gates each second rung behind a first that exists', () => {
-    expect(new Set(EVERY_UPGRADE).size).toBe(OUTFITTER_UPGRADES.length);
-    for (const upgrade of OUTFITTER_UPGRADES) {
+    expect(new Set(EVERY_UPGRADE).size).toBe(WORKSHOP_UPGRADES.length);
+    for (const upgrade of WORKSHOP_UPGRADES) {
       if (upgrade.requires !== undefined) {
         expect(EVERY_UPGRADE).toContain(upgrade.requires);
         expect(upgrade.requires).not.toBe(upgrade.id);
@@ -66,7 +66,7 @@ describe('the Outfitter ladder', () => {
 
   it('is a sink: every rung costs at least one Pokemon and some supply that exists', () => {
     const itemIds = ITEM_DEFINITIONS.map((item) => item.id);
-    for (const upgrade of OUTFITTER_UPGRADES) {
+    for (const upgrade of WORKSHOP_UPGRADES) {
       expect(upgrade.cost.pokemon).toBeGreaterThanOrEqual(1);
       expect(upgrade.cost.supplies.length).toBeGreaterThanOrEqual(1);
       for (const { itemId, quantity } of upgrade.cost.supplies) {
@@ -83,7 +83,7 @@ describe('the Outfitter ladder', () => {
    * a promise the container cannot keep - and nothing else may pair up.
    */
   it('pays in capability or information, and every rung changes exactly one thing', () => {
-    for (const upgrade of OUTFITTER_UPGRADES) {
+    for (const upgrade of WORKSHOP_UPGRADES) {
       const effects = [
         upgrade.secureItemStack,
         upgrade.securePokemon,
@@ -102,14 +102,14 @@ describe('the Outfitter ladder', () => {
   });
 
   it('draws every rung with an icon the shared set actually holds', () => {
-    for (const upgrade of OUTFITTER_UPGRADES) {
+    for (const upgrade of WORKSHOP_UPGRADES) {
       expect(ICON_NAMES).toContain(upgrade.icon);
     }
   });
 
   it('costs the most for the second protected Pokemon and the least for information', () => {
-    const byId = new Map(OUTFITTER_UPGRADES.map((upgrade) => [upgrade.id, upgrade]));
-    const prices = OUTFITTER_UPGRADES.map((upgrade) => upgrade.cost.pokemon);
+    const byId = new Map(WORKSHOP_UPGRADES.map((upgrade) => [upgrade.id, upgrade]));
+    const prices = WORKSHOP_UPGRADES.map((upgrade) => upgrade.cost.pokemon);
     expect(byId.get('radio-mast')!.cost.pokemon).toBe(Math.min(...prices));
     expect(byId.get('secure-locker-2')!.cost.pokemon).toBe(Math.max(...prices));
   });
@@ -117,8 +117,8 @@ describe('the Outfitter ladder', () => {
 
 describe('what the upgrade list derives', () => {
   it('gives a base with nothing built nothing at all', () => {
-    expect(outfitterSecureItemStacks([])).toBe(0);
-    expect(outfitterSecurePokemon([])).toBe(0);
+    expect(workshopSecureItemStacks([])).toBe(0);
+    expect(workshopSecurePokemon([])).toBe(0);
     expect(recoveryPriceShare([])).toBe(1);
     expect(wardTreatmentsPerRaid([])).toBe(0);
     expect(hasHunterIntel([])).toBe(false);
@@ -126,9 +126,9 @@ describe('what the upgrade list derives', () => {
   });
 
   it('derives each effect from its own rung and from nothing else', () => {
-    expect(outfitterSecureItemStacks(['secure-locker-1'])).toBe(1);
-    expect(outfitterSecurePokemon(['secure-locker-1'])).toBe(0);
-    expect(outfitterSecurePokemon(['secure-locker-1', 'secure-locker-2'])).toBe(1);
+    expect(workshopSecureItemStacks(['secure-locker-1'])).toBe(1);
+    expect(workshopSecurePokemon(['secure-locker-1'])).toBe(0);
+    expect(workshopSecurePokemon(['secure-locker-1', 'secure-locker-2'])).toBe(1);
     expect(recoveryPriceShare(['recovery-bay-1'])).toBe(0.75);
     expect(recoveryPriceShare(['recovery-bay-1', 'recovery-bay-2'])).toBe(0.5);
     expect(wardTreatmentsPerRaid(['quarantine-ward'])).toBe(1);
@@ -137,7 +137,7 @@ describe('what the upgrade list derives', () => {
   });
 
   it('cannot be inflated by a repeated or unknown id', () => {
-    expect(outfitterSecureItemStacks(['secure-locker-1', 'secure-locker-1'])).toBe(1);
+    expect(workshopSecureItemStacks(['secure-locker-1', 'secure-locker-1'])).toBe(1);
     expect(wardTreatmentsPerRaid(['quarantine-ward', 'quarantine-ward', 'golden-ward'])).toBe(1);
   });
 
@@ -153,7 +153,7 @@ describe('what may be spent', () => {
     const vault = vaultWith([]);
     expect(paymentCandidates(vault).map((candidate) => candidate.refusal)).toEqual([PARTNER_REFUSAL]);
     expect(payablePokemonCount(vault)).toBe(0);
-    expect(outfitterOffers(vault, []).some((offer) => offer.affordable)).toBe(false);
+    expect(workshopOffers(vault, []).some((offer) => offer.affordable)).toBe(false);
     expect(checkPayment(vault, [], 'radio-mast', ['partner'])).toMatchObject({
       ok: false,
       refusal: 'pokemon-not-spendable',
@@ -163,7 +163,7 @@ describe('what may be spent', () => {
   it('never offers a lone Pokemon even when it is not the partner species', () => {
     const stash = new Stash({ items: { 'radio-valve': 2, 'mooring-rope': 1 } });
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'only');
-    const vault: OutfitterVault = { stash, starterSpeciesId: 'charmander' };
+    const vault: WorkshopVault = { stash, starterSpeciesId: 'charmander' };
     expect(paymentCandidates(vault)[0].refusal).toBe(LAST_FIT_REFUSAL);
     expect(checkPayment(vault, [], 'radio-mast', ['only'])).toMatchObject({ ok: false });
     expect(stash.listPokemon()).toHaveLength(1);
@@ -180,7 +180,7 @@ describe('what may be spent', () => {
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'fit-1');
     stash.addPokemon(new Pokemon(BULBASAUR, 4), 'fit-2');
     stash.addPokemon(fainted(new Pokemon(PIDGEY, 5)), 'down');
-    const vault: OutfitterVault = { stash, starterSpeciesId: 'charmander' };
+    const vault: WorkshopVault = { stash, starterSpeciesId: 'charmander' };
 
     // Three are spendable, but releasing both fit ones would leave only a faint.
     expect(payablePokemonCount(vault)).toBe(2);
@@ -192,7 +192,7 @@ describe('what may be spent', () => {
   });
 
   it('prices every rung in materials, never in the kit a wipe restocks', () => {
-    for (const upgrade of OUTFITTER_UPGRADES) {
+    for (const upgrade of WORKSHOP_UPGRADES) {
       expect(upgrade.cost.supplies.length, upgrade.id).toBeGreaterThan(0);
       for (const { itemId } of upgrade.cost.supplies) {
         expect(isMaterial(itemId), `${upgrade.id} costs ${itemId}`).toBe(true);
@@ -208,7 +208,7 @@ describe('what may be spent', () => {
       ok: false,
       refusal: 'supplies-short',
     });
-    const offer = outfitterOffers(vault, []).find(({ upgrade }) => upgrade.id === 'secure-locker-1')!;
+    const offer = workshopOffers(vault, []).find(({ upgrade }) => upgrade.id === 'secure-locker-1')!;
     expect(offer.pokemonShort).toBe(0);
     expect(offer.affordable).toBe(false);
     expect(offer.suppliesShort).toEqual([{ itemId: 'parts-crate', quantity: 2 }]);
@@ -281,7 +281,7 @@ describe('what may be spent', () => {
       .toMatchObject({ ok: false, refusal: 'already-built' });
     expect(checkPayment(vault, [], 'gear-tier-9', [])).toMatchObject({ ok: false, refusal: 'unknown-upgrade' });
 
-    const states = outfitterOffers(vault, ['secure-locker-1']).map(({ upgrade, state }) => [upgrade.id, state]);
+    const states = workshopOffers(vault, ['secure-locker-1']).map(({ upgrade, state }) => [upgrade.id, state]);
     expect(states).toContainEqual(['secure-locker-1', 'built']);
     expect(states).toContainEqual(['secure-locker-2', 'open']);
     expect(states).toContainEqual(['recovery-bay-2', 'locked']);

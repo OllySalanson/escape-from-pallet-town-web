@@ -8,7 +8,7 @@ import { needsRecovery } from './recovery';
  *
  * Boxes decide where a Pokemon is kept; this decides how any list of them is
  * shown. It is pure and reads nothing but the Pokemon, so the stash, the
- * loadout and the Outfitter's payment list all order and search the same way,
+ * loadout and Brock's payment list all order and search the same way,
  * and nothing here is saved: it is how the player is looking, not what they own.
  */
 
