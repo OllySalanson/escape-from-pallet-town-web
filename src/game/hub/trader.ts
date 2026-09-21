@@ -292,7 +292,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
      is spent on one Pokemon, and evolution is the reward this game most wants
      to keep paying. The brake is the price - five materials, which is two or
      three raids of carrying heavy things home past the clock, and the same five
-     materials the Outfitter ladder and the gear table are asking for.
+     materials Brock's ladder and the gear table are asking for.
 
      Each one is priced in the materials of the country it is *found* in, so the
      counter says the same thing the map does: the Fire Stone in oil and crates

@@ -217,7 +217,7 @@ describe('what a cache pays', () => {
 
   it('draws on the whole catalogue rather than on medicine and balls', () => {
     const kinds = new Set(paying.flatMap((poi) => poi.reward.map(({ itemId }) => itemId)));
-    // The five supplies plus the six Outfitter materials: a place that works
+    // The five supplies plus the six Brock materials: a place that works
     // pays what working it produces, which is what makes a raid a trip for
     // something rather than a lap.
     expect([...kinds].sort()).toEqual([
@@ -235,7 +235,7 @@ describe('what a cache pays', () => {
     ]);
   });
 
-  it('never pays money, so the Ferryman\'s prices stay set against the ground', () => {
+  it('never pays money, so Bill\'s prices stay set against the ground', () => {
     // The scrip faucet is measured off each map's loot pool alone
     // (`hub/trader.test.ts`), and a cache is a *guaranteed* pickup rather than
     // a pooled one, so money out of one would be an unmeasured second faucet.

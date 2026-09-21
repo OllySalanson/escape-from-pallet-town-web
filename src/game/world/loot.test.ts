@@ -109,7 +109,7 @@ describe('a rare find', () => {
       'viridian-forest: thunder-stone in forest-deep-stand',
     ]);
     // Every stone in the catalogue is findable: one that could only be bought
-    // off the Ferryman would be a thing money buys, which is the constraint the
+    // off Bill would be a thing money buys, which is the constraint the
     // barter table exists to keep (`hub/trader.ts`).
     const found = new Set(
       Object.values(WORLD_MAPS).flatMap((map) =>
@@ -153,7 +153,7 @@ describe('what a raid left on the ground', () => {
  * A stone is the one change this game makes that nothing can take back, so the
  * only two ways to hold one are to walk to it past the clock or to trade a
  * raid's worth of materials for it. Anything that *repeats on its own* - the
- * wipe restock, the kit every save starts with, the Ferryman's shelf - would
+ * wipe restock, the kit every save starts with, Bill's shelf - would
  * make it a formality, which is exactly the rule the machines are held to
  * (`items/teaching.test.ts`).
  */
