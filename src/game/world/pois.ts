@@ -434,7 +434,7 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     position: { x: 44, y: 50 },
     label: 'FLOODED SUPPLY VAULT',
     description:
-      'High-value cache under the open trapdoor - and the one store on this map that was stocked as a store. The causeway west is the short way out once the orchard warden is beaten.',
+      'High-value cache under the open trapdoor - and the one store on this map that was stocked as a store. The causeway west is the short way out once the orchard warden is beaten. Extract to bank it.',
     reward: [
       { itemId: 'super-potion', quantity: 2 },
       { itemId: 'great-ball', quantity: 2 },

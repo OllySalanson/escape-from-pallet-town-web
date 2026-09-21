@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { EVOLUTION_STONE_IDS, isEvolutionStone } from '../items';
+import { TRADER_STOCK } from '../hub/trader';
+import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { WORLD_MAPS } from '../worldMap';
 import { districtAt, districtsForMap } from './districts';
 import { getVisibleLoot, isPrize, prizesLeftBehind, tryCollectLoot, type WorldLoot } from './loot';
@@ -142,5 +144,34 @@ describe('what a raid left on the ground', () => {
 
   it('says nothing about a prize the raid never laid eyes on', () => {
     expect(prizesLeftBehind(laid, new Set(), new Set())).toEqual([]);
+  });
+});
+
+/**
+ * Where a stone may come from, and the two places it may not.
+ *
+ * A stone is the one change this game makes that nothing can take back, so the
+ * only two ways to hold one are to walk to it past the clock or to trade a
+ * raid's worth of materials for it. Anything that *repeats on its own* - the
+ * wipe restock, the kit every save starts with, the Ferryman's shelf - would
+ * make it a formality, which is exactly the rule the machines are held to
+ * (`items/teaching.test.ts`).
+ */
+describe('where a stone comes from', () => {
+  it('is never restocked and never part of the kit a save starts with', () => {
+    const stash = new Stash();
+    for (const id of EVOLUTION_STONE_IDS) {
+      expect(MINIMUM_SUPPLIES).not.toHaveProperty(id);
+    }
+    stash.restockMinimumSupplies();
+    for (const id of EVOLUTION_STONE_IDS) {
+      expect(stash.itemCount(id), `${id} was restocked`).toBe(0);
+    }
+  });
+
+  it('is never on the shelf, because it is one of the things money cannot buy', () => {
+    for (const item of TRADER_STOCK) {
+      expect(isEvolutionStone(item.itemId), `${item.itemId} is for sale`).toBe(false);
+    }
   });
 });

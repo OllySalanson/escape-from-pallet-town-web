@@ -2080,12 +2080,13 @@ export class HubScene extends Phaser.Scene {
             ),
           )
           .join('')}`;
-    // What this map is worth going to, and where on it. It sits above the
-    // wildlife because it is the answer to a different question: the wildlife
-    // pane says what will happen to you on the way, and this says why you are
-    // going. It keeps the same dark - a place nobody has walked keeps what is
-    // in it - so the pane is an invitation on a fresh map and a plan on a
-    // walked one.
+    // What this map is worth going to, and where on it - directly under the
+    // contract, above the ways out and the doors. Those two are safety: how
+    // this raid can end, and what is shut. This is the *reason*, and a pane
+    // that answers "what am I going out for today" is no use eleven exits
+    // below the fold. It keeps the same dark the wildlife pane does - a place
+    // nobody has walked keeps what is in it - so it reads as an invitation on
+    // a fresh map and as a plan on a walked one.
     const foundPrizes = briefing.prizes.filter((prize) => prize.known);
     const hiddenPrizes = briefing.prizes.length - foundPrizes.length;
     const prizes = briefing.prizes.length === 0
@@ -2131,7 +2132,7 @@ export class HubScene extends Phaser.Scene {
     // picture cannot state, because it is about the loadout rather than about
     // the place. Everything else the banner already counts, and a screen this
     // size cannot afford to say a number twice.
-    return `<p class="px-wrap dropin-blurb">${briefing.insertion.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${exits}${doors}${prizes}${wildlife}`;
+    return `<p class="px-wrap dropin-blurb">${briefing.insertion.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${prizes}${exits}${doors}${wildlife}`;
   }
 
   private secureView(): string {
