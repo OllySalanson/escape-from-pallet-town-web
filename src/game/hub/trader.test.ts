@@ -12,7 +12,7 @@ import { secureGrid } from '../objectives/contracts';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { ICON_NAMES } from '../ui/icons';
 import { WORLD_MAPS } from '../worldMap';
-import { OUTFITTER_UPGRADES, outfitterMaterialKinds } from './outfitter';
+import { WORKSHOP_UPGRADES, workshopMaterialKinds } from './workshop';
 import {
   barterShortfall,
   berthSecureColumns,
@@ -83,7 +83,7 @@ describe('scrip', () => {
     // Found only: the same rule as a material, which is what makes it something
     // a wipe can take rather than a number that survives everything.
     expect(isFoundOnly(CURRENCY_ITEM_ID)).toBe(true);
-    // Not a material: nothing at the Outfitter may ever be priced in money.
+    // Not a material: nothing at Brock's Workshop may ever be priced in money.
     expect(isMaterial(CURRENCY_ITEM_ID)).toBe(false);
     // It has to take room to be loot rather than a score, and it does: a square
     // a bundle in the raid pack (`../items/itemGrid`), so a hoard carried out
@@ -193,7 +193,7 @@ describe('the shelf', () => {
       const definition = getItemById(item.itemId);
       expect(definition?.category, `${item.itemId} is not a supply`).not.toBe(ItemCategory.Held);
       expect(definition?.effect.type).not.toBe('currency');
-      expect(isMaterial(item.itemId), `${item.itemId} belongs to the Outfitter`).toBe(false);
+      expect(isMaterial(item.itemId), `${item.itemId} belongs to Brock`).toBe(false);
     }
   });
 
@@ -312,10 +312,10 @@ describe('the barter table', () => {
     expect(gear.every((barter) => barter.once)).toBe(true);
   });
 
-  it('competes with the Outfitter for the same materials', () => {
+  it('competes with Brock for the same materials', () => {
     // The whole reason the table is a real cost: a parts crate is a locker or
     // it is a Focus Band, and a raid only finds one or two.
-    const ladder = new Set(outfitterMaterialKinds([]));
+    const ladder = new Set(workshopMaterialKinds([]));
     const wanted = traderWantedMaterials(NO_PROGRESS);
     expect(wanted.some((itemId) => ladder.has(itemId as never))).toBe(true);
   });
@@ -408,12 +408,12 @@ describe('the berth', () => {
     ).toBe('scrip-short');
   });
 
-  it('is never cheaper than an Outfitter locker over a few raids', () => {
+  it('is never cheaper than a Brock locker over a few raids', () => {
     // Renting must not make the built locker pointless. The first locker asks
     // two Pokemon and two parts crates, which is several raids of catching and
     // scavenging - and the berth is 250 scrip *every* raid, so the ladder is
     // still the answer for a player who intends to keep raiding.
-    const locker = OUTFITTER_UPGRADES.find((upgrade) => upgrade.id === 'secure-locker-1');
+    const locker = WORKSHOP_UPGRADES.find((upgrade) => upgrade.id === 'secure-locker-1');
     expect(locker?.secureItemStack).toBe(true);
     expect(locker?.cost.pokemon).toBeGreaterThan(0);
   });

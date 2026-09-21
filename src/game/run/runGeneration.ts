@@ -306,7 +306,7 @@ export interface RunPlan {
 }
 
 /**
- * What the base the raid deployed from adds to it. Only the Outfitter's beacon
+ * What the base the raid deployed from adds to it. Only Brock's beacon
  * so far: an exit at the landing itself, sealed until `unlockAtMs`.
  */
 export interface RunOutfitting {
@@ -361,7 +361,7 @@ export function generateRunPlan(
   // The bosses this save has already beaten: which gates stand open, and who
   // is no longer on the map. Empty is a fresh save, with every door shut.
   defeatedBosses: readonly string[] = [],
-  // What the base this raid deployed from adds to it: the Outfitter's beacon.
+  // What the base this raid deployed from adds to it: Brock's beacon.
   outfitting: RunOutfitting = {},
   // The contracts this save has banked: which landmarks the world keeps worked,
   // and which of their exits therefore stand open. Empty is a fresh save.
@@ -563,7 +563,7 @@ function generateExtractionPoints(
 }
 
 /**
- * The Outfitter's beacon: the landing itself becomes a way out, late.
+ * Brock's beacon: the landing itself becomes a way out, late.
  *
  * It stands on the insertion tile rather than on a tile authored for it, which
  * is what lets one upgrade serve every map without touching any of them - the

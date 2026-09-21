@@ -6,7 +6,7 @@ import type { Stash, StashedPokemon } from '../stash';
  * Treating a hurt Pokemon at base with a medicine out of the stash.
  *
  * This is the other half of making raid damage real. Damage that survives a
- * raid has to be answerable before the next one, and the recovery bay's price -
+ * raid has to be answerable before the next one, and the Pokemon Center's price -
  * raid time - is not always the price a player wants to pay. A Potion is the
  * alternative, and its cost is itself: a Potion spent at base is a Potion that
  * is not in the bag when a fight goes wrong. That is a real trade rather than
@@ -22,9 +22,9 @@ import type { Stash, StashedPokemon } from '../stash';
  * arithmetic are testable without Phaser; `HubScene` only renders it.
  */
 
-/** Why the recovery bay, not an item, is the answer for a fainted Pokemon. */
+/** Why the Pokemon Center, not an item, is the answer for a fainted Pokemon. */
 export const FAINTED_TREATMENT_NOTE =
-  'Fainted. Medicine cannot revive - only the recovery bay can, for raid time.';
+  'Fainted. Medicine cannot revive - only the Pokémon Center can, for raid time.';
 
 /** One medicine in the stash, described against one Pokemon before it is used. */
 export interface TreatmentOption {
@@ -100,9 +100,9 @@ function describeEffect(
       // the move chooser can be opened over the Pokemon it is about.
       return { effect: 'Read in the field', usable: false };
     case 'material':
-      return { effect: 'Outfitter only', usable: false };
+      return { effect: 'Workshop only', usable: false };
     case 'currency':
-      return { effect: 'The Ferryman only', usable: false };
+      return { effect: 'Bill only', usable: false };
     case 'pack':
       return { effect: 'Chosen on the loadout', usable: false };
     case 'held':

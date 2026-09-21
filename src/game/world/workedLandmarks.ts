@@ -18,7 +18,7 @@ import type { WorldMapId } from '../worldMap';
  * savable thing in a scene carries a stable id and writes its own state into
  * the save file. That is the opposite of the discipline the rest of this game
  * is built on - `secureItemStackLimit()`, `contractUnlockedInsertionIds()`,
- * `getWorldMap()` and the Ferryman's standing are all *derived* from the lists
+ * `getWorldMap()` and Bill's standing are all *derived* from the lists
  * `raidProgress` already keeps, which is why a save can never disagree with any
  * of them. Nothing here is stored either: a row below is a landmark and the
  * contract that finishes it, and `raidProgress.completedContracts` is the whole

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OUTFITTER_UPGRADES } from '../hub/outfitter';
+import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { BULBASAUR, Pokemon } from '../pokemon';
 import { MINIMUM_SUPPLIES } from '../stash';
 import { WORLD_MAPS } from '../worldMap';
@@ -17,14 +17,14 @@ describe('materials', () => {
   it('are a handful, each in the Other pocket and each named by a rung that wants it', () => {
     expect(MATERIAL_IDS.length).toBeGreaterThanOrEqual(4);
     expect(MATERIAL_IDS.length).toBeLessThanOrEqual(6);
-    const wanted = new Set(OUTFITTER_UPGRADES.flatMap((upgrade) => upgrade.cost.supplies.map(({ itemId }) => itemId)));
+    const wanted = new Set(WORKSHOP_UPGRADES.flatMap((upgrade) => upgrade.cost.supplies.map(({ itemId }) => itemId)));
     for (const id of MATERIAL_IDS) {
       expect(getItemById(id)?.category).toBe(ItemCategory.Misc);
       expect(wanted.has(id), `${id} is asked for by no rung`).toBe(true);
     }
     // Nothing else lives in that pocket but the evolution stone and the six
     // machines, both of which are spent on a Pokemon rather than at the
-    // Outfitter, and the scrip, which is spent at the Ferryman's counter and
+    // Brock, and the scrip, which is spent at Bill's counter and
     // nowhere else.
     expect(ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Misc).map((item) => item.id).sort()).toEqual(
       [...MATERIAL_IDS, ...MACHINE_ITEM_IDS, 'thunder-stone', 'scrip'].sort(),

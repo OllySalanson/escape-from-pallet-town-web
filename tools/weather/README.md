@@ -29,7 +29,7 @@ Brook Head is the one place where rain decides a wild fight outright, and it is
 not the player's move that does it: the waterside's Squirtles are level 7-9, so
 they carry Water Gun, and rain hands it to them. Everywhere else rain is paid in
 health rather than in losses - which is the currency this game keeps, since the
-recovery bay charges raid time for it.
+Pokemon Center charges raid time for it.
 
 **Wild.** Every district's own table, played by each fresh starter through the
 shared harness, clear and then under each weather. The headline is that a

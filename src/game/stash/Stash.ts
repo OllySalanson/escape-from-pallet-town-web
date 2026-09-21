@@ -79,7 +79,7 @@ export const MAX_BOX_NAME_LENGTH = 12;
 /**
  * A named box and the Pokemon in it. Boxes are only a way of *finding*: every
  * Pokemon is still one entry in `Stash.listPokemon()`, which is what the
- * Outfitter's payment, the swap-partner offer, the loadout and a wipe all read,
+ * Brock's payment, the swap-partner offer, the loadout and a wipe all read,
  * so a boxed Pokemon is exactly as spendable and as deployable as it was in one
  * flat list.
  */
@@ -198,7 +198,7 @@ export interface SecureSlot {
 
 /**
  * How much a save's secure slot protects. It belongs to the save rather than to
- * this class - contracts and the Outfitter both enlarge it - so a wipe is told
+ * this class - contracts and Brock both enlarge it - so a wipe is told
  * the limits instead of assuming them.
  */
 export interface SecureSlotLimits {
@@ -536,7 +536,7 @@ export class Stash {
    * three spare, and so is three Potions beside three Super Potions. An item
    * that serves no minimum - an Antidote - is spare in full.
    *
-   * It exists for the Outfitter, the one place supplies are spent at base: a
+   * It exists for Brock, the one place supplies are spent at base: a
    * payment taken out of the kit would be refunded by the next wipe.
    */
   public spareCount(itemId: string): number {
@@ -595,7 +595,7 @@ export class Stash {
    * A swap is a change of species and nothing else. The newcomer arrives in the
    * condition the old partner left in (`starterInConditionOf`), and no supplies
    * come with it: a partner home at 1 HP with no Potions used to be traded for
-   * a full-health one and a full kit, which priced the recovery bay at nothing.
+   * a full-health one and a full kit, which priced the Pokemon Center at nothing.
    * A wiped player loses no guarantee by it - the wipe itself restocked the kit
    * before the swap was ever on offer.
    *

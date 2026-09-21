@@ -10,11 +10,11 @@ import {
   DeploymentFlow,
   FAINTED_TREATMENT_NOTE,
   formatRecoveryClock,
-  getOutfitterUpgrade,
+  getWorkshopUpgrade,
   hasBeacon,
   needsRecovery,
-  OUTFITTER_UPGRADES,
-  outfitterOffers,
+  WORKSHOP_UPGRADES,
+  workshopOffers,
   payablePokemonCount,
   paymentCandidates,
   pokemonNeedingRecovery,
@@ -52,9 +52,9 @@ import {
   type TraderBarterOffer,
   type TraderCounter,
   type TraderStockOffer,
-  type OutfitterOffer,
-  type OutfitterUpgrade,
-  type OutfitterVault,
+  type WorkshopOffer,
+  type WorkshopUpgrade,
+  type WorkshopVault,
   type RecoveryTerms,
   type TreatmentOption,
 } from '../hub';
@@ -140,6 +140,7 @@ import {
   escapeAttribute,
   pixelColumns,
   pixelCommitBar,
+  pixelFigure,
   pixelHpBar,
   pixelRail,
   pixelScreen,
@@ -173,7 +174,7 @@ export interface HubSceneData {
 }
 
 /** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
-type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'outfitter' | 'trader';
+type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'workshop' | 'trader';
 
 /** What `traderArmed` holds for the berth, which is the one deal with no id. */
 const BERTH_DEAL = 'berth';
@@ -199,11 +200,11 @@ export class HubScene extends Phaser.Scene {
   /** A swap only runs from an explicit second click, so a misclick cannot delete a survivor. */
   private swapArmed = false;
   /** The upgrade being paid for, or undefined while the ladder is showing. */
-  private outfitterUpgradeId: string | undefined;
+  private workshopUpgradeId: string | undefined;
   /** The Pokemon the player has named as payment, by stash id. */
-  private outfitterPayment: string[] = [];
+  private workshopPayment: string[] = [];
   /** A payment only runs from an explicit second click, exactly as a swap does. */
-  private outfitterArmed = false;
+  private workshopArmed = false;
   /**
    * The deal on the boat asked but not yet struck: a barter id, or `BERTH_DEAL`.
    *
@@ -224,7 +225,7 @@ export class HubScene extends Phaser.Scene {
   private boxScope: number | 'all' = 0;
   private stashSort: StashSort = 'kept';
   private stashSearch = '';
-  /** How many the Ferryman's counter is being asked for, by `buy:` or `barter:` and id. Never saved. */
+  /** How many Bill's counter is being asked for, by `buy:` or `barter:` and id. Never saved. */
   private counterCounts = new Map<string, number>();
   /** The one text field on screen, if any: naming a box or searching. */
   private boxEditing: 'rename' | 'find' | undefined;
@@ -268,10 +269,10 @@ export class HubScene extends Phaser.Scene {
     }
     // Nothing is pre-selected: the raid party is always something the player picked.
     this.flow = new DeploymentFlow(this.stash, this.unlockedInsertions[0]?.[0], {
-      pokemon: securePokemonLimit(loaded.raidProgress.outfitterUpgrades),
+      pokemon: securePokemonLimit(loaded.raidProgress.workshopUpgrades),
       secureGrid: secureGrid(
         loaded.raidProgress.completedContracts,
-        loaded.raidProgress.outfitterUpgrades,
+        loaded.raidProgress.workshopUpgrades,
         loaded.traderBerthPaid,
       ),
     },
@@ -288,9 +289,9 @@ export class HubScene extends Phaser.Scene {
     this.view = 'home';
     this.reselectStarterId = this.startingStarterId();
     this.swapArmed = false;
-    this.outfitterUpgradeId = undefined;
-    this.outfitterPayment = [];
-    this.outfitterArmed = false;
+    this.workshopUpgradeId = undefined;
+    this.workshopPayment = [];
+    this.workshopArmed = false;
     this.traderArmed = undefined;
     this.deploying = false;
     // A fresh look at a freshly loaded vault: nothing narrowed, nothing picked up.
@@ -347,7 +348,7 @@ export class HubScene extends Phaser.Scene {
 
   /**
    * Every Pokemon at base in the order the player asked for and answering their
-   * search - across all boxes, which is what the loadout and the Outfitter's
+   * search - across all boxes, which is what the loadout and Brock's
    * payment are drawn from. A Pokemon about to be spent or deployed is never
    * hidden by the box it is kept in.
    */
@@ -457,9 +458,9 @@ export class HubScene extends Phaser.Scene {
       : raidClockAfterRecovery(RAID_DURATION_MS, this.pendingRecoveryMs);
   }
 
-  /** Every Outfitter upgrade standing at base, by id. */
+  /** Every workshop upgrade standing at base, by id. */
   private get builtUpgradeIds(): readonly string[] {
-    return this.savedGame.raidProgress.outfitterUpgrades;
+    return this.savedGame.raidProgress.workshopUpgrades;
   }
 
   /**
@@ -489,13 +490,13 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * A recovery price as a tag says it - `Bay −0:30`, or `Ward free` when the
+   * A recovery price as a tag says it - `Center −0:30`, or `Ward free` when the
    * ward's bed would take this one. Short, because it shares a row with a name
    * and a health bar; the help bar below is where it is spelt out.
    */
   private recoveryPriceLabel(stored: StashedPokemon): string {
     const priceMs = this.recoveryPriceMs(stored);
-    return `${this.inWardBed(stored) ? 'Ward' : 'Bay'} ${priceMs === 0 ? 'free' : `−${formatRecoveryClock(priceMs)}`}`;
+    return `${this.inWardBed(stored) ? 'Ward' : 'Center'} ${priceMs === 0 ? 'free' : `−${formatRecoveryClock(priceMs)}`}`;
   }
 
   /**
@@ -510,7 +511,7 @@ export class HubScene extends Phaser.Scene {
   /** The same price in a sentence, for the help bar of the control that pays it. */
   private recoveryHelp(stored: StashedPokemon): string {
     const priceMs = this.recoveryPriceMs(stored);
-    const place = this.inWardBed(stored) ? 'Ward bed' : 'Recovery bay';
+    const place = this.inWardBed(stored) ? 'Ward bed' : 'Pokémon Center';
     return priceMs === 0
       ? `${place}: full restore, and it costs this raid nothing.`
       : `${place}: full restore for −${formatRecoveryClock(priceMs)} of raid time.`;
@@ -697,8 +698,8 @@ export class HubScene extends Phaser.Scene {
 
   private setView(view: HubView): void {
     // A status line answers something done on the screen it was raised on, so
-    // it does not follow the player to another: the recovery bay's "recovered
-    // for 0:50 of raid time" was still in the Outfitter's help bar. A caller
+    // it does not follow the player to another: the Pokemon Center's "recovered
+    // for 0:50 of raid time" was still in Brock's help bar. A caller
     // that changes screen *and* has something to say sets its status after.
     if (view !== this.view) {
       this.statusTimer?.remove();
@@ -707,9 +708,9 @@ export class HubScene extends Phaser.Scene {
     }
     this.view = view;
     this.swapArmed = false;
-    this.outfitterUpgradeId = undefined;
-    this.outfitterPayment = [];
-    this.outfitterArmed = false;
+    this.workshopUpgradeId = undefined;
+    this.workshopPayment = [];
+    this.workshopArmed = false;
     this.traderArmed = undefined;
     if (view === 'reselect') {
       this.reselectStarterId = this.startingStarterId();
@@ -739,18 +740,18 @@ export class HubScene extends Phaser.Scene {
     this.setStatus(`${getStarterSpecies(this.reselectStarterId).name} is your new partner.`);
   }
 
-  /** What a payment may touch in this save. The rules live in `../hub/outfitter`. */
-  private get outfitterVault(): OutfitterVault {
+  /** What a payment may touch in this save. The rules live in `../hub/workshop`. */
+  private get workshopVault(): WorkshopVault {
     return {
       stash: this.stash,
       starterSpeciesId: this.savedGame.starterSpeciesId,
     };
   }
 
-  private get payingFor(): OutfitterUpgrade | undefined {
-    return this.outfitterUpgradeId === undefined
+  private get payingFor(): WorkshopUpgrade | undefined {
+    return this.workshopUpgradeId === undefined
       ? undefined
-      : getOutfitterUpgrade(this.outfitterUpgradeId);
+      : getWorkshopUpgrade(this.workshopUpgradeId);
   }
 
   /**
@@ -759,7 +760,7 @@ export class HubScene extends Phaser.Scene {
    * choosing one is answered with what it is waiting on rather than ignored.
    */
   private choosePayment(upgradeId: string): void {
-    const offer = this.outfitterLadder.find((candidate) => candidate.upgrade.id === upgradeId);
+    const offer = this.workshopLadder.find((candidate) => candidate.upgrade.id === upgradeId);
     if (!offer || offer.state === 'built') {
       return;
     }
@@ -767,9 +768,9 @@ export class HubScene extends Phaser.Scene {
       this.refuse(this.shortfallLine(offer));
       return;
     }
-    this.outfitterUpgradeId = upgradeId;
-    this.outfitterPayment = [];
-    this.outfitterArmed = false;
+    this.workshopUpgradeId = upgradeId;
+    this.workshopPayment = [];
+    this.workshopArmed = false;
     this.render();
   }
 
@@ -784,43 +785,43 @@ export class HubScene extends Phaser.Scene {
     if (!upgrade) {
       return;
     }
-    const refusal = paymentCandidates(this.outfitterVault).find(
+    const refusal = paymentCandidates(this.workshopVault).find(
       ({ stored }) => stored.id === pokemonId,
     )?.refusal;
     if (refusal !== undefined) {
       this.refuse(`${refusal}.`);
       return;
     }
-    this.outfitterArmed = false;
-    if (this.outfitterPayment.includes(pokemonId)) {
-      this.outfitterPayment = this.outfitterPayment.filter((id) => id !== pokemonId);
+    this.workshopArmed = false;
+    if (this.workshopPayment.includes(pokemonId)) {
+      this.workshopPayment = this.workshopPayment.filter((id) => id !== pokemonId);
       this.render();
       return;
     }
-    if (this.outfitterPayment.length >= upgrade.cost.pokemon) {
+    if (this.workshopPayment.length >= upgrade.cost.pokemon) {
       this.refuse(`${upgrade.name} takes ${upgrade.cost.pokemon} Pokémon. Un-pick one first.`);
       return;
     }
-    this.outfitterPayment = [...this.outfitterPayment, pokemonId];
+    this.workshopPayment = [...this.workshopPayment, pokemonId];
     this.render();
   }
 
   private confirmPayment(): void {
     const upgrade = this.payingFor;
-    if (!upgrade || !this.outfitterArmed) {
+    if (!upgrade || !this.workshopArmed) {
       return;
     }
     const released = this.stashPokemon
-      .filter((stored) => this.outfitterPayment.includes(stored.id))
+      .filter((stored) => this.workshopPayment.includes(stored.id))
       .map((stored) => stored.pokemon.base.name);
-    const result = this.saveManager.buildOutfitterUpgrade(upgrade.id, this.outfitterPayment);
+    const result = this.saveManager.buildWorkshopUpgrade(upgrade.id, this.workshopPayment);
     if (!result.ok) {
-      this.outfitterArmed = false;
+      this.workshopArmed = false;
       this.refuse(result.message);
       return;
     }
     if (!result.saved) {
-      this.outfitterArmed = false;
+      this.workshopArmed = false;
       this.refuse(`${upgrade.name} could not be saved, so nothing was spent.`);
       return;
     }
@@ -831,7 +832,7 @@ export class HubScene extends Phaser.Scene {
       // secure slot, so a released Pokemon can never linger in a half-built loadout.
       this.applyLoadedGame(reloaded);
     }
-    this.setView('outfitter');
+    this.setView('workshop');
     audioManager.play('confirm');
     this.setStatus(`${upgrade.name} built. ${formatNames(released)} released.`);
   }
@@ -964,8 +965,8 @@ export class HubScene extends Phaser.Scene {
       return;
     }
     // Backing out of a payment returns to the ladder it was chosen from.
-    if (this.view === 'outfitter' && this.outfitterUpgradeId !== undefined) {
-      this.setView('outfitter');
+    if (this.view === 'workshop' && this.workshopUpgradeId !== undefined) {
+      this.setView('workshop');
       this.render();
       return;
     }
@@ -1046,11 +1047,11 @@ export class HubScene extends Phaser.Scene {
   }
 
   private get heading(): string {
-    if (this.view === 'home') return 'Base';
+    if (this.view === 'home') return 'Oak’s Lab';
     if (this.view === 'stash') return 'Your stash';
     if (this.view === 'reselect') return 'Swap your partner';
-    if (this.view === 'outfitter') return this.payingFor ? `Build ${this.payingFor.name}` : 'The Outfitter';
-    if (this.view === 'trader') return 'The Ferryman';
+    if (this.view === 'workshop') return this.payingFor ? `Build ${this.payingFor.name}` : 'Brock’s Workshop';
+    if (this.view === 'trader') return 'Bill';
     if (this.flow.step === 'loadout') return 'Build your loadout';
     if (this.flow.step === 'dropin') return 'Choose your drop-in';
     return this.flow.step === 'secure' ? 'Secure slot' : 'Final check';
@@ -1058,14 +1059,14 @@ export class HubScene extends Phaser.Scene {
 
   private get backLabel(): string {
     if (this.view === 'reselect') return 'Stash';
-    if (this.view === 'outfitter' && this.payingFor) return 'Outfitter';
-    if (this.view !== 'deploy') return 'Base';
+    if (this.view === 'workshop' && this.payingFor) return 'Workshop';
+    if (this.view !== 'deploy') return 'Lab';
     if (this.flow.step === 'confirm') return 'Drop-in';
     if (this.flow.step === 'dropin') return 'Loadout';
     if (this.flow.step === 'secure') {
       return this.flow.secureReturnStep === 'confirm' ? 'Final check' : 'Loadout';
     }
-    return 'Base';
+    return 'Lab';
   }
 
   /** What the keys do, said once along the bottom of every screen. */
@@ -1081,7 +1082,7 @@ export class HubScene extends Phaser.Scene {
       // Said once, on the screen the player arrives at. Every other view is
       // reached from it and carries its own way back, so repeating the town on
       // all five of them only spent the one line of the screen that is short of
-      // room - at the smallest stage the Outfitter's payment screen had a back
+      // room - at the smallest stage Brock's payment screen had a back
       // label, a place, a title and a count on 320 pixels.
       // Which of the two games this is, on every view of it, because the one
       // thing a player must never be unsure of is whether what they are about
@@ -1102,7 +1103,7 @@ export class HubScene extends Phaser.Scene {
             ? undefined
             : // On the stash the counts are the two lists on screen, so the
               // aside carries the one fact the screen turns on instead - the
-              // clock the recovery bay is spending. It was said by the Pokémon
+              // clock the Pokemon Center is spending. It was said by the Pokémon
               // window's own note and again by the bay's line under it.
               this.view === 'stash'
               ? `Next raid clock ${formatRecoveryClock(this.raidClockMs)}`
@@ -1164,11 +1165,11 @@ export class HubScene extends Phaser.Scene {
     on('[data-swap-confirm]', () => this.confirmSwap());
     on('[data-outfit]', (button) => this.choosePayment(button.dataset.outfit!));
     on('[data-built]', (button) =>
-      this.setStatus(`${getOutfitterUpgrade(button.dataset.built!)?.name ?? 'That upgrade'} already stands at base.`),
+      this.setStatus(`${getWorkshopUpgrade(button.dataset.built!)?.name ?? 'That upgrade'} already stands at base.`),
     );
     on('[data-pay-pokemon]', (button) => this.togglePayment(button.dataset.payPokemon!));
-    on('[data-pay-arm]', () => rerender(() => { this.outfitterArmed = true; }));
-    on('[data-pay-cancel]', () => rerender(() => { this.outfitterArmed = false; }));
+    on('[data-pay-arm]', () => rerender(() => { this.workshopArmed = true; }));
+    on('[data-pay-cancel]', () => rerender(() => { this.workshopArmed = false; }));
     on('[data-pay-confirm]', () => this.confirmPayment());
     on('[data-buy]', (button) => {
       const count = this.counterCounts.get(`buy:${button.dataset.buy}`) ?? 1;
@@ -1285,7 +1286,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'home') return this.homeView();
     if (this.view === 'stash') return this.stashView();
     if (this.view === 'reselect') return this.reselectView();
-    if (this.view === 'outfitter') return this.payingFor ? this.paymentView(this.payingFor) : this.outfitterView();
+    if (this.view === 'workshop') return this.payingFor ? this.paymentView(this.payingFor) : this.workshopView();
     if (this.view === 'trader') return this.traderView();
     if (this.flow.step === 'loadout') return this.loadoutView();
     if (this.flow.step === 'dropin') return this.dropInView();
@@ -1302,7 +1303,10 @@ export class HubScene extends Phaser.Scene {
    */
   private homeView(): string {
     const hurt = this.injuredPokemon.length;
-    const deploy = `<button class="px-window px-card px-tone-primary" data-deploy-flow data-cursor-start data-help="Build a loadout, check what it risks, then drop in."><strong>Start a raid</strong><p>Choose who and what you risk, and where you drop in.</p></button>`;
+    // Each door of the lab is a person, and the person is on it: Oak sends you
+    // out, Nurse Joy keeps what came home on its feet, Brock builds and Bill
+    // deals. Same art the overworld draws a figure from, at the same scale.
+    const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-deploy-flow data-cursor-start data-help="Build a loadout, check what it risks, then drop in."><strong>Start a raid</strong><p>Choose who and what you risk, and where you drop in.</p>${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
     // Anyone hurt is said here and fixed in the stash, beside the Pokemon it is
     // about: the bill used to be a panel of its own on this screen, and with two
     // contracts open it left the board it sat above a single line tall.
@@ -1315,8 +1319,8 @@ export class HubScene extends Phaser.Scene {
     const stashLead = hurt
       ? `<p class="px-warning">${hurt === 1 ? '1 Pokémon' : `${hurt} Pokémon`} came home hurt. Treat them here.</p>`
       : '<p>What is secured at base.</p>';
-    const stash = `<button class="px-window px-card" data-view="stash" data-help="Everything secured at base, and the recovery bay.${swap}"><strong>Stash</strong>${stashLead}</button>`;
-    return `<main class="px-body hub-home"><section class="hub-actions" ${pixelColumns(96, { maximum: 3 })}>${deploy}${stash}${this.outfitterCard()}${this.traderCard()}</section>${this.contractBoard()}</main>`;
+    const stash = `<button class="px-window px-card has-figure" data-view="stash" data-help="Everything secured at base, and Nurse Joy.${swap}"><strong>Stash</strong>${stashLead}${pixelFigure('nurse-joy', 'Nurse Joy')}</button>`;
+    return `<main class="px-body hub-home"><section class="hub-actions" ${pixelColumns(96, { maximum: 3 })}>${deploy}${stash}${this.workshopCard()}${this.traderCard()}</section>${this.contractBoard()}</main>`;
   }
 
   /**
@@ -1371,7 +1375,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * The recovery bay's bill, along the bottom of the stash. It only appears when
+   * The Pokemon Center's bill, along the bottom of the stash. It only appears when
    * there is something to say - somebody hurt, or time already booked - so a fit
    * player's stash is exactly the stash they had before. It carries the clock
    * the next raid will start with and the one action that settles everyone at
@@ -1404,7 +1408,8 @@ export class HubScene extends Phaser.Scene {
         : `<button class="px-window px-button is-primary" data-recover-all data-help="Full HP, status cleared. Paid in raid time, never supplies.">Recover ${injured.length === 1 ? 'them' : `all ${injured.length}`} · ${quotedMs === 0 ? 'free' : `−${formatRecoveryClock(quotedMs)}`}</button>`;
     return pixelCommitBar({
       className: 'px-tone-care recovery-panel',
-      title: `Recovery bay · ${lead}`,
+      lead: pixelFigure('nurse-joy', 'Nurse Joy'),
+      title: `Pokémon Center · ${lead}`,
       lines: [clock ? `<small class="px-wrap">${clock}</small>` : '', cap],
       actions: action,
     });
@@ -1434,7 +1439,7 @@ export class HubScene extends Phaser.Scene {
    * The treatment surface, in the pane about the Pokemon it would treat.
    *
    * It offers both prices side by side before either is paid: one medicine out
-   * of the stash, or a full restore at the recovery bay for raid time. What
+   * of the stash, or a full restore at the Pokemon Center for raid time. What
    * each would do is in the help bar the moment the cursor is on it, and a
    * medicine that would do nothing can still be pointed at to be told why - a
    * player should never have to spend a Potion to find out what it does.
@@ -1680,7 +1685,7 @@ export class HubScene extends Phaser.Scene {
    * Pokemon from another, and what you came for - its condition, its
    * experience, its stats, its moves and everything you can do to it - is the
    * detail pane the cursor fills as it walks, the same pane the contract board
-   * and the Outfitter's ladder already use.
+   * and Brock's ladder already use.
    */
   private stashView(): string {
     const pokemon = this.stashPokemon;
@@ -1716,7 +1721,7 @@ export class HubScene extends Phaser.Scene {
     const materialRows = this.stashItems.filter((item) => isFoundOnly(item.id)).map(supplyRow).join('');
     const supplies = `${this.stashItems.filter((item) => !isFoundOnly(item.id)).map(supplyRow).join('')}${
       // Found goods are their own list: nothing in it can be packed or used,
-      // and the Outfitter and the Ferryman are where all of it goes.
+      // and Brock and Bill are where all of it goes.
       materialRows ? `<h3 class="px-subheading">Found goods</h3>${materialRows}` : ''
     }`;
     return `<main class="px-body stash-layout">${pixelWindow(
@@ -2219,7 +2224,7 @@ export class HubScene extends Phaser.Scene {
         .map((stored) => cargoCells(pokemonCargo(stored.id, stored.pokemon)))
         .sort((a, b) => a - b)[0];
       return smallest !== undefined && smallest > free
-        ? `<p class="px-note px-wrap">Nothing in this party fits: the container is ${this.flow.secureGrid.width}x${this.flow.secureGrid.height} and the smallest here needs ${cargoSquaresLabel(smallest)}. Grow it at the Outfitter, or bank a cordon ledger.</p>`
+        ? `<p class="px-note px-wrap">Nothing in this party fits: the container is ${this.flow.secureGrid.width}x${this.flow.secureGrid.height} and the smallest here needs ${cargoSquaresLabel(smallest)}. Grow it at Brock's Workshop’s Workshop, or bank a cordon ledger.</p>`
         : '';
     }
     const names = cargo.map((piece) => piece.name.toUpperCase()).join(' and ');
@@ -2300,7 +2305,7 @@ export class HubScene extends Phaser.Scene {
    * it says how far along the base is so the card is a standing goal rather
    * than a door the player has to open to find out.
    */
-  /** What the Ferryman is looking at: this save's vault, record and trip. */
+  /** What Bill is looking at: this save's vault, record and trip. */
   private get traderCounter(): TraderCounter {
     return {
       stash: this.stash,
@@ -2311,7 +2316,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * The Ferryman's card, beside the Outfitter's, because the pair of them is
+   * Bill's card, beside Brock's, because the pair of them is
    * how a player tells the two apart: one builds the base, one deals off a
    * boat. The card leads with the money, since that is the fact the screen
    * behind it turns on and the only number in the game that is found rather
@@ -2324,7 +2329,7 @@ export class HubScene extends Phaser.Scene {
     const ready =
       traderStockOffers(counter).filter((offer) => offer.refusal === undefined).length +
       traderBarterOffers(counter).filter((offer) => offer.refusal === undefined).length;
-    return `<button class="px-window px-card" data-view="trader" data-help="Spend found scrip on his rationed shelf, and barter found goods for the gear money cannot buy."><strong>Ferryman</strong><p>${standing.name} · ${scrip} scrip</p><p>${ready ? `<span class="px-ready">${ready} deal${ready === 1 ? '' : 's'} ready</span>` : 'Nothing you can take today'}</p></button>`;
+    return `<button class="px-window px-card has-figure" data-view="trader" data-help="Spend found scrip on his rationed shelf, and barter found goods for the gear money cannot buy."><strong>Bill</strong><p>${standing.name} · ${scrip} scrip</p><p>${ready ? `<span class="px-ready">${ready} deal${ready === 1 ? '' : 's'} ready</span>` : 'Nothing you can take today'}</p>${pixelFigure('bill', 'Bill')}</button>`;
   }
 
   /**
@@ -2360,7 +2365,7 @@ export class HubScene extends Phaser.Scene {
     // sentence about them: the paragraph that was here took a third of the
     // screen off the two lists the screen is actually for.
     const standingPane = pixelWindow(
-      `<p class="px-wrap">${standing.note}</p>${
+      `<div class="px-lead">${pixelFigure('bill', 'Bill')}<p class="px-wrap">${standing.note}</p></div>${
         next
           ? `<p class="px-wrap px-note">Bank a contract +${STANDING_PER_CONTRACT}, beat a boss +${STANDING_PER_BOSS}, spend ${STANDING_PER_SCRIP} scrip +1.</p>`
           : ''
@@ -2483,7 +2488,7 @@ export class HubScene extends Phaser.Scene {
    *
    * It stands in the shelf's own window rather than in a third pane because it
    * is the other thing scrip buys, and it says "this raid only" in the row
-   * itself - the words that keep it distinct from the Outfitter's locker, which
+   * itself - the words that keep it distinct from Brock's locker, which
    * is the same stack for good. That comparison is the help bar's, not the
    * row's: spelled out on the row it wrapped to three lines and took the shelf
    * above it down to two and a half. Its price is the row's own price column,
@@ -2508,7 +2513,7 @@ export class HubScene extends Phaser.Scene {
     const wiring = paid
       ? `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`
       : offer.refusal === undefined
-        ? `data-berth data-help="${escapeAttribute(`One more protected stack for one raid. The Outfitter builds one for good.`)}"`
+        ? `data-berth data-help="${escapeAttribute(`One more protected stack for one raid. Brock builds one for good.`)}"`
         : `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
     const tag = paid
       ? pixelTag('Paid', 'secure', true)
@@ -2590,7 +2595,7 @@ export class HubScene extends Phaser.Scene {
    * A deal asked again before it is struck.
    *
    * Found goods and a berth are both spent for good on one press, and the
-   * Outfitter has asked twice since it existed. This is the same promise on the
+   * workshop has asked twice since it existed. This is the same promise on the
    * boat, kept without a screen of its own: the row becomes the question and
    * two buttons, with the cursor on the one that changes nothing - because the
    * key that armed the deal is still under the player's finger, which is why
@@ -2631,18 +2636,18 @@ export class HubScene extends Phaser.Scene {
     this.setStatus(result.message);
   }
 
-  private outfitterCard(): string {
+  private workshopCard(): string {
     const built = builtUpgrades(this.builtUpgradeIds).length;
-    const ready = this.outfitterLadder.filter((offer) => offer.affordable).length;
-    return `<button class="px-window px-card" data-view="outfitter" data-help="Spend banked Pokémon and spare supplies on permanent base upgrades."><strong>Outfitter</strong><p>Permanent base upgrades.</p><p>${built}/${OUTFITTER_UPGRADES.length} built${ready ? `<span class="px-ready"> · ${ready} ready</span>` : ''}</p></button>`;
+    const ready = this.workshopLadder.filter((offer) => offer.affordable).length;
+    return `<button class="px-window px-card has-figure" data-view="workshop" data-help="Brock builds banked Pokémon and salvage into the base, for good."><strong>Brock’s Workshop</strong><p>Permanent upgrades to the base.</p><p>${built}/${WORKSHOP_UPGRADES.length} built${ready ? `<span class="px-ready"> · ${ready} ready</span>` : ''}</p>${pixelFigure('brock', 'Brock')}</button>`;
   }
 
-  private get outfitterLadder(): readonly OutfitterOffer[] {
-    return outfitterOffers(this.outfitterVault, this.builtUpgradeIds);
+  private get workshopLadder(): readonly WorkshopOffer[] {
+    return workshopOffers(this.workshopVault, this.builtUpgradeIds);
   }
 
   /** "2 Pokémon + 2× Poké Ball, 1× Potion", the way every price here is said. */
-  private priceLine(upgrade: OutfitterUpgrade): string {
+  private priceLine(upgrade: WorkshopUpgrade): string {
     return `${upgrade.cost.pokemon} Pokémon + ${formatStacks(upgrade.cost.supplies)}`;
   }
 
@@ -2656,15 +2661,15 @@ export class HubScene extends Phaser.Scene {
    * wipe kit. A price beside a number the player cannot spend is worse than no
    * number at all.
    */
-  private pricedAgainstVault(offer: OutfitterOffer): readonly ShopPricePart[] {
+  private pricedAgainstVault(offer: WorkshopOffer): readonly ShopPricePart[] {
     const { cost } = offer.upgrade;
-    const payable = payablePokemonCount(this.outfitterVault);
+    const payable = payablePokemonCount(this.workshopVault);
     return [
       pricePart(`${cost.pokemon} Pokémon`, payable, cost.pokemon, 'you can release'),
       ...cost.supplies.map(({ itemId, quantity }) =>
         pricePart(
           formatStacks([{ itemId, quantity }]),
-          spendableSupply(this.outfitterVault, itemId),
+          spendableSupply(this.workshopVault, itemId),
           quantity,
           'spare at base',
           itemIcon(itemId, this.itemName(itemId)),
@@ -2674,7 +2679,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   /** The same price with nothing said about the vault: what a built rung cost. */
-  private priceAsPaid(upgrade: OutfitterUpgrade): readonly ShopPricePart[] {
+  private priceAsPaid(upgrade: WorkshopUpgrade): readonly ShopPricePart[] {
     return [
       { ask: `${upgrade.cost.pokemon} Pokémon` },
       ...upgrade.cost.supplies.map(({ itemId, quantity }) => ({
@@ -2685,7 +2690,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   /** Why a rung cannot be built yet, as the status line says it when one is chosen. */
-  private shortfallLine(offer: OutfitterOffer): string {
+  private shortfallLine(offer: WorkshopOffer): string {
     if (offer.state === 'locked') {
       return `${offer.upgrade.name} is built after ${offer.requires?.name ?? 'an earlier upgrade'}.`;
     }
@@ -2709,8 +2714,8 @@ export class HubScene extends Phaser.Scene {
    * vault, and whatever is stopping it - is the pane under the list, which
    * follows the cursor. See `ui/shopDetail.ts`.
    */
-  private outfitterView(): string {
-    const ladder = this.outfitterLadder;
+  private workshopView(): string {
+    const ladder = this.workshopLadder;
     const first = ladder.find((offer) => offer.affordable) ?? ladder.find((offer) => offer.state !== 'built');
     const rows = ladder
       .map((offer) => {
@@ -2747,8 +2752,16 @@ export class HubScene extends Phaser.Scene {
       })
       .join('');
     const shown = first ?? ladder[0];
-    const details = ladder.map((offer) => this.outfitterDetail(offer, offer === shown)).join('');
-    return `<main class="px-body outfitter-layout">${pixelWindow(
+    const details = ladder.map((offer) => this.workshopDetail(offer, offer === shown)).join('');
+    // Brock leads his own screen the way Bill leads his: the person, then what
+    // he will do for you. One line, because the ladder under it is the screen.
+    const brock = pixelWindow(
+      `<div class="px-lead">${pixelFigure('brock', 'Brock')}<p class="px-wrap">Bring him the right salvage and he builds it into the base. He builds; he does not deal.</p></div>`,
+      // The title bar has already said where this is, so the pane says who: the
+      // person, not the place again.
+      { className: 'trader-standing workshop-lead', heading: 'Brock', note: `${ladder.filter((offer) => offer.state === 'built').length}/${WORKSHOP_UPGRADES.length} built` },
+    );
+    return `<main class="px-body workshop-layout">${brock}${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.priced)}>${rows}</div>${details}`,
       {
         className: 'objectives-panel',
@@ -2759,7 +2772,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   /** One rung, whole: what it does, what it costs against this vault, and its gate. */
-  private outfitterDetail(offer: OutfitterOffer, shown: boolean): string {
+  private workshopDetail(offer: WorkshopOffer, shown: boolean): string {
     const { upgrade } = offer;
     const built = offer.state === 'built';
     return shopDetailPane({
@@ -2787,14 +2800,14 @@ export class HubScene extends Phaser.Scene {
    * player one at a time - this game's contract with its player is that a
    * Pokemon is not a coin, so the screen never reaches into the vault for them.
    */
-  private paymentView(upgrade: OutfitterUpgrade): string {
-    const candidates = paymentCandidates(this.outfitterVault);
-    const chosen = this.stashPokemon.filter((stored) => this.outfitterPayment.includes(stored.id));
+  private paymentView(upgrade: WorkshopUpgrade): string {
+    const candidates = paymentCandidates(this.workshopVault);
+    const chosen = this.stashPokemon.filter((stored) => this.workshopPayment.includes(stored.id));
     const ordered = sortPokemon(searchPokemon(candidates.map(({ stored }) => stored), this.stashSearch), this.stashSort);
     const rows = ordered
       .map((stored) => candidates.find((candidate) => candidate.stored === stored)!)
       .map(({ stored, refusal }) => {
-        const picked = this.outfitterPayment.includes(stored.id);
+        const picked = this.workshopPayment.includes(stored.id);
         const name = escapeAttribute(stored.pokemon.base.name);
         // A Pokemon that is never payment can still be pointed at to be told why.
         const wiring =
@@ -2810,7 +2823,7 @@ export class HubScene extends Phaser.Scene {
     const supplies = upgrade.cost.supplies
       .map(
         ({ itemId, quantity }) =>
-          `<div class="px-row has-icon">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong>${this.itemName(itemId)} ×${quantity}</strong><small>${spendableSupply(this.outfitterVault, itemId)} spare of ${this.stash.itemCount(itemId)}</small></span></div>`,
+          `<div class="px-row has-icon">${itemIcon(itemId, this.itemName(itemId))}<span class="px-row-main"><strong>${this.itemName(itemId)} ×${quantity}</strong><small>${spendableSupply(this.workshopVault, itemId)} spare of ${this.stash.itemCount(itemId)}</small></span></div>`,
       )
       .join('');
     return `<main class="px-body loadout-layout">${pixelWindow(
@@ -2826,14 +2839,14 @@ export class HubScene extends Phaser.Scene {
     )}${this.paymentFooter(upgrade, chosen)}</main>`;
   }
 
-  private paymentFooter(upgrade: OutfitterUpgrade, chosen: readonly StashedPokemon[]): string {
+  private paymentFooter(upgrade: WorkshopUpgrade, chosen: readonly StashedPokemon[]): string {
     const named = formatNames(chosen.map((stored) => `${stored.pokemon.base.name} (Level ${stored.pokemon.level})`));
     const supplies = formatStacks(upgrade.cost.supplies);
     const check = checkPayment(
-      this.outfitterVault,
+      this.workshopVault,
       this.builtUpgradeIds,
       upgrade.id,
-      this.outfitterPayment,
+      this.workshopPayment,
     );
     if (!check.ok) {
       const remaining = upgrade.cost.pokemon - chosen.length;
@@ -2850,7 +2863,7 @@ export class HubScene extends Phaser.Scene {
         actions: `<button class="px-window px-button is-primary" disabled>Build</button>`,
       });
     }
-    if (!this.outfitterArmed) {
+    if (!this.workshopArmed) {
       return pixelCommitBar({
         title: `Costs ${this.priceLine(upgrade)}`,
         lines: [

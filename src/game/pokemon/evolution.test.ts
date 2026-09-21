@@ -82,7 +82,7 @@ describe('the evolution table', () => {
    * rule here and by nothing a player can own, so those lines are unreachable
    * exactly as the four trade lines are. An item that can never do anything is
    * a worse find than no item, and where a stone *should* be found is a
-   * question about loot tables and the Ferryman's shelf rather than about this
+   * question about loot tables and Bill's shelf rather than about this
    * table. Pinned so that adding one is a decision somebody made.
    */
   it('gives every stone it does ship an evolution-stone effect, and names the rest', () => {

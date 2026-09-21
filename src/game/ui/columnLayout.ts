@@ -99,7 +99,7 @@ export function columnTracks(plan: ColumnPlan, unit: number): string {
  *
  * **Tight** is the floor under that, and it is `BASE_STAGE` itself: a screen
  * where a list, the band that answers for the row it is on, *and* a second band
- * under that cannot share a pane at all. The Ferryman's shelf is the layout
+ * under that cannot share a pane at all. Bill's shelf is the layout
  * that runs out - a list of stock, the pane that prices the pointed-at row and
  * the berth along the bottom - and at 320x240 a band sized for a laptop left
  * the list with no rows in it and pushed the berth off the screen. A tight

@@ -86,6 +86,17 @@ describe('the character design registry', () => {
     expect(count('trainer')).toBeGreaterThanOrEqual(4);
     expect(count('protagonist')).toBeGreaterThanOrEqual(1);
   });
+
+  it('casts the four people the base is made of, each by name', () => {
+    const named = CHARACTER_DESIGN_IDS.filter((id) => getCharacterDesign(id).kind === 'named');
+
+    expect(named.sort()).toEqual(['bill', 'brock', 'nurse-joy', 'prof-oak']);
+    for (const id of named) {
+      // A class of person is described by what they look like; one of these is
+      // described by who they are, and the screens print that name.
+      expect(getCharacterDesign(id).description, id).toMatch(/^[A-Z]/);
+    }
+  });
 });
 
 describe('the character design sheets', () => {
@@ -116,7 +127,7 @@ describe('the character design sheets', () => {
   });
 
   it('take a step in the walk cycle rather than sliding on the idle frame', async () => {
-    for (const design of CHARACTER_DESIGN_IDS) {
+    for (const design of CHARACTER_DESIGN_IDS.filter((id) => getCharacterDesign(id).walks)) {
       const sheet = await loadSheet(design);
       for (const direction of DIRECTIONS) {
         const [stepA, idle, stepB] = getWalkFrames(direction, CHARACTER_DESIGN_SHEET_COLUMNS).map(
@@ -126,6 +137,23 @@ describe('the character design sheets', () => {
         expect(stepA, `${design} ${direction} first step`).not.toBe(idle);
         expect(stepB, `${design} ${direction} second step`).not.toBe(idle);
         expect(stepA, `${design} ${direction} steps are one frame`).not.toBe(stepB);
+      }
+    }
+  });
+
+  it('hold a standing figure still, because the sheet gave it no cycle to walk', async () => {
+    const standing = CHARACTER_DESIGN_IDS.filter((id) => !getCharacterDesign(id).walks);
+    expect(standing.length).toBeGreaterThan(0);
+
+    for (const design of standing) {
+      const sheet = await loadSheet(design);
+      for (const direction of DIRECTIONS) {
+        const idle = frameBounds(sheet, getIdleFrame(direction, CHARACTER_DESIGN_SHEET_COLUMNS))!;
+        for (const frame of getWalkFrames(direction, CHARACTER_DESIGN_SHEET_COLUMNS)) {
+          expect(frameBounds(sheet, frame)!.ink, `${design} ${direction} frame ${frame}`).toBe(
+            idle.ink,
+          );
+        }
       }
     }
   });

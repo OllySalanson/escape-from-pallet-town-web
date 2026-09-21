@@ -47,7 +47,7 @@ export interface RunConfig {
    * the size belongs to the save, not to the code.
    */
   readonly secureGrid?: GridSize;
-  /** How many Pokemon it protects, which the Outfitter's second locker raises. */
+  /** How many Pokemon it protects, which Brock's second locker raises. */
   readonly securePokemonLimit?: number;
 }
 

@@ -57,7 +57,7 @@ function seedSave(storage: StorageLike, completedContracts: readonly string[], s
       firstContractExtracted: completedContracts.includes(FIRST_CONTRACT_ID),
       unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
       completedContracts: [...completedContracts],
-      outfitterUpgrades: [],
+      workshopUpgrades: [],
     },
   });
   return saves;
@@ -208,7 +208,7 @@ describe('the cordon ledger only banks through its own exit', () => {
 });
 
 describe('what a banked contract buys', () => {
-  it('stacks the Outfitter\'s locker on top of the ledger\'s, from the two lists alone', () => {
+  it('stacks Brock\'s locker on top of the ledger\'s, from the two lists alone', () => {
     const ledger = [FIRST_CONTRACT_ID, 'survey-the-braid', 'cordon-ledger'];
 
     expect(secureGrid([], ['secure-locker-1'], false)).toEqual({ width: 3, height: 2 });
@@ -217,7 +217,7 @@ describe('what a banked contract buys', () => {
     // in: a Pokemon is four squares, so the slot alone would be unusable.
     expect(secureGrid(ledger, ['secure-locker-1', 'secure-locker-2'], false)).toEqual({ width: 5, height: 2 });
     expect(secureGrid([], ['secure-locker-1', 'secure-locker-2'], false)).toEqual({ width: 4, height: 2 });
-    // And the Ferryman's berth is one more column for one raid, on the same
+    // And Bill's berth is one more column for one raid, on the same
     // total - rented rather than built, so it rides on its own argument and
     // never on either banked list.
     expect(secureGrid(ledger, ['secure-locker-1'], true)).toEqual({ width: 5, height: 2 });
@@ -326,7 +326,7 @@ describe('saves written before contracts were a list', () => {
     expect(
       secureGrid(
         loaded.raidProgress.completedContracts,
-        loaded.raidProgress.outfitterUpgrades,
+        loaded.raidProgress.workshopUpgrades,
         loaded.traderBerthPaid,
       ),
     ).toEqual({ width: 2, height: 2 });

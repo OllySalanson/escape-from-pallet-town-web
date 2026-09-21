@@ -1,4 +1,4 @@
-import { getOutfitterUpgrade, takePayment, type PaymentCheck } from '../hub/outfitter';
+import { getWorkshopUpgrade, takePayment, type PaymentCheck } from '../hub/workshop';
 import { clampPendingRecoveryMs, clampWardTreatmentsUsed } from '../hub/recovery';
 import {
   DEFAULT_SECURE_PREFERENCE,
@@ -152,12 +152,12 @@ export interface RaidProgress {
    */
   readonly reachedInsertions: readonly string[];
   /**
-   * Every Outfitter upgrade built at base, by id. Like `completedContracts` it
+   * Every workshop upgrade built at base, by id. Like `completedContracts` it
    * is the whole record: every effect an upgrade has is derived from this list
    * by the system that owns it, so no effect is ever stored beside it. Saves
-   * written before the Outfitter simply have none built.
+   * written before Brock simply have none built.
    */
-  readonly outfitterUpgrades: readonly string[];
+  readonly workshopUpgrades: readonly string[];
   /**
    * Set once the authored opening fight has explained the battle screen. The
    * fight itself repeats for as long as the first contract is open, because a
@@ -182,7 +182,7 @@ export interface RaidProgress {
    */
   readonly giftsReceived: readonly string[];
   /**
-   * Scrip that has crossed the Ferryman's counter, ever. It is turnover, not a
+   * Scrip that has crossed Bill's counter, ever. It is turnover, not a
    * balance: a player's money is what is in the vault and nothing else
    * (`../hub/trader`), and this only records what was spent, because standing
    * with him is derived from it. Absent on every save written before he tied
@@ -191,7 +191,7 @@ export interface RaidProgress {
   readonly traderScripSpent?: number;
   /**
    * Barters that may only be taken once, by barter id - the gear he brings up
-   * from the hold. Like `outfitterUpgrades` it is the whole record: what is
+   * from the hold. Like `workshopUpgrades` it is the whole record: what is
    * still on his table is derived from it. Absent on older saves, which have
    * taken none.
    */
@@ -302,7 +302,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   defeatedBosses: [],
   openedGates: [],
   reachedInsertions: [],
-  outfitterUpgrades: [],
+  workshopUpgrades: [],
   standingContractsBanked: 0,
   giftsReceived: [],
   traderScripSpent: 0,
@@ -338,7 +338,7 @@ export interface SaveData {
    */
   readonly wardTreatmentsUsed: number;
   /**
-   * Units of the Ferryman's stock already bought before the coming raid. It is
+   * Units of Bill's stock already bought before the coming raid. It is
    * per-raid state rather than an effect, so it is stored, and it is cleared by
    * the same `RAID_RESOLVED` as the ward's bed for the same reason: a reload
    * must not hand the ration back. Absent on older saves, which have bought
@@ -346,7 +346,7 @@ export interface SaveData {
    */
   readonly traderRationUsed: number;
   /**
-   * Whether a berth in the Ferryman's hold is paid for on the coming raid - one
+   * Whether a berth in Bill's hold is paid for on the coming raid - one
    * more column of the secure container, this trip only. Cleared when the raid resolves
    * whether or not the stack was used, because what was bought was the trip.
    */
@@ -830,7 +830,7 @@ export class SaveManager {
   }
 
   /**
-   * Builds one Outfitter upgrade, paying for it with exactly the Pokemon the
+   * Builds one workshop upgrade, paying for it with exactly the Pokemon the
    * player named and the supplies it lists. This is the only path that spends:
    * it reloads the vault, so the payment is checked against what is really
    * banked rather than against whatever a screen was showing, and it records
@@ -840,7 +840,7 @@ export class SaveManager {
    * An upgrade already built is refused rather than charged again, which makes
    * a repeated click a no-op instead of a second payment.
    */
-  public buildOutfitterUpgrade(
+  public buildWorkshopUpgrade(
     upgradeId: string,
     pokemonIds: readonly string[],
   ): PaymentCheck & { readonly saved: boolean } {
@@ -859,7 +859,7 @@ export class SaveManager {
         stash: game.stash,
         starterSpeciesId: game.starterSpeciesId,
       },
-      game.raidProgress.outfitterUpgrades,
+      game.raidProgress.workshopUpgrades,
       upgradeId,
       pokemonIds,
     );
@@ -868,13 +868,13 @@ export class SaveManager {
     }
     const raidProgress: RaidProgress = {
       ...game.raidProgress,
-      outfitterUpgrades: [...game.raidProgress.outfitterUpgrades, payment.upgrade.id],
+      workshopUpgrades: [...game.raidProgress.workshopUpgrades, payment.upgrade.id],
     };
     return { ...payment, saved: this.save({ ...game, raidProgress }) };
   }
 
   /**
-   * What the Ferryman is looking at, for this save: the vault he is paid out
+   * What Bill is looking at, for this save: the vault he is paid out
    * of, the record he reads standing off, and the two per-raid facts.
    *
    * It is built here, from the loaded save alone, so the lobby that draws his
@@ -887,7 +887,7 @@ export class SaveManager {
   }
 
   /**
-   * Buys one unit off the Ferryman's shelf.
+   * Buys one unit off Bill's shelf.
    *
    * Nothing moves unless the whole deal stands - standing, ration and price all
    * checked against the save that is about to be written - so a refused
@@ -1019,10 +1019,10 @@ export class SaveManager {
 
     game.stash.applyRaidCondition(condition);
     game.stash.applyWipeLoss(broughtPokemonIds, broughtItems, secureSlot, {
-      pokemon: securePokemonLimit(game.raidProgress.outfitterUpgrades),
+      pokemon: securePokemonLimit(game.raidProgress.workshopUpgrades),
       grid: secureGrid(
         game.raidProgress.completedContracts,
-        game.raidProgress.outfitterUpgrades,
+        game.raidProgress.workshopUpgrades,
         // A berth is paid for before the raid and read here, at the end of it,
         // because a rented stack has to protect a haul from the wipe it was
         // rented against. `RAID_RESOLVED` below is what takes it away again.
@@ -1227,10 +1227,21 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
   // Only upgrades the ladder still knows are kept, once each: an id nothing
   // derives an effect from is not an upgrade, and a duplicate must not be able
   // to count a locker twice.
-  const outfitterUpgrades = [
+  //
+  // `outfitterUpgrades` is what this list was called before the base's four
+  // people had names, and a save written then is still holding it under that
+  // key. A field is wire format rather than a name anybody reads, so it is
+  // read here and never written: dropping it would have silently un-built
+  // every rung somebody had paid for. `SaveManager.test.ts` pins it.
+  const savedUpgrades = Array.isArray(value.workshopUpgrades)
+    ? value.workshopUpgrades
+    : Array.isArray(value.outfitterUpgrades)
+      ? value.outfitterUpgrades
+      : [];
+  const workshopUpgrades = [
     ...new Set(
-      (Array.isArray(value.outfitterUpgrades) ? value.outfitterUpgrades : []).filter(
-        (id): id is string => typeof id === 'string' && getOutfitterUpgrade(id) !== undefined,
+      savedUpgrades.filter(
+        (id): id is string => typeof id === 'string' && getWorkshopUpgrade(id) !== undefined,
       ),
     ),
   ];
@@ -1242,7 +1253,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     defeatedBosses: uniqueStrings(value.defeatedBosses),
     openedGates: uniqueStrings(value.openedGates),
     reachedInsertions: uniqueStrings(value.reachedInsertions),
-    outfitterUpgrades,
+    workshopUpgrades,
     // Saves written before gifts existed have received none.
     giftsReceived: uniqueStrings(value.giftsReceived),
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
@@ -1253,7 +1264,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
       value.standingContractsBanked > 0
         ? value.standingContractsBanked
         : 0,
-    // Absent on every save written before the Ferryman tied up, which reads as
+    // Absent on every save written before Bill tied up, which reads as
     // nothing spent and nothing bartered - so such a save simply meets him as a
     // stranger who has banked whatever it banked.
     traderScripSpent: clampTraderCount(value.traderScripSpent),
@@ -1603,7 +1614,7 @@ export interface TraderPurchaseResult {
 }
 
 /**
- * The Ferryman's view of one loaded save. It is a function rather than a field
+ * Bill's view of one loaded save. It is a function rather than a field
  * so it is always read off the save that is about to be written, never off a
  * snapshot the lobby happens to be holding.
  */
@@ -1616,7 +1627,7 @@ function traderCounterFor(game: RestoredGame): TraderCounter {
   };
 }
 
-/** The part of a save's raid progress the Ferryman reads standing off. */
+/** The part of a save's raid progress Bill reads standing off. */
 export function traderProgressOf(raidProgress: RaidProgress): TraderProgress {
   return {
     completedContracts: raidProgress.completedContracts,

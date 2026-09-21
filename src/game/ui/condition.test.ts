@@ -26,7 +26,7 @@ describe('the condition line a Pokemon carries', () => {
     );
   });
 
-  it('leads with a faint, which the recovery bay - not a medicine - answers', () => {
+  it('leads with a faint, which the Pokemon Center - not a medicine - answers', () => {
     expect(conditionLine(pokemon({ currentHp: 0, isFainted: true, primaryStatus: 'burn' }))).toBe(
       'Level 5 · 0/16 HP · fainted · burn',
     );

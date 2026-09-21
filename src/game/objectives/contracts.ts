@@ -6,7 +6,7 @@ import {
   type ItemId,
   type SupplyItemId,
 } from '../items';
-import { outfitterSecureItemStacks, outfitterSecurePokemon } from '../hub/outfitter';
+import { workshopSecureItemStacks, workshopSecurePokemon } from '../hub/workshop';
 import { berthSecureColumns } from '../hub/trader';
 import type { GridPosition } from '../movement/gridMovement';
 import type { RunSnapshot } from '../run/RunManager';
@@ -81,7 +81,7 @@ export interface ContractReward {
   readonly items: readonly ContractStack[];
   /**
    * Pokemon added to the vault when the contract is banked. Only the standing
-   * board pays this way: the Outfitter's real price is Pokemon, so a reward that
+   * board pays this way: Brock's real price is Pokemon, so a reward that
    * is meant to be spent there has to be able to be one.
    */
   readonly pokemon?: readonly ContractPokemon[];
@@ -422,8 +422,8 @@ export const BASE_SECURE_POKEMON = 1;
  * How big the secure container is for this save: what has been banked, what has
  * been built, and what has been rented for the coming raid.
  *
- * The cordon ledger's whole reward is one column of it, the Outfitter's first
- * locker is another, and the Ferryman's berth is a column for one trip
+ * The cordon ledger's whole reward is one column of it, Brock's first
+ * locker is another, and Bill's berth is a column for one trip
  * (`../hub/trader`), so the size is derived from what the save records rather
  * than stored, and a save can never disagree with any of the three.
  *
@@ -437,21 +437,21 @@ export const BASE_SECURE_POKEMON = 1;
  */
 export function secureGrid(
   completedContractIds: readonly string[],
-  outfitterUpgradeIds: readonly string[],
+  workshopUpgradeIds: readonly string[],
   berthPaid: boolean,
 ): GridSize {
   const columns =
     RAID_CONTRACTS.filter(
       (contract) => contract.reward.secureItemStack && completedContractIds.includes(contract.id),
     ).length +
-    outfitterSecureItemStacks(outfitterUpgradeIds) +
+    workshopSecureItemStacks(workshopUpgradeIds) +
     berthSecureColumns(berthPaid);
   return growGridColumns(BASE_SECURE_GRID, columns * SECURE_COLUMNS_PER_UPGRADE);
 }
 
 /** How many Pokemon the secure slot protects for this save. */
-export function securePokemonLimit(outfitterUpgradeIds: readonly string[]): number {
-  return BASE_SECURE_POKEMON + outfitterSecurePokemon(outfitterUpgradeIds);
+export function securePokemonLimit(workshopUpgradeIds: readonly string[]): number {
+  return BASE_SECURE_POKEMON + workshopSecurePokemon(workshopUpgradeIds);
 }
 
 /** Insertions every banked contract has opened, in the order they were listed. */

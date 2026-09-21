@@ -2,7 +2,7 @@ import { escapeAttribute } from './pixelUi';
 
 /**
  * "How many?" - the one widget every quantity on a pixel-ui screen is asked
- * with: the loadout's pack, the secure container, the Ferryman's shelf and his
+ * with: the loadout's pack, the secure container, Bill's shelf and his
  * table.
  *
  * It is the tutorial's `CountSelectorUI` (a +/- pair and a running total) made

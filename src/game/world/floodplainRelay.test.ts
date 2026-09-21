@@ -277,7 +277,7 @@ describe('a fresh save, from the front door', () => {
   it('walks to every landmark on the home bank, and not to the vault or the shoal', () => {
     // The shoal's cache is behind the SURF door, which is not a door a fresh
     // save can open: nothing it fields knows the move, and the disc is a
-    // barter it has not stood long enough with the Ferryman to be offered. It
+    // barter it has not stood long enough with Bill to be offered. It
     // is named here rather than filtered out, because "what a fresh save can
     // walk to" is the whole point of this file.
     const shoal = WORLD_POIS.find((poi) => poi.id === 'floodplain-shoal-cache')!;

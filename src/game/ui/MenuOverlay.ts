@@ -295,7 +295,7 @@ export class MenuOverlay {
    * a list can stay one line a row and still show the Pokemon it is naming.
    *
    * The swap is scoped to the control's own window, because a screen may hold
-   * two lists that each answer for themselves - the Ferryman's shelf and his
+   * two lists that each answer for themselves - Bill's shelf and his
    * barter table are one screen and two counters. Swept across the whole
    * screen, pointing at a Potion on the shelf blanked the pane under the barter
    * table, and the table's answer only came back by pointing at the table.
@@ -393,7 +393,7 @@ const SCROLL_ENTRIES = 'button, .px-empty';
  *
  * `.px-window` is the frame, and a button or a chip wears it too (a window that
  * is also a button keeps its frame). So `closest('.px-window')` from a chip or
- * from the KEEP THEM button on the Ferryman's armed deal returns *that control*,
+ * from the KEEP THEM button on Bill's armed deal returns *that control*,
  * whose own subtree holds no panes at all - and the pane under the list stopped
  * answering for the thing being asked about. Walking up until a window with a
  * pane in it is found skips the control-shaped ones; a screen with no panes at
@@ -442,7 +442,7 @@ const MORE_STRIP_UNITS = 13;
  * that can be down there: rows are laid out from text, so a pane routinely
  * overflows itself by a fraction of a game pixel, and asking whether that is
  * more than one *screen* pixel gave a different answer at every scale - the
- * Ferryman's shelf fitted its five rows at 2x and grew a MORE strip over the
+ * Bill's shelf fitted its five rows at 2x and grew a MORE strip over the
  * fifth at 4x, off half a game pixel of rounding.
  */
 export function hasMoreBelow(

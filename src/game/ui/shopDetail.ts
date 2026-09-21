@@ -2,7 +2,7 @@ import { escapeAttribute } from './pixelUi';
 
 /**
  * How the two places that sell something say what it is, what it costs and why
- * you cannot have it - the Outfitter's ladder and the Ferryman's counter.
+ * you cannot have it - Brock's ladder and Bill's counter.
  *
  * It exists because of one fault, and the fault is worth writing down: a rung's
  * subtitle used to be its *price* while it was unbought and its *effect* once it
@@ -132,7 +132,7 @@ export function shopDetailPane(options: ShopDetailOptions): string {
  * cannot drift into saying the same fact two ways.
  *
  * `held` is the number counted the way that half is *spendable* rather than the
- * raw total - the Outfitter's spare supplies are what is above the wipe kit,
+ * raw total - Brock's spare supplies are what is above the wipe kit,
  * and its Pokemon are what may be released - because a price beside a number
  * the player cannot actually spend is worse than no number at all.
  */

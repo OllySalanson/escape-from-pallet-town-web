@@ -44,7 +44,7 @@ export type BagContents = Readonly<Record<string, number>>;
 export class Bag {
   private readonly contents: Record<string, number>;
   /**
-   * The squares this pack has. A property, so the Outfitter can grow it - and
+   * The squares this pack has. A property, so Brock can grow it - and
    * `null` for the vault at base, which is a warehouse rather than a pack and
    * has never had a size. A raid is what is carried; the stash is what is kept.
    */

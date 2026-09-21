@@ -66,13 +66,13 @@ try {
 
   await shoot('lobby');
   await clickSel('button[data-view="trader"]');
-  await shoot('ferryman');
+  await shoot('bill');
   await press('Escape');
   await clickSel('button[data-view="stash"]');
   await shoot('stash');
   await press('Escape');
-  await clickSel('button[data-view="outfitter"]');
-  await shoot('outfitter');
+  await clickSel('button[data-view="workshop"]');
+  await shoot('workshop');
   await press('Escape');
   await click('Start a raid');
   await shoot('loadout');

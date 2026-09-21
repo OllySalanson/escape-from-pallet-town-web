@@ -299,7 +299,7 @@ describe('extraction loop integration', () => {
 
   it('brings a Pokemon that fainted mid-raid home fainted rather than deleting it', () => {
     // Fainting is a wound, not a death: deleting deployed Pokemon is the wipe's
-    // job, and doing it here too would charge one faint twice. The recovery bay
+    // job, and doing it here too would charge one faint twice. The Pokemon Center
     // revive premium is what a faint actually costs.
     const saves = seedNewPlayer(new MemoryStorage());
     const stash = saves.load()!.stash;
@@ -802,7 +802,7 @@ describe('extraction loop integration', () => {
       // Banking a contract beats no boss and reaches nowhere new.
       defeatedBosses: [],
       reachedInsertions: [],
-      outfitterUpgrades: [],
+      workshopUpgrades: [],
       giftsReceived: [],
       // An authored contract is not a standing one and does not count as one.
       standingContractsBanked: 0,

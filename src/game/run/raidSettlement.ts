@@ -25,7 +25,7 @@ import type { ItemStack, RunSnapshot } from './RunManager';
  * A Pokemon that merely ends a raid hurt comes home hurt; one that fainted
  * comes home fainted rather than deleted, because deleting deployed Pokemon is
  * the wipe's job and doing it here would charge a faint twice. Reviving is then
- * the recovery bay's premium (`../hub/recovery`), which is exactly the price a
+ * the Pokemon Center's premium (`../hub/recovery`), which is exactly the price a
  * faint is supposed to carry.
  *
  * Experience travels the same way, and for the same reason: a raid is played on

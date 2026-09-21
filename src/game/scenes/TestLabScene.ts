@@ -212,7 +212,7 @@ export class TestLabScene extends Phaser.Scene {
           firstContractExtracted: true,
           unlockedInsertions: [...CONTRACT_REWARD_INSERTIONS],
           completedContracts: [FIRST_CONTRACT_ID],
-          outfitterUpgrades: [],
+          workshopUpgrades: [],
         }
         : DEFAULT_RAID_PROGRESS,
     });

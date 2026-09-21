@@ -3,7 +3,12 @@ import type { ContractStack } from '../objectives/contracts';
 import { Stash, type StashedPokemon } from '../stash';
 
 /**
- * The Outfitter: permanent base upgrades, paid for out of the vault.
+ * Brock's Workshop: permanent upgrades to the lab, paid for out of the vault.
+ *
+ * Brock is the practical one, which is why the workshop is his. He is blunt,
+ * competent and unimpressed by your salvage until it is the *right* salvage,
+ * and he builds - he does not deal. That line between him and Bill at the quay
+ * is load-bearing and `./trader` states it in one sentence.
  *
  * The stash was a savings account with no withdrawals. Supplies arrived faster
  * than raids spent them and a caught Pokemon had no use past the sixth, so
@@ -24,12 +29,12 @@ import { Stash, type StashedPokemon } from '../stash';
  *
  * It builds the *base*, and only the base. The raid pack is deliberately not on
  * this ladder and can never be: a pack is gear a player owns, chooses and loses
- * (`../items/packs`), and an Outfitter rung is permanent and cannot be lost, so
+ * (`../items/packs`), and a workshop rung is permanent and cannot be lost, so
  * a rung that grew the pack would have quietly made the one container a wipe
  * destroys into one it could not.
  *
  * Like a contract's reward, an upgrade is never stored beside its effect. The
- * save records which upgrades were built (`raidProgress.outfitterUpgrades`) and
+ * save records which upgrades were built (`raidProgress.workshopUpgrades`) and
  * every effect is derived from that list by the owner that already existed:
  * secure slots in `../objectives/contracts`, healing prices in `./recovery`,
  * the hunter line in `../scenes/raidHud`, the beacon in
@@ -37,16 +42,16 @@ import { Stash, type StashedPokemon } from '../stash';
  *
  * Everything here is a pure function over the stash, so the rules about what
  * may be spent are testable without Phaser; `HubScene` only renders them and
- * `SaveManager.buildOutfitterUpgrade()` is the one path that spends.
+ * `SaveManager.buildWorkshopUpgrade()` is the one path that spends.
  */
 
-export interface OutfitterCost {
+export interface WorkshopCost {
   /** How many banked Pokemon are released to build this. The player names them. */
   readonly pokemon: number;
   readonly supplies: readonly ContractStack[];
 }
 
-export interface OutfitterUpgrade {
+export interface WorkshopUpgrade {
   readonly id: string;
   readonly name: string;
   /**
@@ -65,13 +70,13 @@ export interface OutfitterUpgrade {
   readonly icon: string;
   /** The upgrade that must already stand before this one is offered. */
   readonly requires?: string;
-  readonly cost: OutfitterCost;
+  readonly cost: WorkshopCost;
   /** Adds one column to the secure container. */
   readonly secureItemStack?: boolean;
   /** Adds one protected Pokemon to the secure slot. */
   readonly securePokemon?: boolean;
   /**
-   * The share of every listed recovery bay price still charged once this
+   * The share of every listed Pokemon Center price still charged once this
    * stands. It scales the *share* of a raid a treatment costs, never an
    * absolute time - see `./recovery` for why. The lowest built share applies.
    */
@@ -102,7 +107,7 @@ export interface OutfitterUpgrade {
  * decision are mid-priced, and the second protected Pokemon - the strongest
  * thing on the list - costs the most.
  */
-export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
+export const WORKSHOP_UPGRADES: readonly WorkshopUpgrade[] = [
   {
     id: 'radio-mast',
     icon: 'radio-mast',
@@ -167,20 +172,24 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     secureItemStack: true,
   },
   {
+    // The two ids below still read `recovery-bay`: an id is what the save
+    // file holds (`raidProgress.workshopUpgrades`), so it is wire format and
+    // not a name anybody reads. Renaming one would quietly un-build it on
+    // every existing save, which is a worse price than a stale word.
     id: 'recovery-bay-1',
     icon: 'super-potion',
-    name: 'Recovery bay I',
-    effect: 'Recovery prices drop a quarter.',
-    detail: 'Every recovery bay price - healing, curing and reviving - costs a quarter less raid time.',
+    name: 'Healing machine I',
+    effect: 'Treatment prices drop a quarter.',
+    detail: 'Brock fits the Center with a better machine: every price Nurse Joy quotes - healing, curing and reviving - costs a quarter less raid time.',
     cost: { pokemon: 2, supplies: [{ itemId: 'linen-roll', quantity: 2 }] },
     recoveryPriceShare: 0.75,
   },
   {
     id: 'recovery-bay-2',
     icon: 'super-potion',
-    name: 'Recovery bay II',
-    effect: 'Recovery prices drop to half.',
-    detail: 'Every recovery bay price - healing, curing and reviving - costs half the raid time it started at.',
+    name: 'Healing machine II',
+    effect: 'Treatment prices drop to half.',
+    detail: 'A second machine beside the first: every price Nurse Joy quotes costs half the raid time it started at.',
     requires: 'recovery-bay-1',
     cost: {
       pokemon: 3,
@@ -197,7 +206,7 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
     name: 'Quarantine ward',
     effect: 'One heal per raid, free of clock.',
     detail:
-      'Once per raid, the bay heals and cures one Pokémon free of clock - whoever it saves the most on. A revive still costs its premium.',
+      'Once per raid, Nurse Joy heals and cures one Pokémon free of clock - whoever it saves the most on. A revive still costs its premium.',
     cost: {
       pokemon: 2,
       supplies: [
@@ -209,22 +218,22 @@ export const OUTFITTER_UPGRADES: readonly OutfitterUpgrade[] = [
   },
 ];
 
-export function getOutfitterUpgrade(id: string): OutfitterUpgrade | undefined {
-  return OUTFITTER_UPGRADES.find((upgrade) => upgrade.id === id);
+export function getWorkshopUpgrade(id: string): WorkshopUpgrade | undefined {
+  return WORKSHOP_UPGRADES.find((upgrade) => upgrade.id === id);
 }
 
 /** Every built upgrade the ladder still knows, once each, in ladder order. */
-export function builtUpgrades(builtIds: readonly string[]): readonly OutfitterUpgrade[] {
-  return OUTFITTER_UPGRADES.filter((upgrade) => builtIds.includes(upgrade.id));
+export function builtUpgrades(builtIds: readonly string[]): readonly WorkshopUpgrade[] {
+  return WORKSHOP_UPGRADES.filter((upgrade) => builtIds.includes(upgrade.id));
 }
 
-/** Columns the Outfitter has added to the secure container. */
-export function outfitterSecureItemStacks(builtIds: readonly string[]): number {
+/** Columns Brock has added to the secure container. */
+export function workshopSecureItemStacks(builtIds: readonly string[]): number {
   return builtUpgrades(builtIds).filter((upgrade) => upgrade.secureItemStack).length;
 }
 
-/** Protected Pokemon the Outfitter has added to the secure slot. */
-export function outfitterSecurePokemon(builtIds: readonly string[]): number {
+/** Protected Pokemon Brock has added to the secure slot. */
+export function workshopSecurePokemon(builtIds: readonly string[]): number {
   return builtUpgrades(builtIds).filter((upgrade) => upgrade.securePokemon).length;
 }
 
@@ -262,10 +271,10 @@ export const FINISHED_BASE_PAY: readonly SupplyItemId[] = ['antidote', 'great-ba
  * a reward is always something the player has a use for. Once the whole ladder
  * stands nothing wants a material any more, and the board pays in supplies.
  */
-export function outfitterMaterialKinds(builtIds: readonly string[]): readonly SupplyItemId[] {
+export function workshopMaterialKinds(builtIds: readonly string[]): readonly SupplyItemId[] {
   const outstanding = [
     ...new Set(
-      OUTFITTER_UPGRADES.filter((upgrade) => !builtIds.includes(upgrade.id)).flatMap((upgrade) =>
+      WORKSHOP_UPGRADES.filter((upgrade) => !builtIds.includes(upgrade.id)).flatMap((upgrade) =>
         upgrade.cost.supplies.map(({ itemId }) => itemId),
       ),
     ),
@@ -286,7 +295,7 @@ export function beaconUnlockAtMs(raidDurationMs: number): number {
 }
 
 /** What the vault is holding that a payment may touch, for one save. */
-export interface OutfitterVault {
+export interface WorkshopVault {
   readonly stash: Stash;
   /** The species this save is re-issued after a wipe. Never payment. */
   readonly starterSpeciesId: string | null;
@@ -310,7 +319,7 @@ export const LAST_FIT_REFUSAL = 'Your last Pokémon fit to raid';
  * the original. And the last Pokemon fit to raid, because every path in this
  * game has to leave the player able to attempt a run.
  */
-export function paymentCandidates(vault: OutfitterVault): readonly PaymentCandidate[] {
+export function paymentCandidates(vault: WorkshopVault): readonly PaymentCandidate[] {
   const stored = vault.stash.listPokemon();
   const fit = stored.filter((entry) => !entry.pokemon.isFainted);
   return stored.map((entry) => {
@@ -325,12 +334,12 @@ export function paymentCandidates(vault: OutfitterVault): readonly PaymentCandid
 }
 
 /**
- * How many of one supply the Outfitter may take from this vault: whatever is
+ * How many of one supply Brock may take from this vault: whatever is
  * above the kit base restocks after a wipe. Spending into that kit would be
  * refunded by the next wipe, which would make wiping a way to build a base for
  * nothing. The kit is `Stash`'s rule, so this only asks it.
  */
-export function spendableSupply(vault: OutfitterVault, itemId: string): number {
+export function spendableSupply(vault: WorkshopVault, itemId: string): number {
   return vault.stash.spareCount(itemId);
 }
 
@@ -339,7 +348,7 @@ export function spendableSupply(vault: OutfitterVault, itemId: string): number {
  * shortfall the restock would then make good. Asked of the price as a whole,
  * because two stacks that serve the same need are spare together, not each.
  */
-function canSpareSupplies(vault: OutfitterVault, supplies: readonly ContractStack[]): boolean {
+function canSpareSupplies(vault: WorkshopVault, supplies: readonly ContractStack[]): boolean {
   const after: Record<string, number> = { ...vault.stash.listItems() };
   for (const { itemId, quantity } of supplies) {
     if ((after[itemId] ?? 0) < quantity) {
@@ -360,7 +369,7 @@ function canSpareSupplies(vault: OutfitterVault, supplies: readonly ContractStac
  * Pokemon at base is spendable, releasing them all would leave only the fainted
  * behind, so one of them is always held back.
  */
-export function payablePokemonCount(vault: OutfitterVault): number {
+export function payablePokemonCount(vault: WorkshopVault): number {
   const candidates = paymentCandidates(vault);
   const spendable = candidates.filter((candidate) => candidate.refusal === undefined);
   const fit = candidates.filter((candidate) => !candidate.stored.pokemon.isFainted);
@@ -371,13 +380,13 @@ export function payablePokemonCount(vault: OutfitterVault): number {
   return fitKeptRegardless ? spendable.length : Math.max(0, spendable.length - 1);
 }
 
-export type OutfitterOfferState ='built' | 'locked' | 'open';
+export type WorkshopOfferState ='built' | 'locked' | 'open';
 
-export interface OutfitterOffer {
-  readonly upgrade: OutfitterUpgrade;
-  readonly state: OutfitterOfferState;
+export interface WorkshopOffer {
+  readonly upgrade: WorkshopUpgrade;
+  readonly state: WorkshopOfferState;
   /** The upgrade a locked rung is waiting on. */
-  readonly requires?: OutfitterUpgrade;
+  readonly requires?: WorkshopUpgrade;
   /** How many more spendable Pokemon the price needs. Zero when it is covered. */
   readonly pokemonShort: number;
   /** Supplies still short, after the protected kit is set aside. */
@@ -386,15 +395,15 @@ export interface OutfitterOffer {
 }
 
 /** The whole ladder as the lobby lists it, judged against this vault. */
-export function outfitterOffers(
-  vault: OutfitterVault,
+export function workshopOffers(
+  vault: WorkshopVault,
   builtIds: readonly string[],
-): readonly OutfitterOffer[] {
+): readonly WorkshopOffer[] {
   const payablePokemon = payablePokemonCount(vault);
 
-  return OUTFITTER_UPGRADES.map((upgrade) => {
-    const requires = upgrade.requires === undefined ? undefined : getOutfitterUpgrade(upgrade.requires);
-    const state: OutfitterOfferState = builtIds.includes(upgrade.id)
+  return WORKSHOP_UPGRADES.map((upgrade) => {
+    const requires = upgrade.requires === undefined ? undefined : getWorkshopUpgrade(upgrade.requires);
+    const state: WorkshopOfferState = builtIds.includes(upgrade.id)
       ? 'built'
       : requires !== undefined && !builtIds.includes(requires.id)
         ? 'locked'
@@ -431,7 +440,7 @@ export type PaymentRefusal =
   | 'supplies-short';
 
 export type PaymentCheck =
-  | { readonly ok: true; readonly upgrade: OutfitterUpgrade; readonly pokemon: readonly StashedPokemon[] }
+  | { readonly ok: true; readonly upgrade: WorkshopUpgrade; readonly pokemon: readonly StashedPokemon[] }
   | { readonly ok: false; readonly refusal: PaymentRefusal; readonly message: string };
 
 /**
@@ -442,14 +451,14 @@ export type PaymentCheck =
  * substitute is ever chosen on their behalf.
  */
 export function checkPayment(
-  vault: OutfitterVault,
+  vault: WorkshopVault,
   builtIds: readonly string[],
   upgradeId: string,
   pokemonIds: readonly string[],
 ): PaymentCheck {
-  const upgrade = getOutfitterUpgrade(upgradeId);
+  const upgrade = getWorkshopUpgrade(upgradeId);
   if (!upgrade) {
-    return refuse('unknown-upgrade', 'The Outfitter does not build that.');
+    return refuse('unknown-upgrade', 'Brock does not build that.');
   }
   if (builtIds.includes(upgrade.id)) {
     return refuse('already-built', `${upgrade.name} is already built.`);
@@ -457,7 +466,7 @@ export function checkPayment(
   if (upgrade.requires !== undefined && !builtIds.includes(upgrade.requires)) {
     return refuse(
       'locked',
-      `${upgrade.name} needs ${getOutfitterUpgrade(upgrade.requires)?.name ?? upgrade.requires} first.`,
+      `${upgrade.name} needs ${getWorkshopUpgrade(upgrade.requires)?.name ?? upgrade.requires} first.`,
     );
   }
 
@@ -503,7 +512,7 @@ export function checkPayment(
  * payment is valid, so a refused purchase costs nothing.
  */
 export function takePayment(
-  vault: OutfitterVault,
+  vault: WorkshopVault,
   builtIds: readonly string[],
   upgradeId: string,
   pokemonIds: readonly string[],

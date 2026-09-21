@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { pricePart, shopDetailPane, shopPaidColumn, shopPriceColumn } from './shopDetail';
-import { OUTFITTER_UPGRADES } from '../hub/outfitter';
+import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { TRADER_BARTERS } from '../hub/trader';
 import { getItemById } from '../items';
 
 /**
  * The shelves' one rule, held where it is cheap to hold: what a thing does and
  * what it costs are two facts, and a screen never shows one in place of the
- * other. The Outfitter used to - a rung's line was its price until it was
+ * other. Brock used to - a rung's line was its price until it was
  * built and its effect afterwards - which is the fault this module exists for.
  */
 describe('a priced row', () => {
@@ -93,7 +93,7 @@ describe('what the two shelves are written to say', () => {
       .filter(Boolean);
 
   it('never repeats a rung’s effect in its own detail', () => {
-    for (const upgrade of OUTFITTER_UPGRADES) {
+    for (const upgrade of WORKSHOP_UPGRADES) {
       expect(sentences(upgrade.detail)).not.toContain(upgrade.effect.toLowerCase());
     }
   });

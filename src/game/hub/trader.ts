@@ -10,16 +10,20 @@ import {
 import type { Stash } from '../stash';
 
 /**
- * The Ferryman: the trader who ties up at the base quay, and the one place
+ * Bill: the collector who ties up at the lab's own quay, and the one place
  * money in this game does anything.
  *
- * He is not the Outfitter and the two must never blur into one screen. The
- * Outfitter is the hideout - it takes banked Pokemon and materials and builds
- * something into the base that stands for good, and it hands nothing back. The
- * Ferryman is a person with a boat: he takes what you carried out of a raid and
- * gives you goods, this trip only, and he remembers whether you are worth
- * opening the hold for. One sentence: **the Outfitter builds, the Ferryman
- * deals.**
+ * He is not Brock and the two must never blur into one screen. Brock has the
+ * workshop - he takes banked Pokemon and materials and builds something into
+ * the lab that stands for good, and he hands nothing back. Bill has a boat and
+ * a hold full of things he has collected: he takes what you carried out of a
+ * raid and gives you goods, this trip only, and he remembers whether you are
+ * worth opening the hold for. One sentence: **Brock builds, Bill deals.**
+ *
+ * Play him as the collector he is rather than as a shopkeeper. He does not
+ * want your money so much as he wants the *thing you found*, which is why his
+ * four standing tiers read you rather than your purse and why the best things
+ * on the boat can only be bartered for.
  *
  * Four constraints are the captain's ruling of 2026-09-19 and not
  * implementation detail. They are written here because this file is where all
@@ -64,7 +68,7 @@ export interface TraderStanding {
   readonly name: string;
   /** Standing points this tier opens at. */
   readonly points: number;
-  /** What the tier is, in the Ferryman's own reading of you. */
+  /** What the tier is, in Bill's own reading of you. */
   readonly note: string;
   /** Units of stock he will sell between one raid and the next. */
   readonly ration: number;
@@ -121,7 +125,7 @@ export const STANDING_PER_BOSS = 3;
 export const STANDING_PER_SCRIP = 200;
 
 /**
- * The part of the save the Ferryman reads. Every field is a record of something
+ * The part of the save Bill reads. Every field is a record of something
  * that happened, never an effect: which tier the player stands at, what is on
  * the shelf and what the ration is are all derived from these four numbers, so
  * a save can no more disagree with his standing than it can with the secure
@@ -183,7 +187,7 @@ export function getTraderStanding(id: TraderStandingId): TraderStanding {
  * scrip, so a Potion at 120 is about two raids of scavenging and a Super Potion
  * at 260 is four. A raid is measured at three Potions of consumption, so even a
  * player who spends every note he finds is replacing well under half of what a
- * raid drinks: the Ferryman is a backstop on a bad week, never a supply line.
+ * raid drinks: Bill is a backstop on a bad week, never a supply line.
  * That is what keeps scarcity real with money in the game.
  */
 export interface TraderStockItem {
@@ -205,7 +209,7 @@ export const TRADER_STOCK: readonly TraderStockItem[] = [
  *
  * Every price here is materials, and never scrip, which is the captain's third
  * constraint kept literally - there is no sum that buys a Life Orb. It also
- * puts the barter table and the Outfitter ladder in competition for the same
+ * puts the barter table and the workshop ladder in competition for the same
  * six materials, which is the point: a parts crate is a locker or it is a Focus
  * Band, and a raid only finds one or two.
  *
@@ -315,7 +319,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
   // The two machines that are a route as well as a move. They are the boat's
   // own goods for the same reason HM06 is: a field move opens a door for good
   // (`world/fieldMoves.ts`), so it must not be a roll of the loot pool, and it
-  // must not be buyable with money either - the Ferryman takes what a raid
+  // must not be buyable with money either - Bill takes what a raid
   // found and nothing else. A player who wants the wood open goes and finds
   // the parts for it.
   {
@@ -367,8 +371,8 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
  * this trip only.
  *
  * This is the heavy scrip drain, and it is the clearest statement of what the
- * Ferryman is. The Outfitter *builds* a secure locker and it stands for every
- * raid afterwards; the Ferryman *rents* you the same two squares for the trip
+ * Bill is. Brock *builds* a secure locker and it stands for every
+ * raid afterwards; Bill *rents* you the same two squares for the trip
  * and they are gone when the raid resolves, filled or not. Renting is how a
  * player protects a haul before they can afford to build, and it never makes
  * the locker rungs pointless: at 250 a raid, the first locker pays for itself
@@ -598,7 +602,7 @@ export function formatTraderStacks(stacks: readonly TraderStack[]): string {
 /**
  * Every found-only kind a deal on the boat still wants, once each.
  *
- * It is the barter table's answer to `outfitterMaterialKinds`, and it exists so
+ * It is the barter table's answer to `workshopMaterialKinds`, and it exists so
  * a reviewer can see in one call that the two sinks pull on the same six
  * materials - which is the whole reason the barter table is a real cost and not
  * a second shelf.

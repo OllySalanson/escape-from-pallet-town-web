@@ -1412,7 +1412,7 @@ describe('SaveManager', () => {
         firstContractExtracted: completedContracts.length > 0,
         unlockedInsertions: ['floodplain-relay'],
         completedContracts: [...completedContracts],
-        outfitterUpgrades: [],
+        workshopUpgrades: [],
         defeatedBosses: [],
         reachedInsertions: [],
         standingContractsBanked: 0,
@@ -1422,7 +1422,7 @@ describe('SaveManager', () => {
     return saves;
   }
 
-  /** A save that stands high enough with the Ferryman to be sold anything. */
+  /** A save that stands high enough with Bill to be sold anything. */
   function counterSave(storage: MemoryStorage, scrip = 1_000): SaveManager {
     const saves = outfittedSave(storage);
     const game = saves.load()!;
@@ -1584,7 +1584,7 @@ describe('SaveManager', () => {
   });
 
   it.each([1, 2, 3, 4, 5])(
-    'opens a version %i save written before the Outfitter with nothing built and no ward bed used',
+    'opens a version %i save written before Brock with nothing built and no ward bed used',
     (version) => {
       const storage = new MemoryStorage();
       storage.setItem(
@@ -1603,7 +1603,7 @@ describe('SaveManager', () => {
 
       const restored = new SaveManager(storage).load();
       expect(restored).not.toBeNull();
-      expect(restored?.raidProgress.outfitterUpgrades).toEqual([]);
+      expect(restored?.raidProgress.workshopUpgrades).toEqual([]);
       expect(restored?.wardTreatmentsUsed).toBe(0);
     },
   );
@@ -1620,7 +1620,7 @@ describe('SaveManager', () => {
         bag: {},
         stash: { pokemon: [], items: {} },
         raidProgress: {
-          outfitterUpgrades: ['secure-locker-1', 'secure-locker-1', 'gear-tier-9', 7, 'beacon'],
+          workshopUpgrades: ['secure-locker-1', 'secure-locker-1', 'gear-tier-9', 7, 'beacon'],
           defeatedBosses: [],
           reachedInsertions: [],
         },
@@ -1629,20 +1629,47 @@ describe('SaveManager', () => {
     );
 
     const restored = new SaveManager(storage).load();
-    expect(restored?.raidProgress.outfitterUpgrades).toEqual(['secure-locker-1', 'beacon']);
+    expect(restored?.raidProgress.workshopUpgrades).toEqual(['secure-locker-1', 'beacon']);
     expect(restored?.wardTreatmentsUsed).toBe(0);
+  });
+
+  it('still reads a save that built its upgrades when the workshop was the Outfitter', () => {
+    // The field was `outfitterUpgrades` before the base's four people had
+    // names. A save is wire format: renaming the key without reading the old
+    // one would have quietly un-built every rung somebody had paid for.
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 5,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: {},
+        stash: { pokemon: [], items: {} },
+        raidProgress: {
+          outfitterUpgrades: ['secure-locker-1', 'radio-mast'],
+          defeatedBosses: [],
+          reachedInsertions: [],
+        },
+      }),
+    );
+
+    const restored = new SaveManager(storage).load();
+
+    expect(restored?.raidProgress.workshopUpgrades).toEqual(['secure-locker-1', 'radio-mast']);
   });
 
   it('builds an upgrade out of the named Pokemon and spare supplies, and keeps it across a reload', () => {
     const storage = new MemoryStorage();
     const saves = outfittedSave(storage);
 
-    const built = saves.buildOutfitterUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2']);
+    const built = saves.buildWorkshopUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2']);
     expect(built).toMatchObject({ ok: true, saved: true });
 
     // A second manager over the same storage is a page reload.
     const reloaded = new SaveManager(storage).load();
-    expect(reloaded?.raidProgress.outfitterUpgrades).toEqual(['secure-locker-1']);
+    expect(reloaded?.raidProgress.workshopUpgrades).toEqual(['secure-locker-1']);
     expect(reloaded?.stash.listPokemon().map(({ id }) => id)).toEqual(['partner', 'bulbasaur-1']);
     // Two parts crates are spent; the raid's own kit is not touched.
     expect(reloaded?.stash.itemCount('parts-crate')).toBe(2);
@@ -1745,16 +1772,16 @@ describe('SaveManager', () => {
     const saves = outfittedSave(storage);
     const before = storage.getItem(SAVE_KEY);
 
-    expect(saves.buildOutfitterUpgrade('secure-locker-1', ['partner', 'pidgey-1'])).toMatchObject({
+    expect(saves.buildWorkshopUpgrade('secure-locker-1', ['partner', 'pidgey-1'])).toMatchObject({
       ok: false,
       refusal: 'pokemon-not-spendable',
       saved: false,
     });
-    expect(saves.buildOutfitterUpgrade('secure-locker-2', ['pidgey-1'])).toMatchObject({ ok: false });
+    expect(saves.buildWorkshopUpgrade('secure-locker-2', ['pidgey-1'])).toMatchObject({ ok: false });
     expect(storage.getItem(SAVE_KEY)).toBe(before);
 
-    expect(saves.buildOutfitterUpgrade('radio-mast', ['pidgey-1'])).toMatchObject({ ok: true });
-    expect(saves.buildOutfitterUpgrade('radio-mast', ['pidgey-2'])).toMatchObject({
+    expect(saves.buildWorkshopUpgrade('radio-mast', ['pidgey-1'])).toMatchObject({ ok: true });
+    expect(saves.buildWorkshopUpgrade('radio-mast', ['pidgey-2'])).toMatchObject({
       ok: false,
       refusal: 'already-built',
     });
@@ -1775,9 +1802,9 @@ describe('SaveManager', () => {
       starterSpeciesId: 'charmander',
     });
 
-    expect(saves.buildOutfitterUpgrade('radio-mast', ['only'])).toMatchObject({ ok: false, saved: false });
+    expect(saves.buildWorkshopUpgrade('radio-mast', ['only'])).toMatchObject({ ok: false, saved: false });
     expect(saves.load()?.stash.listPokemon()).toHaveLength(1);
-    expect(saves.load()?.raidProgress.outfitterUpgrades).toEqual([]);
+    expect(saves.load()?.raidProgress.workshopUpgrades).toEqual([]);
   });
 
   it('never takes the kit a wipe would hand straight back', () => {
@@ -1797,7 +1824,7 @@ describe('SaveManager', () => {
     });
 
     // Materials are the whole price, so the kit is never in reach of it.
-    expect(saves.buildOutfitterUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2'])).toMatchObject({ ok: true });
+    expect(saves.buildWorkshopUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2'])).toMatchObject({ ok: true });
     expect(saves.load()!.stash.supplyShortfall()).toEqual({});
     expect(saves.load()!.stash.itemCount('poke-ball')).toBe(5);
     expect(saves.load()!.stash.itemCount('potion')).toBe(3);
@@ -1828,7 +1855,7 @@ describe('SaveManager', () => {
       'survey-the-braid',
       'cordon-ledger',
     ]);
-    expect(saves.buildOutfitterUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2'])).toMatchObject({ ok: true });
+    expect(saves.buildWorkshopUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2'])).toMatchObject({ ok: true });
     const held = saves.load()!.stash.listItems();
 
     // The ledger's stack and the locker's stack: four protected, one at risk.
@@ -1853,7 +1880,7 @@ describe('SaveManager', () => {
       const storage = new MemoryStorage();
       const saves = outfittedSave(storage);
       const game = saves.load()!;
-      saves.save({ ...game, raidProgress: { ...game.raidProgress, outfitterUpgrades: upgrades } });
+      saves.save({ ...game, raidProgress: { ...game.raidProgress, workshopUpgrades: upgrades } });
       saves.applyWipeLoss(['partner', 'pidgey-1', 'pidgey-2'], [], {
         pokemonIds: ['partner', 'pidgey-1'],
       });
@@ -2145,7 +2172,7 @@ describe('SaveManager', () => {
       ]);
     });
 
-    it('pays the Outfitter with a Pokemon kept in a later box, and forgets the box it left', () => {
+    it('pays Brock with a Pokemon kept in a later box, and forgets the box it left', () => {
       const storage = new MemoryStorage();
       const saves = outfittedSave(storage);
       const loaded = saves.load()!;
@@ -2154,7 +2181,7 @@ describe('SaveManager', () => {
       loaded.stash.movePokemon('pidgey-2', second);
       saves.save({ ...loaded, stash: loaded.stash });
 
-      const built = saves.buildOutfitterUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2']);
+      const built = saves.buildWorkshopUpgrade('secure-locker-1', ['pidgey-1', 'pidgey-2']);
       expect(built).toMatchObject({ ok: true, saved: true });
 
       const reloaded = new SaveManager(storage).load();

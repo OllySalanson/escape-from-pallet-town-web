@@ -18,7 +18,7 @@ clicks, from the title screen down to a raid on Viridian Forest.
 | `title-1200x768.png` | the third row, and the line under the menu that speaks for it |
 | `title-question-1200x768.png` | the second question, asked only once there is a run to carry on |
 | `raid-1200x768.png` | the corner where the raid clock lives, saying which game this is |
-| `lobby-960x720.png` | the lobby at the smallest stage: the title bar names the run, and the Ferryman deals |
+| `lobby-960x720.png` | the lobby at the smallest stage: the title bar names the run, and Bill deals |
 | `raid-960x720.png` | the same stage with the objective chip open, so the third hint can be checked against the clock chip |
 
 The thing worth checking by eye on the title is that nothing about the ordinary

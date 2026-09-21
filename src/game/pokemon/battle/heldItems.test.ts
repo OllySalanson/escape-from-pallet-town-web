@@ -41,7 +41,7 @@ describe('the gear catalogue', () => {
     }
   });
 
-  it('is never a supply: no kit line, no Outfitter price, no contract payout', () => {
+  it('is never a supply: no kit line, no Brock price, no contract payout', () => {
     // `SupplyItemId` is what enforces the last two at the type level; this is
     // the runtime half of the same promise.
     for (const item of HELD_ITEM_DEFINITIONS) {

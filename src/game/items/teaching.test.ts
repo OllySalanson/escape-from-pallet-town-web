@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TRADER_BARTERS, TRADER_STOCK } from '../hub/trader';
-import { outfitterMaterialKinds } from '../hub/outfitter';
+import { workshopMaterialKinds } from '../hub/workshop';
 import { BULBASAUR, CHARMANDER, PIKACHU, Pokemon, SQUIRTLE } from '../pokemon';
 import { MACHINES } from '../pokemon/machines';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
@@ -186,10 +186,10 @@ describe('where machines come from', () => {
   });
 
   it('is never something a contract or the standing board can pay out', () => {
-    const everyRung = outfitterMaterialKinds([]);
+    const everyRung = workshopMaterialKinds([]);
 
     for (const id of everyRung) {
-      expect(isMachine(id), `${id} is an Outfitter price`).toBe(false);
+      expect(isMachine(id), `${id} is a Brock price`).toBe(false);
     }
   });
 });

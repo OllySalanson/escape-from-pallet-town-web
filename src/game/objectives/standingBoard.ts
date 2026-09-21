@@ -1,4 +1,4 @@
-import { outfitterMaterialKinds } from '../hub/outfitter';
+import { workshopMaterialKinds } from '../hub/workshop';
 import { ITEMS, type SupplyItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import { Pokemon } from '../pokemon';
@@ -36,7 +36,7 @@ import { formatStacks } from './RunObjectives';
  * Nothing here is stored. The save keeps one number - how many standing
  * contracts have been banked - and the whole board is derived from that and
  * from the rest of `raidProgress`: which maps the player can deploy to, which
- * bosses still hold their gates, which Outfitter rungs are still unbuilt. The
+ * bosses still hold their gates, which workshop rungs are still unbuilt. The
  * same progress always offers the same board, so the lobby that lists a
  * contract, the raid that carries it and the save that pays it can never
  * disagree, and a board cannot be re-rolled by reloading. It turns over when
@@ -56,8 +56,8 @@ import { formatStacks } from './RunObjectives';
  * steps down from the top to nothing, so the safe raid is still on offer: it
  * just pays what a safe raid is worth.
  *
- * It pays in Outfitter materials - the radio valves, cable and the like the unbuilt rungs still cost,
- * and Pokemon, which are the ladder's real price - because the Outfitter is the
+ * It pays in Brock materials - the radio valves, cable and the like the unbuilt rungs still cost,
+ * and Pokemon, which are the ladder's real price - because Brock is the
  * only thing in the game that gives a banked reward somewhere to go.
  */
 
@@ -74,7 +74,7 @@ export interface StandingBoardProgress {
    * default, as the save field is.
    */
   readonly openedGates?: readonly string[];
-  readonly outfitterUpgrades: readonly string[];
+  readonly workshopUpgrades: readonly string[];
   readonly unlockedInsertions: readonly string[];
   readonly reachedInsertions: readonly string[];
 }
@@ -146,7 +146,7 @@ export function standingOffers(seed: number, progress: StandingBoardProgress): r
     round,
     mapIds,
     [...openedDoors(progress)].sort(),
-    outfitterMaterialKinds(progress.outfitterUpgrades),
+    workshopMaterialKinds(progress.workshopUpgrades),
   ]);
   const remembered = boards.get(key);
   if (remembered) {
@@ -408,16 +408,16 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   'lamp-oil': 1,
   'mooring-rope': 1,
   // Never actually paid out - a stone is found, not awarded, and
-  // `outfitterMaterialKinds()` is what the board draws from - but priced here
+  // `workshopMaterialKinds()` is what the board draws from - but priced here
   // because this record is exhaustive on purpose, so that adding an item makes
   // the compiler ask what it is worth instead of a default answering for it.
   'thunder-stone': 1,
   'linen-roll': 1,
   // Zero on purpose, all eight, and they must stay zero. A machine is found in
-  // the field or bartered off the Ferryman, and a board that paid one out every
+  // the field or bartered off Bill, and a board that paid one out every
   // few raids would turn the one permanent thing a raid can bring home into a
   // subscription. The board cannot reach them anyway - it draws only from
-  // `outfitterMaterialKinds()` - so these exist to make the compiler ask.
+  // `workshopMaterialKinds()` - so these exist to make the compiler ask.
   'tm09-bullet-seed': 0,
   'tm13-ice-beam': 0,
   'tm23-iron-tail': 0,
@@ -430,7 +430,7 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   // with the pack; a board that paid it out would be a faucet that repeats for
   // as long as the player keeps banking, which is the one thing the captain's
   // fourth constraint forbids. The board cannot reach it anyway - it draws only
-  // from `outfitterMaterialKinds()`, which is Outfitter prices or
+  // from `workshopMaterialKinds()`, which is Brock prices or
   // `FINISHED_BASE_PAY`, and scrip is in neither - so this entry exists to make
   // the compiler ask rather than to be read.
   scrip: 0,
@@ -477,7 +477,7 @@ function draftContract(
       ...(draft.requiredExitLabel ? { requiredExitLabel: draft.requiredExitLabel } : {}),
       ...(pressure > 0 ? { hunterPressure: pressure } : {}),
       ...(draft.sealedBehind ? { sealedBehind: draft.sealedBehind } : {}),
-      reward: draftReward(rng, ground.map, pressure, draft, progress.outfitterUpgrades),
+      reward: draftReward(rng, ground.map, pressure, draft, progress.workshopUpgrades),
       briefing: draft.briefing,
       deploymentBriefing: `${draft.deploymentBriefing} Press O for the FIELD GUIDE.`,
     };
@@ -687,7 +687,7 @@ function spreadTiles(
 // ---------------------------------------------------------------------------
 
 /**
- * What a contract pays. The supply is one the Outfitter's unbuilt rungs still
+ * What a contract pays. The supply is one Brock's unbuilt rungs still
  * cost (a delivery is instead paid back a grade up on what it took), a share
  * larger for every tier of hunter the contract adds. A Pokemon is paid on top
  * wherever the contract cost a fight the player could not decline - a boss, or
@@ -701,7 +701,7 @@ function draftReward(
   draft: Draft,
   builtUpgradeIds: readonly string[],
 ): ContractReward {
-  const kind = draft.paysIn ?? rng.pick(outfitterMaterialKinds(builtUpgradeIds));
+  const kind = draft.paysIn ?? rng.pick(workshopMaterialKinds(builtUpgradeIds));
   // A delivery pays one share more than any other contract: it has to clear
   // what was handed over before it is pay at all.
   const items: ContractStack[] = [
@@ -713,7 +713,7 @@ function draftReward(
       ? [rng.pick(entries)].map((entry) => ({ speciesId: entry.speciesId, level: entry.minLevel }))
       : [];
   return {
-    summary: `${rewardLine({ items, pokemon })}, waiting at base for the Outfitter.`,
+    summary: `${rewardLine({ items, pokemon })}, waiting at base for Brock.`,
     items,
     ...(pokemon.length > 0 ? { pokemon } : {}),
   };

@@ -94,7 +94,7 @@ describe('treating a Pokemon at base with a stash item', () => {
     expect(stash.itemCount('antidote')).toBe(0);
   });
 
-  it('leaves reviving to the recovery bay, so a faint keeps costing what it should', () => {
+  it('leaves reviving to the Pokemon Center, so a faint keeps costing what it should', () => {
     const { stash, pokemon } = stashWith(0);
     pokemon.takeDamage(pokemon.maxHp);
 

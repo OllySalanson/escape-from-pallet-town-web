@@ -48,7 +48,7 @@ export interface EvolutionRule {
  * Stone is an item (`items.ts`); Fire, Water, Leaf and Moon Stones are named by
  * rules here and nothing hands one out, so those lines are as unreachable as
  * the trade ones until a stone is put somewhere a raid can find it. That is a
- * question about loot and the Ferryman's shelf rather than about this table,
+ * question about loot and Bill's shelf rather than about this table,
  * and a stone that does nothing is a worse find than no stone.
  *
  * **What a move a species cannot express does to a learnset** is

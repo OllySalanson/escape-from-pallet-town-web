@@ -77,9 +77,9 @@ const useLabel = (item: ItemDefinition): string => {
     case 'capture-modifier':
       return 'Thrown in a battle, from the BALL command. Nothing to do with it here.';
     case 'material':
-      return 'Carry it home: the Outfitter is the only thing that takes one.';
+      return 'Carry it home: Brock is the only one who takes it.';
     case 'currency':
-      return 'Carry it home: the Ferryman is the only one who takes it.';
+      return 'Carry it home: Bill is the only one who takes it.';
     case 'machine':
       return `Read ${item.displayName} to a Pokémon. A move learned is learned for good.`;
     default:

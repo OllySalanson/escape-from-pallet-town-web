@@ -16,7 +16,7 @@ import {
 } from './packs';
 import { MINIMUM_SUPPLIES } from '../stash/Stash';
 import { WORLD_MAPS } from '../worldMap';
-import { OUTFITTER_UPGRADES } from '../hub/outfitter';
+import { WORKSHOP_UPGRADES } from '../hub/workshop';
 import { TRADER_STOCK, TRADER_BARTERS } from '../hub/trader';
 import { RAID_CONTRACTS } from '../objectives/contracts';
 
@@ -127,13 +127,13 @@ describe('where a pack comes from', () => {
   /**
    * Nothing that repeats may hand one out. A pack is kept by surviving with it,
    * the way gear is kept by carrying it out, so a contract reward, a shelf or an
-   * Outfitter rung paying one would stop the loss meaning anything. The types
+   * workshop rung paying one would stop the loss meaning anything. The types
    * already refuse it - `SupplyItemId` excludes packs - and this says so out
    * loud, because a type can be widened by accident.
    */
   it('is never sold, bartered, built or handed out by a contract', () => {
     const named = [
-      ...OUTFITTER_UPGRADES.flatMap((upgrade) => upgrade.cost.supplies.map(({ itemId }) => itemId)),
+      ...WORKSHOP_UPGRADES.flatMap((upgrade) => upgrade.cost.supplies.map(({ itemId }) => itemId)),
       ...TRADER_STOCK.map((stock) => stock.itemId),
       ...TRADER_BARTERS.flatMap((barter) => [
         barter.gives.itemId,
