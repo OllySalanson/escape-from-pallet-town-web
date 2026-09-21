@@ -67,6 +67,6 @@ export class StarterScene extends Phaser.Scene {
       starterSpeciesId: this.selectedStarterId,
     };
     this.saveManager.save(newGame);
-    this.scene.start('hub', { savedGame: this.saveManager.load() ?? newGame });
+    this.scene.start('base', { savedGame: this.saveManager.load() ?? newGame });
   }
 }

@@ -43,11 +43,14 @@ export function label(image, value, x0, y0, scale, colour) {
   }
 }
 
-/** Multiplies by a 0xRRGGBB tint, the way Phaser tints a tile. */
-export function blit(destination, source, sx, sy, width, height, dx, dy, tint) {
+/**
+ * Multiplies by a 0xRRGGBB tint, the way Phaser tints a tile, and draws it left
+ * for right where the tile says so - see `PropCell.flipX`.
+ */
+export function blit(destination, source, sx, sy, width, height, dx, dy, tint, flipX = false) {
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      const i = ((sy + y) * source.width + sx + x) * 4;
+      const i = ((sy + y) * source.width + sx + (flipX ? width - 1 - x : x)) * 4;
       const alpha = source.data[i + 3];
       if (!alpha) continue;
       let r = source.data[i];
@@ -63,7 +66,7 @@ export function blit(destination, source, sx, sy, width, height, dx, dy, tint) {
   }
 }
 
-export function drawTile(destination, sheet, index, tileX, tileY, tint) {
+export function drawTile(destination, sheet, index, tileX, tileY, tint, flipX = false) {
   if (index < 0) return;
   const columns = sheet.width / TILE_SIZE;
   blit(
@@ -76,6 +79,7 @@ export function drawTile(destination, sheet, index, tileX, tileY, tint) {
     tileX * TILE_SIZE,
     tileY * TILE_SIZE,
     tint,
+    flipX,
   );
 }
 

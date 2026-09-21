@@ -2680,8 +2680,8 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.pendingHubTransition) {
-      if (this.scene.manager.keys.hub) {
-        this.scene.start('hub');
+      if (this.scene.manager.keys.base) {
+        this.scene.start('base', { arrival: 'raid' });
       } else {
         this.scene.start('title');
       }
@@ -2792,7 +2792,10 @@ export class BattleScene extends Phaser.Scene {
         this.scene.start('extraction', { report });
         return;
       }
-      this.scene.start(this.scene.manager.keys.hub ? 'hub' : 'title');
+      this.scene.start(
+        this.scene.manager.keys.base ? 'base' : 'title',
+        this.scene.manager.keys.base ? { arrival: 'raid' } : undefined,
+      );
     });
   }
 }

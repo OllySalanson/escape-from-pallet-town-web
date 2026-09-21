@@ -92,6 +92,15 @@ export interface PropCell {
   readonly solid: boolean;
   /** Drawn over figures, so the player passes behind it. */
   readonly canopy?: boolean;
+  /**
+   * Drawn left for right. A sheet draws the two ends of a symmetrical thing
+   * once and expects the other to be mirrored, and now and then it draws
+   * something else entirely over the second one - the FireRed shop front has a
+   * cat standing in its right-hand pier. A cell that says so is drawn with
+   * another cell's art the right way round rather than approximated with a
+   * neighbour that is nearly the same.
+   */
+  readonly flipX?: boolean;
 }
 
 /**
@@ -172,6 +181,56 @@ export function tileReader(source: Omit<TileSource, 'firstIndex'>, firstIndex: n
   const at = (column: number, row: number): number =>
     firstIndex + row * source.columns + column;
   return { source: { ...source, firstIndex }, at };
+}
+
+/**
+ * The same landmark with one cell drawn from another, mirrored.
+ *
+ * Used where a sheet's own art is wrong rather than missing: see `flipX`.
+ */
+export function withMirroredCell(
+  prop: PropDefinition,
+  at: readonly [number, number],
+  from: readonly [number, number],
+): PropDefinition {
+  const source = prop.cells[from[1] * prop.width + from[0]];
+  const index = at[1] * prop.width + at[0];
+  const target = prop.cells[index];
+  if (source === undefined || target === undefined) {
+    throw new Error(`mirrored cell is outside '${prop.label}'`);
+  }
+  return {
+    ...prop,
+    cells: prop.cells.map((cell, ordinal) =>
+      ordinal === index ? { ...target, tile: source.tile, flipX: true } : cell,
+    ),
+  };
+}
+
+/**
+ * The same landmark with named cells opened up to be stood on.
+ *
+ * A door is the one part of a building that is ground: the player walks into
+ * the doorway exactly as they do in the games this is dressed as, and the
+ * figure is drawn over the dark of the opening. A prop is the last word on its
+ * own tiles (`buildMapLayers`), so this is all it takes.
+ */
+export function withDoorway(
+  prop: PropDefinition,
+  cells: readonly (readonly [number, number])[],
+): PropDefinition {
+  const opened = new Set(cells.map(([x, y]) => y * prop.width + x));
+  for (const index of opened) {
+    if (prop.cells[index] === undefined) {
+      throw new Error(`doorway is outside '${prop.label}'`);
+    }
+  }
+  return {
+    ...prop,
+    cells: prop.cells.map((cell, ordinal) =>
+      opened.has(ordinal) ? { ...cell, solid: false } : cell,
+    ),
+  };
 }
 
 export interface TilesetCatalogue<PropName extends string = string> {

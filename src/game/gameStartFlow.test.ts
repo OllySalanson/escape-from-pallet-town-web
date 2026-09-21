@@ -249,7 +249,7 @@ describe('game start flow', () => {
   });
 
   it.each(['bulbasaur', 'charmander', 'squirtle'] as const)(
-    'commits the selected %s starter to a fresh profile before opening the hub',
+    'commits the selected %s starter to a fresh profile before opening the base',
     (starterSpeciesId) => {
       const values = new Map<string, string>();
       const saves = new SaveManager({
@@ -275,7 +275,7 @@ describe('game start flow', () => {
     },
   );
 
-  it('returns a browser reload to the hub instead of resuming an active raid location', () => {
+  it('returns a browser reload to the base instead of resuming an active raid location', () => {
     const values = new Map<string, string>();
     const saves = new SaveManager({
       getItem: (key) => values.get(key) ?? null,
@@ -302,6 +302,6 @@ describe('game start flow', () => {
     (title as unknown as { startGame(): void }).startGame();
 
     expect(start.mock.calls).toHaveLength(1);
-    expect(start.mock.calls[0]?.[0]).toBe('hub');
+    expect(start.mock.calls[0]?.[0]).toBe('base');
   });
 });

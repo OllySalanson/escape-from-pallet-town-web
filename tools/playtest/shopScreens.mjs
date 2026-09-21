@@ -14,7 +14,7 @@
 // is exactly what a screen-wide detail swap used to do.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { SAVE_KEY, sceneIs } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -126,13 +126,13 @@ try {
     `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('Confirm Bulbasaur')); if (!b) return false; b.click(); return true; })()`,
     { what: 'the starter confirmation' },
   );
-  await page.waitFor(sceneIs('hub'));
+  await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
   await page.evaluate(SEED);
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await page.waitFor(sceneIs('title'));
   await press('Space');
-  await page.waitFor(sceneIs('hub'));
+  await page.waitFor(sceneIs('base'));
   await sleep(500);
 
   // The ladder is laid out in columns, so the cursor is walked with all four
@@ -142,7 +142,7 @@ try {
   const walk = [...times('ArrowDown', 8), 'ArrowRight', ...times('ArrowUp', 8), ...times('ArrowDown', 8)];
 
   console.log('Brock, one rung at a time:');
-  await clickSel('button[data-view="workshop"]');
+  await walkIntoBase(page, 'brocks-workshop');
   await sleep(400);
   const seen = new Map();
   for (const key of ['', ...walk]) {
@@ -181,7 +181,7 @@ try {
   console.log('Bill:');
   await press('Escape');
   await sleep(300);
-  await clickSel('button[data-view="trader"]');
+  await walkIntoBase(page, 'the-quay');
   await sleep(400);
   const shelfReading = await read();
   say(shelfReading);

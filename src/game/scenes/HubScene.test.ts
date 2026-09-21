@@ -870,17 +870,19 @@ describe('what the base screen leads with', () => {
     expect(stash).toContain('data-view="reselect"');
   });
 
-  it('says the swap is there, so a wiped player is not left hunting for it', () => {
+  /**
+   * Oak's Lab is a room, not a lobby. The stash, the Outfitter and the
+   * Ferryman are three other buildings in the yard outside
+   * (`base/doors.ts`), so nothing here may navigate to one - what each of them
+   * holds is said on its own door (`base/doorStatus.ts`), and the swap offer
+   * with it.
+   */
+  it('is a room rather than a lobby, and links to no other screen', () => {
     const hub = createFreshHub();
 
-    // On the card that leads to it, in the help bar rather than in the card's
-    // own line: with somebody hurt the line is already a warning, and a second
-    // sentence made the smallest card the loudest thing on the base screen.
-    const card = markupOf(hub);
-    const stash = card.slice(card.indexOf('data-view="stash"'));
-    expect(stash.slice(0, stash.indexOf('</button>'))).toContain(
-      'Your last partner can be swapped here.',
-    );
+    const lab = markupOf(hub);
+    expect(lab).toContain('Start a raid');
+    expect(lab).not.toContain('data-view=');
   });
 
   /** Playtest 3, D1: home from an extraction at 1 HP with no Potions and four Poke Balls. */
@@ -1048,13 +1050,12 @@ describe('Brock', () => {
     return { hub: hub as WorkshopInternals, start, storage };
   }
 
-  it('is reached from base, beside the raid and the stash', () => {
+  it('is its own building, walked into rather than chosen off the lab screen', () => {
     const { hub } = createWorkshopHub();
 
-    const home = markupOf(hub);
-    expect(home).toContain('data-view="workshop"');
-    expect(home).toContain('0/7 built');
-    expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('data-view="workshop"'));
+    expect(markupOf(hub)).not.toContain('data-view="workshop"');
+    hub.setView('workshop');
+    expect(markupOf(hub)).toContain('Secure locker I');
   });
 
   it('lists every rung with its price, and marks what this vault cannot pay yet', () => {
@@ -1406,16 +1407,15 @@ describe('HubScene - Bill', () => {
     return { hub, storage };
   }
 
-  it('stands beside Brock on the base screen, so the pair reads as two places', () => {
+  it('is the quay, a walk away from Brock, so the pair reads as two places', () => {
     const { hub } = createTraderHub();
-    const home = markupOf(hub);
+    expect(markupOf(hub)).not.toContain('data-view="trader"');
 
-    expect(home).toContain('data-view="trader"');
-    expect(home).toContain('data-view="workshop"');
-    // The raid still leads; the two sinks are the row under it.
-    expect(home.indexOf('Start a raid')).toBeLessThan(home.indexOf('data-view="trader"'));
-    // Money is on the card, because it is the one number found rather than earned.
-    expect(home).toContain('1000 scrip');
+    hub.setView('trader');
+    const boat = markupOf(hub);
+    // Money leads, because it is the one number found rather than earned and
+    // the screen behind the door turns on it.
+    expect(boat).toContain('1000 scrip');
   });
 
   it('keeps the shelf and the barter table apart, and says money buys none of the second', () => {

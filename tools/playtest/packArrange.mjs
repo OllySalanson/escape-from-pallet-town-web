@@ -105,7 +105,7 @@ try {
   await page.send('Page.navigate', { url: url.href });
   await until(sceneIs('title'), 'the title screen again');
   await press('Space');
-  await until(sceneIs('hub'), 'the lobby');
+  await until(sceneIs('base'), 'the base');
   await click('Start a raid');
   await click('Bulbasaur');
   for (const itemId of ['super-potion', 'super-potion', 'potion', 'potion', 'poke-ball']) {

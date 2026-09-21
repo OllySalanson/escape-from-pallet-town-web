@@ -1828,13 +1828,14 @@ button {
 }
 :where(.pixel-ui) .hub-actions {
   display: grid;
-  /* The raid across the top, then the three places at base beneath it. A fourth
-     96-pixel card on the old single row left the raid about forty pixels wide at
-     the smallest stage - narrower than the words `Start a raid` - and two rows
-     of two left Brock in a wide card with two short lines in it. This
-     way the raid still leads and is the widest thing on the screen, and the
-     three doors are equal because they are the same kind of thing. */
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* One column, because there are two things here and both are one line: the
+     raid this lab sends you on, and whether the team is fit to go on it. The
+     other three cards this row used to hold are the Pokemon Center, Brock's
+     Workshop and Bill's quay, which are buildings in the yard outside now
+     (`src/game/base/doors.ts`), and two cards sharing the three-column grid
+     that held four left one of them a third of the screen wide with a single
+     line in it. */
+  grid-template-columns: minmax(0, 1fr);
   gap: calc(var(--u) * 4);
 }
 :where(.pixel-ui) .hub-actions > .px-tone-primary {

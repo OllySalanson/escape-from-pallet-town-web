@@ -362,10 +362,20 @@ describe('raid resolution hand-off', () => {
     );
   });
 
-  it('keeps a way out of the result screen when the hub scene is unavailable', () => {
-    expect(sceneSource).toContain("this.scene.start(this.scene.manager.keys.hub ? 'hub' : 'title');");
-    expect(battleSceneSource).toContain("this.scene.start(this.scene.manager.keys.hub ? 'hub' : 'title');");
-    expect(extractionSceneSource).toContain("this.scene.manager.keys.hub ? 'hub' : 'title'");
+  /**
+   * Every way a raid ends comes home to the base map, and a browser with no
+   * storage - which never reached a base in the first place - falls back to the
+   * title screen rather than to a scene that would throw on an empty save.
+   */
+  it('keeps a way out of the result screen when the base scene is unavailable', () => {
+    expect(sceneSource).toContain('if (this.scene.manager.keys.base) {');
+    expect(sceneSource).toContain("this.scene.start('title');");
+    expect(battleSceneSource).toContain("this.scene.start('base', { arrival: 'raid' });");
+    expect(battleSceneSource).toContain("this.scene.start('title');");
+    expect(extractionSceneSource).toContain('const home = this.scene.manager.keys.base;');
+    expect(extractionSceneSource).toContain(
+      "home ? this.scene.start('base', { arrival: 'raid' }) : this.scene.start('title')",
+    );
   });
 });
 

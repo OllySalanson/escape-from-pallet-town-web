@@ -280,12 +280,14 @@ export class ExtractionScene extends Phaser.Scene {
     }
     this.leaving = true;
     audioManager.play('confirm');
-    // Storage-less browsers never reached a hub in the first place, so the title
-    // screen stays the fallback it is everywhere else in the game.
-    const target = this.scene.manager.keys.hub ? 'hub' : 'title';
+    // Storage-less browsers never reached a base in the first place, so the
+    // title screen stays the fallback it is everywhere else in the game. A raid
+    // that is over puts the player down on the quay, beside the man who buys
+    // what they came home with.
+    const home = this.scene.manager.keys.base;
     this.cameras.main.fadeOut(200, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
-      this.scene.start(target),
+      home ? this.scene.start('base', { arrival: 'raid' }) : this.scene.start('title'),
     );
   }
 

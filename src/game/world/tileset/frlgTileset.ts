@@ -14,7 +14,7 @@ import {
   type SheetRegion,
 } from '../frlgSheet';
 import type { MaterialTiles, PropCell, PropDefinition, TilesetCatalogue } from './catalogue';
-import { tileReader } from './catalogue';
+import { tileReader, withMirroredCell } from './catalogue';
 
 /**
  * The FireRed/LeafGreen terrain sheet, catalogued.
@@ -200,8 +200,14 @@ const PROPS = {
   }),
 
   // --- Built ----------------------------------------------------------------
-  /** A shop front with its door. The relay's own office. */
-  building: object('building', FRLG_OBJECTS.BUILDING_SHOP),
+  /**
+   * A shop front with its door. The relay's own office.
+   *
+   * The sheet draws a cat standing in the right-hand pier's foot, so that one
+   * cell is the left pier's foot mirrored: the art is symmetrical and the
+   * animal is not part of the building.
+   */
+  building: withMirroredCell(object('building', FRLG_OBJECTS.BUILDING_SHOP), [3, 3], [0, 3]),
   marketStall: object('market stall', FRLG_OBJECTS.MARKET_STALL),
   awning: object('awning', FRLG_OBJECTS.AWNING),
   fountain: object('fountain', FRLG_OBJECTS.FOUNTAIN),
