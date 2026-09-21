@@ -188,6 +188,13 @@ export interface HunterChipInput {
   /** Compass letters from the player toward the hunter, e.g. `NW`. */
   readonly direction: string;
   /**
+   * True while the player is under a roof and the hunter is chasing a sighting
+   * that is no longer true (`interiors.ts`). It outranks the distance warning:
+   * how near the hunter is matters less than the fact that it does not know
+   * where you are, which is the whole reason to be standing in a cave.
+   */
+  readonly offTheScent?: boolean;
+  /**
    * Present only on a raid deployed from a base with the radio mast, and only
    * while there is still a hunter to report on.
    */
@@ -244,6 +251,12 @@ function hunterContactView(input: HunterChipInput): HunterChipView | null {
     // what it counts down is how long the thing chasing them stays blind.
     const seconds = Math.max(0, Math.ceil((input.searchRemainingMs ?? 0) / 1_000));
     return { label: `HUNTER LOST YOU ${seconds}s`, tone: 'lost-you' };
+  }
+  if (input.offTheScent === true) {
+    // Named for the hunter, as the line above it is: what the player wants to
+    // know standing in the dark is not where they are, it is that the thing
+    // outside is looking somewhere else.
+    return { label: 'HUNTER OFF THE SCENT', tone: 'lost-you' };
   }
   if (input.distance === null || input.distance > HUNTER_ALERT_DISTANCE) {
     return null;

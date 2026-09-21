@@ -59,7 +59,13 @@ try {
     if (x !== Number(wantX) || y !== Number(wantY)) console.log(`${name}: ${wantX},${wantY} is not ground, standing at ${x},${y}`);
     await page.evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const off = w.player.y - w.currentTile.y * 16;
       w.currentTile = { x: ${x}, y: ${y} }; w.setPlayerPosition(${x} * 16, ${y} * 16 + off); })()`);
-    await wait(900);
+    // Long enough for whatever the scene starts on arrival to have finished.
+    // Phaser advances a tween on the real clock rather than on the game time a
+    // stepped frame hands it, so a stepped frame is worth a few milliseconds to
+    // one: at 900ms of game time an interior's lid (`world/interiors.ts`) was
+    // still halfway through coming back on, and the shot showed a hillside with
+    // a cave visible through it.
+    await wait(4000);
     await page.screenshot(`${outDir}/tour-${name}.png`);
     console.log('shot', name, x, y);
   }

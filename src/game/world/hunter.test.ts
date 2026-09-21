@@ -19,8 +19,10 @@ import {
   findHunterSpawnTile,
   HUNTER_MINIMUM_SPAWN_DISTANCE,
   HUNTER_SPAWN_DISTANCE,
+  hunterQuarry,
   hunterTierFor,
   HUNTER_TIERS,
+  isHunterOffTheScent,
   isHunterContactingPlayer,
   isHunterSearching,
   resolveHunterBattleLoss,
@@ -1000,5 +1002,57 @@ describe('findHunterSpawnTile', () => {
     // so it waits for them to move instead. WorldScene retries on the next tick.
     expect(findHunterSpawnTile({ x: 0, y: 0 }, { width: 3, height: 1 }, () => false)).toBeNull();
     expect(findHunterSpawnTile({ x: 9, y: 9 }, { width: 3, height: 3 }, () => false)).toBeNull();
+  });
+});
+
+/**
+ * The half of the hunter an interior changes (`world/interiors.ts`).
+ *
+ * It is deliberately small: a roof decides *what the hunter is walking
+ * towards* and nothing else. It is never blinded, never frozen and never
+ * slowed, because a figure that cannot be walked into and will not move is a
+ * wall - which is the trap this game is built not to allow.
+ */
+describe('a hunter that cannot see the player', () => {
+  const state = createHunterState();
+
+  it('walks to the player and remembers where they were, out in the open', () => {
+    const seen = hunterQuarry(state, { x: 4, y: 7 }, false);
+
+    expect(seen.target).toEqual({ x: 4, y: 7 });
+    expect(seen.state.lastSeen).toEqual({ x: 4, y: 7 });
+  });
+
+  it('keeps walking to the last tile it knew once they are under a roof', () => {
+    const outside = hunterQuarry(state, { x: 4, y: 7 }, false).state;
+    const hidden = hunterQuarry(outside, { x: 9, y: 9 }, true);
+
+    // The ground outside the mouth they went in by - which is also exactly
+    // where a player who doubles back walks into it.
+    expect(hidden.target).toEqual({ x: 4, y: 7 });
+    expect(hidden.state.lastSeen).toEqual({ x: 4, y: 7 });
+  });
+
+  it('has nowhere else to go when it never saw them at all', () => {
+    // A hunter that arrives while the player is already inside has no sighting
+    // to hunt, so it hunts them. A roof is a trail broken, not a cloak.
+    expect(hunterQuarry(state, { x: 9, y: 9 }, true).target).toEqual({ x: 9, y: 9 });
+  });
+
+  it('says it is off the scent only while the sighting is stale', () => {
+    const outside = hunterQuarry(state, { x: 4, y: 7 }, false).state;
+
+    expect(isHunterOffTheScent(outside, { x: 4, y: 7 })).toBe(false);
+    expect(isHunterOffTheScent(outside, { x: 9, y: 9 })).toBe(true);
+    expect(isHunterOffTheScent(state, { x: 9, y: 9 })).toBe(false);
+  });
+
+  it('is not the escape window, and does not touch it', () => {
+    // The two are different mechanics: an escape buys a hunter that holds
+    // position and cannot engage, a roof buys one that is still hunting.
+    const hidden = hunterQuarry(state, { x: 9, y: 9 }, true).state;
+
+    expect(isHunterSearching(hidden)).toBe(false);
+    expect(hidden.pendingBreakaway).toBeUndefined();
   });
 });

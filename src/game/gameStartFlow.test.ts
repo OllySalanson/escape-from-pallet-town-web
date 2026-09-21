@@ -136,6 +136,9 @@ describe('game start flow', () => {
         rectangle: vi.fn(() => ({
           setDepth: vi.fn().mockReturnThis(),
           setStrokeStyle: vi.fn().mockReturnThis(),
+          // The veil that darkens an interior's floor is drawn from its
+          // top-left corner (`interiors.ts`).
+          setOrigin: vi.fn().mockReturnThis(),
         })),
         // Every marker the raid draws is a preloaded icon texture, so a marker
         // added without a matching `load.image` in BootScene fails here rather
@@ -186,6 +189,9 @@ describe('game start flow', () => {
             putTilesAt: vi.fn(),
             setDepth: vi.fn(),
             forEachTile: vi.fn(),
+            // An interior's lid is a layer the scene hides and shows
+            // (`interiors.ts`), so a stubbed layer has to answer that too.
+            setAlpha: vi.fn(),
           })),
         })),
       },

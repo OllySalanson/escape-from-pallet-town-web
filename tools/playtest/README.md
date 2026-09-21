@@ -195,6 +195,16 @@ that says only one of those four, a price in the pane whose asks do not line up,
 anything drawn off the screen, and a barter whose *first* press spends the goods
 - which is the one promise of that screen a screenshot cannot show.
 
+`interior.mjs <url> [out dir] [--interior=id]` walks in and out of a roofed
+place (`src/game/world/interiors.ts`) and reports the four things about one that
+are the scene rather than the map: the lid comes off and goes back on, a hunter
+outside is hunting a sighting that is no longer true, a hunter standing in the
+cave with you is not fooled by it, and with one mouth blocked the other is still
+there. `docs/screens/interiors/` is what it photographs. **A lid is a tween, and
+Phaser advances a tween on the real clock** rather than on the game time a
+stepped frame hands it, so a stepped check has to step several seconds' worth of
+frames before reading an alpha - the same thing the battle screen's HP bars do.
+
 `worldAnchors.mjs <url> [--window=WxH]` prints the canvas box, the stage, the
 dialogue box and every caption the world has on screen, so the one thing the two
 boxes must never change - where anything anchored to a tile sits - is diffed

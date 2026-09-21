@@ -40,6 +40,8 @@ import type { FloodTownPropName } from '../tileset/floodTownTileset';
  * - THE HIGH WOOD (north-east) - the ride in three short reaches, the charcoal
  *   hearth off its first turn, a glade with a fallen tree off its second.
  * - THE HANGER (east) - beech wood on the slope, and the spring house in it.
+ * - THE DELVE (under the quarry hill) - the map's one roofed place, and the
+ *   only ground on it with no sky over it. See `interiors.ts`.
  * - THE QUARRY (far east) - the stone the town is built of, its pit flooded, its
  *   adit open, and its own track out to the north-east.
  * - THE DROVE (south-east) - the walled road off the apron, stepping east down
@@ -436,8 +438,9 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
   ]);
   map.plant(38, 22, 'shrine');
   map.plant(56, 14, 'mineMouth');
+  // The boulder that stood at 53,26 is gone: the hill it was propped against is
+  // the delve's east face now, and the quarry floor there is one tile wide.
   map.plant(59, 17, 'crateTower');
-  map.plant(53, 26, 'boulder');
   map.plant(59, 24, 'boulder');
   map.plant(60, 21, 'barrelPair');
 
@@ -789,6 +792,37 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
     '                     b          ',
     'b                               ',
     '                                ',
+  ]);
+
+  // == THE DELVE ============================================================
+  // The level driven under the quarry hill, and the one place on this map with
+  // a roof over it (`interiors.ts`). It goes in off the hanger at (44,22),
+  // doglegs south through the rock, opens out into the old working and the
+  // gallery beside it, and comes out on the quarry floor at (53,24) - nineteen
+  // steps door to door against thirty-seven round the hill.
+  //
+  // It is drawn last, and it is drawn in rock rather than by leaving the
+  // lattice standing, because the lid lifts while the player is inside it and
+  // a tree crown left in the block would be a beech growing in a mine
+  // (`interiors.test.ts` fails one). `C` is therefore the cave's walls as well
+  // as its hillside, `M` the shored level and `v` the two chambers the
+  // quarrymen left.
+  //
+  // It stops at row 27 and not a row lower because the trees standing on row 30
+  // carry their crowns up onto row 28. Row 28 is drawn as rock anyway, for two
+  // reasons at once: it fells those trees, and it seals the holes felling them
+  // would otherwise leave. A lattice tree cut down gives its tile back to
+  // `bare`, which on this map is grass - so a block that opens ground beside a
+  // trunk opens the trunk's own tile too, and the hill would have had a window
+  // in its floor.
+  map.draw(44, 22, [
+    'MMMCCCCCCC',
+    'CCMCCCCCCC',
+    'CCMCCCCCCM',
+    'CCvvvCCvvM',
+    'CCvvvCCvvM',
+    'CCvvvMMMMM',
+    'CCCCCCCCCC',
   ]);
 
   return map;

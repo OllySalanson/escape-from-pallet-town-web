@@ -6,6 +6,7 @@ import { STEP_DURATION_MS } from '../movement/stepClock';
 import { getWorldMap } from '../worldMap';
 import { EXTRACTION_POINTS } from './extractionPoints';
 import { gatesForMap } from './gates';
+import { WORLD_INTERIORS } from './interiors';
 import { WORLD_POIS } from './pois';
 import { exitTile, steps } from './redrawnMaps.testkit';
 
@@ -281,6 +282,34 @@ describe('Pallet Town', () => {
     const sluiceFirst =
       steps(MAP, square, sluice, walk) + steps(MAP, sluice, ledger, walk) + steps(MAP, ledger, culvert, walk);
     expect(sluiceFirst - (toLedger + theErrand)).toBe(10);
+  });
+
+  /**
+   * What the delve is for, in steps: a way through the quarry hill that is
+   * worth knowing and never worth taking blind.
+   *
+   * It is the map's one roofed place (`interiors.ts`), and the point of it is
+   * that the hanger and the quarry floor are thirty-seven steps apart round the
+   * hill and nineteen through it - a real alternative, and small enough that
+   * the valley does not shrink round it. What it charges is fights: every step of
+   * its floor rolls, so the short way is the one that costs, which is the same
+   * bargain Route 1's grass makes and the reason it is not simply better.
+   */
+  it('makes the delve a short way through the hill that costs fights rather than steps', () => {
+    const delve = WORLD_INTERIORS.find((interior) => interior.id === 'pallet-delve')!;
+    const [hangerMouth, quarryMouth] = delve.mouths;
+    const hanger = { x: hangerMouth.x - 1, y: hangerMouth.y };
+    const floor = { x: quarryMouth.x + 1, y: quarryMouth.y };
+    expect(steps(MAP, hanger, floor)).toBe(19);
+    // The hill sealed is the surface walk, and it is the one the map had
+    // before the level was driven.
+    const throughTheHill: { x: number; y: number }[] = [];
+    for (let y = delve.roof.y; y < delve.roof.y + delve.roof.height; y += 1) {
+      for (let x = delve.roof.x; x < delve.roof.x + delve.roof.width; x += 1) {
+        throughTheHill.push({ x, y });
+      }
+    }
+    expect(steps(MAP, hanger, floor, { without: throughTheHill })).toBe(37);
   });
 
   it('keeps the Mill Stair the one way out that never crosses the leat', () => {

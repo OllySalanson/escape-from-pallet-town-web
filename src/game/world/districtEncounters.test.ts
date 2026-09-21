@@ -8,6 +8,7 @@ import type { WildEncounterTable } from '../pokemon/encounters';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 import { generateRunPlan } from '../run/runGeneration';
 import { MAP_DISTRICTS, districtAt, districtsForMap } from './districts';
+import { WORLD_INTERIORS } from './interiors';
 import { encounterTableAt } from './localEncounters';
 import { measureTable } from './encounterMeasure';
 
@@ -49,8 +50,18 @@ describe('wildlife authored per place', () => {
     }
   });
 
-  it('holds no table for a place with no tall grass to roll it on', () => {
+  it('holds no table for a place with nothing to roll it on', () => {
+    // Tall grass, or a floor that rolls on every step of it - which is what a
+    // cave is, and the only ground in the game that is not grass and still
+    // costs fights (`interiors.ts`). Everything else with a table would be a
+    // table nothing ever reads.
+    const rollingFloors = new Set(
+      WORLD_INTERIORS.filter((interior) => interior.floorRolls).map((interior) => interior.label),
+    );
     for (const district of MAP_DISTRICTS.filter((entry) => entry.encounters)) {
+      if (rollingFloors.has(district.name)) {
+        continue;
+      }
       const grass = grassTiles(district.mapId).some((tile) => tile.districtId === district.id);
       expect(grass, `${district.id} has wildlife and no tall grass`).toBe(true);
     }

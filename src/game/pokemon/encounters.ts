@@ -152,6 +152,37 @@ export const PALLET_MARSH_WILDLIFE = wildlife(0.08, [
   { speciesId: 'magikarp', minLevel: 4, maxLevel: 5, weight: 2 },
 ]);
 
+/**
+ * Under the quarry hill: the one table on this map that is not a field, a wood
+ * or a water, and the reason to go into THE DELVE at all (`interiors.ts`).
+ *
+ * It is Kanto's own cave roster minus the part of it this map cannot hold.
+ * **Geodude and Onix are deliberately out**, and both for the same measured
+ * reason: 100 and 160 base Defence against a level-5 starter whose only move is
+ * Tackle is 0-7% over sixty fights for all three starters
+ * (`world/encounterMeasure.ts`). That is not a rare hard roll, it is a fight
+ * that cannot be finished, and the only move left to a player who meets one is
+ * to flee - which is the trap `PALLET_TALL_GRASS`'s own header was written
+ * about. A rock-type cave belongs on a map whose starters are past level 7 with
+ * a typed move in hand; this one is Zubat, Diglett and a Sandshrew. Measured
+ * against a level-5 starter it wins 80-88% over the table, and its worst roll
+ * is a Sandshrew at 5 on 15-28% - a fight that can be lost, which is what the
+ * rock types were not.
+ *
+ * The rate is lower than any grass table because a cave floor rolls on **every
+ * step** (`MapInterior.floorRolls`), not only on tall grass: at 0.05 over the
+ * nineteen steps through the delve that is about a three-in-five chance of one
+ * fight, which is the price of the short way and the same bargain Route 1's
+ * grass makes. A cave here is dangerous by how often it stops you, not by any
+ * single thing in it.
+ */
+export const PALLET_DELVE_WILDLIFE = wildlife(0.05, [
+  { speciesId: 'zubat', minLevel: 3, maxLevel: 5, weight: 4 },
+  { speciesId: 'diglett', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'sandshrew', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'zubat', minLevel: 6, maxLevel: 6, weight: 1 },
+]);
+
 /** The hard and the tide line: gulls, cats on the quay, and what the sea puts up. */
 export const PALLET_SHORE_WILDLIFE = wildlife(0.08, [
   { speciesId: 'spearow', minLevel: 3, maxLevel: 5, weight: 3 },

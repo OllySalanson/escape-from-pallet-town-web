@@ -173,6 +173,8 @@ const attachSceneStubs = (scene: WorldScene): void => {
           putTilesAt: vi.fn(),
           setDepth: vi.fn(),
           forEachTile: vi.fn(),
+          // An interior's lid is a layer the scene hides and shows.
+          setAlpha: vi.fn(),
           // A layer is torn down with the rest of the map when a field move
           // rebuilds it under the player, which is the one thing that clears
           // the map without a warp or a battle between.

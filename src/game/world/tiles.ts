@@ -7,6 +7,7 @@ import {
 } from './tileset/catalogue';
 import { MATERIALS, type Material } from './tileset/materials';
 import type { MapSketch } from './mapGrid';
+import type { Rect } from './interiors';
 
 /**
  * A finished sketch plus a tileset catalogue becomes the layers the world scene
@@ -33,6 +34,17 @@ export interface MapLayers {
   readonly detail: TileLayer;
   /** The part of a landmark a figure walks behind - a tree's crown. */
   readonly canopy: TileLayer;
+  /**
+   * The lid over an interior, in two layers because it has to be **opaque**
+   * (`interiors.ts`). Every wall material on this sheet is an *overlay* - one
+   * rock or one bush drawn over whatever ground is beneath it - so a lid drawn
+   * from one of them alone is a rock field with the cave's own floor showing
+   * between the stones. `roofGround` is the hillside and `roof` is what is
+   * standing on it. Both are blank on a map with no interior, which is every
+   * map but one.
+   */
+  readonly roofGround: TileLayer;
+  readonly roof: TileLayer;
   readonly collision: boolean[][];
   readonly tallGrass: boolean[][];
 }
@@ -125,6 +137,7 @@ export function shoreTile(
 export function buildMapLayers(
   sketch: MapSketch,
   catalogue: TilesetCatalogue,
+  roofs: readonly RoofPatch[] = [],
 ): MapLayers {
   const { width, height } = sketch;
   const surface = Array.from({ length: height }, (_row, y) =>
@@ -136,6 +149,8 @@ export function buildMapLayers(
   const overlay = blankLayer(width, height);
   const detail = blankLayer(width, height);
   const canopy = blankLayer(width, height);
+  const roofGround = blankLayer(width, height);
+  const roof = blankLayer(width, height);
   const collision = Array.from({ length: height }, () => Array<boolean>(width).fill(false));
   const tallGrass = Array.from({ length: height }, () => Array<boolean>(width).fill(false));
 
@@ -204,8 +219,86 @@ export function buildMapLayers(
 
   applyShoreline(sketch, catalogue, surface, ground);
   plantProps(sketch, catalogue, detail, canopy, collision, tallGrass);
+  paintRoofs(catalogue, roofs, roofGround, roof);
 
-  return { ground, overlay, detail, canopy, collision, tallGrass };
+  return { ground, overlay, detail, canopy, roofGround, roof, collision, tallGrass };
+}
+
+/**
+ * One interior's lid: the rectangle it covers, and what it draws on each tile
+ * of it - a ground, optionally with a wall standing on it, or nothing at all
+ * where the hill has a mouth in it. The drawing lives with the interior
+ * (`interiors.ts`); this only paints it.
+ */
+export interface RoofPatch {
+  readonly area: Rect;
+  readonly at: (
+    x: number,
+    y: number,
+  ) => { readonly ground: Material; readonly standing: Material | null } | null;
+}
+
+/**
+ * Paints each interior's lid through the ordinary autotiler.
+ *
+ * A roof is not a new kind of art: it is the materials the sheet already draws,
+ * asked for their own edges and corners against what the lid itself draws - so
+ * a scree apron takes its rim from where the scree stops rather than from
+ * whatever the cave is cut through. Collision is untouched on purpose: the rock
+ * the passages are driven through is solid because the *sketch* drew it solid,
+ * and the lid is only ever a picture. That is what keeps every structural rule
+ * and the hunter's search looking at exactly the map they looked at before.
+ */
+function paintRoofs(
+  catalogue: TilesetCatalogue,
+  roofs: readonly RoofPatch[],
+  roofGround: TileLayer,
+  roof: TileLayer,
+): void {
+  for (const patch of roofs) {
+    const { area } = patch;
+    // A lid's ground takes its edges from the lid, not from the map beneath:
+    // a hill has a rim where it stops, and a scree apron inside one does not
+    // want the shoreline of whatever the cave is cut through.
+    const drawn = (x: number, y: number): Material | null => patch.at(x, y)?.ground ?? null;
+    for (let y = area.y; y < area.y + area.height; y += 1) {
+      for (let x = area.x; x < area.x + area.width; x += 1) {
+        if (y < 0 || x < 0 || y >= roof.tiles.length || x >= roof.tiles[y].length) {
+          throw new Error(`roof at ${area.x},${area.y} runs off the map`);
+        }
+        const cell = patch.at(x, y);
+        // A mouth is left bare in both layers: from outside it is the one gap
+        // in the hill, which is the whole of how a cave is ever found.
+        if (cell === null) {
+          continue;
+        }
+        const ground = catalogue.materials[cell.ground];
+        const same = (dx: number, dy: number): boolean => drawn(x + dx, y + dy) === cell.ground;
+        const role = roleFor({
+          north: same(0, -1),
+          south: same(0, 1),
+          east: same(1, 0),
+          west: same(-1, 0),
+          northEast: same(1, -1),
+          northWest: same(-1, -1),
+          southEast: same(1, 1),
+          southWest: same(-1, 1),
+        });
+        roofGround.tiles[y][x] = role === 'fill' ? fillTile(ground, x, y) : resolveTile(ground, role);
+        if (ground.tint !== undefined) {
+          roofGround.tints[y][x] = ground.tint;
+        }
+        if (cell.standing === null) {
+          continue;
+        }
+        const standing = catalogue.materials[cell.standing];
+        roof.tiles[y][x] = fillTile(standing, x, y);
+        if (standing.tint !== undefined) {
+          roof.tints[y][x] = standing.tint;
+        }
+      }
+    }
+  }
 }
 
 function applyShoreline(
