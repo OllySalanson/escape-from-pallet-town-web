@@ -177,6 +177,9 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
           putTilesAt: vi.fn(),
           setDepth: vi.fn(),
           forEachTile: vi.fn(),
+          // An interior's lid is a layer the scene hides and shows
+          // (`interiors.ts`), so a stubbed layer has to answer that too.
+          setAlpha: vi.fn(),
         })),
       })),
     },

@@ -172,6 +172,18 @@ export const SOUND_EFFECTS = {
     moment: 'Passing through a door or a map edge',
     tones: [sweep(tri(330, 0.16, 0.06), 660)],
   },
+  interiorEnter: {
+    channel: 'world',
+    moment: 'Stepping in under a roof - a cave mouth, and the hill closing over',
+    // Down, and hollow: a triangle falling an octave is the one shape that
+    // reads as going under something rather than through it.
+    tones: [sweep(tri(392, 0.2, 0.055), 196)],
+  },
+  interiorLeave: {
+    channel: 'world',
+    moment: 'Stepping back out from under a roof, into the light',
+    tones: [sweep(tri(196, 0.18, 0.05), 392)],
+  },
   lootPickup: {
     channel: 'world',
     moment: 'Loose loot picked up',

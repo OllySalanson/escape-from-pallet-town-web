@@ -111,11 +111,21 @@ import {
   FIGURE_BAND,
   MARKER_BAND,
   CANOPY_BAND,
+  ROOF_BAND,
+  INTERIOR_DIM_DEPTH,
   TERRAIN_DEPTH,
   WATCH_SHADING_DEPTH,
   atRow,
 } from '../world/depths';
 import { districtAt, weatherAt } from '../world/districts';
+import type { MapLayers } from '../world/tiles';
+import {
+  INTERIOR_COVER_MS,
+  interiorAt,
+  interiorFloorRolls,
+  isInsideRect,
+  type MapInterior,
+} from '../world/interiors';
 import type { WeatherId } from '../pokemon/battle/weather';
 import { SURVEY_RADIUS, tilesAround } from '../world/minimap';
 import { WINDOW_CREAM } from '../ui/pixelWindow';
@@ -196,6 +206,8 @@ import {
   HUNTER_BREAKAWAY_DISTANCE,
   applyHunterBreakaway,
   isHunterSearching,
+  isHunterOffTheScent,
+  hunterQuarry,
   tickHunterSearch,
   createHunterState,
   createHunterTrainer,
@@ -257,6 +269,7 @@ const LABEL_TONES: Readonly<
     | 'gateOpen'
     | 'worked'
     | 'dropIn'
+    | 'interior'
     | 'ledge',
     WorldLabelTone
   >
@@ -283,6 +296,9 @@ const LABEL_TONES: Readonly<
   // A drop-in point is the one teal on the map: somewhere a later raid can
   // start, which no cache, exit or contract stop is.
   dropIn: { fill: 0x0f3a3d, border: 0x5eead4, ink: '#ccfbf1' },
+  // A mouth is a way into the hill: the ledge's stone gone darker, because what
+  // is behind it is the one ground on the map with no sky over it.
+  interior: { fill: 0x141a24, border: 0xa9b6c6, ink: '#e8eef6' },
   // A ledge is the ground itself, so it is stone: not an exit's green or red,
   // not a threat, not a place a raid is sent to.
   ledge: { fill: 0x1c2733, border: 0x9fb3c8, ink: '#e2e8f0' },
@@ -444,6 +460,17 @@ export class WorldScene extends Phaser.Scene {
    */
   private lookMs = 0;
   private canopyInViewCache: { readonly key: string; readonly runs: readonly Rect[] } | null = null;
+
+  /**
+   * The lid over each interior, kept by id so a step in or out lifts exactly
+   * one, and rebuilt with the rest of the map - so nothing here survives a
+   * raid. The veil that darkens a floor is not kept: it never changes, and
+   * while the lid is down the lid is over it.
+   */
+  private roofLayers = new Map<string, Phaser.Tilemaps.TilemapLayer[]>();
+
+  /** The interior the player is standing in, or null out in the open. */
+  private currentInterior: MapInterior | null = null;
   /** Ground a trainer is watching: shaded to be read, so no caption may sit on it. */
   private watchedGround: Rect[] = [];
   private raidHud: RaidHud | undefined;
@@ -1034,6 +1061,7 @@ export class WorldScene extends Phaser.Scene {
     ] as const) {
       this.createTileLayer(map, sheets, name, layer, depth);
     }
+    this.createInteriors(map, sheets, layers);
 
     this.createExtractionPoints();
     this.createRouteTransitionLabels();
@@ -1189,13 +1217,181 @@ export class WorldScene extends Phaser.Scene {
     return dropInReachedLine(insertion.label);
   }
 
+  /**
+   * Draws every roofed place on the map: its lid, above the figures, and the
+   * veil that makes the floor under it dim.
+   *
+   * The lid is an ordinary tile layer of the map's own art (`interiors.ts`
+   * says what it is made of, `buildMapLayers` paints it), and the only layer
+   * in the game the scene ever hides. The veil sits over the ground and under
+   * every figure - so in a cave the rock is dark and whoever is standing on it
+   * is not, which is the whole of the dark here. It is never a lock: a cave you
+   * needed an item to walk through would be the corridor this game refuses.
+   */
+  private createInteriors(
+    map: Phaser.Tilemaps.Tilemap,
+    sheets: Phaser.Tilemaps.Tileset[],
+    layers: MapLayers,
+  ): void {
+    this.roofLayers.clear();
+    // Cleared before the early return, not after it: the scene instance is
+    // reused for every raid (`resetStateFromPreviousRaid`), so a map with no
+    // interior on it must not inherit the last raid's cave.
+    this.currentInterior = interiorAt(this.currentMap.id, this.currentTile) ?? null;
+    if (this.currentMap.interiors.length === 0) {
+      return;
+    }
+    // Two layers for the whole map's lids - the hillside and what stands on it
+    // - keyed per interior: a map with two caves on it lifts the pair for
+    // whichever one the player is in, and two caves are never entered at once.
+    const lid = [
+      this.createTileLayer(map, sheets, 'roofGround', layers.roofGround, ROOF_BAND),
+      this.createTileLayer(map, sheets, 'roof', layers.roof, ROOF_BAND + 0.01),
+    ];
+    for (const interior of this.currentMap.interiors) {
+      this.roofLayers.set(interior.id, lid);
+      this.mapObjects.push(
+        this.add
+          .rectangle(
+            interior.roof.x * TILE_SIZE,
+            interior.roof.y * TILE_SIZE,
+            interior.roof.width * TILE_SIZE,
+            interior.roof.height * TILE_SIZE,
+            0x0b1020,
+            interior.dim,
+          )
+          .setOrigin(0, 0)
+          .setDepth(INTERIOR_DIM_DEPTH),
+      );
+    }
+    // The map is rebuilt after every battle and every warp, so a player who was
+    // standing in a cave when a wild fight started comes back to a cave with
+    // its lid still off - and without the quarter second of it lifting again.
+    this.applyInteriorCover(false);
+    this.createInteriorLabels();
+  }
+
+  /**
+   * Lifts or lowers the lid over the place the player is in.
+   *
+   * `animated` is false when the world is being built - a roof that faded in
+   * over a player already standing under it would be the hillside closing on
+   * them - and true for a step, where the quarter second is the hill coming
+   * off and is short enough that it never delays a move.
+   */
+  private applyInteriorCover(animated: boolean): void {
+    for (const [id, layers] of this.roofLayers) {
+      const inside = this.currentInterior?.id === id;
+      const alpha = inside ? 0 : 1;
+      if (!animated) {
+        for (const layer of layers) {
+          layer.setAlpha(alpha);
+        }
+        continue;
+      }
+      // Whatever the lid was doing, it stops: walking in and straight back out
+      // otherwise leaves the tween that was lifting the hill fighting the one
+      // putting it back, and the hill settles half drawn over the cave.
+      this.tweens.killTweensOf(layers);
+      this.tweens.add({ targets: layers, alpha, duration: INTERIOR_COVER_MS });
+    }
+  }
+
+  /**
+   * Notices a step in or out of a roofed place.
+   *
+   * Called on the tile the step *finished* on, because the lid is about what
+   * the player is standing in rather than what they are walking towards - and
+   * because a mouth is the first tile of the inside, the hill is already off by
+   * the time they are under it.
+   */
+  private noteInterior(): void {
+    const interior = interiorAt(this.currentMap.id, this.currentTile) ?? null;
+    if (interior?.id === this.currentInterior?.id) {
+      return;
+    }
+    this.currentInterior = interior;
+    this.applyInteriorCover(true);
+    audioManager.play(interior ? 'interiorEnter' : 'interiorLeave');
+  }
+
+  /** Whether the hunter can see the player from where it is standing. */
+  private playerIsHidden(): boolean {
+    if (this.currentInterior === null) {
+      return false;
+    }
+    const hunter = this.hunterState.position;
+    if (!hunter || !this.isHunterOnCurrentMap()) {
+      return true;
+    }
+    // A cave you are both standing in is not a hiding place.
+    return interiorAt(this.currentMap.id, hunter)?.id !== this.currentInterior.id;
+  }
+
+  /**
+   * Names each mouth of each roofed place.
+   *
+   * Without it a cave is invisible: the lid is the hillside's own art, so from
+   * outside there is nothing to tell a mouth from a shadow in the rock. The
+   * caption speaks within five steps like every other name (`captionReveal.ts`),
+   * so it is a thing you find by walking up to the hill rather than a signpost
+   * across the valley - and holding L still shows every one in view.
+   */
+  private createInteriorLabels(): void {
+    // Captions are raid furniture, like every other one on the map: the world
+    // is also built outside a raid (the title screen's backdrop, and a scene
+    // created with no session in the suite) and nothing is being named then.
+    if (!this.runSession) {
+      return;
+    }
+    for (const interior of this.currentMap.interiors) {
+      for (const mouth of interior.mouths) {
+        // The subject is the mouth *and* the ground outside it, which is what
+        // gives the caption somewhere to sit. A lid is drawn over the captions
+        // exactly as a crown is, so every seat inside the hill is forbidden
+        // ground (`lidsInView`); anchored on the mouth alone, the name of the
+        // delve's quarry-side mouth had nowhere left and went undrawn.
+        const outside = [
+          { x: 1, y: 0 },
+          { x: -1, y: 0 },
+          { x: 0, y: 1 },
+          { x: 0, y: -1 },
+        ]
+          .map((step) => ({ x: mouth.x + step.x, y: mouth.y + step.y }))
+          .filter(
+            (tile) =>
+              !isInsideRect(interior.roof, tile) && this.collisionData[tile.y]?.[tile.x] === false,
+          );
+        const about = [mouth, ...outside];
+        const left = Math.min(...about.map((tile) => tile.x));
+        const right = Math.max(...about.map((tile) => tile.x));
+        const top = Math.min(...about.map((tile) => tile.y));
+        const bottom = Math.max(...about.map((tile) => tile.y));
+        this.worldLabels.push(
+          new WorldLabel(this, {
+            subject: {
+              x: left * TILE_SIZE,
+              y: top * TILE_SIZE,
+              width: (right - left + 1) * TILE_SIZE,
+              height: (bottom - top + 1) * TILE_SIZE,
+            },
+            text: interior.label,
+            tone: LABEL_TONES.interior,
+            depth: atRow(CAPTION_BAND, mouth.y),
+            speech: { voice: 'name', tiles: about },
+          }),
+        );
+      }
+    }
+  }
+
   private createTileLayer(
     map: Phaser.Tilemaps.Tilemap,
     sheets: Phaser.Tilemaps.Tileset[],
     name: string,
     layer: TileLayer,
     depth: number,
-  ): void {
+  ): Phaser.Tilemaps.TilemapLayer {
     const created = map.createBlankLayer(name, sheets);
     if (!created) {
       throw new Error(`Tilemap layer '${name}' failed to initialize.`);
@@ -1216,6 +1412,7 @@ export class WorldScene extends Phaser.Scene {
       }
     });
     this.mapObjects.push(created);
+    return created;
   }
 
   private createExtractionPoints(): void {
@@ -1954,6 +2151,7 @@ export class WorldScene extends Phaser.Scene {
       this.placePlateMs = Math.max(0, this.placePlateMs - deltaMs);
     }
     this.noteDistrict();
+    this.noteInterior();
     this.surveyGround();
 
     if (manager.isEnraged) {
@@ -1990,6 +2188,8 @@ export class WorldScene extends Phaser.Scene {
           searchRemainingMs: this.hunterState.searchRemainingMs,
           distance: this.hunterStepsAway(),
           direction: this.hunterBearing(),
+          offTheScent:
+            this.playerIsHidden() && isHunterOffTheScent(this.hunterState, this.currentTile),
           // The radio mast reports on a hunter that is still coming or still
           // here. One that has been beaten is out of the raid, and a line about
           // its next team would be a warning about nothing.
@@ -2847,7 +3047,13 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const encounters = this.encountersAtCurrentTile();
-    if (isTallGrassInMap(this.currentMap, this.currentTile) && encounters) {
+    // Tall grass, or the floor of a place that rolls on every step - which is
+    // what a cave is, and the only reason its wildlife is ever met
+    // (`interiors.ts`). There is no tall grass underground.
+    const rolls =
+      isTallGrassInMap(this.currentMap, this.currentTile) ||
+      interiorFloorRolls(this.currentMap.id, this.currentTile);
+    if (rolls && encounters) {
       const rng = this.runSession?.rng;
       // The authored teaching fight replaces the first roll of a first-contract
       // raid, so a new player's opening battle is winnable and explicable.
@@ -3029,7 +3235,7 @@ export class WorldScene extends Phaser.Scene {
         bounds,
         furniture,
         keepClear: this.captionKeepClear(),
-        canopy: this.canopyInView(bounds),
+        canopy: [...this.canopyInView(bounds), ...this.lidsInView()],
         player: this.captionPlayer(),
       },
     );
@@ -3072,6 +3278,25 @@ export class WorldScene extends Phaser.Scene {
     }
     this.canopyInViewCache = { key, runs };
     return runs;
+  }
+
+  /**
+   * The lids that are down, as the captions' seating sees them.
+   *
+   * A lid is drawn above the captions exactly as a tree's crown is, so it is
+   * ground a caption may not take by the same rule - a mouth's own name came
+   * out half washed out under the hillside it was naming. The one the player is
+   * standing in is left out, because a lifted lid covers nothing.
+   */
+  private lidsInView(): Rect[] {
+    return this.currentMap.interiors
+      .filter((interior) => interior.id !== this.currentInterior?.id)
+      .map((interior) => ({
+        x: interior.roof.x * TILE_SIZE,
+        y: interior.roof.y * TILE_SIZE,
+        width: interior.roof.width * TILE_SIZE,
+        height: interior.roof.height * TILE_SIZE,
+      }));
   }
 
   /**
@@ -3794,8 +4019,15 @@ export class WorldScene extends Phaser.Scene {
       ? Math.max(aggression, HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP)
       : aggression;
     let position = this.hunterState.position;
+    // What it is walking towards is what it can see: out in the open that is
+    // the player and the sighting is recorded, and under a roof it is the last
+    // tile it knew them on (`interiors.ts`). Contact below is still asked of
+    // the player's real tile, because a hunter standing next to you has found
+    // you whatever it believes.
+    const quarry = hunterQuarry(this.hunterState, this.currentTile, this.playerIsHidden());
+    this.hunterState = quarry.state;
     // The player holds still for the whole tick, so one search covers every step it takes.
-    const path = findHunterPursuitPath(position, this.currentTile, this.bounds, (tile) =>
+    const path = findHunterPursuitPath(position, quarry.target, this.bounds, (tile) =>
       this.isBlockedForHunter(tile),
     );
     for (let index = 0; index < steps && index < path.length; index += 1) {

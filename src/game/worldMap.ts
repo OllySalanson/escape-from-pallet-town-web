@@ -5,6 +5,7 @@ import {
   type WildEncounterTable,
 } from './pokemon/encounters';
 import { applyGates, gatesForMap, gateStateKey, type MapGate } from './world/gates';
+import { interiorsForMap, lidAt, type MapInterior } from './world/interiors';
 import type { WorldLoot } from './world/loot';
 import type { MapSketch } from './world/mapGrid';
 import { sketchFloodplainRelay } from './world/maps/floodplainRelay';
@@ -23,6 +24,7 @@ export { CLASSIC_TILE } from './world/tileset/classicTileset';
 export type { MapLayers, TileLayer } from './world/tiles';
 
 export type { MapGate } from './world/gates';
+export type { MapInterior } from './world/interiors';
 
 export const TILE_SIZE = 16;
 
@@ -83,6 +85,13 @@ export interface WorldMapDefinition {
    * deciding what is solid.
    */
   readonly gates: readonly MapGate[];
+  /**
+   * Every roofed place on the map. The collision above already has their
+   * passages cut into it - they are drawn in the sketch like any other ground -
+   * so this is for the lid, the dark and the name, not for deciding what is
+   * solid. See `interiors.ts`.
+   */
+  readonly interiors: readonly MapInterior[];
 }
 
 export type WorldMapId = 'pallet-town' | 'route-1' | 'viridian-forest' | 'floodplain-relay';
@@ -119,7 +128,15 @@ function createMap(
   const gates = gatesForMap(id);
   const tileset = content.tileset ?? CLASSIC_TILESET;
   const sketch = applyGates(content.sketch(), gates, defeatedBosses);
-  const layers = buildMapLayers(sketch, tileset);
+  const interiors = interiorsForMap(id);
+  const layers = buildMapLayers(
+    sketch,
+    tileset,
+    interiors.map((interior) => ({
+      area: interior.roof,
+      at: (x: number, y: number) => lidAt(interior, x, y),
+    })),
+  );
   return {
     id,
     width: sketch.width,
@@ -139,6 +156,7 @@ function createMap(
     entities: entitiesForMap(id),
     pois: poisForMap(id),
     gates,
+    interiors,
     loot: content.loot,
   };
 }

@@ -142,6 +142,19 @@ export interface HunterState {
   /** Raid time left before a hunter that lost the trail picks it back up. */
   readonly searchRemainingMs?: number;
   /**
+   * The last tile the hunter knew the player on.
+   *
+   * It exists for one thing: an interior (`interiors.ts`) is roofed, and under
+   * a roof the player cannot be seen. The hunter then hunts the tile it last
+   * saw them on rather than the tile they are actually standing on, which is
+   * why ducking into a cave breaks the trail - and it is *only* that. It is
+   * never blinded and never frozen: a frozen figure in a cave mouth would be a
+   * wall, and this game's rule is that a figure you may walk into is a price
+   * and a figure you may not is never allowed on a door. So it may walk in
+   * after you, and it catches you if it reaches you.
+   */
+  readonly lastSeen?: GridPosition;
+  /**
    * Set by an escape in BattleScene and cleared by WorldScene, which is the only
    * place that knows the map well enough to choose where the hunter falls back to.
    */
@@ -503,6 +516,32 @@ export const chooseHunterPursuitStep = (
   bounds: GridBounds,
   isBlocked: (tile: GridPosition) => boolean,
 ): GridPosition | null => findHunterPursuitPath(hunter, player, bounds, isBlocked)[0] ?? null;
+
+/**
+ * What the hunter is actually walking towards.
+ *
+ * Out in the open that is the player, and the sighting is recorded as it goes.
+ * Under a roof the player is out of sight, so it keeps hunting the last tile it
+ * knew - which is the ground outside the mouth they went in by, and which is
+ * therefore exactly where a player who doubles back walks into it. A hunter
+ * under the *same* roof can see them perfectly well: a cave you are both
+ * standing in is not a hiding place.
+ */
+export const hunterQuarry = (
+  state: HunterState,
+  player: GridPosition,
+  playerIsHidden: boolean,
+): { readonly target: GridPosition; readonly state: HunterState } => {
+  if (!playerIsHidden) {
+    return { target: player, state: { ...state, lastSeen: player } };
+  }
+  return { target: state.lastSeen ?? player, state };
+};
+
+/** Whether the hunter is walking towards a sighting that is no longer true. */
+export const isHunterOffTheScent = (state: HunterState, player: GridPosition): boolean =>
+  state.lastSeen !== undefined &&
+  (state.lastSeen.x !== player.x || state.lastSeen.y !== player.y);
 
 /** A hunter that lost the trail holds position and cannot start a battle. */
 export const isHunterSearching = (state: HunterState): boolean =>

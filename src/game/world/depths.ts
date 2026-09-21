@@ -41,3 +41,17 @@ export const atRow = (band: number, tileY: number): number => band + tileY / 100
  * is above even this, so a covered player is still findable.
  */
 export const CANOPY_BAND = 2.5;
+
+/**
+ * The lid over an interior (`interiors.ts`): above even the canopy, because a
+ * hillside is over the trees growing on it as well as over the people under it.
+ * It is the one layer the scene ever hides, and it hides while the player is
+ * inside what it covers.
+ */
+export const ROOF_BAND = 2.6;
+
+/**
+ * The veil that makes an interior dim. Over the ground and under every figure,
+ * so the floor is dark and whoever is standing on it is not.
+ */
+export const INTERIOR_DIM_DEPTH = 1.55;

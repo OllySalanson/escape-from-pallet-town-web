@@ -378,6 +378,17 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     areas: [{ x: 32, y: 0, width: 32, height: 13 }],
   },
   {
+    // Listed before the quarry and the hanger it is cut between, because the
+    // first district listed wins an overlap and the delve is under both of
+    // them. Its area is exactly its roof, so every tile the lid covers is
+    // named THE DELVE and every tile outside it is the hillside it is in.
+    id: 'pallet-delve',
+    mapId: 'pallet-town',
+    name: 'THE DELVE',
+    encounters: wildlife.PALLET_DELVE_WILDLIFE,
+    areas: [{ x: 44, y: 22, width: 10, height: 6 }],
+  },
+  {
     id: 'pallet-hanger',
     mapId: 'pallet-town',
     name: 'THE HANGER',
