@@ -271,19 +271,62 @@ export const ITEMS = {
     description: 'League notes, water-stained. Bill still takes them; nobody else does.',
     effect: { type: 'currency' },
   },
-  /**
-   * The one thing in the pack that is neither a supply nor a material: it is
-   * spent on a Pokemon rather than at base. It is rare field loot, it is used
-   * from the raid's own Bag on a Pokemon standing beside you, and it is
-   * destroyed with everything else on a wipe unless a secure slot is spent on
-   * it.
-   */
+  /* --- The stones ---------------------------------------------------------
+     The five things in the pack that are neither a supply nor a material: a
+     stone is spent on a Pokemon rather than at base, and what it buys is the
+     one change this game makes that nothing can take back.
+
+     They are **the prize the maps are walked for**. Every one is rolled on its
+     own odds rather than drawn from a map's pool (`world/loot.ts`), seated in
+     the one district its own species lives in (`worldMap.ts`), drawn with a
+     light on it and named on the raid HUD from the moment it is seen - because
+     a rarity nobody can see costing them their clock is not a decision, it is
+     a surprise when you open a box. And it rides home in the pack like
+     everything else, so a raid that does not walk out loses it.
+
+     The stone names no stone: the item's own id *is* the key
+     `pokemon/evolution.ts` matches a rule on, exactly as a machine's id is the
+     key its move is looked up by. Thirteen evolution lines among the 151 are
+     live because these five exist, and `evolution.test.ts` lists them.
+     --------------------------------------------------------------------- */
   'thunder-stone': {
     id: 'thunder-stone',
     displayName: 'Thunder Stone',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
     description: 'A stone with a thunderbolt in it. Some Pokemon answer to it.',
+    effect: { type: 'evolution-stone' },
+  },
+  'fire-stone': {
+    id: 'fire-stone',
+    displayName: 'Fire Stone',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A stone with a flame trapped in it. Vulpix and Growlithe answer to it.',
+    effect: { type: 'evolution-stone' },
+  },
+  'water-stone': {
+    id: 'water-stone',
+    displayName: 'Water Stone',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A stone the colour of deep water. Shellder, Poliwhirl and Staryu answer to it.',
+    effect: { type: 'evolution-stone' },
+  },
+  'leaf-stone': {
+    id: 'leaf-stone',
+    displayName: 'Leaf Stone',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A stone with a leaf pattern in it. Gloom, Weepinbell and Exeggcute answer to it.',
+    effect: { type: 'evolution-stone' },
+  },
+  'moon-stone': {
+    id: 'moon-stone',
+    displayName: 'Moon Stone',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'A black stone with the moon in it. Clefairy, Jigglypuff and the Nidoran lines answer to it.',
     effect: { type: 'evolution-stone' },
   },
   /**
@@ -535,6 +578,16 @@ export function isMachine(itemId: string): boolean {
 /** Every machine in the catalogue, in catalogue order. */
 export const MACHINE_ITEM_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
   (item) => item.effect.type === 'machine',
+).map((item) => item.id as SupplyItemId);
+
+/** An evolution stone, by id. Which line it answers is `../pokemon/evolution.ts`. */
+export function isEvolutionStone(itemId: string): boolean {
+  return getItemById(itemId)?.effect.type === 'evolution-stone';
+}
+
+/** Every stone in the catalogue, in catalogue order. */
+export const EVOLUTION_STONE_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
+  (item) => item.effect.type === 'evolution-stone',
 ).map((item) => item.id as SupplyItemId);
 
 /**

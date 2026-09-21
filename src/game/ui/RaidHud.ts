@@ -12,7 +12,13 @@ import {
 import { GAME_FONT } from './gameFont';
 import { CHIP_FONT_SIZE, CLOCK_FONT_SIZE } from './screenType';
 import type { Rect } from './labelPlacement';
-import type { HunterChipTone, HunterChipView, RaidClockTone, RaidClockView } from '../scenes/raidHud';
+import type {
+  HunterChipTone,
+  HunterChipView,
+  PrizeChipView,
+  RaidClockTone,
+  RaidClockView,
+} from '../scenes/raidHud';
 
 /**
  * The in-raid overlays.
@@ -61,6 +67,14 @@ const HUNTER_STYLES: Readonly<Record<HunterChipTone, ChipStyle>> = {
  */
 const WEATHER_STYLE: ChipStyle = { fill: 0xa9c3d6, ink: 0x14232e };
 
+/**
+ * The prize chip: gold, because it is the one chip on the screen that is not a
+ * fact about where you are or what is chasing you - it is an offer, and it is
+ * meant to catch the eye every time it is glanced past. It is the only warm
+ * chip in the set, which is what stops it reading as another hunter warning.
+ */
+const PRIZE_STYLE: ChipStyle = { fill: 0xe8b43c, ink: 0x2e1f00 };
+
 export interface RaidHudState {
   readonly clock: RaidClockView;
   readonly objectiveLines: readonly string[];
@@ -69,6 +83,8 @@ export interface RaidHudState {
   readonly place: string | null;
   /** The weather of the district being stood in, for as long as it is true. */
   readonly weather: string | null;
+  /** A rare find this raid has laid eyes on and not yet picked up. */
+  readonly prize: PrizeChipView | null;
 }
 
 export class RaidHud {
@@ -83,6 +99,7 @@ export class RaidHud {
   private readonly hunterText: Phaser.GameObjects.Text;
   private readonly placeText: Phaser.GameObjects.Text;
   private readonly weatherText: Phaser.GameObjects.Text;
+  private readonly prizeText: Phaser.GameObjects.Text;
 
   private readonly scene: Phaser.Scene;
 
@@ -94,6 +111,7 @@ export class RaidHud {
     this.hunterText = this.createText(CHIP_FONT_SIZE);
     this.placeText = this.createText(CHIP_FONT_SIZE);
     this.weatherText = this.createText(CHIP_FONT_SIZE);
+    this.prizeText = this.createText(CHIP_FONT_SIZE);
   }
 
   /** The chips' screen rectangles, for anything that has to avoid them. */
@@ -157,8 +175,13 @@ export class RaidHud {
       this.placeText.setVisible(false);
     }
 
+    // The right column is the clock and what is running against it: the hunter
+    // under the clock, and the prize under the hunter. That is the order the two
+    // are read in - what is coming for me, then what I am about to give up - and
+    // it puts the offer directly beneath the number it is costing.
+    let right = clock;
     if (state.hunter) {
-      this.placeChip(
+      right = this.placeChip(
         this.hunterText,
         state.hunter.detail ? [state.hunter.label, state.hunter.detail] : [state.hunter.label],
         HUNTER_STYLES[state.hunter.tone],
@@ -171,6 +194,21 @@ export class RaidHud {
     } else {
       this.hunterText.setVisible(false);
     }
+
+    if (state.prize) {
+      this.placeChip(
+        this.prizeText,
+        [state.prize.label, state.prize.detail],
+        PRIZE_STYLE,
+        1,
+        (width) => ({
+          x: stageWidth - EDGE_MARGIN - width,
+          y: right.y + right.height + CHIP_GAP,
+        }),
+      );
+    } else {
+      this.prizeText.setVisible(false);
+    }
   }
 
   public destroy(): void {
@@ -180,6 +218,7 @@ export class RaidHud {
     this.hunterText.destroy();
     this.placeText.destroy();
     this.weatherText.destroy();
+    this.prizeText.destroy();
   }
 
   private createText(fontSize: string): Phaser.GameObjects.Text {

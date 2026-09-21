@@ -7,6 +7,7 @@ import {
   ITEM_DEFINITIONS,
   ItemCategory,
   MACHINE_ITEM_IDS,
+  EVOLUTION_STONE_IDS,
   MATERIAL_IDS,
   getItemById,
   isMaterial,
@@ -22,12 +23,12 @@ describe('materials', () => {
       expect(getItemById(id)?.category).toBe(ItemCategory.Misc);
       expect(wanted.has(id), `${id} is asked for by no rung`).toBe(true);
     }
-    // Nothing else lives in that pocket but the evolution stone and the six
-    // machines, both of which are spent on a Pokemon rather than at the
-    // Brock, and the scrip, which is spent at Bill's counter and
+    // Nothing else lives in that pocket but the five evolution stones and the
+    // eight machines, both of which are spent on a Pokemon rather than at
+    // Brock's, and the scrip, which is spent at Bill's counter and
     // nowhere else.
     expect(ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Misc).map((item) => item.id).sort()).toEqual(
-      [...MATERIAL_IDS, ...MACHINE_ITEM_IDS, 'thunder-stone', 'scrip'].sort(),
+      [...MATERIAL_IDS, ...MACHINE_ITEM_IDS, ...EVOLUTION_STONE_IDS, 'scrip'].sort(),
     );
   });
 

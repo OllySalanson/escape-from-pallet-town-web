@@ -45,6 +45,16 @@ export interface RaidCarriage {
    */
   readonly unclaimedBossGear: readonly { readonly itemId: string; readonly name: string }[];
   readonly collectedLootIds: readonly string[];
+  /**
+   * Rare finds this raid has laid eyes on, by loot id.
+   *
+   * The prize chip is the caption's memory - it keeps asking for a thing the
+   * player has seen and walked away from - so what it remembers is per-raid
+   * world state like any other, and a fight is exactly the moment it would
+   * otherwise be forgotten: the hunter arrives beside the Fire Stone, you win,
+   * and the world comes back with no idea the stone is there.
+   */
+  readonly seenPrizeIds: readonly string[];
   readonly activatedPoiIds: readonly string[];
   /** Spawned, beaten, searching: the hunter is the same hunter after a fight. */
   readonly hunterState: HunterState | undefined;
@@ -65,6 +75,7 @@ export const RAID_CARRIAGE_KEYS = [
   'defeatedTrainerIds',
   'unclaimedBossGear',
   'collectedLootIds',
+  'seenPrizeIds',
   'activatedPoiIds',
   'hunterState',
   'returnLocation',

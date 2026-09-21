@@ -200,14 +200,26 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       // drawn from the pool, for the same reason: at pool odds a permanent
       // change to a Pokemon would be a formality, and the point of it is the
       // raid you remember finding one on.
-      { id: 'pallet-town-tm-dig', position: { x: 7, y: 36 }, itemId: 'tm28-dig', quantity: 1, chance: 0.25 },
+      { id: 'pallet-town-tm-dig', position: { x: 6, y: 19 }, itemId: 'tm28-dig', quantity: 1, chance: 0.25, district: 'pallet-allotments' },
       // A pack, rolled on its own like the machines above rather than drawn
       // from the pool: a pack is gear you own, choose and lose, so finding one
       // has to be the raid you remember rather than a tick on a list. It is
       // four squares of whatever you are already wearing to carry out.
       // The gentlest map holds the workaday pack: this is where a player who
       // went down in their last one comes to stop being in a Satchel.
-      { id: 'pallet-town-raid-pack', position: { x: 21, y: 28 }, itemId: 'raid-pack', quantity: 1, chance: 0.3 },
+      { id: 'pallet-town-raid-pack', position: { x: 20, y: 30 }, itemId: 'raid-pack', quantity: 1, chance: 0.3, district: 'pallet-stockyard' },
+      // The Water Stone, out on the headland behind Salter Cobb's two doors -
+      // which is the longest walk on this map and the one place on it a fresh
+      // save cannot reach at all. What it answers to lives below it: Shellder
+      // and Krabby on the shore, Poliwag in the flood above.
+      {
+        id: 'pallet-town-water-stone',
+        position: { x: 52, y: 69 },
+        itemId: 'water-stone',
+        quantity: 1,
+        chance: 0.18,
+        district: 'pallet-beacon',
+      },
     ],
   },
   'route-1': {
@@ -246,11 +258,24 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'route-1-scrip-burn', position: { x: 48, y: 61 }, itemId: 'scrip', quantity: 55 },
       // TM40 Aerial Ace, on the road the Pidgey flock is over. It is also the
       // only machine the bug catcher's Butterfree can read.
-      { id: 'route-1-tm-aerial-ace', position: { x: 18, y: 5 }, itemId: 'tm40-aerial-ace', quantity: 1, chance: 0.25 },
-      // The road out: a spare of the workaday pack at its top, and the first
-      // pack bigger than the one the game starts you in, deep in the south.
-      { id: 'route-1-raid-pack', position: { x: 26, y: 10 }, itemId: 'raid-pack', quantity: 1, chance: 0.25 },
-      { id: 'route-1-ranger-pack', position: { x: 55, y: 58 }, itemId: 'ranger-pack', quantity: 1, chance: 0.2 },
+      { id: 'route-1-tm-aerial-ace', position: { x: 18, y: 5 }, itemId: 'tm40-aerial-ace', quantity: 1, chance: 0.25, district: 'route-1-head' },
+      // The road out: a spare of the workaday pack at the field station, and
+      // the first pack bigger than the one the game starts you in out in the
+      // steading's yard, which is the far east of the route.
+      { id: 'route-1-raid-pack', position: { x: 26, y: 10 }, itemId: 'raid-pack', quantity: 1, chance: 0.25, district: 'route-1-field-station' },
+      { id: 'route-1-ranger-pack', position: { x: 60, y: 36 }, itemId: 'ranger-pack', quantity: 1, chance: 0.2, district: 'route-1-steading' },
+      // The Fire Stone in the charcoal burn, which is the far south-east corner
+      // of the route and the hottest ground on it. The Vulpix are on the west
+      // verge, a raid's whole width away, which is the point: the stone and the
+      // Pokemon it answers to are two errands rather than one.
+      {
+        id: 'route-1-fire-stone',
+        position: { x: 47, y: 53 },
+        itemId: 'fire-stone',
+        quantity: 1,
+        chance: 0.18,
+        district: 'route-1-charcoal-burn',
+      },
     ],
   },
   'viridian-forest': {
@@ -266,22 +291,38 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'forest-mooring-rope', position: { x: 24, y: 27 }, itemId: 'mooring-rope', quantity: 1 },
       { id: 'forest-scrip-stand', position: { x: 13, y: 24 }, itemId: 'scrip', quantity: 35 },
       { id: 'forest-scrip-ridge', position: { x: 26, y: 13 }, itemId: 'scrip', quantity: 50 },
-      // The one evolution stone in the game, on the one map whose tall grass
-      // holds a Pikachu - so the stone and the Pokemon it answers to are found
-      // in the same place. One raid in five, rolled on its own rather than out
-      // of the pool above, because a stone at pool odds would be a formality
-      // and the walk to it is meant to be a decision.
+      // The Thunder Stone, in DEEP STAND, which is the tree block a player
+      // calls deep and where the Pikachu are - so the stone and the Pokemon it
+      // answers to are found in the same wood. One raid in five, rolled on its
+      // own rather than out of the pool above, because a stone at pool odds
+      // would be a formality and the walk to it is meant to be a decision.
+      //
+      // There are five stones now and each map holds one of its own; the whole
+      // rule is in `items/items.ts` beside them and `world/loot.ts` above the
+      // `chance` a prize is rolled on.
       {
         id: 'forest-thunder-stone',
-        position: { x: 20, y: 6 },
+        position: { x: 12, y: 21 },
         itemId: 'thunder-stone',
         quantity: 1,
         chance: 0.2,
+        district: 'forest-deep-stand',
+      },
+      // The Moon Stone at the stone row, which is the one place in this wood
+      // that is already about stones; the Clefairy are on Beech Flat one
+      // district east and the Jigglypuff on the south road below it.
+      {
+        id: 'forest-moon-stone',
+        position: { x: 28, y: 44 },
+        itemId: 'moon-stone',
+        quantity: 1,
+        chance: 0.18,
+        district: 'forest-stone-row',
       },
       // TM09 Bullet Seed: the Grass move, in the wood, and the narrowest disc
       // in the game - only the Bulbasaur line can read it. The forest is the
       // map worth walking for a rarity, and it is now the map with two.
-      { id: 'forest-tm-bullet-seed', position: { x: 11, y: 7 }, itemId: 'tm09-bullet-seed', quantity: 1, chance: 0.25 },
+      { id: 'forest-tm-bullet-seed', position: { x: 15, y: 28 }, itemId: 'tm09-bullet-seed', quantity: 1, chance: 0.25, district: 'forest-coppice' },
       // The east and the south. A pool, not a layout - `generateLoot` re-seats
       // every piece each raid - so these are one per place rather than a trail
       // of crumbs, which is what keeps a map four times the size worth walking.
@@ -305,8 +346,8 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       // Two of the four maps are vast, and both of them hold the big packs -
       // the walk is the price. The charcoal burn is somebody's working camp and
       // the quarry is the far south-east of the wood.
-      { id: 'forest-kiln-ranger-pack', position: { x: 56, y: 32 }, itemId: 'ranger-pack', quantity: 1, chance: 0.22 },
-      { id: 'forest-quarry-hauler-frame', position: { x: 43, y: 58 }, itemId: 'hauler-frame', quantity: 1, chance: 0.12 },
+      { id: 'forest-kiln-ranger-pack', position: { x: 56, y: 32 }, itemId: 'ranger-pack', quantity: 1, chance: 0.22, district: 'forest-charcoal-burn' },
+      { id: 'forest-quarry-hauler-frame', position: { x: 43, y: 58 }, itemId: 'hauler-frame', quantity: 1, chance: 0.12, district: 'forest-quarry' },
     ],
   },
   // The first map drawn on the FireRed sheet, which is the only one with
@@ -364,13 +405,25 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       // short of one berth (`hub/trader.test.ts` recomputes that from here).
       { id: 'floodplain-scrip-quarry', position: { x: 90, y: 18 }, itemId: 'scrip', quantity: 20 },
       { id: 'floodplain-scrip-staithe', position: { x: 34, y: 102 }, itemId: 'scrip', quantity: 35 },
-      { id: 'floodplain-tm-ice-beam', position: { x: 25, y: 18 }, itemId: 'tm13-ice-beam', quantity: 1, chance: 0.25 },
-      { id: 'floodplain-tm-iron-tail', position: { x: 47, y: 23 }, itemId: 'tm23-iron-tail', quantity: 1, chance: 0.25 },
+      { id: 'floodplain-tm-ice-beam', position: { x: 25, y: 18 }, itemId: 'tm13-ice-beam', quantity: 1, chance: 0.25, district: 'floodplain-reedbeds' },
+      { id: 'floodplain-tm-iron-tail', position: { x: 47, y: 23 }, itemId: 'tm23-iron-tail', quantity: 1, chance: 0.25, district: 'floodplain-mill-weir' },
+      // The Leaf Stone in the withy beds, the deepest south-east of the vast
+      // map and behind the Cut door into them. The Bellsprout of the fen are
+      // what read it.
+      {
+        id: 'floodplain-leaf-stone',
+        position: { x: 66, y: 64 },
+        itemId: 'leaf-stone',
+        quantity: 1,
+        chance: 0.18,
+        district: 'floodplain-withy-beds',
+      },
       // The starting map is also a vast one, so it holds the whole range: the
-      // quay's stores, the mill, and the keep nobody reaches on a first raid.
-      { id: 'floodplain-quay-raid-pack', position: { x: 16, y: 26 }, itemId: 'raid-pack', quantity: 1, chance: 0.25 },
-      { id: 'floodplain-mill-ranger-pack', position: { x: 49, y: 24 }, itemId: 'ranger-pack', quantity: 1, chance: 0.22 },
-      { id: 'floodplain-keep-hauler-frame', position: { x: 52, y: 10 }, itemId: 'hauler-frame', quantity: 1, chance: 0.12 },
+      // quay's stores in Old Town, the wharf at the bottom of the lanes, and
+      // the keep nobody reaches on a first raid.
+      { id: 'floodplain-quay-raid-pack', position: { x: 5, y: 30 }, itemId: 'raid-pack', quantity: 1, chance: 0.25, district: 'floodplain-old-town' },
+      { id: 'floodplain-staithe-ranger-pack', position: { x: 34, y: 102 }, itemId: 'ranger-pack', quantity: 1, chance: 0.22, district: 'floodplain-staithe' },
+      { id: 'floodplain-keep-hauler-frame', position: { x: 52, y: 10 }, itemId: 'hauler-frame', quantity: 1, chance: 0.12, district: 'floodplain-beacon-keep' },
     ],
   },
 };

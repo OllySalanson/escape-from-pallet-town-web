@@ -263,3 +263,58 @@ function hunterContactView(input: HunterChipInput): HunterChipView | null {
   }
   return { label: `HUNTER ${input.direction} ${input.distance}`, tone: 'closing' };
 }
+
+// ---------------------------------------------------------------------------
+// The prize chip
+// ---------------------------------------------------------------------------
+
+/**
+ * What the map is holding that a raid could be *for*, once the player has seen
+ * it: the thing's own name, which way it lies, and how many steps it is.
+ *
+ * Why it is a chip and not only a caption. A caption is drawn over the map and
+ * only while its subject is on screen, so the moment a player turns away from a
+ * Fire Stone the game stops asking. That is exactly the wrong moment to stop
+ * asking: the whole of greed is "I know it is back there, and my clock is
+ * running", and a decision that is only offered once is not a decision, it is a
+ * reflex. So the chip is the caption's memory - it appears the first frame the
+ * prize is in view and stays for the rest of the raid, counting the steps back
+ * to it, until it is picked up or the raid ends.
+ *
+ * It is never shown for a prize that has not been seen. The dark on the drop-in
+ * map is the same rule: a vast map is built so that finding out what is in it
+ * costs something, and a HUD that named every rarity at 0:00 would hand that
+ * over for nothing.
+ */
+export interface PrizeChipInput {
+  /** What the find is called, as the item catalogue names it. */
+  readonly name: string;
+  /** Compass letters from the player toward it, e.g. `SE`. */
+  readonly direction: string;
+  /** Steps between the player and it. */
+  readonly distance: number;
+}
+
+export interface PrizeChipView {
+  readonly label: string;
+  /** The line under it: how far, and which way. */
+  readonly detail: string;
+}
+
+/**
+ * Null means show nothing - nothing seen yet, or it is already in the pack.
+ *
+ * Two lines rather than one, because the two halves are read at different
+ * moments: the name is what the player is deciding about and the distance is
+ * what they are deciding it against, and squeezing them onto one line put the
+ * number where the eye goes last.
+ */
+export function prizeChipView(input: PrizeChipInput | null): PrizeChipView | null {
+  if (input === null) {
+    return null;
+  }
+  return {
+    label: input.name.toUpperCase(),
+    detail: `${input.direction} ${input.distance}`,
+  };
+}

@@ -605,3 +605,43 @@ describe('what the result screen says about the pack', () => {
     expect(reportWearing(undefined, 'WIPED').packSummary).toBeNull();
   });
 });
+
+/**
+ * The other half of greed, and the cheaper half: the screen asking once more,
+ * after it is too late, about the thing the raid was for.
+ */
+describe('what the raid left on the ground', () => {
+  const raid = (leftBehind: readonly string[], outcome: 'ESCAPED' | 'WIPED' = 'ESCAPED') => {
+    const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+    const snapshot = outcome === 'ESCAPED' ? manager.resolveEscape() : manager.resolveWipe();
+    return buildExtractionReport({
+      outcome,
+      ...(outcome === 'WIPED' ? { cause: 'timer' as const } : {}),
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      leftBehind,
+      saved: true,
+      ...(outcome === 'ESCAPED' ? { banked: { pokemon: [], items: snapshot.bankedItems } } : {}),
+    });
+  };
+
+  it('names what was seen and walked past, in the words the map used', () => {
+    expect(raid(['Fire Stone']).pressure[0]).toBe(
+      'Left on the ground: FIRE STONE - you walked out past it',
+    );
+  });
+
+  it('names each one once, however many were in view of the same clearing', () => {
+    expect(raid(['Fire Stone', 'Fire Stone', 'Ranger pack']).pressure[0]).toBe(
+      'Left on the ground: FIRE STONE, RANGER PACK - you walked out past it',
+    );
+  });
+
+  it('says it of a raid that was lost too, without the walking out', () => {
+    expect(raid(['Moon Stone'], 'WIPED').pressure[0]).toBe('Left on the ground: MOON STONE');
+  });
+
+  it('says nothing at all on the raids that saw nothing, which is most of them', () => {
+    expect(raid([]).pressure.some((line) => line.startsWith('Left on the ground'))).toBe(false);
+  });
+});

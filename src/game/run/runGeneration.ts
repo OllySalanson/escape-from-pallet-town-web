@@ -10,6 +10,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import { openedDoors } from '../world/gates';
 import { stepDistances } from '../world/mapStructure';
 import { districtEncounterTables } from '../world/localEncounters';
+import { districtsForMap, type DistrictArea } from '../world/districts';
 import { EXTRACTION_POINTS, type ExtractionPoint } from '../world/extractionPoints';
 import { withWorkedExitsOpen } from '../world/workedLandmarks';
 import type { WorldLoot } from '../world/loot';
@@ -677,11 +678,44 @@ function generateLoot(
     const count = rng.int(Math.ceil(pool.length / 2), pool.length);
     const items = [...rng.shuffle(pool).slice(0, count), ...rare];
     const candidates = rng.shuffle(validTiles(map, reservedTiles.get(map.id), isReachable));
-    const generated = items.map((item, index) => {
-      const position = candidates[index] ?? item.position;
+    // One shuffle of the map's free ground per raid, read two ways. An ordinary
+    // piece takes the next tile off it; a piece that names a district takes the
+    // first tile on it that is inside that district. Filtering the same list is
+    // what keeps this cheap - asking `validTiles` again per prize is a whole
+    // scan of a 128x128 map, and this loop runs five hundred times per landing
+    // in `runGeneration.test.ts`.
+    const taken = new Set<string>();
+    let next = 0;
+    const generated: WorldLoot[] = [];
+    for (const item of items) {
+      // A piece that names a district is seated in that district and nowhere
+      // else: the tile moves every raid, the place does not. A district this
+      // raid cannot walk to - behind a gate it has not opened - simply does not
+      // hold its prize, which is the honest answer and the one the map already
+      // makes: the Water Stone is on the headland, and if you cannot get onto
+      // the headland there is no Water Stone today.
+      let position: GridPosition | undefined;
+      if (item.district !== undefined) {
+        const areas = districtsForMap(map.id).find(
+          (candidate) => candidate.id === item.district,
+        )?.areas;
+        position = areas
+          ? candidates.find((tile) => !taken.has(tileKey(tile)) && inAreas(tile, areas))
+          : undefined;
+        if (position === undefined) {
+          continue;
+        }
+      } else {
+        while (next < candidates.length && taken.has(tileKey(candidates[next]))) {
+          next += 1;
+        }
+        position = candidates[next] ?? item.position;
+        next += 1;
+      }
+      taken.add(tileKey(position));
       reserve(reservedTiles, map.id, position);
-      return { ...item, position };
-    });
+      generated.push({ ...item, position });
+    }
     generatedByMap[map.id] = generated;
   }
   return generatedByMap;
@@ -689,6 +723,17 @@ function generateLoot(
 
 /** Whether this raid can walk to a tile from where it dropped in. */
 type Reachability = (mapId: WorldMapId, position: GridPosition) => boolean;
+
+/** Whether a tile falls inside any of a district's rectangles. */
+function inAreas(tile: GridPosition, areas: readonly DistrictArea[]): boolean {
+  return areas.some(
+    (area) =>
+      tile.x >= area.x &&
+      tile.x < area.x + area.width &&
+      tile.y >= area.y &&
+      tile.y < area.y + area.height,
+  );
+}
 
 function validTiles(
   map: WorldMapDefinition,

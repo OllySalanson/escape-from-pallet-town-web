@@ -412,6 +412,10 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   // because this record is exhaustive on purpose, so that adding an item makes
   // the compiler ask what it is worth instead of a default answering for it.
   'thunder-stone': 1,
+  'fire-stone': 1,
+  'water-stone': 1,
+  'leaf-stone': 1,
+  'moon-stone': 1,
   'linen-roll': 1,
   // Zero on purpose, all eight, and they must stay zero. A machine is found in
   // the field or bartered off Bill, and a board that paid one out every

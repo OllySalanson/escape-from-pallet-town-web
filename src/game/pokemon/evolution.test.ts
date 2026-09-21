@@ -77,15 +77,17 @@ describe('the evolution table', () => {
   });
 
   /**
-   * **Sixteen of the seventeen stone rules ship without their stone.** Only the
-   * Thunder Stone is an item; a Fire, Water, Leaf or Moon Stone is named by a
-   * rule here and by nothing a player can own, so those lines are unreachable
-   * exactly as the four trade lines are. An item that can never do anything is
-   * a worse find than no item, and where a stone *should* be found is a
-   * question about loot tables and Bill's shelf rather than about this
-   * table. Pinned so that adding one is a decision somebody made.
+   * **All five stones ship, and every stone rule in the table is reachable.**
+   * Four of them were named by a rule here and by nothing a player could own
+   * until the maps were given something worth being greedy about: a stone is
+   * the one change this game makes that nothing can take back, which is what
+   * makes it the prize a raid can be *for* - see `world/loot.ts` for the rule
+   * and `worldMap.ts` for the place each is seated in.
+   *
+   * Pinned as the whole list, so a sixth is a decision somebody made and a
+   * stone that stops being an item is caught here rather than in a playtest.
    */
-  it('gives every stone it does ship an evolution-stone effect, and names the rest', () => {
+  it('gives every stone it ships an evolution-stone effect, and ships them all', () => {
     const stones = new Set(
       EVOLUTIONS.flatMap((rule) => (rule.trigger.kind === 'stone' ? [rule.trigger.itemId] : [])),
     );
@@ -94,11 +96,30 @@ describe('the evolution table', () => {
     ]);
     for (const stone of stones) {
       const item = getItemById(stone);
-      expect(Boolean(item), `${stone} exists as an item`).toBe(stone === 'thunder-stone');
-      if (item) {
-        expect(item.effect.type).toBe('evolution-stone');
-      }
+      expect(Boolean(item), `${stone} exists as an item`).toBe(true);
+      expect(item?.effect.type).toBe('evolution-stone');
     }
+  });
+
+  /**
+   * What the four new stones bought, counted rather than claimed: every line
+   * the table has that a stone crosses is now a line a player can cross.
+   */
+  it('has a live line for every stone, and a Pokemon on a shipped table to read it', () => {
+    const byStone = new Map<string, string[]>();
+    for (const rule of EVOLUTIONS) {
+      if (rule.trigger.kind !== 'stone') continue;
+      byStone.set(rule.trigger.itemId, [...(byStone.get(rule.trigger.itemId) ?? []), rule.from]);
+    }
+    expect(
+      [...byStone].map(([stone, from]) => `${stone}: ${from.sort().join(', ')}`).sort(),
+    ).toEqual([
+      'fire-stone: eevee, growlithe, vulpix',
+      'leaf-stone: exeggcute, gloom, weepinbell',
+      'moon-stone: clefairy, jigglypuff, nidorina, nidorino',
+      'thunder-stone: eevee, pikachu',
+      'water-stone: eevee, poliwhirl, shellder, staryu',
+    ]);
   });
 
   /** Nothing asks for a trade, so the four trade lines can never be crossed. */
@@ -292,10 +313,13 @@ describe('evolving with a stone', () => {
     expect(RAICHU.learnset.map((entry) => entry.move)).toContain(THUNDERBOLT);
   });
 
-  it('is no use on a species that has no stone at all', () => {
-    // Wigglytuff exists and its rule is authored; the Moon Stone does not ship.
+  it('answers a stone that ships and refuses one that does not', () => {
     expect(evolutionByStone('jigglypuff', 'moon-stone')).toBe(WIGGLYTUFF);
-    expect(getItemById('moon-stone')).toBeUndefined();
+    expect(getItemById('moon-stone')?.effect.type).toBe('evolution-stone');
+    // Generation III has no Ice Stone and this game ships none either, so a
+    // Vulpix reads the Fire Stone and nothing else.
+    expect(getItemById('ice-stone')).toBeUndefined();
+    expect(evolutionByStone('jigglypuff', 'leaf-stone')).toBeUndefined();
   });
 });
 

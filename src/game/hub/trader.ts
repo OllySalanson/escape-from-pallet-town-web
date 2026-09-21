@@ -216,9 +216,9 @@ export const TRADER_STOCK: readonly TraderStockItem[] = [
  * Gear is `once` because a boss already hands each piece over exactly once per
  * save (`../world/trainers`). The barter is the *second* copy - what arms a
  * second Pokemon - so it never undercuts the fight, and it cannot become a
- * faucet the way a repeating board reward would. The stone repeats, because
- * evolution is a reward the game wants to keep paying and the material price is
- * the brake.
+ * faucet the way a repeating board reward would. The five stones repeat,
+ * because evolution is a reward the game wants to keep paying and the material
+ * price is the brake.
  */
 export interface TraderBarter {
   readonly id: string;
@@ -283,11 +283,29 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     standing: 'trusted',
     once: true,
   },
+  /* --- The stones ---------------------------------------------------------
+     The five deals on the boat he will make twice, and the only repeating ones
+     there are.
+
+     Every other barter is `once`, because a second Focus Band arms a second
+     Pokemon and a third arms nobody. A stone is not like that: it is spent, it
+     is spent on one Pokemon, and evolution is the reward this game most wants
+     to keep paying. The brake is the price - five materials, which is two or
+     three raids of carrying heavy things home past the clock, and the same five
+     materials the Outfitter ladder and the gear table are asking for.
+
+     Each one is priced in the materials of the country it is *found* in, so the
+     counter says the same thing the map does: the Fire Stone in oil and crates
+     out of the charcoal burn, the Water Stone in rope and linen off the tide,
+     the Leaf Stone in linen and oil out of the withy beds, the Moon Stone in
+     crates and valves out of the workings. He is the way to get one without
+     the walk - and the walk is cheaper, which is the point.
+     --------------------------------------------------------------------- */
   {
     id: 'barter-thunder-stone',
     name: 'Thunder Stone',
     detail:
-      'The only one outside Viridian Forest, and the only deal on the boat he will make twice.',
+      'For a Pikachu, and the first of the stones he will deal in. He will make this trade as often as you can pay it.',
     icon: 'thunder-stone',
     gives: { itemId: 'thunder-stone', quantity: 1 },
     takes: [
@@ -296,6 +314,66 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
       { itemId: 'lamp-oil', quantity: 1 },
     ],
     standing: 'trusted',
+    once: false,
+  },
+  {
+    id: 'barter-fire-stone',
+    name: 'Fire Stone',
+    detail:
+      'Vulpix becomes Ninetales and Growlithe becomes Arcanine, on the spot and with no level asked for. Found in the charcoal burn at the bottom of Route 1, if you would rather walk.',
+    icon: 'fire-stone',
+    gives: { itemId: 'fire-stone', quantity: 1 },
+    takes: [
+      { itemId: 'lamp-oil', quantity: 2 },
+      { itemId: 'parts-crate', quantity: 2 },
+      { itemId: 'radio-valve', quantity: 1 },
+    ],
+    standing: 'trusted',
+    once: false,
+  },
+  {
+    id: 'barter-water-stone',
+    name: 'Water Stone',
+    detail:
+      'Shellder becomes Cloyster, and a Poliwhirl or a Staryu answers it too. Found out on the beacon headland at Pallet, behind the salter.',
+    icon: 'water-stone',
+    gives: { itemId: 'water-stone', quantity: 1 },
+    takes: [
+      { itemId: 'mooring-rope', quantity: 2 },
+      { itemId: 'linen-roll', quantity: 2 },
+      { itemId: 'cable-coil', quantity: 1 },
+    ],
+    standing: 'trusted',
+    once: false,
+  },
+  {
+    id: 'barter-leaf-stone',
+    name: 'Leaf Stone',
+    detail:
+      'Gloom becomes Vileplume and Weepinbell becomes Victreebel - both a level past what you catch. Found in the withy beds at the far end of the Floodplain.',
+    icon: 'leaf-stone',
+    gives: { itemId: 'leaf-stone', quantity: 1 },
+    takes: [
+      { itemId: 'linen-roll', quantity: 2 },
+      { itemId: 'lamp-oil', quantity: 2 },
+      { itemId: 'parts-crate', quantity: 1 },
+    ],
+    standing: 'trusted',
+    once: false,
+  },
+  {
+    id: 'barter-moon-stone',
+    name: 'Moon Stone',
+    detail:
+      'The stone that crosses the most lines there are: Clefairy, Jigglypuff and both Nidoran. The last thing he brings up, and the dearest.',
+    icon: 'moon-stone',
+    gives: { itemId: 'moon-stone', quantity: 1 },
+    takes: [
+      { itemId: 'parts-crate', quantity: 2 },
+      { itemId: 'radio-valve', quantity: 2 },
+      { itemId: 'mooring-rope', quantity: 1 },
+    ],
+    standing: 'partner',
     once: false,
   },
   {

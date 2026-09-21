@@ -5,6 +5,7 @@ import {
   PLACE_PLATE_MS,
   hunterChipView,
   hunterIntelLine,
+  prizeChipView,
   openRaidCue,
   placePlateLine,
   weatherChipLine,
@@ -134,5 +135,35 @@ describe('the weather chip', () => {
     for (const weather of Object.values(WeatherId)) {
       expect(weatherChipLine(weather)!.length).toBeLessThanOrEqual('EXTRACT WITH YOUR HAUL'.length);
     }
+  });
+});
+
+/**
+ * The prize chip: the caption's memory, and the thing that makes leaving hard.
+ *
+ * A caption stops speaking the moment its subject scrolls off, which is exactly
+ * the wrong moment for this one - the whole of greed is knowing a thing is back
+ * there while the clock runs. The chip is what keeps asking.
+ */
+describe('the prize chip', () => {
+  it('names the find and says which way and how far', () => {
+    expect(prizeChipView({ name: 'Fire Stone', direction: 'SE', distance: 34 })).toEqual({
+      label: 'FIRE STONE',
+      detail: 'SE 34',
+    });
+  });
+
+  it('shows nothing until something rare has actually been seen', () => {
+    // Which is most raids: a prize is rolled on its own odds, and a HUD that
+    // named every rarity at 0:00 would hand over what a vast map is built to
+    // make you go and find.
+    expect(prizeChipView(null)).toBeNull();
+  });
+
+  it('stays a chip rather than a panel, even for the longest name there is', () => {
+    const longest = 'HM06 ROCK SMASH';
+    const view = prizeChipView({ name: longest, direction: 'NW', distance: 128 })!;
+    expect(view.label.length).toBeLessThanOrEqual('EXTRACT WITH YOUR HAUL'.length);
+    expect(view.detail.length).toBeLessThanOrEqual(view.label.length);
   });
 });

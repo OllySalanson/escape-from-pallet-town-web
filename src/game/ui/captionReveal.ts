@@ -15,7 +15,7 @@ import { RAID_CLOCK_URGENT_MS } from '../scenes/raidHud';
  * legal seat. The question was never where they go. It is whether they belong
  * on the screen.
  *
- * A caption is an answer, not a signpost, and the map answers three questions:
+ * A caption is an answer, not a signpost, and the map answers four questions:
  *
  * - *What is this thing I have walked up to?* A name speaks while the player is
  *   within `CAPTION_NEAR_STEPS` of it and is silent otherwise. Everything a name
@@ -33,6 +33,11 @@ import { RAID_CLOCK_URGENT_MS } from '../scenes/raidHud';
  *   view, at any distance. An exit that is *open* joins it once the raid clock
  *   goes red (`RAID_CLOCK_URGENT_MS`), because in the last of a raid the only
  *   question on the screen is which way out, and a sealed one is no answer to it.
+ * - *What is worth going over there for?* A prize - a rare find, the thing a
+ *   raid can be *for* - speaks whenever it is in view, for the same reason a
+ *   warning does. It is the one caption that exists to be read from across a
+ *   clearing, because the whole of it is the question "that is over there and my
+ *   clock is running".
  *
  * Phaser-free, so the rule is testable rather than eyeballed, in the manner of
  * `labelPlacement.ts` and `raidHud.ts`.
@@ -45,7 +50,20 @@ export type CaptionVoice =
   /** A way out. A name, until the clock makes it the question. */
   | 'exit'
   /** A price about to be paid: the trainer watch, and nothing else so far. */
-  | 'warning';
+  | 'warning'
+  /**
+   * A rare find on the ground (`../world/loot.ts`), and the fourth question the
+   * map answers: *what is worth going over there for?*
+   *
+   * It speaks whenever it is in view, at any distance, for the same reason a
+   * warning does - both are a decision the player makes before they are in it,
+   * and both are worthless once they are. A name asks to be walked up to; a
+   * prize is the thing you have to decide *not* to walk up to, with the clock
+   * running, and a decision made by somebody who cannot see the cost is not a
+   * decision. A Potion on the grass says nothing, because nobody's heart rate
+   * ever rose over a Potion.
+   */
+  | 'prize';
 
 export interface CaptionSpeech {
   readonly voice: CaptionVoice;
@@ -114,7 +132,7 @@ export function stepsToNearest(from: GridPosition, tiles: readonly GridPosition[
  * while its trainer can be seen.
  */
 export function captionSpeaks(speech: CaptionSpeech, audience: CaptionAudience): boolean {
-  if (speech.voice === 'warning' || audience.looking) {
+  if (speech.voice === 'warning' || speech.voice === 'prize' || audience.looking) {
     return true;
   }
   if (speech.voice === 'exit' && speech.open === true && audience.raidRemainingMs <= EXIT_CALL_MS) {

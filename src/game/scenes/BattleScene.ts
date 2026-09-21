@@ -40,6 +40,7 @@ import { DialogBox } from '../ui/DialogBox';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { MoveTarget, type MoveBase } from '../pokemon/MoveBase';
+import { prizesLeftBehind } from '../world/loot';
 import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { battleEventSound, battleNote, type BattleNote } from '../audio/battleSounds';
@@ -74,7 +75,7 @@ import {
   carriedBalls,
   usableBattleItems,
 } from '../pokemon/battle/battleItems';
-import { Bag, heldItemName, type ItemDefinition } from '../items';
+import { Bag, ITEMS, heldItemName, type ItemDefinition } from '../items';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH, baseCompositionOffset } from '../display/stage';
 import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
 import { GAME_FONT } from '../ui/gameFont';
@@ -349,6 +350,8 @@ export class BattleScene extends Phaser.Scene {
   /** A beaten boss's gear the pack had no room for, carried back to the world. */
   private unclaimedBossGear: RaidCarriage['unclaimedBossGear'] = [];
   private readonly collectedLootIds = new Set<string>();
+  /** Carried through untouched: a fight neither finds nor forgets a prize. */
+  private readonly seenPrizeIds = new Set<string>();
   private readonly activatedPoiIds = new Set<string>();
   private returnLocation: BattleSceneData['returnLocation'];
   private returnScene: BattleSceneData['returnScene'];
@@ -429,6 +432,8 @@ export class BattleScene extends Phaser.Scene {
     this.unclaimedBossGear = data.unclaimedBossGear ?? [];
     this.collectedLootIds.clear();
     data.collectedLootIds?.forEach((id) => this.collectedLootIds.add(id));
+    this.seenPrizeIds.clear();
+    data.seenPrizeIds?.forEach((id) => this.seenPrizeIds.add(id));
     this.activatedPoiIds.clear();
     data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
     this.pendingHubTransition = false;
@@ -2710,6 +2715,7 @@ export class BattleScene extends Phaser.Scene {
         defeatedTrainerIds: [...this.defeatedTrainerIds],
         unclaimedBossGear: this.unclaimedBossGear,
         collectedLootIds: [...this.collectedLootIds],
+        seenPrizeIds: [...this.seenPrizeIds],
         activatedPoiIds: [...this.activatedPoiIds],
         returnLocation: this.returnLocation,
         hunterState:
@@ -2779,6 +2785,14 @@ export class BattleScene extends Phaser.Scene {
       cause: 'defeated',
       snapshot,
       durationMs: snapshot.durationMs,
+      // The world hands its seen-prize list through the carriage like every
+      // other per-raid fact, so a raid lost in a fight says the same thing a
+      // raid lost to the clock does.
+      leftBehind: prizesLeftBehind(
+        this.runSession?.plan?.loot ?? {},
+        this.seenPrizeIds,
+        this.collectedLootIds,
+      ).map((itemId) => ITEMS[itemId].displayName),
       lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
       carriedOut,
       // The one that was out when the party ran out. The result screen's defeat

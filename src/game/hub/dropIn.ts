@@ -1,3 +1,4 @@
+import { getItemById } from '../items';
 import type { RaidContract } from '../objectives';
 import { getSpeciesById } from '../pokemon/species';
 import type { WildEncounterTable } from '../pokemon/encounters';
@@ -9,6 +10,7 @@ import { FIELD_MOVES } from '../world/fieldMoves';
 import { gatesForMap, isGateOpen, openedDoors, type MapGate } from '../world/gates';
 import { HUNTER_TIERS } from '../world/hunter';
 import { buildMinimap, type Minimap, type MinimapMark } from '../world/minimap';
+import { isPrize } from '../world/loot';
 import { surveyedTiles, type SurveyRecord } from '../world/survey';
 import { bossEncounters, createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
 import { exitsOpenForGood, withWorkedExitsOpen, workedLandmarksOn } from '../world/workedLandmarks';
@@ -91,6 +93,30 @@ export interface WildlifeLine {
   readonly species: readonly { readonly name: string; readonly min: number; readonly max: number }[];
 }
 
+/**
+ * A rare find this map can hold, and where on it.
+ *
+ * This is what makes "what am I going out for today" a sentence a player can
+ * say at base. It is a fact about the *map*, never about the coming raid: a
+ * prize is rolled on its own odds when the raid is generated and is on the
+ * ground about one raid in five, so this is where to look for one rather than a
+ * promise that one is there. Telling the player which raid holds what would
+ * take the going and finding out of it.
+ *
+ * It obeys the same dark the wildlife pane does: a place nobody has walked
+ * keeps what is in it, and the count of those is the invitation.
+ */
+export interface PrizeLine {
+  /** The item's own name, as the catalogue gives it. */
+  readonly name: string;
+  /** The district it is seated in, by name. */
+  readonly place: string;
+  /** Whether the player has walked any of that place. */
+  readonly known: boolean;
+  /** Roughly how often it is on the ground, 0 to 1. */
+  readonly chance: number;
+}
+
 export interface PlaceRecord {
   readonly deployed: number;
   readonly extracted: number;
@@ -113,6 +139,8 @@ export interface DropInBriefing {
   readonly doors: readonly DoorLine[];
   readonly exits: readonly ExitLine[];
   readonly wildlife: readonly WildlifeLine[];
+  /** What this map is worth going to: its rare finds, and where they lie. */
+  readonly prizes: readonly PrizeLine[];
   readonly contract: RaidContract | undefined;
 }
 
@@ -245,6 +273,22 @@ export function buildDropInBriefing(
   }
   const held = context.raidRecord?.[mapId] ?? { deployed: 0, extracted: 0, wiped: 0 };
 
+  // What this map is worth going to. Read off the map's own loot table rather
+  // than off this raid's plan: the screen answers "where do I look for one",
+  // and telling the player which raid is holding one would spend the finding.
+  const prizes: PrizeLine[] = context.map.loot
+    .filter(isPrize)
+    .map((loot) => {
+      const place = districts.find((district) => district.id === loot.district);
+      return {
+        name: getItemById(loot.itemId)?.displayName ?? loot.itemId,
+        place: place?.name ?? WORLD_MAP_NAMES[mapId].toUpperCase(),
+        known: place === undefined ? knownWalkable > 0 : reached(place),
+        chance: loot.chance ?? 0,
+      };
+    })
+    .sort((a, b) => a.chance - b.chance || a.name.localeCompare(b.name));
+
   return {
     insertion,
     mapId,
@@ -288,6 +332,7 @@ export function buildDropInBriefing(
       // player's own work and this screen is where they come to see it.
       ...(openedByWork.includes(point.label) ? { worked: true } : {}),
     })),
+    prizes,
     wildlife: tables.map(({ district, table }) => ({
       place: district?.name ?? WORLD_MAP_NAMES[mapId].toUpperCase(),
       known: district === undefined || reached(district),

@@ -2080,6 +2080,31 @@ export class HubScene extends Phaser.Scene {
             ),
           )
           .join('')}`;
+    // What this map is worth going to, and where on it. It sits above the
+    // wildlife because it is the answer to a different question: the wildlife
+    // pane says what will happen to you on the way, and this says why you are
+    // going. It keeps the same dark - a place nobody has walked keeps what is
+    // in it - so the pane is an invitation on a fresh map and a plan on a
+    // walked one.
+    const foundPrizes = briefing.prizes.filter((prize) => prize.known);
+    const hiddenPrizes = briefing.prizes.length - foundPrizes.length;
+    const prizes = briefing.prizes.length === 0
+      ? ''
+      : `<h3 class="px-subheading">Worth going for</h3>${foundPrizes
+          .map((prize) =>
+            told(
+              `<span class="px-row-main"><strong>${prize.name}</strong><small class="px-wrap">${prize.place} · about one raid in ${Math.max(2, Math.round(1 / prize.chance))}</small></span>`,
+              `${prize.name}: lies in ${prize.place}, on about one raid in ${Math.max(2, Math.round(1 / prize.chance))}. You will see it from a distance, and it burns with the pack if you do not walk out.`,
+              ' px-tall',
+            ),
+          )
+          .join('')}${
+          foundPrizes.length === 0
+            ? '<p class="px-empty px-wrap">Rare things are found on this map, but not in any country you have walked.</p>'
+            : hiddenPrizes === 0
+              ? ''
+              : `<p class="px-note px-wrap">${hiddenPrizes} more, in places nobody here has walked.</p>`
+        }`;
     const seen = briefing.wildlife.filter((place) => place.known);
     const unseen = briefing.wildlife.length - seen.length;
     const wildlife = briefing.wildlife.length === 0
@@ -2106,7 +2131,7 @@ export class HubScene extends Phaser.Scene {
     // picture cannot state, because it is about the loadout rather than about
     // the place. Everything else the banner already counts, and a screen this
     // size cannot afford to say a number twice.
-    return `<p class="px-wrap dropin-blurb">${briefing.insertion.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${exits}${doors}${wildlife}`;
+    return `<p class="px-wrap dropin-blurb">${briefing.insertion.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${exits}${doors}${prizes}${wildlife}`;
   }
 
   private secureView(): string {

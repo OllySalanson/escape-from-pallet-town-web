@@ -54,10 +54,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 3, y: 16 },
     label: 'TOWN PUMP',
-    description: 'Marked supply cache under the pump on the Green, a few steps south of the square.',
+    description:
+      'The town\'s own pump on the Green, and the box the parish keeps beside it: clean water, two Potions and an Antidote.',
     reward: [
-      { itemId: 'poke-ball', quantity: 2 },
-      { itemId: 'potion', quantity: 1 },
+      { itemId: 'potion', quantity: 2 },
+      { itemId: 'antidote', quantity: 1 },
     ],
   },
   {
@@ -77,9 +78,10 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 38, y: 4 },
     label: 'CHARCOAL HEARTH',
-    description: 'The burner\'s floor in the high wood, a short climb east of the north field. Two Poke Balls in the hut and a Potion on the stump.',
+    description:
+      'The burner\'s floor in the high wood, a short climb east of the north field. His tin of lamp oil is still under the hut and there is a Potion on the stump.',
     reward: [
-      { itemId: 'poke-ball', quantity: 2 },
+      { itemId: 'lamp-oil', quantity: 1 },
       { itemId: 'potion', quantity: 1 },
     ],
   },
@@ -90,10 +92,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 53, y: 17 },
     label: 'THE ADIT',
-    description: 'The level driven into the quarry face, still shored and still stocked. A Great Ball and a Super Potion, a whole valley east of the square.',
+    description:
+      'The level driven into the quarry face, still shored and still stocked: a crate of the hasps and bolts the shoring is hung on, and the oil they worked by.',
     reward: [
-      { itemId: 'great-ball', quantity: 1 },
-      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'parts-crate', quantity: 1 },
+      { itemId: 'lamp-oil', quantity: 1 },
     ],
   },
   {
@@ -103,10 +106,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 8, y: 67 },
     label: 'THE SALT PANS',
-    description: 'The pans worked between the two creeks, and the barrels stacked on the walk between them. A Potion and an Antidote.',
+    description:
+      'The pans worked between the two creeks, and the barrels stacked on the walk between them. Two Antidotes off the brine shelf and a roll of the linen they strain through.',
     reward: [
-      { itemId: 'potion', quantity: 1 },
-      { itemId: 'antidote', quantity: 1 },
+      { itemId: 'antidote', quantity: 2 },
+      { itemId: 'linen-roll', quantity: 1 },
     ],
   },
   {
@@ -116,10 +120,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 57, y: 71 },
     label: 'BEACON LIGHT',
-    description: 'The lamp store on the seaward side of the beacon, behind the salter\'s two doors. Two Great Balls and a Super Potion.',
+    description:
+      'The lamp store on the seaward side of the beacon, behind the salter\'s two doors. Oil for the light, and the cable that used to carry its warning inland.',
     reward: [
-      { itemId: 'great-ball', quantity: 2 },
-      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'lamp-oil', quantity: 1 },
+      { itemId: 'cable-coil', quantity: 1 },
     ],
   },
   {
@@ -129,9 +134,10 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 37, y: 22 },
     label: 'SPRING HOUSE',
-    description: 'The stone house over the spring in the hanger, where the millpond starts. Somebody keeps a Potion and an Antidote on the sill.',
+    description:
+      'The stone house over the spring in the hanger, where the millpond starts. Cold all year, which is why the good medicine is kept in it.',
     reward: [
-      { itemId: 'potion', quantity: 1 },
+      { itemId: 'super-potion', quantity: 1 },
       { itemId: 'antidote', quantity: 1 },
     ],
   },
@@ -142,10 +148,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 56, y: 28 },
     label: 'THE POWDER STORE',
-    description: 'The blasting store cut into the back of the quarry, well away from the face. A Super Potion and a Poke Ball on the shelf.',
+    description:
+      'The blasting store cut into the back of the quarry, well away from the face. Charges and fuse line: a parts crate and a coil of cable.',
     reward: [
-      { itemId: 'super-potion', quantity: 1 },
-      { itemId: 'poke-ball', quantity: 1 },
+      { itemId: 'parts-crate', quantity: 1 },
+      { itemId: 'cable-coil', quantity: 1 },
     ],
   },
   {
@@ -155,8 +162,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 28, y: 46 },
     label: 'THE MEADOW HATCH',
-    description: 'The hatch that used to flood the meadows off the carrier, seized open since the flood. A Potion left in the frame of it.',
-    reward: [{ itemId: 'potion', quantity: 1 }],
+    description:
+      'The hatch that used to flood the meadows off the carrier, seized open since the flood. Nobody came back for the ironwork stacked beside it.',
+    reward: [{ itemId: 'parts-crate', quantity: 1 }],
   },
   {
     // The top of the north field is the first tall grass out of the square and
@@ -167,8 +175,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 17, y: 7 },
     label: 'THE SCARE POST',
-    description: 'The bird-scarer\'s post at the head of the north field, with the lad\'s tin and a spare Poke Ball wedged in the crook of it.',
-    reward: [{ itemId: 'poke-ball', quantity: 1 }],
+    description:
+      'The bird-scarer\'s post at the head of the north field, with the lad\'s tin and two spare Poke Balls wedged in the crook of it.',
+    reward: [{ itemId: 'poke-ball', quantity: 2 }],
   },
   {
     // The wet pocket east of the rickyard is a dead end, and a dead end is
@@ -178,10 +187,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 35, y: 59 },
     label: 'THE DECOY',
-    description: 'The duck decoy in the wet corner of the water meadows, its pipe still netted. An Antidote and a Potion in the hide.',
+    description:
+      'The duck decoy in the wet corner of the water meadows, its pipe still netted. The fowler\'s own balls are in the hide, the good one included.',
     reward: [
-      { itemId: 'antidote', quantity: 1 },
-      { itemId: 'potion', quantity: 1 },
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'poke-ball', quantity: 1 },
     ],
   },
   {
@@ -191,9 +201,10 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'pallet-town',
     position: { x: 19, y: 71 },
     label: 'THE STAITHE',
-    description: 'The old landing stage out on the saltings, between the two creeks. A Poke Ball and a Potion in what is left of the locker.',
+    description:
+      'The old landing stage out on the saltings, between the two creeks. A coil of tarred rope still on the bollard, and a Potion in what is left of the locker.',
     reward: [
-      { itemId: 'poke-ball', quantity: 1 },
+      { itemId: 'mooring-rope', quantity: 1 },
       { itemId: 'potion', quantity: 1 },
     ],
   },
@@ -202,7 +213,8 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'route-1',
     position: { x: 26, y: 15 },
     label: "OAK'S FIELD STATION",
-    description: 'Marked supply cache at the station door: 2 Poké Balls and 1 Potion. Switching its relay on opens the Station Relay exit at the east end of the yard.',
+    description:
+      'Marked supply cache at the station door: 2 Poké Balls and 1 Potion. Switching its relay on opens the Station Relay exit at the east end of the yard.',
     reward: [
       { itemId: 'poke-ball', quantity: 2 },
       { itemId: 'potion', quantity: 1 },
@@ -217,10 +229,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'route-1',
     position: { x: 39, y: 23 },
     label: 'ORCHARD STORE',
-    description: "The picker's store built into the orchard wall. A Great Ball and an Antidote on the shelf inside the door.",
+    description:
+      'The picker\'s store built into the orchard wall: a roll of the sacking they pick into, and the cider they keep for a long day.',
     reward: [
-      { itemId: 'great-ball', quantity: 1 },
-      { itemId: 'antidote', quantity: 1 },
+      { itemId: 'linen-roll', quantity: 1 },
+      { itemId: 'potion', quantity: 2 },
     ],
   },
   {
@@ -231,11 +244,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'route-1',
     position: { x: 52, y: 6 },
     label: 'THORN DELL',
-    description: 'A hollow in the wood that the thorn closed over. Somebody left a kit in it and never came back for it.',
-    reward: [
-      { itemId: 'great-ball', quantity: 1 },
-      { itemId: 'super-potion', quantity: 1 },
-    ],
+    description:
+      'A hollow in the wood that the thorn closed over. Whatever has been living in it since is worth a good ball, and there are two on the shelf.',
+    reward: [{ itemId: 'great-ball', quantity: 2 }],
   },
   {
     // The map's second sealed exit, at the far end of it from the first. The
@@ -256,10 +267,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'route-1',
     position: { x: 38, y: 39 },
     label: 'THE HOLLOW OAK',
-    description: 'The stump of an oak nobody could shift, in a clearing off the steading track. A Poke Ball and a Super Potion in the hollow of it.',
+    description:
+      'The stump of an oak nobody could shift, in a clearing off the steading track. The ranger keeps one good ball and a flask dry in the hollow of it.',
     reward: [
-      { itemId: 'poke-ball', quantity: 1 },
-      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'potion', quantity: 1 },
     ],
   },
   {
@@ -270,10 +282,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'route-1',
     position: { x: 59, y: 22 },
     label: 'THE STOCK TROUGH',
-    description: 'The stone trough in the steading\u2019s far field. Somebody keeps a kit dry under the lip of it.',
+    description:
+      'The stone trough in the steading\'s far field. The drench kit is under the lip of it, where the stockman left it: two Antidotes and a Potion.',
     reward: [
-      { itemId: 'super-potion', quantity: 1 },
-      { itemId: 'poke-ball', quantity: 1 },
+      { itemId: 'antidote', quantity: 2 },
+      { itemId: 'potion', quantity: 1 },
     ],
   },
   {
@@ -284,10 +297,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'route-1',
     position: { x: 59, y: 35 },
     label: 'THE FARM WELL',
-    description: 'The well at the back of the farmhouse, out of the way of everything. There is a kit on the sill of it.',
+    description:
+      'The well at the back of the farmhouse, out of the way of everything. The house\'s linen is on the line above it and its good medicine on the sill.',
     reward: [
-      { itemId: 'potion', quantity: 1 },
-      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'linen-roll', quantity: 1 },
     ],
   },
   {
@@ -296,10 +310,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'route-1',
     position: { x: 34, y: 54 },
     label: 'THE WAYSIDE SHRINE',
-    description: 'A shrine in a clearing off the Old Road, with a bench in front of it. Travellers leave things here; not all of them come back for them.',
+    description:
+      'A shrine in a clearing off the Old Road, with a bench in front of it. Travellers leave what a shrine is given: cloth, and oil for the lamp.',
     reward: [
-      { itemId: 'poke-ball', quantity: 1 },
-      { itemId: 'antidote', quantity: 1 },
+      { itemId: 'linen-roll', quantity: 1 },
+      { itemId: 'lamp-oil', quantity: 1 },
     ],
   },
   {
@@ -309,10 +324,12 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'route-1',
     position: { x: 19, y: 55 },
     label: "DROVER'S CAIRN",
-    description: 'The cairn the drovers pile on the common, out in the gorse with a road either side of it and grass all the way to both.',
+    description:
+      'The cairn the drovers pile on the common, out in the gorse with a road either side of it. Every man who passes leaves one small thing on it.',
     reward: [
-      { itemId: 'poke-ball', quantity: 2 },
+      { itemId: 'poke-ball', quantity: 1 },
       { itemId: 'potion', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
     ],
   },
   {
@@ -335,9 +352,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     position: { x: 13, y: 29 },
     label: "COPPICER'S STORE",
     description:
-      'The store in the old coppice, behind the growth that closed the ride. Nobody has been in since the wood grew over it.',
+      'The store in the old coppice, behind the growth that closed the ride. His billhooks and wedges are still crated, and the medicine he kept for a slip with them is still good.',
     reward: [
-      { itemId: 'great-ball', quantity: 2 },
+      { itemId: 'parts-crate', quantity: 1 },
       { itemId: 'super-potion', quantity: 1 },
     ],
   },
@@ -350,11 +367,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-forest',
     position: { x: 54, y: 13 },
     label: 'THE TARN HIDE',
-    description: 'A watcher\u2019s hide on the shingle at the head of the tarn, with the box of tackle whoever built it left under the bench.',
-    reward: [
-      { itemId: 'great-ball', quantity: 1 },
-      { itemId: 'potion', quantity: 1 },
-    ],
+    description:
+      'A watcher\'s hide on the shingle at the head of the tarn, with the box of tackle whoever built it left under the bench. Three balls in it, and nothing else worth the walk.',
+    reward: [{ itemId: 'poke-ball', quantity: 3 }],
   },
   {
     // The south's own cache, in the timber yard everybody walks through on the
@@ -364,10 +379,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-forest',
     position: { x: 20, y: 44 },
     label: "SAWYER'S STORE",
-    description: 'The lean-to at the foot of the sawpit, still holding what the sawyers left when the wood stopped being worked.',
+    description:
+      'The lean-to at the foot of the sawpit, with the lamp they worked the dark end of the day by still on its hook - and the bottle they kept for a slip with a pit saw.',
     reward: [
-      { itemId: 'poke-ball', quantity: 2 },
-      { itemId: 'potion', quantity: 1 },
+      { itemId: 'lamp-oil', quantity: 1 },
+      { itemId: 'super-potion', quantity: 1 },
     ],
   },
   {
@@ -377,10 +393,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-forest',
     position: { x: 42, y: 62 },
     label: 'ADIT STORE',
-    description: "The quarrymen's store at the back of the working, under the adit mouth. Nobody has been down here since the gate was hung.",
+    description:
+      'The quarrymen\'s store at the back of the working, under the adit mouth. Nobody has been down here since the gate was hung, and two crates are still stacked against the wall.',
     reward: [
-      { itemId: 'great-ball', quantity: 2 },
-      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'parts-crate', quantity: 2 },
+      { itemId: 'lamp-oil', quantity: 1 },
     ],
   },
   {
@@ -390,10 +407,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'viridian-forest',
     position: { x: 9, y: 62 },
     label: 'THE OLD DIG',
-    description: 'Somebody dug into the sand bank a long time ago and roofed it with a board. Whatever they were keeping out of the wet is still in it.',
+    description:
+      'Somebody dug into the sand bank a long time ago and roofed it with a board. They were after what lives in the bank, and they came out for it properly equipped: two Great Balls and a spare.',
     reward: [
-      { itemId: 'super-potion', quantity: 1 },
-      { itemId: 'antidote', quantity: 1 },
+      { itemId: 'great-ball', quantity: 2 },
+      { itemId: 'poke-ball', quantity: 1 },
     ],
   },
   {
@@ -403,18 +421,23 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'floodplain-relay',
     position: { x: 12, y: 41 },
     label: 'DROWNED CHAPEL',
-    description: "Old Town's chapel, standing in what was its green. Somebody left a Poke Ball on the sill above the waterline.",
-    reward: [{ itemId: 'poke-ball', quantity: 1 }],
+    description:
+      'Old Town\'s chapel, standing in what was its green. What was high enough to keep is still on the shelf above the waterline: the altar linen, and a Potion.',
+    reward: [
+      { itemId: 'linen-roll', quantity: 1 },
+      { itemId: 'potion', quantity: 1 },
+    ],
   },
   {
     id: 'floodplain-supply-vault',
     mapId: 'floodplain-relay',
     position: { x: 44, y: 50 },
     label: 'FLOODED SUPPLY VAULT',
-    description: 'High-value cache under the open trapdoor. The causeway west is the short way out once the orchard warden is beaten. Extract to bank it.',
+    description:
+      'High-value cache under the open trapdoor - and the one store on this map that was stocked as a store. The causeway west is the short way out once the orchard warden is beaten.',
     reward: [
+      { itemId: 'super-potion', quantity: 2 },
       { itemId: 'great-ball', quantity: 2 },
-      { itemId: 'super-potion', quantity: 1 },
     ],
   },
   {
@@ -425,10 +448,10 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     position: { x: 28, y: 43 },
     label: 'STRANDED LIGHTER',
     description:
-      'A relay lighter left on the bar when the water dropped, still holding what it was carrying when the flood took it.',
+      'A relay lighter left on the bar when the water dropped, still holding what it was carrying up to the keep: her warp on the bitts and a valve in the crate under them.',
     reward: [
-      { itemId: 'great-ball', quantity: 1 },
-      { itemId: 'super-potion', quantity: 2 },
+      { itemId: 'mooring-rope', quantity: 1 },
+      { itemId: 'radio-valve', quantity: 1 },
     ],
   },
   {
@@ -439,21 +462,20 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'floodplain-relay',
     position: { x: 68, y: 10 },
     label: 'POWDER HOUSE',
-    description: 'The magazine cut into the quarry bench. Locked when the water came up, and nobody has been back for what is in it.',
-    reward: [
-      { itemId: 'super-potion', quantity: 1 },
-      { itemId: 'poke-ball', quantity: 1 },
-    ],
+    description:
+      'The magazine cut into the quarry bench. Locked when the water came up, and the fuse line is still coiled on its reels: two of them.',
+    reward: [{ itemId: 'cable-coil', quantity: 2 }],
   },
   {
     id: 'floodplain-press-house',
     mapId: 'floodplain-relay',
     position: { x: 66, y: 47 },
     label: 'THE PRESS HOUSE',
-    description: "The cider press behind the orchard, with the pickers' kit still stacked against the wall where they left it.",
+    description:
+      'The cider press behind the orchard, with the pickers\' kit still stacked against the wall. What comes off a press is stronger than what goes into it.',
     reward: [
-      { itemId: 'potion', quantity: 2 },
-      { itemId: 'antidote', quantity: 1 },
+      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'potion', quantity: 1 },
     ],
   },
   {
@@ -474,10 +496,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'floodplain-relay',
     position: { x: 19, y: 81 },
     label: "SHEPHERD'S HUT",
-    description: 'A hut on wheels in the middle of the grazing, with a lambing kit in it that somebody kept stocked for a season nobody came back for.',
+    description:
+      'A hut on wheels in the middle of the grazing, with the lambing kit in it that somebody kept stocked for a season nobody came back for: cloths and a drench.',
     reward: [
-      { itemId: 'potion', quantity: 1 },
-      { itemId: 'poke-ball', quantity: 1 },
+      { itemId: 'linen-roll', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
     ],
   },
   {
@@ -487,10 +510,11 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'floodplain-relay',
     position: { x: 92, y: 87 },
     label: "OSIER CUTTER'S STORE",
-    description: 'A withy bed nobody has cut since the ride into it grew shut, and the cutter\'s own store still standing in the middle of it.',
+    description:
+      'A withy bed nobody has cut since the ride into it grew shut, and the cutter\'s own store still standing in the middle of it, with his bundles banded and stacked.',
     reward: [
-      { itemId: 'great-ball', quantity: 2 },
-      { itemId: 'super-potion', quantity: 1 },
+      { itemId: 'linen-roll', quantity: 2 },
+      { itemId: 'potion', quantity: 1 },
     ],
   },
   {
@@ -498,11 +522,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'floodplain-relay',
     position: { x: 106, y: 60 },
     label: 'PUMPING ENGINE',
-    description: 'The engine that kept the levels dry, standing over its own drain with the fire long out and the stores beside it untouched.',
-    reward: [
-      { itemId: 'super-potion', quantity: 1 },
-      { itemId: 'antidote', quantity: 1 },
-    ],
+    description:
+      'The engine that kept the levels dry, standing over its own drain with the fire long out. Its spares are crated beside it and nobody has opened them.',
+    reward: [{ itemId: 'parts-crate', quantity: 2 }],
   },
   {
     // Behind the banksman, out on the sands. Nothing else on this map is
@@ -511,11 +533,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     mapId: 'floodplain-relay',
     position: { x: 28, y: 116 },
     label: 'STRANDED BARGE',
-    description: 'A relay barge left on the sand when the tide went out and never floated again, with what it was carrying still under its hatches.',
-    reward: [
-      { itemId: 'great-ball', quantity: 1 },
-      { itemId: 'super-potion', quantity: 2 },
-    ],
+    description:
+      'A relay barge left on the sand when the tide went out and never floated again. She was carrying valves up to the keep, and they are still under her hatches.',
+    reward: [{ itemId: 'radio-valve', quantity: 2 }],
   },
   {
     id: 'floodplain-church-farm',
@@ -523,11 +543,8 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     position: { x: 45, y: 76 },
     label: 'CHURCH FARM',
     description:
-      'The farm that stood by the church, with a foot of water in its yard and its kitchen door still on the latch.',
-    reward: [
-      { itemId: 'potion', quantity: 1 },
-      { itemId: 'poke-ball', quantity: 2 },
-    ],
+      'The farm that stood by the church, with a foot of water in its yard and its kitchen door still on the latch. The kitchen shelf is where a farm keeps its medicine, and there are three Potions on it.',
+    reward: [{ itemId: 'potion', quantity: 3 }],
   },
   {
     id: 'floodplain-decoy',
@@ -537,8 +554,8 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     description:
       'A duck decoy: a pond with curved pipes of netting off it, and the fowler\'s kit still in the screen at the end of one.',
     reward: [
-      { itemId: 'super-potion', quantity: 1 },
-      { itemId: 'antidote', quantity: 1 },
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'poke-ball', quantity: 2 },
     ],
   },
   {
@@ -547,11 +564,8 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     position: { x: 81, y: 122 },
     label: 'THE WRECK',
     description:
-      'A trading smack driven onto the bar and left there. What was worth taking went a year ago; what was not is still in her.',
-    reward: [
-      { itemId: 'great-ball', quantity: 1 },
-      { itemId: 'potion', quantity: 2 },
-    ],
+      'A trading smack driven onto the bar and left there. What was worth taking went a year ago; what nobody could be bothered to cut free is her two warps.',
+    reward: [{ itemId: 'mooring-rope', quantity: 2 }],
   },
   {
     id: 'floodplain-ranger-radio',

@@ -194,6 +194,15 @@ export const SOUND_EFFECTS = {
     moment: 'A marked cache is opened for its reward',
     tones: [noise(900, 0.06, 0.05), ...run([392, 523, 659, 784], 0.07, 0.06, 0.05).map(later(0.06))],
   },
+  prizeSighted: {
+    channel: 'alert',
+    ducksMusic: true,
+    moment: 'A rare find comes into view for the first time - the one sound that is an offer rather than a warning',
+    // Up rather than down, and the only bright rising figure on the alert
+    // channel, which is otherwise all of the things coming for you. It sounds
+    // once per find per raid, because the chip is what keeps asking afterwards.
+    tones: [sq(784, 0.06, 0.055), sq(1047, 0.06, 0.055, 0.07), sq(1568, 0.22, 0.06, 0.14)],
+  },
   landmarkWorked: {
     channel: 'world',
     moment: 'A landmark is worked or a new drop-in point is reached - the sluice wheel turns, a station answers',

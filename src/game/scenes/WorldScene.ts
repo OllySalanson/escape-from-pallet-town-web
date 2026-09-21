@@ -137,6 +137,8 @@ import {
   objectiveChipLines,
   placePlateLine,
   weatherChipLine,
+  prizeChipView,
+  type PrizeChipInput,
   raidClockAlertTier,
   raidClockView,
 } from './raidHud';
@@ -185,7 +187,13 @@ import {
 } from '../world/trainerEngagement';
 import { hasHunterIntel } from '../hub/workshop';
 import { BEACON_EXIT_LABEL } from '../run/runGeneration';
-import { getVisibleLoot, tryCollectLoot } from '../world/loot';
+import {
+  getVisibleLoot,
+  isPrize,
+  prizesLeftBehind,
+  tryCollectLoot,
+  type WorldLoot,
+} from '../world/loot';
 import { cacheRefusalLine, tryActivatePoi } from '../world/pois';
 import {
   isLandmarkWorked,
@@ -246,11 +254,31 @@ const RUN_RESULT_DELAY_MS = 700;
 /** The player's chevron stands this far above their hair. */
 const CHEVRON_HEIGHT = 6;
 
+/**
+ * A rare find's tile and the light standing over it, so a caption is seated
+ * clear of the gleam rather than through the middle of it - the same rule the
+ * player's own chevron gets from `landingRect` below.
+ */
+const prizeRect = (tile: GridPosition): Rect => {
+  const rect = tileRect(tile);
+  return { ...rect, y: rect.y - PRIZE_GLEAM_REACH, height: rect.height + PRIZE_GLEAM_REACH };
+};
+
 /** A tile the player is expected to be standing on: the figure, and the chevron over it. */
 const landingRect = (tile: GridPosition): Rect => {
   const figure = figureRect(tile);
   return { ...figure, y: figure.y - CHEVRON_HEIGHT, height: figure.height + CHEVRON_HEIGHT };
 };
+
+/**
+ * The light a rare find is drawn under: gold, the same gold as its caption and
+ * its HUD chip, so the three read as one thing. The reach is two tiles across
+ * and the pulse is slow enough to be noticed from the edge of the screen
+ * without being the thing the eye is stuck on.
+ */
+const PRIZE_GLEAM_COLOUR = 0xfacc15;
+const PRIZE_GLEAM_REACH = 8;
+const PRIZE_GLEAM_PULSE_MS = 900;
 
 /**
  * Map captions share the raid HUD's window, in a darker weight: screen furniture
@@ -270,7 +298,8 @@ const LABEL_TONES: Readonly<
     | 'worked'
     | 'dropIn'
     | 'interior'
-    | 'ledge',
+    | 'ledge'
+    | 'prize',
     WorldLabelTone
   >
 > = {
@@ -299,6 +328,10 @@ const LABEL_TONES: Readonly<
   // A mouth is a way into the hill: the ledge's stone gone darker, because what
   // is behind it is the one ground on the map with no sky over it.
   interior: { fill: 0x141a24, border: 0xa9b6c6, ink: '#e8eef6' },
+  // A rare find. The same gold as its chip and its gleam, and the brightest
+  // frame on the map, because this is the one caption meant to be read from
+  // the other side of a clearing rather than walked up to.
+  prize: { fill: 0x3d2c05, border: 0xfacc15, ink: '#fffbe6' },
   // A ledge is the ground itself, so it is stone: not an exit's green or red,
   // not a threat, not a place a raid is sent to.
   ledge: { fill: 0x1c2733, border: 0x9fb3c8, ink: '#e2e8f0' },
@@ -499,7 +532,14 @@ export class WorldScene extends Phaser.Scene {
    */
   private unclaimedBossGear: RaidCarriage['unclaimedBossGear'] = [];
   private readonly collectedLootIds = new Set<string>();
+  /**
+   * Rare finds this raid has laid eyes on, by loot id. The prize chip keeps
+   * asking about these for the rest of the raid - see `prizeChipView`.
+   */
+  private readonly seenPrizeIds = new Set<string>();
   private readonly lootSprites = new Map<string, Phaser.GameObjects.Image>();
+  /** A rare find's caption, so picking it up takes the writing with it. */
+  private readonly prizeLabels = new Map<string, WorldLabel>();
   private readonly activatedPoiIds = new Set<string>();
   private readonly poiSprites = new Map<string, Phaser.GameObjects.Container>();
   private readonly poiLabels = new Map<string, WorldLabel>();
@@ -713,6 +753,8 @@ export class WorldScene extends Phaser.Scene {
     }
     this.collectedLootIds.clear();
     data.collectedLootIds?.forEach((id) => this.collectedLootIds.add(id));
+    this.seenPrizeIds.clear();
+    data.seenPrizeIds?.forEach((id) => this.seenPrizeIds.add(id));
     this.activatedPoiIds.clear();
     data.activatedPoiIds?.forEach((id) => this.activatedPoiIds.add(id));
     this.hunterState = data.hunterState ?? createHunterState();
@@ -1624,16 +1666,137 @@ export class WorldScene extends Phaser.Scene {
       this.isLootAvailable(),
       this.collectedLootIds,
     )) {
+      const x = loot.position.x * TILE_SIZE + TILE_SIZE / 2;
+      const y = loot.position.y * TILE_SIZE + TILE_SIZE / 2;
       const marker = this.add
-        .image(
-          loot.position.x * TILE_SIZE + TILE_SIZE / 2,
-          loot.position.y * TILE_SIZE + TILE_SIZE / 2,
-          iconTextureKey(itemIconName(loot.itemId)),
-        )
+        .image(x, y, iconTextureKey(itemIconName(loot.itemId)))
         .setDepth(atRow(MARKER_BAND, loot.position.y));
       this.lootSprites.set(loot.id, marker);
       this.mapObjects.push(marker);
+      if (isPrize(loot)) {
+        this.createPrizeGleam(loot, x, y);
+      }
     }
+  }
+
+  /**
+   * What makes a rare find a decision rather than a surprise: a light over it
+   * and its name beside it, both readable from across a clearing.
+   *
+   * The gleam is drawn in `CANOPY_BAND`, the one band above the figures, which
+   * is deliberate and is the whole reason it works in a wood: the light shows
+   * over a tree crown, so a Leaf Stone in the withy beds is a thing you notice
+   * from the bank rather than a thing you tread on. It is the only mark in that
+   * band that is not a crown, and it is two tiles of nothing being taken from
+   * the map - the icon under it is still the thing.
+   *
+   * The caption speaks with the `prize` voice, so unlike every other name on
+   * the map it does not wait to be walked up to (`ui/captionReveal.ts`).
+   */
+  private createPrizeGleam(loot: WorldLoot, x: number, y: number): void {
+    const gleam = this.add
+      .graphics()
+      .setDepth(atRow(CANOPY_BAND, loot.position.y))
+      .fillStyle(PRIZE_GLEAM_COLOUR, 1);
+    // A four-pointed star: two crossed bars and a bright centre, drawn rather
+    // than loaded, because it is four rectangles and an asset for it would be
+    // an asset to keep in provenance for no gain.
+    gleam.fillRect(-1, -PRIZE_GLEAM_REACH, 2, PRIZE_GLEAM_REACH * 2);
+    gleam.fillRect(-PRIZE_GLEAM_REACH, -1, PRIZE_GLEAM_REACH * 2, 2);
+    gleam.fillRect(-2, -2, 4, 4);
+    gleam.setPosition(x, y - TILE_SIZE / 2 - 2);
+    this.tweens.add({
+      targets: gleam,
+      alpha: { from: 1, to: 0.35 },
+      scale: { from: 1, to: 0.6 },
+      duration: PRIZE_GLEAM_PULSE_MS,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    this.mapObjects.push(gleam);
+
+    const label = new WorldLabel(this, {
+      subject: prizeRect(loot.position),
+      text: ITEMS[loot.itemId].displayName.toUpperCase(),
+      tone: LABEL_TONES.prize,
+      depth: atRow(CAPTION_BAND, loot.position.y),
+      speech: { voice: 'prize', tiles: [loot.position] },
+    });
+    this.worldLabels.push(label);
+    this.prizeLabels.set(loot.id, label);
+  }
+
+  /**
+   * Every prize on this map that the camera can currently see, remembered for
+   * the rest of the raid.
+   *
+   * Seeing is the camera's view rather than the survey disc: the survey is what
+   * the drop-in map lights and is deliberately tighter than a screen, and a
+   * prize the player has looked straight at but not walked within four tiles of
+   * is exactly the case the chip exists for.
+   */
+  private notePrizesInView(): void {
+    if (!this.isLootAvailable()) {
+      return;
+    }
+    const view = this.cameras.main.worldView;
+    for (const loot of getVisibleLoot(
+      this.lootForCurrentMap(),
+      true,
+      this.collectedLootIds,
+    )) {
+      if (!isPrize(loot) || this.seenPrizeIds.has(loot.id)) {
+        continue;
+      }
+      const x = loot.position.x * TILE_SIZE + TILE_SIZE / 2;
+      const y = loot.position.y * TILE_SIZE + TILE_SIZE / 2;
+      if (x >= view.left && x <= view.right && y >= view.top && y <= view.bottom) {
+        this.seenPrizeIds.add(loot.id);
+        audioManager.play('prizeSighted');
+      }
+    }
+  }
+
+  /**
+   * Rare finds this raid saw and is leaving on the ground, for the result
+   * screen. Every map the raid could have walked, because a prize is left
+   * behind on the map it was seen on, not on the one the exit is.
+   */
+  private prizesLeftBehindNow(): readonly string[] {
+    const plan = this.runSession?.plan;
+    return prizesLeftBehind(
+      plan?.loot ?? { [this.currentMap.id]: this.currentMap.loot },
+      this.seenPrizeIds,
+      this.collectedLootIds,
+    ).map((itemId) => ITEMS[itemId].displayName);
+  }
+
+  /**
+   * The nearest prize this raid has seen and not picked up, for the chip - or
+   * null, which is most raids.
+   */
+  private prizeInMind(): PrizeChipInput | null {
+    if (!this.isLootAvailable()) {
+      return null;
+    }
+    let nearest: { readonly loot: WorldLoot; readonly steps: number } | null = null;
+    for (const loot of getVisibleLoot(this.lootForCurrentMap(), true, this.collectedLootIds)) {
+      if (!this.seenPrizeIds.has(loot.id)) {
+        continue;
+      }
+      const steps = manhattan(this.currentTile, loot.position);
+      if (nearest === null || steps < nearest.steps) {
+        nearest = { loot, steps };
+      }
+    }
+    return nearest === null
+      ? null
+      : {
+        name: ITEMS[nearest.loot.itemId].displayName,
+        direction: directionTo(this.currentTile, nearest.loot.position),
+        distance: nearest.steps,
+      };
   }
 
   private createPois(): void {
@@ -2153,6 +2316,7 @@ export class WorldScene extends Phaser.Scene {
     this.noteDistrict();
     this.noteInterior();
     this.surveyGround();
+    this.notePrizesInView();
 
     if (manager.isEnraged) {
       if (this.timerThreat !== 'enraged') {
@@ -2183,6 +2347,9 @@ export class WorldScene extends Phaser.Scene {
         // chip and the fight that is about to start have to be reading the same
         // thing, and `transitionToBattle` reads the tile too.
         weather: weatherChipLine(this.currentWeather()),
+        // What the raid could still be for. Null until something rare has
+        // actually been laid eyes on, which is most raids.
+        prize: prizeChipView(this.prizeInMind()),
         hunter: hunterChipView({
           searching: isHunterSearching(this.hunterState),
           searchRemainingMs: this.hunterState.searchRemainingMs,
@@ -3144,6 +3311,7 @@ export class WorldScene extends Phaser.Scene {
       defeatedTrainerIds: [...this.defeatedTrainerIds],
       unclaimedBossGear: this.unclaimedBossGear,
       collectedLootIds: [...this.collectedLootIds],
+      seenPrizeIds: [...this.seenPrizeIds],
       activatedPoiIds: [...this.activatedPoiIds],
       hunterState: this.hunterState,
       returnLocation: this.returnLocation(),
@@ -3179,6 +3347,7 @@ export class WorldScene extends Phaser.Scene {
     this.npcAppearances.clear();
     this.idleFigures = [];
     this.lootSprites.clear();
+    this.prizeLabels.clear();
     this.poiSprites.clear();
     this.poiLabels.clear();
     this.contractMarkers.clear();
@@ -3379,6 +3548,8 @@ export class WorldScene extends Phaser.Scene {
     audioManager.play('lootPickup');
     marker?.destroy();
     this.lootSprites.delete(loot!.id);
+    this.removeWorldLabel(this.prizeLabels.get(loot!.id));
+    this.prizeLabels.delete(loot!.id);
     const item = ITEMS[loot!.itemId];
     const quantity = loot!.quantity > 1 ? ` x${loot!.quantity}` : '';
     return `Found ${item.displayName}${quantity}!${this.reseatNote()}`;
@@ -3723,6 +3894,7 @@ export class WorldScene extends Phaser.Scene {
         snapshot,
         durationMs: snapshot.durationMs,
         exitLabel: point.label,
+        leftBehind: this.prizesLeftBehindNow(),
         // The contract's payout is granted by the save rather than by the run,
         // so the report is handed exactly what the stash received. Field loot
         // arrives as the settlement's own positive delta rather than as the
@@ -3883,6 +4055,7 @@ export class WorldScene extends Phaser.Scene {
         cause: 'timer',
         snapshot,
         durationMs: snapshot.durationMs,
+        leftBehind: this.prizesLeftBehindNow(),
         lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
         carriedOut,
         saved,
