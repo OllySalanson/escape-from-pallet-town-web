@@ -4,7 +4,7 @@
 
 @font-face {
   font-family: 'Orange Kid';
-  src: url('/assets/battle/orange-kid.woff2') format('woff2');
+  src: url('./battle/orange-kid.woff2') format('woff2');
   font-display: block;
 }
 
@@ -555,7 +555,7 @@ button {
      the image with that point of the box - so shifting up by 5 of those 22 pixels
      is 5/22 divided by (1163.6% - 100%), which is 2.137%, not 22.727%. */
   aspect-ratio: 16 / 22;
-  background: url('/assets/character.png') 0 2.137% / 1700% 1163.6% no-repeat;
+  background: url('./character.png') 0 2.137% / 1700% 1163.6% no-repeat;
   image-rendering: pixelated;
   transform-origin: 50% 100%;
 }

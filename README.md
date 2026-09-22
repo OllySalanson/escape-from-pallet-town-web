@@ -25,6 +25,14 @@ Then open the local Vite URL in your browser.
 
 CI runs those same checks on every push and pull request.
 
+## Play online
+
+The current build is published on GitHub Pages:
+
+**https://ollysalanson.github.io/escape-from-pallet-town-web/**
+
+See [docs/deployment.md](docs/deployment.md) for how publishing works and how to verify a deployment.
+
 The test suite runs on four workers so that several checkouts can run it at once
 on one machine; `VITEST_MAX_WORKERS=12 npm run test` gives it the whole box.
 

@@ -1,4 +1,5 @@
 import { itemRefAt, pieceRefKey, type GridPacking } from '../items';
+import { publicAssetUrl } from '../publicAssetUrl';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
 import {
   characterDesignAssetPath,
@@ -189,13 +190,13 @@ export function pixelFigure(design: CharacterDesignId, name: string): string {
   // that asks "is anything drawn outside this screen?" answers yes on the card
   // nearest the edge. A background is clipped by the box it is on and has no
   // box of its own - the same reason `pixelWindow.ts` draws a frame this way.
-  const style = `--figure-top:${top};--figure-height:${height};--figure-sheet:url('/${characterDesignAssetPath(design)}')`;
+  const style = `--figure-top:${top};--figure-height:${height};--figure-sheet:url('${publicAssetUrl(characterDesignAssetPath(design))}')`;
   return `<span class="px-figure" role="img" aria-label="${escapeAttribute(name)}" style="${style}"></span>`;
 }
 
 /** A species' front sprite at its own size: one source pixel is one game pixel. */
 export function pixelPortrait(dexId: number, name: string): string {
-  return `<span class="px-portrait pokemon-avatar" aria-label="${escapeAttribute(name)}"><img src="/assets/pokemon/front/${dexId}.png" alt="" /><span aria-hidden="true">${name.slice(0, 1)}</span></span>`;
+  return `<span class="px-portrait pokemon-avatar" aria-label="${escapeAttribute(name)}"><img src="${publicAssetUrl(`assets/pokemon/front/${dexId}.png`)}" alt="" /><span aria-hidden="true">${name.slice(0, 1)}</span></span>`;
 }
 
 export function pixelTypeBadge(type: string): string {
