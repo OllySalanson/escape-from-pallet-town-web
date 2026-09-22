@@ -72,10 +72,13 @@ describe('Floodplain Relay', () => {
         () => true,
       ),
     ).toBe('activated');
-    expect(extracted.resolveEscape().bankedItems).toEqual([
-      { itemId: 'great-ball', quantity: 2 },
-      { itemId: 'super-potion', quantity: 1 },
-    ]);
+    // Read off the landmark rather than typed out: what a cache pays is
+    // authored judgement about the place (`pois.ts`), and pinning it here would
+    // make every re-author of a payout a two-file change for no guarantee. What
+    // this test is about is *when* it is banked.
+    expect(extracted.resolveEscape().bankedItems).toEqual(
+      vault.reward.map(({ itemId, quantity }) => ({ itemId, quantity })),
+    );
 
     const wiped = new RunManager();
     wiped.startRun({ party: [], items: [] }, { mapId: 'floodplain-relay', durationMs: 60_000 });
@@ -91,10 +94,9 @@ describe('Floodplain Relay', () => {
     );
     const wipeResult = wiped.resolveWipe();
     expect(wipeResult.bankedItems).toEqual([]);
-    expect(wipeResult.lostItems).toEqual([
-      { itemId: 'great-ball', quantity: 2 },
-      { itemId: 'super-potion', quantity: 1 },
-    ]);
+    expect(wipeResult.lostItems).toEqual(
+      vault.reward.map(({ itemId, quantity }) => ({ itemId, quantity })),
+    );
   });
 });
 

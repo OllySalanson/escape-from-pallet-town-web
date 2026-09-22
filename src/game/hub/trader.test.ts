@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   CURRENCY_ITEM_ID,
+  EVOLUTION_STONE_IDS,
   ITEM_DEFINITIONS,
   ItemCategory,
   getItemById,
+  isEvolutionStone,
   isFoundOnly,
   isMaterial,
 } from '../items';
@@ -433,5 +435,39 @@ describe('what a save may hold', () => {
     expect(clampTraderBarters(['nope', 7, 'barter-quick-claw', 'barter-quick-claw'])).toEqual([
       'barter-quick-claw',
     ]);
+  });
+});
+
+/**
+ * The stones are the only deals on the boat he will make twice, and the only
+ * ones that are also a thing you can go and find.
+ */
+describe('the stones on the counter', () => {
+  const stoneBarters = TRADER_BARTERS.filter((barter) =>
+    isEvolutionStone(barter.gives.itemId),
+  );
+
+  it('deals in every stone there is, and repeats every one of them', () => {
+    expect(stoneBarters.map((barter) => barter.gives.itemId).sort()).toEqual(
+      [...EVOLUTION_STONE_IDS].sort(),
+    );
+    // Gear is `once` because a second Focus Band arms a second Pokemon and a
+    // third arms nobody. A stone is spent, so the deal has to repeat or the
+    // reward stops after five.
+    expect(stoneBarters.every((barter) => !barter.once)).toBe(true);
+    // And nothing else on the table repeats, so "the stones are the repeating
+    // deals" is a sentence about the whole table rather than about these rows.
+    expect(TRADER_BARTERS.filter((barter) => !barter.once)).toEqual(stoneBarters);
+  });
+
+  it('prices one at more than a raid carries home, so finding one is cheaper', () => {
+    for (const barter of stoneBarters) {
+      const materials = barter.takes.reduce((total, { quantity }) => total + quantity, 0);
+      // Five materials is two or three raids of carrying heavy things out past
+      // the clock. The walk to the stone itself is one raid, which is what
+      // keeps the counter the fallback rather than the route.
+      expect(`${barter.id}: ${materials}`).toBe(`${barter.id}: 5`);
+      expect(barter.takes.every(({ itemId }) => isMaterial(itemId))).toBe(true);
+    }
   });
 });

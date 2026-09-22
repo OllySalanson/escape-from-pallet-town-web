@@ -118,3 +118,41 @@ describe('the look', () => {
     expect(isLooking(remaining, true)).toBe(true);
   });
 });
+
+/**
+ * The fourth voice, and the only one that exists to be read from across the
+ * map rather than walked up to.
+ */
+describe('a prize caption', () => {
+  const prize = {
+    voice: 'prize' as const,
+    tiles: [{ x: 40, y: 40 }],
+  };
+
+  it('speaks wherever the player is, because the decision is made at a distance', () => {
+    // Thirty steps away, off the other side of the screen, and still speaking:
+    // being in view is `labelPlacement`'s business, and a prize that only named
+    // itself once you were beside it would have nothing left to offer.
+    for (const distance of [0, 5, 12, 30]) {
+      expect(
+        captionSpeaks(prize, {
+          player: { x: 40, y: 40 + distance },
+          looking: false,
+          raidRemainingMs: 300_000,
+        }),
+        `silent at ${distance} steps`,
+      ).toBe(true);
+    }
+  });
+
+  it('is a warning about the clock rather than a name, which a name is not', () => {
+    const name = { voice: 'name' as const, tiles: prize.tiles };
+    const audience = {
+      player: { x: 40, y: 40 + CAPTION_NEAR_STEPS + 1 },
+      looking: false,
+      raidRemainingMs: 300_000,
+    };
+    expect(captionSpeaks(name, audience)).toBe(false);
+    expect(captionSpeaks(prize, audience)).toBe(true);
+  });
+});

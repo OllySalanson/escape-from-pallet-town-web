@@ -19,7 +19,14 @@ export const ITEM_ICONS = {
   'mooring-rope': 'mooring-rope',
   'linen-roll': 'linen-roll',
   scrip: 'scrip',
+  // The five stones, one hue and one mark each: a bolt, a flame, a drop, a
+  // leaf and a crescent. A stone is drawn on the ground as well as in a list,
+  // so which one it is has to read at 16px from across a clearing.
   'thunder-stone': 'thunder-stone',
+  'fire-stone': 'fire-stone',
+  'water-stone': 'water-stone',
+  'leaf-stone': 'leaf-stone',
+  'moon-stone': 'moon-stone',
   // One disc, eight hues: a machine is drawn in the type colour of the move it
   // teaches, which is how these games have always told one TM from another, and
   // an HM carries a slot where a TM has a pinhole.

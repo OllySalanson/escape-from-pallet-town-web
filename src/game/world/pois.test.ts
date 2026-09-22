@@ -6,7 +6,10 @@ import { WORLD_POIS, cacheRefusalLine, tryActivatePoi } from './pois';
 
 const worldSceneSource = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
 
-const fieldStation = WORLD_POIS[0];
+// Oak's field station, by id rather than by position in the list: it is the
+// one landmark that is a cache *and* an exit switch, so it is what the
+// activation rules are exercised against, and the list is authored map by map.
+const fieldStation = WORLD_POIS.find((poi) => poi.id === 'oak-field-station-relay')!;
 
 describe('world POIs', () => {
   it('only activates a fixed POI once during an active run', () => {
@@ -175,5 +178,85 @@ describe('world POIs', () => {
     expect(worldSceneSource).toContain(
       'const spoken = pickup === null ? this.tryActivatePoiAt(this.currentTile) : [pickup];',
     );
+  });
+});
+
+/**
+ * **A cache pays what its place is.**
+ *
+ * Forty-one named caches across four maps used to pay the same five things
+ * between them - a ball, a better ball, a Potion, a Super Potion, an Antidote -
+ * and four of them paid character for character the same two. As destinations
+ * they were interchangeable: only the distance and the danger told them apart,
+ * which is the same as saying the map's names meant nothing. The wildlife
+ * tables already worked the other way (`world/districts.ts`: Krabby only on
+ * Pallet's shore, Vulpix only on Route 1's west verge), and so did the
+ * materials in the ground loot; the caches were the layer that did not.
+ *
+ * These hold the shape of that rather than the contents, which are authored
+ * judgement and belong in the file rather than in an assertion.
+ */
+describe('what a cache pays', () => {
+  const paying = WORLD_POIS.filter((poi) => poi.reward.length > 0);
+  const recipe = (poi: (typeof WORLD_POIS)[number]): string =>
+    poi.reward
+      .map(({ itemId, quantity }) => `${quantity}x ${itemId}`)
+      .sort()
+      .join(' + ');
+
+  it('is not the same handful of supplies over and over', () => {
+    // Every cache in the game, and the number of distinct payouts among them.
+    // It was eighteen shapes across thirty-six paying caches, and four of the
+    // best ones - the quarry adit, the forest adit, the osier store and the
+    // stranded barge - were one payout repeated four times.
+    const shapes = new Set(paying.map(recipe));
+    expect(`${shapes.size} of ${paying.length} caches pay something of their own`).toBe(
+      `${paying.length} of ${paying.length} caches pay something of their own`,
+    );
+  });
+
+  it('draws on the whole catalogue rather than on medicine and balls', () => {
+    const kinds = new Set(paying.flatMap((poi) => poi.reward.map(({ itemId }) => itemId)));
+    // The five supplies plus the six Brock materials: a place that works
+    // pays what working it produces, which is what makes a raid a trip for
+    // something rather than a lap.
+    expect([...kinds].sort()).toEqual([
+      'antidote',
+      'cable-coil',
+      'great-ball',
+      'lamp-oil',
+      'linen-roll',
+      'mooring-rope',
+      'parts-crate',
+      'poke-ball',
+      'potion',
+      'radio-valve',
+      'super-potion',
+    ]);
+  });
+
+  it('never pays money, so Bill\'s prices stay set against the ground', () => {
+    // The scrip faucet is measured off each map's loot pool alone
+    // (`hub/trader.test.ts`), and a cache is a *guaranteed* pickup rather than
+    // a pooled one, so money out of one would be an unmeasured second faucet.
+    for (const poi of WORLD_POIS) {
+      expect(poi.reward.every(({ itemId }) => itemId !== 'scrip')).toBe(true);
+    }
+  });
+
+  it('gives every map a character of its own in what it pays', () => {
+    const byMap = new Map<string, Set<string>>();
+    for (const poi of paying) {
+      const kinds = byMap.get(poi.mapId) ?? new Set<string>();
+      poi.reward.forEach(({ itemId }) => kinds.add(itemId));
+      byMap.set(poi.mapId, kinds);
+    }
+    // No map pays everything, and no two maps pay the same list: where you go
+    // decides what you come home with.
+    for (const [mapId, kinds] of byMap) {
+      expect(`${mapId}: ${kinds.size}`).not.toBe(`${mapId}: 11`);
+    }
+    const lists = [...byMap.values()].map((kinds) => [...kinds].sort().join(','));
+    expect(new Set(lists).size).toBe(lists.length);
   });
 });

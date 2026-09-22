@@ -263,6 +263,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     pendingBattleExit: false,
     defeatedTrainerIds: new Set(),
     collectedLootIds: new Set(),
+    seenPrizeIds: new Set(),
     activatedPoiIds: new Set(),
     forcedReplacement: false,
     isPresentingCombatEvents: false,

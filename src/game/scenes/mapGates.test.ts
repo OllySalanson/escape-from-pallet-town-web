@@ -153,7 +153,7 @@ const attachSceneStubs = (scene: WorldScene): void => {
         setRoundPixels: vi.fn(),
         setZoom: vi.fn(),
         startFollow: vi.fn(),
-        worldView: { left: 0, right: BASE_STAGE_WIDTH },
+        worldView: { left: 0, right: BASE_STAGE_WIDTH, top: 0, bottom: BASE_STAGE_HEIGHT },
       },
     },
     game: { loop: { frame: 0 } },
@@ -189,6 +189,8 @@ const attachSceneStubs = (scene: WorldScene): void => {
       manager: { keys: { base: {}, extraction: {} } },
     },
     events: { once: vi.fn(), on: vi.fn() },
+    // A rare find pulses, so a map with one on it asks for a tween.
+    tweens: { add: vi.fn(() => chainable()), addCounter: vi.fn(() => chainable()) },
     time: { now: 0, delayedCall: vi.fn() },
   });
 };

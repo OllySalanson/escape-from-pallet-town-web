@@ -209,6 +209,14 @@ export interface ExtractionReportInput {
    * cannot be recovered from the party afterwards: by then they are all at 0 HP.
    */
   readonly lastStand?: Pokemon;
+  /**
+   * Rare finds this raid saw and left on the ground, by display name.
+   *
+   * It is passed in rather than derived because only the world knows what was
+   * ever in view (`world/loot.ts`, `prizesLeftBehind`), and a report that
+   * guessed at it from the plan would name things the player never met.
+   */
+  readonly leftBehind?: readonly string[];
   readonly saved: boolean;
 }
 
@@ -322,7 +330,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     gearSummary: gearSummary(gear, escaped),
     pack,
     packSummary: packSummary(pack),
-    pressure: pressureLines(snapshot, escaped),
+    pressure: pressureLines(snapshot, escaped, input.leftBehind ?? []),
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
     saved: input.saved,
   };
@@ -453,8 +461,21 @@ function suppliesSpent(snapshot: RunSnapshot, carriedOut: BagContents): ReportIt
   );
 }
 
-function pressureLines(snapshot: RunSnapshot, escaped: boolean): string[] {
+function pressureLines(
+  snapshot: RunSnapshot,
+  escaped: boolean,
+  leftBehind: readonly string[],
+): string[] {
   const lines: string[] = [];
+  // First, because it is the only line here that is about the next raid rather
+  // than about this one. A raid is for something, and this is the screen saying
+  // what it was for and that you did not get it.
+  if (leftBehind.length > 0) {
+    const named = [...new Set(leftBehind)].map((name) => name.toUpperCase());
+    lines.push(
+      `Left on the ground: ${named.join(', ')}${escaped ? ' - you walked out past it' : ''}`,
+    );
+  }
   if (snapshot.hunterFlees > 0) {
     const clockCost = Array.from({ length: snapshot.hunterFlees }, (_unused, index) =>
       hunterFleePenaltyMs(index),
