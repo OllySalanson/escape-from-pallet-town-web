@@ -59,7 +59,15 @@ function renderMap(id: WorldMapId) {
         const span = spans.find((candidate) => tile >= candidate.from && tile < candidate.to);
         if (!span) throw new Error(`tile ${tile} on ${id} is on none of its sheets`);
         const tint = layer.tints[y][x];
-        drawTile(image, span.sheet, tile - span.from, x - cx, y - cy, tint >= 0 ? tint : undefined);
+        drawTile(
+          image,
+          span.sheet,
+          tile - span.from,
+          x - cx,
+          y - cy,
+          tint >= 0 ? tint : undefined,
+          layer.flips[y][x],
+        );
       }
     }
   }

@@ -652,7 +652,7 @@ describe('a lost raid resolved inside a battle', () => {
     // Two Potions deployed, one drunk in this fight, one still in the pack.
     const { scene } = createBattleSceneHarness({ runSession, bag: new Bag({ potion: 1 }) });
     Object.assign(scene as object, {
-      scene: { manager: { keys: { world: {}, hub: {}, extraction: {} } }, start },
+      scene: { manager: { keys: { world: {}, base: {}, extraction: {} } }, start },
     });
 
     (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();
@@ -682,7 +682,7 @@ describe('a lost raid resolved inside a battle', () => {
     // Two Potions deployed, one drunk in this fight, one still in the pack.
     const { scene } = createBattleSceneHarness({ runSession, bag: new Bag({ potion: 1 }) });
     Object.assign(scene as object, {
-      scene: { manager: { keys: { world: {}, hub: {}, extraction: {} } }, start },
+      scene: { manager: { keys: { world: {}, base: {}, extraction: {} } }, start },
     });
 
     (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();
@@ -717,7 +717,7 @@ describe('a lost raid resolved inside a battle', () => {
     // The whole loadout is still in the pack: this raid healed nobody.
     const { scene } = createBattleSceneHarness({ runSession, bag: new Bag({ potion: 2 }) });
     Object.assign(scene as object, {
-      scene: { manager: { keys: { world: {}, hub: {}, extraction: {} } }, start },
+      scene: { manager: { keys: { world: {}, base: {}, extraction: {} } }, start },
     });
 
     (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();
@@ -747,7 +747,7 @@ describe('a lost raid resolved inside a battle', () => {
     const start = vi.fn();
     const { scene } = createBattleSceneHarness({ runSession });
     Object.assign(scene as object, {
-      scene: { manager: { keys: { world: {}, hub: {}, extraction: {} } }, start },
+      scene: { manager: { keys: { world: {}, base: {}, extraction: {} } }, start },
     });
     const internals = scene as unknown as {
       resolveRunWipe(): void;
@@ -784,7 +784,7 @@ describe('a lost raid resolved inside a battle', () => {
     const start = vi.fn();
     const { scene } = createBattleSceneHarness({ runSession });
     Object.assign(scene as object, {
-      scene: { manager: { keys: { world: {}, hub: {}, extraction: {} } }, start },
+      scene: { manager: { keys: { world: {}, base: {}, extraction: {} } }, start },
     });
 
     (scene as unknown as { resolveRunWipe(): void }).resolveRunWipe();

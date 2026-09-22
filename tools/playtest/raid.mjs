@@ -17,7 +17,7 @@
 // rest, and how the two endings nobody chooses are reached with them.
 import { writeFileSync } from 'node:fs';
 import { LOGIC_WINDOW, PIXEL_WINDOW, launchBrowser, sleep } from './browser.mjs';
-import { GAME, deploy, deployOptions, sceneIs } from './deploy.mjs';
+import { GAME, deploy, deployOptions, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
@@ -570,9 +570,14 @@ try {
     await page.screenshot(option('shot'));
   }
   if (ended) {
-    // And home, which is where a second raid starts from.
+    // And home, which is where a second raid starts from: a raid puts the
+    // player down on the base's own quay, so `base` is the scene and Oak's Lab
+    // is a walk away.
     await click('Back to the lab');
-    await until(sceneIs('hub'), 'the lobby');
+    await until(sceneIs('base'), 'the base');
+    await wait(400);
+    note(`home at ${await page.evaluate(`JSON.stringify(${GAME}.scene.getScene('base').currentTile)`)}`);
+    await walkIntoBase(page, 'oaks-lab', { press, until });
     await wait(400);
     note(`lobby: ${await page.evaluate(`document.querySelector('.menu-overlay')?.innerText.replace(/\\n+/g, ' | ').slice(0, 160)`)}`);
     // What the raid left in the record at base: the count, and the ground it

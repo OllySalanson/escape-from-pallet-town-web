@@ -20,7 +20,7 @@
 // screenshot cannot show, and the thing a multi-column list can quietly break.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
-import { SAVE_KEY, sceneIs } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -159,7 +159,7 @@ try {
   await page.waitFor(sceneIs('starter'));
   await shoot('starter');
   await click('Confirm Bulbasaur');
-  await page.waitFor(sceneIs('hub'));
+  await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
   // A save with a real amount in it: four maps unlocked, two dozen Pokemon and
   // a shelf of supplies. A thin save is the one shape these screens have never
@@ -182,19 +182,23 @@ try {
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await page.waitFor(sceneIs('title'));
   await press('Space');
-  await page.waitFor(sceneIs('hub'));
+  await page.waitFor(sceneIs('base'));
   await sleep(500);
 
-  await shoot('lobby');
-  await clickSel('button[data-view="stash"]');
+  // The base is a map now, so the screens are reached by walking to their own
+  // doors. `walkIntoBase` works the route out over the scene's own collision.
+  await shoot('base');
+  await walkIntoBase(page, 'pokemon-centre');
   await shoot('stash');
   await press('Escape');
-  await clickSel('button[data-view="workshop"]');
+  await walkIntoBase(page, 'brocks-workshop');
   await shoot('workshop');
   await press('Escape');
-  await clickSel('button[data-view="trader"]');
+  await walkIntoBase(page, 'the-quay');
   await shoot('bill');
   await press('Escape');
+  await walkIntoBase(page, 'oaks-lab');
+  await shoot('lobby');
   await click('Start a raid');
   await shoot('loadout');
   await click('Bulbasaur');
@@ -229,12 +233,13 @@ try {
     // breadth-first search over the four arrow keys, and every row of every
     // list has to turn up in it. A screenshot cannot show this, and columns are
     // exactly the change that can quietly break it.
+    // Back out to the yard, then walk into the Center again.
     for (let back = 0; back < 6; back += 1) {
-      if (await page.evaluate(`Boolean(document.querySelector('button[data-view="stash"]'))`)) break;
+      if (await page.evaluate(sceneIs('base'))) break;
       await press('Escape');
       await sleep(250);
     }
-    await clickSel('button[data-view="stash"]');
+    await walkIntoBase(page, 'pokemon-centre');
     await sleep(400);
     // A control is named by its wiring, which is what survives a re-render.
     const NAME = `(node) => node ? [...Object.entries(node.dataset)].filter(([k]) => k !== 'help').map(([k, v]) => k + '=' + v).sort().join('|') || node.textContent.trim().slice(0, 20) : ''`;
@@ -270,12 +275,13 @@ try {
     // One screen, every window, no reload: a menu is laid out on `resize` and a
     // screen that only ever looks right on a fresh load is a screen that breaks
     // the first time somebody drags a corner.
+    // Back out to the yard, then walk into the Center again.
     for (let back = 0; back < 6; back += 1) {
-      if (await page.evaluate(`Boolean(document.querySelector('button[data-view="stash"]'))`)) break;
+      if (await page.evaluate(sceneIs('base'))) break;
       await press('Escape');
       await sleep(250);
     }
-    await clickSel('button[data-view="stash"]');
+    await walkIntoBase(page, 'pokemon-centre');
     for (const [width, height] of RESIZES) {
       await page.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
       await sleep(500);

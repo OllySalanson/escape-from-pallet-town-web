@@ -186,7 +186,7 @@ const attachSceneStubs = (scene: WorldScene): void => {
       start: vi.fn(),
       launch: vi.fn(),
       pause: vi.fn(),
-      manager: { keys: { hub: {}, extraction: {} } },
+      manager: { keys: { base: {}, extraction: {} } },
     },
     events: { once: vi.fn(), on: vi.fn() },
     time: { now: 0, delayedCall: vi.fn() },

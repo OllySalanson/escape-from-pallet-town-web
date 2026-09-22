@@ -57,7 +57,7 @@ try {
     await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
     await page.waitFor(sceneIs('title'));
     await press('Space');
-    await page.waitFor(sceneIs('hub'));
+    await page.waitFor(sceneIs('base'));
   };
 
   const toDropIn = async () => {
@@ -70,7 +70,7 @@ try {
   await press('Space');
   await page.waitFor(sceneIs('starter'));
   await click('Confirm Bulbasaur');
-  await page.waitFor(sceneIs('hub'));
+  await page.waitFor(sceneIs('base'));
 
   await toDropIn();
   await shoot('dropin-fresh');

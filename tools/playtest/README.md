@@ -59,13 +59,28 @@ Pokemon going 16 to 1) and the sprites sit half out of frame. Assert on
 `getScene('battle').state`, never on `playerHpText` or a sprite's position, and
 judge either by eye only at real speed.
 
+## The base is a map, so a screen is walked to
+
+The lobby is a town (`src/game/scenes/BaseScene.ts`), so nothing here clicks a
+`button[data-view=...]` any more. `walkIntoBase(page, doorId)` in `deploy.mjs`
+is how every driver reaches a base screen: it reads the scene's own collision
+and its own `doors` list, paths to the doorway (or to beside the keeper, for
+the quay, which has no door) and goes in. A redrawn base moves the walk with
+it, which a table of tiles copied in here would not.
+
+    await walkIntoBase(page, 'pokemon-centre');   // oaks-lab | brocks-workshop | the-quay
+
+A raid ends back on the base's quay, not on a screen, so a driver that plays
+two raids walks into Oak's Lab between them - `raid.mjs` does.
+
 ## Any map, any ending
 
 A fresh save is offered one insertion, the Floodplain's front door. `deploy.mjs`
 is the way in for every driver (`raid.mjs`, `tour.mjs`, `gridtour.mjs`, `whyHidden.mjs`),
 and it goes the way a player does: the game writes its own save, `raidProgress`
-is edited in it, the page is reloaded and the raid is deployed from the lobby
-that save opens on, by clicking the insertion's own row in the loadout.
+is edited in it, the page is reloaded and the raid is deployed from the base
+that save opens on - walking into Oak's Lab and clicking the insertion's own
+row in the loadout.
 
 - `--insertion=id` - `town-square`, `route-1`, `route-1-overlook`,
   `viridian-forest`, or a Floodplain drop-in. The save says the first contract

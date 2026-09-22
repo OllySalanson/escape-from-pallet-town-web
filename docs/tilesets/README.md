@@ -34,6 +34,7 @@ npx vite-node tools/tileset/atlas.mts -- overworld atlas.png
 # sheet first stands on another sheet's ground, and where a clash between the
 # two sheets' numbering shows up as a tower with a base made of sand.
 npx vite-node tools/tileset/props.mts -- flood-town props.png 2
+# `--only=house,barn` draws a shortlist, for when the question is four landmarks.
 
 # And the maps themselves, exactly as the scene draws them.
 npx vite-node tools/tileset/renderMap.mts -- all maps.png 2 --grid --content
@@ -48,6 +49,12 @@ npx vite-node tools/tileset/minimap.mts -- all minimap.png 6 --beaten=overlook-w
 # --runs lists every over-long lane once; --clashes lists landmarks drawn over
 # each other (a tree's crown eats a roof one tile away) and trunks on roads.
 npx vite-node tools/tileset/mapReport.mts -- floodplain-relay --runs --clashes
+```
+
+```sh
+# And the base, at any stage of building: the same layer builder, the same
+# sheet, plus the walk from where the player is put down to each of its doors.
+npx vite-node tools/base/renderBase.mts -- base.png 3 --built=all --walks --marks
 ```
 
 ```sh

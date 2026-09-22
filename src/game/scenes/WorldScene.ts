@@ -1410,6 +1410,9 @@ export class WorldScene extends Phaser.Scene {
       if (tint >= 0) {
         tile.tint = tint;
       }
+      if (layer.flips[tile.y]?.[tile.x]) {
+        tile.flipX = true;
+      }
     });
     this.mapObjects.push(created);
     return created;
@@ -3792,7 +3795,10 @@ export class WorldScene extends Phaser.Scene {
         this.scene.start('extraction', { report });
         return;
       }
-      this.scene.start(this.scene.manager.keys.hub ? 'hub' : 'title');
+      this.scene.start(
+        this.scene.manager.keys.base ? 'base' : 'title',
+        this.scene.manager.keys.base ? { arrival: 'raid' } : undefined,
+      );
     });
   }
 
@@ -3906,10 +3912,10 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    if (this.scene.manager.keys.hub) {
+    if (this.scene.manager.keys.base) {
       this.cameras.main.fadeOut(180, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('hub');
+        this.scene.start('base', { arrival: 'raid' });
       });
       return;
     }

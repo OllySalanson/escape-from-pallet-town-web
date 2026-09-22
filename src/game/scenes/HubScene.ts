@@ -4,7 +4,6 @@ import type { SoundEffectName } from '../audio/soundEffects';
 import {
   applyRecovery,
   beaconUnlockAtMs,
-  builtUpgrades,
   checkBerth,
   checkPayment,
   DeploymentFlow,
@@ -157,6 +156,7 @@ import {
   type ShopPricePart,
 } from '../ui/shopDetail';
 import { starterCards } from '../ui/starterPicker';
+import { BASE_PLACE_NAME } from '../base/baseMap';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP } from '../ui/countSelector';
 
 /**
@@ -171,6 +171,14 @@ const ARRANGE_HELP =
 
 export interface HubSceneData {
   readonly savedGame?: RestoredGame;
+  /**
+   * Which room the player walked into. The base is a map now
+   * (`scenes/BaseScene.ts`), so a screen is reached by walking to its door
+   * rather than by choosing its row, and the door says which screen it is.
+   */
+  readonly view?: HubView;
+  /** The door they came in by, so backing out puts them on its step again. */
+  readonly from?: string;
 }
 
 /** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
@@ -186,6 +194,8 @@ export class HubScene extends Phaser.Scene {
   private flow!: DeploymentFlow;
   private overlay!: MenuOverlay;
   private view: HubView = 'home';
+  /** The base door this screen was walked in through, if any - see `leaveToBase`. */
+  private enteredFrom: string | undefined;
   /**
    * Picking a piece up and putting it down, in both containers.
    *
@@ -253,6 +263,11 @@ export class HubScene extends Phaser.Scene {
     }
 
     this.applyLoadedGame(loaded);
+    // The save wins over the payload for the *game*; the payload wins for which
+    // room this is, because that is the door the player just walked through and
+    // storage knows nothing about it.
+    this.view = data.view ?? 'home';
+    this.enteredFrom = data.from;
   }
 
   private applyLoadedGame(loaded: RestoredGame): void {
@@ -851,10 +866,28 @@ export class HubScene extends Phaser.Scene {
     this.render();
   }
 
+  /** Backing out of preparation returns to the lab it is done in. */
   private leaveDeployment(): void {
     this.flow.restart();
     this.setView('home');
     this.render();
+  }
+
+  /**
+   * Backing out of a room walks back onto its own doorstep.
+   *
+   * The lobby used to be a screen these four were reached from, so backing out
+   * of one meant `setView('home')`. They are rooms now and the thing they are
+   * reached from is the base map, so leaving one starts that scene again with
+   * the door named - `BaseScene` puts the player down on its step, facing out,
+   * and never in the middle of the yard they walked from.
+   */
+  private leaveToBase(): void {
+    this.flow.restart();
+    this.scene.start('base', {
+      savedGame: this.savedGame,
+      ...(this.enteredFrom === undefined ? {} : { from: this.enteredFrom }),
+    });
   }
 
   /** The only way into a raid: a plan the player walked through and confirmed. */
@@ -970,7 +1003,13 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
-    this.leaveDeployment();
+    // Preparation is done inside Oak's Lab, so its first step backs out to the
+    // lab rather than out of the building.
+    if (this.view === 'deploy') {
+      this.leaveDeployment();
+      return;
+    }
+    this.leaveToBase();
   }
 
   private handleKey(event: KeyboardEvent): void {
@@ -989,7 +1028,10 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
-    if (event.key === 'Escape' && this.view !== 'home') {
+    // Every room has a way out now, Oak's Lab included, and `goBack` knows
+    // where each one leads: a step of preparation back to the lab, and the lab
+    // itself back out into the yard.
+    if (event.key === 'Escape') {
       event.preventDefault(); audioManager.play('cancel'); this.goBack(); return;
     }
     const group = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('.px-count');
@@ -1046,9 +1088,17 @@ export class HubScene extends Phaser.Scene {
     this.render();
   }
 
+  /**
+   * Every room is headed with the name over the door the player walked through
+   * (`base/doors.ts`), because the two being different is the one thing a
+   * walkable base can get wrong that a lobby could not: a building captioned
+   * BROCK'S WORKSHOP opening onto a screen headed `The Outfitter` reads as two
+   * places. What each keeper *trades in* - the Outfitter's ladder, the
+   * Ferryman's counters - is unchanged everywhere it is said inside.
+   */
   private get heading(): string {
     if (this.view === 'home') return 'Oak’s Lab';
-    if (this.view === 'stash') return 'Your stash';
+    if (this.view === 'stash') return 'Pokémon Center';
     if (this.view === 'reselect') return 'Swap your partner';
     if (this.view === 'workshop') return this.payingFor ? `Build ${this.payingFor.name}` : 'Brock’s Workshop';
     if (this.view === 'trader') return 'Bill';
@@ -1058,22 +1108,21 @@ export class HubScene extends Phaser.Scene {
   }
 
   private get backLabel(): string {
-    if (this.view === 'reselect') return 'Stash';
+    if (this.view === 'reselect') return 'Center';
     if (this.view === 'workshop' && this.payingFor) return 'Workshop';
-    if (this.view !== 'deploy') return 'Lab';
+    // Out of a room is out of its door, so the label names where that puts you.
+    if (this.view !== 'deploy') return BASE_PLACE_NAME;
     if (this.flow.step === 'confirm') return 'Drop-in';
     if (this.flow.step === 'dropin') return 'Loadout';
     if (this.flow.step === 'secure') {
       return this.flow.secureReturnStep === 'confirm' ? 'Final check' : 'Loadout';
     }
-    return 'Lab';
+    return 'Oak’s Lab';
   }
 
   /** What the keys do, said once along the bottom of every screen. */
   private get hints(): string {
-    return this.view === 'home'
-      ? 'ARROWS move · ENTER choose'
-      : 'ARROWS move · ENTER choose · ESC back';
+    return 'ARROWS move · ENTER choose · ESC back';
   }
 
   private render(): void {
@@ -1087,15 +1136,14 @@ export class HubScene extends Phaser.Scene {
       // Which of the two games this is, on every view of it, because the one
       // thing a player must never be unsure of is whether what they are about
       // to spend is real (`dev/playtestMode.ts`).
-      place: isPlaytestRun()
-        ? this.view === 'home'
-          ? `${PLAYTEST_PLACE_LABEL} · Pallet Town`
-          : PLAYTEST_PLACE_LABEL
-        : this.view === 'home'
-          ? 'Pallet Town'
-          : undefined,
+      // Which of the two games this is, and nothing else: where the player is
+      // standing is said by the way out, which every room now carries. Said in
+      // both places it read `THE HARBOUR THE HARBOUR OAK'S LAB`.
+      place: isPlaytestRun() ? PLAYTEST_PLACE_LABEL : undefined,
       title: this.heading,
-      back: this.view === 'home' ? undefined : { label: this.backLabel, attribute: 'data-back' },
+      // Every room has a way out now, Oak's Lab included: it is a building the
+      // player walked into rather than the screen everything else hangs off.
+      back: { label: this.backLabel, attribute: 'data-back' },
       aside:
         this.view === 'deploy'
           ? this.progressRail()
@@ -1294,33 +1342,30 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * The base screen leads with the raid it is sending you on: what to do next,
-   * then what is outstanding. Nothing here is a consolation prize - the swap
-   * offer lives in the stash, beside the Pokemon it would trade away, because
-   * on a fresh save it is the loudest panel on the screen three seconds after
-   * the player chose that partner, and it is what pushed the lobby past the
-   * frame and put a browser scrollbar down the side of the game.
+   * Oak's Lab: the one room a raid is prepared in.
+   *
+   * This used to be the lobby - the raid card, the stash, the Outfitter and the
+   * Ferryman side by side, with the contract board under them. Three of those
+   * four are buildings of their own now (`base/doors.ts`), so what is left here
+   * is the two things that belong in a lab: the board of work on offer, and the
+   * door out to it. Nothing about the board or preparation changed; what went
+   * is the navigation, which is the yard outside.
+   *
+   * The Pokémon line stays because it is the one fact that decides whether to
+   * deploy at all, and the Center is a walk away rather than a click.
    */
   private homeView(): string {
     const hurt = this.injuredPokemon.length;
-    // Each door of the lab is a person, and the person is on it: Oak sends you
-    // out, Nurse Joy keeps what came home on its feet, Brock builds and Bill
-    // deals. Same art the overworld draws a figure from, at the same scale.
+    // Oak sends you out, and he is on the card that does it: the same art the
+    // overworld draws him from, at the same scale. The other three people are
+    // in their own buildings now (`base/doors.ts`), so the only other face here
+    // is Nurse Joy's, on the line that says somebody needs her.
     const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-deploy-flow data-cursor-start data-help="Build a loadout, check what it risks, then drop in."><strong>Start a raid</strong><p>Choose who and what you risk, and where you drop in.</p>${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
-    // Anyone hurt is said here and fixed in the stash, beside the Pokemon it is
-    // about: the bill used to be a panel of its own on this screen, and with two
-    // contracts open it left the board it sat above a single line tall.
-    // Short, because three cards share the row: the help bar has the sentence.
-    // The swap offer is one, and on a card a third of the screen wide it was a
-    // fifth red line - the loudest thing on the base screen, for its
-    // second-most important panel. The stash puts the offer under the Pokemon
-    // it is about; this card only has to say there is something to do.
-    const swap = this.sparePartner ? ' Your last partner can be swapped here.' : '';
-    const stashLead = hurt
-      ? `<p class="px-warning">${hurt === 1 ? '1 Pokémon' : `${hurt} Pokémon`} came home hurt. Treat them here.</p>`
-      : '<p>What is secured at base.</p>';
-    const stash = `<button class="px-window px-card has-figure" data-view="stash" data-help="Everything secured at base, and Nurse Joy.${swap}"><strong>Stash</strong>${stashLead}${pixelFigure('nurse-joy', 'Nurse Joy')}</button>`;
-    return `<main class="px-body hub-home"><section class="hub-actions" ${pixelColumns(96, { maximum: 3 })}>${deploy}${stash}${this.workshopCard()}${this.traderCard()}</section>${this.contractBoard()}</main>`;
+    const condition = hurt
+      ? `<p class="px-warning">${hurt === 1 ? '1 Pokémon' : `${hurt} Pokémon`} came home hurt. NURSE JOY is across the yard.</p>`
+      : '<p>Everyone is fit to deploy.</p>';
+    const team = `<button class="px-window px-card has-figure" data-refused="The Pokémon Center is the building west of the lab." data-help="Your team's condition. Nurse Joy treats them, across the yard."><strong>Your team</strong>${condition}${pixelFigure('nurse-joy', 'Nurse Joy')}</button>`;
+    return `<main class="px-body hub-home"><section class="hub-actions">${deploy}${team}</section>${this.contractBoard()}</main>`;
   }
 
   /**
@@ -2316,23 +2361,6 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * Bill's card, beside Brock's, because the pair of them is
-   * how a player tells the two apart: one builds the base, one deals off a
-   * boat. The card leads with the money, since that is the fact the screen
-   * behind it turns on and the only number in the game that is found rather
-   * than earned.
-   */
-  private traderCard(): string {
-    const counter = this.traderCounter;
-    const standing = traderStanding(counter.progress);
-    const scrip = scripHeld(this.stash);
-    const ready =
-      traderStockOffers(counter).filter((offer) => offer.refusal === undefined).length +
-      traderBarterOffers(counter).filter((offer) => offer.refusal === undefined).length;
-    return `<button class="px-window px-card has-figure" data-view="trader" data-help="Spend found scrip on his rationed shelf, and barter found goods for the gear money cannot buy."><strong>Bill</strong><p>${standing.name} · ${scrip} scrip</p><p>${ready ? `<span class="px-ready">${ready} deal${ready === 1 ? '' : 's'} ready</span>` : 'Nothing you can take today'}</p>${pixelFigure('bill', 'Bill')}</button>`;
-  }
-
-  /**
    * The boat: standing at the top, then the two halves of what he does.
    *
    * They are two windows and never one list, because the whole design rests on
@@ -2634,12 +2662,6 @@ export class HubScene extends Phaser.Scene {
       audioManager.play('cancel');
     }
     this.setStatus(result.message);
-  }
-
-  private workshopCard(): string {
-    const built = builtUpgrades(this.builtUpgradeIds).length;
-    const ready = this.workshopLadder.filter((offer) => offer.affordable).length;
-    return `<button class="px-window px-card has-figure" data-view="workshop" data-help="Brock builds banked Pokémon and salvage into the base, for good."><strong>Brock’s Workshop</strong><p>Permanent upgrades to the base.</p><p>${built}/${WORKSHOP_UPGRADES.length} built${ready ? `<span class="px-ready"> · ${ready} ready</span>` : ''}</p>${pixelFigure('brock', 'Brock')}</button>`;
   }
 
   private get workshopLadder(): readonly WorkshopOffer[] {

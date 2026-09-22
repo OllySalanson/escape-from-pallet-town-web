@@ -23,6 +23,8 @@ export interface TileLayer {
   readonly tiles: number[][];
   /** -1 where the tile is drawn exactly as the art has it. */
   readonly tints: number[][];
+  /** True where the tile is drawn left for right - see `PropCell.flipX`. */
+  readonly flips: boolean[][];
 }
 
 export interface MapLayers {
@@ -55,6 +57,7 @@ function blankLayer(width: number, height: number): TileLayer {
   return {
     tiles: Array.from({ length: height }, () => Array<number>(width).fill(NONE)),
     tints: Array.from({ length: height }, () => Array<number>(width).fill(NONE)),
+    flips: Array.from({ length: height }, () => Array<boolean>(width).fill(false)),
   };
 }
 
@@ -375,6 +378,7 @@ function plantProps(
         }
         const layer = cell.canopy ? canopy : detail;
         layer.tiles[y][x] = cell.tile;
+        layer.flips[y][x] = cell.flipX === true;
         // A canopy is drawn *over* the figures, so a figure can be under it:
         // the crown of a tree may never also be a wall. Enforced here rather
         // than trusted to each catalogue, because the two contradict silently.

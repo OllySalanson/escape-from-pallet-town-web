@@ -205,7 +205,7 @@ function createScene(): { scene: ExtractionScene; start: ReturnType<typeof vi.fn
         once: (_event: string, callback: () => void) => callback(),
       },
     },
-    scene: { start, manager: { keys: { hub: {}, extraction: {} } } },
+    scene: { start, manager: { keys: { base: {}, extraction: {} } } },
     events: { once: vi.fn() },
     time: {
       get now(): number {
@@ -345,7 +345,7 @@ describe('the result screen on a defeat', () => {
     advance(400);
     press('Enter');
 
-    expect(start).toHaveBeenCalledWith('hub');
+    expect(start).toHaveBeenCalledWith('base', { arrival: 'raid' });
   });
 });
 
@@ -453,7 +453,7 @@ describe('moving the defeat sequence on', () => {
     advance(1_000);
     press(' ');
 
-    expect(start).toHaveBeenCalledWith('hub');
+    expect(start).toHaveBeenCalledWith('base', { arrival: 'raid' });
   });
 });
 

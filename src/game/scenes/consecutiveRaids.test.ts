@@ -189,7 +189,7 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
       pause: vi.fn(),
       // The real game registers both, and which one exists decides where a
       // finished raid is handed to.
-      manager: { keys: { hub: {}, extraction: {} } },
+      manager: { keys: { base: {}, extraction: {} } },
     },
     events: { once: vi.fn(), on: vi.fn() },
     // Raid resolution waits a beat so the flash lands on the map; run it now.

@@ -427,7 +427,7 @@ export class TitleScene extends Phaser.Scene {
         return;
       }
       const savedGame = this.loadOrCreateGame();
-      this.scene.start(savedGame ? 'hub' : 'starter', savedGame ? { savedGame } : undefined);
+      this.scene.start(savedGame ? 'base' : 'starter', savedGame ? { savedGame } : undefined);
     });
   }
 
@@ -450,10 +450,10 @@ export class TitleScene extends Phaser.Scene {
     if (!savedGame) {
       // Storage is unavailable or full. The run is still playable; it simply
       // will not be there next time, which is better than refusing to start.
-      this.scene.start('hub', { savedGame: createPlaytestGame() });
+      this.scene.start('base', { savedGame: createPlaytestGame() });
       return;
     }
-    this.scene.start('hub', { savedGame });
+    this.scene.start('base', { savedGame });
   }
 
   private loadOrCreateGame() {

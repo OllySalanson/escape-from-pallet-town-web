@@ -10,7 +10,7 @@
 // does instead of cutting is on record.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep, PIXEL_WINDOW } from './browser.mjs';
-import { SAVE_KEY, sceneIs } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots'] = args.filter((arg) => !arg.startsWith('--'));
@@ -55,23 +55,23 @@ try {
   await press('Space');
   await page.waitFor(sceneIs('starter'));
   await click('Confirm Bulbasaur');
-  await page.waitFor(sceneIs('hub'));
+  await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
   await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}')); Object.assign(save.raidProgress, { firstContractExtracted: true, completedContracts: ['recover-lost-field-kit'], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'] }); localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
   await page.waitFor(sceneIs('title'));
   await press('Space');
-  await page.waitFor(sceneIs('hub'));
+  await page.waitFor(sceneIs('base'));
   await sleep(400);
 
   await shoot('lobby');
-  await clickSel('button[data-view="trader"]');
+  await walkIntoBase(page, 'the-quay');
   await shoot('bill');
   await press('Escape');
-  await clickSel('button[data-view="stash"]');
+  await walkIntoBase(page, 'pokemon-centre');
   await shoot('stash');
   await press('Escape');
-  await clickSel('button[data-view="workshop"]');
+  await walkIntoBase(page, 'brocks-workshop');
   await shoot('workshop');
   await press('Escape');
   await click('Start a raid');

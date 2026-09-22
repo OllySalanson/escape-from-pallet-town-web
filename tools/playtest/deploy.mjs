@@ -13,6 +13,85 @@ export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 export const GAME = 'window.__escapeFromPalletTownGame__';
 export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
 
+/**
+ * Walks the base to one of its four doors and goes in.
+ *
+ * The lobby used to be a screen with four cards on it, so every driver here
+ * reached a base screen by clicking `button[data-view=...]`. It is a map now
+ * (`src/game/scenes/BaseScene.ts`): the screens are unchanged and what changed
+ * is that you walk to them. The route is worked out over the scene's own
+ * collision and the scene's own door list rather than typed here, so a redrawn
+ * base moves the walk with it.
+ *
+ * `door` is a `BASE_DOORS` id: `oaks-lab`, `pokemon-centre`, `brocks-workshop`
+ * or `the-quay`. The quay has no door - Bill is the way in - so the walk ends
+ * beside him and presses the interact key.
+ */
+export async function walkIntoBase(page, door, options = {}) {
+  const press = options.press ?? ((code) => page.tap(code, 60));
+  const until = options.until ?? ((expression, what) => page.waitFor(expression, { what }));
+  const settleMs = options.settleMs ?? 180;
+  await until(sceneIs('base'), 'the base');
+  const target = await page.evaluate(
+    `(() => { const b = ${GAME}.scene.getScene('base');
+      const d = b.doors.find((door) => door.id === ${JSON.stringify(door)});
+      if (!d) throw new Error('no base door ' + ${JSON.stringify(door)});
+      return { tiles: d.tiles, keeper: d.keeper.position }; })()`,
+  );
+  if (!target) throw new Error(`no base door ${door}`);
+  // A door is walked onto; a keeper is walked up to and spoken to.
+  const goals = target.tiles.length > 0 ? target.tiles : [target.keeper];
+  const speakTo = target.tiles.length === 0 ? target.keeper : null;
+  for (let guard = 0; guard < 80; guard += 1) {
+    if (await page.evaluate(sceneIs('hub'))) {
+      return;
+    }
+    const move = await page.evaluate(
+      `(() => { const b = ${GAME}.scene.getScene('base'); if (!b) return { gone: true };
+        const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
+        const goals = ${JSON.stringify(goals)};
+        const speak = ${JSON.stringify(speakTo)};
+        const at = (x, y) => goals.some((g) => g.x === x && g.y === y);
+        if (speak && Math.abs(s.x - speak.x) + Math.abs(s.y - speak.y) === 1) {
+          return { face: speak.x > s.x ? 'ArrowRight' : speak.x < s.x ? 'ArrowLeft' : speak.y > s.y ? 'ArrowDown' : 'ArrowUp' };
+        }
+        const blocked = (x, y) => b.isBlocked({ x, y });
+        const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;
+        // Standing beside the keeper counts as arriving, because that is where
+        // a player stops to speak to somebody.
+        const done = (x, y) => (speak ? Math.abs(x - speak.x) + Math.abs(y - speak.y) === 1 : at(x, y));
+        if (done(s.x, s.y)) return { arrived: true };
+        while (queue.length) { const [x, y] = queue.shift();
+          if (done(x, y)) { found = [x, y]; break; }
+          for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny))) continue;
+            if (!done(nx, ny) && blocked(nx, ny)) continue;
+            prev.set(id(nx, ny), [x, y, k]); queue.push([nx, ny]); } }
+        if (!found) return { unreachable: true };
+        let cur = found, key = null;
+        for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; }
+        return { key }; })()`,
+    );
+    if (move?.gone) return;
+    if (move?.unreachable) throw new Error(`nothing walks to the ${door} from the base spawn`);
+    if (move?.face) {
+      await press(move.face);
+      await sleep(settleMs);
+      await press('Space');
+      await sleep(settleMs);
+      continue;
+    }
+    if (move?.arrived) {
+      await press('Space');
+      await sleep(settleMs);
+      continue;
+    }
+    await press(move.key);
+    await sleep(settleMs);
+  }
+  await until(sceneIs('hub'), `the ${door}`);
+}
+
 /** `--insertion=id --beaten=bossId,.. --opened=gateId,.. --completed=contractId,.. --hp=N --level=N --starter=name --team=species,.. --stash=itemId[:n],.. --pack=itemId[:n],.. --secure=itemId[:n],..`, out of a driver's arguments. */
 export function deployOptions(args) {
   const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -102,9 +181,11 @@ export async function deploy(page, url, { press, click, until, paused = false, i
       localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
     await page.send('Page.navigate', { url });
     await title();
-    await press('Space'); await until(sceneIs('hub'));
+    await press('Space'); await until(sceneIs('base'));
     console.log(`continuing from a save with: ${JSON.stringify(await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress`))}`);
   }
+  // The lobby is a town now, and preparation is done inside Oak's Lab.
+  await walkIntoBase(page, 'oaks-lab', { press, until });
   await click('Start a raid');
   await click(starter);
   // Everybody else the vault holds, so a `--team` deploys as a team. The rows

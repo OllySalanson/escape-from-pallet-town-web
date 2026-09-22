@@ -188,7 +188,7 @@ export class TestLabScene extends Phaser.Scene {
     }
     const game = this.createFreshProfile(route !== 'base' && route !== 'run-town');
     if (route === 'base') {
-      this.scene.start('hub', { savedGame: game });
+      this.scene.start('base', { savedGame: game });
       return;
     }
     const insertion: RunInsertionId =
