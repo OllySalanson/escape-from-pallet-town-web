@@ -57,6 +57,7 @@ import {
   characterDesignAssetPath,
   characterDesignTextureKey,
 } from './world/characterDesigns';
+import { publicAssetUrl } from './publicAssetUrl';
 
 describe('game start flow', () => {
   it('auto-starts Boot so World prerequisites are ready before Title can start it', async () => {
@@ -83,7 +84,7 @@ describe('game start flow', () => {
     boot.preload();
     boot.create();
 
-    expect(spritesheet).toHaveBeenCalledWith('character', 'assets/character.png', {
+    expect(spritesheet).toHaveBeenCalledWith('character', publicAssetUrl('assets/character.png'), {
       frameWidth: 16,
       frameHeight: 32,
     });
@@ -92,17 +93,17 @@ describe('game start flow', () => {
     // CC0 buildings - so these are the two sheets a raid cannot start without.
     for (const map of Object.values(WORLD_MAPS)) {
       for (const source of map.tileset.sources) {
-        expect(image).toHaveBeenCalledWith(source.textureKey, source.imagePath);
+        expect(image).toHaveBeenCalledWith(source.textureKey, publicAssetUrl(source.imagePath));
       }
     }
     // No shipped map draws from the classic sheet any more, but it is still the
     // catalogue `worldMap.ts` gives a map that names none, so it is still loaded.
-    expect(image).toHaveBeenCalledWith('classicTiles', 'assets/tileset.png');
+    expect(image).toHaveBeenCalledWith('classicTiles', publicAssetUrl('assets/tileset.png'));
     // Every registered character design is loaded on the same frame grid and
     // given the same four-facing walk cycle as the shared sheet.
     for (const design of CHARACTER_DESIGN_IDS) {
       const textureKey = characterDesignTextureKey(design);
-      expect(spritesheet).toHaveBeenCalledWith(textureKey, characterDesignAssetPath(design), {
+      expect(spritesheet).toHaveBeenCalledWith(textureKey, publicAssetUrl(characterDesignAssetPath(design)), {
         frameWidth: 16,
         frameHeight: 32,
       });

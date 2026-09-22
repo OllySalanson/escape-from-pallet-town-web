@@ -1,3 +1,5 @@
+import { publicAssetUrl } from '../publicAssetUrl';
+
 /**
  * The one place a pixel icon is named. Every icon is a 16x16 PNG under
  * `public/assets/icons`, so both the DOM menus and the Phaser world draw the
@@ -75,7 +77,7 @@ export function iconTextureKey(name: string): string {
 }
 
 export function iconUrl(name: string): string {
-  return `/assets/icons/${name}.png`;
+  return publicAssetUrl(`assets/icons/${name}.png`);
 }
 
 /**

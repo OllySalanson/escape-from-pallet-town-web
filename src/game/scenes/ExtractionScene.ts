@@ -14,6 +14,7 @@ import type {
   ReportItem,
   ReportPokemon,
 } from '../run/extractionReport';
+import { publicAssetUrl } from '../publicAssetUrl';
 import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { pixelCommitBar, pixelHpBar, pixelScreen, pixelTag, pixelWindow } from '../ui/pixelUi';
@@ -538,7 +539,7 @@ function defeatFigure(figure: DefeatFigure, index: number): string {
   const classes = ['defeat-figure', figure.lastStand ? 'is-last-stand' : ''].join(' ').trim();
   const body =
     figure.kind === 'pokemon'
-      ? `<img src="/assets/pokemon/front/${figure.dexId}.png" alt="" />`
+      ? `<img src="${publicAssetUrl(`assets/pokemon/front/${figure.dexId}.png`)}" alt="" />`
       : `<span class="defeat-item-glyph"><img src="${iconUrl(itemIconName(figure.itemId ?? ''))}" alt="" aria-hidden="true" /></span>`;
   const meta = figure.kind === 'pokemon' ? `Lv ${figure.level ?? '?'}` : `\u00d7${figure.quantity ?? 1}`;
   return `<figure class="${classes}" data-kind="${figure.kind}" data-fate="${figure.fate}" style="--figure-index:${index}">
