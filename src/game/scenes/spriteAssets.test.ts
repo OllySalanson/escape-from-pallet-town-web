@@ -49,8 +49,8 @@ describe('Pokemon sprite assets', () => {
   it('loads sprites by dex id with no per-species file-format exception', async () => {
     const source = await readFile(new URL('./BootScene.ts', import.meta.url), 'utf8');
 
-    expect(source).toContain('`assets/pokemon/front/${species.dexId}.png`');
-    expect(source).toContain('`assets/pokemon/back/${species.dexId}.png`');
+    expect(source).toContain('publicAssetUrl(`assets/pokemon/front/${species.dexId}.png`)');
+    expect(source).toContain('publicAssetUrl(`assets/pokemon/back/${species.dexId}.png`)');
     expect(source).not.toMatch(/dexId === \d/);
     expect(source).not.toContain('svg');
   });
@@ -60,7 +60,7 @@ describe('Pokemon sprite assets', () => {
     // rounded avatar the in-raid screens used went with those screens.
     const source = await readFile(new URL('../ui/pixelUi.ts', import.meta.url), 'utf8');
 
-    expect(source).toContain('/assets/pokemon/front/${dexId}.png');
+    expect(source).toContain('publicAssetUrl(`assets/pokemon/front/${dexId}.png`)');
     expect(source).not.toMatch(/dexId === \d/);
     expect(source).not.toContain('svg');
   });

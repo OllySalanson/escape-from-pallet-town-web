@@ -197,6 +197,8 @@ const attachSceneStubs = (scene: WorldScene, controls: Record<string, FakeKey>):
       now: 0,
       delayedCall: vi.fn((_delayMs: number, callback: () => void) => callback()),
     },
+    // Prize gleams pulse for the life of the raid (`WorldScene.createPrizeGleam`).
+    tweens: { add: vi.fn(() => chainable()), addCounter: vi.fn(() => chainable()) },
   });
 };
 

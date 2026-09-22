@@ -17,6 +17,7 @@ import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import { isTestLabRequested } from '../dev/testLabAccess';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
 import { awaitGameFont } from '../ui/gameFont';
+import { publicAssetUrl } from '../publicAssetUrl';
 import { TILE_SOURCES } from '../world/tileset/sheets';
 
 const DIRECTIONS: readonly Direction[] = ['down', 'left', 'up', 'right'];
@@ -27,32 +28,39 @@ export class BootScene extends Phaser.Scene {
   }
 
   public preload(): void {
-    this.load.spritesheet(SHARED_CHARACTER_TEXTURE, 'assets/character.png', {
+    this.load.spritesheet(SHARED_CHARACTER_TEXTURE, publicAssetUrl('assets/character.png'), {
       frameWidth: CHARACTER_FRAME_WIDTH,
       frameHeight: CHARACTER_FRAME_HEIGHT,
     });
     // Every registered design, at the same frame size as the shared sheet, so a
     // figure that names one is a change of texture key and nothing else.
     for (const design of CHARACTER_DESIGN_IDS) {
-      this.load.spritesheet(characterDesignTextureKey(design), characterDesignAssetPath(design), {
-        frameWidth: CHARACTER_FRAME_WIDTH,
-        frameHeight: CHARACTER_FRAME_HEIGHT,
-      });
+      this.load.spritesheet(
+        characterDesignTextureKey(design),
+        publicAssetUrl(characterDesignAssetPath(design)),
+        {
+          frameWidth: CHARACTER_FRAME_WIDTH,
+          frameHeight: CHARACTER_FRAME_HEIGHT,
+        },
+      );
     }
     // Every sheet a map might be drawn from. A catalogue is chosen per map and
     // may draw from more than one sheet at a time, so the loader takes the list
     // rather than naming any of them: `frlg-tiles.png` for the ground, and
     // ArMM1998's CC0 `Overworld.png` for the objects standing on it.
     for (const source of TILE_SOURCES) {
-      this.load.image(source.textureKey, source.imagePath);
+      this.load.image(source.textureKey, publicAssetUrl(source.imagePath));
     }
-    this.load.image('battle-background-grass', 'assets/battle/background-grass.png');
+    this.load.image(
+      'battle-background-grass',
+      publicAssetUrl('assets/battle/background-grass.png'),
+    );
 
     // The raid's markers are pixel art rather than tinted rectangles. They are
     // all one tile square, so a marker drawn at the centre of a tile lands on
     // whole pixels; `iconAssets.test.ts` enforces both facts.
     for (const name of ICON_NAMES) {
-      this.load.image(iconTextureKey(name), `assets/icons/${name}.png`);
+      this.load.image(iconTextureKey(name), publicAssetUrl(`assets/icons/${name}.png`));
     }
 
     // Every species sprite is a PNG. A per-species file-format exception is how
@@ -62,9 +70,12 @@ export class BootScene extends Phaser.Scene {
     for (const species of Object.values(SPECIES_BY_ID)) {
       this.load.image(
         `pokemon-front-${species.dexId}`,
-        `assets/pokemon/front/${species.dexId}.png`,
+        publicAssetUrl(`assets/pokemon/front/${species.dexId}.png`),
       );
-      this.load.image(`pokemon-back-${species.dexId}`, `assets/pokemon/back/${species.dexId}.png`);
+      this.load.image(
+        `pokemon-back-${species.dexId}`,
+        publicAssetUrl(`assets/pokemon/back/${species.dexId}.png`),
+      );
     }
   }
 
