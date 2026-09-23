@@ -159,7 +159,7 @@ export function hunterCatchCutscene(
 }
 
 /** The way from one tile to a neighbour, or null when they are not neighbours. */
-function bearingFrom(from: GridPosition, to: GridPosition): Direction | null {
+export function bearingFrom(from: GridPosition, to: GridPosition): Direction | null {
   if (to.x === from.x && to.y === from.y - 1) {
     return 'up';
   }

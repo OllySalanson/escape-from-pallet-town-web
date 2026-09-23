@@ -52,6 +52,16 @@ const DESIGN_ROWS = {
   'nurse-joy': 342,
   bill: 984,
   brock: 1709,
+  // The five hunters (`src/game/world/hunters.ts`). Named people again, so
+  // each is the row the sheet lays that person on, settled the same way the
+  // four above were: frame for frame against `pret/pokefirered`'s
+  // `graphics/object_events/pics/people/{blue,misty,lt_surge,koga,sabrina}`.
+  // Blue is the rival and walks; the four gym leaders are standing figures.
+  blue: 92,
+  misty: 1734,
+  'lt-surge': 1759,
+  koga: 1809,
+  sabrina: 1834,
 };
 
 /**
@@ -67,7 +77,7 @@ const DESIGN_ROWS = {
  * object-event graphics, where all four sprites are the same height and stand
  * on the same row.
  */
-const STANDING_DESIGNS = new Set(['nurse-joy', 'brock']);
+const STANDING_DESIGNS = new Set(['nurse-joy', 'brock', 'misty', 'lt-surge', 'koga', 'sabrina']);
 const STANDING_LIFT = 1;
 
 // The sheet lays 16x24 cells on a 17px pitch from x=9, twelve to a design:

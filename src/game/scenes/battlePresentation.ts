@@ -520,10 +520,21 @@ export const formatHunterFleeCommand = (
 export const formatWildEscapeCommand = (chance: number): string =>
   `RUN ${Math.round(chance * 100)}%`;
 
-/** What the player is told after breaking contact, so the cost is never silent. */
-export const hunterFleeMessages = (penaltyMs: number, searchMs: number): readonly string[] => [
-  'You broke away from the RIVAL HUNTER!',
-  `It lost your trail and holds off for ${formatSeconds(searchMs)}.`,
+/**
+ * What the player is told after breaking contact, so the cost is never silent -
+ * and what the hunter shouts after them, which is their own line
+ * (`world/hunters.ts`). A battle is free of the raid clock, so the extra line
+ * costs nothing but a key press.
+ */
+export const hunterFleeMessages = (
+  hunterName: string,
+  getaway: string | undefined,
+  penaltyMs: number,
+  searchMs: number,
+): readonly string[] => [
+  `You broke away from ${hunterName}!`,
+  ...(getaway ? [getaway] : []),
+  `${hunterName} lost your trail and holds off for ${formatSeconds(searchMs)}.`,
   `Breaking contact cost ${formatSeconds(penaltyMs)} of raid time.`,
 ];
 
@@ -645,8 +656,9 @@ export const levelLabel = (level: number): string => `Lv ${level}`;
 export type BannerRole = 'WILD' | 'FOE' | 'RIVAL' | 'YOURS';
 
 /**
- * Whose Pokemon the enemy plate belongs to. RIVAL is the hunter's word - "A
- * RIVAL HUNTER is on your trail" - and every trainer once fought under it, so
+ * Whose Pokemon the enemy plate belongs to. RIVAL is the hunter's word - it
+ * was once "A RIVAL HUNTER is on your trail", and is Blue and the four gym
+ * leaders who take turns at it now - and every trainer once fought under it, so
  * the toll keeper's Pidgey read as the hunter's. An authored trainer is a FOE,
  * short enough that two long types still end inside the plate.
  */

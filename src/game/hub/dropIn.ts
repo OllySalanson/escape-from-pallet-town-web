@@ -8,7 +8,6 @@ import { districtAt, districtsForMap, type MapDistrict } from '../world/district
 import { EXTRACTION_POINTS, extractionRequirementText, type ExtractionPoint } from '../world/extractionPoints';
 import { FIELD_MOVES } from '../world/fieldMoves';
 import { gatesForMap, isGateOpen, openedDoors, type MapGate } from '../world/gates';
-import { HUNTER_TIERS } from '../world/hunter';
 import { buildMinimap, type Minimap, type MinimapMark } from '../world/minimap';
 import { isPrize } from '../world/loot';
 import { surveyedTiles, type SurveyRecord } from '../world/survey';
@@ -30,12 +29,13 @@ import { WORLD_MAP_NAMES, type WorldMapDefinition, type WorldMapId } from '../wo
  *
  * # How hard a place is, and why it is not typed in
  *
- * There is exactly one difficulty ladder in this game: `HUNTER_TIERS`, whose
- * four rungs are the levels a party crosses to open a harder hunter. A place is
- * put on that same ladder by the highest level of opposition it can still field
- * - the top of its wildlife, and the top of any trainer party still standing on
- * it - so "grade 3" means the same thing here as "hunter tier 3" does on the
- * final check, and beating a boss visibly lowers the grade of the map they held.
+ * A place is graded on four rungs of level, `PLACE_GRADE_LEVELS`, by the
+ * highest level of opposition it can still field - the top of its wildlife,
+ * and the top of any trainer party still standing on it - so beating a boss
+ * visibly lowers the grade of the map they held. The rungs are the levels the
+ * hunter ladder used to open on (Lv 6, 9, 12 and 15) and were kept when that
+ * ladder became a mirror of the party (`world/hunter.ts`): the hunter no
+ * longer has absolute levels to share, and a place still does.
  *
  * What is deliberately *not* done here is play the fights out.
  * `world/encounterMeasure.ts` gives the real number - the share of encounters a
@@ -48,7 +48,7 @@ import { WORLD_MAP_NAMES, type WorldMapDefinition, type WorldMapId } from '../wo
  */
 
 export interface PlaceGrade {
-  /** Where this place sits on the hunter ladder's own rungs, one-based. */
+  /** Where this place sits on the four grades, one-based. */
   readonly rung: number;
   readonly rungs: number;
   /** The highest level of anything still standing here. */
@@ -190,18 +190,19 @@ function meanLevelOf(table: WildEncounterTable): number {
   );
 }
 
+/** The levels a place's opposition crosses to climb a grade. */
+export const PLACE_GRADE_LEVELS = [6, 9, 12, 15] as const;
+
 /**
- * Where a place sits on the hunter's own four rungs.
- *
- * Read exactly as `hunterThreatFor` reads a party: the highest rung whose level
- * the opposition is above. A wood whose wildlife tops out at Lv 10 and whose
+ * Where a place sits on the four grades: the highest rung whose level the
+ * opposition is above. A wood whose wildlife tops out at Lv 10 and whose
  * lookout fields Lv 12 sits a rung above a town whose miller fields Lv 11,
  * because that is the rung the two of them cross.
  */
 function gradeFor(opposition: number): number {
   return (
-    HUNTER_TIERS.reduce(
-      (selected, tier, index) => (opposition > tier.level ? index : selected),
+    PLACE_GRADE_LEVELS.reduce(
+      (selected, level, index) => (opposition > level ? index : selected),
       0,
     ) + 1
   );
@@ -296,7 +297,7 @@ export function buildDropInBriefing(
     isDropIn: isDropInPoint(insertion),
     grade: {
       rung: gradeFor(opposition),
-      rungs: HUNTER_TIERS.length,
+      rungs: PLACE_GRADE_LEVELS.length,
       opposition,
       wild,
       trainer: trainerCeiling,

@@ -5,14 +5,14 @@
  *
  * Two things abilities touch and one of them is the hunter, so both are printed
  * together: every district's table against each starter (the numbers
- * `districtEncounters.test.ts` holds), and every hunter rung against the party
- * that opens it (the relationship `hunter.ts` records in its own header). Run it
+ * `districtEncounters.test.ts` holds), and every hunter rung against three Lv 10
+ * starters (`tools/hunter/measure.mts` is the whole hunter table). Run it
  * on both sides of a change to abilities and diff the output.
  */
 import { WORLD_MAPS } from '../../src/game/worldMap';
 import { districtsForMap } from '../../src/game/world/districts';
 import { measureTable } from '../../src/game/world/encounterMeasure';
-import { HUNTER_TIERS } from '../../src/game/world/hunter';
+import { createHunterTrainer, DEFAULT_HUNTER_TUNING, HUNTER_TIERS } from '../../src/game/world/hunter';
 import { Pokemon } from '../../src/game/pokemon';
 import {
   createBattleState,
@@ -45,9 +45,9 @@ for (const map of Object.values(WORLD_MAPS)) {
 }
 
 /**
- * A rung is measured against the party that opens it - a rung at level N is met
- * by a party at N+1 - and the party is three starters at that level, played by
- * the same always-its-best-move driver the wild tables use.
+ * The hunter mirrors the party, so a rung is measured against one party - three
+ * starters at Lv 10 - played by the same always-its-best-move driver the wild
+ * tables use.
  */
 const bestMove = (state: BattleState): number => {
   const types = [
@@ -67,24 +67,20 @@ const bestMove = (state: BattleState): number => {
   return best;
 };
 
-console.log(`\n# hunter rungs (${TRIALS} trials each, a party of three at the rung's level + 1)`);
+console.log(`\n# hunter rungs (${TRIALS} trials each, three Lv 10 starters against the team the hunter mirrors them with)`);
 for (const [index, tier] of HUNTER_TIERS.entries()) {
-  const level = tier.level + 1;
+  const level = 10;
   const rng = createSeededRng(0x5eed + index);
   const random = (): number => rng.next();
   let wins = 0;
   let healthLeft = 0;
+  let fielded = 0;
   for (let trial = 0; trial < TRIALS; trial += 1) {
     const party = STARTERS.map((starter) => new Pokemon(getSpeciesById(starter)!, level));
-    let state = createBattleState(party[0], new Pokemon(tier.party[0], tier.level));
-    state = {
-      ...state,
-      trainer: {
-        id: 'hunter',
-        name: 'Rival',
-        party: tier.party.map((base) => new Pokemon(base, tier.level)),
-      },
-    };
+    const trainer = createHunterTrainer(tier.startsAtMs, false, DEFAULT_HUNTER_TUNING, party);
+    fielded = trainer.party.length;
+    let state = createBattleState(party[0], trainer.party[0]);
+    state = { ...state, trainer };
     for (let turn = 0; turn < 400 && state.outcome === 'active'; turn += 1) {
       state = resolveTurn(state, bestMove(state), random).state;
       if (state.outcome === 'defeat') {
@@ -108,7 +104,7 @@ for (const [index, tier] of HUNTER_TIERS.entries()) {
     }
   }
   console.log(
-    `rung ${index + 1} (Lv${tier.level} x${tier.party.length})  party Lv${level}  ` +
+    `rung ${index + 1} (offset ${tier.levelOffset} x${fielded})  party Lv${level}  ` +
       `win ${((wins / TRIALS) * 100).toFixed(0)}%  party HP left ${wins ? ((healthLeft / wins) * 100).toFixed(0) : '-'}%`,
   );
 }

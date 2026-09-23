@@ -200,14 +200,23 @@ export async function deploy(page, url, { press, click, until, paused = false, i
     }
     await sleep(150);
   }
-  // --pack=itemId[:n],.. puts supplies in the raid bag by the loadout row's own
-  // count selector - the plus of the `item` group, once per unit, so the
-  // driver is stopped by exactly what stops a player (`ui/countSelector.ts`). Nothing is packed by default - the loadout is the decision the game
-  // is built around, and the flow starts it empty - so a driver that clicks
-  // straight through deploys with nothing, and a fight priced in Potions
-  // (`world/floodplainCheckpoint.test.ts`) cannot be played without this.
+  // --pack=itemId[:n],.. packs exactly n of a supply by the loadout row's own
+  // count selector - the minus down to none, then the plus once per unit, so
+  // the driver is stopped by exactly what stops a player (`ui/countSelector.ts`).
+  // The stash's medicine is packed by default (`DeploymentFlow.packMedicine`),
+  // so a driver that clicks straight through deploys with the vault's Potions,
+  // and `--pack=potion:0` is how a raid is sent out with none.
   for (const entry of pack) {
     const [itemId, count = '1'] = entry.split(':');
+    for (let guard = 0; guard < 99; guard += 1) {
+      const removed = await page.evaluate(
+        `(() => { const b = document.querySelector('button[data-count-kind="item"][data-count-id=${JSON.stringify(itemId)}][data-count-dir="-1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,
+      );
+      if (!removed) {
+        break;
+      }
+      await sleep(150);
+    }
     for (let i = 0; i < Number(count); i += 1) {
       await until(
         `(() => { const b = document.querySelector('button[data-count-kind="item"][data-count-id=${JSON.stringify(itemId)}][data-count-dir="1"]'); if (!b || b.disabled || b.getAttribute('aria-disabled') === 'true') return false; b.click(); return true; })()`,

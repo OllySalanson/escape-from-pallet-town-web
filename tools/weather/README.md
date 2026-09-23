@@ -52,6 +52,13 @@ times. Measured at 300 fights a cell:
 | 3: Lv12 x3 | 98% (32%) | 98% (30%) | 94% (28%) | 99% (37%) |
 | 4: Lv15 x4 | 49% (19%) | **17% (9%)** | 39% (18%) | **63% (22%)** |
 
+That table was measured on the ladder as it stood before 2026-09-23, when the
+hunter grew its team on the clock. It mirrors the party now (one Pokemon for
+each of yours, `world/hunter.ts`), so the four-against-three that made the chip
+reverse is gone and `measure.mts` measures each rung against three Lv 10
+starters instead; the table is kept because it is the reason for the rule below,
+and the rule is no less true of a hunter that can grow again.
+
 That table is what decided the authoring in `districts.ts`: a place may bend
 damage and may never chip HP, and of the two that bend, only rain is authored -
 harsh sunlight is a fourteen-point gift on the hardest fight in the game,

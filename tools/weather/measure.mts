@@ -24,8 +24,8 @@
  * they win with. This half plays every district's own table with each starter.
  *
  * A **hunter** fight is the long one, and the one the raid is tuned around:
- * every rung of `HUNTER_TIERS` is pitched at "a win costing a third to a half of
- * the party's health", measured against the party that opens it. Weather chips
+ * every rung of `HUNTER_TIERS` is pitched below the party it mirrors, and
+ * `tools/hunter/measure.mts` is what it was measured with. Weather chips
  * both sides, so whether it tightens or loosens a rung is not something to
  * reason about from the multiplier - this half re-measures each rung the way the
  * rung was set, clear and then under each weather.
@@ -34,12 +34,11 @@ import { Pokemon } from '../../src/game/pokemon';
 import {
   createBattleState,
   resolveTurn,
-  type TrainerBattle,
 } from '../../src/game/pokemon/battle/battleEngine';
 import { getSpeciesById } from '../../src/game/pokemon/species';
 import { createSeededRng } from '../../src/game/run/rng';
 import { WeatherId, weatherLabel } from '../../src/game/pokemon/battle/weather';
-import { HUNTER_TIERS } from '../../src/game/world/hunter';
+import { createHunterTrainer, DEFAULT_HUNTER_TUNING, HUNTER_TIERS } from '../../src/game/world/hunter';
 import { MAP_DISTRICTS, districtsForMap } from '../../src/game/world/districts';
 import { WORLD_MAPS } from '../../src/game/worldMap';
 import { measureTable } from '../../src/game/world/encounterMeasure';
@@ -136,39 +135,24 @@ if (runLead) {
 
 if (runHunter) {
   /**
-   * A rung is met by the party that opens it: `hunterThreatFor` gives a rung to
-   * the highest-level Pokemon that out-levels it, so a rung at level N is
-   * fought by a party at N+1. The party is the three starters at that level,
-   * played through `trainerMeasure` - the same harness the authored trainers
-   * are measured with, so these numbers sit beside `tools/trainers/report.mts`
-   * rather than beside a second harness of their own.
+   * The hunter mirrors the party (`HUNTER_TIERS` in `world/hunter.ts`): one
+   * Pokemon for each of yours, a rung's offset below it. So a rung is fought
+   * here by one representative party - the three starters at Lv 10 - against
+   * the team `createHunterTrainer` builds for that party, played through
+   * `trainerMeasure`, the same harness the authored trainers are measured with.
    */
-  console.log('\nHunter rungs: the chance the party that opens a rung beats it, and the health it keeps');
+  console.log('\nHunter rungs: the chance three Lv 10 starters beat a rung, and the health they keep');
   console.log(`(${HUNTER_TRIALS} fights a cell, the whole team on both sides, always the best damaging move)\n`);
   console.log(`  ${'rung'.padEnd(18)} ${'weather'.padEnd(10)}  wins   HP left`);
+  const party = partyOf('starters 10', ...STARTERS.map((id) => [id, 10] as [string, number]));
   for (const [index, tier] of HUNTER_TIERS.entries()) {
-    const partyLevel = tier.level + 1;
-    const party = partyOf(
-      `starters ${partyLevel}`,
-      ...STARTERS.map((id) => [id, partyLevel] as [string, number]),
-    );
-    const hunter: TrainerBattle = {
-      id: 'hunter',
-      name: 'RIVAL HUNTER',
-      party: tier.party.map((base) => new Pokemon(base, tier.level)),
-    };
     for (const weather of WEATHERS) {
-      // A fresh team for the hunter too: `playTrainerBattle` writes HP onto the
-      // Pokemon it is handed, so a reused enemy party would arrive beaten.
-      const measure = trainerMeasure(
-        party,
-        { ...hunter, party: tier.party.map((base) => new Pokemon(base, tier.level)) },
-        HUNTER_TRIALS,
-        0x51ede,
-        weather,
-      );
+      // A fresh team for the hunter every cell: `playTrainerBattle` writes HP
+      // onto the Pokemon it is handed, so a reused enemy party would arrive beaten.
+      const hunter = createHunterTrainer(tier.startsAtMs, false, DEFAULT_HUNTER_TUNING, party.build());
+      const measure = trainerMeasure(party, hunter, HUNTER_TRIALS, 0x51ede, weather);
       console.log(
-        `  ${`${index + 1}: Lv${tier.level} x${tier.party.length}`.padEnd(18)} ${label(weather).padEnd(10)} ${pct(
+        `  ${`${index + 1}: ${tier.levelOffset} x${hunter.party.length}`.padEnd(18)} ${label(weather).padEnd(10)} ${pct(
           measure.winRate,
         )}  ${measure.winRate > 0 ? pct(measure.healthLeftOnWin) : '   -'}`,
       );

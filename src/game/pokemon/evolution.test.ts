@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getItemById, useFieldItem, type ItemId } from '../items';
 import { hunterThreatFor } from '../world/hunterThreat';
-import { HUNTER_TIERS } from '../world/hunter';
 import { Pokemon, computePokemonStats, experienceForLevel } from './Pokemon';
 import {
   EVOLUTIONS,
@@ -326,21 +325,19 @@ describe('evolving with a stone', () => {
 /**
  * The condition the progression report set on building this at all: evolution
  * is only a reward rather than a difficulty setting if the thing hunting you
- * reads it. It does, because the hunter is priced off the strongest deployed
- * Pokemon's level - so an evolution that comes with a level raises the hunter
+ * reads it. It does, because the hunter pairs a Pokemon a rung below each of
+ * yours by level - so an evolution that comes with a level raises the hunter
  * with it, and a stone, which comes with no level at all, does not.
  */
 describe('what evolving costs you in hunter', () => {
-  it('raises the hunter with the level that evolved you', () => {
+  it('raises the hunter with the level that evolved you, and keeps it below you', () => {
     const before = hunterThreatFor([new Pokemon(BULBASAUR, 9)]);
     const after = hunterThreatFor([new Pokemon(IVYSAUR, 16)]);
 
-    expect(before.tierOffset).toBeLessThan(after.tierOffset);
-    // Sixteen is the first evolution and the fourth rung opens at exactly that
-    // level, so evolving draws the rung that was added to answer it - it used to
-    // draw the top of a three-rung ladder and then have nothing left to climb.
-    expect(after.tierOffset).toBe(HUNTER_TIERS.length - 1);
-    expect(after.openingTier.party.length).toBe(4);
+    expect(before.openingTeam[0].level).toBeLessThan(after.openingTeam[0].level);
+    expect(after.openingTeam[0].level).toBeLessThan(16);
+    // One Pokemon is still one Pokemon: evolving buys a stronger rival, never a bigger one.
+    expect(after.openingTeam).toHaveLength(1);
   });
 
   it('charges nothing for a stone, which is the level it did not cost you', () => {
@@ -348,6 +345,6 @@ describe('what evolving costs you in hunter', () => {
     const before = hunterThreatFor([pikachu]);
     useFieldItem(getItemById('thunder-stone')!, pikachu);
 
-    expect(hunterThreatFor([pikachu]).tierOffset).toBe(before.tierOffset);
+    expect(hunterThreatFor([pikachu]).openingTeam).toEqual(before.openingTeam);
   });
 });

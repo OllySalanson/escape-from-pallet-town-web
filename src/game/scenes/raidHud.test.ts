@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { hunterIntelFor } from '../world/hunter';
+import { Pokemon } from '../pokemon';
+import { CHARMANDER, PIDGEY } from '../pokemon/species';
+import { DEFAULT_HUNTER_TUNING, hunterIntelFor } from '../world/hunter';
 import {
   HUNTER_ALERT_DISTANCE,
   PLACE_PLATE_MS,
@@ -33,65 +35,75 @@ describe('the hunter chip', () => {
 });
 
 describe('the radio mast', () => {
-  it('names the team that is coming and when the next one lands', () => {
-    const intel = hunterIntelFor(75_000, 300_000, false);
+  // The mast reads the hunter against the party being carried, because the
+  // hunter mirrors it: one Pokemon to one, each a rung below the one it answers.
+  const party = [new Pokemon(CHARMANDER, 12)];
 
-    expect(intel).toEqual({ level: 6, teamSize: 1, next: { level: 9, teamSize: 2, inMs: 45_000 } });
+  it('names the team that is coming and when the next one lands', () => {
+    const intel = hunterIntelFor(75_000, 300_000, false, DEFAULT_HUNTER_TUNING, party);
+
+    expect(intel).toEqual({ level: 8, teamSize: 1, next: { level: 9, teamSize: 1, inMs: 45_000 } });
     expect(hunterChipView({ ...FAR, intel })).toEqual({
-      label: 'HUNTER LV6 x1',
+      label: 'HUNTER LV8 x1',
       tone: 'intel',
-      detail: 'LV9 x2 IN 0:45',
+      detail: 'LV9 x1 IN 0:45',
     });
   });
 
   it('rides under a contact warning instead of replacing it', () => {
-    const intel = hunterIntelFor(130_000, 300_000, false);
+    const intel = hunterIntelFor(130_000, 300_000, false, DEFAULT_HUNTER_TUNING, party);
 
     expect(hunterChipView({ ...FAR, distance: 3, direction: 'E', intel })).toEqual({
       label: 'HUNTER E 3',
       tone: 'closing',
-      detail: 'LV9 x2, LV12 x3 IN 0:50',
+      detail: 'LV9 x1, LV10 x1 IN 0:50',
     });
   });
 
-  it('names the fourth team the ladder grew, and then the enrage', () => {
-    // The mast reads the ladder rather than a list of its own, so the rung that
-    // arrived with evolution is announced by it without a change here.
-    expect(hunterIntelFor(200_000, 300_000, false).next).toEqual({
-      level: 15,
-      teamSize: 4,
+  it('counts a team of one for every Pokemon carried', () => {
+    const three = [...party, new Pokemon(PIDGEY, 8), new Pokemon(PIDGEY, 7)];
+    expect(hunterIntelFor(75_000, 300_000, false, DEFAULT_HUNTER_TUNING, three)).toMatchObject({
+      level: 8,
+      teamSize: 3,
+    });
+  });
+
+  it('names the last scheduled rung, and then the enrage', () => {
+    expect(hunterIntelFor(200_000, 300_000, false, DEFAULT_HUNTER_TUNING, party).next).toEqual({
+      level: 11,
+      teamSize: 1,
       inMs: 40_000,
     });
   });
 
   it('counts down to the enrage once the last scheduled team has landed', () => {
-    const intel = hunterIntelFor(250_000, 300_000, false);
+    const intel = hunterIntelFor(250_000, 300_000, false, DEFAULT_HUNTER_TUNING, party);
 
-    expect(intel.next).toEqual({ level: 19, teamSize: 4, inMs: 50_000 });
-    expect(hunterIntelLine(intel)).toBe('LV19 x4 IN 0:50');
+    expect(intel.next).toEqual({ level: 15, teamSize: 1, inMs: 50_000 });
+    expect(hunterIntelLine(intel)).toBe('LV15 x1 IN 0:50');
   });
 
   it('reports the enrage next on a raid recovery has shortened past a later team', () => {
-    // Booked recovery can halve the clock, and then the level-12 team never starts.
-    const intel = hunterIntelFor(130_000, 150_000, false);
+    // Booked recovery can halve the clock, and then the third rung never starts.
+    const intel = hunterIntelFor(130_000, 150_000, false, DEFAULT_HUNTER_TUNING, party);
 
     expect(intel.level).toBe(9);
-    expect(intel.next).toEqual({ level: 19, teamSize: 4, inMs: 20_000 });
+    expect(intel.next).toEqual({ level: 15, teamSize: 1, inMs: 20_000 });
   });
 
   it('has nothing further to announce once the raid is enraged', () => {
-    const intel = hunterIntelFor(300_000, 300_000, true);
+    const intel = hunterIntelFor(300_000, 300_000, true, DEFAULT_HUNTER_TUNING, party);
 
-    expect(intel).toEqual({ level: 19, teamSize: 4, next: null });
+    expect(intel).toEqual({ level: 15, teamSize: 1, next: null });
     expect(hunterIntelLine(intel)).toBe('FINAL TEAM');
   });
 
   it('reports the team a shifted tuning will actually field', () => {
-    const tuning = { spawnDelayMs: 60_000, aggressionStepsPerPlayerStep: 1, teamTierOffset: 1 };
-    const intel = hunterIntelFor(0, 300_000, false, tuning);
+    const tuning = { ...DEFAULT_HUNTER_TUNING, teamTierOffset: 1 };
+    const intel = hunterIntelFor(0, 300_000, false, tuning, party);
 
     expect(intel.level).toBe(9);
-    expect(intel.next).toEqual({ level: 12, teamSize: 3, inMs: 120_000 });
+    expect(intel.next).toEqual({ level: 10, teamSize: 1, inMs: 120_000 });
   });
 });
 

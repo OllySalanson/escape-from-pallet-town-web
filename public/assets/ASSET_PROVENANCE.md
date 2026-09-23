@@ -326,11 +326,16 @@ stays visible rather than becoming an assumption.
 | `characters/nurse-joy.png` | 342 (standing) |
 | `characters/bill.png` | 984 |
 | `characters/brock.png` | 1709 (standing) |
+| `characters/blue.png` | 92 |
+| `characters/misty.png` | 1734 (standing) |
+| `characters/lt-surge.png` | 1759 (standing) |
+| `characters/koga.png` | 1809 (standing) |
+| `characters/sabrina.png` | 1834 (standing) |
 
 Seventeen of the file names describe what the figure looks like on screen. They
 are this repository's labels, not a claim about what the game calls that sprite.
 
-The last four are the exception, and they are a claim: Professor Oak, Nurse Joy,
+The last nine are the exception, and they are a claim. Professor Oak, Nurse Joy,
 Bill and Brock are the base's four people (`src/game/world/characterDesigns.ts`,
 kind `named`), so casting a lookalike would have been worse than no art. Which
 row of an unlabelled sheet holds which person was settled against
@@ -342,11 +347,19 @@ decompilation** - it was read to identify a row and no pixel of it ships; every
 byte here is cut from the sheet above by `scripts/cut-frlg-characters.mjs`, as
 the other seventeen are.
 
+The five hunters (`src/game/world/hunters.ts`) were added on 2026-09-23 on the
+same terms and by the same method: Blue, Misty, Lt. Surge, Koga and Sabrina are
+named people, so each row was matched frame for frame against
+`pret/pokefirered`'s `blue`, `misty`, `lt_surge`, `koga` and `sabrina`
+object-event graphics, and again nothing of the decompilation ships. Blue is
+the rival and walks; the four gym leaders stand in their gyms all game and are
+*standing* figures like the two below.
+
 Two of the four are marked *standing*: the sheet gives them four cells, one a
 facing, and no walk cycle, because the game draws them at a counter all day. The
 cut repeats each cell across that facing's idle and step columns, and gives back
 the one pixel the sheet draws a standing figure higher inside its cell, so all
-twenty-one stand on the same sole line.
+twenty-six stand on the same sole line.
 
 ## Flagged: `tileset.png`, the sheet every map's ground is drawn from
 

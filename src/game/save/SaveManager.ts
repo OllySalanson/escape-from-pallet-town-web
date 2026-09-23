@@ -488,7 +488,7 @@ export class SaveManager {
       kind: 'game',
       pokemon: game.stash.listPokemon().length,
       contracts: progress.completedContracts.length + progress.standingContractsBanked,
-      raids: Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.deployed, 0),
+      raids: raidsDeployed(progress),
     };
   }
 
@@ -1054,6 +1054,11 @@ export class SaveManager {
     game.stash.restockMinimumSupplies();
     return this.save({ ...game, ...RAID_RESOLVED });
   }
+}
+
+/** Every raid this save has gone on, on every map - what the hunters take turns by. */
+export function raidsDeployed(progress: RaidProgress): number {
+  return Object.values(progress.raidRecord ?? {}).reduce((total, record) => total + record.deployed, 0);
 }
 
 /** One more raid of a kind on one map, leaving every other map's count alone. */

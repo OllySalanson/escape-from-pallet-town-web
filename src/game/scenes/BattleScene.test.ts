@@ -133,9 +133,10 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
   const trainer = options.hunterBattle
     ? {
         id: 'rival-hunter',
-        name: 'RIVAL HUNTER',
+        name: 'BLUE',
         party: [new Pokemon(PIDGEY, 6)],
-        defeatText: 'You slipped through my fingers... this time.',
+        defeatText: 'What?! I was just warming up... Smell ya later!',
+        getawayText: 'BLUE: "Run, then!"',
       }
     : options.authoredTrainer
       ? {
@@ -450,8 +451,10 @@ describe('escaping the hunter', () => {
     expect(runSession.manager.snapshot().elapsedMs).toBe(40_000);
     expect(runSession.manager.snapshot().hunterFlees).toBe(1);
     expect(dialog.shownMessages).toEqual([
-      'You broke away from the RIVAL HUNTER!',
-      'It lost your trail and holds off for 20s.',
+      'You broke away from BLUE!',
+      // The hunter's own parting shot, which is the rival's line (`hunters.ts`).
+      'BLUE: "Run, then!"',
+      'BLUE lost your trail and holds off for 20s.',
       'Breaking contact cost 40s of raid time.',
     ]);
     const hunterState = (scene as unknown as { hunterState: { searchRemainingMs?: number; pendingBreakaway?: boolean } })

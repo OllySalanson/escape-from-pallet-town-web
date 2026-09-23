@@ -6,8 +6,11 @@ import {
   cargoCells,
   EMPTY_ARRANGEMENT,
   fitsInGrid,
+  footprintOf,
+  getItemById,
   gridCells,
   isFoundOnly,
+  ItemCategory,
   packContents,
   packGridFor,
   packName,
@@ -36,6 +39,22 @@ import type { RunInsertionId } from '../run/runGeneration';
 import type { SecureSlot as StashSecureSlot, Stash, StashedPokemon } from '../stash';
 
 export const MAX_RUN_PARTY = 6;
+
+/**
+ * The most of the pack the stash's medicine is packed into by default.
+ *
+ * The captain, 2026-09-23, on a playtest that lost its first fight with an
+ * empty bag: "put the stash's medicine in the pack by default". The playtest's
+ * numbers are why: a Lv 5 starter beats the first contract's checkpoint 2-8%
+ * of the time with no Potions and 85-92% with the three a fresh save holds,
+ * and nothing on the way to the raid said the pack was empty.
+ *
+ * Half, and not all of it, because a pack filled wall to wall with Potions has
+ * no room for what a raid is *for*: a vault that has banked twenty Potions
+ * would otherwise open every loadout with no square left for a find. A fresh
+ * save's three Potions are three squares of eighteen.
+ */
+export const MEDICINE_PREPACK_SHARE = 0.5;
 
 /**
  * What the *base* has built: the container a wipe cannot touch, and how many
@@ -158,6 +177,12 @@ export class DeploymentFlow {
    */
   private bagArranged: boolean;
   private secureArranged: boolean;
+  /**
+   * What the default put in the pack, by kind, so a row can say "packed for
+   * you" for exactly as long as the player has not changed it. Nothing about
+   * it is stored: the next loadout packs it again, as the pack is chosen again.
+   */
+  private readonly prepacked = new Map<ItemId, number>();
 
   public constructor(
     stash: Stash,
@@ -177,6 +202,47 @@ export class DeploymentFlow {
     this.bagArranged = arrangements.bag.items.length > 0 || arrangements.bag.cargo.length > 0;
     this.secureArranged =
       arrangements.secure.items.length > 0 || arrangements.secure.cargo.length > 0;
+    this.packMedicine();
+  }
+
+  /**
+   * Puts the stash's medicine in the pack, as a default and never a cage - the
+   * same rule the worn pack and the secure container follow. Every row can
+   * take it straight back out, and each says it was packed for the player
+   * until they touch it, so the pack is still visibly the player's decision.
+   *
+   * Medicine only: a Poke Ball is a choice about what the raid is for, while a
+   * Potion is what lets the raid's first fight be won at all.
+   */
+  private packMedicine(only?: readonly ItemId[]): void {
+    const medicine = Object.keys(this.stash.listItems())
+      .filter((itemId) => getItemById(itemId)?.category === ItemCategory.Medicine)
+      .map((itemId) => itemId as ItemId);
+    // Medicine the player packed themselves counts against the share and is
+    // never re-packed: the default fills in around a choice, never over one.
+    let budget = medicine.reduce((left, itemId) => {
+      const { width, height } = footprintOf(itemId);
+      return left - this.itemQuantity(itemId) * width * height;
+    }, Math.floor(gridCells(this.bagGrid) * MEDICINE_PREPACK_SHARE));
+    for (const itemId of medicine.filter((candidate) => only === undefined || only.includes(candidate))) {
+      const { width, height } = footprintOf(itemId);
+      const wanted = Math.min(this.stash.itemCount(itemId), Math.floor(budget / (width * height)));
+      if (wanted <= 0) {
+        continue;
+      }
+      this.setItemQuantity(itemId, wanted);
+      const packed = this.itemQuantity(itemId);
+      if (packed > 0) {
+        this.prepacked.set(itemId, packed);
+        budget -= packed * width * height;
+      }
+    }
+  }
+
+  /** Whether this row is still exactly what the default packed. */
+  public isPrepacked(itemId: ItemId): boolean {
+    const packed = this.itemQuantity(itemId);
+    return packed > 0 && this.prepacked.get(itemId) === packed;
   }
 
   /** The seats the player chose in the pack. */
@@ -258,7 +324,7 @@ export class DeploymentFlow {
     const chosen = this.packItemId;
     return packsIn(this.stash.listItems()).map(({ itemId, held }) => {
       const squares = packSquares(itemId);
-      const holds = fitsInGrid(this.packedContents, packGridFor(itemId));
+      const holds = fitsInGrid(this.chosenContents, packGridFor(itemId));
       return {
         itemId,
         name: packName(itemId),
@@ -288,13 +354,40 @@ export class DeploymentFlow {
     if (itemId === this.packItemId) {
       return undefined;
     }
-    if (!fitsInGrid(this.packedContents, packGridFor(itemId))) {
+    if (!fitsInGrid(this.chosenContents, packGridFor(itemId))) {
       return `${packName(itemId)} holds ${packSquares(itemId)} squares and you have packed ${this.bagCells.used}. Take something out first.`;
     }
+    // The medicine the default packed is not the player's choice yet, so it
+    // is packed again for the pack now being worn rather than standing in the
+    // way of it: a smaller pack takes less of it, a bigger one more.
+    const repack = [...this.prepacked.keys()].filter((prepacked) => this.isPrepacked(prepacked));
+    for (const prepacked of repack) {
+      this.selectedItems.delete(prepacked);
+      this.securedItemCounts.delete(prepacked);
+    }
+    this.prepacked.clear();
     this.packItemIdValue = itemId;
+    if (repack.length > 0) {
+      this.packMedicine(repack);
+    }
     this.refillSecureSlot();
     this.holdLayouts();
     return undefined;
+  }
+
+  /**
+   * What is packed less whatever the medicine default put in and the player
+   * has not touched since - the part of the pack that is the player's own
+   * choice, and so the part a change of pack has to make room for.
+   */
+  private get chosenContents(): Readonly<Record<string, number>> {
+    const contents: Record<string, number> = { ...this.packedContents };
+    for (const itemId of this.prepacked.keys()) {
+      if (this.isPrepacked(itemId)) {
+        delete contents[itemId];
+      }
+    }
+    return contents;
   }
 
   public get step(): DeploymentStep {

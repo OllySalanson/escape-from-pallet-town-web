@@ -108,7 +108,7 @@ import {
   securePokemonLimit,
   type RaidContract,
 } from '../objectives';
-import { SaveManager, traderProgressOf, type RestoredGame } from '../save/SaveManager';
+import { raidsDeployed, SaveManager, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import {
   searchPokemon,
   sortPokemon,
@@ -128,6 +128,7 @@ import {
 } from '../stash';
 import { iconMarkup, itemIcon, objectiveIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
+import { rivalForRaid } from '../world/hunters';
 import { openedDoors } from '../world/gates';
 import { getWorldMap, WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
 import { MINIMAP_PALETTE, MINIMAP_TILE, type Minimap } from '../world/minimap';
@@ -412,6 +413,9 @@ export class HubScene extends Phaser.Scene {
     return hunterThreatFor(
       party.map((stored) => stored.pokemon),
       this.contractFor(insertionId)?.hunterPressure,
+      // Whose turn it is: read before `startRun` counts this raid, so the name
+      // the final check prints is the one the raid is hunted by.
+      rivalForRaid(raidsDeployed(this.savedGame.raidProgress)),
     );
   }
 
@@ -1873,8 +1877,14 @@ export class HubScene extends Phaser.Scene {
         const size = footprint.width === 1 && footprint.height === 1
           ? '1 square'
           : `${footprint.width * footprint.height} squares`;
+        // Medicine goes in by default (`MEDICINE_PREPACK_SHARE`), and the row
+        // says so for as long as it is the default rather than a choice, so
+        // the player can see what was packed for them and take it back out.
+        const prepacked = this.flow.isPrepacked(item.id as ItemId);
         const help = escapeAttribute(
-          `${item.displayName}: ${item.description} ${size} each, ${held} at base.`,
+          `${item.displayName}: ${item.description} ${size} each, ${held} at base.${
+            prepacked ? ' Packed for you - medicine goes in by default. Take it out if you want the squares.' : ''
+          }`,
         );
         // The pack is the second cap after the vault, so a row says both: what
         // it costs in squares, and how many of it the base still holds. A plus
@@ -1890,7 +1900,7 @@ export class HubScene extends Phaser.Scene {
             ? `The pack has room for ${limit} ${item.displayName} as you have laid it out - ${tidied} if it is packed again. Tidy is under the squares.`
             : `The pack has room for ${limit} ${item.displayName} beside what else is packed.`
           : `All ${held} at base are packed.`;
-        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${size} · ${held} at base</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
+        return `<div class="px-row has-icon${packed ? ' is-selected' : ''}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong><small>${size} · ${held} at base${prepacked ? ' · packed for you' : ''}</small></span>${countSelector({ kind: 'item', id: item.id, label: item.displayName, value: packed, max: limit, help, limit: limitReason })}</div>`;
       })
       .join('');
     const cells = this.flow.bagCells;
