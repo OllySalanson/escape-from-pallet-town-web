@@ -90,3 +90,6 @@ a typo's 20 to 25. **Warden Holt** is four points harder for the test party of
 three: both sides field a Butterfree and both now attack from FireRed's 80
 Sp. Atk rather than 90, and the player's is the one that had more fighting to
 do.
+
+What it looks like where a player reads it, before and after, is
+`docs/screens/stat-audit/`.

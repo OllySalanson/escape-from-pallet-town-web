@@ -1,24 +1,28 @@
 // Photographs a species' stats where a player reads them: the Pokemon Center's
 // detail pane, with the cursor on that Pokemon.
 //
-//   node tools/playtest/statShots.mjs <url> <out dir> [--level=50] [pikachu dugtrio ...]
+//   node tools/playtest/statShots.mjs <url> <out dir> [--level=50] [--window=1920x1080] [pikachu dugtrio ...]
 //
 // A base stat moves the real stat by about one point per ten base points per
 // ten levels, so a correction is invisible on a level-5 Pokemon; `--level`
 // seeds them high enough to see it. Used for the base-stat audit
 // (`docs/pokemon/stat-audit.md`): run it against a build either side of a
-// stat change and the two pictures are the before and after.
+// stat change and the two pictures are the before and after. The window
+// defaults to 1920x1080 because the pane stands its stats beside the vitals
+// only once the screen is `wide` (`roomFor` in `columnLayout.ts`); at the
+// 1200x768 pixel window they are a scroll below the pane's fold.
 import { mkdirSync } from 'node:fs';
-import { launchBrowser, sleep, PIXEL_WINDOW } from './browser.mjs';
+import { launchBrowser, sleep } from './browser.mjs';
 import { SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'shots', ...rest] = args.filter((arg) => !arg.startsWith('--'));
 const level = Number(args.find((arg) => arg.startsWith('--level='))?.slice(8) ?? 50);
+const [width, height] = (args.find((arg) => arg.startsWith('--window='))?.slice(9) ?? '1920x1080').split('x').map(Number);
 const species = rest.length > 0 ? rest : ['pikachu', 'dugtrio', 'butterfree', 'jigglypuff'];
 mkdirSync(out, { recursive: true });
 
-const browser = await launchBrowser({ window: PIXEL_WINDOW });
+const browser = await launchBrowser({ window: { width, height } });
 try {
   const page = await browser.openPage(`${url}?testmode=pixels`);
   const press = async (code) => { await page.tap(code); await sleep(200); };
