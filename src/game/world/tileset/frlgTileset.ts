@@ -159,10 +159,11 @@ const PROPS = {
   // --- Woodland -------------------------------------------------------------
   /**
    * A broadleaf tree. FireRed draws one as 3x3 with the trunk on the bottom
-   * row. The top of the crown is drawn *over* the figures and left walkable, so
-   * a lane can pass behind a tree and the player is covered by it; everything
-   * below the crown is solid. That one row is the difference between a wood you
-   * are inside and a hedge with leaves on.
+   * row. The top of the crown is drawn *over* the figures, so whatever stands
+   * behind it is layered under it; everything below the crown is solid. The
+   * crown itself decides nothing about the tile it hangs over - but a map may
+   * not leave that tile walkable, because a player standing there is gone
+   * (`PropCell.walkedUnder`, `crowns.test.ts`).
    */
   tree: object('tree', FRLG_OBJECTS.TREE_BROAD_A, { canopyRows: 1 }),
   treeAlt: object('tree', FRLG_OBJECTS.TREE_BROAD_B, { canopyRows: 1 }),

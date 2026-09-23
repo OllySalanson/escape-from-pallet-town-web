@@ -54,7 +54,7 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
         anchor: [1, 2],
         ground: '.',
         bare: 'T',
-        blocks: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]],
+        blocks: [[-1, -2], [0, -2], [1, -2], [-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]],
       },
       o: { prop: 'tree', anchor: [1, 2], ground: '.' },
       p: { prop: 'pine', anchor: [0, 2], ground: '.', blocks: [[0, -1], [1, -1], [1, 0]] },
@@ -262,11 +262,14 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
   // station yard, with its own arch out at the north; a hollow in the wood
   // above it that the growth closed and a Cut opens; and below both, the
   // steading's fenced fields either side of the drove lane, whose tall grass is
-  // the price of the short way south.
+  // the price of the short way south. The `TTT` over an orchard tree is the
+  // ground under its crown, drawn shut: a crown is drawn over the figures, so a
+  // tile behind a tree is a tile to stand in unseen, and a tree in the open is
+  // walked round rather than behind. The tall bushes by the drove lane the same.
   map.draw(32, 0, [
     '                                ',
     '                                ',
-    '...C......                      ',
+    'TTTC......                      ',
     '........o.                      ',
     '.o........       ......         ',
     '....C.....       ......         ',
@@ -277,22 +280,22 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
     '..F...........FT   .            ',
     ' .F..o...o....F    .            ',
     ' .............F   ..            ',
-    '  F...........F   .             ',
-    '  F.........o.F   .             ',
-    '  F...........F ...             ',
+    '  F........TTTF   .             ',
+    '  FTTT.TTT....F   .             ',
+    '  F.........o.F ...             ',
     'T F.o...o.....F .               ',
     '  F...........F .               ',
-    'T F..........."...              ',
-    '  F...........F ..              ',
-    '  F..o....o...F ..FFFFFFFFFFFFF ',
-    '  F...........F ..FgggggFgggggF ',
+    'T F.TTT......."...              ',
+    '  F......TTT..F ..              ',
+    '  F..o........F T.FFFFFFFFFFFFF ',
+    '  F.......o...F ..FgggggFgggggF ',
     '  F....PP.....F b.gggoggFgggggF ',
     '  F....PP.....F ..FgggggggggggF ',
-    '  F....PP.....F ..FgggggFgggggF ',
+    '  F....PP.....F .TFgggggFgggggF ',
     '  FFFFFF.FFFFFF ..FFFFFFFFFFFFF ',
     '   T  T .       .bFgggggggggggF ',
     '        ..      ..FgggogggogggF ',
-    '         .      ..ggggggggggggF ',
+    '         .      T.ggggggggggggF ',
     '         ..     ..FgggggggggggF ',
     '          .     b.FgggggggggggF ',
     '          .     ..FFFFFFFFFFFFF ',
@@ -362,7 +365,8 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
   // nothing in them is a lawn you can cross at a run.
   map.plant(43, 6, 'stoneArch');
   map.plant(35, 21, 'barn');
-  map.plant(38, 12, 'produceCrate');
+  map.plant(45, 23, 'produceCrate');
+  map.plant(40, 12, 'crate');
   map.plant(41, 22, 'produce');
   map.plant(42, 17, 'crate');
   map.plant(44, 18, 'crate');

@@ -204,11 +204,13 @@ describe('chooseHunterPursuitStep', () => {
     // end - away from the player. Anything that closes the distance greedily
     // walks into the water and stays there.
     const { bounds, isBlocked } = mapBlocker('floodplain-relay');
-    // The last tile of reeds north of the cut and the first tile south of it,
-    // in one column. Nothing in the map's data lies across the cut, so these
-    // are named - and what they mean is asserted, so that a redrawn marsh fails
-    // here saying so rather than leaving this test chasing across open ground.
-    const hunter = { x: 13, y: 19 };
+    // The last tile of reeds north of the lone tree and the cut, and the first
+    // tile south of them, in one column (the tile under the tree's crown is
+    // thicket - nobody stands unseen under a crown). Nothing in the map's data
+    // lies across the cut, so these are named - and what they mean is asserted,
+    // so that a redrawn marsh fails here saying so rather than leaving this
+    // test chasing across open ground.
+    const hunter = { x: 13, y: 18 };
     const player = { x: 13, y: 24 };
     expect(isBlocked(hunter)).toBe(false);
     expect(isBlocked(player)).toBe(false);
