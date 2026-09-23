@@ -1,5 +1,8 @@
 import { evolutionByStone, type Pokemon } from '../pokemon';
 import { PrimaryStatus } from '../pokemon/battle/status';
+import { POKEDOLLAR_SIGN } from '../ui/gameFont';
+
+export { POKEDOLLAR_SIGN };
 
 export const ItemCategory = {
   Medicine: 'medicine',
@@ -144,7 +147,7 @@ export interface ItemDefinition {
    * ships, because a second Potion taking a second square is the whole point.
    *
    * It exists for the things that are counted in the hundreds rather than the
-   * handful - the scrip is the one - where one square per unit would be absurd
+   * handful - the Pokedollars are the one - where one square per unit would be absurd
    * and one square for the lot is what a player expects.
    */
   readonly stackSize?: number;
@@ -255,10 +258,16 @@ export const ITEMS = {
    * survives everything, and the captain's ruling is that money is loot. In the
    * pack it can be dropped by a wipe, protected by the secure slot, and - once
    * the grid pack lands - it will cost cells like anything else.
+   *
+   * It is the Pokedollar because that is what these games pay in, and an amount
+   * of it is always written the way they write one - `₽40`, through
+   * `formatMoney` - never as a count of a thing. The id was `scrip` until the
+   * captain asked for money that sounds like Pokemon (2026-09-23); a save that
+   * still says `scrip` is read through `currentItemId`.
    */
-  scrip: {
-    id: 'scrip',
-    displayName: 'Scrip',
+  money: {
+    id: 'money',
+    displayName: 'Pokedollars',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
     // A bundle to a square. Money has to cost room or it is a score with an
@@ -268,7 +277,7 @@ export const ITEMS = {
     // carries a square of them; one that hoards four raids' worth gives up a
     // fifth of its pack to do it.
     stackSize: 250,
-    description: 'League notes, water-stained. Bill still takes them; nobody else does.',
+    description: 'League money, counted in ₽ and water-stained. Bill still takes it; out here nobody else does.',
     effect: { type: 'currency' },
   },
   /* --- The stones ---------------------------------------------------------
@@ -533,7 +542,28 @@ export const MATERIAL_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.filter(
 ).map((item) => item.id as SupplyItemId);
 
 /** Money. One item, one id, and the only thing Bill's stock is priced in. */
-export const CURRENCY_ITEM_ID = 'scrip';
+export const CURRENCY_ITEM_ID = 'money';
+
+/** An amount of money as these games print one: `₽40`, never "40 Pokedollars". */
+export function formatMoney(amount: number): string {
+  return `${POKEDOLLAR_SIGN}${amount}`;
+}
+
+/**
+ * Ids a save may still carry for an item that has since been renamed.
+ *
+ * A save is wire format, so renaming an item is a migration rather than an
+ * edit: every place the loader reads an item id asks `currentItemId` first,
+ * and a save written before the rename keeps what it held.
+ */
+export const RETIRED_ITEM_IDS: Readonly<Record<string, ItemId>> = {
+  scrip: 'money',
+};
+
+/** The id an item goes by now, for an id read out of a save. */
+export function currentItemId(itemId: string): string {
+  return Object.hasOwn(RETIRED_ITEM_IDS, itemId) ? RETIRED_ITEM_IDS[itemId] : itemId;
+}
 
 /** Every pack in the catalogue, smallest first. What one holds is `./packs`. */
 export const PACK_ITEM_IDS: readonly PackItemId[] = ITEM_DEFINITIONS.filter(
@@ -591,12 +621,13 @@ export const EVOLUTION_STONE_IDS: readonly SupplyItemId[] = ITEM_DEFINITIONS.fil
 ).map((item) => item.id as SupplyItemId);
 
 /**
- * An item's name for a quantity: "3 Potions", but "40 scrip".
+ * An item's name for a quantity: "3 Potions", but "Pokedollars".
  *
  * Money is a mass noun and every other item in the catalogue is a count noun,
  * so the rule is read off the item rather than guessed by the caller that is
  * printing it - the result screen said "Banked 40 Scrips" in a playtest, and
- * the same sentence is built in three places.
+ * the same sentence is built in three places. An *amount* of money is not a
+ * name at all: see `itemAmountFor`.
  */
 export function itemNameFor(itemId: string, quantity: number): string {
   const item = getItemById(itemId);
@@ -606,6 +637,22 @@ export function itemNameFor(itemId: string, quantity: number): string {
   return item.effect.type === 'currency' || quantity === 1
     ? item.displayName
     : `${item.displayName}s`;
+}
+
+/**
+ * A quantity of an item as a sentence says it: "3 Potions", "1 Potion", and
+ * for money the amount itself, "₽40".
+ */
+export function itemAmountFor(itemId: string, quantity: number): string {
+  return isCurrency(itemId) ? formatMoney(quantity) : `${quantity} ${itemNameFor(itemId, quantity)}`;
+}
+
+/**
+ * How many of an item a row holds, in the tag beside its name: "×3", and for
+ * money the amount, "₽40", because a count of Pokedollars is a sum.
+ */
+export function itemCountTag(itemId: string, quantity: number): string {
+  return isCurrency(itemId) ? formatMoney(quantity) : `×${quantity}`;
 }
 
 /** Money, by id. Nothing else in the catalogue answers to it. */

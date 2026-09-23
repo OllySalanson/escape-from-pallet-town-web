@@ -15,6 +15,15 @@
       type="font/woff2"
       crossorigin
     />
+    <!-- The Pokedollar sign is its own face in the same family (style.css), and
+         a face behind a unicode-range is not fetched until the sign is drawn. -->
+    <link
+      rel="preload"
+      href="./assets/battle/pokedollar.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
   </head>
   <body>
     <div id="app"></div>

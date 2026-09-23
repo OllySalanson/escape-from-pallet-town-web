@@ -340,7 +340,7 @@ export class DeploymentFlow {
   /**
    * What is in the secure container: loadout supplies the player put in it, and
    * room set aside for the found goods they expect to bring back - materials,
-   * and the scrip they have not picked up yet.
+   * and the money they have not picked up yet.
    *
    * A supply is capped at what is actually packed, so a stack shrunk at base
    * cannot protect more than deploys. A found good is never packed - it is
@@ -508,7 +508,7 @@ export class DeploymentFlow {
    * would. Only a request that moves nothing answers with a reason.
    */
   public setItemQuantity(itemId: ItemId, target: number): string | undefined {
-    // Materials are for Brock and scrip is for Bill: neither
+    // Materials are for Brock and money is for Bill: neither
     // does anything in a raid, so packing one only puts it at risk.
     if (isFoundOnly(itemId)) {
       return undefined;
@@ -630,7 +630,7 @@ export class DeploymentFlow {
    *
    * A square rather than a unit, because that is what the container is measured
    * in and what the row's own line says one of these costs. For everything a
-   * square holds one of they are the same number; for the scrip, which stacks a
+   * square holds one of they are the same number; for the money, which stacks a
    * bundle to a square, they are not - one press used to reserve a square and
    * protect a single note, and a wipe brought one note home out of forty.
    *

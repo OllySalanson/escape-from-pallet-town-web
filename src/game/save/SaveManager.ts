@@ -8,6 +8,8 @@ import {
 import {
   CURRENCY_ITEM_ID as TRADER_CURRENCY_ITEM_ID,
   EMPTY_ARRANGEMENT,
+  currentItemId,
+  formatMoney,
   readArrangement,
   type GridArrangement,
 } from '../items';
@@ -182,13 +184,14 @@ export interface RaidProgress {
    */
   readonly giftsReceived: readonly string[];
   /**
-   * Scrip that has crossed Bill's counter, ever. It is turnover, not a
+   * Pokedollars that have crossed Bill's counter, ever. It is turnover, not a
    * balance: a player's money is what is in the vault and nothing else
    * (`../hub/trader`), and this only records what was spent, because standing
    * with him is derived from it. Absent on every save written before he tied
-   * up, which reads as nothing spent.
+   * up, which reads as nothing spent; written as `traderScripSpent` before the
+   * money was the Pokedollar, which is read as the same number.
    */
-  readonly traderScripSpent?: number;
+  readonly traderMoneySpent?: number;
   /**
    * Barters that may only be taken once, by barter id - the gear he brings up
    * from the hold. Like `workshopUpgrades` it is the whole record: what is
@@ -305,7 +308,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   workshopUpgrades: [],
   standingContractsBanked: 0,
   giftsReceived: [],
-  traderScripSpent: 0,
+  traderMoneySpent: 0,
   traderBarters: [],
   securePreference: DEFAULT_SECURE_PREFERENCE,
   packArrangement: EMPTY_ARRANGEMENT,
@@ -912,11 +915,11 @@ export class SaveManager {
     game.stash.addItem(offer.item.itemId, quantity);
     const raidProgress: RaidProgress = {
       ...game.raidProgress,
-      traderScripSpent: clampTraderCount(game.raidProgress.traderScripSpent) + total,
+      traderMoneySpent: clampTraderCount(game.raidProgress.traderMoneySpent) + total,
     };
     return {
       ok: true,
-      message: quantity === 1 ? `Bought one for ${total} scrip.` : `Bought ${quantity} for ${total} scrip.`,
+      message: quantity === 1 ? `Bought one for ${formatMoney(total)}.` : `Bought ${quantity} for ${formatMoney(total)}.`,
       saved: this.save({
         ...game,
         raidProgress,
@@ -928,7 +931,7 @@ export class SaveManager {
   /**
    * Takes one barter: found goods across the counter, gear or a stone back.
    *
-   * No scrip changes hands here and none may - these are the things the
+   * No money changes hands here and none may - these are the things the
    * captain's ruling puts beyond money - so this path deliberately never
    * touches turnover. A barter offered once is recorded the moment it is taken,
    * which is what stops the boat becoming a gear faucet.
@@ -986,7 +989,7 @@ export class SaveManager {
     game.stash.removeItem(TRADER_CURRENCY_ITEM_ID, TRADER_BERTH_PRICE);
     const raidProgress: RaidProgress = {
       ...game.raidProgress,
-      traderScripSpent: clampTraderCount(game.raidProgress.traderScripSpent) + TRADER_BERTH_PRICE,
+      traderMoneySpent: clampTraderCount(game.raidProgress.traderMoneySpent) + TRADER_BERTH_PRICE,
     };
     return {
       ok: true,
@@ -1267,7 +1270,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // Absent on every save written before Bill tied up, which reads as
     // nothing spent and nothing bartered - so such a save simply meets him as a
     // stranger who has banked whatever it banked.
-    traderScripSpent: clampTraderCount(value.traderScripSpent),
+    traderMoneySpent: clampTraderCount(value.traderMoneySpent ?? value.traderScripSpent),
     traderBarters: clampTraderBarters(value.traderBarters),
     // A save written before the container filled itself has no preference, and
     // the default is exactly what such a player wants: lead with the Pokemon.
@@ -1583,7 +1586,10 @@ function bagContents(value: unknown): BagContents {
   const contents: Record<string, number> = {};
   for (const [itemId, quantity] of Object.entries(value)) {
     if (typeof quantity === 'number' && Number.isInteger(quantity) && quantity > 0) {
-      contents[itemId] = quantity;
+      // Read under the name the item goes by now, so a save written before a
+      // rename keeps what it held - `scrip` is the Pokedollars.
+      const current = currentItemId(itemId);
+      contents[current] = (contents[current] ?? 0) + quantity;
     }
   }
   return contents;
@@ -1599,7 +1605,7 @@ function addBagContents(first: BagContents, second: BagContents): BagContents {
 
 function stringArrayToBagContents(value: unknown): BagContents {
   const contents: Record<string, number> = {};
-  for (const itemId of stringArray(value)) {
+  for (const itemId of stringArray(value).map(currentItemId)) {
     contents[itemId] = (contents[itemId] ?? 0) + 1;
   }
   return contents;
@@ -1633,7 +1639,7 @@ export function traderProgressOf(raidProgress: RaidProgress): TraderProgress {
     completedContracts: raidProgress.completedContracts,
     standingContractsBanked: raidProgress.standingContractsBanked,
     defeatedBosses: raidProgress.defeatedBosses,
-    traderScripSpent: clampTraderCount(raidProgress.traderScripSpent),
+    traderMoneySpent: clampTraderCount(raidProgress.traderMoneySpent),
     traderBarters: clampTraderBarters(raidProgress.traderBarters),
   };
 }

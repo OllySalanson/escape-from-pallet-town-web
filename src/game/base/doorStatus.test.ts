@@ -97,7 +97,7 @@ describe("what each of the base's doors says", () => {
   it('leads the quay with the money, because that is what the screen turns on', () => {
     const rich = createStartingStash(CHARMANDER);
     rich.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
-    rich.addItem('scrip', 1_000);
+    rich.addItem('money', 1_000);
     const line = doorStatusLine(
       doorNamed('the-quay'),
       restore(rich, {
@@ -106,7 +106,7 @@ describe("what each of the base's doors says", () => {
         unlockedInsertions: ['floodplain-relay', 'town-square'],
       }),
     );
-    expect(line).toContain('1000 scrip');
+    expect(line).toContain('₽1000');
   });
 
   it('answers for every door there is', () => {

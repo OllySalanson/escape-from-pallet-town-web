@@ -1,6 +1,6 @@
 import { Bag } from '../items';
 import { CURRENCY_ITEM_ID, ITEM_DEFINITIONS } from '../items/items';
-import { STANDING_PER_SCRIP, TRADER_STANDINGS } from '../hub/trader';
+import { POKEDOLLARS_PER_STANDING, TRADER_STANDINGS } from '../hub/trader';
 import { FIRST_CONTRACT_ID } from '../objectives/contracts';
 import { Move, Pokemon, PokemonParty } from '../pokemon';
 import {
@@ -36,7 +36,7 @@ import { WORLD_MAPS } from '../worldMap';
 
 /** Enough of everything that nothing in the mode is rationed. */
 const SUPPLY_STOCK = 20;
-const SCRIP_STOCK = 5_000;
+const MONEY_STOCK = 5_000;
 
 /**
  * The partner. A level-99 Charizard built the way every other Pokemon in this
@@ -95,10 +95,10 @@ export function playtestRaidProgress(): RaidProgress {
     defeatedBosses: [],
     openedGates: [...new Set(WORLD_GATES.map((gate) => gateKey(gate)))],
     battleLessonGiven: true,
-    // Bill deals with whoever has turned scrip over his counter, so an
+    // Bill deals with whoever has turned money over his counter, so an
     // explorer run arrives as a partner rather than a stranger with an empty
     // shelf - derived from his own top tier, so a retuned ladder moves with it.
-    traderScripSpent: STANDING_PER_SCRIP * (TRADER_STANDINGS.at(-1)?.points ?? 0),
+    traderMoneySpent: POKEDOLLARS_PER_STANDING * (TRADER_STANDINGS.at(-1)?.points ?? 0),
     surveyed: everythingSurveyed(),
   };
 }
@@ -110,7 +110,7 @@ export function createPlaytestStash(): Stash {
     stash.addPokemon(built(base, level));
   }
   for (const item of ITEM_DEFINITIONS) {
-    stash.addItem(item.id, item.id === CURRENCY_ITEM_ID ? SCRIP_STOCK : SUPPLY_STOCK);
+    stash.addItem(item.id, item.id === CURRENCY_ITEM_ID ? MONEY_STOCK : SUPPLY_STOCK);
   }
   return stash;
 }

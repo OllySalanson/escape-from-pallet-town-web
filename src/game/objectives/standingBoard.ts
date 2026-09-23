@@ -435,9 +435,9 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   // as long as the player keeps banking, which is the one thing the captain's
   // fourth constraint forbids. The board cannot reach it anyway - it draws only
   // from `workshopMaterialKinds()`, which is Brock prices or
-  // `FINISHED_BASE_PAY`, and scrip is in neither - so this entry exists to make
+  // `FINISHED_BASE_PAY`, and money is in neither - so this entry exists to make
   // the compiler ask rather than to be read.
-  scrip: 0,
+  money: 0,
 };
 
 /** "on Route 1", "in Pallet Town" - typed by map id, so a new map has to say which it is. */

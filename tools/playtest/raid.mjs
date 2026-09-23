@@ -9,7 +9,11 @@
 //        [--insertion=id] [--beaten=bossId,..] [--opened=gateId,..] [--completed=contractId,..]
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--grab=itemId,..] [--fight]
-//        [--progress=path.json]
+//        [--progress=path.json] [--shot-dialogs]
+//
+// --shot-dialogs (with --shot) photographs every line of dialogue a step raised
+// before the driver presses past it - a pickup's "Found ₽40!", say, which is
+// canvas text and so is only ever checked by eye.
 //
 // --seed pins `crypto.getRandomValues` and `Math.random` in the page, so two
 // runs roll the same raid and their event logs can be compared line for line.
@@ -180,6 +184,7 @@ try {
     for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; } return { key }; })()`);
 
   let steps = 0;
+  let dialogShots = 0;
   let walkingMs = 0;
   let ended = false;
 
@@ -271,8 +276,15 @@ try {
         }
       }
       await page.keyUp(next.key);
+      let dialogShot = false;
       for (let poll = 0; poll < 100; poll += 1) {
         const now = await state();
+        if (now.world?.dialog && !dialogShot && option('shot') && flag('shot-dialogs')) {
+          dialogShot = true;
+          dialogShots += 1;
+          await wait(stepped ? 300 : 200);
+          await page.screenshot(option('shot').replace(/\.png$/, `-dialog-${dialogShots}.png`));
+        }
         if (!now.world || !now.world.target) {
           if (now.world && !now.world.dialog && before.world.elapsedMs !== null) {
             steps += 1;
@@ -450,11 +462,20 @@ try {
   // --grab=itemId picks up every piece of that item this raid laid, wherever it
   // laid it. Loot is re-seated every raid, so a driver cannot be pointed at it
   // with --via: only the run plan knows where it is. It is how anything that is
-  // found rather than packed - a material, a note of scrip - is ever checked
+  // found rather than packed - a material, a bundle of Pokedollars - is ever checked
   // from the pack it has to come home in.
   const grab = (option('grab') ?? '').split(',').filter(Boolean);
   for (const piece of plan.loot.filter((l) => grab.includes(l.itemId))) {
     await walkTo(piece.position, `${piece.quantity}x ${piece.itemId}`);
+  }
+  if (grab.length > 0 && option('shot') && !ended) {
+    // The pack as the player sees it once they have picked the thing up.
+    await press('KeyB');
+    await until(`document.querySelectorAll('.menu-overlay').length > 0`, 'the bag');
+    await wait(400);
+    await page.screenshot(option('shot').replace(/\.png$/, '-bag.png'));
+    await press('Escape');
+    await wait(300);
   }
   if (grab.length > 0) {
     note(`seats the pack is still holding: ${ended ? 'n/a' : await page.evaluate(`${GAME}.scene.getScene('world').bag.arrangement.items.length`)}`);

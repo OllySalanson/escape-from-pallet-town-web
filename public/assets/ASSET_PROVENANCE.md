@@ -144,6 +144,17 @@ the typeface every battle line, HUD banner and field-guide heading is set in
   the old build's was 4. No attribution is required; the credit above is
   voluntary.
 
+### `battle/pokedollar.ttf` - the one glyph Orange Kid lacks
+
+Orange Kid has no Pokedollar sign (U+20BD), so this is a one-glyph TrueType face
+drawn here by `scripts/draw-pokedollar-glyph.mjs` and joined to the Orange Kid
+family for that character alone by `unicode-range` in `src/style.css`. The
+glyph is Orange Kid's own P, cell for cell on its grid, with the stem moved in a
+cell and two bars through it, and the vertical metrics are copied from Orange
+Kid's tables; the file is written by hand in the script, so it is byte-stable and
+has no other source. **Licence: CC0 1.0**, as the face it is drawn after is, and
+its name table says so.
+
 ### What this replaces, and why the licence question is now closed
 
 The file that shipped until 2026-09-08 was `battle/orange-kid.ttf`, version
@@ -192,7 +203,7 @@ game.
   `radio-valve`, `cable-coil`, `parts-crate`, `lamp-oil`, `mooring-rope` and
   `linen-roll`, the four held items `leftovers`, `focus-band`, `life-orb` and
   `quick-claw`, the five evolution stones `thunder-stone`, `fire-stone`,
-  `water-stone`, `leaf-stone` and `moon-stone`, and the money `scrip`.
+  `water-stone`, `leaf-stone` and `moon-stone`, and `money`, the Pokedollars.
   The materials are
   drawn in code by `scripts/draw-material-icons.mjs` and the held items by
   `scripts/draw-gear-icons.mjs` (character art and small shapes on the same
@@ -207,11 +218,13 @@ game.
   (`#1c7434`, `#44b848`, `#9ce87c`) and a crescent in violet (`#443c6c`,
   `#7c74ac`, `#c4bce4`). The Thunder Stone's own rows are unchanged, so its file
   is byte-identical to the one that shipped.
-  `scrip` is `scripts/draw-scrip-icon.mjs`: two pale sheets offset behind each
-  other with a seal printed on the face, in a bleached green (`#9aa77e`,
-  `#cfd8b6`, `#e8eed2`) and one warm seal (`#7d8a63` through `#c47a4e`). Flat and
-  square-cornered on purpose - every shaded, rounded draft of it read as a tin
-  or a jar, which is what every other icon in the Other pocket already is.
+  `money` is `scripts/draw-money-icon.mjs`: two pale sheets offset behind each
+  other with the Pokedollar sign (a P with two bars) printed on the face, in a
+  bleached green (`#9aa77e`, `#cfd8b6`, `#e8eed2`) and one warm ink
+  (`#9c5b3a`). Flat and square-cornered on purpose - every shaded, rounded draft
+  of it read as a tin or a jar, which is what every other icon in the Other
+  pocket already is. It was `scrip.png`, with a plain seal where the sign is,
+  until the money became the Pokedollar on 2026-09-23.
   The eight machines - `tm09-bullet-seed`, `tm13-ice-beam`, `tm23-iron-tail`,
   `tm28-dig`, `tm40-aerial-ace`, `hm01-cut`, `hm03-surf` and `hm06-rock-smash` -
   are `scripts/draw-machine-icons.mjs`: **one disc shape drawn eight times**, lit

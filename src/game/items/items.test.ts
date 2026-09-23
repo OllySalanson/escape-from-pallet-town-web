@@ -25,10 +25,10 @@ describe('materials', () => {
     }
     // Nothing else lives in that pocket but the five evolution stones and the
     // eight machines, both of which are spent on a Pokemon rather than at
-    // Brock's, and the scrip, which is spent at Bill's counter and
+    // Brock's, and the money, which is spent at Bill's counter and
     // nowhere else.
     expect(ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Misc).map((item) => item.id).sort()).toEqual(
-      [...MATERIAL_IDS, ...MACHINE_ITEM_IDS, ...EVOLUTION_STONE_IDS, 'scrip'].sort(),
+      [...MATERIAL_IDS, ...MACHINE_ITEM_IDS, ...EVOLUTION_STONE_IDS, 'money'].sort(),
     );
   });
 

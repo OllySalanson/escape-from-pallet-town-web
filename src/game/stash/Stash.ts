@@ -663,7 +663,7 @@ export class Stash {
       securedItems.set(itemId, Math.max(0, (securedItems.get(itemId) ?? 0) - protectedQuantity));
       this.removeItem(itemId, quantity - protectedQuantity);
     }
-    // A material, and the scrip beside it, are found rather than brought, so
+    // A material, and the money beside it, are found rather than brought, so
     // the loop above never met either: the container reserved room for the kind
     // and the caller has already cut that room to what was still in the pack,
     // which is the only place this stash learns it.

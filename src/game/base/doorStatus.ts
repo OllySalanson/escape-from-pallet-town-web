@@ -3,12 +3,13 @@ import { buildContractBoard } from '../hub/contractBoard';
 import { WORKSHOP_UPGRADES, builtUpgrades, workshopOffers } from '../hub/workshop';
 import { pokemonNeedingRecovery } from '../hub/recovery';
 import {
-  scripHeld,
+  moneyHeld,
   traderBarterOffers,
   traderStanding,
   traderStockOffers,
   type TraderCounter,
 } from '../hub/trader';
+import { formatMoney } from '../items';
 import type { BaseDoor } from './doors';
 
 /**
@@ -16,7 +17,7 @@ import type { BaseDoor } from './doors';
  *
  * The lobby carried this on the four cards it was made of - how many contracts
  * were on the board, who was hurt, how much of the ladder stood and how much
- * scrip was in hand - and the walkable base would have thrown all four away.
+ * money was in hand - and the walkable base would have thrown all four away.
  * That is the one thing a map is worse at than a list, so it is put back where
  * the map can carry it: on the caption over the building, which speaks as the
  * player walks up to it and, with the look key held, over the whole yard at
@@ -66,7 +67,7 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
       const ready =
         traderStockOffers(counter).filter((offer) => offer.refusal === undefined).length +
         traderBarterOffers(counter).filter((offer) => offer.refusal === undefined).length;
-      const money = `${scripHeld(game.stash)} scrip`;
+      const money = formatMoney(moneyHeld(game.stash));
       return ready === 0
         ? `${traderStanding(counter.progress).name} · ${money}`
         : `${money} · ${ready} deal${ready === 1 ? '' : 's'} ready`;

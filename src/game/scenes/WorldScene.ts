@@ -75,7 +75,7 @@ import {
   nextHunterProximity,
 } from '../audio/worldSounds';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
-import { Bag, ITEMS, footprintOf, getItemById, type ItemId } from '../items';
+import { Bag, ITEMS, footprintOf, formatMoney, getItemById, isCurrency, type ItemId } from '../items';
 import {
   areContractStopsComplete,
   completedObjectiveRewards,
@@ -3554,8 +3554,11 @@ export class WorldScene extends Phaser.Scene {
     this.removeWorldLabel(this.prizeLabels.get(loot!.id));
     this.prizeLabels.delete(loot!.id);
     const item = ITEMS[loot!.itemId];
-    const quantity = loot!.quantity > 1 ? ` x${loot!.quantity}` : '';
-    return `Found ${item.displayName}${quantity}!${this.reseatNote()}`;
+    // Money is found as a sum, the way these games pay it out: "Found ₽40!".
+    const found = isCurrency(item.id)
+      ? formatMoney(loot!.quantity)
+      : `${item.displayName}${loot!.quantity > 1 ? ` x${loot!.quantity}` : ''}`;
+    return `Found ${found}!${this.reseatNote()}`;
   }
 
   /**

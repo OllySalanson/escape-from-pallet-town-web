@@ -3,7 +3,7 @@ import {
   heldItemName,
   isFoundOnly,
   isPackId,
-  itemNameFor,
+  itemAmountFor,
   packName,
   packSquares,
   type BagContents,
@@ -316,7 +316,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
         ? declaredSecureItems.length > 0 &&
           securedPokemon(snapshot).length === 0 &&
           declaredSecureItems.every((item) => isFoundOnly(item.itemId))
-          // A material, or scrip, is protected before it exists, so an empty
+          // A material, or money, is protected before it exists, so an empty
           // slot may only mean the raid never turned one up.
           ? 'None of what you protected turned up in the raid.'
           : 'Everything you protected was used up in the field.'
@@ -695,9 +695,9 @@ function gradeHaul(
 export function describeGroup(group: ReportGroup): string | null {
   const parts = [
     ...group.pokemon.map((member) => member.name),
-    // The catalogue owns the plural, because money has none: "40 scrip", not
-    // "40 Scrips", which is what this line printed in a playtest.
-    ...group.items.map((item) => `${item.quantity} ${itemNameFor(item.itemId, item.quantity)}`),
+    // The catalogue owns the plural, and money is not counted at all: "₽40",
+    // never "40 Scrips", which is what this line printed in a playtest.
+    ...group.items.map((item) => itemAmountFor(item.itemId, item.quantity)),
   ];
   if (parts.length === 0) {
     return null;

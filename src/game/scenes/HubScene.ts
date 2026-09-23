@@ -40,10 +40,10 @@ import {
   formatTraderStacks,
   nextTraderStanding,
   rationLeft,
-  scripHeld,
+  moneyHeld,
   STANDING_PER_BOSS,
   STANDING_PER_CONTRACT,
-  STANDING_PER_SCRIP,
+  POKEDOLLARS_PER_STANDING,
   wardBedIds,
   wardTreatmentsPerRaid,
   berthSquares,
@@ -61,6 +61,8 @@ import {
   Bag,
   CURRENCY_ITEM_ID,
   EMPTY_ARRANGEMENT,
+  formatMoney,
+  itemCountTag,
   HELD_ITEM_DEFINITIONS,
   ITEM_DEFINITIONS,
   FOUND_ONLY_IDS,
@@ -1159,7 +1161,7 @@ export class HubScene extends Phaser.Scene {
               // it is the title bar's aside rather than a line inside a pane
               // that scrolls away from the row being priced.
               : this.view === 'trader'
-                ? `${scripHeld(this.stash)} scrip`
+                ? formatMoney(moneyHeld(this.stash))
                 : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} items`,
       body: this.content(),
       hints: this.hints,
@@ -1762,7 +1764,7 @@ export class HubScene extends Phaser.Scene {
     const supplyRow = (item: ItemDefinition): string =>
       // One line a supply, as a bag lists them: what it does is said by the
       // help bar when it is pointed at, which is why the row is a control.
-      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">×${this.stash.itemCount(item.id)}</span></button>`;
+      `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
     const materialRows = this.stashItems.filter((item) => isFoundOnly(item.id)).map(supplyRow).join('');
     const supplies = `${this.stashItems.filter((item) => !isFoundOnly(item.id)).map(supplyRow).join('')}${
       // Found goods are their own list: nothing in it can be packed or used,
@@ -2209,7 +2211,7 @@ export class HubScene extends Phaser.Scene {
     // what a material's room is for, are in the help bar the cursor fills.
     const secureRow = (itemId: ItemId, help: string): string => {
       // Squares, not units. They are the same number for everything a square
-      // holds one of, and for the scrip - a bundle to a square - the stepper
+      // holds one of, and for money - a bundle to a square - the stepper
       // would otherwise count in hundreds in a box four characters wide.
       const held = blocksFor(itemId, this.flow.secureQuantity(itemId));
       const footprint = footprintOf(itemId);
@@ -2236,7 +2238,7 @@ export class HubScene extends Phaser.Scene {
         ),
       )
       .join('');
-    // A material, and the scrip beside it, are found rather than packed, so the
+    // A material, and the money beside it, are found rather than packed, so the
     // container holds room for them: whatever of that kind is still in the pack
     // when the raid is lost comes home, up to the squares set aside here. Money
     // no room was kept for is money a wipe takes.
@@ -2329,7 +2331,7 @@ export class HubScene extends Phaser.Scene {
     // The window a row stands in is what says whether it is lost or comes home,
     // so the rows do not each say it again.
     const itemRow = (item: { readonly itemId: ItemId; readonly quantity: number }, secured: boolean): string =>
-      `<div class="px-row has-icon${secured ? ' is-secured' : ''}">${itemIcon(item.itemId, this.itemName(item.itemId))}<span class="px-row-main"><strong>${this.itemName(item.itemId)} ×${item.quantity}</strong>${isFoundOnly(item.itemId) ? '<small>room kept for what you find</small>' : ''}</span></div>`;
+      `<div class="px-row has-icon${secured ? ' is-secured' : ''}">${itemIcon(item.itemId, this.itemName(item.itemId))}<span class="px-row-main"><strong>${this.itemName(item.itemId)} ${itemCountTag(item.itemId, item.quantity)}</strong>${isFoundOnly(item.itemId) ? '<small>room kept for what you find</small>' : ''}</span></div>`;
     // The pack leads the list, because it is the biggest single thing a wipe
     // takes and the one nothing in the container beside it can protect: the
     // container is something the pack is carried past, not something it is in.
@@ -2421,7 +2423,7 @@ export class HubScene extends Phaser.Scene {
     const standingPane = pixelWindow(
       `<div class="px-lead">${pixelFigure('bill', 'Bill')}<p class="px-wrap">${standing.note}</p></div>${
         next
-          ? `<p class="px-wrap px-note">Bank a contract +${STANDING_PER_CONTRACT}, beat a boss +${STANDING_PER_BOSS}, spend ${STANDING_PER_SCRIP} scrip +1.</p>`
+          ? `<p class="px-wrap px-note">Bank a contract +${STANDING_PER_CONTRACT}, beat a boss +${STANDING_PER_BOSS}, spend ${formatMoney(POKEDOLLARS_PER_STANDING)} +1.</p>`
           : ''
       }`,
       { className: 'trader-standing', heading: `Standing · ${standing.name}`, note: standingNote },
@@ -2436,19 +2438,19 @@ export class HubScene extends Phaser.Scene {
         const count = open ? clampCount(this.counterCounts.get(`buy:${offer.item.itemId}`) ?? 1, 1, limit) : 1;
         const price = shopPriceColumn([
           {
-            ask: `${offer.item.price * count} scrip`,
-            short: offer.refusal === 'scrip-short' || scripHeld(this.stash) < offer.item.price * count,
+            ask: formatMoney(offer.item.price * count),
+            short: offer.refusal === 'money-short' || moneyHeld(this.stash) < offer.item.price * count,
           },
         ]);
         if (open) {
-          const help = `Buy ${count} ${name} for ${offer.item.price * count} scrip. ${limit === 1 ? 'That is all this trip allows' : `Up to ${limit} this trip`}.`;
+          const help = `Buy ${count} ${name} for ${formatMoney(offer.item.price * count)}. ${limit === 1 ? 'That is all this trip allows' : `Up to ${limit} this trip`}.`;
           // The row is a pair, because a quantity is a control of its own: the
           // row still buys, and the selector beside it says how many. What the
           // thing *does* is the row's own line either way - a shelf that only
           // priced its stock told a player nothing they did not already know.
           return `<div class="px-pair"><button class="px-row has-icon px-tall px-priced" data-buy="${offer.item.itemId}" data-shows="${offer.item.itemId}" data-help="${escapeAttribute(help)}"${offer === first ? ' data-cursor-start' : ''}>${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}${count > 1 ? ` ×${count}` : ''}</strong><small class="px-wrap">${what}</small></span>${price}</button>${countSelector({ kind: 'buy', id: offer.item.itemId, label: name, value: count, min: 1, max: limit, help, limit: traderStockLimitReason(counter, offer.item) })}</div>`;
         }
-        const tag = pixelTag(offer.refusal === 'scrip-short' ? 'Short' : offer.refusal === 'ration-spent' ? 'Spent' : 'Locked');
+        const tag = pixelTag(offer.refusal === 'money-short' ? 'Short' : offer.refusal === 'ration-spent' ? 'Spent' : 'Locked');
         // Never `disabled`: the cursor has to reach a row to say why it is shut.
         const wiring = `data-refused="${escapeAttribute(offer.message ?? '')}" aria-disabled="true" data-help="${escapeAttribute(offer.message ?? '')}"`;
         return `<button class="px-row has-icon px-tall px-priced" ${wiring} data-shows="${offer.item.itemId}">${itemIcon(offer.item.itemId, name)}<span class="px-row-main"><strong class="px-name">${name}</strong><small class="px-wrap">${what}</small></span>${price}${tag}</button>`;
@@ -2530,7 +2532,7 @@ export class HubScene extends Phaser.Scene {
       heading: 'Out of the hold',
       // Short, because a heading bar's note clips: "Found goods only · no scrip
       // buys these" came out as "FOUND GOODS ONLY · NO SI" on the real stage.
-      note: 'No scrip buys these',
+      note: 'No money buys these',
     });
 
     return `<main class="px-body trader-layout">${standingPane}${shelfPane}${tablePane}</main>`;
@@ -2541,7 +2543,7 @@ export class HubScene extends Phaser.Scene {
    * container, this raid only.
    *
    * It stands in the shelf's own window rather than in a third pane because it
-   * is the other thing scrip buys, and it says "this raid only" in the row
+   * is the other thing money buys, and it says "this raid only" in the row
    * itself - the words that keep it distinct from Brock's locker, which
    * is the same stack for good. That comparison is the help bar's, not the
    * row's: spelled out on the row it wrapped to three lines and took the shelf
@@ -2558,10 +2560,10 @@ export class HubScene extends Phaser.Scene {
         id: BERTH_DEAL,
         icon: iconMarkup('supply-crate', 'Berth'),
         name: 'Berth',
-        question: `Pay ${TRADER_BERTH_PRICE} scrip for one raid, used or not?`,
+        question: `Pay ${formatMoney(TRADER_BERTH_PRICE)} for one raid, used or not?`,
         confirm: 'data-berth-confirm',
         confirmLabel: 'Pay for it',
-        confirmHelp: `Spends ${TRADER_BERTH_PRICE} scrip on the coming raid.`,
+        confirmHelp: `Spends ${formatMoney(TRADER_BERTH_PRICE)} on the coming raid.`,
       })}</div>`;
     }
     const wiring = paid
@@ -2573,11 +2575,11 @@ export class HubScene extends Phaser.Scene {
       ? pixelTag('Paid', 'secure', true)
       : offer.refusal === undefined
         ? pixelTag('Rent', 'good')
-        : pixelTag(offer.refusal === 'scrip-short' ? 'Short' : 'Locked');
+        : pixelTag(offer.refusal === 'money-short' ? 'Short' : 'Locked');
     const price = paid
-      ? shopPaidColumn(`${TRADER_BERTH_PRICE} scrip`)
+      ? shopPaidColumn(formatMoney(TRADER_BERTH_PRICE))
       : shopPriceColumn([
-          { ask: `${TRADER_BERTH_PRICE} scrip`, short: offer.refusal === 'scrip-short' },
+          { ask: formatMoney(TRADER_BERTH_PRICE), short: offer.refusal === 'money-short' },
         ]);
     return `<div class="px-list">${heading}<button class="px-row has-icon px-tall px-priced${paid ? ' is-secured' : ''}" ${wiring}>${iconMarkup('supply-crate', 'Berth')}<span class="px-row-main"><strong class="px-name">Berth</strong><small class="px-wrap">+${squares} protected squares, this raid.</small></span>${price}${tag}</button></div>`;
   }
@@ -2585,7 +2587,7 @@ export class HubScene extends Phaser.Scene {
   /** What the shelf's pointed-at row is, what it costs, and what is shutting it. */
   private stockDetail(counter: TraderCounter, offer: TraderStockOffer, shown: boolean): string {
     const { item } = offer;
-    const held = scripHeld(this.stash);
+    const held = moneyHeld(this.stash);
     const left = rationLeft(counter);
     const ration = traderStanding(counter.progress).ration;
     const footprint = footprintOf(item.itemId);
@@ -2600,7 +2602,13 @@ export class HubScene extends Phaser.Scene {
       detail: `${squares} ${squares === 1 ? 'square' : 'squares'} in the pack.`,
       priceLabel: 'Price',
       price: [
-        pricePart(`${item.price} scrip`, held, item.price, 'in the vault', itemIcon(CURRENCY_ITEM_ID, 'Scrip')),
+        // Money is held as a sum, so both halves are written as one: ₽120 against ₽300.
+        {
+          ask: formatMoney(item.price),
+          held: `${formatMoney(held)} in the vault`,
+          short: held < item.price,
+          icon: itemIcon(CURRENCY_ITEM_ID, this.itemName(CURRENCY_ITEM_ID)),
+        },
         {
           ask: '1 of his ration',
           held: ration === 0 ? 'he sells you nothing yet' : `${left} of ${ration} left this trip`,
@@ -2640,7 +2648,7 @@ export class HubScene extends Phaser.Scene {
       ...(taken
         ? { note: 'Traded, and he only had the one.' }
         : offer.refusal === undefined
-          ? { note: 'No scrip changes hands, and found goods are the only thing that buys this.' }
+          ? { note: 'No money changes hands, and found goods are the only thing that buys this.' }
           : { blocked: offer.message ?? '' }),
     });
   }
@@ -2654,7 +2662,7 @@ export class HubScene extends Phaser.Scene {
    * two buttons, with the cursor on the one that changes nothing - because the
    * key that armed the deal is still under the player's finger, which is why
    * `trainerChallengePrompt` opens on BACK AWAY and the payment bar opens on
-   * KEEP. Nothing about the shelf is armed: a Potion for scrip is an ordinary
+   * KEEP. Nothing about the shelf is armed: a Potion for Pokedollars is an ordinary
    * purchase, already rationed, and asking twice for one would be friction.
    */
   private armedDeal(deal: {

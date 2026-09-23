@@ -8,6 +8,19 @@
   font-display: block;
 }
 
+/* Orange Kid has no Pokedollar sign, so the game draws one on its grid and joins
+   it to the same family for that one character: the browser takes the sign from
+   here and everything else from the face above, in the DOM and in a canvas
+   alike. `scripts/draw-pokedollar-glyph.mjs` draws it; `formatMoney` prints it.
+   Root-absolute, because the dev server serves a public file as it is named and
+   the build prefixes the base - a relative url resolves against /src/ in dev. */
+@font-face {
+  font-family: 'Orange Kid';
+  src: url('/assets/battle/pokedollar.ttf') format('truetype');
+  unicode-range: U+20BD;
+  font-display: block;
+}
+
 :root {
   --menu-bg: #0b1220;
   --menu-surface: #111c2e;
@@ -2515,7 +2528,7 @@ button {
   padding-bottom: calc(var(--u) * 2);
 }
 /* The berth is the shelf's own last row, not a third pane: it is the other
-   thing scrip buys, and a pane of its own would read as a third kind of deal. */
+   thing money buys, and a pane of its own would read as a third kind of deal. */
 :where(.pixel-ui) .trader-shelf,
 :where(.pixel-ui) .trader-table {
   align-self: start;

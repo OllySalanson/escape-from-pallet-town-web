@@ -236,11 +236,11 @@ describe('what a cache pays', () => {
   });
 
   it('never pays money, so Bill\'s prices stay set against the ground', () => {
-    // The scrip faucet is measured off each map's loot pool alone
+    // The money faucet is measured off each map's loot pool alone
     // (`hub/trader.test.ts`), and a cache is a *guaranteed* pickup rather than
     // a pooled one, so money out of one would be an unmeasured second faucet.
     for (const poi of WORLD_POIS) {
-      expect(poi.reward.every(({ itemId }) => itemId !== 'scrip')).toBe(true);
+      expect(poi.reward.every(({ itemId }) => itemId !== 'money')).toBe(true);
     }
   });
 

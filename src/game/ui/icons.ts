@@ -20,7 +20,7 @@ export const ITEM_ICONS = {
   'lamp-oil': 'lamp-oil',
   'mooring-rope': 'mooring-rope',
   'linen-roll': 'linen-roll',
-  scrip: 'scrip',
+  money: 'money',
   // The five stones, one hue and one mark each: a bolt, a flame, a drop, a
   // leaf and a crescent. A stone is drawn on the ground as well as in a list,
   // so which one it is has to read at 16px from across a clearing.

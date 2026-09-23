@@ -1423,10 +1423,10 @@ describe('SaveManager', () => {
   }
 
   /** A save that stands high enough with Bill to be sold anything. */
-  function counterSave(storage: MemoryStorage, scrip = 1_000): SaveManager {
+  function counterSave(storage: MemoryStorage, money = 1_000): SaveManager {
     const saves = outfittedSave(storage);
     const game = saves.load()!;
-    game.stash.addItem('scrip', scrip);
+    game.stash.addItem('money', money);
     game.stash.addItem('cable-coil', 2);
     game.stash.addItem('lamp-oil', 2);
     saves.save({
@@ -1450,9 +1450,9 @@ describe('SaveManager', () => {
 
     const after = saves.load()!;
     expect(after.stash.itemCount('potion')).toBe(potions + 1);
-    expect(after.stash.itemCount('scrip')).toBe(1_000 - 120);
+    expect(after.stash.itemCount('money')).toBe(1_000 - 120);
     // Turnover, which is the only thing standing is bought with.
-    expect(after.raidProgress.traderScripSpent).toBe(120);
+    expect(after.raidProgress.traderMoneySpent).toBe(120);
     expect(after.traderRationUsed).toBe(1);
   });
 
@@ -1473,17 +1473,17 @@ describe('SaveManager', () => {
     const ration = saves.load()!.traderRationUsed;
 
     const bought = saves.buyTraderStock('potion', 2);
-    expect(bought.message).toBe('Bought 2 for 240 scrip.');
+    expect(bought.message).toBe('Bought 2 for ₽240.');
 
     const after = saves.load()!;
     expect(after.stash.itemCount('potion')).toBe(potions + 2);
-    expect(after.stash.itemCount('scrip')).toBe(1_000 - 240);
-    expect(after.raidProgress.traderScripSpent).toBe(240);
+    expect(after.stash.itemCount('money')).toBe(1_000 - 240);
+    expect(after.raidProgress.traderMoneySpent).toBe(240);
     expect(after.traderRationUsed).toBe(ration + 2);
     // More than the ration allows is refused whole, and costs nothing.
     const refused = saves.buyTraderStock('potion', 99);
     expect(refused.ok).toBe(false);
-    expect(saves.load()!.stash.itemCount('scrip')).toBe(1_000 - 240);
+    expect(saves.load()!.stash.itemCount('money')).toBe(1_000 - 240);
   });
 
   it('refuses a second purchase on a one-a-trip ration, and costs nothing for refusing', () => {
@@ -1499,11 +1499,11 @@ describe('SaveManager', () => {
     });
 
     expect(saves.buyTraderStock('potion')).toMatchObject({ ok: true });
-    const held = saves.load()!.stash.itemCount('scrip');
+    const held = saves.load()!.stash.itemCount('money');
     const refused = saves.buyTraderStock('potion');
     expect(refused.ok).toBe(false);
     expect(refused.message).toContain('trip');
-    expect(saves.load()!.stash.itemCount('scrip')).toBe(held);
+    expect(saves.load()!.stash.itemCount('money')).toBe(held);
   });
 
   it('hands the ration back only once the raid it was spent before has resolved', () => {
@@ -1532,8 +1532,8 @@ describe('SaveManager', () => {
     expect(after.stash.itemCount('cable-coil')).toBe(coils - 1);
     // Not a penny: these are the things the captain's ruling puts beyond money,
     // so a barter can never raise standing either.
-    expect(after.stash.itemCount('scrip')).toBe(1_000);
-    expect(after.raidProgress.traderScripSpent).toBe(0);
+    expect(after.stash.itemCount('money')).toBe(1_000);
+    expect(after.raidProgress.traderMoneySpent).toBe(0);
     expect(after.raidProgress.traderBarters).toEqual(['barter-quick-claw']);
 
     expect(saves.takeTraderBarter('barter-quick-claw').ok).toBe(false);
@@ -1545,7 +1545,7 @@ describe('SaveManager', () => {
     const saves = counterSave(storage);
     expect(saves.buyTraderBerth()).toMatchObject({ ok: true });
     expect(saves.load()!.traderBerthPaid).toBe(true);
-    expect(saves.load()!.stash.itemCount('scrip')).toBe(1_000 - 250);
+    expect(saves.load()!.stash.itemCount('money')).toBe(1_000 - 250);
 
     // Three stacks come home instead of the two a fresh save protects.
     const brought = [
@@ -1567,13 +1567,13 @@ describe('SaveManager', () => {
     const lost = (secured: boolean): number => {
       const storage = new MemoryStorage();
       const saves = counterSave(storage, 40);
-      // 120 scrip found in the field, in a pack that also held a Potion.
+      // ₽120 found in the field, in a pack that also held a Potion.
       return saves.applyWipeLoss(
         ['bulbasaur-1'],
         [{ itemId: 'potion', quantity: 1 }],
-        secured ? { items: [{ itemId: 'scrip', quantity: 120 }] } : {},
+        secured ? { items: [{ itemId: 'money', quantity: 120 }] } : {},
       )
-        ? saves.load()!.stash.itemCount('scrip')
+        ? saves.load()!.stash.itemCount('money')
         : -1;
     };
 
@@ -2080,7 +2080,7 @@ describe('SaveManager', () => {
       expect(
         saves.recordContainerArrangements(
           { items: [{ itemId: 'potion', x: 5, y: 2, rotated: false }], cargo: [] },
-          { items: [{ itemId: 'scrip', x: 1, y: 1, rotated: false }], cargo: [] },
+          { items: [{ itemId: 'money', x: 1, y: 1, rotated: false }], cargo: [] },
         ),
       ).toBe(true);
 
@@ -2089,7 +2089,7 @@ describe('SaveManager', () => {
         { itemId: 'potion', x: 5, y: 2, rotated: false },
       ]);
       expect(progress?.secureArrangement?.items).toEqual([
-        { itemId: 'scrip', x: 1, y: 1, rotated: false },
+        { itemId: 'money', x: 1, y: 1, rotated: false },
       ]);
 
       // A raid ending writes only the pack, so the container the player set at
@@ -2098,7 +2098,7 @@ describe('SaveManager', () => {
       const after = new SaveManager(storage).load()?.raidProgress;
       expect(after?.packArrangement?.items).toEqual([]);
       expect(after?.secureArrangement?.items).toEqual([
-        { itemId: 'scrip', x: 1, y: 1, rotated: false },
+        { itemId: 'money', x: 1, y: 1, rotated: false },
       ]);
     });
   });
@@ -2210,5 +2210,62 @@ describe('SaveManager', () => {
       const boxes = saves.load()!.stash.listBoxes();
       expect(boxes.map((box) => box.pokemonIds.length)).toEqual([30, 1]);
     });
+  });
+});
+
+/**
+ * The money was `scrip` until it became the Pokedollar (2026-09-23), and a save
+ * is wire format: every place an item id is read out of one has to answer to the
+ * old name, or a player who had saved up for Bill's berth would load in broke.
+ */
+describe('a save written while the money was called scrip', () => {
+  const scripSave = (): string =>
+    JSON.stringify({
+      version: 6,
+      party: [],
+      mapId: 'pallet-town',
+      position: { x: 1, y: 1 },
+      items: [],
+      bag: {},
+      stash: { pokemon: [], items: { scrip: 480, potion: 2 } },
+      raidProgress: {
+        traderScripSpent: 600,
+        securePreference: { pokemon: false, items: [{ itemId: 'scrip', quantity: 250 }] },
+        packArrangement: { items: [{ itemId: 'scrip', x: 2, y: 1, rotated: false }], cargo: [] },
+        secureArrangement: { items: [{ itemId: 'scrip', x: 0, y: 0, rotated: false }], cargo: [] },
+      },
+    });
+
+  it('keeps the balance, as Pokedollars', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SAVE_KEY, scripSave());
+    const game = new SaveManager(storage).load()!;
+
+    expect(game.stash.itemCount('money')).toBe(480);
+    expect(game.stash.itemCount('potion')).toBe(2);
+    expect(Object.keys(game.stash.listItems())).not.toContain('scrip');
+  });
+
+  it('keeps the standing turnover bought with Bill, and where the money was laid out', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SAVE_KEY, scripSave());
+    const progress = new SaveManager(storage).load()!.raidProgress;
+
+    expect(progress.traderMoneySpent).toBe(600);
+    expect(progress.securePreference?.items).toEqual([{ itemId: 'money', quantity: 250 }]);
+    expect(progress.packArrangement?.items).toEqual([{ itemId: 'money', x: 2, y: 1, rotated: false }]);
+    expect(progress.secureArrangement?.items).toEqual([{ itemId: 'money', x: 0, y: 0, rotated: false }]);
+  });
+
+  it('writes it back under the new name, so the old one is read once', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SAVE_KEY, scripSave());
+    const saves = new SaveManager(storage);
+    expect(saves.save(saves.load()!)).toBe(true);
+
+    const written = storage.getItem(SAVE_KEY) ?? '';
+    expect(written).not.toContain('scrip');
+    expect(written).not.toContain('traderScripSpent');
+    expect(new SaveManager(storage).load()!.stash.itemCount('money')).toBe(480);
   });
 });
