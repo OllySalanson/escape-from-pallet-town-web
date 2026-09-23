@@ -21,12 +21,12 @@ import {
 describe('the Pokedollar', () => {
   it('is the money, and an amount of it is a sum with the sign in front', () => {
     expect(POKEDOLLAR_SIGN).toBe('₽');
-    expect(getItemById(CURRENCY_ITEM_ID)?.displayName).toBe('Pokedollars');
+    expect(getItemById(CURRENCY_ITEM_ID)?.displayName).toBe('Pokédollars');
     expect(formatMoney(40)).toBe('₽40');
     expect(itemAmountFor(CURRENCY_ITEM_ID, 40)).toBe('₽40');
     expect(itemCountTag(CURRENCY_ITEM_ID, 250)).toBe('₽250');
     // Money is a mass noun; everything else is still counted.
-    expect(itemNameFor(CURRENCY_ITEM_ID, 40)).toBe('Pokedollars');
+    expect(itemNameFor(CURRENCY_ITEM_ID, 40)).toBe('Pokédollars');
     expect(itemAmountFor('potion', 3)).toBe('3 Potions');
     expect(itemAmountFor('potion', 1)).toBe('1 Potion');
     expect(itemCountTag('potion', 3)).toBe('×3');

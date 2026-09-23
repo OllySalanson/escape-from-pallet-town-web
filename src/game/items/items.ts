@@ -267,7 +267,7 @@ export const ITEMS = {
    */
   money: {
     id: 'money',
-    displayName: 'Pokedollars',
+    displayName: 'Pokédollars',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
     // A bundle to a square. Money has to cost room or it is a score with an
