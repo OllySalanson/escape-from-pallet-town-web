@@ -96,8 +96,10 @@ export interface PropStamp<PropName extends string = string> {
    * out of a forest leaves a tree at the edge of every cut, and one whose trunk
    * overhangs the lane makes a two-wide road one wide without anyone drawing
    * that. So walkable ground cut under any of these takes the landmark away,
-   * exactly as ground drawn over the letter does. A crown is not listed: it
-   * blocks nothing, and one hanging over a lane is what a wood's edge looks like.
+   * exactly as ground drawn over the letter does. A tree's crown row belongs
+   * here too, though it blocks nothing: a crown is drawn over the figures, so
+   * a lane cut under one is a lane the player walks unseen, and the tree has
+   * to go (`crowns.test.ts`).
    */
   readonly blocks?: readonly (readonly [number, number])[];
   /**

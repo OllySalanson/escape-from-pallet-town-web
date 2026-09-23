@@ -93,6 +93,17 @@ export interface PropCell {
   /** Drawn over figures, so the player passes behind it. */
   readonly canopy?: boolean;
   /**
+   * A canopy cell that is *walked under*: the span of an arch, the wall walk
+   * of a gatehouse - something built to be gone through, where passing out of
+   * sight for a step is the point. Every other canopy cell is a **crown**, and
+   * a crown may never hang over ground somebody walks: one tile under a tree is
+   * enough to stand in unseen, and a playtest found the player at Route 1's
+   * steading with nothing showing but the chevron. `MapLayers.crowned` is where
+   * the build says which tiles a crown hangs over, and `crowns.test.ts` holds
+   * every map to it.
+   */
+  readonly walkedUnder?: boolean;
+  /**
    * Drawn left for right. A sheet draws the two ends of a symmetrical thing
    * once and expects the other to be mirrored, and now and then it draws
    * something else entirely over the second one - the FireRed shop front has a

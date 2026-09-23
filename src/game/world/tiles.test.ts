@@ -109,7 +109,9 @@ describe('building a map from a sketch and a catalogue', () => {
       expect(canopy.tiles[0][1]).toBeGreaterThanOrEqual(0);
       expect(detail.tiles[1][2]).toBeGreaterThanOrEqual(0);
       expect(detail.tiles[2][1]).toBeGreaterThanOrEqual(0);
-      // You walk behind the top of the crown; everything under it is a wall.
+      // The crown blocks nothing of its own - what is under it is the map's
+      // to shut, and every shipped map does (`crowns.test.ts`) - while
+      // everything below the crown is a wall.
       expect(collision[0][1]).toBe(false);
       expect(collision[0][3]).toBe(false);
       expect(collision[1][1]).toBe(true);

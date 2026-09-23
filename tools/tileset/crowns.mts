@@ -2,12 +2,13 @@
  * Which trees hang a crown where one must not be.
  *
  * A crown is drawn over the figures, which is what gives a wood an inside - and
- * three ways it goes wrong, none of which any structure rule sees:
+ * three ways it goes wrong, which no structure rule sees:
  *
  * - over ground that is not grass. A crown tile has this sheet's grass baked
  *   into its corners, so over a road it is a green square punched in the road;
- * - over ground somebody walks. Six tiles is the player gone, and in a playtest
- *   the hunter stood under one unseen - and one tile is no better, because a
+ * - over ground somebody walks, the one of the three CI now holds every map to
+ *   (`src/game/world/crowns.test.ts`). Six tiles is the player gone, and in a
+ *   playtest the hunter stood under one unseen - and one tile is no better, because a
  *   tile can be stood on: for the whole of this tool's first life one tile was
  *   excused as "walking behind a tree", and Viridian shipped a dead-end tile at
  *   12,24 where all that showed of the player was the chevron. A walk-under
@@ -29,6 +30,7 @@ import { FLOOD_TOWN_TILESET } from '../../src/game/world/tileset/floodTownTilese
 import { sketchPalletTown } from '../../src/game/world/maps/palletTown';
 import { sketchRoute1 } from '../../src/game/world/maps/route1';
 import { sketchViridianForest } from '../../src/game/world/maps/viridianForest';
+import { sketchFloodplainRelay } from '../../src/game/world/maps/floodplainRelay';
 import { getWorldMap } from '../../src/game/worldMap';
 import { gateKeys, gatesForMap, WORLD_GATES } from '../../src/game/world/gates';
 import { EXTRACTION_POINTS } from '../../src/game/world/extractionPoints';
@@ -38,7 +40,12 @@ import { RAID_CONTRACTS } from '../../src/game/objectives/contracts';
 import { createRunTrainerEncounters } from '../../src/game/world/trainers';
 
 const id = process.argv.slice(2).find((a) => a !== '--')! as 'pallet-town';
-const sketch = { 'pallet-town': sketchPalletTown, 'route-1': sketchRoute1, 'viridian-forest': sketchViridianForest }[id]!();
+const sketch = {
+  'pallet-town': sketchPalletTown,
+  'route-1': sketchRoute1,
+  'viridian-forest': sketchViridianForest,
+  'floodplain-relay': sketchFloodplainRelay,
+}[id]!();
 const grid = sketch.toGrid();
 const map = getWorldMap(id, gateKeys(gatesForMap(id)));
 const W = sketch.width, H = sketch.height;
@@ -46,6 +53,7 @@ const CLEAR_SKY: Record<string, number[][]> = {
   'route-1': [[18, 16, 31, 22], [21, 0, 31, 11], [0, 22, 9, 31]],
   'pallet-town': [],
   'viridian-forest': [],
+  'floodplain-relay': [],
 };
 const clearSky = (x: number, y: number) => (CLEAR_SKY[id] ?? []).some(([x0, y0, x1, y1]) => x >= x0 && x <= x1 && y >= y0 && y <= y1);
 type Subject = { x: number; y0: number; y1: number };

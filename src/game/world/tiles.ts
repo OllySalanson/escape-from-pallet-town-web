@@ -49,6 +49,14 @@ export interface MapLayers {
   readonly roof: TileLayer;
   readonly collision: boolean[][];
   readonly tallGrass: boolean[][];
+  /**
+   * Where a crown hangs - canopy that is not walked under (`PropCell.walkedUnder`).
+   * Nothing may stand on one of these, and the build does not make it so: the
+   * map has to, because a tile quietly shut under a crown is a lane the drawing
+   * says is there and the game says is not. `crowns.test.ts` asks it of every
+   * map in every gate state.
+   */
+  readonly crowned: boolean[][];
 }
 
 const NONE = -1;
@@ -156,6 +164,7 @@ export function buildMapLayers(
   const roof = blankLayer(width, height);
   const collision = Array.from({ length: height }, () => Array<boolean>(width).fill(false));
   const tallGrass = Array.from({ length: height }, () => Array<boolean>(width).fill(false));
+  const crowned = Array.from({ length: height }, () => Array<boolean>(width).fill(false));
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -221,10 +230,10 @@ export function buildMapLayers(
   }
 
   applyShoreline(sketch, catalogue, surface, ground);
-  plantProps(sketch, catalogue, detail, canopy, collision, tallGrass);
+  plantProps(sketch, catalogue, detail, canopy, collision, tallGrass, crowned);
   paintRoofs(catalogue, roofs, roofGround, roof);
 
-  return { ground, overlay, detail, canopy, roofGround, roof, collision, tallGrass };
+  return { ground, overlay, detail, canopy, roofGround, roof, collision, tallGrass, crowned };
 }
 
 /**
@@ -359,6 +368,7 @@ function plantProps(
   canopy: TileLayer,
   collision: boolean[][],
   tallGrass: boolean[][],
+  crowned: boolean[][],
 ): void {
   for (const planted of sketch.props()) {
     const prop = catalogue.props[planted.name];
@@ -379,10 +389,13 @@ function plantProps(
         const layer = cell.canopy ? canopy : detail;
         layer.tiles[y][x] = cell.tile;
         layer.flips[y][x] = cell.flipX === true;
-        // A canopy is drawn *over* the figures, so a figure can be under it:
-        // the crown of a tree may never also be a wall. Enforced here rather
-        // than trusted to each catalogue, because the two contradict silently.
+        // A canopy is drawn *over* the figures, so it never decides what is
+        // under it: the crown of a tree may never also be a wall. Enforced
+        // here rather than trusted to each catalogue, because the two
+        // contradict silently. What is under a crown is the map's to shut -
+        // nobody may stand there - and it is recorded so that can be asked.
         if (cell.canopy) {
+          crowned[y][x] ||= cell.walkedUnder !== true;
           continue;
         }
         // Anything else a landmark draws is the last word on its own tile. A

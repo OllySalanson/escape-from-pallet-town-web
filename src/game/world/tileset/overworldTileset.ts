@@ -216,9 +216,11 @@ function block(
       cells.push({
         tile: at(column + x, row + y),
         solid: !walkable.has(key),
-        ...((options.canopyRows !== undefined && y < options.canopyRows) || over.has(key)
-          ? { canopy: true }
-          : {}),
+        ...(over.has(key)
+          ? { canopy: true, walkedUnder: true }
+          : options.canopyRows !== undefined && y < options.canopyRows
+            ? { canopy: true }
+            : {}),
       });
     }
   }

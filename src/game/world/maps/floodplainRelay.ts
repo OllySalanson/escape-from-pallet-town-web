@@ -83,7 +83,9 @@ import type { FloodTownPropName } from '../tileset/floodTownTileset';
  * `C` rock, `F` fence. And this map's own letters: `t` is a tree of the forest,
  * `o` one that stands in grass - an orchard row, a landmark - `p` a pine and
  * `b` a tall bush one tile wide, each drawn where its trunk stands - the two rows at and above
- * the letter are solid, and the crown above those is walked behind.
+ * the letter are solid, and the crown above those hangs over ground nobody may
+ * stand on: a forest tree whose crown row is cut into is felled, and a tree
+ * standing in grass has thicket drawn under its crown.
  */
 export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   const map = new MapSketch<FloodTownPropName>({
@@ -98,7 +100,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
         anchor: [1, 2],
         ground: '.',
         bare: 'T',
-        blocks: [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]],
+        blocks: [[-1, -2], [0, -2], [1, -2], [-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0]],
       },
       // A tree somebody planted, or one that stands alone: it is in grass, and
       // nothing is cut from under it.
@@ -228,13 +230,15 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // cut lying right across it. The only way round the cut is at its west end,
   // so the reeds are not a short cut that costs fights - they are the long way
   // and they cost fights, which is what makes the road a price worth reading.
+  // The lone tree has thicket under its crown, so nobody wades out of sight
+  // behind the one thing in the marsh everyone is looking at.
   map.draw(3, 14, [
     '      ,, ..             ',
     '      ,, ..             ',
     '      ,,,,,,,,,         ',
     ' ggg....Cgg..,,,,       ',
     'gggggCggggg..T,,,,,,,,, ',
-    'gggggWWWgggg.C,,,,,,,,, ',
+    'gggggWWWgTTT.C,,,,,,,,, ',
     ' ggggWWW.ggggCggT...,,.C',
     '  .gWW.gg.o.ggggTTC.,,. ',
     ' ggWWWWWWWWWWWWWT  ,    ',
@@ -282,7 +286,9 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   // the houses and away down the lane south, so this is the one district that
   // is waded through. Two houses behind their front hedges, the old tree the
   // street has always gone round, and south of it the chapel - round, under a
-  // cone of a roof - standing in the pool that was the green.
+  // cone of a roof - standing in the pool that was the green. The front hedge
+  // runs on unbroken behind the old tree: a gap in it under the crown was a
+  // step nobody could be seen on.
   map.draw(3, 29, [
     '   ,            ',
     ',,,,            ',
@@ -291,7 +297,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ',,,, .......... ',
     '   , .......... ',
     '   , .......... ',
-    '   ,,##P##PPPPPP',
+    '   ,,##P###PPPPP',
     '   ,PPPP...wwwwC',
     '   ,PPPP.o.wwwww',
     '    PPPPPPPPPwwP',
@@ -452,9 +458,9 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '              ',
     '            p ',
     '              ',
-    '            p ',
     '              ',
-    'p        p  p ',
+    '              ',
+    '         p  p ',
     '              ',
   ]);
 
@@ -1949,8 +1955,8 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '                                                                ',
     '                                                                ',
     '                                           p                    ',
-    '           p                                                    ',
-    '                                             b  p   p           ',
+    '                                                                ',
+    '                                             b      p           ',
     '                                           p                    ',
     '                                                                ',
     '                                                             p  ',
@@ -1969,31 +1975,31 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     '       p                                                        ',
     '                                                             p  ',
     '                                                                ',
-    '     p                                                          ',
+    '                                                                ',
     '       b          b                                             ',
     '                                                                ',
     '                                    p                           ',
     ' p                                                              ',
     '                                                                ',
     '                                                                ',
-    '                                           p                    ',
+    '                                                                ',
     '                                                          p     ',
     '                                                                ',
     '                      p                                         ',
     '                  b                 p                           ',
-    '                                                             p  ',
-    '               b                                                ',
+    '                                                                ',
+    '                                                                ',
     '    p                                                           ',
     '                                                                ',
     '                                                                ',
     '                                                                ',
-    ' p          p                    p                              ',
+    ' p          p                                                   ',
     '                                                                ',
     '                                     p                    p     ',
     '           p                                                    ',
     '                 p                                              ',
-    '                   b                    p                       ',
-    '                                              p              p  ',
+    '                   b                                            ',
+    '                                              p                 ',
     '                           p                                    ',
     '    p                                                           ',
     '                                                                ',
