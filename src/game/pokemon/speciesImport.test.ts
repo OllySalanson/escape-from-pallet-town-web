@@ -158,9 +158,9 @@ interface VerifiedRow {
  * refuses to write a row they disagree on, and `--check` re-asks all three.
  */
 describe('base stats and types, against FireRed', () => {
-  const verified: readonly VerifiedRow[] = JSON.parse(
+  const { species: verified } = JSON.parse(
     readFileSync(join(REPO, 'tools/species/frlg-base-stats.json'), 'utf8'),
-  ).species;
+  ) as { species: readonly VerifiedRow[] };
 
   it('covers all 151, in dex order', () => {
     expect(verified.map((row) => row.dexId)).toEqual(Array.from({ length: 151 }, (_, index) => index + 1));
