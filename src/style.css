@@ -4,7 +4,7 @@
 
 @font-face {
   font-family: 'Orange Kid';
-  src: url('./battle/orange-kid.woff2') format('woff2');
+  src: url('/assets/battle/orange-kid.woff2') format('woff2');
   font-display: block;
 }
 
@@ -555,7 +555,7 @@ button {
      the image with that point of the box - so shifting up by 5 of those 22 pixels
      is 5/22 divided by (1163.6% - 100%), which is 2.137%, not 22.727%. */
   aspect-ratio: 16 / 22;
-  background: url('./character.png') 0 2.137% / 1700% 1163.6% no-repeat;
+  background: url('/assets/character.png') 0 2.137% / 1700% 1163.6% no-repeat;
   image-rendering: pixelated;
   transform-origin: 50% 100%;
 }
@@ -1968,7 +1968,6 @@ button {
   /* Deep enough for the longest promise the ladder makes beside the longest
      price it charges, both measured off the rows rather than guessed at. */
   height: calc(var(--u) * 88);
-  padding-bottom: calc(var(--u) * 2);
 }
 /* Bill's shelf is the narrow half of his screen and its rows have
    already said what the thing does, so its pane is the price and the gates. */

@@ -343,7 +343,9 @@ export class MenuOverlay {
         return;
       }
       const box = pane.getBoundingClientRect();
-      const rows = [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].map((row) => row.getBoundingClientRect());
+      const rows = [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].flatMap((row) =>
+        row.classList.contains('px-wrap') ? lineBoxes(row) : [row.getBoundingClientRect()],
+      );
       const cover = scrollCoverHeight(box, rows, unit);
       pane.style.setProperty('--more-cover', `${cover}px`);
       // The strip says how much is down there, because "there is more" is not
@@ -371,9 +373,46 @@ export function moreLabel(entries: readonly { readonly bottom: number }[], fold:
  * middle of. A line of a dossier is one of them - the pane under a list of
  * Pokemon is made of single lines rather than of rows, and at the smallest
  * stage the fold ran through `Level 5 · 17/17 HP` and left its top half drawn
- * with no bottom edge.
+ * with no bottom edge. A shop's detail pane is the same kind of pane - its
+ * label, its sentences and each line of its price - and the fold ran through
+ * Bill's refusal the same way.
  */
-const SCROLL_ROWS = 'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body small';
+const SCROLL_ROWS =
+  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body small, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div)';
+
+/**
+ * The lines a run of wrapped copy is set in, top to bottom. A `.px-wrap`
+ * sentence is one element however many lines it wraps onto, and taken whole
+ * the strip either covered all of it - at the smallest stage a shop's pane
+ * was its two labels and nothing else - or, taller than the rule allows, cut
+ * through the middle of one of its lines. The fold may fall between any two
+ * of them; it is a line's waist it must not go through.
+ */
+function lineBoxes(element: HTMLElement): { top: number; bottom: number }[] {
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  // A text fragment's rectangle is the face's content area, which in Orange
+  // Kid is taller than the line it sits on and overlaps the lines either side
+  // of it: measured that way, the fold went three pixels into the line above.
+  // The line box is the line height, centred where the content area is.
+  const height = Number.parseFloat(getComputedStyle(element).lineHeight);
+  const lines: { top: number; bottom: number }[] = [];
+  for (const rect of [...range.getClientRects()].sort((a, b) => a.top - b.top)) {
+    if (rect.height <= 0) {
+      continue;
+    }
+    const middle = (rect.top + rect.bottom) / 2;
+    const half = Number.isFinite(height) ? height / 2 : rect.height / 2;
+    const line = lines.at(-1);
+    // Fragments of one line share its middle; the next line's is below it.
+    if (line && middle < line.bottom) {
+      line.bottom = Math.max(line.bottom, middle + half);
+    } else {
+      lines.push({ top: middle - half, bottom: middle + half });
+    }
+  }
+  return lines.length > 0 ? lines : [element.getBoundingClientRect()];
+}
 
 /** What the strip counts: the entries a player is looking for, not the bands between them. */
 const SCROLL_ENTRIES = 'button, .px-empty';

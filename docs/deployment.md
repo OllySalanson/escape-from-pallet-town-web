@@ -55,4 +55,4 @@ Check the browser console and network tab for 404s on JS, CSS, fonts, sprites, o
 
 ## Asset paths
 
-Runtime and DOM asset URLs go through `publicAssetUrl()` in `src/game/publicAssetUrl.ts`. Bundled CSS references public files with paths relative to the emitted stylesheet (for example `./battle/orange-kid.woff2`).
+Runtime and DOM asset URLs go through `publicAssetUrl()` in `src/game/publicAssetUrl.ts`. Bundled CSS references public files by root-absolute path (for example `url('/assets/battle/orange-kid.woff2')`): the dev server serves `public/` at `/`, and the production build rewrites the path to `/escape-from-pallet-town-web/assets/...`. Do not make these relative to the emitted stylesheet - that form happens to work in the build but resolves against `/src/` under `npm run dev`, where the dev server answers with `index.html` and every menu loses its font. `src/styleAssets.test.ts` checks every stylesheet URL against both a real dev server and a real build.

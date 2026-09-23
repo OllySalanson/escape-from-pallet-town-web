@@ -1,7 +1,42 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 const stylesheet = await readFile(new URL('./style.css', import.meta.url), 'utf8');
+
+/** Every module that draws a scrolling pane, so the panes' own classes can be read off the markup. */
+const scrollPaneMarkup = await Promise.all(
+  (await readdir(new URL('./game', import.meta.url), { recursive: true }))
+    .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
+    .map((file) => readFile(new URL(`./game/${file}`, import.meta.url), 'utf8')),
+).then((sources) => sources.filter((source) => source.includes('px-scroll')));
+
+/**
+ * The bottom padding a rule gives, if it gives one that is not zero - from
+ * `padding-bottom` or from the third (or only) value of the `padding` shorthand.
+ */
+function footOf(body: string): string | null {
+  const longhand = /padding-bottom:\s*([^;]+);/.exec(body)?.[1]?.trim();
+  if (longhand !== undefined) {
+    return longhand === '0' ? null : `padding-bottom: ${longhand}`;
+  }
+  const shorthand = /(?:^|[\s;])padding:\s*([^;]+);/.exec(body)?.[1]?.trim();
+  if (shorthand === undefined) {
+    return null;
+  }
+  // Split on spaces outside brackets, so `calc(var(--u) * 2)` is one value.
+  const values: string[] = [''];
+  let depth = 0;
+  for (const character of shorthand) {
+    depth += character === '(' ? 1 : character === ')' ? -1 : 0;
+    if (depth === 0 && /\s/.test(character)) {
+      if (values.at(-1) !== '') values.push('');
+    } else {
+      values[values.length - 1] += character;
+    }
+  }
+  const bottom = values[2] ?? values[0];
+  return bottom === '0' ? null : `padding: ${shorthand}`;
+}
 
 /** Everything from the pixel-ui banner to the end of the file is that system. */
 const pixelUi = stylesheet.slice(
@@ -155,14 +190,30 @@ describe('the pixel-ui stylesheet', () => {
     // to the *content* edge: a pane with bottom padding draws the tops of the
     // next line's letters in the gap under its own cue. The dossier re-added
     // two pixels of it further down the file and had exactly that at 640x480.
-    // Anything with the class is held to it, so the rule cannot be undone by
-    // a later one the way it was.
-    const dossier = /:where\(\.pixel-ui\) \.px-dossier \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '';
-    expect(dossier.length).toBeGreaterThan(0);
-    expect(dossier).not.toMatch(/padding-bottom/);
+    // Bill's shop pane did the same thing again, two pixels that showed a red
+    // stub of the next line under his MORE strip. So every class the markup
+    // ever puts beside `px-scroll` is held to it, read off the markup rather
+    // than listed here, and the `padding` shorthand is read as well as the
+    // longhand.
     expect(/:where\(\.pixel-ui\) \.px-scroll \{([^}]*)\}/.exec(pixelUiRules)?.[1] ?? '').toMatch(
       /padding-bottom:\s*0;/,
     );
+    const paneClasses = new Set(
+      scrollPaneMarkup.flatMap((source) =>
+        [...source.matchAll(/(?:class="|className: ')([^"']*\bpx-scroll\b[^"']*)["']/g)].flatMap((match) =>
+          match[1].split(/\s+/).filter((name) => name !== '' && name !== 'px-scroll'),
+        ),
+      ),
+    );
+    expect([...paneClasses]).toEqual(expect.arrayContaining(['px-list', 'px-detail', 'px-dossier', 'shop-detail']));
+    const feet = [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)].flatMap(([, selector, body]) => {
+      const subjects = selector.split(',').map((one) => one.trim().split(/\s+/).at(-1) ?? '');
+      const pane = [...paneClasses].find((name) =>
+        subjects.some((subject) => new RegExp(`\\.${name}(?![\\w-])`).test(subject)),
+      );
+      return pane && footOf(body) ? [`${selector.trim()} { ${footOf(body)} }`] : [];
+    });
+    expect(feet).toEqual([]);
   });
 
   it('lets wrapped copy break inside a narrow window instead of widening it', () => {
