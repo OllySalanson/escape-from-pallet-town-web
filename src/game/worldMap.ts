@@ -172,12 +172,12 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'pallet-town-antidote', position: { x: 8, y: 37 }, itemId: 'antidote', quantity: 1 },
       { id: 'pallet-town-parts-crate', position: { x: 4, y: 26 }, itemId: 'parts-crate', quantity: 1 },
       { id: 'pallet-town-linen-roll', position: { x: 18, y: 33 }, itemId: 'linen-roll', quantity: 1 },
-      // Scrip. Two bundles a map on the small three and three on the vast one,
+      // Pokedollars. Two bundles a map on the small three and three on the vast one,
       // in unequal amounts so a find is a find rather than a tick - and never
       // more than a raid's worth of it, because Bill's prices are set
       // against what a raid actually brings home (`world/hub/trader.ts`).
-      { id: 'pallet-town-scrip-yard', position: { x: 11, y: 24 }, itemId: 'scrip', quantity: 25 },
-      { id: 'pallet-town-scrip-shed', position: { x: 26, y: 30 }, itemId: 'scrip', quantity: 40 },
+      { id: 'pallet-town-money-yard', position: { x: 11, y: 24 }, itemId: 'money', quantity: 25 },
+      { id: 'pallet-town-money-shed', position: { x: 26, y: 30 }, itemId: 'money', quantity: 40 },
       // The valley above the town and the valley below it. Loot is a pool
       // rather than a layout - `generateLoot` re-seats every piece each raid -
       // so these positions are where a piece sits when nothing moves it, and
@@ -194,7 +194,7 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'pallet-town-strand-super-potion', position: { x: 13, y: 72 }, itemId: 'super-potion', quantity: 1 },
       { id: 'pallet-town-hard-cable-coil', position: { x: 37, y: 72 }, itemId: 'cable-coil', quantity: 1 },
       { id: 'pallet-town-fields-potion', position: { x: 46, y: 62 }, itemId: 'potion', quantity: 1 },
-      { id: 'pallet-town-scrip-quarry', position: { x: 60, y: 16 }, itemId: 'scrip', quantity: 55 },
+      { id: 'pallet-town-money-quarry', position: { x: 60, y: 16 }, itemId: 'money', quantity: 55 },
       // TM28 Dig, in the town whose sheds have dug rows and produce beside
       // them. A machine is rolled on its own like the stone below rather than
       // drawn from the pool, for the same reason: at pool odds a permanent
@@ -232,8 +232,8 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'route-1-great-ball', position: { x: 12, y: 15 }, itemId: 'great-ball', quantity: 1 },
       { id: 'route-1-cable-coil', position: { x: 8, y: 9 }, itemId: 'cable-coil', quantity: 1 },
       { id: 'route-1-radio-valve', position: { x: 22, y: 18 }, itemId: 'radio-valve', quantity: 1 },
-      { id: 'route-1-scrip-verge', position: { x: 17, y: 7 }, itemId: 'scrip', quantity: 30 },
-      { id: 'route-1-scrip-station', position: { x: 23, y: 18 }, itemId: 'scrip', quantity: 45 },
+      { id: 'route-1-money-verge', position: { x: 17, y: 7 }, itemId: 'money', quantity: 30 },
+      { id: 'route-1-money-station', position: { x: 23, y: 18 }, itemId: 'money', quantity: 45 },
       // The south half. A pool is re-seated every raid (`generateLoot`), so
       // these positions are a fallback rather than a layout - what they set is
       // how much there is to find and in roughly which country, and the route
@@ -254,8 +254,8 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'route-1-dell-antidote', position: { x: 52, y: 4 }, itemId: 'antidote', quantity: 1 },
       { id: 'route-1-drove-poke-ball', position: { x: 49, y: 30 }, itemId: 'poke-ball', quantity: 1 },
       { id: 'route-1-burn-radio-valve', position: { x: 50, y: 54 }, itemId: 'radio-valve', quantity: 1 },
-      { id: 'route-1-scrip-steading', position: { x: 52, y: 40 }, itemId: 'scrip', quantity: 35 },
-      { id: 'route-1-scrip-burn', position: { x: 48, y: 61 }, itemId: 'scrip', quantity: 55 },
+      { id: 'route-1-money-steading', position: { x: 52, y: 40 }, itemId: 'money', quantity: 35 },
+      { id: 'route-1-money-burn', position: { x: 48, y: 61 }, itemId: 'money', quantity: 55 },
       // TM40 Aerial Ace, on the road the Pidgey flock is over. It is also the
       // only machine the bug catcher's Butterfree can read.
       { id: 'route-1-tm-aerial-ace', position: { x: 18, y: 5 }, itemId: 'tm40-aerial-ace', quantity: 1, chance: 0.25, district: 'route-1-head' },
@@ -289,8 +289,8 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'forest-antidote', position: { x: 21, y: 30 }, itemId: 'antidote', quantity: 1 },
       { id: 'forest-lamp-oil', position: { x: 9, y: 12 }, itemId: 'lamp-oil', quantity: 1 },
       { id: 'forest-mooring-rope', position: { x: 24, y: 27 }, itemId: 'mooring-rope', quantity: 1 },
-      { id: 'forest-scrip-stand', position: { x: 13, y: 24 }, itemId: 'scrip', quantity: 35 },
-      { id: 'forest-scrip-ridge', position: { x: 26, y: 13 }, itemId: 'scrip', quantity: 50 },
+      { id: 'forest-money-stand', position: { x: 13, y: 24 }, itemId: 'money', quantity: 35 },
+      { id: 'forest-money-ridge', position: { x: 26, y: 13 }, itemId: 'money', quantity: 50 },
       // The Thunder Stone, in DEEP STAND, which is the tree block a player
       // calls deep and where the Pikachu are - so the stone and the Pokemon it
       // answers to are found in the same wood. One raid in five, rolled on its
@@ -332,7 +332,7 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'forest-glade-antidote', position: { x: 41, y: 23 }, itemId: 'antidote', quantity: 1 },
       { id: 'forest-blowdown-super-potion', position: { x: 39, y: 37 }, itemId: 'super-potion', quantity: 1 },
       { id: 'forest-kiln-parts-crate', position: { x: 57, y: 36 }, itemId: 'parts-crate', quantity: 1 },
-      { id: 'forest-kiln-scrip', position: { x: 53, y: 30 }, itemId: 'scrip', quantity: 40 },
+      { id: 'forest-kiln-money', position: { x: 53, y: 30 }, itemId: 'money', quantity: 40 },
       { id: 'forest-sawpit-cable-coil', position: { x: 22, y: 40 }, itemId: 'cable-coil', quantity: 1 },
       { id: 'forest-brook-foot-poke-ball', position: { x: 6, y: 41 }, itemId: 'poke-ball', quantity: 1 },
       { id: 'forest-stone-row-potion', position: { x: 32, y: 47 }, itemId: 'potion', quantity: 1 },
@@ -342,7 +342,7 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'forest-warren-potion', position: { x: 6, y: 62 }, itemId: 'potion', quantity: 1 },
       { id: 'forest-rookery-super-potion', position: { x: 55, y: 62 }, itemId: 'super-potion', quantity: 1 },
       { id: 'forest-beech-poke-ball', position: { x: 39, y: 68 }, itemId: 'poke-ball', quantity: 1 },
-      { id: 'forest-drive-scrip', position: { x: 58, y: 46 }, itemId: 'scrip', quantity: 45 },
+      { id: 'forest-drive-money', position: { x: 58, y: 46 }, itemId: 'money', quantity: 45 },
       // Two of the four maps are vast, and both of them hold the big packs -
       // the walk is the price. The charcoal burn is somebody's working camp and
       // the quarry is the far south-east of the wood.
@@ -374,9 +374,9 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'floodplain-mill-lamp-oil', position: { x: 46, y: 22 }, itemId: 'lamp-oil', quantity: 1 },
       { id: 'floodplain-keep-cable-coil', position: { x: 54, y: 9 }, itemId: 'cable-coil', quantity: 1 },
       { id: 'floodplain-linen-roll', position: { x: 6, y: 30 }, itemId: 'linen-roll', quantity: 1 },
-      { id: 'floodplain-scrip-town', position: { x: 14, y: 25 }, itemId: 'scrip', quantity: 30 },
-      { id: 'floodplain-scrip-mill', position: { x: 46, y: 30 }, itemId: 'scrip', quantity: 45 },
-      { id: 'floodplain-scrip-keep', position: { x: 51, y: 12 }, itemId: 'scrip', quantity: 60 },
+      { id: 'floodplain-money-town', position: { x: 14, y: 25 }, itemId: 'money', quantity: 30 },
+      { id: 'floodplain-money-mill', position: { x: 46, y: 30 }, itemId: 'money', quantity: 45 },
+      { id: 'floodplain-money-keep', position: { x: 51, y: 12 }, itemId: 'money', quantity: 60 },
       // Two on the vast map, because it is played a district at a time and one
       // rolled find across sixty-four tiles square is a find nobody meets.
       // TM13 Ice Beam out of the drowned reach, TM23 Iron Tail out of the mill.
@@ -401,10 +401,10 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'floodplain-withy-super-potion', position: { x: 73, y: 71 }, itemId: 'super-potion', quantity: 1 },
       { id: 'floodplain-wall-potion', position: { x: 50, y: 100 }, itemId: 'potion', quantity: 1 },
       { id: 'floodplain-light-great-ball', position: { x: 122, y: 99 }, itemId: 'great-ball', quantity: 1 },
-      // Two more bundles of scrip, and no more: the whole map has to stay
+      // Two more bundles of Pokedollars, and no more: the whole map has to stay
       // short of one berth (`hub/trader.test.ts` recomputes that from here).
-      { id: 'floodplain-scrip-quarry', position: { x: 90, y: 18 }, itemId: 'scrip', quantity: 20 },
-      { id: 'floodplain-scrip-staithe', position: { x: 34, y: 102 }, itemId: 'scrip', quantity: 35 },
+      { id: 'floodplain-money-quarry', position: { x: 90, y: 18 }, itemId: 'money', quantity: 20 },
+      { id: 'floodplain-money-staithe', position: { x: 34, y: 102 }, itemId: 'money', quantity: 35 },
       { id: 'floodplain-tm-ice-beam', position: { x: 25, y: 18 }, itemId: 'tm13-ice-beam', quantity: 1, chance: 0.25, district: 'floodplain-reedbeds' },
       { id: 'floodplain-tm-iron-tail', position: { x: 47, y: 23 }, itemId: 'tm23-iron-tail', quantity: 1, chance: 0.25, district: 'floodplain-mill-weir' },
       // The Leaf Stone in the withy beds, the deepest south-east of the vast

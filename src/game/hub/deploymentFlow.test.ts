@@ -363,8 +363,8 @@ describe('deployment flow', () => {
 
   /**
    * A playtest found this and only a playtest could have: a raid that carried
-   * forty scrip out, with the scrip's own row in the container, came home with
-   * one note. The container is measured in squares and the scrip stacks a
+   * ₽40 out, with the money's own row in the container, came home with
+   * one Pokedollar. The container is measured in squares and the money stacks a
    * bundle to a square, so a press has to reserve the whole square.
    */
   it('reserves a whole square of a stacked kind, not one of it', () => {
@@ -375,17 +375,17 @@ describe('deployment flow', () => {
     // squares a stacked kind takes, so the player takes it back out first.
     flow.toggleSecurePokemon('charmander-1');
 
-    expect(flow.adjustSecureItem('scrip', 1)).toBeUndefined();
-    expect(flow.secureQuantity('scrip')).toBe(stackSizeOf('scrip'));
-    expect(blocksFor('scrip', flow.secureQuantity('scrip'))).toBe(1);
+    expect(flow.adjustSecureItem('money', 1)).toBeUndefined();
+    expect(flow.secureQuantity('money')).toBe(stackSizeOf('money'));
+    expect(blocksFor('money', flow.secureQuantity('money'))).toBe(1);
     // And it is still one square of the container, not a stack of them.
     expect(flow.secureCells.used).toBe(1);
 
     // A second press is a second square, and taking one out takes a square out.
-    expect(flow.adjustSecureItem('scrip', 1)).toBeUndefined();
+    expect(flow.adjustSecureItem('money', 1)).toBeUndefined();
     expect(flow.secureCells.used).toBe(2);
-    flow.adjustSecureItem('scrip', -1);
-    expect(flow.secureQuantity('scrip')).toBe(stackSizeOf('scrip'));
+    flow.adjustSecureItem('money', -1);
+    expect(flow.secureQuantity('money')).toBe(stackSizeOf('money'));
 
     // Everything a square holds one of is unchanged: a press is still one.
     flow.adjustItem('potion', 2);

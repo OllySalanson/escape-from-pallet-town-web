@@ -806,7 +806,7 @@ describe('extraction loop integration', () => {
       giftsReceived: [],
       // An authored contract is not a standing one and does not count as one.
       standingContractsBanked: 0,
-      traderScripSpent: 0,
+      traderMoneySpent: 0,
       traderBarters: [],
       // A raid deployed from a test never wrote a container preference, so the
       // save keeps the default: lead with the Pokemon, carry nothing else.

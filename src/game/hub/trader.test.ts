@@ -29,10 +29,10 @@ import {
   meetsStanding,
   nextTraderStanding,
   rationLeft,
-  scripHeld,
+  moneyHeld,
   STANDING_PER_BOSS,
   STANDING_PER_CONTRACT,
-  STANDING_PER_SCRIP,
+  POKEDOLLARS_PER_STANDING,
   TRADER_BARTERS,
   TRADER_BERTH_PRICE,
   TRADER_STANDINGS,
@@ -50,7 +50,7 @@ const NO_PROGRESS: TraderProgress = {
   completedContracts: [],
   standingContractsBanked: 0,
   defeatedBosses: [],
-  traderScripSpent: 0,
+  traderMoneySpent: 0,
   traderBarters: [],
 };
 
@@ -67,7 +67,7 @@ const PARTNER = progress({
 
 function counter(overrides: Partial<TraderCounter> = {}): TraderCounter {
   return {
-    stash: new Stash({ items: { scrip: 1_000, ...MINIMUM_SUPPLIES } }),
+    stash: new Stash({ items: { money: 1_000, ...MINIMUM_SUPPLIES } }),
     progress: NO_PROGRESS,
     rationUsed: 0,
     berthPaid: false,
@@ -75,13 +75,13 @@ function counter(overrides: Partial<TraderCounter> = {}): TraderCounter {
   };
 }
 
-describe('scrip', () => {
+describe('money, the Pokedollar', () => {
   it('is money, and money is loot: found only, in the pack, never a wallet', () => {
-    const scrip = getItemById(CURRENCY_ITEM_ID);
-    expect(scrip?.effect.type).toBe('currency');
+    const money = getItemById(CURRENCY_ITEM_ID);
+    expect(money?.effect.type).toBe('currency');
     // The Other pocket, beside the materials, because it is spent at base and
     // does nothing in the field - and so a raid screen never has to know it.
-    expect(scrip?.category).toBe(ItemCategory.Misc);
+    expect(money?.category).toBe(ItemCategory.Misc);
     // Found only: the same rule as a material, which is what makes it something
     // a wipe can take rather than a number that survives everything.
     expect(isFoundOnly(CURRENCY_ITEM_ID)).toBe(true);
@@ -90,10 +90,10 @@ describe('scrip', () => {
     // It has to take room to be loot rather than a score, and it does: a square
     // a bundle in the raid pack (`../items/itemGrid`), so a hoard carried out
     // is squares that could have held loot.
-    expect(scrip?.footprint).toEqual({ width: 1, height: 1 });
-    expect(scrip?.stackSize).toBeGreaterThan(1);
+    expect(money?.footprint).toEqual({ width: 1, height: 1 });
+    expect(money?.stackSize).toBeGreaterThan(1);
     expect(cellsFor(CURRENCY_ITEM_ID, 1)).toBe(1);
-    expect(cellsFor(CURRENCY_ITEM_ID, (scrip?.stackSize ?? 1) + 1)).toBe(2);
+    expect(cellsFor(CURRENCY_ITEM_ID, (money?.stackSize ?? 1) + 1)).toBe(2);
     // Never part of the kit, so the wipe restock can never hand out money.
     expect(MINIMUM_SUPPLIES).not.toHaveProperty(CURRENCY_ITEM_ID);
   });
@@ -107,7 +107,7 @@ describe('scrip', () => {
   it('is field loot on every map, so a raid is the only way to earn it', () => {
     for (const map of Object.values(WORLD_MAPS)) {
       const bundles = map.loot.filter((item) => item.itemId === CURRENCY_ITEM_ID);
-      expect(bundles.length, `${map.id} holds no scrip`).toBeGreaterThan(0);
+      expect(bundles.length, `${map.id} holds no money`).toBeGreaterThan(0);
       // Part of the ordinary pool rather than a rare roll of its own: money
       // has to arrive reliably or its prices cannot be set against it.
       expect(bundles.every((bundle) => bundle.chance === undefined)).toBe(true);
@@ -126,12 +126,12 @@ describe('scrip', () => {
       const whole = map.loot
         .filter((item) => item.itemId === CURRENCY_ITEM_ID)
         .reduce((total, item) => total + item.quantity, 0);
-      expect(whole, `${map.id} pays out too much scrip`).toBeLessThan(cheapest * 2 + TRADER_BERTH_PRICE);
+      expect(whole, `${map.id} pays out too much money`).toBeLessThan(cheapest * 2 + TRADER_BERTH_PRICE);
     }
   });
 
   it('has an icon of its own, so a note on the ground is not a crate', () => {
-    expect(ICON_NAMES).toContain('scrip');
+    expect(ICON_NAMES).toContain('money');
   });
 });
 
@@ -147,12 +147,12 @@ describe('trader standing', () => {
     );
   });
 
-  it('counts scrip turned over rather than scrip held', () => {
+  it('counts money turned over rather than money held', () => {
     // Turnover: a hoard buys no standing, and spending is what he remembers.
-    expect(traderStandingPoints(progress({ traderScripSpent: STANDING_PER_SCRIP * 2 }))).toBe(2);
-    expect(traderStandingPoints(progress({ traderScripSpent: STANDING_PER_SCRIP - 1 }))).toBe(0);
+    expect(traderStandingPoints(progress({ traderMoneySpent: POKEDOLLARS_PER_STANDING * 2 }))).toBe(2);
+    expect(traderStandingPoints(progress({ traderMoneySpent: POKEDOLLARS_PER_STANDING - 1 }))).toBe(0);
     // A corrupt or negative record can only ever read as nothing spent.
-    expect(traderStandingPoints(progress({ traderScripSpent: -500 }))).toBe(0);
+    expect(traderStandingPoints(progress({ traderMoneySpent: -500 }))).toBe(0);
   });
 
   it('starts every save as a stranger and is derived, never stored', () => {
@@ -165,7 +165,7 @@ describe('trader standing', () => {
 
   it('opens each tier in turn, and the top one is reachable', () => {
     for (const tier of TRADER_STANDINGS) {
-      expect(traderStanding(progress({ traderScripSpent: tier.points * STANDING_PER_SCRIP })).id).toBe(
+      expect(traderStanding(progress({ traderMoneySpent: tier.points * POKEDOLLARS_PER_STANDING })).id).toBe(
         tier.id,
       );
     }
@@ -200,7 +200,7 @@ describe('the shelf', () => {
   });
 
   it('prices every unit above what a raid finds', () => {
-    // A raid nets roughly 40-70 scrip. The cheapest thing on the shelf is more
+    // A raid nets roughly ₽40-70. The cheapest thing on the shelf is more
     // than that, so nothing is ever a single raid's casual purchase.
     expect(Math.min(...TRADER_STOCK.map((item) => item.price))).toBeGreaterThan(70);
   });
@@ -213,7 +213,7 @@ describe('the shelf', () => {
   it('sells several at once, up to the smaller of the ration and the purse', () => {
     const trusted = progress({ completedContracts: ['a', 'b', 'c', 'd'], defeatedBosses: ['x', 'y'] });
     const stash = new Stash();
-    stash.addItem('scrip', 500);
+    stash.addItem('money', 500);
     const rich = counter({ progress: trusted, stash });
     const potion = TRADER_STOCK.find((item) => item.itemId === 'potion')!;
     const limit = traderStockLimit(rich, potion);
@@ -222,7 +222,7 @@ describe('the shelf', () => {
     expect(checkPurchase(rich, 'potion', limit)?.refusal).toBeUndefined();
     expect(checkPurchase(rich, 'potion', limit + 1)?.refusal).toBeDefined();
     expect(checkPurchase(rich, 'potion', 0)).toBeUndefined();
-    expect(traderStockLimitReason(rich, potion)).toMatch(/scrip covers|ration/);
+    expect(traderStockLimitReason(rich, potion)).toMatch(/covers at|ration/);
     expect(traderStockLimit(counter(), potion)).toBe(0);
   });
 
@@ -257,18 +257,18 @@ describe('the shelf', () => {
     expect(rationLeft(rich)).toBe(ration);
     const spent = counter({ progress: PARTNER, rationUsed: ration });
     expect(rationLeft(spent)).toBe(0);
-    // A thousand scrip and the deal is still refused: the ration is the gate
+    // ₽1000 and the deal is still refused: the ration is the gate
     // that a hoard cannot buy its way past.
-    expect(scripHeld(spent.stash)).toBeGreaterThan(1_000 - 1);
+    expect(moneyHeld(spent.stash)).toBeGreaterThan(1_000 - 1);
     expect(checkPurchase(spent, 'potion')?.refusal).toBe('ration-spent');
   });
 
   it('refuses what the vault cannot pay for', () => {
     const broke = counter({
       progress: PARTNER,
-      stash: new Stash({ items: { scrip: 10, ...MINIMUM_SUPPLIES } }),
+      stash: new Stash({ items: { money: 10, ...MINIMUM_SUPPLIES } }),
     });
-    expect(checkPurchase(broke, 'super-potion')?.refusal).toBe('scrip-short');
+    expect(checkPurchase(broke, 'super-potion')?.refusal).toBe('money-short');
   });
 
   it('never stocks something it does not sell', () => {
@@ -292,7 +292,7 @@ describe('the barter table', () => {
     for (const barter of TRADER_BARTERS) {
       expect(
         barter.takes.every(({ itemId }) => itemId !== CURRENCY_ITEM_ID),
-        `${barter.id} is priced in scrip`,
+        `${barter.id} is priced in money`,
       ).toBe(true);
       // Found goods only, so a barter is always paid for out of a raid.
       expect(barter.takes.every(({ itemId }) => isFoundOnly(itemId))).toBe(true);
@@ -373,7 +373,7 @@ describe('the berth', () => {
 
   it('is enough room for a raid\'s whole take of money', () => {
     // A berth that could not hold what a raid finds would be a berth nobody
-    // buys: one square of scrip is 250, and no map lays that much.
+    // buys: one square of money is ₽250, and no map lays that much.
     const richest = Math.max(
       ...Object.values(WORLD_MAPS).map((map) =>
         map.loot
@@ -405,15 +405,15 @@ describe('the berth', () => {
     expect(checkBerth(counter({ progress: PARTNER, berthPaid: true })).refusal).toBe('already-paid');
     expect(
       checkBerth(
-        counter({ progress: PARTNER, stash: new Stash({ items: { scrip: 10, ...MINIMUM_SUPPLIES } }) }),
+        counter({ progress: PARTNER, stash: new Stash({ items: { money: 10, ...MINIMUM_SUPPLIES } }) }),
       ).refusal,
-    ).toBe('scrip-short');
+    ).toBe('money-short');
   });
 
   it('is never cheaper than a Brock locker over a few raids', () => {
     // Renting must not make the built locker pointless. The first locker asks
     // two Pokemon and two parts crates, which is several raids of catching and
-    // scavenging - and the berth is 250 scrip *every* raid, so the ladder is
+    // scavenging - and the berth is ₽250 *every* raid, so the ladder is
     // still the answer for a player who intends to keep raiding.
     const locker = WORKSHOP_UPGRADES.find((upgrade) => upgrade.id === 'secure-locker-1');
     expect(locker?.secureItemStack).toBe(true);

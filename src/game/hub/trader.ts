@@ -1,5 +1,6 @@
 import {
   CURRENCY_ITEM_ID,
+  formatMoney,
   getItemById,
   isFoundOnly,
   SECURE_COLUMNS_PER_UPGRADE,
@@ -29,10 +30,10 @@ import type { Stash } from '../stash';
  * implementation detail. They are written here because this file is where all
  * four are kept or broken:
  *
- * 1. **Money is loot, never a score.** Scrip is found in a raid, lives in the
- *    pack, cannot be packed *for* one, and is destroyed with the pack on a wipe
+ * 1. **Money is loot, never a score.** Pokedollars are found in a raid, live in the
+ *    pack, cannot be packed *for* one, and are destroyed with the pack on a wipe
  *    unless the secure slot names it. There is no wallet anywhere in the save -
- *    a player's money is `stash.itemCount('scrip')` and nothing else.
+ *    a player's money is `stash.itemCount('money')` and nothing else.
  * 2. **Supplies are not freely purchasable.** His stock is gated twice over: by
  *    standing, which offers nothing at all until you have proved you extract,
  *    and by a ration of a few units per raid. Both gates bind at different
@@ -40,11 +41,11 @@ import type { Stash } from '../stash';
  *    Potions in one sitting, and the price stops everybody else. See
  *    `TRADER_STOCK` for the arithmetic that keeps a raid's scarcity real.
  * 3. **The best things are barter only.** Gear and the evolution stone are on
- *    `TRADER_BARTERS`, paid for in found items and *never* in scrip, so no
+ *    `TRADER_BARTERS`, paid for in found items and *never* in money, so no
  *    amount of money buys one. `TraderStockItem` is typed to `SupplyItemId`,
  *    which is derived from the catalogue rather than listed, so the compiler
  *    refuses a price tag on a piece of gear.
- * 4. **Sinks outweigh the faucet.** A raid finds roughly 40-70 scrip
+ * 4. **Sinks outweigh the faucet.** A raid finds roughly ₽40-70
  *    (`worldMap.ts`). His stock is an unbounded drain at 80-260 a unit, and the
  *    berth is 250 every raid a player wants one. A player cannot out-earn him.
  *
@@ -91,7 +92,7 @@ export const TRADER_STANDINGS: readonly TraderStanding[] = [
     id: 'stranger',
     name: 'Stranger',
     points: 0,
-    note: 'He will take your scrip and sell you nothing.',
+    note: 'He will take your money and sell you nothing.',
     ration: 0,
   },
   {
@@ -121,8 +122,8 @@ export const TRADER_STANDINGS: readonly TraderStanding[] = [
 export const STANDING_PER_CONTRACT = 2;
 /** What a beaten boss is worth. More than a contract: a door you opened stays open. */
 export const STANDING_PER_BOSS = 3;
-/** Scrip across his counter for one point of standing. Turnover, not balance. */
-export const STANDING_PER_SCRIP = 200;
+/** Pokedollars across his counter for one point of standing. Turnover, not balance. */
+export const POKEDOLLARS_PER_STANDING = 200;
 
 /**
  * The part of the save Bill reads. Every field is a record of something
@@ -135,8 +136,8 @@ export interface TraderProgress {
   readonly completedContracts: readonly string[];
   readonly standingContractsBanked: number;
   readonly defeatedBosses: readonly string[];
-  /** Scrip that has crossed his counter, ever. Turnover is what he remembers. */
-  readonly traderScripSpent: number;
+  /** Pokedollars that have crossed his counter, ever. Turnover is what he remembers. */
+  readonly traderMoneySpent: number;
   /** Barters taken that may only be taken once, by barter id. */
   readonly traderBarters: readonly string[];
 }
@@ -145,7 +146,7 @@ export function traderStandingPoints(progress: TraderProgress): number {
   return (
     STANDING_PER_CONTRACT * (progress.completedContracts.length + progress.standingContractsBanked) +
     STANDING_PER_BOSS * progress.defeatedBosses.length +
-    Math.floor(Math.max(0, progress.traderScripSpent) / STANDING_PER_SCRIP)
+    Math.floor(Math.max(0, progress.traderMoneySpent) / POKEDOLLARS_PER_STANDING)
   );
 }
 
@@ -183,10 +184,10 @@ export function getTraderStanding(id: TraderStandingId): TraderStanding {
  * exactly the faucet that would undo it.
  *
  * The prices are the second gate, and they are set against the faucet rather
- * than against what the item feels worth. A raid brings home roughly 40-70
- * scrip, so a Potion at 120 is about two raids of scavenging and a Super Potion
+ * than against what the item feels worth. A raid brings home roughly ₽40-70,
+ * so a Potion at 120 is about two raids of scavenging and a Super Potion
  * at 260 is four. A raid is measured at three Potions of consumption, so even a
- * player who spends every note he finds is replacing well under half of what a
+ * player who spends every Pokedollar he finds is replacing well under half of what a
  * raid drinks: Bill is a backstop on a bad week, never a supply line.
  * That is what keeps scarcity real with money in the game.
  */
@@ -207,7 +208,7 @@ export const TRADER_STOCK: readonly TraderStockItem[] = [
 /**
  * The barter table: found goods in, the things money cannot buy out.
  *
- * Every price here is materials, and never scrip, which is the captain's third
+ * Every price here is materials, and never money, which is the captain's third
  * constraint kept literally - there is no sum that buys a Life Orb. It also
  * puts the barter table and the workshop ladder in competition for the same
  * six materials, which is the point: a parts crate is a locker or it is a Focus
@@ -233,7 +234,7 @@ export interface TraderBarter {
   /** One of the shared 16x16 icons in `../ui/icons`, by file name. */
   readonly icon: string;
   readonly gives: TraderStack;
-  /** Found items handed over. Never scrip: these are the things money cannot buy. */
+  /** Found items handed over. Never money: these are the things money cannot buy. */
   readonly takes: readonly TraderStack[];
   readonly standing: TraderStandingId;
   /** Offered once per save, because a second one would be a gear faucet. */
@@ -448,7 +449,7 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
  * A berth in his hold for one raid: one more column of the secure container,
  * this trip only.
  *
- * This is the heavy scrip drain, and it is the clearest statement of what the
+ * This is the heavy money drain, and it is the clearest statement of what the
  * Bill is. Brock *builds* a secure locker and it stands for every
  * raid afterwards; Bill *rents* you the same two squares for the trip
  * and they are gone when the raid resolves, filled or not. Renting is how a
@@ -463,7 +464,7 @@ export const TRADER_BERTH_PRICE = 250;
 export const TRADER_BERTH_STANDING: TraderStandingId = 'regular';
 
 /** How much money this save has. There is no wallet: money is what is in the vault. */
-export function scripHeld(stash: Stash): number {
+export function moneyHeld(stash: Stash): number {
   return stash.itemCount(CURRENCY_ITEM_ID);
 }
 
@@ -486,7 +487,7 @@ export type TraderRefusal =
   | 'unknown-deal'
   | 'standing-short'
   | 'ration-spent'
-  | 'scrip-short'
+  | 'money-short'
   | 'goods-short'
   | 'already-taken'
   | 'already-paid';
@@ -535,8 +536,8 @@ function judgePurchase(counter: TraderCounter, item: TraderStockItem, quantity =
         : `He sells ${ration} ${ration === 1 ? 'thing' : 'things'} a trip, and this trip is spent. Raid, and come back.`,
     );
   }
-  if (scripHeld(counter.stash) < item.price * quantity) {
-    return refuse('scrip-short', `${item.price * quantity} scrip, and you have ${scripHeld(counter.stash)}.`);
+  if (moneyHeld(counter.stash) < item.price * quantity) {
+    return refuse('money-short', `${formatMoney(item.price * quantity)}, and you have ${formatMoney(moneyHeld(counter.stash))}.`);
   }
   return {};
 }
@@ -562,7 +563,7 @@ export function traderStockLimit(counter: TraderCounter, item: TraderStockItem):
   if (!meetsStanding(counter.progress, item.standing)) {
     return 0;
   }
-  return Math.max(0, Math.min(rationLeft(counter), Math.floor(scripHeld(counter.stash) / item.price)));
+  return Math.max(0, Math.min(rationLeft(counter), Math.floor(moneyHeld(counter.stash) / item.price)));
 }
 
 /**
@@ -572,9 +573,9 @@ export function traderStockLimit(counter: TraderCounter, item: TraderStockItem):
  */
 export function traderStockLimitReason(counter: TraderCounter, item: TraderStockItem): string {
   const ration = rationLeft(counter);
-  const affordable = Math.floor(scripHeld(counter.stash) / item.price);
+  const affordable = Math.floor(moneyHeld(counter.stash) / item.price);
   return affordable <= ration
-    ? `${affordable} is what your ${scripHeld(counter.stash)} scrip covers at ${item.price} each.`
+    ? `${affordable} is what your ${formatMoney(moneyHeld(counter.stash))} covers at ${formatMoney(item.price)} each.`
     : `${ration} left on this trip's ration.`;
 }
 
@@ -644,8 +645,8 @@ export function checkBerth(counter: TraderCounter): TraderOffer {
   if (!meetsStanding(counter.progress, TRADER_BERTH_STANDING)) {
     return standingRefusal(TRADER_BERTH_STANDING);
   }
-  if (scripHeld(counter.stash) < TRADER_BERTH_PRICE) {
-    return refuse('scrip-short', `${TRADER_BERTH_PRICE} scrip, and you have ${scripHeld(counter.stash)}.`);
+  if (moneyHeld(counter.stash) < TRADER_BERTH_PRICE) {
+    return refuse('money-short', `${formatMoney(TRADER_BERTH_PRICE)}, and you have ${formatMoney(moneyHeld(counter.stash))}.`);
   }
   return {};
 }

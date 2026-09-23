@@ -14,6 +14,7 @@ import type {
   ReportItem,
   ReportPokemon,
 } from '../run/extractionReport';
+import { itemCountTag } from '../items';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -574,7 +575,7 @@ function pokemonRow(member: ReportPokemon, tag: RowTag): string {
 function itemRow(item: ReportItem, tag: RowTag): string {
   // Quantity sits on the name's own line: an item row has nothing to say on a
   // second one, and the screen is worth more than the extra height costs.
-  return `<div class="px-row has-icon${tag === 'lost' ? ' is-lost' : ''}">${itemIcon(item.itemId, item.label)}<span class="px-row-main"><strong>${escapeHtml(item.label)} ×${item.quantity}</strong></span>${ROW_TAGS[tag]}</div>`;
+  return `<div class="px-row has-icon${tag === 'lost' ? ' is-lost' : ''}">${itemIcon(item.itemId, item.label)}<span class="px-row-main"><strong>${escapeHtml(item.label)} ${itemCountTag(item.itemId, item.quantity)}</strong></span>${ROW_TAGS[tag]}</div>`;
 }
 
 function itemText(item: ReportItem): string {

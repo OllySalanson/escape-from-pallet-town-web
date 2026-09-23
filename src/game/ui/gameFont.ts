@@ -16,6 +16,19 @@
  * about it.
  */
 
+/**
+ * The Pokedollar sign, which these games print in front of every amount.
+ *
+ * Unicode has no Pokedollar of its own, so this is the rouble sign - a P with a
+ * bar - which is what everybody types for it. Orange Kid has no glyph for it,
+ * so the game draws its own: `public/assets/battle/pokedollar.ttf`, a one-glyph
+ * face joined to the game's family by `unicode-range` in `style.css`, which is
+ * why the same character comes out in the pixel font on a DOM screen and in a
+ * canvas scene alike. `scripts/draw-pokedollar-glyph.mjs` draws it, and
+ * `formatMoney` in `../items` is how an amount is written with it.
+ */
+export const POKEDOLLAR_SIGN = '\u20bd';
+
 /** Every family name the game asks Phaser for, in one place. */
 export const GAME_FONT_FAMILY = 'Orange Kid';
 export const GAME_FONT = `"${GAME_FONT_FAMILY}", monospace`;
@@ -34,8 +47,17 @@ export const GAME_FONT_SIZES = [8, 10, 11, 12, 13, 14, 16] as const;
  */
 export const GAME_FONT_TIMEOUT_MS = 3000;
 
+/**
+ * What each size is loaded against. The family is two faces - Orange Kid, and
+ * the Pokedollar sign it lacks, joined to it by `unicode-range` - and a face
+ * behind a range is only fetched for text that falls inside it, so the sample
+ * names a character from each. Without the sign here the first price a canvas
+ * scene painted would be painted in the fallback, for good.
+ */
+export const GAME_FONT_SAMPLE = `A${POKEDOLLAR_SIGN}`;
+
 interface FontFaceSetLike {
-  load(font: string): Promise<unknown>;
+  load(font: string, text?: string): Promise<unknown>;
   check?(font: string): boolean;
 }
 
@@ -60,7 +82,7 @@ export async function awaitGameFont(
     return false;
   }
 
-  const loaded = Promise.all(GAME_FONT_SIZES.map((size) => fonts.load(requestFor(size))))
+  const loaded = Promise.all(GAME_FONT_SIZES.map((size) => fonts.load(requestFor(size), GAME_FONT_SAMPLE)))
     .then(() => true)
     .catch(() => false);
 

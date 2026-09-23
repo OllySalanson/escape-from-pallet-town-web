@@ -145,7 +145,7 @@ describe('the explorer run it deals', () => {
     expect(
       traderStanding({
         ...progress,
-        traderScripSpent: progress.traderScripSpent ?? 0,
+        traderMoneySpent: progress.traderMoneySpent ?? 0,
         traderBarters: progress.traderBarters ?? [],
       }).id,
     ).toBe('partner');

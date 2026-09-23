@@ -1,4 +1,5 @@
 import {
+  currentItemId,
   fitsInGrid,
   gridCells,
   isFoundOnly,
@@ -77,7 +78,7 @@ export interface SecureFill {
  *
  * `heldQuantity` is what the loadout actually packed, because a supply can only
  * be protected if it is being carried; a found-only kind (a material, the
- * scrip) is never packed, so the container reserves room for it instead and its
+ * money) is never packed, so the container reserves room for it instead and its
  * only ceiling is the container.
  */
 export function autofillSecureSlot(
@@ -148,7 +149,7 @@ export function readSecurePreference(value: unknown): SecurePreference {
         typeof stack.quantity === 'number' &&
         Number.isSafeInteger(stack.quantity) &&
         stack.quantity > 0
-        ? [{ itemId: stack.itemId, quantity: stack.quantity }]
+        ? [{ itemId: currentItemId(stack.itemId), quantity: stack.quantity }]
         : [];
     })
     : [];

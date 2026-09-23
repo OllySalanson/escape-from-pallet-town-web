@@ -4,6 +4,7 @@ import {
   canBeTaught,
   footprintOf,
   gridCells,
+  itemCountTag,
   ITEM_CATEGORY_LABELS,
   ItemCategory,
   machineForItem,
@@ -58,7 +59,7 @@ const POCKETS = [
 
 /**
  * What a row's Enter does nothing about. Three kinds of thing in the pocket do
- * nothing to a Pokemon and say where they are spent instead - the scrip used to
+ * nothing to a Pokemon and say where they are spent instead - the money used to
  * offer a live USE ITEM that could only ever refuse itself.
  */
 const USELESS_IN_THE_FIELD = new Set(['capture-modifier', 'material', 'currency']);
@@ -280,7 +281,7 @@ export class BagScene extends Phaser.Scene {
 
   private itemRow(item: ItemDefinition): string {
     const help = `${item.displayName}: ${item.description} ${useLabel(item)}`;
-    return `<button class="px-row has-icon" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong class="px-name">${item.displayName}</strong></span>${pocketTag(item)}<span class="px-tag">×${this.bag.count(item.id)}</span></button>`;
+    return `<button class="px-row has-icon" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong class="px-name">${item.displayName}</strong></span>${pocketTag(item)}<span class="px-tag">${itemCountTag(item.id, this.bag.count(item.id))}</span></button>`;
   }
 
   /**

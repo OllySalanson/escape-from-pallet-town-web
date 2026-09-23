@@ -45,7 +45,7 @@ const SEED = `(() => {
   }));
   save.stash.pokemon = [seed, ...extra];
   save.stash.boxes = [{ name: 'Box 1', pokemonIds: [seed.id, ...extra.map((p) => p.id)] }];
-  save.stash.items = { potion: 4, 'super-potion': 2, 'poke-ball': 4, 'great-ball': 2, antidote: 2, 'parts-crate': 2, 'cable-coil': 1, 'radio-valve': 1, 'linen-roll': 1, scrip: 300 };
+  save.stash.items = { potion: 4, 'super-potion': 2, 'poke-ball': 4, 'great-ball': 2, antidote: 2, 'parts-crate': 2, 'cable-coil': 1, 'radio-valve': 1, 'linen-roll': 1, money: 300 };
   localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
 })()`;
 

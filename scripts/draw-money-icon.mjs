@@ -1,10 +1,13 @@
-// Draws the scrip icon into public/assets/icons.
+// Draws the money icon into public/assets/icons.
 //
-//   node scripts/draw-scrip-icon.mjs
+//   node scripts/draw-money-icon.mjs
 //
 // Money is the one item in the bag that is neither a supply, a material nor
-// gear, so it is drawn to read as none of them at a glance: a banded bundle of
-// notes rather than a tin, a crate or a coil.
+// gear, so it is drawn to read as none of them at a glance: a pair of notes
+// rather than a tin, a crate or a coil. What is printed on the face is the
+// Pokedollar sign - a P with two bars - because that is what the money is.
+// The same sign is the glyph `scripts/draw-pokedollar-glyph.mjs` adds to the
+// game's font, drawn here in the icon's own pixels.
 //
 // 16x16 RGBA, one shared outline (#241f2e) and a shade/base/light triple per
 // hue, the same rules as the rest of the set (see ASSET_PROVENANCE.md). Drawn
@@ -38,7 +41,7 @@ const C = {
   q: hex('9c7b4e'), Q: hex('d9bd8a'), u: hex('6d5233'),
   // linen
   l: hex('f4efe2'), i: hex('c9c1ad'), v: hex('5b8fd6'), V: hex('3b64a8'),
-  // scrip: water-stained league notes, and the band round the bundle
+  // money: water-stained league notes, and the ink the sign is printed in
   p: hex('cfd8b6'), P: hex('e8eed2'), d: hex('9aa77e'), e: hex('7d8a63'),
   z: hex('9c5b3a'), Z: hex('c47a4e'),
 };
@@ -95,14 +98,15 @@ const rect = (grid, x0, y0, x1, y1, key) => {
 
 const icons = {};
 
-// Two notes, the back one offset up and left, with a seal printed on the face.
+// Two notes, the back one offset up and left, with the Pokedollar sign printed
+// on the face.
 //
 // Flat, square-cornered and wider than tall, because that is what reads as
 // paper at sixteen pixels. Every earlier draft shaded the body like a solid
 // object and came out as a tin or a jar - which is what every other icon in
 // the Other pocket already is. The only shading left is the one row along each
 // note's foot that makes it a sheet lying on another sheet.
-icons['scrip'] = outline(
+icons['money'] = outline(
   fromRows([
     '................',
     '..PPPPPPPPPPP...',
@@ -110,13 +114,13 @@ icons['scrip'] = outline(
     '..PddddddddPP...',
     '..PP.........PP.',
     '..PPPPPPPPPPPPP.',
-    '...PPPPPPPPPPPP.',
-    '...PPZZZZZZPPPP.',
-    '...PPZzzzzZPPPP.',
-    '...PPZzZZzZPPPP.',
-    '...PPZzzzzZPPPP.',
-    '...PPZZZZZZPPPP.',
-    '...PPPPPPPPPPPP.',
+    '...PPPPzzzPPPPP.',
+    '...PPPPzPPzPPPP.',
+    '...PPPPzPPzPPPP.',
+    '...PPPzzzzPPPPP.',
+    '...PPPPzPPPPPPP.',
+    '...PPPzzzPPPPPP.',
+    '...PPPPzPPPPPPP.',
     '...PdddddddddPP.',
     '................',
     '................',

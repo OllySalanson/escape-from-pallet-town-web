@@ -160,9 +160,9 @@ describe('where machines come from', () => {
     for (const barter of bartered) {
       expect(barter.once, `${barter.id} repeats`).toBe(true);
       // Never for money: a taught move cannot be taken off a Pokemon even by a
-      // wipe, which makes it the last thing on the boat that scrip should reach.
+      // wipe, which makes it the last thing on the boat that money should reach.
       for (const takes of barter.takes) {
-        expect(takes.itemId).not.toBe('scrip');
+        expect(takes.itemId).not.toBe('money');
       }
     }
   });

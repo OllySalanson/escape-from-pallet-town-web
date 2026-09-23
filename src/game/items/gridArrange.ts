@@ -9,6 +9,7 @@ import {
   type GridPlacement,
   type GridSeat,
 } from './itemGrid';
+import { currentItemId } from './items';
 
 /**
  * Moving a piece by hand: the rules, with no screen in them.
@@ -319,7 +320,7 @@ export function readArrangement(value: unknown): GridArrangement {
     ? record.items.flatMap((entry) => {
         const where = seat(entry);
         const itemId = (entry as Record<string, unknown>)?.itemId;
-        return where && typeof itemId === 'string' ? [{ ...where, itemId }] : [];
+        return where && typeof itemId === 'string' ? [{ ...where, itemId: currentItemId(itemId) }] : [];
       })
     : [];
   const cargo = Array.isArray(record.cargo)

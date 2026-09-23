@@ -176,7 +176,7 @@ try {
     const extra = species.map((speciesId, i) => ({ id: 'seeded-' + i, pokemon: { ...seed.pokemon, speciesId, moves: ['Tackle'], level: 5 + (i % 12), xp: 120 + i * 60, currentHp: i % 7 === 0 ? 6 : 999 } }));
     save.stash.pokemon = [seed, ...extra];
     save.stash.boxes = [{ name: 'Box 1', pokemonIds: [seed.id, ...extra.map((p) => p.id)] }];
-    save.stash.items = { potion: 9, 'super-potion': 3, 'poke-ball': 8, 'great-ball': 4, antidote: 5, 'radio-valve': 3, 'cable-coil': 2, 'parts-crate': 2, 'lamp-oil': 4, 'mooring-rope': 1, 'linen-roll': 3, scrip: 260 };
+    save.stash.items = { potion: 9, 'super-potion': 3, 'poke-ball': 8, 'great-ball': 4, antidote: 5, 'radio-valve': 3, 'cable-coil': 2, 'parts-crate': 2, 'lamp-oil': 4, 'mooring-rope': 1, 'linen-roll': 3, money: 260 };
     localStorage.setItem('${SAVE_KEY}', JSON.stringify(save));
   })()`);
   await page.send('Page.navigate', { url: `${url}?testmode=pixels` });

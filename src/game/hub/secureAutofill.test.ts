@@ -117,12 +117,12 @@ describe('what the secure container fills itself with', () => {
   it('reserves whole squares of a stacked kind, never one note of it', () => {
     const fill = autofillSecureSlot(
       [],
-      { pokemon: true, items: [{ itemId: 'scrip', quantity: stackSizeOf('scrip') * 2 }] },
+      { pokemon: true, items: [{ itemId: 'money', quantity: stackSizeOf('money') * 2 }] },
       BASE_SECURE_GRID,
       1,
       held,
     );
-    expect(fill.items).toEqual([{ itemId: 'scrip', quantity: stackSizeOf('scrip') * 2 }]);
+    expect(fill.items).toEqual([{ itemId: 'money', quantity: stackSizeOf('money') * 2 }]);
   });
 });
 

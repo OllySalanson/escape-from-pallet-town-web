@@ -555,7 +555,7 @@ function validateSecureSlot(
 
   const availableQuantities = toItemQuantities(availableItems);
   for (const item of secureItems) {
-    // A material, or a note of scrip, is found in the raid, so the container
+    // A material, or a bundle of Pokedollars, is found in the raid, so the container
     // may reserve room for a kind the loadout never carried.
     if (!isFoundOnly(item.itemId) && (availableQuantities.get(item.itemId) ?? 0) < item.quantity) {
       throw new Error(`The secure slot contains unavailable item "${item.itemId}".`);

@@ -1374,11 +1374,11 @@ describe('HubScene - Bill', () => {
   }
 
   /** A save standing high enough with him to be sold and bartered anything. */
-  function createTraderHub(scrip = 1_000): { hub: HubInternals; storage: MemoryStorage } {
+  function createTraderHub(money = 1_000): { hub: HubInternals; storage: MemoryStorage } {
     const storage = new MemoryStorage();
     const stash = createStartingStash(CHARMANDER);
     stash.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
-    stash.addItem('scrip', scrip);
+    stash.addItem('money', money);
     stash.addItem('parts-crate', 4);
     stash.addItem('cable-coil', 3);
     stash.addItem('lamp-oil', 3);
@@ -1415,7 +1415,7 @@ describe('HubScene - Bill', () => {
     const boat = markupOf(hub);
     // Money leads, because it is the one number found rather than earned and
     // the screen behind the door turns on it.
-    expect(boat).toContain('1000 scrip');
+    expect(boat).toContain('₽1000');
   });
 
   it('keeps the shelf and the barter table apart, and says money buys none of the second', () => {
@@ -1425,10 +1425,10 @@ describe('HubScene - Bill', () => {
 
     expect(boat).toContain('Off the deck');
     expect(boat).toContain('Out of the hold');
-    expect(boat).toContain('No scrip buys these');
-    // The shelf prices in scrip; the table prices in found goods.
+    expect(boat).toContain('No money buys these');
+    // The shelf prices in money; the table prices in found goods.
     expect(boat).toContain('data-buy="potion"');
-    expect(boat).toContain('120 scrip');
+    expect(boat).toContain('₽120');
     expect(boat).toContain('data-barter="barter-quick-claw"');
     expect(boat).toContain('<small>2× Parts crate</small><small>1× Cable coil</small>');
     // Nothing on the shelf is gear, at any standing.
@@ -1445,13 +1445,13 @@ describe('HubScene - Bill', () => {
     expect(boat).toContain('with him');
     // What raises it, as the three prices rather than a paragraph about them -
     // and only while there is a tier left to raise it to.
-    expect(boat).toContain('Bank a contract +2, beat a boss +3, spend 200 scrip +1.');
+    expect(boat).toContain('Bank a contract +2, beat a boss +3, spend ₽200 +1.');
   });
 
   it('offers a stranger nothing, and keeps every shut row reachable by the cursor', () => {
     const storage = new MemoryStorage();
     const stash = createStartingStash(CHARMANDER);
-    stash.addItem('scrip', 5_000);
+    stash.addItem('money', 5_000);
     new SaveManager(storage).save({
       party: new PokemonParty(),
       mapId: 'pallet-town',
@@ -1465,7 +1465,7 @@ describe('HubScene - Bill', () => {
     hub.setView('trader');
     const boat = markupOf(hub);
 
-    // Five thousand scrip and he sells nothing: standing is the first gate, and
+    // ₽5000 and he sells nothing: standing is the first gate, and
     // money can never open it.
     expect(boat).not.toContain('data-buy=');
     expect(boat).toContain('Nothing for you yet');
@@ -1482,7 +1482,7 @@ describe('HubScene - Bill', () => {
     expect(boat).toContain('data-berth');
     // The price is the row's own price column, as every price on the two
     // shelves now is; the row's line is kept for what the berth *does*.
-    expect(boat).toContain('<span class="px-price"><small>250 scrip</small></span>');
+    expect(boat).toContain('<span class="px-price"><small>₽250</small></span>');
     // The one sentence that tells the two places apart, on the row itself.
     // The squares come from the grid rather than a number typed beside it.
     expect(boat).toMatch(/\+\d+ protected squares, this raid\./);
@@ -1504,7 +1504,7 @@ describe('HubScene - Bill', () => {
 
     // The shelf: what a Potion does, and its price beside it.
     expect(boat).toContain('<strong class="px-name">Potion</strong><small class="px-wrap">Restores 20 HP.</small>');
-    expect(boat).toContain('<span class="px-price"><small>120 scrip</small></span>');
+    expect(boat).toContain('<span class="px-price"><small>₽120</small></span>');
     // The table: what the gear does, from the item's own catalogue line.
     expect(boat).toContain('Sometimes the holder strikes first, whatever the Speed says.');
     expect(boat).toContain("The holder's hits land a third harder and cost it a tenth of its own HP.");
@@ -1516,9 +1516,9 @@ describe('HubScene - Bill', () => {
     const boat = markupOf(hub);
 
     const shelf = boat.slice(boat.indexOf('data-shown-by="super-potion"'));
-    // 260 scrip against 200 held, so the held half is the one written in red.
+    // ₽260 against ₽200 held, so the held half is the one written in red.
     expect(shelf).toContain('<div class="is-short"><dt>');
-    expect(shelf).toContain('<dd>200 in the vault</dd>');
+    expect(shelf).toContain('<dd>₽200 in the vault</dd>');
     expect(shelf).toContain('<dt><span class="shop-price-nib" aria-hidden="true"></span><span>1 of his ration</span></dt>');
 
     const table = boat.slice(boat.indexOf('data-shown-by="barter-hm03"'));
@@ -1565,7 +1565,7 @@ describe('HubScene - Bill', () => {
     expect(asking.indexOf('data-deal-cancel')).toBeLessThan(asking.indexOf('data-barter-confirm'));
   });
 
-  it('asks again before it rents a berth, which is a raid of scavenging in scrip', () => {
+  it('asks again before it rents a berth, which is a raid of scavenging in money', () => {
     const { hub } = createTraderHub();
     const armed = hub as unknown as { traderArmed: string | undefined };
     hub.setView('trader');
@@ -1573,7 +1573,7 @@ describe('HubScene - Bill', () => {
     armed.traderArmed = 'berth';
     const asking = markupOf(hub);
 
-    expect(asking).toContain('Pay 250 scrip for one raid, used or not?');
+    expect(asking).toContain('Pay ₽250 for one raid, used or not?');
     expect(asking).toContain('data-berth-confirm');
     expect(asking).toMatch(/data-deal-cancel[^>]*data-cursor-start/);
     expect(asking).not.toMatch(/data-berth(?![-\w])/);
