@@ -13,11 +13,13 @@
 //    `past_abilities` does: an entry names the typing that was right **through**
 //    that generation, so the earliest entry at or after generation III wins.
 //    Clefairy, Jigglypuff and their evolutions are Normal here, not Fairy.
-//  - **Base stats have no history in PokeAPI at all.** `/pokemon/{id}` serves
-//    generation IX's numbers and there is no `past_stats`. Generation VI raised
-//    one stat on a number of Kanto species, so a few of these rows are ten
-//    points high; `src/game/pokemon/generated/statCorrections.ts` is where that
-//    is put right, and it is hand-authored knowledge rather than either source.
+//  - **Base stats** through `past_stats`, which reads forwards the same way:
+//    `/pokemon/{id}` serves generation IX's numbers, and generation VI and VII
+//    raised a stat on twenty of Kanto's own. A generation I entry names
+//    `special`, a stat generation III had already split, and is never applied.
+//    `verifyStats.mjs` beside this holds every row against the FireRed
+//    disassembly and Bulbapedia as well, and `frlg-base-stats.json` is what
+//    the game is pinned to.
 //  - **Base experience is the modern value** for the same reason: generation V
 //    re-tabulated every yield and PokeAPI serves only the current one. Nothing
 //    in this engine spends it yet - `experienceForLevel` is level-cubed - so it
@@ -53,6 +55,22 @@ const generationIIITypes = (pokemon) => {
     .sort((left, right) => generationIndex(left.generation.name) - generationIndex(right.generation.name))[0];
   const types = past ? past.types : pokemon.types;
   return [...types].sort((left, right) => left.slot - right.slot).map((entry) => entry.type.name);
+};
+
+/** The base stats generation III had, read forwards through `past_stats`. */
+const generationIIIStats = (pokemon) => {
+  const stats = Object.fromEntries(pokemon.stats.map((entry) => [entry.stat.name, entry.base_stat]));
+  // Latest first, so the earliest entry at or after generation III is the one
+  // left standing for each stat it names.
+  const past = [...(pokemon.past_stats ?? [])]
+    .filter((entry) => generationIndex(entry.generation.name) >= GEN_III)
+    .sort((left, right) => generationIndex(right.generation.name) - generationIndex(left.generation.name));
+  for (const entry of past) {
+    for (const stat of entry.stats) {
+      if (stat.stat.name in stats) stats[stat.stat.name] = stat.base_stat;
+    }
+  }
+  return stats;
 };
 
 const chainCache = new Map();
@@ -96,7 +114,7 @@ for (let dexId = 1; dexId <= 151; dexId += 1) {
     )
     .sort((left, right) => left.level - right.level || left.move.localeCompare(right.move));
 
-  const stats = Object.fromEntries(pokemon.stats.map((entry) => [entry.stat.name, entry.base_stat]));
+  const stats = generationIIIStats(pokemon);
   const chain = await evolutionChain(record.evolution_chain.url);
   for (const rule of rulesFromChain(chain.chain)) {
     // Keyed by the whole rule: a species can carry several rows for the same
@@ -115,7 +133,7 @@ for (let dexId = 1; dexId <= 151; dexId += 1) {
     name: pokemon.name,
     displayName: record.names.find((entry) => entry.language.name === 'en')?.name ?? pokemon.name,
     types: generationIIITypes(pokemon),
-    // Modern base stats. See the header: PokeAPI has no historical ones.
+    // Generation III's, read through `past_stats`. See the header.
     baseStats: {
       hp: stats.hp,
       attack: stats.attack,

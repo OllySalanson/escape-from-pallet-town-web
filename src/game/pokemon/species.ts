@@ -1,38 +1,32 @@
-import { PokemonBase, type LearnableMove, type PokemonStats } from './PokemonBase';
+import { PokemonBase, type LearnableMove } from './PokemonBase';
 import { ABILITIES_BY_ID } from './abilities';
 import { GENERATED_SPECIES, type GeneratedSpecies } from './generated/speciesCatalogue';
 import { MOVE_CATALOGUE } from './moveCatalogue';
 import { SHIPPED_DEVIATIONS } from './shippedSpecies';
-import { GENERATION_III_STATS } from './statCorrections';
 
 /**
  * Kanto's original 151, built from the import rather than written out.
  *
- * Four things go into a species and each is owned by exactly one file, which is
- * what makes the roster reviewable at this size:
+ * Three things go into a species and each is owned by exactly one file, which
+ * is what makes the roster reviewable at this size:
  *
  *  1. **canon**, `generated/speciesCatalogue.ts`, generated from the committed
- *     PokeAPI snapshots by `node tools/species/generate.mjs`;
- *  2. **the stats a later generation raised**, `statCorrections.ts`, which is
- *     the one part of the import that came from neither source and says so;
- *  3. **what this game decided differently**, `shippedSpecies.ts`, which is
- *     every disagreement with canon in one place;
- *  4. **what the engine can play**, which is asked here: a move canon teaches
+ *     PokeAPI snapshots by `node tools/species/generate.mjs`. Its base stats and
+ *     types are FireRed's own, checked against three sources by
+ *     `tools/species/verifyStats.mjs`, and a species fields them untouched -
+ *     nothing in this game is allowed a stat canon does not give it;
+ *  2. **what this game decided differently**, `shippedSpecies.ts`, which is
+ *     every disagreement with canon in one place, and is learnsets only;
+ *  3. **what the engine can play**, which is asked here: a move canon teaches
  *     that `MOVE_CATALOGUE` does not hold is left out of the learnset rather
  *     than approximated, and an ability `abilities.ts` cannot express leaves
  *     its species with none - which is what `abilityId: null` has meant since
  *     Jigglypuff's Cute Charm needed a gender nothing here has.
  *
- * `docs/pokemon/roster.md` is the list of everything (4) drops, by species and
+ * `docs/pokemon/roster.md` is the list of everything (3) drops, by species and
  * with the reason, and `speciesImport.test.ts` holds the floor under it: a
  * species can still field a damaging move at every level it can be met at.
  */
-const applyStats = (row: GeneratedSpecies): PokemonStats => ({
-  ...row.baseStats,
-  ...GENERATION_III_STATS[row.id],
-  ...SHIPPED_DEVIATIONS[row.id]?.baseStats,
-});
-
 const applyLearnset = (row: GeneratedSpecies): readonly LearnableMove[] =>
   (SHIPPED_DEVIATIONS[row.id]?.learnset ?? row.learnset).flatMap((entry) => {
     const move = MOVE_CATALOGUE[entry.move];
@@ -57,7 +51,7 @@ const build = (row: GeneratedSpecies): PokemonBase =>
     abilityId: abilityOf(row),
     primaryType: row.types[0],
     secondaryType: row.types[1],
-    baseStats: applyStats(row),
+    baseStats: row.baseStats,
     learnset: applyLearnset(row),
     catchRate: row.catchRate,
     baseExperience: row.baseExperience,

@@ -3,8 +3,10 @@
 //   node tools/species/generate.mjs            # write the files
 //   node tools/species/generate.mjs --check    # fail if they are out of date
 //
-// Three snapshots go in - `frlg-species.json` beside this, `../moves/frlg-level-up-moves.json`
-// and `../abilities/frlg-abilities.json` - and four files come out:
+// The snapshots go in - `frlg-species.json` beside this, checked against the
+// three-source `frlg-base-stats.json` beside it, `../moves/frlg-level-up-moves.json`,
+// `../moves/frlg-machines.json` and the two under `../abilities/` - and four
+// files come out:
 //
 //   src/game/pokemon/generated/moveCatalogue.ts    every move the engine can play
 //   src/game/pokemon/generated/speciesCatalogue.ts all 151, as canon has them
@@ -26,6 +28,27 @@ const repo = join(here, '..', '..');
 const read = (path) => JSON.parse(readFileSync(join(repo, path), 'utf8'));
 
 const SPECIES = read('tools/species/frlg-species.json');
+const VERIFIED = new Map(read('tools/species/frlg-base-stats.json').species.map((row) => [row.name, row]));
+
+// The stats and types are the one part of a species checked against three
+// sources rather than one, and the check lives in \`verifyStats.mjs\`. A
+// snapshot that disagrees with it is a harvest that went wrong, so nothing is
+// generated from one.
+for (const row of SPECIES.species) {
+  const verified = VERIFIED.get(row.name);
+  if (!verified) throw new Error(`${row.name} is not in frlg-base-stats.json`);
+  for (const [stat, value] of Object.entries(verified.stats)) {
+    if (row.baseStats[stat] !== value) {
+      throw new Error(`${row.name}.${stat} is ${row.baseStats[stat]} in the snapshot and ${value} in FireRed`);
+    }
+  }
+  if (row.types.join('/') !== verified.types.join('/')) {
+    throw new Error(`${row.name} is ${row.types} in the snapshot and ${verified.types} in FireRed`);
+  }
+}
+const laterGenerations = SPECIES.species
+  .filter((row) => VERIFIED.get(row.name).laterGenerations)
+  .map((row) => row.displayName);
 const MOVES = read('tools/moves/frlg-level-up-moves.json');
 const MACHINES = read('tools/moves/frlg-machines.json');
 const FLAGS = new Map(read('tools/abilities/frlg-move-flags.json').map((row) => [row.name, row.flags]));
@@ -475,15 +498,19 @@ ${abilityless.length === 0 ? 'Every one of the 151 carries at least one generati
 
 ## Everything else
 
-- **Base stats** are PokeAPI's, which are generation IX's: it serves no
-  historical stats at all. Generation VI raised one stat on a number of Kanto
-  species, and \`src/game/pokemon/statCorrections.ts\` is where that is put back -
-  hand-authored knowledge rather than either source, and the first thing to
-  check in this import.
+- **Base stats and types** are generation III's, and none of them is written
+  from memory: \`node tools/species/verifyStats.mjs\` reads every one of the 151
+  out of the FireRed disassembly (pret/pokefirered), Bulbapedia's generation
+  II-V table and PokeAPI's \`past_stats\`, refuses a row the three disagree on,
+  and writes \`tools/species/frlg-base-stats.json\`, which this generator will
+  not run against a snapshot that disagrees with. ${laterGenerations.length} of the 151 had
+  a stat raised by a later generation - ${laterGenerations.join(', ')} - and field
+  the FireRed value.
 - **Catch rate** and **growth rate** are generation III's own and have not
   changed for these species. Neither is spent yet: catching reads HP, status and
   the ball, and experience is level-cubed for everything.
-- **Base experience** is the modern yield, for the same reason as the stats.
+- **Base experience** is the modern yield: generation V re-tabulated every one
+  and PokeAPI serves no history for it. Nothing spends it yet.
 - **Sprites** are the FireRed/LeafGreen rip of the same PokeAPI sprite
   repository the first seventeen came from; \`public/assets/ASSET_PROVENANCE.md\`
   carries the licence question they raise.

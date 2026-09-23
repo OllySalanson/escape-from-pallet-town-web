@@ -79,15 +79,19 @@ Every one of the 151 carries at least one generation III ability.
 
 ## Everything else
 
-- **Base stats** are PokeAPI's, which are generation IX's: it serves no
-  historical stats at all. Generation VI raised one stat on a number of Kanto
-  species, and `src/game/pokemon/statCorrections.ts` is where that is put back -
-  hand-authored knowledge rather than either source, and the first thing to
-  check in this import.
+- **Base stats and types** are generation III's, and none of them is written
+  from memory: `node tools/species/verifyStats.mjs` reads every one of the 151
+  out of the FireRed disassembly (pret/pokefirered), Bulbapedia's generation
+  II-V table and PokeAPI's `past_stats`, refuses a row the three disagree on,
+  and writes `tools/species/frlg-base-stats.json`, which this generator will
+  not run against a snapshot that disagrees with. 20 of the 151 had
+  a stat raised by a later generation - Butterfree, Beedrill, Pidgeot, Arbok, Pikachu, Raichu, Nidoqueen, Nidoking, Clefable, Wigglytuff, Vileplume, Dugtrio, Poliwrath, Alakazam, Victreebel, Golem, Farfetch’d, Dodrio, Electrode, Exeggutor - and field
+  the FireRed value.
 - **Catch rate** and **growth rate** are generation III's own and have not
   changed for these species. Neither is spent yet: catching reads HP, status and
   the ball, and experience is level-cubed for everything.
-- **Base experience** is the modern yield, for the same reason as the stats.
+- **Base experience** is the modern yield: generation V re-tabulated every one
+  and PokeAPI serves no history for it. Nothing spends it yet.
 - **Sprites** are the FireRed/LeafGreen rip of the same PokeAPI sprite
   repository the first seventeen came from; `public/assets/ASSET_PROVENANCE.md`
   carries the licence question they raise.

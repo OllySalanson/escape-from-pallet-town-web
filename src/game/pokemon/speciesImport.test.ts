@@ -14,7 +14,6 @@ import { GENERATED_MOVES } from './generated/moveCatalogue';
 import { GENERATED_SPECIES } from './generated/speciesCatalogue';
 import { AUTHORED_MOVES, MOVE_CATALOGUE } from './moveCatalogue';
 import { SHIPPED_DEVIATIONS } from './shippedSpecies';
-import { GENERATION_III_STATS } from './statCorrections';
 import { EVOLUTIONS } from './evolution';
 
 const REPO = join(__dirname, '..', '..', '..');
@@ -144,35 +143,99 @@ describe('the imported roster', () => {
   });
 });
 
+interface VerifiedRow {
+  readonly dexId: number;
+  readonly name: string;
+  readonly types: readonly string[];
+  readonly stats: Record<(typeof STATS)[number], number>;
+  readonly laterGenerations?: Partial<Record<(typeof STATS)[number], number>>;
+}
+
+/**
+ * The captain's ruling of 2026-09-23: no stat is written from memory. Every
+ * number below is one the FireRed disassembly, Bulbapedia's generation II-V
+ * table and PokeAPI's `past_stats` all print - `tools/species/verifyStats.mjs`
+ * refuses to write a row they disagree on, and `--check` re-asks all three.
+ */
+describe('base stats and types, against FireRed', () => {
+  const { species: verified } = JSON.parse(
+    readFileSync(join(REPO, 'tools/species/frlg-base-stats.json'), 'utf8'),
+  ) as { species: readonly VerifiedRow[] };
+
+  it('covers all 151, in dex order', () => {
+    expect(verified.map((row) => row.dexId)).toEqual(Array.from({ length: 151 }, (_, index) => index + 1));
+    expect(verified.map((row) => row.name)).toEqual(ALL_SPECIES.map((species) => species.id));
+  });
+
+  it('is what every one of the 151 fields in a fight', () => {
+    const wrong: string[] = [];
+    for (const row of verified) {
+      const species = getSpeciesById(row.name)!;
+      for (const stat of STATS) {
+        if (species.baseStats[stat] !== row.stats[stat]) {
+          wrong.push(`${row.name}.${stat}: ${species.baseStats[stat]} not ${row.stats[stat]}`);
+        }
+      }
+      const types = [species.primaryType, species.secondaryType].filter(Boolean).join('/').toLowerCase();
+      if (types !== row.types.join('/')) {
+        wrong.push(`${row.name}: ${types} not ${row.types.join('/')}`);
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  /**
+   * The twenty a later generation raised, pinned by name: these are the numbers
+   * a modern fan site gets wrong for this game, and the ones recall got wrong
+   * before this table existed - Dugtrio fielded generation VII's 100 Attack.
+   */
+  it('names every species whose modern stat line is not FireRed\'s', () => {
+    const raised = verified
+      .filter((row) => row.laterGenerations)
+      .map((row) =>
+        `${row.name} ${Object.entries(row.laterGenerations!)
+          .map(([stat, modern]) => `${stat} ${row.stats[stat as (typeof STATS)[number]]}->${modern}`)
+          .join(' ')}`,
+      );
+    expect(raised).toEqual([
+      'butterfree spAttack 80->90',
+      'beedrill attack 80->90',
+      'pidgeot speed 91->101',
+      'arbok attack 85->95',
+      'pikachu defense 30->40 spDefense 40->50',
+      'raichu speed 100->110',
+      'nidoqueen attack 82->92',
+      'nidoking attack 92->102',
+      'clefable spAttack 85->95',
+      'wigglytuff spAttack 75->85',
+      'vileplume spAttack 100->110',
+      'dugtrio attack 80->100',
+      'poliwrath attack 85->95',
+      'alakazam spDefense 85->95',
+      'victreebel spDefense 60->70',
+      'golem attack 110->120',
+      'farfetchd attack 65->90',
+      'dodrio speed 100->110',
+      'electrode speed 140->150',
+      'exeggutor spDefense 65->75',
+    ]);
+  });
+});
+
 describe('what the game decided, against what canon says', () => {
   const snapshot = new Map(GENERATED_SPECIES.map((row) => [row.id, row]));
 
   /**
-   * A correction undoes a raise a later generation made, so it can only ever
-   * take a stat *down*. One that raises one is a number somebody guessed.
-   */
-  it('only ever lowers a stat back to generation III', () => {
-    for (const [id, stats] of Object.entries(GENERATION_III_STATS)) {
-      const canon = snapshot.get(id);
-      expect(canon, `${id} is not one of the 151`).toBeDefined();
-      for (const [stat, value] of Object.entries(stats)) {
-        expect(value, `${id}.${stat}`).toBeLessThan(canon!.baseStats[stat as (typeof STATS)[number]]);
-      }
-    }
-  });
-
-  /**
    * The list of disagreements is exactly the disagreements. Anything the game
-   * fields that canon does not say is either a row in `shippedSpecies.ts` or a
-   * correction in `statCorrections.ts`, and a new one cannot arrive quietly.
+   * fields that canon does not say is a row in `shippedSpecies.ts`, and a new
+   * one cannot arrive quietly.
    */
   it('is the whole of the difference between the game and the snapshot', () => {
     const differs: string[] = [];
     for (const species of ALL_SPECIES) {
       const canon = snapshot.get(species.id)!;
-      const corrected = { ...canon.baseStats, ...GENERATION_III_STATS[species.id] };
       for (const stat of STATS) {
-        if (species.baseStats[stat] !== corrected[stat]) {
+        if (species.baseStats[stat] !== canon.baseStats[stat]) {
           differs.push(`${species.id}.${stat}`);
         }
       }
@@ -186,10 +249,9 @@ describe('what the game decided, against what canon says', () => {
       }
     }
 
-    const declared = Object.entries(SHIPPED_DEVIATIONS).flatMap(([id, deviation]) => [
-      ...Object.keys(deviation.baseStats ?? {}).map((stat) => `${id}.${stat}`),
-      ...(deviation.learnset ? [`${id}.learnset`] : []),
-    ]);
+    const declared = Object.entries(SHIPPED_DEVIATIONS).flatMap(([id, deviation]) =>
+      deviation.learnset ? [`${id}.learnset`] : [],
+    );
     expect(differs.sort()).toEqual(declared.sort());
   });
 
