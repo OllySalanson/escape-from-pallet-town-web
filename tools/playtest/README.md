@@ -253,11 +253,28 @@ stranger saw and could not name.
 - `page.freeze()` / `page.thaw()` stop a page outright and keep its state, but
   only on a **built** game: Vite's dev client reloads a page whose socket went
   quiet, so a frozen dev page thaws as a fresh load. `freeze()` refuses there.
-  A build is `VITE_EPTW_TEST_MODE=1 npx vite build --outDir "$SCRATCH/dist"` then
-  `npx vite preview --outDir "$SCRATCH/dist" --port "$FREE_PORT"`.
+  A build is `VITE_EPTW_TEST_MODE=1 npx vite build --outDir "$SCRATCH/dist"`,
+  served under the Pages subpath it is built for (`vite.config.ts`), which
+  `vite preview` does not do - copy it into `$SCRATCH/root/escape-from-pallet-town-web/`
+  and serve `$SCRATCH/root` (`python3 -m http.server "$FREE_PORT"`), then open
+  `/escape-from-pallet-town-web/?testmode=1`.
 - Logic checks run in `LOGIC_WINDOW` (400x256, 1x zoom); `PIXEL_WINDOW` is 3x
   and nine times the pixels, for screenshots only.
 - Close the browser and stop the dev server when the session ends.
+
+## Memory: photograph a build, not the dev server
+
+A browser's memory is its PSS summed over the process group
+(`/proc/<pid>/smaps_rollup`), never its RSS summed: Chromium's processes share
+pages, and summed RSS reads 1.1GB on a blank tab. Measured that way at 1x with
+`?testmode=1`, a **dev-server** page passes 1GB on the title screen - the
+renderer grows 400MB in half a second as the unbundled module graph evaluates,
+on `main` as much as on any branch - while a **test-mode build** of the same
+code sits at 590MB on the title and 700-760MB standing in a raid on any of the
+four maps. A tour at `PIXEL_WINDOW` over `?testmode=pixels` on the dev server is
+the one that took the machine down (2026-09-23). So a screenshot session runs
+against a build, one map per launch, with the browser closed between them; a
+dev server is for checking that it serves, not for photographing.
 
 ## Measured
 
