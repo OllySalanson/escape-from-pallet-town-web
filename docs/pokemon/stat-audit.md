@@ -51,36 +51,42 @@ site is wrong for this game for all of them.
 
 Barely. At the levels this game is played at, a stat is
 `floor(base * level / 100) + 5`, so ten base points is one point of real stat
-at level 10. The same seeded measurements were run before and after
-(`tools/trainers/report.mts`, `tools/abilities/measure.mts`,
-`tools/weather/measure.mts`). Dugtrio is on no wild table and in no trainer's
-party, so its correction changes nothing yet.
+at level 10. The same seeded measurements were run on `main` and on this
+change, **2000 fights a cell** so that a shift is a shift and not noise
+(`tools/trainers/report.mts -- --trials=2000`,
+`tools/abilities/measure.mts -- --trials=2000`). Dugtrio is on no wild table
+and in no trainer's party, so its correction changes nothing yet.
 
-**Trainers** (win rate for each test party, best move every turn, no items):
+**Trainers** (win rate for each test party, best move every turn, no items).
+Every cell that moved:
 
 | Trainer | Party | Before | After |
 | --- | --- | --- | --- |
-| Warden Holt (double battle) | three at 10-12 (includes the player's Butterfree) | 77% | 72% |
-| Lookout Pell | Charmander 10 | 30% | 25% |
-| Lookout Pell | Charmander 14 | 67% | 64% |
-| Lookout Pell | Bulbasaur 14 | 57% | 60% |
-| Warden Wren | Bulbasaur 14 | 58% | 66% |
-| Sluice Keeper Dane | Bulbasaur 14 | 90% | 93% |
-| Sluice Keeper Dane | Charmander 12 + Pidgey 10 | 48% | 51% |
+| Warden Wren | Bulbasaur 14 | 58% | 65% |
+| Warden Holt (double battle) | three at 10-12 (includes the player's Butterfree) | 77% | 73% |
+| Lookout Pell | Charmander 10 | 25% | 21% |
+| Lookout Pell | Bulbasaur 14 | 56% | 59% |
+| Drover Ash | Charmander 10 | 94% | 91% |
+| Sluice Keeper Dane | Bulbasaur 14 | 93% | 95% |
+| Miller Vance | Charmander 10 | 4% | 2% |
 
-Every other trainer moved by one point or not at all. The boss ladder's order
-(Briggs, Wren, Vance, Pell, Dane, Holt) is unchanged and `trainerLadder.test.ts`
-still passes.
+Everything else moved by two points or less, or not at all. The boss ladder's
+order (Briggs, Wren, Vance, Pell, Dane, Holt) is unchanged and
+`trainerLadder.test.ts` still passes.
 
-**The hunter** (rung against a party at its level plus one): rung 3 leaves the
-party 46% of its health instead of 44%; rungs 1, 2 and 4 did not move, and every
-rung is still won.
+**The hunter** (every rung against a party of three at its level plus one):
+identical to the point before and after - 100% won on every rung, leaving the
+party 75%, 53%, 46% and 42% of its health.
 
-**Wild fights**: no district's win rate moved by more than one point in clear
-weather. The largest shift anywhere is a Squirtle in harsh sunlight at Warden's
-Cut, 57% to 63% - weather no map in the game actually has.
+**Wild fights**: of 59 district tables times three starters, three cells moved and
+none by more than one point (Deep Stand, Warden's Cut and the Sawpit in
+Viridian Forest).
 
-No species' correction shifts balance noticeably. The one that is worth
-knowing about is Warden Holt: a player who brings a Butterfree to the last
-door now has a slightly harder fight, because their Butterfree's Psybeam and
-Confusion hit ten base points softer.
+No species' correction shifts balance noticeably. The two worth knowing about
+are both bosses. **Warden Wren** is seven points easier for a Bulbasaur:
+her Pikachu now has FireRed's 30 Defense and 40 Sp. Def rather than a later
+generation's 40 and 50, which outweighs her Jigglypuff's Sp. Def going up from
+a typo's 20 to 25. **Warden Holt** is four points harder for the test party of
+three: both sides field a Butterfree and both now attack from FireRed's 80
+Sp. Atk rather than 90, and the player's is the one that had more fighting to
+do.
