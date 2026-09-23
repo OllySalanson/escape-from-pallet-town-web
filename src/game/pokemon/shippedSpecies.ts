@@ -1,5 +1,3 @@
-import type { PokemonStats } from './PokemonBase';
-
 /**
  * A level-up move, by the identifier both snapshots use for it.
  *
@@ -13,9 +11,12 @@ export interface AuthoredLearnsetEntry {
   readonly move: string;
 }
 
+/**
+ * A learnset, and never a stat. The captain's ruling (2026-09-23) is that every
+ * base stat is FireRed's, so a deviation has nowhere to put one: the type is
+ * what keeps a guessed number out, not a reviewer.
+ */
 export interface SpeciesDeviation {
-  /** Only the stats that differ. Everything else comes from the snapshot. */
-  readonly baseStats?: Partial<PokemonStats>;
   /** The whole learnset, replacing canon's. */
   readonly learnset?: readonly AuthoredLearnsetEntry[];
 }
@@ -52,13 +53,12 @@ export interface SpeciesDeviation {
  *   a Water move and would satisfy the rule, but the line's whole ladder was
  *   authored around Water Gun before the import.
  *
- * **The stats.** Three rows, and AGENTS.md names all three. Butterfree's Sp.
- * Atk and Pikachu's Defence and Sp. Def shipped on generation VI's values;
- * `statCorrections.ts` now knows what generation III had, and these put the
- * shipped numbers back rather than quietly reprice the starting maps and the
- * hunter ladder. Jigglypuff's Sp. Def of 20 is canon's 25 mistyped somewhere in
- * Unity - the same reasoning applies, and Wigglytuff deliberately does not
- * repeat it.
+ * **No stats.** Three used to be here - Butterfree's Sp. Atk of 90 and
+ * Pikachu's Defence and Sp. Def of 40/50, all generation VI's values, and
+ * Jigglypuff's Sp. Def of 20, canon's 25 mistyped somewhere in Unity. They were
+ * kept so as not to reprice the starting maps and the hunter ladder; the
+ * captain ruled on 2026-09-23 that every stat is canon's, and the repricing was
+ * measured when they went (see the PR that removed them).
  */
 export const SHIPPED_DEVIATIONS: Readonly<Record<string, SpeciesDeviation>> = {
   bulbasaur: {
@@ -89,7 +89,6 @@ export const SHIPPED_DEVIATIONS: Readonly<Record<string, SpeciesDeviation>> = {
     learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'tail-whip' }, { level: 1, move: 'bubble' }, { level: 13, move: 'water-gun' }, { level: 19, move: 'bite' }, { level: 42, move: 'rain-dance' }, { level: 68, move: 'hydro-pump' }],
   },
   butterfree: {
-    baseStats: { spAttack: 90 },
     learnset: [{ level: 1, move: 'tackle' }, { level: 10, move: 'poison-powder' }, { level: 34, move: 'psybeam' }],
   },
   pidgey: {
@@ -102,16 +101,15 @@ export const SHIPPED_DEVIATIONS: Readonly<Record<string, SpeciesDeviation>> = {
     learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'gust' }, { level: 13, move: 'quick-attack' }, { level: 27, move: 'wing-attack' }, { level: 34, move: 'feather-dance' }, { level: 48, move: 'agility' }],
   },
   pikachu: {
-    baseStats: { defense: 40, spDefense: 50 },
     learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'growl' }, { level: 10, move: 'thunder-wave' }, { level: 15, move: 'double-team' }, { level: 33, move: 'agility' }],
   },
   raichu: {
     learnset: [{ level: 1, move: 'tail-whip' }, { level: 1, move: 'quick-attack' }, { level: 1, move: 'thunder-shock' }, { level: 1, move: 'thunderbolt' }],
   },
   jigglypuff: {
-    baseStats: { spDefense: 20 },
     learnset: [{ level: 1, move: 'tackle' }, { level: 1, move: 'growl' }, { level: 10, move: 'sing' }, { level: 24, move: 'double-slap' }, { level: 34, move: 'body-slam' }, { level: 49, move: 'double-edge' }],
   },
   wigglytuff: {
     learnset: [{ level: 1, move: 'sing' }, { level: 1, move: 'double-slap' }],
-  },};
+  },
+};
