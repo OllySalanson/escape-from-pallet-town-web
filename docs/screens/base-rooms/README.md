@@ -10,7 +10,7 @@ stands inside, and the room shows what you have built:
 | `oaks-lab.png` | Professor Oak's Lab, from FireRed. The stretch of plain wall between the computers and the bookshelves is kept bare for the wall map (`OAK_WALL_MAP`). |
 | `pokemon-centre-fresh.png` / `-built.png` | Nurse Joy's Center. A Poké Ball waits on her counter for every Pokémon she has to treat. Brock's two healing machines hang on the back wall once they are built, and the ward's bed stands where the Cable Club stairs used to go up. |
 | `brocks-workshop-fresh.png` / `-built.png` | Brock's workshop, drawn from the Rocket Warehouse. It starts as bare floor and gets one object for every rung of his ladder: the radio set, the beacon's lamp, two lockers, two healing machines and the ward's monitors. |
-| `bills-cottage.png` | Bill's house from FireRed, with the cell separators. The two empty shelf units either side of his desk are his cabinet of oddities, still to be filled (`BILL_CABINET_SHELVES`). |
+| `bills-cottage.png` | Bill's house from FireRed, with the cell separators. The two empty shelf units either side of his desk are his cabinet of oddities, which fills with everything you barter to him - see `docs/screens/bill-cabinet/`. |
 | `pokemon-centre-smallest-stage.png` | The Center on the smallest screen the game supports (320x240). Every room fits on it and sits in the middle, in the dark, the way FireRed draws a room. |
 | `oaks-lab-screen.png` | One key from the lab's door mat. |
 
@@ -26,10 +26,12 @@ only walk that costs anything is the walk across the yard, measured by
 |---|---|---|---|---|
 | the middle of the yard | 2 | 7 | 7 | 6 |
 | the quay (home from a raid) | 6 | 11 | 11 | 4 |
-| + walking up to the keeper (optional) | 3 | 4 | 1 | 2 |
+| + walking up to the keeper (optional) | 3 | 4 | 1 | 4 |
 
 The only yard walk that changed is going to Bill, and that one is the new door:
-Bill used to stand two steps from the jetty, and his cottage door is four.
+Bill used to stand two steps from the jetty, and his cottage door is four. His
+cottage is two rows deeper since his cabinet of oddities, so walking up to him
+is four steps rather than two; the key on the mat is still the one-key way in.
 
 ## How they were made
 

@@ -9,11 +9,14 @@
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --built=radio-mast,beacon
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=brocks-workshop --built=all
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=pokemon-centre --hurt=5
+ *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=bills-cottage --traded=40
  *
  * `--built=` is a list of rung ids from Brock's ladder, `all` or `none` (the
  * default). `--room=` draws the room behind that door instead of the yard, with
  * its keeper standing in it; `--hurt=N` puts that many Pokémon in the Center's
- * care. `--marks` names the doors, the mat, the keeper and every fixture,
+ * care, and `--traded=N` puts at least that many things on Bill's shelves
+ * (`tradedBook` in `baseGames.testkit.ts`), with `--inspect=I` framing the
+ * Ith of them the way looking at it in the game does. `--marks` names the doors, the mat, the keeper and every fixture,
  * `--collision` hatches what is solid, which is what says whether something
  * built has quietly walled a corner off, and `--walks` prints the one number
  * the base is designed against: how many steps each keeper is from where the
@@ -31,6 +34,7 @@ import { BASE_LANDING, BASE_SPAWN, getBaseMap } from '../../src/game/base/baseMa
 import { buildRoom, roomNamed } from '../../src/game/base/rooms';
 import { BASE_STARTS, walksToKeepers } from '../../src/game/base/baseWalks';
 import { baseGame } from '../../src/game/base/baseGames.testkit';
+import { ODDITY_INK, oddityArt } from '../../src/game/base/cabinet';
 import type { TileSource } from '../../src/game/world/tileset/catalogue';
 import type { MapLayers } from '../../src/game/world/tiles';
 
@@ -41,6 +45,8 @@ const option = (name: string) =>
 const builtFlag = option('built');
 const roomFlag = option('room');
 const hurt = Number(option('hurt') ?? '0');
+const traded = Number(option('traded') ?? '0');
+const inspected = option('inspect') === undefined ? undefined : Number(option('inspect'));
 const [target = 'base.png', zoomArgument = '3'] = args.filter((value) => !value.startsWith('--'));
 const zoom = Number(zoomArgument);
 
@@ -55,7 +61,7 @@ for (const id of built) {
     throw new Error(`no rung of Brock's ladder called '${id}'`);
   }
 }
-const game = baseGame({ built, hurt });
+const game = baseGame({ built, hurt, traded });
 
 const room = roomFlag === undefined ? null : roomNamed(roomFlag);
 if (roomFlag !== undefined && !room) {
@@ -137,6 +143,26 @@ if (room && drawnRoom) {
       sprite.x * TILE_SIZE,
       sprite.y * TILE_SIZE,
     );
+  }
+  // Bill's oddities, each painted from its pixel table as the scene paints it.
+  for (const placed of drawnRoom.cabinet?.layout.placed ?? []) {
+    oddityArt(placed.oddity.itemId).forEach((row, y) =>
+      [...row].forEach((ink, x) => {
+        if (ink === '.') return;
+        const colour = ODDITY_INK[ink];
+        plot(image, placed.x + x, placed.y + y, [colour >> 16, (colour >> 8) & 0xff, colour & 0xff]);
+      }),
+    );
+    if (placed.index === inspected) {
+      for (let x = -1; x <= placed.width; x += 1) {
+        plot(image, placed.x + x, placed.y - 1, [0xf7, 0xd3, 0x6b]);
+        plot(image, placed.x + x, placed.y + placed.height, [0xf7, 0xd3, 0x6b]);
+      }
+      for (let y = 0; y < placed.height; y += 1) {
+        plot(image, placed.x - 1, placed.y + y, [0xf7, 0xd3, 0x6b]);
+        plot(image, placed.x + placed.width, placed.y + y, [0xf7, 0xd3, 0x6b]);
+      }
+    }
   }
   const figure = readPng(`public/assets/characters/${room.keeper.design}.png`);
   // The down-idle frame: 16x32, soles on row 27, the tile's foot on row 31.

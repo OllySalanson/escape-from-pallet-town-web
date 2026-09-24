@@ -165,6 +165,16 @@ export class WorldLabel {
     }
   }
 
+  /**
+   * Off the screen and out of the seating altogether, for a frame in which the
+   * scene is saying one thing only. The next `seat` puts it back where it was.
+   */
+  public hide(): void {
+    this.held = undefined;
+    this.frame.setVisible(false);
+    this.label.setVisible(false);
+  }
+
   public destroy(): void {
     this.frame.destroy();
     this.label.destroy();
