@@ -4,9 +4,11 @@ import { getWorldMap, WORLD_MAPS, type WorldMapId } from '../worldMap';
 import { gatesForMap, gateStatesToVerify } from './gates';
 import { EXTRACTION_POINTS } from './extractionPoints';
 import {
+  collisionBlocker,
   findHunterBreakawayTile,
   HUNTER_BREAKAWAY_DISTANCE,
   HUNTER_SEARCH_MS,
+  planHunterBreakaway,
 } from './hunter';
 import { stepDistances, walkableTiles } from './mapStructure';
 import { createRunTrainerEncounters } from './trainers';
@@ -62,16 +64,26 @@ const HEADING_DELTA: Record<Direction, GridPosition> = {
   right: { x: 1, y: 0 },
 };
 
-/** Signs, townsfolk and live trainers block their own tile, as the engine does. */
+/**
+ * Signs, townsfolk and live trainers block their own tile, as the engine does.
+ * Drawn onto a copy of the collision and read once, because the sweep below
+ * asks it from every tile of the map.
+ */
 function blockerFor(mapId: WorldMapId): (tile: GridPosition) => boolean {
   const map = getWorldMap(mapId);
-  const taken = new Set(map.entities.map((entity) => `${entity.position.x},${entity.position.y}`));
+  const grid = map.collision.map((row) => [...row]);
+  const take = ({ x, y }: GridPosition): void => {
+    if (grid[y]?.[x] !== undefined) {
+      grid[y][x] = true;
+    }
+  };
+  map.entities.forEach((entity) => take(entity.position));
   for (const trainer of createRunTrainerEncounters()) {
     if (trainer.mapId === mapId) {
-      taken.add(`${trainer.position.x},${trainer.position.y}`);
+      take(trainer.position);
     }
   }
-  return (tile) => map.collision[tile.y]?.[tile.x] !== false || taken.has(`${tile.x},${tile.y}`);
+  return collisionBlocker(grid);
 }
 
 function boundsOf(mapId: WorldMapId) {
@@ -176,21 +188,12 @@ describe('what an escape buys', () => {
       // a raid is walking to, and on a 64x72 map the difference is the whole
       // test running or timing out.
       const detourCache = new Map<string, readonly Int32Array[]>();
-      // And one escape worked out per heading rather than per destination: the
-      // fallback is a search of its own and it does not know where the player
-      // was going, only which way they were facing.
-      const escapes = new Map<string, GridPosition>();
-      const fallBack = (heading: Direction | null): GridPosition => {
-        const known = escapes.get(heading ?? 'blind');
-        if (known) {
-          return known;
-        }
-        const away = heading
-          ? findHunterBreakawayTile(contact, player, bounds, isBlocked, HUNTER_BREAKAWAY_DISTANCE, heading)
-          : findHunterBreakawayTile(contact, player, bounds, isBlocked);
-        escapes.set(heading ?? 'blind', away);
-        return away;
-      };
+      // And the escape's searches done once for this tile rather than once per
+      // destination or per heading: the fallback does not know where the
+      // player was going, only which way they were facing, and the heading is
+      // only its last tie-break - `planHunterBreakaway` is exactly
+      // `findHunterBreakawayTile` with that split out.
+      const fallBack = planHunterBreakaway(contact, player, bounds, isBlocked);
       const around = (tile: GridPosition): readonly Int32Array[] => {
         const key = `${tile.x},${tile.y}`;
         const known = detourCache.get(key);

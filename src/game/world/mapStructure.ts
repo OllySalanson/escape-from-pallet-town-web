@@ -14,7 +14,7 @@ import type { GridPosition } from '../movement/gridMovement';
  *   many connected lumps of them there are. "You walk down and the whole map is
  *   one huge bit of grass" is literally one blob of a few hundred tiles.
  *
- * Both are cheap to compute and are asserted per map in `mapStructure.test.ts`.
+ * Both are cheap to compute and are asserted per map in `mapStructure.testkit.ts`.
  */
 
 export type CollisionGrid = readonly (readonly boolean[])[];
@@ -183,8 +183,8 @@ export function openGround(collision: CollisionGrid, clearance = 3): OpenGroundS
 /**
  * Step distance from `from` to every reachable tile; -1 where unreachable.
  *
- * The rows are `Int32Array`s and the queue is two flat ones, which reads the
- * same at every call site (`field[y][x]`) and matters because this is the
+ * The rows are `Int32Array` views of one buffer and the queue is a flat one,
+ * which reads the same at every call site (`field[y][x]`) and matters because this is the
  * hot loop of every rule a map is held to: the structure suite alone runs it
  * a few hundred thousand times over a 128x128 map, and a typed row clears in
  * one memset where an array of numbers clears a cell at a time.
@@ -196,44 +196,67 @@ export function stepDistances(
 ): readonly Int32Array[] {
   const height = collision.length;
   const width = collision[0]?.length ?? 0;
+  // One buffer, a row a view of it, so the whole field is one allocation and
+  // one fill.
+  const field = new Int32Array(width * height).fill(-1);
   const distances: Int32Array[] = [];
   for (let y = 0; y < height; y += 1) {
-    distances.push(new Int32Array(width).fill(-1));
+    distances.push(field.subarray(y * width, (y + 1) * width));
   }
+  // The extra walls are read once into a mask rather than asked as a string
+  // per neighbour: building `"x,y"` four times a tile was the most expensive
+  // thing this loop did.
+  const extra = blockedMask(extraBlocked, width, height);
   const passable = (x: number, y: number): boolean =>
-    !isBlockedAt(collision, x, y) && !extraBlocked.has(`${x},${y}`);
+    !isBlockedAt(collision, x, y) && (extra === null || extra[y * width + x] === 0);
   if (!passable(from.x, from.y)) {
     return distances;
   }
 
-  distances[from.y][from.x] = 0;
-  const queueX = new Int32Array(width * height);
-  const queueY = new Int32Array(width * height);
-  queueX[0] = from.x;
-  queueY[0] = from.y;
+  field[from.y * width + from.x] = 0;
+  const queue = new Int32Array(width * height);
+  queue[0] = from.y * width + from.x;
   let head = 0;
   let tail = 1;
   while (head < tail) {
-    const x = queueX[head];
-    const y = queueY[head];
+    const here = queue[head];
     head += 1;
-    const next = distances[y][x] + 1;
+    const x = here % width;
+    const y = (here - x) / width;
+    const next = field[here] + 1;
     for (const [dx, dy] of ORTHOGONAL) {
       const nx = x + dx;
       const ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
         continue;
       }
-      if (distances[ny][nx] !== -1 || !passable(nx, ny)) {
+      const index = ny * width + nx;
+      if (field[index] !== -1 || !passable(nx, ny)) {
         continue;
       }
-      distances[ny][nx] = next;
-      queueX[tail] = nx;
-      queueY[tail] = ny;
+      field[index] = next;
+      queue[tail] = index;
       tail += 1;
     }
   }
   return distances;
+}
+
+/** A set of `"x,y"` keys as a mask over the grid, or null when it holds nothing on it. */
+function blockedMask(keys: ReadonlySet<string>, width: number, height: number): Uint8Array | null {
+  if (keys.size === 0) {
+    return null;
+  }
+  const mask = new Uint8Array(width * height);
+  for (const key of keys) {
+    const comma = key.indexOf(',');
+    const x = Number(key.slice(0, comma));
+    const y = Number(key.slice(comma + 1));
+    if (comma > 0 && Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < width && y < height) {
+      mask[y * width + x] = 1;
+    }
+  }
+  return mask;
 }
 
 export function unreachableTiles(

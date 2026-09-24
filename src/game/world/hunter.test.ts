@@ -9,6 +9,7 @@ import { RUN_INSERTIONS } from '../run/runGeneration';
 import { createActiveRunSession } from '../run/RunSession';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 import {
+  collisionBlocker,
   HUNTER_BREAKAWAY_DISTANCE,
   HUNTER_SEARCH_MS,
   applyHunterBreakaway,
@@ -41,7 +42,8 @@ const mapBlocker = (mapId: WorldMapId) => {
   const map = WORLD_MAPS[mapId];
   return {
     bounds: { width: map.width, height: map.height },
-    isBlocked: (tile: { x: number; y: number }) => map.collision[tile.y][tile.x],
+    // Read once up front: the sweeps below search the whole map from every tile.
+    isBlocked: collisionBlocker(map.collision),
     walkableTiles: map.collision.flatMap((row, y) =>
       row.flatMap((blocked, x) => (blocked ? [] : [{ x, y }])),
     ),
