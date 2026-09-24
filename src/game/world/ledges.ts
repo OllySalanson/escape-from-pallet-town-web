@@ -14,7 +14,7 @@ import type { WorldMapId } from '../worldMap';
  *
  * Nothing about the map changes to make one. The brow is ground the player
  * already stands on, the ledge itself is already the sheet's bank art and
- * already solid, and the landing is already walkable: `mapStructure.test.ts`
+ * already solid, and the landing is already walkable: `mapStructure.testkit.ts`
  * and `hunterFlee.test.ts` therefore see exactly the map they saw before, and
  * the ledge can never be the only way anywhere. `ledges.test.ts` holds the rest
  * - that the way round still exists and is genuinely longer, that nothing a

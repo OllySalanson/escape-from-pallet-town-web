@@ -30,7 +30,7 @@ import { standingFixtures } from './fixtures';
  * It is not a `WorldMapId`. A raid map carries a hunter, a clock, wildlife,
  * loot, districts, gates and a density budget, and every one of those is a rule
  * the base would have to be excused from; keeping it out of that union is what
- * lets `mapStructure.test.ts` go on meaning what it means. What it does share
+ * lets `mapStructure.testkit.ts` go on meaning what it means. What it does share
  * is the drawing: the same `MapSketch`, the same catalogue, the same
  * `buildMapLayers`, so the base is the same art in the same hand.
  *

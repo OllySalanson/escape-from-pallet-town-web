@@ -33,7 +33,7 @@ import { sketchViridianForest } from './maps/viridianForest';
  * planted by name is not in the grid at all, so a bridge reads as the deep
  * water under its deck. And none of these drawings marks content any more:
  * insertions, exits, landmarks, trainers and signs are authored in their own
- * files, and `worldMap.test.ts` and `mapStructure.test.ts` hold them to this
+ * files, and `worldMap.test.ts` and `mapStructure.testkit.ts` hold them to this
  * ground.
  */
 

@@ -9,7 +9,7 @@ import type { WorldEntity } from './npcs';
  * small change that can quietly break a map, because a figure blocks its own
  * tile and a map is judged as a network of passages. So a beat is authored
  * rather than wandered: `NpcIdle.roam` is the whole set of tiles a person may
- * ever stand on besides the one they were placed on, `mapStructure.test.ts`
+ * ever stand on besides the one they were placed on, `mapStructure.testkit.ts`
  * holds every map with **all** of them solid at once - which is stricter than
  * any single position the game can actually be in - and this module never
  * invents a tile that is not on that list.

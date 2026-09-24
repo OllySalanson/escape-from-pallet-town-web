@@ -7,7 +7,7 @@ import { createRunTrainerEncounters } from './trainers';
 /**
  * Route facts for the hand-drawn maps, measured the way a player walks them.
  *
- * `mapStructure.test.ts` holds every map to the same rules; what it cannot say
+ * `mapStructure.testkit.ts` holds every map to the same rules; what it cannot say
  * is what a particular map is *for* - that the bridge is the quick way and the
  * far ford the quiet one, that June is a door and Ivy is not. Those are facts
  * about one drawing, and a redraw that loses one still passes every rule. Each

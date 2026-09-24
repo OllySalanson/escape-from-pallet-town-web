@@ -29,6 +29,11 @@ export default defineConfig({
      * seconds a build, which was also a raid starting with a stutter), and the
      * flee sweep asks for the map's doors once per tile instead of once per
      * heading. What is left is honest work, and the bound is what it needs.
+     *
+     * The suite as a whole is kept fast by splitting such sweeps into files,
+     * because vitest runs files side by side and the tests inside one in turn:
+     * the structure rules were one file and fifteen minutes of CI on one core.
+     * See `mapStructure.testkit.ts` and the suite note in `AGENTS.md`.
      */
     testTimeout: 120_000,
     maxWorkers: MAX_WORKERS,

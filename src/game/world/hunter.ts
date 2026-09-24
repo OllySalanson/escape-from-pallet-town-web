@@ -323,6 +323,8 @@ const PURSUIT_STEP_DELTAS: readonly GridPosition[] = [
   { x: -1, y: 0 },
   { x: 1, y: 0 },
 ];
+const STEP_DX = [0, 0, -1, 1] as const;
+const STEP_DY = [-1, 1, 0, 0] as const;
 
 const UNREACHED = -1;
 
@@ -333,6 +335,131 @@ const tileIndex = (tile: GridPosition, bounds: GridBounds): number => tile.y * b
 
 const manhattanDistance = (from: GridPosition, to: GridPosition): number =>
   Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
+
+/**
+ * `isBlocked` for one search, asked at most once a tile and answered by tile
+ * index. Every search below walks the whole map and asks about each tile from
+ * up to four sides, and the flee and pursuit rules in `mapStructure.testkit.ts` run
+ * these searches from every tile of every map in every gate state - so the
+ * callback, and the position object built to ask it, were most of the suite's
+ * wall clock. The answers are the callback's own, so nothing a search returns
+ * changes; off the map is blocked, as `walkableNeighbours` always had it.
+ */
+interface BlockedLookup {
+  readonly width: number;
+  readonly height: number;
+  /** Whether the tile at this index cannot be stood on. */
+  readonly at: (index: number) => boolean;
+  /** The index one step in direction `step` (0-3, N/S/W/E), or UNREACHED off the map or into a wall. */
+  readonly step: (index: number, step: number) => number;
+}
+
+/**
+ * Every tile's answer, worked out once, for the `isBlocked` functions made by
+ * `collisionBlocker`. Keyed by the function, so nothing about the searches'
+ * signatures changes: a caller hands over a function as it always did, and a
+ * search that recognises one skips asking it sixteen thousand times.
+ */
+const PRECOMPUTED_BLOCKERS = new WeakMap<
+  (tile: GridPosition) => boolean,
+  {
+    readonly width: number;
+    readonly height: number;
+    readonly mask: Uint8Array;
+    /** Four entries a tile, N/S/W/E: the index one step that way, or UNREACHED. */
+    readonly neighbours: Int32Array;
+  }
+>();
+
+/**
+ * `isBlocked` for a fixed collision grid - blocked unless the grid says the
+ * tile is walkable, and blocked off it - with every tile's answer read once
+ * up front.
+ *
+ * It is for callers that ask the same map the same question from every tile
+ * of it: the structure and flee suites run a whole-map search per walkable tile
+ * per gate state, and asking a callback per tile per search was the largest
+ * cost left in them once the searches themselves were typed arrays. The grid is
+ * read when this is called, so it is only for a grid that does not change
+ * afterwards - which every built map is, a gate state being a different map.
+ */
+export const collisionBlocker = (
+  collision: readonly (readonly boolean[])[],
+): ((tile: GridPosition) => boolean) => {
+  const height = collision.length;
+  const width = collision[0]?.length ?? 0;
+  /** 1 open, 2 blocked: the same encoding `blockedLookup` fills in lazily. */
+  const mask = new Uint8Array(width * height);
+  for (let y = 0; y < height; y += 1) {
+    const row = collision[y];
+    for (let x = 0; x < width; x += 1) {
+      mask[y * width + x] = row[x] === false ? 1 : 2;
+    }
+  }
+  // Where every step from every tile lands, worked out once, so a search's
+  // inner loop is one read rather than a division and four bounds checks.
+  const neighbours = new Int32Array(width * height * 4).fill(UNREACHED);
+  for (let index = 0; index < width * height; index += 1) {
+    const x = index % width;
+    const y = (index / width) | 0;
+    for (let direction = 0; direction < 4; direction += 1) {
+      const nx = x + STEP_DX[direction];
+      const ny = y + STEP_DY[direction];
+      if (nx >= 0 && ny >= 0 && nx < width && ny < height && mask[ny * width + nx] === 1) {
+        neighbours[index * 4 + direction] = ny * width + nx;
+      }
+    }
+  }
+  const isBlocked = (tile: GridPosition): boolean =>
+    tile.x < 0 || tile.y < 0 || tile.x >= width || tile.y >= height
+      ? true
+      : mask[tile.y * width + tile.x] === 2;
+  PRECOMPUTED_BLOCKERS.set(isBlocked, { width, height, mask, neighbours });
+  return isBlocked;
+};
+
+const blockedLookup = (
+  bounds: GridBounds,
+  isBlocked: (tile: GridPosition) => boolean,
+): BlockedLookup => {
+  const { width, height } = bounds;
+  const found = PRECOMPUTED_BLOCKERS.get(isBlocked);
+  const precomputed = found && found.width === width && found.height === height ? found : null;
+  if (precomputed) {
+    const { mask, neighbours } = precomputed;
+    return {
+      width,
+      height,
+      at: (index) => mask[index] === 2,
+      step: (index, direction) => neighbours[index * 4 + direction],
+    };
+  }
+  /** 0 not yet asked, 1 open, 2 blocked. */
+  const known = new Uint8Array(width * height);
+  const at = (index: number): boolean => {
+    let answer = known[index];
+    if (answer === 0) {
+      answer = isBlocked({ x: index % width, y: (index / width) | 0 }) ? 2 : 1;
+      known[index] = answer;
+    }
+    return answer === 2;
+  };
+  const step = (index: number, direction: number): number => {
+    const x = (index % width) + STEP_DX[direction];
+    const y = ((index / width) | 0) + STEP_DY[direction];
+    if (x < 0 || y < 0 || x >= width || y >= height) {
+      return UNREACHED;
+    }
+    const next = y * width + x;
+    return at(next) ? UNREACHED : next;
+  };
+  return { width, height, at, step };
+};
+
+const positionOf = (index: number, width: number): GridPosition => ({
+  x: index % width,
+  y: (index / width) | 0,
+});
 
 const walkableNeighbours = (
   tile: GridPosition,
@@ -351,24 +478,36 @@ const walkableNeighbours = (
 const buildDistanceField = (
   goals: readonly GridPosition[],
   bounds: GridBounds,
-  isBlocked: (tile: GridPosition) => boolean,
+  blocked: BlockedLookup,
 ): Int32Array => {
-  const distances = new Int32Array(bounds.width * bounds.height).fill(UNREACHED);
-  const frontier = goals.filter((tile) => isInsideBounds(tile, bounds) && !isBlocked(tile));
-  for (const tile of frontier) {
-    distances[tileIndex(tile, bounds)] = 0;
+  const size = bounds.width * bounds.height;
+  const distances = new Int32Array(size).fill(UNREACHED);
+  const queue = new Int32Array(size);
+  let tail = 0;
+  for (const tile of goals) {
+    if (!isInsideBounds(tile, bounds)) {
+      continue;
+    }
+    const index = tileIndex(tile, bounds);
+    if (distances[index] !== UNREACHED || blocked.at(index)) {
+      continue;
+    }
+    distances[index] = 0;
+    queue[tail] = index;
+    tail += 1;
   }
 
-  for (let head = 0; head < frontier.length; head += 1) {
-    const tile = frontier[head];
-    const nextDistance = distances[tileIndex(tile, bounds)] + 1;
-    for (const neighbour of walkableNeighbours(tile, bounds, isBlocked)) {
-      const index = tileIndex(neighbour, bounds);
-      if (distances[index] !== UNREACHED) {
+  for (let head = 0; head < tail; head += 1) {
+    const here = queue[head];
+    const nextDistance = distances[here] + 1;
+    for (let direction = 0; direction < 4; direction += 1) {
+      const index = blocked.step(here, direction);
+      if (index === UNREACHED || distances[index] !== UNREACHED) {
         continue;
       }
       distances[index] = nextDistance;
-      frontier.push(neighbour);
+      queue[tail] = index;
+      tail += 1;
     }
   }
 
@@ -437,15 +576,20 @@ const findClosestApproachTile = (
   hunter: GridPosition,
   player: GridPosition,
   bounds: GridBounds,
-  isBlocked: (tile: GridPosition) => boolean,
+  blocked: BlockedLookup,
 ): GridPosition => {
-  const visited = new Uint8Array(bounds.width * bounds.height);
-  visited[tileIndex(hunter, bounds)] = 1;
-  const reached = [hunter];
+  const size = bounds.width * bounds.height;
+  const visited = new Uint8Array(size);
+  const reached = new Int32Array(size);
+  const start = tileIndex(hunter, bounds);
+  visited[start] = 1;
+  reached[0] = start;
+  let tail = 1;
   let best = hunter;
 
-  for (let head = 0; head < reached.length; head += 1) {
-    const tile = reached[head];
+  for (let head = 0; head < tail; head += 1) {
+    const here = reached[head];
+    const tile = positionOf(here, bounds.width);
     const distance = manhattanDistance(tile, player);
     const bestDistance = manhattanDistance(best, player);
     if (
@@ -454,13 +598,14 @@ const findClosestApproachTile = (
     ) {
       best = tile;
     }
-    for (const neighbour of walkableNeighbours(tile, bounds, isBlocked)) {
-      const index = tileIndex(neighbour, bounds);
-      if (visited[index] === 1) {
+    for (let direction = 0; direction < 4; direction += 1) {
+      const index = blocked.step(here, direction);
+      if (index === UNREACHED || visited[index] === 1) {
         continue;
       }
       visited[index] = 1;
-      reached.push(neighbour);
+      reached[tail] = index;
+      tail += 1;
     }
   }
 
@@ -482,21 +627,23 @@ export const findHunterPursuitPath = (
   if (!isInsideBounds(hunter, bounds) || isHunterContactingPlayer(hunter, player)) {
     return [];
   }
-  const contactDistances = buildDistanceField(contactGoals(player), bounds, isBlocked);
+  const blocked = blockedLookup(bounds, isBlocked);
+  const isBlockedTile = (tile: GridPosition): boolean => blocked.at(tileIndex(tile, bounds));
+  const contactDistances = buildDistanceField(contactGoals(player), bounds, blocked);
   if (contactDistances[tileIndex(hunter, bounds)] !== UNREACHED) {
-    return routeDownhill(hunter, player, contactDistances, bounds, isBlocked);
+    return routeDownhill(hunter, player, contactDistances, bounds, isBlockedTile);
   }
 
-  const approach = findClosestApproachTile(hunter, player, bounds, isBlocked);
+  const approach = findClosestApproachTile(hunter, player, bounds, blocked);
   if (approach.x === hunter.x && approach.y === hunter.y) {
     return [];
   }
   return routeDownhill(
     hunter,
     approach,
-    buildDistanceField([approach], bounds, isBlocked),
+    buildDistanceField([approach], bounds, blocked),
     bounds,
-    isBlocked,
+    isBlockedTile,
   );
 };
 
@@ -543,33 +690,36 @@ export const findHunterSpawnTile = (
   if (!isInsideBounds(player, bounds)) {
     return null;
   }
+  const blocked = blockedLookup(bounds, isBlocked);
   const visited = new Uint8Array(bounds.width * bounds.height);
-  visited[tileIndex(player, bounds)] = 1;
+  const start = tileIndex(player, bounds);
+  visited[start] = 1;
   // Ring N holds every tile exactly N walkable steps out, so ring 0 is the player.
-  const rings: GridPosition[][] = [[player]];
+  let ring: number[] = [start];
+  let furthestRing = 0;
   for (let distance = 0; distance < spawnDistance; distance += 1) {
-    const nextRing: GridPosition[] = [];
-    for (const tile of rings[distance]) {
-      for (const neighbour of walkableNeighbours(tile, bounds, isBlocked)) {
-        const index = tileIndex(neighbour, bounds);
-        if (visited[index] === 1) {
+    const nextRing: number[] = [];
+    for (const here of ring) {
+      for (let direction = 0; direction < 4; direction += 1) {
+        const index = blocked.step(here, direction);
+        if (index === UNREACHED || visited[index] === 1) {
           continue;
         }
         visited[index] = 1;
-        nextRing.push(neighbour);
+        nextRing.push(index);
       }
     }
     if (nextRing.length === 0) {
       break;
     }
-    rings.push(nextRing);
+    ring = nextRing;
+    furthestRing = distance + 1;
   }
 
-  const furthestRing = rings.length - 1;
   if (furthestRing < HUNTER_MINIMUM_SPAWN_DISTANCE) {
     return null;
   }
-  return pick(rings[furthestRing]);
+  return pick(ring.map((index) => positionOf(index, bounds.width)));
 };
 
 /**
@@ -665,13 +815,25 @@ export const doorsFrom = (
   bounds: GridBounds,
   isBlocked: (tile: GridPosition) => boolean,
   goals: readonly GridPosition[] = [],
+): MapDoors => doorsFromLookup(from, bounds, blockedLookup(bounds, isBlocked), goals);
+
+const doorsFromLookup = (
+  from: GridPosition,
+  bounds: GridBounds,
+  blocked: BlockedLookup,
+  goals: readonly GridPosition[],
 ): MapDoors => {
-  const doors = new Set<number>();
   const sealsIn = new Set<number>();
-  if (!isInsideBounds(from, bounds) || isBlocked(from)) {
-    return { doors, sealsIn };
+  if (!isInsideBounds(from, bounds) || blocked.at(tileIndex(from, bounds))) {
+    return { doors: new Set<number>(), sealsIn };
   }
   const size = bounds.width * bounds.height;
+  // The doors as flags and a list in the order they are found, not a set: on a
+  // map of one-tile lanes nearly every tile is one, and most callers only want
+  // `sealsIn`. The set is built from the list, in the same order, if asked for.
+  const isDoor = new Uint8Array(size);
+  const doorList = new Int32Array(size);
+  let doorCount = 0;
   const discovered = new Int32Array(size).fill(UNREACHED);
   const lowest = new Int32Array(size);
   /** Goals inside a tile's search subtree, and goals its doors shut away. */
@@ -686,40 +848,45 @@ export const doorsFrom = (
   const root = tileIndex(from, bounds);
   let order = 0;
 
-  const tiles: GridPosition[] = [from];
-  const parents: number[] = [UNREACHED];
-  const neighbours: GridPosition[][] = [walkableNeighbours(from, bounds, isBlocked)];
-  const cursors: number[] = [0];
+  // The explicit stack, one frame a tile: the tile, its parent, and which of
+  // its four sides the walk has looked at so far.
+  const tiles = new Int32Array(size);
+  const parents = new Int32Array(size);
+  const cursors = new Uint8Array(size);
+  let depth = 1;
+  tiles[0] = root;
+  parents[0] = UNREACHED;
+  cursors[0] = 0;
   discovered[root] = order;
   lowest[root] = order;
   goalsBelow[root] = isGoal[root];
   order += 1;
 
-  while (tiles.length > 0) {
-    const top = tiles.length - 1;
-    const here = tileIndex(tiles[top], bounds);
-    if (cursors[top] < neighbours[top].length) {
-      const neighbour = neighbours[top][cursors[top]];
+  while (depth > 0) {
+    const top = depth - 1;
+    const here = tiles[top];
+    if (cursors[top] < 4) {
+      const index = blocked.step(here, cursors[top]);
       cursors[top] += 1;
-      const index = tileIndex(neighbour, bounds);
+      if (index === UNREACHED) {
+        continue;
+      }
       if (discovered[index] === UNREACHED) {
         discovered[index] = order;
         lowest[index] = order;
         goalsBelow[index] = isGoal[index];
         order += 1;
-        tiles.push(neighbour);
-        parents.push(here);
-        neighbours.push(walkableNeighbours(neighbour, bounds, isBlocked));
-        cursors.push(0);
+        tiles[depth] = index;
+        parents[depth] = here;
+        cursors[depth] = 0;
+        depth += 1;
       } else if (index !== parents[top]) {
         lowest[here] = Math.min(lowest[here], discovered[index]);
       }
       continue;
     }
-    tiles.pop();
-    neighbours.pop();
-    cursors.pop();
-    const parent = parents.pop()!;
+    depth -= 1;
+    const parent = parents[top];
     if (parent === UNREACHED) {
       continue;
     }
@@ -729,7 +896,11 @@ export const doorsFrom = (
     // `parent` shuts all of it away from `from`. The root is exempt: it is the
     // tile `from` is on, and nobody else can be standing there.
     if (parent !== root && lowest[here] >= discovered[parent]) {
-      doors.add(parent);
+      if (isDoor[parent] === 0) {
+        isDoor[parent] = 1;
+        doorList[doorCount] = parent;
+        doorCount += 1;
+      }
       goalsShut[parent] += goalsBelow[here];
     }
   }
@@ -737,7 +908,8 @@ export const doorsFrom = (
   // Only goals `from` could reach in the first place are goals it can lose, and
   // a goal is lost by being stood on as surely as by being shut away.
   const within = goalsBelow[root];
-  for (const door of doors) {
+  for (let place = 0; place < doorCount; place += 1) {
+    const door = doorList[place];
     if (within > 0 && within - goalsShut[door] - isGoal[door] <= 0) {
       sealsIn.add(door);
     }
@@ -753,7 +925,14 @@ export const doorsFrom = (
     }
   }
 
-  return { doors, sealsIn };
+  let doors: ReadonlySet<number> | undefined;
+  return {
+    get doors() {
+      doors ??= new Set(doorList.subarray(0, doorCount));
+      return doors;
+    },
+    sealsIn,
+  };
 };
 
 /** The index `doorsFrom` keys a tile by, so a caller can ask about one. */
@@ -804,36 +983,62 @@ export const findHunterBreakawayTile = (
   /**
    * The doors of the map as seen from the player, where the caller already has
    * them. This is the only whole-map search in the function that does not
-   * depend on where the hunter is, so a caller asking what four headings would
-   * do from one tile - which is what the structure rules ask of every tile of
-   * every map - hands over one answer instead of paying for it four times.
+   * depend on where the hunter is, so a caller asking about many hunters from
+   * one tile hands over one answer instead of paying for it each time.
    */
   doors: MapDoors | null = null,
-): GridPosition => {
-  if (!isInsideBounds(hunter, bounds)) {
-    return hunter;
-  }
-  const fromPlayer = buildDistanceField([player], bounds, isBlocked);
-  const separation = (tile: GridPosition): number => {
-    const distance = fromPlayer[tileIndex(tile, bounds)];
-    return distance === UNREACHED ? 0 : Math.min(distance, breakawayDistance);
-  };
+): GridPosition =>
+  planHunterBreakaway(hunter, player, bounds, isBlocked, breakawayDistance, mustReach, doors)(
+    heading,
+  );
 
-  const visited = new Uint8Array(bounds.width * bounds.height);
-  visited[tileIndex(hunter, bounds)] = 1;
+/**
+ * `findHunterBreakawayTile` for every heading at once.
+ *
+ * The heading is the last thing the choice reads - it only breaks a tie between
+ * tiles that are equal on everything else - so the two searches and the doors
+ * behind it are the same whichever way the player was walking. The structure
+ * rules ask what all four headings would do from every tile of every map, and
+ * this is what lets them pay for the searches once rather than four times. The
+ * answer for a heading is exactly `findHunterBreakawayTile`'s, which is this.
+ */
+export const planHunterBreakaway = (
+  hunter: GridPosition,
+  player: GridPosition,
+  bounds: GridBounds,
+  isBlocked: (tile: GridPosition) => boolean,
+  breakawayDistance: number = HUNTER_BREAKAWAY_DISTANCE,
+  mustReach: readonly GridPosition[] = [],
+  doors: MapDoors | null = null,
+): ((heading: Direction | null) => GridPosition) => {
+  if (!isInsideBounds(hunter, bounds)) {
+    return () => hunter;
+  }
+  const { width } = bounds;
+  const blocked = blockedLookup(bounds, isBlocked);
+  const fromPlayer = buildDistanceField([player], bounds, blocked);
+
+  const size = width * bounds.height;
+  const visited = new Uint8Array(size);
+  const start = tileIndex(hunter, bounds);
+  visited[start] = 1;
   // Breadth-first, so `reached` is ordered by how soon the hunter gets there and
   // `walk` is the number of steps it would have taken to back off that far.
-  const reached = [hunter];
-  const walk = [0];
-  for (let head = 0; head < reached.length; head += 1) {
-    for (const neighbour of walkableNeighbours(reached[head], bounds, isBlocked)) {
-      const index = tileIndex(neighbour, bounds);
-      if (visited[index] === 1) {
+  const reached = new Int32Array(size);
+  const walk = new Int32Array(size);
+  reached[0] = start;
+  walk[0] = 0;
+  let count = 1;
+  for (let head = 0; head < count; head += 1) {
+    for (let direction = 0; direction < 4; direction += 1) {
+      const index = blocked.step(reached[head], direction);
+      if (index === UNREACHED || visited[index] === 1) {
         continue;
       }
       visited[index] = 1;
-      reached.push(neighbour);
-      walk.push(walk[head] + 1);
+      reached[count] = index;
+      walk[count] = walk[head] + 1;
+      count += 1;
     }
   }
 
@@ -844,18 +1049,9 @@ export const findHunterBreakawayTile = (
    * stops "furthest behind the player" from reaching across the whole map when a
    * dozen tiles are tied on separation.
    */
-  const hunterToPlayer = fromPlayer[tileIndex(hunter, bounds)];
+  const hunterToPlayer = fromPlayer[start];
   const walkLimit =
     (hunterToPlayer === UNREACHED ? breakawayDistance : hunterToPlayer) + breakawayDistance + 1;
-  const delta = heading === null ? null : DIRECTION_DELTAS[heading];
-  /** Positive is in front of the player, negative behind: smaller is a better retreat. */
-  const aheadOfPlayer = (tile: GridPosition): number =>
-    delta === null ? 0 : (tile.x - player.x) * delta.x + (tile.y - player.y) * delta.y;
-
-  const playerDistance = (tile: GridPosition): number => {
-    const distance = fromPlayer[tileIndex(tile, bounds)];
-    return distance === UNREACHED ? Number.POSITIVE_INFINITY : distance;
-  };
 
   /**
    * Most separation first, because that is what the escape is for; then a tile
@@ -866,38 +1062,77 @@ export const findHunterBreakawayTile = (
    * running both ways is the whole question; a retreat the hunter could have
    * walked comes before it so a tie can never be settled by a tile across the
    * map, and the tile it reaches soonest settles what is left, deterministically.
+   *
+   * The first four of those do not depend on the heading, so they are settled
+   * here, once: `tied` is every tile that is best on all four, in the order the
+   * hunter reaches them.
    */
-  const { sealsIn } = doors ?? doorsFrom(player, bounds, isBlocked, mustReach);
-  const rank = (index: number): readonly number[] => [
-    -separation(reached[index]),
-    sealsIn.has(tileIndex(reached[index], bounds)) ? 1 : 0,
-    playerDistance(reached[index]),
-    walk[index] > walkLimit ? 1 : 0,
-    aheadOfPlayer(reached[index]),
-    walk[index],
-  ];
-
-  // Compared in place rather than sorted: `reached` is every tile the hunter
-  // can walk to, so on a map 128 tiles square building a rank for each of them
-  // is six thousand arrays a call, and this is called from every tile of every
-  // map in every gate state by `mapStructure.test.ts`.
-  let best = 0;
-  let bestRank = rank(0);
-  for (let index = 1; index < reached.length; index += 1) {
-    const candidate = rank(index);
-    for (let place = 0; place < candidate.length; place += 1) {
-      if (candidate[place] === bestRank[place]) {
-        continue;
-      }
-      if (candidate[place] < bestRank[place]) {
-        best = index;
-        bestRank = candidate;
-      }
-      break;
+  // With nothing to reach nothing can be sealed in, so the whole-map door walk
+  // is only paid for when there are exits to protect.
+  const { sealsIn } =
+    doors ??
+    (mustReach.length === 0
+      ? { sealsIn: new Set<number>() }
+      : doorsFromLookup(player, bounds, blocked, mustReach));
+  // One pass, keeping every tile that is best so far on all four: first
+  // `tied` holds whatever beat everything before it, and a tile that beats
+  // the tied ones clears the list.
+  let bestSeparation = -1;
+  let bestSeals = 2;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  let bestFar = 2;
+  const tied: number[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const tile = reached[index];
+    const distance = fromPlayer[tile];
+    const separation = distance === UNREACHED ? 0 : Math.min(distance, breakawayDistance);
+    if (separation < bestSeparation) {
+      continue;
+    }
+    const seals = sealsIn.size > 0 && sealsIn.has(tile) ? 1 : 0;
+    const playerDistance = distance === UNREACHED ? Number.POSITIVE_INFINITY : distance;
+    const far = walk[index] > walkLimit ? 1 : 0;
+    const order =
+      bestSeparation - separation ||
+      seals - bestSeals ||
+      (playerDistance === bestDistance ? 0 : playerDistance < bestDistance ? -1 : 1) ||
+      far - bestFar;
+    if (order < 0) {
+      tied.length = 0;
+      bestSeparation = separation;
+      bestSeals = seals;
+      bestDistance = playerDistance;
+      bestFar = far;
+    }
+    if (order <= 0) {
+      tied.push(index);
     }
   }
 
-  return reached[best];
+  return (heading) => {
+    const delta = heading === null ? null : DIRECTION_DELTAS[heading];
+    /** Positive is in front of the player, negative behind: smaller is a better retreat. */
+    const aheadOfPlayer = (index: number): number => {
+      if (delta === null) {
+        return 0;
+      }
+      const tile = reached[index];
+      return ((tile % width) - player.x) * delta.x + (((tile / width) | 0) - player.y) * delta.y;
+    };
+    // Compared in place, and the first of equals kept: `tied` is in the order
+    // the hunter reaches its tiles, so that is the soonest.
+    let best = tied[0];
+    let bestAhead = aheadOfPlayer(best);
+    for (let place = 1; place < tied.length; place += 1) {
+      const index = tied[place];
+      const ahead = aheadOfPlayer(index);
+      if (ahead < bestAhead || (ahead === bestAhead && walk[index] < walk[best])) {
+        best = index;
+        bestAhead = ahead;
+      }
+    }
+    return positionOf(reached[best], width);
+  };
 };
 
 /** Places a disengaged hunter on its fallback tile and clears the pending marker. */

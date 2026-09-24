@@ -1,7 +1,7 @@
 /**
  * What a map measures, printed.
  *
- * The invariants in `mapStructure.test.ts` are pass/fail; while a map is being
+ * The invariants in `mapStructure.testkit.ts` are pass/fail; while a map is being
  * drawn what you need is the number and *where*. This prints the same
  * measurements plus the one thing a test cannot: a picture of which pieces of
  * ground are joined to which, so a district drawn one tile short of its
