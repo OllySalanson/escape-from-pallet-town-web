@@ -1,10 +1,13 @@
 export {
   buildDropInBriefing,
   gradeLine,
+  largestMapSize,
+  mapPicture,
   placePicture,
 
   type DropInBriefing,
   type DropInContext,
+  type MapPictureContext,
   type PlaceGrade,
   type PlaceRecord,
 } from './dropIn';

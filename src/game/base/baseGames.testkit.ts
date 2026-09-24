@@ -65,13 +65,18 @@ export function tradedBook(oddities: number): readonly CabinetEntry[] {
   return book;
 }
 
-/** A base with these rungs built and this many Pokémon waiting at the Center. */
+/**
+ * A base with these rungs built and this many Pokémon waiting at the Center,
+ * and anything else the raids have left in the record - keepers beaten, ground
+ * walked - which is what the wall map in Oak's Lab is a picture of.
+ */
 export function baseGame(
   options: {
     built?: readonly string[];
     hurt?: number;
     /** At least this many things bartered to Bill - see `tradedBook`. */
     traded?: number;
+    progress?: Partial<RaidProgress>;
   } = {},
 ): RestoredGame {
   const stash = createStartingStash(CHARMANDER);
@@ -84,6 +89,7 @@ export function baseGame(
   }
   const book = tradedBook(options.traded ?? 0);
   return restoreBase(stash, {
+    ...options.progress,
     workshopUpgrades: [...(options.built ?? [])],
     traderCabinet: book,
     traderBarters: [

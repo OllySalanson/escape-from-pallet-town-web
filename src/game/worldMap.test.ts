@@ -23,8 +23,7 @@ describe('worldMap', () => {
       'floodplain-relay',
     ]);
     // Pallet Town is the valley one: the town it shipped as is its north-west
-    // quarter and the parish round it is the rest, up to the ceiling the
-    // lobby's banner sets on a picture drawn at one pixel to the tile.
+    // quarter and the parish round it is the rest.
     expect(getWorldMap('pallet-town').width).toBe(64);
     expect(getWorldMap('pallet-town').height).toBe(76);
     // Route 1 and Viridian Forest are the long ones now: each is four and a
@@ -36,11 +35,11 @@ describe('worldMap', () => {
     expect(getWorldMap('route-1').height).toBe(72);
     expect(getWorldMap('viridian-forest').width).toBe(64);
     expect(getWorldMap('viridian-forest').height).toBe(72);
-    // The Floodplain is the vast one, and the only one that outgrew the
-    // banner: four times the river town it grew out of, and more than three
-    // times the ground of any of the other three. That is on purpose - it is
-    // played a district at a time, and the town that used to be the whole of
-    // it is now its top-left quarter, tile for tile.
+    // The Floodplain is the vast one: four times the river town it grew out
+    // of, and more than three times the ground of any of the other three.
+    // That is on purpose - it is played a district at a time, and the town
+    // that used to be the whole of it is now its top-left quarter, tile for
+    // tile.
     expect(getWorldMap('floodplain-relay').width).toBe(128);
     expect(getWorldMap('floodplain-relay').height).toBe(128);
   });

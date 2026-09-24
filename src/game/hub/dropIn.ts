@@ -13,7 +13,7 @@ import { isPrize } from '../world/loot';
 import { surveyedTiles, type SurveyRecord } from '../world/survey';
 import { bossEncounters, createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
 import { exitsOpenForGood, withWorkedExitsOpen, workedLandmarksOn } from '../world/workedLandmarks';
-import { WORLD_MAP_NAMES, type WorldMapDefinition, type WorldMapId } from '../worldMap';
+import { WORLD_MAP_NAMES, WORLD_MAPS, type WorldMapDefinition, type WorldMapId } from '../worldMap';
 
 /**
  * Everything the drop-in screen says about a place, worked out without Phaser.
@@ -383,21 +383,56 @@ export function gradeLine(grade: PlaceGrade): string {
 }
 
 /**
- * The picture of a place: the map drawn one pixel to the tile, dark everywhere
- * nobody has walked, with your own doors and the ones you have opened lit.
+ * The picture of a place: the map dark everywhere nobody has walked, with your
+ * own doors and the ones you have opened lit.
  *
  * A front door and a drop-in point you have reached are lit whether or not the
  * survey has reached them, because they are yours - which is also what stops a
  * fresh save opening on a black square. A door a boss was holding lights when
  * it opens, so beating one changes this picture at base: that is the payoff the
  * whole screen is built around.
+ *
+ * `step` is how many tiles a pixel of the picture stands for, which is the
+ * screen's to decide from the room it has (`fitPicture`).
  */
 export function placePicture(
   insertionId: RunInsertionId,
   context: DropInContext,
+  step = 1,
 ): Minimap {
-  const insertion = RUN_INSERTIONS[insertionId];
-  const mapId = insertion.mapId;
+  return mapPicture(RUN_INSERTIONS[insertionId].mapId, context, { chosen: insertionId, step });
+}
+
+/**
+ * The biggest map there is, in tiles, which is what a picture's frame is sized
+ * against so a screen does not move when the picture in it changes.
+ */
+export function largestMapSize(): { readonly width: number; readonly height: number } {
+  return Object.values(WORLD_MAPS).reduce(
+    (biggest, map) => ({
+      width: Math.max(biggest.width, map.width),
+      height: Math.max(biggest.height, map.height),
+    }),
+    { width: 0, height: 0 },
+  );
+}
+
+/** What a picture of a map is drawn from: the map in this save's gate state, and the save. */
+export type MapPictureContext = Pick<
+  DropInContext,
+  'map' | 'defeatedBosses' | 'completedContracts' | 'openedGates' | 'surveyed' | 'insertionIds'
+>;
+
+/**
+ * The picture of a whole map, with no one way in singled out - which is how it
+ * hangs on the wall in Oak's Lab. The drop-in screen's picture is this with the
+ * chosen way in drawn apart from the rest.
+ */
+export function mapPicture(
+  mapId: WorldMapId,
+  context: MapPictureContext,
+  options: { readonly chosen?: RunInsertionId; readonly step?: number } = {},
+): Minimap {
   const ours = context.insertionIds
     .map((id) => RUN_INSERTIONS[id])
     .filter((entry) => entry.mapId === mapId);
@@ -412,7 +447,7 @@ export function placePicture(
   const marks: MinimapMark[] = [
     ...ours.map((entry) => ({
       position: entry.position,
-      char: entry.id === insertionId ? 'i' : 'I',
+      char: entry.id === options.chosen ? 'i' : 'I',
       always: true,
     })),
     ...gatesForMap(mapId).flatMap((gate) =>
@@ -437,6 +472,7 @@ export function placePicture(
       ...worked.map((poi) => poi.position),
     ],
     marks,
+    step: options.step,
   });
 }
 

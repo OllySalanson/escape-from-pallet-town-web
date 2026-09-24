@@ -10,18 +10,23 @@
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=brocks-workshop --built=all
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=pokemon-centre --hurt=5
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=bills-cottage --traded=40
+ *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=oaks-lab --beaten=overlook-warden --survey=save.json
  *
  * `--built=` is a list of rung ids from Brock's ladder, `all` or `none` (the
  * default). `--room=` draws the room behind that door instead of the yard, with
  * its keeper standing in it; `--hurt=N` puts that many Pokémon in the Center's
  * care, and `--traded=N` puts at least that many things on Bill's shelves
  * (`tradedBook` in `baseGames.testkit.ts`), with `--inspect=I` framing the
- * Ith of them the way looking at it in the game does. `--marks` names the doors, the mat, the keeper and every fixture,
+ * Ith of them the way looking at it in the game does. `--beaten=bossId,..`
+ * and `--survey=path.json` (a save's `raidProgress.surveyed`) are what the
+ * wall map in Oak's Lab draws: the keepers' signs, and the ground a raid has
+ * walked. `--marks` names the doors, the mat, the keeper and every fixture,
  * `--collision` hatches what is solid, which is what says whether something
  * built has quietly walled a corner off, and `--walks` prints the one number
  * the base is designed against: how many steps each keeper is from where the
  * player is put down (`src/game/base/baseWalks.ts`).
  */
+import { readFileSync } from 'node:fs';
 import { readPng, writePng, TILE_SIZE } from '../tileset/tileSheet.mjs';
 import { blit, box, canvas, drawTile, label, plot, upscale } from '../tileset/draw.mjs';
 import { WORKSHOP_UPGRADES } from '../../src/game/hub/workshop';
@@ -32,6 +37,7 @@ import { BASE_DOORS } from '../../src/game/base/doors';
 import { BASE_FIXTURES, standingFixtures } from '../../src/game/base/fixtures';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from '../../src/game/base/baseMap';
 import { buildRoom, roomNamed } from '../../src/game/base/rooms';
+import { wallMapPoster } from '../../src/game/base/wallMap';
 import { BASE_STARTS, walksToKeepers } from '../../src/game/base/baseWalks';
 import { baseGame } from '../../src/game/base/baseGames.testkit';
 import { ODDITY_INK, oddityArt } from '../../src/game/base/cabinet';
@@ -61,7 +67,23 @@ for (const id of built) {
     throw new Error(`no rung of Brock's ladder called '${id}'`);
   }
 }
-const game = baseGame({ built, hurt, traded });
+// What the wall map in Oak's Lab is a picture of: keepers beaten, and a real
+// save's walked ground (`tools/playtest/raid.mjs --progress=` writes one).
+const survey = option('survey');
+const game = baseGame({
+  built,
+  hurt,
+  traded,
+  progress: {
+    defeatedBosses: (option('beaten') ?? '').split(',').filter(Boolean),
+    ...(survey === undefined
+      ? {}
+      : {
+          surveyed:
+            JSON.parse(readFileSync(survey, 'utf8')).surveyed ?? JSON.parse(readFileSync(survey, 'utf8')),
+        }),
+  },
+});
 
 const room = roomFlag === undefined ? null : roomNamed(roomFlag);
 if (roomFlag !== undefined && !room) {
@@ -163,6 +185,12 @@ if (room && drawnRoom) {
         plot(image, placed.x + placed.width, placed.y + y, [0xf7, 0xd3, 0x6b]);
       }
     }
+  }
+  // The wall map, painted from the save exactly as `BaseScene.drawWallMap` does.
+  if (drawnRoom.wallMap) {
+    const poster = wallMapPoster(game, drawnRoom.wallMap);
+    const { x, y } = drawnRoom.wallMap;
+    blit(image, poster, 0, 0, poster.width, poster.height, x * TILE_SIZE, y * TILE_SIZE);
   }
   const figure = readPng(`public/assets/characters/${room.keeper.design}.png`);
   // The down-idle frame: 16x32, soles on row 27, the tile's foot on row 31.

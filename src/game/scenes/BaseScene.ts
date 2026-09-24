@@ -84,6 +84,7 @@ import {
   type PlacedOddity,
 } from '../base/cabinet';
 import { oddityLabel } from '../hub/traderCabinet';
+import { wallMapPoster } from '../base/wallMap';
 import type { HubSceneData } from './HubScene';
 
 /**
@@ -175,6 +176,9 @@ function boxRect(
  * to go; a thing you built is the quiet slate the raid maps use for a landmark
  * that has been worked - it is a fact about the place now, not something to do.
  */
+/** The texture the wall map is painted into, one per visit to the lab. */
+const WALL_MAP_TEXTURE = 'base-wall-map';
+
 const DOOR_TONE: WorldLabelTone = { fill: 0x3a2408, border: 0xf1bf63, ink: '#fef3c7' };
 const FIXTURE_TONE: WorldLabelTone = { fill: 0x16222c, border: 0x6f97b4, ink: '#c6dced' };
 /** The label on the one oddity being looked at: brass, like the case it is in. */
@@ -190,6 +194,12 @@ export interface BaseSceneData {
   readonly room?: string;
   /** Set by the result screen: a raid puts the player down on the quay. */
   readonly arrival?: 'raid';
+  /**
+   * Where in the room to stand, facing up, instead of on the mat: backing out
+   * of a screen opened from something in the room - the wall map - puts the
+   * player back in front of it rather than at the door.
+   */
+  readonly at?: GridPosition;
 }
 
 interface BaseControls {
@@ -328,8 +338,12 @@ export class BaseScene extends Phaser.Scene {
         room: built,
       };
       this.fixtures = [];
-      // In through the door, onto the mat, facing the keeper.
-      this.currentTile = { ...room.mat };
+      // In through the door, onto the mat, facing the keeper - or back where
+      // they were standing, if a screen opened from inside the room is what
+      // they have just backed out of.
+      const standing =
+        data.at !== undefined && built.collision[data.at.y]?.[data.at.x] === false ? data.at : room.mat;
+      this.currentTile = { ...standing };
       this.facing = 'up';
     } else {
       const map = getBaseMap(loaded.raidProgress.workshopUpgrades);
@@ -356,6 +370,7 @@ export class BaseScene extends Phaser.Scene {
     this.drawMap();
     this.drawSprites();
     this.drawOddities();
+    this.drawWallMap();
     this.createFigures();
     this.createPlayer();
     this.createCaptions();
@@ -695,6 +710,33 @@ export class BaseScene extends Phaser.Scene {
     this.inspect({ index, by: 'keys' });
   }
 
+  /**
+   * The wall map in Oak's Lab, painted from the save onto the stretch of wall
+   * the room keeps for it (`base/wallMap.ts`). A texture made fresh on every
+   * visit, because what it is a picture of - where the player has walked, who
+   * they have beaten - changes between visits and a room is rebuilt on each.
+   */
+  private drawWallMap(): void {
+    const area = this.place.room?.wallMap;
+    if (!area) {
+      return;
+    }
+    const poster = wallMapPoster(this.savedGame, area);
+    if (this.textures.exists(WALL_MAP_TEXTURE)) {
+      this.textures.remove(WALL_MAP_TEXTURE);
+    }
+    const texture = this.textures.createCanvas(WALL_MAP_TEXTURE, poster.width, poster.height);
+    if (!texture) {
+      return;
+    }
+    texture.context.putImageData(new ImageData(poster.data, poster.width, poster.height), 0, 0);
+    texture.refresh();
+    this.add
+      .image(area.x * TILE_SIZE, area.y * TILE_SIZE, WALL_MAP_TEXTURE)
+      .setOrigin(0, 0)
+      .setDepth(atRow(MARKER_BAND, area.y + area.height - 1));
+  }
+
   /** The keeper of the room the player is in. The yard has nobody standing in it. */
   private createFigures(): void {
     const room = this.place.room?.room;
@@ -892,9 +934,15 @@ export class BaseScene extends Phaser.Scene {
     if (servesFrom(room, facing)) {
       return keeper;
     }
-    // The cabinet is the one thing in a room that is looked into rather than
-    // read off, so it is the one thing that says it can be.
-    const unit = this.thingFaced(facing)?.cabinetUnit;
+    // Something in the room that opens a screen says so where it can be
+    // opened from, exactly as the keeper does: a board on a wall that answers
+    // a key nobody was told about is a board nobody reads.
+    const faced = this.thingFaced(facing);
+    if (faced?.opens) {
+      return `[SPACE] ${faced.name}`;
+    }
+    // The cabinet is looked into rather than read off, so it says it can be.
+    const unit = faced?.cabinetUnit;
     return unit !== undefined && this.oddityToStartAt(facing, unit) !== undefined
       ? '[SPACE] LOOK CLOSER'
       : '';
@@ -1202,6 +1250,10 @@ export class BaseScene extends Phaser.Scene {
       }
       const thing = this.thingFaced(target);
       const cabinet = this.place.room?.cabinet;
+      if (thing?.opens === 'wall-map') {
+        this.openWallMap(room);
+        return;
+      }
       if (thing?.cabinetUnit !== undefined) {
         const index = this.oddityToStartAt(target, thing.cabinetUnit);
         if (index === undefined) {
@@ -1298,8 +1350,20 @@ export class BaseScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * The wall map, read on a screen. Backing out of it puts the player back on
+   * the tile they read it from, facing it, rather than at the door.
+   */
+  private openWallMap(room: BaseRoom): void {
+    this.openHub({ savedGame: this.savedGame, view: 'wallmap', from: room.id, at: { ...this.currentTile } });
+  }
+
   /** The keeper's screen, which is what the room is the way to. */
   private openScreen(room: BaseRoom): void {
+    this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[room.screen], from: room.id });
+  }
+
+  private openHub(payload: HubSceneData): void {
     if (this.leaving) {
       return;
     }
@@ -1307,11 +1371,6 @@ export class BaseScene extends Phaser.Scene {
     this.player.stop();
     this.showHint('');
     audioManager.play('menuOpen');
-    const payload: HubSceneData = {
-      savedGame: this.savedGame,
-      view: SCREEN_VIEWS[room.screen],
-      from: room.id,
-    };
     this.cameras.main.fadeOut(140, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
       this.scene.start('hub', payload),

@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { buildMinimap, HINT_BLOCK, LIT_RADIUS, MINIMAP_MAX_HEIGHT, MINIMAP_MAX_WIDTH, MINIMAP_PALETTE, tilesAround } from './minimap';
+import {
+  buildMinimap,
+  fitPicture,
+  fittedSize,
+  HINT_BLOCK,
+  LIT_RADIUS,
+  MARK_RING,
+  MINIMAP_PALETTE,
+  paintMinimap,
+  tilesAround,
+} from './minimap';
 import { WORLD_MAPS, type WorldMapId } from '../worldMap';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import type { Material } from './tileset/materials';
@@ -119,44 +129,32 @@ describe('the bird\'s-eye picture of a map', () => {
     expect([...drawn].filter((char) => !(char in MINIMAP_PALETTE))).toEqual([]);
   });
 
-  it('draws every shipped map inside the banner the lobby gives it', () => {
-    // The drop-in screen's banner is a fixed 100 game pixels tall (the
-    // `.dropin-layout` rows in style.css), of which the picture's own lid and
-    // frame take 24 - so a picture may be 76 pixels tall, and wider than the
-    // pane is the other way it would be clipped rather than scaled.
-    // It is the *picture* that is held to the banner, not the map: a map too
-    // big for it is drawn at two tiles to the pixel, which is what keeps a
-    // 128-tile map inside the frame without making it the same size on screen
-    // as a 32-tile one. Nothing is ever drawn at less than one pixel to the
-    // tile - see `MINIMAP_TILE`.
+  it('draws a map tile for tile unless it is told to condense', () => {
     for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
       const picture = buildMinimap({ map: WORLD_MAPS[id] });
-      expect(picture.width, id).toBeLessThanOrEqual(MINIMAP_MAX_WIDTH);
-      expect(picture.height, id).toBeLessThanOrEqual(MINIMAP_MAX_HEIGHT);
+      expect([picture.width, picture.height, picture.tilesPerPixel], id).toEqual([
+        WORLD_MAPS[id].width,
+        WORLD_MAPS[id].height,
+        1,
+      ]);
       expect(picture.rows).toHaveLength(picture.height);
-      expect(picture.width).toBe(Math.ceil(WORLD_MAPS[id].width / picture.tilesPerPixel));
     }
+    const halved = buildMinimap({ map: WORLD_MAPS['floodplain-relay'], step: 2 });
+    expect([halved.width, halved.height, halved.tilesPerPixel]).toEqual([64, 64, 2]);
   });
 
-  it('coarsens only the map that cannot fit, and draws the rest tile for tile', () => {
-    // Four maps have grown and only one of them outgrew the banner: Route 1
-    // and Viridian Forest at 64x72 still fit it, so their pictures are the
-    // ground itself, and only the Floodplain at 128 square is halved.
-    //
-    // The price of that is stated rather than hidden: halved, the vast map
-    // draws 64x64 against Route 1's 64x72, so the lobby's biggest map is not
-    // its biggest picture. The alternative is scaling every map to fill the
-    // box, which would make them all the same size and say nothing at all.
-    const vast = buildMinimap({ map: WORLD_MAPS['floodplain-relay'] });
-    expect(vast.tilesPerPixel).toBe(2);
-    for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
-      if (id === 'floodplain-relay') {
-        continue;
-      }
-      expect(buildMinimap({ map: WORLD_MAPS[id] }).tilesPerPixel, id).toBe(1);
-    }
+  it('keeps a way in or out when several tiles share a pixel', () => {
+    // A mark is one tile, and condensed four to a pixel it is still there:
+    // what a player most needs to read off a small picture is never lost to
+    // the ground beside it.
+    const picture = buildMinimap({
+      map,
+      surveyed: new Set([0, 1, 2, 3]),
+      marks: [{ position: { x: 3, y: 1 }, char: 'X', always: true }],
+      step: 4,
+    });
+    expect(picture.rows[0][0]).toBe('X');
   });
-
   it('opens every map on something lit, so a fresh save is an invitation', () => {
     for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
       const front = Object.values(RUN_INSERTIONS).find((entry) => entry.mapId === id)!;
@@ -173,5 +171,72 @@ describe('the bird\'s-eye picture of a map', () => {
     // generous by a tile at the diagonal, so a walk leaves a rounded track
     // rather than a cross.
     expect(tilesAround({ x: 5, y: 5 }, 1, 11, 11)).toEqual([48, 49, 50, 59, 60, 61, 70, 71, 72]);
+  });
+});
+
+describe('how big a picture of a map is drawn', () => {
+  it('takes the largest whole number of pixels to the tile that fits', () => {
+    // A pixel that is not whole is a blurred one, so 250 pixels of room draws
+    // a 128-tile map at one to the tile, not at 1.95.
+    expect(fitPicture({ width: 128, height: 128 }, { width: 400, height: 250 })).toEqual({ step: 1, zoom: 1 });
+    expect(fitPicture({ width: 128, height: 128 }, { width: 400, height: 256 })).toEqual({ step: 1, zoom: 2 });
+    expect(fitPicture({ width: 64, height: 72 }, { width: 400, height: 256 })).toEqual({ step: 1, zoom: 3 });
+  });
+
+  it('condenses only a picture with less room than the map has tiles, and by the least it can', () => {
+    expect(fitPicture({ width: 128, height: 128 }, { width: 124, height: 124 })).toEqual({ step: 2, zoom: 1 });
+    expect(fitPicture({ width: 128, height: 128 }, { width: 40, height: 400 })).toEqual({ step: 4, zoom: 1 });
+    // And a room of nothing still answers with a picture rather than a loop.
+    expect(fitPicture({ width: 128, height: 128 }, { width: 0, height: 0 }).zoom).toBe(1);
+  });
+
+  it('says how big the fitted picture comes out', () => {
+    expect(fittedSize({ width: 64, height: 76 }, { step: 1, zoom: 3 })).toEqual({ width: 192, height: 228 });
+    expect(fittedSize({ width: 128, height: 128 }, { step: 3, zoom: 1 })).toEqual({ width: 43, height: 43 });
+  });
+});
+
+describe('the picture as pixels', () => {
+  const tiny = buildMinimap({
+    map: {
+      width: 4,
+      height: 3,
+      terrain: [
+        ['grass', 'grass', 'grass', 'grass'],
+        ['grass', 'grass', 'grass', 'grass'],
+        ['grass', 'grass', 'grass', 'grass'],
+      ],
+      collision: [
+        [false, false, false, false],
+        [false, false, false, false],
+        [false, false, false, false],
+      ],
+    },
+    surveyed: new Set(Array.from({ length: 12 }, (_tile, index) => index)),
+    marks: [{ position: { x: 1, y: 1 }, char: 'X' }],
+  });
+  const ink = (painted: ReturnType<typeof paintMinimap>, x: number, y: number): string => {
+    const at = (y * painted.width + x) * 4;
+    return `#${[0, 1, 2].map((offset) => painted.data[at + offset].toString(16).padStart(2, '0')).join('')}`;
+  };
+
+  it('draws every tile as a block of its own ink at the zoom it is given', () => {
+    const painted = paintMinimap(tiny, 3);
+    expect([painted.width, painted.height]).toEqual([12, 9]);
+    expect(ink(painted, 11, 8)).toBe(MINIMAP_PALETTE['.']);
+    expect(ink(painted, 4, 4)).toBe(MINIMAP_PALETTE.X);
+  });
+
+  it('rings a mark once a tile is big enough to ring, and not before', () => {
+    // At one pixel to the tile a mark is its own ink and nothing else, because
+    // a ring would be the tiles beside it.
+    const flat = paintMinimap(tiny, 1);
+    expect(ink(flat, 0, 1)).toBe(MINIMAP_PALETTE['.']);
+    // Drawn bigger, a pixel of ring stands outside the mark's own tile, so an
+    // exit on green ground reads as a pin rather than a dot.
+    const big = paintMinimap(tiny, 3);
+    expect(ink(big, 2, 3)).toBe(MARK_RING);
+    expect(ink(big, 6, 6)).toBe(MARK_RING);
+    expect(ink(big, 3, 3)).toBe(MINIMAP_PALETTE.X);
   });
 });

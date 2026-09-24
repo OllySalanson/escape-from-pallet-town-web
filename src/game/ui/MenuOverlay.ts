@@ -17,6 +17,13 @@ export class MenuOverlay {
   private readonly resizeHandler: () => void;
   /** Which control the player was last on, so a re-render can put them back. */
   private lastFocusKey: string | null = null;
+  /**
+   * Whatever a screen has that can only be sized once it is laid out and must
+   * be sized before its columns are counted - a map picture in a column as
+   * wide as the picture is (`ui/mapPicture.ts`). Handed one game pixel, in
+   * screen pixels.
+   */
+  public onMeasure: ((unit: number) => void) | undefined;
 
   public constructor(
     scene: Phaser.Scene,
@@ -178,11 +185,15 @@ export class MenuOverlay {
 
   /**
    * Everything about a screen that can only be decided once it has been
-   * measured, in the one order that works: how many columns each collection
-   * takes, and then - inside the columns that answer settled - how wide each
-   * box of words is.
+   * measured, in the one order that works: how big each picture is, how many
+   * columns each collection takes, and then - inside the columns that answer
+   * settled - how wide each box of words is.
    */
   private relayout(): void {
+    const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
+    if (unit > 0) {
+      this.onMeasure?.(unit);
+    }
     this.layoutColumns();
     this.clearStickyHeads();
     this.snapTextBoxes();
