@@ -412,8 +412,12 @@ export function generateRunPlan(
   // every door the player has not opened.
   const insertionMap = content.maps[insertion.mapId];
   const walkable = stepDistances(insertionMap.collision, insertion.position);
-  const isReachable = (mapId: WorldMapId, position: GridPosition): boolean =>
-    mapId !== insertion.mapId || (walkable[position.y]?.[position.x] ?? -1) >= 0;
+  const isReachable: Reachability = {
+    mapId: insertion.mapId,
+    steps: walkable,
+    reaches: (mapId, position) =>
+      mapId !== insertion.mapId || (walkable[position.y]?.[position.x] ?? -1) >= 0,
+  };
   const extractionPoints = [
     ...generateExtractionPoints(content.extractionPoints, rng, insertion, content.maps, isReachable),
     ...beaconExit(insertion, content.extractionPoints, outfitting),
@@ -524,7 +528,7 @@ function generateExtractionPoints(
   // - and it has to be one this raid can walk to, or a drop-in behind a shut
   // gate is promised a door on the far side of it.
   const walkable = available.filter(
-    (point) => point.mapId === insertion.mapId && isReachable(point.mapId, point.position),
+    (point) => point.mapId === insertion.mapId && isReachable.reaches(point.mapId, point.position),
   );
   // Where the map already authors one - an exit that is always open, in reach -
   // the promise is kept and nothing is forced. It used to force the first exit
@@ -574,7 +578,7 @@ function generateExtractionPoints(
  *
  * It stands on the insertion tile rather than on a tile authored for it, which
  * is what lets one upgrade serve every map without touching any of them - the
- * landing is reachable by construction, `mapStructure.test.ts` already keeps
+ * landing is reachable by construction, `mapStructure.testkit.ts` already keeps
  * every trainer watch off it, and it is reserved against loot and trainers a
  * few lines above. It changes a route rather than shortening one: the way home
  * can be the way you came, but only for a raid that stayed in long enough.
@@ -651,7 +655,7 @@ function generateTrainers(
       };
     }
     const candidates = validTiles(maps[trainer.mapId], reservedTiles.get(trainer.mapId), isReachable);
-    const position = candidates.length > 0 ? rng.pick(candidates) : trainer.position;
+    const position = candidates.length > 0 ? seatOn(rng.pick(candidates)) : trainer.position;
     reserve(reservedTiles, trainer.mapId, position);
     return {
       ...trainer,
@@ -705,17 +709,19 @@ function generateLoot(
         const areas = districtsForMap(map.id).find(
           (candidate) => candidate.id === item.district,
         )?.areas;
-        position = areas
-          ? candidates.find((tile) => !taken.has(tileKey(tile)) && inAreas(tile, areas))
+        const seat = areas
+          ? candidates.find((tile) => inAreas(tile, areas) && !taken.has(tile.key))
           : undefined;
-        if (position === undefined) {
+        if (seat === undefined) {
           continue;
         }
+        position = seatOn(seat);
       } else {
-        while (next < candidates.length && taken.has(tileKey(candidates[next]))) {
+        while (next < candidates.length && taken.has(candidates[next].key)) {
           next += 1;
         }
-        position = candidates[next] ?? item.position;
+        const seat = candidates[next];
+        position = seat ? seatOn(seat) : item.position;
         next += 1;
       }
       taken.add(tileKey(position));
@@ -727,8 +733,18 @@ function generateLoot(
   return generatedByMap;
 }
 
-/** Whether this raid can walk to a tile from where it dropped in. */
-type Reachability = (mapId: WorldMapId, position: GridPosition) => boolean;
+/** What this raid can walk to from where it dropped in. */
+interface Reachability {
+  /** Whether it can walk to this tile. */
+  readonly reaches: (mapId: WorldMapId, position: GridPosition) => boolean;
+  /**
+   * The one map a shut gate can cut it off from part of, and the walk across
+   * it: every other map is reached whole, which is what lets `validTiles` ask
+   * a row of an array rather than a question per tile.
+   */
+  readonly mapId: WorldMapId;
+  readonly steps: readonly Int32Array[];
+}
 
 /** Whether a tile falls inside any of a district's rectangles. */
 function inAreas(tile: GridPosition, areas: readonly DistrictArea[]): boolean {
@@ -741,28 +757,80 @@ function inAreas(tile: GridPosition, areas: readonly DistrictArea[]): boolean {
   );
 }
 
+/**
+ * The tiles of `standingGround` this raid may still seat something on, shared
+ * rather than copied: only the handful actually chosen become positions, through
+ * `seatOn`, so a raid does not build an object for every free tile of every map
+ * to keep thirty of them.
+ */
 function validTiles(
   map: WorldMapDefinition,
   reserved: ReadonlySet<string> = new Set(),
-  isReachable: Reachability = () => true,
-): { x: number; y: number }[] {
+  isReachable?: Reachability,
+): StandingTile[] {
+  const steps = isReachable?.mapId === map.id ? isReachable.steps : undefined;
+  // The reserved tiles as a mask, so the scan below reads an array rather than
+  // hashing a string per tile of the map.
+  const taken = new Uint8Array(map.width * map.height);
+  for (const key of reserved) {
+    const comma = key.indexOf(',');
+    const x = Number(key.slice(0, comma));
+    const y = Number(key.slice(comma + 1));
+    if (x >= 0 && y >= 0 && x < map.width && y < map.height) {
+      taken[y * map.width + x] = 1;
+    }
+  }
+  const tiles: StandingTile[] = [];
+  for (const tile of standingGround(map)) {
+    if (taken[tile.index] === 1 || (steps !== undefined && steps[tile.y][tile.x] < 0)) {
+      continue;
+    }
+    tiles.push(tile);
+  }
+  return tiles;
+}
+
+/** A chosen tile as a position of its own, never the shared one. */
+function seatOn(tile: StandingTile): GridPosition {
+  return { x: tile.x, y: tile.y };
+}
+
+/**
+ * Every tile of a map anything could be seated on before this raid has
+ * reserved any of it - walkable, and no warp or standing figure on it - in the
+ * row order `validTiles` hands them out in, keyed once. It depends on nothing
+ * but the map, which is built once per gate state and kept, so it is worked out
+ * once per map rather than once per piece of loot per raid: this scan of every
+ * map was most of what generating a raid cost, and `runGeneration.test.ts`
+ * generates twenty-five thousand of them.
+ */
+const standingGroundByMap = new WeakMap<WorldMapDefinition, readonly StandingTile[]>();
+
+interface StandingTile {
+  readonly x: number;
+  readonly y: number;
+  readonly key: string;
+  /** `y * width + x`. */
+  readonly index: number;
+}
+
+function standingGround(map: WorldMapDefinition): readonly StandingTile[] {
+  const known = standingGroundByMap.get(map);
+  if (known) {
+    return known;
+  }
   const warpTiles = new Set(map.warps.map((warp) => tileKey(warp.source)));
   const entityTiles = new Set(map.entities.map((entity) => tileKey(entity.position)));
-  const tiles: { x: number; y: number }[] = [];
+  const tiles: StandingTile[] = [];
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
       const key = `${x},${y}`;
-      if (
-        !map.collision[y][x] &&
-        !warpTiles.has(key) &&
-        !entityTiles.has(key) &&
-        !reserved.has(key) &&
-        isReachable(map.id, { x, y })
-      ) {
-        tiles.push({ x, y });
+      if (!map.collision[y][x] && !warpTiles.has(key) && !entityTiles.has(key)) {
+        tiles.push({ x, y, key, index: y * map.width + x });
       }
     }
   }
+  standingGroundByMap.set(map, tiles);
   return tiles;
 }
 

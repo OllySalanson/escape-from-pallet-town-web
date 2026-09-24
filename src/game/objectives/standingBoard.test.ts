@@ -192,10 +192,24 @@ describe('every standing contract', () => {
   });
 
   it('never stands a stop on a tile that belongs to something else', () => {
+    // What is taken depends only on the map and who is beaten, so it is worked
+    // out once per gate state rather than once per contract.
+    const takenIn = new Map<string, readonly string[]>();
     for (const { contract, defeatedBosses } of everyBoard()) {
-      const map = getWorldMap(contract.mapId, defeatedBosses);
+      const key = `${contract.mapId}|${defeatedBosses.join('+')}`;
+      const taken = takenIn.get(key) ?? takenOn(contract.mapId, defeatedBosses);
+      takenIn.set(key, taken);
+      const stops = contract.markers.map((marker) => `${marker.position.x},${marker.position.y}`);
+      expect(new Set(stops).size).toBe(stops.length);
+      for (const stop of stops) {
+        expect(taken, contract.id).not.toContain(stop);
+      }
+    }
+
+    function takenOn(mapId: WorldMapId, defeatedBosses: readonly string[]): readonly string[] {
+      const map = getWorldMap(mapId, defeatedBosses);
       const isBlocked = (tile: { x: number; y: number }): boolean => map.collision[tile.y]?.[tile.x] ?? true;
-      const taken = [
+      return [
         ...EXTRACTION_POINTS.filter((point) => point.mapId === map.id).map((point) => point.position),
         ...Object.values(RUN_INSERTIONS).filter((entry) => entry.mapId === map.id).map((entry) => entry.position),
         ...map.pois.map((poi) => poi.position),
@@ -206,21 +220,20 @@ describe('every standing contract', () => {
           .filter((trainer) => trainer.mapId === map.id && trainer.fixedPosition)
           .flatMap((trainer) => [trainer.position, ...trainerSightTiles(trainer, isBlocked)]),
       ].map((tile) => `${tile.x},${tile.y}`);
-      const stops = contract.markers.map((marker) => `${marker.position.x},${marker.position.y}`);
-      expect(new Set(stops).size).toBe(stops.length);
-      for (const stop of stops) {
-        expect(taken, contract.id).not.toContain(stop);
-      }
     }
   });
 
   it('asks for a walk rather than an errand beside the landing', () => {
+    // The longest walk is a fact about the map and its open doors, so it is
+    // read once per walk rather than once per contract drawn on it.
+    const longestOf = new Map<readonly Int32Array[], number>();
     for (const { contract, defeatedBosses } of everyBoard()) {
       if (contract.sealedBehind) {
         continue;
       }
       const steps = walkFromFrontDoor(contract.mapId, defeatedBosses);
-      const longest = Math.max(...steps.flatMap((row) => [...row]));
+      const longest = longestOf.get(steps) ?? Math.max(...steps.flatMap((row) => [...row]));
+      longestOf.set(steps, longest);
       for (const marker of contract.markers) {
         expect(steps[marker.position.y][marker.position.x], contract.id).toBeGreaterThanOrEqual(longest * 0.45);
       }

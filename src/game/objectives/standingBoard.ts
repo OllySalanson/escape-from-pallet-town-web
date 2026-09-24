@@ -615,7 +615,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     const district = rng.pick(ground.districts);
     const exit = district.exits.length > 0 ? rng.pick(district.exits) : undefined;
     const beyond = district.steps;
-    const deepest = [...district.tiles].sort((a, b) => beyond[b.y][b.x] - beyond[a.y][a.x]);
+    const deepest = deepestFirst(district);
     // The far half of the district, so the stop is never the tile behind the door.
     const deep = deepest.slice(0, Math.max(1, Math.ceil(deepest.length / 2)));
     const stops = exit ? [rng.pick(deep)] : rng.shuffle(deep).slice(0, 2);
@@ -650,6 +650,24 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     };
   },
 };
+
+/**
+ * A district's tiles, furthest from the landing first. It is the same list for
+ * every board dealt from the same ground, so it is sorted once per district
+ * rather than once per board - and it lives exactly as long as the ground does.
+ */
+const deepestByDistrict = new WeakMap<SealedDistrict, readonly GridPosition[]>();
+
+function deepestFirst(district: SealedDistrict): readonly GridPosition[] {
+  const known = deepestByDistrict.get(district);
+  if (known) {
+    return known;
+  }
+  const beyond = district.steps;
+  const deepest = [...district.tiles].sort((a, b) => beyond[b.y][b.x] - beyond[a.y][a.x]);
+  deepestByDistrict.set(district, deepest);
+  return deepest;
+}
 
 function farTiles(ground: Ground): readonly GridPosition[] {
   const far = ground.open.filter(

@@ -36,6 +36,14 @@ function walkableFrom(
   defeatedBosses: readonly string[] = [],
 ): ReadonlySet<string> {
   const visited = new Set<string>();
+  // Each map's figures as a set of tiles, built once per map rather than
+  // searched once per tile walked.
+  const standing = new Map<WorldMapId, ReadonlySet<string>>();
+  const figuresOn = (currentMapId: WorldMapId, map: ReturnType<typeof getWorldMap>): ReadonlySet<string> => {
+    const known = standing.get(currentMapId) ?? new Set(map.entities.map((entity) => tileKey(entity.position)));
+    standing.set(currentMapId, known);
+    return known;
+  };
   const pending: { mapId: WorldMapId; position: GridPosition }[] = [{ mapId, position }];
   while (pending.length > 0) {
     const { mapId: currentMapId, position: tile } = pending.pop()!;
@@ -48,7 +56,7 @@ function walkableFrom(
       tile.x >= map.width ||
       tile.y >= map.height ||
       map.collision[tile.y][tile.x] ||
-      map.entities.some((entity) => entity.position.x === tile.x && entity.position.y === tile.y)
+      figuresOn(currentMapId, map).has(tileKey(tile))
     ) {
       continue;
     }
@@ -162,21 +170,29 @@ describe('run generation', () => {
       const rareSeen = new Map<string, number>();
       const layouts = new Map<string, number>();
       const liveCounts = new Set<number>();
+      const rareIds = new Set(rare.map(({ id }) => id));
+      const poolIds = new Set(WORLD_MAPS[mapId].loot.map(({ id }) => id));
+      // Every raid's faults, gathered and asked about once: five hundred raids
+      // of twenty-odd pieces is ten thousand assertions a landing otherwise,
+      // and the bookkeeping of that many was most of what this test cost.
+      const faults: string[] = [];
       for (let seed = 0; seed < SAMPLED_RUNS; seed += 1) {
         const loot = generateRunPlan(seed, undefined, insertionId).loot[mapId];
-        const rareIds = new Set(rare.map(({ id }) => id));
         loot
           .filter((item) => rareIds.has(item.id))
           .forEach((item) => rareSeen.set(item.id, (rareSeen.get(item.id) ?? 0) + 1));
         liveCounts.add(loot.filter((item) => !rareIds.has(item.id)).length);
         // Only the map's own pool is ever drawn from, each entry at most once.
-        expect(new Set(loot.map((item) => item.id)).size).toBe(loot.length);
-        loot.forEach((item) =>
-          expect(WORLD_MAPS[mapId].loot.map(({ id }) => id)).toContain(item.id),
-        );
+        if (new Set(loot.map((item) => item.id)).size !== loot.length) {
+          faults.push(`seed ${seed}: a piece laid twice`);
+        }
+        loot
+          .filter((item) => !poolIds.has(item.id))
+          .forEach((item) => faults.push(`seed ${seed}: ${item.id} is not in the pool`));
         const layout = loot.map((item) => `${item.id}@${tileKey(item.position)}`).sort().join('|');
         layouts.set(layout, (layouts.get(layout) ?? 0) + 1);
       }
+      expect(faults).toEqual([]);
       // How much is live varies, from half the pool to all of it...
       expect([...liveCounts].sort((a, b) => a - b)).toEqual(
         Array.from(
@@ -466,15 +482,20 @@ describe('run generation', () => {
     });
 
     it('never rolls a cache onto a drop-in point, so reaching one is never spoken over', () => {
+      // Gathered and asked once: a hundred raids from every landing against
+      // every drop-in is sixty thousand assertions otherwise.
+      const spokenOver: string[] = [];
       for (const insertionId of insertionIds) {
         for (let seed = 1; seed <= 100; seed += 1) {
           const plan = generateRunPlan(seed, undefined, insertionId, undefined, undefined, EVERY_BOSS);
           for (const dropIn of Object.values(RUN_INSERTIONS)) {
-            expect(plan.loot[dropIn.mapId].map((loot) => tileKey(loot.position)))
-              .not.toContain(tileKey(dropIn.position));
+            if (plan.loot[dropIn.mapId].some((loot) => tileKey(loot.position) === tileKey(dropIn.position))) {
+              spokenOver.push(`${insertionId} seed ${seed}: loot on ${dropIn.id}`);
+            }
           }
         }
       }
+      expect(spokenOver).toEqual([]);
     });
 
     it('sends a boss into the raid until they are beaten, and never again', () => {
