@@ -75,6 +75,13 @@ export interface CaptionSpeech {
   readonly tiles: readonly GridPosition[];
   /** For an `exit`: whether it can be left by right now. A sealed one is only a name. */
   readonly open?: boolean;
+  /**
+   * How near a `name` has to be walked before it speaks, when that is not
+   * `CAPTION_NEAR_STEPS`. A room in the base is thirteen tiles across, so at
+   * five steps everything in it would speak at once from the door mat; the
+   * things in a room speak when the player is beside them.
+   */
+  readonly near?: number;
 }
 
 export interface CaptionAudience {
@@ -138,7 +145,7 @@ export function captionSpeaks(speech: CaptionSpeech, audience: CaptionAudience):
   if (speech.voice === 'exit' && speech.open === true && audience.raidRemainingMs <= EXIT_CALL_MS) {
     return true;
   }
-  return stepsToNearest(audience.player, speech.tiles) <= CAPTION_NEAR_STEPS;
+  return stepsToNearest(audience.player, speech.tiles) <= (speech.near ?? CAPTION_NEAR_STEPS);
 }
 
 /**

@@ -10,81 +10,24 @@ import {
 } from './baseMap';
 import { BASE_DOORS } from './doors';
 import { BASE_FIXTURES, standingFixtures } from './fixtures';
+import { stepsFrom as walkFrom, stepsTo } from './baseWalks';
 
 const EVERY_RUNG = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
 
 /** The strictest state there is: everything built, so every fixture is a wall. */
 const fullyBuilt = () => getBaseMap(EVERY_RUNG);
 
-function occupied(): Set<string> {
-  return new Set(BASE_DOORS.map((door) => `${door.keeper.position.x},${door.keeper.position.y}`));
-}
-
 /**
- * Walking steps from a tile, with every keeper standing where they stand. A
- * figure is collision, so the walk the player actually takes is the one that
- * goes round all four of them.
+ * Walking steps from a tile across the yard. Nobody stands in the yard any
+ * more - the keepers are inside (`rooms.ts`) - so the walk is the map's.
  */
 function stepsFrom(start: GridPosition): number[][] {
-  const map = fullyBuilt();
-  const people = occupied();
-  const steps = Array.from({ length: map.height }, () =>
-    Array<number>(map.width).fill(Number.POSITIVE_INFINITY),
-  );
-  steps[start.y][start.x] = 0;
-  let frontier: GridPosition[] = [start];
-  while (frontier.length > 0) {
-    const next: GridPosition[] = [];
-    for (const tile of frontier) {
-      for (const [dx, dy] of [
-        [0, -1],
-        [0, 1],
-        [-1, 0],
-        [1, 0],
-      ]) {
-        const x = tile.x + dx;
-        const y = tile.y + dy;
-        if (x < 0 || y < 0 || x >= map.width || y >= map.height) continue;
-        if (map.collision[y][x] || people.has(`${x},${y}`)) continue;
-        if (steps[y][x] <= steps[tile.y][tile.x] + 1) continue;
-        steps[y][x] = steps[tile.y][tile.x] + 1;
-        next.push({ x, y });
-      }
-    }
-    frontier = next;
-  }
-  return steps;
+  return walkFrom(fullyBuilt().collision, start);
 }
 
-/** How far a place is, which is as far as its nearest tile. */
-function stepsTo(steps: number[][], tiles: readonly GridPosition[]): number {
-  return Math.min(...tiles.map((tile) => steps[tile.y][tile.x]));
-}
-
-/** The tiles a door is reached from: its own doorway, or its keeper's neighbours. */
+/** The tiles a door is reached from: its own doorway. */
 function approachesTo(doorId: string): readonly GridPosition[] {
-  const door = BASE_DOORS.find((candidate) => candidate.id === doorId)!;
-  if (door.tiles.length > 0) {
-    return door.tiles;
-  }
-  const map = fullyBuilt();
-  const people = occupied();
-  return [
-    [0, -1],
-    [0, 1],
-    [-1, 0],
-    [1, 0],
-  ]
-    .map(([dx, dy]) => ({ x: door.keeper.position.x + dx, y: door.keeper.position.y + dy }))
-    .filter(
-      (tile) =>
-        tile.x >= 0 &&
-        tile.y >= 0 &&
-        tile.x < map.width &&
-        tile.y < map.height &&
-        !map.collision[tile.y][tile.x] &&
-        !people.has(`${tile.x},${tile.y}`),
-    );
+  return BASE_DOORS.find((candidate) => candidate.id === doorId)!.tiles;
 }
 
 describe('the base map', () => {
@@ -113,7 +56,8 @@ describe('the base map', () => {
    * The one number this map is designed against. A player re-kits between raids
    * many times an hour, so a base that is a pleasure the first time and a
    * corridor the fourth is a base that is too big. Measured with every rung
-   * built and every keeper standing, which is the longest the walk ever gets.
+   * built, which is the longest the walk ever gets. Inside, the keeper is one
+   * key from the mat (`rooms.test.ts`), so this is the whole of the walk.
    */
   it('keeps every door within seven steps of where a raid drops the player', () => {
     const steps = stepsFrom(BASE_SPAWN);
@@ -128,46 +72,17 @@ describe('the base map', () => {
 
   it('lands a raid within four steps of Bill and eight of the lab', () => {
     const steps = stepsFrom(BASE_LANDING);
-    expect(stepsTo(steps, approachesTo('the-quay'))).toBeLessThanOrEqual(4);
+    expect(stepsTo(steps, approachesTo('bills-cottage'))).toBeLessThanOrEqual(4);
     expect(stepsTo(steps, approachesTo('oaks-lab'))).toBeLessThanOrEqual(8);
   });
 
   it('reaches every door and every fixture from both landings, whatever is built', () => {
     for (const built of [[], EVERY_RUNG, ['beacon'], ['radio-mast', 'quarantine-ward']]) {
       const map = getBaseMap(built);
-      const people = occupied();
-      const steps = (() => {
-        const grid = Array.from({ length: map.height }, () =>
-          Array<number>(map.width).fill(Number.POSITIVE_INFINITY),
-        );
-        grid[BASE_SPAWN.y][BASE_SPAWN.x] = 0;
-        let frontier: GridPosition[] = [BASE_SPAWN];
-        while (frontier.length > 0) {
-          const next: GridPosition[] = [];
-          for (const tile of frontier) {
-            for (const [dx, dy] of [
-              [0, -1],
-              [0, 1],
-              [-1, 0],
-              [1, 0],
-            ]) {
-              const x = tile.x + dx;
-              const y = tile.y + dy;
-              if (x < 0 || y < 0 || x >= map.width || y >= map.height) continue;
-              if (map.collision[y][x] || people.has(`${x},${y}`)) continue;
-              if (grid[y][x] <= grid[tile.y][tile.x] + 1) continue;
-              grid[y][x] = grid[tile.y][tile.x] + 1;
-              next.push({ x, y });
-            }
-          }
-          frontier = next;
-        }
-        return grid;
-      })();
+      const steps = walkFrom(map.collision, BASE_SPAWN);
       expect(steps[BASE_LANDING.y][BASE_LANDING.x]).toBeLessThan(Number.POSITIVE_INFINITY);
       for (const door of BASE_DOORS) {
-        const reach = door.tiles.length > 0 ? door.tiles : approachesTo(door.id);
-        expect([door.id, built.length, Math.min(...reach.map((t) => steps[t.y][t.x])) < Infinity]).toEqual([
+        expect([door.id, built.length, stepsTo(steps, door.tiles) < Infinity]).toEqual([
           door.id,
           built.length,
           true,
@@ -177,7 +92,7 @@ describe('the base map', () => {
       // of the yard off from the rest of it.
       for (let y = 0; y < map.height; y += 1) {
         for (let x = 0; x < map.width; x += 1) {
-          if (map.collision[y][x] || people.has(`${x},${y}`)) continue;
+          if (map.collision[y][x]) continue;
           expect([x, y, built.length, steps[y][x] < Infinity]).toEqual([x, y, built.length, true]);
         }
       }
@@ -211,93 +126,23 @@ describe('the base map', () => {
     }
   });
 
-  /**
-   * A figure is collision, so wherever one stops is a door - and a keeper who
-   * cannot be walked into may not stand in the neck of a pocket. Nothing here
-   * can be fought or spoken past, so the rule is the strict one: taking any
-   * keeper off the map must not shorten any walk between the places that matter.
-   */
-  it('never stands a keeper where they are the only way through', () => {
+  it('gives every return tile its own patch of ground, off every doorway', () => {
     const map = fullyBuilt();
-    const places = [
-      BASE_SPAWN,
-      BASE_LANDING,
-      ...BASE_DOORS.flatMap((door) => approachesTo(door.id)),
-      ...standingFixtures(EVERY_RUNG).map((fixture) => fixture.at),
-    ];
-    for (const blocked of BASE_DOORS) {
-      const people = new Set(
-        BASE_DOORS.map((door) => `${door.keeper.position.x},${door.keeper.position.y}`),
-      );
-      people.delete(`${blocked.keeper.position.x},${blocked.keeper.position.y}`);
-      // With this keeper gone, every place is still exactly as far as it was:
-      // they are beside the route, never on it.
-      const withKeeper = stepsFrom(BASE_SPAWN);
-      const without = (() => {
-        const grid = Array.from({ length: map.height }, () =>
-          Array<number>(map.width).fill(Number.POSITIVE_INFINITY),
-        );
-        grid[BASE_SPAWN.y][BASE_SPAWN.x] = 0;
-        let frontier: GridPosition[] = [BASE_SPAWN];
-        while (frontier.length > 0) {
-          const next: GridPosition[] = [];
-          for (const tile of frontier) {
-            for (const [dx, dy] of [
-              [0, -1],
-              [0, 1],
-              [-1, 0],
-              [1, 0],
-            ]) {
-              const x = tile.x + dx;
-              const y = tile.y + dy;
-              if (x < 0 || y < 0 || x >= map.width || y >= map.height) continue;
-              if (map.collision[y][x] || people.has(`${x},${y}`)) continue;
-              if (grid[y][x] <= grid[tile.y][tile.x] + 1) continue;
-              grid[y][x] = grid[tile.y][tile.x] + 1;
-              next.push({ x, y });
-            }
-          }
-          frontier = next;
-        }
-        return grid;
-      })();
-      for (const place of places) {
-        if (place.x === blocked.keeper.position.x && place.y === blocked.keeper.position.y) continue;
-        expect([blocked.keeper.id, place.x, place.y, withKeeper[place.y][place.x]]).toEqual([
-          blocked.keeper.id,
-          place.x,
-          place.y,
-          without[place.y][place.x],
-        ]);
-      }
-    }
-  });
-
-  it('gives every keeper and every return tile its own patch of ground', () => {
-    const map = fullyBuilt();
-    const seen = new Set<string>();
     for (const door of BASE_DOORS) {
-      for (const tile of [door.keeper.position, door.returnTo]) {
-        expect([door.id, map.collision[tile.y][tile.x]]).toEqual([door.id, false]);
-      }
-      const key = `${door.keeper.position.x},${door.keeper.position.y}`;
-      expect(seen.has(key)).toBe(false);
-      seen.add(key);
-      // A keeper never stands on a doorway, or walking out of a building would
-      // put the player inside them.
+      expect([door.id, map.collision[door.returnTo.y][door.returnTo.x]]).toEqual([door.id, false]);
+      // Coming back out never puts the player on a doorway, or they would be
+      // taken straight back in.
       expect(
         BASE_DOORS.some((other) =>
-          other.tiles.some(
-            (doorway) =>
-              doorway.x === door.keeper.position.x && doorway.y === door.keeper.position.y,
-          ),
+          other.tiles.some((tile) => tile.x === door.returnTo.x && tile.y === door.returnTo.y),
         ),
       ).toBe(false);
-      // And you can reach the keeper from the tile you are put down on.
+      // And it is the step in front of its own door.
       expect(
-        Math.abs(door.returnTo.x - door.keeper.position.x) +
-          Math.abs(door.returnTo.y - door.keeper.position.y),
-      ).toBeGreaterThan(0);
+        door.tiles.some(
+          (tile) => Math.abs(tile.x - door.returnTo.x) + Math.abs(tile.y - door.returnTo.y) === 1,
+        ),
+      ).toBe(true);
     }
   });
 
@@ -308,7 +153,7 @@ describe('the base map', () => {
    */
   it('stands the notice board where somebody coming off the boat can read it', () => {
     const map = fullyBuilt();
-    const board = { x: 20, y: 15 };
+    const board = { x: 14, y: 15 };
     expect(map.collision[board.y][board.x]).toBe(true);
     expect(map.collision[board.y + 1][board.x]).toBe(false);
     // And it is a short walk from where a raid puts the player down.
@@ -318,7 +163,6 @@ describe('the base map', () => {
   it('opens every doorway the catalogue cut, and nothing else in a building', () => {
     const map = fullyBuilt();
     for (const door of BASE_DOORS) {
-      if (!door.building) continue;
       for (const tile of door.tiles) {
         expect([door.id, map.collision[tile.y][tile.x]]).toEqual([door.id, false]);
       }
@@ -340,7 +184,7 @@ describe('what the base is built out of', () => {
     expect(standingFixtures(EVERY_RUNG)).toHaveLength(BASE_FIXTURES.length);
   });
 
-  it('lays no fixture over another, over a building, or over a keeper', () => {
+  it('lays no fixture over another or over a doorway', () => {
     const taken = new Map<string, string>();
     const claim = (x: number, y: number, by: string): void => {
       const key = `${x},${y}`;
@@ -348,13 +192,6 @@ describe('what the base is built out of', () => {
       taken.set(key, by);
     };
     for (const door of BASE_DOORS) {
-      if (door.building) {
-        // The building's own footprint is read off the catalogue rather than
-        // restated, so a redrawn prop cannot quietly start overlapping.
-        const prop = getBaseMap([]).collision;
-        expect(prop).toBeDefined();
-      }
-      claim(door.keeper.position.x, door.keeper.position.y, `keeper:${door.keeper.id}`);
       for (const tile of door.tiles) claim(tile.x, tile.y, `door:${door.id}`);
     }
     for (const fixture of BASE_FIXTURES) {

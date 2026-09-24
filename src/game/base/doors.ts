@@ -3,30 +3,25 @@ import type { CastCharacterDesignId } from '../world/characterDesigns';
 import type { BasePropName } from './baseTileset';
 
 /**
- * The four places in the base, who keeps each one, and how you get in.
+ * The four buildings in the base, and how you get into each.
  *
- * A screen is a room now. What was a list of four cards on a lobby is four
- * buildings round a yard, and choosing one is walking to it - so the door and
- * the screen behind it are authored together here, and the scene only has to
- * ask which door a tile belongs to.
+ * A screen is behind a room now, and the room is behind a door. What was a
+ * list of four cards on a lobby is four buildings round a yard: walking onto a
+ * doorway takes the player inside (`rooms.ts`), where the keeper stands and
+ * the thing the player built is on show, and the keeper's screen is one key
+ * from the door mat. So the door and the room behind it are authored together
+ * - a door names its room by sharing its id - and the scene only has to ask
+ * which door a tile belongs to.
  *
- * Two ways in, always, and that is deliberate rather than generous. **Stepping
- * onto a doorway opens it**, the way a door works in the games this is dressed
- * as; and **speaking to the keeper opens it too**, because a figure standing in
- * the yard is what says which building is which, and walking up to somebody and
- * pressing the key is the one verb this game has always had. Neither costs a
- * line of dialogue first: the base is walked through many times an hour, and a
- * keypress that only says hello is a toll by the fourth raid.
- *
- * The quay has no door because a quay has none: Bill is the way in, standing by
- * his crates at the head of the jetty the boat is tied to.
- *
- * All four are drawn from their own sheets (`world/characterDesigns.ts`), which
- * is the same art the screens behind their doors put a face on - so the person
- * in the yard and the person on the screen are one piece of art at one scale.
+ * Nobody stands in the yard any more. The four keepers used to wait outside
+ * their own doors because there was nowhere else for them to be; they are
+ * inside now, behind their counters, which is where a player walking in looks
+ * for them. Bill has a door for the first time: his cottage stands at the head
+ * of the jetty the boat ties up to, because the first thing a raid that went
+ * well wants is him.
  */
 
-/** Which screen a door opens. `HubScene` is the one place these are rendered. */
+/** Which screen a room's keeper opens. `HubScene` is the one place these are rendered. */
 export type BaseScreen = 'raid' | 'stash' | 'workshop' | 'trader';
 
 export interface BaseKeeper {
@@ -46,25 +41,24 @@ export interface BaseBuilding {
 }
 
 export interface BaseDoor {
+  /** Also the id of the room behind it (`rooms.ts`). */
   readonly id: string;
   readonly screen: BaseScreen;
   /**
-   * The name over it, which is also the name of the screen behind it. A
-   * building captioned one thing opening onto a screen headed another reads as
-   * two places, so `HubScene.heading` says the same words.
+   * The name over it, which is also the name of the room and the screen behind
+   * it. A building captioned one thing opening onto a screen headed another
+   * reads as two places, so `HubScene.heading` says the same words.
    */
   readonly name: string;
-  /** Omitted by the quay, which is open air. */
-  readonly building?: BaseBuilding;
+  readonly building: BaseBuilding;
   /**
    * Every tile that opens it. A doorway cut two cells wide opens from either,
    * because a player walking at a building should not have to find the middle
-   * of it. Empty where there is no door - see the quay.
+   * of it.
    */
   readonly tiles: readonly GridPosition[];
   /** Where the player is put down when they come back out. */
   readonly returnTo: GridPosition;
-  readonly keeper: BaseKeeper;
 }
 
 export const BASE_DOORS: readonly BaseDoor[] = [
@@ -78,13 +72,6 @@ export const BASE_DOORS: readonly BaseDoor[] = [
       { x: 17, y: 11 },
     ],
     returnTo: { x: 16, y: 12 },
-    keeper: {
-      id: 'oak',
-      name: 'PROFESSOR OAK',
-      design: 'prof-oak',
-      position: { x: 15, y: 12 },
-      facing: 'down',
-    },
   },
   {
     id: 'pokemon-centre',
@@ -93,13 +80,6 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     building: { prop: 'pokemonCentre', x: 9, y: 7 },
     tiles: [{ x: 11, y: 11 }],
     returnTo: { x: 11, y: 12 },
-    keeper: {
-      id: 'nurse-joy',
-      name: 'NURSE JOY',
-      design: 'nurse-joy',
-      position: { x: 10, y: 12 },
-      facing: 'down',
-    },
   },
   {
     id: 'brocks-workshop',
@@ -111,27 +91,16 @@ export const BASE_DOORS: readonly BaseDoor[] = [
       { x: 22, y: 11 },
     ],
     returnTo: { x: 21, y: 12 },
-    keeper: {
-      id: 'brock',
-      name: 'BROCK',
-      design: 'brock',
-      position: { x: 23, y: 12 },
-      facing: 'down',
-    },
   },
   {
-    id: 'the-quay',
+    id: 'bills-cottage',
     screen: 'trader',
-    name: 'BILL’S QUAY',
-    tiles: [],
-    returnTo: { x: 14, y: 17 },
-    keeper: {
-      id: 'bill',
-      name: 'BILL',
-      design: 'bill',
-      position: { x: 14, y: 16 },
-      facing: 'right',
-    },
+    name: 'BILL’S COTTAGE',
+    // On the yard's edge beside the jetty, with its door on the quay: four
+    // steps from where the boat puts a raid down.
+    building: { prop: 'billsCottage', x: 17, y: 13 },
+    tiles: [{ x: 18, y: 15 }],
+    returnTo: { x: 18, y: 16 },
   },
 ];
 
@@ -141,8 +110,6 @@ export function doorAt(tile: GridPosition): BaseDoor | undefined {
   );
 }
 
-export function keeperAt(tile: GridPosition): BaseDoor | undefined {
-  return BASE_DOORS.find(
-    (door) => door.keeper.position.x === tile.x && door.keeper.position.y === tile.y,
-  );
+export function doorNamed(id: string): BaseDoor | undefined {
+  return BASE_DOORS.find((door) => door.id === id);
 }

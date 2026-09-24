@@ -9,6 +9,8 @@ import { standingFixtures } from './fixtures';
 /**
  * THE HARBOUR - the one map in the game nobody is hunting you on.
  *
+ * (Every building on it can be walked into: see `rooms.ts`.)
+ *
  * The lobby used to be a list of four cards. This is the same four places as a
  * town you walk around: Oak's Lab for the raid, the Pokémon Center for the
  * team, Brock's Workshop for the base, and the quay where Bill takes what you
@@ -117,24 +119,23 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
     'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
   ]);
 
-  // The three buildings, each with its own doorway cut into it by the base's
-  // catalogue. They stand in one row so the three doors are one decision.
+  // The four buildings, each with its own doorway cut into it by the base's
+  // catalogue. The three the player re-kits at stand in one row so the three
+  // doors are one decision; Bill's cottage stands on the quay beside the jetty.
   for (const door of BASE_DOORS) {
-    if (door.building) {
-      map.plant(door.building.x, door.building.y, door.building.prop);
-    }
+    map.plant(door.building.x, door.building.y, door.building.prop);
   }
 
   // The quay, which is always here: the jetty the boat is tied to, Bill's
-  // crates beside him, a post to moor against and the harbour's own board.
+  // crates, a post to moor against and the harbour's own board.
   // Two jetties abreast: one is two planks wide, which from above reads as two
   // planks rather than as something a boat ties up to.
   map.plant(15, 17, 'jetty');
   map.plant(17, 17, 'jetty');
   map.plant(12, 15, 'crateStack');
-  map.plant(19, 15, 'mooringPost');
-  map.plant(20, 15, 'noticeBoard');
+  map.plant(14, 15, 'noticeBoard');
   map.plant(22, 15, 'barrelPair');
+  map.plant(24, 15, 'mooringPost');
 
   // And what the player has built. Planted last, so a fixture is the last word
   // on its own tiles exactly as a landmark is on a raid map.
