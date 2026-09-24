@@ -1838,7 +1838,11 @@ button {
    smaller than its neighbour. */
 :where(.pixel-ui) .wallmap-layout {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1fr);
+  /* Name, picture, signs, and what is left: shared by every card through a
+     subgrid, so a name that wraps onto a third line in a narrow card moves all
+     four pictures down together and they still stand on one line. */
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  row-gap: calc(var(--u) * 3);
   height: 100%;
 }
 :where(.pixel-ui) .px-card.wallmap-card {
@@ -1847,9 +1851,9 @@ button {
   /* The name, the picture and the signs one under another from the top, where
      the cursor is: the picture's frame is sized to it (`fitMapPictures`), so
      the signs hang directly under the map they belong to rather than at the
-     foot of a card the height of the screen. */
-  grid-template-rows: auto auto auto;
-  align-content: start;
+     foot of a card the height of the screen. The fourth row is the rest. */
+  grid-row: 1 / -1;
+  grid-template-rows: subgrid;
   gap: calc(var(--u) * 3);
   padding: calc(var(--u) * 2) calc(var(--u) * 3) calc(var(--u) * 3) calc(var(--u) * 9);
   text-align: left;
@@ -1858,6 +1862,7 @@ button {
   /* Two lines on every card, however wide, so the four frames start level and
      the four maps stand on one line. */
   display: grid;
+  align-content: start;
   text-transform: uppercase;
 }
 :where(.pixel-ui) .wallmap-card-head small {

@@ -169,27 +169,39 @@ export function pictureRowAttributes(weights: readonly number[], gap: number, ov
 }
 
 /**
- * The room a `shared` frame has: as wide as its card, and as tall as the card
- * less everything else in it. A shared frame is sized to its picture once it
- * is fitted, so its own height is never the room it had - it is asked of the
- * card instead, which is what lets the card centre the picture and the signs
- * under it as one group.
+ * The room each `shared` frame has: as wide as its card, and as tall as the
+ * card less everything else in it. A shared frame is sized to its picture once
+ * it is fitted, so its own height is never the room it had - it is asked of
+ * the card instead. The cards share their rows (a subgrid), so what else is in
+ * a card is as tall as the tallest of its kind in any card: a name that wraps
+ * in one card takes the same line from every picture.
  */
-function sharedRoom(frame: HTMLElement, unit: number): PictureSize {
-  const card = frame.parentElement;
-  if (!card) {
-    return { width: frame.clientWidth / unit, height: frame.clientHeight / unit };
-  }
-  const style = getComputedStyle(card);
-  const others = [...card.children].filter((child) => child !== frame) as HTMLElement[];
-  const gap = Number.parseFloat(style.rowGap) || 0;
-  const content =
-    card.clientHeight -
-    Number.parseFloat(style.paddingTop) -
-    Number.parseFloat(style.paddingBottom) -
-    others.reduce((sum, child) => sum + child.offsetHeight, 0) -
-    gap * others.length;
-  return { width: frame.clientWidth / unit, height: content / unit };
+function sharedRooms(frames: readonly HTMLElement[], unit: number): readonly PictureSize[] {
+  const siblings = frames.map((frame) =>
+    [...(frame.parentElement?.children ?? [])].filter((child) => child !== frame) as HTMLElement[],
+  );
+  const tallest: number[] = [];
+  siblings.forEach((others) =>
+    others.forEach((child, index) => {
+      tallest[index] = Math.max(tallest[index] ?? 0, child.offsetHeight);
+    }),
+  );
+  return frames.map((frame, index) => {
+    const card = frame.parentElement;
+    if (!card) {
+      return { width: frame.clientWidth / unit, height: frame.clientHeight / unit };
+    }
+    const style = getComputedStyle(card);
+    const others = siblings[index];
+    const gap = Number.parseFloat(style.rowGap) || 0;
+    const content =
+      card.clientHeight -
+      Number.parseFloat(style.paddingTop) -
+      Number.parseFloat(style.paddingBottom) -
+      others.reduce((sum, _child, at) => sum + (tallest[at] ?? 0), 0) -
+      gap * (others.length + 1);
+    return { width: frame.clientWidth / unit, height: content / unit };
+  });
 }
 
 /**
@@ -292,9 +304,11 @@ export function fitMapPictures(
   // Measured with every frame back at no height of its own, so the room each
   // card has is the room it has now rather than what the last fit left it.
   shared.forEach(({ frame }) => frame.style.removeProperty('height'));
-  const row = planSharedRow(
-    shared.map(({ frame, canvas }) => ({ size: size(canvas), room: sharedRoom(frame, unit) })),
+  const rooms = sharedRooms(
+    shared.map(({ frame }) => frame),
+    unit,
   );
+  const row = planSharedRow(shared.map(({ canvas }, index) => ({ size: size(canvas), room: rooms[index] })));
   shared.forEach(({ frame, canvas }, index) => {
     frame.style.height = whole(row.frames[index].height);
     paint(frame, canvas, row.fit, 'foot');
