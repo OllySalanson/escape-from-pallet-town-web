@@ -2493,15 +2493,29 @@ button {
   /* Seven to six, measured rather than chosen: the shelf has the berth standing
      in it as well as its stock, so an even split left it short of a whole row
      and the fold ran through one. A row of stock is 28 game pixels and the MORE
-     strip is 13, so its list needs 41 before it shows anything whole. */
-  grid-template-rows: auto minmax(0, 7fr) minmax(0, 6fr);
+     strip is 13, so its list needs 41 before it shows anything whole, and its
+     window 92 round that - heading, list, berth. The table's first deal wraps
+     its line to 40 pixels and needs 53, and 76 round it. Those are floors, not
+     shares: at `BASE_STAGE` the split alone gave the shelf 91 and the fold went
+     through the Poke Ball, so the ratio only spends what is left over. */
+  grid-template-rows: auto minmax(calc(var(--u) * 92), 7fr) minmax(calc(var(--u) * 76), 6fr);
+  /* Two pixels between his windows rather than four: 16 + 92 + 76 is all but
+     the whole of what `BASE_STAGE` has under its title bar and over its help
+     bar, and the four pixels are the difference between both floors fitting
+     and neither list showing a whole row. */
+  row-gap: calc(var(--u) * 2);
 }
 /* And his standing is its heading strip alone: the strip already names the tier
    and counts the points to the next, so his two sentences about it are the
    first thing to go when a screen this size has four bands to fit and the two
    lists under them have no rows to show. */
-:where(.pixel-ui[data-room='tight']) .trader-standing {
-  padding: 0;
+/* The window keeps its padding - `.pixel-ui .px-window` outranks anything
+   scoped through `:where()` here, which is how a `padding: 0` in this place sat
+   dead for a whole release and left a blank band under the strip - so the strip
+   takes back the four pixels it would have left under itself, and the window is
+   the strip and its frame: sixteen pixels. */
+:where(.pixel-ui[data-room='tight']) .trader-standing > .px-heading {
+  margin-bottom: calc(var(--u) * -3);
 }
 :where(.pixel-ui[data-room='tight']) .trader-standing > p,
 /* The line he says it in is inside the band that stands him beside it now, and
