@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 const stylesheet = await readFile(new URL('./style.css', import.meta.url), 'utf8');
 
-/** Every module that draws a scrolling pane, so the panes' own classes can be read off the markup. */
-const scrollPaneMarkup = await Promise.all(
+/** Every module of the game, so the classes the markup pairs with a shared one can be read off it. */
+const gameSources = await Promise.all(
   (await readdir(new URL('./game', import.meta.url), { recursive: true }))
     .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
     .map((file) => readFile(new URL(`./game/${file}`, import.meta.url), 'utf8')),
-).then((sources) => sources.filter((source) => source.includes('px-scroll')));
+);
+/** Every module that draws a scrolling pane, so the panes' own classes can be read off the markup. */
+const scrollPaneMarkup = gameSources.filter((source) => source.includes('px-scroll'));
 
 /**
  * The bottom padding a rule gives, if it gives one that is not zero - from
@@ -214,6 +216,40 @@ describe('the pixel-ui stylesheet', () => {
       return pane && footOf(body) ? [`${selector.trim()} { ${footOf(body)} }`] : [];
     });
     expect(feet).toEqual([]);
+  });
+
+  it('never pads a window from a rule the window itself outranks', () => {
+    // `.pixel-ui .px-window` sets the padding every window has, two classes
+    // deep, and nearly everything else here is scoped through `:where()` and
+    // weighs one. So a rule that pads a class the markup always draws as a
+    // window - `:where(.pixel-ui[data-room='tight']) .trader-standing` - loses
+    // to it and is simply never applied. That one sat dead for a whole release:
+    // Bill's standing kept a blank band under its strip at 320x240 and both of
+    // his lists lost their only whole row to it. The window classes are read off
+    // the markup, every class that stands beside `px-window` or is handed to
+    // `pixelWindow` as its `className`.
+    const windowClasses = new Set(
+      gameSources.flatMap((source) => [
+        ...[...source.matchAll(/class="([^"]*\bpx-window\b[^"]*)"/g)].flatMap((match) => match[1].split(/\s+/)),
+        ...[...source.matchAll(/pixelWindow\([\s\S]*?className: ['`]([^'`$]*)/g)].flatMap((match) => match[1].split(/\s+/)),
+      ].filter((name) => /^[\w-]+$/.test(name) && name !== 'px-window')),
+    );
+    expect([...windowClasses]).toEqual(expect.arrayContaining(['trader-standing', 'trader-shelf', 'objectives-panel']));
+    const dead = [...pixelUiRules.matchAll(/([^{}]+)\{([^}]*)\}/g)].flatMap(([, selectors, body]) => {
+      if (!/(?:^|[\s;])padding(?:-top|-right|-bottom|-left)?\s*:/.test(body)) return [];
+      return selectors.split(',').map((one) => one.trim()).filter((one) => {
+        if (!one.startsWith(':where(')) return false;
+        const weighed = one.replace(/:where\((?:[^()]|\([^()]*\))*\)/g, '');
+        const weight = (weighed.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) ?? []).length;
+        const subject = weighed.trim().split(/\s+/).at(-1) ?? '';
+        return weight < 2 && [...windowClasses].some((name) => new RegExp(`\\.${name}(?![\\w-])`).test(subject));
+      });
+    });
+    // Two that were already dead when this was written, on screens that are not
+    // Bill's, left for their own change rather than restyled in passing: the
+    // one-Pokemon reselect message (`px-window px-empty`) and the workshop's
+    // "Materials spent" window (`run-loadout px-scroll`).
+    expect(dead).toEqual([':where(.pixel-ui) .px-scroll', ':where(.pixel-ui) .px-empty']);
   });
 
   it('lets wrapped copy break inside a narrow window instead of widening it', () => {
