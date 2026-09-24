@@ -69,6 +69,7 @@ try {
     press,
     click,
     until,
+    wait,
     paused: stepped,
     insertion: option('insertion') ?? 'viridian-forest',
     starter: option('starter') ?? 'Charmander',

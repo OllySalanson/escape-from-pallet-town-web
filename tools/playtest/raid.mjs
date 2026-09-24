@@ -137,7 +137,7 @@ try {
     await wait(350);
   };
 
-  await deploy(page, url.href, { press, click, until, paused: stepped, ...deployOptions(args) });
+  await deploy(page, url.href, { press, click, until, wait, paused: stepped, ...deployOptions(args) });
   note(`renderer ${(await page.evaluate(`${GAME}.config.renderType`)) === 1 ? 'canvas' : 'webgl'}, test mode ${testMode}, stepped ${stepped}`);
   await wait(600);
   if (option('shot')) {
@@ -598,7 +598,7 @@ try {
     await until(sceneIs('base'), 'the base');
     await wait(400);
     note(`home at ${await page.evaluate(`JSON.stringify(${GAME}.scene.getScene('base').currentTile)`)}`);
-    await walkIntoBase(page, 'oaks-lab', { press, until });
+    await walkIntoBase(page, 'oaks-lab', { press, until, wait });
     await wait(400);
     note(`lobby: ${await page.evaluate(`document.querySelector('.menu-overlay')?.innerText.replace(/\\n+/g, ' | ').slice(0, 160)`)}`);
     // What the raid left in the record at base: the count, and the ground it

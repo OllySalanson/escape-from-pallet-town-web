@@ -37,7 +37,7 @@ try {
   const until = async (expression, what = expression) => { for (let i = 0; i < 300; i += 1) { if (await page.evaluate(expression)) return; await wait(100); } throw new Error(`never saw ${what}`); };
   const press = async (code) => { await page.keyDown(code); await wait(60); await page.keyUp(code); };
   const click = async (text) => { await until(`(() => { const b = [...document.querySelectorAll('button')].find((b) => b.innerText.toLowerCase().includes(${JSON.stringify(text.toLowerCase())}) && !b.disabled); if (!b) return false; b.click(); return true; })()`, `button "${text}"`); await wait(350); };
-  await deploy(page, url.href, { press, click, until, paused: true, ...deployOptions(args) });
+  await deploy(page, url.href, { press, click, until, wait, paused: true, ...deployOptions(args) });
   await wait(600);
   console.log('map:', await page.evaluate(`${GAME}.scene.getScene('world').currentMap.id`));
   console.log('gates open in this raid:', await page.evaluate(`${GAME}.scene.getScene('world').defeatedBosses.join(', ') || '(none)'`));

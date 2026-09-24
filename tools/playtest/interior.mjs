@@ -45,7 +45,7 @@ try {
     );
     await wait(350);
   };
-  await deploy(page, url.href, { press, click, until, paused: true, ...deployOptions(args) });
+  await deploy(page, url.href, { press, click, until, wait, paused: true, ...deployOptions(args) });
   await wait(600);
   for (let i = 0; i < 12; i += 1) { await press('Space'); await wait(200); }
 
