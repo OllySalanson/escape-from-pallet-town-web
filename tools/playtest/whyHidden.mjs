@@ -29,7 +29,7 @@ try {
   const until = async (e, what = e) => { for (let i = 0; i < 300; i += 1) { if (await page.evaluate(e)) return; await wait(100); } throw new Error(`never saw ${what}`); };
   const press = async (code) => { await page.keyDown(code); await wait(60); await page.keyUp(code); };
   const click = async (text) => { await until(`(() => { const b = [...document.querySelectorAll('button')].find((b) => b.innerText.toLowerCase().includes(${JSON.stringify(text.toLowerCase())}) && !b.disabled); if (!b) return false; b.click(); return true; })()`, `button "${text}"`); await wait(350); };
-  await deploy(page, url.href, { press, click, until, paused: true, ...deployOptions(process.argv.slice(2)) });
+  await deploy(page, url.href, { press, click, until, wait, paused: true, ...deployOptions(process.argv.slice(2)) });
   await wait(600);
   for (let i = 0; i < 12; i += 1) { await press('Space'); await wait(200); }
   const [name, x, y] = stop.split(':');

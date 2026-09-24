@@ -29,11 +29,20 @@ export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.sc
  * screen - the one-key way in a player re-kitting takes - so that is what this
  * presses. A driver already in the right room (backed out of its screen) just
  * presses it again; one in another room walks back out first.
+ *
+ * `wait` is how it lets the scene catch up between moves, and a driver that
+ * steps a paused loop must hand over its own: a real-time sleep advances a
+ * paused game by nothing, so the room a door opens onto never finished coming
+ * in and every stepped driver stood on Oak's Lab's doorstep until it gave up.
  */
 export async function walkIntoBase(page, door, options = {}) {
   const press = options.press ?? ((code) => page.tap(code, 60));
   const until = options.until ?? ((expression, what) => page.waitFor(expression, { what }));
   const settleMs = options.settleMs ?? 180;
+  const settle = options.wait ?? sleep;
+  if (!options.wait && (await page.evaluate(`${GAME}?.loopPaused === true`))) {
+    throw new Error(`walkIntoBase: the game loop is paused, so it only moves when stepped - hand over the driver's own \`wait\``);
+  }
   await until(sceneIs('base'), 'the base');
   for (let guard = 0; guard < 120; guard += 1) {
     if (await page.evaluate(sceneIs('hub'))) {
@@ -74,7 +83,7 @@ export async function walkIntoBase(page, door, options = {}) {
     if (move?.key) {
       await press(move.key);
     }
-    await sleep(settleMs);
+    await settle(settleMs);
   }
   await until(sceneIs('hub'), `the ${door}`);
 }
@@ -100,11 +109,13 @@ export function deployOptions(args) {
 }
 
 /**
- * Title, starter, lobby, loadout, final check, raid. `press`, `click` and `until`
- * are the driver's own, because only it knows whether the game is being stepped;
- * `paused` puts the loop to sleep on every load, for a driver that steps it.
+ * Title, starter, lobby, loadout, final check, raid. `press`, `click`, `until`
+ * and `wait` are the driver's own, because only it knows whether the game is
+ * being stepped; `paused` puts the loop to sleep on every load, for a driver
+ * that steps it, and so needs the `wait` that steps it (`walkIntoBase` refuses
+ * a paused loop without one).
  */
-export async function deploy(page, url, { press, click, until, paused = false, insertion, beaten = [], opened = [], completed = [], hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [] }) {
+export async function deploy(page, url, { press, click, until, wait, paused = false, insertion, beaten = [], opened = [], completed = [], hp, level, starter = 'Bulbasaur', team = [], stash = [], pack = [], secure = [] }) {
   const title = async () => { await page.waitFor(sceneIs('title')); if (paused) await page.evaluate(`${GAME}.pauseLoop()`); };
   await title();
   await press('Space'); await until(sceneIs('starter'));
@@ -172,7 +183,7 @@ export async function deploy(page, url, { press, click, until, paused = false, i
     console.log(`continuing from a save with: ${JSON.stringify(await page.evaluate(`JSON.parse(localStorage.getItem('${SAVE_KEY}')).raidProgress`))}`);
   }
   // The lobby is a town now, and preparation is done inside Oak's Lab.
-  await walkIntoBase(page, 'oaks-lab', { press, until });
+  await walkIntoBase(page, 'oaks-lab', { press, until, wait });
   await click('Start a raid');
   await click(starter);
   // Everybody else the vault holds, so a `--team` deploys as a team. The rows
