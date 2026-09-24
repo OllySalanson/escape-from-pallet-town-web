@@ -14,7 +14,7 @@
 // smallest one and look right at the biggest.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { launchBrowser, sleep, PIXEL_WINDOW } from './browser.mjs';
-import { SAVE_KEY, sceneIs } from './deploy.mjs';
+import { SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const option = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -60,7 +60,9 @@ try {
     await page.waitFor(sceneIs('base'));
   };
 
+  // The lobby is a town now, and a raid is prepared inside Oak's Lab.
   const toDropIn = async () => {
+    await walkIntoBase(page, 'oaks-lab');
     await click('Start a raid');
     await click('Bulbasaur');
     await click('Choose drop-in');

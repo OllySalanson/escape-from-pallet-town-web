@@ -24,6 +24,7 @@ import {
   spendableSupply,
   buildDropInBriefing,
   gradeLine,
+  largestMapSize,
   placePicture,
   type DropInBriefing,
   type DropInContext,
@@ -93,6 +94,7 @@ import { createActiveRunSession } from '../run/RunSession';
 import {
   availableInsertionIds,
   FIRST_CONTRACT,
+  frontDoorFor,
   generateRunPlan,
   isDropInPoint,
   RUN_INSERTIONS,
@@ -130,8 +132,11 @@ import { iconMarkup, itemIcon, objectiveIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
 import { rivalForRaid } from '../world/hunters';
 import { openedDoors } from '../world/gates';
+import type { GridPosition } from '../movement/gridMovement';
 import { getWorldMap, WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
-import { MINIMAP_PALETTE, MINIMAP_TILE, type Minimap } from '../world/minimap';
+import { MINIMAP_PALETTE, type Minimap } from '../world/minimap';
+import { fitMapPictures, mapPictureFrame, pictureRowAttributes } from '../ui/mapPicture';
+import { WALL_MAP_ORDER, wallMapContext, wallMapEntries, wallMapNote, wallMapPicture, type WallMapEntry } from '../base/wallMap';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -181,10 +186,33 @@ export interface HubSceneData {
   readonly view?: HubView;
   /** The room they came in from, so backing out puts them back in it. */
   readonly from?: string;
+  /**
+   * Where in that room they stood to open this, when it was not the door mat:
+   * the wall map is read from in front of it, and backing out stands the
+   * player back there.
+   */
+  readonly at?: GridPosition;
 }
 
 /** Base screens outside preparation; the deploy route is owned by DeploymentFlow. */
-type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'workshop' | 'trader';
+type HubView = 'home' | 'stash' | 'deploy' | 'reselect' | 'workshop' | 'trader' | 'wallmap';
+
+/**
+ * Game pixels the drop-in screen's right-hand side takes beyond its column's
+ * measure: the gap between the two sides, the body's padding and the two
+ * windows' frames. Only its picture needs to know, because only the picture's
+ * column is as wide as what is in it.
+ */
+const DROPIN_SIDE_ALLOWANCE = 20;
+
+/**
+ * Game pixels a card on the wall map takes beyond its picture: its window's
+ * two frame pixels, the cursor's margin on the left, a pixel of room on the
+ * right, and the picture's own ring.
+ */
+const WALL_CARD_OVERHEAD = 2 + 9 + 3 + 2;
+/** The gap between two cards, which is the body's own (`.px-body` in style.css). */
+const WALL_CARD_GAP = 4;
 
 /** What `traderArmed` holds for the berth, which is the one deal with no id. */
 const BERTH_DEAL = 'berth';
@@ -198,6 +226,10 @@ export class HubScene extends Phaser.Scene {
   private view: HubView = 'home';
   /** The base door this screen was walked in through, if any - see `leaveToBase`. */
   private enteredFrom: string | undefined;
+  /** Where in that room the player stood to open it, when it was not the mat. */
+  private enteredAt: GridPosition | undefined;
+  /** The map on Oak's wall being read close up, or undefined while all four are. */
+  private wallMapInspect: WorldMapId | undefined;
   /**
    * Picking a piece up and putting it down, in both containers.
    *
@@ -270,6 +302,7 @@ export class HubScene extends Phaser.Scene {
     // storage knows nothing about it.
     this.view = data.view ?? 'home';
     this.enteredFrom = data.from;
+    this.enteredAt = data.at;
   }
 
   private applyLoadedGame(loaded: RestoredGame): void {
@@ -310,6 +343,7 @@ export class HubScene extends Phaser.Scene {
     this.workshopPayment = [];
     this.workshopArmed = false;
     this.traderArmed = undefined;
+    this.wallMapInspect = undefined;
     this.deploying = false;
     // A fresh look at a freshly loaded vault: nothing narrowed, nothing picked up.
     this.boxScope = 0;
@@ -325,6 +359,10 @@ export class HubScene extends Phaser.Scene {
   public create(): void {
     this.cameras.main.fadeIn?.(180, 0, 0, 0);
     this.overlay = new MenuOverlay(this, 'hub-menu pixel-ui', (event) => this.handleKey(event));
+    // A map picture is as big as the window it is in, which only the browser
+    // can say once the screen is laid out (`ui/mapPicture.ts`).
+    this.overlay.onMeasure = (unit) =>
+      fitMapPictures(this.overlay.root, unit, (key, step) => this.drawPicture(key, step));
     this.render();
     this.offerPendingMoves();
   }
@@ -732,6 +770,7 @@ export class HubScene extends Phaser.Scene {
     this.workshopPayment = [];
     this.workshopArmed = false;
     this.traderArmed = undefined;
+    this.wallMapInspect = undefined;
     if (view === 'reselect') {
       this.reselectStarterId = this.startingStarterId();
     }
@@ -893,6 +932,7 @@ export class HubScene extends Phaser.Scene {
     this.scene.start('base', {
       savedGame: this.savedGame,
       ...(this.enteredFrom === undefined ? {} : { room: this.enteredFrom }),
+      ...(this.enteredAt === undefined ? {} : { at: this.enteredAt }),
     });
   }
 
@@ -1003,6 +1043,12 @@ export class HubScene extends Phaser.Scene {
       this.render();
       return;
     }
+    // Reading one map close up backs out to all four, not out of the lab.
+    if (this.view === 'wallmap' && this.wallMapInspect !== undefined) {
+      this.wallMapInspect = undefined;
+      this.render();
+      return;
+    }
     // Backing out of a payment returns to the ladder it was chosen from.
     if (this.view === 'workshop' && this.workshopUpgradeId !== undefined) {
       this.setView('workshop');
@@ -1108,6 +1154,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'reselect') return 'Swap your partner';
     if (this.view === 'workshop') return this.payingFor ? `Build ${this.payingFor.name}` : 'Brock’s Workshop';
     if (this.view === 'trader') return 'Bill’s Cottage';
+    if (this.view === 'wallmap') return this.wallMapInspect ? WORLD_MAP_NAMES[this.wallMapInspect] : 'The wall map';
     if (this.flow.step === 'loadout') return 'Build your loadout';
     if (this.flow.step === 'dropin') return 'Choose your drop-in';
     return this.flow.step === 'secure' ? 'Secure slot' : 'Final check';
@@ -1122,6 +1169,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'stash') return 'Center';
     if (this.view === 'workshop') return 'Workshop';
     if (this.view === 'trader') return 'Cottage';
+    if (this.view === 'wallmap') return this.wallMapInspect ? 'Wall map' : 'Lab';
     if (this.flow.step === 'confirm') return 'Drop-in';
     if (this.flow.step === 'dropin') return 'Loadout';
     if (this.flow.step === 'secure') {
@@ -1170,7 +1218,9 @@ export class HubScene extends Phaser.Scene {
               // that scrolls away from the row being priced.
               : this.view === 'trader'
                 ? formatMoney(moneyHeld(this.stash))
-                : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} items`,
+                : this.view === 'wallmap'
+                  ? wallMapNote(this.savedGame)
+                  : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} items`,
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
@@ -1284,47 +1334,31 @@ export class HubScene extends Phaser.Scene {
       rerender(() => this.flow.chooseInsertion(button.dataset.insertion as RunInsertionId)),
     );
     on('[data-secure-slot]', () => rerender(() => this.flow.openSecureSlot()));
+    on('[data-wall-map]', (button) =>
+      rerender(() => {
+        this.wallMapInspect = button.dataset.wallMap as WorldMapId;
+      }),
+    );
     on('[data-advance]', () => this.answer(this.flow.advance(), 'confirm'));
     on('[data-start]', () => this.startRun());
-    this.paintMinimaps(root);
     // The cursor starts on what the screen is for, never on the way out of it.
     this.overlay.refocus('.px-field', '[data-cursor-start]', '.loadout-entry .px-row', '.px-body button:not([disabled])', 'button');
   }
 
   /**
-   * Inks every bird's-eye map on the screen, after the markup is in the DOM.
-   *
-   * The picture is a grid of characters (`world/minimap.ts`) and the palette
-   * says what ink each one is, so this is the only part of it that touches a
-   * browser: one source pixel a tile, written straight into an ImageData. It is
-   * done here rather than in the markup because four thousand `<i>` elements is
-   * not a thumbnail, and as a canvas the whole map is one element the stylesheet
-   * scales by a whole number with `image-rendering: pixelated`.
+   * The picture a canvas on this screen asks for, at the step the overlay
+   * fitted it to (`ui/mapPicture.ts`). The key says which: a way in on the
+   * drop-in step, or a map on Oak's wall.
    */
-  private paintMinimaps(root: HTMLElement): void {
-    root.querySelectorAll<HTMLCanvasElement>('canvas[data-minimap]').forEach((canvas) => {
-      const insertionId = canvas.dataset.minimap as RunInsertionId;
-      if (!(insertionId in RUN_INSERTIONS)) {
-        return;
-      }
-      const picture = placePicture(insertionId, this.dropInContext(insertionId));
-      const context = canvas.getContext('2d');
-      if (!context) {
-        return;
-      }
-      const image = context.createImageData(picture.width, picture.height);
-      for (let y = 0; y < picture.height; y += 1) {
-        for (let x = 0; x < picture.width; x += 1) {
-          const ink = MINIMAP_PALETTE[picture.rows[y][x]] ?? '#000000';
-          const at = (y * picture.width + x) * 4;
-          image.data[at] = Number.parseInt(ink.slice(1, 3), 16);
-          image.data[at + 1] = Number.parseInt(ink.slice(3, 5), 16);
-          image.data[at + 2] = Number.parseInt(ink.slice(5, 7), 16);
-          image.data[at + 3] = 255;
-        }
-      }
-      context.putImageData(image, 0, 0);
-    });
+  private drawPicture(key: string, step: number): Minimap | undefined {
+    const [kind, id] = key.split(':');
+    if (kind === 'dropin' && id in RUN_INSERTIONS) {
+      return placePicture(id as RunInsertionId, this.dropInContext(id as RunInsertionId), step);
+    }
+    if (kind === 'wall' && (WALL_MAP_ORDER as readonly string[]).includes(id)) {
+      return wallMapPicture(this.savedGame, id as WorldMapId, step);
+    }
+    return undefined;
   }
 
   /**
@@ -1346,6 +1380,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'reselect') return this.reselectView();
     if (this.view === 'workshop') return this.payingFor ? this.paymentView(this.payingFor) : this.workshopView();
     if (this.view === 'trader') return this.traderView();
+    if (this.view === 'wallmap') return this.wallMapView();
     if (this.flow.step === 'loadout') return this.loadoutView();
     if (this.flow.step === 'dropin') return this.dropInView();
     return this.flow.step === 'secure' ? this.secureView() : this.confirmView();
@@ -2000,22 +2035,26 @@ export class HubScene extends Phaser.Scene {
   /**
    * Choosing where to drop in, as its own step.
    *
-   * The left window is the choice; the right is the place, and it leads with a
-   * picture of the map drawn one game pixel to the tile with everything nobody
-   * has walked still dark. That dark is the point: the vast maps are built so
-   * you drop in, see a piece and leave wondering, and a full bird's-eye view
-   * would hand that answer over for nothing. What fills in is what you walked,
-   * plus your own landings and the doors you have opened - so opening a gate
-   * changes something you can come back to base and look at.
+   * The map is the screen: a window down the whole left of it with the place
+   * drawn as big as the window will take (`ui/mapPicture.ts`), dark everywhere
+   * nobody has walked. That dark is the point: the vast maps are built so you
+   * drop in, see a piece and leave wondering, and a full bird's-eye view would
+   * hand that answer over for nothing. What fills in is what you walked, plus
+   * your own landings and the doors you have opened - so opening a gate changes
+   * something you can come back to base and look at.
    *
-   * The picture is pinned and only the words under it scroll, because it is
-   * what the screen is for.
+   * It was a hundred-pixel banner, which drew the Floodplain at two tiles to
+   * the pixel in a 64-pixel square in the corner of a screen with most of the
+   * window to spare - the captain's rule for menus is that they use the whole
+   * window, and a picture is the thing on this screen that most wants it. The
+   * choice of way in and what the place holds share the right-hand side; the
+   * picture's frame is the size the biggest map fits at, so nothing on the
+   * screen moves when the cursor changes the place.
    */
   private dropInView(): string {
     const chosen = this.flow.insertionId;
     const context = this.dropInContext(chosen);
     const briefing = buildDropInBriefing(chosen, context);
-    const picture = placePicture(chosen, context);
     const rows = this.unlockedInsertions
       .map(([id, insertion]) => {
         const contract = this.contractFor(id);
@@ -2032,9 +2071,20 @@ export class HubScene extends Phaser.Scene {
         return `<button class="px-row${isChosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertion.description)}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${isChosen ? pixelTag('', 'good', true) : ''}</button>`;
       })
       .join('');
+    const walked = Math.round(briefing.record.surveyed * 100);
 
     return `<main class="px-body dropin-layout">${pixelWindow(
-      this.placeHead(briefing, picture),
+      mapPictureFrame({
+        key: `dropin:${chosen}`,
+        label: `${briefing.mapName}, ${walked}% walked`,
+        size: { width: context.map.width, height: context.map.height },
+        reference: largestMapSize(),
+        mode: 'own',
+        // What the right-hand side needs to stay a column of one-line rows:
+        // its measure, the gap and the body's own padding.
+        leave: COLUMN_MEASURES.line + DROPIN_SIDE_ALLOWANCE,
+        className: 'dropin-picture',
+      }),
       {
         className: 'dropin-place',
         heading: briefing.insertion.label,
@@ -2048,11 +2098,11 @@ export class HubScene extends Phaser.Scene {
         note: this.firstContractActive ? '' : `${this.unlockedInsertions.length} known`,
       },
     )}${pixelWindow(
-      `<div class="px-list px-scroll dropin-brief" ${pixelColumns(COLUMN_MEASURES.line)}>${this.placeBrief(briefing)}</div>`,
+      `<div class="px-list px-scroll dropin-brief" ${pixelColumns(COLUMN_MEASURES.line)}>${this.placeFacts(briefing)}${this.placeBrief(briefing)}</div>`,
       { className: 'dropin-about', heading: 'What is in there' },
     )}${pixelCommitBar({
       title: `Drop in at ${briefing.insertion.label}`,
-      // One line, because the banner above already states the place's levels,
+      // One line, because the facts above already state the place's levels,
       // its doors and what it has cost you. A second row of the bar is 12
       // pixels off what the place holds, at the stage every screen is authored
       // against.
@@ -2065,22 +2115,151 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * The picture of the place, with the short facts beside it.
+   * The wall map in Oak's Lab, read on a screen (`base/wallMap.ts`).
    *
-   * The canvas carries the map's own tile dimensions, so one source pixel is
-   * one tile and one game pixel; `paintMinimaps()` fills it after the render,
-   * because the ink is data rather than markup and a few thousand `<i>`s would
-   * be. `--cols` is what the stylesheet measures its width in, exactly as
-   * the pack grid is measured.
+   * All four maps side by side at one scale - the scale the biggest fits at -
+   * so the Floodplain hangs four times the size of Route 1 because it is, lit
+   * where a raid has walked and dark everywhere else, with a sign pinned under
+   * each for every keeper beaten there. That is the glance: how far across the
+   * whole game the player has got. Choosing a map is the inspect: that one map
+   * as big as the window takes, with what is on it listed beside it.
    */
-  private placeHead(briefing: DropInBriefing, picture: Minimap): string {
+  private wallMapView(): string {
+    const entries = wallMapEntries(this.savedGame);
+    const inspected = entries.find((entry) => entry.mapId === this.wallMapInspect);
+    if (inspected) {
+      return this.wallMapInspectView(inspected, entries);
+    }
+    const cards = entries
+      .map((entry) => {
+        const known = Math.round(entry.known * 100);
+        const signs =
+          entry.signs.length === 0
+            ? `<small class="wallmap-none">${entry.held === 0 ? 'Nobody holds a door here' : `${entry.held} keeper${entry.held === 1 ? '' : 's'} still holding doors`}</small>`
+            : entry.signs.map((sign) => this.wallSign(sign.keeper)).join('');
+        const help = `${entry.name}: ${known}% of it known, ${entry.districtsKnown} of ${entry.districts} places reached${entry.signs.length === 0 ? '' : `, ${entry.signs.length} keeper${entry.signs.length === 1 ? '' : 's'} beaten`}. ENTER reads it close up.`;
+        return `<button class="px-window px-card wallmap-card" data-wall-map="${entry.mapId}" data-help="${escapeAttribute(help)}"><span class="wallmap-card-head"><strong>${entry.name}</strong><small>${entry.walked ? `${known}% known` : 'never walked'}</small></span>${mapPictureFrame({
+          key: `wall:${entry.mapId}`,
+          label: `${entry.name}, ${known}% known`,
+          size: entry.size,
+          mode: 'shared',
+          className: 'wallmap-picture',
+        })}<span class="wallmap-signs">${signs}</span></button>`;
+      })
+      .join('');
+    // Each card as wide as its map is, beside the others, plus its own frame
+    // and the cursor's margin (`WALL_CARD_OVERHEAD`); see `shareTracks`.
+    return `<main class="px-body wallmap-layout" ${pictureRowAttributes(
+      entries.map((entry) => entry.size.width),
+      WALL_CARD_GAP,
+      WALL_CARD_OVERHEAD,
+    )}>${cards}</main>`;
+  }
+
+  /** A keeper's sign, pinned: the name they held the doors under. */
+  private wallSign(keeper: string): string {
+    return `<span class="wallmap-sign"><i class="wallmap-pin" aria-hidden="true"></i>${keeper}</span>`;
+  }
+
+  /**
+   * One map from the wall, close up: the picture as big as the window takes
+   * down the left, exactly as the drop-in screen draws it, and beside it the
+   * four maps to move between and what this one has on it - the signs pinned
+   * under it, its doors and its ways out, each with a swatch in the ink the
+   * picture draws it in, so the list is the legend.
+   */
+  private wallMapInspectView(entry: WallMapEntry, entries: readonly WallMapEntry[]): string {
+    const door = frontDoorFor(entry.mapId);
+    const progress = this.savedGame.raidProgress;
+    const briefing = door
+      ? buildDropInBriefing(door.id, {
+          ...wallMapContext(this.savedGame, entry.mapId),
+          raidRecord: progress.raidRecord,
+          partyLevels: [],
+          contract: undefined,
+        })
+      : undefined;
+    const told = (body: string, help: string, className = ''): string =>
+      `<button class="px-row${className}" aria-disabled="true" data-help="${escapeAttribute(help)}">${body}</button>`;
+    const maps = entries
+      .map((other) => {
+        const chosen = other.mapId === entry.mapId;
+        return `<button class="px-row${chosen ? ' is-selected' : ''}" data-wall-map="${other.mapId}" data-help="${escapeAttribute(`${other.name}: ${Math.round(other.known * 100)}% known.`)}"><span class="px-row-main"><strong class="px-name">${other.name}</strong><small>${other.walked ? `${Math.round(other.known * 100)}% known · ${other.districtsKnown}/${other.districts} places` : 'never walked'}</small></span>${chosen ? pixelTag('', 'good', true) : ''}</button>`;
+      })
+      .join('');
+    const signs = `<h3 class="px-subheading">Signs pinned here</h3>${
+      entry.signs.length === 0
+        ? `<p class="px-empty px-wrap">${entry.held === 0 ? 'Nobody holds a door on this map.' : `No keeper beaten here yet. Beat one and their sign goes up.`}</p>`
+        : entry.signs
+            .map((sign) =>
+              told(
+                `<span class="px-row-main"><strong>${this.wallSign(sign.keeper)}</strong><small class="px-wrap">${sign.doors} · open for good</small></span>`,
+                `You beat ${sign.keeper}. ${sign.doors} stand${sign.doors.includes('+') ? '' : 's'} open on every raid from now on.`,
+                ' px-tall',
+              ),
+            )
+            .join('')
+    }`;
+    const doors = !briefing || briefing.doors.length === 0
+      ? ''
+      : `<h3 class="px-subheading">Doors</h3>${briefing.doors
+          .map((line) =>
+            told(
+              `${this.pip(line.open ? 'O' : 'H')}<span class="px-row-main"><strong>${line.label}</strong><small>${line.open ? 'open' : `held by ${line.bossName}`}</small></span>`,
+              line.open
+                ? `${line.label} stands open on every raid.`
+                : `${line.label} is held by ${line.bossName}.`,
+              ' has-pip',
+            ),
+          )
+          .join('')}`;
+    const exits = !briefing
+      ? ''
+      : `<h3 class="px-subheading">Ways out</h3>${briefing.exits
+          .map((exit) =>
+            told(
+              `${this.pip(exit.worked ? 'K' : 'X')}<span class="px-row-main"><strong>${exit.label}</strong><small>${exit.worked ? 'open for good' : exit.opens === 'OPEN' ? 'open from the first second' : exit.opens.toLowerCase()}</small></span>`,
+              `${exit.label}: ${exit.opens === 'OPEN' ? 'open from the first second of a raid' : exit.opens.toLowerCase()}. It shows on the map once somebody has walked to it.`,
+              ' has-pip',
+            ),
+          )
+          .join('')}`;
+    const known = Math.round(entry.known * 100);
+    return `<main class="px-body wallmap-inspect">${pixelWindow(
+      mapPictureFrame({
+        key: `wall:${entry.mapId}`,
+        label: `${entry.name}, ${known}% known`,
+        size: entry.size,
+        reference: largestMapSize(),
+        mode: 'own',
+        leave: COLUMN_MEASURES.line + DROPIN_SIDE_ALLOWANCE,
+        className: 'dropin-picture',
+      }),
+      {
+        className: 'wallmap-place',
+        heading: entry.name,
+        note: entry.walked ? `${known}% known` : 'Never walked',
+      },
+    )}${pixelWindow(
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.line)}>${maps}${signs}${doors}${exits}</div>`,
+      { className: 'wallmap-about', heading: 'On the wall', note: `${entry.districtsKnown}/${entry.districts} places` },
+    )}</main>`;
+  }
+
+  /**
+   * The five short facts about the place, across the head of what it holds:
+   * they were beside the picture when the picture was a thumbnail, and the
+   * picture wants that room now. They scroll with the rest, because at the
+   * smallest stage five lines pinned over the pane were most of it.
+   */
+  private placeFacts(briefing: DropInBriefing): string {
     const { grade, record } = briefing;
     const walked = Math.round(record.surveyed * 100);
-    return `<div class="dropin-head"><canvas class="px-minimap" data-minimap="${briefing.insertion.id}" width="${picture.width}" height="${picture.height}" style="--cols:${picture.width * MINIMAP_TILE}" role="img" aria-label="${escapeAttribute(`${briefing.mapName}, ${walked}% walked`)}"></canvas><dl class="dropin-facts">${
+    return `<dl class="dropin-facts">${
       // A second entrance does not carry its map's name, so it says which map
       // it is on. A front door is the map.
       briefing.isDropIn ? `<div><dt>Map</dt><dd>${briefing.mapName}</dd></div>` : ''
-    }<div><dt>Wild</dt><dd>${grade.wild.max === 0 ? 'none' : `Lv ${grade.wild.min}-${grade.wild.max}`}</dd></div><div><dt>Fights</dt><dd>${grade.trainers === 0 ? 'none' : `${grade.trainers} · Lv ${grade.trainer}`}</dd></div><div><dt>Doors</dt><dd>${grade.bossesHeld === 0 ? (grade.bossesBeaten === 0 ? 'none' : 'all yours') : `${grade.bossesHeld} held`}</dd></div><div><dt>Raids</dt><dd>${record.deployed === 0 ? 'none yet' : `${record.deployed} · ${record.extracted} out`}</dd></div><div><dt>Known</dt><dd>${record.districts === 0 ? `${walked}%` : `${record.districtsKnown}/${record.districts} · ${walked}%`}</dd></div></dl></div>`;
+    }<div><dt>Wild</dt><dd>${grade.wild.max === 0 ? 'none' : `Lv ${grade.wild.min}-${grade.wild.max}`}</dd></div><div><dt>Fights</dt><dd>${grade.trainers === 0 ? 'none' : `${grade.trainers} · Lv ${grade.trainer}`}</dd></div><div><dt>Doors</dt><dd>${grade.bossesHeld === 0 ? (grade.bossesBeaten === 0 ? 'none' : 'all yours') : `${grade.bossesHeld} held`}</dd></div><div><dt>Raids</dt><dd>${record.deployed === 0 ? 'none yet' : `${record.deployed} · ${record.extracted} out`}</dd></div><div><dt>Known</dt><dd>${record.districts === 0 ? `${walked}%` : `${record.districtsKnown}/${record.districts} · ${walked}%`}</dd></div></dl>`;
   }
 
   /** A swatch in the same ink the map draws that thing in, so the list is the legend. */
@@ -2189,9 +2368,9 @@ export class HubScene extends Phaser.Scene {
               ? ''
               : `<p class="px-note px-wrap">${unseen} more place${unseen === 1 ? '' : 's'} on this map nobody here has walked.</p>`
         }`;
-    // How the place compares to the party is the one fact the banner beside the
-    // picture cannot state, because it is about the loadout rather than about
-    // the place. Everything else the banner already counts, and a screen this
+    // How the place compares to the party is the one fact the strip of facts
+    // above cannot state, because it is about the loadout rather than about
+    // the place. Everything else the strip already counts, and a screen this
     // size cannot afford to say a number twice.
     return `<p class="px-wrap dropin-blurb">${briefing.insertion.description}</p><p class="px-note px-wrap">${gradeLine(grade)}.</p>${contract}${prizes}${exits}${doors}${wildlife}`;
   }

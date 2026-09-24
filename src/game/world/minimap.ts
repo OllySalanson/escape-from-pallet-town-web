@@ -3,8 +3,8 @@ import type { Material } from './tileset/materials';
 import type { WorldMapDefinition } from '../worldMap';
 
 /**
- * A map drawn one game pixel to the tile, with everywhere nobody has walked
- * still dark.
+ * A map drawn a whole number of game pixels to the tile, with everywhere
+ * nobody has walked still dark.
  *
  * It is character art, exactly as the maps themselves are (`mapGrid.ts`): one
  * character a tile, and a palette that says what ink each character is. That is
@@ -43,8 +43,8 @@ export const SURVEY_RADIUS = 3;
  * The ink each character is drawn in.
  *
  * Eight grounds and three darks. The grounds are the sheet's own family of
- * greens, tans and stone so the thumbnail reads as the map it is of; the darks
- * are the lobby's backdrop blue taken down in three steps, so the unexplored
+ * greens, tans and stone so the picture reads as the map it is of; the darks
+ * are the menus' backdrop blue taken down in three steps, so the unexplored
  * part of a map reads as part of the screen it is on rather than as a hole
  * punched in it.
  */
@@ -97,10 +97,15 @@ export interface MinimapRequest {
   /** Ground that is known without being walked: your own doors, the ones you opened. */
   readonly lit?: readonly GridPosition[];
   readonly marks?: readonly MinimapMark[];
+  /**
+   * How many tiles each pixel of the picture stands for, on a side. One unless
+   * the picture has less room than the map has tiles - see `fitPicture`.
+   */
+  readonly step?: number;
 }
 
 export interface Minimap {
-  /** The picture's size in game pixels, which is the map's size in tiles / `tilesPerPixel`. */
+  /** The picture's size in its own pixels, which is the map's size in tiles / `tilesPerPixel`. */
   readonly width: number;
   readonly height: number;
   /** How many tiles of the map each pixel of the picture stands for. */
@@ -255,7 +260,7 @@ export function buildMinimap(request: MinimapRequest): Minimap {
     rows.push(row);
   }
 
-  const step = tilesPerPixel(map);
+  const step = Math.max(1, Math.floor(request.step ?? 1));
   const picture = step === 1 ? rows : condense(rows, step);
   return {
     width: picture[0]?.length ?? 0,
@@ -266,28 +271,6 @@ export function buildMinimap(request: MinimapRequest): Minimap {
     walkable,
     knownWalkable,
   };
-}
-
-/**
- * The banner the lobby draws this in is a fixed size, and a picture bigger than
- * it would be clipped rather than scaled - so a map too big for it is drawn at
- * two tiles to the pixel, or four, until it fits.
- *
- * It is not a scale chosen per map to fill the box: the first thing a player
- * should read off these pictures is that one map is four times another, and
- * sizing them all alike would take that away. What it is instead is the
- * coarsest step that keeps the biggest map inside the frame - and the dark is
- * already quantised into blocks of `HINT_BLOCK` tiles, so at two tiles to the
- * pixel nothing in the picture was ever finer than the picture is. The two
- * sides are asked separately because the banner is not square: a route is
- * taller than it is wide and the pane is wider than it is tall.
- */
-export function tilesPerPixel(map: { readonly width: number; readonly height: number }): number {
-  return Math.max(
-    1,
-    Math.ceil(map.width / MINIMAP_MAX_WIDTH),
-    Math.ceil(map.height / MINIMAP_MAX_HEIGHT),
-  );
 }
 
 /**
@@ -328,24 +311,117 @@ function condense(rows: readonly string[], step: number): string[] {
 }
 
 /**
- * One game pixel to the tile wherever a map fits in the banner, and two where
- * it does not.
+ * How big a picture is drawn in the room a screen has for it.
  *
- * Scaling each map to fill the same box would make the Floodplain and Route 1
- * the same size on screen, and the first thing a player should read off these
- * pictures is that one of them is four times the other. So the step is the
- * same for every map that fits and only coarsens for one that cannot: Pallet
- * Town, Route 1 and Viridian Forest are all drawn tile for tile, and only the
- * Floodplain at 128 tiles square goes to two, coming out 64 pixels square -
- * the size it was when it was 64 tiles across, and still visibly the biggest
- * picture in the lobby.
+ * A picture is drawn at a whole number of game pixels to the tile, because a
+ * pixel that is not whole is a blurred one - so it is the largest whole zoom
+ * that fits. Only a room smaller than the map has tiles draws several tiles to
+ * the pixel, and then the fewest that fit, condensed by `CONDENSE_ORDER` so a
+ * way in or out is never lost to the ground beside it.
+ *
+ * What it is fitted *to* is the caller's to say, and that is the one design
+ * decision in it. The wall map in Oak's Lab fits every map to the biggest one,
+ * so four pictures side by side are one scale and the Floodplain reads as four
+ * times Route 1 because it is; the drop-in screen shows one place at a time and
+ * fits that place to the window, because what it is for is reading the place.
  */
-export const MINIMAP_TILE = 1;
+export interface PictureFit {
+  /** Tiles to a pixel of the picture, on a side. */
+  readonly step: number;
+  /** Game pixels to a pixel of the picture, on a side. */
+  readonly zoom: number;
+}
+
+export interface PictureSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+export function fitPicture(size: PictureSize, room: PictureSize): PictureFit {
+  const width = Math.max(1, size.width);
+  const height = Math.max(1, size.height);
+  const zoom = Math.floor(Math.min(room.width / width, room.height / height));
+  if (zoom >= 1) {
+    return { step: 1, zoom };
+  }
+  const largest = Math.max(width, height);
+  let step = 2;
+  while (
+    step < largest &&
+    (Math.ceil(width / step) > room.width || Math.ceil(height / step) > room.height)
+  ) {
+    step += 1;
+  }
+  return { step, zoom: 1 };
+}
+
+/** The size a map comes out at under a fit, in game pixels. */
+export function fittedSize(size: PictureSize, fit: PictureFit): PictureSize {
+  return {
+    width: Math.ceil(size.width / fit.step) * fit.zoom,
+    height: Math.ceil(size.height / fit.step) * fit.zoom,
+  };
+}
+
+/** The characters that stand on a map rather than being the map. */
+export const MINIMAP_MARKS: ReadonlySet<MinimapChar> = new Set(['i', 'I', 'X', 'O', 'H', 'K']);
+
+/** The ink a mark is ringed with once a pixel is big enough to ring. */
+export const MARK_RING = '#0b1119';
+
+export interface PaintedPicture {
+  readonly width: number;
+  readonly height: number;
+  /** RGBA, row-major: what an `ImageData` holds and a PNG writer takes. */
+  readonly data: Uint8ClampedArray<ArrayBuffer>;
+}
 
 /**
- * What the lobby's banner can draw without clipping. It is 100 game pixels
- * tall (the `.dropin-layout` rows in `style.css`), of which the picture's own
- * lid and frame take 24, and the pane it sits in is 64 across.
+ * The picture as pixels, at a whole zoom.
+ *
+ * At one game pixel to the tile a mark is one pixel of its own ink, which on a
+ * picture this size is all it can be. Drawn bigger, a mark earns a ring of
+ * `MARK_RING` round it, a pixel wide and outside its own tile: at four screen
+ * pixels to a tile an exit is a dot, and a dot of orange on a field of green
+ * earth is lost, where a ringed one is a pin in a map. Every ring goes down
+ * before any mark does, so two marks side by side - the tiles of one gate -
+ * read as one pinned thing rather than two with a line through them.
  */
-export const MINIMAP_MAX_WIDTH = 64;
-export const MINIMAP_MAX_HEIGHT = 76;
+export function paintMinimap(picture: Minimap, zoom: number): PaintedPicture {
+  const scale = Math.max(1, Math.floor(zoom));
+  const width = picture.width * scale;
+  const height = picture.height * scale;
+  const data = new Uint8ClampedArray(width * height * 4);
+  const fill = (x: number, y: number, w: number, h: number, ink: string): void => {
+    const red = Number.parseInt(ink.slice(1, 3), 16);
+    const green = Number.parseInt(ink.slice(3, 5), 16);
+    const blue = Number.parseInt(ink.slice(5, 7), 16);
+    for (let py = Math.max(0, y); py < Math.min(height, y + h); py += 1) {
+      for (let px = Math.max(0, x); px < Math.min(width, x + w); px += 1) {
+        const at = (py * width + px) * 4;
+        data[at] = red;
+        data[at + 1] = green;
+        data[at + 2] = blue;
+        data[at + 3] = 255;
+      }
+    }
+  };
+  const marks: { x: number; y: number; ink: string }[] = [];
+  for (let y = 0; y < picture.height; y += 1) {
+    for (let x = 0; x < picture.width; x += 1) {
+      const char = picture.rows[y][x];
+      const ink = MINIMAP_PALETTE[char] ?? '#000000';
+      if (scale > 1 && MINIMAP_MARKS.has(char)) {
+        marks.push({ x: x * scale, y: y * scale, ink });
+      }
+      fill(x * scale, y * scale, scale, scale, ink);
+    }
+  }
+  for (const mark of marks) {
+    fill(mark.x - 1, mark.y - 1, scale + 2, scale + 2, MARK_RING);
+  }
+  for (const mark of marks) {
+    fill(mark.x, mark.y, scale, scale, mark.ink);
+  }
+  return { width, height, data };
+}

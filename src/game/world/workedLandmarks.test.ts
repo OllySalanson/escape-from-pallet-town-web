@@ -234,8 +234,8 @@ describe('what the rest of the game reads off it', () => {
       );
       // And the picture the screen leads with carries it, lit and glyphed, on
       // ground the survey has never reached.
-      // A map too big for the banner is drawn at more than one tile to the
-      // pixel, so the glyph is looked for at the pixel the tile falls in.
+      // A picture condensed for a small window is drawn at more than one tile
+      // to the pixel, so the glyph is looked for at the pixel the tile falls in.
       const picture = placePicture(insertionId, context);
       const pixel = (drawn: typeof picture) => {
         const step = drawn.tilesPerPixel;

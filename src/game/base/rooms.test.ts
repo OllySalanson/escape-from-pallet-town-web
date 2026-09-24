@@ -11,8 +11,8 @@ import {
   OAK_WALL_MAP,
   WORKSHOP_DISPLAY,
   buildRoom,
-  labWallMap,
   propTiles,
+  WALL_MAP_TILES,
   restingBalls,
   roomNamed,
   type BaseRoom,
@@ -233,34 +233,46 @@ describe('the Pokémon Center, which shows who is being treated', () => {
 });
 
 /**
- * Two later pieces of work fill these rooms - the wall map in Oak's Lab and
- * the oddities on Bill's shelves - and the room is built so that neither has
- * to move anything to do it. These hold the space they were promised.
+ * Two pieces of work fill these rooms - the wall map in Oak's Lab and the
+ * oddities on Bill's shelves - and the room is built so that neither has to
+ * move anything to do it. These hold the space they were promised.
  */
 describe('the hooks the rooms leave for what comes next', () => {
-  it("keeps a stretch of Oak's wall bare for the wall map", () => {
+  it("hangs the wall map on the stretch of Oak's wall kept bare for it", () => {
     const lab = room('oaks-lab');
     const game = baseGame({ built: EVERY_RUNG });
     const built = buildRoom(lab, game);
     const plain = buildRoom(lab, baseGame()).layers.ground;
     for (let y = OAK_WALL_MAP.y; y < OAK_WALL_MAP.y + OAK_WALL_MAP.height; y += 1) {
       for (let x = OAK_WALL_MAP.x; x < OAK_WALL_MAP.x + OAK_WALL_MAP.width; x += 1) {
-        // Wall, both rows of it, with the plain wall drawn and nothing over it.
+        // Wall, both rows of it, with the plain wall drawn and no tile over
+        // it: the map is painted there by the scene, from the save.
         expect([x, y, built.collision[y][x]]).toEqual([x, y, true]);
         expect([x, y, plain.tiles[y][x] >= 0]).toEqual([x, y, true]);
-        if (labWallMap(game).length === 0) {
-          expect([x, y, built.layers.detail.tiles[y][x]]).toEqual([x, y, -1]);
-        }
+        expect([x, y, built.layers.detail.tiles[y][x]]).toEqual([x, y, -1]);
       }
     }
-    // What hangs there stays there.
-    for (const tile of propTiles(labWallMap(game))) {
-      expect(
-        tile.x >= OAK_WALL_MAP.x &&
-          tile.y >= OAK_WALL_MAP.y &&
-          tile.x < OAK_WALL_MAP.x + OAK_WALL_MAP.width &&
-          tile.y < OAK_WALL_MAP.y + OAK_WALL_MAP.height,
-      ).toBe(true);
+    expect(built.wallMap).toEqual(OAK_WALL_MAP);
+    // The one room it hangs in.
+    for (const other of BASE_ROOMS.filter((each) => each.id !== 'oaks-lab')) {
+      expect(buildRoom(other, game).wallMap).toBeNull();
+    }
+  });
+
+  it('opens the wall map from the floor in front of it, and captions the whole board', () => {
+    const lab = room('oaks-lab');
+    const built = buildRoom(lab, baseGame());
+    const board = built.things.find((thing) => thing.opens === 'wall-map')!;
+    expect(board.name).toBe('THE WALL MAP');
+    expect(board.tiles).toEqual(WALL_MAP_TILES);
+    // Every tile of the board's lower row can be faced from a floor tile in
+    // front of it, so the key the hint names works wherever the player stands
+    // under it - the trap is a board that answers only from its middle.
+    const foot = OAK_WALL_MAP.y + OAK_WALL_MAP.height - 1;
+    for (let x = OAK_WALL_MAP.x; x < OAK_WALL_MAP.x + OAK_WALL_MAP.width; x += 1) {
+      expect(board.tiles.some((tile) => tile.x === x && tile.y === foot)).toBe(true);
+      expect([x, built.collision[foot + 1][x]]).toEqual([x, false]);
+      expect(Number.isFinite(stepsFrom(built.collision, lab.mat)[foot + 1][x])).toBe(true);
     }
   });
 

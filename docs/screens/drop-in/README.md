@@ -8,9 +8,10 @@ that pane; where to drop in is its own step between it and the final check
 
 ## The picture is the screen
 
-The map is drawn one game pixel to the tile - so the Floodplain is 64 pixels
-square and Route 1 is 32, which is the first thing the two pictures say - and
-**everything nobody has walked is dark**. That is the point rather than a
+The map is drawn as big as the window lets it be - a whole number of game
+pixels to the tile, down the whole left of the screen (the screenshots here
+show the older 100-pixel banner; `docs/screens/wall-map/` has the current
+screen) - and **everything nobody has walked is dark**. That is the point rather than a
 compromise: the vast maps are built so you drop in, see a piece and leave
 wondering what else is out there, and a full bird's-eye view would hand that
 answer over for nothing.

@@ -1693,22 +1693,18 @@ button {
 }
 
 /* --- Choosing where to drop in ------------------------------------------ */
-/* A banner across the top - the picture of the place, the facts beside it, the
-   ways in next to those - and everything the place holds underneath at the full
-   width of the screen. Side by side in two columns, what a place *holds* - its
-   contract, its doors, its wildlife - was two lines tall at the smallest stage,
-   and that is most of what the screen is for. */
+/* The picture of the place down the whole left of the screen, as tall as the
+   body is, and the two things said about it - which way in, and what the place
+   holds - stacked on the right. The left column is as wide as the picture's
+   frame, which `ui/mapPicture.ts` sizes from the room the window has; the rows
+   are fixed by the body rather than by what is in them, so the frame's height
+   is the room the picture has and nothing moves when the cursor changes the
+   place. The list of ways in takes what it needs up to two fifths of the
+   height, because it is the choice this screen exists for and a long one
+   scrolls. */
 :where(.pixel-ui) .dropin-layout {
   grid-template-columns: auto minmax(0, 1fr);
-  /* The banner is a fixed 100 pixels rather than `auto`, for two reasons: an
-     `auto` row takes its height from the *list* beside the picture, which is as
-     tall as however many ways in the player has found, and a banner that changed
-     height with the map would move the whole screen every time the cursor did.
-     It is 100 and not the tallest map's own 88 (its picture at one pixel to the
-     tile, plus its lid and its frame) because the list beside the picture is the
-     choice this screen exists for: at 88 the fourth way in was always under the
-     MORE strip, at every window size the game runs in. */
-  grid-template-rows: calc(var(--u) * 100) minmax(0, 1fr) auto;
+  grid-template-rows: fit-content(40%) minmax(0, 1fr) auto;
   height: 100%;
 }
 :where(.pixel-ui) .dropin-layout > .px-window {
@@ -1718,35 +1714,41 @@ button {
   grid-template-rows: auto minmax(0, 1fr);
   align-content: start;
 }
-:where(.pixel-ui) .dropin-about,
+:where(.pixel-ui) .dropin-place {
+  grid-row: 1 / 3;
+}
 :where(.pixel-ui) .dropin-layout .confirm-bar {
   grid-column: 1 / -1;
 }
-/* The map, and the five short facts that fit beside it. */
-:where(.pixel-ui) .dropin-head {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--u) * 4);
-  padding: calc(var(--u) * 3);
+/* A map picture in its frame. The frame's size is the room it has - never the
+   picture's - so the picture is placed in it rather than laid out by it, on
+   whole game pixels, by `fitMapPictures`. Until that has run the canvas is not
+   drawn at all, or a blank default-sized canvas flashes for a frame. */
+:where(.pixel-ui) .px-picture {
+  display: block;
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
-/* One source pixel is one tile is one game pixel, scaled by nothing. The width
-   is the map's own tile count in game pixels; the height follows from the
-   canvas's own proportions, so a tall map is drawn tall without the stylesheet
-   being told twice how big it is. */
 :where(.pixel-ui) .px-minimap {
-  flex: none;
-  width: calc(var(--u) * var(--cols));
-  height: auto;
+  position: absolute;
   image-rendering: pixelated;
   box-shadow: 0 0 0 var(--u) var(--frame);
-  margin: var(--u);
 }
+:where(.pixel-ui) .px-minimap:not([data-painted]) {
+  visibility: hidden;
+}
+/* The five short facts, in a strip across the head of what the place holds -
+   across every column the list below them is laid out in. */
 :where(.pixel-ui) .dropin-facts {
-  flex: 1;
-  min-width: 0;
+  grid-column: 1 / -1;
   display: grid;
-  align-content: start;
-  gap: 0;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 84), 1fr));
+  column-gap: calc(var(--u) * 6);
+  margin: 0;
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+  box-shadow: 0 var(--u) 0 var(--frame);
 }
 :where(.pixel-ui) .dropin-facts > div {
   display: flex;
@@ -1760,9 +1762,6 @@ button {
   margin: 0;
   text-align: right;
   white-space: nowrap;
-}
-:where(.pixel-ui) .dropin-brief {
-  box-shadow: 0 var(--u) 0 inset var(--frame);
 }
 :where(.pixel-ui) .dropin-blurb,
 :where(.pixel-ui) .dropin-brief > .px-note,
@@ -1829,6 +1828,93 @@ button {
 }
 .pixel-ui .px-card.px-tone-primary:focus {
   --fill: #d5f2e0;
+}
+
+/* --- The wall map in Oak's Lab ----------------------------------------- */
+/* The four maps side by side, a card each, as wide as the screen shares out:
+   the glance at how far across the game the player has got. Every picture is
+   drawn at one scale (`ui/mapPicture.ts`, 'shared'), so the cards share the
+   room the smallest of them has and the signs pinned under a map never make it
+   smaller than its neighbour. */
+:where(.pixel-ui) .wallmap-layout {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Name, picture, signs, and what is left: shared by every card through a
+     subgrid, so a name that wraps onto a third line in a narrow card moves all
+     four pictures down together and they still stand on one line. */
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  row-gap: calc(var(--u) * 3);
+  height: 100%;
+}
+:where(.pixel-ui) .px-card.wallmap-card {
+  --pad-top: 2;
+  min-height: 0;
+  /* The name, the picture and the signs one under another from the top, where
+     the cursor is: the picture's frame is sized to it (`fitMapPictures`), so
+     the signs hang directly under the map they belong to rather than at the
+     foot of a card the height of the screen. The fourth row is the rest. */
+  grid-row: 1 / -1;
+  grid-template-rows: subgrid;
+  gap: calc(var(--u) * 3);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3) calc(var(--u) * 3) calc(var(--u) * 9);
+  text-align: left;
+}
+:where(.pixel-ui) .wallmap-card-head {
+  /* Two lines on every card, however wide, so the four frames start level and
+     the four maps stand on one line. */
+  display: grid;
+  align-content: start;
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .wallmap-card-head small {
+  color: var(--ink-soft);
+}
+/* The signs pinned under a map: a plaque a keeper, with the pin through it. */
+:where(.pixel-ui) .wallmap-signs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(var(--u) * 3);
+  min-height: calc(var(--u) * 14);
+  align-content: start;
+}
+:where(.pixel-ui) .wallmap-none {
+  color: var(--ink-soft);
+  text-align: center;
+}
+:where(.pixel-ui) .wallmap-sign {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  padding: 0 calc(var(--u) * 3) 0 calc(var(--u) * 2);
+  background: #d9a55c;
+  color: #3a2410;
+  box-shadow: 0 0 0 var(--u) #6b4320, 0 var(--u) 0 var(--u) #6b4320;
+  text-transform: uppercase;
+  /* A plaque wider than a narrow card breaks between words rather than
+     standing out past the card's frame. */
+  white-space: normal;
+  text-align: center;
+}
+:where(.pixel-ui) .wallmap-pin {
+  flex: none;
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 3);
+  background: #d8342c;
+  box-shadow: 0 0 0 var(--u) #5a1210;
+}
+/* One map close up: the picture down the left, as big as the window takes,
+   and the four maps and what this one holds down the right - the drop-in
+   screen's shape, so the two read as one picture of one place. */
+:where(.pixel-ui) .wallmap-inspect {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+}
+:where(.pixel-ui) .wallmap-inspect > .px-window {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 /* --- The lobby ---------------------------------------------------------- */

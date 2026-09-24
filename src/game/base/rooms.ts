@@ -19,6 +19,7 @@ import {
   unitTiles,
   type CabinetLayout,
 } from './cabinet';
+import { wallMapNote } from './wallMap';
 
 /**
  * The four rooms behind the base's four doors.
@@ -196,6 +197,11 @@ export interface RoomThing {
   readonly cabinetUnit?: number;
   /** Whether it is the crates the cabinet overflows into. */
   readonly crated?: boolean;
+  /**
+   * A screen it opens when faced and spoken to, in place of saying its line:
+   * the wall map is read on a screen, drawn as big as the window allows.
+   */
+  readonly opens?: 'wall-map';
 }
 
 /**
@@ -243,27 +249,36 @@ export interface BuiltRoom {
   readonly sprites: readonly RoomSprite[];
   /** Only in Bill's cottage. */
   readonly cabinet?: BuiltCabinet;
+  /** Where the wall map hangs, in the one room it hangs in. */
+  readonly wallMap: Rect | null;
 }
 
-// --- the hook the wall map fills ------------------------------------------
+// --- the wall map -----------------------------------------------------------
 
 /**
- * The stretch of Oak's back wall kept bare for the wall map.
+ * The stretch of Oak's back wall the wall map hangs on.
  *
  * Five tiles of plain wall between the computers and the bookshelves, both
  * wall rows deep, with nothing planted over it (`rooms.test.ts` holds that).
- * Whoever hangs the map adds a prop drawn to this rectangle in `labWallMap`;
- * nothing else in the room has to move.
+ * The map is not a tile of the sheet - it is a picture of the save
+ * (`base/wallMap.ts`) - so the room says where it hangs (`BuiltRoom.wallMap`)
+ * and the scene paints it there, over plain wall.
  */
 export const OAK_WALL_MAP: Rect = { x: 4, y: 0, width: 5, height: 2 };
 
 /**
- * What hangs on Oak's wall map spot. Empty until the wall map is built; the
- * whole of adding it is returning props here that stay inside `OAK_WALL_MAP`
- * and on the wall (`rooms.test.ts` asks both), derived from the save the way
- * everything else in a room is.
+ * Every tile of the board: what a player faces to read it - its lower row is
+ * the wall a player standing in front of it is looking at - and what its
+ * caption is seated against, which is the whole board so the caption never
+ * covers the map it is naming.
  */
-export const labWallMap: (game: RestoredGame) => readonly RoomProp[] = () => [];
+export const WALL_MAP_TILES: readonly GridPosition[] = Array.from(
+  { length: OAK_WALL_MAP.width * OAK_WALL_MAP.height },
+  (_tile, index) => ({
+    x: OAK_WALL_MAP.x + (index % OAK_WALL_MAP.width),
+    y: OAK_WALL_MAP.y + Math.floor(index / OAK_WALL_MAP.width),
+  }),
+);
 
 // --- what Brock has built, in his workshop ---------------------------------
 
@@ -493,6 +508,7 @@ interface Drawn {
   readonly things: RoomThing[];
   readonly sprites: RoomSprite[];
   readonly cabinet?: BuiltCabinet;
+  readonly wallMap?: Rect;
 }
 
 /**
@@ -512,8 +528,13 @@ function drawLab(room: BaseRoom, game: RestoredGame): Drawn {
   sketch.plant(0, 10, 'labPlant');
   sketch.plant(12, 10, 'labPlantEast');
   sketch.plant(5, 11, 'labMat');
-  for (const prop of labWallMap(game)) sketch.plant(prop.x, prop.y, prop.name);
-  return { sketch, catalogue: LAB, things: [], sprites: [] };
+  const wallMap: RoomThing = {
+    name: 'THE WALL MAP',
+    note: wallMapNote(game),
+    tiles: WALL_MAP_TILES,
+    opens: 'wall-map',
+  };
+  return { sketch, catalogue: LAB, things: [wallMap], sprites: [], wallMap: OAK_WALL_MAP };
 }
 
 /**
@@ -636,6 +657,7 @@ export function buildRoom(room: BaseRoom, game: RestoredGame): BuiltRoom {
     things: drawn.things,
     sprites: drawn.sprites,
     ...(drawn.cabinet ? { cabinet: drawn.cabinet } : {}),
+    wallMap: drawn.wallMap ?? null,
   };
 }
 

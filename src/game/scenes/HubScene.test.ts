@@ -68,6 +68,11 @@ describe('the lobby as a screen of the game', () => {
     screens.push(markupOf(hub));
     readyToDeploy(hub);
     screens.push(markupOf(hub));
+    // The wall map in Oak's Lab, at a glance and close up.
+    hub.setView('wallmap');
+    screens.push(markupOf(hub));
+    hub.wallMapInspect = 'route-1';
+    screens.push(markupOf(hub));
     return screens;
   }
 
@@ -193,7 +198,9 @@ interface WorldSceneData {
 
 interface HubInternals {
   init(data?: HubSceneData): void;
-  setView(view: 'home' | 'stash' | 'summary' | 'deploy' | 'reselect' | 'workshop' | 'trader'): void;
+  setView(view: 'home' | 'stash' | 'summary' | 'deploy' | 'reselect' | 'workshop' | 'trader' | 'wallmap'): void;
+  goBack(): void;
+  wallMapInspect: string | undefined;
   startRun(): void;
   render(): void;
   recover(ids: readonly string[]): void;
@@ -600,9 +607,12 @@ describe('hub deployment route', () => {
     hub.flow.advance();
 
     const markup = markupOf(hub);
-    // The canvas carries the map's own tile dimensions: one source pixel is one
-    // tile, so a redrawn map draws a new picture with nothing stored.
-    expect(markup).toContain('<canvas class="px-minimap" data-minimap="floodplain-relay" width="64" height="64"');
+    // The canvas says which map and how big it is in tiles; how many pixels a
+    // tile is drawn at is the window's to say, once it is laid out
+    // (`ui/mapPicture.ts`). The frame is sized for the biggest map there is, so
+    // the screen does not move when the cursor changes the place.
+    expect(markup).toContain('data-fit="own" data-fit-width="128" data-fit-height="128"');
+    expect(markup).toContain('data-picture="dropin:floodplain-relay" data-picture-width="128" data-picture-height="128"');
     expect(markup).toContain('0% walked');
     // What a place holds is on the screen: its doors and who has them, its ways
     // out, and the wildlife of nowhere at all until some of it has been walked.
@@ -1696,5 +1706,63 @@ describe('what the stash says about the Pokémon under the cursor', () => {
     for (const control of pane.slice(0, pane.indexOf('data-shown-by=', 1)).matchAll(/<button[^>]*>/g)) {
       expect(control[0]).toContain(`data-shows="${id}"`);
     }
+  });
+});
+
+describe('the wall map in Oak’s Lab', () => {
+  /** What `BaseScene.openWallMap` hands over: the view, the room, and where the player stood. */
+  function walkUpToTheWall(hub: HubInternals): void {
+    Object.assign(hub as unknown as Record<string, unknown>, {
+      enteredFrom: 'oaks-lab',
+      enteredAt: { x: 6, y: 2 },
+    });
+    hub.setView('wallmap');
+  }
+
+  function markupOf(hub: HubInternals): string {
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  }
+
+  it('hangs all four maps at one scale, with a sign for every keeper beaten', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      defeatedBosses: ['floodplain-toll-keeper', 'overlook-warden'],
+    });
+    walkUpToTheWall(hub);
+    const markup = markupOf(hub);
+
+    for (const mapId of ['floodplain-relay', 'pallet-town', 'route-1', 'viridian-forest']) {
+      expect(markup).toContain(`data-wall-map="${mapId}"`);
+      expect(markup).toContain(`data-picture="wall:${mapId}"`);
+    }
+    // One scale for all four, and each card as wide as its map.
+    expect(markup.match(/data-fit="shared"/g)).toHaveLength(4);
+    expect(markup).toContain('data-picture-row="128,64,64,64"');
+    expect(markup).toContain('TOLLMAN BRIGGS');
+    expect(markup).toContain('WARDEN WREN');
+    expect(markup).not.toContain('MILLER VANCE');
+    expect(markup).toContain('2 of 10 keepers beaten');
+  });
+
+  it('reads one map close up, and backs out to all four before leaving the lab', () => {
+    const { hub, start } = createHub();
+    walkUpToTheWall(hub);
+    hub.wallMapInspect = 'route-1';
+    const close = markupOf(hub);
+    expect(close).toContain('data-picture="wall:route-1"');
+    expect(close).toContain('data-fit="own"');
+    // What is on it, each with the ink the picture draws it in.
+    expect(close).toContain('OVERLOOK GATE');
+    expect(close).toContain('held by WARDEN WREN');
+    expect(close).toContain('No keeper beaten here yet');
+
+    hub.goBack();
+    expect(hub.wallMapInspect).toBeUndefined();
+    expect(markupOf(hub)).toContain('data-fit="shared"');
+
+    // And out of the screen, back to the tile it was read from.
+    hub.goBack();
+    expect(start).toHaveBeenCalledWith('base', expect.objectContaining({ room: 'oaks-lab', at: { x: 6, y: 2 } }));
   });
 });
