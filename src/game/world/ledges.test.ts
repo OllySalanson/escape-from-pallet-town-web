@@ -19,7 +19,7 @@ import { WORLD_GATES, gateKeys } from './gates';
 
 const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
 
-/** Every gate state a raid can be played in, as `mapStructure.test.ts` builds them. */
+/** Every gate state a raid can be played in, as `mapStructure.testkit.ts` builds them. */
 function statesFor(mapId: MapLedge['mapId']): WorldMapDefinition[] {
   const keys = gateKeys(WORLD_GATES.filter((gate) => gate.mapId === mapId));
   return [WORLD_MAPS[mapId], ...keys.map((key) => getWorldMap(mapId, [key])), getWorldMap(mapId, keys)];

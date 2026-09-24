@@ -1101,7 +1101,7 @@ export function sketchViridianForest(): MapSketch<FloodTownPropName> {
   // A cart nook off the kiln yard, and the stone staith the mere's timber was
   // floated off. Both are pockets a player steps into on purpose: an open exit
   // takes whoever stands on it, so none of them may be a tile on the way to
-  // anywhere (`../extractionPoints.ts`, and the rule in `mapStructure.test.ts`).
+  // anywhere (`../extractionPoints.ts`, and the rule in `mapStructure.testkit.ts`).
   map.draw(62, 31, ['.']);
   map.draw(3, 58, ['.']);
 

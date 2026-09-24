@@ -35,7 +35,7 @@ import { bossEncounters, createRunTrainerEncounters, withoutDefeatedBosses } fro
 /**
  * The rules a boss-held gate has to keep, held against the authored data.
  *
- * `mapStructure.test.ts` holds every gate state to the rules every map keeps -
+ * `mapStructure.testkit.ts` holds every gate state to the rules every map keeps -
  * straight walks, open ground, the hunter's arrival, a way out of every region
  * a raid can start in. What is here is what only a gate can get wrong: a door
  * nobody holds, a boss with no door, a door that gates nothing, and a chain of

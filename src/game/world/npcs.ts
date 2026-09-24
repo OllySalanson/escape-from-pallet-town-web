@@ -21,7 +21,7 @@ export interface WorldEntity {
   /**
    * The small schedule this townsperson keeps: where they drift and which way
    * they look. Signs and anyone without one stand where they were put. Every
-   * tile of it is held solid by `mapStructure.test.ts`, so a beat can never be
+   * tile of it is held solid by `mapStructure.testkit.ts`, so a beat can never be
    * authored across a route - see `npcIdle.ts`.
    */
   idle?: NpcIdle;
@@ -587,7 +587,7 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
     kind: 'sign',
     // In the nub off the shelf, not on it: three tiles east the shelf is one
     // tile through, and a sign is a figure the player cannot walk into, so one
-    // standing there would wall the whole east ridge off (`mapStructure.test.ts`).
+    // standing there would wall the whole east ridge off (`mapStructure.testkit.ts`).
     position: { x: 41, y: 3 },
     facing: 'down',
     dialogLines: [
