@@ -7,8 +7,20 @@ recipe with no dependencies; `raid.mjs` is a whole raid played through it.
 ```bash
 export EPTW_CHROME_LIBS="$(tools/playtest/ensure-libs.sh "$SCRATCH/chrome-libs")"
 npm run dev -- --port "$FREE_PORT" --strictPort &      # stop it when the session ends
-nice -n 15 node tools/playtest/raid.mjs "http://localhost:$FREE_PORT/" --stepped
+node tools/playtest/raid.mjs "http://localhost:$FREE_PORT/" --stepped
 ```
+
+**No `nice` to type: low priority is built in.** `launchBrowser()` lowers the
+driver to niceness 15 before it spawns Chromium, so the browser and every
+renderer it forks are born polite, and `vite.config.ts` and `vitest.config.ts`
+do the same for the dev server, a build and the test suite with its workers
+(`tools/lowPriority.mjs`, every thread, never raised). Asking each brief to say
+`nice -n 15` was measured not to work - on 2026-09-20 several browsers and test
+runs were at nice 0, lagging a game on the captain's desktop. It is politeness,
+not a limit: nothing caps how many run at once. To check one, `ps -L -o ni,comm
+-g <pid>` on the browser's process group reads 15 on every line. A new tool
+that spawns a browser goes through `launchBrowser()`; one that spawns anything
+else heavy calls `lowerOwnPriority()` first.
 
 `launchBrowser()` passes `--remote-debugging-port=0`, so the OS picks the CDP
 port and two workers cannot share one - a fixed port is how a driver once

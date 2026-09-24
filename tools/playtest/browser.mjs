@@ -10,6 +10,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { lowerOwnPriority } from '../lowPriority.mjs';
 
 /** 1x stage zoom: the largest logical screen with nothing spent on scaling it up. */
 export const LOGIC_WINDOW = { width: 400, height: 256 };
@@ -57,8 +58,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * Launches a browser on a CDP port the OS picked. A fixed port is how one
  * worker's driver came to attach to another worker's tab: port 0 cannot collide.
  * `EPTW_CHROME_LIBS` is the scratch directory `ensure-libs.sh` filled.
+ *
+ * The driver lowers itself first (`tools/lowPriority.mjs`), so Chromium and
+ * every renderer it forks are born at low priority - no `nice` to remember.
  */
 export async function launchBrowser({ window = LOGIC_WINDOW, libs = process.env.EPTW_CHROME_LIBS, scrollbars = false } = {}) {
+  lowerOwnPriority();
   const profile = mkdtempSync(join(tmpdir(), 'eptw-chrome-'));
   const child = spawn(
     findChromium(),

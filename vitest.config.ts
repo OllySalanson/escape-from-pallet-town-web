@@ -1,4 +1,12 @@
 import { defineConfig } from 'vitest/config';
+import { lowerOwnPriority } from './tools/lowPriority.mjs';
+
+/**
+ * The suite runs at low CPU priority, and every worker it forks with it, so
+ * nobody running it beside the captain's desktop has to remember `nice`.
+ * See `tools/lowPriority.mjs`.
+ */
+lowerOwnPriority();
 
 /**
  * This suite is run by several agents on one machine at the same time, and
