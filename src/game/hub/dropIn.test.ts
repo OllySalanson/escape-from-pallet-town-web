@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildDropInBriefing, gradeLine, placePicture, type DropInContext } from './dropIn';
+import { buildDropInBriefing, gradeLine, PLACE_GRADE_LEVELS, placePicture, type DropInContext } from './dropIn';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { getWorldMap } from '../worldMap';
 import { RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
-import { HUNTER_TIERS } from '../world/hunter';
 import { encodeSurvey } from '../world/survey';
 import { districtAt, districtsForMap } from '../world/districts';
 
@@ -49,12 +48,12 @@ function walked(insertionId: RunInsertionId, districtId: string): DropInContext[
 }
 
 describe('what the drop-in screen says about a place', () => {
-  it('grades a place on the hunter ladder rather than on a number typed in', () => {
+  it('grades a place on four rungs of level rather than on a number typed in', () => {
     const briefing = buildDropInBriefing('floodplain-relay', contextFor('floodplain-relay'));
 
-    expect(briefing.grade.rungs).toBe(HUNTER_TIERS.length);
+    expect(briefing.grade.rungs).toBe(PLACE_GRADE_LEVELS.length);
     expect(briefing.grade.rung).toBeGreaterThanOrEqual(1);
-    expect(briefing.grade.rung).toBeLessThanOrEqual(HUNTER_TIERS.length);
+    expect(briefing.grade.rung).toBeLessThanOrEqual(PLACE_GRADE_LEVELS.length);
     // The grade is the highest level anything still standing here can field.
     expect(briefing.grade.opposition).toBe(
       Math.max(briefing.grade.wild.max, briefing.grade.trainer),

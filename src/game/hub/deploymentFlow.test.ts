@@ -2,12 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { blocksFor, BASE_SECURE_GRID, gridCells, packGridFor, RAID_BAG_GRID, stackSizeOf } from '../items';
 import { CHARMANDER, IVYSAUR, Pokemon, SQUIRTLE } from '../pokemon';
 import { createStartingStash, Stash } from '../stash';
-import { DeploymentFlow } from './deploymentFlow';
+import { DeploymentFlow, MEDICINE_PREPACK_SHARE } from './deploymentFlow';
 
 function seedFlow(): { flow: DeploymentFlow; stash: Stash } {
   const stash = createStartingStash();
   stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
   return { flow: new DeploymentFlow(stash), stash };
+}
+
+/**
+ * Takes out what the medicine default packed, for a test about packing from
+ * an empty pack. The default is its own describe block below.
+ */
+function emptied(flow: DeploymentFlow): DeploymentFlow {
+  for (const { itemId } of flow.items) {
+    flow.setItemQuantity(itemId, 0);
+  }
+  return flow;
 }
 
 describe('the pack a raid is worn into', () => {
@@ -115,12 +126,14 @@ describe('the pack a raid is worn into', () => {
 });
 
 describe('deployment flow', () => {
-  it('starts preparation with nothing selected, so no partner is chosen for the player', () => {
+  it('starts preparation with no Pokemon selected, so no partner is chosen for the player', () => {
     const { flow } = seedFlow();
 
     expect(flow.step).toBe('loadout');
     expect(flow.party).toEqual([]);
-    expect(flow.items).toEqual([]);
+    // Medicine is the one thing packed for the player (see below); a Pokemon
+    // and everything else is still theirs to choose.
+    expect(flow.items).toEqual([{ itemId: 'potion', quantity: 3 }]);
     expect(flow.isDeployable).toBe(false);
   });
 
@@ -204,6 +217,7 @@ describe('deployment flow', () => {
       secureGrid: { width: 3, height: 2 },
     });
 
+    emptied(flow);
     flow.togglePokemon('charmander-1');
     flow.togglePokemon('bulbasaur-1');
     flow.adjustItem('potion', 2);
@@ -400,6 +414,7 @@ describe('deployment flow', () => {
       secureGrid: { width: 3, height: 2 },
     });
 
+    emptied(flow);
     flow.togglePokemon('charmander-1');
     flow.adjustItem('potion', 2);
     flow.openSecureSlot();
@@ -497,7 +512,8 @@ describe('deployment flow', () => {
   });
 
   it('never packs a material, but lets the secure slot name its kind', () => {
-    const { flow, stash } = seedFlow();
+    const { flow: seeded, stash } = seedFlow();
+    const flow = emptied(seeded);
     stash.addItem('radio-valve', 2);
     flow.togglePokemon('bulbasaur-1');
     // Squares for a material means squares the Pokemon is not standing on.
@@ -530,7 +546,8 @@ describe('deployment flow', () => {
   });
 
   it('caps the pack by its squares, not by the vault', () => {
-    const { flow, stash } = seedFlow();
+    const { flow: seeded, stash } = seedFlow();
+    const flow = emptied(seeded);
     stash.addItem('potion', 40);
     flow.togglePokemon('bulbasaur-1');
     // Eighteen squares, one apiece: the nineteenth Potion is refused, and the
@@ -554,7 +571,8 @@ describe('deployment flow', () => {
    * room ought to have meant all along.
    */
   it('measures a Super Potion at two squares, and lets it lie down to use the last row', () => {
-    const { flow, stash } = seedFlow();
+    const { flow: seeded, stash } = seedFlow();
+    const flow = emptied(seeded);
     stash.addItem('super-potion', 20);
     stash.addItem('potion', 20);
     for (let index = 0; index < 6; index += 1) {
@@ -614,9 +632,80 @@ describe('deployment flow', () => {
     });
 
     it('will not secure what was never packed, and says why', () => {
-      const { flow } = seedFlow();
+      const flow = emptied(seedFlow().flow);
       expect(flow.secureLimit('potion')).toBe(0);
       expect(flow.setSecureSquares('potion', 2)).toMatch(/Pack some of this first/);
     });
+  });
+});
+
+/**
+ * The captain, 2026-09-23, on a playtest that lost its first fight with an
+ * empty bag: "put the stash's medicine in the pack by default". A default and
+ * never a cage, like the pack worn and the secure container filling itself.
+ */
+describe('medicine packed by default', () => {
+  it('packs a fresh save\'s Potions, so a first raid is not deployed with an empty bag', () => {
+    const { flow } = seedFlow();
+
+    expect(flow.itemQuantity('potion')).toBe(3);
+    expect(flow.isPrepacked('potion')).toBe(true);
+    // Only medicine: a Poke Ball is a choice about what the raid is for.
+    expect(flow.itemQuantity('poke-ball')).toBe(0);
+  });
+
+  it('packs no more than half the pack, so a full vault still leaves room for a find', () => {
+    const { stash } = seedFlow();
+    stash.addItem('potion', 40);
+    stash.addItem('super-potion', 10);
+    const flow = new DeploymentFlow(stash);
+
+    expect(flow.bagCells.used).toBeLessThanOrEqual(gridCells(flow.bagGrid) * MEDICINE_PREPACK_SHARE);
+    expect(flow.bagCells.used).toBeGreaterThan(0);
+  });
+
+  it('is the player\'s to change: taking it out keeps it out, and the row stops saying it was packed for them', () => {
+    const { flow } = seedFlow();
+
+    expect(flow.setItemQuantity('potion', 1)).toBeUndefined();
+    expect(flow.isPrepacked('potion')).toBe(false);
+    expect(flow.setItemQuantity('potion', 0)).toBeUndefined();
+    expect(flow.items).toEqual([]);
+  });
+
+  /**
+   * The trap the default could have set: a player who never chose those
+   * Potions being told the Satchel "holds 12 squares - take something out
+   * first". What the default packed is packed again for the new pack instead.
+   */
+  it('packs again for a smaller pack rather than standing in the way of it', () => {
+    const { stash } = seedFlow();
+    stash.addItem('hauler-frame', 1);
+    stash.addItem('satchel', 1);
+    stash.addItem('potion', 30);
+    const flow = new DeploymentFlow(stash);
+    expect(flow.packItemId).toBe('hauler-frame');
+    expect(flow.itemQuantity('potion')).toBe(15);
+
+    expect(flow.packChoices.find((choice) => choice.itemId === 'satchel')?.wouldNotHold).toBeUndefined();
+    expect(flow.choosePack('satchel')).toBeUndefined();
+    expect(flow.itemQuantity('potion')).toBe(6);
+    expect(flow.isPrepacked('potion')).toBe(true);
+    expect(flow.choosePack('hauler-frame')).toBeUndefined();
+    expect(flow.itemQuantity('potion')).toBe(15);
+  });
+
+  it('never re-packs over a count the player chose', () => {
+    const { stash } = seedFlow();
+    stash.addItem('hauler-frame', 1);
+    stash.addItem('satchel', 1);
+    stash.addItem('potion', 30);
+    const flow = new DeploymentFlow(stash);
+    flow.setItemQuantity('potion', 14);
+
+    expect(flow.choosePack('satchel')).toMatch(/Satchel holds 12 squares/);
+    flow.setItemQuantity('potion', 2);
+    expect(flow.choosePack('satchel')).toBeUndefined();
+    expect(flow.itemQuantity('potion')).toBe(2);
   });
 });

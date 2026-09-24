@@ -18,7 +18,7 @@
  * refuses one on any other role. `trainer` and `townsfolk` are a casting note
  * for whoever places people, not a rule - nothing stops a hiker being scenery.
  * `named` is the fifth: a figure who is somebody in particular - Professor Oak,
- * Nurse Joy, Bill, Brock - rather than a class of person, which is why the base
+ * Nurse Joy, Bill, Brock, and the five hunters - rather than a class of person, which is why the base
  * screens name one by id (`ui/pixelUi.ts`'s `pixelFigure`) and a map never
  * should cast one as scenery.
  */
@@ -71,6 +71,15 @@ export const CHARACTER_DESIGNS = {
   'nurse-joy': { kind: 'named', description: 'Nurse Joy, pink hair and a white apron', headPixelY: 8, walks: false },
   bill: { kind: 'named', description: 'Bill, fair hair and a lilac shirt', headPixelY: 8, walks: true },
   brock: { kind: 'named', description: 'Brock, spiked hair and a green work vest', headPixelY: 8, walks: false },
+  // The five hunters (`hunters.ts`), each the person the game draws under that
+  // name. Blue is the rival and walks; the four gym leaders are drawn standing
+  // in their gyms in the game, so the sheet gives them a facing each and no
+  // stride - the hunter is placed a tile at a time and never strides anyway.
+  blue: { kind: 'named', description: 'Blue, the rival: spiked hair, dark shirt', headPixelY: 8, walks: true },
+  misty: { kind: 'named', description: 'Misty, tied-back hair and a swimsuit', headPixelY: 9, walks: false },
+  'lt-surge': { kind: 'named', description: 'Lt. Surge, blond crop and army greens', headPixelY: 8, walks: false },
+  koga: { kind: 'named', description: 'Koga, grey hair and a ninja\'s dark garb', headPixelY: 8, walks: false },
+  sabrina: { kind: 'named', description: 'Sabrina, long dark hair and a red top', headPixelY: 9, walks: false },
 } as const satisfies Record<string, CharacterDesign>;
 
 export type CharacterDesignId = keyof typeof CHARACTER_DESIGNS;

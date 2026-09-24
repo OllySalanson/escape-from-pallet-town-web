@@ -19,6 +19,9 @@ import { RunPhase } from '../run/RunManager';
 import { getWorldMap } from '../worldMap';
 import { CATCH_ALERT_MS, CATCH_SETTLE_MS } from '../world/cutscenes';
 import { CUTSCENE_TIMED_CAP_MS } from '../cutscene/cutscene';
+import { Pokemon, PokemonParty } from '../pokemon';
+import { CHARMANDER } from '../pokemon/species';
+import { HUNTER_RIVALS } from '../world/hunters';
 import { WorldScene } from './WorldScene';
 
 const TILE = 16;
@@ -96,6 +99,7 @@ function caughtByTheHunter() {
         return drawn;
       }),
     },
+    party: new PokemonParty([new Pokemon(CHARMANDER, 5)]),
     runSession: {
       manager: {
         phase: RunPhase.InRun,
@@ -157,7 +161,7 @@ describe('the hunter catching the player, as an authored beat', () => {
     // The breath, and then the line - at which point the cutscene gives the
     // frame back so the box can be read and answered as any other box is.
     const speaking = harness.scene.advanceCutscene(CATCH_SETTLE_MS);
-    expect(harness.dialogBox.shown).toEqual(['FOUND YOU.', 'There is nowhere left to run!']);
+    expect(harness.dialogBox.shown).toEqual([...HUNTER_RIVALS[0].caught]);
     expect(speaking).toBe(false);
     expect(harness.scene.cutscene?.waitingForPlayer).toBe(true);
 
@@ -187,6 +191,6 @@ describe('the hunter catching the player, as an authored beat', () => {
     // One 100ms test-mode frame, or one absurd one: the beat still reaches its
     // line rather than being skipped or stalled by how the frames fell.
     harness.scene.advanceCutscene(CUTSCENE_TIMED_CAP_MS * 10);
-    expect(harness.dialogBox.shown[0]).toBe('FOUND YOU.');
+    expect(harness.dialogBox.shown[0]).toBe(HUNTER_RIVALS[0].caught[0]);
   });
 });

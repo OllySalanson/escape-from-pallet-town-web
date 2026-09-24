@@ -696,7 +696,7 @@ describe('hub deployment route', () => {
     const { hub, start } = createHub();
 
     hub.flow.togglePokemon('charmander-1');
-    hub.flow.adjustItem('potion', 2);
+    hub.flow.setItemQuantity('potion', 2);
     hub.flow.openSecureSlot();
     readyToDeploy(hub);
     deploy(hub, start);
@@ -727,33 +727,50 @@ describe('the hunter a loadout draws', () => {
     return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
   }
 
-  it('prices the veteran on the final check and sends that same hunter into the raid', () => {
+  /**
+   * The hunter mirrors the party (`world/hunter.ts`): one Pokemon for each of
+   * yours, each a rung below the one it answers. So a veteran is priced in the
+   * level of the one Pokemon it meets, never in a bigger team or an earlier
+   * arrival, and the final check says who is coming and with what.
+   */
+  it('names the hunter on the final check, and matches a veteran with one Pokemon below it', () => {
     const { hub, start } = createHub();
     hub.stash.addPokemon(new Pokemon(CHARMANDER, 16), 'veteran-1');
     hub.flow.togglePokemon('veteran-1');
 
     const finalCheck = finalCheckOf(hub);
-    expect(finalCheck).toContain('data-hunter-tier="4"');
-    expect(finalCheck).toContain('matched to your Lv 16 Charmander');
+    expect(finalCheck).toContain('data-hunter-tier="1"');
+    expect(finalCheck).toContain('<b>Hunter: BLUE</b>');
+    expect(finalCheck).toContain('1 Pokémon to your 1 · lead Lv 12 to your Lv 16 Charmander');
 
     deploy(hub, start);
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
-    expect(runSession.plan?.hunter.teamTierOffset).toBe(3);
+    expect(runSession.plan?.hunter.teamTierOffset).toBe(0);
+    expect(runSession.plan?.hunter.rivalId).toBe('blue');
   });
 
-  it('prices the same save a tier-one hunter when the veteran stays at base', () => {
+  it('meets a lone Lv 5 starter with one Pokemon at the floor', () => {
     const { hub, start } = createHub();
     hub.stash.addPokemon(new Pokemon(CHARMANDER, 16), 'veteran-1');
     hub.flow.togglePokemon('bulbasaur-1');
     expect(hub.flow.party.map((stored) => stored.pokemon.level)).toEqual([5]);
 
     const finalCheck = finalCheckOf(hub);
-    expect(finalCheck).toContain('data-hunter-tier="1"');
-    expect(finalCheck).toContain('nothing you bring out-levels it');
+    expect(finalCheck).toContain('1 Pokémon to your 1 · lead Lv 2 to your Lv 5 Bulbasaur');
 
     deploy(hub, start);
     const { runSession } = start.mock.calls[0][1] as WorldSceneData;
     expect(runSession.plan?.hunter.teamTierOffset).toBe(0);
+  });
+
+  it('sends the next hunter on the next raid, and names them before it starts', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      raidRecord: { 'floodplain-relay': { deployed: 1, extracted: 1, wiped: 0 } },
+    });
+    hub.flow.togglePokemon('bulbasaur-1');
+
+    expect(finalCheckOf(hub)).toContain('<b>Hunter: MISTY</b>');
   });
 });
 
@@ -819,7 +836,7 @@ describe('the standing board in the lobby', () => {
 
       const finalCheck = markupOf(hub);
       expect(finalCheck).toContain(`data-hunter-tier="${tier}"`);
-      expect(finalCheck.includes('for the contract')).toBe(pressure !== undefined);
+      expect(finalCheck.includes(', +1 contract')).toBe(pressure !== undefined);
 
       deploy(hub, start);
       const { runSession } = start.mock.calls[0][1] as WorldSceneData;
@@ -978,7 +995,7 @@ describe('what the base screen leads with', () => {
     const { hub } = createHub();
 
     hub.flow.togglePokemon('charmander-1');
-    hub.flow.adjustItem('potion', 2);
+    hub.flow.setItemQuantity('potion', 2);
     hub.setView('deploy');
     const loadout = markupOf(hub);
     const bar = loadout.slice(loadout.indexOf('confirm-bar'));

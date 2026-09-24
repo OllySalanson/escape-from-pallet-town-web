@@ -172,6 +172,8 @@ export interface TrainerBattle {
   readonly party: readonly Pokemon[];
   readonly sprite?: string;
   readonly defeatText?: string;
+  /** What they shout after a player who breaks away - only the hunter can be fled. */
+  readonly getawayText?: string;
   readonly prize?: string;
   /**
    * How many Pokemon this trainer puts on the field at once - the tutorial's

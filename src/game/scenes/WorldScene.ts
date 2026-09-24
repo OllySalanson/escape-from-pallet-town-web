@@ -178,7 +178,7 @@ import {
   type Cutscene,
   type CutsceneActorFrame,
 } from '../cutscene/cutscene';
-import { hunterCatchCutscene, trainerApproachCutscene } from '../world/cutscenes';
+import { bearingFrom, hunterCatchCutscene, trainerApproachCutscene } from '../world/cutscenes';
 import { findWatchingTrainer, trainerSightTiles } from '../world/trainerSight';
 import {
   trainerChallengePrompt,
@@ -227,6 +227,7 @@ import {
   type HunterState,
   hunterIntelFor,
 } from '../world/hunter';
+import { FIRST_HUNTER_RIVAL, hunterRival, type HunterRival } from '../world/hunters';
 
 const CAMERA_ZOOM = 1;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
@@ -625,6 +626,12 @@ export class WorldScene extends Phaser.Scene {
   private pushingAgainst: Direction | null = null;
   /** Whether the hunter's approach has already been announced. See `nextHunterProximity`. */
   private hunterNear = false;
+  /**
+   * The way the hunter last walked. Scene state rather than hunter state: it
+   * is how the figure is drawn, and after a battle it starts facing down again
+   * like every other figure the rebuilt world stands up.
+   */
+  private hunterFacing: Direction = 'down';
 
   public constructor() {
     super('world');
@@ -678,6 +685,7 @@ export class WorldScene extends Phaser.Scene {
     this.knownInsertionIds.clear();
     this.pushingAgainst = null;
     this.hunterNear = false;
+    this.hunterFacing = 'down';
     // Where the last raid ended is not where this one starts, and the plate
     // that named it must not flash up over the next insertion.
     this.districtId = null;
@@ -1974,7 +1982,16 @@ export class WorldScene extends Phaser.Scene {
     if (!this.isHunterOnCurrentMap()) {
       return;
     }
-    this.createFigure(HUNTER_FIGURE_ID, this.hunterState.position!, 'down', 'hunter');
+    // Drawn as this raid's rival (`hunters.ts`) - Blue, Misty and the rest are
+    // their own FireRed art, which is what tells the hunter from everybody else
+    // on the map now that it no longer wears the red tint.
+    this.createFigure(
+      HUNTER_FIGURE_ID,
+      this.hunterState.position!,
+      this.hunterFacing,
+      'hunter',
+      this.hunterRival().design,
+    );
   }
 
   /**
@@ -2370,6 +2387,7 @@ export class WorldScene extends Phaser.Scene {
                 snapshot.durationMs,
                 manager.isEnraged,
                 session.plan?.hunter,
+                this.party.pokemon,
               ),
             }
             : {}),
@@ -4139,8 +4157,13 @@ export class WorldScene extends Phaser.Scene {
     this.createHunterSprite();
     if (awaitingSpawn) {
       audioManager.play('hunterArrival');
-      this.interrupt(['A RIVAL HUNTER is on your trail!'], [position]);
+      this.interrupt([this.hunterRival().arrival], [position]);
     }
+  }
+
+  /** Who is hunting this raid - a face and lines, never a fight (`hunters.ts`). */
+  private hunterRival(): HunterRival {
+    return hunterRival(this.runSession?.plan?.hunter.rivalId ?? FIRST_HUNTER_RIVAL);
   }
 
   private isHunterEligible(): boolean {
@@ -4213,6 +4236,7 @@ export class WorldScene extends Phaser.Scene {
       this.isBlockedForHunter(tile),
     );
     for (let index = 0; index < steps && index < path.length; index += 1) {
+      this.hunterFacing = bearingFrom(position, path[index]) ?? this.hunterFacing;
       position = path[index];
       if (isHunterContactingPlayer(position, this.currentTile)) {
         break;
@@ -4230,10 +4254,9 @@ export class WorldScene extends Phaser.Scene {
     if (proximity.warn && !isHunterContactingPlayer(position, this.currentTile)) {
       audioManager.play('hunterNear');
     }
-    const sprite = this.npcSprites.get(HUNTER_FIGURE_ID);
-    sprite
-      ?.setPosition(position.x * TILE_SIZE, position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET)
-      .setDepth(atRow(FIGURE_BAND, position.y));
+    // Placed a tile at a time and turned the way it went: until the hunters
+    // had faces it stood facing down for the whole raid, gliding sideways.
+    this.placeFigure(HUNTER_FIGURE_ID, position.x, position.y, this.hunterFacing);
   }
 
   /**
@@ -4352,12 +4375,15 @@ export class WorldScene extends Phaser.Scene {
     // window left running would have it blind to someone it is already holding.
     this.hunterState = { ...this.hunterState, searchRemainingMs: 0 };
     this.pendingTrainerBattle = {
+      // Matched to the party that can fight *now*: one Pokemon for each of
+      // theirs still standing, so a raid that lost two on the way meets one.
       trainer: createHunterTrainer(
         this.runSession!.manager.snapshot().elapsedMs,
         this.runSession!.manager.isEnraged,
         this.runSession!.plan?.hunter,
+        this.party.pokemon,
       ),
-      introLines: ['FOUND YOU.', 'There is nowhere left to run!'],
+      introLines: this.hunterRival().caught,
       isHunter: true,
     };
     this.playCutscene(

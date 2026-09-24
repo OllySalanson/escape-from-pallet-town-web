@@ -21,6 +21,7 @@ import {
 } from '../world/trainers';
 import type { RaidContract } from '../objectives/contracts';
 import { applyHunterThreat, hunterThreatFor, type HunterThreat } from '../world/hunterThreat';
+import { FIRST_HUNTER_RIVAL, type HunterRivalId } from '../world/hunters';
 import { createSeededRng } from './rng';
 
 export { FIRST_CONTRACT } from '../objectives/contracts';
@@ -266,6 +267,8 @@ export interface HunterTuning {
   readonly spawnDelayMs: number;
   readonly aggressionStepsPerPlayerStep: number;
   readonly teamTierOffset: number;
+  /** Who is hunting this raid (`world/hunters.ts`): a face and lines, never a fight. */
+  readonly rivalId: HunterRivalId;
 }
 
 export interface RunPlan {
@@ -464,6 +467,9 @@ export function generateRunPlan(
           RUN_GENERATION_BOUNDS.hunterTeamTierMinimum,
           RUN_GENERATION_BOUNDS.hunterTeamTierMaximum,
         ),
+        // Replaced by the threat's own rival below; spends no randomness, so a
+        // seed plays the same raid whoever is hunting it.
+        rivalId: FIRST_HUNTER_RIVAL,
       },
       hunterThreat,
     ),

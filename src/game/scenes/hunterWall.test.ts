@@ -19,6 +19,9 @@ import { RunPhase } from '../run/RunManager';
 import { getWorldMap } from '../worldMap';
 import { HUNTER_SEARCH_MS } from '../world/hunter';
 import type { GridPosition } from '../movement/gridMovement';
+import { Pokemon, PokemonParty } from '../pokemon';
+import { CHARMANDER } from '../pokemon/species';
+import { HUNTER_RIVALS } from '../world/hunters';
 import { WorldScene } from './WorldScene';
 
 /** A drawn thing that remembers what was done to it, as `cutsceneBeats.test.ts` has one. */
@@ -110,6 +113,7 @@ function sealedInAPocket(
     scale: { width: 320, height: 240 },
     cameras: { main: { worldView: { left: 0, top: 0 }, fadeIn: vi.fn(), fadeOut: vi.fn() } },
     add: { graphics: vi.fn(() => stubGraphics()) },
+    party: new PokemonParty([new Pokemon(CHARMANDER, 5)]),
     runSession: {
       manager: {
         phase: RunPhase.InRun,
@@ -156,7 +160,7 @@ describe('a hunter standing in the only way out', () => {
   it('takes whoever walks into it, which is what makes that door openable', () => {
     expect(harness.scene.tryWalkIntoHunter(harness.into)).toBe(true);
 
-    expect(harness.scene.pendingTrainerBattle?.trainer.name).toBe('RIVAL HUNTER');
+    expect(harness.scene.pendingTrainerBattle?.trainer.name).toBe(HUNTER_RIVALS[0].name);
     expect(harness.scene.pendingTrainerBattle?.isHunter).toBe(true);
     // The same beat a pursuit contact plays, because it is the same event from
     // the other side: the player is turned to face whoever has them.
@@ -175,7 +179,7 @@ describe('a hunter standing in the only way out', () => {
     // Long enough for the whole beat: the mark, the breath, then the words.
     harness.scene.advanceCutscene(10_000);
 
-    expect(harness.dialogBox.shown).toEqual(['FOUND YOU.', 'There is nowhere left to run!']);
+    expect(harness.dialogBox.shown).toEqual([...HUNTER_RIVALS[0].caught]);
   });
 
   it('is still solid, because the player may not walk through a person', () => {

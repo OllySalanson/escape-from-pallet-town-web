@@ -114,11 +114,11 @@ row in the loadout.
   save's vault before the lobby opens. The loadout's stepper cannot pack more
   than the vault holds, so this is what makes a pack filled to its **last
   square** reachable - which is the only state the pack-full refusals happen in.
-- `--pack=itemId[:n],..` - puts supplies in the raid bag by the loadout row's own
-  stepper. **Nothing is packed by default** - the flow starts the pack empty,
-  because the loadout is the decision the game is built around - so a driver that
-  clicks through deploys with no medicine, and a fight priced in Potions (the
-  Floodplain checkpoint) cannot be played without this.
+- `--pack=itemId[:n],..` - packs exactly `n` of a supply by the loadout row's
+  own stepper (down to none, then up). **The stash's medicine is packed by
+  default** (`DeploymentFlow.packMedicine`, up to half the pack), so a driver
+  that clicks through deploys with the vault's Potions, and `--pack=potion:0` is
+  how a raid goes out with none.
 - `--secure=itemId[:n],..` - takes the secure-slot detour on the way out and
   puts `n` (default one) squares of each kind into the container, by the row's
   own stepper. It is the only way the container is checked end to end, and the

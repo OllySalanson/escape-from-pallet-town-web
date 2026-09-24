@@ -2,7 +2,8 @@ import { STEP_DURATION_MS } from '../movement/stepClock';
 import { describe, expect, it } from 'vitest';
 import { Pokemon } from '../pokemon';
 import { EVOLUTIONS } from '../pokemon/evolution';
-import { CHARMANDER } from '../pokemon/species';
+import { CHARMANDER, getSpeciesById, PIDGEY } from '../pokemon/species';
+import { PokemonType } from '../pokemon/PokemonType';
 import { RunManager } from '../run/RunManager';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { createActiveRunSession } from '../run/RunSession';
@@ -20,7 +21,10 @@ import {
   HUNTER_MINIMUM_SPAWN_DISTANCE,
   HUNTER_SPAWN_DISTANCE,
   hunterQuarry,
+  hunterTeamFor,
   hunterTierFor,
+  HUNTER_MINIMUM_LEVEL,
+  HUNTER_ROSTER,
   HUNTER_TIERS,
   isHunterOffTheScent,
   isHunterContactingPlayer,
@@ -30,6 +34,8 @@ import {
   doorsFrom,
   doorIndex,
 } from './hunter';
+
+const RATTATA = getSpeciesById('rattata')!;
 
 const mapBlocker = (mapId: WorldMapId) => {
   const map = WORLD_MAPS[mapId];
@@ -315,54 +321,22 @@ describe('chooseHunterPursuitStep', () => {
 });
 
 describe('hunterTierFor', () => {
-  it('escalates with elapsed raid time and reaches its strongest team while enraged', () => {
-    expect(hunterTierFor(0, false)).toMatchObject({ level: 6, party: [{ id: 'pidgey' }] });
-    expect(hunterTierFor(120_000, false)).toMatchObject({ level: 9, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }] });
-    expect(hunterTierFor(180_000, false)).toMatchObject({ level: 12, party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }] });
-    expect(hunterTierFor(240_000, false)).toMatchObject({
-      level: 15,
-      party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }, { id: 'jigglypuff' }],
-    });
-    expect(hunterTierFor(10_000, true)).toMatchObject({
-      level: 19,
-      party: [{ id: 'pidgey' }, { id: 'bulbasaur' }, { id: 'pikachu' }, { id: 'jigglypuff' }],
-    });
+  it('climbs a level closer to the party with elapsed raid time, and past it while enraged', () => {
+    expect(HUNTER_TIERS.map((tier) => hunterTierFor(tier.startsAtMs, false).levelOffset)).toEqual([-4, -3, -2, -1]);
+    expect(hunterTierFor(119_999, false).levelOffset).toBe(-4);
+    expect(hunterTierFor(10_000, true).levelOffset).toBeGreaterThan(0);
   });
 
   /**
-   * The fourth rung is a fourth body rather than the rival's team evolved, so
-   * nothing on the ladder is an evolved form today. The rule is kept anyway,
-   * because the evolved rung was written once and measured out again: a rung
-   * that does reach for one has to field a species the game's own rules could
-   * produce at that level, not a Pidgeotto at 17 invented for the hunter.
+   * Every ordinary rung sits below the party it is paired with, because the
+   * captain wants the hunter easy to beat (`hunter.ts`). A rung at or above
+   * zero is the harder hunter, which is a rival's `temperament`, not a rung.
    */
-  it('fields only species that are legal at the level the rung fields them at', () => {
-    for (const tier of HUNTER_TIERS) {
-      for (const species of tier.party) {
-        const rule = EVOLUTIONS.find((evolution) => evolution.to === species.id);
-        if (rule?.trigger.kind === 'level') {
-          expect(`${species.id} at Lv ${tier.level}`).toBe(
-            `${species.id} at Lv ${Math.max(tier.level, rule.trigger.level)}`,
-          );
-        }
-      }
-    }
-  });
-
-  /**
-   * The ladder's shape, and the reason the fourth rung is a body rather than a
-   * bigger number: team size is the one lever that does not scale with the party
-   * opposite, so it is the one that still bites at the top. Raising three levels
-   * was measured and leaves the opener better off than rung 3 does.
-   */
-  it('grows by one Pokemon a rung, and never shrinks', () => {
+  it('keeps every scheduled rung below the party, and never lets one step back', () => {
     HUNTER_TIERS.forEach((tier, index) => {
-      expect(tier.party.length).toBe(index + 1);
+      expect(tier.levelOffset).toBeLessThan(0);
       if (index > 0) {
-        expect(tier.level).toBeGreaterThan(HUNTER_TIERS[index - 1].level);
-        // Each rung is the one below it plus one, so the ladder reads as one
-        // trainer catching Pokemon rather than four unrelated teams.
-        expect(tier.party.slice(0, index)).toEqual(HUNTER_TIERS[index - 1].party);
+        expect(tier.levelOffset).toBeGreaterThan(HUNTER_TIERS[index - 1].levelOffset);
       }
     });
   });
@@ -375,8 +349,64 @@ describe('hunterTierFor', () => {
   it('enrages into something above every scheduled rung', () => {
     const enraged = hunterTierFor(0, true);
     for (const tier of HUNTER_TIERS) {
-      expect(enraged.level).toBeGreaterThan(tier.level);
-      expect(enraged.party.length).toBeGreaterThanOrEqual(tier.party.length);
+      expect(enraged.levelOffset).toBeGreaterThan(tier.levelOffset);
+    }
+  });
+});
+
+describe('hunterTeamFor', () => {
+  const rung = (index: number) => HUNTER_TIERS[index];
+
+  it('brings one Pokemon to a party of one, and one each to a party of three', () => {
+    expect(hunterTeamFor(rung(0), [new Pokemon(CHARMANDER, 5)])).toHaveLength(1);
+    expect(
+      hunterTeamFor(rung(0), [new Pokemon(CHARMANDER, 10), new Pokemon(PIDGEY, 7), new Pokemon(RATTATA, 6)]),
+    ).toHaveLength(3);
+  });
+
+  it('pairs its team off highest level first, each a rung below the one it answers', () => {
+    const team = hunterTeamFor(rung(2), [
+      new Pokemon(PIDGEY, 7),
+      new Pokemon(CHARMANDER, 12),
+      new Pokemon(RATTATA, 9),
+    ]);
+    expect(team.map((member) => member.level)).toEqual([10, 7, 5]);
+    expect(team.map((member) => member.species.id)).toEqual(
+      HUNTER_ROSTER.slice(0, 3).map((species) => species.id),
+    );
+  });
+
+  it('answers only the Pokemon that can still fight, so a raid that lost two meets one', () => {
+    const fainted = new Pokemon(CHARMANDER, 14);
+    fainted.takeDamage(fainted.maxHp);
+    const team = hunterTeamFor(rung(0), [fainted, new Pokemon(PIDGEY, 8), (() => {
+      const down = new Pokemon(RATTATA, 9);
+      down.takeDamage(down.maxHp);
+      return down;
+    })()]);
+    expect(team).toEqual([{ species: HUNTER_ROSTER[0], level: 4 }]);
+  });
+
+  it('never fields a Pokemon below the floor, however low the party', () => {
+    expect(hunterTeamFor(rung(0), [new Pokemon(CHARMANDER, 2)])[0].level).toBe(HUNTER_MINIMUM_LEVEL);
+    expect(hunterTeamFor(rung(0), [new Pokemon(CHARMANDER, 5)])[0].level).toBe(HUNTER_MINIMUM_LEVEL);
+  });
+
+  it('leads with a Normal type, so a lone starter meets no type it is weak to', () => {
+    expect(HUNTER_ROSTER[0].primaryType).toBe(PokemonType.Normal);
+    expect(HUNTER_ROSTER[0].secondaryType ?? null).toBeNull();
+    // A full party is six, so the roster has a Pokemon for every one of them.
+    expect(HUNTER_ROSTER.length).toBeGreaterThanOrEqual(6);
+  });
+
+  /**
+   * The roster is basic forms on purpose, so no hunter Pokemon is a species the
+   * game's own rules could not produce at the level it is fielded at.
+   */
+  it('fields only species that are legal at the level the team fields them at', () => {
+    for (const species of HUNTER_ROSTER) {
+      const rule = EVOLUTIONS.find((evolution) => evolution.to === species.id);
+      expect(rule).toBeUndefined();
     }
   });
 });

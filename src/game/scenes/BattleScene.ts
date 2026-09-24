@@ -1638,7 +1638,14 @@ export class BattleScene extends Phaser.Scene {
     this.dialog.showMessages(
       penaltyMs === undefined
         ? [WILD_ESCAPE_SUCCESS_MESSAGE]
-        : [...hunterFleeMessages(penaltyMs, HUNTER_SEARCH_MS)],
+        : [
+          ...hunterFleeMessages(
+            this.trainer?.name ?? 'the hunter',
+            this.trainer?.getawayText,
+            penaltyMs,
+            HUNTER_SEARCH_MS,
+          ),
+        ],
     );
   }
 

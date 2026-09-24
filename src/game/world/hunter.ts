@@ -1,5 +1,5 @@
 import { Pokemon } from '../pokemon';
-import { BULBASAUR, JIGGLYPUFF, PIDGEY, PIKACHU } from '../pokemon/species';
+import { getSpeciesById } from '../pokemon/species';
 import type { PokemonBase } from '../pokemon/PokemonBase';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
 import { DIRECTION_DELTAS, type Direction, type GridBounds, type GridPosition } from '../movement/gridMovement';
@@ -7,6 +7,7 @@ import type { ActiveRunSession } from '../run/RunSession';
 import type { RunResult } from '../run/RunManager';
 import type { HunterTuning } from '../run/runGeneration';
 import type { WorldMapId } from '../worldMap';
+import { FIRST_HUNTER_RIVAL, hunterRival } from './hunters';
 
 export const HUNTER_ID = 'rival-hunter';
 export const HUNTER_SPAWN_MS = 60_000;
@@ -48,91 +49,111 @@ export const DEFAULT_HUNTER_TUNING: HunterTuning = {
   spawnDelayMs: HUNTER_SPAWN_MS,
   aggressionStepsPerPlayerStep: 1,
   teamTierOffset: 0,
+  rivalId: FIRST_HUNTER_RIVAL,
+};
+
+const species = (id: string): PokemonBase => {
+  const found = getSpeciesById(id);
+  if (!found) {
+    throw new Error(`${id} is not one of the 151`);
+  }
+  return found;
 };
 
 /**
- * When the hunter's team grows. Exported so `raidClock.test.ts` can prove every
- * tier is still reachable inside the raid duration.
+ * **The hunter brings one Pokemon for each of yours, and it is easy to beat.**
  *
- * **Four rungs, and the fourth is a fourth Pokemon.** It arrived with evolution,
- * which begins at level 16 and had put an evolved party above the whole ladder.
- * The obvious answer was to evolve the rival's team with it - the same three
- * Pokemon further along their own lines - and it was written that way first and
- * measured second. The measurement threw it out, which is the entry worth
- * keeping here: **an evolved form is worth far more than the levels it costs**,
- * so a rung built from them overshoots whatever level it is pitched at.
+ * The captain, 2026-09-23: "when you've just got one Pokemon the Hunter should
+ * also have one Pokemon ... it should be pretty easy to beat because the NPCs
+ * in Escape from Tarkov are pretty easy to beat ... it's the other players
+ * that are fairly difficult ... later down the line in single player mode I'll
+ * introduce one who's harder to beat and keep everyone else easy."
  *
- * What a rung promises is the fight the party that *opens* it gets - a party
- * opens the highest rung it out-levels, so a rung at level N is met by a party
- * at N+1 (`hunterThreat.ts`). Measured over the real engine (300 seeded battles
- * a cell, the player taking its best move each turn, the hunter choosing as
- * `chooseEnemyMove` does, a mixed trio of the lead's own line plus another
- * starter and a Pidgey), the shipped rungs keep a steady promise:
+ * So the ladder is a mirror. The hunter fields as many Pokemon as the player
+ * can fight with at the moment it catches them, and pairs them off: its first
+ * against your highest-level Pokemon, its second against your next, and so on,
+ * each a rung's `levelOffset` below the one it is paired with. A lone starter
+ * meets one Pokemon; a veteran with two weak escorts meets one strong Pokemon
+ * and two weak ones, never three strong ones.
  *
- * | rung          | wins        | HP left    |
- * | ------------- | ----------- | ---------- |
- * | 1: Lv 6 x1    | 100%        | 66-86%     |
- * | 2: Lv 9 x2    | 100%        | 47-70%     |
- * | 3: Lv 12 x3   | 97-98%      | 36-57%     |
- * | 4: Lv 15 x4   | 90-100%     | 36-63%     |
+ * The ladder it replaced grew the team instead - one Pokemon, then two, three
+ * and four as the clock ran - and read only the strongest Pokemon deployed, so
+ * a lone Lv 5 starter met a Lv 6 Pidgey and won it 1-14% of the time with no
+ * Potions, and a lone veteran met four. Both measured below, both gone.
  *
- * The evolved team never came close to that band at any level: Pidgeotto,
- * Ivysaur and Raichu beat their own opener 93% of the time at Lv 13 and 90% at
- * Lv 18 - the ratio barely moves, because dropping the rung's level drops the
- * opener's with it. Raichu alone does most of it; swapping it for Pikachu at
- * one level higher than rung 3 turns a 97% rung into a 14% one.
+ * Two measured choices, over the real engine on the FireRed base stats
+ * (`npx vite-node tools/hunter/measure.mts`, 150 fights a cell, no items, the
+ * player throwing its best move each turn; parties of one starter at Lv 5-13,
+ * each starter's second stage at 16, a starter with an escort, a trio at
+ * Lv 8-10 and a Lv 18 veteran with five Lv 10 escorts):
  *
- * And **raising three levels is not a rung either**, for the same reason: Lv 15,
- * 16 and 18 trios all leave their opener 99-100% wins with 44-71% of its health,
- * which is softer than rung 3. Team size is the only lever that bites, because
- * it is the one thing that does not scale with the party opposite. So the
- * fourth rung is what the first three were doing all along - one more Pokemon.
+ * - **The lead is Normal.** A one-Pokemon hunter is one type against one
+ *   starter, and a Flying lead is a starter lottery: Pidgey paired a level
+ *   under a Lv 10 starter wins against the Charmander and the Squirtle 96-100%
+ *   of the time and against the Bulbasaur never, where Rattata is 95-97%
+ *   against all three. Rattata, then Jigglypuff and Meowth, cover nobody and
+ *   check nobody, and Pidgey, Pikachu and Spearow only arrive in a party big
+ *   enough to answer a type.
+ * - **Every rung sits below you.** Measured at each offset:
  *
- * It is **Jigglypuff**, and its being Normal is the point rather than an
- * accident: the rival's three cover Flying, Grass/Poison and Electric, so a
- * fourth with a type would check one starter line and not the others. The
- * Bug/Flying alternative (Butterfree) did exactly that - it took the Squirtle
- * lead's win rate to 83% and its health to 22% while leaving Charmander's at
- * 100% and 60%. Jigglypuff is also already a trainer's Pokemon in this game and
- * nothing a player can own, so the rival having caught one costs nothing.
+ * | rung            | offset | wins (mean / worst) | HP left on a win |
+ * | --------------- | ------ | ------------------- | ---------------- |
+ * | 1: 0-120s       | -4     | 100% / 99%          | 79%              |
+ * | 2: 120-180s     | -3     | 100% / 99%          | 73%              |
+ * | 3: 180-240s     | -2     | 99% / 97%           | 66%              |
+ * | 4: 240s-end     | -1     | 96% / 87%           | 57%              |
+ * | at your level   | 0      | 83% / 45%           | 47%              |
+ * | enraged         | +3     | 31% / 4%            | 33%              |
  *
- * **The schedule is even in hunted time, not in raid time.** The hunter is only
- * on the map from its arrival (55-75s seeded, earlier for a party that raised
- * it) to the end of a 300s raid, so the first rung's stretch is the one the
- * arrival eats into. Measured that way the ladder is four near-equal watches:
+ * The clock still closes the gap, so staying late still costs - a fifth more
+ * of your health by the last minute - but no ordinary rung is a wall. The
+ * worst cell of rung 4 is a lone Lv 5 Charmander with an empty pack at 87%,
+ * and the three Potions a fresh save deploys with do not move that worst cell
+ * but raise the health it keeps. Level 2 is the floor, which is what a Lv 5
+ * starter meets on rung 1.
  *
- * | rung | from   | to   | hunted length |
- * | ---- | ------ | ---- | ------------- |
- * | 1    | 55-75s | 120s | 45-65s        |
- * | 2    | 120s   | 180s | 60s           |
- * | 3    | 180s   | 240s | 60s           |
- * | 4    | 240s   | 300s | 60s (enrages) |
- *
- * Sixty seconds is not a round number picked for the table: it is what a rung
- * has to last for an escape taken inside it to still be an escape. A first
- * breakaway costs `HUNTER_FLEE_BASE_PENALTY_MS` of clock (40s), so one taken the
- * moment a rung lands leaves 20s of that rung to walk in - the player is still
- * running from the hunter they fled. The second costs 60s, exactly one rung,
- * which is the escalation doing its job rather than an accident. `raidClock.ts`
- * holds the whole schedule and `raidClock.test.ts` the relationships.
+ * **The harder hunter is not built.** It is the `temperament` on a rival in
+ * `hunters.ts`: every shipped rival is `ordinary` and fights on this ladder.
+ * A `hard` rival would carry its own offsets - the "at your level" row is
+ * already the measured start of one - and nothing else here would change.
  */
 export const HUNTER_TIERS = [
-  { startsAtMs: 0, level: 6, party: [PIDGEY] },
-  { startsAtMs: 120_000, level: 9, party: [PIDGEY, BULBASAUR] },
-  { startsAtMs: 180_000, level: 12, party: [PIDGEY, BULBASAUR, PIKACHU] },
-  { startsAtMs: 240_000, level: 15, party: [PIDGEY, BULBASAUR, PIKACHU, JIGGLYPUFF] },
+  { startsAtMs: 0, levelOffset: -4 },
+  { startsAtMs: 120_000, levelOffset: -3 },
+  { startsAtMs: 180_000, levelOffset: -2 },
+  { startsAtMs: 240_000, levelOffset: -1 },
 ] as const;
+
 /**
- * What lands when the clock runs out. It has to be above the top rung or the
- * enrage would be a reprieve - the old Lv 15 trio is now *weaker* than the top
- * rung and beats its opener 99-100% of the time, which is what forced this to
- * move - and it is pitched by what the shipped enrage did to the party that
- * opened the shipped top rung: 9-39% wins with 17-26% of its health left. The
- * top rung's own team at Lv 19 gives that party 16-45% and 26-40%. Lv 18 was
- * measured first and leaves 28-61%, which is a rung rather than a reason to
- * leave; Lv 20 leaves 1-18%, which is not a fight at all.
+ * Who the hunter sends, in order: a team of N is the first N. The first three
+ * are Normal for the reason above; the rest arrive only against a party of
+ * four or more, which already has the types to meet them.
  */
-const HUNTER_ENRAGED_TIER = { level: 19, party: [PIDGEY, BULBASAUR, PIKACHU, JIGGLYPUFF] } as const;
+export const HUNTER_ROSTER: readonly PokemonBase[] = [
+  'rattata',
+  'jigglypuff',
+  'meowth',
+  'pidgey',
+  'pikachu',
+  'spearow',
+].map(species);
+
+/** The lowest level the hunter fields, which is what a Lv 5 starter meets on rung 1. */
+export const HUNTER_MINIMUM_LEVEL = 2;
+
+/**
+ * What the hunter pairs with when it has nobody to read - a party that cannot
+ * fight, which a live raid never hands it. A fresh starter's level.
+ */
+const UNKNOWN_OPPONENT_LEVEL = 5;
+
+/**
+ * What lands when the clock runs out, and the one rung that is not easy on
+ * purpose: the enrage is the raid telling you it is over, and a reprieve would
+ * be no reason to leave. Three levels *above* each of yours wins 31% of the
+ * time on the parties above, with a third of the party's health left.
+ */
+const HUNTER_ENRAGED_TIER = { levelOffset: 3 } as const;
 
 export interface HunterState {
   readonly spawned: boolean;
@@ -161,9 +182,21 @@ export interface HunterState {
   readonly pendingBreakaway?: boolean;
 }
 
+/** A rung of the ladder: how far below each of yours its Pokemon stand. */
 export interface HunterTier {
+  readonly levelOffset: number;
+}
+
+/** The part of a player's Pokemon the hunter reads. `Pokemon` satisfies it. */
+export interface HunterOpponent {
   readonly level: number;
-  readonly party: readonly PokemonBase[];
+  readonly isFainted: boolean;
+}
+
+/** One of the hunter's Pokemon, before it is built. */
+export interface HunterTeamMember {
+  readonly species: PokemonBase;
+  readonly level: number;
 }
 
 export const createHunterState = (): HunterState => ({ spawned: false, defeated: false });
@@ -187,8 +220,31 @@ export const hunterTierFor = (
   return HUNTER_TIERS[tierIndex];
 };
 
+/**
+ * The hunter's team on a rung, against whoever it is facing: one Pokemon for
+ * each of theirs that can still fight, paired highest level first. Only those
+ * that can fight, because a fainted Pokemon cannot be revived in the field and
+ * so is nobody the hunter has to answer.
+ */
+export function hunterTeamFor(
+  tier: HunterTier,
+  opponents: readonly HunterOpponent[],
+): readonly HunterTeamMember[] {
+  const levels = opponents
+    .filter((pokemon) => !pokemon.isFainted)
+    .map((pokemon) => pokemon.level)
+    .sort((a, b) => b - a)
+    .slice(0, HUNTER_ROSTER.length);
+  const paired = levels.length > 0 ? levels : [UNKNOWN_OPPONENT_LEVEL];
+  return paired.map((level, index) => ({
+    species: HUNTER_ROSTER[index],
+    level: Math.max(HUNTER_MINIMUM_LEVEL, level + tier.levelOffset),
+  }));
+}
+
 /** What Brock's radio mast reads off the hunter, before it is worded. */
 export interface HunterIntel {
+  /** The level of the hunter's strongest Pokemon, which is the number that decides a fight. */
   readonly level: number;
   readonly teamSize: number;
   /** The next team to land and how much raid clock is left before it does. */
@@ -196,7 +252,8 @@ export interface HunterIntel {
 }
 
 /**
- * The hunter's team right now, and the next change to it.
+ * The hunter's team right now, and the next change to it, against the party
+ * the player is carrying now.
  *
  * It asks `hunterTierFor` rather than reading `HUNTER_TIERS` itself, so a raid
  * whose tuning shifts the tiers is reported as it will actually be fought. The
@@ -209,12 +266,13 @@ export const hunterIntelFor = (
   raidDurationMs: number,
   isEnraged: boolean,
   tuning: HunterTuning = DEFAULT_HUNTER_TUNING,
+  opponents: readonly HunterOpponent[] = [],
 ): HunterIntel => {
   const current = hunterTierFor(elapsedMs, isEnraged, tuning);
-  const describe = (tier: HunterTier): { level: number; teamSize: number } => ({
-    level: tier.level,
-    teamSize: tier.party.length,
-  });
+  const describe = (tier: HunterTier): { level: number; teamSize: number } => {
+    const team = hunterTeamFor(tier, opponents);
+    return { level: Math.max(...team.map((member) => member.level)), teamSize: team.length };
+  };
   if (isEnraged) {
     return { ...describe(current), next: null };
   }
@@ -233,17 +291,25 @@ export const hunterIntelFor = (
   return { ...describe(current), next: null };
 };
 
+/**
+ * The fight the hunter brings: this raid's rival, on the rung the clock is
+ * at, against the party the player can fight with right now.
+ */
 export const createHunterTrainer = (
   elapsedMs: number,
   isEnraged: boolean,
   tuning: HunterTuning = DEFAULT_HUNTER_TUNING,
+  opponents: readonly HunterOpponent[] = [],
 ): TrainerBattle => {
-  const tier = hunterTierFor(elapsedMs, isEnraged, tuning);
+  const rival = hunterRival(tuning.rivalId);
   return {
     id: HUNTER_ID,
-    name: 'RIVAL HUNTER',
-    party: tier.party.map((species) => new Pokemon(species, tier.level)),
-    defeatText: 'You slipped through my fingers... this time.',
+    name: rival.name,
+    party: hunterTeamFor(hunterTierFor(elapsedMs, isEnraged, tuning), opponents).map(
+      (member) => new Pokemon(member.species, member.level),
+    ),
+    defeatText: rival.defeat,
+    getawayText: rival.getaway,
   };
 };
 

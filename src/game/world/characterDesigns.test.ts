@@ -87,10 +87,20 @@ describe('the character design registry', () => {
     expect(count('protagonist')).toBeGreaterThanOrEqual(1);
   });
 
-  it('casts the four people the base is made of, each by name', () => {
+  it('casts the four people the base is made of and the five hunters, each by name', () => {
     const named = CHARACTER_DESIGN_IDS.filter((id) => getCharacterDesign(id).kind === 'named');
 
-    expect(named.sort()).toEqual(['bill', 'brock', 'nurse-joy', 'prof-oak']);
+    expect(named.sort()).toEqual([
+      'bill',
+      'blue',
+      'brock',
+      'koga',
+      'lt-surge',
+      'misty',
+      'nurse-joy',
+      'prof-oak',
+      'sabrina',
+    ]);
     for (const id of named) {
       // A class of person is described by what they look like; one of these is
       // described by who they are, and the screens print that name.

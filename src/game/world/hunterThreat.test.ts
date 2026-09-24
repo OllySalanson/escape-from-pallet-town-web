@@ -10,6 +10,7 @@ import {
   hunterThreatFor,
   hunterThreatLine,
 } from './hunterThreat';
+import { FIRST_HUNTER_RIVAL } from './hunters';
 
 const fainted = (pokemon: Pokemon): Pokemon => {
   pokemon.takeDamage(pokemon.maxHp);
@@ -17,127 +18,93 @@ const fainted = (pokemon: Pokemon): Pokemon => {
 };
 
 describe('hunterThreatFor', () => {
-  it('opens on the highest tier the strongest deployed Pokemon out-levels', () => {
-    for (let level = 1; level <= 30; level += 1) {
-      const { openingTier, tierOffset } = hunterThreatFor([new Pokemon(CHARMANDER, level)]);
-      // Never above the party: a raised hunter is always one the lead out-levels.
-      if (tierOffset > 0) {
-        expect(openingTier.level).toBeLessThan(level);
-      }
-      // And never lower than it has to be: the next tier up would not be out-levelled.
-      const next = HUNTER_TIERS[tierOffset + 1];
-      if (next) {
-        expect(next.level).toBeGreaterThanOrEqual(level);
-      }
+  /**
+   * The captain, 2026-09-23: "when you've just got one Pokemon the Hunter
+   * should also have one Pokemon". The team is counted off the party, and every
+   * one of its Pokemon stands below the one of yours it is paired with.
+   */
+  it('brings as many Pokemon as the party, each below the one it answers', () => {
+    for (let size = 1; size <= 6; size += 1) {
+      const party = Array.from({ length: size }, (_, index) => new Pokemon(PIDGEY, 6 + index));
+      const { openingTeam } = hunterThreatFor(party);
+      expect(openingTeam).toHaveLength(size);
+      const levels = party.map((pokemon) => pokemon.level).sort((a, b) => b - a);
+      openingTeam.forEach((member, index) => expect(member.level).toBeLessThan(levels[index]));
     }
   });
 
-  it('brings the veteran a tier up and three fresh catches the tutorial hunter', () => {
-    expect(hunterThreatFor([new Pokemon(IVYSAUR, 16)]).openingTier.level).toBe(15);
-    expect(hunterThreatFor([new Pokemon(CHARMANDER, 13)]).openingTier.level).toBe(12);
-    expect(hunterThreatFor([new Pokemon(CHARMANDER, 10)]).openingTier.level).toBe(9);
-    expect(
-      hunterThreatFor([new Pokemon(PIDGEY, 6), new Pokemon(PIDGEY, 6), new Pokemon(PIDGEY, 6)]),
-    ).toMatchObject({ tierOffset: 0, arrivesSoonerMs: 0, openingTier: { level: 6 } });
-  });
-
-  it('reads the strongest Pokemon, so weak company neither raises nor lowers the price', () => {
-    const alone = hunterThreatFor([new Pokemon(CHARMANDER, 13)]);
-    const escorted = hunterThreatFor([
-      new Pokemon(PIDGEY, 3),
-      new Pokemon(CHARMANDER, 13),
-      new Pokemon(PIDGEY, 4),
-    ]);
-    expect(escorted).toEqual(alone);
-    expect(escorted.matchedTo).toEqual({ name: 'Charmander', level: 13 });
+  it('meets a lone Lv 5 starter with one Pokemon at the floor', () => {
+    const threat = hunterThreatFor([new Pokemon(BULBASAUR, 5)]);
+    expect(threat).toMatchObject({ tierOffset: 0, arrivesSoonerMs: 0, contractTiers: 0 });
+    expect(threat.openingTeam.map((member) => [member.species.id, member.level])).toEqual([['rattata', 2]]);
+    expect(threat.matchedTo).toEqual({ name: 'Bulbasaur', level: 5 });
   });
 
   /**
-   * The risk the design names: a wipe takes the team and leaves one Pokemon, and
-   * the hunter must not still be priced for the team that died.
+   * The ladder this replaced read only the strongest Pokemon and grew the
+   * team on the clock, so a lone veteran met four. A strong party now meets a
+   * strong team of its own size, and nothing else about the raid moves.
    */
-  it('puts a recovering player with one Pokemon left back on the first tier', () => {
-    const veterans = [new Pokemon(IVYSAUR, 16), new Pokemon(SQUIRTLE, 14), new Pokemon(PIDGEY, 9)];
-    expect(hunterThreatFor(veterans).tierOffset).toBe(HUNTER_TIERS.length - 1);
-
-    // What every recovery path hands back: a fresh level-5 starter, or the one
-    // low catch the secure slot saved.
-    for (const survivor of [new Pokemon(BULBASAUR, 5), new Pokemon(PIDGEY, 6)]) {
-      const threat = hunterThreatFor([survivor]);
-      expect(threat).toMatchObject({ tierOffset: 0, arrivesSoonerMs: 0 });
-      expect(threat.openingTier).toBe(HUNTER_TIERS[0]);
-      expect(threat.matchedTo).toBeUndefined();
-    }
+  it('prices a strong party in levels, never in extra Pokemon or an earlier arrival', () => {
+    const veteran = hunterThreatFor([new Pokemon(IVYSAUR, 16)]);
+    const rookie = hunterThreatFor([new Pokemon(BULBASAUR, 5)]);
+    expect(veteran.openingTeam).toHaveLength(1);
+    expect(veteran.openingTeam[0].level).toBe(12);
+    expect(veteran.tierOffset).toBe(rookie.tierOffset);
+    expect(veteran.arrivesSoonerMs).toBe(rookie.arrivesSoonerMs);
   });
 
-  it('does not charge for a veteran who came along fainted', () => {
+  it('does not answer a Pokemon that came along fainted', () => {
     const threat = hunterThreatFor([fainted(new Pokemon(IVYSAUR, 16)), new Pokemon(PIDGEY, 6)]);
-    expect(threat.tierOffset).toBe(0);
+    expect(threat.openingTeam).toHaveLength(1);
+    expect(threat.openingTeam[0].level).toBe(2);
+    expect(threat.matchedTo).toEqual({ name: 'Pidgey', level: 6 });
     expect(hunterThreatFor([]).tierOffset).toBe(0);
   });
 
-  /**
-   * The regression the fourth rung exists for. Evolution begins at level 16, and
-   * with three rungs a party that had crossed it drew the top of the ladder and
-   * could never draw anything else - the failure the whole progression pass was
-   * built to prevent, arriving at the moment getting stronger started to matter.
-   *
-   * The rung is pitched at level 15 precisely so that 16 opens it: the ladder
-   * answers evolution on the level that grants it, not three levels later.
-   */
-  it('answers a party that has just evolved with a rung the old ladder did not have', () => {
-    const justEvolved = hunterThreatFor([new Pokemon(IVYSAUR, 16), new Pokemon(PIDGEY, 14)]);
-    expect(justEvolved.tierOffset).toBe(HUNTER_TIERS.length - 1);
-    // The old top rung is what it used to draw, and the rung it draws now is a
-    // bigger team than that - so evolving costs hunter rather than capping it.
-    const oldTop = HUNTER_TIERS[HUNTER_TIERS.length - 2];
-    expect(justEvolved.openingTier.party.length).toBeGreaterThan(oldTop.party.length);
-    expect(justEvolved.openingTier.level).toBeGreaterThan(oldTop.level);
-
-    // One level short of evolving is still a rung below it, so the step is the
-    // evolution and not the walk up to it.
-    expect(hunterThreatFor([new Pokemon(BULBASAUR, 15)]).tierOffset).toBe(HUNTER_TIERS.length - 2);
-  });
-
-  it('stays inside the tiers that exist however strong the party is', () => {
-    const threat = hunterThreatFor([new Pokemon(CHARMANDER, 100)]);
-    expect(threat.tierOffset).toBe(HUNTER_TIERS.length - 1);
-    expect(threat.openingTier).toBe(HUNTER_TIERS[HUNTER_TIERS.length - 1]);
+  it('carries whose turn it is into the raid', () => {
+    expect(hunterThreatFor([new Pokemon(SQUIRTLE, 5)]).rival).toBe(FIRST_HUNTER_RIVAL);
+    expect(hunterThreatFor([new Pokemon(SQUIRTLE, 5)], 0, 'koga').rival).toBe('koga');
   });
 });
 
 describe('a raid generated for a party', () => {
-  const planFor = (seed: number, party: readonly Pokemon[]) =>
-    generateRunPlan(seed, undefined, 'floodplain-relay', undefined, hunterThreatFor(party));
+  const planFor = (seed: number, party: readonly Pokemon[], pressure = 0) =>
+    generateRunPlan(seed, undefined, 'floodplain-relay', undefined, hunterThreatFor(party, pressure));
 
-  it('fields the matched team at first contact and the same team a weak party would meet later', () => {
-    const strong = planFor(7, [new Pokemon(IVYSAUR, 16)]);
-    const weak = planFor(7, [new Pokemon(PIDGEY, 6)]);
+  it('fights the party it catches, rung by rung, and past it once enraged', () => {
+    const plan = planFor(7, [new Pokemon(CHARMANDER, 10)]);
+    const party = [new Pokemon(CHARMANDER, 10), new Pokemon(PIDGEY, 7)];
+    const levelsAt = (elapsedMs: number, enraged = false) =>
+      createHunterTrainer(elapsedMs, enraged, plan.hunter, party).party.map((pokemon) => pokemon.level);
 
-    expect(createHunterTrainer(0, false, weak.hunter).party.map((pokemon) => pokemon.level)).toEqual([6]);
-    expect(createHunterTrainer(0, false, strong.hunter).party.map((pokemon) => pokemon.level)).toEqual([15, 15, 15, 15]);
-    // Time still escalates a matched hunter, and the offset never leaves the ladder.
-    expect(createHunterTrainer(240_000, false, strong.hunter).party).toHaveLength(4);
-    expect(createHunterTrainer(0, true, weak.hunter).party.map((pokemon) => pokemon.level)).toEqual([19, 19, 19, 19]);
+    expect(levelsAt(0)).toEqual([6, 3]);
+    expect(levelsAt(240_000)).toEqual([9, 6]);
+    expect(levelsAt(0, true)).toEqual([13, 10]);
+    // The party it catches, not the party that deployed: the plan was drawn
+    // for one Pokemon, the fight is against the two now carried.
+    expect(createHunterTrainer(0, false, plan.hunter, party).party).toHaveLength(2);
   });
 
-  it('arrives sooner for a stronger party, and never at the start of the raid', () => {
-    for (let seed = 0; seed < 200; seed += 1) {
-      const weak = planFor(seed, [new Pokemon(PIDGEY, 6)]);
-      const strong = planFor(seed, [new Pokemon(IVYSAUR, 16)]);
-      expect(weak.hunter.spawnDelayMs).toBeGreaterThanOrEqual(RUN_GENERATION_BOUNDS.hunterSpawnDelayMinimumMs);
-      expect(weak.hunter.spawnDelayMs - strong.hunter.spawnDelayMs).toBe(
-        HUNTER_ARRIVAL_LEAD_PER_TIER_MS * (HUNTER_TIERS.length - 1),
-      );
-      expect(strong.hunter.spawnDelayMs).toBeGreaterThanOrEqual(HUNTER_EARLIEST_ARRIVAL_MS);
-    }
+  it('is fought as this raid\'s rival, in their own words', () => {
+    const plan = generateRunPlan(
+      3,
+      undefined,
+      'floodplain-relay',
+      undefined,
+      hunterThreatFor([new Pokemon(SQUIRTLE, 5)], 0, 'sabrina'),
+    );
+    const trainer = createHunterTrainer(0, false, plan.hunter, [new Pokemon(SQUIRTLE, 5)]);
+    expect(trainer.name).toBe('SABRINA');
+    expect(trainer.defeatText).toBeTruthy();
+    expect(trainer.getawayText).toBeTruthy();
   });
 
-  it('changes nothing else about the raid, so the party is priced in hunter and only in hunter', () => {
+  it('changes nothing about the raid for a stronger party, which is priced at the fight', () => {
     const { hunter: weakHunter, ...weak } = planFor(11, [new Pokemon(PIDGEY, 6)]);
     const { hunter: strongHunter, ...strong } = planFor(11, [new Pokemon(IVYSAUR, 16)]);
     expect(strong).toEqual(weak);
-    expect(strongHunter).not.toEqual(weakHunter);
+    expect(strongHunter).toEqual(weakHunter);
   });
 
   /**
@@ -163,32 +130,24 @@ describe('a raid generated for a party', () => {
 });
 
 describe('contract pressure', () => {
-  it('adds tiers on the party’s own ladder, so a weak party loses its discount', () => {
-    const rookie = [new Pokemon(BULBASAUR, 5)];
+  it('opens the hunter rungs closer to the party and brings it sooner', () => {
+    const rookie = [new Pokemon(CHARMANDER, 12)];
     expect(hunterThreatFor(rookie, 0)).toEqual(hunterThreatFor(rookie));
-    expect(hunterThreatFor(rookie, 1)).toMatchObject({
+    const pressed = hunterThreatFor(rookie, 1);
+    expect(pressed).toMatchObject({
       tierOffset: 1,
       contractTiers: 1,
-      openingTier: { level: 9 },
       arrivesSoonerMs: HUNTER_ARRIVAL_LEAD_PER_TIER_MS,
     });
-    // Nothing the player brought raised it, so no Pokemon is named for it.
-    expect(hunterThreatFor(rookie, 2).matchedTo).toBeUndefined();
+    expect(pressed.openingTeam[0].level).toBe(hunterThreatFor(rookie).openingTeam[0].level + 1);
   });
 
-  it('never leaves the ladder: a veteran already at the top pays nothing more', () => {
-    const veteran = [new Pokemon(IVYSAUR, 16)];
-    for (const pressure of [1, 2, 9]) {
-      expect(hunterThreatFor(veteran, pressure)).toMatchObject({
-        tierOffset: HUNTER_TIERS.length - 1,
-        contractTiers: 0,
-        arrivesSoonerMs: hunterThreatFor(veteran).arrivesSoonerMs,
-      });
+  it('never leaves the ladder, so even the top of the board is below the party', () => {
+    for (const pressure of [3, 9]) {
+      const threat = hunterThreatFor([new Pokemon(IVYSAUR, 16)], pressure);
+      expect(threat.tierOffset).toBe(HUNTER_TIERS.length - 1);
+      expect(threat.openingTeam[0].level).toBeLessThan(16);
     }
-    expect(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 5)).toMatchObject({
-      tierOffset: HUNTER_TIERS.length - 1,
-      contractTiers: 2,
-    });
   });
 
   it('still never arrives at the start of the raid, however much is stacked on it', () => {
@@ -206,28 +165,23 @@ describe('contract pressure', () => {
 });
 
 describe('hunterThreatLine', () => {
-  it('says what the contract added, beside what the party did', () => {
-    expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 1))).toEqual({
-      heading: 'Hunter tier 3 of 4',
-      detail: 'Lv 12 team of 3, arrives 20s sooner - your Lv 12 Charmander, +1 contract',
-    });
-    expect(hunterThreatLine(hunterThreatFor([new Pokemon(BULBASAUR, 5)], 1))).toEqual({
-      heading: 'Hunter tier 2 of 4',
-      detail: 'Lv 9 team of 2, arrives 10s sooner - +1 for the contract',
-    });
-  });
-
-  it('names the tier, the team and the Pokemon that set it', () => {
+  it('names who is coming, how many and how strong, against which of yours', () => {
     expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)]))).toEqual({
-      heading: 'Hunter tier 2 of 4',
-      detail: 'Lv 9 team of 2, arrives 10s sooner - matched to your Lv 12 Charmander',
+      heading: 'Hunter: BLUE',
+      detail: '1 Pokémon to your 1 · lead Lv 8 to your Lv 12 Charmander',
+    });
+    expect(
+      hunterThreatLine(hunterThreatFor([new Pokemon(BULBASAUR, 5), new Pokemon(PIDGEY, 3)], 0, 'misty')),
+    ).toEqual({
+      heading: 'Hunter: MISTY',
+      detail: '2 Pokémon to your 2 · lead Lv 2 to your Lv 5 Bulbasaur',
     });
   });
 
-  it('says plainly when the party has not raised it', () => {
-    expect(hunterThreatLine(hunterThreatFor([new Pokemon(BULBASAUR, 5)]))).toEqual({
-      heading: 'Hunter tier 1 of 4',
-      detail: 'It fields a Lv 6 team of 1 - nothing you bring out-levels it',
+  it('says what the contract added', () => {
+    expect(hunterThreatLine(hunterThreatFor([new Pokemon(CHARMANDER, 12)], 1))).toEqual({
+      heading: 'Hunter: BLUE',
+      detail: '1 Pokémon to your 1 · lead Lv 9 to your Lv 12 Charmander, +1 contract, 10s sooner',
     });
   });
 });
