@@ -71,6 +71,19 @@ import {
   type RoomThing,
 } from '../base/rooms';
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
+import {
+  CABINET_UNITS,
+  EMPTY_CABINET_LINE,
+  ODDITY_ART,
+  ODDITY_HEIGHT,
+  ODDITY_INK,
+  cratesLine,
+  firstOddityAt,
+  nextOddity,
+  unitTiles,
+  type PlacedOddity,
+} from '../base/cabinet';
+import { oddityLabel } from '../hub/traderCabinet';
 import type { HubSceneData } from './HubScene';
 
 /**
@@ -164,6 +177,10 @@ function boxRect(
  */
 const DOOR_TONE: WorldLabelTone = { fill: 0x3a2408, border: 0xf1bf63, ink: '#fef3c7' };
 const FIXTURE_TONE: WorldLabelTone = { fill: 0x16222c, border: 0x6f97b4, ink: '#c6dced' };
+/** The label on the one oddity being looked at: brass, like the case it is in. */
+const ODDITY_TONE: WorldLabelTone = { fill: 0x2b1d0e, border: 0xd8b070, ink: '#f4efe2' };
+/** The frame round the oddity being looked at. */
+const ODDITY_MARK = 0xf7d36b;
 
 export interface BaseSceneData {
   readonly savedGame?: RestoredGame;
@@ -187,6 +204,17 @@ interface BaseControls {
   readonly look: Phaser.Input.Keyboard.Key;
   readonly run: Phaser.Input.Keyboard.Key;
   readonly interact: readonly Phaser.Input.Keyboard.Key[];
+  readonly back: Phaser.Input.Keyboard.Key;
+}
+
+/**
+ * The one thing on Bill's shelves being looked at, and what is looking: the
+ * arrow keys, which hold the player at the cabinet until they are done, or the
+ * pointer resting on it, which holds nobody.
+ */
+interface Inspecting {
+  readonly index: number;
+  readonly by: 'keys' | 'pointer';
 }
 
 /** What the scene is standing the player in this visit. */
@@ -229,6 +257,9 @@ export class BaseScene extends Phaser.Scene {
   private pushingAgainst: Direction | null = null;
   private lookMs = 0;
   private leaving = false;
+  private inspecting: Inspecting | null = null;
+  private inspectLabel: WorldLabel | null = null;
+  private inspectMark: Phaser.GameObjects.Graphics | null = null;
   /**
    * False until `create` has finished building this visit. Phaser keeps one
    * instance per scene key and runs `update` whatever `create` decided, so a
@@ -281,6 +312,9 @@ export class BaseScene extends Phaser.Scene {
     this.hintShown = '';
     this.figures.clear();
     this.worldLabels = [];
+    this.inspecting = null;
+    this.inspectLabel = null;
+    this.inspectMark = null;
 
     const room = data.room === undefined ? undefined : roomNamed(data.room);
     if (room) {
@@ -321,6 +355,7 @@ export class BaseScene extends Phaser.Scene {
 
     this.drawMap();
     this.drawSprites();
+    this.drawOddities();
     this.createFigures();
     this.createPlayer();
     this.createCaptions();
@@ -364,6 +399,11 @@ export class BaseScene extends Phaser.Scene {
     if (this.dialogBox.visible) {
       this.showHint('');
       this.handleDialogInput();
+      return;
+    }
+
+    if (this.inspecting?.by === 'keys') {
+      this.handleInspectInput();
       return;
     }
 
@@ -479,8 +519,8 @@ export class BaseScene extends Phaser.Scene {
 
   /**
    * What a room sets on its furniture rather than into it: the Poké Balls on
-   * Joy's counter, and whatever Bill's shelves come to hold. Each is a frame
-   * of the base's own sheet, named by the piece it is.
+   * Joy's counter. Each is a frame of the base's own sheet, named by the piece
+   * it is. Bill's oddities are drawn by `drawOddities`.
    */
   private drawSprites(): void {
     const sprites: readonly RoomSprite[] = this.place.room?.sprites ?? [];
@@ -505,6 +545,154 @@ export class BaseScene extends Phaser.Scene {
         .setOrigin(0, 0)
         .setDepth(atRow(MARKER_BAND, sprite.y));
     }
+  }
+
+  /**
+   * Everything on Bill's shelves, each as the miniature `base/cabinet.ts`
+   * draws it (`oddityFrame`). Each answers the pointer: resting on one is
+   * asking what it is, and while the keys are looking along the shelves the
+   * pointer moves the look rather than taking it over.
+   */
+  private drawOddities(): void {
+    const placed = this.place.room?.cabinet?.layout.placed ?? [];
+    for (const oddity of placed) {
+      const { key, frame } = this.oddityFrame(oddity.oddity.itemId);
+      const image = this.add
+        .image(oddity.x, oddity.y, key, frame)
+        .setOrigin(0, 0)
+        .setDepth(atRow(MARKER_BAND, CABINET_UNITS[oddity.unit].y));
+      // The whole seat, a pixel proud all round: four pixels of lamp is a
+      // hard thing to rest a pointer on.
+      image.setInteractive(
+        new Phaser.Geom.Rectangle(-1, -1, oddity.width + 2, oddity.height + 2),
+        (area: Phaser.Geom.Rectangle, x: number, y: number) =>
+          Phaser.Geom.Rectangle.Contains(area, x, y),
+      );
+      image.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OVER, () => {
+        if (!this.leaving) {
+          this.inspect({ index: oddity.index, by: this.inspecting?.by === 'keys' ? 'keys' : 'pointer' });
+        }
+      });
+      image.on(Phaser.Input.Events.GAMEOBJECT_POINTER_OUT, () => {
+        if (this.inspecting?.by === 'pointer' && this.inspecting.index === oddity.index) {
+          this.inspect(null);
+        }
+      });
+    }
+  }
+
+  /**
+   * Every miniature, painted once into one texture with a transparent pixel
+   * round each. The gutter is not tidiness: drawn from frames exactly their
+   * own size, every miniature came out a column wider under WebGL, its last
+   * column repeated, and three crates on a shelf ran together into one plank.
+   * Each frame now takes the gutter to its right and below, so whatever the
+   * edge repeats is a pixel of nothing.
+   */
+  private oddityFrame(itemId: string): { readonly key: string; readonly frame: string } {
+    const key = 'bill-oddities';
+    const frame = itemId in ODDITY_ART ? itemId : 'curio';
+    if (this.textures.exists(key)) {
+      return { key, frame };
+    }
+    const kinds = Object.entries(ODDITY_ART);
+    const width = kinds.reduce((sum, [, art]) => sum + art[0].length + 2, 0);
+    const texture = this.textures.createCanvas(key, width, ODDITY_HEIGHT + 2);
+    if (!texture) {
+      throw new Error("Could not make a texture for Bill's shelves.");
+    }
+    const context = texture.getContext();
+    let left = 0;
+    for (const [kind, art] of kinds) {
+      art.forEach((row, y) =>
+        [...row].forEach((ink, x) => {
+          if (ink === '.') return;
+          context.fillStyle = `#${ODDITY_INK[ink].toString(16).padStart(6, '0')}`;
+          context.fillRect(left + 1 + x, 1 + y, 1, 1);
+        }),
+      );
+      texture.add(kind, 0, left + 1, 1, art[0].length + 1, ODDITY_HEIGHT + 1);
+      left += art[0].length + 2;
+    }
+    texture.refresh();
+    return { key, frame };
+  }
+
+  /**
+   * Looks at one oddity, or at none: the frame round it and the one label that
+   * says what it is. Only one is ever up, and while it is every other caption
+   * in the room keeps quiet, so the shelf is read a thing at a time.
+   */
+  private inspect(next: Inspecting | null): void {
+    const placed = this.place.room?.cabinet?.layout.placed ?? [];
+    const target = next === null ? undefined : placed[next.index];
+    this.inspectLabel?.destroy();
+    this.inspectLabel = null;
+    this.inspectMark?.destroy();
+    this.inspectMark = null;
+    this.inspecting = target && next ? next : null;
+    if (!target) {
+      return;
+    }
+    const around = { x: target.x - 1, y: target.y - 1, width: target.width + 2, height: target.height + 2 };
+    this.inspectMark = this.add
+      .graphics()
+      .lineStyle(1, ODDITY_MARK, 1)
+      .strokeRect(around.x + 0.5, around.y + 0.5, around.width - 1, around.height - 1)
+      .setDepth(atRow(MARKER_BAND, CABINET_UNITS[target.unit].y) + 0.0005);
+    const label = oddityLabel(target.oddity, new Date());
+    this.inspectLabel = new WorldLabel(this, {
+      // Seated against the whole unit rather than the thing, which is four
+      // pixels tall: a label sat on the thing covers the shelf above it, and
+      // the frame already says which thing on the unit it means.
+      subject: tilesRect(unitTiles(target.unit)),
+      text: `${label.name}\n${label.note}`,
+      tone: ODDITY_TONE,
+      depth: atRow(CAPTION_BAND, this.place.height),
+      // Speaks for as long as it is up, wherever the player is standing.
+      speech: { voice: 'name', tiles: [], near: Number.POSITIVE_INFINITY },
+    });
+  }
+
+  /**
+   * Looking along the shelves with the keys: the arrows walk from thing to
+   * thing (`nextOddity`), and the interact key or Escape puts the player back
+   * in charge of their feet.
+   */
+  private handleInspectInput(): void {
+    this.showHint('[ARROWS] LOOK ALONG   [SPACE] DONE');
+    const current = this.inspecting;
+    if (!current) {
+      return;
+    }
+    if (this.isInteractionPressed() || this.keyPresses.justPressed(this.controls.back)) {
+      audioManager.play('cancel');
+      this.spentPresses.spendHeld(this.directionKeys());
+      this.inspect(null);
+      return;
+    }
+    const placed = this.place.room?.cabinet?.layout.placed ?? [];
+    const pressed = (keys: Phaser.Input.Keyboard.Key[]) =>
+      keys.some((key) => this.keyPresses.justPressed(key));
+    const direction: Direction | null = pressed([this.controls.left, this.controls.a])
+      ? 'left'
+      : pressed([this.controls.right, this.controls.d])
+        ? 'right'
+        : pressed([this.controls.up, this.controls.w])
+          ? 'up'
+          : pressed([this.controls.down, this.controls.s])
+            ? 'down'
+            : null;
+    if (direction === null) {
+      return;
+    }
+    const index = nextOddity(placed, current.index, direction);
+    if (index === current.index) {
+      audioManager.play('bump');
+      return;
+    }
+    audioManager.play('select');
+    this.inspect({ index, by: 'keys' });
   }
 
   /** The keeper of the room the player is in. The yard has nobody standing in it. */
@@ -700,7 +888,27 @@ export class BaseScene extends Phaser.Scene {
     if (this.onMat(room)) {
       return `${keeper}   [DOWN] OUT`;
     }
-    return servesFrom(room, nextTileFromDirection(this.currentTile, this.facing)) ? keeper : '';
+    const facing = nextTileFromDirection(this.currentTile, this.facing);
+    if (servesFrom(room, facing)) {
+      return keeper;
+    }
+    // The cabinet is the one thing in a room that is looked into rather than
+    // read off, so it is the one thing that says it can be.
+    const unit = this.thingFaced(facing)?.cabinetUnit;
+    return unit !== undefined && this.oddityToStartAt(facing, unit) !== undefined
+      ? '[SPACE] LOOK CLOSER'
+      : '';
+  }
+
+  private thingFaced(facing: GridPosition): RoomThing | undefined {
+    return this.place.room?.things.find((candidate: RoomThing) =>
+      candidate.tiles.some((tile) => tile.x === facing.x && tile.y === facing.y),
+    );
+  }
+
+  private oddityToStartAt(facing: GridPosition, unit: number): number | undefined {
+    const placed: readonly PlacedOddity[] = this.place.room?.cabinet?.layout.placed ?? [];
+    return firstOddityAt(placed, facing, unit, TILE_SIZE);
   }
 
   private showHint(text: string): void {
@@ -766,12 +974,20 @@ export class BaseScene extends Phaser.Scene {
       looking: isLooking(this.lookMs, this.controls.look.isDown),
       raidRemainingMs: Number.POSITIVE_INFINITY,
     };
-    this.worldLabels.forEach((label) => label.describe(audience));
+    // Looking at one thing on Bill's shelves takes every other caption in the
+    // room off the screen - and out of the seating, where a quiet caption is
+    // still ground a label may not sit on - so the label on it is the only
+    // writing there is.
+    const labels = this.inspectLabel ? [this.inspectLabel] : this.worldLabels;
+    if (this.inspectLabel) {
+      this.worldLabels.forEach((label) => label.hide());
+    }
+    labels.forEach((label) => label.describe(audience));
     const view = this.cameras.main.worldView;
     const bounds: Rect = { x: view.left, y: view.top, width: view.width, height: view.height };
     const room = this.place.room?.room;
     const placements = placeCaptions(
-      this.worldLabels.map((label) => label.request()),
+      labels.map((label) => label.request()),
       {
         bounds,
         furniture: this.hintShown ? [this.hintRect(view)] : [],
@@ -780,7 +996,7 @@ export class BaseScene extends Phaser.Scene {
         player: [figureRect(this.currentTile), figureRect(this.targetTile ?? this.currentTile)],
       },
     );
-    this.worldLabels.forEach((label, index) => label.seat(placements[index]));
+    labels.forEach((label, index) => label.seat(placements[index]));
   }
 
   /** Where the hint line is, in the world, so no caption is seated under it. */
@@ -853,9 +1069,15 @@ export class BaseScene extends Phaser.Scene {
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
       ],
+      back: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC, false),
     };
     this.latchDirectionPresses();
-    this.keyPresses.watch([...this.directionKeys(), ...this.controls.interact, this.controls.look]);
+    this.keyPresses.watch([
+      ...this.directionKeys(),
+      ...this.controls.interact,
+      this.controls.look,
+      this.controls.back,
+    ]);
   }
 
   private directionKeys(): Phaser.Input.Keyboard.Key[] {
@@ -978,9 +1200,24 @@ export class BaseScene extends Phaser.Scene {
         this.openScreen(room);
         return;
       }
-      const thing = this.place.room?.things.find((candidate: RoomThing) =>
-        candidate.tiles.some((tile) => tile.x === target.x && tile.y === target.y),
-      );
+      const thing = this.thingFaced(target);
+      const cabinet = this.place.room?.cabinet;
+      if (thing?.cabinetUnit !== undefined) {
+        const index = this.oddityToStartAt(target, thing.cabinetUnit);
+        if (index === undefined) {
+          this.say([EMPTY_CABINET_LINE], [target]);
+          return;
+        }
+        audioManager.play('select');
+        this.player.stop();
+        this.player.setFrame(getIdleFrame(this.facing));
+        this.inspect({ index, by: 'keys' });
+        return;
+      }
+      if (thing?.crated && cabinet) {
+        this.say([cratesLine(cabinet.layout, cabinet.oddities, new Date())], [target]);
+        return;
+      }
       if (thing) {
         this.say([`${thing.name} - ${thing.note.toLowerCase()}.`], [target]);
       }

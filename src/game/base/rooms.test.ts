@@ -6,12 +6,10 @@ import { TILE_SIZE } from '../worldMap';
 import { BASE_DOORS } from './doors';
 import {
   BASE_ROOMS,
-  BILL_CABINET_SHELVES,
   CENTER_DISPLAY,
   COUNTER_BALLS,
   OAK_WALL_MAP,
   WORKSHOP_DISPLAY,
-  billCabinet,
   buildRoom,
   labWallMap,
   propTiles,
@@ -22,6 +20,7 @@ import {
 import { BASE_PIECES } from './generated/basePieces';
 import { stepsFrom, stepsTo, servingTiles, walksToKeepers, BASE_STARTS } from './baseWalks';
 import { baseGame } from './baseGames.testkit';
+import { CABINET_UNITS, CABINET_UNITS_AT_START, CABINET_UNIT_SIZE, unitTiles } from './cabinet';
 
 const EVERY_RUNG = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
 const room = (id: string): BaseRoom => roomNamed(id)!;
@@ -33,6 +32,11 @@ const STATES = [
   { built: EVERY_RUNG, hurt: 0 },
   { built: EVERY_RUNG, hurt: 12 },
   { built: ['recovery-bay-1', 'quarantine-ward'], hurt: 3 },
+  // Bill's cabinet: a first deal, the second pair of units carried in, and
+  // every shelf and every crate full.
+  { built: [], hurt: 0, traded: 1 },
+  { built: [], hurt: 0, traded: 60 },
+  { built: EVERY_RUNG, hurt: 0, traded: 400 },
 ] as const;
 
 describe('the rooms behind the base doors', () => {
@@ -260,34 +264,27 @@ describe('the hooks the rooms leave for what comes next', () => {
     }
   });
 
-  it("stands Bill's shelves empty, where the cabinet says they are", () => {
+  it("stands Bill's cabinet empty until something is traded to him", () => {
     const cottage = room('bills-cottage');
-    const game = baseGame();
-    const built = buildRoom(cottage, game);
+    const built = buildRoom(cottage, baseGame());
     const shelf = BASE_PIECES['lab.shelvesEmpty'];
-    for (const rect of BILL_CABINET_SHELVES) {
-      expect([rect.width, rect.height]).toEqual([shelf.width, shelf.height]);
-      for (let y = rect.y; y < rect.y + rect.height; y += 1) {
-        for (let x = rect.x; x < rect.x + rect.width; x += 1) {
-          expect([x, y, built.collision[y][x], built.layers.detail.tiles[y][x] >= 0]).toEqual([
-            x,
-            y,
-            true,
-            true,
-          ]);
-        }
+    expect(CABINET_UNIT_SIZE).toEqual({ width: shelf.width, height: shelf.height });
+    expect(built.cabinet?.layout.units).toBe(CABINET_UNITS_AT_START);
+    expect(built.cabinet?.layout.placed).toEqual([]);
+    for (let unit = 0; unit < CABINET_UNITS_AT_START; unit += 1) {
+      for (const tile of unitTiles(unit)) {
+        expect([tile, built.collision[tile.y][tile.x], built.layers.detail.tiles[tile.y][tile.x] >= 0]).toEqual([
+          tile,
+          true,
+          true,
+        ]);
       }
     }
-    for (const sprite of billCabinet(game)) {
-      expect(
-        BILL_CABINET_SHELVES.some(
-          (rect) =>
-            sprite.x >= rect.x &&
-            sprite.y >= rect.y &&
-            sprite.x < rect.x + rect.width &&
-            sprite.y < rect.y + rect.height,
-        ),
-      ).toBe(true);
+    // The floor the second pair is carried in onto is bare until it is.
+    for (let unit = CABINET_UNITS_AT_START; unit < CABINET_UNITS.length; unit += 1) {
+      for (const tile of unitTiles(unit)) {
+        expect([tile, built.collision[tile.y][tile.x]]).toEqual([tile, false]);
+      }
     }
   });
 });

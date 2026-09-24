@@ -24,6 +24,7 @@ import {
   type TraderCounter,
   type TraderProgress,
 } from '../hub/trader';
+import { cabinetEntryFor, clampCabinet, type CabinetEntry } from '../hub/traderCabinet';
 import {
   contractUnlockedInsertionIds,
   FIRST_CONTRACT_ID,
@@ -200,6 +201,16 @@ export interface RaidProgress {
    */
   readonly traderBarters?: readonly string[];
   /**
+   * Bill's book: every barter struck, with what went across, what came back
+   * and the day (`../hub/traderCabinet`). It is what his cabinet of oddities
+   * stands on its shelves, and the one trader record that cannot be derived -
+   * a stone can be bartered for any number of times, and history has to keep
+   * the price that was paid rather than today's. Absent on every save written
+   * before the book was kept, which reads as an empty book; the once-only deals
+   * such a save struck are still shown, from `traderBarters`.
+   */
+  readonly traderCabinet?: readonly CabinetEntry[];
+  /**
    * What the secure container was filled with last time it was deployed: a flag
    * for whether it leads with Pokemon, and whatever else was in it.
    *
@@ -310,6 +321,7 @@ export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   giftsReceived: [],
   traderMoneySpent: 0,
   traderBarters: [],
+  traderCabinet: [],
   securePreference: DEFAULT_SECURE_PREFERENCE,
   packArrangement: EMPTY_ARRANGEMENT,
   secureArrangement: EMPTY_ARRANGEMENT,
@@ -936,7 +948,11 @@ export class SaveManager {
    * touches turnover. A barter offered once is recorded the moment it is taken,
    * which is what stops the boat becoming a gear faucet.
    */
-  public takeTraderBarter(barterId: string, quantity = 1): TraderPurchaseResult {
+  public takeTraderBarter(
+    barterId: string,
+    quantity = 1,
+    when: Date = new Date(),
+  ): TraderPurchaseResult {
     const game = this.load();
     if (!game) {
       return { ok: false, message: 'There is no saved game to deal on.', saved: false };
@@ -958,13 +974,18 @@ export class SaveManager {
       traderBarters: offer.barter.once
         ? [...new Set([...clampTraderBarters(game.raidProgress.traderBarters), offer.barter.id])]
         : clampTraderBarters(game.raidProgress.traderBarters),
+      // Everything he takes goes on a shelf in his cottage.
+      traderCabinet: [
+        ...clampCabinet(game.raidProgress.traderCabinet),
+        cabinetEntryFor(offer.barter, times, when),
+      ],
     };
     return {
       ok: true,
       message:
         times === 1
-          ? `Traded ${formatTraderStacks(offer.barter.takes)} for a ${offer.barter.name}.`
-          : `Traded ${formatTraderStacks(offer.barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * times })))} for ${times} ${offer.barter.name}s.`,
+          ? `Traded ${formatTraderStacks(offer.barter.takes)} for the ${offer.barter.name}. It goes on his shelves.`
+          : `Traded ${formatTraderStacks(offer.barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * times })))} for ${times} ${offer.barter.name}s. It all goes on his shelves.`,
       saved: this.save({ ...game, raidProgress }),
     };
   }
@@ -1277,6 +1298,7 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // stranger who has banked whatever it banked.
     traderMoneySpent: clampTraderCount(value.traderMoneySpent ?? value.traderScripSpent),
     traderBarters: clampTraderBarters(value.traderBarters),
+    traderCabinet: clampCabinet(value.traderCabinet),
     // A save written before the container filled itself has no preference, and
     // the default is exactly what such a player wants: lead with the Pokemon.
     securePreference: readSecurePreference(value.securePreference),

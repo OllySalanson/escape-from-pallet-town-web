@@ -89,6 +89,10 @@ first. `baseRooms.mjs <url> <dir> [--built=all|none|id,..] [--hurt=N]` walks
 into all four rooms, photographs each, and fails if the mat's key does not open
 the keeper's screen, backing out does not land in the room, or down off the mat
 does not leave it - `docs/screens/base-rooms/` is what it photographs.
+`billCabinet.mjs <url> <dir> [--traded=N]` strikes a barter at Bill's table,
+backs out into his cottage and looks along his cabinet with the keys and the
+pointer, failing if the goods paid are not on the shelf or the look moves the
+player - `docs/screens/bill-cabinet/`.
 
 A raid ends back on the base's quay, not on a screen, so a driver that plays
 two raids walks into Oak's Lab between them - `raid.mjs` does.

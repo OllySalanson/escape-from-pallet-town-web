@@ -808,6 +808,7 @@ describe('extraction loop integration', () => {
       standingContractsBanked: 0,
       traderMoneySpent: 0,
       traderBarters: [],
+      traderCabinet: [],
       // A raid deployed from a test never wrote a container preference, so the
       // save keeps the default: lead with the Pokemon, carry nothing else.
       securePreference: { pokemon: true, items: [] },

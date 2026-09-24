@@ -1540,6 +1540,40 @@ describe('SaveManager', () => {
     expect(saves.load()!.stash.itemCount('quick-claw')).toBe(1);
   });
 
+  it("writes every barter in Bill's book, which his cabinet stands on its shelves", () => {
+    const storage = new MemoryStorage();
+    const saves = counterSave(storage);
+    expect(saves.load()!.raidProgress.traderCabinet).toEqual([]);
+
+    const struck = saves.takeTraderBarter('barter-quick-claw', 1, new Date(2026, 8, 24));
+    expect(struck).toMatchObject({ ok: true });
+    expect(struck.message).toContain('shelves');
+    // A refused deal writes nothing.
+    expect(saves.takeTraderBarter('barter-quick-claw').ok).toBe(false);
+
+    const book = new SaveManager(storage).load()!.raidProgress.traderCabinet;
+    expect(book).toEqual([
+      {
+        barter: 'barter-quick-claw',
+        gave: [
+          { itemId: 'parts-crate', quantity: 2 },
+          { itemId: 'cable-coil', quantity: 1 },
+        ],
+        got: { itemId: 'quick-claw', quantity: 1 },
+        day: '2026-09-24',
+      },
+    ]);
+  });
+
+  it('reads a save written before the book was kept as an empty book', () => {
+    const storage = new MemoryStorage();
+    const saves = counterSave(storage);
+    const raw = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: Record<string, unknown> };
+    delete raw.raidProgress.traderCabinet;
+    storage.setItem(SAVE_KEY, JSON.stringify(raw));
+    expect(saves.load()!.raidProgress.traderCabinet).toEqual([]);
+  });
+
   it('rents a berth that protects one more stack, and only for that raid', () => {
     const storage = new MemoryStorage();
     const saves = counterSave(storage);

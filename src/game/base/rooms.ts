@@ -9,6 +9,16 @@ import type { PropDefinition } from '../world/tileset/catalogue';
 import { floorPiece, pieceProp, roomCatalogue, solidPiece } from './baseSheet';
 import type { BasePieceName } from './generated/basePieces';
 import type { BaseKeeper, BaseScreen } from './doors';
+import { cabinetOddities, type Oddity } from '../hub/traderCabinet';
+import { TILE_SIZE } from '../worldMap';
+import {
+  CABINET_UNITS,
+  cabinetLayout,
+  cratesNote,
+  unitNote,
+  unitTiles,
+  type CabinetLayout,
+} from './cabinet';
 
 /**
  * The four rooms behind the base's four doors.
@@ -67,6 +77,7 @@ export type RoomPropName =
   | 'billDesk'
   | 'billPlant'
   | 'billShelves'
+  | 'billBox'
   | 'billMat'
   | 'whGenerator'
   | 'whPhone'
@@ -112,6 +123,7 @@ const ROOM_PROPS: Readonly<Record<RoomPropName, PropDefinition>> = {
   billDesk: solidPiece('bill.desk', 'desk'),
   billPlant: solidPiece('bill.plant', 'plant'),
   billShelves: solidPiece('lab.shelvesEmpty', 'shelves'),
+  billBox: solidPiece('bill.box', 'crate'),
   billMat: floorPiece('bill.mat', 'door mat'),
   whGenerator: solidPiece('warehouse.generator', 'generator'),
   whPhone: solidPiece('warehouse.phone', 'telephone'),
@@ -177,6 +189,13 @@ export interface RoomThing {
   readonly tiles: readonly GridPosition[];
   /** The rung of Brock's ladder it shows, if it shows one. */
   readonly upgradeId?: string;
+  /**
+   * Which unit of Bill's cabinet it is, if it is one: facing it and asking is
+   * how the shelves are looked along, one thing at a time (`cabinet.ts`).
+   */
+  readonly cabinetUnit?: number;
+  /** Whether it is the crates the cabinet overflows into. */
+  readonly crated?: boolean;
 }
 
 /**
@@ -210,15 +229,23 @@ export interface BaseRoom {
   readonly counter: readonly GridPosition[];
 }
 
+/** What Bill's cabinet holds this visit, and where each thing in it stands. */
+export interface BuiltCabinet {
+  readonly oddities: readonly Oddity[];
+  readonly layout: CabinetLayout;
+}
+
 export interface BuiltRoom {
   readonly room: BaseRoom;
   readonly layers: MapLayers;
   readonly collision: readonly boolean[][];
   readonly things: readonly RoomThing[];
   readonly sprites: readonly RoomSprite[];
+  /** Only in Bill's cottage. */
+  readonly cabinet?: BuiltCabinet;
 }
 
-// --- the hooks two later pieces of work fill -----------------------------
+// --- the hook the wall map fills ------------------------------------------
 
 /**
  * The stretch of Oak's back wall kept bare for the wall map.
@@ -237,26 +264,6 @@ export const OAK_WALL_MAP: Rect = { x: 4, y: 0, width: 5, height: 2 };
  * everything else in a room is.
  */
 export const labWallMap: (game: RestoredGame) => readonly RoomProp[] = () => [];
-
-/**
- * Bill's cabinet of oddities: two units of empty shelving, five tiles by two
- * each, standing either side of his desk. Each unit has two shelves - the upper
- * across the top of its first row, the lower across the foot of it - so ten
- * tiles of shelf a unit.
- */
-export const BILL_CABINET_SHELVES: readonly Rect[] = [
-  { x: 1, y: 5, width: 5, height: 2 },
-  { x: 9, y: 5, width: 5, height: 2 },
-];
-
-/**
- * What stands on Bill's shelves. Nothing yet: the shelves are empty on purpose,
- * so the cabinet fills from nothing. Whoever fills it returns sprites here,
- * inside `BILL_CABINET_SHELVES` (`rooms.test.ts` asks), derived from the save -
- * sprites and not props, because an oddity stands *on* a shelf and a prop
- * planted over one would replace the shelf.
- */
-export const billCabinet: (game: RestoredGame) => readonly RoomSprite[] = () => [];
 
 // --- what Brock has built, in his workshop ---------------------------------
 
@@ -406,8 +413,8 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     screen: 'trader',
     name: 'BILL’S COTTAGE',
     width: 15,
-    height: 10,
-    mat: { x: 7, y: 9 },
+    height: 12,
+    mat: { x: 7, y: 11 },
     keeper: {
       id: 'bill',
       name: 'BILL',
@@ -485,6 +492,7 @@ interface Drawn {
   readonly catalogue: typeof LAB;
   readonly things: RoomThing[];
   readonly sprites: RoomSprite[];
+  readonly cabinet?: BuiltCabinet;
 }
 
 /**
@@ -562,7 +570,10 @@ function drawWorkshop(room: BaseRoom, game: RestoredGame): Drawn {
 
 /**
  * Bill's house from FireRed, which is to say his two cell separators and the
- * tube between them, and his cabinet of oddities either side of the desk.
+ * tube between them - and his cabinet of oddities, which is everything the
+ * player has ever bartered to him (`cabinet.ts`). Two units of empty shelving
+ * stand either side of his desk from the start; the rows below them are left
+ * bare for the second pair, which is carried in when the first is full.
  */
 function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
   const sketch = shell(room);
@@ -572,11 +583,32 @@ function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
   sketch.plant(2, 1, 'billSeparators');
   sketch.plant(12, 1, 'billPc');
   sketch.plant(6, 4, 'billDesk');
-  for (const shelf of BILL_CABINET_SHELVES) sketch.plant(shelf.x, shelf.y, 'billShelves');
-  sketch.plant(1, 8, 'billPlant');
-  sketch.plant(13, 8, 'billPlant');
-  sketch.plant(6, 9, 'billMat');
-  return { sketch, catalogue: COTTAGE, things: [], sprites: [...billCabinet(game)] };
+  const oddities = cabinetOddities(game.raidProgress);
+  const layout = cabinetLayout(oddities, TILE_SIZE);
+  const things: RoomThing[] = [];
+  for (let unit = 0; unit < layout.units; unit += 1) {
+    const at = CABINET_UNITS[unit];
+    sketch.plant(at.x, at.y, 'billShelves');
+    things.push({
+      name: 'BILL’S CABINET',
+      note: unitNote(layout, unit),
+      tiles: unitTiles(unit),
+      cabinetUnit: unit,
+    });
+  }
+  for (const crate of layout.crates) sketch.plant(crate.tile.x, crate.tile.y, 'billBox');
+  if (layout.crates.length > 0) {
+    things.push({
+      name: 'BILL’S CRATES',
+      note: cratesNote(layout),
+      tiles: layout.crates.map((crate) => crate.tile),
+      crated: true,
+    });
+  }
+  sketch.plant(1, 10, 'billPlant');
+  sketch.plant(13, 10, 'billPlant');
+  sketch.plant(6, 11, 'billMat');
+  return { sketch, catalogue: COTTAGE, things, sprites: [], cabinet: { oddities, layout } };
 }
 
 /** Two rows of back wall and floor to the room's edge. */
@@ -603,6 +635,7 @@ export function buildRoom(room: BaseRoom, game: RestoredGame): BuiltRoom {
     collision: layers.collision,
     things: drawn.things,
     sprites: drawn.sprites,
+    ...(drawn.cabinet ? { cabinet: drawn.cabinet } : {}),
   };
 }
 
