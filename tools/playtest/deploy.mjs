@@ -14,79 +14,66 @@ export const GAME = 'window.__escapeFromPalletTownGame__';
 export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
 
 /**
- * Walks the base to one of its four doors and goes in.
+ * Walks the base to one of its four doors, goes in, and speaks to the keeper.
  *
  * The lobby used to be a screen with four cards on it, so every driver here
  * reached a base screen by clicking `button[data-view=...]`. It is a map now
- * (`src/game/scenes/BaseScene.ts`): the screens are unchanged and what changed
- * is that you walk to them. The route is worked out over the scene's own
- * collision and the scene's own door list rather than typed here, so a redrawn
- * base moves the walk with it.
+ * (`src/game/scenes/BaseScene.ts`), and every building on it is a room with its
+ * keeper inside (`src/game/base/rooms.ts`): the screens are unchanged and what
+ * changed is that you walk to them. The route is worked out over the scene's
+ * own collision and the scene's own door list rather than typed here, so a
+ * redrawn base moves the walk with it.
  *
  * `door` is a `BASE_DOORS` id: `oaks-lab`, `pokemon-centre`, `brocks-workshop`
- * or `the-quay`. The quay has no door - Bill is the way in - so the walk ends
- * beside him and presses the interact key.
+ * or `bills-cottage`. Inside, the interact key on the door mat is the keeper's
+ * screen - the one-key way in a player re-kitting takes - so that is what this
+ * presses. A driver already in the right room (backed out of its screen) just
+ * presses it again; one in another room walks back out first.
  */
 export async function walkIntoBase(page, door, options = {}) {
   const press = options.press ?? ((code) => page.tap(code, 60));
   const until = options.until ?? ((expression, what) => page.waitFor(expression, { what }));
   const settleMs = options.settleMs ?? 180;
   await until(sceneIs('base'), 'the base');
-  const target = await page.evaluate(
-    `(() => { const b = ${GAME}.scene.getScene('base');
-      const d = b.doors.find((door) => door.id === ${JSON.stringify(door)});
-      if (!d) throw new Error('no base door ' + ${JSON.stringify(door)});
-      return { tiles: d.tiles, keeper: d.keeper.position }; })()`,
-  );
-  if (!target) throw new Error(`no base door ${door}`);
-  // A door is walked onto; a keeper is walked up to and spoken to.
-  const goals = target.tiles.length > 0 ? target.tiles : [target.keeper];
-  const speakTo = target.tiles.length === 0 ? target.keeper : null;
-  for (let guard = 0; guard < 80; guard += 1) {
+  for (let guard = 0; guard < 120; guard += 1) {
     if (await page.evaluate(sceneIs('hub'))) {
       return;
     }
     const move = await page.evaluate(
-      `(() => { const b = ${GAME}.scene.getScene('base'); if (!b) return { gone: true };
-        const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
-        const goals = ${JSON.stringify(goals)};
-        const speak = ${JSON.stringify(speakTo)};
-        const at = (x, y) => goals.some((g) => g.x === x && g.y === y);
-        if (speak && Math.abs(s.x - speak.x) + Math.abs(s.y - speak.y) === 1) {
-          return { face: speak.x > s.x ? 'ArrowRight' : speak.x < s.x ? 'ArrowLeft' : speak.y > s.y ? 'ArrowDown' : 'ArrowUp' };
+      `(() => { const b = ${GAME}.scene.getScene('base'); if (!b || !b.sys.isActive() || !b.ready || b.leaving) return { wait: true };
+        const room = b.room;
+        if (room) {
+          if (room.id !== ${JSON.stringify(door)}) {
+            const on = b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
+            if (on) return { key: 'ArrowDown' };
+          } else {
+            const on = b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
+            if (on) return { key: 'Space' };
+          }
+        } else {
+          const d = b.doors.find((each) => each.id === ${JSON.stringify(door)});
+          if (!d) throw new Error('no base door ' + ${JSON.stringify(door)});
+          var goals = d.tiles;
         }
-        const blocked = (x, y) => b.isBlocked({ x, y });
+        if (room) var goals = [room.mat];
+        const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
+        const at = (x, y) => goals.some((g) => g.x === x && g.y === y);
         const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;
-        // Standing beside the keeper counts as arriving, because that is where
-        // a player stops to speak to somebody.
-        const done = (x, y) => (speak ? Math.abs(x - speak.x) + Math.abs(y - speak.y) === 1 : at(x, y));
-        if (done(s.x, s.y)) return { arrived: true };
         while (queue.length) { const [x, y] = queue.shift();
-          if (done(x, y)) { found = [x, y]; break; }
+          if (at(x, y)) { found = [x, y]; break; }
           for (const [dx, dy, k] of [[0,-1,'ArrowUp'],[0,1,'ArrowDown'],[-1,0,'ArrowLeft'],[1,0,'ArrowRight']]) { const nx = x + dx, ny = y + dy;
             if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(id(nx, ny))) continue;
-            if (!done(nx, ny) && blocked(nx, ny)) continue;
+            if (!at(nx, ny) && b.isBlocked({ x: nx, y: ny })) continue;
             prev.set(id(nx, ny), [x, y, k]); queue.push([nx, ny]); } }
         if (!found) return { unreachable: true };
         let cur = found, key = null;
         for (;;) { const p = prev.get(id(cur[0], cur[1])); if (!p) break; key = p[2]; cur = [p[0], p[1]]; }
         return { key }; })()`,
     );
-    if (move?.gone) return;
-    if (move?.unreachable) throw new Error(`nothing walks to the ${door} from the base spawn`);
-    if (move?.face) {
-      await press(move.face);
-      await sleep(settleMs);
-      await press('Space');
-      await sleep(settleMs);
-      continue;
+    if (move?.unreachable) throw new Error(`nothing walks to the ${door}`);
+    if (move?.key) {
+      await press(move.key);
     }
-    if (move?.arrived) {
-      await press('Space');
-      await sleep(settleMs);
-      continue;
-    }
-    await press(move.key);
     await sleep(settleMs);
   }
   await until(sceneIs('hub'), `the ${door}`);

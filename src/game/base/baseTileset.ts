@@ -1,4 +1,5 @@
-import { withDoorway, type TilesetCatalogue } from '../world/tileset/catalogue';
+import { withDoorway, type PropDefinition, type TilesetCatalogue } from '../world/tileset/catalogue';
+import { pieceTile, BASE_SHEET_SOURCE } from './baseSheet';
 import {
   FLOOD_TOWN_TILESET,
   type FloodTownPropName,
@@ -20,10 +21,43 @@ import {
  * shop front's is two cells wide and dead centre, the house's is one cell under
  * its arch, and the boathouse's is the pair under its own.
  */
-export type BasePropName = FloodTownPropName | 'oakLab' | 'pokemonCentre' | 'workshop';
+export type BasePropName =
+  | FloodTownPropName
+  | 'oakLab'
+  | 'pokemonCentre'
+  | 'workshop'
+  | 'billsCottage';
+
+/**
+ * Bill's cottage: a little blue-roofed FireRed house, cut onto the base's own
+ * sheet (`scripts/cut-frlg-base.mjs`). The sheet draws its door at the east
+ * end; it stands here drawn left for right, so the door is at the end nearest
+ * the jetty and the walk from the boat to Bill is four steps rather than eight.
+ * FireRed's houses are lit from straight above, so nothing reads backwards.
+ */
+function mirroredCottage(): PropDefinition {
+  const width = 5;
+  const height = 3;
+  const door = { x: 1, y: 2 };
+  return {
+    label: 'cottage',
+    width,
+    height,
+    cells: Array.from({ length: width * height }, (_cell, index) => {
+      const x = index % width;
+      const y = Math.floor(index / width);
+      return {
+        tile: pieceTile('cottage', width - 1 - x, y),
+        solid: !(x === door.x && y === door.y),
+        flipX: true,
+      };
+    }),
+  };
+}
 
 export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
   ...FLOOD_TOWN_TILESET,
+  sources: [...FLOOD_TOWN_TILESET.sources, BASE_SHEET_SOURCE.source],
   props: {
     ...FLOOD_TOWN_TILESET.props,
     // 4x4. The shop front, which is the one building on the FireRed sheet and
@@ -39,5 +73,6 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
       [1, 4],
       [2, 4],
     ]),
+    billsCottage: mirroredCottage(),
   },
 };

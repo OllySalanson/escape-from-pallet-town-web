@@ -455,6 +455,49 @@ colour it can display lands on an exact multiple of 8 in 8-bit RGB, and 91% of
   `frlgSheet.test.ts` reads each coordinate back out of the PNG, so this list
   cannot drift from the file.
 
+### `frlg-base.png` - the base's four rooms and Bill's cottage
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
+as `frlg-tiles.png` and `characters/*.png` above: Pokemon FireRed/LeafGreen art,
+rights holders Nintendo / Creatures / Game Freak, no licence from them.
+
+- **Sources.** Five uploads to The Spriters Resource's FireRed/LeafGreen page
+  (<https://www.spriters-resource.com/game_boy_advance/pokemonfireredleafgreen/>),
+  all downloaded 2026-09-24 from `https://www.spriters-resource.com/media/assets/4/<id>.png`:
+  - asset **3724**, "Pokémon Center / Mart" (523x760), uploaded by **FrenchOrange** -
+    the Pokémon Center room;
+  - asset **3729**, "Bill's House" (250x200), contributor **Sam Webster**, whose note
+    is painted into the image: *"Bill's house ripped from Fire Red by Sam Webster.
+    No credit needed"* - Bill's cottage inside;
+  - asset **3733**, "Rocket Warehouse" (480x464), uploaded by **FrenchOrange** -
+    Brock's workshop;
+  - asset **3771**, "Pallet Town" (1032x376), uploaded by **FrenchOrange** -
+    Professor Oak's Lab, and the bed from the player's house upstairs;
+  - asset **3862**, "Tileset 1" (1096x1090), contributor **fabnt** (*"Pokémon
+    FireRed/LeafGreen buildings tileset. Ripped by fabnt. No credit needed."*) -
+    the blue-roofed cottage Bill's door is in.
+
+  A "no credit needed" is the ripper's position, not a licence from the rights
+  holder.
+- **The publisher's terms** are the two clauses quoted under `frlg-tiles.png`
+  above, and this file sits against them the same way: the game is
+  non-commercial, and **none of the five source images is committed**. What ships
+  is a cut: named pieces lifted out of the renders and packed onto a new 20x17
+  grid that matches none of them.
+- **How it was cut, and the edits made.** `scripts/cut-frlg-base.mjs` is the
+  whole method: it names the source cell of every piece and writes
+  `src/game/base/generated/basePieces.ts`, which is the only thing in the game
+  that knows where a piece sits on the sheet. Four kinds of change are made, each
+  named in the script where it is made: a floor an object was drawn on is made
+  transparent where the object travels to another room (Oak's machine into
+  Brock's workshop, a lab bookcase and the bed into the others); the lab
+  bookcase standing in Bill's cottage has its books painted out with the
+  bookcase's own back panel, so the shelves are empty; two plain wall tiles are
+  put back together where the source only ever has something hung on them; and
+  a door mat, which every render draws hanging half a tile off the room's foot,
+  is cut from its own top edge. Two 7-pixel Poké Balls, set on Joy's counter,
+  are drawn by the script rather than cut.
+
 ### `pokemon/{front,back}/<dexId>.png` - the species sprites
 
 - **Source.** <https://github.com/PokeAPI/sprites>, path

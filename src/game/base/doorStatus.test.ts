@@ -94,12 +94,12 @@ describe("what each of the base's doors says", () => {
     ).toContain('2 of 7 built');
   });
 
-  it('leads the quay with the money, because that is what the screen turns on', () => {
+  it('leads Bill’s cottage with the money, because that is what the screen turns on', () => {
     const rich = createStartingStash(CHARMANDER);
     rich.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
     rich.addItem('money', 1_000);
     const line = doorStatusLine(
-      doorNamed('the-quay'),
+      doorNamed('bills-cottage'),
       restore(rich, {
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID],

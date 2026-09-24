@@ -65,7 +65,7 @@ try {
   await sleep(400);
 
   await shoot('lobby');
-  await walkIntoBase(page, 'the-quay');
+  await walkIntoBase(page, 'bills-cottage');
   await shoot('bill');
   await press('Escape');
   await walkIntoBase(page, 'pokemon-centre');

@@ -1,30 +1,46 @@
 /**
- * Draws the base exactly as the game draws it, at any stage of building.
+ * Draws the base exactly as the game draws it, at any stage of building - the
+ * yard, or any of the four rooms inside it.
  *
  * The point of the walkable base is that it fills up with the things you earn,
  * and that is a thing to look at rather than reason about:
  *
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --built=all
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --built=radio-mast,beacon
+ *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=brocks-workshop --built=all
+ *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=pokemon-centre --hurt=5
  *
- * `--built=` is a list of rung ids from Brock's ladder, `all` or `none` (the default).
- * `--marks` names the doors, the keepers and every fixture standing,
+ * `--built=` is a list of rung ids from Brock's ladder, `all` or `none` (the
+ * default). `--room=` draws the room behind that door instead of the yard, with
+ * its keeper standing in it; `--hurt=N` puts that many Pokémon in the Center's
+ * care. `--marks` names the doors, the mat, the keeper and every fixture,
  * `--collision` hatches what is solid, which is what says whether something
- * built has quietly walled a corner of the yard off, and `--walks` prints the
- * one number this map is designed against: how many steps each door is from
- * where the player is put down, with every keeper standing in the way.
+ * built has quietly walled a corner off, and `--walks` prints the one number
+ * the base is designed against: how many steps each keeper is from where the
+ * player is put down (`src/game/base/baseWalks.ts`).
  */
 import { readPng, writePng, TILE_SIZE } from '../tileset/tileSheet.mjs';
-import { box, canvas, drawTile, label, plot, upscale } from '../tileset/draw.mjs';
+import { blit, box, canvas, drawTile, label, plot, upscale } from '../tileset/draw.mjs';
 import { WORKSHOP_UPGRADES } from '../../src/game/hub/workshop';
 import { BASE_TILESET } from '../../src/game/base/baseTileset';
+import { BASE_SHEET_SOURCE } from '../../src/game/base/baseSheet';
+import { BASE_PIECES } from '../../src/game/base/generated/basePieces';
 import { BASE_DOORS } from '../../src/game/base/doors';
 import { BASE_FIXTURES, standingFixtures } from '../../src/game/base/fixtures';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from '../../src/game/base/baseMap';
+import { buildRoom, roomNamed } from '../../src/game/base/rooms';
+import { BASE_STARTS, walksToKeepers } from '../../src/game/base/baseWalks';
+import { baseGame } from '../../src/game/base/baseGames.testkit';
+import type { TileSource } from '../../src/game/world/tileset/catalogue';
+import type { MapLayers } from '../../src/game/world/tiles';
 
 const args = process.argv.slice(2).filter((value) => value !== '--');
 const flags = new Set(args.filter((value) => value.startsWith('--')));
-const builtFlag = args.find((value) => value.startsWith('--built='))?.slice('--built='.length);
+const option = (name: string) =>
+  args.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3);
+const builtFlag = option('built');
+const roomFlag = option('room');
+const hurt = Number(option('hurt') ?? '0');
 const [target = 'base.png', zoomArgument = '3'] = args.filter((value) => !value.startsWith('--'));
 const zoom = Number(zoomArgument);
 
@@ -39,27 +55,57 @@ for (const id of built) {
     throw new Error(`no rung of Brock's ladder called '${id}'`);
   }
 }
+const game = baseGame({ built, hurt });
 
-const map = getBaseMap(built);
+const room = roomFlag === undefined ? null : roomNamed(roomFlag);
+if (roomFlag !== undefined && !room) {
+  throw new Error(
+    `no room called '${roomFlag}' - one of ${BASE_DOORS.map((door) => door.id).join(', ')}`,
+  );
+}
+const drawnRoom = room ? buildRoom(room, game) : null;
+const yard = getBaseMap(built);
+const place: {
+  width: number;
+  height: number;
+  layers: MapLayers;
+  collision: readonly boolean[][];
+  sources: readonly TileSource[];
+} =
+  room && drawnRoom
+    ? {
+        width: room.width,
+        height: room.height,
+        layers: drawnRoom.layers,
+        collision: drawnRoom.collision,
+        sources: [BASE_SHEET_SOURCE.source],
+      }
+    : { ...yard, sources: BASE_TILESET.sources };
+
 const sheets = new Map<string, ReturnType<typeof readPng>>();
-const spans = BASE_TILESET.sources.map((source) => {
+const sheetOf = (source: TileSource) => {
   let sheet = sheets.get(source.imagePath);
   if (!sheet) {
     sheet = readPng(`public/${source.imagePath}`);
     sheets.set(source.imagePath, sheet);
   }
-  return { sheet, from: source.firstIndex, to: source.firstIndex + source.columns * source.rows };
-});
+  return sheet;
+};
+const spans = place.sources.map((source) => ({
+  sheet: sheetOf(source),
+  from: source.firstIndex,
+  to: source.firstIndex + source.columns * source.rows,
+}));
 
-const image = canvas(map.width * TILE_SIZE, map.height * TILE_SIZE, [8, 10, 14]);
-const { ground, overlay, detail, canopy } = map.layers;
-for (const layer of [ground, overlay, detail, canopy]) {
-  for (let y = 0; y < map.height; y += 1) {
-    for (let x = 0; x < map.width; x += 1) {
+const image = canvas(place.width * TILE_SIZE, place.height * TILE_SIZE, [0, 0, 0]);
+const { ground, overlay, detail } = place.layers;
+const drawLayer = (layer: MapLayers['ground']) => {
+  for (let y = 0; y < place.height; y += 1) {
+    for (let x = 0; x < place.width; x += 1) {
       const tile = layer.tiles[y][x];
       if (tile < 0) continue;
       const span = spans.find((candidate) => tile >= candidate.from && tile < candidate.to);
-      if (!span) throw new Error(`tile ${tile} is on none of the base's sheets`);
+      if (!span) throw new Error(`tile ${tile} is on none of this place's sheets`);
       const tint = layer.tints[y][x];
       drawTile(
         image,
@@ -72,12 +118,45 @@ for (const layer of [ground, overlay, detail, canopy]) {
       );
     }
   }
+};
+for (const layer of [ground, overlay, detail]) drawLayer(layer);
+
+// What a room sets on its furniture, and who is standing in it - drawn the way
+// the scene draws them, above the tiles and below the canopy.
+if (room && drawnRoom) {
+  const baseSheet = sheetOf(BASE_SHEET_SOURCE.source);
+  for (const sprite of drawnRoom.sprites) {
+    const piece = BASE_PIECES[sprite.piece];
+    blit(
+      image,
+      baseSheet,
+      piece.column * TILE_SIZE,
+      piece.row * TILE_SIZE,
+      piece.width * TILE_SIZE,
+      piece.height * TILE_SIZE,
+      sprite.x * TILE_SIZE,
+      sprite.y * TILE_SIZE,
+    );
+  }
+  const figure = readPng(`public/assets/characters/${room.keeper.design}.png`);
+  // The down-idle frame: 16x32, soles on row 27, the tile's foot on row 31.
+  blit(
+    image,
+    figure,
+    0,
+    0,
+    16,
+    32,
+    room.keeper.position.x * TILE_SIZE,
+    room.keeper.position.y * TILE_SIZE - 11,
+  );
 }
+drawLayer(place.layers.canopy);
 
 if (flags.has('--collision')) {
-  for (let y = 0; y < map.height; y += 1) {
-    for (let x = 0; x < map.width; x += 1) {
-      if (!map.collision[y][x]) continue;
+  for (let y = 0; y < place.height; y += 1) {
+    for (let x = 0; x < place.width; x += 1) {
+      if (!place.collision[y][x]) continue;
       for (let py = 0; py < TILE_SIZE; py += 1) {
         for (let px = 0; px < TILE_SIZE; px += 1) {
           if ((px + py) % 6 !== 0) continue;
@@ -97,65 +176,45 @@ if (flags.has('--marks')) {
     box(drawn, left, top, text.length * 6 * 2 + 4, 12, [12, 13, 17]);
     label(drawn, text, left + 2, top + 2, 2, colour);
   };
-  mark(BASE_SPAWN.x, BASE_SPAWN.y, 'SPAWN', [120, 240, 255]);
-  mark(BASE_LANDING.x, BASE_LANDING.y, 'LAND', [120, 240, 255]);
-  for (const door of BASE_DOORS) {
-    for (const tile of door.tiles) mark(tile.x, tile.y, 'DOOR', [255, 214, 92]);
-    mark(door.keeper.position.x, door.keeper.position.y, door.keeper.name.slice(0, 5), [255, 160, 80]);
-  }
-  for (const fixture of standingFixtures(built)) {
-    mark(fixture.at.x, fixture.at.y, fixture.name.replace('THE ', '').slice(0, 6), [190, 140, 255]);
+  if (room && drawnRoom) {
+    mark(room.mat.x, room.mat.y, 'MAT', [120, 240, 255]);
+    for (const thing of drawnRoom.things) {
+      mark(
+        thing.tiles[0].x,
+        thing.tiles[0].y,
+        thing.name.replace('THE ', '').slice(0, 6),
+        [190, 140, 255],
+      );
+    }
+  } else {
+    mark(BASE_SPAWN.x, BASE_SPAWN.y, 'SPAWN', [120, 240, 255]);
+    mark(BASE_LANDING.x, BASE_LANDING.y, 'LAND', [120, 240, 255]);
+    for (const door of BASE_DOORS) {
+      for (const tile of door.tiles) mark(tile.x, tile.y, 'DOOR', [255, 214, 92]);
+    }
+    for (const fixture of standingFixtures(built)) {
+      mark(
+        fixture.at.x,
+        fixture.at.y,
+        fixture.name.replace('THE ', '').slice(0, 6),
+        [190, 140, 255],
+      );
+    }
   }
 }
 
 if (flags.has('--walks')) {
-  const people = new Set(
-    BASE_DOORS.map((door) => `${door.keeper.position.x},${door.keeper.position.y}`),
-  );
-  const stepsFrom = (start: { x: number; y: number }) => {
-    const grid = Array.from({ length: map.height }, () =>
-      Array<number>(map.width).fill(Number.POSITIVE_INFINITY),
+  for (const start of BASE_STARTS) {
+    const walks = walksToKeepers(start.tile, game).map(
+      (walk) => `${walk.door.name} ${walk.yard} (+${walk.acrossTheRoom} across the room)`,
     );
-    grid[start.y][start.x] = 0;
-    let frontier = [start];
-    while (frontier.length > 0) {
-      const next: { x: number; y: number }[] = [];
-      for (const tile of frontier) {
-        for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
-          const x = tile.x + dx;
-          const y = tile.y + dy;
-          if (x < 0 || y < 0 || x >= map.width || y >= map.height) continue;
-          if (map.collision[y][x] || people.has(`${x},${y}`)) continue;
-          if (grid[y][x] <= grid[tile.y][tile.x] + 1) continue;
-          grid[y][x] = grid[tile.y][tile.x] + 1;
-          next.push({ x, y });
-        }
-      }
-      frontier = next;
-    }
-    return grid;
-  };
-  const reach = (door: (typeof BASE_DOORS)[number]) =>
-    door.tiles.length > 0
-      ? door.tiles
-      : [[0, -1], [0, 1], [-1, 0], [1, 0]]
-          .map(([dx, dy]) => ({ x: door.keeper.position.x + dx, y: door.keeper.position.y + dy }))
-          .filter((tile) => !map.collision[tile.y]?.[tile.x] && !people.has(`${tile.x},${tile.y}`));
-  for (const [name, start] of [
-    ['yard', BASE_SPAWN],
-    ['quay (home from a raid)', BASE_LANDING],
-  ] as const) {
-    const grid = stepsFrom(start);
-    const walks = BASE_DOORS.map(
-      (door) => `${door.name} ${Math.min(...reach(door).map((tile) => grid[tile.y][tile.x]))}`,
-    );
-    console.log(`from the ${name}: ${walks.join(' · ')}`);
+    console.log(`from ${start.name}: ${walks.join(' · ')}`);
   }
 }
 
 writePng(target, drawn);
-const walkable = map.collision.flat().filter((solid) => !solid).length;
+const walkable = place.collision.flat().filter((solid) => !solid).length;
 console.log(
-  `${target}  ${drawn.width}x${drawn.height}  ${map.width}x${map.height}  ${walkable} walkable  ` +
+  `${target}  ${drawn.width}x${drawn.height}  ${place.width}x${place.height}  ${walkable} walkable  ` +
     `${built.length}/${BASE_FIXTURES.length} built`,
 );

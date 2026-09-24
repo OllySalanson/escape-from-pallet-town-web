@@ -64,11 +64,19 @@ judge either by eye only at real speed.
 The lobby is a town (`src/game/scenes/BaseScene.ts`), so nothing here clicks a
 `button[data-view=...]` any more. `walkIntoBase(page, doorId)` in `deploy.mjs`
 is how every driver reaches a base screen: it reads the scene's own collision
-and its own `doors` list, paths to the doorway (or to beside the keeper, for
-the quay, which has no door) and goes in. A redrawn base moves the walk with
-it, which a table of tiles copied in here would not.
+and its own `doors` list, paths to the doorway and goes in, and inside the room
+(`src/game/base/rooms.ts`) presses the interact key on the door mat, which is
+the keeper's screen. A redrawn base moves the walk with it, which a table of
+tiles copied in here would not.
 
-    await walkIntoBase(page, 'pokemon-centre');   // oaks-lab | brocks-workshop | the-quay
+    await walkIntoBase(page, 'pokemon-centre');   // oaks-lab | brocks-workshop | bills-cottage
+
+Backing out of a screen lands the player back in its room, on the mat; the
+same call from there presses the key again, and from another room walks out
+first. `baseRooms.mjs <url> <dir> [--built=all|none|id,..] [--hurt=N]` walks
+into all four rooms, photographs each, and fails if the mat's key does not open
+the keeper's screen, backing out does not land in the room, or down off the mat
+does not leave it - `docs/screens/base-rooms/` is what it photographs.
 
 A raid ends back on the base's quay, not on a screen, so a driver that plays
 two raids walks into Oak's Lab between them - `raid.mjs` does.

@@ -159,7 +159,6 @@ import {
   type ShopPricePart,
 } from '../ui/shopDetail';
 import { starterCards } from '../ui/starterPicker';
-import { BASE_PLACE_NAME } from '../base/baseMap';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP } from '../ui/countSelector';
 
 /**
@@ -180,7 +179,7 @@ export interface HubSceneData {
    * rather than by choosing its row, and the door says which screen it is.
    */
   readonly view?: HubView;
-  /** The door they came in by, so backing out puts them on its step again. */
+  /** The room they came in from, so backing out puts them back in it. */
   readonly from?: string;
 }
 
@@ -880,19 +879,20 @@ export class HubScene extends Phaser.Scene {
   }
 
   /**
-   * Backing out of a room walks back onto its own doorstep.
+   * Backing out of a screen puts the player back in the room it is kept in.
    *
    * The lobby used to be a screen these four were reached from, so backing out
-   * of one meant `setView('home')`. They are rooms now and the thing they are
-   * reached from is the base map, so leaving one starts that scene again with
-   * the door named - `BaseScene` puts the player down on its step, facing out,
-   * and never in the middle of the yard they walked from.
+   * of one meant `setView('home')`. They are keepers in rooms now
+   * (`base/rooms.ts`), so leaving one starts the base again inside the room
+   * the player walked into - on its door mat, where one key opens the screen
+   * again and one step down leaves, and where whatever was just built is now
+   * standing.
    */
   private leaveToBase(): void {
     this.flow.restart();
     this.scene.start('base', {
       savedGame: this.savedGame,
-      ...(this.enteredFrom === undefined ? {} : { from: this.enteredFrom }),
+      ...(this.enteredFrom === undefined ? {} : { room: this.enteredFrom }),
     });
   }
 
@@ -1107,7 +1107,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'stash') return 'Pokémon Center';
     if (this.view === 'reselect') return 'Swap your partner';
     if (this.view === 'workshop') return this.payingFor ? `Build ${this.payingFor.name}` : 'Brock’s Workshop';
-    if (this.view === 'trader') return 'Bill';
+    if (this.view === 'trader') return 'Bill’s Cottage';
     if (this.flow.step === 'loadout') return 'Build your loadout';
     if (this.flow.step === 'dropin') return 'Choose your drop-in';
     return this.flow.step === 'secure' ? 'Secure slot' : 'Final check';
@@ -1116,8 +1116,12 @@ export class HubScene extends Phaser.Scene {
   private get backLabel(): string {
     if (this.view === 'reselect') return 'Center';
     if (this.view === 'workshop' && this.payingFor) return 'Workshop';
-    // Out of a room is out of its door, so the label names where that puts you.
-    if (this.view !== 'deploy') return BASE_PLACE_NAME;
+    // Out of a screen is back into the room it is kept in (`base/rooms.ts`),
+    // so the label names the room that puts you in.
+    if (this.view === 'home') return 'Lab';
+    if (this.view === 'stash') return 'Center';
+    if (this.view === 'workshop') return 'Workshop';
+    if (this.view === 'trader') return 'Cottage';
     if (this.flow.step === 'confirm') return 'Drop-in';
     if (this.flow.step === 'dropin') return 'Loadout';
     if (this.flow.step === 'secure') {

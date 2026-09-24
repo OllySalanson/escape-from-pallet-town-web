@@ -181,7 +181,7 @@ try {
   console.log('Bill:');
   await press('Escape');
   await sleep(300);
-  await walkIntoBase(page, 'the-quay');
+  await walkIntoBase(page, 'bills-cottage');
   await sleep(400);
   const shelfReading = await read();
   say(shelfReading);

@@ -37,33 +37,60 @@ import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
 import { placeCaptions, placeDialog, type Rect } from '../ui/labelPlacement';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
-import { WINDOW_CREAM } from '../ui/pixelWindow';
-import { DIALOG_FONT_SIZE } from '../ui/screenType';
-import { CANOPY_BAND, CAPTION_BAND, FIGURE_BAND, TERRAIN_DEPTH, atRow } from '../world/depths';
+import { WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/pixelWindow';
+import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
+import {
+  CANOPY_BAND,
+  CAPTION_BAND,
+  FIGURE_BAND,
+  MARKER_BAND,
+  TERRAIN_DEPTH,
+  atRow,
+} from '../world/depths';
+import type { TileSource } from '../world/tileset/catalogue';
+import type { MapLayers } from '../world/tiles';
 import {
   BASE_LANDING,
   BASE_PLACE_NAME,
   BASE_SPAWN,
   getBaseMap,
-  type BaseMapDefinition,
 } from '../base/baseMap';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
-import { BASE_DOORS, doorAt, keeperAt, type BaseDoor } from '../base/doors';
+import { BASE_DOORS, doorAt, doorNamed, type BaseDoor } from '../base/doors';
 import { doorStatusLine } from '../base/doorStatus';
+import { BASE_SHEET_SOURCE } from '../base/baseSheet';
+import { BASE_PIECES } from '../base/generated/basePieces';
+import {
+  BASE_ROOMS,
+  buildRoom,
+  roomNamed,
+  servesFrom,
+  type BaseRoom,
+  type BuiltRoom,
+  type RoomSprite,
+  type RoomThing,
+} from '../base/rooms';
 import { standingFixtures, type BaseFixture } from '../base/fixtures';
 import type { HubSceneData } from './HubScene';
 
 /**
- * THE HARBOUR: the base, walked rather than chosen off a list.
+ * THE HARBOUR: the base, walked rather than chosen off a list - and the four
+ * rooms inside its buildings.
  *
- * Everything the four base screens do is untouched - they are
- * `HubScene` exactly as they were. What this scene replaces is the lobby that
- * used to sit in front of them: instead of four cards on one page, the player
- * stands in their own base and walks to Oak's Lab, the Pokémon Center, Brock's
- * Workshop or the quay. The reason is not navigation. It is that a base you can
- * see is a base that can *fill up*: every Outfitter rung the player builds
- * stands somewhere on this map (`base/fixtures.ts`), so the reward for a raid is
- * a thing in a place rather than a row going grey.
+ * Everything the four base screens do is untouched - they are `HubScene`
+ * exactly as they were. What this scene replaces is the lobby that used to sit
+ * in front of them: instead of four cards on one page, the player stands in
+ * their own base, walks through a door and finds the keeper inside. The reason
+ * is not navigation. It is that a base you can see is a base that can *fill
+ * up*: every rung of Brock's ladder stands somewhere in the yard
+ * (`base/fixtures.ts`) and in his workshop (`base/rooms.ts`), so the reward for
+ * a raid is a thing in a place rather than a row going grey.
+ *
+ * One scene, two kinds of place. The yard and a room are both a drawn map the
+ * player walks on, so they share every line of the walking, the drawing and the
+ * captions; what differs is only what a door does and who is standing where.
+ * Going through a door starts this scene again in the other place, the way a
+ * FireRed door is a fade and a new map.
  *
  * It is deliberately not `WorldScene`. A raid scene carries a clock, a hunter, a
  * pack, wild encounters, loot, contracts, extraction, trainer watches, cutscenes
@@ -72,11 +99,10 @@ import type { HubSceneData } from './HubScene';
  * the drawing, and those are shared as modules (`movement/`, `world/tiles`,
  * `world/characterPresentation`, `ui/WorldLabel`) rather than by inheritance.
  *
- * Two ways through every door, because the base is crossed many times an hour:
- * step onto the doorway, or walk up to the keeper and press the interact key.
- * Neither spends a line of dialogue on the way in. The keepers do speak - every
- * one of them has something to say about what they do - but only when you speak
- * to them from somewhere other than their own doorstep.
+ * Walking is never a toll, because the base is crossed many times an hour: a
+ * doorway opens the moment it is stepped on, and inside, the interact key on
+ * the door mat opens the keeper's screen without crossing the room. Nothing
+ * spends a line of dialogue on the way in.
  */
 
 const CAMERA_ZOOM = 1;
@@ -85,6 +111,9 @@ const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 const DIALOG_WIDTH = 232;
 const DIALOG_HEIGHT = 56;
 const DIALOG_MARGIN = 8;
+const HINT_MARGIN = 6;
+const HINT_PADDING_X = 5;
+const HINT_PADDING_Y = 2;
 
 const figureRect = (tile: GridPosition): Rect => ({
   x: tile.x * TILE_SIZE,
@@ -105,6 +134,16 @@ const propsRect = (
     const art = BASE_TILESET.props[prop.name];
     return { x: prop.x, y: prop.y, right: prop.x + art.width, bottom: prop.y + art.height };
   });
+  return boxRect(boxes, frontageRows);
+};
+
+const tilesRect = (tiles: readonly GridPosition[]): Rect =>
+  boxRect(tiles.map((tile) => ({ x: tile.x, y: tile.y, right: tile.x + 1, bottom: tile.y + 1 })));
+
+function boxRect(
+  boxes: readonly { x: number; y: number; right: number; bottom: number }[],
+  frontageRows?: number,
+): Rect {
   const left = Math.min(...boxes.map((box) => box.x));
   const top = Math.min(...boxes.map((box) => box.y));
   const right = Math.max(...boxes.map((box) => box.right));
@@ -116,7 +155,7 @@ const propsRect = (
     width: (right - left) * TILE_SIZE,
     height: (bottom - from) * TILE_SIZE,
   };
-};
+}
 
 /**
  * The base's two caption tones. A door is the warm one, because it is somewhere
@@ -128,8 +167,10 @@ const FIXTURE_TONE: WorldLabelTone = { fill: 0x16222c, border: 0x6f97b4, ink: '#
 
 export interface BaseSceneData {
   readonly savedGame?: RestoredGame;
-  /** The door the player is coming back out of, if any. */
+  /** The door the player is coming back out of, into the yard. */
   readonly from?: string;
+  /** The room the player is in: walked into, or backed out of a screen into. */
+  readonly room?: string;
   /** Set by the result screen: a raid puts the player down on the quay. */
   readonly arrival?: 'raid';
 }
@@ -148,16 +189,30 @@ interface BaseControls {
   readonly interact: readonly Phaser.Input.Keyboard.Key[];
 }
 
+/** What the scene is standing the player in this visit. */
+interface Place {
+  readonly width: number;
+  readonly height: number;
+  readonly layers: MapLayers;
+  readonly collision: readonly boolean[][];
+  readonly sources: readonly TileSource[];
+  /** Null in the yard. */
+  readonly room: BuiltRoom | null;
+}
+
 export class BaseScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
   private savedGame!: RestoredGame;
-  private map!: BaseMapDefinition;
+  private place!: Place;
   private bounds: GridBounds = { width: 0, height: 0 };
   private collision: boolean[][] = [];
   private player!: Phaser.GameObjects.Sprite;
   private playerGroundMark!: Phaser.GameObjects.Graphics;
   private playerHeadMark!: Phaser.GameObjects.Graphics;
   private dialogBox!: DialogBox;
+  private hintFrame!: Phaser.GameObjects.Graphics;
+  private hintText!: Phaser.GameObjects.Text;
+  private hintShown = '';
   private controls!: BaseControls;
   private readonly keyPresses = new KeyPresses(() => this.currentFrame());
   private readonly directionPresses = new PressLatch<Direction>();
@@ -185,17 +240,24 @@ export class BaseScene extends Phaser.Scene {
   private readonly stepEnd = new Phaser.Math.Vector2();
 
   /**
-   * The four doors, reachable from outside the bundle.
+   * The four doors and the four rooms behind them, reachable from outside the
+   * bundle.
    *
    * A playtest driver cannot import a module, and the alternative - a table of
    * tiles copied into `tools/playtest/` - is how a driver comes to walk to
-   * where a door used to be. It reads this instead, the same way it reads
+   * where a door used to be. It reads these instead, the same way it reads
    * `WorldScene`'s collision. See `tools/playtest/README.md`.
    */
   public readonly doors = BASE_DOORS;
+  public readonly rooms = BASE_ROOMS;
 
   public constructor() {
     super('base');
+  }
+
+  /** The room the player is standing in, or null in the yard. */
+  public get room(): BaseRoom | null {
+    return this.place?.room?.room ?? null;
   }
 
   public create(data: BaseSceneData = {}): void {
@@ -216,31 +278,62 @@ export class BaseScene extends Phaser.Scene {
     this.stepCarryMs = null;
     this.pushingAgainst = null;
     this.lookMs = 0;
+    this.hintShown = '';
     this.figures.clear();
     this.worldLabels = [];
 
-    this.map = getBaseMap(loaded.raidProgress.workshopUpgrades);
-    this.fixtures = standingFixtures(loaded.raidProgress.workshopUpgrades);
-    this.bounds = { width: this.map.width, height: this.map.height };
-    this.collision = this.map.collision.map((row) => [...row]);
-
-    const returning = BASE_DOORS.find((door) => door.id === data.from);
-    this.currentTile = returning
-      ? { ...returning.returnTo }
-      : data.arrival === 'raid'
-        ? { ...BASE_LANDING }
-        : { ...BASE_SPAWN };
-    this.facing = returning ? 'down' : 'up';
+    const room = data.room === undefined ? undefined : roomNamed(data.room);
+    if (room) {
+      const built = buildRoom(room, loaded);
+      this.place = {
+        width: room.width,
+        height: room.height,
+        layers: built.layers,
+        collision: built.collision,
+        sources: [BASE_SHEET_SOURCE.source],
+        room: built,
+      };
+      this.fixtures = [];
+      // In through the door, onto the mat, facing the keeper.
+      this.currentTile = { ...room.mat };
+      this.facing = 'up';
+    } else {
+      const map = getBaseMap(loaded.raidProgress.workshopUpgrades);
+      this.place = {
+        width: map.width,
+        height: map.height,
+        layers: map.layers,
+        collision: map.collision,
+        sources: BASE_TILESET.sources,
+        room: null,
+      };
+      this.fixtures = standingFixtures(loaded.raidProgress.workshopUpgrades);
+      const returning = data.from === undefined ? undefined : doorNamed(data.from);
+      this.currentTile = returning
+        ? { ...returning.returnTo }
+        : data.arrival === 'raid'
+          ? { ...BASE_LANDING }
+          : { ...BASE_SPAWN };
+      this.facing = returning ? 'down' : 'up';
+    }
+    this.bounds = { width: this.place.width, height: this.place.height };
+    this.collision = this.place.collision.map((row) => [...row]);
 
     this.drawMap();
+    this.drawSprites();
     this.createFigures();
     this.createPlayer();
     this.createCaptions();
     this.createDialogBox();
+    this.createHint();
     this.bindControls();
+    // A direction still held from the step that came through the door is not
+    // a step in here: it has to be let go and pressed again. That is what
+    // stops the key that walked in off the mat walking straight back out.
+    this.spentPresses.spendHeld(this.directionKeys());
     this.configureCamera();
-    // The dialogue box is anchored to the bottom of the screen, so a resized
-    // window has to re-anchor it exactly as a raid does.
+    // The dialogue box and the hint are anchored to the screen, and the camera
+    // centres a small room in it, so a resized window re-does both.
     const relayout = (): void => this.layoutForStage();
     this.scale.on(Phaser.Scale.Events.RESIZE, relayout);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
@@ -269,6 +362,7 @@ export class BaseScene extends Phaser.Scene {
     }
 
     if (this.dialogBox.visible) {
+      this.showHint('');
       this.handleDialogInput();
       return;
     }
@@ -278,12 +372,21 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
+    this.showHint(this.hintHere());
+
     if (this.isInteractionPressed()) {
       this.tryInteract();
       return;
     }
 
     const input = this.readInput();
+    const room = this.place.room?.room;
+    // The way out of a room is the way out of every FireRed room: down off
+    // the mat, into the dark the door is in.
+    if (room && input.down && this.onMat(room)) {
+      this.leaveRoom(room);
+      return;
+    }
     const decision = planNextGridStep({
       position: this.currentTile,
       facing: this.facing,
@@ -315,12 +418,12 @@ export class BaseScene extends Phaser.Scene {
 
   private drawMap(): void {
     const map = this.make.tilemap({
-      width: this.map.width,
-      height: this.map.height,
+      width: this.place.width,
+      height: this.place.height,
       tileWidth: TILE_SIZE,
       tileHeight: TILE_SIZE,
     });
-    const sheets = BASE_TILESET.sources.map((source) => {
+    const sheets = this.place.sources.map((source) => {
       const sheet = map.addTilesetImage(
         source.textureKey,
         source.textureKey,
@@ -335,7 +438,7 @@ export class BaseScene extends Phaser.Scene {
       }
       return sheet;
     });
-    const { ground, overlay, detail, canopy } = this.map.layers;
+    const { ground, overlay, detail, canopy } = this.place.layers;
     for (const [name, layer, depth] of [
       ['base-ground', ground, atRow(TERRAIN_DEPTH, 0)],
       ['base-overlay', overlay, atRow(TERRAIN_DEPTH, 1)],
@@ -374,22 +477,55 @@ export class BaseScene extends Phaser.Scene {
     });
   }
 
-  private createFigures(): void {
-    for (const door of BASE_DOORS) {
-      const { keeper } = door;
-      const appearance = getWorldCharacterAppearance('npc', keeper.design);
-      const sprite = this.add
-        .sprite(
-          keeper.position.x * TILE_SIZE,
-          keeper.position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
-          appearance.textureKey,
-          worldCharacterIdleFrame(appearance, keeper.facing),
-        )
-        .setOrigin(0, 0)
-        .setTint(appearance.tint ?? NO_TINT)
-        .setDepth(atRow(FIGURE_BAND, keeper.position.y));
-      this.figures.set(keeper.id, sprite);
+  /**
+   * What a room sets on its furniture rather than into it: the Poké Balls on
+   * Joy's counter, and whatever Bill's shelves come to hold. Each is a frame
+   * of the base's own sheet, named by the piece it is.
+   */
+  private drawSprites(): void {
+    const sprites: readonly RoomSprite[] = this.place.room?.sprites ?? [];
+    if (sprites.length === 0) {
+      return;
     }
+    const texture = this.textures.get(BASE_SHEET_SOURCE.source.textureKey);
+    for (const sprite of sprites) {
+      const piece = BASE_PIECES[sprite.piece];
+      if (!texture.has(sprite.piece)) {
+        texture.add(
+          sprite.piece,
+          0,
+          piece.column * TILE_SIZE,
+          piece.row * TILE_SIZE,
+          piece.width * TILE_SIZE,
+          piece.height * TILE_SIZE,
+        );
+      }
+      this.add
+        .image(sprite.x * TILE_SIZE, sprite.y * TILE_SIZE, texture.key, sprite.piece)
+        .setOrigin(0, 0)
+        .setDepth(atRow(MARKER_BAND, sprite.y));
+    }
+  }
+
+  /** The keeper of the room the player is in. The yard has nobody standing in it. */
+  private createFigures(): void {
+    const room = this.place.room?.room;
+    if (!room) {
+      return;
+    }
+    const { keeper } = room;
+    const appearance = getWorldCharacterAppearance('npc', keeper.design);
+    const sprite = this.add
+      .sprite(
+        keeper.position.x * TILE_SIZE,
+        keeper.position.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+        appearance.textureKey,
+        worldCharacterIdleFrame(appearance, keeper.facing),
+      )
+      .setOrigin(0, 0)
+      .setTint(appearance.tint ?? NO_TINT)
+      .setDepth(atRow(FIGURE_BAND, keeper.position.y));
+    this.figures.set(keeper.id, sprite);
   }
 
   private createPlayer(): void {
@@ -426,14 +562,21 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * One caption per door and one per thing the player has built. Both speak
-   * within `CAPTION_NEAR_STEPS` of what they name, and all of them while the
-   * look key is held - the same rule the raid maps follow, so the base is read
-   * the way the rest of the game is.
+   * In the yard, one caption per door and one per thing the player has built.
+   * In a room, one over the keeper - who they are and what is waiting, the
+   * line the door said outside - and one over each thing in it, which speaks
+   * only while the player is standing beside it, because a room is small
+   * enough that everything in it is within the yard's five steps of the mat.
+   * All of them speak while the look key is held, the same rule the raid maps
+   * follow, so the base is read the way the rest of the game is.
    */
   private createCaptions(): void {
+    const built = this.place.room;
+    if (built) {
+      this.createRoomCaptions(built);
+      return;
+    }
     for (const door of BASE_DOORS) {
-      const about = door.tiles.length > 0 ? door.tiles : [door.keeper.position];
       /*
        * Seated against the building's **frontage** - its bottom row - rather
        * than against its doorway or its whole footprint, and both of those
@@ -450,12 +593,14 @@ export class BaseScene extends Phaser.Scene {
        * is over the lower wall of the building and unmistakably that
        * building's, and the roof and the door are both still on screen.
        */
-      const subject = door.building
-        ? propsRect([{ ...door.building, name: door.building.prop }], 1)
-        : figureRect(door.keeper.position);
       this.worldLabels.push(
         new WorldLabel(this, {
-          subject,
+          subject: propsRect(
+            [{ ...door.building, name: door.building.prop }],
+            // A building three rows tall is all frontage: seated against its
+            // bottom row, the caption covered the whole of Bill's cottage.
+            BASE_TILESET.props[door.building.prop].height > 3 ? 1 : undefined,
+          ),
           // Two lines, and no more. The name says what the building is and
           // the second line says what is waiting inside today, which is the
           // whole of what the lobby's four cards carried
@@ -466,8 +611,8 @@ export class BaseScene extends Phaser.Scene {
           // said once, on the harbour's own board by the jetty.
           text: `${door.name}\n${doorStatusLine(door, this.savedGame)}`,
           tone: DOOR_TONE,
-          depth: atRow(CAPTION_BAND, about[0].y),
-          speech: { voice: 'name', tiles: about },
+          depth: atRow(CAPTION_BAND, door.tiles[0].y),
+          speech: { voice: 'name', tiles: door.tiles },
         }),
       );
     }
@@ -479,6 +624,35 @@ export class BaseScene extends Phaser.Scene {
           tone: FIXTURE_TONE,
           depth: atRow(CAPTION_BAND, fixture.at.y),
           speech: { voice: 'name', tiles: [fixture.at] },
+        }),
+      );
+    }
+  }
+
+  private createRoomCaptions(built: BuiltRoom): void {
+    const { room } = built;
+    const door = doorNamed(room.id);
+    const status = door ? doorStatusLine(door, this.savedGame) : '';
+    this.worldLabels.push(
+      new WorldLabel(this, {
+        subject: figureRect(room.keeper.position),
+        text: status ? `${room.keeper.name}\n${status}` : room.keeper.name,
+        tone: DOOR_TONE,
+        depth: atRow(CAPTION_BAND, room.keeper.position.y),
+        // Said as the player walks up, not from the mat: the hint line already
+        // names the keeper there, and a caption said from the door sits over
+        // the very room the player has walked in to look at.
+        speech: { voice: 'name', tiles: [room.keeper.position], near: 2 },
+      }),
+    );
+    for (const thing of built.things) {
+      this.worldLabels.push(
+        new WorldLabel(this, {
+          subject: tilesRect(thing.tiles),
+          text: `${thing.name}\n${thing.note}`,
+          tone: FIXTURE_TONE,
+          depth: atRow(CAPTION_BAND, Math.max(...thing.tiles.map((tile) => tile.y))),
+          speech: { voice: 'name', tiles: thing.tiles, near: 1 },
         }),
       );
     }
@@ -501,6 +675,52 @@ export class BaseScene extends Phaser.Scene {
     }).setScrollFactor(0, 0, true);
   }
 
+  /**
+   * The line along the foot of the screen that says what the keys do where
+   * the player is standing: which key speaks to the keeper, and - on the mat -
+   * which way is out. It is the room's whole tutorial, and it is only shown
+   * where it is true.
+   */
+  private createHint(): void {
+    this.hintFrame = this.add.graphics().setScrollFactor(0).setDepth(CANOPY_BAND + 0.2);
+    this.hintText = this.add
+      .text(0, 0, '', { fontFamily: GAME_FONT, fontSize: CHIP_FONT_SIZE, color: WINDOW_INK })
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(CANOPY_BAND + 0.21);
+    this.showHint('');
+  }
+
+  private hintHere(): string {
+    const room = this.place.room?.room;
+    if (!room) {
+      return '';
+    }
+    const keeper = `[SPACE] ${room.keeper.name}`;
+    if (this.onMat(room)) {
+      return `${keeper}   [DOWN] OUT`;
+    }
+    return servesFrom(room, nextTileFromDirection(this.currentTile, this.facing)) ? keeper : '';
+  }
+
+  private showHint(text: string): void {
+    if (text === this.hintShown) {
+      return;
+    }
+    this.hintShown = text;
+    this.hintFrame.clear();
+    this.hintText.setText(text).setVisible(text !== '');
+    if (text === '') {
+      return;
+    }
+    const width = Math.ceil(this.hintText.width) + HINT_PADDING_X * 2;
+    const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
+    const x = Math.round((this.scale.width - width) / 2);
+    const y = this.scale.height - height - HINT_MARGIN;
+    drawPixelWindow(this.hintFrame, { x, y, width, height }, { fill: WINDOW_CREAM });
+    this.hintText.setPosition(x + HINT_PADDING_X, y + HINT_PADDING_Y);
+  }
+
   private layoutForStage(): void {
     if (!this.dialogBox) {
       return;
@@ -509,13 +729,32 @@ export class BaseScene extends Phaser.Scene {
       Math.round((this.scale.width - DIALOG_WIDTH) / 2),
       this.scale.height - DIALOG_HEIGHT - DIALOG_MARGIN,
     );
+    const hint = this.hintShown;
+    this.hintShown = '\u0000';
+    this.showHint(hint);
+    this.configureCamera();
   }
 
+  /**
+   * The yard is bigger than the screen and the camera follows the player
+   * across it. A room is smaller than the screen and stands still in the
+   * middle of it, in the dark, the way a FireRed room does: the bounds are
+   * widened to the view round the room so the camera cannot scroll and the
+   * room lands centred, on whole pixels.
+   */
   private configureCamera(): void {
-    this.cameras.main.setBounds(0, 0, this.map.width * TILE_SIZE, this.map.height * TILE_SIZE);
-    this.cameras.main.setZoom(CAMERA_ZOOM);
-    this.cameras.main.setRoundPixels(true);
-    this.cameras.main.startFollow(this.player, true);
+    const camera = this.cameras.main;
+    const width = this.place.width * TILE_SIZE;
+    const height = this.place.height * TILE_SIZE;
+    const viewWidth = this.scale.width / CAMERA_ZOOM;
+    const viewHeight = this.scale.height / CAMERA_ZOOM;
+    const left = width < viewWidth ? Math.floor((width - viewWidth) / 2) : 0;
+    const top = height < viewHeight ? Math.floor((height - viewHeight) / 2) : 0;
+    camera.setBackgroundColor(0x000000);
+    camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height, viewHeight));
+    camera.setZoom(CAMERA_ZOOM);
+    camera.setRoundPixels(true);
+    camera.startFollow(this.player, true);
   }
 
   private containWorldLabels(): void {
@@ -530,12 +769,13 @@ export class BaseScene extends Phaser.Scene {
     this.worldLabels.forEach((label) => label.describe(audience));
     const view = this.cameras.main.worldView;
     const bounds: Rect = { x: view.left, y: view.top, width: view.width, height: view.height };
+    const room = this.place.room?.room;
     const placements = placeCaptions(
       this.worldLabels.map((label) => label.request()),
       {
         bounds,
-        furniture: [],
-        keepClear: BASE_DOORS.map((door) => figureRect(door.keeper.position)),
+        furniture: this.hintShown ? [this.hintRect(view)] : [],
+        keepClear: room ? [figureRect(room.keeper.position)] : [],
         canopy: this.canopyInView(bounds),
         player: [figureRect(this.currentTile), figureRect(this.targetTile ?? this.currentTile)],
       },
@@ -543,13 +783,24 @@ export class BaseScene extends Phaser.Scene {
     this.worldLabels.forEach((label, index) => label.seat(placements[index]));
   }
 
+  /** Where the hint line is, in the world, so no caption is seated under it. */
+  private hintRect(view: Phaser.Geom.Rectangle): Rect {
+    const height = Math.ceil(this.hintText.height) + HINT_PADDING_Y * 2;
+    return {
+      x: view.left,
+      y: view.top + this.scale.height - height - HINT_MARGIN,
+      width: view.width,
+      height: height + HINT_MARGIN,
+    };
+  }
+
   /** Every crown in view, as one rectangle a row: writing may not sit under one. */
   private canopyInView(view: Rect): readonly Rect[] {
-    const canopy = this.map.layers.canopy.tiles;
+    const canopy = this.place.layers.canopy.tiles;
     const left = Math.max(0, Math.floor(view.x / TILE_SIZE));
-    const right = Math.min(this.map.width - 1, Math.ceil((view.x + view.width) / TILE_SIZE));
+    const right = Math.min(this.place.width - 1, Math.ceil((view.x + view.width) / TILE_SIZE));
     const top = Math.max(0, Math.floor(view.y / TILE_SIZE));
-    const bottom = Math.min(this.map.height - 1, Math.ceil((view.y + view.height) / TILE_SIZE));
+    const bottom = Math.min(this.place.height - 1, Math.ceil((view.y + view.height) / TILE_SIZE));
     const runs: Rect[] = [];
     for (let y = top; y <= bottom; y += 1) {
       let start: number | null = null;
@@ -604,7 +855,11 @@ export class BaseScene extends Phaser.Scene {
       ],
     };
     this.latchDirectionPresses();
-    this.keyPresses.watch([
+    this.keyPresses.watch([...this.directionKeys(), ...this.controls.interact, this.controls.look]);
+  }
+
+  private directionKeys(): Phaser.Input.Keyboard.Key[] {
+    return [
       this.controls.up,
       this.controls.down,
       this.controls.left,
@@ -613,9 +868,7 @@ export class BaseScene extends Phaser.Scene {
       this.controls.a,
       this.controls.s,
       this.controls.d,
-      ...this.controls.interact,
-      this.controls.look,
-    ]);
+    ];
   }
 
   private latchDirectionPresses(): void {
@@ -655,13 +908,17 @@ export class BaseScene extends Phaser.Scene {
 
   // -- walking ---------------------------------------------------------------
 
-  private isBlocked(tile: GridPosition): boolean {
+  /** Whether a tile can be walked onto: the map, and whoever is standing on it. */
+  public isBlocked(tile: GridPosition): boolean {
+    const keeper = this.place.room?.room.keeper.position;
     return (
-      this.collision[tile.y][tile.x] ||
-      BASE_DOORS.some(
-        (door) => door.keeper.position.x === tile.x && door.keeper.position.y === tile.y,
-      )
+      (this.collision[tile.y]?.[tile.x] ?? true) ||
+      (keeper !== undefined && keeper.x === tile.x && keeper.y === tile.y)
     );
+  }
+
+  private onMat(room: BaseRoom): boolean {
+    return this.currentTile.x === room.mat.x && this.currentTile.y === room.mat.y;
   }
 
   private beginStep(targetTile: GridPosition): void {
@@ -692,33 +949,46 @@ export class BaseScene extends Phaser.Scene {
     this.currentTile = this.targetTile;
     this.targetTile = null;
     this.stepCarryMs = tick.overflowMs;
+    if (this.place.room) {
+      return;
+    }
     const door = doorAt(this.currentTile);
     if (door) {
-      this.enter(door);
+      this.enterRoom(door);
     }
   }
 
-  // -- the four places -------------------------------------------------------
+  // -- the doors, the rooms and the keepers ----------------------------------
 
   /**
    * Speaking to whatever is in front of the player.
    *
-   * A keeper opens their own screen with no line first: the base is crossed
-   * many times an hour and a keypress that only says hello is a toll by the
-   * fourth raid. A door does the same from the tile in front of it, so a player
-   * who walks *at* a building rather than *into* it is not left pressing keys at
-   * a wall. Everything else answers with what it is.
+   * In a room the keeper is spoken to across their counter or face to face,
+   * and from the door mat whichever way the player is facing: that is the
+   * one-key way to a screen, and nothing else in a room is on the mat. In the
+   * yard a door opens from the tile in front of it, so a player who walks *at*
+   * a building rather than *into* it is not left pressing keys at a wall.
+   * Everything else answers with what it is.
    */
   private tryInteract(): void {
     const target = nextTileFromDirection(this.currentTile, this.facing);
-    const keeper = keeperAt(target);
-    if (keeper) {
-      this.enter(keeper);
+    const room = this.place.room?.room;
+    if (room) {
+      if (this.onMat(room) || servesFrom(room, target)) {
+        this.openScreen(room);
+        return;
+      }
+      const thing = this.place.room?.things.find((candidate: RoomThing) =>
+        candidate.tiles.some((tile) => tile.x === target.x && tile.y === target.y),
+      );
+      if (thing) {
+        this.say([`${thing.name} - ${thing.note.toLowerCase()}.`], [target]);
+      }
       return;
     }
     const door = doorAt(target);
     if (door) {
-      this.enter(door);
+      this.enterRoom(door);
       return;
     }
     const fixture = this.fixtures.find(
@@ -743,16 +1013,7 @@ export class BaseScene extends Phaser.Scene {
     if (!this.isInteractionPressed()) {
       return;
     }
-    this.spentPresses.spendHeld([
-      this.controls.up,
-      this.controls.down,
-      this.controls.left,
-      this.controls.right,
-      this.controls.w,
-      this.controls.a,
-      this.controls.s,
-      this.controls.d,
-    ]);
+    this.spentPresses.spendHeld(this.directionKeys());
     if (this.dialogBox.isCurrentMessageComplete) {
       audioManager.play('textAdvance');
       this.dialogBox.advance();
@@ -776,17 +1037,43 @@ export class BaseScene extends Phaser.Scene {
     this.dialogBox.showMessages([...lines]);
   }
 
-  private enter(door: BaseDoor): void {
+  /** Through a door: the same scene, started again inside the room behind it. */
+  private enterRoom(door: BaseDoor): void {
+    this.goTo({ savedGame: this.savedGame, room: door.id }, 'interiorEnter');
+  }
+
+  /** Down off the mat: back out into the yard, on the step outside. */
+  private leaveRoom(room: BaseRoom): void {
+    this.goTo({ savedGame: this.savedGame, from: room.id }, 'interiorLeave');
+  }
+
+  private goTo(data: BaseSceneData, sound: 'interiorEnter' | 'interiorLeave'): void {
     if (this.leaving) {
       return;
     }
     this.leaving = true;
     this.player.stop();
+    this.showHint('');
+    audioManager.play(sound);
+    this.cameras.main.fadeOut(120, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
+      this.scene.start('base', data),
+    );
+  }
+
+  /** The keeper's screen, which is what the room is the way to. */
+  private openScreen(room: BaseRoom): void {
+    if (this.leaving) {
+      return;
+    }
+    this.leaving = true;
+    this.player.stop();
+    this.showHint('');
     audioManager.play('menuOpen');
     const payload: HubSceneData = {
       savedGame: this.savedGame,
-      view: SCREEN_VIEWS[door.screen],
-      from: door.id,
+      view: SCREEN_VIEWS[room.screen],
+      from: room.id,
     };
     this.cameras.main.fadeOut(140, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
@@ -800,7 +1087,7 @@ export class BaseScene extends Phaser.Scene {
  * where a player who has just come home is standing.
  */
 const NOTICE_BOARD = {
-  x: 20,
+  x: 14,
   y: 15,
   lines: [
     `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
@@ -808,10 +1095,10 @@ const NOTICE_BOARD = {
   ],
 } as const;
 
-/** Which screen each door opens, as `HubScene` names its views. */
+/** Which screen each room's keeper opens, as `HubScene` names its views. */
 const SCREEN_VIEWS = {
   raid: 'home',
   stash: 'stash',
   workshop: 'workshop',
   trader: 'trader',
-} as const satisfies Record<BaseDoor['screen'], NonNullable<HubSceneData['view']>>;
+} as const satisfies Record<BaseRoom['screen'], NonNullable<HubSceneData['view']>>;

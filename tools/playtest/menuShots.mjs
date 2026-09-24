@@ -194,7 +194,7 @@ try {
   await walkIntoBase(page, 'brocks-workshop');
   await shoot('workshop');
   await press('Escape');
-  await walkIntoBase(page, 'the-quay');
+  await walkIntoBase(page, 'bills-cottage');
   await shoot('bill');
   await press('Escape');
   await walkIntoBase(page, 'oaks-lab');
