@@ -179,6 +179,14 @@ const BATTLE_FONT = GAME_FONT;
 const STARTING_POKE_BALLS = 5;
 /** Long enough for the wipe flash and shake to read before the result screen. */
 const RUN_RESULT_DELAY_MS = 700;
+/**
+ * One leg of an attacker's lunge. It goes out and back twice, and the blow
+ * lands when it is home: four legs after the line that names the move.
+ */
+const LUNGE_LEG_MS = 140;
+const LUNGE_LANDS_MS = LUNGE_LEG_MS * 4;
+/** How far a fainting Pokemon sinks below its spot as it fades out. */
+const FAINT_DROP = 34;
 const BATTLEFIELD_WIDTH = BASE_STAGE_WIDTH;
 const BATTLEFIELD_HEIGHT = BASE_STAGE_HEIGHT;
 const GRASS_BACKDROP_WIDTH = 257;
@@ -357,6 +365,13 @@ export class BattleScene extends Phaser.Scene {
   private returnScene: BattleSceneData['returnScene'];
   /** Which Pokemon each slot's plate is currently drawn for. */
   private displayed = new Map<string, PokemonInstance>();
+  /**
+   * Every Pokemon whose faint has been put on screen. A blow that lands after
+   * the line saying its target fainted must not flash the target back into
+   * view: the flash ends on full alpha, so it stood the Pokemon up again as a
+   * ghost over the empty spot.
+   */
+  private fallen = new Set<PokemonInstance>();
   private isTransitioning = false;
   private pendingBattleExit = false;
   /** Failed wild escapes so far in this battle; each one improves the next roll. */
@@ -485,6 +500,7 @@ export class BattleScene extends Phaser.Scene {
     this.sprites.clear();
     this.displayed.clear();
     this.displayedHp.clear();
+    this.fallen.clear();
     this.pendingChoices = [];
     this.choosingSlot = 0;
     this.replacementSlot = 0;
@@ -865,6 +881,29 @@ export class BattleScene extends Phaser.Scene {
 
   private spriteFor(ref: SlotRef): Phaser.GameObjects.Image | undefined {
     return this.sprites.get(plateKey(ref.side, ref.slot));
+  }
+
+  /**
+   * Stops whatever a slot's sprite is still doing and stands it on its own
+   * spot, whole and untinted.
+   *
+   * A slot keeps one sprite for the whole fight and every Pokemon sent into it
+   * is drawn on that sprite, so a tween started for the last one is still
+   * writing to it when the next one lands. The knockout's fade went on fading
+   * the Pokemon that replaced it, and because it sank from wherever the sprite
+   * already stood, each knockout sank the next one further: a trainer's second
+   * Pokemon came out half faded and the third was fought at nothing, faded out
+   * and dozens of pixels below its spot. Every change of what a sprite shows
+   * goes through here first, so nothing started for one Pokemon outlives it.
+   */
+  private standOnSpot(ref: SlotRef): Phaser.GameObjects.Image | undefined {
+    const sprite = this.spriteFor(ref);
+    if (!sprite) {
+      return undefined;
+    }
+    const spot = combatantSpot(ref.side, ref.slot, this.state.unitCount);
+    this.tweens.killTweensOf(sprite);
+    return sprite.clearTint().setPosition(spot.x, spot.y).setAlpha(1);
   }
 
   private drawHpBar(
@@ -2190,12 +2229,8 @@ export class BattleScene extends Phaser.Scene {
     plate?.container.destroy();
     plate?.banner?.destroy();
     this.createStatusBox(ref, combatant);
-    const spot = combatantSpot(ref.side, ref.slot, this.state.unitCount);
     const facing = ref.side === 'player' ? 'back' : 'front';
-    this.spriteFor(ref)
-      ?.setTexture(`pokemon-${facing}-${combatant.pokemon.base.dexId}`)
-      .setPosition(spot.x, spot.y)
-      .setAlpha(1);
+    this.standOnSpot(ref)?.setTexture(`pokemon-${facing}-${combatant.pokemon.base.dexId}`);
     this.refreshStatusLabels();
   }
 
@@ -2603,11 +2638,18 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (event.type === 'fainted') {
-      const sprite = this.spriteFor(slotRef(event.user, event.slot ?? 0));
+      const ref = slotRef(event.user, event.slot ?? 0);
+      const fallen = this.displayed.get(plateKey(ref.side, ref.slot));
+      if (fallen) {
+        this.fallen.add(fallen);
+      }
+      // From the spot, never from wherever a lunge or a flash had left it, so
+      // the fall ends in the same place however quickly the lines were read.
+      const sprite = this.standOnSpot(ref);
       if (sprite) {
         this.tweens.add({
           targets: sprite,
-          y: sprite.y + 34,
+          y: sprite.y + FAINT_DROP,
           alpha: 0,
           duration: 500,
           ease: 'Quad.in',
@@ -2629,38 +2671,55 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (event.type === 'used-move' || event.type === 'spread-damage') {
-      const attacker = this.spriteFor(slotRef(step.actor ?? 'player', step.actorSlot));
-      const target = step.target ? this.spriteFor(slotRef(step.target, step.targetSlot)) : undefined;
+      const attackerRef = slotRef(step.actor ?? 'player', step.actorSlot);
+      const attacker = this.spriteFor(attackerRef);
       if (!attacker) {
         return;
       }
+      const home = combatantSpot(attackerRef.side, attackerRef.slot, this.state.unitCount).x;
       const direction = event.user === 'player' ? 16 : -16;
+      // Out from its spot and back to it, not from wherever the sprite happens
+      // to be: a lunge that began while the entrance slide or another lunge was
+      // still moving it used to come home sixteen pixels short.
       this.tweens.add({
         targets: attacker,
-        x: attacker.x + direction,
+        x: { from: home, to: home + direction },
         yoyo: true,
-        duration: 140,
+        duration: LUNGE_LEG_MS,
         repeat: 1,
-        onComplete: () => {
-          if (cue?.at === 'impact') {
-            audioManager.play(cue.name);
-          }
-          if (target) {
-            target.setTintFill(0xffffff);
-            this.tweens.add({
-              targets: target,
-              alpha: 0.35,
-              yoyo: true,
-              duration: 90,
-              repeat: 1,
-              onComplete: () => target.clearTint(),
-            });
-          }
-          this.cameras.main.shake(60, 0.003);
-          if (step.target) {
-            this.animateHpDelta(slotRef(step.target, step.targetSlot), step.hpDelta);
-          }
-        },
+      });
+      // The blow lands on a clock of its own rather than on the lunge's own
+      // completion, because the attacker can faint or be replaced before its
+      // lunge is home - and the hit it was reporting still has to reach the
+      // other side's bar.
+      const targetRef = step.target ? slotRef(step.target, step.targetSlot) : undefined;
+      const struckPlate = targetRef ? this.plateFor(targetRef) : undefined;
+      const struck = targetRef ? this.displayed.get(plateKey(targetRef.side, targetRef.slot)) : undefined;
+      this.time.delayedCall(LUNGE_LANDS_MS, () => {
+        if (cue?.at === 'impact') {
+          audioManager.play(cue.name);
+        }
+        this.cameras.main.shake(60, 0.003);
+        // A plate built since the blow was thrown is drawn from the state the
+        // blow already landed in - for whoever was sent into that slot since,
+        // or for the Pokemon that evolved in it - so the blow has nothing left
+        // to say to it, and walking it again took the HP off twice.
+        if (!targetRef || this.plateFor(targetRef) !== struckPlate) {
+          return;
+        }
+        const target = this.spriteFor(targetRef);
+        if (target && struck && !this.fallen.has(struck)) {
+          target.setTintFill(0xffffff);
+          this.tweens.add({
+            targets: target,
+            alpha: { from: 1, to: 0.35 },
+            yoyo: true,
+            duration: 90,
+            repeat: 1,
+            onComplete: () => target.clearTint(),
+          });
+        }
+        this.animateHpDelta(targetRef, step.hpDelta);
       });
       return;
     }
