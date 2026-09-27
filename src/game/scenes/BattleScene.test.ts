@@ -37,6 +37,7 @@ import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
 import { BattleScene } from './BattleScene';
+import { combatantSpot } from './battlePresentation';
 
 interface RenderedText {
   readonly x: number;
@@ -51,6 +52,7 @@ interface RenderedText {
   setOrigin: ReturnType<typeof vi.fn>;
   setColor: ReturnType<typeof vi.fn>;
   setDepth: ReturnType<typeof vi.fn>;
+  destroy: ReturnType<typeof vi.fn>;
 }
 
 interface HarnessOptions {
@@ -231,6 +233,9 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
           setColor: vi.fn().mockReturnThis(),
           setDepth: vi.fn().mockReturnThis(),
           setOrigin: vi.fn().mockReturnThis(),
+          // A plate's banner is a text, and a plate is torn down when the next
+          // Pokemon is sent into its slot.
+          destroy: vi.fn(),
         } satisfies RenderedText;
         renderedTexts.push(rendered);
         return rendered;
@@ -249,7 +254,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     choosingSlot: 0,
     aimingMoveIndex: 0,
     replacementSlot: 0,
-    tweens: { add: vi.fn(), addCounter: vi.fn() },
+    tweens: { add: vi.fn(), addCounter: vi.fn(), killTweensOf: vi.fn() },
     cameras: { main: { flash: vi.fn(), shake: vi.fn(), fadeOut: vi.fn(), once: vi.fn() } },
     // Raid resolution waits a beat before handing over; run it now.
     time: { delayedCall: vi.fn((_delayMs: number, callback: () => void) => callback()) },
@@ -276,6 +281,8 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     // Class fields do not run for an Object.create'd scene, and experience is
     // awarded by walking this set.
     participatingPokemon: new Set([player]),
+    // Whose faint has been put on screen - also a class field.
+    fallen: new Set(),
     victoryRewardsGranted: false,
     mode: 'events',
     party: options.party ?? new PokemonParty([player]),
@@ -1286,5 +1293,227 @@ describe('a catch the pack has no room for', () => {
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     expect((scene as unknown as { mode: string }).mode).toBe('main');
     expect(bag.count('poke-ball')).toBe(1);
+  });
+});
+
+/**
+ * Just enough of Phaser's tween manager and scene clock to watch a sprite over
+ * time: a tween takes its start values when it first runs, which is what let
+ * one started for a Pokemon that fainted go on writing to the next one.
+ */
+function createFakeClock() {
+  type Value = number | { readonly from: number; readonly to: number };
+  interface FakeTween {
+    readonly target: Record<string, number>;
+    readonly props: readonly (readonly [string, Value])[];
+    readonly duration: number;
+    readonly yoyo: boolean;
+    readonly repeat: number;
+    readonly onComplete?: () => void;
+    readonly onUpdate?: (tween: { getValue(): number }) => void;
+    readonly counter?: { from: number; to: number; value: number };
+    start?: Record<string, number>;
+    elapsed: number;
+    live: boolean;
+  }
+  let tweens: FakeTween[] = [];
+  let timers: { at: number; callback: () => void }[] = [];
+  let now = 0;
+  const reserved = new Set(['targets', 'duration', 'yoyo', 'repeat', 'ease', 'delay', 'onComplete', 'onUpdate']);
+  const add = (config: Record<string, unknown>): FakeTween => {
+    const tween: FakeTween = {
+      target: config.targets as Record<string, number>,
+      props: Object.entries(config).filter(([key]) => !reserved.has(key)) as [string, Value][],
+      duration: (config.duration as number) ?? 0,
+      yoyo: Boolean(config.yoyo),
+      repeat: (config.repeat as number) ?? 0,
+      onComplete: config.onComplete as (() => void) | undefined,
+      elapsed: 0,
+      live: true,
+    };
+    tweens.push(tween);
+    return tween;
+  };
+  const step = (ms: number): void => {
+    now += ms;
+    for (const tween of [...tweens]) {
+      if (!tween.live) {
+        continue;
+      }
+      if (tween.counter) {
+        tween.elapsed += ms;
+        const progress = Math.min(1, tween.elapsed / tween.duration);
+        tween.counter.value = tween.counter.from + (tween.counter.to - tween.counter.from) * progress;
+        tween.onUpdate?.({ getValue: () => tween.counter!.value });
+        if (progress === 1) {
+          tween.live = false;
+        }
+        continue;
+      }
+      tween.start ??= Object.fromEntries(
+        tween.props.map(([key, value]) => [key, typeof value === 'number' ? tween.target[key] : value.from]),
+      );
+      tween.elapsed += ms;
+      const leg = tween.duration;
+      const cycle = tween.yoyo ? leg * 2 : leg;
+      const total = cycle * (tween.repeat + 1);
+      const at = Math.min(tween.elapsed, total);
+      const within = at === total ? cycle : at % cycle;
+      const progress = within <= leg ? within / leg : 1 - (within - leg) / leg;
+      for (const [key, value] of tween.props) {
+        const to = typeof value === 'number' ? value : value.to;
+        tween.target[key] = tween.start[key] + (to - tween.start[key]) * progress;
+      }
+      if (at === total) {
+        tween.live = false;
+        tween.onComplete?.();
+      }
+    }
+    for (const timer of timers.filter(({ at }) => at <= now)) {
+      timers = timers.filter((other) => other !== timer);
+      timer.callback();
+    }
+    tweens = tweens.filter(({ live }) => live);
+  };
+  return {
+    tweens: {
+      add: vi.fn(add),
+      addCounter: vi.fn((config: { from: number; to: number; duration: number; onUpdate: FakeTween['onUpdate'] }) => {
+        const tween: FakeTween = {
+          target: {},
+          props: [],
+          duration: config.duration,
+          yoyo: false,
+          repeat: 0,
+          onUpdate: config.onUpdate,
+          counter: { from: config.from, to: config.to, value: config.from },
+          elapsed: 0,
+          live: true,
+        };
+        tweens.push(tween);
+        return tween;
+      }),
+      killTweensOf: vi.fn((target: unknown) => {
+        for (const tween of tweens) {
+          if (tween.target === target) {
+            tween.live = false;
+          }
+        }
+      }),
+    },
+    time: {
+      delayedCall: vi.fn((delayMs: number, callback: () => void) => {
+        timers.push({ at: now + delayMs, callback });
+      }),
+    },
+    /** Lets the given milliseconds pass, a frame at a time. */
+    advance: (ms: number): void => {
+      for (let spent = 0; spent < ms; spent += 16) {
+        step(16);
+      }
+    },
+  };
+}
+
+/** A sprite with real numbers on it, standing on its slot's spot. */
+const standingSprite = (side: 'player' | 'enemy') => {
+  const spot = combatantSpot(side, 0, 1);
+  const sprite = {
+    x: spot.x,
+    y: spot.y,
+    alpha: 1,
+    scaleX: 1,
+    scaleY: 1,
+    tinted: false,
+    texture: '',
+    setTexture: (key: string) => ((sprite.texture = key), sprite),
+    setPosition: (x: number, y: number) => ((sprite.x = x), (sprite.y = y), sprite),
+    setAlpha: (alpha: number) => ((sprite.alpha = alpha), sprite),
+    setTintFill: () => ((sprite.tinted = true), sprite),
+    clearTint: () => ((sprite.tinted = false), sprite),
+  };
+  return sprite;
+};
+
+/**
+ * A trainer's Pokemon are all drawn on the one sprite their slot keeps, and a
+ * player who reads the knockout lines as fast as they come puts each new one on
+ * it while the last one's faint is still playing. The captain met it as a
+ * trainer whose third Pokemon never showed up and was fought anyway.
+ */
+describe('a trainer sending out Pokemon after a knockout', () => {
+  const fightThree = () => {
+    const party = [new Pokemon(PIDGEY, 3), new Pokemon(PIDGEY, 3), new Pokemon(BULBASAUR, 3)];
+    for (const pokemon of party) {
+      pokemon.takeDamage(pokemon.maxHp - 1);
+    }
+    const harness = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: party,
+      party: new PokemonParty([new Pokemon(SQUIRTLE, 8)]),
+    });
+    const clock = createFakeClock();
+    const sprites = new Map([
+      ['player0', standingSprite('player')],
+      ['enemy0', standingSprite('enemy')],
+    ]);
+    Object.assign(harness.scene as object, {
+      tweens: clock.tweens,
+      time: clock.time,
+      sprites,
+    });
+    return { ...harness, party, clock, enemySprite: sprites.get('enemy0')! };
+  };
+
+  /** One turn of TACKLE, every line read the instant it is up. */
+  const knockOutAtOnce = (
+    scene: BattleScene,
+    renderedTexts: RenderedText[],
+    dialog: { isCurrentMessageComplete: boolean },
+  ): void => {
+    renderedTexts.findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
+    renderedTexts.filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40; step += 1) {
+      if ((scene as unknown as { mode: string }).mode === 'main') {
+        return;
+      }
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    throw new Error('The turn never handed the commands back.');
+  };
+
+  it('stands every Pokemon after the first on its spot, whole, however fast the lines are read', () => {
+    const { scene, renderedTexts, dialog, party, clock, enemySprite } = fightThree();
+    const spot = combatantSpot('enemy', 0, 1);
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+
+    for (const next of party.slice(1)) {
+      knockOutAtOnce(scene, renderedTexts, dialog);
+      expect(dialog.shownMessages).toContain(`Go, ${next.base.name.toUpperCase()}!`);
+      // Long enough for anything started by the knockout to have finished.
+      clock.advance(1500);
+
+      expect(enemySprite.texture).toBe(`pokemon-front-${next.base.dexId}`);
+      expect({ x: enemySprite.x, y: enemySprite.y, alpha: enemySprite.alpha, tinted: enemySprite.tinted }).toEqual({
+        x: spot.x,
+        y: spot.y,
+        alpha: 1,
+        tinted: false,
+      });
+    }
+  });
+
+  it('never lands the blow that knocked one Pokemon out on the plate of the one that replaced it', () => {
+    const { scene, renderedTexts, dialog, party, clock } = fightThree();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+
+    knockOutAtOnce(scene, renderedTexts, dialog);
+    clock.advance(1500);
+
+    const { displayedHp } = scene as unknown as { displayedHp: Map<string, number> };
+    expect(displayedHp.get('enemy0')).toBe(party[1].currentHp);
   });
 });
