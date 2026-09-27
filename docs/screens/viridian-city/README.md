@@ -52,6 +52,17 @@ the Pallet Road.
 - **Viridian City is the gap in the geography.** Route 1 and Viridian Forest
   are in the game; the town between them was not.
 
+## Where this follows the map-making plan
+
+| Decision | The plan recommends | Here |
+|---|---|---|
+| D1 | the FireRed standard for every map | **Followed, for this map.** One road joins the districts (paving in town, sand on the routes); edges run - the tree walls, the ledges, the fences; walls are masses (1.8 crumbs per 1000 tiles); grass in beds (none under 12 tiles); 3% one-tile lanes; FireRed-sized places joined by the road; and thin ground answered with places, not notices - of the eighteen things added for density, thirteen are townspeople, three are caches and two are signs: a signpost where the path turns into the ranger's meadow, and the town's notice board. |
+| D2 | no tile more than 5 steps from a wall, held-direction median 2-5, corridors may run long | **Followed.** It is the rule this map is tested to (`STRUCTURE_STANDARDS`), and it measures 5, 4 and 37. |
+| D3 | the plan and shapes drafted, the captain corrects | **Followed** as far as a PR can: the plan is above, the map is playable, and every choice is written down to be overruled. |
+| D4 | build a painter in the game | **Not in this change.** The map is drawn as `MapSketch` text, as the other four are. |
+| D5 | a painter and one redrawn district first | **Departed from**: a new map instead of a redrawn district - see the section above for why. What the plan wanted a redraw to test (whether the standard reads well, and at what cost to the rules) this tests without moving a learned route. |
+| D6 | redraw the four maps | **Not in this change**, and nothing here pre-empts it: the four keep the nine-step standard. |
+
 ## What makes a good map: the research, briefly
 
 Sources, read in full: the map-making plan and the three earlier map reports;
