@@ -81,6 +81,47 @@ describe('pixel text', () => {
       ]);
     });
 
+    it('keeps the end of a short stroke split across two columns, so an S is never a 3', () => {
+      // Orange Kid's `S` at 12px exactly as Chromium covers it (the game's own
+      // setting). Its upper-left stroke is under two pixels tall and lies across
+      // columns 2 and 3; the second row of it is under the bar in both, and it
+      // used to go - the battle banner read `YOUR3` and the poison tag `P3N`.
+      const s = mask([
+        [0, 0, 0, 160, 255, 255, 24],
+        [0, 0, 133, 110, 0, 0, 245],
+        [0, 0, 100, 88, 0, 0, 0],
+        [0, 0, 0, 160, 255, 255, 24],
+        [0, 0, 0, 0, 0, 0, 245],
+        [0, 0, 100, 83, 0, 0, 245],
+        [0, 0, 133, 110, 0, 0, 245],
+        [0, 0, 0, 160, 255, 255, 24],
+      ]);
+      expect(s.map((row) => row.join(''))).toEqual([
+        '0001110',
+        '0010001',
+        '0010000',
+        '0001110',
+        '0000001',
+        '0010001',
+        '0010001',
+        '0001110',
+      ]);
+    });
+
+    it('does not take the soft edge of a wide stroke for the end of a split one', () => {
+      // An outline is a stroke three pixels wide, grey along its edge: the
+      // pixel under the edge is ink, and so is its neighbour, but there is no
+      // paper either side of the pair, so it is not a one-pixel stroke ending.
+      expect(
+        mask([
+          [0, 0, 0, 0, 0],
+          [0, 100, 90, 90, 0],
+          [0, 255, 255, 255, 0],
+          [0, 255, 255, 255, 0],
+        ])[1],
+      ).toEqual([0, 0, 0, 0, 0]);
+    });
+
     it('keeps the dot of an i, which is a stroke in neither direction - and only on a dotted glyph', () => {
       const glyph = [
         [0, 0, 0],
