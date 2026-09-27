@@ -22,12 +22,13 @@ import type { KantoPropName } from '../tileset/kantoTileset';
  *
  * The town between them is fast and bare: paved streets, buildings on their
  * lots, fences, and nothing that costs a fight. The wood to the east has a way
- * out nobody is watching.
+ * out nobody is watching, past one grass bed.
  *
  * Trees stand on FireRed's lattice (`tileset/lattice.ts`): a wood is drawn in
  * whole trees, two tiles wide, bodies on even rows - so every `T` mass here
  * starts on an even column and an even row and ends on odd ones. A `T` no whole
- * tree covers draws as a bush, which is what the few beside the League gate are.
+ * tree covers draws as a bush, which is what the few beside the League gate and
+ * either side of the Pallet Road are.
  *
  * Legend: `.` grass, `"` mown turf, `g` tall grass, `d` sand road, `P` paving,
  * `T` wood, `C` rock, `W` water, `F` fence, `#` hedge; `<` `=` `>` a ledge's
