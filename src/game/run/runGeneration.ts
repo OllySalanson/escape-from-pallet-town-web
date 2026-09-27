@@ -205,6 +205,36 @@ export const RUN_INSERTIONS = {
     position: { x: 50, y: 33 },
     description: "The collier's gate in the far east. The only kept ground in this forest, with the ride south out of it and the tarn above.",
   },
+  // Viridian City's front door is the Pokemon Center, in the middle of the
+  // town: every road out is in reach from it, and none of them is short.
+  'viridian-city': {
+    id: 'viridian-city',
+    label: 'Viridian City',
+    mapId: 'viridian-city',
+    position: { x: 44, y: 42 },
+    description: "The Pokemon Center's steps, in the middle of town. Paved streets, the Gym shut up behind its ledge, and three roads out: Route 1 down the terraces, Route 2 north to the Forest, the League road west.",
+  },
+  'viridian-city-forest-gate': {
+    id: 'viridian-city-forest-gate',
+    label: 'Forest Gate',
+    mapId: 'viridian-city',
+    position: { x: 36, y: 7 },
+    description: "The steps of the gatehouse on Route 2, the Forest at your back. Grass beds all the way down to town, and a Bug Catcher on the road through them.",
+  },
+  'viridian-city-league-road': {
+    id: 'viridian-city-league-road',
+    label: 'League Road',
+    mapId: 'viridian-city',
+    position: { x: 7, y: 26 },
+    description: "A gap in the trees on Route 22, the lane up to the Pokemon League's front gate. There is a keeper at the fence, and a pond field between here and the town.",
+  },
+  'viridian-city-south-road': {
+    id: 'viridian-city-south-road',
+    label: 'South Road',
+    mapId: 'viridian-city',
+    position: { x: 38, y: 73 },
+    description: "The foot of Route 1's terraces, where the road comes up from Pallet Town. The way home is behind you; the way up is the long road round every ledge.",
+  },
 } as const;
 
 export type RunInsertionId = keyof typeof RUN_INSERTIONS;

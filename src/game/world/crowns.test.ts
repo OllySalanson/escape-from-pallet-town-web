@@ -51,9 +51,26 @@ describe('tree crowns', () => {
     expect(standingUnderCrowns(getBaseMap(everything).layers)).toEqual([]);
   });
 
+  /**
+   * A wood of FireRed's route conifers has no crowns at all, and that is the
+   * art rather than a gap in the rule. Its trees stand on a lattice
+   * (`tileset/lattice.ts`) with every body and base a wall, and the one part of
+   * a tree drawn over the figures is its tip, which hangs over the ground above
+   * the wood the way FireRed draws it: a point in front of the feet of whoever
+   * stands there, never a canopy over them. So a lattice wood carries tips -
+   * canopy that is walked under - instead, and hundreds of them.
+   */
   it('are on every wooded map, so the rule is asking about something', () => {
     for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
-      expect(WORLD_MAPS[id].layers.crowned.flat().filter(Boolean).length, id).toBeGreaterThan(100);
+      const { crowned, canopy } = WORLD_MAPS[id].layers;
+      const crowns = crowned.flat().filter(Boolean).length;
+      if (WORLD_MAPS[id].tileset.materials.tree.lattice) {
+        const tips = canopy.tiles.flatMap((row, y) => row.filter((tile, x) => tile >= 0 && !crowned[y][x])).length;
+        expect(crowns, id).toBe(0);
+        expect(tips, id).toBeGreaterThan(100);
+      } else {
+        expect(crowns, id).toBeGreaterThan(100);
+      }
     }
   });
 });

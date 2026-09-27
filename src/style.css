@@ -1831,16 +1831,16 @@ button {
 }
 
 /* --- The wall map in Oak's Lab ----------------------------------------- */
-/* The four maps side by side, a card each, as wide as the screen shares out:
+/* Every map side by side, a card each, as wide as the screen shares out:
    the glance at how far across the game the player has got. Every picture is
    drawn at one scale (`ui/mapPicture.ts`, 'shared'), so the cards share the
    room the smallest of them has and the signs pinned under a map never make it
    smaller than its neighbour. */
 :where(.pixel-ui) .wallmap-layout {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   /* Name, picture, signs, and what is left: shared by every card through a
-     subgrid, so a name that wraps onto a third line in a narrow card moves all
-     four pictures down together and they still stand on one line. */
+     subgrid, so a name that wraps onto a third line in a narrow card moves every
+     picture down together and they still stand on one line. */
   grid-template-rows: auto auto auto minmax(0, 1fr);
   row-gap: calc(var(--u) * 3);
   height: 100%;

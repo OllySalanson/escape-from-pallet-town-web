@@ -910,6 +910,128 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     encounters: wildlife.FOREST_CLEARING_WILDLIFE,
     areas: [{ x: 11, y: 27, width: 21, height: 9 }],
   },
+
+  // -- Viridian City --------------------------------------------------------
+  // A hub and three roads, so the names are the town's own quarters and the
+  // three routes out of it by what they are to the town rather than by their
+  // numbers. First listed wins, so the small places come before the roads
+  // they are cut into.
+  {
+    id: 'viridian-front-gate',
+    mapId: 'viridian-city',
+    name: 'THE FRONT GATE',
+    // The Pokemon League's gate and its fenced forecourt, behind the keeper.
+    areas: [{ x: 0, y: 0, width: 22, height: 14 }],
+  },
+  {
+    id: 'viridian-diglett-hill',
+    mapId: 'viridian-city',
+    name: "DIGLETT'S HILL",
+    // The hill, the ground in front of its foot and the corridor along the
+    // wood to it - but not the grass bed below, which is the Forest road's.
+    areas: [
+      { x: 50, y: 0, width: 22, height: 13 },
+      { x: 44, y: 0, width: 6, height: 12 },
+    ],
+  },
+  {
+    id: 'viridian-trade-house',
+    mapId: 'viridian-city',
+    name: 'THE TRADE HOUSE',
+    // The cottage and its garden, grown shut behind a tree only Cut clears.
+    areas: [{ x: 54, y: 13, width: 18, height: 9 }],
+  },
+  {
+    id: 'viridian-forest-road',
+    mapId: 'viridian-city',
+    name: 'THE FOREST ROAD',
+    encounters: wildlife.VIRIDIAN_FOREST_ROAD_WILDLIFE,
+    // Route 2, from the town's north gap up to the gatehouse, both grass beds
+    // and the high path west to the League gate's side fence.
+    areas: [{ x: 22, y: 0, width: 32, height: 22 }],
+  },
+  {
+    id: 'viridian-league-road',
+    mapId: 'viridian-city',
+    name: 'THE LEAGUE ROAD',
+    encounters: wildlife.VIRIDIAN_LEAGUE_ROAD_WILDLIFE,
+    // Route 22 from the town's West Gate to the keeper at the fence: the lane
+    // between the trees, the pond field and the road round the bend.
+    areas: [
+      { x: 0, y: 14, width: 22, height: 24 },
+      { x: 22, y: 36, width: 2, height: 2 },
+    ],
+  },
+  {
+    id: 'viridian-border-fields',
+    mapId: 'viridian-city',
+    name: 'THE BORDER FIELDS',
+    encounters: wildlife.VIRIDIAN_BORDER_WILDLIFE,
+    areas: [{ x: 0, y: 38, width: 22, height: 20 }],
+  },
+  {
+    id: 'viridian-academy',
+    mapId: 'viridian-city',
+    name: 'THE ACADEMY',
+    areas: [{ x: 22, y: 22, width: 14, height: 10 }],
+  },
+  {
+    id: 'viridian-gym',
+    mapId: 'viridian-city',
+    name: 'THE GYM',
+    areas: [{ x: 40, y: 22, width: 22, height: 10 }],
+  },
+  {
+    id: 'viridian-main-street',
+    mapId: 'viridian-city',
+    name: 'MAIN STREET',
+    // The road in from the north gap down to the south one, and the cross
+    // street from the West Gate to the edge of the wood.
+    areas: [
+      { x: 36, y: 22, width: 4, height: 36 },
+      { x: 22, y: 32, width: 40, height: 3 },
+    ],
+  },
+  {
+    id: 'viridian-center-square',
+    mapId: 'viridian-city',
+    name: 'CENTER SQUARE',
+    areas: [{ x: 40, y: 35, width: 22, height: 13 }],
+  },
+  {
+    id: 'viridian-pond',
+    mapId: 'viridian-city',
+    name: 'THE POND',
+    areas: [{ x: 22, y: 35, width: 14, height: 13 }],
+  },
+  {
+    id: 'viridian-garden-row',
+    mapId: 'viridian-city',
+    name: 'GARDEN ROW',
+    areas: [{ x: 22, y: 48, width: 40, height: 8 }],
+  },
+  {
+    id: 'viridian-east-wood',
+    mapId: 'viridian-city',
+    name: 'THE EAST WOOD',
+    areas: [{ x: 62, y: 22, width: 10, height: 40 }],
+  },
+  {
+    id: 'viridian-ranger-hut',
+    mapId: 'viridian-city',
+    name: "THE RANGER'S HUT",
+    encounters: wildlife.VIRIDIAN_RANGER_WILDLIFE,
+    areas: [{ x: 0, y: 58, width: 22, height: 18 }],
+  },
+  {
+    id: 'viridian-south-terraces',
+    mapId: 'viridian-city',
+    name: 'THE SOUTH TERRACES',
+    encounters: wildlife.VIRIDIAN_TERRACE_WILDLIFE,
+    // Route 1's head: three terraces and the road that zigzags down them to
+    // the way home to Pallet.
+    areas: [{ x: 22, y: 56, width: 50, height: 20 }],
+  },
 ];
 
 const holds = (area: DistrictArea, tile: GridPosition): boolean =>

@@ -113,6 +113,9 @@ describe('a move that is also a route', () => {
           'meowth',
           // Pallet's hay closes, which is where a Nidoran would be.
           'nidoran-f',
+          // And its brother on Route 22, which FireRed puts him on: Viridian
+          // City's Cut door has a learner in the fields on the same map.
+          'nidoran-m',
           'oddish',
           // The forest's east and south, the kilns' heath and the levels'
           // fen: four maps grew, and these two came with the ground.

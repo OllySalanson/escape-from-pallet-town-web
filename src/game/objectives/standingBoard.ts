@@ -446,6 +446,7 @@ const MAP_PHRASE: Readonly<Record<WorldMapId, string>> = {
   'pallet-town': `in ${WORLD_MAP_NAMES['pallet-town']}`,
   'route-1': `on ${WORLD_MAP_NAMES['route-1']}`,
   'viridian-forest': `in ${WORLD_MAP_NAMES['viridian-forest']}`,
+  'viridian-city': `in ${WORLD_MAP_NAMES['viridian-city']}`,
 };
 
 function draftContract(

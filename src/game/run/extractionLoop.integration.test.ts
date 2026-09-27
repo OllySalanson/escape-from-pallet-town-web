@@ -782,7 +782,7 @@ describe('extraction loop integration', () => {
     ]);
   });
 
-  it('unlocks the three remaining insertions and grants one supply exactly once after extracting the recovered field kit', () => {
+  it('unlocks the four remaining insertions and grants one supply exactly once after extracting the recovered field kit', () => {
     const saves = seedNewPlayer(new MemoryStorage());
     const starter = saves.load()!.stash.listPokemon()[0];
     const loadout = { party: [starter.pokemon], items: [] };
@@ -798,7 +798,7 @@ describe('extraction loop integration', () => {
       firstContractExtracted: true,
       openedGates: [],
       completedContracts: ['recover-lost-field-kit'],
-      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+      unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'],
       // Banking a contract beats no boss and reaches nowhere new.
       defeatedBosses: [],
       reachedInsertions: [],

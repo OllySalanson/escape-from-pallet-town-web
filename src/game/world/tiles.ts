@@ -2,9 +2,11 @@ import { roleFor } from './tileset/autotile';
 import {
   fillTile,
   resolveTile,
+  type MaterialTiles,
   type ShoreTiles,
   type TilesetCatalogue,
 } from './tileset/catalogue';
+import { latticeTile, latticeTip } from './tileset/lattice';
 import { MATERIALS, type Material } from './tileset/materials';
 import type { MapSketch } from './mapGrid';
 import type { Rect } from './interiors';
@@ -83,6 +85,10 @@ function groundUnder(
   x: number,
   y: number,
 ): Material {
+  const floor = catalogue.materials[sketch.surfaceAt(x, y)]?.floor;
+  if (floor !== undefined) {
+    return floor;
+  }
   const tally = new Map<Material, number>();
   for (const [dx, dy] of [
     [0, -1],
@@ -215,25 +221,143 @@ export function buildMapLayers(
         continue;
       }
 
-      const same = (dx: number, dy: number): boolean => materialAt(x + dx, y + dy) === material;
-      const role = roleFor({
-        north: same(0, -1),
-        south: same(0, 1),
-        east: same(1, 0),
-        west: same(-1, 0),
-      });
-      overlay.tiles[y][x] = role === 'fill' ? fillTile(tiles, x, y) : resolveTile(tiles, role);
+      overlay.tiles[y][x] = overlayTile(tiles, (ax, ay) => materialAt(ax, ay) === material, width, height, x, y);
       if (tiles.tint !== undefined) {
         overlay.tints[y][x] = tiles.tint;
       }
     }
   }
 
+  drawTips(catalogue, surface, canopy);
   applyShoreline(sketch, catalogue, surface, ground);
   plantProps(sketch, catalogue, detail, canopy, collision, tallGrass, crowned);
   paintRoofs(catalogue, roofs, roofGround, roof);
 
   return { ground, overlay, detail, canopy, roofGround, roof, collision, tallGrass, crowned };
+}
+
+/**
+ * What an overlay material draws on one of its tiles.
+ *
+ * Most are an edge role read off the four neighbours. Three are drawn by a rule
+ * of their own, because FireRed draws them that way: a wood of conifers on its
+ * lattice (`lattice.ts`), a fence whose uprights sit on the side of the corner
+ * they run into, and a rock mound whose rim and face are two tiles deep. Those
+ * three count off the map as more of the same, so a wood or a fence run to the
+ * edge carries on out of sight rather than growing a rim along it.
+ */
+function overlayTile(
+  tiles: MaterialTiles,
+  isHere: (x: number, y: number) => boolean,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+): number {
+  const same = (ax: number, ay: number): boolean =>
+    ax < 0 || ay < 0 || ax >= width || ay >= height || isHere(ax, ay);
+  if (tiles.lattice) {
+    return latticeTile(tiles.lattice, same, x, y);
+  }
+  if (tiles.mound) {
+    return moundTile(tiles.mound, same, x, y);
+  }
+  const role = roleFor({
+    north: isHere(x, y - 1),
+    south: isHere(x, y + 1),
+    east: isHere(x + 1, y),
+    west: isHere(x - 1, y),
+  });
+  const rails = tiles.railSides;
+  if (rails) {
+    const side = railSide(same, x, y);
+    if (role === 'run-v' || role === 'cap-s') {
+      return side === 'west' ? rails.west : rails.east;
+    }
+    if (role === 'cap-n') {
+      return side === 'west' ? rails.capWest : rails.capEast;
+    }
+  }
+  return role === 'fill' ? fillTile(tiles, x, y) : resolveTile(tiles, role);
+}
+
+/**
+ * Which side of its tile a fence's upright is drawn on: the side of the corner
+ * the run goes into, found by walking along it. A pen's west fence meets its
+ * corners on their west, so its posts stand on the west half; a lone upright
+ * with no corner at either end stands west.
+ */
+function railSide(same: (x: number, y: number) => boolean, x: number, y: number): 'west' | 'east' {
+  for (const step of [-1, 1]) {
+    for (let at = y; same(x, at); at += step) {
+      const west = same(x - 1, at);
+      const east = same(x + 1, at);
+      if (east && !west) return 'west';
+      if (west && !east) return 'east';
+      if (at < -1 || at > y + 512) break;
+    }
+  }
+  return 'west';
+}
+
+/**
+ * A cell of a rock mound, by how far the tile is from each edge of the rock: a
+ * rim two deep at the top, a face two deep at the foot, sides two wide. The
+ * foot and face win over the rim, so a mound too shallow for all four still
+ * stands on its face.
+ */
+function moundTile(
+  cells: readonly (readonly number[])[],
+  same: (x: number, y: number) => boolean,
+  x: number,
+  y: number,
+): number {
+  const reach = (dx: number, dy: number): number => {
+    let steps = 0;
+    while (steps < 2 && same(x + dx * (steps + 1), y + dy * (steps + 1))) steps += 1;
+    return steps;
+  };
+  const north = reach(0, -1);
+  const south = reach(0, 1);
+  const west = reach(-1, 0);
+  const east = reach(1, 0);
+  const last = cells.length - 1;
+  const row = south === 0 ? last : south === 1 ? last - 1 : north === 0 ? 0 : north === 1 ? 1 : 2;
+  const columns = cells[row];
+  const end = columns.length - 1;
+  const column = west === 0 ? 0 : east === 0 ? end : west === 1 ? 1 : east === 1 ? end - 1 : 2;
+  return columns[column];
+}
+
+/**
+ * The tips of a conifer wood, drawn over the ground above it. FireRed lets you
+ * walk there, with the point of the tree below in front of your feet, so each
+ * one is canopy that is *walked under* rather than a crown: it never shuts the
+ * tile and never counts as one somebody could be hidden under.
+ */
+function drawTips(catalogue: TilesetCatalogue, surface: Material[][], canopy: TileLayer): void {
+  const wood = (Object.keys(catalogue.materials) as Material[]).find(
+    (material) => catalogue.materials[material].lattice !== undefined,
+  );
+  if (wood === undefined) {
+    return;
+  }
+  const lattice = catalogue.materials[wood].lattice!;
+  const height = surface.length;
+  const width = surface[0]?.length ?? 0;
+  const isTree = (x: number, y: number): boolean =>
+    x < 0 || y < 0 || x >= width || y >= height || surface[y][x] === wood;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      // A tree off the map is imagined for the wood's edges, never drawn: its
+      // tip on the map's last row would be a point of a tree nobody can see.
+      if (surface[y][x] === wood || y + 1 >= height) continue;
+      const tip = latticeTip(lattice, isTree, x, y);
+      if (tip >= 0) {
+        canopy.tiles[y][x] = tip;
+      }
+    }
+  }
 }
 
 /**

@@ -162,9 +162,9 @@ describe('the lobby’s contract board', () => {
     const board = buildContractBoard(progress);
     expect(board).toMatchObject({
       heading: 'Standing board',
-      note: '4 open · 3 banked · turns over when you bank one',
+      note: '5 open · 3 banked · turns over when you bank one',
     });
-    expect(board.rows).toHaveLength(4);
+    expect(board.rows).toHaveLength(5);
     expect(board.rows[0].hunterPressure).toBe(standingTopPressure(3));
     expect(board.rows.map((row) => row.hunterPressure)).toEqual(
       [...board.rows.map((row) => row.hunterPressure)].sort((a, b) => b - a),

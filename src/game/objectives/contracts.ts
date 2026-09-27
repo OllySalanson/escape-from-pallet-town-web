@@ -145,9 +145,9 @@ const RECOVER_LOST_FIELD_KIT: RaidContract = {
   ],
   reward: {
     summary:
-      'Three more insertions are permanently unlocked, and a Super Potion is waiting at base.',
+      'Four more insertions are permanently unlocked, and a Super Potion is waiting at base.',
     items: [{ itemId: 'super-potion', quantity: 1 }],
-    unlockedInsertionIds: ['town-square', 'route-1', 'viridian-forest'],
+    unlockedInsertionIds: ['town-square', 'route-1', 'viridian-forest', 'viridian-city'],
   },
   briefing: [
     'The kit is close: follow the road down from the Landing to the ranger hut, and where the road turns east carry straight on - it is beside the lone tree at the edge of the pool, a few steps into the reeds. Going on south is the real choice: the shore road is quick and dry but narrows to one tile where Maya watches it, and she fights whoever walks that; the reeds go round her and come back to the road below her, the long way, and nothing in them is free.',

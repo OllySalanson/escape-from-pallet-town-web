@@ -589,3 +589,55 @@ export const FLOODPLAIN_SHOAL_WILDLIFE = wildlife(0.09, [
   { speciesId: 'krabby', minLevel: 4, maxLevel: 5, weight: 2 },
   { speciesId: 'psyduck', minLevel: 4, maxLevel: 5, weight: 1 },
 ]);
+
+// -- Viridian City ----------------------------------------------------------
+// The crossroads, and its three roads are three of Kanto's own routes, so each
+// holds what that route holds in FireRed: Route 2's roadside pair and the
+// caterpillars that come down out of the Forest, Route 22's Mankey and
+// Spearow, and Route 1's Pidgey and Rattata and nothing else. The town between
+// them has no tall grass at all.
+
+/** Route 2's grass beds, on the way up to the Forest gatehouse. */
+export const VIRIDIAN_FOREST_ROAD_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 5, weight: 4 },
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'caterpie', minLevel: 3, maxLevel: 5, weight: 2 },
+  { speciesId: 'weedle', minLevel: 3, maxLevel: 5, weight: 2 },
+]);
+
+/** Route 22 round the pond, below the League gate. */
+export const VIRIDIAN_LEAGUE_ROAD_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 4 },
+  { speciesId: 'spearow', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'mankey', minLevel: 3, maxLevel: 5, weight: 3 },
+]);
+
+/**
+ * The fields at the west edge of Route 22, under the rock: the same road's
+ * birds and Mankey, and the Nidoran that FireRed puts on it, which is a Poison
+ * sting a starter can read off the ground before walking in.
+ */
+export const VIRIDIAN_BORDER_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'spearow', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'nidoran-m', minLevel: 3, maxLevel: 5, weight: 2 },
+  { speciesId: 'mankey', minLevel: 4, maxLevel: 5, weight: 2 },
+]);
+
+/** Route 1's terraces: Pidgey and Rattata, exactly as the road from Pallet has always had. */
+export const VIRIDIAN_TERRACE_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 5, weight: 5 },
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 5 },
+]);
+
+/**
+ * The ranger's rough ground in the south-west corner, dug through by what lives
+ * under the hut's garden: a Diglett is the one Ground type on the map, and the
+ * one thing here a Water or Grass starter's first typed move is built for.
+ */
+export const VIRIDIAN_RANGER_WILDLIFE = wildlife(0.09, [
+  { speciesId: 'rattata', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'pidgey', minLevel: 3, maxLevel: 5, weight: 3 },
+  { speciesId: 'diglett', minLevel: 4, maxLevel: 5, weight: 2 },
+  { speciesId: 'nidoran-m', minLevel: 3, maxLevel: 4, weight: 1 },
+]);

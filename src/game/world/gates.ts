@@ -483,6 +483,44 @@ export const WORLD_GATES: readonly MapGate[] = [
     closed: { material: 'fence' },
     open: { material: 'stone' },
   },
+
+  // -- Viridian City ---------------------------------------------------------
+  // The Pokemon League's forecourt is fenced all round, and Gatekeeper Ross
+  // holds both ways into it. The front is the fence at the head of the League
+  // road, where he stands; the side is the gate onto the high path along the
+  // top of Route 2, which a fresh save walks up to and looks through. Beaten,
+  // he opens both, and the north of the map turns out to be a ring: town, the
+  // League road, the forecourt, the high path, the Forest road, town.
+  {
+    id: 'viridian-league-fence',
+    mapId: 'viridian-city',
+    bossId: 'viridian-league-gatekeeper',
+    label: 'LEAGUE FENCE',
+    tiles: [{ x: 8, y: 14 }, { x: 9, y: 14 }],
+    closed: { material: 'fence' },
+    open: { material: 'paving' },
+  },
+  {
+    id: 'viridian-high-gate',
+    mapId: 'viridian-city',
+    bossId: 'viridian-league-gatekeeper',
+    label: 'HIGH GATE',
+    tiles: [{ x: 21, y: 9 }, { x: 21, y: 10 }],
+    closed: { material: 'fence' },
+    open: { material: 'paving' },
+  },
+  {
+    // FireRed's own Cut door: the small tree standing in a gap of a fence. The
+    // trade house garden is behind it and nothing else is, so a Cut here buys a
+    // place rather than a short cut (`fieldMoves.test.ts`).
+    id: 'viridian-trade-tree',
+    mapId: 'viridian-city',
+    fieldMove: 'cut',
+    label: 'TRADE HOUSE TREE',
+    tiles: [{ x: 54, y: 16 }],
+    closed: { material: 'grass', props: [{ name: 'cutTree', x: 54, y: 16 }] },
+    open: { material: 'grass' },
+  },
 ];
 
 /**

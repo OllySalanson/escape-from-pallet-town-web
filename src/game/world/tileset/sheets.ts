@@ -1,6 +1,7 @@
 import { tileReader, type TileSource } from './catalogue';
 import { FRLG_TILESET } from './frlgTileset';
 import { BASE_SHEET_SOURCE } from '../../base/baseSheet';
+import { KANTO_SHEET_SOURCE } from './kantoTileset';
 
 /**
  * The images the game draws maps from, and where each one's tiles sit in the
@@ -42,4 +43,7 @@ export const TILE_SOURCES: readonly TileSource[] = [
   ...FRLG_TILESET.sources,
   // The base's own cuts - its rooms and Bill's cottage (`base/baseSheet.ts`).
   BASE_SHEET_SOURCE.source,
+  // Kanto's own outdoor pieces - the route conifer, the town fence and paving,
+  // Viridian's buildings (`kantoTileset.ts`).
+  KANTO_SHEET_SOURCE.source,
 ];

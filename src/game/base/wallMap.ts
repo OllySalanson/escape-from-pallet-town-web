@@ -43,12 +43,13 @@ import { getWorldMap, WORLD_MAP_NAMES, type WorldMapDefinition, type WorldMapId 
  * big as the window allows (`HubScene`'s wall map).
  */
 
-/** The four maps, left to right: where every save starts, then the three it opens. */
+/** The maps, left to right: where every save starts, then the ones it opens. */
 export const WALL_MAP_ORDER: readonly WorldMapId[] = [
   'floodplain-relay',
   'pallet-town',
   'route-1',
   'viridian-forest',
+  'viridian-city',
 ];
 
 /** One beaten keeper's sign: who held the doors, and what the doors are called. */
@@ -237,7 +238,29 @@ export function posterLayout(area: Rect, signCounts: Readonly<Record<string, num
   let step = fitPicture(reference, { width: innerWidth, height: innerHeight - 2 }).step;
   const across = (candidate: number): number =>
     sizes.reduce((sum, size) => sum + Math.ceil(size.width / candidate) + 2, 0);
-  while (across(step) > innerWidth && step < totalTiles) {
+  // A map's signs stand in rows under its picture, as many to a row as its
+  // ring is wide enough for: five maps on one board leave the Floodplain's
+  // picture a pixel too narrow for its five keepers abreast, and a sign that
+  // overhangs its picture is a sign for the map beside it.
+  const signRows = (candidate: number): number =>
+    Math.max(
+      1,
+      ...sizes.map((size) => {
+        const count = signCounts[size.mapId] ?? 0;
+        const ring = Math.ceil(size.width / candidate) + 2;
+        const perRow = Math.max(1, Math.floor((ring + SIGN_GAP) / (SIGN_WIDTH + SIGN_GAP)));
+        return Math.ceil(count / perRow);
+      }),
+    );
+  const tall = (candidate: number): number =>
+    POSTER_BORDER * 2 +
+    POSTER_MARGIN * 2 +
+    Math.max(...sizes.map((size) => Math.ceil(size.height / candidate))) +
+    2 +
+    SIGN_DROP +
+    signRows(candidate) * (SIGN_HEIGHT + SIGN_GAP) -
+    SIGN_GAP;
+  while ((across(step) > innerWidth || tall(step) > height) && step < totalTiles) {
     step += 1;
   }
   const drawn = sizes.map((size) => fittedSize(size, { step, zoom: 1 }));
@@ -253,11 +276,16 @@ export function posterLayout(area: Rect, signCounts: Readonly<Record<string, num
     const ring = { width: picture.width + 2, height: picture.height + 2 };
     pictures.push({ mapId: size.mapId, at: { x, y: baseline - ring.height }, size: picture });
     const count = signCounts[size.mapId] ?? 0;
-    const row = count * SIGN_WIDTH + Math.max(0, count - 1) * SIGN_GAP;
-    let signX = x + Math.floor((ring.width - row) / 2);
-    for (let sign = 0; sign < count; sign += 1) {
-      signs.push({ mapId: size.mapId, at: { x: signX, y: baseline + SIGN_DROP } });
-      signX += SIGN_WIDTH + SIGN_GAP;
+    const perRow = Math.max(1, Math.floor((ring.width + SIGN_GAP) / (SIGN_WIDTH + SIGN_GAP)));
+    for (let first = 0; first < count; first += perRow) {
+      const inRow = Math.min(perRow, count - first);
+      const row = inRow * SIGN_WIDTH + Math.max(0, inRow - 1) * SIGN_GAP;
+      const y = baseline + SIGN_DROP + (first / perRow) * (SIGN_HEIGHT + SIGN_GAP);
+      let signX = x + Math.floor((ring.width - row) / 2);
+      for (let sign = 0; sign < inRow; sign += 1) {
+        signs.push({ mapId: size.mapId, at: { x: signX, y } });
+        signX += SIGN_WIDTH + SIGN_GAP;
+      }
     }
     x += ring.width + POSTER_GAP;
   });

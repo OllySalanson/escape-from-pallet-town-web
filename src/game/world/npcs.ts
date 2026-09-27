@@ -1857,6 +1857,153 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
       'Boiled in a long copper and peeled by hand. The copper is still there and the roof is not.',
     ],
   },
+
+  // -- Viridian City ----------------------------------------------------------
+  // The town's own signs say what FireRed's say, and then what a raid needs to
+  // know; the people in it are the ones Viridian has always had.
+  {
+    id: 'viridian-city-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 44, y: 26 },
+    facing: 'down',
+    dialogLines: [
+      'VIRIDIAN CITY - The Eternally Green Paradise',
+      'Three roads out. South to Pallet Town down the terraces, north to Viridian Forest, west to the Pokemon League.',
+      'PALLET ROAD and FOREST GATE are always open. The EAST TRAIL leaves through the wood. WEST STILE opens on the ranger\'s round.',
+    ],
+  },
+  {
+    id: 'viridian-trainer-tips',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 33, y: 31 },
+    facing: 'down',
+    dialogLines: [
+      'TRAINER TIPS',
+      'A ledge can be jumped down, never up. The hunter cannot jump one after you.',
+      'The terraces south of town are three ledges and a long road. Take the ledges.',
+    ],
+  },
+  {
+    id: 'viridian-league-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 13, y: 15 },
+    facing: 'down',
+    dialogLines: [
+      'POKEMON LEAGUE - FRONT GATE',
+      'Only trainers who have proven themselves may pass. The keeper holds the fence.',
+      'Beat him and the side gate onto the high path opens as well.',
+    ],
+  },
+  {
+    id: 'viridian-route2-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 40, y: 12 },
+    facing: 'down',
+    dialogLines: [
+      'ROUTE 2 - VIRIDIAN FOREST AHEAD',
+      'The gatehouse at the top of the road is the FOREST GATE, and it is open.',
+      'A Bug Catcher watches the road where it narrows. The grass beds go round him.',
+    ],
+  },
+  {
+    id: 'viridian-route22-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 17, y: 35 },
+    facing: 'down',
+    dialogLines: [
+      'ROUTE 22 - POKEMON LEAGUE FRONT GATE',
+      'North up the lane to the League fence. South through the border fields to the WEST STILE and the ranger\'s hut.',
+    ],
+  },
+  {
+    id: 'viridian-route1-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 40, y: 61 },
+    facing: 'down',
+    dialogLines: [
+      'ROUTE 1 - PALLET TOWN - VIRIDIAN CITY',
+      'The PALLET ROAD is at the foot of the terraces. Down is one hop at a time.',
+    ],
+  },
+  {
+    id: 'viridian-diglett-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 52, y: 10 },
+    facing: 'down',
+    dialogLines: [
+      "DIGLETT'S CAVE",
+      'Closed. Grate locked after the tunnel flooded. Key held by the ranger, Route 22 south.',
+    ],
+  },
+  {
+    // The old man who lies across Viridian's north road in the game this is
+    // dressed as, until he has had his coffee. He has had it.
+    id: 'viridian-old-man',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 37, y: 27 },
+    facing: 'down',
+    design: 'old-man',
+    dialogLines: [
+      'Ahh, I have had my coffee now and I feel great!',
+      'You want the Forest? Straight up this road. Mind the bug catcher in the grass.',
+    ],
+  },
+  {
+    id: 'viridian-gym-guide',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 46, y: 29 },
+    facing: 'up',
+    design: 'boy',
+    dialogLines: [
+      "This is Viridian's Gym. The leader has been away for a long time.",
+      'The doors are locked. Nobody knows who the leader even is.',
+    ],
+  },
+  {
+    id: 'viridian-hiker',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 55, y: 11 },
+    facing: 'up',
+    design: 'hiker',
+    dialogLines: [
+      "Diglett's Cave goes right under the mountains to Vermilion. The grate is locked.",
+      'The ranger has the key, at the hut in the far south-west. It is a long walk and a quick way out.',
+    ],
+  },
+  {
+    id: 'viridian-angler',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 31, y: 42 },
+    facing: 'left',
+    design: 'sailor',
+    dialogLines: [
+      'Nothing in this pond but Magikarp, and not many of those.',
+      'My tackle box is on the bank. Help yourself, I am not catching anything with it.',
+    ],
+  },
+  {
+    id: 'viridian-ranger',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 13, y: 69 },
+    facing: 'left',
+    design: 'woman',
+    dialogLines: [
+      "The key to Diglett's Cave is in my lockbox, by the door.",
+      'Take it. That tunnel is the quickest way off this map, if you can get to the far corner alive.',
+    ],
+  },
 ];
 
 export function entitiesForMap(mapId: WorldMapId): readonly WorldEntity[] {

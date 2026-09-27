@@ -2091,7 +2091,7 @@ export class HubScene extends Phaser.Scene {
         note: `Grade ${briefing.grade.rung}/${briefing.grade.rungs}`,
       },
     )}${pixelWindow(
-      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.line)}>${rows}${this.firstContractActive ? '<p class="px-note px-wrap">Three more insertions unlock when you extract this contract.</p>' : ''}</div>`,
+      `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.line)}>${rows}${this.firstContractActive ? '<p class="px-note px-wrap">Four more insertions unlock when you extract this contract.</p>' : ''}</div>`,
       {
         className: 'dropin-list',
         heading: this.firstContractActive ? 'Contract area' : 'Drop in at',

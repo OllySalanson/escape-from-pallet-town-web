@@ -5,6 +5,7 @@ import { MapSketch } from './world/mapGrid';
 import { buildMapLayers } from './world/tiles';
 import { CLASSIC_TILESET } from './world/tileset/classicTileset';
 import { FLOOD_TOWN_TILESET } from './world/tileset/floodTownTileset';
+import { KANTO_TILESET } from './world/tileset/kantoTileset';
 import { createRunTrainerEncounters } from './world/trainers';
 
 /** A small map drawn as character art, the way a real map is authored. */
@@ -15,12 +16,13 @@ function sketch(rows: readonly string[]): MapSketch {
 }
 
 describe('worldMap', () => {
-  it('registers four self-contained raid maps', () => {
+  it('registers five self-contained raid maps', () => {
     expect(Object.keys(WORLD_MAPS)).toEqual([
       'pallet-town',
       'route-1',
       'viridian-forest',
       'floodplain-relay',
+      'viridian-city',
     ]);
     // Pallet Town is the valley one: the town it shipped as is its north-west
     // quarter and the parish round it is the rest.
@@ -42,6 +44,10 @@ describe('worldMap', () => {
     // tile.
     expect(getWorldMap('floodplain-relay').width).toBe(128);
     expect(getWorldMap('floodplain-relay').height).toBe(128);
+    // Viridian City is a FireRed town and its three roads: FireRed's own
+    // Viridian is 48x40, and the roads round it are what the rest is.
+    expect(getWorldMap('viridian-city').width).toBe(72);
+    expect(getWorldMap('viridian-city').height).toBe(76);
   });
 
   it('builds complete layers for every map', () => {
@@ -64,11 +70,14 @@ describe('worldMap', () => {
    * still on the classic catalogue beside it. All four have been redrawn now,
    * so all four draw from the town catalogue - the FireRed ground with the
    * chosen buildings standing on it - and none is left on the classic sheet.
+   * Viridian City is the one drawn on Kanto's own art (`kantoTileset.ts`): the
+   * same FireRed ground, with FireRed's route conifer and Viridian's buildings.
    */
-  it('draws every map from the town catalogue', () => {
+  it('draws every map from the town catalogue or from Kanto', () => {
     for (const map of Object.values(WORLD_MAPS)) {
-      expect({ map: map.id, fromTheTownCatalogue: map.tileset === FLOOD_TOWN_TILESET })
-        .toMatchObject({ fromTheTownCatalogue: true });
+      const expected = map.id === 'viridian-city' ? KANTO_TILESET : FLOOD_TOWN_TILESET;
+      expect({ map: map.id, fromItsCatalogue: map.tileset === expected })
+        .toMatchObject({ fromItsCatalogue: true });
     }
     // Every tile a map draws has to land inside one of its catalogue's sheets:
     // a map with two sheets shares one numbering, and a tile in the gap between
