@@ -115,9 +115,6 @@ export interface MaterialTiles {
     readonly west: number;
     /** A vertical run whose corner opens west - the east side of a pen. */
     readonly east: number;
-    /** The top end of a vertical run: the post, on each side. */
-    readonly capWest: number;
-    readonly capEast: number;
   };
   /**
    * A mound of rock as FireRed draws Diglett's Cave: a rim two tiles deep, a

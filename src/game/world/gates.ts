@@ -517,8 +517,8 @@ export const WORLD_GATES: readonly MapGate[] = [
     mapId: 'viridian-city',
     fieldMove: 'cut',
     label: 'TRADE HOUSE TREE',
-    tiles: [{ x: 54, y: 16 }],
-    closed: { material: 'grass', props: [{ name: 'cutTree', x: 54, y: 16 }] },
+    tiles: [{ x: 57, y: 13 }],
+    closed: { material: 'grass', props: [{ name: 'cutTree', x: 57, y: 13 }] },
     open: { material: 'grass' },
   },
 ];

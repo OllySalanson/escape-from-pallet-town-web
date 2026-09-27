@@ -920,8 +920,9 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'viridian-front-gate',
     mapId: 'viridian-city',
     name: 'THE FRONT GATE',
-    // The Pokemon League's gate and its fenced forecourt, behind the keeper.
-    areas: [{ x: 0, y: 0, width: 22, height: 14 }],
+    // The Pokemon League's gate and its fenced forecourt, behind the keeper -
+    // and the fence he keeps, because a door belongs to the place it opens.
+    areas: [{ x: 0, y: 0, width: 22, height: 15 }],
   },
   {
     id: 'viridian-diglett-hill',

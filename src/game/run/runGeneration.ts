@@ -827,8 +827,12 @@ function seatOn(tile: StandingTile): GridPosition {
 
 /**
  * Every tile of a map anything could be seated on before this raid has
- * reserved any of it - walkable, and no warp or standing figure on it - in the
- * row order `validTiles` hands them out in, keyed once. It depends on nothing
+ * reserved any of it - walkable, no warp or standing figure on it, and nothing
+ * drawn over it - in the row order `validTiles` hands them out in, keyed once.
+ * A tile under canopy is ground a figure walks under, never one a thing is
+ * found on: a conifer's tip, a roof's back edge and an arch's span are all
+ * drawn above whatever stands there, and a Radio Valve seated behind a tip in
+ * Viridian City showed as a grey smudge a player would walk past. It depends on nothing
  * but the map, which is built once per gate state and kept, so it is worked out
  * once per map rather than once per piece of loot per raid: this scan of every
  * map was most of what generating a raid cost, and `runGeneration.test.ts`
@@ -851,11 +855,12 @@ function standingGround(map: WorldMapDefinition): readonly StandingTile[] {
   }
   const warpTiles = new Set(map.warps.map((warp) => tileKey(warp.source)));
   const entityTiles = new Set(map.entities.map((entity) => tileKey(entity.position)));
+  const canopy = map.layers.canopy.tiles;
   const tiles: StandingTile[] = [];
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
       const key = `${x},${y}`;
-      if (!map.collision[y][x] && !warpTiles.has(key) && !entityTiles.has(key)) {
+      if (!map.collision[y][x] && canopy[y][x] < 0 && !warpTiles.has(key) && !entityTiles.has(key)) {
         tiles.push({ x, y, key, index: y * map.width + x });
       }
     }

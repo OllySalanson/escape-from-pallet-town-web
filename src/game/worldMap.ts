@@ -453,10 +453,10 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'viridian-pond-field-antidote', position: { x: 11, y: 28 }, itemId: 'antidote', quantity: 1 },
       { id: 'viridian-academy-antidote', position: { x: 30, y: 28 }, itemId: 'antidote', quantity: 1 },
       { id: 'viridian-high-path-poke-ball', position: { x: 28, y: 9 }, itemId: 'poke-ball', quantity: 2 },
-      { id: 'viridian-border-poke-ball', position: { x: 19, y: 45 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'viridian-border-poke-ball', position: { x: 17, y: 44 }, itemId: 'poke-ball', quantity: 1 },
       { id: 'viridian-mart-lot-poke-ball', position: { x: 56, y: 36 }, itemId: 'poke-ball', quantity: 1 },
       { id: 'viridian-gym-lawn-great-ball', position: { x: 43, y: 26 }, itemId: 'great-ball', quantity: 1 },
-      { id: 'viridian-terrace-great-ball', position: { x: 34, y: 71 }, itemId: 'great-ball', quantity: 1 },
+      { id: 'viridian-terrace-great-ball', position: { x: 34, y: 70 }, itemId: 'great-ball', quantity: 1 },
       // Brock's materials, each where somebody would have left it.
       { id: 'viridian-terrace-radio-valve', position: { x: 35, y: 67 }, itemId: 'radio-valve', quantity: 1 },
       { id: 'viridian-hill-parts-crate', position: { x: 58, y: 11 }, itemId: 'parts-crate', quantity: 1 },
@@ -464,7 +464,7 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'viridian-border-lamp-oil', position: { x: 9, y: 50 }, itemId: 'lamp-oil', quantity: 1 },
       // Pokedollars: three bundles, unequal, and short of one berth between them
       // (`hub/trader.test.ts`).
-      { id: 'viridian-money-garden', position: { x: 33, y: 49 }, itemId: 'money', quantity: 30 },
+      { id: 'viridian-money-garden', position: { x: 31, y: 49 }, itemId: 'money', quantity: 30 },
       { id: 'viridian-money-terrace', position: { x: 58, y: 60 }, itemId: 'money', quantity: 45 },
       { id: 'viridian-money-forecourt', position: { x: 14, y: 12 }, itemId: 'money', quantity: 60 },
       // Two prizes, one at each end of the map. The Ranger pack in the League
@@ -473,6 +473,9 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       // south-west, where only a raid that went the long way round goes.
       { id: 'viridian-forecourt-ranger-pack', position: { x: 13, y: 10 }, itemId: 'ranger-pack', quantity: 1, chance: 0.2, district: 'viridian-front-gate' },
       { id: 'viridian-ranger-raid-pack', position: { x: 10, y: 72 }, itemId: 'raid-pack', quantity: 1, chance: 0.25, district: 'viridian-ranger-hut' },
+      // The Nidoran in the border fields are what reads it: a Nidorino given
+      // one is a Nidoking, and the farmer says the stone turns up there.
+      { id: 'viridian-border-moon-stone', position: { x: 9, y: 47 }, itemId: 'moon-stone', quantity: 1, chance: 0.25, district: 'viridian-border-fields' },
     ],
   },
 };

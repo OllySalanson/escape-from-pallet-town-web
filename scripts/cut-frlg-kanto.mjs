@@ -128,14 +128,17 @@ const PIECES = [
   // --- Fences --------------------------------------------------------------------
   // The grey post-and-rail every Kanto town is fenced with. A vertical run is drawn
   // on one side of its tile or the other, and FireRed picks the side that meets
-  // the corner it runs into.
-  { name: 'fence.run', from: 'route1', at: [2, 36], key: true },
-  { name: 'fence.west', from: 'route22', at: [2, 5], key: true },
-  { name: 'fence.east', from: 'route22', at: [14, 5], key: true },
-  { name: 'fence.nw', from: 'route22', at: [2, 4], key: true },
-  { name: 'fence.ne', from: 'route1', at: [11, 36], key: true },
-  { name: 'fence.sw', from: 'route22', at: [2, 12], key: true },
-  { name: 'fence.se', from: 'route22', at: [14, 12], key: true },
+  // the corner it runs into. `grey` is for a piece with no green of its own:
+  // any green left after the ground is lifted is grass the match missed - Route
+  // 22's east rail stands on a blade tile none of the ground cells has, and came
+  // out with thirteen specks of it that showed on paving.
+  { name: 'fence.run', from: 'route1', at: [2, 36], key: true, grey: true },
+  { name: 'fence.west', from: 'route22', at: [2, 5], key: true, grey: true },
+  { name: 'fence.east', from: 'route22', at: [14, 5], key: true, grey: true },
+  { name: 'fence.nw', from: 'route22', at: [2, 4], key: true, grey: true },
+  { name: 'fence.ne', from: 'route1', at: [11, 36], key: true, grey: true },
+  { name: 'fence.sw', from: 'route22', at: [2, 12], key: true, grey: true },
+  { name: 'fence.se', from: 'route22', at: [14, 12], key: true, grey: true },
   // Route 2's timber posts: a paddock rather than a town.
   { name: 'posts.corner', from: 'route2', at: [12, 2], key: true },
   { name: 'posts.run', from: 'route2', at: [13, 2], key: true },
@@ -159,7 +162,9 @@ const PIECES = [
   // houses, one of them with its window boxes.
   { name: 'pokemonCenter', from: 'viridian', at: [24, 22], size: [5, 5], key: true },
   { name: 'pokeMart', from: 'viridian', at: [34, 16], size: [4, 4], key: true },
-  { name: 'gym', from: 'viridian', at: [33, 6], size: [6, 5], key: true },
+  // The Gym is grey, tan and blue, and a tuft of the grass in front of its door
+  // came out of the render with it.
+  { name: 'gym', from: 'viridian', at: [33, 6], size: [6, 5], key: true, grey: true },
   { name: 'house', from: 'viridian', at: [24, 8], size: [5, 4], key: true },
   { name: 'houseFlowers', from: 'viridian', at: [24, 15], size: [5, 5], key: true },
   // Route 2's: the blue-roofed cottage, and the two gatehouses on the way to the
@@ -253,6 +258,17 @@ function liftGround(tile) {
   return tile;
 }
 
+/** Makes every green pixel of a piece with no green of its own transparent. */
+function liftGreen(tile) {
+  for (let i = 0; i < tile.data.length; i += 4) {
+    const [red, green, blue] = [tile.data[i], tile.data[i + 1], tile.data[i + 2]];
+    if (green > red + 16 && green > blue + 16) {
+      tile.data[i + 3] = 0;
+    }
+  }
+  return tile;
+}
+
 function cutPiece(piece) {
   const [w, h] = piece.size ?? [1, 1];
   const out = blank(w * TILE, h * TILE);
@@ -263,6 +279,7 @@ function cutPiece(piece) {
       // wall inside a building is never lifted, whatever colour it happens to share.
       const onRing = r === 0 || q === 0 || r === h - 1 || q === w - 1;
       if (piece.key && onRing) tile = liftGround(tile);
+      if (piece.grey) tile = liftGreen(tile);
       for (let py = 0; py < TILE; py += 1) {
         tile.data.copy(out.data, ((r * TILE + py) * out.width + q * TILE) * 4, py * TILE * 4, (py + 1) * TILE * 4);
       }

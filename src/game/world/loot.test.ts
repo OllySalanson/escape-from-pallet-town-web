@@ -105,6 +105,7 @@ describe('a rare find', () => {
       'floodplain-relay: leaf-stone in floodplain-withy-beds',
       'pallet-town: water-stone in pallet-beacon',
       'route-1: fire-stone in route-1-charcoal-burn',
+      'viridian-city: moon-stone in viridian-border-fields',
       'viridian-forest: moon-stone in forest-stone-row',
       'viridian-forest: thunder-stone in forest-deep-stand',
     ]);

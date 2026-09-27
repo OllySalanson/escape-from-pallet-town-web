@@ -56,9 +56,7 @@ const ground = (cell: SheetCell): number => FRLG_FIRST + frlgTileIndex(cell);
 
 /**
  * A named piece as a landmark, its collision drawn beside it in the shape it
- * has on screen: `#` a wall, `.` ground, `^` ground the piece hangs over and
- * is drawn above the figures on - a roof's top edge, which FireRed lets you
- * walk behind - and `-` a cell of the piece left out.
+ * has on screen: `#` a wall, `.` ground and `-` a cell of the piece left out.
  */
 function pieceProp(name: KantoPieceName, label: string, mask: readonly string[]): PropDefinition {
   const at = KANTO_PIECES[name];
@@ -71,8 +69,6 @@ function pieceProp(name: KantoPieceName, label: string, mask: readonly string[])
       const mark = mask[y][x];
       if (mark === '-') {
         cells.push({ tile: -1, solid: false });
-      } else if (mark === '^') {
-        cells.push({ tile: piece(name, x, y), solid: false, canopy: true, walkedUnder: true });
       } else {
         cells.push({ tile: piece(name, x, y), solid: mark === '#' });
       }
@@ -119,36 +115,38 @@ const PROPS = {
   flowers: cellProp('flowers', piece('flowers'), false),
   signTown: cellProp('sign', piece('signTown'), true),
   signTips: cellProp('sign', piece('signTips'), true),
-  signGym: pieceProp('signGym', 'sign', ['^', '#']),
+  signGym: pieceProp('signGym', 'sign', ['#', '#']),
   /** The small tree Cut clears. */
   cutTree: cellProp('small tree', piece('cutTree'), true),
   /** The mouth of a cave in a mound's foot: the one tile of it that is ground. */
   caveMouth: cellProp('cave', piece('rock', 4, 5), false),
 
   // --- Buildings -------------------------------------------------------------------
-  // The top row of every roof hangs over the ground behind the building, as it
-  // does in FireRed: walk along the back of the Pokemon Center and its roof is
-  // drawn over your feet. The door is a wall here; a map that means a door to be
-  // gone through opens it with `withDoorway`.
+  // The top row of a roof is a wall. FireRed lets you walk along the back of a
+  // house with the eave drawn over you, and in a raid that left the player
+  // behind Viridian's ranger hut as a head with nothing under it - the thing
+  // `crowns.test.ts` refuses a tree - so a building here is as deep as it looks.
+  // The door is a wall too; a map that means a door to be gone through opens it
+  // with `withDoorway`.
   pokemonCenter: pieceProp('pokemonCenter', 'Pokemon Center', [
-    '^^^^^',
+    '#####',
     '#####',
     '#####',
     '#####',
     '#####',
   ]),
-  pokeMart: pieceProp('pokeMart', 'Poke Mart', ['^^^^', '####', '####', '####']),
-  gym: pieceProp('gym', 'Gym', ['^^^^^^', '######', '######', '######', '######']),
-  house: pieceProp('house', 'house', ['^^^^^', '#####', '#####', '#####']),
+  pokeMart: pieceProp('pokeMart', 'Poke Mart', ['####', '####', '####', '####']),
+  gym: pieceProp('gym', 'Gym', ['######', '######', '######', '######', '######']),
+  house: pieceProp('house', 'house', ['#####', '#####', '#####', '#####']),
   /** The same house with window boxes either side of its step. */
   houseFlowers: pieceProp('houseFlowers', 'house', [
-    '^^^^^',
+    '#####',
     '#####',
     '#####',
     '#####',
     '#.###',
   ]),
-  cottage: pieceProp('cottage', 'cottage', ['^^^^^', '#####', '#####']),
+  cottage: pieceProp('cottage', 'cottage', ['#####', '#####', '#####']),
   /** The long gatehouse on the road to Viridian Forest, with its steps. */
   forestGate: pieceProp('forestGate', 'gatehouse', [
     '########',
@@ -261,8 +259,6 @@ export const KANTO_TILESET: TilesetCatalogue<KantoPropName> = {
       railSides: {
         west: piece('fence.west'),
         east: piece('fence.east'),
-        capWest: piece('fence.nw'),
-        capEast: piece('fence.ne'),
       },
     },
   },

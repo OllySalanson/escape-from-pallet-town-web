@@ -69,12 +69,12 @@ export function sketchViridianCity(): MapSketch<KantoPropName> {
     'TTTT"""PPPP""""""""""Fggggggggdddddddddd..TTgggggg....FFFFFFFFFFFFFFTTTT',
     'TTTTFFFFFFFFFFFFFFFFFFggggTTggddTTTTTTTT..TTgggggg....F............FTTTT',
     'TTTT####......CCCCCCCCggggTTggddTTTTTTTT..TTgggggg....F............FTTTT',
-    'TTTTTTTTddTTTTCCCCCCCCggggggggddTTTTTTTT..TTgggggg....F............FTTTT',
-    'TTTTTTTTddTTTTCCCCCCCCggggggggddTTTTTTTT..TTgggggg....F............FTTTT',
-    'TTTTTTTTddTTTTCCCCCCCCggggggggdddddddddd..<======>TTTTF............FTTTT',
-    'TTTTTTTTddTTTTCCCCCCCCggggggggdddddddddd..........TTTTFFFFFFFFFFFFFFTTTT',
-    'TTTTTTTTddTTTTCCCCCCCCTTTTTTTTTTTTTTddddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTddTTTTCCCCCCCCTTTTTTTTTTTTTTddddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTdd..TTCCCCCCCCggggggggddTTTTTTTT..TTgggggg....F............FTTTT',
+    'TTTTTTTTdd..TTCCCCCCCCggggggggddTTTTTTTT..TTgggggg....F............FTTTT',
+    'TTTTTTTTdd..TTCCCCCCCCggggggggdddddddddd..<======>TTTTF............FTTTT',
+    'TTTTTTTTdd..TTCCCCCCCCggggggggdddddddddd..........TTTTFFFFFFFFFFFFFFTTTT',
+    'TTTTTTTTdd..TTCCCCCCCCTTTTTTTTTTTTTTddddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTdd..TTCCCCCCCCTTTTTTTTTTTTTTddddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ]);
 
   // == THE TOWN, with the League road west of it and the wood east ==========
@@ -97,20 +97,20 @@ export function sketchViridianCity(): MapSketch<KantoPropName> {
     'TTTTgggg.....ddd..dddddd........TTTTPPPP........................TTTTTTTT',
     'TTTTgggg.....dddCCCCCCTT.WWWWWW.TTTTPPPP........................TTTTTTTT',
     'TTTTgggg.....dddCCCCCCTT.WWWWWW.TTTTPPPP........................TTTTTTTT',
-    'TTTTggggTTTT.dddCCCCCCTT.WWWWWW.TTTTPPPP..............................TT',
-    'TTTTggggTTTT.dddCCCCCCTT.WWWWWW.TTTTPPPP..............................TT',
+    'TTTTggggTTTT.dddCCCCCCTT.WWWWWW.TTTTPPPP........................f.....TT',
+    'TTTTggggTTTT.dddCCCCCCTT.WWWWWW.TTTTPPPP.............................fTT',
     'TTTTggggTTTT.dddCCCCCCTT.WWWWWW.....PPPPPkPPPPPkPPPPPPPPPPPPPPTT......TT',
     'TTTTggggTTTT.dddCCCCCCTT.WWWWWW.....PPPPPPPPPPPPPPPPPPPPPPPPPPTT......TT',
     '.............ddd......TT............PPPPP#######r"r"PPPPTTTTTTTT........',
-    'TT...........ddd......TT............PPPPP"r"r"r"""""PPPPTTTTTTTT......TT',
-    'TTTTTTgg..gg.ddd..TTTTTT............PPPPP""""""""r"rPPPPTTTTTTTTTT..TTTT',
+    'TT...........ddd......TT.f...f......PPPPP"r"r"r"""""PPPPTTTTTTTTf.....TT',
+    'TTTTTTgg..gg.ddd..TTTTTT..f......f..PPPPP""""""""r"rPPPPTTTTTTTTTT..TTTT',
     'TTTTTTgg..gg.ddd..TTTTTT............PPPPP""r"r"r""""PPPPTTTTTTTTTT..TTTT',
     'TTTTTTgg..gg.ddd..TTTTTTFFFFFFFF....TTPPFFFFFFFF....FFFFFFF...TTTT..TTTT',
-    'TTTTTTgg..gg.ddd..TTTTTT."""""".....TTPP."""""".....""""""....TTTT..TTTT',
-    'TTTTTTgg..ggTTTT..TTTTTT."""""".TTTTPPPP."""""".TTTT""""""TTTTTTTT..TTTT',
-    'TTTTTTgg..ggTTTT..TTTTTT."""""".TTTTPPPP."""""".TTTT""""""TTTTTTTT..TTTT',
-    'TTTTTTTT....TTTT..TTTTTT."""""".TTTTPPTT."""""".TTTT""""""TTTTTTTT..TTTT',
-    'TTTTTTTT....TTTT..TTTTTT."""""".TTTTPPTT."""""".TTTT""""""TTTTTTTT..TTTT',
+    'TTTTTTgg..gg.ddd..TTTTTT""""""".....TTPP."""""".....""""""....TTTT..TTTT',
+    'TTTTTTgg..ggTTTT..TTTTTT""""""".TTTTPPPPf"""""".TTTT""""""TTTTTTTT..TTTT',
+    'TTTTTTgg..ggTTTT..TTTTTT""""""".TTTTPPPP."""""".TTTT""""""TTTTTTTT..TTTT',
+    'TTTTTTTT....TTTT..TTTTTT""""""".TTTTPPTT."""""".TTTT"""""rTTTTTTTT..TTTT',
+    'TTTTTTTT....TTTT..TTTTTT""""""".TTTTPPTT."""""".TTTT""""""TTTTTTTT..TTTT',
     'TTTTTTTT.....ddd..TTTTTTPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPTTTT..TTTT',
     'TTTTTTTT.....ddd..TTTTTTPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPTTTT..TTTT',
     'TTTTTTTT.....dddTTTTTTTT<=========>oddddo<===================>TTTT..TTTT',
@@ -122,8 +122,8 @@ export function sketchViridianCity(): MapSketch<KantoPropName> {
     'TTTTTTgggggg...dddggggTT..dddddddddddddd.gggggggggTTTTTT............TTTT',
     'TTTTTTgggggg...dddggggTT..dddddddddddddd.gggggggggTTTTTT............TTTT',
     'TTTTTTgggggg...dddggggTT..dddddddddddddd.gggggggggTTTTTT......TTTTTTTTTT',
-    'TTTTTTgggggg...dddggggTT..dddd...........gggggggggTTTTTT......TTTTTTTTTT',
-    'TTTTTTgggggg...dddggggTT..dddd........................TTTTTTTTTTTTTTTTTT',
+    'TTTTTTgggggg...dddggggTT..dddd..ff.......gggggggggTTTTTT......TTTTTTTTTT',
+    'TTTTTTgggggg...dddggggTT..dddd.......ff...............TTTTTTTTTTTTTTTTTT',
     'TTTTTT.........dddggggTT..dddd<============>o<=======>TTTTTTTTTTTTTTTTTT',
     'TTTTTT.........dddddddddddddTTdddddddddddddddddddddddd..TTTTTTTTTTTTTTTT',
     'TTTTTT.........dddddddddddddTTdddddddddddddddddddddddd..TTTTTTTTTTTTTTTT',
@@ -131,12 +131,12 @@ export function sketchViridianCity(): MapSketch<KantoPropName> {
     'TTTTTT..""""".............ggggggggggggggTTggggggggdddd..TTTTTTTTTTTTTTTT',
     'TTTTTT..""""".............gggggggogggggggggggoggggdddd........TTTTTTTTTT',
     'TTTTTT.."""""...........o<======================>odddd........TTTTTTTTTT',
-    'TTTTTT""""""""""""TTTT..............dddddddddddddddddd........TTTTTTTTTT',
-    'TTTTTT""""""""""""TTTT..............dddddddddddddddddd........TTTTTTTTTT',
-    'TTTTTT""""""""""""TTTT..TTTTTTTTTTTTddddTTdddddddddddd........TTTTTTTTTT',
-    'TTTTTT""""""""""""TTTT..TTTTTTTTTTTTddddTT....................TTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTFddFTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTFdTFTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTT""""""""""""TTTT..............dddddddddddddddddd..TTTT..TTTTTTTTTT',
+    'TTTTTT"r"r""r"r"""TTTT..............dddddddddddddddddd..TTTT..TTTTTTTTTT',
+    'TTTTTT""""""""""""TTTT..TTTTTTTTTTTTddddTTdddddddddddd..TTTT..TTTTTTTTTT',
+    'TTTTTT""r""""r""""TTTT..TTTTTTTTTTTTddddTT..............TTTT..TTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTddTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTdTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
   ]);
 
   // Every building is FireRed's own, planted whole; the prop is the last word
@@ -151,7 +151,7 @@ export function sketchViridianCity(): MapSketch<KantoPropName> {
   map.plant(42, 37, 'pokemonCenterDoor');
   map.plant(51, 38, 'pokeMartDoor');
   map.plant(56, 38, 'house');
-  map.plant(25, 49, 'house');
+  map.plant(24, 49, 'house');
   map.plant(41, 49, 'houseFlowers');
   map.plant(52, 49, 'house');
   map.plant(8, 67, 'cottageDoor');

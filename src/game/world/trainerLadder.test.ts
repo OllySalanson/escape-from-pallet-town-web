@@ -63,6 +63,11 @@ const rungOf = (trainer: TrainerBattle): number =>
  * two, so he is measured after Pell and before the Floodplain's back half -
  * which is where he lands, at 63% against Pell's 74% and Dane's 60%.
  *
+ * Gatekeeper Ross holds Viridian City's League fence, which opens on the same
+ * banked contract as the three small maps, and is measured beside their last
+ * door: 66%, with no starter at 14 under 52% - his first party was a Nidorino
+ * and a Spearow, and a Bulbasaur won 1% of it.
+ *
  * Two pairs are inside the tie rather than ordered. Vance and Pell unlock
  * together - Pallet Town and Route 1 arrive on the same banked contract - so
  * which of the two small-map doors is the harder is a choice the player makes,
@@ -79,6 +84,7 @@ const LADDER: readonly [string, string][] = [
   ['pallet-salt-keeper-cobb', 'SALTER COBB'],
   ['forest-ridge-keeper-pell', 'LOOKOUT PELL'],
   ['forest-quarry-keeper-mott', 'QUARRYMAN MOTT'],
+  ['viridian-gatekeeper-ross', 'GATEKEEPER ROSS'],
   ['floodplain-sluice-keeper-dane', 'SLUICE KEEPER DANE'],
   ['floodplain-orchard-warden-holt', 'WARDEN HOLT'],
 ];
@@ -107,6 +113,7 @@ describe('the boss ladder, played out', () => {
       'pallet-salt-keeper-cobb',
       'forest-ridge-keeper-pell',
       'forest-quarry-keeper-mott',
+      'viridian-gatekeeper-ross',
     ]) {
       const trainer = trainerOf(id);
       const solo = trainerWinRate(SOLO, trainer, TRIALS);

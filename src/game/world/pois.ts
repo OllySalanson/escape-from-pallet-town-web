@@ -668,6 +668,33 @@ export const WORLD_POIS: readonly WorldPoi[] = [
       { itemId: 'poke-ball', quantity: 1 },
     ],
   },
+  {
+    id: 'viridian-bird-hide',
+    mapId: 'viridian-city',
+    position: { x: 59, y: 60 },
+    label: 'BIRD HIDE',
+    description: 'A watchers\' hide at the edge of the terraces, for counting the Pidgey that feed on them: a Great Ball on the bench, and an Antidote for the bees.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    id: 'viridian-first-aid-box',
+    mapId: 'viridian-city',
+    position: { x: 6, y: 66 },
+    label: "RANGER'S FIRST-AID BOX",
+    description: 'The box the ranger patches up hurt wild Pokemon from, nailed to a post in her meadow: two Super Potions.',
+    reward: [{ itemId: 'super-potion', quantity: 2 }],
+  },
+  {
+    id: 'viridian-potting-shed',
+    mapId: 'viridian-city',
+    position: { x: 61, y: 48 },
+    label: 'POTTING SHED',
+    description: 'The herb grower\'s shed in the corner behind the last house on Garden Row: two Antidotes she steeps from her own beds.',
+    reward: [{ itemId: 'antidote', quantity: 2 }],
+  },
 ];
 
 export function poisForMap(mapId: WorldMapId): readonly WorldPoi[] {

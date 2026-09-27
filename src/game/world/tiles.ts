@@ -269,14 +269,12 @@ function overlayTile(
     west: isHere(x - 1, y),
   });
   const rails = tiles.railSides;
-  if (rails) {
-    const side = railSide(same, x, y);
-    if (role === 'run-v' || role === 'cap-s') {
-      return side === 'west' ? rails.west : rails.east;
-    }
-    if (role === 'cap-n') {
-      return side === 'west' ? rails.capWest : rails.capEast;
-    }
+  // Either end of an upright is the rail itself. FireRed's only post is the
+  // corner's pair of them, and standing that on a run's free end drew a second
+  // post out into whatever the fence was keeping - a pen's yard, a gap for a
+  // Cut tree - where no rail ran to meet it.
+  if (rails && (role === 'run-v' || role === 'cap-s' || role === 'cap-n')) {
+    return railSide(same, x, y) === 'west' ? rails.west : rails.east;
   }
   return role === 'fill' ? fillTile(tiles, x, y) : resolveTile(tiles, role);
 }

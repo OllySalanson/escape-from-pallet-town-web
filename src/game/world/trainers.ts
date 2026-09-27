@@ -799,10 +799,15 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     trainer: createTrainer(
       'viridian-gatekeeper-ross',
       'GATEKEEPER ROSS',
+      // Route 22's Mankey, a Diglett out of the cave on his own map, and a
+      // Rattata, measured (`tools/trainers/report.mts`) to a 66% rung with every
+      // starter at 14 between 52% and 72%. His first party had a Spearow and a
+      // Nidorino, which is Route 22 to the letter and a starter lottery: both
+      // resist Vine Whip, and Bulbasaur 14 won 1% against Charmander's 85%.
       [
         new Pokemon(getSpeciesById('mankey')!, 10),
-        new Pokemon(SPEAROW, 10),
-        new Pokemon(getSpeciesById('nidorino')!, 11),
+        new Pokemon(getSpeciesById('diglett')!, 11),
+        new Pokemon(RATTATA, 11),
       ],
       'The fence is open, and the side gate onto the high path. The League road is yours.',
     ),
@@ -845,7 +850,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
     ),
   },
   {
-    // Route 1's toll, on the middle terrace. He looks up across the road from
+    // Route 1's toll, on the middle terrace. She looks up across the road from
     // the grass bed under it, so the road up from Pallet passes through him and
     // the bed is the way round. Going down, nobody needs the road: it is three
     // hops.

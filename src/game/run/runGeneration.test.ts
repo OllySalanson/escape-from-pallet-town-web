@@ -250,6 +250,26 @@ describe('run generation', () => {
     }
   });
 
+  it('never seats loot or a trainer on ground something is drawn over', () => {
+    // A tip, a roof's back edge or an arch's span is drawn above whatever
+    // stands under it, so a piece seated there is a piece nobody sees.
+    const underCanopy = (mapId: WorldMapId, position: { x: number; y: number }): boolean =>
+      WORLD_MAPS[mapId].layers.canopy.tiles[position.y][position.x] >= 0;
+    const hidden: string[] = [];
+    for (const seed of seeds) {
+      const plan = generateRunPlan(seed, undefined, 'floodplain-relay', FIRST_CONTRACT);
+      for (const [mapId, loot] of Object.entries(plan.loot) as [WorldMapId, typeof plan.loot[WorldMapId]][]) {
+        loot
+          .filter((item) => underCanopy(mapId, item.position))
+          .forEach((item) => hidden.push(`${mapId} ${item.itemId} at ${tileKey(item.position)}`));
+      }
+      plan.trainers
+        .filter((trainer) => underCanopy(trainer.mapId, trainer.position))
+        .forEach((trainer) => hidden.push(`${trainer.mapId} ${trainer.trainer.id} at ${tileKey(trainer.position)}`));
+    }
+    expect(hidden).toEqual([]);
+  });
+
   it('always supplies encounters and an exit that is open the second a raid starts', () => {
     for (const insertionId of insertionIds) {
       for (const seed of seeds) {
