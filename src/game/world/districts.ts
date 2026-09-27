@@ -1015,6 +1015,10 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'viridian-east-wood',
     mapId: 'viridian-city',
     name: 'THE EAST WOOD',
+    // The same wood the Forest road runs through, and the same things in it:
+    // the grass bed in the clearing is the price on the nearest way out of
+    // the square.
+    encounters: wildlife.VIRIDIAN_FOREST_ROAD_WILDLIFE,
     areas: [{ x: 62, y: 22, width: 10, height: 40 }],
   },
   {

@@ -498,6 +498,51 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   is cut from its own top edge. Two 7-pixel Poké Balls, set on Joy's counter,
   are drawn by the script rather than cut.
 
+### `frlg-kanto.png` - Kanto's own outdoor art, for Viridian City
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
+as `frlg-tiles.png` and `characters/*.png` above: Pokemon FireRed/LeafGreen art,
+rights holders Nintendo / Creatures / Game Freak, no licence from them.
+
+- **Sources.** Six uploads to The Spriters Resource's FireRed/LeafGreen page
+  (<https://www.spriters-resource.com/game_boy_advance/pokemonfireredleafgreen/>),
+  all downloaded 2026-09-27 from `https://www.spriters-resource.com/media/assets/4/<id>.png`
+  and all uploaded by **FrenchOrange**:
+  - asset **3736**, "Route 01" (400x672) - the route conifer in every one of its
+    lattice rows, the four grass tiles FireRed weaves a lawn from, and one fence run;
+  - asset **3737**, "Route 02" (648x1312) - Route 2's timber posts;
+  - asset **3764**, "Route 22" (1032x416) - the grey post-and-rail's uprights and
+    corners;
+  - asset **3769**, "Cerulean City" (1496x672) - the town paving's inner corners;
+  - asset **3777**, "Viridian City" (1360x672) - the paving, the rock mound
+    Diglett's Cave is cut into, the Pokemon Center, the Mart, the Gym and its sign,
+    the town's houses, the Pokemon League Front Gate and the Route 2 gatehouse;
+  - asset **3698**, "Overworld NPCs" (238x2967) - the same sheet the character
+    designs above were cut from - gives the small tree Cut clears.
+
+  Every one of the five map uploads is a whole FireRed map drawn out tile for
+  tile, which is why they were cut from rather than a tile sheet: a map shows the
+  conifer's overlap rows, the fence's corners and the paving's inner notches where
+  the game itself puts them.
+- **The publisher's terms** are the two clauses quoted under `frlg-tiles.png`
+  above, and this file sits against them the same way: the game is
+  non-commercial, and **none of the six source images is committed**. What ships
+  is a cut: 57 named pieces lifted out of the renders and packed onto a new 20x25
+  grid that matches none of them.
+- **How it was cut, and the edits made.** `scripts/cut-frlg-kanto.mjs` is the
+  whole method: it names the source cell of every piece and writes
+  `src/game/world/generated/kantoPieces.ts`, the only thing in the game that
+  knows where a piece sits on the sheet. Three changes are made, each named in the
+  script where it is made. Every colour is read back to the five bits a channel
+  the Game Boy Advance showed and written the way `frlg-tiles.png` writes it
+  (`x << 3`, where these renders scale), so the two sheets meet without a seam.
+  The ground behind a standing piece is made transparent - the ground tile
+  sharing most pixels with the cell is the one it was painted over - on a piece's
+  outer ring only, so a roof never loses a pixel it happens to share with grass.
+  And on the fence and the Gym, which have no green of their own, whatever green
+  that match missed is lifted too: thirteen grass specks on Route 22's east rail
+  and a tuft by the Gym door, both of which showed on paving.
+
 ### `pokemon/{front,back}/<dexId>.png` - the species sprites
 
 - **Source.** <https://github.com/PokeAPI/sprites>, path

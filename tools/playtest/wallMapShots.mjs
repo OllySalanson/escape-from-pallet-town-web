@@ -1,5 +1,5 @@
 // Walks up to the wall map in Oak's Lab, reads it, and photographs every step:
-// the board on the wall, the four maps at a glance, each map close up, and the
+// the board on the wall, every map at a glance, each map close up, and the
 // drop-in screen's picture of the place, which is the same picture.
 //
 //   node tools/playtest/wallMapShots.mjs <url> <out dir> [--window=1200x768]
@@ -114,9 +114,11 @@ try {
 
   await press('Space');
   await page.waitFor(sceneIs('hub'));
-  await page.waitFor(`document.querySelectorAll('canvas[data-picture][data-painted]').length === 4`, {
-    what: 'the four maps to be painted',
-  });
+  // As many pictures as the wall has maps: it was four until Viridian City, and
+  // a number typed here is the next map's broken screenshot.
+  const everyMapPainted = `(() => { const cards = document.querySelectorAll('[data-wall-map]').length;
+    return cards > 0 && document.querySelectorAll('canvas[data-picture][data-painted]').length === cards; })()`;
+  await page.waitFor(everyMapPainted, { what: 'every map on the wall to be painted' });
   await shoot('wall-map');
 
   // Every map close up, reached with the keyboard alone.
@@ -137,7 +139,7 @@ try {
     });
     await shoot(`close-up-${mapId}`);
     await press('Escape');
-    await page.waitFor(`document.querySelectorAll('canvas[data-picture][data-painted]').length === 4`);
+    await page.waitFor(everyMapPainted);
   }
 
   // Out of the screen, back in front of the board rather than at the door.
