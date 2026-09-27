@@ -142,8 +142,33 @@ export function inkMask(
       const crest = (before: number, after: number): boolean =>
         before < threshold && after < threshold && here > before && here >= after;
       const runsAlong = (one: number, other: number): boolean => one >= faint && other >= faint;
-      const bar = crest(at(x, y - 1), at(x, y + 1)) && runsAlong(at(x - 1, y), at(x + 1, y));
-      const stem = crest(at(x - 1, y), at(x + 1, y)) && runsAlong(at(x, y - 1), at(x, y + 1));
+      // The last pixel of a stroke runs along on one side only. Asking for both
+      // lost the end of every short split stroke, and the shortest is the one
+      // that tells an `S` from a `3`: at 12px its upper-left stroke is under two
+      // pixels tall and lies across two columns, so its second row went and the
+      // battle banner read `YOUR3`. Running on into ink is not enough by itself:
+      // the soft edge of a wide stroke - every outline - and the lighter half of
+      // a split stem do that too. So the end is kept only where the stroke is
+      // one pixel thick and split the same way all along: this pixel and its
+      // partner across the split both hold a real share of it with paper either
+      // side of the pair, and so do the two it runs on into, one of them ink.
+      const endsInto = (along: -1 | 1, dx: number, dy: number, partner: -1 | 1): boolean => {
+        const [ox, oy] = dx === 0 ? [partner, 0] : [0, partner];
+        const splitPair = (px: number, py: number): boolean =>
+          at(px + ox, py + oy) >= faint && at(px - ox, py - oy) < faint && at(px + 2 * ox, py + 2 * oy) < faint;
+        const [nx, ny] = [x + dx * along, y + dy * along];
+        return splitPair(x, y) && at(nx, ny) >= threshold && splitPair(nx, ny);
+      };
+      // The other half of a split is the heavier neighbour across the stroke:
+      // beside a stem, above or below a bar.
+      const sideways: -1 | 1 = at(x - 1, y) >= at(x + 1, y) ? -1 : 1;
+      const upDown: -1 | 1 = at(x, y - 1) >= at(x, y + 1) ? -1 : 1;
+      const bar =
+        crest(at(x, y - 1), at(x, y + 1)) &&
+        (runsAlong(at(x - 1, y), at(x + 1, y)) || endsInto(-1, 1, 0, upDown) || endsInto(1, 1, 0, upDown));
+      const stem =
+        crest(at(x - 1, y), at(x + 1, y)) &&
+        (runsAlong(at(x, y - 1), at(x, y + 1)) || endsInto(-1, 0, 1, sideways) || endsInto(1, 0, 1, sideways));
       // The dot of an `i` is a stroke in neither direction: a crest both ways,
       // touching no ink. Without it `field kit is` read `fleld klt ls`.
       const alone = dotted && [-1, 0, 1].every((dy) => [-1, 0, 1].every((dx) => at(x + dx, y + dy) < threshold));
