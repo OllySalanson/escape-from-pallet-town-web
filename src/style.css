@@ -1444,7 +1444,8 @@ button {
 .pixel-ui .px-button.is-danger:focus {
   --fill: #d0302a;
 }
-.pixel-ui .px-button:disabled {
+.pixel-ui .px-button:disabled,
+.pixel-ui .px-button[aria-disabled='true'] {
   --fill: var(--cream-dim);
   --edge: var(--ink-soft);
   color: var(--ink-soft);
@@ -2844,4 +2845,194 @@ button {
 }
 :where(.pixel-ui) .summary-stats dd {
   margin: 0;
+}
+
+/* --- Where the pointer is, on a screen where it only previews ------------ *
+   On a screen whose rows are a choice of who receives something the pointer
+   does not move the cursor (`ui/pointerPreview.ts`), so the two can be on
+   different controls at once and must never look alike. The cursor is the lit
+   fill and the drawn triangle; the pointer is one pixel of rule inside the
+   control, and nothing on the control it is over changes but that. */
+:where(.pixel-ui[data-pointer='previews']) button:hover:not(:focus) {
+  box-shadow: inset 0 0 0 var(--u) var(--ink-soft);
+}
+
+/* --- Teaching a move from a disc ----------------------------------------- *
+   The disc across the top, everybody who could read it as cards across the
+   width under it, and the bar that asks before anything is spent at the foot
+   (`ui/teachScreen.ts`). The list of cards takes whatever room is left and
+   scrolls inside its own frame, so the bar is always on screen. */
+:where(.pixel-ui) .teach-layout {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, auto) auto;
+  height: 100%;
+}
+:where(.pixel-ui) .teach-layout > .px-window:not(.confirm-bar) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+/* Only the cards give up room when the screen is short: the disc and the bar
+   are what the screen is asking about, and the cards scroll. */
+:where(.pixel-ui) .teach-layout > .teach-pupils-window {
+  min-height: 0;
+}
+:where(.pixel-ui) .teach-disc {
+  display: flex;
+  align-items: start;
+  gap: calc(var(--u) * 6);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+}
+:where(.pixel-ui) .teach-disc > .item-icon {
+  flex: none;
+}
+:where(.pixel-ui) .teach-disc-words {
+  min-width: 0;
+  display: grid;
+}
+/* A card per party member: the portrait, then who, what they know and what
+   the disc would do to them. The row's own triangle cursor still leads it. */
+.pixel-ui .px-row.teach-pupil {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: calc(var(--u) * 6);
+  padding: calc(var(--u) * 3) calc(var(--u) * 4) calc(var(--u) * 3) calc(var(--u) * 8);
+  background: var(--cream-dim);
+}
+.pixel-ui button.px-row.teach-pupil:focus {
+  background: var(--cream-lit);
+}
+.pixel-ui button.px-row.teach-pupil.is-selected,
+.pixel-ui button.px-row.teach-pupil.is-selected:focus {
+  background: var(--teal-wash);
+  box-shadow: inset 0 0 0 var(--u) #1d6a4f;
+}
+/* A card that cannot be chosen still explains itself, so it is dimmed rather
+   than taken out: no fill of its own, its words in the soft ink and its
+   portrait at half. */
+.pixel-ui .px-row.teach-pupil:is(.is-cannot, .is-knows) {
+  background: none;
+  color: var(--ink-soft);
+}
+.pixel-ui .px-row.teach-pupil:is(.is-cannot, .is-knows) .px-portrait {
+  opacity: 0.5;
+}
+:where(.pixel-ui) .teach-pupil-words {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+}
+:where(.pixel-ui) .teach-pupil-words > .px-row-line > .px-tag {
+  margin-left: auto;
+}
+:where(.pixel-ui) .teach-moves {
+  display: grid;
+  margin: calc(var(--u) * 2) 0;
+}
+:where(.pixel-ui) .teach-moves > li {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  min-width: 0;
+  white-space: nowrap;
+}
+:where(.pixel-ui) .teach-moves > li.is-known .px-name {
+  text-decoration: underline;
+  text-decoration-thickness: var(--u);
+  text-underline-offset: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .teach-outcome {
+  color: var(--ink);
+}
+.pixel-ui .px-row.teach-pupil:is(.is-cannot, .is-knows) .teach-outcome {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .confirm-bar.teach-bar.is-armed,
+:where(.pixel-ui) .confirm-bar.move-chooser-actions.is-armed {
+  --fill: var(--teal-wash);
+}
+/* At the smallest stage the words are the screen: the portraits go, a card's
+   moves run on as a line rather than a column, and what is said twice - the
+   condition, the disc's fate, the name over the new move - is said once. */
+:where(.pixel-ui[data-room='tight']) .teach-pupil > .px-portrait,
+:where(.pixel-ui[data-room='tight']) .move-chooser-new-body > .px-portrait,
+:where(.pixel-ui[data-room='tight']) .teach-disc-fate,
+:where(.pixel-ui[data-room='tight']) .move-chooser-learning > .px-row-line,
+/* The bar's own sentence, before anyone is chosen: the help bar under it says
+   the same of whichever card the cursor is on. */
+:where(.pixel-ui[data-room='tight']) .teach-bar:not(.is-armed) > .px-wrap,
+:where(.pixel-ui[data-room='tight']) .move-chooser-actions:not(.is-armed) > .px-wrap {
+  display: none;
+}
+/* Heavier than `.px-row small`, which shows every line of a row. */
+:where(.pixel-ui[data-room='tight']) .teach-pupil small.teach-pupil-condition,
+:where(.pixel-ui[data-room='tight']) .move-chooser-known small.move-card-words {
+  display: none;
+}
+:where(.pixel-ui[data-room='tight']) .teach-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--u) calc(var(--u) * 6);
+  margin: var(--u) 0;
+}
+:where(.pixel-ui[data-room='tight']) .move-chooser-new-body,
+:where(.pixel-ui[data-room='tight']) .teach-disc {
+  padding-top: var(--u);
+  padding-bottom: var(--u);
+}
+
+/* --- The move chooser ---------------------------------------------------- *
+   Who is learning and the move they want across the top, the four they know
+   as cards across the width under it - each with its own sentence, so they
+   are compared on the terms the new one is shown on - and the bar at the foot,
+   which only asks once a move is marked. */
+:where(.pixel-ui) .move-chooser {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, auto) auto;
+  height: 100%;
+}
+:where(.pixel-ui) .move-chooser > .px-window:not(.confirm-bar) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .move-chooser > .move-chooser-known {
+  min-height: 0;
+}
+:where(.pixel-ui) .move-chooser-new-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: calc(var(--u) * 6);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+}
+:where(.pixel-ui) .move-chooser-learning {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: calc(var(--u) * 2);
+}
+.pixel-ui .px-row.move-card {
+  align-items: start;
+  padding-top: calc(var(--u) * 3);
+  padding-bottom: calc(var(--u) * 3);
+  background: var(--cream-dim);
+}
+.pixel-ui .move-chooser-new .px-row.move-card {
+  background: var(--cream-lit);
+}
+.pixel-ui button.px-row.move-card:focus {
+  background: var(--cream-lit);
+}
+.pixel-ui button.px-row.move-card.is-forgetting,
+.pixel-ui button.px-row.move-card.is-forgetting:focus {
+  background: var(--red-wash);
+  box-shadow: inset 0 0 0 var(--u) var(--red);
+}
+:where(.pixel-ui) .move-card .px-row-line > .px-tag {
+  margin-left: auto;
+}
+:where(.pixel-ui) .move-card-words {
+  margin-top: var(--u);
+  color: var(--ink);
 }

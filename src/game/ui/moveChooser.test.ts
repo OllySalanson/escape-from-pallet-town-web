@@ -36,6 +36,48 @@ describe('the move chooser', () => {
     expect(at(false)).not.toContain('data-later');
   });
 
+  it('forgets nothing on the first press: picking a move marks it and asks', () => {
+    const pokemon = crowded();
+    const open = moveChooserMarkup({ pokemon, incoming: WATER_GUN, canDefer: false });
+    expect(open).not.toContain('data-forget-confirm');
+    expect(open).toContain('Nothing is lost until you confirm');
+
+    const marked = moveChooserMarkup({ pokemon, incoming: WATER_GUN, canDefer: false }, 1);
+    const second = pokemon.moves[1].base.name.toUpperCase();
+    expect(marked).toContain(`Forget ${second} and learn WATER GUN?`);
+    expect(marked).toMatch(/is-forgetting" data-forget="1" aria-pressed="true"/);
+    expect(marked).toContain(`>Forget ${second}</button>`);
+    // Keeping all four is still one press away while a move is marked.
+    expect(marked).toContain('data-decline');
+  });
+
+  it('shows who is learning and says whether the disc is spent', () => {
+    const pokemon = crowded();
+    const tm = moveChooserMarkup(
+      { pokemon, incoming: WATER_GUN, canDefer: false, source: 'TM03 Water Gun', spendsSource: true },
+      0,
+    );
+    expect(tm).toContain('pokemon/front/4.png');
+    expect(tm).toContain('from TM03 Water Gun');
+    expect(tm).toContain('TM03 Water Gun is used up once it is learned.');
+    const hm = moveChooserMarkup(
+      { pokemon, incoming: WATER_GUN, canDefer: false, source: 'HM03 Surf', spendsSource: false },
+      0,
+    );
+    expect(hm).toContain('HM03 Surf is not used up.');
+  });
+
+  it('describes every move it offers to forget, on the card and on the help bar', () => {
+    const pokemon = crowded();
+    const markup = moveChooserMarkup({ pokemon, incoming: WATER_GUN, canDefer: false });
+    for (const move of pokemon.moves) {
+      if (move.base.description) {
+        expect(markup).toContain(move.base.description);
+      }
+    }
+    expect(markup).toContain(`Mark ${pokemon.moves[0].base.name.toUpperCase()} to forget.`);
+  });
+
   it('draws no typed arrows or ticks, which the face does not have', () => {
     const markup = moveChooserMarkup({ pokemon: crowded(), incoming: WATER_GUN, canDefer: true });
     expect(markup).not.toMatch(/[→←↑↓▶✓✔]/);

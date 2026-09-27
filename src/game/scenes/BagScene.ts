@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager';
 import {
-  canBeTaught,
   footprintOf,
   gridCells,
   itemCountTag,
@@ -23,6 +22,7 @@ import { bagFocusPreference } from '../ui/menuFocus';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { conditionLine } from '../ui/condition';
 import { describeKey, splitDescribeKey } from '../ui/hoverDescribe';
+import { canChoosePupil, pupilOutcome, pupilVerdict, teachBody } from '../ui/teachScreen';
 import {
   COLUMN_MEASURES,
   escapeAttribute,
@@ -125,6 +125,11 @@ export class BagScene extends Phaser.Scene {
   private onItemUsed!: () => void;
   /** The item whose recipient list is open, if one is. */
   private usingItemId?: string;
+  /**
+   * The party member chosen to read the disc that is open, before TEACH is
+   * pressed. Choosing is not teaching: the card is marked and the bar asks.
+   */
+  private pupilIndex?: number;
   /** Said once, over the help bar, about what just happened. */
   private status?: string;
   private menuOverlay?: MenuOverlay;
@@ -164,6 +169,7 @@ export class BagScene extends Phaser.Scene {
     this.party = data.party;
     this.onItemUsed = data.onItemUsed;
     this.usingItemId = undefined;
+    this.pupilIndex = undefined;
     this.status = undefined;
     this.arranging.release();
   }
@@ -171,6 +177,10 @@ export class BagScene extends Phaser.Scene {
   public create(): void {
     this.menuOverlay = new MenuOverlay(this, 'bag-menu pixel-ui', (event) => this.handleKey(event));
     this.menuOverlay.root.setAttribute('aria-label', 'Raid pack');
+    // Every Enter on this screen gives something to somebody, so the pointer
+    // only previews: resting it on a Pokemon must never make that Pokemon the
+    // one the Potion or the disc is about to go to (`ui/pointerPreview.ts`).
+    this.menuOverlay.pointerRule = 'previews';
     // Lighting the pointed-at item's squares is a class on a block, not a
     // render: the cursor moves on every arrow key and a rebuilt screen would
     // cost the player a beat each time.
@@ -200,7 +210,10 @@ export class BagScene extends Phaser.Scene {
     // B is what opened this, so B is what the player will press to leave it.
     if (isOverlayDismissKey(event, 'b', 'Backspace')) {
       event.preventDefault();
-      if (this.usingItemId) {
+      if (this.pupilIndex !== undefined) {
+        audioManager.play('cancel');
+        this.unchoosePupil();
+      } else if (this.usingItemId) {
         audioManager.play('cancel');
         this.stopUsing();
       } else {
@@ -225,17 +238,37 @@ export class BagScene extends Phaser.Scene {
     // the next press is answered by the help bar again, as everywhere else.
     const status = this.status;
     this.status = undefined;
-    root.innerHTML = pixelScreen({
-      title: 'Pack',
-      back: { label: 'Raid', attribute: 'data-close' },
-      // No aside: the one number this screen turns on is the squares, and the
-      // container itself carries it on the lid over the picture of them.
-      body: using ? this.recipientBody(using) : this.pocketBody(),
-      hints: using
-        ? 'ARROWS move · ENTER give it · ESC back to the pack'
-        : 'ARROWS move · ENTER use · ESC back to the raid',
-      status,
-    });
+    const machine = using ? machineForItem(using) : undefined;
+    root.innerHTML = pixelScreen(
+      using && machine
+        ? {
+            title: 'Teach a move',
+            back: { label: 'Pack', attribute: 'data-teach-back' },
+            body: teachBody({
+              item: using,
+              machine,
+              party: this.party.pokemon,
+              carried: this.bag.count(using.id),
+              chosen: this.pupilIndex ?? null,
+            }),
+            hints:
+              this.pupilIndex === undefined
+                ? 'ARROWS move · ENTER choose who learns it · ESC back to the pack'
+                : 'ENTER teach · ESC choose someone else',
+            status,
+          }
+        : {
+            title: 'Pack',
+            back: { label: 'Raid', attribute: 'data-close' },
+            // No aside: the one number this screen turns on is the squares, and the
+            // container itself carries it on the lid over the picture of them.
+            body: using ? this.recipientBody(using) : this.pocketBody(),
+            hints: using
+              ? 'ARROWS move · ENTER give it · ESC back to the pack'
+              : 'ARROWS move · ENTER use · ESC back to the raid',
+            status,
+          },
+    );
     const on = (selector: string, handler: (button: HTMLButtonElement) => void): void => {
       root.querySelectorAll<HTMLButtonElement>(selector).forEach((button) => {
         button.onclick = () => handler(button);
@@ -253,7 +286,17 @@ export class BagScene extends Phaser.Scene {
     on('[data-item]', (button) => this.pressItem(button.dataset.item!));
     on('[data-drop]', (button) => this.dropOne(button.dataset.drop!));
     on('[data-target]', (button) => this.giveTo(Number(button.dataset.target)));
-    this.menuOverlay!.refocus(...prefer, ...bagFocusPreference({ choosingPokemon: Boolean(using) }));
+    on('[data-pupil]', (button) => this.choosePupil(Number(button.dataset.pupil)));
+    on('[data-teach]', () => this.teachPupil());
+    on('[data-teach-cancel]', () => {
+      audioManager.play('cancel');
+      this.unchoosePupil();
+    });
+    on('[data-teach-back]', () => {
+      audioManager.play('cancel');
+      this.stopUsing();
+    });
+    this.menuOverlay!.refocus(...prefer, ...bagFocusPreference({ choosingPokemon: Boolean(using), teaching: Boolean(machine) }));
   }
 
   /** Every pocket at once, and the squares they are packed into beside them. */
@@ -300,16 +343,18 @@ export class BagScene extends Phaser.Scene {
   }
 
   /**
-   * Who is getting it. The pocket list gives way to the party rather than
+   * Who is getting a Potion. The pocket list gives way to the party rather than
    * standing beside it, because at this point there is exactly one question on
    * the screen and the pack is still drawn alongside to answer the other one.
+   * A disc is not given this way: it has a screen of its own (`teachBody`),
+   * because what it does depends on who reads it.
    */
   private recipientBody(item: ItemDefinition): string {
     const rows = this.party.pokemon
       .map((pokemon, index) => {
-        const note = this.targetNote(item, pokemon);
+        const note = this.targetNote(pokemon);
         return `<button class="px-row" data-target="${index}" data-item="${item.id}" data-help="${escapeAttribute(
-          `${machineForItem(item) ? 'Read' : 'Use'} ${item.displayName} on ${pokemon.base.name}. ${note}`,
+          `Use ${item.displayName} on ${pokemon.base.name}. ${note}`,
         )}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}</small></span><span class="px-tag">${note}</span></button>`;
       })
       .join('');
@@ -319,7 +364,7 @@ export class BagScene extends Phaser.Scene {
       }</div>`,
       {
         className: 'raid-pockets',
-        heading: `${machineForItem(item) ? 'Read' : 'Use'} ${item.displayName} on`,
+        heading: `Use ${item.displayName} on`,
         note: `${this.bag.count(item.id)} carried`,
       },
     );
@@ -358,25 +403,34 @@ export class BagScene extends Phaser.Scene {
   }
 
   /**
-   * The pointer resting on a square of the pack. An item's square hands the
-   * question to its row, which is the screen's one cursor; a piece of cargo has
-   * no row to hand it to, so it answers on the help line itself.
+   * The pointer resting on the pocket list or the pack. A row and the squares
+   * it takes up are the same thing asked about two ways (`ui/hoverDescribe.ts`),
+   * so pointing at either lights the squares and reads the row's own line on
+   * the help bar - and moves no cursor, because this screen's pointer only
+   * previews (`ui/pointerPreview.ts`). A piece of cargo has no row, so it
+   * answers on the help line itself. Pointing at nothing puts the squares back
+   * on whatever the cursor is on.
    */
   private pointAtPack(event: Event): void {
     const root = this.menuOverlay?.root;
-    const block = event.target instanceof Element ? event.target.closest<HTMLElement>('.px-grid-block') : null;
-    if (!root || !block?.dataset.describes) {
+    // A piece in the hand owns the grid: lighting another while one is being
+    // carried would say the wrong thing about where it is going.
+    if (!root || this.arranging.held) {
       return;
     }
-    // A piece in the hand owns the cursor: handing the question to a pocket row
-    // while one is being carried would take the focus off the block the arrow
-    // keys are moving, and a pointer resting on the grid would end the carry.
-    if (this.arranging.held) {
+    const pointed = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-describes]') : null;
+    if (!pointed?.dataset.describes) {
+      this.markPack(this.cursorItem());
       return;
     }
-    const { kind, id } = splitDescribeKey(block.dataset.describes);
+    const { kind, id } = splitDescribeKey(pointed.dataset.describes);
+    const line = root.querySelector<HTMLElement>('[data-help-text]');
     if (kind === 'item') {
-      root.querySelector<HTMLElement>(`[data-item="${CSS.escape(id)}"]`)?.focus();
+      this.markPack(id);
+      const row = root.querySelector<HTMLElement>(`[data-item="${CSS.escape(id)}"]`);
+      if (line && row?.dataset.help && pointed.classList.contains('px-grid-block')) {
+        line.textContent = row.dataset.help;
+      }
       return;
     }
     const piece = this.bag.layout().cargo.find((placement) => placement.cargoId === id);
@@ -384,30 +438,23 @@ export class BagScene extends Phaser.Scene {
       return;
     }
     this.markPack(id, 'cargo');
-    const line = root.querySelector<HTMLElement>('[data-help-text]');
     if (line) {
       const squares = piece.width * piece.height;
       line.textContent = `${piece.name} is riding home in your pack, and is only yours once the raid banks. ${squares} squares.`;
     }
   }
 
-  /**
-   * What the row on the recipient list says on its end. For a machine that is
-   * not the HP - it is whether this Pokemon can read the disc at all, because
-   * that is the only question the screen is open to answer, and a refusal a
-   * player meets before committing is a refusal they can act on.
-   */
-  private targetNote(item: ItemDefinition, pokemon: Pokemon): string {
-    const machine = machineForItem(item);
-    if (!machine) {
-      return `${pokemon.currentHp}/${pokemon.maxHp} HP`;
-    }
-    if (pokemon.moves.some((known) => known.base === machine.move)) {
-      return `Knows ${machine.move.name}`;
-    }
-    return canBeTaught(item, pokemon)
-      ? `Can learn ${machine.move.name}`
-      : `Cannot learn ${machine.move.name}`;
+  /** The item whose row the cursor is on, if it is on one. */
+  private cursorItem(): string | undefined {
+    const active = document.activeElement;
+    return active instanceof HTMLElement && this.menuOverlay?.root.contains(active)
+      ? active.closest<HTMLElement>('[data-item]')?.dataset.item
+      : undefined;
+  }
+
+  /** What the row on the recipient list says on its end: the HP a Potion is for. */
+  private targetNote(pokemon: Pokemon): string {
+    return `${pokemon.currentHp}/${pokemon.maxHp} HP`;
   }
 
   /** The row's own press: open the recipient list, or say why there is nobody to open it for. */
@@ -433,9 +480,61 @@ export class BagScene extends Phaser.Scene {
     this.render();
   }
 
+  /**
+   * ENTER or a click on a party member's card: marks them as the one to learn
+   * the disc and asks, rather than reading it. A card that cannot read it says
+   * why and chooses nothing.
+   */
+  private choosePupil(index: number): void {
+    const item = this.usingItem;
+    const machine = item ? machineForItem(item) : undefined;
+    const pokemon = this.party.pokemon[index];
+    if (!machine || !pokemon) {
+      return;
+    }
+    if (!canChoosePupil(pupilVerdict(machine, pokemon))) {
+      audioManager.play('denied');
+      this.status = `${pokemon.base.name.toUpperCase()}: ${pupilOutcome(machine, pokemon)}`;
+      this.render();
+      return;
+    }
+    audioManager.play('select');
+    this.pupilIndex = index;
+    this.render();
+    // The next thing to press is TEACH, so the cursor goes there; the card
+    // stays marked and in view, and the bar says who and what.
+    this.menuOverlay?.focus('[data-teach]');
+    requestAnimationFrame(() =>
+      this.menuOverlay?.root.querySelector('.teach-pupil.is-selected')?.scrollIntoView({ block: 'nearest' }),
+    );
+  }
+
+  /** Cancel: nobody is chosen, and the cursor goes back to the card that was. */
+  private unchoosePupil(): void {
+    const was = this.pupilIndex;
+    this.pupilIndex = undefined;
+    this.status = undefined;
+    this.render();
+    if (was !== undefined) {
+      this.menuOverlay?.focus(`[data-pupil="${was}"]`);
+    }
+  }
+
+  /** TEACH: the one press that reads the disc. */
+  private teachPupil(): void {
+    const item = this.usingItem;
+    const target = this.pupilIndex === undefined ? undefined : this.party.pokemon[this.pupilIndex];
+    if (!item || !target) {
+      audioManager.play('denied');
+      return;
+    }
+    this.readMachine(item, target);
+  }
+
   private stopUsing(): void {
     const wasUsing = this.usingItemId;
     this.usingItemId = undefined;
+    this.pupilIndex = undefined;
     this.status = undefined;
     this.render(wasUsing ? [`[data-item="${wasUsing}"]`] : []);
   }
@@ -444,10 +543,6 @@ export class BagScene extends Phaser.Scene {
     const target = this.party.pokemon[index];
     const item = this.usingItem;
     if (!target || !item) {
-      return;
-    }
-    if (machineForItem(item)) {
-      this.readMachine(item, target);
       return;
     }
     const result = useFieldItem(item, target);
@@ -477,7 +572,8 @@ export class BagScene extends Phaser.Scene {
       this.settleTeaching(item, outcome.kind === 'learned', outcome.machineIsSpent, outcome.message);
       return;
     }
-    openMoveChooser(this, { pokemon: target, incoming: outcome.move, canDefer: false }, (choice) => {
+    const source = `${outcome.machine.number} ${outcome.move.name}`;
+    openMoveChooser(this, { pokemon: target, incoming: outcome.move, canDefer: false, source, spendsSource: !outcome.machine.reusable }, (choice) => {
       const result = target.resolvePendingMove(
         outcome.move,
         choice.kind === 'forget' ? choice.index : null,
@@ -505,6 +601,7 @@ export class BagScene extends Phaser.Scene {
       this.onItemUsed();
     }
     this.usingItemId = undefined;
+    this.pupilIndex = undefined;
     this.status = message;
     this.render([`[data-item="${item.id}"]`]);
   }

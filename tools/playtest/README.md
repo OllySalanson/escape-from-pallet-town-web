@@ -189,6 +189,14 @@ into each refusal that fullness causes: the catch a fight has to make room for
 URL. It is the only driver that reaches any of them, because a full pack needs a
 vault that could fill it (`--stash`) and then a wild fight to be standing in.
 
+`teachShots.mjs <url> <out dir> [--window=WxH] [--hover-check]` reads TM13 Ice
+Beam in the raid's pack to a party that answers it every way a disc can be
+answered - cannot learn it, a free slot, knows it, four moves known - and
+photographs the teaching screen, a card chosen, the move chooser and a move
+marked to forget. `--hover-check` fails if resting the pointer on a card or a
+move moves the cursor, which is the rule those two screens are held to
+(`src/game/ui/pointerPreview.ts`) - `docs/screens/teach-a-move/`.
+
 Nobody chooses the other two endings, so they are reached sideways. The clock
 runs out on a driver sent to an exit that will not open - `--exit=west-culvert`
 with no `--work` stands beside it for the whole five minutes (stepped, that is

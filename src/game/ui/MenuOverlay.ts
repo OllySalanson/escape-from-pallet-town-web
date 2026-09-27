@@ -5,6 +5,7 @@ import { menuLayer } from '../display/menuStage';
 import { columnTracks, planColumns, roomFor } from './columnLayout';
 import { firstMatching } from './menuFocus';
 import { claimOverlayKeyboard } from './overlayKeyboard';
+import { PointerPreview, type PointerRule } from './pointerPreview';
 import { focusDirectionForKey, nextFocusIndex } from './spatialFocus';
 
 export class MenuOverlay {
@@ -14,6 +15,8 @@ export class MenuOverlay {
   private readonly clickSoundHandler: (event: Event) => void;
   private readonly focusHandler: (event: Event) => void;
   private readonly hoverHandler: (event: Event) => void;
+  private readonly leaveHandler: () => void;
+  private readonly pointer: PointerPreview<HTMLElement>;
   private readonly resizeHandler: () => void;
   /** Which control the player was last on, so a re-render can put them back. */
   private lastFocusKey: string | null = null;
@@ -24,6 +27,20 @@ export class MenuOverlay {
    * screen pixels.
    */
   public onMeasure: ((unit: number) => void) | undefined;
+
+  /**
+   * Whether the pointer moves this screen's cursor or only previews what it is
+   * over. See `pointerPreview.ts`: a screen whose rows are a choice of who
+   * receives something says 'previews'.
+   */
+  public get pointerRule(): PointerRule {
+    return this.pointer.rule;
+  }
+
+  public set pointerRule(rule: PointerRule) {
+    this.pointer.rule = rule;
+    this.root.dataset.pointer = rule;
+  }
 
   public constructor(
     scene: Phaser.Scene,
@@ -75,19 +92,27 @@ export class MenuOverlay {
     this.focusHandler = (event) => {
       const control = event.target instanceof HTMLElement ? event.target : null;
       this.lastFocusKey = control ? focusKeyOf(control) : null;
+      this.pointer.cursorMoved();
       this.showHelpFor(control);
     };
-    // A pixel-ui screen has one cursor, as the games it is dressed as do: the
-    // pointer moves it rather than lighting a second row beside the focused one.
+    // A pixel-ui screen has one cursor, as the games it is dressed as do. On
+    // most screens the pointer moves it; on a screen that sets `pointerRule` to
+    // 'previews' it only lights what it is over and reads its help, because the
+    // cursor there is the thing about to be chosen (`ui/pointerPreview.ts`).
+    this.pointer = new PointerPreview<HTMLElement>({
+      help: (control) => this.writeHelp(control),
+      cursor: () => {
+        const active = document.activeElement;
+        return active instanceof HTMLElement && this.root.contains(active) ? active : null;
+      },
+    });
     this.hoverHandler = (event) => {
-      if (!this.root.classList.contains('pixel-ui') || !(event.target instanceof Element)) {
+      if (!this.root.classList.contains('pixel-ui')) {
         return;
       }
-      const control = event.target.closest<HTMLElement>('button:not([disabled])');
-      if (control && control !== document.activeElement) {
-        control.focus({ preventScroll: true });
-      }
+      this.pointer.moved(event.target instanceof HTMLElement ? event.target : null);
     };
+    this.leaveHandler = () => this.pointer.left();
     this.resizeHandler = () => {
       this.relayout();
       this.markScrollCues();
@@ -104,6 +129,7 @@ export class MenuOverlay {
     document.fonts?.addEventListener?.('loadingdone', this.resizeHandler);
     this.root.addEventListener('focusin', this.focusHandler);
     this.root.addEventListener('mouseover', this.hoverHandler);
+    this.root.addEventListener('mouseleave', this.leaveHandler);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
     scene.events.once(Phaser.Scenes.Events.DESTROY, () => this.destroy());
   }
@@ -114,6 +140,7 @@ export class MenuOverlay {
     this.root.removeEventListener('click', this.clickSoundHandler, true);
     this.root.removeEventListener('focusin', this.focusHandler);
     this.root.removeEventListener('mouseover', this.hoverHandler);
+    this.root.removeEventListener('mouseleave', this.leaveHandler);
     window.removeEventListener('resize', this.resizeHandler);
     document.fonts?.removeEventListener?.('loadingdone', this.resizeHandler);
     this.root.remove();
@@ -331,6 +358,11 @@ export class MenuOverlay {
   private showHelpFor(control: HTMLElement | null): void {
     this.showDetailFor(control);
     this.markScrollCues();
+    this.writeHelp(control);
+  }
+
+  /** The help bar, saying what this control does - or what the keys do, for none. */
+  private writeHelp(control: HTMLElement | null): void {
     const line = this.root.querySelector<HTMLElement>('[data-help-text]');
     if (!line) {
       return;
