@@ -23,7 +23,7 @@ Then open the local Vite URL in your browser.
 - `npm run test` - Vitest
 - `npm run build` - production bundle
 
-CI runs those same checks on every push and pull request.
+Run those same checks locally (`npm run lint && npm run typecheck && npm run test && npm run build`) before opening a PR; GitHub re-runs them on `main` after each merge.
 
 ## Play online
 
