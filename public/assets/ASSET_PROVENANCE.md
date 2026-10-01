@@ -447,6 +447,15 @@ colour it can display lands on an exact multiple of 8 in 8-bit RGB, and 91% of
   moves that one colour - 1415 pixels, and it appears nowhere else on the sheet -
   leaving the tree's own shadow (`#388860`) untouched. The script is idempotent
   and `--check` fails if the file ever regresses.
+- **One strip added, recorded.** FireRed draws the broadleaf's crown five pixels
+  taller than its 3x3 block, over the grass of the tile above it, and the cut
+  took only the block - so every tree stood with the top of its crown sliced
+  flat. `scripts/cut-frlg-tree-brim.mjs` lifts that strip off the same source
+  sheet (the three cells above the first tree of its tree column), keeps the
+  crown's own four colours and makes the grass round them transparent, and
+  writes it to three cells of the cut that were empty (`FRLG_OBJECTS.TREE_BRIM`).
+  Nothing is drawn: every pixel is the source's. `--check` compares the strip
+  with the source again.
 - **What was cut.** Eight ground materials with a complete 13-tile edge set;
   three 3x3 nine-slices (shallow water, deep water, tall grass); sixteen
   multi-tile objects (trees, a ledge run, a cliff face, a bridge, a market stall,
@@ -475,7 +484,8 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
     Professor Oak's Lab, and the bed from the player's house upstairs;
   - asset **3862**, "Tileset 1" (1096x1090), contributor **fabnt** (*"Pokémon
     FireRed/LeafGreen buildings tileset. Ripped by fabnt. No credit needed."*) -
-    the blue-roofed cottage Bill's door is in.
+    the blue-roofed cottage Bill's door is in, and the corrugated-iron shed
+    that is Brock's workshop from the yard.
 
   A "no credit needed" is the ripper's position, not a licence from the rights
   holder.
@@ -495,7 +505,11 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   bookcase's own back panel, so the shelves are empty; two plain wall tiles are
   put back together where the source only ever has something hung on them; and
   a door mat, which every render draws hanging half a tile off the room's foot,
-  is cut from its own top edge. Two 7-pixel Poké Balls, set on Joy's counter,
+  is cut from its own top edge. Some pieces are assembled a cell at a time
+  from cells of the same render rather than cut as one rectangle - the Center's
+  side walls, the warehouse's two side walls, and the warehouse generator,
+  whose shadow cell beside the render's west wall is given the half shade its
+  other two columns throw. Two 7-pixel Poké Balls, set on Joy's counter,
   are drawn by the script rather than cut.
 
 ### `pokemon/{front,back}/<dexId>.png` - the species sprites

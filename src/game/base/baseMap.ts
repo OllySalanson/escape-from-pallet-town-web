@@ -77,7 +77,9 @@ export interface BaseMapDefinition {
  * flat pale slab with nothing in it, and a yard drawn in it read as a blank
  * grey rectangle across the middle of the base. `t` is a tree, and every one of
  * them stands inside the wood so that no crown hangs over ground anybody can
- * stand on.
+ * stand on. The first row of them stands three rows down rather than two: the
+ * top of a crown is drawn in the row above its tree (`PropDefinition.brim`),
+ * and a tree any higher has the edge of the map slice it flat.
  */
 function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName> {
   const map = new MapSketch<BasePropName>({
@@ -98,12 +100,12 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.draw(0, 0, [
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
     'TTT......TTTTTTTTTTTTTTTTTTTTTTT',
     'TTT......TTTTTTTTTTTTTTTTTTTTTTT',
     'TtT......TTtTTTtTTTtTTTtTTTTTTtT',
-    'TTT...........TTTTTT....T....TTT',
+    'TTT...........TTTTTTTTTTT....TTT',
     'TTT...........T....T....T....TTT',
     'TtT...........T....T....T....TtT',
     'TTT...........T....T....T....TTT',

@@ -19,6 +19,7 @@ import {
   type NineSliceCell,
   type SheetRegion,
 } from './frlgSheet';
+import { FRLG_TILESET } from './tileset/frlgTileset';
 
 const SHEET = new URL('../../../public/assets/frlg-tiles.png', import.meta.url);
 
@@ -224,6 +225,57 @@ describe('the FireRed/LeafGreen sheet', () => {
       // An object may be ragged - an awning leaves its corners clear - so this
       // only asserts that the region is not empty sheet.
       expect(drawn, `${name} is blank`).toBeGreaterThan(0);
+    }
+  });
+
+  /**
+   * FireRed draws a broadleaf's crown five pixels taller than its 3x3 block,
+   * into the tile above. The sheet was first cut to the block, and every tree
+   * on every map stood with the top of its crown sliced off in a straight line
+   * until a playtest named it. The brim is that missing strip: ink only where
+   * the tree's prop says it is, and joined to the crown below it - every column
+   * where the crown's first row is leaf, the brim's last row is leaf too.
+   */
+  it('gives the broadleaf the top of its crown, joined to the crown', async () => {
+    const sheet = await sheetPromise;
+    const alpha = (x: number, y: number) => sheet.pixels[(y * sheet.width + x) * 4 + 3];
+    const brim = FRLG_OBJECTS.TREE_BRIM;
+    const depth = FRLG_TILESET.props.tree.brim?.depth ?? 0;
+    expect(depth).toBeGreaterThan(0);
+    expect(FRLG_TILESET.props.treeAlt.brim).toEqual(FRLG_TILESET.props.tree.brim);
+    const left = brim.column * TILE_SIZE;
+    const bottom = (brim.row + 1) * TILE_SIZE - 1;
+    let inked = 0;
+    for (let x = left; x < left + brim.width * TILE_SIZE; x += 1) {
+      for (let y = brim.row * TILE_SIZE; y <= bottom; y += 1) {
+        if (alpha(x, y) === 0) continue;
+        inked += 1;
+        expect(y, `ink above the brim's ${depth} rows at x=${x}`).toBeGreaterThan(bottom - depth);
+      }
+    }
+    expect(inked).toBeGreaterThan(0);
+
+    // The crown's first row is drawn on route grass, edged in its outline
+    // where the crown flares out: the brim stands on the crown and nowhere
+    // else, and covers all of it but that flare.
+    const colourIs = (x: number, y: number, colour: readonly number[]) => {
+      const at = (y * sheet.width + x) * 4;
+      return [0, 1, 2].every((k) => sheet.pixels[at + k] === colour[k]);
+    };
+    const GRASS = [0x70, 0xc8, 0xa0];
+    const OUTLINE = [0x38, 0x58, 0x58];
+    for (const tree of [FRLG_OBJECTS.TREE_BROAD_A, FRLG_OBJECTS.TREE_BROAD_B]) {
+      const crownTop = tree.row * TILE_SIZE;
+      for (let dx = 0; dx < tree.width * TILE_SIZE; dx += 1) {
+        const x = tree.column * TILE_SIZE + dx;
+        const brimmed = alpha(left + dx, bottom) !== 0;
+        if (brimmed) {
+          expect(colourIs(x, crownTop, GRASS), `brim over grass at column ${dx}`).toBe(false);
+        } else {
+          const bare = colourIs(x, crownTop, GRASS) || colourIs(x, crownTop, OUTLINE);
+          expect(bare, `leaf with no brim over it at column ${dx}`).toBe(true);
+        }
+      }
     }
   });
 

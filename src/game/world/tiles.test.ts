@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MapSketch } from './mapGrid';
-import { buildMapLayers } from './tiles';
+import { brimRuns, buildMapLayers } from './tiles';
 import { OVERWORLD_TILESET } from './tileset/overworldTileset';
 import { CLASSIC_TILESET } from './tileset/classicTileset';
 import { FRLG_TILESET } from './tileset/frlgTileset';
@@ -175,6 +175,33 @@ describe('building a map from a sketch and a catalogue', () => {
       const { tallGrass } = buildMapLayers(map, FRLG_TILESET);
       expect(tallGrass[2][1]).toBe(false);
       expect(tallGrass[2][2]).toBe(false);
+    });
+
+    /**
+     * The top of a broadleaf's crown is drawn in the tile above its block. It
+     * is art and nothing else: drawn over the figures and over any crown in
+     * that row, clipped by the top of the map, and never a wall or a place a
+     * figure could stand hidden.
+     */
+    it('draws the top of a crown in the row above the tree, and decides nothing there', () => {
+      const map = sketch(['......', '......', '......', '......', '......', '......']);
+      map.plant(1, 0, 'tree');
+      map.plant(2, 3, 'tree');
+      const alone = sketch(['......', '......', '......', '......', '......', '......']);
+      alone.plant(1, 0, 'tree');
+      const without = buildMapLayers(alone, FRLG_TILESET);
+      const { brim, brimDepth, collision, crowned } = buildMapLayers(map, FRLG_TILESET);
+      // The tree on the first row has nowhere to draw its brim, and is not refused.
+      expect(brim.tiles[0].every((tile) => tile < 0)).toBe(true);
+      // The lower tree's brim is the row above its crown, as wide as the tree.
+      expect(brim.tiles[2].map((tile) => tile >= 0)).toEqual([false, false, true, true, true, false]);
+      expect(brimDepth[2]).toEqual([0, 0, 5, 5, 5, 0]);
+      // Over the upper tree's trunk, which is the wall it was before.
+      expect(collision[2]).toEqual(without.collision[2]);
+      expect(crowned[2]).toEqual(without.crowned[2]);
+      expect(
+        brimRuns({ brimDepth }, { left: 0, top: 0, right: 5, bottom: 5 }, 16),
+      ).toEqual([{ x: 32, y: 43, width: 48, height: 5 }]);
     });
 
     it('refuses a prop that runs off the map rather than losing half of it', () => {

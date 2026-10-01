@@ -150,6 +150,24 @@ function object(
   return { label, width, height, cells };
 }
 
+/**
+ * A broadleaf with the top of its crown: five pixels of it are drawn above the
+ * 3x3 block, over the grass of the tile above (`FRLG_OBJECTS.TREE_BRIM`).
+ */
+function withBrim(tree: PropDefinition): PropDefinition {
+  const { column, row, width } = FRLG_OBJECTS.TREE_BRIM;
+  return {
+    ...tree,
+    brim: {
+      tiles: Array.from({ length: width }, (_cell, x) => index({ column: column + x, row })),
+      depth: TREE_BRIM_DEPTH,
+    },
+  };
+}
+
+/** How far the broadleaf's crown rises over its block, in pixels. */
+const TREE_BRIM_DEPTH = 5;
+
 /** A single tile standing on its own. */
 function single(label: string, cell: SheetCell, solid = true): PropDefinition {
   return { label, width: 1, height: 1, cells: [{ tile: index(cell), solid }] };
@@ -165,8 +183,8 @@ const PROPS = {
    * not leave that tile walkable, because a player standing there is gone
    * (`PropCell.walkedUnder`, `crowns.test.ts`).
    */
-  tree: object('tree', FRLG_OBJECTS.TREE_BROAD_A, { canopyRows: 1 }),
-  treeAlt: object('tree', FRLG_OBJECTS.TREE_BROAD_B, { canopyRows: 1 }),
+  tree: withBrim(object('tree', FRLG_OBJECTS.TREE_BROAD_A, { canopyRows: 1 })),
+  treeAlt: withBrim(object('tree', FRLG_OBJECTS.TREE_BROAD_B, { canopyRows: 1 })),
   pine: object('pine', FRLG_OBJECTS.TREE_PINE_A, { canopyRows: 1 }),
   pineAlt: object('pine', FRLG_OBJECTS.TREE_PINE_B, { canopyRows: 1 }),
   /** A stacked run of canopy: a wall of wood rather than a single tree. */

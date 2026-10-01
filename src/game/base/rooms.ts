@@ -6,7 +6,7 @@ import type { Rect } from '../ui/labelPlacement';
 import { MapSketch } from '../world/mapGrid';
 import { buildMapLayers, type MapLayers } from '../world/tiles';
 import type { PropDefinition } from '../world/tileset/catalogue';
-import { floorPiece, pieceProp, roomCatalogue, solidPiece } from './baseSheet';
+import { floorPiece, pieceProp, pieceTile, roomCatalogue, solidPiece } from './baseSheet';
 import type { BasePieceName } from './generated/basePieces';
 import type { BaseKeeper, BaseScreen } from './doors';
 import { cabinetOddities, type Oddity } from '../hub/traderCabinet';
@@ -80,16 +80,44 @@ export type RoomPropName =
   | 'billShelves'
   | 'billBox'
   | 'billMat'
+  | 'whSideWest'
+  | 'whSideEast'
+  | 'whShade'
+  | 'whShadow'
   | 'whGenerator'
   | 'whPhone'
   | 'whVent'
   | 'whCrate'
   | 'whTerminals'
   | 'whMonitorDesk'
+  | 'whTable'
   | 'whBox'
+  | 'whBoxStack'
   | 'whStool'
   | 'whMat'
   | 'healingMachineModel';
+
+/** Brock's workshop, walls included. */
+const WORKSHOP_SIZE = { width: 15, height: 12 } as const;
+
+/**
+ * One of the workshop's two side walls, top to bottom: the corner, the run
+ * beside the back wall, and the run beside the floor as far as the room goes.
+ * The warehouse is walled on both sides, which is half of what makes it read
+ * as a room rather than a floor that stops.
+ */
+function sideWall(name: 'warehouse.sideWest' | 'warehouse.sideEast'): PropDefinition {
+  const { height } = WORKSHOP_SIZE;
+  return {
+    label: 'wall',
+    width: 1,
+    height,
+    cells: Array.from({ length: height }, (_cell, y) => ({
+      tile: pieceTile(name, 0, Math.min(y, 2)),
+      solid: true,
+    })),
+  };
+}
 
 const ROOM_PROPS: Readonly<Record<RoomPropName, PropDefinition>> = {
   labComputers: solidPiece('lab.computers', 'computers'),
@@ -126,13 +154,21 @@ const ROOM_PROPS: Readonly<Record<RoomPropName, PropDefinition>> = {
   billShelves: solidPiece('lab.shelvesEmpty', 'shelves'),
   billBox: solidPiece('bill.box', 'crate'),
   billMat: floorPiece('bill.mat', 'door mat'),
-  whGenerator: solidPiece('warehouse.generator', 'generator'),
+  whSideWest: sideWall('warehouse.sideWest'),
+  whSideEast: sideWall('warehouse.sideEast'),
+  whShade: floorPiece('warehouse.floorShade', 'floor'),
+  whShadow: floorPiece('warehouse.floorShadow', 'floor'),
+  // Its last row is the half shade it throws on the plate in front of it.
+  whGenerator: pieceProp('warehouse.generator', 'generator', ['###', '###', '###', '...']),
   whPhone: solidPiece('warehouse.phone', 'telephone'),
   whVent: solidPiece('warehouse.vent', 'vent'),
   whCrate: solidPiece('warehouse.crate', 'crate'),
   whTerminals: solidPiece('warehouse.terminals', 'radio set'),
   whMonitorDesk: solidPiece('warehouse.monitorDesk', 'monitors'),
+  // The legs and the shadow under the bench are drawn in its third row.
+  whTable: solidPiece('warehouse.table', 'workbench'),
   whBox: solidPiece('warehouse.box', 'box'),
+  whBoxStack: pieceProp('warehouse.boxStack', 'boxes', ['#', '#', '.']),
   whStool: solidPiece('warehouse.stool', 'stool'),
   whMat: floorPiece('warehouse.mat', 'door mat'),
   healingMachineModel: solidPiece('lab.machineLifted', 'healing machine'),
@@ -287,6 +323,8 @@ interface RungDisplay {
   readonly name: string;
   readonly note: string;
   readonly props: readonly RoomProp[];
+  /** Floor it shades, laid with it: walked on, and no part of the thing itself. */
+  readonly shade?: readonly RoomProp[];
 }
 
 /**
@@ -296,52 +334,63 @@ interface RungDisplay {
  * empty floor until it is paid for - so a player walking in reads how much of
  * the base they have built off the room rather than off a count. The things
  * themselves are the ones FireRed's warehouse has, picked for what each rung
- * does: the aerial is a radio set on the wall, the harbour light a generator,
- * each locker a crate on its pallet, each healing machine a copy of Oak's, and the
- * ward the bank of monitors that watches it.
+ * does, and stood where that warehouse stands them: the aerial is a radio set
+ * against the back wall, the harbour light the generator in the far corner,
+ * the ward the bank of monitors against the wall between them, each locker a
+ * crate on its pallet down the west side and each healing machine a copy of
+ * Oak's down the east. What a thing stands in front of throws its shade on the
+ * plate below it (`shade`), and the shade goes when the thing does.
  */
 export const WORKSHOP_DISPLAY: readonly RungDisplay[] = [
   {
     upgradeId: 'radio-mast',
     name: 'THE RADIO SET',
     note: 'It hears the hunter',
-    props: [{ name: 'whTerminals', x: 1, y: 1 }],
+    props: [{ name: 'whTerminals', x: 1, y: 0 }],
   },
   {
     upgradeId: 'beacon',
     name: 'THE BEACON’S LAMP',
     note: 'It lights your landing',
-    props: [{ name: 'whGenerator', x: 9, y: 1 }],
+    props: [{ name: 'whGenerator', x: 11, y: 0 }],
   },
   {
     upgradeId: 'secure-locker-1',
     name: 'THE FIRST LOCKER',
     note: 'What a lost raid cannot take',
-    props: [{ name: 'whCrate', x: 1, y: 4 }],
+    props: [{ name: 'whCrate', x: 2, y: 4 }],
+    shade: [
+      { name: 'whShadow', x: 2, y: 6 },
+      { name: 'whShadow', x: 3, y: 6 },
+    ],
   },
   {
     upgradeId: 'secure-locker-2',
     name: 'THE SECOND LOCKER',
     note: 'Room for a second Pokémon',
-    props: [{ name: 'whCrate', x: 4, y: 4 }],
+    props: [{ name: 'whCrate', x: 2, y: 7 }],
+    shade: [
+      { name: 'whShadow', x: 2, y: 9 },
+      { name: 'whShadow', x: 3, y: 9 },
+    ],
   },
   {
     upgradeId: 'recovery-bay-1',
     name: 'HEALING MACHINE I',
     note: 'Joy quotes a quarter less',
-    props: [{ name: 'healingMachineModel', x: 10, y: 4 }],
+    props: [{ name: 'healingMachineModel', x: 11, y: 4 }],
   },
   {
     upgradeId: 'recovery-bay-2',
     name: 'HEALING MACHINE II',
     note: 'Joy quotes half',
-    props: [{ name: 'healingMachineModel', x: 10, y: 8 }],
+    props: [{ name: 'healingMachineModel', x: 11, y: 7 }],
   },
   {
     upgradeId: 'quarantine-ward',
     name: 'THE WARD’S MONITORS',
     note: 'One heal a raid, off the clock',
-    props: [{ name: 'whMonitorDesk', x: 1, y: 8 }],
+    props: [{ name: 'whMonitorDesk', x: 5, y: 2 }],
   },
 ];
 
@@ -411,17 +460,21 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
     id: 'brocks-workshop',
     screen: 'workshop',
     name: 'BROCK’S WORKSHOP',
-    width: 13,
-    height: 12,
-    mat: { x: 6, y: 11 },
+    width: WORKSHOP_SIZE.width,
+    height: WORKSHOP_SIZE.height,
+    mat: { x: 7, y: 11 },
+    // Behind his bench, served across it the way Joy is across her counter.
     keeper: {
       id: 'brock',
       name: 'BROCK',
       design: 'brock',
-      position: { x: 6, y: 9 },
+      position: { x: 8, y: 5 },
       facing: 'down',
     },
-    counter: [],
+    counter: [
+      { x: 7, y: 8 },
+      { x: 8, y: 8 },
+    ],
   },
   {
     id: 'bills-cottage',
@@ -453,6 +506,14 @@ export function propTiles(props: readonly RoomProp[]): GridPosition[] {
       x: prop.x + (index % art.width),
       y: prop.y + Math.floor(index / art.width),
     }));
+  });
+}
+
+/** The tiles of a planted prop nobody can stand on: the thing itself, not the shade it throws. */
+function solidTiles(props: readonly RoomProp[]): GridPosition[] {
+  return props.flatMap((prop) => {
+    const art = ROOM_PROPS[prop.name];
+    return propTiles([prop]).filter((_tile, index) => art.cells[index].solid);
   });
 }
 
@@ -497,7 +558,7 @@ function thingsFor(displays: readonly RungDisplay[]): RoomThing[] {
   return displays.map((display) => ({
     name: display.name,
     note: display.note,
-    tiles: propTiles(display.props),
+    tiles: solidTiles(display.props),
     upgradeId: display.upgradeId,
   }));
 }
@@ -568,23 +629,33 @@ function drawCenter(room: BaseRoom, game: RestoredGame): Drawn {
 }
 
 /**
- * Brock's workshop. Everything the ladder builds has a bay here, and the bays
- * nobody has paid for are bare floor - which is the point of standing in it.
+ * Brock's workshop, which is a room of FireRed's Rocket Warehouse: walled both
+ * sides, lit from the top left, with the telephone and the grille on its back
+ * wall and Brock behind his steel bench in the middle of it. Everything the
+ * ladder builds has a bay here, and the bays nobody has paid for are bare
+ * floor - which is the point of standing in it.
  */
 function drawWorkshop(room: BaseRoom, game: RestoredGame): Drawn {
   const sketch = shell(room);
-  sketch.plant(5, 1, 'whPhone');
-  sketch.plant(6, 1, 'whVent');
-  sketch.plant(7, 1, 'whVent');
-  sketch.plant(12, 2, 'whBox');
-  // What he is working on, and somewhere to sit while he does.
-  sketch.plant(4, 10, 'whBox');
-  sketch.plant(5, 10, 'whBox');
-  sketch.plant(7, 10, 'whStool');
-  sketch.plant(5, 11, 'whMat');
+  sketch.plant(0, 0, 'whSideWest');
+  sketch.plant(room.width - 1, 0, 'whSideEast');
+  // The west wall's shade, down the floor beside it.
+  for (let y = 3; y < room.height; y += 1) sketch.plant(1, y, 'whShade');
+  sketch.plant(4, 0, 'whPhone');
+  sketch.plant(5, 0, 'whVent');
+  sketch.plant(6, 0, 'whVent');
+  sketch.plant(3, 2, 'whBox');
+  // His bench and his stool, as the warehouse stands them.
+  sketch.plant(7, 6, 'whTable');
+  sketch.plant(9, 7, 'whStool');
+  // Stores: what he has not got round to yet.
+  sketch.plant(13, 9, 'whBoxStack');
+  sketch.plant(room.mat.x - 1, room.mat.y, 'whMat');
   const displays = standing(WORKSHOP_DISPLAY, game);
   for (const display of displays) {
-    for (const prop of display.props) sketch.plant(prop.x, prop.y, prop.name);
+    for (const prop of [...display.props, ...(display.shade ?? [])]) {
+      sketch.plant(prop.x, prop.y, prop.name);
+    }
   }
   return { sketch, catalogue: WAREHOUSE, things: thingsFor(displays), sprites: [] };
 }

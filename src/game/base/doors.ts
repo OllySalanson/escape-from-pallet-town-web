@@ -85,11 +85,8 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     id: 'brocks-workshop',
     screen: 'workshop',
     name: 'BROCK’S WORKSHOP',
-    building: { prop: 'workshop', x: 20, y: 7 },
-    tiles: [
-      { x: 21, y: 11 },
-      { x: 22, y: 11 },
-    ],
+    building: { prop: 'workshop', x: 20, y: 8 },
+    tiles: [{ x: 21, y: 11 }],
     returnTo: { x: 21, y: 12 },
   },
   {
