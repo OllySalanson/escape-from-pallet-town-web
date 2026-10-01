@@ -778,4 +778,94 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       'Gate is open, and so is the stair down the west face. The adit at the back takes you home.',
     ),
   },
+
+  // -- Viridian City ----------------------------------------------------------
+  {
+    // The keeper of the League's front gate, standing at the fence at the head
+    // of the tree-walled lane. He watches the one tile of the lane in front of
+    // him, so the other half of it still takes a player up to the fence to look
+    // through - the lock is shown before the key.
+    mapId: 'viridian-city',
+    position: { x: 8, y: 15 },
+    facing: 'down',
+    fixedPosition: true,
+    sightRange: 1,
+    bossId: 'viridian-league-gatekeeper',
+    design: 'cooltrainer',
+    introLines: [
+      'GATEKEEPER ROSS HOLDS THE LEAGUE FENCE.',
+      'Only trainers who can win get through this gate. Show me.',
+    ],
+    trainer: createTrainer(
+      'viridian-gatekeeper-ross',
+      'GATEKEEPER ROSS',
+      // Route 22's Mankey, a Diglett out of the cave on his own map, and a
+      // Rattata, measured (`tools/trainers/report.mts`) to a 66% rung with every
+      // starter at 14 between 52% and 72%. His first party had a Spearow and a
+      // Nidorino, which is Route 22 to the letter and a starter lottery: both
+      // resist Vine Whip, and Bulbasaur 14 won 1% against Charmander's 85%.
+      [
+        new Pokemon(getSpeciesById('mankey')!, 10),
+        new Pokemon(getSpeciesById('diglett')!, 11),
+        new Pokemon(RATTATA, 11),
+      ],
+      'The fence is open, and the side gate onto the high path. The League road is yours.',
+    ),
+  },
+  {
+    // The toll on Route 2. He stands in the west grass bed and looks across
+    // the road where it is two tiles wide, so walking the road north to the
+    // Forest gate is walking into him; the grass bed he is standing in is the
+    // way round, and it costs what grass costs.
+    mapId: 'viridian-city',
+    position: { x: 29, y: 15 },
+    facing: 'right',
+    fixedPosition: true,
+    sightRange: 2,
+    design: 'bug-catcher',
+    introLines: ['Hey! You walked right into my net!', 'Let me show you what lives in the Forest!'],
+    trainer: createTrainer(
+      'viridian-bug-catcher-rick',
+      'BUG CATCHER RICK',
+      [new Pokemon(getSpeciesById('weedle')!, 6), new Pokemon(getSpeciesById('caterpie')!, 7)],
+      'Aww. The Forest is that way, if you want more of them.',
+    ),
+  },
+  {
+    // Route 22's toll, halfway up the lane to the League gate: he looks across
+    // the road from the pond field's grass, and the grass beside the pond is
+    // the way round him.
+    mapId: 'viridian-city',
+    position: { x: 10, y: 24 },
+    facing: 'left',
+    fixedPosition: true,
+    sightRange: 2,
+    design: 'youngster',
+    introLines: ['This road goes to the Pokemon League!', 'You have to beat me before you even see it.'],
+    trainer: createTrainer(
+      'viridian-camper-liam',
+      'CAMPER LIAM',
+      [new Pokemon(getSpeciesById('mankey')!, 6), new Pokemon(RATTATA, 7)],
+      'Okay, okay. The keeper at the top is a lot tougher than me.',
+    ),
+  },
+  {
+    // Route 1's toll, on the middle terrace. She looks up across the road from
+    // the grass bed under it, so the road up from Pallet passes through him and
+    // the bed is the way round. Going down, nobody needs the road: it is three
+    // hops.
+    mapId: 'viridian-city',
+    position: { x: 44, y: 67 },
+    facing: 'up',
+    fixedPosition: true,
+    sightRange: 3,
+    design: 'lass',
+    introLines: ['Going up to Viridian?', 'Not on this road, not without a battle!'],
+    trainer: createTrainer(
+      'viridian-lass-ada',
+      'LASS ADA',
+      [new Pokemon(PIDGEY, 7), new Pokemon(RATTATA, 6)],
+      'Fine, go on up. The Center is right in the middle of town.',
+    ),
+  },
 ];

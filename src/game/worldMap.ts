@@ -2,6 +2,7 @@ import type { Direction, GridPosition } from './movement/gridMovement';
 import {
   PALLET_TALL_GRASS,
   VIRIDIAN_FOREST_TALL_GRASS,
+  VIRIDIAN_TERRACE_WILDLIFE,
   type WildEncounterTable,
 } from './pokemon/encounters';
 import { applyGates, gatesForMap, gateStateKey, type MapGate } from './world/gates';
@@ -11,6 +12,7 @@ import type { MapSketch } from './world/mapGrid';
 import { sketchFloodplainRelay } from './world/maps/floodplainRelay';
 import { sketchPalletTown } from './world/maps/palletTown';
 import { sketchRoute1 } from './world/maps/route1';
+import { sketchViridianCity } from './world/maps/viridianCity';
 import { sketchViridianForest } from './world/maps/viridianForest';
 import { entitiesForMap, type WorldEntity } from './world/npcs';
 import { poisForMap, type WorldPoi } from './world/pois';
@@ -19,6 +21,7 @@ import type { TilesetCatalogue } from './world/tileset/catalogue';
 import type { Material } from './world/tileset/materials';
 import { CLASSIC_TILESET } from './world/tileset/classicTileset';
 import { FLOOD_TOWN_TILESET } from './world/tileset/floodTownTileset';
+import { KANTO_TILESET } from './world/tileset/kantoTileset';
 
 export { CLASSIC_TILE } from './world/tileset/classicTileset';
 export type { MapLayers, TileLayer } from './world/tiles';
@@ -94,7 +97,12 @@ export interface WorldMapDefinition {
   readonly interiors: readonly MapInterior[];
 }
 
-export type WorldMapId = 'pallet-town' | 'route-1' | 'viridian-forest' | 'floodplain-relay';
+export type WorldMapId =
+  | 'pallet-town'
+  | 'route-1'
+  | 'viridian-forest'
+  | 'floodplain-relay'
+  | 'viridian-city';
 
 /** One place for the player-facing name of an area, so signage cannot drift. */
 export const WORLD_MAP_NAMES: Readonly<Record<WorldMapId, string>> = {
@@ -102,6 +110,7 @@ export const WORLD_MAP_NAMES: Readonly<Record<WorldMapId, string>> = {
   'route-1': 'Route 1',
   'viridian-forest': 'Viridian Forest',
   'floodplain-relay': 'Floodplain Relay',
+  'viridian-city': 'Viridian City',
 };
 
 interface MapContent {
@@ -424,6 +433,49 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
       { id: 'floodplain-quay-raid-pack', position: { x: 5, y: 30 }, itemId: 'raid-pack', quantity: 1, chance: 0.25, district: 'floodplain-old-town' },
       { id: 'floodplain-staithe-ranger-pack', position: { x: 34, y: 102 }, itemId: 'ranger-pack', quantity: 1, chance: 0.22, district: 'floodplain-staithe' },
       { id: 'floodplain-keep-hauler-frame', position: { x: 52, y: 10 }, itemId: 'hauler-frame', quantity: 1, chance: 0.12, district: 'floodplain-beacon-keep' },
+    ],
+  },
+  // The crossroads. The first map drawn on Kanto's own art rather than on the
+  // Floodplain's sheet, which is why it names its own catalogue.
+  'viridian-city': {
+    sketch: sketchViridianCity,
+    tileset: KANTO_TILESET,
+    encounters: VIRIDIAN_TERRACE_WILDLIFE,
+    loot: [
+      // The supplies, one or two to a place: the roads pay in grass as well as
+      // in what lies in it, and the town pays the most for the least risk.
+      { id: 'viridian-forest-road-potion', position: { x: 25, y: 17 }, itemId: 'potion', quantity: 1 },
+      { id: 'viridian-garden-potion', position: { x: 47, y: 46 }, itemId: 'potion', quantity: 1 },
+      { id: 'viridian-terrace-potion', position: { x: 45, y: 60 }, itemId: 'potion', quantity: 1 },
+      { id: 'viridian-border-potion', position: { x: 16, y: 47 }, itemId: 'potion', quantity: 1 },
+      { id: 'viridian-pond-super-potion', position: { x: 27, y: 44 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'viridian-clearing-super-potion', position: { x: 65, y: 44 }, itemId: 'super-potion', quantity: 1 },
+      { id: 'viridian-pond-field-antidote', position: { x: 11, y: 28 }, itemId: 'antidote', quantity: 1 },
+      { id: 'viridian-academy-antidote', position: { x: 30, y: 28 }, itemId: 'antidote', quantity: 1 },
+      { id: 'viridian-high-path-poke-ball', position: { x: 28, y: 9 }, itemId: 'poke-ball', quantity: 2 },
+      { id: 'viridian-border-poke-ball', position: { x: 17, y: 44 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'viridian-mart-lot-poke-ball', position: { x: 56, y: 36 }, itemId: 'poke-ball', quantity: 1 },
+      { id: 'viridian-gym-lawn-great-ball', position: { x: 43, y: 26 }, itemId: 'great-ball', quantity: 1 },
+      { id: 'viridian-terrace-great-ball', position: { x: 34, y: 70 }, itemId: 'great-ball', quantity: 1 },
+      // Brock's materials, each where somebody would have left it.
+      { id: 'viridian-terrace-radio-valve', position: { x: 35, y: 67 }, itemId: 'radio-valve', quantity: 1 },
+      { id: 'viridian-hill-parts-crate', position: { x: 58, y: 11 }, itemId: 'parts-crate', quantity: 1 },
+      { id: 'viridian-terrace-cable-coil', position: { x: 60, y: 70 }, itemId: 'cable-coil', quantity: 1 },
+      { id: 'viridian-border-lamp-oil', position: { x: 9, y: 50 }, itemId: 'lamp-oil', quantity: 1 },
+      // Pokedollars: three bundles, unequal, and short of one berth between them
+      // (`hub/trader.test.ts`).
+      { id: 'viridian-money-garden', position: { x: 31, y: 49 }, itemId: 'money', quantity: 30 },
+      { id: 'viridian-money-terrace', position: { x: 58, y: 60 }, itemId: 'money', quantity: 45 },
+      { id: 'viridian-money-forecourt', position: { x: 14, y: 12 }, itemId: 'money', quantity: 60 },
+      // Two prizes, one at each end of the map. The Ranger pack in the League
+      // forecourt, behind the one keeper here, where only a raid that paid for
+      // the fence goes; and a Raid pack in the ranger's garden in the far
+      // south-west, where only a raid that went the long way round goes.
+      { id: 'viridian-forecourt-ranger-pack', position: { x: 13, y: 10 }, itemId: 'ranger-pack', quantity: 1, chance: 0.2, district: 'viridian-front-gate' },
+      { id: 'viridian-ranger-raid-pack', position: { x: 10, y: 72 }, itemId: 'raid-pack', quantity: 1, chance: 0.25, district: 'viridian-ranger-hut' },
+      // The Nidoran in the border fields are what reads it: a Nidorino given
+      // one is a Nidoking, and the farmer says the stone turns up there.
+      { id: 'viridian-border-moon-stone', position: { x: 9, y: 47 }, itemId: 'moon-stone', quantity: 1, chance: 0.25, district: 'viridian-border-fields' },
     ],
   },
 };

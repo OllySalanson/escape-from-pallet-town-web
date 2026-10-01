@@ -678,12 +678,15 @@ describe('hub deployment route', () => {
     });
     const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
 
+    // The save was written before Viridian City existed, and banked the first
+    // contract that now unlocks it too: the loader hands it over rather than
+    // leaving an old player a map short (`CONTRACT_REWARD_INSERTIONS`).
     expect((hub as unknown as { savedGame: { raidProgress: RaidProgress } }).savedGame.raidProgress)
       .toEqual({
         ...DEFAULT_RAID_PROGRESS,
         firstContractExtracted: true,
         completedContracts: [FIRST_CONTRACT_ID],
-        unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+        unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'],
         workshopUpgrades: [],
       });
   });
@@ -1724,7 +1727,7 @@ describe('the wall map in Oak’s Lab', () => {
     return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
   }
 
-  it('hangs all four maps at one scale, with a sign for every keeper beaten', () => {
+  it('hangs every map at one scale, with a sign for every keeper beaten', () => {
     const { hub } = createHub({
       ...DEFAULT_RAID_PROGRESS,
       defeatedBosses: ['floodplain-toll-keeper', 'overlook-warden'],
@@ -1732,20 +1735,20 @@ describe('the wall map in Oak’s Lab', () => {
     walkUpToTheWall(hub);
     const markup = markupOf(hub);
 
-    for (const mapId of ['floodplain-relay', 'pallet-town', 'route-1', 'viridian-forest']) {
+    for (const mapId of ['floodplain-relay', 'pallet-town', 'route-1', 'viridian-forest', 'viridian-city']) {
       expect(markup).toContain(`data-wall-map="${mapId}"`);
       expect(markup).toContain(`data-picture="wall:${mapId}"`);
     }
-    // One scale for all four, and each card as wide as its map.
-    expect(markup.match(/data-fit="shared"/g)).toHaveLength(4);
-    expect(markup).toContain('data-picture-row="128,64,64,64"');
+    // One scale for all five, and each card as wide as its map.
+    expect(markup.match(/data-fit="shared"/g)).toHaveLength(5);
+    expect(markup).toContain('data-picture-row="128,64,64,64,72"');
     expect(markup).toContain('TOLLMAN BRIGGS');
     expect(markup).toContain('WARDEN WREN');
     expect(markup).not.toContain('MILLER VANCE');
-    expect(markup).toContain('2 of 10 keepers beaten');
+    expect(markup).toContain('2 of 11 keepers beaten');
   });
 
-  it('reads one map close up, and backs out to all four before leaving the lab', () => {
+  it('reads one map close up, and backs out to all of them before leaving the lab', () => {
     const { hub, start } = createHub();
     walkUpToTheWall(hub);
     hub.wallMapInspect = 'route-1';

@@ -84,6 +84,72 @@ export interface MaterialTiles {
   readonly joins?: readonly Material[];
   /** Multiplied into the tile when drawn, the way Phaser tints. */
   readonly tint?: number;
+  /**
+   * A fill laid as a repeating weave rather than one tile with accents: row
+   * `y % rows`, column `x % columns`. FireRed's grass is four tiles laid two
+   * by two - the plain green and three with blades drawn in - and a lawn of
+   * one of them is the flat mat the earlier maps were. Overrides `fill` and
+   * `fillVariants` for the fill role only; edges are still roles.
+   */
+  readonly weave?: readonly (readonly number[])[];
+  /**
+   * The ground an overlay material always stands on, whatever is beside it. A
+   * FireRed wood has grass under every tree, and its edge cells carry that grass
+   * in them: stood on the sand of the road beside it, a tree would be a tree in
+   * a sandpit.
+   */
+  readonly floor?: Material;
+  /**
+   * A wood of FireRed's conifers: see `LatticeTiles`. Drawn by the lattice
+   * rule in `lattice.ts` rather than by an edge role.
+   */
+  readonly lattice?: LatticeTiles;
+  /**
+   * A post-and-rail fence whose vertical runs are drawn on one side of the
+   * tile or the other: FireRed draws a fence's west side with its posts on the
+   * west half and its east side on the east half, so a pen is fenced round its
+   * outside. A vertical run takes the side of the corner it runs into.
+   */
+  readonly railSides?: {
+    /** A vertical run whose corner opens east - the west side of a pen. */
+    readonly west: number;
+    /** A vertical run whose corner opens west - the east side of a pen. */
+    readonly east: number;
+  };
+  /**
+   * A mound of rock as FireRed draws Diglett's Cave: a rim two tiles deep, a
+   * face two tiles deep at the foot, sides two wide. `cells` is the source
+   * mound, eight wide and six deep, and every tile of the material takes the
+   * cell its distance from each edge picks - so any rectangle four wide and
+   * five deep is a mound. A mound that is not a rectangle has no inside corner
+   * drawn for it, so a map draws them square.
+   */
+  readonly mound?: readonly (readonly number[])[];
+}
+
+/**
+ * FireRed's route conifer, as the fourteen cells a wood of them is made of.
+ *
+ * A tree is two tiles wide and three tall - a tip, a body and a base - and a
+ * wood stacks them on a two-row period, so the base of one tree is the row the
+ * next one's tip is drawn in. The *body* and *base* rows are the material; the
+ * tip hangs over the ground above the wood, which FireRed lets you walk on, so
+ * it is drawn over the figures and never shuts a tile. Every pair is
+ * `[west half, east half]`. `edge` is the cell with open ground beside it and the
+ * plain one has a tree beside it, whose shadow runs into this one's.
+ */
+export interface LatticeTiles {
+  readonly tip: readonly [number, number];
+  readonly body: readonly [number, number];
+  readonly bodyEdge: readonly [number, number];
+  /** A base with the next tree's tip drawn into it. */
+  readonly overlap: readonly [number, number];
+  readonly overlapEdge: readonly [number, number];
+  /** A base with open ground below it. */
+  readonly base: readonly [number, number];
+  readonly baseEdge: readonly [number, number];
+  /** A tile of the material that no whole tree covers: a bush, rather than half a tree. */
+  readonly stray: number;
 }
 
 export interface PropCell {
@@ -305,6 +371,11 @@ export function resolveTile(tiles: MaterialTiles, role: TileRole): number {
  * noise, which is its own kind of generated.
  */
 export function fillTile(tiles: MaterialTiles, x: number, y: number): number {
+  const weave = tiles.weave;
+  if (weave && weave.length > 0) {
+    const row = weave[y % weave.length];
+    return row[x % row.length];
+  }
   const base = resolveTile(tiles, 'fill');
   const variants = tiles.fillVariants;
   if (!variants || variants.length === 0) {

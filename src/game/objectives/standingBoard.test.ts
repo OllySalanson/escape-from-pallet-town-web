@@ -27,7 +27,7 @@ import {
 } from './standingBoard';
 
 const CHAIN = RAID_CONTRACTS.map((contract) => contract.id);
-const EVERY_FRONT_DOOR = ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'];
+const EVERY_FRONT_DOOR = ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'];
 const EVERY_BOSS = gateBossIds(WORLD_GATES);
 const SEEDS = Array.from({ length: 300 }, (_, index) => Math.imul(index + 1, 0x9e3779b1) >>> 0);
 
@@ -366,7 +366,10 @@ describe('escalation', () => {
       const pressures = standingBoard(progressWith({ standingContractsBanked: banked }))
         .map((contract) => contract.hunterPressure ?? 0)
         .sort((a, b) => b - a);
-      expect(pressures).toEqual([top, Math.max(0, top - 1), Math.max(0, top - 2), 0]);
+      // One map a rank, each a tier under the last until the board is back to
+      // a safe raid: however many maps there are, the rest carry none.
+      expect(pressures).toEqual(EVERY_FRONT_DOOR.map((_door, rank) => Math.max(0, top - rank)));
+      expect(pressures[pressures.length - 1]).toBe(0);
     }
   });
 
@@ -407,7 +410,7 @@ describe('what it pays in', () => {
     const everything = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
     expect(workshopMaterialKinds(everything).length).toBeGreaterThan(1);
     expect(workshopMaterialKinds(everything).some((itemId) => isMaterial(itemId))).toBe(false);
-    expect(standingBoard(progressWith({ workshopUpgrades: everything })).length).toBe(4);
+    expect(standingBoard(progressWith({ workshopUpgrades: everything })).length).toBe(EVERY_FRONT_DOOR.length);
   });
 });
 

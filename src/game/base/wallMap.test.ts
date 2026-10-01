@@ -32,6 +32,7 @@ const EVERY_KEEPER = [
   'overlook-warden',
   'forest-ridge-keeper',
   'forest-quarry-keeper',
+  'viridian-league-gatekeeper',
 ];
 
 describe('the wall map in Oak’s Lab', () => {
@@ -58,7 +59,7 @@ describe('the wall map in Oak’s Lab', () => {
     const entries = wallMapEntries(game({ defeatedBosses: EVERY_KEEPER }));
     expect(entries.reduce((sum, entry) => sum + entry.signs.length, 0)).toBe(EVERY_KEEPER.length);
     expect(entries.every((entry) => entry.held === 0)).toBe(true);
-    expect(wallMapNote(game({ defeatedBosses: EVERY_KEEPER }))).toBe('10 of 10 keepers beaten');
+    expect(wallMapNote(game({ defeatedBosses: EVERY_KEEPER }))).toBe('11 of 11 keepers beaten');
     // A field-move door is opened, not beaten: it pins no sign.
     expect(wallMapEntries(game({ openedGates: ['route-1-thorn-gate'] })).some((entry) => entry.signs.length > 0)).toBe(false);
   });
@@ -70,7 +71,7 @@ describe('the wall map in Oak’s Lab', () => {
     expect(floodplain.known).toBeGreaterThan(0);
     expect(floodplain.walked).toBe(false);
     expect(others.every((entry) => entry.known === 0)).toBe(true);
-    expect(wallMapNote(fresh)).toBe('0 of 4 maps walked');
+    expect(wallMapNote(fresh)).toBe('0 of 5 maps walked');
 
     const door = frontDoorFor('route-1')!.position;
     const map = WORLD_MAPS['route-1'];
@@ -97,7 +98,7 @@ describe('the board on the lab wall', () => {
     }
   });
 
-  it('hangs the four maps at one scale, standing on one line, inside the board', () => {
+  it('hangs every map at one scale, standing on one line, inside the board', () => {
     const layout = posterLayout(area, {});
     const scale = (mapId: string) => {
       const placed = layout.pictures.find((picture) => picture.mapId === mapId)!;

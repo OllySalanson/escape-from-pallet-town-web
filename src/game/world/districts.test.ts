@@ -209,6 +209,49 @@ describe('the named districts of a map', () => {
     }
   });
 
+  it('Viridian City: puts every exit, landing and landmark in the quarter it is remembered as part of', () => {
+    expect(placesOn('viridian-city')).toEqual({
+      exits: {
+        'PALLET ROAD': 'THE SOUTH TERRACES',
+        'FOREST GATE': 'THE FOREST ROAD',
+        'LEAGUE GATE': 'THE FRONT GATE',
+        'EAST TRAIL': 'THE EAST WOOD',
+        'WEST STILE': 'THE BORDER FIELDS',
+        "DIGLETT'S CAVE": "DIGLETT'S HILL",
+      },
+      landings: {
+        'Viridian City': 'CENTER SQUARE',
+        'Forest Gate': 'THE FOREST ROAD',
+        'League Road': 'THE LEAGUE ROAD',
+        'South Road': 'THE SOUTH TERRACES',
+      },
+      landmarks: {
+        "JOY'S NIGHT HATCH": 'CENTER SQUARE',
+        'MART STOCKROOM': 'CENTER SQUARE',
+        'ACADEMY BLACKBOARD': 'THE ACADEMY',
+        "ANGLER'S TACKLE": 'THE POND',
+        "TRADER'S CRATE": 'THE TRADE HOUSE',
+        "RANGER'S LOCKBOX": "THE RANGER'S HUT",
+        "WOODCUTTER'S STORE": 'THE EAST WOOD',
+        'BIRD HIDE': 'THE SOUTH TERRACES',
+        "RANGER'S FIRST-AID BOX": "THE RANGER'S HUT",
+        'POTTING SHED': 'GARDEN ROW',
+      },
+    });
+    // The keeper's two doors both open his forecourt, and the Cut tree opens
+    // the trade house garden and nothing else.
+    const doors: Record<string, string> = {
+      'LEAGUE FENCE': 'THE FRONT GATE',
+      'HIGH GATE': 'THE FRONT GATE',
+      'TRADE HOUSE TREE': 'THE TRADE HOUSE',
+    };
+    for (const gate of gatesForMap('viridian-city')) {
+      for (const tile of gate.tiles) {
+        expect(`${gate.label}: ${districtAt('viridian-city', tile)?.name}`).toBe(`${gate.label}: ${doors[gate.label]}`);
+      }
+    }
+  });
+
   it('Viridian Forest: puts every exit, landing and landmark in the clearing it is named for', () => {
     expect(placesOn('viridian-forest')).toEqual({
       exits: {

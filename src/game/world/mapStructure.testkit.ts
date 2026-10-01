@@ -27,7 +27,9 @@ import {
   straightWalk,
   unreachableTiles,
   walkableTiles,
+  wallDistances,
   walksLengthenedBy,
+  type CollisionGrid,
   type NamedGround,
 } from './mapStructure';
 import { idleBeatTiles, stepDirection } from './npcIdle';
@@ -46,6 +48,60 @@ import { RUN_INSERTIONS } from '../run/runGeneration';
 const LONGEST_STRAIGHT_WALK = 9;
 /** How far you may hold a direction from an insertion before something answers. */
 const INSERTION_DECISION_STEPS = 4;
+
+/**
+ * Two ways of holding a map to the captain's rule - hold one direction and you
+ * meet structure within a few steps - and every map says which it is held to.
+ *
+ * **`nine-step`** caps every straight walk at nine and forbids any open ground.
+ * The four maps drawn before Viridian City were built to it and pass it. It is
+ * also a rule no map of FireRed's passes: measured on FireRed's own collision
+ * (`data/layouts` of the decompilation, fourteen maps), every one has a straight
+ * walk of 17 to 47 steps and thirteen of the fourteen have a clearing - because
+ * a road between two walls runs long, and a town has a square. Held to it, a map
+ * is forced into a lattice of one-tile stubs, which is what the earlier maps
+ * look like.
+ *
+ * **`firered`** is the rule as FireRed keeps it, which is what the map-making
+ * plan recommended (its decision D2): no walkable tile more than five steps from
+ * a wall - FireRed's own maximum on every one of the fourteen - and a *typical*
+ * held direction of two to five steps, measured as the median over every tile
+ * and heading. Roads and corridors between walls may run long, up to FireRed's
+ * own longest (47, Viridian Forest). A map drawn on FireRed's art is held to
+ * FireRed's measure.
+ */
+export type StructureStandard = 'nine-step' | 'firered';
+
+export const STRUCTURE_STANDARDS: Readonly<Record<WorldMapId, StructureStandard>> = {
+  'pallet-town': 'nine-step',
+  'route-1': 'nine-step',
+  'viridian-forest': 'nine-step',
+  'floodplain-relay': 'nine-step',
+  'viridian-city': 'firered',
+};
+
+/** FireRed's furthest walkable tile from a wall, on every map measured. */
+const FIRERED_FURTHEST_FROM_WALL = 5;
+/** The typical held direction FireRed's maps sit in, as a median. */
+const FIRERED_MEDIAN_HELD = { min: 2, max: 5 } as const;
+/** FireRed's own longest straight walk: Viridian Forest's. */
+const FIRERED_LONGEST_STRAIGHT_WALK = 47;
+
+/** Every held direction on a map - each walkable tile, each heading - sorted. */
+function heldDirections(collision: CollisionGrid): number[] {
+  const runs: number[] = [];
+  for (const tile of walkableTiles(collision)) {
+    for (const [dx, dy] of [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ]) {
+      runs.push(slideLength(collision, tile, dx, dy));
+    }
+  }
+  return runs.sort((a, b) => a - b);
+}
 
 /**
  * A map with boss-held gates is several maps: a shut gate is collision and an
@@ -94,6 +150,7 @@ export const MAP_STRUCTURE_PARTS: readonly MapStructurePart[] = [
   { name: 'floodplain-relay 1/3', mapId: 'floodplain-relay', part: 1, of: 3, file: 'mapStructure.floodplainRelay1.test.ts' },
   { name: 'floodplain-relay 2/3', mapId: 'floodplain-relay', part: 2, of: 3, file: 'mapStructure.floodplainRelay2.test.ts' },
   { name: 'floodplain-relay 3/3', mapId: 'floodplain-relay', part: 3, of: 3, file: 'mapStructure.floodplainRelay3.test.ts' },
+  { name: 'viridian-city', mapId: 'viridian-city', part: 1, of: 1, file: 'mapStructure.viridianCity.test.ts' },
 ];
 
 /** Every gate state of a map, in the order `gateStatesToVerify` gives them. */
@@ -307,17 +364,35 @@ export function describeMapStructure(partName: string): void {
   };
 
   describe(`map structure: ${partName}`, () => {
-    it.each(named(MAP_STATES))('%s never lets a held direction cross it', (_name, { map }) => {
-      const { longest } = straightWalk(map.collision);
-      expect(longest).toBeLessThanOrEqual(LONGEST_STRAIGHT_WALK);
-    });
+    if (STRUCTURE_STANDARDS[part.mapId] === 'nine-step') {
+      it.each(named(MAP_STATES))('%s never lets a held direction cross it', (_name, { map }) => {
+        const { longest } = straightWalk(map.collision);
+        expect(longest).toBeLessThanOrEqual(LONGEST_STRAIGHT_WALK);
+      });
 
-    it.each(named(MAP_STATES))('%s has no open ground in it', (_name, { map }) => {
-      const open = openGround(map.collision);
-      // A single tile with nothing within three steps is a wide junction. Two of
-      // them joined together is the beginning of a field.
-      expect(open.blobs.filter((blob) => blob > 1)).toEqual([]);
-    });
+      it.each(named(MAP_STATES))('%s has no open ground in it', (_name, { map }) => {
+        const open = openGround(map.collision);
+        // A single tile with nothing within three steps is a wide junction. Two of
+        // them joined together is the beginning of a field.
+        expect(open.blobs.filter((blob) => blob > 1)).toEqual([]);
+      });
+    } else {
+      it.each(named(MAP_STATES))('%s keeps every tile within five steps of a wall', (_name, { map }) => {
+        const distances = wallDistances(map.collision);
+        const far = walkableTiles(map.collision)
+          .filter((tile) => distances[tile.y][tile.x] > FIRERED_FURTHEST_FROM_WALL)
+          .map((tile) => `${tile.x},${tile.y}`);
+        expect(far).toEqual([]);
+      });
+
+      it.each(named(MAP_STATES))('%s answers a held direction within a few steps, typically', (_name, { map }) => {
+        const runs = heldDirections(map.collision);
+        const median = runs[Math.floor(runs.length / 2)];
+        expect(median).toBeGreaterThanOrEqual(FIRERED_MEDIAN_HELD.min);
+        expect(median).toBeLessThanOrEqual(FIRERED_MEDIAN_HELD.max);
+        expect(runs[runs.length - 1]).toBeLessThanOrEqual(FIRERED_LONGEST_STRAIGHT_WALK);
+      });
+    }
 
     eachOpenState(
       '%s is one connected place with signs and trainers solid',

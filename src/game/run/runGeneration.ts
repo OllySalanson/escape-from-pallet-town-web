@@ -205,6 +205,36 @@ export const RUN_INSERTIONS = {
     position: { x: 50, y: 33 },
     description: "The collier's gate in the far east. The only kept ground in this forest, with the ride south out of it and the tarn above.",
   },
+  // Viridian City's front door is the Pokemon Center, in the middle of the
+  // town: every road out is in reach from it, and none of them is short.
+  'viridian-city': {
+    id: 'viridian-city',
+    label: 'Viridian City',
+    mapId: 'viridian-city',
+    position: { x: 44, y: 42 },
+    description: "The Pokemon Center's steps, in the middle of town. Paved streets, the Gym shut up behind its ledge, and three roads out: Route 1 down the terraces, Route 2 north to the Forest, the League road west.",
+  },
+  'viridian-city-forest-gate': {
+    id: 'viridian-city-forest-gate',
+    label: 'Forest Gate',
+    mapId: 'viridian-city',
+    position: { x: 36, y: 7 },
+    description: "The steps of the gatehouse on Route 2, the Forest at your back. Grass beds all the way down to town, and a Bug Catcher on the road through them.",
+  },
+  'viridian-city-league-road': {
+    id: 'viridian-city-league-road',
+    label: 'League Road',
+    mapId: 'viridian-city',
+    position: { x: 7, y: 26 },
+    description: "A gap in the trees on Route 22, the lane up to the Pokemon League's front gate. There is a keeper at the fence, and a pond field between here and the town.",
+  },
+  'viridian-city-south-road': {
+    id: 'viridian-city-south-road',
+    label: 'South Road',
+    mapId: 'viridian-city',
+    position: { x: 38, y: 73 },
+    description: "The foot of Route 1's terraces, where the road comes up from Pallet Town. The way home is behind you; the way up is the long road round every ledge.",
+  },
 } as const;
 
 export type RunInsertionId = keyof typeof RUN_INSERTIONS;
@@ -797,8 +827,12 @@ function seatOn(tile: StandingTile): GridPosition {
 
 /**
  * Every tile of a map anything could be seated on before this raid has
- * reserved any of it - walkable, and no warp or standing figure on it - in the
- * row order `validTiles` hands them out in, keyed once. It depends on nothing
+ * reserved any of it - walkable, no warp or standing figure on it, and nothing
+ * drawn over it - in the row order `validTiles` hands them out in, keyed once.
+ * A tile under canopy is ground a figure walks under, never one a thing is
+ * found on: a conifer's tip, a roof's back edge and an arch's span are all
+ * drawn above whatever stands there, and a Radio Valve seated behind a tip in
+ * Viridian City showed as a grey smudge a player would walk past. It depends on nothing
  * but the map, which is built once per gate state and kept, so it is worked out
  * once per map rather than once per piece of loot per raid: this scan of every
  * map was most of what generating a raid cost, and `runGeneration.test.ts`
@@ -821,11 +855,12 @@ function standingGround(map: WorldMapDefinition): readonly StandingTile[] {
   }
   const warpTiles = new Set(map.warps.map((warp) => tileKey(warp.source)));
   const entityTiles = new Set(map.entities.map((entity) => tileKey(entity.position)));
+  const canopy = map.layers.canopy.tiles;
   const tiles: StandingTile[] = [];
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {
       const key = `${x},${y}`;
-      if (!map.collision[y][x] && !warpTiles.has(key) && !entityTiles.has(key)) {
+      if (!map.collision[y][x] && canopy[y][x] < 0 && !warpTiles.has(key) && !entityTiles.has(key)) {
         tiles.push({ x, y, key, index: y * map.width + x });
       }
     }

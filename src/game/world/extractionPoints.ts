@@ -491,4 +491,66 @@ export const EXTRACTION_POINTS: readonly ExtractionPoint[] = [
     unlockAtMs: 0,
     requirement: { kind: 'always' },
   },
+
+  // -- Viridian City: the crossroads, so every way out is a road out -------
+  {
+    // Route 1's own mouth, at the foot of the terraces: home to Pallet Town,
+    // and the one every raid can count on.
+    mapId: 'viridian-city',
+    position: { x: 37, y: 75 },
+    label: 'PALLET ROAD',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The gatehouse on the road north, through its door: out into Viridian
+    // Forest. A doorway is a pocket, so the steps in front of it stay a place
+    // to stand.
+    mapId: 'viridian-city',
+    position: { x: 37, y: 6 },
+    label: 'FOREST GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The Pokemon League's front gate, behind the keeper and his fence. Open
+    // from the first second, so a raid that reaches it never waits on it.
+    mapId: 'viridian-city',
+    position: { x: 8, y: 5 },
+    label: 'LEAGUE GATE',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The quiet one: the end of the woodcutter's trail through the east wood,
+    // which nobody watches and nobody paved.
+    mapId: 'viridian-city',
+    position: { x: 71, y: 44 },
+    label: 'EAST TRAIL',
+    unlockAtMs: 0,
+    requirement: { kind: 'always' },
+  },
+  {
+    // The stile over the border fence at the west edge of Route 22. The
+    // ranger leaves it chained until the first round of the day is walked.
+    mapId: 'viridian-city',
+    position: { x: 0, y: 44 },
+    label: 'WEST STILE',
+    unlockAtMs: 90_000,
+    requirement: { kind: 'elapsed', unlockAtMs: 90_000 },
+  },
+  {
+    // Diglett's Cave, in the foot of the hill north-east of the town: the
+    // tunnel under the mountains to Vermilion, with a grate across it whose
+    // key is in the ranger's lockbox at the other corner of the map.
+    mapId: 'viridian-city',
+    position: { x: 56, y: 9 },
+    label: "DIGLETT'S CAVE",
+    unlockAtMs: 0,
+    requirement: {
+      kind: 'poi-activated',
+      poiId: 'viridian-ranger-lockbox',
+      poiLabel: "RANGER'S LOCKBOX",
+    },
+  },
 ];

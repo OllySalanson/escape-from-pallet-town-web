@@ -72,6 +72,81 @@ export const WORLD_LEDGES: readonly MapLedge[] = [
     ],
     depth: 2,
   },
+
+  // -- Viridian City ---------------------------------------------------------
+  // FireRed's own ledges, drawn where FireRed draws them on the roads round
+  // Viridian: every one drops south, towards Pallet Town and home, so the way
+  // back from anywhere is quick and the way in is the road round. The hunter
+  // cannot follow a hop, which is what makes the terraces the escape they are.
+  {
+    // The long ledge under the Gym, exactly where Viridian has always had it:
+    // off the Gym's paving onto the cross street in one hop.
+    id: 'viridian-gym-ledge',
+    mapId: 'viridian-city',
+    label: 'GYM LEDGE',
+    drop: 'down',
+    brow: [{ x: 41, y: 30 }, { x: 42, y: 30 }, { x: 43, y: 30 }, { x: 44, y: 30 }, { x: 45, y: 30 }, { x: 46, y: 30 }, { x: 47, y: 30 }, { x: 48, y: 30 }, { x: 49, y: 30 }, { x: 50, y: 30 }, { x: 51, y: 30 }, { x: 52, y: 30 }, { x: 53, y: 30 }, { x: 54, y: 30 }, { x: 55, y: 30 }, { x: 56, y: 30 }, { x: 57, y: 30 }, { x: 58, y: 30 }, { x: 59, y: 30 }, { x: 60, y: 30 }, { x: 61, y: 30 }],
+    depth: 1,
+  },
+  {
+    // The foot of Route 22's pond field, onto the League road where it bends
+    // for the town.
+    id: 'viridian-pond-field-ledge',
+    mapId: 'viridian-city',
+    label: 'POND FIELD LEDGE',
+    drop: 'down',
+    brow: [{ x: 11, y: 30 }, { x: 12, y: 30 }, { x: 13, y: 30 }, { x: 14, y: 30 }, { x: 15, y: 30 }, { x: 16, y: 30 }, { x: 17, y: 30 }, { x: 18, y: 30 }, { x: 19, y: 30 }, { x: 20, y: 30 }, { x: 21, y: 30 }],
+    depth: 1,
+  },
+  {
+    // Off the foot of Route 2's east grass bed, back towards the town gap.
+    id: 'viridian-forest-road-ledge',
+    mapId: 'viridian-city',
+    label: 'FOREST ROAD LEDGE',
+    drop: 'down',
+    brow: [{ x: 44, y: 17 }, { x: 45, y: 17 }, { x: 46, y: 17 }, { x: 47, y: 17 }, { x: 48, y: 17 }, { x: 49, y: 17 }],
+    depth: 1,
+  },
+  {
+    // The town's south edge, either side of Main Street: out of Garden Row and
+    // down onto Route 1's top terrace.
+    id: 'viridian-garden-ledge-west',
+    mapId: 'viridian-city',
+    label: 'GARDEN LEDGE',
+    drop: 'down',
+    brow: [{ x: 24, y: 55 }, { x: 25, y: 55 }, { x: 26, y: 55 }, { x: 27, y: 55 }, { x: 28, y: 55 }, { x: 29, y: 55 }, { x: 30, y: 55 }, { x: 31, y: 55 }, { x: 32, y: 55 }, { x: 33, y: 55 }, { x: 34, y: 55 }],
+    depth: 1,
+  },
+  {
+    id: 'viridian-garden-ledge-east',
+    mapId: 'viridian-city',
+    label: 'GARDEN LEDGE',
+    drop: 'down',
+    brow: [{ x: 41, y: 55 }, { x: 42, y: 55 }, { x: 43, y: 55 }, { x: 44, y: 55 }, { x: 45, y: 55 }, { x: 46, y: 55 }, { x: 47, y: 55 }, { x: 48, y: 55 }, { x: 49, y: 55 }, { x: 50, y: 55 }, { x: 51, y: 55 }, { x: 52, y: 55 }, { x: 53, y: 55 }, { x: 54, y: 55 }, { x: 55, y: 55 }, { x: 56, y: 55 }, { x: 57, y: 55 }, { x: 58, y: 55 }, { x: 59, y: 55 }, { x: 60, y: 55 }, { x: 61, y: 55 }],
+    depth: 1,
+  },
+  {
+    // The bush in the middle of it stands where a hop would have landed in the
+    // Lass's watch on the road below: a drop taken to get away must never be
+    // the step that starts a fight.
+    id: 'viridian-upper-terrace-ledge',
+    mapId: 'viridian-city',
+    label: 'UPPER TERRACE',
+    drop: 'down',
+    brow: [{ x: 30, y: 62 }, { x: 31, y: 62 }, { x: 32, y: 62 }, { x: 33, y: 62 }, { x: 34, y: 62 }, { x: 35, y: 62 }, { x: 36, y: 62 }, { x: 37, y: 62 }, { x: 38, y: 62 }, { x: 39, y: 62 }, { x: 40, y: 62 }, { x: 41, y: 62 }, { x: 42, y: 62 }, { x: 43, y: 62 }, { x: 45, y: 62 }, { x: 46, y: 62 }, { x: 47, y: 62 }, { x: 48, y: 62 }, { x: 49, y: 62 }, { x: 50, y: 62 }, { x: 51, y: 62 }, { x: 52, y: 62 }, { x: 53, y: 62 }],
+    depth: 1,
+  },
+  {
+    // A bush caps each ledge where the way round is only a step or two off, as
+    // FireRed ends its ledges against growth, and the two bushes along this one's
+    // brow are the tiles of it that do not hop.
+    id: 'viridian-lower-terrace-ledge',
+    mapId: 'viridian-city',
+    label: 'LOWER TERRACE',
+    drop: 'down',
+    brow: [{ x: 25, y: 68 }, { x: 26, y: 68 }, { x: 27, y: 68 }, { x: 28, y: 68 }, { x: 29, y: 68 }, { x: 30, y: 68 }, { x: 31, y: 68 }, { x: 32, y: 68 }, { x: 34, y: 68 }, { x: 35, y: 68 }, { x: 36, y: 68 }, { x: 37, y: 68 }, { x: 38, y: 68 }, { x: 39, y: 68 }, { x: 40, y: 68 }, { x: 41, y: 68 }, { x: 42, y: 68 }, { x: 43, y: 68 }, { x: 44, y: 68 }, { x: 46, y: 68 }, { x: 47, y: 68 }, { x: 48, y: 68 }],
+    depth: 1,
+  },
 ];
 
 export function ledgesForMap(mapId: WorldMapId): readonly MapLedge[] {

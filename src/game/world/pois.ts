@@ -577,6 +577,124 @@ export const WORLD_POIS: readonly WorldPoi[] = [
     effect: 'unlock-extraction',
     unlockedExtractionLabel: 'RADIO EXIT',
   },
+
+  // -- Viridian City --------------------------------------------------------
+  // Every landmark in the town is a door you step into: the building behind
+  // it is FireRed's own, and its doorway is a pocket off the street.
+  {
+    // Nurse Joy's night hatch, in the Center's doorway: the front door of the
+    // raid is also its first cache, so it is the most modest one.
+    id: 'viridian-center-hatch',
+    mapId: 'viridian-city',
+    position: { x: 44, y: 41 },
+    label: "JOY'S NIGHT HATCH",
+    description: "The hatch in the Pokemon Center's door, for trainers who come in after the lights are off: a Potion and an Antidote on the shelf.",
+    reward: [
+      { itemId: 'potion', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    id: 'viridian-mart-stockroom',
+    mapId: 'viridian-city',
+    position: { x: 53, y: 41 },
+    label: 'MART STOCKROOM',
+    description: "The Poke Mart's back room, through a door nobody locked: two Poke Balls still in their box, and an Antidote off the shelf by the till.",
+    reward: [
+      { itemId: 'poke-ball', quantity: 2 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    // The Trainer School, which in the game this is dressed as teaches status
+    // conditions on its blackboard - so it keeps the cures for them.
+    id: 'viridian-academy-board',
+    mapId: 'viridian-city',
+    position: { x: 26, y: 26 },
+    label: 'ACADEMY BLACKBOARD',
+    description: "The Trainer School's blackboard, still chalked with the lesson on poison, and the cupboard under it: two Antidotes and a Super Potion.",
+    reward: [
+      { itemId: 'antidote', quantity: 2 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    id: 'viridian-angler-tackle',
+    mapId: 'viridian-city',
+    position: { x: 31, y: 44 },
+    label: "ANGLER'S TACKLE",
+    description: "An old angler's box on the pond's bank: a coil of line strong enough to moor a boat with, and a Great Ball he kept for whatever took the hook.",
+    reward: [
+      { itemId: 'mooring-rope', quantity: 1 },
+      { itemId: 'great-ball', quantity: 1 },
+    ],
+  },
+  {
+    // Behind the Cut door, and the whole of what that door is worth: a Cut
+    // here shortens no walk the map already had.
+    id: 'viridian-trade-crate',
+    mapId: 'viridian-city',
+    position: { x: 62, y: 16 },
+    label: "TRADER'S CRATE",
+    description: "The crate by the trade house door, packed for a trade that never happened: a coil of cable and a Super Potion.",
+    reward: [
+      { itemId: 'cable-coil', quantity: 1 },
+      { itemId: 'super-potion', quantity: 1 },
+    ],
+  },
+  {
+    // The map's one sealed exit is at the far corner from what opens it:
+    // Diglett's Cave is in the north-east hill and its key is down here.
+    id: 'viridian-ranger-lockbox',
+    mapId: 'viridian-city',
+    position: { x: 11, y: 69 },
+    label: "RANGER'S LOCKBOX",
+    description: "The ranger's lockbox at the hut door: a roll of linen, the spare valve for the ranger's radio, and the key to the grate across Diglett's Cave. Taking it opens the cave as an exit.",
+    reward: [
+      { itemId: 'linen-roll', quantity: 1 },
+      { itemId: 'radio-valve', quantity: 1 },
+    ],
+    effect: 'unlock-extraction',
+    unlockedExtractionLabel: "DIGLETT'S CAVE",
+  },
+  {
+    id: 'viridian-woodcutter-store',
+    mapId: 'viridian-city',
+    position: { x: 67, y: 41 },
+    label: "WOODCUTTER'S STORE",
+    description: "The woodcutter's store in the clearing, where the east trail leaves the wood: a can of lamp oil and a Poke Ball.",
+    reward: [
+      { itemId: 'lamp-oil', quantity: 1 },
+      { itemId: 'poke-ball', quantity: 1 },
+    ],
+  },
+  {
+    id: 'viridian-bird-hide',
+    mapId: 'viridian-city',
+    position: { x: 59, y: 60 },
+    label: 'BIRD HIDE',
+    description: 'A watchers\' hide at the edge of the terraces, for counting the Pidgey that feed on them: a Great Ball on the bench, and an Antidote for the bees.',
+    reward: [
+      { itemId: 'great-ball', quantity: 1 },
+      { itemId: 'antidote', quantity: 1 },
+    ],
+  },
+  {
+    id: 'viridian-first-aid-box',
+    mapId: 'viridian-city',
+    position: { x: 6, y: 66 },
+    label: "RANGER'S FIRST-AID BOX",
+    description: 'The box the ranger patches up hurt wild Pokemon from, nailed to a post in her meadow: two Super Potions.',
+    reward: [{ itemId: 'super-potion', quantity: 2 }],
+  },
+  {
+    id: 'viridian-potting-shed',
+    mapId: 'viridian-city',
+    position: { x: 61, y: 48 },
+    label: 'POTTING SHED',
+    description: 'The herb grower\'s shed in the corner behind the last house on Garden Row: two Antidotes she steeps from her own beds.',
+    reward: [{ itemId: 'antidote', quantity: 2 }],
+  },
 ];
 
 export function poisForMap(mapId: WorldMapId): readonly WorldPoi[] {

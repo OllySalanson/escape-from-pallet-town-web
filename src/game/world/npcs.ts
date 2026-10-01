@@ -1857,6 +1857,350 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
       'Boiled in a long copper and peeled by hand. The copper is still there and the roof is not.',
     ],
   },
+
+  // -- Viridian City ----------------------------------------------------------
+  // The town's own signs say what FireRed's say, and then what a raid needs to
+  // know; the people in it are the ones Viridian has always had.
+  {
+    // At the foot of Main Street, where the town begins for anyone coming up
+    // from Pallet - which is where FireRed stands it.
+    id: 'viridian-city-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 40, y: 53 },
+    facing: 'down',
+    dialogLines: [
+      'VIRIDIAN CITY - The Eternally Green Paradise',
+      'Three roads out. South to Pallet Town down the terraces, north to Viridian Forest, west to the Pokemon League.',
+      'PALLET ROAD and FOREST GATE are always open. The EAST TRAIL leaves through the wood. WEST STILE opens on the ranger\'s round.',
+    ],
+  },
+  {
+    id: 'viridian-trainer-tips',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 33, y: 31 },
+    facing: 'down',
+    dialogLines: [
+      'TRAINER TIPS',
+      'A ledge can be jumped down, never up. The hunter cannot jump one after you.',
+      'The terraces south of town are three ledges and a long road. Take the ledges.',
+    ],
+  },
+  {
+    id: 'viridian-league-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 10, y: 15 },
+    facing: 'down',
+    dialogLines: [
+      'POKEMON LEAGUE - FRONT GATE',
+      'Only trainers who have proven themselves may pass. The keeper holds the fence.',
+      'Beat him and the side gate onto the high path opens as well.',
+    ],
+  },
+  {
+    id: 'viridian-route2-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 40, y: 12 },
+    facing: 'down',
+    dialogLines: [
+      'ROUTE 2 - VIRIDIAN FOREST AHEAD',
+      'The gatehouse at the top of the road is the FOREST GATE, and it is open.',
+      'A Bug Catcher watches the road where it narrows. The grass beds go round him.',
+    ],
+  },
+  {
+    id: 'viridian-route22-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 17, y: 35 },
+    facing: 'down',
+    dialogLines: [
+      'ROUTE 22 - POKEMON LEAGUE FRONT GATE',
+      'North up the lane to the League fence. South through the border fields to the WEST STILE and the ranger\'s hut.',
+    ],
+  },
+  {
+    id: 'viridian-route1-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 40, y: 61 },
+    facing: 'down',
+    dialogLines: [
+      'ROUTE 1 - PALLET TOWN - VIRIDIAN CITY',
+      'The PALLET ROAD is at the foot of the terraces. Down is one hop at a time.',
+    ],
+  },
+  {
+    id: 'viridian-diglett-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 52, y: 10 },
+    facing: 'down',
+    dialogLines: [
+      "DIGLETT'S CAVE",
+      'Closed. Grate locked after the tunnel flooded. Key held by the ranger, Route 22 south.',
+    ],
+  },
+  {
+    // The old man who lies across Viridian's north road in the game this is
+    // dressed as, until he has had his coffee. He has had it.
+    id: 'viridian-old-man',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 38, y: 27 },
+    facing: 'down',
+    design: 'old-man',
+    dialogLines: [
+      'Ahh, I have had my coffee now and I feel great!',
+      'You want the Forest? Straight up this road. Mind the bug catcher in the grass.',
+    ],
+  },
+  {
+    id: 'viridian-gym-guide',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 46, y: 29 },
+    facing: 'up',
+    design: 'boy',
+    dialogLines: [
+      "This is Viridian's Gym. The leader has been away for a long time.",
+      'The doors are locked. Nobody knows who the leader even is.',
+    ],
+  },
+  {
+    id: 'viridian-hiker',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 55, y: 11 },
+    facing: 'up',
+    design: 'hiker',
+    dialogLines: [
+      "Diglett's Cave goes right under the mountains to Vermilion. The grate is locked.",
+      'The ranger has the key, at the hut in the far south-west. It is a long walk and a quick way out.',
+    ],
+  },
+  {
+    id: 'viridian-angler',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 31, y: 42 },
+    facing: 'left',
+    design: 'sailor',
+    dialogLines: [
+      'Nothing in this pond but Magikarp, and not many of those.',
+      'My tackle box is on the bank. Help yourself, I am not catching anything with it.',
+    ],
+  },
+  {
+    id: 'viridian-ranger',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 13, y: 69 },
+    facing: 'left',
+    design: 'woman',
+    dialogLines: [
+      "The key to Diglett's Cave is in my lockbox, by the door.",
+      'Take it. That tunnel is the quickest way off this map, if you can get to the far corner alive.',
+    ],
+  },
+  // The rest of the town, each where the map measured furthest from anything
+  // (`tools/tileset/density.mts`) and then written to the ground that is
+  // there: a FireRed town is its people, and every one of them says where
+  // something is.
+  {
+    id: 'viridian-ranger-station-sign',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 12, y: 56 },
+    facing: 'down',
+    dialogLines: [
+      'RANGER STATION - ROUTE 22 SOUTH',
+      "The ranger's lockbox holds the key to DIGLETT'S CAVE, the far north-east way out.",
+    ],
+  },
+  {
+    id: 'viridian-field-farmer',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 12, y: 45 },
+    facing: 'left',
+    design: 'straw-hat',
+    idle: { roam: [{ x: 11, y: 45 }], glances: ['down', 'right'], beatMs: 2900 },
+    dialogLines: [
+      'These are my fields. The Nidoran go mad for a pale stone that turns up in the long grass some mornings.',
+      'The WEST STILE at the end of the lane is on the ranger\'s round. She has it open a minute and a half after you get here.',
+    ],
+  },
+  {
+    id: 'viridian-pond-fisher',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 19, y: 27 },
+    facing: 'left',
+    design: 'bald-man',
+    dialogLines: [
+      'Poliwag in this one. You can see their swirls when the light is right.',
+      'The ledge under the pond drops you on the road south. Nobody has ever climbed back up it.',
+    ],
+  },
+  {
+    id: 'viridian-academy-teacher',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 29, y: 28 },
+    facing: 'down',
+    design: 'scientist',
+    idle: { roam: [{ x: 30, y: 28 }], glances: ['left', 'up'], beatMs: 3400 },
+    dialogLines: [
+      'The green roof is the Trainer School. I teach the morning class.',
+      'The blackboard by the door still has my lesson on poison on it. The cupboard under it has the Antidotes for it.',
+    ],
+  },
+  {
+    // FireRed's youngster who spots a trainer's Poke Balls, in the middle of
+    // the road the way he stands in the game.
+    id: 'viridian-youngster',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 56, y: 33 },
+    facing: 'down',
+    design: 'youngster',
+    idle: { roam: [{ x: 57, y: 33 }], glances: ['left', 'right'], beatMs: 2600 },
+    dialogLines: [
+      'Those are Poke Balls on your belt! You\'re a trainer!',
+      "The Mart's door isn't locked. There's still a box of Poke Balls in the stockroom behind the counter.",
+    ],
+  },
+  {
+    id: 'viridian-gym-hopeful',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 56, y: 27 },
+    facing: 'left',
+    design: 'cooltrainer',
+    dialogLines: [
+      'I came to challenge the Viridian Gym. It has been locked every day for a week.',
+      'The keeper at the League fence is the strongest trainer in town. His Diglett came out of the cave on the hill.',
+    ],
+  },
+  {
+    id: 'viridian-center-granny',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 39, y: 45 },
+    facing: 'left',
+    design: 'old-woman',
+    idle: { roam: [{ x: 39, y: 44 }], glances: ['down', 'up'], beatMs: 3700 },
+    dialogLines: [
+      'Nurse Joy leaves a Potion in the night hatch for anyone who comes in after dark.',
+      'The hatch is in the Pokemon Center door. You only have to step up to it.',
+    ],
+  },
+  {
+    id: 'viridian-garden-row-woman',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 53, y: 54 },
+    facing: 'down',
+    design: 'woman',
+    idle: { roam: [{ x: 52, y: 54 }], glances: ['left', 'right'], beatMs: 3200 },
+    dialogLines: [
+      'Everybody on Garden Row grows something. The house at the end grows herbs.',
+      'Her potting shed is round the back of it, in the corner. She never locks it.',
+    ],
+  },
+  {
+    id: 'viridian-terrace-walker',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 25, y: 65 },
+    facing: 'right',
+    design: 'lass',
+    idle: { roam: [{ x: 24, y: 65 }], glances: ['down', 'up'], beatMs: 2750 },
+    dialogLines: [
+      'I walked up from Pallet Town. The ledges only go down, so it is the long road back up.',
+      'Going south? Hop the ledges and you are at the PALLET ROAD before you know it.',
+    ],
+  },
+  {
+    id: 'viridian-bug-kid',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 53, y: 69 },
+    facing: 'up',
+    design: 'bug-catcher',
+    idle: { roam: [{ x: 53, y: 70 }], glances: ['left', 'right'], beatMs: 2450 },
+    dialogLines: [
+      'Caterpie come down out of the forest onto the terraces. I have caught three!',
+      'The bird watchers have a hide on the meadow up the path. They leave their spare balls in it.',
+    ],
+  },
+  {
+    id: 'viridian-notice-board',
+    mapId: 'viridian-city',
+    kind: 'sign',
+    position: { x: 47, y: 36 },
+    facing: 'down',
+    dialogLines: [
+      'VIRIDIAN CITY NOTICE BOARD',
+      'The Gym is closed until further notice. The League fence is kept by GATEKEEPER ROSS.',
+      'A small tree has grown across the gate of the trade house on the hill. A Pokemon that knows CUT would clear it.',
+    ],
+  },
+  {
+    id: 'viridian-farmers-son',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 9, y: 38 },
+    facing: 'right',
+    design: 'boy',
+    idle: { roam: [{ x: 10, y: 38 }], glances: ['up', 'down'], beatMs: 2350 },
+    dialogLines: [
+      'The camper by the pond picks a fight with anybody on the League road.',
+      'The long grass on the pond side goes round him, if you would rather meet Nidoran than him.',
+    ],
+  },
+  {
+    id: 'viridian-flower-girl',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 48, y: 47 },
+    facing: 'down',
+    design: 'lass',
+    idle: { roam: [{ x: 49, y: 47 }], glances: ['left', 'right'], beatMs: 3550 },
+    dialogLines: [
+      'A trainer in a dark jacket was asking after you.',
+      'He said he would catch you up once you had set off. He did not look like he meant to be friends.',
+    ],
+  },
+  {
+    id: 'viridian-garden-row-grower',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 29, y: 53 },
+    facing: 'down',
+    design: 'heavy-man',
+    dialogLines: [
+      'Quickest way east is the trail through the wood past the Mart.',
+      "The woodcutter keeps a store in the clearing on the way. He won't miss a Poke Ball.",
+    ],
+  },
+  {
+    id: 'viridian-terrace-beauty',
+    mapId: 'viridian-city',
+    kind: 'npc',
+    position: { x: 30, y: 59 },
+    facing: 'down',
+    design: 'beauty',
+    idle: { roam: [{ x: 31, y: 59 }], glances: ['right', 'left'], beatMs: 3900 },
+    dialogLines: [
+      'On a clear day you can see all the way to Pallet Town from up here.',
+      'There is a Lass in the grass on the terrace below. She watches the road where it passes her, and the grass goes round.',
+    ],
+  },
 ];
 
 export function entitiesForMap(mapId: WorldMapId): readonly WorldEntity[] {
