@@ -23,8 +23,10 @@ import { OVERWORLD } from './sheets';
  */
 const CHOSEN = [
   // Buildings - timber and stone, which is what a river town is made of.
+  // The CC0 'barn' is not here: it is this house drawn from behind - a roof,
+  // two vents and a blank end wall - and every map that stood one had a
+  // building with its back to the lane. Turned round, it is the house.
   'house',
-  'barn',
   'hut',
   'tower',
   'roundhouse',
