@@ -118,7 +118,7 @@ import {
   atRow,
 } from '../world/depths';
 import { districtAt, weatherAt } from '../world/districts';
-import type { MapLayers } from '../world/tiles';
+import { brimRuns, type MapLayers } from '../world/tiles';
 import {
   INTERIOR_COVER_MS,
   interiorAt,
@@ -1102,12 +1102,15 @@ export class WorldScene extends Phaser.Scene {
 
     // Four bands, drawn in this order: what the ground is, what stands on it,
     // what is planted on it, and the crowns a figure walks behind. Only the
-    // last is above the player, which is what lets a wood have an inside.
+    // last is above the player, which is what lets a wood have an inside. The
+    // tops of the crowns go in that band too, after the crowns themselves,
+    // because a tree's brim is in front of whatever stands in the row behind it.
     for (const [name, layer, depth] of [
       ['ground', layers.ground, atRow(TERRAIN_DEPTH, 0)],
       ['overlay', layers.overlay, atRow(TERRAIN_DEPTH, 1)],
       ['detail', layers.detail, atRow(TERRAIN_DEPTH, 2)],
       ['canopy', layers.canopy, CANOPY_BAND],
+      ['brim', layers.brim, CANOPY_BAND],
     ] as const) {
       this.createTileLayer(map, sheets, name, layer, depth);
     }
@@ -3466,6 +3469,7 @@ export class WorldScene extends Phaser.Scene {
         }
       }
     }
+    runs.push(...brimRuns(this.currentMap.layers, { left, top, right, bottom }, TILE_SIZE));
     this.canopyInViewCache = { key, runs };
     return runs;
   }

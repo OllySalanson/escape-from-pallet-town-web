@@ -163,6 +163,13 @@ export type FrlgNineSliceName = keyof typeof FRLG_NINE_SLICES;
 export const FRLG_OBJECTS = {
   TREE_BROAD_A: { column: 0, row: 9, width: 3, height: 3 },
   TREE_BROAD_B: { column: 3, row: 9, width: 3, height: 3 },
+  /**
+   * The top of the broadleaf's crown, which FireRed draws over the grass of the
+   * tile above the 3x3 block: five pixels of outline and leaf on a transparent
+   * strip (`scripts/cut-frlg-tree-brim.mjs`). Without it every tree's crown
+   * stops in a straight line - see `PropDefinition.brim`.
+   */
+  TREE_BRIM: { column: 0, row: 12, width: 3, height: 1 },
   /** A stacked run of canopy - a forest wall rather than a single tree. */
   TREE_COLUMN: { column: 6, row: 9, width: 3, height: 9 },
   TREE_PINE_A: { column: 9, row: 9, width: 2, height: 3 },

@@ -48,7 +48,7 @@ import {
   atRow,
 } from '../world/depths';
 import type { TileSource } from '../world/tileset/catalogue';
-import type { MapLayers } from '../world/tiles';
+import { brimRuns, type MapLayers } from '../world/tiles';
 import {
   BASE_LANDING,
   BASE_PLACE_NAME,
@@ -493,12 +493,13 @@ export class BaseScene extends Phaser.Scene {
       }
       return sheet;
     });
-    const { ground, overlay, detail, canopy } = this.place.layers;
+    const { ground, overlay, detail, canopy, brim } = this.place.layers;
     for (const [name, layer, depth] of [
       ['base-ground', ground, atRow(TERRAIN_DEPTH, 0)],
       ['base-overlay', overlay, atRow(TERRAIN_DEPTH, 1)],
       ['base-detail', detail, atRow(TERRAIN_DEPTH, 2)],
       ['base-canopy', canopy, CANOPY_BAND],
+      ['base-brim', brim, CANOPY_BAND],
     ] as const) {
       this.createTileLayer(map, sheets, name, layer, depth);
     }
@@ -1058,7 +1059,7 @@ export class BaseScene extends Phaser.Scene {
     };
   }
 
-  /** Every crown in view, as one rectangle a row: writing may not sit under one. */
+  /** Every crown in view, as one rectangle a row, and the tops of them: writing may not sit under one. */
   private canopyInView(view: Rect): readonly Rect[] {
     const canopy = this.place.layers.canopy.tiles;
     const left = Math.max(0, Math.floor(view.x / TILE_SIZE));
@@ -1083,6 +1084,7 @@ export class BaseScene extends Phaser.Scene {
         }
       }
     }
+    runs.push(...brimRuns(this.place.layers, { left, top, right, bottom }, TILE_SIZE));
     return runs;
   }
 

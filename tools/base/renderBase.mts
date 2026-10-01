@@ -206,6 +206,7 @@ if (room && drawnRoom) {
   );
 }
 drawLayer(place.layers.canopy);
+drawLayer(place.layers.brim);
 
 if (flags.has('--collision')) {
   for (let y = 0; y < place.height; y += 1) {

@@ -227,6 +227,19 @@ function block(
   return { label, width, height, cells };
 }
 
+/** The same one-column prop stood side by side, `count` wide. */
+function abreast(prop: PropDefinition, count: number, label: string): PropDefinition {
+  if (prop.width !== 1) {
+    throw new Error(`only a one-column prop stands abreast, not '${prop.label}'`);
+  }
+  return {
+    label,
+    width: count,
+    height: prop.height,
+    cells: prop.cells.flatMap((cell) => Array.from({ length: count }, () => cell)),
+  };
+}
+
 const PROPS = {
   // --- Buildings ------------------------------------------------------------
   /** A timber house with a door you stand in front of. The relay's own quarters. */
@@ -373,7 +386,11 @@ const PROPS = {
   // Two tall on the sheet - a lid over a body. One row of it is a barrel with
   // its top sawn off.
   barrel: block('barrel', 33, 0, 1, 2),
-  barrelPair: block('barrels', 33, 0, 2, 2),
+  // Two of the one barrel, not the sheet's own pair: the second barrel there
+  // has another stacked on it whose lid is sliced off by the top of the sheet,
+  // and it stands in a tuft of the CC0 grass, so on a quay it read as a barrel
+  // half buried in the path above it.
+  barrelPair: abreast(block('barrel', 33, 0, 1, 2), 2, 'barrels'),
   crate: block('crate', 30, 0, 1, 2),
   cratePair: block('crates', 30, 0, 2, 2),
   crateStack: block('crates', 35, 8, 2, 2),

@@ -50,8 +50,8 @@ function renderMap(id: WorldMapId) {
   }));
   const [cx, cy, cw, ch] = crop ?? [0, 0, map.width, map.height];
   const image = canvas(cw * TILE_SIZE, ch * TILE_SIZE, [8, 10, 14]);
-  const { ground, overlay, detail, canopy } = map.layers;
-  for (const layer of [ground, overlay, detail, canopy]) {
+  const { ground, overlay, detail, canopy, brim } = map.layers;
+  for (const layer of [ground, overlay, detail, canopy, brim]) {
     for (let y = cy; y < Math.min(cy + ch, map.height); y += 1) {
       for (let x = cx; x < Math.min(cx + cw, map.width); x += 1) {
         const tile = layer.tiles[y][x];

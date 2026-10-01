@@ -169,8 +169,8 @@ export class TitleScene extends Phaser.Scene {
 
     const originX = Math.floor((width - CROP.width * TILE_SIZE) / 2);
     const originY = Math.floor((height - CROP.height * TILE_SIZE) / 2);
-    const { ground, overlay, detail, canopy } = map.layers;
-    const layers = { ground, overlay, detail, canopy };
+    const { ground, overlay, detail, canopy, brim } = map.layers;
+    const layers = { ground, overlay, detail, canopy, brim };
     let depth = 0;
     for (const [name, layer] of Object.entries(layers)) {
       const created = tilemap.createBlankLayer(name, sheets, originX, originY);

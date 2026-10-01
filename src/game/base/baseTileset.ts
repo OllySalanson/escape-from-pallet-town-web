@@ -55,6 +55,29 @@ function mirroredCottage(): PropDefinition {
   };
 }
 
+/**
+ * Brock's workshop: a corrugated-iron shed from the FireRed buildings sheet,
+ * cut onto the base's own sheet (`scripts/cut-frlg-base.mjs`). It used to be
+ * the CC0 sheet's barn, which is only ever drawn from behind - a roof and a
+ * blank end wall - so the workshop stood with its back to the yard and a
+ * doorway cut into a wall with no door in it.
+ */
+function workshopShed(): PropDefinition {
+  const width = 4;
+  const height = 4;
+  const door = { x: 1, y: 3 };
+  return {
+    label: 'workshop',
+    width,
+    height,
+    cells: Array.from({ length: width * height }, (_cell, index) => {
+      const x = index % width;
+      const y = Math.floor(index / width);
+      return { tile: pieceTile('workshop', x, y), solid: !(x === door.x && y === door.y) };
+    }),
+  };
+}
+
 export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
   ...FLOOD_TOWN_TILESET,
   sources: [...FLOOD_TOWN_TILESET.sources, BASE_SHEET_SOURCE.source],
@@ -68,11 +91,9 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
     ]),
     // 5x5, with a single arched door under a lit window.
     pokemonCentre: withDoorway(FLOOD_TOWN_TILESET.props.house, [[2, 4]]),
-    // 4x5. Doors wide enough for a boat, which is what a workshop wants.
-    workshop: withDoorway(FLOOD_TOWN_TILESET.props.barn, [
-      [1, 4],
-      [2, 4],
-    ]),
+    // 4x4. A FireRed shed under a corrugated roof, with its plank door at the
+    // west end - the end nearest the lab, so the walk to it stays seven steps.
+    workshop: workshopShed(),
     billsCottage: mirroredCottage(),
   },
 };

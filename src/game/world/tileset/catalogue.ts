@@ -192,6 +192,27 @@ export interface PropDefinition {
   readonly cells: readonly PropCell[];
   /** What a caption would call it. Kept beside the art so signage cannot drift. */
   readonly label: string;
+  /**
+   * Art that rises above the footprint, into the row over its top: the top of
+   * a FireRed broadleaf's crown is drawn over the grass of the tile above its
+   * 3x3 block, and a tree cut to the block stands with its crown sliced off in
+   * a straight line. It decides nothing - it is not collision, not a crown a
+   * figure can stand hidden under, and it is clipped at the map's edge - it is
+   * only drawn, over the figures and over every crown, because the thing it
+   * belongs to is in front of whatever is in the row above it.
+   */
+  readonly brim?: PropBrim;
+}
+
+/** The row of art a prop draws above its own footprint (`PropDefinition.brim`). */
+export interface PropBrim {
+  /** One per column of the prop; -1 draws nothing in that column. */
+  readonly tiles: readonly number[];
+  /**
+   * How many pixels of the brim's tiles are drawn, up from their bottom edge.
+   * A caption only has to keep clear of what is actually drawn there.
+   */
+  readonly depth: number;
 }
 
 /**

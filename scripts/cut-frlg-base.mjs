@@ -1,7 +1,7 @@
 // Cuts the rooms of the base out of The Spriters Resource's FireRed/LeafGreen
 // interior renders, onto `public/assets/frlg-base.png`.
 //
-//   mkdir -p /tmp/frlg-rooms && for id in 3724 3729 3733 3771; do
+//   mkdir -p /tmp/frlg-rooms && for id in 3724 3729 3733 3771 3862; do
 //     curl -sSL -A "Mozilla/5.0" -o /tmp/frlg-rooms/$id.png \
 //       "https://www.spriters-resource.com/media/assets/4/$id.png"; done
 //   node scripts/cut-frlg-base.mjs /tmp/frlg-rooms
@@ -126,6 +126,13 @@ const PIECES = [
   // The sheet's white ground round it is lifted so it stands on the harbour's.
   { name: 'cottage', from: 'buildings', px: [459, 1010], pitch: 17, size: [5, 3], lift: 'white' },
 
+  // --- Brock's workshop, outside --------------------------------------------
+  // A shed under a corrugated iron roof, brick below and a plank door: the one
+  // building on the sheet that reads as somewhere things are made rather than
+  // somewhere somebody lives. It replaced a CC0 barn whose only drawing is of
+  // its back, so the workshop used to show the yard a blank wall.
+  { name: 'workshop', from: 'buildings', px: [527, 245], pitch: 17, size: [4, 4], lift: 'white' },
+
   // --- the Pokemon Center ----------------------------------------------------
   // The back of the room whole: the wall, Joy's counter and her machine, the
   // television, the box, the storage PC and the map, and the shadow the
@@ -172,20 +179,57 @@ const PIECES = [
   { name: 'bill.mat', from: 'bill', px: [101, 154], size: [3, 1], lift: 'mat' },
 
   // --- the Rocket Warehouse, which is Brock's workshop -----------------------
+  // The warehouse is lit from the top left: the back wall and the west wall
+  // throw a full shade on the floor beside them (`floorShade`), and what stands
+  // against the back wall throws half a tile of it below (`floorShadow`). The
+  // floor itself is the lit plate. The first cut of this room laid the
+  // half-shaded plate as its whole floor - it is the commonest cell in the
+  // render, because the render's first room is full of crates - and the room
+  // read as one dull olive sheet.
   { name: 'warehouse.wallUpper', from: 'warehouse', at: [6, 1], size: [1, 1] },
   { name: 'warehouse.wallLower', from: 'warehouse', at: [6, 2], size: [1, 1] },
-  { name: 'warehouse.floor', from: 'warehouse', at: [8, 4], size: [1, 1] },
+  { name: 'warehouse.floor', from: 'warehouse', at: [19, 4], size: [1, 1] },
   { name: 'warehouse.floorShade', from: 'warehouse', at: [6, 3], size: [1, 1] },
-  { name: 'warehouse.generator', from: 'warehouse', at: [1, 2], size: [3, 2] },
-  { name: 'warehouse.phone', from: 'warehouse', at: [4, 2], size: [1, 1] },
-  { name: 'warehouse.vent', from: 'warehouse', at: [5, 2], size: [1, 1] },
+  { name: 'warehouse.floorShadow', from: 'warehouse', at: [8, 4], size: [1, 1] },
+  // A room in the warehouse is walled on both sides, the wall seen from above
+  // as a white top on black: the corner, the run beside the back wall and the
+  // run beside the floor.
+  { name: 'warehouse.sideWest', from: 'warehouse', cells: [[[14, 1]], [[14, 2]], [[14, 3]]] },
+  { name: 'warehouse.sideEast', from: 'warehouse', cells: [[[20, 1]], [[20, 2]], [[20, 3]]] },
+  // Several things here are drawn across the line between two rows of the
+  // render - the generator's head, the tops of the terminals, the telephone
+  // and the grille on the wall, the top of the monitor desk - and the first
+  // cut took them a row short, so each stood with its top sliced off. Each is
+  // cut from the row its art starts in, wall and all.
+  //
+  // The generator stands against the west wall in the render, so the shade in
+  // the cell below its first column is that wall's: it is given the half
+  // shadow the other two columns have.
+  {
+    name: 'warehouse.generator',
+    from: 'warehouse',
+    cells: [
+      [[1, 1], [2, 1], [3, 1]],
+      [[1, 2], [2, 2], [3, 2]],
+      [[1, 3], [2, 3], [3, 3]],
+      [[2, 4], [2, 4], [3, 4]],
+    ],
+  },
+  { name: 'warehouse.phone', from: 'warehouse', at: [4, 1], size: [1, 2] },
+  { name: 'warehouse.vent', from: 'warehouse', at: [5, 1], size: [1, 2] },
   { name: 'warehouse.crate', from: 'warehouse', at: [4, 4], size: [2, 2] },
-  { name: 'warehouse.terminals', from: 'warehouse', at: [22, 2], size: [2, 2] },
+  { name: 'warehouse.terminals', from: 'warehouse', at: [22, 1], size: [2, 3] },
   { name: 'warehouse.stool', from: 'warehouse', at: [24, 4], size: [1, 1] },
-  { name: 'warehouse.monitorDesk', from: 'warehouse', at: [25, 4], size: [2, 3] },
+  { name: 'warehouse.monitorDesk', from: 'warehouse', at: [25, 3], size: [2, 4] },
+  // Brock's bench: the steel table, its legs and the shadow under it.
+  { name: 'warehouse.table', from: 'warehouse', at: [16, 4], size: [2, 3] },
   { name: 'warehouse.sofa', from: 'warehouse', at: [24, 9], size: [2, 2] },
   { name: 'warehouse.bed', from: 'warehouse', at: [26, 10], size: [2, 4] },
   { name: 'warehouse.box', from: 'warehouse', at: [27, 3], size: [1, 1] },
+  // Stores, stacked in the hall: a tall stack and a single box, each with the
+  // shadow it throws on the plate below it.
+  { name: 'warehouse.boxStack', from: 'warehouse', at: [19, 10], size: [1, 3] },
+  { name: 'warehouse.boxSingle', from: 'warehouse', at: [15, 11], size: [1, 2] },
   { name: 'warehouse.mat', from: 'warehouse', px: [376, 428], size: [3, 1], lift: 'mat' },
 ];
 

@@ -39,6 +39,19 @@ export interface MapLayers {
   /** The part of a landmark a figure walks behind - a tree's crown. */
   readonly canopy: TileLayer;
   /**
+   * Art a landmark draws above its own footprint (`PropDefinition.brim`): the
+   * top of a tree's crown, over the row behind the tree. Drawn over the canopy
+   * as well as the figures, because whatever stands in that row - another
+   * crown included - is behind the tree it belongs to.
+   */
+  readonly brim: TileLayer;
+  /**
+   * How many pixels of each brim tile are drawn, up from its bottom edge, and
+   * 0 where there is none: what a caption has to keep clear of is the leaf
+   * actually drawn, not the whole tile it is drawn in.
+   */
+  readonly brimDepth: number[][];
+  /**
    * The lid over an interior, in two layers because it has to be **opaque**
    * (`interiors.ts`). Every wall material on this sheet is an *overlay* - one
    * rock or one bush drawn over whatever ground is beneath it - so a lid drawn
@@ -166,6 +179,8 @@ export function buildMapLayers(
   const overlay = blankLayer(width, height);
   const detail = blankLayer(width, height);
   const canopy = blankLayer(width, height);
+  const brim = blankLayer(width, height);
+  const brimDepth = Array.from({ length: height }, () => Array<number>(width).fill(0));
   const roofGround = blankLayer(width, height);
   const roof = blankLayer(width, height);
   const collision = Array.from({ length: height }, () => Array<boolean>(width).fill(false));
@@ -231,9 +246,22 @@ export function buildMapLayers(
   drawTips(catalogue, surface, canopy);
   applyShoreline(sketch, catalogue, surface, ground);
   plantProps(sketch, catalogue, detail, canopy, collision, tallGrass, crowned);
+  drawBrims(sketch, catalogue, brim, brimDepth);
   paintRoofs(catalogue, roofs, roofGround, roof);
 
-  return { ground, overlay, detail, canopy, roofGround, roof, collision, tallGrass, crowned };
+  return {
+    ground,
+    overlay,
+    detail,
+    canopy,
+    brim,
+    brimDepth,
+    roofGround,
+    roof,
+    collision,
+    tallGrass,
+    crowned,
+  };
 }
 
 /**
@@ -533,4 +561,69 @@ function plantProps(
       }
     }
   }
+}
+
+/**
+ * Every landmark's brim, in the row above it. Clipped at the map's top edge
+ * rather than refused: a tree standing in the first row has nothing behind it
+ * to be drawn over, and the edge of the map is the edge of the picture.
+ */
+function drawBrims(
+  sketch: MapSketch,
+  catalogue: TilesetCatalogue,
+  brim: TileLayer,
+  brimDepth: number[][],
+): void {
+  for (const planted of sketch.props()) {
+    const art = catalogue.props[planted.name]?.brim;
+    const y = planted.y - 1;
+    if (!art || y < 0) {
+      continue;
+    }
+    art.tiles.forEach((tile, column) => {
+      const x = planted.x + column;
+      if (tile === NONE || x < 0 || x >= brim.tiles[y].length) {
+        return;
+      }
+      brim.tiles[y][x] = tile;
+      brimDepth[y][x] = art.depth;
+    });
+  }
+}
+
+/**
+ * The brims in a block of tiles, as a caption's seating sees canopy: one
+ * rectangle per unbroken run along a row, as tall as the leaf actually drawn
+ * there and sitting on the bottom of its tile.
+ */
+export function brimRuns(
+  layers: Pick<MapLayers, 'brimDepth'>,
+  tiles: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number },
+  tileSize: number,
+): Rect[] {
+  const runs: Rect[] = [];
+  for (let y = tiles.top; y <= tiles.bottom; y += 1) {
+    const row = layers.brimDepth[y];
+    if (!row) {
+      continue;
+    }
+    let start = -1;
+    for (let x = tiles.left; x <= tiles.right + 1; x += 1) {
+      const depth = x <= tiles.right ? (row[x] ?? 0) : 0;
+      const runDepth = start >= 0 ? row[start] : 0;
+      if (start >= 0 && depth !== runDepth) {
+        runs.push({
+          x: start * tileSize,
+          y: (y + 1) * tileSize - runDepth,
+          width: (x - start) * tileSize,
+          height: runDepth,
+        });
+        start = -1;
+      }
+      if (depth > 0 && start < 0) {
+        start = x;
+      }
+    }
+  }
+  return runs;
 }
