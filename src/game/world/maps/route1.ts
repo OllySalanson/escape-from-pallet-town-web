@@ -364,7 +364,7 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
   // break in a row or a column of it, because eleven tiles of mown turf with
   // nothing in them is a lawn you can cross at a run.
   map.plant(43, 6, 'stoneArch');
-  map.plant(35, 21, 'barn');
+  map.plant(34, 21, 'house');
   map.plant(45, 23, 'produceCrate');
   map.plant(40, 12, 'crate');
   map.plant(41, 22, 'produce');
@@ -382,7 +382,7 @@ export function sketchRoute1(): MapSketch<FloodTownPropName> {
 
   // The steading: barn and house either side of its gravel, the hut on the
   // south side, and what nobody has put away.
-  map.plant(45, 33, 'barn');
+  map.plant(44, 33, 'house');
   map.plant(53, 33, 'house');
   map.plant(50, 38, 'hut');
   map.plant(58, 38, 'crateStack');

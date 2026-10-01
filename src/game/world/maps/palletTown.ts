@@ -264,8 +264,8 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
   // South of the square's hedge: the green, mown, with the pump in its corner,
   // a bench, and the oak the lane goes round - bushes grown up behind it, so
   // nobody walks under its crown. The lane steps down two rows on
-  // its way east so it is never one long run, passes the mill's door - sacks
-  // stacked against its west wall - and stops at the towpath. East of the pond
+  // its way east so it is never one long run, passes the mill's door and stops
+  // at the towpath. East of the pond
   // the far bank's path runs down past the stair in the rock, which is the Mill
   // Stair, and on to the head of the leat: the long way round everything.
   map.draw(0, 13, [
@@ -287,9 +287,7 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
     '                          ,,    ',
     '                          ,,    ',
   ]);
-  map.plant(15, 12, 'barn');
-  map.plant(14, 13, 'sack');
-  map.plant(14, 14, 'sack');
+  map.plant(14, 12, 'house');
   map.plant(2, 14, 'fountain');
   map.plant(5, 17, 'bench');
   map.plant(28, 19, 'rockStair');
@@ -506,7 +504,7 @@ export function sketchPalletTown(): MapSketch<FloodTownPropName> {
     '    .gg.g,,g.        gg.WW,,        ',
     '    g.gg.,,gg        g..WW,,        ',
   ]);
-  map.plant(32, 51, 'barn');
+  map.plant(32, 51, 'house');
   map.plant(30, 53, 'crateStack');
   map.plant(30, 51, 'sack');
   map.plant(9, 44, 'deadStump');

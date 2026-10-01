@@ -204,7 +204,7 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
     ' ,, ..             MMMWWWWWWMMMM',
   ]);
   map.plant(11, 5, 'building');
-  map.plant(22, 5, 'barn');
+  map.plant(22, 5, 'house');
   map.plant(32, 10, 'jetty');
   map.plant(32, 7, 'crateStack');
   map.plant(29, 8, 'barrelPair');
@@ -1902,8 +1902,8 @@ export function sketchFloodplainRelay(): MapSketch<FloodTownPropName> {
   map.plant(104, 10, 'log');            // cordwood off the tramway
   map.plant(116, 10, 'sack');           // and a sack of it nobody carried in
   // -- THE CIDER YARD
-  map.plant(67, 46, 'barn');                 // the press house, on the yard's own paving
-  map.plant(71, 45, 'house');           // the store, on the yard's own paving
+  map.plant(67, 46, 'house');           // the press house, on the yard's own paving
+  map.plant(72, 45, 'house');           // the store, on the yard's own paving
   map.plant(66, 52, 'barrelPair');      // casks stood out in the rough ground behind it
   map.plant(78, 47, 'produceCrate');    // and the picking crates, still where the last cart left them
   map.plant(83, 46, 'sack');            // a sack of pomace that never went on the heap

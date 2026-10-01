@@ -244,7 +244,13 @@ const PROPS = {
   // --- Buildings ------------------------------------------------------------
   /** A timber house with a door you stand in front of. The relay's own quarters. */
   house: block('house', 6, 0, 5, 5),
-  /** A barn with doors wide enough for a boat. The Landing's boathouse. */
+  /**
+   * The house above, drawn from behind: a roof with two vents and a blank end
+   * wall, no door and no window. It was taken for a barn and stood on four maps
+   * with its back to the lane; nothing the maps draw from uses it now
+   * (`floodTownTileset.ts`). It is also cut a column short - the sheet draws
+   * its west eave in column 11.
+   */
   barn: block('boathouse', 12, 0, 4, 5),
   /** A one-room shed. Cheap to scatter and it reads as somebody's. */
   hut: block('hut', 13, 5, 2, 3),
