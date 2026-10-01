@@ -58,6 +58,14 @@ export const COLUMN_MEASURES = {
   pricedCounted: 372,
   /** One line: a way in, a move, an exit, a door, a species on a table. */
   line: 176,
+  /**
+   * A Pokemon about to be taught a move (`ui/teachScreen.ts`): a 64-pixel
+   * portrait beside its name, level and verdict on one line, and its moves -
+   * a name and a type badge each - under them.
+   */
+  pupil: 280,
+  /** A move to compare against another: its name, type, numbers and sentence. */
+  move: 216,
 } as const;
 
 /**

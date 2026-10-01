@@ -316,18 +316,24 @@ try {
       `a bag row for ${itemId}`,
     );
     await wait(150);
-    // The first row the bag does not already call a refusal: canon decides who
-    // may read a disc, and the driver is not allowed to argue with it.
+    // The first card the teaching screen lets be chosen: canon decides who may
+    // read a disc, and the driver is not allowed to argue with it. Choosing a
+    // card only marks it; the bar's TEACH is the press that reads the disc
+    // (`ui/teachScreen.ts`).
     await until(
-      `(() => { const rows = [...document.querySelectorAll('[data-target]')];
-        const ok = rows.find((r) => !/cannot learn|\\bknows\\b/i.test(r.innerText)); if (!ok) return false; ok.click(); return true; })()`,
+      `(() => { const card = document.querySelector('[data-pupil]:not([aria-disabled])'); if (!card) return false; card.click(); return true; })()`,
       `somebody who can read ${itemId}`,
+    );
+    await wait(150);
+    await until(
+      `(() => { const b = document.querySelector('[data-teach]:not([aria-disabled])'); if (!b) return false; b.click(); return true; })()`,
+      'the TEACH button',
     );
     await wait(250);
     // A full moveset is a question, not a refusal: the disc queues the move and
     // the same chooser a level-up opens asks which of the four to give up
     // (`ui/MoveChooserOverlay.ts`). The driver gives up the first, which is the
-    // only answer a script has any business giving.
+    // only answer a script has any business giving - marked, then confirmed.
     if (await page.evaluate(`Boolean(document.querySelector('[data-forget]'))`)) {
       note(`move chooser: forgetting ${await page.evaluate(`document.querySelector('[data-forget]')?.innerText.split('\\n')[0] ?? ''`)}`);
       // The chooser ignores everything for `MOVE_CHOOSER_ARMING_MS` of *wall*
@@ -336,7 +342,7 @@ try {
       // time and not wall time, so this waits on the clock the guard uses.
       for (let guard = 0; guard < 20; guard += 1) {
         await sleep(120);
-        await page.evaluate(`document.querySelector('[data-forget]')?.click()`);
+        await page.evaluate(`document.querySelector('[data-forget-confirm]') ? document.querySelector('[data-forget-confirm]').click() : document.querySelector('[data-forget]')?.click()`);
         if (!(await page.evaluate(`Boolean(document.querySelector('[data-forget]'))`))) break;
       }
     }

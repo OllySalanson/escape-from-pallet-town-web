@@ -30,6 +30,8 @@ export function firstMatching<T>(
 export interface BagFocusState {
   /** The recipient list is on screen: the next Enter is meant for a Pokemon. */
   readonly choosingPokemon: boolean;
+  /** The list is of who should read a disc: start on the first who can. */
+  readonly teaching?: boolean;
 }
 
 /**
@@ -41,6 +43,9 @@ export interface BagFocusState {
  * which is why this only has to answer "where does a fresh screen start".
  */
 export function bagFocusPreference(state: BagFocusState): readonly string[] {
+  if (state.teaching) {
+    return ['[data-pupil]:not([aria-disabled])', '[data-pupil]', '[data-teach-back]'];
+  }
   return state.choosingPokemon
     ? ['[data-target]', '[data-close]']
     : ['[data-item]', '[data-close]'];
