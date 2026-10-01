@@ -8,11 +8,13 @@ other six was "yes turn the barns round".
 
 Turned round, the barn is the house: the same building, with the same roof and
 the same posts, seen from the front. The barn was also cut a column short (the
-sheet draws its west eave one column further west), so each house stands where
-the whole building's drawing would have stood. Where that column was walkable
-ground, the house moves one column east instead, onto thicket or fence. At the
-cider yard the store moves a column east to make room. The press-house
-landmark stays on its tile beside the west wall.
+sheet draws its west eave one column further west), so at the mill and on
+Route 1 each house stands where the whole building's drawing would have stood.
+At the rickyard, the ferry yard and the cider yard that column held something
+that has to stay - the rickyard's crates, the ferry yard's barrel and the
+press-house landmark - so the house stands a column east instead. At the cider
+yard the store moves a column east as well, to make room. Every map-structure,
+route and gate rule still passes.
 
 The `barn` is out of the catalogue the maps are drawn from
 (`floodTownTileset.ts`), so a map cannot plant one again.
