@@ -16,6 +16,7 @@ import {
 import { escapeAttribute, pixelCommitBar, pixelScreen, pixelWindow } from '../ui/pixelUi';
 import type { SpotKind, ThingRef } from './draft';
 import type { StoredDraft } from './drafts';
+import type { QueuedMap } from './review';
 import { STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
 import {
   BUILDING_CHOICES,
@@ -36,7 +37,18 @@ import {
  */
 
 /** The right-hand column: the chosen thing and the map, the drafts, sending in, or what became of what was sent. */
-export type MakerPanel = 'map' | 'drafts' | 'send' | 'sent';
+export type MakerPanel = 'map' | 'drafts' | 'send' | 'sent' | 'review';
+
+/**
+ * The review list, for the owner: whether whoever is here may review, and
+ * what is waiting. The database decides who is a reviewer (`maker/review.ts`).
+ */
+export type ReviewState =
+  | { readonly step: 'checking' }
+  | { readonly step: 'signed-out'; readonly reason?: string }
+  | { readonly step: 'not-reviewer' }
+  | { readonly step: 'loaded'; readonly maps: readonly QueuedMap[]; readonly reason?: string }
+  | { readonly step: 'failed'; readonly reason: string };
 
 /**
  * Sending in, step by step. `previous` is this draft's last receipt and what
@@ -104,6 +116,9 @@ export interface MakerViewState {
   readonly sending: SendState;
   /** What became of this browser's maps, while the sent panel is open. */
   readonly sent: SentState;
+  readonly review: ReviewState;
+  /** The map sent in that is open in the editor to be reviewed, if one is. */
+  readonly reviewing: QueuedMap | undefined;
   readonly status?: string;
 }
 
@@ -426,7 +441,7 @@ function draftsPane(drafts: readonly StoredDraft[], current: string): string {
     )
     .join('');
   return pixelWindow(
-    `<div class="px-scroll maker-pane"><div class="px-list">${rows || '<p class="px-empty">No drafts yet.</p>'}</div></div><div class="maker-actions maker-pad"><button class="px-window px-button" data-panel="sent" data-help="What became of the maps you sent in from this browser.">Sent in</button></div>`,
+    `<div class="px-scroll maker-pane"><div class="px-list">${rows || '<p class="px-empty">No drafts yet.</p>'}</div></div><div class="maker-actions maker-pad"><button class="px-window px-button" data-panel="sent" data-help="What became of the maps you sent in from this browser.">Sent in</button><button class="px-window px-button" data-panel="review" data-help="For the game's owner: the maps players have sent in.">Review maps</button></div>`,
     {
       className: 'maker-drafts',
       heading: 'Your drafts',
@@ -506,12 +521,96 @@ function sentPane(sent: SentState): string {
   );
 }
 
+/**
+ * Reviewing: the decision on the map open in the editor, then everything sent
+ * in. A map is opened into the editor to be played and, if it needs it, fixed:
+ * approving takes the map as it then stands.
+ */
+function reviewPane(
+  review: ReviewState,
+  reviewing: QueuedMap | undefined,
+  checks: readonly MakerCheck[],
+): string {
+  const button = (attribute: string, label: string, primary = false, help = ''): string =>
+    `<button class="px-window px-button${primary ? ' is-primary' : ''}" ${attribute}${help ? ` data-help="${escapeAttribute(help)}"` : ''}>${label}</button>`;
+  const footer = (extra: string): string =>
+    `<div class="maker-actions maker-pad">${button('data-panel="drafts"', 'Drafts')}${extra}</div>`;
+  switch (review.step) {
+    case 'checking':
+      return pixelWindow(`<p class="px-empty">Checking…</p>`, {
+        className: 'maker-drafts',
+        heading: 'Review maps',
+      });
+    case 'signed-out':
+      return pixelWindow(
+        `<div class="maker-form"><p class="px-wrap">Maps sent in are reviewed here by the game's owner, who signs in with GitHub.</p>${
+          review.reason ? `<p class="px-warning px-wrap">${escapeHtml(review.reason)}</p>` : ''
+        }<div class="maker-actions">${button('data-panel="drafts"', 'Drafts')}${button('data-review-sign-in', 'Sign in with GitHub', true)}</div></div>`,
+        { className: 'maker-drafts', heading: 'Review maps' },
+      );
+    case 'not-reviewer':
+      return pixelWindow(
+        `<div class="maker-form"><p class="px-wrap">This account does not review maps.</p><div class="maker-actions">${button('data-panel="drafts"', 'Drafts')}${button('data-review-sign-out', 'Sign out')}</div></div>`,
+        { className: 'maker-drafts', heading: 'Review maps' },
+      );
+    case 'failed':
+      return pixelWindow(
+        `<p class="px-warning px-wrap maker-pad">${escapeHtml(review.reason)}</p>${footer(button('data-review-refresh', 'Try again'))}`,
+        {
+          className: 'maker-drafts',
+          heading: 'Review maps',
+        },
+      );
+    case 'loaded':
+      break;
+  }
+  const passed = checks.filter((check) => check.id !== 'walked' && check.passed).length;
+  const total = checks.filter((check) => check.id !== 'walked').length;
+  const decision = reviewing
+    ? pixelWindow(
+        `<div class="maker-form"><p class="px-wrap"><strong>${escapeHtml(reviewing.mapName)}</strong> by <strong>${escapeHtml(reviewing.makerName)}</strong>${
+          reviewing.revision > 1 ? `, try ${reviewing.revision}` : ''
+        }. ${STATUS_WORDS[reviewing.status]}. Receipt ${reviewing.receiptCode}.</p><p class="px-note px-wrap">${passed} of ${total} checks pass. Play it with WALK IT or RAID IT; fix anything here before approving and the fixed map is what is approved.</p>${
+          review.reason ? `<p class="px-warning px-wrap">${escapeHtml(review.reason)}</p>` : ''
+        }<label class="maker-field"><span>Note to the maker</span><textarea class="px-window px-field maker-lines" data-review-note rows="3" maxlength="2000" placeholder="Needed to send back or turn down">${escapeHtml(reviewing.note ?? '')}</textarea></label><div class="maker-actions">${button(
+          'data-decide="sent_back"',
+          'Send back',
+          false,
+          'Returns it to its maker with your note, to fix and send again.',
+        )}${button('data-decide="rejected"', 'Turn down', false, 'Refuses it for good, with your note as the reason.')}${button(
+          'data-decide="approved"',
+          'Approve',
+          passed === total,
+          passed === total
+            ? 'Approves the map as it now stands; it is then added to the game.'
+            : 'It must pass every check first.',
+        )}</div><div class="maker-actions">${button('data-block-maker', 'Block this maker', false, 'Stops this maker sending any more maps. Press twice.')}</div></div>`,
+        { className: 'maker-send', heading: 'Reviewing' },
+      )
+    : '';
+  const rows = review.maps
+    .map(
+      (map) =>
+        `<button class="px-row${reviewing?.id === map.id ? ' is-selected' : ''}" data-review-open="${escapeAttribute(map.id)}" data-help="Opens it in the editor to play and decide."${map.file ? '' : ' aria-disabled="true"'}><span class="px-row-main"><span class="px-name">${escapeHtml(map.mapName)}</span><small class="px-note">${escapeHtml(map.makerName)} · ${STATUS_WORDS[map.status]}${map.revision > 1 ? ` · try ${map.revision}` : ''}</small></span></button>`,
+    )
+    .join('');
+  return `${decision}${pixelWindow(
+    `<div class="px-scroll maker-pane"><div class="px-list">${rows || '<p class="px-empty">Nothing has been sent in.</p>'}</div></div>${footer(`${button('data-review-refresh', 'Check again')}${button('data-review-sign-out', 'Sign out')}`)}`,
+    {
+      className: 'maker-drafts',
+      heading: 'Review maps',
+      note: `${review.maps.filter((map) => map.status === 'waiting').length} waiting`,
+    },
+  )}`;
+}
+
 export function makerScreen(state: MakerViewState): string {
   const panels: Readonly<Record<MakerPanel, () => string>> = {
     map: () => `${selectedPane(state.file, state.selected)}${settingsPane(state.file)}`,
     drafts: () => draftsPane(state.drafts, state.draftKey),
     send: () => sendPane(state.file, state.sending),
     sent: () => sentPane(state.sent),
+    review: () => reviewPane(state.review, state.reviewing, state.checks),
   };
   const side = `<div class="maker-side">${checksPane(state.checks)}${panels[state.panel]()}</div>`;
   const button = (

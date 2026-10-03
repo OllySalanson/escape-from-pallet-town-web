@@ -53,9 +53,21 @@ import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { botCheckNeeded, passBotCheck } from '../maker/turnstile';
 import { isSignedIn, sendMap, sentMaps, type SubmissionStatus } from '../maker/submissions';
 import {
+  blockMaker,
+  decide,
+  finishReviewSignIn,
+  reviewAccess,
+  reviewQueue,
+  signInToReview,
+  signOutOfReview,
+  type QueuedMap,
+  type ReviewDecision,
+} from '../maker/review';
+import {
   makerScreen,
   walkedCheck,
   type MakerPanel,
+  type ReviewState,
   type SendState,
   type SentState,
   MAKER_ZOOMS,
@@ -113,6 +125,10 @@ export class MapMakerScene extends Phaser.Scene {
   private panel: MakerPanel = 'map';
   private sending: SendState = { step: 'checking' };
   private sent: SentState = { step: 'loading' };
+  private review: ReviewState = { step: 'checking' };
+  /** The map sent in that is open in the editor to be reviewed. */
+  private reviewing: QueuedMap | undefined;
+  private pendingBlock = false;
   /** A passed bot check, spent by the next sign-in. */
   private captchaToken: string | undefined;
   private stroke: Stroke | undefined;
@@ -127,7 +143,7 @@ export class MapMakerScene extends Phaser.Scene {
     super('mapmaker');
   }
 
-  public create(data?: { readonly tried?: boolean }): void {
+  public create(data?: { readonly tried?: boolean; readonly review?: boolean }): void {
     // Back from a TRY IT: the draft stops being a map the game can deploy onto,
     // and the game goes back to its ordinary save.
     const tried = data?.tried === true;
@@ -159,6 +175,10 @@ export class MapMakerScene extends Phaser.Scene {
         : undefined,
     );
     this.fitZoom();
+    // Back from signing in with GitHub: finish it, then open the review list.
+    if (data?.review) {
+      void finishReviewSignIn().then(() => this.openPanel('review'));
+    }
     void loadMakerSheets().then(() => {
       if (this.scene.isActive()) {
         this.drawSwatches();
@@ -240,6 +260,8 @@ export class MapMakerScene extends Phaser.Scene {
       panel: this.panel,
       sending: this.sending,
       sent: this.sent,
+      review: this.review,
+      reviewing: this.reviewing,
       ...(status ? { status } : {}),
     });
     this.wire();
@@ -345,6 +367,28 @@ export class MapMakerScene extends Phaser.Scene {
     on('[data-send]', () => this.openSend());
     on('[data-send-confirm]', () => void this.confirmSend());
     on('[data-refresh-sent]', () => this.openPanel('sent'));
+    on('[data-review-refresh]', () => this.openPanel('review'));
+    on('[data-review-sign-in]', () => {
+      void signInToReview().then((result) => {
+        if (!result.ok) {
+          this.review = { step: 'signed-out', reason: result.reason };
+          this.render();
+        }
+      });
+    });
+    on('[data-review-sign-out]', () => {
+      void signOutOfReview().then(() => {
+        this.reviewing = undefined;
+        this.review = { step: 'signed-out' };
+        this.render();
+      });
+    });
+    on('[data-review-open]', (element) => this.openForReview(element.dataset.reviewOpen ?? ''));
+    on(
+      '[data-decide]',
+      (element) => void this.decideReview(element.dataset.decide as ReviewDecision),
+    );
+    on('[data-block-maker]', (element) => void this.blockReviewedMaker(element));
     on('[data-open-draft]', (element) => this.openDraft(element.dataset.openDraft ?? ''));
     on('[data-delete-draft]', (element) =>
       this.deleteDraft(element, element.dataset.deleteDraft ?? ''),
@@ -834,6 +878,10 @@ export class MapMakerScene extends Phaser.Scene {
     this.flushAutosave();
     this.pendingDelete = undefined;
     this.panel = panel;
+    if (panel === 'review') {
+      this.review = { step: 'checking' };
+      void this.loadReview();
+    }
     if (panel === 'sent') {
       this.sent = { step: 'loading' };
       void sentMaps().then((result) => {
@@ -938,6 +986,99 @@ export class MapMakerScene extends Phaser.Scene {
     if (this.scene.isActive() && this.panel === 'send') {
       this.render();
     }
+  }
+
+  /** Asks the database who is here and, for a reviewer, what has been sent in. */
+  private async loadReview(reason?: string): Promise<void> {
+    const access = await reviewAccess();
+    if (access !== 'reviewer') {
+      this.review = { step: access };
+    } else {
+      const queue = await reviewQueue();
+      this.review = queue.ok
+        ? { step: 'loaded', maps: queue.value, ...(reason ? { reason } : {}) }
+        : { step: 'failed', reason: queue.reason };
+      if (queue.ok && this.reviewing) {
+        this.reviewing = queue.value.find((map) => map.id === this.reviewing?.id) ?? this.reviewing;
+      }
+    }
+    if (this.scene.isActive() && this.panel === 'review') {
+      this.render();
+    }
+  }
+
+  /**
+   * Opens a map sent in, in the editor, as a draft of the reviewer's own: it can
+   * be played with TRY IT and fixed before it is approved, and nothing done to
+   * it reaches the maker until a decision is made.
+   */
+  private openForReview(id: string): void {
+    if (this.review.step !== 'loaded') {
+      return;
+    }
+    const map = this.review.maps.find((candidate) => candidate.id === id);
+    if (!map?.file) {
+      return;
+    }
+    this.flushAutosave();
+    const key = `review-${map.receiptCode}`;
+    const kept = this.store.drafts.find((draft) => draft.key === key);
+    this.draftKey = key;
+    this.history.reset(kept?.file ?? map.file);
+    this.store = withDraft(this.store, kept ?? { key, file: map.file, updatedAt: Date.now() });
+    saveMakerStore(this.store);
+    this.reviewing = map;
+    this.selected = undefined;
+    this.pendingBlock = false;
+    this.render();
+    this.fitZoom();
+  }
+
+  private async decideReview(decision: ReviewDecision): Promise<void> {
+    const reviewing = this.reviewing;
+    if (!reviewing) {
+      return;
+    }
+    if (decision === 'approved' && !this.currentChecks().every((check) => check.passed)) {
+      this.render('It must pass every check before it is approved.');
+      return;
+    }
+    const note =
+      this.overlay.root.querySelector<HTMLTextAreaElement>('[data-review-note]')?.value ?? '';
+    this.flushAutosave();
+    const result = await decide(
+      reviewing.id,
+      decision,
+      note,
+      decision === 'approved' ? this.file : undefined,
+    );
+    const said = {
+      approved: 'Approved.',
+      sent_back: 'Sent back to its maker.',
+      rejected: 'Turned down.',
+    }[decision];
+    await this.loadReview(result.ok ? undefined : result.reason);
+    if (result.ok) {
+      this.render(said);
+    }
+  }
+
+  /** Two presses: a blocked maker can send nothing more. */
+  private async blockReviewedMaker(button: HTMLElement): Promise<void> {
+    const reviewing = this.reviewing;
+    if (!reviewing) {
+      return;
+    }
+    if (!this.pendingBlock) {
+      this.pendingBlock = true;
+      button.textContent = 'Block for good';
+      return;
+    }
+    this.pendingBlock = false;
+    const note =
+      this.overlay.root.querySelector<HTMLTextAreaElement>('[data-review-note]')?.value ?? '';
+    const result = await blockMaker(reviewing.makerUid, note);
+    this.render(result.ok ? `${reviewing.makerName} can send no more maps.` : result.reason);
   }
 
   /** Whether the maker has walked out of this version of the map in TRY IT. */

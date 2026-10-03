@@ -17,6 +17,7 @@ import {
   type TitleMenu,
 } from '../ui/titleMenu';
 import { setActiveSaveSlot } from '../dev/playtestMode';
+import { isReviewReturn } from '../maker/review';
 import { createPlaytestGame, withEverythingCurrent } from '../dev/playtestSave';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { TILE_SIZE, WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
@@ -76,6 +77,13 @@ export class TitleScene extends Phaser.Scene {
     // only the playtest row moves it. That is what makes an explorer run
     // unreachable by accident rather than merely unlikely.
     setActiveSaveSlot('normal');
+    // GitHub sends the map reviewer back to the game's own address; the
+    // review list is where they were going, so they go straight there.
+    if (isReviewReturn()) {
+      this.hasStarted = true;
+      this.scene.start('mapmaker', { review: true });
+      return;
+    }
     // Asked once per visit, not per frame: the summary reads the whole save.
     this.summary = this.saveManager.describe();
     this.playtestSummary = this.playtestSaveManager.describe();

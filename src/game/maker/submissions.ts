@@ -1,6 +1,7 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { MapFile } from '../world/mapFile';
-import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from './submitConfig';
+import { supabase, type SubmissionStatus } from './supabaseClient';
+
+export type { SubmissionStatus } from './supabaseClient';
 
 /**
  * Sending a map in, and asking what became of it.
@@ -16,8 +17,6 @@ import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from './submitConfig';
  * downloads it.
  */
 
-export type SubmissionStatus = 'waiting' | 'sent_back' | 'approved' | 'rejected' | 'published';
-
 export interface SentMap {
   readonly receiptCode: string;
   readonly mapName: string;
@@ -31,48 +30,6 @@ export interface SentMap {
 
 export type Outcome<T> =
   { readonly ok: true; readonly value: T } | { readonly ok: false; readonly reason: string };
-
-interface SentRow {
-  readonly receipt_code: string;
-  readonly map_name: string;
-  readonly status: SubmissionStatus;
-  readonly owner_note: string | null;
-  readonly revision: number;
-  readonly created_at: string;
-  readonly updated_at: string;
-}
-
-/** The two calls a maker's browser can make, as the database declares them (`supabase/migrations/`). */
-interface MakerDatabase {
-  public: {
-    Tables: Record<string, never>;
-    Views: Record<string, never>;
-    Functions: {
-      submit_map: {
-        Args: { map: unknown; maker_name: string; resubmits: string | null };
-        Returns: string;
-      };
-      my_submissions: { Args: Record<PropertyKey, never>; Returns: SentRow[] };
-    };
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
-}
-
-let client: Promise<SupabaseClient<MakerDatabase>> | undefined;
-
-function supabase(): Promise<SupabaseClient<MakerDatabase>> {
-  client ??= import('@supabase/supabase-js').then(({ createClient }) =>
-    createClient<MakerDatabase>(SUBMISSIONS_URL, SUBMISSIONS_PUBLISHABLE_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        storageKey: 'escape-from-pallet-town.maker.session',
-      },
-    }),
-  );
-  return client;
-}
 
 /** The reasons the database gives, said as they are; anything else said plainly. */
 const DATABASE_REASONS = [

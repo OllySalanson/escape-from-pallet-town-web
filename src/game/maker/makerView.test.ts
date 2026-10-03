@@ -35,6 +35,8 @@ function state(file: MapFile, walked: boolean): MakerViewState {
     panel: 'map',
     sending: { step: 'checking' },
     sent: { step: 'loading' },
+    review: { step: 'checking' },
+    reviewing: undefined,
   };
 }
 
