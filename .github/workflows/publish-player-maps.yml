@@ -1,0 +1,93 @@
+name: Publish player maps
+
+# Every half hour (and by hand), every map the reviewer approved in the game is
+# checked by the game's own rules, added to src/maps/player/ as one file, tested
+# with the whole suite, merged, and deployed - then marked published, which is
+# what its maker sees under Sent in. See tools/maps/publishApproved.mts.
+#
+# The half-hourly read is also what keeps the free Supabase project awake: a
+# free project pauses after a week with no requests.
+#
+# A change pushed or merged with this workflow's own token starts no other
+# workflow, so this one runs the suite itself before it merges, and asks for
+# the Pages deploy by hand afterwards.
+
+on:
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: publish-player-maps
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Collect approved maps
+        id: collect
+        run: |
+          npx vite-node tools/maps/publishApproved.mts -- collect "$RUNNER_TEMP/published.json"
+          echo "count=$(node -e "console.log(require(process.argv[1]).length)" "$RUNNER_TEMP/published.json")" >> "$GITHUB_OUTPUT"
+
+      - name: Lint
+        if: steps.collect.outputs.count != '0'
+        run: npm run lint
+
+      - name: Typecheck
+        if: steps.collect.outputs.count != '0'
+        run: npm run typecheck
+
+      - name: Unit tests
+        if: steps.collect.outputs.count != '0'
+        run: npm test
+
+      - name: Build
+        if: steps.collect.outputs.count != '0'
+        run: npm run build
+
+      - name: Open and merge the pull request
+        if: steps.collect.outputs.count != '0'
+        run: |
+          branch="publish/player-maps-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add src/maps/player
+          names=$(node -e "console.log(require(process.argv[1]).map((entry) => entry.file.replace(/^.*\//, '')).join(', '))" "$RUNNER_TEMP/published.json")
+          git commit -m "Publish player maps: ${names}"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" --title "Publish player maps: ${names}" \
+            --body "Approved in the game's review list, checked by the game's own rules and the whole test suite in this run (${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
+          gh pr merge "$branch" --squash --delete-branch
+
+      - name: Mark them published
+        if: steps.collect.outputs.count != '0'
+        run: npx vite-node tools/maps/publishApproved.mts -- mark "$RUNNER_TEMP/published.json"
+
+      - name: Deploy the game
+        if: steps.collect.outputs.count != '0'
+        run: gh workflow run pages.yml --ref main

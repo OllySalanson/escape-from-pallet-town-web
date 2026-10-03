@@ -2,7 +2,7 @@
 
 Photographed in headless Chromium against the dev server (`?testmode=pixels`), 1280x800 unless named.
 
-- `00-stage1-dropin-sample-lane.png` - stage 1: the explorer run's drop-in screen offering Sample Lane, a map loaded from `src/maps/player/sample-lane.json`.
+- `00-stage1-dropin-sample-lane.png` - stage 1: the explorer run's drop-in screen offering Sample Lane, a map loaded from `src/maps/sample/sample-lane.json`.
 - `01-title-maps.png` - MAKE A MAP on the title asks which: the map maker, or the explorer run (moved here because four rows do not fit 320x240).
 - `02-editor-painted.png` - a map painted from a blank draft: a sand road, a pond, tall grass, a wood, a ledge, flowers, two drop-ins, an exit, item spots and a house; all six checks pass.
 - `03-raid-it.png` - RAID IT: the draft played by the real game, clock and all.
@@ -15,3 +15,4 @@ Photographed in headless Chromium against the dev server (`?testmode=pixels`), 1
 - `10-send-it-in.png` - stage 3: a finished map (every check folded to one line) and the send panel, saying who reads it and what travels with it.
 - `11-send-refused-until-switched-on.png` - the same send while the project still has anonymous sign-ins switched off: said plainly, the map safe in its drafts.
 - `12-review-maps-signed-out.png` - stage 4: *Review maps* for someone not signed in, while the project's GitHub sign-in is still switched off - refused in place, never a redirect to an error page.
+- `13-published-map-in-drop-in.png` - stage 5: an ordinary save that has banked its first contract, offered a published map under PLAYER MAPS with its maker credited (photographed with a stand-in file the publisher wrote, removed before commit).

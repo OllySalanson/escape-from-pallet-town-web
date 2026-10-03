@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import sampleLane from '../../maps/player/sample-lane.json';
+import sampleLane from '../../maps/sample/sample-lane.json';
 import { playtestRaidProgress, withEverythingCurrent } from '../dev/playtestSave';
 import {
+  availableInsertionIds,
   generateRunPlan,
   insertionsOn,
   requireInsertion,
@@ -18,12 +19,12 @@ import {
 import { extractionPointsOn } from './extractionPoints';
 import { districtAt } from './districts';
 import { districtEncounterTables } from './localEncounters';
-import { buildPlayerMap, MAP_FILE_TRAINER_TEAMS, readMapFile, trainerTemplate, type MapFile } from './mapFile';
+import { buildPlayerMap, MAP_FILE_TRAINER_TEAMS, plainText, readMapFile, trainerTemplate, type MapFile } from './mapFile';
 import { trainersOn } from './mapTrainers';
 import { entitiesForMap } from './npcs';
 import { poisForMap } from './pois';
 import { checkMapFile, type MapCheckId } from './mapFileChecks';
-import { playerMaps, registerPlayerMap, unregisterPlayerMap } from './playerMaps';
+import { isPublishedMap, playerMaps, registerPlayerMap, unregisterPlayerMap } from './playerMaps';
 
 const SAMPLE = sampleLane as MapFile;
 
@@ -376,5 +377,34 @@ describe('people, signs, landmarks, districts and trainers in a file', () => {
     for (const team of Object.keys(MAP_FILE_TRAINER_TEAMS) as (keyof typeof MAP_FILE_TRAINER_TEAMS)[]) {
       expect(trainerTemplate(team).bossId).toBeUndefined();
     }
+  });
+});
+
+describe('publishing', () => {
+  it('offers an approved map to every save that has banked its first contract, and the sample to none', () => {
+    const approved = buildPlayerMap({ ...SAMPLE, id: 'pond-lane', name: 'Pond Lane', maker: 'Tester' });
+    registerPlayerMap(approved, { published: true });
+    try {
+      const fresh = { unlockedInsertions: ['floodplain-relay'], reachedInsertions: [], completedContracts: [] };
+      const banked = { ...fresh, completedContracts: ['recover-lost-field-kit'] };
+      expect(availableInsertionIds(fresh)).not.toContain('player-pond-lane/south-road');
+      expect(availableInsertionIds(banked)).toContain('player-pond-lane/south-road');
+      // Only its front door: a drop-in point is reached on foot, as on any map.
+      expect(availableInsertionIds(banked)).not.toContain('player-pond-lane/pond-side');
+      expect(availableInsertionIds(banked).some((id) => id.startsWith('player-sample-lane'))).toBe(false);
+      expect(isPublishedMap('player-sample-lane')).toBe(false);
+      expect(isPublishedMap(approved.id)).toBe(true);
+    } finally {
+      unregisterPlayerMap(approved.id);
+    }
+    expect(isPublishedMap('player-pond-lane')).toBe(false);
+  });
+
+  it('refuses any name or line that could carry markup onto a screen', () => {
+    expect(problemsOf(edited({ name: 'Pond <b>Lane</b>' }))).toEqual(['Names and words in a map may not use < > & or ".']);
+    expect(
+      problemsOf(edited({ people: [{ x: 12, y: 7, name: 'Tam', look: 'old-man', facing: 'down', lines: ['Fish & chips'] }] })),
+    ).toEqual(['Names and words in a map may not use < > & or ".']);
+    expect(plainText('Fish & "chips" <here>')).toBe('Fish  chips here');
   });
 });
