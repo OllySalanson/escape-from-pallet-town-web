@@ -14,3 +14,4 @@ Photographed in headless Chromium against the dev server (`?testmode=pixels`), 1
 - `09-trainer-sees-you.png` - stepping into the trainer's sight: he walks up and the fight starts with the Scout team (Pidgey 5, Squirtle 6).
 - `10-send-it-in.png` - stage 3: a finished map (every check folded to one line) and the send panel, saying who reads it and what travels with it.
 - `11-send-refused-until-switched-on.png` - the same send while the project still has anonymous sign-ins switched off: said plainly, the map safe in its drafts.
+- `12-review-maps-signed-out.png` - stage 4: *Review maps* for someone not signed in, while the project's GitHub sign-in is still switched off - refused in place, never a redirect to an error page.
