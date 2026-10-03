@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { homeAfterRaid } from '../maker/tryIt';
 import {
   nextTileFromDirection,
   planNextGridStep,
@@ -4111,10 +4112,11 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
-    if (this.scene.manager.keys.base) {
+    const home = homeAfterRaid();
+    if (this.scene.manager.keys[home.key]) {
       this.cameras.main.fadeOut(180, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('base', { arrival: 'raid' });
+        this.scene.start(home.key, home.data);
       });
       return;
     }

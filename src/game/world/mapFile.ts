@@ -191,7 +191,16 @@ const isWholeNumber = (value: unknown): value is number =>
  * `mapFileChecks.ts`. Every problem is listed rather than the first, because a
  * file is fixed in one sitting or not at all.
  */
-export function readMapFile(value: unknown): MapFileReading {
+export function readMapFile(
+  value: unknown,
+  /**
+   * A draft is a map still being drawn: it may have no name or maker yet and
+   * no way in or out, and the editor still has to be able to open it. Every
+   * other rule - the shape, the letters, the bounds - holds for a draft too.
+   */
+  options: { readonly draft?: boolean } = {},
+): MapFileReading {
+  const draft = options.draft === true;
   const problems: string[] = [];
   if (!isRecord(value)) {
     return { ok: false, problems: ['The file is not a map.'] };
@@ -202,27 +211,24 @@ export function readMapFile(value: unknown): MapFileReading {
       problems: [`The file is format ${String(value.format)}; this game reads format ${MAP_FILE_FORMAT}.`],
     };
   }
-  const text = (field: string, max: number, required = true): string | undefined => {
+  const text = (field: string, what: string, max: number): string | undefined => {
     const raw = value[field];
-    if (raw === undefined && !required) {
-      return undefined;
-    }
-    if (typeof raw !== 'string' || raw.trim().length === 0) {
-      problems.push(`'${field}' must be some text.`);
+    if (typeof raw !== 'string' || (raw.trim().length === 0 && !draft)) {
+      problems.push(`The map needs ${what}.`);
       return undefined;
     }
     if (raw.length > max) {
-      problems.push(`'${field}' is longer than ${max} letters.`);
+      problems.push(`The map's ${field} is longer than ${max} letters.`);
     }
     return raw;
   };
 
-  const id = text('id', 40);
+  const id = text('id', 'an id', 40);
   if (id !== undefined && !ID_PATTERN.test(id)) {
     problems.push(`'id' may only hold lower-case letters, digits and single dashes.`);
   }
-  text('name', MAP_FILE_LIMITS.maxNameLength);
-  text('maker', MAP_FILE_LIMITS.maxMakerLength);
+  text('name', 'a name', MAP_FILE_LIMITS.maxNameLength);
+  text('maker', "its maker's name", MAP_FILE_LIMITS.maxMakerLength);
 
   const { width, height } = value;
   const sized =
@@ -271,7 +277,7 @@ export function readMapFile(value: unknown): MapFileReading {
       problems.push(`'${field}' must be a list.`);
       return [];
     }
-    if (raw.length < min) {
+    if (raw.length < min && !draft) {
       problems.push(`A map needs at least ${min} ${field === 'dropIns' ? 'drop-in' : 'exit'}.`);
     }
     if (raw.length > max) {
@@ -296,7 +302,7 @@ export function readMapFile(value: unknown): MapFileReading {
     for (const [index, spot] of list(field, max, 1).entries()) {
       const name = spot.name;
       if (typeof name !== 'string' || name.trim().length === 0) {
-        problems.push(`${field} ${index + 1} needs a name.`);
+        problems.push(`${field === 'dropIns' ? 'Drop-in' : 'Exit'} ${index + 1} needs a name.`);
         continue;
       }
       if (name.length > MAP_FILE_LIMITS.maxPlaceNameLength) {

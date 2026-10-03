@@ -37,9 +37,18 @@
 /** Where an explorer run is kept. Never the key the ordinary game is kept under. */
 export const PLAYTEST_SAVE_KEY = 'escape-from-pallet-town.save.playtest.v1';
 
-export type SaveSlot = 'normal' | 'playtest';
+/**
+ * Where a map maker's TRY IT is kept: a raid on a draft is a real raid, and it
+ * banks, records and surveys like one, so it needs a save to write into - and
+ * it must never be either of the other two. Dealt fresh for every try.
+ */
+export const TRY_IT_SAVE_KEY = 'escape-from-pallet-town.save.try-it.v1';
+
+export type SaveSlot = 'normal' | 'playtest' | 'try-it';
 
 let slot: SaveSlot = 'normal';
+/** Whether a TRY IT is walked under the explorer run's rules or raided under the game's. */
+let tryWalks = false;
 
 export function activeSaveSlot(): SaveSlot {
   return slot;
@@ -50,9 +59,18 @@ export function setActiveSaveSlot(next: SaveSlot): void {
   slot = next;
 }
 
-/** Whether the game running right now is an explorer run. */
+/**
+ * Whether the game running right now is played under the explorer run's
+ * rules: the explorer run itself, and a map maker's TRY IT that asked to walk
+ * the draft rather than raid it.
+ */
 export function isPlaytestRun(): boolean {
-  return slot === 'playtest';
+  return slot === 'playtest' || (slot === 'try-it' && tryWalks);
+}
+
+/** Set by the map maker as it starts a TRY IT, beside the slot. */
+export function setTryItRules(walk: boolean): void {
+  tryWalks = walk;
 }
 
 /**

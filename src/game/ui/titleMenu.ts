@@ -12,12 +12,16 @@ import type { SaveSummary } from '../save/SaveManager';
  * starts on BACK AWAY - the title is where the key that woke the game up is
  * still held.
  *
- * The third row is the explorer run (`dev/playtestMode.ts`): a whole second
- * game, in its own save, for walking the maps rather than surviving them. It is
- * a row of its own rather than a switch on New Game because the two games are
- * separate files, and it carries no detail line - the hint under the menu says
- * what it does while the cursor is on it, which is the one place on a 320x240
- * screen there is still room for a sentence.
+ * The third row is MAKE A MAP, and it opens a second question with the two
+ * things the game has that are about maps rather than about a save: the map
+ * maker (`scenes/MapMakerScene.ts`) and the explorer run (`dev/playtestMode.ts`),
+ * a whole second game, in its own save, for walking the maps rather than
+ * surviving them. They share a row because four rows do not fit under the name
+ * plate on a 320x240 screen - the map maker's plan said so before it was built,
+ * and moved PLAYTEST inside MAKE A MAP rather than shrink anything. Neither
+ * carries a detail line: the hint under the menu says what each does while the
+ * cursor is on it, which is the one place on that screen there is still room
+ * for a sentence.
  *
  * Pure, like `raidHud.ts`, so the wording and the layout are held by tests that
  * never open a canvas; `TitleScene` only draws what it is handed.
@@ -28,6 +32,8 @@ export type TitleChoiceId =
   | 'new'
   | 'keep'
   | 'erase'
+  | 'maps'
+  | 'maker'
   | 'playtest'
   | 'resume-playtest'
   | 'fresh-playtest';
@@ -62,7 +68,7 @@ export function saveDetail(summary: SaveSummary): string {
   return `${summary.pokemon} POKEMON · ${plural(summary.contracts, 'CONTRACT', 'CONTRACTS')}`;
 }
 
-export function titleMenu(summary: SaveSummary, playtest: SaveSummary = { kind: 'none' }): TitleMenu {
+export function titleMenu(summary: SaveSummary): TitleMenu {
   const canContinue = summary.kind === 'game';
   return {
     initial: canContinue ? 'continue' : 'new',
@@ -74,6 +80,21 @@ export function titleMenu(summary: SaveSummary, playtest: SaveSummary = { kind: 
         ...(summary.kind === 'none' ? {} : { detail: summary.kind === 'unreadable' ? 'REPLACES THE SAVE' : 'ERASES THE SAVE' }),
         enabled: true,
       },
+      { id: 'maps', label: 'MAKE A MAP', enabled: true },
+    ],
+  };
+}
+
+/**
+ * MAKE A MAP's own question: draw a map, or walk the game's. Starts on the map
+ * maker, because that is what the row said.
+ */
+export function mapsMenu(playtest: SaveSummary = { kind: 'none' }): TitleMenu {
+  return {
+    question: 'MAPS',
+    initial: 'maker',
+    choices: [
+      { id: 'maker', label: 'MAP MAKER', enabled: true },
       { id: 'playtest', label: playtest.kind === 'game' ? 'RESUME PLAYTEST' : 'PLAYTEST', enabled: true },
     ],
   };
@@ -118,11 +139,17 @@ export function needsEraseConfirmation(summary: SaveSummary): boolean {
  * ordinary game alone - is a sentence, and a sentence does not fit on a row.
  */
 export function titleHint(menu: TitleMenu, choice: TitleChoiceId): string {
-  if (menu.question) {
-    return menu.choices[0].id === 'keep' ? 'ESC KEEPS IT' : 'ESC GOES BACK';
-  }
   if (choice === 'playtest') {
     return 'EXPLORE FREELY · YOUR SAVED GAME IS UNTOUCHED';
+  }
+  if (choice === 'maker') {
+    return 'DRAW YOUR OWN RAID MAP';
+  }
+  if (choice === 'maps') {
+    return 'DRAW A MAP · OR EXPLORE THE GAME\'S';
+  }
+  if (menu.question) {
+    return menu.choices[0].id === 'keep' ? 'ESC KEEPS IT' : 'ESC GOES BACK';
   }
   return 'UP DOWN CHOOSE · SPACE SELECT';
 }

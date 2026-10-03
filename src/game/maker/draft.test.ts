@@ -1,0 +1,272 @@
+import { describe, expect, it } from 'vitest';
+import { readMapFile, type MapFile } from '../world/mapFile';
+import { checkMapFile } from '../world/mapFileChecks';
+import {
+  blankMap,
+  buildingSize,
+  describeDropIn,
+  fillRegion,
+  line,
+  moveThing,
+  paintWith,
+  placeBuilding,
+  placeSpot,
+  rectangle,
+  removeThing,
+  renameMap,
+  renamePlace,
+  resizeMap,
+  setExitOpens,
+  setMaker,
+  thingAt,
+} from './draft';
+import {
+  loadMakerStore,
+  mapFileText,
+  newDraftKey,
+  saveMakerStore,
+  walkedVersion,
+  withDraft,
+  withoutDraft,
+} from './drafts';
+import { EditHistory } from './history';
+import { BUILDING_CHOICES, GROUND_BRUSHES, groundBrush, joinLedges } from './palette';
+import { MAP_FILE_BUILDINGS } from '../world/mapFile';
+
+const brush = (id: string) => groundBrush(id)!;
+
+/** Places something and hands back the map, failing the test if it was refused. */
+function placed(outcome: ReturnType<typeof placeSpot>): MapFile {
+  if (!outcome.placed) {
+    throw new Error(outcome.reason);
+  }
+  return outcome.file;
+}
+
+/** A small map that works: a drop-in at one end of a lane and an exit at the other. */
+function working(): MapFile {
+  let file = setMaker(blankMap(24, 20, 'Test Lane'), 'Tester');
+  file = placed(placeSpot(file, 'drop-in', { x: 4, y: 10 }));
+  file = placed(placeSpot(file, 'exit', { x: 18, y: 10 }));
+  return file;
+}
+
+describe('a new map', () => {
+  it('is grass in a ring of whole trees, with nothing on it, and readable as a draft', () => {
+    const file = blankMap(24, 20);
+    expect(file.ground[0]).toBe('T'.repeat(24));
+    expect(file.ground[10]).toBe(`TT${'.'.repeat(20)}TT`);
+    expect(readMapFile(file, { draft: true }).ok).toBe(true);
+  });
+
+  it('fails the checks until it has a maker, a way in and a way out, and then passes them', () => {
+    const fresh = blankMap(24, 20);
+    expect(checkMapFile(fresh).find((check) => check.id === 'loads')?.problems).toEqual([
+      "The map needs its maker's name.",
+      'A map needs at least 1 drop-in.',
+      'A map needs at least 1 exit.',
+    ]);
+    expect(checkMapFile(working()).every((check) => check.passed)).toBe(true);
+  });
+
+  it('is only ever a size a file can be', () => {
+    expect([blankMap(3, 400).width, blankMap(3, 400).height]).toEqual([20, 128]);
+  });
+});
+
+describe('painting', () => {
+  it('writes a brush onto every tile of a stroke, and returns the same map when nothing changed', () => {
+    const file = blankMap(24, 20);
+    const painted = paintWith(file, line({ x: 3, y: 5 }, { x: 8, y: 5 }), brush('sand'));
+    expect(painted.ground[5].slice(3, 9)).toBe('dddddd');
+    expect(paintWith(painted, [{ x: 3, y: 5 }], brush('sand'))).toBe(painted);
+  });
+
+  it('leaves no gap in a fast stroke', () => {
+    expect(line({ x: 0, y: 0 }, { x: 4, y: 2 })).toHaveLength(5);
+  });
+
+  it('fills a rectangle either way round', () => {
+    expect(rectangle({ x: 3, y: 3 }, { x: 1, y: 2 })).toHaveLength(6);
+  });
+
+  it('fills joined ground of one kind and nothing beyond it', () => {
+    let file = blankMap(24, 20);
+    file = paintWith(file, rectangle({ x: 10, y: 2 }, { x: 10, y: 17 }), brush('water'));
+    const region = fillRegion(file, { x: 5, y: 5 });
+    expect(region.length).toBe(8 * 16);
+    expect(region.every((tile) => tile.x < 10)).toBe(true);
+  });
+
+  it('draws flowers and a bush on whatever ground they are painted over', () => {
+    let file = paintWith(blankMap(24, 20), [{ x: 5, y: 5 }], brush('turf'));
+    file = paintWith(file, [{ x: 5, y: 5 }, { x: 6, y: 5 }], brush('flowers'));
+    expect(file.ground[5].slice(5, 7)).toBe('rf');
+    file = paintWith(file, [{ x: 5, y: 6 }], brush('paving'));
+    file = paintWith(file, [{ x: 5, y: 6 }], brush('bush'));
+    expect(file.ground[6][5]).toBe('k');
+  });
+
+  it('joins a ledge up: a west end, a run and an east end, however it was drawn', () => {
+    expect(joinLedges('..====..=..==.')).toBe('..<==>..=..<>.');
+    let file = paintWith(blankMap(24, 20), line({ x: 4, y: 8 }, { x: 9, y: 8 }), brush('ledge'));
+    expect(file.ground[8].slice(3, 11)).toBe('.<====>.');
+    // Cutting the middle out of a ledge gives both halves their ends.
+    file = paintWith(file, [{ x: 6, y: 8 }], brush('grass'));
+    expect(file.ground[8].slice(3, 11)).toBe('.<>.<=>.');
+    expect(readMapFile(file, { draft: true }).ok).toBe(true);
+  });
+
+  it('only offers brushes the file can say', () => {
+    for (const candidate of GROUND_BRUSHES) {
+      const file = paintWith(blankMap(24, 20), [{ x: 5, y: 5 }], candidate);
+      expect(readMapFile(file, { draft: true })).toMatchObject({ ok: true });
+    }
+  });
+});
+
+describe('placing things', () => {
+  it('names each drop-in and exit in turn, opens a new exit from the start, and puts one thing on a tile', () => {
+    let file = blankMap(24, 20);
+    file = placed(placeSpot(file, 'drop-in', { x: 4, y: 4 }));
+    file = placed(placeSpot(file, 'drop-in', { x: 5, y: 4 }));
+    file = placed(placeSpot(file, 'exit', { x: 6, y: 4 }));
+    expect(file.dropIns.map((spot) => spot.name)).toEqual(['Drop-in 1', 'Drop-in 2']);
+    expect(file.exits[0]).toMatchObject({ name: 'Exit 1', opens: { when: 'always' } });
+    expect(placeSpot(file, 'item', { x: 4, y: 4 })).toEqual({
+      placed: false,
+      reason: 'Something is already on that tile.',
+    });
+  });
+
+  it('plants a building only where the whole of it fits and no other building stands', () => {
+    let file = blankMap(24, 20);
+    const size = buildingSize('house');
+    expect(size).toEqual({ width: 5, height: 4 });
+    file = placed(placeBuilding(file, 'house', { x: 5, y: 5 }));
+    expect(placeBuilding(file, 'house', { x: 7, y: 6 })).toMatchObject({ placed: false });
+    expect(placeBuilding(file, 'house', { x: 22, y: 5 })).toMatchObject({ placed: false });
+    expect(thingAt(file, { x: 9, y: 8 })).toEqual({ kind: 'building', index: 0 });
+    expect(thingAt(file, { x: 10, y: 8 })).toBeUndefined();
+  });
+
+  it('chooses the place on a tile before the building it stands in front of', () => {
+    let file = placed(placeBuilding(blankMap(24, 20), 'house-door', { x: 5, y: 5 }));
+    file = placed(placeSpot(file, 'item', { x: 6, y: 8 }));
+    expect(thingAt(file, { x: 6, y: 8 })).toEqual({ kind: 'item', index: 0 });
+  });
+
+  it('moves, renames and removes, keeping everything else about a thing', () => {
+    let file = working();
+    file = setExitOpens(file, 0, { when: 'after', seconds: 60 });
+    file = renamePlace(file, { kind: 'exit', index: 0 }, 'East Stile');
+    const moved = moveThing(file, { kind: 'exit', index: 0 }, { x: 18, y: 12 });
+    file = placed(moved);
+    expect(file.exits[0]).toEqual({ x: 18, y: 12, name: 'East Stile', opens: { when: 'after', seconds: 60 } });
+    expect(moveThing(file, { kind: 'exit', index: 0 }, { x: 4, y: 10 })).toMatchObject({ placed: false });
+    expect(removeThing(file, { kind: 'exit', index: 0 }).exits).toEqual([]);
+  });
+
+  it('moves a building whole, and keeps it where it was drawn in the list', () => {
+    let file = placed(placeBuilding(blankMap(30, 20), 'house', { x: 3, y: 3 }));
+    file = placed(placeBuilding(file, 'cottage', { x: 12, y: 3 }));
+    file = placed(moveThing(file, { kind: 'building', index: 0 }, { x: 3, y: 10 }));
+    expect(file.buildings.map((building) => [building.kind, building.x, building.y])).toEqual([
+      ['house', 3, 10],
+      ['cottage', 12, 3],
+    ]);
+  });
+
+  it('gives a drop-in words of its own, and takes them away again', () => {
+    let file = describeDropIn(working(), 0, 'Where the lane starts.');
+    expect(file.dropIns[0].description).toBe('Where the lane starts.');
+    file = describeDropIn(file, 0, '  ');
+    expect(file.dropIns[0]).not.toHaveProperty('description');
+  });
+
+  it('offers every building the file can name, and only those', () => {
+    expect(BUILDING_CHOICES.map((choice) => choice.kind).sort()).toEqual(Object.keys(MAP_FILE_BUILDINGS).sort());
+  });
+});
+
+describe('the map itself', () => {
+  it('takes its id from its name', () => {
+    expect(renameMap(blankMap(), "Bill's Cape!").id).toBe('bill-s-cape');
+    expect(renameMap(blankMap(), '!!!').id).toBe('map');
+  });
+
+  it('grows with trees, and shrinks dropping whatever no longer fits', () => {
+    let file = placed(placeBuilding(working(), 'house', { x: 15, y: 14 }));
+    const grown = resizeMap(file, 30, 22);
+    expect(grown.ground[21]).toBe('T'.repeat(30));
+    expect(grown.ground[10].endsWith('TTTTTTTT')).toBe(true);
+    file = placed(placeSpot(file, 'item', { x: 22, y: 5 }));
+    file = resizeMap(file, 20, 16);
+    expect(file.itemSpots).toEqual([]);
+    expect(file.buildings).toEqual([]);
+    expect([file.dropIns.length, file.exits.length]).toEqual([1, 1]);
+    expect(readMapFile(file, { draft: true }).ok).toBe(true);
+  });
+});
+
+describe('undo', () => {
+  it('steps back and forward through whole maps, and a new edit forgets what was undone', () => {
+    const history = new EditHistory('a');
+    history.push('b');
+    history.push('c');
+    expect(history.undo()).toBe('b');
+    expect(history.redo()).toBe('c');
+    history.undo();
+    history.push('d');
+    expect(history.canRedo).toBe(false);
+    expect([history.undo(), history.undo(), history.undo()]).toEqual(['b', 'a', 'a']);
+  });
+});
+
+describe('drafts in this browser', () => {
+  const memory = (): { getItem: (key: string) => string | null; setItem: (key: string, value: string) => void } => {
+    const held = new Map<string, string>();
+    return { getItem: (key) => held.get(key) ?? null, setItem: (key, value) => void held.set(key, value) };
+  };
+
+  it('keeps drafts newest first and opens the last one worked on', () => {
+    const storage = memory();
+    let store = withDraft({ drafts: [] }, { key: 'a', file: blankMap(), updatedAt: 1 });
+    store = withDraft(store, { key: 'b', file: working(), updatedAt: 2 });
+    expect(saveMakerStore(store, storage)).toBe(true);
+    const loaded = loadMakerStore(storage);
+    expect(loaded.drafts.map((draft) => draft.key)).toEqual(['b', 'a']);
+    expect(loaded.current).toBe('b');
+    expect(withoutDraft(loaded, 'b')).toEqual({ drafts: [loaded.drafts[1]] });
+  });
+
+  it('leaves out a draft it cannot open rather than refusing them all', () => {
+    const storage = memory();
+    storage.setItem(
+      'escape-from-pallet-town.maker.v1',
+      JSON.stringify({ drafts: [{ key: 'bad', file: { format: 1 } }, { key: 'good', file: blankMap() }] }),
+    );
+    expect(loadMakerStore(storage).drafts.map((draft) => draft.key)).toEqual(['good']);
+    storage.setItem('escape-from-pallet-town.maker.v1', 'not json');
+    expect(loadMakerStore(storage)).toEqual({ drafts: [] });
+    expect(loadMakerStore(undefined)).toEqual({ drafts: [] });
+  });
+
+  it('never gives two drafts one key', () => {
+    const store = withDraft({ drafts: [] }, { key: newDraftKey({ drafts: [] }, 99), file: blankMap(), updatedAt: 0 });
+    expect(newDraftKey(store, 99)).not.toBe(store.drafts[0].key);
+  });
+
+  it('remembers a walk through a rename but not through a change to the ground', () => {
+    const file = working();
+    expect(walkedVersion(renameMap(file, 'Another Name'))).toBe(walkedVersion(file));
+    expect(walkedVersion(renamePlace(file, { kind: 'exit', index: 0 }, 'Home'))).toBe(walkedVersion(file));
+    expect(walkedVersion(paintWith(file, [{ x: 10, y: 10 }], brush('rock')))).not.toBe(walkedVersion(file));
+    expect(walkedVersion(setExitOpens(file, 0, { when: 'after', seconds: 30 }))).not.toBe(walkedVersion(file));
+  });
+
+  it('downloads as the file the game reads', () => {
+    const file = working();
+    expect(readMapFile(JSON.parse(mapFileText(file)))).toEqual({ ok: true, file });
+  });
+});

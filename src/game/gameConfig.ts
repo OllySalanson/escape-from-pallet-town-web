@@ -5,6 +5,7 @@ import { BagScene } from './scenes/BagScene';
 import { BootScene } from './scenes/BootScene';
 import { ExtractionScene } from './scenes/ExtractionScene';
 import { HubScene } from './scenes/HubScene';
+import { MapMakerScene } from './scenes/MapMakerScene';
 import { ObjectivesScene } from './scenes/ObjectivesScene';
 import { PartyScene } from './scenes/PartyScene';
 import { StarterScene } from './scenes/StarterScene';
@@ -25,6 +26,7 @@ const BASE_SCENES = [
   BagScene,
   ObjectivesScene,
   ExtractionScene,
+  MapMakerScene,
 ];
 
 export function createGameConfig(

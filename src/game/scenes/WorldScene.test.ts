@@ -368,13 +368,16 @@ describe('raid resolution hand-off', () => {
    * title screen rather than to a scene that would throw on an empty save.
    */
   it('keeps a way out of the result screen when the base scene is unavailable', () => {
-    expect(sceneSource).toContain('if (this.scene.manager.keys.base) {');
+    // Home is the base, or the map maker from a TRY IT (`maker/tryIt.ts`), and
+    // whichever it is, a game without that scene still has the title.
+    expect(sceneSource).toContain('const home = homeAfterRaid();');
+    expect(sceneSource).toContain('if (this.scene.manager.keys[home.key]) {');
     expect(sceneSource).toContain("this.scene.start('title');");
-    expect(battleSceneSource).toContain("this.scene.start('base', { arrival: 'raid' });");
+    expect(battleSceneSource).toContain('if (this.scene.manager.keys[home.key]) {');
     expect(battleSceneSource).toContain("this.scene.start('title');");
-    expect(extractionSceneSource).toContain('const home = this.scene.manager.keys.base;');
+    expect(extractionSceneSource).toContain('const reachable = this.scene.manager.keys[home.key];');
     expect(extractionSceneSource).toContain(
-      "home ? this.scene.start('base', { arrival: 'raid' }) : this.scene.start('title')",
+      "reachable ? this.scene.start(home.key, home.data) : this.scene.start('title')",
     );
   });
 });

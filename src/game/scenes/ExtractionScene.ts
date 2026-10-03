@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { currentTry, homeAfterRaid, recordWalkedOut } from '../maker/tryIt';
 import { audioManager } from '../audio/AudioManager';
 import {
   buildDefeatSequence,
@@ -98,6 +99,12 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   public create(): void {
+    // A map maker's TRY IT that ended through an exit is the walk the last
+    // check asks for, recorded against the version of the draft it was.
+    const attempt = currentTry();
+    if (attempt && this.report.outcome === 'ESCAPED') {
+      recordWalkedOut(attempt);
+    }
     this.cameras.main.fadeIn?.(200, 0, 0, 0);
     this.overlay = new MenuOverlay(this, 'extraction-menu', (event) => this.handleKey(event));
     this.overlay.root.setAttribute('aria-label', 'Raid result');
@@ -286,10 +293,11 @@ export class ExtractionScene extends Phaser.Scene {
     // title screen stays the fallback it is everywhere else in the game. A raid
     // that is over puts the player down on the quay, beside the man who buys
     // what they came home with.
-    const home = this.scene.manager.keys.base;
+    const home = homeAfterRaid();
+    const reachable = this.scene.manager.keys[home.key];
     this.cameras.main.fadeOut(200, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
-      home ? this.scene.start('base', { arrival: 'raid' }) : this.scene.start('title'),
+      reachable ? this.scene.start(home.key, home.data) : this.scene.start('title'),
     );
   }
 
@@ -318,7 +326,7 @@ export class ExtractionScene extends Phaser.Scene {
       )}${this.ledgerPanel()}${this.gamblePanel()}${pixelCommitBar({
         title: escapeHtml(this.footerTitle()),
         lines: [`<small class="px-wrap">${this.costFacts().map(escapeHtml).join(' · ')}</small>`],
-        actions: '<button class="px-window px-button is-primary" data-continue>Back to the lab</button>',
+        actions: `<button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the lab'}</button>`,
       })}</main>`,
     });
   }
@@ -463,6 +471,13 @@ export class ExtractionScene extends Phaser.Scene {
   }
 
   private footerNote(): string {
+    // A try of a map in the map maker banks into a save of its own and is
+    // thrown away; what it says is whether the maker's walk counted.
+    if (currentTry()) {
+      return this.report.outcome === 'ESCAPED'
+        ? 'A try of your map: you left by an exit, so the walk counts. Your saved game was not touched.'
+        : 'A try of your map: leave by an exit for the walk to count. Your saved game was not touched.';
+    }
     if (!this.report.saved) {
       return 'This result could not be written to storage.';
     }

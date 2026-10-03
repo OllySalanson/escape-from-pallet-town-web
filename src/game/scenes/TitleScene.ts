@@ -9,6 +9,7 @@ import {
   layoutTitleMenu,
   moveTitleChoice,
   needsEraseConfirmation,
+  mapsMenu,
   playtestMenu,
   titleHint,
   titleMenu,
@@ -78,7 +79,7 @@ export class TitleScene extends Phaser.Scene {
     // Asked once per visit, not per frame: the summary reads the whole save.
     this.summary = this.saveManager.describe();
     this.playtestSummary = this.playtestSaveManager.describe();
-    this.menu = titleMenu(this.summary, this.playtestSummary);
+    this.menu = titleMenu(this.summary);
     this.choice = this.menu.initial;
     this.build();
 
@@ -363,8 +364,14 @@ export class TitleScene extends Phaser.Scene {
     if (this.hasStarted || !this.menu.question) {
       return;
     }
-    const wasErasing = this.menu.choices[0]?.id === 'keep';
-    this.showMenu(titleMenu(this.summary, this.playtestSummary), wasErasing ? 'new' : 'playtest');
+    const asking = this.menu.choices[0]?.id;
+    // The explorer run's question was asked from MAKE A MAP's, so it backs out
+    // to that one; the other two back out to the title's own menu.
+    if (asking === 'resume-playtest') {
+      this.showMenu(mapsMenu(this.playtestSummary), 'playtest');
+      return;
+    }
+    this.showMenu(titleMenu(this.summary), asking === 'keep' ? 'new' : 'maps');
   }
 
   private showMenu(menu: TitleMenu, choice: TitleChoiceId): void {
@@ -389,6 +396,12 @@ export class TitleScene extends Phaser.Scene {
       } else {
         this.startGame('new');
       }
+    } else if (this.choice === 'maps') {
+      audioManager.play('confirm');
+      const menu = mapsMenu(this.playtestSummary);
+      this.showMenu(menu, menu.initial);
+    } else if (this.choice === 'maker') {
+      this.startMapMaker();
     } else if (this.choice === 'playtest') {
       if (this.playtestSummary.kind === 'game') {
         audioManager.play('confirm');
@@ -404,6 +417,24 @@ export class TitleScene extends Phaser.Scene {
     } else {
       this.startGame('new');
     }
+  }
+
+  /**
+   * Into the map maker. It touches neither save - drafts are kept under a key
+   * of their own (`maker/drafts.ts`) - so the slot is set back to the ordinary
+   * game, as every way out of the title that is not the explorer run does.
+   */
+  private startMapMaker(): void {
+    if (this.hasStarted) {
+      return;
+    }
+    this.hasStarted = true;
+    setActiveSaveSlot('normal');
+    void this.playStartAudio();
+    this.cameras.main.fadeOut(180, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('mapmaker');
+    });
   }
 
   private startGame(mode: 'continue' | 'new' | 'resume-playtest' | 'fresh-playtest'): void {

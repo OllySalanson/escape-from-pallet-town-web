@@ -63,7 +63,7 @@ import {
 } from '../stash/Stash';
 import { getWorldMap, isWorldMapId, type WorldMapId } from '../worldMap';
 import { mergeSurvey, type SurveyRecord } from '../world/survey';
-import { activeSaveSlot, PLAYTEST_SAVE_KEY, type SaveSlot } from '../dev/playtestMode';
+import { activeSaveSlot, PLAYTEST_SAVE_KEY, TRY_IT_SAVE_KEY, type SaveSlot } from '../dev/playtestMode';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 const SAVE_VERSION = 6;
@@ -475,7 +475,8 @@ export class SaveManager {
 
   /** Resolved per call, never cached: the slot can change between two reads. */
   private get key(): string {
-    return (this.slot ?? activeSaveSlot()) === 'playtest' ? PLAYTEST_SAVE_KEY : SAVE_KEY;
+    const slot = this.slot ?? activeSaveSlot();
+    return slot === 'playtest' ? PLAYTEST_SAVE_KEY : slot === 'try-it' ? TRY_IT_SAVE_KEY : SAVE_KEY;
   }
 
   public hasSave(): boolean {

@@ -3,6 +3,7 @@ import type { SaveSummary } from '../save/SaveManager';
 import {
   eraseMenu,
   layoutTitleMenu,
+  mapsMenu,
   moveTitleChoice,
   needsEraseConfirmation,
   playtestMenu,
@@ -63,37 +64,42 @@ describe('the title menu', () => {
   it('moves the cursor over enabled choices only, and stops at the ends', () => {
     const fresh = titleMenu(NONE);
     expect(moveTitleChoice(fresh, 'new', -1)).toBe('new');
-    expect(moveTitleChoice(fresh, 'new', 1)).toBe('playtest');
-    expect(moveTitleChoice(fresh, 'playtest', 1)).toBe('playtest');
+    expect(moveTitleChoice(fresh, 'new', 1)).toBe('maps');
+    expect(moveTitleChoice(fresh, 'maps', 1)).toBe('maps');
 
     const played = titleMenu(GAME);
     expect(moveTitleChoice(played, 'continue', 1)).toBe('new');
-    expect(moveTitleChoice(played, 'new', 1)).toBe('playtest');
+    expect(moveTitleChoice(played, 'new', 1)).toBe('maps');
     expect(moveTitleChoice(played, 'new', -1)).toBe('continue');
   });
 
-  it('always offers the explorer run, and never starts the cursor on it', () => {
+  it('always offers the map maker and the explorer run, and never starts the cursor on them', () => {
     for (const summary of [NONE, GAME, BROKEN]) {
       const menu = titleMenu(summary);
-      const playtest = menu.choices.find((choice) => choice.id === 'playtest')!;
+      const maps = menu.choices.find((choice) => choice.id === 'maps')!;
 
-      expect(playtest.enabled).toBe(true);
+      expect(maps).toMatchObject({ label: 'MAKE A MAP', enabled: true });
       // A row, never a detail line: the sentence about it is the hint below.
-      expect(playtest.detail).toBeUndefined();
-      expect(menu.initial).not.toBe('playtest');
+      expect(maps.detail).toBeUndefined();
+      expect(menu.initial).not.toBe('maps');
     }
+    const maps = mapsMenu(NONE);
+    expect(maps.choices.map((choice) => choice.id)).toEqual(['maker', 'playtest']);
+    expect(maps.initial).toBe('maker');
   });
 
   it('offers to carry the explorer run on once there is one', () => {
-    expect(titleMenu(GAME, NONE).choices[2].label).toBe('PLAYTEST');
-    expect(titleMenu(GAME, GAME).choices[2].label).toBe('RESUME PLAYTEST');
+    expect(mapsMenu(NONE).choices[1].label).toBe('PLAYTEST');
+    expect(mapsMenu(GAME).choices[1].label).toBe('RESUME PLAYTEST');
   });
 
   it('promises the saved game is untouched, where the promise fits', () => {
-    const menu = titleMenu(GAME, GAME);
+    const menu = mapsMenu(GAME);
 
     expect(titleHint(menu, 'playtest')).toMatch(/UNTOUCHED/);
-    expect(titleHint(menu, 'continue')).toBe('UP DOWN CHOOSE · SPACE SELECT');
+    expect(titleHint(menu, 'maker')).toBe('DRAW YOUR OWN RAID MAP');
+    expect(titleHint(titleMenu(GAME), 'maps')).toMatch(/DRAW A MAP/);
+    expect(titleHint(titleMenu(GAME), 'continue')).toBe('UP DOWN CHOOSE · SPACE SELECT');
     expect(titleHint(eraseMenu(), 'keep')).toBe('ESC KEEPS IT');
     expect(titleHint(playtestMenu(), 'resume-playtest')).toBe('ESC GOES BACK');
   });
@@ -122,10 +128,11 @@ describe('the title menu layout', () => {
     const menus = [
       titleMenu(NONE),
       titleMenu(GAME),
-      titleMenu(GAME, GAME),
+      titleMenu(GAME),
       titleMenu(BROKEN),
       eraseMenu(),
       playtestMenu(),
+      mapsMenu(GAME),
     ];
     for (const menu of menus) {
       const layout = layoutTitleMenu(menu, width, height, plateBottom);

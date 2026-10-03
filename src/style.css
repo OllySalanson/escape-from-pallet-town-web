@@ -1244,20 +1244,28 @@ button {
 }
 /* The track is drawn, not implied: a thumb on a transparent track says how far
    down you are only if you can see how far down there is to go. */
-:where(.pixel-ui) .px-scroll::-webkit-scrollbar {
+:where(.pixel-ui) .px-scroll::-webkit-scrollbar,
+:where(.pixel-ui) .maker-viewport::-webkit-scrollbar {
   width: calc(var(--u) * 4);
+  height: calc(var(--u) * 4);
 }
-:where(.pixel-ui) .px-scroll::-webkit-scrollbar-button {
+:where(.pixel-ui) .px-scroll::-webkit-scrollbar-button,
+:where(.pixel-ui) .maker-viewport::-webkit-scrollbar-button {
   display: none;
 }
-:where(.pixel-ui) .px-scroll::-webkit-scrollbar-thumb {
+:where(.pixel-ui) .px-scroll::-webkit-scrollbar-thumb,
+:where(.pixel-ui) .maker-viewport::-webkit-scrollbar-thumb {
   background: var(--ink-soft);
   border: var(--u) solid transparent;
   background-clip: content-box;
 }
-:where(.pixel-ui) .px-scroll::-webkit-scrollbar-track {
+:where(.pixel-ui) .px-scroll::-webkit-scrollbar-track,
+:where(.pixel-ui) .maker-viewport::-webkit-scrollbar-track {
   background: var(--cream-dim);
   box-shadow: inset var(--u) 0 0 var(--frame);
+}
+:where(.pixel-ui) .maker-viewport::-webkit-scrollbar-corner {
+  background: var(--cream-dim);
 }
 :where(.pixel-ui) .px-list {
   display: grid;
@@ -3035,4 +3043,162 @@ button {
 :where(.pixel-ui) .move-card-words {
   margin-top: var(--u);
   color: var(--ink);
+}
+
+/* --- The map maker ---------------------------------------------------------
+   Three columns: what to paint with, the map, and what the map is. The map
+   column takes every pixel the other two leave, because it is the screen; the
+   map inside it scrolls in its own viewport, drawn at a whole number of game
+   pixels a tile (`maker/makerView.ts`, `MAKER_ZOOMS`) so a tile never lands
+   between two pixels. The commit bar runs under all three. */
+:where(.pixel-ui) .maker-shell {
+  height: 100%;
+  grid-template-columns: calc(var(--u) * 132) minmax(0, 1fr) calc(var(--u) * 188);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+:where(.pixel-ui) .maker-shell .confirm-bar {
+  grid-column: 1 / -1;
+}
+:where(.pixel-ui) .maker-tools,
+:where(.pixel-ui) .maker-map,
+:where(.pixel-ui) .maker-drafts {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .maker-map,
+:where(.pixel-ui) .maker-tools {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .maker-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 3);
+}
+.pixel-ui .px-chip.maker-tool.is-selected {
+  --fill: var(--teal-wash);
+}
+:where(.pixel-ui) .maker-pane {
+  min-height: 0;
+}
+:where(.pixel-ui) .maker-swatch {
+  display: block;
+  width: calc(var(--u) * 16);
+  height: calc(var(--u) * 16);
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 var(--u) var(--frame);
+}
+:where(.pixel-ui) .maker-zooms {
+  display: flex;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+}
+:where(.pixel-ui) .maker-viewport {
+  min-height: 0;
+  display: grid;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--bar);
+}
+/* A map smaller than its viewport sits in the middle of it; a bigger one
+   starts at its corner and scrolls, because an auto margin is nothing then. */
+:where(.pixel-ui) .maker-stack {
+  position: relative;
+  margin: auto;
+}
+:where(.pixel-ui) .maker-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+:where(.pixel-ui) .maker-canvas[data-preview] {
+  cursor: crosshair;
+  touch-action: none;
+}
+:where(.pixel-ui) .maker-side {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: max-content;
+  gap: calc(var(--u) * 4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+:where(.pixel-ui) .maker-side > .maker-drafts {
+  max-height: calc(var(--u) * 320);
+}
+:where(.pixel-ui) .maker-checks-list {
+  margin: 0;
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+  list-style: none;
+  display: grid;
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .maker-check {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 10) minmax(0, 1fr);
+  align-items: start;
+}
+:where(.pixel-ui) .maker-check small {
+  display: block;
+  color: var(--red);
+}
+:where(.pixel-ui) .maker-check-mark {
+  width: calc(var(--u) * 7);
+  height: calc(var(--u) * 5);
+  margin-top: calc(var(--u) * 4);
+  background: var(--teal);
+  mask: var(--px-tick) center / 100% 100% no-repeat;
+  -webkit-mask: var(--px-tick) center / 100% 100% no-repeat;
+}
+:where(.pixel-ui) .maker-check.is-waiting .maker-check-mark {
+  width: calc(var(--u) * 5);
+  margin-left: var(--u);
+  background: var(--ink-soft);
+  mask: none;
+  -webkit-mask: none;
+}
+:where(.pixel-ui) .maker-check.is-failed .maker-check-mark {
+  width: calc(var(--u) * 5);
+  margin-left: var(--u);
+  background: var(--red);
+  mask: none;
+  -webkit-mask: none;
+}
+:where(.pixel-ui) .maker-form {
+  display: grid;
+  gap: calc(var(--u) * 3);
+  padding: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .maker-field {
+  display: grid;
+  gap: var(--u);
+}
+:where(.pixel-ui) .maker-field > span {
+  color: var(--ink-soft);
+}
+:where(.pixel-ui) .maker-size {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: calc(var(--u) * 3);
+}
+:where(.pixel-ui) .maker-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+:where(.pixel-ui) .maker-draft {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+}
+/* With less room the two side columns give the map what they can spare: the
+   brushes keep their names and the checks still wrap at a readable width. */
+:where(.pixel-ui[data-room='narrow']) .maker-shell,
+:where(.pixel-ui[data-room='tight']) .maker-shell {
+  grid-template-columns: calc(var(--u) * 116) minmax(0, 1fr) calc(var(--u) * 152);
 }
