@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import sampleLane from '../../maps/player/sample-lane.json';
+import sampleLane from '../../maps/sample/sample-lane.json';
 import {
   isPlaytestRun,
   setActiveSaveSlot,

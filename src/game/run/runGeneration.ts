@@ -9,7 +9,7 @@ import {
   type WorldMapId,
 } from '../worldMap';
 import { isPlayerMapId, type PlayerMapId } from '../world/mapFile';
-import { playerMap, playerMaps } from '../world/playerMaps';
+import { isPublishedMap, playerMap, playerMaps } from '../world/playerMaps';
 import type { GridPosition } from '../movement/gridMovement';
 import { openedDoors } from '../world/gates';
 import { stepDistances } from '../world/mapStructure';
@@ -23,7 +23,7 @@ import {
   withoutDefeatedBosses,
   type RunTrainerEncounter,
 } from '../world/trainers';
-import type { RaidContract } from '../objectives/contracts';
+import { FIRST_CONTRACT_ID, type RaidContract } from '../objectives/contracts';
 import { applyHunterThreat, hunterThreatFor, type HunterThreat } from '../world/hunterThreat';
 import { FIRST_HUNTER_RIVAL, type HunterRivalId } from '../world/hunters';
 import { createSeededRng } from './rng';
@@ -338,10 +338,20 @@ export function insertionAt(mapId: WorldMapId, position: GridPosition): RunInser
 export function availableInsertionIds(progress: {
   readonly unlockedInsertions: readonly string[];
   readonly reachedInsertions: readonly string[];
+  readonly completedContracts?: readonly string[];
 }): readonly RunInsertionId[] {
+  // A map the owner approved opens with the shipped maps the first contract
+  // opens: once the Floodplain's field kit is home, every player map's front
+  // door is on the board. Its drop-in points are reached on foot, as any map's are.
+  const playerMapsOpen = progress.completedContracts?.includes(FIRST_CONTRACT_ID) === true;
   return runInsertions()
-    .map((insertion) => insertion.id)
-    .filter((id) => progress.unlockedInsertions.includes(id) || progress.reachedInsertions.includes(id));
+    .filter(
+      (insertion) =>
+        progress.unlockedInsertions.includes(insertion.id) ||
+        progress.reachedInsertions.includes(insertion.id) ||
+        (playerMapsOpen && isPublishedMap(insertion.mapId) && frontDoorFor(insertion.mapId)?.id === insertion.id),
+    )
+    .map((insertion) => insertion.id);
 }
 
 export const RUN_GENERATION_BOUNDS = {

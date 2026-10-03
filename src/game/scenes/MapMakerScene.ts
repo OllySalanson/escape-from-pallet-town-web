@@ -80,6 +80,7 @@ import { MenuOverlay } from '../ui/MenuOverlay';
 import { takeDownPixelStatus } from '../ui/pixelUi';
 import {
   MAP_FILE_LIMITS,
+  plainText,
   readMapFile,
   type MapFile,
   type MapFileBuildingKind,
@@ -426,8 +427,8 @@ export class MapMakerScene extends Phaser.Scene {
           }
         });
     };
-    field('[data-map-name]', (value) => renameMap(this.file, value));
-    field('[data-map-maker]', (value) => setMaker(this.file, value));
+    field('[data-map-name]', (value) => renameMap(this.file, plainText(value)));
+    field('[data-map-maker]', (value) => setMaker(this.file, plainText(value)));
     field('[data-map-wildlife]', (value) => ({ ...this.file, wildlife: value as MapFileHabitat }));
     field('[data-map-width]', (value) => resizeMap(this.file, Number(value), this.file.height));
     field('[data-map-height]', (value) => resizeMap(this.file, this.file.width, Number(value)));
@@ -661,7 +662,8 @@ export class MapMakerScene extends Phaser.Scene {
    * what it writes, so this is the only place a value is read back - and the
    * only place one is turned from what a form holds into what a file holds.
    */
-  private changeSelected(field: string, value: string): MapFile {
+  private changeSelected(field: string, typed: string): MapFile {
+    const value = plainText(typed);
     const selected = this.selected;
     if (!selected) {
       return this.file;

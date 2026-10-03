@@ -359,6 +359,34 @@ export interface MapFile {
   readonly trainers?: readonly MapFileTrainer[];
 }
 
+/**
+ * The characters no name or line in a map file may hold. Player-written words
+ * are shown on the game's DOM screens as well as on the canvas, and a file that
+ * cannot carry markup is safe on every one of them without each having to
+ * remember to escape it. A map has no need of any of them.
+ */
+export const UNSAFE_TEXT = /[<>&"]/;
+
+/** Text with the characters a map file may not hold taken out, as a field is typed. */
+export function plainText(value: string): string {
+  return value.replace(/[<>&"]/g, '');
+}
+
+/** Every piece of player-written text in a map file. */
+export function wordsOf(file: Partial<MapFile>): readonly string[] {
+  return [
+    file.name ?? '',
+    file.maker ?? '',
+    ...(file.dropIns ?? []).flatMap((spot) => [spot.name, spot.description ?? '']),
+    ...(file.exits ?? []).map((spot) => spot.name),
+    ...(file.people ?? []).flatMap((person) => [person.name, ...person.lines]),
+    ...(file.signs ?? []).flatMap((sign) => sign.lines),
+    ...(file.landmarks ?? []).map((landmark) => landmark.name),
+    ...(file.districts ?? []).map((district) => district.name),
+    ...(file.trainers ?? []).flatMap((trainer) => [trainer.name, ...trainer.lines]),
+  ].filter((text): text is string => typeof text === 'string');
+}
+
 export type MapFileReading =
   | { readonly ok: true; readonly file: MapFile }
   | { readonly ok: false; readonly problems: readonly string[] };
@@ -634,6 +662,10 @@ export function readMapFile(
 
   if (typeof value.wildlife !== 'string' || !(value.wildlife in MAP_FILE_HABITATS)) {
     problems.push(`'wildlife' must be one of: ${Object.keys(MAP_FILE_HABITATS).join(', ')}.`);
+  }
+
+  if (problems.length === 0 && wordsOf(value).some((text) => UNSAFE_TEXT.test(text))) {
+    problems.push('Names and words in a map may not use < > & or ".');
   }
 
   return problems.length > 0

@@ -136,7 +136,7 @@ import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/h
 import { rivalForRaid } from '../world/hunters';
 import { openedDoors } from '../world/gates';
 import type { GridPosition } from '../movement/gridMovement';
-import { getWorldMap, type WorldMapId, worldMapName } from '../worldMap';
+import { getWorldMap, type WorldMapId, worldMapMaker, worldMapName } from '../worldMap';
 import { MINIMAP_PALETTE, type Minimap } from '../world/minimap';
 import { fitMapPictures, mapPictureFrame, pictureRowAttributes } from '../ui/mapPicture';
 import { WALL_MAP_ORDER, wallMapContext, wallMapEntries, wallMapNote, wallMapPicture, type WallMapEntry } from '../base/wallMap';
@@ -2055,20 +2055,28 @@ export class HubScene extends Phaser.Scene {
     const chosen = this.flow.insertionId;
     const context = this.dropInContext(chosen);
     const briefing = buildDropInBriefing(chosen, context);
+    // The maps players made come after the game's own, under a heading of
+    // their own, each front door crediting who drew it.
+    const firstPlayerMap = this.unlockedInsertions.find(([, insertion]) => worldMapMaker(insertion.mapId) !== undefined)?.[0];
     const rows = this.unlockedInsertions
       .map(([id, insertion]) => {
         const contract = this.contractFor(id);
         const isChosen = chosen === id;
+        const maker = worldMapMaker(insertion.mapId);
         // One line unless the row has something to add, so the pane shows five
         // ways in rather than two: a drop-in point says which map it is on,
         // because unlike a front door its name is not the map's, and a place
         // with a contract on it names the contract. "No contract" is not news.
         const note = isDropInPoint(insertion)
           ? `DROP-IN · ${worldMapName(insertion.mapId)}${contract ? ` · ${contract.name}` : ''}`
-          : contract
-            ? `${contract.name}${contract.hunterPressure ? ` · hunter +${contract.hunterPressure}` : ''}`
-            : '';
-        return `<button class="px-row${isChosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertion.description)}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${isChosen ? pixelTag('', 'good', true) : ''}</button>`;
+          : [
+              ...(maker ? [`DRAWN BY ${maker}`] : []),
+              ...(contract
+                ? [`${contract.name}${contract.hunterPressure ? ` · hunter +${contract.hunterPressure}` : ''}`]
+                : []),
+            ].join(' · ');
+        const heading = id === firstPlayerMap ? `<p class="px-subheading">Player maps</p>` : '';
+        return `${heading}<button class="px-row${isChosen ? ' is-selected' : ''}" data-insertion="${id}" data-help="${escapeAttribute(insertion.description)}"><span class="px-row-main"><strong class="px-name">${insertion.label}</strong>${note ? `<small class="insertion-note">${note}</small>` : ''}</span>${isChosen ? pixelTag('', 'good', true) : ''}</button>`;
       })
       .join('');
     const walked = Math.round(briefing.record.surveyed * 100);

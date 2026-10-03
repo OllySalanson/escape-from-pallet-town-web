@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import sampleLane from '../../maps/player/sample-lane.json';
+import sampleLane from '../../maps/sample/sample-lane.json';
 import type { MapFile } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import { makerScreen, walkedCheck, type MakerViewState } from './makerView';
