@@ -6,6 +6,8 @@ import { readMapFile, sketchMapFile, type MapFile } from './mapFile';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
 import { buildMapLayers } from './tiles';
 import { KANTO_TILESET } from './tileset/kantoTileset';
+import { trainerSightTiles } from './trainerSight';
+import { refusedWords } from './wordFilter';
 
 /**
  * Whether a map works - and nothing else.
@@ -18,18 +20,21 @@ import { KANTO_TILESET } from './tileset/kantoTileset';
  * published - so a map that passes in the editor is never refused later for a
  * reason nobody showed its maker.
  *
- * Two of the plan's checks are not here because they are not facts about the
- * file: that the maker walked it out in the editor's TRY IT, and that its words
- * pass the filter. They join the list where those facts live.
+ * One of the plan's checks is not here because it is not a fact about the
+ * file: that the maker walked it out in the editor's TRY IT. It joins the list
+ * where that fact lives (`maker/makerView.ts`).
+ *
+ * Townsfolk and signs are walls you cannot walk into, so every walk below is
+ * measured with them standing where they were put: a person in the only lane
+ * to an exit is a raid with no way out, which is the trap a figure on a door
+ * once sprang on the captain. A trainer is walked into - that is the fight -
+ * so a trainer never shuts a walk; what one may not do is watch a drop-in or
+ * an exit, because a fight forced on the first step or the last is a raid
+ * nobody chose.
  */
 
 export type MapCheckId =
-  | 'loads'
-  | 'standing'
-  | 'apart'
-  | 'way-out'
-  | 'reachable'
-  | 'hunter-room';
+  'loads' | 'standing' | 'apart' | 'way-out' | 'reachable' | 'hunter-room' | 'watch' | 'words';
 
 export interface MapCheck {
   readonly id: MapCheckId;
@@ -47,6 +52,8 @@ const LABELS: Readonly<Record<MapCheckId, string>> = {
   'way-out': 'Every drop-in can walk out before the clock runs out',
   reachable: 'Every exit and item spot can be walked to',
   'hunter-room': 'The hunter has room to arrive near every drop-in',
+  watch: 'No trainer watches a drop-in or an exit',
+  words: 'Every name and line is fit for everyone',
 };
 
 const at = ({ x, y }: GridPosition): string => `${x},${y}`;
@@ -77,10 +84,18 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const file = reading.file;
   const collision = mapFileCollision(file);
   const walkable = (spot: GridPosition): boolean => !isBlockedAt(collision, spot.x, spot.y);
+  const people = file.people ?? [];
+  const signs = file.signs ?? [];
+  const landmarks = file.landmarks ?? [];
+  const trainers = file.trainers ?? [];
   const named = [
     ...file.dropIns.map((spot) => ({ spot, what: `Drop-in ${spot.name}` })),
     ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}` })),
     ...file.itemSpots.map((spot, index) => ({ spot, what: `Item spot ${index + 1}` })),
+    ...landmarks.map((spot) => ({ spot, what: `Landmark ${spot.name}` })),
+    ...people.map((spot) => ({ spot, what: `${spot.name}` })),
+    ...signs.map((spot, index) => ({ spot, what: `Sign ${index + 1}` })),
+    ...trainers.map((spot) => ({ spot, what: `Trainer ${spot.name}` })),
   ];
 
   const standing = named
@@ -99,9 +114,11 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   // because an open exit takes whoever steps on it: a way out that is only
   // reached across another exit is not a way out, it is that exit.
   const exitTiles = new Set(file.exits.map(at));
+  const figureTiles = [...people, ...signs].map(at);
+  const shut = new Set([...exitTiles, ...figureTiles]);
   const fromDropIn = file.dropIns.map((dropIn) => ({
     dropIn,
-    steps: stepDistances(collision, dropIn, exitTiles),
+    steps: stepDistances(collision, dropIn, shut),
   }));
   const stepsTo = (steps: readonly Int32Array[], spot: GridPosition): number => {
     // A spot is reached by reaching any walkable tile beside it, then one step.
@@ -133,12 +150,15 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     if (best === Infinity) {
       return [`Drop-in ${dropIn.name} cannot walk to any exit.`];
     }
-    return best > RAID_DURATION_MS ? [`Drop-in ${dropIn.name} cannot reach an open exit in time.`] : [];
+    return best > RAID_DURATION_MS
+      ? [`Drop-in ${dropIn.name} cannot reach an open exit in time.`]
+      : [];
   });
 
   const reachable = [
     ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}` })),
     ...file.itemSpots.map((spot, index) => ({ spot, what: `Item spot ${index + 1}` })),
+    ...landmarks.map((spot) => ({ spot, what: `Landmark ${spot.name}` })),
   ]
     .filter(({ spot }) => walkable(spot))
     .filter(({ spot }) => fromDropIn.every(({ steps }) => stepsTo(steps, spot) < 0))
@@ -155,6 +175,41 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
         `Drop-in ${dropIn.name} has no ground ${HUNTER_SPAWN_DISTANCE} steps away for the hunter to arrive on.`,
     );
 
+  const doors = new Set([...file.dropIns, ...file.exits].map(at));
+  const watch = trainers.flatMap((trainer) => {
+    const seen = trainerSightTiles(
+      { position: trainer, facing: trainer.facing, sightRange: trainer.sight },
+      (tile) => isBlockedAt(collision, tile.x, tile.y),
+    );
+    return seen.some((tile) => doors.has(at(tile)))
+      ? [`Trainer ${trainer.name} can see a drop-in or an exit. Turn them, or watch less far.`]
+      : [];
+  });
+
+  const said = [
+    { what: "The map's name", text: file.name },
+    { what: "The maker's name", text: file.maker },
+    ...file.dropIns.flatMap((spot) => [
+      { what: `Drop-in ${spot.name}`, text: spot.name },
+      { what: `Drop-in ${spot.name}`, text: spot.description ?? '' },
+    ]),
+    ...file.exits.map((spot) => ({ what: `Exit ${spot.name}`, text: spot.name })),
+    ...landmarks.map((spot) => ({ what: `Landmark ${spot.name}`, text: spot.name })),
+    ...people.map((spot) => ({ what: spot.name, text: [spot.name, ...spot.lines].join(' ') })),
+    ...signs.map((spot, index) => ({ what: `Sign ${index + 1}`, text: spot.lines.join(' ') })),
+    ...trainers.map((spot) => ({
+      what: `Trainer ${spot.name}`,
+      text: [spot.name, ...spot.lines].join(' '),
+    })),
+    ...(file.districts ?? []).map((district) => ({
+      what: `District ${district.name}`,
+      text: district.name,
+    })),
+  ];
+  const words = said
+    .filter(({ text }) => refusedWords(text).length > 0)
+    .map(({ what }) => `${what} says something the game will not show. Reword it.`);
+
   return [
     check('loads', []),
     check('standing', standing),
@@ -162,6 +217,8 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     check('way-out', wayOut),
     check('reachable', reachable),
     check('hunter-room', hunterRoom),
+    check('watch', watch),
+    check('words', [...new Set(words)]),
   ];
 }
 

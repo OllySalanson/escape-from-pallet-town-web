@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { readMapFile, type MapFile } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import {
+  addDistrict,
+  updateThing,
   blankMap,
   buildingSize,
   describeDropIn,
@@ -100,7 +102,14 @@ describe('painting', () => {
 
   it('draws flowers and a bush on whatever ground they are painted over', () => {
     let file = paintWith(blankMap(24, 20), [{ x: 5, y: 5 }], brush('turf'));
-    file = paintWith(file, [{ x: 5, y: 5 }, { x: 6, y: 5 }], brush('flowers'));
+    file = paintWith(
+      file,
+      [
+        { x: 5, y: 5 },
+        { x: 6, y: 5 },
+      ],
+      brush('flowers'),
+    );
     expect(file.ground[5].slice(5, 7)).toBe('rf');
     file = paintWith(file, [{ x: 5, y: 6 }], brush('paving'));
     file = paintWith(file, [{ x: 5, y: 6 }], brush('bush'));
@@ -162,8 +171,15 @@ describe('placing things', () => {
     file = renamePlace(file, { kind: 'exit', index: 0 }, 'East Stile');
     const moved = moveThing(file, { kind: 'exit', index: 0 }, { x: 18, y: 12 });
     file = placed(moved);
-    expect(file.exits[0]).toEqual({ x: 18, y: 12, name: 'East Stile', opens: { when: 'after', seconds: 60 } });
-    expect(moveThing(file, { kind: 'exit', index: 0 }, { x: 4, y: 10 })).toMatchObject({ placed: false });
+    expect(file.exits[0]).toEqual({
+      x: 18,
+      y: 12,
+      name: 'East Stile',
+      opens: { when: 'after', seconds: 60 },
+    });
+    expect(moveThing(file, { kind: 'exit', index: 0 }, { x: 4, y: 10 })).toMatchObject({
+      placed: false,
+    });
     expect(removeThing(file, { kind: 'exit', index: 0 }).exits).toEqual([]);
   });
 
@@ -185,7 +201,9 @@ describe('placing things', () => {
   });
 
   it('offers every building the file can name, and only those', () => {
-    expect(BUILDING_CHOICES.map((choice) => choice.kind).sort()).toEqual(Object.keys(MAP_FILE_BUILDINGS).sort());
+    expect(BUILDING_CHOICES.map((choice) => choice.kind).sort()).toEqual(
+      Object.keys(MAP_FILE_BUILDINGS).sort(),
+    );
   });
 });
 
@@ -224,9 +242,15 @@ describe('undo', () => {
 });
 
 describe('drafts in this browser', () => {
-  const memory = (): { getItem: (key: string) => string | null; setItem: (key: string, value: string) => void } => {
+  const memory = (): {
+    getItem: (key: string) => string | null;
+    setItem: (key: string, value: string) => void;
+  } => {
     const held = new Map<string, string>();
-    return { getItem: (key) => held.get(key) ?? null, setItem: (key, value) => void held.set(key, value) };
+    return {
+      getItem: (key) => held.get(key) ?? null,
+      setItem: (key, value) => void held.set(key, value),
+    };
   };
 
   it('keeps drafts newest first and opens the last one worked on', () => {
@@ -244,7 +268,12 @@ describe('drafts in this browser', () => {
     const storage = memory();
     storage.setItem(
       'escape-from-pallet-town.maker.v1',
-      JSON.stringify({ drafts: [{ key: 'bad', file: { format: 1 } }, { key: 'good', file: blankMap() }] }),
+      JSON.stringify({
+        drafts: [
+          { key: 'bad', file: { format: 1 } },
+          { key: 'good', file: blankMap() },
+        ],
+      }),
     );
     expect(loadMakerStore(storage).drafts.map((draft) => draft.key)).toEqual(['good']);
     storage.setItem('escape-from-pallet-town.maker.v1', 'not json');
@@ -253,20 +282,69 @@ describe('drafts in this browser', () => {
   });
 
   it('never gives two drafts one key', () => {
-    const store = withDraft({ drafts: [] }, { key: newDraftKey({ drafts: [] }, 99), file: blankMap(), updatedAt: 0 });
+    const store = withDraft(
+      { drafts: [] },
+      { key: newDraftKey({ drafts: [] }, 99), file: blankMap(), updatedAt: 0 },
+    );
     expect(newDraftKey(store, 99)).not.toBe(store.drafts[0].key);
   });
 
   it('remembers a walk through a rename but not through a change to the ground', () => {
     const file = working();
     expect(walkedVersion(renameMap(file, 'Another Name'))).toBe(walkedVersion(file));
-    expect(walkedVersion(renamePlace(file, { kind: 'exit', index: 0 }, 'Home'))).toBe(walkedVersion(file));
-    expect(walkedVersion(paintWith(file, [{ x: 10, y: 10 }], brush('rock')))).not.toBe(walkedVersion(file));
-    expect(walkedVersion(setExitOpens(file, 0, { when: 'after', seconds: 30 }))).not.toBe(walkedVersion(file));
+    expect(walkedVersion(renamePlace(file, { kind: 'exit', index: 0 }, 'Home'))).toBe(
+      walkedVersion(file),
+    );
+    expect(walkedVersion(paintWith(file, [{ x: 10, y: 10 }], brush('rock')))).not.toBe(
+      walkedVersion(file),
+    );
+    expect(walkedVersion(setExitOpens(file, 0, { when: 'after', seconds: 30 }))).not.toBe(
+      walkedVersion(file),
+    );
   });
 
   it('downloads as the file the game reads', () => {
     const file = working();
     expect(readMapFile(JSON.parse(mapFileText(file)))).toEqual({ ok: true, file });
+  });
+});
+
+describe('people, signs, landmarks, trainers and districts', () => {
+  it('places each with plain defaults, and one thing a tile', () => {
+    let file = working();
+    file = placed(placeSpot(file, 'person', { x: 6, y: 6 }));
+    file = placed(placeSpot(file, 'sign', { x: 7, y: 6 }));
+    file = placed(placeSpot(file, 'landmark', { x: 8, y: 6 }));
+    file = placed(placeSpot(file, 'trainer', { x: 9, y: 6 }));
+    expect(file.people).toEqual([{ x: 6, y: 6, name: 'Person 1', look: 'boy', facing: 'down', lines: [] }]);
+    expect(file.signs).toEqual([{ x: 7, y: 6, lines: [] }]);
+    expect(file.landmarks).toEqual([{ x: 8, y: 6, name: 'Landmark 1', kind: 'spring' }]);
+    expect(file.trainers?.[0]).toMatchObject({ name: 'Trainer 1', team: 'scout', sight: 0 });
+    expect(placeSpot(file, 'item', { x: 9, y: 6 })).toMatchObject({ placed: false });
+    expect(readMapFile(file)).toMatchObject({ ok: true });
+  });
+
+  it('changes, moves and removes them like anything else', () => {
+    let file = placed(placeSpot(working(), 'trainer', { x: 9, y: 6 }));
+    const trainer = { kind: 'trainer', index: 0 } as const;
+    file = updateThing(file, trainer, { team: 'drover', facing: 'left', sight: 3, lines: ['Halt.'] });
+    file = placed(moveThing(file, trainer, { x: 10, y: 7 }));
+    expect(file.trainers?.[0]).toMatchObject({ x: 10, y: 7, team: 'drover', facing: 'left', sight: 3, lines: ['Halt.'] });
+    expect(thingAt(file, { x: 10, y: 7 })).toEqual(trainer);
+    expect(removeThing(file, trainer).trainers).toEqual([]);
+  });
+
+  it('marks out a district either way round, kept on the map, and chosen below what stands in it', () => {
+    let file = placed(addDistrict(working(), { x: 30, y: 12 }, { x: 15, y: 5 }));
+    expect(file.districts).toEqual([{ name: 'District 1', x: 15, y: 5, width: 9, height: 8 }]);
+    expect(thingAt(file, { x: 16, y: 6 })).toEqual({ kind: 'district', index: 0 });
+    expect(thingAt(file, { x: 18, y: 10 })).toEqual({ kind: 'exit', index: 0 });
+    file = updateThing(file, { kind: 'district', index: 0 }, { wildlife: 'wetland', name: 'The Pond' });
+    expect(file.districts?.[0]).toMatchObject({ name: 'The Pond', wildlife: 'wetland' });
+    file = updateThing(file, { kind: 'district', index: 0 }, { wildlife: undefined });
+    expect(file.districts?.[0]).not.toHaveProperty('wildlife');
+    file = placed(moveThing(file, { kind: 'district', index: 0 }, { x: 40, y: 40 }));
+    expect([file.districts?.[0].x, file.districts?.[0].y]).toEqual([15, 12]);
+    expect(readMapFile(file)).toMatchObject({ ok: true });
   });
 });

@@ -1,5 +1,6 @@
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
+import { playerMap } from './playerMaps';
 import type { CastCharacterDesignId } from './characterDesigns';
 import { REEDBEDS_PIKACHU } from './gifts';
 import type { NpcIdle } from './npcIdle';
@@ -2203,17 +2204,20 @@ export const WORLD_ENTITIES: readonly WorldEntity[] = [
   },
 ];
 
+/** A map's townsfolk and signs: authored above for a shipped map, from its file for a file map. */
 export function entitiesForMap(mapId: WorldMapId): readonly WorldEntity[] {
-  return WORLD_ENTITIES.filter((entity) => entity.mapId === mapId);
+  return [
+    ...WORLD_ENTITIES.filter((entity) => entity.mapId === mapId),
+    ...(playerMap(mapId)?.entities ?? []),
+  ];
 }
 
 export function getWorldEntityAt(
   mapId: WorldMapId,
   position: GridPosition,
 ): WorldEntity | undefined {
-  return WORLD_ENTITIES.find(
+  return entitiesForMap(mapId).find(
     (entity) =>
-      entity.mapId === mapId &&
       entity.position.x === position.x &&
       entity.position.y === position.y,
   );

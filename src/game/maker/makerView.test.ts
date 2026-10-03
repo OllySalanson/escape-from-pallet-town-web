@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import sampleLane from '../../maps/player/sample-lane.json';
-import { isPlaytestRun, setActiveSaveSlot, setTryItRules, TRY_IT_SAVE_KEY } from '../dev/playtestMode';
+import {
+  isPlaytestRun,
+  setActiveSaveSlot,
+  setTryItRules,
+  TRY_IT_SAVE_KEY,
+} from '../dev/playtestMode';
 import { createPlaytestGame } from '../dev/playtestSave';
 import { SaveManager } from '../save/SaveManager';
 import { getWorldMap } from '../worldMap';
@@ -58,10 +63,12 @@ describe('the map maker screen', () => {
       'way-out',
       'reachable',
       'hunter-room',
+      'watch',
+      'words',
       'walked',
     ]);
     expect(markup).toContain("The map needs its maker's name.");
-    expect(markup).toContain('0 of 7');
+    expect(markup).toContain('0 of 9');
   });
 
   it('greys out undo when there is nothing to undo', () => {

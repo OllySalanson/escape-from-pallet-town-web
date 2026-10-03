@@ -89,7 +89,10 @@ export function loadMakerStore(storage: Storage | undefined = defaultStorage()):
 }
 
 /** Writes the store. Returns whether it was kept. */
-export function saveMakerStore(store: MakerStore, storage: Storage | undefined = defaultStorage()): boolean {
+export function saveMakerStore(
+  store: MakerStore,
+  storage: Storage | undefined = defaultStorage(),
+): boolean {
   try {
     if (!storage) {
       return false;

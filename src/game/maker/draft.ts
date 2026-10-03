@@ -6,10 +6,15 @@ import {
   type MapFile,
   type MapFileBuilding,
   type MapFileBuildingKind,
+  type MapFileDistrict,
   type MapFileDropIn,
   type MapFileExit,
+  type MapFileLandmark,
   type MapFileOpens,
+  type MapFilePerson,
+  type MapFileSign,
   type MapFileSpot,
+  type MapFileTrainer,
 } from '../world/mapFile';
 import { KANTO_TILESET } from '../world/tileset/kantoTileset';
 import { joinLedges, LEDGE_LETTERS, type GroundBrush } from './palette';
@@ -30,11 +35,42 @@ export interface GridPoint {
 }
 
 /** What a placed thing is, and which one. */
+export type SpotKind = 'drop-in' | 'exit' | 'item' | 'person' | 'sign' | 'landmark' | 'trainer';
+
 export type ThingRef =
-  | { readonly kind: 'drop-in'; readonly index: number }
-  | { readonly kind: 'exit'; readonly index: number }
-  | { readonly kind: 'item'; readonly index: number }
-  | { readonly kind: 'building'; readonly index: number };
+  | { readonly kind: SpotKind; readonly index: number }
+  | { readonly kind: 'building'; readonly index: number }
+  | { readonly kind: 'district'; readonly index: number };
+
+/** The list in a file each kind of one-tile thing is kept in. */
+const SPOT_LISTS = {
+  'drop-in': 'dropIns',
+  exit: 'exits',
+  item: 'itemSpots',
+  person: 'people',
+  sign: 'signs',
+  landmark: 'landmarks',
+  trainer: 'trainers',
+} as const satisfies Record<SpotKind, keyof MapFile>;
+
+/** Every one-tile thing on a map, the one drawn on top first. */
+const SPOT_ORDER: readonly SpotKind[] = [
+  'drop-in',
+  'exit',
+  'trainer',
+  'person',
+  'sign',
+  'landmark',
+  'item',
+];
+
+function spotsOf(file: MapFile, kind: SpotKind): readonly MapFileSpot[] {
+  return file[SPOT_LISTS[kind]] ?? [];
+}
+
+function withSpots(file: MapFile, kind: SpotKind, spots: readonly MapFileSpot[]): MapFile {
+  return { ...file, [SPOT_LISTS[kind]]: spots };
+}
 
 export const TREE = MATERIAL_CHARS.tree;
 export const GRASS = MATERIAL_CHARS.grass;
@@ -61,7 +97,9 @@ export function blankMap(width = 40, height = 30, name = 'My map'): MapFile {
   const size = clampSize(width, height);
   const ground = Array.from({ length: size.height }, (_, y) =>
     Array.from({ length: size.width }, (_, x) =>
-      x < BORDER || y < BORDER || x >= size.width - BORDER || y >= size.height - BORDER ? TREE : GRASS,
+      x < BORDER || y < BORDER || x >= size.width - BORDER || y >= size.height - BORDER
+        ? TREE
+        : GRASS,
     ).join(''),
   );
   return {
@@ -142,8 +180,11 @@ export function paintWith(file: MapFile, tiles: readonly GridPoint[], brush: Gro
     return file;
   }
   const rows = new Set(tiles.map((tile) => tile.y));
-  const isLedge = (letter: string): boolean => (LEDGE_LETTERS as readonly string[]).includes(letter);
-  const ground = next.ground.map((row, y) => (rows.has(y) && [...row].some(isLedge) ? joinLedges(row) : row));
+  const isLedge = (letter: string): boolean =>
+    (LEDGE_LETTERS as readonly string[]).includes(letter);
+  const ground = next.ground.map((row, y) =>
+    rows.has(y) && [...row].some(isLedge) ? joinLedges(row) : row,
+  );
   return { ...next, ground };
 }
 
@@ -164,7 +205,10 @@ export function line(from: GridPoint, to: GridPoint): GridPoint[] {
   const tiles: GridPoint[] = [];
   for (let step = 0; step <= steps; step += 1) {
     const t = steps === 0 ? 0 : step / steps;
-    tiles.push({ x: Math.round(from.x + (to.x - from.x) * t), y: Math.round(from.y + (to.y - from.y) * t) });
+    tiles.push({
+      x: Math.round(from.x + (to.x - from.x) * t),
+      y: Math.round(from.y + (to.y - from.y) * t),
+    });
   }
   return tiles;
 }
@@ -204,28 +248,49 @@ export function buildingSize(kind: MapFileBuildingKind): { width: number; height
 function covers(building: MapFileBuilding, point: GridPoint): boolean {
   const { width, height } = buildingSize(building.kind);
   return (
-    point.x >= building.x && point.y >= building.y && point.x < building.x + width && point.y < building.y + height
+    point.x >= building.x &&
+    point.y >= building.y &&
+    point.x < building.x + width &&
+    point.y < building.y + height
   );
 }
 
-/** What stands on a tile, the one on top first: a place before the building it is beside. */
+/** The one-tile thing standing on a tile, if any. */
+function spotAt(file: MapFile, point: GridPoint): ThingRef | undefined {
+  for (const kind of SPOT_ORDER) {
+    const index = spotsOf(file, kind).findIndex((spot) => same(spot, point));
+    if (index >= 0) {
+      return { kind, index };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * What stands on a tile, the one on top first: a place before the building it
+ * is beside, and a building before the district it is in.
+ */
 export function thingAt(file: MapFile, point: GridPoint): ThingRef | undefined {
-  const dropIn = file.dropIns.findIndex((spot) => same(spot, point));
-  if (dropIn >= 0) {
-    return { kind: 'drop-in', index: dropIn };
-  }
-  const exit = file.exits.findIndex((spot) => same(spot, point));
-  if (exit >= 0) {
-    return { kind: 'exit', index: exit };
-  }
-  const item = file.itemSpots.findIndex((spot) => same(spot, point));
-  if (item >= 0) {
-    return { kind: 'item', index: item };
+  const spot = spotAt(file, point);
+  if (spot) {
+    return spot;
   }
   // The building planted last is drawn on top, so it is the one under the pointer.
   for (let index = file.buildings.length - 1; index >= 0; index -= 1) {
     if (covers(file.buildings[index], point)) {
       return { kind: 'building', index };
+    }
+  }
+  const districts = file.districts ?? [];
+  for (let index = districts.length - 1; index >= 0; index -= 1) {
+    const district = districts[index];
+    if (
+      point.x >= district.x &&
+      point.y >= district.y &&
+      point.x < district.x + district.width &&
+      point.y < district.y + district.height
+    ) {
+      return { kind: 'district', index };
     }
   }
   return undefined;
@@ -246,45 +311,146 @@ export type PlaceOutcome =
   | { readonly placed: true; readonly file: MapFile; readonly thing: ThingRef }
   | { readonly placed: false; readonly reason: string };
 
+/** How many of each one-tile thing a map may hold, and what a maker calls it. */
+const SPOT_RULES: Readonly<Record<SpotKind, { readonly max: number; readonly plural: string }>> = {
+  'drop-in': { max: MAP_FILE_LIMITS.maxDropIns, plural: 'drop-ins' },
+  exit: { max: MAP_FILE_LIMITS.maxExits, plural: 'exits' },
+  item: { max: MAP_FILE_LIMITS.maxItemSpots, plural: 'item spots' },
+  person: { max: MAP_FILE_LIMITS.maxPeople, plural: 'people' },
+  sign: { max: MAP_FILE_LIMITS.maxSigns, plural: 'signs' },
+  landmark: { max: MAP_FILE_LIMITS.maxLandmarks, plural: 'landmarks' },
+  trainer: { max: MAP_FILE_LIMITS.maxTrainers, plural: 'trainers' },
+};
+
+const spotOf = <T extends MapFileSpot>(spot: T): MapFileSpot => spot;
+
+/** A new one of a kind, standing on a tile, with everything about it at its plainest. */
+function newSpot(file: MapFile, kind: SpotKind, spot: MapFileSpot): MapFileSpot {
+  switch (kind) {
+    case 'drop-in':
+      return spotOf<MapFileDropIn>({ ...spot, name: nextName(file.dropIns, 'Drop-in') });
+    case 'exit':
+      return spotOf<MapFileExit>({
+        ...spot,
+        name: nextName(file.exits, 'Exit'),
+        opens: { when: 'always' },
+      });
+    case 'item':
+      return spot;
+    case 'person':
+      return spotOf<MapFilePerson>({
+        ...spot,
+        name: nextName(file.people ?? [], 'Person'),
+        look: 'boy',
+        facing: 'down',
+        lines: [],
+      });
+    case 'sign':
+      return spotOf<MapFileSign>({ ...spot, lines: [] });
+    case 'landmark':
+      return spotOf<MapFileLandmark>({
+        ...spot,
+        name: nextName(file.landmarks ?? [], 'Landmark'),
+        kind: 'spring',
+      });
+    case 'trainer':
+      return spotOf<MapFileTrainer>({
+        ...spot,
+        name: nextName(file.trainers ?? [], 'Trainer'),
+        team: 'scout',
+        look: 'youngster',
+        facing: 'down',
+        sight: 0,
+        lines: [],
+      });
+  }
+}
+
 /**
- * Puts a drop-in, an exit or an item spot on a tile. A tile holds one place:
- * the checks would refuse two, so the editor never makes them.
+ * Puts a one-tile thing on a tile: a drop-in, an exit, an item spot, a person,
+ * a sign, a landmark or a trainer. A tile holds one of them: the checks would
+ * refuse two, so the editor never makes them.
  */
-export function placeSpot(
-  file: MapFile,
-  kind: 'drop-in' | 'exit' | 'item',
-  point: GridPoint,
-): PlaceOutcome {
+export function placeSpot(file: MapFile, kind: SpotKind, point: GridPoint): PlaceOutcome {
   if (!inside(file, point)) {
     return { placed: false, reason: 'That is off the map.' };
   }
-  const there = thingAt(file, point);
-  if (there && there.kind !== 'building') {
+  if (spotAt(file, point)) {
     return { placed: false, reason: 'Something is already on that tile.' };
   }
-  const spot = { x: point.x, y: point.y };
-  if (kind === 'drop-in') {
-    if (file.dropIns.length >= MAP_FILE_LIMITS.maxDropIns) {
-      return { placed: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxDropIns} drop-ins.` };
-    }
-    const dropIn: MapFileDropIn = { ...spot, name: nextName(file.dropIns, 'Drop-in') };
-    return { placed: true, file: { ...file, dropIns: [...file.dropIns, dropIn] }, thing: { kind, index: file.dropIns.length } };
-  }
-  if (kind === 'exit') {
-    if (file.exits.length >= MAP_FILE_LIMITS.maxExits) {
-      return { placed: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxExits} exits.` };
-    }
-    const exit: MapFileExit = { ...spot, name: nextName(file.exits, 'Exit'), opens: { when: 'always' } };
-    return { placed: true, file: { ...file, exits: [...file.exits, exit] }, thing: { kind, index: file.exits.length } };
-  }
-  if (file.itemSpots.length >= MAP_FILE_LIMITS.maxItemSpots) {
-    return { placed: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxItemSpots} item spots.` };
+  const list = spotsOf(file, kind);
+  const rule = SPOT_RULES[kind];
+  if (list.length >= rule.max) {
+    return { placed: false, reason: `A map has at most ${rule.max} ${rule.plural}.` };
   }
   return {
     placed: true,
-    file: { ...file, itemSpots: [...file.itemSpots, spot] },
-    thing: { kind, index: file.itemSpots.length },
+    file: withSpots(file, kind, [...list, newSpot(file, kind, { x: point.x, y: point.y })]),
+    thing: { kind, index: list.length },
   };
+}
+
+/**
+ * Marks out a district: a named part of the map. Districts may overlap - the
+ * first listed wins a tile, as the game's own do - so a smaller place can be
+ * drawn inside a bigger one before it.
+ */
+export function addDistrict(file: MapFile, from: GridPoint, to: GridPoint): PlaceOutcome {
+  const districts = file.districts ?? [];
+  if (districts.length >= MAP_FILE_LIMITS.maxDistricts) {
+    return {
+      placed: false,
+      reason: `A map has at most ${MAP_FILE_LIMITS.maxDistricts} districts.`,
+    };
+  }
+  const x = Math.max(0, Math.min(from.x, to.x));
+  const y = Math.max(0, Math.min(from.y, to.y));
+  const district: MapFileDistrict = {
+    name: nextName(districts, 'District'),
+    x,
+    y,
+    width: Math.min(file.width - 1, Math.max(from.x, to.x)) - x + 1,
+    height: Math.min(file.height - 1, Math.max(from.y, to.y)) - y + 1,
+  };
+  return {
+    placed: true,
+    file: { ...file, districts: [...districts, district] },
+    thing: { kind: 'district', index: districts.length },
+  };
+}
+
+/** Changes some of what is said about one placed thing, leaving the rest. */
+export function updateThing(
+  file: MapFile,
+  thing: ThingRef,
+  changes: Readonly<Record<string, unknown>>,
+): MapFile {
+  if (thing.kind === 'building') {
+    return file;
+  }
+  if (thing.kind === 'district') {
+    const districts = file.districts ?? [];
+    return {
+      ...file,
+      districts: districts.map((district, index) => {
+        if (index !== thing.index) {
+          return district;
+        }
+        const next = { ...district, ...changes } as MapFileDistrict & { wildlife?: unknown };
+        if (next.wildlife === undefined) {
+          const { name, x, y, width, height } = next;
+          return { name, x, y, width, height };
+        }
+        return next;
+      }),
+    };
+  }
+  const list = spotsOf(file, thing.kind);
+  return withSpots(
+    file,
+    thing.kind,
+    list.map((spot, index) => (index === thing.index ? { ...spot, ...changes } : spot)),
+  );
 }
 
 /**
@@ -292,7 +458,11 @@ export function placeSpot(
  * map and may not stand on another building, because two roofs on one tile
  * draw as neither.
  */
-export function placeBuilding(file: MapFile, kind: MapFileBuildingKind, corner: GridPoint): PlaceOutcome {
+export function placeBuilding(
+  file: MapFile,
+  kind: MapFileBuildingKind,
+  corner: GridPoint,
+): PlaceOutcome {
   const { width, height } = buildingSize(kind);
   const footprint = rectangle(corner, { x: corner.x + width - 1, y: corner.y + height - 1 });
   if (!footprint.every((tile) => inside(file, tile))) {
@@ -312,16 +482,13 @@ export function placeBuilding(file: MapFile, kind: MapFileBuildingKind, corner: 
 /** Takes one placed thing off the map. */
 export function removeThing(file: MapFile, thing: ThingRef): MapFile {
   const without = <T>(list: readonly T[]): T[] => list.filter((_, index) => index !== thing.index);
-  switch (thing.kind) {
-    case 'drop-in':
-      return { ...file, dropIns: without(file.dropIns) };
-    case 'exit':
-      return { ...file, exits: without(file.exits) };
-    case 'item':
-      return { ...file, itemSpots: without(file.itemSpots) };
-    case 'building':
-      return { ...file, buildings: without(file.buildings) };
+  if (thing.kind === 'building') {
+    return { ...file, buildings: without(file.buildings) };
   }
+  if (thing.kind === 'district') {
+    return { ...file, districts: without(file.districts ?? []) };
+  }
+  return withSpots(file, thing.kind, without(spotsOf(file, thing.kind)));
 }
 
 /** Moves a placed thing to another tile, keeping its name and settings. */
@@ -338,22 +505,21 @@ export function moveThing(file: MapFile, thing: ThingRef, to: GridPoint): PlaceO
     buildings.splice(thing.index, 0, { ...building, x: to.x, y: to.y });
     return { placed: true, file: { ...rest, buildings }, thing };
   }
+  if (thing.kind === 'district') {
+    // A district moves whole, staying on the map.
+    const district = (file.districts ?? [])[thing.index];
+    const x = Math.max(0, Math.min(file.width - district.width, to.x));
+    const y = Math.max(0, Math.min(file.height - district.height, to.y));
+    return { placed: true, file: updateThing(file, thing, { x, y }), thing };
+  }
   if (!inside(file, to)) {
     return { placed: false, reason: 'That is off the map.' };
   }
-  const there = thingAt(file, to);
-  if (there && there.kind !== 'building' && !(there.kind === thing.kind && there.index === thing.index)) {
+  const there = spotAt(file, to);
+  if (there && !(there.kind === thing.kind && there.index === thing.index)) {
     return { placed: false, reason: 'Something is already on that tile.' };
   }
-  const moved = <T extends MapFileSpot>(list: readonly T[]): T[] =>
-    list.map((spot, index) => (index === thing.index ? { ...spot, x: to.x, y: to.y } : spot));
-  const next =
-    thing.kind === 'drop-in'
-      ? { ...file, dropIns: moved(file.dropIns) }
-      : thing.kind === 'exit'
-        ? { ...file, exits: moved(file.exits) }
-        : { ...file, itemSpots: moved(file.itemSpots) };
-  return { placed: true, file: next, thing };
+  return { placed: true, file: updateThing(file, thing, { x: to.x, y: to.y }), thing };
 }
 
 /** Renames a drop-in or an exit. */
@@ -362,13 +528,17 @@ export function renamePlace(file: MapFile, thing: ThingRef, name: string): MapFi
   if (thing.kind === 'drop-in') {
     return {
       ...file,
-      dropIns: file.dropIns.map((spot, index) => (index === thing.index ? { ...spot, name: trimmed } : spot)),
+      dropIns: file.dropIns.map((spot, index) =>
+        index === thing.index ? { ...spot, name: trimmed } : spot,
+      ),
     };
   }
   if (thing.kind === 'exit') {
     return {
       ...file,
-      exits: file.exits.map((spot, index) => (index === thing.index ? { ...spot, name: trimmed } : spot)),
+      exits: file.exits.map((spot, index) =>
+        index === thing.index ? { ...spot, name: trimmed } : spot,
+      ),
     };
   }
   return file;

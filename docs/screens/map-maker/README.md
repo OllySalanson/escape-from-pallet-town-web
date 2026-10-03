@@ -9,3 +9,6 @@ Photographed in headless Chromium against the dev server (`?testmode=pixels`), 1
 - `04-extracted.png` - leaving by the exit; the result screen goes back to the map maker.
 - `05-ready.png` - back in the editor: the walk is recorded, seven of seven, READY.
 - `06-editor-960x600.png` - the same screen in a smaller window, side columns narrowed.
+- `07-people-trainers-districts.png` - Sample Lane with a townsperson, a sign, a landmark, a district (The Pond, with wetland wildlife) and a trainer whose sight is shaded; all eight file checks pass.
+- `08-townsperson-speaks.png` - RAID IT: the townsperson's own line, and THE POND's name plate on walking in.
+- `09-trainer-sees-you.png` - stepping into the trainer's sight: he walks up and the fight starts with the Scout team (Pidgey 5, Squirtle 6).

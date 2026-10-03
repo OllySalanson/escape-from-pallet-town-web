@@ -6,6 +6,7 @@ import { getSpeciesById } from '../pokemon/species';
 import { createSeededRng, type SeededRng } from '../run/rng';
 import { availableInsertionIds, frontDoorFor, insertionsOn, requireInsertion } from '../run/runGeneration';
 import { extractionPointsOn, type ExtractionPoint } from '../world/extractionPoints';
+import { trainersOn } from '../world/mapTrainers';
 import {
   gateBossIds,
   gateStateKey,
@@ -362,8 +363,8 @@ function measureGround(
  */
 function takenTiles(map: WorldMapDefinition, defeatedBosses: readonly string[]): ReadonlySet<string> {
   const isBlocked = (tile: GridPosition): boolean => map.collision[tile.y]?.[tile.x] ?? true;
-  const fixedTrainers = withoutDefeatedBosses(createRunTrainerEncounters(), defeatedBosses).filter(
-    (trainer) => trainer.mapId === map.id && trainer.fixedPosition,
+  const fixedTrainers = withoutDefeatedBosses(trainersOn(map.id), defeatedBosses).filter(
+    (trainer) => trainer.fixedPosition,
   );
   return new Set(
     [
