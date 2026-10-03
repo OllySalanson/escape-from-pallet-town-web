@@ -74,11 +74,11 @@ describe('tree crowns', () => {
       ...createRunTrainerEncounters().map((trainer) => [trainer.mapId, `trainer ${trainer.trainer.id}`, trainer.position] as const),
       ...Object.entries(RUN_INSERTIONS).map(([id, insertion]) => [insertion.mapId, `landing ${id}`, insertion.position] as const),
       ...(Object.keys(WORLD_MAPS) as WorldMapId[]).flatMap((id) =>
-        WORLD_MAPS[id].loot.map((item) => [id, `loot ${item.id}`, item.position] as const),
+        getWorldMap(id).loot.map((item) => [id, `loot ${item.id}`, item.position] as const),
       ),
     ];
     const hidden = authored
-      .filter(([mapId, , at]) => WORLD_MAPS[mapId].layers.canopy.tiles[at.y][at.x] >= 0)
+      .filter(([mapId, , at]) => getWorldMap(mapId).layers.canopy.tiles[at.y][at.x] >= 0)
       .map(([mapId, what, at]) => `${mapId} ${what} at ${at.x},${at.y}`);
     expect(hidden).toEqual([]);
   });
@@ -94,9 +94,9 @@ describe('tree crowns', () => {
    */
   it('are on every wooded map, so the rule is asking about something', () => {
     for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
-      const { crowned, canopy } = WORLD_MAPS[id].layers;
+      const { crowned, canopy } = getWorldMap(id).layers;
       const crowns = crowned.flat().filter(Boolean).length;
-      if (WORLD_MAPS[id].tileset.materials.tree.lattice) {
+      if (getWorldMap(id).tileset.materials.tree.lattice) {
         const tips = canopy.tiles.flatMap((row, y) => row.filter((tile, x) => tile >= 0 && !crowned[y][x])).length;
         expect(crowns, id).toBe(0);
         expect(tips, id).toBeGreaterThan(100);

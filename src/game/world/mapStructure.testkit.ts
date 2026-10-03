@@ -21,10 +21,8 @@ import {
 } from './hunter';
 import {
   isBlockedAt,
-  openGround,
   slideLength,
   stepDistances,
-  straightWalk,
   unreachableTiles,
   walkableTiles,
   wallDistances,
@@ -38,47 +36,25 @@ import { createRunTrainerEncounters, withoutDefeatedBosses } from './trainers';
 import { RAID_CONTRACTS } from '../objectives';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 
-/**
- * The standard every map is held to, as machine-checkable numbers.
- *
- * A map that fails these is a field with decoration painted on it, however many
- * tiles the player can stand on. The shipped maps scored 42, 31, 33 and 26 on
- * the first line and 49%, 69%, 31% and 0% on the second.
- */
-const LONGEST_STRAIGHT_WALK = 9;
 /** How far you may hold a direction from an insertion before something answers. */
 const INSERTION_DECISION_STEPS = 4;
 
 /**
- * Two ways of holding a map to the captain's rule - hold one direction and you
- * meet structure within a few steps - and every map says which it is held to.
+ * The maps held to FireRed's own measure of a drawn map.
  *
- * **`nine-step`** caps every straight walk at nine and forbids any open ground.
- * The four maps drawn before Viridian City were built to it and pass it. It is
- * also a rule no map of FireRed's passes: measured on FireRed's own collision
- * (`data/layouts` of the decompilation, fourteen maps), every one has a straight
- * walk of 17 to 47 steps and thirteen of the fourteen have a clearing - because
- * a road between two walls runs long, and a town has a square. Held to it, a map
- * is forced into a lattice of one-tile stubs, which is what the earlier maps
- * look like.
+ * This suite used to hold every map to a design rule as well as to whether it
+ * works: the four maps drawn before Viridian City were capped at a nine-step
+ * straight walk and forbidden any open ground. The captain retired both on
+ * 2026-10-03 (the player map maker's P8) - players draw their own maps now and
+ * the only gate on a map is whether it works, so the game's own maps are held
+ * to the same. What stays below is every "does it work" rule.
  *
- * **`firered`** is the rule as FireRed keeps it, which is what the map-making
- * plan recommended (its decision D2): no walkable tile more than five steps from
- * a wall - FireRed's own maximum on every one of the fourteen - and a *typical*
- * held direction of two to five steps, measured as the median over every tile
- * and heading. Roads and corridors between walls may run long, up to FireRed's
- * own longest (47, Viridian Forest). A map drawn on FireRed's art is held to
- * FireRed's measure.
+ * Viridian City keeps the FireRed measure it was drawn to, because it is the
+ * one map whose drawing was *for* those numbers - no tile more than five steps
+ * from a wall, a typical held direction of two to five, FireRed's own longest
+ * walk - and a redraw that drifted off them would no longer be the map it is.
  */
-export type StructureStandard = 'nine-step' | 'firered';
-
-export const STRUCTURE_STANDARDS: Readonly<Record<WorldMapId, StructureStandard>> = {
-  'pallet-town': 'nine-step',
-  'route-1': 'nine-step',
-  'viridian-forest': 'nine-step',
-  'floodplain-relay': 'nine-step',
-  'viridian-city': 'firered',
-};
+export const FIRERED_STANDARD_MAPS: readonly WorldMapId[] = ['viridian-city'];
 
 /** FireRed's furthest walkable tile from a wall, on every map measured. */
 const FIRERED_FURTHEST_FROM_WALL = 5;
@@ -364,19 +340,7 @@ export function describeMapStructure(partName: string): void {
   };
 
   describe(`map structure: ${partName}`, () => {
-    if (STRUCTURE_STANDARDS[part.mapId] === 'nine-step') {
-      it.each(named(MAP_STATES))('%s never lets a held direction cross it', (_name, { map }) => {
-        const { longest } = straightWalk(map.collision);
-        expect(longest).toBeLessThanOrEqual(LONGEST_STRAIGHT_WALK);
-      });
-
-      it.each(named(MAP_STATES))('%s has no open ground in it', (_name, { map }) => {
-        const open = openGround(map.collision);
-        // A single tile with nothing within three steps is a wide junction. Two of
-        // them joined together is the beginning of a field.
-        expect(open.blobs.filter((blob) => blob > 1)).toEqual([]);
-      });
-    } else {
+    if (FIRERED_STANDARD_MAPS.includes(part.mapId)) {
       it.each(named(MAP_STATES))('%s keeps every tile within five steps of a wall', (_name, { map }) => {
         const distances = wallDistances(map.collision);
         const far = walkableTiles(map.collision)

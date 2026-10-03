@@ -12,7 +12,7 @@ import { PokemonParty } from '../pokemon';
 import { createTestLabBattleScenario } from '../dev/testLabRoutes';
 import { activeRunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
-import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
+import { generateRunPlan, type RunInsertionId, requireInsertion } from '../run/runGeneration';
 import { contractForMap, FIRST_CONTRACT_ID, objectivesForContract } from '../objectives';
 import {
   CONTRACT_REWARD_INSERTIONS,
@@ -226,11 +226,11 @@ export class TestLabScene extends Phaser.Scene {
     const party = [stored.pokemon];
     activeRunManager.startRun(
       { party, items: [] },
-      { mapId: RUN_INSERTIONS[insertion].mapId, durationMs: 18 * 60 * 1000 },
+      { mapId: requireInsertion(insertion).mapId, durationMs: 18 * 60 * 1000 },
       {},
     );
     const contract = contractForMap(
-      RUN_INSERTIONS[insertion].mapId,
+      requireInsertion(insertion).mapId,
       game.raidProgress.completedContracts,
     );
     const plan = generateRunPlan(0x5eed1234, undefined, insertion, contract, hunterThreatFor(party));

@@ -1,0 +1,110 @@
+{
+  "format": 1,
+  "id": "sample-lane",
+  "name": "Sample Lane",
+  "maker": "Escape from Pallet Town",
+  "width": 32,
+  "height": 24,
+  "ground": [
+    "TTTTTTTTTTTTTTTT..TTTTTTTTTTTTTT",
+    "TTTTTTTTTTTTTTTT..TTTTTTTTTTTTTT",
+    "TTTT..........dd..........ggTTTT",
+    "TTTT.f..gggg..dd..........ggTTTT",
+    "TT....ggggggg.dd..........ggggTT",
+    "TT....ggggggg.dd..........ggggTT",
+    "TT..f.ggggggg.dd.............fTT",
+    "TT............dd..f.......f...TT",
+    "TT..WWWWWW....dddddddddddddddddd",
+    "TT..WWWWWW....dddddddddddddddddd",
+    "TT..WWWWWW....dd..............TT",
+    "TT..WWWWWW..o.dd..FFFFFFFF....TT",
+    "TT...........fdd..F..gggg.....TT",
+    "TT.<=====>....dd..F..gggg.....TT",
+    "TTTT..........dd..F..gggg...TTTT",
+    "TTTTgggg......dd.....gggg...TTTT",
+    "TTTTgggg..TT..dd..........TTTTTT",
+    "TTTTgggg..TT..dd..<=====>.TTTTTT",
+    "TTTT..........dd..........TTTTTT",
+    "TTTT..f.......dd....f.....TTTTTT",
+    "TTTTTTTTTT....dd..TTTTTTTTTTTTTT",
+    "TTTTTTTTTT....dd..TTTTTTTTTTTTTT",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+  ],
+  "buildings": [
+    {
+      "x": 19,
+      "y": 3,
+      "kind": "house-door"
+    },
+    {
+      "x": 22,
+      "y": 18,
+      "kind": "sign"
+    }
+  ],
+  "dropIns": [
+    {
+      "x": 15,
+      "y": 20,
+      "name": "South Road",
+      "description": "The bottom of the lane, where the sand road comes in from the south."
+    },
+    {
+      "x": 3,
+      "y": 12,
+      "name": "Pond Side",
+      "description": "The bank of the pond on the west side, under the ledge."
+    }
+  ],
+  "exits": [
+    {
+      "x": 16,
+      "y": 0,
+      "name": "North Stile",
+      "opens": {
+        "when": "always"
+      }
+    },
+    {
+      "x": 31,
+      "y": 8,
+      "name": "East Gap",
+      "opens": {
+        "when": "after",
+        "seconds": 60
+      }
+    }
+  ],
+  "itemSpots": [
+    {
+      "x": 8,
+      "y": 5
+    },
+    {
+      "x": 28,
+      "y": 4
+    },
+    {
+      "x": 22,
+      "y": 13
+    },
+    {
+      "x": 5,
+      "y": 15
+    },
+    {
+      "x": 21,
+      "y": 9
+    },
+    {
+      "x": 11,
+      "y": 19
+    },
+    {
+      "x": 28,
+      "y": 12
+    }
+  ],
+  "wildlife": "meadow"
+}

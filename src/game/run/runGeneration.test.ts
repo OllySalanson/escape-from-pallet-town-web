@@ -16,6 +16,7 @@ import {
   RUN_GENERATION_BOUNDS,
   RUN_INSERTIONS,
   type RunInsertionId,
+  requireInsertion,
 } from './runGeneration';
 
 const seeds = [1, 27, 999_999];
@@ -86,7 +87,7 @@ function tileKey(position: { x: number; y: number }): string {
 }
 
 function expectValidTile(mapId: WorldMapId, position: { x: number; y: number }): void {
-  const map = WORLD_MAPS[mapId];
+  const map = getWorldMap(mapId);
   const warps = new Set(map.warps.map((warp) => tileKey(warp.source)));
   expect(position.x).toBeGreaterThanOrEqual(0);
   expect(position.y).toBeGreaterThanOrEqual(0);
@@ -104,7 +105,7 @@ describe('run generation', () => {
 
   it('adds Brock beacon as one late exit on the landing of every map', () => {
     for (const insertionId of insertionIds) {
-      const insertion = RUN_INSERTIONS[insertionId];
+      const insertion = requireInsertion(insertionId);
       const plain = generateRunPlan(27, undefined, insertionId);
       const plan = generateRunPlan(27, undefined, insertionId, undefined, undefined, [], { beaconUnlockAtMs: 150_000 });
       const beacons = plan.extractionPoints.filter((point) => point.label === BEACON_EXIT_LABEL);
@@ -125,7 +126,7 @@ describe('run generation', () => {
 
   it('never stacks the beacon on a tile that is already an exit or a contract stop', () => {
     for (const insertionId of insertionIds) {
-      const insertion = RUN_INSERTIONS[insertionId];
+      const insertion = requireInsertion(insertionId);
       const plan = generateRunPlan(1, undefined, insertionId, undefined, undefined, [], { beaconUnlockAtMs: 1 });
       const onLanding = plan.extractionPoints.filter(
         (point) =>
@@ -161,17 +162,17 @@ describe('run generation', () => {
    */
   it.each(insertionIds)('never lays the same loot on the same tiles raid after raid: %s', (insertionId) => {
     {
-      const mapId = RUN_INSERTIONS[insertionId].mapId;
+      const mapId = requireInsertion(insertionId).mapId;
       // Only the ordinary pool: a piece with its own `chance` is rolled
       // separately and so is neither part of the half-the-pool floor nor able
       // to crowd a supply out of it.
-      const pool = WORLD_MAPS[mapId].loot.filter((item) => item.chance === undefined);
-      const rare = WORLD_MAPS[mapId].loot.filter((item) => item.chance !== undefined);
+      const pool = getWorldMap(mapId).loot.filter((item) => item.chance === undefined);
+      const rare = getWorldMap(mapId).loot.filter((item) => item.chance !== undefined);
       const rareSeen = new Map<string, number>();
       const layouts = new Map<string, number>();
       const liveCounts = new Set<number>();
       const rareIds = new Set(rare.map(({ id }) => id));
-      const poolIds = new Set(WORLD_MAPS[mapId].loot.map(({ id }) => id));
+      const poolIds = new Set(getWorldMap(mapId).loot.map(({ id }) => id));
       // Every raid's faults, gathered and asked about once: five hundred raids
       // of twenty-odd pieces is ten thousand assertions a landing otherwise,
       // and the bookkeeping of that many was most of what this test cost.
@@ -254,7 +255,7 @@ describe('run generation', () => {
     // A tip, a roof's back edge or an arch's span is drawn above whatever
     // stands under it, so a piece seated there is a piece nobody sees.
     const underCanopy = (mapId: WorldMapId, position: { x: number; y: number }): boolean =>
-      WORLD_MAPS[mapId].layers.canopy.tiles[position.y][position.x] >= 0;
+      getWorldMap(mapId).layers.canopy.tiles[position.y][position.x] >= 0;
     const hidden: string[] = [];
     for (const seed of seeds) {
       const plan = generateRunPlan(seed, undefined, 'floodplain-relay', FIRST_CONTRACT);
@@ -274,7 +275,7 @@ describe('run generation', () => {
     for (const insertionId of insertionIds) {
       for (const seed of seeds) {
         const plan = generateRunPlan(seed, undefined, insertionId);
-        expect(Object.values(plan.encounters).some((table) => table.entries.length > 0)).toBe(true);
+        expect(Object.values(plan.encounters).some((table) => (table?.entries.length ?? 0) > 0)).toBe(true);
         expect(plan.extractionPoints.filter(isOpenAtStart).length).toBeGreaterThanOrEqual(1);
       }
     }
@@ -295,7 +296,7 @@ describe('run generation', () => {
    */
   it.each(insertionIds)('never generates a run with one exit, and every offered exit can be walked to: %s', (insertionId) => {
     {
-      const insertion = RUN_INSERTIONS[insertionId];
+      const insertion = requireInsertion(insertionId);
       const walkable = walkableFrom(insertion.mapId, insertion.position, EVERY_BOSS);
       const walkableNow = walkableFrom(insertion.mapId, insertion.position);
       for (let seed = 1; seed <= SAMPLED_RUNS; seed += 1) {
@@ -412,7 +413,7 @@ describe('run generation', () => {
     for (const seed of seeds) {
       const plan = generateRunPlan(seed);
       for (const [mapId, table] of Object.entries(plan.encounters) as [WorldMapId, NonNullable<typeof plan.encounters[WorldMapId]>][]) {
-        const baseTable = WORLD_MAPS[mapId].encounters;
+        const baseTable = getWorldMap(mapId).encounters;
         if (!baseTable) {
           throw new Error(`Missing base encounters for ${mapId}.`);
         }
@@ -448,12 +449,12 @@ describe('run generation', () => {
     // The proving-ground boss gate, whose key is the boss's own id.
     const gate = WORLD_GATES[0] as BossGate;
     const gatedInsertions = insertionIds.filter(
-      (id) => RUN_INSERTIONS[id].mapId === gate.mapId,
+      (id) => requireInsertion(id).mapId === gate.mapId,
     );
 
     it('only ever rolls loot this raid can walk to, whichever side of the gate it starts', () => {
       for (const insertionId of gatedInsertions) {
-        const insertion = RUN_INSERTIONS[insertionId];
+        const insertion = requireInsertion(insertionId);
         for (const defeatedBosses of [[], [gate.bossId]]) {
           const walkable = walkableFrom(insertion.mapId, insertion.position, defeatedBosses);
           for (let seed = 1; seed <= 100; seed += 1) {
@@ -470,7 +471,7 @@ describe('run generation', () => {
 
     it('promises an exit that is open at once on this side of the gate', () => {
       for (const insertionId of gatedInsertions) {
-        const insertion = RUN_INSERTIONS[insertionId];
+        const insertion = requireInsertion(insertionId);
         const walkable = walkableFrom(insertion.mapId, insertion.position);
         for (let seed = 1; seed <= 100; seed += 1) {
           const { extractionPoints } = generateRunPlan(seed, undefined, insertionId);

@@ -1,17 +1,21 @@
 import type { WildEncounterTable } from '../pokemon/encounters';
 import { Pokemon } from '../pokemon';
 import {
+  BUILT_IN_MAP_IDS,
   getWorldMap,
-  WORLD_MAPS,
+  isBuiltInMapId,
+  type BuiltInMapId,
   type WorldMapDefinition,
   type WorldMapId,
 } from '../worldMap';
+import { isPlayerMapId, type PlayerMapId } from '../world/mapFile';
+import { playerMap, playerMaps } from '../world/playerMaps';
 import type { GridPosition } from '../movement/gridMovement';
 import { openedDoors } from '../world/gates';
 import { stepDistances } from '../world/mapStructure';
 import { districtEncounterTables } from '../world/localEncounters';
 import { districtsForMap, type DistrictArea } from '../world/districts';
-import { EXTRACTION_POINTS, type ExtractionPoint } from '../world/extractionPoints';
+import { extractionPointsOn, type ExtractionPoint } from '../world/extractionPoints';
 import { withWorkedExitsOpen } from '../world/workedLandmarks';
 import type { WorldLoot } from '../world/loot';
 import {
@@ -235,10 +239,73 @@ export const RUN_INSERTIONS = {
     position: { x: 38, y: 73 },
     description: "The foot of Route 1's terraces, where the road comes up from Pallet Town. The way home is behind you; the way up is the long road round every ledge.",
   },
-} as const;
+} as const satisfies Record<string, BuiltInInsertion>;
 
-export type RunInsertionId = keyof typeof RUN_INSERTIONS;
-export type RunInsertion = (typeof RUN_INSERTIONS)[RunInsertionId];
+interface BuiltInInsertion {
+  readonly id: string;
+  readonly label: string;
+  readonly mapId: BuiltInMapId;
+  readonly position: GridPosition;
+  readonly description: string;
+}
+
+/** A shipped landing's id. */
+export type BuiltInInsertionId = keyof typeof RUN_INSERTIONS;
+
+/**
+ * Any landing: a shipped one, or one on a file map, whose id is that map's id
+ * and the place's name (`world/mapFile.ts`) and so always starts `player-`.
+ */
+export type RunInsertionId = BuiltInInsertionId | PlayerMapId;
+
+export interface RunInsertion {
+  readonly id: RunInsertionId;
+  readonly label: string;
+  readonly mapId: WorldMapId;
+  readonly position: GridPosition;
+  readonly description: string;
+}
+
+/**
+ * Every landing a raid can start from, in order: the shipped ones as they are
+ * authored above, then each file map's in the order the file lists them.
+ */
+export function runInsertions(): readonly RunInsertion[] {
+  return [
+    ...(Object.values(RUN_INSERTIONS) as RunInsertion[]),
+    ...playerMaps().flatMap((map) => map.insertions),
+  ];
+}
+
+/** The landing with this id, if the game has one. */
+export function runInsertion(id: string): RunInsertion | undefined {
+  if (id in RUN_INSERTIONS) {
+    return RUN_INSERTIONS[id as BuiltInInsertionId];
+  }
+  const slash = id.indexOf('/');
+  if (!isPlayerMapId(id) || slash < 0) {
+    return undefined;
+  }
+  return playerMap(id.slice(0, slash))?.insertions.find((insertion) => insertion.id === id);
+}
+
+export function isRunInsertionId(id: string): id is RunInsertionId {
+  return runInsertion(id) !== undefined;
+}
+
+/** The landing with this id; an id that is not one is a bug in the caller. */
+export function requireInsertion(id: RunInsertionId): RunInsertion {
+  const insertion = runInsertion(id);
+  if (!insertion) {
+    throw new Error(`no landing '${id}'`);
+  }
+  return insertion;
+}
+
+/** Every landing on one map, front door first. */
+export function insertionsOn(mapId: WorldMapId): readonly RunInsertion[] {
+  return runInsertions().filter((insertion) => insertion.mapId === mapId);
+}
 
 /**
  * A map's front door: the first insertion authored for it, which is the one a
@@ -246,7 +313,7 @@ export type RunInsertion = (typeof RUN_INSERTIONS)[RunInsertionId];
  * on the map is a drop-in point.
  */
 export function frontDoorFor(mapId: WorldMapId): RunInsertion | undefined {
-  return Object.values(RUN_INSERTIONS).find((insertion) => insertion.mapId === mapId);
+  return insertionsOn(mapId)[0];
 }
 
 export function isDropInPoint(insertion: RunInsertion): boolean {
@@ -255,9 +322,8 @@ export function isDropInPoint(insertion: RunInsertion): boolean {
 
 /** The insertion standing on this tile, if there is one. */
 export function insertionAt(mapId: WorldMapId, position: GridPosition): RunInsertion | undefined {
-  return Object.values(RUN_INSERTIONS).find(
+  return insertionsOn(mapId).find(
     (insertion) =>
-      insertion.mapId === mapId &&
       insertion.position.x === position.x &&
       insertion.position.y === position.y,
   );
@@ -273,9 +339,9 @@ export function availableInsertionIds(progress: {
   readonly unlockedInsertions: readonly string[];
   readonly reachedInsertions: readonly string[];
 }): readonly RunInsertionId[] {
-  return (Object.keys(RUN_INSERTIONS) as RunInsertionId[]).filter(
-    (id) => progress.unlockedInsertions.includes(id) || progress.reachedInsertions.includes(id),
-  );
+  return runInsertions()
+    .map((insertion) => insertion.id)
+    .filter((id) => progress.unlockedInsertions.includes(id) || progress.reachedInsertions.includes(id));
 }
 
 export const RUN_GENERATION_BOUNDS = {
@@ -360,18 +426,32 @@ export interface RunGenerationContent {
  * their beaten bosses and opened field-move doors have earned. Everything below
  * reads collision - where loot may land, which exit is guaranteed - so it has
  * to be this raid's collision and not a fresh save's.
+ *
+ * That is every shipped map, plus the raid's own map when it is a file map -
+ * and never any other file map. The rolls below are one seeded stream across
+ * every map in here, so a raid on a shipped map plays exactly the raid it
+ * always did however many maps players have added to the game.
  */
 function authoredContent(
+  raidMapId: WorldMapId,
   opened: readonly string[],
   completedContracts: readonly string[],
 ): RunGenerationContent {
+  const mapIds: WorldMapId[] = [
+    ...BUILT_IN_MAP_IDS,
+    ...(isBuiltInMapId(raidMapId) ? [] : [raidMapId]),
+  ];
   return {
-    maps: Object.fromEntries(
-      (Object.keys(WORLD_MAPS) as WorldMapId[]).map((id) => [id, getWorldMap(id, opened)]),
-    ) as Record<WorldMapId, WorldMapDefinition>,
+    maps: Object.fromEntries(mapIds.map((id) => [id, getWorldMap(id, opened)])) as Record<
+      WorldMapId,
+      WorldMapDefinition
+    >,
     // A landmark this save has finished with holds its exit open from the first
     // second, so the generator's timing variance never meets it.
-    extractionPoints: withWorkedExitsOpen(EXTRACTION_POINTS, completedContracts),
+    extractionPoints: withWorkedExitsOpen(
+      mapIds.flatMap((id) => extractionPointsOn(id)),
+      completedContracts,
+    ),
     trainers: createRunTrainerEncounters(),
   };
 }
@@ -406,9 +486,10 @@ export function generateRunPlan(
   openedGates: readonly string[] = [],
 ): RunPlan {
   const rng = createSeededRng(seed);
-  const insertion = RUN_INSERTIONS[insertionId];
+  const insertion = requireInsertion(insertionId);
   const openedDoorKeys = openedDoors({ defeatedBosses, openedGates });
-  const authored = suppliedContent ?? authoredContent(openedDoorKeys, completedContracts);
+  const authored =
+    suppliedContent ?? authoredContent(insertion.mapId, openedDoorKeys, completedContracts);
   // A beaten boss is gone for good, so they are dropped before anything is
   // reserved for them: the tile they stood on is ordinary ground again.
   const content: RunGenerationContent = {
@@ -464,7 +545,7 @@ export function generateRunPlan(
   }
   // Every drop-in point, not only the one this raid starts on: reaching one is
   // an event of its own, and a cache rolled onto it would speak over it.
-  for (const dropIn of Object.values(RUN_INSERTIONS)) {
+  for (const dropIn of runInsertions()) {
     reserve(reservedTiles, dropIn.mapId, dropIn.position);
   }
   for (const map of Object.values(content.maps)) {

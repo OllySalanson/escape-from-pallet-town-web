@@ -6,7 +6,7 @@ import { SaveManager, type StorageLike } from '../save/SaveManager';
 import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
 import { createStartingStash } from '../stash';
-import { RUN_INSERTIONS } from '../run/runGeneration';
+import { runInsertions } from '../run/runGeneration';
 import { gateKey, WORLD_GATES } from '../world/gates';
 import { raidClockView } from '../scenes/raidHud';
 import {
@@ -125,7 +125,7 @@ describe('the explorer run it deals', () => {
   });
 
   it('offers every way into every map', () => {
-    expect([...progress.unlockedInsertions].sort()).toEqual(Object.keys(RUN_INSERTIONS).sort());
+    expect([...progress.unlockedInsertions].sort()).toEqual(runInsertions().map((insertion) => insertion.id).sort());
   });
 
   it('hands over a level-99 Charizard with a moveset it could have', () => {

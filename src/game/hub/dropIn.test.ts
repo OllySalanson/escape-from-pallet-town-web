@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildDropInBriefing, gradeLine, PLACE_GRADE_LEVELS, placePicture, type DropInContext } from './dropIn';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { getWorldMap } from '../worldMap';
-import { RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
+import { type RunInsertionId, requireInsertion } from '../run/runGeneration';
 import { encodeSurvey } from '../world/survey';
 import { districtAt, districtsForMap } from '../world/districts';
 
@@ -13,7 +13,7 @@ function contextFor(
   const defeatedBosses = over.defeatedBosses ?? [];
   const openedGates = over.openedGates ?? [];
   return {
-    map: getWorldMap(RUN_INSERTIONS[insertionId].mapId, [...defeatedBosses, ...openedGates]),
+    map: getWorldMap(requireInsertion(insertionId).mapId, [...defeatedBosses, ...openedGates]),
     defeatedBosses,
     completedContracts: [],
     openedGates,
@@ -34,7 +34,7 @@ function contextFor(
  * a rectangle is not the same thing as a place.
  */
 function walked(insertionId: RunInsertionId, districtId: string): DropInContext['surveyed'] {
-  const mapId = RUN_INSERTIONS[insertionId].mapId;
+  const mapId = requireInsertion(insertionId).mapId;
   const map = getWorldMap(mapId);
   const tiles = new Set<number>();
   for (let y = 0; y < map.height; y += 1) {

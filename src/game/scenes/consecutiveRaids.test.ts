@@ -93,7 +93,7 @@ import { createActiveRunSession, type ActiveRunSession } from '../run/RunSession
 import { ENRAGE_GRACE_MS } from '../run/RunManager';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { FIRST_CONTRACT } from '../objectives';
-import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
+import { generateRunPlan, type RunInsertionId, requireInsertion } from '../run/runGeneration';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
 import { RAID_CARRIAGE_KEYS, type RaidCarriage } from '../run/raidCarriage';
 import { createHunterState, type HunterState } from '../world/hunter';
@@ -211,7 +211,7 @@ const startRaid = (
   const party = new PokemonParty([new Pokemon(BULBASAUR, 5)]);
   manager.startRun(
     { party: party.pokemon, items: [{ itemId: 'potion', quantity: 5 }] },
-    { mapId: RUN_INSERTIONS[insertionId].mapId, durationMs: RAID_DURATION_MS },
+    { mapId: requireInsertion(insertionId).mapId, durationMs: RAID_DURATION_MS },
   );
   // A second raid never carries the first contract: it was banked on extraction.
   const plan = generateRunPlan(seed, undefined, insertionId, seed === 1 ? FIRST_CONTRACT : undefined);

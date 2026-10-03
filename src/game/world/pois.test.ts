@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { RunManager } from '../run/RunManager';
-import { WORLD_MAPS } from '../worldMap';
+import { getWorldMap } from '../worldMap';
 import { WORLD_POIS, cacheRefusalLine, tryActivatePoi } from './pois';
 
 const worldSceneSource = await readFile(new URL('../scenes/WorldScene.ts', import.meta.url), 'utf8');
@@ -159,7 +159,7 @@ describe('world POIs', () => {
    */
   it('lets a landmark be worked by standing on it, not only by facing it', () => {
     const facedFromBeside = (poi: (typeof WORLD_POIS)[number]): boolean => {
-      const map = WORLD_MAPS[poi.mapId];
+      const map = getWorldMap(poi.mapId);
       const free = (x: number, y: number): boolean => map.collision[y]?.[x] === false;
       return [[0, -1], [0, 1], [-1, 0], [1, 0]].some(([dx, dy]) =>
         free(poi.position.x - dx, poi.position.y - dy) &&
@@ -172,7 +172,7 @@ describe('world POIs', () => {
     // Every landmark stands on ground the player can reach, so stepping on it
     // is an approach that no map geometry can take away.
     for (const poi of WORLD_POIS) {
-      expect(`${poi.id} stands on walkable ground: ${WORLD_MAPS[poi.mapId].collision[poi.position.y][poi.position.x] === false}`)
+      expect(`${poi.id} stands on walkable ground: ${getWorldMap(poi.mapId).collision[poi.position.y][poi.position.x] === false}`)
         .toBe(`${poi.id} stands on walkable ground: true`);
     }
     expect(worldSceneSource).toContain(

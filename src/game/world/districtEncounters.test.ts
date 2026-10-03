@@ -5,7 +5,7 @@ import { Pokemon } from '../pokemon';
 import { BULBASAUR, CHARMANDER, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
 import type { WildEncounterTable } from '../pokemon/encounters';
-import { WORLD_MAPS, type WorldMapId } from '../worldMap';
+import { WORLD_MAPS, type WorldMapId, getWorldMap } from '../worldMap';
 import { generateRunPlan } from '../run/runGeneration';
 import { MAP_DISTRICTS, districtAt, districtsForMap } from './districts';
 import { WORLD_INTERIORS } from './interiors';
@@ -16,7 +16,7 @@ const MAPS = Object.values(WORLD_MAPS);
 
 /** Every tall-grass tile of a map, with the district it stands in. */
 const grassTiles = (mapId: WorldMapId) => {
-  const map = WORLD_MAPS[mapId];
+  const map = getWorldMap(mapId);
   const tiles: { x: number; y: number; districtId: string | undefined }[] = [];
   for (let y = 0; y < map.height; y += 1) {
     for (let x = 0; x < map.width; x += 1) {

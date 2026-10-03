@@ -36,11 +36,12 @@ import {
   getWorldMap,
   isTallGrassInMap,
   TILE_SIZE,
-  WORLD_MAP_NAMES,
+  
   type MapWarp,
   type TileLayer,
   type WorldMapDefinition,
   type WorldMapId,
+  worldMapName,
 } from '../worldMap';
 import { type WorldEntity } from '../world/npcs';
 import {
@@ -170,7 +171,7 @@ import {
   fieldMoveUser,
 } from '../world/fieldMoves';
 import { dropInCaption, dropInReachedLine } from '../world/dropIns';
-import { insertionAt, isDropInPoint, RUN_INSERTIONS } from '../run/runGeneration';
+import { insertionAt, insertionsOn, isDropInPoint } from '../run/runGeneration';
 import { planTrainerApproach } from '../world/trainerApproach';
 import {
   CutscenePlayer,
@@ -201,7 +202,7 @@ import {
   workedLandmarkCaption,
 } from '../world/workedLandmarks';
 import {
-  EXTRACTION_POINTS,
+  extractionPointsOn,
   extractionCaption,
   extractionRequirementText,
   isExtractionAvailable,
@@ -1203,7 +1204,7 @@ export class WorldScene extends Phaser.Scene {
     if (!session) {
       return;
     }
-    for (const insertion of Object.values(RUN_INSERTIONS)) {
+    for (const insertion of insertionsOn(this.currentMap.id)) {
       // A map's front door is not marked: it is where a raid on this map has
       // always started, and a caption over it would announce nothing.
       if (
@@ -1963,7 +1964,7 @@ export class WorldScene extends Phaser.Scene {
         new WorldLabel(this, {
           // A boundary is two tiles wide and is named from between them.
           subject: { ...tileRect(warp.source), width: TILE_SIZE * 2 },
-          text: `${WORLD_MAP_NAMES[warp.destinationMapId].toUpperCase()} ${this.warpArrow(warp)}`,
+          text: `${worldMapName(warp.destinationMapId).toUpperCase()} ${this.warpArrow(warp)}`,
           tone: LABEL_TONES.route,
           depth: atRow(CAPTION_BAND, warp.source.y),
           speech: {
@@ -2772,7 +2773,7 @@ export class WorldScene extends Phaser.Scene {
       return undefined;
     }
     if (this.currentMap.id !== contract.mapId) {
-      return `TRAVEL TO ${WORLD_MAP_NAMES[contract.mapId].toUpperCase()}`;
+      return `TRAVEL TO ${worldMapName(contract.mapId).toUpperCase()}`;
     }
     const outstanding = remainingMarkers(contract, contractSteps);
     if (outstanding.length === 0) {
@@ -3757,7 +3758,7 @@ export class WorldScene extends Phaser.Scene {
   private extractionPointsForCurrentMap(): readonly ExtractionPoint[] {
     return (
       this.runSession?.plan?.extractionPoints ??
-      withWorkedExitsOpen(EXTRACTION_POINTS, this.completedContracts)
+      withWorkedExitsOpen(extractionPointsOn(this.currentMap.id), this.completedContracts)
     ).filter((point) => point.mapId === this.currentMap.id);
   }
 

@@ -292,8 +292,8 @@ describe('gate state', () => {
     const boss = gateKey(WORLD_GATES[0]);
     const mapId = WORLD_GATES[0].mapId;
     expect(getWorldMap(mapId, [boss])).toBe(getWorldMap(mapId, [boss, 'someone-else']));
-    expect(getWorldMap(mapId, ['someone-else'])).toBe(WORLD_MAPS[mapId]);
-    expect(getWorldMap(mapId, [boss])).not.toBe(WORLD_MAPS[mapId]);
+    expect(getWorldMap(mapId, ['someone-else'])).toBe(getWorldMap(mapId));
+    expect(getWorldMap(mapId, [boss])).not.toBe(getWorldMap(mapId));
     // A map is remembered by its OWN doors: a boss beaten on another map opens
     // nothing here, so this is the fresh-save map again.
     expect(getWorldMap('viridian-forest', [boss])).toBe(WORLD_MAPS['viridian-forest']);

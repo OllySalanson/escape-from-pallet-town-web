@@ -16,7 +16,7 @@ import {
   type TitleMenu,
 } from '../ui/titleMenu';
 import { setActiveSaveSlot } from '../dev/playtestMode';
-import { createPlaytestGame } from '../dev/playtestSave';
+import { createPlaytestGame, withEverythingCurrent } from '../dev/playtestSave';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { TILE_SIZE, WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
 
@@ -443,6 +443,13 @@ export class TitleScene extends Phaser.Scene {
       this.playtestSaveManager.clear();
     }
     let savedGame = this.playtestSaveManager.load();
+    if (savedGame) {
+      const current = withEverythingCurrent(savedGame.raidProgress);
+      if (current !== savedGame.raidProgress) {
+        savedGame = { ...savedGame, raidProgress: current };
+        this.playtestSaveManager.save(savedGame);
+      }
+    }
     if (!savedGame) {
       this.playtestSaveManager.save(createPlaytestGame());
       savedGame = this.playtestSaveManager.load();

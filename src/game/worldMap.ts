@@ -14,7 +14,9 @@ import { sketchPalletTown } from './world/maps/palletTown';
 import { sketchRoute1 } from './world/maps/route1';
 import { sketchViridianCity } from './world/maps/viridianCity';
 import { sketchViridianForest } from './world/maps/viridianForest';
+import type { PlayerMapId } from './world/mapFile';
 import { entitiesForMap, type WorldEntity } from './world/npcs';
+import { playerMap, playerMaps } from './world/playerMaps';
 import { poisForMap, type WorldPoi } from './world/pois';
 import { buildMapLayers, type MapLayers } from './world/tiles';
 import type { TilesetCatalogue } from './world/tileset/catalogue';
@@ -97,15 +99,25 @@ export interface WorldMapDefinition {
   readonly interiors: readonly MapInterior[];
 }
 
-export type WorldMapId =
+/** The maps the game shipped with, authored in its own source. */
+export type BuiltInMapId =
   | 'pallet-town'
   | 'route-1'
   | 'viridian-forest'
   | 'floodplain-relay'
   | 'viridian-city';
 
+/**
+ * Any raid map: one the game shipped with, or one loaded from a map file
+ * (`world/mapFile.ts`), whose id always starts `player-` so the two can never
+ * collide. A table authored for the shipped maps is keyed by `BuiltInMapId`;
+ * anything that answers for a map a raid can be on takes a `WorldMapId` and
+ * asks `worldMapName`, `getWorldMap` and the rest rather than indexing a table.
+ */
+export type WorldMapId = BuiltInMapId | PlayerMapId;
+
 /** One place for the player-facing name of an area, so signage cannot drift. */
-export const WORLD_MAP_NAMES: Readonly<Record<WorldMapId, string>> = {
+export const WORLD_MAP_NAMES: Readonly<Record<BuiltInMapId, string>> = {
   'pallet-town': 'Pallet Town',
   'route-1': 'Route 1',
   'viridian-forest': 'Viridian Forest',
@@ -170,7 +182,7 @@ function createMap(
   };
 }
 
-const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
+const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
   'pallet-town': {
     sketch: sketchPalletTown,
     tileset: FLOOD_TOWN_TILESET,
@@ -480,17 +492,48 @@ const MAP_CONTENT: Readonly<Record<WorldMapId, MapContent>> = {
   },
 };
 
-const MAP_IDS = Object.keys(MAP_CONTENT) as WorldMapId[];
+/** The shipped maps, in the order they are authored above. */
+export const BUILT_IN_MAP_IDS = Object.keys(MAP_CONTENT) as BuiltInMapId[];
+
+export function isBuiltInMapId(id: string): id is BuiltInMapId {
+  return id in MAP_CONTENT;
+}
 
 /**
- * Every map with every gate shut - the world a fresh save deploys into, and the
- * one anything that has no save to ask (tests, the structure rules) reads.
+ * Every shipped map with every gate shut - the world a fresh save deploys into,
+ * and the one anything that has no save to ask (tests, the structure rules)
+ * reads. A file map is not in here: ask `worldMapIds()` and `getWorldMap()`.
  */
-export const WORLD_MAPS: Readonly<Record<WorldMapId, WorldMapDefinition>> = Object.fromEntries(
-  MAP_IDS.map((id) => [id, createMap(id, MAP_CONTENT[id])]),
-) as Record<WorldMapId, WorldMapDefinition>;
+export const WORLD_MAPS: Readonly<Record<BuiltInMapId, WorldMapDefinition>> = Object.fromEntries(
+  BUILT_IN_MAP_IDS.map((id) => [id, createMap(id, MAP_CONTENT[id])]),
+) as Record<BuiltInMapId, WorldMapDefinition>;
+
+/** Every map a raid can be on: the shipped five, then every file map. */
+export function worldMapIds(): readonly WorldMapId[] {
+  return [...BUILT_IN_MAP_IDS, ...playerMaps().map((map) => map.id)];
+}
+
+export function isWorldMapId(value: unknown): value is WorldMapId {
+  return typeof value === 'string' && (isBuiltInMapId(value) || playerMap(value) !== undefined);
+}
+
+/** A map's name as the player reads it. */
+export function worldMapName(id: WorldMapId): string {
+  return isBuiltInMapId(id) ? WORLD_MAP_NAMES[id] : (playerMap(id)?.name ?? 'Unknown map');
+}
+
+/** Who drew a file map, for its credit line; a shipped map has none. */
+export function worldMapMaker(id: WorldMapId): string | undefined {
+  return isBuiltInMapId(id) ? undefined : playerMap(id)?.maker;
+}
 
 const builtMaps = new Map<string, WorldMapDefinition>();
+/**
+ * A file map's builds, kept against the loaded map itself rather than its id,
+ * so a draft re-registered after an edit is built again rather than served
+ * from before the edit.
+ */
+const builtPlayerMaps = new WeakMap<object, Map<string, WorldMapDefinition>>();
 
 /**
  * A map as it stands for a player who has beaten these bosses.
@@ -507,6 +550,20 @@ export function getWorldMap(
   defeatedBosses: readonly string[] = [],
 ): WorldMapDefinition {
   const state = gateStateKey(gatesForMap(id), defeatedBosses);
+  if (!isBuiltInMapId(id)) {
+    const loaded = playerMap(id);
+    if (!loaded) {
+      throw new Error(`no map '${id}'`);
+    }
+    const builds = builtPlayerMaps.get(loaded) ?? new Map<string, WorldMapDefinition>();
+    builtPlayerMaps.set(loaded, builds);
+    let built = builds.get(state);
+    if (!built) {
+      built = createMap(id, loaded, defeatedBosses);
+      builds.set(state, built);
+    }
+    return built;
+  }
   if (state === '') {
     return WORLD_MAPS[id];
   }

@@ -45,7 +45,7 @@ import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
 import { battleEventSound, battleNote, type BattleNote } from '../audio/battleSounds';
 import type { SoundEffectName } from '../audio/soundEffects';
-import { WORLD_MAPS } from '../worldMap';
+import { getWorldMap } from '../worldMap';
 import { SaveManager } from '../save/SaveManager';
 import { RunPhase } from '../run/RunManager';
 import { buildExtractionReport } from '../run/extractionReport';
@@ -2816,7 +2816,7 @@ export class BattleScene extends Phaser.Scene {
     const raidMapId = this.runSession.plan?.insertion.mapId;
     if (raidMapId) {
       new SaveManager().recordRaidEnded(raidMapId, 'wiped', {
-        width: WORLD_MAPS[raidMapId].width,
+        width: getWorldMap(raidMapId).width,
         walked: this.runSession.surveyed ?? [],
       });
     }
