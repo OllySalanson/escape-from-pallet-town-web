@@ -12,3 +12,5 @@ Photographed in headless Chromium against the dev server (`?testmode=pixels`), 1
 - `07-people-trainers-districts.png` - Sample Lane with a townsperson, a sign, a landmark, a district (The Pond, with wetland wildlife) and a trainer whose sight is shaded; all eight file checks pass.
 - `08-townsperson-speaks.png` - RAID IT: the townsperson's own line, and THE POND's name plate on walking in.
 - `09-trainer-sees-you.png` - stepping into the trainer's sight: he walks up and the fight starts with the Scout team (Pidgey 5, Squirtle 6).
+- `10-send-it-in.png` - stage 3: a finished map (every check folded to one line) and the send panel, saying who reads it and what travels with it.
+- `11-send-refused-until-switched-on.png` - the same send while the project still has anonymous sign-ins switched off: said plainly, the map safe in its drafts.
