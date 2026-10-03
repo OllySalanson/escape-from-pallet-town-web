@@ -8,7 +8,14 @@ import {
   ROUTE_MEADOW_WILDLIFE,
   type WildEncounterTable,
 } from '../pokemon/encounters';
+import { Pokemon } from '../pokemon';
+import type { Direction } from '../movement/gridMovement';
+import type { CastCharacterDesignId } from './characterDesigns';
+import type { MapDistrict } from './districts';
 import type { ExtractionPoint } from './extractionPoints';
+import type { WorldEntity } from './npcs';
+import type { WorldPoi } from './pois';
+import { createRunTrainerEncounters, type RunTrainerEncounter } from './trainers';
 import type { WorldLoot } from './loot';
 import { MapSketch, type PropStamp } from './mapGrid';
 import { KANTO_TILESET, type KantoPropName } from './tileset/kantoTileset';
@@ -59,6 +66,16 @@ export const MAP_FILE_LIMITS = {
   maxItemSpots: 40,
   /** The latest an exit may open: the raid clock is five minutes. */
   maxExitDelaySeconds: 240,
+  maxPeople: 30,
+  maxSigns: 30,
+  maxLandmarks: 16,
+  maxDistricts: 16,
+  maxTrainers: 12,
+  /** What one person, sign or trainer may say: a few short lines. */
+  maxLines: 4,
+  maxLineLength: 120,
+  /** How far a trainer may watch along the way they face. */
+  maxSight: 4,
 } as const;
 
 /** Every file map's id is its own id with this in front, so none can collide with a shipped map. */
@@ -129,8 +146,7 @@ export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
 
 /** When an exit can be left by. Locks and keys will be more values of this. */
 export type MapFileOpens =
-  | { readonly when: 'always' }
-  | { readonly when: 'after'; readonly seconds: number };
+  { readonly when: 'always' } | { readonly when: 'after'; readonly seconds: number };
 
 export interface MapFileSpot {
   readonly x: number;
@@ -151,6 +167,168 @@ export interface MapFileExit extends MapFileSpot {
   readonly opens: MapFileOpens;
 }
 
+/** The ways a figure can face, in the words the file uses. */
+export const MAP_FILE_FACINGS = [
+  'down',
+  'up',
+  'left',
+  'right',
+] as const satisfies readonly Direction[];
+export type MapFileFacing = (typeof MAP_FILE_FACINGS)[number];
+
+/**
+ * Who a person can look like: the townsfolk and trainer figures the game
+ * already draws. Never a named character - Oak, Joy, Bill, Brock and the five
+ * rivals are somebody - and never the player's own two designs.
+ */
+export const MAP_FILE_LOOKS = [
+  'boy',
+  'woman',
+  'heavy-man',
+  'bald-man',
+  'scientist',
+  'old-man',
+  'old-woman',
+  'straw-hat',
+  'lass',
+  'youngster',
+  'bug-catcher',
+  'hiker',
+  'cooltrainer',
+  'beauty',
+  'sailor',
+] as const satisfies readonly CastCharacterDesignId[];
+export type MapFileLook = (typeof MAP_FILE_LOOKS)[number];
+
+/**
+ * What a landmark is, and so what it holds. A landmark is a cache worked once a
+ * raid by walking onto it, and it pays what its place is - the rule the game's
+ * own forty-one caches follow (`pois.ts`): medicine from water, balls from a
+ * place that catches, a material from the place that makes it, and never money.
+ * The maker chooses the place; the game chooses the payout.
+ */
+export const MAP_FILE_LANDMARKS = {
+  spring: {
+    label: 'Spring',
+    says: 'Clean water, and someone keeps medicine beside it.',
+    reward: [{ itemId: 'potion', quantity: 2 }],
+  },
+  hide: {
+    label: 'Bird hide',
+    says: "A watcher's hide. Whoever used it left their spare balls.",
+    reward: [{ itemId: 'poke-ball', quantity: 2 }],
+  },
+  shed: {
+    label: 'Tool shed',
+    says: 'A shed of tools and spare parts.',
+    reward: [{ itemId: 'parts-crate', quantity: 1 }],
+  },
+  kiln: {
+    label: 'Kiln',
+    says: 'A cold kiln with the lamp store beside it.',
+    reward: [{ itemId: 'lamp-oil', quantity: 1 }],
+  },
+  jetty: {
+    label: 'Jetty',
+    says: 'A mooring with rope left coiled on it.',
+    reward: [{ itemId: 'mooring-rope', quantity: 1 }],
+  },
+  shrine: {
+    label: 'Shrine',
+    says: 'A wayside shrine with offerings of cloth.',
+    reward: [{ itemId: 'linen-roll', quantity: 1 }],
+  },
+  mast: {
+    label: 'Radio mast',
+    says: 'An old relay mast, its spares still in the box.',
+    reward: [{ itemId: 'radio-valve', quantity: 1 }],
+  },
+  herbs: {
+    label: 'Herb garden',
+    says: 'Somebody grows their own cures here.',
+    reward: [{ itemId: 'antidote', quantity: 2 }],
+  },
+} as const satisfies Record<
+  string,
+  {
+    readonly label: string;
+    readonly says: string;
+    readonly reward: readonly { readonly itemId: ItemId; readonly quantity: number }[];
+  }
+>;
+export type MapFileLandmarkKind = keyof typeof MAP_FILE_LANDMARKS;
+
+/**
+ * The teams a maker's trainer can field: every one is the party of one of the
+ * game's own toll trainers, already measured over the real engine against the
+ * starters (`trainerMeasure.ts`), so a maker places a fight without ever
+ * authoring one. None is a boss's - a boss holds a door, and doors are later work.
+ */
+export const MAP_FILE_TRAINER_TEAMS = {
+  scout: 'grass-scout-lee',
+  raider: 'floodplain-checkpoint-maya',
+  drover: 'route-drover-gil',
+  breaker: 'pallet-quarry-breaker-finn',
+  orchardist: 'route-orchardist-nell',
+  collier: 'route-collier-osk',
+  netter: 'pallet-netter-pike',
+  lengthsman: 'floodplain-levels-lengthsman-quill',
+} as const;
+export type MapFileTrainerTeam = keyof typeof MAP_FILE_TRAINER_TEAMS;
+
+/** The measured trainer a team is taken from. */
+export function trainerTemplate(team: MapFileTrainerTeam): RunTrainerEncounter {
+  const id = MAP_FILE_TRAINER_TEAMS[team];
+  const template = createRunTrainerEncounters().find((encounter) => encounter.trainer.id === id);
+  if (!template || template.bossId !== undefined) {
+    throw new Error(`team '${team}' names no toll trainer: ${id}`);
+  }
+  return template;
+}
+
+/** A team as a maker reads it: "Pidgey 5, Squirtle 6". */
+export function teamLine(team: MapFileTrainerTeam): string {
+  return trainerTemplate(team)
+    .trainer.party.map((pokemon) => `${pokemon.base.name} ${pokemon.level}`)
+    .join(', ');
+}
+
+export interface MapFilePerson extends MapFileSpot {
+  readonly name: string;
+  readonly look: MapFileLook;
+  readonly facing: MapFileFacing;
+  readonly lines: readonly string[];
+}
+
+export interface MapFileSign extends MapFileSpot {
+  readonly lines: readonly string[];
+}
+
+export interface MapFileLandmark extends MapFileSpot {
+  readonly name: string;
+  readonly kind: MapFileLandmarkKind;
+}
+
+/** A named part of the map: a rectangle, with its own wildlife if it has any. */
+export interface MapFileDistrict {
+  readonly name: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly wildlife?: MapFileHabitat;
+}
+
+export interface MapFileTrainer extends MapFileSpot {
+  readonly name: string;
+  readonly team: MapFileTrainerTeam;
+  readonly look: MapFileLook;
+  readonly facing: MapFileFacing;
+  /** How many tiles ahead they challenge on sight; nought is a trainer you walk up to. */
+  readonly sight: number;
+  readonly lines: readonly string[];
+}
+
 export interface MapFile {
   readonly format: typeof MAP_FILE_FORMAT;
   /** Lower-case letters, digits and dashes: it becomes part of the map's id. */
@@ -169,6 +347,16 @@ export interface MapFile {
   /** Where something can be found. The game decides what. */
   readonly itemSpots: readonly MapFileSpot[];
   readonly wildlife: MapFileHabitat;
+  /**
+   * Everything after this was added in the first version's second part, and is
+   * optional so a file written before it still reads: townsfolk who talk,
+   * signs that say something, landmarks to work, named places and trainers.
+   */
+  readonly people?: readonly MapFilePerson[];
+  readonly signs?: readonly MapFileSign[];
+  readonly landmarks?: readonly MapFileLandmark[];
+  readonly districts?: readonly MapFileDistrict[];
+  readonly trainers?: readonly MapFileTrainer[];
 }
 
 export type MapFileReading =
@@ -208,7 +396,9 @@ export function readMapFile(
   if (value.format !== MAP_FILE_FORMAT) {
     return {
       ok: false,
-      problems: [`The file is format ${String(value.format)}; this game reads format ${MAP_FILE_FORMAT}.`],
+      problems: [
+        `The file is format ${String(value.format)}; this game reads format ${MAP_FILE_FORMAT}.`,
+      ],
     };
   }
   const text = (field: string, what: string, max: number): string | undefined => {
@@ -268,8 +458,8 @@ export function readMapFile(
     sized &&
     spot.x >= 0 &&
     spot.y >= 0 &&
-    spot.x < (width) &&
-    spot.y < (height);
+    spot.x < width &&
+    spot.y < height;
 
   const list = (field: string, max: number, min = 0): Record<string, unknown>[] => {
     const raw = value[field];
@@ -293,7 +483,9 @@ export function readMapFile(
 
   for (const [index, building] of list('buildings', 200).entries()) {
     if (typeof building.kind !== 'string' || !(building.kind in MAP_FILE_BUILDINGS)) {
-      problems.push(`Building ${index + 1} is not a building the game has: ${String(building.kind)}.`);
+      problems.push(
+        `Building ${index + 1} is not a building the game has: ${String(building.kind)}.`,
+      );
     }
   }
 
@@ -320,7 +512,9 @@ export function readMapFile(
         (typeof spot.description !== 'string' ||
           spot.description.length > MAP_FILE_LIMITS.maxDescriptionLength)
       ) {
-        problems.push(`The description of '${name}' must be text of at most ${MAP_FILE_LIMITS.maxDescriptionLength} letters.`);
+        problems.push(
+          `The description of '${name}' must be text of at most ${MAP_FILE_LIMITS.maxDescriptionLength} letters.`,
+        );
       }
     }
   };
@@ -345,11 +539,106 @@ export function readMapFile(
 
   list('itemSpots', MAP_FILE_LIMITS.maxItemSpots);
 
+  const linesOf = (what: string, raw: unknown): void => {
+    if (
+      !Array.isArray(raw) ||
+      raw.length > MAP_FILE_LIMITS.maxLines ||
+      !raw.every((line) => typeof line === 'string' && line.length <= MAP_FILE_LIMITS.maxLineLength)
+    ) {
+      problems.push(
+        `${what} may say up to ${MAP_FILE_LIMITS.maxLines} lines of at most ${MAP_FILE_LIMITS.maxLineLength} letters.`,
+      );
+    }
+  };
+  const nameOf = (what: string, raw: unknown): void => {
+    if (
+      typeof raw !== 'string' ||
+      raw.trim().length === 0 ||
+      raw.length > MAP_FILE_LIMITS.maxPlaceNameLength
+    ) {
+      problems.push(
+        `${what} needs a name of at most ${MAP_FILE_LIMITS.maxPlaceNameLength} letters.`,
+      );
+    }
+  };
+  const oneOf = (what: string, raw: unknown, allowed: readonly string[]): void => {
+    if (typeof raw !== 'string' || !allowed.includes(raw)) {
+      problems.push(`${what} must be one of: ${allowed.join(', ')}.`);
+    }
+  };
+  const optional = (field: string, max: number): Record<string, unknown>[] =>
+    value[field] === undefined ? [] : list(field, max);
+
+  optional('people', MAP_FILE_LIMITS.maxPeople).forEach((person, index) => {
+    const what = `Person ${index + 1}`;
+    nameOf(what, person.name);
+    oneOf(`${what}'s look`, person.look, MAP_FILE_LOOKS);
+    oneOf(`${what}'s facing`, person.facing, MAP_FILE_FACINGS);
+    linesOf(what, person.lines);
+  });
+  optional('signs', MAP_FILE_LIMITS.maxSigns).forEach((sign, index) =>
+    linesOf(`Sign ${index + 1}`, sign.lines),
+  );
+  optional('landmarks', MAP_FILE_LIMITS.maxLandmarks).forEach((landmark, index) => {
+    nameOf(`Landmark ${index + 1}`, landmark.name);
+    oneOf(`Landmark ${index + 1}'s kind`, landmark.kind, Object.keys(MAP_FILE_LANDMARKS));
+  });
+  optional('trainers', MAP_FILE_LIMITS.maxTrainers).forEach((trainer, index) => {
+    const what = `Trainer ${index + 1}`;
+    nameOf(what, trainer.name);
+    oneOf(`${what}'s team`, trainer.team, Object.keys(MAP_FILE_TRAINER_TEAMS));
+    oneOf(`${what}'s look`, trainer.look, MAP_FILE_LOOKS);
+    oneOf(`${what}'s facing`, trainer.facing, MAP_FILE_FACINGS);
+    if (
+      !isWholeNumber(trainer.sight) ||
+      trainer.sight < 0 ||
+      trainer.sight > MAP_FILE_LIMITS.maxSight
+    ) {
+      problems.push(`${what} watches 0 to ${MAP_FILE_LIMITS.maxSight} tiles ahead.`);
+    }
+    linesOf(what, trainer.lines);
+  });
+  const districts = value.districts;
+  if (districts !== undefined) {
+    if (!Array.isArray(districts) || !districts.every(isRecord)) {
+      problems.push(`'districts' must be a list.`);
+    } else {
+      if (districts.length > MAP_FILE_LIMITS.maxDistricts) {
+        problems.push(`A map holds at most ${MAP_FILE_LIMITS.maxDistricts} districts.`);
+      }
+      districts.forEach((district, index) => {
+        const what = `District ${index + 1}`;
+        nameOf(what, district.name);
+        const { x, y, width: w, height: h } = district;
+        const fits =
+          isWholeNumber(x) &&
+          isWholeNumber(y) &&
+          isWholeNumber(w) &&
+          isWholeNumber(h) &&
+          sized &&
+          x >= 0 &&
+          y >= 0 &&
+          w > 0 &&
+          h > 0 &&
+          x + w <= width &&
+          y + h <= height;
+        if (!fits) {
+          problems.push(`${what} is not on the map.`);
+        }
+        if (district.wildlife !== undefined) {
+          oneOf(`${what}'s wildlife`, district.wildlife, Object.keys(MAP_FILE_HABITATS));
+        }
+      });
+    }
+  }
+
   if (typeof value.wildlife !== 'string' || !(value.wildlife in MAP_FILE_HABITATS)) {
     problems.push(`'wildlife' must be one of: ${Object.keys(MAP_FILE_HABITATS).join(', ')}.`);
   }
 
-  return problems.length > 0 ? { ok: false, problems } : { ok: true, file: value as unknown as MapFile };
+  return problems.length > 0
+    ? { ok: false, problems }
+    : { ok: true, file: value as unknown as MapFile };
 }
 
 /** A place's name as a piece of an id: `North Gate` is `north-gate`. */
@@ -394,6 +683,12 @@ export interface PlayerMap {
   readonly loot: readonly WorldLoot[];
   readonly insertions: readonly PlayerMapInsertion[];
   readonly exits: readonly ExtractionPoint[];
+  /** Its townsfolk and signs, as the shipped maps' are authored (`npcs.ts`). */
+  readonly entities: readonly WorldEntity[];
+  readonly pois: readonly WorldPoi[];
+  readonly districts: readonly MapDistrict[];
+  /** Fresh Pokemon every call, as `createRunTrainerEncounters` hands out, so no fight leaks into the next raid. */
+  readonly trainers: () => readonly RunTrainerEncounter[];
 }
 
 /**
@@ -461,7 +756,9 @@ export function sketchMapFile(file: MapFile): MapSketch<KantoPropName> {
 export function buildPlayerMap(file: MapFile): PlayerMap {
   const reading = readMapFile(file);
   if (!reading.ok) {
-    throw new Error(`map file '${String(file.id)}' cannot be loaded: ${reading.problems.join(' ')}`);
+    throw new Error(
+      `map file '${String(file.id)}' cannot be loaded: ${reading.problems.join(' ')}`,
+    );
   }
   const id = playerMapId(file);
   const credit = `Drawn by ${file.maker}.`;
@@ -489,6 +786,66 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         description: about,
       };
     }),
+    entities: [
+      ...(file.people ?? []).map((person, index): WorldEntity => ({
+        id: `${id}/person-${index + 1}`,
+        mapId: id,
+        kind: 'npc',
+        position: { x: person.x, y: person.y },
+        facing: person.facing,
+        dialogLines: person.lines.length > 0 ? [...person.lines] : [`${person.name} nods at you.`],
+        design: person.look,
+      })),
+      ...(file.signs ?? []).map((sign, index): WorldEntity => ({
+        id: `${id}/sign-${index + 1}`,
+        mapId: id,
+        kind: 'sign',
+        position: { x: sign.x, y: sign.y },
+        facing: 'down',
+        dialogLines: sign.lines.length > 0 ? [...sign.lines] : ['The sign has been left blank.'],
+      })),
+    ],
+    pois: (file.landmarks ?? []).map((landmark, index) => {
+      const kind = MAP_FILE_LANDMARKS[landmark.kind];
+      return {
+        id: `${id}/landmark-${index + 1}`,
+        mapId: id,
+        position: { x: landmark.x, y: landmark.y },
+        label: landmark.name.toUpperCase(),
+        description: `${kind.label}. ${kind.says}`,
+        reward: kind.reward.map((entry) => ({ ...entry })),
+      };
+    }),
+    districts: (file.districts ?? []).map((district, index) => ({
+      id: `${id}/district-${index + 1}`,
+      mapId: id,
+      name: district.name.toUpperCase(),
+      areas: [{ x: district.x, y: district.y, width: district.width, height: district.height }],
+      ...(district.wildlife ? { encounters: MAP_FILE_HABITATS[district.wildlife] } : {}),
+    })),
+    trainers: () =>
+      (file.trainers ?? []).map((placed, index) => {
+        const template = trainerTemplate(placed.team);
+        const name = placed.name.toUpperCase();
+        return {
+          mapId: id,
+          position: { x: placed.x, y: placed.y },
+          facing: placed.facing,
+          fixedPosition: true,
+          ...(placed.sight > 0 ? { sightRange: placed.sight } : {}),
+          design: placed.look,
+          introLines: placed.lines.length > 0 ? [...placed.lines] : [`${name} wants to battle!`],
+          trainer: {
+            id: `${id}/trainer-${index + 1}`,
+            name,
+            party: template.trainer.party.map(
+              (pokemon) => new Pokemon(pokemon.base, pokemon.level),
+            ),
+            defeatText: 'You win. The way is yours.',
+            unitCount: template.trainer.unitCount,
+          },
+        };
+      }),
     exits: file.exits.map((exit) => {
       const unlockAtMs = exit.opens.when === 'after' ? exit.opens.seconds * 1_000 : 0;
       return {

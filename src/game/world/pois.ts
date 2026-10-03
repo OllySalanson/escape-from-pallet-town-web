@@ -1,6 +1,7 @@
 import { ITEMS, cellsFor, type ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
+import { playerMap } from './playerMaps';
 
 export interface WorldPoi {
   readonly id: string;
@@ -697,8 +698,9 @@ export const WORLD_POIS: readonly WorldPoi[] = [
   },
 ];
 
+/** A map's landmarks: authored above for a shipped map, from its file for a file map. */
 export function poisForMap(mapId: WorldMapId): readonly WorldPoi[] {
-  return WORLD_POIS.filter((poi) => poi.mapId === mapId);
+  return [...WORLD_POIS.filter((poi) => poi.mapId === mapId), ...(playerMap(mapId)?.pois ?? [])];
 }
 
 /**

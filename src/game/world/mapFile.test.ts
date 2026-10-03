@@ -1,10 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import sampleLane from '../../maps/player/sample-lane.json';
 import { playtestRaidProgress, withEverythingCurrent } from '../dev/playtestSave';
-import { generateRunPlan, insertionsOn, requireInsertion, runInsertion } from '../run/runGeneration';
-import { getWorldMap, isWorldMapId, WORLD_MAPS, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
+import {
+  generateRunPlan,
+  insertionsOn,
+  requireInsertion,
+  runInsertion,
+} from '../run/runGeneration';
+import {
+  getWorldMap,
+  isWorldMapId,
+  WORLD_MAPS,
+  worldMapIds,
+  worldMapMaker,
+  worldMapName,
+} from '../worldMap';
 import { extractionPointsOn } from './extractionPoints';
-import { buildPlayerMap, readMapFile, type MapFile } from './mapFile';
+import { districtAt } from './districts';
+import { districtEncounterTables } from './localEncounters';
+import { buildPlayerMap, MAP_FILE_TRAINER_TEAMS, readMapFile, trainerTemplate, type MapFile } from './mapFile';
+import { trainersOn } from './mapTrainers';
+import { entitiesForMap } from './npcs';
+import { poisForMap } from './pois';
 import { checkMapFile, type MapCheckId } from './mapFileChecks';
 import { playerMaps, registerPlayerMap, unregisterPlayerMap } from './playerMaps';
 
@@ -28,7 +45,9 @@ const failing = (value: unknown): readonly MapCheckId[] =>
 
 /** A row of the sample with one tile written over. */
 const withTile = (x: number, y: number, letter: string): string[] =>
-  SAMPLE.ground.map((row, rowY) => (rowY === y ? `${row.slice(0, x)}${letter}${row.slice(x + 1)}` : row));
+  SAMPLE.ground.map((row, rowY) =>
+    rowY === y ? `${row.slice(0, x)}${letter}${row.slice(x + 1)}` : row,
+  );
 
 describe('reading a map file', () => {
   it('reads the sample', () => {
@@ -60,7 +79,9 @@ describe('reading a map file', () => {
     expect(problemsOf(edited({ buildings: [{ x: 1, y: 1, kind: 'castle' }] }))).toContain(
       'Building 1 is not a building the game has: castle.',
     );
-    expect(problemsOf(edited({ wildlife: 'volcano' }))[0]).toMatch(/^'wildlife' must be one of: meadow/);
+    expect(problemsOf(edited({ wildlife: 'volcano' }))[0]).toMatch(
+      /^'wildlife' must be one of: meadow/,
+    );
   });
 
   it('refuses a map with no way in or no way out', () => {
@@ -70,11 +91,17 @@ describe('reading a map file', () => {
 
   it('refuses two places with one name, a place off the map, and an exit that never opens', () => {
     expect(
-      problemsOf(edited({ exits: [...SAMPLE.exits, { ...SAMPLE.exits[0], x: 17, name: 'north stile' }] })),
+      problemsOf(
+        edited({ exits: [...SAMPLE.exits, { ...SAMPLE.exits[0], x: 17, name: 'north stile' }] }),
+      ),
     ).toContain("Two exits are called 'north stile'.");
-    expect(problemsOf(edited({ itemSpots: [{ x: 40, y: 2 }] }))).toContain('itemSpots 1 is not on the map.');
+    expect(problemsOf(edited({ itemSpots: [{ x: 40, y: 2 }] }))).toContain(
+      'itemSpots 1 is not on the map.',
+    );
     expect(
-      problemsOf(edited({ exits: [{ ...SAMPLE.exits[0], opens: { when: 'after', seconds: 900 } }] })),
+      problemsOf(
+        edited({ exits: [{ ...SAMPLE.exits[0], opens: { when: 'after', seconds: 900 } }] }),
+      ),
     ).toContain("Exit 'North Stile' must open always, or after 1 to 240 seconds.");
   });
 
@@ -120,7 +147,8 @@ describe('whether a map works', () => {
       [2, 12],
       [4, 12],
     ].reduce<string[]>(
-      (rows, [x, y]) => rows.map((row, rowY) => (rowY === y ? `${row.slice(0, x)}C${row.slice(x + 1)}` : row)),
+      (rows, [x, y]) =>
+        rows.map((row, rowY) => (rowY === y ? `${row.slice(0, x)}C${row.slice(x + 1)}` : row)),
       [...SAMPLE.ground],
     );
     // The ledge under it is already solid, so the drop-in is shut in.
@@ -189,7 +217,10 @@ describe('a map from a file is a map like any other', () => {
     expect(runInsertion('player-sample-lane/pond-side')?.position).toEqual({ x: 3, y: 12 });
     expect(runInsertion('player-sample-lane/nowhere')).toBeUndefined();
     // The front door is named for the map, as every shipped one is.
-    expect(insertionsOn(sample.id).map((insertion) => insertion.label)).toEqual(['Sample Lane', 'Pond Side']);
+    expect(insertionsOn(sample.id).map((insertion) => insertion.label)).toEqual([
+      'Sample Lane',
+      'Pond Side',
+    ]);
     expect(requireInsertion('player-sample-lane/south-road').description).toBe(
       'South Road. The bottom of the lane, where the sand road comes in from the south. Drawn by Escape from Pallet Town.',
     );
@@ -233,7 +264,9 @@ describe('a map from a file is a map like any other', () => {
     registerPlayerMap(draft);
     try {
       expect(getWorldMap(draft.id).collision[12][16]).toBe(false);
-      registerPlayerMap(buildPlayerMap({ ...SAMPLE, id: 'draft-lane', ground: withTile(16, 12, 'C') }));
+      registerPlayerMap(
+        buildPlayerMap({ ...SAMPLE, id: 'draft-lane', ground: withTile(16, 12, 'C') }),
+      );
       expect(getWorldMap(draft.id).collision[12][16]).toBe(true);
     } finally {
       unregisterPlayerMap(draft.id);
@@ -263,5 +296,85 @@ describe('an explorer run kept from before a map was added', () => {
     expect(current.surveyed?.['player-sample-lane']).toBeDefined();
     expect(current.surveyed?.['route-1']).toBe(old.surveyed['route-1']);
     expect(withEverythingCurrent(current)).toBe(current);
+  });
+});
+
+describe('people, signs, landmarks, districts and trainers in a file', () => {
+  const full: MapFile = {
+    ...SAMPLE,
+    id: 'full-lane',
+    people: [{ x: 12, y: 7, name: 'Old Tam', look: 'old-man', facing: 'down', lines: ['The pond was dug by my grandad.'] }],
+    signs: [{ x: 13, y: 19, lines: ['SAMPLE LANE'] }],
+    landmarks: [{ x: 9, y: 12, name: 'Pond Hide', kind: 'hide' }],
+    districts: [{ name: 'The Pond', x: 2, y: 2, width: 12, height: 8, wildlife: 'wetland' }],
+    trainers: [{ x: 24, y: 10, name: 'Bug Kid', team: 'scout', look: 'bug-catcher', facing: 'left', sight: 3, lines: [] }],
+  };
+
+  it('reads and passes every check', () => {
+    expect(readMapFile(full)).toMatchObject({ ok: true });
+    expect(checkMapFile(full).filter((check) => !check.passed)).toEqual([]);
+  });
+
+  it('refuses a look, a team or a kind the game does not have, and a district off the map', () => {
+    const problems = problemsOf({
+      ...full,
+      people: [{ ...full.people![0], look: 'prof-oak' }],
+      trainers: [{ ...full.trainers![0], team: 'champion', sight: 9 }],
+      landmarks: [{ ...full.landmarks![0], kind: 'castle' }],
+      districts: [{ ...full.districts![0], width: 99 }],
+    });
+    expect(problems.some((problem) => problem.startsWith("Person 1's look must be one of"))).toBe(true);
+    expect(problems.some((problem) => problem.startsWith("Trainer 1's team must be one of"))).toBe(true);
+    expect(problems).toContain('Trainer 1 watches 0 to 4 tiles ahead.');
+    expect(problems.some((problem) => problem.startsWith("Landmark 1's kind must be one of"))).toBe(true);
+    expect(problems).toContain('District 1 is not on the map.');
+  });
+
+  it('counts a person as a wall: one standing in the only way out is a map that does not work', () => {
+    // Shut the pond-side drop-in into its corner but for one tile, then stand someone in it.
+    const ground = [[2, 11], [3, 11], [4, 11], [2, 12]].reduce<string[]>(
+      (rows, [x, y]) => rows.map((row, rowY) => (rowY === y ? `${row.slice(0, x)}C${row.slice(x + 1)}` : row)),
+      [...SAMPLE.ground],
+    );
+    const shut = { ...SAMPLE, ground, people: [{ x: 4, y: 12, name: 'Gatekeeper', look: 'boy', facing: 'down', lines: [] }] } as MapFile;
+    expect(failing({ ...shut, people: [] })).toEqual([]);
+    expect(failing(shut)).toEqual(['way-out', 'hunter-room']);
+  });
+
+  it('refuses a trainer who watches a drop-in or an exit, and words the game will not show', () => {
+    const watching = { ...full, trainers: [{ ...full.trainers![0], x: 15, y: 17, facing: 'down', sight: 4 }] } as MapFile;
+    expect(failing(watching)).toEqual(['watch']);
+    expect(failing({ ...full, signs: [{ x: 13, y: 19, lines: ['what the fuck'] }] })).toEqual(['words']);
+  });
+
+  it('puts them in the game: townsfolk, a landmark, a named place with its own wildlife, and a trainer', () => {
+    const map = buildPlayerMap(full);
+    registerPlayerMap(map);
+    try {
+      expect(entitiesForMap(map.id).map((entity) => [entity.kind, entity.design ?? null])).toEqual([
+        ['npc', 'old-man'],
+        ['sign', null],
+      ]);
+      expect(poisForMap(map.id)[0]).toMatchObject({ label: 'POND HIDE', reward: [{ itemId: 'poke-ball', quantity: 2 }] });
+      expect(districtAt(map.id, { x: 5, y: 5 })?.name).toBe('THE POND');
+      expect(districtEncounterTables(map.id)[`${map.id}/district-1`]).toBeDefined();
+      expect(districtEncounterTables('route-1')[`${map.id}/district-1`]).toBeUndefined();
+      const [trainer] = trainersOn(map.id);
+      expect(trainer).toMatchObject({ sightRange: 3, facing: 'left', design: 'bug-catcher' });
+      expect(trainer.trainer.party.map((pokemon) => `${pokemon.base.name} ${pokemon.level}`)).toEqual(['Pidgey 5', 'Squirtle 6']);
+      // Fresh Pokemon every time, as the shipped trainers are, so a fight never leaks into the next raid.
+      expect(trainersOn(map.id)[0].trainer.party[0]).not.toBe(trainer.trainer.party[0]);
+      const plan = generateRunPlan(3, undefined, `${map.id}/south-road` as never);
+      expect(plan.trainers.filter((encounter) => encounter.mapId === map.id).map((encounter) => encounter.trainer.name)).toEqual(['BUG KID']);
+      expect(getWorldMap(map.id).entities).toHaveLength(2);
+    } finally {
+      unregisterPlayerMap(map.id);
+    }
+  });
+
+  it('only ever fields a measured toll trainer\'s team, never a boss\'s', () => {
+    for (const team of Object.keys(MAP_FILE_TRAINER_TEAMS) as (keyof typeof MAP_FILE_TRAINER_TEAMS)[]) {
+      expect(trainerTemplate(team).bossId).toBeUndefined();
+    }
   });
 });

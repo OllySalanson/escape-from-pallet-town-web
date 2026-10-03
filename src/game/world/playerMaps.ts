@@ -17,10 +17,13 @@ import { buildPlayerMap, readMapFile, type PlayerMap, type PlayerMapId } from '.
  * file so the suite fails first.
  */
 
-const BUNDLED_FILES: Readonly<Record<string, unknown>> = import.meta.glob('../../maps/player/*.json', {
-  eager: true,
-  import: 'default',
-});
+const BUNDLED_FILES: Readonly<Record<string, unknown>> = import.meta.glob(
+  '../../maps/player/*.json',
+  {
+    eager: true,
+    import: 'default',
+  },
+);
 
 let registry: Map<PlayerMapId, PlayerMap> | undefined;
 

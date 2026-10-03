@@ -1,5 +1,6 @@
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
+import { playerMap } from './playerMaps';
 import * as wildlife from '../pokemon/encounters';
 import type { WildEncounterTable } from '../pokemon/encounters';
 import { WEATHER_CONDITIONS, WeatherId } from '../pokemon/battle/weather';
@@ -1047,7 +1048,10 @@ const holds = (area: DistrictArea, tile: GridPosition): boolean =>
 
 /** The districts a map declares, in the order that settles an overlap. */
 export function districtsForMap(mapId: WorldMapId): readonly MapDistrict[] {
-  return MAP_DISTRICTS.filter((district) => district.mapId === mapId);
+  return [
+    ...MAP_DISTRICTS.filter((district) => district.mapId === mapId),
+    ...(playerMap(mapId)?.districts ?? []),
+  ];
 }
 
 /** The district a tile is in, or undefined on a map that names none. */

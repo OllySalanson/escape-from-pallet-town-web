@@ -8,6 +8,7 @@ import { districtAt, districtsForMap, type MapDistrict } from '../world/district
 import { extractionPointsOn, extractionRequirementText, type ExtractionPoint } from '../world/extractionPoints';
 import { FIELD_MOVES } from '../world/fieldMoves';
 import { gatesForMap, isGateOpen, openedDoors, type MapGate } from '../world/gates';
+import { trainersOn } from '../world/mapTrainers';
 import { buildMinimap, type Minimap, type MinimapMark } from '../world/minimap';
 import { isPrize } from '../world/loot';
 import { surveyedTiles, type SurveyRecord } from '../world/survey';
@@ -216,9 +217,7 @@ export function buildDropInBriefing(
   const mapId = insertion.mapId;
   const gates = gatesForMap(mapId);
   const opened = openedDoors(context);
-  const standing = withoutDefeatedBosses(createRunTrainerEncounters(), context.defeatedBosses).filter(
-    (trainer) => trainer.mapId === mapId,
-  );
+  const standing = withoutDefeatedBosses(trainersOn(mapId), context.defeatedBosses);
   const trainerCeiling = standing.reduce(
     (best, encounter) =>
       Math.max(best, ...encounter.trainer.party.map((pokemon) => pokemon.level)),

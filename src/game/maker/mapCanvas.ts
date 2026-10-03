@@ -1,4 +1,13 @@
+import {
+  CHARACTER_FEET_PIXEL_Y,
+  CHARACTER_FRAME_HEIGHT,
+  CHARACTER_FRAME_WIDTH,
+  getIdleFrame,
+} from '../playerFrames';
 import { publicAssetUrl } from '../publicAssetUrl';
+import { characterDesignAssetPath } from '../world/characterDesigns';
+import { MAP_FILE_LOOKS, type MapFileLook } from '../world/mapFile';
+import { trainerSightTiles } from '../world/trainerSight';
 import { TILE_SIZE } from '../worldMap';
 import type { MapFile } from '../world/mapFile';
 import { sketchMapFile } from '../world/mapFile';
@@ -19,26 +28,88 @@ import { buildingSize, type GridPoint, type ThingRef } from './draft';
 
 const sheets = new Map<string, HTMLImageElement>();
 
-/** Loads the sheets the Kanto catalogue draws from, once. */
+function loadImage(path: string): Promise<void> {
+  return new Promise<void>((resolve) => {
+    if (sheets.has(path)) {
+      resolve();
+      return;
+    }
+    const image = new Image();
+    image.onload = () => resolve();
+    // A sheet that will not load leaves a hole in the picture rather than an
+    // editor that never opens.
+    image.onerror = () => resolve();
+    image.src = publicAssetUrl(path);
+    sheets.set(path, image);
+  });
+}
+
+/** Loads the sheets the Kanto catalogue draws from, and every figure a person can look like, once. */
 export function loadMakerSheets(): Promise<void> {
-  return Promise.all(
-    KANTO_TILESET.sources.map(
-      (source) =>
-        new Promise<void>((resolve) => {
-          if (sheets.has(source.imagePath)) {
-            resolve();
-            return;
-          }
-          const image = new Image();
-          image.onload = () => resolve();
-          // A sheet that will not load leaves a hole in the picture rather
-          // than an editor that never opens.
-          image.onerror = () => resolve();
-          image.src = publicAssetUrl(source.imagePath);
-          sheets.set(source.imagePath, image);
-        }),
-    ),
-  ).then(() => undefined);
+  return Promise.all([
+    ...KANTO_TILESET.sources.map((source) => loadImage(source.imagePath)),
+    ...MAP_FILE_LOOKS.map((look) => loadImage(characterDesignAssetPath(look))),
+  ]).then(() => undefined);
+}
+
+/** The columns a cut character sheet has: four, a frame per step of its walk. */
+const FIGURE_SHEET_COLUMNS = 4;
+
+/**
+ * A person or a trainer standing on a tile, drawn as the game draws them: the
+ * figure's idle frame for the way they face, soles on the tile's bottom row.
+ */
+function drawFigure(
+  context: CanvasRenderingContext2D,
+  look: MapFileLook,
+  facing: 'down' | 'up' | 'left' | 'right',
+  spot: GridPoint,
+): void {
+  const image = sheets.get(characterDesignAssetPath(look));
+  if (!image?.complete || image.naturalWidth === 0) {
+    return;
+  }
+  const frame = getIdleFrame(facing, FIGURE_SHEET_COLUMNS);
+  const sx = (frame % FIGURE_SHEET_COLUMNS) * CHARACTER_FRAME_WIDTH;
+  const sy = Math.floor(frame / FIGURE_SHEET_COLUMNS) * CHARACTER_FRAME_HEIGHT;
+  const left = spot.x * TILE_SIZE + Math.floor((TILE_SIZE - CHARACTER_FRAME_WIDTH) / 2);
+  const top = (spot.y + 1) * TILE_SIZE - 1 - CHARACTER_FEET_PIXEL_Y;
+  context.drawImage(
+    image,
+    sx,
+    sy,
+    CHARACTER_FRAME_WIDTH,
+    CHARACTER_FRAME_HEIGHT,
+    left,
+    top,
+    CHARACTER_FRAME_WIDTH,
+    CHARACTER_FRAME_HEIGHT,
+  );
+}
+
+/** Draws one tile of the Kanto sheets by its number. */
+function drawTileAt(context: CanvasRenderingContext2D, tile: number, x: number, y: number): void {
+  const source = KANTO_TILESET.sources.find(
+    (candidate) =>
+      tile >= candidate.firstIndex &&
+      tile < candidate.firstIndex + candidate.columns * candidate.rows,
+  );
+  const image = source ? sheets.get(source.imagePath) : undefined;
+  if (!source || !image?.complete || image.naturalWidth === 0) {
+    return;
+  }
+  const index = tile - source.firstIndex;
+  context.drawImage(
+    image,
+    (index % source.columns) * TILE_SIZE,
+    Math.floor(index / source.columns) * TILE_SIZE,
+    TILE_SIZE,
+    TILE_SIZE,
+    x * TILE_SIZE,
+    y * TILE_SIZE,
+    TILE_SIZE,
+    TILE_SIZE,
+  );
 }
 
 export function layersFor(file: MapFile): MapLayers {
@@ -50,7 +121,10 @@ const MARK_COLOURS = {
   'drop-in': '#5fd6f0',
   exit: '#ff7a6b',
   item: '#8fe08a',
+  landmark: '#ffd65c',
   building: '#ffd65c',
+  district: '#f8f7dd',
+  figure: '#c9a6ff',
 } as const;
 
 /**
@@ -59,10 +133,11 @@ const MARK_COLOURS = {
  * pixels of the tile rather than in text, which the game's face cannot set this
  * small.
  */
-const MARK_GLYPHS: Readonly<Record<'drop-in' | 'exit' | 'item', readonly string[]>> = {
+const MARK_GLYPHS: Readonly<Record<'drop-in' | 'exit' | 'item' | 'landmark', readonly string[]>> = {
   'drop-in': ['#######', '.#####.', '..###..', '...#...'],
   exit: ['#.....#', '.#...#.', '..#.#..', '...#...', '..#.#..', '.#...#.', '#.....#'],
   item: ['..#..', '.###.', '#####', '.###.', '..#..'],
+  landmark: ['...#...', '..###..', '#######', '.#####.', '.##.##.', '#.....#'],
 };
 
 /** Draws the whole map, then everything placed on it. */
@@ -110,7 +185,17 @@ export function drawMap(
           context.drawImage(span.image, sx, sy, TILE_SIZE, TILE_SIZE, 0, 0, TILE_SIZE, TILE_SIZE);
           context.restore();
         } else {
-          context.drawImage(span.image, sx, sy, TILE_SIZE, TILE_SIZE, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          context.drawImage(
+            span.image,
+            sx,
+            sy,
+            TILE_SIZE,
+            TILE_SIZE,
+            x * TILE_SIZE,
+            y * TILE_SIZE,
+            TILE_SIZE,
+            TILE_SIZE,
+          );
         }
       }
     }
@@ -134,7 +219,79 @@ export function drawMap(
       });
     });
   };
+  // Districts first and faintest: they are the parts of the map everything
+  // else stands in. The chosen one is drawn heavier.
+  (file.districts ?? []).forEach((district, index) => {
+    const chosen = selected?.kind === 'district' && selected.index === index;
+    context.fillStyle = chosen ? 'rgba(248, 247, 221, 0.16)' : 'rgba(248, 247, 221, 0.06)';
+    context.fillRect(
+      district.x * TILE_SIZE,
+      district.y * TILE_SIZE,
+      district.width * TILE_SIZE,
+      district.height * TILE_SIZE,
+    );
+    ring(
+      context,
+      district.x * TILE_SIZE,
+      district.y * TILE_SIZE,
+      district.width * TILE_SIZE,
+      district.height * TILE_SIZE,
+      MARK_COLOURS.district,
+      chosen,
+    );
+  });
+  // What a trainer watches is the price on the ground, so it is shown as the
+  // game shows it: the tiles shaded.
+  const blocked = (tile: GridPoint): boolean => layers.collision[tile.y]?.[tile.x] ?? true;
+  for (const trainer of file.trainers ?? []) {
+    context.fillStyle = 'rgba(255, 90, 80, 0.28)';
+    for (const tile of trainerSightTiles(
+      { position: trainer, facing: trainer.facing, sightRange: trainer.sight },
+      blocked,
+    )) {
+      context.fillRect(tile.x * TILE_SIZE, tile.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  }
   file.itemSpots.forEach((spot, index) => mark('item', spot, index));
+  (file.landmarks ?? []).forEach((spot, index) => mark('landmark', spot, index));
+  const signTile = KANTO_TILESET.props.signTown.cells[0]?.tile;
+  for (const sign of file.signs ?? []) {
+    if (signTile !== undefined) {
+      drawTileAt(context, signTile, sign.x, sign.y);
+    }
+  }
+  // Figures in the order they stand, top of the map first, so a head drawn
+  // into the row above is behind whoever stands in that row.
+  const figures = [
+    ...(file.people ?? []).map((person, index) => ({ ...person, kind: 'person' as const, index })),
+    ...(file.trainers ?? []).map((trainer, index) => ({
+      ...trainer,
+      kind: 'trainer' as const,
+      index,
+    })),
+  ].sort((a, b) => a.y - b.y);
+  for (const figure of figures) {
+    drawFigure(context, figure.look, figure.facing, figure);
+  }
+  for (const [kind, list] of [
+    ['sign', file.signs ?? []],
+    ['person', file.people ?? []],
+    ['trainer', file.trainers ?? []],
+  ] as const) {
+    list.forEach((spot, index) => {
+      if (selected?.kind === kind && selected.index === index) {
+        ring(
+          context,
+          spot.x * TILE_SIZE,
+          spot.y * TILE_SIZE,
+          TILE_SIZE,
+          TILE_SIZE,
+          MARK_COLOURS.figure,
+          true,
+        );
+      }
+    });
+  }
   file.exits.forEach((spot, index) => mark('exit', spot, index));
   file.dropIns.forEach((spot, index) => mark('drop-in', spot, index));
   if (selected?.kind === 'building') {
@@ -195,7 +352,12 @@ export function drawPreview(
   const right = Math.max(area.from.x, area.to.x);
   const bottom = Math.max(area.from.y, area.to.y);
   context.fillStyle = valid ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 90, 80, 0.25)';
-  context.fillRect(left * TILE_SIZE, top * TILE_SIZE, (right - left + 1) * TILE_SIZE, (bottom - top + 1) * TILE_SIZE);
+  context.fillRect(
+    left * TILE_SIZE,
+    top * TILE_SIZE,
+    (right - left + 1) * TILE_SIZE,
+    (bottom - top + 1) * TILE_SIZE,
+  );
   ring(
     context,
     left * TILE_SIZE,
@@ -252,5 +414,15 @@ export function drawSwatch(canvas: HTMLCanvasElement, letter: string): void {
   canvas.height = TILE_SIZE;
   context.imageSmoothingEnabled = false;
   context.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
-  context.drawImage(scratch, TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE, 0, 0, TILE_SIZE, TILE_SIZE);
+  context.drawImage(
+    scratch,
+    TILE_SIZE,
+    TILE_SIZE,
+    TILE_SIZE,
+    TILE_SIZE,
+    0,
+    0,
+    TILE_SIZE,
+    TILE_SIZE,
+  );
 }

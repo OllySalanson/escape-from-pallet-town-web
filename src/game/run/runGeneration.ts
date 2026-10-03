@@ -452,7 +452,11 @@ function authoredContent(
       mapIds.flatMap((id) => extractionPointsOn(id)),
       completedContracts,
     ),
-    trainers: createRunTrainerEncounters(),
+    // The raid's own file map brings its trainers, after every shipped one.
+    trainers: [
+      ...createRunTrainerEncounters(),
+      ...(isBuiltInMapId(raidMapId) ? [] : (playerMap(raidMapId)?.trainers() ?? [])),
+    ],
   };
 }
 
@@ -508,7 +512,7 @@ export function generateRunPlan(
   // wildlife does not move a single loot, trainer or hunter roll of any seed.
   const districtRng = createSeededRng((seed ^ DISTRICT_ENCOUNTER_STREAM) >>> 0);
   const districtEncounters = Object.fromEntries(
-    Object.entries(districtEncounterTables()).map(([id, table]) => [
+    Object.entries(districtEncounterTables(insertion.mapId)).map(([id, table]) => [
       id,
       varyEncounterTable(table, districtRng),
     ]),

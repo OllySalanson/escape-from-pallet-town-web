@@ -1,4 +1,10 @@
-import { MAP_FILE_HABITATS, type MapFileBuildingKind, type MapFileHabitat } from '../world/mapFile';
+import {
+  MAP_FILE_HABITATS,
+  type MapFileBuildingKind,
+  type MapFileFacing,
+  type MapFileHabitat,
+  type MapFileLook,
+} from '../world/mapFile';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 
 /**
@@ -35,7 +41,10 @@ const plain = (id: string, label: string, letter: string, help: string): GroundB
 
 /** The stamps flowers and a bush are written as, by the ground they stand on. */
 const FLOWERS_ON: Readonly<Record<string, string>> = { [MATERIAL_CHARS.turf]: 'r' };
-const BUSH_ON: Readonly<Record<string, string>> = { [MATERIAL_CHARS.turf]: 'u', [MATERIAL_CHARS.paving]: 'k' };
+const BUSH_ON: Readonly<Record<string, string>> = {
+  [MATERIAL_CHARS.turf]: 'u',
+  [MATERIAL_CHARS.paving]: 'k',
+};
 
 /** The letters a ledge is written as: its west end, its run and its east end. */
 export const LEDGE_LETTERS = ['<', '=', '>'] as const;
@@ -59,12 +68,22 @@ export function groundUnder(letter: string): string {
 
 export const GROUND_BRUSHES: readonly GroundBrush[] = [
   plain('grass', 'Grass', MATERIAL_CHARS.grass, 'Short grass. Walked on, and nothing lives in it.'),
-  plain('tall-grass', 'Tall grass', MATERIAL_CHARS['tall-grass'], 'Wild Pokémon live in it: every step on it can start a fight.'),
+  plain(
+    'tall-grass',
+    'Tall grass',
+    MATERIAL_CHARS['tall-grass'],
+    'Wild Pokémon live in it: every step on it can start a fight.',
+  ),
   plain('turf', 'Lawn', MATERIAL_CHARS.turf, 'Mown lawn, as in a garden or a town.'),
   plain('sand', 'Sand road', MATERIAL_CHARS.sand, 'A sandy road. Looks best two tiles wide.'),
   plain('paving', 'Paving', MATERIAL_CHARS.paving, 'Town paving. Looks best two tiles wide.'),
   plain('water', 'Water', MATERIAL_CHARS.water, 'Deep water. Nobody walks on it.'),
-  plain('trees', 'Trees', MATERIAL_CHARS.tree, 'A wood. Trees stand two tiles wide; a lone tile of it is a bush.'),
+  plain(
+    'trees',
+    'Trees',
+    MATERIAL_CHARS.tree,
+    'A wood. Trees stand two tiles wide; a lone tile of it is a bush.',
+  ),
   plain('rock', 'Rock', MATERIAL_CHARS.cliff, 'A rock mound. Solid.'),
   plain('fence', 'Fence', MATERIAL_CHARS.fence, 'A post-and-rail fence. Solid.'),
   plain('hedge', 'Hedge', MATERIAL_CHARS.hedge, 'A clipped hedge. Solid.'),
@@ -154,3 +173,29 @@ export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
 export function habitatSpecies(habitat: MapFileHabitat): readonly string[] {
   return MAP_FILE_HABITATS[habitat].entries.map((entry) => entry.speciesId);
 }
+
+/** What each look is called in the editor. */
+export const LOOK_LABELS: Readonly<Record<MapFileLook, string>> = {
+  boy: 'Boy',
+  woman: 'Woman',
+  'heavy-man': 'Big man',
+  'bald-man': 'Bald man',
+  scientist: 'Scientist',
+  'old-man': 'Old man',
+  'old-woman': 'Old woman',
+  'straw-hat': 'Gardener',
+  lass: 'Lass',
+  youngster: 'Youngster',
+  'bug-catcher': 'Bug catcher',
+  hiker: 'Hiker',
+  cooltrainer: 'Cool trainer',
+  beauty: 'Beauty',
+  sailor: 'Sailor',
+};
+
+export const FACING_LABELS: Readonly<Record<MapFileFacing, string>> = {
+  down: 'Down',
+  up: 'Up',
+  left: 'Left',
+  right: 'Right',
+};

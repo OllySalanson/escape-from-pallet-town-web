@@ -106,5 +106,60 @@
       "y": 12
     }
   ],
-  "wildlife": "meadow"
+  "wildlife": "meadow",
+  "people": [
+    {
+      "x": 12,
+      "y": 7,
+      "name": "Old Tam",
+      "look": "old-man",
+      "facing": "down",
+      "lines": [
+        "The pond was dug by my grandad.",
+        "Mind the ledge on the way down."
+      ]
+    }
+  ],
+  "signs": [
+    {
+      "x": 13,
+      "y": 19,
+      "lines": [
+        "SAMPLE LANE",
+        "North: the stile, open from the start. East: the gap, after a minute."
+      ]
+    }
+  ],
+  "landmarks": [
+    {
+      "x": 9,
+      "y": 12,
+      "name": "Pond Hide",
+      "kind": "hide"
+    }
+  ],
+  "districts": [
+    {
+      "name": "The Pond",
+      "x": 2,
+      "y": 2,
+      "width": 12,
+      "height": 9,
+      "wildlife": "wetland"
+    }
+  ],
+  "trainers": [
+    {
+      "x": 24,
+      "y": 10,
+      "name": "Bug Kid",
+      "team": "scout",
+      "look": "bug-catcher",
+      "facing": "left",
+      "sight": 3,
+      "lines": [
+        "You walked right into my net!"
+      ]
+    }
+  ]
 }

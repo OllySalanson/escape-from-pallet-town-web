@@ -12,13 +12,15 @@ import {
   rectangle,
   removeThing,
   renameMap,
-  renamePlace,
   resizeMap,
+  updateThing,
+  addDistrict,
   setExitOpens,
   setMaker,
   thingAt,
   buildingSize,
   type GridPoint,
+  type SpotKind,
   type ThingRef,
 } from '../maker/draft';
 import {
@@ -59,7 +61,13 @@ import {
 import { GROUND_BRUSHES, groundBrush, groundUnder } from '../maker/palette';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { takeDownPixelStatus } from '../ui/pixelUi';
-import { readMapFile, type MapFile, type MapFileBuildingKind, type MapFileHabitat } from '../world/mapFile';
+import {
+  MAP_FILE_LIMITS,
+  readMapFile,
+  type MapFile,
+  type MapFileBuildingKind,
+  type MapFileHabitat,
+} from '../world/mapFile';
 import { checkMapFile, type MapCheck } from '../world/mapFileChecks';
 import type { MapLayers } from '../world/tiles';
 
@@ -118,7 +126,8 @@ export class MapMakerScene extends Phaser.Scene {
     unregisterPlayerMap(playerMapId({ id: TRY_IT_MAP_ID }));
     setActiveSaveSlot('normal');
     this.store = loadMakerStore();
-    const current = this.store.drafts.find((draft) => draft.key === this.store.current) ?? this.store.drafts[0];
+    const current =
+      this.store.drafts.find((draft) => draft.key === this.store.current) ?? this.store.drafts[0];
     if (current) {
       this.draftKey = current.key;
       this.history.reset(current.file);
@@ -133,7 +142,13 @@ export class MapMakerScene extends Phaser.Scene {
     // must not choose one: it only lights what it is over.
     this.overlay.pointerRule = 'previews';
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.flushAutosave());
-    this.render(tried ? (this.walkedOut() ? 'You walked out of it. The map is ready.' : 'That try ended without leaving by an exit.') : undefined);
+    this.render(
+      tried
+        ? this.walkedOut()
+          ? 'You walked out of it. The map is ready.'
+          : 'That try ended without leaving by an exit.'
+        : undefined,
+    );
     this.fitZoom();
     void loadMakerSheets().then(() => {
       if (this.scene.isActive()) {
@@ -255,9 +270,11 @@ export class MapMakerScene extends Phaser.Scene {
   }
 
   private drawSwatches(): void {
-    this.overlay.root.querySelectorAll<HTMLCanvasElement>('canvas[data-swatch]').forEach((canvas) => {
-      drawSwatch(canvas, canvas.dataset.swatch ?? '.');
-    });
+    this.overlay.root
+      .querySelectorAll<HTMLCanvasElement>('canvas[data-swatch]')
+      .forEach((canvas) => {
+        drawSwatch(canvas, canvas.dataset.swatch ?? '.');
+      });
   }
 
   // --- The screen's controls ---------------------------------------------------
@@ -290,7 +307,7 @@ export class MapMakerScene extends Phaser.Scene {
       this.place =
         kind === 'building'
           ? { kind: 'building', building: element.dataset.building as MapFileBuildingKind }
-          : { kind: kind as 'drop-in' | 'exit' | 'item' };
+          : { kind: kind as SpotKind | 'district' };
       this.tool = 'place';
       this.render();
     });
@@ -312,10 +329,14 @@ export class MapMakerScene extends Phaser.Scene {
       this.render();
     });
     on('[data-open-draft]', (element) => this.openDraft(element.dataset.openDraft ?? ''));
-    on('[data-delete-draft]', (element) => this.deleteDraft(element, element.dataset.deleteDraft ?? ''));
+    on('[data-delete-draft]', (element) =>
+      this.deleteDraft(element, element.dataset.deleteDraft ?? ''),
+    );
     on('[data-download]', () => this.download());
     on('[data-try]', (element) => this.tryIt(element.dataset.try === 'walk' ? 'walk' : 'raid'));
-    on('[data-open-file]', () => root.querySelector<HTMLInputElement>('[data-file-input]')?.click());
+    on('[data-open-file]', () =>
+      root.querySelector<HTMLInputElement>('[data-file-input]')?.click(),
+    );
     on('[data-back]', () => this.leave());
     on('[data-remove-selected]', () => {
       if (this.selected) {
@@ -323,47 +344,44 @@ export class MapMakerScene extends Phaser.Scene {
       }
     });
 
-    root.querySelector<HTMLInputElement>('[data-file-input]')?.addEventListener('change', (event) => {
-      const input = event.target as HTMLInputElement;
-      const chosen = input.files?.[0];
-      if (chosen) {
-        void chosen.text().then((text) => this.openFileText(text, chosen.name));
-      }
-      input.value = '';
-    });
+    root
+      .querySelector<HTMLInputElement>('[data-file-input]')
+      ?.addEventListener('change', (event) => {
+        const input = event.target as HTMLInputElement;
+        const chosen = input.files?.[0];
+        if (chosen) {
+          void chosen.text().then((text) => this.openFileText(text, chosen.name));
+        }
+        input.value = '';
+      });
 
     const field = (selector: string, change: (value: string) => MapFile): void => {
-      root.querySelector<HTMLInputElement | HTMLSelectElement>(selector)?.addEventListener('change', (event) => {
-        const next = change((event.target as HTMLInputElement).value);
-        if (next !== this.file) {
-          this.commit(next);
-        }
-      });
+      root
+        .querySelector<HTMLInputElement | HTMLSelectElement>(selector)
+        ?.addEventListener('change', (event) => {
+          const next = change((event.target as HTMLInputElement).value);
+          if (next !== this.file) {
+            this.commit(next);
+          }
+        });
     };
     field('[data-map-name]', (value) => renameMap(this.file, value));
     field('[data-map-maker]', (value) => setMaker(this.file, value));
     field('[data-map-wildlife]', (value) => ({ ...this.file, wildlife: value as MapFileHabitat }));
     field('[data-map-width]', (value) => resizeMap(this.file, Number(value), this.file.height));
     field('[data-map-height]', (value) => resizeMap(this.file, this.file.width, Number(value)));
-    field('[data-place-name]', (value) =>
-      this.selected && value.trim().length > 0 ? renamePlace(this.file, this.selected, value) : this.file,
-    );
-    field('[data-place-description]', (value) =>
-      this.selected?.kind === 'drop-in' ? describeDropIn(this.file, this.selected.index, value) : this.file,
-    );
-    field('[data-exit-seconds]', (value) => {
-      if (this.selected?.kind !== 'exit') {
-        return this.file;
-      }
-      const seconds = Math.round(Number(value));
-      return setExitOpens(
-        this.file,
-        this.selected.index,
-        Number.isFinite(seconds) && seconds > 0
-          ? { when: 'after', seconds: Math.min(240, seconds) }
-          : { when: 'always' },
-      );
-    });
+    root
+      .querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('[data-field]')
+      .forEach((input) => {
+        input.addEventListener('change', () => {
+          const next = this.selected
+            ? this.changeSelected(input.dataset.field ?? '', input.value)
+            : this.file;
+          if (next !== this.file) {
+            this.commit(next);
+          }
+        });
+      });
 
     const preview = root.querySelector<HTMLCanvasElement>('canvas[data-preview]');
     if (preview) {
@@ -450,12 +468,23 @@ export class MapMakerScene extends Phaser.Scene {
         this.selected = thing;
         this.showDrafts = false;
         if (thing) {
-          this.stroke = { tool: 'select', start: tile, last: tile, file: this.file, carrying: thing };
+          this.stroke = {
+            tool: 'select',
+            start: tile,
+            last: tile,
+            file: this.file,
+            carrying: thing,
+          };
         }
         this.render();
         return;
       }
       case 'place': {
+        if (this.place.kind === 'district') {
+          this.stroke = { tool: 'place', start: tile, last: tile, file: this.file };
+          this.previewArea({ from: tile, to: tile });
+          return;
+        }
         const outcome =
           this.place.kind === 'building'
             ? placeBuilding(this.file, this.place.building, tile)
@@ -485,7 +514,7 @@ export class MapMakerScene extends Phaser.Scene {
       stroke.file = paintWith(stroke.file, line(stroke.last, tile), this.brush());
       stroke.last = tile;
       this.redraw(stroke.file);
-    } else if (stroke.tool === 'rect') {
+    } else if (stroke.tool === 'rect' || stroke.tool === 'place') {
       stroke.last = tile;
       this.previewArea({ from: stroke.start, to: tile });
     } else if (stroke.tool === 'select' && stroke.carrying) {
@@ -507,6 +536,13 @@ export class MapMakerScene extends Phaser.Scene {
       this.commit(stroke.file);
     } else if (stroke.tool === 'rect') {
       this.commit(paintWith(this.file, rectangle(stroke.start, stroke.last), this.brush()));
+    } else if (stroke.tool === 'place') {
+      const outcome = addDistrict(this.file, stroke.start, stroke.last);
+      if (outcome.placed) {
+        this.commit(outcome.file, outcome.thing);
+      } else {
+        this.render(outcome.reason);
+      }
     } else if (stroke.tool === 'select' && stroke.carrying) {
       if (stroke.last.x === stroke.start.x && stroke.last.y === stroke.start.y) {
         this.previewArea(undefined);
@@ -527,22 +563,98 @@ export class MapMakerScene extends Phaser.Scene {
     this.redraw();
   }
 
-  /** Where a carried thing lands: a building keeps the offset it was picked up by. */
+  /** Where a carried thing lands: a building or a district keeps the offset it was picked up by. */
   private carriedCorner(thing: ThingRef, start: GridPoint, at: GridPoint): GridPoint {
-    if (thing.kind !== 'building') {
+    const area = this.areaOf(thing);
+    if (!area) {
       return at;
     }
-    const building = this.file.buildings[thing.index];
-    return { x: building.x + at.x - start.x, y: building.y + at.y - start.y };
+    return { x: area.x + at.x - start.x, y: area.y + at.y - start.y };
+  }
+
+  /** The tiles a building or a district covers; a one-tile thing has none to speak of. */
+  private areaOf(
+    thing: ThingRef,
+  ): { x: number; y: number; width: number; height: number } | undefined {
+    if (thing.kind === 'building') {
+      const building = this.file.buildings[thing.index];
+      return { x: building.x, y: building.y, ...buildingSize(building.kind) };
+    }
+    if (thing.kind === 'district') {
+      return (this.file.districts ?? [])[thing.index];
+    }
+    return undefined;
   }
 
   private footprint(thing: ThingRef, at: GridPoint): { from: GridPoint; to: GridPoint } {
-    if (thing.kind !== 'building') {
+    const area = this.areaOf(thing);
+    if (!area) {
       return { from: at, to: at };
     }
     const corner = this.carriedCorner(thing, this.stroke?.start ?? at, at);
-    const size = buildingSize(this.file.buildings[thing.index].kind);
-    return { from: corner, to: { x: corner.x + size.width - 1, y: corner.y + size.height - 1 } };
+    return { from: corner, to: { x: corner.x + area.width - 1, y: corner.y + area.height - 1 } };
+  }
+
+  /**
+   * One field of the chosen thing, changed. The view names each field after
+   * what it writes, so this is the only place a value is read back - and the
+   * only place one is turned from what a form holds into what a file holds.
+   */
+  private changeSelected(field: string, value: string): MapFile {
+    const selected = this.selected;
+    if (!selected) {
+      return this.file;
+    }
+    switch (field) {
+      case 'name':
+        return value.trim().length > 0
+          ? updateThing(this.file, selected, {
+              name: value.slice(0, MAP_FILE_LIMITS.maxPlaceNameLength),
+            })
+          : this.file;
+      case 'description':
+        return selected.kind === 'drop-in'
+          ? describeDropIn(this.file, selected.index, value)
+          : this.file;
+      case 'opens': {
+        if (selected.kind !== 'exit') {
+          return this.file;
+        }
+        const seconds = Math.round(Number(value));
+        return setExitOpens(
+          this.file,
+          selected.index,
+          Number.isFinite(seconds) && seconds > 0
+            ? { when: 'after', seconds: Math.min(MAP_FILE_LIMITS.maxExitDelaySeconds, seconds) }
+            : { when: 'always' },
+        );
+      }
+      case 'lines':
+        return updateThing(this.file, selected, {
+          lines: value
+            .split('\n')
+            .map((line) => line.trim().slice(0, MAP_FILE_LIMITS.maxLineLength))
+            .filter((line) => line.length > 0)
+            .slice(0, MAP_FILE_LIMITS.maxLines),
+        });
+      case 'sight': {
+        const sight = Math.round(Number(value));
+        return updateThing(this.file, selected, {
+          sight: Number.isFinite(sight)
+            ? Math.max(0, Math.min(MAP_FILE_LIMITS.maxSight, sight))
+            : 0,
+        });
+      }
+      case 'wildlife':
+        return updateThing(this.file, selected, { wildlife: value === '' ? undefined : value });
+      case 'look':
+      case 'facing':
+      case 'kind':
+      case 'team':
+        return updateThing(this.file, selected, { [field]: value });
+      default:
+        return this.file;
+    }
   }
 
   /** What the pointer would do, before it does it. */
@@ -554,7 +666,10 @@ export class MapMakerScene extends Phaser.Scene {
     if (this.tool === 'place' && this.place.kind === 'building') {
       const size = buildingSize(this.place.building);
       const valid = placeBuilding(this.file, this.place.building, tile).placed;
-      this.previewArea({ from: tile, to: { x: tile.x + size.width - 1, y: tile.y + size.height - 1 } }, valid);
+      this.previewArea(
+        { from: tile, to: { x: tile.x + size.width - 1, y: tile.y + size.height - 1 } },
+        valid,
+      );
       return;
     }
     this.previewArea({ from: tile, to: tile });
@@ -575,7 +690,10 @@ export class MapMakerScene extends Phaser.Scene {
     // Zoom about the middle of what is in view, so the place being looked at stays put.
     const ratio = zoom / this.zoom;
     const middle = viewport
-      ? { x: viewport.scrollLeft + viewport.clientWidth / 2, y: viewport.scrollTop + viewport.clientHeight / 2 }
+      ? {
+          x: viewport.scrollLeft + viewport.clientWidth / 2,
+          y: viewport.scrollTop + viewport.clientHeight / 2,
+        }
       : undefined;
     this.zoom = zoom;
     this.render();
@@ -683,7 +801,11 @@ export class MapMakerScene extends Phaser.Scene {
     this.flushAutosave();
     this.draftKey = newDraftKey(this.store);
     this.history.reset(reading.file);
-    this.store = withDraft(this.store, { key: this.draftKey, file: reading.file, updatedAt: Date.now() });
+    this.store = withDraft(this.store, {
+      key: this.draftKey,
+      file: reading.file,
+      updatedAt: Date.now(),
+    });
     saveMakerStore(this.store);
     this.selected = undefined;
     this.showDrafts = false;
@@ -710,8 +832,9 @@ export class MapMakerScene extends Phaser.Scene {
     const attempt = beginTry(this.draftKey, this.file, rules);
     registerPlayerMap(attempt.map);
     const insertion =
-      (this.selected?.kind === 'drop-in' ? attempt.map.insertions[this.selected.index] : undefined) ??
-      attempt.map.insertions[0];
+      (this.selected?.kind === 'drop-in'
+        ? attempt.map.insertions[this.selected.index]
+        : undefined) ?? attempt.map.insertions[0];
     setActiveSaveSlot('try-it');
     setTryItRules(rules === 'walk');
     const saves = new SaveManager();
@@ -730,7 +853,10 @@ export class MapMakerScene extends Phaser.Scene {
     const packItemId = 'raid-pack';
     activeRunManager.startRun(
       { party, items: [...items], packItemId },
-      { mapId: insertion.mapId, durationMs: rules === 'walk' ? PLAYTEST_RAID_DURATION_MS : RAID_DURATION_MS },
+      {
+        mapId: insertion.mapId,
+        durationMs: rules === 'walk' ? PLAYTEST_RAID_DURATION_MS : RAID_DURATION_MS,
+      },
     );
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
     const plan = generateRunPlan(seed, undefined, insertion.id, undefined, hunterThreatFor(party));
@@ -749,7 +875,10 @@ export class MapMakerScene extends Phaser.Scene {
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.start('world', {
         party: new PokemonParty(party),
-        bag: new Bag(Object.fromEntries(items.map(({ itemId, quantity }) => [itemId, quantity])), packGridFor(packItemId)),
+        bag: new Bag(
+          Object.fromEntries(items.map(({ itemId, quantity }) => [itemId, quantity])),
+          packGridFor(packItemId),
+        ),
         runSession,
       });
     });
@@ -795,7 +924,14 @@ export class MapMakerScene extends Phaser.Scene {
       this.commit(removeThing(this.file, this.selected), undefined);
       return;
     }
-    const tools: Readonly<Record<string, MakerTool>> = { b: 'brush', r: 'rect', f: 'fill', i: 'pick', v: 'select', x: 'erase' };
+    const tools: Readonly<Record<string, MakerTool>> = {
+      b: 'brush',
+      r: 'rect',
+      f: 'fill',
+      i: 'pick',
+      v: 'select',
+      x: 'erase',
+    };
     if (tools[key]) {
       this.tool = tools[key];
       this.render();
