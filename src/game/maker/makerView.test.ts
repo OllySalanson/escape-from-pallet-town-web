@@ -14,6 +14,7 @@ import { checkMapFile } from '../world/mapFileChecks';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { blankMap } from './draft';
 import { makerScreen, walkedCheck, type MakerViewState } from './makerView';
+import { reasonFor } from './submissions';
 import { beginTry, currentTry, endTry, homeAfterRaid, TRY_IT_MAP_ID } from './tryIt';
 
 const SAMPLE = sampleLane as MapFile;
@@ -31,7 +32,9 @@ function state(file: MapFile, walked: boolean): MakerViewState {
     canRedo: true,
     drafts: [],
     draftKey: 'draft-a',
-    showDrafts: false,
+    panel: 'map',
+    sending: { step: 'checking' },
+    sent: { step: 'loading' },
   };
 }
 
@@ -51,6 +54,8 @@ describe('the map maker screen', () => {
       expect(button).not.toContain('aria-disabled');
     }
     expect(works).toContain('WORKS · TRY IT');
+    // A finished map's checks fold to one line.
+    expect(makerScreen(state(SAMPLE, true))).toContain('Every check passes.');
     expect(makerScreen(state(SAMPLE, true))).toContain('READY');
   });
 
@@ -125,5 +130,75 @@ describe('TRY IT', () => {
     expect(homeAfterRaid().key).toBe('base');
     setActiveSaveSlot('try-it');
     expect(homeAfterRaid()).toEqual({ key: 'mapmaker', data: { tried: true } });
+  });
+});
+
+describe('sending a map in', () => {
+  const ready = (sending: MakerViewState['sending']): string =>
+    makerScreen({ ...state(SAMPLE, true), panel: 'send', sending });
+
+  it('can only be sent once every check passes, the walk included', () => {
+    expect(makerScreen(state(SAMPLE, false))).toMatch(/data-send[^-][^>]*aria-disabled="true"/);
+    expect(makerScreen(state(SAMPLE, true))).not.toMatch(/data-send[^-][^>]*aria-disabled/);
+  });
+
+  it('says who it goes to and what travels with it, and asks for the bot check only when one is needed', () => {
+    const markup = ready({ step: 'ready', needsCheck: true });
+    expect(markup).toContain('Every map sent in is played before it can join the game.');
+    expect(markup).toContain('Nothing else about you is sent.');
+    expect(markup).toContain('data-captcha');
+    expect(ready({ step: 'ready', needsCheck: false })).not.toContain('data-captcha');
+  });
+
+  it('never sends a map still waiting twice, and sends a map sent back as its next try', () => {
+    const waiting = ready({
+      step: 'ready',
+      needsCheck: false,
+      previous: { receipt: 'ABCDEFGHJK', status: 'waiting' },
+    });
+    expect(waiting).toContain('waiting to be played');
+    expect(waiting).not.toContain('data-send-confirm');
+    const back = ready({
+      step: 'ready',
+      needsCheck: false,
+      previous: { receipt: 'ABCDEFGHJK', status: 'sent_back' },
+    });
+    expect(back).toContain('Send again');
+  });
+
+  it('hands over the receipt, and says what went wrong in words', () => {
+    expect(ready({ step: 'sent', receipt: 'ABCDEFGHJK' })).toContain(
+      'Your receipt is <strong>ABCDEFGHJK</strong>',
+    );
+    expect(reasonFor({ message: 'Anonymous sign-ins are disabled' })).toMatch(
+      /not switched on yet/,
+    );
+    expect(reasonFor({ message: 'You can send three maps a day. Try again tomorrow.' })).toBe(
+      'You can send three maps a day. Try again tomorrow.',
+    );
+    expect(reasonFor({ message: 'TypeError: Failed to fetch' })).toMatch(/Check your connection/);
+  });
+
+  it("lists what became of each map sent, with the reviewer's note", () => {
+    const markup = makerScreen({
+      ...state(SAMPLE, true),
+      panel: 'sent',
+      sent: {
+        step: 'loaded',
+        maps: [
+          {
+            receiptCode: 'ABCDEFGHJK',
+            mapName: 'Sample Lane',
+            status: 'sent_back',
+            note: 'Move the exit off the road.',
+            revision: 2,
+            sentAt: '',
+            updatedAt: '',
+          },
+        ],
+      },
+    });
+    expect(markup).toContain('Sent back with notes · try 2 · ABCDEFGHJK');
+    expect(markup).toContain('Move the exit off the road.');
   });
 });

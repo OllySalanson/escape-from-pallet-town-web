@@ -3202,3 +3202,25 @@ button {
 :where(.pixel-ui[data-room='tight']) .maker-shell {
   grid-template-columns: calc(var(--u) * 116) minmax(0, 1fr) calc(var(--u) * 152);
 }
+/* Sending in, and what became of what was sent. */
+:where(.pixel-ui) .maker-pad {
+  padding: calc(var(--u) * 3);
+  gap: calc(var(--u) * 2);
+}
+:where(.pixel-ui) .maker-actions {
+  gap: calc(var(--u) * 2);
+  flex-wrap: wrap;
+}
+:where(.pixel-ui) .maker-captcha {
+  min-height: calc(var(--u) * 33);
+}
+:where(.pixel-ui) .maker-sent {
+  display: grid;
+  gap: var(--u);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+  box-shadow: inset 0 calc(var(--u) * -1) 0 var(--frame);
+}
+:where(.pixel-ui) .maker-sent .maker-note {
+  display: block;
+  color: var(--ink);
+}
