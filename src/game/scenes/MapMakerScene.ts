@@ -50,9 +50,14 @@ import { SaveManager } from '../save/SaveManager';
 import { hunterThreatFor } from '../world/hunterThreat';
 import { playerMapId } from '../world/mapFile';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
+import { botCheckNeeded, passBotCheck } from '../maker/turnstile';
+import { isSignedIn, sendMap, sentMaps, type SubmissionStatus } from '../maker/submissions';
 import {
   makerScreen,
   walkedCheck,
+  type MakerPanel,
+  type SendState,
+  type SentState,
   MAKER_ZOOMS,
   type MakerTool,
   type MakerZoom,
@@ -105,7 +110,11 @@ export class MapMakerScene extends Phaser.Scene {
   private place: PlaceChoice = { kind: 'drop-in' };
   private selected: ThingRef | undefined;
   private zoom: MakerZoom = 16;
-  private showDrafts = false;
+  private panel: MakerPanel = 'map';
+  private sending: SendState = { step: 'checking' };
+  private sent: SentState = { step: 'loading' };
+  /** A passed bot check, spent by the next sign-in. */
+  private captchaToken: string | undefined;
   private stroke: Stroke | undefined;
   private checks: readonly MapCheck[] = [];
   private checkedFile: MapFile | undefined;
@@ -136,7 +145,7 @@ export class MapMakerScene extends Phaser.Scene {
     }
     this.selected = undefined;
     this.stroke = undefined;
-    this.showDrafts = false;
+    this.panel = 'map';
     this.overlay = new MenuOverlay(this, 'map-maker pixel-ui', (event) => this.handleKey(event));
     // Rows here are tools, and a pointer crossing them on its way to the map
     // must not choose one: it only lights what it is over.
@@ -228,7 +237,9 @@ export class MapMakerScene extends Phaser.Scene {
       canRedo: this.history.canRedo,
       drafts: this.store.drafts,
       draftKey: this.draftKey,
-      showDrafts: this.showDrafts,
+      panel: this.panel,
+      sending: this.sending,
+      sent: this.sent,
       ...(status ? { status } : {}),
     });
     this.wire();
@@ -239,6 +250,14 @@ export class MapMakerScene extends Phaser.Scene {
     }
     this.drawSwatches();
     this.redraw();
+    this.showBotCheck();
+    // A panel opened in the right-hand column is brought into view: under a
+    // long list of checks it would otherwise open below the fold, unseen.
+    if (this.panel !== 'map') {
+      this.overlay.root
+        .querySelector('.maker-side > .px-window:last-child')
+        ?.scrollIntoView({ block: 'nearest' });
+    }
     this.overlay.refocus('[data-tool].is-selected', '[data-tool]');
     if (status) {
       if (this.statusTimer) {
@@ -318,16 +337,14 @@ export class MapMakerScene extends Phaser.Scene {
       this.flushAutosave();
       this.startNewDraft();
       this.selected = undefined;
-      this.showDrafts = false;
+      this.panel = 'map';
       this.render('A new map. Your last one is in your drafts.');
       this.fitZoom();
     });
-    on('[data-toggle-drafts]', () => {
-      this.flushAutosave();
-      this.showDrafts = !this.showDrafts;
-      this.pendingDelete = undefined;
-      this.render();
-    });
+    on('[data-panel]', (element) => this.openPanel(element.dataset.panel as MakerPanel));
+    on('[data-send]', () => this.openSend());
+    on('[data-send-confirm]', () => void this.confirmSend());
+    on('[data-refresh-sent]', () => this.openPanel('sent'));
     on('[data-open-draft]', (element) => this.openDraft(element.dataset.openDraft ?? ''));
     on('[data-delete-draft]', (element) =>
       this.deleteDraft(element, element.dataset.deleteDraft ?? ''),
@@ -466,7 +483,7 @@ export class MapMakerScene extends Phaser.Scene {
       case 'select': {
         const thing = thingAt(this.file, tile);
         this.selected = thing;
-        this.showDrafts = false;
+        this.panel = 'map';
         if (thing) {
           this.stroke = {
             tool: 'select',
@@ -490,7 +507,7 @@ export class MapMakerScene extends Phaser.Scene {
             ? placeBuilding(this.file, this.place.building, tile)
             : placeSpot(this.file, this.place.kind, tile);
         if (outcome.placed) {
-          this.showDrafts = false;
+          this.panel = 'map';
           this.commit(outcome.file, outcome.thing);
         } else {
           this.render(outcome.reason);
@@ -753,7 +770,7 @@ export class MapMakerScene extends Phaser.Scene {
     this.store = { ...this.store, current: draft.key };
     saveMakerStore(this.store);
     this.selected = undefined;
-    this.showDrafts = false;
+    this.panel = 'map';
     this.render();
     this.fitZoom();
   }
@@ -808,9 +825,119 @@ export class MapMakerScene extends Phaser.Scene {
     });
     saveMakerStore(this.store);
     this.selected = undefined;
-    this.showDrafts = false;
+    this.panel = 'map';
     this.render(`Opened ${name}.`);
     this.fitZoom();
+  }
+
+  private openPanel(panel: MakerPanel): void {
+    this.flushAutosave();
+    this.pendingDelete = undefined;
+    this.panel = panel;
+    if (panel === 'sent') {
+      this.sent = { step: 'loading' };
+      void sentMaps().then((result) => {
+        this.sent = result.ok
+          ? { step: 'loaded', maps: result.value }
+          : { step: 'failed', reason: result.reason };
+        if (this.scene.isActive() && this.panel === 'sent') {
+          this.render();
+        }
+      });
+    }
+    this.render();
+  }
+
+  /**
+   * Opens the send panel: first asks whether this draft has been sent before
+   * and what became of it, because a map still waiting is not sent twice and a
+   * map sent back goes in again as its next version.
+   */
+  private openSend(): void {
+    if (!this.currentChecks().every((check) => check.passed) || !this.walkedOut()) {
+      this.render('Pass every check first, walking out of it in TRY IT included.');
+      return;
+    }
+    this.flushAutosave();
+    this.panel = 'send';
+    this.sending = { step: 'checking' };
+    this.render();
+    const receipt = this.store.drafts.find((draft) => draft.key === this.draftKey)?.sentAs;
+    void (async () => {
+      const signedIn = await isSignedIn().catch(() => false);
+      let previous: { receipt: string; status: SubmissionStatus } | undefined;
+      if (receipt && signedIn) {
+        const result = await sentMaps();
+        const found = result.ok
+          ? result.value.find((map) => map.receiptCode === receipt)
+          : undefined;
+        if (found) {
+          previous = { receipt, status: found.status };
+        }
+      }
+      this.sending = {
+        step: 'ready',
+        ...(previous ? { previous } : {}),
+        needsCheck: botCheckNeeded() && !signedIn && this.captchaToken === undefined,
+      };
+      if (this.scene.isActive() && this.panel === 'send') {
+        this.render();
+      }
+    })();
+  }
+
+  /** Puts the bot check on screen when the send panel is waiting for one. */
+  private showBotCheck(): void {
+    const container = this.overlay.root.querySelector<HTMLElement>('[data-captcha]');
+    if (!container || this.sending.step !== 'ready' || !this.sending.needsCheck) {
+      return;
+    }
+    void passBotCheck(container).then((token) => {
+      if (token && this.sending.step === 'ready') {
+        this.captchaToken = token;
+        this.sending = { ...this.sending, needsCheck: false };
+        if (this.scene.isActive() && this.panel === 'send') {
+          this.render();
+        }
+      }
+    });
+  }
+
+  private async confirmSend(): Promise<void> {
+    const sending = this.sending;
+    if (sending.step !== 'ready' || sending.previous?.status === 'waiting') {
+      return;
+    }
+    if (sending.needsCheck) {
+      this.render('Pass the bot check first.');
+      return;
+    }
+    const file = this.file;
+    const key = this.draftKey;
+    this.sending = { step: 'sending' };
+    this.render();
+    const result = await sendMap(file, {
+      ...(this.captchaToken ? { captchaToken: this.captchaToken } : {}),
+      ...(sending.previous?.status === 'sent_back' ? { resubmits: sending.previous.receipt } : {}),
+    });
+    // A bot check's token is good for one sign-in, used or refused.
+    this.captchaToken = undefined;
+    if (result.ok) {
+      const store = loadMakerStore();
+      this.store = {
+        ...store,
+        drafts: store.drafts.map((draft) =>
+          draft.key === key ? { ...draft, sentAs: result.value } : draft,
+        ),
+      };
+      saveMakerStore(this.store);
+      this.sending = { step: 'sent', receipt: result.value };
+    } else {
+      this.sending = { step: 'failed', reason: result.reason };
+    }
+    if (this.scene.isActive() && this.panel === 'send') {
+      this.render();
+    }
   }
 
   /** Whether the maker has walked out of this version of the map in TRY IT. */

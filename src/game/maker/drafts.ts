@@ -23,6 +23,8 @@ export interface StoredDraft {
    * a raid would walk, and kept through a rename.
    */
   readonly walkedOut?: string;
+  /** The receipt this draft was last sent in under, so its fate can be asked after. */
+  readonly sentAs?: string;
 }
 
 export interface MakerStore {
@@ -78,6 +80,7 @@ export function loadMakerStore(storage: Storage | undefined = defaultStorage()):
         file: reading.file,
         updatedAt: typeof entry.updatedAt === 'number' ? entry.updatedAt : 0,
         ...(typeof entry.walkedOut === 'string' ? { walkedOut: entry.walkedOut } : {}),
+        ...(typeof entry.sentAs === 'string' ? { sentAs: entry.sentAs } : {}),
       },
     ];
   });

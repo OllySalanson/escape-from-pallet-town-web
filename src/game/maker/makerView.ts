@@ -16,6 +16,7 @@ import {
 import { escapeAttribute, pixelCommitBar, pixelScreen, pixelWindow } from '../ui/pixelUi';
 import type { SpotKind, ThingRef } from './draft';
 import type { StoredDraft } from './drafts';
+import { STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
 import {
   BUILDING_CHOICES,
   FACING_LABELS,
@@ -33,6 +34,31 @@ import {
  * at the top of the right-hand column because they are the maker's to-do list:
  * a new map fails them all, and each one says what to do next.
  */
+
+/** The right-hand column: the chosen thing and the map, the drafts, sending in, or what became of what was sent. */
+export type MakerPanel = 'map' | 'drafts' | 'send' | 'sent';
+
+/**
+ * Sending in, step by step. `previous` is this draft's last receipt and what
+ * became of it, when it has been sent before: a map still waiting is not sent
+ * twice, and a map sent back goes in again as its next version.
+ */
+export type SendState =
+  | { readonly step: 'checking' }
+  | {
+      readonly step: 'ready';
+      readonly previous?: { readonly receipt: string; readonly status: SubmissionStatus };
+      /** Whether a bot check is on screen and has not been passed yet. */
+      readonly needsCheck: boolean;
+    }
+  | { readonly step: 'sending' }
+  | { readonly step: 'sent'; readonly receipt: string }
+  | { readonly step: 'failed'; readonly reason: string };
+
+export type SentState =
+  | { readonly step: 'loading' }
+  | { readonly step: 'loaded'; readonly maps: readonly SentMap[] }
+  | { readonly step: 'failed'; readonly reason: string };
 
 /** How a stroke on the map lands. */
 export type MakerTool = 'brush' | 'rect' | 'fill' | 'pick' | 'select' | 'erase' | 'place';
@@ -72,8 +98,12 @@ export interface MakerViewState {
   /** Every draft in this browser, for the drafts panel. */
   readonly drafts: readonly StoredDraft[];
   readonly draftKey: string;
-  /** Whether the drafts list is open in place of the map's settings. */
-  readonly showDrafts: boolean;
+  /** What the right-hand column shows under the checks. */
+  readonly panel: MakerPanel;
+  /** Where sending this map in has got to, while the send panel is open. */
+  readonly sending: SendState;
+  /** What became of this browser's maps, while the sent panel is open. */
+  readonly sent: SentState;
   readonly status?: string;
 }
 
@@ -219,6 +249,14 @@ function mapPane(state: MakerViewState): string {
 
 function checksPane(checks: readonly MakerCheck[]): string {
   const passed = checks.filter((check) => check.passed).length;
+  // A finished map's list is one line: every check has passed, and the room
+  // is needed by whatever the column is opened to next - sending it in.
+  if (passed === checks.length) {
+    return pixelWindow(
+      `<ul class="maker-checks-list"><li class="maker-check is-passed" data-check="all"><span class="maker-check-mark" aria-label="passed"></span><span class="px-row-main"><span class="px-wrap">Every check passes.</span></span></li></ul>`,
+      { className: 'maker-checks', heading: 'Does it work', note: `${passed} of ${checks.length}` },
+    );
+  }
   const rows = checks
     .map((check) => {
       const problems = check.problems
@@ -388,7 +426,7 @@ function draftsPane(drafts: readonly StoredDraft[], current: string): string {
     )
     .join('');
   return pixelWindow(
-    `<div class="px-scroll maker-pane"><div class="px-list">${rows || '<p class="px-empty">No drafts yet.</p>'}</div></div>`,
+    `<div class="px-scroll maker-pane"><div class="px-list">${rows || '<p class="px-empty">No drafts yet.</p>'}</div></div><div class="maker-actions maker-pad"><button class="px-window px-button" data-panel="sent" data-help="What became of the maps you sent in from this browser.">Sent in</button></div>`,
     {
       className: 'maker-drafts',
       heading: 'Your drafts',
@@ -397,8 +435,85 @@ function draftsPane(drafts: readonly StoredDraft[], current: string): string {
   );
 }
 
+/**
+ * Sending the map in. Who reads it is said plainly and once: every map sent is
+ * played before it can join the game, and nothing about the maker but the name
+ * they typed travels with it.
+ */
+function sendPane(file: MapFile, sending: SendState): string {
+  const button = (attribute: string, label: string, primary = false): string =>
+    `<button class="px-window px-button${primary ? ' is-primary' : ''}" ${attribute}>${label}</button>`;
+  const back = button('data-panel="map"', 'Back to map');
+  let body: string;
+  switch (sending.step) {
+    case 'checking':
+      body = `<p class="px-note">Looking up this map…</p>`;
+      break;
+    case 'ready': {
+      const previous = sending.previous;
+      if (previous?.status === 'waiting') {
+        body = `<p class="px-wrap">This map is already in, waiting to be played. Its receipt is <strong>${previous.receipt}</strong>.</p><div class="maker-actions">${back}</div>`;
+        break;
+      }
+      const again = previous?.status === 'sent_back';
+      body = `<p class="px-wrap">${
+        again
+          ? `This map was sent back with notes (receipt <strong>${previous.receipt}</strong>). Send this version as its next try.`
+          : 'Every map sent in is played before it can join the game. An approved map goes into the game with your maker name on it.'
+      }</p><p class="px-note px-wrap">Sent as <strong>${escapeHtml(file.name)}</strong> by <strong>${escapeHtml(file.maker)}</strong>. Nothing else about you is sent.</p>${
+        sending.needsCheck ? `<div class="maker-captcha" data-captcha></div>` : ''
+      }<div class="maker-actions">${back}${button('data-send-confirm', again ? 'Send again' : 'Send it in', true)}</div>`;
+      break;
+    }
+    case 'sending':
+      body = `<p class="px-note">Sending…</p>`;
+      break;
+    case 'sent':
+      body = `<p class="px-wrap">Sent. Your receipt is <strong>${sending.receipt}</strong>.</p><p class="px-note px-wrap">Sent in, under Drafts, shows what becomes of it.</p><div class="maker-actions">${back}</div>`;
+      break;
+    case 'failed':
+      body = `<p class="px-warning px-wrap">${escapeHtml(sending.reason)}</p><div class="maker-actions">${back}${button('data-send', 'Try again')}</div>`;
+      break;
+  }
+  return pixelWindow(`<div class="maker-form">${body}</div>`, {
+    className: 'maker-send',
+    heading: 'Send it in',
+  });
+}
+
+/** Every map this browser has sent, and what became of each. */
+function sentPane(sent: SentState): string {
+  let body: string;
+  if (sent.step === 'loading') {
+    body = `<p class="px-empty">Looking…</p>`;
+  } else if (sent.step === 'failed') {
+    body = `<p class="px-warning px-wrap">${escapeHtml(sent.reason)}</p>`;
+  } else if (sent.maps.length === 0) {
+    body = `<p class="px-empty px-wrap">Nothing sent from this browser yet.</p>`;
+  } else {
+    body = sent.maps
+      .map(
+        (map) =>
+          `<div class="maker-sent"><span class="px-name">${escapeHtml(map.mapName)}</span><small class="px-note">${STATUS_WORDS[map.status]}${map.revision > 1 ? ` · try ${map.revision}` : ''} · ${map.receiptCode}</small>${
+            map.note ? `<small class="px-wrap maker-note">${escapeHtml(map.note)}</small>` : ''
+          }</div>`,
+      )
+      .join('');
+  }
+  return pixelWindow(
+    `<div class="px-scroll maker-pane"><div class="px-list">${body}</div></div><div class="maker-actions maker-pad"><button class="px-window px-button" data-panel="drafts">Drafts</button><button class="px-window px-button" data-refresh-sent>Check again</button></div>`,
+    { className: 'maker-drafts', heading: 'Sent in', note: 'from this browser' },
+  );
+}
+
 export function makerScreen(state: MakerViewState): string {
-  const side = `<div class="maker-side">${checksPane(state.checks)}${state.showDrafts ? draftsPane(state.drafts, state.draftKey) : `${selectedPane(state.file, state.selected)}${settingsPane(state.file)}`}</div>`;
+  const panels: Readonly<Record<MakerPanel, () => string>> = {
+    map: () => `${selectedPane(state.file, state.selected)}${settingsPane(state.file)}`,
+    drafts: () => draftsPane(state.drafts, state.draftKey),
+    send: () => sendPane(state.file, state.sending),
+    sent: () => sentPane(state.sent),
+  };
+  const side = `<div class="maker-side">${checksPane(state.checks)}${panels[state.panel]()}</div>`;
   const button = (
     attribute: string,
     label: string,
@@ -412,6 +527,7 @@ export function makerScreen(state: MakerViewState): string {
   const works = state.checks
     .filter((check) => check.id !== 'walked')
     .every((check) => check.passed);
+  const ready = state.checks.every((check) => check.passed);
   const tryHelp = (what: string): string =>
     works
       ? `${what} ${state.selected?.kind === 'drop-in' ? 'Starts at the chosen drop-in.' : 'Starts at the front door; choose a drop-in first to start there.'}`
@@ -421,9 +537,9 @@ export function makerScreen(state: MakerViewState): string {
     button('data-redo', 'Redo', 'Puts it back again. Ctrl+Y.', state.canRedo),
     button('data-new', 'New', 'Starts a new map. This one stays in your drafts.'),
     button(
-      'data-toggle-drafts',
-      state.showDrafts ? 'Back to map' : 'Drafts',
-      'Every map you have drawn in this browser.',
+      `data-panel="${state.panel === 'drafts' ? 'map' : 'drafts'}"`,
+      state.panel === 'drafts' ? 'Back to map' : 'Drafts',
+      'Every map you have drawn in this browser, and what became of the ones you sent in.',
     ),
     button('data-open-file', 'Open file', 'Opens a map file you downloaded or were sent.'),
     button('data-download', 'Download', 'Saves this map as a file you can keep or share.'),
@@ -438,6 +554,14 @@ export function makerScreen(state: MakerViewState): string {
       'Raid it',
       tryHelp('Plays your map as a raid: the clock, the hunter, the wild Pokémon.'),
       works,
+    ),
+    button(
+      'data-send',
+      'Send in',
+      ready
+        ? 'Sends this map in to be played and, if it is approved, put in the game.'
+        : 'Pass every check above first, walking out of it in TRY IT included.',
+      ready,
       true,
     ),
   ].join('');
