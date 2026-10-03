@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { homeAfterRaid } from '../maker/tryIt';
 import {
   Pokemon,
   PARTY_LIMIT,
@@ -2751,8 +2752,9 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.pendingHubTransition) {
-      if (this.scene.manager.keys.base) {
-        this.scene.start('base', { arrival: 'raid' });
+      const home = homeAfterRaid();
+      if (this.scene.manager.keys[home.key]) {
+        this.scene.start(home.key, home.data);
       } else {
         this.scene.start('title');
       }
