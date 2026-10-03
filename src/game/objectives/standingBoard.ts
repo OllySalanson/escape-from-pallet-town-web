@@ -4,8 +4,8 @@ import type { GridPosition } from '../movement/gridMovement';
 import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
 import { createSeededRng, type SeededRng } from '../run/rng';
-import { RUN_INSERTIONS, availableInsertionIds, frontDoorFor } from '../run/runGeneration';
-import { EXTRACTION_POINTS, type ExtractionPoint } from '../world/extractionPoints';
+import { availableInsertionIds, frontDoorFor, insertionsOn, requireInsertion } from '../run/runGeneration';
+import { extractionPointsOn, type ExtractionPoint } from '../world/extractionPoints';
 import {
   gateBossIds,
   gateStateKey,
@@ -18,7 +18,15 @@ import { HUNTER_TIERS } from '../world/hunter';
 import { stepDistances } from '../world/mapStructure';
 import { createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
 import { trainerSightTiles } from '../world/trainerSight';
-import { WORLD_MAP_NAMES, getWorldMap, type WorldMapDefinition, type WorldMapId } from '../worldMap';
+import {
+  WORLD_MAP_NAMES,
+  getWorldMap,
+  isBuiltInMapId,
+  worldMapName,
+  type BuiltInMapId,
+  type WorldMapDefinition,
+  type WorldMapId,
+} from '../worldMap';
 import {
   availableContracts,
   type ContractMarker,
@@ -117,7 +125,7 @@ export function standingBoardSeed(progress: Pick<StandingBoardProgress, 'standin
 
 /** Every map the player can deploy to, once each, in authored order. */
 export function deployableMapIds(progress: StandingBoardProgress): readonly WorldMapId[] {
-  return [...new Set(availableInsertionIds(progress).map((id) => RUN_INSERTIONS[id].mapId))];
+  return [...new Set(availableInsertionIds(progress).map((id) => requireInsertion(id).mapId))];
 }
 
 const boards = new Map<string, readonly RaidContract[]>();
@@ -286,7 +294,7 @@ function measureGround(
   const taken = takenTiles(map, defeatedBosses);
   const free = (tile: GridPosition): boolean => !taken.has(tileKey(tile));
   const reached = (grid: readonly Int32Array[], tile: GridPosition): boolean => (grid[tile.y]?.[tile.x] ?? -1) >= 0;
-  const mapExits = EXTRACTION_POINTS.filter((point) => point.mapId === mapId);
+  const mapExits = extractionPointsOn(mapId);
 
   // A district is what one more boss would add to the walk from the front door.
   // Asked boss by boss, so a door behind another door is not offered before the
@@ -363,10 +371,8 @@ function takenTiles(map: WorldMapDefinition, defeatedBosses: readonly string[]):
       ...map.entities.map((entity) => entity.position),
       ...map.pois.map((poi) => poi.position),
       ...map.gates.flatMap((gate) => gate.tiles),
-      ...EXTRACTION_POINTS.filter((point) => point.mapId === map.id).map((point) => point.position),
-      ...Object.values(RUN_INSERTIONS)
-        .filter((insertion) => insertion.mapId === map.id)
-        .map((insertion) => insertion.position),
+      ...extractionPointsOn(map.id).map((point) => point.position),
+      ...insertionsOn(map.id).map((insertion) => insertion.position),
       ...fixedTrainers.flatMap((trainer) => [trainer.position, ...trainerSightTiles(trainer, isBlocked)]),
     ].map(tileKey),
   );
@@ -440,8 +446,15 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   money: 0,
 };
 
-/** "on Route 1", "in Pallet Town" - typed by map id, so a new map has to say which it is. */
-const MAP_PHRASE: Readonly<Record<WorldMapId, string>> = {
+/**
+ * "on Route 1", "in Pallet Town" - typed by map id, so a new shipped map has to
+ * say which it is. A map from a file is a place with a name, so it is "in" it.
+ */
+function mapPhrase(mapId: WorldMapId): string {
+  return isBuiltInMapId(mapId) ? MAP_PHRASE[mapId] : `in ${worldMapName(mapId)}`;
+}
+
+const MAP_PHRASE: Readonly<Record<BuiltInMapId, string>> = {
   'floodplain-relay': `at the ${WORLD_MAP_NAMES['floodplain-relay']}`,
   'pallet-town': `in ${WORLD_MAP_NAMES['pallet-town']}`,
   'route-1': `on ${WORLD_MAP_NAMES['route-1']}`,
@@ -510,7 +523,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     if (stakes.length < SURVEY_STAKES) {
       return undefined;
     }
-    const where = MAP_PHRASE[ground.map.id];
+    const where = mapPhrase(ground.map.id);
     return {
       template: 'survey',
       name: 'Line survey',
@@ -548,7 +561,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     const exit = rng.pick(others);
     const exitWalk = fromCase[exit.position.y][exit.position.x];
     const nearestWalk = fromCase[nearest.position.y][nearest.position.x];
-    const where = MAP_PHRASE[ground.map.id];
+    const where = mapPhrase(ground.map.id);
     return {
       template: 'dispatch',
       name: 'Sealed dispatch',
@@ -580,7 +593,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     }
     const delivery = rng.pick(DELIVERIES);
     const asked = `${delivery.asks.quantity} ${ITEMS[delivery.asks.itemId].displayName}s`;
-    const where = MAP_PHRASE[ground.map.id];
+    const where = mapPhrase(ground.map.id);
     return {
       template: 'resupply',
       name: 'Outpost resupply',
@@ -623,7 +636,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     if (!exit && stops.length < 2) {
       return undefined;
     }
-    const where = MAP_PHRASE[ground.map.id];
+    const where = mapPhrase(ground.map.id);
     const gate = district.gate.label;
     return {
       template: 'sealed',

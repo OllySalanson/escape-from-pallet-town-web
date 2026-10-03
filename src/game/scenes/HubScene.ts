@@ -97,8 +97,11 @@ import {
   frontDoorFor,
   generateRunPlan,
   isDropInPoint,
-  RUN_INSERTIONS,
+  isRunInsertionId,
+  type RunInsertion,
   type RunInsertionId,
+  requireInsertion,
+  runInsertions,
 } from '../run/runGeneration';
 import {
   boardContractForMap,
@@ -133,7 +136,7 @@ import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/h
 import { rivalForRaid } from '../world/hunters';
 import { openedDoors } from '../world/gates';
 import type { GridPosition } from '../movement/gridMovement';
-import { getWorldMap, WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
+import { getWorldMap, type WorldMapId, worldMapName } from '../worldMap';
 import { MINIMAP_PALETTE, type Minimap } from '../world/minimap';
 import { fitMapPictures, mapPictureFrame, pictureRowAttributes } from '../ui/mapPicture';
 import { WALL_MAP_ORDER, wallMapContext, wallMapEntries, wallMapNote, wallMapPicture, type WallMapEntry } from '../base/wallMap';
@@ -438,7 +441,7 @@ export class HubScene extends Phaser.Scene {
    * fall out of step with it.
    */
   private contractFor(insertionId: RunInsertionId): RaidContract | undefined {
-    return boardContractForMap(RUN_INSERTIONS[insertionId].mapId, this.savedGame.raidProgress);
+    return boardContractForMap(requireInsertion(insertionId).mapId, this.savedGame.raidProgress);
   }
 
   /**
@@ -478,11 +481,8 @@ export class HubScene extends Phaser.Scene {
    * running, so a first raid can never be deployed somewhere its objective is
    * unreachable. Every unlocked insertion returns the moment it is banked.
    */
-  private get unlockedInsertions(): readonly [RunInsertionId, (typeof RUN_INSERTIONS)[RunInsertionId]][] {
-    const entries = Object.entries(RUN_INSERTIONS) as [
-      RunInsertionId,
-      (typeof RUN_INSERTIONS)[RunInsertionId],
-    ][];
+  private get unlockedInsertions(): readonly [RunInsertionId, RunInsertion][] {
+    const entries = runInsertions().map((insertion) => [insertion.id, insertion] as [RunInsertionId, RunInsertion]);
     // Unlocked by a contract or reached on foot: `availableInsertionIds` is the
     // one rule, so a drop-in point the player has stood on is offered here the
     // moment they are back at base.
@@ -954,7 +954,7 @@ export class HubScene extends Phaser.Scene {
     // Counted where it is committed to rather than where it ends: a raid
     // nobody came back from is still a raid you went on, and the difference
     // between the two numbers is what the drop-in screen reads back.
-    this.saveManager.recordDeployment(RUN_INSERTIONS[deployment.insertionId].mapId);
+    this.saveManager.recordDeployment(requireInsertion(deployment.insertionId).mapId);
     const items = deployment.items;
     activeRunManager.startRun(
       {
@@ -966,7 +966,7 @@ export class HubScene extends Phaser.Scene {
       },
       // The base clock, less whatever recovery has already been booked against it.
       {
-        mapId: RUN_INSERTIONS[deployment.insertionId].mapId,
+        mapId: requireInsertion(deployment.insertionId).mapId,
         durationMs: this.raidClockMs,
         secureGrid: this.flow.secureGrid,
         securePokemonLimit: this.flow.securePokemonSlots,
@@ -1154,7 +1154,7 @@ export class HubScene extends Phaser.Scene {
     if (this.view === 'reselect') return 'Swap your partner';
     if (this.view === 'workshop') return this.payingFor ? `Build ${this.payingFor.name}` : 'Brock’s Workshop';
     if (this.view === 'trader') return 'Bill’s Cottage';
-    if (this.view === 'wallmap') return this.wallMapInspect ? WORLD_MAP_NAMES[this.wallMapInspect] : 'The wall map';
+    if (this.view === 'wallmap') return this.wallMapInspect ? worldMapName(this.wallMapInspect) : 'The wall map';
     if (this.flow.step === 'loadout') return 'Build your loadout';
     if (this.flow.step === 'dropin') return 'Choose your drop-in';
     return this.flow.step === 'secure' ? 'Secure slot' : 'Final check';
@@ -1352,8 +1352,8 @@ export class HubScene extends Phaser.Scene {
    */
   private drawPicture(key: string, step: number): Minimap | undefined {
     const [kind, id] = key.split(':');
-    if (kind === 'dropin' && id in RUN_INSERTIONS) {
-      return placePicture(id as RunInsertionId, this.dropInContext(id as RunInsertionId), step);
+    if (kind === 'dropin' && isRunInsertionId(id)) {
+      return placePicture(id, this.dropInContext(id), step);
     }
     if (kind === 'wall' && (WALL_MAP_ORDER as readonly string[]).includes(id)) {
       return wallMapPicture(this.savedGame, id as WorldMapId, step);
@@ -1434,7 +1434,7 @@ export class HubScene extends Phaser.Scene {
     const rows = board.rows
       .map((row) => {
         const insertion = this.insertionFor(row.mapId);
-        const place = insertion?.[1].label ?? WORLD_MAP_NAMES[row.mapId];
+        const place = insertion?.[1].label ?? worldMapName(row.mapId);
         const wiring = insertion
           ? `data-contract="${insertion[0]}" data-shows="${row.contractId}" data-help="Prepare a raid that drops in at ${escapeAttribute(place)}."`
           : 'disabled';
@@ -1460,7 +1460,7 @@ export class HubScene extends Phaser.Scene {
   /** The unlocked insertion a contract is taken from, if the player can reach it yet. */
   private insertionFor(
     mapId: WorldMapId,
-  ): readonly [RunInsertionId, (typeof RUN_INSERTIONS)[RunInsertionId]] | undefined {
+  ): readonly [RunInsertionId, RunInsertion] | undefined {
     return this.unlockedInsertions.find(([, insertion]) => insertion.mapId === mapId);
   }
 
@@ -2017,7 +2017,7 @@ export class HubScene extends Phaser.Scene {
     return {
       // The map as this raid would actually find it: a door the player has
       // opened is open here, which is what makes a beaten boss visible at base.
-      map: getWorldMap(RUN_INSERTIONS[insertionId].mapId, openedDoors(progress)),
+      map: getWorldMap(requireInsertion(insertionId).mapId, openedDoors(progress)),
       defeatedBosses: progress.defeatedBosses,
       // What this save has finished with out there: a landmark worked for good
       // holds its exit open, and this screen has to say so or the exits it
@@ -2064,7 +2064,7 @@ export class HubScene extends Phaser.Scene {
         // because unlike a front door its name is not the map's, and a place
         // with a contract on it names the contract. "No contract" is not news.
         const note = isDropInPoint(insertion)
-          ? `DROP-IN · ${WORLD_MAP_NAMES[insertion.mapId]}${contract ? ` · ${contract.name}` : ''}`
+          ? `DROP-IN · ${worldMapName(insertion.mapId)}${contract ? ` · ${contract.name}` : ''}`
           : contract
             ? `${contract.name}${contract.hunterPressure ? ` · hunter +${contract.hunterPressure}` : ''}`
             : '';
@@ -2500,7 +2500,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   private confirmView(): string {
-    const insertion = RUN_INSERTIONS[this.flow.insertionId];
+    const insertion = requireInsertion(this.flow.insertionId);
     const contract = this.contractFor(this.flow.insertionId);
     const securedPokemon = this.flow.securedPokemon;
     const securedItems = this.flow.securedItems;

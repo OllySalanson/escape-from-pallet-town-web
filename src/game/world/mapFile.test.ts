@@ -1,0 +1,267 @@
+import { describe, expect, it } from 'vitest';
+import sampleLane from '../../maps/player/sample-lane.json';
+import { playtestRaidProgress, withEverythingCurrent } from '../dev/playtestSave';
+import { generateRunPlan, insertionsOn, requireInsertion, runInsertion } from '../run/runGeneration';
+import { getWorldMap, isWorldMapId, WORLD_MAPS, worldMapIds, worldMapMaker, worldMapName } from '../worldMap';
+import { extractionPointsOn } from './extractionPoints';
+import { buildPlayerMap, readMapFile, type MapFile } from './mapFile';
+import { checkMapFile, type MapCheckId } from './mapFileChecks';
+import { playerMaps, registerPlayerMap, unregisterPlayerMap } from './playerMaps';
+
+const SAMPLE = sampleLane as MapFile;
+
+/** The sample with some of it changed, as a maker's next save would be. */
+const edited = (changes: Partial<Record<keyof MapFile, unknown>>): Record<string, unknown> => ({
+  ...SAMPLE,
+  ...changes,
+});
+
+const problemsOf = (value: unknown): readonly string[] => {
+  const reading = readMapFile(value);
+  return reading.ok ? [] : reading.problems;
+};
+
+const failing = (value: unknown): readonly MapCheckId[] =>
+  checkMapFile(value)
+    .filter((check) => !check.passed)
+    .map((check) => check.id);
+
+/** A row of the sample with one tile written over. */
+const withTile = (x: number, y: number, letter: string): string[] =>
+  SAMPLE.ground.map((row, rowY) => (rowY === y ? `${row.slice(0, x)}${letter}${row.slice(x + 1)}` : row));
+
+describe('reading a map file', () => {
+  it('reads the sample', () => {
+    expect(problemsOf(SAMPLE)).toEqual([]);
+  });
+
+  it('refuses a file from a format it does not know, and says which', () => {
+    expect(problemsOf(edited({ format: 2 }))).toEqual([
+      'The file is format 2; this game reads format 1.',
+    ]);
+    expect(problemsOf('a map')).toEqual(['The file is not a map.']);
+  });
+
+  it('refuses a map too small or too large, and ground that does not match its size', () => {
+    expect(problemsOf(edited({ width: 8 }))).toContain('A map is 20x16 to 128x128 tiles.');
+    expect(problemsOf(edited({ height: 400 }))).toContain('A map is 20x16 to 128x128 tiles.');
+    expect(problemsOf(edited({ ground: SAMPLE.ground.slice(1) }))).toContain(
+      "'ground' has 23 rows; the map is 24 tall.",
+    );
+    expect(problemsOf(edited({ ground: withTile(4, 4, '..') }))).toContain(
+      'Ground row 4 is 33 letters; the map is 32 wide.',
+    );
+  });
+
+  it('refuses a letter, a building or a habitat the game cannot draw', () => {
+    expect(problemsOf(edited({ ground: withTile(4, 4, 'Z') }))).toContain(
+      'Ground row 4 uses letters the game does not draw: Z',
+    );
+    expect(problemsOf(edited({ buildings: [{ x: 1, y: 1, kind: 'castle' }] }))).toContain(
+      'Building 1 is not a building the game has: castle.',
+    );
+    expect(problemsOf(edited({ wildlife: 'volcano' }))[0]).toMatch(/^'wildlife' must be one of: meadow/);
+  });
+
+  it('refuses a map with no way in or no way out', () => {
+    expect(problemsOf(edited({ dropIns: [] }))).toContain('A map needs at least 1 drop-in.');
+    expect(problemsOf(edited({ exits: [] }))).toContain('A map needs at least 1 exit.');
+  });
+
+  it('refuses two places with one name, a place off the map, and an exit that never opens', () => {
+    expect(
+      problemsOf(edited({ exits: [...SAMPLE.exits, { ...SAMPLE.exits[0], x: 17, name: 'north stile' }] })),
+    ).toContain("Two exits are called 'north stile'.");
+    expect(problemsOf(edited({ itemSpots: [{ x: 40, y: 2 }] }))).toContain('itemSpots 1 is not on the map.');
+    expect(
+      problemsOf(edited({ exits: [{ ...SAMPLE.exits[0], opens: { when: 'after', seconds: 900 } }] })),
+    ).toContain("Exit 'North Stile' must open always, or after 1 to 240 seconds.");
+  });
+
+  it('only takes an id that can be part of another id', () => {
+    expect(problemsOf(edited({ id: 'Sample Lane' }))).toContain(
+      "'id' may only hold lower-case letters, digits and single dashes.",
+    );
+  });
+});
+
+describe('whether a map works', () => {
+  it('passes the sample on every check', () => {
+    expect(checkMapFile(SAMPLE).filter((check) => !check.passed)).toEqual([]);
+  });
+
+  it('fails a map that does not load on every check, and says why only once', () => {
+    const checks = checkMapFile(edited({ format: 9 }));
+    expect(checks.every((check) => !check.passed)).toBe(true);
+    expect(checks.flatMap((check) => check.problems)).toEqual([
+      'The file is format 9; this game reads format 1.',
+    ]);
+  });
+
+  it('fails a drop-in or an item spot standing on something solid', () => {
+    const inTheTrees = edited({ dropIns: [{ ...SAMPLE.dropIns[0], x: 0, y: 23 }] });
+    expect(failing(inTheTrees)).toContain('standing');
+    expect(checkMapFile(inTheTrees).find((check) => check.id === 'standing')?.problems).toEqual([
+      'Drop-in South Road at 0,23 is on something solid.',
+    ]);
+  });
+
+  it('fails two things on one tile', () => {
+    const shared = edited({ itemSpots: [{ x: SAMPLE.exits[0].x, y: SAMPLE.exits[0].y }] });
+    expect(failing(shared)).toEqual(['apart']);
+  });
+
+  it('fails a drop-in walled in with no way out, and an exit nobody can walk to', () => {
+    // A ring of rock round the pond-side drop-in.
+    const ground = [
+      [2, 11],
+      [3, 11],
+      [4, 11],
+      [2, 12],
+      [4, 12],
+    ].reduce<string[]>(
+      (rows, [x, y]) => rows.map((row, rowY) => (rowY === y ? `${row.slice(0, x)}C${row.slice(x + 1)}` : row)),
+      [...SAMPLE.ground],
+    );
+    // The ledge under it is already solid, so the drop-in is shut in.
+    expect(failing(edited({ ground }))).toEqual(['way-out', 'hunter-room']);
+    expect(failing(edited({ ground, dropIns: [SAMPLE.dropIns[1]] }))).toEqual([
+      'way-out',
+      'reachable',
+      'hunter-room',
+    ]);
+  });
+
+  it('counts an exit that opens late as a way out, so long as it opens inside the clock', () => {
+    const slow = edited({
+      exits: [{ ...SAMPLE.exits[0], opens: { when: 'after', seconds: 240 } }],
+    });
+    expect(failing(slow)).toEqual([]);
+  });
+
+  it('does not count a walk across one exit as a walk to anything beyond it', () => {
+    // Two exits side by side across the north gap, and something to find
+    // behind them: an open exit takes whoever steps on it, so nobody reaches it.
+    const behind = edited({
+      exits: [
+        { x: 16, y: 1, name: 'North Stile', opens: { when: 'always' } },
+        { x: 17, y: 1, name: 'North Gap', opens: { when: 'always' } },
+      ],
+      itemSpots: [{ x: 16, y: 0 }],
+    });
+    expect(checkMapFile(behind).find((check) => check.id === 'reachable')?.problems).toEqual([
+      'Item spot 1 at 16,0 cannot be walked to from any drop-in.',
+    ]);
+  });
+});
+
+describe('a map from a file is a map like any other', () => {
+  const sample = playerMaps().find((map) => map.file.id === 'sample-lane')!;
+
+  it('is in the list of maps after the shipped five', () => {
+    expect(sample.id).toBe('player-sample-lane');
+    expect(worldMapIds().slice(0, 5)).toEqual(Object.keys(WORLD_MAPS));
+    expect(worldMapIds()).toContain(sample.id);
+    expect(isWorldMapId(sample.id)).toBe(true);
+    expect(isWorldMapId('player-nowhere')).toBe(false);
+    expect(worldMapName(sample.id)).toBe('Sample Lane');
+    expect(worldMapMaker(sample.id)).toBe('Escape from Pallet Town');
+    expect(worldMapMaker('route-1')).toBeUndefined();
+  });
+
+  it('is drawn on the Kanto sheet at the size its file says', () => {
+    const map = getWorldMap(sample.id);
+    expect([map.width, map.height]).toEqual([32, 24]);
+    expect(map.tileset.sources.map((source) => source.imagePath)).toEqual(
+      WORLD_MAPS['viridian-city'].tileset.sources.map((source) => source.imagePath),
+    );
+    // Tall grass is the file's `g`, so it costs encounters exactly where it is drawn.
+    expect(map.tallGrass[4][6]).toBe(true);
+    expect(map.tallGrass[2][4]).toBe(false);
+    expect(map.encounters).toBeDefined();
+  });
+
+  it('lands where its drop-ins are and leaves where its exits are', () => {
+    expect(insertionsOn(sample.id).map((insertion) => insertion.id)).toEqual([
+      'player-sample-lane/south-road',
+      'player-sample-lane/pond-side',
+    ]);
+    expect(runInsertion('player-sample-lane/pond-side')?.position).toEqual({ x: 3, y: 12 });
+    expect(runInsertion('player-sample-lane/nowhere')).toBeUndefined();
+    // The front door is named for the map, as every shipped one is.
+    expect(insertionsOn(sample.id).map((insertion) => insertion.label)).toEqual(['Sample Lane', 'Pond Side']);
+    expect(requireInsertion('player-sample-lane/south-road').description).toBe(
+      'South Road. The bottom of the lane, where the sand road comes in from the south. Drawn by Escape from Pallet Town.',
+    );
+    expect(extractionPointsOn(sample.id).map((point) => [point.label, point.requirement])).toEqual([
+      ['NORTH STILE', { kind: 'always' }],
+      ['EAST GAP', { kind: 'elapsed', unlockAtMs: 60_000 }],
+    ]);
+  });
+
+  it('deploys: a raid starts on it, with its loot laid on it and a way out open', () => {
+    for (const seed of [1, 2, 3, 42, 9_999]) {
+      const plan = generateRunPlan(seed, undefined, 'player-sample-lane/south-road');
+      expect(plan.insertion.mapId).toBe(sample.id);
+      expect(plan.encounters[sample.id]).toBeDefined();
+      const loot = plan.loot[sample.id];
+      expect(loot.length).toBeGreaterThanOrEqual(Math.ceil(sample.loot.length / 2));
+      const map = getWorldMap(sample.id);
+      expect(loot.every((piece) => !map.collision[piece.position.y][piece.position.x])).toBe(true);
+      const exits = plan.extractionPoints.filter((point) => point.mapId === sample.id);
+      expect(exits.map((point) => point.label)).toEqual(['NORTH STILE', 'EAST GAP']);
+    }
+  });
+
+  it('is offered in an explorer run, which unlocks every landing there is', () => {
+    expect(playtestRaidProgress().unlockedInsertions).toContain('player-sample-lane/south-road');
+  });
+
+  it('never moves a roll of a raid on a shipped map, however many maps are added', () => {
+    const before = JSON.stringify(generateRunPlan(7, undefined, 'route-1'));
+    const extra = buildPlayerMap({ ...SAMPLE, id: 'another-lane', name: 'Another Lane' });
+    registerPlayerMap(extra);
+    try {
+      expect(JSON.stringify(generateRunPlan(7, undefined, 'route-1'))).toBe(before);
+    } finally {
+      unregisterPlayerMap(extra.id);
+    }
+  });
+
+  it('is built again when a newer copy of it is registered, as a draft is after an edit', () => {
+    const draft = buildPlayerMap({ ...SAMPLE, id: 'draft-lane' });
+    registerPlayerMap(draft);
+    try {
+      expect(getWorldMap(draft.id).collision[12][16]).toBe(false);
+      registerPlayerMap(buildPlayerMap({ ...SAMPLE, id: 'draft-lane', ground: withTile(16, 12, 'C') }));
+      expect(getWorldMap(draft.id).collision[12][16]).toBe(true);
+    } finally {
+      unregisterPlayerMap(draft.id);
+    }
+    expect(isWorldMapId(draft.id)).toBe(false);
+  });
+});
+
+describe('every map file the game is built with', () => {
+  it.each(playerMaps().map((map) => [map.id, map.file] as const))('%s works', (_id, file) => {
+    expect(checkMapFile(file).filter((check) => !check.passed)).toEqual([]);
+  });
+});
+
+describe('an explorer run kept from before a map was added', () => {
+  it('is brought up to date when resumed, keeping everything it had', () => {
+    const fresh = playtestRaidProgress();
+    const old = {
+      ...fresh,
+      unlockedInsertions: fresh.unlockedInsertions.filter((id) => !id.startsWith('player-')),
+      reachedInsertions: ['floodplain-relay'],
+      surveyed: { 'route-1': fresh.surveyed!['route-1'] },
+    };
+    const current = withEverythingCurrent(old);
+    expect(current.unlockedInsertions).toContain('player-sample-lane/south-road');
+    expect(current.reachedInsertions[0]).toBe('floodplain-relay');
+    expect(current.surveyed?.['player-sample-lane']).toBeDefined();
+    expect(current.surveyed?.['route-1']).toBe(old.surveyed['route-1']);
+    expect(withEverythingCurrent(current)).toBe(current);
+  });
+});

@@ -71,7 +71,7 @@ describe('in-run objective HUD layout', () => {
   });
 
   it('keeps the active contract destination visible and direction-aware', () => {
-    expect(sceneSource).toContain('TRAVEL TO ${WORLD_MAP_NAMES[contract.mapId].toUpperCase()}');
+    expect(sceneSource).toContain('TRAVEL TO ${worldMapName(contract.mapId).toUpperCase()}');
     // The cue is the marker's own short name, so a contract with three stops
     // names the one you are nearest rather than a hard-coded objective.
     expect(sceneSource).toContain('${next.cue}: ${directionTo(this.currentTile, next.position)}');
@@ -83,7 +83,7 @@ describe('in-run objective HUD layout', () => {
 
   it('names route transitions from map data and hides areas the first contract does not need', () => {
     expect(sceneSource).toContain('createRouteTransitionLabels');
-    expect(sceneSource).toContain('WORLD_MAP_NAMES[warp.destinationMapId].toUpperCase()');
+    expect(sceneSource).toContain('worldMapName(warp.destinationMapId).toUpperCase()');
     expect(sceneSource).toContain('poi.label');
     // No area name is hard-coded, so a label can never contradict the map data.
     expect(sceneSource).not.toContain("'VIRIDIAN FOREST'");

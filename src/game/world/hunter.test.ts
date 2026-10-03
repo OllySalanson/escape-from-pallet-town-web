@@ -7,7 +7,7 @@ import { PokemonType } from '../pokemon/PokemonType';
 import { RunManager } from '../run/RunManager';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { createActiveRunSession } from '../run/RunSession';
-import { WORLD_MAPS, type WorldMapId } from '../worldMap';
+import { WORLD_MAPS, type WorldMapId, getWorldMap } from '../worldMap';
 import {
   collisionBlocker,
   HUNTER_BREAKAWAY_DISTANCE,
@@ -39,7 +39,7 @@ import {
 const RATTATA = getSpeciesById('rattata')!;
 
 const mapBlocker = (mapId: WorldMapId) => {
-  const map = WORLD_MAPS[mapId];
+  const map = getWorldMap(mapId);
   return {
     bounds: { width: map.width, height: map.height },
     // Read once up front: the sweeps below search the whole map from every tile.

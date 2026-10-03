@@ -16,7 +16,7 @@ import {
 } from '../world/minimap';
 import { surveyedTiles } from '../world/survey';
 import { bossEncounters, createRunTrainerEncounters } from '../world/trainers';
-import { getWorldMap, WORLD_MAP_NAMES, type WorldMapDefinition, type WorldMapId } from '../worldMap';
+import { getWorldMap, type WorldMapDefinition, type WorldMapId, worldMapName } from '../worldMap';
 
 /**
  * The wall map in Oak's Lab: the four raid maps, hung side by side on the
@@ -133,7 +133,7 @@ export function wallMapEntry(game: RestoredGame, mapId: WorldMapId): WallMapEntr
   const surveyed = surveyedTiles(context.surveyed?.[mapId], context.map.width);
   return {
     mapId,
-    name: WORLD_MAP_NAMES[mapId],
+    name: worldMapName(mapId),
     size: { width: context.map.width, height: context.map.height },
     known: picture.walkable === 0 ? 0 : picture.knownWalkable / picture.walkable,
     walked: surveyed.size > 0,

@@ -105,7 +105,7 @@ import { CUT } from '../pokemon/moves';
 import { RunManager } from '../run/RunManager';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { createActiveRunSession, type ActiveRunSession } from '../run/RunSession';
-import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
+import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId, requireInsertion } from '../run/runGeneration';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type StorageLike } from '../save/SaveManager';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
 import { WORLD_GATES, type BossGate } from '../world/gates';
@@ -250,7 +250,7 @@ const deploy = (
   const manager = new RunManager();
   manager.startRun(
     { party: party.pokemon, items: [] },
-    { mapId: RUN_INSERTIONS[insertionId].mapId, durationMs: RAID_DURATION_MS },
+    { mapId: requireInsertion(insertionId).mapId, durationMs: RAID_DURATION_MS },
   );
   const plan = generateRunPlan(
     11,

@@ -14,7 +14,7 @@ import {
 import { stepDistances } from './mapStructure';
 import { trainerSightTiles } from './trainerSight';
 import { createRunTrainerEncounters } from './trainers';
-import { WORLD_MAPS, getWorldMap, type WorldMapDefinition } from '../worldMap';
+import { getWorldMap, type WorldMapDefinition } from '../worldMap';
 import { WORLD_GATES, gateKeys } from './gates';
 
 const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
@@ -22,7 +22,7 @@ const key = (tile: GridPosition): string => `${tile.x},${tile.y}`;
 /** Every gate state a raid can be played in, as `mapStructure.testkit.ts` builds them. */
 function statesFor(mapId: MapLedge['mapId']): WorldMapDefinition[] {
   const keys = gateKeys(WORLD_GATES.filter((gate) => gate.mapId === mapId));
-  return [WORLD_MAPS[mapId], ...keys.map((key) => getWorldMap(mapId, [key])), getWorldMap(mapId, keys)];
+  return [getWorldMap(mapId), ...keys.map((key) => getWorldMap(mapId, [key])), getWorldMap(mapId, keys)];
 }
 
 describe('a one-way ledge', () => {
@@ -57,7 +57,7 @@ describe('a one-way ledge', () => {
   it.each(WORLD_LEDGES.map((ledge) => [ledge.id, ledge] as const))(
     '%s is a real saving, and the hunter has to take the long way',
     (_id, ledge) => {
-      const map = WORLD_MAPS[ledge.mapId];
+      const map = getWorldMap(ledge.mapId);
       for (const from of ledge.brow) {
         const landing = ledgeLanding(ledge, from);
         const round = stepDistances(map.collision, from)[landing.y][landing.x];
@@ -92,7 +92,7 @@ describe('a one-way ledge', () => {
   it.each(WORLD_LEDGES.map((ledge) => [ledge.id, ledge] as const))(
     '%s never puts the player down on something a raid is for',
     (_id, ledge) => {
-      const map = WORLD_MAPS[ledge.mapId];
+      const map = getWorldMap(ledge.mapId);
       const sacred = new Map<string, string>();
       for (const point of EXTRACTION_POINTS.filter((point) => point.mapId === ledge.mapId)) {
         // Landing on an open exit would end the raid on a step taken to escape.

@@ -61,7 +61,7 @@ import {
   type StarterSpeciesId,
   type StashBox,
 } from '../stash/Stash';
-import { WORLD_MAPS, type WorldMapId } from '../worldMap';
+import { getWorldMap, isWorldMapId, type WorldMapId } from '../worldMap';
 import { mergeSurvey, type SurveyRecord } from '../world/survey';
 import { activeSaveSlot, PLAYTEST_SAVE_KEY, type SaveSlot } from '../dev/playtestMode';
 
@@ -1140,8 +1140,8 @@ export function deserializeGame(value: unknown): RestoredGame | null {
   if (
     !isWorldMapId(mapId) ||
     !isGridPosition(position) ||
-    position.x >= WORLD_MAPS[mapId].width ||
-    position.y >= WORLD_MAPS[mapId].height ||
+    position.x >= getWorldMap(mapId).width ||
+    position.y >= getWorldMap(mapId).height ||
     !Array.isArray(party)
   ) {
     return null;
@@ -1332,7 +1332,7 @@ function clampRaidRecord(value: unknown): Readonly<Record<string, MapRaidRecord>
     typeof entry === 'number' && Number.isSafeInteger(entry) && entry > 0 ? entry : 0;
   const record: Record<string, MapRaidRecord> = {};
   for (const [mapId, held] of Object.entries(value)) {
-    if (!(mapId in WORLD_MAPS) || !isRecord(held)) {
+    if (!isWorldMapId(mapId) || !isRecord(held)) {
       continue;
     }
     record[mapId] = {
@@ -1355,7 +1355,7 @@ function clampSurvey(value: unknown): SurveyRecord {
   const record: Record<string, { width: number; tiles: string }> = {};
   for (const [mapId, held] of Object.entries(value)) {
     if (
-      !(mapId in WORLD_MAPS) ||
+      !isWorldMapId(mapId) ||
       !isRecord(held) ||
       typeof held.width !== 'number' ||
       !Number.isSafeInteger(held.width) ||
@@ -1569,9 +1569,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isWorldMapId(value: unknown): value is WorldMapId {
-  return typeof value === 'string' && value in WORLD_MAPS;
-}
 
 function isGridPosition(value: unknown): value is GridPosition {
   return (

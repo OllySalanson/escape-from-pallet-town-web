@@ -12,12 +12,12 @@ import {
   VENUSAUR,
 } from '../pokemon/species';
 import type { PokemonBase } from '../pokemon/PokemonBase';
-import { RUN_INSERTIONS } from '../run/runGeneration';
+import { runInsertions } from '../run/runGeneration';
 import { DEFAULT_RAID_PROGRESS, type RaidProgress, type SaveGameState } from '../save/SaveManager';
 import { Stash } from '../stash/Stash';
 import { gateKey, WORLD_GATES } from '../world/gates';
 import { encodeSurvey, type SurveyRecord } from '../world/survey';
-import { WORLD_MAPS } from '../worldMap';
+import { getWorldMap, worldMapIds } from '../worldMap';
 
 /**
  * What an explorer run starts as. See `playtestMode.ts` for what the mode is
@@ -74,7 +74,7 @@ function built(base: PokemonBase, level: number, moveNames?: readonly string[]):
 /** Every tile of every map, so no minimap opens dark on a mode built for looking. */
 function everythingSurveyed(): SurveyRecord {
   const record: Record<string, ReturnType<typeof encodeSurvey>> = {};
-  for (const map of Object.values(WORLD_MAPS)) {
+  for (const map of worldMapIds().map((id) => getWorldMap(id))) {
     const tiles = new Set<number>();
     for (let index = 0; index < map.width * map.height; index += 1) {
       tiles.add(index);
@@ -89,8 +89,8 @@ export function playtestRaidProgress(): RaidProgress {
     ...DEFAULT_RAID_PROGRESS,
     firstContractExtracted: true,
     completedContracts: [FIRST_CONTRACT_ID],
-    unlockedInsertions: Object.keys(RUN_INSERTIONS),
-    reachedInsertions: Object.keys(RUN_INSERTIONS),
+    unlockedInsertions: runInsertions().map((insertion) => insertion.id),
+    reachedInsertions: runInsertions().map((insertion) => insertion.id),
     // Doors, not wins: see the note at the top of this file.
     defeatedBosses: [],
     openedGates: [...new Set(WORLD_GATES.map((gate) => gateKey(gate)))],
@@ -100,6 +100,43 @@ export function playtestRaidProgress(): RaidProgress {
     // shelf - derived from his own top tier, so a retuned ladder moves with it.
     traderMoneySpent: POKEDOLLARS_PER_STANDING * (TRADER_STANDINGS.at(-1)?.points ?? 0),
     surveyed: everythingSurveyed(),
+  };
+}
+
+/**
+ * An explorer run kept from before the game had the maps it has now, brought
+ * up to date: every landing there is now unlocked and every door open, and any
+ * map it has never seen surveyed. A run is resumed for months while maps are
+ * added - a new file map most of all - and a run that could not see them would
+ * be the one place nobody can look at them. Nothing it already has is taken
+ * away, so a resumed run keeps every step it walked. Returns the same object
+ * when there was nothing to add.
+ */
+export function withEverythingCurrent(progress: RaidProgress): RaidProgress {
+  const fresh = playtestRaidProgress();
+  const union = (held: readonly string[], all: readonly string[]): readonly string[] => [
+    ...held,
+    ...all.filter((id) => !held.includes(id)),
+  ];
+  const unlockedInsertions = union(progress.unlockedInsertions, fresh.unlockedInsertions);
+  const reachedInsertions = union(progress.reachedInsertions, fresh.reachedInsertions);
+  const heldGates = progress.openedGates ?? [];
+  const openedGates = union(heldGates, fresh.openedGates ?? []);
+  const unsurveyed = Object.entries(fresh.surveyed ?? {}).filter(([mapId]) => !progress.surveyed?.[mapId]);
+  const added =
+    unlockedInsertions.length !== progress.unlockedInsertions.length ||
+    reachedInsertions.length !== progress.reachedInsertions.length ||
+    openedGates.length !== heldGates.length ||
+    unsurveyed.length > 0;
+  if (!added) {
+    return progress;
+  }
+  return {
+    ...progress,
+    unlockedInsertions,
+    reachedInsertions,
+    openedGates,
+    surveyed: { ...progress.surveyed, ...Object.fromEntries(unsurveyed) },
   };
 }
 

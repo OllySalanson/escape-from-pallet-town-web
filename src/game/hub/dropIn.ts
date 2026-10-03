@@ -2,10 +2,10 @@ import { getItemById } from '../items';
 import type { RaidContract } from '../objectives';
 import { getSpeciesById } from '../pokemon/species';
 import type { WildEncounterTable } from '../pokemon/encounters';
-import { isDropInPoint, RUN_INSERTIONS, type RunInsertion, type RunInsertionId } from '../run/runGeneration';
+import { isDropInPoint, type RunInsertion, type RunInsertionId, requireInsertion } from '../run/runGeneration';
 import type { MapRaidRecord } from '../save/SaveManager';
 import { districtAt, districtsForMap, type MapDistrict } from '../world/districts';
-import { EXTRACTION_POINTS, extractionRequirementText, type ExtractionPoint } from '../world/extractionPoints';
+import { extractionPointsOn, extractionRequirementText, type ExtractionPoint } from '../world/extractionPoints';
 import { FIELD_MOVES } from '../world/fieldMoves';
 import { gatesForMap, isGateOpen, openedDoors, type MapGate } from '../world/gates';
 import { buildMinimap, type Minimap, type MinimapMark } from '../world/minimap';
@@ -13,7 +13,7 @@ import { isPrize } from '../world/loot';
 import { surveyedTiles, type SurveyRecord } from '../world/survey';
 import { bossEncounters, createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
 import { exitsOpenForGood, withWorkedExitsOpen, workedLandmarksOn } from '../world/workedLandmarks';
-import { WORLD_MAP_NAMES, WORLD_MAPS, type WorldMapDefinition, type WorldMapId } from '../worldMap';
+import { WORLD_MAPS, type WorldMapDefinition, type WorldMapId, worldMapName } from '../worldMap';
 
 /**
  * Everything the drop-in screen says about a place, worked out without Phaser.
@@ -212,7 +212,7 @@ export function buildDropInBriefing(
   insertionId: RunInsertionId,
   context: DropInContext,
 ): DropInBriefing {
-  const insertion = RUN_INSERTIONS[insertionId];
+  const insertion = requireInsertion(insertionId);
   const mapId = insertion.mapId;
   const gates = gatesForMap(mapId);
   const opened = openedDoors(context);
@@ -283,7 +283,7 @@ export function buildDropInBriefing(
       const place = districts.find((district) => district.id === loot.district);
       return {
         name: getItemById(loot.itemId)?.displayName ?? loot.itemId,
-        place: place?.name ?? WORLD_MAP_NAMES[mapId].toUpperCase(),
+        place: place?.name ?? worldMapName(mapId).toUpperCase(),
         known: place === undefined ? knownWalkable > 0 : reached(place),
         chance: loot.chance ?? 0,
       };
@@ -293,7 +293,7 @@ export function buildDropInBriefing(
   return {
     insertion,
     mapId,
-    mapName: WORLD_MAP_NAMES[mapId],
+    mapName: worldMapName(mapId),
     isDropIn: isDropInPoint(insertion),
     grade: {
       rung: gradeFor(opposition),
@@ -324,7 +324,7 @@ export function buildDropInBriefing(
       open: isGateOpen(gate, opened),
     })),
     exits: withWorkedExitsOpen(
-      EXTRACTION_POINTS.filter((point) => point.mapId === mapId),
+      extractionPointsOn(mapId),
       context.completedContracts,
     ).map((point) => ({
       label: point.label,
@@ -335,7 +335,7 @@ export function buildDropInBriefing(
     })),
     prizes,
     wildlife: tables.map(({ district, table }) => ({
-      place: district?.name ?? WORLD_MAP_NAMES[mapId].toUpperCase(),
+      place: district?.name ?? worldMapName(mapId).toUpperCase(),
       known: district === undefined || reached(district),
       species: [
         ...new Map(
@@ -400,7 +400,7 @@ export function placePicture(
   context: DropInContext,
   step = 1,
 ): Minimap {
-  return mapPicture(RUN_INSERTIONS[insertionId].mapId, context, { chosen: insertionId, step });
+  return mapPicture(requireInsertion(insertionId).mapId, context, { chosen: insertionId, step });
 }
 
 /**
@@ -434,7 +434,7 @@ export function mapPicture(
   options: { readonly chosen?: RunInsertionId; readonly step?: number } = {},
 ): Minimap {
   const ours = context.insertionIds
-    .map((id) => RUN_INSERTIONS[id])
+    .map((id) => requireInsertion(id))
     .filter((entry) => entry.mapId === mapId);
   const open = openedDoors(context);
   const opened = gatesForMap(mapId).filter((gate) => isGateOpen(gate, open));
@@ -457,7 +457,7 @@ export function mapPicture(
         always: isGateOpen(gate, open),
       })),
     ),
-    ...EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => ({
+    ...extractionPointsOn(mapId).map((point) => ({
       position: point.position,
       char: 'X',
     })),

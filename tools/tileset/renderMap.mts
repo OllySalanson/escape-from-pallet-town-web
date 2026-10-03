@@ -2,12 +2,14 @@
  * Draws a map exactly as the game draws it, to a PNG.
  *
  * Viridian Forest shipped with no forest in it because nobody could see what
- * they had authored. This reads the real `WORLD_MAPS` data through the real
+ * they had authored. This reads the real maps - shipped or from a map file - through the real
  * layer builder, so what it prints is what the scene prints - the same tiles,
  * the same four bands, the same tints - and a map can be criticised before it
  * is played.
  *
  *   npx vite-node tools/tileset/renderMap.mts -- <map-id|all> <out.png> [zoom]
+ *
+ * A map file's id is `player-` and the id in the file (`player-sample-lane`).
  *
  * Pass `--grid` for tile coordinates every four tiles, `--content` to mark the
  * insertion, exits, landmarks, loot, signs and trainers on top, and
@@ -15,9 +17,9 @@
  */
 import { readPng, writePng, TILE_SIZE } from './tileSheet.mjs';
 import { blit, box, canvas, drawTile, label, plot, upscale } from './draw.mjs';
-import { WORLD_MAPS, type WorldMapId } from '../../src/game/worldMap';
-import { EXTRACTION_POINTS } from '../../src/game/world/extractionPoints';
-import { RUN_INSERTIONS } from '../../src/game/run/runGeneration';
+import { getWorldMap, worldMapIds, type WorldMapId } from '../../src/game/worldMap';
+import { extractionPointsOn } from '../../src/game/world/extractionPoints';
+import { insertionsOn } from '../../src/game/run/runGeneration';
 import { RAID_CONTRACTS } from '../../src/game/objectives/contracts';
 import { createRunTrainerEncounters } from '../../src/game/world/trainers';
 
@@ -40,7 +42,7 @@ function sheetFor(path: string) {
 }
 
 function renderMap(id: WorldMapId) {
-  const map = WORLD_MAPS[id];
+  const map = getWorldMap(id);
   // A map may draw from several sheets under one numbering, exactly as the
   // scene does, so the tile has to be resolved back to the sheet it came from.
   const spans = map.tileset.sources.map((source) => ({
@@ -85,15 +87,11 @@ const MARKS: Record<string, [string, [number, number, number]]> = {
 };
 
 function annotate(image: ReturnType<typeof canvas>, id: WorldMapId, scale: number) {
-  const map = WORLD_MAPS[id];
+  const map = getWorldMap(id);
   const [ox, oy] = crop ?? [0, 0];
   const marks: { x: number; y: number; kind: keyof typeof MARKS }[] = [];
-  for (const insertion of Object.values(RUN_INSERTIONS)) {
-    if (insertion.mapId === id) marks.push({ ...insertion.position, kind: 'insertion' });
-  }
-  for (const point of EXTRACTION_POINTS) {
-    if (point.mapId === id) marks.push({ ...point.position, kind: 'exit' });
-  }
+  for (const insertion of insertionsOn(id)) marks.push({ ...insertion.position, kind: 'insertion' });
+  for (const point of extractionPointsOn(id)) marks.push({ ...point.position, kind: 'exit' });
   for (const poi of map.pois) marks.push({ ...poi.position, kind: 'poi' });
   for (const contract of RAID_CONTRACTS) {
     if (contract.mapId !== id) continue;
@@ -119,7 +117,7 @@ function annotate(image: ReturnType<typeof canvas>, id: WorldMapId, scale: numbe
 }
 
 function gridLines(image: ReturnType<typeof canvas>, id: WorldMapId, scale: number) {
-  const map = WORLD_MAPS[id];
+  const map = getWorldMap(id);
   const [ox, oy, cw = map.width, ch = map.height] = crop ?? [0, 0, map.width, map.height];
   const ink: [number, number, number] = [255, 255, 255];
   for (let x = ox; x <= ox + cw; x += 4) {
@@ -136,7 +134,7 @@ function gridLines(image: ReturnType<typeof canvas>, id: WorldMapId, scale: numb
   }
 }
 
-const ids = which === 'all' ? (Object.keys(WORLD_MAPS) as WorldMapId[]) : [which as WorldMapId];
+const ids = which === 'all' ? worldMapIds() : [which as WorldMapId];
 const rendered = ids.map((id) => ({ id, image: upscale(renderMap(id), zoom) }));
 for (const { id, image } of rendered) {
   if (flags.has('--grid')) gridLines(image, id, zoom);

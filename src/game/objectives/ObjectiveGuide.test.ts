@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Pokemon, BULBASAUR } from '../pokemon';
 import { RunManager } from '../run';
 import { createActiveRunSession } from '../run/RunSession';
-import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId } from '../run/runGeneration';
+import { generateRunPlan, RUN_INSERTIONS, type RunInsertionId, requireInsertion } from '../run/runGeneration';
 import { FIRST_CONTRACT } from './contracts';
 import { objectivesForContract } from './RunObjectives';
 import { buildObjectiveGuide } from './ObjectiveGuide';
@@ -32,7 +32,7 @@ function createUncontractedSession(insertionId: RunInsertionId) {
   const manager = new RunManager();
   manager.startRun(
     { party: [new Pokemon(BULBASAUR, 5)], items: [] },
-    { mapId: RUN_INSERTIONS[insertionId].mapId, durationMs: 60_000 },
+    { mapId: requireInsertion(insertionId).mapId, durationMs: 60_000 },
   );
   return createActiveRunSession(
     manager,
@@ -226,7 +226,7 @@ describe('objective field guide', () => {
     for (const { id, mapId } of insertions) {
       const guide = buildObjectiveGuide(createUncontractedSession(id), {
         currentMapId: mapId,
-        currentPosition: RUN_INSERTIONS[id].position,
+        currentPosition: requireInsertion(id).position,
         activatedPoiIds: new Set(),
       });
       const text = guide.hints.join(' ').toUpperCase();

@@ -3,7 +3,7 @@ import { formatStacks, type RunObjective } from './RunObjectives';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { GridPosition } from '../movement/gridMovement';
 import { compassBearing, compassWord } from '../world/bearing';
-import { WORLD_MAP_NAMES, type WorldMapId } from '../worldMap';
+import { type WorldMapId, worldMapName } from '../worldMap';
 import { poisForMap } from '../world/pois';
 
 export interface ObjectiveGuideContext {
@@ -126,13 +126,13 @@ function locationHint(
   nextStop: GridPosition,
 ): string {
   if (!session.plan) {
-    return WORLD_MAP_NAMES[context.currentMapId];
+    return worldMapName(context.currentMapId);
   }
   if (context.currentMapId !== contract.mapId) {
-    return `${WORLD_MAP_NAMES[context.currentMapId]}. Travel to ${WORLD_MAP_NAMES[contract.mapId]}`;
+    return `${worldMapName(context.currentMapId)}. Travel to ${worldMapName(contract.mapId)}`;
   }
 
-  return `${WORLD_MAP_NAMES[contract.mapId]}. The next stop is ${directionTo(context.currentPosition, nextStop)}`;
+  return `${worldMapName(contract.mapId)}. The next stop is ${directionTo(context.currentPosition, nextStop)}`;
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {

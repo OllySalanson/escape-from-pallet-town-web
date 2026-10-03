@@ -10,7 +10,7 @@ import {
   paintMinimap,
   tilesAround,
 } from './minimap';
-import { WORLD_MAPS, type WorldMapId } from '../worldMap';
+import { WORLD_MAPS, type WorldMapId, getWorldMap } from '../worldMap';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import type { Material } from './tileset/materials';
 
@@ -131,10 +131,10 @@ describe('the bird\'s-eye picture of a map', () => {
 
   it('draws a map tile for tile unless it is told to condense', () => {
     for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
-      const picture = buildMinimap({ map: WORLD_MAPS[id] });
+      const picture = buildMinimap({ map: getWorldMap(id) });
       expect([picture.width, picture.height, picture.tilesPerPixel], id).toEqual([
-        WORLD_MAPS[id].width,
-        WORLD_MAPS[id].height,
+        getWorldMap(id).width,
+        getWorldMap(id).height,
         1,
       ]);
       expect(picture.rows).toHaveLength(picture.height);
@@ -158,7 +158,7 @@ describe('the bird\'s-eye picture of a map', () => {
   it('opens every map on something lit, so a fresh save is an invitation', () => {
     for (const id of Object.keys(WORLD_MAPS) as WorldMapId[]) {
       const front = Object.values(RUN_INSERTIONS).find((entry) => entry.mapId === id)!;
-      const picture = buildMinimap({ map: WORLD_MAPS[id], lit: [front.position] });
+      const picture = buildMinimap({ map: getWorldMap(id), lit: [front.position] });
 
       expect(picture.knownWalkable).toBeGreaterThan(8);
       expect(picture.knownWalkable).toBeLessThan(picture.walkable / 4);
