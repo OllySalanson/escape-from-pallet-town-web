@@ -44,6 +44,8 @@ import {
   captionWords,
   CAPTION_WORD_SPACE,
   fitCaption,
+  describeBallGuidance,
+  catchChanceLabel,
 } from './battlePresentation';
 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
@@ -431,5 +433,20 @@ describe("a double battle's move line, which carries the chooser's name too", ()
       types: [PokemonType.Grass],
     });
     expect(guidance.compactSummary).toBe('FIRE · POWER 40 · PP 25/25 · SAME-TYPE x1.5');
+  });
+});
+
+describe("the ball list's help line", () => {
+  const ball = { effect: { type: 'capture-modifier', multiplier: 1 } };
+  it('says what the throw would catch it with now, as RUN says its odds', () => {
+    expect(describeBallGuidance(ball, 0.34)).toBe('Standard catch rate. 34% to catch it now.');
+    expect(describeBallGuidance({ effect: { type: 'capture-modifier', multiplier: 1.5 } }, 0.5)).toBe(
+      '1.5x catch rate. 50% to catch it now.',
+    );
+  });
+
+  it('never calls a small chance nothing', () => {
+    expect(catchChanceLabel(0.002)).toBe('under 1%');
+    expect(catchChanceLabel(0)).toBe('0%');
   });
 });

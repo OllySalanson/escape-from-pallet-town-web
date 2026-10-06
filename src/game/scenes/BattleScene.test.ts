@@ -1323,9 +1323,11 @@ describe('throwing a ball in a wild battle', () => {
   });
 
   it('applies the Great Ball\'s own 1.5 to the catch roll', () => {
-    // A full-health wild Pokemon is caught below 0.2 with a Poke Ball and below
-    // 0.3 with a Great Ball, so a roll of 0.25 is the one that tells them apart.
-    const roll = vi.spyOn(Math, 'random').mockReturnValue(0.25);
+    // The harness's wild Bulbasaur (catch rate 45) at full health: FireRed's
+    // odds are 15 in a Poke Ball and 22 in a Great Ball, so each of the four
+    // shake checks passes under 32767 and 36157 of 65536 - and a roll of 0.52
+    // (34078) passes all four in the Great Ball and none in the Poke Ball.
+    const roll = vi.spyOn(Math, 'random').mockReturnValue(0.52);
     try {
       const poke = new Bag({ 'poke-ball': 1 });
       const great = new Bag({ 'great-ball': 1 });

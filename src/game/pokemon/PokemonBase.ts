@@ -38,11 +38,10 @@ export interface PokemonBaseInit {
   readonly learnset: readonly LearnableMove[];
   /**
    * Generation III's own capture rate, out of 255, and the modern experience
-   * yield and growth curve. All three are imported and **nothing spends any of
-   * them yet**: a throw is decided by the target's health, its status and the
-   * ball (`attemptCatch`), and every species climbs the one level-cubed curve
-   * in `experienceForLevel`. Wiring either in reprices every measured fight in
-   * the game, so it is its own change with its own measurements.
+   * yield and growth curve. The capture rate is what a throw is decided by
+   * (`catchOdds`, FireRed's formula); the yield and curve are imported and
+   * not yet spent - every species climbs the one level-cubed curve in
+   * `experienceForLevel`.
    */
   readonly catchRate?: number;
   readonly baseExperience?: number;

@@ -15,6 +15,7 @@ import {
   refreshPlayerAfterLevelUp,
   replacePlayerPokemon,
   resolveCatchAttempt,
+  getCatchChance,
   lockedMove,
   mustStruggle,
   STRUGGLE_MOVE_INDEX,
@@ -1597,7 +1598,19 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.mode === 'balls') {
       const ball = carriedBalls(this.bag)[this.selectedCommand];
-      this.moveGuidanceTexts[0]?.setText(this.fitCaption(ball ? describeBallGuidance(ball) : '')).setColor(PANEL_GUIDANCE_INK);
+      const foe = this.state.enemy;
+      const chance = ball
+        ? getCatchChance(
+            foe.pokemon.base.catchRate,
+            foe.currentHp,
+            foe.pokemon.maxHp,
+            foe.primaryStatus,
+            ballModifierOf(ball),
+          )
+        : undefined;
+      this.moveGuidanceTexts[0]
+        ?.setText(this.fitCaption(ball ? describeBallGuidance(ball, chance) : ''))
+        .setColor(PANEL_GUIDANCE_INK);
       this.moveGuidanceTexts[1]?.setText('').setColor(PANEL_GUIDANCE_INK);
       return;
     }

@@ -448,11 +448,25 @@ export const describeMoveGuidance = (
 export const formatBallCommand = (count: number): string => `BALL x${count}`;
 
 /** What the highlighted ball does, on the line a move's numbers take. */
-export const describeBallGuidance = (ball: {
-  readonly effect: { readonly type: string; readonly multiplier?: number };
-}): string => {
+export const describeBallGuidance = (
+  ball: { readonly effect: { readonly type: string; readonly multiplier?: number } },
+  /** The chance this ball catches the Pokemon in front of the player now, if known. */
+  chance?: number,
+): string => {
   const multiplier = ball.effect.type === 'capture-modifier' ? (ball.effect.multiplier ?? 1) : 1;
-  return multiplier === 1 ? 'Standard catch rate.' : `${multiplier}x catch rate.`;
+  const rate = multiplier === 1 ? 'Standard catch rate.' : `${multiplier}x catch rate.`;
+  return chance === undefined ? rate : `${rate} ${catchChanceLabel(chance)} to catch it now.`;
+};
+
+/**
+ * A catch chance in the words the RUN command already uses for its odds - a
+ * whole per cent - except that a chance that rounds to nothing is "under 1%",
+ * because FireRed's odds on a rare Pokemon at full health are real and small,
+ * and "0%" would say a throw is pointless when it is only unlikely.
+ */
+export const catchChanceLabel = (chance: number): string => {
+  const percent = Math.round(chance * 100);
+  return percent === 0 && chance > 0 ? 'under 1%' : `${percent}%`;
 };
 
 export const formatItemCommand = (count: number): string => `ITEM x${count}`;
