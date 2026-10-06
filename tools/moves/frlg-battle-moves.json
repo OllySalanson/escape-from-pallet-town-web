@@ -1,0 +1,3031 @@
+{
+ "ruling": "FireRed/LeafGreen's own move table for every move the 151 learn by level or by machine: what PokeAPI keeps no history for.",
+ "source": {
+  "pokefirered": {
+   "url": "https://raw.githubusercontent.com/pret/pokefirered/c75f352304d529f6ba92d4f74b9cf8b5c3810788/src/data/battle_moves.h",
+   "note": "the FireRed disassembly - the table the cartridge reads"
+  }
+ },
+ "moves": [
+  {
+   "name": "absorb",
+   "effect": "EFFECT_ABSORB",
+   "power": 20,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "acid",
+   "effect": "EFFECT_DEFENSE_DOWN_HIT",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "acid-armor",
+   "effect": "EFFECT_DEFENSE_UP_2",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "aerial-ace",
+   "effect": "EFFECT_ALWAYS_HIT",
+   "power": 60,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "agility",
+   "effect": "EFFECT_SPEED_UP_2",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "air-cutter",
+   "effect": "EFFECT_HIGH_CRITICAL",
+   "power": 55,
+   "accuracy": 95,
+   "pp": 25,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "amnesia",
+   "effect": "EFFECT_SPECIAL_DEFENSE_UP_2",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "ancient-power",
+   "effect": "EFFECT_ALL_STATS_UP_HIT",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "aromatherapy",
+   "effect": "EFFECT_HEAL_BELL",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "astonish",
+   "effect": "EFFECT_FLINCH_MINIMIZE_HIT",
+   "power": 30,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "attract",
+   "effect": "EFFECT_ATTRACT",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "aurora-beam",
+   "effect": "EFFECT_ATTACK_DOWN_HIT",
+   "power": 65,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "barrage",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 15,
+   "accuracy": 85,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "barrier",
+   "effect": "EFFECT_DEFENSE_UP_2",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "baton-pass",
+   "effect": "EFFECT_BATON_PASS",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "belly-drum",
+   "effect": "EFFECT_BELLY_DRUM",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "bind",
+   "effect": "EFFECT_TRAP",
+   "power": 15,
+   "accuracy": 75,
+   "pp": 20,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "bite",
+   "effect": "EFFECT_FLINCH_HIT",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 25,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "blizzard",
+   "effect": "EFFECT_FREEZE_HIT",
+   "power": 120,
+   "accuracy": 70,
+   "pp": 5,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "block",
+   "effect": "EFFECT_MEAN_LOOK",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "body-slam",
+   "effect": "EFFECT_PARALYZE_HIT",
+   "power": 85,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "bone-club",
+   "effect": "EFFECT_FLINCH_HIT",
+   "power": 65,
+   "accuracy": 85,
+   "pp": 20,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "bone-rush",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 25,
+   "accuracy": 80,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "bonemerang",
+   "effect": "EFFECT_DOUBLE_HIT",
+   "power": 50,
+   "accuracy": 90,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "bounce",
+   "effect": "EFFECT_SEMI_INVULNERABLE",
+   "power": 85,
+   "accuracy": 85,
+   "pp": 5,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "brick-break",
+   "effect": "EFFECT_BRICK_BREAK",
+   "power": 75,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "bubble",
+   "effect": "EFFECT_SPEED_DOWN_HIT",
+   "power": 20,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "bubble-beam",
+   "effect": "EFFECT_SPEED_DOWN_HIT",
+   "power": 65,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "bulk-up",
+   "effect": "EFFECT_BULK_UP",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "bullet-seed",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 10,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "calm-mind",
+   "effect": "EFFECT_CALM_MIND",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "camouflage",
+   "effect": "EFFECT_CAMOUFLAGE",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "charge",
+   "effect": "EFFECT_CHARGE",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "clamp",
+   "effect": "EFFECT_TRAP",
+   "power": 35,
+   "accuracy": 75,
+   "pp": 10,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "comet-punch",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 18,
+   "accuracy": 85,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "confuse-ray",
+   "effect": "EFFECT_CONFUSE",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "confusion",
+   "effect": "EFFECT_CONFUSE_HIT",
+   "power": 50,
+   "accuracy": 100,
+   "pp": 25,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "constrict",
+   "effect": "EFFECT_SPEED_DOWN_HIT",
+   "power": 10,
+   "accuracy": 100,
+   "pp": 35,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "conversion",
+   "effect": "EFFECT_CONVERSION",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "conversion-2",
+   "effect": "EFFECT_CONVERSION_2",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "cosmic-power",
+   "effect": "EFFECT_COSMIC_POWER",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "counter",
+   "effect": "EFFECT_COUNTER",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_DEPENDS",
+   "priority": -5
+  },
+  {
+   "name": "covet",
+   "effect": "EFFECT_THIEF",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 40,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "crabhammer",
+   "effect": "EFFECT_HIGH_CRITICAL",
+   "power": 90,
+   "accuracy": 85,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "cross-chop",
+   "effect": "EFFECT_HIGH_CRITICAL",
+   "power": 100,
+   "accuracy": 80,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "crunch",
+   "effect": "EFFECT_SPECIAL_DEFENSE_DOWN_HIT",
+   "power": 80,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 20,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "curse",
+   "effect": "EFFECT_CURSE",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "cut",
+   "effect": "EFFECT_HIT",
+   "power": 50,
+   "accuracy": 95,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "defense-curl",
+   "effect": "EFFECT_DEFENSE_CURL",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "destiny-bond",
+   "effect": "EFFECT_DESTINY_BOND",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "detect",
+   "effect": "EFFECT_PROTECT",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 3
+  },
+  {
+   "name": "dig",
+   "effect": "EFFECT_SEMI_INVULNERABLE",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "disable",
+   "effect": "EFFECT_DISABLE",
+   "power": 0,
+   "accuracy": 55,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "dive",
+   "effect": "EFFECT_SEMI_INVULNERABLE",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "dizzy-punch",
+   "effect": "EFFECT_CONFUSE_HIT",
+   "power": 70,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 20,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "double-edge",
+   "effect": "EFFECT_DOUBLE_EDGE",
+   "power": 120,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "double-kick",
+   "effect": "EFFECT_DOUBLE_HIT",
+   "power": 30,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "double-slap",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 15,
+   "accuracy": 85,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "double-team",
+   "effect": "EFFECT_EVASION_UP",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "dragon-breath",
+   "effect": "EFFECT_PARALYZE_HIT",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "dragon-claw",
+   "effect": "EFFECT_HIT",
+   "power": 80,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "dragon-dance",
+   "effect": "EFFECT_DRAGON_DANCE",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "dragon-rage",
+   "effect": "EFFECT_DRAGON_RAGE",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "dream-eater",
+   "effect": "EFFECT_DREAM_EATER",
+   "power": 100,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "drill-peck",
+   "effect": "EFFECT_HIT",
+   "power": 80,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "dynamic-punch",
+   "effect": "EFFECT_CONFUSE_HIT",
+   "power": 100,
+   "accuracy": 50,
+   "pp": 5,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "earthquake",
+   "effect": "EFFECT_EARTHQUAKE",
+   "power": 100,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_FOES_AND_ALLY",
+   "priority": 0
+  },
+  {
+   "name": "egg-bomb",
+   "effect": "EFFECT_HIT",
+   "power": 100,
+   "accuracy": 75,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "ember",
+   "effect": "EFFECT_BURN_HIT",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 25,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "encore",
+   "effect": "EFFECT_ENCORE",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "endeavor",
+   "effect": "EFFECT_ENDEAVOR",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "endure",
+   "effect": "EFFECT_ENDURE",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 3
+  },
+  {
+   "name": "explosion",
+   "effect": "EFFECT_EXPLOSION",
+   "power": 250,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_FOES_AND_ALLY",
+   "priority": 0
+  },
+  {
+   "name": "extreme-speed",
+   "effect": "EFFECT_QUICK_ATTACK",
+   "power": 80,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 1
+  },
+  {
+   "name": "facade",
+   "effect": "EFFECT_FACADE",
+   "power": 70,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "fake-out",
+   "effect": "EFFECT_FAKE_OUT",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 1
+  },
+  {
+   "name": "fake-tears",
+   "effect": "EFFECT_SPECIAL_DEFENSE_DOWN_2",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "false-swipe",
+   "effect": "EFFECT_FALSE_SWIPE",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "feather-dance",
+   "effect": "EFFECT_ATTACK_DOWN_2",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "feint-attack",
+   "effect": "EFFECT_ALWAYS_HIT",
+   "power": 60,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "fire-blast",
+   "effect": "EFFECT_BURN_HIT",
+   "power": 120,
+   "accuracy": 85,
+   "pp": 5,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "fire-punch",
+   "effect": "EFFECT_BURN_HIT",
+   "power": 75,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "fire-spin",
+   "effect": "EFFECT_TRAP",
+   "power": 15,
+   "accuracy": 70,
+   "pp": 15,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "fissure",
+   "effect": "EFFECT_OHKO",
+   "power": 1,
+   "accuracy": 30,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "flail",
+   "effect": "EFFECT_FLAIL",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "flame-wheel",
+   "effect": "EFFECT_THAW_HIT",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 25,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "flamethrower",
+   "effect": "EFFECT_BURN_HIT",
+   "power": 95,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "flash",
+   "effect": "EFFECT_ACCURACY_DOWN",
+   "power": 0,
+   "accuracy": 70,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "flatter",
+   "effect": "EFFECT_FLATTER",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "fly",
+   "effect": "EFFECT_SEMI_INVULNERABLE",
+   "power": 70,
+   "accuracy": 95,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "focus-energy",
+   "effect": "EFFECT_FOCUS_ENERGY",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "focus-punch",
+   "effect": "EFFECT_FOCUS_PUNCH",
+   "power": 150,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": -3
+  },
+  {
+   "name": "follow-me",
+   "effect": "EFFECT_FOLLOW_ME",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 3
+  },
+  {
+   "name": "foresight",
+   "effect": "EFFECT_FORESIGHT",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "frustration",
+   "effect": "EFFECT_FRUSTRATION",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "fury-attack",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 15,
+   "accuracy": 85,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "fury-cutter",
+   "effect": "EFFECT_FURY_CUTTER",
+   "power": 10,
+   "accuracy": 95,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "fury-swipes",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 18,
+   "accuracy": 80,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "future-sight",
+   "effect": "EFFECT_FUTURE_SIGHT",
+   "power": 80,
+   "accuracy": 90,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "giga-drain",
+   "effect": "EFFECT_ABSORB",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "glare",
+   "effect": "EFFECT_PARALYZE",
+   "power": 0,
+   "accuracy": 75,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "growl",
+   "effect": "EFFECT_ATTACK_DOWN",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "growth",
+   "effect": "EFFECT_SPECIAL_ATTACK_UP",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "grudge",
+   "effect": "EFFECT_GRUDGE",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "guillotine",
+   "effect": "EFFECT_OHKO",
+   "power": 1,
+   "accuracy": 30,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "gust",
+   "effect": "EFFECT_GUST",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 35,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "hail",
+   "effect": "EFFECT_HAIL",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "harden",
+   "effect": "EFFECT_DEFENSE_UP",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "haze",
+   "effect": "EFFECT_HAZE",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "headbutt",
+   "effect": "EFFECT_FLINCH_HIT",
+   "power": 70,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "heat-wave",
+   "effect": "EFFECT_BURN_HIT",
+   "power": 100,
+   "accuracy": 90,
+   "pp": 10,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "helping-hand",
+   "effect": "EFFECT_HELPING_HAND",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 5
+  },
+  {
+   "name": "hidden-power",
+   "effect": "EFFECT_HIDDEN_POWER",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "high-jump-kick",
+   "effect": "EFFECT_RECOIL_IF_MISS",
+   "power": 85,
+   "accuracy": 90,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "horn-attack",
+   "effect": "EFFECT_HIT",
+   "power": 65,
+   "accuracy": 100,
+   "pp": 25,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "horn-drill",
+   "effect": "EFFECT_OHKO",
+   "power": 1,
+   "accuracy": 30,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "hydro-pump",
+   "effect": "EFFECT_HIT",
+   "power": 120,
+   "accuracy": 80,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "hyper-beam",
+   "effect": "EFFECT_RECHARGE",
+   "power": 150,
+   "accuracy": 90,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "hyper-fang",
+   "effect": "EFFECT_FLINCH_HIT",
+   "power": 80,
+   "accuracy": 90,
+   "pp": 15,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "hyper-voice",
+   "effect": "EFFECT_HIT",
+   "power": 90,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "hypnosis",
+   "effect": "EFFECT_SLEEP",
+   "power": 0,
+   "accuracy": 60,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "ice-beam",
+   "effect": "EFFECT_FREEZE_HIT",
+   "power": 95,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "ice-punch",
+   "effect": "EFFECT_FREEZE_HIT",
+   "power": 75,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "icicle-spear",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 10,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "icy-wind",
+   "effect": "EFFECT_SPEED_DOWN_HIT",
+   "power": 55,
+   "accuracy": 95,
+   "pp": 15,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "imprison",
+   "effect": "EFFECT_IMPRISON",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "ingrain",
+   "effect": "EFFECT_INGRAIN",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "iron-tail",
+   "effect": "EFFECT_DEFENSE_DOWN_HIT",
+   "power": 100,
+   "accuracy": 75,
+   "pp": 15,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "jump-kick",
+   "effect": "EFFECT_RECOIL_IF_MISS",
+   "power": 70,
+   "accuracy": 95,
+   "pp": 25,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "karate-chop",
+   "effect": "EFFECT_HIGH_CRITICAL",
+   "power": 50,
+   "accuracy": 100,
+   "pp": 25,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "kinesis",
+   "effect": "EFFECT_ACCURACY_DOWN",
+   "power": 0,
+   "accuracy": 80,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "knock-off",
+   "effect": "EFFECT_KNOCK_OFF",
+   "power": 20,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "leech-life",
+   "effect": "EFFECT_ABSORB",
+   "power": 20,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "leech-seed",
+   "effect": "EFFECT_LEECH_SEED",
+   "power": 0,
+   "accuracy": 90,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "leer",
+   "effect": "EFFECT_DEFENSE_DOWN",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "lick",
+   "effect": "EFFECT_PARALYZE_HIT",
+   "power": 20,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "light-screen",
+   "effect": "EFFECT_LIGHT_SCREEN",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "lock-on",
+   "effect": "EFFECT_LOCK_ON",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "lovely-kiss",
+   "effect": "EFFECT_SLEEP",
+   "power": 0,
+   "accuracy": 75,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "low-kick",
+   "effect": "EFFECT_LOW_KICK",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "mach-punch",
+   "effect": "EFFECT_QUICK_ATTACK",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 1
+  },
+  {
+   "name": "magical-leaf",
+   "effect": "EFFECT_ALWAYS_HIT",
+   "power": 60,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "magnitude",
+   "effect": "EFFECT_MAGNITUDE",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_FOES_AND_ALLY",
+   "priority": 0
+  },
+  {
+   "name": "mean-look",
+   "effect": "EFFECT_MEAN_LOOK",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "meditate",
+   "effect": "EFFECT_ATTACK_UP",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "mega-drain",
+   "effect": "EFFECT_ABSORB",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "mega-kick",
+   "effect": "EFFECT_HIT",
+   "power": 120,
+   "accuracy": 75,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "mega-punch",
+   "effect": "EFFECT_HIT",
+   "power": 80,
+   "accuracy": 85,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "megahorn",
+   "effect": "EFFECT_HIT",
+   "power": 120,
+   "accuracy": 85,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "memento",
+   "effect": "EFFECT_MEMENTO",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "metal-claw",
+   "effect": "EFFECT_ATTACK_UP_HIT",
+   "power": 50,
+   "accuracy": 95,
+   "pp": 35,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "metal-sound",
+   "effect": "EFFECT_SPECIAL_DEFENSE_DOWN_2",
+   "power": 0,
+   "accuracy": 85,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "meteor-mash",
+   "effect": "EFFECT_ATTACK_UP_HIT",
+   "power": 100,
+   "accuracy": 85,
+   "pp": 10,
+   "secondaryEffectChance": 20,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "metronome",
+   "effect": "EFFECT_METRONOME",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_DEPENDS",
+   "priority": 0
+  },
+  {
+   "name": "mimic",
+   "effect": "EFFECT_MIMIC",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "mind-reader",
+   "effect": "EFFECT_LOCK_ON",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "minimize",
+   "effect": "EFFECT_MINIMIZE",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "mirror-coat",
+   "effect": "EFFECT_MIRROR_COAT",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_DEPENDS",
+   "priority": -5
+  },
+  {
+   "name": "mirror-move",
+   "effect": "EFFECT_MIRROR_MOVE",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_DEPENDS",
+   "priority": 0
+  },
+  {
+   "name": "mist",
+   "effect": "EFFECT_MIST",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "moonlight",
+   "effect": "EFFECT_MOONLIGHT",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "mud-shot",
+   "effect": "EFFECT_SPEED_DOWN_HIT",
+   "power": 55,
+   "accuracy": 95,
+   "pp": 15,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "mud-slap",
+   "effect": "EFFECT_ACCURACY_DOWN_HIT",
+   "power": 20,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "mud-sport",
+   "effect": "EFFECT_MUD_SPORT",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "night-shade",
+   "effect": "EFFECT_LEVEL_DAMAGE",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "nightmare",
+   "effect": "EFFECT_NIGHTMARE",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "odor-sleuth",
+   "effect": "EFFECT_FORESIGHT",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "outrage",
+   "effect": "EFFECT_RAMPAGE",
+   "power": 90,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_RANDOM",
+   "priority": 0
+  },
+  {
+   "name": "overheat",
+   "effect": "EFFECT_OVERHEAT",
+   "power": 140,
+   "accuracy": 90,
+   "pp": 5,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "pay-day",
+   "effect": "EFFECT_PAY_DAY",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "peck",
+   "effect": "EFFECT_HIT",
+   "power": 35,
+   "accuracy": 100,
+   "pp": 35,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "perish-song",
+   "effect": "EFFECT_PERISH_SONG",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "petal-dance",
+   "effect": "EFFECT_RAMPAGE",
+   "power": 70,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_RANDOM",
+   "priority": 0
+  },
+  {
+   "name": "pin-missile",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 14,
+   "accuracy": 85,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "poison-fang",
+   "effect": "EFFECT_POISON_FANG",
+   "power": 50,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "poison-gas",
+   "effect": "EFFECT_POISON",
+   "power": 0,
+   "accuracy": 55,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "poison-powder",
+   "effect": "EFFECT_POISON",
+   "power": 0,
+   "accuracy": 75,
+   "pp": 35,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "poison-sting",
+   "effect": "EFFECT_POISON_HIT",
+   "power": 15,
+   "accuracy": 100,
+   "pp": 35,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "pound",
+   "effect": "EFFECT_HIT",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 35,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "powder-snow",
+   "effect": "EFFECT_FREEZE_HIT",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 25,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "protect",
+   "effect": "EFFECT_PROTECT",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 3
+  },
+  {
+   "name": "psybeam",
+   "effect": "EFFECT_CONFUSE_HIT",
+   "power": 65,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "psych-up",
+   "effect": "EFFECT_PSYCH_UP",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "psychic",
+   "effect": "EFFECT_SPECIAL_DEFENSE_DOWN_HIT",
+   "power": 90,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "pursuit",
+   "effect": "EFFECT_PURSUIT",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "quick-attack",
+   "effect": "EFFECT_QUICK_ATTACK",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 1
+  },
+  {
+   "name": "rage",
+   "effect": "EFFECT_RAGE",
+   "power": 20,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "rain-dance",
+   "effect": "EFFECT_RAIN_DANCE",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "rapid-spin",
+   "effect": "EFFECT_RAPID_SPIN",
+   "power": 20,
+   "accuracy": 100,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "razor-leaf",
+   "effect": "EFFECT_HIGH_CRITICAL",
+   "power": 55,
+   "accuracy": 95,
+   "pp": 25,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "recover",
+   "effect": "EFFECT_RESTORE_HP",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "recycle",
+   "effect": "EFFECT_RECYCLE",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "reflect",
+   "effect": "EFFECT_REFLECT",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "refresh",
+   "effect": "EFFECT_REFRESH",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "rest",
+   "effect": "EFFECT_REST",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "return",
+   "effect": "EFFECT_RETURN",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "revenge",
+   "effect": "EFFECT_REVENGE",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": -4
+  },
+  {
+   "name": "reversal",
+   "effect": "EFFECT_FLAIL",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "roar",
+   "effect": "EFFECT_ROAR",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": -6
+  },
+  {
+   "name": "rock-blast",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 25,
+   "accuracy": 80,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "rock-smash",
+   "effect": "EFFECT_DEFENSE_DOWN_HIT",
+   "power": 20,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 50,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "rock-throw",
+   "effect": "EFFECT_HIT",
+   "power": 50,
+   "accuracy": 90,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "rock-tomb",
+   "effect": "EFFECT_SPEED_DOWN_HIT",
+   "power": 50,
+   "accuracy": 80,
+   "pp": 10,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "role-play",
+   "effect": "EFFECT_ROLE_PLAY",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "rolling-kick",
+   "effect": "EFFECT_FLINCH_HIT",
+   "power": 60,
+   "accuracy": 85,
+   "pp": 15,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "rollout",
+   "effect": "EFFECT_ROLLOUT",
+   "power": 30,
+   "accuracy": 90,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "safeguard",
+   "effect": "EFFECT_SAFEGUARD",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 25,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "sand-attack",
+   "effect": "EFFECT_ACCURACY_DOWN",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "sand-tomb",
+   "effect": "EFFECT_TRAP",
+   "power": 15,
+   "accuracy": 70,
+   "pp": 15,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "sandstorm",
+   "effect": "EFFECT_SANDSTORM",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "scary-face",
+   "effect": "EFFECT_SPEED_DOWN_2",
+   "power": 0,
+   "accuracy": 90,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "scratch",
+   "effect": "EFFECT_HIT",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 35,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "screech",
+   "effect": "EFFECT_DEFENSE_DOWN_2",
+   "power": 0,
+   "accuracy": 85,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "secret-power",
+   "effect": "EFFECT_SECRET_POWER",
+   "power": 70,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "seismic-toss",
+   "effect": "EFFECT_LEVEL_DAMAGE",
+   "power": 1,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "self-destruct",
+   "effect": "EFFECT_EXPLOSION",
+   "power": 200,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_FOES_AND_ALLY",
+   "priority": 0
+  },
+  {
+   "name": "shadow-ball",
+   "effect": "EFFECT_SPECIAL_DEFENSE_DOWN_HIT",
+   "power": 80,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 20,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "shadow-punch",
+   "effect": "EFFECT_ALWAYS_HIT",
+   "power": 60,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "sharpen",
+   "effect": "EFFECT_ATTACK_UP",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "sheer-cold",
+   "effect": "EFFECT_OHKO",
+   "power": 1,
+   "accuracy": 30,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "shock-wave",
+   "effect": "EFFECT_ALWAYS_HIT",
+   "power": 60,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "signal-beam",
+   "effect": "EFFECT_CONFUSE_HIT",
+   "power": 75,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "silver-wind",
+   "effect": "EFFECT_ALL_STATS_UP_HIT",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "sing",
+   "effect": "EFFECT_SLEEP",
+   "power": 0,
+   "accuracy": 55,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "skill-swap",
+   "effect": "EFFECT_SKILL_SWAP",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "skull-bash",
+   "effect": "EFFECT_SKULL_BASH",
+   "power": 100,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "sky-attack",
+   "effect": "EFFECT_SKY_ATTACK",
+   "power": 140,
+   "accuracy": 90,
+   "pp": 5,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "sky-uppercut",
+   "effect": "EFFECT_SKY_UPPERCUT",
+   "power": 85,
+   "accuracy": 90,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "slam",
+   "effect": "EFFECT_HIT",
+   "power": 80,
+   "accuracy": 75,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "slash",
+   "effect": "EFFECT_HIGH_CRITICAL",
+   "power": 70,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "sleep-powder",
+   "effect": "EFFECT_SLEEP",
+   "power": 0,
+   "accuracy": 75,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "sleep-talk",
+   "effect": "EFFECT_SLEEP_TALK",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_DEPENDS",
+   "priority": 0
+  },
+  {
+   "name": "sludge",
+   "effect": "EFFECT_POISON_HIT",
+   "power": 65,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "sludge-bomb",
+   "effect": "EFFECT_POISON_HIT",
+   "power": 90,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "smog",
+   "effect": "EFFECT_POISON_HIT",
+   "power": 20,
+   "accuracy": 70,
+   "pp": 20,
+   "secondaryEffectChance": 40,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "smokescreen",
+   "effect": "EFFECT_ACCURACY_DOWN",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "snatch",
+   "effect": "EFFECT_SNATCH",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_DEPENDS",
+   "priority": 4
+  },
+  {
+   "name": "snore",
+   "effect": "EFFECT_SNORE",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "soft-boiled",
+   "effect": "EFFECT_SOFTBOILED",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "solar-beam",
+   "effect": "EFFECT_SOLAR_BEAM",
+   "power": 120,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "sonic-boom",
+   "effect": "EFFECT_SONICBOOM",
+   "power": 1,
+   "accuracy": 90,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "spark",
+   "effect": "EFFECT_PARALYZE_HIT",
+   "power": 65,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "spike-cannon",
+   "effect": "EFFECT_MULTI_HIT",
+   "power": 20,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "spikes",
+   "effect": "EFFECT_SPIKES",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_OPPONENTS_FIELD",
+   "priority": 0
+  },
+  {
+   "name": "spit-up",
+   "effect": "EFFECT_SPIT_UP",
+   "power": 100,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "spite",
+   "effect": "EFFECT_SPITE",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "splash",
+   "effect": "EFFECT_SPLASH",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "spore",
+   "effect": "EFFECT_SLEEP",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "steel-wing",
+   "effect": "EFFECT_DEFENSE_UP_HIT",
+   "power": 70,
+   "accuracy": 90,
+   "pp": 25,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "stockpile",
+   "effect": "EFFECT_STOCKPILE",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "stomp",
+   "effect": "EFFECT_FLINCH_MINIMIZE_HIT",
+   "power": 65,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "strength",
+   "effect": "EFFECT_HIT",
+   "power": 80,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "string-shot",
+   "effect": "EFFECT_SPEED_DOWN",
+   "power": 0,
+   "accuracy": 95,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "stun-spore",
+   "effect": "EFFECT_PARALYZE",
+   "power": 0,
+   "accuracy": 75,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "submission",
+   "effect": "EFFECT_RECOIL",
+   "power": 80,
+   "accuracy": 80,
+   "pp": 25,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "substitute",
+   "effect": "EFFECT_SUBSTITUTE",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "sunny-day",
+   "effect": "EFFECT_SUNNY_DAY",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "super-fang",
+   "effect": "EFFECT_SUPER_FANG",
+   "power": 1,
+   "accuracy": 90,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "superpower",
+   "effect": "EFFECT_SUPERPOWER",
+   "power": 120,
+   "accuracy": 100,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "supersonic",
+   "effect": "EFFECT_CONFUSE",
+   "power": 0,
+   "accuracy": 55,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "surf",
+   "effect": "EFFECT_HIT",
+   "power": 95,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "swagger",
+   "effect": "EFFECT_SWAGGER",
+   "power": 0,
+   "accuracy": 90,
+   "pp": 15,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "swallow",
+   "effect": "EFFECT_SWALLOW",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "sweet-scent",
+   "effect": "EFFECT_EVASION_DOWN",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "swift",
+   "effect": "EFFECT_ALWAYS_HIT",
+   "power": 60,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "swords-dance",
+   "effect": "EFFECT_ATTACK_UP_2",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "synthesis",
+   "effect": "EFFECT_SYNTHESIS",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 5,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "tackle",
+   "effect": "EFFECT_HIT",
+   "power": 35,
+   "accuracy": 95,
+   "pp": 35,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "tail-whip",
+   "effect": "EFFECT_DEFENSE_DOWN",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "take-down",
+   "effect": "EFFECT_RECOIL",
+   "power": 90,
+   "accuracy": 85,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "taunt",
+   "effect": "EFFECT_TAUNT",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "teleport",
+   "effect": "EFFECT_TELEPORT",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "thief",
+   "effect": "EFFECT_THIEF",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "thrash",
+   "effect": "EFFECT_RAMPAGE",
+   "power": 90,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_RANDOM",
+   "priority": 0
+  },
+  {
+   "name": "thunder",
+   "effect": "EFFECT_THUNDER",
+   "power": 120,
+   "accuracy": 70,
+   "pp": 10,
+   "secondaryEffectChance": 30,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "thunder-punch",
+   "effect": "EFFECT_PARALYZE_HIT",
+   "power": 75,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "thunder-shock",
+   "effect": "EFFECT_PARALYZE_HIT",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "thunder-wave",
+   "effect": "EFFECT_PARALYZE",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "thunderbolt",
+   "effect": "EFFECT_PARALYZE_HIT",
+   "power": 95,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 10,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "tickle",
+   "effect": "EFFECT_TICKLE",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "torment",
+   "effect": "EFFECT_TORMENT",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "toxic",
+   "effect": "EFFECT_TOXIC",
+   "power": 0,
+   "accuracy": 85,
+   "pp": 10,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "transform",
+   "effect": "EFFECT_TRANSFORM",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "tri-attack",
+   "effect": "EFFECT_TRI_ATTACK",
+   "power": 80,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 20,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "trick",
+   "effect": "EFFECT_TRICK",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "twineedle",
+   "effect": "EFFECT_TWINEEDLE",
+   "power": 25,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 20,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "twister",
+   "effect": "EFFECT_TWISTER",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 20,
+   "target": "MOVE_TARGET_BOTH",
+   "priority": 0
+  },
+  {
+   "name": "uproar",
+   "effect": "EFFECT_UPROAR",
+   "power": 50,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_RANDOM",
+   "priority": 0
+  },
+  {
+   "name": "vice-grip",
+   "effect": "EFFECT_HIT",
+   "power": 55,
+   "accuracy": 100,
+   "pp": 30,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "vine-whip",
+   "effect": "EFFECT_HIT",
+   "power": 35,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "vital-throw",
+   "effect": "EFFECT_VITAL_THROW",
+   "power": 70,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": -1
+  },
+  {
+   "name": "water-gun",
+   "effect": "EFFECT_HIT",
+   "power": 40,
+   "accuracy": 100,
+   "pp": 25,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "water-pulse",
+   "effect": "EFFECT_CONFUSE_HIT",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 20,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "water-sport",
+   "effect": "EFFECT_WATER_SPORT",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "waterfall",
+   "effect": "EFFECT_HIT",
+   "power": 80,
+   "accuracy": 100,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "whirlwind",
+   "effect": "EFFECT_ROAR",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 20,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": -6
+  },
+  {
+   "name": "will-o-wisp",
+   "effect": "EFFECT_WILL_O_WISP",
+   "power": 0,
+   "accuracy": 75,
+   "pp": 15,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "wing-attack",
+   "effect": "EFFECT_HIT",
+   "power": 60,
+   "accuracy": 100,
+   "pp": 35,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "withdraw",
+   "effect": "EFFECT_DEFENSE_UP",
+   "power": 0,
+   "accuracy": 0,
+   "pp": 40,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_USER",
+   "priority": 0
+  },
+  {
+   "name": "wrap",
+   "effect": "EFFECT_TRAP",
+   "power": 15,
+   "accuracy": 85,
+   "pp": 20,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "yawn",
+   "effect": "EFFECT_YAWN",
+   "power": 0,
+   "accuracy": 100,
+   "pp": 10,
+   "secondaryEffectChance": 0,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  },
+  {
+   "name": "zap-cannon",
+   "effect": "EFFECT_PARALYZE_HIT",
+   "power": 100,
+   "accuracy": 50,
+   "pp": 5,
+   "secondaryEffectChance": 100,
+   "target": "MOVE_TARGET_SELECTED",
+   "priority": 0
+  }
+ ]
+}

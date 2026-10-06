@@ -12,7 +12,7 @@ import { WeatherId } from '../battle/weather';
  * Every level-up move of Kanto's original 151 that this engine can play, keyed
  * by the identifier PokeAPI and both snapshots use.
  *
- * 188 of the 273 the 151 learn are here. What the other 85 need is
+ * 187 of the 273 the 151 learn are here. What the other 86 need is
  * `node tools/moves/coverage.mjs`, which counts with the same function this
  * was generated with, and `docs/pokemon/roster.md` lists them by species.
  *
@@ -38,14 +38,14 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'acid': new MoveBase({
     name: 'Acid',
-    description: 'A Poison physical attack. Hits both foes. 10% chance to lower both foes\' Sp. Def by one stage.',
+    description: 'A Poison physical attack. Hits both foes. 10% chance to lower both foes\' Defense by one stage.',
     type: PokemonType.Poison,
     power: 40,
     accuracy: 100,
     pp: 30,
     category: MoveCategory.Physical,
     target: MoveTarget.BothFoes,
-    secondaries: [{ chance: 10, boosts: [{ stat: 'spDefense', stages: -1 }] }],
+    secondaries: [{ chance: 10, boosts: [{ stat: 'defense', stages: -1 }] }],
   }),
   'acid-armor': new MoveBase({
     name: 'Acid Armor',
@@ -276,18 +276,6 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
     target: MoveTarget.Self,
     effects: { boosts: [{ stat: 'spAttack', stages: 1 }, { stat: 'spDefense', stages: 1 }] },
   }),
-  'charge': new MoveBase({
-    name: 'Charge',
-    description: 'A Electric status move. Raises the user\'s Sp. Def by one stage.',
-    type: PokemonType.Electric,
-    power: 0,
-    accuracy: 100,
-    pp: 20,
-    category: MoveCategory.Status,
-    alwaysHits: true,
-    target: MoveTarget.Self,
-    effects: { boosts: [{ stat: 'spDefense', stages: 1 }] },
-  }),
   'comet-punch': new MoveBase({
     name: 'Comet Punch',
     description: 'A Normal physical attack. Hits 2 to 5 times.',
@@ -376,13 +364,13 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'crunch': new MoveBase({
     name: 'Crunch',
-    description: 'A Dark special attack. 20% chance to lower the target\'s Defense by one stage.',
+    description: 'A Dark special attack. 20% chance to lower the target\'s Sp. Def by one stage.',
     type: PokemonType.Dark,
     power: 80,
     accuracy: 100,
     pp: 15,
     category: MoveCategory.Special,
-    secondaries: [{ chance: 20, boosts: [{ stat: 'defense', stages: -1 }] }],
+    secondaries: [{ chance: 20, boosts: [{ stat: 'spDefense', stages: -1 }] }],
     flags: [MoveFlag.Bite, MoveFlag.Contact],
   }),
   'defense-curl': new MoveBase({
@@ -562,7 +550,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
     accuracy: 100,
     pp: 5,
     category: MoveCategory.Physical,
-    priority: 2,
+    priority: 1,
     flags: [MoveFlag.Contact],
   }),
   'fake-out': new MoveBase({
@@ -573,7 +561,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
     accuracy: 100,
     pp: 10,
     category: MoveCategory.Physical,
-    priority: 3,
+    priority: 1,
     secondaries: [{ chance: 100, flinch: true }],
     flags: [MoveFlag.Contact],
   }),
@@ -736,7 +724,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'growth': new MoveBase({
     name: 'Growth',
-    description: 'A Normal status move. Raises the user\'s Attack, Sp. Atk by one stage.',
+    description: 'A Normal status move. Raises the user\'s Sp. Atk by one stage.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -744,7 +732,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
     category: MoveCategory.Status,
     alwaysHits: true,
     target: MoveTarget.Self,
-    effects: { boosts: [{ stat: 'attack', stages: 1 }, { stat: 'spAttack', stages: 1 }] },
+    effects: { boosts: [{ stat: 'spAttack', stages: 1 }] },
   }),
   'gust': new MoveBase({
     name: 'Gust',
@@ -1105,7 +1093,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'minimize': new MoveBase({
     name: 'Minimize',
-    description: 'A Normal status move. Raises the user\'s evasion by two stages.',
+    description: 'A Normal status move. Raises the user\'s evasion by one stage.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
@@ -1113,7 +1101,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
     category: MoveCategory.Status,
     alwaysHits: true,
     target: MoveTarget.Self,
-    effects: { boosts: [{ stat: 'evasion', stages: 2 }] },
+    effects: { boosts: [{ stat: 'evasion', stages: 1 }] },
   }),
   'moonlight': new MoveBase({
     name: 'Moonlight',
@@ -1178,24 +1166,23 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'poison-fang': new MoveBase({
     name: 'Poison Fang',
-    description: 'A Poison physical attack. 50% chance to leave the target poisoned.',
+    description: 'A Poison physical attack. 30% chance to leave the target poisoned.',
     type: PokemonType.Poison,
     power: 50,
     accuracy: 100,
     pp: 15,
     category: MoveCategory.Physical,
-    secondaries: [{ chance: 50, status: PrimaryStatus.Poison }],
+    secondaries: [{ chance: 30, status: PrimaryStatus.Poison }],
     flags: [MoveFlag.Bite, MoveFlag.Contact],
   }),
   'poison-gas': new MoveBase({
     name: 'Poison Gas',
-    description: 'A Poison status move. Lands on both foes. Leaves both foes poisoned.',
+    description: 'A Poison status move. Leaves the target poisoned.',
     type: PokemonType.Poison,
     power: 0,
     accuracy: 55,
     pp: 40,
     category: MoveCategory.Status,
-    target: MoveTarget.BothFoes,
     effects: { status: PrimaryStatus.Poison },
   }),
   'poison-powder': new MoveBase({
@@ -1692,14 +1679,14 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'string-shot': new MoveBase({
     name: 'String Shot',
-    description: 'A Bug status move. Lands on both foes. Lowers both foes\' Speed by two stages.',
+    description: 'A Bug status move. Lands on both foes. Lowers both foes\' Speed by one stage.',
     type: PokemonType.Bug,
     power: 0,
     accuracy: 95,
     pp: 40,
     category: MoveCategory.Status,
     target: MoveTarget.BothFoes,
-    effects: { boosts: [{ stat: 'speed', stages: -2 }] },
+    effects: { boosts: [{ stat: 'speed', stages: -1 }] },
   }),
   'stun-spore': new MoveBase({
     name: 'Stun Spore',
@@ -1767,14 +1754,14 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'sweet-scent': new MoveBase({
     name: 'Sweet Scent',
-    description: 'A Normal status move. Lands on both foes. Lowers both foes\' evasion by two stages.',
+    description: 'A Normal status move. Lands on both foes. Lowers both foes\' evasion by one stage.',
     type: PokemonType.Normal,
     power: 0,
     accuracy: 100,
     pp: 20,
     category: MoveCategory.Status,
     target: MoveTarget.BothFoes,
-    effects: { boosts: [{ stat: 'evasion', stages: -2 }] },
+    effects: { boosts: [{ stat: 'evasion', stages: -1 }] },
   }),
   'swift': new MoveBase({
     name: 'Swift',
@@ -1969,13 +1956,12 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'waterfall': new MoveBase({
     name: 'Waterfall',
-    description: 'A Water special attack. 20% chance to make the target flinch.',
+    description: 'A Water special attack. No side effect.',
     type: PokemonType.Water,
     power: 80,
     accuracy: 100,
     pp: 15,
     category: MoveCategory.Special,
-    secondaries: [{ chance: 20, flinch: true }],
     flags: [MoveFlag.Contact],
   }),
   'will-o-wisp': new MoveBase({
