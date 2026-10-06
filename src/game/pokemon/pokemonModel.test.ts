@@ -6,7 +6,7 @@ import { PokemonBase } from './PokemonBase';
 import { PokemonParty } from './PokemonParty';
 import { PokemonType } from './PokemonType';
 import { POISON_POWDER, TACKLE, VINE_WHIP, WATER_GUN } from './moves';
-import { BULBASAUR, BUTTERFREE, CHARMANDER, PIDGEY, SQUIRTLE } from './species';
+import { ALL_SPECIES, BULBASAUR, BUTTERFREE, CHARMANDER, PIDGEY, SQUIRTLE, getSpeciesById } from './species';
 import { createBattleState } from './battle/battleEngine';
 
 const expectedHp = (baseHp: number, level: number): number =>
@@ -319,5 +319,49 @@ describe('PokemonParty', () => {
     expect(party.movePokemon(0, 0)).toBe(false);
     expect(party.movePokemon(-1, 1)).toBe(false);
     expect(party.movePokemon(0, 3)).toBe(false);
+  });
+});
+
+describe('the moves a Pokemon is built with', () => {
+  /**
+   * Playtest finding B2: FireRed's learnsets list many moves twice - at level 1
+   * and again later - and the constructor took the last four entries blindly,
+   * so 44 species were built with one move in two slots, live on shipped maps
+   * (a Viridian Forest Metapod with HARDEN / HARDEN, Nye's Poliwhirl with
+   * HYPNOSIS and WATER GUN twice each). FireRed's `GiveBoxMonInitialMoveset`
+   * skips a move already known.
+   */
+  it('never knows the same move twice, for any of the 151 at any level', () => {
+    const repeats: string[] = [];
+    for (const species of ALL_SPECIES) {
+      for (let level = 1; level <= 100; level += 1) {
+        const names = new Pokemon(species, level).moves.map((move) => move.base.name);
+        if (new Set(names).size !== names.length) {
+          repeats.push(`${species.id} ${level}: ${names.join(' / ')}`);
+        }
+      }
+    }
+    expect(repeats).toEqual([]);
+  });
+
+  it('builds the reproductions with each move once', () => {
+    const metapod = new Pokemon(getSpeciesById('metapod')!, 9).moves.map((move) => move.base.name);
+    expect(metapod.filter((name) => name === 'Harden')).toHaveLength(1);
+    const poliwhirl = new Pokemon(getSpeciesById('poliwhirl')!, 13).moves.map((move) => move.base.name);
+    expect(poliwhirl.filter((name) => name === 'Hypnosis')).toHaveLength(1);
+    expect(poliwhirl.filter((name) => name === 'Water Gun')).toHaveLength(1);
+  });
+
+  it('keeps the four most recently learned when there are more than four, as FireRed does', () => {
+    // Charmander's learnset never brings a move back after it has been pushed
+    // out, so here walking it in level order and dropping the oldest when full
+    // is the last four distinct moves in the order they were first learned.
+    const charmander = new Pokemon(CHARMANDER, 40).moves.map((move) => move.base.name);
+    expect(charmander).toHaveLength(4);
+    const learnedBy40 = CHARMANDER.learnset
+      .filter((entry) => entry.level <= 40)
+      .map((entry) => entry.move.name)
+      .filter((name, index, all) => all.indexOf(name) === index);
+    expect(charmander).toEqual(learnedBy40.slice(-4));
   });
 });

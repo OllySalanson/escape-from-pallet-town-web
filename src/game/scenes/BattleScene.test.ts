@@ -972,6 +972,31 @@ describe('a level reached in the middle of a trainer battle', () => {
  * and the player read about it. Named before it lands, it is a decision - and
  * the switch is free, because nothing has moved yet.
  */
+describe('a Pokemon with no PP left', () => {
+  it('says it has no moves left and Struggles, instead of offering a list it cannot use', () => {
+    const squirtle = new Pokemon(SQUIRTLE, 8);
+    squirtle.moves.forEach((move) => move.setPp(0));
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [new Pokemon(PIDGEY, 5)],
+      party: new PokemonParty([squirtle]),
+    });
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 20 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+
+    const shown = dialog.shownMessages;
+    const said = shown.indexOf('SQUIRTLE has no moves left!');
+    expect(said).toBeGreaterThanOrEqual(0);
+    expect(shown.slice(said + 1).some((line) => line.startsWith('Your SQUIRTLE used STRUGGLE!'))).toBe(true);
+  });
+});
+
 describe('BattleScene about-to-use switch prompt', () => {
   /** A trainer on their last point of HP with a second Pokemon, and a bench to answer it with. */
   const fightWithABench = () => {

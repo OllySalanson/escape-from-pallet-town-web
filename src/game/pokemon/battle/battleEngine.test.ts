@@ -7,6 +7,7 @@ import {
   BITE,
   EMBER,
   GROWL,
+  ICE_BEAM,
   METAL_CLAW,
   POISON_POWDER,
   SING,
@@ -15,7 +16,16 @@ import {
   TAIL_WHIP,
   THUNDER_WAVE,
 } from '../moves';
-import { BULBASAUR, BUTTERFREE, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE } from '../species';
+import {
+  BULBASAUR,
+  BUTTERFREE,
+  CHARMANDER,
+  JIGGLYPUFF,
+  PIDGEY,
+  PIKACHU,
+  SQUIRTLE,
+  getSpeciesById,
+} from '../species';
 import {
   attemptCatch,
   chooseEnemyMove,
@@ -371,11 +381,17 @@ describe('battle turn resolution', () => {
   });
 
   it('does not narrate type effectiveness for a move that deals no damage', () => {
-    // Poison Powder is Poison and Bulbasaur is part Grass, so the old code
-    // announced "It's super effective!" for a status move that dealt nothing.
+    // Poison Powder is Poison and Tangela is Grass, so the old code announced
+    // "It's super effective!" for a status move that dealt nothing. (It was a
+    // Bulbasaur here until Bulbasaur, being part Poison, stopped being one a
+    // Poison Powder can poison.)
     const butterfree = new Pokemon(BUTTERFREE, 12);
     const powderIndex = butterfree.moves.findIndex((move) => move.base === POISON_POWDER);
-    const result = resolveTurn(createBattleState(butterfree, new Pokemon(BULBASAUR, 10)), powderIndex, maximumRandom);
+    const result = resolveTurn(
+      createBattleState(butterfree, new Pokemon(getSpeciesById('tangela')!, 10)),
+      powderIndex,
+      maximumRandom,
+    );
     // Butterfree is faster, so its own action is everything before the reply.
     const enemyReplyIndex = result.events.findIndex(
       (event) => event.type === 'used-move' && event.user === 'enemy',
@@ -569,6 +585,136 @@ describe('catching', () => {
     expect(failedCatch.state.outcome).toBe('active');
     expect(failedCatch.events.at(-1)).toEqual({ type: 'broke-free', name: 'Bulbasaur' });
     expect(enemyTurn.events.some((event) => event.type === 'used-move' && event.user === 'enemy')).toBe(true);
+  });
+});
+
+/**
+ * Playtest finding B3: the status branch only refused a status when the move's
+ * *type* could not touch the target, so Ember burned Fire types, Poison Powder
+ * poisoned Poison types (the player's own Bulbasaur, every time) and Ice Beam
+ * froze Lapras. FireRed's `SetMoveEffect` refuses all three by type.
+ */
+describe('statuses a type cannot carry', () => {
+  const holding = (speciesId: string, level: number, ...moves: MoveBase[]): Pokemon => {
+    const pokemon = new Pokemon(getSpeciesById(speciesId)!, level);
+    pokemon.moves.splice(0, pokemon.moves.length, ...moves.map((move) => new Move(move)));
+    return pokemon;
+  };
+  /** Every roll lands: the secondary fires, nothing misses. */
+  const always = (): number => 0;
+  const standingStill = (speciesId: string, level: number): Pokemon => holding(speciesId, level);
+
+  it.each([
+    ['charmander', 'a Fire type'],
+    ['growlithe', 'a Fire type'],
+  ])('never burns %s (%s) with Ember, and says nothing about the roll', (target) => {
+    const result = resolveTurn(
+      createBattleState(holding('charmander', 30, EMBER), standingStill(target, 30)),
+      0,
+      always,
+    );
+    expect(result.state.enemy.primaryStatus).toBeNull();
+    expect(result.events.some((event) => event.type === 'status-applied')).toBe(false);
+    expect(result.events.some((event) => event.type === 'effectiveness' && event.multiplier === 0)).toBe(false);
+  });
+
+  it.each(['ekans', 'bulbasaur', 'magnemite'])('never poisons %s with Poison Powder, and says it does not affect it', (target) => {
+    const result = resolveTurn(
+      createBattleState(holding('butterfree', 20, POISON_POWDER), standingStill(target, 20)),
+      0,
+      always,
+    );
+    expect(result.state.enemy.primaryStatus).toBeNull();
+    expect(result.events).toContainEqual({ type: 'effectiveness', multiplier: 0 });
+  });
+
+  it('never freezes Lapras with Ice Beam', () => {
+    const result = resolveTurn(
+      createBattleState(holding('dewgong', 50, ICE_BEAM), standingStill('lapras', 50)),
+      0,
+      always,
+    );
+    expect(result.state.enemy.primaryStatus).toBeNull();
+  });
+
+  it('still paralyses an Electric type, which generation III allows', () => {
+    const result = resolveTurn(
+      createBattleState(holding('pikachu', 20, THUNDER_WAVE), standingStill('voltorb', 20)),
+      0,
+      always,
+    );
+    expect(result.state.enemy.primaryStatus).toBe(PrimaryStatus.Paralysis);
+  });
+
+  it('never lets Poison Point poison a Poison type that touches it', () => {
+    const ekans = holding('ekans', 20, TACKLE);
+    const result = resolveTurn(createBattleState(ekans, standingStill('nidoran-m', 20)), 0, always);
+    expect(getSpeciesById('nidoran-m')?.abilityId).toBe('poison-point');
+    expect(result.state.player.primaryStatus).toBeNull();
+    expect(result.events.some((event) => event.type === 'status-applied')).toBe(false);
+  });
+});
+
+/**
+ * Playtest finding B4: with every move at 0 PP, choosing any move answered
+ * `no-pp` and resolved nothing - the enemy did not act either - so a trainer
+ * fight with an empty bench and an empty bag had no button that moved it on.
+ * FireRed has Struggle.
+ */
+describe('Struggle', () => {
+  const spent = (pokemon: Pokemon): Pokemon => {
+    pokemon.moves.forEach((move) => move.setPp(0));
+    return pokemon;
+  };
+  const geodudeTrainer = () => ({
+    id: 'b4-repro',
+    name: 'TESTER',
+    party: [new Pokemon(getSpeciesById('geodude')!, 8)],
+  });
+
+  it('is what a Pokemon with no PP left does, whatever move was chosen', () => {
+    const state = createTrainerBattleState(spent(new Pokemon(SQUIRTLE, 8)), geodudeTrainer());
+    const result = resolveTurn(state, 2, () => 0.5);
+
+    const struggle = result.events.find(
+      (event) => event.type === 'used-move' && event.user === 'player',
+    );
+    expect(struggle).toMatchObject({ move: 'Struggle' });
+    expect(result.state.enemy.currentHp).toBeLessThan(result.state.enemy.pokemon.maxHp);
+    expect(result.events.some((event) => event.type === 'no-pp')).toBe(false);
+  });
+
+  it('is typeless: a Rock type does not resist it and nothing is said about effectiveness', () => {
+    const state = createTrainerBattleState(spent(new Pokemon(SQUIRTLE, 8)), geodudeTrainer());
+    const result = resolveTurn(state, 0, () => 0.5);
+    const playerSwing = result.events.findIndex(
+      (event) => event.type === 'used-move' && event.user === 'player',
+    );
+    expect(result.events[playerSwing + 1]?.type).not.toBe('effectiveness');
+  });
+
+  it('costs a quarter of what it dealt, at least one HP, and spends no PP', () => {
+    const squirtle = spent(new Pokemon(SQUIRTLE, 30));
+    const state = createBattleState(squirtle, new Pokemon(getSpeciesById('snorlax')!, 30));
+    const enemyStill = { ...state, enemy: { ...state.enemy, moves: [] } };
+    const result = resolveTurn(enemyStill, 0, () => 0.5);
+
+    const dealt = state.enemy.currentHp - result.state.enemy.currentHp;
+    const recoil = result.events.find((event) => event.type === 'recoil');
+    expect(dealt).toBeGreaterThan(0);
+    expect(recoil).toMatchObject({ damage: Math.max(1, Math.floor(dealt / 4)) });
+    expect(result.state.player.moves.every((move) => move.pp === 0)).toBe(true);
+  });
+
+  it('is what an enemy with no PP left does, so the fight always moves on', () => {
+    const state = createTrainerBattleState(new Pokemon(SQUIRTLE, 8), {
+      ...geodudeTrainer(),
+      party: [spent(new Pokemon(getSpeciesById('geodude')!, 8))],
+    });
+    const result = resolveTurn(state, 0, () => 0.5);
+    expect(
+      result.events.find((event) => event.type === 'used-move' && event.user === 'enemy'),
+    ).toMatchObject({ move: 'Struggle' });
   });
 });
 

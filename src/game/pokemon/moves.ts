@@ -15,6 +15,28 @@ export const TACKLE = new MoveBase({
 });
 
 /**
+ * What a Pokemon does when it has no PP left in any move: FireRed's
+ * `gBattleMoves[MOVE_STRUGGLE]` (pret/pokefirered `src/data/battle_moves.h` at
+ * 037335f) - 50 power, 100 accuracy, contact, and a quarter of the damage dealt
+ * back as recoil (`MOVE_EFFECT_RECOIL_25`, at least one HP). It is typeless in
+ * battle (`Cmd_typecalc` skips it), its recoil ignores Rock Head
+ * (`BattleScript_MoveEffectRecoil` jumps past the ability for it), and it costs
+ * no PP. Nobody learns it: the engine reaches for it when there is nothing else.
+ */
+export const STRUGGLE = new MoveBase({
+  name: 'Struggle',
+  description: 'Used only when no move has PP left. Typeless; the user takes a quarter of the damage dealt.',
+  type: PokemonType.Normal,
+  power: 50,
+  accuracy: 100,
+  pp: 1,
+  category: MoveCategory.Physical,
+  recoil: 0.25,
+  typeless: true,
+  flags: [MoveFlag.Contact],
+});
+
+/**
  * The five shipped moves that hit **both** foes.
  *
  * `MoveTarget.BothFoes` is PokeAPI's `all-opponents`, read off the committed

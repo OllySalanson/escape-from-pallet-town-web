@@ -22,7 +22,8 @@ const identifierOf = (move: MoveBase): string => {
 export const AUTHORED_MOVES: Readonly<Record<string, MoveBase>> = Object.freeze(
   Object.fromEntries(
     Object.values(AUTHORED)
-      .filter((value): value is MoveBase => value instanceof MoveBase)
+      // Struggle is the engine's, not a move anybody can be handed or taught.
+      .filter((value): value is MoveBase => value instanceof MoveBase && value !== AUTHORED.STRUGGLE)
       .map((move) => [identifierOf(move), move]),
   ),
 );

@@ -320,12 +320,33 @@ export class Pokemon {
     return { forgotten };
   }
 
+  /**
+   * The moves a Pokemon built at a level knows, by FireRed's own rule
+   * (`GiveBoxMonInitialMoveset`, pret/pokefirered `src/pokemon.c` at 037335f):
+   * walk the learnset in level order up to the Pokemon's level, skip a move it
+   * already knows, and when all four slots are full drop the oldest and take
+   * the new one.
+   *
+   * The skip is the part that matters. FireRed's learnsets list many moves
+   * twice - at level 1 and again later - and taking the last four entries
+   * blindly built 44 species with one move in two slots: a Viridian Forest
+   * Metapod with HARDEN / HARDEN, Nye's Poliwhirl with HYPNOSIS and WATER GUN
+   * twice each (playtest finding B2).
+   */
   private initializeMoves(): Move[] {
-    return this.base.learnset
-      .filter((entry) => entry.level <= this.level)
-      .sort((left, right) => left.level - right.level)
-      .slice(-Pokemon.MAX_MOVE_COUNT)
-      .map((entry) => new Move(entry.move));
+    const known: MoveBase[] = [];
+    for (const entry of this.base.learnset
+      .filter((learnable) => learnable.level <= this.level)
+      .sort((left, right) => left.level - right.level)) {
+      if (known.includes(entry.move)) {
+        continue;
+      }
+      if (known.length === Pokemon.MAX_MOVE_COUNT) {
+        known.shift();
+      }
+      known.push(entry.move);
+    }
+    return known.map((move) => new Move(move));
   }
 
   private learnMovesAtLevel(level: number): {

@@ -782,7 +782,9 @@ describe('the multi-unit ability hooks, against imported species', () => {
   /** Takes every move's PP away, so this slot has no action to take. */
   const silenced = (state: BattleState, ref: ReturnType<typeof slotRef>): BattleState => {
     const combatant = unitAt(state, ref)!;
-    const quiet = { ...combatant, moves: combatant.moves.map((move) => ({ ...move, pp: 0 })) };
+    // No moves at all, rather than no PP: a Pokemon out of PP Struggles, as in
+    // FireRed, and only one that knows nothing stands still.
+    const quiet = { ...combatant, moves: [] };
     return ref.slot === 0 ? { ...state, enemy: quiet } : { ...state, enemyPartner: quiet };
   };
 
