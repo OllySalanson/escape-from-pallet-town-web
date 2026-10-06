@@ -339,7 +339,13 @@ export class BattleScene extends Phaser.Scene {
   private party!: PokemonParty;
   private forcedReplacement = false;
   private partyMessage = '';
-  private readonly participatingPokemon = new Set<PokemonInstance>();
+  /**
+   * Who has stood on the field against each foe, which is who shares what it
+   * pays when it falls - FireRed's `gSentPokesToOpponent`. Kept per foe, so a
+   * Pokemon that fought the first of a trainer's party earns nothing for the
+   * second unless it faced that one too.
+   */
+  private readonly foesFacedBy = new Map<PokemonInstance, Set<PokemonInstance>>();
   /** The list the cursor below was drawn for, and where each of its rows started. */
   private cursorRows: readonly Phaser.GameObjects.Text[] = [];
   private rowHomes = new WeakMap<Phaser.GameObjects.Text, number>();
@@ -450,7 +456,7 @@ export class BattleScene extends Phaser.Scene {
     if (data.trainer) {
       audioManager.play('battleStart');
     }
-    this.participatingPokemon.clear();
+    this.foesFacedBy.clear();
     this.struggleLines = [];
     this.ballSprite = undefined;
     this.thrownBallId = undefined;
@@ -526,9 +532,7 @@ export class BattleScene extends Phaser.Scene {
         : createBattleState(playerPokemon, wildPokemon, data.weather ?? null)),
       playerParty: this.party.pokemon,
     };
-    playerCombatants(this.state).forEach((combatant) =>
-      this.participatingPokemon.add(combatant.pokemon),
-    );
+    this.noteWhoFacesWhom();
     this.cameras.main.setBackgroundColor('#0b1220');
     this.centreComposition();
     this.cameras.main.fadeIn(180, 0, 0, 0);
@@ -2030,6 +2034,7 @@ export class BattleScene extends Phaser.Scene {
     const previousState = this.state;
     this.state = result.state;
     this.persistActivePokemonHp();
+    this.noteWhoFacesWhom();
     this.refreshStatusLabels();
     const rewardMessages = this.awardTrainerDefeatExperience(previousState, result.events);
     this.pendingChoices = [];
@@ -2221,14 +2226,19 @@ export class BattleScene extends Phaser.Scene {
       this.refreshPlayerHpDisplay(healedSlot);
     }
     this.refreshStatusLabels();
+    const beforeEnemy = this.state;
     const enemyResult = resolveEnemyTurn(this.state, () => Math.random());
     this.state = enemyResult.state;
     this.persistActivePokemonHp();
+    this.noteWhoFacesWhom();
+    // A foe can fall on a turn spent on the bag - to its own poison or recoil -
+    // and it pays as it would on any other turn.
+    const rewards = this.awardTrainerDefeatExperience(beforeEnemy, enemyResult.events);
     this.refreshStatusLabels();
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.showCombatEvents(enemyResult.events, [{ message: use.message, sound: 'heal' }]);
+    this.showCombatEvents(enemyResult.events, [{ message: use.message, sound: 'heal' }], [], rewards);
   }
 
   /**
@@ -2282,7 +2292,7 @@ export class BattleScene extends Phaser.Scene {
     const switchIn = replacePlayerPokemon(this.state, pokemon, into.slot);
     const switchedState = switchIn.state;
     this.state = switchedState;
-    this.participatingPokemon.add(pokemon);
+    this.noteWhoFacesWhom();
     this.forcedReplacement = false;
     this.refreshPlayerCombatant(into);
     // A Pokemon sent in because the last one fainted comes in free, as in
@@ -2305,14 +2315,22 @@ export class BattleScene extends Phaser.Scene {
     const result = resolveEnemyTurn(switchedState, () => Math.random());
     this.state = result.state;
     this.persistActivePokemonHp();
+    this.noteWhoFacesWhom();
+    const events = [...switchIn.events, ...result.events];
+    const rewards = this.awardTrainerDefeatExperience(switchedState, events);
     this.refreshStatusLabels();
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.showCombatEvents([...switchIn.events, ...result.events], [
-      ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
-      { message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' },
-    ]);
+    this.showCombatEvents(
+      events,
+      [
+        ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
+        { message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' },
+      ],
+      [],
+      rewards,
+    );
   }
 
   /**
@@ -2382,7 +2400,10 @@ export class BattleScene extends Phaser.Scene {
     this.persistActivePokemonHp();
     const switchIn = replacePlayerPokemon(this.state, pokemon);
     this.state = switchIn.state;
-    this.participatingPokemon.add(pokemon);
+    // The Pokemon that knocked the last foe out goes back before the next one
+    // lands, so this foe is faced by the newcomer alone - FireRed resets who
+    // faces a foe to whoever is out when it is sent in.
+    this.foesFacedBy.set(this.state.enemy.pokemon, new Set([pokemon]));
     this.refreshPlayerCombatant();
     this.refreshStatusLabels();
     this.pendingCombatMessages.unshift(
@@ -2688,8 +2709,36 @@ export class BattleScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * Notes everyone the player has standing on the field as facing every foe
+   * standing opposite. Asked after every change to the field, so a Pokemon that
+   * was out against a foe for any part of the fight shares what it pays.
+   */
+  private noteWhoFacesWhom(): void {
+    const mine = playerCombatants(this.state)
+      .filter((combatant) => combatant.currentHp > 0)
+      .map((combatant) => combatant.pokemon);
+    for (const ref of slotsOf(this.state, 'enemy')) {
+      const foe = unitAt(this.state, ref);
+      if (!foe || foe.currentHp === 0) {
+        continue;
+      }
+      const faced = this.foesFacedBy.get(foe.pokemon) ?? new Set<PokemonInstance>();
+      mine.forEach((pokemon) => faced.add(pokemon));
+      this.foesFacedBy.set(foe.pokemon, faced);
+    }
+  }
+
   private awardVictoryExperience(defeatedPokemon: PokemonInstance): StagedNote[] {
-    const experience = experienceAwardForDefeat(defeatedPokemon.level);
+    // Whoever faced it and is still standing shares it, as FireRed shares it;
+    // a Pokemon that fainted earns nothing for the foe it fell to.
+    const participants = [...(this.foesFacedBy.get(defeatedPokemon) ?? [])].filter(
+      (pokemon) => !pokemon.isFainted,
+    );
+    const experience = experienceAwardForDefeat(defeatedPokemon, {
+      participants: participants.length,
+      trainer: this.trainer !== undefined,
+    });
     const messages: StagedNote[] = [];
     // Everyone the player has on the field, not just the lead: in a double
     // battle both of them are looking at a plate that has to keep up.
@@ -2699,7 +2748,7 @@ export class BattleScene extends Phaser.Scene {
     });
     const levelled: typeof onField = [];
 
-    for (const pokemon of this.participatingPokemon) {
+    for (const pokemon of participants) {
       const result = pokemon.gainExperience(experience);
       const standing = onField.find((entry) => entry.pokemon === pokemon);
       if (standing && result.levelsGained.length > 0) {

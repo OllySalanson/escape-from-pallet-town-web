@@ -10,11 +10,18 @@ import {
   moveSummary,
 } from './pokemonSummary';
 
+/**
+ * Every Pokemon in this file is a starter or a Pidgey, and FireRed puts all
+ * four on the medium-slow curve - which is the curve a level is read on here.
+ */
+const STARTER_CURVE = 'medium-slow' as const;
+
+
 describe('experience progress', () => {
   it('measures the level from its own start, not from zero', () => {
     const pokemon = new Pokemon(CHARMANDER, 8);
-    const span = experienceForLevel(9) - experienceForLevel(8);
-    pokemon.experience = experienceForLevel(8) + Math.floor(span / 4);
+    const span = experienceForLevel(9, STARTER_CURVE) - experienceForLevel(8, STARTER_CURVE);
+    pokemon.experience = experienceForLevel(8, STARTER_CURVE) + Math.floor(span / 4);
 
     const progress = experienceProgress(pokemon);
 
@@ -35,16 +42,16 @@ describe('experience progress', () => {
     expect(progress.fraction).toBe(0);
     expect(experienceBarFill(progress)).toBe(0);
     expect(experienceLine(progress)).toBe(
-      `${(experienceForLevel(9) - experienceForLevel(8)).toLocaleString('en-GB')} XP to Lv 9`,
+      `${(experienceForLevel(9, STARTER_CURVE) - experienceForLevel(8, STARTER_CURVE)).toLocaleString('en-GB')} XP to Lv 9`,
     );
   });
 
   it('shows a pixel for any experience at all, and never more than the bar', () => {
     const pokemon = new Pokemon(CHARMANDER, 8);
-    pokemon.experience = experienceForLevel(8) + 1;
+    pokemon.experience = experienceForLevel(8, STARTER_CURVE) + 1;
     expect(experienceBarFill(experienceProgress(pokemon))).toBe(1);
 
-    pokemon.experience = experienceForLevel(9) - 1;
+    pokemon.experience = experienceForLevel(9, STARTER_CURVE) - 1;
     expect(experienceBarFill(experienceProgress(pokemon))).toBe(XP_BAR_WIDTH);
   });
 

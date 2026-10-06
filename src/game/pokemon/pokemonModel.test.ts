@@ -88,11 +88,44 @@ describe('Pokemon stat computation', () => {
 });
 
 describe('Pokemon experience and leveling', () => {
-  it('uses an N cubed total experience curve and awards half the defeated level-cubed XP', () => {
-    expect(experienceForLevel(1)).toBe(1);
-    expect(experienceForLevel(5)).toBe(125);
+  /**
+   * FireRed's `gExperienceTables`, worked by hand: medium-fast is n cubed, fast
+   * four fifths of it, slow five quarters, and medium-slow `6n^3/5 - 15n^2 +
+   * 100n - 140`. Level 1 is 1 on every curve, as the table has it.
+   */
+  it("puts each species on FireRed's own growth curve", () => {
+    expect(experienceForLevel(1, 'medium-slow')).toBe(1);
     expect(experienceForLevel(10)).toBe(1000);
-    expect(experienceAwardForDefeat(10)).toBe(500);
+    expect(experienceForLevel(10, 'medium')).toBe(1000);
+    expect(experienceForLevel(10, 'fast')).toBe(800);
+    expect(experienceForLevel(10, 'slow')).toBe(1250);
+    expect(experienceForLevel(10, 'medium-slow')).toBe(560);
+    expect(experienceForLevel(100, 'medium-slow')).toBe(1059860);
+    expect(new Pokemon(BULBASAUR, 10).experience).toBe(560);
+    expect(BULBASAUR.growthRate).toBe('medium-slow');
+  });
+
+  /**
+   * FireRed's `Cmd_getexp`: the fallen Pokemon's own yield times its level over
+   * seven, shared by whoever faced it, at least one each, and half as much
+   * again from a trainer. Pidgey's FireRed yield is read off the species.
+   */
+  it("pays the fallen Pokemon's FireRed yield, shared, and half again from a trainer", () => {
+    const pidgey = new Pokemon(PIDGEY, 10);
+    const whole = Math.floor((PIDGEY.expYield * 10) / 7);
+    expect(experienceAwardForDefeat(pidgey)).toBe(whole);
+    expect(experienceAwardForDefeat(pidgey, { participants: 2 })).toBe(Math.floor(whole / 2));
+    expect(experienceAwardForDefeat(pidgey, { trainer: true })).toBe(Math.floor((whole * 150) / 100));
+    expect(experienceAwardForDefeat(new Pokemon(PIDGEY, 1), { participants: 6 })).toBe(1);
+  });
+
+  it('reads the yield FireRed itself has, not the modern one', () => {
+    // FireRed's species table: Bulbasaur 64, Charmander 65, Squirtle 66,
+    // Pidgey 55, Machop 88 (`verifyExperience.mjs`). PokeAPI's modern values
+    // for the last four are 62, 63, 50 and 61.
+    expect([BULBASAUR, CHARMANDER, SQUIRTLE, PIDGEY].map((species) => species.expYield)).toEqual([
+      64, 65, 66, 55,
+    ]);
   });
 
   it('levels up by recomputing stats and preserving the gained maximum HP', () => {
@@ -100,7 +133,7 @@ describe('Pokemon experience and leveling', () => {
     const initialMaxHp = charmander.maxHp;
     charmander.takeDamage(3);
 
-    const result = charmander.gainExperience(experienceForLevel(6) - charmander.experience);
+    const result = charmander.gainExperience(experienceForLevel(6, CHARMANDER.growthRate) - charmander.experience);
 
     expect(result.levelsGained).toEqual([6]);
     expect(charmander.level).toBe(6);
@@ -120,7 +153,7 @@ describe('Pokemon experience and leveling', () => {
     const charmander = new Pokemon(CHARMANDER, 5);
     charmander.takeDamage(charmander.maxHp);
 
-    const result = charmander.gainExperience(experienceForLevel(6) - charmander.experience);
+    const result = charmander.gainExperience(experienceForLevel(6, CHARMANDER.growthRate) - charmander.experience);
 
     // The extra HP a level brings is not a revive. A party member levelling
     // from the bench of a trainer battle would otherwise walk back on at 1 HP.
@@ -132,7 +165,9 @@ describe('Pokemon experience and leveling', () => {
   it('learns moves that unlock during a level-up', () => {
     const charmander = new Pokemon(CHARMANDER, 6);
 
-    const result = charmander.gainExperience(experienceForLevel(7) - charmander.experience);
+    const result = charmander.gainExperience(
+      experienceForLevel(7, CHARMANDER.growthRate) - charmander.experience,
+    );
 
     expect(result.levelsGained).toEqual([7]);
     expect(result.learnedMoves.map((move) => move.name)).toEqual(['Ember']);

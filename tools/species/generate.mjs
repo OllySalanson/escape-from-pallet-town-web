@@ -29,6 +29,10 @@ const read = (path) => JSON.parse(readFileSync(join(repo, path), 'utf8'));
 
 const SPECIES = read('tools/species/frlg-species.json');
 const VERIFIED = new Map(read('tools/species/frlg-base-stats.json').species.map((row) => [row.name, row]));
+// FireRed's own experience yield, read out of its species table by
+// `verifyExperience.mjs` - the snapshot's `baseExperience` is PokeAPI's modern
+// value, which generation V re-tabulated.
+const EXPERIENCE = new Map(read('tools/species/frlg-experience.json').species.map((row) => [row.name, row]));
 
 // The stats and types are the one part of a species checked against three
 // sources rather than one, and the check lives in \`verifyStats.mjs\`. A
@@ -311,7 +315,7 @@ const renderSpecies = (species) => {
       `spDefense: ${species.baseStats.spDefense}, speed: ${species.baseStats.speed} },`,
     `    abilityIds: [${abilities.map(quote).join(', ')}],`,
     `    catchRate: ${species.catchRate},`,
-    `    baseExperience: ${species.baseExperience},`,
+    `    expYield: ${EXPERIENCE.get(species.name).expYield},`,
     `    growthRate: ${quote(species.growthRate)},`,
     `    learnset: [${learnset}],`,
     '  },',
@@ -344,15 +348,14 @@ export interface GeneratedSpecies {
   readonly types: readonly PokemonType[];
   readonly baseStats: PokemonStats;
   readonly abilityIds: readonly string[];
-  /** Generation III's own capture rate, out of 255. Nothing spends it yet. */
+  /** Generation III's own capture rate, out of 255. */
   readonly catchRate: number;
   /**
-   * PokeAPI's \`base_experience\`, which is the **modern** yield: generation V
-   * re-tabulated every one of these and PokeAPI serves no historical value.
-   * Nothing spends it yet either - \`experienceForLevel\` is level-cubed - so it
-   * is imported labelled rather than wired into a fight.
+   * FireRed's experience yield (\`expYield\` in its species table), read by
+   * \`tools/species/verifyExperience.mjs\`. Not PokeAPI's \`base_experience\`,
+   * which is the modern value: generation V re-tabulated every one of these.
    */
-  readonly baseExperience: number;
+  readonly expYield: number;
   readonly growthRate: GrowthRate;
   readonly learnset: readonly { readonly level: number; readonly move: string }[];
 }

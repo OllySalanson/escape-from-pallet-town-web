@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Bag } from '../items';
 import {
   CHARMANDER,
+  PIDGEY,
   Pokemon,
   PokemonParty,
   experienceAwardForDefeat,
@@ -14,6 +15,13 @@ import { RunManager } from './RunManager';
 import { buildExtractionReport } from './extractionReport';
 import { buildRaidSettlement, buildWipeSettlement, deployedRaidCondition } from './raidSettlement';
 import { RAID_DURATION_MS } from './raidClock';
+
+/**
+ * Every Pokemon in this file is a starter or a Pidgey, and FireRed puts all
+ * four on the medium-slow curve - which is the curve a level is read on here.
+ */
+const STARTER_CURVE = 'medium-slow' as const;
+
 
 class MemoryStorage implements StorageLike {
   private readonly values = new Map<string, string>();
@@ -180,7 +188,9 @@ describe('extraction loop integration', () => {
     const session = createActiveRunSession(manager, {}, {}, [starter.id], []);
 
     // One win in the field, exactly as a battle awards it.
-    const awarded = starter.pokemon.gainExperience(experienceAwardForDefeat(3)).awarded;
+    const awarded = starter.pokemon.gainExperience(
+      experienceAwardForDefeat(new Pokemon(PIDGEY, 3)),
+    ).awarded;
     expect(awarded).toBeGreaterThan(0);
 
     session.manager.resolveEscape();
@@ -202,7 +212,7 @@ describe('extraction loop integration', () => {
     const session = createActiveRunSession(manager, {}, {}, [starter.id], []);
 
     // Enough to cross two boundaries, which is where the level-7 typed move is.
-    const result = starter.pokemon.gainExperience(experienceForLevel(7) - starter.pokemon.experience);
+    const result = starter.pokemon.gainExperience(experienceForLevel(7, STARTER_CURVE) - starter.pokemon.experience);
     expect(result.levelsGained).toEqual([6, 7]);
     const raidLevel = starter.pokemon.level;
     const raidStats = { ...starter.pokemon.stats };
@@ -218,7 +228,7 @@ describe('extraction loop integration', () => {
 
     const banked = saves.load()!.stash.listPokemon()[0].pokemon;
     expect(banked.level).toBe(raidLevel);
-    expect(banked.experience).toBe(experienceForLevel(7));
+    expect(banked.experience).toBe(experienceForLevel(7, STARTER_CURVE));
     expect(banked.stats).toEqual(raidStats);
     expect(banked.currentHp).toBe(raidHp);
     expect(banked.moves.map((move) => move.base.name)).toContain('Vine Whip');
@@ -241,7 +251,7 @@ describe('extraction loop integration', () => {
       [],
     );
 
-    starter.pokemon.gainExperience(experienceAwardForDefeat(4));
+    starter.pokemon.gainExperience(experienceAwardForDefeat(new Pokemon(PIDGEY, 4)));
     starter.pokemon.takeDamage(5);
     const raidXp = starter.pokemon.experience;
     const raidHp = starter.pokemon.currentHp;
@@ -279,7 +289,7 @@ describe('extraction loop integration', () => {
       [],
     );
 
-    starter.pokemon.gainExperience(experienceForLevel(6) - starter.pokemon.experience);
+    starter.pokemon.gainExperience(experienceForLevel(6, STARTER_CURVE) - starter.pokemon.experience);
     starter.pokemon.takeDamage(starter.pokemon.maxHp);
     session.manager.resolveWipe(session.secureSlot);
     expect(
@@ -293,7 +303,7 @@ describe('extraction loop integration', () => {
 
     const secured = saves.load()!.stash.listPokemon()[0].pokemon;
     expect(secured.level).toBe(6);
-    expect(secured.experience).toBe(experienceForLevel(6));
+    expect(secured.experience).toBe(experienceForLevel(6, STARTER_CURVE));
     expect(secured.currentHp).toBe(0);
   });
 

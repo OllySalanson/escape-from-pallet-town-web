@@ -1669,8 +1669,9 @@ describe('what the stash says about the Pokémon under the cursor', () => {
     const { hub } = createHub();
     const stored = hub.stash.listPokemon().find(({ id }) => id === 'charmander-1')!;
     const { pokemon } = stored;
-    const span = experienceForLevel(pokemon.level + 1) - experienceForLevel(pokemon.level);
-    pokemon.experience = experienceForLevel(pokemon.level) + Math.floor(span / 2);
+    const curve = pokemon.base.growthRate;
+    const span = experienceForLevel(pokemon.level + 1, curve) - experienceForLevel(pokemon.level, curve);
+    pokemon.experience = experienceForLevel(pokemon.level, curve) + Math.floor(span / 2);
 
     const stash = stashMarkup(hub);
 

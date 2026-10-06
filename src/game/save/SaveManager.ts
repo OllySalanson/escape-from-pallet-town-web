@@ -62,11 +62,12 @@ import {
   type StashBox,
 } from '../stash/Stash';
 import { getWorldMap, isWorldMapId, type WorldMapId } from '../worldMap';
+import type { GrowthRate } from '../pokemon/generated/speciesCatalogue';
 import { mergeSurvey, type SurveyRecord } from '../world/survey';
 import { activeSaveSlot, PLAYTEST_SAVE_KEY, TRY_IT_SAVE_KEY, type SaveSlot } from '../dev/playtestMode';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
 const PRIMARY_STATUSES = new Set<PrimaryStatus>([
   'poison',
   'burn',
@@ -308,6 +309,18 @@ const LAST_FREE_ROAM_SAVE_VERSION = 3;
  * on saves that never had the fault.
  */
 const LAST_MISSING_TACKLE_SAVE_VERSION = 4;
+
+/**
+ * The last version written while every species levelled on one level-cubed
+ * curve. Version 7 is FireRed's experience: each species on its own growth
+ * rate (`experienceForLevel`). A total written on the old curve is not a total
+ * on the new one - a level-10 Bulbasaur with 1,000 XP is level 12 on its
+ * medium-slow curve - so a Pokemon from an older save keeps the level it was
+ * saved at and the share of the way to its next level it had made, carried
+ * onto its own curve (`experienceOnFireRedCurve`). Pinned, like the version
+ * above, so a later bump cannot re-open the conversion.
+ */
+const LAST_CUBIC_EXPERIENCE_SAVE_VERSION = 6;
 
 export const DEFAULT_RAID_PROGRESS: RaidProgress = {
   firstContractExtracted: false,
@@ -1130,7 +1143,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
   if (
     !isRecord(value) ||
     typeof value.version !== 'number' ||
-    ![1, 2, 3, 4, 5, SAVE_VERSION].includes(value.version)
+    ![1, 2, 3, 4, 5, 6, SAVE_VERSION].includes(value.version)
   ) {
     return null;
   }
@@ -1434,18 +1447,22 @@ function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon
     );
   }
 
-  // Experience is floored at the level's own total rather than at zero. A save
-  // written before XP was recorded has a level and no XP, and reading that as
-  // "level 5 with 0 XP" would make the next level cost the whole curve from
-  // scratch - so a returning player would be charged twice for progress they
-  // had already made.
-  setPokemonXp(
-    pokemon,
-    Math.max(
-      experienceForLevel(pokemon.level),
-      clampInteger(value.xp, 0, Number.MAX_SAFE_INTEGER, 0),
-    ),
-  );
+  // Experience is held to the saved level's own span on the species' curve.
+  // Floored at the level's total rather than at zero: a save written before XP
+  // was recorded has a level and no XP, and reading that as "level 5 with 0 XP"
+  // would make the next level cost the whole curve from scratch - so a
+  // returning player would be charged twice for progress they had already
+  // made. And below the next level's total, because the level is what was
+  // saved and a total can only pass it by being read on the wrong curve.
+  const curve = pokemon.base.growthRate;
+  const start = experienceForLevel(pokemon.level, curve);
+  const end = Math.max(start, experienceForLevel(pokemon.level + 1, curve) - 1);
+  const saved = clampInteger(value.xp, 0, Number.MAX_SAFE_INTEGER, 0);
+  const xp =
+    saveVersion <= LAST_CUBIC_EXPERIENCE_SAVE_VERSION
+      ? experienceOnFireRedCurve(saved, pokemon.level, curve)
+      : saved;
+  setPokemonXp(pokemon, Math.min(end, Math.max(start, xp)));
   return pokemon;
 }
 
@@ -1547,6 +1564,19 @@ function inferStarterSpeciesId(stash: Stash | undefined): StarterSpeciesId | nul
 
 function isStarterSpeciesId(value: string): value is StarterSpeciesId {
   return value === 'bulbasaur' || value === 'charmander' || value === 'squirtle';
+}
+
+/**
+ * A total written on the old level-cubed curve, moved onto a species' own
+ * FireRed curve without moving its level: the share of the way from this level
+ * to the next stays the share it was.
+ */
+function experienceOnFireRedCurve(saved: number, level: number, curve: GrowthRate): number {
+  const oldStart = experienceForLevel(level);
+  const oldSpan = experienceForLevel(level + 1) - oldStart;
+  const share = oldSpan > 0 ? Math.min(1, Math.max(0, (saved - oldStart) / oldSpan)) : 0;
+  const start = experienceForLevel(level, curve);
+  return start + Math.floor(share * (experienceForLevel(level + 1, curve) - start));
 }
 
 function getPokemonXp(pokemon: Pokemon): number {

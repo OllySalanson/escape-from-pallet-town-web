@@ -249,6 +249,58 @@ describe('SaveManager', () => {
     expect(saves.load()?.stash.listItems()).toEqual(withPack({ potion: 3 }));
   });
 
+  /**
+   * Version 7 is FireRed's experience: every species on its own growth curve.
+   * A total written on the old shared cubic curve is not a total on the new
+   * one, so a Pokemon from a save at version 6 or earlier keeps the level it was
+   * saved at and the share of the way to its next level it had made.
+   */
+  // Versions 1 to 3 kept their Pokemon in a free-roam party; how those are
+  // carried is the free-roam tests' below, with the same conversion.
+  it.each([4, 5, 6])(
+    'carries a version %i Pokemon onto its own curve at the same level and the same share of it',
+    (version) => {
+      const storage = new MemoryStorage();
+      // Bulbasaur 10, a quarter of the way to 11 on the old curve.
+      const old = 1000 + Math.floor((1331 - 1000) / 4);
+      storage.setItem(
+        SAVE_KEY,
+        JSON.stringify({
+          version,
+          party: [],
+          mapId: 'pallet-town',
+          position: { x: 1, y: 1 },
+          bag: {},
+          stash: {
+            pokemon: [{ id: 'bulbasaur-1', pokemon: { speciesId: 'bulbasaur', level: 10, currentHp: 29, xp: old, moves: ['Tackle'] } }],
+            items: {},
+          },
+        }),
+      );
+
+      const pokemon = new SaveManager(storage).load()!.stash.listPokemon()[0].pokemon;
+
+      const start = experienceForLevel(10, 'medium-slow');
+      const span = experienceForLevel(11, 'medium-slow') - start;
+      expect(pokemon.level).toBe(10);
+      expect(pokemon.experience).toBe(start + Math.floor(((old - 1000) / 331) * span));
+    },
+  );
+
+  it('keeps a version 7 total as it was written, inside its own level', () => {
+    const storage = new MemoryStorage();
+    const saves = new SaveManager(storage);
+    const stash = new Stash();
+    const bulbasaur = new Pokemon(BULBASAUR, 10);
+    bulbasaur.experience = experienceForLevel(10, 'medium-slow') + 7;
+    stash.addPokemon(bulbasaur, 'bulbasaur-1');
+    saves.save({ party: new PokemonParty(), mapId: 'pallet-town', position: { x: 1, y: 1 }, stash });
+
+    const pokemon = saves.load()!.stash.listPokemon()[0].pokemon;
+    expect(pokemon.level).toBe(10);
+    expect(pokemon.experience).toBe(experienceForLevel(10, 'medium-slow') + 7);
+  });
+
   it.each([2, 3])('carries a version %i free-roam party into the vault as well', (version) => {
     const storage = new MemoryStorage();
     storage.setItem(
@@ -266,7 +318,9 @@ describe('SaveManager', () => {
     const restored = new SaveManager(storage).load();
 
     expect(restored?.stash.listPokemon()).toMatchObject([
-      { pokemon: { base: { id: 'squirtle' }, level: 11, experience: 1331 } },
+      // Level 11 on the old shared cubic curve was 1,331; a save that old is
+      // carried onto Squirtle's own medium-slow curve at the same level.
+      { pokemon: { base: { id: 'squirtle' }, level: 11, experience: experienceForLevel(11, 'medium-slow') } },
     ]);
     expect(restored?.stash.listItems()).toEqual(withPack({ potion: 1 }));
     expect(restored?.party.pokemon).toEqual([]);
@@ -688,7 +742,7 @@ describe('SaveManager', () => {
 
     const settlement = {
       condition: [
-        { id: 'charmander-1', currentHp: 4, primaryStatus: null, experience: experienceForLevel(8), heldItemId: null },
+        { id: 'charmander-1', currentHp: 4, primaryStatus: null, experience: experienceForLevel(8, 'medium-slow'), heldItemId: null },
       ],
       supplies: [],
     } as const;
@@ -711,7 +765,7 @@ describe('SaveManager', () => {
 
     const settled = saves.load()?.stash.listPokemon()[0].pokemon;
     expect(settled?.level).toBe(8);
-    expect(settled?.experience).toBe(experienceForLevel(8));
+    expect(settled?.experience).toBe(experienceForLevel(8, 'medium-slow'));
   });
 
   it('brings a Pokemon home evolved, whichever way it evolved out there', () => {
@@ -733,7 +787,7 @@ describe('SaveManager', () => {
           id: 'bulbasaur-1',
           currentHp: 20,
           primaryStatus: null,
-          experience: experienceForLevel(16),
+          experience: experienceForLevel(16, 'medium-slow'),
           speciesId: 'ivysaur',
           heldItemId: null,
         },
@@ -828,9 +882,10 @@ describe('SaveManager', () => {
     );
 
     const restored = new SaveManager(storage).load();
-    expect(restored?.stash.listPokemon()[0].pokemon.experience).toBe(experienceForLevel(7));
-    // One ordinary win is enough to make progress from there, rather than 343.
-    expect(restored?.party.pokemon[0].experience).toBe(experienceForLevel(7));
+    expect(restored?.stash.listPokemon()[0].pokemon.experience).toBe(experienceForLevel(7, 'medium-slow'));
+    // One ordinary win is enough to make progress from there, rather than the
+    // whole curve to level 7.
+    expect(restored?.party.pokemon[0].experience).toBe(experienceForLevel(7, 'medium-slow'));
   });
 
   it('keeps a recovery and the raid time it cost across a reload', () => {
@@ -1031,7 +1086,7 @@ describe('SaveManager', () => {
    * missing list reads as. Every accepted version is pinned, because accepting
    * a version is a promise to keep loading it.
    */
-  it.each([1, 2, 3, 4, 5, 6])(
+  it.each([1, 2, 3, 4, 5, 6, 7])(
     'opens a version %i save written before gates existed with no boss beaten and nowhere reached',
     (version) => {
       const storage = new MemoryStorage();
@@ -1065,7 +1120,7 @@ describe('SaveManager', () => {
    * version is pinned, because accepting a version is a promise to keep loading
    * it and to honour everything in it.
    */
-  it.each([1, 2, 3, 4, 5, 6])(
+  it.each([1, 2, 3, 4, 5, 6, 7])(
     'opens a version %i save written before the raid record with nothing recorded',
     (version) => {
       const storage = new MemoryStorage();
@@ -1991,7 +2046,7 @@ describe('SaveManager', () => {
         ...(securePreference === undefined ? {} : { raidProgress: { securePreference } }),
       });
 
-    it.each([1, 2, 3, 4, 5, 6])(
+    it.each([1, 2, 3, 4, 5, 6, 7])(
       'reads a version %i save that never wrote one as "lead with the Pokemon"',
       (version) => {
         const storage = new MemoryStorage();
@@ -2063,7 +2118,7 @@ describe('SaveManager', () => {
         ...(raidProgress === undefined ? {} : { raidProgress }),
       });
 
-    it.each([1, 2, 3, 4, 5, 6])(
+    it.each([1, 2, 3, 4, 5, 6, 7])(
       'reads a version %i save that never arranged one as a container nobody touched',
       (version) => {
         const storage = new MemoryStorage();

@@ -6,6 +6,13 @@ import { buildExtractionReport } from './extractionReport';
 import { RAID_DURATION_MS } from './raidClock';
 
 /**
+ * Every Pokemon in this file is a starter or a Pidgey, and FireRed puts all
+ * four on the medium-slow curve - which is the curve a level is read on here.
+ */
+const STARTER_CURVE = 'medium-slow' as const;
+
+
+/**
  * A container that has been grown. A Pokemon takes four squares of it by
  * evolution stage, so the 2x2 one a save starts with holds a Pokemon *or* some
  * supplies - the squares are `RunManager`'s test, and these reports are about
@@ -368,7 +375,7 @@ describe('what the party earned', () => {
   }
 
   it('names the level a Pokemon came home at instead of calling the raid empty', () => {
-    const { manager } = raidThatWon(experienceForLevel(7) - experienceForLevel(5));
+    const { manager } = raidThatWon(experienceForLevel(7, STARTER_CURVE) - experienceForLevel(5, STARTER_CURVE));
     manager.resolveEscape();
 
     const report = buildExtractionReport({
@@ -403,7 +410,7 @@ describe('what the party earned', () => {
 
     expect(report.progress[0]).toMatchObject({ fromLevel: 5, toLevel: 5, experienceGained: 20 });
     expect(report.progressSummary).toBe(
-      `Nobody levelled. Bulbasaur came out ${experienceForLevel(6) - starter.experience} experience short of level 6.`,
+      `Nobody levelled. Bulbasaur came out ${experienceForLevel(6, STARTER_CURVE) - starter.experience} experience short of level 6.`,
     );
     expect(report.haulTier).toBe('thin');
     expect(report.summary).toContain('experience short of level 6.');
@@ -433,8 +440,8 @@ describe('what the party earned', () => {
     const manager = new RunManager();
     manager.startRun({ party: [secured, lost], items: [] }, RUN_CONFIG, { pokemon: [secured] });
     manager.tick(120_000);
-    secured.gainExperience(experienceForLevel(7) - experienceForLevel(5));
-    lost.gainExperience(experienceForLevel(8) - experienceForLevel(5));
+    secured.gainExperience(experienceForLevel(7, STARTER_CURVE) - experienceForLevel(5, STARTER_CURVE));
+    lost.gainExperience(experienceForLevel(8, STARTER_CURVE) - experienceForLevel(5, STARTER_CURVE));
     manager.resolveWipe();
 
     const report = buildExtractionReport({

@@ -357,7 +357,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     aboutToUseSwitching: false,
     // Class fields do not run for an Object.create'd scene, and experience is
     // awarded by walking this set.
-    participatingPokemon: new Set([player]),
+    foesFacedBy: new Map(),
     // Whose faint has been put on screen - also a class field.
     fallen: new Set(),
     victoryRewardsGranted: false,
@@ -375,6 +375,9 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     state,
     trainer,
   });
+
+  // Whoever is out faces whoever is out opposite, as a battle opens.
+  (scene as unknown as { noteWhoFacesWhom(): void }).noteWhoFacesWhom();
 
   return { scene, renderedTexts, dialog, commandContainer };
 }
@@ -919,10 +922,13 @@ describe('a level reached in the middle of a trainer battle', () => {
    * why this was only ever reported from a trainer fight.
    */
   const levellingBattle = () => {
-    const squirtle = new Pokemon(SQUIRTLE, 6);
-    squirtle.experience = experienceForLevel(7) - experienceAwardForDefeat(3);
-    squirtle.takeDamage(4);
     const lead = new Pokemon(PIDGEY, 3);
+    const squirtle = new Pokemon(SQUIRTLE, 6);
+    // One knockout short of 7 on its own curve: the Pidgey's FireRed yield,
+    // and half as much again because a trainer's Pokemon pays it.
+    squirtle.experience =
+      experienceForLevel(7, SQUIRTLE.growthRate) - experienceAwardForDefeat(lead, { trainer: true });
+    squirtle.takeDamage(4);
     lead.takeDamage(lead.maxHp - 1);
     const harness = createBattleSceneHarness({
       authoredTrainer: true,
@@ -1046,18 +1052,21 @@ describe('a level reached in the middle of a trainer battle', () => {
   });
 
   it('leaves a benched Pokemon to be read live when it is sent out', () => {
-    const squirtle = new Pokemon(SQUIRTLE, 6);
-    squirtle.experience = experienceForLevel(7) - experienceAwardForDefeat(3);
-    const benched = new Pokemon(SQUIRTLE, 6);
-    benched.experience = experienceForLevel(7) - experienceAwardForDefeat(3);
     const lead = new Pokemon(PIDGEY, 3);
+    // Both faced the lead, so they share what it pays, as FireRed shares it.
+    const share = experienceAwardForDefeat(lead, { participants: 2, trainer: true });
+    const squirtle = new Pokemon(SQUIRTLE, 6);
+    squirtle.experience = experienceForLevel(7, SQUIRTLE.growthRate) - share;
+    const benched = new Pokemon(SQUIRTLE, 6);
+    benched.experience = experienceForLevel(7, SQUIRTLE.growthRate) - share;
     lead.takeDamage(lead.maxHp - 1);
     const { scene, renderedTexts, dialog } = createBattleSceneHarness({
       authoredTrainer: true,
       trainerParty: [lead, new Pokemon(PIDGEY, 5)],
       party: new PokemonParty([squirtle, benched]),
     });
-    (scene as unknown as { participatingPokemon: Set<Pokemon> }).participatingPokemon.add(benched);
+    // It was out against the lead earlier in the fight and is benched now.
+    (scene as unknown as { foesFacedBy: Map<Pokemon, Set<Pokemon>> }).foesFacedBy.get(lead)!.add(benched);
 
     knockOutTheLead(scene, renderedTexts);
     readThroughNarration(scene, dialog);

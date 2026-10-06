@@ -2,6 +2,7 @@ import { isHeldItemId, type HeldItemId } from '../items/items';
 import { Move } from './Move';
 import type { MoveBase } from './MoveBase';
 import type { PokemonBase, PokemonStats } from './PokemonBase';
+import type { GrowthRate } from './generated/speciesCatalogue';
 import { evolutionFamily, evolutionOnLevel, evolvesInto } from './evolution';
 import { machineMovesFor } from './machines';
 import type { PrimaryStatus } from './battle/status';
@@ -9,22 +10,53 @@ import type { PrimaryStatus } from './battle/status';
 export type CombatStats = PokemonStats;
 
 const MAX_LEVEL = 100;
-/** Two comparable wins should normally earn an early level without a single win skipping several. */
-export const DEFEAT_EXPERIENCE_MULTIPLIER = 0.5;
 
 /**
- * Medium-slow-free total experience curve. A Pokemon at level N has N³ XP.
+ * The total experience a Pokemon of this growth rate has at a level: FireRed's
+ * `gExperienceTables` (pret/pokefirered `src/data/pokemon/experience_tables.h`),
+ * in its own integer arithmetic. Level 1 is 1 on every curve, as the table has
+ * it. The 151 use four of FireRed's six curves; medium-fast - plain n cubed - is
+ * the default, which is also the one curve every species used to share.
  */
-export const experienceForLevel = (level: number): number => {
-  const normalizedLevel = Math.max(1, Math.min(MAX_LEVEL, Math.floor(level)));
-  return normalizedLevel ** 3;
+export const experienceForLevel = (level: number, growthRate: GrowthRate = 'medium'): number => {
+  const n = Math.max(1, Math.min(MAX_LEVEL, Math.floor(level)));
+  if (n === 1) {
+    return 1;
+  }
+  const cube = n ** 3;
+  switch (growthRate) {
+    case 'fast':
+      return Math.floor((4 * cube) / 5);
+    case 'slow':
+      return Math.floor((5 * cube) / 4);
+    case 'medium-slow':
+      return Math.floor((6 * cube) / 5) - 15 * n * n + 100 * n - 140;
+    case 'medium':
+    default:
+      return cube;
+  }
 };
 
+/** The share a trainer's Pokemon pays over a wild one's: FireRed's x1.5. */
+export const TRAINER_EXPERIENCE_BONUS = 1.5;
+
 /**
- * A defeated Pokemon awards half of its level-cubed total experience.
+ * What one Pokemon that fought earns for a knockout: FireRed's `Cmd_getexp`
+ * (`src/battle_script_commands.c`). The fallen Pokemon's own yield times its
+ * level over seven, shared evenly between every Pokemon that fought it and is
+ * still standing, at least one point each, and half as much again from a
+ * trainer. The award used to be half the fallen Pokemon's level cubed, to each
+ * participant whole, whatever the species - which made a level cheaper the
+ * higher it was (playtest finding 2.4).
  */
-export const experienceAwardForDefeat = (defeatedLevel: number): number =>
-  Math.floor(experienceForLevel(defeatedLevel) * DEFEAT_EXPERIENCE_MULTIPLIER);
+export const experienceAwardForDefeat = (
+  defeated: { readonly base: { readonly expYield: number }; readonly level: number },
+  { participants = 1, trainer = false }: { readonly participants?: number; readonly trainer?: boolean } = {},
+): number => {
+  const yielded = Math.floor((defeated.base.expYield * defeated.level) / 7);
+  const share = Math.max(1, Math.floor(yielded / Math.max(1, participants)));
+  return trainer ? Math.floor((share * 150) / 100) : share;
+};
 
 export const computePokemonStats = (baseStats: PokemonStats, level: number): CombatStats => ({
   // Ported from Pokemon.cs in the Unity project.
@@ -106,7 +138,7 @@ export class Pokemon {
 
     this.base = base;
     this.level = level;
-    this.experience = experienceForLevel(level);
+    this.experience = experienceForLevel(level, base.growthRate);
     this.stats = computePokemonStats(base.baseStats, level);
     this.currentHp = this.stats.hp;
     this.moves = this.initializeMoves();
@@ -165,7 +197,10 @@ export class Pokemon {
     const evolutions: SpeciesEvolution[] = [];
     const movesToChoose: MoveBase[] = [];
 
-    while (this.level < MAX_LEVEL && this.experience >= experienceForLevel(this.level + 1)) {
+    while (
+      this.level < MAX_LEVEL &&
+      this.experience >= experienceForLevel(this.level + 1, this.base.growthRate)
+    ) {
       const previousMaxHp = this.maxHp;
       this.level += 1;
       this.stats = computePokemonStats(this.base.baseStats, this.level);

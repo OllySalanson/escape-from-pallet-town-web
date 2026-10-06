@@ -602,10 +602,13 @@ function partyProgress(snapshot: RunSnapshot, escaped: boolean): ReportProgress[
     .map(({ member, before }) => ({
       name: member.base.name,
       dexId: member.base.dexId,
-      fromLevel: levelForExperience(before, member.level),
+      fromLevel: levelForExperience(before, member.level, member.base.growthRate),
       toLevel: member.level,
       experienceGained: member.experience - before,
-      experienceToNextLevel: Math.max(0, experienceForLevel(member.level + 1) - member.experience),
+      experienceToNextLevel: Math.max(
+        0,
+        experienceForLevel(member.level + 1, member.base.growthRate) - member.experience,
+      ),
     }))
     .sort((a, b) => b.toLevel - b.fromLevel - (a.toLevel - a.fromLevel)
       || b.experienceGained - a.experienceGained);
@@ -616,9 +619,13 @@ function partyProgress(snapshot: RunSnapshot, escaped: boolean): ReportProgress[
  * is at now. Level is a function of experience through one curve, so deriving
  * the starting level is safer than storing a second number that can disagree.
  */
-function levelForExperience(experience: number, currentLevel: number): number {
+function levelForExperience(
+  experience: number,
+  currentLevel: number,
+  growthRate: Pokemon['base']['growthRate'],
+): number {
   let level = currentLevel;
-  while (level > 1 && experience < experienceForLevel(level)) {
+  while (level > 1 && experience < experienceForLevel(level, growthRate)) {
     level -= 1;
   }
   return level;

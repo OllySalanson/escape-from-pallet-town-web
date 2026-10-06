@@ -26,7 +26,7 @@ import {
 
 /** Enough experience to stand a Pokemon exactly at `level`. */
 const experienceTo = (pokemon: Pokemon, level: number): number =>
-  experienceForLevel(level) - pokemon.experience;
+  experienceForLevel(level, pokemon.base.growthRate) - pokemon.experience;
 
 describe('the evolution table', () => {
   /**
@@ -359,7 +359,7 @@ describe('the moves of the level an evolution happens at', () => {
    */
   it("offers the pre-evolution's move for that level before evolving", () => {
     const charmander = new Pokemon(CHARMANDER, 18);
-    const result = charmander.gainExperience(experienceForLevel(19) - charmander.experience);
+    const result = charmander.gainExperience(experienceTo(charmander, 19));
 
     expect(result.evolutions.map((evolution) => evolution.to.id)).toEqual(['charmeleon']);
     expect([...result.learnedMoves, ...result.movesToChoose].map((move) => move.name)).toContain(

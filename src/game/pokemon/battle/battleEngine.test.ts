@@ -1213,7 +1213,7 @@ describe('a combatant refreshed after a level-up', () => {
     const squirtle = new Pokemon(SQUIRTLE, 6);
     const combatant = createBattleState(squirtle, new Pokemon(PIDGEY, 5)).player;
     const previousMaxHp = squirtle.maxHp;
-    squirtle.gainExperience(experienceForLevel(7) - squirtle.experience);
+    squirtle.gainExperience(experienceForLevel(7, SQUIRTLE.growthRate) - squirtle.experience);
     return { squirtle, combatant, previousMaxHp };
   };
 
