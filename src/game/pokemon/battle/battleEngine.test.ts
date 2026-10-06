@@ -723,6 +723,103 @@ describe('Struggle', () => {
   });
 });
 
+/**
+ * Playtest 20, N1 (a regression from the end-of-turn send-out): when the
+ * player's active and the trainer's active fell in the same turn, the engine
+ * called the battle lost because the player's field was empty, the trainer's
+ * next Pokemon was never sent out, and the replacement the player then chose
+ * "won" a fight with the trainer's bench still full. The engine now counts the
+ * player's bench (`playerParty`) as it counts a trainer's.
+ */
+describe('both sides losing their active Pokemon in one turn', () => {
+  const holding = (base: Pokemon['base'], level: number, ...moves: MoveBase[]): Pokemon => {
+    const pokemon = new Pokemon(base, level);
+    pokemon.moves.splice(0, pokemon.moves.length, ...moves.map((move) => new Move(move)));
+    return pokemon;
+  };
+
+  /** The report's reproduction: a poisoned 1-HP Pidgey 20 knocks out a 3-HP Rattata 3. */
+  const poisonedKnockout = () => {
+    const pidgey = holding(PIDGEY, 20, TACKLE);
+    pidgey.currentHp = 1;
+    pidgey.primaryStatus = PrimaryStatus.Poison;
+    const squirtle = new Pokemon(SQUIRTLE, 20);
+    const rattata = holding(getSpeciesById('rattata')!, 3, TACKLE);
+    rattata.currentHp = 3;
+    const state = createTrainerBattleState(pidgey, {
+      id: 'n1-repro',
+      name: 'TESTER',
+      party: [rattata, new Pokemon(PIDGEY, 3)],
+    });
+    return { state: { ...state, playerParty: [pidgey, squirtle] }, squirtle };
+  };
+
+  it("sends the trainer's next Pokemon out, and the fight goes on once the player sends theirs", () => {
+    const { state, squirtle } = poisonedKnockout();
+
+    const turn = resolveTurn(state, 0, () => 0.5);
+
+    expect(turn.events.filter((event) => event.type === 'fainted').map((event) => event.user)).toEqual([
+      'enemy',
+      'player',
+    ]);
+    expect(turn.events).toContainEqual({ type: 'enemy-sent-out', name: 'Pidgey' });
+    expect(turn.state.outcome).toBe('active');
+
+    const replaced = replacePlayerPokemon(turn.state, squirtle);
+    expect(replaced.state.outcome).toBe('active');
+    expect(replaced.state.enemy.pokemon.base.name).toBe('Pidgey');
+    expect(replaced.state.enemy.currentHp).toBeGreaterThan(0);
+  });
+
+  it('is lost, not won, when the last of both fall together - FireRed\'s draw', () => {
+    // Playtest 20, N3: a 1-HP Charmander with nothing but Struggle knocks out a
+    // lone 6-HP Rattata and falls to the recoil. Both faints are read out.
+    const charmander = new Pokemon(CHARMANDER, 20);
+    charmander.moves.forEach((move) => move.setPp(0));
+    charmander.currentHp = 1;
+    const rattata = holding(getSpeciesById('rattata')!, 3, TACKLE);
+    rattata.currentHp = 6;
+    const state = createTrainerBattleState(charmander, { id: 'n3', name: 'TESTER', party: [rattata] });
+
+    const turn = resolveTurn({ ...state, playerParty: [charmander] }, 0, () => 0.5);
+
+    expect(turn.events.filter((event) => event.type === 'fainted').map((event) => event.user)).toEqual([
+      'enemy',
+      'player',
+    ]);
+    expect(turn.state.outcome).toBe('defeat');
+  });
+
+  it("charges a foe its own end of turn after it knocks out the player's Pokemon", () => {
+    // Playtest 20, N5: the battle used to stop at "defeat" the moment the
+    // player's field emptied, so a poisoned foe was never hurt by its poison.
+    const pidgey = holding(PIDGEY, 5, GROWL);
+    pidgey.currentHp = 1;
+    const rattata = holding(getSpeciesById('rattata')!, 15, TACKLE);
+    const state = createTrainerBattleState(pidgey, { id: 'n5', name: 'TESTER', party: [rattata] });
+    const poisoned = {
+      ...state,
+      enemy: { ...state.enemy, primaryStatus: PrimaryStatus.Poison },
+      playerParty: [pidgey, new Pokemon(CHARMANDER, 30)],
+    };
+
+    const turn = resolveTurn(poisoned, 0, () => 0.5);
+
+    expect(turn.events.some((event) => event.type === 'fainted' && event.user === 'player')).toBe(true);
+    expect(turn.events).toContainEqual(
+      expect.objectContaining({ type: 'status-damage', user: 'enemy', status: 'poison' }),
+    );
+    expect(turn.state.outcome).toBe('active');
+  });
+
+  it('is still lost when the player has nobody left to send in', () => {
+    const { state } = poisonedKnockout();
+    const turn = resolveTurn({ ...state, playerParty: [state.player.pokemon] }, 0, () => 0.5);
+    expect(turn.state.outcome).toBe('defeat');
+  });
+});
+
 describe('trainer battles', () => {
   const trainer = () => ({
     id: 'test-trainer',

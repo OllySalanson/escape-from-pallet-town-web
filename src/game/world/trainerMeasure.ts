@@ -104,6 +104,11 @@ export function playTrainerBattle(
   const sentOut = new Set<Pokemon>(
     playerCombatants(state).map((combatant) => combatant.pokemon),
   );
+  // The engine counts the bench, as the game's battle screen hands it the
+  // party: a Pokemon that has been out is never sent again here and its own HP
+  // is never written back, so the bench is whoever has not been out yet.
+  const benched = (): readonly Pokemon[] => party.filter((pokemon) => !sentOut.has(pokemon));
+  state = { ...state, playerParty: benched() };
   let left = potions;
   // A combatant owns its HP while it is out and this harness never writes it
   // back to the Pokemon, so the party's own `currentHp` is not the fight's:
@@ -174,7 +179,8 @@ export function playTrainerBattle(
         continue;
       }
       sentOut.add(next);
-      state = replacePlayerPokemon(state, next, ref.slot).state;
+      state = replacePlayerPokemon({ ...state, playerParty: benched() }, next, ref.slot).state;
+      state = { ...state, playerParty: benched() };
     }
     if (state.outcome === 'defeat') {
       return lost();

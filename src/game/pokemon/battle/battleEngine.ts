@@ -256,6 +256,19 @@ export interface BattleState {
    * in a sandstorm - see `weather.ts`.
    */
   readonly ambientWeather: WeatherId | null;
+  /**
+   * The player's whole party, so the engine can count the player's bench the
+   * way it counts a trainer's: a side is beaten only when nobody on it is left
+   * standing *and* nobody is left to send in. Absent - the measuring harnesses
+   * and most tests - the field is the whole side, which is how it always was.
+   *
+   * Without it the engine called the battle lost the moment the player's field
+   * emptied, mid-turn, and everything after that was skipped: the trainer's next
+   * Pokemon never came out when both actives fell in one turn, so the player won
+   * a fight with the trainer's bench still full (playtest 20, N1), and a foe that
+   * knocked the player's Pokemon out was never charged its own end of turn (N5).
+   */
+  readonly playerParty?: readonly Pokemon[];
 }
 
 export type BattleEvent =
@@ -1095,16 +1108,10 @@ export const replacePlayerPokemon = (
 
   const statStages = withdrawn.playerStatStages.get(pokemon) ?? createStatStages();
   const arriving = { ...toCombatant(pokemon), statStages };
-  const switched: BattleState = {
-    ...withUnit(withdrawn, ref, arriving),
-    outcome: pokemon.isFainted
-      ? engagedSlots(withdrawn, 'player').some((other) => !sameSlot(other, ref))
-        ? 'active'
-        : 'defeat'
-      : engagedSlots(withdrawn, 'enemy').length === 0
-        ? 'victory'
-        : 'active',
-  };
+  const placed = withUnit(withdrawn, ref, arriving);
+  // Won only if the foe has nobody left to send in either: a trainer whose
+  // active fell in the same turn as the player's still has a bench.
+  const switched: BattleState = { ...placed, outcome: outcomeOf(placed) };
   if (switched.outcome !== 'active') {
     return { state: switched, events };
   }
@@ -1302,7 +1309,7 @@ const applyWeather = (state: BattleState): TurnResult => {
       damage: combatant.currentHp - buffeted.currentHp,
     });
     if (buffeted.currentHp === 0) {
-      const fallen = resolveFaint(nextState, ref);
+      const fallen = resolveFaint(nextState);
       nextState = fallen.state;
       events.push(
         { type: 'fainted', user: ref.side, ...inSlot(ref), name: combatant.pokemon.base.name },
@@ -1853,7 +1860,7 @@ const applyMove = (
       continue;
     }
     const fallen = unitAt(nextState, hit.ref);
-    const resolved = resolveFaint(nextState, hit.ref);
+    const resolved = resolveFaint(nextState);
     nextState = resolved.state;
     events.push(
       {
@@ -1975,9 +1982,12 @@ const applyMove = (
     }
   }
 
+  // Even if the blow just won the fight: a Pokemon that knocked out the last
+  // foe and fell to its own recoil fell, and if it was the last of the
+  // player's that is FireRed's draw, which is a loss (`outcomeOf`).
   const standing = unitAt(nextState, ref);
-  if (standing && standing.currentHp === 0 && nextState.outcome === 'active') {
-    const fallen = resolveFaint(nextState, ref);
+  if (standing && standing.currentHp === 0) {
+    const fallen = resolveFaint(nextState);
     nextState = fallen.state;
     events.push(
       { type: 'fainted', user, ...inSlot(ref), name: attackerName },
@@ -2196,7 +2206,7 @@ const resolveStatusBeforeMove = (
         damage: confused.currentHp - hurt.currentHp,
       });
       if (hurt.currentHp === 0) {
-        const fallen = resolveFaint(state, ref);
+        const fallen = resolveFaint(state);
         state = fallen.state;
         events.push({ type: 'fainted', user, ...slot, name }, ...fallen.events);
       }
@@ -2265,7 +2275,7 @@ const applyEndOfAction = (
       damage: combatant.currentHp - updated.currentHp,
     });
     if (updated.currentHp === 0) {
-      const fallen = resolveFaint(nextState, ref);
+      const fallen = resolveFaint(nextState);
       nextState = fallen.state;
       nextEvents.push(
         { type: 'fainted', user, ...slot, name: combatant.pokemon.base.name },
@@ -2403,8 +2413,9 @@ const applyStatus = (
 };
 
 /**
- * Somebody has gone down. The side has lost only when nobody is left standing
- * on it *and* nobody is left to send in.
+ * Somebody has gone down. A side has lost only when nobody is left standing on
+ * it *and* nobody is left to send in - the trainer's party for the foe, the
+ * player's (`BattleState.playerParty`) for the player.
  *
  * A trainer's next Pokemon does **not** walk in here. It waits for the end of
  * the turn (`sendOutReplacements`), which is FireRed's rule and the tutorial's
@@ -2419,19 +2430,32 @@ const applyStatus = (
  */
 const resolveFaint = (
   state: BattleState,
-  ref: SlotRef,
-): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
-  if (engagedSlots(state, ref.side).length > 0) {
-    return { state, events: [] };
-  }
-  if (ref.side === 'enemy' && nextTrainerPokemon(state) !== null) {
-    return { state, events: [] };
-  }
-  return {
-    state: { ...state, outcome: ref.side === 'enemy' ? 'victory' : 'defeat' },
-    events: [],
-  };
+): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => ({
+  state: { ...state, outcome: outcomeOf(state) },
+  events: [],
+});
+
+/**
+ * Where the battle stands: lost when the player has nobody standing and nobody
+ * to send in; won when the foe has nobody standing and nobody to send in; and
+ * lost, not won, when both are true at once. That last is FireRed's draw -
+ * `Cmd_checkteamslost` sets both bits and `IsPlayerDefeated` counts
+ * `B_OUTCOME_DREW` as a loss - which a recoil, a Struggle or a burn can reach.
+ */
+const outcomeOf = (state: BattleState): BattleState['outcome'] => {
+  const playerOut =
+    engagedSlots(state, 'player').length === 0 && !playerCanSendIn(state);
+  const enemyOut = engagedSlots(state, 'enemy').length === 0 && nextTrainerPokemon(state) === null;
+  return playerOut ? 'defeat' : enemyOut ? 'victory' : 'active';
 };
+
+/** Whether the player has somebody able to fight who is not on the field. */
+const playerCanSendIn = (state: BattleState): boolean =>
+  (state.playerParty ?? []).some(
+    (pokemon) =>
+      !pokemon.isFainted &&
+      !slotsOf(state, 'player').some((ref) => unitAt(state, ref)?.pokemon === pokemon),
+  );
 
 /**
  * Where in the trainer's party the next Pokemon able to fight is, or `null` when

@@ -487,9 +487,15 @@ export class BattleScene extends Phaser.Scene {
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
     this.launchedFromWorld = Boolean((data.wild || data.trainer) && data.party);
-    this.state = data.trainer
-      ? createTrainerBattleState(playerPokemon, data.trainer, data.weather ?? null, playerPartner)
-      : createBattleState(playerPokemon, wildPokemon, data.weather ?? null);
+    // The whole party rides on the state, so the engine counts the bench as it
+    // counts a trainer's: the field emptying is not the battle lost while
+    // somebody is left to send in.
+    this.state = {
+      ...(data.trainer
+        ? createTrainerBattleState(playerPokemon, data.trainer, data.weather ?? null, playerPartner)
+        : createBattleState(playerPokemon, wildPokemon, data.weather ?? null)),
+      playerParty: this.party.pokemon,
+    };
     playerCombatants(this.state).forEach((combatant) =>
       this.participatingPokemon.add(combatant.pokemon),
     );
