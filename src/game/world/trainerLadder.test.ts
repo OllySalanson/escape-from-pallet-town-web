@@ -92,7 +92,8 @@ const TIE = 0.12;
  * rules, in the re-measure that closes the series. These are deleted then.
  */
 const AWAITING_REMEASURE = {
-  inversions: new Set(['LOOKOUT PELL < SALTER COBB']),
+  // The second is FireRed's status rules: Ross 74% against Mott's 59%.
+  inversions: new Set(['LOOKOUT PELL < SALTER COBB', 'GATEKEEPER ROSS < QUARRYMAN MOTT']),
   soloCeiling: { 'MILLER VANCE': 0.8, 'LOOKOUT PELL': 0.95 } as Readonly<Record<string, number>>,
   teamCeiling: { 'LOOKOUT PELL': 0.99 } as Readonly<Record<string, number>>,
 };

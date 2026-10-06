@@ -171,8 +171,11 @@ export const ABILITIES: readonly AbilityBase[] = [
     secondaryChanceMultiplier: 2,
   },
 
-  // 6. What touching it costs. All four are 30% in generation III, and Effect
-  // Spore spreads that 30% evenly over three conditions rather than adding to it.
+  // 6. What touching it costs. FireRed's `AbilityBattleEffects` (pret/pokefirered
+  // `src/battle_util.c`) rolls `Random() % 3` for Static, Poison Point and Flame
+  // Body - one in three, not the modern 30% this file used to say generation III
+  // had - and `Random() % 10` for Effect Spore, which then picks sleep, poison
+  // or paralysis evenly.
   onContact('static', 'Static', 'Touching it may leave the attacker paralysed.', [PrimaryStatus.Paralysis]),
   onContact('poison-point', 'Poison Point', 'Touching its spines may poison the attacker.', [PrimaryStatus.Poison]),
   onContact('flame-body', 'Flame Body', 'Touching its body may burn the attacker.', [PrimaryStatus.Burn]),
@@ -181,6 +184,7 @@ export const ABILITIES: readonly AbilityBase[] = [
     'Effect Spore',
     'Touching its spores may paralyse, poison or put the attacker to sleep.',
     [PrimaryStatus.Paralysis, PrimaryStatus.Poison, PrimaryStatus.Sleep],
+    10,
   ),
   {
     id: 'synchronize',
@@ -311,14 +315,15 @@ function refuses(
   return { id, name, description, blocksStatus: (asked) => asked === condition };
 }
 
-/** The four that answer a touch with a condition, at generation III's 30%. */
+/** The four that answer a touch with a condition: one in three, unless said otherwise. */
 function onContact(
   id: string,
   name: string,
   description: string,
   statuses: readonly PrimaryStatus[],
+  chance = 100 / 3,
 ): AbilityBase {
-  return { id, name, description, onDamagingHit: { chance: 30, statuses } };
+  return { id, name, description, onDamagingHit: { chance, statuses } };
 }
 
 export const ABILITIES_BY_ID: Readonly<Record<string, AbilityBase>> = Object.freeze(

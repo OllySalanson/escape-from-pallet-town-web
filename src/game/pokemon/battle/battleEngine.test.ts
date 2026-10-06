@@ -1003,12 +1003,63 @@ describe('status conditions', () => {
     });
   });
 
-  it('deals floor(max HP / 16) burn damage without changing attack', () => {
+  it('deals an eighth of maximum HP to a burned Pokemon at the end of the turn, as FireRed does', () => {
     const result = enemyAction('burn', maximumRandom);
     const maxHp = result.state.enemy.pokemon.maxHp;
 
-    expect(result.state.enemy.currentHp).toBe(maxHp - Math.floor(maxHp / 16));
-    expect(result.state.enemy.pokemon.stats.attack).toBe(new Pokemon(BULBASAUR, 10).stats.attack);
+    expect(result.state.enemy.currentHp).toBe(maxHp - Math.floor(maxHp / 8));
+    expect(result.events.at(-1)).toMatchObject({ type: 'status-damage', status: 'burn' });
+  });
+
+  it('halves the physical damage a burned Pokemon deals, and leaves its special damage alone', () => {
+    const swing = (move: MoveBase, burned: boolean): number => {
+      const attacker = new Pokemon(CHARMANDER, 20);
+      attacker.moves.splice(0, attacker.moves.length, new Move(move));
+      const state = createBattleState(attacker, new Pokemon(SQUIRTLE, 20));
+      const ready = {
+        ...state,
+        player: { ...state.player, primaryStatus: burned ? PrimaryStatus.Burn : null },
+        enemy: { ...state.enemy, moves: [] },
+      };
+      const result = resolveTurn(ready, 0, () => 0.5);
+      return state.enemy.currentHp - result.state.enemy.currentHp;
+    };
+    const clean = swing(TACKLE, false);
+    const burnedHit = swing(TACKLE, true);
+    expect(burnedHit).toBeLessThan(clean);
+    expect(burnedHit).toBeGreaterThanOrEqual(Math.floor((clean - 2) / 2));
+    expect(swing(EMBER, true)).toBe(swing(EMBER, false));
+  });
+
+  it('takes at least one HP for poison or burn, however small the Pokemon', () => {
+    const state = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(PIDGEY, 1));
+    const result = resolveEnemyTurn(
+      { ...state, enemy: { ...state.enemy, primaryStatus: PrimaryStatus.Poison, moves: [] } },
+      maximumRandom,
+    );
+    expect(state.enemy.pokemon.maxHp).toBeLessThan(16);
+    expect(result.events).toContainEqual(expect.objectContaining({ type: 'status-damage', damage: 1 }));
+  });
+
+  it('quarters a paralysed Pokemon\'s Speed when the turn is put in order', () => {
+    // Pikachu outruns Charmander at the same level, until it is paralysed.
+    const pikachu = new Pokemon(PIKACHU, 20);
+    pikachu.moves.splice(0, pikachu.moves.length, new Move(TACKLE));
+    const charmander = new Pokemon(CHARMANDER, 20);
+    charmander.moves.splice(0, charmander.moves.length, new Move(TACKLE));
+    const state = createBattleState(charmander, pikachu);
+    const first = (paralysed: boolean): string | undefined => {
+      const ready = {
+        ...state,
+        enemy: { ...state.enemy, primaryStatus: paralysed ? PrimaryStatus.Paralysis : null },
+      };
+      const result = resolveTurn(ready, 0, () => 0.5);
+      const opener = result.events.find((event) => event.type === 'used-move');
+      return opener && 'user' in opener ? opener.user : undefined;
+    };
+    expect(pikachu.stats.speed).toBeGreaterThan(charmander.stats.speed);
+    expect(first(false)).toBe('enemy');
+    expect(first(true)).toBe('player');
   });
 
   it('uses the pinned 25 percent paralysis roll to prevent an action', () => {
@@ -1023,13 +1074,13 @@ describe('status conditions', () => {
     expect(result.events.some((event) => event.type === 'used-move')).toBe(false);
   });
 
-  it('thaws at 25 percent and otherwise prevents frozen actions', () => {
+  it('thaws one time in five, as FireRed does, and otherwise prevents frozen actions', () => {
     const thawed = enemyAction('freeze', (() => {
-      const rolls = [0, 0.24, 0, 1, 1];
+      const rolls = [0, 0.19, 0, 1, 1];
       return () => rolls.shift() ?? 1;
     })());
     const frozen = enemyAction('freeze', (() => {
-      const rolls = [0, 0.25];
+      const rolls = [0, 0.2];
       return () => rolls.shift() ?? 1;
     })());
 
@@ -1038,33 +1089,91 @@ describe('status conditions', () => {
     expect(frozen.events).toContainEqual({ type: 'status-prevented', user: 'enemy', name: 'Bulbasaur', status: 'freeze' });
   });
 
-  it('sleeps for its rolled duration then wakes before acting', () => {
-    const sleeping = enemyAction('sleep', maximumRandom, { sleepTurns: 1 });
+  it('thaws a frozen Pokemon a Fire move hits', () => {
+    const charmander = new Pokemon(CHARMANDER, 20);
+    charmander.moves.splice(0, charmander.moves.length, new Move(EMBER));
+    const state = createBattleState(charmander, new Pokemon(SQUIRTLE, 30));
+    const result = resolveTurn(
+      { ...state, enemy: { ...state.enemy, primaryStatus: PrimaryStatus.Freeze, moves: [] } },
+      0,
+      () => 0.5,
+    );
+    expect(result.state.enemy.primaryStatus).toBeNull();
+    expect(result.events).toContainEqual({ type: 'status-cured', user: 'enemy', name: 'Squirtle', status: 'freeze' });
+  });
+
+  it('never freezes anything in harsh sunlight', () => {
+    const lapras = new Pokemon(getSpeciesById('dewgong')!, 50);
+    lapras.moves.splice(0, lapras.moves.length, new Move(ICE_BEAM));
+    const state = createBattleState(lapras, new Pokemon(PIDGEY, 50), WeatherId.HarshSunlight);
+    const result = resolveTurn({ ...state, enemy: { ...state.enemy, moves: [] } }, 0, () => 0);
+    expect(result.state.enemy.primaryStatus).toBeNull();
+  });
+
+  it('puts a Pokemon to sleep on a counter of two to five, spent before each move', () => {
+    const sleeper = (roll: number): number => {
+      const state = createBattleState(new Pokemon(JIGGLYPUFF, 20), new Pokemon(CHARMANDER, 20));
+      const singing = { ...state, player: { ...state.player, moves: [{ base: SING, pp: 15 }] }, enemy: { ...state.enemy, moves: [] } };
+      // Sing's accuracy roll first, then the counter's.
+      const rolls = [0, roll];
+      return resolveTurn(singing, 0, () => rolls.shift() ?? 0.5).state.enemy.sleepTurns;
+    };
+    expect([sleeper(0), sleeper(0.999)]).toEqual([2, 5]);
+  });
+
+  it('sleeps while the counter lasts, then wakes and moves on the turn it runs out', () => {
+    const sleeping = enemyAction('sleep', maximumRandom, { sleepTurns: 2 });
     const awake = resolveEnemyTurn(sleeping.state, maximumRandom);
 
-    expect(sleeping.state.enemy.sleepTurns).toBe(0);
+    expect(sleeping.state.enemy.sleepTurns).toBe(1);
     expect(sleeping.events).toContainEqual({ type: 'status-prevented', user: 'enemy', name: 'Bulbasaur', status: 'sleep' });
     expect(awake.state.enemy.primaryStatus).toBeNull();
     expect(awake.events).toContainEqual({ type: 'status-cured', user: 'enemy', name: 'Bulbasaur', status: 'sleep' });
     expect(awake.events.some((event) => event.type === 'used-move')).toBe(true);
   });
 
-  it('uses the pinned 50 percent confusion roll for self-damage and clears on expiry', () => {
+  it('hurts a confused Pokemon with a 40-power hit of its own Attack on its own Defence', () => {
     const result = enemyAction(null, (() => {
       const rolls = [0, 0.5];
       return () => rolls.shift() ?? 1;
-    })(), { confusionTurns: 1 });
-    const maxHp = result.state.enemy.pokemon.maxHp;
+    })(), { confusionTurns: 2 });
+    const bulbasaur = result.state.enemy.pokemon;
+    // FireRed's `CalculateBaseDamage`, in its own integer arithmetic.
+    const expected =
+      Math.floor(
+        Math.floor(bulbasaur.stats.attack * 40 * (Math.floor((2 * bulbasaur.level) / 5) + 2)) /
+          bulbasaur.stats.defense /
+          50,
+      ) + 2;
 
-    expect(result.state.enemy.currentHp).toBe(maxHp - Math.floor(maxHp / 8));
-    expect(result.state.enemy.confusionTurns).toBe(0);
+    expect(result.state.enemy.confusionTurns).toBe(1);
     expect(result.events).toContainEqual({
       type: 'confusion-self-hit',
       user: 'enemy',
       name: 'Bulbasaur',
-      damage: Math.floor(maxHp / 8),
+      damage: expected,
     });
+    expect(result.events.some((event) => event.type === 'used-move')).toBe(false);
+  });
+
+  it('snaps out of confusion and moves when the counter runs out, with no roll', () => {
+    const result = enemyAction(null, maximumRandom, { confusionTurns: 1 });
     expect(result.events).toContainEqual({ type: 'status-cured', user: 'enemy', name: 'Bulbasaur', status: 'confusion' });
+    expect(result.events.some((event) => event.type === 'used-move')).toBe(true);
+  });
+
+  it('serves Leftovers before poison at the end of the turn, as FireRed does', () => {
+    const bulbasaur = new Pokemon(BULBASAUR, 20);
+    bulbasaur.heldItemId = 'leftovers';
+    const state = createBattleState(new Pokemon(CHARMANDER, 20), bulbasaur);
+    const result = resolveEnemyTurn(
+      {
+        ...state,
+        enemy: { ...state.enemy, currentHp: 20, primaryStatus: PrimaryStatus.Poison, moves: [] },
+      },
+      maximumRandom,
+    );
+    expect(result.events.map((event) => event.type)).toEqual(['gear-heal', 'status-damage']);
   });
 });
 
