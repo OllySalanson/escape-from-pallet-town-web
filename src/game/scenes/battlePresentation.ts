@@ -180,6 +180,12 @@ export interface PlateLayout {
   readonly detailY: number;
   /** Where the HP bar starts, measured from the plate's own left edge. */
   readonly barX: number;
+  /**
+   * Where "HP:" starts. On the compact plate it sits on the name's own margin:
+   * indented like the full plate's it ended a pixel short of the bar, which
+   * read as one shape (playtest section 3, item 4).
+   */
+  readonly hpLabelX: number;
   readonly barWidth: number;
   /** A double battle's plate carries the typing; a single battle's banner does. */
   readonly showsTyping: boolean;
@@ -194,6 +200,7 @@ const SINGLE_ENEMY_PLATE: PlateLayout = {
   barY: 26,
   detailY: 44,
   barX: 39,
+  hpLabelX: 15,
   barWidth: 88,
   showsTyping: false,
 };
@@ -209,6 +216,48 @@ const DOUBLE_PLATE_PITCH = 156;
 /** The top band, clear of the field; and the bottom one, just over the panel. */
 const DOUBLE_ENEMY_BAND_Y = 2;
 const DOUBLE_PLAYER_BAND_Y = 126;
+
+/**
+ * A word space the small caption lines can be read by.
+ *
+ * At 12px the face's own space is two pixels and the gap after every letter is
+ * two more, so a space was barely wider than the gap between two letters and
+ * "Standard catch rate." read "Standard catchrate." (playtest section 3, item
+ * 5). A three-per-em space is four pixels at 12px, which puts six clear columns
+ * between words against two between letters. It is applied to the battle
+ * panel's caption lines only - the help lines under a list and the prompts over
+ * one - because the dialogue's 14px space is already wide enough.
+ */
+export const CAPTION_WORD_SPACE = '\u2004';
+
+export const captionWords = (text: string): string => text.replace(/ /g, CAPTION_WORD_SPACE);
+
+/** How wide a caption line may be: the panel, inside its margins. */
+export const CAPTION_LINE_WIDTH = BATTLE_PANEL.width - PANEL_INSET_X * 2;
+
+/**
+ * A caption line set to fit the panel, in the order it is best read: with the
+ * wide word space; with the face's own; then with its dot separators closed up.
+ *
+ * The move summary is the one line long enough to need it. In a double battle
+ * it carries the chooser's name as well, and "PIDGEY · NORMAL · PHYSICAL ·
+ * POWER 40 · PP 20/20 · SAME-TYPE x1.5" ran 55 pixels past the panel's edge
+ * on the face's own spacing - clean off the battle screen.
+ *
+ * `fits` is asked of the rendered width, which only the scene can measure. If
+ * nothing fits, the narrowest is used.
+ */
+export const fitCaption = (
+  /** The line, or the line followed by shorter ways of saying the same thing. */
+  texts: string | readonly string[],
+  fits: (line: string) => boolean,
+): string => {
+  const candidates = (typeof texts === 'string' ? [texts] : texts).flatMap((text) => {
+    const tight = text.replace(/ · /g, '·');
+    return [captionWords(text), text, captionWords(tight), tight];
+  });
+  return candidates.find(fits) ?? candidates[candidates.length - 1];
+};
 
 export const statusPlateLayout = (
   side: 'player' | 'enemy',
@@ -227,6 +276,7 @@ export const statusPlateLayout = (
     barY: 19,
     detailY: 30,
     barX: 30,
+    hpLabelX: 9,
     // The player's plate has to fit its HP numbers on the same row as the bar,
     // because the row below is carrying the typing and the gear - so the bar is
     // shorter on that side and the numbers sit off the plate's right edge. Set
@@ -321,6 +371,12 @@ export type MatchupTone = 'good' | 'bad' | 'neutral' | 'none';
 export interface MoveGuidance {
   /** Type, category, power and PP: what the move is. */
   readonly summary: string;
+  /**
+   * The same without the category, for a line that has no room for it. In
+   * generation III a move's category follows from its type, so this loses
+   * nothing the type does not already say.
+   */
+  readonly compactSummary: string;
   /** How the move lands on the Pokemon currently facing the player. */
   readonly matchup: string;
   readonly tone: MatchupTone;
@@ -367,6 +423,7 @@ export const describeMoveGuidance = (
   if (move.base.category === MoveCategory.Status || move.base.power <= 0) {
     return {
       summary: `${move.base.type.toUpperCase()} · STATUS · ${pp}`,
+      compactSummary: `${move.base.type.toUpperCase()} · STATUS · ${pp}`,
       matchup: move.base.description || 'No direct damage.',
       tone: 'neutral',
       effectiveness: 1,
@@ -376,6 +433,7 @@ export const describeMoveGuidance = (
   const effectiveness = getTypeEffectiveness(move.base.type, defender.types);
   return {
     summary: `${move.base.type.toUpperCase()} · ${move.base.category.toUpperCase()} · POWER ${move.base.power} · ${pp}${stabSuffix}`,
+    compactSummary: `${move.base.type.toUpperCase()} · POWER ${move.base.power} · ${pp}${stabSuffix}`,
     matchup: `vs ${defender.name.toUpperCase()}: ${effectivenessLabel(effectiveness)} ${formatMultiplier(effectiveness)}`,
     tone: matchupTone(effectiveness),
     effectiveness,

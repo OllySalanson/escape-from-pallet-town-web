@@ -34,6 +34,8 @@ export function decodePng(bytes: Buffer): PngPixels {
 
   let width = 0;
   let height = 0;
+  // RGBA, or RGB read as opaque RGBA - the battle backdrop is the one RGB file.
+  let channels: number = BYTES_PER_PIXEL;
   const data: Buffer[] = [];
   for (let offset = 8; offset < bytes.length;) {
     const length = bytes.readUInt32BE(offset);
@@ -42,9 +44,10 @@ export function decodePng(bytes: Buffer): PngPixels {
     if (type === 'IHDR') {
       width = body.readUInt32BE(0);
       height = body.readUInt32BE(4);
-      if (body[8] !== 8 || body[9] !== 6 || body[12] !== 0) {
-        throw new Error('expected a non-interlaced 8-bit RGBA PNG');
+      if (body[8] !== 8 || (body[9] !== 6 && body[9] !== 2) || body[12] !== 0) {
+        throw new Error('expected a non-interlaced 8-bit RGBA or RGB PNG');
       }
+      channels = body[9] === 2 ? 3 : BYTES_PER_PIXEL;
     } else if (type === 'IDAT') {
       data.push(body);
     }
@@ -52,15 +55,14 @@ export function decodePng(bytes: Buffer): PngPixels {
   }
 
   const raw = inflateSync(Buffer.concat(data));
-  const stride = width * BYTES_PER_PIXEL;
+  const stride = width * channels;
   const pixels = Buffer.alloc(stride * height);
   for (let y = 0; y < height; y += 1) {
     const filter = raw[y * (stride + 1)];
     for (let x = 0; x < stride; x += 1) {
-      const left = x >= BYTES_PER_PIXEL ? pixels[y * stride + x - BYTES_PER_PIXEL] : 0;
+      const left = x >= channels ? pixels[y * stride + x - channels] : 0;
       const up = y > 0 ? pixels[(y - 1) * stride + x] : 0;
-      const upLeft =
-        x >= BYTES_PER_PIXEL && y > 0 ? pixels[(y - 1) * stride + x - BYTES_PER_PIXEL] : 0;
+      const upLeft = x >= channels && y > 0 ? pixels[(y - 1) * stride + x - channels] : 0;
       const predicted = [0, left, up, (left + up) >> 1, paeth(left, up, upLeft)][filter];
       if (predicted === undefined) {
         throw new Error(`unknown PNG filter ${filter}`);
@@ -73,8 +75,8 @@ export function decodePng(bytes: Buffer): PngPixels {
     width,
     height,
     at: (x, y) => {
-      const index = (y * width + x) * BYTES_PER_PIXEL;
-      return [pixels[index], pixels[index + 1], pixels[index + 2], pixels[index + 3]];
+      const index = (y * width + x) * channels;
+      return [pixels[index], pixels[index + 1], pixels[index + 2], channels === 3 ? 255 : pixels[index + 3]];
     },
   };
 }

@@ -38,10 +38,41 @@ import { createActiveRunSession } from '../run/RunSession';
 import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
 import { BattleScene } from './BattleScene';
 import { combatantSpot } from './battlePresentation';
+import { iconTextureKey, itemIconName } from '../ui/icons';
+
+/** The width the stub reports for "▶ ", which is how far every row is moved right. */
+const CURSOR_GUTTER = 10;
+
+const cursors = new WeakMap<RenderedText[], { cursor: RenderedText; after: number }[]>();
+const cursorsOf = (texts: RenderedText[]): { cursor: RenderedText; after: number }[] => {
+  const known = cursors.get(texts) ?? [];
+  cursors.set(texts, known);
+  return known;
+};
+
+/**
+ * The texts as a player reads them: a row the cursor is on reads "▶ ROW" and
+ * every other row of a list "  ROW", at the place the row's gutter starts.
+ * The scene draws the cursor as its own text in a gutter (so a row never moves
+ * when the cursor lands on it); this puts the two back together so a test can
+ * say what is selected the way it always said it.
+ */
+const read = (texts: RenderedText[]): RenderedText[] =>
+  texts.map((text, index) => {
+    if (text.setX.mock.calls.length === 0) {
+      return text;
+    }
+    const own = cursorsOf(texts).find(({ after }) => after > index)?.cursor;
+    const home = text.x - CURSOR_GUTTER;
+    const chosen = own !== undefined && own.visible && own.x === home && own.y === text.y;
+    return { ...text, x: home, text: `${chosen ? '▶ ' : '  '}${text.text}` };
+  });
 
 interface RenderedText {
-  readonly x: number;
-  readonly y: number;
+  x: number;
+  y: number;
+  width: number;
+  visible: boolean;
   readonly style: Record<string, unknown>;
   text: string;
   readonly handlers: Record<string, () => void>;
@@ -53,6 +84,11 @@ interface RenderedText {
   setColor: ReturnType<typeof vi.fn>;
   setDepth: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
+  setX: ReturnType<typeof vi.fn>;
+  setPosition: ReturnType<typeof vi.fn>;
+  setVisible: ReturnType<typeof vi.fn>;
+  setFixedSize: ReturnType<typeof vi.fn>;
+  setWordWrapWidth: ReturnType<typeof vi.fn>;
 }
 
 interface HarnessOptions {
@@ -205,6 +241,13 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
         };
         return stub;
       }),
+      // The ball a throw puts on the field.
+      image: vi.fn(() => ({
+        ...spriteStub(),
+        setDepth: vi.fn().mockReturnThis(),
+        setAngle: vi.fn().mockReturnThis(),
+        destroy: vi.fn(),
+      })),
       graphics: vi.fn(() => ({
         clear: vi.fn().mockReturnThis(),
         fillStyle: vi.fn().mockReturnThis(),
@@ -213,7 +256,8 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
         strokeRect: vi.fn().mockReturnThis(),
         setDepth: vi.fn().mockReturnThis(),
       })),
-      text: vi.fn((x: number, y: number, text: string, style: Record<string, unknown>) => {
+      text: vi.fn((x: number, y: number, raw: string, style: Record<string, unknown>) => {
+        const text = raw.replace(/\u2004/g, ' ');
         const rendered = {
           x,
           y,
@@ -225,8 +269,10 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
             this.handlers[event] = handler;
             return this;
           }),
+          // A caption line's wide word space reads as a space; the width it is
+          // drawn at is `battlePresentation.test.ts`'s business, not this file's.
           setText: vi.fn(function (this: RenderedText, value: string) {
-            this.text = value;
+            this.text = value.replace(/\u2004/g, ' ');
             return this;
           }),
           setBackgroundColor: vi.fn().mockReturnThis(),
@@ -236,7 +282,36 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
           // A plate's banner is a text, and a plate is torn down when the next
           // Pokemon is sent into its slot.
           destroy: vi.fn(),
+          // The list cursor stands in a gutter of its own: rows are moved right
+          // by its width once and the cursor is moved from row to row. The
+          // stub's text has no width, so the gutter here is the stub's own.
+          width: text === '▶ ' ? CURSOR_GUTTER : 0,
+          setX: vi.fn(function (this: { x: number }, value: number) {
+            this.x = value;
+            return this;
+          }),
+          setPosition: vi.fn(function (this: { x: number; y: number }, x: number, y: number) {
+            this.x = x;
+            this.y = y;
+            return this;
+          }),
+          setVisible: vi.fn(function (this: { visible: boolean }, value: boolean) {
+            this.visible = value;
+            return this;
+          }),
+          visible: true,
+          setFixedSize: vi.fn().mockReturnThis(),
+          setWordWrapWidth: vi.fn().mockReturnThis(),
         } satisfies RenderedText;
+        // The cursor and the probe that measures its gutter are the list's
+        // furniture, not its rows: they are kept apart so a test reads the
+        // rows exactly as it always has, through `read`.
+        if (text === '▶' || text === '▶ ') {
+          if (text === '▶') {
+            cursorsOf(renderedTexts).push({ cursor: rendered, after: renderedTexts.length });
+          }
+          return rendered;
+        }
         renderedTexts.push(rendered);
         return rendered;
       }),
@@ -284,6 +359,14 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     // Whose faint has been put on screen - also a class field.
     fallen: new Set(),
     victoryRewardsGranted: false,
+    // The list cursor's own state - class fields, which an Object.create'd
+    // scene does not run.
+    cursorRows: [],
+    rowHomes: new WeakMap(),
+    cursorGutters: new Map(),
+    // Caption lines are fitted to the panel by measuring them on the game's own
+    // text, which the stub cannot do: every line fits here.
+    captionWidth: () => 0,
     mode: 'events',
     party: options.party ?? new PokemonParty([player]),
     selectedCommand: 0,
@@ -304,7 +387,7 @@ describe('BattleScene command presentation', () => {
     // explicit handoff is the screenshot regression: PR #55 rendered the
     // labels but left this masking layer eligible to cover them.
     expect(dialog.setVisible).toHaveBeenCalledWith(false);
-    expect(renderedTexts.map(({ text, x, y }) => ({ text, x, y }))).toEqual([
+    expect(read(renderedTexts).map(({ text, x, y }) => ({ text, x, y }))).toEqual([
       { text: '▶ FIGHT', x: 18, y: 185 },
       { text: '  BALL x5', x: 112, y: 185 },
       { text: '  POKéMON', x: 206, y: 185 },
@@ -315,13 +398,13 @@ describe('BattleScene command presentation', () => {
     ]);
     // Five commands are three columns of the same two rows four commands use:
     // as a third row the last one sat six pixels off the panel's border.
-    expect(renderedTexts.every(({ y }) => y >= 174 && y < 238)).toBe(true);
-    expect(renderedTexts.every(({ style }) => !('fixedWidth' in style))).toBe(true);
+    expect(read(renderedTexts).every(({ y }) => y >= 174 && y < 238)).toBe(true);
+    expect(read(renderedTexts).every(({ style }) => !('fixedWidth' in style))).toBe(true);
 
-    renderedTexts[0].handlers.pointerdown();
+    read(renderedTexts)[0].handlers.pointerdown();
 
     // Two guidance lines are laid out first, then one row per known move.
-    const [summaryLine, matchupLine, ...moveTexts] = renderedTexts.slice(5);
+    const [summaryLine, matchupLine, ...moveTexts] = read(renderedTexts).slice(5);
     expect(moveTexts).toHaveLength(3);
     expect([summaryLine, matchupLine, ...moveTexts].every(({ y }) => y >= 174 && y < 238)).toBe(
       true,
@@ -336,7 +419,7 @@ describe('BattleScene command presentation', () => {
 
     (scene as unknown as { goBack(): void }).goBack();
 
-    expect(renderedTexts.slice(10).map(({ text }) => text)).toEqual([
+    expect(read(renderedTexts).slice(10).map(({ text }) => text)).toEqual([
       '▶ FIGHT',
       '  BALL x5',
       '  POKéMON',
@@ -345,13 +428,31 @@ describe('BattleScene command presentation', () => {
     ]);
   });
 
+  it('keeps every row still and moves only the cursor (playtest section 3, item 2)', () => {
+    const { scene, renderedTexts } = createBattleSceneHarness();
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    const rows = renderedTexts.slice(0, 5);
+    const before = rows.map(({ x, y, text }) => `${text}@${x},${y}`);
+    const cursor = cursorsOf(renderedTexts).at(-1)!.cursor;
+    const first = { x: cursor.x, y: cursor.y };
+
+    (scene as unknown as { moveSelection(direction: string): void }).moveSelection('down');
+
+    // The text of a row never carries the cursor, so nothing about a row
+    // changes when the cursor lands on it: only the cursor moves.
+    expect(rows.map(({ x, y, text }) => `${text}@${x},${y}`)).toEqual(before);
+    expect(rows.every(({ text }) => !text.startsWith('▶'))).toBe(true);
+    expect({ x: cursor.x, y: cursor.y }).not.toEqual(first);
+    expect(read(renderedTexts).slice(0, 5).map(({ text }) => text)).toContain('▶ ITEM x2');
+  });
+
   it('rewrites the guidance lines when the highlighted move changes', () => {
     const { scene, renderedTexts } = createBattleSceneHarness();
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts[0].handlers.pointerdown();
+    read(renderedTexts)[0].handlers.pointerdown();
 
-    const [summaryLine, matchupLine, , , emberRow] = renderedTexts.slice(5);
+    const [summaryLine, matchupLine, , , emberRow] = read(renderedTexts).slice(5);
     emberRow.handlers.pointerover();
 
     expect(summaryLine.text).toBe('FIRE · SPECIAL · POWER 40 · PP 25/25 · SAME-TYPE x1.5');
@@ -381,7 +482,7 @@ describe('BattleScene command presentation', () => {
     });
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts[4].handlers.pointerdown();
+    read(renderedTexts)[4].handlers.pointerdown();
 
     expect(dialog.visibleText).toBe('Got away safely!');
     expect(dialog.showMessage).toHaveBeenCalledWith('Got away safely!');
@@ -419,7 +520,7 @@ describe('escaping the hunter', () => {
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
-    expect(renderedTexts.map(({ text }) => text)).toEqual([
+    expect(read(renderedTexts).map(({ text }) => text)).toEqual([
       '▶ FIGHT',
       '  FLEE -40s',
       '  POKéMON',
@@ -440,7 +541,7 @@ describe('escaping the hunter', () => {
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
-    expect(renderedTexts.map(({ text }) => text)).toContain('  FLEE -60s OF 84s');
+    expect(read(renderedTexts).map(({ text }) => text)).toContain('  FLEE -60s OF 84s');
   });
 
   it('charges the raid clock, never rolls for it, and marks the hunter as having lost the trail', () => {
@@ -453,7 +554,7 @@ describe('escaping the hunter', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.999);
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts[1].handlers.pointerdown();
+    read(renderedTexts)[1].handlers.pointerdown();
 
     expect(runSession.manager.snapshot().elapsedMs).toBe(40_000);
     expect(runSession.manager.snapshot().hunterFlees).toBe(1);
@@ -496,7 +597,7 @@ describe('escaping the hunter', () => {
     });
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts[1].handlers.pointerdown();
+    read(renderedTexts)[1].handlers.pointerdown();
     dialog.isCurrentMessageComplete = true;
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
@@ -520,7 +621,7 @@ describe('escaping a wild encounter', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts[4].handlers.pointerdown();
+    read(renderedTexts)[4].handlers.pointerdown();
 
     expect(dialog.shownMessages[0]).toBe("Couldn't get away from BULBASAUR!");
     expect((scene as unknown as { pendingBattleExit: boolean }).pendingBattleExit).toBe(false);
@@ -532,12 +633,12 @@ describe('escaping a wild encounter', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts[4].handlers.pointerdown();
+    read(renderedTexts)[4].handlers.pointerdown();
 
     (scene as unknown as { mode: string }).mode = 'main';
     (scene as unknown as { showCommands(): void }).showCommands();
 
-    expect(renderedTexts.at(-1)?.text).toBe('▶ RUN 77%');
+    expect(read(renderedTexts).at(-1)?.text).toBe('▶ RUN 77%');
   });
 });
 
@@ -550,7 +651,7 @@ describe('using an item in a battle', () => {
   ): void => {
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     const clickLast = (match: string, from = 0): void => {
-      const row = renderedTexts.slice(from).filter(({ text }) => text.includes(match)).at(-1);
+      const row = read(renderedTexts).slice(from).filter(({ text }) => text.includes(match)).at(-1);
       if (!row) {
         throw new Error(`No command row matching ${match}`);
       }
@@ -570,7 +671,7 @@ describe('using an item in a battle', () => {
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
-    expect(renderedTexts.map(({ text }) => text)).toEqual([
+    expect(read(renderedTexts).map(({ text }) => text)).toEqual([
       '▶ FIGHT',
       '  POKéMON',
       '  ITEM x2',
@@ -627,7 +728,7 @@ describe('using an item in a battle', () => {
     expect(dialog.shownMessages).toEqual([]);
     expect((scene as unknown as { mode: string }).mode).toBe('party');
     expect(
-      renderedTexts.filter(({ text }) => text.includes('already at full HP')),
+      read(renderedTexts).filter(({ text }) => text.includes('already at full HP')),
     ).toHaveLength(1);
   });
 
@@ -637,7 +738,7 @@ describe('using an item in a battle', () => {
     });
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    const itemCommand = renderedTexts.find(({ text }) => text.includes('ITEM x'));
+    const itemCommand = read(renderedTexts).find(({ text }) => text.includes('ITEM x'));
 
     expect(itemCommand?.text).toBe('  ITEM x0');
 
@@ -853,8 +954,8 @@ describe('a level reached in the middle of a trainer battle', () => {
   const knockOutTheLead = (scene: BattleScene, renderedTexts: RenderedText[]): void => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
-    const tackle = renderedTexts.filter(({ text }) => text.includes('TACKLE')).at(-1);
+    read(renderedTexts).find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    const tackle = read(renderedTexts).filter(({ text }) => text.includes('TACKLE')).at(-1);
     if (!tackle) {
       throw new Error('The move menu did not offer Tackle.');
     }
@@ -915,10 +1016,10 @@ describe('a level reached in the middle of a trainer battle', () => {
     readThroughNarration(scene, dialog);
     expect(dialog.shownMessages).toContain('SQUIRTLE learned WATER GUN!');
     const beforeMenu = renderedTexts.length;
-    renderedTexts.filter(({ text }) => text.includes('FIGHT')).at(-1)?.handlers.pointerdown();
+    read(renderedTexts).filter(({ text }) => text.includes('FIGHT')).at(-1)?.handlers.pointerdown();
 
     expect(
-      renderedTexts
+      read(renderedTexts)
         .slice(beforeMenu)
         .map(({ text }) => text.trim())
         .filter((text) => /^[▶ ]*[A-Z]/.test(text) && !text.includes('·')),
@@ -984,7 +1085,7 @@ describe('a Pokemon with no PP left', () => {
 
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    read(renderedTexts).find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
     dialog.isCurrentMessageComplete = true;
     for (let step = 0; step < 20 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
       (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
@@ -1020,8 +1121,8 @@ describe('BattleScene about-to-use switch prompt', () => {
   ): void => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
-    renderedTexts.filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
+    read(renderedTexts).find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    read(renderedTexts).filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
     dialog.isCurrentMessageComplete = true;
     for (let step = 0; step < 40; step += 1) {
       if ((scene as unknown as { mode: string }).mode === 'about-to-use') {
@@ -1037,7 +1138,7 @@ describe('BattleScene about-to-use switch prompt', () => {
 
     readUpToTheQuestion(scene, renderedTexts, dialog);
 
-    const panel = renderedTexts.slice(renderedTexts.findLastIndex(({ text }) => text.includes('is about to use')));
+    const panel = read(renderedTexts).slice(read(renderedTexts).findLastIndex(({ text }) => text.includes('is about to use')));
     expect(panel[0].text).toBe('RAIDER MAYA is about to use PIDGEY.');
     expect(panel[1].text).toBe('Will you switch POKéMON?');
     expect(panel.slice(2).map(({ text }) => text)).toEqual(['  YES', '▶ NO']);
@@ -1061,11 +1162,11 @@ describe('BattleScene about-to-use switch prompt', () => {
     const { scene, renderedTexts, dialog, benched } = fightWithABench();
 
     readUpToTheQuestion(scene, renderedTexts, dialog);
-    const yes = renderedTexts.findLast(({ text }) => text.includes('YES'))!;
+    const yes = read(renderedTexts).findLast(({ text }) => text.includes('YES'))!;
     yes.handlers.pointerover();
     yes.handlers.pointerdown();
     expect((scene as unknown as { mode: string }).mode).toBe('party');
-    renderedTexts.findLast(({ text }) => text.includes('BULBASAUR'))!.handlers.pointerdown();
+    read(renderedTexts).findLast(({ text }) => text.includes('BULBASAUR'))!.handlers.pointerdown();
 
     const { state } = scene as unknown as { state: BattleState };
     expect(state.player.pokemon).toBe(benched);
@@ -1097,8 +1198,8 @@ describe('BattleScene about-to-use switch prompt', () => {
 
     vi.spyOn(Math, 'random').mockReturnValue(0);
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
-    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
-    renderedTexts.filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
+    read(renderedTexts).find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    read(renderedTexts).filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
     dialog.isCurrentMessageComplete = true;
     for (let step = 0; step < 40; step += 1) {
       if ((scene as unknown as { mode: string }).mode === 'main') {
@@ -1107,7 +1208,7 @@ describe('BattleScene about-to-use switch prompt', () => {
       (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     }
 
-    expect(renderedTexts.some(({ text }) => text.includes('is about to use'))).toBe(false);
+    expect(read(renderedTexts).some(({ text }) => text.includes('is about to use'))).toBe(false);
     expect(dialog.shownMessages).toContain('Go, PIDGEY!');
   });
 });
@@ -1117,7 +1218,7 @@ describe('throwing a ball in a wild battle', () => {
     const harness = createBattleSceneHarness({ bag });
     (harness.scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     const press = (match: string, from = 0): void => {
-      const row = harness.renderedTexts.slice(from).filter(({ text }) => text.includes(match)).at(-1);
+      const row = read(harness.renderedTexts).slice(from).filter(({ text }) => text.includes(match)).at(-1);
       if (!row) {
         throw new Error(`No command row matching ${match}`);
       }
@@ -1130,18 +1231,28 @@ describe('throwing a ball in a wild battle', () => {
     const bag = new Bag({ 'great-ball': 2 });
     const { renderedTexts, press } = open(bag);
 
-    expect(renderedTexts.find(({ text }) => text.includes('BALL x'))?.text).toBe('  BALL x2');
+    expect(read(renderedTexts).find(({ text }) => text.includes('BALL x'))?.text).toBe('  BALL x2');
 
     press('BALL x');
 
     expect(bag.count('great-ball')).toBe(1);
   });
 
+  it('puts the ball that was thrown on the field (playtest section 3, item 7)', () => {
+    const bag = new Bag({ 'great-ball': 2 });
+    const { scene, press } = open(bag);
+
+    press('BALL x');
+
+    const images = (scene as unknown as { add: { image: { mock: { calls: unknown[][] } } } }).add.image.mock.calls;
+    expect(images.map((call) => call[2])).toContain(iconTextureKey(itemIconName('great-ball')));
+  });
+
   it('asks which ball when two kinds are carried, and spends only the one chosen', () => {
     const bag = new Bag({ 'poke-ball': 2, 'great-ball': 1 });
     const { scene, renderedTexts, press } = open(bag);
 
-    expect(renderedTexts.find(({ text }) => text.includes('BALL x'))?.text).toBe('  BALL x3');
+    expect(read(renderedTexts).find(({ text }) => text.includes('BALL x'))?.text).toBe('  BALL x3');
     const before = renderedTexts.length;
     press('BALL x');
 
@@ -1210,7 +1321,7 @@ describe('a catch the pack has no room for', () => {
       row.handlers.pointerdown();
     };
     const readPanel = (from: number): string[] =>
-      harness.renderedTexts.slice(from).map(({ text }) => text);
+      read(harness.renderedTexts).slice(from).map(({ text }) => text);
     return { ...harness, press, readPanel };
   };
 
@@ -1227,7 +1338,7 @@ describe('a catch the pack has no room for', () => {
     // The refusal is read, and then the panel asks the question it raises.
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     expect((scene as unknown as { mode: string }).mode).toBe('make-room');
-    const panel = renderedTexts.slice(before).map(({ text }) => text);
+    const panel = read(renderedTexts).slice(before).map(({ text }) => text);
     expect(panel.some((text) => text.includes('POTION x17 \u00b7 1sq'))).toBe(true);
     // The one ball left is what the room is being made for, so it is not on
     // the table: inviting the player to put it down would be a second trap in
@@ -1274,7 +1385,7 @@ describe('a catch the pack has no room for', () => {
     // Every command is back: fighting on is a way forward, and fleeing is only
     // one of five.
     expect((scene as unknown as { mode: string }).mode).toBe('main');
-    expect(renderedTexts.slice(-5).map(({ text }) => text)).toEqual([
+    expect(read(renderedTexts).slice(-5).map(({ text }) => text)).toEqual([
       '\u25b6 FIGHT',
       '  BALL x1',
       '  POKéMON',
@@ -1513,8 +1624,8 @@ describe('a trainer sending out Pokemon after a knockout', () => {
     renderedTexts: RenderedText[],
     dialog: { isCurrentMessageComplete: boolean },
   ): void => {
-    renderedTexts.findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
-    renderedTexts.filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
+    read(renderedTexts).findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
+    read(renderedTexts).filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
     dialog.isCurrentMessageComplete = true;
     for (let step = 0; step < 40; step += 1) {
       if ((scene as unknown as { mode: string }).mode === 'main') {

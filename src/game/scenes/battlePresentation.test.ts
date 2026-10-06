@@ -41,6 +41,9 @@ import {
   formatHunterFleeCommand,
   formatItemRow,
   itemTargetPrompt,
+  captionWords,
+  CAPTION_WORD_SPACE,
+  fitCaption,
 } from './battlePresentation';
 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
@@ -123,6 +126,7 @@ describe('battle presentation', () => {
       }),
     ).toEqual({
       summary: 'FIRE · SPECIAL · POWER 40 · PP 25/25 · SAME-TYPE x1.5',
+      compactSummary: 'FIRE · POWER 40 · PP 25/25 · SAME-TYPE x1.5',
       matchup: 'vs BULBASAUR: SUPER EFFECTIVE x2',
       tone: 'good',
       effectiveness: 2,
@@ -383,5 +387,49 @@ describe('the small wording faults the battles playtest found', () => {
     expect(
       eventToMessage({ type: 'effectiveness', multiplier: 0, user: 'enemy', name: 'Geodude' }),
     ).toBe("It doesn't affect Foe GEODUDE...");
+  });
+});
+
+describe('the caption lines under and over a list', () => {
+  it('space their words wider than their letters (playtest section 3, item 5)', () => {
+    expect(captionWords('Standard catch rate.')).toBe('Standard catch rate.');
+    expect(CAPTION_WORD_SPACE).toBe(' ');
+  });
+});
+
+describe('a caption line too long for the panel', () => {
+  // Characters stand in for pixels: a line "fits" when it is no longer than this.
+  const within = (limit: number) => (line: string) => line.length <= limit;
+  const summary = 'PIDGEY · NORMAL · PHYSICAL · POWER 40';
+
+  it('keeps the wide word space while it fits', () => {
+    expect(fitCaption(summary, within(80))).toBe(captionWords(summary));
+  });
+
+  it('closes the dot separators up before it would run off the panel', () => {
+    expect(fitCaption(summary, (line) => !line.includes(' · ') && !line.includes('\u2004·'))).toBe(
+      captionWords('PIDGEY·NORMAL·PHYSICAL·POWER 40'),
+    );
+    expect(fitCaption(summary, within(31))).toBe(captionWords('PIDGEY·NORMAL·PHYSICAL·POWER 40'));
+  });
+});
+
+describe("a double battle's move line, which carries the chooser's name too", () => {
+  it('falls back to the line without the category before running off the panel', () => {
+    const lines = [
+      'PIDGEY · NORMAL · PHYSICAL · POWER 40 · PP 20/20 · SAME-TYPE x1.5',
+      'PIDGEY · NORMAL · POWER 40 · PP 20/20 · SAME-TYPE x1.5',
+    ];
+    // Only the short one fits, closed up or not.
+    const fits = (line: string) => !line.includes('PHYSICAL');
+    expect(fitCaption(lines, fits)).toBe(captionWords(lines[1]));
+  });
+
+  it('offers the summary without the category, which a generation III type already implies', () => {
+    const guidance = describeMoveGuidance({ base: EMBER, pp: 25 }, [PokemonType.Fire], {
+      name: 'Bulbasaur',
+      types: [PokemonType.Grass],
+    });
+    expect(guidance.compactSummary).toBe('FIRE · POWER 40 · PP 25/25 · SAME-TYPE x1.5');
   });
 });
