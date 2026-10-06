@@ -31,6 +31,7 @@ import {
   chooseEnemyMove,
   createBattleState,
   createTrainerBattleState,
+  catchOdds,
   getCatchChance,
   persistCombatantToPokemon,
   refreshCombatantAfterLevelUp,
@@ -545,21 +546,50 @@ describe('battle turn resolution', () => {
 });
 
 describe('catching', () => {
-  it('raises catch chance as HP falls and for qualifying status and ball modifiers', () => {
-    expect(getCatchChance(100, 100, null)).toBe(0.2);
-    expect(getCatchChance(1, 100, null)).toBeCloseTo(0.794);
-    expect(getCatchChance(100, 100, PrimaryStatus.Paralysis)).toBeCloseTo(0.35);
-    expect(getCatchChance(100, 100, PrimaryStatus.Sleep)).toBeCloseTo(0.45);
-    expect(getCatchChance(100, 100, PrimaryStatus.Sleep, 2)).toBeCloseTo(0.9);
-    expect(getCatchChance(0, 100, PrimaryStatus.Sleep, 2)).toBe(0.95);
+  /**
+   * FireRed's `Cmd_handleballthrow`, worked by hand for a 100-HP target. The
+   * playtest report's table (2.5) computed the same formula with a real square
+   * root and so came out a few points lower; FireRed's `Sqrt` is the GBA
+   * BIOS's whole-number one, which these follow.
+   */
+  it("follows FireRed: the species' own rate, the ball, the HP gone and the status", () => {
+    // A Rattata (255) at full HP in a Poke Ball: odds 85, so each of the four
+    // checks passes under 1048560 / floor(sqrt(floor(sqrt(16711680 / 85)))).
+    const rattata = getCatchChance(255, 100, 100, null);
+    expect(rattata).toBeCloseTo((Math.floor(1048560 / 21) / 65536) ** 4, 10);
+    expect(rattata).toBeCloseTo(0.34, 2);
+    // A starter line (45) is a different animal, and a Great Ball's 15 tenths help.
+    expect(getCatchChance(45, 100, 100, null)).toBeCloseTo(0.06, 2);
+    expect(getCatchChance(45, 100, 100, null, 1.5)).toBeCloseTo(0.09, 2);
+    // HP gone raises it; at 1 HP it is nearly three times full health's odds.
+    expect(getCatchChance(45, 1, 100, null)).toBeCloseTo(0.2, 2);
+    // Sleep and freeze double the odds; poison, burn and paralysis add half.
+    expect(getCatchChance(45, 100, 100, PrimaryStatus.Sleep)).toBeGreaterThan(
+      getCatchChance(45, 100, 100, PrimaryStatus.Paralysis),
+    );
+    expect(getCatchChance(45, 100, 100, PrimaryStatus.Paralysis)).toBeGreaterThan(
+      getCatchChance(45, 100, 100, null),
+    );
+    // Mewtwo (3) is all but uncatchable in an ordinary ball.
+    expect(getCatchChance(3, 100, 100, null)).toBeLessThan(0.005);
   });
 
-  it('uses pinned boundary rolls and produces classic shake counts', () => {
+  it('is a sure catch once the odds pass 254, and never more than certain', () => {
+    expect(catchOdds(255, 1, 100, PrimaryStatus.Sleep, 2)).toBeGreaterThan(254);
+    expect(getCatchChance(255, 1, 100, PrimaryStatus.Sleep, 2)).toBe(1);
+  });
+
+  it('makes four shake checks, shows the ones that passed, and catches only on all four', () => {
     const state = createBattleState(new Pokemon(CHARMANDER, 10), new Pokemon(BULBASAUR, 10));
     const fullHealthEnemy = state.enemy;
 
-    expect(attemptCatch(fullHealthEnemy, () => 0.199999)).toMatchObject({ caught: true, shakes: 3 });
-    expect(attemptCatch(fullHealthEnemy, () => 0.2)).toMatchObject({ caught: false, shakes: 2 });
+    expect(attemptCatch(fullHealthEnemy, () => 0)).toMatchObject({ caught: true, shakes: 3 });
+    // Three pass and the fourth fails: three wobbles, and it breaks free.
+    const rolls = [0, 0, 0, 0.999];
+    expect(attemptCatch(fullHealthEnemy, () => rolls.shift() ?? 0.999)).toMatchObject({
+      caught: false,
+      shakes: 3,
+    });
     expect(attemptCatch(fullHealthEnemy, () => 1)).toMatchObject({ caught: false, shakes: 0 });
   });
 

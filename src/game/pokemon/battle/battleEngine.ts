@@ -429,25 +429,66 @@ export interface CatchAttempt {
 }
 
 /**
- * Catch chance is a deliberately simple, visible rule for the extraction loop:
- * 20% at full HP, rising linearly by up to 60% as HP falls, plus a 25% bonus
- * for sleep/freeze or 15% for paralysis/poison/burn, then the ball modifier.
- * The result is capped at 95%, so every throw retains a small amount of risk.
+ * FireRed's capture rate, `Cmd_handleballthrow` (pret/pokefirered
+ * `src/battle_script_commands.c` at 037335f), in its own integer arithmetic.
+ *
+ * The species' own catch rate (out of 255) times the ball's bonus in tenths -
+ * ten for a Poke Ball, fifteen for a Great Ball - scaled by how much HP is
+ * gone, `(3 x max - 2 x current) / (3 x max)`, then doubled for sleep or
+ * freeze and raised by half for poison, burn or paralysis. Over 254 is a sure
+ * catch; anything else is four shake checks, each passing when a 16-bit roll
+ * is under `1048560 / sqrt(sqrt(16711680 / odds))`, and the Pokemon is caught
+ * only if all four pass.
+ *
+ * The rule this replaced was a flat, species-blind 20% at full HP rising to
+ * 80%, so a 1-HP starter-line Pokemon was 77% in a Poke Ball against FireRed's
+ * 17%, and a Rattata at full HP 20% against FireRed's 33% (playtest 2.5).
  */
-export const getCatchChance = (
+export const catchOdds = (
+  catchRate: number,
   currentHp: number,
   maxHp: number,
   primaryStatus: PrimaryStatusType | null,
   ballModifier = 1,
 ): number => {
-  const hpFraction = maxHp > 0 ? Math.min(1, Math.max(0, currentHp / maxHp)) : 1;
-  const statusBonus =
-    primaryStatus === PrimaryStatus.Sleep || primaryStatus === PrimaryStatus.Freeze
-      ? 0.25
-      : primaryStatus
-        ? 0.15
-        : 0;
-  return Math.min(0.95, Math.max(0, (0.2 + (1 - hpFraction) * 0.6 + statusBonus) * ballModifier));
+  const ballBonus = Math.round(ballModifier * 10);
+  const max = Math.max(1, maxHp);
+  const hp = Math.max(0, Math.min(max, currentHp));
+  let odds = Math.floor(
+    (Math.floor((catchRate * ballBonus) / 10) * (max * 3 - hp * 2)) / (3 * max),
+  );
+  if (primaryStatus === PrimaryStatus.Sleep || primaryStatus === PrimaryStatus.Freeze) {
+    odds *= 2;
+  } else if (primaryStatus !== null) {
+    odds = Math.floor((odds * 15) / 10);
+  }
+  return odds;
+};
+
+/** A sure catch: FireRed's `odds > 254`. */
+const CERTAIN_CATCH_ODDS = 254;
+/** How many checks a ball makes; all of them must pass. */
+const SHAKE_CHECKS = 4;
+
+/** The bar each of the four 16-bit shake rolls must be under, or null for a sure catch. */
+export const shakeThreshold = (odds: number): number | null => {
+  if (odds > CERTAIN_CATCH_ODDS) {
+    return null;
+  }
+  const root = Math.floor(Math.sqrt(Math.floor(Math.sqrt(Math.floor(16711680 / Math.max(1, odds))))));
+  return Math.floor(1048560 / Math.max(1, root));
+};
+
+/** The chance a throw catches: one, or the shake check passing four times running. */
+export const getCatchChance = (
+  catchRate: number,
+  currentHp: number,
+  maxHp: number,
+  primaryStatus: PrimaryStatusType | null,
+  ballModifier = 1,
+): number => {
+  const threshold = shakeThreshold(catchOdds(catchRate, currentHp, maxHp, primaryStatus, ballModifier));
+  return threshold === null ? 1 : Math.min(1, threshold / 65536) ** SHAKE_CHECKS;
 };
 
 export const attemptCatch = (
@@ -455,13 +496,32 @@ export const attemptCatch = (
   random: RandomSource,
   ballModifier = 1,
 ): CatchAttempt => {
-  const chance = getCatchChance(combatant.currentHp, combatant.pokemon.maxHp, combatant.primaryStatus, ballModifier);
-  const roll = clampRandom(random());
-  const caught = roll < chance;
-  // Failed throws can still wobble up to twice. A successful throw always
-  // shows the classic three shakes before the capture message.
-  const shakes = caught ? 3 : Math.min(2, Math.floor((chance / Math.max(roll, 0.000001)) * 3));
-  return { chance, caught, shakes };
+  const odds = catchOdds(
+    combatant.pokemon.base.catchRate,
+    combatant.currentHp,
+    combatant.pokemon.maxHp,
+    combatant.primaryStatus,
+    ballModifier,
+  );
+  const chance = getCatchChance(
+    combatant.pokemon.base.catchRate,
+    combatant.currentHp,
+    combatant.pokemon.maxHp,
+    combatant.primaryStatus,
+    ballModifier,
+  );
+  const threshold = shakeThreshold(odds);
+  if (threshold === null) {
+    return { chance, caught: true, shakes: 3 };
+  }
+  // The checks stop at the first that fails, so the wobbles a player sees are
+  // the checks that passed - three at most, because the fourth is the catch.
+  let passed = 0;
+  while (passed < SHAKE_CHECKS && Math.floor(clampRandom(random()) * 65536) < threshold) {
+    passed += 1;
+  }
+  const caught = passed === SHAKE_CHECKS;
+  return { chance, caught, shakes: Math.min(3, passed) };
 };
 
 const toCombatant = (pokemon: Pokemon): BattleCombatant => ({
