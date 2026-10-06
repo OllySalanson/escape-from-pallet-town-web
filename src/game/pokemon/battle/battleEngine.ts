@@ -1918,6 +1918,10 @@ const applyMove = (
   const landedSomewhere = struck.some(
     (hit) => hit.landedHits > 0 || move.base.category === MoveCategory.Status,
   );
+  // Whether the user's own share of the move - Superpower's drop, Metal Claw's
+  // raise - has been rolled yet. It belongs to the user, so it is rolled once
+  // whether the foe it hit is still standing or not.
+  let selfRolled = false;
   if (landedSomewhere && nextState.outcome === 'active') {
     for (const targetRef of effectTargets) {
       if (nextState.outcome !== 'active' || !isEngaged(unitAt(nextState, targetRef))) {
@@ -1953,6 +1957,12 @@ const applyMove = (
           }
           continue;
         }
+        if (secondary.target === MoveTarget.Self) {
+          if (selfRolled) {
+            continue;
+          }
+          selfRolled = true;
+        }
         // Each secondary rolls on its own, exactly as the tutorial does it: a
         // move with two of them can land both, one, or neither, and a move that
         // hit two Pokemon rolls for each of them. Serene Grace doubles the
@@ -1976,6 +1986,26 @@ const applyMove = (
         nextState = rolled.state;
         events.push(...rolled.events);
       }
+    }
+  }
+  // The hit knocked out everything it struck, so the loop above had nobody to
+  // roll for - but a change to the *user's* stats is still the user's.
+  // FireRed's `SetMoveEffect` checks the HP of whoever the effect lands on, and
+  // for Superpower or Metal Claw that is the attacker: a Superpower that
+  // knocks out its foe still costs its user the Attack and Defence. Skipping it
+  // made a knockout the one way to use Superpower for free.
+  const connected = struck.some((hit) => hit.landedHits > 0 && !hit.immune && !hit.absorbed);
+  if (!selfRolled && connected && nextState.outcome === 'active' && isEngaged(unitAt(nextState, ref))) {
+    for (const secondary of move.base.secondaries.filter((each) => each.target === MoveTarget.Self)) {
+      if (
+        clampRandom(random()) * 100 >=
+        secondaryChance(abilityCarrier(attackerNow()), secondary.chance)
+      ) {
+        continue;
+      }
+      const rolled = applyMoveEffects(nextState, ref, secondary, secondary.target, ref, move.base, random);
+      nextState = rolled.state;
+      events.push(...rolled.events);
     }
   }
 

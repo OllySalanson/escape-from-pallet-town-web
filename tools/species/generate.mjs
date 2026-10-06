@@ -89,6 +89,16 @@ const STAGES = ['', 'one stage', 'two stages', 'three stages'];
 
 // -- the move catalogue ------------------------------------------------------
 
+/**
+ * Stat changes PokeAPI reports that generation III does not have. PokeAPI keeps
+ * no history for a move's stat changes, so a later generation's addition reads
+ * as if it were always there. Rapid Spin's Speed raise is generation VIII:
+ * FireRed's Rapid Spin is \`EFFECT_RAPID_SPIN\` (pret/pokefirered
+ * \`src/data/battle_moves.h\`), which frees the user from binding and Leech Seed
+ * and changes no stat.
+ */
+const NO_GEN_III_STAT_CHANGE = new Set(['rapid-spin']);
+
 /** A move's effects, split the way `MoveBase` splits them. */
 const effectsOf = (move) => {
   const status = move.ailment === 'none' ? null : STATUSES[move.ailment];
@@ -106,11 +116,20 @@ const effectsOf = (move) => {
   const chance = move.ailment_chance > 0 ? move.ailment_chance : (move.effect_chance ?? 0);
   if (status && chance > 0) secondaries.push({ chance, status });
   if (move.flinch_chance > 0) secondaries.push({ chance: move.flinch_chance, flinch: true });
-  if (boosts.length > 0) {
+  if (boosts.length > 0 && !NO_GEN_III_STAT_CHANGE.has(move.name)) {
     secondaries.push({
       chance: move.stat_chance > 0 ? move.stat_chance : (move.effect_chance ?? 100),
       boosts,
-      self: move.target === 'user',
+      // Whose stats an attack changes is PokeAPI's \`meta.category\`, not its
+      // \`target\`: an attack's target is always the foe, and \`damage-raise\` is
+      // the category for "hits, then changes the *user's* stats" - Metal Claw,
+      // Meteor Mash, Silver Wind, Ancient Power, and Superpower, whose change
+      // is a drop. Reading \`target === 'user'\` instead (which no attack has)
+      // sent all of them to the foe: a Venomoth's Silver Wind raised its
+      // opponent's five stats and a Nidoqueen's Superpower weakened hers
+      // (playtest 22, W1). FireRed's own effects agree: EFFECT_ATTACK_UP_HIT,
+      // EFFECT_ALL_STATS_UP_HIT and EFFECT_SUPERPOWER all act on the attacker.
+      self: move.meta === 'damage-raise',
     });
   }
   return { guaranteed: null, secondaries };
