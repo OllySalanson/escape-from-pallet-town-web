@@ -98,12 +98,19 @@ const species = (id: string): PokemonBase => {
  *
  * | rung            | offset | wins (mean / worst) | HP left on a win |
  * | --------------- | ------ | ------------------- | ---------------- |
- * | 1: 0-120s       | -4     | 100% / 99%          | 79%              |
- * | 2: 120-180s     | -3     | 100% / 99%          | 73%              |
- * | 3: 180-240s     | -2     | 99% / 97%           | 66%              |
- * | 4: 240s-end     | -1     | 96% / 87%           | 57%              |
- * | at your level   | 0      | 83% / 45%           | 47%              |
- * | enraged         | +3     | 31% / 4%            | 33%              |
+ * | 1: 0-120s       | -4     | 100% / 99%          | 80%              |
+ * | 2: 120-180s     | -3     | 100% / 99%          | 74%              |
+ * | 3: 180-240s     | -2     | 99% / 97%           | 67%              |
+ * | 4: 240s-end     | -1     | 96% / 87%           | 59%              |
+ * | at your level   | 0      | 83% / 45%           | 49%              |
+ * | enraged         | +3     | 33% / 4%            | 36%              |
+ *
+ * Re-measured on 2026-10-06 after the battle rules moved to FireRed's (a
+ * trainer's replacement no longer attacks the turn it arrives, FireRed's
+ * status, catching and experience rules, its move data). Against the table
+ * before them the ladder moved by a point or two in the player's favour and
+ * no rung changed character: a hunter facing one Pokemon fields one, so the
+ * free hit on a knockout that most of the change removed never reached it.
  *
  * The clock still closes the gap, so staying late still costs - a fifth more
  * of your health by the last minute - but no ordinary rung is a wall. The
