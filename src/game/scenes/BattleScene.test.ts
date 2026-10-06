@@ -880,6 +880,23 @@ describe('a level reached in the middle of a trainer battle', () => {
     expect(dialog.shownMessages).toContain('SQUIRTLE grew to Lv 7!');
   });
 
+  it('says what the knockout paid straight after the faint, before the next Pokemon comes in', () => {
+    const { scene, renderedTexts, dialog } = levellingBattle();
+
+    knockOutTheLead(scene, renderedTexts);
+    readThroughNarration(scene, dialog);
+
+    const shown = dialog.shownMessages;
+    const fainted = shown.indexOf('Foe PIDGEY fainted!');
+    const sentOut = shown.indexOf('Go, PIDGEY!');
+    expect(fainted).toBeGreaterThanOrEqual(0);
+    expect(shown[fainted + 1]).toMatch(/^SQUIRTLE gained \d+ XP!$/);
+    expect(sentOut).toBeGreaterThan(fainted);
+    // And the newcomer takes nothing on its way in: its first move is next turn.
+    expect(shown.slice(fainted, sentOut + 1).some((line) => line.startsWith('Foe PIDGEY used'))).toBe(false);
+    expect(shown.slice(sentOut + 1).some((line) => line.startsWith('Foe PIDGEY used'))).toBe(false);
+  });
+
   it('offers the move it just said was learned, with the PP of the old moves untouched', () => {
     const { scene, renderedTexts, dialog } = levellingBattle();
 

@@ -980,7 +980,11 @@ export const resolveTurn = (
   // off `applyEndOfAction` the way burn and Leftovers do, and why four units on
   // the field are still one weather.
   const weathered = applyWeather(clearFlinching(nextState));
-  return { state: weathered.state, events: [...events, ...weathered.events] };
+  const refilled = sendOutReplacements(weathered.state);
+  return {
+    state: refilled.state,
+    events: [...events, ...weathered.events, ...refilled.events],
+  };
 };
 
 /**
@@ -1158,7 +1162,11 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
     events.push(...acted.events);
   }
   const weathered = applyWeather(nextState);
-  return { state: weathered.state, events: [...events, ...weathered.events] };
+  const refilled = sendOutReplacements(weathered.state);
+  return {
+    state: refilled.state,
+    events: [...events, ...weathered.events, ...refilled.events],
+  };
 };
 
 /**
@@ -2298,54 +2306,89 @@ const applyStatus = (
 };
 
 /**
- * Somebody has gone down. Whoever is waiting takes their place, and the side has
- * lost only when nobody is left standing on it.
+ * Somebody has gone down. The side has lost only when nobody is left standing
+ * on it *and* nobody is left to send in.
  *
- * In a single battle the trainer's next Pokemon walks into the one slot there
- * is, which is exactly what this did before. In a double it walks into the slot
- * that emptied, and the *other* slot goes on fighting meanwhile - which is why
- * the next body is drawn from `enemySentOut` rather than from either slot's own
- * party index. A player's empty slot is left empty: who goes into it is a
- * decision, and `BattleScene` is where decisions are asked for.
+ * A trainer's next Pokemon does **not** walk in here. It waits for the end of
+ * the turn (`sendOutReplacements`), which is FireRed's rule and the tutorial's
+ * (`NextStepsAfterFainting` marks the fallen unit's action invalid): the action
+ * the fallen Pokemon had queued is lost with it, and the one that replaces it
+ * acts first on the turn after. Filling the slot at the moment of the faint
+ * used to hand the newcomer the fallen Pokemon's queued move in the same turn -
+ * a free attack on every knockout that every trainer, boss and hunter number
+ * in the game had been measured with. A player's empty slot is left empty too:
+ * who goes into it is a decision, and `BattleScene` is where decisions are
+ * asked for.
  */
 const resolveFaint = (
   state: BattleState,
   ref: SlotRef,
 ): { readonly state: BattleState; readonly events: readonly BattleEvent[] } => {
-  if (ref.side === 'enemy' && state.trainer) {
-    const party = state.trainer.party;
-    let index = state.enemySentOut;
-    while (index < party.length && party[index].isFainted) {
-      index += 1;
-    }
-    const next = party[index];
-    if (next) {
-      const filled: BattleState = {
-        ...withUnit(state, ref, toCombatant(next)),
-        enemySentOut: index + 1,
-        ...(ref.slot === 0
-          ? { enemyPartyIndex: index }
-          : { enemyPartnerPartyIndex: index }),
-        outcome: 'active',
-      };
-      const arrived = applySendOut(filled, ref);
-      return {
-        state: arrived.state,
-        events: [
-          { type: 'enemy-sent-out', name: next.base.name, ...inSlot(ref) },
-          ...arrived.events,
-        ],
-      };
-    }
-  }
-
   if (engagedSlots(state, ref.side).length > 0) {
+    return { state, events: [] };
+  }
+  if (ref.side === 'enemy' && nextTrainerPokemon(state) !== null) {
     return { state, events: [] };
   }
   return {
     state: { ...state, outcome: ref.side === 'enemy' ? 'victory' : 'defeat' },
     events: [],
   };
+};
+
+/**
+ * Where in the trainer's party the next Pokemon able to fight is, or `null` when
+ * there is nobody left. Drawn from `enemySentOut` rather than from either slot's
+ * own party index, because two slots draw from one party.
+ */
+const nextTrainerPokemon = (state: BattleState, from = state.enemySentOut): number | null => {
+  const party = state.trainer?.party;
+  if (!party) {
+    return null;
+  }
+  let index = from;
+  while (index < party.length && party[index].isFainted) {
+    index += 1;
+  }
+  return index < party.length ? index : null;
+};
+
+/**
+ * The end of a turn for a trainer: every slot that emptied this turn is filled
+ * from the party, in slot order, and each arrival is announced and lands its
+ * own ability then - after the weather has been charged, so a newcomer is never
+ * chipped by a turn it was not on the field for.
+ *
+ * Every path that resolves a turn ends here, so a state is never handed out
+ * with a slot owing: the next turn opens with the replacement standing in it,
+ * which is the first moment it is asked for an action.
+ */
+const sendOutReplacements = (state: BattleState): TurnResult => {
+  if (!state.trainer || state.outcome !== 'active') {
+    return { state, events: [] };
+  }
+  let nextState = state;
+  const events: BattleEvent[] = [];
+  for (const ref of slotsOf(state, 'enemy')) {
+    const fallen = unitAt(nextState, ref);
+    if (!fallen || fallen.currentHp > 0) {
+      continue;
+    }
+    const index = nextTrainerPokemon(nextState);
+    const next = index === null ? undefined : nextState.trainer?.party[index];
+    if (index === null || !next) {
+      continue;
+    }
+    const filled: BattleState = {
+      ...withUnit(nextState, ref, toCombatant(next)),
+      enemySentOut: index + 1,
+      ...(ref.slot === 0 ? { enemyPartyIndex: index } : { enemyPartnerPartyIndex: index }),
+    };
+    const arrived = applySendOut(filled, ref);
+    nextState = arrived.state;
+    events.push({ type: 'enemy-sent-out', name: next.base.name, ...inSlot(ref) }, ...arrived.events);
+  }
+  return { state: nextState, events };
 };
 
 const randomTurnCount = (random: RandomSource, maximum: number): number =>
