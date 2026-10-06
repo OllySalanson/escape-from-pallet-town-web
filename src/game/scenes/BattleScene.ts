@@ -2272,6 +2272,23 @@ export class BattleScene extends Phaser.Scene {
     this.participatingPokemon.add(pokemon);
     this.forcedReplacement = false;
     this.refreshPlayerCombatant(into);
+    // A Pokemon sent in because the last one fainted comes in free, as in
+    // FireRed: the turn it fainted in is already over, and the next one starts
+    // with both sides choosing. Running the foe's turn here gave it a free hit
+    // on every replacement - the mirror of the trainer's free hit B1 removed
+    // (playtest 20, N2). A switch the player chose still costs the turn.
+    if (wasForcedReplacement) {
+      this.persistActivePokemonHp();
+      this.refreshStatusLabels();
+      // A double battle can have emptied both slots; the other is asked next.
+      this.prepareForcedReplacement();
+      this.mode = 'events';
+      this.commandContainer.setVisible(false);
+      this.showCombatEvents(switchIn.events, [
+        { message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' },
+      ]);
+      return;
+    }
     const result = resolveEnemyTurn(switchedState, () => Math.random());
     this.state = result.state;
     this.persistActivePokemonHp();

@@ -31,7 +31,9 @@ import {
   unitAt,
   type BattleState,
 } from '../pokemon/battle/battleEngine';
-import { BULBASAUR, PIDGEY, SQUIRTLE } from '../pokemon/species';
+import { BULBASAUR, PIDGEY, SQUIRTLE, getSpeciesById } from '../pokemon/species';
+import { Move } from '../pokemon/Move';
+import { GROWL } from '../pokemon/moves';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
@@ -1095,6 +1097,52 @@ describe('a Pokemon with no PP left', () => {
     const said = shown.indexOf('SQUIRTLE has no moves left!');
     expect(said).toBeGreaterThanOrEqual(0);
     expect(shown.slice(said + 1).some((line) => line.startsWith('Your SQUIRTLE used STRUGGLE!'))).toBe(true);
+  });
+});
+
+/**
+ * Playtest 20, N2: after the player's Pokemon fainted, choosing its
+ * replacement ran a whole enemy turn first, so the foe got a free hit on every
+ * replacement - the mirror image of the trainer's free hit B1 removed. In
+ * FireRed the replacement comes in free and the next turn starts with both
+ * sides choosing.
+ */
+describe('a replacement sent in after a faint', () => {
+  it('comes in free, and the foe does not act until the next turn', () => {
+    const pidgey = new Pokemon(PIDGEY, 5);
+    pidgey.moves.splice(0, pidgey.moves.length, new Move(GROWL));
+    pidgey.currentHp = 1;
+    const charmander = new Pokemon(CHARMANDER, 30);
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [new Pokemon(getSpeciesById('rattata')!, 15)],
+      party: new PokemonParty([pidgey, charmander]),
+    });
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    renderedTexts.filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    const mode = () => (scene as unknown as { mode: string }).mode;
+    for (let step = 0; step < 40 && mode() !== 'party'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    expect(dialog.shownMessages).toContain('Your PIDGEY fainted!');
+
+    (scene as unknown as { switchPokemon(index: number): void }).switchPokemon(1);
+    for (let step = 0; step < 40 && mode() !== 'main'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+
+    const shown = dialog.shownMessages;
+    const goLine = shown.lastIndexOf('Go, CHARMANDER!');
+    expect(goLine).toBeGreaterThanOrEqual(0);
+    expect(shown.slice(goLine + 1).some((line) => line.startsWith('Foe RATTATA used'))).toBe(false);
+    expect(mode()).toBe('main');
+    const { state } = scene as unknown as { state: BattleState };
+    expect(state.player.pokemon).toBe(charmander);
+    expect(state.player.currentHp).toBe(charmander.maxHp);
   });
 });
 
