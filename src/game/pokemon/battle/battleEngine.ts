@@ -310,7 +310,16 @@ export type BattleEvent =
   // foe is the battle, and a battle with no foe has already ended.
   | { readonly type: 'no-target'; readonly user: 'player' | 'enemy'; readonly slot?: number }
   | { readonly type: 'critical-hit' }
-  | { readonly type: 'effectiveness'; readonly multiplier: number }
+  // How well a hit landed. A move that does nothing at all to its target also
+  // says *whose* target it was - FireRed's "It doesn't affect FOE GEODUDE..."
+  // - so `user`, `slot` and `name` are the Pokemon it did not affect.
+  | {
+      readonly type: 'effectiveness';
+      readonly multiplier: number;
+      readonly user?: 'player' | 'enemy';
+      readonly slot?: number;
+      readonly name?: string;
+    }
   | { readonly type: 'fainted'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string }
   | { readonly type: 'no-pp'; readonly user: 'player' | 'enemy';
@@ -346,7 +355,8 @@ export type BattleEvent =
       readonly slot?: number; readonly name: string; readonly move: string }
   | { readonly type: 'recharging'; readonly user: 'player' | 'enemy';
       readonly slot?: number; readonly name: string }
-  | { readonly type: 'ball-thrown'; readonly name: string }
+  /** `ball` is the one thrown, as the bag names it; absent reads as a Poke Ball. */
+  | { readonly type: 'ball-thrown'; readonly name: string; readonly ball?: string }
   | { readonly type: 'catch-shake'; readonly count: number }
   | { readonly type: 'caught'; readonly name: string }
   | { readonly type: 'broke-free'; readonly name: string }
@@ -1326,6 +1336,8 @@ export const resolveCatchAttempt = (
   state: BattleState,
   random: RandomSource,
   ballModifier = 1,
+  /** The ball's own name, so the line says which ball went (playtest B5). */
+  ballName?: string,
 ): TurnResult => {
   if (state.outcome !== 'active') {
     return { state, events: [] };
@@ -1337,7 +1349,7 @@ export const resolveCatchAttempt = (
   const attempt = attemptCatch(state.enemy, random, ballModifier);
   const name = state.enemy.pokemon.base.name;
   const events: BattleEvent[] = [
-    { type: 'ball-thrown', name },
+    { type: 'ball-thrown', name, ...(ballName ? { ball: ballName } : {}) },
     ...Array.from({ length: attempt.shakes }, (_, index) => ({ type: 'catch-shake' as const, count: index + 1 })),
   ];
   if (attempt.caught) {
@@ -1730,7 +1742,7 @@ const applyMove = (
       events.push({ type: 'multi-hit', hits: landedHits });
     }
     if (isDamagingMove(move)) {
-      events.push(...effectivenessEvents(effectiveness));
+      events.push(...effectivenessEvents(effectiveness, targetRef, defenderName));
     }
     if (endured) {
       events.push({
@@ -1751,7 +1763,12 @@ const applyMove = (
     // each is its own action.
     if (landedHits > 0 && damageHere > 0 && !defenderFainted && !immune) {
       const shock = contactStatus(abilityCarrier(defenderNow()), move.base, random);
-      if (shock) {
+      // The roll is spent either way, but an attacker that cannot take the
+      // status hears nothing about it: FireRed's Static sets its effect and
+      // `SetMoveEffect` simply breaks on a Pokemon already carrying a status,
+      // a type that refuses it or an ability that does (playtest finding B7 -
+      // "Your SQUIRTLE already has a status condition!" off a Static).
+      if (shock && wouldTakeStatus(nextState, ref, shock, targetRef)) {
         const said = announceAbility(nextState, targetRef, 'contact', { status: shock });
         nextState = said.state;
         const strike = applyStatus(nextState, ref, shock, random, targetRef);
@@ -2072,8 +2089,8 @@ const applyMoveEffects = (
       const applied = applyStatus(nextState, side, effects.status, random, ref);
       nextState = applied.state;
       events.push(...applied.events);
-    } else if (untouchable || effects === move.effects) {
-      events.push({ type: 'effectiveness', multiplier: 0 });
+    } else if ((untouchable || effects === move.effects) && receiver) {
+      events.push(...effectivenessEvents(0, side, receiver.pokemon.base.name));
     }
   }
   if (effects.flinch) {
@@ -2300,6 +2317,26 @@ const weatherStilledBy = (state: BattleState): SlotRef | null =>
   }) ?? null;
 
 /**
+ * Whether a status sent at this slot would land, asked before anything is said
+ * about it. The same refusals `applyStatus` makes, in the same order.
+ */
+const wouldTakeStatus = (
+  state: BattleState,
+  ref: SlotRef,
+  status: StatusName,
+  source: SlotRef,
+): boolean => {
+  const combatant = unitAt(state, ref);
+  if (!isEngaged(combatant) || typeRefusesStatus(status, getCombatantTypes(combatant))) {
+    return false;
+  }
+  if (!sameSlot(source, ref) && blocksCondition(abilityCarrier(combatant), status)) {
+    return false;
+  }
+  return status === 'confusion' ? combatant.confusionTurns === 0 : combatant.primaryStatus === null;
+};
+
+/**
  * One status landing on one slot.
  *
  * `source` is who caused it, and it does two things: an ability only refuses a
@@ -2502,9 +2539,9 @@ const applyStatBoosts = (
   return { state: nextState, events };
 };
 
-const effectivenessEvents = (multiplier: number): BattleEvent[] => {
+const effectivenessEvents = (multiplier: number, target: SlotRef, name: string): BattleEvent[] => {
   if (multiplier === 0) {
-    return [{ type: 'effectiveness', multiplier }];
+    return [{ type: 'effectiveness', multiplier, user: target.side, ...inSlot(target), name }];
   }
   if (multiplier > 1 || multiplier < 1) {
     return [{ type: 'effectiveness', multiplier }];

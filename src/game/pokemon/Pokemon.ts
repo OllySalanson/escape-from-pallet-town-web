@@ -176,17 +176,25 @@ export class Pokemon {
         ? 0
         : Math.min(this.maxHp, this.currentHp + this.maxHp - previousMaxHp);
       levelsGained.push(this.level);
-      // The species changes before the moves are learned, because the level
-      // that evolves a Pokemon is also the first level read off the new
-      // learnset - and a loop, because a settlement replayed over a long raid
-      // can cross two thresholds of the same line in one call.
+      // The level's own moves are learned first, as the species that reached
+      // it, and then again as whatever it evolves into - FireRed learns
+      // level-up moves in the battle and evolves afterwards, and the evolution
+      // asks the new species' learnset at the same level
+      // (`MonTryLearningNewMove`, pret/pokefirered `src/pokemon.c`). Evolving
+      // first lost the pre-evolution's move for that level: an over-level
+      // Charmander reaching 19 became a Charmeleon and never saw Smokescreen
+      // (playtest finding B8). A loop, because a settlement replayed over a
+      // long raid can cross two thresholds of the same line in one call.
+      const beforeEvolving = this.learnMovesAtLevel(this.level);
+      learnedMoves.push(...beforeEvolving.learned);
+      movesToChoose.push(...beforeEvolving.queued);
       const evolved = this.evolveOnLevel();
       if (evolved) {
         evolutions.push(evolved);
+        const asEvolved = this.learnMovesAtLevel(this.level);
+        learnedMoves.push(...asEvolved.learned);
+        movesToChoose.push(...asEvolved.queued);
       }
-      const atThisLevel = this.learnMovesAtLevel(this.level);
-      learnedMoves.push(...atThisLevel.learned);
-      movesToChoose.push(...atThisLevel.queued);
     }
 
     return { awarded, levelsGained, learnedMoves, evolutions, movesToChoose };

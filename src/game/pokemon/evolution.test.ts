@@ -348,3 +348,22 @@ describe('what evolving costs you in hunter', () => {
     expect(hunterThreatFor([pikachu]).openingTeam).toEqual(before.openingTeam);
   });
 });
+
+describe('the moves of the level an evolution happens at', () => {
+  /**
+   * Playtest finding B8: a level-18 Charmander one knockout short of 19 grew,
+   * evolved into Charmeleon and was never offered Smokescreen - Charmander
+   * learns it at 19 and Charmeleon at 20, and the engine evolved first and
+   * then read only the evolved learnset. FireRed learns the level's moves as
+   * the species that reached it, then evolves.
+   */
+  it("offers the pre-evolution's move for that level before evolving", () => {
+    const charmander = new Pokemon(CHARMANDER, 18);
+    const result = charmander.gainExperience(experienceForLevel(19) - charmander.experience);
+
+    expect(result.evolutions.map((evolution) => evolution.to.id)).toEqual(['charmeleon']);
+    expect([...result.learnedMoves, ...result.movesToChoose].map((move) => move.name)).toContain(
+      'Smokescreen',
+    );
+  });
+});

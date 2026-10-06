@@ -625,7 +625,12 @@ describe('statuses a type cannot carry', () => {
       always,
     );
     expect(result.state.enemy.primaryStatus).toBeNull();
-    expect(result.events).toContainEqual({ type: 'effectiveness', multiplier: 0 });
+    expect(result.events).toContainEqual({
+      type: 'effectiveness',
+      multiplier: 0,
+      user: 'enemy',
+      name: getSpeciesById(target)!.name,
+    });
   });
 
   it('never freezes Lapras with Ice Beam', () => {
@@ -1040,5 +1045,31 @@ describe('a combatant refreshed after a level-up', () => {
       'Growl',
       'Water Gun',
     ]);
+  });
+});
+
+describe('a contact ability against an attacker that cannot take its status', () => {
+  /**
+   * Playtest finding B7: a Squirtle already paralysed touched Raider Maya's
+   * Pikachu and read "Foe PIKACHU's STATIC answered the touch!" then "Your
+   * SQUIRTLE already has a status condition!". In FireRed the effect breaks
+   * silently on a Pokemon that already carries a status.
+   */
+  it('says nothing at all', () => {
+    const squirtle = new Pokemon(SQUIRTLE, 10);
+    squirtle.moves.splice(0, squirtle.moves.length, new Move(TACKLE));
+    const state = createBattleState(squirtle, new Pokemon(PIKACHU, 10));
+    const paralysed = {
+      ...state,
+      player: { ...state.player, primaryStatus: PrimaryStatus.Paralysis },
+      enemy: { ...state.enemy, moves: [] },
+    };
+    // 0.27 a roll: over full paralysis's quarter, so the Squirtle swings, and
+    // under Static's 30%, so the Pikachu's ability fires on the touch.
+    const result = resolveTurn(paralysed, 0, () => 0.27);
+
+    expect(result.events.some((event) => event.type === 'used-move' && event.user === 'player')).toBe(true);
+    expect(result.events.some((event) => event.type === 'ability')).toBe(false);
+    expect(result.events.some((event) => event.type === 'status-already')).toBe(false);
   });
 });

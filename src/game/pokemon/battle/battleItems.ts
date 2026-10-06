@@ -52,6 +52,20 @@ const withHealedUnit = (state: BattleState, ref: SlotRef, healed: Pokemon): Batt
  * battle log names Pokemon in capitals.
  */
 
+/**
+ * A name in the capitals the battle screen writes in, with FireRed's one
+ * exception: the accent stays small, so POKé BALL and POKéMON match everywhere
+ * the screen says them (a plain `toUpperCase` made it POKÉ BALL in the ball
+ * list beside POKéMON on the command grid).
+ */
+export const battleCaps = (text: string): string => text.toUpperCase().replace(/É/g, 'é');
+
+/** "a X" or "an X", for a name in battle capitals; `opening` capitalises it. */
+export const withArticle = (name: string, opening = false): string => {
+  const article = /^[AEIOU]/.test(name) ? 'an' : 'a';
+  return `${opening ? article[0].toUpperCase() + article.slice(1) : article} ${name}`;
+};
+
 /** Why a Potion is not the answer to a fainted Pokemon, in battle as at base. */
 export const NO_REVIVE_IN_BATTLE_NOTE = 'Medicine cannot revive a fainted POKéMON!';
 
@@ -149,7 +163,7 @@ function refusalMessage(item: ItemDefinition, name: string): string {
     case 'cure-status':
       return `It would not have any effect on ${name}.`;
     case 'capture-modifier':
-      return `A ${item.displayName.toUpperCase()} is thrown with the BALL command.`;
+      return `${withArticle(battleCaps(item.displayName), true)} is thrown with the BALL command.`;
     case 'material':
       return `${item.displayName} is for Brock’s Workshop, not the field.`;
     case 'currency':
@@ -158,7 +172,7 @@ function refusalMessage(item: ItemDefinition, name: string): string {
     // evolution has a sprite and a name plate to change, and a battle is
     // already drawing both for a different species.
     case 'evolution-stone':
-      return `A ${item.displayName.toUpperCase()} cannot be used in a battle.`;
+      return `${withArticle(battleCaps(item.displayName), true)} cannot be used in a battle.`;
     // A machine is read in the field, for the same reason: teaching can open the
     // move chooser, and a battle is no place to be asked what to forget.
     case 'machine':
@@ -169,6 +183,6 @@ function refusalMessage(item: ItemDefinition, name: string): string {
       // The ITEM command only lists medicine, so this is the answer to a
       // question nothing asks - written out so the switch stays exhaustive and
       // the refusal is never a blank line.
-      return `A ${item.displayName.toUpperCase()} is carried, not used.`;
+      return `${withArticle(battleCaps(item.displayName), true)} is carried, not used.`;
   }
 }

@@ -4,6 +4,7 @@ import type { PokemonType } from '../pokemon/PokemonType';
 import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
 import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
 import { WeatherId, weatherLabel } from '../pokemon/battle/weather';
+import { battleCaps, withArticle } from '../pokemon/battle/battleItems';
 
 export const BATTLE_SCREEN_WIDTH = 320;
 export const MOVE_COLUMN_WIDTH = 148;
@@ -402,11 +403,11 @@ export const formatItemCommand = (count: number): string => `ITEM x${count}`;
 export const formatItemRow = (
   item: { readonly displayName: string },
   count: number,
-): string => `${item.displayName.toUpperCase()} x${count}`;
+): string => `${battleCaps(item.displayName)} x${count}`;
 
 /** The party screen's heading while it is choosing who to give an item to. */
 export const itemTargetPrompt = (item: { readonly displayName: string }): string =>
-  `Use ${item.displayName.toUpperCase()} on whom?`;
+  `Use ${battleCaps(item.displayName)} on whom?`;
 
 /**
  * What the highlighted medicine would do, on the same line the move submenu
@@ -468,7 +469,7 @@ export const formatPackRoomRow = (choice: {
   readonly displayName: string;
   readonly carried: number;
   readonly squares: number;
-}): string => `${choice.displayName.toUpperCase()} x${choice.carried} · ${choice.squares}sq`;
+}): string => `${battleCaps(choice.displayName)} x${choice.carried} · ${choice.squares}sq`;
 
 /**
  * The line above the rows, answering whichever one the cursor is on.
@@ -706,7 +707,9 @@ export const eventToMessage = (event: BattleEvent): string => {
       return 'A critical hit!';
     case 'effectiveness':
       if (event.multiplier === 0) {
-        return 'It does not affect the target...';
+        return event.name && event.user
+          ? `It doesn't affect ${combatantName({ user: event.user, name: event.name })}...`
+          : "It doesn't affect the target...";
       }
       return event.multiplier > 1 ? "It's super effective!" : "It's not very effective...";
     case 'fainted':
@@ -732,7 +735,7 @@ export const eventToMessage = (event: BattleEvent): string => {
     case 'stat-stage-changed':
       return `${combatantName(event)}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
     case 'ball-thrown':
-      return `Threw a POKé BALL at ${event.name.toUpperCase()}!`;
+      return `Threw ${withArticle(battleCaps(event.ball ?? 'Poké Ball'))} at ${event.name.toUpperCase()}!`;
     case 'catch-shake':
       return `${event.count}...`;
     case 'caught':

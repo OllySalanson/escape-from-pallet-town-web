@@ -1909,7 +1909,12 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const result = resolveCatchAttempt(this.state, () => Math.random(), ballModifierOf(ball));
+    const result = resolveCatchAttempt(
+      this.state,
+      () => Math.random(),
+      ballModifierOf(ball),
+      ball.displayName,
+    );
     this.state = result.state;
     let events = result.events;
     if (this.state.outcome === 'caught') {

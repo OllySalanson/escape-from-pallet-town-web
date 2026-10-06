@@ -65,3 +65,20 @@ describe('authored trainers', () => {
     expect(new Set(teams).size).toBe(teams.length);
   });
 });
+
+describe('every authored trainer Pokemon', () => {
+  /**
+   * Playtest finding B6: two bosses' Machop knew only Leer, so every turn the
+   * boss spent on it was free. A wild table already may not name a species
+   * with nothing to throw (`districtEncounters.test.ts`); a trainer's party is
+   * held to the same rule here.
+   */
+  it('knows a move that does damage', () => {
+    const harmless = createRunTrainerEncounters().flatMap(({ trainer }) =>
+      trainer.party
+        .filter((pokemon) => !pokemon.moves.some((move) => move.base.category !== 'Status'))
+        .map((pokemon) => `${trainer.name}: ${pokemon.base.name} ${pokemon.level}`),
+    );
+    expect(harmless).toEqual([]);
+  });
+});
