@@ -618,6 +618,7 @@ describe('a raid carried through a battle and back', () => {
         tweens: chainable(),
         input: { keyboard: new Proxy({}, { get: () => () => chainable() }) },
         cameras: { main: chainable() },
+        textures: chainable(),
       });
       battle.create(outbound);
       (battle as unknown as { completeReturnToWorld(): void }).completeReturnToWorld();

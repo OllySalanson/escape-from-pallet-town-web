@@ -40,6 +40,8 @@ import { battleOpeningMessages, teachingBattleMessages } from '../pokemon/battle
 import type { WeatherId } from '../pokemon/battle/weather';
 import { statusAbbreviation } from '../pokemon/battle/status';
 import { DialogBox } from '../ui/DialogBox';
+import { doubleBattleBackdrop } from './battleBackdrop';
+import { iconTextureKey, itemIconName } from '../ui/icons';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { MoveTarget, type MoveBase } from '../pokemon/MoveBase';
@@ -126,6 +128,8 @@ import {
   combatantSpot,
   combatantEntryX,
   statusPlateLayout,
+  fitCaption,
+  CAPTION_LINE_WIDTH,
   formatTargetRow,
   targetRowLayout,
   targetPromptLayout,
@@ -192,7 +196,22 @@ const LUNGE_LANDS_MS = LUNGE_LEG_MS * 4;
 const FAINT_DROP = 34;
 const BATTLEFIELD_WIDTH = BASE_STAGE_WIDTH;
 const BATTLEFIELD_HEIGHT = BASE_STAGE_HEIGHT;
-const GRASS_BACKDROP_WIDTH = 257;
+/**
+ * The art inside `background-grass.png`, which is not the whole file: the crop
+ * it was cut from left a black row along the top and the bottom and a black
+ * then a white column down the right, and drawn whole those were a dark line
+ * under the top bezel and a black-and-white double line down the right edge
+ * (playtest section 3, item 1). Only this rectangle is drawn.
+ */
+const GRASS_BACKDROP_ART = { x: 0, y: 1, width: 255, height: 143 } as const;
+/**
+ * How far down the battlefield the backdrop reaches: a whole game pixel, so its
+ * bottom edge is never drawn half a pixel deep. It runs under the panel, whose
+ * top is at 174.
+ */
+const GRASS_BACKDROP_DEPTH = 180;
+/** The double battle's own backdrop, made at run time from the single battle's. */
+const DOUBLE_BACKDROP_KEY = 'battle-background-grass-double';
 const BANNER_TEXT_STYLE = {
   fontFamily: BATTLE_FONT,
   // The smallest size the face survives as hard-edged pixels: at 8px its stems
@@ -320,6 +339,14 @@ export class BattleScene extends Phaser.Scene {
   private forcedReplacement = false;
   private partyMessage = '';
   private readonly participatingPokemon = new Set<PokemonInstance>();
+  /** The list the cursor below was drawn for, and where each of its rows started. */
+  private cursorRows: readonly Phaser.GameObjects.Text[] = [];
+  private rowHomes = new WeakMap<Phaser.GameObjects.Text, number>();
+  private rowCursor?: Phaser.GameObjects.Text;
+  private readonly cursorGutters = new Map<string, number>();
+  /** The ball on the field during a throw, and which ball it is. */
+  private ballSprite?: Phaser.GameObjects.Image;
+  private thrownBallId?: string;
   /** "X has no moves left!" for each slot that is about to Struggle this turn. */
   private struggleLines: string[] = [];
   private victoryRewardsGranted = false;
@@ -424,6 +451,8 @@ export class BattleScene extends Phaser.Scene {
     }
     this.participatingPokemon.clear();
     this.struggleLines = [];
+    this.ballSprite = undefined;
+    this.thrownBallId = undefined;
     this.victoryRewardsGranted = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
     this.bag = data.bag ?? new Bag({ 'poke-ball': STARTING_POKE_BALLS });
@@ -648,10 +677,23 @@ export class BattleScene extends Phaser.Scene {
    * what makes it read as a screen rather than as art that stopped short.
    */
   private drawBackdrop(): void {
+    const texture = this.textures.get('battle-background-grass');
+    if (!texture.has('art')) {
+      const { x, y, width, height } = GRASS_BACKDROP_ART;
+      texture.add('art', 0, x, y, width, height);
+    }
+    // Still a fractional scale, 320 / 255 across: this art is 255 pixels wide
+    // and the field is 320, so nothing short of a 320-wide redraw lands every
+    // pixel on the grid. What this fixes is the stray border and the half-pixel
+    // edges; the redraw is an art task of its own.
+    const double = this.state.unitCount > 1;
+    if (double && !this.textures.exists(DOUBLE_BACKDROP_KEY)) {
+      this.createDoubleBackdrop();
+    }
     this.add
-      .image(BATTLEFIELD_WIDTH / 2, 0, 'battle-background-grass')
-      .setOrigin(0.5, 0)
-      .setScale(BATTLEFIELD_WIDTH / GRASS_BACKDROP_WIDTH);
+      .image(0, 0, double ? DOUBLE_BACKDROP_KEY : 'battle-background-grass', double ? undefined : 'art')
+      .setOrigin(0, 0)
+      .setDisplaySize(BATTLEFIELD_WIDTH, GRASS_BACKDROP_DEPTH);
     const bezel = this.add.graphics().setDepth(20);
     bezel.fillStyle(WINDOW_CREAM, 1);
     bezel.fillRect(-1, -1, BATTLEFIELD_WIDTH + 2, 1);
@@ -659,6 +701,63 @@ export class BattleScene extends Phaser.Scene {
     bezel.fillRect(-1, 0, 1, BATTLEFIELD_HEIGHT);
     bezel.fillRect(BATTLEFIELD_WIDTH, 0, 1, BATTLEFIELD_HEIGHT);
     this.centreComposition();
+  }
+
+  /**
+   * The ball the player threw, on the field: it arcs from the player's side to
+   * the foe, and the foe goes into it. Until this the throw was only text -
+   * "Threw a POKé BALL..." over a Pokemon still standing there, then "1... 2...
+   * 3..." (playtest section 3, item 7). It is the ball that was thrown, by its
+   * own icon, and it wobbles once a shake (`catch-shake`); the foe comes back
+   * out on `broke-free`.
+   */
+  private throwBallSprite(): void {
+    this.ballSprite?.destroy();
+    const spot = combatantSpot('enemy', 0, this.state.unitCount);
+    const from = { x: 60, y: 150 };
+    // At the foe's feet, and clear of the banner over the player's plate below them.
+    const to = { x: spot.x, y: spot.y + 14 };
+    const ball = this.add
+      .image(from.x, from.y, iconTextureKey(itemIconName(this.thrownBallId ?? 'poke-ball')))
+      .setDepth(3);
+    this.ballSprite = ball;
+    this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: 420,
+      onUpdate: (tween: Phaser.Tweens.Tween) => {
+        const t = tween.getValue() ?? 0;
+        // A throw, not a slide: up and over, landing where the foe stood.
+        ball.setPosition(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t - Math.sin(Math.PI * t) * 60);
+        ball.setAngle(t * 540);
+      },
+      onComplete: () => {
+        ball.setAngle(0);
+        const foe = this.spriteFor(slotRef('enemy', 0));
+        if (foe) {
+          this.tweens.add({ targets: foe, scaleX: 0.2, scaleY: 0.2, alpha: 0, duration: 200, ease: 'Quad.in' });
+        }
+      },
+    });
+  }
+
+  /**
+   * The double battle's backdrop, drawn once from the single battle's art -
+   * see `battleBackdrop.ts` for what changes and why.
+   */
+  private createDoubleBackdrop(): void {
+    const { x, y, width, height } = GRASS_BACKDROP_ART;
+    const source = this.textures.get('battle-background-grass').getSourceImage() as CanvasImageSource;
+    const canvas = this.textures.createCanvas(DOUBLE_BACKDROP_KEY, width, height);
+    if (!canvas) {
+      return;
+    }
+    const context = canvas.getContext();
+    context.drawImage(source, x, y, width, height, 0, 0, width, height);
+    const art = context.getImageData(0, 0, width, height);
+    const redrawn = doubleBattleBackdrop({ width, height, data: art.data });
+    context.putImageData(new ImageData(new Uint8ClampedArray(redrawn.data), width, height), 0, 0);
+    canvas.refresh();
   }
 
   /**
@@ -786,7 +885,7 @@ export class BattleScene extends Phaser.Scene {
     container.add(statusText);
     container.add(
       this.add
-        .text(x + 15, y + layout.barY - 1, 'HP:', {
+        .text(x + layout.hpLabelX, y + layout.barY - 1, 'HP:', {
           fontFamily: BATTLE_FONT,
           fontSize: '12px',
           color: '#202020',
@@ -1073,11 +1172,13 @@ export class BattleScene extends Phaser.Scene {
       this.add.text(
         partyPromptLayout.x,
         COMMAND_Y + partyPromptLayout.y,
-        partyPrompt({
-          item: this.pendingItem,
-          forced: this.forcedReplacement,
-          refusal: this.partyMessage,
-        }),
+        this.fitCaption(
+          partyPrompt({
+            item: this.pendingItem,
+            forced: this.forcedReplacement,
+            refusal: this.partyMessage,
+          }),
+        ),
         {
           fontFamily: BATTLE_FONT,
           fontSize: CAPTION_FONT_SIZE,
@@ -1257,7 +1358,7 @@ export class BattleScene extends Phaser.Scene {
       this.add.text(
         makeRoomPromptLayout.x,
         COMMAND_Y + makeRoomPromptLayout.y,
-        packRoomPrompt(rows[this.selectedCommand]),
+        this.fitCaption(packRoomPrompt(rows[this.selectedCommand])),
         {
           fontFamily: BATTLE_FONT,
           fontSize: CAPTION_FONT_SIZE,
@@ -1397,16 +1498,90 @@ export class BattleScene extends Phaser.Scene {
       this.mode === 'make-room'
         ? this.selectedCommand - this.makeRoomPage * MAKE_ROOM_PAGE
         : this.selectedCommand;
+    this.seatRowsBesideCursor();
     this.commandTexts.forEach((text, index) => {
-      text.setText(
-        `${index === cursor ? '▶ ' : '  '}${text.text.replace(/^[▶ ]{2}/, '')}`,
-      );
       // The cursor is the whole of the selection, as it is in the dialogue this
       // panel shares a frame with: no row is boxed in a second colour.
       text.setColor(
         text.text.includes('FNT') || isEmptyStackLabel(text.text) ? PANEL_REFUSAL_INK : WINDOW_INK,
       );
+      if (index === cursor) {
+        this.rowCursor?.setPosition(this.rowHomes.get(text) ?? text.x, text.y);
+      }
     });
+    this.rowCursor?.setVisible(cursor >= 0 && cursor < this.commandTexts.length);
+  }
+
+  /**
+   * The rows of whichever list is on screen stand still and the cursor moves in
+   * a gutter of its own, as FireRed draws its menus. The cursor used to be typed
+   * into the row - "▶ FIGHT" against "  ITEM" - and the arrow is wider than two
+   * spaces, so the chosen row jumped about seven pixels right every time the
+   * cursor landed on it (playtest section 3, item 2).
+   *
+   * Each row is moved right by the arrow's width once, when its list is drawn,
+   * so the chosen row is where it always was and the others line up with it;
+   * the cursor is one text of its own at the row's original position.
+   */
+  private seatRowsBesideCursor(): void {
+    if (this.cursorRows === this.commandTexts) {
+      return;
+    }
+    this.cursorRows = this.commandTexts;
+    this.rowHomes = new WeakMap();
+    const first = this.commandTexts[0];
+    if (!first) {
+      this.rowCursor = undefined;
+      return;
+    }
+    const fontSize = String(first.style.fontSize ?? DIALOG_FONT_SIZE);
+    const gutter = this.cursorGutter(fontSize);
+    for (const text of this.commandTexts) {
+      this.rowHomes.set(text, text.x);
+      text.setX(text.x + gutter);
+      const fixedWidth = Number(text.style.fixedWidth) || 0;
+      if (fixedWidth > 0) {
+        text.setFixedSize(fixedWidth - gutter, Number(text.style.fixedHeight) || 0);
+        text.setWordWrapWidth(fixedWidth - gutter);
+      }
+    }
+    const cursor = this.add.text(first.x - gutter, first.y, '▶', {
+      fontFamily: BATTLE_FONT,
+      fontSize,
+      color: WINDOW_INK,
+    });
+    first.parentContainer?.add(cursor);
+    this.rowCursor = cursor;
+  }
+
+  /**
+   * A caption line as wide as the panel lets it be - see `fitCaption`. The
+   * width is measured on the game's own text, which is the only place a
+   * glyph's advance is known.
+   */
+  private fitCaption(text: string | readonly string[]): string {
+    return fitCaption(text, (line) => this.captionWidth(line) <= CAPTION_LINE_WIDTH);
+  }
+
+  /** How wide a caption line is drawn, measured on a text that is never shown. */
+  private captionWidth(line: string): number {
+    const probe = this.add.text(0, 0, line, { fontFamily: BATTLE_FONT, fontSize: CAPTION_FONT_SIZE });
+    const width = Number.isFinite(probe.width) ? probe.width : 0;
+    probe.destroy();
+    return width;
+  }
+
+  /** How wide "▶ " is at a size, which is the gutter every row stands in. */
+  private cursorGutter(fontSize: string): number {
+    const known = this.cursorGutters.get(fontSize);
+    if (known !== undefined) {
+      return known;
+    }
+    const probe = this.add.text(0, 0, '▶ ', { fontFamily: BATTLE_FONT, fontSize });
+    const width = Number.isFinite(probe.width) ? Math.round(probe.width) : 0;
+    probe.destroy();
+    this.cursorGutters.set(fontSize, width);
+    return width;
   }
 
   /** Keeps the guidance lines describing whichever row is highlighted. */
@@ -1416,13 +1591,13 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.mode === 'items') {
       const item = usableBattleItems(this.bag)[this.selectedCommand];
-      this.moveGuidanceTexts[0]?.setText(item ? describeItemGuidance(item) : '').setColor(PANEL_GUIDANCE_INK);
+      this.moveGuidanceTexts[0]?.setText(this.fitCaption(item ? describeItemGuidance(item) : '')).setColor(PANEL_GUIDANCE_INK);
       this.moveGuidanceTexts[1]?.setText('').setColor(PANEL_GUIDANCE_INK);
       return;
     }
     if (this.mode === 'balls') {
       const ball = carriedBalls(this.bag)[this.selectedCommand];
-      this.moveGuidanceTexts[0]?.setText(ball ? describeBallGuidance(ball) : '').setColor(PANEL_GUIDANCE_INK);
+      this.moveGuidanceTexts[0]?.setText(this.fitCaption(ball ? describeBallGuidance(ball) : '')).setColor(PANEL_GUIDANCE_INK);
       this.moveGuidanceTexts[1]?.setText('').setColor(PANEL_GUIDANCE_INK);
       return;
     }
@@ -1446,14 +1621,14 @@ export class BattleScene extends Phaser.Scene {
     });
     this.moveGuidanceTexts[0]
       ?.setText(
-        moveGuidanceFor(
-          guidance.summary,
-          { name: chooser.pokemon.base.name },
-          this.state.unitCount,
+        this.fitCaption(
+          [guidance.summary, guidance.compactSummary].map((summary) =>
+            moveGuidanceFor(summary, { name: chooser.pokemon.base.name }, this.state.unitCount),
+          ),
         ),
       )
       .setColor(PANEL_GUIDANCE_INK);
-    this.moveGuidanceTexts[1]?.setText(guidance.matchup).setColor(MATCHUP_COLORS[guidance.tone]);
+    this.moveGuidanceTexts[1]?.setText(this.fitCaption(guidance.matchup)).setColor(MATCHUP_COLORS[guidance.tone]);
   }
 
   private confirm(): void {
@@ -1915,6 +2090,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    this.thrownBallId = ball.id;
     const result = resolveCatchAttempt(
       this.state,
       () => Math.random(),
@@ -2685,6 +2861,24 @@ export class BattleScene extends Phaser.Scene {
     if (cue?.at === 'line') {
       audioManager.play(cue.name);
     }
+    if (event.type === 'ball-thrown') {
+      this.throwBallSprite();
+      return;
+    }
+    if (event.type === 'catch-shake') {
+      if (this.ballSprite) {
+        this.tweens.add({ targets: this.ballSprite, angle: { from: -24, to: 24 }, duration: 110, yoyo: true, repeat: 1 });
+      }
+      return;
+    }
+    if (event.type === 'broke-free') {
+      this.ballSprite?.destroy();
+      this.ballSprite = undefined;
+      const enemy = slotRef('enemy', 0);
+      this.standOnSpot(enemy)?.setScale(combatantSpot('enemy', 0, this.state.unitCount).scale);
+      return;
+    }
+
     if (event.type === 'caught') {
       const caught = this.spriteFor(slotRef('enemy', 0));
       this.cameras.main.flash(180, 255, 255, 255, false);
