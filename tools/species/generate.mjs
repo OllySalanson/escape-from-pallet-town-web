@@ -22,6 +22,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { classify, CHARGE, RECHARGE, WEATHER } from '../moves/classify.mjs';
+import { withFireRedRules } from '../moves/fireRedRules.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, '..', '..');
@@ -53,7 +54,9 @@ for (const row of SPECIES.species) {
 const laterGenerations = SPECIES.species
   .filter((row) => VERIFIED.get(row.name).laterGenerations)
   .map((row) => row.displayName);
-const MOVES = read('tools/moves/frlg-level-up-moves.json');
+// Each row corrected to FireRed's own move table where PokeAPI keeps no history
+// (priority, target, stat changes, flinch) - see `../moves/fireRedRules.mjs`.
+const MOVES = read('tools/moves/frlg-level-up-moves.json').map(withFireRedRules);
 const MACHINES = read('tools/moves/frlg-machines.json');
 const FLAGS = new Map(read('tools/abilities/frlg-move-flags.json').map((row) => [row.name, row.flags]));
 const ABILITIES = new Map(read('tools/abilities/frlg-abilities.json').species.map((row) => [row.name, row.abilities]));
@@ -93,16 +96,6 @@ const STAGES = ['', 'one stage', 'two stages', 'three stages'];
 
 // -- the move catalogue ------------------------------------------------------
 
-/**
- * Stat changes PokeAPI reports that generation III does not have. PokeAPI keeps
- * no history for a move's stat changes, so a later generation's addition reads
- * as if it were always there. Rapid Spin's Speed raise is generation VIII:
- * FireRed's Rapid Spin is \`EFFECT_RAPID_SPIN\` (pret/pokefirered
- * \`src/data/battle_moves.h\`), which frees the user from binding and Leech Seed
- * and changes no stat.
- */
-const NO_GEN_III_STAT_CHANGE = new Set(['rapid-spin']);
-
 /** A move's effects, split the way `MoveBase` splits them. */
 const effectsOf = (move) => {
   const status = move.ailment === 'none' ? null : STATUSES[move.ailment];
@@ -120,7 +113,7 @@ const effectsOf = (move) => {
   const chance = move.ailment_chance > 0 ? move.ailment_chance : (move.effect_chance ?? 0);
   if (status && chance > 0) secondaries.push({ chance, status });
   if (move.flinch_chance > 0) secondaries.push({ chance: move.flinch_chance, flinch: true });
-  if (boosts.length > 0 && !NO_GEN_III_STAT_CHANGE.has(move.name)) {
+  if (boosts.length > 0) {
     secondaries.push({
       chance: move.stat_chance > 0 ? move.stat_chance : (move.effect_chance ?? 100),
       boosts,

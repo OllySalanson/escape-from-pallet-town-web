@@ -29,6 +29,10 @@ export const BESPOKE = new Set([
   // PokeAPI's flat 25% is only the first stack. It reads as expressible from
   // its own row alone, which is exactly why it is named here.
   'swallow',
+  // Charge's generation III effect is only to double the user's next Electric
+  // move (FireRed's EFFECT_CHARGE); the Sp. Def raise PokeAPI gives it is
+  // generation IV. Without the doubling it would be a move that does nothing.
+  'charge',
 ]);
 
 /** PokeAPI flags neither, so both are named by hand - the audit's own warning. */

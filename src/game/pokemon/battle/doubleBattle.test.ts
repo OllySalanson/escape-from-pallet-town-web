@@ -899,8 +899,15 @@ describe('the imported roster knows a spread move when it has one', () => {
     readFileSync(new URL('../../../../tools/moves/frlg-level-up-moves.json', import.meta.url), 'utf8'),
   ) as Record<string, { readonly name: string; readonly target: string }>;
 
+  // FireRed's own table has the last word on who a move lands on, because
+  // PokeAPI's target is today's (Poison Gas hits both foes now and one in
+  // FireRed) - see `tools/moves/fireRedRules.mjs`.
+  const fireRedTable = JSON.parse(
+    readFileSync(new URL('../../../../tools/moves/frlg-battle-moves.json', import.meta.url), 'utf8'),
+  ) as { readonly moves: readonly { readonly name: string; readonly target: string }[] };
+  const fireRed = new Map(fireRedTable.moves.map((row) => [row.name, row.target]));
   const allOpponents = Object.values(snapshot)
-    .filter((move) => move.target === 'all-opponents')
+    .filter((move) => move.target === 'all-opponents' && fireRed.get(move.name) === 'MOVE_TARGET_BOTH')
     .map((move) => move.name);
 
   it('gives every `all-opponents` move it can play `MoveTarget.BothFoes`', () => {

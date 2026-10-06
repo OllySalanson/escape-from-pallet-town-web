@@ -9,8 +9,8 @@ play, and what a species does instead.
 
 ## Moves
 
-The 151 learn **273** distinct moves by levelling. **188** of them are in
-`src/game/pokemon/generated/moveCatalogue.ts`; the other **85** are not, because
+The 151 learn **273** distinct moves by levelling. **187** of them are in
+`src/game/pokemon/generated/moveCatalogue.ts`; the other **86** are not, because
 nothing in `MoveBase` can say what they do.
 
 **A move that is not in the catalogue is simply not learned.** It is left out of
@@ -19,9 +19,9 @@ Leech Seed at 7 knows one move fewer at 7 - never a move that looks right and
 does nothing. `speciesImport.test.ts` holds the floor that matters: every
 species can still field a damaging move at every level it can be met at.
 
-### bespoke (42)
+### bespoke (43)
 
-Aromatherapy, Baton Pass, Belly Drum, Block, Camouflage, Conversion, Conversion 2, Curse, Destiny Bond, Detect, Disable, Encore, Endure, Focus Energy, Follow Me, Future Sight, Grudge, Helping Hand, Imprison, Lock-On, Mean Look, Memento, Metronome, Mimic, Mind Reader, Mirror Move, Protect, Psych Up, Recycle, Refresh, Rest, Roar, Role Play, Sleep Talk, Spite, Stockpile, Substitute, Swallow, Teleport, Transform, Trick, Whirlwind.
+Aromatherapy, Baton Pass, Belly Drum, Block, Camouflage, Charge, Conversion, Conversion 2, Curse, Destiny Bond, Detect, Disable, Encore, Endure, Focus Energy, Follow Me, Future Sight, Grudge, Helping Hand, Imprison, Lock-On, Mean Look, Memento, Metronome, Mimic, Mind Reader, Mirror Move, Protect, Psych Up, Recycle, Refresh, Rest, Roar, Role Play, Sleep Talk, Spite, Stockpile, Substitute, Swallow, Teleport, Transform, Trick, Whirlwind.
 
 ### volatile status (13)
 
@@ -52,6 +52,7 @@ Fissure, Guillotine, Horn Drill, Sheer Cold.
 | Gengar | 7 | spite (1), spite (8), curse (13), night-shade (16), destiny-bond (39), nightmare (53), mean-look (64) |
 | Kadabra | 6 | teleport (1), disable (18), reflect (23), future-sight (30), role-play (33), trick (43) |
 | Gastly | 6 | spite (8), curse (13), night-shade (16), destiny-bond (33), nightmare (41), mean-look (48) |
+| Electrode | 6 | charge (1), sonic-boom (1), sonic-boom (15), rollout (34), light-screen (41), mirror-coat (59) |
 | Snorlax | 6 | belly-drum (13), yawn (21), rest (25), sleep-talk (37), block (41), rollout (49) |
 | Ekans | 5 | wrap (1), spit-up (37), stockpile (37), swallow (37), haze (44) |
 | Arbok | 5 | wrap (1), spit-up (46), stockpile (46), swallow (46), haze (56) |
@@ -61,12 +62,11 @@ Fissure, Guillotine, Horn Drill, Sheer Cold.
 | Machoke | 5 | focus-energy (1), low-kick (1), focus-energy (7), seismic-toss (19), foresight (22) |
 | Machamp | 5 | focus-energy (1), low-kick (1), focus-energy (7), seismic-toss (19), foresight (22) |
 | Hypno | 5 | disable (1), nightmare (1), disable (7), psych-up (43), future-sight (57) |
-| Electrode | 5 | sonic-boom (1), sonic-boom (15), rollout (34), light-screen (41), mirror-coat (59) |
+| Voltorb | 5 | charge (1), sonic-boom (15), rollout (32), light-screen (37), mirror-coat (49) |
 | Hitmonlee | 5 | focus-energy (21), mind-reader (31), foresight (36), endure (41), reversal (51) |
 | Porygon | 5 | conversion (1), conversion-2 (1), lock-on (32), tri-attack (36), recycle (44) |
 | Mewtwo | 5 | disable (1), mist (22), safeguard (55), psych-up (77), future-sight (88) |
 | Clefairy | 4 | encore (5), follow-me (17), metronome (29), light-screen (41) |
-| Jigglypuff | 4 | disable (14), rollout (19), rest (29), mimic (39) |
 
 ## Abilities
 

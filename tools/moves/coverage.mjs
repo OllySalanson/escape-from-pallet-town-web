@@ -19,11 +19,12 @@
 // printed here and the moves a Pokemon actually knows cannot disagree.
 import { readFileSync } from 'node:fs';
 import { classify } from './classify.mjs';
+import { withFireRedRules } from './fireRedRules.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const moves = JSON.parse(readFileSync(join(here, 'frlg-level-up-moves.json'), 'utf8'));
+const moves = JSON.parse(readFileSync(join(here, 'frlg-level-up-moves.json'), 'utf8')).map(withFireRedRules);
 
 const verdicts = moves.map((move) => ({ move, ...classify(move) }));
 const expressible = verdicts.filter((v) => v.ok);
