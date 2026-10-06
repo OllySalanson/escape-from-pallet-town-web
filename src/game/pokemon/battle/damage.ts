@@ -12,6 +12,7 @@ import { attackMultiplier, attackRecoil } from './heldItems';
 import { getTypeEffectiveness } from './typeChart';
 import { createStatStages, getStagedStat, type StatStages } from './statStages';
 import { weatherDamageMultiplier } from './weather';
+import { PrimaryStatus } from './status';
 import type { WeatherId } from './weather';
 
 export type RandomSource = () => number;
@@ -84,6 +85,36 @@ const clampRandom = (random: RandomSource): number => Math.min(1, Math.max(0, ra
 
 const randomModifier = (random: RandomSource): number => 0.85 + clampRandom(random) * 0.15;
 
+/** Whether this attacker's burn halves its physical damage: burned, and not Guts. */
+const burnHalves = (attacker: AbilityCarrier | undefined): boolean =>
+  attacker !== undefined && attacker.primaryStatus === PrimaryStatus.Burn && attacker.abilityId !== 'guts';
+
+/**
+ * What a confused Pokemon does to itself: FireRed's `CANCELLER_CONFUSED` calls
+ * `CalculateBaseDamage` with a 40-power hit of the Pokemon's own Attack on its
+ * own Defence, both through their stages - integer arithmetic as FireRed does
+ * it, typeless, with no random roll, no critical hit and no same-type bonus. A
+ * burn halves it and Guts lifts it, because both live in that same function.
+ */
+export const confusionSelfHitDamage = (
+  pokemon: Pokemon,
+  stages: StatStages,
+  holder: AbilityCarrier,
+): number => {
+  const gutsy = holder.abilityId === 'guts' && holder.primaryStatus !== null;
+  const attack = Math.floor(getStagedStat(pokemon.stats.attack, stages.attack) * (gutsy ? 1.5 : 1));
+  const defense = Math.max(1, getStagedStat(pokemon.stats.defense, stages.defense));
+  const levelTerm = Math.floor((2 * pokemon.level) / 5) + 2;
+  let damage = Math.floor(Math.floor(attack * CONFUSION_SELF_HIT_POWER * levelTerm) / defense / 50);
+  if (burnHalves(holder)) {
+    damage = Math.floor(damage / 2);
+  }
+  return damage + 2;
+};
+
+/** The power of the hit a confused Pokemon gives itself. */
+export const CONFUSION_SELF_HIT_POWER = 40;
+
 export const calculateDamage = (
   attacker: Pokemon,
   defender: Pokemon,
@@ -145,7 +176,12 @@ export const calculateDamage = (
     abilityNotes.push({ side: 'defender', effect: 'shrugged-off' });
   }
   const stabMultiplier = isStab ? STAB_MULTIPLIER : 1;
-  const baseDamage = ((2 * attacker.level + 10) / 250) * move.power * (attack / defense) + 2;
+  // A burned attacker's physical hit is halved, before the two that every hit
+  // gets: FireRed's `CalculateBaseDamage` halves the damage straight after
+  // dividing by fifty and before it adds two, and Guts is the one exception.
+  const burn =
+    move.category === MoveCategory.Physical && burnHalves(abilities?.attacker) ? 0.5 : 1;
+  const baseDamage = ((2 * attacker.level + 10) / 250) * move.power * (attack / defense) * burn + 2;
   // The attacker's own gear is read straight off the Pokemon rather than passed
   // in: an item is not a property of the swing, and a copy of it here would be
   // one more thing to keep in step with the party.

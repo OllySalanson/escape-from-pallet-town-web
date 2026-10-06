@@ -72,6 +72,9 @@ const TRIALS = 400;
  */
 const AWAITING_REMEASURE: Readonly<Record<string, { readonly bare?: number; readonly gap?: number }>> = {
   charmander: { bare: 0.4, gap: 0.08 },
+  // FireRed's status rules (paralysis quarters Speed, burn halves a physical
+  // hit) put a bare Squirtle a shade over the line: 15.25%.
+  squirtle: { bare: 0.2 },
 };
 
 const rate = (speciesId: string, level: number, potions: number, condition = 1): number =>

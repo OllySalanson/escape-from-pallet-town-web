@@ -19,7 +19,7 @@ import { PokemonType } from '../PokemonType';
  * Ground, which is generation III's own rule and which the tutorial could not
  * write because its type chart is fifteen wide; ours is seventeen. And the chip
  * is `floor(maxHp / 16)` with a floor of 1, which is generation III's rounding
- * and the same rounding poison and burn already use in `applyEndOfAction` - the
+ * and the same rounding poison and burn use in `applyEndOfTurn` - the
  * tutorial rounds up, which on a 17 HP starter is the difference between 1 and 2
  * a turn.
  */

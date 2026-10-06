@@ -431,10 +431,12 @@ describe('a rule that fires once per unit against one that fires once per hit', 
     );
     state.player.pokemon.heldItemId = 'leftovers';
     state.playerPartner!.pokemon.heldItemId = 'leftovers';
+    // Hurt, but not so badly that the Pidgeys' blows knock either out before
+    // the end of the turn, which is when Leftovers is served.
     const hurt: BattleState = {
       ...state,
-      player: { ...state.player, currentHp: 5 },
-      playerPartner: { ...state.playerPartner!, currentHp: 5 },
+      player: { ...state.player, currentHp: Math.floor(state.player.pokemon.maxHp / 2) },
+      playerPartner: { ...state.playerPartner!, currentHp: Math.floor(state.playerPartner!.pokemon.maxHp / 2) },
     };
     const result = resolveTurn(
       hurt,
@@ -445,8 +447,8 @@ describe('a rule that fires once per unit against one that fires once per hit', 
       maximumRandom,
     );
 
-    // Two holders, two actions, two meals - and never four, which is what a
-    // rule hung off the turn rather than off the action would have paid.
+    // Two holders, two meals - once each at the end of the turn, never once
+    // per blow taken or per action on the field.
     expect(of(result.events, 'gear-heal')).toHaveLength(2);
   });
 });

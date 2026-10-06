@@ -3,7 +3,7 @@ import type { AbilityEffectKind } from '../AbilityBase';
 import type { MoveBase, NormalizedMoveEffects, NormalizedSecondaryEffect } from '../MoveBase';
 import { MoveCategory, MoveCharge, MoveTarget, targetsTheOtherSide } from '../MoveBase';
 import type { Pokemon } from '../Pokemon';
-import type { PokemonType } from '../PokemonType';
+import { PokemonType } from '../PokemonType';
 import {
   type AbilityCarrier,
   abilityLabel,
@@ -28,7 +28,12 @@ import {
   speedMultiplier,
   suppressesWeather,
 } from './abilityHooks';
-import { calculateDamage, type DamageAbilities, type RandomSource } from './damage';
+import {
+  calculateDamage,
+  confusionSelfHitDamage,
+  type DamageAbilities,
+  type RandomSource,
+} from './damage';
 import {
   endOfTurnHeal,
   gearLabel,
@@ -43,7 +48,7 @@ import {
   typeRefusesStatus,
 } from './status';
 import { getTypeEffectiveness } from './typeChart';
-import { WEATHER_MOVE_TURNS, weatherChipDamage, type WeatherId } from './weather';
+import { WEATHER_MOVE_TURNS, WeatherId, weatherChipDamage } from './weather';
 import {
   applyStatBoost,
   createStatStages,
@@ -979,11 +984,7 @@ export const resolveTurn = (
   // nowhere else: doubling a Speed that only matters for who goes first is the
   // whole of both abilities.
   const field = effectiveWeather(state);
-  const speedOf = (combatant: BattleCombatant): number =>
-    Math.floor(
-      getStagedStat(combatant.pokemon.stats.speed, combatant.statStages.speed) *
-        speedMultiplier(abilityCarrier(combatant), field),
-    );
+  const speedOf = (combatant: BattleCombatant): number => turnSpeed(state, combatant);
   const actions: QueuedAction[] = [...playerActions, ...enemyActions].flatMap((action) => {
     const combatant = unitAt(state, action.ref);
     return combatant
@@ -1002,11 +1003,7 @@ export const resolveTurn = (
       right.priority - left.priority ||
       right.claw - left.claw ||
       right.speed - left.speed ||
-      (left.ref.side === right.ref.side
-        ? left.ref.slot - right.ref.slot
-        : left.ref.side === 'player'
-          ? -1
-          : 1),
+      tieBreak(left.ref, right.ref),
   );
 
   // Flinch is cleared for everybody before anyone acts, so the only flinch a
@@ -1042,15 +1039,35 @@ export const resolveTurn = (
   }
 
   // The weather is charged once for the whole turn, after everybody has acted -
-  // it is the field's turn, not any combatant's, which is why it does not hang
-  // off `applyEndOfAction` the way burn and Leftovers do, and why four units on
-  // the field are still one weather.
+  // it is the field's turn, not any combatant's, so four units on the field are
+  // still one weather - and then each Pokemon's own end of turn, in the order
+  // the turn was played (FireRed's `DoFieldEndTurnEffects`, then
+  // `DoBattlerEndTurnEffects`).
   const weathered = applyWeather(clearFlinching(nextState));
-  const refilled = sendOutReplacements(weathered.state);
+  const ended = applyEndOfTurn(
+    weathered.state,
+    endOfTurnOrder(weathered.state, actions.map((action) => action.ref)),
+    random,
+  );
+  const refilled = sendOutReplacements(ended.state);
   return {
     state: refilled.state,
-    events: [...events, ...weathered.events, ...refilled.events],
+    events: [...events, ...weathered.events, ...ended.events, ...refilled.events],
   };
+};
+
+/**
+ * The Speed a turn is ordered on: the stat through its stage, doubled by
+ * Chlorophyll or Swift Swim in their weather, and **quartered by paralysis** -
+ * FireRed's `GetWhoStrikesFirst` (`src/battle_main.c`), `speed /= 4` for a
+ * paralysed battler. The tutorial left a paralysed Pokemon's Speed alone.
+ */
+const turnSpeed = (state: BattleState, combatant: BattleCombatant): number => {
+  const speed = Math.floor(
+    getStagedStat(combatant.pokemon.stats.speed, combatant.statStages.speed) *
+      speedMultiplier(abilityCarrier(combatant), effectiveWeather(state)),
+  );
+  return combatant.primaryStatus === PrimaryStatus.Paralysis ? Math.floor(speed / 4) : speed;
 };
 
 /**
@@ -1222,10 +1239,11 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
     events.push(...acted.events);
   }
   const weathered = applyWeather(nextState);
-  const refilled = sendOutReplacements(weathered.state);
+  const ended = applyEndOfTurn(weathered.state, endOfTurnOrder(weathered.state, []), random);
+  const refilled = sendOutReplacements(ended.state);
   return {
     state: refilled.state,
-    events: [...events, ...weathered.events, ...refilled.events],
+    events: [...events, ...weathered.events, ...ended.events, ...refilled.events],
   };
 };
 
@@ -1414,12 +1432,10 @@ const applyMove = (
   // a Hyper Beam can never cost two turns in a row.
   if (pending?.kind === MoveCharge.Recharge) {
     const rested = withUnit(state, ref, { ...attacker, pendingMove: null });
-    return applyEndOfAction(
-      rested,
-      ref,
-      [{ type: 'recharging', user, ...inSlot(ref), name: attacker.pokemon.base.name }],
-      random,
-    );
+    return {
+      state: rested,
+      events: [{ type: 'recharging', user, ...inSlot(ref), name: attacker.pokemon.base.name }],
+    };
   }
   const releasingCharge = pending?.kind === MoveCharge.Charge;
   const chosenIndex = releasingCharge ? pending.moveIndex : moveIndex;
@@ -1437,18 +1453,16 @@ const applyMove = (
   // move that took this turn away, not this side's condition.
   if (attacker.flinching) {
     const shaken = withUnit(state, ref, { ...attacker, flinching: false, pendingMove: null });
-    return applyEndOfAction(
-      shaken,
-      ref,
-      [{ type: 'flinched', user, ...inSlot(ref), name: attacker.pokemon.base.name }],
-      random,
-    );
+    return {
+      state: shaken,
+      events: [{ type: 'flinched', user, ...inSlot(ref), name: attacker.pokemon.base.name }],
+    };
   }
 
   // 3.
   const attempted = resolveStatusBeforeMove(state, ref, random);
   if (!attempted.canAct) {
-    return applyEndOfAction(attempted.state, ref, attempted.events, random);
+    return { state: attempted.state, events: attempted.events };
   }
 
   let nextState = attempted.state;
@@ -1492,7 +1506,7 @@ const applyMove = (
       { type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name },
       { type: 'charging', user, ...inSlot(ref), name: attackerName, move: move.base.name },
     );
-    return applyEndOfAction(nextState, ref, events, random);
+    return { state: nextState, events };
   }
 
   // A move aimed at a side with nobody left standing on it. Only a double
@@ -1503,7 +1517,7 @@ const applyMove = (
       { type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name },
       { type: 'no-target', user, ...inSlot(ref) },
     );
-    return applyEndOfAction(nextState, ref, events, random);
+    return { state: nextState, events };
   }
 
   const attackerNow = (): BattleCombatant => unitAt(nextState, ref)!;
@@ -1699,6 +1713,20 @@ const applyMove = (
     }
 
     totalDamage += damageHere;
+    let thaw: BattleEvent | null = null;
+    // A Fire move that hurts a frozen Pokemon thaws it - FireRed's
+    // `MOVEEND_DEFROST`.
+    const scorched = unitAt(nextState, targetRef);
+    if (
+      damageHere > 0 &&
+      !defenderFainted &&
+      move.base.type === PokemonType.Fire &&
+      !move.base.typeless &&
+      scorched?.primaryStatus === PrimaryStatus.Freeze
+    ) {
+      nextState = withUnit(nextState, targetRef, { ...scorched, primaryStatus: null });
+      thaw = { type: 'status-cured', user: targetRef.side, ...inSlot(targetRef), name: defenderName, status: 'freeze' };
+    }
     // Only a hit that actually took HP is reported per target. A spread
     // *status* move takes none from anybody, and a line saying so for each of
     // them is two presses that tell the player nothing - what a Growl did is
@@ -1759,6 +1787,9 @@ const applyMove = (
         name: defenderName,
         item: gearLabel(defenderNow().pokemon.heldItemId),
       });
+    }
+    if (thaw) {
+      events.push(thaw);
     }
 
     // 7b. What touching it cost. Static and the three like it need the move to
@@ -1995,7 +2026,7 @@ const applyMove = (
     );
   }
 
-  return applyEndOfAction(nextState, ref, events, random);
+  return { state: nextState, events };
 };
 
 /**
@@ -2154,7 +2185,9 @@ const resolveStatusBeforeMove = (
     };
   }
   if (primary === PrimaryStatus.Freeze) {
-    if (clampRandom(random()) >= 0.25) {
+    // One chance in five to thaw, each time it tries to move: FireRed's
+    // `Random() % 5` in `CANCELLER_FROZEN`. The tutorial thawed a quarter.
+    if (clampRandom(random()) >= 0.2) {
       return {
         state,
         events: [{ type: 'status-prevented', user, ...slot, name, status: primary }],
@@ -2169,21 +2202,20 @@ const resolveStatusBeforeMove = (
     };
   }
   if (primary === PrimaryStatus.Sleep) {
-    if (combatant.sleepTurns > 0) {
-      // Early Bird burns two turns of it for every one that passes, which is
-      // the whole of the ability: a Pokemon that sleeps is not a Pokemon that
-      // cannot be put to sleep.
-      const asleep = {
-        ...combatant,
-        sleepTurns: Math.max(0, combatant.sleepTurns - sleepTurnsPerTurn(abilityCarrier(combatant))),
-      };
+    // FireRed's counter (`CANCELLER_ASLEEP`): it is spent first, and the
+    // Pokemon sleeps on only while some is left - so a counter of two to five
+    // is one to four turns asleep, and it wakes and moves on the turn the
+    // counter runs out. Early Bird spends two of it for every one that passes,
+    // which is the whole of the ability.
+    const counter = Math.max(0, combatant.sleepTurns - sleepTurnsPerTurn(abilityCarrier(combatant)));
+    if (counter > 0) {
       return {
-        state: withUnit(state, ref, asleep),
+        state: withUnit(state, ref, { ...combatant, sleepTurns: counter }),
         events: [{ type: 'status-prevented', user, ...slot, name, status: primary }],
         canAct: false,
       };
     }
-    state = withUnit(state, ref, { ...combatant, primaryStatus: null });
+    state = withUnit(state, ref, { ...combatant, primaryStatus: null, sleepTurns: 0 });
     return {
       state,
       events: [{ type: 'status-cured', user, ...slot, name, status: 'sleep' }],
@@ -2191,133 +2223,142 @@ const resolveStatusBeforeMove = (
     };
   }
   if (combatant.confusionTurns > 0) {
+    // FireRed's `CANCELLER_CONFUSED`: the counter is spent first; at nothing
+    // the Pokemon snaps out and moves, and otherwise it is a coin whether it
+    // hurts itself instead - a 40-power typeless physical hit of its own Attack
+    // on its own Defence, with no random roll and no critical. The tutorial
+    // took an eighth of maximum HP.
     const confused = { ...combatant, confusionTurns: combatant.confusionTurns - 1 };
     state = withUnit(state, ref, confused);
-    const events: BattleEvent[] = [];
-    if (clampRandom(random()) >= 0.5) {
-      const damage = Math.floor(combatant.pokemon.maxHp / 8);
-      const hurt = { ...confused, currentHp: hpAfterDamage(ref.side, confused.currentHp, damage) };
-      state = withUnit(state, ref, hurt);
-      events.push({
-        type: 'confusion-self-hit',
-        user,
-        ...slot,
-        name,
-        damage: confused.currentHp - hurt.currentHp,
-      });
-      if (hurt.currentHp === 0) {
-        const fallen = resolveFaint(state);
-        state = fallen.state;
-        events.push({ type: 'fainted', user, ...slot, name }, ...fallen.events);
-      }
-      if (confused.confusionTurns === 0) {
-        const still = unitAt(state, ref);
-        if (still && still.pokemon === hurt.pokemon) {
-          state = withUnit(state, ref, { ...still, confusionTurns: 0 });
-        }
-        events.push({ type: 'status-cured', user, ...slot, name, status: 'confusion' });
-      }
-      return { state, events, canAct: false };
-    }
     if (confused.confusionTurns === 0) {
-      events.push({ type: 'status-cured', user, ...slot, name, status: 'confusion' });
+      return {
+        state,
+        events: [{ type: 'status-cured', user, ...slot, name, status: 'confusion' }],
+        canAct: true,
+      };
     }
-    return { state, events, canAct: true };
+    if (clampRandom(random()) < 0.5) {
+      return { state, events: [], canAct: true };
+    }
+    const damage = confusionSelfHitDamage(
+      combatant.pokemon,
+      confused.statStages,
+      abilityCarrier(confused),
+    );
+    const hurt = { ...confused, currentHp: hpAfterDamage(ref.side, confused.currentHp, damage) };
+    state = withUnit(state, ref, hurt);
+    const events: BattleEvent[] = [
+      { type: 'confusion-self-hit', user, ...slot, name, damage: confused.currentHp - hurt.currentHp },
+    ];
+    if (hurt.currentHp === 0) {
+      const fallen = resolveFaint(state);
+      state = fallen.state;
+      events.push({ type: 'fainted', user, ...slot, name }, ...fallen.events);
+    }
+    return { state, events, canAct: false };
   }
   return { state, events: [], canAct: true };
 };
 
 /**
- * The end of one combatant's turn: what its status costs it, then what its gear
- * gives back.
+ * The end of the turn for every Pokemon on the field, after the weather:
+ * FireRed's `DoBattlerEndTurnEffects` (pret/pokefirered `src/battle_util.c`),
+ * which takes each battler in the order the turn was played and, for each,
+ * its ability (Shed Skin), then its gear (Leftovers), then poison, then burn.
  *
- * Leftovers is charged at exactly the point burn and poison are charged, which is
- * what makes it read as their mirror - and it is charged after them, so a burned
- * holder sees the burn take four and the food give one back rather than a single
- * net number that explains neither.
- *
- * It hangs off an **action** rather than off the turn, which is what keeps it
- * from double-applying when there are four Pokemon on the field: each unit takes
- * exactly one action a turn, so each is charged its burn and paid its Leftovers
- * exactly once. The weather is the other way round - it is the field's, so it is
- * charged once for the whole turn in `applyWeather`.
+ * This used to hang off each *action* - a Pokemon was charged its burn the
+ * moment it had moved - which put a poisoned Pokemon's damage before the
+ * faster foe's swing it should have followed, charged a Pokemon that spent its
+ * turn on the bag or a switch nothing at all, and paid Leftovers after the
+ * burn instead of before it. Residual damage is a share of maximum HP, at least
+ * one HP: an eighth for poison and burn.
  */
-const applyEndOfAction = (
+const applyEndOfTurn = (
   state: BattleState,
-  ref: SlotRef,
-  events: readonly BattleEvent[],
+  order: readonly SlotRef[],
   random: RandomSource,
 ): TurnResult => {
   let nextState = state;
-  const nextEvents: BattleEvent[] = [...events];
-  const combatant = unitAt(state, ref);
-  const user = ref.side;
-  const slot = inSlot(ref);
-  if (state.outcome !== 'active' || !isEngaged(combatant)) {
-    return { state, events };
-  }
-  const divisor =
-    combatant.primaryStatus === PrimaryStatus.Poison
-      ? 8
-      : combatant.primaryStatus === PrimaryStatus.Burn
-        ? 16
-        : 0;
-  if (divisor > 0) {
-    const damage = Math.floor(combatant.pokemon.maxHp / divisor);
-    const updated = { ...combatant, currentHp: hpAfterDamage(ref.side, combatant.currentHp, damage) };
-    nextState = withUnit(nextState, ref, updated);
-    nextEvents.push({
-      type: 'status-damage',
-      user,
-      ...slot,
-      name: combatant.pokemon.base.name,
-      status: combatant.primaryStatus!,
-      damage: combatant.currentHp - updated.currentHp,
-    });
-    if (updated.currentHp === 0) {
-      const fallen = resolveFaint(nextState);
-      nextState = fallen.state;
-      nextEvents.push(
-        { type: 'fainted', user, ...slot, name: combatant.pokemon.base.name },
-        ...fallen.events,
-      );
-      return { state: nextState, events: nextEvents };
+  const events: BattleEvent[] = [];
+  for (const ref of order) {
+    if (nextState.outcome !== 'active') {
+      break;
+    }
+    const combatant = unitAt(nextState, ref);
+    if (!isEngaged(combatant)) {
+      continue;
+    }
+    const user = ref.side;
+    const slot = inSlot(ref);
+    const name = combatant.pokemon.base.name;
+
+    // Shed Skin, first: FireRed asks the ability before anything is charged,
+    // so a skin shed this turn takes the poison with it before it bites.
+    if (combatant.primaryStatus && shedsStatus(abilityCarrier(combatant), random)) {
+      nextState = withUnit(nextState, ref, { ...combatant, primaryStatus: null, sleepTurns: 0 });
+      const said = announceAbility(nextState, ref, 'shed', { status: combatant.primaryStatus });
+      nextState = said.state;
+      events.push(...said.events);
+    }
+
+    // Leftovers, before the status: FireRed's `ENDTURN_ITEMS1` comes before
+    // `ENDTURN_POISON` and `ENDTURN_BURN`.
+    const fed = unitAt(nextState, ref)!;
+    const healed = endOfTurnHeal(fed.pokemon, fed.currentHp);
+    if (healed > 0) {
+      nextState = withUnit(nextState, ref, { ...fed, currentHp: fed.currentHp + healed });
+      events.push({
+        type: 'gear-heal',
+        user,
+        ...slot,
+        name,
+        item: gearLabel(fed.pokemon.heldItemId),
+        amount: healed,
+      });
+    }
+
+    const hurt = unitAt(nextState, ref)!;
+    if (hurt.primaryStatus === PrimaryStatus.Poison || hurt.primaryStatus === PrimaryStatus.Burn) {
+      const damage = Math.max(1, Math.floor(hurt.pokemon.maxHp / 8));
+      const updated = { ...hurt, currentHp: hpAfterDamage(ref.side, hurt.currentHp, damage) };
+      nextState = withUnit(nextState, ref, updated);
+      events.push({
+        type: 'status-damage',
+        user,
+        ...slot,
+        name,
+        status: hurt.primaryStatus,
+        damage: hurt.currentHp - updated.currentHp,
+      });
+      if (updated.currentHp === 0) {
+        const fallen = resolveFaint(nextState);
+        nextState = fallen.state;
+        events.push({ type: 'fainted', user, ...slot, name }, ...fallen.events);
+      }
     }
   }
-
-  // Shed Skin, after what the status cost and before what the food gives back:
-  // the turn's damage is paid first, and only then does the skin come off - so
-  // a poisoned holder is never healed of a poison that had not yet hurt it.
-  const shedding = unitAt(nextState, ref);
-  if (shedding && shedding.primaryStatus && shedsStatus(abilityCarrier(shedding), random)) {
-    nextState = withUnit(nextState, ref, {
-      ...shedding,
-      primaryStatus: null,
-      sleepTurns: 0,
-    });
-    const said = announceAbility(nextState, ref, 'shed', { status: shedding.primaryStatus });
-    nextState = said.state;
-    nextEvents.push(...said.events);
-  }
-
-  const standing = unitAt(nextState, ref);
-  const healed = standing ? endOfTurnHeal(standing.pokemon, standing.currentHp) : 0;
-  if (standing && healed > 0) {
-    nextState = withUnit(nextState, ref, {
-      ...standing,
-      currentHp: standing.currentHp + healed,
-    });
-    nextEvents.push({
-      type: 'gear-heal',
-      user,
-      ...slot,
-      name: standing.pokemon.base.name,
-      item: gearLabel(standing.pokemon.heldItemId),
-      amount: healed,
-    });
-  }
-  return { state: nextState, events: nextEvents };
+  return { state: nextState, events };
 };
+
+/**
+ * The order the end of a turn is taken in: whoever acted, in the order they
+ * acted, then anybody on the field who did not, by Speed. FireRed's
+ * `gBattlerByTurnOrder` is every battler in the order the turn was played.
+ */
+const endOfTurnOrder = (state: BattleState, acted: readonly SlotRef[]): readonly SlotRef[] => {
+  const rest = occupiedSlots(state)
+    .filter((ref) => !acted.some((done) => sameSlot(done, ref)))
+    .sort((left, right) => {
+      const a = unitAt(state, left);
+      const b = unitAt(state, right);
+      return (b ? turnSpeed(state, b) : 0) - (a ? turnSpeed(state, a) : 0) || tieBreak(left, right);
+    });
+  return [...acted, ...rest];
+};
+
+/** Whose turn a true Speed tie goes to: the player's side, then the lead. */
+const tieBreak = (left: SlotRef, right: SlotRef): number =>
+  left.side === right.side ? left.slot - right.slot : left.side === 'player' ? -1 : 1;
 
 /** Which slot, if any, is holding the weather off the field. */
 const weatherStilledBy = (state: BattleState): SlotRef | null =>
@@ -2325,6 +2366,13 @@ const weatherStilledBy = (state: BattleState): SlotRef | null =>
     const combatant = unitAt(state, ref);
     return combatant !== null && suppressesWeather(abilityCarrier(combatant));
   }) ?? null;
+
+/**
+ * Nothing freezes in harsh sunlight: FireRed's `SetMoveEffect` breaks on
+ * freeze when `B_WEATHER_SUN` is in effect.
+ */
+const sunPreventsFreeze = (state: BattleState, status: StatusName): boolean =>
+  status === PrimaryStatus.Freeze && effectiveWeather(state) === WeatherId.HarshSunlight;
 
 /**
  * Whether a status sent at this slot would land, asked before anything is said
@@ -2337,7 +2385,11 @@ const wouldTakeStatus = (
   source: SlotRef,
 ): boolean => {
   const combatant = unitAt(state, ref);
-  if (!isEngaged(combatant) || typeRefusesStatus(status, getCombatantTypes(combatant))) {
+  if (
+    !isEngaged(combatant) ||
+    typeRefusesStatus(status, getCombatantTypes(combatant)) ||
+    sunPreventsFreeze(state, status)
+  ) {
     return false;
   }
   if (!sameSlot(source, ref) && blocksCondition(abilityCarrier(combatant), status)) {
@@ -2372,7 +2424,7 @@ const applyStatus = (
   // A type that cannot carry the status refuses it silently, whoever sends it:
   // a Poison Point cannot poison a Poison type that touches it, and
   // Synchronize cannot hand a burn back to a Fire type.
-  if (typeRefusesStatus(status, getCombatantTypes(combatant))) {
+  if (typeRefusesStatus(status, getCombatantTypes(combatant)) || sunPreventsFreeze(state, status)) {
     return { state, events: [] };
   }
   if (fromElsewhere && blocksCondition(abilityCarrier(combatant), status)) {
@@ -2383,7 +2435,9 @@ const applyStatus = (
     if (combatant.confusionTurns > 0) {
       return { state, events: [{ type: 'status-already', user, ...slot, name, status }] };
     }
-    const updated = { ...combatant, confusionTurns: randomTurnCount(random, 4) };
+    // Two to five, spent before each move: FireRed's
+    // `STATUS2_CONFUSION_TURN(Random() % 4 + 2)`.
+    const updated = { ...combatant, confusionTurns: randomTurnCount(random, 4) + 1 };
     return {
       state: withUnit(state, ref, updated),
       events: [{ type: 'status-applied', user, ...slot, name, status }],
@@ -2395,7 +2449,9 @@ const applyStatus = (
   const updated = {
     ...combatant,
     primaryStatus: status,
-    sleepTurns: status === PrimaryStatus.Sleep ? randomTurnCount(random, 3) : 0,
+    // A counter of two to five, FireRed's `STATUS1_SLEEP_TURN(Random() & 3 + 2)`
+    // - one to four turns asleep, since it is spent before each move.
+    sleepTurns: status === PrimaryStatus.Sleep ? randomTurnCount(random, 4) + 1 : 0,
   };
   let nextState = withUnit(state, ref, updated);
   const events: BattleEvent[] = [{ type: 'status-applied', user, ...slot, name, status }];
