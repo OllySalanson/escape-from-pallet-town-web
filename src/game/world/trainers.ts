@@ -112,6 +112,22 @@ export function bossGearDropped(
     }));
 }
 
+/**
+ * A quarry Machop, which knows the one move its trade teaches.
+ *
+ * FireRed gives a Machop below 13 Leer, Low Kick and Focus Energy, and the
+ * import can play only Leer: Low Kick's power is the target's weight and Focus
+ * Energy is a critical-hit stage this engine has no state for. So both bosses'
+ * Machop came out able to do nothing but lower Defence, and every turn spent on
+ * it was free (playtest finding B6). Rock Smash is canon for it - HM06, which a
+ * Machop can be taught in FireRed - and it is the move a quarry teaches.
+ */
+const quarryMachop = (level: number): Pokemon => {
+  const machop = new Pokemon(getSpeciesById('machop')!, level);
+  machop.restoreMoveset([...machop.moves.map((move) => move.base.name), 'Rock Smash'], []);
+  return machop;
+};
+
 const createTrainer = (
   id: string,
   name: string,
@@ -341,7 +357,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // reference parties and held on the ladder in `trainerLadder.test.ts` -
       // this door is met after the sluice keeper, so it may not be a rung
       // easier.
-      [new Pokemon(getSpeciesById('geodude')!, 11), new Pokemon(getSpeciesById('machop')!, 11), new Pokemon(getSpeciesById('sandshrew')!, 12)],
+      [new Pokemon(getSpeciesById('geodude')!, 11), quarryMachop(11), new Pokemon(getSpeciesById('sandshrew')!, 12)],
       'Take it down, then. The level through the hill is open too - it comes out on the beck.',
     ),
   },
@@ -773,7 +789,7 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       [
         new Pokemon(getSpeciesById('geodude')!, 12),
         new Pokemon(getSpeciesById('zubat')!, 13),
-        new Pokemon(getSpeciesById('machop')!, 12),
+        quarryMachop(12),
       ],
       'Gate is open, and so is the stair down the west face. The adit at the back takes you home.',
     ),

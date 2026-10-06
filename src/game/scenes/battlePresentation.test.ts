@@ -39,6 +39,8 @@ import {
   moveGuidanceLayout,
   HUNTER_FLEE_WARNING_SHARE,
   formatHunterFleeCommand,
+  formatItemRow,
+  itemTargetPrompt,
 } from './battlePresentation';
 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
@@ -358,5 +360,28 @@ describe('making room for a catch from inside the fight', () => {
     expect(
       seats.every(({ x }) => x >= BATTLE_PANEL.x && x < BATTLE_PANEL.x + BATTLE_PANEL.width),
     ).toBe(true);
+  });
+});
+
+describe('the small wording faults the battles playtest found', () => {
+  it('names the ball that was thrown (B5)', () => {
+    expect(eventToMessage({ type: 'ball-thrown', name: 'Pikachu', ball: 'Great Ball' })).toBe(
+      'Threw a GREAT BALL at PIKACHU!',
+    );
+    expect(eventToMessage({ type: 'ball-thrown', name: 'Pikachu', ball: 'Poké Ball' })).toBe(
+      'Threw a POKé BALL at PIKACHU!',
+    );
+    expect(eventToMessage({ type: 'ball-thrown', name: 'Pikachu' })).toBe('Threw a POKé BALL at PIKACHU!');
+  });
+
+  it('writes POKé with a small accent in every list, as the command grid does', () => {
+    expect(formatItemRow({ displayName: 'Poké Ball' }, 3)).toBe('POKé BALL x3');
+    expect(itemTargetPrompt({ displayName: 'Poké Ball' })).toBe('Use POKé BALL on whom?');
+  });
+
+  it("names the Pokemon a move did not affect, as FireRed's line does", () => {
+    expect(
+      eventToMessage({ type: 'effectiveness', multiplier: 0, user: 'enemy', name: 'Geodude' }),
+    ).toBe("It doesn't affect Foe GEODUDE...");
   });
 });

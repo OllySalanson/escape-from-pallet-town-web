@@ -1149,7 +1149,7 @@ describe('throwing a ball in a wild battle', () => {
     expect(bag.count('poke-ball')).toBe(2);
     expect(bag.count('great-ball')).toBe(1);
 
-    press('POKÉ BALL x', before);
+    press('POKé BALL x', before);
 
     expect(bag.count('poke-ball')).toBe(1);
     expect(bag.count('great-ball')).toBe(1);
@@ -1232,7 +1232,7 @@ describe('a catch the pack has no room for', () => {
     // The one ball left is what the room is being made for, so it is not on
     // the table: inviting the player to put it down would be a second trap in
     // the same breath as the first.
-    expect(panel.some((text) => text.includes('POKÉ BALL'))).toBe(false);
+    expect(panel.some((text) => text.includes('POKé BALL'))).toBe(false);
     expect(panel.some((text) => text.includes('KEEP THE PACK'))).toBe(true);
   });
 
@@ -1308,7 +1308,7 @@ describe('a catch the pack has no room for', () => {
       press('GREAT BALL x', before);
       (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
       const panelFrom = renderedTexts.length;
-      press('POKÉ BALL x1', before);
+      press('POKé BALL x1', before);
       for (let drop = 0; drop < 3; drop += 1) {
         press('POTION x', panelFrom);
       }
