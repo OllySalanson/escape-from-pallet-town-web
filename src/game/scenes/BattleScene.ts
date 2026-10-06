@@ -16,6 +16,8 @@ import {
   replacePlayerPokemon,
   resolveCatchAttempt,
   lockedMove,
+  mustStruggle,
+  STRUGGLE_MOVE_INDEX,
   openingAbilityEvents,
   resolveEnemyTurn,
   resolveTurn,
@@ -318,6 +320,8 @@ export class BattleScene extends Phaser.Scene {
   private forcedReplacement = false;
   private partyMessage = '';
   private readonly participatingPokemon = new Set<PokemonInstance>();
+  /** "X has no moves left!" for each slot that is about to Struggle this turn. */
+  private struggleLines: string[] = [];
   private victoryRewardsGranted = false;
   /**
    * The bag the raid is carrying, not the persisted overworld bag. They are
@@ -419,6 +423,7 @@ export class BattleScene extends Phaser.Scene {
       audioManager.play('battleStart');
     }
     this.participatingPokemon.clear();
+    this.struggleLines = [];
     this.victoryRewardsGranted = false;
     this.party = data.party ?? new PokemonParty([new Pokemon(CHARMANDER, 10)]);
     this.bag = data.bag ?? new Bag({ 'poke-ball': STARTING_POKE_BALLS });
@@ -1517,6 +1522,10 @@ export class BattleScene extends Phaser.Scene {
           this.choosingSlots().find(
             (ref) => !this.pendingChoices.some((choice) => (choice.slot ?? 0) === ref.slot),
           )?.slot ?? 0;
+        this.struggleLines = [];
+        if (this.struggleIfStuck()) {
+          return;
+        }
         this.mode = 'moves';
         this.selectedCommand = 0;
         this.showCommands();
@@ -1793,12 +1802,30 @@ export class BattleScene extends Phaser.Scene {
     const next = this.choosingSlots().find((ref) => !answered.has(ref.slot));
     if (next) {
       this.choosingSlot = next.slot;
+      if (this.struggleIfStuck()) {
+        return;
+      }
       this.mode = 'moves';
       this.selectedCommand = 0;
       this.showCommands();
       return;
     }
     this.useMove(this.pendingChoices);
+  }
+
+  /**
+   * A Pokemon with no PP left in any move is not shown a list it cannot use:
+   * FIGHT says "X has no moves left!" and books Struggle, as FireRed does
+   * (`BattleScript_NoMovesLeft`). The line leads the turn it starts.
+   */
+  private struggleIfStuck(): boolean {
+    const chooser = this.chooser();
+    if (!chooser || lockedMove(this.state, 'player', this.choosingSlot) !== null || !mustStruggle(chooser)) {
+      return false;
+    }
+    this.struggleLines.push(`${chooser.pokemon.base.name.toUpperCase()} has no moves left!`);
+    this.recordChoice({ slot: this.choosingSlot, moveIndex: STRUGGLE_MOVE_INDEX });
+    return true;
   }
 
   private useMove(choice: number | readonly PlayerMoveChoice[]): void {
@@ -1816,7 +1843,9 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.showCombatEvents(result.events, [], [], rewardMessages);
+    const leading = this.struggleLines;
+    this.struggleLines = [];
+    this.showCombatEvents(result.events, leading, [], rewardMessages);
   }
 
   /**

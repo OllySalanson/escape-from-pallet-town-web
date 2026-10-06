@@ -35,7 +35,13 @@ import {
   rollsFirstStrike,
   survivesKnockout,
 } from './heldItems';
-import { PrimaryStatus, type PrimaryStatus as PrimaryStatusType, type StatusName } from './status';
+import { STRUGGLE } from '../moves';
+import {
+  PrimaryStatus,
+  type PrimaryStatus as PrimaryStatusType,
+  type StatusName,
+  typeRefusesStatus,
+} from './status';
 import { getTypeEffectiveness } from './typeChart';
 import { WEATHER_MOVE_TURNS, weatherChipDamage, type WeatherId } from './weather';
 import {
@@ -753,6 +759,23 @@ export const createTrainerBattleState = (
 
 export const canCatchEnemy = (state: BattleState): boolean => state.trainer === undefined;
 
+/**
+ * The move index that means Struggle. It is not a slot in anybody's moveset -
+ * nobody learns Struggle - so it is a value no slot can have.
+ */
+export const STRUGGLE_MOVE_INDEX = -1;
+
+/**
+ * Whether this combatant has nothing left to choose: every move it knows is out
+ * of PP. FireRed answers FIGHT then with "X has no moves left!" and Struggle
+ * (`gProtectStructs[].noValidMoves`, pret/pokefirered `src/battle_main.c`);
+ * without it a trainer fight with an empty bench and an empty bag had no
+ * button that moved it on, and an enemy out of PP simply stopped acting
+ * (playtest finding B4).
+ */
+export const mustStruggle = (combatant: BattleCombatant): boolean =>
+  combatant.moves.length > 0 && combatant.moves.every((move) => move.pp <= 0);
+
 export const chooseEnemyMove = (combatant: BattleCombatant, random: RandomSource): number | null => {
   const usableMoves = combatant.moves
     .map((move, index) => ({ move, index }))
@@ -763,6 +786,25 @@ export const chooseEnemyMove = (combatant: BattleCombatant, random: RandomSource
 
   return usableMoves[Math.floor(clampRandom(random()) * usableMoves.length)]?.index ?? null;
 };
+
+/**
+ * What the enemy does this turn: a move it can pay for, Struggle when every move
+ * it knows is spent, or nothing at all for a Pokemon that knows no move - which
+ * no Pokemon in a real fight does, and which tests use to stand a target still.
+ */
+const enemyAction = (
+  state: BattleState,
+  ref: SlotRef,
+  combatant: BattleCombatant,
+  random: RandomSource,
+): number | null =>
+  lockedMove(state, 'enemy', ref.slot) ??
+  chooseEnemyMove(combatant, random) ??
+  (mustStruggle(combatant) ? STRUGGLE_MOVE_INDEX : null);
+
+/** The move an action names: a slot of the moveset, or Struggle. */
+const moveAt = (combatant: BattleCombatant, moveIndex: number): BattleMove | undefined =>
+  moveIndex === STRUGGLE_MOVE_INDEX ? { base: STRUGGLE, pp: 1 } : combatant.moves[moveIndex];
 
 /**
  * The move this side is not free to choose this turn, if any: the second half of
@@ -855,8 +897,9 @@ export const resolveTurn = (
       continue;
     }
     const forced = lockedMove(state, 'player', ref.slot);
-    const moveIndex = forced ?? choice.moveIndex;
-    const move = unitAt(state, ref)?.moves[moveIndex];
+    const unit = unitAt(state, ref);
+    const moveIndex = forced ?? (unit && mustStruggle(unit) ? STRUGGLE_MOVE_INDEX : choice.moveIndex);
+    const move = unit ? moveAt(unit, moveIndex) : undefined;
     if (!move) {
       return { state, events: [] };
     }
@@ -882,7 +925,7 @@ export const resolveTurn = (
     if (!combatant) {
       continue;
     }
-    const moveIndex = lockedMove(state, 'enemy', ref.slot) ?? chooseEnemyMove(combatant, random);
+    const moveIndex = enemyAction(state, ref, combatant, random);
     if (moveIndex === null) {
       continue;
     }
@@ -908,7 +951,7 @@ export const resolveTurn = (
     return 1;
   };
   const movePriority = (combatant: BattleCombatant, moveIndex: number): number =>
-    combatant.moves[moveIndex]?.base.priority ?? 0;
+    moveAt(combatant, moveIndex)?.base.priority ?? 0;
   // Chlorophyll and Swift Swim are read here, where the order is settled, and
   // nowhere else: doubling a Speed that only matters for who goes first is the
   // whole of both abilities.
@@ -1152,7 +1195,7 @@ export const resolveEnemyTurn = (state: BattleState, random: RandomSource): Turn
     if (!combatant) {
       continue;
     }
-    const moveIndex = lockedMove(nextState, 'enemy', ref.slot) ?? chooseEnemyMove(combatant, random);
+    const moveIndex = enemyAction(nextState, ref, combatant, random);
     if (moveIndex === null) {
       continue;
     }
@@ -1361,7 +1404,7 @@ const applyMove = (
   }
   const releasingCharge = pending?.kind === MoveCharge.Charge;
   const chosenIndex = releasingCharge ? pending.moveIndex : moveIndex;
-  const move = attacker.moves[chosenIndex];
+  const move = moveAt(attacker, chosenIndex);
   // PP was already spent on the winding-up turn, so a released charge never
   // checks it - otherwise a Solar Beam on its last PP would fizzle halfway.
   if (!move || (!releasingCharge && move.pp <= 0)) {
@@ -1449,8 +1492,9 @@ const applyMove = (
   // The same-type bonus is the attacker's business and the move's, so it is the
   // same figure against every target and is known before a single roll.
   const isStab =
-    move.base.type === attackerNow().pokemon.base.primaryType ||
-    move.base.type === attackerNow().pokemon.base.secondaryType;
+    !move.base.typeless &&
+    (move.base.type === attackerNow().pokemon.base.primaryType ||
+      move.base.type === attackerNow().pokemon.base.secondaryType);
   if (spread) {
     // A spread move names itself once and then says what it took off each
     // target in that target's own line - see the `spread-damage` event.
@@ -1770,7 +1814,10 @@ const applyMove = (
     }
   }
   if (move.base.recoil > 0 && totalDamage > 0) {
-    if (blocksRecoil(abilityCarrier(attackerNow()))) {
+    // Struggle's recoil is the price of having nothing else, so Rock Head does
+    // not waive it - `BattleScript_MoveEffectRecoil` jumps straight past the
+    // ability for Struggle.
+    if (move.base !== STRUGGLE && blocksRecoil(abilityCarrier(attackerNow()))) {
       const said = announceAbility(nextState, ref, 'no-recoil');
       nextState = said.state;
       events.push(...said.events);
@@ -2009,16 +2056,23 @@ const applyMoveEffects = (
     // A move that cannot touch the target at all cannot poison it either:
     // Thunder Wave used to paralyse a Ground type, because the status branch
     // never asked the type chart the damage branch was already asking.
+    //
+    // A type that refuses the status itself is the other half of the same
+    // question, and FireRed asks it in the same place: a status *move* on it
+    // says "It doesn't affect..." (`BattleScript_EffectPoison` jumps to
+    // `BattleScript_NotAffected` on a Poison type), while a rolled secondary -
+    // Ember's burn on a Charmander - simply does not happen, and says nothing.
     const receiver = unitAt(nextState, side);
-    const immune =
+    const untouchable =
       !sameSlot(side, ref) &&
       receiver !== null &&
       getTypeEffectiveness(move.type, getCombatantTypes(receiver)) === 0;
-    if (!immune) {
+    const refused = receiver !== null && typeRefusesStatus(effects.status, getCombatantTypes(receiver));
+    if (!untouchable && !refused) {
       const applied = applyStatus(nextState, side, effects.status, random, ref);
       nextState = applied.state;
       events.push(...applied.events);
-    } else {
+    } else if (untouchable || effects === move.effects) {
       events.push({ type: 'effectiveness', multiplier: 0 });
     }
   }
@@ -2268,6 +2322,12 @@ const applyStatus = (
   const slot = inSlot(ref);
   const name = combatant.pokemon.base.name;
   const fromElsewhere = !sameSlot(source, ref);
+  // A type that cannot carry the status refuses it silently, whoever sends it:
+  // a Poison Point cannot poison a Poison type that touches it, and
+  // Synchronize cannot hand a burn back to a Fire type.
+  if (typeRefusesStatus(status, getCombatantTypes(combatant))) {
+    return { state, events: [] };
+  }
   if (fromElsewhere && blocksCondition(abilityCarrier(combatant), status)) {
     const refused = announceAbility(state, ref, 'blocked-status', { status });
     return { state: refused.state, events: [...refused.events] };

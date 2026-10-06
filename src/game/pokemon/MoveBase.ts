@@ -152,6 +152,12 @@ export interface MoveBaseInit {
   /** Each rolled on its own chance, after the hit. */
   readonly secondaries?: readonly SecondaryEffect[];
   readonly flags?: readonly MoveFlag[];
+  /**
+   * The move has no type in battle: no same-type bonus and no effectiveness, so
+   * it hits a Ghost and nothing resists it. Only Struggle - FireRed's
+   * `Cmd_typecalc` returns early for it before either is applied.
+   */
+  readonly typeless?: boolean;
 }
 
 /** `MoveEffects` with its optional list filled in, so nothing has to guard it. */
@@ -194,6 +200,7 @@ export class MoveBase {
   public readonly effects: NormalizedMoveEffects;
   public readonly secondaries: readonly NormalizedSecondaryEffect[];
   public readonly flags: readonly MoveFlag[];
+  public readonly typeless: boolean;
 
   public constructor(init: MoveBaseInit) {
     this.name = init.name;
@@ -222,6 +229,7 @@ export class MoveBase {
       target: secondary.target ?? this.target,
     }));
     this.flags = init.flags ?? [];
+    this.typeless = init.typeless ?? false;
   }
 
   /** Whether this move does anything at all beyond its damage. */

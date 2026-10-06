@@ -103,11 +103,15 @@ export const calculateDamage = (
   /** True when this same swing is landing on more than one Pokemon. */
   spread = false,
 ): DamageResult => {
-  const typeEffectiveness = getTypeEffectiveness(move.type, [
-    defender.base.primaryType,
-    ...(defender.base.secondaryType ? [defender.base.secondaryType] : []),
-  ]);
-  const isStab = attacker.base.primaryType === move.type || attacker.base.secondaryType === move.type;
+  const typeEffectiveness = move.typeless
+    ? 1
+    : getTypeEffectiveness(move.type, [
+        defender.base.primaryType,
+        ...(defender.base.secondaryType ? [defender.base.secondaryType] : []),
+      ]);
+  const isStab =
+    !move.typeless &&
+    (attacker.base.primaryType === move.type || attacker.base.secondaryType === move.type);
 
   if (move.category === MoveCategory.Status || move.power <= 0 || typeEffectiveness === 0) {
     return { damage: 0, isStab, isCritical: false, typeEffectiveness, recoil: 0, abilityNotes: [] };

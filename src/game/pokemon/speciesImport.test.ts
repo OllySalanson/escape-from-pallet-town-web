@@ -113,7 +113,7 @@ describe('the imported roster', () => {
       'cubone 1-8',
       'dratini 1-14',
       'ekans 1-7',
-      'gloom 14-23',
+      'gloom 18-23',
       'kakuna 1-60',
       'machamp 1-12',
       'machoke 1-12',
@@ -123,7 +123,6 @@ describe('the imported roster', () => {
       'mr-mime 1-4',
       'oddish 18-22',
       'pikachu 33-60',
-      'weepinbell 19-23',
     ]);
   });
 
