@@ -1816,7 +1816,7 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.mode = 'events';
     this.commandContainer.setVisible(false);
-    this.showCombatEvents(result.events, [], rewardMessages);
+    this.showCombatEvents(result.events, [], [], rewardMessages);
   }
 
   /**
@@ -2555,27 +2555,50 @@ export class BattleScene extends Phaser.Scene {
     plate.hpText?.setText(`${shown}/${pokemon.maxHp}`);
   }
 
+  /**
+   * The experience for each trainer Pokemon knocked out this turn, keyed by the
+   * index of the line that says it fainted - because that is where FireRed says
+   * it: "Foe PIDGEY fainted!", then what it paid, then the rest of the turn, and
+   * only then the trainer's next Pokemon. Paid at the end of the turn it read as
+   * the reward for whatever came after.
+   *
+   * Each knockout pays for the Pokemon that fell, read off the slot it fell in
+   * before the turn began: a trainer's replacement only arrives at the end of
+   * the turn, so a slot holds one Pokemon for the whole of it.
+   */
   private awardTrainerDefeatExperience(
     previousState: BattleState,
     events: readonly BattleEvent[],
-  ): StagedNote[] {
-    if (
-      !this.trainer ||
-      !events.some((event) => event.type === 'fainted' && event.user === 'enemy')
-    ) {
-      return [];
+  ): ReadonlyMap<number, readonly StagedNote[]> {
+    const rewards = new Map<number, readonly StagedNote[]>();
+    if (!this.trainer) {
+      return rewards;
     }
-    return this.awardVictoryExperience(previousState.enemy.pokemon);
+    events.forEach((event, index) => {
+      if (event.type !== 'fainted' || event.user !== 'enemy') {
+        return;
+      }
+      const fallen = unitAt(previousState, slotRef('enemy', event.slot ?? 0));
+      if (fallen) {
+        rewards.set(index, this.awardVictoryExperience(fallen.pokemon));
+      }
+    });
+    return rewards;
   }
 
   private showCombatEvents(
     events: readonly BattleEvent[],
     leadingMessages: readonly StagedNote[] = [],
     trailingMessages: readonly StagedNote[] = [],
+    /** Lines read straight after one of `events`, by that event's index. */
+    afterEvents: ReadonlyMap<number, readonly StagedNote[]> = new Map(),
   ): void {
     this.pendingCombatMessages = [
       ...leadingMessages.map(stagedNote),
-      ...events.map((event) => ({ event, message: eventToMessage(event) })),
+      ...events.flatMap((event, index) => [
+        { event, message: eventToMessage(event) },
+        ...(afterEvents.get(index) ?? []).map(stagedNote),
+      ]),
       ...trailingMessages.map(stagedNote),
     ];
     if (this.pendingCombatMessages.length === 0) {

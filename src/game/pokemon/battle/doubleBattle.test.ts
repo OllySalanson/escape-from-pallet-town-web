@@ -545,6 +545,34 @@ describe('a trainer with more Pokemon than slots', () => {
     expect(engagedSlots(result.state, 'enemy')).toHaveLength(2);
   });
 
+  it('fills the slot at the end of the turn, so the partner\'s swing goes to the foe still standing', () => {
+    // Both of the player's aim at the lead. The first knocks it out; the second
+    // used to land on the replacement that had already walked into the slot.
+    // With the slot empty until the turn is over, it is re-aimed at the foe who
+    // is actually there - generation III's redirection - and the newcomer
+    // arrives whole, after every action of the turn.
+    const state = createTrainerBattleState(
+      armed(HEAVY, 30, TACKLE),
+      pair([armed(GLASS, 5, TACKLE), armed(HEAVY, 5, TACKLE), armed(GLASS, 5, TACKLE)]),
+      null,
+      armed(HEAVY, 30, TACKLE),
+    );
+    const result = resolveTurn(
+      state,
+      [
+        { slot: 0, moveIndex: 0, target: slotRef('enemy', 0) },
+        { slot: 1, moveIndex: 0, target: slotRef('enemy', 0) },
+      ],
+      steady,
+    );
+
+    const hits = of(result.events, 'used-move').map((event) => `${event.user}${event.slot ?? 0}>${event.target}${event.targetSlot ?? 0}`);
+    expect(hits.slice(0, 2)).toEqual(['player0>enemy0', 'player1>enemy1']);
+    expect(hits).not.toContain('player1>enemy0');
+    expect(result.events.at(-1)).toEqual({ type: 'enemy-sent-out', name: 'Glass' });
+    expect(result.state.enemy.currentHp).toBe(result.state.enemy.pokemon.maxHp);
+  });
+
   it('is beaten only once nothing is left standing on it', () => {
     const state = createTrainerBattleState(
       armed(HEAVY, 30, TACKLE),

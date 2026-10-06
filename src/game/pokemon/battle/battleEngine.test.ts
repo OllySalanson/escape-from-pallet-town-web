@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MoveBase, MoveCategory } from '../MoveBase';
+import { Move } from '../Move';
 import { Pokemon, experienceForLevel } from '../Pokemon';
 import { PokemonType } from '../PokemonType';
 import {
@@ -32,6 +33,7 @@ import { PrimaryStatus } from './status';
 import { calculateDamage } from './damage';
 import { applyStatBoost, createStatStages, getStagedStat } from './statStages';
 import { getTypeEffectiveness } from './typeChart';
+import { WeatherId } from './weather';
 
 const maximumRandom = (): number => 1;
 
@@ -588,6 +590,71 @@ describe('trainer battles', () => {
     expect(result.state.enemy.pokemon.base.name).toBe('Pidgey');
     expect(result.state.enemyPartyIndex).toBe(1);
     expect(result.events).toContainEqual({ type: 'enemy-sent-out', name: 'Pidgey' });
+  });
+
+  /**
+   * The playtest's reproduction (B1), exactly: a level-30 Charmander with Ember
+   * against a trainer's Pidgey 3 and Pikachu 4. The Pidgey falls before it can
+   * move, and the Pikachu used to walk into its slot and take the Pidgey's
+   * queued action in the same turn - a free attack on every knockout. In
+   * FireRed, and in the tutorial (`NextStepsAfterFainting`), the fallen
+   * Pokemon's action is lost with it and the replacement arrives at the end of
+   * the turn, so its first move is on the turn after.
+   */
+  const emberAgainstTwo = () => {
+    const charmander = new Pokemon(CHARMANDER, 30);
+    charmander.moves.splice(0, charmander.moves.length, new Move(EMBER));
+    return createTrainerBattleState(charmander, {
+      id: 'b1-repro',
+      name: 'TESTER',
+      party: [new Pokemon(PIDGEY, 3), new Pokemon(PIKACHU, 4)],
+    });
+  };
+
+  it('gives the replacement no action in the turn its predecessor fell', () => {
+    const result = resolveTurn(emberAgainstTwo(), 0, () => 0.5);
+
+    expect(
+      result.events.map((event) =>
+        event.type === 'used-move' || event.type === 'fainted'
+          ? `${event.type}:${event.user}`
+          : event.type === 'enemy-sent-out'
+            ? `${event.type}:${event.name}`
+            : event.type,
+      ),
+    ).toEqual(['used-move:player', 'fainted:enemy', 'enemy-sent-out:Pikachu']);
+    expect(result.state.enemy.pokemon.base.name).toBe('Pikachu');
+    expect(result.state.enemy.currentHp).toBe(result.state.enemy.pokemon.maxHp);
+    expect(result.state.player.currentHp).toBe(result.state.player.pokemon.maxHp);
+  });
+
+  it('lets the replacement act from the next turn on', () => {
+    const first = resolveTurn(emberAgainstTwo(), 0, () => 0.5);
+    // The Charmander slowed right down, so the Pikachu is not knocked out
+    // before its turn comes round: it has one of its own now.
+    const slowed = {
+      ...first.state,
+      player: { ...first.state.player, statStages: { ...first.state.player.statStages, speed: -6 } },
+    };
+    const second = resolveTurn(slowed, 0, () => 0.5);
+
+    expect(
+      second.events.some((event) => event.type === 'used-move' && event.user === 'enemy'),
+    ).toBe(true);
+  });
+
+  it('sends the replacement in after the weather, which it was not on the field for', () => {
+    const state = { ...emberAgainstTwo() };
+    const sandy = { ...state, weather: { id: WeatherId.Sandstorm, turnsRemaining: null } };
+
+    const result = resolveTurn(sandy, 0, () => 0.5);
+
+    const chipped = result.events.flatMap((event) =>
+      event.type === 'weather-damage' ? [event.name] : [],
+    );
+    expect(chipped).toEqual(['Charmander']);
+    expect(result.events.at(-1)).toEqual({ type: 'enemy-sent-out', name: 'Pikachu' });
+    expect(result.state.enemy.currentHp).toBe(result.state.enemy.pokemon.maxHp);
   });
 
   it('wins only after the trainer party is exhausted', () => {
