@@ -19,8 +19,16 @@ import {
   TACKLE,
   THUNDER_WAVE,
 } from '../moves';
-import { BULBASAUR, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE } from '../species';
-import { createBattleState, lockedMove, resolveTurn, rollHitCount, type BattleEvent } from './battleEngine';
+import { BULBASAUR, CHARMANDER, JIGGLYPUFF, PIDGEY, PIKACHU, SQUIRTLE, getSpeciesById } from '../species';
+import { MOVE_CATALOGUE } from '../moveCatalogue';
+import {
+  createBattleState,
+  createTrainerBattleState,
+  lockedMove,
+  resolveTurn,
+  rollHitCount,
+  type BattleEvent,
+} from './battleEngine';
 import { PrimaryStatus } from './status';
 import { stagedAccuracy } from './statStages';
 
@@ -453,3 +461,78 @@ function razorInit(move: MoveBase) {
     category: move.category,
   };
 }
+
+/**
+ * Playtest 22, W1: the generator sent the stat change of every "hits, then
+ * changes the user's stats" attack to the foe, because it asked PokeAPI's
+ * `target` (always the foe for an attack) rather than its `meta.category`. A
+ * Venomoth's Silver Wind raised its opponent's five stats and a Nidoqueen's
+ * Superpower lowered her opponent's Attack and Defence. FireRed's effects -
+ * EFFECT_ALL_STATS_UP_HIT, EFFECT_ATTACK_UP_HIT, EFFECT_SUPERPOWER - all act on
+ * the attacker, and its Rapid Spin changes no stat at all.
+ */
+describe("attacks that change their user's stats", () => {
+  it('never raise a stat of the foe they hit, anywhere in the catalogue', () => {
+    const generous = Object.entries(MOVE_CATALOGUE).flatMap(([id, move]) =>
+      move.category === MoveCategory.Status
+        ? []
+        : move.secondaries
+            .filter((secondary) => secondary.target !== MoveTarget.Self)
+            .filter((secondary) => secondary.boosts.some((boost) => boost.stages > 0))
+            .map(() => id),
+    );
+    expect(generous).toEqual([]);
+  });
+
+  it.each(['ancient-power', 'meteor-mash', 'silver-wind', 'superpower', 'metal-claw'])(
+    '%s changes the user, as FireRed does',
+    (id) => {
+      const move = MOVE_CATALOGUE[id];
+      expect(move.secondaries.filter((secondary) => secondary.boosts.length > 0).map((secondary) => secondary.target)).toEqual([
+        MoveTarget.Self,
+      ]);
+    },
+  );
+
+  it('gives Rapid Spin no Speed raise, which is generation VIII', () => {
+    expect(MOVE_CATALOGUE['rapid-spin'].secondaries).toEqual([]);
+  });
+
+  it("lowers a Superpower user's own Attack and Defence, and leaves the foe's alone", () => {
+    const result = resolveTurn(
+      createBattleState(
+        armed(getSpeciesById('nidoqueen')!, 50, MOVE_CATALOGUE.superpower),
+        armed(getSpeciesById('snorlax')!, 70),
+      ),
+      0,
+      () => 0.5,
+    );
+    expect(result.state.enemy.currentHp).toBeGreaterThan(0);
+    expect(result.state.player.statStages.attack).toBe(-1);
+    expect(result.state.player.statStages.defense).toBe(-1);
+    expect(result.state.enemy.statStages.attack).toBe(0);
+    expect(result.state.enemy.statStages.defense).toBe(0);
+  });
+
+  it('still costs the Superpower user its stats when the hit knocks the foe out', () => {
+    // A trainer's lead, so the fight goes on after the knockout.
+    const state = createTrainerBattleState(
+      armed(getSpeciesById('nidoqueen')!, 50, MOVE_CATALOGUE.superpower),
+      { id: 'w1', name: 'TESTER', party: [armed(PIDGEY, 5), armed(PIDGEY, 5)] },
+    );
+    const result = resolveTurn(state, 0, () => 0.5);
+    expect(result.events.some((event) => event.type === 'fainted' && event.user === 'enemy')).toBe(true);
+    expect(result.state.player.statStages.attack).toBe(-1);
+    expect(result.state.player.statStages.defense).toBe(-1);
+  });
+
+  it("raises a Silver Wind user's own stats when the 10% lands", () => {
+    const result = resolveTurn(
+      createBattleState(armed(getSpeciesById('venomoth')!, 50, MOVE_CATALOGUE['silver-wind']), armed(SQUIRTLE, 60)),
+      0,
+      always,
+    );
+    expect(result.state.player.statStages.speed).toBe(1);
+    expect(result.state.enemy.statStages.speed).toBe(0);
+  });
+});
