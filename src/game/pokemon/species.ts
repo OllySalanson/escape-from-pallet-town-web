@@ -54,7 +54,7 @@ const build = (row: GeneratedSpecies): PokemonBase =>
     baseStats: row.baseStats,
     learnset: applyLearnset(row),
     catchRate: row.catchRate,
-    baseExperience: row.baseExperience,
+    expYield: row.expYield,
     growthRate: row.growthRate,
   });
 

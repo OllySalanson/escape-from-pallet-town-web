@@ -44,7 +44,7 @@ export interface PokemonBaseInit {
    * `experienceForLevel`.
    */
   readonly catchRate?: number;
-  readonly baseExperience?: number;
+  readonly expYield?: number;
   readonly growthRate?: GrowthRate;
 }
 
@@ -58,7 +58,7 @@ export class PokemonBase {
   public readonly baseStats: PokemonStats;
   public readonly learnset: readonly LearnableMove[];
   public readonly catchRate: number;
-  public readonly baseExperience: number;
+  public readonly expYield: number;
   public readonly growthRate: GrowthRate;
 
   public constructor(init: PokemonBaseInit) {
@@ -73,7 +73,7 @@ export class PokemonBase {
     // 255 is "caught by anything", which is what a species with no imported
     // rate should be: the one place this could bite is a test fixture.
     this.catchRate = init.catchRate ?? 255;
-    this.baseExperience = init.baseExperience ?? 0;
+    this.expYield = init.expYield ?? 0;
     this.growthRate = init.growthRate ?? 'medium';
   }
 }

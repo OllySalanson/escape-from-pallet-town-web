@@ -9,6 +9,13 @@ import {
   survivingSecureItems,
 } from './raidSettlement';
 
+/**
+ * Every Pokemon in this file is a starter or a Pidgey, and FireRed puts all
+ * four on the medium-slow curve - which is the curve a level is read on here.
+ */
+const STARTER_CURVE = 'medium-slow' as const;
+
+
 const RUN_CONFIG = { mapId: 'pallet-town', durationMs: 60_000 };
 
 function startedRun(party: readonly Pokemon[], items: readonly { itemId: string; quantity: number }[] = []): RunManager {
@@ -38,7 +45,7 @@ describe('raid settlement', () => {
         currentHp: starter.currentHp,
         primaryStatus: 'poison',
         // What the raid earned, carried by the same trip as what it cost.
-        experience: experienceForLevel(5) + 30,
+        experience: experienceForLevel(5, STARTER_CURVE) + 30,
         // And what it became, for the evolution that spends no experience.
         speciesId: 'bulbasaur',
         // Gear was never in the pack, so the condition is the only way home for
@@ -55,7 +62,7 @@ describe('raid settlement', () => {
         primaryStatus: null,
         // Even a fainted Pokemon reports its experience: whether it survives at
         // all is the wipe's decision, not this one's.
-        experience: experienceForLevel(7),
+        experience: experienceForLevel(7, STARTER_CURVE),
         speciesId: 'charmander',
         heldItemId: null,
         moves: partner.moves.map((move) => move.base.name),
@@ -74,7 +81,7 @@ describe('raid settlement', () => {
         id: 'bulbasaur-1',
         currentHp: starter.maxHp,
         primaryStatus: null,
-        experience: experienceForLevel(5),
+        experience: experienceForLevel(5, STARTER_CURVE),
         speciesId: 'bulbasaur',
         heldItemId: null,
         moves: starter.moves.map((move) => move.base.name),
@@ -133,7 +140,7 @@ describe('raid settlement', () => {
           id: 'bulbasaur-1',
           currentHp: starter.currentHp,
           primaryStatus: null,
-          experience: experienceForLevel(5),
+          experience: experienceForLevel(5, STARTER_CURVE),
           speciesId: 'bulbasaur',
           heldItemId: null,
           moves: starter.moves.map((move) => move.base.name),

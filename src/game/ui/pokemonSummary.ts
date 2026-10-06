@@ -1,4 +1,5 @@
 import { MoveCategory, experienceForLevel } from '../pokemon';
+import type { GrowthRate } from '../pokemon/generated/speciesCatalogue';
 import type { MoveBase } from '../pokemon';
 
 /**
@@ -45,9 +46,11 @@ export interface ExperienceProgress {
 export function experienceProgress(pokemon: {
   readonly level: number;
   readonly experience: number;
+  /** The species' growth rate, which is the curve it levels on. */
+  readonly base?: { readonly growthRate: GrowthRate };
 }): ExperienceProgress {
-  const start = experienceForLevel(pokemon.level);
-  const next = experienceForLevel(pokemon.level + 1);
+  const start = experienceForLevel(pokemon.level, pokemon.base?.growthRate);
+  const next = experienceForLevel(pokemon.level + 1, pokemon.base?.growthRate);
   const levelSpan = Math.max(0, next - start);
   if (levelSpan === 0) {
     return {
