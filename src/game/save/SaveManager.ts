@@ -49,7 +49,8 @@ import {
   type MoveBase,
 } from '../pokemon';
 import { Bag, type BagContents } from '../items/Bag';
-import type { PrimaryStatus } from '../pokemon/battle/status';
+import { typeRefusesStatus, type PrimaryStatus } from '../pokemon/battle/status';
+import type { PokemonType } from '../pokemon/PokemonType';
 import type { GridPosition } from '../movement/gridMovement';
 import {
   getStarterSpecies,
@@ -1414,7 +1415,13 @@ function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon
 
   const pokemon = new Pokemon(species, value.level);
   pokemon.currentHp = clampInteger(value.currentHp, 0, pokemon.maxHp, pokemon.maxHp);
-  pokemon.primaryStatus = isPrimaryStatus(value.primaryStatus) ? value.primaryStatus : null;
+  // A status the Pokemon's own types now refuse is not carried in: a save
+  // written before generation III's type immunities could hold a burned
+  // Charmeleon or a poisoned Venusaur, which the rules say cannot exist, and
+  // carried in it went on burning every turn (playtest 21).
+  const savedStatus = isPrimaryStatus(value.primaryStatus) ? value.primaryStatus : null;
+  pokemon.primaryStatus =
+    savedStatus !== null && typeRefusesStatus(savedStatus, pokemonTypes(pokemon)) ? null : savedStatus;
   pokemon.giveHeldItem(typeof value.heldItemId === 'string' ? value.heldItemId : null);
 
   if (Array.isArray(value.moves)) {
@@ -1577,6 +1584,11 @@ function experienceOnFireRedCurve(saved: number, level: number, curve: GrowthRat
   const share = oldSpan > 0 ? Math.min(1, Math.max(0, (saved - oldStart) / oldSpan)) : 0;
   const start = experienceForLevel(level, curve);
   return start + Math.floor(share * (experienceForLevel(level + 1, curve) - start));
+}
+
+/** A Pokemon's one or two types, as the type immunities read them. */
+function pokemonTypes(pokemon: Pokemon): readonly PokemonType[] {
+  return [pokemon.base.primaryType, ...(pokemon.base.secondaryType ? [pokemon.base.secondaryType] : [])];
 }
 
 function getPokemonXp(pokemon: Pokemon): number {

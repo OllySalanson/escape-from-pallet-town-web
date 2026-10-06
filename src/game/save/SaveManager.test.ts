@@ -103,7 +103,7 @@ describe('SaveManager', () => {
   it('round-trips party state and world position', () => {
     const charmander = new Pokemon(CHARMANDER, 12);
     charmander.takeDamage(9);
-    charmander.primaryStatus = PrimaryStatus.Burn;
+    charmander.primaryStatus = PrimaryStatus.Paralysis;
     const pidgey = new Pokemon(PIDGEY, 8);
     const storage = new MemoryStorage();
     const saves = new SaveManager(storage);
@@ -139,7 +139,7 @@ describe('SaveManager', () => {
       base: { id: 'charmander' },
       level: 12,
       currentHp: charmander.currentHp,
-      primaryStatus: PrimaryStatus.Burn,
+      primaryStatus: PrimaryStatus.Paralysis,
     });
     expect(restored?.party.pokemon[0].moves.map((move) => move.base.name)).toEqual(
       charmander.moves.map((move) => move.base.name),
@@ -192,7 +192,7 @@ describe('SaveManager', () => {
       JSON.stringify({
         version: 1,
         party: [
-          { speciesId: 'bulbasaur', level: 9, currentHp: 11, moves: ['Tackle', 'Vine Whip'], primaryStatus: 'poison' },
+          { speciesId: 'bulbasaur', level: 9, currentHp: 11, moves: ['Tackle', 'Vine Whip'], primaryStatus: 'paralysis' },
           { speciesId: 'pikachu', level: 7, currentHp: 12, moves: ['Thunder Shock'], primaryStatus: null },
         ],
         mapId: 'pallet-town',
@@ -206,7 +206,7 @@ describe('SaveManager', () => {
     const restored = saves.load();
 
     expect(restored?.stash.listPokemon()).toMatchObject([
-      { pokemon: { base: { id: 'bulbasaur' }, level: 9, currentHp: 11, primaryStatus: PrimaryStatus.Poison } },
+      { pokemon: { base: { id: 'bulbasaur' }, level: 9, currentHp: 11, primaryStatus: PrimaryStatus.Paralysis } },
       { pokemon: { base: { id: 'pikachu' }, level: 7, currentHp: 12 } },
     ]);
     expect(restored?.stash.listPokemon()[0].pokemon.moves.map((move) => move.base.name)).toEqual([
@@ -286,6 +286,52 @@ describe('SaveManager', () => {
       expect(pokemon.experience).toBe(start + Math.floor(((old - 1000) / 331) * span));
     },
   );
+
+  /**
+   * Generation III's type immunities say a Fire type cannot be burned, a Poison
+   * or Steel type poisoned, an Ice type frozen. A save written before those
+   * rules can hold exactly that (playtest 21), and carried in, the burn went on
+   * hurting every turn. It is cleared on load; a status the types allow stays.
+   */
+  it('clears a saved status the Pokemon\'s own types now refuse, and keeps the rest', () => {
+    const storage = new MemoryStorage();
+    const saved = (speciesId: string, primaryStatus: string) => ({
+      id: `${speciesId}-1`,
+      pokemon: { speciesId, level: 20, currentHp: 40, xp: 8000, moves: ['Tackle'], primaryStatus },
+    });
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        version: 6,
+        party: [],
+        mapId: 'pallet-town',
+        position: { x: 1, y: 1 },
+        bag: {},
+        stash: {
+          pokemon: [
+            saved('charmeleon', 'burn'),
+            saved('venusaur', 'poison'),
+            saved('magneton', 'poison'),
+            saved('dewgong', 'freeze'),
+            saved('charmeleon', 'paralysis'),
+          ],
+          items: {},
+        },
+      }),
+    );
+
+    const statuses = new SaveManager(storage)
+      .load()!
+      .stash.listPokemon()
+      .map(({ pokemon }) => `${pokemon.base.id} ${pokemon.primaryStatus}`);
+    expect(statuses).toEqual([
+      'charmeleon null',
+      'venusaur null',
+      'magneton null',
+      'dewgong null',
+      'charmeleon paralysis',
+    ]);
+  });
 
   it('keeps a version 7 total as it was written, inside its own level', () => {
     const storage = new MemoryStorage();
@@ -672,7 +718,7 @@ describe('SaveManager', () => {
         { pokemon: [], items: [] },
         {
           condition: [
-            { id: 'charmander-1', currentHp: 6, primaryStatus: 'burn', experience: 400, heldItemId: null },
+            { id: 'charmander-1', currentHp: 6, primaryStatus: 'poison', experience: 400, heldItemId: null },
           ],
           supplies: [{ itemId: 'potion', quantity: -2 }],
         },
@@ -681,7 +727,7 @@ describe('SaveManager', () => {
 
     const settled = saves.load();
     expect(settled?.stash.listPokemon()).toMatchObject([
-      { id: 'charmander-1', pokemon: { currentHp: 6, primaryStatus: 'burn' } },
+      { id: 'charmander-1', pokemon: { currentHp: 6, primaryStatus: 'poison' } },
     ]);
     expect(settled?.stash.listItems()).toEqual(withPack({ potion: 1 }));
   });
