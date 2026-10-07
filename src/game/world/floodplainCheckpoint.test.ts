@@ -58,24 +58,6 @@ const freshStarter = (speciesId: string, level: number, condition = 1): Measured
 
 const TRIALS = 400;
 
-/**
- * Where a starter's number is held somewhere other than the design line, and
- * why. Every price in this file was first measured with a bug in it: a
- * trainer's replacement Pokemon took the fallen one's queued move in the turn
- * it arrived (playtest finding B1), a free hit on every knockout. With that
- * fixed the fight is fairer and a lone level-5 Charmander wins a bare fight 37%
- * of the time instead of 8%, and the Potions narrow the gap between arriving
- * healthy and arriving hurt to 9 points. The battle rules are being moved to
- * FireRed's in a series of changes after this one, each of which moves this
- * fight again, so her party is retuned once, against the finished rules, in
- * the re-measure that closes the series - and these overrides are deleted then.
- */
-const AWAITING_REMEASURE: Readonly<Record<string, { readonly bare?: number; readonly gap?: number }>> = {
-  charmander: { bare: 0.4, gap: 0.08 },
-  // FireRed's status rules (paralysis quarters Speed, burn halves a physical
-  // hit) put a bare Squirtle a shade over the line: 15.25%.
-  squirtle: { bare: 0.2 },
-};
 
 const rate = (speciesId: string, level: number, potions: number, condition = 1): number =>
   trainerMeasure(
@@ -101,9 +83,7 @@ describe('the price of the Floodplain checkpoint', () => {
     // spent their medicine in the reeds has the reeds left, not the road: the
     // watch is shaded and captioned CANNOT BE FLED, and the junction one step
     // above it is outside her sight.
-    const bare = STARTERS.map(
-      (starter) => `${starter} ${rate(starter, 5, 0) <= (AWAITING_REMEASURE[starter]?.bare ?? 0.15)}`,
-    );
+    const bare = STARTERS.map((starter) => `${starter} ${rate(starter, 5, 0) <= 0.15}`);
     expect(bare).toEqual(STARTERS.map((starter) => `${starter} true`));
   });
 
@@ -115,8 +95,7 @@ describe('the price of the Floodplain checkpoint', () => {
     for (const starter of STARTERS) {
       const healthy = rate(starter, 5, PACK);
       const hurt = rate(starter, 5, PACK, 0.6);
-      const gap = AWAITING_REMEASURE[starter]?.gap ?? 0.12;
-      expect(`${starter} costs ${healthy - hurt > gap}`).toBe(`${starter} costs true`);
+      expect(`${starter} costs ${healthy - hurt > 0.12}`).toBe(`${starter} costs true`);
     }
   });
 

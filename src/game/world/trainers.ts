@@ -184,14 +184,11 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // Pidgey 3 and Pikachu 4 is the same two species at the level the reeds
       // around them hold, measured over the real engine at the level a player
       // actually arrives at, in the rain this place has (`trainerMeasure.ts`,
-      // 800 trials, Potions drunk out of the pack exactly as `battleItems.ts`
+      // 400 trials, Potions drunk out of the pack exactly as `battleItems.ts`
       // charges them - a turn each). At level 5 on full HP with the loadout's
-      // three Potions a starter wins 87/92/85%
-      // (Charmander/Squirtle/Bulbasaur), spending 2.2 of the three and walking
-      // away on about half to two thirds of its health; with two Potions
-      // 74/80/67%; walking in at 60% health 67/76/66%; with an empty pack
-      // 9/4/2%. By level 6 it is 96/96/94% and by level 7 one Potion is the
-      // whole price. So the fight is decided by the condition you arrive in and
+      // three Potions a starter wins 84/92/86% (Charmander/Squirtle/Bulbasaur);
+      // walking in at 60% health 65/76/68%; with an empty pack 8/10/10%. By
+      // level 6 it is 93/94/93% and by level 7 one Potion is the whole price. So the fight is decided by the condition you arrive in and
       // the supplies you are willing to spend on it - both of them things a
       // player chooses - and not by the 6.25% critical roll that decided it when
       // one hit was a third of the bar.
@@ -210,7 +207,13 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // party in the other order wins 38/40/33%. The Pidgey is the teaching
       // fight's own Pidgey at its own level: the opening battle is one of them,
       // and the checkpoint is that Pidgey with something behind it.
-      [new Pokemon(PIDGEY, 3), new Pokemon(PIKACHU, 4)],
+      //
+      // Re-measured on 2026-10-06, once the battle rules were FireRed's: these
+      // numbers were first taken while her Pikachu still attacked in the turn
+      // her Pidgey fell, a free hit that every fresh starter paid. Without it a
+      // bare level-5 Charmander won 37% and the road was nearly free; the
+      // Pikachu a level up (4 to 5) puts every line above back where it was.
+      [new Pokemon(PIDGEY, 3), new Pokemon(PIKACHU, 5)],
       'The checkpoint is open. Move before the hunter closes in.',
     ),
   },
@@ -357,7 +360,11 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // reference parties and held on the ladder in `trainerLadder.test.ts` -
       // this door is met after the sluice keeper, so it may not be a rung
       // easier.
-      [new Pokemon(getSpeciesById('geodude')!, 11), quarryMachop(11), new Pokemon(getSpeciesById('sandshrew')!, 12)],
+      //
+      // Re-measured on 2026-10-06 against FireRed's rules (see Vance): with its
+      // Machop at 11 a lone Charmander 14 won 75%, on the edge of the band, and
+      // at 12 it is 71%, a 79% rung.
+      [new Pokemon(getSpeciesById('geodude')!, 11), quarryMachop(12), new Pokemon(getSpeciesById('sandshrew')!, 12)],
       'Take it down, then. The level through the hill is open too - it comes out on the beck.',
     ),
   },
@@ -461,7 +468,15 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // Floodplain's last boss on the gentlest map in the game, which is what
       // measuring rather than guessing caught. The mill's own, and the one
       // party in the game with no Pidgey and no Pikachu in it.
-      [new Pokemon(JIGGLYPUFF, 9), new Pokemon(SQUIRTLE, 9), new Pokemon(BUTTERFREE, 11)],
+      //
+      // Re-measured on 2026-10-06, once the battle rules were FireRed's: the
+      // first numbers here were taken while a trainer's replacement still
+      // attacked in the turn its predecessor fell, a free hit on every
+      // knockout, so every party with a second Pokemon measured harder than
+      // it was. Without it this party was an 89% rung and a lone Charmander 14
+      // won 77%, over the band; the Squirtle a level up (9 to 10) puts it at
+      // 81% with the Charmander on 61% (`trainerLadder.test.ts`).
+      [new Pokemon(JIGGLYPUFF, 9), new Pokemon(SQUIRTLE, 10), new Pokemon(BUTTERFREE, 11)],
       'Towpath is yours, head and foot. Mind the stair - it is a long drop and a short way home.',
     ),
   },
@@ -706,7 +721,15 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       // purpose - Pidgey and Butterfree together take a Bulbasaur to nil, and
       // a fight only one starter can win is the lottery Scout Lee's Squirtle
       // exists to avoid.
-      [new Pokemon(PIDGEY, 9), new Pokemon(PIKACHU, 11), new Pokemon(JIGGLYPUFF, 12)],
+      //
+      // Re-measured on 2026-10-06, once the battle rules were FireRed's: the
+      // first numbers here were taken while a trainer's replacement still
+      // attacked in the turn its predecessor fell, a free hit on every
+      // knockout, so every party with a second Pokemon measured harder than
+      // it was. Without it the party (9, 11, 12) was an 85% rung, a rung easier
+      // than Cobb, with a lone Charmander 14 on 91% and the team on 96%. A level
+      // on the first two and two on the Jigglypuff puts it at 70%, 71% and 80%.
+      [new Pokemon(PIDGEY, 10), new Pokemon(PIKACHU, 12), new Pokemon(JIGGLYPUFF, 14)],
       'Ridge is open, both ends. Light the tower and you are ten steps from the stair, not half a map.',
     ),
   },
@@ -816,12 +839,19 @@ export const createRunTrainerEncounters = (): readonly RunTrainerEncounter[] => 
       'viridian-gatekeeper-ross',
       'GATEKEEPER ROSS',
       // Route 22's Mankey, a Diglett out of the cave on his own map, and a
-      // Rattata, measured (`tools/trainers/report.mts`) to a 66% rung with every
-      // starter at 14 between 52% and 72%. His first party had a Spearow and a
+      // Rattata, measured (`tools/trainers/report.mts`) to a 65% rung with every
+      // starter at 14 between 50% and 69%. His first party had a Spearow and a
       // Nidorino, which is Route 22 to the letter and a starter lottery: both
       // resist Vine Whip, and Bulbasaur 14 won 1% against Charmander's 85%.
+      //
+      // Re-measured on 2026-10-06, once the battle rules were FireRed's: the
+      // first numbers here were taken while a trainer's replacement still
+      // attacked in the turn its predecessor fell, a free hit on every
+      // knockout, so every party with a second Pokemon measured harder than
+      // it was. Without it, and under FireRed's status rules, he was a 74% rung,
+      // a rung easier than Mott; the Mankey a level up (10 to 11) is 65%.
       [
-        new Pokemon(getSpeciesById('mankey')!, 10),
+        new Pokemon(getSpeciesById('mankey')!, 11),
         new Pokemon(getSpeciesById('diglett')!, 11),
         new Pokemon(RATTATA, 11),
       ],
