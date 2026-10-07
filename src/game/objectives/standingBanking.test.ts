@@ -6,7 +6,7 @@ import { PokemonParty } from '../pokemon';
 import { DEFAULT_RAID_PROGRESS, SAVE_KEY, SaveManager, type StorageLike } from '../save/SaveManager';
 import { createStartingStash } from '../stash';
 import { RAID_CONTRACTS, type RaidContract } from './contracts';
-import { standingBoard, standingTopPressure } from './standingBoard';
+import { deployableMapIds, standingBoard, standingTopPressure } from './standingBoard';
 
 class MemoryStorage implements StorageLike {
   private readonly entries = new Map<string, string>();
@@ -160,11 +160,14 @@ describe('the lobby’s contract board', () => {
   it('becomes the standing board after it, says what turns it over, and leads with the most hunter', () => {
     const progress = seedSave(new MemoryStorage(), 3).load()!.raidProgress;
     const board = buildContractBoard(progress);
+    // One row for every map the save can deploy to: the shipped maps it has
+    // unlocked and every map the owner has approved, however many that is.
+    const maps = deployableMapIds(progress).length;
     expect(board).toMatchObject({
       heading: 'Standing board',
-      note: '5 open · 3 banked · turns over when you bank one',
+      note: `${maps} open · 3 banked · turns over when you bank one`,
     });
-    expect(board.rows).toHaveLength(5);
+    expect(board.rows).toHaveLength(maps);
     expect(board.rows[0].hunterPressure).toBe(standingTopPressure(3));
     expect(board.rows.map((row) => row.hunterPressure)).toEqual(
       [...board.rows.map((row) => row.hunterPressure)].sort((a, b) => b - a),
