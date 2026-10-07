@@ -264,7 +264,9 @@ pulling back. It refuses to photograph a screen that puts a scrollbar down the
 side of the browser. The survey it draws is a real one: `raid.mjs
 --progress=path.json` writes what a raid left in the record at base, survey
 included, and `tools/tileset/minimap.mts --survey=` draws the same picture big
-enough to criticise without a browser.
+enough to criticise without a browser. `--save-out=path.json` keeps the whole
+save the raid banked, which is what a taught move or anything else that has to
+survive a load is checked against: seed it back and CONTINUE from the title.
 
 ## The stranger's memory test
 

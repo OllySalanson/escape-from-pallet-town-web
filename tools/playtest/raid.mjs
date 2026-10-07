@@ -9,7 +9,7 @@
 //        [--insertion=id] [--beaten=bossId,..] [--opened=gateId,..] [--completed=contractId,..]
 //        [--hp=N] [--stash=itemId[:n],..] [--read=itemId,..] [--open=LABEL] [--arrange]
 //        [--work=LABEL] [--exit=LABEL] [--via=x:y,x:y] [--grab=itemId,..] [--fight]
-//        [--progress=path.json] [--shot-dialogs]
+//        [--progress=path.json] [--save-out=path.json] [--shot-dialogs]
 //
 // --shot-dialogs (with --shot) photographs every line of dialogue a step raised
 // before the driver presses past it - a pickup's "Found ₽40!", say, which is
@@ -66,7 +66,11 @@ const STATE = `(() => {
   }
   const b = g.scene.getScene('battle');
   if (active.includes('battle')) {
-    out.battle = { mode: b.mode, commands: b.commandTexts.map((t) => t.text) };
+    // The cursor is a text of its own beside the rows now (BattleScene's
+    // seatRowsBesideCursor), so the driver puts it back in front of the row it
+    // is on, as the screen shows it.
+    const cursor = b.mode === 'make-room' ? b.selectedCommand - b.makeRoomPage * 6 : b.selectedCommand;
+    out.battle = { mode: b.mode, commands: b.commandTexts.map((t, i) => (i === cursor ? '\u25b6 ' : '') + t.text) };
   }
   return out;
 })()`;
@@ -305,6 +309,11 @@ try {
   // spends it, and an HM comes out of the raid still in the pack.
   const readDisc = async (itemId) => {
     note(`reading ${itemId} in the bag`);
+    // The raid opens on its briefing, and B under a dialogue box opens nothing.
+    for (let line = 0; line < 12 && (await state()).world?.dialog; line += 1) {
+      await press('Space');
+      await wait(300);
+    }
     await press('KeyB');
     await until(`document.querySelectorAll('.menu-overlay').length > 0`, 'the bag');
     await wait(200);
@@ -617,6 +626,11 @@ try {
     note(`pack layout kept: ${JSON.stringify(progress.packArrangement?.items ?? [])}`);
     if (option('progress')) {
       writeFileSync(option('progress'), JSON.stringify(progress));
+    }
+    // --save-out=path.json keeps the whole save the raid banked, which is what
+    // a load is checked against (a taught move, a held item, the stash).
+    if (option('save-out')) {
+      writeFileSync(option('save-out'), await page.evaluate(`localStorage.getItem('escape-from-pallet-town.save.v1')`));
     }
     if (option('shot')) {
       await page.screenshot(option('shot').replace(/\.png$/, '-lobby.png'));
