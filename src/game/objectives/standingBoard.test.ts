@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { isMaterial } from '../items';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from '../hub/workshop';
-import { generateRunPlan, RUN_INSERTIONS, frontDoorFor } from '../run/runGeneration';
-import { EXTRACTION_POINTS } from '../world/extractionPoints';
+import { generateRunPlan, frontDoorFor, insertionsOn } from '../run/runGeneration';
+import { extractionPointsOn } from '../world/extractionPoints';
 import { WORLD_GATES, gateBossIds, gatesForMap } from '../world/gates';
 import { HUNTER_TIERS } from '../world/hunter';
 import { stepDistances } from '../world/mapStructure';
+import { trainersOn } from '../world/mapTrainers';
+import { isPublishedMap, playerMaps } from '../world/playerMaps';
 import { createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
 import { trainerSightTiles } from '../world/trainerSight';
 import { getWorldMap, type WorldMapId } from '../worldMap';
@@ -28,6 +30,16 @@ import {
 
 const CHAIN = RAID_CONTRACTS.map((contract) => contract.id);
 const EVERY_FRONT_DOOR = ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest', 'viridian-city'];
+/**
+ * Every map the owner has approved. Each one's front door opens with the first
+ * contract, so it is on every board below beside the shipped maps the save has
+ * unlocked - and the suite always runs with at least one
+ * (`publishedMapFixture.testkit.ts`), because a board test that counted only
+ * the shipped maps is what kept every approved map from publishing.
+ */
+const PUBLISHED_MAPS = playerMaps()
+  .map((map) => map.id)
+  .filter((id) => isPublishedMap(id));
 const EVERY_BOSS = gateBossIds(WORLD_GATES);
 const SEEDS = Array.from({ length: 300 }, (_, index) => Math.imul(index + 1, 0x9e3779b1) >>> 0);
 
@@ -107,11 +119,13 @@ describe('a drawn board', () => {
 
   it('never offers a map the player cannot deploy to, and offers every map they can', () => {
     const partial = progressWith({ unlockedInsertions: ['floodplain-relay', 'route-1'] });
-    expect(deployableMapIds(partial)).toEqual(['floodplain-relay', 'route-1']);
+    expect(PUBLISHED_MAPS.length).toBeGreaterThan(0);
+    expect(deployableMapIds(partial)).toEqual(['floodplain-relay', 'route-1', ...PUBLISHED_MAPS]);
     for (const seed of SEEDS) {
       expect(standingOffers(seed, partial).map((contract) => contract.mapId)).toEqual([
         'floodplain-relay',
         'route-1',
+        ...PUBLISHED_MAPS,
       ]);
       expect(standingOffers(seed, progressWith()).map((contract) => contract.mapId)).toEqual(
         deployableMapIds(progressWith()),
@@ -124,7 +138,11 @@ describe('a drawn board', () => {
       unlockedInsertions: ['floodplain-relay'],
       reachedInsertions: ['route-1-overlook'],
     });
-    expect(standingBoard(progress).map((contract) => contract.mapId)).toEqual(['floodplain-relay', 'route-1']);
+    expect(standingBoard(progress).map((contract) => contract.mapId)).toEqual([
+      'floodplain-relay',
+      'route-1',
+      ...PUBLISHED_MAPS,
+    ]);
   });
 
   it('gives every contract and every stop an id of its own, carrying the round it was drawn in', () => {
@@ -182,9 +200,7 @@ describe('every standing contract', () => {
       if (contract.requiredExitLabel === undefined) {
         continue;
       }
-      const exit = EXTRACTION_POINTS.find(
-        (point) => point.mapId === contract.mapId && point.label === contract.requiredExitLabel,
-      );
+      const exit = extractionPointsOn(contract.mapId).find((point) => point.label === contract.requiredExitLabel);
       expect(exit, contract.id).toBeDefined();
       const bosses = contract.sealedBehind ? EVERY_BOSS : defeatedBosses;
       expect(reaches(walkFromFrontDoor(contract.mapId, bosses), exit!.position), contract.id).toBe(true);
@@ -210,14 +226,14 @@ describe('every standing contract', () => {
       const map = getWorldMap(mapId, defeatedBosses);
       const isBlocked = (tile: { x: number; y: number }): boolean => map.collision[tile.y]?.[tile.x] ?? true;
       return [
-        ...EXTRACTION_POINTS.filter((point) => point.mapId === map.id).map((point) => point.position),
-        ...Object.values(RUN_INSERTIONS).filter((entry) => entry.mapId === map.id).map((entry) => entry.position),
+        ...extractionPointsOn(map.id).map((point) => point.position),
+        ...insertionsOn(map.id).map((entry) => entry.position),
         ...map.pois.map((poi) => poi.position),
         ...map.warps.map((warp) => warp.source),
         ...map.entities.map((entity) => entity.position),
         ...map.gates.flatMap((gate) => gate.tiles),
-        ...withoutDefeatedBosses(createRunTrainerEncounters(), defeatedBosses)
-          .filter((trainer) => trainer.mapId === map.id && trainer.fixedPosition)
+        ...withoutDefeatedBosses(trainersOn(map.id), defeatedBosses)
+          .filter((trainer) => trainer.fixedPosition)
           .flatMap((trainer) => [trainer.position, ...trainerSightTiles(trainer, isBlocked)]),
       ].map((tile) => `${tile.x},${tile.y}`);
     }
@@ -368,7 +384,7 @@ describe('escalation', () => {
         .sort((a, b) => b - a);
       // One map a rank, each a tier under the last until the board is back to
       // a safe raid: however many maps there are, the rest carry none.
-      expect(pressures).toEqual(EVERY_FRONT_DOOR.map((_door, rank) => Math.max(0, top - rank)));
+      expect(pressures).toEqual(deployableMapIds(progressWith()).map((_map, rank) => Math.max(0, top - rank)));
       expect(pressures[pressures.length - 1]).toBe(0);
     }
   });
@@ -410,7 +426,9 @@ describe('what it pays in', () => {
     const everything = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
     expect(workshopMaterialKinds(everything).length).toBeGreaterThan(1);
     expect(workshopMaterialKinds(everything).some((itemId) => isMaterial(itemId))).toBe(false);
-    expect(standingBoard(progressWith({ workshopUpgrades: everything })).length).toBe(EVERY_FRONT_DOOR.length);
+    expect(standingBoard(progressWith({ workshopUpgrades: everything })).length).toBe(
+      deployableMapIds(progressWith()).length,
+    );
   });
 });
 

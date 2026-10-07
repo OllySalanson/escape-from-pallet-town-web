@@ -18,10 +18,11 @@ import {
   SQUIRTLE,
   experienceForLevel,
 } from '../pokemon';
-import { FIRST_CONTRACT_ID, RAID_CONTRACTS, standingBoard } from '../objectives';
+import { FIRST_CONTRACT_ID, RAID_CONTRACTS, standingBoard, type RaidContract } from '../objectives';
 import { activeRunManager, RunPhase } from '../run';
 import { RAID_DURATION_MS } from '../run/raidClock';
-import { RUN_INSERTIONS } from '../run/runGeneration';
+import { deployableMapIds } from '../objectives/standingBoard';
+import { frontDoorFor } from '../run/runGeneration';
 import type { ActiveRunSession } from '../run/RunSession';
 import { createStartingStash, Stash, type StashedPokemon } from '../stash';
 import {
@@ -40,6 +41,7 @@ import {
   type StorageLike,
 } from '../save/SaveManager';
 import { PIXEL_STATUS_SELECTOR } from '../ui/pixelUi';
+import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
 import { HubScene, type HubSceneData } from './HubScene';
 
 describe('the lobby as a screen of the game', () => {
@@ -812,7 +814,8 @@ describe('the standing board in the lobby', () => {
     const home = markupOf(hub);
     expect(home).not.toContain('Every contract is banked');
     expect(home).toContain('Standing board');
-    expect(home).toContain('4 open · 2 banked');
+    // One row per map the save can deploy to, approved player maps included.
+    expect(home).toContain(`${deployableMapIds(progress).length} open · 2 banked`);
     for (const contract of standingBoard(progress)) {
       expect(home).toContain(contract.description);
       expect(home).toContain(`data-shows="${contract.id}"`);
@@ -824,7 +827,7 @@ describe('the standing board in the lobby', () => {
     const progress = chainBanked(2);
     const raised = standingBoard(progress).find((contract) => contract.hunterPressure === 1)!;
     const home = markupOf(createHub(progress).hub);
-    const insertion = Object.values(RUN_INSERTIONS).find((entry) => entry.mapId === raised.mapId)!;
+    const insertion = frontDoorFor(raised.mapId)!;
     expect(home).toContain(`data-contract="${insertion.id}" data-shows="${raised.id}"`);
     expect(home).toContain('data-hunter-pressure="1"');
     expect(home).toContain('Hunter +1 tier');
@@ -833,14 +836,17 @@ describe('the standing board in the lobby', () => {
   });
 
   it.each([
-    ['a raised contract', 1, 2],
-    ['a contract with no pressure on it', undefined, 1],
+    ['a raised contract', (contract: RaidContract) => contract.hunterPressure === 1],
+    ['a contract with no pressure on it', (contract: RaidContract) => contract.hunterPressure === undefined],
+    ['a contract on a map a player made', (contract: RaidContract) => contract.mapId === PUBLISHED_FIXTURE_MAP_ID],
   ] as const)(
     'prices %s on the final check and sends that same hunter into the raid',
-    (_name, pressure, tier) => {
+    (_name, isTheOne) => {
       const progress = chainBanked(2);
-      const contract = standingBoard(progress).find((candidate) => candidate.hunterPressure === pressure)!;
-      const insertion = Object.values(RUN_INSERTIONS).find((entry) => entry.mapId === contract.mapId)!;
+      const contract = standingBoard(progress).find(isTheOne)!;
+      const pressure = contract.hunterPressure;
+      const tier = (pressure ?? 0) + 1;
+      const insertion = frontDoorFor(contract.mapId)!;
       const { hub, start } = createHub(progress);
       hub.flow.togglePokemon('bulbasaur-1');
       hub.flow.chooseInsertion(insertion.id);

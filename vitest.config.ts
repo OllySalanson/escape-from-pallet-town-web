@@ -45,5 +45,11 @@ export default defineConfig({
      */
     testTimeout: 120_000,
     maxWorkers: MAX_WORKERS,
+    /**
+     * One approved player map is in the game for every test file, so a test
+     * that assumes only the shipped maps exist fails here rather than in the
+     * publish workflow. See `publishedMapFixture.testkit.ts`.
+     */
+    setupFiles: ['src/game/world/publishedMapFixture.testkit.ts'],
   },
 });
