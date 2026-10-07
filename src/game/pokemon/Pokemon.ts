@@ -69,6 +69,27 @@ export const computePokemonStats = (baseStats: PokemonStats, level: number): Com
 });
 
 /** One species becoming another, in the words the screen needs to announce it. */
+/**
+ * Every move a Pokemon of this species could know, by name: what its whole
+ * evolution line learns by levelling **and what that line can be taught from a
+ * machine**. It is the one lookup a stored move name is resolved through - the
+ * save loader and `restoreMoveset` both ask it - because a lookup built from
+ * learnsets alone has no home for a taught move, and the loader once kept its
+ * own copy of exactly that and deleted every TM and HM move on the next load
+ * (playtest 21). The whole line, not this species alone, because an Ivysaur
+ * that evolved out of this game's Bulbasaur still knows the Super Sonic only
+ * Bulbasaur teaches; and no wider than the line, which is what stops a corrupt
+ * save handing a Pidgey a Hydro Pump.
+ */
+export const knowableMoves = (species: PokemonBase): ReadonlyMap<string, MoveBase> =>
+  new Map(
+    [species, ...evolutionFamily(species.id)].flatMap((member) =>
+      [...member.learnset.map((entry) => entry.move), ...machineMovesFor(member.id)].map(
+        (move) => [move.name, move] as const,
+      ),
+    ),
+  );
+
 export interface SpeciesEvolution {
   readonly from: PokemonBase;
   readonly to: PokemonBase;
@@ -284,14 +305,7 @@ export class Pokemon {
    * keep their PP; new ones start full.
    */
   public restoreMoveset(names: readonly string[], pendingNames: readonly string[]): void {
-    const byName = new Map(
-      [this.base, ...evolutionFamily(this.base.id)].flatMap((member) =>
-        [
-          ...member.learnset.map((entry) => entry.move),
-          ...machineMovesFor(member.id),
-        ].map((move) => [move.name, move] as const),
-      ),
-    );
+    const byName = knowableMoves(this.base);
     const known: MoveBase[] = [];
     for (const name of names) {
       const move = byName.get(name);

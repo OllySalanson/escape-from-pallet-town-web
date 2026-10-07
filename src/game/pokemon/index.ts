@@ -10,6 +10,7 @@ export {
   experienceAwardForDefeat,
   experienceForLevel,
   computePokemonStats,
+  knowableMoves,
   type ExperienceResult,
   Pokemon,
   type SpeciesEvolution,
