@@ -519,6 +519,26 @@ export class SaveManager {
     };
   }
 
+  /**
+   * Whether this browser keeps anything at all: storage that is missing,
+   * blocked or refuses a write. The whole game is read back out of the save
+   * between screens, so a game that cannot be written cannot be played - a
+   * new one started anyway opened onto a black screen.
+   */
+  public canSave(): boolean {
+    if (!this.storage) {
+      return false;
+    }
+    const probe = `${SAVE_KEY}.probe`;
+    try {
+      this.storage.setItem(probe, '1');
+      this.storage.removeItem(probe);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   public save(state: SaveGameState): boolean {
     if (!this.storage) {
       return false;
