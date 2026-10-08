@@ -156,6 +156,20 @@ describe('the lobby as a screen of the game', () => {
     expect(markupOf(hub)).toContain('data-pokemon="shelved"');
   });
 
+  it('opens the loadout with the cursor on the first Pokemon, never on the sort chip', () => {
+    // Playtest 44 #2: the loadout had no cursor start, so the cursor fell on
+    // the first button in the body - SORT - and the first Enter re-sorted the
+    // stash instead of choosing who goes.
+    const { hub } = createHub();
+    hub.openDeployment();
+    const markup = markupOf(hub);
+
+    const starts = markup.match(/<button[^>]*data-cursor-start[^>]*>/g) ?? [];
+    expect(starts).toHaveLength(1);
+    expect(starts[0]).toContain('data-pokemon=');
+    expect(markup.indexOf('data-cursor-start')).toBeLessThan(markup.indexOf('data-advance'));
+  });
+
   it('offers only the boxes that have room while a Pokemon is picked up, and puts it down', () => {
     const { hub } = createHub();
     hub.setView('stash');

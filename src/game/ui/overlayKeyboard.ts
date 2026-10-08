@@ -33,6 +33,12 @@
  *
  * Key *up* is deliberately left alone. Phaser tracks `Key.isDown` from it, and a
  * swallowed keyup would hand the resumed world a key the player has released.
+ * That is also why Space works a button here, on its keydown, rather than being
+ * left to the browser: Chromium activates a focused button with Enter on keydown
+ * but with Space on *keyup*, and Phaser `preventDefault()`s the keyup of every
+ * key it captures - SPACE among them - which cancels the activation. Space is
+ * the A button on the title, in dialogue and at every door, so every menu was
+ * dead to it. `pressFocusedButton` gives it Enter's meaning and Enter's moment.
  */
 
 /** The part of `window` this module needs, so a test can supply its own. */
@@ -74,6 +80,28 @@ function onKeyDown(event: KeyboardEvent): void {
     return;
   }
   owner.handler(event);
+  pressFocusedButton(event);
+}
+
+/**
+ * Space on a focused button presses it on the keydown, as Enter does, unless
+ * the screen already took the key (a pack being arranged reads Space itself).
+ * The default is prevented so the browser does not press it a second time on
+ * the keyup in a page where nothing cancels that.
+ */
+function pressFocusedButton(event: KeyboardEvent): void {
+  if (event.key !== ' ' || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
+    return;
+  }
+  const button = event.target as { tagName?: unknown; click?: unknown } | null;
+  if (!button || typeof button.tagName !== 'string' || button.tagName.toUpperCase() !== 'BUTTON') {
+    return;
+  }
+  if (typeof button.click !== 'function') {
+    return;
+  }
+  event.preventDefault();
+  (button as { click(): void }).click();
 }
 
 /**

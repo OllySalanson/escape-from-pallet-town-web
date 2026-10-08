@@ -289,6 +289,44 @@ describe('an open overlay owns the keyboard', () => {
     overlay.destroy();
   });
 
+  it('presses the focused button on Space, as on Enter, and once however long it is held', () => {
+    // Playtest 44 #1: Space never pressed a menu button. Chromium works a
+    // button with Space on the keyup, and Phaser preventDefaults the keyup of
+    // every key it captures, SPACE among them - so the press is made here, on
+    // the keydown, with the browser's own keyup activation switched off.
+    const overlay = openOverlay();
+    let clicks = 0;
+    const button = { tagName: 'BUTTON', click: () => (clicks += 1) };
+
+    const press = fakeWindow.press({ key: ' ', target: button });
+    const repeats = [1, 2, 3].map(() => fakeWindow.press({ key: ' ', repeat: true, target: button }));
+
+    expect(clicks).toBe(1);
+    expect(press.defaultPrevented).toBe(true);
+    expect(repeats.every((event) => event.defaultPrevented)).toBe(true);
+    expect(overlay.keys).toEqual([' ']);
+    expect(phaser.seen).toEqual([]);
+    overlay.destroy();
+  });
+
+  it('leaves Space to a screen that took it, and to anything that is not a button', () => {
+    const scene = { events: { once: () => {} } } as never;
+    const overlay = new MenuOverlay(scene, 'test-menu', (event) => event.preventDefault());
+    let clicks = 0;
+    const button = { tagName: 'BUTTON', click: () => (clicks += 1) };
+
+    fakeWindow.press({ key: ' ', target: button });
+    overlay.destroy();
+    const plain = openOverlay();
+    const onBody = fakeWindow.press(' ');
+    const withCtrl = fakeWindow.press({ key: ' ', ctrlKey: true, target: button });
+
+    expect(clicks).toBe(0);
+    expect(onBody.defaultPrevented).toBe(false);
+    expect(withCtrl.defaultPrevented).toBe(false);
+    plain.destroy();
+  });
+
   it('still repeats every other key, so a held arrow walks a list', () => {
     const overlay = openOverlay();
 
