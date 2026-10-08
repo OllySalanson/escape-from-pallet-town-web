@@ -1,5 +1,6 @@
 import type { SupplyItemId } from '../items';
 import type { ContractStack } from '../objectives/contracts';
+import { evolutionFamily } from '../pokemon';
 import { Stash, type StashedPokemon } from '../stash';
 
 /**
@@ -313,17 +314,22 @@ export const LAST_FIT_REFUSAL = 'Your last Pokémon fit to raid';
 /**
  * Every Pokemon at base, with the reason it cannot be spent when it cannot.
  *
- * Two are never payment. The partner - any Pokemon of the species this save
+ * Two are never payment. The partner - any Pokemon of the line this save
  * chose, because nothing else in a save identifies the one the player started
  * with and refusing a caught lookalike is a far smaller wrong than releasing
- * the original. And the last Pokemon fit to raid, because every path in this
- * game has to leave the player able to attempt a run.
+ * the original. The *line*, not the species: a partner evolves, and a
+ * Charmeleon on a Charmander save is the very Pokemon the rule is for. And the
+ * last Pokemon fit to raid, because every path in this game has to leave the
+ * player able to attempt a run.
  */
 export function paymentCandidates(vault: WorkshopVault): readonly PaymentCandidate[] {
   const stored = vault.stash.listPokemon();
   const fit = stored.filter((entry) => !entry.pokemon.isFainted);
+  const partnerLine = new Set(
+    vault.starterSpeciesId === null ? [] : evolutionFamily(vault.starterSpeciesId).map((species) => species.id),
+  );
   return stored.map((entry) => {
-    if (entry.pokemon.base.id === vault.starterSpeciesId) {
+    if (partnerLine.has(entry.pokemon.base.id)) {
       return { stored: entry, refusal: PARTNER_REFUSAL };
     }
     if (fit.length === 1 && fit[0] === entry) {
@@ -510,6 +516,10 @@ export function checkPayment(
 /**
  * Takes the payment out of the vault. Nothing is removed unless the whole
  * payment is valid, so a refused purchase costs nothing.
+ *
+ * Brock is paid in Pokemon, never in what they are holding: a released
+ * Pokemon's gear goes back on the vault's shelf first. Gear comes off a boss
+ * once per save, so letting it leave with the Pokemon lost it for good.
  */
 export function takePayment(
   vault: WorkshopVault,
@@ -522,6 +532,7 @@ export function takePayment(
     return check;
   }
   for (const { id } of check.pokemon) {
+    vault.stash.takeHeldItem(id);
     vault.stash.removePokemon(id);
   }
   for (const { itemId, quantity } of check.upgrade.cost.supplies) {

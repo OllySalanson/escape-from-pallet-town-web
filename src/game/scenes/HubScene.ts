@@ -220,6 +220,14 @@ const WALL_CARD_GAP = 4;
 /** What `traderArmed` holds for the berth, which is the one deal with no id. */
 const BERTH_DEAL = 'berth';
 
+/**
+ * How long after a deal that releases something for good is armed a pointer
+ * click on its confirm button is still read as the second half of the
+ * double-click that armed it. Half a second is the double-click interval
+ * Windows ships with, the longest of the common defaults.
+ */
+export const RELEASE_ARMING_MS = 500;
+
 export class HubScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
   private stash!: Stash;
@@ -259,6 +267,12 @@ export class HubScene extends Phaser.Scene {
    * press. It is one at a time, because arming a second disarms the first.
    */
   private traderArmed: string | undefined;
+  /**
+   * When the last irreversible deal was armed (`armRelease`), so a pointer
+   * click that lands on its confirm button straight away can be told for the
+   * second half of the double-click that armed it.
+   */
+  private releaseArmedAt = Number.NEGATIVE_INFINITY;
   /**
    * Set once a raid has been committed to. The screen stays up and keeps its
    * cursor on `Enter the raid` for the length of the fade, so a second press of
@@ -799,6 +813,29 @@ export class HubScene extends Phaser.Scene {
     this.setStatus(`${getStarterSpecies(this.reselectStarterId).name} is your new partner.`);
   }
 
+  /** Notes the moment an irreversible deal was armed. */
+  private armRelease(): void {
+    this.releaseArmedAt = performance.now();
+  }
+
+  /**
+   * Whether a pointer click on a just-armed deal's confirm button is the second
+   * half of the double-click that armed it. The armed question is drawn under
+   * the pointer the first click left there, so a double-click on SWAP FOR X
+   * released the partner for good. Such a click is swallowed and the cursor
+   * goes back to the answer that changes nothing. A key press is never one -
+   * its click has no `detail` - because the cursor starts on Keep and reaching
+   * the confirm button is already a deliberate move.
+   */
+  private clickedTooSoon(event: MouseEvent, keep: string): boolean {
+    if (event.detail === 0 || performance.now() - this.releaseArmedAt >= RELEASE_ARMING_MS) {
+      return false;
+    }
+    this.render();
+    this.overlay.focus(keep);
+    return true;
+  }
+
   /** What a payment may touch in this save. The rules live in `../hub/workshop`. */
   private get workshopVault(): WorkshopVault {
     return {
@@ -870,9 +907,9 @@ export class HubScene extends Phaser.Scene {
     if (!upgrade || !this.workshopArmed) {
       return;
     }
-    const released = this.stashPokemon
-      .filter((stored) => this.workshopPayment.includes(stored.id))
-      .map((stored) => stored.pokemon.base.name);
+    const paid = this.stashPokemon.filter((stored) => this.workshopPayment.includes(stored.id));
+    const released = paid.map((stored) => stored.pokemon.base.name);
+    const gearKept = this.gearKeptLine(paid);
     const result = this.saveManager.buildWorkshopUpgrade(upgrade.id, this.workshopPayment);
     if (!result.ok) {
       this.workshopArmed = false;
@@ -893,7 +930,7 @@ export class HubScene extends Phaser.Scene {
     }
     this.setView('workshop');
     audioManager.play('confirm');
-    this.setStatus(`${upgrade.name} built. ${formatNames(released)} released.`);
+    this.setStatus([`${upgrade.name} built. ${formatNames(released)} released.`, ...gearKept].join(' '));
   }
 
   /**
@@ -1268,17 +1305,21 @@ export class HubScene extends Phaser.Scene {
     on('[data-box-drop]', (button) => this.putDown(button.dataset.boxDrop!));
     on('[data-box-cancel]', () => rerender(() => { this.boxEditing = undefined; this.boxMoving = undefined; }));
     this.wireBoxForm(root);
-    on('[data-swap-arm]', () => rerender(() => { this.swapArmed = true; }));
+    on('[data-swap-arm]', () => rerender(() => { this.swapArmed = true; this.armRelease(); }));
     on('[data-swap-cancel]', () => rerender(() => { this.swapArmed = false; }));
-    on('[data-swap-confirm]', () => this.confirmSwap());
+    on('[data-swap-confirm]', (_button, event) => {
+      if (!this.clickedTooSoon(event, '[data-swap-cancel]')) this.confirmSwap();
+    });
     on('[data-outfit]', (button) => this.choosePayment(button.dataset.outfit!));
     on('[data-built]', (button) =>
       this.setStatus(`${getWorkshopUpgrade(button.dataset.built!)?.name ?? 'That upgrade'} already stands at base.`),
     );
     on('[data-pay-pokemon]', (button) => this.togglePayment(button.dataset.payPokemon!));
-    on('[data-pay-arm]', () => rerender(() => { this.workshopArmed = true; }));
+    on('[data-pay-arm]', () => rerender(() => { this.workshopArmed = true; this.armRelease(); }));
     on('[data-pay-cancel]', () => rerender(() => { this.workshopArmed = false; }));
-    on('[data-pay-confirm]', () => this.confirmPayment());
+    on('[data-pay-confirm]', (_button, event) => {
+      if (!this.clickedTooSoon(event, '[data-pay-cancel]')) this.confirmPayment();
+    });
     on('[data-buy]', (button) => {
       const count = this.counterCounts.get(`buy:${button.dataset.buy}`) ?? 1;
       this.counterCounts.delete(`buy:${button.dataset.buy}`);
@@ -1287,9 +1328,10 @@ export class HubScene extends Phaser.Scene {
     // Found goods are gone for good, so the row asks before it takes them: the
     // first press arms the deal and the second is a different button, with the
     // cursor on the one that keeps them (`armedDeal`).
-    on('[data-barter]', (button) => rerender(() => { this.traderArmed = button.dataset.barter; }));
+    on('[data-barter]', (button) => rerender(() => { this.traderArmed = button.dataset.barter; this.armRelease(); }));
     on('[data-deal-cancel]', () => rerender(() => { this.traderArmed = undefined; }));
-    on('[data-barter-confirm]', (button) => {
+    on('[data-barter-confirm]', (button, event) => {
+      if (this.clickedTooSoon(event, '[data-deal-cancel]')) return;
       const barterId = button.dataset.barterConfirm!;
       const count = this.counterCounts.get(`barter:${barterId}`) ?? 1;
       this.counterCounts.delete(`barter:${barterId}`);
@@ -1299,8 +1341,9 @@ export class HubScene extends Phaser.Scene {
     on('[data-count-dir]', (button, event) =>
       this.stepCount(button.closest<HTMLElement>('.px-count'), Number(button.dataset.countDir) * (event.shiftKey ? COUNT_BIG_STEP : 1)),
     );
-    on('[data-berth]', () => rerender(() => { this.traderArmed = BERTH_DEAL; }));
-    on('[data-berth-confirm]', () => {
+    on('[data-berth]', () => rerender(() => { this.traderArmed = BERTH_DEAL; this.armRelease(); }));
+    on('[data-berth-confirm]', (_button, event) => {
+      if (this.clickedTooSoon(event, '[data-deal-cancel]')) return;
       this.traderArmed = undefined;
       this.dealAtCounter(() => this.saveManager.buyTraderBerth());
     });
@@ -3135,9 +3178,22 @@ export class HubScene extends Phaser.Scene {
       lines: [
         `<span class="px-wrap px-warning">Release ${named} and spend ${supplies}?</span>`,
         `<small class="px-wrap">${chosen.length === 1 ? 'It is' : 'They are'} gone for good, and ${upgrade.name} stands at base permanently.</small>`,
+        ...this.gearKeptLine(chosen).map((line) => `<small class="px-wrap" data-gear-kept>${line}</small>`),
       ],
-      actions: `<button class="px-window px-button" data-pay-cancel data-cursor-start data-help="Nothing changes.">Keep ${chosen.length === 1 ? 'it' : 'them'}</button><button class="px-window px-button is-danger" data-pay-confirm data-help="Releases ${escapeAttribute(formatNames(chosen.map((stored) => stored.pokemon.base.name)))} for good.">Release and build</button>`,
+      // Keep stands last, in the seat Build had - see `swapFooter`.
+      actions: `<button class="px-window px-button is-danger" data-pay-confirm data-help="Releases ${escapeAttribute(formatNames(chosen.map((stored) => stored.pokemon.base.name)))} for good.">Release and build</button><button class="px-window px-button" data-pay-cancel data-cursor-start data-help="Nothing changes.">Keep ${chosen.length === 1 ? 'it' : 'them'}</button>`,
     });
+  }
+
+  /**
+   * What a released Pokemon was holding, which stays at base: Brock is paid in
+   * Pokemon, and their gear goes back on the vault's shelf (`takePayment`).
+   */
+  private gearKeptLine(chosen: readonly StashedPokemon[]): string[] {
+    const held = chosen.flatMap(({ pokemon }) =>
+      pokemon.heldItemId ? [`${pokemon.base.name}'s ${this.itemName(pokemon.heldItemId)}`] : [],
+    );
+    return held.length ? [`${formatNames(held)} ${held.length === 1 ? 'goes' : 'go'} back to the vault.`] : [];
   }
 
   private swapPanel(): string {
@@ -3173,7 +3229,9 @@ export class HubScene extends Phaser.Scene {
       className: 'is-arming',
       title: `Release ${spare.pokemon.base.name} (Level ${spare.pokemon.level})?`,
       lines: [`<span class="px-wrap px-warning" data-swap-condition>This cannot be undone. It is gone for good. ${chosen.name} arrives as ${conditionLine(starterInConditionOf(spare.pokemon, chosen))}.</span>`],
-      actions: `<button class="px-window px-button" data-swap-cancel data-cursor-start data-help="Nothing changes.">Keep ${spare.pokemon.base.name}</button><button class="px-window px-button is-danger" data-swap-confirm data-help="Releases ${escapeAttribute(spare.pokemon.base.name)} for good.">Release and take ${chosen.name}</button>`,
+      // Keep stands last, in the seat the swap button had, so the second click
+      // of a double-click lands on the answer that changes nothing.
+      actions: `<button class="px-window px-button is-danger" data-swap-confirm data-help="Releases ${escapeAttribute(spare.pokemon.base.name)} for good.">Release and take ${chosen.name}</button><button class="px-window px-button" data-swap-cancel data-cursor-start data-help="Nothing changes.">Keep ${spare.pokemon.base.name}</button>`,
     });
   }
 

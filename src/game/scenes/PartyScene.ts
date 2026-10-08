@@ -43,6 +43,9 @@ interface PartySceneData {
  * decision this screen has to be able to make: Enter picks one up and the next
  * Enter puts it in the slot the cursor is on.
  */
+/** Said when the pack had to re-seat itself to take a piece of gear back. */
+const PACK_RESEATED = 'Your pack re-packed itself to fit it.';
+
 export class PartyScene extends Phaser.Scene {
   private party!: PokemonParty;
   private bag = new Bag();
@@ -225,26 +228,55 @@ export class PartyScene extends Phaser.Scene {
     this.render([`[data-member="${index}"]`]);
   }
 
+  /**
+   * Puts a piece from the pack on a Pokemon. Whatever it was holding comes back
+   * into the pack, so the swap is refused, with nothing changed, when the pack
+   * has no room for it even with the given piece out.
+   */
   private giveGear(itemId: string, index: number): void {
     const pokemon = this.party.pokemon[index];
     if (!pokemon || this.bag.count(itemId) <= 0 || !this.bag.remove(itemId, 1)) {
       return;
     }
-    const displaced = pokemon.giveHeldItem(itemId);
-    if (displaced) {
-      this.bag.add(displaced, 1);
+    const holding = pokemon.heldItemId;
+    const back = holding ? this.bag.takeFind(holding, 1) : 'seated';
+    if (back === 'refused') {
+      this.bag.add(itemId, 1);
+      this.refuseForRoom(pokemon, holding!);
+      return;
     }
+    pokemon.giveHeldItem(itemId);
     audioManager.play('select');
+    this.status = back === 'reseated' ? PACK_RESEATED : undefined;
     this.render();
   }
 
+  /**
+   * Takes a Pokemon's gear back into the pack, or leaves it where it is when
+   * the pack has no room: gear comes off a boss once per save, and the pack
+   * refusing it used to destroy it.
+   */
   private takeGear(index: number): void {
-    const taken = this.party.pokemon[index]?.takeHeldItem();
-    if (!taken) {
+    const pokemon = this.party.pokemon[index];
+    const holding = pokemon?.heldItemId;
+    if (!pokemon || !holding) {
       return;
     }
-    this.bag.add(taken, 1);
+    const taken = this.bag.takeFind(holding, 1);
+    if (taken === 'refused') {
+      this.refuseForRoom(pokemon, holding);
+      return;
+    }
+    pokemon.takeHeldItem();
     audioManager.play('cancel');
+    this.status = taken === 'reseated' ? PACK_RESEATED : undefined;
+    this.render();
+  }
+
+  /** The pack had no room for a piece coming off a Pokemon, so it stays on. */
+  private refuseForRoom(pokemon: Pokemon, itemId: string): void {
+    audioManager.play('denied');
+    this.status = `No room in the pack for ${getHeldItem(itemId)?.displayName ?? itemId}. ${pokemon.base.name} keeps holding it - make room in your BAG first.`;
     this.render();
   }
 
