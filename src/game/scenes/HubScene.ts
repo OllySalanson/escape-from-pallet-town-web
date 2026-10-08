@@ -1004,6 +1004,13 @@ export class HubScene extends Phaser.Scene {
     if (this.deploying) {
       return;
     }
+    // A raid is played on the vault's own Pokemon and supplies, so a loadout
+    // built against a picture of the game another tab has since moved on from
+    // - a wipe there took the Pokemon and the gear this one is about to send -
+    // must not deploy. The flow is rebuilt against the vault as it stands.
+    if (this.movedOnElsewhere()) {
+      return;
+    }
     let deployment: Deployment;
     try {
       deployment = this.flow.deploy();
@@ -1995,6 +2002,10 @@ export class HubScene extends Phaser.Scene {
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
     const allFainted = party.length > 0 && !this.flow.isDeployable;
     const hurtCount = this.injuredPokemon.length;
+    // The default packs medicine and never a ball, so a first raid could not
+    // catch and nothing said so (playtests 7, 10, 13, 18 and 34). The pack is
+    // still the player's to choose; the bar says what it cannot do.
+    const noBall = party.length > 0 && !this.flow.packsABall;
     // The bar is where the loadout is read back, so it names what is in it
     // rather than counting it; the final check screen is where the full at-risk
     // breakdown belongs.
@@ -2082,7 +2093,7 @@ export class HubScene extends Phaser.Scene {
       title: `${party.length}/6 Pokémon packed`,
       lines: [
         `<span class="px-wrap">${summary}</span>`,
-        `<small class="px-wrap${allFainted ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : `Everything here is lost on a wipe unless it is in the secure slot - and the ${this.flow.packName} goes either way.`}</small>`,
+        `<small class="px-wrap${allFainted || noBall ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : noBall ? (this.flow.ballAtBase ? 'No Poké Balls packed, so nothing can be caught this raid. Add one under Supplies.' : 'No Poké Balls at base, so nothing can be caught this raid.') : `Everything here is lost on a wipe unless it is in the secure slot - and the ${this.flow.packName} goes either way.`}</small>`,
       ],
       actions: `<button class="px-window px-button" data-secure-slot data-help="${escapeAttribute(`The ${gridCells(this.flow.secureGrid)} squares that survive a wipe. It fills itself with your highest-level Pokémon first - a Pokémon costs 4, 6 or 9 squares by its stage - and you can change it.`)}">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Choose where this raid drops in." ${this.flow.isDeployable ? '' : 'disabled'}>Choose drop-in</button>`,
     })}</main>`;

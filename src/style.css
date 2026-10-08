@@ -2297,6 +2297,10 @@ button {
   color: var(--bar-text);
   padding: 0 calc(var(--u) * 2);
 }
+/* A browser that keeps nothing is told so in place of the picker. */
+:where(.pixel-ui) .cannot-save {
+  padding: calc(var(--u) * 4) calc(var(--u) * 6);
+}
 :where(.pixel-ui) .starter-grid {
   display: grid;
   /* Three cards, centred, each a whole number of game pixels wide and never

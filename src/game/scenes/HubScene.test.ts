@@ -42,7 +42,7 @@ import {
 } from '../save/SaveManager';
 import { PIXEL_STATUS_SELECTOR } from '../ui/pixelUi';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
-import { HubScene, RELEASE_ARMING_MS, type HubSceneData } from './HubScene';
+import { HubScene, RELEASE_ARMING_MS, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
 
 describe('the lobby as a screen of the game', () => {
   function markupOf(hub: HubInternals): string {
@@ -494,6 +494,70 @@ describe('hub deployment route', () => {
     expect(hub.flow.step).toBe('loadout');
     expect(hub.flow.party).toEqual([]);
     expect(hub.flow.isDeployable).toBe(false);
+  });
+
+  it('never deploys a Pokemon a wipe in another tab has already taken', () => {
+    // Two tabs on one save: this one built a loadout around the Charmander and
+    // was left on the final check, and the other lost a raid it was on.
+    const storage = new MemoryStorage();
+    const stash = createStartingStash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
+    stash.addItem('leftovers', 1);
+    stash.giveHeldItem('charmander-1', 'leftovers');
+    new SaveManager(storage).save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash,
+    });
+    const { hub: stale, start: staleStart } = createHub(DEFAULT_RAID_PROGRESS, storage);
+    stale.flow.togglePokemon('charmander-1');
+    readyToDeploy(stale);
+    expect(stale.flow.step).toBe('confirm');
+    expect(new SaveManager(storage).applyWipeLoss(['charmander-1'], [])).toBe(true);
+
+    deploy(stale, staleStart);
+
+    expect(staleStart).not.toHaveBeenCalled();
+    expect(activeRunManager.phase).not.toBe(RunPhase.InRun);
+    expect(statusOf(stale)).toBe(STALE_SAVE_REFUSAL);
+    // It caught up: the wiped Pokemon and its gear are gone from this tab too,
+    // and the loadout is rebuilt against the vault as it stands.
+    expect(stale.stash.listPokemon().some((stored) => stored.id === 'charmander-1')).toBe(false);
+    expect(stale.stash.itemCount('leftovers')).toBe(0);
+    expect(stale.flow.party).toEqual([]);
+
+    // The next deploy is made against the game as it now stands, and goes.
+    stale.flow.togglePokemon('bulbasaur-1');
+    readyToDeploy(stale);
+    deploy(stale, staleStart);
+    expect(staleStart).toHaveBeenCalledTimes(1);
+  });
+
+  it('says on the loadout when no Poké Ball is packed, and packs none unasked', () => {
+    // A fresh save's default packs its Potions and no ball, so a first raid
+    // could not catch anything and nothing on the way said so.
+    const { hub } = createHub();
+    const loadout = () => {
+      hub.setView('deploy');
+      hub.render();
+      return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+    };
+    expect(hub.stash.itemCount('poke-ball')).toBeGreaterThan(0);
+    hub.flow.togglePokemon('charmander-1');
+
+    expect(hub.flow.itemQuantity('poke-ball')).toBe(0);
+    expect(loadout()).toContain('No Poké Balls packed, so nothing can be caught this raid.');
+
+    // Packing one is the answer, and the warning goes.
+    hub.flow.adjustItem('poke-ball', 1);
+    expect(loadout()).not.toContain('nothing can be caught');
+
+    // With none at base the line says that instead, since there is nothing to add.
+    hub.flow.adjustItem('poke-ball', -1);
+    hub.stash.removeItem('poke-ball', hub.stash.itemCount('poke-ball'));
+    expect(loadout()).toContain('No Poké Balls at base, so nothing can be caught this raid.');
   });
 
   it('will not enter a raid until the player confirms the plan', () => {
@@ -1772,6 +1836,28 @@ describe('what the stash says about the Pokémon under the cursor', () => {
     }
     // Nothing on a row opens a second screen about the thing the row is.
     expect(stash).not.toContain('data-summary=');
+  });
+
+  it.each(['<!--', '<i>Keep</i>'])('prints a box named %s as words, never as markup', (typed) => {
+    // A box named `<!--` once commented out the rest of the Pokemon Center.
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, new MemoryStorage());
+    const editing = hub as unknown as { boxScope: number; boxEditing: string; submitBoxForm(text: string): void };
+    hub.setView('stash');
+    editing.boxScope = 0;
+    editing.boxEditing = 'rename';
+    editing.submitBoxForm(typed);
+
+    // Read with the "Renamed to" line still up, which prints the name too.
+    const stash = markupOf(hub);
+    expect(stash).toContain('Renamed to');
+
+    expect(stash).not.toContain('<!--');
+    expect(stash).not.toContain('<i>');
+    const named = hub.stash.listBoxes()[0].name;
+    expect(named).toBe(typed.replace(/[<>]/g, ''));
+    expect(stash).toContain(named);
+    // The screen is still all there after the name: the list is drawn.
+    expect(stash.slice(stash.indexOf(named))).toContain('data-shows="charmander-1"');
   });
 
   it('says how far the next level is, and what each move does', () => {

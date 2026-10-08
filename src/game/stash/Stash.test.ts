@@ -423,6 +423,20 @@ describe('Stash boxes', () => {
     expect(stash.renameBox(second, '   ')).toBe(false);
   });
 
+  it('takes markup out of a box name, typed or saved', () => {
+    // The name is printed into the Pokemon Center's page: `<i>` rendered, and a
+    // box named `<!--` commented out everything after it.
+    const stash = new Stash();
+    const second = stash.addBox();
+    expect(stash.renameBox(second, '<i>Keep</i>')).toBe(true);
+    expect(stash.listBoxes()[second].name).toBe('iKeep/i');
+    expect(stash.renameBox(second, '<!--')).toBe(true);
+    expect(stash.listBoxes()[second].name).toBe('!--');
+    expect(stash.renameBox(second, '<>&"')).toBe(false);
+    const saved = new Stash({ boxes: [{ name: 'Box 1', pokemonIds: [] }, { name: '<!-- "A&B"', pokemonIds: [] }] });
+    expect(saved.listBoxes()[1].name).toBe('!-- AB');
+  });
+
   it('removes only an empty box, and never the last', () => {
     const stash = new Stash();
     fill(stash, 1);

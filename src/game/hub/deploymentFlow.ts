@@ -491,6 +491,21 @@ export class DeploymentFlow {
     };
   }
 
+  /**
+   * Whether anything packed is a ball, and whether the base holds one to pack.
+   * The default packs medicine only, so a first loadout carries no ball and its
+   * raid cannot catch; the loadout says so rather than packing one unasked.
+   */
+  public get packsABall(): boolean {
+    return this.items.some(({ itemId }) => isBallItem(itemId));
+  }
+
+  public get ballAtBase(): boolean {
+    return Object.keys(this.stash.listItems()).some(
+      (itemId) => isBallItem(itemId) && this.stash.itemCount(itemId) > 0,
+    );
+  }
+
   /** The packed supplies as a record, for the packer and the view. */
   public get packedContents(): Readonly<Record<string, number>> {
     return Object.fromEntries(this.items.map(({ itemId, quantity }) => [itemId, quantity]));
@@ -944,4 +959,9 @@ export class DeploymentFlow {
       secureArrangement: this.secureSeats,
     };
   }
+}
+
+/** A ball of any kind, as the battle's BALL command counts one (`carriedBalls`). */
+function isBallItem(itemId: string): boolean {
+  return getItemById(itemId)?.category === ItemCategory.PokeBall;
 }

@@ -160,7 +160,7 @@ function processGroupCpuSeconds(groupId) {
   return ticks / 100;
 }
 
-async function openPage(port, url, window, { save } = {}) {
+async function openPage(port, url, window, { save, init } = {}) {
   const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json();
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
@@ -207,6 +207,11 @@ async function openPage(port, url, window, { save } = {}) {
     await send('Page.addScriptToEvaluateOnNewDocument', {
       source: `localStorage.setItem('escape-from-pallet-town.save.v1', ${JSON.stringify(JSON.stringify(save))});`,
     });
+  }
+  if (init !== undefined) {
+    // Any script that has to run before the game's own - a browser that
+    // refuses to store anything is `Storage.prototype.setItem` throwing.
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: init });
   }
   const loaded = new Promise((resolve) => listeners.set('Page.loadEventFired', resolve));
   await send('Page.navigate', { url });

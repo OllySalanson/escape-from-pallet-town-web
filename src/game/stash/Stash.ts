@@ -278,8 +278,8 @@ export class Stash {
   }
 
   /**
-   * Names a box. The name is tidied (trimmed, runs of space collapsed, cut to
-   * `MAX_BOX_NAME_LENGTH`) and refused if it is empty or another box already
+   * Names a box. The name is tidied (markup characters taken out, trimmed,
+   * runs of space collapsed, cut to `MAX_BOX_NAME_LENGTH`) and refused if it is empty or another box already
    * wears it, because two boxes with one name are a place nobody can be sent to
    * on purpose.
    */
@@ -824,8 +824,15 @@ function clampHp(value: number, maxHp: number): number {
   return Math.min(maxHp, Math.max(0, Math.floor(value)));
 }
 
+/**
+ * A box name is player-written text shown on the DOM screens, so it may not
+ * carry markup: `<i>` rendered and a box named `<!--` blanked the whole
+ * Pokemon Center. The characters are taken out here, where every name is made
+ * and every saved one is read, rather than escaped at each of the dozen places
+ * a name is printed - the same rule a map file's text keeps (`UNSAFE_TEXT`).
+ */
 function tidyBoxName(name: string): string {
-  return name.replace(/\s+/g, ' ').trim().slice(0, MAX_BOX_NAME_LENGTH).trim();
+  return name.replace(/[<>&"]/g, '').replace(/\s+/g, ' ').trim().slice(0, MAX_BOX_NAME_LENGTH).trim();
 }
 
 function sameName(a: string, b: string): boolean {
