@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { blocksFor, BASE_SECURE_GRID, gridCells, packGridFor, RAID_BAG_GRID, stackSizeOf } from '../items';
-import { CHARMANDER, IVYSAUR, Pokemon, SQUIRTLE } from '../pokemon';
+import { CHARMANDER, CHARMELEON, IVYSAUR, Pokemon, SPECIES_BY_ID, SQUIRTLE } from '../pokemon';
 import { createStartingStash, Stash } from '../stash';
 import { DeploymentFlow, MEDICINE_PREPACK_SHARE } from './deploymentFlow';
 
@@ -256,6 +256,45 @@ describe('deployment flow', () => {
    * first and by level, so nobody ever deploys with their best unprotected
    * because they did not open a screen.
    */
+  /**
+   * Playtest 13: a level-5 Caterpie caught on the way and a level-5 Charmander
+   * tied, the alphabet gave the container to the Caterpie, and the wipe that
+   * followed deleted the starter. A tie goes to the partner.
+   */
+  it('gives a level tie to the partner rather than to a fresh catch', () => {
+    const secured = (caterpieLevel: number): readonly string[] => {
+      const stash = createStartingStash();
+      stash.addPokemon(new Pokemon(CHARMANDER, 5), 'charmander-1');
+      stash.addPokemon(new Pokemon(SPECIES_BY_ID.caterpie, caterpieLevel), 'caterpie-1');
+      const flow = new DeploymentFlow(stash, undefined, undefined, undefined, undefined, 'charmander');
+      flow.togglePokemon('charmander-1');
+      flow.togglePokemon('caterpie-1');
+      return flow.securedPokemon.map(({ id }) => id);
+    };
+
+    expect(secured(5)).toEqual(['charmander-1']);
+    // The rule is still highest level first: the partner only breaks a tie.
+    expect(secured(6)).toEqual(['caterpie-1']);
+  });
+
+  it('knows the partner after it has evolved', () => {
+    const stash = createStartingStash();
+    stash.addPokemon(new Pokemon(CHARMELEON, 16), 'charmander-1');
+    stash.addPokemon(new Pokemon(SPECIES_BY_ID.butterfree, 16), 'butterfree-1');
+    const flow = new DeploymentFlow(
+      stash,
+      'floodplain-relay',
+      { pokemon: 1, secureGrid: { width: 3, height: 2 } },
+      undefined,
+      undefined,
+      'charmander',
+    );
+    flow.togglePokemon('butterfree-1');
+    flow.togglePokemon('charmander-1');
+
+    expect(flow.securedPokemon.map(({ id }) => id)).toEqual(['charmander-1']);
+  });
+
   it('fills itself with the highest-level Pokemon when the player never opens the secure slot', () => {
     const { flow } = seedFlow();
 

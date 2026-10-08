@@ -14,6 +14,41 @@ import {
   useFieldItem,
 } from './items';
 
+describe('medicine in the field', () => {
+  /**
+   * Playtests 13 and 29: a fainted Charmander drank a Potion out of the raid
+   * pack and came back on 16 HP, which is the Pokemon Center's revive at the
+   * price of a Potion. Every heal and every cure is refused on a fainted
+   * Pokemon, and nothing is spent or changed.
+   */
+  it('never revives a fainted Pokemon, whatever the medicine', () => {
+    const medicine = ITEM_DEFINITIONS.filter(
+      (item) => item.effect.type === 'heal' || item.effect.type === 'cure-status',
+    );
+    expect(medicine.map((item) => item.id)).toContain('potion');
+    for (const item of medicine) {
+      const pokemon = new Pokemon(BULBASAUR, 5);
+      pokemon.takeDamage(pokemon.maxHp);
+      if (item.effect.type === 'cure-status') {
+        pokemon.primaryStatus = item.effect.status;
+      }
+      const status = pokemon.primaryStatus;
+      const result = useFieldItem(item, pokemon);
+      expect(result.used, item.id).toBe(false);
+      expect(pokemon.isFainted).toBe(true);
+      expect(pokemon.currentHp).toBe(0);
+      expect(pokemon.primaryStatus).toBe(status);
+    }
+  });
+
+  it('still heals a Pokemon that is only hurt', () => {
+    const pokemon = new Pokemon(BULBASAUR, 5);
+    pokemon.takeDamage(pokemon.maxHp - 1);
+    expect(useFieldItem(getItemById('potion')!, pokemon).used).toBe(true);
+    expect(pokemon.currentHp).toBe(pokemon.maxHp);
+  });
+});
+
 describe('materials', () => {
   it('are a handful, each in the Other pocket and each named by a rung that wants it', () => {
     expect(MATERIAL_IDS.length).toBeGreaterThanOrEqual(4);

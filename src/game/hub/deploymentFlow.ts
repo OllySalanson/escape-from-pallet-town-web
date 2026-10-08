@@ -27,6 +27,7 @@ import {
   type ItemId,
   type PackItemId,
 } from '../items';
+import { evolutionFamily } from '../pokemon/evolution';
 import { cargoSquaresLabel, pokemonCargo } from '../pokemon/pokemonCargo';
 import {
   autofillSecureSlot,
@@ -157,6 +158,12 @@ export class DeploymentFlow {
   /** What the container filled itself with last raid, and whether to lead with Pokemon. */
   private readonly preference: SecurePreference;
   /**
+   * Every species of the partner's line, so the container can break a level tie
+   * in the partner's favour whether or not it has evolved. Empty when the save
+   * names no starter, which leaves the tie to the alphabet as before.
+   */
+  private readonly partnerSpecies: ReadonlySet<string>;
+  /**
    * Set the moment the player changes anything in the container. Until then the
    * container refills itself as the loadout changes; afterwards it is theirs,
    * because an auto-fill that overwrites a decision is not a default, it is a
@@ -190,8 +197,12 @@ export class DeploymentFlow {
     capacity: LoadoutCapacity = BASE_LOADOUT_CAPACITY,
     preference: SecurePreference = DEFAULT_SECURE_PREFERENCE,
     arrangements: LoadoutArrangements = EMPTY_LOADOUT_ARRANGEMENTS,
+    partnerSpeciesId: string | null = null,
   ) {
     this.stash = stash;
+    this.partnerSpecies = new Set(
+      partnerSpeciesId ? evolutionFamily(partnerSpeciesId).map((species) => species.id) : [],
+    );
     this.insertion = insertionId;
     this.secureGrid = capacity.secureGrid;
     this.securePokemonSlots = capacity.pokemon;
@@ -567,6 +578,7 @@ export class DeploymentFlow {
         id: stored.id,
         level: stored.pokemon.level,
         cargo: pokemonCargo(stored.id, stored.pokemon),
+        partner: this.partnerSpecies.has(stored.pokemon.base.id),
       })),
       this.preference,
       this.secureGrid,
