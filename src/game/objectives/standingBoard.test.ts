@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { isMaterial } from '../items';
-import { WORKSHOP_UPGRADES, workshopMaterialKinds } from '../hub/workshop';
+import { paymentCandidates, WORKSHOP_UPGRADES, workshopMaterialKinds } from '../hub/workshop';
+import { Pokemon } from '../pokemon';
+import { Stash, STARTER_SPECIES } from '../stash/Stash';
 import { generateRunPlan, frontDoorFor, insertionsOn } from '../run/runGeneration';
 import { extractionPointsOn } from '../world/extractionPoints';
 import { WORLD_GATES, gateBossIds, gatesForMap } from '../world/gates';
@@ -272,6 +274,28 @@ describe('every standing contract', () => {
       expect(rewardPokemon(contract.reward)).toHaveLength(contract.reward.pokemon?.length ?? 0);
       expect(contract.reward.unlockedInsertionIds).toBeUndefined();
       expect(contract.reward.secureItemStack).toBeUndefined();
+    }
+  });
+
+  /**
+   * Playtest 26 #30 and 24 B2: a board paid a Lv 4 Charmander "waiting at base
+   * for Brock" to a Charmander save, and Brock never takes the partner's line.
+   * The board is a function of `raidProgress` alone, which does not know the
+   * partner, and a partner can be swapped after a reward is banked - so no
+   * starter's line is ever paid, whoever the save started with.
+   */
+  it('never pays a Pokemon Brock would refuse as the partner, whichever starter the save chose', () => {
+    const paid = everyBoard().flatMap(({ contract }) => rewardPokemon(contract.reward));
+    expect(paid.length).toBeGreaterThan(0);
+    for (const starter of STARTER_SPECIES) {
+      for (const pokemon of paid) {
+        const stash = new Stash();
+        stash.addPokemon(new Pokemon(starter, 5));
+        stash.addPokemon(pokemon);
+        const offered = paymentCandidates({ stash, starterSpeciesId: starter.id })
+          .find((candidate) => candidate.stored.pokemon === pokemon);
+        expect(offered?.refusal, `${pokemon.base.name} paid to a ${starter.name} save`).toBeUndefined();
+      }
     }
   });
 

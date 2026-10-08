@@ -6,7 +6,13 @@ import { columnTracks, planColumns, roomFor } from './columnLayout';
 import { firstMatching } from './menuFocus';
 import { claimOverlayKeyboard } from './overlayKeyboard';
 import { PointerPreview, type PointerRule } from './pointerPreview';
-import { focusDirectionForKey, nextFocusIndex } from './spatialFocus';
+import {
+  detailStepIndex,
+  focusDirectionForKey,
+  leavingPaneIndex,
+  nextFocusIndex,
+  type DetailRef,
+} from './spatialFocus';
 
 export class MenuOverlay {
   public readonly root: HTMLElement;
@@ -171,6 +177,9 @@ export class MenuOverlay {
    * to keep it from the browser.
    */
   public moveCursor(key: string): boolean {
+    if (key === 'Tab') {
+      return this.stepAcrossPane();
+    }
     const direction = focusDirectionForKey(key);
     if (!direction) {
       return false;
@@ -186,7 +195,28 @@ export class MenuOverlay {
       const { left, top, right, bottom } = control.getBoundingClientRect();
       return { left, top, right, bottom, ...(pane ? { group: `pane-${panes.indexOf(pane)}` } : {}) };
     });
-    controls[nextFocusIndex(rects, current, direction)]?.focus();
+    const next = nextFocusIndex(rects, current, direction);
+    controls[
+      direction === 'up' && current >= 0 ? leavingPaneIndex(controls.map(detailRefOf), current, next) : next
+    ]?.focus();
+    return true;
+  }
+
+  /**
+   * Tab: from a row into the pane it is showing, and from the pane back to its
+   * row (`detailStepIndex`). False where there is no pane to cross, so the key
+   * is left to the browser as before.
+   */
+  private stepAcrossPane(): boolean {
+    const controls = this.cursorControls();
+    const target = detailStepIndex(
+      controls.map(detailRefOf),
+      controls.indexOf(document.activeElement as HTMLElement),
+    );
+    if (target === undefined) {
+      return false;
+    }
+    controls[target].focus();
     return true;
   }
 
@@ -483,6 +513,17 @@ const SCROLL_ENTRIES = 'button, .px-empty';
  * pane in it is found skips the control-shaped ones; a screen with no panes at
  * all falls back to the root, where there is nothing to swap either way.
  */
+/** What a control is to the detail panes around it; see `DetailRef`. */
+function detailRefOf(control: HTMLElement): DetailRef {
+  const shows = control.closest<HTMLElement>('[data-shows]')?.dataset.shows;
+  const inPane = control.closest<HTMLElement>('[data-shown-by]')?.dataset.shownBy;
+  return {
+    ...(shows === undefined ? {} : { shows }),
+    ...(inPane === undefined ? {} : { inPane }),
+    actionable: control.getAttribute('aria-disabled') !== 'true',
+  };
+}
+
 function detailGroupOf(control: HTMLElement | null, root: HTMLElement): HTMLElement {
   for (
     let node = control?.closest<HTMLElement>('.px-window') ?? null;

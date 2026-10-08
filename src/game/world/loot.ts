@@ -1,4 +1,4 @@
-import type { ItemId } from '../items';
+import { cellsFor, isCurrency, ITEMS, itemAmountFor, type ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 
 export interface WorldLoot {
@@ -93,6 +93,25 @@ export function tryCollectLoot(
 
   collectedLootIds.add(loot.id);
   return 'collected';
+}
+
+/**
+ * What ground loot says when it will not go into the pack: the find, and the
+ * squares it needs.
+ *
+ * Priced as the whole find against what the pack already carries of it, because
+ * a pile of three Potions is three squares rather than one, and ₽40 dropped
+ * beside a bundle with room in it costs nothing at all - "it needs 1 square"
+ * about a pile that needs three is a refusal that sends the player to put down
+ * the wrong amount.
+ */
+export function lootRefusalLine(itemId: ItemId, quantity: number, carried: number): string {
+  const squares = Math.max(1, cellsFor(itemId, carried + quantity) - cellsFor(itemId, carried));
+  const name =
+    quantity === 1 && !isCurrency(itemId)
+      ? ITEMS[itemId].displayName.toUpperCase()
+      : itemAmountFor(itemId, quantity).toUpperCase();
+  return `No room for ${name} - it needs ${squares} ${squares === 1 ? 'square' : 'squares'}. Drop something from the PACK and come back for it.`;
 }
 
 /**

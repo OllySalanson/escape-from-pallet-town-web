@@ -279,6 +279,14 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   const spent =
     input.carriedOut === undefined ? undefined : suppliesSpent(snapshot, input.carriedOut);
   const haulTier = gradeHaul(ledger, contractBanked, escaped, progress, gear);
+  const lostPack = pack?.fate === 'lost' ? pack : null;
+  // What a wipe takes is more than the ledger: the pack the haul was in, and
+  // the gear on every Pokemon that went down. What a survived raid had at stake
+  // is everything a wipe would have taken - the catches it was carrying home
+  // and whatever it found as much as what it deployed with.
+  const stakes = escaped
+    ? describeStakes(exposedGroup(snapshot, risked, securedItems, input.carriedOut), exposedGear(snapshot), pack)
+    : describeStakes(ledger, gear.filter((piece) => piece.fate === 'lost'), lostPack);
 
   return {
     outcome,
@@ -288,8 +296,8 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       : 'Raid lost',
     headline: escaped ? escapeHeadline(haulTier) : wipeHeadline(input.cause, secured),
     summary: escaped
-      ? escapeSummary(ledger, risked, contractBanked, progress, gear)
-      : wipeSummary(input.cause, ledger, secured),
+      ? escapeSummary(ledger, risked, contractBanked, progress, gear, pack)
+      : wipeSummary(input.cause, stakes, secured),
     haulTier,
     clockLabel: `${formatRaidClock(snapshot.elapsedMs)} of ${formatRaidClock(input.durationMs)}`,
     elapsedMs: snapshot.elapsedMs,
@@ -308,7 +316,9 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
         : (spent ?? []).length > 0
           ? 'Nothing new. What the raid used up is counted below.'
           : 'Nothing new. You leave with exactly what you took in.'
-      : 'Nothing outside the secure slot was at stake.',
+      : lostPack !== null
+        ? `Only your ${lostPack.name}, below, went down outside the secure slot.`
+        : 'Nothing outside the secure slot was at stake.',
     ...(contract ? { contract } : {}),
     secured,
     securedEmptyText:
@@ -322,7 +332,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
           : 'Everything you protected was used up in the field.'
         : 'You protected nothing.',
     risked,
-    gambleVerdict: gambleVerdict(escaped, secured, risked),
+    gambleVerdict: gambleVerdict(escaped, secured, stakes),
     ...(spent === undefined ? {} : { spent }),
     progress,
     progressSummary: progressSummary(progress),
@@ -385,13 +395,18 @@ function escapeSummary(
   contractComplete: boolean,
   progress: readonly ReportProgress[],
   gear: readonly ReportGear[],
+  pack: ReportPack | null,
 ): string {
   const haul = describeGroup(ledger);
   const carried = gear.filter((piece) => piece.fate === 'found');
   const riskedCount = countGroup(risked);
+  // The pack is never protected, so a raid that wore one never took nothing in
+  // exposed.
   const riskLine =
     riskedCount === 0
-      ? 'Nothing you took in was ever exposed.'
+      ? pack === null
+        ? 'Nothing you took in was ever exposed.'
+        : `Nothing you took in was exposed but your ${pack.name}.`
       : `${riskedCount === 1 ? 'One entry' : `${riskedCount} entries`} rode out unprotected and came home.`;
   if (haul === null) {
     // A raid that levelled a Pokemon, or walked a piece of gear out of the
@@ -408,10 +423,9 @@ function escapeSummary(
 
 function wipeSummary(
   cause: WipeCause | undefined,
-  ledger: ReportGroup,
+  gone: string | null,
   secured: ReportGroup,
 ): string {
-  const gone = describeGroup(ledger);
   const opening =
     cause === 'timer'
       ? 'The extraction window closed on you.'
@@ -423,8 +437,12 @@ function wipeSummary(
   return `${opening} You lost ${gone}.${kept === null ? ' Nothing was protected.' : ` The secure slot held ${kept}.`}`;
 }
 
-function gambleVerdict(escaped: boolean, secured: ReportGroup, risked: ReportGroup): string {
-  const riskedDescription = describeGroup(risked);
+/**
+ * What the secure-slot decision was worth. `riskedDescription` is everything outside the
+ * slot: what a wipe would have taken from a survived raid, or what it did take
+ * from a lost one - pack and gear included, because neither is ever protected.
+ */
+function gambleVerdict(escaped: boolean, secured: ReportGroup, riskedDescription: string | null): string {
   const securedDescription = describeGroup(secured);
   if (escaped) {
     if (riskedDescription === null) {
@@ -700,19 +718,79 @@ function gradeHaul(
  * beneath it uses; two phrasings of one loss is how they drift apart.
  */
 export function describeGroup(group: ReportGroup): string | null {
+  return describeStakes(group, [], null);
+}
+
+/**
+ * "Bulbasaur, Bulbasaur's Leftovers and your Raid pack": a group, the gear
+ * riding on Pokemon and the pack, in the one sentence - or null for nothing.
+ */
+function describeStakes(
+  group: ReportGroup,
+  gear: readonly ReportGear[],
+  pack: ReportPack | null,
+): string | null {
   const parts = [
     ...group.pokemon.map((member) => member.name),
     // The catalogue owns the plural, and money is not counted at all: "₽40",
     // never "40 Scrips", which is what this line printed in a playtest.
     ...group.items.map((item) => itemAmountFor(item.itemId, item.quantity)),
+    ...gear.map((piece) => `${piece.holder}'s ${piece.label}`),
+    ...(pack === null ? [] : [`your ${pack.name}`]),
   ];
-  if (parts.length === 0) {
-    return null;
-  }
-  if (parts.length === 1) {
-    return parts[0];
-  }
-  return joinList(parts);
+  return parts.length === 0 ? null : joinList(parts);
+}
+
+/**
+ * What a lost raid took, in the words the report beneath the defeat sequence
+ * uses: the ledger, the gear that went down with its holder, and the pack.
+ * Exported so the line-up and the report cannot name one loss two ways.
+ */
+export function describeLoss(report: ExtractionReport): string | null {
+  return describeStakes(
+    report.ledger,
+    report.gear.filter((piece) => piece.fate === 'lost'),
+    report.pack?.fate === 'lost' ? report.pack : null,
+  );
+}
+
+/**
+ * Everything a survived raid ended holding outside the secure slot: the
+ * deployed party it did not protect, every Pokemon it was carrying home, and
+ * whatever was in the pack that the slot was not holding - found or brought.
+ * A contract's reward is paid at base and was never in the pack, so it is read
+ * off the pack rather than the ledger.
+ */
+function exposedGroup(
+  snapshot: RunSnapshot,
+  risked: ReportGroup,
+  securedItems: readonly Stack[],
+  carriedOut: BagContents | undefined,
+): ReportGroup {
+  return {
+    pokemon: [...risked.pokemon, ...snapshot.caughtPokemon.map(toReportPokemon)],
+    items:
+      carriedOut === undefined
+        ? risked.items
+        : toReportItems(
+          subtractStacks(
+            Object.entries(carriedOut).map(([itemId, quantity]) => ({ itemId, quantity: quantity ?? 0 })),
+            securedItems,
+          ),
+        ),
+  };
+}
+
+/** The gear on every deployed Pokemon the secure slot was not protecting. */
+function exposedGear(snapshot: RunSnapshot): ReportGear[] {
+  return (snapshot.loadout?.party ?? [])
+    .filter((member) => !securedPokemon(snapshot).includes(member))
+    .flatMap((member) => {
+      const label = heldItemName(member.heldItemId);
+      return member.heldItemId === null || label === undefined
+        ? []
+        : [{ itemId: member.heldItemId, label, holder: member.base.name, fate: 'kept' as const }];
+    });
 }
 
 function joinList(parts: readonly string[]): string {

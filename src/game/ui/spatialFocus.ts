@@ -131,3 +131,64 @@ export function nextFocusIndex(
   });
   return best;
 }
+
+/**
+ * What one control is to the detail panes of its screen: the pane it answers
+ * for (`data-shows`), the pane it stands in (`data-shown-by`), and whether it
+ * does anything when pressed.
+ */
+export interface DetailRef {
+  readonly shows?: string;
+  readonly inPane?: string;
+  readonly actionable: boolean;
+}
+
+/**
+ * Where Tab takes the cursor: from a row into the pane it is showing, and from
+ * inside a pane back to the row it answers for. Undefined when there is no such
+ * place, so the key is left alone.
+ *
+ * A row's deeds - a Pokemon's Move, Take and Give - live in the pane under the
+ * list, and the arrow keys walk the list by where things are: Down from a row
+ * reaches the row below it, and only the last row of a column has the pane
+ * below it. Every row the cursor crosses swaps the pane, so the arrows could
+ * only ever reach the deeds of the Pokemon at the bottom of a column. Tab is
+ * the way in for any row; it lands on the first thing in the pane that does
+ * something, and the moves listed above the deeds stay one Up away.
+ */
+export function detailStepIndex(controls: readonly DetailRef[], current: number): number | undefined {
+  const from = controls[current];
+  if (!from) {
+    return undefined;
+  }
+  if (from.inPane !== undefined) {
+    const owner = paneOwnerIndex(controls, from.inPane);
+    return owner < 0 ? undefined : owner;
+  }
+  if (from.shows === undefined) {
+    return undefined;
+  }
+  const inside = controls.flatMap((control, index) => (control.inPane === from.shows ? [index] : []));
+  const target = inside.find((index) => controls[index].actionable) ?? inside[0];
+  return target;
+}
+
+/**
+ * Where an arrow key that leaves a pane goes: back to the row the pane answers
+ * for, rather than to whichever row happens to sit nearest above it - which
+ * swaps the pane for another Pokemon's and loses the one Tab came in from.
+ * `next` is where the spatial rule would have gone, and is kept whenever the
+ * move stays in the pane or the pane has no row on this screen.
+ */
+export function leavingPaneIndex(controls: readonly DetailRef[], current: number, next: number): number {
+  const pane = controls[current]?.inPane;
+  if (pane === undefined || next === current || controls[next]?.inPane === pane) {
+    return next;
+  }
+  const owner = paneOwnerIndex(controls, pane);
+  return owner < 0 ? next : owner;
+}
+
+function paneOwnerIndex(controls: readonly DetailRef[], pane: string): number {
+  return controls.findIndex((control) => control.inPane === undefined && control.shows === pane);
+}

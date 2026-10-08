@@ -1,4 +1,4 @@
-import { ITEM_DEFINITIONS, fitsInGrid, type Bag, type GridCargo } from '../items';
+import { ITEM_DEFINITIONS, blocksFor, fitsInGrid, stackSizeOf, type Bag, type GridCargo } from '../items';
 import type { Pokemon } from '../pokemon';
 import { cargoSquaresLabel, pokemonCargo, pokemonCargoCells } from '../pokemon/pokemonCargo';
 import type { RunSnapshot } from './RunManager';
@@ -80,9 +80,15 @@ export interface PackRoomChoice {
   /** What the row calls it, in the catalogue's own words. */
   readonly displayName: string;
   readonly carried: number;
-  /** The squares one of these stands on. */
+  /**
+   * How many one press puts down: one, or for a find that stacks on a square
+   * (money), what stands on its last square - a single ₽1 out of a bundle of
+   * two hundred and fifty frees nothing at all.
+   */
+  readonly drops: number;
+  /** The squares putting `drops` down frees. */
   readonly squares: number;
-  /** Whether putting down one of these is room enough on its own. */
+  /** Whether putting `drops` down is room enough on its own. */
   readonly freesEnough: boolean;
 }
 
@@ -112,14 +118,16 @@ export function packRoomChoices(
     (item) => (contents[item.id] ?? 0) > (item.id === keepOne ? 1 : 0),
   ).map((item) => {
     const carried = contents[item.id];
+    const drops = carried - (blocksFor(item.id, carried) - 1) * stackSizeOf(item.id);
     return {
       itemId: item.id,
       displayName: item.displayName,
       carried,
+      drops,
       squares: item.footprint.width * item.footprint.height,
       freesEnough:
         capacity === null ||
-        fitsInGrid({ ...contents, [item.id]: carried - 1 }, capacity, [...bag.cargo, incoming]),
+        fitsInGrid({ ...contents, [item.id]: carried - drops }, capacity, [...bag.cargo, incoming]),
     };
   });
 }

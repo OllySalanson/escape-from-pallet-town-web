@@ -225,3 +225,39 @@ describe('the gate a press has to pass to move a beat on', () => {
     expect(gate.accepts({ nowMs: 1_000, repeat: false })).toBe(false);
   });
 });
+
+/**
+ * Playtest 24 B1: a wipe whose party was all secured read "NOTHING LEFT TO
+ * TAKE ... They went through your bag for nothing" while the Raid pack went
+ * down with the raid.
+ */
+describe('the pack in the line-up', () => {
+  it('is stripped with the raid, even when everything in it was protected', () => {
+    const starter = new Pokemon(CHARMANDER, 12);
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [starter], items: [], packItemId: 'raid-pack' },
+      { mapId: 'floodplain-relay', durationMs: DURATION_MS, secureGrid: { width: 6, height: 2 } },
+      { pokemon: [starter] },
+    );
+    manager.resolveWipe({});
+    const sequence = buildDefeatSequence(
+      buildExtractionReport({
+        outcome: 'WIPED',
+        cause: 'defeated',
+        snapshot: manager.snapshot(),
+        durationMs: DURATION_MS,
+        lost: { pokemon: [], items: [] },
+        carriedOut: {},
+        lastStand: starter,
+        saved: true,
+      }),
+    );
+
+    expect(sequence?.beats[1].headline).toBe('THEY STRIPPED YOU.');
+    expect(sequence?.beats[1].detail).toBe('Your Raid pack lifted off you and gone from your stash.');
+    expect(sequence?.figures).toContainEqual(
+      expect.objectContaining({ kind: 'item', itemId: 'raid-pack', label: 'Raid pack', fate: 'taken' }),
+    );
+  });
+});

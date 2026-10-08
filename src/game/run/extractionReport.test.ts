@@ -104,8 +104,10 @@ describe('extraction report after a survived raid', () => {
     expect(report.risked.items).toEqual([
       { itemId: 'poke-ball', label: 'Poké Ball', quantity: 2 },
     ]);
+    // The verdict is everything a wipe would have taken: the catch and the
+    // found Great Balls rode home outside the slot as much as the balls did.
     expect(report.gambleVerdict).toBe(
-      'A wipe would have cost you 2 Poké Balls. It did not happen this time.',
+      'A wipe would have cost you Pidgey, 2 Poké Balls and 2 Great Balls. It did not happen this time.',
     );
     // Spent is measured against the bag, so found supplies used up still count.
     expect(report.spent).toEqual([
@@ -246,7 +248,7 @@ describe('extraction report after a survived raid', () => {
     expect(report.secured).toEqual({ pokemon: [], items: [] });
     expect(report.securedEmptyText).toBe('You protected nothing.');
     expect(report.gambleVerdict).toBe(
-      'A wipe would have cost you Charmander. It did not happen this time.',
+      'A wipe would have cost you Charmander and 1 Antidote. It did not happen this time.',
     );
     expect(report.pressure).toContain('2 escapes from the hunter, for 1:40 off the clock');
     expect(report.spent).toEqual([{ itemId: 'potion', label: 'Potion', quantity: 3 }]);
@@ -650,5 +652,125 @@ describe('what the raid left on the ground', () => {
 
   it('says nothing at all on the raids that saw nothing, which is most of them', () => {
     expect(raid([]).pressure.some((line) => line.startsWith('Left on the ground'))).toBe(false);
+  });
+});
+
+/**
+ * Playtests 24 B1, 25 G2 and 34 #5: the screen's account of what was at stake
+ * left out the three things a raid carries that are not supplies - the pack,
+ * the catches and the gear on a Pokemon.
+ */
+describe('what the raid had at stake', () => {
+  it('never calls a raid that carried catches home "never a gamble"', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({
+      party: [starter],
+      items: [{ itemId: 'potion', quantity: 1 }],
+      secure: { pokemon: [starter], items: [{ itemId: 'potion', quantity: 1 }] },
+    });
+    const caught = new Pokemon(PIDGEY, 4);
+    manager.registerCaughtPokemon(caught);
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [caught], items: [] },
+      carriedOut: { potion: 1 },
+      saved: true,
+    });
+
+    expect(report.gambleVerdict).toBe('A wipe would have cost you Pidgey. It did not happen this time.');
+  });
+
+  it('counts the gear on an unprotected Pokemon and the pack it all rode in', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    starter.giveHeldItem('leftovers');
+    const manager = startedRun({ party: [starter], items: [], packItemId: 'raid-pack' });
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [] },
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.gambleVerdict).toBe(
+      "A wipe would have cost you Bulbasaur, Bulbasaur's Leftovers and your Raid pack. It did not happen this time.",
+    );
+  });
+
+  it('says a protected party was still a gamble on the pack', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({
+      party: [starter],
+      items: [],
+      secure: { pokemon: [starter] },
+      packItemId: 'raid-pack',
+    });
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [] },
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.gambleVerdict).toBe('A wipe would have cost you your Raid pack. It did not happen this time.');
+  });
+
+  it('never says nothing was taken from a wipe that took the pack', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({
+      party: [starter],
+      items: [],
+      secure: { pokemon: [starter] },
+      packItemId: 'raid-pack',
+    });
+    manager.resolveWipe({});
+
+    const report = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'defeated',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      lost: { pokemon: [], items: [] },
+      carriedOut: {},
+      lastStand: starter,
+      saved: true,
+    });
+
+    expect(report.summary).toBe('The raid ended where you fell. You lost your Raid pack. The secure slot held Bulbasaur.');
+    expect(report.summary).not.toContain('Nothing was taken');
+    expect(report.ledgerEmptyText).not.toBe('Nothing outside the secure slot was at stake.');
+    expect(report.gambleVerdict).toBe('The secure slot brought Bulbasaur home. Your Raid pack did not make it.');
+  });
+
+  it('names the gear that went down with an unprotected Pokemon in the loss', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    starter.giveHeldItem('leftovers');
+    const manager = startedRun({ party: [starter], items: [] });
+    manager.resolveWipe({});
+
+    const report = buildExtractionReport({
+      outcome: 'WIPED',
+      cause: 'timer',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      lost: { pokemon: [starter], items: [] },
+      carriedOut: {},
+      saved: true,
+    });
+
+    expect(report.summary).toBe(
+      "The extraction window closed on you. You lost Bulbasaur and Bulbasaur's Leftovers. Nothing was protected.",
+    );
   });
 });
