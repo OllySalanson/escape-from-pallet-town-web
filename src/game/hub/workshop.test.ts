@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ITEM_DEFINITIONS, isMaterial } from '../items';
-import { BULBASAUR, CHARMANDER, PIDGEY, Pokemon } from '../pokemon';
+import { BULBASAUR, CHARIZARD, CHARMANDER, CHARMELEON, PIDGEY, Pokemon } from '../pokemon';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { ICON_NAMES } from '../ui/icons';
 import {
@@ -173,6 +173,34 @@ describe('what may be spent', () => {
     const vault = vaultWith([new Pokemon(CHARMANDER, 4), new Pokemon(PIDGEY, 4)]);
     const refusals = paymentCandidates(vault).map((candidate) => candidate.refusal);
     expect(refusals).toEqual([PARTNER_REFUSAL, PARTNER_REFUSAL, undefined]);
+  });
+
+  it('refuses the partner after it has evolved, at every stage of its line', () => {
+    // Playtest 32 #3: a Charmeleon on a Charmander save was offered, and paying
+    // with it released the partner for good.
+    const vault = vaultWith([new Pokemon(CHARMELEON, 16), new Pokemon(CHARIZARD, 36), new Pokemon(PIDGEY, 4)]);
+    const refusals = paymentCandidates(vault).map((candidate) => candidate.refusal);
+    expect(refusals).toEqual([PARTNER_REFUSAL, PARTNER_REFUSAL, PARTNER_REFUSAL, undefined]);
+    expect(checkPayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-3'])).toMatchObject({
+      ok: false,
+      refusal: 'pokemon-not-spendable',
+    });
+  });
+
+  it('puts a released Pokemon\'s gear back in the vault rather than letting it leave', () => {
+    // Playtest 18 #1: the vault's Leftovers was gone after paying with its holder.
+    const vault = vaultWith([new Pokemon(PIDGEY, 4), new Pokemon(PIDGEY, 5)], {
+      'parts-crate': 2,
+      leftovers: 1,
+      'quick-claw': 1,
+    });
+    vault.stash.giveHeldItem('catch-1', 'leftovers');
+    vault.stash.giveHeldItem('catch-2', 'quick-claw');
+    expect(vault.stash.itemCount('leftovers')).toBe(0);
+
+    expect(takePayment(vault, [], 'secure-locker-1', ['catch-1', 'catch-2'])).toMatchObject({ ok: true });
+    expect(vault.stash.itemCount('leftovers')).toBe(1);
+    expect(vault.stash.itemCount('quick-claw')).toBe(1);
   });
 
   it('always leaves somebody fit to raid, even when every fit Pokemon is spendable', () => {

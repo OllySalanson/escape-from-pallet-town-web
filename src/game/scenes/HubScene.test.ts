@@ -42,7 +42,7 @@ import {
 } from '../save/SaveManager';
 import { PIXEL_STATUS_SELECTOR } from '../ui/pixelUi';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
-import { HubScene, type HubSceneData } from './HubScene';
+import { HubScene, RELEASE_ARMING_MS, type HubSceneData } from './HubScene';
 
 describe('the lobby as a screen of the game', () => {
   function markupOf(hub: HubInternals): string {
@@ -987,6 +987,66 @@ describe('what the base screen leads with', () => {
     expect(armed).toContain('Level 5 · 1/16 HP');
   });
 
+  it('cannot be released by double-clicking SWAP FOR X', () => {
+    // Playtest 30 4.7: the second click of a double-click landed on the armed
+    // question's RELEASE button, drawn where SWAP had been.
+    const { hub } = createSpentHub();
+    const buttons = new Map<string, { onclick?: (event: { detail: number }) => void }>();
+    const internals = hub as unknown as {
+      reselectStarterId: string;
+      overlay: { root: { querySelectorAll(selector: string): unknown[] }; focus: ReturnType<typeof vi.fn> };
+    };
+    internals.overlay.root.querySelectorAll = (selector: string) => {
+      if (!selector.startsWith('[data-swap-')) return [];
+      const button = buttons.get(selector) ?? {};
+      buttons.set(selector, button);
+      return [button];
+    };
+    const click = (selector: string, detail: number): void => buttons.get(selector)!.onclick!({ detail });
+    let now = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+
+    hub.setView('reselect');
+    internals.reselectStarterId = 'charmander';
+    hub.render();
+    click('[data-swap-arm]', 1);
+    // Keep stands in the seat the swap button had: last in the bar.
+    expect(markupOf(hub)).toMatch(/data-swap-confirm[\s\S]*data-swap-cancel/);
+
+    now += 120;
+    click('[data-swap-confirm]', 2);
+    expect(hub.stash.listPokemon()[0].pokemon.base.id).toBe('squirtle');
+    expect(internals.overlay.focus).toHaveBeenLastCalledWith('[data-swap-cancel]');
+
+    // A deliberate click, once the double-click is over, still swaps.
+    now += RELEASE_ARMING_MS;
+    click('[data-swap-confirm]', 1);
+    expect(hub.stash.listPokemon()[0].pokemon.base.id).toBe('charmander');
+    vi.restoreAllMocks();
+  });
+
+  it('lets the keyboard confirm a swap straight away', () => {
+    const { hub } = createSpentHub();
+    const buttons = new Map<string, { onclick?: (event: { detail: number }) => void }>();
+    const internals = hub as unknown as {
+      reselectStarterId: string;
+      overlay: { root: { querySelectorAll(selector: string): unknown[] } };
+    };
+    internals.overlay.root.querySelectorAll = (selector: string) => {
+      if (!selector.startsWith('[data-swap-')) return [];
+      const button = buttons.get(selector) ?? {};
+      buttons.set(selector, button);
+      return [button];
+    };
+    hub.setView('reselect');
+    internals.reselectStarterId = 'charmander';
+    hub.render();
+    buttons.get('[data-swap-arm]')!.onclick!({ detail: 0 });
+    // A key's click carries no detail: reaching RELEASE from KEEP is already deliberate.
+    buttons.get('[data-swap-confirm]')!.onclick!({ detail: 0 });
+    expect(hub.stash.listPokemon()[0].pokemon.base.id).toBe('charmander');
+  });
+
   it('drops the offer everywhere the moment a second Pokémon is banked', () => {
     const { hub } = createHub();
 
@@ -1234,6 +1294,35 @@ describe('Brock', () => {
     expect(markupOf(hub)).toMatch(/data-built="secure-locker-1"[\s\S]*?has-tick">Built</);
     // The upgrade is in storage, not just on screen.
     expect(new SaveManager(storage).load()?.raidProgress.workshopUpgrades).toEqual(['secure-locker-1']);
+  });
+
+  it('names the gear a released Pokemon was holding, and keeps it in the vault', () => {
+    const { hub } = createWorkshopHub();
+    hub.stash.addItem('leftovers', 1);
+    hub.stash.giveHeldItem('pidgey-1', 'leftovers');
+    // The scene's vault is the save's: write the gear to storage as the stash does.
+    (hub as unknown as { saveManager: SaveManager }).saveManager.save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash: hub.stash,
+      starterSpeciesId: 'charmander',
+      raidProgress: (hub as unknown as { savedGame: { raidProgress: RaidProgress } }).savedGame.raidProgress,
+    });
+
+    hub.setView('workshop');
+    hub.choosePayment('secure-locker-1');
+    hub.togglePayment('pidgey-1');
+    hub.togglePayment('pidgey-2');
+    hub.workshopArmed = true;
+    expect(markupOf(hub)).toContain("Pidgey's Leftovers goes back to the vault.");
+
+    hub.confirmPayment();
+    expect(statusOf(hub)).toBe(
+      "Secure locker I built. Pidgey and Pidgey released. Pidgey's Leftovers goes back to the vault.",
+    );
+    expect(hub.stash.itemCount('leftovers')).toBe(1);
   });
 
   it('offers a player with one Pokémon nothing to spend', () => {
