@@ -228,10 +228,21 @@ const BERTH_DEAL = 'berth';
  */
 export const RELEASE_ARMING_MS = 500;
 
+/** What a screen left open says when the game moved on in another tab. */
+export const STALE_SAVE_REFUSAL =
+  'The game moved on in another tab, so this screen has caught up. Nothing was changed: try again.';
+
 export class HubScene extends Phaser.Scene {
   private readonly saveManager = new SaveManager();
   private stash!: Stash;
   private savedGame!: RestoredGame;
+  /**
+   * The save as storage held it when this screen read it (`SaveManager.stamp`).
+   * Another tab may write the save while this one sits open, and this screen
+   * writes its whole copy of the game, so it never writes once storage has
+   * moved on from this - see `movedOnElsewhere`.
+   */
+  private saveStamp: string | null = null;
   private flow!: DeploymentFlow;
   private overlay!: MenuOverlay;
   private view: HubView = 'home';
@@ -324,6 +335,7 @@ export class HubScene extends Phaser.Scene {
 
   private applyLoadedGame(loaded: RestoredGame): void {
     this.savedGame = loaded;
+    this.saveStamp = this.saveManager.stamp();
     this.stash = loaded.stash;
     // An explorer run comes home whole. Its Pokemon cannot be knocked out, so
     // they come back from every raid on one hit point; charging raid time to
@@ -399,7 +411,7 @@ export class HubScene extends Phaser.Scene {
     }
     const move = waiting.pokemon.pendingMoves[0];
     openMoveChooser(this, { pokemon: waiting.pokemon, incoming: move, canDefer: true }, (choice) => {
-      if (choice.kind === 'later') {
+      if (choice.kind === 'later' || this.movedOnElsewhere()) {
         return;
       }
       const result = waiting.pokemon.resolvePendingMove(
@@ -408,7 +420,7 @@ export class HubScene extends Phaser.Scene {
       );
       const said = moveChoiceMessage(waiting.pokemon.base.name, move, result?.forgotten ?? null);
       this.setStatus(
-        this.saveManager.save({ ...this.savedGame, stash: this.stash })
+        this.writeGame()
           ? said
           : `${said} It could not be saved.`,
       );
@@ -597,6 +609,9 @@ export class HubScene extends Phaser.Scene {
    * at the same Pokemon it did before, now healed.
    */
   private recover(ids: readonly string[]): void {
+    if (this.movedOnElsewhere()) {
+      return;
+    }
     const outcome = applyRecovery(this.stash, this.pendingRecoveryMs, ids, this.recoveryTerms);
     if (outcome.recoveredIds.length === 0) {
       this.refuse('Everyone there is already fit.');
@@ -620,7 +635,7 @@ export class HubScene extends Phaser.Scene {
         ? 'no extra raid time'
         : `${formatRecoveryClock(outcome.chargedMs)} of raid time`;
     this.setStatus(
-      this.saveManager.save({ ...this.savedGame, stash: this.stash })
+      this.writeGame()
         ? `${treated} recovered for ${cost}. Next raid clock: ${formatRecoveryClock(this.raidClockMs)}.`
         : `${treated} recovered, but the recovery could not be saved.`,
     );
@@ -634,6 +649,9 @@ export class HubScene extends Phaser.Scene {
    * outgrow what is actually held - see `DeploymentFlow.items`.
    */
   private treat(pokemonId: string, itemId: string): void {
+    if (this.movedOnElsewhere()) {
+      return;
+    }
     const result = treatWithItem(this.stash, pokemonId, itemId);
     if (!result.used) {
       this.refuse(result.message);
@@ -643,7 +661,7 @@ export class HubScene extends Phaser.Scene {
     audioManager.play('heal');
 
     this.setStatus(
-      this.saveManager.save({ ...this.savedGame, stash: this.stash })
+      this.writeGame()
         ? result.message
         : `${result.message} The treatment could not be saved.`,
     );
@@ -657,6 +675,9 @@ export class HubScene extends Phaser.Scene {
    * loadout's own supply counts shrink with it exactly as a treatment's do.
    */
   private giveGear(pokemonId: string, itemId: string): void {
+    if (this.movedOnElsewhere()) {
+      return;
+    }
     if (!this.stash.giveHeldItem(pokemonId, itemId)) {
       this.refuse('That gear is not at base any more.');
       return;
@@ -665,7 +686,7 @@ export class HubScene extends Phaser.Scene {
     const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.base.name;
     const gear = this.itemName(itemId);
     this.setStatus(
-      this.saveManager.save({ ...this.savedGame, stash: this.stash })
+      this.writeGame()
         ? `${name ?? 'Your Pokémon'} is holding the ${gear}. It rides into the raid, and a wipe takes it unless ${name ?? 'it'} is secured.`
         : `${name ?? 'Your Pokémon'} is holding the ${gear}, but it could not be saved.`,
     );
@@ -673,6 +694,9 @@ export class HubScene extends Phaser.Scene {
 
   /** Takes a stashed Pokemon's gear back into the stash's supplies. */
   private takeGear(pokemonId: string): void {
+    if (this.movedOnElsewhere()) {
+      return;
+    }
     const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.base.name;
     if (!this.stash.takeHeldItem(pokemonId)) {
       this.refuse('There is nothing to take.');
@@ -680,7 +704,7 @@ export class HubScene extends Phaser.Scene {
     }
     audioManager.play('cancel');
     this.setStatus(
-      this.saveManager.save({ ...this.savedGame, stash: this.stash })
+      this.writeGame()
         ? `Took the gear back off ${name ?? 'your Pokémon'}. It stays at base.`
         : `Took the gear back off ${name ?? 'your Pokémon'}, but it could not be saved.`,
     );
@@ -1602,8 +1626,47 @@ export class HubScene extends Phaser.Scene {
     return `<button class="px-window px-chip" data-treat-pokemon="${pokemonId}" data-treat-item="${option.itemId}" ${shows} data-help="${escapeAttribute(`${option.displayName}: ${option.effect}.`)}"${option.usable ? '' : ' aria-disabled="true"'}>${option.displayName} ×${option.held}</button>`;
   }
 
+  /**
+   * Writes this screen's game - the one place the Pokemon Center, the
+   * treatment bench, gear and the boxes save. Refused, with nothing written,
+   * once another tab has written the save since this screen read it: this is
+   * a whole copy of the game, and written over a newer one it erased a banked
+   * contract or undid a wipe. Every action that ends here asks
+   * `movedOnElsewhere` before it changes anything, so in play a refusal here
+   * is only ever a backstop.
+   */
+  private writeGame(): boolean {
+    if (this.saveManager.stamp() !== this.saveStamp) {
+      return false;
+    }
+    const saved = this.saveManager.save({ ...this.savedGame, stash: this.stash });
+    this.saveStamp = this.saveManager.stamp();
+    return saved;
+  }
+
+  /**
+   * Whether the save has moved on since this screen read it - another tab
+   * banked a raid, lost one, built or bought something - and if so, brings the
+   * screen up to date and says so instead of doing what was asked. The press
+   * was made against a picture of a game that no longer exists (the Pokemon it
+   * named may have been wiped), so it is refused rather than replayed.
+   */
+  private movedOnElsewhere(): boolean {
+    if (this.saveManager.stamp() === this.saveStamp) {
+      return false;
+    }
+    const reloaded = this.saveManager.load();
+    if (reloaded) {
+      const view = this.view;
+      this.applyLoadedGame(reloaded);
+      this.view = view;
+    }
+    this.refuse(STALE_SAVE_REFUSAL);
+    return true;
+  }
+
   private saveStash(said: string, failed: string): void {
-    this.setStatus(this.saveManager.save({ ...this.savedGame, stash: this.stash }) ? said : failed);
+    this.setStatus(this.writeGame() ? said : failed);
   }
 
   private chip(attributes: string, help: string, label: string, disabled = false): string {
@@ -1717,7 +1780,7 @@ export class HubScene extends Phaser.Scene {
   private putDown(destination: string): void {
     const id = this.boxMoving;
     const stored = this.stash.listPokemon().find((entry) => entry.id === id);
-    if (!id || !stored) {
+    if (!id || !stored || this.movedOnElsewhere()) {
       return;
     }
     const index = destination === 'new' ? this.stash.addBox() : Number(destination);
@@ -1735,6 +1798,9 @@ export class HubScene extends Phaser.Scene {
   }
 
   private addBoxAndShow(): void {
+    if (this.movedOnElsewhere()) {
+      return;
+    }
     this.boxScope = this.stash.addBox();
     audioManager.play('confirm');
     this.saveStash(
@@ -1745,7 +1811,7 @@ export class HubScene extends Phaser.Scene {
 
   private deleteBox(): void {
     const scope = this.scopeBox;
-    if (scope === 'all') {
+    if (scope === 'all' || this.movedOnElsewhere()) {
       return;
     }
     const name = this.stash.listBoxes()[scope]?.name ?? 'That box';
@@ -1770,6 +1836,9 @@ export class HubScene extends Phaser.Scene {
     const scope = this.scopeBox;
     if (scope === 'all') {
       this.render();
+      return;
+    }
+    if (this.movedOnElsewhere()) {
       return;
     }
     if (!this.stash.renameBox(scope, text)) {

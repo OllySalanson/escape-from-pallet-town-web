@@ -189,6 +189,10 @@ into each refusal that fullness causes: the catch a fight has to make room for
 URL. It is the only driver that reaches any of them, because a full pack needs a
 vault that could fill it (`--stash`) and then a wild fight to be standing in.
 
+`staleTab.mjs <url> [--shot=path.png]` is two tabs on one save: the Pokemon
+Center left open in one while the other deploys a raid, then NEW BOX pressed in
+the stale one. It fails if the stale tab wrote over the raid the other recorded.
+
 `teachShots.mjs <url> <out dir> [--window=WxH] [--hover-check]` reads TM13 Ice
 Beam in the raid's pack to a party that answers it every way a disc can be
 answered - cannot learn it, a free slot, knows it, four moves known - and
