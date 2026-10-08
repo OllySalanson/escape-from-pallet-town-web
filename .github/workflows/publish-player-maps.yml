@@ -50,7 +50,7 @@ jobs:
       - name: Collect approved maps
         id: collect
         run: |
-          npx vite-node tools/maps/publishApproved.mts -- collect "$RUNNER_TEMP/published.json"
+          npx --no-install vite-node tools/maps/publishApproved.mts -- collect "$RUNNER_TEMP/published.json"
           echo "count=$(node -e "console.log(require(process.argv[1]).length)" "$RUNNER_TEMP/published.json")" >> "$GITHUB_OUTPUT"
 
       - name: Lint
@@ -86,7 +86,7 @@ jobs:
 
       - name: Mark them published
         if: steps.collect.outputs.count != '0'
-        run: npx vite-node tools/maps/publishApproved.mts -- mark "$RUNNER_TEMP/published.json"
+        run: npx --no-install vite-node tools/maps/publishApproved.mts -- mark "$RUNNER_TEMP/published.json"
 
       - name: Deploy the game
         if: steps.collect.outputs.count != '0'

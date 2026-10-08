@@ -19,12 +19,30 @@ import {
 import { extractionPointsOn } from './extractionPoints';
 import { districtAt } from './districts';
 import { districtEncounterTables } from './localEncounters';
-import { buildPlayerMap, MAP_FILE_TRAINER_TEAMS, plainText, readMapFile, trainerTemplate, type MapFile } from './mapFile';
+import {
+  buildPlayerMap,
+  freeMapFileId,
+  MAP_FILE_TRAINER_TEAMS,
+  plainText,
+  readMapFile,
+  RESERVED_MAP_FILE_IDS,
+  trainerTemplate,
+  type MapFile,
+} from './mapFile';
 import { trainersOn } from './mapTrainers';
 import { entitiesForMap } from './npcs';
 import { poisForMap } from './pois';
 import { checkMapFile, type MapCheckId } from './mapFileChecks';
-import { isPublishedMap, playerMaps, registerPlayerMap, unregisterPlayerMap } from './playerMaps';
+import {
+  isPublishedMap,
+  loadBundledMaps,
+  playerMapProblems,
+  playerMaps,
+  registerPlayerMap,
+  unregisterPlayerMap,
+} from './playerMaps';
+import { TRY_IT_MAP_ID } from '../maker/tryIt';
+import { PUBLISHED_FIXTURE_MAP_ID } from './publishedMapFixture.testkit';
 
 const SAMPLE = sampleLane as MapFile;
 
@@ -288,6 +306,10 @@ describe('a map from a file is a map like any other', () => {
 });
 
 describe('every map file the game is built with', () => {
+  it('loads, with none left out', () => {
+    expect(playerMapProblems()).toEqual([]);
+  });
+
   it.each(playerMaps().map((map) => [map.id, map.file] as const))('%s works', (_id, file) => {
     expect(checkMapFile(file).filter((check) => !check.passed)).toEqual([]);
   });
@@ -409,6 +431,50 @@ describe('publishing', () => {
       unregisterPlayerMap(approved.id);
     }
     expect(isPublishedMap('player-pond-lane')).toBe(false);
+  });
+
+  it('never gives a map an id the game keeps for itself, or one another map already has', () => {
+    expect(RESERVED_MAP_FILE_IDS).toContain(TRY_IT_MAP_ID);
+    expect(PUBLISHED_FIXTURE_MAP_ID).toBe(`player-${RESERVED_MAP_FILE_IDS[1]}`);
+    const taken = new Set(['sample-lane', 'pond-lane']);
+    expect(freeMapFileId('try-it', taken)).toBe('try-it-2');
+    expect(freeMapFileId('suite-fixture', taken)).toBe('suite-fixture-2');
+    expect(freeMapFileId('sample-lane', taken)).toBe('sample-lane-2');
+    expect(freeMapFileId('pond-lane', new Set([...taken, 'pond-lane-2']))).toBe('pond-lane-3');
+    expect(freeMapFileId('meadow', taken)).toBe('meadow');
+  });
+
+  it('keeps a long id one the game can load when it is published twice', () => {
+    const long = 'the-very-long-and-winding-road-to-viridi';
+    expect(long).toHaveLength(40);
+    const second = freeMapFileId(long, new Set([long]));
+    expect(second).toBe('the-very-long-and-winding-road-to-viri-2');
+    expect(problemsOf(edited({ id: second }))).toEqual([]);
+    // A stem cut on a dash keeps the id to single dashes.
+    const dashed = freeMapFileId('a'.repeat(37) + '-bc', new Set(['a'.repeat(37) + '-bc']));
+    expect(dashed).toBe(`${'a'.repeat(37)}-2`);
+    expect(problemsOf(edited({ id: dashed }))).toEqual([]);
+  });
+
+  it('leaves out one map file that cannot load, and loads every other', () => {
+    const file = (id: string): MapFile => ({ ...SAMPLE, id, name: 'Pond Lane', maker: 'Tester' });
+    const loaded = loadBundledMaps([
+      { path: 'sample/sample-lane.json', value: SAMPLE, isPublished: false },
+      { path: 'player/old-format.json', value: { ...SAMPLE, id: 'old-format', format: 0 }, isPublished: true },
+      { path: 'player/sample-lane.json', value: file('sample-lane'), isPublished: true },
+      { path: 'player/try-it.json', value: file('try-it'), isPublished: true },
+      { path: 'player/pond-lane.json', value: file('pond-lane'), isPublished: true },
+      { path: 'player/pond-lane-copy.json', value: file('pond-lane'), isPublished: true },
+    ]);
+    expect(loaded.maps.map(({ map, isPublished }) => [map.id, map.file.name, isPublished])).toEqual([
+      ['player-sample-lane', 'Sample Lane', false],
+      ['player-pond-lane', 'Pond Lane', true],
+    ]);
+    expect(loaded.problems).toHaveLength(4);
+    expect(loaded.problems[0]).toMatch(/^player\/old-format\.json is not a map the game can load/);
+    expect(loaded.problems[1]).toBe('player/sample-lane.json has the same id as another map: player-sample-lane');
+    expect(loaded.problems[2]).toBe('player/try-it.json has an id the game keeps for itself: try-it');
+    expect(loaded.problems[3]).toBe('player/pond-lane-copy.json has the same id as another map: player-pond-lane');
   });
 
   it('refuses any name or line that could carry markup onto a screen', () => {
