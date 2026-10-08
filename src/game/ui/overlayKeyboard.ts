@@ -21,6 +21,16 @@
  * default - Enter or Space activating the focused Close button - survives, since
  * stopping propagation is not preventing the default.
  *
+ * A held Enter or Space is one press, not a stream of them. Holding a key sends
+ * one keydown and then a keydown marked `repeat` at the keyboard's own rate, and
+ * Chromium works the focused button on every one: the drop-in step's `Review &
+ * deploy` re-rendered into the final check with the cursor on `Enter the raid`
+ * and the next repeat started the raid, and a Potion in the raid pack was given
+ * away once per repeat until the pack ran out. So a repeated Enter or Space is
+ * swallowed here, default and all, before any screen or the browser sees it -
+ * the commit keys commit once per press, as they do in the games this is
+ * dressed as. Every other key still repeats: holding an arrow walks a list.
+ *
  * Key *up* is deliberately left alone. Phaser tracks `Key.isDown` from it, and a
  * swallowed keyup would hand the resumed world a key the player has released.
  */
@@ -59,6 +69,10 @@ function onKeyDown(event: KeyboardEvent): void {
   if (isTypingTarget(event.target)) {
     return;
   }
+  if (isHeldCommitKey(event)) {
+    event.preventDefault();
+    return;
+  }
   owner.handler(event);
 }
 
@@ -91,6 +105,15 @@ export function claimOverlayKeyboard(
       host = undefined;
     }
   };
+}
+
+/**
+ * A repeat of the key that works a focused control. Not a typing target's:
+ * a held Space in a text field is a row of spaces, and the field is asked
+ * first, so a held Enter in one never reaches a button either.
+ */
+export function isHeldCommitKey(event: KeyboardEvent): boolean {
+  return event.repeat === true && (event.key === 'Enter' || event.key === ' ');
 }
 
 /** How many overlays currently hold the keyboard. Zero means the game has it. */
