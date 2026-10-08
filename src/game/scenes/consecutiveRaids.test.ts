@@ -92,6 +92,7 @@ import { RunManager, RunPhase } from '../run/RunManager';
 import { createActiveRunSession, type ActiveRunSession } from '../run/RunSession';
 import { ENRAGE_GRACE_MS } from '../run/RunManager';
 import { RAID_DURATION_MS } from '../run/raidClock';
+import { STEP_DURATION_MS } from '../movement/stepClock';
 import { FIRST_CONTRACT } from '../objectives';
 import { generateRunPlan, type RunInsertionId, requireInsertion } from '../run/runGeneration';
 import { BASE_STAGE_HEIGHT, BASE_STAGE_WIDTH } from '../display/stage';
@@ -684,7 +685,7 @@ describe('a raid carried through a battle and back', () => {
 
 /**
  * Walking is the one thing the world times for itself, and it shares this file's
- * harness: both rules below are about what a frame is allowed to lose.
+ * harness: every rule below is about what a frame is allowed to lose.
  */
 describe('walking at any frame rate', () => {
   const enterTownSquare = (): {
@@ -751,4 +752,38 @@ describe('walking at any frame rate', () => {
     expect(atSixty).toBeLessThanOrEqual(300 + 2 * (1000 / 60) + 0.001);
     expect(gameTimeToWalk(100, 2)).toBe(100 + 300);
   });
+
+  /**
+   * Playtest 28, F1: a held walk stood still for one frame and then moved two
+   * frames' worth, once a tile, and the camera follows the player, so the whole
+   * map juddered. No game time was lost, so the test above cannot see it; only
+   * the distance moved on each frame shows it. `tools/playtest/walkJudder.mjs`
+   * is the same probe in the real game.
+   */
+  it.each([1000 / 60, 1000 / 144, 1000 / 30])(
+    'moves a held walk the same distance on every frame across tiles (%f ms frames)',
+    (frameMs) => {
+      const { scene, controls, internals, game } = enterTownSquare();
+      const player = (scene as unknown as { player: { setPosition: ReturnType<typeof vi.fn> } })
+        .player;
+      const playerX = (): number => player.setPosition.mock.calls.at(-1)![0] as number;
+      const goal = internals.currentTile.x + 3;
+      controls.right.isDown = true;
+      const xs: number[] = [playerX()];
+      while (internals.currentTile.x < goal - 1) {
+        game.loop.frame += 1;
+        scene.update(0, frameMs);
+        xs.push(playerX());
+        expect(xs.length).toBeLessThan(1_000);
+      }
+      // The first frame takes the key and begins the step from rest; every frame
+      // after it is walking, two tile boundaries included.
+      const moves = xs.slice(2).map((x, index) => x - xs[index + 1]);
+      const steady = (16 * frameMs) / STEP_DURATION_MS;
+      expect(moves.length).toBeGreaterThan(STEP_DURATION_MS / frameMs);
+      for (const move of moves) {
+        expect(move).toBeCloseTo(steady, 6);
+      }
+    },
+  );
 });

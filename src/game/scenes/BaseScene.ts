@@ -422,9 +422,23 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
+    // What is left of this frame for walking, and the game time a step that
+    // finished part-way through a frame hands to the step that follows it.
+    let frameLeftMs = deltaMs;
+    let carriedMs = stepCarryMs;
     if (this.targetTile) {
       this.advanceStep(deltaMs);
-      return;
+      // A step that ends part-way through a frame walks straight on into the
+      // next one in the same frame, as `WorldScene` does and for the same
+      // reason: begun on the following frame, a held walk judders once a tile.
+      // A door the step went through owns the frame, and so would anything
+      // else the guards above answer first.
+      if (this.targetTile || this.stepCarryMs === null || this.leaving || this.dialogBox.visible) {
+        return;
+      }
+      carriedMs = this.stepCarryMs;
+      this.stepCarryMs = null;
+      frameLeftMs = 0;
     }
 
     this.showHint(this.hintHere());
@@ -459,8 +473,8 @@ export class BaseScene extends Phaser.Scene {
 
     if (decision.target) {
       this.beginStep(decision.target);
-      if (stepCarryMs !== null) {
-        this.advanceStep(deltaMs + stepCarryMs);
+      if (carriedMs !== null) {
+        this.advanceStep(frameLeftMs + carriedMs);
       }
       return;
     }
