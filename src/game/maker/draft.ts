@@ -578,8 +578,67 @@ export function setMaker(file: MapFile, maker: string): MapFile {
 }
 
 /**
+ * What a size field holds, as a size: the number typed, or `current` when the
+ * field holds no number at all. An emptied field is a maker part way through
+ * typing a new size, never a request for the smallest map there is - read as
+ * a number it was zero, which `clampSize` made the minimum, and the map was
+ * cut down to it the moment the field lost focus.
+ */
+export function sizeFromField(typed: string, current: number): number {
+  const value = typed.trim() === '' ? Number.NaN : Number(typed);
+  return Number.isFinite(value) ? value : current;
+}
+
+/**
+ * The file with everything that no longer stands on the map taken off it, and
+ * every district cut to the part of it that is still on the map. A file is
+ * only ever readable whole, so a single person left at 30,20 on a 20x16 map
+ * makes the whole draft one the game - and the editor's own store - cannot
+ * open.
+ */
+export function keepOnMap(file: MapFile): MapFile {
+  const { width, height } = file;
+  const fits = (spot: MapFileSpot): boolean =>
+    spot.x >= 0 && spot.y >= 0 && spot.x < width && spot.y < height;
+  const people = file.people?.filter(fits);
+  const signs = file.signs?.filter(fits);
+  const landmarks = file.landmarks?.filter(fits);
+  const trainers = file.trainers?.filter(fits);
+  const districts = file.districts?.flatMap((district): MapFileDistrict[] => {
+    const x = Math.max(0, district.x);
+    const y = Math.max(0, district.y);
+    const right = Math.min(width, district.x + district.width);
+    const bottom = Math.min(height, district.y + district.height);
+    return right > x && bottom > y
+      ? [{ ...district, x, y, width: right - x, height: bottom - y }]
+      : [];
+  });
+  return {
+    ...file,
+    buildings: file.buildings.filter((building) => {
+      const size = buildingSize(building.kind);
+      return (
+        building.x >= 0 &&
+        building.y >= 0 &&
+        building.x + size.width <= width &&
+        building.y + size.height <= height
+      );
+    }),
+    dropIns: file.dropIns.filter(fits),
+    exits: file.exits.filter(fits),
+    itemSpots: file.itemSpots.filter(fits),
+    ...(people ? { people } : {}),
+    ...(signs ? { signs } : {}),
+    ...(landmarks ? { landmarks } : {}),
+    ...(trainers ? { trainers } : {}),
+    ...(districts ? { districts } : {}),
+  };
+}
+
+/**
  * The map at another size, anchored at its top-left. New ground is trees, so
- * a map grown never opens a hole in its edge; anything left off the map goes.
+ * a map grown never opens a hole in its edge; anything left off the map goes,
+ * and a district part on and part off is cut to the part that is on.
  */
 export function resizeMap(file: MapFile, width: number, height: number): MapFile {
   const size = clampSize(width, height);
@@ -590,21 +649,5 @@ export function resizeMap(file: MapFile, width: number, height: number): MapFile
     const row = file.ground[y] ?? '';
     return (row.slice(0, size.width) + TREE.repeat(size.width)).slice(0, size.width);
   });
-  const fits = (spot: MapFileSpot): boolean => spot.x < size.width && spot.y < size.height;
-  const next: MapFile = {
-    ...file,
-    width: size.width,
-    height: size.height,
-    ground,
-    dropIns: file.dropIns.filter(fits),
-    exits: file.exits.filter(fits),
-    itemSpots: file.itemSpots.filter(fits),
-  };
-  return {
-    ...next,
-    buildings: file.buildings.filter((building) => {
-      const { width: w, height: h } = buildingSize(building.kind);
-      return building.x + w <= size.width && building.y + h <= size.height;
-    }),
-  };
+  return keepOnMap({ ...file, width: size.width, height: size.height, ground });
 }

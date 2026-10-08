@@ -13,6 +13,7 @@ import {
   removeThing,
   renameMap,
   resizeMap,
+  sizeFromField,
   updateThing,
   addDistrict,
   setExitOpens,
@@ -101,6 +102,11 @@ import type { MapLayers } from '../world/tiles';
  * only the canvas, so painting never waits on the DOM.
  */
 
+/**
+ * How long an edit may go unsaved. A throttle, not a debounce: the first edit
+ * after a save starts the clock and nothing restarts it, so a maker who never
+ * stops clicking is still saved every this often.
+ */
 const AUTOSAVE_MS = 400;
 const STATUS_MS = 3_500;
 
@@ -137,6 +143,20 @@ export class MapMakerScene extends Phaser.Scene {
   private checkedFile: MapFile | undefined;
   private layers: { readonly file: MapFile; readonly layers: MapLayers } | undefined;
   private autosaveTimer: ReturnType<typeof setTimeout> | undefined;
+  private renderTimer: ReturnType<typeof setTimeout> | undefined;
+  /**
+   * A text field typed into and not yet committed, and the map it would make:
+   * saved with the draft as it is typed, and committed before anything else
+   * can change what the field was opened for.
+   */
+  private typing: { readonly field: HTMLElement; readonly apply: () => MapFile } | undefined;
+  /** Set while the screen's markup is replaced, when a field torn down with it reports a change. */
+  private rendering = false;
+  private readonly flushOnLeave = (event: Event): void => {
+    if (event.type === 'pagehide' || document.visibilityState === 'hidden') {
+      this.flushAutosave();
+    }
+  };
   private statusTimer: ReturnType<typeof setTimeout> | undefined;
   private pendingDelete: string | undefined;
 
@@ -167,7 +187,36 @@ export class MapMakerScene extends Phaser.Scene {
     // Rows here are tools, and a pointer crossing them on its way to the map
     // must not choose one: it only lights what it is over.
     this.overlay.pointerRule = 'previews';
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.flushAutosave());
+    // Enter in a one-line field is done with it: the field is committed and the
+    // cursor goes back to the tools, so the next key is a shortcut again rather
+    // than a letter typed in front of the name. On key up, because the keyboard
+    // claim keeps every key down to itself.
+    this.overlay.root.addEventListener('keyup', (event) => {
+      const target = event.target;
+      if (
+        event.key === 'Enter' &&
+        target instanceof HTMLInputElement &&
+        this.overlay.root.contains(target)
+      ) {
+        this.overlay.root
+          .querySelector<HTMLElement>('[data-tool].is-selected, [data-tool]')
+          ?.focus();
+      }
+    });
+    // A tab closed, reloaded or put in the background may never run another
+    // timer, so whatever is waiting to be saved is saved on the way out.
+    window.addEventListener('pagehide', this.flushOnLeave);
+    document.addEventListener('visibilitychange', this.flushOnLeave);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('pagehide', this.flushOnLeave);
+      document.removeEventListener('visibilitychange', this.flushOnLeave);
+      if (this.renderTimer) {
+        clearTimeout(this.renderTimer);
+        this.renderTimer = undefined;
+      }
+      this.flushAutosave();
+      this.typing = undefined;
+    });
     this.render(
       tried
         ? this.walkedOut()
@@ -219,53 +268,79 @@ export class MapMakerScene extends Phaser.Scene {
   }
 
   private scheduleAutosave(): void {
-    if (this.autosaveTimer) {
-      clearTimeout(this.autosaveTimer);
-    }
-    this.autosaveTimer = setTimeout(() => this.flushAutosave(), AUTOSAVE_MS);
+    this.autosaveTimer ??= setTimeout(() => this.flushAutosave(), AUTOSAVE_MS);
   }
 
+  /** Saves the draft as it stands, with whatever is being typed in it. */
   private flushAutosave(): void {
     if (this.autosaveTimer) {
       clearTimeout(this.autosaveTimer);
       this.autosaveTimer = undefined;
     }
+    const file = this.typing?.apply() ?? this.file;
     const kept = this.store.drafts.find((draft) => draft.key === this.draftKey);
-    if (kept?.file === this.file) {
+    if (kept?.file === file) {
       return;
     }
     this.store = withDraft(this.store, {
       ...(kept ?? {}),
       key: this.draftKey,
-      file: this.file,
+      file,
       updatedAt: Date.now(),
     });
     saveMakerStore(this.store);
   }
 
+  /** Makes what is typed in a field the map, as one undo step, without drawing the screen again. */
+  private commitTyping(): void {
+    const typing = this.typing;
+    this.typing = undefined;
+    if (typing) {
+      this.pushEdit(typing.apply());
+    }
+  }
+
+  private pushEdit(next: MapFile): void {
+    if (next !== this.file) {
+      this.history.push(next);
+      this.scheduleAutosave();
+    }
+  }
+
+  /**
+   * A field's value, committed against the thing the field was opened for.
+   * The screen is drawn again once the focus has finished moving, so Tab lands
+   * on the field it was pressed towards rather than back on this one.
+   */
+  private commitField(field: HTMLElement, apply: () => MapFile): void {
+    if (this.rendering) {
+      // Torn down by a render, which committed what it held before it began.
+      return;
+    }
+    if (this.typing?.field === field) {
+      this.typing = undefined;
+    }
+    this.pushEdit(apply());
+    this.renderTimer ??= setTimeout(() => this.render(), 0);
+  }
+
   private render(status?: string): void {
+    if (this.renderTimer) {
+      clearTimeout(this.renderTimer);
+      this.renderTimer = undefined;
+    }
+    this.commitTyping();
+    const typedIn = this.fieldWithFocus();
     const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
     const scroll = viewport ? { left: viewport.scrollLeft, top: viewport.scrollTop } : undefined;
-    this.overlay.root.innerHTML = makerScreen({
-      file: this.file,
-      tool: this.tool,
-      brushId: this.brushId,
-      place: this.place,
-      selected: this.selected,
-      zoom: this.zoom,
-      checks: [...this.currentChecks(), walkedCheck(this.walkedOut())],
-      canUndo: this.history.canUndo,
-      canRedo: this.history.canRedo,
-      drafts: this.store.drafts,
-      draftKey: this.draftKey,
-      panel: this.panel,
-      sending: this.sending,
-      sent: this.sent,
-      review: this.review,
-      reviewing: this.reviewing,
-      ...(status ? { status } : {}),
-    });
+    this.rendering = true;
+    try {
+      this.overlay.root.innerHTML = this.screenMarkup(status);
+    } finally {
+      this.rendering = false;
+    }
     this.wire();
+    this.restoreField(typedIn);
     const next = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
     if (next && scroll) {
       next.scrollLeft = scroll.left;
@@ -287,6 +362,76 @@ export class MapMakerScene extends Phaser.Scene {
         clearTimeout(this.statusTimer);
       }
       this.statusTimer = setTimeout(() => takeDownPixelStatus(this.overlay.root), STATUS_MS);
+    }
+  }
+
+  private screenMarkup(status: string | undefined): string {
+    return makerScreen({
+      file: this.file,
+      tool: this.tool,
+      brushId: this.brushId,
+      place: this.place,
+      selected: this.selected,
+      zoom: this.zoom,
+      checks: [...this.currentChecks(), walkedCheck(this.walkedOut())],
+      canUndo: this.history.canUndo,
+      canRedo: this.history.canRedo,
+      drafts: this.store.drafts,
+      unreadableDrafts: this.store.unreadable?.length ?? 0,
+      draftKey: this.draftKey,
+      panel: this.panel,
+      sending: this.sending,
+      sent: this.sent,
+      review: this.review,
+      reviewing: this.reviewing,
+      ...(status ? { status } : {}),
+    });
+  }
+
+  /** The text field the maker is in, by the selector that finds it again, and where the caret is. */
+  private fieldWithFocus():
+    | { readonly selector: string; readonly start: number | null; readonly end: number | null }
+    | undefined {
+    const active = document.activeElement;
+    if (
+      !(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) ||
+      !this.overlay.root.contains(active)
+    ) {
+      return undefined;
+    }
+    const selector = Object.entries(active.dataset)
+      .filter(([name]) => name !== 'help')
+      .map(([name, value]) => {
+        const attribute = `data-${name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
+        return value ? `[${attribute}="${CSS.escape(value)}"]` : `[${attribute}]`;
+      })
+      .join('');
+    if (!selector) {
+      return undefined;
+    }
+    // A number field has no caret to ask about, and asking throws.
+    const caret = active.type === 'number' ? null : active.selectionStart;
+    return { selector, start: caret, end: caret === null ? null : active.selectionEnd };
+  }
+
+  /**
+   * Puts the maker back in the field they were in, caret and all: a field
+   * rebuilt and focused afresh has its caret at the start, and the next word
+   * typed went in front of the last.
+   */
+  private restoreField(typedIn: ReturnType<MapMakerScene['fieldWithFocus']>): void {
+    if (!typedIn) {
+      return;
+    }
+    const field = this.overlay.root.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+      typedIn.selector,
+    );
+    if (!field) {
+      return;
+    }
+    field.focus();
+    if (typedIn.start !== null && typedIn.end !== null && field.type !== 'number') {
+      field.setSelectionRange(typedIn.start, typedIn.end);
     }
   }
 
@@ -417,32 +562,47 @@ export class MapMakerScene extends Phaser.Scene {
         input.value = '';
       });
 
-    const field = (selector: string, change: (value: string) => MapFile): void => {
-      root
-        .querySelector<HTMLInputElement | HTMLSelectElement>(selector)
-        ?.addEventListener('change', (event) => {
-          const next = change((event.target as HTMLInputElement).value);
-          if (next !== this.file) {
-            this.commit(next);
-          }
+    // Every field is bound to what it was drawn for. Read at the moment of the
+    // change, "the selected thing" was already whatever the click that ended
+    // the typing had chosen, and a name typed for one person went on another.
+    const bind = (
+      element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+      change: (value: string) => MapFile,
+    ): void => {
+      const apply = (): MapFile => change(element.value);
+      const typed =
+        element instanceof HTMLTextAreaElement ||
+        (element instanceof HTMLInputElement && element.type === 'text');
+      if (typed) {
+        element.addEventListener('input', () => {
+          this.typing = { field: element, apply };
+          this.scheduleAutosave();
         });
+      }
+      element.addEventListener('change', () => this.commitField(element, apply));
+    };
+    const field = (selector: string, change: (value: string) => MapFile): void => {
+      const element = root.querySelector<HTMLInputElement | HTMLSelectElement>(selector);
+      if (element) {
+        bind(element, change);
+      }
     };
     field('[data-map-name]', (value) => renameMap(this.file, plainText(value)));
     field('[data-map-maker]', (value) => setMaker(this.file, plainText(value)));
     field('[data-map-wildlife]', (value) => ({ ...this.file, wildlife: value as MapFileHabitat }));
-    field('[data-map-width]', (value) => resizeMap(this.file, Number(value), this.file.height));
-    field('[data-map-height]', (value) => resizeMap(this.file, this.file.width, Number(value)));
+    field('[data-map-width]', (value) =>
+      resizeMap(this.file, sizeFromField(value, this.file.width), this.file.height),
+    );
+    field('[data-map-height]', (value) =>
+      resizeMap(this.file, this.file.width, sizeFromField(value, this.file.height)),
+    );
+    const selected = this.selected;
     root
       .querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('[data-field]')
       .forEach((input) => {
-        input.addEventListener('change', () => {
-          const next = this.selected
-            ? this.changeSelected(input.dataset.field ?? '', input.value)
-            : this.file;
-          if (next !== this.file) {
-            this.commit(next);
-          }
-        });
+        bind(input, (value) =>
+          selected ? this.changeThing(selected, input.dataset.field ?? '', value) : this.file,
+        );
       });
 
     const preview = root.querySelector<HTMLCanvasElement>('canvas[data-preview]');
@@ -482,6 +642,13 @@ export class MapMakerScene extends Phaser.Scene {
       return;
     }
     event.preventDefault();
+    // Preventing the default keeps the focus where it was, so a field typed in
+    // is left by hand: its change lands on what it was for before the click
+    // chooses anything else.
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && this.overlay.root.contains(active)) {
+      active.blur();
+    }
     const tile = this.tileAt(event, canvas);
     if (!this.inMap(tile)) {
       return;
@@ -662,12 +829,8 @@ export class MapMakerScene extends Phaser.Scene {
    * what it writes, so this is the only place a value is read back - and the
    * only place one is turned from what a form holds into what a file holds.
    */
-  private changeSelected(field: string, typed: string): MapFile {
+  private changeThing(selected: ThingRef, field: string, typed: string): MapFile {
     const value = plainText(typed);
-    const selected = this.selected;
-    if (!selected) {
-      return this.file;
-    }
     switch (field) {
       case 'name':
         return value.trim().length > 0

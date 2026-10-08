@@ -75,14 +75,27 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     passed: problems.length === 0,
     problems,
   });
+  const unloadable = (problems: readonly string[]): readonly MapCheck[] =>
+    (Object.keys(LABELS) as MapCheckId[]).map((id) =>
+      id === 'loads' ? check(id, problems) : { ...check(id, []), passed: false },
+    );
   const reading = readMapFile(value);
   if (!reading.ok) {
-    return (Object.keys(LABELS) as MapCheckId[]).map((id) =>
-      id === 'loads' ? check(id, reading.problems) : { ...check(id, []), passed: false },
-    );
+    return unloadable(reading.problems);
   }
   const file = reading.file;
-  const collision = mapFileCollision(file);
+  // The shape check is meant to refuse anything the game cannot draw, but the
+  // checks are asked of every map in the editor, the review queue and the
+  // publish run: a file that slipped past it must fail here, not throw, or one
+  // bad map bricks every screen that opens it.
+  let collision: CollisionGrid;
+  try {
+    collision = mapFileCollision(file);
+  } catch (error) {
+    return unloadable([
+      `The game cannot draw it: ${error instanceof Error ? error.message : String(error)}.`,
+    ]);
+  }
   const walkable = (spot: GridPosition): boolean => !isBlockedAt(collision, spot.x, spot.y);
   const people = file.people ?? [];
   const signs = file.signs ?? [];
