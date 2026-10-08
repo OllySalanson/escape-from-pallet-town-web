@@ -1998,6 +1998,36 @@ button {
 .pixel-ui .raid-party-layout > .px-window:has(.px-detail) {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
+/* A Pokemon's dossier is the one pane under a list that has more to say than
+   a line or two, so it is not held to a band: the list and the dossier are both
+   as tall as what is in them, and only once the two together are more than the
+   screen holds does either scroll - the list from nothing up, the dossier from
+   its floor up, sharing what is left between them. Held to a fixed band the
+   dossier was one or two lines and a MORE strip over half a screen of empty
+   backdrop, with the raid party's TAKE below the fold (playtests 38 and 44). */
+.pixel-ui .stash-layout > .px-window:has(.px-dossier),
+.pixel-ui .loadout-layout > .px-window:has(.px-dossier),
+.pixel-ui .raid-party-layout > .px-window:has(.px-dossier) {
+  /* A column of boxes rather than a grid, because only a flex container
+     shrinks what is in it to the window's `max-height`: grid rows sized to
+     their content took all of it and drew the list out past the window. */
+  display: flex;
+  flex-direction: column;
+}
+.pixel-ui .px-window:has(.px-dossier) > * {
+  flex: none;
+}
+.pixel-ui .px-window:has(.px-dossier) > .px-list {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+/* The dossier gives way first, down to its floor, and only then the list: so
+   once the two cannot both be whole, how much of the list shows is the same
+   whichever Pokemon the cursor is on. */
+.pixel-ui .px-window:has(.px-dossier) > .px-dossier {
+  flex: 0 1000 auto;
+  min-height: var(--dossier-floor);
+}
 /* What the pointed-at row asks and pays - a contract on the board, a rung on
    Brock's ladder. One pane for the whole list, so a row stays two lines
    however long its sentence is. */
@@ -2711,33 +2741,35 @@ button {
    It is the same pane at base and in a raid: the stash's list and the raid
    party's are two lists of the same kind of thing, and `ui/pokemonDossier.ts`
    is the one place either of them is drawn from. */
-/* A fixed height, and it scrolls: the list above it has to know what it is
-   left with, and a pane that grew with whatever Pokemon the cursor was on
-   would move the whole list every time the cursor moved - the same reason the
-   help bar along the bottom of every screen is two lines whatever it says. */
+/* As tall as it needs and no taller, down to a floor it keeps when the list
+   above wants the room too (the window's rows, above). The floor is what the
+   list can count on being left with whichever Pokemon the cursor is on. */
+:where(.pixel-ui) {
+  --dossier-floor: calc(var(--u) * 80);
+}
 :where(.pixel-ui) .px-dossier {
   min-height: 0;
-  height: calc(var(--u) * 80);
 }
-/* At the smallest stage five blocks stacked are the whole screen, so the pane
-   is the four lines that say which Pokemon this is and how it is, with the
-   rest of it a scroll away. It is the floor, not the target: a 1024-wide
-   browser window is already `wide`. */
-:where(.pixel-ui[data-room='narrow']) .px-dossier,
-:where(.pixel-ui[data-room='tight']) .px-dossier {
+/* At the smallest stage five blocks stacked are the whole screen, so the pane's
+   floor is the four lines that say which Pokemon this is and how it is, with
+   the rest of it a scroll away. A `narrow` screen keeps the wide floor: its
+   first wrapped line is the vitals, the deeds and the portrait, and a floor
+   lower than the portrait cut the figure through the middle. */
+:where(.pixel-ui[data-room='tight']) {
   /* Three lines of the vitals block and the MORE strip under them. Four would
      be the whole block, and at 640x480 those twelve pixels are the difference
      between the list showing one Pokemon and showing none. Measured rather
      than chosen: at 48 the strip takes the whole condition line to avoid
-     cutting it, and the pane is then a name and a bar. */
-  height: calc(var(--u) * 52);
+     cutting it, and the pane is then a name and a bar. It is only the floor:
+     when the list leaves room, the pane takes it. */
+  --dossier-floor: calc(var(--u) * 52);
 }
-/* One block to a line there, rather than as many as the width happens to hold:
+/* One block to a line at the smallest stage, rather than as many as the width
+   happens to hold:
    wrapped, the four narrow blocks fitted on the first line and the portrait -
    64 game pixels tall on its own - was cut through the middle by the foot of a
    band four lines deep. Stacked, the band shows one whole block and says how
    many more are under it, which is what every other pane here does. */
-:where(.pixel-ui[data-room='narrow']) .px-dossier-body,
 :where(.pixel-ui[data-room='tight']) .px-dossier-body {
   flex-direction: column;
   flex-wrap: nowrap;
@@ -2808,6 +2840,10 @@ button {
      and holds 848 game pixels rather than 952, and a block that insisted on
      its own width there wrapped the band onto a second line. */
   flex: 1 1 calc(var(--u) * 112);
+}
+/* Stacked, a block's basis would be its height: each is as tall as it is. */
+:where(.pixel-ui[data-room='tight']) .px-dossier-body > * {
+  flex: none;
 }
 /* A move in here is a row the cursor rests on to be told what it does, so it
    sits flush with its label rather than indented for a cursor that has nowhere

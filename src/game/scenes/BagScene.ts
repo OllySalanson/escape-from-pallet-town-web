@@ -88,7 +88,11 @@ const useLabel = (item: ItemDefinition): string => {
   }
 };
 
-/** The short word on the end of a row, when a row has one to carry. */
+/**
+ * The short word beside a row's name, when a row has one to carry. Beside the
+ * name rather than in a column of its own: a row with an icon has three
+ * columns, and a fourth cell wrapped the count onto a line of its own.
+ */
 const pocketTag = (item: ItemDefinition): string =>
   item.category === ItemCategory.Held ? pixelTag('Gear', 'plain') : '';
 
@@ -324,7 +328,7 @@ export class BagScene extends Phaser.Scene {
 
   private itemRow(item: ItemDefinition): string {
     const help = `${item.displayName}: ${item.description} ${useLabel(item)}`;
-    return `<button class="px-row has-icon" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong class="px-name">${item.displayName}</strong></span>${pocketTag(item)}<span class="px-tag">${itemCountTag(item.id, this.bag.count(item.id))}</span></button>`;
+    return `<button class="px-row has-icon" data-item="${item.id}" data-shows="${item.id}" data-describes="${describeKey('item', item.id)}" data-help="${escapeAttribute(help)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${item.displayName}</strong>${pocketTag(item)}</span></span><span class="px-tag">${itemCountTag(item.id, this.bag.count(item.id))}</span></button>`;
   }
 
   /**

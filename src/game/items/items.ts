@@ -190,7 +190,7 @@ export const ITEMS = {
     displayName: 'Poké Ball',
     category: ItemCategory.PokeBall,
     footprint: { width: 1, height: 1 },
-    description: 'A device for catching wild Pokemon.',
+    description: 'A device for catching wild Pokémon.',
     effect: { type: 'capture-modifier', multiplier: 1 },
   },
   'great-ball': {
@@ -246,7 +246,7 @@ export const ITEMS = {
     displayName: 'Linen roll',
     category: ItemCategory.Misc,
     footprint: { width: 2, height: 1 },
-    description: 'Clean linen for beds and bandages. Brock fits the Pokemon Center and the ward with it.',
+    description: 'Clean linen for beds and bandages. Brock fits the Pokémon Center and the ward with it.',
     effect: { type: 'material' },
   },
   /**
@@ -303,7 +303,7 @@ export const ITEMS = {
     displayName: 'Thunder Stone',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'A stone with a thunderbolt in it. Some Pokemon answer to it.',
+    description: 'A stone with a thunderbolt in it. Some Pokémon answer to it.',
     effect: { type: 'evolution-stone' },
   },
   'fire-stone': {
@@ -397,7 +397,7 @@ export const ITEMS = {
     displayName: 'HM01 Cut',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'Teaches Cut, and is never used up. A Pokemon that knows it can clear growth in the field.',
+    description: 'Teaches Cut, and is never used up. A Pokémon that knows it can clear growth in the field.',
     effect: { type: 'machine' },
   },
   'hm03-surf': {
@@ -405,7 +405,7 @@ export const ITEMS = {
     displayName: 'HM03 Surf',
     category: ItemCategory.Misc,
     footprint: { width: 1, height: 1 },
-    description: 'Teaches Surf, and is never used up. A Pokemon that knows it can carry you over deep water.',
+    description: 'Teaches Surf, and is never used up. A Pokémon that knows it can carry you over deep water.',
     effect: { type: 'machine' },
   },
   'hm06-rock-smash': {

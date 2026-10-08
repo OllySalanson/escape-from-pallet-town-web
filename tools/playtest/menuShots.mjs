@@ -174,6 +174,9 @@ try {
     // has. Saved HP is clamped to the species' own maximum on load, so a big
     // number is "full" without this driver knowing the stat formula.
     const extra = species.map((speciesId, i) => ({ id: 'seeded-' + i, pokemon: { ...seed.pokemon, speciesId, moves: ['Tackle'], level: 5 + (i % 12), xp: 120 + i * 60, currentHp: i % 7 === 0 ? 6 : 999 } }));
+    // The partner holds gear, so the raid's party screen has its TAKE to show
+    // and the pack a gear row once it is taken.
+    seed.pokemon.heldItemId = 'leftovers';
     save.stash.pokemon = [seed, ...extra];
     save.stash.boxes = [{ name: 'Box 1', pokemonIds: [seed.id, ...extra.map((p) => p.id)] }];
     save.stash.items = { potion: 9, 'super-potion': 3, 'poke-ball': 8, 'great-ball': 4, antidote: 5, 'radio-valve': 3, 'cable-coil': 2, 'parts-crate': 2, 'lamp-oil': 4, 'mooring-rope': 1, 'linen-roll': 3, money: 260 };
@@ -223,6 +226,9 @@ try {
     for (const [key, name] of [['KeyP', 'party'], ['KeyB', 'bag'], ['KeyO', 'field-guide']]) {
       await press(key);
       await shoot(name);
+      // Take the partner's gear into the pack, so the bag is photographed with
+      // a gear row in it.
+      if (name === 'party') await clickSel('[data-gear-take]');
       await press('Escape');
       await sleep(250);
     }
