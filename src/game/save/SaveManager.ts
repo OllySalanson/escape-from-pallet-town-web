@@ -549,6 +549,22 @@ export class SaveManager {
     }
   }
 
+  /**
+   * The save exactly as storage holds it, for telling whether anything has
+   * written it since a screen read it. Two tabs share one save, so a screen
+   * that keeps its own copy of the game - the Pokemon Center does - can be
+   * looking at a game another tab has since banked a raid into or wiped; it
+   * compares this before it writes, and reloads instead of writing over it.
+   * Null where there is no save or no storage, which is equal to itself.
+   */
+  public stamp(): string | null {
+    try {
+      return this.storage?.getItem(this.key) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   public clear(): void {
     try {
       this.storage?.removeItem(this.key);
