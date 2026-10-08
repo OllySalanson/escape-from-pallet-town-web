@@ -1,4 +1,4 @@
-import { describeGroup, type ExtractionReport, type ReportItem } from './extractionReport';
+import { describeGroup, describeLoss, type ExtractionReport, type ReportItem } from './extractionReport';
 
 /**
  * The three beats a lost raid opens on, before the result screen's accounting.
@@ -131,7 +131,7 @@ export function buildDefeatSequence(report: ExtractionReport): DefeatSequence | 
   }
 
   const figures = buildFigures(report);
-  const takenNames = describeGroup(report.ledger);
+  const takenNames = describeLoss(report);
   const heldNames = describeGroup(report.secured);
   const standing = fallen.find((member) => member.lastStand) ?? fallen[fallen.length - 1];
 
@@ -186,7 +186,15 @@ function buildFigures(report: ExtractionReport): DefeatFigure[] {
     fate: member.secured ? 'held' : 'taken',
     lastStand: member.lastStand,
   }));
+  // The pack and the gear a lost Pokemon was holding go down with the raid
+  // whatever the secure slot held, so they stand in the line-up as taken.
+  const lostPack: ReportItem[] =
+    report.pack?.fate === 'lost' ? [{ itemId: report.pack.itemId, label: report.pack.name, quantity: 1 }] : [];
+  const lostGear: ReportItem[] = report.gear
+    .filter((piece) => piece.fate === 'lost')
+    .map((piece) => ({ itemId: piece.itemId, label: piece.label, quantity: 1 }));
   const items: DefeatFigure[] = [
+    ...[...lostPack, ...lostGear].map((item) => toItemFigure(item, 'taken')),
     ...report.ledger.items.map((item) => toItemFigure(item, 'taken')),
     ...report.secured.items.map((item) => toItemFigure(item, 'held')),
   ];

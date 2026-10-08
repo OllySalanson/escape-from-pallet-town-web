@@ -77,7 +77,7 @@ import {
   nextHunterProximity,
 } from '../audio/worldSounds';
 import { DEFAULT_RAID_PROGRESS, SaveManager, type RestoredGame } from '../save/SaveManager';
-import { Bag, ITEMS, footprintOf, formatMoney, getItemById, isCurrency, type ItemId } from '../items';
+import { Bag, ITEMS, formatMoney, getItemById, isCurrency, type ItemId } from '../items';
 import {
   areContractStopsComplete,
   completedObjectiveRewards,
@@ -192,6 +192,7 @@ import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import {
   getVisibleLoot,
   isPrize,
+  lootRefusalLine,
   prizesLeftBehind,
   tryCollectLoot,
   type WorldLoot,
@@ -3597,10 +3598,7 @@ export class WorldScene extends Phaser.Scene {
       // The Tarkov moment, and the whole point of a pack with squares in it:
       // the thing is still on the ground, so the choice is what comes out to
       // make room for it. It names both so the choice can be made from here.
-      const wanted = ITEMS[loot!.itemId];
-      const footprint = footprintOf(loot!.itemId);
-      const squares = footprint.width * footprint.height;
-      return `No room for ${wanted.displayName.toUpperCase()} - it needs ${squares} ${squares === 1 ? 'square' : 'squares'}. Drop something from the PACK and come back for it.`;
+      return lootRefusalLine(loot!.itemId, loot!.quantity, this.bag.count(loot!.itemId));
     }
 
     const marker = this.lootSprites.get(loot!.id);

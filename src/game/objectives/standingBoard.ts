@@ -1,8 +1,9 @@
 import { workshopMaterialKinds } from '../hub/workshop';
 import { ITEMS, type SupplyItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
-import { Pokemon } from '../pokemon';
+import { evolutionFamily, Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
+import { STARTER_SPECIES } from '../stash/Stash';
 import { createSeededRng, type SeededRng } from '../run/rng';
 import { availableInsertionIds, frontDoorFor, insertionsOn, requireInsertion } from '../run/runGeneration';
 import { extractionPointsOn, type ExtractionPoint } from '../world/extractionPoints';
@@ -724,6 +725,17 @@ function spreadTiles(
 // ---------------------------------------------------------------------------
 
 /**
+ * Every species of the three starters' lines. Brock never takes the partner's
+ * line as payment (`paymentCandidates`), and the board cannot know the partner:
+ * it is a function of `raidProgress` alone, and a partner can be swapped after
+ * a reward is banked. So no starter's line is ever paid, and a Pokemon the
+ * board hands over is always one Brock will take.
+ */
+const STARTER_LINES: ReadonlySet<string> = new Set(
+  STARTER_SPECIES.flatMap((starter) => evolutionFamily(starter.id).map((species) => species.id)),
+);
+
+/**
  * What a contract pays. The supply is one Brock's unbuilt rungs still
  * cost (a delivery is instead paid back a grade up on what it took), a share
  * larger for every tier of hunter the contract adds. A Pokemon is paid on top
@@ -744,7 +756,9 @@ function draftReward(
   const items: ContractStack[] = [
     { itemId: kind, quantity: MATERIAL_SHARE[kind] + pressure + (draft.paysIn ? 1 : 0) },
   ];
-  const entries = map.encounters?.entries ?? [];
+  const entries = (map.encounters?.entries ?? []).filter(
+    (entry) => !STARTER_LINES.has(entry.speciesId),
+  );
   const pokemon: ContractPokemon[] =
     (pressure > 0 || draft.template === 'sealed') && entries.length > 0
       ? [rng.pick(entries)].map((entry) => ({ speciesId: entry.speciesId, level: entry.minLevel }))

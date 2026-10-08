@@ -5,6 +5,7 @@ import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
 import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
 import { WeatherId, weatherLabel } from '../pokemon/battle/weather';
 import { battleCaps, withArticle } from '../pokemon/battle/battleItems';
+import { isCurrency, itemAmountFor, itemCountTag } from '../items';
 
 export const BATTLE_SCREEN_WIDTH = 320;
 export const MOVE_COLUMN_WIDTH = 148;
@@ -538,10 +539,16 @@ export const NOTHING_TO_DROP_MESSAGE =
 
 /** One kind in the pack: what it is, how many, and the squares one stands on. */
 export const formatPackRoomRow = (choice: {
+  readonly itemId?: string;
   readonly displayName: string;
   readonly carried: number;
   readonly squares: number;
-}): string => `${battleCaps(choice.displayName)} x${choice.carried} · ${choice.squares}sq`;
+}): string =>
+  `${battleCaps(choice.displayName)} ${
+    choice.itemId !== undefined && isCurrency(choice.itemId)
+      ? itemCountTag(choice.itemId, choice.carried)
+      : `x${choice.carried}`
+  } · ${choice.squares}sq`;
 
 /**
  * The line above the rows, answering whichever one the cursor is on.
@@ -551,6 +558,8 @@ export const formatPackRoomRow = (choice: {
  * the player cannot see the packing. Undefined is the KEEP THE PACK row.
  */
 export const packRoomPrompt = (choice?: {
+  readonly itemId?: string;
+  readonly drops?: number;
   readonly squares: number;
   readonly freesEnough: boolean;
 }): string => {
@@ -558,9 +567,17 @@ export const packRoomPrompt = (choice?: {
     return 'Keep everything. The catch is off.';
   }
   const freed = choice.squares === 1 ? '1 square' : `${choice.squares} squares`;
+  // A find that stacks on a square goes down a square at a time, so the line
+  // says how much one press puts down: "₽50 frees 1 square", never a ₽1 that
+  // frees nothing.
+  const drops = choice.drops ?? 1;
+  const what =
+    choice.itemId !== undefined && (drops > 1 || isCurrency(choice.itemId))
+      ? `${itemAmountFor(choice.itemId, drops)} frees`
+      : 'Frees';
   return choice.freesEnough
-    ? `Frees ${freed} - the ball follows.`
-    : `Frees ${freed} - not enough yet.`;
+    ? `${what} ${freed} - the ball follows.`
+    : `${what} ${freed} - not enough yet.`;
 };
 
 /** Whole seconds, so a cost printed on a command reads the same as the raid timer. */

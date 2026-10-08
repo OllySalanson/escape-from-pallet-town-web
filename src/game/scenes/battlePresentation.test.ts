@@ -353,6 +353,14 @@ describe('making room for a catch from inside the fight', () => {
     expect(packRoomPrompt({ squares: 4, freesEnough: true })).toBe(
       'Frees 4 squares - the ball follows.',
     );
+    // Money stacks on a square, so a press puts down a square's worth and the
+    // row counts it as the sum it is (playtest 29 B6, T5).
+    expect(formatPackRoomRow({ itemId: 'money', displayName: 'Pokédollars', carried: 300, squares: 1 })).toBe(
+      'POKéDOLLARS \u20bd300 · 1sq',
+    );
+    expect(packRoomPrompt({ itemId: 'money', drops: 50, squares: 1, freesEnough: false })).toBe(
+      '\u20bd50 frees 1 square - not enough yet.',
+    );
     // The row that changes nothing says so in the same place.
     expect(packRoomPrompt()).toBe('Keep everything. The catch is off.');
   });

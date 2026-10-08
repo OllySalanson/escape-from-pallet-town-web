@@ -112,6 +112,24 @@ describe('what the pack could put down to make room', () => {
       .toEqual(['potion', 'poke-ball']);
   });
 
+  /**
+   * Playtest 29 B6 and T5: two hundred and fifty Pokedollars share a square, so
+   * putting one down frees nothing - yet the row said "Frees 1 square" and every
+   * press put down a single ₽1. One press puts down what stands on one square.
+   */
+  it('puts down a whole square of a stacked find, and frees the square it says', () => {
+    const bag = new Bag({ potion: 14, money: 300 }, RAID_BAG_GRID);
+    const money = packRoomChoices(bag, new Pokemon(PIDGEY, 4)).find(({ itemId }) => itemId === 'money')!;
+    const potion = packRoomChoices(bag, new Pokemon(PIDGEY, 4)).find(({ itemId }) => itemId === 'potion')!;
+
+    expect(potion.drops).toBe(1);
+    expect(money.drops).toBe(50);
+    expect(money.squares).toBe(1);
+    const before = bag.layout().cellsUsed;
+    expect(bag.remove(money.itemId, money.drops)).toBe(true);
+    expect(bag.layout().cellsUsed).toBe(before - money.squares);
+  });
+
   it('is empty when every square is already a Pokemon being carried home', () => {
     const bag = new Bag({ 'poke-ball': 1 }, RAID_BAG_GRID);
     bag.setCargo(raidPackCargo([0, 1, 2, 3].map(() => new Pokemon(PIDGEY, 4))));

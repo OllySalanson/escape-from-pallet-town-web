@@ -557,7 +557,10 @@ function defeatFigure(figure: DefeatFigure, index: number): string {
     figure.kind === 'pokemon'
       ? `<img src="${publicAssetUrl(`assets/pokemon/front/${figure.dexId}.png`)}" alt="" />`
       : `<span class="defeat-item-glyph"><img src="${iconUrl(itemIconName(figure.itemId ?? ''))}" alt="" aria-hidden="true" /></span>`;
-  const meta = figure.kind === 'pokemon' ? `Lv ${figure.level ?? '?'}` : `\u00d7${figure.quantity ?? 1}`;
+  const meta =
+    figure.kind === 'pokemon'
+      ? `Lv ${figure.level ?? '?'}`
+      : itemCountTag(figure.itemId ?? '', figure.quantity ?? 1);
   return `<figure class="${classes}" data-kind="${figure.kind}" data-fate="${figure.fate}" style="--figure-index:${index}">
     <span class="defeat-sprite">${body}</span>
     <span class="defeat-plate">

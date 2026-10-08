@@ -19,7 +19,7 @@ export const PIXEL_WINDOW = { width: 1200, height: 768 };
 
 const KEYS = {
   ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39,
-  Space: 32, Enter: 13, Escape: 27,
+  Space: 32, Enter: 13, Escape: 27, Tab: 9,
 };
 
 function keyDescription(code) {

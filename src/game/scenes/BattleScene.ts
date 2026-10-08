@@ -1415,7 +1415,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /**
-   * Puts one piece of the pack down and finishes the throw it was blocking.
+   * Puts one square of the pack down - one piece, or a square's worth of a
+   * find that stacks - and finishes the throw it was blocking.
    *
    * Nothing is ever dropped that was not chosen, and one drop may not be
    * enough - four free squares scattered around a Potion are not a seat for a
@@ -1430,7 +1431,7 @@ export class BattleScene extends Phaser.Scene {
       this.keepThePack();
       return;
     }
-    if (!this.bag.remove(choice.itemId, 1)) {
+    if (!this.bag.remove(choice.itemId, choice.drops)) {
       return;
     }
     audioManager.play('menuClose');

@@ -4,7 +4,7 @@ import { TRADER_STOCK } from '../hub/trader';
 import { MINIMUM_SUPPLIES, Stash } from '../stash';
 import { WORLD_MAPS } from '../worldMap';
 import { districtAt, districtsForMap } from './districts';
-import { getVisibleLoot, isPrize, prizesLeftBehind, tryCollectLoot, type WorldLoot } from './loot';
+import { getVisibleLoot, isPrize, lootRefusalLine, prizesLeftBehind, tryCollectLoot, type WorldLoot } from './loot';
 
 const POKE_BALL_LOOT: WorldLoot = {
   id: 'test-poke-ball',
@@ -174,5 +174,28 @@ describe('where a stone comes from', () => {
     for (const item of TRADER_STOCK) {
       expect(isEvolutionStone(item.itemId), `${item.itemId} is for sale`).toBe(false);
     }
+  });
+});
+
+/**
+ * Playtest 26 #38, 29 B6: a pile of three Potions refused with "it needs 1
+ * square", so a player who put one square's worth down walked back to the same
+ * refusal.
+ */
+describe('a find the pack has no room for', () => {
+  it('prices the whole pile, not one of it', () => {
+    expect(lootRefusalLine('potion', 3, 0)).toBe(
+      'No room for 3 POTIONS - it needs 3 squares. Drop something from the PACK and come back for it.',
+    );
+    expect(lootRefusalLine('potion', 1, 2)).toBe(
+      'No room for POTION - it needs 1 square. Drop something from the PACK and come back for it.',
+    );
+  });
+
+  it('prices money in bundles, against the bundle already carried', () => {
+    expect(lootRefusalLine('money', 40, 0)).toMatch(/^No room for \u20bd40 - it needs 1 square\./);
+    expect(lootRefusalLine('money', 300, 0)).toMatch(/^No room for \u20bd300 - it needs 2 squares\./);
+    // 240 already carried is one bundle with ten to spare, so 40 more is one new square.
+    expect(lootRefusalLine('money', 40, 240)).toMatch(/- it needs 1 square\./);
   });
 });

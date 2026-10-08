@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { focusDirectionForKey, nextFocusIndex, type FocusRect } from './spatialFocus';
+import {
+  detailStepIndex,
+  focusDirectionForKey,
+  leavingPaneIndex,
+  nextFocusIndex,
+  type DetailRef,
+  type FocusRect,
+} from './spatialFocus';
 
 const rect = (left: number, top: number, width: number, height: number): FocusRect => ({
   left,
@@ -97,5 +104,62 @@ describe('a list that scrolls', () => {
     const rects = [pane(0), { left: 200, top: 0, right: 300, bottom: 20 }];
 
     expect(nextFocusIndex(rects, 0, 'right')).toBe(1);
+  });
+});
+
+/**
+ * Playtest 32 #5 (and 26 #31): the Pokemon Center, a box in two columns with
+ * the pane under it showing whichever row the cursor is on. Down walks the
+ * column, each row swaps the pane, so the arrows only ever reached the deeds of
+ * the Pokemon at the bottom of a column.
+ */
+describe('a row and the pane it shows', () => {
+  // Charizard and Pidgey on the top row, Kakuna and Rattata under them; the
+  // pane is Charizard's: one move listed (it does nothing), then MOVE and TAKE.
+  const CHARIZARD = 0;
+  const KAKUNA = 2;
+  const MOVE_ROW = 4;
+  const MOVE_CHIP = 5;
+  const TAKE_CHIP = 6;
+  const rects: readonly FocusRect[] = [
+    { ...rect(8, 40, 140, 26), group: 'list' },
+    { ...rect(152, 40, 140, 26), group: 'list' },
+    { ...rect(8, 67, 140, 26), group: 'list' },
+    { ...rect(152, 67, 140, 26), group: 'list' },
+    { ...rect(8, 110, 284, 14), group: 'pane' },
+    rect(8, 140, 70, 14),
+    rect(82, 140, 70, 14),
+  ];
+  const refs: readonly DetailRef[] = [
+    { shows: 'charizard', actionable: true },
+    { shows: 'pidgey', actionable: true },
+    { shows: 'kakuna', actionable: true },
+    { shows: 'rattata', actionable: true },
+    { shows: 'charizard', inPane: 'charizard', actionable: false },
+    { shows: 'charizard', inPane: 'charizard', actionable: true },
+    { shows: 'charizard', inPane: 'charizard', actionable: true },
+  ];
+
+  it('cannot reach a top-row Pokemon\'s deeds by arrow key alone', () => {
+    expect(nextFocusIndex(rects, CHARIZARD, 'down')).toBe(KAKUNA);
+  });
+
+  it('steps from any row into its own pane with Tab, onto the first thing that does something', () => {
+    expect(detailStepIndex(refs, CHARIZARD)).toBe(MOVE_CHIP);
+    expect(detailStepIndex(refs, TAKE_CHIP)).toBe(CHARIZARD);
+    expect(detailStepIndex(refs, MOVE_ROW)).toBe(CHARIZARD);
+  });
+
+  it('goes back up to the row it came from, not the row nearest above the pane', () => {
+    const spatial = nextFocusIndex(rects, MOVE_ROW, 'up');
+    expect(spatial).toBe(KAKUNA);
+    expect(leavingPaneIndex(refs, MOVE_ROW, spatial)).toBe(CHARIZARD);
+    // Inside the pane the arrows are the spatial rule's.
+    expect(leavingPaneIndex(refs, TAKE_CHIP, MOVE_CHIP)).toBe(MOVE_CHIP);
+  });
+
+  it('leaves the key alone where there is no pane to step into', () => {
+    expect(detailStepIndex([{ actionable: true }], 0)).toBeUndefined();
+    expect(detailStepIndex([{ shows: 'potion', actionable: true }], 0)).toBeUndefined();
   });
 });
