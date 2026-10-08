@@ -3,33 +3,26 @@ import { advanceStepClock, STEP_DURATION_MS } from './stepClock';
 
 /**
  * A held direction key, walked the way `WorldScene.update` walks it: a frame at
- * rest begins a step, a finished step hands its overflow to the step the next
- * frame begins. Returns the game time at which each tile was reached.
+ * rest begins a step, and a step that finishes part-way through a frame begins
+ * the next in the same frame with what that frame had left. Returns the game
+ * time at which each tile was reached.
  */
 function walk(frameMs: number, tiles: number): number[] {
   const arrivals: number[] = [];
   let now = 0;
   let progress: number | null = null;
-  let carryMs: number | null = null;
   while (arrivals.length < tiles) {
     now += frameMs;
-    const carried = carryMs;
-    carryMs = null;
-    let deltaMs = frameMs;
     if (progress === null) {
       progress = 0;
-      if (carried === null) {
-        continue;
-      }
-      deltaMs += carried;
+      continue;
     }
-    const tick = advanceStepClock(progress, deltaMs);
-    progress = tick.progress;
-    if (tick.progress === 1) {
+    let tick = advanceStepClock(progress, frameMs);
+    while (tick.progress === 1 && arrivals.length < tiles) {
       arrivals.push(now - tick.overflowMs);
-      carryMs = tick.overflowMs;
-      progress = null;
+      tick = advanceStepClock(0, tick.overflowMs);
     }
+    progress = tick.progress;
   }
   return arrivals;
 }

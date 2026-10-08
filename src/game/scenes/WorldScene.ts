@@ -974,9 +974,25 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    // What is left of this frame for walking, and the game time a step that
+    // finished part-way through a frame hands to the step that follows it.
+    let frameLeftMs = deltaMs;
+    let carriedMs = stepCarryMs;
     if (this.targetTile) {
       this.advanceStep(deltaMs);
-      return;
+      // A step that ends part-way through a frame walks straight on into the
+      // next one in the same frame. Begun on the following frame instead, the
+      // arrival frame moved short and the next one moved two frames' worth -
+      // once a tile, with the camera following, so the whole map judders while
+      // a direction is held (playtest 28, F1). The arrival may have started
+      // something that owns the frame - a door, a fight, a line to read - and
+      // then the walk stops here, exactly as the next frame would have.
+      if (this.targetTile || this.stepCarryMs === null || !this.mayWalkOnFromArrival()) {
+        return;
+      }
+      carriedMs = this.stepCarryMs;
+      this.stepCarryMs = null;
+      frameLeftMs = 0;
     }
 
     if (this.tryExtractWhereStanding()) {
@@ -1027,15 +1043,32 @@ export class WorldScene extends Phaser.Scene {
 
     if (decision.target) {
       this.beginStep(decision.target);
-      // Walking on from a step that ended part-way through the last frame: this
-      // one started then, not now. A step begun from rest starts from nothing.
-      if (stepCarryMs !== null) {
-        this.advanceStep(deltaMs + stepCarryMs);
+      // Walking on from a step that ended part-way through a frame: this one
+      // started then, not now. A step begun from rest starts from nothing.
+      if (carriedMs !== null) {
+        this.advanceStep(frameLeftMs + carriedMs);
       }
       return;
     }
 
     this.showIdlePose();
+  }
+
+  /**
+   * Whether the tile just reached left the world as `update` finds it at the
+   * top of a frame with nothing to answer first - the same guards, in the same
+   * order - so walking on from it in the same frame is what the next frame
+   * would have done anyway.
+   */
+  private mayWalkOnFromArrival(): boolean {
+    return (
+      !this.pendingHubTransition &&
+      !this.isWarping &&
+      !this.trainerPrompt &&
+      !this.cutscene &&
+      !this.dialogBox.visible &&
+      this.pendingTrainerBattle === undefined
+    );
   }
 
   /**
