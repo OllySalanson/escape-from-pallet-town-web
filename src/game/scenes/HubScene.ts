@@ -1411,7 +1411,7 @@ export class HubScene extends Phaser.Scene {
     on('[data-advance]', () => this.answer(this.flow.advance(), 'confirm'));
     on('[data-start]', () => this.startRun());
     // The cursor starts on what the screen is for, never on the way out of it.
-    this.overlay.refocus('.px-field', '[data-cursor-start]', '.loadout-entry .px-row', '.px-body button:not([disabled])', 'button');
+    this.overlay.refocus('.px-field', '[data-cursor-start]', '.px-body button:not([disabled])', 'button');
   }
 
   /**
@@ -2002,10 +2002,12 @@ export class HubScene extends Phaser.Scene {
       ? 'Nothing selected yet. Add a Pokémon from your stash.'
       : `${party.map((stored) => stored.pokemon.base.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${securedCount} protected`;
     const pokemonRows = this.findablePokemon
-      .map((stored) => {
+      .map((stored, index) => {
         const added = this.flow.includesPokemon(stored.id);
         const name = escapeAttribute(stored.pokemon.base.name);
-        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}" data-help="${added ? `Take ${name} back out of the raid.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
+        // The cursor starts on the first Pokemon, not on the sort chip above
+        // the list: an Enter on arrival re-sorted the stash (playtest 44 #2).
+        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''} data-help="${added ? `Take ${name} back out of the raid.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
           stored,
           // A tick, as every chosen row on these screens is marked: a ten-letter
           // name and its health bar leave no room for a word beside them.
