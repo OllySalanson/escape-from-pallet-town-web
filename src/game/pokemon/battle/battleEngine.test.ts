@@ -793,7 +793,7 @@ describe('both sides losing their active Pokemon in one turn', () => {
       'enemy',
       'player',
     ]);
-    expect(turn.events).toContainEqual({ type: 'enemy-sent-out', name: 'Pidgey' });
+    expect(turn.events).toContainEqual({ type: 'enemy-sent-out', trainer: 'TESTER', name: 'Pidgey' });
     expect(turn.state.outcome).toBe('active');
 
     const replaced = replacePlayerPokemon(turn.state, squirtle);
@@ -867,7 +867,7 @@ describe('trainer battles', () => {
     expect(result.state.outcome).toBe('active');
     expect(result.state.enemy.pokemon.base.name).toBe('Pidgey');
     expect(result.state.enemyPartyIndex).toBe(1);
-    expect(result.events).toContainEqual({ type: 'enemy-sent-out', name: 'Pidgey' });
+    expect(result.events).toContainEqual({ type: 'enemy-sent-out', trainer: 'TESTER', name: 'Pidgey' });
   });
 
   /**
@@ -931,7 +931,7 @@ describe('trainer battles', () => {
       event.type === 'weather-damage' ? [event.name] : [],
     );
     expect(chipped).toEqual(['Charmander']);
-    expect(result.events.at(-1)).toEqual({ type: 'enemy-sent-out', name: 'Pikachu' });
+    expect(result.events.at(-1)).toEqual({ type: 'enemy-sent-out', trainer: 'TESTER', name: 'Pikachu' });
     expect(result.state.enemy.currentHp).toBe(result.state.enemy.pokemon.maxHp);
   });
 

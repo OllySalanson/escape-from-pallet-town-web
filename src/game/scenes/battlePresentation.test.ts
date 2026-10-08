@@ -385,6 +385,16 @@ describe('the small wording faults the battles playtest found', () => {
     expect(itemTargetPrompt({ displayName: 'Poké Ball' })).toBe('Use POKé BALL on whom?');
   });
 
+  it("has a trainer send their next Pokemon out in their own name, not the player's \"Go\"", () => {
+    expect(eventToMessage({ type: 'enemy-sent-out', trainer: 'MAYA', name: 'Pikachu' })).toBe(
+      'MAYA sent out PIKACHU!',
+    );
+  });
+
+  it('says that Splash did nothing, as FireRed does', () => {
+    expect(eventToMessage({ type: 'nothing-happened', user: 'enemy' })).toBe('But nothing happened!');
+  });
+
   it("names the Pokemon a move did not affect, as FireRed's line does", () => {
     expect(
       eventToMessage({ type: 'effectiveness', multiplier: 0, user: 'enemy', name: 'Geodude' }),

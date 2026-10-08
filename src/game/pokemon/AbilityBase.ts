@@ -185,9 +185,10 @@ export interface AbilityHooks {
  * A player is never shown an ability in a menu, so the only way to learn what
  * one does is to watch it happen - which is why every one of these exists and
  * why `battlePresentation.ts` has a line for each. The continuous ones
- * (`powered-up`, `sharpened`, `shrugged-off`, `hardened`) introduce themselves
- * once per battle and then stay quiet; the rest are each a separate thing
- * happening and are said each time.
+ * (`powered-up`, `sharpened`, `shrugged-off`, `hardened`, and the weather's own
+ * `quickened` and `weathered-out`) introduce themselves once per battle and then
+ * stay quiet; the rest are each a separate thing happening and are said each
+ * time.
  */
 export type AbilityEffectKind =
   | 'powered-up'

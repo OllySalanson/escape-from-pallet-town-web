@@ -571,7 +571,7 @@ describe('a trainer with more Pokemon than slots', () => {
     const hits = of(result.events, 'used-move').map((event) => `${event.user}${event.slot ?? 0}>${event.target}${event.targetSlot ?? 0}`);
     expect(hits.slice(0, 2)).toEqual(['player0>enemy0', 'player1>enemy1']);
     expect(hits).not.toContain('player1>enemy0');
-    expect(result.events.at(-1)).toEqual({ type: 'enemy-sent-out', name: 'Glass' });
+    expect(result.events.at(-1)).toEqual({ type: 'enemy-sent-out', trainer: 'TESTERS', name: 'Glass' });
     expect(result.state.enemy.currentHp).toBe(result.state.enemy.pokemon.maxHp);
   });
 

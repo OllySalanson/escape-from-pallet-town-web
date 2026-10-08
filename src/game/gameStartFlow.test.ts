@@ -282,6 +282,27 @@ describe('game start flow', () => {
     },
   );
 
+  it.each(['bulbasaur', 'charmander', 'squirtle'] as const)(
+    'starts the cursor on the chosen %s card, never on CONFIRM',
+    (starterSpeciesId) => {
+      // The first decision in the game: a cursor on the commit button made one
+      // Enter take Bulbasaur before a card had been read (playtest 38, row 34).
+      const focus = vi.fn();
+      const starter = Object.create(StarterScene.prototype) as StarterScene;
+      Object.assign(starter as unknown as Record<string, unknown>, {
+        selectedStarterId: starterSpeciesId,
+        overlay: { root: { innerHTML: '', querySelectorAll: () => [], querySelector: () => null }, focus },
+      });
+
+      (starter as unknown as { render(): void }).render();
+
+      expect(focus).toHaveBeenCalledTimes(1);
+      expect(focus.mock.calls[0][0]).toBe(`[data-starter="${starterSpeciesId}"]`);
+      const markup = (starter as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+      expect(markup).toContain(`data-starter="${starterSpeciesId}"`);
+    },
+  );
+
   it('returns a browser reload to the base instead of resuming an active raid location', () => {
     const values = new Map<string, string>();
     const saves = new SaveManager({

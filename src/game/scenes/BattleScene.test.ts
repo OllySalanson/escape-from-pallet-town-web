@@ -997,7 +997,7 @@ describe('a level reached in the middle of a trainer battle', () => {
 
     const shown = dialog.shownMessages;
     const fainted = shown.indexOf('Foe PIDGEY fainted!');
-    const sentOut = shown.indexOf('Go, PIDGEY!');
+    const sentOut = shown.indexOf('RAIDER MAYA sent out PIDGEY!');
     expect(fainted).toBeGreaterThanOrEqual(0);
     expect(shown[fainted + 1]).toMatch(/^SQUIRTLE gained \d+ XP!$/);
     expect(sentOut).toBeGreaterThan(fainted);
@@ -1202,7 +1202,7 @@ describe('BattleScene about-to-use switch prompt', () => {
     // Every line of it is inside the one panel the rest of the fight is drawn in.
     expect(panel.every(({ y }) => y >= 174 && y < 238)).toBe(true);
     // The send-out it is holding back has not been read yet.
-    expect(dialog.shownMessages).not.toContain('Go, PIDGEY!');
+    expect(dialog.shownMessages).not.toContain('RAIDER MAYA sent out PIDGEY!');
   });
 
   it('carries straight on to the send-out when the offer is declined', () => {
@@ -1211,7 +1211,7 @@ describe('BattleScene about-to-use switch prompt', () => {
     readUpToTheQuestion(scene, renderedTexts, dialog);
     (scene as unknown as { confirm(): void }).confirm();
 
-    expect(dialog.shownMessages).toContain('Go, PIDGEY!');
+    expect(dialog.shownMessages).toContain('RAIDER MAYA sent out PIDGEY!');
     expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(squirtle);
   });
 
@@ -1239,7 +1239,7 @@ describe('BattleScene about-to-use switch prompt', () => {
     expect(shown.slice(shown.indexOf('Come back, SQUIRTLE!'), shown.indexOf('Come back, SQUIRTLE!') + 3)).toEqual([
       'Come back, SQUIRTLE!',
       'Go, BULBASAUR!',
-      'Go, PIDGEY!',
+      'RAIDER MAYA sent out PIDGEY!',
     ]);
   });
 
@@ -1266,7 +1266,7 @@ describe('BattleScene about-to-use switch prompt', () => {
     }
 
     expect(read(renderedTexts).some(({ text }) => text.includes('is about to use'))).toBe(false);
-    expect(dialog.shownMessages).toContain('Go, PIDGEY!');
+    expect(dialog.shownMessages).toContain('RAIDER MAYA sent out PIDGEY!');
   });
 });
 
@@ -1703,7 +1703,7 @@ describe('a trainer sending out Pokemon after a knockout', () => {
 
     for (const next of party.slice(1)) {
       knockOutAtOnce(scene, renderedTexts, dialog);
-      expect(dialog.shownMessages).toContain(`Go, ${next.base.name.toUpperCase()}!`);
+      expect(dialog.shownMessages).toContain(`RAIDER MAYA sent out ${next.base.name.toUpperCase()}!`);
       // Long enough for anything started by the knockout to have finished.
       clock.advance(1500);
 

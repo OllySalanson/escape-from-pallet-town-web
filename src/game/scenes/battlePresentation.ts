@@ -775,6 +775,8 @@ export const eventToMessage = (event: BattleEvent): string => {
       return 'The attack missed!';
     case 'no-target':
       return 'But there was no target!';
+    case 'nothing-happened':
+      return 'But nothing happened!';
     case 'critical-hit':
       return 'A critical hit!';
     case 'effectiveness':
@@ -817,7 +819,7 @@ export const eventToMessage = (event: BattleEvent): string => {
     case 'catch-disabled':
       return "You can't catch a trainer's POKéMON!";
     case 'enemy-sent-out':
-      return `Go, ${event.name.toUpperCase()}!`;
+      return `${event.trainer} sent out ${event.name.toUpperCase()}!`;
     // Gear says what it did, in the words of the thing it did it to. A player who
     // reads one of these lines once knows the whole rule, which is the bar every
     // piece of gear in the catalogue is held to.

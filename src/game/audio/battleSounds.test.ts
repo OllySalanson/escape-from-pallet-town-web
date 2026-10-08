@@ -61,7 +61,7 @@ describe('battleEventSound', () => {
     const events: BattleEvent[] = [
       { type: 'fainted', user: 'enemy', name: 'Pidgey' },
       { type: 'critical-hit' },
-      { type: 'enemy-sent-out', name: 'Pidgey' },
+      { type: 'enemy-sent-out', trainer: 'MAYA', name: 'Pidgey' },
       { type: 'no-pp', user: 'player', move: 'Tackle' },
     ];
     for (const event of events) {

@@ -597,6 +597,31 @@ describe('the four that are only about the weather', () => {
     expect(firstMover(sunny.events)).toBe('enemy');
   });
 
+  it('says each weather ability once a battle, not once a turn (playtest 38, row 49)', () => {
+    // Swift Swim racing the rain and Cloud Nine holding it off are standing
+    // states: said every turn they were the most-read lines of the first raid.
+    const count = (events: readonly BattleEvent[], effect: string): number =>
+      events.filter((event) => event.type === 'ability' && event.effect === effect).length;
+    const threeTurns = (state: BattleState): BattleEvent[] => {
+      const events: BattleEvent[] = [];
+      let current = state;
+      for (let turn = 0; turn < 3; turn += 1) {
+        const result = resolveTurn(current, 0, at({}));
+        events.push(...result.events);
+        current = result.state;
+      }
+      expect(current.outcome).toBe('active');
+      return events;
+    };
+    // Level 20 Tackles: three turns of trading them leaves both standing.
+    const still = (abilityId: string | null) => armed(species({ abilityId }), 20, TACKLE);
+
+    const racing = threeTurns(inWeather(still('swift-swim'), still(null), WeatherId.Rain));
+    expect(count(racing, 'quickened')).toBe(1);
+    const stilled = threeTurns(inWeather(still('cloud-nine'), still(null), WeatherId.Rain));
+    expect(count(stilled, 'weathered-out')).toBe(1);
+  });
+
   it('hides a Sand Veil in a sandstorm and spares it the scouring', () => {
     const chancy = new MoveBase({
       name: 'Wild Swing',

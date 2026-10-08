@@ -57,6 +57,9 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
     // A move aimed at nobody is a turn refused, which is what `denied` says.
     case 'no-target':
       return withLine('denied');
+    // Splash is not refused, it simply does nothing, and nothing is silent.
+    case 'nothing-happened':
+      return null;
     case 'critical-hit':
       return withLine('criticalHit');
     case 'effectiveness':
