@@ -193,6 +193,11 @@ vault that could fill it (`--stash`) and then a wild fight to be standing in.
 Center left open in one while the other deploys a raid, then NEW BOX pressed in
 the stale one. It fails if the stale tab wrote over the raid the other recorded.
 
+`firstHour.mjs <url> [out dir]` prints the first lines a new player meets: where
+the starter screen's cursor starts (a card, never CONFIRM), and two trainer
+fights in the rain against a Splashing Swift Swim Magikarp - each weather
+ability said once, "But nothing happened!", and "MAYA sent out PIKACHU!".
+
 `teachShots.mjs <url> <out dir> [--window=WxH] [--hover-check]` reads TM13 Ice
 Beam in the raid's pack to a party that answers it every way a disc can be
 answered - cannot learn it, a free slot, knows it, four moves known - and

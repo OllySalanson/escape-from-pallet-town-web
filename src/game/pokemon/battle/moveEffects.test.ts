@@ -536,3 +536,23 @@ describe("attacks that change their user's stats", () => {
     expect(result.state.enemy.statStages.speed).toBe(0);
   });
 });
+
+describe('a move that does nothing at all', () => {
+  it('is Splash and nothing else in the catalogue', () => {
+    // Read off the move's own data, so the resolver never has to know its name -
+    // and a move left with no expressible effect would show up here first.
+    const inert = Object.entries(MOVE_CATALOGUE)
+      .filter(([, move]) => move.doesNothing)
+      .map(([id]) => id);
+    expect(inert).toEqual(['splash']);
+  });
+
+  it('says "But nothing happened!" when it is used, as FireRed does (playtest 38, row 72)', () => {
+    const splash = MOVE_CATALOGUE.splash;
+    const magikarp = armed(getSpeciesById('magikarp')!, 9, splash);
+    const result = resolveTurn(createBattleState(magikarp, new Pokemon(PIDGEY, 3)), 0, at({}));
+    const own = result.events.filter((event) => 'user' in event && event.user === 'player');
+    expect(types(own)).toEqual(['used-move', 'nothing-happened']);
+    expect(result.state.player.moves[0].pp).toBe(splash.pp - 1);
+  });
+});

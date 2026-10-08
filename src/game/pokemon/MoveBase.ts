@@ -242,4 +242,20 @@ export class MoveBase {
       this.secondaries.length > 0
     );
   }
+
+  /**
+   * Whether this move does nothing at all: no damage, no effect, nothing healed
+   * or stored. Splash is the one shipped move it describes, and FireRed answers
+   * it with "But nothing happened!" (`EFFECT_SPLASH`) rather than silence -
+   * asked here from the move's own data, so the resolver never names it.
+   */
+  public get doesNothing(): boolean {
+    return (
+      this.power === 0 &&
+      !this.hasEffects &&
+      this.healing === 0 &&
+      this.drain === 0 &&
+      this.charge === null
+    );
+  }
 }

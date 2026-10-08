@@ -327,6 +327,8 @@ export type BattleEvent =
   // to aim it at. Only a double battle can reach it: in a single battle the one
   // foe is the battle, and a battle with no foe has already ended.
   | { readonly type: 'no-target'; readonly user: 'player' | 'enemy'; readonly slot?: number }
+  // A move that does nothing at all - Splash - says so, as FireRed does.
+  | { readonly type: 'nothing-happened'; readonly user: 'player' | 'enemy'; readonly slot?: number }
   | { readonly type: 'critical-hit' }
   // How well a hit landed. A move that does nothing at all to its target also
   // says *whose* target it was - FireRed's "It doesn't affect FOE GEODUDE..."
@@ -379,7 +381,9 @@ export type BattleEvent =
   | { readonly type: 'caught'; readonly name: string }
   | { readonly type: 'broke-free'; readonly name: string }
   | { readonly type: 'catch-disabled' }
-  | { readonly type: 'enemy-sent-out'; readonly name: string; readonly slot?: number }
+  // `trainer` is who sent it, because the line is theirs - "MAYA sent out
+  // PIKACHU!" - and "Go, PIKACHU!" is the player's own words.
+  | { readonly type: 'enemy-sent-out'; readonly trainer: string; readonly name: string; readonly slot?: number }
   // Gear. Each one is announced the moment it acts, because an item whose effect
   // is only visible in the HP bar is an item the player has to be told about in
   // a menu - and the whole point of these four is that they explain themselves.
@@ -629,7 +633,7 @@ const damageAbilities = (attacker: BattleCombatant, defender: BattleCombatant): 
  * What an ability says when it does something, and whether it is worth saying
  * again.
  *
- * The four continuous effects speak once per battle and mark the combatant;
+ * The continuous effects speak once per battle and mark the combatant;
  * everything else is a separate thing happening and is said every time. A
  * Pokemon with no ability says nothing, which is what makes this safe to call
  * without asking first.
@@ -639,6 +643,11 @@ const CONTINUOUS_ABILITY_EFFECTS: ReadonlySet<AbilityEffectKind> = new Set([
   'sharpened',
   'shrugged-off',
   'hardened',
+  // The weather abilities are a standing state, not an event: a Swift Swim in
+  // the rain is racing it every turn, and saying so every turn was the most-read
+  // line in the first raid. Introduced once, like the four above.
+  'quickened',
+  'weathered-out',
 ]);
 
 const announceAbility = (
@@ -1576,6 +1585,16 @@ const applyMove = (
     events.push(
       { type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name },
       { type: 'no-target', user, ...inSlot(ref) },
+    );
+    return { state: nextState, events };
+  }
+
+  // A move that does nothing at all is used, and then nothing happens - and the
+  // player is told so, or a Magikarp's turn reads as a line that went missing.
+  if (move.base.doesNothing) {
+    events.push(
+      { type: 'used-move', user, ...inSlot(ref), name: attackerName, move: move.base.name },
+      { type: 'nothing-happened', user, ...inSlot(ref) },
     );
     return { state: nextState, events };
   }
@@ -2642,8 +2661,9 @@ const sendOutReplacements = (state: BattleState): TurnResult => {
       continue;
     }
     const index = nextTrainerPokemon(nextState);
-    const next = index === null ? undefined : nextState.trainer?.party[index];
-    if (index === null || !next) {
+    const trainer = nextState.trainer;
+    const next = index === null ? undefined : trainer?.party[index];
+    if (index === null || !next || !trainer) {
       continue;
     }
     const filled: BattleState = {
@@ -2653,7 +2673,7 @@ const sendOutReplacements = (state: BattleState): TurnResult => {
     };
     const arrived = applySendOut(filled, ref);
     nextState = arrived.state;
-    events.push({ type: 'enemy-sent-out', name: next.base.name, ...inSlot(ref) }, ...arrived.events);
+    events.push({ type: 'enemy-sent-out', trainer: trainer.name, name: next.base.name, ...inSlot(ref) }, ...arrived.events);
   }
   return { state: nextState, events };
 };
