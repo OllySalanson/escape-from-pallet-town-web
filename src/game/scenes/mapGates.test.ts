@@ -369,7 +369,7 @@ describe('a boss-held gate in a live raid', () => {
 
     expect(bag.count('life-orb')).toBe(0);
     expect(spoken[0]).toContain(
-      'It is yours the moment you make room: drop something from the BAG.',
+      'It is yours the moment you make room: drop something from the PACK.',
     );
     expect(internalsOf(scene).unclaimedBossGear.map(({ itemId }) => itemId)).toEqual(['life-orb']);
     // It rides through the next fight, or the raid would forget it.

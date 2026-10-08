@@ -418,10 +418,12 @@ export function moreLabel(entries: readonly { readonly bottom: number }[], fold:
  * stage the fold ran through `Level 5 · 17/17 HP` and left its top half drawn
  * with no bottom edge. A shop's detail pane is the same kind of pane - its
  * label, its sentences and each line of its price - and the fold ran through
- * Bill's refusal the same way.
+ * Bill's refusal the same way. A dossier's portrait and its types are one
+ * block, because a dossier now grows into the room a list leaves and the fold
+ * came to rest across the figure's middle.
  */
 const SCROLL_ROWS =
-  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body small, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div)';
+  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body small, .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div)';
 
 /**
  * The lines a run of wrapped copy is set in, top to bottom. A `.px-wrap`

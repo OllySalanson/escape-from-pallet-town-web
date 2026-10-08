@@ -276,7 +276,7 @@ export class PartyScene extends Phaser.Scene {
   /** The pack had no room for a piece coming off a Pokemon, so it stays on. */
   private refuseForRoom(pokemon: Pokemon, itemId: string): void {
     audioManager.play('denied');
-    this.status = `No room in the pack for ${getHeldItem(itemId)?.displayName ?? itemId}. ${pokemon.base.name} keeps holding it - make room in your BAG first.`;
+    this.status = `No room in the pack for ${getHeldItem(itemId)?.displayName ?? itemId}. ${pokemon.base.name} keeps holding it - make room in your PACK first.`;
     this.render();
   }
 

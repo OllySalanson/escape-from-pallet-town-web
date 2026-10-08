@@ -885,7 +885,7 @@ export class WorldScene extends Phaser.Scene {
         waiting.push({ ...drop });
         lines.push(
           `${drop.name} was carrying a ${gearName} - and your pack has no room for it.`,
-          'It is yours the moment you make room: drop something from the BAG.',
+          'It is yours the moment you make room: drop something from the PACK.',
         );
         continue;
       }
@@ -3600,7 +3600,7 @@ export class WorldScene extends Phaser.Scene {
       const wanted = ITEMS[loot!.itemId];
       const footprint = footprintOf(loot!.itemId);
       const squares = footprint.width * footprint.height;
-      return `No room for ${wanted.displayName.toUpperCase()} - it needs ${squares} ${squares === 1 ? 'square' : 'squares'}. Drop something from the BAG and come back for it.`;
+      return `No room for ${wanted.displayName.toUpperCase()} - it needs ${squares} ${squares === 1 ? 'square' : 'squares'}. Drop something from the PACK and come back for it.`;
     }
 
     const marker = this.lootSprites.get(loot!.id);
@@ -3665,7 +3665,7 @@ export class WorldScene extends Phaser.Scene {
       // the part a player cannot see - that the exit this landmark opens has
       // not opened either.
       return [
-        `${cacheRefusalLine(poi!)} Drop something from the BAG and work it again.`,
+        `${cacheRefusalLine(poi!)} Drop something from the PACK and work it again.`,
         ...(poi!.effect === 'unlock-extraction'
           ? [
               `${poi!.unlockedExtractionLabel ?? 'The exit it opens'} stays shut until the cache is taken.`,
