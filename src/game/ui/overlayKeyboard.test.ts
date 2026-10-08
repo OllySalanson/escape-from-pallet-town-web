@@ -30,6 +30,7 @@ interface FakeKeyInit {
   readonly metaKey?: boolean;
   readonly altKey?: boolean;
   readonly target?: unknown;
+  readonly repeat?: boolean;
 }
 
 class FakeKeyEvent {
@@ -38,6 +39,7 @@ class FakeKeyEvent {
   public readonly metaKey: boolean;
   public readonly altKey: boolean;
   public readonly target: unknown;
+  public readonly repeat: boolean;
   public defaultPrevented = false;
   public propagationStopped = false;
 
@@ -47,6 +49,7 @@ class FakeKeyEvent {
     this.metaKey = init.metaKey ?? false;
     this.altKey = init.altKey ?? false;
     this.target = init.target ?? { tagName: 'BODY' };
+    this.repeat = init.repeat ?? false;
   }
 
   public preventDefault(): void {
@@ -263,6 +266,46 @@ describe('an open overlay owns the keyboard', () => {
 
     expect(overlay.keys).toEqual([]);
     expect(phaser.seen).toEqual([]);
+    overlay.destroy();
+  });
+
+  it('takes a held Enter or Space as one press: the repeats work nothing, on screen or in the browser', () => {
+    // Playtest 26 #7: Enter held on `Review & deploy` ran through the final
+    // check into the raid, and held on a Potion drank the pack. The browser
+    // works the focused button on every repeated keydown, so a repeat must be
+    // stopped before it, not only kept from the screen.
+    const overlay = openOverlay();
+
+    const first = fakeWindow.press('Enter');
+    const repeats = [1, 2, 3].map(() => fakeWindow.press({ key: 'Enter', repeat: true }));
+    fakeWindow.press(' ');
+    const spaceRepeat = fakeWindow.press({ key: ' ', repeat: true });
+
+    expect(overlay.keys).toEqual(['Enter', ' ']);
+    expect(first.defaultPrevented).toBe(false);
+    expect(repeats.every((event) => event.defaultPrevented)).toBe(true);
+    expect(spaceRepeat.defaultPrevented).toBe(true);
+    expect(phaser.seen).toEqual([]);
+    overlay.destroy();
+  });
+
+  it('still repeats every other key, so a held arrow walks a list', () => {
+    const overlay = openOverlay();
+
+    fakeWindow.press('ArrowDown');
+    const held = fakeWindow.press({ key: 'ArrowDown', repeat: true });
+
+    expect(overlay.keys).toEqual(['ArrowDown', 'ArrowDown']);
+    expect(held.defaultPrevented).toBe(false);
+    overlay.destroy();
+  });
+
+  it('leaves a held Space in a text field to type its row of spaces', () => {
+    const overlay = openOverlay();
+
+    const held = fakeWindow.press({ key: ' ', repeat: true, target: { tagName: 'INPUT' } });
+
+    expect(held.defaultPrevented).toBe(false);
     overlay.destroy();
   });
 
