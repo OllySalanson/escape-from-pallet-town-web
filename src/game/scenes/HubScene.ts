@@ -351,7 +351,9 @@ export class HubScene extends Phaser.Scene {
     {
       bag: loaded.raidProgress.packArrangement ?? EMPTY_ARRANGEMENT,
       secure: loaded.raidProgress.secureArrangement ?? EMPTY_ARRANGEMENT,
-    });
+    },
+    // The partner wins a level tie for the container's protection.
+    loaded.starterSpeciesId);
     this.arranging.release();
     this.view = 'home';
     this.reselectStarterId = this.startingStarterId();

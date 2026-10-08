@@ -27,6 +27,22 @@ describe('what the secure container fills itself with', () => {
    * The captain's addition, 2026-09-19: Pokemon first, ordered by level, so
    * nobody deploys with their best unprotected because they forgot a screen.
    */
+  it('gives a level tie to the partner, whatever the alphabet says', () => {
+    const caterpie = { id: 'caterpie-1', level: 5, cargo: { cargoId: 'caterpie-1', name: 'Caterpie', width: 2, height: 2 } };
+    const charmander = {
+      id: 'charmander-1',
+      level: 5,
+      cargo: { cargoId: 'charmander-1', name: 'Charmander', width: 2, height: 2 },
+      partner: true,
+    };
+    const fill = (candidates: readonly SecureCandidate[]) =>
+      autofillSecureSlot(candidates, DEFAULT_SECURE_PREFERENCE, BASE_SECURE_GRID, 1, held).pokemonIds;
+
+    expect(fill([caterpie, charmander])).toEqual(['charmander-1']);
+    expect(fill([charmander, caterpie])).toEqual(['charmander-1']);
+    expect(fill([{ ...caterpie, level: 6 }, charmander])).toEqual(['caterpie-1']);
+  });
+
   it('leads with the highest-level Pokemon', () => {
     const fill = autofillSecureSlot(
       [pidgey('low', 4), pidgey('high', 18), pidgey('middle', 9)],

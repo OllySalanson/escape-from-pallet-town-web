@@ -699,6 +699,14 @@ export function heldItemName(id: string | null | undefined): string | undefined 
 }
 
 export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemUseResult {
+  // Medicine never revives: a Potion poured on a fainted Pokemon would have
+  // been a revive at the price of a Potion, which is the Pokemon Center's job
+  // and the one thing its revive price exists to charge for. The battle and the
+  // base bench refused it already; this is the rule they share, so the raid pack
+  // refuses it too.
+  if (pokemon.isFainted && (item.effect.type === 'heal' || item.effect.type === 'cure-status')) {
+    return { used: false, message: `It will not have any effect on a fainted Pokémon.` };
+  }
   switch (item.effect.type) {
     case 'heal': {
       const healed = pokemon.heal(item.effect.amount);

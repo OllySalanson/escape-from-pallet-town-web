@@ -62,6 +62,11 @@ export interface SecureCandidate {
   readonly id: string;
   readonly level: number;
   readonly cargo: GridCargo;
+  /**
+   * Whether this is the save's partner - of the starter's line, evolved or
+   * not. It only ever breaks a level tie: the rule is still highest level first.
+   */
+  readonly partner?: boolean;
 }
 
 export interface SecureFill {
@@ -91,7 +96,7 @@ export function autofillSecureSlot(
   const pokemonIds: string[] = [];
   const cargo: GridCargo[] = [];
   if (preference.pokemon) {
-    for (const candidate of [...candidates].sort(byLevelThenName)) {
+    for (const candidate of [...candidates].sort(byLevelThenPartner)) {
       if (pokemonIds.length >= pokemonSlots) {
         break;
       }
@@ -128,9 +133,22 @@ export function autofillSecureSlot(
   return { pokemonIds, items };
 }
 
-/** Highest level first, then by name and id so the same party fills the same way. */
-function byLevelThenName(a: SecureCandidate, b: SecureCandidate): number {
-  return b.level - a.level || a.cargo.name.localeCompare(b.cargo.name) || a.id.localeCompare(b.id);
+/**
+ * Highest level first; on a tie the partner, then by name and id so the same
+ * party fills the same way.
+ *
+ * The partner outranks a tie because the alphabet used to decide it: a level-5
+ * Caterpie caught on the way out was protected ahead of a level-5 Charmander,
+ * and a wipe then deleted the starter (playtest 13). A fresh catch is the
+ * cheapest thing in the party to replace and the partner the dearest.
+ */
+function byLevelThenPartner(a: SecureCandidate, b: SecureCandidate): number {
+  return (
+    b.level - a.level ||
+    Number(b.partner === true) - Number(a.partner === true) ||
+    a.cargo.name.localeCompare(b.cargo.name) ||
+    a.id.localeCompare(b.id)
+  );
 }
 
 /** A stored preference, read defensively; anything unrecognisable is the default. */
