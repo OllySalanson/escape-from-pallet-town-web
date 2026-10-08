@@ -1,4 +1,5 @@
 import { readMapFile, type MapFile } from '../world/mapFile';
+import { keepOnMap } from './draft';
 
 /**
  * The maps a player is drawing, kept in this browser.
@@ -31,6 +32,13 @@ export interface MakerStore {
   readonly drafts: readonly StoredDraft[];
   /** The draft the editor opens on, if it still exists. */
   readonly current?: string;
+  /**
+   * Whatever was in storage that the editor cannot open, exactly as it was
+   * stored, and written back with every save. A draft is somebody's work: one
+   * this version cannot read is kept for a version that can - or for a person
+   * to recover by hand - and never quietly dropped by the next autosave.
+   */
+  readonly unreadable?: readonly unknown[];
 }
 
 type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem'>;
@@ -46,7 +54,30 @@ function defaultStorage(): Storage | undefined {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** Every draft in storage that can still be opened; anything else is left out rather than thrown. */
+/**
+ * A stored map as a draft the editor can open: as it is, or with whatever
+ * stands off the map taken off it. An older editor could leave a person or a
+ * building off the edge when a map was made smaller, and a file is only ever
+ * readable whole, so without this one stray person lost the whole draft.
+ */
+function openable(value: unknown): MapFile | undefined {
+  const reading = readMapFile(value, { draft: true });
+  if (reading.ok) {
+    return reading.file;
+  }
+  try {
+    const rescued = readMapFile(keepOnMap(value as MapFile), { draft: true });
+    return rescued.ok ? rescued.file : undefined;
+  } catch {
+    // Not enough of a map to trim: kept as it was stored instead.
+    return undefined;
+  }
+}
+
+/**
+ * Every draft in storage that can be opened. Anything else is kept aside, as
+ * stored, in `unreadable` - never thrown, and never dropped.
+ */
 export function loadMakerStore(storage: Storage | undefined = defaultStorage()): MakerStore {
   let raw: string | null;
   try {
@@ -61,23 +92,25 @@ export function loadMakerStore(storage: Storage | undefined = defaultStorage()):
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { drafts: [] };
+    return { drafts: [], unreadable: [raw] };
   }
   if (!isRecord(parsed) || !Array.isArray(parsed.drafts)) {
-    return { drafts: [] };
+    return { drafts: [], unreadable: [parsed] };
   }
+  const unreadable: unknown[] = Array.isArray(parsed.unreadable)
+    ? [...(parsed.unreadable as unknown[])]
+    : [];
   const drafts = parsed.drafts.flatMap((entry): StoredDraft[] => {
-    if (!isRecord(entry) || typeof entry.key !== 'string') {
-      return [];
-    }
-    const reading = readMapFile(entry.file, { draft: true });
-    if (!reading.ok) {
+    const file =
+      isRecord(entry) && typeof entry.key === 'string' ? openable(entry.file) : undefined;
+    if (!isRecord(entry) || typeof entry.key !== 'string' || !file) {
+      unreadable.push(entry);
       return [];
     }
     return [
       {
         key: entry.key,
-        file: reading.file,
+        file,
         updatedAt: typeof entry.updatedAt === 'number' ? entry.updatedAt : 0,
         ...(typeof entry.walkedOut === 'string' ? { walkedOut: entry.walkedOut } : {}),
         ...(typeof entry.sentAs === 'string' ? { sentAs: entry.sentAs } : {}),
@@ -88,7 +121,11 @@ export function loadMakerStore(storage: Storage | undefined = defaultStorage()):
     typeof parsed.current === 'string' && drafts.some((draft) => draft.key === parsed.current)
       ? parsed.current
       : undefined;
-  return current ? { drafts, current } : { drafts };
+  return {
+    drafts,
+    ...(current ? { current } : {}),
+    ...(unreadable.length > 0 ? { unreadable } : {}),
+  };
 }
 
 /** Writes the store. Returns whether it was kept. */
@@ -110,14 +147,16 @@ export function saveMakerStore(
 /** The store with this draft in it, newest first, and opened. */
 export function withDraft(store: MakerStore, draft: StoredDraft): MakerStore {
   return {
+    ...store,
     drafts: [draft, ...store.drafts.filter((other) => other.key !== draft.key)],
     current: draft.key,
   };
 }
 
 export function withoutDraft(store: MakerStore, key: string): MakerStore {
+  const { current, ...rest } = store;
   const drafts = store.drafts.filter((draft) => draft.key !== key);
-  return store.current === key || !store.current ? { drafts } : { drafts, current: store.current };
+  return current === key || !current ? { ...rest, drafts } : { ...rest, drafts, current };
 }
 
 /** A key no draft in the store has yet. */

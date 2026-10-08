@@ -109,6 +109,8 @@ export interface MakerViewState {
   readonly canRedo: boolean;
   /** Every draft in this browser, for the drafts panel. */
   readonly drafts: readonly StoredDraft[];
+  /** How many drafts in this browser this editor cannot open: kept, and said so. */
+  readonly unreadableDrafts?: number;
   readonly draftKey: string;
   /** What the right-hand column shows under the checks. */
   readonly panel: MakerPanel;
@@ -429,7 +431,7 @@ function settingsPane(file: MapFile): string {
   );
 }
 
-function draftsPane(drafts: readonly StoredDraft[], current: string): string {
+function draftsPane(drafts: readonly StoredDraft[], current: string, unreadable = 0): string {
   const rows = drafts
     .map(
       (draft) =>
@@ -440,8 +442,12 @@ function draftsPane(drafts: readonly StoredDraft[], current: string): string {
         }</div>`,
     )
     .join('');
+  const kept =
+    unreadable > 0
+      ? `<p class="px-empty px-wrap">${unreadable === 1 ? 'One draft here cannot be opened. It is kept, not deleted.' : `${unreadable} drafts here cannot be opened. They are kept, not deleted.`}</p>`
+      : '';
   return pixelWindow(
-    `<div class="px-scroll maker-pane"><div class="px-list">${rows || '<p class="px-empty">No drafts yet.</p>'}</div></div><div class="maker-actions maker-pad"><button class="px-window px-button" data-panel="sent" data-help="What became of the maps you sent in from this browser.">Sent in</button><button class="px-window px-button" data-panel="review" data-help="For the game's owner: the maps players have sent in.">Review maps</button></div>`,
+    `<div class="px-scroll maker-pane"><div class="px-list">${rows || (kept ? '' : '<p class="px-empty">No drafts yet.</p>')}${kept}</div></div><div class="maker-actions maker-pad"><button class="px-window px-button" data-panel="sent" data-help="What became of the maps you sent in from this browser.">Sent in</button><button class="px-window px-button" data-panel="review" data-help="For the game's owner: the maps players have sent in.">Review maps</button></div>`,
     {
       className: 'maker-drafts',
       heading: 'Your drafts',
@@ -607,7 +613,7 @@ function reviewPane(
 export function makerScreen(state: MakerViewState): string {
   const panels: Readonly<Record<MakerPanel, () => string>> = {
     map: () => `${selectedPane(state.file, state.selected)}${settingsPane(state.file)}`,
-    drafts: () => draftsPane(state.drafts, state.draftKey),
+    drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts),
     send: () => sendPane(state.file, state.sending),
     sent: () => sentPane(state.sent),
     review: () => reviewPane(state.review, state.reviewing, state.checks),

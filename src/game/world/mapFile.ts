@@ -514,6 +514,16 @@ export function readMapFile(
       problems.push(
         `Building ${index + 1} is not a building the game has: ${String(building.kind)}.`,
       );
+    } else if (inBounds(building)) {
+      // Its top-left corner is on the map; the rest of it has to be too, or the
+      // sketch it plants into refuses it and nothing about the map can be drawn.
+      const prop = KANTO_TILESET.props[MAP_FILE_BUILDINGS[building.kind as MapFileBuildingKind]];
+      if (
+        (building.x as number) + prop.width > (width as number) ||
+        (building.y as number) + prop.height > (height as number)
+      ) {
+        problems.push(`Building ${index + 1} runs off the edge of the map.`);
+      }
     }
   }
 

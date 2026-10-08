@@ -78,6 +78,14 @@ describe('the map maker screen', () => {
     expect(markup).toContain('0 of 9');
   });
 
+  it('says a draft it cannot open is kept rather than letting it vanish', () => {
+    const drafts = { ...state(SAMPLE, false), panel: 'drafts' as const };
+    expect(makerScreen(drafts)).not.toContain('cannot be opened');
+    expect(makerScreen({ ...drafts, unreadableDrafts: 1 })).toContain(
+      'One draft here cannot be opened. It is kept, not deleted.',
+    );
+  });
+
   it('greys out undo when there is nothing to undo', () => {
     const markup = makerScreen(state(blankMap(), false));
     expect(markup).toMatch(/data-undo[^>]*aria-disabled="true"/);

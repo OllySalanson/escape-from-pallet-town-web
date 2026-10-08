@@ -85,6 +85,17 @@ describe('reading a map file', () => {
     );
   });
 
+  // Playtest 23 C1: a gym planted at 28,10 on a 30-wide map passed this check,
+  // then threw out of the layer builder in `checkMapFile`, which bricked the
+  // map maker for its maker, a reviewer and every publish run.
+  it('refuses a building that hangs off the edge, as a draft too', () => {
+    const offEdge = edited({ buildings: [{ x: SAMPLE.width - 2, y: 2, kind: 'gym' }] });
+    expect(problemsOf(offEdge)).toContain('Building 1 runs off the edge of the map.');
+    expect(readMapFile(offEdge, { draft: true }).ok).toBe(false);
+    expect(() => checkMapFile(offEdge)).not.toThrow();
+    expect(failing(offEdge)).toContain('loads');
+  });
+
   it('refuses a map with no way in or no way out', () => {
     expect(problemsOf(edited({ dropIns: [] }))).toContain('A map needs at least 1 drop-in.');
     expect(problemsOf(edited({ exits: [] }))).toContain('A map needs at least 1 exit.');

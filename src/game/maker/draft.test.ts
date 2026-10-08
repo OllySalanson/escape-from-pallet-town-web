@@ -19,6 +19,7 @@ import {
   renamePlace,
   resizeMap,
   setExitOpens,
+  sizeFromField,
   setMaker,
   thingAt,
 } from './draft';
@@ -225,6 +226,34 @@ describe('the map itself', () => {
     expect([file.dropIns.length, file.exits.length]).toEqual([1, 1]);
     expect(readMapFile(file, { draft: true }).ok).toBe(true);
   });
+
+  // Playtests 23 C2, 26 #18 and 31 bug 1: a person left at 30,20 on a 20x16
+  // map made the whole draft unreadable, and the next load deleted it.
+  it('takes everyone and everything off the ground it cut away, and cuts a district to fit', () => {
+    let file = working();
+    file = placed(placeSpot(file, 'person', { x: 21, y: 17 }));
+    file = placed(placeSpot(file, 'person', { x: 6, y: 6 }));
+    file = placed(placeSpot(file, 'sign', { x: 21, y: 4 }));
+    file = placed(placeSpot(file, 'landmark', { x: 4, y: 17 }));
+    file = placed(placeSpot(file, 'trainer', { x: 22, y: 8 }));
+    file = placed(addDistrict(file, { x: 2, y: 2 }, { x: 22, y: 6 }));
+    file = placed(addDistrict(file, { x: 21, y: 15 }, { x: 22, y: 17 }));
+    const shrunk = resizeMap(file, 20, 16);
+    expect(shrunk.people?.map((person) => [person.x, person.y])).toEqual([[6, 6]]);
+    expect([shrunk.signs, shrunk.landmarks, shrunk.trainers]).toEqual([[], [], []]);
+    expect(shrunk.districts).toEqual([{ name: 'District 1', x: 2, y: 2, width: 18, height: 5 }]);
+    expect(readMapFile(shrunk, { draft: true }).ok).toBe(true);
+    expect(checkMapFile(shrunk).find((check) => check.id === 'loads')?.passed).toBe(true);
+  });
+
+  it('reads an emptied size field as no change rather than the smallest map', () => {
+    expect(sizeFromField('', 40)).toBe(40);
+    expect(sizeFromField('  ', 40)).toBe(40);
+    expect(sizeFromField('e', 40)).toBe(40);
+    expect(sizeFromField('24', 40)).toBe(24);
+    const file = working();
+    expect(resizeMap(file, sizeFromField('', file.width), file.height)).toBe(file);
+  });
 });
 
 describe('undo', () => {
@@ -276,9 +305,48 @@ describe('drafts in this browser', () => {
       }),
     );
     expect(loadMakerStore(storage).drafts.map((draft) => draft.key)).toEqual(['good']);
-    storage.setItem('escape-from-pallet-town.maker.v1', 'not json');
-    expect(loadMakerStore(storage)).toEqual({ drafts: [] });
     expect(loadMakerStore(undefined)).toEqual({ drafts: [] });
+  });
+
+  // A draft is somebody's work: one this editor cannot open is kept, as it
+  // was stored, through every later save - never deleted by the next autosave.
+  it('keeps a draft it cannot open, and writes it back with every save', () => {
+    const storage = memory();
+    const bad = { key: 'bad', file: { format: 1 } };
+    storage.setItem(
+      'escape-from-pallet-town.maker.v1',
+      JSON.stringify({ drafts: [bad, { key: 'good', file: blankMap() }], current: 'good' }),
+    );
+    const loaded = loadMakerStore(storage);
+    expect(loaded.unreadable).toEqual([bad]);
+    const edited = withDraft(
+      withoutDraft(loaded, 'nothing'),
+      { key: 'good', file: renameMap(blankMap(), 'Edited'), updatedAt: 3 },
+    );
+    saveMakerStore(edited, storage);
+    const again = loadMakerStore(storage);
+    expect(again.unreadable).toEqual([bad]);
+    expect(again.drafts.map((draft) => draft.file.name)).toEqual(['Edited']);
+
+    storage.setItem('escape-from-pallet-town.maker.v1', 'not json');
+    expect(loadMakerStore(storage)).toEqual({ drafts: [], unreadable: ['not json'] });
+  });
+
+  it('opens a draft an older editor left with things off the map, without them', () => {
+    const storage = memory();
+    const file = {
+      ...blankMap(30, 20),
+      buildings: [{ x: 28, y: 10, kind: 'gym' }],
+      people: [{ x: 30, y: 20, name: 'Stray', look: 'boy', facing: 'down', lines: [] }],
+    };
+    storage.setItem(
+      'escape-from-pallet-town.maker.v1',
+      JSON.stringify({ drafts: [{ key: 'old', file }], current: 'old' }),
+    );
+    const loaded = loadMakerStore(storage);
+    expect(loaded.unreadable).toBeUndefined();
+    expect(loaded.drafts[0].file.buildings).toEqual([]);
+    expect(loaded.drafts[0].file.people).toEqual([]);
   });
 
   it('never gives two drafts one key', () => {
