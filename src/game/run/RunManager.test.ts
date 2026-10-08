@@ -313,4 +313,49 @@ describe('RunManager lifecycle', () => {
 
     expect(manager.resolveWipe()).toMatchObject({ bankedPokemon: [partner] });
   });
+
+  /**
+   * Playtest 32 #1, still there in playtest 38: the case above passed while the
+   * game froze, because it resolves the slot this manager holds and no scene
+   * does. The lobby hands `startRun` the deployment's slot and keeps it on the
+   * run session, the manager keeps a copy, and the clock, a lost battle and a
+   * lost hunter fight all resolve the session's - so the protection has to be
+   * found by the Pokemon, not by which object carries the list.
+   */
+  it('keeps protecting it when the wipe is handed a copy of the slot', () => {
+    const partner = makePokemon();
+    const other = makePokemon(PIDGEY);
+    const deployedSlot = { pokemon: [partner] };
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [partner, other], items: [] },
+      { mapId: 'pallet-town', durationMs: 60_000 },
+      deployedSlot,
+    );
+
+    partner.gainExperience(experienceForLevel(16) - partner.experience);
+    expect(partner.base.id).toBe('ivysaur');
+
+    expect(manager.resolveWipe({ pokemon: [partner], items: [] })).toMatchObject({
+      bankedPokemon: [partner],
+      lostPokemon: [other],
+    });
+  });
+
+  it('still measures a Pokemon the container never accepted', () => {
+    const partner = makePokemon();
+    const other = makePokemon(PIDGEY);
+    const manager = new RunManager();
+    manager.startRun(
+      { party: [partner, other], items: [] },
+      { mapId: 'pallet-town', durationMs: 60_000 },
+      { pokemon: [other] },
+    );
+
+    partner.gainExperience(experienceForLevel(16) - partner.experience);
+
+    expect(() => manager.resolveWipe({ pokemon: [partner] })).toThrow(
+      'A secure container of 2x2 cannot hold that.',
+    );
+  });
 });

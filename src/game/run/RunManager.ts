@@ -387,7 +387,7 @@ export class RunManager {
       allPokemon,
       allItems,
       this.secureLimits(),
-      resolvedSecureSlot === this.secureSlotValue ? this.secureFootprintsValue : undefined,
+      this.acceptedFootprints(resolvedSecureSlot),
     );
     this.beginResolution();
 
@@ -405,6 +405,25 @@ export class RunManager {
     };
     this.phaseValue = RunPhase.Wiped;
     return result;
+  }
+
+  /**
+   * The squares the container gave each Pokemon in `secureSlot` when it was
+   * filled, matched by the Pokemon rather than by the slot object. Every scene
+   * that resolves a wipe hands over the run session's own copy of the slot,
+   * never this manager's, so comparing the slot itself never matched and an
+   * evolved Pokemon was measured again - which threw on every frame of a lost
+   * raid and left the save unwritten. A Pokemon the container never accepted
+   * is measured as it stands.
+   */
+  private acceptedFootprints(secureSlot: SecureSlot): GridCargo[] {
+    const accepted = this.secureSlotValue.pokemon ?? [];
+    return (secureSlot.pokemon ?? []).map((member, index) => {
+      const acceptedIndex = accepted.indexOf(member);
+      return acceptedIndex === -1
+        ? pokemonCargo(`secured-${index}`, member)
+        : this.secureFootprintsValue[acceptedIndex];
+    });
   }
 
   public snapshot(): RunSnapshot {

@@ -87,7 +87,7 @@ vi.mock('../ui/DialogBox', () => ({
 }));
 
 import { Bag } from '../items';
-import { BULBASAUR, Pokemon, PokemonParty } from '../pokemon';
+import { BULBASAUR, Pokemon, PokemonParty, experienceForLevel } from '../pokemon';
 import { RunManager, RunPhase } from '../run/RunManager';
 import { createActiveRunSession, type ActiveRunSession } from '../run/RunSession';
 import { ENRAGE_GRACE_MS } from '../run/RunManager';
@@ -337,6 +337,47 @@ describe('two raids in a row on one WorldScene instance', () => {
     internals.handleRunResolutionComplete();
 
     expect(started.scene.start).toHaveBeenCalledWith('battle', expect.anything());
+  });
+
+  /**
+   * Playtest 32 #1 (still there in playtest 38): a Pikachu secured at the door
+   * and made a Raichu with a Thunder Stone, then the clock ran out. The wipe
+   * threw on every frame, the result screen never came and the save was never
+   * written, so a reload handed the lost raid back. The run session is given
+   * the lobby's own slot exactly as `HubScene.startRun` gives it.
+   */
+  it('ends a raid lost to the clock when the Pokemon it secured has evolved', () => {
+    const controls = makeControls();
+    const scene = new WorldScene();
+    attachSceneStubs(scene, controls);
+    const manager = new RunManager();
+    const partner = new Pokemon(BULBASAUR, 5);
+    const party = new PokemonParty([partner, new Pokemon(BULBASAUR, 5)]);
+    const deployedSlot = { pokemon: [partner] };
+    manager.startRun(
+      { party: party.pokemon, items: [{ itemId: 'potion', quantity: 5 }] },
+      { mapId: requireInsertion('floodplain-relay').mapId, durationMs: RAID_DURATION_MS },
+      deployedSlot,
+    );
+    const plan = generateRunPlan(1, undefined, 'floodplain-relay', FIRST_CONTRACT);
+    const runSession = createActiveRunSession(manager, deployedSlot, {}, [], [], [], plan);
+    scene.create({ party, bag: new Bag({ potion: 5 }), runSession });
+
+    partner.gainExperience(experienceForLevel(16, partner.base.growthRate) - partner.experience);
+    expect(partner.base.id).toBe('ivysaur');
+
+    const internals = scene as unknown as {
+      dialogBox: { visible: boolean };
+      advanceRunClock(deltaMs: number): void;
+    };
+    internals.dialogBox.visible = false;
+    internals.advanceRunClock(RAID_DURATION_MS);
+    internals.advanceRunClock(ENRAGE_GRACE_MS);
+
+    expect(manager.phase).toBe(RunPhase.Wiped);
+    const started = (scene as unknown as { scene: { start: ReturnType<typeof vi.fn> } }).scene
+      .start;
+    expect(started).toHaveBeenCalledWith('extraction', expect.anything());
   });
 
   /**
