@@ -1,4 +1,10 @@
-import { buildPlayerMap, readMapFile, type PlayerMap, type PlayerMapId } from './mapFile';
+import {
+  buildPlayerMap,
+  readMapFile,
+  RESERVED_MAP_FILE_IDS,
+  type PlayerMap,
+  type PlayerMapId,
+} from './mapFile';
 
 /**
  * Every map that came from a file rather than from the game's own source.
@@ -12,9 +18,12 @@ import { buildPlayerMap, readMapFile, type PlayerMap, type PlayerMapId } from '.
  * exits all answer for both.
  *
  * Registration is lazy so that importing this module costs nothing until a map
- * is asked for, and a file that does not load is a build that does not start:
- * a broken map is a broken game, and `playerMaps.test.ts` reads every bundled
- * file so the suite fails first.
+ * is asked for. A file that does not load - one written before a change to the
+ * format, a second map with an id already taken, a map under an id the game
+ * keeps for itself - is left out and said so (`playerMapProblems`), and every
+ * other map loads: one map a player made must never be able to stop the game
+ * starting for everybody. `mapFile.test.ts` fails on any problem here, so the
+ * change that broke a file is the change that has to mend it.
  */
 
 /**
@@ -41,34 +50,89 @@ const SAMPLE_FILES: Readonly<Record<string, unknown>> = import.meta.glob(
 const published = new Set<PlayerMapId>();
 
 let registry: Map<PlayerMapId, PlayerMap> | undefined;
+let problems: readonly string[] = [];
+
+export interface BundledMapFile {
+  readonly path: string;
+  readonly value: unknown;
+  readonly isPublished: boolean;
+}
+
+export interface BundledMaps {
+  readonly maps: readonly { readonly map: PlayerMap; readonly isPublished: boolean }[];
+  /** One line per file left out, naming the file and why. */
+  readonly problems: readonly string[];
+}
+
+/**
+ * Every bundled file the game can load, in order, and why each of the rest was
+ * left out. The first file to claim an id keeps it; samples are read first, so
+ * a published map can never take the sample's place.
+ */
+export function loadBundledMaps(files: readonly BundledMapFile[]): BundledMaps {
+  const loaded: { map: PlayerMap; isPublished: boolean }[] = [];
+  const found: string[] = [];
+  const ids = new Set<PlayerMapId>();
+  for (const { path, value, isPublished } of files) {
+    const reading = readMapFile(value);
+    if (!reading.ok) {
+      found.push(`${path} is not a map the game can load: ${reading.problems.join(' ')}`);
+      continue;
+    }
+    if (isPublished && RESERVED_MAP_FILE_IDS.includes(reading.file.id)) {
+      found.push(`${path} has an id the game keeps for itself: ${reading.file.id}`);
+      continue;
+    }
+    let map: PlayerMap;
+    try {
+      map = buildPlayerMap(reading.file);
+    } catch (error) {
+      found.push(`${path} is not a map the game can load: ${String(error)}`);
+      continue;
+    }
+    if (ids.has(map.id)) {
+      found.push(`${path} has the same id as another map: ${map.id}`);
+      continue;
+    }
+    ids.add(map.id);
+    loaded.push({ map, isPublished });
+  }
+  return { maps: loaded, problems: found };
+}
 
 function maps(): Map<PlayerMapId, PlayerMap> {
   if (!registry) {
     registry = new Map();
-    const bundled = [
+    const bundled = loadBundledMaps([
+      ...Object.entries(SAMPLE_FILES).map(([path, value]) => ({
+        path,
+        value,
+        isPublished: false,
+      })),
       ...Object.entries(PUBLISHED_FILES).map(([path, value]) => ({
         path,
         value,
         isPublished: true,
       })),
-      ...Object.entries(SAMPLE_FILES).map(([path, value]) => ({ path, value, isPublished: false })),
-    ];
-    for (const { path, value, isPublished } of bundled) {
-      const reading = readMapFile(value);
-      if (!reading.ok) {
-        throw new Error(`${path} is not a map the game can load: ${reading.problems.join(' ')}`);
-      }
-      const map = buildPlayerMap(reading.file);
-      if (registry.has(map.id)) {
-        throw new Error(`${path} has the same id as another map: ${map.id}`);
-      }
+    ]);
+    for (const { map, isPublished } of bundled.maps) {
       registry.set(map.id, map);
       if (isPublished) {
         published.add(map.id);
       }
     }
+    problems = bundled.problems;
+    for (const problem of problems) {
+      console.error(problem);
+    }
   }
   return registry;
+}
+
+/** Every bundled map file left out of the game, and why. Empty in a healthy build. */
+export function playerMapProblems(): readonly string[] {
+  maps();
+  return problems;
 }
 
 /**
@@ -80,7 +144,7 @@ export function isPublishedMap(id: string): boolean {
   return published.has(id as PlayerMapId);
 }
 
-/** Every file map, in the order the files are named. */
+/** Every file map: the samples, then the published maps in the order their files are named. */
 export function playerMaps(): readonly PlayerMap[] {
   return [...maps().values()];
 }

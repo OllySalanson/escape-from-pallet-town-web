@@ -1,8 +1,8 @@
 /**
  * Publishes approved player maps: the last step of the map maker's pipeline.
  *
- *   npx vite-node tools/maps/publishApproved.mts -- collect <out.json>
- *   npx vite-node tools/maps/publishApproved.mts -- mark <out.json>
+ *   npx --no-install vite-node tools/maps/publishApproved.mts -- collect <out.json>
+ *   npx --no-install vite-node tools/maps/publishApproved.mts -- mark <out.json>
  *
  * `collect` reads every submission the reviewer approved, runs the game's own
  * `readMapFile` and `checkMapFile` on it - the same checks the editor showed
@@ -19,10 +19,11 @@
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { checkMapFile } from '../../src/game/world/mapFileChecks';
-import { readMapFile, type MapFile } from '../../src/game/world/mapFile';
+import { freeMapFileId, readMapFile, type MapFile } from '../../src/game/world/mapFile';
 import { SUBMISSIONS_URL } from '../../src/game/maker/submitConfig';
 
 const PLAYER_MAPS = 'src/maps/player';
+const SAMPLE_MAPS = 'src/maps/sample';
 
 interface Approved {
   readonly id: string;
@@ -41,10 +42,17 @@ const [mode, out] = process.argv.slice(2).filter((argument) => argument !== '--'
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 /** The project, unless a run points it elsewhere (a local stand-in, to try the script). */
 const projectUrl = process.env.SUPABASE_URL ?? SUBMISSIONS_URL;
+/**
+ * No key is a broken run, never a quiet one: a run that read nothing and said
+ * "nothing to publish" in green looks exactly like a run with nothing approved,
+ * and every map a reviewer approved would sit unpublished with nobody told.
+ */
 if (!key) {
-  console.log('No SUPABASE_SERVICE_ROLE_KEY: nothing can be read, so nothing is published.');
-  writeFileSync(out ?? 'published.json', '[]\n');
-  process.exit(0);
+  console.error(
+    '::error::No SUPABASE_SERVICE_ROLE_KEY: the approved maps cannot be read, so none can be published. ' +
+      'Add the service-role key as the repository secret SUPABASE_SERVICE_ROLE_KEY.',
+  );
+  process.exit(1);
 }
 
 async function rest(path: string, init: RequestInit = {}): Promise<Response> {
@@ -71,17 +79,20 @@ async function setStatus(id: string, status: string, note?: string): Promise<voi
   });
 }
 
-/** A file name no published map has: the map's own id, then -2, -3... */
+/**
+ * A file name no bundled map has - published or sample - and no id the game
+ * keeps for itself: the map's own id, else that with -2, -3... and never
+ * longer than an id may be (`freeMapFileId`).
+ */
 function freeId(id: string): string {
-  const taken = new Set(readdirSync(PLAYER_MAPS).map((name) => name.replace(/\.json$/, '')));
-  if (!taken.has(id)) {
-    return id;
-  }
-  for (let suffix = 2; ; suffix += 1) {
-    if (!taken.has(`${id}-${suffix}`)) {
-      return `${id}-${suffix}`;
-    }
-  }
+  const taken = new Set(
+    [PLAYER_MAPS, SAMPLE_MAPS].flatMap((folder) =>
+      readdirSync(folder)
+        .filter((name) => name.endsWith('.json'))
+        .map((name) => name.replace(/\.json$/, '')),
+    ),
+  );
+  return freeMapFileId(id, taken);
 }
 
 async function collect(): Promise<void> {

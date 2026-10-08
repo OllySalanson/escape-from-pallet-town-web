@@ -83,6 +83,41 @@ export const PLAYER_MAP_PREFIX = 'player-';
 
 export type PlayerMapId = `${typeof PLAYER_MAP_PREFIX}${string}`;
 
+/** The longest id a map file may carry. */
+export const MAP_FILE_ID_MAX_LENGTH = 40;
+
+/**
+ * Ids the game keeps for maps of its own, so no published map may take one:
+ * `try-it` is the draft being tried in the editor (`maker/tryIt.ts`), which is
+ * registered over whatever map already has the id and unregistered after, and
+ * `suite-fixture` is the approved map every test file runs with
+ * (`publishedMapFixture.testkit.ts`). The sample's id is taken by its own file.
+ */
+export const RESERVED_MAP_FILE_IDS: readonly string[] = ['try-it', 'suite-fixture'];
+
+/**
+ * The id a newly published map is given: its own, unless another map already
+ * holds it or the game keeps it, and then its own with -2, -3... on the end -
+ * cut short first where it has to be, so the id it ends up with is still one
+ * `readMapFile` takes. A 40-letter id published twice used to become 42 letters
+ * and a file the game could not load.
+ */
+export function freeMapFileId(id: string, taken: ReadonlySet<string>): string {
+  const isFree = (candidate: string): boolean =>
+    !taken.has(candidate) && !RESERVED_MAP_FILE_IDS.includes(candidate);
+  if (isFree(id) && id.length <= MAP_FILE_ID_MAX_LENGTH) {
+    return id;
+  }
+  for (let suffix = 2; ; suffix += 1) {
+    const end = `-${suffix}`;
+    const stem = id.slice(0, MAP_FILE_ID_MAX_LENGTH - end.length).replace(/-+$/, '');
+    const candidate = `${stem}${end}`;
+    if (isFree(candidate)) {
+      return candidate;
+    }
+  }
+}
+
 /**
  * The letters a file's ground may use: every material's own letter, plus the
  * stamps Viridian City is drawn with. A stamp is a landmark drawn as a letter -
@@ -441,7 +476,7 @@ export function readMapFile(
     return raw;
   };
 
-  const id = text('id', 'an id', 40);
+  const id = text('id', 'an id', MAP_FILE_ID_MAX_LENGTH);
   if (id !== undefined && !ID_PATTERN.test(id)) {
     problems.push(`'id' may only hold lower-case letters, digits and single dashes.`);
   }
