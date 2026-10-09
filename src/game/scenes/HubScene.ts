@@ -113,6 +113,7 @@ import {
   securePokemonLimit,
   type RaidContract,
 } from '../objectives';
+import { deferPendingMoves, nextPendingMoveOffer } from '../hub/pendingMoves';
 import { raidsDeployed, SaveManager, traderProgressOf, type RestoredGame } from '../save/SaveManager';
 import {
   searchPokemon,
@@ -402,16 +403,23 @@ export class HubScene extends Phaser.Scene {
    * A level-up that found four moves already known queues the new one on the
    * Pokemon instead of forgetting anything, and base is where the player is
    * around to answer - a raid that settles has nobody watching. Asked one at a
-   * time; "decide later" leaves the rest until the next visit.
+   * time; "decide later" puts that Pokemon off until the next raid and asks
+   * the next one (`hub/pendingMoves.ts`).
    */
   private offerPendingMoves(): void {
-    const waiting = this.stashPokemon.find(({ pokemon }) => pokemon.pendingMoves.length > 0);
+    const raids = raidsDeployed(this.savedGame.raidProgress);
+    const waiting = nextPendingMoveOffer(this.stashPokemon, raids);
     if (!waiting) {
       return;
     }
     const move = waiting.pokemon.pendingMoves[0];
     openMoveChooser(this, { pokemon: waiting.pokemon, incoming: move, canDefer: true }, (choice) => {
-      if (choice.kind === 'later' || this.movedOnElsewhere()) {
+      if (choice.kind === 'later') {
+        deferPendingMoves(waiting.id, raids);
+        this.offerPendingMoves();
+        return;
+      }
+      if (this.movedOnElsewhere()) {
         return;
       }
       const result = waiting.pokemon.resolvePendingMove(

@@ -11,7 +11,7 @@ import {
 } from './pixelWindow';
 import { GAME_FONT } from './gameFont';
 import { CHIP_FONT_SIZE, CLOCK_FONT_SIZE } from './screenType';
-import type { Rect } from './labelPlacement';
+import { overlaps, type Rect } from './labelPlacement';
 import type {
   HunterChipTone,
   HunterChipView,
@@ -94,6 +94,8 @@ export class RaidHud {
    * kept out of it: a caption slid under the raid clock is not a caption.
    */
   private covered: Rect[] = [];
+  /** What this render is drawn under, if anything (see `render`). */
+  private under: Rect | null = null;
   private readonly clockText: Phaser.GameObjects.Text;
   private readonly objectiveText: Phaser.GameObjects.Text;
   private readonly hunterText: Phaser.GameObjects.Text;
@@ -119,10 +121,18 @@ export class RaidHud {
     return this.covered;
   }
 
-  public render(state: RaidHudState, timeMs: number): void {
+  /**
+   * @param under A box drawn over the HUD - the world's dialogue box, which is
+   * seated at the top whenever the person a line is about is below the player.
+   * A chip it would cut through is not drawn at all rather than drawn sticking
+   * out either side of it (`▸FIND LO`, `AID 4:55`), and every other chip keeps
+   * its own seat, so nothing jumps when the box goes.
+   */
+  public render(state: RaidHudState, timeMs: number, under: Rect | null = null): void {
     const stageWidth = this.scene.scale.width;
     this.frames.clear();
     this.covered = [];
+    this.under = under;
 
     const clockStyle = CLOCK_STYLES[state.clock.tone];
     const clockAlpha = state.clock.pulses
@@ -252,6 +262,12 @@ export class RaidHud {
     const height = Math.ceil(text.height) + TEXT_PADDING_Y * 2;
     const { x, y } = anchor(width, height);
     const rect = { x: Math.round(x), y: Math.round(y), width, height };
+    // Still measured and seated, so the chip under it in the column keeps its
+    // place; only the drawing is withheld.
+    if (this.under && overlaps(rect, this.under)) {
+      text.setVisible(false);
+      return rect;
+    }
     this.covered.push(rect);
     drawPixelWindow(this.frames, rect, { fill: style.fill, fillAlpha: alpha });
     if (withCursor) {

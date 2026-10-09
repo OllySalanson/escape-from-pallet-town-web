@@ -158,6 +158,9 @@ const overlap = (a: Rect, b: Rect): number => {
   return width > 0 && height > 0 ? width * height : 0;
 };
 
+/** Whether two screen rectangles share any pixel. */
+export const overlaps = (a: Rect, b: Rect): boolean => overlap(a, b) > 0;
+
 const inflate = (rect: Rect, by: number): Rect => ({
   x: rect.x - by,
   y: rect.y - by,

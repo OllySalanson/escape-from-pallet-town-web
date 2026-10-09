@@ -226,9 +226,7 @@ export class DeploymentFlow {
    * Potion is what lets the raid's first fight be won at all.
    */
   private packMedicine(only?: readonly ItemId[]): void {
-    const medicine = Object.keys(this.stash.listItems())
-      .filter((itemId) => getItemById(itemId)?.category === ItemCategory.Medicine)
-      .map((itemId) => itemId as ItemId);
+    const medicine = this.stashMedicine;
     // Medicine the player packed themselves counts against the share and is
     // never re-packed: the default fills in around a choice, never over one.
     let budget = medicine.reduce((left, itemId) => {
@@ -248,6 +246,18 @@ export class DeploymentFlow {
         budget -= packed * width * height;
       }
     }
+  }
+
+  /** Every kind of medicine the stash holds, in the order the stash lists it. */
+  private get stashMedicine(): ItemId[] {
+    return Object.keys(this.stash.listItems())
+      .filter((itemId) => getItemById(itemId)?.category === ItemCategory.Medicine)
+      .map((itemId) => itemId as ItemId);
+  }
+
+  /** The medicine in the pack right now. */
+  private get packedMedicine(): ItemId[] {
+    return this.stashMedicine.filter((itemId) => this.itemQuantity(itemId) > 0);
   }
 
   /** Whether this row is still exactly what the default packed. */
@@ -483,8 +493,18 @@ export class DeploymentFlow {
     return packContents(this.securedContents, this.secureGrid, this.securedCargo, this.secureSeats);
   }
 
-  /** What the container was left holding, for the save to start next raid from. */
+  /**
+   * What the container was left holding, for the save to start next raid from.
+   *
+   * Only a container the player touched says anything new. One the autofill
+   * filled is the preference it was filled from: read back off its contents, a
+   * raid whose party had no Pokemon small enough went home remembering "no
+   * Pokemon", and every later raid deployed its best unprotected.
+   */
   public get securePreference(): SecurePreference {
+    if (!this.secureTouched) {
+      return this.preference;
+    }
     return {
       pokemon: this.securedPokemon.length > 0,
       items: this.securedItems.map(({ itemId, quantity }) => ({ itemId, quantity })),
@@ -599,6 +619,8 @@ export class DeploymentFlow {
       this.secureGrid,
       this.securePokemonSlots,
       (itemId) => this.itemQuantity(itemId),
+      // When no Pokemon fits, the medicine the loadout carries rather than nothing.
+      this.packedMedicine,
     );
     this.securedPokemonIds = [...fill.pokemonIds];
     this.securedItemCounts.clear();

@@ -85,6 +85,14 @@ export interface SecureFill {
  * be protected if it is being carried; a found-only kind (a material, the
  * money) is never packed, so the container reserves room for it instead and its
  * only ceiling is the container.
+ *
+ * `fallback` is what the container protects when it was told to lead with
+ * Pokemon and not one of them fits - a party of second stages against a 2x2
+ * container is the common case. Left there, it went out empty while every
+ * Potion rode at risk (playtest 32 #8), which is the forgetfulness rule 1
+ * exists to prevent. So the squares no Pokemon could take are filled with what
+ * the loadout packed of these kinds, in the order given, around whatever the
+ * remembered preference already put in.
  */
 export function autofillSecureSlot(
   candidates: readonly SecureCandidate[],
@@ -92,6 +100,7 @@ export function autofillSecureSlot(
   grid: GridSize,
   pokemonSlots: number,
   heldQuantity: (itemId: ItemId) => number,
+  fallback: readonly ItemId[] = [],
 ): SecureFill {
   const pokemonIds: string[] = [];
   const cargo: GridCargo[] = [];
@@ -127,6 +136,25 @@ export function autofillSecureSlot(
     if (quantity > 0) {
       contents[remembered.itemId] = quantity;
       items.push({ itemId: remembered.itemId, quantity });
+    }
+  }
+
+  if (preference.pokemon && candidates.length > 0 && pokemonIds.length === 0) {
+    for (const itemId of fallback) {
+      const already = contents[itemId] ?? 0;
+      let quantity = heldQuantity(itemId);
+      while (quantity > already && !fitsInGrid({ ...contents, [itemId]: quantity }, grid, cargo)) {
+        quantity -= 1;
+      }
+      if (quantity > already) {
+        contents[itemId] = quantity;
+        const stack = items.find((one) => one.itemId === itemId);
+        if (stack) {
+          items[items.indexOf(stack)] = { itemId, quantity };
+        } else {
+          items.push({ itemId, quantity });
+        }
+      }
     }
   }
 
