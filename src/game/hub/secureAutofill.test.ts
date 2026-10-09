@@ -43,6 +43,35 @@ describe('what the secure container fills itself with', () => {
     expect(fill([{ ...caterpie, level: 6 }, charmander])).toEqual(['caterpie-1']);
   });
 
+  it('protects the packed medicine when not one Pokemon fits', () => {
+    // Playtest 32 #8: a party of second stages against the 2x2 container went
+    // out with the container empty and every Potion at risk.
+    const fill = autofillSecureSlot(
+      [ivysaur('ivysaur-1', 20), ivysaur('ivysaur-2', 18)],
+      DEFAULT_SECURE_PREFERENCE,
+      BASE_SECURE_GRID,
+      1,
+      (itemId) => (itemId === 'potion' ? 8 : 0),
+      ['potion'],
+    );
+    expect(fill.pokemonIds).toEqual([]);
+    expect(fill.items).toEqual([{ itemId: 'potion', quantity: 4 }]);
+  });
+
+  it('never trades a Pokemon that fits for medicine, and never secures what was not packed', () => {
+    const potions = (itemId: string): number => (itemId === 'potion' ? 8 : 0);
+    expect(
+      autofillSecureSlot([pidgey('pidgey-1', 5)], DEFAULT_SECURE_PREFERENCE, BASE_SECURE_GRID, 1, potions, [
+        'potion',
+      ]),
+    ).toEqual({ pokemonIds: ['pidgey-1'], items: [] });
+    expect(
+      autofillSecureSlot([ivysaur('ivysaur-1', 20)], DEFAULT_SECURE_PREFERENCE, BASE_SECURE_GRID, 1, () => 0, [
+        'potion',
+      ]).items,
+    ).toEqual([]);
+  });
+
   it('leads with the highest-level Pokemon', () => {
     const fill = autofillSecureSlot(
       [pidgey('low', 4), pidgey('high', 18), pidgey('middle', 9)],

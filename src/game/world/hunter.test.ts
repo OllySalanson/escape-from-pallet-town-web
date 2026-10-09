@@ -8,6 +8,7 @@ import { RunManager } from '../run/RunManager';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { createActiveRunSession } from '../run/RunSession';
 import { WORLD_MAPS, type WorldMapId, getWorldMap } from '../worldMap';
+import { extractionPointsOn } from './extractionPoints';
 import {
   collisionBlocker,
   HUNTER_BREAKAWAY_DISTANCE,
@@ -1029,6 +1030,77 @@ describe('findHunterSpawnTile', () => {
     const spawn = findHunterSpawnTile({ x: 0, y: 0 }, bounds, () => false);
 
     expect(spawn).toEqual({ x: 4, y: 0 });
+  });
+
+  it('never arrives in the one lane between the player and every exit when it need not', () => {
+    // Playtest 33 B2: the ring was picked from uniformly, so on the Floodplain one
+    // arrival in twenty-five stood in the only neck to every way out of the raid
+    // and the warning became a wall. A player in a room whose only way out is a
+    // lane: the lane tile five steps away is in the ring, and so is the far wall.
+    //   . . . . . . . . . E
+    //   . . . . . . . . # #    the room is columns 0-7, the lane is row 0 past it
+    //   . . . . . P . . # #
+    const bounds = { width: 10, height: 3 };
+    const isBlocked = ({ x, y }: { x: number; y: number }) => x >= 8 && y >= 1;
+    const player = { x: 5, y: 2 };
+    const exit = { x: 9, y: 0 };
+    const lane = { x: 8, y: 0 };
+    const offerFrom = (mustReach: { x: number; y: number }[]) => {
+      const offered: { x: number; y: number }[] = [];
+      findHunterSpawnTile(
+        player,
+        bounds,
+        isBlocked,
+        (tiles) => {
+          offered.push(...tiles);
+          return tiles[0];
+        },
+        HUNTER_SPAWN_DISTANCE,
+        mustReach,
+      );
+      return offered;
+    };
+    // The lane is in the ring, and a hunter standing on it shuts the exit away.
+    expect(offerFrom([])).toContainEqual(lane);
+    expect(
+      tilesConnectedTo(player, bounds, (tile) => isBlocked(tile) || (tile.x === 8 && tile.y === 0)),
+    ).not.toContain('9,0');
+
+    const offered = offerFrom([exit]);
+    expect(offered.length).toBeGreaterThan(0);
+    expect(offered).not.toContainEqual(lane);
+  });
+
+  it('keeps every Pallet Town arrival off the way out wherever another tile is offered', () => {
+    const { bounds, isBlocked, walkableTiles } = mapBlocker('pallet-town');
+    const exits = extractionPointsOn('pallet-town').map((point) => point.position);
+    const sealed: string[] = [];
+    let guarded = 0;
+    for (const player of walkableTiles) {
+      const ring = spawnCandidates(player, bounds, isBlocked);
+      const { sealsIn } = doorsFrom(player, bounds, isBlocked, exits);
+      const seals = (tile: { x: number; y: number }) => sealsIn.has(doorIndex(tile, bounds));
+      if (!ring.some(seals) || ring.every(seals)) {
+        continue;
+      }
+      guarded += 1;
+      findHunterSpawnTile(
+        player,
+        bounds,
+        isBlocked,
+        (tiles) => {
+          for (const tile of tiles.filter(seals)) {
+            sealed.push(`${player.x},${player.y} -> ${tile.x},${tile.y}`);
+          }
+          return tiles[0];
+        },
+        HUNTER_SPAWN_DISTANCE,
+        exits,
+      );
+    }
+    // The sweep has to have met the fault for its silence to mean anything.
+    expect(guarded).toBeGreaterThan(50);
+    expect(sealed).toEqual([]);
   });
 
   it('refuses to spawn rather than appear on top of the player', () => {

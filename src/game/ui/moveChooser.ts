@@ -105,7 +105,7 @@ export function moveChooserMarkup(view: MoveChooserView, chosen: number | null =
   const who = `<span class="px-row-line"><strong class="px-name">${escapeHtml(name)}</strong><small>Lv ${pokemon.level} · ${pokemon.moves.length} of 4 moves known</small></span>`;
   const newMove = moveCard(incoming, moveFacts(incoming), 'aria-disabled="true" data-help="The move being learned."', pixelTag('New', 'good'));
   const later = view.canDefer
-    ? `<button class="px-window px-button" data-later data-help="Ask again at base. Nothing changes until you choose.">Decide later</button>`
+    ? `<button class="px-window px-button" data-later data-help="Ask again after your next raid. Nothing changes until you choose.">Decide later</button>`
     : '';
   const decline = `<button class="px-window px-button${forgetting ? '' : ' is-primary'}" data-decline data-help="${escapeAttribute(declineHelp)}">Do not learn ${escapeHtml(learning)}</button>`;
   const bar = forgetting

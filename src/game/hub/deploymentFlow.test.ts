@@ -367,6 +367,28 @@ describe('deployment flow', () => {
     expect(flow.securedItems).toEqual([{ itemId: 'potion', quantity: 2 }]);
   });
 
+  it('secures the packed Potions when no Pokemon in the party fits the container', () => {
+    // Playtest 32 #8: Pidgeotto and Ivysaur with 8 Potions read "COMES HOME
+    // 0/4 SQUARES - Nothing is protected." A second stage is six squares.
+    const stash = createStartingStash();
+    stash.addPokemon(new Pokemon(IVYSAUR, 18), 'ivysaur-1');
+    stash.addPokemon(new Pokemon(CHARMELEON, 17), 'charmeleon-1');
+    stash.addItem('potion', 5);
+    const flow = emptied(
+      new DeploymentFlow(stash, 'floodplain-relay', { pokemon: 1, secureGrid: BASE_SECURE_GRID }),
+    );
+    flow.togglePokemon('ivysaur-1');
+    flow.togglePokemon('charmeleon-1');
+    flow.setItemQuantity('potion', 8);
+
+    expect(flow.securedPokemon).toEqual([]);
+    expect(flow.securedItems).toEqual([{ itemId: 'potion', quantity: 4 }]);
+    expect(flow.secureCells).toEqual({ used: 4, total: 4 });
+    // And the raid after it still leads with a Pokemon that fits: what the
+    // autofill fell back on is not a choice the player made.
+    expect(flow.securePreference).toEqual({ pokemon: true, items: [] });
+  });
+
   it('never lets a remembered supply keep a Pokemon out', () => {
     const { flow } = seedFlow();
     const remembered = new DeploymentFlow(

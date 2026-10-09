@@ -686,6 +686,14 @@ const firstCandidate = (candidates: readonly GridPosition[]): GridPosition => ca
  * for that yields the furthest tile it does hold; an area smaller than
  * HUNTER_MINIMUM_SPAWN_DISTANCE yields nothing at all, because the only tiles left
  * are on top of the player.
+ *
+ * `mustReach` is this raid's exits, read the way `findHunterBreakawayTile` reads
+ * them: a hunter that arrives in the one neck between the player and every way out
+ * has turned its warning into a wall, and the only way on is to walk into it.
+ * Measured before this rule, one Floodplain arrival in twenty-five did that. A
+ * tile that does not seal is preferred, and only when every tile of the ring
+ * seals - a pocket whose one way out is a lane - is the whole ring offered again.
+ * The pick is still made once, so a seed spends the same randomness either way.
  */
 export const findHunterSpawnTile = (
   player: GridPosition,
@@ -693,6 +701,7 @@ export const findHunterSpawnTile = (
   isBlocked: (tile: GridPosition) => boolean,
   pick: (candidates: readonly GridPosition[]) => GridPosition = firstCandidate,
   spawnDistance: number = HUNTER_SPAWN_DISTANCE,
+  mustReach: readonly GridPosition[] = [],
 ): GridPosition | null => {
   if (!isInsideBounds(player, bounds)) {
     return null;
@@ -726,7 +735,14 @@ export const findHunterSpawnTile = (
   if (furthestRing < HUNTER_MINIMUM_SPAWN_DISTANCE) {
     return null;
   }
-  return pick(ring.map((index) => positionOf(index, bounds.width)));
+  // With nothing to reach nothing can be sealed in, so the whole-map door walk
+  // is only paid for when there are exits to protect.
+  const { sealsIn } =
+    mustReach.length === 0
+      ? { sealsIn: new Set<number>() }
+      : doorsFromLookup(player, bounds, blocked, mustReach);
+  const open = ring.filter((index) => !sealsIn.has(index));
+  return pick((open.length > 0 ? open : ring).map((index) => positionOf(index, bounds.width)));
 };
 
 /**

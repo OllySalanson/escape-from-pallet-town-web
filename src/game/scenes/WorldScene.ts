@@ -214,6 +214,7 @@ import {
   findHunterPursuitPath,
   findHunterBreakawayTile,
   findHunterSpawnTile,
+  HUNTER_SPAWN_DISTANCE,
   HUNTER_BREAKAWAY_DISTANCE,
   applyHunterBreakaway,
   isHunterSearching,
@@ -2392,6 +2393,11 @@ export class WorldScene extends Phaser.Scene {
       }
     }
 
+    // A box drawn across the top of the screen is drawn over the chips, which
+    // stuck out either side of it half cut; while one is up they stand aside.
+    const dialogOver = this.dialogBox.visible
+      ? { x: this.dialogBox.x, y: this.dialogBox.y, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }
+      : null;
     hud.render(
       {
         clock: raidClockView(
@@ -2433,6 +2439,7 @@ export class WorldScene extends Phaser.Scene {
         }),
       },
       this.time.now,
+      dialogOver,
     );
   }
 
@@ -4220,6 +4227,10 @@ export class WorldScene extends Phaser.Scene {
       (tile) => this.isBlockedForHunter(tile),
       // Wrapped rather than passed by reference so the RNG keeps its own `this`.
       rng ? (candidates) => rng.pick(candidates) : undefined,
+      HUNTER_SPAWN_DISTANCE,
+      // This raid's own exits, so the hunter never arrives in the one lane
+      // between the player and every way out (the breakaway reads them too).
+      this.extractionPointsForCurrentMap().map((point) => point.position),
     );
   }
 
