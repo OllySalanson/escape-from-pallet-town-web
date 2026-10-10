@@ -651,18 +651,45 @@ export function keepOnMap(file: MapFile): MapFile {
 }
 
 /**
+ * How many whole lines of trees stand at the end of a map, counting in from
+ * its edge - the wood a map is ringed with, which a shrunk map keeps.
+ */
+function treeBand(lines: readonly string[], cap: number): number {
+  let band = 0;
+  while (band < cap && band < lines.length && isAllTrees(lines[lines.length - 1 - band])) {
+    band += 1;
+  }
+  return band;
+}
+
+const isAllTrees = (line: string): boolean => line.length > 0 && [...line].every((tile) => tile === TREE);
+
+/** The map's ground read a column at a time, top to bottom. */
+function columnsOf(ground: readonly string[], width: number): string[] {
+  return Array.from({ length: width }, (_, x) => ground.map((row) => row[x] ?? '').join(''));
+}
+
+/**
  * The map at another size, anchored at its top-left. New ground is trees, so
- * a map grown never opens a hole in its edge; anything left off the map goes,
- * and a district part on and part off is cut to the part that is on.
+ * a map grown never opens a hole in its edge; a map shrunk keeps the band of
+ * trees its east and south edges stood in, so cutting a map down never opens
+ * one either (playtest 46: a new 40x30 cut to 24x18 lost its ring on two
+ * sides). Anything left off the map goes, and a district part on and part off
+ * is cut to the part that is on.
  */
 export function resizeMap(file: MapFile, width: number, height: number): MapFile {
   const size = clampSize(width, height);
   if (size.width === file.width && size.height === file.height) {
     return file;
   }
+  const east =
+    size.width < file.width ? treeBand(columnsOf(file.ground, file.width), Math.floor(size.width / 2)) : 0;
+  const south = size.height < file.height ? treeBand(file.ground, Math.floor(size.height / 2)) : 0;
   const ground = Array.from({ length: size.height }, (_, y) => {
-    const row = file.ground[y] ?? '';
-    return (row.slice(0, size.width) + TREE.repeat(size.width)).slice(0, size.width);
+    const row =
+      y >= size.height - south ? file.ground[file.height - (size.height - y)] : (file.ground[y] ?? '');
+    const kept = row.slice(0, size.width - east) + row.slice(file.width - east, file.width);
+    return (kept + TREE.repeat(size.width)).slice(0, size.width);
   });
   return keepOnMap({ ...file, width: size.width, height: size.height, ground });
 }

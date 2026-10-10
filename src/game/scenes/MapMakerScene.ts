@@ -29,6 +29,8 @@ import {
   loadMakerStore,
   mapFileText,
   walkedVersion,
+  isUntouchedBlank,
+  lastMakerName,
   newDraftKey,
   saveMakerStore,
   withDraft,
@@ -276,9 +278,9 @@ export class MapMakerScene extends Phaser.Scene {
     return this.history.value;
   }
 
-  private startNewDraft(): void {
+  private startNewDraft(maker = lastMakerName(this.store)): void {
     this.draftKey = newDraftKey(this.store);
-    const file = blankMap();
+    const file = setMaker(blankMap(), maker);
     this.openHistory(file);
     this.store = withDraft(this.store, { key: this.draftKey, file, updatedAt: Date.now() });
     saveMakerStore(this.store);
@@ -608,10 +610,19 @@ export class MapMakerScene extends Phaser.Scene {
     on('[data-new]', () => {
       this.flushAutosave();
       this.rememberView();
-      this.startNewDraft();
+      // A map nobody has touched is not one to keep: NEW replaces it rather
+      // than leaving another identical blank in the drafts list.
+      const maker = lastMakerName(this.store);
+      const untouched = isUntouchedBlank(this.file);
+      if (untouched) {
+        this.store = withoutDraft(this.store, this.draftKey);
+        sessionHistories.delete(this.draftKey);
+        sessionViews.delete(this.draftKey);
+      }
+      this.startNewDraft(maker);
       this.selected = undefined;
       this.panel = 'map';
-      this.render('A new map. Your last one is in your drafts.');
+      this.render(untouched ? 'A new map.' : 'A new map. Your last one is in your drafts.');
       this.fitZoom();
     });
     on('[data-panel]', (element) => this.openPanel(element.dataset.panel as MakerPanel));

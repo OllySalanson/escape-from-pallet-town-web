@@ -341,11 +341,43 @@ describe('the result screen on a defeat', () => {
     expect(root.html).toContain('extraction-lost');
     expect(root.html).toContain('data-continue');
     expect(root.html).toContain('The secure slot brought Bulbasaur home.');
+    // A raid ends on the harbour's quay, beside Bill, not inside Oak's Lab, so
+    // the one way out says where it puts the player down.
+    expect(root.html).toContain('data-continue>Back to the harbour</button>');
+    expect(root.html).not.toContain('Back to the lab');
 
     advance(400);
     press('Enter');
 
     expect(start).toHaveBeenCalledWith('base', { arrival: 'raid' });
+  });
+});
+
+describe('the result screen counts what it lists', () => {
+  it('counts a lost pack among the entries gone for good, because it is drawn GONE under that heading', () => {
+    const report: ExtractionReport = {
+      ...defeatReport(),
+      pack: { itemId: 'raid-pack', name: 'Raid pack', squares: 18, fate: 'lost' },
+    };
+    // Charmander and the two Potions are the ledger; the pack is the third row
+    // drawn GONE in the same window.
+    expect(report.ledger.pokemon.length + report.ledger.items.length).toBe(2);
+    const { root, advance } = open(report);
+    readThrough(advance);
+
+    expect(root.html).toContain('<h2>Gone for good</h2><small>3 entries</small>');
+  });
+
+  it('does not count a pack that came home among what was banked', () => {
+    const report: ExtractionReport = {
+      ...escapeReport(),
+      pack: { itemId: 'raid-pack', name: 'Raid pack', squares: 18, fate: 'kept' },
+    };
+    // Charmander came home: one entry, and the pack is not a second.
+    expect(report.ledger.pokemon.length + report.ledger.items.length).toBe(1);
+    const { root } = open(report);
+
+    expect(root.html).toContain('<h2>Banked</h2><small>1 entry</small>');
   });
 });
 

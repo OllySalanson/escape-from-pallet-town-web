@@ -704,6 +704,31 @@ describe('what the raid had at stake', () => {
     );
   });
 
+  it('names the pack beside what else rode out unprotected and came home', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const manager = startedRun({
+      party: [starter],
+      items: [{ itemId: 'potion', quantity: 3 }],
+      secure: { pokemon: [starter] },
+      packItemId: 'raid-pack',
+    });
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [] },
+      carriedOut: { potion: 3 },
+      saved: true,
+    });
+
+    // The gamble already says a wipe would have cost the Potions *and* the
+    // pack, so the headline may not count the Potions and forget the pack.
+    expect(report.summary).toContain('One entry and your Raid pack rode out unprotected and came home.');
+    expect(report.gambleVerdict).toBe('A wipe would have cost you 3 Potions and your Raid pack. It did not happen this time.');
+  });
+
   it('says a protected party was still a gamble on the pack', () => {
     const starter = new Pokemon(BULBASAUR, 5);
     const manager = startedRun({

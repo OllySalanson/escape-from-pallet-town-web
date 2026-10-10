@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { currentTry, homeAfterRaid, recordWalkedOut } from '../maker/tryIt';
 import { audioManager } from '../audio/AudioManager';
+import { isPlaytestRun } from '../dev/playtestMode';
+import { formatRaidClock } from '../run/raidClock';
 import {
   buildDefeatSequence,
   createBeatGate,
@@ -316,26 +318,67 @@ export class ExtractionScene extends Phaser.Scene {
     return pixelScreen({
       place: escapeHtml(report.eyebrow),
       title: '',
-      aside: `Raid clock ${escapeHtml(report.clockLabel)}`,
+      aside: escapeHtml(this.clockAside()),
       // There is one control on this screen, so the help bar is free to carry
       // what becomes of the result.
       hints: escapeHtml(this.footerNote()),
       body: `<main class="px-body extraction-layout ${escaped ? 'extraction-won' : 'extraction-lost'}">${pixelWindow(
-        `<strong class="px-name">${escapeHtml(report.headline)}</strong><span class="px-wrap">${escapeHtml(report.summary)}</span>`,
+        `<strong class="px-name">${escapeHtml(report.headline)}</strong><span class="px-wrap">${escapeHtml(this.verdictSummary())}</span>`,
         { className: `extraction-verdict ${escaped ? 'px-tone-primary' : 'px-tone-risk'}`, tag: 'div' },
       )}${this.ledgerPanel()}${this.gamblePanel()}${pixelCommitBar({
         title: escapeHtml(this.footerTitle()),
         lines: [`<small class="px-wrap">${this.costFacts().map(escapeHtml).join(' · ')}</small>`],
-        actions: `<button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the lab'}</button>`,
+        actions: `<button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the harbour'}</button>`,
       })}</main>`,
     });
+  }
+
+  /**
+   * What the clock read. Under the explorer rules - the explorer run, and a map
+   * maker try walked with WALK IT - the raid clock is eight hours so the map can
+   * be looked at, and "0:07 of 480:00" printed that stand-in as though it were a
+   * limit somebody had raced; what is worth saying there is how long it took.
+   */
+  private clockAside(): string {
+    return isPlaytestRun()
+      ? `Time taken ${formatRaidClock(this.report.elapsedMs)}`
+      : `Raid clock ${this.report.clockLabel}`;
+  }
+
+  /**
+   * The sentence under the headline. A try of a map in the map maker carries a
+   * throwaway team in a save of its own, so "5 entries and your Raid pack rode
+   * out unprotected" is a raid economy that was never in play; what a maker
+   * reads there is what happened on their map.
+   */
+  private verdictSummary(): string {
+    const attempt = currentTry();
+    if (!attempt) {
+      return this.report.summary;
+    }
+    const name = attempt.map.name;
+    if (this.report.outcome === 'ESCAPED') {
+      return `You walked out of ${name} by an exit.`;
+    }
+    return this.report.cause === 'timer'
+      ? `The clock ran out before you found a way out of ${name}.`
+      : `The try team went down inside ${name}.`;
   }
 
   private ledgerPanel(): string {
     const report = this.report;
     const escaped = report.outcome === 'ESCAPED';
     const rows = groupRows(report.ledger, escaped ? 'banked' : 'lost');
-    const total = report.ledger.pokemon.length + report.ledger.items.length;
+    // The note counts every row under the heading that went the heading's way,
+    // so a lost raid counts the pack and the gear that went down with it: they
+    // are drawn GONE in this same window, and "1 ENTRY" over two GONE rows read
+    // as the screen miscounting what was lost.
+    const total =
+      report.ledger.pokemon.length +
+      report.ledger.items.length +
+      (escaped
+        ? report.gear.filter((piece) => piece.fate === 'found').length
+        : report.gear.filter((piece) => piece.fate === 'lost').length + (report.pack?.fate === 'lost' ? 1 : 0));
     // Experience before the contract: the verdict window above has already said
     // what became of the contract, while a level gained in the field is said
     // nowhere else - and under a four-line contract row it was below the fold.
@@ -357,6 +400,21 @@ export class ExtractionScene extends Phaser.Scene {
 
   private gamblePanel(): string {
     const report = this.report;
+    // A try of a map in the map maker is played with a ready-made team in a
+    // save of its own and thrown away, so nothing was gambled: "a wipe would
+    // have cost you Charizard" over a level 99 try team is a raid that was not
+    // at stake. What a maker came to this screen for is whether the walk counts.
+    if (currentTry()) {
+      const escaped = report.outcome === 'ESCAPED';
+      return pixelWindow(
+        `<div class="px-list px-scroll"><h3 class="px-subheading">${escaped ? 'The walk counts' : 'The walk does not count yet'}</h3><p class="px-empty px-wrap">${
+          escaped
+            ? 'You left by an exit, so the map maker ticks "You walked out of it yourself" for this version of the map.'
+            : 'Leave by an exit for the walk to count.'
+        }</p><p class="px-wrap gamble-verdict">Nothing was at stake: the try team plays in a save of its own, and your saved game was not touched.</p></div>`,
+        { className: 'extraction-gamble', heading: 'Your try' },
+      );
+    }
     const securedRows = groupRows(report.secured, 'secured');
     const riskedRows = groupRows(report.risked, 'survived');
     // A lost raid's at-risk list is exactly the ledger beside it, so only a
