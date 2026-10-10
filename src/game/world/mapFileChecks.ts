@@ -5,6 +5,9 @@ import { HUNTER_SPAWN_DISTANCE } from './hunter';
 import {
   composeMapFile,
   doorwayOf,
+  stairwellAt,
+  TUNNEL_STAIRS_SIZE,
+  tunnelStairsAt,
   landingsOf,
   searchedLinks,
   STAIRS_SIZE,
@@ -25,7 +28,7 @@ import {
   type MapFileSpot,
 } from './mapFile';
 import { MATERIAL_CHARS } from './tileset/materials';
-import { insideBackDoor, insideSideMat } from './tileset/insideTileset';
+import { insideBackDoor, insideSideMat, insideStairwell } from './tileset/insideTileset';
 import { gateKey } from './gates';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
 import { pokemonName } from './pokemonFigures';
@@ -87,6 +90,8 @@ const DOORWAY_NAMES: Readonly<Record<MapFileDoorwayLook, string>> = {
   door: 'door',
   mat: 'way out',
   'back-door': 'back door',
+  stairwell: 'stairs down',
+  'tunnel-stairs': 'stairs up',
   'stairs-up': 'stairs',
   'stairs-down': 'stairs',
   'cave-exit': 'way out',
@@ -278,6 +283,31 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
           }
         } else if (areaOf(other)?.kind !== 'inside') {
           found.push(`${what} has to lead into the inside of a building.`);
+        }
+      } else if (end.look === 'tunnel-stairs' || kind === 'tunnel') {
+        // A tunnel is gone down into and come up out of by its stairs, and
+        // they are nothing else's.
+        if (end.look !== 'tunnel-stairs') {
+          found.push(`${what} cannot be in a tunnel: its ways out are its stairs up.`);
+        } else if (kind !== 'tunnel') {
+          found.push(`${what} belongs in a tunnel.`);
+        } else {
+          const at = tunnelStairsAt(end);
+          const size = end.toward === 'left' || end.toward === 'right' ? TUNNEL_STAIRS_SIZE[end.toward] : undefined;
+          if (!size || at.x < 0 || at.y < 0 || at.x + size.width > area!.width || at.y + size.height > area!.height) {
+            found.push(`${what} has to stand in the tunnel, pressed into west or east from beside them.`);
+          }
+        }
+      } else if (end.look === 'stairwell') {
+        // The stairwell down into the Underground Path, in the floor of its
+        // entrance, with floor round it.
+        const at = stairwellAt(end);
+        const floor = (x: number, y: number): boolean => ground(x, y) === MATERIAL_CHARS.paving;
+        const clear = [0, 1, 2].every((dy) => [0, 1, 2].every((dx) => floor(at.x + dx, at.y + dy)));
+        if (!area || !insideStairwell(area.style)) {
+          found.push(`${what} is the Underground Path's: give the room the Gatehouse look.`);
+        } else if (end.toward !== 'left' || !clear) {
+          found.push(`${what} needs clear floor three tiles square, gone into westward from its east side.`);
         }
       } else if (CAVE_LOOKS.includes(end.look) && kind !== 'cave') {
         found.push(`${what} belongs in a cave.`);

@@ -8,7 +8,7 @@ import {
   type MapFileHabitat,
   type MapFileLook,
 } from '../world/mapFile';
-import { CAVE_STYLES } from '../world/tileset/insideTileset';
+import { CAVE_STYLES, TUNNEL_STYLES } from '../world/tileset/insideTileset';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 
 /**
@@ -165,8 +165,23 @@ export const CAVE_BRUSHES: readonly GroundBrush[] = [
 ];
 
 /** The brushes for the place being drawn: outdoors, the inside of a building, or a cave. */
+/**
+ * What a tunnel is painted with: the Underground Path's floor and its walls,
+ * both laid as FireRed's are wherever they are painted.
+ */
+export const TUNNEL_BRUSHES: readonly GroundBrush[] = [
+  plain('floor', 'Floor', MATERIAL_CHARS.paving, 'The floor of the tunnel. Walked on.'),
+  plain('wall', 'Wall', MATERIAL_CHARS.wall, 'The wall of the tunnel. Solid.'),
+];
+
 export function brushesFor(place: MapFileAreaKind | undefined): readonly GroundBrush[] {
-  return place === 'cave' ? CAVE_BRUSHES : place === 'inside' ? INSIDE_BRUSHES : GROUND_BRUSHES;
+  return place === 'cave'
+    ? CAVE_BRUSHES
+    : place === 'tunnel'
+      ? TUNNEL_BRUSHES
+      : place === 'inside'
+        ? INSIDE_BRUSHES
+        : GROUND_BRUSHES;
 }
 
 export function groundBrush(id: string, place?: MapFileAreaKind): GroundBrush | undefined {
@@ -243,6 +258,7 @@ export const BUILDING_CHOICES: readonly BuildingChoice[] = (
     ['city-gate', 'City gatehouse', 'Landmarks'],
     ['saffron-gate', 'Saffron gatehouse', 'Landmarks'],
     ['saffron-side-gate', 'Saffron gatehouse, east-west', 'Landmarks'],
+    ['underground-path', 'Underground Path', 'Buildings'],
     ['pewter-gym', 'Pewter Gym', 'Landmarks'],
     ['cerulean-gym', 'Cerulean Gym', 'Landmarks'],
     ['vermilion-gym', 'Vermilion Gym', 'Landmarks'],
@@ -380,6 +396,8 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
     ['gate-chair-east', 'Chair, turned', undefined],
     ['gate-counter', 'Counter, north to south', undefined],
     ['gate-long-counter', 'Counter, west to east', undefined],
+    ['path-counter', 'Guard post', undefined],
+    ['path-counter-east', 'Guard post, turned', undefined],
     ['rug', 'Rug', 'house'],
     ['mart-counter', 'Shop counter', 'mart'],
     ['mart-till', 'Counter with till', 'mart'],
@@ -447,12 +465,13 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
 
 /**
  * The furniture a place in this style is furnished from: a room's own pieces
- * and the house's, which stand in any room; a cave has only its own.
+ * and the house's, which stand in any room; a cave or a tunnel has only its
+ * own.
  */
 export function furnitureFor(style: MapFileAreaStyle): readonly FurnitureChoice[] {
-  const cave = (CAVE_STYLES as readonly string[]).includes(style);
+  const ownOnly = ([...CAVE_STYLES, ...TUNNEL_STYLES] as readonly string[]).includes(style);
   return FURNITURE_CHOICES.filter((choice) =>
-    choice.style === undefined ? !cave : choice.style === style,
+    choice.style === undefined ? !ownOnly : choice.style === style,
   );
 }
 
@@ -466,6 +485,7 @@ export const STYLE_LABELS: Readonly<Record<MapFileAreaStyle, string>> = {
   warehouse: 'Warehouse',
   gatehouse: 'Gatehouse',
   cave: 'Cave',
+  underground: 'Underground Path',
 };
 
 export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {

@@ -2121,15 +2121,21 @@ export class WorldScene extends Phaser.Scene {
         continue;
       }
       const doorway = nextTileFromDirection(warp.source, warp.toward);
+      // The doorway, the tile it is gone through from, and what is drawn to
+      // go through it: the caption sits by the whole of it - beside a
+      // stairwell, not on its steps - rather than on the person standing at it.
+      const art = warp.art ?? { x: doorway.x, y: doorway.y, width: 1, height: 1 };
+      const left = Math.min(warp.source.x, doorway.x, art.x);
+      const top = Math.min(warp.source.y, doorway.y, art.y);
+      const right = Math.max(warp.source.x, doorway.x, art.x + art.width - 1);
+      const bottom = Math.max(warp.source.y, doorway.y, art.y + art.height - 1);
       this.worldLabels.push(
         new WorldLabel(this, {
-          // The doorway and the tile it is gone through from: the caption
-          // sits by the door rather than on the person standing at it.
           subject: {
-            x: Math.min(warp.source.x, doorway.x) * TILE_SIZE,
-            y: Math.min(warp.source.y, doorway.y) * TILE_SIZE,
-            width: (Math.abs(warp.source.x - doorway.x) + 1) * TILE_SIZE,
-            height: (Math.abs(warp.source.y - doorway.y) + 1) * TILE_SIZE,
+            x: left * TILE_SIZE,
+            y: top * TILE_SIZE,
+            width: (right - left + 1) * TILE_SIZE,
+            height: (bottom - top + 1) * TILE_SIZE,
           },
           text: `${leadsTo.name.toUpperCase()} ${ARROWS[warp.toward]}`,
           tone: LABEL_TONES.route,

@@ -4,6 +4,7 @@ import {
   MAP_FILE_BUILDING_DOORS,
   MAP_FILE_LIMITS,
   placeSlug,
+  TUNNEL_SIZE,
   type MapFile,
   type MapFileArea,
   type MapFileAreaKind,
@@ -19,7 +20,15 @@ import {
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 import { BUILDING_CHOICES } from './palette';
 import { keepOnMap, moveThing, removeThing, type GridPoint, type PlaceOutcome } from './draft';
-import { doorwayOf, landingsOf, STAIRS_SIZE, stairsAt } from '../world/mapAreas';
+import {
+  doorwayOf,
+  landingsOf,
+  STAIRS_SIZE,
+  stairsAt,
+  stairwellAt,
+  TUNNEL_STAIRS_SIZE,
+  tunnelStairsAt,
+} from '../world/mapAreas';
 
 /**
  * The places of a map, as the map maker edits them.
@@ -266,6 +275,8 @@ function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
       return SAFFRON_GATEHOUSE;
     case 'saffron-side-gate':
       return SAFFRON_SIDE_GATEHOUSE;
+    case 'underground-path':
+      return PATH_ENTRANCE;
     // Kanto's town buildings, each into the room it is: a Gym and the Dojo
     // into a hall cleared for battling, the Department Store and the Bike Shop
     // into a shop, and the places somebody studies into Oak's own Lab.
@@ -577,6 +588,158 @@ const SAFFRON_SIDE_GATEHOUSE: InsideTemplate = {
     { x: 11, y: 5, toward: 'right', look: 'mat' },
   ],
 };
+
+/**
+ * The room in a hut the Underground Path goes down from, as FireRed's is: the
+ * guards' posts either side, a palm in each corner, and the floor between them
+ * left clear for the stairwell down, which the path puts in
+ * (`makeUndergroundPath`).
+ */
+const PATH_ENTRANCE: InsideTemplate = {
+  name: 'Path entrance',
+  style: 'gatehouse',
+  width: 13,
+  height: 9,
+  ground: wallAndFloor(13, 9),
+  furniture: [
+    { kind: 'gate-plant', x: 0, y: 1 },
+    { kind: 'gate-plant', x: 12, y: 1 },
+    { kind: 'path-counter', x: 2, y: 3 },
+    { kind: 'path-counter-east', x: 9, y: 3 },
+    { kind: 'gate-plant', x: 0, y: 7 },
+    { kind: 'gate-plant', x: 12, y: 7 },
+  ],
+  mat: 6,
+};
+
+/** Where a path entrance's stairwell is gone down from: the floor east of it, as FireRed's is. */
+const PATH_STAIRWELL = { x: 7, y: 4 } as const;
+
+/**
+ * The Underground Path between two huts: FireRed's own tunnel north to south,
+ * walled either side, with its stairs up eastward at the north end and
+ * westward at the south.
+ */
+const TUNNEL: InsideTemplate = {
+  name: 'Underground Path',
+  kind: 'tunnel',
+  style: 'underground',
+  width: TUNNEL_SIZE.width,
+  height: TUNNEL_SIZE.height,
+  ground: Array.from({ length: TUNNEL_SIZE.height }, (_, y) =>
+    y < 2 || y === TUNNEL_SIZE.height - 1
+      ? MATERIAL_CHARS.wall.repeat(TUNNEL_SIZE.width)
+      : `${MATERIAL_CHARS.wall}${MATERIAL_CHARS.paving.repeat(TUNNEL_SIZE.width - 2)}${MATERIAL_CHARS.wall}`,
+  ),
+  furniture: [],
+};
+
+/** Where a tunnel's two staircases are gone up from: the north end's eastward, the south end's westward. */
+const TUNNEL_ENDS = {
+  north: { x: 4, y: 3, toward: 'right' },
+  south: { x: 3, y: 60, toward: 'left' },
+} as const;
+
+/** The stairwell down out of a path entrance, if it has one. */
+export function stairwellIn(file: MapFile, area: string): DoorwayInArea | undefined {
+  return doorwaysIn(file, area).find((doorway) => doorway.at.look === 'stairwell');
+}
+
+/**
+ * The Underground Path between two huts, made whole: each hut's entrance if it
+ * has none yet, the tunnel, and the stairs down from each entrance to its end
+ * of the tunnel - the hut further north to the north end, as Route 5's goes
+ * down to it in FireRed, and the other to the south end.
+ */
+export function makeUndergroundPath(file: MapFile, from: number, to: number): InsideOutcome {
+  const huts = [file.buildings[from], file.buildings[to]];
+  if (huts.some((hut) => hut?.kind !== 'underground-path')) {
+    return { made: false, reason: 'The Underground Path goes from one of its huts to another.' };
+  }
+  if (from === to) {
+    return { made: false, reason: 'The path has to come out at another hut.' };
+  }
+  if (
+    huts.some((hut) => {
+      const inside = insideOf(file, hut);
+      return inside !== undefined && stairwellIn(file, inside.id) !== undefined;
+    })
+  ) {
+    return { made: false, reason: 'That hut has its path already.' };
+  }
+  const missing = huts.filter((hut) => !insideOf(file, hut)).length;
+  if ((file.areas ?? []).length + missing + 1 > MAP_FILE_LIMITS.maxAreas) {
+    return { made: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxAreas} insides.` };
+  }
+  if ((file.links ?? []).length + missing + 2 > MAP_FILE_LIMITS.maxLinks) {
+    return { made: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxLinks} ways through.` };
+  }
+  let made = file;
+  for (const index of [from, to]) {
+    if (!insideOf(made, made.buildings[index])) {
+      const inside = makeInside(made, index);
+      if (!inside.made) {
+        return inside;
+      }
+      made = inside.file;
+    }
+  }
+  const entrances = [from, to].map((index) => insideOf(made, made.buildings[index])!);
+  for (const entrance of entrances) {
+    const taken = occupiedIn(made, entrance.id);
+    const at = stairwellAt(PATH_STAIRWELL);
+    const clear = [0, 1, 2].every((dy) =>
+      [0, 1, 2].every(
+        (dx) =>
+          entrance.ground[at.y + dy]?.[at.x + dx] === MATERIAL_CHARS.paving && !taken(at.x + dx, at.y + dy),
+      ),
+    );
+    if (!clear) {
+      return {
+        made: false,
+        reason: `Clear the floor of ${entrance.name} where its stairs go down - the middle of the room - first.`,
+      };
+    }
+  }
+  const name = freeAreaName(made, TUNNEL.name);
+  const tunnel: MapFileArea = {
+    id: freeAreaId(made, name),
+    name,
+    kind: 'tunnel',
+    style: TUNNEL.style,
+    width: TUNNEL.width,
+    height: TUNNEL.height,
+    ground: TUNNEL.ground,
+    buildings: TUNNEL.furniture,
+  };
+  // The hut further north goes down to the north end.
+  const [north, south] =
+    huts[0].y <= huts[1].y ? [entrances[0], entrances[1]] : [entrances[1], entrances[0]];
+  const down = (entrance: MapFileArea): MapFileLinkEnd => ({
+    area: entrance.id,
+    ...PATH_STAIRWELL,
+    toward: 'left',
+    look: 'stairwell',
+  });
+  const up = (end: (typeof TUNNEL_ENDS)[keyof typeof TUNNEL_ENDS]): MapFileLinkEnd => ({
+    area: tunnel.id,
+    ...end,
+    look: 'tunnel-stairs',
+  });
+  return {
+    made: true,
+    area: tunnel.id,
+    file: {
+      ...made,
+      areas: [...(made.areas ?? []), tunnel],
+      links: [
+        ...(made.links ?? []),
+        { ends: [down(north), up(TUNNEL_ENDS.north)] },
+        { ends: [down(south), up(TUNNEL_ENDS.south)] },
+      ],
+    },
+  };
+}
 
 /** And upstairs: a bedroom, its PC and its shelves, with the stairs down along the back wall. */
 const HOUSE_UPSTAIRS: InsideTemplate = {
@@ -905,6 +1068,11 @@ export function moveDoorway(
       case 'back-door':
         // A doorway moves along the back wall, framed by the wall either side.
         return { ...end, x: clamp(to.x, 1, inside.width - 2) };
+      case 'stairwell':
+      case 'tunnel-stairs':
+        // The Underground Path's stairs are where FireRed has them: the
+        // middle of its entrance, and the two ends of its tunnel.
+        return end;
       default:
         // A mat in a side wall moves up and down it; one at the foot of the
         // room along the south wall.
@@ -1027,7 +1195,17 @@ export function occupiedIn(file: MapFile, area: string): (x: number, y: number) 
     const ahead = doorwayOf(at);
     switch (at.look) {
       case 'mat':
-        return [{ x: Math.max(0, at.x - 1), y: at.y, width: 3, height: 1 }];
+        return at.toward === 'left' || at.toward === 'right'
+          ? [{ x: at.toward === 'left' ? at.x - 1 : at.x, y: at.y - 1, width: 2, height: 3 }]
+          : [{ x: Math.max(0, at.x - 1), y: at.y, width: 3, height: 1 }];
+      case 'back-door':
+        return [{ x: ahead.x - 1, y: ahead.y - 1, width: 3, height: 2 }];
+      case 'stairwell':
+        return [{ ...stairwellAt(at), width: 3, height: 3 }];
+      case 'tunnel-stairs':
+        return at.toward === 'left' || at.toward === 'right'
+          ? [{ ...tunnelStairsAt(at), ...TUNNEL_STAIRS_SIZE[at.toward] }]
+          : [];
       case 'stairs-up':
       case 'stairs-down':
         return [{ ...stairsAt(at), ...STAIRS_SIZE }, { x: at.x, y: at.y, width: 1, height: 2 }];

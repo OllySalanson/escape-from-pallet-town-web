@@ -26,6 +26,8 @@ import {
   insideBackDoor,
   insideMat,
   insideSideMat,
+  insideStairwell,
+  tunnelStairs,
   type InsidePropName,
 } from './tileset/insideTileset';
 import { PLAYER_MAP_TILESET } from './tileset/playerMapTileset';
@@ -205,6 +207,23 @@ export function sketchArea(
         if (door && inArea(doorway.x - 1, doorway.y - 1) && inArea(doorway.x + 1, doorway.y)) {
           sketch.plant(doorway.x - 1, doorway.y - 1, door);
         }
+      } else if (end.look === 'stairwell') {
+        // The stairwell down into the Underground Path, stood beside on the
+        // floor east of it: its own column of floor is the tile stood on.
+        const stairwell = insideStairwell(area.style);
+        const at = stairwellAt(end);
+        if (stairwell && inArea(at.x, at.y) && inArea(at.x + 2, at.y + 2)) {
+          sketch.plant(at.x, at.y, stairwell);
+        }
+      } else if (end.look === 'tunnel-stairs' && (end.toward === 'left' || end.toward === 'right')) {
+        // The stairs up out of a tunnel: eastward from its north end, their
+        // top in the north wall, and westward from its south end.
+        const stairs = tunnelStairs(area.style, end.toward);
+        const at = tunnelStairsAt(end);
+        const size = TUNNEL_STAIRS_SIZE[end.toward];
+        if (stairs && inArea(at.x, at.y) && inArea(at.x + size.width - 1, at.y + size.height - 1)) {
+          sketch.plant(at.x, at.y, stairs);
+        }
       } else if (end.look === 'cave-exit') {
         if (inArea(doorway.x - 1, doorway.y) && inArea(doorway.x + 1, doorway.y)) {
           sketch.plant(doorway.x - 1, doorway.y, 'caveExit');
@@ -234,6 +253,32 @@ export function sketchArea(
     }
   }
   return sketch;
+}
+
+/**
+ * Where the Underground Path's stairwell stands, from the end of the way
+ * through that goes down it: three tiles wide and three deep, the end on the
+ * middle of its east column, which is floor - FireRed's own stairwell is
+ * pressed into westward from there.
+ */
+export function stairwellAt(end: Pick<MapFileLinkEnd, 'x' | 'y'>): { x: number; y: number } {
+  return { x: end.x - 2, y: end.y - 1 };
+}
+
+/** How much of a tunnel each of its staircases takes: up eastward four deep, up westward three. */
+export const TUNNEL_STAIRS_SIZE = {
+  right: { width: 2, height: 4 },
+  left: { width: 2, height: 3 },
+} as const;
+
+/**
+ * Where a tunnel's stairs stand, from the end of the way through that goes up
+ * them: east of it with their top two rows above it for the stairs up
+ * eastward, west of it and a row above for the stairs up westward, as the
+ * Underground Path's own are.
+ */
+export function tunnelStairsAt(end: Pick<MapFileLinkEnd, 'x' | 'y' | 'toward'>): { x: number; y: number } {
+  return end.toward === 'right' ? { x: end.x + 1, y: end.y - 2 } : { x: end.x - 2, y: end.y - 1 };
 }
 
 /** How much of a room a staircase takes: two tiles wide and three deep, its top row against the back wall. */
@@ -482,6 +527,14 @@ function artOf(end: MapFileLinkEnd, landing: GridPosition, doorway: GridPosition
   }
   if (end.look === 'back-door') {
     return { x: doorway.x - 1, y: doorway.y - 1, width: 3, height: 2 };
+  }
+  if (end.look === 'stairwell') {
+    const at = stairwellAt(end);
+    return { x: landing.x + (at.x - end.x), y: landing.y + (at.y - end.y), width: 3, height: 3 };
+  }
+  if (end.look === 'tunnel-stairs' && (end.toward === 'left' || end.toward === 'right')) {
+    const at = tunnelStairsAt(end);
+    return { x: landing.x + (at.x - end.x), y: landing.y + (at.y - end.y), ...TUNNEL_STAIRS_SIZE[end.toward] };
   }
   if (end.look === 'cave-exit') {
     return { x: doorway.x - 1, y: doorway.y, width: 3, height: 1 };

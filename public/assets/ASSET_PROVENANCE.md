@@ -664,7 +664,8 @@ map maker as possible" (the palette board, 2026-10-10).
   battle and move rules from. Read 2026-10-10: the general tileset and the
   tilesets of Pewter, Cerulean, Vermilion, Lavender, Celadon, Fuchsia, Saffron,
   Cinnabar and Viridian (`data/tilesets/`), those eight towns' block data and
-  that of Routes 2, 5 and 7, where FireRed's gatehouses stand
+  that of Routes 2, 5 and 7, where FireRed's gatehouses and the Underground
+  Path's hut stand
   (`data/layouts/<Town>/map.bin`), and their warps (`data/maps/<Town>/map.json`,
   read for where each building's doors are and nothing drawn, together with
   each warp cell's behaviour in the tilesets' `metatile_attributes.bin`, which
@@ -677,7 +678,7 @@ map maker as possible" (the palette board, 2026-10-10).
   nothing that makes them anyone's but the rights holders'. So this file sits on
   the owner's ruling and nothing else, exactly as the other FireRed sheets do,
   and **nothing from pret is committed**: no tileset, palette or map file. What
-  ships is a cut - 38 named buildings drawn from the towns' and routes' own
+  ships is a cut - 39 named buildings drawn from the towns' and routes' own
   metatiles and 17 objects' first frames, trimmed and packed onto a new 20x97
   grid that matches nothing in the source.
 - **How it was cut, and the edits made.** `scripts/cut-frlg-towns.mjs` is the
@@ -729,23 +730,28 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   (<https://github.com/pret/pokefirered>), at commit
   `c75f352304d529f6ba92d4f74b9cf8b5c3810788` - the same commit the game already
   reads FireRed's species, moves and battle rules from - read 2026-10-10. The
-  pieces come from eight of the game's own places, drawn from their tilesets
+  pieces come from ten of the game's own places, drawn from their tilesets
   (`data/tilesets/primary/building`, `secondary/generic_building_1`,
-  `secondary/generic_building_2`, `secondary/mart`, and for the cave
-  `primary/general` and `secondary/cave`: the 4bpp tile sheets, the JASC
-  palettes and the metatile tables) and their layouts
-  (`data/layouts/PalletTown_PlayersHouse_1F`, `PalletTown_PlayersHouse_2F`,
-  `Mart`, `MtMoon_1F`, `MtMoon_B1F`, `Route2_Entrance`,
-  `SaffronCity_NorthSouthEntrance`, `SaffronCity_EastWestEntrance`): the house
+  `secondary/generic_building_2`, `secondary/mart`,
+  `secondary/underground_path`, and for the cave `primary/general` and
+  `secondary/cave`: the 4bpp tile sheets, the JASC palettes and the metatile
+  tables) and their layouts (`data/layouts/PalletTown_PlayersHouse_1F`,
+  `PalletTown_PlayersHouse_2F`, `Mart`, `MtMoon_1F`, `MtMoon_B1F`,
+  `Route2_Entrance`, `SaffronCity_NorthSouthEntrance`,
+  `SaffronCity_EastWestEntrance`, `UndergroundPath_Entrance`,
+  `UndergroundPath_NorthSouthTunnel`): the house
   and the Mart; Mt. Moon's floor, rock, sand, boulders, crater, dripping water,
   ladders and the daylight of its way out; and three gatehouses' floor, walls,
   windows, palms, tables, chairs, counters, runners and rugs, the doorway in
   the back wall and the mats - at the foot of the room, and let into the side
-  walls of the gatehouse walked through west to east.
+  walls of the gatehouse walked through west to east; and the Underground
+  Path's entrance - its guard posts and its stairwell - and its tunnel north
+  to south: every floor and wall metatile of it, cut one to a piece, and its
+  stairs up at either end.
 - **Terms.** pret publishes no licence for the graphics it extracts: they are
   the game's own, and this file treats them exactly as it treats the other
   ripped sheets. **Nothing of the checkout is committed**: what ships is a cut -
-  86 named pieces drawn out of the game's metatiles and packed onto a new 20x21
+  137 named pieces drawn out of the game's metatiles and packed onto a new 20x25
   grid that matches none of the game's own sheets.
 - **How it was cut.** `scripts/cut-frlg-areas.mjs` is the whole method: it
   refuses a checkout at any other commit, names the room, the metatile and the
@@ -760,7 +766,10 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   foot of its room, is cropped to its own pixels and centred on one row; and
   the mats let into a gatehouse's side walls, which FireRed draws hanging over
   the dark beyond the wall, are cut whole across it with FireRed's own black -
-  the dark - lifted out.
+  the dark - lifted out. The tunnel's floor and walls are cut one metatile to
+  a piece, and the script also writes which piece stands at each cell of the
+  tunnel (`AREA_WEAVES` in the generated module), so the game lays its floor
+  and walls exactly as FireRed's own layout does.
 
 ### `berry-trees.png` - the berry trees a map maker plants
 

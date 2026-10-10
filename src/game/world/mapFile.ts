@@ -36,6 +36,7 @@ import {
   INSIDE_PROPS,
   INSIDE_STYLES,
   ROOM_STYLES,
+  TUNNEL_STYLES,
   type InsidePropName,
   type InsideStyle,
 } from './tileset/insideTileset';
@@ -305,6 +306,7 @@ export const MAP_FILE_BUILDINGS = {
   'city-gate': 'cityGate',
   'saffron-gate': 'saffronGate',
   'saffron-side-gate': 'saffronSideGate',
+  'underground-path': 'pathHut',
   'pewter-gym': 'pewterGym',
   'cerulean-gym': 'ceruleanGym',
   'vermilion-gym': 'vermilionGym',
@@ -429,6 +431,10 @@ export const MAP_FILE_FURNITURE = {
   'gate-runner': 'gateRunner',
   'gate-short-runner': 'gateShortRunner',
   'gate-rug': 'gateWideRug',
+  // The Underground Path entrance's: the guards' counters either side of the
+  // stairwell.
+  'path-counter': 'pathCounterWest',
+  'path-counter-east': 'pathCounterEast',
 } as const satisfies Record<string, InsidePropName>;
 
 export type MapFileFurnitureKind = keyof typeof MAP_FILE_FURNITURE;
@@ -650,10 +656,12 @@ export function doorwayTiles(doorway: BuildingDoorway): readonly MapFileSpot[] {
 }
 
 /**
- * What kind of place an area is: the inside of a building, or a cave - the
- * same thing in rock, whose floor is wild ground on every step.
+ * What kind of place an area is: the inside of a building; a cave - the same
+ * thing in rock, whose floor is wild ground on every step; or a tunnel, the
+ * Underground Path's, gone down into by the stairs in a hut and come up out of
+ * in another.
  */
-export const MAP_FILE_AREA_KINDS = ['inside', 'cave'] as const;
+export const MAP_FILE_AREA_KINDS = ['inside', 'cave', 'tunnel'] as const;
 export type MapFileAreaKind = (typeof MAP_FILE_AREA_KINDS)[number];
 
 /** How an area is dressed: which FireRed room, or which cave, its ground is. */
@@ -664,6 +672,7 @@ export type MapFileAreaStyle = InsideStyle;
 export const MAP_FILE_STYLES_OF: Readonly<Record<MapFileAreaKind, readonly MapFileAreaStyle[]>> = {
   inside: ROOM_STYLES,
   cave: CAVE_STYLES,
+  tunnel: TUNNEL_STYLES,
 };
 
 /**
@@ -674,7 +683,15 @@ export const MAP_FILE_STYLES_OF: Readonly<Record<MapFileAreaKind, readonly MapFi
 export const MAP_FILE_AREA_LETTERS: Readonly<Record<MapFileAreaKind, readonly string[]>> = {
   inside: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.cliff],
   cave: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.sand],
+  tunnel: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall],
 };
+
+/**
+ * A tunnel is the size FireRed made the Underground Path north to south: its
+ * floor and walls are laid cell for cell as the game's own are, so they are
+ * that size or they are not the Underground Path.
+ */
+export const TUNNEL_SIZE = { width: 8, height: 63 } as const;
 
 /** The sizes each kind of area may be. */
 export function areaLimits(kind: MapFileAreaKind): {
@@ -684,6 +701,10 @@ export function areaLimits(kind: MapFileAreaKind): {
   readonly maxHeight: number;
 } {
   const L = MAP_FILE_LIMITS;
+  if (kind === 'tunnel') {
+    const { width, height } = TUNNEL_SIZE;
+    return { minWidth: width, minHeight: height, maxWidth: width, maxHeight: height };
+  }
   return kind === 'cave'
     ? { minWidth: L.minCaveWidth, minHeight: L.minCaveHeight, maxWidth: L.maxCaveWidth, maxHeight: L.maxCaveHeight }
     : { minWidth: L.minInsideWidth, minHeight: L.minInsideHeight, maxWidth: L.maxInsideWidth, maxHeight: L.maxInsideHeight };
@@ -698,11 +719,16 @@ export function areaLimits(kind: MapFileAreaKind): {
  * stand on, and a hole with a ladder down it that you walk up to. A gatehouse
  * has a doorway in its back wall, walked up into from the floor below it, and
  * its mat may be let into a side wall, stepped off sideways out of the room.
+ * The Underground Path is gone down into by a stairwell in the floor of its
+ * entrance, pressed into westward from beside it, and come up out of by the
+ * stairs at either end of its tunnel.
  */
 export const MAP_FILE_DOORWAY_LOOKS = [
   'door',
   'mat',
   'back-door',
+  'stairwell',
+  'tunnel-stairs',
   'stairs-up',
   'stairs-down',
   'cave-exit',
@@ -1578,8 +1604,11 @@ function readAreas(
       width <= limits.maxWidth &&
       height <= limits.maxHeight;
     if (!sized) {
+      const fixed = limits.minWidth === limits.maxWidth && limits.minHeight === limits.maxHeight;
       problems.push(
-        `${what} is ${limits.minWidth}x${limits.minHeight} to ${limits.maxWidth}x${limits.maxHeight} tiles.`,
+        fixed
+          ? `${what} is ${limits.minWidth}x${limits.minHeight} tiles, the size FireRed made it.`
+          : `${what} is ${limits.minWidth}x${limits.minHeight} to ${limits.maxWidth}x${limits.maxHeight} tiles.`,
       );
     } else if (typeof id === 'string' && !sizes.has(id)) {
       sizes.set(id, { width, height });
@@ -1599,7 +1628,7 @@ function readAreas(
         const unknown = [...new Set([...row].filter((letter) => !letters.includes(letter)))];
         if (unknown.length > 0) {
           problems.push(
-            `${what}'s ground row ${y} uses letters ${kind === 'cave' ? 'a cave' : 'an inside'} does not draw: ${unknown.join(' ')}`,
+            `${what}'s ground row ${y} uses letters ${kind === 'cave' ? 'a cave' : kind === 'tunnel' ? 'a tunnel' : 'an inside'} does not draw: ${unknown.join(' ')}`,
           );
         }
       });

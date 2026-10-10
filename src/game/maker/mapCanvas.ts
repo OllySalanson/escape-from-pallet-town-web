@@ -29,12 +29,12 @@ import {
 import { iconUrl, WORLD_ICONS } from '../ui/icons';
 import { TILE_SIZE } from '../worldMap';
 import type { MapFile, MapFileArea, MapFileLink, MapFileLinkEnd } from '../world/mapFile';
-import { fileDoorGates, plantedProp, sketchMapFile } from '../world/mapFile';
+import { fileDoorGates, plantedProp, sketchMapFile, TUNNEL_SIZE } from '../world/mapFile';
 import { applyGates } from '../world/gates';
 import { areaTileset, sketchArea } from '../world/mapAreas';
 import { buildMapLayers, type MapLayers } from '../world/tiles';
 import type { TileSource } from '../world/tileset/catalogue';
-import { INSIDE_TILESETS } from '../world/tileset/insideTileset';
+import { INSIDE_TILESETS, TUNNEL_STYLES } from '../world/tileset/insideTileset';
 import { PLAYER_MAP_TILESET } from '../world/tileset/playerMapTileset';
 import { buildingSize, type GridPoint, type ThingRef } from './draft';
 import type { TileRect } from './layerPatch';
@@ -618,7 +618,26 @@ function ring(
   context.fillRect(x + width - weight, y, weight, height);
 }
 
-const swatchPatches = new Map<string, { readonly file: MapFile; readonly layers: MapLayers }>();
+const swatchPatches = new Map<
+  string,
+  {
+    readonly file: MapFile;
+    readonly layers: MapLayers;
+    /** The tile of the patch the swatch is: its middle, unless a style says otherwise. */
+    readonly cell?: { readonly x: number; readonly y: number };
+  }
+>();
+
+/**
+ * Where a tunnel's swatches are taken from: a tunnel is laid cell for cell as
+ * FireRed's own is, so a patch of it shows whatever the game has at that cell,
+ * and the swatch is drawn from the tunnel itself - the face of its north wall,
+ * and the planks at its north end.
+ */
+const TUNNEL_SWATCH_CELLS: Readonly<Record<string, { readonly x: number; readonly y: number }>> = {
+  [MATERIAL_CHARS.wall]: { x: 3, y: 1 },
+  [MATERIAL_CHARS.paving]: { x: 3, y: 6 },
+};
 
 /**
  * A brush's swatch: the middle tile of a little patch of it, drawn by the same
@@ -637,6 +656,42 @@ export function drawSwatch(
   }
   const key = style ? `${style}:${letter}` : letter;
   let patch = swatchPatches.get(key);
+  if (!patch && style && (TUNNEL_STYLES as readonly string[]).includes(style)) {
+    const { width, height } = TUNNEL_SIZE;
+    const ground = Array.from({ length: height }, (_, y) =>
+      y < 2 || y === height - 1 ? 'B'.repeat(width) : `B${'P'.repeat(width - 2)}B`,
+    );
+    const file: MapFile = {
+      format: 1,
+      id: 'swatch',
+      name: 'swatch',
+      maker: 'swatch',
+      width,
+      height,
+      ground,
+      buildings: [],
+      dropIns: [],
+      exits: [],
+      itemSpots: [],
+      wildlife: 'meadow',
+    };
+    const area: MapFileArea = {
+      id: 'swatch',
+      name: 'swatch',
+      kind: 'tunnel',
+      style,
+      width,
+      height,
+      ground,
+      buildings: [],
+    };
+    patch = {
+      file,
+      layers: layersFor(file, { area, links: [] }),
+      cell: TUNNEL_SWATCH_CELLS[letter] ?? { x: 3, y: 6 },
+    };
+    swatchPatches.set(key, patch);
+  }
   if (!patch && style) {
     // A wall stood on floor, so the swatch is the wall's face with its
     // skirting; anything else is a patch of itself.
@@ -706,10 +761,11 @@ export function drawSwatch(
     context.fillStyle = MAP_DARK;
     context.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
   }
+  const cell = patch.cell ?? { x: 1, y: 1 };
   context.drawImage(
     scratch,
-    TILE_SIZE,
-    TILE_SIZE,
+    cell.x * TILE_SIZE,
+    cell.y * TILE_SIZE,
     TILE_SIZE,
     TILE_SIZE,
     0,

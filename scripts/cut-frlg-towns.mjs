@@ -163,6 +163,10 @@ const PIECES = [
     scrub: [1, 2, 3, 4].flatMap((r) => [[0, r], [7, r]]),
     warpsFrom: [{ town: 'saffron', offset: [14, -17] }],
   },
+  // The hut on Route 5 that the Underground Path goes down from, its door
+  // warped by Route 5 into the path's entrance; Route 6 has the same hut where
+  // the path comes up.
+  { name: 'pathHut', town: 'route5', at: [30, 28], size: [4, 4] },
   { name: 'burntMansion', town: 'cinnabar', at: [5, 0], size: [7, 5], drop: [[1, 4]] },
   { name: 'cinnabarLab', town: 'cinnabar', at: [5, 6], size: [7, 5], drop: [[1, 4]] },
   { name: 'cinnabarGym', town: 'cinnabar', at: [17, 0], size: [6, 5], drop: [[5, 4]] },

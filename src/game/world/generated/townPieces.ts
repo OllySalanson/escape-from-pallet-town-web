@@ -88,7 +88,7 @@ export const TOWN_PIECES = {
     doors: [[3, 4, 'door']],
   },
   roundFountain: {
-    column: 12,
+    column: 16,
     row: 89,
     width: 3,
     height: 4,
@@ -295,6 +295,14 @@ export const TOWN_PIECES = {
     cells: ['-######-', '########', '########', '########', '########'],
     doors: [[0, 3, 'right'], [7, 3, 'left']],
   },
+  pathHut: {
+    column: 8,
+    row: 89,
+    width: 4,
+    height: 4,
+    cells: ['####', '####', '####', '####'],
+    doors: [[1, 3, 'door']],
+  },
   burntMansion: {
     column: 7,
     row: 62,
@@ -448,7 +456,7 @@ export const TOWN_PIECES = {
     doors: [],
   },
   seagallop: {
-    column: 8,
+    column: 12,
     row: 89,
     width: 4,
     height: 4,
