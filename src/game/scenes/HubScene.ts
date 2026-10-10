@@ -1988,7 +1988,7 @@ export class HubScene extends Phaser.Scene {
       { className: 'stash-roster', heading: 'Pokémon', note: `${pokemon.length} stored` },
     )}<div class="stash-side">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${supplies || '<p class="px-empty">No supplies in storage.</p>'}</div>`,
-      { heading: 'Supplies', note: `${this.stashItems.length} kinds` },
+      { heading: 'Supplies', note: `${this.stashItems.length} ${this.stashItems.length === 1 ? 'kind' : 'kinds'}` },
     )}</div>${this.recoveryPanel()}</main>`;
   }
 

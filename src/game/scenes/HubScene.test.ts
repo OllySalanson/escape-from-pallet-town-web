@@ -122,6 +122,19 @@ describe('the lobby as a screen of the game', () => {
     expect(hub.flow.insertionId).toBe('floodplain-relay');
   });
 
+  it('counts one kind of supply in the stash as one kind, not "1 kinds"', () => {
+    const { hub } = createHub();
+    const kinds = Object.entries(hub.stash.listItems()).filter(([, count]) => count > 0);
+    for (const [itemId, count] of kinds.slice(1)) {
+      hub.stash.removeItem(itemId, count);
+    }
+
+    hub.setView('stash');
+    const stash = markupOf(hub);
+    expect(stash).toContain('<small>1 kind</small>');
+    expect(stash).not.toContain('1 kinds');
+  });
+
   it('says on the base screen that someone is hurt, and bills it in the stash', () => {
     const { hub } = createWornHub();
 
