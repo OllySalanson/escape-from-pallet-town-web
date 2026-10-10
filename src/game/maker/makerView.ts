@@ -150,7 +150,17 @@ const PLACE_ROWS = [
   [
     'district',
     'District',
-    'Drag out a named part of the map, with its own wild Pokémon if you like.',
+    'Drag out a named part of the map, with its own wild Pokémon and rain if you like.',
+  ],
+  [
+    'cut-tree',
+    'Cut tree',
+    'A small tree in the way. A Pokémon that knows Cut clears it, and it stays cleared.',
+  ],
+  [
+    'surf',
+    'Surf water',
+    'Drag out deep water a Pokémon that knows Surf can cross. Crossed once, it stays open.',
   ],
 ] as const;
 
