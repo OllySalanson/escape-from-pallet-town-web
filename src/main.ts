@@ -5,6 +5,7 @@ import { isTestLabRequested } from './game/dev/testLabAccess';
 import { installTestModeControls, requestedTestMode } from './game/dev/testMode';
 import { mountGame, unmountGame } from './game/gameLifecycle';
 import { watchViewport } from './game/display/stageScaler';
+import { installFeedbackDesk } from './game/feedback/feedbackDesk';
 import { installPixelText } from './game/ui/pixelText';
 
 const developmentScenes = import.meta.env.DEV && isTestLabRequested()
@@ -29,6 +30,8 @@ const game = mountGame(() => {
   return testMode === 'off' ? created : installTestModeControls(created);
 });
 const stopWatchingViewport = watchViewport(game);
+// The FEEDBACK tab and the F key, on every screen. See `feedback/feedbackDesk.ts`.
+const feedbackDesk = installFeedbackDesk(game);
 if (import.meta.env.DEV) {
   (window as unknown as { __game: Phaser.Game }).__game = game;
 }
@@ -36,6 +39,7 @@ if (import.meta.env.DEV) {
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     stopWatchingViewport();
+    feedbackDesk.destroy();
     unmountGame();
   });
 }

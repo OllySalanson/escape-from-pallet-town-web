@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { homeAfterRaid } from '../maker/tryIt';
+import { recordAction } from '../feedback/actionLog';
+import type { FeedbackDetail } from '../feedback/feedbackContext';
 import {
   nextTileFromDirection,
   planNextGridStep,
@@ -2286,6 +2288,26 @@ export class WorldScene extends Phaser.Scene {
     this.districtId = district.id;
     this.placeName = district.name;
     this.placePlateMs = silently ? 0 : PLACE_PLATE_MS;
+    recordAction(`Walked into ${district.name}`);
+  }
+
+  /** Where the raid is, for a feedback message. See `feedback/feedbackContext.ts`. */
+  public feedbackContext(): readonly FeedbackDetail[] {
+    const manager = this.runSession?.manager;
+    const snapshot = manager?.snapshot();
+    return [
+      { label: 'Map', value: worldMapName(this.currentMap.id) },
+      ...(this.placeName ? [{ label: 'Place', value: this.placeName }] : []),
+      { label: 'Tile', value: `${this.currentTile.x}, ${this.currentTile.y}` },
+      ...(manager && snapshot
+        ? [
+            {
+              label: 'Raid clock',
+              value: raidClockView(snapshot.remainingMs, manager.isEnraged, snapshot.enrageGraceRemainingMs, isPlaytestRun()).label,
+            },
+          ]
+        : []),
+    ];
   }
 
   /** The weather of the district the player is standing in, or null. */

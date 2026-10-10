@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { FeedbackDetail } from '../feedback/feedbackContext';
 import {
   nextTileFromDirection,
   planNextGridStep,
@@ -369,6 +370,11 @@ export class BaseScene extends Phaser.Scene {
   /** The room the player is standing in, or null in the yard. */
   public get room(): BaseRoom | null {
     return this.place?.room?.room ?? null;
+  }
+
+  /** Which room the player stands in, for a feedback message. See `feedback/feedbackContext.ts`. */
+  public feedbackContext(): readonly FeedbackDetail[] {
+    return [{ label: 'Room', value: this.place?.room?.room.name ?? 'The yard' }];
   }
 
   public create(data: BaseSceneData = {}): void {
