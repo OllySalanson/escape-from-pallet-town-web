@@ -117,6 +117,28 @@ describe('the result screen of a map maker try', () => {
     expect(lost).not.toContain('The gamble');
   });
 
+  it('says what happened on the map under the headline instead of what rode out unprotected', () => {
+    const verdict = (outcome: 'ESCAPED' | 'WIPED', cause?: 'timer' | 'defeated') => {
+      const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+      const report = {
+        outcome,
+        cause,
+        summary: '5 entries and your Raid pack rode out unprotected and came home.',
+      } as unknown as ExtractionReport;
+      Object.assign(scene as object, { report });
+      return (scene as unknown as { verdictSummary(): string }).verdictSummary();
+    };
+    expect(verdict('ESCAPED')).toContain('rode out unprotected');
+
+    beginTry('draft-a', sampleLane as MapFile, 'walk');
+    setActiveSaveSlot('try-it');
+    const name = (sampleLane as MapFile).name;
+
+    expect(verdict('ESCAPED')).toBe(`You walked out of ${name} by an exit.`);
+    expect(verdict('WIPED', 'defeated')).toBe(`The try team went down inside ${name}.`);
+    expect(verdict('WIPED', 'timer')).toBe(`The clock ran out before you found a way out of ${name}.`);
+  });
+
   it('still lays out the gamble on a raid of the game', () => {
     const html = gamble('ESCAPED');
     expect(html).toContain('The gamble');

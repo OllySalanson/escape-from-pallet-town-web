@@ -321,7 +321,7 @@ export class ExtractionScene extends Phaser.Scene {
       // what becomes of the result.
       hints: escapeHtml(this.footerNote()),
       body: `<main class="px-body extraction-layout ${escaped ? 'extraction-won' : 'extraction-lost'}">${pixelWindow(
-        `<strong class="px-name">${escapeHtml(report.headline)}</strong><span class="px-wrap">${escapeHtml(report.summary)}</span>`,
+        `<strong class="px-name">${escapeHtml(report.headline)}</strong><span class="px-wrap">${escapeHtml(this.verdictSummary())}</span>`,
         { className: `extraction-verdict ${escaped ? 'px-tone-primary' : 'px-tone-risk'}`, tag: 'div' },
       )}${this.ledgerPanel()}${this.gamblePanel()}${pixelCommitBar({
         title: escapeHtml(this.footerTitle()),
@@ -329,6 +329,26 @@ export class ExtractionScene extends Phaser.Scene {
         actions: `<button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the harbour'}</button>`,
       })}</main>`,
     });
+  }
+
+  /**
+   * The sentence under the headline. A try of a map in the map maker carries a
+   * throwaway team in a save of its own, so "5 entries and your Raid pack rode
+   * out unprotected" is a raid economy that was never in play; what a maker
+   * reads there is what happened on their map.
+   */
+  private verdictSummary(): string {
+    const attempt = currentTry();
+    if (!attempt) {
+      return this.report.summary;
+    }
+    const name = attempt.map.name;
+    if (this.report.outcome === 'ESCAPED') {
+      return `You walked out of ${name} by an exit.`;
+    }
+    return this.report.cause === 'timer'
+      ? `The clock ran out before you found a way out of ${name}.`
+      : `The try team went down inside ${name}.`;
   }
 
   private ledgerPanel(): string {
