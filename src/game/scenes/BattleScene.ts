@@ -149,7 +149,12 @@ import {
   NOTHING_TO_DROP_MESSAGE,
   weatherSetMessage,
   wildEscapeFailureMessage,
+  changesShownStatus,
+  shownStatusLabel,
+  statusAfterLine,
+  statusBeforeLines,
   type MatchupTone,
+  type ShownStatus,
 } from './battlePresentation';
 
 type CommandMode =
@@ -428,6 +433,8 @@ export class BattleScene extends Phaser.Scene {
   private wildEscapeAttempts = 0;
   /** The HP each plate's bar is currently showing, which the tweens walk. */
   private displayedHp = new Map<string, number>();
+  /** What each plate's status tag reads, which the turn's lines move on. */
+  private shownStatus = new Map<string, ShownStatus>();
   private pendingCombatMessages: {
     readonly event?: BattleEvent;
     readonly message: string;
@@ -575,6 +582,7 @@ export class BattleScene extends Phaser.Scene {
     this.sprites.clear();
     this.displayed.clear();
     this.displayedHp.clear();
+    this.shownStatus.clear();
     this.fallen.clear();
     this.pendingChoices = [];
     this.choosingSlot = 0;
@@ -2478,6 +2486,7 @@ export class BattleScene extends Phaser.Scene {
     this.commandContainer.setVisible(false);
     if (this.pendingCombatMessages.length === 0) {
       this.isPresentingCombatEvents = false;
+      this.refreshStatusLabels();
       this.dialog.showMessages([]);
       return;
     }
@@ -2501,12 +2510,36 @@ export class BattleScene extends Phaser.Scene {
   private refreshStatusLabels(): void {
     for (const side of ['player', 'enemy'] as const) {
       for (const ref of slotsOf(this.state, side)) {
-        const combatant = unitAt(this.state, ref);
-        this.plateFor(ref)?.statusText.setText(
-          combatant
-            ? (statusAbbreviation(combatant.primaryStatus, combatant.confusionTurns) ?? '')
-            : '',
+        this.showStatus(ref, this.statusNow(ref));
+      }
+    }
+  }
+
+  /** What the battle state says a slot's status tag should read. */
+  private statusNow(ref: SlotRef): ShownStatus {
+    const combatant = unitAt(this.state, ref);
+    return { primary: combatant?.primaryStatus ?? null, confused: (combatant?.confusionTurns ?? 0) > 0 };
+  }
+
+  private showStatus(ref: SlotRef, shown: ShownStatus): void {
+    this.shownStatus.set(plateKey(ref.side, ref.slot), shown);
+    this.plateFor(ref)?.statusText.setText(shownStatusLabel(shown));
+  }
+
+  /**
+   * Puts every tag a turn's lines are about to change back to what it read
+   * before them, so each one changes on the line that says so
+   * (`statusAfterLine`) rather than before the first line is read.
+   */
+  private rewindStatusLabels(events: readonly BattleEvent[]): void {
+    for (const side of ['player', 'enemy'] as const) {
+      for (const ref of slotsOf(this.state, side)) {
+        const about = events.filter(
+          (event) => changesShownStatus(event) && event.user === side && (event.slot ?? 0) === ref.slot,
         );
+        if (about.length > 0) {
+          this.showStatus(ref, statusBeforeLines(this.statusNow(ref), about));
+        }
       }
     }
   }
@@ -2672,6 +2705,8 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       this.isPresentingCombatEvents = false;
+      // Every line has been read, so every tag can say where the turn ended.
+      this.refreshStatusLabels();
     }
 
     if (this.forcedReplacement) {
@@ -2952,6 +2987,7 @@ export class BattleScene extends Phaser.Scene {
       ]),
       ...trailingMessages.map(stagedNote),
     ];
+    this.rewindStatusLabels(events);
     if (this.pendingCombatMessages.length === 0) {
       // Nothing to say still has to complete, or the fight waits on a line
       // that was never shown.
@@ -2976,6 +3012,7 @@ export class BattleScene extends Phaser.Scene {
     }
     if (next.event) {
       this.presentCombatEvent(next.event);
+      this.advanceStatusLabel(next.event);
     }
     // Before the line, not after it: the player should be reading "IVYSAUR"
     // while looking at an Ivysaur, never at the Bulbasaur it stopped being.
@@ -2985,6 +3022,15 @@ export class BattleScene extends Phaser.Scene {
     }
     this.moveOffer = next.offerMove ?? null;
     this.dialog.showMessage(next.message);
+  }
+
+  private advanceStatusLabel(event: BattleEvent): void {
+    if (!changesShownStatus(event)) {
+      return;
+    }
+    const ref = slotRef(event.user, event.slot ?? 0);
+    const shown = this.shownStatus.get(plateKey(ref.side, ref.slot)) ?? this.statusNow(ref);
+    this.showStatus(ref, statusAfterLine(shown, event));
   }
 
   private presentCombatEvent(event: BattleEvent): void {

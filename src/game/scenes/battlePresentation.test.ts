@@ -47,6 +47,9 @@ import {
   describeBallGuidance,
   catchChanceLabel,
   formatWildEscapeCommand,
+  shownStatusLabel,
+  statusAfterLine,
+  statusBeforeLines,
 } from './battlePresentation';
 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
@@ -477,5 +480,21 @@ describe('formatWildEscapeCommand', () => {
     expect(formatWildEscapeCommand(96 / 256)).toBe('RUN 38%');
     expect(formatWildEscapeCommand(1 / 256)).toBe('RUN 1%');
     expect(formatWildEscapeCommand(0)).toBe('RUN 0%');
+  });
+});
+
+describe('a status tag moved line by line', () => {
+  it('reads SLP until the line that wakes the Pokemon, then CNF until it snaps out', () => {
+    const woke = { type: 'status-cured', user: 'enemy', name: 'PIDGEY', status: 'sleep' } as const;
+    const snapped = { type: 'status-cured', user: 'enemy', name: 'PIDGEY', status: 'confusion' } as const;
+    const confused = { type: 'status-applied', user: 'enemy', name: 'PIDGEY', status: 'confusion' } as const;
+    // Asleep going in; confused, woken and snapped out of it by the turn's end.
+    const before = statusBeforeLines({ primary: null, confused: false }, [confused, woke, snapped]);
+    expect(shownStatusLabel(before)).toBe('SLP');
+    const afterConfused = statusAfterLine(before, confused);
+    expect(shownStatusLabel(afterConfused)).toBe('SLP');
+    const afterWoke = statusAfterLine(afterConfused, woke);
+    expect(shownStatusLabel(afterWoke)).toBe('CNF');
+    expect(shownStatusLabel(statusAfterLine(afterWoke, snapped))).toBe('');
   });
 });

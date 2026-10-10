@@ -33,7 +33,7 @@ import {
 } from '../pokemon/battle/battleEngine';
 import { BULBASAUR, PIDGEY, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import { Move } from '../pokemon/Move';
-import { GROWL } from '../pokemon/moves';
+import { GROWL, SUPER_SONIC } from '../pokemon/moves';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
@@ -328,6 +328,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     sprites,
     displayed,
     displayedHp,
+    shownStatus: new Map(),
     pendingCombatMessages: [],
     pendingChoices: [],
     choosingSlot: 0,
@@ -670,6 +671,34 @@ describe('escaping a wild encounter', () => {
 
     expect(dialog.shownMessages[0]).toBe('Got away safely!');
     expect((scene as unknown as { pendingBattleExit: boolean }).pendingBattleExit).toBe(true);
+  });
+});
+
+describe('a status tag on a plate', () => {
+  it('changes on the line that says so, never before the turn is read', () => {
+    const player = new Pokemon(BULBASAUR, 12);
+    player.moves.splice(0, player.moves.length, new Move(SUPER_SONIC));
+    const foe = new Pokemon(PIDGEY, 3);
+    // A Pokemon that knows no move stands still, so the foe's turn says nothing.
+    foe.moves.splice(0, foe.moves.length);
+    const { scene, dialog } = createBattleSceneHarness({ party: new PokemonParty([player]), wild: foe });
+    vi.spyOn(Math, 'random').mockReturnValue(0.01);
+    const foeTag = (scene as unknown as { plates: Map<string, { statusText: { setText: ReturnType<typeof vi.fn> } }> })
+      .plates.get('enemy0')!.statusText.setText;
+    const tagNow = (): string => (foeTag.mock.calls.at(-1)?.[0] as string | undefined) ?? '';
+
+    (scene as unknown as { useMove(index: number): void }).useMove(0);
+
+    // The turn is already resolved and the foe already confused, but the line
+    // up is the move being used: the tag waits for the line that confuses it.
+    expect(dialog.visibleText).toBe('Your BULBASAUR used SUPER SONIC!');
+    expect(tagNow()).toBe('');
+
+    for (let guard = 0; guard < 10 && !dialog.visibleText.includes('confused'); guard += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    expect(dialog.visibleText).toBe('Foe PIDGEY became confused!');
+    expect(tagNow()).toBe('CNF');
   });
 });
 

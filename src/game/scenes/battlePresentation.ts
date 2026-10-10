@@ -5,6 +5,7 @@ import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
 import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
 import { WeatherId, weatherLabel } from '../pokemon/battle/weather';
 import { battleCaps, withArticle } from '../pokemon/battle/battleItems';
+import { statusAbbreviation, type PrimaryStatus } from '../pokemon/battle/status';
 import { isCurrency, itemAmountFor, itemCountTag } from '../items';
 
 export const BATTLE_SCREEN_WIDTH = 320;
@@ -773,6 +774,64 @@ export const combatantBanner = (
  * One line of battle log per event. Damaging hits carry the HP they took, so a
  * defeat can be read back from the log without replaying the HP bar.
  */
+/**
+ * What a plate's status tag is showing: the one primary status and whether the
+ * Pokemon is confused, which is all `statusAbbreviation` reads.
+ */
+export interface ShownStatus {
+  readonly primary: PrimaryStatus | null;
+  readonly confused: boolean;
+}
+
+export const shownStatusLabel = (shown: ShownStatus): string =>
+  statusAbbreviation(shown.primary, shown.confused ? 1 : 0) ?? '';
+
+/**
+ * The tag once this line has been read. A turn is resolved whole before its
+ * first line is put up, so a plate set from the state at the end of it showed
+ * CNF under "used SUPERSONIC!" and dropped SLP above "is fast asleep" - the tag
+ * has to move with the line that says so, as FireRed's does.
+ */
+export const statusAfterLine = (shown: ShownStatus, event: BattleEvent): ShownStatus => {
+  if (event.type === 'status-applied') {
+    return event.status === 'confusion' ? { ...shown, confused: true } : { ...shown, primary: event.status };
+  }
+  if (event.type === 'status-cured') {
+    return event.status === 'confusion' ? { ...shown, confused: false } : { ...shown, primary: null };
+  }
+  if (event.type === 'ability' && event.effect === 'shed') {
+    return { ...shown, primary: null };
+  }
+  return shown;
+};
+
+/**
+ * The tag before any of these lines (one slot's, in the order read), worked
+ * back from where the turn ended. Exact, because the engine only ever applies a
+ * primary status to a Pokemon with none and only cures one it has.
+ */
+export const statusBeforeLines = (end: ShownStatus, events: readonly BattleEvent[]): ShownStatus =>
+  events.reduceRight<ShownStatus>((shown, event) => {
+    if (event.type === 'status-applied') {
+      return event.status === 'confusion' ? { ...shown, confused: false } : { ...shown, primary: null };
+    }
+    if (event.type === 'status-cured') {
+      return event.status === 'confusion' ? { ...shown, confused: true } : { ...shown, primary: event.status };
+    }
+    if (event.type === 'ability' && event.effect === 'shed' && event.status && event.status !== 'confusion') {
+      return { ...shown, primary: event.status };
+    }
+    return shown;
+  }, end);
+
+/** Whether a line moves a plate's status tag. */
+export const changesShownStatus = (
+  event: BattleEvent,
+): event is Extract<BattleEvent, { readonly type: 'status-applied' | 'status-cured' | 'ability' }> =>
+  event.type === 'status-applied' ||
+  event.type === 'status-cured' ||
+  (event.type === 'ability' && event.effect === 'shed');
+
 export const eventToMessage = (event: BattleEvent): string => {
   switch (event.type) {
     case 'used-move': {
