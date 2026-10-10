@@ -58,6 +58,8 @@ export interface ComposedDoorway extends GridLink {
   /** The way you face coming out of the other end: away from its doorway. */
   readonly arrivalFacing: Direction;
   readonly look: MapFileLinkEnd['look'];
+  /** What is drawn there to go through, in the composed grid's tiles. */
+  readonly art: Rect;
 }
 
 export interface ComposedMap {
@@ -132,13 +134,51 @@ export function sketchArea(
   const mat = insideMat(area.style);
   for (const link of links) {
     for (const end of link.ends) {
-      if (end.area === area.id && end.look === 'mat') {
+      if (end.area !== area.id) {
+        continue;
+      }
+      if (end.look === 'mat') {
         const x = Math.max(0, Math.min(area.width - 3, end.x - 1));
         sketch.plant(x, end.y, mat);
+      } else if (end.look === 'stairs-up' || end.look === 'stairs-down') {
+        const at = stairsAt(end);
+        if (
+          at.x >= 0 &&
+          at.y >= 0 &&
+          at.x + STAIRS_SIZE.width <= area.width &&
+          end.y + 1 < area.height
+        ) {
+          sketch.plant(at.x, at.y, end.look === 'stairs-up' ? 'stairsUp' : 'stairsDown');
+          // The little rug the way up is stood on, as FireRed lays one beside
+          // every staircase in a house.
+          sketch.plant(end.x, end.y, 'smallRug');
+        }
       }
     }
   }
   return sketch;
+}
+
+/** How much of a room a staircase takes: two tiles wide and three deep, its top row against the back wall. */
+export const STAIRS_SIZE = { width: 2, height: 3 } as const;
+
+/**
+ * Where a staircase stands, from the end of the way through that is gone up
+ * or down it. FireRed puts the way onto a staircase on a little rug beside its
+ * middle row - west of a staircase up, east of one down - and in its own
+ * player's house the two rugs are the same tile of the two floors, so going up
+ * and coming down never moves you across the room. You stand on the rug and
+ * press towards the stairs.
+ */
+export function stairsAt(end: Pick<MapFileLinkEnd, 'x' | 'y' | 'look'>): { x: number; y: number } {
+  return end.look === 'stairs-down'
+    ? { x: end.x - STAIRS_SIZE.width, y: end.y - 1 }
+    : { x: end.x + 1, y: end.y - 1 };
+}
+
+/** The way you press to go onto a staircase from its rug. */
+export function stairsToward(look: 'stairs-up' | 'stairs-down'): 'left' | 'right' {
+  return look === 'stairs-up' ? 'right' : 'left';
 }
 
 /** Where each area lies in the composed grid, and how big that grid is. */
@@ -320,6 +360,7 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
         doorway,
         arrivalFacing: arrivalFacing(to.toward),
         look: from.look,
+        art: artOf(from, landing, doorway),
       });
     }
   }
@@ -332,6 +373,22 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
     doorways,
     tileset: joinedTileset(catalogues),
   };
+}
+
+/** What a way through draws, in the composed grid: the staircase, the mat, or the door. */
+function artOf(end: MapFileLinkEnd, landing: GridPosition, doorway: GridPosition): Rect {
+  if (end.look === 'stairs-up' || end.look === 'stairs-down') {
+    const at = stairsAt(end);
+    return {
+      x: landing.x + (at.x - end.x),
+      y: landing.y + (at.y - end.y),
+      ...STAIRS_SIZE,
+    };
+  }
+  if (end.look === 'mat') {
+    return { x: landing.x - 1, y: landing.y, width: 3, height: 1 };
+  }
+  return { ...doorway, width: 1, height: 1 };
 }
 
 /** The place of a composed map a tile of it is in, or undefined in the dark between. */

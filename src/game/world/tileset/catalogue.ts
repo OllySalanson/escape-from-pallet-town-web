@@ -125,6 +125,14 @@ export interface MaterialTiles {
    * drawn for it, so a map draws them square.
    */
   readonly mound?: readonly (readonly number[])[];
+  /**
+   * Whether the edge of the map is something this material stops against, as
+   * a neighbour that is not it would be. Off the map is ordinarily more of the
+   * same, so a wood run to the edge carries on out of sight; a FireRed room's
+   * floor is shaded down its west side, which is the room's own edge, and only
+   * reads as a room if that edge is drawn.
+   */
+  readonly edgesAtMapEdge?: boolean;
 }
 
 /**

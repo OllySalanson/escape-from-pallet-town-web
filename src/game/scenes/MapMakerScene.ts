@@ -47,6 +47,7 @@ import {
 } from '../maker/drafts';
 import { EditHistory } from '../maker/history';
 import {
+  addUpstairs,
   areaById,
   doorwayAt,
   doorwaysIn,
@@ -932,6 +933,16 @@ export class MapMakerScene extends Phaser.Scene {
       }
       this.showArea(outcome.area);
     });
+    on('[data-add-upstairs]', (element) => {
+      const outcome = addUpstairs(this.file, element.dataset.addUpstairs ?? '');
+      if (!outcome.made) {
+        this.render(outcome.reason);
+        return;
+      }
+      this.history.push(outcome.file);
+      this.scheduleAutosave();
+      this.showArea(outcome.area);
+    });
     on('[data-remove-area]', (element) => {
       const id = element.dataset.removeArea ?? '';
       if (this.pendingAreaRemoval !== id) {
@@ -1606,7 +1617,7 @@ export class MapMakerScene extends Phaser.Scene {
         this.selected = thing;
         this.doorway = doorway ? { link: doorway.link, end: doorway.end } : undefined;
         this.panel = 'map';
-        if (thing || doorway?.at.look === 'mat') {
+        if (thing || (doorway && doorway.at.look !== 'door')) {
           this.stroke = {
             tool: 'select',
             start: tile,
@@ -1703,8 +1714,10 @@ export class MapMakerScene extends Phaser.Scene {
       stroke.last = tile;
       this.previewArea(this.footprint(stroke.carrying, tile));
     } else if (stroke.tool === 'select' && this.doorway) {
-      // A mat is carried along the room's bottom row and nowhere else.
-      stroke.last = { x: tile.x, y: this.view.height - 1 };
+      // A mat is carried along the room's bottom row and nowhere else, and a
+      // staircase along the back wall, its foot on the row it was on.
+      const end = this.file.links?.[this.doorway.link]?.ends[this.doorway.end];
+      stroke.last = { x: tile.x, y: end?.look === 'mat' ? this.view.height - 1 : (end?.y ?? tile.y) };
       this.previewArea({ from: stroke.last, to: stroke.last });
     }
   }

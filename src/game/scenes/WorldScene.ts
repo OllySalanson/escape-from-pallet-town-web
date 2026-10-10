@@ -2102,6 +2102,9 @@ export class WorldScene extends Phaser.Scene {
           text: `${leadsTo.name.toUpperCase()} ${ARROWS[warp.toward]}`,
           tone: LABEL_TONES.route,
           depth: atRow(CAPTION_BAND, warp.source.y),
+          // On the near side of the doorway, so it never covers the door or
+          // the stairs it names: under the tile in front of a door, over a mat.
+          placement: warp.toward === 'down' ? 'above' : 'below',
           speech: { voice: 'name', tiles: [warp.source] },
         }),
       );
@@ -3916,7 +3919,21 @@ export class WorldScene extends Phaser.Scene {
         width: TILE_SIZE,
         height: FIGURE_HEIGHT,
       }));
-    return [...signs, ...crates, ...standing, ...this.watchedGround];
+    // A door, a staircase or a mat is the thing its caption names, and writing
+    // seated over it hides it.
+    const doorways = this.currentMap.warps.flatMap((warp) =>
+      warp.art
+        ? [
+            {
+              x: warp.art.x * TILE_SIZE,
+              y: warp.art.y * TILE_SIZE,
+              width: warp.art.width * TILE_SIZE,
+              height: warp.art.height * TILE_SIZE,
+            },
+          ]
+        : [],
+    );
+    return [...signs, ...crates, ...standing, ...this.watchedGround, ...doorways];
   }
 
   /**

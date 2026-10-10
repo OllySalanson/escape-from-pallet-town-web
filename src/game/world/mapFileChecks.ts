@@ -2,7 +2,14 @@ import { linkTable, type GridLinks, type GridPosition } from '../movement/gridMo
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { HUNTER_SPAWN_DISTANCE } from './hunter';
-import { composeMapFile, doorwayOf, type ComposedMap } from './mapAreas';
+import {
+  composeMapFile,
+  doorwayOf,
+  STAIRS_SIZE,
+  stairsAt,
+  stairsToward,
+  type ComposedMap,
+} from './mapAreas';
 import {
   doorFront,
   fileDoorGates,
@@ -176,7 +183,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const areaName = (end: MapFileLinkEnd): string =>
     end.area === undefined ? 'outside' : (origins.get(end.area)?.name ?? end.area);
   const doorwayName = (end: MapFileLinkEnd, other: MapFileLinkEnd): string =>
-    `The ${end.look === 'mat' ? 'way out' : 'door'} at ${tileOf(end)} to ${areaName(other)}`;
+    `The ${end.look === 'mat' ? 'way out' : end.look === 'door' ? 'door' : 'stairs'} at ${tileOf(end)} to ${areaName(other)}`;
   const landings = fileLinks.flatMap((link) => [
     { spot: link.ends[0], what: doorwayName(link.ends[0], link.ends[1]) },
     { spot: link.ends[1], what: doorwayName(link.ends[1], link.ends[0]) },
@@ -211,6 +218,24 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
             : undefined;
         if (!building || end.toward !== 'up') {
           found.push(`${what} is not in front of a building's door.`);
+        }
+      } else if (end.look === 'stairs-up' || end.look === 'stairs-down') {
+        // A staircase stands against the back wall of a room: the row above
+        // its top is wall, and all of it is on the room.
+        const area = end.area === undefined ? undefined : file.areas?.find((a) => a.id === end.area);
+        const top = stairsAt(end);
+        const fits =
+          area !== undefined &&
+          end.toward === stairsToward(end.look) &&
+          top.x >= 0 &&
+          top.y >= 1 &&
+          top.x + STAIRS_SIZE.width <= area.width &&
+          end.y + 1 < area.height &&
+          [...area.ground[top.y - 1].slice(top.x, top.x + STAIRS_SIZE.width)].every(
+            (letter) => letter === 'B',
+          );
+        if (!fits) {
+          found.push(`${what} has to stand against the back wall of the room.`);
         }
       } else {
         const area = end.area === undefined ? undefined : file.areas?.find((a) => a.id === end.area);

@@ -363,6 +363,33 @@ export const MAP_FILE_FURNITURE = {
   box: 'box',
   boxes: 'boxStack',
   'tall-box': 'tallBox',
+  // FireRed's own house, cut clear of its floor, and its Poké Mart.
+  window: 'window',
+  cupboard: 'cupboard',
+  television: 'television',
+  'kitchen-sink': 'kitchenSink',
+  'small-rug': 'smallRug',
+  'dining-table': 'diningTable',
+  'potted-plant': 'pottedPlant',
+  'computer-desk': 'computerDesk',
+  'tall-drawers': 'tallDrawers',
+  bookshelf: 'bookshelf',
+  notice: 'notice',
+  'single-bed': 'singleBed',
+  rug: 'rug',
+  'mart-counter': 'martCounter',
+  'mart-till': 'martTill',
+  'mart-case': 'martCase',
+  'mart-rack': 'martRack',
+  'mart-racks': 'martRacks',
+  'mart-fridges': 'martFridges',
+  'mart-wall-shelves': 'martWallShelves',
+  'mart-plant': 'martPlant',
+  'mart-poster': 'martPoster',
+  'mart-wall-west': 'martWallWest',
+  'mart-wall-east': 'martWallEast',
+  'mart-corner-west': 'martCornerWest',
+  'mart-corner-east': 'martCornerEast',
 } as const satisfies Record<string, InsidePropName>;
 
 export type MapFileFurnitureKind = keyof typeof MAP_FILE_FURNITURE;
@@ -405,6 +432,13 @@ export const MAP_FILE_BUILDING_DOORS: Readonly<
   'poke-mart': [2, 3],
   'poke-mart-door': [2, 3],
   gym: [3, 4],
+  // Three of the buildings the second palette brought, each measured off its
+  // own drawing: the shed's plank door, the cottage's, and the timber house's
+  // arch. The shop's and the hut's doors are drawn across two cells, and the
+  // tower and the roundhouse have none.
+  shed: [1, 3],
+  'blue-cottage': [3, 2],
+  'timber-house': [2, 4],
 };
 
 /** The tile in front of a building's door - where its link's end stands - or undefined. */
@@ -426,10 +460,12 @@ export const MAP_FILE_INSIDE_LETTERS: readonly string[] = [MATERIAL_CHARS.paving
 
 /**
  * How a way through looks where you go through it: a building's door you
- * walk up to, or the mat inside a room you step off. More looks - a cave's
- * mouth, a ladder, stairs - are more values of this.
+ * walk up to, the mat inside a room you step off, or a staircase in a house -
+ * up from the floor below, down from the floor above - which you walk up to
+ * from the tile in front of its foot. More looks - a cave's mouth, a ladder -
+ * are more values of this.
  */
-export const MAP_FILE_DOORWAY_LOOKS = ['door', 'mat'] as const;
+export const MAP_FILE_DOORWAY_LOOKS = ['door', 'mat', 'stairs-up', 'stairs-down'] as const;
 export type MapFileDoorwayLook = (typeof MAP_FILE_DOORWAY_LOOKS)[number];
 
 /**

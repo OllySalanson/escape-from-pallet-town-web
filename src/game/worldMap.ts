@@ -54,6 +54,11 @@ export interface MapWarp {
   readonly activation: WarpActivation;
   /** The way a `push` warp is pressed. */
   readonly toward?: Direction;
+  /**
+   * What is drawn to go through, in tiles - a door, a staircase, a mat - which
+   * no caption may be seated over: writing over the stairs it names hides them.
+   */
+  readonly art?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
 }
 
 export interface WorldMapDefinition {
@@ -239,6 +244,7 @@ function createComposedMap(
       facing: doorway.arrivalFacing,
       activation: 'push',
       toward: doorway.toward,
+      art: doorway.art,
     })),
     entities: entitiesForMap(id),
     pois: poisForMap(id),

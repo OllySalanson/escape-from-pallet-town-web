@@ -9,6 +9,7 @@ import {
 } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import {
+  addUpstairs,
   doorwaysIn,
   focusArea,
   insideOf,
@@ -19,6 +20,7 @@ import {
   removeArea,
   removeBuilding,
   resizeArea,
+  stairsUpIn,
   withFocusedArea,
 } from './areas';
 import { makerScreen, type MakerViewState } from './makerView';
@@ -50,15 +52,24 @@ describe("a building's inside, as the maker makes it", () => {
     expect(Object.keys(MAP_FILE_FURNITURE).filter((word) => outdoors.has(word))).toEqual([]);
   });
 
-  it('makes a furnished room with its door linked to a mat in the middle of its south wall', () => {
+  it("makes FireRed's own house downstairs, its door linked to a mat at the west end, by the door", () => {
     const { file, area } = withHouse();
     const inside = file.areas?.find((candidate) => candidate.id === area);
-    expect(inside).toMatchObject({ name: 'House', style: 'house', width: 11, height: 8 });
+    expect(inside).toMatchObject({ name: 'House', style: 'house', width: 12, height: 9 });
+    expect(inside?.buildings.map((piece) => piece.kind)).toEqual([
+      'kitchen-sink',
+      'cupboard',
+      'television',
+      'window',
+      'dining-table',
+      'potted-plant',
+      'potted-plant',
+    ]);
     expect(file.links).toEqual([
       {
         ends: [
           { ...doorFront(SAMPLE.buildings[0])!, toward: 'up', look: 'door' },
-          { area, x: 5, y: 7, toward: 'down', look: 'mat' },
+          { area, x: 3, y: 8, toward: 'down', look: 'mat' },
         ],
       },
     ]);
@@ -88,10 +99,36 @@ describe("a building's inside, as the maker makes it", () => {
     }
     expect(file.areas?.map((area) => [area.id, area.name, area.style])).toEqual([
       ['pokemon-center', 'Pokémon Center', 'center'],
-      ['poke-mart', 'Poké Mart', 'lab'],
+      ['poke-mart', 'Poké Mart', 'mart'],
     ]);
     // The sign has no door to give an inside to.
     expect(makeInside(file, 1)).toMatchObject({ made: false });
+    expect(readMapFile(file).ok).toBe(true);
+  });
+
+  it('gives the shed, the blue-roof cottage and the timber house an inside of their own', () => {
+    let file: MapFile = SAMPLE;
+    for (const [kind, x, y] of [
+      ['shed', 4, 15],
+      ['blue-cottage', 22, 12],
+      ['timber-house', 4, 2],
+    ] as const) {
+      const placed = placeBuilding(file, kind, { x, y });
+      if (!placed.placed) {
+        throw new Error(`${kind}: ${placed.reason}`);
+      }
+      file = placed.file;
+      const made = makeInside(file, file.buildings.length - 1);
+      if (!made.made) {
+        throw new Error(made.reason);
+      }
+      file = made.file;
+    }
+    expect(file.areas?.map((area) => [area.name, area.style])).toEqual([
+      ['Shed', 'warehouse'],
+      ['Cottage', 'cottage'],
+      ['House', 'house'],
+    ]);
     expect(readMapFile(file).ok).toBe(true);
   });
 
@@ -150,9 +187,9 @@ describe('editing one place of the map', () => {
     const { file, area } = withHouse();
     const placed = { ...file, itemSpots: [...file.itemSpots, { area, x: 8, y: 5 }] };
     const view = focusArea(placed, area);
-    expect([view.width, view.height]).toEqual([11, 8]);
+    expect([view.width, view.height]).toEqual([12, 9]);
     expect(view.itemSpots).toEqual([{ x: 8, y: 5 }]);
-    expect(view.buildings.map((piece) => piece.kind)).toContain('bed');
+    expect(view.buildings.map((piece) => piece.kind)).toContain('dining-table');
     // The outdoors' view has everything else.
     expect(focusArea(placed, undefined).itemSpots).toEqual(SAMPLE.itemSpots);
   });
@@ -189,12 +226,12 @@ describe('editing one place of the map', () => {
 
   it('puts the mat back against the wall when the room is made smaller or larger', () => {
     const { file, area } = withHouse();
-    const smaller = resizeArea(file, area, 6, 6);
+    const smaller = resizeArea(file, area, 3, 6);
     expect(smaller.areas?.[0]).toMatchObject({ width: 6, height: 6 });
-    expect(doorwaysIn(smaller, area)[0].at).toMatchObject({ x: 5, y: 5, toward: 'down' });
-    const deeper = resizeArea(file, area, 11, 10);
-    expect(deeper.areas?.[0].ground.slice(8)).toEqual(['PPPPPPPPPPP', 'PPPPPPPPPPP']);
-    expect(doorwaysIn(deeper, area)[0].at).toMatchObject({ x: 5, y: 9 });
+    expect(doorwaysIn(smaller, area)[0].at).toMatchObject({ x: 3, y: 5, toward: 'down' });
+    const deeper = resizeArea(file, area, 12, 11);
+    expect(deeper.areas?.[0].ground.slice(9)).toEqual(['PPPPPPPPPPPP', 'PPPPPPPPPPPP']);
+    expect(doorwaysIn(deeper, area)[0].at).toMatchObject({ x: 3, y: 10 });
     expect(checkMapFile(deeper).filter((check) => !check.passed)).toEqual([]);
     // Never smaller than a room can be.
     expect(resizeArea(file, area, 2, 2).areas?.[0]).toMatchObject({ width: 6, height: 5 });
@@ -203,7 +240,7 @@ describe('editing one place of the map', () => {
   it('moves the mat along its wall and nowhere else', () => {
     const { file, area } = withHouse();
     const moved = moveDoorway(file, { link: 0, end: 1 }, { x: 2, y: 3 });
-    expect(doorwaysIn(moved, area)[0].at).toMatchObject({ x: 2, y: 7 });
+    expect(doorwaysIn(moved, area)[0].at).toMatchObject({ x: 2, y: 8 });
     // A building's door end moves with its building, not on its own.
     expect(moveDoorway(file, { link: 0, end: 0 }, { x: 2, y: 3 })).toBe(file);
   });
@@ -319,10 +356,12 @@ describe('the maker screen with an inside', () => {
     expect(markup).toMatch(/maker-area is-selected" data-area="house"/);
     expect(markup).toContain('data-brush="floor"');
     expect(markup).not.toContain('data-brush="tall-grass"');
-    expect(markup).toContain('data-building="bed"');
-    expect(markup).toContain('data-building="desk"');
-    // A lab's shelves carry the lab's floor in them, so a house does not offer them.
+    expect(markup).toContain('data-building="single-bed"');
+    expect(markup).toContain('data-building="rug"');
+    // A lab's shelves and Bill's desk carry their own room's floor in them, so
+    // a house does not offer them.
     expect(markup).not.toContain('data-building="shelves-books"');
+    expect(markup).not.toContain('data-building="desk"');
     expect(markup).toContain('This inside');
     expect(markup).toContain('data-area-style');
     // A field move's doors stand outdoors.
@@ -337,5 +376,94 @@ describe('the maker screen with an inside', () => {
     const markup = makerScreen({ ...state(file, area), doorway: { link: 0, end: 1 } });
     expect(markup).toContain('Way out');
     expect(markup).toContain('back outside');
+  });
+});
+
+describe('a house with an upstairs', () => {
+  it('builds a bedroom above, with stairs up against the east end of the back wall and stairs down above them', () => {
+    const { file, area } = withHouse();
+    const made = addUpstairs(file, area);
+    if (!made.made) {
+      throw new Error(made.reason);
+    }
+    const up = made.file.areas?.find((candidate) => candidate.id === made.area);
+    expect(up).toMatchObject({ name: 'House 2F', style: 'house', width: 12, height: 9 });
+    expect(made.file.links?.at(-1)).toEqual({
+      ends: [
+        { area, x: 9, y: 2, toward: 'right', look: 'stairs-up' },
+        { area: made.area, x: 9, y: 2, toward: 'left', look: 'stairs-down' },
+      ],
+    });
+    expect(stairsUpIn(made.file, area)?.link).toBe(1);
+    expect(checkMapFile(made.file).filter((check) => !check.passed)).toEqual([]);
+    // Once is enough, and only a house has stairs.
+    expect(addUpstairs(made.file, area)).toMatchObject({ made: false });
+    expect(addUpstairs(made.file, 'nowhere')).toMatchObject({ made: false });
+  });
+
+  it('finds the nearest stretch of the back wall with room when the east end is taken', () => {
+    const { file, area } = withHouse();
+    const crowded: MapFile = {
+      ...file,
+      areas: file.areas?.map((inside) =>
+        inside.id === area ? { ...inside, buildings: [...inside.buildings, { kind: 'bookshelf', x: 10, y: 0 }] } : inside,
+      ),
+    };
+    const made = addUpstairs(crowded, area);
+    expect(made.made && made.file.links?.at(-1)?.ends[0]).toMatchObject({ x: 7, y: 2 });
+  });
+
+  it("never stands a third floor's stairs on the second's, and says what to clear when there is no room", () => {
+    const { file, area } = withHouse();
+    const second = addUpstairs(file, area);
+    if (!second.made) {
+      throw new Error(second.reason);
+    }
+    // The bedroom's back wall is its desk, drawers, shelves and the stairs down.
+    expect(addUpstairs(second.file, second.area)).toEqual({
+      made: false,
+      reason: 'Clear a stretch of the back wall three tiles wide for the stairs first.',
+    });
+    const cleared: MapFile = {
+      ...second.file,
+      areas: second.file.areas?.map((inside) =>
+        inside.id === second.area
+          ? { ...inside, buildings: inside.buildings.filter((piece) => piece.kind !== 'bookshelf') }
+          : inside,
+      ),
+    };
+    const third = addUpstairs(cleared, second.area);
+    if (!third.made) {
+      throw new Error(third.reason);
+    }
+    expect(third.file.links?.at(-1)?.ends[0]).toMatchObject({ area: second.area, x: 4, y: 2 });
+    expect(checkMapFile(third.file).filter((check) => !check.passed)).toEqual([]);
+  });
+
+  it('goes with the house: taking the inside away takes the floor above it too', () => {
+    const { file, area } = withHouse();
+    const made = addUpstairs(file, area);
+    if (!made.made) {
+      throw new Error(made.reason);
+    }
+    const removed = removeBuilding(made.file, 0);
+    expect(removed.areas).toEqual([]);
+    expect(removed.links).toEqual([]);
+  });
+
+  it('refuses stairs that do not stand against the back wall', () => {
+    const { file, area } = withHouse();
+    const made = addUpstairs(file, area);
+    if (!made.made) {
+      throw new Error(made.reason);
+    }
+    const loose: MapFile = {
+      ...made.file,
+      links: made.file.links?.map((link, index) =>
+        index === 1 ? { ends: [{ ...link.ends[0], y: 7 }, link.ends[1]] } : link,
+      ),
+    };
+    const doors = checkMapFile(loose).find((check) => check.id === 'doors');
+    expect(doors?.problems.join(' ')).toMatch(/stand against the back wall/);
   });
 });

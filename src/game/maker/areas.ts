@@ -12,9 +12,11 @@ import {
   type MapFileLinkEnd,
   type MapFileOutdoorBuildingKind,
   type MapFileSpot,
+  plantedProp,
 } from '../world/mapFile';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 import { keepOnMap, moveThing, removeThing, type GridPoint, type PlaceOutcome } from './draft';
+import { STAIRS_SIZE, stairsAt } from '../world/mapAreas';
 
 /**
  * The places of a map, as the map maker edits them.
@@ -198,6 +200,8 @@ interface InsideTemplate {
   /** Rows of the room's own ground: `B` wall and `P` floor. */
   readonly ground: readonly string[];
   readonly furniture: readonly MapFileBuilding[];
+  /** The column its mat is in, on its bottom row; the middle when absent. */
+  readonly mat?: number;
 }
 
 const wallAndFloor = (width: number, height: number, wallRows = 2): string[] =>
@@ -232,20 +236,31 @@ function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
       };
     case 'poke-mart':
     case 'poke-mart-door':
+      // FireRed's Poké Mart, piece for piece where the game stands them: the
+      // counter and its till by the door, the shelves down the east side, the
+      // fridges and the wall shelves along the back, and the slanting walls.
       return {
         name: 'Poké Mart',
-        style: 'lab',
+        style: 'mart',
         width: 11,
-        height: 9,
-        ground: wallAndFloor(11, 9),
+        height: 8,
+        ground: wallAndFloor(11, 8),
         furniture: [
-          { kind: 'shelves-jars', x: 6, y: 1 },
-          { kind: 'computers', x: 0, y: 1 },
-          { kind: 'shelves-jars', x: 6, y: 4 },
-          { kind: 'shelves-books', x: 0, y: 4 },
-          { kind: 'plant', x: 0, y: 7 },
-          { kind: 'plant-pot', x: 10, y: 7 },
+          { kind: 'mart-wall-west', x: 0, y: 0 },
+          { kind: 'mart-wall-east', x: 10, y: 0 },
+          { kind: 'mart-plant', x: 1, y: 1 },
+          { kind: 'mart-poster', x: 2, y: 0 },
+          { kind: 'mart-till', x: 3, y: 1 },
+          { kind: 'mart-wall-shelves', x: 4, y: 0 },
+          { kind: 'mart-fridges', x: 7, y: 1 },
+          { kind: 'mart-counter', x: 0, y: 3 },
+          { kind: 'mart-case', x: 1, y: 5 },
+          { kind: 'mart-racks', x: 7, y: 3 },
+          { kind: 'mart-rack', x: 10, y: 3 },
+          { kind: 'mart-corner-west', x: 0, y: 7 },
+          { kind: 'mart-corner-east', x: 10, y: 7 },
         ],
+        mat: 4,
       };
     case 'gym':
       // The Rocket Warehouse's own room: crates along the walls and the floor
@@ -263,25 +278,94 @@ function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
           { kind: 'big-crate', x: 11, y: 9 },
         ],
       };
-    default:
-      // A house: a bed against the back wall, a desk with its PC, a plant in
-      // each front corner either side of the mat.
+    case 'shed':
+      // A shed is somebody's workshop: the Rocket Warehouse's own bench,
+      // stool and stores, which is what Brock's workshop is furnished with.
       return {
-        name: 'House',
-        style: 'house',
+        name: 'Shed',
+        style: 'warehouse',
+        width: 9,
+        height: 7,
+        ground: wallAndFloor(9, 7),
+        furniture: [
+          { kind: 'boxes', x: 0, y: 2 },
+          { kind: 'workbench', x: 3, y: 2 },
+          { kind: 'stool', x: 5, y: 3 },
+          { kind: 'big-crate', x: 7, y: 2 },
+          { kind: 'tall-box', x: 8, y: 4 },
+        ],
+      };
+    case 'blue-cottage':
+      // Bill's house, which this cottage is outside: his PC by the wall, his
+      // desk, his books.
+      return {
+        name: 'Cottage',
+        style: 'cottage',
         width: 11,
         height: 8,
         ground: wallAndFloor(11, 8),
         furniture: [
-          { kind: 'bed', x: 1, y: 2 },
-          { kind: 'desk', x: 6, y: 2 },
+          { kind: 'pc', x: 1, y: 1 },
+          { kind: 'desk', x: 4, y: 2 },
+          { kind: 'books', x: 8, y: 2 },
           { kind: 'drawers', x: 9, y: 2 },
           { kind: 'house-plant', x: 0, y: 6 },
           { kind: 'house-plant', x: 10, y: 6 },
         ],
       };
+    default:
+      return HOUSE_GROUND_FLOOR;
   }
 }
+
+/**
+ * FireRed's own house downstairs, as the player's house in Pallet Town is
+ * furnished: the sink and the cupboard, the television and the window along
+ * the back wall, the table on the floor and a plant in each front corner, and
+ * the mat near the west end where the house's door is. The east end of the
+ * back wall is left clear, which is where a staircase goes (`addUpstairs`).
+ */
+const HOUSE_GROUND_FLOOR: InsideTemplate = {
+  name: 'House',
+  style: 'house',
+  width: 12,
+  height: 9,
+  ground: wallAndFloor(12, 9),
+  furniture: [
+    { kind: 'kitchen-sink', x: 0, y: 1 },
+    { kind: 'cupboard', x: 2, y: 0 },
+    { kind: 'television', x: 5, y: 0 },
+    { kind: 'window', x: 6, y: 0 },
+    { kind: 'dining-table', x: 4, y: 4 },
+    { kind: 'potted-plant', x: 0, y: 6 },
+    { kind: 'potted-plant', x: 11, y: 6 },
+  ],
+  mat: 3,
+};
+
+/** And upstairs: a bedroom, its PC and its shelves, with the stairs down along the back wall. */
+const HOUSE_UPSTAIRS: InsideTemplate = {
+  name: '2F',
+  style: 'house',
+  width: 12,
+  height: 9,
+  ground: wallAndFloor(12, 9),
+  furniture: [
+    { kind: 'computer-desk', x: 0, y: 0 },
+    { kind: 'tall-drawers', x: 2, y: 0 },
+    { kind: 'bookshelf', x: 3, y: 0 },
+    { kind: 'notice', x: 10, y: 0 },
+    { kind: 'single-bed', x: 0, y: 4 },
+    { kind: 'potted-plant', x: 11, y: 6 },
+  ],
+};
+
+/**
+ * Where the stairs down are gone down from in a new upstairs: the rug east of
+ * them, which is where a player arrives. The stairs stand two tiles west of it
+ * against the back wall, as the player's own upstairs has them.
+ */
+const UPSTAIRS_LANDING = { x: 9, y: 2 } as const;
 
 /** The way through a building's door: its outdoor end, if it has one. */
 function doorEnd(building: MapFileBuilding): MapFileLinkEnd | undefined {
@@ -395,7 +479,7 @@ export function makeInside(file: MapFile, buildingIndex: number): InsideOutcome 
   };
   const mat: MapFileLinkEnd = {
     area: area.id,
-    x: Math.floor(area.width / 2),
+    x: template.mat ?? Math.floor(area.width / 2),
     y: area.height - 1,
     toward: 'down',
     look: 'mat',
@@ -411,7 +495,12 @@ export function makeInside(file: MapFile, buildingIndex: number): InsideOutcome 
   };
 }
 
-/** Everything standing in an area, and its own ways through, out of the file. */
+/**
+ * Everything standing in an area, and its own ways through, out of the file -
+ * and then every area that is left with no way into it at all, which is the
+ * upstairs of a house taken away, so nothing is left in the file that nobody
+ * can reach.
+ */
 function withoutArea(file: MapFile, area: string): MapFile {
   const lists = Object.fromEntries(
     PLACED.filter((field) => file[field] !== undefined).map((field) => [
@@ -419,12 +508,16 @@ function withoutArea(file: MapFile, area: string): MapFile {
       ((file[field] ?? []) as readonly Placed[]).filter((thing) => thing.area !== area),
     ]),
   ) as Partial<MapFile>;
-  return {
+  const next: MapFile = {
     ...file,
     ...lists,
     areas: (file.areas ?? []).filter((candidate) => candidate.id !== area),
     links: (file.links ?? []).filter((link) => link.ends.every((end) => end.area !== area)),
   };
+  const stranded = (next.areas ?? []).find(
+    (candidate) => !(next.links ?? []).some((link) => link.ends.some((end) => end.area === candidate.id)),
+  );
+  return stranded ? withoutArea(next, stranded.id) : next;
 }
 
 /**
@@ -503,8 +596,9 @@ export function doorwayAt(
 
 /**
  * Moves the way out of a room along its wall: a mat stays on the room's
- * bottom row, wherever along it the maker drags it. A building's door end
- * moves with its building, never on its own.
+ * bottom row and a staircase against the back wall, wherever along it the
+ * maker drags it. A building's door end moves with its building, never on its
+ * own.
  */
 export function moveDoorway(
   file: MapFile,
@@ -513,18 +607,27 @@ export function moveDoorway(
 ): MapFile {
   const link = file.links?.[doorway.link];
   const end = link?.ends[doorway.end];
-  if (!link || !end || end.look !== 'mat') {
+  const stairs = end?.look === 'stairs-up' || end?.look === 'stairs-down';
+  if (!link || !end || (end.look !== 'mat' && !stairs)) {
     return file;
   }
   const inside = areaById(file, end.area);
   if (!inside) {
     return file;
   }
-  const x = Math.max(0, Math.min(inside.width - 1, to.x));
+  // A staircase moves along the back wall it stands against, its foot on the
+  // row it was on; a mat along the south wall.
+  // A staircase's rug is west of a way up and east of a way down, so the
+  // whole of the staircase stays on the room wherever the rug goes.
+  const lowest = end.look === 'stairs-down' ? STAIRS_SIZE.width : 0;
+  const highest = inside.width - 1 - (end.look === 'stairs-up' ? STAIRS_SIZE.width : 0);
+  const x = Math.max(lowest, Math.min(highest, to.x));
   if (x === end.x) {
     return file;
   }
-  const moved: MapFileLinkEnd = { ...end, x, y: inside.height - 1, toward: 'down' };
+  const moved: MapFileLinkEnd = stairs
+    ? { ...end, x }
+    : { ...end, x, y: inside.height - 1, toward: 'down' };
   return {
     ...file,
     links: file.links.map((candidate, index) =>
@@ -589,4 +692,108 @@ export function resizeArea(file: MapFile, area: string, width: number, height: n
   });
   const view = keepOnMap({ ...focusArea(file, area), width: w, height: h, ground });
   return withFocusedArea(file, area, view);
+}
+
+/** The stairs up out of a room, if it has them. */
+export function stairsUpIn(file: MapFile, area: string): DoorwayInArea | undefined {
+  return doorwaysIn(file, area).find((doorway) => doorway.at.look === 'stairs-up');
+}
+
+/**
+ * Gives a house's room a floor above it: a bedroom, furnished as the player's
+ * own upstairs is, and a staircase up to it standing against this room's back
+ * wall - at its east end, or the nearest stretch of it with room - with the
+ * stairs down in the new room. Only a house has stairs: they are FireRed's
+ * own house's, floor and wall and all.
+ */
+export function addUpstairs(file: MapFile, area: string): InsideOutcome {
+  const below = areaById(file, area);
+  if (!below || below.style !== 'house') {
+    return { made: false, reason: 'Only a house has stairs.' };
+  }
+  if (stairsUpIn(file, area)) {
+    return { made: false, reason: 'It has an upstairs already.' };
+  }
+  if ((file.areas ?? []).length >= MAP_FILE_LIMITS.maxAreas) {
+    return { made: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxAreas} insides.` };
+  }
+  if ((file.links ?? []).length >= MAP_FILE_LIMITS.maxLinks) {
+    return { made: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxLinks} ways through.` };
+  }
+  const view = focusArea(file, area);
+  const standing = [
+    ...view.dropIns,
+    ...view.exits,
+    ...view.itemSpots,
+    ...(view.people ?? []),
+    ...(view.signs ?? []),
+    ...(view.trainers ?? []),
+    ...(view.landmarks ?? []),
+    ...doorwaysIn(file, area).map((doorway) => doorway.at),
+  ];
+  // The stairs and mats the room's ways through stand there too, though they
+  // are not its furniture.
+  const planted = doorwaysIn(file, area).flatMap(({ at }) => {
+    if (at.look === 'mat') {
+      return [{ x: Math.max(0, at.x - 1), y: at.y, width: 3, height: 1 }];
+    }
+    if (at.look === 'stairs-up' || at.look === 'stairs-down') {
+      return [{ ...stairsAt(at), ...STAIRS_SIZE }, { x: at.x, y: at.y, width: 1, height: 2 }];
+    }
+    return [];
+  });
+  const taken = (x: number, y: number): boolean =>
+    view.buildings.some((piece) => {
+      const prop = plantedProp(piece.kind);
+      return x >= piece.x && y >= piece.y && x < piece.x + prop.width && y < piece.y + prop.height;
+    }) ||
+    planted.some((rect) => x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height) ||
+    standing.some((thing) => thing.x === x && thing.y === y);
+  // The stairs' top row is the back wall's lower row, under its upper one, and
+  // their rug is beside their middle row, west of them.
+  const top = 1;
+  const free = (x: number, y: number): boolean =>
+    !taken(x, y) && below.ground[y]?.[x] === MATERIAL_CHARS.paving;
+  const fits = (x: number): boolean => {
+    if (x < 1 || x + STAIRS_SIZE.width > below.width || top + STAIRS_SIZE.height >= below.height) {
+      return false;
+    }
+    if (below.ground[top - 1]?.slice(x, x + STAIRS_SIZE.width) !== 'BB') {
+      return false;
+    }
+    for (let y = top; y < top + STAIRS_SIZE.height; y += 1) {
+      for (let dx = 0; dx < STAIRS_SIZE.width; dx += 1) {
+        if (taken(x + dx, y)) {
+          return false;
+        }
+      }
+    }
+    return free(x - 1, top + 1) && free(x - 1, top + 2);
+  };
+  const column = Array.from({ length: below.width }, (_, index) => below.width - 2 - index).find(fits);
+  if (column === undefined) {
+    return { made: false, reason: 'Clear a stretch of the back wall three tiles wide for the stairs first.' };
+  }
+  const name = freeAreaName(file, `${below.name} 2F`.slice(0, MAP_FILE_LIMITS.maxPlaceNameLength));
+  const up: MapFileArea = {
+    id: freeAreaId(file, name),
+    name,
+    kind: 'inside',
+    style: 'house',
+    width: HOUSE_UPSTAIRS.width,
+    height: HOUSE_UPSTAIRS.height,
+    ground: HOUSE_UPSTAIRS.ground,
+    buildings: HOUSE_UPSTAIRS.furniture,
+  };
+  const link: MapFileLink = {
+    ends: [
+      { area, x: column - 1, y: top + 1, toward: 'right', look: 'stairs-up' },
+      { area: up.id, ...UPSTAIRS_LANDING, toward: 'left', look: 'stairs-down' },
+    ],
+  };
+  return {
+    made: true,
+    area: up.id,
+    file: { ...file, areas: [...(file.areas ?? []), up], links: [...(file.links ?? []), link] },
+  };
 }

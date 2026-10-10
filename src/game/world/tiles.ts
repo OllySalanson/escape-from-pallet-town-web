@@ -213,13 +213,12 @@ export function buildMapLayers(
         // missing only a diagonal: without them that tile drew as plain fill,
         // and the fringe either side of it stopped dead in a square notch.
         const joins = tiles.joins ?? [];
+        const offMapContinues = tiles.edgesAtMapEdge !== true;
         const continues = (dx: number, dy: number): boolean =>
           materialAt(x + dx, y + dy) === material ||
           joins.includes(materialAt(x + dx, y + dy) as Material) ||
-          x + dx < 0 ||
-          y + dy < 0 ||
-          x + dx >= width ||
-          y + dy >= height;
+          (offMapContinues &&
+            (x + dx < 0 || y + dy < 0 || x + dx >= width || y + dy >= height));
         const role = roleFor({
           north: continues(0, -1),
           south: continues(0, 1),
