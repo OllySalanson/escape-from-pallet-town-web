@@ -538,6 +538,12 @@ export const MAKE_ROOM_INVITE = 'Choose what to put down - what you drop stays h
 export const NOTHING_TO_DROP_MESSAGE =
   'Nothing in the pack can be put down - it is all POKéMON.';
 
+/**
+ * BALL with none carried. Not "none left": the base packs medicine for you and
+ * no balls, so on a first raid there were never any to run out of.
+ */
+export const NO_BALLS_MESSAGE = 'There are no POKé BALLS in the pack!';
+
 /** One kind in the pack: what it is, how many, and the squares one stands on. */
 export const formatPackRoomRow = (choice: {
   readonly itemId?: string;

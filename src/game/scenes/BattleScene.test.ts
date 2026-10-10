@@ -1471,7 +1471,7 @@ describe('throwing a ball in a wild battle', () => {
 
     press('BALL x0');
 
-    expect(dialog.shownMessages).toEqual(['No POKé BALLS left!']);
+    expect(dialog.shownMessages).toEqual(['There are no POKé BALLS in the pack!']);
   });
 
   it('applies the Great Ball\'s own 1.5 to the catch roll', () => {
@@ -1547,6 +1547,18 @@ describe('a catch the pack has no room for', () => {
     // the same breath as the first.
     expect(panel.some((text) => text.includes('POKé BALL'))).toBe(false);
     expect(panel.some((text) => text.includes('KEEP THE PACK'))).toBe(true);
+  });
+
+  it('says there is no ball before asking for room, so nothing is put down for a throw that cannot happen', () => {
+    const bag = new Bag({ potion: 18 });
+    const { scene, dialog, press } = open(bag);
+
+    press('BALL x0');
+
+    expect(dialog.shownMessages).toEqual(['There are no POKé BALLS in the pack!']);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    expect((scene as unknown as { mode: string }).mode).not.toBe('make-room');
+    expect(bag.count('potion')).toBe(18);
   });
 
   it('throws the held ball the moment a drop has bought the room', () => {

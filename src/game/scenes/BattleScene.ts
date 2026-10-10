@@ -146,6 +146,7 @@ import {
   MAKE_ROOM_PAGE,
   makeRoomPromptLayout,
   makeRoomRowLayout,
+  NO_BALLS_MESSAGE,
   NOTHING_TO_DROP_MESSAGE,
   weatherSetMessage,
   wildEscapeFailureMessage,
@@ -2123,6 +2124,17 @@ export class BattleScene extends Phaser.Scene {
       this.dialog.showMessage("You can't catch a trainer's POKéMON!");
       return;
     }
+    // No ball is the first answer, before the pack's room: asked the other way
+    // round, a full pack with no ball in it invited the player to put Potions
+    // down for "the ball that follows", lost them for good, and then said
+    // there was no ball to throw.
+    if (!carriedBalls(this.bag)[ballIndex]) {
+      this.mode = 'events';
+      this.commandContainer.setVisible(false);
+      audioManager.play('denied');
+      this.dialog.showMessage(NO_BALLS_MESSAGE);
+      return;
+    }
     // Asked before the ball is spent, and before the roll: a Pokemon that will
     // not fit in the pack must be refused out loud rather than caught and then
     // quietly dropped, and finding out should not cost a ball - whichever ball
@@ -2155,7 +2167,7 @@ export class BattleScene extends Phaser.Scene {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
       audioManager.play('denied');
-      this.dialog.showMessage('No POKé BALLS left!');
+      this.dialog.showMessage(NO_BALLS_MESSAGE);
       return;
     }
 
