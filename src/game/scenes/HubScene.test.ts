@@ -1233,6 +1233,22 @@ describe('what the base screen leads with', () => {
     // The container filled itself with the one Pokemon in the loadout.
     expect(bar).toContain('Charmander · 2 supplies · 1 protected');
   });
+
+  it('counts one packed supply as one supply on the final check, as the loadout bar does', () => {
+    const { hub } = createHub();
+
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.setItemQuantity('potion', 1);
+    hub.setView('deploy');
+    expect(markupOf(hub)).toContain('Charmander · 1 supply · 1 protected');
+
+    readyToDeploy(hub);
+    hub.setView('deploy');
+    const check = markupOf(hub);
+    expect(hub.flow.step).toBe('confirm');
+    expect(check).toContain('1 Pokémon · 1 supply · ');
+    expect(check).not.toContain('1 supplies');
+  });
 });
 
 describe('Brock', () => {

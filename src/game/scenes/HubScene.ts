@@ -1330,7 +1330,7 @@ export class HubScene extends Phaser.Scene {
                 ? formatMoney(moneyHeld(this.stash))
                 : this.view === 'wallmap'
                   ? wallMapNote(this.savedGame)
-                  : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} items`,
+                  : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} ${this.stashItems.length === 1 ? 'item' : 'items'}`,
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
@@ -2750,7 +2750,7 @@ export class HubScene extends Phaser.Scene {
       title: `Deploy to ${insertion.label}`,
       lines: [
         `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · raid clock ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}</span>`,
-        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} supplies · ${this.flow.packName} ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
+        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${this.flow.packName} ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
         `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
       ],
       actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-start data-cursor-start data-help="There is no way back from here: the raid starts.">Enter the raid</button>`,
