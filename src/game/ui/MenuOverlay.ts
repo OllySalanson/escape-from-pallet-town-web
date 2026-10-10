@@ -410,15 +410,21 @@ export class MenuOverlay {
   private markScrollCues(): void {
     const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
     this.root.querySelectorAll<HTMLElement>('.px-scroll').forEach((pane) => {
-      if (unit <= 0 || !hasMoreBelow(pane, unit)) {
+      const scrolled = unit > 0 && pane.scrollTop > 0.5;
+      const more = unit > 0 && hasMoreBelow(pane, unit);
+      const box = pane.getBoundingClientRect();
+      const rows =
+        scrolled || more
+          ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].flatMap((row) =>
+              row.classList.contains('px-wrap') ? lineBoxes(row) : [row.getBoundingClientRect()],
+            )
+          : [];
+      this.markTopCut(pane, box, rows, scrolled ? unit : 0);
+      if (!more) {
         pane.removeAttribute('data-more');
         pane.style.removeProperty('--more-cover');
         return;
       }
-      const box = pane.getBoundingClientRect();
-      const rows = [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].flatMap((row) =>
-        row.classList.contains('px-wrap') ? lineBoxes(row) : [row.getBoundingClientRect()],
-      );
       const cover = scrollCoverHeight(box, rows, unit);
       pane.style.setProperty('--more-cover', `${cover}px`);
       // The strip says how much is down there, because "there is more" is not
@@ -429,6 +435,60 @@ export class MenuOverlay {
       pane.setAttribute('data-more', moreLabel(entries, box.bottom - cover));
     });
   }
+
+  /**
+   * The pane's top edge, given the same care as its foot. The cursor scrolls a
+   * row into view by just enough to show it, so walking down Brock's ladder
+   * left the row above it sliced through its name at the top of the pane - a
+   * row with no top half, which reads as a fault rather than as "more above".
+   * Nothing is drawn there, because the pane's heading already sits above it:
+   * the sliver is simply not shown (`.px-scroll[data-above]`), down to the
+   * first whole row. Measured below a sticky head, which is where rows are cut.
+   */
+  private markTopCut(
+    pane: HTMLElement,
+    box: DOMRect,
+    rows: readonly { readonly top: number; readonly bottom: number }[],
+    unit: number,
+  ): void {
+    const head = Number.parseFloat(pane.style.scrollPaddingTop) || 0;
+    const cover = unit > 0 ? scrollTopCoverHeight(box, head, rows, unit) : 0;
+    if (cover <= 0) {
+      pane.removeAttribute('data-above');
+      return;
+    }
+    pane.setAttribute('data-above', '');
+    pane.style.setProperty('--above-head', `${head}px`);
+    pane.style.setProperty('--above-cover', `${cover}px`);
+    // A mask would take the top of the scrollbar's track with the rows, so
+    // the stylesheet leaves the bar's own width drawn.
+    pane.style.setProperty('--above-bar', `${Math.max(0, pane.offsetWidth - pane.clientWidth)}px`);
+  }
+}
+
+/**
+ * How much of a scrolled pane's top to leave undrawn so that no row is shown
+ * cut through its waist: from the line the rows scroll under (the pane's top,
+ * below any sticky head) down to the foot of the lowest row that line runs
+ * through, in whole game pixels. Zero when the line falls between rows, and
+ * zero for a row so tall that hiding its sliver would hide most of the pane.
+ */
+export function scrollTopCoverHeight(
+  pane: { readonly top: number; readonly bottom: number },
+  head: number,
+  rows: readonly { readonly top: number; readonly bottom: number }[],
+  unit: number,
+): number {
+  const line = pane.top + head;
+  const cut = rows.filter((row) => row.top < line - 0.5 && row.bottom > line + 0.5);
+  if (cut.length === 0) {
+    return 0;
+  }
+  const cover = Math.max(...cut.map((row) => row.bottom)) - line;
+  if (cover > ((pane.bottom - line) * 3) / 4) {
+    return 0;
+  }
+  return Math.ceil(cover / unit - 0.001) * unit;
 }
 
 /**

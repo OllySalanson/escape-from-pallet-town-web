@@ -1303,6 +1303,20 @@ button {
     linear-gradient(rgb(23 23 23 / 25%), rgb(23 23 23 / 25%)) 0 0 / 100% var(--u) no-repeat,
     linear-gradient(var(--fill, var(--cream)), var(--fill, var(--cream)));
 }
+/* The pane's top edge never cuts a row through its waist either. The cursor
+   scrolls a row into view by just enough to show it, which left the row above
+   it sliced through its name; `MenuOverlay.markTopCut()` marks the sliver, and
+   it is masked out below any sticky head, leaving the scrollbar drawn. A mask
+   rather than a strip, because a box at the top of a grid list takes a gap of
+   its own and would shift every row it was meant to cover. A pane that is
+   itself a window is left alone: its frame is drawn in that band. */
+:where(.pixel-ui) .px-scroll[data-above]:not(.px-window) {
+  --above-edge: calc(var(--above-head) + var(--above-cover));
+  mask:
+    linear-gradient(#000, #000) right / var(--above-bar) 100% no-repeat,
+    linear-gradient(#000 var(--above-head), transparent var(--above-head) var(--above-edge), #000 var(--above-edge))
+      left / calc(100% - var(--above-bar)) 100% no-repeat;
+}
 /* The track is drawn, not implied: a thumb on a transparent track says how far
    down you are only if you can see how far down there is to go. */
 :where(.pixel-ui) .px-scroll::-webkit-scrollbar,

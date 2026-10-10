@@ -14,7 +14,7 @@ import { setActiveSaveSlot, setTryItRules } from '../dev/playtestMode';
 import { beginTry, endTry } from '../maker/tryIt';
 import type { ExtractionReport } from '../run/extractionReport';
 import type { MapFile } from '../world/mapFile';
-import { hasMoreBelow, moreLabel, scrollCoverHeight } from '../ui/MenuOverlay';
+import { hasMoreBelow, moreLabel, scrollCoverHeight, scrollTopCoverHeight } from '../ui/MenuOverlay';
 import { ExtractionScene } from './ExtractionScene';
 
 /**
@@ -67,6 +67,24 @@ describe('the result screen ledger', () => {
     expect(scrollCoverHeight(pane, [{ top: 0, bottom: 78 }, { top: 81, bottom: 128 }], 3)).toBe(39);
     // A row that would swallow most of the pane is cut rather than hide it.
     expect(scrollCoverHeight(pane, [{ top: 20, bottom: 300 }], 3)).toBe(39);
+  });
+
+  it('hides a row the top of a scrolled pane cuts through, down to the first whole row', () => {
+    // Brock's ladder, walked down with the arrow keys: the pane scrolled 188px
+    // and left SECURE LOCKER I with 32 of its 56 pixels showing.
+    const pane = { top: 200, bottom: 516 };
+    const rows = [
+      { top: 176, bottom: 232 },
+      { top: 234, bottom: 314 },
+    ];
+    expect(scrollTopCoverHeight(pane, 0, rows, 3)).toBe(33);
+    // A line that falls between two rows leaves nothing to hide.
+    expect(scrollTopCoverHeight(pane, 0, [{ top: 120, bottom: 200 }, ...rows.slice(1)], 3)).toBe(0);
+    // Under a sticky head, the cut is measured at the head's foot.
+    expect(scrollTopCoverHeight(pane, 34, rows, 3)).toBe(0);
+    expect(scrollTopCoverHeight(pane, 40, rows, 3)).toBe(75);
+    // A row that would swallow most of the pane is cut rather than hide it.
+    expect(scrollTopCoverHeight(pane, 0, [{ top: 100, bottom: 480 }], 3)).toBe(0);
   });
 
   it('counts what is under the strip rather than only saying there is something', () => {
