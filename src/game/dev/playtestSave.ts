@@ -142,7 +142,8 @@ export function withEverythingCurrent(progress: RaidProgress): RaidProgress {
 
 export function createPlaytestStash(): Stash {
   const stash = new Stash();
-  stash.addPokemon(built(CHARIZARD, 99, CHARIZARD_MOVES));
+  // The Charizard is the partner, so the explorer run has someone at its heel.
+  stash.adoptPartner(stash.addPokemon(built(CHARIZARD, 99, CHARIZARD_MOVES)));
   for (const [base, level] of BENCH) {
     stash.addPokemon(built(base, level));
   }

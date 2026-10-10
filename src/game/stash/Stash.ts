@@ -98,6 +98,11 @@ export interface StashContents {
    * Pokemon no box names is put in the first box with room.
    */
   readonly boxes?: readonly StashBox[];
+  /**
+   * The stash id of the partner - the very Pokemon the player picked as their
+   * starter - or null once it is gone. See `Stash.partner()`.
+   */
+  readonly partnerId?: string | null;
 }
 
 /**
@@ -222,9 +227,11 @@ export class Stash {
   private readonly bag: Bag;
   /** Every stored Pokemon is in exactly one of these, and there is always one. */
   private readonly boxes: { name: string; pokemonIds: string[] }[] = [];
+  private partnerStashId: string | null = null;
 
   public constructor(contents: Partial<StashContents> = {}) {
     this.storedPokemon = [...(contents.pokemon ?? [])];
+    this.adoptPartner(contents.partnerId ?? null);
     // The vault has no size. A grid is what a raid is carried in; what a
     // player has banked is a warehouse, and capping it would make banking a
     // thing that can fail.
@@ -239,6 +246,35 @@ export class Stash {
    */
   public listPokemon(): readonly StashedPokemon[] {
     return [...this.storedPokemon];
+  }
+
+  /**
+   * The partner: the one Pokemon the player picked as their starter, evolved
+   * or not, and nothing else - which is what walks behind them round the
+   * harbour.
+   *
+   * It is a Pokemon, never a species. A wipe that takes the partner re-issues
+   * a fresh level-5 of the same species under the same stash id (`charmander-1`
+   * is free again), and that newcomer is a replacement rather than the friend
+   * who was lost, so the mark is cleared the moment the partner leaves the
+   * vault (`removePokemon`) - every way a Pokemon can leave goes through there
+   * - and only a new game (`createStartingStash`) or a swap of the partner
+   * itself (`swapStarter`) ever sets one.
+   */
+  public partner(): StashedPokemon | undefined {
+    return this.partnerStashId === null
+      ? undefined
+      : this.storedPokemon.find((stored) => stored.id === this.partnerStashId);
+  }
+
+  public partnerId(): string | null {
+    return this.partnerStashId;
+  }
+
+  /** Marks one stored Pokemon as the partner, or none. An id the vault does not hold marks none. */
+  public adoptPartner(id: string | null): void {
+    this.partnerStashId =
+      id !== null && this.storedPokemon.some((stored) => stored.id === id) ? id : null;
   }
 
   public listBoxes(): readonly StashBox[] {
@@ -338,6 +374,9 @@ export class Stash {
 
     for (const box of this.boxes) {
       box.pokemonIds = box.pokemonIds.filter((boxed) => boxed !== id);
+    }
+    if (this.partnerStashId === id) {
+      this.partnerStashId = null;
     }
     return this.storedPokemon.splice(index, 1)[0].pokemon;
   }
@@ -609,10 +648,16 @@ export class Stash {
 
     const incoming = starterInConditionOf(outgoing.pokemon, starter);
     const box = Math.max(0, this.boxIndexOf(outgoing.id));
+    const wasPartner = this.partnerStashId === outgoing.id;
     this.removePokemon(outgoing.id);
     const id = this.addPokemon(incoming);
     // The partner stays where the old one was kept.
     this.movePokemon(id, box);
+    // A change of species and nothing else, so a partner swapped is still the
+    // partner, and a replacement swapped is still a replacement.
+    if (wasPartner) {
+      this.partnerStashId = id;
+    }
     return true;
   }
 
@@ -800,6 +845,8 @@ export function createStartingStash(starter = BULBASAUR): Stash {
   // player who had lost everything.
   stash.ensureAPack();
   stash.ensurePlayable(starter);
+  // The one Pokemon in a new vault is the one the player just picked.
+  stash.adoptPartner(stash.listPokemon()[0]?.id ?? null);
   return stash;
 }
 

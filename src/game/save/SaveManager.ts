@@ -50,6 +50,7 @@ import {
 } from '../pokemon';
 import { Bag, type BagContents } from '../items/Bag';
 import { typeRefusesStatus, type PrimaryStatus } from '../pokemon/battle/status';
+import { evolutionFamily } from '../pokemon/evolution';
 import type { PokemonType } from '../pokemon/PokemonType';
 import type { GridPosition } from '../movement/gridMovement';
 import {
@@ -118,6 +119,13 @@ export interface SavedStash {
    * anything no box names is put in the first box with room (`Stash`).
    */
   readonly boxes?: readonly SavedStashBox[];
+  /**
+   * The stash id of the partner, the very Pokemon picked as the starter, or
+   * null once it has been lost. Absent on every save written before the
+   * partner was recorded, which is read as the strongest Pokemon of the
+   * starter's line (`inferPartnerId`) - so no version bump.
+   */
+  readonly partnerId?: string | null;
 }
 
 export interface RaidProgress {
@@ -1224,6 +1232,12 @@ export function deserializeGame(value: unknown): RestoredGame | null {
   // Satchel (`MINIMUM_SUPPLIES`), so a vault that has ever been loaded since is
   // never packless again.
   stash.ensureAPack();
+  const starterSpeciesId = deserializeStarterSpeciesId(value.starterSpeciesId) ?? inferStarterSpeciesId(stash);
+  // Undefined is a save from before the partner was recorded; null is one
+  // whose partner has been lost, and stays lost.
+  if (!isRecord(value.stash) || value.stash.partnerId === undefined) {
+    stash.adoptPartner(inferPartnerId(stash, starterSpeciesId));
+  }
   return {
     party: new PokemonParty(carriedIntoVault ? [] : pokemon),
     mapId,
@@ -1234,7 +1248,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     bag: new Bag(carriedIntoVault ? {} : bagContents(value.bag), null),
     stash,
     raidProgress: deserializeRaidProgress(value.raidProgress),
-    starterSpeciesId: deserializeStarterSpeciesId(value.starterSpeciesId) ?? inferStarterSpeciesId(stash),
+    starterSpeciesId,
     pendingRecoveryMs: clampPendingRecoveryMs(value.pendingRecoveryMs),
     wardTreatmentsUsed: clampWardTreatmentsUsed(value.wardTreatmentsUsed),
     traderRationUsed: clampTraderCount(value.traderRationUsed),
@@ -1506,6 +1520,7 @@ function serializeStash(stash: Stash): SavedStash {
     pokemon: stash.listPokemon().map(({ id, pokemon }) => ({ id, pokemon: serializePokemon(pokemon) })),
     items: stash.listItems(),
     boxes: stash.listBoxes().map(({ name, pokemonIds }) => ({ name, pokemonIds: [...pokemonIds] })),
+    partnerId: stash.partnerId(),
   };
 }
 
@@ -1545,7 +1560,34 @@ function deserializeStash(value: unknown, saveVersion: number): Stash {
         .map((entry) => deserializeStashedPokemon(entry, saveVersion))
         .filter((entry): entry is { id: string; pokemon: Pokemon } => entry !== null)
     : [];
-  return new Stash({ pokemon, items: bagContents(value.items), boxes: deserializeBoxes(value.boxes) });
+  return new Stash({
+    pokemon,
+    items: bagContents(value.items),
+    boxes: deserializeBoxes(value.boxes),
+    // A save written before the partner was recorded has none here, and
+    // `deserializeGame` settles it, because only it knows the starter's line.
+    partnerId: typeof value.partnerId === 'string' ? value.partnerId : null,
+  });
+}
+
+/**
+ * Which stored Pokemon a save written before the partner was recorded meant
+ * by it: the strongest of the starter's line, evolved or not, first kept on a
+ * tie. A save cannot say whether that Pokemon is the original or a re-issue,
+ * so the old save is given the benefit of the doubt - its oldest friend walks
+ * with it - rather than being told it lost one it may never have lost.
+ */
+function inferPartnerId(stash: Stash, starterSpeciesId: StarterSpeciesId | null): string | null {
+  if (starterSpeciesId === null) {
+    return null;
+  }
+  const line = new Set(evolutionFamily(starterSpeciesId).map((species) => species.id));
+  const candidates = stash.listPokemon().filter(({ pokemon }) => line.has(pokemon.base.id));
+  const strongest = candidates.reduce<(typeof candidates)[number] | undefined>(
+    (best, entry) => (best === undefined || entry.pokemon.experience > best.pokemon.experience ? entry : best),
+    undefined,
+  );
+  return strongest?.id ?? null;
 }
 
 function deserializeStashedPokemon(

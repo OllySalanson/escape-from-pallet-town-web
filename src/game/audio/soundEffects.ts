@@ -184,6 +184,19 @@ export const SOUND_EFFECTS = {
     moment: 'Stepping back out from under a roof, into the light',
     tones: [sweep(tri(196, 0.18, 0.05), 392)],
   },
+  partnerAppear: {
+    channel: 'world',
+    moment: 'The partner pops out at the harbour, beside the player',
+    // A soft rising blip: something small arriving, not a door or a warp.
+    tones: [sweep(tri(523, 0.07, 0.05), 784), tri(1047, 0.05, 0.05, 0.06)],
+  },
+  partnerHappy: {
+    channel: 'world',
+    moment: 'The partner hops and chirps - spoken to, greeting the player home, or just pleased',
+    // Two quick bright notes and a lift, the shape of a little cry, and quiet
+    // enough to sound now and then in the yard without becoming a noise.
+    tones: [sq(988, 0.05, 0.05), sq(1319, 0.05, 0.045, 0.06), sweep(sq(1175, 0.08, 0.04, 0.12), 1480)],
+  },
   lootPickup: {
     channel: 'world',
     moment: 'Loose loot picked up',
