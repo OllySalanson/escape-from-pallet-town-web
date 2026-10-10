@@ -50,6 +50,15 @@ describe("what the things in THE BOLTHOLE say", () => {
     expect(lines[2]).toContain('Pokémon for you');
   });
 
+  it('names only what Bill is keeping, never a purse of nothing', () => {
+    const broke = baseGame();
+    expect(broke.stash.itemCount('money')).toBe(0);
+    const count = broke.stash.listPokemon().length;
+    expect(pcLines(broke).at(-1)).toBe(`Bill is keeping ${count} Pokémon for you.`);
+    broke.stash.addItem('money', 40);
+    expect(pcLines(broke).at(-1)).toBe(`Bill is keeping ₽40 and ${count} Pokémon for you.`);
+  });
+
   it('turns the calendar a day for every raid', () => {
     expect(calendarDay(baseGame())).toBe(1);
     expect(calendarLines(baseGame())[0]).toContain('DAY 1');
