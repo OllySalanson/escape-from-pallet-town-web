@@ -72,24 +72,43 @@ export function whereLine(row: Pick<FeedbackRow, 'context'>): string {
   return parts.join(' - ');
 }
 
-/** The first words of a message, for a one-line announcement. */
-export function gist(row: Pick<FeedbackRow, 'message' | 'voice_ms'>, length = 60): string {
-  const words = row.message.replace(/\s+/g, ' ').trim();
+/**
+ * What kind of message it is, never what it says: "words", "voice 0:42" or
+ * both. The announcement line is read by an agent as well as by the owner, and
+ * a stranger's words quoted into it would be a stranger writing into that
+ * agent's instructions - so the words stay in the folder and on the list page,
+ * where they are read as what they are.
+ */
+export function kindOf(row: Pick<FeedbackRow, 'message' | 'voice_ms'>): string {
+  const words = row.message.trim().length > 0;
   const voice = row.voice_ms > 0 ? `voice ${voiceTime(row.voice_ms)}` : '';
-  if (!words) {
-    return voice ? `(${voice})` : '(empty)';
-  }
-  const cut = words.length > length ? `${words.slice(0, length - 3)}...` : words;
-  return voice ? `"${cut}" + ${voice}` : `"${cut}"`;
+  return [words ? 'words' : '', voice].filter(Boolean).join(' + ') || 'empty';
+}
+
+/**
+ * The screens the game names (`feedbackContext.ts`'s SCREEN_NAMES). Anything
+ * else in a row came from a hand-made request, not the game, and is not
+ * repeated: the database checks a tag's shape but cannot check this.
+ */
+export const KNOWN_SCREENS = new Set([
+  'Loading', 'Title screen', 'Choosing a starter', 'The Harbour', 'Base screen', 'Raid', 'Battle',
+  'Raid party', 'Raid pack', 'Field guide', 'Raid result', 'Map maker', 'Test lab', 'Unknown',
+]);
+
+export function screenOf(row: Pick<FeedbackRow, 'context'>): string {
+  const screen = row.context.screen ?? 'Unknown';
+  return KNOWN_SCREENS.has(screen) ? screen : 'an unknown screen';
 }
 
 /** The one line a check prints when something new has come in, and nothing otherwise. */
-export function announcement(rows: readonly Pick<FeedbackRow, 'tag' | 'message' | 'voice_ms'>[]): string | null {
+export function announcement(
+  rows: readonly Pick<FeedbackRow, 'tag' | 'message' | 'voice_ms' | 'context'>[],
+): string | null {
   if (rows.length === 0) {
     return null;
   }
-  const shown = rows.slice(0, 3).map((row) => `${row.tag} ${gist(row, 40)}`);
-  const more = rows.length > 3 ? `, and ${rows.length - 3} more` : '';
+  const shown = rows.slice(0, 5).map((row) => `${row.tag} (${screenOf(row)}, ${kindOf(row)})`);
+  const more = rows.length > 5 ? `, and ${rows.length - 5} more` : '';
   return `Pallet Town: ${rows.length} new player note${rows.length === 1 ? '' : 's'} - ${shown.join('; ')}${more}`;
 }
 
