@@ -390,8 +390,8 @@ describe('a house with an upstairs', () => {
     expect(up).toMatchObject({ name: 'House 2F', style: 'house', width: 12, height: 9 });
     expect(made.file.links?.at(-1)).toEqual({
       ends: [
-        { area, x: 10, y: 4, toward: 'up', look: 'stairs-up' },
-        { area: made.area, x: 7, y: 4, toward: 'up', look: 'stairs-down' },
+        { area, x: 9, y: 2, toward: 'right', look: 'stairs-up' },
+        { area: made.area, x: 9, y: 2, toward: 'left', look: 'stairs-down' },
       ],
     });
     expect(stairsUpIn(made.file, area)?.link).toBe(1);
@@ -410,20 +410,33 @@ describe('a house with an upstairs', () => {
       ),
     };
     const made = addUpstairs(crowded, area);
-    expect(made.made && made.file.links?.at(-1)?.ends[0]).toMatchObject({ x: 8, y: 4 });
+    expect(made.made && made.file.links?.at(-1)?.ends[0]).toMatchObject({ x: 7, y: 2 });
   });
 
-  it('builds a third floor beside the stairs up to the second, never on them', () => {
+  it("never stands a third floor's stairs on the second's, and says what to clear when there is no room", () => {
     const { file, area } = withHouse();
     const second = addUpstairs(file, area);
     if (!second.made) {
       throw new Error(second.reason);
     }
-    const third = addUpstairs(second.file, second.area);
+    // The bedroom's back wall is its desk, drawers, shelves and the stairs down.
+    expect(addUpstairs(second.file, second.area)).toEqual({
+      made: false,
+      reason: 'Clear a stretch of the back wall three tiles wide for the stairs first.',
+    });
+    const cleared: MapFile = {
+      ...second.file,
+      areas: second.file.areas?.map((inside) =>
+        inside.id === second.area
+          ? { ...inside, buildings: inside.buildings.filter((piece) => piece.kind !== 'bookshelf') }
+          : inside,
+      ),
+    };
+    const third = addUpstairs(cleared, second.area);
     if (!third.made) {
       throw new Error(third.reason);
     }
-    expect(third.file.links?.at(-1)?.ends[0]).toMatchObject({ area: second.area, x: 5, y: 4 });
+    expect(third.file.links?.at(-1)?.ends[0]).toMatchObject({ area: second.area, x: 4, y: 2 });
     expect(checkMapFile(third.file).filter((check) => !check.passed)).toEqual([]);
   });
 

@@ -142,25 +142,26 @@ try {
   report('pressing into the door goes in, onto the mat, facing in', inHouse.area === 'House' && inHouse.facing === 'up', JSON.stringify(inHouse));
   await shot('play-2-inside');
   // Up the stairs and back down them: stand at the foot of each and press up.
-  const stairs = await evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const area = (tile) => w.currentMap.areas.find(({ rect }) => tile.x >= rect.x && tile.y >= rect.y && tile.x < rect.x + rect.width && tile.y < rect.y + rect.height)?.name; const up = w.currentMap.warps.find((warp) => area(warp.source) === 'House' && area(warp.destination) === 'House 2F'); return up ? { from: up.source, to: up.destination } : null; })()`);
+  const stairs = await evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const area = (tile) => w.currentMap.areas.find(({ rect }) => tile.x >= rect.x && tile.y >= rect.y && tile.x < rect.x + rect.width && tile.y < rect.y + rect.height)?.name; const up = w.currentMap.warps.find((warp) => area(warp.source) === 'House' && area(warp.destination) === 'House 2F'); const down = w.currentMap.warps.find((warp) => area(warp.source) === 'House 2F' && area(warp.destination) === 'House'); return up && down ? { from: up.source, to: up.destination, up: up.toward, down: down.toward } : null; })()`);
+  const keyFor = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
   const standAt = (tile) => evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); const off = w.player.y - w.currentTile.y * 16; w.currentTile = { x: ${tile.x}, y: ${tile.y} }; w.setPlayerPosition(${tile.x} * 16, ${tile.y} * 16 + off); w.facing = 'up'; })()`);
   await standAt(stairs.from);
   await wait(300);
-  await page.keyDown('ArrowUp');
+  await page.keyDown(keyFor[stairs.up]);
   await wait(300);
-  await page.keyUp('ArrowUp');
+  await page.keyUp(keyFor[stairs.up]);
   await wait(1200);
   const upstairs = await evaluate(`(() => { const w = ${GAME}.scene.getScene('world'); return { tile: w.currentTile, area: w.currentArea()?.name }; })()`);
-  report('pressing up at the foot of the stairs goes up them', upstairs.area === 'House 2F' && upstairs.tile.x === stairs.to.x && upstairs.tile.y === stairs.to.y, JSON.stringify(upstairs));
+  report('pressing towards the stairs from their rug goes up them', upstairs.area === 'House 2F' && upstairs.tile.x === stairs.to.x && upstairs.tile.y === stairs.to.y, JSON.stringify(upstairs));
   await shot('play-2b-upstairs');
   // One press, facing away from the stairs as a player arrives: it turns and
   // goes down in the same press.
-  await page.keyDown('ArrowUp');
+  await page.keyDown(keyFor[stairs.down]);
   await wait(300);
-  await page.keyUp('ArrowUp');
+  await page.keyUp(keyFor[stairs.down]);
   await wait(1200);
   const downstairs = await evaluate(`${GAME}.scene.getScene('world').currentArea()?.name`);
-  report('and pressing up at the foot of the stairs down comes back down', downstairs === 'House', String(downstairs));
+  report('and pressing towards the stairs down from their rug comes back down', downstairs === 'House', String(downstairs));
   await standAt({ x: inHouse.tile.x, y: inHouse.tile.y });
   await wait(300);
   await page.keyDown('ArrowDown');

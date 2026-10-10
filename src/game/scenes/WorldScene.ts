@@ -2104,7 +2104,7 @@ export class WorldScene extends Phaser.Scene {
           depth: atRow(CAPTION_BAND, warp.source.y),
           // On the near side of the doorway, so it never covers the door or
           // the stairs it names: under the tile in front of a door, over a mat.
-          placement: warp.toward === 'up' ? 'below' : 'above',
+          placement: warp.toward === 'down' ? 'above' : 'below',
           speech: { voice: 'name', tiles: [warp.source] },
         }),
       );

@@ -140,8 +140,16 @@ export function sketchArea(
         sketch.plant(x, end.y, mat);
       } else if (end.look === 'stairs-up' || end.look === 'stairs-down') {
         const at = stairsAt(end);
-        if (at.x >= 0 && at.y >= 0 && at.x + STAIRS_SIZE.width <= area.width) {
+        if (
+          at.x >= 0 &&
+          at.y >= 0 &&
+          at.x + STAIRS_SIZE.width <= area.width &&
+          end.y + 1 < area.height
+        ) {
           sketch.plant(at.x, at.y, end.look === 'stairs-up' ? 'stairsUp' : 'stairsDown');
+          // The little rug the way up is stood on, as FireRed lays one beside
+          // every staircase in a house.
+          sketch.plant(end.x, end.y, 'smallRug');
         }
       }
     }
@@ -154,10 +162,21 @@ export const STAIRS_SIZE = { width: 2, height: 3 } as const;
 
 /**
  * Where a staircase stands, from the end of the way through that is gone up
- * it: the tile in front of its foot, pressing up into its bottom-left cell.
+ * or down it. FireRed puts the way onto a staircase on a little rug beside its
+ * middle row - west of a staircase up, east of one down - and in its own
+ * player's house the two rugs are the same tile of the two floors, so going up
+ * and coming down never moves you across the room. You stand on the rug and
+ * press towards the stairs.
  */
-export function stairsAt(end: Pick<MapFileLinkEnd, 'x' | 'y'>): { x: number; y: number } {
-  return { x: end.x, y: end.y - STAIRS_SIZE.height };
+export function stairsAt(end: Pick<MapFileLinkEnd, 'x' | 'y' | 'look'>): { x: number; y: number } {
+  return end.look === 'stairs-down'
+    ? { x: end.x - STAIRS_SIZE.width, y: end.y - 1 }
+    : { x: end.x + 1, y: end.y - 1 };
+}
+
+/** The way you press to go onto a staircase from its rug. */
+export function stairsToward(look: 'stairs-up' | 'stairs-down'): 'left' | 'right' {
+  return look === 'stairs-up' ? 'right' : 'left';
 }
 
 /** Where each area lies in the composed grid, and how big that grid is. */

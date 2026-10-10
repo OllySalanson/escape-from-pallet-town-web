@@ -336,18 +336,21 @@ describe("FireRed's own house, inside", () => {
     const composed = composeMapFile(up.file);
     const below = composed.areas[1].rect;
     const above = composed.areas[2].rect;
-    // The staircase's three rows stand on the room, solid, over its foot.
+    // The staircase's three rows stand against the back wall, solid, with the
+    // rug its way up is stood on beside its middle row - the same tile of
+    // both floors, as FireRed's own house has it.
     for (let y = 1; y <= 3; y += 1) {
       expect(composed.layers.detail.tiles[below.y + y][below.x + 10]).toBeGreaterThan(0);
       expect(composed.layers.collision[below.y + y][below.x + 10]).toBe(true);
     }
-    expect(composed.layers.collision[below.y + 4][below.x + 10]).toBe(false);
+    expect(composed.layers.collision[below.y + 2][below.x + 9]).toBe(false);
+    expect(composed.layers.detail.tiles[below.y + 2][below.x + 9]).toBe(areaTile('house.rugSmall'));
     const upward = composed.doorways.find((doorway) => doorway.look === 'stairs-up');
     expect(upward).toMatchObject({
-      from: { x: below.x + 10, y: below.y + 4 },
-      toward: 'up',
-      to: { x: above.x + 7, y: above.y + 4 },
-      arrivalFacing: 'down',
+      from: { x: below.x + 9, y: below.y + 2 },
+      toward: 'right',
+      to: { x: above.x + 9, y: above.y + 2 },
+      arrivalFacing: 'right',
     });
     expect(checkMapFile(up.file).filter((check) => !check.passed)).toEqual([]);
   });

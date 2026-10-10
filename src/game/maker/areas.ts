@@ -343,7 +343,7 @@ const HOUSE_GROUND_FLOOR: InsideTemplate = {
   mat: 3,
 };
 
-/** And upstairs: a bedroom, its PC and its shelves, with the stairs down in the middle of the back wall. */
+/** And upstairs: a bedroom, its PC and its shelves, with the stairs down along the back wall. */
 const HOUSE_UPSTAIRS: InsideTemplate = {
   name: '2F',
   style: 'house',
@@ -355,14 +355,17 @@ const HOUSE_UPSTAIRS: InsideTemplate = {
     { kind: 'tall-drawers', x: 2, y: 0 },
     { kind: 'bookshelf', x: 3, y: 0 },
     { kind: 'notice', x: 10, y: 0 },
-    { kind: 'small-rug', x: 10, y: 2 },
     { kind: 'single-bed', x: 0, y: 4 },
     { kind: 'potted-plant', x: 11, y: 6 },
   ],
 };
 
-/** Where the stairs down stand in a new upstairs: the foot of them, which is where a player arrives. */
-const UPSTAIRS_LANDING = { x: 7, y: 4 } as const;
+/**
+ * Where the stairs down are gone down from in a new upstairs: the rug east of
+ * them, which is where a player arrives. The stairs stand two tiles west of it
+ * against the back wall, as the player's own upstairs has them.
+ */
+const UPSTAIRS_LANDING = { x: 9, y: 2 } as const;
 
 /** The way through a building's door: its outdoor end, if it has one. */
 function doorEnd(building: MapFileBuilding): MapFileLinkEnd | undefined {
@@ -614,7 +617,11 @@ export function moveDoorway(
   }
   // A staircase moves along the back wall it stands against, its foot on the
   // row it was on; a mat along the south wall.
-  const x = Math.max(0, Math.min(inside.width - (stairs ? STAIRS_SIZE.width : 1), to.x));
+  // A staircase's rug is west of a way up and east of a way down, so the
+  // whole of the staircase stays on the room wherever the rug goes.
+  const lowest = end.look === 'stairs-down' ? STAIRS_SIZE.width : 0;
+  const highest = inside.width - 1 - (end.look === 'stairs-up' ? STAIRS_SIZE.width : 0);
+  const x = Math.max(lowest, Math.min(highest, to.x));
   if (x === end.x) {
     return file;
   }
@@ -731,7 +738,7 @@ export function addUpstairs(file: MapFile, area: string): InsideOutcome {
       return [{ x: Math.max(0, at.x - 1), y: at.y, width: 3, height: 1 }];
     }
     if (at.look === 'stairs-up' || at.look === 'stairs-down') {
-      return [{ ...stairsAt(at), ...STAIRS_SIZE }];
+      return [{ ...stairsAt(at), ...STAIRS_SIZE }, { x: at.x, y: at.y, width: 1, height: 2 }];
     }
     return [];
   });
@@ -742,27 +749,30 @@ export function addUpstairs(file: MapFile, area: string): InsideOutcome {
     }) ||
     planted.some((rect) => x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height) ||
     standing.some((thing) => thing.x === x && thing.y === y);
-  // The stairs' top row is the back wall's lower row, under its upper one.
+  // The stairs' top row is the back wall's lower row, under its upper one, and
+  // their rug is beside their middle row, west of them.
   const top = 1;
+  const free = (x: number, y: number): boolean =>
+    !taken(x, y) && below.ground[y]?.[x] === MATERIAL_CHARS.paving;
   const fits = (x: number): boolean => {
-    if (x < 0 || x + STAIRS_SIZE.width > below.width || top + STAIRS_SIZE.height >= below.height) {
+    if (x < 1 || x + STAIRS_SIZE.width > below.width || top + STAIRS_SIZE.height >= below.height) {
       return false;
     }
     if (below.ground[top - 1]?.slice(x, x + STAIRS_SIZE.width) !== 'BB') {
       return false;
     }
-    for (let y = top; y <= top + STAIRS_SIZE.height; y += 1) {
+    for (let y = top; y < top + STAIRS_SIZE.height; y += 1) {
       for (let dx = 0; dx < STAIRS_SIZE.width; dx += 1) {
-        if (taken(x + dx, y) && !(y === top + STAIRS_SIZE.height && dx === 1)) {
+        if (taken(x + dx, y)) {
           return false;
         }
       }
     }
-    return below.ground[top + STAIRS_SIZE.height]?.[x] === MATERIAL_CHARS.paving;
+    return free(x - 1, top + 1) && free(x - 1, top + 2);
   };
   const column = Array.from({ length: below.width }, (_, index) => below.width - 2 - index).find(fits);
   if (column === undefined) {
-    return { made: false, reason: 'Clear a stretch of the back wall two tiles wide for the stairs first.' };
+    return { made: false, reason: 'Clear a stretch of the back wall three tiles wide for the stairs first.' };
   }
   const name = freeAreaName(file, `${below.name} 2F`.slice(0, MAP_FILE_LIMITS.maxPlaceNameLength));
   const up: MapFileArea = {
@@ -777,8 +787,8 @@ export function addUpstairs(file: MapFile, area: string): InsideOutcome {
   };
   const link: MapFileLink = {
     ends: [
-      { area, x: column, y: top + STAIRS_SIZE.height, toward: 'up', look: 'stairs-up' },
-      { area: up.id, ...UPSTAIRS_LANDING, toward: 'up', look: 'stairs-down' },
+      { area, x: column - 1, y: top + 1, toward: 'right', look: 'stairs-up' },
+      { area: up.id, ...UPSTAIRS_LANDING, toward: 'left', look: 'stairs-down' },
     ],
   };
   return {

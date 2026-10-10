@@ -2,7 +2,14 @@ import { linkTable, type GridLinks, type GridPosition } from '../movement/gridMo
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { HUNTER_SPAWN_DISTANCE } from './hunter';
-import { composeMapFile, doorwayOf, STAIRS_SIZE, stairsAt, type ComposedMap } from './mapAreas';
+import {
+  composeMapFile,
+  doorwayOf,
+  STAIRS_SIZE,
+  stairsAt,
+  stairsToward,
+  type ComposedMap,
+} from './mapAreas';
 import {
   doorFront,
   fileDoorGates,
@@ -219,10 +226,11 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
         const top = stairsAt(end);
         const fits =
           area !== undefined &&
-          end.toward === 'up' &&
+          end.toward === stairsToward(end.look) &&
           top.x >= 0 &&
           top.y >= 1 &&
           top.x + STAIRS_SIZE.width <= area.width &&
+          end.y + 1 < area.height &&
           [...area.ground[top.y - 1].slice(top.x, top.x + STAIRS_SIZE.width)].every(
             (letter) => letter === 'B',
           );
