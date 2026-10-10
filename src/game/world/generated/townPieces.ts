@@ -5,7 +5,7 @@
 export const TOWN_SHEET = {
   imagePath: 'assets/frlg-towns.png',
   columns: 20,
-  rows: 90,
+  rows: 97,
 } as const;
 
 /**
@@ -24,8 +24,8 @@ export const TOWN_PIECES = {
     doors: [[5, 6, 'door'], [13, 4, 'door']],
   },
   pewterGym: {
-    column: 13,
-    row: 44,
+    column: 8,
+    row: 52,
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '#######'],
@@ -33,7 +33,7 @@ export const TOWN_PIECES = {
   },
   greyHouse: {
     column: 13,
-    row: 74,
+    row: 81,
     width: 5,
     height: 4,
     cells: ['#####', '#####', '#####', '#####'],
@@ -48,8 +48,8 @@ export const TOWN_PIECES = {
     doors: [[2, 9, 'door'], [6, 9, 'door']],
   },
   smallFlats: {
-    column: 14,
-    row: 23,
+    column: 0,
+    row: 31,
     width: 5,
     height: 8,
     cells: ['#--##', '#####', '#####', '#####', '#####', '#####', '#####', '#####'],
@@ -65,23 +65,23 @@ export const TOWN_PIECES = {
   },
   terrace: {
     column: 6,
-    row: 65,
+    row: 72,
     width: 4,
     height: 5,
     cells: ['---#', '####', '####', '####', '####'],
     doors: [],
   },
   gameCorner: {
-    column: 0,
-    row: 38,
+    column: 6,
+    row: 39,
     width: 10,
     height: 6,
     cells: ['##########', '##########', '##########', '##########', '#######---', '--#-#-----'],
     doors: [[3, 4, 'door'], [8, 3, 'door']],
   },
   celadonGym: {
-    column: 5,
-    row: 44,
+    column: 11,
+    row: 46,
     width: 8,
     height: 5,
     cells: ['########', '########', '########', '########', '########'],
@@ -89,7 +89,7 @@ export const TOWN_PIECES = {
   },
   roundFountain: {
     column: 12,
-    row: 82,
+    row: 89,
     width: 3,
     height: 4,
     cells: ['###', '###', '###', '###'],
@@ -97,7 +97,7 @@ export const TOWN_PIECES = {
   },
   diner: {
     column: 0,
-    row: 86,
+    row: 93,
     width: 6,
     height: 3,
     cells: ['######', '######', '######'],
@@ -105,14 +105,14 @@ export const TOWN_PIECES = {
   },
   blueHouse: {
     column: 8,
-    row: 70,
+    row: 77,
     width: 7,
     height: 4,
     cells: ['#######', '#######', '#######', '#######'],
     doors: [[2, 3, 'door'], [2, 0, 'down']],
   },
   bikeShop: {
-    column: 7,
+    column: 12,
     row: 31,
     width: 6,
     height: 7,
@@ -121,7 +121,7 @@ export const TOWN_PIECES = {
   },
   ceruleanGym: {
     column: 0,
-    row: 50,
+    row: 57,
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '#######'],
@@ -129,7 +129,7 @@ export const TOWN_PIECES = {
   },
   fanClub: {
     column: 0,
-    row: 78,
+    row: 85,
     width: 5,
     height: 4,
     cells: ['#####', '#####', '#####', '#####'],
@@ -137,7 +137,7 @@ export const TOWN_PIECES = {
   },
   orangeHouse: {
     column: 15,
-    row: 78,
+    row: 85,
     width: 4,
     height: 4,
     cells: ['####', '####', '####', '####'],
@@ -145,7 +145,7 @@ export const TOWN_PIECES = {
   },
   flowerHouse: {
     column: 5,
-    row: 78,
+    row: 85,
     width: 5,
     height: 4,
     cells: ['#####', '#####', '#####', '#####'],
@@ -153,7 +153,7 @@ export const TOWN_PIECES = {
   },
   vermilionGym: {
     column: 7,
-    row: 50,
+    row: 57,
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '#######'],
@@ -168,7 +168,7 @@ export const TOWN_PIECES = {
     doors: [[2, 2, 'down'], [3, 2, 'down'], [4, 2, 'down']],
   },
   pokemonTower: {
-    column: 0,
+    column: 5,
     row: 31,
     width: 7,
     height: 7,
@@ -177,15 +177,15 @@ export const TOWN_PIECES = {
   },
   purpleHouse: {
     column: 10,
-    row: 78,
+    row: 85,
     width: 5,
     height: 4,
     cells: ['#####', '#####', '#####', '#####'],
     doors: [[2, 3, 'door']],
   },
   safariGate: {
-    column: 10,
-    row: 38,
+    column: 0,
+    row: 46,
     width: 6,
     height: 6,
     cells: ['######', '######', '######', '######', '######', '######'],
@@ -193,7 +193,7 @@ export const TOWN_PIECES = {
   },
   wardenHouse: {
     column: 7,
-    row: 60,
+    row: 67,
     width: 6,
     height: 5,
     cells: ['######', '######', '######', '######', '######'],
@@ -201,7 +201,7 @@ export const TOWN_PIECES = {
   },
   fuchsiaGym: {
     column: 0,
-    row: 74,
+    row: 81,
     width: 7,
     height: 4,
     cells: ['#######', '#######', '#######', '#######'],
@@ -209,7 +209,7 @@ export const TOWN_PIECES = {
   },
   brickRow: {
     column: 10,
-    row: 65,
+    row: 72,
     width: 10,
     height: 4,
     cells: ['##########', '##########', '##########', '##########'],
@@ -225,7 +225,7 @@ export const TOWN_PIECES = {
   },
   dojo: {
     column: 13,
-    row: 60,
+    row: 67,
     width: 6,
     height: 5,
     cells: ['######', '######', '######', '######', '######'],
@@ -233,7 +233,7 @@ export const TOWN_PIECES = {
   },
   saffronGym: {
     column: 0,
-    row: 55,
+    row: 62,
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '#######'],
@@ -241,7 +241,7 @@ export const TOWN_PIECES = {
   },
   cityGate: {
     column: 7,
-    row: 74,
+    row: 81,
     width: 6,
     height: 4,
     cells: ['######', '######', '######', '######'],
@@ -249,7 +249,7 @@ export const TOWN_PIECES = {
   },
   greenHouse: {
     column: 0,
-    row: 82,
+    row: 89,
     width: 4,
     height: 4,
     cells: ['####', '####', '####', '####'],
@@ -257,23 +257,47 @@ export const TOWN_PIECES = {
   },
   greenCottage: {
     column: 4,
-    row: 82,
+    row: 89,
     width: 4,
     height: 4,
     cells: ['####', '####', '####', '####'],
     doors: [],
   },
   apartments: {
-    column: 0,
-    row: 44,
+    column: 6,
+    row: 46,
     width: 5,
     height: 6,
     cells: ['#--##', '#####', '#####', '#####', '#####', '#####'],
     doors: [],
   },
+  route2Gate: {
+    column: 0,
+    row: 39,
+    width: 6,
+    height: 7,
+    cells: ['-####-', '######', '######', '######', '######', '######', '-####-'],
+    doors: [[2, 5, 'door'], [3, 5, 'door'], [2, 0, 'down'], [3, 0, 'down']],
+  },
+  saffronGate: {
+    column: 14,
+    row: 23,
+    width: 6,
+    height: 8,
+    cells: ['-####-', '######', '######', '######', '######', '######', '######', '-####-'],
+    doors: [[2, 6, 'door'], [3, 6, 'door'], [2, 0, 'down'], [3, 0, 'down']],
+  },
+  saffronSideGate: {
+    column: 0,
+    row: 52,
+    width: 8,
+    height: 5,
+    cells: ['-######-', '########', '########', '########', '########'],
+    doors: [[0, 3, 'right'], [7, 3, 'left']],
+  },
   burntMansion: {
     column: 7,
-    row: 55,
+    row: 62,
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '--###--'],
@@ -281,7 +305,7 @@ export const TOWN_PIECES = {
   },
   cinnabarLab: {
     column: 0,
-    row: 60,
+    row: 67,
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '----##-'],
@@ -289,7 +313,7 @@ export const TOWN_PIECES = {
   },
   cinnabarGym: {
     column: 0,
-    row: 65,
+    row: 72,
     width: 6,
     height: 5,
     cells: ['######', '######', '######', '######', '#####-'],
@@ -297,7 +321,7 @@ export const TOWN_PIECES = {
   },
   smashRock: {
     column: 11,
-    row: 86,
+    row: 93,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -305,7 +329,7 @@ export const TOWN_PIECES = {
   },
   strengthBoulder: {
     column: 12,
-    row: 86,
+    row: 93,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -313,7 +337,7 @@ export const TOWN_PIECES = {
   },
   itemBall: {
     column: 13,
-    row: 86,
+    row: 93,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -321,7 +345,7 @@ export const TOWN_PIECES = {
   },
   fossil: {
     column: 14,
-    row: 86,
+    row: 93,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -329,7 +353,7 @@ export const TOWN_PIECES = {
   },
   oldAmber: {
     column: 15,
-    row: 86,
+    row: 93,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -337,7 +361,7 @@ export const TOWN_PIECES = {
   },
   woodenSign: {
     column: 16,
-    row: 86,
+    row: 93,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -345,7 +369,7 @@ export const TOWN_PIECES = {
   },
   metalSign: {
     column: 17,
-    row: 86,
+    row: 93,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -353,7 +377,7 @@ export const TOWN_PIECES = {
   },
   gymStatue: {
     column: 10,
-    row: 86,
+    row: 93,
     width: 1,
     height: 2,
     cells: ['#', '#'],
@@ -361,7 +385,7 @@ export const TOWN_PIECES = {
   },
   townMap: {
     column: 18,
-    row: 86,
+    row: 93,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -369,7 +393,7 @@ export const TOWN_PIECES = {
   },
   pokedex: {
     column: 19,
-    row: 86,
+    row: 93,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -377,7 +401,7 @@ export const TOWN_PIECES = {
   },
   clipboard: {
     column: 0,
-    row: 89,
+    row: 96,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -385,7 +409,7 @@ export const TOWN_PIECES = {
   },
   laprasDoll: {
     column: 6,
-    row: 86,
+    row: 93,
     width: 2,
     height: 2,
     cells: ['##', '##'],
@@ -393,7 +417,7 @@ export const TOWN_PIECES = {
   },
   ruby: {
     column: 1,
-    row: 89,
+    row: 96,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -401,7 +425,7 @@ export const TOWN_PIECES = {
   },
   sapphire: {
     column: 2,
-    row: 89,
+    row: 96,
     width: 1,
     height: 1,
     cells: ['#'],
@@ -409,7 +433,7 @@ export const TOWN_PIECES = {
   },
   ancientStone: {
     column: 8,
-    row: 86,
+    row: 93,
     width: 2,
     height: 2,
     cells: ['--', '##'],
@@ -417,7 +441,7 @@ export const TOWN_PIECES = {
   },
   ssAnne: {
     column: 0,
-    row: 70,
+    row: 77,
     width: 8,
     height: 4,
     cells: ['--######', '########', '########', '########'],
@@ -425,7 +449,7 @@ export const TOWN_PIECES = {
   },
   seagallop: {
     column: 8,
-    row: 82,
+    row: 89,
     width: 4,
     height: 4,
     cells: ['----', '####', '####', '####'],

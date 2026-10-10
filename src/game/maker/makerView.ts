@@ -5,6 +5,7 @@ import { BERRY_IDS, berryItemId, berryName } from '../world/berries';
 import { ITEMS } from '../items/items';
 import {
   areaLimits,
+  buildingDoorways,
   doorFront,
   MAP_FILE_DOOR_KINDS,
   MAP_FILE_FACINGS,
@@ -16,6 +17,7 @@ import {
   teamLine,
   MAP_FILE_STYLES_OF,
   type MapFile,
+  type MapFileLinkEnd,
   type MapFileArea,
   type MapFileBuildingKind,
   type MapFileDoorKind,
@@ -661,9 +663,13 @@ function selectedPane(
                   ? `<div class="maker-actions"><button class="px-window px-button" data-lead-into="${selected.index}" data-help="Makes it a second way into a cave you have: choose the cave, then click its south wall where the daylight goes.">Into a cave you have</button></div>`
                   : ''
               }`
-          : room
-            ? `<p class="px-note px-wrap">Its door leads into ${escapeHtml(room.name)}.</p>${goIn('Go inside', 'Opens the inside of it, to furnish and fill.')}`
-            : `<p class="px-note px-wrap">Its door is shut. Give it an inside and walking up to the door takes a player in.</p>${goIn('Make its inside', 'Makes the inside of it, furnished as FireRed furnishes one, and opens it.')}`;
+          : buildingDoorways(building).length > 1
+            ? room
+              ? `<p class="px-note px-wrap">It is walked through: its doors lead into ${escapeHtml(room.name)}, in at one side and out at the other.</p>${goIn('Go inside', 'Opens the inside of it, to furnish and fill.')}`
+              : `<p class="px-note px-wrap">Its doors are shut. Give it an inside and a player walks through it, in at one side and out at the other, as FireRed's gatehouses are.</p>${goIn('Make its inside', 'Makes the inside of it, the gatehouse FireRed has, with a way out on each side, and opens both doors.')}`
+            : room
+              ? `<p class="px-note px-wrap">Its door leads into ${escapeHtml(room.name)}.</p>${goIn('Go inside', 'Opens the inside of it, to furnish and fill.')}`
+              : `<p class="px-note px-wrap">Its door is shut. Give it an inside and walking up to the door takes a player in.</p>${goIn('Make its inside', 'Makes the inside of it, furnished as FireRed furnishes one, and opens it.')}`;
       body = `<p class="px-note px-wrap">Drag it with Select to move it.</p>${door}`;
       break;
     }
@@ -678,6 +684,14 @@ function selectedPane(
   );
 }
 
+/** How a building's door is gone in by, from the way it is pressed. */
+const GOING_IN: Readonly<Record<MapFileLinkEnd['toward'], string>> = {
+  up: 'walking up to the door',
+  down: 'walking down off the ridge of its roof',
+  left: 'walking into its porch from the east',
+  right: 'walking into its porch from the west',
+};
+
 /** A way through chosen on the map: where it goes, and how to move it. */
 function doorwayPane(file: MapFile, doorway: DoorwayInArea): string {
   const far = file.links?.[doorway.link]?.ends[1 - doorway.end];
@@ -689,7 +703,16 @@ function doorwayPane(file: MapFile, doorway: DoorwayInArea): string {
       case 'mat':
         return [
           'Way out',
-          `<p class="px-wrap">The way out. Standing on the mat and pressing ${doorway.at.toward} takes a player ${to}, and coming in they arrive on it.</p><p class="px-note px-wrap">Drag it along the wall with Select to move it.</p>`,
+          `<p class="px-wrap">The way out. Standing on the mat and pressing ${doorway.at.toward} takes a player ${to}, and coming in they arrive on it.</p><p class="px-note px-wrap">${
+            doorway.at.toward === 'down'
+              ? 'Drag it along the wall with Select to move it.'
+              : 'It is let into the side wall. Drag it up and down the wall with Select to move it.'
+          }</p>`,
+        ];
+      case 'back-door':
+        return [
+          'Back door',
+          `<p class="px-wrap">The doorway in the back wall. Walking up into it takes a player ${to}, and coming in they arrive in front of it.</p><p class="px-note px-wrap">Drag it along the back wall with Select to move it.</p>`,
         ];
       case 'stairs-up':
       case 'stairs-down':
@@ -726,7 +749,7 @@ function doorwayPane(file: MapFile, doorway: DoorwayInArea): string {
             ]
           : [
               'Door',
-              `<p class="px-wrap">The door into ${escapeHtml(leadsTo)}. A player goes in by walking up to the door.</p>`,
+              `<p class="px-wrap">The door into ${escapeHtml(leadsTo)}. A player goes in by ${GOING_IN[doorway.at.toward]}.</p>`,
             ];
       }
     }

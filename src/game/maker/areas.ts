@@ -1,6 +1,6 @@
 import {
   areaLimits,
-  doorFront,
+  buildingDoorways,
   MAP_FILE_BUILDING_DOORS,
   MAP_FILE_LIMITS,
   placeSlug,
@@ -186,6 +186,15 @@ function withMatsAgainstTheWall(file: MapFile, resizedArea: AreaId): MapFile {
     if (end.area !== inside.id) {
       return end;
     }
+    if (end.look === 'mat' && (end.toward === 'left' || end.toward === 'right')) {
+      // A mat in a side wall keeps its column, on the room, and its middle a
+      // row in from the top and the foot, so the whole of it is on the room.
+      return {
+        ...end,
+        x: Math.max(0, Math.min(inside.width - 1, end.x)),
+        y: Math.max(1, Math.min(inside.height - 2, end.y)),
+      };
+    }
     if (end.look === 'mat') {
       return {
         ...end,
@@ -193,6 +202,9 @@ function withMatsAgainstTheWall(file: MapFile, resizedArea: AreaId): MapFile {
         y: inside.height - 1,
         toward: 'down',
       };
+    }
+    if (end.look === 'back-door') {
+      return { ...end, x: Math.max(1, Math.min(inside.width - 2, end.x)) };
     }
     if (end.look === 'cave-exit') {
       return {
@@ -227,6 +239,11 @@ interface InsideTemplate {
    * notch in its south wall - the middle when absent.
    */
   readonly mat?: number;
+  /**
+   * A gatehouse's ways out, one for each of the building's doors in order: the
+   * end in the room that each door's way through comes out at.
+   */
+  readonly ways?: readonly Omit<MapFileLinkEnd, 'area'>[];
 }
 
 const wallAndFloor = (width: number, height: number, wallRows = 2): string[] =>
@@ -243,6 +260,12 @@ function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
   switch (kind) {
     case 'cave-mouth':
       return CAVE;
+    case 'route-gate':
+      return ROUTE_GATEHOUSE;
+    case 'saffron-gate':
+      return SAFFRON_GATEHOUSE;
+    case 'saffron-side-gate':
+      return SAFFRON_SIDE_GATEHOUSE;
     // Kanto's town buildings, each into the room it is: a Gym and the Dojo
     // into a hall cleared for battling, the Department Store and the Bike Shop
     // into a shop, and the places somebody studies into Oak's own Lab.
@@ -453,6 +476,108 @@ const CAVE: InsideTemplate = {
   ],
 };
 
+/**
+ * Route 2's gatehouse, as FireRed furnishes it: plants along the back wall
+ * either side of the doorway out north, the runner down the middle to the mat
+ * at its foot, two pots of palms on the west side and the guards' tables on
+ * the east. FireRed's room has a column of dark down each side; this is the
+ * room between them.
+ */
+const ROUTE_GATEHOUSE: InsideTemplate = {
+  name: 'Gatehouse',
+  style: 'gatehouse',
+  width: 13,
+  height: 11,
+  ground: wallAndFloor(13, 11),
+  furniture: [
+    { kind: 'gate-window', x: 1, y: 0 },
+    { kind: 'gate-window', x: 10, y: 0 },
+    { kind: 'gate-plant', x: 0, y: 1 },
+    { kind: 'gate-plant', x: 4, y: 1 },
+    { kind: 'gate-plant', x: 8, y: 1 },
+    { kind: 'gate-plant', x: 12, y: 1 },
+    { kind: 'gate-runner', x: 5, y: 3 },
+    { kind: 'gate-plant', x: 0, y: 4 },
+    { kind: 'gate-plant', x: 1, y: 4 },
+    { kind: 'gate-plant', x: 0, y: 7 },
+    { kind: 'gate-plant', x: 1, y: 7 },
+    { kind: 'gate-chair', x: 9, y: 4 },
+    { kind: 'gate-chair', x: 9, y: 5 },
+    { kind: 'gate-table', x: 10, y: 4 },
+    { kind: 'gate-chair-east', x: 12, y: 5 },
+    { kind: 'gate-table', x: 10, y: 7 },
+    { kind: 'gate-chair-east', x: 12, y: 8 },
+  ],
+  // In by the door, onto the mat; out north by the doorway in the back wall.
+  ways: [
+    { x: 6, y: 10, toward: 'down', look: 'mat' },
+    { x: 6, y: 2, toward: 'up', look: 'back-door' },
+  ],
+};
+
+/**
+ * The gatehouse into Saffron from the north or the south, as FireRed has it: a
+ * counter down each side for the guards to stand behind, palms along the
+ * walls, a runner up the middle to the doorway in the back wall.
+ */
+const SAFFRON_GATEHOUSE: InsideTemplate = {
+  name: 'Gatehouse',
+  style: 'gatehouse',
+  width: 9,
+  height: 10,
+  ground: wallAndFloor(9, 10),
+  furniture: [
+    { kind: 'gate-window', x: 0, y: 0 },
+    { kind: 'gate-window', x: 7, y: 0 },
+    { kind: 'gate-plant', x: 0, y: 2 },
+    { kind: 'gate-plant', x: 0, y: 5 },
+    { kind: 'gate-plant', x: 0, y: 8 },
+    { kind: 'gate-plant', x: 8, y: 2 },
+    { kind: 'gate-plant', x: 8, y: 5 },
+    { kind: 'gate-plant', x: 8, y: 8 },
+    { kind: 'gate-counter', x: 2, y: 2 },
+    { kind: 'gate-counter', x: 6, y: 2 },
+    { kind: 'gate-short-runner', x: 3, y: 3 },
+  ],
+  ways: [
+    { x: 4, y: 9, toward: 'down', look: 'mat' },
+    { x: 4, y: 2, toward: 'up', look: 'back-door' },
+  ],
+};
+
+/**
+ * The gatehouse into Saffron from the east or the west, which FireRed cuts
+ * with a column of dark down each side and a mat let into each, hanging over
+ * it: a counter across the room either side of the rug between them, and a
+ * palm in each corner.
+ */
+const SAFFRON_SIDE_GATEHOUSE: InsideTemplate = {
+  name: 'Gatehouse',
+  style: 'gatehouse',
+  width: 13,
+  height: 9,
+  ground: Array.from({ length: 9 }, (_, y) =>
+    `${MATERIAL_CHARS.cliff}${(y < 2 ? MATERIAL_CHARS.wall : MATERIAL_CHARS.paving).repeat(11)}${MATERIAL_CHARS.cliff}`,
+  ),
+  furniture: [
+    { kind: 'gate-plant', x: 1, y: 1 },
+    { kind: 'gate-plant', x: 11, y: 1 },
+    { kind: 'gate-window', x: 3, y: 0 },
+    { kind: 'gate-window', x: 8, y: 0 },
+    { kind: 'gate-long-counter', x: 2, y: 3 },
+    { kind: 'gate-rug', x: 3, y: 4 },
+    { kind: 'gate-long-counter', x: 2, y: 7 },
+    { kind: 'gate-plant', x: 1, y: 7 },
+    { kind: 'gate-plant', x: 11, y: 7 },
+  ],
+  // In from the west porch onto the west mat, out by the east mat to the
+  // east porch, and back.
+  ways: [
+    { x: 1, y: 5, toward: 'left', look: 'mat' },
+    { x: 11, y: 5, toward: 'right', look: 'mat' },
+  ],
+};
+
 /** And upstairs: a bedroom, its PC and its shelves, with the stairs down along the back wall. */
 const HOUSE_UPSTAIRS: InsideTemplate = {
   name: '2F',
@@ -477,31 +602,44 @@ const HOUSE_UPSTAIRS: InsideTemplate = {
  */
 const UPSTAIRS_LANDING = { x: 9, y: 2 } as const;
 
-/** The way through a building's door: its outdoor end, if it has one. */
-export function doorEnd(building: MapFileBuilding): MapFileLinkEnd | undefined {
-  const front = doorFront(building);
-  return front ? { x: front.x, y: front.y, toward: 'up', look: 'door' } : undefined;
+/**
+ * The ways through a building's doors, front door first: the outdoor end each
+ * stands at. A gatehouse has two, one on either side of it.
+ */
+export function doorEnds(building: MapFileBuilding): readonly MapFileLinkEnd[] {
+  return buildingDoorways(building).map(({ x, y, toward }) => ({ x, y, toward, look: 'door' }));
 }
 
-const sameEnd = (a: MapFileLinkEnd, b: Pick<MapFileLinkEnd, 'x' | 'y' | 'area'>): boolean =>
-  a.area === b.area && a.x === b.x && a.y === b.y;
+/** The way through a building's front door: its outdoor end, if it has one. */
+export function doorEnd(building: MapFileBuilding): MapFileLinkEnd | undefined {
+  return doorEnds(building)[0];
+}
 
-/** The link through a building's door, and which of its ends is outdoors. */
-export function linkThroughDoor(
-  file: MapFile,
-  building: MapFileBuilding,
-): { readonly index: number; readonly outside: 0 | 1 } | undefined {
-  const end = doorEnd(building);
-  if (!end) {
-    return undefined;
-  }
-  for (const [index, link] of (file.links ?? []).entries()) {
-    const outside = link.ends.findIndex((candidate) => sameEnd(candidate, end));
-    if (outside >= 0) {
-      return { index, outside: outside as 0 | 1 };
-    }
-  }
-  return undefined;
+const sameEnd = (
+  a: MapFileLinkEnd,
+  b: Pick<MapFileLinkEnd, 'x' | 'y' | 'area' | 'toward'>,
+): boolean => a.area === b.area && a.x === b.x && a.y === b.y && a.toward === b.toward;
+
+/** A link through one of a building's doors: which link, which of its ends is outdoors, and which door. */
+export interface LinkThroughDoor {
+  readonly index: number;
+  readonly outside: 0 | 1;
+  readonly door: number;
+}
+
+/** Every link through any of a building's doors. */
+export function linksThroughDoors(file: MapFile, building: MapFileBuilding): readonly LinkThroughDoor[] {
+  return doorEnds(building).flatMap((end, door) =>
+    (file.links ?? []).flatMap((link, index) => {
+      const outside = link.ends.findIndex((candidate) => sameEnd(candidate, end));
+      return outside >= 0 ? [{ index, outside: outside as 0 | 1, door }] : [];
+    }),
+  );
+}
+
+/** The link through a building's doors - its front door's, when that leads anywhere - and which end is outdoors. */
+export function linkThroughDoor(file: MapFile, building: MapFileBuilding): LinkThroughDoor | undefined {
+  return linksThroughDoors(file, building)[0];
 }
 
 /** The inside a building's door leads into, if it has one. */
@@ -557,29 +695,34 @@ export type InsideOutcome =
 /**
  * The inside of a building, made if it has none yet: a room from the template
  * the building is, and a link from the tile in front of its door to the mat in
- * the middle of the room's south wall.
+ * the middle of the room's south wall - or, for a gatehouse, from each of its
+ * doors to the way out of the room on that side.
  */
 export function makeInside(file: MapFile, buildingIndex: number): InsideOutcome {
   const building = file.buildings[buildingIndex];
-  const end = building ? doorEnd(building) : undefined;
-  if (!building || !end) {
+  const doors = building ? doorEnds(building) : [];
+  if (!building || doors.length === 0) {
     return { made: false, reason: 'That has no door to go in by.' };
   }
   const existing = insideOf(file, building);
   if (existing) {
     return { made: true, file, area: existing.id };
   }
+  const template = templateFor(building.kind as MapFileOutdoorBuildingKind);
+  const ways = template.ways?.slice(0, doors.length).length ?? 1;
   if ((file.areas ?? []).length >= MAP_FILE_LIMITS.maxAreas) {
     return { made: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxAreas} insides.` };
   }
-  if ((file.links ?? []).length >= MAP_FILE_LIMITS.maxLinks) {
+  if ((file.links ?? []).length + ways > MAP_FILE_LIMITS.maxLinks) {
     return { made: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxLinks} ways through.` };
   }
-  const template = templateFor(building.kind as MapFileOutdoorBuildingKind);
   // A landmark's inside is named for it - Pewter Gym, the Department store -
-  // and anything else for the room it is.
+  // where its name fits a place's, and anything else for the room it is.
   const landmark = BUILDING_CHOICES.find(
-    (choice) => choice.kind === building.kind && choice.group === 'Landmarks',
+    (choice) =>
+      choice.kind === building.kind &&
+      choice.group === 'Landmarks' &&
+      choice.label.length <= MAP_FILE_LIMITS.maxPlaceNameLength - 2,
   );
   const name = freeAreaName(file, landmark?.label ?? template.name);
   const area: MapFileArea = {
@@ -594,18 +737,25 @@ export function makeInside(file: MapFile, buildingIndex: number): InsideOutcome 
   };
   const x = template.mat ?? Math.floor(area.width / 2);
   // A room's way out is its mat, stepped off down out of the room; a cave's is
-  // the daylight in its south wall, walked into from the floor above it.
-  const mat: MapFileLinkEnd =
-    area.kind === 'cave'
-      ? { area: area.id, x, y: area.height - 2, toward: 'down', look: 'cave-exit' }
-      : { area: area.id, x, y: area.height - 1, toward: 'down', look: 'mat' };
+  // the daylight in its south wall, walked into from the floor above it; and
+  // a gatehouse says where each of its ways out is, one for each of its doors.
+  const insideEnds: readonly MapFileLinkEnd[] = template.ways
+    ? template.ways.slice(0, doors.length).map((way) => ({ ...way, area: area.id }))
+    : [
+        area.kind === 'cave'
+          ? { area: area.id, x, y: area.height - 2, toward: 'down', look: 'cave-exit' }
+          : { area: area.id, x, y: area.height - 1, toward: 'down', look: 'mat' },
+      ];
   return {
     made: true,
     area: area.id,
     file: {
       ...file,
       areas: [...(file.areas ?? []), area],
-      links: [...(file.links ?? []), { ends: [end, mat] }],
+      links: [
+        ...(file.links ?? []),
+        ...insideEnds.map((inside, door) => ({ ends: [doors[door], inside] as const })),
+      ],
     },
   };
 }
@@ -655,26 +805,26 @@ export function removeArea(file: MapFile, area: string): MapFile {
   return withoutArea(file, area);
 }
 
-/** Moves a building on the outdoors, and the way through its door with it. */
+/** Moves a building on the outdoors, and the way through each of its doors with it. */
 export function moveBuilding(file: MapFile, buildingIndex: number, to: GridPoint): PlaceOutcome {
   const building = file.buildings[buildingIndex];
-  const through = building ? linkThroughDoor(file, building) : undefined;
+  const through = building ? linksThroughDoors(file, building) : [];
   const outcome = moveThing(file, { kind: 'building', index: buildingIndex }, to);
-  if (!outcome.placed || !through) {
+  if (!outcome.placed || through.length === 0) {
     return outcome;
   }
-  const moved = outcome.file.buildings[buildingIndex];
-  const end = doorEnd(moved)!;
-  const links = (outcome.file.links ?? []).map((link, index) =>
-    index === through.index
+  const ends = doorEnds(outcome.file.buildings[buildingIndex]);
+  const links = (outcome.file.links ?? []).map((link, index) => {
+    const moving = through.find((candidate) => candidate.index === index);
+    return moving
       ? {
           ...link,
           ends: link.ends.map((candidate, at) =>
-            at === through.outside ? end : candidate,
+            at === moving.outside ? ends[moving.door] : candidate,
           ) as unknown as MapFileLink['ends'],
         }
-      : link,
-  );
+      : link;
+  });
   return { ...outcome, file: { ...outcome.file, links } };
 }
 
@@ -712,9 +862,9 @@ export function doorwayAt(
 
 /**
  * Moves the way out of a room along its wall: a mat stays on the room's
- * bottom row and a staircase against the back wall, wherever along it the
- * maker drags it. A building's door end moves with its building, never on its
- * own.
+ * bottom row, or in the side wall it is let into, and a staircase or a back
+ * door against the back wall, wherever along it the maker drags it. A
+ * building's door end moves with its building, never on its own.
  */
 export function moveDoorway(
   file: MapFile,
@@ -752,9 +902,15 @@ export function moveDoorway(
         // A ladder goes anywhere on the floor, with its top or its hole the
         // tile above the one it is climbed from.
         return { ...end, x: clamp(to.x, 0, inside.width - 1), y: clamp(to.y, 1, inside.height - 1) };
+      case 'back-door':
+        // A doorway moves along the back wall, framed by the wall either side.
+        return { ...end, x: clamp(to.x, 1, inside.width - 2) };
       default:
-        // A mat along the south wall.
-        return { ...end, x: clamp(to.x, 0, inside.width - 1), y: inside.height - 1, toward: 'down' };
+        // A mat in a side wall moves up and down it; one at the foot of the
+        // room along the south wall.
+        return end.toward === 'left' || end.toward === 'right'
+          ? { ...end, y: clamp(to.y, 1, inside.height - 2) }
+          : { ...end, x: clamp(to.x, 0, inside.width - 1), y: inside.height - 1, toward: 'down' };
     }
   })();
   if (moved.x === end.x && moved.y === end.y) {

@@ -34,6 +34,10 @@
 //
 // A cell of the rectangle that is something standing beside the building - a
 // tree's crown, a ledge, a sign - is named in the piece's `drop` and left out.
+// A cell the building is walked onto from - a gatehouse's porch, the ridge of
+// its roof - is drawn over the path that leads to it, which is too rare on a
+// route to count as its ground; such a cell is named in `scrub`, and every
+// pixel in it coloured like the ground round the building is lifted.
 //
 // **The piece is trimmed** to the cells that still hold anything, so a rectangle
 // read a little generously off the map does not carry a row of nothing with it.
@@ -46,6 +50,9 @@
 // (`src/field_control_avatar.c`): a door is walked up into, an arrow warp is
 // stood on and pressed the way it points, and a warp on any other floor never
 // takes anybody anywhere - FireRed puts some beside the ones that work.
+// Where two maps meet, each warps only its own side of a building both of them
+// draw, so a gatehouse reads its far side's doors off the map beyond it
+// (`warpsFrom`), taking each only where that map draws the same cell.
 //
 // The script writes the sheet and `src/game/world/generated/townPieces.ts`, which
 // is the only thing in the game that knows where a piece landed on it.
@@ -57,7 +64,11 @@ import { writePng } from '../tools/tileset/tileSheet.mjs';
 const TILE = 16;
 const SHEET_COLUMNS = 20;
 
-/** Each town: its layout's folder, its secondary tileset and its size in blocks. */
+/**
+ * Each town: its layout's folder, its secondary tileset and its size in blocks
+ * - and the routes FireRed's gatehouses stand on: Route 2's, and the two into
+ * Saffron.
+ */
 const TOWNS = {
   pewter: ['PewterCity', 'pewter_city', 48, 40],
   cerulean: ['CeruleanCity', 'cerulean_city', 48, 40],
@@ -67,6 +78,9 @@ const TOWNS = {
   fuchsia: ['FuchsiaCity', 'fuchsia_city', 48, 40],
   saffron: ['SaffronCity', 'saffron_city', 66, 55],
   cinnabar: ['CinnabarIsland', 'cinnabar_island', 24, 20],
+  route2: ['Route2', 'viridian_city', 24, 80],
+  route5: ['Route5', 'cerulean_city', 48, 40],
+  route7: ['Route7', 'celadon_city', 24, 20],
 };
 
 /**
@@ -115,6 +129,40 @@ const PIECES = [
   { name: 'greenHouse', town: 'saffron', at: [21, 10], size: [4, 5] },
   { name: 'greenCottage', town: 'saffron', at: [22, 18], size: [4, 4] },
   { name: 'apartments', town: 'saffron', at: [19, 25], size: [5, 6] },
+  // FireRed's gatehouses, walked through from one side to the other: Route
+  // 2's, north to south, its roof's ridge stood on to go in from the north and
+  // its door at the foot of the steps, both warped on Route 2; Route 5's into
+  // Saffron, the same way through, whose south side Saffron City's map warps,
+  // drawing the same building where the two maps meet; and Route 7's, west to
+  // east, gone into from the porch at either end, its east porch warped by
+  // Saffron's map in the same way. The fence posts either end of the north-
+  // south ones are the fence they stand in, which a map draws for itself.
+  {
+    name: 'route2Gate',
+    town: 'route2',
+    at: [16, 41],
+    size: [6, 7],
+    drop: [[0, 0], [5, 0], [0, 6], [5, 6]],
+    scrub: [[1, 0], [2, 0], [3, 0], [4, 0]],
+  },
+  {
+    name: 'saffronGate',
+    town: 'route5',
+    at: [22, 32],
+    size: [6, 8],
+    drop: [[0, 0], [5, 0], [0, 7], [5, 7]],
+    scrub: [[1, 0], [2, 0], [3, 0], [4, 0]],
+    warpsFrom: [{ town: 'saffron', offset: [-10, 33] }],
+  },
+  {
+    name: 'saffronSideGate',
+    town: 'route7',
+    at: [15, 7],
+    size: [8, 5],
+    drop: [[7, 0]],
+    scrub: [1, 2, 3, 4].flatMap((r) => [[0, r], [7, r]]),
+    warpsFrom: [{ town: 'saffron', offset: [14, -17] }],
+  },
   { name: 'burntMansion', town: 'cinnabar', at: [5, 0], size: [7, 5], drop: [[1, 4]] },
   { name: 'cinnabarLab', town: 'cinnabar', at: [5, 6], size: [7, 5], drop: [[1, 4]] },
   { name: 'cinnabarGym', town: 'cinnabar', at: [17, 0], size: [6, 5], drop: [[5, 4]] },
@@ -348,7 +396,7 @@ const groundsOf = new Map(
         seen.set(cell.metatile, cellImage(town, index % town.width, Math.floor(index / town.width)));
       }
     });
-    return [name, [...seen.values()]];
+    return [name, seen];
   }),
 );
 
@@ -368,6 +416,16 @@ function liftGround(tile, grounds) {
   if (!best || bestShared < 12) return tile;
   for (let i = 0; i < tile.data.length; i += 4) {
     if (tile.data[i] === best.data[i] && tile.data[i + 1] === best.data[i + 1] && tile.data[i + 2] === best.data[i + 2]) tile.data[i + 3] = 0;
+  }
+  return tile;
+}
+
+const colourKey = (data, i) => (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
+
+/** A cell with every pixel coloured like the ground round it lifted. */
+function scrub(tile, colours) {
+  for (let i = 0; i < tile.data.length; i += 4) {
+    if (colours.has(colourKey(tile.data, i))) tile.data[i + 3] = 0;
   }
   return tile;
 }
@@ -412,12 +470,38 @@ function sweepSpecks(grid, w, h) {
 
 function cutPiece(piece) {
   const town = towns.get(piece.town);
-  const grounds = groundsOf.get(piece.town);
+  // A metatile the building itself draws solid is part of it, never ground:
+  // FireRed marks a roof walkable where nobody can reach it, and a route with
+  // three gatehouses on it has enough of one roof to count it as its ground.
+  const own = new Set();
+  for (let r = 0; r < piece.size[1]; r += 1) {
+    for (let q = 0; q < piece.size[0]; q += 1) {
+      const cell = town.cells[(piece.at[1] + r) * town.width + piece.at[0] + q];
+      if (!cell.walkable) own.add(cell.metatile);
+    }
+  }
+  const grounds = [...groundsOf.get(piece.town)]
+    .filter(([metatile]) => !own.has(metatile))
+    .map(([, image]) => image);
   const [ax, ay] = piece.at;
   const [w, h] = piece.size;
   // Cells of the rectangle that are something standing beside the piece - a
   // tree's crown over a roof, a ledge along a garden - named per piece.
   const dropped = new Set((piece.drop ?? []).map(([q, r]) => `${q},${r}`));
+  const scrubbed = new Set((piece.scrub ?? []).map(([q, r]) => `${q},${r}`));
+  // The colours of the ground round the building: the cells of the map that
+  // touch its rectangle from outside and can be walked on.
+  const groundColours = new Set();
+  for (let r = -1; r <= h; r += 1) {
+    for (let q = -1; q <= w; q += 1) {
+      const outer = q === -1 || r === -1 || q === w || r === h;
+      const x = ax + q;
+      const y = ay + r;
+      if (!outer || x < 0 || y < 0 || x >= town.width || y >= town.height || !town.cells[y * town.width + x].walkable) continue;
+      const image = cellImage(town, x, y);
+      for (let i = 0; i < image.data.length; i += 4) groundColours.add(colourKey(image.data, i));
+    }
+  }
   // Ground is only lifted where it reaches the rectangle's edge through more
   // ground. A big flat roof is walkable on paper - nobody can get onto it, so
   // FireRed never shuts it - and as common as a lawn, so a building that has
@@ -454,7 +538,7 @@ function cutPiece(piece) {
         continue;
       }
       const tile = town.cellArt(ax + q, ay + r);
-      row.push(liftGround(tile, grounds));
+      row.push(scrubbed.has(`${q},${r}`) ? scrub(tile, groundColours) : liftGround(tile, grounds));
     }
     grid.push(row);
   }
@@ -488,8 +572,19 @@ function cutPiece(piece) {
   const mask = Array.from({ length: height }, (_, r) =>
     Array.from({ length: width }, (_, q) => (opaque(grid[top + r][left + q]) ? '#' : '-')).join(''),
   );
-  // The building's doors, in its own trimmed cells, bottom row first.
-  const doors = town.warps
+  // The building's doors, in its own trimmed cells, bottom row first: the
+  // town's own warps, and any the map beyond it puts on a cell of the
+  // building that both maps draw.
+  const borrowed = (piece.warpsFrom ?? []).flatMap(({ town: name, offset: [dx, dy] }) => {
+    const beyond = towns.get(name);
+    return beyond.warps.flatMap(([x, y, way]) => {
+      const [hx, hy] = [x + dx, y + dy];
+      const inside = hx >= 0 && hy >= 0 && hx < town.width && hy < town.height;
+      const same = inside && beyond.cells[y * beyond.width + x].metatile === town.cells[hy * town.width + hx].metatile;
+      return same ? [[hx, hy, way]] : [];
+    });
+  });
+  const doors = [...town.warps, ...borrowed]
     .filter(([x, y]) => x >= ax + left && x <= ax + right && y >= ay + top && y <= ay + bottom)
     .map(([x, y, way]) => [x - ax - left, y - ay - top, way])
     .sort((a, b) => b[1] - a[1] || a[0] - b[0]);

@@ -136,6 +136,12 @@ export const INSIDE_BRUSHES: readonly GroundBrush[] = [
     MATERIAL_CHARS.wall,
     'A wall. Solid. Two rows of it make the back wall of a room.',
   ),
+  plain(
+    'dark',
+    'Dark',
+    MATERIAL_CHARS.cliff,
+    'The dark where the room is not. Solid. FireRed cuts a room to its shape with it - a gatehouse is dark down each side, with a mat let into each.',
+  ),
 ];
 
 /**
@@ -235,6 +241,8 @@ export const BUILDING_CHOICES: readonly BuildingChoice[] = (
     ['bike-shop', 'Bike shop', 'Landmarks'],
     ['safari-gate', 'Safari Zone gate', 'Landmarks'],
     ['city-gate', 'City gatehouse', 'Landmarks'],
+    ['saffron-gate', 'Saffron gatehouse', 'Landmarks'],
+    ['saffron-side-gate', 'Saffron gatehouse, east-west', 'Landmarks'],
     ['pewter-gym', 'Pewter Gym', 'Landmarks'],
     ['cerulean-gym', 'Cerulean Gym', 'Landmarks'],
     ['vermilion-gym', 'Vermilion Gym', 'Landmarks'],
@@ -364,6 +372,14 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
     ['window', 'Window', undefined],
     ['notice', 'Notice', undefined],
     ['bed', 'Bed, metal frame', undefined],
+    // A gatehouse's, also from the top layer: any room may have these too.
+    ['gate-window', 'Window, small', undefined],
+    ['gate-plant', 'Potted palm', undefined],
+    ['gate-table', 'Glass table', undefined],
+    ['gate-chair', 'Chair', undefined],
+    ['gate-chair-east', 'Chair, turned', undefined],
+    ['gate-counter', 'Counter, north to south', undefined],
+    ['gate-long-counter', 'Counter, west to east', undefined],
     ['rug', 'Rug', 'house'],
     ['mart-counter', 'Shop counter', 'mart'],
     ['mart-till', 'Counter with till', 'mart'],
@@ -419,6 +435,9 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
     ['rocks', 'Rocks', 'cave'],
     ['crater', 'Crater', 'cave'],
     ['dripping-water', 'Dripping water', 'cave'],
+    ['gate-runner', 'Runner', 'gatehouse'],
+    ['gate-short-runner', 'Runner, short', 'gatehouse'],
+    ['gate-rug', 'Rug, wide', 'gatehouse'],
   ] as const satisfies readonly (readonly [
     MapFileFurnitureKind,
     string,
@@ -445,6 +464,7 @@ export const STYLE_LABELS: Readonly<Record<MapFileAreaStyle, string>> = {
   lab: 'Lab',
   center: 'Pokémon Center',
   warehouse: 'Warehouse',
+  gatehouse: 'Gatehouse',
   cave: 'Cave',
 };
 

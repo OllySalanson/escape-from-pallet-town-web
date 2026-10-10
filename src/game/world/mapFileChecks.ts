@@ -13,6 +13,7 @@ import {
   type ComposedMap,
 } from './mapAreas';
 import {
+  buildingDoorAt,
   doorFront,
   fileDoorGates,
   readMapFile,
@@ -24,6 +25,7 @@ import {
   type MapFileSpot,
 } from './mapFile';
 import { MATERIAL_CHARS } from './tileset/materials';
+import { insideBackDoor, insideSideMat } from './tileset/insideTileset';
 import { gateKey } from './gates';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
 import { pokemonName } from './pokemonFigures';
@@ -84,6 +86,7 @@ export interface MapCheck {
 const DOORWAY_NAMES: Readonly<Record<MapFileDoorwayLook, string>> = {
   door: 'door',
   mat: 'way out',
+  'back-door': 'back door',
   'stairs-up': 'stairs',
   'stairs-down': 'stairs',
   'cave-exit': 'way out',
@@ -215,12 +218,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     end.area === undefined ? undefined : file.areas?.find((area) => area.id === end.area);
   /** The building whose door a way through outdoors is stood in front of. */
   const buildingAt = (end: MapFileLinkEnd): MapFileBuilding | undefined =>
-    end.area === undefined
-      ? file.buildings.find((candidate) => {
-          const front = doorFront(candidate);
-          return front !== undefined && front.x === end.x && front.y === end.y;
-        })
-      : undefined;
+    buildingDoorAt(file, end)?.building;
   const doorwayName = (end: MapFileLinkEnd, other: MapFileLinkEnd): string => {
     const named =
       end.look === 'door' && buildingAt(end)?.kind === 'cave-mouth'
@@ -262,7 +260,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
       const doorway = doorwayOf(end);
       if (end.look === 'door') {
         const building = buildingAt(end);
-        if (!building || end.toward !== 'up') {
+        if (!building) {
           found.push(`${what} is not in front of a building's door.`);
         } else if (building.kind === 'cave-mouth') {
           // FireRed cuts a cave's mouth into the foot of a rock face.
@@ -317,16 +315,38 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
         if (!fits) {
           found.push(`${what} has to stand against the back wall of the room.`);
         }
+      } else if (end.look === 'back-door') {
+        // A doorway let into the back wall, walked up into from the floor
+        // below it, with wall either side of it to frame it.
+        const wall = (x: number, y: number): boolean => ground(x, y) === MATERIAL_CHARS.wall;
+        const framed =
+          end.toward === 'up' &&
+          [-1, 0, 1].every((dx) => wall(doorway.x + dx, doorway.y) && wall(doorway.x + dx, doorway.y - 1));
+        if (!framed) {
+          found.push(`${what} has to be let into the back wall of the room, with wall either side of it.`);
+        } else if (area && !insideBackDoor(area.style)) {
+          found.push(`${what} is a gatehouse's: give the room the Gatehouse look.`);
+        }
       } else {
+        // A mat is stepped off out of the room, over its edge, the dark beyond
+        // its walls, or a wall: at its foot, or let into a side wall.
+        const beyond = area?.ground[doorway.y]?.[doorway.x];
         const againstTheEdge =
           area !== undefined &&
           (doorway.x < 0 ||
             doorway.y < 0 ||
             doorway.x >= area.width ||
             doorway.y >= area.height ||
-            area.ground[doorway.y]?.[doorway.x] === 'B');
-        if (!againstTheEdge) {
+            beyond === MATERIAL_CHARS.wall ||
+            beyond === MATERIAL_CHARS.cliff);
+        if (!againstTheEdge || end.toward === 'up') {
           found.push(`${what} has to be against the room's wall, stepped off the way it faces.`);
+        } else if (
+          area &&
+          (end.toward === 'left' || end.toward === 'right') &&
+          !insideSideMat(area.style, end.toward)
+        ) {
+          found.push(`${what} is let into a side wall, as a gatehouse's is: give the room the Gatehouse look.`);
         }
       }
       return found;

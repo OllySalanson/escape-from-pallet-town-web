@@ -214,7 +214,8 @@ export const MAP_FILE_BUILDINGS = {
   'poke-mart-door': 'pokeMartDoor',
   gym: 'gym',
   'forest-gate': 'forestGate',
-  'route-gate': 'routeGate',
+  // Route 2's gatehouse, cut from pret's Route 2 (`townSheet.ts`), walked through.
+  'route-gate': 'route2Gate',
   'league-gate': 'leagueGate',
   // The mouth of a cave, cut into the foot of a rock face: the way into one.
   'cave-mouth': 'caveMouth',
@@ -302,6 +303,8 @@ export const MAP_FILE_BUILDINGS = {
   'bike-shop': 'bikeShop',
   'safari-gate': 'safariGate',
   'city-gate': 'cityGate',
+  'saffron-gate': 'saffronGate',
+  'saffron-side-gate': 'saffronSideGate',
   'pewter-gym': 'pewterGym',
   'cerulean-gym': 'ceruleanGym',
   'vermilion-gym': 'vermilionGym',
@@ -414,6 +417,18 @@ export const MAP_FILE_FURNITURE = {
   rocks: 'caveRocks',
   crater: 'caveCrater',
   'dripping-water': 'caveDrip',
+  // A gatehouse's: FireRed's own, from the one on Route 2 and the two kinds
+  // into Saffron.
+  'gate-window': 'gateWindow',
+  'gate-plant': 'gatePlant',
+  'gate-table': 'gateDesk',
+  'gate-chair': 'gateChair',
+  'gate-chair-east': 'gateChairEast',
+  'gate-counter': 'gateCounter',
+  'gate-long-counter': 'gateLongCounter',
+  'gate-runner': 'gateRunner',
+  'gate-short-runner': 'gateShortRunner',
+  'gate-rug': 'gateWideRug',
 } as const satisfies Record<string, InsidePropName>;
 
 export type MapFileFurnitureKind = keyof typeof MAP_FILE_FURNITURE;
@@ -438,96 +453,200 @@ export function isFurniture(kind: string): kind is MapFileFurnitureKind {
 }
 
 /**
- * A building's door: the first cell of its footprint a player walks up into,
- * and how many cells wide it is - FireRed draws a shop's door two cells wide,
- * and every cell of it takes you in.
+ * A way into a building: the first cell of its footprint that is pressed into,
+ * how many cells along its wall it runs - FireRed draws a shop's door two
+ * cells wide, and every cell of it takes you in - and the way it is pressed:
+ * up into a door, or, on a gatehouse walked through from one side to the
+ * other, down off the ridge of its roof or across into a porch. It is stood at
+ * from the tile before that cell (`buildingDoorways`).
  */
 export interface MapFileBuildingDoor {
   readonly x: number;
   readonly y: number;
   readonly width: number;
+  readonly toward: MapFileFacing;
 }
 
-const door = (x: number, y: number, width = 1): MapFileBuildingDoor => ({ x, y, width });
+const door = (x: number, y: number, width = 1, toward: MapFileFacing = 'up'): MapFileBuildingDoor => ({
+  x,
+  y,
+  width,
+  toward,
+});
+
+/** A step each way, for a door's own cells: the movement module's table, kept here so the format reads standalone. */
+const FACING_STEP: Readonly<Record<MapFileFacing, { readonly x: number; readonly y: number }>> = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+};
+
+/** Whether a door pressed this way runs along a row of cells, rather than down a column of them. */
+const runsAlongARow = (toward: MapFileFacing): boolean => toward === 'up' || toward === 'down';
 
 /**
  * Kanto's town buildings whose warps are no door of theirs: the pier's are the
- * S.S. Anne's gangway, and Saffron's gate is walked through, a gatehouse.
+ * S.S. Anne's gangway, and Saffron's city gate is only the front of a gatehouse,
+ * whose far side FireRed draws on the route beyond it.
  */
 const NOT_A_DOOR: ReadonlySet<string> = new Set(['pier', 'city-gate']);
 
 /**
- * A Kanto town building's front door, where FireRed's own map puts it: the
- * bottom row of the doors the town cutter read off the town's map
- * (`TOWN_PIECES[...].doors` - only warps FireRed fires, each with the way it is
- * gone through), as wide as the run of them there.
+ * Kanto's gatehouses, walked through from one side to the other: every door
+ * FireRed gives them is a way through, the far side's as well as the front.
  */
-function townDoor(piece: TownPieceName): MapFileBuildingDoor | undefined {
-  const doors = (TOWN_PIECES[piece].doors as readonly (readonly [number, number, string])[]).filter(
-    ([, , way]) => way === 'door',
+const WALKED_THROUGH: ReadonlySet<string> = new Set([
+  'route-gate',
+  'saffron-gate',
+  'saffron-side-gate',
+]);
+
+/**
+ * A Kanto town building's doors, where FireRed's own map puts them: the doors
+ * the town cutter read off the town's map (`TOWN_PIECES[...].doors` - only
+ * warps FireRed fires, each with the way it is gone through), each run of them
+ * along a wall one door as wide as the run. A door FireRed walks you up into is
+ * pressed up into the cell it is drawn on; an arrow warp is stood on and
+ * pressed the way it points, into the building beside it. The front door - the
+ * bottom row's run of doors walked into - comes first, and is the only one
+ * unless the building is a gatehouse.
+ */
+function townDoors(piece: TownPieceName, walkedThrough: boolean): readonly MapFileBuildingDoor[] {
+  const cells = (TOWN_PIECES[piece].doors as readonly (readonly [number, number, string])[]).map(
+    ([x, y, way]) => {
+      if (way === 'door') {
+        return { x, y, toward: 'up' as const, walkedInto: true };
+      }
+      const toward = way as MapFileFacing;
+      return { x: x + FACING_STEP[toward].x, y: y + FACING_STEP[toward].y, toward, walkedInto: false };
+    },
   );
-  const first = doors[0];
-  if (!first) {
-    return undefined;
+  const runs: (MapFileBuildingDoor & { readonly walkedInto: boolean })[] = [];
+  for (const cell of [...cells].sort((a, b) => a.y - b.y || a.x - b.x)) {
+    const index = runs.findIndex(
+      (run) =>
+        run.toward === cell.toward &&
+        run.walkedInto === cell.walkedInto &&
+        (runsAlongARow(run.toward)
+          ? run.y === cell.y && run.x + run.width === cell.x
+          : run.x === cell.x && run.y + run.width === cell.y),
+    );
+    if (index >= 0) {
+      runs[index] = { ...runs[index], width: runs[index].width + 1 };
+    } else {
+      runs.push({ ...door(cell.x, cell.y, 1, cell.toward), walkedInto: cell.walkedInto });
+    }
   }
-  const [x, y] = first;
-  let width = 1;
-  while (doors.some(([dx, dy]) => dy === y && dx === x + width)) {
-    width += 1;
-  }
-  return door(x, y, width);
+  const ordered = [...runs].sort(
+    (a, b) => Number(b.walkedInto) - Number(a.walkedInto) || b.y - a.y || a.x - b.x,
+  );
+  const doors = walkedThrough ? ordered : ordered.filter((run) => run.walkedInto).slice(0, 1);
+  return doors.map(({ x, y, width, toward }) => door(x, y, width, toward));
 }
 
 /**
- * Where each building's door is, as a cell of its footprint. A building with
- * a door can be given an inside: linking the tile in front of this cell to a
- * mat in a room is what opens it. The rest - signs, the gatehouses - have no
- * door of this kind.
+ * Where each building's doors are, as cells of its footprint, the way in by
+ * its front first. A building with a door can be given an inside: linking the
+ * tile it is stood at to a mat in a room is what opens it, and a gatehouse's
+ * second door is the way out of the room's far side. The rest - signs, the
+ * buildings drawn shut - have none.
  */
 export const MAP_FILE_BUILDING_DOORS: Readonly<
-  Partial<Record<MapFileOutdoorBuildingKind, MapFileBuildingDoor>>
+  Partial<Record<MapFileOutdoorBuildingKind, readonly MapFileBuildingDoor[]>>
 > = {
-  house: door(1, 3),
-  'house-door': door(1, 3),
-  'house-flowers': door(1, 3),
-  cottage: door(3, 2),
-  'cottage-door': door(3, 2),
-  'pokemon-center': door(2, 4),
-  'pokemon-center-door': door(2, 4),
-  'poke-mart': door(2, 3),
-  'poke-mart-door': door(2, 3),
-  gym: door(3, 4),
+  house: [door(1, 3)],
+  'house-door': [door(1, 3)],
+  'house-flowers': [door(1, 3)],
+  cottage: [door(3, 2)],
+  'cottage-door': [door(3, 2)],
+  'pokemon-center': [door(2, 4)],
+  'pokemon-center-door': [door(2, 4)],
+  'poke-mart': [door(2, 3)],
+  'poke-mart-door': [door(2, 3)],
+  gym: [door(3, 4)],
   // The buildings the second palette brought, each measured off its own
   // drawing: the shed's plank door, the cottage's, the timber house's arch,
   // and the shop's and the hut's, which are drawn across two cells. The tower
   // and the roundhouse have none.
-  shed: door(1, 3),
-  'blue-cottage': door(3, 2),
-  'timber-house': door(2, 4),
-  shop: door(1, 3, 2),
-  hut: door(0, 2, 2),
+  shed: [door(1, 3)],
+  'blue-cottage': [door(3, 2)],
+  'timber-house': [door(2, 4)],
+  shop: [door(1, 3, 2)],
+  hut: [door(0, 2, 2)],
   // A cave mouth is all door.
-  'cave-mouth': door(0, 0),
+  'cave-mouth': [door(0, 0)],
   // And every one of Kanto's town buildings FireRed lets you into.
   ...Object.fromEntries(
     (Object.entries(MAP_FILE_BUILDINGS) as [MapFileOutdoorBuildingKind, string][]).flatMap(
       ([kind, prop]) => {
-        const front = prop in TOWN_PIECES && !NOT_A_DOOR.has(kind) ? townDoor(prop as TownPieceName) : undefined;
-        return front ? [[kind, front]] : [];
+        const doors =
+          prop in TOWN_PIECES && !NOT_A_DOOR.has(kind)
+            ? townDoors(prop as TownPieceName, WALKED_THROUGH.has(kind))
+            : [];
+        return doors.length > 0 ? [[kind, doors]] : [];
       },
     ),
   ),
 };
 
-/** The tile in front of a building's door - where its link's end stands - or undefined. */
-export function doorFront(building: MapFileBuilding): MapFileSpot | undefined {
-  const at = MAP_FILE_BUILDING_DOORS[building.kind as MapFileOutdoorBuildingKind];
-  return at ? { x: building.x + at.x, y: building.y + at.y + 1 } : undefined;
+/**
+ * A way into a building where its link's end stands: the tile before its
+ * door's first cell, the way that cell is pressed from there, and how many
+ * tiles along its wall it is stood at from.
+ */
+export interface BuildingDoorway extends MapFileSpot {
+  readonly toward: MapFileFacing;
+  readonly width: number;
 }
 
-/** How many cells wide a building's door is; one for a building with none. */
-export function doorWidth(building: MapFileBuilding): number {
-  return MAP_FILE_BUILDING_DOORS[building.kind as MapFileOutdoorBuildingKind]?.width ?? 1;
+/** Every way into a building, its front door first. */
+export function buildingDoorways(building: MapFileBuilding): readonly BuildingDoorway[] {
+  return (MAP_FILE_BUILDING_DOORS[building.kind as MapFileOutdoorBuildingKind] ?? []).map(
+    ({ x, y, width, toward }) => ({
+      x: building.x + x - FACING_STEP[toward].x,
+      y: building.y + y - FACING_STEP[toward].y,
+      toward,
+      width,
+    }),
+  );
+}
+
+/** The tile its front door is stood at - where the link's end into it stands - or undefined. */
+export function doorFront(building: MapFileBuilding): MapFileSpot | undefined {
+  const front = buildingDoorways(building)[0];
+  return front ? { x: front.x, y: front.y } : undefined;
+}
+
+/**
+ * The building outdoors, and which of its ways in, that a link's end stands
+ * at and presses the way that door is pressed.
+ */
+export function buildingDoorAt(
+  file: Pick<MapFile, 'buildings'>,
+  end: Pick<MapFileLinkEnd, 'x' | 'y' | 'toward' | 'area'>,
+): { readonly building: MapFileBuilding; readonly doorway: BuildingDoorway; readonly index: number } | undefined {
+  if (end.area !== undefined) {
+    return undefined;
+  }
+  for (const building of file.buildings) {
+    const index = buildingDoorways(building).findIndex(
+      (doorway) => doorway.x === end.x && doorway.y === end.y && doorway.toward === end.toward,
+    );
+    if (index >= 0) {
+      return { building, doorway: buildingDoorways(building)[index], index };
+    }
+  }
+  return undefined;
+}
+
+/** The tiles a door is stood at from, along its wall: one, or as many as FireRed draws it wide. */
+export function doorwayTiles(doorway: BuildingDoorway): readonly MapFileSpot[] {
+  return Array.from({ length: doorway.width }, (_, step) =>
+    runsAlongARow(doorway.toward)
+      ? { x: doorway.x + step, y: doorway.y }
+      : { x: doorway.x, y: doorway.y + step },
+  );
 }
 
 /**
@@ -547,9 +666,13 @@ export const MAP_FILE_STYLES_OF: Readonly<Record<MapFileAreaKind, readonly MapFi
   cave: CAVE_STYLES,
 };
 
-/** The ground letters each kind of area may use: a floor and a wall, and a cave's sand. */
+/**
+ * The ground letters each kind of area may use: a floor and a wall; a room's
+ * dark beyond its walls (`C`), where FireRed cuts a room to a shape that is
+ * not a box; and a cave's sand.
+ */
 export const MAP_FILE_AREA_LETTERS: Readonly<Record<MapFileAreaKind, readonly string[]>> = {
-  inside: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall],
+  inside: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.cliff],
   cave: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.sand],
 };
 
@@ -572,11 +695,14 @@ export function areaLimits(kind: MapFileAreaKind): {
  * up from the floor below, down from the floor above - which you walk up to
  * from the tile in front of its foot. A cave has its own three: the daylight
  * cut into its south wall that is its way out, a ladder up whose foot you
- * stand on, and a hole with a ladder down it that you walk up to.
+ * stand on, and a hole with a ladder down it that you walk up to. A gatehouse
+ * has a doorway in its back wall, walked up into from the floor below it, and
+ * its mat may be let into a side wall, stepped off sideways out of the room.
  */
 export const MAP_FILE_DOORWAY_LOOKS = [
   'door',
   'mat',
+  'back-door',
   'stairs-up',
   'stairs-down',
   'cave-exit',

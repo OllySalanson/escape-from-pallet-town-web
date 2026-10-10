@@ -7,8 +7,8 @@ import {
 import type { Rect } from './interiors';
 import { applyGates } from './gates';
 import {
-  doorFront,
-  doorWidth,
+  buildingDoorAt,
+  doorwayTiles,
   fileDoorGates,
   MAP_FILE_FURNITURE,
   sketchMapFile,
@@ -21,7 +21,13 @@ import {
 import { MapSketch } from './mapGrid';
 import { buildMapLayers, type MapLayers, type TileLayer } from './tiles';
 import type { TileSource, TilesetCatalogue } from './tileset/catalogue';
-import { INSIDE_TILESETS, insideMat, type InsidePropName } from './tileset/insideTileset';
+import {
+  INSIDE_TILESETS,
+  insideBackDoor,
+  insideMat,
+  insideSideMat,
+  type InsidePropName,
+} from './tileset/insideTileset';
 import { PLAYER_MAP_TILESET } from './tileset/playerMapTileset';
 import { MATERIAL_CHARS, type Material } from './tileset/materials';
 
@@ -131,12 +137,10 @@ export function doorwayOf(end: Pick<MapFileLinkEnd, 'x' | 'y' | 'toward'>): Grid
  */
 export function landingsOf(file: MapFile, end: MapFileLinkEnd): readonly GridPosition[] {
   if (end.look === 'door' && end.area === undefined) {
-    const building = file.buildings.find((candidate) => {
-      const front = doorFront(candidate);
-      return front?.x === end.x && front.y === end.y;
-    });
-    const width = building ? doorWidth(building) : 1;
-    return Array.from({ length: width }, (_, dx) => ({ x: end.x + dx, y: end.y }));
+    const door = buildingDoorAt(file, end);
+    if (door) {
+      return doorwayTiles(door.doorway);
+    }
   }
   return [{ x: end.x, y: end.y }];
 }
@@ -184,9 +188,23 @@ export function sketchArea(
       const doorway = doorwayOf(end);
       const inArea = (x: number, y: number): boolean =>
         x >= 0 && y >= 0 && x < area.width && y < area.height;
-      if (end.look === 'mat' && mat) {
+      if (end.look === 'mat' && (end.toward === 'left' || end.toward === 'right')) {
+        // A mat let into a side wall hangs over the dark beyond it, a column
+        // outside the floor it is stood on, as FireRed draws a gatehouse's.
+        const side = insideSideMat(area.style, end.toward);
+        const x = end.toward === 'left' ? end.x - 1 : end.x;
+        if (side && inArea(x, end.y - 1) && inArea(x + 1, end.y + 1)) {
+          sketch.plant(x, end.y - 1, side);
+        }
+      } else if (end.look === 'mat' && mat) {
         const x = Math.max(0, Math.min(area.width - 3, end.x - 1));
         sketch.plant(x, end.y, mat);
+      } else if (end.look === 'back-door') {
+        // A doorway in the back wall, framed by the wall either side of it.
+        const door = insideBackDoor(area.style);
+        if (door && inArea(doorway.x - 1, doorway.y - 1) && inArea(doorway.x + 1, doorway.y)) {
+          sketch.plant(doorway.x - 1, doorway.y - 1, door);
+        }
       } else if (end.look === 'cave-exit') {
         if (inArea(doorway.x - 1, doorway.y) && inArea(doorway.x + 1, doorway.y)) {
           sketch.plant(doorway.x - 1, doorway.y, 'caveExit');
@@ -456,8 +474,14 @@ function artOf(end: MapFileLinkEnd, landing: GridPosition, doorway: GridPosition
       ...STAIRS_SIZE,
     };
   }
+  if (end.look === 'mat' && (end.toward === 'left' || end.toward === 'right')) {
+    return { x: end.toward === 'left' ? landing.x - 1 : landing.x, y: landing.y - 1, width: 2, height: 3 };
+  }
   if (end.look === 'mat') {
     return { x: landing.x - 1, y: landing.y, width: 3, height: 1 };
+  }
+  if (end.look === 'back-door') {
+    return { x: doorway.x - 1, y: doorway.y - 1, width: 3, height: 2 };
   }
   if (end.look === 'cave-exit') {
     return { x: doorway.x - 1, y: doorway.y, width: 3, height: 1 };
