@@ -366,6 +366,21 @@ export class ExtractionScene extends Phaser.Scene {
 
   private gamblePanel(): string {
     const report = this.report;
+    // A try of a map in the map maker is played with a ready-made team in a
+    // save of its own and thrown away, so nothing was gambled: "a wipe would
+    // have cost you Charizard" over a level 99 try team is a raid that was not
+    // at stake. What a maker came to this screen for is whether the walk counts.
+    if (currentTry()) {
+      const escaped = report.outcome === 'ESCAPED';
+      return pixelWindow(
+        `<div class="px-list px-scroll"><h3 class="px-subheading">${escaped ? 'The walk counts' : 'The walk does not count yet'}</h3><p class="px-empty px-wrap">${
+          escaped
+            ? 'You left by an exit, so the map maker ticks "You walked out of it yourself" for this version of the map.'
+            : 'Leave by an exit for the walk to count.'
+        }</p><p class="px-wrap gamble-verdict">Nothing was at stake: the try team plays in a save of its own, and your saved game was not touched.</p></div>`,
+        { className: 'extraction-gamble', heading: 'Your try' },
+      );
+    }
     const securedRows = groupRows(report.secured, 'secured');
     const riskedRows = groupRows(report.risked, 'survived');
     // A lost raid's at-risk list is exactly the ledger beside it, so only a

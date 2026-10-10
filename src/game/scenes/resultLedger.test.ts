@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('phaser', () => ({
   default: {
@@ -9,7 +9,11 @@ vi.mock('phaser', () => ({
 }));
 vi.mock('../audio/AudioManager', () => ({ audioManager: { play: vi.fn() } }));
 
+import sampleLane from '../../maps/sample/sample-lane.json';
+import { setActiveSaveSlot } from '../dev/playtestMode';
+import { beginTry, endTry } from '../maker/tryIt';
 import type { ExtractionReport } from '../run/extractionReport';
+import type { MapFile } from '../world/mapFile';
 import { hasMoreBelow, moreLabel, scrollCoverHeight } from '../ui/MenuOverlay';
 import { ExtractionScene } from './ExtractionScene';
 
@@ -70,5 +74,52 @@ describe('the result screen ledger', () => {
     // one the strip is covering, so it is not yet read.
     expect(moreLabel([{ bottom: 40 }, { bottom: 80 }, { bottom: 120 }, { bottom: 160 }], 100)).toBe('2 MORE');
     expect(moreLabel([{ bottom: 40 }, { bottom: 100 }], 100)).toBe('MORE');
+  });
+});
+
+/**
+ * Playtest 46: a try of a map in the map maker ended on THE GAMBLE - "a wipe
+ * would have cost you Charizard, Blastoise, Venusaur" - under a level 99 try
+ * team in a save of its own, where nothing was ever at stake.
+ */
+describe('the result screen of a map maker try', () => {
+  const gamble = (outcome: 'ESCAPED' | 'WIPED') => {
+    const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+    const report = {
+      outcome,
+      secured: { pokemon: [], items: [] },
+      risked: { pokemon: [], items: [{ itemId: 'potion', label: 'Potion', quantity: 5 }] },
+      securedEmptyText: 'You protected nothing.',
+      gambleVerdict: 'A wipe would have cost you Charizard and 5 Potions. It did not happen this time.',
+    } as unknown as ExtractionReport;
+    Object.assign(scene as object, { report });
+    return (scene as unknown as { gamblePanel(): string }).gamblePanel();
+  };
+
+  afterEach(() => {
+    endTry();
+    setActiveSaveSlot('normal');
+  });
+
+  it('says whether the walk counts instead of what a wipe would have cost', () => {
+    beginTry('draft-a', sampleLane as MapFile, 'walk');
+    setActiveSaveSlot('try-it');
+
+    const escaped = gamble('ESCAPED');
+    expect(escaped).toContain('Your try');
+    expect(escaped).toContain('The walk counts');
+    expect(escaped).toContain('your saved game was not touched');
+    expect(escaped).not.toContain('The gamble');
+    expect(escaped).not.toContain('A wipe would have cost you');
+
+    const lost = gamble('WIPED');
+    expect(lost).toContain('The walk does not count yet');
+    expect(lost).not.toContain('The gamble');
+  });
+
+  it('still lays out the gamble on a raid of the game', () => {
+    const html = gamble('ESCAPED');
+    expect(html).toContain('The gamble');
+    expect(html).toContain('A wipe would have cost you Charizard');
   });
 });
