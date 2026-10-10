@@ -128,6 +128,8 @@ export class MapMakerScene extends Phaser.Scene {
   private brushId = GROUND_BRUSHES[0].id;
   private place: PlaceChoice = { kind: 'drop-in' };
   private selected: ThingRef | undefined;
+  /** The thing whose panel was last brought into view, so it is brought there once per choice. */
+  private shownChosen: string | undefined;
   private zoom: MakerZoom = 16;
   private panel: MakerPanel = 'map';
   private sending: SendState = { step: 'checking' };
@@ -333,6 +335,7 @@ export class MapMakerScene extends Phaser.Scene {
     const typedIn = this.fieldWithFocus();
     const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
     const scroll = viewport ? { left: viewport.scrollLeft, top: viewport.scrollTop } : undefined;
+    const sideTop = this.overlay.root.querySelector<HTMLElement>('.maker-side')?.scrollTop;
     this.rendering = true;
     try {
       this.overlay.root.innerHTML = this.screenMarkup(status);
@@ -349,13 +352,28 @@ export class MapMakerScene extends Phaser.Scene {
     this.drawSwatches();
     this.redraw();
     this.showBotCheck();
-    // A panel opened in the right-hand column is brought into view: under a
-    // long list of checks it would otherwise open below the fold, unseen.
-    if (this.panel !== 'map') {
-      this.overlay.root
-        .querySelector('.maker-side > .px-window:last-child')
-        ?.scrollIntoView({ block: 'nearest' });
+    // The column is rebuilt with the screen; it keeps where it was scrolled to.
+    const side = this.overlay.root.querySelector<HTMLElement>('.maker-side');
+    if (side && sideTop !== undefined) {
+      side.scrollTop = sideTop;
     }
+    // A panel opened in the right-hand column is brought into view: under a
+    // long list of checks it would otherwise open below the fold, unseen. So is
+    // the panel of a thing just placed or chosen, which is where it is named.
+    const chosen = this.selected ? `${this.selected.kind}:${this.selected.index}` : undefined;
+    if (this.panel !== 'map') {
+      side?.querySelector('.maker-side > .px-window:last-child')?.scrollIntoView({ block: 'nearest' });
+    } else if (side && chosen !== undefined && chosen !== this.shownChosen) {
+      // Brought to the top of the column rather than the nearest edge: scrolled
+      // only as far as it took, the fold came to rest through a line of the
+      // checks above it.
+      const pane = side.querySelector<HTMLElement>('.maker-selected')?.getBoundingClientRect();
+      const column = side.getBoundingClientRect();
+      if (pane && (pane.top < column.top || pane.bottom > column.bottom)) {
+        side.scrollTop += pane.top - column.top;
+      }
+    }
+    this.shownChosen = chosen;
     this.overlay.refocus('[data-tool].is-selected', '[data-tool]');
     if (status) {
       if (this.statusTimer) {

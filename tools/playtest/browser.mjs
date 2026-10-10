@@ -43,13 +43,19 @@ function findChromium() {
     return process.env.EPTW_CHROME;
   }
   const cache = join(homedir(), '.cache', 'ms-playwright');
-  const build = existsSync(cache)
-    ? readdirSync(cache).filter((name) => /^chromium-\d+$/.test(name)).sort().at(-1)
+  // Newest build first by its number, not its name: a string sort put an old
+  // chromium-815036 (no chrome-linux64 in it) ahead of chromium-1243.
+  const binary = existsSync(cache)
+    ? readdirSync(cache)
+        .filter((name) => /^chromium-\d+$/.test(name))
+        .sort((a, b) => Number(b.slice('chromium-'.length)) - Number(a.slice('chromium-'.length)))
+        .map((name) => join(cache, name, 'chrome-linux64', 'chrome'))
+        .find((path) => existsSync(path))
     : undefined;
-  if (!build) {
+  if (!binary) {
     throw new Error('No Chromium under ~/.cache/ms-playwright; set EPTW_CHROME to a chrome binary.');
   }
-  return join(cache, build, 'chrome-linux64', 'chrome');
+  return binary;
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

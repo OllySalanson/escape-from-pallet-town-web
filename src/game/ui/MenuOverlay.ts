@@ -450,10 +450,12 @@ export function moreLabel(entries: readonly { readonly bottom: number }[], fold:
  * label, its sentences and each line of its price - and the fold ran through
  * Bill's refusal the same way. A dossier's portrait and its types are one
  * block, because a dossier now grows into the room a list leaves and the fold
- * came to rest across the figure's middle.
+ * came to rest across the figure's middle. The map maker's side column is a
+ * window of checks over the chosen thing's panel, and the fold went through
+ * a check's last line and through the panel's heading (playtest 45).
  */
 const SCROLL_ROWS =
-  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body small, .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div)';
+  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body small, .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div), .maker-side :is(.px-heading, .maker-check .px-wrap, .maker-check .px-note, .maker-field > span, .px-field)';
 
 /**
  * The lines a run of wrapped copy is set in, top to bottom. A `.px-wrap`

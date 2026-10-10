@@ -3459,7 +3459,13 @@ export class WorldScene extends Phaser.Scene {
     };
     // The HUD is pinned to the screen and the captions live in the world, so
     // the chips are translated into world space before they are avoided.
-    const furniture = (this.raidHud?.occupied ?? []).map((chip) => ({
+    // The dialogue box is pinned to the screen in the same way, and it is drawn
+    // over the captions: a trainer's CANNOT BE FLED came out half under the
+    // drop-in briefing. While a box is up it is ground no caption may take.
+    const dialog = this.dialogBox?.visible
+      ? [{ x: this.dialogBox.x, y: this.dialogBox.y, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }]
+      : [];
+    const furniture = [...(this.raidHud?.occupied ?? []), ...dialog].map((chip) => ({
       x: chip.x + view.left,
       y: chip.y + view.top,
       width: chip.width,
@@ -3539,11 +3545,12 @@ export class WorldScene extends Phaser.Scene {
   /**
    * What stands on this map that a caption may not cover, beyond the things the
    * captions themselves name: signs, crates, the ground a trainer watches, and
-   * everyone standing still. The hunter is left out on purpose: it walks, a
-   * caption that dodged it would chase around the screen, and `depths.ts`
-   * already draws every figure over every caption. The player walks too, and is
-   * `captionPlayer()`'s business rather than this list's, because a caption
-   * gives the player room only while it has somewhere else to sit.
+   * everyone standing still - the hunter among them. It walks, but it is
+   * placed a whole tile at a time, so a caption it walks into moves once per
+   * step rather than chasing it; left out, a landmark's name was drawn straight
+   * across the hunter standing beside it (playtest 45). The player walks too,
+   * and is `captionPlayer()`'s business rather than this list's, because a
+   * caption gives the player room only while it has somewhere else to sit.
    */
   private captionKeepClear(): Rect[] {
     const signs = this.currentMap.entities
@@ -3555,9 +3562,9 @@ export class WorldScene extends Phaser.Scene {
       width: TILE_SIZE,
       height: TILE_SIZE,
     }));
-    const standing = [...this.npcSprites.entries()]
-      .filter(([id]) => id !== HUNTER_FIGURE_ID)
-      .map(([, sprite]) => ({
+    const standing = [...this.npcSprites.values()]
+      .filter((sprite) => sprite.visible)
+      .map((sprite) => ({
         x: sprite.x,
         y: sprite.y + CHARACTER_HEAD_PIXEL_Y,
         width: TILE_SIZE,

@@ -23,6 +23,17 @@ const extractionSceneSource = await readFile(new URL('./ExtractionScene.ts', imp
  * which tiles it is about, or it cannot be built at all.
  */
 describe('the map speaks only when asked', () => {
+  it('seats captions clear of the hunter and of an open dialogue box', () => {
+    const keepClear = sceneSource.slice(sceneSource.indexOf('private captionKeepClear('));
+    const standing = keepClear.slice(0, keepClear.indexOf('return [...signs'));
+    // The hunter is a standing figure like any other (playtest 45, finding 7).
+    expect(standing).not.toContain('HUNTER_FIGURE_ID');
+    const contain = sceneSource.slice(sceneSource.indexOf('private containWorldLabels('));
+    const furniture = contain.slice(0, contain.indexOf('placeCaptions('));
+    // The dialogue box is furniture while it is up (finding 8).
+    expect(furniture).toMatch(/this\.dialogBox\?\.visible[\s\S]*DIALOG_HEIGHT[\s\S]*\.\.\.dialog\]/);
+  });
+
   it('gives every caption on the map a voice and the tiles it is about', () => {
     const captions = sceneSource.match(/new WorldLabel\(this, \{/g) ?? [];
     expect(captions.length).toBeGreaterThan(5);
