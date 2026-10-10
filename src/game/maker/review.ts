@@ -1,7 +1,7 @@
 import { readMapFile, type MapFile } from '../world/mapFile';
 import type { Outcome } from './submissions';
 import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from './submitConfig';
-import { supabase, type SubmissionRow, type SubmissionStatus } from './supabaseClient';
+import { reviewSupabase, type SubmissionRow, type SubmissionStatus } from './supabaseClient';
 
 /**
  * Reviewing the maps players send in: the owner's side of the inbox.
@@ -49,7 +49,7 @@ export function isReviewReturn(search: string = window.location.search): boolean
  * was, so a reload does not try to spend the code twice.
  */
 export async function finishReviewSignIn(): Promise<void> {
-  const db = await supabase();
+  const db = await reviewSupabase();
   await db.auth.getSession();
   const url = new URL(window.location.href);
   url.searchParams.delete('code');
@@ -79,7 +79,7 @@ export async function signInToReview(): Promise<Outcome<true>> {
   if (!(await gitHubSignInIsOn())) {
     return { ok: false, reason: 'GitHub sign-in is not switched on yet.' };
   }
-  const db = await supabase();
+  const db = await reviewSupabase();
   const { error } = await db.auth.signInWithOAuth({
     provider: 'github',
     options: { redirectTo: reviewReturnUrl() },
@@ -90,17 +90,17 @@ export async function signInToReview(): Promise<Outcome<true>> {
 }
 
 export async function signOutOfReview(): Promise<void> {
-  await (await supabase()).auth.signOut();
+  await (await reviewSupabase()).auth.signOut();
 }
 
 /**
- * Whether whoever is signed in here may review: nobody (or only a maker's
- * anonymous session), somebody the database does not count as a reviewer, or
- * a reviewer. The database answers the last part.
+ * Whether whoever is signed in to review in this tab may review: nobody,
+ * somebody the database does not count as a reviewer, or a reviewer. The
+ * database answers the last part.
  */
 export async function reviewAccess(): Promise<'signed-out' | 'not-reviewer' | 'reviewer'> {
   try {
-    const db = await supabase();
+    const db = await reviewSupabase();
     const { data } = await db.auth.getSession();
     if (!data.session || data.session.user.is_anonymous) {
       return 'signed-out';
@@ -141,7 +141,7 @@ export function queueOrder(a: QueuedMap, b: QueuedMap): number {
 export async function reviewQueue(): Promise<Outcome<readonly QueuedMap[]>> {
   try {
     const { data, error } = await (
-      await supabase()
+      await reviewSupabase()
     )
       .from('map_submissions')
       .select('*')
@@ -173,7 +173,7 @@ export async function decide(
   }
   try {
     const { error } = await (
-      await supabase()
+      await reviewSupabase()
     )
       .from('map_submissions')
       .update({
@@ -194,7 +194,7 @@ export async function decide(
 export async function blockMaker(makerUid: string, reason: string): Promise<Outcome<true>> {
   try {
     const { error } = await (
-      await supabase()
+      await reviewSupabase()
     )
       .from('blocked_makers')
       .insert({ maker_uid: makerUid, reason: reason.trim() || null });

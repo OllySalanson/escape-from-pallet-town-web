@@ -11,6 +11,14 @@ name: Publish player maps
 # A change pushed or merged with this workflow's own token starts no other
 # workflow, so this one runs the suite itself before it merges, and asks for
 # the Pages deploy by hand afterwards.
+#
+# The service-role key reads every player's maps and feedback and bypasses all
+# of the database's rules, so it is given to the two steps that call the
+# project and to nothing else - never to npm, whose dependencies' code runs in
+# install, lint, test and build (the security review's M4). The same goes for
+# the write token: it is not left in .git/config, and only the steps that push
+# or ask GitHub for something hold it. No dependency here has an install
+# script that runs on Linux (`fsevents` is macOS's), so none is run.
 
 on:
   schedule:
@@ -29,14 +37,12 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    env:
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check out main
         uses: actions/checkout@v4
         with:
           ref: main
+          persist-credentials: false
 
       - name: Use Node.js 20
         uses: actions/setup-node@v4
@@ -45,10 +51,12 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Collect approved maps
         id: collect
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           npx --no-install vite-node tools/maps/publishApproved.mts -- collect "$RUNNER_TEMP/published.json"
           echo "count=$(node -e "console.log(require(process.argv[1]).length)" "$RUNNER_TEMP/published.json")" >> "$GITHUB_OUTPUT"
@@ -71,6 +79,8 @@ jobs:
 
       - name: Open and merge the pull request
         if: steps.collect.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           branch="publish/player-maps-${GITHUB_RUN_ID}"
           git config user.name "github-actions[bot]"
@@ -79,15 +89,19 @@ jobs:
           git add src/maps/player
           names=$(node -e "console.log(require(process.argv[1]).map((entry) => entry.file.replace(/^.*\//, '')).join(', '))" "$RUNNER_TEMP/published.json")
           git commit -m "Publish player maps: ${names}"
-          git push origin "$branch"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
           gh pr create --base main --head "$branch" --title "Publish player maps: ${names}" \
             --body "Approved in the game's review list, checked by the game's own rules and the whole test suite in this run (${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
           gh pr merge "$branch" --squash --delete-branch
 
       - name: Mark them published
         if: steps.collect.outputs.count != '0'
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npx --no-install vite-node tools/maps/publishApproved.mts -- mark "$RUNNER_TEMP/published.json"
 
       - name: Deploy the game
         if: steps.collect.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh workflow run pages.yml --ref main

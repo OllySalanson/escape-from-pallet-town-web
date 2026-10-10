@@ -88,21 +88,75 @@ export type GameDatabase = {
   };
 };
 
-let client: Promise<SupabaseClient<GameDatabase>> | undefined;
+/** Where a client keeps its session, as the auth library reads it. */
+type SessionStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
+/**
+ * The player's client: an anonymous maker or feedback sender, kept across
+ * visits so "your maps" stay theirs. It never signs in through a redirect, so
+ * it never reads the address - the reviewer's sign-in comes back with a code
+ * that is the review client's to spend.
+ */
+export function playerClientOptions() {
+  return {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      storageKey: 'escape-from-pallet-town.maker.session',
+    },
+  } as const;
+}
+
+/**
+ * The reviewer's client, and only the reviewer's (the security review's M5).
+ * A reviewer's session can read every player's map and approve one into the
+ * game, and the game shares its origin with every other page served from
+ * ollysalanson.github.io - so the session is kept for this tab only
+ * (`sessionStorage`, which also holds the sign-in's PKCE verifier across the
+ * GitHub round trip in the same tab) and never in the `localStorage` any page
+ * on that origin can read. Closing the tab signs the reviewer out. It is a
+ * client of its own, so signing in to review no longer replaces the browser's
+ * anonymous maker session either.
+ */
+export function reviewClientOptions(storage: SessionStore | undefined) {
+  return {
+    auth: {
+      persistSession: storage !== undefined,
+      autoRefreshToken: true,
+      // The reviewer signs in through GitHub and comes back with a code in
+      // the address, which this client trades for a session as it starts.
+      flowType: 'pkce',
+      detectSessionInUrl: true,
+      storageKey: 'escape-from-pallet-town.review.session',
+      ...(storage ? { storage } : {}),
+    },
+  } as const;
+}
+
+function tabStorage(): SessionStore | undefined {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+let client: Promise<SupabaseClient<GameDatabase>> | undefined;
+let reviewClient: Promise<SupabaseClient<GameDatabase>> | undefined;
+
+/** The player's client. See `playerClientOptions`. */
 export function supabase(): Promise<SupabaseClient<GameDatabase>> {
   client ??= import('@supabase/supabase-js').then(({ createClient }) =>
-    createClient<GameDatabase>(SUBMISSIONS_URL, SUBMISSIONS_PUBLISHABLE_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        // The reviewer signs in through GitHub and comes back with a code in
-        // the address, which the client trades for a session as it starts.
-        flowType: 'pkce',
-        detectSessionInUrl: true,
-        storageKey: 'escape-from-pallet-town.maker.session',
-      },
-    }),
+    createClient<GameDatabase>(SUBMISSIONS_URL, SUBMISSIONS_PUBLISHABLE_KEY, playerClientOptions()),
   );
   return client;
+}
+
+/** The reviewer's client. See `reviewClientOptions`. */
+export function reviewSupabase(): Promise<SupabaseClient<GameDatabase>> {
+  reviewClient ??= import('@supabase/supabase-js').then(({ createClient }) =>
+    createClient<GameDatabase>(SUBMISSIONS_URL, SUBMISSIONS_PUBLISHABLE_KEY, reviewClientOptions(tabStorage())),
+  );
+  return reviewClient;
 }
