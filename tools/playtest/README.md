@@ -97,7 +97,12 @@ does not leave it - `docs/screens/base-rooms/` is what it photographs.
 `billCabinet.mjs <url> <dir> [--traded=N]` strikes a barter at Bill's table,
 backs out into his cottage and looks along his cabinet with the keys and the
 pointer, failing if the goods paid are not on the shelf or the look moves the
-player - `docs/screens/bill-cabinet/`.
+player - `docs/screens/bill-cabinet/`. `bolthole.mjs <url> <dir> [--built=..]`
+walks the player's own house: reads the garden sign, goes in, faces the telly,
+climbs the stairs and checks it arrived on the matching mat facing away, reads
+the bed, the PC, the console and the calendar, comes back down and leaves by the
+mat - `docs/screens/bolthole/`. The house has no keeper, so `walkIntoBase`
+never goes there; it leaves an upstairs floor by its stairs if it finds itself on one.
 
 A raid ends back on the base's quay, not on a screen, so a driver that plays
 two raids walks into Oak's Lab between them - `raid.mjs` does.
