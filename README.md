@@ -70,7 +70,7 @@ from the board send you looking for something specific. Somewhere on the map the
 glinting, that is definitely worth the detour. Probably.
 
 <p align="center">
-  <img src="docs/readme/raid.png" width="800" alt="Viridian City's Center Square mid-raid: the Pokemon Center and Mart, the raid clock reading 4:59, and a caption naming Joy's Night Hatch and the cache inside it.">
+  <img src="docs/readme/forest.png" width="800" alt="Viridian Forest's North Landing mid-raid: tall grass, a fire tower, a trainer watching the path, and the raid clock at 4:58.">
 </p>
 
 ### 3. Somebody's coming

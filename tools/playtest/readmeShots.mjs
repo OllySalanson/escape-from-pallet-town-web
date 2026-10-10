@@ -1,14 +1,20 @@
-// Photographs the game for the repository's front page (README.md, docs/readme/):
-// the title, the base, Oak's Lab, the drop-in map, a raid with its clock, the
-// hunter arriving, the fight, the pack, and the frames of a walk for the GIF.
+// Photographs the game for the repository's front page (README.md, docs/readme/).
 //
-//   node tools/playtest/readmeShots.mjs <url of a test-mode build> <out dir> [--insertion=viridian-city]
+//   node tools/playtest/readmeShots.mjs <url of a test-mode build> <out dir> [--part=raid|base|maker|place] [--window=WxH]
 //
-// Every picture is taken at 800x512, which the stage fills at exactly 2x
-// (`src/game/display/stage.ts`): GitHub's README column is a little wider than
-// 800 pixels, so the pictures are shown at their own size, every game pixel a
-// crisp 2x2 square, rather than resampled. `frames/` holds the walk, one PNG
-// per 15th of a second; ffmpeg turns it into the animation (see docs/readme/README.md).
+//   raid (default)  the title, Oak's Lab, the loadout, drop-in and final check, a
+//                   raid in Viridian City (or --insertion=), the frames of a walk,
+//                   the pack, the hunter arriving, being caught and the fight
+//   base            the harbour with every workshop rung built, and each room in
+//                   --rooms=id,.. (default oaks-lab) with the keeper's screen
+//   maker           the map maker with the sample map open as a draft, at 1X
+//   place           the briefing and the first view of a raid on --insertion=
+//
+// The default window, 800x512, is the stage at exactly 2x (`src/game/display/stage.ts`):
+// GitHub's README column is a little wider than 800 pixels, so a picture is
+// shown at its own size, every game pixel a crisp 2x2 square. --window=1600x1024
+// is the same view at 4x, shown at half size. `frames/` holds the walk, one PNG
+// per 15th of a second; ffmpeg turns it into the animation (docs/readme/README.md).
 import { mkdirSync, readFileSync } from 'node:fs';
 import { launchBrowser } from './browser.mjs';
 import { GAME, SAVE_KEY, deploy, deployOptions, sceneIs, walkIntoBase } from './deploy.mjs';
@@ -91,6 +97,20 @@ const main = async () => {
     await page.evaluate(`[...document.querySelectorAll('button')].find((b) => b.innerText.trim() === '1X')?.click()`);
     await wait(800);
     await shot('maker');
+    return;
+  }
+
+  if (part === 'place') {
+    // Somewhere else to stand: the briefing a contract raid opens on, then the
+    // map it opens onto, on whichever insertion is asked for.
+    const options = deployOptions(args);
+    await deploy(page, url.href, { press, until, wait, click, paused: true, ...options });
+    await until(sceneIs('world'));
+    await wait(1200);
+    await shot('place-briefing');
+    for (let i = 0; i < 12 && (await page.evaluate(`${world}.dialogBox.visible`)); i += 1) { await press('Space'); await wait(250); }
+    await wait(600);
+    await shot('place');
     return;
   }
 
