@@ -38,6 +38,68 @@ export interface CollectedFiles {
   readonly save: string | null;
   /** What the PC heard in the clips, if it has listened yet. */
   readonly transcript: string | null;
+  /** Files the lab held that were not what they claimed, and so were not saved. */
+  readonly refused: readonly string[];
+}
+
+const text = (value: unknown, fallback = ''): string => (typeof value === 'string' ? value : value == null ? fallback : String(value));
+const optionalText = (value: unknown): string | undefined => (value == null ? undefined : text(value));
+
+/**
+ * A row as the game sends it, whatever actually arrived. The database checks
+ * the shape now, but a row written before it did - or anything else that ever
+ * gets past it - must not be able to stop the owner reading every other
+ * message: one `"at": "x"` used to throw on every run and the list page was
+ * never written again. Every field is made the type it is read as.
+ */
+export function normaliseRow(raw: unknown): FeedbackRow {
+  const row = (raw ?? {}) as Record<string, unknown>;
+  const context = (typeof row.context === 'object' && row.context !== null ? row.context : {}) as Record<string, unknown>;
+  const details = Array.isArray(context.details) ? context.details : [];
+  const actions = Array.isArray(row.actions) ? row.actions : [];
+  return {
+    id: text(row.id),
+    tag: text(row.tag),
+    sender_uid: text(row.sender_uid),
+    message: text(row.message),
+    context: {
+      version: optionalText(context.version),
+      builtAt: optionalText(context.builtAt),
+      screen: optionalText(context.screen),
+      details: details.map((detail) => {
+        const pair = (typeof detail === 'object' && detail !== null ? detail : {}) as Record<string, unknown>;
+        return { label: text(pair.label), value: text(pair.value) };
+      }),
+      window: optionalText(context.window),
+      browser: optionalText(context.browser),
+      mode: optionalText(context.mode),
+      takenAt: optionalText(context.takenAt),
+    },
+    actions: actions.map((action) => {
+      const move = (typeof action === 'object' && action !== null ? action : {}) as Record<string, unknown>;
+      const at = Number(move.at);
+      return { at: Number.isFinite(at) ? at : 0, what: text(move.what) };
+    }),
+    save: row.save == null ? null : text(row.save),
+    picture_path: row.picture_path == null ? null : text(row.picture_path),
+    voice_paths: Array.isArray(row.voice_paths) ? row.voice_paths.map((path) => text(path)) : [],
+    voice_ms: Number.isFinite(Number(row.voice_ms)) ? Number(row.voice_ms) : 0,
+    written_at: text(row.written_at),
+    created_at: text(row.created_at),
+    received_at: row.received_at == null ? null : text(row.received_at),
+  };
+}
+
+/**
+ * Player text as a Markdown code block, so nothing in it is ever rendered - a
+ * `![](https://...)` would otherwise make the owner's viewer fetch a
+ * stranger's URL. The fence is longer than any run of backticks in the text,
+ * which is how CommonMark lets a block hold backticks of its own.
+ */
+export function fenced(words: string): string {
+  const longest = Math.max(0, ...[...words.matchAll(/`+/g)].map((match) => match[0].length));
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  return `${fence}text\n${words}\n${fence}`;
 }
 
 /** `2026-10-10 0405 FB-5HB5`: sorts by time, names the tag. */
@@ -114,23 +176,33 @@ export function announcement(
 
 /** The message as a person reads it, written into its folder. */
 export function messageMarkdown(row: FeedbackRow, files: CollectedFiles): string {
+  // Everything the player's browser sent is in a code block, the words and the
+  // where-they-were alike: only the tag (checked by the database), the times
+  // (the database's own) and the file names (the collector's own) are written
+  // as Markdown.
+  const about = [
+    `Where: ${whereLine(row) || 'unknown'}`,
+    `Game version: ${row.context.version ?? 'unknown'}${row.context.builtAt ? ` (built ${row.context.builtAt})` : ''}`,
+    ...(row.context.mode && row.context.mode !== 'normal' ? [`Mode: ${row.context.mode}`] : []),
+    `Window: ${row.context.window ?? 'unknown'}`,
+    `Browser: ${row.context.browser ?? 'unknown'}`,
+    ...(row.context.details ?? []).map((detail) => `${detail.label}: ${detail.value}`),
+  ];
   const lines = [
     `# ${row.tag}`,
     '',
     `Sent ${row.written_at.replace('T', ' ').slice(0, 16)} UTC, arrived ${row.created_at.replace('T', ' ').slice(0, 16)} UTC.`,
-    `Where: ${whereLine(row) || 'unknown'}`,
-    `Game version: ${row.context.version ?? 'unknown'}${row.context.builtAt ? ` (built ${row.context.builtAt})` : ''}${row.context.mode && row.context.mode !== 'normal' ? `, mode ${row.context.mode}` : ''}`,
     '',
     '## What they wrote',
     '',
-    row.message.trim() ? row.message.trim() : '_(nothing typed)_',
+    row.message.trim() ? fenced(row.message.trim()) : '_(nothing typed)_',
     '',
   ];
   if (files.voice.length > 0) {
     lines.push(
       `## What they said (${voiceTime(row.voice_ms)}, ${files.voice.length} clip${files.voice.length === 1 ? '' : 's'}: ${files.voice.join(', ')})`,
       '',
-      files.transcript?.trim() || '_(not turned into text yet)_',
+      files.transcript?.trim() ? fenced(files.transcript.trim()) : '_(not turned into text yet)_',
       '',
     );
   }
@@ -139,13 +211,15 @@ export function messageMarkdown(row: FeedbackRow, files: CollectedFiles): string
     '',
     `- Picture: ${files.picture ?? 'none'}`,
     `- Save: ${files.save ?? 'not included'}`,
-    `- Window: ${row.context.window ?? 'unknown'}`,
-    `- Browser: ${row.context.browser ?? 'unknown'}`,
-    ...(row.context.details ?? []).map((detail) => `- ${detail.label}: ${detail.value}`),
+    ...(files.refused.length ? [`- Left out, not what they said they were: ${files.refused.join(', ')}`] : []),
+    '',
+    '## Where they were',
+    '',
+    fenced(about.join('\n')),
     '',
     '## Their last moves',
     '',
-    ...(row.actions.length ? row.actions.map((action) => `- ${action.at.toFixed(1)}s ${action.what}`) : ['- none recorded']),
+    row.actions.length ? fenced(row.actions.map((action) => `${action.at.toFixed(1)}s ${action.what}`).join('\n')) : '- none recorded',
     '',
   );
   return lines.join('\n');
