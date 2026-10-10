@@ -353,6 +353,34 @@ describe('the result screen on a defeat', () => {
   });
 });
 
+describe('the result screen counts what it lists', () => {
+  it('counts a lost pack among the entries gone for good, because it is drawn GONE under that heading', () => {
+    const report: ExtractionReport = {
+      ...defeatReport(),
+      pack: { itemId: 'raid-pack', name: 'Raid pack', squares: 18, fate: 'lost' },
+    };
+    // Charmander and the two Potions are the ledger; the pack is the third row
+    // drawn GONE in the same window.
+    expect(report.ledger.pokemon.length + report.ledger.items.length).toBe(2);
+    const { root, advance } = open(report);
+    readThrough(advance);
+
+    expect(root.html).toContain('<h2>Gone for good</h2><small>3 entries</small>');
+  });
+
+  it('does not count a pack that came home among what was banked', () => {
+    const report: ExtractionReport = {
+      ...escapeReport(),
+      pack: { itemId: 'raid-pack', name: 'Raid pack', squares: 18, fate: 'kept' },
+    };
+    // Charmander came home: one entry, and the pack is not a second.
+    expect(report.ledger.pokemon.length + report.ledger.items.length).toBe(1);
+    const { root } = open(report);
+
+    expect(root.html).toContain('<h2>Banked</h2><small>1 entry</small>');
+  });
+});
+
 /** Walks the whole sequence the way a player who reads it does. */
 function readThrough(advance: (ms: number) => void): void {
   for (let beat = 0; beat < 3; beat += 1) {

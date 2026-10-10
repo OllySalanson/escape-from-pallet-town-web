@@ -335,7 +335,16 @@ export class ExtractionScene extends Phaser.Scene {
     const report = this.report;
     const escaped = report.outcome === 'ESCAPED';
     const rows = groupRows(report.ledger, escaped ? 'banked' : 'lost');
-    const total = report.ledger.pokemon.length + report.ledger.items.length;
+    // The note counts every row under the heading that went the heading's way,
+    // so a lost raid counts the pack and the gear that went down with it: they
+    // are drawn GONE in this same window, and "1 ENTRY" over two GONE rows read
+    // as the screen miscounting what was lost.
+    const total =
+      report.ledger.pokemon.length +
+      report.ledger.items.length +
+      (escaped
+        ? report.gear.filter((piece) => piece.fate === 'found').length
+        : report.gear.filter((piece) => piece.fate === 'lost').length + (report.pack?.fate === 'lost' ? 1 : 0));
     // Experience before the contract: the verdict window above has already said
     // what became of the contract, while a level gained in the field is said
     // nowhere else - and under a four-line contract row it was below the fold.
