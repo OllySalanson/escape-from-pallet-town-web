@@ -89,6 +89,12 @@ try {
   const inside = await evaluate(`(() => { const s = ${GAME}.scene.getScene('mapmaker'); return { area: s.area, size: [s.view.width, s.view.height], heading: document.querySelector('.maker-map .px-heading h2')?.textContent }; })()`);
   report('making it opens the inside', inside.area === 'house', JSON.stringify(inside));
   await shot('maker-2-inside');
+  // The furniture of the room, each row pictured on the room's own floor.
+  await evaluate(`document.querySelector('[data-plant="bed"]')?.scrollIntoView({ block: 'start' })`);
+  await sleep(200);
+  const pictured = await evaluate(`[...document.querySelectorAll('.maker-tools canvas[data-plant]')].every((canvas) => canvas.width === 16 && canvas.getContext('2d').getImageData(0, 0, 16, 16).data.some((value, index) => index % 4 === 3 && value > 0))`);
+  report('every piece of furniture has a picture', pictured);
+  await shot('maker-2b-furniture');
 
   // Choose the mat, so its panel says where it goes.
   await clickTile(5, 7);

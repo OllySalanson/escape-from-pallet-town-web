@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import sampleLane from '../../maps/sample/sample-lane.json';
-import { doorFront, readMapFile, type MapFile } from '../world/mapFile';
+import {
+  doorFront,
+  MAP_FILE_BUILDINGS,
+  MAP_FILE_FURNITURE,
+  readMapFile,
+  type MapFile,
+} from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import {
   doorwaysIn,
@@ -39,6 +45,11 @@ function withHouse(): { file: MapFile; area: string } {
 }
 
 describe("a building's inside, as the maker makes it", () => {
+  it('has words for its furniture that no outdoor thing has, so a word in a file means one thing', () => {
+    const outdoors = new Set(Object.keys(MAP_FILE_BUILDINGS));
+    expect(Object.keys(MAP_FILE_FURNITURE).filter((word) => outdoors.has(word))).toEqual([]);
+  });
+
   it('makes a furnished room with its door linked to a mat in the middle of its south wall', () => {
     const { file, area } = withHouse();
     const inside = file.areas?.find((candidate) => candidate.id === area);
