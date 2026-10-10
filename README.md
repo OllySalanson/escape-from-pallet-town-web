@@ -195,7 +195,7 @@ everybody, under **PLAYER MAPS**, with your name on it.
   <img src="docs/readme/map-maker.png" width="800" alt="The map maker: a palette of ground on the left, a lane with a pond, a house, tall grass and trees in the middle, and the does-it-work checklist on the right.">
 </p>
 
-Also inside MAKE A MAP: **PLAYTEST**, an explorer's run where nobody can knock you out, every door
+Right next to it on the title: **PLAYTEST**, an explorer's run where nobody can knock you out, every door
 is open and holding <kbd>Shift</kbd> walks three times faster. For sightseeing. Purely for
 sightseeing.
 

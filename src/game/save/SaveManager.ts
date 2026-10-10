@@ -473,6 +473,8 @@ export type SaveSummary =
       readonly pokemon: number;
       readonly contracts: number;
       readonly raids: number;
+      /** The partner's species, for the title screen to run beside the trainer. */
+      readonly partner?: string;
     };
 
 export class SaveManager {
@@ -519,11 +521,13 @@ export class SaveManager {
       return { kind: 'unreadable' };
     }
     const progress = game.raidProgress;
+    const partner = game.stash.partner();
     return {
       kind: 'game',
       pokemon: game.stash.listPokemon().length,
       contracts: progress.completedContracts.length + progress.standingContractsBanked,
       raids: raidsDeployed(progress),
+      ...(partner ? { partner: partner.pokemon.base.id } : {}),
     };
   }
 

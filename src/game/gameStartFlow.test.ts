@@ -75,13 +75,30 @@ describe('game start flow', () => {
     const start = vi.fn<(scene: string, data?: { savedGame?: unknown }) => void>();
     const boot = Object.create(BootScene.prototype) as BootScene;
 
+    // The loading screen: the title's dusk and a bar that fills in mint.
+    const painted: Array<[string, unknown[]]> = [];
+    const paint = (): unknown =>
+      new Proxy({}, {
+        get: (_target, method: string) => (...args: unknown[]) => {
+          painted.push([method, args]);
+          return paint();
+        },
+      });
+    const loaderEvents = new Map<string, (progress: number) => void>();
     Object.assign(boot as unknown as Record<string, unknown>, {
-      load: { spritesheet, image },
+      load: { spritesheet, image, on: (event: string, handler: (progress: number) => void) => loaderEvents.set(event, handler) },
       anims: { create, generateFrameNumbers },
       scene: { start },
+      scale: { width: 320, height: 240 },
+      add: { graphics: paint },
     });
 
     boot.preload();
+    expect(painted).toContainEqual(['fillStyle', [0x0a1428, 1]]);
+    expect(painted).toContainEqual(['fillRect', [0, 0, 320, 240]]);
+    loaderEvents.get('progress')?.(0.5);
+    expect(painted).toContainEqual(['fillStyle', [0x8ed4c2, 1]]);
+    expect(painted).toContainEqual(['fillRect', [102, 150, 58, 3]]);
     boot.create();
 
     expect(spritesheet).toHaveBeenCalledWith('character', publicAssetUrl('assets/character.png'), {
@@ -321,7 +338,8 @@ describe('game start flow', () => {
     const title = Object.create(TitleScene.prototype) as TitleScene;
     Object.assign(title as unknown as Record<string, unknown>, {
       saveManager: saves,
-      prompt: { setText: vi.fn() },
+      prompt: [{ setText: vi.fn() }],
+      cameras: { main: { fadeOut: vi.fn() } },
       scene: { start },
       time: { delayedCall: (_delay: number, callback: () => void) => callback() },
       playStartAudio: vi.fn(),

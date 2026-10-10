@@ -12,16 +12,16 @@ import type { SaveSummary } from '../save/SaveManager';
  * starts on BACK AWAY - the title is where the key that woke the game up is
  * still held.
  *
- * The third row is MAKE A MAP, and it opens a second question with the two
- * things the game has that are about maps rather than about a save: the map
- * maker (`scenes/MapMakerScene.ts`) and the explorer run (`dev/playtestMode.ts`),
- * a whole second game, in its own save, for walking the maps rather than
- * surviving them. They share a row because four rows do not fit under the name
- * plate on a 320x240 screen - the map maker's plan said so before it was built,
- * and moved PLAYTEST inside MAKE A MAP rather than shrink anything. Neither
- * carries a detail line: the hint under the menu says what each does while the
- * cursor is on it, which is the one place on that screen there is still room
- * for a sentence.
+ * Under the two of them sit the two things the game has that are about maps
+ * rather than about a save, side by side on one row: MAKE A MAP, which opens
+ * the map maker (`scenes/MapMakerScene.ts`) and nothing else, and PLAYTEST, the
+ * explorer run (`dev/playtestMode.ts`) - a whole second game, in its own save,
+ * for walking the maps rather than surviving them. PLAYTEST used to be a
+ * second question behind MAKE A MAP, because four full-width rows do not fit
+ * under the name on a 320x240 screen; the owner asked for the map maker's
+ * button to be only the map maker (2026-10-10), and two half-width buttons on
+ * one row are what make room for both. Neither carries a detail line: the hint
+ * under the menu says what each does while the cursor is on it.
  *
  * Pure, like `raidHud.ts`, so the wording and the layout are held by tests that
  * never open a canvas; `TitleScene` only draws what it is handed.
@@ -32,7 +32,6 @@ export type TitleChoiceId =
   | 'new'
   | 'keep'
   | 'erase'
-  | 'maps'
   | 'maker'
   | 'playtest'
   | 'resume-playtest'
@@ -45,6 +44,8 @@ export interface TitleChoice {
   readonly detail?: string;
   /** A choice that would do nothing is drawn dim and the cursor passes over it. */
   readonly enabled: boolean;
+  /** Shares the row of the choice before it, each taking half. */
+  readonly beside?: boolean;
 }
 
 export interface TitleMenu {
@@ -80,22 +81,8 @@ export function titleMenu(summary: SaveSummary): TitleMenu {
         ...(summary.kind === 'none' ? {} : { detail: summary.kind === 'unreadable' ? 'REPLACES THE SAVE' : 'ERASES THE SAVE' }),
         enabled: true,
       },
-      { id: 'maps', label: 'MAKE A MAP', enabled: true },
-    ],
-  };
-}
-
-/**
- * MAKE A MAP's own question: draw a map, or walk the game's. Starts on the map
- * maker, because that is what the row said.
- */
-export function mapsMenu(playtest: SaveSummary = { kind: 'none' }): TitleMenu {
-  return {
-    question: 'MAPS',
-    initial: 'maker',
-    choices: [
-      { id: 'maker', label: 'MAP MAKER', enabled: true },
-      { id: 'playtest', label: playtest.kind === 'game' ? 'RESUME PLAYTEST' : 'PLAYTEST', enabled: true },
+      { id: 'maker', label: 'MAKE A MAP', enabled: true },
+      { id: 'playtest', label: 'PLAYTEST', enabled: true, beside: true },
     ],
   };
 }
@@ -145,21 +132,36 @@ export function titleHint(menu: TitleMenu, choice: TitleChoiceId): string {
   if (choice === 'maker') {
     return 'DRAW YOUR OWN RAID MAP';
   }
-  if (choice === 'maps') {
-    return 'DRAW A MAP · OR EXPLORE THE GAME\'S';
-  }
   if (menu.question) {
     return menu.choices[0].id === 'keep' ? 'ESC KEEPS IT' : 'ESC GOES BACK';
   }
-  return 'UP DOWN CHOOSE · SPACE SELECT';
+  return 'ARROWS CHOOSE · SPACE SELECT';
 }
 
-/** Moves the cursor one enabled choice up or down, stopping at the ends. */
+/**
+ * Moves the cursor one enabled choice up or down, stopping at the ends. It
+ * walks the choices in reading order, so Down from MAKE A MAP is PLAYTEST
+ * beside it: every choice is reachable with Up and Down alone.
+ */
 export function moveTitleChoice(menu: TitleMenu, current: TitleChoiceId, step: -1 | 1): TitleChoiceId {
   const enabled = menu.choices.filter((choice) => choice.enabled);
   const index = enabled.findIndex((choice) => choice.id === current);
   const next = Math.max(0, Math.min(enabled.length - 1, (index < 0 ? 0 : index) + step));
   return enabled[next]?.id ?? current;
+}
+
+/**
+ * Left and Right: to the choice beside this one on its row, and nowhere else.
+ */
+export function moveTitleChoiceAcross(menu: TitleMenu, current: TitleChoiceId, step: -1 | 1): TitleChoiceId {
+  const index = menu.choices.findIndex((choice) => choice.id === current);
+  const here = menu.choices[index];
+  const next = menu.choices[index + step];
+  if (!here || !next || !next.enabled) {
+    return current;
+  }
+  const sameRow = step === 1 ? next.beside === true : here.beside === true;
+  return sameRow ? next.id : current;
 }
 
 export interface TitleRow {
@@ -181,35 +183,54 @@ export const TITLE_ROW_WIDTH = 200;
 export const TITLE_ROW_HEIGHT = 22;
 export const TITLE_ROW_HEIGHT_WITH_DETAIL = 32;
 const ROW_GAP = 5;
+/** Between two choices that share a row. */
+const PAIR_GAP = 6;
 const QUESTION_HEIGHT = 16;
 const HINT_HEIGHT = 12;
 
 /**
- * Seats the choices under the name plate on whole pixels, and the key hint
- * under them. Everything is anchored to the screen's bottom edge first and the
- * plate second, so a stage as small as 320x240 shows the whole menu and a
- * taller one simply has more dusk between.
+ * Seats the choices under the title on whole pixels, and the key hint under
+ * them. Everything is anchored to the screen's bottom edge first and the title
+ * second, so a stage as small as 320x240 shows the whole menu and a taller one
+ * simply has more town between. A choice that is `beside` the one before it
+ * takes the right half of that row.
  */
 export function layoutTitleMenu(
   menu: TitleMenu,
   width: number,
   height: number,
-  plateBottom: number,
+  titleBottom: number,
 ): TitleMenuLayout {
-  const heights = menu.choices.map((choice) =>
-    choice.detail ? TITLE_ROW_HEIGHT_WITH_DETAIL : TITLE_ROW_HEIGHT,
+  // One entry per drawn row, holding the indices of the choices on it.
+  const lines: number[][] = [];
+  menu.choices.forEach((choice, index) => {
+    if (choice.beside && lines.length > 0) {
+      lines[lines.length - 1].push(index);
+    } else {
+      lines.push([index]);
+    }
+  });
+  const heights = lines.map((line) =>
+    Math.max(...line.map((index) => (menu.choices[index].detail ? TITLE_ROW_HEIGHT_WITH_DETAIL : TITLE_ROW_HEIGHT))),
   );
   const rowsHeight = heights.reduce((total, value) => total + value, 0) + ROW_GAP * (heights.length - 1);
   const questionHeight = menu.question ? QUESTION_HEIGHT : 0;
   const stack = questionHeight + rowsHeight + 8 + HINT_HEIGHT;
-  const top = Math.max(plateBottom + 8, Math.min(height - 10 - stack, plateBottom + Math.round((height - plateBottom - stack) / 2)));
-  const left = Math.floor((width - Math.min(width - 32, TITLE_ROW_WIDTH)) / 2);
+  const top = Math.max(titleBottom + 8, Math.min(height - 10 - stack, titleBottom + Math.round((height - titleBottom - stack) / 2)));
   const rowWidth = Math.min(width - 32, TITLE_ROW_WIDTH);
+  const left = Math.floor((width - rowWidth) / 2);
   let y = top + questionHeight;
-  const rows = menu.choices.map((choice, index) => {
-    const row = { id: choice.id, x: left, y, width: rowWidth, height: heights[index] };
-    y += heights[index] + ROW_GAP;
-    return row;
+  const rows: TitleRow[] = [];
+  lines.forEach((line, lineIndex) => {
+    const share = Math.floor((rowWidth - PAIR_GAP * (line.length - 1)) / line.length);
+    line.forEach((choiceIndex, place) => {
+      // The last of a row takes up any pixel the division left over, so the
+      // pair's outer edges line up with the full-width rows above them.
+      const x = left + place * (share + PAIR_GAP);
+      const rowRight = place === line.length - 1 ? left + rowWidth : x + share;
+      rows.push({ id: menu.choices[choiceIndex].id, x, y, width: rowRight - x, height: heights[lineIndex] });
+    });
+    y += heights[lineIndex] + ROW_GAP;
   });
   return {
     ...(menu.question ? { question: { x: Math.floor(width / 2), y: top + Math.round(QUESTION_HEIGHT / 2) } } : {}),
