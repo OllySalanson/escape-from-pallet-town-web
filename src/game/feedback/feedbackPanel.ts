@@ -38,6 +38,8 @@ import {
 export interface PanelView {
   /** An object URL for the picture, or null when the game could not take one. */
   readonly pictureUrl: string | null;
+  /** True when no picture was taken because a menu screen covered the game. */
+  readonly pictureSkipped?: boolean;
   readonly includePicture: boolean;
   readonly includeSave: boolean;
   /** Whether there is a save at all; with none, its row says so and does nothing. */
@@ -105,7 +107,10 @@ export function voiceRow(voice: VoiceView): string {
   return `<div class="feedback-voice" data-voice><button class="px-window px-button feedback-talk" data-talk data-help="Record some more onto the end.">${TALK_MORE}</button>${time}<button class="px-window px-chip" data-play data-help="${voice.playing ? 'Stop playing it back.' : 'Hear what you recorded.'}">${voice.playing ? 'Stop' : 'Play'}</button><button class="px-window px-chip" data-delete-voice data-help="Throw the recording away.">Delete</button></div>`;
 }
 
-export function pictureRow(view: Pick<PanelView, 'pictureUrl' | 'includePicture'>): string {
+export function pictureRow(view: Pick<PanelView, 'pictureUrl' | 'includePicture' | 'pictureSkipped'>): string {
+  if (view.pictureSkipped) {
+    return `<button class="px-row px-tall" aria-disabled="true" data-help="A menu is drawn over the game, so a picture would show what is behind it. Which screen you are on is under SEE IT ALL."><span class="px-row-main"><span>Picture of this moment</span><small>None on a menu screen</small></span></button>`;
+  }
   if (!view.pictureUrl) {
     return `<button class="px-row px-tall" aria-disabled="true" data-help="The game could not take a picture this time."><span class="px-row-main"><span>Picture of this moment</span><small>None this time</small></span></button>`;
   }
@@ -127,8 +132,13 @@ export function saveRow(view: Pick<PanelView, 'includeSave' | 'hasSave'>): strin
   }</button>`;
 }
 
+/** ", your last 3 moves", ", your last move", or nothing before anything has happened. */
+export function movesPhrase(count: number): string {
+  return count === 0 ? '' : count === 1 ? ', your last move' : `, your last ${count} moves`;
+}
+
 export function seeAllRow(view: Pick<PanelView, 'seeAll' | 'actions'>): string {
-  return `<button class="px-row px-tall" data-see-all aria-expanded="${view.seeAll}" data-help="Every line that goes with your message, before you send it."><span class="px-row-main"><span class="px-wrap">Game version, where you are, your last ${view.actions.length} moves</span><small>${
+  return `<button class="px-row px-tall" data-see-all aria-expanded="${view.seeAll}" data-help="Every line that goes with your message, before you send it."><span class="px-row-main"><span class="px-wrap">Game version, where you are${movesPhrase(view.actions.length)}</span><small>${
     view.seeAll ? 'Hide it' : 'See it all'
   }</small></span></button>`;
 }

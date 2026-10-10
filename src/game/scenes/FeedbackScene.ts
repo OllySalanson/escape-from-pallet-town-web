@@ -39,6 +39,8 @@ export interface FeedbackSceneData {
   readonly actions: readonly LoggedAction[];
   /** The picture, which arrives a frame after the tab was pressed (or never). */
   readonly picture: Promise<Blob | null>;
+  /** No picture was taken, because the player was on a menu screen the canvas does not show. */
+  readonly pictureSkipped?: boolean;
   /** The raw stored save at the instant the tab was pressed, or null with none. */
   readonly save: string | null;
   readonly courier: FeedbackCourier;
@@ -121,6 +123,7 @@ export class FeedbackScene extends Phaser.Scene {
   private view(): PanelView {
     return {
       pictureUrl: this.pictureUrl,
+      pictureSkipped: this.request.pictureSkipped === true,
       includePicture: this.includePicture,
       includeSave: this.includeSave,
       hasSave: this.request.save !== null,

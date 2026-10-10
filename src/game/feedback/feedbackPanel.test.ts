@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allLines, commitBar, countLine, outcomeMarkup, panelMarkup, voiceRow, type PanelView } from './feedbackPanel';
+import { allLines, commitBar, countLine, movesPhrase, outcomeMarkup, panelMarkup, voiceRow, type PanelView } from './feedbackPanel';
 import { MAX_FEEDBACK_TEXT } from './feedbackNote';
 
 const view: PanelView = {
@@ -24,7 +24,7 @@ describe('the feedback panel', () => {
     expect(markup).toContain('src="blob:picture"');
     expect(markup).toContain('data-save aria-pressed="true"');
     expect(markup).toContain('data-see-all aria-expanded="false"');
-    expect(markup).toContain('your last 1 moves');
+    expect(markup).toContain('where you are, your last move<');
   });
 
   it('says plainly when there is no picture or no save, rather than offering one', () => {
@@ -83,4 +83,16 @@ describe('the voice row', () => {
     expect(row).toContain('aria-disabled="true"');
     expect(row).not.toContain('data-talk');
   });
+});
+
+it('says why there is no picture on a menu screen, rather than sending a black one', () => {
+  const row = panelMarkup({ ...view, pictureUrl: null, pictureSkipped: true });
+  expect(row).toContain('None on a menu screen');
+  expect(row).not.toContain('data-picture');
+});
+
+it('counts the last moves in English', () => {
+  expect(movesPhrase(0)).toBe('');
+  expect(movesPhrase(1)).toBe(', your last move');
+  expect(movesPhrase(30)).toBe(', your last 30 moves');
 });

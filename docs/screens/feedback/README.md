@@ -21,4 +21,6 @@ server in `?testmode=pixels`, at 1280x800 and at a 390x844 phone.
 | `on-air.png` | Recording: STOP, the blinking dot, the level meter and the tape's time. |
 | `recorded.png` | After a stop: TALK MORE adds a clip, PLAY hears it back, DELETE throws it away. |
 | `mic-refused.png` | A refused microphone leaves typing, and says so in the raid's voice. |
+| `menu-tab-clear.png` | Over a menu screen (the map maker) the tab stands in a strip no menu is laid out under. It used to sit on the menu's frame and the ends of its right-hand column. |
+| `menu-no-picture.png` | On a menu screen no picture is taken (the canvas behind the menu is black), and the panel says so. |
 | `phone-tab.png`, `phone-panel.png` | A phone held upright: the tab under the game, the panel the width of the screen. |
