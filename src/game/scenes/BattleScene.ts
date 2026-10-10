@@ -3157,6 +3157,11 @@ export class BattleScene extends Phaser.Scene {
         if (cue?.at === 'impact') {
           audioManager.play(cue.name);
         }
+        // Only a blow that took HP shakes the screen and blinks its target:
+        // Growl landing like a Tackle read as a hit that did no damage.
+        if (step.hpDelta <= 0) {
+          return;
+        }
         this.cameras.main.shake(60, 0.003);
         // A plate built since the blow was thrown is drawn from the state the
         // blow already landed in - for whoever was sent into that slot since,

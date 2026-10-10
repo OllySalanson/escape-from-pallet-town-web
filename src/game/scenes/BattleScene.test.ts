@@ -33,7 +33,8 @@ import {
 } from '../pokemon/battle/battleEngine';
 import { BULBASAUR, PIDGEY, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import { Move } from '../pokemon/Move';
-import { GROWL, SUPER_SONIC } from '../pokemon/moves';
+import { GROWL, SUPER_SONIC, TACKLE, TAIL_WHIP } from '../pokemon/moves';
+import type { MoveBase } from '../pokemon/MoveBase';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
@@ -1900,5 +1901,62 @@ describe('a trainer sending out Pokemon after a knockout', () => {
 
     const { displayedHp } = scene as unknown as { displayedHp: Map<string, number> };
     expect(displayedHp.get('enemy0')).toBe(party[1].currentHp);
+  });
+});
+
+/**
+ * A Pokemon blinks white when a blow takes HP off it, and only then. Growl and
+ * Tail Whip used to blink their target and shake the screen exactly as a
+ * Tackle does, so a move that lowered a stat looked like a hit that did no
+ * damage.
+ */
+describe('the blink a blow lands with', () => {
+  const fight = (playerMove: MoveBase, wildMove: MoveBase) => {
+    const pidgey = new Pokemon(PIDGEY, 8);
+    pidgey.moves.splice(0, pidgey.moves.length, new Move(playerMove));
+    const wild = new Pokemon(getSpeciesById('rattata')!, 3);
+    wild.moves.splice(0, wild.moves.length, new Move(wildMove));
+    const harness = createBattleSceneHarness({ party: new PokemonParty([pidgey]), wild });
+    const clock = createFakeClock();
+    const blinked: string[] = [];
+    const sprites = new Map(
+      (['player', 'enemy'] as const).map((side) => {
+        const sprite = standingSprite(side);
+        const setTintFill = sprite.setTintFill;
+        sprite.setTintFill = () => (blinked.push(side), setTintFill());
+        return [`${side}0`, sprite];
+      }),
+    );
+    const shake = vi.fn();
+    Object.assign(harness.scene as object, { tweens: clock.tweens, time: clock.time, sprites });
+    (harness.scene as unknown as { cameras: { main: { shake: unknown } } }).cameras.main.shake = shake;
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const { scene, renderedTexts, dialog } = harness;
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts).findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
+    read(renderedTexts)
+      .filter(({ text }) => text.includes(playerMove.name.toUpperCase()))
+      .at(-1)!
+      .handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      clock.advance(400);
+    }
+    return { blinked, shake, dialog };
+  };
+
+  it('does not blink or shake for a move that only lowers a stat', () => {
+    const { blinked, shake, dialog } = fight(GROWL, TAIL_WHIP);
+    expect(dialog.shownMessages).toContain("Wild RATTATA's Attack fell!");
+    expect(dialog.shownMessages).toContain("Your PIDGEY's Defense fell!");
+    expect(blinked).toEqual([]);
+    expect(shake).not.toHaveBeenCalled();
+  });
+
+  it('still blinks the Pokemon a damaging move hits, and only that one', () => {
+    const { blinked, shake } = fight(TACKLE, TAIL_WHIP);
+    expect(blinked).toEqual(['enemy']);
+    expect(shake).toHaveBeenCalledTimes(1);
   });
 });
