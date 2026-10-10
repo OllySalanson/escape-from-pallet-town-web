@@ -182,6 +182,15 @@ export function pokemonNeedingRecovery(stash: Stash): readonly StashedPokemon[] 
   return stash.listPokemon().filter((stored) => needsRecovery(stored.pokemon));
 }
 
+/**
+ * Whether anyone in the vault can be deployed, or undefined when there is no
+ * vault to read. A wipe restocks the kit but revives nobody, so the result
+ * screen asks this of the stash the wipe just wrote.
+ */
+export function anyoneFitToRaid(stash: Stash | undefined): boolean | undefined {
+  return stash?.listPokemon().some((stored) => !stored.pokemon.isFainted);
+}
+
 /** What the base says of the whole team (`teamConditionLine`), or null when everyone is fit. */
 export function teamCondition(stash: Stash): string | null {
   return teamConditionLine(

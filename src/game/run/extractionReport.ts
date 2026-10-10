@@ -184,6 +184,13 @@ export interface ExtractionReport {
    * was lost in a battle, which is the one ending with a line-up to show.
    */
   readonly fallen?: readonly FallenPokemon[];
+  /**
+   * What the base is like to come home to after a lost raid, or null after a
+   * survived one. A wipe restocks the kit, but it revives nobody: a secured
+   * partner comes home fainted, and promising "a loadout you can deploy with"
+   * over a team that cannot deploy sent the player to a lab that refused them.
+   */
+  readonly baseNote: string | null;
   readonly saved: boolean;
 }
 
@@ -217,6 +224,12 @@ export interface ExtractionReportInput {
    * guessed at it from the plan would name things the player never met.
    */
   readonly leftBehind?: readonly string[];
+  /**
+   * Whether anyone at base can fight once a lost raid's losses are applied,
+   * read off the stash the caller just wrote. Absent is taken as yes, which is
+   * the old claim; only a caller that looked can say otherwise.
+   */
+  readonly fitToRaid?: boolean;
   readonly saved: boolean;
 }
 
@@ -342,8 +355,15 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     packSummary: packSummary(pack),
     pressure: pressureLines(snapshot, escaped, input.leftBehind ?? []),
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
+    baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
     saved: input.saved,
   };
+}
+
+function wipedBaseNote(fitToRaid: boolean): string {
+  return fitToRaid
+    ? 'Your base has been topped back up to a loadout you can deploy with.'
+    : 'Your supplies have been topped back up, but nobody is fit to raid: revive a Pokémon at the Pokémon Center first.';
 }
 
 /**

@@ -89,6 +89,7 @@ import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/
 import { GAME_FONT } from '../ui/gameFont';
 import { CAPTION_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { KeyPresses } from '../input/KeyPresses';
+import { anyoneFitToRaid } from '../hub/recovery';
 import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
@@ -3258,6 +3259,9 @@ export class BattleScene extends Phaser.Scene {
       // sequence names it, and it cannot be recovered afterwards: by then every
       // member of the party is at 0 HP and indistinguishable from every other.
       lastStand: this.state.player.pokemon,
+      // A wipe restocks the kit but revives nobody, so whether the lab will
+      // let this player out again is read off the stash just written.
+      fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),
       saved,
     });
     this.time.delayedCall(RUN_RESULT_DELAY_MS, () => {

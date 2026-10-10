@@ -212,6 +212,7 @@ import {
   trainerWatchCaption,
 } from '../world/trainerEngagement';
 import { hasHunterIntel } from '../hub/workshop';
+import { anyoneFitToRaid } from '../hub/recovery';
 import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import {
   getVisibleLoot,
@@ -4786,6 +4787,7 @@ export class WorldScene extends Phaser.Scene {
         leftBehind: this.prizesLeftBehindNow(),
         lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
         carriedOut,
+        fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),
         saved,
       }),
     );

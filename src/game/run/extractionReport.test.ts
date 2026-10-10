@@ -4,6 +4,8 @@ import { Pokemon, experienceForLevel } from '../pokemon';
 import { RunManager, type ItemStack, type SecureSlot } from './RunManager';
 import { buildExtractionReport } from './extractionReport';
 import { RAID_DURATION_MS } from './raidClock';
+import { Stash } from '../stash/Stash';
+import { anyoneFitToRaid } from '../hub/recovery';
 
 /**
  * Every Pokemon in this file is a starter or a Pidgey, and FireRed puts all
@@ -345,6 +347,61 @@ describe('extraction report after a lost raid', () => {
     // No bag was available to the losing scene, which is not the same claim as
     // "nothing was spent", so the screen is given nothing to print.
     expect(report.spent).toBeUndefined();
+  });
+
+  /**
+   * A lone Bulbasaur, secured by default and beaten in the Floodplain, came
+   * home on 0/17 HP - and the result screen's last word was "a loadout you can
+   * deploy with", over a lab that refused to send anyone out.
+   */
+  it('never promises a deployable loadout when the wipe left nobody fit to raid', () => {
+    const report = (fitToRaid: boolean) => {
+      const partner = new Pokemon(BULBASAUR, 5);
+      const manager = startedRun({ party: [partner], items: [], secure: { pokemon: [partner] } });
+      const result = manager.resolveWipe();
+      return buildExtractionReport({
+        outcome: 'WIPED',
+        cause: 'defeated',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        lost: { pokemon: result.lostPokemon, items: result.lostItems },
+        fitToRaid,
+        saved: true,
+      });
+    };
+
+    expect(report(false).baseNote).toBe(
+      'Your supplies have been topped back up, but nobody is fit to raid: revive a Pokémon at the Pokémon Center first.',
+    );
+    expect(report(true).baseNote).toBe(
+      'Your base has been topped back up to a loadout you can deploy with.',
+    );
+
+    // Read off the stash the wipe wrote: a fainted partner is nobody fit, and
+    // one standing Pokemon anywhere in the vault is somebody.
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(BULBASAUR, 5));
+    stash.listPokemon()[0].pokemon.currentHp = 0;
+    expect(anyoneFitToRaid(stash)).toBe(false);
+    stash.addPokemon(new Pokemon(PIDGEY, 3));
+    expect(anyoneFitToRaid(stash)).toBe(true);
+    expect(anyoneFitToRaid(undefined)).toBeUndefined();
+  });
+
+  it('says nothing about the base after a survived raid', () => {
+    const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+    manager.resolveEscape();
+
+    expect(
+      buildExtractionReport({
+        outcome: 'ESCAPED',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        banked: { pokemon: [], items: [] },
+        fitToRaid: false,
+        saved: true,
+      }).baseNote,
+    ).toBeNull();
   });
 
   it('reports a failed save rather than promising a stash that was not written', () => {

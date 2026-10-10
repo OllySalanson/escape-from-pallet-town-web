@@ -539,8 +539,8 @@ export class ExtractionScene extends Phaser.Scene {
     if (!this.report.saved) {
       return 'This result could not be written to storage.';
     }
-    if (this.report.outcome === 'WIPED') {
-      return 'Your base has been topped back up to a loadout you can deploy with.';
+    if (this.report.baseNote !== null) {
+      return this.report.baseNote;
     }
     // Promising a stash full of new supplies after an empty raid is the one way
     // this screen could lie about a result the player can see for themselves -
