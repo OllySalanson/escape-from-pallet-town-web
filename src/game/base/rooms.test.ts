@@ -18,6 +18,7 @@ import {
   stairArrival,
   BADGE_CASE_WALL,
   PENNANT_WALL,
+  PUMPKIN_SPOT,
   wallTiles,
   type BaseRoom,
 } from './rooms';
@@ -455,5 +456,70 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
     const things = [downstairs, upstairs].flatMap((each) => buildRoom(each, baseGame()).things);
     expect(things.filter((thing) => thing.does === 'sleep').map((thing) => thing.name)).toEqual(['YOUR BED']);
     expect(things.filter((thing) => thing.does === 'play').map((thing) => thing.name)).toEqual(['THE CONSOLE']);
+  });
+
+  /**
+   * The house follows the player's clock: a window for the hour and a
+   * decoration for the month. Every combination has to leave the house as
+   * walkable as it was, because the room is built from whatever time it is.
+   */
+  const MOMENTS = [
+    new Date(2026, 5, 15, 12),
+    new Date(2026, 5, 15, 19),
+    new Date(2026, 5, 15, 23),
+    new Date(2026, 9, 31, 22),
+    new Date(2026, 11, 24, 18),
+  ];
+
+  it('stays walkable everywhere at every hour of every month it dresses up for', () => {
+    for (const now of MOMENTS) {
+      for (const each of [downstairs, upstairs]) {
+        const built = buildRoom(each, baseGame(), now);
+        for (const entrance of entrancesOf(each)) {
+          const steps = stepsFrom(built.collision, entrance);
+          for (let y = 0; y < each.height; y += 1) {
+            for (let x = 0; x < each.width; x += 1) {
+              if (built.collision[y][x]) continue;
+              expect([now.toISOString(), each.id, x, y, steps[y][x] < Infinity]).toEqual([
+                now.toISOString(),
+                each.id,
+                x,
+                y,
+                true,
+              ]);
+            }
+          }
+        }
+        // And the stairs and the mat are never what a decoration is put on.
+        for (const tile of entrancesOf(each)) {
+          expect([now.toISOString(), each.id, built.collision[tile.y][tile.x]]).toEqual([
+            now.toISOString(),
+            each.id,
+            false,
+          ]);
+        }
+      }
+    }
+  });
+
+  it('draws a different window for day, dusk and night', () => {
+    const windowAt = (now: Date) => buildRoom(downstairs, baseGame(), now).layers.detail.tiles[1][6];
+    const [day, dusk, night] = [12, 19, 23].map((hour) => windowAt(new Date(2026, 5, 15, hour)));
+    expect(new Set([day, dusk, night]).size).toBe(3);
+  });
+
+  it('puts a pumpkin by the door all October and a tree in the corner all December', () => {
+    const things = (now: Date) => buildRoom(downstairs, baseGame(), now).things.map((thing) => thing.name);
+    expect(things(new Date(2026, 9, 1, 12))).toContain('A PUMPKIN');
+    expect(things(new Date(2026, 9, 1, 12))).not.toContain('THE TREE');
+    expect(things(new Date(2026, 11, 1, 12))).toContain('THE TREE');
+    expect(things(new Date(2026, 11, 1, 12))).not.toContain('A PUMPKIN');
+    for (const name of ['A PUMPKIN', 'THE TREE']) {
+      expect(things(new Date(2026, 5, 1, 12))).not.toContain(name);
+    }
+    const october = buildRoom(downstairs, baseGame(), new Date(2026, 9, 31, 20));
+    expect(october.collision[PUMPKIN_SPOT.y][PUMPKIN_SPOT.x]).toBe(true);
+    const june = buildRoom(downstairs, baseGame(), new Date(2026, 5, 1, 12));
+    expect(june.collision[PUMPKIN_SPOT.y][PUMPKIN_SPOT.x]).toBe(false);
   });
 });

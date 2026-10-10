@@ -12,6 +12,7 @@
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=bills-cottage --traded=40
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=oaks-lab --beaten=overlook-warden --survey=save.json
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=bolthole-upstairs --raids=route-1:3:2 --starter=squirtle
+ *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=bolthole --date=2026-12-24T22:00
  *
  * `--built=` is a list of rung ids from Brock's ladder, `all` or `none` (the
  * default). `--room=` draws the room behind that door instead of the yard, with
@@ -114,7 +115,11 @@ if (roomFlag !== undefined && !room) {
     `no room called '${roomFlag}' - one of ${BASE_ROOMS.map((each) => each.id).join(', ')}`,
   );
 }
-const drawnRoom = room ? buildRoom(room, game) : null;
+// `--date=2026-10-31T22:00`: the moment THE BOLTHOLE is drawn at - its window
+// follows the hour and its decorations the month (`homeClock.ts`).
+const dateFlag = option('date');
+const drawnAt = dateFlag === undefined ? new Date() : new Date(dateFlag);
+const drawnRoom = room ? buildRoom(room, game, drawnAt) : null;
 const yard = getBaseMap(built);
 const place: {
   width: number;

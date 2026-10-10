@@ -25,6 +25,23 @@ it breaks, including a badge case that reads a different number of badges than
 keepers beaten, a bed that does not send you to Joy, or a fourth game you do
 not win.
 
+## By the player's own clock
+
+The rest of the house is the save; this part is the day you are playing on, read
+off the browser's own local time each time you walk in (`base/homeClock.ts`).
+
+| | |
+|---|---|
+| `october-dusk.png` | The real game on 10 October at half past five in the morning: the window gone orange for dusk, a jack-o'-lantern by the door, and a Squirtle at the player's heel. |
+| `clock-day.png` / `clock-dusk.png` | The same room at noon and at seven in the evening in June (`renderBase.mts --room=bolthole --date=2026-06-15T12:00`). |
+| `clock-halloween.png` | Ten at night on 31 October: the window dark with the stars out, and the pumpkin. |
+| `clock-christmas.png` | Six in the evening on Christmas Eve: dusk in the window and a little tree in the corner, with a Poké Ball on top where the star should go. |
+
+- **The window**: day from seven until six, dusk either side of it, night from
+  nine until five. Face it and press Space and it says what is out there.
+- **October**: a pumpkin by the door mat, all month.
+- **December**: a tree in place of the corner plant, all month.
+
 ## What it reads off the save
 
 Nothing in the house is stored; everything in it is the save you already have.

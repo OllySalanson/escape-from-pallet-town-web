@@ -50,8 +50,11 @@ const RUG_GREEN = { palette: 2, index: 5 };
  * Ids under 640 are the shared "building" tileset every FireRed house is drawn
  * from; 640 and up are the player's house's own secondary tileset, which is
  * where the bed and the PC live. `recolour` swaps one palette entry for one
- * colour - the only edit made to any of them - and `mat` builds a door mat
- * from the two rows it hangs across (see `liftMat`).
+ * colour - on one layer only, and above one pixel row of the piece only, where
+ * it names them - which is the only edit made
+ * to any of them; `stars` sets a few pixels of a night sky; `mat` builds a door
+ * mat from the two rows it hangs across (see `liftMat`); and `drawn` is a piece
+ * drawn here as a pixel table, because FireRed's house has nothing for it.
  */
 const PIECES = [
   // --- the shell: the back wall, its skirting, the floor and its shaded edge
@@ -68,6 +71,29 @@ const PIECES = [
   // The family television against the wall, on its stand.
   { name: 'home.tv', metatiles: [[45], [53], [61]] },
   { name: 'home.window', metatiles: [[33, 34], [41, 42]] },
+  // The same window in the evening and at night. FireRed draws the panes in
+  // its second palette's white with that palette's palest blue round their
+  // edges, on the window's own layer - the wall behind it is the same white,
+  // and the sill under it is too - so only those two, on that layer, above the
+  // sill, turn to dusk or to dark with a few stars out. The room picks one by
+  // the player's own clock.
+  {
+    name: 'home.windowEvening',
+    metatiles: [[33, 34], [41, 42]],
+    recolour: [
+      { palette: 1, index: 4, layer: 1, above: 21, to: [255, 196, 140] },
+      { palette: 1, index: 7, layer: 1, above: 21, to: [255, 226, 176] },
+    ],
+  },
+  {
+    name: 'home.windowNight',
+    metatiles: [[33, 34], [41, 42]],
+    recolour: [
+      { palette: 1, index: 4, layer: 1, above: 21, to: [52, 62, 128] },
+      { palette: 1, index: 7, layer: 1, above: 21, to: [90, 106, 170] },
+    ],
+    stars: { on: [52, 62, 128], at: [[15, 12], [22, 11], [23, 13], [17, 16], [25, 17]], colour: [255, 246, 189] },
+  },
   // The stairs up, and the orange mat at their foot that is the way onto them.
   { name: 'home.stairsUp', metatiles: [[22, 23], [30, 31], [38, 39]] },
   { name: 'home.stairMatUp', metatiles: [[29], [37]] },
@@ -116,7 +142,99 @@ const PIECES = [
   })),
   // The top of the television, which stands proud of the rug.
   { name: 'home.tvTop', metatiles: [[646]] },
+
+  // --- drawn here: the house through the year ---------------------------------
+  // A jack-o'-lantern for October, lit from inside, in FireRed's own outline
+  // weight and lit from the top left as everything in the house is.
+  {
+    name: 'home.pumpkin',
+    drawn: {
+      ink: {
+        o: [74, 36, 16],
+        a: [232, 128, 40],
+        b: [248, 184, 88],
+        c: [184, 84, 24],
+        g: [88, 140, 48],
+        G: [56, 96, 32],
+        y: [255, 228, 104],
+      },
+      rows: [
+        '................',
+        '........oo......',
+        '.......oGgo.....',
+        '.......oGo......',
+        '...ooooooooooo..',
+        '..oabaacaabaaco.',
+        '.oabaaacaaabaaco',
+        '.oaayyaacayyaaco',
+        '.oaayyaacayyaaco',
+        '.oaaaaayyaaaaaco',
+        '.oayaaaaaaaayaco',
+        '.oaayyyyyyyyaaco',
+        '.ocaaaacaaaaacco',
+        '..occaacaaaccco.',
+        '...occccccccco..',
+        '....ooooooooo...',
+      ],
+    },
+  },
+  // A little tree for December, in a pot like the house's plants, hung with
+  // baubles and with a Poke Ball on top where a star would go.
+  { name: 'home.festiveTree', drawn: festiveTree() },
 ];
+
+/** The December tree, built a tier of branches at a time: 16x32, a pot at its foot. */
+function festiveTree() {
+  const width = 16;
+  const height = 32;
+  const rows = Array.from({ length: height }, () => Array(width).fill('.'));
+  const put = (x, y, ink) => {
+    if (x >= 0 && y >= 0 && x < width && y < height) rows[y][x] = ink;
+  };
+  ['..oo..', '.orro.', '.owwo.', '..oo..'].forEach((line, y) =>
+    [...line].forEach((ink, x) => ink !== '.' && put(5 + x, y, ink)),
+  );
+  for (const tier of [
+    { top: 4, bottom: 10, from: 1, to: 4 },
+    { top: 9, bottom: 17, from: 2, to: 6 },
+    { top: 15, bottom: 24, from: 3, to: 7 },
+  ]) {
+    for (let y = tier.top; y <= tier.bottom; y += 1) {
+      const half = Math.round(tier.from + ((tier.to - tier.from) * (y - tier.top)) / (tier.bottom - tier.top));
+      for (let x = 8 - half; x < 8 + half; x += 1) {
+        const edge = x === 8 - half || x === 8 + half - 1 || y === tier.bottom;
+        put(x, y, edge ? 'o' : x < 8 - half / 3 ? 'h' : 'g');
+      }
+    }
+  }
+  for (const [x, y, ink] of [
+    [6, 8, 'R'], [9, 7, 'Y'], [5, 13, 'B'], [10, 12, 'R'], [7, 15, 'Y'],
+    [4, 20, 'R'], [8, 19, 'B'], [11, 18, 'Y'], [6, 22, 'Y'], [10, 22, 'R'],
+  ]) {
+    put(x, y, ink);
+  }
+  put(7, 25, 'k');
+  put(8, 25, 'k');
+  ['.oooooooo.', 'oppppppppo', 'oPppppppPo', '.oPppppPo.', '.oPPPPPPo.', '..oooooo..'].forEach((line, y) =>
+    [...line].forEach((ink, x) => ink !== '.' && put(3 + x, 26 + y, ink)),
+  );
+  return {
+    ink: {
+      o: [32, 64, 40],
+      g: [64, 152, 72],
+      h: [120, 200, 104],
+      r: [232, 72, 56],
+      w: [248, 248, 248],
+      R: [232, 64, 64],
+      Y: [255, 216, 72],
+      B: [88, 152, 248],
+      k: [112, 72, 32],
+      p: [208, 112, 72],
+      P: [160, 72, 48],
+    },
+    rows: rows.map((row) => row.join('')),
+  };
+}
 
 // ---------------------------------------------------------------------------
 
@@ -242,7 +360,14 @@ function drawMetatile(image, id, left, top, recolour = []) {
         for (let x = 0; x < 8; x += 1) {
           const index = tilePixel(tile, flipX ? 7 - x : x, flipY ? 7 - y : y);
           if (index === 0) continue;
-          const swap = recolour.find((each) => each.palette === palette && each.index === index);
+          const py = top + Math.floor(quarter / 2) * 8 + y;
+          const swap = recolour.find(
+            (each) =>
+              each.palette === palette &&
+              each.index === index &&
+              (each.layer === undefined || each.layer === layer) &&
+              (each.above === undefined || py < each.above),
+          );
           const [r, g, b] = swap ? swap.to : palettes[palette][index];
           const at = ((top + Math.floor(quarter / 2) * 8 + y) * image.width + left + (quarter % 2) * 8 + x) * 4;
           image.data[at] = r;
@@ -293,10 +418,45 @@ function liftMat({ top, bottom, drop }) {
   return image;
 }
 
-const cut = PIECES.map((piece) => ({
-  name: piece.name,
-  image: piece.mat ? liftMat(piece.mat) : drawGrid(piece.metatiles, piece.recolour),
-}));
+/** A pixel table, one character a pixel and `.` clear, in the piece's own inks. */
+function drawTable({ ink, rows }) {
+  const image = blank(rows[0].length, rows.length);
+  if (image.width % TILE !== 0 || image.height % TILE !== 0) throw new Error('a drawn piece must be whole tiles');
+  rows.forEach((row, y) => {
+    if (row.length !== image.width) throw new Error(`row ${y} of a drawn piece is ${row.length} wide`);
+    [...row].forEach((mark, x) => {
+      if (mark === '.') return;
+      const at = (y * image.width + x) * 4;
+      const [r, g, b] = ink[mark];
+      image.data[at] = r;
+      image.data[at + 1] = g;
+      image.data[at + 2] = b;
+      image.data[at + 3] = 255;
+    });
+  });
+  return image;
+}
+
+/** A few stars, set only where the sky they are set in is still showing. */
+function setStars(image, { on, at, colour }) {
+  for (const [x, y] of at) {
+    const i = (y * image.width + x) * 4;
+    if (image.data[i] !== on[0] || image.data[i + 1] !== on[1] || image.data[i + 2] !== on[2]) {
+      throw new Error(`star at ${x},${y} is not on the night sky`);
+    }
+    image.data.set(colour, i);
+  }
+}
+
+const cut = PIECES.map((piece) => {
+  const image = piece.mat
+    ? liftMat(piece.mat)
+    : piece.drawn
+      ? drawTable(piece.drawn)
+      : drawGrid(piece.metatiles, piece.recolour);
+  if (piece.stars) setStars(image, piece.stars);
+  return { name: piece.name, image };
+});
 
 // Shelf packing, as the base's sheet is packed: tallest first, left to right.
 const order = [...cut].sort((a, b) => b.image.height - a.image.height || b.image.width - a.image.width);

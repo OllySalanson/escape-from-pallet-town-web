@@ -102,7 +102,8 @@ try {
       await sleep(150);
     }
     if (shot) await page.screenshot(shot);
-    for (let guard = 0; guard < 40; guard += 1) {
+    // Long enough for the badge case's twelve boxes typed out at forty letters a second.
+    for (let guard = 0; guard < 400; guard += 1) {
       const now = await page.evaluate(state());
       if (now.dialog === null) break;
       if (now.complete) {
@@ -167,6 +168,15 @@ try {
     throw new Error(`the badge case read ${badges.length - 1} badges for ${beaten.length} keepers beaten`);
   }
   console.log(`badge case: ${badges.join(' / ')}`);
+
+  // The house is dressed for the month on the player's own clock.
+  const month = await page.evaluate('new Date().getMonth()');
+  const names = await page.evaluate(`${BASE}.place.room.things.map((t) => t.name)`);
+  if (month === 9 && !names.includes('A PUMPKIN')) throw new Error('it is October and there is no pumpkin by the door');
+  if (month === 11 && !names.includes('THE TREE')) throw new Error('it is December and there is no tree in the corner');
+  const windowTile = await page.evaluate(`${BASE}.place.room.things.find((t) => t.name === 'THE WINDOW').tiles[0]`);
+  await walkTo([{ x: windowTile.x, y: windowTile.y + 1 }]);
+  console.log(`window: ${(await read('ArrowUp')).join(' / ')}`);
 
   const telly = await page.evaluate(`${BASE}.place.room.things.find((t) => t.name === 'THE TELLY').tiles[0]`);
   await walkTo([{ x: telly.x, y: telly.y + 1 }]);
