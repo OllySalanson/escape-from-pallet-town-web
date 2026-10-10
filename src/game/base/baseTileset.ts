@@ -4,9 +4,10 @@ import {
   FLOOD_TOWN_TILESET,
   type FloodTownPropName,
 } from '../world/tileset/floodTownTileset';
+import { KANTO_TILESET } from '../world/tileset/kantoTileset';
 
 /**
- * The base is drawn on the same sheet the four raid maps are, with three of its
+ * The base is drawn on the same sheet the four raid maps are, with its
  * buildings opened up.
  *
  * A door is the one part of a building that is ground. The shared props are
@@ -26,7 +27,10 @@ export type BasePropName =
   | 'oakLab'
   | 'pokemonCentre'
   | 'workshop'
-  | 'billsCottage';
+  | 'billsCottage'
+  | 'bolthole'
+  | 'homeSign'
+  | 'gardenFlowers';
 
 /**
  * Bill's cottage: a little blue-roofed FireRed house, cut onto the base's own
@@ -89,11 +93,21 @@ export const BASE_TILESET: TilesetCatalogue<BasePropName> = {
       [1, 3],
       [2, 3],
     ]),
-    // 5x5, with a single arched door under a lit window.
-    pokemonCentre: withDoorway(FLOOD_TOWN_TILESET.props.house, [[2, 4]]),
+    // 5x5: FireRed's own Pokemon Center, red roof and all, with its door open.
+    // It used to be the CC0 sheet's timber house - the one building in a
+    // FireRed harbour that came from a different game.
+    pokemonCentre: KANTO_TILESET.props.pokemonCenterDoor,
     // 4x4. A FireRed shed under a corrugated roof, with its plank door at the
     // west end - the end nearest the lab, so the walk to it stays seven steps.
     workshop: workshopShed(),
     billsCottage: mirroredCottage(),
+    // 5x5. THE BOLTHOLE: a FireRed house with window boxes either side of its
+    // step, which is the one thing in the harbour that says somebody lives
+    // there. Its door is at the west end, the end nearest the yard.
+    bolthole: withDoorway(KANTO_TILESET.props.houseFlowers, [[1, 3]]),
+    // FireRed's own wooden sign, which says whose house a house is.
+    homeSign: KANTO_TILESET.props.signTown,
+    // FireRed's red flowers, walked through as FireRed's are.
+    gardenFlowers: KANTO_TILESET.props.flowers,
   },
 };

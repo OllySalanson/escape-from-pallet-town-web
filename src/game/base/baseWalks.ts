@@ -67,7 +67,11 @@ export function servingTiles(
   room: BaseRoom,
   collision: readonly (readonly boolean[])[],
 ): GridPosition[] {
-  const targets = [room.keeper.position, ...room.counter];
+  const { keeper } = room;
+  if (!keeper) {
+    return [];
+  }
+  const targets = [keeper.position, ...room.counter];
   const tiles: GridPosition[] = [];
   for (const target of targets) {
     for (const [dx, dy] of [
@@ -78,7 +82,7 @@ export function servingTiles(
     ]) {
       const tile = { x: target.x + dx, y: target.y + dy };
       if (collision[tile.y]?.[tile.x] !== false) continue;
-      if (tile.x === room.keeper.position.x && tile.y === room.keeper.position.y) continue;
+      if (tile.x === keeper.position.x && tile.y === keeper.position.y) continue;
       tiles.push(tile);
     }
   }
@@ -97,14 +101,17 @@ export interface KeeperWalk {
  * From a spot in the yard to every keeper: the walk to the door, then the walk
  * across the room if the player chooses to take it. The screen itself is one
  * key from the mat, so the first number is the whole of the toll and the
- * second is what looking at the room costs a player who wants to.
+ * second is what looking at the room costs a player who wants to. The
+ * player's own house has no keeper and is not on the way to re-kitting, so it
+ * is measured on its own (`walkHome`).
  */
 export function walksToKeepers(from: GridPosition, game: RestoredGame): readonly KeeperWalk[] {
   const yard = getBaseMap(game.raidProgress.workshopUpgrades);
   const steps = stepsFrom(yard.collision, from);
-  return BASE_DOORS.map((door) => {
+  return BASE_DOORS.flatMap((door) => {
     const room = roomNamed(door.id);
     if (!room) throw new Error(`no room behind ${door.id}`);
+    if (!room.keeper || !room.mat) return [];
     const built = buildRoom(room, game);
     const keeper = room.keeper.position;
     const inside = stepsFrom(
@@ -118,6 +125,14 @@ export function walksToKeepers(from: GridPosition, game: RestoredGame): readonly
       acrossTheRoom: stepsTo(inside, servingTiles(room, built.collision)),
     };
   });
+}
+
+/** Steps across the yard from a spot onto the doorway of the player's own house. */
+export function walkHome(from: GridPosition, game: RestoredGame): number {
+  const yard = getBaseMap(game.raidProgress.workshopUpgrades);
+  const home = BASE_DOORS.find((door) => door.screen === null);
+  if (!home) throw new Error('the base has no house of the player\'s own');
+  return stepsTo(stepsFrom(yard.collision, from), home.tiles);
 }
 
 /** The two places a player starts a visit to the base from. */

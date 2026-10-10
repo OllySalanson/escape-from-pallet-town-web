@@ -56,11 +56,12 @@ export const BASE_FIXTURES: readonly BaseFixture[] = [
     upgradeId: 'radio-mast',
     name: 'THE MAST',
     note: 'The aerial that hears the hunter',
-    // Seven tiles of stone rising out of the wood behind the workshop: the
+    // Seven tiles of stone rising out of the wood beside THE BOLTHOLE: the
     // tallest thing in the base, for the rung most players build first. A first
-    // purchase should change the skyline.
-    props: [{ name: 'tower', x: 25, y: 5 }],
-    at: { x: 26, y: 11 },
+    // purchase should change the skyline, and the house the player lives in is
+    // where they will see it from.
+    props: [{ name: 'tower', x: 30, y: 4 }],
+    at: { x: 31, y: 10 },
   },
   {
     upgradeId: 'beacon',

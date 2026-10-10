@@ -3,7 +3,8 @@ import type { CastCharacterDesignId } from '../world/characterDesigns';
 import type { BasePropName } from './baseTileset';
 
 /**
- * The four buildings in the base, and how you get into each.
+ * The buildings in the base, and how you get into each: the four keepers'
+ * and THE BOLTHOLE, the player's own house.
  *
  * A screen is behind a room now, and the room is behind a door. What was a
  * list of four cards on a lobby is four buildings round a yard: walking onto a
@@ -43,7 +44,8 @@ export interface BaseBuilding {
 export interface BaseDoor {
   /** Also the id of the room behind it (`rooms.ts`). */
   readonly id: string;
-  readonly screen: BaseScreen;
+  /** The keeper's screen behind it, or null for the player's own house. */
+  readonly screen: BaseScreen | null;
   /**
    * The name over it, which is also the name of the room and the screen behind
    * it. A building captioned one thing opening onto a screen headed another
@@ -98,6 +100,19 @@ export const BASE_DOORS: readonly BaseDoor[] = [
     building: { prop: 'billsCottage', x: 17, y: 13 },
     tiles: [{ x: 18, y: 15 }],
     returnTo: { x: 18, y: 16 },
+  },
+  {
+    // The player's own house, at the end of the row the keepers stand in, with
+    // its window boxes and its own patch of garden. It is not on the way to
+    // re-kitting, so it does not have to be one of the seven-step doors; it is
+    // a short stroll up the yard, and in view from the middle of it.
+    id: 'bolthole',
+    screen: null,
+    name: 'THE BOLTHOLE',
+    building: { prop: 'bolthole', x: 25, y: 7 },
+    tiles: [{ x: 26, y: 10 }],
+    // The step between the window boxes.
+    returnTo: { x: 26, y: 11 },
   },
 ];
 

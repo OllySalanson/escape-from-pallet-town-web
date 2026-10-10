@@ -28,60 +28,85 @@ export const BASE_SHEET_SOURCE = tileReader(
   5000,
 );
 
-/** One cell of a named piece, as a tile number in the shared index space. */
-export function pieceTile(name: BasePieceName, dx = 0, dy = 0): number {
-  const piece = BASE_PIECES[name];
-  if (dx < 0 || dy < 0 || dx >= piece.width || dy >= piece.height) {
-    throw new Error(`cell ${dx},${dy} is outside '${name}'`);
-  }
-  return BASE_SHEET_SOURCE.at(piece.column + dx, piece.row + dy);
+/** Where one named piece sits on a sheet of cut pieces, in tiles. */
+export interface PiecePlace {
+  readonly column: number;
+  readonly row: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 /**
- * A named piece as a landmark, with its collision drawn beside it.
- *
- * `solid` is the piece as rows of `#` (solid) and `.` (stood on), in the shape
- * it has on screen, so a reviewer reads a shelf unit's foot the way they read
- * a map. It has to be the piece's size exactly, or this throws - a mask that
- * drifted from its art is how a bookcase comes to be walked through.
+ * A sheet of named pieces, and the four ways a room asks for one. Each sheet
+ * the base draws rooms from - the cut rooms here and the player's house
+ * (`homeSheet.ts`) - is one of these, so a room asks for a piece by name on
+ * whichever sheet it was drawn on and nothing outside the generated module
+ * knows a coordinate.
  */
-export function pieceProp(
-  name: BasePieceName,
-  label: string,
-  solid: readonly string[],
-): PropDefinition {
-  const piece = BASE_PIECES[name];
-  if (solid.length !== piece.height || solid.some((row) => row.length !== piece.width)) {
-    throw new Error(`the collision drawn for '${name}' is not ${piece.width}x${piece.height}`);
-  }
-  const cells: PropCell[] = [];
-  for (let y = 0; y < piece.height; y += 1) {
-    for (let x = 0; x < piece.width; x += 1) {
-      cells.push({ tile: pieceTile(name, x, y), solid: solid[y][x] === '#' });
+export interface PieceSheet<Name extends string> {
+  readonly source: ReturnType<typeof tileReader>['source'];
+  /** One cell of a named piece, as a tile number in the shared index space. */
+  readonly tile: (name: Name, dx?: number, dy?: number) => number;
+  /**
+   * A named piece as a landmark, with its collision drawn beside it.
+   *
+   * `solid` is the piece as rows of `#` (solid) and `.` (stood on), in the
+   * shape it has on screen, so a reviewer reads a shelf unit's foot the way
+   * they read a map. It has to be the piece's size exactly, or this throws - a
+   * mask that drifted from its art is how a bookcase comes to be walked through.
+   */
+  readonly prop: (name: Name, label: string, solid: readonly string[]) => PropDefinition;
+  /** A piece nobody can walk on, which is most furniture. */
+  readonly solid: (name: Name, label: string) => PropDefinition;
+  /** A piece that is only ever walked over: a mat, a floor emblem. */
+  readonly floor: (name: Name, label: string) => PropDefinition;
+}
+
+export function pieceSheet<Name extends string>(
+  reader: ReturnType<typeof tileReader>,
+  pieces: Readonly<Record<Name, PiecePlace>>,
+): PieceSheet<Name> {
+  const tile = (name: Name, dx = 0, dy = 0): number => {
+    const piece = pieces[name];
+    if (dx < 0 || dy < 0 || dx >= piece.width || dy >= piece.height) {
+      throw new Error(`cell ${dx},${dy} is outside '${name}'`);
     }
-  }
-  return { label, width: piece.width, height: piece.height, cells };
+    return reader.at(piece.column + dx, piece.row + dy);
+  };
+  const prop = (name: Name, label: string, solid: readonly string[]): PropDefinition => {
+    const piece = pieces[name];
+    if (solid.length !== piece.height || solid.some((row) => row.length !== piece.width)) {
+      throw new Error(`the collision drawn for '${name}' is not ${piece.width}x${piece.height}`);
+    }
+    const cells: PropCell[] = [];
+    for (let y = 0; y < piece.height; y += 1) {
+      for (let x = 0; x < piece.width; x += 1) {
+        cells.push({ tile: tile(name, x, y), solid: solid[y][x] === '#' });
+      }
+    }
+    return { label, width: piece.width, height: piece.height, cells };
+  };
+  const filled = (name: Name, mark: string): string[] =>
+    Array.from({ length: pieces[name].height }, () => mark.repeat(pieces[name].width));
+  return {
+    source: reader.source,
+    tile,
+    prop,
+    solid: (name, label) => prop(name, label, filled(name, '#')),
+    floor: (name, label) => prop(name, label, filled(name, '.')),
+  };
 }
 
-/** A piece nobody can walk on, which is most furniture. */
-export function solidPiece(name: BasePieceName, label: string): PropDefinition {
-  const { width, height } = BASE_PIECES[name];
-  return pieceProp(
-    name,
-    label,
-    Array.from({ length: height }, () => '#'.repeat(width)),
-  );
-}
+const BASE = pieceSheet<BasePieceName>(BASE_SHEET_SOURCE, BASE_PIECES);
 
-/** A piece that is only ever walked over: a mat, a floor emblem. */
-export function floorPiece(name: BasePieceName, label: string): PropDefinition {
-  const { width, height } = BASE_PIECES[name];
-  return pieceProp(
-    name,
-    label,
-    Array.from({ length: height }, () => '.'.repeat(width)),
-  );
-}
+/** One cell of a named piece of the base's sheet, as a tile number in the shared index space. */
+export const pieceTile = BASE.tile;
+/** A named piece of the base's sheet as a landmark, with its collision drawn beside it. */
+export const pieceProp = BASE.prop;
+/** A piece of the base's sheet nobody can walk on, which is most furniture. */
+export const solidPiece = BASE.solid;
+/** A piece of the base's sheet that is only ever walked over: a mat, a floor emblem. */
+export const floorPiece = BASE.floor;
 
 /**
  * The shell of a room: a floor and a back wall, and nothing else.
@@ -93,20 +118,21 @@ export function floorPiece(name: BasePieceName, label: string): PropDefinition {
  * what a FireRed room stands in. Every other material is the floor, because the
  * catalogue type asks for all sixteen and a room uses two.
  */
-export function roomCatalogue<PropName extends string>(
+export function roomCatalogue<PropName extends string, Piece extends string = BasePieceName>(
   shell: {
-    readonly floor: BasePieceName;
-    readonly floorShade: BasePieceName;
-    readonly wallUpper: BasePieceName;
-    readonly wallLower: BasePieceName;
+    readonly floor: Piece;
+    readonly floorShade: Piece;
+    readonly wallUpper: Piece;
+    readonly wallLower: Piece;
   },
   props: Readonly<Record<PropName, PropDefinition>>,
+  sheet: PieceSheet<Piece> = BASE as unknown as PieceSheet<Piece>,
 ): TilesetCatalogue<PropName> {
   const floor: MaterialTiles = {
-    roles: { fill: pieceTile(shell.floor), 'edge-n': pieceTile(shell.floorShade) },
+    roles: { fill: sheet.tile(shell.floor), 'edge-n': sheet.tile(shell.floorShade) },
   };
   const wall: MaterialTiles = {
-    roles: { fill: pieceTile(shell.wallUpper), 'edge-s': pieceTile(shell.wallLower) },
+    roles: { fill: sheet.tile(shell.wallUpper), 'edge-s': sheet.tile(shell.wallLower) },
   };
   const materials = Object.fromEntries(
     (
@@ -130,7 +156,7 @@ export function roomCatalogue<PropName extends string>(
     ).map((material) => [material, floor]),
   ) as Record<Exclude<Material, 'wall'>, MaterialTiles>;
   return {
-    sources: [BASE_SHEET_SOURCE.source],
+    sources: [sheet.source],
     materials: { ...materials, wall },
     props,
   };

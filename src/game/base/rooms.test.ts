@@ -15,8 +15,10 @@ import {
   WALL_MAP_TILES,
   restingBalls,
   roomNamed,
+  stairArrival,
   type BaseRoom,
 } from './rooms';
+import type { BaseKeeper } from './doors';
 import { BASE_PIECES } from './generated/basePieces';
 import { stepsFrom, stepsTo, servingTiles, walksToKeepers, BASE_STARTS } from './baseWalks';
 import { baseGame } from './baseGames.testkit';
@@ -24,6 +26,15 @@ import { CABINET_UNITS, CABINET_UNITS_AT_START, CABINET_UNIT_SIZE, unitTiles } f
 
 const EVERY_RUNG = WORKSHOP_UPGRADES.map((upgrade) => upgrade.id);
 const room = (id: string): BaseRoom => roomNamed(id)!;
+const keeperOf = (each: BaseRoom): BaseKeeper => each.keeper!;
+const matOf = (each: BaseRoom): GridPosition => each.mat!;
+/** The rooms a keeper serves from, which is every room but the player's own house. */
+const KEEPER_ROOMS = BASE_ROOMS.filter((each) => each.keeper !== null);
+/** Where a player comes into a room: its mat, or the foot of its stairs. */
+const entrancesOf = (each: BaseRoom): GridPosition[] => [
+  ...(each.mat ? [each.mat] : []),
+  ...each.stairs.map((stair) => stair.tile),
+];
 const key = (tile: GridPosition) => `${tile.x},${tile.y}`;
 
 /** The states a room can be in that change what stands in it. */
@@ -41,12 +52,27 @@ const STATES = [
 
 describe('the rooms behind the base doors', () => {
   it('puts one room behind every door, under the same name, opening the same screen', () => {
-    expect(BASE_ROOMS.map((each) => each.id).sort()).toEqual(
-      BASE_DOORS.map((door) => door.id).sort(),
-    );
     for (const door of BASE_DOORS) {
       const inside = room(door.id);
       expect([door.id, inside.name, inside.screen]).toEqual([door.id, door.name, door.screen]);
+    }
+    // And every room is behind a door, or up the stairs from a room that is.
+    for (const each of BASE_ROOMS) {
+      const reached =
+        BASE_DOORS.some((door) => door.id === each.id) ||
+        BASE_ROOMS.some(
+          (other) =>
+            BASE_DOORS.some((door) => door.id === other.id) &&
+            other.stairs.some((stair) => stair.to === each.id),
+        );
+      expect([each.id, reached]).toEqual([each.id, true]);
+    }
+  });
+
+  /** A room with nobody in it opens no screen: what it is for is what stands in it. */
+  it('gives a screen to every room with a keeper, and to no other', () => {
+    for (const each of BASE_ROOMS) {
+      expect([each.id, each.screen === null]).toEqual([each.id, each.keeper === null]);
     }
   });
 
@@ -63,10 +89,11 @@ describe('the rooms behind the base doors', () => {
   });
 
   it('lays the mat on the bottom row, so a push south from it is the way out', () => {
-    for (const each of BASE_ROOMS) {
+    for (const each of BASE_ROOMS.filter((candidate) => candidate.mat !== null)) {
       const built = buildRoom(each, baseGame());
-      expect([each.id, each.mat.y]).toEqual([each.id, each.height - 1]);
-      expect([each.id, built.collision[each.mat.y][each.mat.x]]).toEqual([each.id, false]);
+      const mat = matOf(each);
+      expect([each.id, mat.y]).toEqual([each.id, each.height - 1]);
+      expect([each.id, built.collision[mat.y][mat.x]]).toEqual([each.id, false]);
     }
   });
 
@@ -78,12 +105,12 @@ describe('the rooms behind the base doors', () => {
   it('reaches the keeper and every tile of every room from the mat, whatever is built', () => {
     for (const state of STATES) {
       const game = baseGame(state);
-      for (const each of BASE_ROOMS) {
+      for (const each of KEEPER_ROOMS) {
         const built = buildRoom(each, game);
-        const keeper = each.keeper.position;
+        const keeper = keeperOf(each).position;
         expect([each.id, built.collision[keeper.y][keeper.x]]).toEqual([each.id, false]);
-        expect([each.id, key(keeper) === key(each.mat)]).toEqual([each.id, false]);
-        const steps = stepsFrom(built.collision, each.mat, (tile) => key(tile) === key(keeper));
+        expect([each.id, key(keeper) === key(matOf(each))]).toEqual([each.id, false]);
+        const steps = stepsFrom(built.collision, matOf(each), (tile) => key(tile) === key(keeper));
         expect([each.id, stepsTo(steps, servingTiles(each, built.collision)) < Infinity]).toEqual([
           each.id,
           true,
@@ -166,8 +193,8 @@ describe("Brock's workshop, where the whole ladder can be seen", () => {
   it('keeps every bay to itself, clear of the keeper and the mat', () => {
     const workshop = room('brocks-workshop');
     const taken = new Map<string, string>([
-      [key(workshop.keeper.position), 'keeper'],
-      [key(workshop.mat), 'mat'],
+      [key(keeperOf(workshop).position), 'keeper'],
+      [key(matOf(workshop)), 'mat'],
     ]);
     for (const display of WORKSHOP_DISPLAY) {
       for (const tile of propTiles(display.props)) {
@@ -212,7 +239,7 @@ describe('the Pokémon Center, which shows who is being treated', () => {
     for (const sprite of restingBalls(COUNTER_BALLS)) {
       expect(center.counter.some((tile) => key(tile) === key(sprite))).toBe(true);
       // Never on the cell of the counter Joy is served across.
-      expect(sprite.x).not.toBe(center.keeper.position.x);
+      expect(sprite.x).not.toBe(keeperOf(center).position.x);
     }
   });
 
@@ -272,7 +299,7 @@ describe('the hooks the rooms leave for what comes next', () => {
     for (let x = OAK_WALL_MAP.x; x < OAK_WALL_MAP.x + OAK_WALL_MAP.width; x += 1) {
       expect(board.tiles.some((tile) => tile.x === x && tile.y === foot)).toBe(true);
       expect([x, built.collision[foot + 1][x]]).toEqual([x, false]);
-      expect(Number.isFinite(stepsFrom(built.collision, lab.mat)[foot + 1][x])).toBe(true);
+      expect(Number.isFinite(stepsFrom(built.collision, matOf(lab))[foot + 1][x])).toBe(true);
     }
   });
 
@@ -296,6 +323,83 @@ describe('the hooks the rooms leave for what comes next', () => {
     for (let unit = CABINET_UNITS_AT_START; unit < CABINET_UNITS.length; unit += 1) {
       for (const tile of unitTiles(unit)) {
         expect([tile, built.collision[tile.y][tile.x]]).toEqual([tile, false]);
+      }
+    }
+  });
+});
+
+describe('THE BOLTHOLE, the player\'s own house', () => {
+  const downstairs = room('bolthole');
+  const upstairs = room('bolthole-upstairs');
+
+  it('is nobody\'s counter: no keeper, no screen, the door mat downstairs', () => {
+    for (const each of [downstairs, upstairs]) {
+      expect([each.id, each.keeper, each.screen]).toEqual([each.id, null, null]);
+    }
+    expect(downstairs.mat).not.toBeNull();
+    // Upstairs is reached by the stairs and left by them.
+    expect(upstairs.mat).toBeNull();
+  });
+
+  /**
+   * FireRed's stairs: stepping onto the orange mat climbs them, and the
+   * player arrives on the matching mat upstairs. Each stair has to lead to a
+   * room with a stair back, or the player is stranded on the floor it took
+   * them to.
+   */
+  it('joins its two floors with a stair each way, on ground the player can stand on', () => {
+    for (const each of BASE_ROOMS) {
+      const built = buildRoom(each, baseGame());
+      for (const stair of each.stairs) {
+        const to = room(stair.to);
+        const arrival = stairArrival(each.id, to);
+        expect([each.id, stair.to, arrival !== undefined]).toEqual([each.id, stair.to, true]);
+        expect([each.id, built.collision[stair.tile.y][stair.tile.x]]).toEqual([each.id, false]);
+        // Never the mat: the mat is the way out of the house.
+        expect([each.id, each.mat !== null && key(each.mat) === key(stair.tile)]).toEqual([
+          each.id,
+          false,
+        ]);
+      }
+    }
+    expect(downstairs.stairs.map((stair) => stair.to)).toEqual(['bolthole-upstairs']);
+    expect(upstairs.stairs.map((stair) => stair.to)).toEqual(['bolthole']);
+  });
+
+  it('reaches every tile of both floors from where the player comes in', () => {
+    for (const state of STATES) {
+      const game = baseGame(state);
+      for (const each of [downstairs, upstairs]) {
+        const built = buildRoom(each, game);
+        for (const entrance of entrancesOf(each)) {
+          const steps = stepsFrom(built.collision, entrance);
+          for (let y = 0; y < each.height; y += 1) {
+            for (let x = 0; x < each.width; x += 1) {
+              if (built.collision[y][x]) continue;
+              expect([each.id, x, y, steps[y][x] < Infinity]).toEqual([each.id, x, y, true]);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  /**
+   * The stairs are near the door, as the player's house in FireRed has them:
+   * the house is somewhere to look round, not a walk.
+   */
+  it('keeps the stairs a short walk from the door mat', () => {
+    const built = buildRoom(downstairs, baseGame());
+    const steps = stepsFrom(built.collision, matOf(downstairs));
+    expect(stepsTo(steps, downstairs.stairs.map((stair) => stair.tile))).toBeLessThanOrEqual(12);
+  });
+
+  it('gives everything in the house something to say when it is faced', () => {
+    for (const each of [downstairs, upstairs]) {
+      const built = buildRoom(each, baseGame());
+      expect(built.things.length).toBeGreaterThan(0);
+      for (const thing of built.things) {
+        expect([each.id, thing.name, (thing.lines ?? []).length > 0]).toEqual([each.id, thing.name, true]);
       }
     }
   });

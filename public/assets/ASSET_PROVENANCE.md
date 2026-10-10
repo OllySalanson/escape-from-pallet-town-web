@@ -512,6 +512,37 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   other two columns throw. Two 7-pixel Poké Balls, set on Joy's counter,
   are drawn by the script rather than cut.
 
+### `frlg-home.png` - THE BOLTHOLE, the player's own house
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
+as `frlg-tiles.png` and `characters/*.png` above: Pokemon FireRed/LeafGreen art,
+rights holders Nintendo / Creatures / Game Freak, no licence from them.
+
+- **Source.** pret/pokefirered, the community decompilation of FireRed
+  (<https://github.com/pret/pokefirered>), pinned at commit `037335f` - the same
+  commit the battle rules are read from. The files read are the interior
+  tileset every FireRed house is drawn from, `data/tilesets/primary/building/`
+  (`tiles.png`, `metatiles.bin`, `palettes/*.pal`), the player's house's own
+  secondary tileset `data/tilesets/secondary/generic_building_1/`, and the two
+  maps of that house, `data/layouts/PalletTown_PlayersHouse_1F|2F/map.bin`,
+  fetched 2026-10-10 from `https://raw.githubusercontent.com/pret/pokefirered/037335f/`.
+  The repository is a reconstruction of the game's own data, so the pixels are
+  Nintendo's; nothing in it licenses them.
+- **None of the source files is committed.** What ships is drawn pieces packed
+  onto a new 16x12 grid that matches nothing in the source.
+- **How it was drawn, and the one edit.** `scripts/cut-frlg-home.mjs` is the
+  whole method: every piece is named by the 16x16 metatiles FireRed's own map of
+  the player's house lays it out in, and drawn the way the Game Boy Advance
+  draws a metatile - four 8x8 tiles on a bottom layer and four on a top, each
+  with its own palette and flips, colour 0 clear. It writes
+  `src/game/base/generated/homePieces.ts`, the only thing in the game that
+  knows where a piece sits on the sheet. One edit is made: the upstairs rug is
+  drawn twice more with its green palette entry swapped for the red and the blue
+  FireRed's own palettes already hold, so the rug can be the colour of the
+  player's starter. The door mat, which FireRed hangs half a tile across the
+  foot of the room, is drawn across both rows and cut from its own top edge, as
+  the base's other mats are.
+
 ### `frlg-kanto.png` - Kanto's own outdoor art, for Viridian City
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling

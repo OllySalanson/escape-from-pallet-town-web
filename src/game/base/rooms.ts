@@ -7,6 +7,9 @@ import { MapSketch } from '../world/mapGrid';
 import { buildMapLayers, type MapLayers } from '../world/tiles';
 import type { PropDefinition } from '../world/tileset/catalogue';
 import { floorPiece, pieceProp, pieceTile, roomCatalogue, solidPiece } from './baseSheet';
+import { HOME_SHEET_PIECES } from './homeSheet';
+import type { HomePieceName } from './generated/homePieces';
+import type { TileSource } from '../world/tileset/catalogue';
 import type { BasePieceName } from './generated/basePieces';
 import type { BaseKeeper, BaseScreen } from './doors';
 import { cabinetOddities, type Oddity } from '../hub/traderCabinet';
@@ -52,7 +55,13 @@ import { wallMapNote } from './wallMap';
  * shows can never disagree.
  */
 
-export type RoomId = 'oaks-lab' | 'pokemon-centre' | 'brocks-workshop' | 'bills-cottage';
+export type RoomId =
+  | 'oaks-lab'
+  | 'pokemon-centre'
+  | 'brocks-workshop'
+  | 'bills-cottage'
+  | 'bolthole'
+  | 'bolthole-upstairs';
 
 export type RoomPropName =
   | 'labComputers'
@@ -95,7 +104,33 @@ export type RoomPropName =
   | 'whBoxStack'
   | 'whStool'
   | 'whMat'
-  | 'healingMachineModel';
+  | 'healingMachineModel'
+  | HomePropName;
+
+/** What THE BOLTHOLE is furnished with: FireRed's own player's house (`homeSheet.ts`). */
+export type HomePropName =
+  | 'homeKitchen'
+  | 'homeCupboard'
+  | 'homeTv'
+  | 'homeWindow'
+  | 'homeStairsUp'
+  | 'homeStairMatUp'
+  | 'homeRugTable'
+  | 'homePlantWest'
+  | 'homePlantEast'
+  | 'homeMat'
+  | 'homeShade'
+  | 'homePcDesk'
+  | 'homeDrawers'
+  | 'homeBookcase'
+  | 'homeStairsDown'
+  | 'homeStairMatDown'
+  | 'homePoster'
+  | 'homeBed'
+  | 'homeTvTop'
+  | 'homeRugTv'
+  | 'homeRugTvRed'
+  | 'homeRugTvBlue';
 
 /** Brock's workshop, walls included. */
 const WORKSHOP_SIZE = { width: 15, height: 12 } as const;
@@ -116,6 +151,46 @@ function sideWall(name: 'warehouse.sideWest' | 'warehouse.sideEast'): PropDefini
       tile: pieceTile(name, 0, Math.min(y, 2)),
       solid: true,
     })),
+  };
+}
+
+/**
+ * THE BOLTHOLE's furniture, every piece FireRed's own and stood where FireRed
+ * stands it in the player's house (`scripts/cut-frlg-home.mjs` names the
+ * metatiles). The collision is FireRed's too, read off the same map: the
+ * front row of a piece that stands against the wall - the counter's foot, the
+ * cupboard's, the television stand's - is floor you may stand on, which is how
+ * a FireRed room is walked. Three are judged instead of copied, because
+ * FireRed draws a top layer over the player there and this game has none: a
+ * pot plant is solid all the way up, the bed is solid where the bed is, and
+ * the television's top is solid so nobody stands in it.
+ */
+function HOME_PROPS(): Record<HomePropName, PropDefinition> {
+  const home = HOME_SHEET_PIECES;
+  const rugTv = (name: HomePieceName) => home.prop(name, 'rug', ['..#..', '..#..', '.....', '.....']);
+  return {
+    homeKitchen: home.prop('home.kitchen', 'kitchen', ['##', '..']),
+    homeCupboard: home.prop('home.cupboard', 'cupboard', ['##', '##', '..']),
+    homeTv: home.prop('home.tv', 'television', ['#', '#', '.']),
+    homeWindow: home.solid('home.window', 'window'),
+    homeStairsUp: home.prop('home.stairsUp', 'stairs', ['##', '##', '..']),
+    homeStairMatUp: home.floor('home.stairMatUp', 'stair mat'),
+    homeRugTable: home.prop('home.rugTable', 'table', ['......', '..##..', '..##..', '......']),
+    homePlantWest: home.solid('home.plantWest', 'plant'),
+    homePlantEast: home.solid('home.plantEast', 'plant'),
+    homeMat: home.floor('home.mat', 'door mat'),
+    homeShade: home.floor('home.floorShade', 'floor'),
+    homePcDesk: home.prop('home.pcDesk', 'PC', ['##', '##', '..']),
+    homeDrawers: home.prop('home.drawers', 'drawers', ['#', '.']),
+    homeBookcase: home.prop('home.bookcase', 'bookcase', ['##', '##', '..']),
+    homeStairsDown: home.solid('home.stairsDown', 'stairs'),
+    homeStairMatDown: home.floor('home.stairMatDown', 'stair mat'),
+    homePoster: home.solid('home.poster', 'calendar'),
+    homeBed: home.prop('home.bed', 'bed', ['...', '.#.', '.#.']),
+    homeTvTop: home.solid('home.tvTop', 'television'),
+    homeRugTv: rugTv('home.rugTv'),
+    homeRugTvRed: rugTv('home.rugTvRed'),
+    homeRugTvBlue: rugTv('home.rugTvBlue'),
   };
 }
 
@@ -172,6 +247,7 @@ const ROOM_PROPS: Readonly<Record<RoomPropName, PropDefinition>> = {
   whStool: solidPiece('warehouse.stool', 'stool'),
   whMat: floorPiece('warehouse.mat', 'door mat'),
   healingMachineModel: solidPiece('lab.machineLifted', 'healing machine'),
+  ...HOME_PROPS(),
 };
 
 const LAB = roomCatalogue(
@@ -204,6 +280,16 @@ const WAREHOUSE = roomCatalogue(
     wallLower: 'warehouse.wallLower',
   },
   ROOM_PROPS,
+);
+const HOUSE = roomCatalogue(
+  {
+    floor: 'home.floor',
+    floorShade: 'home.floorShade',
+    wallUpper: 'home.wallUpper',
+    wallLower: 'home.wallLower',
+  },
+  ROOM_PROPS,
+  HOME_SHEET_PIECES,
 );
 
 export interface RoomProp {
@@ -238,6 +324,11 @@ export interface RoomThing {
    * the wall map is read on a screen, drawn as big as the window allows.
    */
   readonly opens?: 'wall-map';
+  /**
+   * What it says when faced and spoken to, in place of its name and note: a
+   * thing in the player's own house has more to say than what it is.
+   */
+  readonly lines?: readonly string[];
 }
 
 /**
@@ -253,22 +344,39 @@ export interface RoomSprite {
 
 export interface BaseRoom {
   readonly id: RoomId;
-  readonly screen: BaseScreen;
+  /** The keeper's screen, or null in the player's own house, which is nobody's counter. */
+  readonly screen: BaseScreen | null;
   /** The name over the door, and so the name of the room. */
   readonly name: string;
   readonly width: number;
   readonly height: number;
   /**
    * The door mat's middle tile: where the player is put down coming in, facing
-   * into the room, and the one tile a push south from leaves by.
+   * into the room, and the one tile a push south from leaves by. Null upstairs,
+   * where the way out is the stairs.
    */
-  readonly mat: GridPosition;
-  readonly keeper: BaseKeeper;
+  readonly mat: GridPosition | null;
+  /** Who stands behind the counter, or null in a room that is the player's own. */
+  readonly keeper: BaseKeeper | null;
   /**
    * Counter tiles the keeper serves across. Facing one is speaking to them,
    * exactly as it is in the games this is dressed as.
    */
   readonly counter: readonly GridPosition[];
+  /** The ways to the other floors of the same building. */
+  readonly stairs: readonly RoomStair[];
+}
+
+/**
+ * The orange mat at the foot of a FireRed staircase: stepping onto it is
+ * climbing the stairs, and the player arrives on the matching mat on the floor
+ * it leads to, facing away from the stairs - the way the games this is dressed
+ * as do it. Arriving on one does not climb it straight back: a stair, like a
+ * door, is taken by a step onto it.
+ */
+export interface RoomStair {
+  readonly tile: GridPosition;
+  readonly to: RoomId;
 }
 
 /** What Bill's cabinet holds this visit, and where each thing in it stands. */
@@ -279,6 +387,8 @@ export interface BuiltCabinet {
 
 export interface BuiltRoom {
   readonly room: BaseRoom;
+  /** The sheets the room is drawn from. */
+  readonly sources: readonly TileSource[];
   readonly layers: MapLayers;
   readonly collision: readonly boolean[][];
   readonly things: readonly RoomThing[];
@@ -439,6 +549,7 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
       facing: 'down',
     },
     counter: [],
+    stairs: [],
   },
   {
     id: 'pokemon-centre',
@@ -455,6 +566,7 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
       facing: 'down',
     },
     counter: [5, 6, 7, 8, 9].map((x) => ({ x, y: 3 })),
+    stairs: [],
   },
   {
     id: 'brocks-workshop',
@@ -475,6 +587,7 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
       { x: 7, y: 8 },
       { x: 8, y: 8 },
     ],
+    stairs: [],
   },
   {
     id: 'bills-cottage',
@@ -491,11 +604,47 @@ export const BASE_ROOMS: readonly BaseRoom[] = [
       facing: 'down',
     },
     counter: [],
+    stairs: [],
+  },
+  // THE BOLTHOLE: the player's own house, downstairs and up. Nobody keeps it
+  // but the player, so it has no counter and opens no screen; what it is for
+  // is what stands in it.
+  {
+    id: 'bolthole',
+    screen: null,
+    name: 'THE BOLTHOLE',
+    width: 15,
+    height: 9,
+    mat: { x: 7, y: 8 },
+    keeper: null,
+    counter: [],
+    stairs: [{ tile: { x: 12, y: 2 }, to: 'bolthole-upstairs' }],
+  },
+  {
+    id: 'bolthole-upstairs',
+    screen: null,
+    name: 'UPSTAIRS',
+    width: 14,
+    height: 9,
+    mat: null,
+    keeper: null,
+    counter: [],
+    stairs: [{ tile: { x: 13, y: 2 }, to: 'bolthole' }],
   },
 ];
 
 export function roomNamed(id: string): BaseRoom | undefined {
   return BASE_ROOMS.find((room) => room.id === id);
+}
+
+/** Where a stair leads to: the matching stair on the floor it climbs to. */
+export function stairArrival(from: RoomId, to: BaseRoom): GridPosition | undefined {
+  return to.stairs.find((stair) => stair.to === from)?.tile;
+}
+
+/** The stair a tile is the foot of, in a room. */
+export function stairAt(room: BaseRoom, tile: GridPosition): RoomStair | undefined {
+  return room.stairs.find((stair) => stair.tile.x === tile.x && stair.tile.y === tile.y);
 }
 
 /** Every tile a planted prop covers. */
@@ -650,7 +799,7 @@ function drawWorkshop(room: BaseRoom, game: RestoredGame): Drawn {
   sketch.plant(9, 7, 'whStool');
   // Stores: what he has not got round to yet.
   sketch.plant(13, 9, 'whBoxStack');
-  sketch.plant(room.mat.x - 1, room.mat.y, 'whMat');
+  sketch.plant(6, room.height - 1, 'whMat');
   const displays = standing(WORKSHOP_DISPLAY, game);
   for (const display of displays) {
     for (const prop of [...display.props, ...(display.shade ?? [])]) {
@@ -703,6 +852,129 @@ function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
   return { sketch, catalogue: COTTAGE, things, sprites: [], cabinet: { oddities, layout } };
 }
 
+// --- THE BOLTHOLE -----------------------------------------------------------
+
+/**
+ * Downstairs, which is the player's house in Pallet Town as FireRed draws it:
+ * the sink and the hob, the glass-fronted cupboard, the family television, the
+ * window, the table on its green rug, and the stairs up with the orange mat at
+ * their foot. Two columns of wall are added beside the window and nothing is
+ * stood against them: that stretch of wall is kept.
+ */
+function drawHome(room: BaseRoom): Drawn {
+  const sketch = shell(room);
+  westShade(sketch, room);
+  sketch.plant(0, 1, 'homeKitchen');
+  sketch.plant(2, 0, 'homeCupboard');
+  sketch.plant(5, 0, 'homeTv');
+  sketch.plant(6, 0, 'homeWindow');
+  sketch.plant(12, 2, 'homeStairMatUp');
+  sketch.plant(13, 1, 'homeStairsUp');
+  sketch.plant(4, 3, 'homeRugTable');
+  sketch.plant(0, 6, 'homePlantWest');
+  sketch.plant(14, 6, 'homePlantEast');
+  sketch.plant(6, 8, 'homeMat');
+  const things: RoomThing[] = [
+    {
+      name: 'THE TELLY',
+      note: 'Kanto Tonight is on',
+      tiles: [{ x: 5, y: 1 }],
+      lines: ['KANTO TONIGHT is on. Nobody on it is talking about you, which is how you like it.'],
+    },
+    {
+      name: 'THE KITCHEN',
+      note: 'The kettle is always on',
+      tiles: [
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+      ],
+      lines: ['The kettle is always on. Somebody has left a Potion in the fridge again.'],
+    },
+    {
+      name: 'THE CUPBOARD',
+      note: 'The good plates',
+      tiles: [
+        { x: 2, y: 1 },
+        { x: 3, y: 1 },
+      ],
+      lines: ['The good plates. Nobody has ever eaten off them.'],
+    },
+  ];
+  return { sketch, catalogue: HOUSE, things, sprites: [] };
+}
+
+/**
+ * Upstairs is the player's room from the same house: the PC on its desk, the
+ * chest of drawers and the bookcase of toys along the wall, the clipboard by
+ * the stairs, the bed, and the telly on the rug with the console in front of
+ * it - the room every one of these games begins in. Again a stretch of wall is
+ * added and kept clear, between the bookcase and the clipboard.
+ */
+function drawUpstairs(room: BaseRoom): Drawn {
+  const sketch = shell(room);
+  westShade(sketch, room);
+  sketch.plant(0, 0, 'homePcDesk');
+  sketch.plant(2, 1, 'homeDrawers');
+  sketch.plant(3, 0, 'homeBookcase');
+  sketch.plant(10, 0, 'homePoster');
+  sketch.plant(11, 1, 'homeStairsDown');
+  sketch.plant(13, 2, 'homeStairMatDown');
+  sketch.plant(0, 4, 'homeBed');
+  sketch.plant(7, 3, 'homeTvTop');
+  sketch.plant(5, 4, 'homeRugTv');
+  const things: RoomThing[] = [
+    {
+      name: 'YOUR BED',
+      note: 'Nobody hunts you here',
+      tiles: [
+        { x: 1, y: 5 },
+        { x: 1, y: 6 },
+      ],
+      lines: ['Your own bed. Nobody hunts you here.'],
+    },
+    {
+      name: 'YOUR PC',
+      note: 'It hums to itself',
+      tiles: [{ x: 0, y: 1 }],
+      lines: ['Your PC hums to itself. Bill keeps everything you own; this one just keeps you company.'],
+    },
+    {
+      name: 'THE CONSOLE',
+      note: 'One more go',
+      tiles: [
+        { x: 7, y: 4 },
+        { x: 7, y: 5 },
+      ],
+      lines: ['You play a quick game. You lose to a Bug Catcher, again.'],
+    },
+    {
+      name: 'THE BOOKCASE',
+      note: 'Toys on top, books below',
+      tiles: [
+        { x: 3, y: 1 },
+        { x: 4, y: 1 },
+      ],
+      lines: ['Toys on top, and below them every book about Kanto you have ever been given.'],
+    },
+    {
+      name: 'THE CALENDAR',
+      note: 'Pinned by the stairs',
+      tiles: [{ x: 10, y: 1 }],
+      lines: ['A calendar, pinned by the stairs. Nothing is written on it yet.'],
+    },
+  ];
+  return { sketch, catalogue: HOUSE, things, sprites: [] };
+}
+
+/**
+ * The shade the house's west wall throws down the floor beside it, as FireRed
+ * draws both of the player's rooms - planted first, so the furniture against
+ * that wall stands over it.
+ */
+function westShade(sketch: MapSketch<RoomPropName>, room: BaseRoom): void {
+  for (let y = 3; y < room.height; y += 1) sketch.plant(0, y, 'homeShade');
+}
+
 /** Two rows of back wall and floor to the room's edge. */
 function shell(room: BaseRoom): MapSketch<RoomPropName> {
   const sketch = new MapSketch<RoomPropName>({ width: room.width, height: room.height, fill: 'P' });
@@ -715,6 +987,8 @@ const DRAWERS: Readonly<Record<RoomId, (room: BaseRoom, game: RestoredGame) => D
   'pokemon-centre': drawCenter,
   'brocks-workshop': drawWorkshop,
   'bills-cottage': drawCottage,
+  bolthole: drawHome,
+  'bolthole-upstairs': drawUpstairs,
 };
 
 /** A room as it stands for this save. Rebuilt on every visit; a room is small. */
@@ -723,6 +997,7 @@ export function buildRoom(room: BaseRoom, game: RestoredGame): BuiltRoom {
   const layers = buildMapLayers(drawn.sketch, drawn.catalogue);
   return {
     room,
+    sources: drawn.catalogue.sources,
     layers,
     collision: layers.collision,
     things: drawn.things,
@@ -739,6 +1014,9 @@ export function roomPropArt(name: RoomPropName): PropDefinition {
 
 /** Whether a tile is one the keeper serves from: facing them, or facing their counter. */
 export function servesFrom(room: BaseRoom, facing: GridPosition): boolean {
+  if (!room.keeper) {
+    return false;
+  }
   if (facing.x === room.keeper.position.x && facing.y === room.keeper.position.y) {
     return true;
   }

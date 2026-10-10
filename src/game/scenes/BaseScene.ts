@@ -49,12 +49,7 @@ import {
 } from '../world/depths';
 import type { TileSource } from '../world/tileset/catalogue';
 import { brimRuns, type MapLayers } from '../world/tiles';
-import {
-  BASE_LANDING,
-  BASE_PLACE_NAME,
-  BASE_SPAWN,
-  getBaseMap,
-} from '../base/baseMap';
+import { BASE_LANDING, BASE_SIGNS, BASE_SPAWN, getBaseMap } from '../base/baseMap';
 import { BASE_TILESET, type BasePropName } from '../base/baseTileset';
 import { BASE_DOORS, doorAt, doorNamed, type BaseDoor } from '../base/doors';
 import { doorStatusLine } from '../base/doorStatus';
@@ -65,6 +60,8 @@ import {
   buildRoom,
   roomNamed,
   servesFrom,
+  stairArrival,
+  stairAt,
   type BaseRoom,
   type BuiltRoom,
   type RoomSprite,
@@ -237,6 +234,11 @@ export interface BaseSceneData {
    * player back in front of it rather than at the door.
    */
   readonly at?: GridPosition;
+  /**
+   * The room the player has just come up or down the stairs from: they are put
+   * down on this room's stair mat that leads back there, facing away from it.
+   */
+  readonly stairsFrom?: string;
 }
 
 interface BaseControls {
@@ -404,17 +406,22 @@ export class BaseScene extends Phaser.Scene {
         height: room.height,
         layers: built.layers,
         collision: built.collision,
-        sources: [BASE_SHEET_SOURCE.source],
+        sources: built.sources,
         room: built,
       };
       this.fixtures = [];
       // In through the door, onto the mat, facing the keeper - or back where
       // they were standing, if a screen opened from inside the room is what
-      // they have just backed out of.
+      // they have just backed out of - or on the stair mat they have just
+      // climbed to, facing away from the stairs.
+      const climbedTo =
+        data.stairsFrom === undefined ? undefined : stairArrival(data.stairsFrom as BaseRoom['id'], room);
       const standing =
-        data.at !== undefined && built.collision[data.at.y]?.[data.at.x] === false ? data.at : room.mat;
+        data.at !== undefined && built.collision[data.at.y]?.[data.at.x] === false
+          ? data.at
+          : (climbedTo ?? room.mat ?? room.stairs[0]?.tile ?? { x: 0, y: room.height - 1 });
       this.currentTile = { ...standing };
-      this.facing = 'up';
+      this.facing = climbedTo ? 'down' : 'up';
     } else {
       const map = getBaseMap(loaded.raidProgress.workshopUpgrades);
       this.place = {
@@ -835,13 +842,12 @@ export class BaseScene extends Phaser.Scene {
       .setDepth(atRow(MARKER_BAND, area.y + area.height - 1));
   }
 
-  /** The keeper of the room the player is in. The yard has nobody standing in it. */
+  /** The keeper of the room the player is in. The yard has nobody standing in it, and nor does the house. */
   private createFigures(): void {
-    const room = this.place.room?.room;
-    if (!room) {
+    const keeper = this.place.room?.room.keeper;
+    if (!keeper) {
       return;
     }
-    const { keeper } = room;
     const appearance = getWorldCharacterAppearance('npc', keeper.design);
     const sprite = this.add
       .sprite(
@@ -959,20 +965,23 @@ export class BaseScene extends Phaser.Scene {
 
   private createRoomCaptions(built: BuiltRoom): void {
     const { room } = built;
-    const door = doorNamed(room.id);
-    const status = door ? doorStatusLine(door, this.savedGame) : '';
-    this.worldLabels.push(
-      new WorldLabel(this, {
-        subject: figureRect(room.keeper.position),
-        text: status ? `${room.keeper.name}\n${status}` : room.keeper.name,
-        tone: DOOR_TONE,
-        depth: atRow(CAPTION_BAND, room.keeper.position.y),
-        // Said as the player walks up, not from the mat: the hint line already
-        // names the keeper there, and a caption said from the door sits over
-        // the very room the player has walked in to look at.
-        speech: { voice: 'name', tiles: [room.keeper.position], near: 2 },
-      }),
-    );
+    const { keeper } = room;
+    if (keeper) {
+      const door = doorNamed(room.id);
+      const status = door ? doorStatusLine(door, this.savedGame) : '';
+      this.worldLabels.push(
+        new WorldLabel(this, {
+          subject: figureRect(keeper.position),
+          text: status ? `${keeper.name}\n${status}` : keeper.name,
+          tone: DOOR_TONE,
+          depth: atRow(CAPTION_BAND, keeper.position.y),
+          // Said as the player walks up, not from the mat: the hint line already
+          // names the keeper there, and a caption said from the door sits over
+          // the very room the player has walked in to look at.
+          speech: { voice: 'name', tiles: [keeper.position], near: 2 },
+        }),
+      );
+    }
     for (const thing of built.things) {
       this.worldLabels.push(
         new WorldLabel(this, {
@@ -1028,13 +1037,15 @@ export class BaseScene extends Phaser.Scene {
     if (!room) {
       return partner ?? '';
     }
+    const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
     if (this.onMat(room)) {
-      return `${partner ?? `[SPACE] ${room.keeper.name}`}   [DOWN] OUT`;
+      // The player's own house has nobody to speak to from the mat.
+      const speak = partner ?? keeper;
+      return speak ? `${speak}   [DOWN] OUT` : '[DOWN] OUT';
     }
     if (partner) {
       return partner;
     }
-    const keeper = `[SPACE] ${room.keeper.name}`;
     if (servesFrom(room, facing)) {
       return keeper;
     }
@@ -1153,7 +1164,7 @@ export class BaseScene extends Phaser.Scene {
             : []),
         ],
         keepClear: [
-          ...(room ? [figureRect(room.keeper.position)] : []),
+          ...(room?.keeper ? [figureRect(room.keeper.position)] : []),
           ...(this.partner?.place.out ? [this.partnerRect(this.partner.place.tile)] : []),
         ],
         canopy: this.canopyInView(bounds),
@@ -1297,7 +1308,7 @@ export class BaseScene extends Phaser.Scene {
 
   /** Whether a tile can be walked onto: the map, and whoever is standing on it. */
   public isBlocked(tile: GridPosition): boolean {
-    const keeper = this.place.room?.room.keeper.position;
+    const keeper = this.place.room?.room.keeper?.position;
     return (
       (this.collision[tile.y]?.[tile.x] ?? true) ||
       (keeper !== undefined && keeper.x === tile.x && keeper.y === tile.y)
@@ -1305,7 +1316,7 @@ export class BaseScene extends Phaser.Scene {
   }
 
   private onMat(room: BaseRoom): boolean {
-    return this.currentTile.x === room.mat.x && this.currentTile.y === room.mat.y;
+    return room.mat !== null && this.currentTile.x === room.mat.x && this.currentTile.y === room.mat.y;
   }
 
   private beginStep(targetTile: GridPosition): void {
@@ -1340,7 +1351,12 @@ export class BaseScene extends Phaser.Scene {
     if (this.partner) {
       this.partner.step = null;
     }
-    if (this.place.room) {
+    const room = this.place.room?.room;
+    if (room) {
+      const stair = stairAt(room, this.currentTile);
+      if (stair) {
+        this.climb(room, stair.to);
+      }
       return;
     }
     const door = doorAt(this.currentTile);
@@ -1738,8 +1754,8 @@ export class BaseScene extends Phaser.Scene {
     }
     const room = this.place.room?.room;
     if (room) {
-      if (this.onMat(room) || servesFrom(room, target)) {
-        this.openScreen(room);
+      if (room.screen && (this.onMat(room) || servesFrom(room, target))) {
+        this.openScreen(room, room.screen);
         return;
       }
       const thing = this.thingFaced(target);
@@ -1765,7 +1781,7 @@ export class BaseScene extends Phaser.Scene {
         return;
       }
       if (thing) {
-        this.say([`${thing.name} - ${thing.note.toLowerCase()}.`], [target]);
+        this.say(thing.lines ?? [`${thing.name} - ${thing.note.toLowerCase()}.`], [target]);
       }
       return;
     }
@@ -1781,8 +1797,9 @@ export class BaseScene extends Phaser.Scene {
       this.say([`${fixture.name} - ${fixture.note.toLowerCase()}.`], [target]);
       return;
     }
-    if (target.x === NOTICE_BOARD.x && target.y === NOTICE_BOARD.y) {
-      this.say(NOTICE_BOARD.lines, [target]);
+    const sign = BASE_SIGNS.find((each) => each.x === target.x && each.y === target.y);
+    if (sign) {
+      this.say(sign.lines, [target]);
     }
   }
 
@@ -1825,6 +1842,11 @@ export class BaseScene extends Phaser.Scene {
     this.goTo({ savedGame: this.savedGame, room: door.id }, 'interiorEnter');
   }
 
+  /** Onto a stair mat: the same scene, started again on the floor it leads to. */
+  private climb(room: BaseRoom, to: string): void {
+    this.goTo({ savedGame: this.savedGame, room: to, stairsFrom: room.id }, 'interiorEnter');
+  }
+
   /** Down off the mat: back out into the yard, on the step outside. */
   private leaveRoom(room: BaseRoom): void {
     this.goTo({ savedGame: this.savedGame, from: room.id }, 'interiorLeave');
@@ -1854,8 +1876,8 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /** The keeper's screen, which is what the room is the way to. */
-  private openScreen(room: BaseRoom): void {
-    this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[room.screen], from: room.id });
+  private openScreen(room: BaseRoom, screen: NonNullable<BaseRoom['screen']>): void {
+    this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[screen], from: room.id });
   }
 
   private openHub(payload: HubSceneData): void {
@@ -1873,23 +1895,10 @@ export class BaseScene extends Phaser.Scene {
   }
 }
 
-/**
- * The harbour's own board, on the quay where the boat ties up, because that is
- * where a player who has just come home is standing.
- */
-const NOTICE_BOARD = {
-  x: 14,
-  y: 15,
-  lines: [
-    `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
-    'OAK kits you out. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
-  ],
-} as const;
-
 /** Which screen each room's keeper opens, as `HubScene` names its views. */
 const SCREEN_VIEWS = {
   raid: 'home',
   stash: 'stash',
   workshop: 'workshop',
   trader: 'trader',
-} as const satisfies Record<BaseRoom['screen'], NonNullable<HubSceneData['view']>>;
+} as const satisfies Record<NonNullable<BaseRoom['screen']>, NonNullable<HubSceneData['view']>>;

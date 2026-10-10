@@ -9,7 +9,7 @@
  *
  *   npx vite-node tools/tileset/props.mts -- <catalogue> <out.png> [zoom]
  *
- * `<catalogue>` is `frlg`, `overworld` or `flood-town`. A composed catalogue is
+ * `<catalogue>` is `frlg`, `overworld`, `flood-town`, `kanto`, `player-map` or `base`. A composed catalogue is
  * the one worth looking at: it is where an object from one sheet first stands
  * on another sheet's grass, and where a numbering clash between the two shows.
  *
@@ -23,11 +23,17 @@ import type { TilesetCatalogue } from '../../src/game/world/tileset/catalogue';
 import { FLOOD_TOWN_TILESET } from '../../src/game/world/tileset/floodTownTileset';
 import { FRLG_TILESET } from '../../src/game/world/tileset/frlgTileset';
 import { OVERWORLD_TILESET } from '../../src/game/world/tileset/overworldTileset';
+import { KANTO_TILESET } from '../../src/game/world/tileset/kantoTileset';
+import { PLAYER_MAP_TILESET } from '../../src/game/world/tileset/playerMapTileset';
+import { BASE_TILESET } from '../../src/game/base/baseTileset';
 
 const CATALOGUES: Record<string, TilesetCatalogue<string>> = {
   frlg: FRLG_TILESET,
   overworld: OVERWORLD_TILESET,
   'flood-town': FLOOD_TOWN_TILESET,
+  kanto: KANTO_TILESET,
+  'player-map': PLAYER_MAP_TILESET,
+  base: BASE_TILESET,
 };
 
 const args = process.argv.slice(2).filter((value) => value !== '--');

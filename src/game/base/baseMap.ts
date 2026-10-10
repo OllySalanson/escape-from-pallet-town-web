@@ -38,7 +38,7 @@ import { standingFixtures } from './fixtures';
  * that name would have the player dropping into Pallet Town from Pallet Town.
  */
 
-export const BASE_MAP_WIDTH = 32;
+export const BASE_MAP_WIDTH = 35;
 export const BASE_MAP_HEIGHT = 21;
 
 /** What the screens call this place, on the way out of every one of them. */
@@ -57,6 +57,41 @@ export const BASE_SPAWN: GridPosition = { x: 16, y: 13 };
  * the first thing a raid that went well wants.
  */
 export const BASE_LANDING: GridPosition = { x: 16, y: 17 };
+
+/** Something on a post that says something when faced: a board, a house's sign. */
+export interface BaseSign {
+  readonly x: number;
+  readonly y: number;
+  readonly lines: readonly string[];
+}
+
+/**
+ * The harbour's own board, on the quay where the boat ties up, because that is
+ * where a player who has just come home is standing.
+ */
+export const NOTICE_BOARD: BaseSign = {
+  x: 14,
+  y: 15,
+  lines: [
+    `${BASE_PLACE_NAME.toUpperCase()} - what the raids are run out of.`,
+    'OAK kits you out. JOY patches the team up. BROCK builds onto the base, and BILL takes what you drag home.',
+    'THE BOLTHOLE, at the end of the row, is yours.',
+  ],
+};
+
+/** The sign in THE BOLTHOLE's front garden, beside the path up to the step. */
+export const HOME_SIGN: BaseSign = {
+  x: 27,
+  y: 12,
+  lines: ['THE BOLTHOLE', 'Home. Nobody hunts you here.'],
+};
+
+export const BASE_SIGNS: readonly BaseSign[] = [NOTICE_BOARD, HOME_SIGN];
+
+/** FireRed's red flowers in the front garden, either side of the path. */
+const GARDEN_FLOWERS: readonly (readonly [number, number])[] = [28, 29, 30, 31].flatMap(
+  (x) => [12, 13].map((y) => [x, y] as const),
+);
 
 export interface BaseMapDefinition {
   readonly width: number;
@@ -98,27 +133,27 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   });
 
   map.draw(0, 0, [
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
-    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
-    'TTT......TTTTTTTTTTTTTTTTTTTTTTT',
-    'TTT......TTTTTTTTTTTTTTTTTTTTTTT',
-    'TtT......TTtTTTtTTTtTTTtTTTTTTtT',
-    'TTT...........TTTTTTTTTTT....TTT',
-    'TTT...........T....T....T....TTT',
-    'TtT...........T....T....T....TtT',
-    'TTT...........T....T....T....TTT',
-    'TTT...,,,,,,,,,,,,,,,,,,,,...TTT',
-    'TtT...,,,,,,,,,,,,,,,,,,,,...TtT',
-    'TTT...,,,,,,,,,,,,,,,,,,,,...TTT',
-    'TTT...,,,,,,,,,,,,,,,,,,,,...TTT',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWW',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWW',
-    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
-    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTTtTT',
+    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTT......TTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TtT......TTtTTTtTTTtTTTtTTTtTTTTTTT',
+    'TTT...........TTTTTTTTTTT.......TTT',
+    'TTT...........T....T....T.......TTT',
+    'TtT...........T....T....T.......TTT',
+    'TTT...........T....T....T.......TTT',
+    'TTT...,,,,,,,,,,,,,,,,,,,.......TTT',
+    'TtT...,,,,,,,,,,,,,,,,,,,.......TTT',
+    'TTT...,,,,,,,,,,,,,,,,,,,.......TTT',
+    'TTT...,,,,,,,,,,,,,,,,,,,.......TtT',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWW',
+    'WWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW',
   ]);
 
   // The four buildings, each with its own doorway cut into it by the base's
@@ -138,6 +173,13 @@ function sketchBase(builtUpgradeIds: readonly string[]): MapSketch<BasePropName>
   map.plant(14, 15, 'noticeBoard');
   map.plant(22, 15, 'barrelPair');
   map.plant(24, 15, 'mooringPost');
+
+  // THE BOLTHOLE's front garden: its sign beside the path to the step, and
+  // FireRed's red flowers either side of it.
+  map.plant(HOME_SIGN.x, HOME_SIGN.y, 'homeSign');
+  for (const [x, y] of GARDEN_FLOWERS) {
+    map.plant(x, y, 'gardenFlowers');
+  }
 
   // And what the player has built. Planted last, so a fixture is the last word
   // on its own tiles exactly as a landmark is on a raid map.
