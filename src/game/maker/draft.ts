@@ -491,6 +491,21 @@ export function removeThing(file: MapFile, thing: ThingRef): MapFile {
   return withSpots(file, thing.kind, without(spotsOf(file, thing.kind)));
 }
 
+/**
+ * Whether `thing` still names something on the map. A choice is an index into
+ * a list, so once anything is taken off that list it may name the next thing
+ * along or nothing at all.
+ */
+export function thingExists(file: MapFile, thing: ThingRef): boolean {
+  const list =
+    thing.kind === 'building'
+      ? file.buildings
+      : thing.kind === 'district'
+        ? (file.districts ?? [])
+        : spotsOf(file, thing.kind);
+  return Number.isInteger(thing.index) && thing.index >= 0 && thing.index < list.length;
+}
+
 /** Moves a placed thing to another tile, keeping its name and settings. */
 export function moveThing(file: MapFile, thing: ThingRef, to: GridPoint): PlaceOutcome {
   if (thing.kind === 'building') {

@@ -675,7 +675,7 @@ export function makerScreen(state: MakerViewState): string {
     title: escapeHtml(state.file.name || 'Untitled map'),
     back: { label: 'TITLE', attribute: 'data-back' },
     aside: `<span>${state.checks.every((check) => check.passed) ? 'READY' : works ? 'WORKS · TRY IT' : 'NOT FINISHED'}</span>`,
-    hints: 'CLICK the map to paint · CTRL+Z undo · ESC back',
+    hints: 'CLICK the map to paint · CTRL+Z undo · ESC cancel',
     ...(state.status ? { status: escapeHtml(state.status) } : {}),
     body: `<main class="px-body maker-shell">${toolsPane(state)}${mapPane(state)}${side}${pixelCommitBar(
       {
