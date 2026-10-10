@@ -2102,6 +2102,9 @@ export class WorldScene extends Phaser.Scene {
           text: `${leadsTo.name.toUpperCase()} ${ARROWS[warp.toward]}`,
           tone: LABEL_TONES.route,
           depth: atRow(CAPTION_BAND, warp.source.y),
+          // On the near side of the doorway, so it never covers the door or
+          // the stairs it names: under the tile in front of a door, over a mat.
+          placement: warp.toward === 'up' ? 'below' : 'above',
           speech: { voice: 'name', tiles: [warp.source] },
         }),
       );

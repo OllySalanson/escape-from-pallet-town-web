@@ -132,13 +132,32 @@ export function sketchArea(
   const mat = insideMat(area.style);
   for (const link of links) {
     for (const end of link.ends) {
-      if (end.area === area.id && end.look === 'mat') {
+      if (end.area !== area.id) {
+        continue;
+      }
+      if (end.look === 'mat') {
         const x = Math.max(0, Math.min(area.width - 3, end.x - 1));
         sketch.plant(x, end.y, mat);
+      } else if (end.look === 'stairs-up' || end.look === 'stairs-down') {
+        const at = stairsAt(end);
+        if (at.x >= 0 && at.y >= 0 && at.x + STAIRS_SIZE.width <= area.width) {
+          sketch.plant(at.x, at.y, end.look === 'stairs-up' ? 'stairsUp' : 'stairsDown');
+        }
       }
     }
   }
   return sketch;
+}
+
+/** How much of a room a staircase takes: two tiles wide and three deep, its top row against the back wall. */
+export const STAIRS_SIZE = { width: 2, height: 3 } as const;
+
+/**
+ * Where a staircase stands, from the end of the way through that is gone up
+ * it: the tile in front of its foot, pressing up into its bottom-left cell.
+ */
+export function stairsAt(end: Pick<MapFileLinkEnd, 'x' | 'y'>): { x: number; y: number } {
+  return { x: end.x, y: end.y - STAIRS_SIZE.height };
 }
 
 /** Where each area lies in the composed grid, and how big that grid is. */

@@ -27,6 +27,7 @@ import {
   focusArea,
   hasDoor,
   insideOf,
+  stairsUpIn,
   type AreaId,
   type DoorwayInArea,
 } from './areas';
@@ -586,24 +587,41 @@ function selectedPane(
 function doorwayPane(file: MapFile, doorway: DoorwayInArea): string {
   const far = file.links?.[doorway.link]?.ends[1 - doorway.end];
   const leadsTo = far?.area === undefined ? 'outside' : (areaById(file, far.area)?.name ?? 'nowhere');
+  const look = doorway.at.look;
   const body =
-    doorway.at.look === 'mat'
+    look === 'mat'
       ? `<p class="px-wrap">The way out. Standing on the mat and pressing ${doorway.at.toward} takes a player ${escapeHtml(leadsTo === 'outside' ? 'back outside' : `to ${leadsTo}`)}, and coming in they arrive on it.</p><p class="px-note px-wrap">Drag it along the wall with Select to move it.</p>`
-      : `<p class="px-wrap">The door into ${escapeHtml(leadsTo)}. A player goes in by walking up to the door.</p>`;
+      : look === 'stairs-up' || look === 'stairs-down'
+        ? `<p class="px-wrap">The stairs ${look === 'stairs-up' ? 'up' : 'down'} to ${escapeHtml(leadsTo)}. A player walks up to the foot of them and presses up.</p><p class="px-note px-wrap">Drag them along the back wall with Select to move them.</p>`
+        : `<p class="px-wrap">The door into ${escapeHtml(leadsTo)}. A player goes in by walking up to the door.</p>`;
   return pixelWindow(`<div class="maker-form">${body}</div>`, {
     className: 'maker-selected',
-    heading: doorway.at.look === 'mat' ? 'Way out' : 'Door',
+    heading: look === 'mat' ? 'Way out' : look === 'door' ? 'Door' : 'Stairs',
   });
 }
 
+/** A house can have a floor above it, with stairs up to it; once it has, the button goes there. */
+function upstairsButton(file: MapFile, area: MapFileArea): string {
+  if (area.style !== 'house') {
+    return '';
+  }
+  const stairs = stairsUpIn(file, area.id);
+  const above = stairs
+    ? areaById(file, file.links?.[stairs.link]?.ends[1 - stairs.end].area)
+    : undefined;
+  return above
+    ? `<div class="maker-actions"><button class="px-window px-button" data-area="${escapeAttribute(above.id)}" data-help="Goes up the stairs to ${escapeAttribute(above.name)}.">Go upstairs</button></div>`
+    : `<div class="maker-actions"><button class="px-window px-button" data-add-upstairs="${escapeAttribute(area.id)}" data-help="Builds a floor above this one, furnished as a bedroom, with stairs up to it against the back wall.">Add an upstairs</button></div>`;
+}
+
 /** The inside on screen: its name, its look and its size, and the way back out. */
-function insidePane(area: MapFileArea): string {
+function insidePane(file: MapFile, area: MapFileArea): string {
   const styles = MAP_FILE_AREA_STYLES.map(
     (style) =>
       `<option value="${style}"${style === area.style ? ' selected' : ''}>${STYLE_LABELS[style]}</option>`,
   ).join('');
   return pixelWindow(
-    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label><label class="maker-field"><span>Looks like</span><select class="px-window px-field" data-area-style>${styles}</select></label><div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-area-width type="number" min="${MAP_FILE_LIMITS.minInsideWidth}" max="${MAP_FILE_LIMITS.maxInsideWidth}" value="${area.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-area-height type="number" min="${MAP_FILE_LIMITS.minInsideHeight}" max="${MAP_FILE_LIMITS.maxInsideHeight}" value="${area.height}" /></label></div><div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="Takes this inside away, and everything in it. The door outside shuts again. Press twice.">Remove</button></div></div>`,
+    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label><label class="maker-field"><span>Looks like</span><select class="px-window px-field" data-area-style>${styles}</select></label><div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-area-width type="number" min="${MAP_FILE_LIMITS.minInsideWidth}" max="${MAP_FILE_LIMITS.maxInsideWidth}" value="${area.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-area-height type="number" min="${MAP_FILE_LIMITS.minInsideHeight}" max="${MAP_FILE_LIMITS.maxInsideHeight}" value="${area.height}" /></label></div>${upstairsButton(file, area)}<div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="Takes this inside away, and everything in it. The door outside shuts again. Press twice.">Remove</button></div></div>`,
     { className: 'maker-settings', heading: 'This inside' },
   );
 }
@@ -811,7 +829,7 @@ export function makerScreen(state: MakerViewState): string {
     : undefined;
   const panels: Readonly<Record<MakerPanel, () => string>> = {
     map: () =>
-      `${doorway ? doorwayPane(state.file, doorway) : selectedPane(view, state.selected, state.file, area)}${inside ? insidePane(inside) : settingsPane(state.file)}`,
+      `${doorway ? doorwayPane(state.file, doorway) : selectedPane(view, state.selected, state.file, area)}${inside ? insidePane(state.file, inside) : settingsPane(state.file)}`,
     drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts),
     send: () => sendPane(state.file, state.sending),
     sent: () => sentPane(state.sent),

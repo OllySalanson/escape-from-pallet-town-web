@@ -17,6 +17,8 @@ import {
   type MapFileLink,
 } from './mapFile';
 import { checkMapFile, type MapCheckId } from './mapFileChecks';
+import { addUpstairs, makeInside } from '../maker/areas';
+import { areaTile } from './tileset/areaSheet';
 import { registerPlayerMap, unregisterPlayerMap } from './playerMaps';
 import { buildMapLayers } from './tiles';
 import { PLAYER_MAP_TILESET } from './tileset/playerMapTileset';
@@ -303,5 +305,50 @@ describe('what a map with insides may not do', () => {
       "Area 1's furniture 2 is not furniture the game has: house.",
       'Way through 1 must have two ends.',
     ]);
+  });
+});
+
+describe("FireRed's own house, inside", () => {
+  const made = makeInside(SAMPLE, 0);
+  const house = made.made ? made.file : SAMPLE;
+
+  it('shades its parquet under the back wall and down its west side, and not along the others', () => {
+    const composed = composeMapFile(house);
+    const room = composed.areas[1].rect;
+    const tile = (x: number, y: number): number => composed.layers.ground.tiles[room.y + y][room.x + x];
+    const shade = areaTile('house.floorShade');
+    const floor = areaTile('house.floor');
+    expect(tile(0, 5)).toBe(shade);
+    expect(tile(5, 2)).toBe(shade);
+    expect(tile(0, 2)).toBe(shade);
+    expect(tile(1, 5)).toBe(floor);
+    expect(tile(11, 5)).toBe(floor);
+    expect(tile(5, 8)).toBe(floor);
+    expect(tile(5, 0)).toBe(areaTile('house.wallUpper'));
+    expect(tile(5, 1)).toBe(areaTile('house.wallLower'));
+  });
+
+  it('stands its stairs where its way up is, and goes up them and back down', () => {
+    const up = addUpstairs(house, 'house');
+    if (!up.made) {
+      throw new Error(up.reason);
+    }
+    const composed = composeMapFile(up.file);
+    const below = composed.areas[1].rect;
+    const above = composed.areas[2].rect;
+    // The staircase's three rows stand on the room, solid, over its foot.
+    for (let y = 1; y <= 3; y += 1) {
+      expect(composed.layers.detail.tiles[below.y + y][below.x + 10]).toBeGreaterThan(0);
+      expect(composed.layers.collision[below.y + y][below.x + 10]).toBe(true);
+    }
+    expect(composed.layers.collision[below.y + 4][below.x + 10]).toBe(false);
+    const upward = composed.doorways.find((doorway) => doorway.look === 'stairs-up');
+    expect(upward).toMatchObject({
+      from: { x: below.x + 10, y: below.y + 4 },
+      toward: 'up',
+      to: { x: above.x + 7, y: above.y + 4 },
+      arrivalFacing: 'down',
+    });
+    expect(checkMapFile(up.file).filter((check) => !check.passed)).toEqual([]);
   });
 });

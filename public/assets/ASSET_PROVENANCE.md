@@ -693,6 +693,38 @@ and the row its feet stand on. They are the owner's ask on the palette board:
 "all of the Pokémon that are in the game should be in the mapmaker", and only
 those.
 
+### `frlg-areas.png` - the insides of a player's buildings
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
+as `frlg-tiles.png` and `characters/*.png` above: Pokemon FireRed/LeafGreen art,
+rights holders Nintendo / Creatures / Game Freak, no licence from them.
+
+- **Source.** pret's FireRed disassembly, **pret/pokefirered**
+  (<https://github.com/pret/pokefirered>), at commit
+  `c75f352304d529f6ba92d4f74b9cf8b5c3810788` - the same commit the game already
+  reads FireRed's species, moves and battle rules from - read 2026-10-10. The
+  pieces come from three of the game's own rooms, drawn from their tilesets
+  (`data/tilesets/primary/building`, `secondary/generic_building_1`,
+  `secondary/mart`: the 4bpp tile sheets, the JASC palettes and the metatile
+  tables) and their layouts (`data/layouts/PalletTown_PlayersHouse_1F`,
+  `PalletTown_PlayersHouse_2F`, `Mart`).
+- **Terms.** pret publishes no licence for the graphics it extracts: they are
+  the game's own, and this file treats them exactly as it treats the other
+  ripped sheets. **Nothing of the checkout is committed**: what ships is a cut -
+  38 named pieces drawn out of the game's metatiles and packed onto a new 20x10
+  grid that matches none of the game's own sheets.
+- **How it was cut.** `scripts/cut-frlg-areas.mjs` is the whole method: it
+  refuses a checkout at any other commit, names the room, the metatile and the
+  layer of every piece, and writes `src/game/world/generated/areaPieces.ts`,
+  the only thing in the game that knows where a piece sits on the sheet. Two
+  things are done to the game's art and nothing else. Every colour is read back
+  to the five bits a channel the Game Boy Advance shows and written `x << 3`, as
+  `frlg-tiles.png` writes it. And a piece is drawn from one of a metatile's two
+  layers or both: FireRed draws a room's furniture on the top layer, clear of
+  the floor on the bottom one, so a piece cut from the top layer alone is the
+  furniture with nothing round it; a door mat, which hangs half a tile off the
+  foot of its room, is cropped to its own pixels and centred on one row.
+
 ### `pokemon/{front,back}/<dexId>.png` - the species sprites
 
 - **Source.** <https://github.com/PokeAPI/sprites>, path
