@@ -61,6 +61,16 @@ describe("what the things in THE BOLTHOLE say", () => {
     ]);
   });
 
+  it('says the ticks as a sentence, whatever the count', () => {
+    const tick = (deployed: number, extracted: number) =>
+      calendarLines(raids({ 'route-1': { deployed, extracted, wiped: deployed - extracted } }))[1];
+    expect(tick(1, 1)).toBe('It has a tick for coming home.');
+    expect(tick(1, 0)).toBe('It has no tick for coming home.');
+    expect(tick(3, 1)).toBe('1 of them has a tick for coming home.');
+    expect(tick(3, 0)).toBe('None of them has a tick for coming home.');
+    expect(tick(3, 3)).toBe('Every one of them has a tick for coming home.');
+  });
+
   /**
    * The bed is somewhere to lie down, never a heal: healing is Joy's and is
    * priced in raid time, and the bed has to say so rather than leave a player
