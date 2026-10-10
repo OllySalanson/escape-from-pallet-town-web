@@ -9,10 +9,12 @@ import {
 } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import {
+  addFloorBelow,
   addUpstairs,
   doorwaysIn,
   focusArea,
   insideOf,
+  ladderDownIn,
   makeInside,
   moveBuilding,
   moveDoorway,
@@ -33,7 +35,7 @@ import {
   removeThing,
   shiftThings,
 } from './draft';
-import { furnitureFor, INSIDE_BRUSHES } from './palette';
+import { brushesFor, furnitureFor, INSIDE_BRUSHES } from './palette';
 
 const SAMPLE = { ...(sampleLane as MapFile), maker: 'Probe' };
 
@@ -376,6 +378,143 @@ describe('the maker screen with an inside', () => {
     const markup = makerScreen({ ...state(file, area), doorway: { link: 0, end: 1 } });
     expect(markup).toContain('Way out');
     expect(markup).toContain('back outside');
+  });
+
+  it("offers a cave mouth its cave, and shows a cave with a cave's brushes, pieces and settings", () => {
+    const lane = laneWithARockFace();
+    const index = lane.buildings.length - 1;
+    const shut = makerScreen({ ...state(lane), selected: { kind: 'building', index } });
+    expect(shut).toContain('Make its cave');
+    expect(shut).toContain('It leads nowhere yet.');
+    const { file, area } = withCave();
+    expect(makerScreen({ ...state(file), selected: { kind: 'building', index } })).toContain('It leads into Cave.');
+    const markup = makerScreen(state(file, area));
+    expect(markup).toContain('This cave');
+    expect(markup).toContain('Add a floor below');
+    expect(markup).toContain('data-brush="sand"');
+    expect(markup).toContain('data-building="boulder"');
+    // No house furniture in a cave, and no field-move doors indoors at all.
+    expect(markup).not.toContain('data-building="single-bed"');
+    expect(markup).not.toContain('data-place="cut-tree"');
+    // A cave has one look, so there is no choosing it.
+    expect(markup).not.toContain('data-area-style');
+    const exit = makerScreen({ ...state(file, area), doorway: { link: file.links!.length - 1, end: 1 } });
+    expect(exit).toContain('daylight in its south wall');
+    expect(exit).toContain('data-go-end');
+    // Outdoors, the same way through is the cave's mouth.
+    const mouth = makerScreen({ ...state(file), doorway: { link: file.links!.length - 1, end: 0 } });
+    expect(mouth).toContain('Cave mouth');
+    expect(mouth).toContain('The mouth of Cave.');
+  });
+
+  it('asks where a passage comes out while it waits, and offers a second mouth a cave there is', () => {
+    const { file } = withCave();
+    const lane = {
+      ...file,
+      buildings: [...file.buildings, { kind: 'cave-mouth' as const, x: 7, y: 6 }],
+    };
+    const second = makerScreen({ ...state(lane), selected: { kind: 'building', index: lane.buildings.length - 1 } });
+    expect(second).toContain('data-lead-into');
+    expect(second).toContain('Into a cave you have');
+    const waiting = makerScreen({
+      ...state(lane),
+      passage: { from: { x: 7, y: 7, toward: 'up', look: 'door' }, to: 'cave-exit' },
+    });
+    expect(waiting).toContain('Where does it come out?');
+    expect(waiting).toContain("a cave's south wall");
+    expect(waiting).toContain('data-cancel-passage');
+  });
+});
+
+/** The sample with a rock face east of its fenced field and a cave mouth cut into its foot. */
+function laneWithARockFace(): MapFile {
+  const ground = SAMPLE.ground.map((row, y) =>
+    y >= 10 && y <= 14 ? `${row.slice(0, 26)}CCCC${row.slice(30)}` : row,
+  );
+  return {
+    ...SAMPLE,
+    ground,
+    itemSpots: SAMPLE.itemSpots.map((spot) => (spot.x === 28 && spot.y === 12 ? { x: 25, y: 13 } : spot)),
+    buildings: [...SAMPLE.buildings, { kind: 'cave-mouth', x: 27, y: 14 }],
+  };
+}
+
+function withCave(): { file: MapFile; area: string } {
+  const lane = laneWithARockFace();
+  const made = makeInside(lane, lane.buildings.length - 1);
+  if (!made.made) {
+    throw new Error(made.reason);
+  }
+  return { file: made.file, area: made.area };
+}
+
+describe('a cave, as the maker makes it', () => {
+  it('rings it in rock, with its way out in the middle of the south wall', () => {
+    const { file, area } = withCave();
+    const cave = file.areas!.find((candidate) => candidate.id === area)!;
+    expect(cave).toMatchObject({ name: 'Cave', kind: 'cave', style: 'cave' });
+    expect(cave.ground[0]).toBe('B'.repeat(20));
+    expect(cave.ground.at(-1)).toBe('B'.repeat(20));
+    expect(doorwaysIn(file, area).map((doorway) => doorway.at)).toEqual([
+      { area, x: 10, y: 14, toward: 'down', look: 'cave-exit' },
+    ]);
+  });
+
+  it('keeps its ring of rock when it is made bigger or smaller, and its way out in the south wall', () => {
+    const { file, area } = withCave();
+    for (const [width, height] of [
+      [26, 20],
+      [12, 9],
+    ] as const) {
+      const resized = resizeArea(file, area, width, height);
+      const cave = resized.areas!.find((candidate) => candidate.id === area)!;
+      expect(cave.ground).toHaveLength(height);
+      expect(cave.ground.at(-1)).toBe('B'.repeat(width));
+      expect(cave.ground.every((row) => row.length === width && row.at(-1) === 'B' && row[0] === 'B')).toBe(true);
+      expect(doorwaysIn(resized, area)[0].at).toMatchObject({ y: height - 2, look: 'cave-exit' });
+      expect(checkMapFile(resized).find((check) => check.id === 'doors')?.problems).toEqual([]);
+    }
+  });
+
+  it('moves its way out along the south wall, and a ladder anywhere on the floor', () => {
+    const { file, area } = withCave();
+    const exit = { link: file.links!.length - 1, end: 1 as const };
+    const along = moveDoorway(file, exit, { x: 4, y: 7 });
+    expect(along.links!.at(-1)!.ends[1]).toMatchObject({ x: 4, y: 14 });
+    const below = addFloorBelow(file, area);
+    if (!below.made) {
+      throw new Error(below.reason);
+    }
+    const ladder = { link: below.file.links!.length - 1, end: 0 as const };
+    const moved = moveDoorway(below.file, ladder, { x: 6, y: 9 });
+    expect(moved.links!.at(-1)!.ends[0]).toMatchObject({ x: 6, y: 9, look: 'ladder-down' });
+    expect(checkMapFile(moved).filter((check) => !check.passed)).toEqual([]);
+  });
+
+  it('digs a floor below with a ladder down to it, once, and names each floor deeper than the last', () => {
+    const { file, area } = withCave();
+    const below = addFloorBelow(file, area);
+    if (!below.made) {
+      throw new Error(below.reason);
+    }
+    expect(below.file.areas!.at(-1)).toMatchObject({ name: 'Cave B1F', kind: 'cave' });
+    expect(ladderDownIn(below.file, area)).toBeDefined();
+    expect(addFloorBelow(below.file, area)).toMatchObject({ made: false });
+    const deeper = addFloorBelow(below.file, below.area);
+    expect(deeper.made && deeper.file.areas!.at(-1)?.name).toBe('Cave B2F');
+    const house = withHouse();
+    expect(addFloorBelow(house.file, house.area)).toMatchObject({ made: false });
+  });
+
+  it('paints a cave with its floor, its rock and its sand, and furnishes it with its own pieces', () => {
+    expect(brushesFor('cave').map((brush) => brush.id)).toEqual(['floor', 'wall', 'sand']);
+    expect(furnitureFor('cave').map((choice) => choice.kind)).toEqual([
+      'boulder',
+      'rocks',
+      'crater',
+      'dripping-water',
+    ]);
+    expect(furnitureFor('house').map((choice) => choice.kind)).not.toContain('boulder');
   });
 });
 

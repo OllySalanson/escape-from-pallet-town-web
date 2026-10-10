@@ -191,6 +191,26 @@ export function layersFor(
 export interface DoorwayMark {
   readonly at: MapFileLinkEnd;
   readonly chosen: boolean;
+  /** Its other end, when that is in the same place: the two are joined by a line. */
+  readonly pair?: MapFileLinkEnd;
+}
+
+/**
+ * A dotted line between the middles of two tiles, in the map's own pixels, so
+ * it zooms as the art does: every other pixel of a line drawn the way a pixel
+ * line is drawn, one pixel a step along its longer axis.
+ */
+function dottedLine(context: CanvasRenderingContext2D, from: GridPoint, to: GridPoint): void {
+  const x0 = from.x * TILE_SIZE + TILE_SIZE / 2;
+  const y0 = from.y * TILE_SIZE + TILE_SIZE / 2;
+  const x1 = to.x * TILE_SIZE + TILE_SIZE / 2;
+  const y1 = to.y * TILE_SIZE + TILE_SIZE / 2;
+  const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  for (let step = 0; step <= steps; step += 2) {
+    const x = Math.round(x0 + ((x1 - x0) * step) / Math.max(1, steps));
+    const y = Math.round(y0 + ((y1 - y0) * step) / Math.max(1, steps));
+    context.fillRect(x, y, 1, 1);
+  }
 }
 
 /** Colours for what is placed on the map, the same three the drop-in screen marks them in. */
@@ -433,6 +453,14 @@ export function drawMap(
       selected?.kind === 'door' && selected.index === index,
     ),
   );
+  // A way through whose two ends are both here is joined end to end, under
+  // the marks, so the pair can be seen as one.
+  context.fillStyle = MARK_COLOURS.doorway;
+  for (const doorway of doorways) {
+    if (doorway.pair) {
+      dottedLine(context, doorway.at, doorway.pair);
+    }
+  }
   // Each way through, on the tile it is gone through from: a ring and an
   // arrow pressing the way it goes - up into a door, down off a mat.
   for (const doorway of doorways) {
@@ -507,7 +535,9 @@ export function drawSwatch(
   const key = style ? `${style}:${letter}` : letter;
   let patch = swatchPatches.get(key);
   if (!patch && style) {
-    const ground = letter === 'B' ? ['BBB', 'BBB', 'PPP'] : ['PPP', 'PPP', 'PPP'];
+    // A wall stood on floor, so the swatch is the wall's face with its
+    // skirting; anything else is a patch of itself.
+    const ground = letter === 'B' ? ['BBB', 'BBB', 'PPP'] : [letter.repeat(3), letter.repeat(3), letter.repeat(3)];
     const file: MapFile = {
       format: 1,
       id: 'swatch',

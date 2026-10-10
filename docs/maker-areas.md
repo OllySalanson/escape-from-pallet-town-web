@@ -19,9 +19,12 @@ meant (`mapFile.test.ts` holds the sample and an old-shape file to that).
   signs, landmarks, trainers and districts. Absent is outdoors.
 - **`links`** - the ways between places. A link is two **ends**, and an end is a
   landing tile in an area, `toward` (the way you press to go through) and a
-  `look` (`door`, `mat`, `cave`, `ladder`, `stairs`). A building's door is the
+  `look`: `door`, `mat`, `stairs-up` and `stairs-down` in a building, and in a
+  cave `cave-exit` (daylight cut into its south wall), `ladder-up` (stood on at
+  its foot) and `ladder-down` (a hole, walked up to). A building's door is the
   `door` look standing on the tile in front of the building's door cell: linking
-  it is what opens the door.
+  it is what opens the door. A cave's mouth is a building too, `cave-mouth`,
+  cut into the foot of a rock face, and its door is the mouth.
 
 ## Going through
 
@@ -46,8 +49,10 @@ Going through is a same-map warp: a fade, a move, a fade, nothing rebuilt. The
 camera frames the area you are in, centred on black when it is smaller than the
 screen as a FireRed room is (`BaseScene` already frames its rooms that way),
 and a black mat covers everything outside that area. Each area is a district of
-the map, so its name is the arrival plate. A cave is also an interior
-(`interiors.ts`): dimmed, and its floor rolls for wildlife on every step.
+the map, so its name is the arrival plate. A cave's floor rolls for wildlife on
+every step, as the Delve's does (`interiors.ts`), from Mt. Moon's own table
+(the `cave` habitat). It is not dimmed: Mt. Moon is lit, and dark is
+atmosphere, never a lock.
 
 ## The checks
 
@@ -64,10 +69,15 @@ inside and cave. Editing an area is editing a *focused view* of the file
 (`maker/areas.ts`): the area's ground and buildings and the things standing in
 it, as a map file of its own, so every brush, tool, the canvas and the map's
 growth work on an area exactly as they do outdoors, and the edit is written back
-into the file whole. A building's **GO INSIDE** makes its inside from the
-FireRed room that building is and links its door. A passage between two places
-is two clicks - the entrance, then where it comes out - drawn as a line between
-its ends.
+into the file whole. Drawing past the outdoors' edge grows the map, and the
+outdoor end of every link moves with it; an inside or a cave is the size its
+own fields say. A building's **MAKE ITS INSIDE** makes its inside from the
+FireRed room that building is and links its door; a cave mouth's **MAKE ITS
+CAVE** makes a cave ringed in rock the way Mt. Moon is, with its way out cut
+into the south wall, and **ADD A FLOOR BELOW** digs the next floor down and
+links the two by a ladder. A passage between two places that already exist is
+two clicks - the entrance, then where it comes out - and a chosen way through
+names where it leads and goes there.
 
 ## Shipping order
 

@@ -128,9 +128,12 @@ export interface MaterialTiles {
   /**
    * Whether the edge of the map is something this material stops against, as
    * a neighbour that is not it would be. Off the map is ordinarily more of the
-   * same, so a wood run to the edge carries on out of sight; a FireRed room's
-   * floor is shaded down its west side, which is the room's own edge, and only
-   * reads as a room if that edge is drawn.
+   * same for ground, so a wood run to the edge carries on out of sight; a
+   * FireRed room's floor is shaded down its west side, which is the room's own
+   * edge, and only reads as a room if that edge is drawn. An overlay's edge
+   * roles ordinarily stop at the map's edge - a hedge along it grows its rim -
+   * and `false` carries one on instead: a cave's rock, whose back wall is the
+   * room's top row and is no rim.
    */
   readonly edgesAtMapEdge?: boolean;
 }

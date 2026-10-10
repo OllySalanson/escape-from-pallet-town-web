@@ -693,7 +693,7 @@ and the row its feet stand on. They are the owner's ask on the palette board:
 "all of the Pokémon that are in the game should be in the mapmaker", and only
 those.
 
-### `frlg-areas.png` - the insides of a player's buildings
+### `frlg-areas.png` - the insides of a player's buildings, and its caves
 
 **RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
 as `frlg-tiles.png` and `characters/*.png` above: Pokemon FireRed/LeafGreen art,
@@ -703,15 +703,18 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   (<https://github.com/pret/pokefirered>), at commit
   `c75f352304d529f6ba92d4f74b9cf8b5c3810788` - the same commit the game already
   reads FireRed's species, moves and battle rules from - read 2026-10-10. The
-  pieces come from three of the game's own rooms, drawn from their tilesets
+  pieces come from five of the game's own places, drawn from their tilesets
   (`data/tilesets/primary/building`, `secondary/generic_building_1`,
-  `secondary/mart`: the 4bpp tile sheets, the JASC palettes and the metatile
-  tables) and their layouts (`data/layouts/PalletTown_PlayersHouse_1F`,
-  `PalletTown_PlayersHouse_2F`, `Mart`).
+  `secondary/mart`, and for the cave `primary/general` and `secondary/cave`:
+  the 4bpp tile sheets, the JASC palettes and the metatile tables) and their
+  layouts (`data/layouts/PalletTown_PlayersHouse_1F`,
+  `PalletTown_PlayersHouse_2F`, `Mart`, `MtMoon_1F`, `MtMoon_B1F`): the house
+  and the Mart, and Mt. Moon's floor, rock, sand, boulders, crater, dripping
+  water, ladders and the daylight of its way out.
 - **Terms.** pret publishes no licence for the graphics it extracts: they are
   the game's own, and this file treats them exactly as it treats the other
   ripped sheets. **Nothing of the checkout is committed**: what ships is a cut -
-  38 named pieces drawn out of the game's metatiles and packed onto a new 20x10
+  68 named pieces drawn out of the game's metatiles and packed onto a new 20x12
   grid that matches none of the game's own sheets.
 - **How it was cut.** `scripts/cut-frlg-areas.mjs` is the whole method: it
   refuses a checkout at any other commit, names the room, the metatile and the

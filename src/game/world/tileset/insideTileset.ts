@@ -26,9 +26,18 @@ import type { Material } from './materials';
  * style. Everything else - a staircase, a rug, a Mart's fixtures and every
  * piece the base cut from its renders - was drawn with its room's floor under
  * it, and is only offered in a room of that style (`maker/palette.ts`).
+ *
+ * A cave is the same thing in rock: Mt. Moon's floor, its sand (`d`) and its
+ * rock (`B`), which is an overlay - FireRed draws every face of it on the top
+ * layer, over the floor or the sand alike - and turns the corners of a room
+ * with joints of its own.
  */
 
-export type InsideStyle = 'house' | 'mart' | 'cottage' | 'lab' | 'center' | 'warehouse';
+/** The rooms a building's inside may be drawn as. */
+export type RoomStyle = 'house' | 'mart' | 'cottage' | 'lab' | 'center' | 'warehouse';
+/** The caves a cave may be drawn as. */
+export type CaveStyle = 'cave';
+export type InsideStyle = RoomStyle | CaveStyle;
 
 export const INSIDE_PROPS = {
   computers: solidPiece('lab.computers', 'computers'),
@@ -119,6 +128,19 @@ export const INSIDE_PROPS = {
   martCornerWest: areaProp('mart.cornerWest', 'wall'),
   martCornerEast: areaProp('mart.cornerEast', 'wall'),
   martMat: areaFloorProp('mart.mat', 'door mat'),
+
+  // --- a cave: Mt. Moon ------------------------------------------------------
+  caveBoulder: areaProp('cave.boulder', 'boulder'),
+  caveRocks: areaProp('cave.rocks', 'rocks'),
+  // The crater a fallen moon stone left, walked over as FireRed's are.
+  caveCrater: areaFloorProp('cave.crater', 'crater'),
+  // Water running down the back wall into a pool, which is walked through.
+  caveDrip: areaProp('cave.drip', 'dripping water', ['##', '..']),
+  // The ways between floors and out: a hole with a ladder down it, a ladder
+  // up with its foot on the floor, and daylight in a notch of the south wall.
+  caveHole: areaProp('cave.hole', 'ladder down'),
+  caveLadder: areaProp('cave.ladder', 'ladder up', ['#', '.']),
+  caveExit: areaProp('cave.exit', 'way out'),
 } as const satisfies Record<string, PropDefinition>;
 
 export type InsidePropName = keyof typeof INSIDE_PROPS;
@@ -127,7 +149,10 @@ export type InsidePropName = keyof typeof INSIDE_PROPS;
 interface StyleArt {
   readonly floor: MaterialTiles;
   readonly wall: MaterialTiles;
-  readonly mat: InsidePropName;
+  /** What the way out of it is drawn as; a cave's is cut into its south wall instead. */
+  readonly mat?: InsidePropName;
+  /** A cave's sand; a room has none, and draws it as floor. */
+  readonly sand?: MaterialTiles;
 }
 
 /** A shell from the base's sheet: a floor shaded under the wall, and two rows of wall. */
@@ -187,6 +212,49 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
     'warehouse.wallLower',
     'warehouseMat',
   ),
+  // Mt. Moon. The rock's top row is the lumps of its back wall and every face
+  // that meets the ground stands on it from the top layer; the corners of a
+  // room are FireRed's own joints, and the south wall is the rock's top seen
+  // from above, rimmed where it meets the floor. The map's edge is more rock,
+  // so a back wall along the top of a cave is no rim.
+  cave: {
+    floor: { roles: { fill: areaTile('cave.floor') } },
+    wall: {
+      overlay: true,
+      edgesAtMapEdge: false,
+      roles: {
+        fill: areaTile('cave.wallUpper'),
+        'edge-s': areaTile('cave.wallLower'),
+        'edge-e': areaTile('cave.faceEast'),
+        'edge-w': areaTile('cave.faceWest'),
+        'edge-n': areaTile('cave.rim'),
+        'inner-se': areaTile('cave.cornerNw'),
+        'inner-sw': areaTile('cave.cornerNe'),
+        'inner-ne': areaTile('cave.cornerSw'),
+        'inner-nw': areaTile('cave.cornerSe'),
+      },
+    },
+    // The sand runs on under the rock, as FireRed's does: against a wall it is
+    // more sand, and only where it meets the floor does it grow an edge.
+    sand: {
+      joins: ['wall'],
+      roles: {
+        fill: areaTile('cave.sand'),
+        'edge-n': areaTile('cave.sandN'),
+        'edge-s': areaTile('cave.sandS'),
+        'edge-e': areaTile('cave.sandE'),
+        'edge-w': areaTile('cave.sandW'),
+        'corner-nw': areaTile('cave.sandNw'),
+        'corner-ne': areaTile('cave.sandNe'),
+        'corner-sw': areaTile('cave.sandSw'),
+        'corner-se': areaTile('cave.sandSe'),
+        'inner-nw': areaTile('cave.sandInNw'),
+        'inner-ne': areaTile('cave.sandInNe'),
+        'inner-sw': areaTile('cave.sandInSw'),
+        'inner-se': areaTile('cave.sandInSe'),
+      },
+    },
+  },
 };
 
 /** Every material but the wall is the floor: a room uses two, and the catalogue asks for all sixteen. */
@@ -215,12 +283,12 @@ function styleCatalogue(style: InsideStyle): TilesetCatalogue<InsidePropName> {
   ) as Record<Exclude<Material, 'wall'>, MaterialTiles>;
   return {
     sources: [BASE_SHEET_SOURCE.source, AREA_SHEET_SOURCE.source],
-    materials: { ...floors, wall: art.wall },
+    materials: { ...floors, wall: art.wall, ...(art.sand ? { sand: art.sand } : {}) },
     props: INSIDE_PROPS,
   };
 }
 
-export const INSIDE_STYLES: readonly InsideStyle[] = [
+export const ROOM_STYLES: readonly RoomStyle[] = [
   'house',
   'mart',
   'cottage',
@@ -228,6 +296,8 @@ export const INSIDE_STYLES: readonly InsideStyle[] = [
   'center',
   'warehouse',
 ];
+export const CAVE_STYLES: readonly CaveStyle[] = ['cave'];
+export const INSIDE_STYLES: readonly InsideStyle[] = [...ROOM_STYLES, ...CAVE_STYLES];
 
 export const INSIDE_TILESETS: Readonly<Record<InsideStyle, TilesetCatalogue<InsidePropName>>> =
   Object.fromEntries(INSIDE_STYLES.map((style) => [style, styleCatalogue(style)])) as Record<
@@ -235,7 +305,7 @@ export const INSIDE_TILESETS: Readonly<Record<InsideStyle, TilesetCatalogue<Insi
     TilesetCatalogue<InsidePropName>
   >;
 
-/** The mat a style's way out is drawn as. */
-export function insideMat(style: InsideStyle): InsidePropName {
+/** The mat a style's way out is drawn as; a cave has none. */
+export function insideMat(style: InsideStyle): InsidePropName | undefined {
   return STYLE_ART[style].mat;
 }

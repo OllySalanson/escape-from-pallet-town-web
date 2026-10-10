@@ -10,14 +10,16 @@ import { wayTowards } from './areaRoutes';
 import {
   buildPlayerMap,
   doorFront,
+  MAP_FILE_HABITATS,
   readMapFile,
   sketchMapFile,
   type MapFile,
   type MapFileArea,
   type MapFileLink,
+  type MapFileLinkEnd,
 } from './mapFile';
 import { checkMapFile, type MapCheckId } from './mapFileChecks';
-import { addUpstairs, makeInside } from '../maker/areas';
+import { addFloorBelow, addUpstairs, makeInside } from '../maker/areas';
 import { areaTile } from './tileset/areaSheet';
 import { registerPlayerMap, unregisterPlayerMap } from './playerMaps';
 import { buildMapLayers } from './tiles';
@@ -355,3 +357,187 @@ describe("FireRed's own house, inside", () => {
     expect(checkMapFile(up.file).filter((check) => !check.passed)).toEqual([]);
   });
 });
+
+/**
+ * The sample lane with a rock face cut into the open ground east of the
+ * fenced field, and a cave mouth in the foot of it - which is where FireRed
+ * cuts every cave mouth it has.
+ */
+function laneWithARockFace(): MapFile {
+  const ground = SAMPLE.ground.map((row, y) =>
+    y >= 10 && y <= 14 ? `${row.slice(0, 26)}CCCC${row.slice(30)}` : row,
+  );
+  return {
+    ...SAMPLE,
+    ground,
+    // The rock covers where one of the lane's finds was.
+    itemSpots: SAMPLE.itemSpots.map((spot) => (spot.x === 28 && spot.y === 12 ? { x: 25, y: 13 } : spot)),
+    buildings: [...SAMPLE.buildings, { kind: 'cave-mouth', x: 27, y: 14 }],
+  };
+}
+
+function laneWithACave(): MapFile {
+  const lane = laneWithARockFace();
+  const made = makeInside(lane, lane.buildings.length - 1);
+  if (!made.made) {
+    throw new Error(made.reason);
+  }
+  return made.file;
+}
+
+describe('a cave behind a cave mouth', () => {
+  afterEach(() => unregisterPlayerMap('player-sample-lane-cave'));
+
+  it('is ringed in rock with its way out cut into the south wall, and passes every check', () => {
+    const file = laneWithACave();
+    const cave = file.areas!.find((area) => area.kind === 'cave')!;
+    expect(cave).toMatchObject({ style: 'cave', width: 20, height: 16 });
+    expect(file.links!.at(-1)).toEqual({
+      ends: [
+        { x: 27, y: 15, toward: 'up', look: 'door' },
+        { area: cave.id, x: 10, y: 14, toward: 'down', look: 'cave-exit' },
+      ],
+    });
+    expect(checkMapFile(file).filter((check) => !check.passed)).toEqual([]);
+  });
+
+  it('goes in by walking up into the mouth, and out by walking down into the daylight', () => {
+    const map = buildPlayerMap({ ...laneWithACave(), id: 'sample-lane-cave' });
+    registerPlayerMap(map);
+    const world = getWorldMap(map.id);
+    const cave = world.areas!.find((area) => area.kind === 'cave')!.rect;
+    const landing = { x: cave.x + 10, y: cave.y + 14 };
+    expect(getWarpAt(world, { x: 27, y: 15 }, 'push', 'up')).toMatchObject({
+      destination: landing,
+      facing: 'up',
+    });
+    expect(getWarpAt(world, landing, 'push', 'down')).toMatchObject({
+      destination: { x: 27, y: 15 },
+      facing: 'down',
+    });
+    // The notch is daylight in the rock, and the rock is a wall.
+    expect(world.layers.detail.tiles[cave.y + 15][cave.x + 10]).toBe(areaTile('cave.exit', 1, 0));
+    expect(world.collision[cave.y + 15][cave.x + 10]).toBe(true);
+    expect(districtAt(world.id, landing)?.name).toBe('CAVE');
+  });
+
+  it("rolls Mt. Moon's wildlife on its floor", () => {
+    const map = buildPlayerMap({ ...laneWithACave(), id: 'sample-lane-cave' });
+    registerPlayerMap(map);
+    const world = getWorldMap(map.id);
+    const cave = world.areas!.find((area) => area.kind === 'cave')!.rect;
+    const district = districtAt(world.id, { x: cave.x + 5, y: cave.y + 6 });
+    expect(district?.encounters).toBe(MAP_FILE_HABITATS.cave);
+  });
+
+  it("draws the rock as Mt. Moon does: its faces, its rim, and FireRed's own joints in the corners", () => {
+    const composed = composeMapFile(laneWithACave());
+    const cave = composed.areas.find((area) => area.kind === 'cave')!.rect;
+    const tile = (x: number, y: number): number => composed.layers.overlay.tiles[cave.y + y][cave.x + x];
+    expect(tile(5, 0)).toBe(areaTile('cave.wallUpper'));
+    expect(tile(5, 1)).toBe(areaTile('cave.wallLower'));
+    expect(tile(0, 6)).toBe(areaTile('cave.faceEast'));
+    expect(tile(19, 6)).toBe(areaTile('cave.faceWest'));
+    expect(tile(5, 15)).toBe(areaTile('cave.rim'));
+    expect(tile(0, 1)).toBe(areaTile('cave.cornerNw'));
+    expect(tile(19, 1)).toBe(areaTile('cave.cornerNe'));
+    expect(tile(0, 15)).toBe(areaTile('cave.cornerSw'));
+    expect(tile(19, 15)).toBe(areaTile('cave.cornerSe'));
+    // The sand runs on under the rock and grows its edges only against the floor.
+    const ground = (x: number, y: number): number => composed.layers.ground.tiles[cave.y + y][cave.x + x];
+    expect(ground(1, 2)).toBe(areaTile('cave.sand'));
+    // The drift in the north-west corner steps down to the floor: a corner at
+    // the foot of each step, and an inside corner where the step turns.
+    expect(ground(4, 2)).toBe(areaTile('cave.sandSe'));
+    expect(ground(3, 2)).toBe(areaTile('cave.sandInSe'));
+  });
+
+  it('has a floor below, down a ladder, and comes back up it', () => {
+    const file = laneWithACave();
+    const cave = file.areas!.find((area) => area.kind === 'cave')!;
+    const below = addFloorBelow(file, cave.id);
+    if (!below.made) {
+      throw new Error(below.reason);
+    }
+    expect(below.file.areas!.at(-1)).toMatchObject({ name: 'Cave B1F', kind: 'cave' });
+    expect(checkMapFile(below.file).filter((check) => !check.passed)).toEqual([]);
+    const composed = composeMapFile(below.file);
+    const down = composed.doorways.find((doorway) => doorway.look === 'ladder-down')!;
+    const up = composed.doorways.find((doorway) => doorway.look === 'ladder-up')!;
+    // Into the hole from the tile in front of it, out at the ladder's foot; up
+    // the ladder from its foot, out in front of the hole.
+    expect(down).toMatchObject({ toward: 'up', to: up.from, arrivalFacing: 'down' });
+    expect(up).toMatchObject({ toward: 'up', to: down.from, arrivalFacing: 'down' });
+    expect(composed.layers.detail.tiles[down.doorway.y][down.doorway.x]).toBe(areaTile('cave.hole'));
+    expect(composed.layers.detail.tiles[up.doorway.y][up.doorway.x]).toBe(areaTile('cave.ladder', 0, 0));
+    expect(composed.layers.detail.tiles[up.from.y][up.from.x]).toBe(areaTile('cave.ladder', 0, 1));
+    expect(composed.layers.collision[up.from.y][up.from.x]).toBe(false);
+    // And a floor below that one is B2F.
+    const deeper = addFloorBelow(below.file, below.area);
+    expect(deeper.made && deeper.file.areas!.at(-1)?.name).toBe('Cave B2F');
+  });
+});
+
+describe('what a cave may not do', () => {
+  it('refuses a cave mouth that is not cut into a rock face, or leads nowhere', () => {
+    const lane = laneWithARockFace();
+    expect(problems(lane, 'doors')).toEqual(['The cave mouth at 27,14 leads nowhere: make its cave, or take it away.']);
+    const loose = {
+      ...lane,
+      buildings: [...SAMPLE.buildings, { kind: 'cave-mouth' as const, x: 22, y: 6 }],
+    };
+    const made = makeInside(loose, loose.buildings.length - 1);
+    if (!made.made) {
+      throw new Error(made.reason);
+    }
+    expect(problems(made.file, 'doors')).toEqual([
+      'The cave mouth at 22,7 to Cave has to be cut into the foot of a rock face, with rock either side of it and above it.',
+    ]);
+  });
+
+  it('refuses a way out not cut into the south wall, and the ways of a cave anywhere but a cave', () => {
+    const file = laneWithACave();
+    const cave = file.areas!.find((area) => area.kind === 'cave')!;
+    const exit = file.links!.at(-1)!;
+    const moved = (end: Partial<MapFileLinkEnd>): MapFile => ({
+      ...file,
+      links: [...file.links!.slice(0, -1), { ends: [exit.ends[0], { ...exit.ends[1], ...end }] }],
+    });
+    expect(problems(moved({ y: 10 }), 'doors')).toContain(
+      "The way out at 10,10 in Cave to outside has to be cut into the cave's south wall, with rock either side of it.",
+    );
+    expect(problems(moved({ look: 'mat', y: 15 }), 'doors')).toContain(
+      "The way out at 10,15 in Cave to outside belongs in a building: a cave's way out is cut into its south wall.",
+    );
+    const house = makeInside(file, 0);
+    if (!house.made) {
+      throw new Error(house.reason);
+    }
+    const ladderInAHouse: MapFile = {
+      ...house.file,
+      links: house.file.links!.map((link) =>
+        link.ends[1].area === house.area
+          ? { ends: [link.ends[0], { ...link.ends[1], look: 'ladder-up', toward: 'up', y: 4 }] }
+          : link,
+      ),
+    };
+    const mat = house.file.links!.find((link) => link.ends[1].area === house.area)!.ends[1];
+    expect(problems(ladderInAHouse, 'doors')).toContain(
+      `The ladder up at ${mat.x},4 in House to outside belongs in a cave.`,
+    );
+    expect(cave.kind).toBe('cave');
+  });
+
+  it("refuses ground a cave does not draw, and a cave the wrong size", () => {
+    const file = laneWithACave();
+    const cave = file.areas!.find((area) => area.kind === 'cave')!;
+    const withGrass = {
+      ...file,
+      areas: [{ ...cave, ground: [cave.ground[0], cave.ground[1].replace('B', '.'), ...cave.ground.slice(2)] }],
+    };
+    const reading = readMapFile(withGrass);
+    expect(reading.ok ? [] : reading.problems).toContain("Area 1's ground row 1 uses letters a cave does not draw: .");
+    expect(readMapFile({ ...file, areas: [{ ...cave, style: 'house' }] }).ok).toBe(false);
+  });
+});
+

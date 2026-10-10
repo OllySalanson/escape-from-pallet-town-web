@@ -240,9 +240,17 @@ export function markBoxes(
   );
   (file.doors ?? []).forEach((door, index) => add('door', index, door, door));
   for (const doorway of doorways) {
+    const pair = doorway.pair;
     boxes.set(
-      `doorway:${JSON.stringify(doorway.at)}:${doorway.chosen ? 'chosen' : ''}`,
-      tile(doorway.at.x, doorway.at.y),
+      `doorway:${JSON.stringify(doorway.at)}:${JSON.stringify(pair ?? null)}:${doorway.chosen ? 'chosen' : ''}`,
+      pair
+        ? {
+            x: Math.min(doorway.at.x, pair.x),
+            y: Math.min(doorway.at.y, pair.y),
+            width: Math.abs(doorway.at.x - pair.x) + 1,
+            height: Math.abs(doorway.at.y - pair.y) + 1,
+          }
+        : tile(doorway.at.x, doorway.at.y),
     );
   }
   if (selected?.kind === 'building') {

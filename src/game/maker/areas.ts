@@ -1,10 +1,12 @@
 import {
+  areaLimits,
   doorFront,
   MAP_FILE_BUILDING_DOORS,
   MAP_FILE_LIMITS,
   placeSlug,
   type MapFile,
   type MapFileArea,
+  type MapFileAreaKind,
   type MapFileAreaStyle,
   type MapFileBuilding,
   type MapFileDistrict,
@@ -16,7 +18,7 @@ import {
 } from '../world/mapFile';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 import { keepOnMap, moveThing, removeThing, type GridPoint, type PlaceOutcome } from './draft';
-import { STAIRS_SIZE, stairsAt } from '../world/mapAreas';
+import { doorwayOf, STAIRS_SIZE, stairsAt } from '../world/mapAreas';
 
 /**
  * The places of a map, as the map maker edits them.
@@ -165,7 +167,9 @@ export function withFocusedArea(file: MapFile, area: AreaId, view: MapFile): Map
 /**
  * Every way out of a room stands against the room's south wall, on its floor.
  * A room made smaller can leave its mat off the edge or in the middle of the
- * floor, so after a resize each mat in it is put back on the bottom row.
+ * floor, so after a resize each mat in it is put back on the bottom row - and
+ * a cave's way out back on the floor above its south wall, with rock either
+ * side of the notch.
  */
 function withMatsAgainstTheWall(file: MapFile, resizedArea: AreaId): MapFile {
   if (resizedArea === undefined) {
@@ -175,32 +179,50 @@ function withMatsAgainstTheWall(file: MapFile, resizedArea: AreaId): MapFile {
   if (!inside) {
     return file;
   }
-  const links = (file.links ?? []).map((link) => ({
-    ...link,
-    ends: link.ends.map((end) =>
-      end.area === inside.id && end.look === 'mat'
-        ? {
-            ...end,
-            x: Math.max(0, Math.min(inside.width - 1, end.x)),
-            y: inside.height - 1,
-            toward: 'down' as const,
-          }
-        : end,
-    ) as unknown as MapFileLink['ends'],
-  }));
+  const seated = (end: MapFileLinkEnd): MapFileLinkEnd => {
+    if (end.area !== inside.id) {
+      return end;
+    }
+    if (end.look === 'mat') {
+      return {
+        ...end,
+        x: Math.max(0, Math.min(inside.width - 1, end.x)),
+        y: inside.height - 1,
+        toward: 'down',
+      };
+    }
+    if (end.look === 'cave-exit') {
+      return {
+        ...end,
+        x: Math.max(1, Math.min(inside.width - 2, end.x)),
+        y: inside.height - 2,
+        toward: 'down',
+      };
+    }
+    return end;
+  };
+  const links = (file.links ?? []).map((link) => {
+    const [one, other] = link.ends;
+    return { ...link, ends: [seated(one), seated(other)] as const };
+  });
   return { ...file, links };
 }
 
 /** What a building's inside is drawn as, and what stands in it to begin with. */
 interface InsideTemplate {
   readonly name: string;
+  /** A building's inside unless it says it is a cave. */
+  readonly kind?: MapFileAreaKind;
   readonly style: MapFileAreaStyle;
   readonly width: number;
   readonly height: number;
   /** Rows of the room's own ground: `B` wall and `P` floor. */
   readonly ground: readonly string[];
   readonly furniture: readonly MapFileBuilding[];
-  /** The column its mat is in, on its bottom row; the middle when absent. */
+  /**
+   * The column its way out is in - a room's mat on its bottom row, a cave's
+   * notch in its south wall - the middle when absent.
+   */
   readonly mat?: number;
 }
 
@@ -216,6 +238,8 @@ const wallAndFloor = (width: number, height: number, wallRows = 2): string[] =>
  */
 function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
   switch (kind) {
+    case 'cave-mouth':
+      return CAVE;
     case 'pokemon-center':
     case 'pokemon-center-door':
       // The Center's ground floor, as the base's own Center is: the counter
@@ -343,6 +367,45 @@ const HOUSE_GROUND_FLOOR: InsideTemplate = {
   mat: 3,
 };
 
+/**
+ * A cave as Mt. Moon's ground floor is: ringed in rock - two rows of it along
+ * the back, one down each side and one along the foot, where the daylight of
+ * the way out is cut in the middle - its floor, a drift of sand in two of its
+ * corners, a crater, boulders, and water dripping off the back wall.
+ */
+const CAVE: InsideTemplate = {
+  name: 'Cave',
+  kind: 'cave',
+  style: 'cave',
+  width: 20,
+  height: 16,
+  ground: [
+    'BBBBBBBBBBBBBBBBBBBB',
+    'BBBBBBBBBBBBBBBBBBBB',
+    'BddddPPPPPPPPPPPPPPB',
+    'BdddPPPPPPPPPPPPPPPB',
+    'BddPPPPPPPPPPPPPPPPB',
+    'BPPPPPPPPPPPPPPPPPPB',
+    'BPPPPPPPPPPPPPPPPPPB',
+    'BPPPPPPPPPPPPPPPPPPB',
+    'BPPPPPPPPPPPPPPPPPPB',
+    'BPPPPPPPPPPPPPPPPPPB',
+    'BPPPPPPPPPPPPPPPdddB',
+    'BPPPPPPPPPPPPPPddddB',
+    'BPPPPPPPPPPPPPdddddB',
+    'BPPPPPPPPPPPPPdddddB',
+    'BPPPPPPPPPPPPPPPPPPB',
+    'BBBBBBBBBBBBBBBBBBBB',
+  ],
+  furniture: [
+    { kind: 'dripping-water', x: 12, y: 1 },
+    { kind: 'boulder', x: 4, y: 7 },
+    { kind: 'rocks', x: 15, y: 4 },
+    { kind: 'rocks', x: 2, y: 12 },
+    { kind: 'crater', x: 8, y: 8 },
+  ],
+};
+
 /** And upstairs: a bedroom, its PC and its shelves, with the stairs down along the back wall. */
 const HOUSE_UPSTAIRS: InsideTemplate = {
   name: '2F',
@@ -368,7 +431,7 @@ const HOUSE_UPSTAIRS: InsideTemplate = {
 const UPSTAIRS_LANDING = { x: 9, y: 2 } as const;
 
 /** The way through a building's door: its outdoor end, if it has one. */
-function doorEnd(building: MapFileBuilding): MapFileLinkEnd | undefined {
+export function doorEnd(building: MapFileBuilding): MapFileLinkEnd | undefined {
   const front = doorFront(building);
   return front ? { x: front.x, y: front.y, toward: 'up', look: 'door' } : undefined;
 }
@@ -470,20 +533,20 @@ export function makeInside(file: MapFile, buildingIndex: number): InsideOutcome 
   const area: MapFileArea = {
     id: freeAreaId(file, name),
     name,
-    kind: 'inside',
+    kind: template.kind ?? 'inside',
     style: template.style,
     width: template.width,
     height: template.height,
     ground: template.ground,
     buildings: template.furniture,
   };
-  const mat: MapFileLinkEnd = {
-    area: area.id,
-    x: template.mat ?? Math.floor(area.width / 2),
-    y: area.height - 1,
-    toward: 'down',
-    look: 'mat',
-  };
+  const x = template.mat ?? Math.floor(area.width / 2);
+  // A room's way out is its mat, stepped off down out of the room; a cave's is
+  // the daylight in its south wall, walked into from the floor above it.
+  const mat: MapFileLinkEnd =
+    area.kind === 'cave'
+      ? { area: area.id, x, y: area.height - 2, toward: 'down', look: 'cave-exit' }
+      : { area: area.id, x, y: area.height - 1, toward: 'down', look: 'mat' };
   return {
     made: true,
     area: area.id,
@@ -607,27 +670,43 @@ export function moveDoorway(
 ): MapFile {
   const link = file.links?.[doorway.link];
   const end = link?.ends[doorway.end];
-  const stairs = end?.look === 'stairs-up' || end?.look === 'stairs-down';
-  if (!link || !end || (end.look !== 'mat' && !stairs)) {
+  if (!link || !end || end.look === 'door') {
     return file;
   }
   const inside = areaById(file, end.area);
   if (!inside) {
     return file;
   }
-  // A staircase moves along the back wall it stands against, its foot on the
-  // row it was on; a mat along the south wall.
-  // A staircase's rug is west of a way up and east of a way down, so the
-  // whole of the staircase stays on the room wherever the rug goes.
-  const lowest = end.look === 'stairs-down' ? STAIRS_SIZE.width : 0;
-  const highest = inside.width - 1 - (end.look === 'stairs-up' ? STAIRS_SIZE.width : 0);
-  const x = Math.max(lowest, Math.min(highest, to.x));
-  if (x === end.x) {
+  const clamp = (value: number, low: number, high: number): number =>
+    Math.max(low, Math.min(high, value));
+  const moved = ((): MapFileLinkEnd => {
+    switch (end.look) {
+      case 'stairs-up':
+      case 'stairs-down': {
+        // A staircase moves along the back wall it stands against, its foot
+        // on the row it was on. Its rug is west of a way up and east of a way
+        // down, so the whole of the staircase stays on the room wherever the
+        // rug goes.
+        const lowest = end.look === 'stairs-down' ? STAIRS_SIZE.width : 0;
+        const highest = inside.width - 1 - (end.look === 'stairs-up' ? STAIRS_SIZE.width : 0);
+        return { ...end, x: clamp(to.x, lowest, highest) };
+      }
+      case 'cave-exit':
+        // Daylight moves along the south wall, with rock either side of it.
+        return { ...end, x: clamp(to.x, 1, inside.width - 2), y: inside.height - 2, toward: 'down' };
+      case 'ladder-up':
+      case 'ladder-down':
+        // A ladder goes anywhere on the floor, with its top or its hole the
+        // tile above the one it is climbed from.
+        return { ...end, x: clamp(to.x, 0, inside.width - 1), y: clamp(to.y, 1, inside.height - 1) };
+      default:
+        // A mat along the south wall.
+        return { ...end, x: clamp(to.x, 0, inside.width - 1), y: inside.height - 1, toward: 'down' };
+    }
+  })();
+  if (moved.x === end.x && moved.y === end.y) {
     return file;
   }
-  const moved: MapFileLinkEnd = stairs
-    ? { ...end, x }
-    : { ...end, x, y: inside.height - 1, toward: 'down' };
   return {
     ...file,
     links: file.links.map((candidate, index) =>
@@ -680,18 +759,86 @@ export function resizeArea(file: MapFile, area: string, width: number, height: n
   }
   const clamp = (value: number, low: number, high: number): number =>
     Math.max(low, Math.min(high, Math.round(Number.isFinite(value) ? value : low)));
-  const w = clamp(width, MAP_FILE_LIMITS.minInsideWidth, MAP_FILE_LIMITS.maxInsideWidth);
-  const h = clamp(height, MAP_FILE_LIMITS.minInsideHeight, MAP_FILE_LIMITS.maxInsideHeight);
+  const limits = areaLimits(inside.kind);
+  const w = clamp(width, limits.minWidth, limits.maxWidth);
+  const h = clamp(height, limits.minHeight, limits.maxHeight);
   if (w === inside.width && h === inside.height) {
     return file;
   }
-  const ground = Array.from({ length: h }, (_, y) => {
-    const row = inside.ground[y] ?? MATERIAL_CHARS.paving.repeat(inside.width);
-    const last = row.at(-1) ?? MATERIAL_CHARS.paving;
-    return (row + last.repeat(w)).slice(0, w);
-  });
+  const ground =
+    inside.kind === 'cave'
+      ? caveGroundAt(inside.ground, w, h)
+      : Array.from({ length: h }, (_, y) => {
+          const row = inside.ground[y] ?? MATERIAL_CHARS.paving.repeat(inside.width);
+          const last = row.at(-1) ?? MATERIAL_CHARS.paving;
+          return (row + last.repeat(w)).slice(0, w);
+        });
   const view = keepOnMap({ ...focusArea(file, area), width: w, height: h, ground });
   return withFocusedArea(file, area, view);
+}
+
+/**
+ * A cave's ground at another size. A cave is ringed in rock, so its last row
+ * and column stay its last - the south and east walls move out or in with the
+ * size - and what is gained between is more of the row and column inside them.
+ */
+function caveGroundAt(ground: readonly string[], width: number, height: number): string[] {
+  const across = (row: string): string => {
+    const inner = row.slice(0, -1);
+    const grown = (inner + (inner.at(-1) ?? MATERIAL_CHARS.paving).repeat(width)).slice(0, width - 1);
+    return grown + (row.at(-1) ?? MATERIAL_CHARS.wall);
+  };
+  const rows = ground.map(across);
+  const inner = rows.slice(0, -1);
+  const filler = inner.at(-1) ?? MATERIAL_CHARS.paving.repeat(width);
+  return [...inner, ...Array.from({ length: height }, () => filler)]
+    .slice(0, height - 1)
+    .concat(rows.at(-1) ?? MATERIAL_CHARS.wall.repeat(width));
+}
+
+/**
+ * Whether a tile of an area has something on it already: a piece of
+ * furniture, anything placed, or the art of one of its ways through - a mat,
+ * a staircase and its rug, a ladder, a hole, a notch of daylight.
+ */
+export function occupiedIn(file: MapFile, area: string): (x: number, y: number) => boolean {
+  const view = focusArea(file, area);
+  const ways = doorwaysIn(file, area);
+  const standing = [
+    ...view.dropIns,
+    ...view.exits,
+    ...view.itemSpots,
+    ...(view.people ?? []),
+    ...(view.signs ?? []),
+    ...(view.trainers ?? []),
+    ...(view.landmarks ?? []),
+    ...ways.map((doorway) => doorway.at),
+  ];
+  const planted = ways.flatMap(({ at }) => {
+    const ahead = doorwayOf(at);
+    switch (at.look) {
+      case 'mat':
+        return [{ x: Math.max(0, at.x - 1), y: at.y, width: 3, height: 1 }];
+      case 'stairs-up':
+      case 'stairs-down':
+        return [{ ...stairsAt(at), ...STAIRS_SIZE }, { x: at.x, y: at.y, width: 1, height: 2 }];
+      case 'cave-exit':
+        return [{ x: ahead.x - 1, y: ahead.y, width: 3, height: 1 }];
+      case 'ladder-up':
+        return [{ x: at.x, y: at.y - 1, width: 1, height: 2 }];
+      case 'ladder-down':
+        return [{ x: ahead.x, y: ahead.y, width: 1, height: 1 }];
+      default:
+        return [];
+    }
+  });
+  return (x, y) =>
+    view.buildings.some((piece) => {
+      const prop = plantedProp(piece.kind);
+      return x >= piece.x && y >= piece.y && x < piece.x + prop.width && y < piece.y + prop.height;
+    }) ||
+    planted.some((rect) => x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height) ||
+    standing.some((thing) => thing.x === x && thing.y === y);
 }
 
 /** The stairs up out of a room, if it has them. */
@@ -720,35 +867,7 @@ export function addUpstairs(file: MapFile, area: string): InsideOutcome {
   if ((file.links ?? []).length >= MAP_FILE_LIMITS.maxLinks) {
     return { made: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxLinks} ways through.` };
   }
-  const view = focusArea(file, area);
-  const standing = [
-    ...view.dropIns,
-    ...view.exits,
-    ...view.itemSpots,
-    ...(view.people ?? []),
-    ...(view.signs ?? []),
-    ...(view.trainers ?? []),
-    ...(view.landmarks ?? []),
-    ...doorwaysIn(file, area).map((doorway) => doorway.at),
-  ];
-  // The stairs and mats the room's ways through stand there too, though they
-  // are not its furniture.
-  const planted = doorwaysIn(file, area).flatMap(({ at }) => {
-    if (at.look === 'mat') {
-      return [{ x: Math.max(0, at.x - 1), y: at.y, width: 3, height: 1 }];
-    }
-    if (at.look === 'stairs-up' || at.look === 'stairs-down') {
-      return [{ ...stairsAt(at), ...STAIRS_SIZE }, { x: at.x, y: at.y, width: 1, height: 2 }];
-    }
-    return [];
-  });
-  const taken = (x: number, y: number): boolean =>
-    view.buildings.some((piece) => {
-      const prop = plantedProp(piece.kind);
-      return x >= piece.x && y >= piece.y && x < piece.x + prop.width && y < piece.y + prop.height;
-    }) ||
-    planted.some((rect) => x >= rect.x && y >= rect.y && x < rect.x + rect.width && y < rect.y + rect.height) ||
-    standing.some((thing) => thing.x === x && thing.y === y);
+  const taken = occupiedIn(file, area);
   // The stairs' top row is the back wall's lower row, under its upper one, and
   // their rug is beside their middle row, west of them.
   const top = 1;
@@ -795,5 +914,111 @@ export function addUpstairs(file: MapFile, area: string): InsideOutcome {
     made: true,
     area: up.id,
     file: { ...file, areas: [...(file.areas ?? []), up], links: [...(file.links ?? []), link] },
+  };
+}
+
+/** The ladder down out of a cave, if it has one. */
+export function ladderDownIn(file: MapFile, area: string): DoorwayInArea | undefined {
+  return doorwaysIn(file, area).find((doorway) => doorway.at.look === 'ladder-down');
+}
+
+/**
+ * A floor below as Mt. Moon's basement is: a room standing on the dark, with
+ * only its back wall, its floor and a drift of sand - and the ladder up out of
+ * it, leant on a rock with its foot on the floor.
+ */
+const CAVE_BELOW: InsideTemplate = {
+  name: 'B1F',
+  kind: 'cave',
+  style: 'cave',
+  width: 16,
+  height: 10,
+  ground: [
+    'BBBBBBBBBBBBBBBB',
+    'BBBBBBBBBBBBBBBB',
+    'PPPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPPP',
+    'PPPPPPPPPPPPPPPP',
+    'dPPPPPPPPPPPPPPP',
+    'ddPPPPPPPPPPPPPP',
+    'dddPPPPPPPPPPPPP',
+    'ddddPPPPPPPPPPPP',
+  ],
+  furniture: [
+    { kind: 'boulder', x: 1, y: 2 },
+    { kind: 'rocks', x: 2, y: 2 },
+    { kind: 'rocks', x: 15, y: 7 },
+  ],
+};
+
+/** Where the ladder up out of a new floor below is climbed from: its foot, a row under its top. */
+const BELOW_LANDING = { x: 12, y: 4 } as const;
+
+/** The name of the floor below one: B1F under Cave, B2F under Cave B1F. */
+function belowName(name: string): string {
+  const deeper = /^(.*) B(\d+)F$/.exec(name);
+  return deeper ? `${deeper[1]} B${Number(deeper[2]) + 1}F` : `${name} B1F`;
+}
+
+/**
+ * A floor below a cave: a hole with a ladder down it, cut in the first clear
+ * stretch of floor from the cave's north-east, and the ladder up out of the
+ * new floor that it leads to.
+ */
+export function addFloorBelow(file: MapFile, area: string): InsideOutcome {
+  const cave = areaById(file, area);
+  if (!cave || cave.kind !== 'cave') {
+    return { made: false, reason: 'Only a cave goes down a ladder.' };
+  }
+  if (ladderDownIn(file, area)) {
+    return { made: false, reason: 'It has a floor below already.' };
+  }
+  if ((file.areas ?? []).length >= MAP_FILE_LIMITS.maxAreas) {
+    return { made: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxAreas} insides.` };
+  }
+  if ((file.links ?? []).length >= MAP_FILE_LIMITS.maxLinks) {
+    return { made: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxLinks} ways through.` };
+  }
+  const taken = occupiedIn(file, area);
+  const floor = (x: number, y: number): boolean => {
+    const letter = cave.ground[y]?.[x];
+    return (letter === MATERIAL_CHARS.paving || letter === MATERIAL_CHARS.sand) && !taken(x, y);
+  };
+  // The hole, and the tile in front of it it is walked into from.
+  let hole: GridPoint | undefined;
+  // Out in the floor, as FireRed's are: a row clear of the back wall and a
+  // column clear of the side.
+  for (let y = 3; y < cave.height - 2 && !hole; y += 1) {
+    for (let x = cave.width - 4; x >= 1 && !hole; x -= 1) {
+      if (floor(x, y) && floor(x, y + 1)) {
+        hole = { x, y };
+      }
+    }
+  }
+  if (!hole) {
+    return { made: false, reason: 'Clear two tiles of floor, one above the other, for the ladder first.' };
+  }
+  const name = freeAreaName(file, belowName(cave.name).slice(0, MAP_FILE_LIMITS.maxPlaceNameLength));
+  const below: MapFileArea = {
+    id: freeAreaId(file, name),
+    name,
+    kind: 'cave',
+    style: cave.style,
+    width: CAVE_BELOW.width,
+    height: CAVE_BELOW.height,
+    ground: CAVE_BELOW.ground,
+    buildings: CAVE_BELOW.furniture,
+  };
+  const link: MapFileLink = {
+    ends: [
+      { area, x: hole.x, y: hole.y + 1, toward: 'up', look: 'ladder-down' },
+      { area: below.id, ...BELOW_LANDING, toward: 'up', look: 'ladder-up' },
+    ],
+  };
+  return {
+    made: true,
+    area: below.id,
+    file: { ...file, areas: [...(file.areas ?? []), below], links: [...(file.links ?? []), link] },
   };
 }
