@@ -101,10 +101,14 @@ export class PartyScene extends Phaser.Scene {
       // No aside: the window's own lid says how many are standing, and saying
       // it twice on one screen is one of the two going stale.
       body: this.body(),
+      // A lone Pokemon has nobody to swap with, so the screen does not offer
+      // to pick it up only to refuse when ENTER is pressed.
       hints:
-        this.movingIndex === undefined
-          ? 'ARROWS move · ENTER pick up · ESC back to the raid'
-          : 'ARROWS move · ENTER put it here · ESC leave it where it was',
+        this.movingIndex !== undefined
+          ? 'ARROWS move · ENTER put it here · ESC leave it where it was'
+          : this.canReorder()
+            ? 'ARROWS move · ENTER pick up · ESC back to the raid'
+            : 'ARROWS move · ESC back to the raid',
       status,
     });
     const on = (selector: string, handler: (button: HTMLButtonElement) => void): void => {
@@ -145,7 +149,9 @@ export class PartyScene extends Phaser.Scene {
     const name = escapeAttribute(pokemon.base.name);
     const help =
       this.movingIndex === undefined
-        ? `Pick ${name} up to move it. The first in the list is the one sent out first.`
+        ? this.canReorder()
+          ? `Pick ${name} up to move it. The first in the list is the one sent out first.`
+          : `${name} is the only Pokémon deployed, so it is the one sent out.`
         : moving
           ? `Put ${name} back down where it was.`
           : `Put the Pokémon you are holding here, and ${name} where it was.`;
@@ -200,7 +206,7 @@ export class PartyScene extends Phaser.Scene {
   /** Picks a member up, or puts the one being held into this slot. */
   private pressMember(index: number): void {
     if (this.movingIndex === undefined) {
-      if (this.party.pokemon.length < 2) {
+      if (!this.canReorder()) {
         audioManager.play('denied');
         this.status = 'There is nobody to swap with.';
         this.render();
@@ -278,6 +284,11 @@ export class PartyScene extends Phaser.Scene {
     audioManager.play('denied');
     this.status = `No room in the pack for ${getHeldItem(itemId)?.displayName ?? itemId}. ${pokemon.base.name} keeps holding it - make room in your PACK first.`;
     this.render();
+  }
+
+  /** Whether there is anyone to swap places with. */
+  private canReorder(): boolean {
+    return this.party.pokemon.length >= 2;
   }
 
   private partyLabel(): string {
