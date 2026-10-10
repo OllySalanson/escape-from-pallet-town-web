@@ -46,6 +46,7 @@ import {
   fitCaption,
   describeBallGuidance,
   catchChanceLabel,
+  formatWildEscapeCommand,
 } from './battlePresentation';
 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
@@ -466,5 +467,15 @@ describe("the ball list's help line", () => {
   it('never calls a small chance nothing', () => {
     expect(catchChanceLabel(0.002)).toBe('under 1%');
     expect(catchChanceLabel(0)).toBe('0%');
+  });
+});
+
+describe('formatWildEscapeCommand', () => {
+  it('says 100% only of a certain escape and 0% only of an impossible one', () => {
+    expect(formatWildEscapeCommand(1)).toBe('RUN 100%');
+    expect(formatWildEscapeCommand(255 / 256)).toBe('RUN 99%');
+    expect(formatWildEscapeCommand(96 / 256)).toBe('RUN 38%');
+    expect(formatWildEscapeCommand(1 / 256)).toBe('RUN 1%');
+    expect(formatWildEscapeCommand(0)).toBe('RUN 0%');
   });
 });
