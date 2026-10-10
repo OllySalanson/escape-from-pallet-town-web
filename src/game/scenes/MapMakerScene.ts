@@ -173,6 +173,9 @@ const sessionViews = new Map<
  */
 const grownFrom = new WeakMap<MapFile, { readonly before: MapFile; readonly shift: Offset }>();
 
+/** Whether the maker wants the overview in the map window's corner: theirs to turn off, for the page's life. */
+let overviewWanted = true;
+
 /** Forgets the session's histories and views: for tests, which share the module. */
 export function forgetMakerSession(): void {
   sessionHistories.clear();
@@ -588,6 +591,7 @@ export class MapMakerScene extends Phaser.Scene {
       place: this.place,
       selected: this.selected,
       zoom: this.zoom,
+      overview: overviewWanted,
       checks: [...this.currentChecks(), walkedCheck(this.walkedOut())],
       canUndo: this.history.canUndo,
       canRedo: this.history.canRedo,
@@ -718,6 +722,10 @@ export class MapMakerScene extends Phaser.Scene {
     });
     on('[data-zoom]', (element) => this.setZoom(Number(element.dataset.zoom) as MakerZoom));
     on('[data-fit]', () => this.fitWhole());
+    on('[data-overview-toggle]', () => {
+      overviewWanted = !overviewWanted;
+      this.render();
+    });
     on('[data-undo]', () => this.undo());
     on('[data-redo]', () => this.redo());
     on('[data-new]', () => {
@@ -845,6 +853,9 @@ export class MapMakerScene extends Phaser.Scene {
           this.startPan(event, stack);
         } else {
           this.pointerDown(event, map());
+          this.overlay.root
+            .querySelector('.maker-view-area')
+            ?.classList.toggle('is-drawing', Boolean(this.stroke));
         }
       });
       stack.addEventListener('pointermove', (event) => {
@@ -854,11 +865,15 @@ export class MapMakerScene extends Phaser.Scene {
           this.pointerMove(event, map());
         }
       });
+      const drawn = (): void => {
+        this.overlay.root.querySelector('.maker-view-area')?.classList.remove('is-drawing');
+      };
       stack.addEventListener('pointerup', (event) => {
         if (this.pan) {
           this.endPan(event, stack);
         } else {
           this.pointerUp(event, map());
+          drawn();
         }
       });
       stack.addEventListener('pointercancel', (event) => {
@@ -866,6 +881,7 @@ export class MapMakerScene extends Phaser.Scene {
           this.endPan(event, stack);
         } else {
           this.cancelStroke();
+          drawn();
         }
       });
       // The middle button's own scrolling would fight the map being moved by hand.
@@ -996,6 +1012,10 @@ export class MapMakerScene extends Phaser.Scene {
     const viewport = this.viewport();
     const map = this.mapCanvas();
     if (!frame || !picture || !outline || !viewport || !map) {
+      return;
+    }
+    if (!overviewWanted) {
+      frame.hidden = true;
       return;
     }
     const file = this.onScreen;

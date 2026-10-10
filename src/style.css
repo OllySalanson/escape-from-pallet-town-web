@@ -3186,6 +3186,12 @@ button {
 .pixel-ui .px-window.maker-overview {
   padding: calc(var(--u) * 2);
 }
+/* While a stroke is held the overview stands aside, so what is drawn under
+   it can be seen. */
+:where(.pixel-ui) .maker-view-area.is-drawing .maker-overview {
+  opacity: 0.25;
+  pointer-events: none;
+}
 :where(.pixel-ui) .maker-overview[hidden] {
   display: none;
 }

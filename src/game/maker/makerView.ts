@@ -110,6 +110,8 @@ export interface MakerViewState {
   readonly place: PlaceChoice;
   readonly selected: ThingRef | undefined;
   readonly zoom: MakerZoom;
+  /** Whether the overview is wanted in the corner of the map window. */
+  readonly overview: boolean;
   readonly checks: readonly MakerCheck[];
   readonly canUndo: boolean;
   readonly canRedo: boolean;
@@ -299,12 +301,13 @@ function mapPane(state: MakerViewState): string {
     (level) =>
       `<button class="px-window px-button maker-zoom${level === zoom ? ' is-primary' : ''}" data-zoom="${level}" aria-pressed="${level === zoom}" data-help="Draws a tile ${level} pixels wide. Ctrl and the mouse wheel zoom about the pointer.">${level === 16 ? '1x' : level < 16 ? `1/${16 / level}` : `${level / 16}x`}</button>`,
   ).join('');
+  const overviewToggle = `<button class="px-window px-button maker-zoom${state.overview ? ' is-primary' : ''}" data-overview-toggle aria-pressed="${state.overview}" data-help="Shows or hides the whole map in the corner of the window, while the map is bigger than the window. Press it to look there.">Overview</button>`;
   const fit = `<button class="px-window px-button maker-zoom" data-fit data-help="Zooms out as far as it takes to see the whole map, or as much of it as the window holds, and puts it in the middle.">Fit</button>`;
   // The overview stands in the window's corner, over the map, and is only
   // shown while the map does not fit the window (`MapMakerScene.showOverview`).
   const overview = `<div class="px-window maker-overview" data-overview hidden><canvas class="maker-overview-map" data-overview-map></canvas><div class="maker-overview-view" data-overview-view></div></div>`;
   return pixelWindow(
-    `<div class="maker-zooms">${zoomButtons}${fit}</div><div class="maker-view-area"><div class="maker-viewport" data-viewport data-help="Drag with the middle button, or hold Space and drag, to move the map. Ctrl and the wheel zoom."><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>${overview}</div>`,
+    `<div class="maker-zooms">${zoomButtons}${fit}${overviewToggle}</div><div class="maker-view-area"><div class="maker-viewport" data-viewport data-help="Drag with the middle button, or hold Space and drag, to move the map. Ctrl and the wheel zoom."><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>${overview}</div>`,
     {
       className: 'maker-map',
       heading: escapeHtml(file.name || 'Untitled map'),

@@ -83,6 +83,7 @@ describe('the paint list', () => {
       place: { kind: 'drop-in' },
       selected: undefined,
       zoom: 16,
+      overview: true,
       checks: checkMapFile(file),
       canUndo: false,
       canRedo: false,

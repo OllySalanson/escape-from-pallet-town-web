@@ -29,6 +29,7 @@ function screen(review: MakerViewState['review'], reviewing?: QueuedMap): string
     place: { kind: 'drop-in' },
     selected: undefined,
     zoom: 16,
+    overview: true,
     checks: [...checkMapFile(SAMPLE), walkedCheck(false)],
     canUndo: false,
     canRedo: false,

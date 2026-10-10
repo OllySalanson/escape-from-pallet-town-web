@@ -120,6 +120,12 @@ try {
   report('...and the kept picture is the picture drawn whole', (await pictureDrift()) === 0);
   await shot('2-grown-west');
 
+  // The map no longer fits its window, so the overview is up in the corner -
+  // where the next box starts. It goes away when asked.
+  report('a map bigger than its window shows the overview', await evaluate(`!document.querySelector('[data-overview]').hidden`));
+  await click('[data-overview-toggle]');
+  report('...and puts it away when asked', await evaluate(`document.querySelector('[data-overview]').hidden`));
+
   // South-east: a box dragged out past the corner.
   await key('r', 'KeyR', 82);
   await click('[data-brush="water"]');

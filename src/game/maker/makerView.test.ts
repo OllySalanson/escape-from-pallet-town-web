@@ -27,6 +27,7 @@ function state(file: MapFile, walked: boolean): MakerViewState {
     place: { kind: 'drop-in' },
     selected: undefined,
     zoom: 16,
+    overview: true,
     checks: [...checkMapFile(file), walkedCheck(walked)],
     canUndo: false,
     canRedo: true,
