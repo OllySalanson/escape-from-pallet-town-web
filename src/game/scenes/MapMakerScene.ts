@@ -165,6 +165,25 @@ const STATUS_MS = 3_500;
 const DRAFTS_FULL =
   'Your drafts could not be saved: this browser may be out of room. DOWNLOAD this map to keep it, and delete drafts you do not need.';
 
+/**
+ * Where the right-hand column comes to rest to show a pane whole: with the pane
+ * at its top - or, when the column is too near its end to scroll that far, at
+ * the top of the last whole row of the checks above it that still leaves the
+ * pane in view. Scrolled as far as it would go, it came to rest through a line
+ * of writing.
+ */
+export function restingTop(side: HTMLElement, pane: DOMRect): number {
+  const column = side.getBoundingClientRect();
+  const along = (box: DOMRect): number => side.scrollTop + box.top - column.top;
+  const most = Math.max(0, side.scrollHeight - side.clientHeight);
+  const wanted = Math.min(along(pane), most);
+  const bottom = side.scrollTop + pane.bottom - column.top;
+  const rows = [...side.querySelectorAll<HTMLElement>('.maker-check, .maker-side > .px-window')]
+    .map((row) => along(row.getBoundingClientRect()))
+    .filter((top) => top <= wanted && bottom - top <= side.clientHeight);
+  return rows.length > 0 ? Math.max(...rows) : wanted;
+}
+
 /** No room to grow on any side: an inside's. */
 const NO_ROOM: Sides = { left: 0, top: 0, right: 0, bottom: 0 };
 /**
@@ -672,7 +691,11 @@ export class MapMakerScene extends Phaser.Scene {
     // A panel opened in the right-hand column is brought into view: under a
     // long list of checks it would otherwise open below the fold, unseen. So is
     // the panel of a thing just placed or chosen, which is where it is named.
-    const chosen = this.selected ? `${this.selected.kind}:${this.selected.index}` : undefined;
+    const chosen = this.selected
+      ? `${this.selected.kind}:${this.selected.index}`
+      : this.doorway
+        ? `doorway:${this.doorway.link}:${this.doorway.end}`
+        : undefined;
     if (this.panel !== 'map') {
       side?.querySelector('.maker-side > .px-window:last-child')?.scrollIntoView({ block: 'nearest' });
     } else if (side && chosen !== undefined && chosen !== this.shownChosen) {
@@ -682,8 +705,13 @@ export class MapMakerScene extends Phaser.Scene {
       const pane = side.querySelector<HTMLElement>('.maker-selected')?.getBoundingClientRect();
       const column = side.getBoundingClientRect();
       if (pane && (pane.top < column.top || pane.bottom > column.bottom)) {
-        side.scrollTop += pane.top - column.top;
+        side.scrollTop = restingTop(side, pane);
       }
+    } else if (side && chosen === undefined && this.shownChosen !== undefined) {
+      // And with nothing chosen any more - let go of, or another place opened -
+      // the column reads from its top again, rather than resting where the
+      // chosen thing's panel was, through a line of the checks.
+      side.scrollTop = 0;
     }
     this.shownChosen = chosen;
     // A frame later, so letting go of a stroke is not held up by the overview.

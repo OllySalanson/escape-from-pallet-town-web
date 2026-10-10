@@ -105,7 +105,7 @@ import type { EditHistory } from '../maker/history';
 import { groundBrush } from '../maker/palette';
 import { readMapFile, type MapFile } from '../world/mapFile';
 import sampleLaneJson from '../../maps/sample/sample-lane.json';
-import { forgetMakerSession, MapMakerScene } from './MapMakerScene';
+import { forgetMakerSession, MapMakerScene, restingTop } from './MapMakerScene';
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -628,6 +628,36 @@ describe('placing things in one place of a map with several', () => {
     expect(scene.file.people?.filter((person) => person.area === undefined)).toEqual(
       sampleLane.people ?? [],
     );
+  });
+});
+
+describe('where the right-hand column comes to rest', () => {
+  /** A column 200 high, scrolled to `top`, holding rows at these heights down it. */
+  function column(top: number, rows: readonly number[], height: number) {
+    const box = (y: number, h: number) => ({ top: y - top, bottom: y - top + h }) as DOMRect;
+    const side = {
+      scrollTop: top,
+      clientHeight: 200,
+      scrollHeight: height,
+      getBoundingClientRect: () => box(top, 200),
+      querySelectorAll: () =>
+        rows.map((y) => ({ getBoundingClientRect: () => box(y, 20) })) as unknown as NodeListOf<HTMLElement>,
+    };
+    return { side: side as unknown as HTMLElement, at: box };
+  }
+
+  it('puts a pane at its top when it can scroll that far', () => {
+    const { side, at } = column(0, [0, 24, 48, 300], 600);
+    expect(restingTop(side, at(300, 120))).toBe(300);
+  });
+
+  it('rests on the top of a whole row, never through one, when the column is at its end', () => {
+    // The pane's top is past the furthest the column scrolls (340); the last
+    // row starting before that and still leaving the pane whole is at 312.
+    const { side, at } = column(0, [0, 240, 264, 288, 312, 380], 540);
+    expect(restingTop(side, at(380, 130))).toBe(312);
+    const shortColumn = column(0, [0, 240, 264, 288, 312, 380], 520);
+    expect(restingTop(shortColumn.side, shortColumn.at(380, 130))).toBe(312);
   });
 });
 
