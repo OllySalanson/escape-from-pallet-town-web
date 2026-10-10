@@ -58,6 +58,8 @@ export interface ComposedDoorway extends GridLink {
   /** The way you face coming out of the other end: away from its doorway. */
   readonly arrivalFacing: Direction;
   readonly look: MapFileLinkEnd['look'];
+  /** What is drawn there to go through, in the composed grid's tiles. */
+  readonly art: Rect;
 }
 
 export interface ComposedMap {
@@ -358,6 +360,7 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
         doorway,
         arrivalFacing: arrivalFacing(to.toward),
         look: from.look,
+        art: artOf(from, landing, doorway),
       });
     }
   }
@@ -370,6 +373,22 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
     doorways,
     tileset: joinedTileset(catalogues),
   };
+}
+
+/** What a way through draws, in the composed grid: the staircase, the mat, or the door. */
+function artOf(end: MapFileLinkEnd, landing: GridPosition, doorway: GridPosition): Rect {
+  if (end.look === 'stairs-up' || end.look === 'stairs-down') {
+    const at = stairsAt(end);
+    return {
+      x: landing.x + (at.x - end.x),
+      y: landing.y + (at.y - end.y),
+      ...STAIRS_SIZE,
+    };
+  }
+  if (end.look === 'mat') {
+    return { x: landing.x - 1, y: landing.y, width: 3, height: 1 };
+  }
+  return { ...doorway, width: 1, height: 1 };
 }
 
 /** The place of a composed map a tile of it is in, or undefined in the dark between. */

@@ -3919,7 +3919,21 @@ export class WorldScene extends Phaser.Scene {
         width: TILE_SIZE,
         height: FIGURE_HEIGHT,
       }));
-    return [...signs, ...crates, ...standing, ...this.watchedGround];
+    // A door, a staircase or a mat is the thing its caption names, and writing
+    // seated over it hides it.
+    const doorways = this.currentMap.warps.flatMap((warp) =>
+      warp.art
+        ? [
+            {
+              x: warp.art.x * TILE_SIZE,
+              y: warp.art.y * TILE_SIZE,
+              width: warp.art.width * TILE_SIZE,
+              height: warp.art.height * TILE_SIZE,
+            },
+          ]
+        : [],
+    );
+    return [...signs, ...crates, ...standing, ...this.watchedGround, ...doorways];
   }
 
   /**
