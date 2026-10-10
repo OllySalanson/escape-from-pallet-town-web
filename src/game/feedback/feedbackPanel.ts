@@ -5,6 +5,8 @@ import { MAX_FEEDBACK_TEXT } from './feedbackNote';
 import { MAX_VOICE_MS, tapeIsLow, tapeTime } from './voiceTape';
 import {
   BACK_TO_THE_GAME,
+  BOT_CHECK_LINE,
+  BOT_CHECK_PASSED,
   KEEP_WRITING,
   MIC_MISSING_LINE,
   ON_AIR,
@@ -69,7 +71,7 @@ export function panelMarkup(view: PanelView): string {
     { heading: 'Your message', note: `<span data-count>${countLine(0)}</span>`, className: 'feedback-message' },
   );
   const attached = pixelWindow(
-    `<div class="px-list feedback-attached-list">${pictureRow(view)}${saveRow(view)}${seeAllRow(view)}</div>${allLines(view)}`,
+    `<div class="px-list feedback-attached-list">${pictureRow(view)}${saveRow(view)}${seeAllRow(view)}</div><div class="feedback-bot-check" data-bot-check hidden></div>${allLines(view)}`,
     { heading: 'Sent with it', className: 'feedback-attached' },
   );
   const body = `<main class="px-body feedback-body">${message}${attached}<div data-commit>${commitBar('writing')}</div></main>`;
@@ -141,6 +143,13 @@ export function allLines(view: Pick<PanelView, 'seeAll' | 'details' | 'actions'>
     ? view.actions.map((action) => line(`${action.at.toFixed(1)}s`, action.what)).join('')
     : line('', 'Nothing yet.');
   return `<div class="px-list feedback-all px-scroll" data-all ${view.seeAll ? '' : 'hidden'}><p class="px-subheading">Where you are</p>${details}<p class="px-subheading">Last moves</p>${moves}<p class="px-subheading">Never sent</p>${line('', 'Your name, email or location, or anything you typed anywhere else.')}</div>`;
+}
+
+/** The bot check's place in the panel: the line, and where Cloudflare draws its widget. */
+export function botCheckMarkup(passed: boolean): string {
+  return passed
+    ? `<p class="px-wrap">${BOT_CHECK_PASSED}</p>`
+    : `<p class="px-wrap">${BOT_CHECK_LINE}</p><div class="feedback-captcha" data-captcha></div>`;
 }
 
 export function commitBar(phase: 'writing' | 'scrapping'): string {

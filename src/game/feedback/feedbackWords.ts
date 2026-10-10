@@ -52,6 +52,10 @@ export const SCRAP_IT = 'Scrap it';
 
 export const SENDING_LINE = 'Transmitting...';
 
+/** Shown only when the project asks for a bot check and this browser has not passed one. */
+export const BOT_CHECK_LINE = "One quick check that you're not a bot, so spam can't jam the lab's radio.";
+export const BOT_CHECK_PASSED = "Checked. You're on the air.";
+
 /** What became of a message, as the player is told it. */
 export type FeedbackOutcome = 'sent' | 'queued' | 'held';
 

@@ -1,5 +1,5 @@
-import { TURNSTILE_SITE_KEY } from '../maker/submitConfig';
 import { supabase } from '../maker/supabaseClient';
+import { botCheckNeeded } from '../maker/turnstile';
 import type { FeedbackSender } from './courier';
 
 /**
@@ -61,8 +61,9 @@ export const sendToTheLab: FeedbackSender = async (note) => {
 /**
  * This browser's anonymous id, signing in for the first time if it has to. A
  * project that asks for a bot check before signing in cannot be answered from
- * here, so a browser with no session yet waits until it has one (the map
- * maker's SEND draws the check).
+ * here: a browser with no session yet waits until it has one, which the panel
+ * gets it by drawing the check (`needsBotCheck`, `signInWithCheck`) - or the
+ * map maker's SEND does.
  */
 async function signedInAs(): Promise<string | null> {
   const db = await supabase();
@@ -70,11 +71,30 @@ async function signedInAs(): Promise<string | null> {
   if (data.session) {
     return data.session.user.id;
   }
-  if (TURNSTILE_SITE_KEY) {
+  if (botCheckNeeded()) {
     return null;
   }
   const { data: signedIn, error } = await db.auth.signInAnonymously();
   return error ? null : (signedIn.user?.id ?? null);
+}
+
+/**
+ * Whether the panel has to draw the bot check before anything can be sent:
+ * the project asks for one and this browser has never signed in. Answered
+ * without loading anything when the project asks for none.
+ */
+export async function needsBotCheck(): Promise<boolean> {
+  if (!botCheckNeeded()) {
+    return false;
+  }
+  const { data } = await (await supabase()).auth.getSession();
+  return data.session === null;
+}
+
+/** Signs this browser in with a passed check's token. A token is good for one sign-in. */
+export async function signInWithCheck(captchaToken: string): Promise<boolean> {
+  const { error } = await (await supabase()).auth.signInAnonymously({ options: { captchaToken } });
+  return !error;
 }
 
 /** `audio/webm;codecs=opus` is stored as `audio/webm`: the bucket allows types, not codecs. */

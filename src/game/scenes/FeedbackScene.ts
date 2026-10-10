@@ -6,6 +6,7 @@ import type { FeedbackCourier } from '../feedback/courier';
 import { MAX_FEEDBACK_TEXT, feedbackTag, hasSomethingToSay } from '../feedback/feedbackNote';
 import {
   allLines,
+  botCheckMarkup,
   commitBar,
   countLine,
   outcomeMarkup,
@@ -27,6 +28,8 @@ import {
   TOO_LONG_LINE,
 } from '../feedback/feedbackWords';
 import { VoiceTape, tapeIsFull, tapeIsLow, tapeTime } from '../feedback/voiceTape';
+import { needsBotCheck, signInWithCheck } from '../feedback/feedbackSender';
+import { passBotCheck } from '../maker/turnstile';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { PIXEL_STATUS_SELECTOR, takeDownPixelStatus } from '../ui/pixelUi';
@@ -108,6 +111,7 @@ export class FeedbackScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.tearDown());
     this.renderWriting();
     void data.picture.then((picture) => this.receivePicture(picture));
+    void this.offerBotCheck();
   }
 
   public create(): void {
@@ -516,6 +520,27 @@ export class FeedbackScene extends Phaser.Scene {
     this.overlay.root.innerHTML = outcomeMarkup(outcome, tag);
     this.overlay.root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.close();
     this.overlay.focus('[data-close]');
+  }
+
+  /**
+   * The project's bot check, drawn in the panel only when it asks for one and
+   * this browser has never signed in - so the message the player is writing
+   * can go when they press SEND, and every later one without asking again.
+   */
+  private async offerBotCheck(): Promise<void> {
+    if (!(await needsBotCheck().catch(() => false))) {
+      return;
+    }
+    const slot = this.overlay.root.querySelector<HTMLElement>('[data-bot-check]');
+    if (!slot || !this.overlay.root.isConnected) {
+      return;
+    }
+    slot.hidden = false;
+    slot.innerHTML = botCheckMarkup(false);
+    const token = await passBotCheck(slot.querySelector<HTMLElement>('[data-captcha]')!);
+    if (token && (await signInWithCheck(token)) && slot.isConnected) {
+      slot.innerHTML = botCheckMarkup(true);
+    }
   }
 
   private receivePicture(picture: Blob | null): void {
