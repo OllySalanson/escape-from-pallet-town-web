@@ -61,6 +61,13 @@ describe('the map maker screen', () => {
     expect(makerScreen(state(SAMPLE, true))).toContain('READY');
   });
 
+  it('scrolls its side column as a pane, so a panel below the checks says MORE', () => {
+    // Playtest 45: the chosen thing's panel sat under the checks with only its
+    // heading showing, and nothing said there was more of the column.
+    const markup = makerScreen(state(blankMap(), false));
+    expect(markup).toMatch(/<div class="maker-side px-scroll">/);
+  });
+
   it('lists every check with the walk last, and says what to do about each that fails', () => {
     const markup = makerScreen(state(blankMap(), false));
     expect([...markup.matchAll(/data-check="([a-z-]+)"/g)].map((match) => match[1])).toEqual([

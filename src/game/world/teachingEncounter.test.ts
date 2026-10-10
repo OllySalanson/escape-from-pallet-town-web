@@ -48,7 +48,7 @@ const playOut = (starter: typeof BULBASAUR, random: () => number): BattleState =
   return state;
 };
 
-const winRate = (starter: typeof BULBASAUR, seed: number, trials = 500): number => {
+const winRate = (starter: typeof BULBASAUR, seed: number, trials = 2000): number => {
   const rng = createSeededRng(seed);
   let wins = 0;
   for (let trial = 0; trial < trials; trial += 1) {
@@ -106,14 +106,14 @@ describe('teaching encounter', () => {
     }
   });
 
-  it('leaves no starter meaningfully behind the others across many fights', () => {
+  it('cannot be lost by any starter that simply attacks', () => {
+    // "This fight is yours to win": at level 3 a Charmander lost it about one
+    // time in eight, which ended the first raid it exists to teach.
     const rates = [BULBASAUR, CHARMANDER, SQUIRTLE].map((starter) => winRate(starter, 0x5eed));
 
     for (const rate of rates) {
-      expect(rate).toBeGreaterThan(0.85);
+      expect(rate).toBeGreaterThanOrEqual(0.99);
     }
-    // Parity: the three starters must not be separated by more than a sliver.
-    expect(Math.max(...rates) - Math.min(...rates)).toBeLessThan(0.15);
   });
 
   it('teaches with one attack and no hidden effects', () => {

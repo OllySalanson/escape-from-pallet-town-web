@@ -11,18 +11,23 @@ import type { WildEncounter } from './wildEncounters';
  * first roll of a first-contract raid with an opponent the player is favoured
  * against, so the opening teaches the battle screen instead of ending the raid.
  *
- * Pidgey level 3 is deliberate: it knows only Tackle, so every line of dialogue
- * in the fight is one attack and one number, with no status effect or stat drop
- * to explain away. Normal typing also keeps it neutral against all three
- * starters, so no starter is favoured or punished by the teaching fight itself.
+ * Pidgey is deliberate: it knows only Tackle, so every line of dialogue in the
+ * fight is one attack and one number, with no status effect or stat drop to
+ * explain away. Normal typing also keeps it neutral against all three starters.
+ *
+ * Level 2 is measured, not chosen: Tackle carries Pidgey's same-type bonus, so
+ * at level 3 it did 5-6 a hit into Charmander's 16 HP against Scratch's 4-5
+ * into its 14, one critical hit decided the fight, and a Charmander player lost
+ * their first raid to it about one time in eight (playtest 45). At level 2 every
+ * starter wins it by attacking at least 99 times in 100.
  */
-export const TEACHING_ENCOUNTER: WildEncounter = { speciesId: 'pidgey', level: 3 };
+export const TEACHING_ENCOUNTER: WildEncounter = { speciesId: 'pidgey', level: 2 };
 
 /**
  * Only raids still carrying the *first* contract get the authored opening, and
  * only once. Ordinary encounter rolls resume from the second grass step. Later
  * contracts are taken by players who have already been taught the battle
- * screen, so handing them a level-3 Pidgey would only be free experience.
+ * screen, so handing them a level-2 Pidgey would only be free experience.
  */
 export const hasTeachingEncounter = (session: ActiveRunSession | undefined): boolean =>
   session?.plan?.contract?.id === FIRST_CONTRACT_ID && session?.teachingEncounterUsed !== true;

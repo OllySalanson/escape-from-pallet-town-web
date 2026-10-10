@@ -618,7 +618,10 @@ export function makerScreen(state: MakerViewState): string {
     sent: () => sentPane(state.sent),
     review: () => reviewPane(state.review, state.reviewing, state.checks),
   };
-  const side = `<div class="maker-side">${checksPane(state.checks)}${panels[state.panel]()}</div>`;
+  // The column scrolls as any pane does, so it says MORE when the chosen
+  // thing's panel is below the checks rather than leaving its heading peeking
+  // out under the bar (playtest 45).
+  const side = `<div class="maker-side px-scroll">${checksPane(state.checks)}${panels[state.panel]()}</div>`;
   const button = (
     attribute: string,
     label: string,

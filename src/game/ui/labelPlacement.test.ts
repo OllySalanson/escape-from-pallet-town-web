@@ -603,3 +603,42 @@ describe('where the dialogue box sits', () => {
     ).toBe('bottom');
   });
 });
+
+/**
+ * Playtest 45: a landmark's name drawn across the hunter standing beside it,
+ * and a trainer's CANNOT BE FLED half under the drop-in briefing. Both are
+ * ordinary obstacles once the scene hands them over - the hunter as a figure
+ * in `keepClear`, an open dialogue box as `furniture` - and a seat held from an
+ * earlier frame is given up the moment either arrives in it.
+ */
+describe('a figure or a dialogue box arriving in a held seat', () => {
+  const stake = tile(152, 112);
+  /** A figure as the scene measures one: a tile wide, taller than its tile. */
+  const figureOn = (x: number, y: number): Rect => ({ x, y: y - 8, width: TILE, height: 24 });
+
+  it('gives up the seat the hunter has walked into, and never draws across it', () => {
+    const first = seat({ subject: stake });
+    expect(first.visible).toBe(true);
+    const caption = rectOf(first);
+    // The hunter steps onto the tile under the caption it was seated on.
+    const hunter = figureOn(stake.x, caption.y + 4);
+    expect(overlaps(caption, hunter)).toBe(true);
+
+    const after = seat({ subject: stake, held: first.candidate }, { keepClear: [hunter] });
+    expect(after.visible).toBe(true);
+    expect(overlaps(rectOf(after), hunter)).toBe(false);
+  });
+
+  it('moves a warning off the dialogue box rather than drawing it half under', () => {
+    const trainer = tile(152, 176);
+    const box = { x: 8, y: 184, width: 304, height: 48 };
+    const warning = { subject: trainer, preferred: 'below' as const, warns: true, height: 40 };
+
+    const before = seat(warning);
+    expect(overlaps(rectOf(before, 60, 40), box)).toBe(true);
+
+    const after = seat({ ...warning, held: before.candidate }, { furniture: [box] });
+    expect(after.visible).toBe(true);
+    expect(overlaps(rectOf(after, 60, 40), box)).toBe(false);
+  });
+});
