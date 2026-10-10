@@ -18,7 +18,7 @@ import type { WorldPoi } from './pois';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from './trainers';
 import type { WorldLoot } from './loot';
 import { MapSketch, type PropStamp } from './mapGrid';
-import { KANTO_TILESET, type KantoPropName } from './tileset/kantoTileset';
+import { PLAYER_MAP_TILESET, type PlayerMapPropName } from './tileset/playerMapTileset';
 import { MATERIAL_CHARS } from './tileset/materials';
 import type { TilesetCatalogue } from './tileset/catalogue';
 
@@ -124,7 +124,7 @@ export function freeMapFileId(id: string, taken: ReadonlySet<string>): string {
  * a ledge's run and its two ends, flowers and a bush - so it travels with the
  * picture rather than in a list beside it.
  */
-export const MAP_FILE_STAMPS: Readonly<Record<string, PropStamp<KantoPropName>>> = {
+export const MAP_FILE_STAMPS: Readonly<Record<string, PropStamp<PlayerMapPropName>>> = {
   '<': { prop: 'bankWest', anchor: [0, 0], ground: '.' },
   '=': { prop: 'bank', anchor: [0, 0], ground: '.' },
   '>': { prop: 'bankEast', anchor: [0, 0], ground: '.' },
@@ -158,7 +158,77 @@ export const MAP_FILE_BUILDINGS = {
   'league-gate': 'leagueGate',
   sign: 'signTown',
   'sign-tips': 'signTips',
-} as const satisfies Record<string, KantoPropName>;
+  // Everything below is the second palette (2026-10-10): every other thing
+  // the game already draws that a map can stand, by the file's own word.
+  shop: 'building',
+  shed: 'shed',
+  'blue-cottage': 'blueCottage',
+  'timber-house': 'timberHouse',
+  hut: 'hut',
+  tower: 'tower',
+  roundhouse: 'roundhouse',
+  'stone-gatehouse': 'stoneGatehouse',
+  shrine: 'shrine',
+  tree: 'tree',
+  'tree-2': 'treeAlt',
+  pine: 'pine',
+  'tall-bush': 'tallBush',
+  'small-tree': 'cutTree',
+  rock: 'rock',
+  'rock-stair': 'rockStair',
+  'round-boulder': 'roundBoulder',
+  'wet-rock': 'wetRock',
+  stump: 'stump',
+  'big-stump': 'bigStump',
+  'dead-stump': 'deadStump',
+  log: 'log',
+  lilies: 'lilies',
+  'lilies-wide': 'liliesWide',
+  fountain: 'fountain',
+  'stone-fountain': 'stoneFountain',
+  'plaza-steps': 'plazaSteps',
+  statue: 'statue',
+  gravestone: 'gravestone',
+  'gravestone-worn': 'gravestoneWorn',
+  'stone-arch': 'stoneArch',
+  'gate-arch': 'gateArch',
+  'stone-bridge': 'stoneBridge',
+  bridge: 'bridgeVertical',
+  'bridge-across': 'bridgeHorizontal',
+  jetty: 'jetty',
+  'market-stall': 'marketStall',
+  'striped-stall': 'stripedStall',
+  awning: 'awning',
+  'produce-stall': 'produceStall',
+  'stall-counter': 'stallCounter',
+  banner: 'banner',
+  banners: 'bannerPair',
+  flag: 'flag',
+  pot: 'pot',
+  planter: 'planter',
+  'pot-plant': 'potPlant',
+  crate: 'crate',
+  crates: 'crates',
+  'crate-pair': 'cratePair',
+  'crate-stack': 'crateStack',
+  'crate-tower': 'crateTower',
+  barrel: 'barrel',
+  barrels: 'barrelPair',
+  sack: 'sack',
+  produce: 'produce',
+  'produce-crate': 'produceCrate',
+  bench: 'bench',
+  'mooring-post': 'mooringPost',
+  'fence-post': 'fencePost',
+  'rail-post': 'railPost',
+  seedlings: 'bedSeedlings',
+  'yellow-crop': 'bedYellowCrop',
+  'red-crop': 'bedRedCrop',
+  signpost: 'signpost',
+  'notice-board': 'noticeBoard',
+  'gym-sign': 'signGym',
+  signboard: 'signboard',
+} as const satisfies Record<string, PlayerMapPropName>;
 
 export type MapFileBuildingKind = keyof typeof MAP_FILE_BUILDINGS;
 
@@ -552,7 +622,7 @@ export function readMapFile(
     } else if (inBounds(building)) {
       // Its top-left corner is on the map; the rest of it has to be too, or the
       // sketch it plants into refuses it and nothing about the map can be drawn.
-      const prop = KANTO_TILESET.props[MAP_FILE_BUILDINGS[building.kind as MapFileBuildingKind]];
+      const prop = PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[building.kind as MapFileBuildingKind]];
       if (
         (building.x as number) + prop.width > (width as number) ||
         (building.y as number) + prop.height > (height as number)
@@ -754,8 +824,8 @@ export interface PlayerMap {
   readonly maker: string;
   readonly file: MapFile;
   /** A fresh sketch per build, as the shipped maps' are: a gate state is drawn onto one. */
-  readonly sketch: () => MapSketch<KantoPropName>;
-  readonly tileset: TilesetCatalogue<KantoPropName>;
+  readonly sketch: () => MapSketch<PlayerMapPropName>;
+  readonly tileset: TilesetCatalogue<PlayerMapPropName>;
   readonly encounters: WildEncounterTable;
   readonly loot: readonly WorldLoot[];
   readonly insertions: readonly PlayerMapInsertion[];
@@ -811,8 +881,8 @@ function lootFor(id: PlayerMapId, spots: readonly MapFileSpot[]): WorldLoot[] {
 }
 
 /** The sketch a file's ground and buildings make. */
-export function sketchMapFile(file: MapFile): MapSketch<KantoPropName> {
-  const sketch = new MapSketch<KantoPropName>({
+export function sketchMapFile(file: MapFile): MapSketch<PlayerMapPropName> {
+  const sketch = new MapSketch<PlayerMapPropName>({
     width: file.width,
     height: file.height,
     fill: MATERIAL_CHARS.tree,
@@ -845,7 +915,7 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
     maker: file.maker,
     file,
     sketch: () => sketchMapFile(file),
-    tileset: KANTO_TILESET,
+    tileset: PLAYER_MAP_TILESET,
     encounters: MAP_FILE_HABITATS[file.wildlife],
     loot: lootFor(id, file.itemSpots),
     // The front door carries the map's name, as every shipped map's does - it

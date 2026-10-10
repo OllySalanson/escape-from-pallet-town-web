@@ -13,7 +13,10 @@ import { MATERIAL_CHARS } from '../world/tileset/materials';
  * The palette is the FireRed look: every brush is a material or a stamp the
  * Kanto sheet draws, so a map can only be painted in the art the game's own
  * Viridian City is painted in (the captain's D1 - "FireRed look for every map"
- * is what the palette offers, not a rule a map has to pass).
+ * is what the palette offers, not a rule a map has to pass). The things a
+ * maker plants are every object the game already draws (the captain, on the
+ * palette board, 2026-10-10: "as much stuff in the map maker as possible"),
+ * which since then includes the Floodplain's CC0 objects.
  */
 
 export interface GroundBrush {
@@ -77,7 +80,12 @@ export const GROUND_BRUSHES: readonly GroundBrush[] = [
   plain('turf', 'Lawn', MATERIAL_CHARS.turf, 'Mown lawn, as in a garden or a town.'),
   plain('sand', 'Sand road', MATERIAL_CHARS.sand, 'A sandy road. Looks best two tiles wide.'),
   plain('paving', 'Paving', MATERIAL_CHARS.paving, 'Town paving. Looks best two tiles wide.'),
+  plain('earth', 'Earth path', MATERIAL_CHARS.earth, 'A trodden earth lane. Looks best two tiles wide.'),
+  plain('stone', 'Stone floor', MATERIAL_CHARS.stone, 'Grey brick: a yard somebody keeps.'),
+  plain('gravel', 'Gravel', MATERIAL_CHARS.gravel, 'Dark grit: a yard nobody sweeps.'),
+  plain('beach', 'Beach', MATERIAL_CHARS.beach, 'Sand that meets the water with a shoreline.'),
   plain('water', 'Water', MATERIAL_CHARS.water, 'Deep water. Nobody walks on it.'),
+  plain('ford', 'Shallow water', MATERIAL_CHARS.ford, 'Water shallow enough to wade: a crossing.'),
   plain(
     'trees',
     'Trees',
@@ -87,6 +95,7 @@ export const GROUND_BRUSHES: readonly GroundBrush[] = [
   plain('rock', 'Rock', MATERIAL_CHARS.cliff, 'A rock mound. Solid.'),
   plain('fence', 'Fence', MATERIAL_CHARS.fence, 'A post-and-rail fence. Solid.'),
   plain('hedge', 'Hedge', MATERIAL_CHARS.hedge, 'A clipped hedge. Solid.'),
+  plain('wall', 'Wall', MATERIAL_CHARS.wall, 'A built wall. Solid.'),
   {
     id: 'flowers',
     label: 'Flowers',
@@ -134,31 +143,109 @@ export function joinLedges(row: string): string {
   return letters.join('');
 }
 
+/** The headings the things a maker can plant are listed under, in order. */
+export const PLANT_GROUPS = ['Buildings', 'Nature', 'Town', 'Things', 'Signs'] as const;
+export type PlantGroup = (typeof PLANT_GROUPS)[number];
+
 export interface BuildingChoice {
   readonly kind: MapFileBuildingKind;
   readonly label: string;
+  readonly group: PlantGroup;
+  /** What its picture in the list stands on: most things on grass, a jetty on water. */
+  readonly on?: 'water';
 }
 
-/** Every building, in the order a town is usually built. */
+/** Everything a maker can plant, under its heading, in the order a town is usually built. */
 export const BUILDING_CHOICES: readonly BuildingChoice[] = (
   [
-    ['house', 'House'],
-    ['house-door', 'House, open door'],
-    ['house-flowers', 'House with flowers'],
-    ['cottage', 'Cottage'],
-    ['cottage-door', 'Cottage, open door'],
-    ['pokemon-center', 'Pokémon Center'],
-    ['pokemon-center-door', 'Pokémon Center, open door'],
-    ['poke-mart', 'Poké Mart'],
-    ['poke-mart-door', 'Poké Mart, open door'],
-    ['gym', 'Gym'],
-    ['route-gate', 'Gatehouse'],
-    ['forest-gate', 'Forest gatehouse'],
-    ['league-gate', 'League gate'],
-    ['sign', 'Sign'],
-    ['sign-tips', 'Sign, trainer tips'],
-  ] as const satisfies readonly (readonly [MapFileBuildingKind, string])[]
-).map(([kind, label]) => ({ kind, label }));
+    ['house', 'House', 'Buildings'],
+    ['house-door', 'House, open door', 'Buildings'],
+    ['house-flowers', 'House with flowers', 'Buildings'],
+    ['cottage', 'Cottage', 'Buildings'],
+    ['cottage-door', 'Cottage, open door', 'Buildings'],
+    ['blue-cottage', 'Blue-roof cottage', 'Buildings'],
+    ['pokemon-center', 'Pokémon Center', 'Buildings'],
+    ['pokemon-center-door', 'Pokémon Center, open door', 'Buildings'],
+    ['poke-mart', 'Poké Mart', 'Buildings'],
+    ['poke-mart-door', 'Poké Mart, open door', 'Buildings'],
+    ['gym', 'Gym', 'Buildings'],
+    ['shop', 'Shop', 'Buildings'],
+    ['shed', 'Shed', 'Buildings'],
+    ['timber-house', 'Timber house', 'Buildings'],
+    ['hut', 'Hut', 'Buildings'],
+    ['tower', 'Stone tower', 'Buildings'],
+    ['roundhouse', 'Roundhouse', 'Buildings'],
+    ['route-gate', 'Gatehouse', 'Buildings'],
+    ['forest-gate', 'Forest gatehouse', 'Buildings'],
+    ['league-gate', 'League gate', 'Buildings'],
+    ['stone-gatehouse', 'Stone gatehouse', 'Buildings'],
+    ['shrine', 'Shrine', 'Buildings'],
+    ['tree', 'Tree', 'Nature'],
+    ['tree-2', 'Tree, wider', 'Nature'],
+    ['pine', 'Pine', 'Nature'],
+    ['tall-bush', 'Tall bush', 'Nature'],
+    ['small-tree', 'Small tree', 'Nature'],
+    ['rock', 'Rock', 'Nature'],
+    ['round-boulder', 'Boulder', 'Nature'],
+    ['rock-stair', 'Rock with steps', 'Nature'],
+    ['wet-rock', 'Rock in water', 'Nature', 'water'],
+    ['stump', 'Stump', 'Nature'],
+    ['big-stump', 'Big stump', 'Nature'],
+    ['dead-stump', 'Dead stump', 'Nature'],
+    ['log', 'Log', 'Nature'],
+    ['lilies', 'Lily pad', 'Nature', 'water'],
+    ['lilies-wide', 'Lily pads', 'Nature', 'water'],
+    ['fountain', 'Fountain', 'Town'],
+    ['stone-fountain', 'Stone fountain', 'Town'],
+    ['plaza-steps', 'Grand steps', 'Town'],
+    ['statue', 'Statue', 'Town'],
+    ['gravestone', 'Gravestone', 'Town'],
+    ['gravestone-worn', 'Old gravestone', 'Town'],
+    ['stone-arch', 'Stone arch', 'Town'],
+    ['gate-arch', 'Gate arch', 'Town'],
+    ['bridge', 'Bridge', 'Town', 'water'],
+    ['bridge-across', 'Bridge, across', 'Town', 'water'],
+    ['stone-bridge', 'Stone bridge', 'Town', 'water'],
+    ['jetty', 'Jetty', 'Town', 'water'],
+    ['market-stall', 'Market stall', 'Town'],
+    ['striped-stall', 'Striped stall', 'Town'],
+    ['produce-stall', 'Produce stall', 'Town'],
+    ['stall-counter', 'Stall counter', 'Town'],
+    ['awning', 'Awning', 'Town'],
+    ['banner', 'Banner', 'Town'],
+    ['banners', 'Banners', 'Town'],
+    ['flag', 'Flag', 'Town'],
+    ['pot', 'Pot', 'Things'],
+    ['planter', 'Planter', 'Things'],
+    ['pot-plant', 'Pot plant', 'Things'],
+    ['crate', 'Crate', 'Things'],
+    ['crates', 'Crates', 'Things'],
+    ['crate-pair', 'Two crates', 'Things'],
+    ['crate-stack', 'Stacked crates', 'Things'],
+    ['crate-tower', 'Crate tower', 'Things'],
+    ['barrel', 'Barrel', 'Things'],
+    ['barrels', 'Barrels', 'Things'],
+    ['sack', 'Sack', 'Things'],
+    ['produce', 'Produce', 'Things'],
+    ['produce-crate', 'Crate of produce', 'Things'],
+    ['bench', 'Bench', 'Things'],
+    ['mooring-post', 'Mooring post', 'Things'],
+    ['fence-post', 'Fence post', 'Things'],
+    ['rail-post', 'Rail post', 'Things'],
+    ['seedlings', 'Seedling bed', 'Things'],
+    ['yellow-crop', 'Yellow crop', 'Things'],
+    ['red-crop', 'Red crop', 'Things'],
+    ['sign', 'Sign', 'Signs'],
+    ['sign-tips', 'Sign, trainer tips', 'Signs'],
+    ['signpost', 'Route signpost', 'Signs'],
+    ['notice-board', 'Notice board', 'Signs'],
+    ['gym-sign', 'Gym sign', 'Signs'],
+    ['signboard', 'Signboard', 'Signs'],
+  ] as const satisfies readonly (
+    | readonly [MapFileBuildingKind, string, PlantGroup]
+    | readonly [MapFileBuildingKind, string, PlantGroup, 'water']
+  )[]
+).map(([kind, label, group, on]) => ({ kind, label, group, ...(on ? { on } : {}) }));
 
 export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
   meadow: 'Meadow',

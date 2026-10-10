@@ -227,12 +227,14 @@ describe('a map from a file is a map like any other', () => {
     expect(worldMapMaker('route-1')).toBeUndefined();
   });
 
-  it('is drawn on the Kanto sheet at the size its file says', () => {
+  it('is drawn on the Kanto sheets, plus the base and Overworld objects, at the size its file says', () => {
     const map = getWorldMap(sample.id);
     expect([map.width, map.height]).toEqual([32, 24]);
-    expect(map.tileset.sources.map((source) => source.imagePath)).toEqual(
-      WORLD_MAPS['viridian-city'].tileset.sources.map((source) => source.imagePath),
-    );
+    expect(map.tileset.sources.map((source) => source.imagePath)).toEqual([
+      ...WORLD_MAPS['viridian-city'].tileset.sources.map((source) => source.imagePath),
+      'assets/Overworld.png',
+      'assets/frlg-base.png',
+    ]);
     // Tall grass is the file's `g`, so it costs encounters exactly where it is drawn.
     expect(map.tallGrass[4][6]).toBe(true);
     expect(map.tallGrass[2][4]).toBe(false);

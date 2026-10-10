@@ -5,7 +5,7 @@ import { HUNTER_SPAWN_DISTANCE } from './hunter';
 import { readMapFile, sketchMapFile, type MapFile } from './mapFile';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
 import { buildMapLayers } from './tiles';
-import { KANTO_TILESET } from './tileset/kantoTileset';
+import { PLAYER_MAP_TILESET } from './tileset/playerMapTileset';
 import { trainerSightTiles } from './trainerSight';
 import { refusedWords } from './wordFilter';
 
@@ -60,7 +60,7 @@ const at = ({ x, y }: GridPosition): string => `${x},${y}`;
 
 /** The collision a file map is played on: its own drawing through the game's own builder. */
 export function mapFileCollision(file: MapFile): CollisionGrid {
-  return buildMapLayers(sketchMapFile(file), KANTO_TILESET).collision;
+  return buildMapLayers(sketchMapFile(file), PLAYER_MAP_TILESET).collision;
 }
 
 /**
