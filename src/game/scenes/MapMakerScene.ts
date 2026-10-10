@@ -8,6 +8,7 @@ import {
   moveThing,
   paintWith,
   placeBuilding,
+  placeDoor,
   placeSpot,
   rectangle,
   removeThing,
@@ -95,6 +96,7 @@ import {
   readMapFile,
   type MapFile,
   type MapFileBuildingKind,
+  type MapFileDoorKind,
   type MapFileHabitat,
 } from '../world/mapFile';
 import { checkMapFile, type MapCheck } from '../world/mapFileChecks';
@@ -618,7 +620,7 @@ export class MapMakerScene extends Phaser.Scene {
       this.place =
         kind === 'building'
           ? { kind: 'building', building: element.dataset.building as MapFileBuildingKind }
-          : { kind: kind as SpotKind | 'district' };
+          : { kind: kind as SpotKind | 'district' | MapFileDoorKind };
       this.tool = 'place';
       this.render();
     });
@@ -944,7 +946,9 @@ export class MapMakerScene extends Phaser.Scene {
         return;
       }
       case 'place': {
-        if (this.place.kind === 'district') {
+        // A district and a stretch of Surf water are dragged out; everything
+        // else lands on the tile clicked.
+        if (this.place.kind === 'district' || this.place.kind === 'surf') {
           this.stroke = { tool: 'place', start: tile, last: tile, file: this.file, ...held };
           this.previewArea({ from: tile, to: tile });
           return;
@@ -952,7 +956,9 @@ export class MapMakerScene extends Phaser.Scene {
         const outcome =
           this.place.kind === 'building'
             ? placeBuilding(this.file, this.place.building, tile)
-            : placeSpot(this.file, this.place.kind, tile);
+            : this.place.kind === 'cut-tree'
+              ? placeDoor(this.file, 'cut-tree', tile)
+              : placeSpot(this.file, this.place.kind, tile);
         if (outcome.placed) {
           this.panel = 'map';
           this.commit(outcome.file, outcome.thing);
@@ -1015,7 +1021,10 @@ export class MapMakerScene extends Phaser.Scene {
         this.selected,
       );
     } else if (stroke.tool === 'place') {
-      const outcome = addDistrict(this.file, stroke.start, stroke.last);
+      const outcome =
+        this.place.kind === 'surf'
+          ? placeDoor(this.file, 'surf', stroke.start, stroke.last)
+          : addDistrict(this.file, stroke.start, stroke.last);
       if (outcome.placed) {
         this.commit(outcome.file, outcome.thing);
       } else {
@@ -1067,6 +1076,9 @@ export class MapMakerScene extends Phaser.Scene {
     }
     if (thing.kind === 'district') {
       return (this.file.districts ?? [])[thing.index];
+    }
+    if (thing.kind === 'door') {
+      return (this.file.doors ?? [])[thing.index];
     }
     return undefined;
   }
@@ -1129,6 +1141,8 @@ export class MapMakerScene extends Phaser.Scene {
       }
       case 'wildlife':
         return updateThing(this.file, selected, { wildlife: value === '' ? undefined : value });
+      case 'rain':
+        return updateThing(this.file, selected, { rain: value === 'rain' });
       case 'look':
       case 'facing':
       case 'kind':

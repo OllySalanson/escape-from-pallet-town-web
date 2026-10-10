@@ -113,7 +113,7 @@ export const GROUND_BRUSHES: readonly GroundBrush[] = [
   {
     id: 'ledge',
     label: 'Ledge',
-    help: 'A rocky ledge. Solid; draw it in a row and its ends join up.',
+    help: 'A rocky ledge. Hop down it, never up - the hunter cannot follow. Draw it in a row and its ends join up.',
     letterFor: () => '=',
     swatch: '=',
   },

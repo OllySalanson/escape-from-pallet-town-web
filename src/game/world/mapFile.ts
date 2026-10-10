@@ -12,6 +12,9 @@ import { Pokemon } from '../pokemon';
 import type { Direction } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from './characterDesigns';
 import type { MapDistrict } from './districts';
+import type { MapGate } from './gates';
+import type { MapLedge } from './ledges';
+import { WeatherId } from '../pokemon/battle/weather';
 import type { ExtractionPoint } from './extractionPoints';
 import type { WorldEntity } from './npcs';
 import type { WorldPoi } from './pois';
@@ -19,7 +22,7 @@ import { createRunTrainerEncounters, type RunTrainerEncounter } from './trainers
 import type { WorldLoot } from './loot';
 import { MapSketch, type PropStamp } from './mapGrid';
 import { PLAYER_MAP_TILESET, type PlayerMapPropName } from './tileset/playerMapTileset';
-import { MATERIAL_CHARS } from './tileset/materials';
+import { MATERIAL_CHARS, MATERIALS, type Material } from './tileset/materials';
 import type { TilesetCatalogue } from './tileset/catalogue';
 
 /**
@@ -70,6 +73,9 @@ export const MAP_FILE_LIMITS = {
   maxSigns: 30,
   maxLandmarks: 16,
   maxDistricts: 16,
+  maxDoors: 16,
+  /** The widest or deepest a stretch of water Surf opens may be. */
+  maxDoorSide: 12,
   maxTrainers: 12,
   /** What one person, sign or trainer may say: a few short lines. */
   maxLines: 4,
@@ -422,6 +428,24 @@ export interface MapFileDistrict {
   readonly width: number;
   readonly height: number;
   readonly wildlife?: MapFileHabitat;
+  /** Whether it rains there: every fight in it is fought in the rain (`weather.ts`). */
+  readonly rain?: boolean;
+}
+
+/**
+ * The doors a field move opens, as a maker places them: a small tree Cut clears
+ * (one tile) and a stretch of deep water Surf crosses (a rectangle). Each is the
+ * game's own field-move gate (`gates.ts`), opened for good once worked.
+ */
+export const MAP_FILE_DOOR_KINDS = ['cut-tree', 'surf'] as const;
+export type MapFileDoorKind = (typeof MAP_FILE_DOOR_KINDS)[number];
+
+export interface MapFileDoor {
+  readonly kind: MapFileDoorKind;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 export interface MapFileTrainer extends MapFileSpot {
@@ -462,6 +486,8 @@ export interface MapFile {
   readonly landmarks?: readonly MapFileLandmark[];
   readonly districts?: readonly MapFileDistrict[];
   readonly trainers?: readonly MapFileTrainer[];
+  /** Added with the second palette: doors a Pokémon's field move opens. */
+  readonly doors?: readonly MapFileDoor[];
 }
 
 /**
@@ -771,6 +797,44 @@ export function readMapFile(
         if (district.wildlife !== undefined) {
           oneOf(`${what}'s wildlife`, district.wildlife, Object.keys(MAP_FILE_HABITATS));
         }
+        if (district.rain !== undefined && typeof district.rain !== 'boolean') {
+          problems.push(`${what}'s rain must be yes or no.`);
+        }
+      });
+    }
+  }
+  const doors = value.doors;
+  if (doors !== undefined) {
+    if (!Array.isArray(doors) || !doors.every(isRecord)) {
+      problems.push(`'doors' must be a list.`);
+    } else {
+      if (doors.length > MAP_FILE_LIMITS.maxDoors) {
+        problems.push(`A map holds at most ${MAP_FILE_LIMITS.maxDoors} doors.`);
+      }
+      doors.forEach((door, index) => {
+        const what = `Door ${index + 1}`;
+        oneOf(`${what}'s kind`, door.kind, MAP_FILE_DOOR_KINDS);
+        const { x, y, width: w, height: h } = door;
+        const fits =
+          isWholeNumber(x) &&
+          isWholeNumber(y) &&
+          isWholeNumber(w) &&
+          isWholeNumber(h) &&
+          sized &&
+          x >= 0 &&
+          y >= 0 &&
+          w > 0 &&
+          h > 0 &&
+          w <= MAP_FILE_LIMITS.maxDoorSide &&
+          h <= MAP_FILE_LIMITS.maxDoorSide &&
+          x + w <= width &&
+          y + h <= height;
+        if (!fits) {
+          problems.push(`${what} is not on the map.`);
+        }
+        if (door.kind === 'cut-tree' && (w !== 1 || h !== 1)) {
+          problems.push(`${what} is a tree, and a tree stands on one tile.`);
+        }
       });
     }
   }
@@ -834,6 +898,10 @@ export interface PlayerMap {
   readonly entities: readonly WorldEntity[];
   readonly pois: readonly WorldPoi[];
   readonly districts: readonly MapDistrict[];
+  /** Its Cut trees and Surf water, as the game's own field-move gates. */
+  readonly gates: readonly MapGate[];
+  /** Its ledges, every one a drop a player can hop down and nobody can climb. */
+  readonly ledges: readonly MapLedge[];
   /** Fresh Pokemon every call, as `createRunTrainerEncounters` hands out, so no fight leaks into the next raid. */
   readonly trainers: () => readonly RunTrainerEncounter[];
 }
@@ -893,6 +961,132 @@ export function sketchMapFile(file: MapFile): MapSketch<PlayerMapPropName> {
     sketch.plant(building.x, building.y, MAP_FILE_BUILDINGS[building.kind]);
   }
   return sketch;
+}
+
+/** What a door is called over it, and what it looks like shut and open. */
+const DOOR_LOOKS: Readonly<
+  Record<MapFileDoorKind, { readonly label: string; readonly fieldMove: 'cut' | 'surf' }>
+> = {
+  'cut-tree': { label: 'SMALL TREE', fieldMove: 'cut' },
+  surf: { label: 'DEEP WATER', fieldMove: 'surf' },
+};
+
+/** The material a ground letter is, reading a stamp as what it stands on. */
+function materialOf(letter: string | undefined): Material | undefined {
+  if (letter === undefined) {
+    return undefined;
+  }
+  const ground = MAP_FILE_STAMPS[letter]?.ground ?? letter;
+  return (Object.keys(MATERIAL_CHARS) as Material[]).find(
+    (material) => MATERIAL_CHARS[material] === ground,
+  );
+}
+
+/**
+ * A file's doors as the game's own field-move gates: a small tree on whatever
+ * ground was painted under it, cleared for good by Cut, and a stretch of deep
+ * water Surf turns into water shallow enough to wade - the pair the
+ * Floodplain's SHOAL CROSSING already uses, so the open door looks like a way
+ * and the shut one like a wall. A gate is drawn over the sketch in the state
+ * the save has earned (`applyGates`), never into the sketch itself.
+ */
+export function fileDoorGates(file: MapFile): readonly MapGate[] {
+  const id = playerMapId(file);
+  return (file.doors ?? []).map((door, index): MapGate => {
+    const look = DOOR_LOOKS[door.kind];
+    const tiles = Array.from({ length: door.width * door.height }, (_tile, cell) => ({
+      x: door.x + (cell % door.width),
+      y: door.y + Math.floor(cell / door.width),
+    }));
+    const base = { id: `${id}/door-${index + 1}`, mapId: id, label: look.label, tiles };
+    if (door.kind === 'cut-tree') {
+      const under = materialOf(file.ground[door.y]?.[door.x]);
+      const ground: Material = under && !MATERIALS[under].solid ? under : 'grass';
+      return {
+        ...base,
+        fieldMove: look.fieldMove,
+        closed: { material: ground, props: [{ name: 'cutTree', x: door.x, y: door.y }] },
+        open: { material: ground },
+      };
+    }
+    return {
+      ...base,
+      fieldMove: look.fieldMove,
+      closed: { material: 'water' },
+      open: { material: 'ford' },
+    };
+  });
+}
+
+const LEDGE_LETTERS = new Set(['<', '=', '>']);
+
+/**
+ * A file's ledges as drops a player can hop down, as every ledge in FireRed is:
+ * each row of painted ledge is one, its brow the walkable ground along the top
+ * of it. A tile of it only hops where there is ground to land on below, that is
+ * not a way in or out of the map - a hop that ended a raid or landed on a
+ * drop-in would be a door nobody chose - and that no building or door stands
+ * on. Nothing else about the map changes: a ledge is solid either way, so every
+ * check is still asked of the collision alone, and the hunter cannot follow.
+ */
+export function fileLedges(file: MapFile): readonly MapLedge[] {
+  const id = playerMapId(file);
+  const covered = new Set<string>();
+  for (const building of file.buildings) {
+    const prop = PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[building.kind]];
+    prop?.cells.forEach((cell, index) => {
+      if (cell.solid) {
+        covered.add(`${building.x + (index % prop.width)},${building.y + Math.floor(index / prop.width)}`);
+      }
+    });
+  }
+  for (const door of file.doors ?? []) {
+    for (let dy = 0; dy < door.height; dy += 1) {
+      for (let dx = 0; dx < door.width; dx += 1) {
+        covered.add(`${door.x + dx},${door.y + dy}`);
+      }
+    }
+  }
+  const places = new Set([...file.dropIns, ...file.exits].map((spot) => `${spot.x},${spot.y}`));
+  const ground = (x: number, y: number): boolean => {
+    const material = materialOf(file.ground[y]?.[x]);
+    const letter = file.ground[y]?.[x];
+    return (
+      material !== undefined &&
+      !MATERIALS[material].solid &&
+      letter !== MAP_FILE_STAMPS.o?.prop &&
+      !['o', 'u', 'k'].includes(letter ?? '') &&
+      !LEDGE_LETTERS.has(letter ?? '') &&
+      !covered.has(`${x},${y}`)
+    );
+  };
+  const ledges: MapLedge[] = [];
+  file.ground.forEach((row, y) => {
+    let run: { x: number; y: number }[] = [];
+    const close = (): void => {
+      if (run.length > 0) {
+        ledges.push({
+          id: `${id}/ledge-${ledges.length + 1}`,
+          mapId: id,
+          label: 'LEDGE',
+          drop: 'down',
+          brow: run,
+          depth: 1,
+        });
+      }
+      run = [];
+    };
+    for (let x = 0; x <= row.length; x += 1) {
+      if (!LEDGE_LETTERS.has(row[x] ?? '')) {
+        close();
+        continue;
+      }
+      if (ground(x, y - 1) && ground(x, y + 1) && !places.has(`${x},${y + 1}`)) {
+        run.push({ x, y: y - 1 });
+      }
+    }
+  });
+  return ledges;
 }
 
 /**
@@ -969,7 +1163,10 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
       name: district.name.toUpperCase(),
       areas: [{ x: district.x, y: district.y, width: district.width, height: district.height }],
       ...(district.wildlife ? { encounters: MAP_FILE_HABITATS[district.wildlife] } : {}),
+      ...(district.rain ? { weather: WeatherId.Rain } : {}),
     })),
+    gates: fileDoorGates(file),
+    ledges: fileLedges(file),
     trainers: () =>
       (file.trainers ?? []).map((placed, index) => {
         const template = trainerTemplate(placed.team);

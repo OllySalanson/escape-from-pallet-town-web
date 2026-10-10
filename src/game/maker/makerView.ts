@@ -9,6 +9,7 @@ import {
   teamLine,
   type MapFile,
   type MapFileBuildingKind,
+  type MapFileDoorKind,
   type MapFileHabitat,
   type MapFileLandmarkKind,
   type MapFileTrainerTeam,
@@ -78,7 +79,7 @@ export type MakerTool = 'brush' | 'rect' | 'fill' | 'pick' | 'select' | 'erase' 
 
 /** What the place tool puts down. */
 export type PlaceChoice =
-  | { readonly kind: SpotKind | 'district' }
+  | { readonly kind: SpotKind | 'district' | MapFileDoorKind }
   | { readonly kind: 'building'; readonly building: MapFileBuildingKind };
 
 /** How big a tile is drawn, in game pixels. Sixteen is the art's own size. */
@@ -149,7 +150,17 @@ const PLACE_ROWS = [
   [
     'district',
     'District',
-    'Drag out a named part of the map, with its own wild Pokémon if you like.',
+    'Drag out a named part of the map, with its own wild Pokémon and rain if you like.',
+  ],
+  [
+    'cut-tree',
+    'Cut tree',
+    'A small tree in the way. A Pokémon that knows Cut clears it, and it stays cleared.',
+  ],
+  [
+    'surf',
+    'Surf water',
+    'Drag out deep water a Pokémon that knows Surf can cross. Crossed once, it stays open.',
   ],
 ] as const;
 
@@ -411,7 +422,21 @@ function selectedPane(file: MapFile, selected: ThingRef | undefined): string {
           (habitat) => [habitat, HABITAT_LABELS[habitat]] as const,
         ),
       ];
-      body = `${name(district.name)}${choose('wildlife', 'Wild Pokémon', district.wildlife ?? '', habitats)}<p class="px-note px-wrap">${district.width}x${district.height} tiles. Its name comes up as a player walks in.</p>`;
+      const weathers: (readonly [string, string])[] = [
+        ['', 'Dry'],
+        ['rain', 'Rain'],
+      ];
+      body = `${name(district.name)}${choose('wildlife', 'Wild Pokémon', district.wildlife ?? '', habitats)}${choose('rain', 'Weather', district.rain ? 'rain' : '', weathers)}<p class="px-note px-wrap">${district.width}x${district.height} tiles. Its name comes up as a player walks in. Rain makes Water moves stronger and Fire moves weaker in every fight there.</p>`;
+      break;
+    }
+    case 'door': {
+      const door = (file.doors ?? [])[selected.index];
+      heading = door.kind === 'cut-tree' ? 'Cut tree' : 'Surf water';
+      body = `<p class="px-note px-wrap">${
+        door.kind === 'cut-tree'
+          ? 'Shut until a Pokémon that knows Cut clears it. A raid must still be able to get out without it.'
+          : `${door.width}x${door.height} tiles of deep water, crossed by a Pokémon that knows Surf. A raid must still be able to get out without it.`
+      } Drag it with Select to move it.</p>`;
       break;
     }
     case 'building': {

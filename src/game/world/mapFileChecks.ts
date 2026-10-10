@@ -2,7 +2,8 @@ import type { GridPosition } from '../movement/gridMovement';
 import { STEP_DURATION_MS } from '../movement/stepClock';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import { HUNTER_SPAWN_DISTANCE } from './hunter';
-import { readMapFile, sketchMapFile, type MapFile } from './mapFile';
+import { fileDoorGates, readMapFile, sketchMapFile, type MapFile } from './mapFile';
+import { applyGates, gateKey } from './gates';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
 import { buildMapLayers } from './tiles';
 import { PLAYER_MAP_TILESET } from './tileset/playerMapTileset';
@@ -58,9 +59,15 @@ const LABELS: Readonly<Record<MapCheckId, string>> = {
 
 const at = ({ x, y }: GridPosition): string => `${x},${y}`;
 
-/** The collision a file map is played on: its own drawing through the game's own builder. */
-export function mapFileCollision(file: MapFile): CollisionGrid {
-  return buildMapLayers(sketchMapFile(file), PLAYER_MAP_TILESET).collision;
+/**
+ * The collision a file map is played on: its own drawing through the game's own
+ * builder, with its Cut trees and Surf water shut - as a fresh save meets them -
+ * or, asked for, opened.
+ */
+export function mapFileCollision(file: MapFile, doorsOpen = false): CollisionGrid {
+  const gates = fileDoorGates(file);
+  const sketch = applyGates(sketchMapFile(file), gates, doorsOpen ? gates.map(gateKey) : []);
+  return buildMapLayers(sketch, PLAYER_MAP_TILESET).collision;
 }
 
 /**
@@ -89,8 +96,10 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   // publish run: a file that slipped past it must fail here, not throw, or one
   // bad map bricks every screen that opens it.
   let collision: CollisionGrid;
+  let openCollision: CollisionGrid;
   try {
     collision = mapFileCollision(file);
+    openCollision = mapFileCollision(file, true);
   } catch (error) {
     return unloadable([
       `The game cannot draw it: ${error instanceof Error ? error.message : String(error)}.`,
@@ -129,9 +138,13 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const exitTiles = new Set(file.exits.map(at));
   const figureTiles = [...people, ...signs].map(at);
   const shut = new Set([...exitTiles, ...figureTiles]);
+  // A raid has to be leavable by a player who brought no Pokemon that knows Cut
+  // or Surf, so the way out is walked with every door shut; what is behind a
+  // door is still somewhere a map is for, so reaching it is walked with them open.
   const fromDropIn = file.dropIns.map((dropIn) => ({
     dropIn,
     steps: stepDistances(collision, dropIn, shut),
+    opened: stepDistances(openCollision, dropIn, shut),
   }));
   const stepsTo = (steps: readonly Int32Array[], spot: GridPosition): number => {
     // A spot is reached by reaching any walkable tile beside it, then one step.
@@ -174,7 +187,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     ...landmarks.map((spot) => ({ spot, what: `Landmark ${spot.name}` })),
   ]
     .filter(({ spot }) => walkable(spot))
-    .filter(({ spot }) => fromDropIn.every(({ steps }) => stepsTo(steps, spot) < 0))
+    .filter(({ spot }) => fromDropIn.every(({ opened }) => stepsTo(opened, spot) < 0))
     .map(({ spot, what }) => `${what} at ${at(spot)} cannot be walked to from any drop-in.`);
 
   // The hunter arrives exactly this many steps from the player, never closer

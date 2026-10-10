@@ -54,7 +54,15 @@ describe('the map maker screen', () => {
       .filter((match) => !match[0].includes('data-building'))
       .map((match) => match[1].toLowerCase());
     expect(places).toEqual(
-      expect.arrayContaining(['sign', 'person', 'trainer', 'landmark', 'district']),
+      expect.arrayContaining([
+        'sign',
+        'person',
+        'trainer',
+        'landmark',
+        'district',
+        'cut tree',
+        'surf water',
+      ]),
     );
     for (const tool of ['select', 'erase']) {
       const help =

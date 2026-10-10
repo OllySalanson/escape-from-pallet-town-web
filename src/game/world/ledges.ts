@@ -1,5 +1,6 @@
 import { DIRECTION_DELTAS, type Direction, type GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
+import { playerMap } from './playerMaps';
 
 /**
  * A ledge you may drop off and never climb.
@@ -149,8 +150,12 @@ export const WORLD_LEDGES: readonly MapLedge[] = [
   },
 ];
 
+/** A map's ledges: the authored ones, or every ledge a map file paints. */
 export function ledgesForMap(mapId: WorldMapId): readonly MapLedge[] {
-  return WORLD_LEDGES.filter((ledge) => ledge.mapId === mapId);
+  return [
+    ...WORLD_LEDGES.filter((ledge) => ledge.mapId === mapId),
+    ...(playerMap(mapId)?.ledges ?? []),
+  ];
 }
 
 /** The tiles a hop from `from` passes over, in order, ending on the landing. */
