@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { conditionLine } from './condition';
+import { conditionLine, teamConditionLine } from './condition';
 
 const partySceneSource = await readFile(new URL('../scenes/PartyScene.ts', import.meta.url), 'utf8');
 const hubSceneSource = await readFile(new URL('../scenes/HubScene.ts', import.meta.url), 'utf8');
@@ -42,5 +42,38 @@ describe('the condition line a Pokemon carries', () => {
     // The pane under either list is one module, so the line under the health
     // bar is the same sentence in a raid as it is at base.
     expect(dossierSource).toContain('view.condition ?? conditionLine(pokemon)');
+  });
+});
+
+describe('what the base says of the whole team', () => {
+  const member = (name: string, over: { isFainted?: boolean; needsTreatment?: boolean } = {}) => ({
+    name,
+    isFainted: false,
+    needsTreatment: false,
+    ...over,
+  });
+  const fainted = { isFainted: true, needsTreatment: true };
+  const hurt = { needsTreatment: true };
+
+  it('says nothing of a fit team', () => {
+    expect(teamConditionLine([member('Bulbasaur'), member('Pidgey')])).toBeNull();
+  });
+
+  it('calls a scratch hurt', () => {
+    expect(teamConditionLine([member('Bulbasaur', hurt), member('Pidgey')])).toBe('1 Pokémon came home hurt');
+  });
+
+  it('never calls a faint hurt, and counts the two apart', () => {
+    expect(teamConditionLine([member('Bulbasaur', fainted), member('Pidgey')])).toBe('1 Pokémon fainted');
+    expect(teamConditionLine([member('Bulbasaur', fainted), member('Pidgey', hurt), member('Rattata')])).toBe(
+      '1 Pokémon fainted and 1 came home hurt',
+    );
+  });
+
+  it('says when nobody is left standing to raid with', () => {
+    expect(teamConditionLine([member('Bulbasaur', fainted)])).toBe('Bulbasaur has fainted, so nobody can raid');
+    expect(teamConditionLine([member('Bulbasaur', fainted), member('Pidgey', fainted)])).toBe(
+      'All 2 Pokémon have fainted, so nobody can raid',
+    );
   });
 });

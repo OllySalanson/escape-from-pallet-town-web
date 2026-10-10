@@ -22,3 +22,34 @@ export function conditionLine(pokemon: PokemonCondition): string {
   ];
   return `Level ${pokemon.level} \u00b7 ${pokemon.currentHp}/${pokemon.maxHp} HP${flags.length ? ` \u00b7 ${flags.join(' \u00b7 ')}` : ''}`;
 }
+
+/** One Pokemon at base, as the team's condition line reads it. */
+export interface TeamMember {
+  readonly name: string;
+  readonly isFainted: boolean;
+  /** Anything the Pokemon Center would change: HP, a status, a faint. */
+  readonly needsTreatment: boolean;
+}
+
+/**
+ * What the base says of the whole team, or null when everyone is fit.
+ *
+ * A faint is not a scratch: a fainted Pokemon cannot be deployed, and a team
+ * that is nothing but fainted cannot raid at all until the Center revives one.
+ * Counting a faint as "hurt" told a player who had just wiped that their
+ * partner was a little worn, and the first they heard otherwise was a CHOOSE
+ * DROP-IN that would not press.
+ */
+export function teamConditionLine(team: readonly TeamMember[]): string | null {
+  const fainted = team.filter((member) => member.isFainted);
+  const hurt = team.filter((member) => !member.isFainted && member.needsTreatment).length;
+  if (team.length > 0 && fainted.length === team.length) {
+    return fainted.length === 1
+      ? `${fainted[0].name} has fainted, so nobody can raid`
+      : `All ${fainted.length} Pokémon have fainted, so nobody can raid`;
+  }
+  if (fainted.length === 0) {
+    return hurt === 0 ? null : `${hurt} Pokémon came home hurt`;
+  }
+  return `${fainted.length} Pokémon fainted${hurt > 0 ? ` and ${hurt} came home hurt` : ''}`;
+}

@@ -18,6 +18,7 @@ import {
   payablePokemonCount,
   paymentCandidates,
   pokemonNeedingRecovery,
+  teamCondition,
   quoteRecovery,
   raidClockAfterRecovery,
   recoveryCostMs,
@@ -1515,14 +1516,14 @@ export class HubScene extends Phaser.Scene {
    * deploy at all, and the Center is a walk away rather than a click.
    */
   private homeView(): string {
-    const hurt = this.injuredPokemon.length;
+    const said = teamCondition(this.stash);
     // Oak sends you out, and he is on the card that does it: the same art the
     // overworld draws him from, at the same scale. The other three people are
     // in their own buildings now (`base/doors.ts`), so the only other face here
     // is Nurse Joy's, on the line that says somebody needs her.
     const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-deploy-flow data-cursor-start data-help="Build a loadout, check what it risks, then drop in."><strong>Start a raid</strong><p>Choose who and what you risk, and where you drop in.</p>${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
-    const condition = hurt
-      ? `<p class="px-warning">${hurt === 1 ? '1 Pokémon' : `${hurt} Pokémon`} came home hurt. NURSE JOY is across the yard.</p>`
+    const condition = said
+      ? `<p class="px-warning">${said}. NURSE JOY is across the yard.</p>`
       : '<p>Everyone is fit to deploy.</p>';
     const team = `<button class="px-window px-card has-figure" data-refused="The Pokémon Center is the building west of the lab." data-help="Your team's condition. Nurse Joy treats them, across the yard."><strong>Your team</strong>${condition}${pixelFigure('nurse-joy', 'Nurse Joy')}</button>`;
     return `<main class="px-body hub-home"><section class="hub-actions">${deploy}${team}</section>${this.contractBoard()}</main>`;

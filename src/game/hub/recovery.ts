@@ -1,6 +1,7 @@
 import type { Pokemon } from '../pokemon';
 import { RAID_DURATION_MS } from '../run/raidClock';
 import type { Stash, StashedPokemon } from '../stash';
+import { teamConditionLine } from '../ui/condition';
 
 /**
  * Recovery between raids, priced in raid time.
@@ -179,6 +180,17 @@ export function needsRecovery(pokemon: Pokemon): boolean {
 /** Every stashed Pokemon a recovery would actually change, in stash order. */
 export function pokemonNeedingRecovery(stash: Stash): readonly StashedPokemon[] {
   return stash.listPokemon().filter((stored) => needsRecovery(stored.pokemon));
+}
+
+/** What the base says of the whole team (`teamConditionLine`), or null when everyone is fit. */
+export function teamCondition(stash: Stash): string | null {
+  return teamConditionLine(
+    stash.listPokemon().map((stored) => ({
+      name: stored.pokemon.base.name,
+      isFainted: stored.pokemon.isFainted,
+      needsTreatment: needsRecovery(stored.pokemon),
+    })),
+  );
 }
 
 /** The whole bill for treating these Pokemon, after the ward's beds and the cap. */

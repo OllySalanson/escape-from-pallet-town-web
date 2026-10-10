@@ -136,6 +136,20 @@ describe('the lobby as a screen of the game', () => {
     expect(stash).toContain('data-recover="charmander-1"');
   });
 
+  it('tells a team with nobody standing that it cannot raid, rather than that it is hurt', () => {
+    const { hub } = createWornHub((maxHp) => maxHp);
+    // The starting stash's own partner is fit, so the team can still go.
+    expect(markupOf(hub)).toContain('1 Pokémon fainted. NURSE JOY is across the yard.');
+
+    for (const stored of hub.stash.listPokemon()) {
+      stored.pokemon.takeDamage(stored.pokemon.maxHp);
+    }
+    hub.setView('home');
+    const home = markupOf(hub);
+    expect(home).toContain('All 2 Pokémon have fainted, so nobody can raid. NURSE JOY is across the yard.');
+    expect(home).not.toContain('came home hurt');
+  });
+
   it('lists one box at a time, and every box when the loadout is chosen from', () => {
     const { hub } = createHub();
     hub.stash.addPokemon(new Pokemon(CHARMANDER, 3), 'shelved');

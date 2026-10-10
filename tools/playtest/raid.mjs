@@ -590,7 +590,7 @@ try {
     await wait(500);
   }
   const clock = clockMs === null ? 'unknown' : `${Math.floor(clockMs / 60000)}:${String(Math.floor(clockMs / 1000) % 60).padStart(2, '0')}`;
-  const report = await page.evaluate(`document.querySelector('.menu-overlay, #app')?.innerText.replace(/\\n+/g, ' | ').slice(0, 420)`);
+  const report = await page.evaluate(`document.querySelector('#screens .menu-overlay, .menu-overlay, #app')?.innerText.replace(/\\n+/g, ' | ').slice(0, 420)`);
   note(`result after ${clock} of raid: ${ended ? report : 'raid did not end'}`);
   const cpu = browser.cpuSeconds() - cpuAtDeploy;
   const wall = (Date.now() - raidStarted) / 1000;

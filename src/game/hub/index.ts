@@ -39,6 +39,7 @@ export {
   recoveryCostMs,
   recoveryPrices,
   STANDARD_RECOVERY_TERMS,
+  teamCondition,
   wardBedIds,
   type RecoveryOutcome,
   type RecoveryPrices,
