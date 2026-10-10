@@ -2704,10 +2704,11 @@ export class HubScene extends Phaser.Scene {
       }))
       .filter((item) => item.quantity > 0);
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
+    // Counted the way the result screen counts its ledger - a row each - so
+    // the note is the number of lines drawn under it: three Potions are one
+    // entry, and "4 ENTRIES" over the pack and a Potion x3 read as a miscount.
     const riskedCount =
-      (this.flow.packItemId === undefined ? 0 : 1) +
-      riskedPokemon.length +
-      riskedItems.reduce((total, item) => total + item.quantity, 0);
+      (this.flow.packItemId === undefined ? 0 : 1) + riskedPokemon.length + riskedItems.length;
     // The price of the party, on screen before the player commits to it - the
     // rule the trainer watch and the flee cost already follow. It sits in the
     // full-width bar beside the button that pays it.

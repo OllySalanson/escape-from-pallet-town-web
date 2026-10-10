@@ -1249,6 +1249,19 @@ describe('what the base screen leads with', () => {
     expect(check).toContain('1 Pokémon · 1 supply · ');
     expect(check).not.toContain('1 supplies');
   });
+
+  it('counts what a wipe would take a row at a time, as the result screen counts its ledger', () => {
+    const { hub } = createHub();
+
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.setItemQuantity('potion', 3);
+    readyToDeploy(hub);
+    hub.setView('deploy');
+    const check = markupOf(hub);
+    expect(hub.flow.step).toBe('confirm');
+    // The pack and one row of three Potions: two lines under the heading.
+    expect(check).toContain('<h2>Lost if you wipe</h2><small>2 entries</small>');
+  });
 });
 
 describe('Brock', () => {
