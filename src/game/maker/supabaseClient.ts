@@ -6,8 +6,9 @@ import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from './submitConfig';
  * never sends or reviews a map downloads it.
  *
  * Its types are the database as `supabase/migrations/` declares it. A maker's
- * browser can only call `submit_map` and `my_submissions`; the table rows are
- * here for the reviewer, whom row-level security lets read and decide.
+ * browser can only call `submit_map` and `my_submissions`, and a player's
+ * `submit_feedback` (`feedback/feedbackSender.ts`); the table rows are here for
+ * the reviewer, whom row-level security lets read and decide.
  */
 
 export type SubmissionStatus = 'waiting' | 'sent_back' | 'approved' | 'rejected' | 'published';
@@ -67,6 +68,20 @@ export type GameDatabase = {
       };
       my_submissions: { Args: Record<PropertyKey, never>; Returns: SentRow[] };
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      submit_feedback: {
+        Args: {
+          tag: string;
+          message: string;
+          context: unknown;
+          actions: unknown;
+          save: string | null;
+          picture_path: string | null;
+          voice_paths: string[];
+          voice_ms: number;
+          written_at: string;
+        };
+        Returns: string;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

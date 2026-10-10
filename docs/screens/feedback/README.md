@@ -15,7 +15,8 @@ server in `?testmode=pixels`, at 1280x800 and at a 390x844 phone.
 | `raid-panel.png` | F in a raid: the raid paused on the left, the message and everything attached on the right. |
 | `see-it-all.png` | SEE IT ALL: every line that rides along, before anything is sent. |
 | `scrap-question.png` | Escape with words in the box asks first, with the cursor on KEEP WRITING. |
-| `kept.png` | SEND before the game has anywhere to send to: kept in the pack, with the tag to quote. |
+| `kept.png` | SEND with the lab out of reach: kept in the pack, with the tag to quote. It goes by itself once the browser is back online. |
+| `extracted.png` | SEND with the lab in reach: MESSAGE EXTRACTED. |
 | `talk.png` | TALK under the box, before anything is recorded. |
 | `on-air.png` | Recording: STOP, the blinking dot, the level meter and the tape's time. |
 | `recorded.png` | After a stop: TALK MORE adds a clip, PLAY hears it back, DELETE throws it away. |

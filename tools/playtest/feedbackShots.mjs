@@ -22,6 +22,14 @@ const option = (name, fallback) => Number(args.find((arg) => arg.startsWith(`--$
 const window = { width: option('width', 1280), height: option('height', 800) };
 mkdirSync(out, { recursive: true });
 
+/**
+ * What the driver types. It says it is a test, because with the project's
+ * anonymous sign-in on, a message from here really does reach the lab.
+ */
+const MESSAGE = 'wasd f test message from the playtest driver';
+const outbox = `new Promise((resolve) => { const open = indexedDB.open('escape-from-pallet-town.feedback'); open.onsuccess = () => { const all = open.result.transaction('outbox').objectStore('outbox').getAll(); all.onsuccess = () => resolve(JSON.stringify(all.result.map((n) => ({ tag: n.tag, text: n.text, screen: n.context.screen, details: n.context.details, actions: n.actions.length, picture: n.picture ? n.picture.size : 0, save: n.save ? n.save.length : 0, clips: (n.voice ?? []).map((c) => ({ size: c.size, type: c.type })), voiceMs: n.voiceMs })))); }; })`;
+const sentTags = [];
+
 const failures = [];
 const check = (ok, what) => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`);
@@ -55,6 +63,10 @@ try {
   };
   const panelUp = `${GAME}.scene.isActive('feedback') && !!document.querySelector('.feedback-panel')`;
 
+  // The first message is written with the lab out of reach, so it is the one
+  // kept in the pack; the voice message later goes straight through.
+  await page.send('Network.enable');
+  await page.send('Network.setBlockedURLs', { urls: ['*supabase.co*'] });
   await page.waitFor(sceneIs('title'));
   await sleep(600);
   const tab = await page.evaluate(`(() => { const t = document.querySelector('.feedback-tab'); if (!t) return null; const r = t.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, hidden: t.hidden }; })()`);
@@ -89,13 +101,13 @@ try {
   const before = { clock: await clock(), tile: await tile() };
   check(await page.evaluate(`${GAME}.scene.isPaused('world')`), 'the raid is paused under the panel');
   check(await page.evaluate(`document.activeElement?.id === 'feedback-text'`), 'the cursor starts in the box');
-  await type(page, 'wasd f stuck by the bench');
+  await type(page, MESSAGE);
   await sleep(1500);
   const typed = await page.evaluate(`document.querySelector('#feedback-text').value`);
-  check(typed === 'wasd f stuck by the bench', `the box took every letter (${JSON.stringify(typed)})`);
+  check(typed === MESSAGE, `the box took every letter (${JSON.stringify(typed)})`);
   check((await tile()) === before.tile, 'typing W, A, S, D walked nobody');
   check((await clock()) === before.clock, `the raid clock did not move while the panel was up (${before.clock})`);
-  check(await page.evaluate(`document.querySelector('[data-count]').textContent === '25 / 2,000'`), 'the count follows the box');
+  check(await page.evaluate(`document.querySelector('[data-count]').textContent === '${MESSAGE.length} / 2,000'`), 'the count follows the box');
   await page.screenshot(join(out, '2-raid-panel.png'));
 
   await click('Game version');
@@ -116,10 +128,18 @@ try {
   const tag = await page.evaluate(`document.querySelector('.feedback-tag').textContent`);
   check(/^FB-[A-Z2-9]{4}$/.test(tag), `the answer carries a tag (${tag})`);
   await page.screenshot(join(out, '5-sent.png'));
-  const kept = await page.evaluate(`new Promise((resolve) => { const open = indexedDB.open('escape-from-pallet-town.feedback'); open.onsuccess = () => { const all = open.result.transaction('outbox').objectStore('outbox').getAll(); all.onsuccess = () => resolve(JSON.stringify(all.result.map((n) => ({ tag: n.tag, text: n.text, screen: n.context.screen, details: n.context.details, actions: n.actions.length, picture: n.picture ? n.picture.size : 0, save: n.save ? n.save.length : 0 })))); }; })`);
+  check(await page.evaluate(`document.querySelector('.feedback-outcome .px-heading').textContent.startsWith('No signal')`), 'with the lab out of reach, it says NO SIGNAL');
+  const kept = await page.evaluate(outbox);
   console.log(`kept in the pack: ${kept}`);
   const notes = JSON.parse(kept);
   check(notes.length === 1 && notes[0].tag === tag && notes[0].text === typed && notes[0].screen === 'Raid' && notes[0].picture > 0 && notes[0].save > 0, 'the message is in the pack with its picture, its save and where it was sent from');
+
+  // Back on the air: the pack empties itself.
+  await page.send('Network.setBlockedURLs', { urls: [] });
+  await page.evaluate(`window.dispatchEvent(new Event('online'))`);
+  await page.waitFor(`${outbox}.then((all) => JSON.parse(all).length === 0)`, { what: 'the kept message to go once the browser is back online', timeoutMs: 30_000 })
+    .then(() => { sentTags.push(tag); check(true, 'back online, the kept message goes by itself'); })
+    .catch(() => check(false, 'back online, the kept message goes by itself'));
 
   await press('Enter');
   await until(`!(${panelUp})`, 'BACK TO THE GAME to close the panel');
@@ -173,10 +193,13 @@ try {
   // SEND while the tape runs stops it and sends what was said.
   await click('Send');
   await until(`!!document.querySelector('.feedback-tag')`, 'SEND over a running tape to send it');
-  const voiced = JSON.parse(await page.evaluate(`new Promise((resolve) => { const open = indexedDB.open('escape-from-pallet-town.feedback'); open.onsuccess = () => { const all = open.result.transaction('outbox').objectStore('outbox').getAll(); all.onsuccess = () => resolve(JSON.stringify(all.result.map((n) => ({ text: n.text, clips: (n.voice ?? []).map((c) => ({ size: c.size, type: c.type })), voiceMs: n.voiceMs })))); }; })`));
-  const spoken = voiced.find((note) => note.text === '');
-  console.log(`voice message: ${JSON.stringify(spoken)}`);
-  check(spoken && spoken.clips.length === 2 && spoken.clips.every((clip) => clip.size > 1000 && clip.type.startsWith('audio/')) && spoken.voiceMs >= 3500, 'a voice-only message is kept with both clips');
+  const voiceTag = await page.evaluate(`document.querySelector('.feedback-tag').textContent`);
+  const heading = await page.evaluate(`document.querySelector('.feedback-outcome .px-heading').textContent`);
+  console.log(`voice message ${voiceTag}: ${heading}`);
+  check(heading.startsWith('Message extracted'), 'with the lab in reach, a voice message is MESSAGE EXTRACTED');
+  check(JSON.parse(await page.evaluate(outbox)).length === 0, 'a sent message is not left in the pack');
+  sentTags.push(voiceTag);
+  await page.screenshot(join(out, '11-extracted.png'));
   await press('Enter');
   await until(`!(${panelUp})`, 'BACK TO THE GAME after the voice message');
 
@@ -192,6 +215,9 @@ try {
 } finally {
   await browser.close();
 }
+// Sent for real: the database is where the rest is checked (both are test
+// messages, and say so).
+console.log(`sent to the lab: ${sentTags.join(' ')}`);
 if (failures.length) {
   console.log(`\n${failures.length} failed`);
   process.exit(1);

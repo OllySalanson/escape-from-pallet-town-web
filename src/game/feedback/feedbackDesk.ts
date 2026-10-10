@@ -13,6 +13,7 @@ import {
   type FeedbackDetail,
 } from './feedbackContext';
 import { FEEDBACK_TAB_LABEL } from './feedbackWords';
+import { sendToTheLab } from './feedbackSender';
 import { browserOutbox } from './outbox';
 
 /**
@@ -135,9 +136,23 @@ export function installFeedbackDesk(game: Phaser.Game, courier: FeedbackCourier 
   window.addEventListener('keydown', onKeyDown, true);
 
   const stopLogging = logWhatHappens(game);
+  // A message kept in the pack - no internet then, or the lab not switched on
+  // yet - goes the next time the game is opened, or the moment the browser is
+  // back online. Nothing is loaded for this unless something is waiting.
+  const flush = (): void => {
+    void courier.flush(new Date()).then((sent) => {
+      if (sent > 0) {
+        recordAction(`Sent ${sent} kept message${sent === 1 ? '' : 's'}`);
+      }
+    });
+  };
+  const firstFlush = window.setTimeout(flush, FLUSH_DELAY_MS);
+  window.addEventListener('online', flush);
   const desk: FeedbackDesk = {
     open,
     destroy: () => {
+      window.clearTimeout(firstFlush);
+      window.removeEventListener('online', flush);
       window.removeEventListener('keydown', onKeyDown, true);
       stopLogging();
       tab.remove();
@@ -147,8 +162,11 @@ export function installFeedbackDesk(game: Phaser.Game, courier: FeedbackCourier 
 }
 
 function defaultCourier(): FeedbackCourier {
-  return createCourier({ outbox: browserOutbox(), storage: safeLocalStorage() });
+  return createCourier({ outbox: browserOutbox(), storage: safeLocalStorage(), send: sendToTheLab });
 }
+
+/** How long after the game starts it looks in the pack, so a boot is never slowed by it. */
+const FLUSH_DELAY_MS = 5000;
 
 function safeLocalStorage(): Storage | undefined {
   try {

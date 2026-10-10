@@ -79,3 +79,47 @@ describe('the courier', () => {
     expect(JSON.parse(kept.items.get(DAILY_COUNT_KEY)!)).toEqual({ day: '2026-10-10', count: DAILY_FEEDBACK_LIMIT });
   });
 });
+
+describe('trying again', () => {
+  it('sends what is due from the pack, oldest first, and leaves tomorrow\'s for tomorrow', async () => {
+    const outbox = memoryOutbox();
+    await outbox.keep({ ...draft('FB-AAAA'), createdAt: '2026-10-10T09:00:00.000Z', notBefore: null });
+    await outbox.keep({ ...draft('FB-BBBB'), createdAt: '2026-10-10T09:30:00.000Z', notBefore: new Date(2026, 9, 11).toISOString() });
+    await outbox.keep({ ...draft('FB-CCCC'), createdAt: '2026-10-10T09:45:00.000Z', notBefore: null });
+    const sent: string[] = [];
+    const courier = createCourier({ outbox, storage: storage(), send: (note) => Promise.resolve(Boolean(sent.push(note.tag))) });
+    expect(await courier.flush(noon)).toBe(2);
+    expect(sent).toEqual(['FB-AAAA', 'FB-CCCC']);
+    expect((await outbox.waiting()).map((note) => note.tag)).toEqual(['FB-BBBB']);
+    expect(await courier.flush(new Date(2026, 9, 11, 9, 0))).toBe(1);
+    expect(await outbox.waiting()).toEqual([]);
+  });
+
+  it('stops at the first that will not go, keeping it and everything after it', async () => {
+    const outbox = memoryOutbox();
+    await outbox.keep({ ...draft('FB-AAAA'), createdAt: '2026-10-10T09:00:00.000Z', notBefore: null });
+    await outbox.keep({ ...draft('FB-BBBB'), createdAt: '2026-10-10T09:30:00.000Z', notBefore: null });
+    let tries = 0;
+    const courier = createCourier({ outbox, storage: storage(), send: () => Promise.resolve(++tries > 99) });
+    expect(await courier.flush(noon)).toBe(0);
+    expect(tries).toBe(1);
+    expect(await outbox.waiting()).toHaveLength(2);
+  });
+
+  it('shares one flush between two calls, so nothing is sent twice', async () => {
+    const outbox = memoryOutbox();
+    await outbox.keep({ ...draft('FB-AAAA'), notBefore: null });
+    const sent: string[] = [];
+    const courier = createCourier({ outbox, storage: storage(), send: (note) => Promise.resolve(Boolean(sent.push(note.tag))) });
+    const [first, second] = await Promise.all([courier.flush(noon), courier.flush(noon)]);
+    expect(first + second).toBe(2);
+    expect(sent).toEqual(['FB-AAAA']);
+  });
+
+  it('does nothing while there is nowhere to send to', async () => {
+    const outbox = memoryOutbox();
+    await outbox.keep({ ...draft('FB-AAAA'), notBefore: null });
+    expect(await createCourier({ outbox, storage: storage() }).flush(noon)).toBe(0);
+    expect(await outbox.waiting()).toHaveLength(1);
+  });
+});
