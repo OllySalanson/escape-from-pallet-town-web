@@ -372,6 +372,8 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     mode: 'events',
     party: options.party ?? new PokemonParty([player]),
     selectedCommand: 0,
+    lastMainCommand: 0,
+    lastMoveOf: new Map(),
     state,
     trainer,
   });
@@ -1152,6 +1154,93 @@ describe('a replacement sent in after a faint', () => {
     const { state } = scene as unknown as { state: BattleState };
     expect(state.player.pokemon).toBe(charmander);
     expect(state.player.currentHp).toBe(charmander.maxHp);
+  });
+});
+
+describe('the forced replacement list', () => {
+  /** A lead on its last point of HP that only Growls, a bench behind it, and a trainer that will knock it out. */
+  const readToTheReplacement = () => {
+    const pidgey = new Pokemon(PIDGEY, 5);
+    pidgey.moves.splice(0, pidgey.moves.length, new Move(GROWL));
+    pidgey.currentHp = 1;
+    const charmander = new Pokemon(CHARMANDER, 30);
+    const harness = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [new Pokemon(getSpeciesById('rattata')!, 15)],
+      party: new PokemonParty([pidgey, charmander]),
+    });
+    const { scene, renderedTexts, dialog } = harness;
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    renderedTexts.filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && (scene as unknown as { mode: string }).mode !== 'party'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    expect((scene as unknown as { mode: string }).mode).toBe('party');
+    return { ...harness, pidgey, charmander };
+  };
+
+  it('opens on the first Pokemon that can fight, so the key already held sends it in (playtest 45)', () => {
+    const { scene, renderedTexts, charmander } = readToTheReplacement();
+
+    expect((scene as unknown as { selectedCommand: number }).selectedCommand).toBe(1);
+    expect(read(renderedTexts).some(({ text }) => text.startsWith('▶ CHARMANDER'))).toBe(true);
+    (scene as unknown as { confirm(): void }).confirm();
+    expect((scene as unknown as { state: BattleState }).state.player.pokemon).toBe(charmander);
+  });
+
+  it('says the fainted Pokemon has no energy left, not that it is already out', () => {
+    const { scene, renderedTexts } = readToTheReplacement();
+
+    (scene as unknown as { switchPokemon(index: number): void }).switchPokemon(0);
+    const texts = read(renderedTexts).map(({ text }) => text.trim());
+    expect(texts).toContain('PIDGEY has no energy left to battle!');
+    expect(texts.some((text) => text.includes('already out'))).toBe(false);
+  });
+});
+
+describe('the battle menu remembers where the cursor was left, as FireRed does', () => {
+  it('opens the next turn on RUN after a failed escape, so trying again is one press (playtest 45)', () => {
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness();
+    // A roll no escape chance clears.
+    vi.spyOn(Math, 'random').mockReturnValue(0.999);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts).find(({ text }) => text.includes('RUN'))!.handlers.pointerdown();
+
+    dialog.isCurrentMessageComplete = true;
+    const mode = () => (scene as unknown as { mode: string }).mode;
+    for (let step = 0; step < 40 && mode() !== 'main'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+
+    expect(mode()).toBe('main');
+    const commands = read(renderedTexts).slice(-5).map(({ text }) => text);
+    expect(commands.find((text) => text.startsWith('▶'))).toMatch(/^▶ RUN/);
+  });
+
+  it("opens FIGHT on the move each Pokemon used last, and backing out returns to FIGHT", () => {
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness();
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const mode = () => (scene as unknown as { mode: string }).mode;
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts).find(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
+    read(renderedTexts).filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && mode() !== 'main'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    expect(mode()).toBe('main');
+    expect(read(renderedTexts).slice(-5).find(({ text }) => text.startsWith('▶'))?.text).toBe('▶ FIGHT');
+
+    (scene as unknown as { confirm(): void }).confirm();
+    expect(mode()).toBe('moves');
+    expect(read(renderedTexts).filter(({ text }) => text.startsWith('▶')).at(-1)?.text).toBe('▶ GROWL');
+
+    (scene as unknown as { goBack(): void }).goBack();
+    expect(mode()).toBe('main');
+    expect(read(renderedTexts).slice(-5).find(({ text }) => text.startsWith('▶'))?.text).toBe('▶ FIGHT');
   });
 });
 

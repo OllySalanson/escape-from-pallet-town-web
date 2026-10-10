@@ -18,8 +18,9 @@ import { escapeAttribute } from './pixelUi';
  * Keyboard first. Left and Right step by one while the cursor is on either end
  * of the control (they would otherwise only hop between the minus and the
  * plus), Shift or Page Up/Down steps by five, Home and End go to the ends. Up
- * and Down still move the cursor between rows, so a whole list can be filled
- * without the mouse. The markup is pure and so is the key rule; `HubScene`
+ * and Down walk from one selector to the next in the list's reading order
+ * (`neighbourCountIndex`) and leave the list at either end, so a whole list
+ * can be filled without the mouse. The markup is pure and so is the key rule; `HubScene`
  * wires the two, one `data-count` group at a time.
  */
 
@@ -74,6 +75,25 @@ export function countKeyTarget(
     default:
       return undefined;
   }
+}
+
+/**
+ * Where Up or Down takes the cursor from the selector at `current` among
+ * `total` selectors of one list, in reading order, or undefined to let the
+ * ordinary cursor take the key (off either end of the list, or another key).
+ *
+ * A list of counts is laid out in columns on a wide screen, so the Poke Ball
+ * stepper can stand beside the Potion one rather than under it, and moving by
+ * where things are on screen sent Up from the Potion to the Pokemon above
+ * and Down out of the list - with Left and Right spent on the count, the
+ * selector beside it could not be reached at all (playtest 45). Up and Down
+ * walk the selectors as the list reads instead, so every count is one key
+ * from the next whatever the column count.
+ */
+export function neighbourCountIndex(key: string, current: number, total: number): number | undefined {
+  const step = key === 'ArrowDown' ? 1 : key === 'ArrowUp' ? -1 : 0;
+  const next = current + step;
+  return step !== 0 && current >= 0 && next >= 0 && next < total ? next : undefined;
 }
 
 /**
