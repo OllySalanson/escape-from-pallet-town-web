@@ -101,9 +101,9 @@ import {
   followStep,
   hopLift,
   idleBeat,
-  idlePoseMs,
   partnerFrame,
   partnerOf,
+  partnerPose,
   partnerReaction,
   partnerTextureKey,
   sameTile,
@@ -277,8 +277,6 @@ interface PartnerWalk {
   /** Following the player through a door as the screen goes dark. */
   tuck: { readonly from: Phaser.Math.Vector2; readonly to: GridPosition; elapsedMs: number } | null;
   walkPose: 0 | 1;
-  idlePose: 0 | 1;
-  idlePoseMs: number;
   /** How long the player has been standing still. */
   stillMs: number;
   nextBeatMs: number;
@@ -1390,8 +1388,6 @@ export class BaseScene extends Phaser.Scene {
       step: null,
       tuck: null,
       walkPose: 0,
-      idlePose: 0,
-      idlePoseMs: 0,
       stillMs: 0,
       nextBeatMs: this.nextBeatDelay(),
       glanceMs: 0,
@@ -1546,7 +1542,7 @@ export class BaseScene extends Phaser.Scene {
   }
 
   /**
-   * The partner's own frame: its walk, its idle treading, the little things it
+   * The partner's own frame: its walk, the little things it
    * does while the player stands about, its bubble, and where it is drawn.
    */
   private updatePartner(deltaMs: number): void {
@@ -1593,14 +1589,8 @@ export class BaseScene extends Phaser.Scene {
     this.drawPartner();
   }
 
-  /** Treading in place, turning to look at the player, glancing about, hopping. */
+  /** Standing still: turning to look at the player, glancing about, hopping. */
   private partnerStandsAbout(partner: PartnerWalk, deltaMs: number, reading: boolean): void {
-    partner.idlePoseMs += deltaMs;
-    const poseMs = idlePoseMs(partner.pokemon);
-    if (partner.idlePoseMs >= poseMs) {
-      partner.idlePoseMs %= poseMs;
-      partner.idlePose = partner.idlePose === 0 ? 1 : 0;
-    }
     const lookingAtPlayer = facingTowards(partner.place.tile, this.currentTile);
     partner.stillMs += deltaMs;
     if (partner.glanceMs > 0) {
@@ -1673,11 +1663,7 @@ export class BaseScene extends Phaser.Scene {
     const progress = partner.tuck
       ? Math.min(1, partner.tuck.elapsedMs / STEP_DURATION_MS)
       : this.stepProgress;
-    // Two poses a step while walking, swapped halfway, and every other step
-    // starting on the other one - the same tread the art was drawn for.
-    const pose: 0 | 1 = moving
-      ? ((progress < 0.5 ? partner.walkPose : 1 - partner.walkPose) as 0 | 1)
-      : partner.idlePose;
+    const pose = partnerPose({ moving, progress, walkPose: partner.walkPose });
     const lift = partner.hopMs === null ? 0 : hopLift(partner.hopMs);
     const x = at.x * TILE_SIZE + PARTNER_SPRITE_X_OFFSET;
     const y = at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET - lift;
