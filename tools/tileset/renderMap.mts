@@ -14,6 +14,10 @@
  * Pass `--grid` for tile coordinates every four tiles, `--content` to mark the
  * insertion, exits, landmarks, loot, signs and trainers on top, and
  * `--crop=x,y,w,h` in tiles to look at one district close up.
+ *
+ * `--file=<path.json>` loads a map file from disk first - a draft downloaded
+ * from the maker, say - so it can be drawn as `player-<its id>`, with every
+ * inside it has laid out beside its outdoors (`world/mapAreas.ts`).
  */
 import { readPng, writePng, TILE_SIZE } from './tileSheet.mjs';
 import { blit, box, canvas, drawTile, label, plot, upscale } from './draw.mjs';
@@ -22,6 +26,9 @@ import { extractionPointsOn } from '../../src/game/world/extractionPoints';
 import { insertionsOn } from '../../src/game/run/runGeneration';
 import { RAID_CONTRACTS } from '../../src/game/objectives/contracts';
 import { createRunTrainerEncounters } from '../../src/game/world/trainers';
+import { readFileSync } from 'node:fs';
+import { buildPlayerMap, readMapFile } from '../../src/game/world/mapFile';
+import { registerPlayerMap } from '../../src/game/world/playerMaps';
 
 const args = process.argv.slice(2);
 const flags = new Set(args.filter((value) => value.startsWith('--')));
@@ -31,6 +38,12 @@ const [which = 'all', target = 'map.png', zoomArgument = '2'] = args.filter(
   (value) => !value.startsWith('--'),
 );
 const zoom = Number(zoomArgument);
+const fileFlag = args.find((value) => value.startsWith('--file='));
+if (fileFlag) {
+  const reading = readMapFile(JSON.parse(readFileSync(fileFlag.slice(7), 'utf8')));
+  if (!reading.ok) throw new Error(reading.problems.join(' '));
+  registerPlayerMap(buildPlayerMap(reading.file));
+}
 
 const sheets = new Map<string, ReturnType<typeof readPng>>();
 function sheetFor(path: string) {

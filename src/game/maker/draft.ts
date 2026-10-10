@@ -1,5 +1,4 @@
 import {
-  MAP_FILE_BUILDINGS,
   MAP_FILE_FORMAT,
   MAP_FILE_LIMITS,
   placeSlug,
@@ -18,8 +17,8 @@ import {
   type MapFileSign,
   type MapFileSpot,
   type MapFileTrainer,
+  plantedProp,
 } from '../world/mapFile';
-import { PLAYER_MAP_TILESET } from '../world/tileset/playerMapTileset';
 import { joinLedges, LEDGE_LETTERS, type GroundBrush } from './palette';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 
@@ -268,7 +267,7 @@ export function fillRegion(file: MapFile, start: GridPoint): GridPoint[] {
 
 /** A building's footprint in tiles, from the catalogue it is drawn from. */
 export function buildingSize(kind: MapFileBuildingKind): { width: number; height: number } {
-  const prop = PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[kind]];
+  const prop = plantedProp(kind);
   return { width: prop.width, height: prop.height };
 }
 
@@ -855,10 +854,17 @@ export interface Offset {
   readonly y: number;
 }
 
-const moved = <T extends { readonly x: number; readonly y: number }>(
+/**
+ * A list moved with the outdoor ground. A thing inside a building stands on
+ * the tiles of its room (`MapFileSpot.area`), which do not move.
+ */
+const moved = <T extends { readonly x: number; readonly y: number; readonly area?: string }>(
   list: readonly T[],
   by: Offset,
-): T[] => list.map((thing) => ({ ...thing, x: thing.x + by.x, y: thing.y + by.y }));
+): T[] =>
+  list.map((thing) =>
+    thing.area === undefined ? { ...thing, x: thing.x + by.x, y: thing.y + by.y } : thing,
+  );
 
 /**
  * How each part of a file moves when the map's ground moves under it. Every
@@ -891,6 +897,14 @@ const SHIFTS: {
   districts: moved,
   doors: moved,
   pokemon: moved,
+  // An inside is its own little map, and its ground does not move.
+  areas: 'stays',
+  // A way through is stood on at each end: the end outdoors moves with it.
+  links: (links, by) =>
+    links.map((link) => {
+      const [one, other] = moved(link.ends, by);
+      return { ...link, ends: [one, other] };
+    }),
 };
 
 /** Everything standing on the map moved by `by`, the ground left as it is. */

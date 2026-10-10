@@ -1,4 +1,4 @@
-import type { MapFile } from '../world/mapFile';
+import type { MapFile, MapFileArea, MapFileLink } from '../world/mapFile';
 import type { MapLayers } from '../world/tiles';
 import { TILE_SIZE } from '../worldMap';
 import { buildingSize, type Sides, type ThingRef } from './draft';
@@ -12,7 +12,21 @@ import {
   unionRect,
   type TileRect,
 } from './layerPatch';
-import { drawMap, layersFor } from './mapCanvas';
+import { drawMap, layersFor, type DoorwayMark } from './mapCanvas';
+
+/** An inside on screen: the area the view is of, and the links that put its mats and stairs in. */
+export interface InsideView {
+  readonly area: MapFileArea;
+  readonly links: readonly MapFileLink[];
+}
+
+const sameInside = (a: InsideView | undefined, b: InsideView | undefined): boolean =>
+  a === b ||
+  (a !== undefined &&
+    b !== undefined &&
+    a.area.id === b.area.id &&
+    a.area.style === b.area.style &&
+    a.links === b.links);
 
 /**
  * The map maker's picture of a map, kept rather than repainted.
@@ -24,7 +38,8 @@ import { drawMap, layersFor } from './mapCanvas';
  * different on - ground or buildings that changed and the reach of their
  * edges, and the marks, figures and frames that were added, taken away or
  * chosen - and draws those again and nothing else. A map of a new size is
- * drawn whole.
+ * drawn whole, and so is an inside: the biggest is 40x32, which draws in
+ * well under a millisecond.
  */
 export class MapPainter {
   private drawn:
@@ -32,22 +47,29 @@ export class MapPainter {
         readonly file: MapFile;
         readonly selected: ThingRef | undefined;
         readonly marks: ReadonlyMap<string, TileRect>;
+        readonly inside: InsideView | undefined;
       }
     | undefined;
-  private built: { file: MapFile; layers: MapLayers } | undefined;
+  private built: { file: MapFile; inside: InsideView | undefined; layers: MapLayers } | undefined;
 
   /**
    * The layers of `file`: patched from the last ones built where the map is
    * the same size, built whole otherwise. The answer is only good until the
-   * next call, which may write over it.
+   * next call, which may write over it. An inside is built whole.
    */
-  public layers(file: MapFile): MapLayers {
+  public layers(file: MapFile, inside?: InsideView): MapLayers {
     const built = this.built;
-    if (built?.file === file) {
+    if (built?.file === file && sameInside(built.inside, inside)) {
       return built.layers;
     }
-    if (!built || built.file.width !== file.width || built.file.height !== file.height) {
-      this.built = { file, layers: layersFor(file) };
+    if (
+      !built ||
+      inside ||
+      built.inside ||
+      built.file.width !== file.width ||
+      built.file.height !== file.height
+    ) {
+      this.built = { file, inside, layers: layersFor(file, inside) };
       return this.built.layers;
     }
     const changed = mapChange(built.file, file);
@@ -63,7 +85,7 @@ export class MapPainter {
    * (`extendMap`). The picture already drawn is moved to where its ground now
    * is, and only the new ground and the old edge it meets are drawn - so a
    * stroke carried past the edge of a 256x256 map does not stop to draw the
-   * whole map again at every tile it gains.
+   * whole map again at every tile it gains. Only the outdoors grows.
    */
   public grew(
     context: CanvasRenderingContext2D,
@@ -76,7 +98,7 @@ export class MapPainter {
     const layers = extendLayers(this.layers(before), sides);
     const strips = grownEdges(grown.width, grown.height, sides);
     const decided = strips.map((strip) => patchLayers(layers, grown, strip));
-    this.built = { file: grown, layers };
+    this.built = { file: grown, inside: undefined, layers };
     const { canvas } = context;
     const old = document.createElement('canvas');
     old.width = canvas.width;
@@ -89,7 +111,7 @@ export class MapPainter {
     for (const region of decided) {
       drawMap(context, grown, layers, selected, region);
     }
-    this.drawn = { file: grown, selected, marks: markBoxes(grown, selected) };
+    this.drawn = { file: grown, selected, marks: markBoxes(grown, selected), inside: undefined };
   }
 
   /** Forgets what is on the canvas, so the next `show` draws it whole: a new canvas, or one cleared. */
@@ -97,27 +119,40 @@ export class MapPainter {
     this.drawn = undefined;
   }
 
-  /** Puts `file` on the canvas, drawing only what differs from what is there. */
+  /**
+   * Puts `file` on the canvas, drawing only what differs from what is there:
+   * the outdoors, or - given `inside` - the inside `file` is a view of, with
+   * its ways through marked.
+   */
   public show(
     context: CanvasRenderingContext2D,
     file: MapFile,
     selected: ThingRef | undefined,
+    doorways: readonly DoorwayMark[] = [],
+    inside?: InsideView,
   ): void {
     const drawn = this.drawn;
     const sameSize =
       drawn !== undefined &&
+      sameInside(drawn.inside, inside) &&
       drawn.file.width === file.width &&
       drawn.file.height === file.height &&
       context.canvas.width === drawn.file.width * TILE_SIZE &&
       context.canvas.height === drawn.file.height * TILE_SIZE;
-    const layers = this.layers(file);
-    const marks = markBoxes(file, selected);
-    if (!drawn || !sameSize) {
-      drawMap(context, file, layers, selected);
-      this.drawn = { file, selected, marks };
+    const layers = this.layers(file, inside);
+    const marks = markBoxes(file, selected, doorways);
+    if (
+      drawn &&
+      sameSize &&
+      drawn.file === file &&
+      sameRef(drawn.selected, selected) &&
+      sameMarks(drawn.marks, marks)
+    ) {
       return;
     }
-    if (drawn.file === file && sameRef(drawn.selected, selected)) {
+    if (!drawn || !sameSize || inside) {
+      drawMap(context, file, layers, selected, undefined, doorways);
+      this.drawn = { file, selected, marks, inside };
       return;
     }
     // Ground and buildings, as far as their edges reach; measured against
@@ -142,14 +177,24 @@ export class MapPainter {
       }
     }
     if (dirty) {
-      drawMap(context, file, layers, selected, grownWithin(dirty, 0, file.width, file.height));
+      drawMap(
+        context,
+        file,
+        layers,
+        selected,
+        grownWithin(dirty, 0, file.width, file.height),
+        doorways,
+      );
     }
-    this.drawn = { file, selected, marks };
+    this.drawn = { file, selected, marks, inside };
   }
 }
 
 const sameRef = (a: ThingRef | undefined, b: ThingRef | undefined): boolean =>
   a === b || (a !== undefined && b !== undefined && a.kind === b.kind && a.index === b.index);
+
+const sameMarks = (a: ReadonlyMap<string, TileRect>, b: ReadonlyMap<string, TileRect>): boolean =>
+  a.size === b.size && [...a.keys()].every((key) => b.has(key));
 
 const overlaps = (a: TileRect, b: TileRect): boolean =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
@@ -162,7 +207,11 @@ const SIGHT_BOX = 4;
  * how it is drawn does, with the tiles it is drawn on: a figure's head is in
  * the row above it, and a trainer's shading runs on along the way they face.
  */
-export function markBoxes(file: MapFile, selected: ThingRef | undefined): Map<string, TileRect> {
+export function markBoxes(
+  file: MapFile,
+  selected: ThingRef | undefined,
+  doorways: readonly DoorwayMark[] = [],
+): Map<string, TileRect> {
   const boxes = new Map<string, TileRect>();
   const chosen = (kind: string, index: number): boolean =>
     selected?.kind === kind && selected.index === index;
@@ -190,6 +239,12 @@ export function markBoxes(file: MapFile, selected: ThingRef | undefined): Map<st
     }),
   );
   (file.doors ?? []).forEach((door, index) => add('door', index, door, door));
+  for (const doorway of doorways) {
+    boxes.set(
+      `doorway:${JSON.stringify(doorway.at)}:${doorway.chosen ? 'chosen' : ''}`,
+      tile(doorway.at.x, doorway.at.y),
+    );
+  }
   if (selected?.kind === 'building') {
     const building = file.buildings[selected.index];
     if (building) {

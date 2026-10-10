@@ -2,6 +2,7 @@ import type { MapCheck } from '../world/mapFileChecks';
 import { POKEMON_ICON_ORDER } from '../pokemon/generated/pokemonIcons';
 import { pokemonCry, pokemonName } from '../world/pokemonFigures';
 import {
+  MAP_FILE_DOOR_KINDS,
   MAP_FILE_FACINGS,
   MAP_FILE_HABITATS,
   MAP_FILE_LANDMARKS,
@@ -9,7 +10,9 @@ import {
   MAP_FILE_LOOKS,
   MAP_FILE_TRAINER_TEAMS,
   teamLine,
+  MAP_FILE_AREA_STYLES,
   type MapFile,
+  type MapFileArea,
   type MapFileBuildingKind,
   type MapFileDoorKind,
   type MapFileHabitat,
@@ -18,16 +21,28 @@ import {
 } from '../world/mapFile';
 import { escapeAttribute, pixelCommitBar, pixelScreen, pixelWindow } from '../ui/pixelUi';
 import { growthRoom, type SpotKind, type ThingRef } from './draft';
+import {
+  areaById,
+  doorwaysIn,
+  focusArea,
+  hasDoor,
+  insideOf,
+  type AreaId,
+  type DoorwayInArea,
+} from './areas';
 import type { StoredDraft } from './drafts';
 import type { QueuedMap } from './review';
 import { STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
 import {
   BUILDING_CHOICES,
   PLANT_GROUPS,
+  brushesFor,
   FACING_LABELS,
-  GROUND_BRUSHES,
+  FURNITURE_CHOICES,
+  furnitureFor,
   HABITAT_LABELS,
   LOOK_LABELS,
+  STYLE_LABELS,
 } from './palette';
 
 /**
@@ -107,6 +122,14 @@ export function walkedCheck(walked: boolean): MakerCheck {
 
 export interface MakerViewState {
   readonly file: MapFile;
+  /**
+   * The place of the map on screen: the outdoors, or the inside of one of its
+   * buildings (`maker/areas.ts`). Everything chosen, painted and placed is in
+   * it; the checks and the map's own name are the whole file's.
+   */
+  readonly area?: AreaId;
+  /** A way through chosen on the map - a room's mat - by its link and end. */
+  readonly doorway?: Pick<DoorwayInArea, 'link' | 'end'>;
   readonly tool: MakerTool;
   readonly brushId: string;
   readonly place: PlaceChoice;
@@ -245,7 +268,7 @@ function toolRow(
   return `<button class="px-row maker-choice${lead ? ' has-icon' : ''}${chosen ? ' is-selected' : ''}" ${attributes} aria-pressed="${chosen}" data-help="${escapeAttribute(help)}">${lead}<span class="px-row-main">${label}</span></button>`;
 }
 
-function toolsPane(state: MakerViewState): string {
+function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): string {
   // The tools are a strip of buttons above the lists rather than rows in them:
   // six of them are picked far more often than any one brush, so they never
   // scroll away.
@@ -253,38 +276,45 @@ function toolsPane(state: MakerViewState): string {
     (tool) =>
       `<button class="px-window px-chip maker-tool${state.tool === tool.id ? ' is-selected' : ''}" data-tool="${tool.id}" aria-pressed="${state.tool === tool.id}" data-help="${escapeAttribute(`${tool.help} Key: ${tool.key}.`)}">${tool.label}</button>`,
   ).join('');
-  const brushes = GROUND_BRUSHES.map((brush) =>
+  const brushes = brushesFor(inside !== undefined).map((brush) =>
     toolRow(
       `data-brush="${brush.id}"`,
       brush.label,
       brush.help,
       state.brushId === brush.id && ['brush', 'rect', 'fill'].includes(state.tool),
-      `<canvas class="maker-swatch" data-swatch="${escapeAttribute(brush.swatch)}" width="16" height="16" aria-hidden="true"></canvas>`,
+      `<canvas class="maker-swatch" data-swatch="${escapeAttribute(brush.swatch)}"${inside ? ` data-swatch-style="${inside.style}"` : ''} width="16" height="16" aria-hidden="true"></canvas>`,
     ),
   ).join('');
   const chosenPlace = state.tool === 'place' ? placeKey(state.place) : '';
-  const places = PLACE_ROWS.map(([kind, label, help]) =>
-    toolRow(`data-place="${kind}"`, label, help, chosenPlace === kind),
-  ).join('');
+  // A field move's doors - a Cut tree, a Rock Smash rock, Surf water - stand
+  // outdoors, so an inside has none of them.
+  const places = PLACE_ROWS.filter(
+    ([kind]) => !inside || !(MAP_FILE_DOOR_KINDS as readonly string[]).includes(kind),
+  )
+    .map(([kind, label, help]) => toolRow(`data-place="${kind}"`, label, help, chosenPlace === kind))
+    .join('');
   // Everything a maker can plant, under its heading, each row with a picture of
   // the thing itself drawn whole (`drawPlantSwatch`), because eighty names are
-  // not a palette.
-  const plants = PLANT_GROUPS.map((group) => {
-    const rows = BUILDING_CHOICES.filter((choice) => choice.group === group)
-      .map((choice) =>
-        toolRow(
-          `data-place="building" data-building="${choice.kind}"`,
-          choice.label,
-          `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`,
-          chosenPlace === `building:${choice.kind}`,
-          `<canvas class="maker-swatch" data-plant="${choice.kind}" width="16" height="16" aria-hidden="true"></canvas>`,
-        ),
-      )
-      .join('');
-    return `<p class="px-subheading">${group}</p>${rows}`;
-  }).join('');
+  // not a palette. Indoors what is planted is the room's furniture: the same
+  // tool, planted the same way, from the pieces a FireRed room is furnished with.
+  const plantRow = (choice: { readonly kind: MapFileBuildingKind; readonly label: string }): string =>
+    toolRow(
+      `data-place="building" data-building="${choice.kind}"`,
+      choice.label,
+      `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`,
+      chosenPlace === `building:${choice.kind}`,
+      `<canvas class="maker-swatch" data-plant="${choice.kind}"${inside ? ` data-swatch-style="${inside.style}"` : ''} width="16" height="16" aria-hidden="true"></canvas>`,
+    );
+  const plants = inside
+    ? `<p class="px-subheading">Furniture</p>${furnitureFor(inside.style).map(plantRow).join('')}`
+    : PLANT_GROUPS.map(
+        (group) =>
+          `<p class="px-subheading">${group}</p>${BUILDING_CHOICES.filter((choice) => choice.group === group)
+            .map(plantRow)
+            .join('')}`,
+      ).join('');
   return pixelWindow(
-    `<div class="maker-toolbar">${tools}</div><div class="px-scroll maker-pane"><div class="px-list"><p class="px-subheading">Ground</p>${brushes}<p class="px-subheading">Places</p>${places}${plants}</div></div>`,
+    `<div class="maker-toolbar">${tools}</div><div class="px-scroll maker-pane"><div class="px-list"><p class="px-subheading">${inside ? 'Room' : 'Ground'}</p>${brushes}<p class="px-subheading">Places</p>${places}${plants}</div></div>`,
     { className: 'maker-tools', heading: 'Paint' },
   );
 }
@@ -295,8 +325,13 @@ function toolsPane(state: MakerViewState): string {
  * inline styles, in game pixels, so the scene can lay a map out again as a
  * stroke grows it without drawing the screen again.
  */
-export function stackLayout(file: MapFile, zoom: MakerZoom): { stack: string; map: string } {
-  const room = growthRoom(file);
+export function stackLayout(
+  file: MapFile,
+  zoom: MakerZoom,
+  grows = true,
+): { stack: string; map: string } {
+  // An inside is a room of a size its own fields set, and does not grow.
+  const room = grows ? growthRoom(file) : { left: 0, top: 0, right: 0, bottom: 0 };
   const at = (tiles: number): string => `calc(var(--u) * ${tiles * zoom})`;
   return {
     // The room is ruled every tile, or every few tiles where a tile is drawn
@@ -306,9 +341,29 @@ export function stackLayout(file: MapFile, zoom: MakerZoom): { stack: string; ma
   };
 }
 
-function mapPane(state: MakerViewState): string {
-  const { file, zoom } = state;
-  const layout = stackLayout(file, zoom);
+/**
+ * The places of the map, one button each: the outdoors and every inside. Only
+ * drawn once there is somewhere to go - a map with no insides is one place,
+ * and a strip with one button on it would say nothing.
+ */
+function areaStrip(file: MapFile, area: AreaId): string {
+  const areas = file.areas ?? [];
+  if (areas.length === 0) {
+    return '';
+  }
+  const chip = (id: AreaId, label: string, help: string): string =>
+    `<button class="px-window px-chip maker-area${id === area ? ' is-selected' : ''}" data-area="${escapeAttribute(id ?? '')}" aria-pressed="${id === area}" data-help="${escapeAttribute(help)}">${escapeHtml(label)}</button>`;
+  return `<div class="maker-areas">${chip(undefined, 'Outside', 'The map itself: the ground, the buildings and everything outdoors.')}${areas
+    .map((candidate) =>
+      chip(candidate.id, candidate.name, `Inside: ${candidate.name}. ${candidate.width}x${candidate.height} tiles.`),
+    )
+    .join('')}</div>`;
+}
+
+function mapPane(state: MakerViewState, view: MapFile, inside: MapFileArea | undefined): string {
+  const { zoom } = state;
+  const file = view;
+  const layout = stackLayout(file, zoom, inside === undefined);
   const zoomButtons = MAKER_ZOOMS.map(
     (level) =>
       `<button class="px-window px-button maker-zoom${level === zoom ? ' is-primary' : ''}" data-zoom="${level}" aria-pressed="${level === zoom}" data-help="Draws a tile ${level} pixels wide. Ctrl and the mouse wheel zoom about the pointer.">${level === 16 ? '1x' : level < 16 ? `1/${16 / level}` : `${level / 16}x`}</button>`,
@@ -319,11 +374,11 @@ function mapPane(state: MakerViewState): string {
   // shown while the map does not fit the window (`MapMakerScene.showOverview`).
   const overview = `<div class="px-window maker-overview" data-overview hidden><canvas class="maker-overview-map" data-overview-map></canvas><div class="maker-overview-view" data-overview-view></div></div>`;
   return pixelWindow(
-    `<div class="maker-zooms">${zoomButtons}${fit}${overviewToggle}</div><div class="maker-view-area"><div class="maker-viewport" data-viewport data-help="Drag with the middle button, or hold Space and drag, to move the map. Ctrl and the wheel zoom."><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>${overview}</div>`,
+    `${areaStrip(state.file, state.area)}<div class="maker-zooms">${zoomButtons}${fit}${overviewToggle}</div><div class="maker-view-area"><div class="maker-viewport" data-viewport data-help="Drag with the middle button, or hold Space and drag, to move the map. Ctrl and the wheel zoom."><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>${overview}</div>`,
     {
       className: 'maker-map',
-      heading: escapeHtml(file.name || 'Untitled map'),
-      note: `${file.width}x${file.height}`,
+      heading: escapeHtml(inside ? inside.name : file.name || 'Untitled map'),
+      note: `${inside ? 'inside · ' : ''}${file.width}x${file.height}`,
     },
   );
 }
@@ -366,7 +421,13 @@ function checksPane(checks: readonly MakerCheck[]): string {
 }
 
 /** What can be said or changed about the thing chosen on the map. */
-function selectedPane(file: MapFile, selected: ThingRef | undefined): string {
+function selectedPane(
+  file: MapFile,
+  selected: ThingRef | undefined,
+  /** The whole file and the place of it `file` is a view of, when it is one. */
+  whole?: MapFile,
+  area?: AreaId,
+): string {
   if (!selected) {
     return pixelWindow(
       `<p class="px-empty px-wrap">Choose anything on the map with Select to name it, change it or move it.</p>`,
@@ -498,8 +559,16 @@ function selectedPane(file: MapFile, selected: ThingRef | undefined): string {
     case 'building': {
       const building = file.buildings[selected.index];
       heading =
-        BUILDING_CHOICES.find((choice) => choice.kind === building.kind)?.label ?? 'Building';
-      body = `<p class="px-note px-wrap">Drag it with Select to move it.</p>`;
+        [...BUILDING_CHOICES, ...FURNITURE_CHOICES].find((choice) => choice.kind === building.kind)
+          ?.label ?? 'Building';
+      const room = whole && !area ? insideOf(whole, building) : undefined;
+      const door =
+        whole && !area && hasDoor(building)
+          ? room
+            ? `<p class="px-note px-wrap">Its door leads into ${escapeHtml(room.name)}.</p><div class="maker-actions"><button class="px-window px-button is-primary" data-go-inside="${selected.index}" data-help="Opens the inside of it, to furnish and fill.">Go inside</button></div>`
+            : `<p class="px-note px-wrap">Its door is shut. Give it an inside and walking up to the door takes a player in.</p><div class="maker-actions"><button class="px-window px-button is-primary" data-go-inside="${selected.index}" data-help="Makes the inside of it, furnished as FireRed furnishes one, and opens it.">Make its inside</button></div>`
+          : '';
+      body = `<p class="px-note px-wrap">Drag it with Select to move it.</p>${door}`;
       break;
     }
   }
@@ -510,6 +579,32 @@ function selectedPane(file: MapFile, selected: ThingRef | undefined): string {
       className: 'maker-selected',
       heading,
     },
+  );
+}
+
+/** A way through chosen on the map: where it goes, and how to move it. */
+function doorwayPane(file: MapFile, doorway: DoorwayInArea): string {
+  const far = file.links?.[doorway.link]?.ends[1 - doorway.end];
+  const leadsTo = far?.area === undefined ? 'outside' : (areaById(file, far.area)?.name ?? 'nowhere');
+  const body =
+    doorway.at.look === 'mat'
+      ? `<p class="px-wrap">The way out. Standing on the mat and pressing ${doorway.at.toward} takes a player ${escapeHtml(leadsTo === 'outside' ? 'back outside' : `to ${leadsTo}`)}, and coming in they arrive on it.</p><p class="px-note px-wrap">Drag it along the wall with Select to move it.</p>`
+      : `<p class="px-wrap">The door into ${escapeHtml(leadsTo)}. A player goes in by walking up to the door.</p>`;
+  return pixelWindow(`<div class="maker-form">${body}</div>`, {
+    className: 'maker-selected',
+    heading: doorway.at.look === 'mat' ? 'Way out' : 'Door',
+  });
+}
+
+/** The inside on screen: its name, its look and its size, and the way back out. */
+function insidePane(area: MapFileArea): string {
+  const styles = MAP_FILE_AREA_STYLES.map(
+    (style) =>
+      `<option value="${style}"${style === area.style ? ' selected' : ''}>${STYLE_LABELS[style]}</option>`,
+  ).join('');
+  return pixelWindow(
+    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label><label class="maker-field"><span>Looks like</span><select class="px-window px-field" data-area-style>${styles}</select></label><div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-area-width type="number" min="${MAP_FILE_LIMITS.minInsideWidth}" max="${MAP_FILE_LIMITS.maxInsideWidth}" value="${area.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-area-height type="number" min="${MAP_FILE_LIMITS.minInsideHeight}" max="${MAP_FILE_LIMITS.maxInsideHeight}" value="${area.height}" /></label></div><div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="Takes this inside away, and everything in it. The door outside shuts again. Press twice.">Remove</button></div></div>`,
+    { className: 'maker-settings', heading: 'This inside' },
   );
 }
 
@@ -706,8 +801,17 @@ function reviewPane(
 }
 
 export function makerScreen(state: MakerViewState): string {
+  const inside = areaById(state.file, state.area);
+  const area = inside?.id;
+  const view = focusArea(state.file, area);
+  const doorway = state.doorway
+    ? doorwaysIn(state.file, area).find(
+        (candidate) => candidate.link === state.doorway?.link && candidate.end === state.doorway.end,
+      )
+    : undefined;
   const panels: Readonly<Record<MakerPanel, () => string>> = {
-    map: () => `${selectedPane(state.file, state.selected)}${settingsPane(state.file)}`,
+    map: () =>
+      `${doorway ? doorwayPane(state.file, doorway) : selectedPane(view, state.selected, state.file, area)}${inside ? insidePane(inside) : settingsPane(state.file)}`,
     drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts),
     send: () => sendPane(state.file, state.sending),
     sent: () => sentPane(state.sent),
@@ -775,7 +879,7 @@ export function makerScreen(state: MakerViewState): string {
     aside: `<span>${state.checks.every((check) => check.passed) ? 'READY' : works ? 'WORKS · TRY IT' : 'NOT FINISHED'}</span>`,
     hints: 'CLICK the map to paint · CTRL+Z undo · ESC cancel',
     ...(state.status ? { status: escapeHtml(state.status) } : {}),
-    body: `<main class="px-body maker-shell">${toolsPane(state)}${mapPane(state)}${side}${pixelCommitBar(
+    body: `<main class="px-body maker-shell">${toolsPane(state, inside)}${mapPane(state, view, inside)}${side}${pixelCommitBar(
       {
         title: 'Your map',
         actions,

@@ -29,6 +29,7 @@ import {
   type GridPoint,
   type Growth,
   type Offset,
+  type Sides,
   type SpotKind,
   type ThingRef,
 } from '../maker/draft';
@@ -45,6 +46,22 @@ import {
   type MakerStore,
 } from '../maker/drafts';
 import { EditHistory } from '../maker/history';
+import {
+  areaById,
+  doorwayAt,
+  doorwaysIn,
+  focusArea,
+  makeInside,
+  moveBuilding,
+  moveDoorway,
+  removeArea,
+  removeBuilding,
+  resizeArea,
+  updateArea,
+  withFocusedArea,
+  type AreaId,
+  type DoorwayInArea,
+} from '../maker/areas';
 import { drawPlantSwatch, drawSwatch, loadMakerSheets } from '../maker/mapCanvas';
 import { MapPainter } from '../maker/mapPainter';
 import { overviewOf, type Overview } from '../maker/overview';
@@ -95,7 +112,13 @@ import {
   type PlaceChoice,
   stackLayout,
 } from '../maker/makerView';
-import { BUILDING_CHOICES, GROUND_BRUSHES, groundBrush, groundUnder } from '../maker/palette';
+import {
+  BUILDING_CHOICES,
+  brushesFor,
+  FURNITURE_CHOICES,
+  groundBrush,
+  groundUnder,
+} from '../maker/palette';
 import { isFigureSpecies } from '../world/pokemonFigures';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { takeDownPixelStatus } from '../ui/pixelUi';
@@ -103,7 +126,10 @@ import {
   MAP_FILE_LIMITS,
   plainText,
   readMapFile,
+  MAP_FILE_AREA_STYLES,
   type MapFile,
+  type MapFileArea,
+  type MapFileAreaStyle,
   type MapFileBuildingKind,
   type MapFileDoorKind,
   type MapFileHabitat,
@@ -132,6 +158,8 @@ const STATUS_MS = 3_500;
 const DRAFTS_FULL =
   'Your drafts could not be saved: this browser may be out of room. DOWNLOAD this map to keep it, and delete drafts you do not need.';
 
+/** No room to grow on any side: an inside's. */
+const NO_ROOM: Sides = { left: 0, top: 0, right: 0, bottom: 0 };
 /**
  * How often the map window scrolls while a stroke is held past its edge: a
  * frame's worth, so the map glides under the pointer rather than stepping.
@@ -191,9 +219,21 @@ export class MapMakerScene extends Phaser.Scene {
   private draftKey = '';
   private history = new EditHistory<MapFile>(blankMap());
   private tool: MakerTool = 'brush';
-  private brushId = GROUND_BRUSHES[0].id;
+  private brushId = brushesFor(false)[0].id;
   private place: PlaceChoice = { kind: 'drop-in' };
   private selected: ThingRef | undefined;
+  /**
+   * The place of the map on screen: the outdoors, or the inside of one of its
+   * buildings. Everything painted, placed and chosen is in it; `selected` is an
+   * index into its view (`focusArea`).
+   */
+  private area: AreaId;
+  /** A way through chosen on the map - a room's mat - instead of a thing. */
+  private doorway: Pick<DoorwayInArea, 'link' | 'end'> | undefined;
+  /** The view of the area on screen, kept against the file it was made from. */
+  private focused: { readonly file: MapFile; readonly area: AreaId; readonly view: MapFile } | undefined;
+  /** An inside the Remove button was pressed for once, waiting on the second press. */
+  private pendingAreaRemoval: string | undefined;
   /** The thing whose panel was last brought into view, so it is brought there once per choice. */
   private shownChosen: string | undefined;
   private zoom: MakerZoom = 16;
@@ -278,6 +318,8 @@ export class MapMakerScene extends Phaser.Scene {
       this.startNewDraft();
     }
     this.selected = undefined;
+    this.area = undefined;
+    this.doorway = undefined;
     this.stroke = undefined;
     this.stopEdgeScroll();
     this.panel = 'map';
@@ -349,6 +391,53 @@ export class MapMakerScene extends Phaser.Scene {
     return this.history.value;
   }
 
+  /**
+   * The area on screen as a map file of its own (`maker/areas.ts`): every brush
+   * and tool works on this, and `commitView` writes what they make back into
+   * the file.
+   */
+  private get view(): MapFile {
+    const file = this.file;
+    if (this.focused?.file !== file || this.focused.area !== this.area) {
+      this.focused = { file, area: this.area, view: focusArea(file, this.area) };
+    }
+    return this.focused.view;
+  }
+
+  /** The inside on screen, or undefined outdoors. */
+  private get inside(): MapFileArea | undefined {
+    return areaById(this.file, this.area);
+  }
+
+  /** Makes an edit of the area on screen the map, as one undo step. */
+  private commitView(next: MapFile, selected: ThingRef | undefined): void {
+    if (next === this.view) {
+      this.commit(this.file, selected);
+      return;
+    }
+    this.commit(withFocusedArea(this.file, this.area, next), selected);
+  }
+
+  /** Shows another place of the map: the outdoors, or one of its insides. */
+  private showArea(area: AreaId): void {
+    this.area = areaById(this.file, area)?.id;
+    this.selected = undefined;
+    this.doorway = undefined;
+    this.pendingAreaRemoval = undefined;
+    this.panel = 'map';
+    if (!brushesFor(this.inside !== undefined).some((brush) => brush.id === this.brushId)) {
+      this.brushId = brushesFor(this.inside !== undefined)[0].id;
+    }
+    if (this.place.kind === 'building') {
+      this.place = { kind: 'drop-in' };
+      if (this.tool === 'place') {
+        this.tool = 'select';
+      }
+    }
+    this.render();
+    this.fitZoom();
+  }
+
   private startNewDraft(maker = lastMakerName(this.store)): void {
     this.draftKey = newDraftKey(this.store);
     const file = setMaker(blankMap(), maker);
@@ -411,6 +500,7 @@ export class MapMakerScene extends Phaser.Scene {
   private commit(next: MapFile, selected: ThingRef | undefined): void {
     this.history.push(next);
     this.selected = selected;
+    this.doorway = undefined;
     this.scheduleAutosave();
     this.render();
   }
@@ -508,10 +598,22 @@ export class MapMakerScene extends Phaser.Scene {
       this.renderTimer = undefined;
     }
     this.commitTyping();
-    // Undo, redo or an edit can take away what was chosen; a choice of nothing
-    // is no choice.
-    if (this.selected && !thingExists(this.file, this.selected)) {
+    // Undo, redo or an edit can take away the inside on screen, or what was
+    // chosen; a choice of nothing is no choice.
+    if (this.area !== undefined && !this.inside) {
+      this.area = undefined;
       this.selected = undefined;
+    }
+    if (this.selected && !thingExists(this.view, this.selected)) {
+      this.selected = undefined;
+    }
+    if (
+      this.doorway &&
+      !doorwaysIn(this.file, this.area).some(
+        (candidate) => candidate.link === this.doorway?.link && candidate.end === this.doorway.end,
+      )
+    ) {
+      this.doorway = undefined;
     }
     const typedIn = this.fieldWithFocus();
     const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
@@ -530,7 +632,7 @@ export class MapMakerScene extends Phaser.Scene {
     const fresh = this.overlay.root.querySelector<HTMLElement>('[data-stack]');
     if (kept && fresh) {
       fresh.replaceWith(kept);
-      this.layoutStack(this.file);
+      this.layoutStack(this.view);
       // Taken out of the page and put back, the map let go of the pointer a
       // stroke holds, and a drag let go of past the window never ended.
       if (this.stroke) {
@@ -589,6 +691,8 @@ export class MapMakerScene extends Phaser.Scene {
   private screenMarkup(status: string | undefined): string {
     return makerScreen({
       file: this.file,
+      ...(this.area !== undefined ? { area: this.area } : {}),
+      ...(this.doorway ? { doorway: this.doorway } : {}),
       tool: this.tool,
       brushId: this.brushId,
       place: this.place,
@@ -664,12 +768,23 @@ export class MapMakerScene extends Phaser.Scene {
     );
   }
 
-  private redraw(file: MapFile = this.file): void {
+  private redraw(file: MapFile = this.view): void {
     const context = this.mapContext();
     if (!context) {
       return;
     }
-    this.painter.show(context, file, this.selected);
+    const doorways = doorwaysIn(this.file, this.area).map((doorway) => ({
+      at: doorway.at,
+      chosen: doorway.link === this.doorway?.link && doorway.end === this.doorway.end,
+    }));
+    const inside = this.inside;
+    this.painter.show(
+      context,
+      file,
+      this.selected,
+      doorways,
+      inside ? { area: inside, links: this.file.links ?? [] } : undefined,
+    );
     this.previewArea(undefined);
   }
 
@@ -677,11 +792,27 @@ export class MapMakerScene extends Phaser.Scene {
     this.overlay.root
       .querySelectorAll<HTMLCanvasElement>('canvas[data-swatch]')
       .forEach((canvas) => {
-        drawSwatch(canvas, canvas.dataset.swatch ?? '.');
+        const style = canvas.dataset.swatchStyle;
+        drawSwatch(
+          canvas,
+          canvas.dataset.swatch ?? '.',
+          style && (MAP_FILE_AREA_STYLES as readonly string[]).includes(style)
+            ? (style as MapFileAreaStyle)
+            : undefined,
+        );
       });
     this.overlay.root
       .querySelectorAll<HTMLCanvasElement>('canvas[data-plant]')
       .forEach((canvas) => {
+        // Furniture is pictured on the floor of the room it is offered in.
+        const style = this.inside?.style;
+        if (style) {
+          const piece = FURNITURE_CHOICES.find((option) => option.kind === canvas.dataset.plant);
+          if (piece) {
+            drawPlantSwatch(canvas, piece.kind, 'grass', style);
+          }
+          return;
+        }
         const choice = BUILDING_CHOICES.find((option) => option.kind === canvas.dataset.plant);
         if (choice) {
           drawPlantSwatch(canvas, choice.kind, choice.on ?? 'grass');
@@ -745,6 +876,8 @@ export class MapMakerScene extends Phaser.Scene {
       }
       this.startNewDraft(maker);
       this.selected = undefined;
+    this.area = undefined;
+    this.doorway = undefined;
       this.panel = 'map';
       this.render(untouched ? 'A new map.' : 'A new map. Your last one is in your drafts.');
       this.fitZoom();
@@ -785,10 +918,33 @@ export class MapMakerScene extends Phaser.Scene {
       root.querySelector<HTMLInputElement>('[data-file-input]')?.click(),
     );
     on('[data-back]', () => this.leave());
-    on('[data-remove-selected]', () => {
-      if (this.selected) {
-        this.commit(removeThing(this.file, this.selected), undefined);
+    on('[data-remove-selected]', () => this.removeSelected());
+    on('[data-area]', (element) => this.showArea(element.dataset.area || undefined));
+    on('[data-go-inside]', (element) => {
+      const outcome = makeInside(this.file, Number(element.dataset.goInside));
+      if (!outcome.made) {
+        this.render(outcome.reason);
+        return;
       }
+      if (outcome.file !== this.file) {
+        this.history.push(outcome.file);
+        this.scheduleAutosave();
+      }
+      this.showArea(outcome.area);
+    });
+    on('[data-remove-area]', (element) => {
+      const id = element.dataset.removeArea ?? '';
+      if (this.pendingAreaRemoval !== id) {
+        this.pendingAreaRemoval = id;
+        element.textContent = 'Remove for good';
+        return;
+      }
+      this.pendingAreaRemoval = undefined;
+      const name = areaById(this.file, id)?.name ?? 'The inside';
+      this.area = undefined;
+      this.commit(removeArea(this.file, id), undefined);
+      this.render(`${name} is gone, and its door is shut. Undo brings it back.`);
+      this.fitZoom();
     });
 
     root
@@ -836,12 +992,38 @@ export class MapMakerScene extends Phaser.Scene {
     field('[data-map-height]', (value) =>
       resizeMap(this.file, this.file.width, sizeFromField(value, this.file.height)),
     );
+    // The inside on screen, bound to that inside as every field is to its thing.
+    const inside = this.inside;
+    if (inside) {
+      field('[data-area-name]', (value) => {
+        const name = plainText(value);
+        return name.trim().length > 0 ? updateArea(this.file, inside.id, { name }) : this.file;
+      });
+      field('[data-area-style]', (value) =>
+        (MAP_FILE_AREA_STYLES as readonly string[]).includes(value)
+          ? updateArea(this.file, inside.id, { style: value as MapFileAreaStyle })
+          : this.file,
+      );
+      field('[data-area-width]', (value) =>
+        resizeArea(this.file, inside.id, sizeFromField(value, inside.width), inside.height),
+      );
+      field('[data-area-height]', (value) =>
+        resizeArea(this.file, inside.id, inside.width, sizeFromField(value, inside.height)),
+      );
+    }
     const selected = this.selected;
+    const area = this.area;
     root
       .querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('[data-field]')
       .forEach((input) => {
         bind(input, (value) =>
-          selected ? this.changeThing(selected, input.dataset.field ?? '', value) : this.file,
+          selected && area === this.area
+            ? withFocusedArea(
+                this.file,
+                area,
+                this.changeThing(selected, input.dataset.field ?? '', value),
+              )
+            : this.file,
         );
       });
 
@@ -1091,7 +1273,7 @@ export class MapMakerScene extends Phaser.Scene {
 
   /** The map as it is drawn now: a stroke's map while one is held, which may have grown. */
   private get onScreen(): MapFile {
-    return this.stroke?.file ?? this.file;
+    return this.stroke?.file ?? this.view;
   }
 
   private tileAt(
@@ -1114,7 +1296,7 @@ export class MapMakerScene extends Phaser.Scene {
   /** The tiles a tool may work on: the map, and for one that grows it, the room round it. */
   private reach(tool: MakerTool): { left: number; top: number; right: number; bottom: number } {
     const file = this.onScreen;
-    const room = this.grows(tool) ? growthRoom(file) : { left: 0, top: 0, right: 0, bottom: 0 };
+    const room = this.grows(tool) ? this.roomOf(file) : NO_ROOM;
     return {
       left: -room.left,
       top: -room.top,
@@ -1226,12 +1408,52 @@ export class MapMakerScene extends Phaser.Scene {
     return this.overlay.root.querySelector<HTMLElement>('canvas[data-map]');
   }
 
+  /**
+   * How much room the place on screen has to grow into on each side: the
+   * outdoors, the map's; an inside, none, because a room is the size its own
+   * fields say.
+   */
+  private roomOf(file: MapFile): Sides {
+    return this.area === undefined ? growthRoom(file) : NO_ROOM;
+  }
+
+  /** `growToFit` for the place on screen, which only grows outdoors. */
+  private wouldGrow(file: MapFile, tiles: readonly GridPoint[]): Growth {
+    return this.area === undefined ? growToFit(file, tiles) : { file, shift: { x: 0, y: 0 } };
+  }
+
   private inMap({ x, y }: GridPoint): boolean {
-    return x >= 0 && y >= 0 && x < this.file.width && y < this.file.height;
+    return x >= 0 && y >= 0 && x < this.view.width && y < this.view.height;
   }
 
   private brush() {
-    return groundBrush(this.brushId) ?? GROUND_BRUSHES[0];
+    const inside = this.inside !== undefined;
+    return groundBrush(this.brushId, inside) ?? brushesFor(inside)[0];
+  }
+
+  /**
+   * Takes the chosen thing off the map. A building outdoors goes with the
+   * inside its door leads into; the way out of a room goes only with the room.
+   */
+  private removeSelected(): void {
+    if (this.doorway) {
+      this.render('The way out of a room goes with the room. Remove the inside to take it away.');
+      return;
+    }
+    const selected = this.selected;
+    if (!selected) {
+      return;
+    }
+    if (selected.kind === 'building' && this.area === undefined) {
+      const had = this.file.links?.length ?? 0;
+      const next = removeBuilding(this.file, selected.index);
+      this.commit(next, undefined);
+      if ((next.links?.length ?? 0) < had) {
+        this.render('The building and its inside are gone. Undo brings both back.');
+      }
+      return;
+    }
+    this.commitView(removeThing(this.view, selected), undefined);
   }
 
   /**
@@ -1240,7 +1462,7 @@ export class MapMakerScene extends Phaser.Scene {
    * grows its own map and has its tiles moved with it.
    */
   private growFor(file: MapFile, tiles: readonly GridPoint[]): Growth {
-    const growth = growToFit(file, tiles);
+    const growth = this.wouldGrow(file, tiles);
     if (growth.file === file) {
       return growth;
     }
@@ -1287,7 +1509,7 @@ export class MapMakerScene extends Phaser.Scene {
     if (!stack || !canvas) {
       return;
     }
-    const layout = stackLayout(file, this.zoom);
+    const layout = stackLayout(file, this.zoom, this.area === undefined);
     stack.setAttribute('style', layout.stack);
     canvas.setAttribute('style', layout.map);
   }
@@ -1321,7 +1543,7 @@ export class MapMakerScene extends Phaser.Scene {
     };
     switch (this.tool) {
       case 'brush': {
-        const growth = this.growFor(this.file, [tile]);
+        const growth = this.growFor(this.view, [tile]);
         const at = { x: tile.x + growth.shift.x, y: tile.y + growth.shift.y };
         const file = paintWith(growth.file, [at], this.brush());
         this.stroke = {
@@ -1340,7 +1562,7 @@ export class MapMakerScene extends Phaser.Scene {
           tool: 'rect',
           start: tile,
           last: tile,
-          file: this.file,
+          file: this.view,
           shift: { x: 0, y: 0 },
           ...held,
         };
@@ -1348,14 +1570,15 @@ export class MapMakerScene extends Phaser.Scene {
         return;
       case 'fill':
         if (inMap) {
-          this.commit(paintWith(this.file, fillRegion(this.file, tile), this.brush()), this.selected);
+          this.commitView(paintWith(this.view, fillRegion(this.view, tile), this.brush()), this.selected);
         }
         return;
       case 'pick': {
-        const letter = groundAt(this.file, tile) ?? '.';
+        const letter = groundAt(this.view, tile) ?? '.';
+        const brushes = brushesFor(this.inside !== undefined);
         const picked =
-          GROUND_BRUSHES.find((brush) => brush.letterFor(groundUnder(letter)) === letter) ??
-          GROUND_BRUSHES.find((brush) => brush.swatch === groundUnder(letter));
+          brushes.find((brush) => brush.letterFor(groundUnder(letter)) === letter) ??
+          brushes.find((brush) => brush.swatch === groundUnder(letter));
         if (inMap && picked) {
           this.brushId = picked.id;
           this.tool = 'brush';
@@ -1364,24 +1587,33 @@ export class MapMakerScene extends Phaser.Scene {
         return;
       }
       case 'erase': {
-        const thing = inMap ? thingAt(this.file, tile) : undefined;
+        if (inMap && doorwayAt(this.file, this.area, tile)) {
+          this.render('The way out of a room goes with the room. Remove the inside to take it away.');
+          return;
+        }
+        const thing = inMap ? thingAt(this.view, tile) : undefined;
         if (thing) {
-          this.commit(removeThing(this.file, thing), undefined);
+          this.selected = thing;
+          this.removeSelected();
         }
         return;
       }
       case 'select': {
-        const thing = inMap ? thingAt(this.file, tile) : undefined;
+        // A way through first: it is drawn over whatever it stands beside, and
+        // the mat of a room is the one thing a maker moves along its wall.
+        const doorway = inMap ? doorwayAt(this.file, this.area, tile) : undefined;
+        const thing = doorway || !inMap ? undefined : thingAt(this.view, tile);
         this.selected = thing;
+        this.doorway = doorway ? { link: doorway.link, end: doorway.end } : undefined;
         this.panel = 'map';
-        if (thing) {
+        if (thing || doorway?.at.look === 'mat') {
           this.stroke = {
             tool: 'select',
             start: tile,
             last: tile,
-            file: this.file,
+            file: this.view,
             shift: { x: 0, y: 0 },
-            carrying: thing,
+            ...(thing ? { carrying: thing } : {}),
             ...held,
           };
         }
@@ -1396,7 +1628,7 @@ export class MapMakerScene extends Phaser.Scene {
             tool: 'place',
             start: tile,
             last: tile,
-            file: this.file,
+            file: this.view,
             shift: { x: 0, y: 0 },
             ...held,
           };
@@ -1410,7 +1642,7 @@ export class MapMakerScene extends Phaser.Scene {
                 y: tile.y + buildingSize(this.place.building).height - 1,
               })
             : [tile];
-        const before = this.file;
+        const before = this.view;
         const growth = this.growFor(before, footprint);
         const at = { x: tile.x + growth.shift.x, y: tile.y + growth.shift.y };
         const outcome =
@@ -1470,6 +1702,10 @@ export class MapMakerScene extends Phaser.Scene {
     } else if (stroke.tool === 'select' && stroke.carrying) {
       stroke.last = tile;
       this.previewArea(this.footprint(stroke.carrying, tile));
+    } else if (stroke.tool === 'select' && this.doorway) {
+      // A mat is carried along the room's bottom row and nowhere else.
+      stroke.last = { x: tile.x, y: this.view.height - 1 };
+      this.previewArea({ from: stroke.last, to: stroke.last });
     }
   }
 
@@ -1483,7 +1719,9 @@ export class MapMakerScene extends Phaser.Scene {
     if (!stroke) {
       return;
     }
-    const before = this.file;
+    // The place on screen as it was before the stroke: outdoors, the map grows
+    // with it; an inside does not grow, and is resized by its own fields.
+    const before = this.view;
     if (stroke.tool === 'brush') {
       this.commitGrown(before, stroke.file, this.selected, stroke.shift);
     } else if (stroke.tool === 'rect') {
@@ -1524,12 +1762,26 @@ export class MapMakerScene extends Phaser.Scene {
       const growth = this.growFor(before, [area.from, area.to]);
       const by = growth.shift;
       const to = this.carriedCorner(stroke.carrying, stroke.start, stroke.last);
-      const outcome = moveThing(growth.file, stroke.carrying, { x: to.x + by.x, y: to.y + by.y });
+      // A building outdoors carries the way through its door with it.
+      const at = { x: to.x + by.x, y: to.y + by.y };
+      const outcome =
+        stroke.carrying.kind === 'building' && this.area === undefined
+          ? moveBuilding(growth.file, stroke.carrying.index, at)
+          : moveThing(growth.file, stroke.carrying, at);
       if (outcome.placed) {
         this.commitGrown(before, outcome.file, outcome.thing, by);
       } else {
         this.undoGrowth(before, growth);
         this.render(outcome.reason);
+      }
+    } else if (stroke.tool === 'select' && this.doorway) {
+      const doorway = this.doorway;
+      const next = moveDoorway(this.file, doorway, stroke.last);
+      this.previewArea(undefined);
+      if (next !== this.file) {
+        this.commit(next, undefined);
+        this.doorway = doorway;
+        this.render();
       }
     }
   }
@@ -1545,11 +1797,15 @@ export class MapMakerScene extends Phaser.Scene {
     selected: ThingRef | undefined,
     shift: Offset,
   ): void {
+    // `before` and `next` are the place on screen; what is kept is the map
+    // with that place written back into it.
+    const from = this.file;
+    const file = withFocusedArea(from, this.area, next);
     const grew = next.width !== before.width || next.height !== before.height;
     if (grew) {
-      grownFrom.set(next, { before, shift });
+      grownFrom.set(file, { before: from, shift });
     }
-    this.history.push(next);
+    this.history.push(file);
     this.selected = selected;
     this.scheduleAutosave();
     this.render(grew ? `The map grew to ${next.width}x${next.height}.` : undefined);
@@ -1574,10 +1830,10 @@ export class MapMakerScene extends Phaser.Scene {
     if (stroke && canvas?.hasPointerCapture(stroke.pointerId)) {
       canvas.releasePointerCapture(stroke.pointerId);
     }
-    if (stroke && (stroke.file.width !== this.file.width || stroke.file.height !== this.file.height)) {
+    if (stroke && (stroke.file.width !== this.view.width || stroke.file.height !== this.view.height)) {
       // The stroke grew the map; dropped, it ungrows, and the window stays on what it showed.
       this.holdingTheView(stroke.file, { x: -stroke.shift.x, y: -stroke.shift.y }, () => {
-        this.layoutStack(this.file);
+        this.layoutStack(this.view);
         this.redraw();
       });
       return;
@@ -1599,11 +1855,11 @@ export class MapMakerScene extends Phaser.Scene {
     thing: ThingRef,
   ): { x: number; y: number; width: number; height: number } | undefined {
     if (thing.kind === 'building') {
-      const building = this.file.buildings[thing.index];
+      const building = this.view.buildings[thing.index];
       return { x: building.x, y: building.y, ...buildingSize(building.kind) };
     }
     if (thing.kind === 'district') {
-      return (this.file.districts ?? [])[thing.index];
+      return (this.view.districts ?? [])[thing.index];
     }
     if (thing.kind === 'door') {
       return (this.file.doors ?? [])[thing.index];
@@ -1630,21 +1886,21 @@ export class MapMakerScene extends Phaser.Scene {
     switch (field) {
       case 'name':
         return value.trim().length > 0
-          ? updateThing(this.file, selected, {
+          ? updateThing(this.view, selected, {
               name: value.slice(0, MAP_FILE_LIMITS.maxPlaceNameLength),
             })
-          : this.file;
+          : this.view;
       case 'description':
         return selected.kind === 'drop-in'
-          ? describeDropIn(this.file, selected.index, value)
-          : this.file;
+          ? describeDropIn(this.view, selected.index, value)
+          : this.view;
       case 'opens': {
         if (selected.kind !== 'exit') {
-          return this.file;
+          return this.view;
         }
         const seconds = Math.round(Number(value));
         return setExitOpens(
-          this.file,
+          this.view,
           selected.index,
           Number.isFinite(seconds) && seconds > 0
             ? { when: 'after', seconds: Math.min(MAP_FILE_LIMITS.maxExitDelaySeconds, seconds) }
@@ -1652,7 +1908,7 @@ export class MapMakerScene extends Phaser.Scene {
         );
       }
       case 'lines':
-        return updateThing(this.file, selected, {
+        return updateThing(this.view, selected, {
           lines: value
             .split('\n')
             .map((line) => line.trim().slice(0, MAP_FILE_LIMITS.maxLineLength))
@@ -1661,27 +1917,27 @@ export class MapMakerScene extends Phaser.Scene {
         });
       case 'sight': {
         const sight = Math.round(Number(value));
-        return updateThing(this.file, selected, {
+        return updateThing(this.view, selected, {
           sight: Number.isFinite(sight)
             ? Math.max(0, Math.min(MAP_FILE_LIMITS.maxSight, sight))
             : 0,
         });
       }
       case 'wildlife':
-        return updateThing(this.file, selected, { wildlife: value === '' ? undefined : value });
+        return updateThing(this.view, selected, { wildlife: value === '' ? undefined : value });
       case 'rain':
-        return updateThing(this.file, selected, { rain: value === 'rain' });
+        return updateThing(this.view, selected, { rain: value === 'rain' });
       case 'hidden':
         return selected.kind === 'item'
-          ? setItemHidden(this.file, selected.index, value === 'hidden')
-          : this.file;
+          ? setItemHidden(this.view, selected.index, value === 'hidden')
+          : this.view;
       case 'level': {
         if (selected.kind !== 'pokemon') {
-          return this.file;
+          return this.view;
         }
         const level = Math.round(Number(value));
         return setPokemonLevel(
-          this.file,
+          this.view,
           selected.index,
           Number.isFinite(level) && level >= 2
             ? Math.min(MAP_FILE_LIMITS.maxPokemonLevel, level)
@@ -1689,14 +1945,14 @@ export class MapMakerScene extends Phaser.Scene {
         );
       }
       case 'species':
-        return isFigureSpecies(value) ? updateThing(this.file, selected, { species: value }) : this.file;
+        return isFigureSpecies(value) ? updateThing(this.view, selected, { species: value }) : this.view;
       case 'look':
       case 'facing':
       case 'kind':
       case 'team':
-        return updateThing(this.file, selected, { [field]: value });
+        return updateThing(this.view, selected, { [field]: value });
       default:
-        return this.file;
+        return this.view;
     }
   }
 
@@ -1710,7 +1966,7 @@ export class MapMakerScene extends Phaser.Scene {
       const size = buildingSize(this.place.building);
       const to = { x: tile.x + size.width - 1, y: tile.y + size.height - 1 };
       // Past the edge, it fits if the map can grow round it.
-      const growth = growToFit(this.file, [tile, to]);
+      const growth = this.wouldGrow(this.view, [tile, to]);
       const valid = placeBuilding(growth.file, this.place.building, {
         x: tile.x + growth.shift.x,
         y: tile.y + growth.shift.y,
@@ -1737,7 +1993,7 @@ export class MapMakerScene extends Phaser.Scene {
     const top = Math.min(area.from.y, area.to.y);
     const at = (tiles: number): string => `calc(var(--u) * ${tiles * this.zoom})`;
     // Placed in the drawing, whose corner is the corner of the room round the map.
-    const room = growthRoom(this.onScreen);
+    const room = this.roomOf(this.onScreen);
     ghost.style.left = at(left + room.left);
     ghost.style.top = at(top + room.top);
     ghost.style.width = at(Math.max(area.from.x, area.to.x) - left + 1);
@@ -1819,13 +2075,13 @@ export class MapMakerScene extends Phaser.Scene {
     if (!viewport || !map || viewport.clientWidth === 0) {
       return;
     }
-    const unit = map.getBoundingClientRect().width / (this.file.width * this.zoom);
+    const unit = map.getBoundingClientRect().width / (this.view.width * this.zoom);
     // Never below half size on its own: at a quarter a tile is four pixels,
     // too small to paint, and a wide map is better scrolled than squinted at.
     // The maker can still zoom out to see the whole of it.
     const fits = [...MAKER_ZOOMS]
       .reverse()
-      .find((zoom) => zoom <= 16 && this.file.width * zoom * unit <= viewport.clientWidth);
+      .find((zoom) => zoom <= 16 && this.view.width * zoom * unit <= viewport.clientWidth);
     const zoom = Math.max(fits ?? 8, 8) as MakerZoom;
     if (zoom !== this.zoom) {
       this.zoom = zoom;
@@ -1857,6 +2113,7 @@ export class MapMakerScene extends Phaser.Scene {
   private undo(): void {
     const from = this.file;
     this.history.undo();
+    this.doorway = undefined;
     this.afterTimeTravel(from, this.file);
   }
 
@@ -1872,6 +2129,7 @@ export class MapMakerScene extends Phaser.Scene {
    */
   private afterTimeTravel(from: MapFile, to: MapFile): void {
     this.selected = undefined;
+    this.doorway = undefined;
     this.scheduleAutosave();
     const undone = grownFrom.get(from);
     const redone = grownFrom.get(to);
@@ -1896,6 +2154,8 @@ export class MapMakerScene extends Phaser.Scene {
     this.store = { ...this.store, current: draft.key };
     saveMakerStore(this.store);
     this.selected = undefined;
+    this.area = undefined;
+    this.doorway = undefined;
     this.panel = 'map';
     this.render();
     this.restoreView();
@@ -1954,6 +2214,8 @@ export class MapMakerScene extends Phaser.Scene {
     });
     saveMakerStore(this.store);
     this.selected = undefined;
+    this.area = undefined;
+    this.doorway = undefined;
     this.panel = 'map';
     this.render(`Opened ${name}.`);
     this.fitZoom();
@@ -2293,17 +2555,18 @@ export class MapMakerScene extends Phaser.Scene {
       event.preventDefault();
       if (this.stroke) {
         this.cancelStroke();
-      } else if (this.selected) {
+      } else if (this.selected || this.doorway) {
         this.selected = undefined;
+        this.doorway = undefined;
         this.render();
       } else if (this.panel !== 'map') {
         this.openPanel('map');
       }
       return;
     }
-    if ((key === 'delete' || key === 'backspace') && this.selected) {
+    if ((key === 'delete' || key === 'backspace') && (this.selected || this.doorway)) {
       event.preventDefault();
-      this.commit(removeThing(this.file, this.selected), undefined);
+      this.removeSelected();
       return;
     }
     const tools: Readonly<Record<string, MakerTool>> = {

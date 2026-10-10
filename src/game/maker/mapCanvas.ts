@@ -7,7 +7,6 @@ import {
 import { publicAssetUrl } from '../publicAssetUrl';
 import { characterDesignAssetPath } from '../world/characterDesigns';
 import {
-  MAP_FILE_BUILDINGS,
   MAP_FILE_LOOKS,
   type MapFileBuildingKind,
   type MapFileLook,
@@ -21,10 +20,13 @@ import {
 } from '../world/pokemonFigures';
 import { trainerSightTiles } from '../world/trainerSight';
 import { TILE_SIZE } from '../worldMap';
-import type { MapFile } from '../world/mapFile';
-import { fileDoorGates, sketchMapFile } from '../world/mapFile';
+import type { MapFile, MapFileArea, MapFileLink, MapFileLinkEnd } from '../world/mapFile';
+import { fileDoorGates, plantedProp, sketchMapFile } from '../world/mapFile';
 import { applyGates } from '../world/gates';
+import { areaTileset, sketchArea } from '../world/mapAreas';
 import { buildMapLayers, type MapLayers } from '../world/tiles';
+import type { TileSource } from '../world/tileset/catalogue';
+import { INSIDE_TILESETS } from '../world/tileset/insideTileset';
 import { PLAYER_MAP_TILESET } from '../world/tileset/playerMapTileset';
 import { buildingSize, type GridPoint, type ThingRef } from './draft';
 import type { TileRect } from './layerPatch';
@@ -58,10 +60,22 @@ function loadImage(path: string): Promise<void> {
   });
 }
 
-/** Loads the sheets a player map draws from, and every figure a person can look like, once. */
+/**
+ * Every sheet a player's map is drawn from: its outdoors and the rooms
+ * its buildings open into, each once.
+ */
+const MAKER_SOURCES: readonly TileSource[] = [
+  ...new Map(
+    [PLAYER_MAP_TILESET, ...Object.values(INSIDE_TILESETS)]
+      .flatMap((catalogue) => catalogue.sources)
+      .map((source) => [source.textureKey, source] as const),
+  ).values(),
+];
+
+/** Loads every sheet a map is drawn from, and every figure a person can look like, once. */
 export function loadMakerSheets(): Promise<void> {
   return Promise.all([
-    ...PLAYER_MAP_TILESET.sources.map((source) => loadImage(source.imagePath)),
+    ...MAKER_SOURCES.map((source) => loadImage(source.imagePath)),
     ...MAP_FILE_LOOKS.map((look) => loadImage(characterDesignAssetPath(look))),
     loadImage(POKEMON_ICON_PATH),
   ]).then(() => undefined);
@@ -125,7 +139,7 @@ function drawPokemon(context: CanvasRenderingContext2D, species: FigureSpeciesId
 
 /** Draws one tile of a player map's sheets by its number. */
 function drawTileAt(context: CanvasRenderingContext2D, tile: number, x: number, y: number): void {
-  const source = PLAYER_MAP_TILESET.sources.find(
+  const source = MAKER_SOURCES.find(
     (candidate) =>
       tile >= candidate.firstIndex &&
       tile < candidate.firstIndex + candidate.columns * candidate.rows,
@@ -148,9 +162,35 @@ function drawTileAt(context: CanvasRenderingContext2D, tile: number, x: number, 
   );
 }
 
-/** A map as the editor draws it: its doors shut, as a fresh save first meets them. */
-export function layersFor(file: MapFile): MapLayers {
-  return buildMapLayers(applyGates(sketchMapFile(file), fileDoorGates(file), []), PLAYER_MAP_TILESET);
+/**
+ * The layers a map file draws, its doors shut as a fresh save first meets
+ * them, or - given the inside it is a view of - that inside's, drawn from its
+ * own room's art with a mat under every way out.
+ */
+export function layersFor(
+  file: MapFile,
+  inside?: { readonly area: MapFileArea; readonly links: readonly MapFileLink[] },
+): MapLayers {
+  if (!inside) {
+    return buildMapLayers(
+      applyGates(sketchMapFile(file), fileDoorGates(file), []),
+      PLAYER_MAP_TILESET,
+    );
+  }
+  const area: MapFileArea = {
+    ...inside.area,
+    width: file.width,
+    height: file.height,
+    ground: file.ground,
+    buildings: file.buildings,
+  };
+  return buildMapLayers(sketchArea(area, inside.links), areaTileset(area));
+}
+
+/** A way through, as the canvas marks it: where it is stood on, which way it goes, whether it is chosen. */
+export interface DoorwayMark {
+  readonly at: MapFileLinkEnd;
+  readonly chosen: boolean;
 }
 
 /** Colours for what is placed on the map, the same three the drop-in screen marks them in. */
@@ -163,7 +203,23 @@ const MARK_COLOURS = {
   door: '#9ff0ff',
   district: '#f8f7dd',
   figure: '#c9a6ff',
+  doorway: '#ffa95c',
 } as const;
+
+/** An arrow pointing the way a doorway is gone through, drawn up and turned for the other three. */
+const DOORWAY_ARROW = ['...#...', '..###..', '.#####.', '#######', '..###..', '..###..'];
+
+function turned(glyph: readonly string[], toward: MapFileLinkEnd['toward']): readonly string[] {
+  if (toward === 'up') {
+    return glyph;
+  }
+  if (toward === 'down') {
+    return [...glyph].reverse();
+  }
+  const width = glyph[0].length;
+  const columns = Array.from({ length: width }, (_, x) => glyph.map((row) => row[x]).join(''));
+  return toward === 'left' ? columns : columns.map((row) => [...row].reverse().join(''));
+}
 
 /**
  * Each place is a frame and a glyph in its own colour - a way in is an arrow
@@ -189,6 +245,7 @@ export function drawMap(
   layers: MapLayers,
   selected: ThingRef | undefined,
   region?: TileRect,
+  doorways: readonly DoorwayMark[] = [],
 ): void {
   const { canvas } = context;
   const width = file.width * TILE_SIZE;
@@ -217,7 +274,7 @@ export function drawMap(
     area.width * TILE_SIZE,
     area.height * TILE_SIZE,
   );
-  const spans = PLAYER_MAP_TILESET.sources.map((source) => ({
+  const spans = MAKER_SOURCES.map((source) => ({
     image: sheets.get(source.imagePath),
     from: source.firstIndex,
     to: source.firstIndex + source.columns * source.rows,
@@ -376,6 +433,24 @@ export function drawMap(
       selected?.kind === 'door' && selected.index === index,
     ),
   );
+  // Each way through, on the tile it is gone through from: a ring and an
+  // arrow pressing the way it goes - up into a door, down off a mat.
+  for (const doorway of doorways) {
+    const left = doorway.at.x * TILE_SIZE;
+    const top = doorway.at.y * TILE_SIZE;
+    ring(context, left, top, TILE_SIZE, TILE_SIZE, MARK_COLOURS.doorway, doorway.chosen);
+    const glyph = turned(DOORWAY_ARROW, doorway.at.toward);
+    const gx = left + Math.floor((TILE_SIZE - glyph[0].length) / 2);
+    const gy = top + Math.floor((TILE_SIZE - glyph.length) / 2);
+    context.fillStyle = MARK_COLOURS.doorway;
+    glyph.forEach((row, dy) => {
+      [...row].forEach((pixel, dx) => {
+        if (pixel === '#') {
+          context.fillRect(gx + dx, gy + dy, 1, 1);
+        }
+      });
+    });
+  }
   if (selected?.kind === 'building') {
     const building = file.buildings[selected.index];
     if (building) {
@@ -417,13 +492,49 @@ const swatchPatches = new Map<string, { readonly file: MapFile; readonly layers:
 /**
  * A brush's swatch: the middle tile of a little patch of it, drawn by the same
  * builder as the map, so the palette shows the very tile the brush will paint.
+ * Indoors the patch is a corner of a room in the style on screen - a wall
+ * stood on floor, so the swatch is the wall's face with its skirting.
  */
-export function drawSwatch(canvas: HTMLCanvasElement, letter: string): void {
+export function drawSwatch(
+  canvas: HTMLCanvasElement,
+  letter: string,
+  style?: MapFileArea['style'],
+): void {
   const context = canvas.getContext('2d');
   if (!context) {
     return;
   }
-  let patch = swatchPatches.get(letter);
+  const key = style ? `${style}:${letter}` : letter;
+  let patch = swatchPatches.get(key);
+  if (!patch && style) {
+    const ground = letter === 'B' ? ['BBB', 'BBB', 'PPP'] : ['PPP', 'PPP', 'PPP'];
+    const file: MapFile = {
+      format: 1,
+      id: 'swatch',
+      name: 'swatch',
+      maker: 'swatch',
+      width: 3,
+      height: 3,
+      ground,
+      buildings: [],
+      dropIns: [],
+      exits: [],
+      itemSpots: [],
+      wildlife: 'meadow',
+    };
+    const area: MapFileArea = {
+      id: 'swatch',
+      name: 'swatch',
+      kind: 'inside',
+      style,
+      width: 3,
+      height: 3,
+      ground,
+      buildings: [],
+    };
+    patch = { file, layers: layersFor(file, { area, links: [] }) };
+    swatchPatches.set(key, patch);
+  }
   if (!patch) {
     // Three wide, so a stamp stands on grass with grass either side of it and
     // a ledge has its two ends.
@@ -445,7 +556,7 @@ export function drawSwatch(canvas: HTMLCanvasElement, letter: string): void {
       wildlife: 'meadow',
     };
     patch = { file, layers: layersFor(file) };
-    swatchPatches.set(letter, patch);
+    swatchPatches.set(key, patch);
   }
   const scratch = document.createElement('canvas');
   const scratchContext = scratch.getContext('2d');
@@ -482,14 +593,46 @@ export function drawPlantSwatch(
   canvas: HTMLCanvasElement,
   kind: MapFileBuildingKind,
   on: 'grass' | 'water' = 'grass',
+  /** A piece of furniture is pictured on the floor of a room in this style. */
+  style?: MapFileArea['style'],
 ): void {
   const context = canvas.getContext('2d');
-  const prop = PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[kind]];
+  const prop = plantedProp(kind);
   if (!context || !prop) {
     return;
   }
   const { width, height } = prop;
-  let patch = plantPatches.get(kind);
+  const key = style ? `${style}:${kind}` : kind;
+  let patch = plantPatches.get(key);
+  if (!patch && style) {
+    const rows = Array.from({ length: height + 3 }, () => 'P'.repeat(width + 2));
+    const file: MapFile = {
+      format: 1,
+      id: 'plant',
+      name: 'plant',
+      maker: 'plant',
+      width: width + 2,
+      height: height + 3,
+      ground: rows,
+      buildings: [{ kind, x: 1, y: 2 }],
+      dropIns: [],
+      exits: [],
+      itemSpots: [],
+      wildlife: 'meadow',
+    };
+    const area: MapFileArea = {
+      id: 'plant',
+      name: 'plant',
+      kind: 'inside',
+      style,
+      width: width + 2,
+      height: height + 3,
+      ground: rows,
+      buildings: file.buildings,
+    };
+    patch = { file, layers: layersFor(file, { area, links: [] }) };
+    plantPatches.set(key, patch);
+  }
   if (!patch) {
     // A tile of ground all round, and a second row above for a crown's brim.
     const ground = (on === 'water' ? 'W' : '.').repeat(width + 2);
@@ -508,7 +651,7 @@ export function drawPlantSwatch(
       wildlife: 'meadow',
     };
     patch = { file, layers: layersFor(file) };
-    plantPatches.set(kind, patch);
+    plantPatches.set(key, patch);
   }
   const scratch = document.createElement('canvas');
   const scratchContext = scratch.getContext('2d');

@@ -25,7 +25,19 @@ import type { WorldLoot } from './loot';
 import { MapSketch, type PropStamp } from './mapGrid';
 import { PLAYER_MAP_TILESET, type PlayerMapPropName } from './tileset/playerMapTileset';
 import { MATERIAL_CHARS, MATERIALS, type Material } from './tileset/materials';
-import type { TilesetCatalogue } from './tileset/catalogue';
+import type { PropDefinition, TilesetCatalogue } from './tileset/catalogue';
+import {
+  INSIDE_PROPS,
+  INSIDE_STYLES,
+  type InsidePropName,
+  type InsideStyle,
+} from './tileset/insideTileset';
+import {
+  composeMapFile,
+  layOutMapFile,
+  type ComposedMap,
+  type PlacedArea,
+} from './mapAreas';
 
 /**
  * A raid map as one file.
@@ -49,6 +61,12 @@ import type { TilesetCatalogue } from './tileset/catalogue';
  * Every exit carries `opens` from the first version, because the locks, keys
  * and pickaxe planned for later are new values of that one field rather than a
  * new shape of file.
+ *
+ * A map may also hold **areas** - the inside of a building, and later a cave -
+ * each drawn as a little map of its own, and **links** between them: a
+ * building's door and the mat inside it. Both are optional, and everything
+ * placed says which area it stands in with an optional `area`, so a file that
+ * has none is the outdoor map it always was (`docs/maker-areas.md`).
  */
 
 /** The version of the file format this code reads and writes. */
@@ -87,6 +105,20 @@ export const MAP_FILE_LIMITS = {
   maxLineLength: 120,
   /** How far a trainer may watch along the way they face. */
   maxSight: 4,
+  /** Places that are not the outdoor map: insides, and later caves. */
+  maxAreas: 16,
+  /** Ways between places: a door and its mat are one. */
+  maxLinks: 32,
+  /**
+   * How big an inside may be. FireRed's smallest house is eight by six and its
+   * Pokemon Center fifteen by ten; a mansion floor is wider than the screen,
+   * which is allowed, because a room the camera has to follow is still a room.
+   */
+  minInsideWidth: 6,
+  minInsideHeight: 5,
+  maxInsideWidth: 40,
+  maxInsideHeight: 32,
+  maxFurniture: 80,
 } as const;
 
 /** Every file map's id is its own id with this in front, so none can collide with a shipped map. */
@@ -286,7 +318,119 @@ export const MAP_FILE_BUILDINGS = {
   'ferry': 'seagallop',
 } as const satisfies Record<string, PlayerMapPropName>;
 
-export type MapFileBuildingKind = keyof typeof MAP_FILE_BUILDINGS;
+export type MapFileOutdoorBuildingKind = keyof typeof MAP_FILE_BUILDINGS;
+
+/**
+ * What a file calls the furniture of an inside, and the piece it plants. As
+ * with buildings, the file keeps its own words.
+ */
+export const MAP_FILE_FURNITURE = {
+  computers: 'computers',
+  bookcase: 'bookshelves',
+  machine: 'machine',
+  table: 'table',
+  'shelves-books': 'shelvesWest',
+  'shelves-jars': 'shelvesEast',
+  'shelves-empty': 'shelvesEmpty',
+  plant: 'plant',
+  'plant-pot': 'plantEast',
+  'tall-plant': 'tallPlant',
+  'house-plant': 'housePlant',
+  bed: 'bed',
+  'center-counter': 'centerCounter',
+  'center-wall-west': 'centerWallWest',
+  'center-wall-east': 'centerWallEast',
+  'center-emblem': 'emblem',
+  seats: 'seats',
+  'healing-machine': 'healingMachine',
+  pillar: 'pillar',
+  'cell-separators': 'separators',
+  pc: 'pc',
+  desk: 'desk',
+  'wooden-box': 'crate',
+  books: 'books',
+  drawers: 'drawer',
+  generator: 'generator',
+  telephone: 'telephone',
+  vent: 'vent',
+  'big-crate': 'bigCrate',
+  'radio-set': 'radioSet',
+  stool: 'stool',
+  monitors: 'monitors',
+  workbench: 'workbench',
+  sofa: 'sofa',
+  bunk: 'bunk',
+  box: 'box',
+  boxes: 'boxStack',
+  'tall-box': 'tallBox',
+} as const satisfies Record<string, InsidePropName>;
+
+export type MapFileFurnitureKind = keyof typeof MAP_FILE_FURNITURE;
+
+/** Anything a map plants: a building outdoors, or a piece of furniture inside. */
+export type MapFileBuildingKind = MapFileOutdoorBuildingKind | MapFileFurnitureKind;
+
+/** The landmark a planted thing is, wherever it stands. */
+export function plantedProp(kind: MapFileBuildingKind): PropDefinition {
+  if (kind in MAP_FILE_BUILDINGS) {
+    return PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[kind as MapFileOutdoorBuildingKind]];
+  }
+  return INSIDE_PROPS[MAP_FILE_FURNITURE[kind as MapFileFurnitureKind]];
+}
+
+export function isOutdoorBuilding(kind: string): kind is MapFileOutdoorBuildingKind {
+  return kind in MAP_FILE_BUILDINGS;
+}
+
+export function isFurniture(kind: string): kind is MapFileFurnitureKind {
+  return kind in MAP_FILE_FURNITURE;
+}
+
+/**
+ * Where each building's door is, as a cell of its footprint. A building with
+ * a door can be given an inside: linking the tile in front of this cell to a
+ * mat in a room is what opens it. The rest - signs, the gatehouses - have no
+ * door of this kind.
+ */
+export const MAP_FILE_BUILDING_DOORS: Readonly<
+  Partial<Record<MapFileOutdoorBuildingKind, readonly [number, number]>>
+> = {
+  house: [1, 3],
+  'house-door': [1, 3],
+  'house-flowers': [1, 3],
+  cottage: [3, 2],
+  'cottage-door': [3, 2],
+  'pokemon-center': [2, 4],
+  'pokemon-center-door': [2, 4],
+  'poke-mart': [2, 3],
+  'poke-mart-door': [2, 3],
+  gym: [3, 4],
+};
+
+/** The tile in front of a building's door - where its link's end stands - or undefined. */
+export function doorFront(building: MapFileBuilding): MapFileSpot | undefined {
+  const door = MAP_FILE_BUILDING_DOORS[building.kind as MapFileOutdoorBuildingKind];
+  return door ? { x: building.x + door[0], y: building.y + door[1] + 1 } : undefined;
+}
+
+/** What kind of place an area is. Caves will be the second. */
+export const MAP_FILE_AREA_KINDS = ['inside'] as const;
+export type MapFileAreaKind = (typeof MAP_FILE_AREA_KINDS)[number];
+
+/** How an inside is dressed: which FireRed room its floor and walls are. */
+export const MAP_FILE_AREA_STYLES: readonly InsideStyle[] = INSIDE_STYLES;
+export type MapFileAreaStyle = InsideStyle;
+
+/** The ground letters an inside may use: its floor and its wall. */
+export const MAP_FILE_INSIDE_LETTERS: readonly string[] = [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall];
+
+/**
+ * How a way through looks where you go through it: a building's door you
+ * walk up to, or the mat inside a room you step off. More looks - a cave's
+ * mouth, a ladder, stairs - are more values of this.
+ */
+export const MAP_FILE_DOORWAY_LOOKS = ['door', 'mat'] as const;
+export type MapFileDoorwayLook = (typeof MAP_FILE_DOORWAY_LOOKS)[number];
 
 /**
  * What kind of country a map's tall grass is. The maker chooses the country and
@@ -312,6 +456,8 @@ export type MapFileOpens =
 export interface MapFileSpot {
   readonly x: number;
   readonly y: number;
+  /** The area it stands in, by id; absent is outdoors. */
+  readonly area?: string;
 }
 
 /** Somewhere to find something; hidden, it is not drawn until it is stepped on. */
@@ -515,6 +661,7 @@ export interface MapFileLandmark extends MapFileSpot {
 
 /** A named part of the map: a rectangle, with its own wildlife if it has any. */
 export interface MapFileDistrict {
+  readonly area?: string;
   readonly name: string;
   readonly x: number;
   readonly y: number;
@@ -552,6 +699,41 @@ export interface MapFileTrainer extends MapFileSpot {
   readonly lines: readonly string[];
 }
 
+/**
+ * A place that is not the outdoor map: the inside of a building. It is drawn
+ * as a little map of its own - its ground and what is planted on it - and is
+ * reached through a link.
+ */
+export interface MapFileArea {
+  /** Lower-case letters, digits and dashes, unique in the file. */
+  readonly id: string;
+  /** What the plate says when you walk in. */
+  readonly name: string;
+  readonly kind: MapFileAreaKind;
+  readonly style: MapFileAreaStyle;
+  readonly width: number;
+  readonly height: number;
+  readonly ground: readonly string[];
+  /** Its furniture. */
+  readonly buildings: readonly MapFileBuilding[];
+}
+
+/**
+ * One end of a way through: the tile you stand on to go through it, and come
+ * out on from the other end; the way you press to go through; and what is
+ * there to go through. A building's door is the `door` look on the tile in
+ * front of the building's door cell, pressing up.
+ */
+export interface MapFileLinkEnd extends MapFileSpot {
+  readonly toward: MapFileFacing;
+  readonly look: MapFileDoorwayLook;
+}
+
+/** A way between two places on the map, the same both ways. */
+export interface MapFileLink {
+  readonly ends: readonly [MapFileLinkEnd, MapFileLinkEnd];
+}
+
 export interface MapFile {
   readonly format: typeof MAP_FILE_FORMAT;
   /** Lower-case letters, digits and dashes: it becomes part of the map's id. */
@@ -584,6 +766,9 @@ export interface MapFile {
   readonly doors?: readonly MapFileDoor[];
   /** And Pokémon standing in the world, who say their own name when spoken to. */
   readonly pokemon?: readonly MapFilePokemon[];
+  /** Insides, and the ways into them: see `MapFileArea` and `MapFileLink`. */
+  readonly areas?: readonly MapFileArea[];
+  readonly links?: readonly MapFileLink[];
 }
 
 /**
@@ -611,6 +796,7 @@ export function wordsOf(file: Partial<MapFile>): readonly string[] {
     ...(file.landmarks ?? []).map((landmark) => landmark.name),
     ...(file.districts ?? []).map((district) => district.name),
     ...(file.trainers ?? []).flatMap((trainer) => [trainer.name, ...trainer.lines]),
+    ...(file.areas ?? []).map((area) => area.name),
   ].filter((text): text is string => typeof text === 'string');
 }
 
@@ -707,14 +893,27 @@ export function readMapFile(
     });
   }
 
-  const inBounds = (spot: Record<string, unknown>): boolean =>
-    isWholeNumber(spot.x) &&
-    isWholeNumber(spot.y) &&
-    sized &&
-    spot.x >= 0 &&
-    spot.y >= 0 &&
-    spot.x < width &&
-    spot.y < height;
+  // The areas come first, because everything placed is measured against the
+  // area it says it stands in rather than against the outdoor map.
+  const areaSizes = readAreas(value.areas, problems);
+  const sizeOf = (spot: Record<string, unknown>): { width: number; height: number } | undefined => {
+    if (spot.area === undefined) {
+      return sized ? { width: width, height: height } : undefined;
+    }
+    return typeof spot.area === 'string' ? areaSizes.get(spot.area) : undefined;
+  };
+  const inBounds = (spot: Record<string, unknown>): boolean => {
+    const size = sizeOf(spot);
+    return (
+      size !== undefined &&
+      isWholeNumber(spot.x) &&
+      isWholeNumber(spot.y) &&
+      spot.x >= 0 &&
+      spot.y >= 0 &&
+      spot.x < size.width &&
+      spot.y < size.height
+    );
+  };
 
   const list = (field: string, max: number, min = 0): Record<string, unknown>[] => {
     const raw = value[field];
@@ -729,7 +928,9 @@ export function readMapFile(
       problems.push(`A map holds at most ${max} ${field}.`);
     }
     raw.forEach((spot, index) => {
-      if (!inBounds(spot)) {
+      if (spot.area !== undefined && (typeof spot.area !== 'string' || !areaSizes.has(spot.area))) {
+        problems.push(`${field} ${index + 1} is in an area the map does not have.`);
+      } else if (!inBounds(spot)) {
         problems.push(`${field} ${index + 1} is not on the map.`);
       }
     });
@@ -737,14 +938,16 @@ export function readMapFile(
   };
 
   for (const [index, building] of list('buildings', 200).entries()) {
-    if (typeof building.kind !== 'string' || !(building.kind in MAP_FILE_BUILDINGS)) {
+    if (building.area !== undefined) {
+      problems.push(`Building ${index + 1} is listed outdoors but says it is in an area.`);
+    } else if (typeof building.kind !== 'string' || !isOutdoorBuilding(building.kind)) {
       problems.push(
         `Building ${index + 1} is not a building the game has: ${String(building.kind)}.`,
       );
     } else if (inBounds(building)) {
       // Its top-left corner is on the map; the rest of it has to be too, or the
       // sketch it plants into refuses it and nothing about the map can be drawn.
-      const prop = PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[building.kind as MapFileBuildingKind]];
+      const prop = plantedProp(building.kind);
       if (
         (building.x as number) + prop.width > (width as number) ||
         (building.y as number) + prop.height > (height as number)
@@ -894,18 +1097,19 @@ export function readMapFile(
         const what = `District ${index + 1}`;
         nameOf(what, district.name);
         const { x, y, width: w, height: h } = district;
+        const size = sizeOf(district);
         const fits =
           isWholeNumber(x) &&
           isWholeNumber(y) &&
           isWholeNumber(w) &&
           isWholeNumber(h) &&
-          sized &&
+          size !== undefined &&
           x >= 0 &&
           y >= 0 &&
           w > 0 &&
           h > 0 &&
-          x + w <= width &&
-          y + h <= height;
+          x + w <= size.width &&
+          y + h <= size.height;
         if (!fits) {
           problems.push(`${what} is not on the map.`);
         }
@@ -954,6 +1158,13 @@ export function readMapFile(
     }
   }
 
+  readLinks(
+    value.links,
+    sized ? { width: width, height: height } : undefined,
+    areaSizes,
+    problems,
+  );
+
   if (typeof value.wildlife !== 'string' || !(value.wildlife in MAP_FILE_HABITATS)) {
     problems.push(`'wildlife' must be one of: ${Object.keys(MAP_FILE_HABITATS).join(', ')}.`);
   }
@@ -965,6 +1176,162 @@ export function readMapFile(
   return problems.length > 0
     ? { ok: false, problems }
     : { ok: true, file: value as unknown as MapFile };
+}
+
+/**
+ * Reads a file's areas, listing what is wrong with them, and answers the size
+ * of every area that has an id - so the things standing in an area can be
+ * held to it even while something else about the area is wrong.
+ */
+function readAreas(
+  raw: unknown,
+  problems: string[],
+): ReadonlyMap<string, { readonly width: number; readonly height: number }> {
+  const sizes = new Map<string, { width: number; height: number }>();
+  if (raw === undefined) {
+    return sizes;
+  }
+  if (!Array.isArray(raw) || !raw.every(isRecord)) {
+    problems.push(`'areas' must be a list.`);
+    return sizes;
+  }
+  if (raw.length > MAP_FILE_LIMITS.maxAreas) {
+    problems.push(`A map holds at most ${MAP_FILE_LIMITS.maxAreas} areas.`);
+  }
+  raw.forEach((area, index) => {
+    const what = `Area ${index + 1}`;
+    const id = area.id;
+    if (typeof id !== 'string' || !ID_PATTERN.test(id) || id.length > MAP_FILE_ID_MAX_LENGTH) {
+      problems.push(`${what} needs an id of lower-case letters, digits and single dashes.`);
+    } else if (sizes.has(id)) {
+      problems.push(`Two areas have the id '${id}'.`);
+    }
+    if (
+      typeof area.name !== 'string' ||
+      area.name.trim().length === 0 ||
+      area.name.length > MAP_FILE_LIMITS.maxPlaceNameLength
+    ) {
+      problems.push(
+        `${what} needs a name of at most ${MAP_FILE_LIMITS.maxPlaceNameLength} letters.`,
+      );
+    }
+    if (typeof area.kind !== 'string' || !(MAP_FILE_AREA_KINDS as readonly string[]).includes(area.kind)) {
+      problems.push(`${what} must be one of: ${MAP_FILE_AREA_KINDS.join(', ')}.`);
+    }
+    if (typeof area.style !== 'string' || !(MAP_FILE_AREA_STYLES as readonly string[]).includes(area.style)) {
+      problems.push(`${what}'s style must be one of: ${MAP_FILE_AREA_STYLES.join(', ')}.`);
+    }
+    const { width, height } = area;
+    const sized =
+      isWholeNumber(width) &&
+      isWholeNumber(height) &&
+      width >= MAP_FILE_LIMITS.minInsideWidth &&
+      height >= MAP_FILE_LIMITS.minInsideHeight &&
+      width <= MAP_FILE_LIMITS.maxInsideWidth &&
+      height <= MAP_FILE_LIMITS.maxInsideHeight;
+    if (!sized) {
+      problems.push(
+        `${what} is ${MAP_FILE_LIMITS.minInsideWidth}x${MAP_FILE_LIMITS.minInsideHeight} to ${MAP_FILE_LIMITS.maxInsideWidth}x${MAP_FILE_LIMITS.maxInsideHeight} tiles.`,
+      );
+    } else if (typeof id === 'string' && !sizes.has(id)) {
+      sizes.set(id, { width, height });
+    }
+    const ground = area.ground;
+    if (!Array.isArray(ground) || !ground.every((row) => typeof row === 'string')) {
+      problems.push(`${what}'s ground must be rows of letters.`);
+    } else if (sized) {
+      if (ground.length !== height) {
+        problems.push(`${what}'s ground has ${ground.length} rows; it is ${height} tall.`);
+      }
+      ground.forEach((row: string, y) => {
+        if (row.length !== width) {
+          problems.push(`${what}'s ground row ${y} is ${row.length} letters; it is ${width} wide.`);
+        }
+        const unknown = [...new Set([...row].filter((letter) => !MAP_FILE_INSIDE_LETTERS.includes(letter)))];
+        if (unknown.length > 0) {
+          problems.push(`${what}'s ground row ${y} uses letters an inside does not draw: ${unknown.join(' ')}`);
+        }
+      });
+    }
+    const furniture = area.buildings;
+    if (!Array.isArray(furniture) || !furniture.every(isRecord)) {
+      problems.push(`${what}'s furniture must be a list.`);
+      return;
+    }
+    if (furniture.length > MAP_FILE_LIMITS.maxFurniture) {
+      problems.push(`${what} holds at most ${MAP_FILE_LIMITS.maxFurniture} pieces of furniture.`);
+    }
+    furniture.forEach((piece, at) => {
+      if (typeof piece.kind !== 'string' || !isFurniture(piece.kind)) {
+        problems.push(`${what}'s furniture ${at + 1} is not furniture the game has: ${String(piece.kind)}.`);
+        return;
+      }
+      const prop = plantedProp(piece.kind);
+      const fits =
+        sized &&
+        isWholeNumber(piece.x) &&
+        isWholeNumber(piece.y) &&
+        piece.x >= 0 &&
+        piece.y >= 0 &&
+        piece.x + prop.width <= width &&
+        piece.y + prop.height <= height;
+      if (!fits) {
+        problems.push(`${what}'s furniture ${at + 1} is not inside it.`);
+      }
+    });
+  });
+  return sizes;
+}
+
+/** Reads a file's links, listing what is wrong with their shape. */
+function readLinks(
+  raw: unknown,
+  outdoors: { readonly width: number; readonly height: number } | undefined,
+  areaSizes: ReadonlyMap<string, { readonly width: number; readonly height: number }>,
+  problems: string[],
+): void {
+  if (raw === undefined) {
+    return;
+  }
+  if (!Array.isArray(raw) || !raw.every(isRecord)) {
+    problems.push(`'links' must be a list.`);
+    return;
+  }
+  if (raw.length > MAP_FILE_LIMITS.maxLinks) {
+    problems.push(`A map holds at most ${MAP_FILE_LIMITS.maxLinks} ways through.`);
+  }
+  raw.forEach((link, index) => {
+    const what = `Way through ${index + 1}`;
+    const ends = link.ends;
+    if (!Array.isArray(ends) || ends.length !== 2 || !ends.every(isRecord)) {
+      problems.push(`${what} must have two ends.`);
+      return;
+    }
+    for (const end of ends) {
+      if (end.area !== undefined && (typeof end.area !== 'string' || !areaSizes.has(end.area))) {
+        problems.push(`${what} ends in an area the map does not have.`);
+        continue;
+      }
+      const size = end.area === undefined ? outdoors : areaSizes.get(end.area);
+      if (
+        size === undefined ||
+        !isWholeNumber(end.x) ||
+        !isWholeNumber(end.y) ||
+        end.x < 0 ||
+        end.y < 0 ||
+        end.x >= size.width ||
+        end.y >= size.height
+      ) {
+        problems.push(`${what} ends somewhere that is not on the map.`);
+      }
+      if (typeof end.toward !== 'string' || !(MAP_FILE_FACINGS as readonly string[]).includes(end.toward)) {
+        problems.push(`${what}'s ends must each face one of: ${MAP_FILE_FACINGS.join(', ')}.`);
+      }
+      if (typeof end.look !== 'string' || !(MAP_FILE_DOORWAY_LOOKS as readonly string[]).includes(end.look)) {
+        problems.push(`${what}'s ends must each be one of: ${MAP_FILE_DOORWAY_LOOKS.join(', ')}.`);
+      }
+    }
+  });
 }
 
 /** A place's name as a piece of an id: `North Gate` is `north-gate`. */
@@ -1019,6 +1386,14 @@ export interface PlayerMap {
   readonly ledges: readonly MapLedge[];
   /** Fresh Pokemon every call, as `createRunTrainerEncounters` hands out, so no fight leaks into the next raid. */
   readonly trainers: () => readonly RunTrainerEncounter[];
+  /**
+   * The map as the one grid it is played on, outdoors and every area together
+   * (`mapAreas.ts`), with the doors named in `opened` open (`gateKey`).
+   * `getWorldMap` keeps what it builds, one per arrangement of the doors.
+   */
+  readonly compose: (opened?: readonly string[]) => ComposedMap;
+  /** Where each place of the map lies in that grid, the outdoors first. */
+  readonly areas: readonly PlacedArea[];
 }
 
 /**
@@ -1047,7 +1422,11 @@ const ITEM_SPOT_ROTATION: readonly { readonly itemId: ItemId; readonly quantity:
 ];
 
 /** The pool a file map's item spots are, by the rotation above. */
-function lootFor(id: PlayerMapId, spots: readonly MapFileItemSpot[]): WorldLoot[] {
+function lootFor(
+  id: PlayerMapId,
+  spots: readonly MapFileItemSpot[],
+  at: (spot: MapFileSpot) => { x: number; y: number },
+): WorldLoot[] {
   const repeating = ITEM_SPOT_ROTATION.filter((entry) => entry.itemId !== 'money');
   return spots.map((spot, index) => {
     const entry =
@@ -1056,7 +1435,7 @@ function lootFor(id: PlayerMapId, spots: readonly MapFileItemSpot[]): WorldLoot[
         : repeating[(index - ITEM_SPOT_ROTATION.length) % repeating.length];
     return {
       id: `${id}/spot-${index + 1}`,
-      position: { x: spot.x, y: spot.y },
+      position: at(spot),
       itemId: entry.itemId,
       quantity: entry.quantity,
       ...(spot.hidden ? { hidden: true } : {}),
@@ -1074,7 +1453,9 @@ export function sketchMapFile(file: MapFile): MapSketch<PlayerMapPropName> {
   });
   sketch.draw(0, 0, file.ground);
   for (const building of file.buildings) {
-    sketch.plant(building.x, building.y, MAP_FILE_BUILDINGS[building.kind]);
+    if (isOutdoorBuilding(building.kind)) {
+      sketch.plant(building.x, building.y, MAP_FILE_BUILDINGS[building.kind]);
+    }
   }
   return sketch;
 }
@@ -1151,7 +1532,7 @@ export function fileLedges(file: MapFile): readonly MapLedge[] {
   const id = playerMapId(file);
   const covered = new Set<string>();
   for (const building of file.buildings) {
-    const prop = PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[building.kind]];
+    const prop = plantedProp(building.kind);
     prop?.cells.forEach((cell, index) => {
       if (cell.solid) {
         covered.add(`${building.x + (index % prop.width)},${building.y + Math.floor(index / prop.width)}`);
@@ -1165,7 +1546,12 @@ export function fileLedges(file: MapFile): readonly MapLedge[] {
       }
     }
   }
-  const places = new Set([...file.dropIns, ...file.exits].map((spot) => `${spot.x},${spot.y}`));
+  // Ledges are painted outdoors, so only an outdoor way in or out can be landed on.
+  const places = new Set(
+    [...file.dropIns, ...file.exits]
+      .filter((spot) => spot.area === undefined)
+      .map((spot) => `${spot.x},${spot.y}`),
+  );
   const ground = (x: number, y: number): boolean => {
     const material = materialOf(file.ground[y]?.[x]);
     const letter = file.ground[y]?.[x];
@@ -1221,6 +1607,14 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
   }
   const id = playerMapId(file);
   const credit = `Drawn by ${file.maker}.`;
+  // Everything a file places is placed in its own area's tiles; the game plays
+  // one grid with every area in it, so each is moved to where its area lies.
+  const { areas } = layOutMapFile(file);
+  const origins = new Map(areas.map((placed) => [placed.id, placed.rect]));
+  const at = (spot: MapFileSpot): { x: number; y: number } => {
+    const origin = origins.get(spot.area) ?? areas[0].rect;
+    return { x: origin.x + spot.x, y: origin.y + spot.y };
+  };
   return {
     id,
     name: file.name,
@@ -1228,8 +1622,10 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
     file,
     sketch: () => sketchMapFile(file),
     tileset: PLAYER_MAP_TILESET,
+    compose: (opened = []) => composeMapFile(file, opened),
+    areas,
     encounters: MAP_FILE_HABITATS[file.wildlife],
-    loot: lootFor(id, file.itemSpots),
+    loot: lootFor(id, file.itemSpots, at),
     // The front door carries the map's name, as every shipped map's does - it
     // is the row a map is chosen by - and says which of the map's places it is
     // in its description, the way the Floodplain's says "The Landing:".
@@ -1241,7 +1637,7 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         id: `${id}/${placeSlug(dropIn.name)}`,
         label: index === 0 ? file.name : dropIn.name,
         mapId: id,
-        position: { x: dropIn.x, y: dropIn.y },
+        position: at(dropIn),
         description: about,
       };
     }),
@@ -1250,7 +1646,7 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         id: `${id}/person-${index + 1}`,
         mapId: id,
         kind: 'npc',
-        position: { x: person.x, y: person.y },
+        position: at(person),
         facing: person.facing,
         dialogLines: person.lines.length > 0 ? [...person.lines] : [`${person.name} nods at you.`],
         design: person.look,
@@ -1259,7 +1655,7 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         id: `${id}/pokemon-${index + 1}`,
         mapId: id,
         kind: 'npc',
-        position: { x: standing.x, y: standing.y },
+        position: at(standing),
         facing: 'down',
         dialogLines: [pokemonCry(standing.species)],
         pokemon: standing.species,
@@ -1269,7 +1665,7 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         id: `${id}/sign-${index + 1}`,
         mapId: id,
         kind: 'sign',
-        position: { x: sign.x, y: sign.y },
+        position: at(sign),
         facing: 'down',
         dialogLines: sign.lines.length > 0 ? [...sign.lines] : ['The sign has been left blank.'],
       })),
@@ -1279,20 +1675,45 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
       return {
         id: `${id}/landmark-${index + 1}`,
         mapId: id,
-        position: { x: landmark.x, y: landmark.y },
+        position: at(landmark),
         label: landmark.name.toUpperCase(),
         description: `${kind.label}. ${kind.says}`,
         reward: kind.reward.map((entry) => ({ ...entry })),
       };
     }),
-    districts: (file.districts ?? []).map((district, index) => ({
-      id: `${id}/district-${index + 1}`,
-      mapId: id,
-      name: district.name.toUpperCase(),
-      areas: [{ x: district.x, y: district.y, width: district.width, height: district.height }],
-      ...(district.wildlife ? { encounters: MAP_FILE_HABITATS[district.wildlife] } : {}),
-      ...(district.rain ? { weather: WeatherId.Rain } : {}),
-    })),
+    // The maker's own districts first, because the first listed wins a tile;
+    // then each area, which is a place of its own and is named on the plate
+    // as you walk in; then, on a map that has areas to come back out of, the
+    // outdoors, so walking out of a house names where you are again.
+    districts: [
+      ...(file.districts ?? []).map((district, index) => {
+        const origin = at({ x: district.x, y: district.y, area: district.area });
+        return {
+          id: `${id}/district-${index + 1}`,
+          mapId: id,
+          name: district.name.toUpperCase(),
+          areas: [{ ...origin, width: district.width, height: district.height }],
+          ...(district.wildlife ? { encounters: MAP_FILE_HABITATS[district.wildlife] } : {}),
+          ...(district.rain ? { weather: WeatherId.Rain } : {}),
+        };
+      }),
+      ...areas.slice(1).map((placed) => ({
+        id: `${id}/area-${String(placed.id)}`,
+        mapId: id,
+        name: placed.name.toUpperCase(),
+        areas: [placed.rect],
+      })),
+      ...(areas.length > 1
+        ? [
+            {
+              id: `${id}/outdoors`,
+              mapId: id,
+              name: file.name.toUpperCase(),
+              areas: [areas[0].rect],
+            },
+          ]
+        : []),
+    ],
     gates: fileDoorGates(file),
     ledges: fileLedges(file),
     trainers: () =>
@@ -1301,7 +1722,7 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         const name = placed.name.toUpperCase();
         return {
           mapId: id,
-          position: { x: placed.x, y: placed.y },
+          position: at(placed),
           facing: placed.facing,
           fixedPosition: true,
           ...(placed.sight > 0 ? { sightRange: placed.sight } : {}),
@@ -1322,7 +1743,7 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
       const unlockAtMs = exit.opens.when === 'after' ? exit.opens.seconds * 1_000 : 0;
       return {
         mapId: id,
-        position: { x: exit.x, y: exit.y },
+        position: at(exit),
         label: exit.name.toUpperCase(),
         unlockAtMs,
         requirement:

@@ -1,7 +1,9 @@
 import {
   MAP_FILE_HABITATS,
+  type MapFileAreaStyle,
   type MapFileBuildingKind,
   type MapFileFacing,
+  type MapFileFurnitureKind,
   type MapFileHabitat,
   type MapFileLook,
 } from '../world/mapFile';
@@ -119,8 +121,28 @@ export const GROUND_BRUSHES: readonly GroundBrush[] = [
   },
 ];
 
-export function groundBrush(id: string): GroundBrush | undefined {
-  return GROUND_BRUSHES.find((brush) => brush.id === id);
+/**
+ * What the inside of a building is painted with: its floor and its wall. A
+ * room's look - the floor's pattern, the wall's colour - is its style, chosen
+ * for the whole room, the way a FireRed room is one tileset.
+ */
+export const INSIDE_BRUSHES: readonly GroundBrush[] = [
+  plain('floor', 'Floor', MATERIAL_CHARS.paving, 'The floor of the room. Walked on.'),
+  plain(
+    'wall',
+    'Wall',
+    MATERIAL_CHARS.wall,
+    'A wall. Solid. Two rows of it make the back wall of a room.',
+  ),
+];
+
+/** The brushes for the place being drawn: outdoors, or the inside of a building. */
+export function brushesFor(inside: boolean): readonly GroundBrush[] {
+  return inside ? INSIDE_BRUSHES : GROUND_BRUSHES;
+}
+
+export function groundBrush(id: string, inside = false): GroundBrush | undefined {
+  return brushesFor(inside).find((brush) => brush.id === id);
 }
 
 /**
@@ -289,6 +311,79 @@ export const BUILDING_CHOICES: readonly BuildingChoice[] = (
     | readonly [MapFileBuildingKind, string, PlantGroup, 'water']
   )[]
 ).map(([kind, label, group, on]) => ({ kind, label, group, ...(on ? { on } : {}) }));
+
+export interface FurnitureChoice {
+  readonly kind: MapFileFurnitureKind;
+  readonly label: string;
+  /**
+   * The room style it belongs in. Every piece but the bed was cut from one of
+   * the base's own FireRed rooms with that room's floor in it, so a lab's
+   * shelves stood on a house's boards show a strip of the lab under them; a
+   * room offers its own pieces and the ones cut clean.
+   */
+  readonly style?: MapFileAreaStyle;
+}
+
+/** Every piece of furniture, by the room it comes from. */
+export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
+  [
+    ['bed', 'Bed', undefined],
+    ['pc', 'PC', 'house'],
+    ['desk', 'Desk', 'house'],
+    ['drawers', 'Drawers', 'house'],
+    ['books', 'Stack of books', 'house'],
+    ['wooden-box', 'Wooden box', 'house'],
+    ['house-plant', 'Plant', 'house'],
+    ['pillar', 'Pillar', 'house'],
+    ['cell-separators', 'Cell separators', 'house'],
+    ['table', 'Table', 'lab'],
+    ['computers', 'Computers', 'lab'],
+    ['bookcase', 'Bookcase', 'lab'],
+    ['shelves-books', 'Long shelves', 'lab'],
+    ['shelves-jars', 'Long shelves, end post', 'lab'],
+    ['shelves-empty', 'Empty shelves', 'lab'],
+    ['machine', 'Poké Ball machine', 'lab'],
+    ['plant', 'Plant', 'lab'],
+    ['plant-pot', 'Plant, turned', 'lab'],
+    ['center-counter', 'Counter and back wall', 'center'],
+    ['center-wall-west', 'West wall', 'center'],
+    ['center-wall-east', 'East wall', 'center'],
+    ['center-emblem', 'Floor emblem', 'center'],
+    ['seats', 'Waiting seats', 'center'],
+    ['healing-machine', 'Healing machine', 'center'],
+    ['tall-plant', 'Plant', 'center'],
+    ['workbench', 'Workbench', 'warehouse'],
+    ['stool', 'Stool', 'warehouse'],
+    ['sofa', 'Sofa', 'warehouse'],
+    ['bunk', 'Bunk', 'warehouse'],
+    ['generator', 'Generator', 'warehouse'],
+    ['monitors', 'Monitors', 'warehouse'],
+    ['radio-set', 'Radio set', 'warehouse'],
+    ['telephone', 'Telephone', 'warehouse'],
+    ['vent', 'Vent', 'warehouse'],
+    ['big-crate', 'Big crate', 'warehouse'],
+    ['box', 'Box', 'warehouse'],
+    ['boxes', 'Boxes', 'warehouse'],
+    ['tall-box', 'Tall box', 'warehouse'],
+  ] as const satisfies readonly (readonly [
+    MapFileFurnitureKind,
+    string,
+    MapFileAreaStyle | undefined,
+  ])[]
+).map(([kind, label, style]) => (style ? { kind, label, style } : { kind, label }));
+
+/** The furniture a room in this style is furnished from. */
+export function furnitureFor(style: MapFileAreaStyle): readonly FurnitureChoice[] {
+  return FURNITURE_CHOICES.filter((choice) => choice.style === undefined || choice.style === style);
+}
+
+/** What each room style is called in the editor. */
+export const STYLE_LABELS: Readonly<Record<MapFileAreaStyle, string>> = {
+  house: 'House',
+  lab: 'Lab',
+  center: 'Pokémon Center',
+  warehouse: 'Warehouse',
+};
 
 export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
   meadow: 'Meadow',

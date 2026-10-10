@@ -536,7 +536,9 @@ export function generateRunPlan(
   // promised open and the loot that is rolled both have to be on this side of
   // every door the player has not opened.
   const insertionMap = content.maps[insertion.mapId];
-  const walkable = stepDistances(insertionMap.collision, insertion.position);
+  // Through the doors of a player's map too (`GridBounds.links`): what is
+  // inside a house is on this side of every door anyone can walk through.
+  const walkable = stepDistances(insertionMap.collision, insertion.position, undefined, insertionMap.links);
   const isReachable: Reachability = {
     mapId: insertion.mapId,
     steps: walkable,

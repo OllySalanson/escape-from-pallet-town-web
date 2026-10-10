@@ -2,7 +2,13 @@ import { Pokemon } from '../pokemon';
 import { getSpeciesById } from '../pokemon/species';
 import type { PokemonBase } from '../pokemon/PokemonBase';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
-import { DIRECTION_DELTAS, type Direction, type GridBounds, type GridPosition } from '../movement/gridMovement';
+import {
+  DIRECTION_DELTAS,
+  linkKey,
+  type Direction,
+  type GridBounds,
+  type GridPosition,
+} from '../movement/gridMovement';
 import type { ActiveRunSession } from '../run/RunSession';
 import type { RunResult } from '../run/RunManager';
 import type { HunterTuning } from '../run/runGeneration';
@@ -350,7 +356,7 @@ const manhattanDistance = (from: GridPosition, to: GridPosition): number =>
  * these searches from every tile of every map in every gate state - so the
  * callback, and the position object built to ask it, were most of the suite's
  * wall clock. The answers are the callback's own, so nothing a search returns
- * changes; off the map is blocked, as `walkableNeighbours` always had it.
+ * changes; off the map is blocked, as the searches always had it.
  */
 interface BlockedLookup {
   readonly width: number;
@@ -428,6 +434,35 @@ export const collisionBlocker = (
 const blockedLookup = (
   bounds: GridBounds,
   isBlocked: (tile: GridPosition) => boolean,
+): BlockedLookup => throughLinks(bounds, gridLookup(bounds, isBlocked));
+
+/**
+ * The same lookup with the grid's links in it (`GridBounds.links`): a step
+ * pressed into a doorway lands on the far side of it, as the player's does, so
+ * every search below follows the player through a door without knowing doors
+ * exist. A link's far side can be stood on by somebody, so it is asked as any
+ * other tile is. A map with no links is handed back untouched.
+ */
+const throughLinks = (bounds: GridBounds, lookup: BlockedLookup): BlockedLookup => {
+  const links = bounds.links;
+  if (!links || links.size === 0) {
+    return lookup;
+  }
+  return {
+    ...lookup,
+    step: (index, direction) => {
+      const through = links.get(linkKey(index, direction));
+      if (through === undefined) {
+        return lookup.step(index, direction);
+      }
+      return lookup.at(through) ? UNREACHED : through;
+    },
+  };
+};
+
+const gridLookup = (
+  bounds: GridBounds,
+  isBlocked: (tile: GridPosition) => boolean,
 ): BlockedLookup => {
   const { width, height } = bounds;
   const found = PRECOMPUTED_BLOCKERS.get(isBlocked);
@@ -467,15 +502,6 @@ const positionOf = (index: number, width: number): GridPosition => ({
   x: index % width,
   y: (index / width) | 0,
 });
-
-const walkableNeighbours = (
-  tile: GridPosition,
-  bounds: GridBounds,
-  isBlocked: (tile: GridPosition) => boolean,
-): GridPosition[] =>
-  PURSUIT_STEP_DELTAS.map((delta) => ({ x: tile.x + delta.x, y: tile.y + delta.y })).filter(
-    (neighbour) => isInsideBounds(neighbour, bounds) && !isBlocked(neighbour),
-  );
 
 /**
  * Steps from every tile to the nearest goal tile, or UNREACHED where no route exists.
@@ -543,20 +569,32 @@ const routePreference = (from: GridPosition, to: GridPosition, target: GridPosit
   return (stepsTowardsTarget ? 0 : 2) + (followsLongAxis ? 0 : 1);
 };
 
-/** Walks the distance field down to zero, so every tile of the route is a shortest step. */
+/**
+ * Walks the distance field down to zero, so every tile of the route is a
+ * shortest step. A step through a link is one step of the route like any
+ * other, so a route can carry on in another room.
+ */
 const routeDownhill = (
   hunter: GridPosition,
   target: GridPosition,
   distances: Int32Array,
   bounds: GridBounds,
-  isBlocked: (tile: GridPosition) => boolean,
+  blocked: BlockedLookup,
 ): GridPosition[] => {
   const route: GridPosition[] = [];
   let position = hunter;
   for (;;) {
     const current = distances[tileIndex(position, bounds)];
-    const step = walkableNeighbours(position, bounds, isBlocked)
-      .map((tile, order) => ({ tile, order, distance: distances[tileIndex(tile, bounds)] }))
+    const here = tileIndex(position, bounds);
+    const step = [0, 1, 2, 3]
+      .map((direction) => blocked.step(here, direction))
+      .map((index, order) => ({ index, order }))
+      .filter(({ index }) => index !== UNREACHED)
+      .map(({ index, order }) => ({
+        tile: positionOf(index, bounds.width),
+        order,
+        distance: distances[index],
+      }))
       .filter((candidate) => candidate.distance !== UNREACHED && candidate.distance < current)
       .sort(
         (left, right) =>
@@ -635,10 +673,9 @@ export const findHunterPursuitPath = (
     return [];
   }
   const blocked = blockedLookup(bounds, isBlocked);
-  const isBlockedTile = (tile: GridPosition): boolean => blocked.at(tileIndex(tile, bounds));
   const contactDistances = buildDistanceField(contactGoals(player), bounds, blocked);
   if (contactDistances[tileIndex(hunter, bounds)] !== UNREACHED) {
-    return routeDownhill(hunter, player, contactDistances, bounds, isBlockedTile);
+    return routeDownhill(hunter, player, contactDistances, bounds, blocked);
   }
 
   const approach = findClosestApproachTile(hunter, player, bounds, blocked);
@@ -650,7 +687,7 @@ export const findHunterPursuitPath = (
     approach,
     buildDistanceField([approach], bounds, blocked),
     bounds,
-    isBlockedTile,
+    blocked,
   );
 };
 

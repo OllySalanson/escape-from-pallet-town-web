@@ -1,4 +1,9 @@
-import type { Direction, GridPosition } from './movement/gridMovement';
+import {
+  linkTable,
+  type Direction,
+  type GridLinks,
+  type GridPosition,
+} from './movement/gridMovement';
 import {
   PALLET_TALL_GRASS,
   VIRIDIAN_FOREST_TALL_GRASS,
@@ -14,6 +19,7 @@ import { sketchPalletTown } from './world/maps/palletTown';
 import { sketchRoute1 } from './world/maps/route1';
 import { sketchViridianCity } from './world/maps/viridianCity';
 import { sketchViridianForest } from './world/maps/viridianForest';
+import type { ComposedMap, PlacedArea } from './world/mapAreas';
 import type { PlayerMapId } from './world/mapFile';
 import { entitiesForMap, type WorldEntity } from './world/npcs';
 import { playerMap, playerMaps } from './world/playerMaps';
@@ -33,7 +39,12 @@ export type { MapInterior } from './world/interiors';
 
 export const TILE_SIZE = 16;
 
-export type WarpActivation = 'step' | 'interact';
+/**
+ * How a warp is set off: by finishing a step onto it, by the interact key, or
+ * by pressing `toward` while standing on it - into a door, or off a room's mat,
+ * which is how every way through on a player's map is gone through.
+ */
+export type WarpActivation = 'step' | 'interact' | 'push';
 
 export interface MapWarp {
   readonly source: GridPosition;
@@ -41,6 +52,8 @@ export interface MapWarp {
   readonly destination: GridPosition;
   readonly facing: Direction;
   readonly activation: WarpActivation;
+  /** The way a `push` warp is pressed. */
+  readonly toward?: Direction;
 }
 
 export interface WorldMapDefinition {
@@ -97,6 +110,15 @@ export interface WorldMapDefinition {
    * solid. See `interiors.ts`.
    */
   readonly interiors: readonly MapInterior[];
+  /**
+   * The places a player's map is made of - the outdoors, then the inside of
+   * every building that has one - and where each lies on this grid
+   * (`mapAreas.ts`). Absent on a map that is one place, which is every
+   * shipped map.
+   */
+  readonly areas?: readonly PlacedArea[];
+  /** The ways through between those places, as every search reads them (`GridBounds.links`). */
+  readonly links?: GridLinks;
 }
 
 /** The maps the game shipped with, authored in its own source. */
@@ -128,6 +150,11 @@ export const WORLD_MAP_NAMES: Readonly<Record<BuiltInMapId, string>> = {
 interface MapContent {
   /** A fresh sketch per build: a gate state is drawn onto it, so it is never shared. */
   readonly sketch: () => MapSketch;
+  /**
+   * A player's map, laid out as the one grid it is played on with every area
+   * in it and the named doors open. It replaces the sketch.
+   */
+  readonly compose?: (opened: readonly string[]) => ComposedMap;
   /** The sheet this map is drawn from. Omitted is the plain classic catalogue. */
   readonly tileset?: TilesetCatalogue;
   readonly encounters?: WildEncounterTable;
@@ -147,6 +174,10 @@ function createMap(
   defeatedBosses: readonly string[] = [],
 ): WorldMapDefinition {
   const gates = gatesForMap(id);
+  const composed = content.compose?.(defeatedBosses);
+  if (composed) {
+    return createComposedMap(id, content, composed, gates);
+  }
   const tileset = content.tileset ?? CLASSIC_TILESET;
   const sketch = applyGates(content.sketch(), gates, defeatedBosses);
   const interiors = interiorsForMap(id);
@@ -179,6 +210,44 @@ function createMap(
     gates,
     interiors,
     loot: content.loot,
+  };
+}
+
+/** A player's map, from the one grid its areas are laid out on. */
+function createComposedMap(
+  id: WorldMapId,
+  content: MapContent,
+  composed: ComposedMap,
+  gates: readonly MapGate[],
+): WorldMapDefinition {
+  const { width, height, layers } = composed;
+  const hasAreas = composed.areas.length > 1 || composed.doorways.length > 0;
+  return {
+    id,
+    width,
+    height,
+    layers,
+    tileset: composed.tileset,
+    collision: layers.collision,
+    terrain: composed.terrain.map((row) => [...row]),
+    tallGrass: layers.tallGrass,
+    ...(content.encounters ? { encounters: content.encounters } : {}),
+    warps: composed.doorways.map((doorway) => ({
+      source: doorway.from,
+      destinationMapId: id,
+      destination: doorway.to,
+      facing: doorway.arrivalFacing,
+      activation: 'push',
+      toward: doorway.toward,
+    })),
+    entities: entitiesForMap(id),
+    pois: poisForMap(id),
+    gates,
+    interiors: [],
+    loot: content.loot,
+    ...(hasAreas
+      ? { areas: composed.areas, links: linkTable(composed.doorways, width) }
+      : {}),
   };
 }
 
@@ -580,12 +649,14 @@ export function getWarpAt(
   map: WorldMapDefinition,
   position: GridPosition,
   activation: WarpActivation,
+  toward?: Direction,
 ): MapWarp | undefined {
   return map.warps.find(
     (warp) =>
       warp.activation === activation &&
       warp.source.x === position.x &&
-      warp.source.y === position.y,
+      warp.source.y === position.y &&
+      (activation !== 'push' || warp.toward === toward),
   );
 }
 

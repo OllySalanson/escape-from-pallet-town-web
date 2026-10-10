@@ -19,6 +19,8 @@ export interface ObjectivesSceneData {
   readonly runSession: ActiveRunSession;
   readonly currentMapId: WorldMapId;
   readonly currentPosition: GridPosition;
+  /** Where to head for a tile, on a map whose places are joined by doors (`areaRoutes.ts`). */
+  readonly towards?: (target: GridPosition) => GridPosition;
   readonly activatedPoiIds: readonly string[];
   /** Only resume WorldScene when this overlay paused it. */
   readonly pausedWorld: boolean;
@@ -51,6 +53,7 @@ export class ObjectivesScene extends Phaser.Scene {
     const guide = buildObjectiveGuide(data.runSession, {
       currentMapId: data.currentMapId,
       currentPosition: data.currentPosition,
+      ...(data.towards ? { towards: data.towards } : {}),
       activatedPoiIds: new Set(data.activatedPoiIds),
     });
     this.createOverlay(guide);
