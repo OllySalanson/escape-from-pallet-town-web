@@ -128,7 +128,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'aurora-beam': new MoveBase({
     name: 'Aurora Beam',
-    description: 'A Ice special attack. 10% chance to lower the target\'s Attack by one stage.',
+    description: 'An Ice special attack. 10% chance to lower the target\'s Attack by one stage.',
     type: PokemonType.Ice,
     power: 65,
     accuracy: 100,
@@ -171,7 +171,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'blizzard': new MoveBase({
     name: 'Blizzard',
-    description: 'A Ice special attack. Hits both foes. 10% chance to leave both foes frozen.',
+    description: 'An Ice special attack. Hits both foes. 10% chance to leave both foes frozen.',
     type: PokemonType.Ice,
     power: 120,
     accuracy: 70,
@@ -850,7 +850,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'ice-beam': new MoveBase({
     name: 'Ice Beam',
-    description: 'A Ice special attack. 10% chance to leave the target frozen.',
+    description: 'An Ice special attack. 10% chance to leave the target frozen.',
     type: PokemonType.Ice,
     power: 95,
     accuracy: 100,
@@ -860,7 +860,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'ice-punch': new MoveBase({
     name: 'Ice Punch',
-    description: 'A Ice special attack. 10% chance to leave the target frozen.',
+    description: 'An Ice special attack. 10% chance to leave the target frozen.',
     type: PokemonType.Ice,
     power: 75,
     accuracy: 100,
@@ -871,7 +871,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'icicle-spear': new MoveBase({
     name: 'Icicle Spear',
-    description: 'A Ice special attack. Hits 2 to 5 times.',
+    description: 'An Ice special attack. Hits 2 to 5 times.',
     type: PokemonType.Ice,
     power: 10,
     accuracy: 100,
@@ -881,7 +881,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'icy-wind': new MoveBase({
     name: 'Icy Wind',
-    description: 'A Ice special attack. Hits both foes. Lowers both foes\' Speed by one stage.',
+    description: 'An Ice special attack. Hits both foes. Lowers both foes\' Speed by one stage.',
     type: PokemonType.Ice,
     power: 55,
     accuracy: 95,
@@ -1217,7 +1217,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'powder-snow': new MoveBase({
     name: 'Powder Snow',
-    description: 'A Ice special attack. Hits both foes. 10% chance to leave both foes frozen.',
+    description: 'An Ice special attack. Hits both foes. 10% chance to leave both foes frozen.',
     type: PokemonType.Ice,
     power: 40,
     accuracy: 100,
@@ -1626,7 +1626,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'spark': new MoveBase({
     name: 'Spark',
-    description: 'A Electric special attack. 30% chance to leave the target paralysed.',
+    description: 'An Electric special attack. 30% chance to leave the target paralysed.',
     type: PokemonType.Electric,
     power: 65,
     accuracy: 100,
@@ -1832,7 +1832,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'thunder': new MoveBase({
     name: 'Thunder',
-    description: 'A Electric special attack. 30% chance to leave the target paralysed.',
+    description: 'An Electric special attack. 30% chance to leave the target paralysed.',
     type: PokemonType.Electric,
     power: 120,
     accuracy: 70,
@@ -1842,7 +1842,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'thunder-punch': new MoveBase({
     name: 'Thunder Punch',
-    description: 'A Electric special attack. 10% chance to leave the target paralysed.',
+    description: 'An Electric special attack. 10% chance to leave the target paralysed.',
     type: PokemonType.Electric,
     power: 75,
     accuracy: 100,
@@ -1853,7 +1853,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'thunder-shock': new MoveBase({
     name: 'Thunder Shock',
-    description: 'A Electric special attack. 10% chance to leave the target paralysed.',
+    description: 'An Electric special attack. 10% chance to leave the target paralysed.',
     type: PokemonType.Electric,
     power: 40,
     accuracy: 100,
@@ -1863,7 +1863,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'thunder-wave': new MoveBase({
     name: 'Thunder Wave',
-    description: 'A Electric status move. Leaves the target paralysed.',
+    description: 'An Electric status move. Leaves the target paralysed.',
     type: PokemonType.Electric,
     power: 0,
     accuracy: 100,
@@ -1873,7 +1873,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'thunderbolt': new MoveBase({
     name: 'Thunderbolt',
-    description: 'A Electric special attack. 10% chance to leave the target paralysed.',
+    description: 'An Electric special attack. 10% chance to leave the target paralysed.',
     type: PokemonType.Electric,
     power: 95,
     accuracy: 100,
@@ -1998,7 +1998,7 @@ export const GENERATED_MOVES: Readonly<Record<string, MoveBase>> = {
   }),
   'zap-cannon': new MoveBase({
     name: 'Zap Cannon',
-    description: 'A Electric special attack. 100% chance to leave the target paralysed.',
+    description: 'An Electric special attack. 100% chance to leave the target paralysed.',
     type: PokemonType.Electric,
     power: 100,
     accuracy: 50,
