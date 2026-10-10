@@ -34,7 +34,7 @@ import {
 } from './drafts';
 import { EditHistory } from './history';
 import { BUILDING_CHOICES, GROUND_BRUSHES, groundBrush, joinLedges } from './palette';
-import { MAP_FILE_BUILDINGS } from '../world/mapFile';
+import { MAP_FILE_BUILDINGS, MAP_FILE_LIMITS } from '../world/mapFile';
 
 const brush = (id: string) => groundBrush(id)!;
 
@@ -73,7 +73,10 @@ describe('a new map', () => {
   });
 
   it('is only ever a size a file can be', () => {
-    expect([blankMap(3, 400).width, blankMap(3, 400).height]).toEqual([20, 128]);
+    expect([blankMap(3, 400).width, blankMap(3, 400).height]).toEqual([
+      MAP_FILE_LIMITS.minWidth,
+      MAP_FILE_LIMITS.maxHeight,
+    ]);
   });
 });
 

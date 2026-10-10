@@ -56,7 +56,7 @@ try {
       window.addEventListener('unhandledrejection', (event) => window.__errors.push(String(event.reason)));
       window.__escapeFromPalletTownGame__.scene.getScene('title').scene.start('mapmaker');
     })()`);
-    await page.waitFor(`Boolean(document.querySelector('.map-maker canvas[data-preview]'))`, { timeoutMs: 5_000 }).catch(() => undefined);
+    await page.waitFor(`Boolean(document.querySelector('.map-maker canvas[data-map]'))`, { timeoutMs: 5_000 }).catch(() => undefined);
     await sleep(300);
   }
   const errors = () => evaluate('window.__errors ?? []');
@@ -82,7 +82,7 @@ try {
   };
   /** The middle of one map tile, on screen. */
   const tile = (x, y) =>
-    evaluate(`(() => { const canvas = document.querySelector('canvas[data-preview]'); const box = canvas.getBoundingClientRect(); const file = window.__escapeFromPalletTownGame__.scene.getScene('mapmaker').history.value; return { x: box.left + (${x} + 0.5) * box.width / file.width, y: box.top + (${y} + 0.5) * box.height / file.height }; })()`);
+    evaluate(`(() => { const canvas = document.querySelector('canvas[data-map]'); const box = canvas.getBoundingClientRect(); const file = window.__escapeFromPalletTownGame__.scene.getScene('mapmaker').history.value; return { x: box.left + (${x} + 0.5) * box.width / file.width, y: box.top + (${y} + 0.5) * box.height / file.height }; })()`);
   const clickTile = async (x, y) => {
     const at = await tile(x, y);
     await mouse(at.x, at.y);

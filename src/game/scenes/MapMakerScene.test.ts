@@ -68,7 +68,7 @@ vi.mock('../ui/MenuOverlay', () => ({
       querySelector: (selector: string) =>
         selector === '[data-viewport]'
           ? page.viewport
-          : selector === 'canvas[data-preview]' || selector === 'canvas[data-map]'
+          : selector === 'canvas[data-map]'
             ? page.canvas
             : null,
       querySelectorAll: (selector: string) =>
@@ -92,7 +92,6 @@ vi.mock('../ui/MenuOverlay', () => ({
 
 vi.mock('../maker/mapCanvas', () => ({
   drawMap: () => undefined,
-  drawPreview: () => undefined,
   drawSwatch: () => undefined,
   layersFor: () => ({}),
   loadMakerSheets: () => new Promise(() => undefined),

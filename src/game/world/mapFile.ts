@@ -53,8 +53,8 @@ export const MAP_FILE_FORMAT = 1;
 export const MAP_FILE_LIMITS = {
   minWidth: 20,
   minHeight: 16,
-  maxWidth: 128,
-  maxHeight: 128,
+  maxWidth: 256,
+  maxHeight: 256,
   /** Bytes of JSON: the submission service holds the same line. */
   maxBytes: 250_000,
   maxNameLength: 24,
