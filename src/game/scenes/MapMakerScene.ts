@@ -19,6 +19,7 @@ import {
   setExitOpens,
   setMaker,
   thingAt,
+  thingExists,
   buildingSize,
   type GridPoint,
   type SpotKind,
@@ -110,6 +111,11 @@ import type { MapLayers } from '../world/tiles';
 const AUTOSAVE_MS = 400;
 const STATUS_MS = 3_500;
 
+/** How often the map window scrolls while a stroke is held past its edge. */
+const EDGE_SCROLL_MS = 30;
+/** The most the window moves in one of those ticks, in screen pixels. */
+const EDGE_SCROLL_MAX_PX = 24;
+
 interface Stroke {
   readonly tool: MakerTool;
   readonly start: GridPoint;
@@ -117,6 +123,30 @@ interface Stroke {
   file: MapFile;
   /** For a drag with Select: the thing being carried. */
   readonly carrying?: ThingRef;
+  /** The pointer drawing it, so a stroke cancelled from the keyboard lets it go. */
+  readonly pointerId: number;
+  /** Where the pointer is now, on screen, which may be past the map window's edge. */
+  pointer: { readonly clientX: number; readonly clientY: number };
+}
+
+/**
+ * What the maker had open, kept for as long as the page is: undo history and
+ * the view of each draft. A TRY IT or a trip to the title starts this scene
+ * again, and the scene used to build its history afresh from the stored draft,
+ * so every step of undo and the zoom went with it. Kept here rather than on
+ * the scene so nothing about reaching it depends on Phaser reusing the
+ * instance, and per draft so opening another draft and coming back keeps both.
+ */
+const sessionHistories = new Map<string, EditHistory<MapFile>>();
+const sessionViews = new Map<
+  string,
+  { readonly zoom: MakerZoom; readonly left: number; readonly top: number }
+>();
+
+/** Forgets the session's histories and views: for tests, which share the module. */
+export function forgetMakerSession(): void {
+  sessionHistories.clear();
+  sessionViews.clear();
 }
 
 export class MapMakerScene extends Phaser.Scene {
@@ -139,6 +169,7 @@ export class MapMakerScene extends Phaser.Scene {
   /** A passed bot check, spent by the next sign-in. */
   private captchaToken: string | undefined;
   private stroke: Stroke | undefined;
+  private edgeScroll: ReturnType<typeof setInterval> | undefined;
   private checks: readonly MapCheck[] = [];
   private checkedFile: MapFile | undefined;
   private layers: { readonly file: MapFile; readonly layers: MapLayers } | undefined;
@@ -176,12 +207,13 @@ export class MapMakerScene extends Phaser.Scene {
       this.store.drafts.find((draft) => draft.key === this.store.current) ?? this.store.drafts[0];
     if (current) {
       this.draftKey = current.key;
-      this.history.reset(current.file);
+      this.openHistory(current.file);
     } else {
       this.startNewDraft();
     }
     this.selected = undefined;
     this.stroke = undefined;
+    this.stopEdgeScroll();
     this.panel = 'map';
     this.overlay = new MenuOverlay(this, 'map-maker pixel-ui', (event) => this.handleKey(event));
     // Rows here are tools, and a pointer crossing them on its way to the map
@@ -214,6 +246,7 @@ export class MapMakerScene extends Phaser.Scene {
         clearTimeout(this.renderTimer);
         this.renderTimer = undefined;
       }
+      this.stopEdgeScroll();
       this.flushAutosave();
       this.typing = undefined;
     });
@@ -224,7 +257,7 @@ export class MapMakerScene extends Phaser.Scene {
           : 'That try ended without leaving by an exit.'
         : undefined,
     );
-    this.fitZoom();
+    this.restoreView();
     // Back from signing in with GitHub: finish it, then open the review list.
     if (data?.review) {
       void finishReviewSignIn().then(() => this.openPanel('review'));
@@ -244,15 +277,63 @@ export class MapMakerScene extends Phaser.Scene {
   private startNewDraft(): void {
     this.draftKey = newDraftKey(this.store);
     const file = blankMap();
-    this.history.reset(file);
+    this.openHistory(file);
     this.store = withDraft(this.store, { key: this.draftKey, file, updatedAt: Date.now() });
     saveMakerStore(this.store);
   }
 
   // --- Keeping the file, the checks and the picture in step --------------------
 
-  /** Makes `next` the map, as one undo step. */
-  private commit(next: MapFile, selected: ThingRef | undefined = this.selected): void {
+  /**
+   * The undo history of the draft being opened: the one this session already
+   * has for it, if that history still ends on the map stored, or a new one.
+   */
+  private openHistory(file: MapFile): void {
+    const kept = sessionHistories.get(this.draftKey);
+    if (kept && (kept.value === file || mapFileText(kept.value) === mapFileText(file))) {
+      this.history = kept;
+      return;
+    }
+    this.history = new EditHistory<MapFile>(file);
+    sessionHistories.set(this.draftKey, this.history);
+  }
+
+  /** Remembers the zoom and scroll of the draft on screen, for when it is next opened. */
+  private rememberView(): void {
+    const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
+    sessionViews.set(this.draftKey, {
+      zoom: this.zoom,
+      left: viewport?.scrollLeft ?? 0,
+      top: viewport?.scrollTop ?? 0,
+    });
+  }
+
+  /** Puts the draft back as it was last seen this session, or fits a draft not seen yet. */
+  private restoreView(): void {
+    const view = sessionViews.get(this.draftKey);
+    if (!view) {
+      this.fitZoom();
+      return;
+    }
+    if (view.zoom !== this.zoom) {
+      this.zoom = view.zoom;
+      this.render();
+    }
+    const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
+    if (viewport) {
+      viewport.scrollLeft = view.left;
+      viewport.scrollTop = view.top;
+    }
+  }
+
+  /**
+   * Makes `next` the map, as one undo step, with `selected` chosen. There is no
+   * default: `undefined` is how a removal says "nothing is chosen now", and a
+   * default parameter read it as "keep the choice", which left the next thing
+   * along chosen - or, after the last of a kind, a choice of nothing that
+   * every render threw on.
+   */
+  private commit(next: MapFile, selected: ThingRef | undefined): void {
     this.history.push(next);
     this.selected = selected;
     this.scheduleAutosave();
@@ -330,6 +411,11 @@ export class MapMakerScene extends Phaser.Scene {
       this.renderTimer = undefined;
     }
     this.commitTyping();
+    // Undo, redo or an edit can take away what was chosen; a choice of nothing
+    // is no choice.
+    if (this.selected && !thingExists(this.file, this.selected)) {
+      this.selected = undefined;
+    }
     const typedIn = this.fieldWithFocus();
     const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
     const scroll = viewport ? { left: viewport.scrollLeft, top: viewport.scrollTop } : undefined;
@@ -503,6 +589,7 @@ export class MapMakerScene extends Phaser.Scene {
     on('[data-redo]', () => this.redo());
     on('[data-new]', () => {
       this.flushAutosave();
+      this.rememberView();
       this.startNewDraft();
       this.selected = undefined;
       this.panel = 'map';
@@ -621,12 +708,104 @@ export class MapMakerScene extends Phaser.Scene {
 
   // --- Drawing on the map --------------------------------------------------------
 
-  private tileAt(event: PointerEvent, canvas: HTMLCanvasElement): GridPoint {
+  private tileAt(
+    point: { readonly clientX: number; readonly clientY: number },
+    canvas: HTMLCanvasElement,
+  ): GridPoint {
     const box = canvas.getBoundingClientRect();
     return {
-      x: Math.floor(((event.clientX - box.left) / box.width) * this.file.width),
-      y: Math.floor(((event.clientY - box.top) / box.height) * this.file.height),
+      x: Math.floor(((point.clientX - box.left) / box.width) * this.file.width),
+      y: Math.floor(((point.clientY - box.top) / box.height) * this.file.height),
     };
+  }
+
+  /**
+   * The tile under the pointer, held to the part of the map the maker can see.
+   * A stroke keeps the pointer after it leaves the map window, so dragged past
+   * the window's edge it painted ground scrolled out of sight; held to the edge
+   * it paints along it instead, and the window scrolls to show more
+   * (`followStroke`).
+   */
+  private visibleTileAt(
+    point: { readonly clientX: number; readonly clientY: number },
+    canvas: HTMLCanvasElement,
+  ): GridPoint {
+    const map = canvas.getBoundingClientRect();
+    const seen = this.viewport()?.getBoundingClientRect() ?? map;
+    const left = Math.max(map.left, seen.left);
+    const top = Math.max(map.top, seen.top);
+    // Half a pixel in from the far edges, so a pointer held there is on the
+    // last tile in view rather than the first one past it.
+    const right = Math.min(map.right, seen.right) - 0.5;
+    const bottom = Math.min(map.bottom, seen.bottom) - 0.5;
+    const tile = this.tileAt(
+      {
+        clientX: Math.min(Math.max(point.clientX, left), Math.max(left, right)),
+        clientY: Math.min(Math.max(point.clientY, top), Math.max(top, bottom)),
+      },
+      canvas,
+    );
+    return {
+      x: Math.min(Math.max(tile.x, 0), this.file.width - 1),
+      y: Math.min(Math.max(tile.y, 0), this.file.height - 1),
+    };
+  }
+
+  private viewport(): HTMLElement | null {
+    return this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
+  }
+
+  /**
+   * How far the window should scroll this tick for a pointer at `point`: none
+   * while it is inside, and faster the further past an edge it is held, as an
+   * image editor scrolls under a drag.
+   */
+  private edgeScrollStep(point: { readonly clientX: number; readonly clientY: number }): {
+    readonly x: number;
+    readonly y: number;
+  } {
+    const box = this.viewport()?.getBoundingClientRect();
+    if (!box) {
+      return { x: 0, y: 0 };
+    }
+    const past = (at: number, low: number, high: number): number =>
+      at < low ? at - low : at > high ? at - high : 0;
+    const speed = (distance: number): number =>
+      distance === 0
+        ? 0
+        : Math.sign(distance) * Math.min(EDGE_SCROLL_MAX_PX, Math.max(2, Math.abs(distance) / 3));
+    return {
+      x: speed(past(point.clientX, box.left, box.right)),
+      y: speed(past(point.clientY, box.top, box.bottom)),
+    };
+  }
+
+  /** Scrolls the window on towards a stroke held past its edge, and carries the stroke with it. */
+  private followStroke(): void {
+    const stroke = this.stroke;
+    const viewport = this.viewport();
+    const canvas = this.overlay.root.querySelector<HTMLCanvasElement>('canvas[data-preview]');
+    if (!stroke || !viewport || !canvas) {
+      this.stopEdgeScroll();
+      return;
+    }
+    const step = this.edgeScrollStep(stroke.pointer);
+    const before = { left: viewport.scrollLeft, top: viewport.scrollTop };
+    viewport.scrollLeft += step.x;
+    viewport.scrollTop += step.y;
+    if (viewport.scrollLeft === before.left && viewport.scrollTop === before.top) {
+      // At the end of the map, or back inside the window: nothing more to show.
+      this.stopEdgeScroll();
+      return;
+    }
+    this.extendStroke(this.visibleTileAt(stroke.pointer, canvas));
+  }
+
+  private stopEdgeScroll(): void {
+    if (this.edgeScroll !== undefined) {
+      clearInterval(this.edgeScroll);
+      this.edgeScroll = undefined;
+    }
   }
 
   private inMap({ x, y }: GridPoint): boolean {
@@ -659,19 +838,23 @@ export class MapMakerScene extends Phaser.Scene {
     } catch {
       // A pointer the browser no longer tracks; the stroke still works inside the map.
     }
+    const held = {
+      pointerId: event.pointerId,
+      pointer: { clientX: event.clientX, clientY: event.clientY },
+    };
     switch (this.tool) {
       case 'brush': {
         const file = paintWith(this.file, [tile], this.brush());
-        this.stroke = { tool: 'brush', start: tile, last: tile, file };
+        this.stroke = { tool: 'brush', start: tile, last: tile, file, ...held };
         this.redraw(file);
         return;
       }
       case 'rect':
-        this.stroke = { tool: 'rect', start: tile, last: tile, file: this.file };
+        this.stroke = { tool: 'rect', start: tile, last: tile, file: this.file, ...held };
         this.previewArea({ from: tile, to: tile });
         return;
       case 'fill':
-        this.commit(paintWith(this.file, fillRegion(this.file, tile), this.brush()));
+        this.commit(paintWith(this.file, fillRegion(this.file, tile), this.brush()), this.selected);
         return;
       case 'pick': {
         const letter = groundAt(this.file, tile) ?? '.';
@@ -703,6 +886,7 @@ export class MapMakerScene extends Phaser.Scene {
             last: tile,
             file: this.file,
             carrying: thing,
+            ...held,
           };
         }
         this.render();
@@ -710,7 +894,7 @@ export class MapMakerScene extends Phaser.Scene {
       }
       case 'place': {
         if (this.place.kind === 'district') {
-          this.stroke = { tool: 'place', start: tile, last: tile, file: this.file };
+          this.stroke = { tool: 'place', start: tile, last: tile, file: this.file, ...held };
           this.previewArea({ from: tile, to: tile });
           return;
         }
@@ -730,13 +914,23 @@ export class MapMakerScene extends Phaser.Scene {
   }
 
   private pointerMove(event: PointerEvent, canvas: HTMLCanvasElement): void {
-    const tile = this.tileAt(event, canvas);
     const stroke = this.stroke;
     if (!stroke) {
-      this.hover(tile);
+      this.hover(this.tileAt(event, canvas));
       return;
     }
-    if (tile.x === stroke.last.x && tile.y === stroke.last.y) {
+    stroke.pointer = { clientX: event.clientX, clientY: event.clientY };
+    const step = this.edgeScrollStep(stroke.pointer);
+    if ((step.x !== 0 || step.y !== 0) && this.edgeScroll === undefined) {
+      this.edgeScroll = setInterval(() => this.followStroke(), EDGE_SCROLL_MS);
+    }
+    this.extendStroke(this.visibleTileAt(stroke.pointer, canvas));
+  }
+
+  /** Carries the stroke in progress on to `tile`. */
+  private extendStroke(tile: GridPoint): void {
+    const stroke = this.stroke;
+    if (!stroke || (tile.x === stroke.last.x && tile.y === stroke.last.y)) {
       return;
     }
     if (stroke.tool === 'brush') {
@@ -755,6 +949,7 @@ export class MapMakerScene extends Phaser.Scene {
   private pointerUp(event: PointerEvent, canvas: HTMLCanvasElement): void {
     const stroke = this.stroke;
     this.stroke = undefined;
+    this.stopEdgeScroll();
     if (canvas.hasPointerCapture(event.pointerId)) {
       canvas.releasePointerCapture(event.pointerId);
     }
@@ -762,9 +957,12 @@ export class MapMakerScene extends Phaser.Scene {
       return;
     }
     if (stroke.tool === 'brush') {
-      this.commit(stroke.file);
+      this.commit(stroke.file, this.selected);
     } else if (stroke.tool === 'rect') {
-      this.commit(paintWith(this.file, rectangle(stroke.start, stroke.last), this.brush()));
+      this.commit(
+        paintWith(this.file, rectangle(stroke.start, stroke.last), this.brush()),
+        this.selected,
+      );
     } else if (stroke.tool === 'place') {
       const outcome = addDistrict(this.file, stroke.start, stroke.last);
       if (outcome.placed) {
@@ -787,8 +985,15 @@ export class MapMakerScene extends Phaser.Scene {
     }
   }
 
+  /** Drops the stroke in progress, leaving the map as it was before it began. */
   private cancelStroke(): void {
+    const stroke = this.stroke;
     this.stroke = undefined;
+    this.stopEdgeScroll();
+    const canvas = this.overlay.root.querySelector<HTMLCanvasElement>('canvas[data-preview]');
+    if (stroke && canvas?.hasPointerCapture(stroke.pointerId)) {
+      canvas.releasePointerCapture(stroke.pointerId);
+    }
     this.redraw();
   }
 
@@ -974,14 +1179,15 @@ export class MapMakerScene extends Phaser.Scene {
       return;
     }
     this.flushAutosave();
+    this.rememberView();
     this.draftKey = draft.key;
-    this.history.reset(draft.file);
+    this.openHistory(draft.file);
     this.store = { ...this.store, current: draft.key };
     saveMakerStore(this.store);
     this.selected = undefined;
     this.panel = 'map';
     this.render();
-    this.fitZoom();
+    this.restoreView();
   }
 
   /** Two presses: a draft deleted is gone from this browser for good. */
@@ -994,6 +1200,8 @@ export class MapMakerScene extends Phaser.Scene {
     this.pendingDelete = undefined;
     this.store = withoutDraft(this.store, key);
     saveMakerStore(this.store);
+    sessionHistories.delete(key);
+    sessionViews.delete(key);
     this.render('Draft deleted.');
   }
 
@@ -1025,8 +1233,9 @@ export class MapMakerScene extends Phaser.Scene {
       return;
     }
     this.flushAutosave();
+    this.rememberView();
     this.draftKey = newDraftKey(this.store);
-    this.history.reset(reading.file);
+    this.openHistory(reading.file);
     this.store = withDraft(this.store, {
       key: this.draftKey,
       file: reading.file,
@@ -1188,8 +1397,9 @@ export class MapMakerScene extends Phaser.Scene {
     this.flushAutosave();
     const key = `review-${map.receiptCode}`;
     const kept = this.store.drafts.find((draft) => draft.key === key);
+    this.rememberView();
     this.draftKey = key;
-    this.history.reset(kept?.file ?? map.file);
+    this.openHistory(kept?.file ?? map.file);
     this.store = withDraft(this.store, kept ?? { key, file: map.file, updatedAt: Date.now() });
     saveMakerStore(this.store);
     this.reviewing = map;
@@ -1262,6 +1472,7 @@ export class MapMakerScene extends Phaser.Scene {
       return;
     }
     this.flushAutosave();
+    this.rememberView();
     const attempt = beginTry(this.draftKey, this.file, rules);
     registerPlayerMap(attempt.map);
     const insertion =
@@ -1319,12 +1530,21 @@ export class MapMakerScene extends Phaser.Scene {
 
   private leave(): void {
     this.flushAutosave();
+    this.rememberView();
     this.scene.start('title');
   }
 
   private handleKey(event: KeyboardEvent): void {
     const command = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
+    if (this.stroke && key !== 'escape') {
+      // A stroke is finished by letting go or dropped with Escape; an undo, a
+      // removal or a change of tool under it would be undone by its ending.
+      if (command) {
+        event.preventDefault();
+      }
+      return;
+    }
     if (command && key === 'z') {
       event.preventDefault();
       if (event.shiftKey) {
@@ -1343,12 +1563,17 @@ export class MapMakerScene extends Phaser.Scene {
       return;
     }
     if (key === 'escape') {
+      // Escape is "not that": it drops a stroke half drawn, then the choice,
+      // then a panel. It never leaves - that is the TITLE button - because
+      // the reflex key for cancelling a box once cost the maker the screen.
       event.preventDefault();
-      if (this.selected) {
+      if (this.stroke) {
+        this.cancelStroke();
+      } else if (this.selected) {
         this.selected = undefined;
         this.render();
-      } else {
-        this.leave();
+      } else if (this.panel !== 'map') {
+        this.openPanel('map');
       }
       return;
     }
