@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { currentTry, homeAfterRaid, recordWalkedOut } from '../maker/tryIt';
 import { audioManager } from '../audio/AudioManager';
+import { isPlaytestRun } from '../dev/playtestMode';
+import { formatRaidClock } from '../run/raidClock';
 import {
   buildDefeatSequence,
   createBeatGate,
@@ -316,7 +318,7 @@ export class ExtractionScene extends Phaser.Scene {
     return pixelScreen({
       place: escapeHtml(report.eyebrow),
       title: '',
-      aside: `Raid clock ${escapeHtml(report.clockLabel)}`,
+      aside: escapeHtml(this.clockAside()),
       // There is one control on this screen, so the help bar is free to carry
       // what becomes of the result.
       hints: escapeHtml(this.footerNote()),
@@ -329,6 +331,18 @@ export class ExtractionScene extends Phaser.Scene {
         actions: `<button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the harbour'}</button>`,
       })}</main>`,
     });
+  }
+
+  /**
+   * What the clock read. Under the explorer rules - the explorer run, and a map
+   * maker try walked with WALK IT - the raid clock is eight hours so the map can
+   * be looked at, and "0:07 of 480:00" printed that stand-in as though it were a
+   * limit somebody had raced; what is worth saying there is how long it took.
+   */
+  private clockAside(): string {
+    return isPlaytestRun()
+      ? `Time taken ${formatRaidClock(this.report.elapsedMs)}`
+      : `Raid clock ${this.report.clockLabel}`;
   }
 
   /**

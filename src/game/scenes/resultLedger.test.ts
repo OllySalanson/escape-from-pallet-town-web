@@ -10,7 +10,7 @@ vi.mock('phaser', () => ({
 vi.mock('../audio/AudioManager', () => ({ audioManager: { play: vi.fn() } }));
 
 import sampleLane from '../../maps/sample/sample-lane.json';
-import { setActiveSaveSlot } from '../dev/playtestMode';
+import { setActiveSaveSlot, setTryItRules } from '../dev/playtestMode';
 import { beginTry, endTry } from '../maker/tryIt';
 import type { ExtractionReport } from '../run/extractionReport';
 import type { MapFile } from '../world/mapFile';
@@ -98,6 +98,7 @@ describe('the result screen of a map maker try', () => {
 
   afterEach(() => {
     endTry();
+    setTryItRules(false);
     setActiveSaveSlot('normal');
   });
 
@@ -137,6 +138,25 @@ describe('the result screen of a map maker try', () => {
     expect(verdict('ESCAPED')).toBe(`You walked out of ${name} by an exit.`);
     expect(verdict('WIPED', 'defeated')).toBe(`The try team went down inside ${name}.`);
     expect(verdict('WIPED', 'timer')).toBe(`The clock ran out before you found a way out of ${name}.`);
+  });
+
+  it('says how long a walked try took rather than counting it against the eight-hour stand-in clock', () => {
+    const aside = () => {
+      const scene = Object.create(ExtractionScene.prototype) as ExtractionScene;
+      const report = { clockLabel: '0:07 of 480:00', elapsedMs: 7_000, durationMs: 480 * 60_000 } as unknown as ExtractionReport;
+      Object.assign(scene as object, { report });
+      return (scene as unknown as { clockAside(): string }).clockAside();
+    };
+    expect(aside()).toBe('Raid clock 0:07 of 480:00');
+
+    beginTry('draft-a', sampleLane as MapFile, 'walk');
+    setTryItRules(true);
+    setActiveSaveSlot('try-it');
+    expect(aside()).toBe('Time taken 0:07');
+
+    // RAID IT plays under the game's own clock, so it still reads as one.
+    setTryItRules(false);
+    expect(aside()).toBe('Raid clock 0:07 of 480:00');
   });
 
   it('still lays out the gamble on a raid of the game', () => {
