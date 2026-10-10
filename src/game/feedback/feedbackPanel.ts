@@ -2,9 +2,16 @@ import { escapeAttribute, pixelCommitBar, pixelScreen, pixelTag, pixelWindow } f
 import type { LoggedAction } from './actionLog';
 import type { FeedbackDetail } from './feedbackContext';
 import { MAX_FEEDBACK_TEXT } from './feedbackNote';
+import { MAX_VOICE_MS, tapeIsLow, tapeTime } from './voiceTape';
 import {
   BACK_TO_THE_GAME,
   KEEP_WRITING,
+  MIC_MISSING_LINE,
+  ON_AIR,
+  STOP_TALKING,
+  TALK,
+  TALK_MORE,
+  TALK_NOTE,
   PANEL_ASK,
   PANEL_HINTS,
   PANEL_PAUSED,
@@ -35,7 +42,22 @@ export interface PanelView {
   readonly seeAll: boolean;
   readonly details: readonly FeedbackDetail[];
   readonly actions: readonly LoggedAction[];
+  readonly voice: VoiceView;
 }
+
+/** The voice row, as the panel draws it. */
+export interface VoiceView {
+  /** Whether this browser can record at all. */
+  readonly supported: boolean;
+  readonly recording: boolean;
+  /** Every clip so far, plus the one being recorded. */
+  readonly totalMs: number;
+  readonly clips: number;
+  readonly playing: boolean;
+}
+
+/** How many bars the level meter has. */
+export const METER_BARS = 5;
 
 export function countLine(length: number): string {
   return `${length.toLocaleString('en-GB')} / ${MAX_FEEDBACK_TEXT.toLocaleString('en-GB')}`;
@@ -43,7 +65,7 @@ export function countLine(length: number): string {
 
 export function panelMarkup(view: PanelView): string {
   const message = pixelWindow(
-    `<label class="feedback-ask px-wrap" for="feedback-text">${PANEL_ASK}</label><textarea id="feedback-text" class="px-window px-field feedback-text" maxlength="${MAX_FEEDBACK_TEXT}" rows="6" spellcheck="true" autocomplete="off" data-help="Type here. TAB takes you on to the buttons."></textarea>`,
+    `<label class="feedback-ask px-wrap" for="feedback-text">${PANEL_ASK}</label><textarea id="feedback-text" class="px-window px-field feedback-text" maxlength="${MAX_FEEDBACK_TEXT}" rows="6" spellcheck="true" autocomplete="off" data-help="Type here. TAB takes you on to TALK and the buttons."></textarea>${voiceRow(view.voice)}`,
     { heading: 'Your message', note: `<span data-count>${countLine(0)}</span>`, className: 'feedback-message' },
   );
   const attached = pixelWindow(
@@ -58,6 +80,26 @@ export function panelMarkup(view: PanelView): string {
     body,
     hints: PANEL_HINTS,
   });
+}
+
+/**
+ * TALK and what it has recorded. One button that starts and stops (the
+ * owner's ruling: press once, not hold), the tape's time beside it, and once
+ * there is something on the tape, PLAY and DELETE.
+ */
+export function voiceRow(voice: VoiceView): string {
+  if (!voice.supported) {
+    return `<div class="feedback-voice" data-voice><button class="px-window px-button" aria-disabled="true" data-help="${MIC_MISSING_LINE}">${TALK}</button><small class="px-wrap">${MIC_MISSING_LINE}</small></div>`;
+  }
+  const time = `<span class="feedback-voice-time${tapeIsLow(voice.totalMs) ? ' is-low' : ''}" data-voice-time>${tapeTime(voice.totalMs)}</span>`;
+  if (voice.recording) {
+    const bars = Array.from({ length: METER_BARS }, () => '<i></i>').join('');
+    return `<div class="feedback-voice is-recording" data-voice><button class="px-window px-button feedback-talk is-recording" data-talk data-help="Stop recording. Your words are kept.">${STOP_TALKING}</button><span class="feedback-on-air"><span class="feedback-dot"></span>${ON_AIR}</span><span class="feedback-meter" data-meter>${bars}</span>${time}</div>`;
+  }
+  if (voice.clips === 0) {
+    return `<div class="feedback-voice" data-voice><button class="px-window px-button feedback-talk" data-talk data-help="Record your voice. Press again to stop; up to ${tapeTime(MAX_VOICE_MS)} in all.">${TALK}</button><small class="px-wrap">${TALK_NOTE}</small></div>`;
+  }
+  return `<div class="feedback-voice" data-voice><button class="px-window px-button feedback-talk" data-talk data-help="Record some more onto the end.">${TALK_MORE}</button>${time}<button class="px-window px-chip" data-play data-help="${voice.playing ? 'Stop playing it back.' : 'Hear what you recorded.'}">${voice.playing ? 'Stop' : 'Play'}</button><button class="px-window px-chip" data-delete-voice data-help="Throw the recording away.">Delete</button></div>`;
 }
 
 export function pictureRow(view: Pick<PanelView, 'pictureUrl' | 'includePicture'>): string {

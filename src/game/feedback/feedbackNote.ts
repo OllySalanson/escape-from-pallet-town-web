@@ -18,6 +18,13 @@ export interface FeedbackNote {
   readonly actions: readonly LoggedAction[];
   /** The game screen at the instant the tab was pressed, as a PNG, or null if removed. */
   readonly picture: Blob | null;
+  /**
+   * What the player said, one clip per TALK, in the browser's own recording
+   * format. Empty when they only typed. Turned into text on the owner's PC.
+   */
+  readonly voice: readonly Blob[];
+  /** How long the clips run between them, in milliseconds. */
+  readonly voiceMs: number;
   /** The raw stored save, when the player left the tick on. */
   readonly save: string | null;
   /**
@@ -75,7 +82,7 @@ export function countOneMore(record: DailyCount | null, now: Date): DailyCount {
   return { day: localDay(now), count: sendsToday(record, now) + 1 };
 }
 
-/** Whether a message has anything in it worth sending. */
-export function hasSomethingToSay(text: string): boolean {
-  return text.trim().length > 0;
+/** Whether a message has anything in it worth sending: words, or a recording. */
+export function hasSomethingToSay(text: string, clips = 0): boolean {
+  return text.trim().length > 0 || clips > 0;
 }

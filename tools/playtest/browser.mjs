@@ -68,7 +68,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * The driver lowers itself first (`tools/lowPriority.mjs`), so Chromium and
  * every renderer it forks are born at low priority - no `nice` to remember.
  */
-export async function launchBrowser({ window = LOGIC_WINDOW, libs = process.env.EPTW_CHROME_LIBS, scrollbars = false } = {}) {
+export async function launchBrowser({ window = LOGIC_WINDOW, libs = process.env.EPTW_CHROME_LIBS, scrollbars = false, args = [] } = {}) {
   lowerOwnPriority();
   const profile = mkdtempSync(join(tmpdir(), 'eptw-chrome-'));
   const child = spawn(
@@ -84,7 +84,11 @@ export async function launchBrowser({ window = LOGIC_WINDOW, libs = process.env.
       // A tab opened over CDP is a background tab, and Chromium runs a background
       // tab's timers once a second - which is the game's loop, in test mode.
       '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
-      '--disable-backgrounding-occluded-windows', 'about:blank',
+      '--disable-backgrounding-occluded-windows',
+      // Whatever a driver needs on top: a fake microphone, say, for the
+      // feedback panel's TALK (`feedbackShots.mjs`).
+      ...args,
+      'about:blank',
     ],
     {
       detached: true,

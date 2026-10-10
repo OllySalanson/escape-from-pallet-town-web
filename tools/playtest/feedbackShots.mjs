@@ -6,8 +6,11 @@
 // the raid clock stops while it is up, typing W, A, S, D and F into the box
 // writes letters and walks nobody, Escape with words in the box asks before
 // scrapping them, SEND keeps the message in the browser's pack and answers with
-// a tag, and closing gives the raid back exactly where it was. It photographs
-// each step into <out-dir>. Exit code 1 is a broken promise.
+// a tag, and closing gives the raid back exactly where it was. Then TALK, on
+// Chromium's fake microphone: one press records until the next, TALK MORE adds
+// a second clip, SEND while the tape runs stops it and sends both, and a
+// refused microphone says so and leaves typing. It photographs each step into
+// <out-dir>. Exit code 1 is a broken promise.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { launchBrowser, sleep } from './browser.mjs';
@@ -37,7 +40,8 @@ async function type(page, text) {
   }
 }
 
-const browser = await launchBrowser({ window });
+// A fake microphone that is always allowed: Chromium plays a beep into it.
+const browser = await launchBrowser({ window, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
 try {
   const page = await browser.openPage(`${url}?testmode=pixels`);
   const press = async (code) => { await page.tap(code, 60); await sleep(150); };
@@ -135,6 +139,56 @@ try {
   await press('Escape');
   await until(`!(${panelUp})`, 'Escape to close it again');
   check(await page.evaluate(`${GAME}.scene.isActive('bag') && ${GAME}.scene.isPaused('world')`), 'the pack is back and the raid is still paused under it');
+  await press('Escape');
+  await until(`!${GAME}.scene.isActive('bag')`, 'Escape to close the pack');
+
+  // TALK: press once, and it records until the next press.
+  await press('KeyF');
+  await until(panelUp, 'F to open the panel for a voice message');
+  await page.screenshot(join(out, '7-talk.png'));
+  // By the keyboard, which is a real press: TAB from the box lands on TALK.
+  await press('Tab');
+  check(await page.evaluate(`document.activeElement?.hasAttribute('data-talk')`), 'TAB from the box lands on TALK');
+  await press('Enter');
+  await until(`!!document.querySelector('.feedback-voice.is-recording')`, 'TALK to start the tape');
+  // Chromium's fake microphone beeps once a second, so the meter is sampled
+  // across a second or two rather than once: it should rise on a beep.
+  let loudest = 2;
+  for (let sample = 0; sample < 26; sample += 1) {
+    await sleep(100);
+    const levels = await page.evaluate(`[...document.querySelectorAll('[data-meter] i')].map((bar) => Number(bar.style.getPropertyValue('--level')) || 2)`);
+    loudest = Math.max(loudest, ...levels);
+  }
+  const time = await page.evaluate(`document.querySelector('[data-voice-time]').textContent`);
+  check(/^0:0[2-4]$/.test(time), `the tape counts while it records (${time})`);
+  check(loudest > 2, `the meter moves with the voice (tallest bar ${loudest})`);
+  await page.screenshot(join(out, '8-on-air.png'));
+  await click('Stop');
+  await until(`!!document.querySelector('[data-play]')`, 'STOP to keep the clip and offer PLAY');
+  check(await page.evaluate(`!document.querySelector('.feedback-voice.is-recording') && document.querySelector('[data-talk]').textContent === 'Talk more'`), 'after a stop the button offers TALK MORE');
+  await page.screenshot(join(out, '9-recorded.png'));
+  await click('Talk more');
+  await until(`!!document.querySelector('.feedback-voice.is-recording')`, 'TALK MORE to record a second clip');
+  await sleep(1200);
+  // SEND while the tape runs stops it and sends what was said.
+  await click('Send');
+  await until(`!!document.querySelector('.feedback-tag')`, 'SEND over a running tape to send it');
+  const voiced = JSON.parse(await page.evaluate(`new Promise((resolve) => { const open = indexedDB.open('escape-from-pallet-town.feedback'); open.onsuccess = () => { const all = open.result.transaction('outbox').objectStore('outbox').getAll(); all.onsuccess = () => resolve(JSON.stringify(all.result.map((n) => ({ text: n.text, clips: (n.voice ?? []).map((c) => ({ size: c.size, type: c.type })), voiceMs: n.voiceMs })))); }; })`));
+  const spoken = voiced.find((note) => note.text === '');
+  console.log(`voice message: ${JSON.stringify(spoken)}`);
+  check(spoken && spoken.clips.length === 2 && spoken.clips.every((clip) => clip.size > 1000 && clip.type.startsWith('audio/')) && spoken.voiceMs >= 3500, 'a voice-only message is kept with both clips');
+  await press('Enter');
+  await until(`!(${panelUp})`, 'BACK TO THE GAME after the voice message');
+
+  // A refused microphone leaves typing, and says so in the raid's voice.
+  await page.evaluate(`navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('Permission denied', 'NotAllowedError'))`);
+  await press('KeyF');
+  await until(panelUp, 'F to open the panel once more');
+  await click('Talk');
+  await until(`document.querySelector('.px-status-line')?.textContent.startsWith('No mic, no problem')`, 'a refused microphone to be answered');
+  check(await page.evaluate(`!document.querySelector('.feedback-voice.is-recording')`), 'a refused microphone records nothing');
+  await page.screenshot(join(out, '10-mic-refused.png'));
+  await press('Escape');
 } finally {
   await browser.close();
 }

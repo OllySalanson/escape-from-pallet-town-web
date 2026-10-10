@@ -25,10 +25,23 @@ export const PANEL_PAUSED = 'Game paused';
 /** Above the box. */
 export const PANEL_ASK = 'What happened out there? What would make it better?';
 
-export const PANEL_HINTS = 'TYPE · TAB to the buttons · ESC close';
+export const PANEL_HINTS = 'TYPE or TALK · TAB to the buttons · ESC close';
 
-/** SEND with nothing typed (and, from the voice stage on, nothing recorded). */
-export const EMPTY_SEND_LINE = 'Dead air. Type something first.';
+/** SEND with nothing typed and nothing recorded. */
+export const EMPTY_SEND_LINE = 'Dead air. Type something, or press TALK.';
+
+/** The voice button, before anything is recorded and once something is. */
+export const TALK = 'Talk';
+export const TALK_MORE = 'Talk more';
+/** The same button while it is recording: pressing it again stops. */
+export const STOP_TALKING = 'Stop';
+export const ON_AIR = 'On air';
+export const TALK_NOTE = 'Press once to talk, again to stop.';
+
+export const TAPE_LOW_LINE = '30 seconds of tape left.';
+export const TAPE_FULL_LINE = "Tape's full. Every word kept.";
+export const MIC_REFUSED_LINE = "No mic, no problem. Type it. The hunter can't hear keys.";
+export const MIC_MISSING_LINE = "This browser can't record. Type it instead.";
 
 /** The box is full. */
 export const TOO_LONG_LINE = "Even Bill wouldn't read all that. Trim it.";
