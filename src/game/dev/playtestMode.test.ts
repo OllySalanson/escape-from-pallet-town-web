@@ -10,11 +10,13 @@ import { runInsertions } from '../run/runGeneration';
 import { gateKey, WORLD_GATES } from '../world/gates';
 import { raidClockView } from '../scenes/raidHud';
 import {
+  hunterComes,
   isPlaytestRun,
   PLAYTEST_CLOCK_LABEL,
   PLAYTEST_RAID_DURATION_MS,
   PLAYTEST_SAVE_KEY,
   setActiveSaveSlot,
+  setTryItRules,
 } from './playtestMode';
 import { createPlaytestGame, playtestRaidProgress } from './playtestSave';
 import { SAVE_KEY } from '../save/SaveManager';
@@ -47,6 +49,26 @@ const ordinaryGame = () => ({
 
 afterEach(() => {
   setActiveSaveSlot('normal');
+  setTryItRules(false);
+});
+
+describe("the map maker's TRY IT", () => {
+  it('sends no hunter on WALK IT, the calm walk its help line promises', () => {
+    setActiveSaveSlot('try-it');
+    setTryItRules(true);
+    expect(isPlaytestRun()).toBe(true);
+    expect(hunterComes()).toBe(false);
+  });
+
+  it('keeps the hunter on RAID IT, in the explorer run and in the ordinary game', () => {
+    setActiveSaveSlot('try-it');
+    setTryItRules(false);
+    expect(hunterComes()).toBe(true);
+    setActiveSaveSlot('playtest');
+    expect(hunterComes()).toBe(true);
+    setActiveSaveSlot('normal');
+    expect(hunterComes()).toBe(true);
+  });
 });
 
 describe('the explorer run', () => {
@@ -125,7 +147,11 @@ describe('the explorer run it deals', () => {
   });
 
   it('offers every way into every map', () => {
-    expect([...progress.unlockedInsertions].sort()).toEqual(runInsertions().map((insertion) => insertion.id).sort());
+    expect([...progress.unlockedInsertions].sort()).toEqual(
+      runInsertions()
+        .map((insertion) => insertion.id)
+        .sort(),
+    );
   });
 
   it('hands over a level-99 Charizard with a moveset it could have', () => {
@@ -141,7 +167,7 @@ describe('the explorer run it deals', () => {
     expect(partner.pokemon.moves.some((move) => move.base.power > 0)).toBe(true);
   });
 
-  it('arrives as Bill\'s partner, so his whole boat can be looked at', () => {
+  it("arrives as Bill's partner, so his whole boat can be looked at", () => {
     expect(
       traderStanding({
         ...progress,

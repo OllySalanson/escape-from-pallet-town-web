@@ -68,6 +68,17 @@ export function isPlaytestRun(): boolean {
   return slot === 'playtest' || (slot === 'try-it' && tryWalks);
 }
 
+/**
+ * Whether a hunter comes for this raid. Every raid but one: a map maker's WALK
+ * IT is the calm walk its help line promises - the maker is there to look at
+ * their own map, and a fight that cannot be lost is only an interruption of
+ * that. RAID IT keeps the hunter, and so does the explorer run, which is
+ * judging the shipped maps as raids are played on them.
+ */
+export function hunterComes(): boolean {
+  return !(slot === 'try-it' && tryWalks);
+}
+
 /** Set by the map maker as it starts a TRY IT, beside the slot. */
 export function setTryItRules(walk: boolean): void {
   tryWalks = walk;

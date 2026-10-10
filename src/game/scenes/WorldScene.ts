@@ -11,7 +11,7 @@ import {
 import { KeyPresses } from '../input/KeyPresses';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
-import { isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
+import { hunterComes, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
 import {
   CHARACTER_FEET_PIXEL_Y,
   CHARACTER_HEAD_PIXEL_Y,
@@ -4221,10 +4221,13 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private isHunterEligible(): boolean {
-    return isHunterEligibleForFirstContract(
-      this.currentMap.id,
-      this.runSession?.plan?.contract?.mapId,
-      this.activatedPoiIds.size > 0,
+    return (
+      hunterComes() &&
+      isHunterEligibleForFirstContract(
+        this.currentMap.id,
+        this.runSession?.plan?.contract?.mapId,
+        this.activatedPoiIds.size > 0,
+      )
     );
   }
 
