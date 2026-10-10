@@ -326,7 +326,7 @@ export class ExtractionScene extends Phaser.Scene {
       )}${this.ledgerPanel()}${this.gamblePanel()}${pixelCommitBar({
         title: escapeHtml(this.footerTitle()),
         lines: [`<small class="px-wrap">${this.costFacts().map(escapeHtml).join(' · ')}</small>`],
-        actions: `<button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the lab'}</button>`,
+        actions: `<button class="px-window px-button is-primary" data-continue>${currentTry() ? 'Back to the map maker' : 'Back to the harbour'}</button>`,
       })}</main>`,
     });
   }
