@@ -48,7 +48,7 @@ export function providesFeedbackContext(scene: unknown): scene is ProvidesFeedba
 }
 
 /** Scene keys as a player would name the screen. */
-const SCREEN_NAMES: Readonly<Record<string, string>> = {
+export const SCREEN_NAMES: Readonly<Record<string, string>> = {
   boot: 'Loading',
   title: 'Title screen',
   starter: 'Choosing a starter',
