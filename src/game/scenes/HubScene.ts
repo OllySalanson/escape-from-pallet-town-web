@@ -2013,7 +2013,6 @@ export class HubScene extends Phaser.Scene {
       pokemon: stored.pokemon,
       id: stored.id,
       first,
-      condition: this.conditionLine(stored),
       holding: held ? `Holding ${held.displayName}` : 'Holding nothing',
       deeds,
     });

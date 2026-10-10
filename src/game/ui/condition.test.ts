@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
-import { conditionLine, teamConditionLine } from './condition';
+import { conditionLine, healthLine, teamConditionLine } from './condition';
 
 const partySceneSource = await readFile(new URL('../scenes/PartyScene.ts', import.meta.url), 'utf8');
 const hubSceneSource = await readFile(new URL('../scenes/HubScene.ts', import.meta.url), 'utf8');
@@ -32,6 +32,13 @@ describe('the condition line a Pokemon carries', () => {
     );
   });
 
+  it('drops only the level where the level is already printed', () => {
+    expect(healthLine(pokemon({ currentHp: 9, primaryStatus: 'poison' }))).toBe('9/16 HP · poison');
+    expect(conditionLine(pokemon({ currentHp: 9, primaryStatus: 'poison' }))).toBe(
+      `Level 5 · ${healthLine(pokemon({ currentHp: 9, primaryStatus: 'poison' }))}`,
+    );
+  });
+
   it('is the same line at base and mid-raid', () => {
     // HP and status survive a raid, so the in-raid party screen is a preview of
     // what the stash will hold. Two phrasings of that would be two answers.
@@ -40,8 +47,9 @@ describe('the condition line a Pokemon carries', () => {
     expect(partySceneSource).toContain('conditionLine(pokemon)');
     expect(hubSceneSource).toContain('return conditionLine(stored.pokemon);');
     // The pane under either list is one module, so the line under the health
-    // bar is the same sentence in a raid as it is at base.
-    expect(dossierSource).toContain('view.condition ?? conditionLine(pokemon)');
+    // bar is the same sentence in a raid as it is at base - less the level,
+    // which the pane prints beside the name.
+    expect(dossierSource).toContain('healthLine(pokemon)');
   });
 });
 

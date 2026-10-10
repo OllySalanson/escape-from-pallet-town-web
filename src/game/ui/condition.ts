@@ -16,11 +16,20 @@ export interface PokemonCondition {
 }
 
 export function conditionLine(pokemon: PokemonCondition): string {
+  return `Level ${pokemon.level} \u00b7 ${healthLine(pokemon)}`;
+}
+
+/**
+ * The same line without the level, for a place that already prints it beside
+ * the name: the dossier heads its pane `BULBASAUR Lv 5`, and saying `Level 5`
+ * again on the line under it was the one fact the pane told you twice.
+ */
+export function healthLine(pokemon: Omit<PokemonCondition, 'level'>): string {
   const flags = [
     ...(pokemon.isFainted ? ['fainted'] : []),
     ...(pokemon.primaryStatus === null ? [] : [pokemon.primaryStatus]),
   ];
-  return `Level ${pokemon.level} \u00b7 ${pokemon.currentHp}/${pokemon.maxHp} HP${flags.length ? ` \u00b7 ${flags.join(' \u00b7 ')}` : ''}`;
+  return `${pokemon.currentHp}/${pokemon.maxHp} HP${flags.length ? ` \u00b7 ${flags.join(' \u00b7 ')}` : ''}`;
 }
 
 /** One Pokemon at base, as the team's condition line reads it. */
