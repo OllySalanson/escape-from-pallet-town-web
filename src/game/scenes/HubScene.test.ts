@@ -150,6 +150,31 @@ describe('the lobby as a screen of the game', () => {
     expect(home).not.toContain('came home hurt');
   });
 
+  it('never tells the loadout to treat a fainted Pokemon a Potion cannot revive', () => {
+    const { hub } = createWornHub();
+    hub.openDeployment();
+    expect(markupOf(hub)).toContain('1 hurt · treat them first');
+
+    const [partner] = hub.stash.listPokemon().filter((stored) => stored.id !== 'charmander-1');
+    partner.pokemon.takeDamage(partner.pokemon.maxHp);
+    hub.setView('deploy');
+    const mixed = markupOf(hub);
+    expect(mixed).toContain('1 fainted · 1 hurt');
+    expect(mixed).not.toContain('treat them first');
+    expect(mixed).toContain(`${partner.pokemon.base.name} has fainted and cannot fight. Only the Pokémon Center can revive it.`);
+
+    const worn = hub.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!;
+    worn.pokemon.takeDamage(worn.pokemon.maxHp);
+    hub.setView('deploy');
+    const wiped = markupOf(hub);
+    expect(wiped).toContain('2 fainted · see Nurse Joy');
+    expect(wiped).not.toContain('treat them first');
+    expect(wiped).not.toContain(`Add ${partner.pokemon.base.name}`);
+    // Nothing is packed yet, and the bar says why nothing can be.
+    expect(wiped).not.toContain('Add a Pokémon from your stash');
+    expect(wiped).toContain('Every Pokémon here has fainted. Revive one at the Pokémon Center before you deploy.');
+  });
+
   it('lists one box at a time, and every box when the loadout is chosen from', () => {
     const { hub } = createHub();
     hub.stash.addPokemon(new Pokemon(CHARMANDER, 3), 'shelved');

@@ -2040,8 +2040,17 @@ export class HubScene extends Phaser.Scene {
       this.flow.securedItems.reduce((total, item) => total + item.quantity, 0);
     const single = this.stashPokemon.length === 1;
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
-    const allFainted = party.length > 0 && !this.flow.isDeployable;
-    const hurtCount = this.injuredPokemon.length;
+    // With nobody packed yet the question is whether anyone in the stash could
+    // be: a wiped lone partner was told to add a Pokemon from the stash.
+    const nobodyStanding = this.stashPokemon.length > 0 && this.stashPokemon.every((stored) => stored.pokemon.isFainted);
+    const allFainted = party.length > 0 ? !this.flow.isDeployable : nobodyStanding;
+    // A faint is not a hurt: medicine cannot revive, so "treat them first"
+    // over a fainted partner pointed at Potion chips that refuse it.
+    const faintedCount = this.injuredPokemon.filter((stored) => stored.pokemon.isFainted).length;
+    const hurtCount = this.injuredPokemon.length - faintedCount;
+    const stashNote = faintedCount === 0
+      ? hurtCount ? `${hurtCount} hurt · treat them first` : ''
+      : hurtCount ? `${faintedCount} fainted · ${hurtCount} hurt` : `${faintedCount} fainted · see Nurse Joy`;
     // The default packs medicine and never a ball, so a first raid could not
     // catch and nothing said so (playtests 7, 10, 13, 18 and 34). The pack is
     // still the player's to choose; the bar says what it cannot do.
@@ -2050,7 +2059,7 @@ export class HubScene extends Phaser.Scene {
     // rather than counting it; the final check screen is where the full at-risk
     // breakdown belongs.
     const summary = party.length === 0
-      ? 'Nothing selected yet. Add a Pokémon from your stash.'
+      ? nobodyStanding ? 'Nothing selected yet.' : 'Nothing selected yet. Add a Pokémon from your stash.'
       : `${party.map((stored) => stored.pokemon.base.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${securedCount} protected`;
     const pokemonRows = this.findablePokemon
       .map((stored, index) => {
@@ -2058,7 +2067,7 @@ export class HubScene extends Phaser.Scene {
         const name = escapeAttribute(stored.pokemon.base.name);
         // The cursor starts on the first Pokemon, not on the sort chip above
         // the list: an Enter on arrival re-sorted the stash (playtest 44 #2).
-        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''} data-help="${added ? `Take ${name} back out of the raid.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
+        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''} data-help="${added ? `Take ${name} back out of the raid.` : stored.pokemon.isFainted ? `${name} has fainted and cannot fight. Only the Pokémon Center can revive ${single ? 'your only Pokémon' : 'it'}.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
           stored,
           // A tick, as every chosen row on these screens is marked: a ten-letter
           // name and its health bar leave no room for a word beside them.
@@ -2118,7 +2127,7 @@ export class HubScene extends Phaser.Scene {
     // can scan, and the treatment is about the one Pokemon being looked at.
     return `<main class="px-body loadout-layout">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${this.browseBar(false)}${pokemonRows || '<p class="px-empty">No Pokémon answers that.</p>'}<h3 class="px-subheading">Supplies</h3>${supplyRows || '<p class="px-empty">No supplies at base.</p>'}</div>${details}`,
-      { className: 'loadout-stash', heading: 'Stash', note: hurtCount ? `${hurtCount} hurt · treat them first` : '' },
+      { className: 'loadout-stash', heading: 'Stash', note: stashNote },
     )}<div class="loadout-side">${pixelWindow(
       `<div class="pack-body px-scroll">${pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         label: `Pack, ${cells.used} of ${cells.total} squares full`,
@@ -2133,7 +2142,7 @@ export class HubScene extends Phaser.Scene {
       title: `${party.length}/6 Pokémon packed`,
       lines: [
         `<span class="px-wrap">${summary}</span>`,
-        `<small class="px-wrap${allFainted || noBall ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : noBall ? (this.flow.ballAtBase ? 'No Poké Balls packed, so nothing can be caught this raid. Add one under Supplies.' : 'No Poké Balls at base, so nothing can be caught this raid.') : `Everything here is lost on a wipe unless it is in the secure slot - and the ${this.flow.packName} goes either way.`}</small>`,
+        `<small class="px-wrap${allFainted || noBall ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Revive one at the Pokémon Center before you deploy.' : noBall ? (this.flow.ballAtBase ? 'No Poké Balls packed, so nothing can be caught this raid. Add one under Supplies.' : 'No Poké Balls at base, so nothing can be caught this raid.') : `Everything here is lost on a wipe unless it is in the secure slot - and the ${this.flow.packName} goes either way.`}</small>`,
       ],
       actions: `<button class="px-window px-button" data-secure-slot data-help="${escapeAttribute(`The ${gridCells(this.flow.secureGrid)} squares that survive a wipe. It fills itself with your highest-level Pokémon first - a Pokémon costs 4, 6 or 9 squares by its stage - and you can change it.`)}">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Choose where this raid drops in." ${this.flow.isDeployable ? '' : 'disabled'}>Choose drop-in</button>`,
     })}</main>`;
