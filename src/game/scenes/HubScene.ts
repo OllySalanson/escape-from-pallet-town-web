@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { FeedbackDetail } from '../feedback/feedbackContext';
 import { audioManager } from '../audio/AudioManager';
 import type { SoundEffectName } from '../audio/soundEffects';
 import {
@@ -319,6 +320,11 @@ export class HubScene extends Phaser.Scene {
    * snapshot captured at game start. Storage is written before every hand-off,
    * so the passed game is only a fallback for storage-less browsers.
    */
+  /** Which base screen this is, for a feedback message. See `feedback/feedbackContext.ts`. */
+  public feedbackContext(): readonly FeedbackDetail[] {
+    return [{ label: 'Base screen', value: this.view }];
+  }
+
   public init(data: HubSceneData = {}): void {
     const loaded = this.saveManager.load() ?? data.savedGame;
     if (!loaded) {

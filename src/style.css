@@ -93,6 +93,11 @@ body {
 #screens .menu-overlay {
   pointer-events: auto;
 }
+/* The feedback panel is a column over a game the player is meant to still see,
+   so the frame is not drawn round the whole layer for it alone. */
+#screens:has(> .feedback-panel:only-child) {
+  box-shadow: none;
+}
 
 /* The game's own canvas, and only it: a direct child of the stage. The DOM
    screens draw on canvases too now - the drop-in screen's bird's-eye map is one
@@ -867,6 +872,54 @@ button {
   .defeat-stage *::after {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* The FEEDBACK tab (`feedback/feedbackDesk.ts`): on every screen, half way down
+   the right edge of the window, where the game puts nothing of its own. It is
+   the page's, not a pixel-ui screen's, so it is sized in CSS pixels at the
+   menus' smallest scale (2x) and drawn in the game's face and frame. */
+.feedback-tab {
+  position: fixed;
+  right: 0;
+  top: calc(50% - 56px);
+  z-index: 3;
+  height: 112px;
+  width: 30px;
+  padding: 0;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  border: 2px solid #171717;
+  border-left: 0;
+  border-radius: 0;
+  background: #55d6be;
+  color: #171717;
+  font-family: 'Orange Kid', monospace;
+  font-size: 25px;
+  line-height: 26px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 2px 0 0 #0b1220;
+}
+.feedback-tab:hover {
+  background: #8fe6d4;
+}
+.feedback-tab[hidden] {
+  display: none;
+}
+/* A phone held upright has room under the game and none beside it. */
+@media (max-width: 600px) and (orientation: portrait) {
+  .feedback-tab {
+    top: auto;
+    bottom: 0;
+    right: calc(50% - 56px);
+    width: 112px;
+    height: 30px;
+    writing-mode: horizontal-tb;
+    transform: none;
+    border-left: 2px solid #171717;
+    border-bottom: 0;
   }
 }
 
@@ -3332,4 +3385,87 @@ button {
 :where(.pixel-ui) .maker-sent .maker-note {
   display: block;
   color: var(--ink);
+}
+
+/* --- The feedback panel (`feedback/feedbackPanel.ts`) --------------------
+   A column down the right of the window over the paused game, the shape of the
+   review tool the owner reads his boards in; the whole screen when the window
+   is too narrow for a column beside anything (`FeedbackScene.fitToWindow`). */
+.menu-overlay.pixel-ui.feedback-panel {
+  inset: 0 0 0 auto;
+  width: calc(var(--u) * 232);
+  box-shadow: calc(var(--u) * -1) 0 0 var(--frame);
+}
+.menu-overlay.pixel-ui.feedback-panel[data-layout='sheet'] {
+  inset: 0;
+  width: auto;
+  box-shadow: none;
+}
+:where(.pixel-ui) .feedback-body {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: stretch;
+}
+:where(.pixel-ui) .feedback-ask {
+  display: block;
+  padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 3);
+}
+.pixel-ui .feedback-text {
+  display: block;
+  width: 100%;
+  height: calc(var(--u) * 74);
+  resize: none;
+  user-select: text;
+  white-space: pre-wrap;
+}
+:where(.pixel-ui) .feedback-attached {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 0;
+}
+.pixel-ui .feedback-thumb {
+  width: calc(var(--u) * 50);
+  height: calc(var(--u) * 32);
+  object-fit: contain;
+  background: var(--frame);
+  /* A thumbnail is the game shrunk, not magnified: smooth reads truer here. */
+  image-rendering: auto;
+}
+:where(.pixel-ui) .is-left-out .feedback-thumb {
+  opacity: 0.35;
+}
+:where(.pixel-ui) .feedback-all {
+  min-height: 0;
+  user-select: text;
+}
+/* A list is a grid, which outranks the browser's own `[hidden]`. */
+:where(.pixel-ui) .feedback-all[hidden] {
+  display: none;
+}
+:where(.pixel-ui) .feedback-line {
+  cursor: default;
+}
+:where(.pixel-ui) .feedback-label {
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+.pixel-ui .feedback-outcome {
+  display: grid;
+  gap: calc(var(--u) * 8);
+  justify-items: start;
+  align-content: start;
+}
+:where(.pixel-ui) .feedback-outcome .px-heading {
+  justify-self: stretch;
+}
+:where(.pixel-ui) .feedback-tag-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 6);
+}
+:where(.pixel-ui) .feedback-tag {
+  flex: none;
+  padding: calc(var(--u) * 2) calc(var(--u) * 6);
+  background: var(--bar);
+  color: var(--bar-text);
+  user-select: text;
 }

@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { recordAction } from '../feedback/actionLog';
+import type { FeedbackDetail } from '../feedback/feedbackContext';
 import { homeAfterRaid } from '../maker/tryIt';
 import {
   Pokemon,
@@ -456,6 +458,19 @@ export class BattleScene extends Phaser.Scene {
     super('battle');
   }
 
+  /** Who is fighting whom, for a feedback message. See `feedback/feedbackContext.ts`. */
+  public feedbackContext(): readonly FeedbackDetail[] {
+    if (!this.state) {
+      return [];
+    }
+    const side = (pokemon: Pokemon): string => `${pokemon.base.name} Lv${pokemon.level}`;
+    return [
+      { label: 'Fight', value: this.trainer ? `against ${this.trainer.name}` : 'wild' },
+      { label: 'Yours', value: side(this.state.player.pokemon) },
+      { label: 'Theirs', value: side(this.state.enemy.pokemon) },
+    ];
+  }
+
   public create(data: BattleSceneData = {}): void {
     void audioManager.startTheme('battle');
     // A wild fight was announced by the grass that produced it, one fade ago;
@@ -540,6 +555,11 @@ export class BattleScene extends Phaser.Scene {
         : createBattleState(playerPokemon, wildPokemon, data.weather ?? null)),
       playerParty: this.party.pokemon,
     };
+    recordAction(
+      data.trainer
+        ? `Fight with ${data.trainer.name}`
+        : `Wild ${this.state.enemy.pokemon.base.name} Lv${this.state.enemy.pokemon.level}`,
+    );
     this.noteWhoFacesWhom();
     this.cameras.main.setBackgroundColor('#0b1220');
     this.centreComposition();
