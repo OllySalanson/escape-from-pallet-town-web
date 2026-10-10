@@ -6,9 +6,9 @@
 
 <p align="center">
   <b>Kanto, but it's a heist.</b><br>
-  Drop into a town with five minutes on the clock, grab everything that isn't nailed down,<br>
-  and get out before time runs out or your rival catches up. Whatever you carry out is yours.<br>
-  Whatever you don't... well. Blue says thanks.
+  Drop into a town with five minutes on the clock, grab everything that isn't nailed down, and get
+  out before time runs out or your rival catches up. Whatever you carry out is yours. Whatever you
+  don't... well. Blue says thanks.
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 **Escape from Pallet Town** is a Pokémon-flavoured *extraction* game that runs in your browser. You
 never played an extraction game? Lucky you, here is the whole genre in five words:
 
-| | |
+| Word | What it means |
 |---|---|
 | **Raid** | One trip out into the world, on a five-minute clock. |
 | **Extraction** | Walking out through an exit before the clock hits zero. It is the only way to keep anything. |
@@ -46,7 +46,7 @@ never played an extraction game? Lucky you, here is the whole genre in five word
 That's it. Go out, get greedy, come home. Or don't come home, and learn something about greed.
 
 <p align="center">
-  <img src="docs/readme/walk.webp" width="800" alt="A raid in Viridian City: the trainer walks down Main Street past the Gym, the raid clock ticking down in the corner.">
+  <img src="docs/readme/walk.webp" width="800" alt="A raid in Viridian City: the trainer walks from the Pokemon Center up Main Street towards the Gym, the raid clock ticking down in the corner.">
 </p>
 
 ## How a raid goes

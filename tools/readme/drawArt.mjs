@@ -197,6 +197,7 @@ try {
   const px = (W - pw) / 2, py = 26;
   const pixelated = 'image-rendering="optimizeSpeed" style="image-rendering:pixelated"';
   // A walk is the sheet's right-facing row, columns 1, 0, 3, 0 (`playerFrames.ts`).
+  // The chase starts mid-street, so a picture of the banner's first frame has them in it.
   const runner = (id, delay) => `
     <g class="run" style="animation-delay:${delay}s">
       <svg x="0" y="${H - 50}" width="16" height="32" viewBox="0 0 16 32" overflow="hidden">
@@ -244,8 +245,8 @@ try {
   <image href="${art.plate}" x="${px}" y="${py}" width="${pw}" height="${ph}" ${pixelated}/>
   <g class="blink"><image href="${art.prompt}" x="${(W - qw) / 2}" y="${py + ph + 10}" width="${qw}" height="${qh}" ${pixelated}/></g>
   <g class="alarm"><image href="${art.clock}" x="${W - cw - 6}" y="6" width="${cw}" height="${ch}" ${pixelated}/></g>
-  ${runner('protagonist-red', 0)}
-  <g class="run"><g transform="translate(-34 0)">
+  ${runner('protagonist-red', -2.5)}
+  <g class="run" style="animation-delay:-2.5s"><g transform="translate(-34 0)">
     <svg x="0" y="${H - 50}" width="16" height="32" viewBox="0 0 16 32" overflow="hidden">
       <image class="stride" href="${art.sheets.blue}" width="64" height="128" y="-32" ${pixelated}/>
     </svg>

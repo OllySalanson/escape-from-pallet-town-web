@@ -8,7 +8,7 @@
 // (`src/game/display/stage.ts`): GitHub's README column is a little wider than
 // 800 pixels, so the pictures are shown at their own size, every game pixel a
 // crisp 2x2 square, rather than resampled. `frames/` holds the walk, one PNG
-// per 50ms frame; `npm`-free ffmpeg turns it into the GIF (see docs/readme/README.md).
+// per 15th of a second; ffmpeg turns it into the animation (see docs/readme/README.md).
 import { mkdirSync, readFileSync } from 'node:fs';
 import { launchBrowser } from './browser.mjs';
 import { GAME, SAVE_KEY, deploy, deployOptions, sceneIs, walkIntoBase } from './deploy.mjs';
@@ -133,11 +133,16 @@ const main = async () => {
   console.log('walk', path.join(' '));
   let frame = 0;
   let held = null;
-  for (const key of path) {
+  // Fifteen frames a second keeps the file small; a townsperson keeping a beat
+  // can step into the lane after it was planned, and the walk ends there rather
+  // than filming the player bumping into them.
+  const frameMs = 1000 / 15;
+  walk: for (const key of path) {
     if (key !== held) { if (held) await page.keyUp(held); await page.keyDown(key); held = key; }
     const from = await page.evaluate(`${world}.currentTile`);
-    for (let guard = 0; guard < 12; guard += 1) {
-      await wait(50, 50);
+    for (let guard = 0; ; guard += 1) {
+      if (guard === 4 || frame === 60) break walk;
+      await wait(frameMs, frameMs);
       await page.screenshot(`${outDir}/frames/${String(frame).padStart(3, '0')}.png`);
       frame += 1;
       const now = await page.evaluate(`${world}.currentTile`);
@@ -147,7 +152,10 @@ const main = async () => {
   if (held) await page.keyUp(held);
   await wait(300);
 
-  // The pack, opened in the raid.
+  // The pack, opened in the raid, holding what a raid this far in might have
+  // found: a crate, a roll of linen, a valve, a stone and a bundle of money.
+  await page.evaluate(`(() => { const b = ${world}.bag;
+    for (const [id, n] of [['parts-crate', 1], ['linen-roll', 1], ['radio-valve', 1], ['super-potion', 1], ['thunder-stone', 1], ['money', 40]]) b.add(id, n); })()`);
   await press('KeyB');
   await wait(600);
   await shot('pack');
