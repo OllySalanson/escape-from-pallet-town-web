@@ -1,5 +1,5 @@
 import { readMapFile, type MapFile } from '../world/mapFile';
-import { keepOnMap } from './draft';
+import { blankMap, keepOnMap, setMaker } from './draft';
 
 /**
  * The maps a player is drawing, kept in this browser.
@@ -166,6 +166,15 @@ export function withoutDraft(store: MakerStore, key: string): MakerStore {
  */
 export function lastMakerName(store: MakerStore): string {
   return store.drafts.find((draft) => draft.file.maker.trim() !== '')?.file.maker ?? '';
+}
+
+/**
+ * Whether a map is still exactly the blank NEW made it: nothing drawn, placed
+ * or renamed. Pressing NEW on one puts nothing away, so it is replaced rather
+ * than left in the drafts list beside the new one.
+ */
+export function isUntouchedBlank(file: MapFile): boolean {
+  return mapFileText(file) === mapFileText(setMaker(blankMap(), file.maker));
 }
 
 /** A key no draft in the store has yet. */

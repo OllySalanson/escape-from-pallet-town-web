@@ -461,6 +461,34 @@ describe('a new map', () => {
     expect(stored.drafts.map((draft) => draft.file.maker)).toEqual(['Olly', 'Olly']);
   });
 
+  it('replaces a map nobody has touched rather than piling up blanks', () => {
+    storeDraft({ ...blankMap(), maker: 'Olly' });
+    const { scene } = openMaker();
+
+    scene.overlay.clicks.get('[data-new]')!();
+    scene.overlay.clicks.get('[data-new]')!();
+
+    const stored = JSON.parse(localStorage.getItem(MAKER_STORAGE_KEY)!) as {
+      drafts: { file: MapFile }[];
+    };
+    expect(stored.drafts).toHaveLength(1);
+    expect(stored.drafts[0].file.maker).toBe('Olly');
+  });
+
+  it('keeps a map that has been drawn on', () => {
+    storeDraft(withSigns());
+    const { scene } = openMaker();
+
+    scene.overlay.clicks.get('[data-new]')!();
+    scene.overlay.clicks.get('[data-new]')!();
+
+    const stored = JSON.parse(localStorage.getItem(MAKER_STORAGE_KEY)!) as {
+      drafts: { file: MapFile }[];
+    };
+    expect(stored.drafts).toHaveLength(2);
+    expect(stored.drafts[1].file.signs ?? []).not.toHaveLength(0);
+  });
+
   it('is unsigned when no map has been signed yet', () => {
     const { scene } = openMaker();
 
