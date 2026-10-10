@@ -1596,7 +1596,15 @@ export class HubScene extends Phaser.Scene {
     const quotedMs = quoteRecovery(this.stash, pending, injured.map((stored) => stored.id), this.recoveryTerms);
     // The cap can make treating everyone cheaper than the rows add up to, so say so.
     const listedMs = injured.reduce((total, stored) => total + this.recoveryPriceMs(stored), 0);
-    const lead = injured.length === 0 ? 'everyone is fit' : `${injured.length} hurt`;
+    // A faint is said apart from a scratch, as everywhere else at base
+    // (`teamConditionLine`): the bill read "1 hurt" over a partner who had
+    // fainted and could not deploy until this very button was pressed.
+    const fainted = injured.filter((stored) => stored.pokemon.isFainted).length;
+    const hurt = injured.length - fainted;
+    const lead =
+      injured.length === 0
+        ? 'everyone is fit'
+        : [fainted > 0 ? `${fainted} fainted` : '', hurt > 0 ? `${hurt} hurt` : ''].filter(Boolean).join(' · ');
     // The title bar carries the clock the next raid starts with. This line is
     // only for what that number does not show - the time already booked out of
     // it - so a fit, unbooked stash repeats nothing.
@@ -1611,7 +1619,7 @@ export class HubScene extends Phaser.Scene {
     const action =
       injured.length === 0
         ? ''
-        : `<button class="px-window px-button is-primary" data-recover-all data-help="Full HP, status cleared. Paid in raid time, never supplies.">Recover ${injured.length === 1 ? 'them' : `all ${injured.length}`} · ${quotedMs === 0 ? 'free' : `−${formatRecoveryClock(quotedMs)}`}</button>`;
+        : `<button class="px-window px-button is-primary" data-recover-all data-help="${fainted > 0 ? 'Revived, f' : 'F'}ull HP, status cleared. Paid in raid time, never supplies.">Recover ${injured.length === 1 ? 'them' : `all ${injured.length}`} · ${quotedMs === 0 ? 'free' : `−${formatRecoveryClock(quotedMs)}`}</button>`;
     return pixelCommitBar({
       className: 'px-tone-care recovery-panel',
       lead: pixelFigure('nurse-joy', 'Nurse Joy'),

@@ -150,6 +150,25 @@ describe('the lobby as a screen of the game', () => {
     expect(home).not.toContain('came home hurt');
   });
 
+  it("bills a fainted Pokemon at the Pokémon Center as fainted, never as hurt", () => {
+    const { hub } = createWornHub();
+    hub.setView('stash');
+    expect(markupOf(hub)).toContain('Pokémon Center · 1 hurt');
+
+    const [partner] = hub.stash.listPokemon().filter((stored) => stored.id !== 'charmander-1');
+    partner.pokemon.takeDamage(partner.pokemon.maxHp);
+    hub.setView('stash');
+    const mixed = markupOf(hub);
+    expect(mixed).toContain('Pokémon Center · 1 fainted · 1 hurt');
+    expect(mixed).toContain('Revived, full HP, status cleared.');
+
+    hub.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!.pokemon.takeDamage(999);
+    hub.setView('stash');
+    const wiped = markupOf(hub);
+    expect(wiped).toContain('Pokémon Center · 2 fainted');
+    expect(wiped).not.toContain('2 fainted · ');
+  });
+
   it('never tells the loadout to treat a fainted Pokemon a Potion cannot revive', () => {
     const { hub } = createWornHub();
     hub.openDeployment();
