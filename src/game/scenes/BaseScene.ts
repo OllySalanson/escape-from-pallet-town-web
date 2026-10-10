@@ -1144,7 +1144,16 @@ export class BaseScene extends Phaser.Scene {
       labels.map((label) => label.request()),
       {
         bounds,
-        furniture: this.hintShown ? [this.hintRect(view)] : [],
+        // The dialogue box is drawn over the captions, as the hint line is, so
+        // while one is up it is ground no caption may take - the raid's rule
+        // (`WorldScene`), which the base had not been told: a caption came out
+        // half under the box whenever anything here was spoken to.
+        furniture: [
+          ...(this.hintShown ? [this.hintRect(view)] : []),
+          ...(this.dialogBox.visible
+            ? [{ x: this.dialogBox.x + view.left, y: this.dialogBox.y + view.top, width: DIALOG_WIDTH, height: DIALOG_HEIGHT }]
+            : []),
+        ],
         keepClear: [
           ...(room ? [figureRect(room.keeper.position)] : []),
           ...(this.partner?.place.out ? [this.partnerRect(this.partner.place.tile)] : []),
@@ -1695,10 +1704,17 @@ export class BaseScene extends Phaser.Scene {
     partner.sprite.setAlpha(alpha);
     if (partner.bubble) {
       const art = FOLLOWER_ART[partner.species];
-      partner.bubble.setPosition(
-        Math.round(at.x * TILE_SIZE + TILE_SIZE / 2 - 5),
-        Math.round(at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET + art.topPixelY - 16 - lift),
-      );
+      let bubbleX = Math.round(at.x * TILE_SIZE + TILE_SIZE / 2 - 5);
+      const bubbleY = Math.round(at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET + art.topPixelY - 16 - lift);
+      // Over its head is where a bubble goes - unless the player is standing
+      // there, as they are whenever the partner is right behind them on the way
+      // down the screen. Then it is seated at the player's shoulder, so it
+      // never covers the player's face.
+      const face = figureRect({ x: this.player.x / TILE_SIZE, y: playerY });
+      if (bubbleX < face.x + face.width && bubbleX + 11 > face.x && bubbleY < face.y + face.height && bubbleY + 15 > face.y) {
+        bubbleX = Math.round(face.x + face.width);
+      }
+      partner.bubble.setPosition(bubbleX, bubbleY);
     }
   }
 

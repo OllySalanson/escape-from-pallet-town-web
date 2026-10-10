@@ -136,6 +136,11 @@ than a menu. Four buildings, four people you'll recognise, and each one is a thi
 - **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones
   and HMs are bartered for things you found. Everything you trade him ends up on his shelves.
 
+And you never walk it alone. The starter you picked trots one step behind you, in your own
+footsteps, through every door and into every room, drawn in HeartGold and SoulSilver's own
+following-Pokémon art. Turn round, press Space, and it'll tell you how it's doing. It's that
+Pokémon and nobody else, so lose it in a raid and the Harbour gets very quiet.
+
 <p align="center">
   <img src="docs/readme/harbour.png" width="800" alt="The Harbour: Oak's Lab, Brock's Workshop and the radio mast above a sandy yard, Bill's cottage on the stone quay, and the sea below.">
 </p>
