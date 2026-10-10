@@ -19,6 +19,13 @@ import { readDailyCount, writeDailyCount, type FeedbackOutbox } from './outbox';
  */
 export interface FeedbackCourier {
   dispatch(note: Omit<FeedbackNote, 'notBefore'>, now: Date): Promise<FeedbackOutcome>;
+  /**
+   * Tries again with everything still in the pack that is due, oldest first,
+   * and stops at the first that will not go - offline is offline for all of
+   * them. Resolves how many went. One flush at a time: a second call while one
+   * runs shares it.
+   */
+  flush(now: Date): Promise<number>;
 }
 
 /**
@@ -36,7 +43,32 @@ export interface CourierParts {
 }
 
 export function createCourier(parts: CourierParts): FeedbackCourier {
+  let flushing: Promise<number> | null = null;
+  const flushNow = async (now: Date): Promise<number> => {
+    if (!parts.send) {
+      return 0;
+    }
+    let sent = 0;
+    for (const note of await parts.outbox.waiting()) {
+      if (note.notBefore && Date.parse(note.notBefore) > now.getTime()) {
+        continue;
+      }
+      const delivered = await parts.send(note).catch(() => false);
+      if (!delivered) {
+        break;
+      }
+      await parts.outbox.forget(note.tag);
+      sent += 1;
+    }
+    return sent;
+  };
   return {
+    flush: (now) => {
+      flushing ??= flushNow(now).finally(() => {
+        flushing = null;
+      });
+      return flushing;
+    },
     dispatch: async (draft, now) => {
       const counted = readDailyCount(parts.storage);
       const overLimit = sendsToday(counted, now) >= DAILY_FEEDBACK_LIMIT;
