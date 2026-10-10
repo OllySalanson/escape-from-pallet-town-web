@@ -114,6 +114,8 @@ import {
   describeMoveGuidance,
   escapeAbilityMessage,
   eventToMessage,
+  foeWordFor,
+  type FoeWord,
   enemyBannerRole,
   type BannerRole,
   formatHunterFleeCommand,
@@ -666,7 +668,7 @@ export class BattleScene extends Phaser.Scene {
       // same words a move that brought it on would use. Nothing else announces
       // it: after this it speaks only when it takes HP off somebody.
       ...(this.state.weather ? [weatherSetMessage(this.state.weather.id, false)] : []),
-      ...openingAbilityEvents(this.state).map((event) => eventToMessage(event)),
+      ...openingAbilityEvents(this.state).map((event) => eventToMessage(event, this.foeWord())),
     ]);
   }
 
@@ -1899,6 +1901,11 @@ export class BattleScene extends Phaser.Scene {
     );
   }
 
+  /** Wild in a wild fight, Foe against anyone with a trainer - the hunter included. */
+  private foeWord(): FoeWord {
+    return foeWordFor({ trainer: this.trainer !== undefined });
+  }
+
   private wildEscapeLabel(): string {
     return formatWildEscapeCommand(
       wildEscapeChanceFor(this.state.player, this.state.enemy, this.wildEscapeAttempts),
@@ -2487,7 +2494,7 @@ export class BattleScene extends Phaser.Scene {
       stagedNote({ message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' }),
       // Whatever the arrival did - a status shed on the way out, an Intimidate
       // on the way in - is read after the two lines that name the swap.
-      ...switchIn.events.map((event) => stagedNote(eventToMessage(event))),
+      ...switchIn.events.map((event) => stagedNote(eventToMessage(event, this.foeWord()))),
     );
     this.resumeCombatMessages();
   }
@@ -2994,7 +3001,7 @@ export class BattleScene extends Phaser.Scene {
     this.pendingCombatMessages = [
       ...leadingMessages.map(stagedNote),
       ...events.flatMap((event, index) => [
-        { event, message: eventToMessage(event) },
+        { event, message: eventToMessage(event, this.foeWord()) },
         ...(afterEvents.get(index) ?? []).map(stagedNote),
       ]),
       ...trailingMessages.map(stagedNote),

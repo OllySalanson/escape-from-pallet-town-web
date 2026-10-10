@@ -697,7 +697,7 @@ describe('a status tag on a plate', () => {
     for (let guard = 0; guard < 10 && !dialog.visibleText.includes('confused'); guard += 1) {
       (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
     }
-    expect(dialog.visibleText).toBe('Foe PIDGEY became confused!');
+    expect(dialog.visibleText).toBe('Wild PIDGEY became confused!');
     expect(tagNow()).toBe('CNF');
   });
 });
@@ -775,7 +775,25 @@ describe('using an item in a battle', () => {
     expect(dialog.shownMessages[0]).toBe('CHARMANDER recovered 15 HP!');
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
-    expect(dialog.shownMessages.slice(1).join(' ')).toContain('Foe BULBASAUR used');
+    expect(dialog.shownMessages.slice(1).join(' ')).toContain('Wild BULBASAUR used');
+  });
+
+  it('names the wild Pokemon Wild on every line, never Foe, under its WILD banner', () => {
+    const hurt = new Pokemon(CHARMANDER, 12);
+    hurt.takeDamage(15);
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      bag: new Bag({ potion: 1 }),
+      party: new PokemonParty([hurt]),
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0.01);
+
+    chooseItemFor(scene, renderedTexts);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+
+    const enemyLines = dialog.shownMessages.filter((line) => line.includes('BULBASAUR'));
+    expect(enemyLines.length).toBeGreaterThan(0);
+    expect(enemyLines.every((line) => line.startsWith('Wild BULBASAUR'))).toBe(true);
+    expect(dialog.shownMessages.some((line) => line.startsWith('Foe '))).toBe(false);
   });
 
   it('keeps the item and the turn when the medicine would do nothing', () => {

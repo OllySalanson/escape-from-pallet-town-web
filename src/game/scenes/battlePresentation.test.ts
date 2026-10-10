@@ -26,6 +26,7 @@ import {
   combatPresentationSteps,
   describeMoveGuidance,
   eventToMessage,
+  foeWordFor,
   formatMoveCommand,
   BATTLE_PANEL,
   formatPartyRow,
@@ -107,6 +108,19 @@ describe('battle presentation', () => {
       .toBe('SQUIRTLE Lv 5 HP 17/17');
     expect(formatPartyRow({ base: { name: 'Squirtle' }, level: 5, currentHp: 0, maxHp: 17, isFainted: true }))
       .toBe('SQUIRTLE Lv 5 FNT');
+  });
+
+  it('calls a wild Pokemon Wild and a trainer\'s Foe, as the banner over its plate does', () => {
+    const wild = foeWordFor({ trainer: false });
+    const trainer = foeWordFor({ trainer: true });
+    expect(eventToMessage({ type: 'used-move', user: 'enemy', name: 'Rattata', move: 'Tackle' }, wild)).toBe(
+      'Wild RATTATA used TACKLE!',
+    );
+    expect(eventToMessage({ type: 'stat-stage-changed', user: 'enemy', name: 'Rattata', stat: 'attack', stages: -1 }, wild))
+      .toBe("Wild RATTATA's Attack fell!");
+    expect(eventToMessage({ type: 'fainted', user: 'enemy', name: 'Pidgey' }, trainer)).toBe('Foe PIDGEY fainted!');
+    // The player's own side is Your whoever they are fighting.
+    expect(eventToMessage({ type: 'fainted', user: 'player', name: 'Squirtle' }, wild)).toBe('Your SQUIRTLE fainted!');
   });
 
   it('names the key that cancels, and says a refusal on the prompt line beside the list', () => {
