@@ -790,3 +790,178 @@ export function resizeMap(file: MapFile, width: number, height: number): MapFile
   });
   return keepOnMap({ ...file, width: size.width, height: size.height, ground });
 }
+
+/** How far a map moves, in tiles: east and south are positive. */
+export interface Offset {
+  readonly x: number;
+  readonly y: number;
+}
+
+const moved = <T extends { readonly x: number; readonly y: number }>(
+  list: readonly T[],
+  by: Offset,
+): T[] => list.map((thing) => ({ ...thing, x: thing.x + by.x, y: thing.y + by.y }));
+
+/**
+ * How each part of a file moves when the map's ground moves under it. Every
+ * key of a file is named, so a part added to the format does not compile until
+ * it says whether it has a place on the map: a list of things left behind
+ * when the map grows west would stand them on the wrong tiles.
+ */
+const SHIFTS: {
+  readonly [K in keyof Required<MapFile>]:
+    | 'stays'
+    | ((value: NonNullable<MapFile[K]>, by: Offset) => NonNullable<MapFile[K]>);
+} = {
+  format: 'stays',
+  id: 'stays',
+  name: 'stays',
+  maker: 'stays',
+  width: 'stays',
+  height: 'stays',
+  // The ground is the map; `extendMap` lays it out round the old.
+  ground: 'stays',
+  wildlife: 'stays',
+  buildings: moved,
+  dropIns: moved,
+  exits: moved,
+  itemSpots: moved,
+  people: moved,
+  signs: moved,
+  landmarks: moved,
+  trainers: moved,
+  districts: moved,
+  doors: moved,
+};
+
+/** Everything standing on the map moved by `by`, the ground left as it is. */
+export function shiftThings(file: MapFile, by: Offset): MapFile {
+  if (by.x === 0 && by.y === 0) {
+    return file;
+  }
+  const next: Record<string, unknown> = { ...file };
+  for (const key of Object.keys(SHIFTS) as (keyof MapFile)[]) {
+    const shift = SHIFTS[key];
+    const value = file[key];
+    if (shift !== 'stays' && value !== undefined) {
+      next[key] = (shift as (value: unknown, by: Offset) => unknown)(value, by);
+    }
+  }
+  return next as unknown as MapFile;
+}
+
+/** How many tiles a map gains on each side. West and north are always even. */
+export interface Sides {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+/**
+ * The map with new ground round it - trees, so a map grown never opens a hole
+ * in its edge - and everything on it moved with the ground it stood on.
+ *
+ * West and north are added two at a time: a FireRed wood stands on a lattice
+ * of even rows and columns (`tileset/lattice.ts`) and the grass on a 2x2
+ * weave, so moving the ground an odd number of tiles would redraw every tree
+ * on the map as a different cut of one.
+ */
+export function extendMap(file: MapFile, sides: Sides): MapFile {
+  if (sides.left % 2 !== 0 || sides.top % 2 !== 0) {
+    throw new Error('a map grows west and north two tiles at a time');
+  }
+  if (sides.left + sides.top + sides.right + sides.bottom === 0) {
+    return file;
+  }
+  const width = file.width + sides.left + sides.right;
+  const height = file.height + sides.top + sides.bottom;
+  const wood = TREE.repeat(width);
+  const ground = [
+    ...Array.from({ length: sides.top }, () => wood),
+    ...file.ground.map((row) => TREE.repeat(sides.left) + row + TREE.repeat(sides.right)),
+    ...Array.from({ length: sides.bottom }, () => wood),
+  ];
+  return shiftThings({ ...file, width, height, ground }, { x: sides.left, y: sides.top });
+}
+
+/** How deep the wood a map grows round what was drawn past its edge is: one whole tree. */
+export const GROWN_RING = BORDER;
+
+/**
+ * How far past each edge a maker may draw: as far as the map may still grow,
+ * up to a screenful. The rest arrives as the map grows towards it.
+ */
+export const GROW_MARGIN = 24;
+
+/** How much room each side of the map has to grow into, in tiles, held to the biggest map there may be. */
+export function growthRoom(file: MapFile): Sides {
+  const across = Math.max(0, MAP_FILE_LIMITS.maxWidth - file.width);
+  const down = Math.max(0, MAP_FILE_LIMITS.maxHeight - file.height);
+  const even = (value: number): number => value - (value % 2);
+  return {
+    left: even(Math.min(GROW_MARGIN, across)),
+    top: even(Math.min(GROW_MARGIN, down)),
+    right: Math.min(GROW_MARGIN, across),
+    bottom: Math.min(GROW_MARGIN, down),
+  };
+}
+
+/** What `growToFit` made: the map, and how far everything on it moved. */
+export interface Growth {
+  readonly file: MapFile;
+  readonly shift: Offset;
+}
+
+/**
+ * The map grown just enough to hold `tiles` - given as tiles of the map as it
+ * is, so past its west or north edge is negative - with a whole tree of wood
+ * beyond them, or as much of one as the biggest map there may be leaves room
+ * for. A map already holding every tile is returned as it is. What the map
+ * cannot grow to hold is left off it: the caller paints onto the grown map,
+ * and painting skips tiles that are not on it.
+ */
+export function growToFit(file: MapFile, tiles: readonly GridPoint[]): Growth {
+  if (tiles.length === 0) {
+    return { file, shift: { x: 0, y: 0 } };
+  }
+  const xs = tiles.map((tile) => tile.x);
+  const ys = tiles.map((tile) => tile.y);
+  const across = axisGrowth(Math.min(...xs), Math.max(...xs), file.width, MAP_FILE_LIMITS.maxWidth);
+  const down = axisGrowth(Math.min(...ys), Math.max(...ys), file.height, MAP_FILE_LIMITS.maxHeight);
+  const sides = { left: across.before, right: across.after, top: down.before, bottom: down.after };
+  return { file: extendMap(file, sides), shift: { x: sides.left, y: sides.top } };
+}
+
+/**
+ * How many tiles one axis gains before and after the map: enough for the
+ * nearest and furthest tile drawn past it and a ring of wood beyond, the ring
+ * given up first and then the tiles furthest out when the map would pass the
+ * biggest it may be.
+ */
+function axisGrowth(
+  low: number,
+  high: number,
+  size: number,
+  most: number,
+): { before: number; after: number } {
+  const even = (value: number): number => value + (value % 2);
+  const evenDown = (value: number): number => value - (value % 2);
+  const room = Math.max(0, most - size);
+  const beforeTiles = low < 0 ? -low : 0;
+  const afterTiles = high >= size ? high - size + 1 : 0;
+  let before = beforeTiles > 0 ? even(beforeTiles + GROWN_RING) : 0;
+  let after = afterTiles > 0 ? afterTiles + GROWN_RING : 0;
+  if (before + after > room) {
+    // Without the ring.
+    before = beforeTiles > 0 ? even(beforeTiles) : 0;
+    after = afterTiles;
+  }
+  if (before + after > room) {
+    // Without the tiles furthest out: each side keeps its share of the room.
+    const share = beforeTiles + afterTiles;
+    before = evenDown(Math.min(before, Math.round((room * beforeTiles) / share)));
+    after = Math.min(after, room - before);
+  }
+  return { before, after };
+}

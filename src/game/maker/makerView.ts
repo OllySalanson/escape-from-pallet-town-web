@@ -15,7 +15,7 @@ import {
   type MapFileTrainerTeam,
 } from '../world/mapFile';
 import { escapeAttribute, pixelCommitBar, pixelScreen, pixelWindow } from '../ui/pixelUi';
-import type { SpotKind, ThingRef } from './draft';
+import { growthRoom, type SpotKind, type ThingRef } from './draft';
 import type { StoredDraft } from './drafts';
 import type { QueuedMap } from './review';
 import { STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
@@ -179,13 +179,13 @@ const TOOLS: readonly {
     id: 'brush',
     label: 'Brush',
     key: 'B',
-    help: 'Paints the ground under the pointer. Drag to paint a stroke.',
+    help: 'Paints the ground under the pointer. Drag to paint a stroke. Paint past the edge of the map to make it bigger.',
   },
   {
     id: 'rect',
     label: 'Box',
     key: 'R',
-    help: 'Drag out a box and fill it with the ground you have chosen.',
+    help: 'Drag out a box and fill it with the ground you have chosen. A box past the edge makes the map bigger.',
   },
   {
     id: 'fill',
@@ -271,16 +271,30 @@ function toolsPane(state: MakerViewState): string {
   );
 }
 
+/**
+ * Where the map is drawn in its window: the map itself, and round it the room
+ * it may still grow into, which a tool that grows the map draws on. Both as
+ * inline styles, in game pixels, so the scene can lay a map out again as a
+ * stroke grows it without drawing the screen again.
+ */
+export function stackLayout(file: MapFile, zoom: MakerZoom): { stack: string; map: string } {
+  const room = growthRoom(file);
+  const at = (tiles: number): string => `calc(var(--u) * ${tiles * zoom})`;
+  return {
+    stack: `width:${at(file.width + room.left + room.right)};height:${at(file.height + room.top + room.bottom)};--tile:${at(1)}`,
+    map: `left:${at(room.left)};top:${at(room.top)};width:${at(file.width)};height:${at(file.height)}`,
+  };
+}
+
 function mapPane(state: MakerViewState): string {
   const { file, zoom } = state;
+  const layout = stackLayout(file, zoom);
   const zoomButtons = MAKER_ZOOMS.map(
     (level) =>
       `<button class="px-window px-button maker-zoom${level === zoom ? ' is-primary' : ''}" data-zoom="${level}" aria-pressed="${level === zoom}" data-help="Draws a tile ${level} pixels wide.">${level === 16 ? '1x' : level < 16 ? `1/${16 / level}` : `${level / 16}x`}</button>`,
   ).join('');
-  const width = file.width * zoom;
-  const height = file.height * zoom;
   return pixelWindow(
-    `<div class="maker-zooms">${zoomButtons}</div><div class="maker-viewport" data-viewport><div class="maker-stack" data-stack style="width:calc(var(--u) * ${width});height:calc(var(--u) * ${height})"><canvas class="maker-canvas" data-map></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>`,
+    `<div class="maker-zooms">${zoomButtons}</div><div class="maker-viewport" data-viewport><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>`,
     {
       className: 'maker-map',
       heading: escapeHtml(file.name || 'Untitled map'),

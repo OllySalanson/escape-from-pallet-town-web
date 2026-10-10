@@ -550,3 +550,29 @@ describe('a stroke dragged past the edge of the map window', () => {
     );
   });
 });
+
+describe('drawing past the edge of the map', () => {
+  it('grows the map to hold what was drawn, and undo takes it back', () => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    scene.brushId = 'sand';
+    scene.pointerDown(at(-1, 7), page.canvas);
+    scene.pointerUp(at(-1, 7), page.canvas);
+    // West two tiles at a time: the tile drawn and a whole tree of wood past it.
+    expect([scene.file.width, scene.file.height]).toEqual([44, 30]);
+    expect(scene.file.ground[7].slice(0, 5)).toBe('TTTdT');
+    expect(scene.overlay.root.innerHTML).toContain('The map grew to 44x30.');
+    scene.handleKey(key('z', { ctrlKey: true }));
+    expect([scene.file.width, scene.file.height]).toEqual([40, 30]);
+  });
+
+  it('does nothing past the edge with a tool that cannot grow it', () => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    scene.tool = 'fill';
+    scene.pointerDown(at(-1, 7), page.canvas);
+    expect(scene.file.width).toBe(40);
+    expect(scene.history.canUndo).toBe(false);
+  });
+});
+

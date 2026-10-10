@@ -22,7 +22,11 @@ import {
   thingAt,
   thingExists,
   buildingSize,
+  growthRoom,
+  growToFit,
   type GridPoint,
+  type Growth,
+  type Offset,
   type SpotKind,
   type ThingRef,
 } from '../maker/draft';
@@ -86,6 +90,7 @@ import {
   type MakerTool,
   type MakerZoom,
   type PlaceChoice,
+  stackLayout,
 } from '../maker/makerView';
 import { BUILDING_CHOICES, GROUND_BRUSHES, groundBrush, groundUnder } from '../maker/palette';
 import { MenuOverlay } from '../ui/MenuOverlay';
@@ -128,9 +133,11 @@ const EDGE_SCROLL_MAX_PX = 24;
 
 interface Stroke {
   readonly tool: MakerTool;
-  readonly start: GridPoint;
+  start: GridPoint;
   last: GridPoint;
   file: MapFile;
+  /** How far the stroke's map has grown west and north since it began, so everything on it moved. */
+  shift: Offset;
   /** For a drag with Select: the thing being carried. */
   readonly carrying?: ThingRef;
   /** The pointer drawing it, so a stroke cancelled from the keyboard lets it go. */
@@ -152,6 +159,13 @@ const sessionViews = new Map<
   string,
   { readonly zoom: MakerZoom; readonly left: number; readonly top: number }
 >();
+
+/**
+ * Each map a stroke grew, with the map it grew from and how far its ground
+ * moved, so undo and redo can hold the window still as the map changes size
+ * under it. Kept beside the histories, whose maps it is keyed by.
+ */
+const grownFrom = new WeakMap<MapFile, { readonly before: MapFile; readonly shift: Offset }>();
 
 /** Forgets the session's histories and views: for tests, which share the module. */
 export function forgetMakerSession(): void {
@@ -448,8 +462,8 @@ export class MapMakerScene extends Phaser.Scene {
     }
     const fresh = this.overlay.root.querySelector<HTMLElement>('[data-stack]');
     if (kept && fresh) {
-      kept.setAttribute('style', fresh.getAttribute('style') ?? '');
       fresh.replaceWith(kept);
+      this.layoutStack(this.file);
     } else if (fresh) {
       this.painter.forgetCanvas();
     }
@@ -564,9 +578,15 @@ export class MapMakerScene extends Phaser.Scene {
     }
   }
 
+  private mapContext(): CanvasRenderingContext2D | null {
+    return (
+      this.overlay.root.querySelector<HTMLCanvasElement>('canvas[data-map]')?.getContext('2d') ??
+      null
+    );
+  }
+
   private redraw(file: MapFile = this.file): void {
-    const canvas = this.overlay.root.querySelector<HTMLCanvasElement>('canvas[data-map]');
-    const context = canvas?.getContext('2d');
+    const context = this.mapContext();
     if (!context) {
       return;
     }
@@ -761,15 +781,43 @@ export class MapMakerScene extends Phaser.Scene {
 
   // --- Drawing on the map --------------------------------------------------------
 
+  /** The map as it is drawn now: a stroke's map while one is held, which may have grown. */
+  private get onScreen(): MapFile {
+    return this.stroke?.file ?? this.file;
+  }
+
   private tileAt(
     point: { readonly clientX: number; readonly clientY: number },
     canvas: HTMLElement,
   ): GridPoint {
     const box = canvas.getBoundingClientRect();
+    const file = this.onScreen;
     return {
-      x: Math.floor(((point.clientX - box.left) / box.width) * this.file.width),
-      y: Math.floor(((point.clientY - box.top) / box.height) * this.file.height),
+      x: Math.floor(((point.clientX - box.left) / box.width) * file.width),
+      y: Math.floor(((point.clientY - box.top) / box.height) * file.height),
     };
+  }
+
+  /** Whether a tool can draw past the edge of the map, growing it. */
+  private grows(tool: MakerTool): boolean {
+    return tool === 'brush' || tool === 'rect' || tool === 'place' || tool === 'select';
+  }
+
+  /** The tiles a tool may work on: the map, and for one that grows it, the room round it. */
+  private reach(tool: MakerTool): { left: number; top: number; right: number; bottom: number } {
+    const file = this.onScreen;
+    const room = this.grows(tool) ? growthRoom(file) : { left: 0, top: 0, right: 0, bottom: 0 };
+    return {
+      left: -room.left,
+      top: -room.top,
+      right: file.width + room.right - 1,
+      bottom: file.height + room.bottom - 1,
+    };
+  }
+
+  private inReach(tool: MakerTool, { x, y }: GridPoint): boolean {
+    const reach = this.reach(tool);
+    return x >= reach.left && y >= reach.top && x <= reach.right && y <= reach.bottom;
   }
 
   /**
@@ -777,20 +825,24 @@ export class MapMakerScene extends Phaser.Scene {
    * A stroke keeps the pointer after it leaves the map window, so dragged past
    * the window's edge it painted ground scrolled out of sight; held to the edge
    * it paints along it instead, and the window scrolls to show more
-   * (`followStroke`).
+   * (`followStroke`). A tool that grows the map is held to the room round the
+   * map as well, which is drawn; any other to the map.
    */
   private visibleTileAt(
     point: { readonly clientX: number; readonly clientY: number },
     canvas: HTMLElement,
+    tool: MakerTool,
   ): GridPoint {
-    const map = canvas.getBoundingClientRect();
-    const seen = this.viewport()?.getBoundingClientRect() ?? map;
-    const left = Math.max(map.left, seen.left);
-    const top = Math.max(map.top, seen.top);
+    const area = (
+      this.grows(tool) ? this.overlay.root.querySelector<HTMLElement>('[data-stack]') : null
+    )?.getBoundingClientRect() ?? canvas.getBoundingClientRect();
+    const seen = this.viewport()?.getBoundingClientRect() ?? area;
+    const left = Math.max(area.left, seen.left);
+    const top = Math.max(area.top, seen.top);
     // Half a pixel in from the far edges, so a pointer held there is on the
     // last tile in view rather than the first one past it.
-    const right = Math.min(map.right, seen.right) - 0.5;
-    const bottom = Math.min(map.bottom, seen.bottom) - 0.5;
+    const right = Math.min(area.right, seen.right) - 0.5;
+    const bottom = Math.min(area.bottom, seen.bottom) - 0.5;
     const tile = this.tileAt(
       {
         clientX: Math.min(Math.max(point.clientX, left), Math.max(left, right)),
@@ -798,9 +850,10 @@ export class MapMakerScene extends Phaser.Scene {
       },
       canvas,
     );
+    const reach = this.reach(tool);
     return {
-      x: Math.min(Math.max(tile.x, 0), this.file.width - 1),
-      y: Math.min(Math.max(tile.y, 0), this.file.height - 1),
+      x: Math.min(Math.max(tile.x, reach.left), reach.right),
+      y: Math.min(Math.max(tile.y, reach.top), reach.bottom),
     };
   }
 
@@ -837,7 +890,7 @@ export class MapMakerScene extends Phaser.Scene {
   private followStroke(): void {
     const stroke = this.stroke;
     const viewport = this.viewport();
-    const canvas = this.overlay.root.querySelector<HTMLElement>('canvas[data-map]');
+    const canvas = this.mapCanvas();
     if (!stroke || !viewport || !canvas) {
       this.stopEdgeScroll();
       return;
@@ -847,11 +900,11 @@ export class MapMakerScene extends Phaser.Scene {
     viewport.scrollLeft += step.x;
     viewport.scrollTop += step.y;
     if (viewport.scrollLeft === before.left && viewport.scrollTop === before.top) {
-      // At the end of the map, or back inside the window: nothing more to show.
+      // At the end of what can be drawn, or back inside the window: nothing more to show.
       this.stopEdgeScroll();
       return;
     }
-    this.extendStroke(this.visibleTileAt(stroke.pointer, canvas));
+    this.extendStroke(this.visibleTileAt(stroke.pointer, canvas, stroke.tool));
   }
 
   private stopEdgeScroll(): void {
@@ -861,12 +914,73 @@ export class MapMakerScene extends Phaser.Scene {
     }
   }
 
+  private mapCanvas(): HTMLElement | null {
+    return this.overlay.root.querySelector<HTMLElement>('canvas[data-map]');
+  }
+
   private inMap({ x, y }: GridPoint): boolean {
     return x >= 0 && y >= 0 && x < this.file.width && y < this.file.height;
   }
 
   private brush() {
     return groundBrush(this.brushId) ?? GROUND_BRUSHES[0];
+  }
+
+  /**
+   * The map grown to hold `tiles`, drawn and laid out as grown with the window
+   * held still on what it showed, or the map as it is. A stroke in progress
+   * grows its own map and has its tiles moved with it.
+   */
+  private growFor(file: MapFile, tiles: readonly GridPoint[]): Growth {
+    const growth = growToFit(file, tiles);
+    if (growth.file === file) {
+      return growth;
+    }
+    const sides = {
+      left: growth.shift.x,
+      top: growth.shift.y,
+      right: growth.file.width - file.width - growth.shift.x,
+      bottom: growth.file.height - file.height - growth.shift.y,
+    };
+    const context = this.mapContext();
+    this.holdingTheView(file, growth.shift, () => {
+      if (context) {
+        this.painter.grew(context, file, growth.file, sides, this.selected);
+      }
+      this.layoutStack(growth.file);
+    });
+    return growth;
+  }
+
+  /**
+   * Does `change`, which moves what is drawn by `shift` tiles within the map
+   * window - `shown` is the map drawn before it - and scrolls the window so that what was under the maker's eye
+   * still is: a map grown west would otherwise jump east under the pointer.
+   */
+  private holdingTheView(shown: MapFile, shift: Offset, change: () => void): void {
+    const before = this.mapCanvas()?.getBoundingClientRect();
+    const tilePx = before ? before.width / Math.max(1, shown.width) : 0;
+    change();
+    // Asked for after the change, which may have drawn the screen again round a new window.
+    const viewport = this.viewport();
+    const after = this.mapCanvas()?.getBoundingClientRect();
+    if (!viewport || !before || !after) {
+      return;
+    }
+    viewport.scrollLeft += after.left + shift.x * tilePx - before.left;
+    viewport.scrollTop += after.top + shift.y * tilePx - before.top;
+  }
+
+  /** Sizes the map window's drawing for `file`: the map, and the room it may grow into round it. */
+  private layoutStack(file: MapFile): void {
+    const stack = this.overlay.root.querySelector<HTMLElement>('[data-stack]');
+    const canvas = this.mapCanvas();
+    if (!stack || !canvas) {
+      return;
+    }
+    const layout = stackLayout(file, this.zoom);
+    stack.setAttribute('style', layout.stack);
+    canvas.setAttribute('style', layout.map);
   }
 
   private pointerDown(event: PointerEvent, canvas: HTMLElement): void {
@@ -882,9 +996,10 @@ export class MapMakerScene extends Phaser.Scene {
       active.blur();
     }
     const tile = this.tileAt(event, canvas);
-    if (!this.inMap(tile)) {
+    if (!this.inReach(this.tool, tile)) {
       return;
     }
+    const inMap = this.inMap(tile);
     try {
       // So a stroke dragged off the edge of the map still ends where it was let go.
       canvas.setPointerCapture(event.pointerId);
@@ -897,24 +1012,42 @@ export class MapMakerScene extends Phaser.Scene {
     };
     switch (this.tool) {
       case 'brush': {
-        const file = paintWith(this.file, [tile], this.brush());
-        this.stroke = { tool: 'brush', start: tile, last: tile, file, ...held };
+        const growth = this.growFor(this.file, [tile]);
+        const at = { x: tile.x + growth.shift.x, y: tile.y + growth.shift.y };
+        const file = paintWith(growth.file, [at], this.brush());
+        this.stroke = {
+          tool: 'brush',
+          start: at,
+          last: at,
+          file,
+          shift: growth.shift,
+          ...held,
+        };
         this.redraw(file);
         return;
       }
       case 'rect':
-        this.stroke = { tool: 'rect', start: tile, last: tile, file: this.file, ...held };
+        this.stroke = {
+          tool: 'rect',
+          start: tile,
+          last: tile,
+          file: this.file,
+          shift: { x: 0, y: 0 },
+          ...held,
+        };
         this.previewArea({ from: tile, to: tile });
         return;
       case 'fill':
-        this.commit(paintWith(this.file, fillRegion(this.file, tile), this.brush()), this.selected);
+        if (inMap) {
+          this.commit(paintWith(this.file, fillRegion(this.file, tile), this.brush()), this.selected);
+        }
         return;
       case 'pick': {
         const letter = groundAt(this.file, tile) ?? '.';
         const picked =
           GROUND_BRUSHES.find((brush) => brush.letterFor(groundUnder(letter)) === letter) ??
           GROUND_BRUSHES.find((brush) => brush.swatch === groundUnder(letter));
-        if (picked) {
+        if (inMap && picked) {
           this.brushId = picked.id;
           this.tool = 'brush';
           this.render();
@@ -922,14 +1055,14 @@ export class MapMakerScene extends Phaser.Scene {
         return;
       }
       case 'erase': {
-        const thing = thingAt(this.file, tile);
+        const thing = inMap ? thingAt(this.file, tile) : undefined;
         if (thing) {
           this.commit(removeThing(this.file, thing), undefined);
         }
         return;
       }
       case 'select': {
-        const thing = thingAt(this.file, tile);
+        const thing = inMap ? thingAt(this.file, tile) : undefined;
         this.selected = thing;
         this.panel = 'map';
         if (thing) {
@@ -938,6 +1071,7 @@ export class MapMakerScene extends Phaser.Scene {
             start: tile,
             last: tile,
             file: this.file,
+            shift: { x: 0, y: 0 },
             carrying: thing,
             ...held,
           };
@@ -949,20 +1083,38 @@ export class MapMakerScene extends Phaser.Scene {
         // A district and a stretch of Surf water are dragged out; everything
         // else lands on the tile clicked.
         if (this.place.kind === 'district' || this.place.kind === 'surf') {
-          this.stroke = { tool: 'place', start: tile, last: tile, file: this.file, ...held };
+          this.stroke = {
+            tool: 'place',
+            start: tile,
+            last: tile,
+            file: this.file,
+            shift: { x: 0, y: 0 },
+            ...held,
+          };
           this.previewArea({ from: tile, to: tile });
           return;
         }
+        const footprint =
+          this.place.kind === 'building'
+            ? rectangle(tile, {
+                x: tile.x + buildingSize(this.place.building).width - 1,
+                y: tile.y + buildingSize(this.place.building).height - 1,
+              })
+            : [tile];
+        const before = this.file;
+        const growth = this.growFor(before, footprint);
+        const at = { x: tile.x + growth.shift.x, y: tile.y + growth.shift.y };
         const outcome =
           this.place.kind === 'building'
-            ? placeBuilding(this.file, this.place.building, tile)
+            ? placeBuilding(growth.file, this.place.building, at)
             : this.place.kind === 'cut-tree'
-              ? placeDoor(this.file, 'cut-tree', tile)
-              : placeSpot(this.file, this.place.kind, tile);
+              ? placeDoor(growth.file, 'cut-tree', at)
+              : placeSpot(growth.file, this.place.kind, at);
         if (outcome.placed) {
           this.panel = 'map';
-          this.commit(outcome.file, outcome.thing);
+          this.commitGrown(before, outcome.file, outcome.thing, growth.shift);
         } else {
+          this.undoGrowth(before, growth);
           this.render(outcome.reason);
         }
         return;
@@ -981,7 +1133,7 @@ export class MapMakerScene extends Phaser.Scene {
     if ((step.x !== 0 || step.y !== 0) && this.edgeScroll === undefined) {
       this.edgeScroll = setInterval(() => this.followStroke(), EDGE_SCROLL_MS);
     }
-    this.extendStroke(this.visibleTileAt(stroke.pointer, canvas));
+    this.extendStroke(this.visibleTileAt(stroke.pointer, canvas, stroke.tool));
   }
 
   /** Carries the stroke in progress on to `tile`. */
@@ -991,8 +1143,17 @@ export class MapMakerScene extends Phaser.Scene {
       return;
     }
     if (stroke.tool === 'brush') {
-      stroke.file = paintWith(stroke.file, line(stroke.last, tile), this.brush());
-      stroke.last = tile;
+      const tiles = line(stroke.last, tile);
+      const growth = this.growFor(stroke.file, tiles);
+      const by = growth.shift;
+      stroke.file = paintWith(
+        growth.file,
+        tiles.map((point) => ({ x: point.x + by.x, y: point.y + by.y })),
+        this.brush(),
+      );
+      stroke.start = { x: stroke.start.x + by.x, y: stroke.start.y + by.y };
+      stroke.last = { x: tile.x + by.x, y: tile.y + by.y };
+      stroke.shift = { x: stroke.shift.x + by.x, y: stroke.shift.y + by.y };
       this.redraw(stroke.file);
     } else if (stroke.tool === 'rect' || stroke.tool === 'place') {
       stroke.last = tile;
@@ -1013,21 +1174,36 @@ export class MapMakerScene extends Phaser.Scene {
     if (!stroke) {
       return;
     }
+    const before = this.file;
     if (stroke.tool === 'brush') {
-      this.commit(stroke.file, this.selected);
+      this.commitGrown(before, stroke.file, this.selected, stroke.shift);
     } else if (stroke.tool === 'rect') {
-      this.commit(
-        paintWith(this.file, rectangle(stroke.start, stroke.last), this.brush()),
+      const tiles = rectangle(stroke.start, stroke.last);
+      const growth = this.growFor(before, tiles);
+      const by = growth.shift;
+      this.commitGrown(
+        before,
+        paintWith(
+          growth.file,
+          tiles.map((point) => ({ x: point.x + by.x, y: point.y + by.y })),
+          this.brush(),
+        ),
         this.selected,
+        by,
       );
     } else if (stroke.tool === 'place') {
+      const growth = this.growFor(before, [stroke.start, stroke.last]);
+      const by = growth.shift;
+      const from = { x: stroke.start.x + by.x, y: stroke.start.y + by.y };
+      const to = { x: stroke.last.x + by.x, y: stroke.last.y + by.y };
       const outcome =
         this.place.kind === 'surf'
-          ? placeDoor(this.file, 'surf', stroke.start, stroke.last)
-          : addDistrict(this.file, stroke.start, stroke.last);
+          ? placeDoor(growth.file, 'surf', from, to)
+          : addDistrict(growth.file, from, to);
       if (outcome.placed) {
-        this.commit(outcome.file, outcome.thing);
+        this.commitGrown(before, outcome.file, outcome.thing, by);
       } else {
+        this.undoGrowth(before, growth);
         this.render(outcome.reason);
       }
     } else if (stroke.tool === 'select' && stroke.carrying) {
@@ -1035,13 +1211,48 @@ export class MapMakerScene extends Phaser.Scene {
         this.previewArea(undefined);
         return;
       }
+      const area = this.footprint(stroke.carrying, stroke.last);
+      const growth = this.growFor(before, [area.from, area.to]);
+      const by = growth.shift;
       const to = this.carriedCorner(stroke.carrying, stroke.start, stroke.last);
-      const outcome = moveThing(this.file, stroke.carrying, to);
+      const outcome = moveThing(growth.file, stroke.carrying, { x: to.x + by.x, y: to.y + by.y });
       if (outcome.placed) {
-        this.commit(outcome.file, outcome.thing);
+        this.commitGrown(before, outcome.file, outcome.thing, by);
       } else {
+        this.undoGrowth(before, growth);
         this.render(outcome.reason);
       }
+    }
+  }
+
+  /**
+   * Commits a map that may have grown from `before`, remembering how far it
+   * moved so undo and redo can hold the window still too, and saying so the
+   * first time it happens.
+   */
+  private commitGrown(
+    before: MapFile,
+    next: MapFile,
+    selected: ThingRef | undefined,
+    shift: Offset,
+  ): void {
+    const grew = next.width !== before.width || next.height !== before.height;
+    if (grew) {
+      grownFrom.set(next, { before, shift });
+    }
+    this.history.push(next);
+    this.selected = selected;
+    this.scheduleAutosave();
+    this.render(grew ? `The map grew to ${next.width}x${next.height}.` : undefined);
+  }
+
+  /** Puts the window back as it was when a growth made for something refused is not kept. */
+  private undoGrowth(before: MapFile, growth: Growth): void {
+    if (growth.file !== before) {
+      this.holdingTheView(growth.file, { x: -growth.shift.x, y: -growth.shift.y }, () => {
+        this.layoutStack(before);
+        this.redraw(before);
+      });
     }
   }
 
@@ -1050,9 +1261,17 @@ export class MapMakerScene extends Phaser.Scene {
     const stroke = this.stroke;
     this.stroke = undefined;
     this.stopEdgeScroll();
-    const canvas = this.overlay.root.querySelector<HTMLElement>('canvas[data-map]');
+    const canvas = this.mapCanvas();
     if (stroke && canvas?.hasPointerCapture(stroke.pointerId)) {
       canvas.releasePointerCapture(stroke.pointerId);
+    }
+    if (stroke && (stroke.file.width !== this.file.width || stroke.file.height !== this.file.height)) {
+      // The stroke grew the map; dropped, it ungrows, and the window stays on what it showed.
+      this.holdingTheView(stroke.file, { x: -stroke.shift.x, y: -stroke.shift.y }, () => {
+        this.layoutStack(this.file);
+        this.redraw();
+      });
+      return;
     }
     this.redraw();
   }
@@ -1155,13 +1374,19 @@ export class MapMakerScene extends Phaser.Scene {
 
   /** What the pointer would do, before it does it. */
   private hover(tile: GridPoint): void {
-    if (!this.inMap(tile)) {
+    if (!this.inReach(this.tool, tile)) {
       this.previewArea(undefined);
       return;
     }
     if (this.tool === 'place' && this.place.kind === 'building') {
       const size = buildingSize(this.place.building);
-      const valid = placeBuilding(this.file, this.place.building, tile).placed;
+      const to = { x: tile.x + size.width - 1, y: tile.y + size.height - 1 };
+      // Past the edge, it fits if the map can grow round it.
+      const growth = growToFit(this.file, [tile, to]);
+      const valid = placeBuilding(growth.file, this.place.building, {
+        x: tile.x + growth.shift.x,
+        y: tile.y + growth.shift.y,
+      }).placed;
       this.previewArea(
         { from: tile, to: { x: tile.x + size.width - 1, y: tile.y + size.height - 1 } },
         valid,
@@ -1183,8 +1408,10 @@ export class MapMakerScene extends Phaser.Scene {
     const left = Math.min(area.from.x, area.to.x);
     const top = Math.min(area.from.y, area.to.y);
     const at = (tiles: number): string => `calc(var(--u) * ${tiles * this.zoom})`;
-    ghost.style.left = at(left);
-    ghost.style.top = at(top);
+    // Placed in the drawing, whose corner is the corner of the room round the map.
+    const room = growthRoom(this.onScreen);
+    ghost.style.left = at(left + room.left);
+    ghost.style.top = at(top + room.top);
     ghost.style.width = at(Math.max(area.from.x, area.to.x) - left + 1);
     ghost.style.height = at(Math.max(area.from.y, area.to.y) - top + 1);
     ghost.classList.toggle('is-refused', !valid);
@@ -1218,11 +1445,11 @@ export class MapMakerScene extends Phaser.Scene {
    */
   private fitZoom(): void {
     const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
-    const stack = viewport?.querySelector<HTMLElement>('.maker-stack');
-    if (!viewport || !stack || viewport.clientWidth === 0) {
+    const map = this.mapCanvas();
+    if (!viewport || !map || viewport.clientWidth === 0) {
       return;
     }
-    const unit = stack.getBoundingClientRect().width / (this.file.width * this.zoom);
+    const unit = map.getBoundingClientRect().width / (this.file.width * this.zoom);
     // Never below half size on its own: at a quarter a tile is four pixels,
     // too small to paint, and a wide map is better scrolled than squinted at.
     // The maker can still zoom out to see the whole of it.
@@ -1234,20 +1461,57 @@ export class MapMakerScene extends Phaser.Scene {
       this.zoom = zoom;
       this.render();
     }
+    this.lookAtMap();
+  }
+
+  /**
+   * Scrolls the window onto the map: the whole of it in the middle when it
+   * fits, else its top-left corner with a little of the room round it showing,
+   * so a maker can see there is somewhere past the edge to draw.
+   */
+  private lookAtMap(): void {
+    const viewport = this.viewport();
+    const map = this.mapCanvas();
+    if (!viewport || !map) {
+      return;
+    }
+    const box = map.getBoundingClientRect();
+    const seen = viewport.getBoundingClientRect();
+    const tilePx = box.width / Math.max(1, this.file.width);
+    const along = (start: number, size: number, viewStart: number, viewSize: number): number =>
+      size <= viewSize ? start + size / 2 - (viewStart + viewSize / 2) : start - 2 * tilePx - viewStart;
+    viewport.scrollLeft += along(box.left, box.width, seen.left, viewport.clientWidth);
+    viewport.scrollTop += along(box.top, box.height, seen.top, viewport.clientHeight);
   }
 
   private undo(): void {
+    const from = this.file;
     this.history.undo();
-    this.selected = undefined;
-    this.scheduleAutosave();
-    this.render();
+    this.afterTimeTravel(from, this.file);
   }
 
   private redo(): void {
+    const from = this.file;
     this.history.redo();
+    this.afterTimeTravel(from, this.file);
+  }
+
+  /**
+   * Shows the map undo or redo landed on. Across a stroke that grew the map
+   * the ground moves by how far it grew, and the window moves with it.
+   */
+  private afterTimeTravel(from: MapFile, to: MapFile): void {
     this.selected = undefined;
     this.scheduleAutosave();
-    this.render();
+    const undone = grownFrom.get(from);
+    const redone = grownFrom.get(to);
+    const shift =
+      undone?.before === to
+        ? { x: -undone.shift.x, y: -undone.shift.y }
+        : redone?.before === from
+          ? redone.shift
+          : { x: 0, y: 0 };
+    this.holdingTheView(from, shift, () => this.render());
   }
 
   private openDraft(key: string): void {

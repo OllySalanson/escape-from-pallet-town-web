@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { BUILDING_CHOICES, GROUND_BRUSHES } from './palette';
-import { moveThing, paintWith, placeBuilding, rectangle, removeThing } from './draft';
+import {
+  extendMap,
+  moveThing,
+  paintWith,
+  placeDoor,
+  placeBuilding,
+  rectangle,
+  removeThing,
+} from './draft';
 import { layersFor } from './mapCanvas';
-import { buildingChange, groundChange, patchLayers, unionRect } from './layerPatch';
+import {
+  extendLayers,
+  groundChange,
+  grownEdges,
+  mapChange,
+  patchLayers,
+} from './layerPatch';
 import { tiledSample } from './tiledSample.testkit';
 
 /** A small seeded random, so a failure can be played again. */
@@ -33,6 +47,15 @@ describe('patching the layers of a changed patch', () => {
       } else if (choice < 0.8 || file.buildings.length === 0) {
         const outcome = placeBuilding(file, pick(BUILDING_CHOICES).kind, at);
         file = outcome.placed ? outcome.file : file;
+      } else if (choice < 0.85) {
+        // A door shuts the ground it stands on: a small tree, or a stretch of deep water.
+        const to = {
+          x: Math.min(file.width - 1, at.x + Math.floor(roll() * 12)),
+          y: Math.min(file.height - 1, at.y + Math.floor(roll() * 3)),
+        };
+        const outcome =
+          roll() < 0.5 ? placeDoor(file, 'cut-tree', at) : placeDoor(file, 'surf', at, to);
+        file = outcome.placed ? outcome.file : file;
       } else if (choice < 0.9) {
         const thing = {
           kind: 'building' as const,
@@ -46,7 +69,7 @@ describe('patching the layers of a changed patch', () => {
           index: Math.floor(roll() * file.buildings.length),
         });
       }
-      const changed = unionRect(groundChange(before, file), buildingChange(before, file));
+      const changed = mapChange(before, file);
       if (changed) {
         patchLayers(layers, file, changed);
       }
@@ -68,5 +91,23 @@ describe('patching the layers of a changed patch', () => {
     expect(changed!.x + changed!.width).toBeLessThanOrEqual(10);
     expect(changed!.y).toBeGreaterThanOrEqual(7);
     expect(changed!.y + changed!.height).toBeLessThanOrEqual(9);
+  });
+
+  it.each([
+    { left: 4, top: 0, right: 0, bottom: 0 },
+    { left: 0, top: 2, right: 3, bottom: 0 },
+    { left: 0, top: 0, right: 0, bottom: 5 },
+    { left: 6, top: 4, right: 1, bottom: 7 },
+  ])('draws a map grown by %o as building it whole does', (sides) => {
+    const before = tiledSample(44, 34, { places: false });
+    const grown = extendMap(before, sides);
+    const layers = extendLayers(layersFor(before), sides);
+    for (const strip of grownEdges(grown.width, grown.height, sides)) {
+      patchLayers(layers, grown, strip);
+    }
+    const whole = layersFor(grown);
+    for (const key of Object.keys(whole) as (keyof typeof whole)[]) {
+      expect({ key, value: layers[key] }).toEqual({ key, value: whole[key] });
+    }
   });
 });

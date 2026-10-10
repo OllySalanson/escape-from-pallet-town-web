@@ -1,7 +1,7 @@
-import { sketchMapFile, type MapFile } from '../world/mapFile';
-import { buildMapLayers, type MapLayers, type TileLayer } from '../world/tiles';
-import { PLAYER_MAP_TILESET } from '../world/tileset/playerMapTileset';
-import { buildingSize } from './draft';
+import type { MapFile } from '../world/mapFile';
+import type { MapLayers, TileLayer } from '../world/tiles';
+import { buildingSize, type Sides } from './draft';
+import { layersFor } from './mapCanvas';
 
 /**
  * Keeping the picture of a map up to date one changed patch at a time.
@@ -162,7 +162,45 @@ function croppedFile(file: MapFile, crop: TileRect): MapFile {
         );
       })
       .map((building) => ({ ...building, x: building.x - crop.x, y: building.y - crop.y })),
+    // A door is a rectangle of shut ground, decided a tile at a time, so a
+    // door running out of the crop is cut to the part inside it.
+    doors: (file.doors ?? []).flatMap((door) => {
+      const x = Math.max(door.x, crop.x);
+      const y = Math.max(door.y, crop.y);
+      const right = Math.min(door.x + door.width, crop.x + crop.width);
+      const bottom = Math.min(door.y + door.height, crop.y + crop.height);
+      return right > x && bottom > y
+        ? [{ ...door, x: x - crop.x, y: y - crop.y, width: right - x, height: bottom - y }]
+        : [];
+    }),
   };
+}
+
+/** The ground under every door one map has and the other does not: a door shuts what it stands on. */
+export function doorChange(before: MapFile, after: MapFile): TileRect | undefined {
+  const was = before.doors ?? [];
+  const now = after.doors ?? [];
+  if (was === now) {
+    return undefined;
+  }
+  const key = (door: NonNullable<MapFile['doors']>[number]): string =>
+    `${door.kind}@${door.x},${door.y},${door.width}x${door.height}`;
+  const stayed = new Set(was.map(key).filter((one) => now.map(key).includes(one)));
+  let changed: TileRect | undefined;
+  for (const door of [...was, ...now]) {
+    if (!stayed.has(key(door))) {
+      changed = unionRect(changed, door);
+    }
+  }
+  return changed;
+}
+
+/** Everything a version of a map can be drawn differently by, as one rectangle. */
+export function mapChange(before: MapFile, after: MapFile): TileRect | undefined {
+  return unionRect(
+    unionRect(groundChange(before, after), buildingChange(before, after)),
+    doorChange(before, after),
+  );
 }
 
 function copyGrid<T>(
@@ -192,7 +230,7 @@ const isTileLayer = (value: unknown): value is TileLayer =>
 export function patchLayers(layers: MapLayers, file: MapFile, changed: TileRect): TileRect {
   const decided = grownWithin(changed, PATCH_REACH, file.width, file.height);
   const crop = cropOf(decided, file);
-  const part = buildMapLayers(sketchMapFile(croppedFile(file, crop)), PLAYER_MAP_TILESET);
+  const part = layersFor(croppedFile(file, crop));
   for (const key of Object.keys(layers) as (keyof MapLayers)[]) {
     const into = layers[key];
     const from = part[key];
@@ -205,4 +243,70 @@ export function patchLayers(layers: MapLayers, file: MapFile, changed: TileRect)
     }
   }
   return decided;
+}
+
+/**
+ * Layers built for a map, laid into the layers of the same map grown by
+ * `sides` - the old picture moved to where its ground now is, and nothing yet
+ * where the new ground is. `patchLayers` over `grownEdges` finishes them.
+ */
+export function extendLayers(
+  layers: MapLayers,
+  sides: Sides,
+): MapLayers {
+  const oldHeight = layers.collision.length;
+  const oldWidth = layers.collision[0]?.length ?? 0;
+  const width = oldWidth + sides.left + sides.right;
+  const height = oldHeight + sides.top + sides.bottom;
+  const grid = <T>(from: readonly (readonly T[])[], blank: T): T[][] =>
+    Array.from({ length: height }, (_, y) => {
+      const source = from[y - sides.top];
+      if (!source) {
+        return Array<T>(width).fill(blank);
+      }
+      return [
+        ...Array<T>(sides.left).fill(blank),
+        ...source,
+        ...Array<T>(sides.right).fill(blank),
+      ];
+    });
+  const layer = (from: TileLayer): TileLayer => ({
+    tiles: grid(from.tiles, -1),
+    tints: grid(from.tints, -1),
+    flips: grid(from.flips, false),
+  });
+  const next: Record<string, unknown> = {};
+  for (const key of Object.keys(layers) as (keyof MapLayers)[]) {
+    const value = layers[key];
+    next[key] = isTileLayer(value)
+      ? layer(value)
+      : grid<unknown>(value, typeof value[0]?.[0] === 'boolean' ? false : 0);
+  }
+  return next as unknown as MapLayers;
+}
+
+/**
+ * The ground of a grown map a patch has to decide: each strip of new ground,
+ * with the old edge it now meets, because what stood on the old edge was drawn
+ * against the map's end and now stands against more wood.
+ */
+export function grownEdges(
+  width: number,
+  height: number,
+  sides: Sides,
+): TileRect[] {
+  const strips: TileRect[] = [];
+  if (sides.left > 0) {
+    strips.push({ x: 0, y: 0, width: sides.left + 1, height });
+  }
+  if (sides.right > 0) {
+    strips.push({ x: width - sides.right - 1, y: 0, width: sides.right + 1, height });
+  }
+  if (sides.top > 0) {
+    strips.push({ x: 0, y: 0, width, height: sides.top + 1 });
+  }
+  if (sides.bottom > 0) {
+    strips.push({ x: 0, y: height - sides.bottom - 1, width, height: sides.bottom + 1 });
+  }
+  return strips;
 }

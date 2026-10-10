@@ -7,6 +7,10 @@ import {
   blankMap,
   buildingSize,
   describeDropIn,
+  extendMap,
+  GROW_MARGIN,
+  growthRoom,
+  growToFit,
   fillRegion,
   line,
   moveThing,
@@ -21,6 +25,7 @@ import {
   setExitOpens,
   sizeFromField,
   setMaker,
+  shiftThings,
   thingAt,
 } from './draft';
 import {
@@ -426,5 +431,112 @@ describe('people, signs, landmarks, trainers and districts', () => {
     file = placed(moveThing(file, { kind: 'district', index: 0 }, { x: 40, y: 40 }));
     expect([file.districts?.[0].x, file.districts?.[0].y]).toEqual([15, 12]);
     expect(readMapFile(file)).toMatchObject({ ok: true });
+  });
+});
+
+describe('growing a map by drawing past its edge', () => {
+  /** A map with one of everything on it, so a test can see each move. */
+  const furnished = (): MapFile => {
+    let file = working();
+    file = placed(placeSpot(file, 'person', { x: 6, y: 6 }));
+    file = placed(placeSpot(file, 'sign', { x: 7, y: 6 }));
+    file = placed(placeSpot(file, 'landmark', { x: 8, y: 6 }));
+    file = placed(placeSpot(file, 'trainer', { x: 9, y: 6 }));
+    file = placed(placeBuilding(file, 'house', { x: 14, y: 12 }));
+    file = placed(addDistrict(file, { x: 4, y: 4 }, { x: 12, y: 9 }));
+    return file;
+  };
+  /** Every x and y on everything standing on the map, in a fixed order. */
+  const positions = (file: MapFile): string[] => {
+    const found: string[] = [];
+    const walk = (value: unknown, path: string): void => {
+      if (Array.isArray(value)) {
+        value.forEach((item, index) => walk(item, `${path}[${index}]`));
+      } else if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        if (typeof record.x === 'number' && typeof record.y === 'number') {
+          found.push(`${path} ${record.x},${record.y}`);
+        }
+        for (const [key, inner] of Object.entries(record)) {
+          walk(inner, `${path}.${key}`);
+        }
+      }
+    };
+    walk({ ...file, ground: [] }, 'file');
+    return found;
+  };
+
+  it('grows west two tiles at a time, with a whole tree of wood past what was drawn, and moves everything with its ground', () => {
+    const file = furnished();
+    const { file: grown, shift } = growToFit(file, [{ x: -1, y: 10 }]);
+    expect(shift).toEqual({ x: 4, y: 0 });
+    expect([grown.width, grown.height]).toEqual([file.width + 4, file.height]);
+    // The old ground, where it was, a tile of the new ground and the wood west of it.
+    expect(grown.ground.map((row) => row.slice(4))).toEqual(file.ground);
+    expect(grown.ground[10].slice(0, 4)).toBe('TTTT');
+    // Every place on the map moved with it, and nothing else about anything changed.
+    const moved = positions(file).map((entry) =>
+      entry.replace(/ (\d+),(\d+)$/, (_, x, y) => ` ${Number(x) + 4},${y}`),
+    );
+    expect(positions(grown)).toEqual(moved);
+    expect(shiftThings(grown, { x: -4, y: 0 })).toEqual({
+      ...file,
+      width: grown.width,
+      height: grown.height,
+      ground: grown.ground,
+    });
+    expect(readMapFile(grown).ok).toBe(true);
+  });
+
+  it('grows east and south without moving anything, and north two tiles at a time', () => {
+    const file = furnished();
+    const east = growToFit(file, [{ x: file.width + 2, y: file.height }]);
+    expect(east.shift).toEqual({ x: 0, y: 0 });
+    expect([east.file.width, east.file.height]).toEqual([file.width + 5, file.height + 3]);
+    expect(positions(east.file)).toEqual(positions(file));
+    const north = growToFit(file, [{ x: 3, y: -3 }]);
+    expect(north.shift).toEqual({ x: 0, y: 6 });
+    expect(north.file.height).toBe(file.height + 6);
+  });
+
+  it('leaves a map that already holds every tile as it is', () => {
+    const file = furnished();
+    expect(growToFit(file, [{ x: 0, y: 0 }, { x: file.width - 1, y: file.height - 1 }])).toEqual({
+      file,
+      shift: { x: 0, y: 0 },
+    });
+  });
+
+  it('never grows past the biggest map there may be: the wood gives way first, then the furthest tiles', () => {
+    const wide = resizeMap(blankMap(), MAP_FILE_LIMITS.maxWidth - 3, 30);
+    const ringless = growToFit(wide, [{ x: wide.width + 2, y: 5 }]);
+    expect(ringless.file.width).toBe(MAP_FILE_LIMITS.maxWidth);
+    const both = growToFit(wide, [
+      { x: -10, y: 5 },
+      { x: wide.width + 10, y: 5 },
+    ]);
+    expect(both.file.width).toBeLessThanOrEqual(MAP_FILE_LIMITS.maxWidth);
+    expect(both.shift.x % 2).toBe(0);
+    const full = resizeMap(blankMap(), MAP_FILE_LIMITS.maxWidth, 30);
+    expect(growToFit(full, [{ x: -5, y: 5 }]).file).toBe(full);
+  });
+
+  it('says how far past each edge a maker may draw: a screenful, or what is left of the biggest map', () => {
+    expect(growthRoom(blankMap(40, 30))).toEqual({
+      left: GROW_MARGIN,
+      top: GROW_MARGIN,
+      right: GROW_MARGIN,
+      bottom: GROW_MARGIN,
+    });
+    const nearly = resizeMap(blankMap(), MAP_FILE_LIMITS.maxWidth - 5, 30);
+    expect(growthRoom(nearly)).toMatchObject({ left: 4, right: 5 });
+    expect(growthRoom(resizeMap(blankMap(), MAP_FILE_LIMITS.maxWidth, 30))).toMatchObject({
+      left: 0,
+      right: 0,
+    });
+  });
+
+  it('refuses to grow west or north an odd number of tiles, which would redraw every tree', () => {
+    expect(() => extendMap(blankMap(), { left: 1, top: 0, right: 0, bottom: 0 })).toThrow();
   });
 });
