@@ -227,6 +227,15 @@ describe('the map itself', () => {
     expect(readMapFile(file, { draft: true }).ok).toBe(true);
   });
 
+  // Playtest 46: a new 40x30 map typed down to 24x18 kept its trees on the
+  // north and west and stood open grass on the east and south edges.
+  it('keeps the ring of trees on every side when a map is cut down', () => {
+    const shrunk = resizeMap(blankMap(40, 30), 24, 18);
+    expect(shrunk).toEqual(blankMap(24, 18));
+    const lane = { ...blankMap(40, 30), ground: blankMap(40, 30).ground.map((row) => `${row.slice(0, 39)}.`) };
+    expect(resizeMap(lane, 24, 30).ground[10]).toBe(`TT${'.'.repeat(22)}`);
+  });
+
   // Playtests 23 C2, 26 #18 and 31 bug 1: a person left at 30,20 on a 20x16
   // map made the whole draft unreadable, and the next load deleted it.
   it('takes everyone and everything off the ground it cut away, and cuts a district to fit', () => {
