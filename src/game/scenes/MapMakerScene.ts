@@ -45,6 +45,7 @@ import {
 import { EditHistory } from '../maker/history';
 import { drawPlantSwatch, drawSwatch, loadMakerSheets } from '../maker/mapCanvas';
 import { MapPainter } from '../maker/mapPainter';
+import { overviewOf, type Overview } from '../maker/overview';
 
 import { createPlaytestGame, createPlaytestStash } from '../dev/playtestSave';
 import { PLAYTEST_RAID_DURATION_MS, setActiveSaveSlot, setTryItRules } from '../dev/playtestMode';
@@ -205,6 +206,31 @@ export class MapMakerScene extends Phaser.Scene {
   private checkedFile: MapFile | undefined;
   /** The map's picture, kept between renders and drawn again only where it changed. */
   private painter = new MapPainter();
+  /** The map being moved by hand: where the pointer took hold, and where the window was then. */
+  private pan:
+    | {
+        readonly pointerId: number;
+        readonly x: number;
+        readonly y: number;
+        readonly left: number;
+        readonly top: number;
+      }
+    | undefined;
+  /** Space held with the pointer over the map: the next press moves the map rather than drawing. */
+  private spaceHeld = false;
+  private pointerOverMap = false;
+  /** Wheel travel with Ctrl held not yet spent on a zoom step, so a trackpad pinch steps once a notch. */
+  private wheelTravel = 0;
+  /** The overview last painted, and the map it is of. */
+  private overview: { readonly file: MapFile; readonly overview: Overview } | undefined;
+  private overviewDrawn: { readonly canvas: HTMLCanvasElement; readonly overview: Overview } | undefined;
+  private overviewFrame: number | undefined;
+  private readonly releaseSpace = (event: Event): void => {
+    if (event.type === 'blur' || (event as KeyboardEvent).key === ' ') {
+      this.spaceHeld = false;
+      this.overlay?.root.querySelector('[data-stack]')?.classList.remove('is-panning');
+    }
+  };
   private autosaveTimer: ReturnType<typeof setTimeout> | undefined;
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
   /**
@@ -274,9 +300,15 @@ export class MapMakerScene extends Phaser.Scene {
     // timer, so whatever is waiting to be saved is saved on the way out.
     window.addEventListener('pagehide', this.flushOnLeave);
     document.addEventListener('visibilitychange', this.flushOnLeave);
+    // Space is let go wherever the focus has gone by then, so its release is
+    // heard on the window, and a window left with it held lets it go too.
+    window.addEventListener('keyup', this.releaseSpace);
+    window.addEventListener('blur', this.releaseSpace);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       window.removeEventListener('pagehide', this.flushOnLeave);
       document.removeEventListener('visibilitychange', this.flushOnLeave);
+      window.removeEventListener('keyup', this.releaseSpace);
+      window.removeEventListener('blur', this.releaseSpace);
       if (this.renderTimer) {
         clearTimeout(this.renderTimer);
         this.renderTimer = undefined;
@@ -537,6 +569,7 @@ export class MapMakerScene extends Phaser.Scene {
       }
     }
     this.shownChosen = chosen;
+    this.showOverview();
     this.overlay.refocus('[data-tool].is-selected', '[data-tool]');
     if (status) {
       if (this.statusTimer) {
@@ -683,6 +716,7 @@ export class MapMakerScene extends Phaser.Scene {
       this.render();
     });
     on('[data-zoom]', (element) => this.setZoom(Number(element.dataset.zoom) as MakerZoom));
+    on('[data-fit]', () => this.fitWhole());
     on('[data-undo]', () => this.undo());
     on('[data-redo]', () => this.redo());
     on('[data-new]', () => {
@@ -805,16 +839,228 @@ export class MapMakerScene extends Phaser.Scene {
     if (stack && stack.dataset.wired === undefined) {
       stack.dataset.wired = '';
       const map = (): HTMLElement => stack.querySelector<HTMLElement>('canvas[data-map]') ?? stack;
-      stack.addEventListener('pointerdown', (event) => this.pointerDown(event, map()));
-      stack.addEventListener('pointermove', (event) => this.pointerMove(event, map()));
-      stack.addEventListener('pointerup', (event) => this.pointerUp(event, map()));
-      stack.addEventListener('pointercancel', () => this.cancelStroke());
+      stack.addEventListener('pointerdown', (event) => {
+        if ((event.button === 1 || (event.button === 0 && this.spaceHeld)) && !this.stroke) {
+          this.startPan(event, stack);
+        } else {
+          this.pointerDown(event, map());
+        }
+      });
+      stack.addEventListener('pointermove', (event) => {
+        if (this.pan) {
+          this.movePan(event);
+        } else {
+          this.pointerMove(event, map());
+        }
+      });
+      stack.addEventListener('pointerup', (event) => {
+        if (this.pan) {
+          this.endPan(event, stack);
+        } else {
+          this.pointerUp(event, map());
+        }
+      });
+      stack.addEventListener('pointercancel', (event) => {
+        if (this.pan) {
+          this.endPan(event, stack);
+        } else {
+          this.cancelStroke();
+        }
+      });
+      // The middle button's own scrolling would fight the map being moved by hand.
+      stack.addEventListener('mousedown', (event) => {
+        if (event.button === 1) {
+          event.preventDefault();
+        }
+      });
+      stack.addEventListener('pointerenter', () => {
+        this.pointerOverMap = true;
+      });
       stack.addEventListener('pointerleave', () => {
+        this.pointerOverMap = false;
         if (!this.stroke) {
           this.previewArea(undefined);
         }
       });
     }
+
+    const viewport = this.viewport();
+    viewport?.addEventListener(
+      'wheel',
+      (event) => {
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          this.wheelZoom(event);
+        }
+      },
+      { passive: false },
+    );
+    viewport?.addEventListener('scroll', () => this.scheduleOverview(), { passive: true });
+    const overview = root.querySelector<HTMLElement>('[data-overview]');
+    if (overview) {
+      const jump = (event: PointerEvent): void => this.lookAtOverviewPoint(event, overview);
+      overview.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        try {
+          overview.setPointerCapture(event.pointerId);
+        } catch {
+          // A pointer the browser no longer tracks: the jump still happens.
+        }
+        jump(event);
+      });
+      overview.addEventListener('pointermove', (event) => {
+        if (overview.hasPointerCapture(event.pointerId)) {
+          jump(event);
+        }
+      });
+    }
+  }
+
+  // --- Moving round the map --------------------------------------------------------
+
+  private startPan(event: PointerEvent, stack: HTMLElement): void {
+    const viewport = this.viewport();
+    if (!viewport) {
+      return;
+    }
+    event.preventDefault();
+    this.pan = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      left: viewport.scrollLeft,
+      top: viewport.scrollTop,
+    };
+    try {
+      stack.setPointerCapture(event.pointerId);
+    } catch {
+      // A pointer the browser no longer tracks; the map still moves while it is over it.
+    }
+    stack.classList.add('is-dragging');
+    this.previewArea(undefined);
+  }
+
+  private movePan(event: PointerEvent): void {
+    const pan = this.pan;
+    const viewport = this.viewport();
+    if (!pan || !viewport || event.pointerId !== pan.pointerId) {
+      return;
+    }
+    viewport.scrollLeft = pan.left - (event.clientX - pan.x);
+    viewport.scrollTop = pan.top - (event.clientY - pan.y);
+  }
+
+  private endPan(event: PointerEvent, stack: HTMLElement): void {
+    this.pan = undefined;
+    stack.classList.remove('is-dragging');
+    if (stack.hasPointerCapture(event.pointerId)) {
+      stack.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  /** Ctrl and the wheel: a zoom step a notch, about the tile under the pointer. */
+  private wheelZoom(event: WheelEvent): void {
+    // A mouse notch is a hundred or so; a trackpad pinch sends many small ones.
+    this.wheelTravel = (this.wheelTravel ?? 0) + event.deltaY;
+    if (Math.abs(this.wheelTravel) < 40) {
+      return;
+    }
+    const index = MAKER_ZOOMS.indexOf(this.zoom) + (this.wheelTravel > 0 ? -1 : 1);
+    this.wheelTravel = 0;
+    const zoom = MAKER_ZOOMS[Math.max(0, Math.min(MAKER_ZOOMS.length - 1, index))];
+    if (zoom !== this.zoom) {
+      this.setZoom(zoom, { clientX: event.clientX, clientY: event.clientY });
+    }
+  }
+
+  /** Repaints the overview at most once a frame, however fast the window scrolls. */
+  private scheduleOverview(): void {
+    if (this.overviewFrame !== undefined || typeof requestAnimationFrame !== 'function') {
+      return;
+    }
+    this.overviewFrame = requestAnimationFrame(() => {
+      this.overviewFrame = undefined;
+      this.showOverview();
+    });
+  }
+
+  /**
+   * The overview in the map window's corner: shown while the map is bigger
+   * than the window, with what the window shows outlined on it.
+   */
+  private showOverview(): void {
+    const frame = this.overlay.root.querySelector<HTMLElement>('[data-overview]');
+    const picture = frame?.querySelector<HTMLCanvasElement>('[data-overview-map]');
+    const outline = frame?.querySelector<HTMLElement>('[data-overview-view]');
+    const viewport = this.viewport();
+    const map = this.mapCanvas();
+    if (!frame || !picture || !outline || !viewport || !map) {
+      return;
+    }
+    const file = this.onScreen;
+    const box = map.getBoundingClientRect();
+    const seen = viewport.getBoundingClientRect();
+    const fits =
+      box.left >= seen.left - 0.5 &&
+      box.top >= seen.top - 0.5 &&
+      box.right <= seen.left + viewport.clientWidth + 0.5 &&
+      box.bottom <= seen.top + viewport.clientHeight + 0.5;
+    if (fits || box.width === 0) {
+      frame.hidden = true;
+      return;
+    }
+    if (this.overview?.file !== file) {
+      this.overview = { file, overview: overviewOf(file, this.painter.layers(file).collision) };
+    }
+    const { picture: painted, fit } = this.overview.overview;
+    // Painted again for a new map, or onto the new canvas a render made.
+    if (this.overviewDrawn?.canvas !== picture || this.overviewDrawn.overview !== this.overview.overview) {
+      picture.width = painted.width;
+      picture.height = painted.height;
+      picture.style.width = `calc(var(--u) * ${painted.width})`;
+      picture.style.height = `calc(var(--u) * ${painted.height})`;
+      picture
+        .getContext('2d')
+        ?.putImageData(new ImageData(painted.data, painted.width, painted.height), 0, 0);
+      this.overviewDrawn = { canvas: picture, overview: this.overview.overview };
+    }
+    frame.hidden = false;
+    // What the window shows, in tiles, then in the overview's game pixels.
+    const tilePx = box.width / file.width;
+    const left = Math.max(0, (seen.left - box.left) / tilePx);
+    const top = Math.max(0, (seen.top - box.top) / tilePx);
+    const right = Math.min(file.width, (seen.left + viewport.clientWidth - box.left) / tilePx);
+    const bottom = Math.min(file.height, (seen.top + viewport.clientHeight - box.top) / tilePx);
+    const scale = fit.zoom / fit.step;
+    const at = (value: number): string => `calc(var(--u) * ${Math.round(value)})`;
+    // The frame's own padding is two game pixels.
+    outline.style.left = at(2 + left * scale);
+    outline.style.top = at(2 + top * scale);
+    outline.style.width = at(Math.max(2, (right - left) * scale));
+    outline.style.height = at(Math.max(2, (bottom - top) * scale));
+  }
+
+  /** A press on the overview: the map window looks at that part of the map. */
+  private lookAtOverviewPoint(event: PointerEvent, frame: HTMLElement): void {
+    const picture = frame.querySelector<HTMLElement>('[data-overview-map]');
+    const viewport = this.viewport();
+    const map = this.mapCanvas();
+    const fit = this.overview?.overview.fit;
+    if (!picture || !viewport || !map || !fit) {
+      return;
+    }
+    const shown = picture.getBoundingClientRect();
+    const file = this.onScreen;
+    const tile = {
+      x: ((event.clientX - shown.left) / shown.width) * file.width,
+      y: ((event.clientY - shown.top) / shown.height) * file.height,
+    };
+    const box = map.getBoundingClientRect();
+    const seen = viewport.getBoundingClientRect();
+    const tilePx = box.width / file.width;
+    viewport.scrollLeft += box.left + tile.x * tilePx - (seen.left + viewport.clientWidth / 2);
+    viewport.scrollTop += box.top + tile.y * tilePx - (seen.top + viewport.clientHeight / 2);
+    this.showOverview();
   }
 
   // --- Drawing on the map --------------------------------------------------------
@@ -1007,6 +1253,7 @@ export class MapMakerScene extends Phaser.Scene {
     }
     viewport.scrollLeft += after.left + shift.x * tilePx - before.left;
     viewport.scrollTop += after.top + shift.y * tilePx - before.top;
+    this.showOverview();
   }
 
   /** Sizes the map window's drawing for `file`: the map, and the room it may grow into round it. */
@@ -1458,23 +1705,65 @@ export class MapMakerScene extends Phaser.Scene {
 
   // --- Everything else --------------------------------------------------------
 
-  private setZoom(zoom: MakerZoom): void {
-    const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
-    // Zoom about the middle of what is in view, so the place being looked at stays put.
-    const ratio = zoom / this.zoom;
-    const middle = viewport
-      ? {
-          x: viewport.scrollLeft + viewport.clientWidth / 2,
-          y: viewport.scrollTop + viewport.clientHeight / 2,
-        }
-      : undefined;
+  /**
+   * Zooms about `anchor` - the pointer, for the wheel - or the middle of what
+   * is in view, so the place being looked at stays where it is on screen.
+   */
+  private setZoom(
+    zoom: MakerZoom,
+    anchor?: { readonly clientX: number; readonly clientY: number },
+  ): void {
+    const viewport = this.viewport();
+    const before = this.mapCanvas()?.getBoundingClientRect();
+    if (!viewport || !before || before.width === 0) {
+      this.zoom = zoom;
+      this.render();
+      return;
+    }
+    const seen = viewport.getBoundingClientRect();
+    const at = anchor ?? {
+      clientX: seen.left + viewport.clientWidth / 2,
+      clientY: seen.top + viewport.clientHeight / 2,
+    };
+    // Where the anchor is on the map, in tiles, fractions and all.
+    const file = this.file;
+    const tile = {
+      x: ((at.clientX - before.left) / before.width) * file.width,
+      y: ((at.clientY - before.top) / before.height) * file.height,
+    };
     this.zoom = zoom;
     this.render();
-    const next = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
-    if (next && middle) {
-      next.scrollLeft = middle.x * ratio - next.clientWidth / 2;
-      next.scrollTop = middle.y * ratio - next.clientHeight / 2;
+    const next = this.viewport();
+    const after = this.mapCanvas()?.getBoundingClientRect();
+    if (next && after) {
+      next.scrollLeft += after.left + (tile.x / file.width) * after.width - at.clientX;
+      next.scrollTop += after.top + (tile.y / file.height) * after.height - at.clientY;
     }
+    this.showOverview();
+  }
+
+  /** The biggest zoom at which the whole map is in view, and the map in the middle of it. */
+  private fitWhole(): void {
+    const viewport = this.viewport();
+    const map = this.mapCanvas();
+    if (!viewport || !map) {
+      return;
+    }
+    const unit = map.getBoundingClientRect().width / (this.file.width * this.zoom);
+    const zoom =
+      [...MAKER_ZOOMS]
+        .reverse()
+        .find(
+          (level) =>
+            this.file.width * level * unit <= viewport.clientWidth &&
+            this.file.height * level * unit <= viewport.clientHeight,
+        ) ?? MAKER_ZOOMS[0];
+    if (zoom !== this.zoom) {
+      this.zoom = zoom;
+      this.render();
+    }
+    this.lookAtMap();
+    this.showOverview();
   }
 
   /**
@@ -1944,6 +2233,14 @@ export class MapMakerScene extends Phaser.Scene {
       return;
     }
     if (command || event.altKey) {
+      return;
+    }
+    if (key === ' ' && this.pointerOverMap && !this.stroke) {
+      // Space held over the map moves it by hand, as in every drawing program,
+      // rather than pressing whichever tool the cursor is on.
+      event.preventDefault();
+      this.spaceHeld = true;
+      this.overlay.root.querySelector('[data-stack]')?.classList.add('is-panning');
       return;
     }
     if (key === 'escape') {

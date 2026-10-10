@@ -22,6 +22,7 @@ const page = {
     clientWidth: 0,
     clientHeight: VIEW.height,
     querySelector: () => null,
+    addEventListener: () => undefined,
     getBoundingClientRect: () => ({
       left: VIEW.left,
       top: VIEW.top,
