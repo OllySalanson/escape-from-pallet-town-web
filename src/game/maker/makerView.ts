@@ -82,8 +82,12 @@ export type PlaceChoice =
   | { readonly kind: SpotKind | 'district' | MapFileDoorKind }
   | { readonly kind: 'building'; readonly building: MapFileBuildingKind };
 
-/** How big a tile is drawn, in game pixels. Sixteen is the art's own size. */
-export const MAKER_ZOOMS = [4, 8, 16, 32] as const;
+/**
+ * How big a tile is drawn, in game pixels. Sixteen is the art's own size; two
+ * is for standing back from a 256x256 map, which at a quarter is still four
+ * screens across.
+ */
+export const MAKER_ZOOMS = [2, 4, 8, 16, 32] as const;
 export type MakerZoom = (typeof MAKER_ZOOMS)[number];
 
 /** A line of the checks panel: a check on the file, or the walk the maker owes it. */
@@ -106,6 +110,8 @@ export interface MakerViewState {
   readonly place: PlaceChoice;
   readonly selected: ThingRef | undefined;
   readonly zoom: MakerZoom;
+  /** Whether the overview is wanted in the corner of the map window. */
+  readonly overview: boolean;
   readonly checks: readonly MakerCheck[];
   readonly canUndo: boolean;
   readonly canRedo: boolean;
@@ -281,7 +287,9 @@ export function stackLayout(file: MapFile, zoom: MakerZoom): { stack: string; ma
   const room = growthRoom(file);
   const at = (tiles: number): string => `calc(var(--u) * ${tiles * zoom})`;
   return {
-    stack: `width:${at(file.width + room.left + room.right)};height:${at(file.height + room.top + room.bottom)};--tile:${at(1)}`,
+    // The room is ruled every tile, or every few tiles where a tile is drawn
+    // smaller than eight game pixels, so the rule never becomes a fill.
+    stack: `width:${at(file.width + room.left + room.right)};height:${at(file.height + room.top + room.bottom)};--grid:${at(Math.max(1, 8 / zoom))}`,
     map: `left:${at(room.left)};top:${at(room.top)};width:${at(file.width)};height:${at(file.height)}`,
   };
 }
@@ -291,10 +299,15 @@ function mapPane(state: MakerViewState): string {
   const layout = stackLayout(file, zoom);
   const zoomButtons = MAKER_ZOOMS.map(
     (level) =>
-      `<button class="px-window px-button maker-zoom${level === zoom ? ' is-primary' : ''}" data-zoom="${level}" aria-pressed="${level === zoom}" data-help="Draws a tile ${level} pixels wide.">${level === 16 ? '1x' : level < 16 ? `1/${16 / level}` : `${level / 16}x`}</button>`,
+      `<button class="px-window px-button maker-zoom${level === zoom ? ' is-primary' : ''}" data-zoom="${level}" aria-pressed="${level === zoom}" data-help="Draws a tile ${level} pixels wide. Ctrl and the mouse wheel zoom about the pointer.">${level === 16 ? '1x' : level < 16 ? `1/${16 / level}` : `${level / 16}x`}</button>`,
   ).join('');
+  const overviewToggle = `<button class="px-window px-button maker-zoom${state.overview ? ' is-primary' : ''}" data-overview-toggle aria-pressed="${state.overview}" data-help="Shows or hides the whole map in the corner of the window, while the map is bigger than the window. Press it to look there.">Overview</button>`;
+  const fit = `<button class="px-window px-button maker-zoom" data-fit data-help="Zooms out as far as it takes to see the whole map, or as much of it as the window holds, and puts it in the middle.">Fit</button>`;
+  // The overview stands in the window's corner, over the map, and is only
+  // shown while the map does not fit the window (`MapMakerScene.showOverview`).
+  const overview = `<div class="px-window maker-overview" data-overview hidden><canvas class="maker-overview-map" data-overview-map></canvas><div class="maker-overview-view" data-overview-view></div></div>`;
   return pixelWindow(
-    `<div class="maker-zooms">${zoomButtons}</div><div class="maker-viewport" data-viewport><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>`,
+    `<div class="maker-zooms">${zoomButtons}${fit}${overviewToggle}</div><div class="maker-view-area"><div class="maker-viewport" data-viewport data-help="Drag with the middle button, or hold Space and drag, to move the map. Ctrl and the wheel zoom."><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>${overview}</div>`,
     {
       className: 'maker-map',
       heading: escapeHtml(file.name || 'Untitled map'),

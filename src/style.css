@@ -3156,10 +3156,56 @@ button {
   cursor: crosshair;
   touch-action: none;
   background:
-    linear-gradient(rgb(248 247 221 / 6%) var(--u), transparent var(--u)) 0 0 / var(--tile)
-      var(--tile),
+    linear-gradient(rgb(248 247 221 / 6%) var(--u), transparent var(--u)) 0 0 / var(--grid)
+      var(--grid),
     linear-gradient(90deg, rgb(248 247 221 / 6%) var(--u), transparent var(--u)) 0 0 /
-      var(--tile) var(--tile);
+      var(--grid) var(--grid);
+}
+/* Moving the map by hand: Space held over it, or the middle button down. */
+:where(.pixel-ui) .maker-stack.is-panning {
+  cursor: grab;
+}
+:where(.pixel-ui) .maker-stack.is-dragging {
+  cursor: grabbing;
+}
+/* The map's window and its overview share one cell, the overview standing in
+   the corner over the map rather than taking a column of its own. */
+:where(.pixel-ui) .maker-view-area {
+  position: relative;
+  min-height: 0;
+  display: grid;
+}
+:where(.pixel-ui) .maker-overview {
+  position: absolute;
+  right: calc(var(--u) * 6);
+  bottom: calc(var(--u) * 6);
+  line-height: 0;
+  cursor: pointer;
+  touch-action: none;
+}
+.pixel-ui .px-window.maker-overview {
+  padding: calc(var(--u) * 2);
+}
+/* While a stroke is held the overview stands aside, so what is drawn under
+   it can be seen. */
+:where(.pixel-ui) .maker-view-area.is-drawing .maker-overview {
+  opacity: 0.25;
+  pointer-events: none;
+}
+:where(.pixel-ui) .maker-overview[hidden] {
+  display: none;
+}
+:where(.pixel-ui) .maker-overview-map {
+  display: block;
+  image-rendering: pixelated;
+}
+/* What the map window is showing, outlined on the overview. */
+:where(.pixel-ui) .maker-overview-view {
+  position: absolute;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 var(--u) #ffffff,
+    0 0 0 var(--u) var(--ink);
 }
 :where(.pixel-ui) .maker-canvas {
   position: absolute;

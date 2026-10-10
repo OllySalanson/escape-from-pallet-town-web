@@ -138,10 +138,18 @@ export function groundAt(file: MapFile, point: GridPoint): string | undefined {
 
 /** Writes one letter onto every tile given. The same file when nothing changed. */
 export function paint(file: MapFile, tiles: readonly GridPoint[], letter: string): MapFile {
+  // Grouped by row with a push, never a copy: a fill of a whole 256x256 field
+  // is sixty-five thousand tiles, and copying the row's list for each one took
+  // half a minute.
   const byRow = new Map<number, number[]>();
   for (const tile of tiles) {
     if (inside(file, tile) && file.ground[tile.y][tile.x] !== letter) {
-      byRow.set(tile.y, [...(byRow.get(tile.y) ?? []), tile.x]);
+      const columns = byRow.get(tile.y);
+      if (columns) {
+        columns.push(tile.x);
+      } else {
+        byRow.set(tile.y, [tile.x]);
+      }
     }
   }
   if (byRow.size === 0) {
@@ -172,7 +180,12 @@ export function paintWith(file: MapFile, tiles: readonly GridPoint[], brush: Gro
     const under = groundAt(file, tile);
     if (under !== undefined) {
       const letter = brush.letterFor(under);
-      byLetter.set(letter, [...(byLetter.get(letter) ?? []), tile]);
+      const group = byLetter.get(letter);
+      if (group) {
+        group.push(tile);
+      } else {
+        byLetter.set(letter, [tile]);
+      }
     }
   }
   let next = file;
