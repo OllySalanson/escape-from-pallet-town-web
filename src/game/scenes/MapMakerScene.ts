@@ -126,10 +126,13 @@ import { checkMapFile, type MapCheck } from '../world/mapFileChecks';
 const AUTOSAVE_MS = 400;
 const STATUS_MS = 3_500;
 
-/** How often the map window scrolls while a stroke is held past its edge. */
-const EDGE_SCROLL_MS = 30;
-/** The most the window moves in one of those ticks, in screen pixels. */
-const EDGE_SCROLL_MAX_PX = 24;
+/**
+ * How often the map window scrolls while a stroke is held past its edge: a
+ * frame's worth, so the map glides under the pointer rather than stepping.
+ */
+const EDGE_SCROLL_MS = 16;
+/** The most the window moves in one of those ticks, in screen pixels: about 750 a second. */
+const EDGE_SCROLL_MAX_PX = 12;
 
 interface Stroke {
   readonly tool: MakerTool;
@@ -879,7 +882,7 @@ export class MapMakerScene extends Phaser.Scene {
     const speed = (distance: number): number =>
       distance === 0
         ? 0
-        : Math.sign(distance) * Math.min(EDGE_SCROLL_MAX_PX, Math.max(2, Math.abs(distance) / 3));
+        : Math.sign(distance) * Math.min(EDGE_SCROLL_MAX_PX, Math.max(1, Math.abs(distance) / 6));
     return {
       x: speed(past(point.clientX, box.left, box.right)),
       y: speed(past(point.clientY, box.top, box.bottom)),
