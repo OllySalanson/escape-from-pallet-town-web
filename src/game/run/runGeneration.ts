@@ -811,6 +811,10 @@ function generateLoot(
     );
     // At least half a map's loot is present, so exploring is reliably worth the risk.
     const count = rng.int(Math.ceil(pool.length / 2), pool.length);
+    if (isPlayerMapId(map.id)) {
+      generatedByMap[map.id] = layItemSpots(map.id, pool, count, rng, isReachable);
+      continue;
+    }
     const items = [...rng.shuffle(pool).slice(0, count), ...rare];
     const candidates = rng.shuffle(validTiles(map, reservedTiles.get(map.id), isReachable));
     // One shuffle of the map's free ground per raid, read two ways. An ordinary
@@ -856,6 +860,32 @@ function generateLoot(
     generatedByMap[map.id] = generated;
   }
   return generatedByMap;
+}
+
+/**
+ * A file map's loot: the maker drew each item spot on a tile, and the tile is
+ * the promise - a reward at the end of a dead end or behind a trainer is the
+ * whole reason to place one. So the spots are never re-seated. What a raid
+ * rolls is which of them are laid (half to all, as a shipped pool) and what is
+ * in each, by dealing the pool's contents out across the spots that are laid.
+ * `mapFileChecks` already keeps every spot off every other authored tile.
+ */
+function layItemSpots(
+  mapId: WorldMapId,
+  spots: readonly WorldLoot[],
+  count: number,
+  rng: ReturnType<typeof createSeededRng>,
+  isReachable: Reachability,
+): WorldLoot[] {
+  const laid = rng.shuffle(spots).slice(0, count);
+  const contents = rng.shuffle(spots);
+  return laid
+    .map((spot, index) => ({
+      ...spot,
+      itemId: contents[index].itemId,
+      quantity: contents[index].quantity,
+    }))
+    .filter((spot) => isReachable.reaches(mapId, spot.position));
 }
 
 /** What this raid can walk to from where it dropped in. */
