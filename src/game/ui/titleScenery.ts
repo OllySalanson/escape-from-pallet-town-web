@@ -128,7 +128,7 @@ export function sparkleAt(timeMs: number, periodMs: number, phaseMs: number): Sp
   const cycle = Math.floor(local / periodMs);
   const frame = Math.floor((local - cycle * periodMs) / SPARKLE_FRAME_MS);
   const size = frame < SPARKLE_FRAMES.length ? SPARKLE_FRAMES[frame] : 0;
-  return { size: size, cycle };
+  return { size, cycle };
 }
 
 /** The pixels of a sparkle of `size`, relative to its centre. */
@@ -272,7 +272,7 @@ export function logoGlint(timeMs: number, logoWidth: number, logoHeight: number)
     return 0;
   }
   const frame = Math.floor(into / SPARKLE_FRAME_MS);
-  return (frame < SPARKLE_FRAMES.length ? SPARKLE_FRAMES[frame] : 0);
+  return frame < SPARKLE_FRAMES.length ? SPARKLE_FRAMES[frame] : 0;
 }
 
 /** The menu cursor nudges a pixel towards the choice and back, as a handheld's does. */
