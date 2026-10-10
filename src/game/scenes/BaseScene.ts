@@ -85,6 +85,35 @@ import {
 } from '../base/cabinet';
 import { oddityLabel } from '../hub/traderCabinet';
 import { wallMapPoster } from '../base/wallMap';
+import {
+  EMOTE_ART,
+  EMOTE_BUBBLE_CREAM,
+  EMOTE_BUBBLE_INK,
+  EMOTE_INKS,
+  EMOTE_MS,
+  HOP_MS,
+  IDLE_BEAT_MIN_MS,
+  IDLE_BEAT_SPREAD_MS,
+  LOOK_AT_PLAYER_AFTER_MS,
+  PARTNER_FEET_PIXEL_Y,
+  arrivalPlace,
+  facingTowards,
+  followStep,
+  hopLift,
+  idleBeat,
+  idlePoseMs,
+  partnerFrame,
+  partnerOf,
+  partnerReaction,
+  partnerTextureKey,
+  sameTile,
+  type PartnerEmote,
+  type PartnerPlace,
+  type PartnerPlaceName,
+  type PartnerSpeciesId,
+} from '../base/partner';
+import { FOLLOWER_ART } from '../base/generated/followerArt';
+import type { Pokemon } from '../pokemon/Pokemon';
 import type { HubSceneData } from './HubScene';
 
 /**
@@ -128,6 +157,20 @@ const DIALOG_MARGIN = 8;
 const HINT_MARGIN = 6;
 const HINT_PADDING_X = 5;
 const HINT_PADDING_Y = 2;
+/**
+ * How long a direction pressed towards the partner, from standing, turns the
+ * player to face it before it walks them through it. A tap is a turn and a
+ * hold is a walk - FireRed's own rule for turning, kept here only for the one
+ * tile that is not a wall but is worth stopping to face.
+ */
+const TURN_TO_PARTNER_MS = 110;
+/** The partner fades in over this long when it arrives, and stands still for the first part of it. */
+const PARTNER_APPEAR_MS = 220;
+const PARTNER_APPEAR_DELAY_MS = 90;
+/** Left of the partner's frame relative to its tile: a 32-pixel frame centred on a 16-pixel tile. */
+const PARTNER_SPRITE_X_OFFSET = -8;
+/** Top of the partner's frame relative to its tile, so its feet land where the player's soles do. */
+const PARTNER_SPRITE_Y_OFFSET = PLAYER_SPRITE_Y_OFFSET + CHARACTER_FEET_PIXEL_Y - PARTNER_FEET_PIXEL_Y;
 
 const figureRect = (tile: GridPosition): Rect => ({
   x: tile.x * TILE_SIZE,
@@ -227,6 +270,35 @@ interface Inspecting {
   readonly by: 'keys' | 'pointer';
 }
 
+/** The partner at the player's heel, and everything its frame needs to remember. */
+interface PartnerWalk {
+  readonly pokemon: Pokemon;
+  readonly species: PartnerSpeciesId;
+  /** Its name as the game writes one, in capitals. */
+  readonly name: string;
+  readonly sprite: Phaser.GameObjects.Sprite;
+  place: PartnerPlace;
+  /** The step it is taking alongside the player's, timed by the player's own. */
+  step: { readonly from: GridPosition; readonly to: GridPosition } | null;
+  /** Following the player through a door as the screen goes dark. */
+  tuck: { readonly from: Phaser.Math.Vector2; readonly to: GridPosition; elapsedMs: number } | null;
+  walkPose: 0 | 1;
+  idlePose: 0 | 1;
+  idlePoseMs: number;
+  /** How long the player has been standing still. */
+  stillMs: number;
+  nextBeatMs: number;
+  /** Time left looking away from the player. */
+  glanceMs: number;
+  hopMs: number | null;
+  /** Time since it began to come into view, or null once it is in view. */
+  appearMs: number | null;
+  bubble: Phaser.GameObjects.Graphics | null;
+  bubbleMs: number;
+  /** The bubble it greets the player with once it is in view. */
+  greeting: PartnerEmote | null;
+}
+
 /** What the scene is standing the player in this visit. */
 interface Place {
   readonly width: number;
@@ -279,6 +351,10 @@ export class BaseScene extends Phaser.Scene {
   private ready = false;
   private readonly stepStart = new Phaser.Math.Vector2();
   private readonly stepEnd = new Phaser.Math.Vector2();
+  /** The partner walking at the player's heel, or null when nobody is (`base/partner.ts`). */
+  private partner: PartnerWalk | null = null;
+  /** Counts down while a tap towards the partner is turning the player rather than walking them. */
+  private turnToPartnerMs: number | null = null;
 
   /**
    * The four doors and the four rooms behind them, reachable from outside the
@@ -325,6 +401,8 @@ export class BaseScene extends Phaser.Scene {
     this.inspecting = null;
     this.inspectLabel = null;
     this.inspectMark = null;
+    this.partner = null;
+    this.turnToPartnerMs = null;
 
     const room = data.room === undefined ? undefined : roomNamed(data.room);
     if (room) {
@@ -373,6 +451,7 @@ export class BaseScene extends Phaser.Scene {
     this.drawWallMap();
     this.createFigures();
     this.createPlayer();
+    this.createPartner(data);
     this.createCaptions();
     this.createDialogBox();
     this.createHint();
@@ -397,6 +476,11 @@ export class BaseScene extends Phaser.Scene {
     if (!this.ready) {
       return;
     }
+    this.updateWalking(deltaMs);
+    this.updatePartner(deltaMs);
+  }
+
+  private updateWalking(deltaMs: number): void {
     const stepCarryMs = this.stepCarryMs;
     this.stepCarryMs = null;
     this.lookMs = advanceLookMs(
@@ -463,6 +547,13 @@ export class BaseScene extends Phaser.Scene {
       bounds: this.bounds,
       isBlocked: (tile) => this.isBlocked(tile),
     });
+    if (this.turnsToFacePartner(decision.target, decision.facing, carriedMs === null, deltaMs)) {
+      this.facing = decision.facing;
+      this.pushingAgainst = null;
+      this.player.stop();
+      this.player.setFrame(getIdleFrame(this.facing));
+      return;
+    }
     const pushing = input.up || input.down || input.left || input.right;
     const bump = nextBump(this.pushingAgainst, !decision.target && pushing ? decision.facing : null);
     this.pushingAgainst = bump.pushingAgainst;
@@ -938,14 +1029,20 @@ export class BaseScene extends Phaser.Scene {
 
   private hintHere(): string {
     const room = this.place.room?.room;
+    const facing = nextTileFromDirection(this.currentTile, this.facing);
+    // Facing the partner is the one thing the yard says a key does, because
+    // turning to face it is the only way anybody would find out.
+    const partner = this.partner && this.partnerAt(facing) ? `[SPACE] ${this.partner.name}` : undefined;
     if (!room) {
-      return '';
+      return partner ?? '';
+    }
+    if (this.onMat(room)) {
+      return `${partner ?? `[SPACE] ${room.keeper.name}`}   [DOWN] OUT`;
+    }
+    if (partner) {
+      return partner;
     }
     const keeper = `[SPACE] ${room.keeper.name}`;
-    if (this.onMat(room)) {
-      return `${keeper}   [DOWN] OUT`;
-    }
-    const facing = nextTileFromDirection(this.currentTile, this.facing);
     if (servesFrom(room, facing)) {
       return keeper;
     }
@@ -1054,7 +1151,10 @@ export class BaseScene extends Phaser.Scene {
       {
         bounds,
         furniture: this.hintShown ? [this.hintRect(view)] : [],
-        keepClear: room ? [figureRect(room.keeper.position)] : [],
+        keepClear: [
+          ...(room ? [figureRect(room.keeper.position)] : []),
+          ...(this.partner?.place.out ? [this.partnerRect(this.partner.place.tile)] : []),
+        ],
         canopy: this.canopyInView(bounds),
         player: [figureRect(this.currentTile), figureRect(this.targetTile ?? this.currentTile)],
       },
@@ -1220,6 +1320,7 @@ export class BaseScene extends Phaser.Scene {
     );
     this.stepEnd.set(targetTile.x * TILE_SIZE, targetTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
     this.player.play(getWalkAnimationKey(this.facing), true);
+    this.followPlayer(this.currentTile, targetTile);
   }
 
   private advanceStep(deltaMs: number): void {
@@ -1235,6 +1336,9 @@ export class BaseScene extends Phaser.Scene {
     this.currentTile = this.targetTile;
     this.targetTile = null;
     this.stepCarryMs = tick.overflowMs;
+    if (this.partner) {
+      this.partner.step = null;
+    }
     if (this.place.room) {
       return;
     }
@@ -1242,6 +1346,367 @@ export class BaseScene extends Phaser.Scene {
     if (door) {
       this.enterRoom(door);
     }
+  }
+
+  // -- the partner -----------------------------------------------------------
+
+  /**
+   * The partner, if this save still has one, standing where it would have
+   * walked in: behind the player, else beside them (`arrivalPlace`). It fades
+   * in with a hop rather than standing there from the first frame, because it
+   * has just come in after them - and coming home from a raid, or opening the
+   * game, it says hello.
+   */
+  private createPartner(data: BaseSceneData): void {
+    const partner = partnerOf(this.savedGame.stash);
+    if (!partner) {
+      return;
+    }
+    const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile));
+    const sprite = this.add
+      .sprite(0, 0, partnerTextureKey(partner.species), partnerFrame(place.facing, 0))
+      .setOrigin(0, 0)
+      .setAlpha(0)
+      .setVisible(place.out);
+    const greeting: PartnerEmote | null =
+      data.arrival === 'raid' || (data.from === undefined && data.room === undefined && data.at === undefined)
+        ? partner.pokemon.isFainted
+          ? 'sleepy'
+          : partner.pokemon.currentHp * 4 <= partner.pokemon.maxHp
+            ? 'ellipsis'
+            : data.arrival === 'raid'
+              ? 'heart'
+              : 'happy'
+        : null;
+    this.partner = {
+      pokemon: partner.pokemon,
+      species: partner.species,
+      name: partner.pokemon.base.name.toUpperCase(),
+      sprite,
+      place,
+      step: null,
+      tuck: null,
+      walkPose: 0,
+      idlePose: 0,
+      idlePoseMs: 0,
+      stillMs: 0,
+      nextBeatMs: this.nextBeatDelay(),
+      glanceMs: 0,
+      hopMs: null,
+      appearMs: place.out ? 0 : null,
+      bubble: null,
+      bubbleMs: 0,
+      greeting,
+    };
+    this.drawPartner();
+  }
+
+  /** Ground a partner may arrive on: inside the place, not solid, nobody on it. */
+  private partnerCanStand(tile: GridPosition): boolean {
+    return tile.x >= 0 && tile.y >= 0 && tile.x < this.bounds.width && tile.y < this.bounds.height && !this.isBlocked(tile);
+  }
+
+  /** Whether the partner is out and standing on `tile`. */
+  private partnerAt(tile: GridPosition): boolean {
+    const partner = this.partner;
+    return partner !== null && partner.place.out && partner.tuck === null && sameTile(partner.place.tile, tile);
+  }
+
+  /**
+   * Whether this frame's direction, pressed towards the partner, only turns
+   * the player to face it. From standing and not already facing it, a press
+   * turns them and only a press still held after `TURN_TO_PARTNER_MS` walks
+   * them on - through the partner, which steps back past them. Mid-walk, or
+   * already facing it, the walk is never held up at all.
+   */
+  private turnsToFacePartner(
+    target: GridPosition | null,
+    facing: Direction,
+    fromStanding: boolean,
+    deltaMs: number,
+  ): boolean {
+    if (!target || !this.partnerAt(target)) {
+      this.turnToPartnerMs = null;
+      return false;
+    }
+    if (this.turnToPartnerMs === null) {
+      if (!fromStanding || facing === this.facing) {
+        return false;
+      }
+      this.turnToPartnerMs = TURN_TO_PARTNER_MS;
+      return true;
+    }
+    this.turnToPartnerMs -= deltaMs;
+    if (this.turnToPartnerMs > 0) {
+      return true;
+    }
+    this.turnToPartnerMs = null;
+    return false;
+  }
+
+  /** The player has begun a step: the partner takes its own, onto the tile they are leaving. */
+  private followPlayer(from: GridPosition, to: GridPosition): void {
+    const partner = this.partner;
+    if (!partner || partner.tuck) {
+      return;
+    }
+    const { move, place } = followStep(partner.place, from, to);
+    partner.place = place;
+    partner.stillMs = 0;
+    partner.glanceMs = 0;
+    partner.nextBeatMs = this.nextBeatDelay();
+    if (move.kind === 'step') {
+      partner.step = { from: move.from, to: move.to };
+      partner.walkPose = partner.walkPose === 0 ? 1 : 0;
+      return;
+    }
+    // Out from where it was tucked away, onto the tile the player has left.
+    partner.step = null;
+    partner.appearMs = 0;
+    partner.sprite.setVisible(true).setAlpha(0);
+    audioManager.play('partnerAppear');
+  }
+
+  /**
+   * Through a door or off a mat: the partner follows the player in, onto the
+   * tile they are standing on, as the screen goes dark.
+   */
+  private tuckPartnerAway(): void {
+    const partner = this.partner;
+    if (!partner || !partner.place.out || sameTile(partner.place.tile, this.currentTile)) {
+      return;
+    }
+    const from = this.partnerPosition();
+    const facing = facingTowards(partner.place.tile, this.currentTile) ?? partner.place.facing;
+    partner.step = null;
+    partner.place = { ...partner.place, facing };
+    partner.tuck = { from, to: { ...this.currentTile }, elapsedMs: 0 };
+    partner.walkPose = partner.walkPose === 0 ? 1 : 0;
+  }
+
+  /**
+   * Facing the partner and pressing the interact key: it turns to the player,
+   * says how it is - in its own words, with the bubble over its head - and
+   * hops if it has the energy.
+   */
+  private talkToPartner(): void {
+    const partner = this.partner;
+    if (!partner) {
+      return;
+    }
+    const place: PartnerPlaceName = (this.place.room?.room.id as PartnerPlaceName | undefined) ?? 'yard';
+    const reaction = partnerReaction(partner.pokemon, place, Math.random());
+    partner.place = {
+      ...partner.place,
+      facing: facingTowards(partner.place.tile, this.currentTile) ?? partner.place.facing,
+    };
+    partner.glanceMs = 0;
+    partner.stillMs = LOOK_AT_PLAYER_AFTER_MS;
+    if (reaction.hops) {
+      partner.hopMs = 0;
+      audioManager.play('partnerHappy');
+    }
+    this.showPartnerBubble(reaction.emote);
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.say([reaction.line], [partner.place.tile]);
+  }
+
+  private showPartnerBubble(emote: PartnerEmote): void {
+    const partner = this.partner;
+    if (!partner) {
+      return;
+    }
+    partner.bubble?.destroy();
+    const bubble = this.add.graphics();
+    const box = (colour: number, x: number, y: number, width: number, height: number): void => {
+      bubble.fillStyle(colour, 1).fillRect(x, y, width, height);
+    };
+    // The raid's spotted mark, to the pixel: an ink rim, a cream inside, a tail.
+    box(EMOTE_BUBBLE_INK, 0, 0, 11, 13);
+    box(EMOTE_BUBBLE_CREAM, 1, 1, 9, 11);
+    box(EMOTE_BUBBLE_INK, 4, 13, 3, 1);
+    box(EMOTE_BUBBLE_CREAM, 5, 13, 1, 1);
+    box(EMOTE_BUBBLE_INK, 5, 14, 1, 1);
+    EMOTE_ART[emote].forEach((row, y) =>
+      [...row].forEach((ink, x) => {
+        if (ink !== '.') {
+          box(EMOTE_INKS[ink], 1 + x, 1 + y, 1, 1);
+        }
+      }),
+    );
+    partner.bubble = bubble.setDepth(CANOPY_BAND + 0.15);
+    partner.bubbleMs = 0;
+  }
+
+  /**
+   * The partner's own frame: its walk, its idle treading, the little things it
+   * does while the player stands about, its bubble, and where it is drawn.
+   */
+  private updatePartner(deltaMs: number): void {
+    const partner = this.partner;
+    if (!partner) {
+      return;
+    }
+    const reading = this.dialogBox.visible;
+    if (partner.tuck) {
+      partner.tuck.elapsedMs += deltaMs;
+    }
+    if (partner.appearMs !== null) {
+      partner.appearMs += deltaMs;
+      if (partner.appearMs >= PARTNER_APPEAR_MS + PARTNER_APPEAR_DELAY_MS) {
+        partner.appearMs = null;
+        if (partner.greeting) {
+          if (partner.greeting === 'heart' || partner.greeting === 'happy') {
+            partner.hopMs = 0;
+            audioManager.play('partnerHappy');
+          }
+          this.showPartnerBubble(partner.greeting);
+          partner.greeting = null;
+        }
+      }
+    }
+    if (partner.hopMs !== null) {
+      partner.hopMs += deltaMs;
+      if (partner.hopMs >= HOP_MS) {
+        partner.hopMs = null;
+      }
+    }
+    if (partner.bubble && !reading) {
+      partner.bubbleMs += deltaMs;
+      if (partner.bubbleMs >= EMOTE_MS) {
+        partner.bubble.destroy();
+        partner.bubble = null;
+      }
+    }
+
+    const standing = this.targetTile === null && partner.step === null && partner.tuck === null && !this.leaving;
+    if (standing && partner.place.out) {
+      this.partnerStandsAbout(partner, deltaMs, reading);
+    }
+    this.drawPartner();
+  }
+
+  /** Treading in place, turning to look at the player, glancing about, hopping. */
+  private partnerStandsAbout(partner: PartnerWalk, deltaMs: number, reading: boolean): void {
+    partner.idlePoseMs += deltaMs;
+    const poseMs = idlePoseMs(partner.pokemon);
+    if (partner.idlePoseMs >= poseMs) {
+      partner.idlePoseMs %= poseMs;
+      partner.idlePose = partner.idlePose === 0 ? 1 : 0;
+    }
+    const lookingAtPlayer = facingTowards(partner.place.tile, this.currentTile);
+    partner.stillMs += deltaMs;
+    if (partner.glanceMs > 0) {
+      partner.glanceMs -= deltaMs;
+      if (partner.glanceMs <= 0 && lookingAtPlayer) {
+        partner.place = { ...partner.place, facing: lookingAtPlayer };
+      }
+      return;
+    }
+    if (partner.stillMs >= LOOK_AT_PLAYER_AFTER_MS && lookingAtPlayer && partner.place.facing !== lookingAtPlayer) {
+      partner.place = { ...partner.place, facing: lookingAtPlayer };
+    }
+    if (reading || this.inspecting) {
+      return;
+    }
+    partner.nextBeatMs -= deltaMs;
+    if (partner.nextBeatMs > 0) {
+      return;
+    }
+    partner.nextBeatMs = this.nextBeatDelay();
+    const beat = idleBeat(Math.random(), partner.pokemon);
+    if (beat === 'glance') {
+      const away = (['up', 'down', 'left', 'right'] as const).filter(
+        (direction) => direction !== partner.place.facing,
+      );
+      partner.place = { ...partner.place, facing: away[Math.floor(Math.random() * away.length)] };
+      partner.glanceMs = 900 + Math.random() * 700;
+    } else if (beat === 'hop' || beat === 'hop-and-chirp') {
+      partner.hopMs = 0;
+      if (beat === 'hop-and-chirp') {
+        audioManager.play('partnerHappy');
+        this.showPartnerBubble('note');
+      }
+    }
+  }
+
+  private nextBeatDelay(): number {
+    return IDLE_BEAT_MIN_MS + Math.random() * IDLE_BEAT_SPREAD_MS;
+  }
+
+  /** Where the partner is, in tiles, which mid-step is part of the way between two. */
+  private partnerPosition(): Phaser.Math.Vector2 {
+    const partner = this.partner;
+    if (!partner) {
+      return new Phaser.Math.Vector2(this.currentTile.x, this.currentTile.y);
+    }
+    if (partner.tuck) {
+      const t = Math.min(1, partner.tuck.elapsedMs / STEP_DURATION_MS);
+      return new Phaser.Math.Vector2(
+        Phaser.Math.Linear(partner.tuck.from.x, partner.tuck.to.x, t),
+        Phaser.Math.Linear(partner.tuck.from.y, partner.tuck.to.y, t),
+      );
+    }
+    if (partner.step && this.targetTile) {
+      return new Phaser.Math.Vector2(
+        Phaser.Math.Linear(partner.step.from.x, partner.step.to.x, this.stepProgress),
+        Phaser.Math.Linear(partner.step.from.y, partner.step.to.y, this.stepProgress),
+      );
+    }
+    return new Phaser.Math.Vector2(partner.place.tile.x, partner.place.tile.y);
+  }
+
+  private drawPartner(): void {
+    const partner = this.partner;
+    if (!partner) {
+      return;
+    }
+    const at = this.partnerPosition();
+    const moving = partner.tuck !== null || (partner.step !== null && this.targetTile !== null);
+    const progress = partner.tuck
+      ? Math.min(1, partner.tuck.elapsedMs / STEP_DURATION_MS)
+      : this.stepProgress;
+    // Two poses a step while walking, swapped halfway, and every other step
+    // starting on the other one - the same tread the art was drawn for.
+    const pose: 0 | 1 = moving
+      ? ((progress < 0.5 ? partner.walkPose : 1 - partner.walkPose) as 0 | 1)
+      : partner.idlePose;
+    const lift = partner.hopMs === null ? 0 : hopLift(partner.hopMs);
+    const x = at.x * TILE_SIZE + PARTNER_SPRITE_X_OFFSET;
+    const y = at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET - lift;
+    partner.sprite
+      .setFrame(partnerFrame(partner.place.facing, pose))
+      .setPosition(x, y)
+      // A hair behind the player on the same row, so a swap passes behind them.
+      .setDepth(atRow(FIGURE_BAND, at.y) - 0.00005);
+    let alpha = 1;
+    if (partner.appearMs !== null) {
+      alpha = Phaser.Math.Clamp((partner.appearMs - PARTNER_APPEAR_DELAY_MS) / PARTNER_APPEAR_MS, 0, 1);
+    }
+    if (partner.tuck) {
+      alpha = 1 - progress;
+    }
+    partner.sprite.setAlpha(alpha);
+    if (partner.bubble) {
+      const art = FOLLOWER_ART[partner.species];
+      partner.bubble.setPosition(
+        Math.round(at.x * TILE_SIZE + TILE_SIZE / 2 - 5),
+        Math.round(at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET + art.topPixelY - 16 - lift),
+      );
+    }
+  }
+
+  /** The partner's figure on a tile, for the captions to keep clear of. */
+  private partnerRect(tile: GridPosition): Rect {
+    const art = this.partner ? FOLLOWER_ART[this.partner.species] : undefined;
+    const top = art?.topPixelY ?? 16;
+    return {
+      x: tile.x * TILE_SIZE,
+      y: tile.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET + top,
+      width: TILE_SIZE,
+      height: PARTNER_FEET_PIXEL_Y - top + 1,
+    };
   }
 
   // -- the doors, the rooms and the keepers ----------------------------------
@@ -1258,6 +1723,12 @@ export class BaseScene extends Phaser.Scene {
    */
   private tryInteract(): void {
     const target = nextTileFromDirection(this.currentTile, this.facing);
+    // The partner first, even on a room's mat: facing it takes a turn on
+    // purpose, so a key pressed at it is meant for it.
+    if (this.partnerAt(target)) {
+      this.talkToPartner();
+      return;
+    }
     const room = this.place.room?.room;
     if (room) {
       if (this.onMat(room) || servesFrom(room, target)) {
@@ -1359,6 +1830,7 @@ export class BaseScene extends Phaser.Scene {
     this.leaving = true;
     this.player.stop();
     this.showHint('');
+    this.tuckPartnerAway();
     audioManager.play(sound);
     this.cameras.main.fadeOut(120, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>

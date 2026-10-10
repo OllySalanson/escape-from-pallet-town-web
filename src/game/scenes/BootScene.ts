@@ -13,6 +13,7 @@ import {
   characterDesignAssetPath,
   characterDesignTextureKey,
 } from '../world/characterDesigns';
+import { PARTNER_FRAME, PARTNER_SPECIES, partnerAssetPath, partnerTextureKey } from '../base/partner';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
 import { isTestLabRequested } from '../dev/testLabAccess';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
@@ -43,6 +44,15 @@ export class BootScene extends Phaser.Scene {
           frameHeight: CHARACTER_FRAME_HEIGHT,
         },
       );
+    }
+    // The partner's walking art, for each Pokemon a partner can be. Nine small
+    // sheets, so all of them rather than only this save's: a partner evolves
+    // in a raid and comes home a different sheet.
+    for (const species of PARTNER_SPECIES) {
+      this.load.spritesheet(partnerTextureKey(species), publicAssetUrl(partnerAssetPath(species)), {
+        frameWidth: PARTNER_FRAME,
+        frameHeight: PARTNER_FRAME,
+      });
     }
     // Every sheet a map might be drawn from. A catalogue is chosen per map and
     // may draw from more than one sheet at a time, so the loader takes the list

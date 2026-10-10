@@ -587,6 +587,40 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   states the images are not the maintainers' to relicense. **These are not CC0
   sprites, and this file must not describe them as such.**
 
+### `followers/<species>.png` - the partner's walking art, from HeartGold/SoulSilver
+
+FireRed/LeafGreen draws no Pokemon walking behind the player, so the one place
+the partner's art could come from without anybody drawing it is the game that
+does: **Pokemon HeartGold/SoulSilver's own following-Pokemon sprites**, ripped
+from that commercial DS game. Rights holder: Nintendo / Creatures / Game Freak.
+It ships under the same ruling as everything else in this section - the owner
+accepted ripped commercial Pokemon art knowingly for this personal,
+non-commercial fan game on 2026-09-19 - and is recorded here in those words.
+
+- **Source.** The pret disassembly of the game,
+  <https://github.com/pret/pokeheartgold>, pinned at commit
+  `9d8b7591f09b65804da2fb2dfd56f320633e0d36` (2026-09-21) - the same project
+  family this repository already reads `pret/pokefirered` from for stats,
+  moves and character casting. Each sprite is one Nitro texture,
+  `files/data/mmodel/mmodel/mmodel_<n>.NSBTX`, and which `<n>` is which Pokemon
+  is that repository's own `include/constants/mmodel.h`:
+  `MMODEL_FOLLOWER_MON_BULBASAUR` 297, `IVYSAUR` 298, `VENUSAUR` 299,
+  `CHARMANDER` 301, `CHARMELEON` 302, `CHARIZARD` 303, `SQUIRTLE` 304,
+  `WARTORTLE` 305, `BLASTOISE` 306. Fetched 2026-10-10.
+- **Licence.** The repository states none (GitHub reports no licence), and it is
+  a reconstruction of a commercial game whose art belongs to the rights holder.
+  Nothing here should be read as a licence for these images.
+- **How they were cut.** `scripts/cut-hgss-followers.mjs` is the whole method:
+  it reads each texture's own header and dictionaries, decodes the eight 32x32
+  four-bit frames with colour 0 clear, widens each 15-bit colour by `<< 3` as
+  every other GBA/DS rip here is, and lays them out as one 64x128 sheet a
+  species - two poses a facing, rows down, up, left, right. **Not a pixel is
+  scaled, filtered, recoloured or moved**, so a frame here is the frame the game
+  draws. HeartGold also has a female Venusaur (300, a seed on the flower); a
+  save records no gender, so the male is the one cut, as the battle sprite is.
+  The source textures are not committed; the script fetches them from the
+  pinned commit.
+
 ### If these are ever to be removed
 
 Both entries are self-contained. `frlg-tiles.png` is loaded by `BootScene` as
