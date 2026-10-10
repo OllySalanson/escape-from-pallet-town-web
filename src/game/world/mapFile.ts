@@ -25,6 +25,7 @@ import { createRunTrainerEncounters, type RunTrainerEncounter } from './trainers
 import type { WorldLoot } from './loot';
 import { MapSketch, type PropStamp } from './mapGrid';
 import { PLAYER_MAP_TILESET, type PlayerMapPropName } from './tileset/playerMapTileset';
+import { TOWN_PIECES, type TownPieceName } from './generated/townPieces';
 import { MATERIAL_CHARS, MATERIALS, type Material } from './tileset/materials';
 import type { PropDefinition, TilesetCatalogue } from './tileset/catalogue';
 import {
@@ -432,39 +433,96 @@ export function isFurniture(kind: string): kind is MapFileFurnitureKind {
 }
 
 /**
+ * A building's door: the first cell of its footprint a player walks up into,
+ * and how many cells wide it is - FireRed draws a shop's door two cells wide,
+ * and every cell of it takes you in.
+ */
+export interface MapFileBuildingDoor {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+}
+
+const door = (x: number, y: number, width = 1): MapFileBuildingDoor => ({ x, y, width });
+
+/**
+ * Kanto's town buildings whose warps are no door of theirs: the pier's are the
+ * S.S. Anne's gangway, and Saffron's gate is walked through, a gatehouse.
+ */
+const NOT_A_DOOR: ReadonlySet<string> = new Set(['pier', 'city-gate']);
+
+/**
+ * A Kanto town building's front door, where FireRed's own map puts it: the
+ * bottom row of the doors the town cutter read off the town's map
+ * (`TOWN_PIECES[...].doors` - only warps FireRed fires, each with the way it is
+ * gone through), as wide as the run of them there.
+ */
+function townDoor(piece: TownPieceName): MapFileBuildingDoor | undefined {
+  const doors = (TOWN_PIECES[piece].doors as readonly (readonly [number, number, string])[]).filter(
+    ([, , way]) => way === 'door',
+  );
+  const first = doors[0];
+  if (!first) {
+    return undefined;
+  }
+  const [x, y] = first;
+  let width = 1;
+  while (doors.some(([dx, dy]) => dy === y && dx === x + width)) {
+    width += 1;
+  }
+  return door(x, y, width);
+}
+
+/**
  * Where each building's door is, as a cell of its footprint. A building with
  * a door can be given an inside: linking the tile in front of this cell to a
  * mat in a room is what opens it. The rest - signs, the gatehouses - have no
  * door of this kind.
  */
 export const MAP_FILE_BUILDING_DOORS: Readonly<
-  Partial<Record<MapFileOutdoorBuildingKind, readonly [number, number]>>
+  Partial<Record<MapFileOutdoorBuildingKind, MapFileBuildingDoor>>
 > = {
-  house: [1, 3],
-  'house-door': [1, 3],
-  'house-flowers': [1, 3],
-  cottage: [3, 2],
-  'cottage-door': [3, 2],
-  'pokemon-center': [2, 4],
-  'pokemon-center-door': [2, 4],
-  'poke-mart': [2, 3],
-  'poke-mart-door': [2, 3],
-  gym: [3, 4],
-  // Three of the buildings the second palette brought, each measured off its
-  // own drawing: the shed's plank door, the cottage's, and the timber house's
-  // arch. The shop's and the hut's doors are drawn across two cells, and the
-  // tower and the roundhouse have none.
-  shed: [1, 3],
-  'blue-cottage': [3, 2],
-  'timber-house': [2, 4],
+  house: door(1, 3),
+  'house-door': door(1, 3),
+  'house-flowers': door(1, 3),
+  cottage: door(3, 2),
+  'cottage-door': door(3, 2),
+  'pokemon-center': door(2, 4),
+  'pokemon-center-door': door(2, 4),
+  'poke-mart': door(2, 3),
+  'poke-mart-door': door(2, 3),
+  gym: door(3, 4),
+  // The buildings the second palette brought, each measured off its own
+  // drawing: the shed's plank door, the cottage's, the timber house's arch,
+  // and the shop's and the hut's, which are drawn across two cells. The tower
+  // and the roundhouse have none.
+  shed: door(1, 3),
+  'blue-cottage': door(3, 2),
+  'timber-house': door(2, 4),
+  shop: door(1, 3, 2),
+  hut: door(0, 2, 2),
   // A cave mouth is all door.
-  'cave-mouth': [0, 0],
+  'cave-mouth': door(0, 0),
+  // And every one of Kanto's town buildings FireRed lets you into.
+  ...Object.fromEntries(
+    (Object.entries(MAP_FILE_BUILDINGS) as [MapFileOutdoorBuildingKind, string][]).flatMap(
+      ([kind, prop]) => {
+        const front = prop in TOWN_PIECES && !NOT_A_DOOR.has(kind) ? townDoor(prop as TownPieceName) : undefined;
+        return front ? [[kind, front]] : [];
+      },
+    ),
+  ),
 };
 
 /** The tile in front of a building's door - where its link's end stands - or undefined. */
 export function doorFront(building: MapFileBuilding): MapFileSpot | undefined {
-  const door = MAP_FILE_BUILDING_DOORS[building.kind as MapFileOutdoorBuildingKind];
-  return door ? { x: building.x + door[0], y: building.y + door[1] + 1 } : undefined;
+  const at = MAP_FILE_BUILDING_DOORS[building.kind as MapFileOutdoorBuildingKind];
+  return at ? { x: building.x + at.x, y: building.y + at.y + 1 } : undefined;
+}
+
+/** How many cells wide a building's door is; one for a building with none. */
+export function doorWidth(building: MapFileBuilding): number {
+  return MAP_FILE_BUILDING_DOORS[building.kind as MapFileOutdoorBuildingKind]?.width ?? 1;
 }
 
 /**

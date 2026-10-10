@@ -3,7 +3,7 @@
 // `public/assets/frlg-towns.png`.
 //
 //   git clone --filter=blob:none --no-checkout https://github.com/pret/pokefirered.git /tmp/pokefirered
-//   git -C /tmp/pokefirered checkout 037335f -- data/tilesets data/layouts graphics/object_events/pics/misc
+//   git -C /tmp/pokefirered checkout 037335f -- data/tilesets data/layouts data/maps graphics/object_events/pics/misc
 //   node scripts/cut-frlg-towns.mjs /tmp/pokefirered
 //
 // pret/pokefirered is the disassembly of the game: its tilesets and every map's
@@ -37,6 +37,15 @@
 //
 // **The piece is trimmed** to the cells that still hold anything, so a rectangle
 // read a little generously off the map does not carry a row of nothing with it.
+//
+// **Its doors are read off the map too.** Every warp the town's own map puts
+// inside a piece's rectangle (`data/maps/<Town>/map.json`) that FireRed can
+// fire is a door of that building, recorded in the piece's own cells after the
+// trim with the way it is gone through, so a map maker's building opens where
+// FireRed's does. A warp only fires on a cell whose floor says it is one
+// (`src/field_control_avatar.c`): a door is walked up into, an arrow warp is
+// stood on and pressed the way it points, and a warp on any other floor never
+// takes anybody anywhere - FireRed puts some beside the ones that work.
 //
 // The script writes the sheet and `src/game/world/generated/townPieces.ts`, which
 // is the only thing in the game that knows where a piece landed on it.
@@ -206,6 +215,22 @@ function palette(dir, number) {
     .map((line) => line.trim().split(/\s+/).map((value) => Math.round((Number(value) * 31) / 255) << 3));
 }
 
+/**
+ * The way a warp is gone through, from the behaviour of the floor it is on
+ * (`include/constants/metatile_behaviors.h`): a door is walked up into, an
+ * arrow warp is stood on and pressed the way it points, and anything else
+ * does not fire.
+ */
+const WAYS = {
+  0x60: 'door', // MB_CAVE_DOOR, a doorway with no door to open
+  0x69: 'door', // MB_WARP_DOOR
+  0x62: 'right', // MB_EAST_ARROW_WARP
+  0x63: 'left', // MB_WEST_ARROW_WARP
+  0x64: 'up', // MB_NORTH_ARROW_WARP
+  0x65: 'down', // MB_SOUTH_ARROW_WARP
+};
+const throughWay = (behaviour) => WAYS[behaviour];
+
 /** A town drawn whole, with each block's metatile and whether it can be walked on. */
 function renderTown([layout, secondary, width, height]) {
   const primaryDir = join(pret, 'data/tilesets/primary/general');
@@ -213,6 +238,13 @@ function renderTown([layout, secondary, width, height]) {
   const tiles = [indexed(join(primaryDir, 'tiles.png')), indexed(join(secondaryDir, 'tiles.png'))];
   const palettes = Array.from({ length: 16 }, (_, n) => palette(n < 7 ? primaryDir : secondaryDir, n));
   const metatiles = [readFileSync(join(primaryDir, 'metatiles.bin')), readFileSync(join(secondaryDir, 'metatiles.bin'))];
+  const attributes = [
+    readFileSync(join(primaryDir, 'metatile_attributes.bin')),
+    readFileSync(join(secondaryDir, 'metatile_attributes.bin')),
+  ];
+  /** A metatile's behaviour: what its floor does to whoever stands on it. */
+  const behaviourOf = (metatile) =>
+    (metatile < 640 ? attributes[0] : attributes[1]).readUInt32LE((metatile < 640 ? metatile : metatile - 640) * 4) & 0x1ff;
   const blocks = readFileSync(join(pret, 'data/layouts', layout, 'map.bin'));
   const image = { width: width * TILE, height: height * TILE, data: Buffer.alloc(width * height * TILE * TILE * 4) };
   const cells = [];
@@ -285,7 +317,14 @@ function renderTown([layout, secondary, width, height]) {
     });
     return out;
   };
-  return { image, width, height, cells, isGround, cellArt };
+  // Where the town's map takes a player somewhere else: its doors, each with
+  // the way it is gone through, and only the ones that fire.
+  const warps = JSON.parse(readFileSync(join(pret, 'data/maps', layout, 'map.json'), 'utf8'))
+    .warp_events.flatMap((warp) => {
+      const way = throughWay(behaviourOf(cells[warp.y * width + warp.x].metatile));
+      return way ? [[warp.x, warp.y, way]] : [];
+    });
+  return { image, width, height, cells, isGround, cellArt, warps };
 }
 
 const towns = new Map(Object.entries(TOWNS).map(([name, town]) => [name, renderTown(town)]));
@@ -449,7 +488,12 @@ function cutPiece(piece) {
   const mask = Array.from({ length: height }, (_, r) =>
     Array.from({ length: width }, (_, q) => (opaque(grid[top + r][left + q]) ? '#' : '-')).join(''),
   );
-  return { name: piece.name, width, height, image: out, mask };
+  // The building's doors, in its own trimmed cells, bottom row first.
+  const doors = town.warps
+    .filter(([x, y]) => x >= ax + left && x <= ax + right && y >= ay + top && y <= ay + bottom)
+    .map(([x, y, way]) => [x - ax - left, y - ay - top, way])
+    .sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+  return { name: piece.name, width, height, image: out, mask, doors };
 }
 
 /** An object's first frame, on the `<< 3` footing, standing on the bottom of whole cells. */
@@ -484,7 +528,7 @@ function cutObject(object) {
   const mask = Array.from({ length: height }, (_, r) =>
     Array.from({ length: width }, (_, q) => (cellHasInk(q, r) ? '#' : '-')).join(''),
   );
-  return { name: object.name, width, height, image: out, mask };
+  return { name: object.name, width, height, image: out, mask, doors: [] };
 }
 
 const cut = [...PIECES.map(cutPiece), ...OBJECTS.map(cutObject)];
@@ -516,10 +560,12 @@ for (const piece of cut) {
 writePng(new URL('../public/assets/frlg-towns.png', import.meta.url).pathname, sheet);
 
 const masks = new Map(cut.map((piece) => [piece.name, piece.mask]));
+const doorsOf = new Map(cut.map((piece) => [piece.name, piece.doors]));
 const entries = [...PIECES, ...OBJECTS].map(({ name }) => {
   const at = placed.get(name);
   const mask = masks.get(name).map((row) => `'${row}'`).join(', ');
-  return `  ${name}: {\n    column: ${at.column},\n    row: ${at.row},\n    width: ${at.width},\n    height: ${at.height},\n    cells: [${mask}],\n  },`;
+  const doors = doorsOf.get(name).map(([x, y, way]) => `[${x}, ${y}, '${way}']`).join(', ');
+  return `  ${name}: {\n    column: ${at.column},\n    row: ${at.row},\n    width: ${at.width},\n    height: ${at.height},\n    cells: [${mask}],\n    doors: [${doors}],\n  },`;
 });
 writeFileSync(
   new URL('../src/game/world/generated/townPieces.ts', import.meta.url),
@@ -533,7 +579,12 @@ export const TOWN_SHEET = {
   rows: ${rows},
 } as const;
 
-/** Where each named piece sits on the sheet, in tiles, and which of its cells hold anything ('#') or nothing ('-'). */
+/**
+ * Where each named piece sits on the sheet, in tiles, which of its cells hold
+ * anything ('#') or nothing ('-'), and its doors: the cells FireRed's own map
+ * warps a player from, bottom row first, each with the way it is gone through -
+ * a door walked up into, or the direction an arrow warp is pressed.
+ */
 export const TOWN_PIECES = {
 ${entries.join('\n')}
 } as const;

@@ -242,7 +242,7 @@ export function markBoxes(
   for (const doorway of doorways) {
     const pair = doorway.pair;
     boxes.set(
-      `doorway:${JSON.stringify(doorway.at)}:${JSON.stringify(pair ?? null)}:${doorway.chosen ? 'chosen' : ''}`,
+      `doorway:${JSON.stringify(doorway.at)}:${JSON.stringify(pair ?? null)}:${JSON.stringify(doorway.span ?? null)}:${doorway.chosen ? 'chosen' : ''}`,
       pair
         ? {
             x: Math.min(doorway.at.x, pair.x),
@@ -250,7 +250,9 @@ export function markBoxes(
             width: Math.abs(doorway.at.x - pair.x) + 1,
             height: Math.abs(doorway.at.y - pair.y) + 1,
           }
-        : tile(doorway.at.x, doorway.at.y),
+        : doorway.span
+          ? { x: doorway.span.x, y: doorway.at.y, width: doorway.span.width, height: 1 }
+          : tile(doorway.at.x, doorway.at.y),
     );
   }
   if (selected?.kind === 'building') {

@@ -29,10 +29,25 @@ const WALKED: Partial<Record<TownPieceName, readonly (readonly [number, number])
   pier: [2, 3, 4, 5, 6, 7].flatMap((y) => [2, 3, 4].map((x) => [x, y] as const)),
 };
 
+/**
+ * The step in front of a building's front door - FireRed draws the Museum's
+ * and the Mansion's into the building - which is walked onto to go in: the
+ * cell below each cell of the bottom row of its doors.
+ */
+function frontSteps(name: TownPieceName): readonly (readonly [number, number])[] {
+  const doors = (TOWN_PIECES[name].doors as readonly (readonly [number, number, string])[]).filter(
+    ([, , way]) => way === 'door',
+  );
+  const bottom = doors[0]?.[1];
+  return doors.filter(([, y]) => y === bottom).map(([x, y]) => [x, y + 1] as const);
+}
+
 /** A town piece as a landmark: wall where it is drawn, ground where it is walked, nothing where it is empty. */
 function townProp(name: TownPieceName): PropDefinition {
   const piece = TOWN_PIECES[name];
-  const walked = new Set((WALKED[name] ?? []).map(([x, y]) => `${x},${y}`));
+  const walked = new Set(
+    [...(WALKED[name] ?? []), ...frontSteps(name)].map(([x, y]) => `${x},${y}`),
+  );
   const cells: PropCell[] = [];
   for (let y = 0; y < piece.height; y += 1) {
     for (let x = 0; x < piece.width; x += 1) {

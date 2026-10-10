@@ -5,6 +5,8 @@ import { HUNTER_SPAWN_DISTANCE } from './hunter';
 import {
   composeMapFile,
   doorwayOf,
+  landingsOf,
+  searchedLinks,
   STAIRS_SIZE,
   stairsAt,
   stairsToward,
@@ -120,7 +122,7 @@ export function mapFileGrid(
   return {
     composed,
     collision: composed.layers.collision,
-    links: linkTable(composed.doorways, composed.width),
+    links: linkTable(searchedLinks(composed.doorways), composed.width),
   };
 }
 
@@ -217,10 +219,14 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
         : DOORWAY_NAMES[end.look];
     return `The ${named} at ${tileOf(end)} to ${areaName(other)}`;
   };
-  const landings = fileLinks.flatMap((link) => [
-    { spot: link.ends[0], what: doorwayName(link.ends[0], link.ends[1]) },
-    { spot: link.ends[1], what: doorwayName(link.ends[1], link.ends[0]) },
-  ]);
+  // Every tile a way through is gone through from - all of a wide door, all
+  // three of a mat - is its, and nothing else may stand there.
+  const landings = fileLinks.flatMap((link) =>
+    link.ends.flatMap((end, index) => {
+      const what = doorwayName(end, link.ends[1 - index]);
+      return landingsOf(file, end).map((tile) => ({ spot: { ...tile, area: end.area }, what }));
+    }),
+  );
 
   const holders = new Map<string, { tile: string; whats: string[] }>();
   for (const { spot, what } of [...named, ...landings]) {

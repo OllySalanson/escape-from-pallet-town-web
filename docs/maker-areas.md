@@ -86,5 +86,11 @@ names where it leads and goes there.
 2. Interiors: more FireRed rooms and furniture cut from pret's FireRed tilesets.
 3. Caves: FireRed cave art from pret, cave mouths on rock, ladders, cave
    wildlife, the passage tool.
-4. Warps: gatehouses and the Underground Path - a door that comes out somewhere
+4. Every building has a way in: Kanto's town buildings open where FireRed's
+   own maps put their doors (read off pret's warps, only the ones FireRed
+   fires), and a door is as wide as FireRed draws it - every cell of a wide
+   door leads in, onto the middle of the mat, which is the one tile of it that
+   leads out, as in FireRed. Only the links that go both ways are walked by
+   the searches; a wide door's other cells are ways in for a player.
+5. Warps: gatehouses and the Underground Path - a door that comes out somewhere
    else on the map.

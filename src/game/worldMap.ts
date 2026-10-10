@@ -19,7 +19,7 @@ import { sketchPalletTown } from './world/maps/palletTown';
 import { sketchRoute1 } from './world/maps/route1';
 import { sketchViridianCity } from './world/maps/viridianCity';
 import { sketchViridianForest } from './world/maps/viridianForest';
-import type { ComposedMap, PlacedArea } from './world/mapAreas';
+import { searchedLinks, type ComposedMap, type PlacedArea } from './world/mapAreas';
 import type { PlayerMapId } from './world/mapFile';
 import { entitiesForMap, type WorldEntity } from './world/npcs';
 import { playerMap, playerMaps } from './world/playerMaps';
@@ -59,6 +59,8 @@ export interface MapWarp {
    * no caption may be seated over: writing over the stairs it names hides them.
    */
   readonly art?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  /** One more tile of a wide door or a mat: it goes through too, and is not named again. */
+  readonly secondary?: boolean;
 }
 
 export interface WorldMapDefinition {
@@ -245,6 +247,7 @@ function createComposedMap(
       activation: 'push',
       toward: doorway.toward,
       art: doorway.art,
+      ...(doorway.primary ? {} : { secondary: true }),
     })),
     entities: entitiesForMap(id),
     pois: poisForMap(id),
@@ -252,7 +255,7 @@ function createComposedMap(
     interiors: [],
     loot: content.loot,
     ...(hasAreas
-      ? { areas: composed.areas, links: linkTable(composed.doorways, width) }
+      ? { areas: composed.areas, links: linkTable(searchedLinks(composed.doorways), width) }
       : {}),
   };
 }

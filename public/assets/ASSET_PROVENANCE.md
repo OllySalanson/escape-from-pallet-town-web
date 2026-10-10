@@ -649,7 +649,10 @@ map maker as possible" (the palette board, 2026-10-10).
   battle and move rules from. Read 2026-10-10: the general tileset and the
   tilesets of Pewter, Cerulean, Vermilion, Lavender, Celadon, Fuchsia, Saffron
   and Cinnabar (`data/tilesets/`), those eight towns' block data
-  (`data/layouts/<Town>/map.bin`), and seventeen of the game's field-object
+  (`data/layouts/<Town>/map.bin`) and their warps (`data/maps/<Town>/map.json`,
+  read for where each building's doors are and nothing drawn, together with
+  each warp cell's behaviour in the tilesets' `metatile_attributes.bin`, which
+  says whether FireRed fires it and how it is gone through), and seventeen of the game's field-object
   graphics (`graphics/object_events/pics/misc/` - the Rock Smash rock, the
   Strength boulder, the item ball, signs, the Gym statue, the S.S. Anne and so on). The Spriters Resource renders the first Kanto
   cut came from now answer an automated fetch with a browser challenge.

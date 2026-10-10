@@ -8,7 +8,12 @@ export const TOWN_SHEET = {
   rows: 90,
 } as const;
 
-/** Where each named piece sits on the sheet, in tiles, and which of its cells hold anything ('#') or nothing ('-'). */
+/**
+ * Where each named piece sits on the sheet, in tiles, which of its cells hold
+ * anything ('#') or nothing ('-'), and its doors: the cells FireRed's own map
+ * warps a player from, bottom row first, each with the way it is gone through -
+ * a door walked up into, or the direction an arrow warp is pressed.
+ */
 export const TOWN_PIECES = {
   museum: {
     column: 0,
@@ -16,6 +21,7 @@ export const TOWN_PIECES = {
     width: 16,
     height: 8,
     cells: ['###########-----', '################', '################', '################', '################', '###########-----', '###########--###', '----###---------'],
+    doors: [[5, 6, 'door'], [13, 4, 'door']],
   },
   pewterGym: {
     column: 13,
@@ -23,6 +29,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '#######'],
+    doors: [[3, 4, 'door']],
   },
   greyHouse: {
     column: 13,
@@ -30,6 +37,7 @@ export const TOWN_PIECES = {
     width: 5,
     height: 4,
     cells: ['#####', '#####', '#####', '#####'],
+    doors: [[1, 3, 'door']],
   },
   deptStore: {
     column: 9,
@@ -37,6 +45,7 @@ export const TOWN_PIECES = {
     width: 9,
     height: 10,
     cells: ['#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########'],
+    doors: [[2, 9, 'door'], [6, 9, 'door']],
   },
   smallFlats: {
     column: 14,
@@ -44,6 +53,7 @@ export const TOWN_PIECES = {
     width: 5,
     height: 8,
     cells: ['#--##', '#####', '#####', '#####', '#####', '#####', '#####', '#####'],
+    doors: [],
   },
   flats: {
     column: 0,
@@ -51,6 +61,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 8,
     cells: ['--#####', '#######', '#######', '#######', '#######', '#######', '#######', '#######'],
+    doors: [[3, 7, 'door'], [3, 0, 'down']],
   },
   terrace: {
     column: 6,
@@ -58,6 +69,7 @@ export const TOWN_PIECES = {
     width: 4,
     height: 5,
     cells: ['---#', '####', '####', '####', '####'],
+    doors: [],
   },
   gameCorner: {
     column: 0,
@@ -65,6 +77,7 @@ export const TOWN_PIECES = {
     width: 10,
     height: 6,
     cells: ['##########', '##########', '##########', '##########', '#######---', '--#-#-----'],
+    doors: [[3, 4, 'door'], [8, 3, 'door']],
   },
   celadonGym: {
     column: 5,
@@ -72,6 +85,7 @@ export const TOWN_PIECES = {
     width: 8,
     height: 5,
     cells: ['########', '########', '########', '########', '########'],
+    doors: [[3, 4, 'door']],
   },
   roundFountain: {
     column: 12,
@@ -79,6 +93,7 @@ export const TOWN_PIECES = {
     width: 3,
     height: 4,
     cells: ['###', '###', '###', '###'],
+    doors: [],
   },
   diner: {
     column: 0,
@@ -86,6 +101,7 @@ export const TOWN_PIECES = {
     width: 6,
     height: 3,
     cells: ['######', '######', '######'],
+    doors: [],
   },
   blueHouse: {
     column: 8,
@@ -93,6 +109,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 4,
     cells: ['#######', '#######', '#######', '#######'],
+    doors: [[2, 3, 'door'], [2, 0, 'down']],
   },
   bikeShop: {
     column: 7,
@@ -100,6 +117,7 @@ export const TOWN_PIECES = {
     width: 6,
     height: 7,
     cells: ['--####', '--####', '######', '######', '######', '-#####', '#-#--#'],
+    doors: [[3, 5, 'door'], [4, 5, 'door']],
   },
   ceruleanGym: {
     column: 0,
@@ -107,6 +125,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '#######'],
+    doors: [[3, 4, 'door']],
   },
   fanClub: {
     column: 0,
@@ -114,6 +133,7 @@ export const TOWN_PIECES = {
     width: 5,
     height: 4,
     cells: ['#####', '#####', '#####', '#####'],
+    doors: [[1, 3, 'door']],
   },
   orangeHouse: {
     column: 15,
@@ -121,6 +141,7 @@ export const TOWN_PIECES = {
     width: 4,
     height: 4,
     cells: ['####', '####', '####', '####'],
+    doors: [[1, 3, 'door']],
   },
   flowerHouse: {
     column: 5,
@@ -128,6 +149,7 @@ export const TOWN_PIECES = {
     width: 5,
     height: 4,
     cells: ['#####', '#####', '#####', '#####'],
+    doors: [[1, 3, 'door']],
   },
   vermilionGym: {
     column: 7,
@@ -135,6 +157,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '#######'],
+    doors: [[3, 4, 'door']],
   },
   pier: {
     column: 7,
@@ -142,6 +165,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 8,
     cells: ['###--##', '#######', '#######', '-#####-', '--###--', '--###--', '--###--', '--###--'],
+    doors: [[2, 2, 'down'], [3, 2, 'down'], [4, 2, 'down']],
   },
   pokemonTower: {
     column: 0,
@@ -149,6 +173,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 7,
     cells: ['#######', '#######', '#######', '#######', '#######', '#######', '#######'],
+    doors: [[3, 6, 'door']],
   },
   purpleHouse: {
     column: 10,
@@ -156,6 +181,7 @@ export const TOWN_PIECES = {
     width: 5,
     height: 4,
     cells: ['#####', '#####', '#####', '#####'],
+    doors: [[2, 3, 'door']],
   },
   safariGate: {
     column: 10,
@@ -163,6 +189,7 @@ export const TOWN_PIECES = {
     width: 6,
     height: 6,
     cells: ['######', '######', '######', '######', '######', '######'],
+    doors: [[2, 5, 'door']],
   },
   wardenHouse: {
     column: 7,
@@ -170,6 +197,7 @@ export const TOWN_PIECES = {
     width: 6,
     height: 5,
     cells: ['######', '######', '######', '######', '######'],
+    doors: [[2, 4, 'door']],
   },
   fuchsiaGym: {
     column: 0,
@@ -177,6 +205,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 4,
     cells: ['#######', '#######', '#######', '#######'],
+    doors: [],
   },
   brickRow: {
     column: 10,
@@ -184,6 +213,7 @@ export const TOWN_PIECES = {
     width: 10,
     height: 4,
     cells: ['##########', '##########', '##########', '##########'],
+    doors: [[1, 3, 'door'], [6, 3, 'door']],
   },
   silphCo: {
     column: 0,
@@ -191,6 +221,7 @@ export const TOWN_PIECES = {
     width: 9,
     height: 15,
     cells: ['#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########', '#########'],
+    doors: [[4, 14, 'door']],
   },
   dojo: {
     column: 13,
@@ -198,6 +229,7 @@ export const TOWN_PIECES = {
     width: 6,
     height: 5,
     cells: ['######', '######', '######', '######', '######'],
+    doors: [[3, 4, 'door']],
   },
   saffronGym: {
     column: 0,
@@ -205,6 +237,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '#######'],
+    doors: [[3, 4, 'door']],
   },
   cityGate: {
     column: 7,
@@ -212,6 +245,7 @@ export const TOWN_PIECES = {
     width: 6,
     height: 4,
     cells: ['######', '######', '######', '######'],
+    doors: [[2, 3, 'door'], [3, 3, 'door']],
   },
   greenHouse: {
     column: 0,
@@ -219,6 +253,7 @@ export const TOWN_PIECES = {
     width: 4,
     height: 4,
     cells: ['####', '####', '####', '####'],
+    doors: [[1, 3, 'door']],
   },
   greenCottage: {
     column: 4,
@@ -226,6 +261,7 @@ export const TOWN_PIECES = {
     width: 4,
     height: 4,
     cells: ['####', '####', '####', '####'],
+    doors: [],
   },
   apartments: {
     column: 0,
@@ -233,6 +269,7 @@ export const TOWN_PIECES = {
     width: 5,
     height: 6,
     cells: ['#--##', '#####', '#####', '#####', '#####', '#####'],
+    doors: [],
   },
   burntMansion: {
     column: 7,
@@ -240,6 +277,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '--###--'],
+    doors: [[3, 3, 'door']],
   },
   cinnabarLab: {
     column: 0,
@@ -247,6 +285,7 @@ export const TOWN_PIECES = {
     width: 7,
     height: 5,
     cells: ['#######', '#######', '#######', '#######', '----##-'],
+    doors: [[3, 3, 'door']],
   },
   cinnabarGym: {
     column: 0,
@@ -254,6 +293,7 @@ export const TOWN_PIECES = {
     width: 6,
     height: 5,
     cells: ['######', '######', '######', '######', '#####-'],
+    doors: [[3, 4, 'door']],
   },
   smashRock: {
     column: 11,
@@ -261,6 +301,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   strengthBoulder: {
     column: 12,
@@ -268,6 +309,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   itemBall: {
     column: 13,
@@ -275,6 +317,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   fossil: {
     column: 14,
@@ -282,6 +325,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   oldAmber: {
     column: 15,
@@ -289,6 +333,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   woodenSign: {
     column: 16,
@@ -296,6 +341,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   metalSign: {
     column: 17,
@@ -303,6 +349,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   gymStatue: {
     column: 10,
@@ -310,6 +357,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 2,
     cells: ['#', '#'],
+    doors: [],
   },
   townMap: {
     column: 18,
@@ -317,6 +365,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   pokedex: {
     column: 19,
@@ -324,6 +373,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   clipboard: {
     column: 0,
@@ -331,6 +381,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   laprasDoll: {
     column: 6,
@@ -338,6 +389,7 @@ export const TOWN_PIECES = {
     width: 2,
     height: 2,
     cells: ['##', '##'],
+    doors: [],
   },
   ruby: {
     column: 1,
@@ -345,6 +397,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   sapphire: {
     column: 2,
@@ -352,6 +405,7 @@ export const TOWN_PIECES = {
     width: 1,
     height: 1,
     cells: ['#'],
+    doors: [],
   },
   ancientStone: {
     column: 8,
@@ -359,6 +413,7 @@ export const TOWN_PIECES = {
     width: 2,
     height: 2,
     cells: ['--', '##'],
+    doors: [],
   },
   ssAnne: {
     column: 0,
@@ -366,6 +421,7 @@ export const TOWN_PIECES = {
     width: 8,
     height: 4,
     cells: ['--######', '########', '########', '########'],
+    doors: [],
   },
   seagallop: {
     column: 8,
@@ -373,6 +429,7 @@ export const TOWN_PIECES = {
     width: 4,
     height: 4,
     cells: ['----', '####', '####', '####'],
+    doors: [],
   },
 } as const;
 
