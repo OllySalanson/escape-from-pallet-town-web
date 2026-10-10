@@ -17,8 +17,9 @@ import {
   plantedProp,
 } from '../world/mapFile';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
+import { BUILDING_CHOICES } from './palette';
 import { keepOnMap, moveThing, removeThing, type GridPoint, type PlaceOutcome } from './draft';
-import { doorwayOf, STAIRS_SIZE, stairsAt } from '../world/mapAreas';
+import { doorwayOf, landingsOf, STAIRS_SIZE, stairsAt } from '../world/mapAreas';
 
 /**
  * The places of a map, as the map maker edits them.
@@ -240,6 +241,26 @@ function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
   switch (kind) {
     case 'cave-mouth':
       return CAVE;
+    // Kanto's town buildings, each into the room it is: a Gym and the Dojo
+    // into a hall cleared for battling, the Department Store and the Bike Shop
+    // into a shop, and the places somebody studies into Oak's own Lab.
+    case 'pewter-gym':
+    case 'cerulean-gym':
+    case 'vermilion-gym':
+    case 'celadon-gym':
+    case 'fuchsia-gym':
+    case 'saffron-gym':
+    case 'cinnabar-gym':
+    case 'dojo':
+      return templateFor('gym');
+    case 'department-store':
+    case 'bike-shop':
+      return templateFor('poke-mart');
+    case 'research-lab':
+    case 'silph-co':
+    case 'museum':
+    case 'pokemon-mansion':
+      return LAB;
     case 'pokemon-center':
     case 'pokemon-center-door':
       // The Center's ground floor, as the base's own Center is: the counter
@@ -341,6 +362,30 @@ function templateFor(kind: MapFileOutdoorBuildingKind): InsideTemplate {
       return HOUSE_GROUND_FLOOR;
   }
 }
+
+/**
+ * Oak's Lab, laid out as the base's own Lab is: his computers and bookcases
+ * along the back wall, the machine he keeps Poké Balls in, the table the
+ * starters were chosen at, and two rows of shelving either side of the aisle.
+ */
+const LAB: InsideTemplate = {
+  name: 'Lab',
+  style: 'lab',
+  width: 13,
+  height: 12,
+  ground: wallAndFloor(13, 12),
+  furniture: [
+    { kind: 'computers', x: 0, y: 1 },
+    { kind: 'bookcase', x: 9, y: 1 },
+    { kind: 'machine', x: 0, y: 3 },
+    { kind: 'table', x: 8, y: 4 },
+    { kind: 'shelves-books', x: 0, y: 8 },
+    { kind: 'shelves-jars', x: 8, y: 8 },
+    { kind: 'plant', x: 0, y: 10 },
+    { kind: 'plant-pot', x: 12, y: 10 },
+  ],
+  mat: 6,
+};
 
 /**
  * FireRed's own house downstairs, as the player's house in Pallet Town is
@@ -529,7 +574,12 @@ export function makeInside(file: MapFile, buildingIndex: number): InsideOutcome 
     return { made: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxLinks} ways through.` };
   }
   const template = templateFor(building.kind as MapFileOutdoorBuildingKind);
-  const name = freeAreaName(file, template.name);
+  // A landmark's inside is named for it - Pewter Gym, the Department store -
+  // and anything else for the room it is.
+  const landmark = BUILDING_CHOICES.find(
+    (choice) => choice.kind === building.kind && choice.group === 'Landmarks',
+  );
+  const name = freeAreaName(file, landmark?.label ?? template.name);
   const area: MapFileArea = {
     id: freeAreaId(file, name),
     name,
@@ -652,8 +702,9 @@ export function doorwayAt(
   area: AreaId,
   point: GridPoint,
 ): DoorwayInArea | undefined {
-  return doorwaysIn(file, area).find(
-    (doorway) => doorway.at.x === point.x && doorway.at.y === point.y,
+  // Any tile a way through is gone through from: every cell of a wide door.
+  return doorwaysIn(file, area).find((doorway) =>
+    landingsOf(file, doorway.at).some((tile) => tile.x === point.x && tile.y === point.y),
   );
 }
 

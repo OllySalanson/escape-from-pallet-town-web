@@ -7,6 +7,8 @@ import {
 import type { Rect } from './interiors';
 import { applyGates } from './gates';
 import {
+  doorFront,
+  doorWidth,
   fileDoorGates,
   MAP_FILE_FURNITURE,
   sketchMapFile,
@@ -60,6 +62,26 @@ export interface ComposedDoorway extends GridLink {
   readonly look: MapFileLinkEnd['look'];
   /** What is drawn there to go through, in the composed grid's tiles. */
   readonly art: Rect;
+  /**
+   * Whether this is the way through's own tile, the one its other end comes
+   * out on. A wide door is gone through from every cell of it, as FireRed's
+   * is, and the others lead to the same place; only this one is named on the
+   * map.
+   */
+  readonly primary: boolean;
+  /**
+   * Whether the other end comes back to this tile. A wide door's extra cells
+   * lead in but come back out to the way through's own tile, and the
+   * searches walk only links that go both ways - a downhill walk over a field
+   * of distances depends on it - so a tile that leads out one way only is a way
+   * out for a player and nothing more (`searchedLinks`).
+   */
+  readonly twoWay: boolean;
+}
+
+/** The links every search walks: the ones that go both ways. */
+export function searchedLinks(doorways: readonly ComposedDoorway[]): readonly ComposedDoorway[] {
+  return doorways.filter((doorway) => doorway.twoWay);
 }
 
 export interface ComposedMap {
@@ -69,7 +91,7 @@ export interface ComposedMap {
   readonly terrain: readonly Material[][];
   /** The outdoors first, then the file's areas in the order it lists them. */
   readonly areas: readonly PlacedArea[];
-  /** Two for every link in the file, one each way. */
+  /** Every tile of every link's two ends, each going through to the other end. */
   readonly doorways: readonly ComposedDoorway[];
   /** Every sheet any area is drawn from, so the scene loads them all. */
   readonly tileset: TilesetCatalogue;
@@ -97,6 +119,26 @@ export function arrivalFacing(toward: Direction): Direction {
 export function doorwayOf(end: Pick<MapFileLinkEnd, 'x' | 'y' | 'toward'>): GridPosition {
   const delta = DIRECTION_DELTAS[end.toward];
   return { x: end.x + delta.x, y: end.y + delta.y };
+}
+
+/**
+ * Every tile a way through is gone through from, in order across it, in its
+ * own area's tiles: a door as wide as the building draws it - FireRed draws
+ * some two cells wide, and both take you in - and one tile for anything else.
+ * A mat is three tiles of art and one way out: FireRed puts the arrow that
+ * takes you out of a room on its middle tile only (the warps beside it are on
+ * plain floor, and a warp only fires on a floor that says it is one).
+ */
+export function landingsOf(file: MapFile, end: MapFileLinkEnd): readonly GridPosition[] {
+  if (end.look === 'door' && end.area === undefined) {
+    const building = file.buildings.find((candidate) => {
+      const front = doorFront(candidate);
+      return front?.x === end.x && front.y === end.y;
+    });
+    const width = building ? doorWidth(building) : 1;
+    return Array.from({ length: width }, (_, dx) => ({ x: end.x + dx, y: end.y }));
+  }
+  return [{ x: end.x, y: end.y }];
 }
 
 /** The area a file names, or undefined for the outdoors or a name it does not have. */
@@ -347,13 +389,14 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
   });
 
   const origin = new Map(layout.areas.map((placed) => [placed.id, placed.rect]));
-  const toGrid = (end: MapFileLinkEnd): GridPosition => {
-    const rect = origin.get(end.area);
+  const toGridIn = (area: string | undefined, tile: GridPosition): GridPosition => {
+    const rect = origin.get(area);
     if (!rect) {
-      throw new Error(`a way through ends in '${String(end.area)}', which the map does not have`);
+      throw new Error(`a way through ends in '${String(area)}', which the map does not have`);
     }
-    return { x: rect.x + end.x, y: rect.y + end.y };
+    return { x: rect.x + tile.x, y: rect.y + tile.y };
   };
+  const toGrid = (end: MapFileLinkEnd): GridPosition => toGridIn(end.area, end);
   const doorways: ComposedDoorway[] = [];
   for (const link of file.links ?? []) {
     const [a, b] = link.ends;
@@ -361,23 +404,34 @@ export function composeMapFile(file: MapFile, opened: readonly string[] = []): C
       [a, b],
       [b, a],
     ] as const) {
-      const landing = toGrid(from);
       const delta = DIRECTION_DELTAS[from.toward];
-      const doorway = { x: landing.x + delta.x, y: landing.y + delta.y };
-      // What a doorway is pressed into is solid, whatever was drawn there: an
-      // open door in a house front is a pocket you step into until it leads
-      // somewhere, and from then on it is the way through and nothing else.
-      if (layers.collision[doorway.y]?.[doorway.x] !== undefined) {
-        layers.collision[doorway.y][doorway.x] = true;
-      }
-      doorways.push({
-        from: landing,
-        toward: from.toward,
-        to: toGrid(to),
-        doorway,
-        arrivalFacing: arrivalFacing(to.toward),
-        look: from.look,
-        art: artOf(from, landing, doorway),
+      const own = toGrid(from);
+      const art = artOf(from, own, { x: own.x + delta.x, y: own.y + delta.y });
+      const near = landingsOf(file, from).map((tile) => toGridIn(from.area, tile));
+      const far = landingsOf(file, to).map((tile) => toGridIn(to.area, tile));
+      near.forEach((landing, index) => {
+        const doorway = { x: landing.x + delta.x, y: landing.y + delta.y };
+        // What a doorway is pressed into is solid, whatever was drawn there: an
+        // open door in a house front is a pocket you step into until it leads
+        // somewhere, and from then on it is the way through and nothing else.
+        if (layers.collision[doorway.y]?.[doorway.x] !== undefined) {
+          layers.collision[doorway.y][doorway.x] = true;
+        }
+        const primary = landing.x === own.x && landing.y === own.y;
+        // Two ends as wide as each other are gone through tile for tile, both
+        // ways; otherwise every tile comes out on the other end's own.
+        const matched = near.length === far.length;
+        doorways.push({
+          from: landing,
+          toward: from.toward,
+          to: matched ? far[index] : toGrid(to),
+          doorway,
+          arrivalFacing: arrivalFacing(to.toward),
+          look: from.look,
+          art,
+          primary,
+          twoWay: matched || primary,
+        });
       });
     }
   }

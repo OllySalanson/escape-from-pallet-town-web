@@ -66,6 +66,7 @@ import {
   type DoorwayInArea,
 } from '../maker/areas';
 import { linkPassage, PASSAGE_PAIRS, passageEndAt, type PendingPassage } from '../maker/passages';
+import { landingsOf } from '../world/mapAreas';
 import { drawPlantSwatch, drawSwatch, loadMakerSheets, type DoorwayMark } from '../maker/mapCanvas';
 import { MapPainter } from '../maker/mapPainter';
 import { overviewOf, type Overview } from '../maker/overview';
@@ -814,9 +815,12 @@ export class MapMakerScene extends Phaser.Scene {
     const doorways: DoorwayMark[] = doorwaysIn(this.file, this.area).map((doorway) => {
       const chosen = doorway.link === this.doorway?.link && doorway.end === this.doorway.end;
       const far = this.file.links?.[doorway.link]?.ends[1 - doorway.end];
+      // A wide way through is marked across every tile of it.
+      const tiles = landingsOf(this.file, doorway.at);
       return {
         at: doorway.at,
         chosen,
+        ...(tiles.length > 1 ? { span: { x: tiles[0].x, width: tiles.length } } : {}),
         ...(chosen && far && far.area === this.area ? { pair: far } : {}),
       };
     });

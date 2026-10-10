@@ -191,6 +191,11 @@ export function layersFor(
 export interface DoorwayMark {
   readonly at: MapFileLinkEnd;
   readonly chosen: boolean;
+  /**
+   * The tiles it is gone through from, across a row: a door as wide as its
+   * building draws it. Absent is the one tile it stands on.
+   */
+  readonly span?: { readonly x: number; readonly width: number };
   /** Its other end, when that is in the same place: the two are joined by a line. */
   readonly pair?: MapFileLinkEnd;
 }
@@ -464,9 +469,18 @@ export function drawMap(
   // Each way through, on the tile it is gone through from: a ring and an
   // arrow pressing the way it goes - up into a door, down off a mat.
   for (const doorway of doorways) {
+    const span = doorway.span ?? { x: doorway.at.x, width: 1 };
     const left = doorway.at.x * TILE_SIZE;
     const top = doorway.at.y * TILE_SIZE;
-    ring(context, left, top, TILE_SIZE, TILE_SIZE, MARK_COLOURS.doorway, doorway.chosen);
+    ring(
+      context,
+      span.x * TILE_SIZE,
+      top,
+      span.width * TILE_SIZE,
+      TILE_SIZE,
+      MARK_COLOURS.doorway,
+      doorway.chosen,
+    );
     const glyph = turned(DOORWAY_ARROW, doorway.at.toward);
     const gx = left + Math.floor((TILE_SIZE - glyph[0].length) / 2);
     const gy = top + Math.floor((TILE_SIZE - glyph.length) / 2);

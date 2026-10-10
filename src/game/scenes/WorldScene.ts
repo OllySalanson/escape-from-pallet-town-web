@@ -2081,7 +2081,12 @@ export class WorldScene extends Phaser.Scene {
       right: '→',
     };
     for (const warp of this.currentMap.warps) {
-      if (warp.destinationMapId !== this.currentMap.id || warp.activation !== 'push' || !warp.toward) {
+      if (
+        warp.destinationMapId !== this.currentMap.id ||
+        warp.activation !== 'push' ||
+        !warp.toward ||
+        warp.secondary
+      ) {
         continue;
       }
       const leadsTo = placedAreaAt(areas, warp.destination);
