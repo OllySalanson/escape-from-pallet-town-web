@@ -26,6 +26,17 @@ export const VOICE_WARNING_MS = MAX_VOICE_MS - 30 * 1000;
 /** Speech, not music: 24 kb/s Opus is clear speech at about 180 KB a minute. */
 export const VOICE_BITS_PER_SECOND = 24_000;
 
+/**
+ * How full the meter is for a peak amplitude (0 to 1): on a decibel scale, as a
+ * recorder's meter is, because the browser's noise suppression leaves speech
+ * quiet and a linear meter barely moved for a soft voice. -54 dB and below is
+ * empty, -12 dB and above is full.
+ */
+export function meterLevel(peak: number): number {
+  const decibels = 20 * Math.log10(Math.max(peak, 1e-6));
+  return Math.min(1, Math.max(0, (decibels + 54) / 42));
+}
+
 /** What a recording looks like to the panel, which only draws it. */
 export interface TapeReading {
   readonly recording: boolean;
@@ -71,7 +82,7 @@ export class VoiceTape {
   private stream: MediaStream | null = null;
   private audio: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
-  private samples: Uint8Array<ArrayBuffer> | null = null;
+  private samples: Float32Array<ArrayBuffer> | null = null;
   /** The meter's last reading, which falls away rather than dropping to nothing between words. */
   private held = 0;
   private startedAt = 0;
@@ -195,7 +206,7 @@ export class VoiceTape {
       this.audio = new AudioContext();
       this.analyser = this.audio.createAnalyser();
       this.analyser.fftSize = 256;
-      this.samples = new Uint8Array(new ArrayBuffer(this.analyser.fftSize));
+      this.samples = new Float32Array(new ArrayBuffer(this.analyser.fftSize * 4));
       this.audio.createMediaStreamSource(stream).connect(this.analyser);
       // A context made outside a click starts suspended and hears nothing.
       void this.audio.resume().catch(() => undefined);
@@ -209,15 +220,15 @@ export class VoiceTape {
     if (!this.analyser || !this.samples) {
       return 0;
     }
-    this.analyser.getByteTimeDomainData(this.samples);
+    this.analyser.getFloatTimeDomainData(this.samples);
     let peak = 0;
     for (const sample of this.samples) {
-      peak = Math.max(peak, Math.abs(sample - 128));
+      peak = Math.max(peak, Math.abs(sample));
     }
     // One reading is a few milliseconds of sound and a voice is not steady, so
     // a meter of raw readings flickers between words. Peaks are held and let
     // fall a fifth a reading, the way a recorder's needle falls back.
-    this.held = Math.max(Math.min(1, peak / 64), this.held * 0.8);
+    this.held = Math.max(meterLevel(peak), this.held * 0.8);
     return this.held;
   }
 }

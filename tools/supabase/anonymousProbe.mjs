@@ -9,7 +9,14 @@
 // player's file in a message, blocking a maker, calling the API with no
 // session at all. Each must be refused. With --send it also sends one real
 // message with a one-pixel picture through the same two calls the game makes,
-// which must be accepted - and says so in its text, because it reaches the lab.
+// which must be accepted.
+//
+// Against the real project it is read-only: a player cannot take back what
+// they sent, so every --send there was a test row in the owner's inbox (the
+// security review, L6). --send runs only against a stand-in (`SUPABASE_URL`,
+// e.g. `supabase start`); the sending half on the real project is checked
+// inside a transaction that is rolled back instead - see the feedback
+// hardening PR. Each run still signs in one anonymous visitor.
 //
 // Every write asks for the rows it changed back (`return=representation`), so
 // "changed nothing" is an empty list rather than an ambiguous 204.
@@ -19,9 +26,14 @@
 import { readFileSync } from 'node:fs';
 
 const config = readFileSync(new URL('../../src/game/maker/submitConfig.ts', import.meta.url), 'utf8');
-const URL_ = /SUBMISSIONS_URL = '([^']+)'/.exec(config)[1];
-const KEY = /SUBMISSIONS_PUBLISHABLE_KEY = '([^']+)'/.exec(config)[1];
+const PRODUCTION = /SUBMISSIONS_URL = '([^']+)'/.exec(config)[1];
+const URL_ = process.env.SUPABASE_URL ?? PRODUCTION;
+const KEY = process.env.SUPABASE_ANON_KEY ?? /SUBMISSIONS_PUBLISHABLE_KEY = '([^']+)'/.exec(config)[1];
 const send = process.argv.includes('--send');
+if (send && URL_ === PRODUCTION) {
+  console.log('--send writes a row nobody can take back: run it against a stand-in (SUPABASE_URL=...), never the real project.');
+  process.exit(2);
+}
 
 const failures = [];
 const check = (ok, what) => {
@@ -80,7 +92,7 @@ check(nobody.status >= 400, `cannot send without a session (${nobody.status})`);
 if (send) {
   // A one-pixel PNG, and the two calls the game makes.
   const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==', 'base64');
-  const tag = 'FB-PRBE';
+  const tag = 'FB-PRBF';
   const upload = await call(`/storage/v1/object/feedback/${me}/${tag}/picture.png`, { method: 'POST', token, body: pixel, type: 'image/png' });
   check(upload.status === 200, `can upload a picture into its own folder (${upload.status})`);
   const sent = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', token, body: message(tag, { message: 'anonymous probe: delete me', picture_path: `${me}/${tag}/picture.png` }) });

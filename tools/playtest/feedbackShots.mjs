@@ -1,6 +1,6 @@
 // Plays the FEEDBACK tab end to end, the way a player meets it.
 //
-//   node tools/playtest/feedbackShots.mjs <url> <out-dir> [--width=1280 --height=800]
+//   node tools/playtest/feedbackShots.mjs <url> <out-dir> [--width=1280 --height=800] [--live]
 //
 // On the title: the tab is there and F opens the panel. In a raid: F opens it,
 // the raid clock stops while it is up, typing W, A, S, D and F into the box
@@ -18,13 +18,16 @@ import { GAME, deploy, sceneIs } from './deploy.mjs';
 
 const args = process.argv.slice(2);
 const [url = 'http://localhost:5173/', out = 'feedback-shots'] = args.filter((arg) => !arg.startsWith('--'));
+const live = args.includes('--live');
 const option = (name, fallback) => Number(args.find((arg) => arg.startsWith(`--${name}=`))?.split('=')[1] ?? fallback);
 const window = { width: option('width', 1280), height: option('height', 800) };
 mkdirSync(out, { recursive: true });
 
 /**
- * What the driver types. It says it is a test, because with the project's
- * anonymous sign-in on, a message from here really does reach the lab.
+ * What the driver types. It says it is a test, because with --live a message
+ * from here really does reach the lab. Without --live the lab is out of reach
+ * for the whole run, so the driver checks everything up to the send and no
+ * test row lands in the owner's inbox (the security review, L6).
  */
 const MESSAGE = 'wasd f test message from the playtest driver';
 const outbox = `new Promise((resolve) => { const open = indexedDB.open('escape-from-pallet-town.feedback'); open.onsuccess = () => { const all = open.result.transaction('outbox').objectStore('outbox').getAll(); all.onsuccess = () => resolve(JSON.stringify(all.result.map((n) => ({ tag: n.tag, text: n.text, screen: n.context.screen, details: n.context.details, actions: n.actions.length, picture: n.picture ? n.picture.size : 0, save: n.save ? n.save.length : 0, clips: (n.voice ?? []).map((c) => ({ size: c.size, type: c.type })), voiceMs: n.voiceMs })))); }; })`;
@@ -134,12 +137,15 @@ try {
   const notes = JSON.parse(kept);
   check(notes.length === 1 && notes[0].tag === tag && notes[0].text === typed && notes[0].screen === 'Raid' && notes[0].picture > 0 && notes[0].save > 0, 'the message is in the pack with its picture, its save and where it was sent from');
 
-  // Back on the air: the pack empties itself.
-  await page.send('Network.setBlockedURLs', { urls: [] });
-  await page.evaluate(`window.dispatchEvent(new Event('online'))`);
-  await page.waitFor(`${outbox}.then((all) => JSON.parse(all).length === 0)`, { what: 'the kept message to go once the browser is back online', timeoutMs: 30_000 })
-    .then(() => { sentTags.push(tag); check(true, 'back online, the kept message goes by itself'); })
-    .catch(() => check(false, 'back online, the kept message goes by itself'));
+  // Back on the air: the pack empties itself. Only with --live, because it
+  // really reaches the lab.
+  if (live) {
+    await page.send('Network.setBlockedURLs', { urls: [] });
+    await page.evaluate(`window.dispatchEvent(new Event('online'))`);
+    await page.waitFor(`${outbox}.then((all) => JSON.parse(all).length === 0)`, { what: 'the kept message to go once the browser is back online', timeoutMs: 30_000 })
+      .then(() => { sentTags.push(tag); check(true, 'back online, the kept message goes by itself'); })
+      .catch(() => check(false, 'back online, the kept message goes by itself'));
+  }
 
   await press('Enter');
   await until(`!(${panelUp})`, 'BACK TO THE GAME to close the panel');
@@ -196,9 +202,14 @@ try {
   const voiceTag = await page.evaluate(`document.querySelector('.feedback-tag').textContent`);
   const heading = await page.evaluate(`document.querySelector('.feedback-outcome .px-heading').textContent`);
   console.log(`voice message ${voiceTag}: ${heading}`);
-  check(heading.startsWith('Message extracted'), 'with the lab in reach, a voice message is MESSAGE EXTRACTED');
-  check(JSON.parse(await page.evaluate(outbox)).length === 0, 'a sent message is not left in the pack');
-  sentTags.push(voiceTag);
+  if (live) {
+    check(heading.startsWith('Message extracted'), 'with the lab in reach, a voice message is MESSAGE EXTRACTED');
+    check(JSON.parse(await page.evaluate(outbox)).length === 0, 'a sent message is not left in the pack');
+    sentTags.push(voiceTag);
+  } else {
+    const kept = JSON.parse(await page.evaluate(outbox)).find((note) => note.tag === voiceTag);
+    check(heading.startsWith('No signal') && kept?.clips.length === 2 && kept.clips.every((clip) => clip.size > 1000 && clip.type.startsWith('audio/')), 'a voice-only message is kept with both clips');
+  }
   await page.screenshot(join(out, '11-extracted.png'));
   await press('Enter');
   await until(`!(${panelUp})`, 'BACK TO THE GAME after the voice message');
@@ -217,7 +228,9 @@ try {
 }
 // Sent for real: the database is where the rest is checked (both are test
 // messages, and say so).
-console.log(`sent to the lab: ${sentTags.join(' ')}`);
+if (live) {
+  console.log(`sent to the lab: ${sentTags.join(' ')}`);
+}
 if (failures.length) {
   console.log(`\n${failures.length} failed`);
   process.exit(1);

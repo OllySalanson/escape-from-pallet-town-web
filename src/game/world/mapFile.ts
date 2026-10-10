@@ -808,6 +808,40 @@ export interface MapFile {
 }
 
 /**
+ * Every key a map file may have, in the order the format lists them. The
+ * submission service refuses a map with any other key, so nothing a reviewer
+ * cannot see can ride an approval into the game (the security review's M3):
+ * `submit_map` in `supabase/migrations/` holds this same list, and
+ * `maker/submissionLimits.test.ts` fails when the two disagree - a new part of
+ * the format needs a migration that lets it through, or every map using it is
+ * refused at SEND. `submissionLimits.test.ts` also fails to compile when
+ * `MapFile` gains a key this list does not name.
+ */
+export const MAP_FILE_KEYS = [
+  'format',
+  'id',
+  'name',
+  'maker',
+  'width',
+  'height',
+  'ground',
+  'buildings',
+  'dropIns',
+  'exits',
+  'itemSpots',
+  'wildlife',
+  'people',
+  'signs',
+  'landmarks',
+  'districts',
+  'trainers',
+  'doors',
+  'pokemon',
+  'areas',
+  'links',
+] as const satisfies readonly (keyof MapFile)[];
+
+/**
  * The characters no name or line in a map file may hold. Player-written words
  * are shown on the game's DOM screens as well as on the canvas, and a file that
  * cannot carry markup is safe on every one of them without each having to
