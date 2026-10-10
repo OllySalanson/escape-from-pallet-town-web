@@ -35,6 +35,13 @@ import {
   type WorldCharacterRole,
 } from '../world/characterPresentation';
 import {
+  POKEMON_ICON_FRAME_MS,
+  POKEMON_ICON_TEXTURE,
+  pokemonIconFrames,
+  pokemonSoleDrop,
+  type FigureSpeciesId,
+} from '../world/pokemonFigures';
+import {
   getWarpAt,
   getWorldMap,
   isTallGrassInMap,
@@ -1556,6 +1563,10 @@ export class WorldScene extends Phaser.Scene {
         continue;
       }
 
+      if (entity.pokemon) {
+        this.createPokemonFigure(entity.id, entity.position, entity.pokemon);
+        continue;
+      }
       this.createFigure(entity.id, entity.position, entity.facing, 'npc', entity.design);
     }
 
@@ -2153,6 +2164,41 @@ export class WorldScene extends Phaser.Scene {
         ? getWalkFrames(facing, appearance.sheetColumns)[0]
         : worldCharacterIdleFrame(appearance, facing),
     );
+  }
+
+  /**
+   * A Pokemon a map maker stood in the world: its party icon, bobbing between
+   * its two frames as FireRed's party menu draws it, standing on its tile with
+   * its feet where a person's are. It is solid like a person - the map's
+   * entities already block their tiles - and never turns, because an icon has
+   * one facing.
+   */
+  private createPokemonFigure(id: string, position: GridPosition, species: FigureSpeciesId): void {
+    const [first, second] = pokemonIconFrames(species);
+    const key = `pokemon-icon-${species}`;
+    if (!this.anims.exists(key)) {
+      this.anims.create({
+        key,
+        frames: [
+          { key: POKEMON_ICON_TEXTURE, frame: first },
+          { key: POKEMON_ICON_TEXTURE, frame: second },
+        ],
+        frameRate: 1000 / POKEMON_ICON_FRAME_MS,
+        repeat: -1,
+      });
+    }
+    const sprite = this.add
+      .sprite(
+        position.x * TILE_SIZE + TILE_SIZE / 2,
+        (position.y + 1) * TILE_SIZE + pokemonSoleDrop(species),
+        POKEMON_ICON_TEXTURE,
+        first,
+      )
+      .setOrigin(0.5, 1)
+      .setDepth(atRow(FIGURE_BAND, position.y))
+      .play(key);
+    this.npcSprites.set(id, sprite);
+    this.mapObjects.push(sprite);
   }
 
   private faceFigure(id: string, facing: Direction): void {

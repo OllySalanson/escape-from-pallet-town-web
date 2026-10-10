@@ -94,6 +94,7 @@ import {
   stackLayout,
 } from '../maker/makerView';
 import { BUILDING_CHOICES, GROUND_BRUSHES, groundBrush, groundUnder } from '../maker/palette';
+import { isFigureSpecies } from '../world/pokemonFigures';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { takeDownPixelStatus } from '../ui/pixelUi';
 import {
@@ -1668,6 +1669,8 @@ export class MapMakerScene extends Phaser.Scene {
         return updateThing(this.file, selected, { wildlife: value === '' ? undefined : value });
       case 'rain':
         return updateThing(this.file, selected, { rain: value === 'rain' });
+      case 'species':
+        return isFigureSpecies(value) ? updateThing(this.file, selected, { species: value }) : this.file;
       case 'look':
       case 'facing':
       case 'kind':

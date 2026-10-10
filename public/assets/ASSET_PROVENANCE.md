@@ -670,6 +670,22 @@ map maker as possible" (the palette board, 2026-10-10).
   thing in the game that knows where a piece sits on the sheet and which of its
   cells are drawn.
 
+### `pokemon-icons.png` - every Pokemon's party icon, for the map maker
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly**, on the same
+ruling and from the same source as `frlg-towns.png` above: pret/pokefirered at
+commit `037335f`, read 2026-10-10. Each of the 151 species' `icon.png` under
+`graphics/pokemon/<species>/` - the two-frame 32x32 figure FireRed draws for a
+Pokemon in the party menu - coloured from the three shared icon palettes in
+`graphics/pokemon/icon_palettes/`, which `gMonIconPaletteIndices` in
+`src/pokemon_icon.c` assigns per species. Nothing from pret is committed: what
+ships is the frames, recoloured and packed in national-dex order onto a new
+16x19 grid. `scripts/cut-frlg-pokemon-icons.mjs` is the whole method and writes
+`src/game/pokemon/generated/pokemonIcons.ts`, which records each species' frame
+and the row its feet stand on. They are the owner's ask on the palette board:
+"all of the Pokémon that are in the game should be in the mapmaker", and only
+those.
+
 ### `pokemon/{front,back}/<dexId>.png` - the species sprites
 
 - **Source.** <https://github.com/PokeAPI/sprites>, path

@@ -17,6 +17,7 @@ import type { MapLedge } from './ledges';
 import { WeatherId } from '../pokemon/battle/weather';
 import type { ExtractionPoint } from './extractionPoints';
 import type { WorldEntity } from './npcs';
+import { isFigureSpecies, pokemonCry, type FigureSpeciesId } from './pokemonFigures';
 import type { WorldPoi } from './pois';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from './trainers';
 import type { WorldLoot } from './loot';
@@ -74,6 +75,7 @@ export const MAP_FILE_LIMITS = {
   maxLandmarks: 16,
   maxDistricts: 16,
   maxDoors: 16,
+  maxPokemon: 30,
   /** The widest or deepest a stretch of water Surf opens may be. */
   maxDoorSide: 12,
   maxTrainers: 12,
@@ -484,6 +486,11 @@ export interface MapFilePerson extends MapFileSpot {
   readonly lines: readonly string[];
 }
 
+/** A Pokemon standing in the world: any species the game has (`pokemonFigures.ts`). */
+export interface MapFilePokemon extends MapFileSpot {
+  readonly species: FigureSpeciesId;
+}
+
 export interface MapFileSign extends MapFileSpot {
   readonly lines: readonly string[];
 }
@@ -561,6 +568,8 @@ export interface MapFile {
   readonly trainers?: readonly MapFileTrainer[];
   /** Added with the second palette: doors a Pokémon's field move opens. */
   readonly doors?: readonly MapFileDoor[];
+  /** And Pokémon standing in the world, who say their own name when spoken to. */
+  readonly pokemon?: readonly MapFilePokemon[];
 }
 
 /**
@@ -817,6 +826,11 @@ export function readMapFile(
     oneOf(`${what}'s look`, person.look, MAP_FILE_LOOKS);
     oneOf(`${what}'s facing`, person.facing, MAP_FILE_FACINGS);
     linesOf(what, person.lines);
+  });
+  optional('pokemon', MAP_FILE_LIMITS.maxPokemon).forEach((standing, index) => {
+    if (!isFigureSpecies(standing.species)) {
+      problems.push(`Pokémon ${index + 1} is not a Pokémon the game has.`);
+    }
   });
   optional('signs', MAP_FILE_LIMITS.maxSigns).forEach((sign, index) =>
     linesOf(`Sign ${index + 1}`, sign.lines),
@@ -1209,6 +1223,15 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         facing: person.facing,
         dialogLines: person.lines.length > 0 ? [...person.lines] : [`${person.name} nods at you.`],
         design: person.look,
+      })),
+      ...(file.pokemon ?? []).map((standing, index): WorldEntity => ({
+        id: `${id}/pokemon-${index + 1}`,
+        mapId: id,
+        kind: 'npc',
+        position: { x: standing.x, y: standing.y },
+        facing: 'down',
+        dialogLines: [pokemonCry(standing.species)],
+        pokemon: standing.species,
       })),
       ...(file.signs ?? []).map((sign, index): WorldEntity => ({
         id: `${id}/sign-${index + 1}`,

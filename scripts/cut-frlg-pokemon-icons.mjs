@@ -137,8 +137,11 @@ const rows = Math.ceil(DEX_SIZE / SPECIES_PER_ROW);
 const width = columns * ICON;
 const height = rows * ICON;
 const sheet = Buffer.alloc(width * height * 4);
+/** Each species' lowest drawn row over both frames: where its feet are. */
+const soles = [];
 entries.forEach(({ folder, palette }, index) => {
   const icon = readIndexed(join(pret, 'graphics/pokemon', folder, 'icon.png'));
+  let sole = 0;
   for (let frame = 0; frame < FRAMES; frame += 1) {
     const cell = index * FRAMES + frame;
     const left = (cell % columns) * ICON;
@@ -147,6 +150,7 @@ entries.forEach(({ folder, palette }, index) => {
       for (let x = 0; x < ICON; x += 1) {
         const colour = icon.pixels[(frame * ICON + y) * icon.width + x];
         if (colour === 0) continue;
+        sole = Math.max(sole, y);
         const [r, g, b] = palettes[palette][colour];
         const at = ((top + y) * width + left + x) * 4;
         sheet[at] = r;
@@ -156,6 +160,7 @@ entries.forEach(({ folder, palette }, index) => {
       }
     }
   }
+  soles.push(sole);
 });
 writeFileSync(new URL('../public/assets/pokemon-icons.png', import.meta.url), encodePng(width, height, sheet));
 
@@ -178,6 +183,9 @@ export const POKEMON_ICON_SHEET = {
 export const POKEMON_ICON_ORDER = [
 ${ids.map((id) => `  '${id}',`).join('\n')}
 ] as const;
+
+/** Each species' lowest drawn row, in the same order: where its feet are on the frame. */
+export const POKEMON_ICON_SOLES = [${soles.join(', ')}] as const;
 `,
 );
 console.log(`pokemon-icons.png ${width}x${height}, ${ids.length} species`);

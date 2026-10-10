@@ -1,3 +1,4 @@
+import type { FigureSpeciesId } from './pokemonFigures';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import { playerMap } from './playerMaps';
@@ -19,6 +20,12 @@ export interface WorldEntity {
    * under the townsfolk tint - see `characterPresentation.ts`. Signs ignore it.
    */
   design?: CastCharacterDesignId;
+  /**
+   * A Pokemon standing in the world instead of a person: drawn from its party
+   * icon (`pokemonFigures.ts`) rather than a character sheet. Only a map file
+   * places one.
+   */
+  pokemon?: FigureSpeciesId;
   /**
    * The small schedule this townsperson keeps: where they drift and which way
    * they look. Signs and anyone without one stand where they were put. Every
