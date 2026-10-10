@@ -32,6 +32,11 @@ export interface FeedbackNote {
    * the daily limit, so it goes out the next day rather than being refused.
    */
   readonly notBefore: string | null;
+  /**
+   * Why the server refused this message for good, when it did: it is kept in
+   * the pack, never lost, but never tried again or allowed to hold up the rest.
+   */
+  readonly refused?: string;
 }
 
 /** The most a message may say. The box will not take more. */

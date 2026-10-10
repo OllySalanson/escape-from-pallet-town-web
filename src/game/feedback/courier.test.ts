@@ -47,7 +47,7 @@ describe('the courier', () => {
     const seen: string[][] = [];
     const send: FeedbackSender = async (note) => {
       seen.push((await outbox.waiting()).map((kept) => kept.tag));
-      return note.tag === 'FB-BBBB';
+      return note.tag === 'FB-BBBB' ? 'sent' : 'later';
     };
     const courier = createCourier({ outbox, storage: storage(), send });
     expect(await courier.dispatch(draft('FB-AAAA'), noon)).toBe('queued');
@@ -67,7 +67,7 @@ describe('the courier', () => {
     const outbox: FeedbackOutbox = memoryOutbox();
     const kept = storage();
     const sent: string[] = [];
-    const courier = createCourier({ outbox, storage: kept, send: (note) => Promise.resolve(Boolean(sent.push(note.tag))) });
+    const courier = createCourier({ outbox, storage: kept, send: (note) => (sent.push(note.tag), Promise.resolve('sent' as const)) });
     for (let index = 0; index < DAILY_FEEDBACK_LIMIT; index += 1) {
       expect(await courier.dispatch(draft(`FB-AAA${index + 2}`), noon)).toBe('sent');
     }
@@ -87,7 +87,7 @@ describe('trying again', () => {
     await outbox.keep({ ...draft('FB-BBBB'), createdAt: '2026-10-10T09:30:00.000Z', notBefore: new Date(2026, 9, 11).toISOString() });
     await outbox.keep({ ...draft('FB-CCCC'), createdAt: '2026-10-10T09:45:00.000Z', notBefore: null });
     const sent: string[] = [];
-    const courier = createCourier({ outbox, storage: storage(), send: (note) => Promise.resolve(Boolean(sent.push(note.tag))) });
+    const courier = createCourier({ outbox, storage: storage(), send: (note) => (sent.push(note.tag), Promise.resolve('sent' as const)) });
     expect(await courier.flush(noon)).toBe(2);
     expect(sent).toEqual(['FB-AAAA', 'FB-CCCC']);
     expect((await outbox.waiting()).map((note) => note.tag)).toEqual(['FB-BBBB']);
@@ -100,7 +100,7 @@ describe('trying again', () => {
     await outbox.keep({ ...draft('FB-AAAA'), createdAt: '2026-10-10T09:00:00.000Z', notBefore: null });
     await outbox.keep({ ...draft('FB-BBBB'), createdAt: '2026-10-10T09:30:00.000Z', notBefore: null });
     let tries = 0;
-    const courier = createCourier({ outbox, storage: storage(), send: () => Promise.resolve(++tries > 99) });
+    const courier = createCourier({ outbox, storage: storage(), send: () => Promise.resolve(++tries > 99 ? ('sent' as const) : ('later' as const)) });
     expect(await courier.flush(noon)).toBe(0);
     expect(tries).toBe(1);
     expect(await outbox.waiting()).toHaveLength(2);
@@ -110,7 +110,7 @@ describe('trying again', () => {
     const outbox = memoryOutbox();
     await outbox.keep({ ...draft('FB-AAAA'), notBefore: null });
     const sent: string[] = [];
-    const courier = createCourier({ outbox, storage: storage(), send: (note) => Promise.resolve(Boolean(sent.push(note.tag))) });
+    const courier = createCourier({ outbox, storage: storage(), send: (note) => (sent.push(note.tag), Promise.resolve('sent' as const)) });
     const [first, second] = await Promise.all([courier.flush(noon), courier.flush(noon)]);
     expect(first + second).toBe(2);
     expect(sent).toEqual(['FB-AAAA']);
@@ -121,5 +121,33 @@ describe('trying again', () => {
     await outbox.keep({ ...draft('FB-AAAA'), notBefore: null });
     expect(await createCourier({ outbox, storage: storage() }).flush(noon)).toBe(0);
     expect(await outbox.waiting()).toHaveLength(1);
+  });
+});
+
+describe('a message the lab will never take', () => {
+  it('is kept with its reason, says so, and never stands in front of the rest', async () => {
+    const outbox = memoryOutbox();
+    await outbox.keep({ ...draft('FB-AAAA'), createdAt: '2026-10-10T09:00:00.000Z', notBefore: null });
+    await outbox.keep({ ...draft('FB-BBBB'), createdAt: '2026-10-10T09:30:00.000Z', notBefore: null });
+    const tried: string[] = [];
+    const send: FeedbackSender = (note) => {
+      tried.push(note.tag);
+      return Promise.resolve(note.tag === 'FB-AAAA' ? { refused: 'A file of this message was not uploaded.' } : 'sent');
+    };
+    const courier = createCourier({ outbox, storage: storage(), send });
+    expect(await courier.flush(noon)).toBe(1);
+    const [parked] = await outbox.waiting();
+    expect(parked).toMatchObject({ tag: 'FB-AAAA', refused: 'A file of this message was not uploaded.' });
+    // Never tried again, and never in the way.
+    expect(await courier.flush(noon)).toBe(0);
+    expect(tried).toEqual(['FB-AAAA', 'FB-BBBB']);
+    expect(await courier.dispatch(draft('FB-CCCC'), noon)).toBe('sent');
+  });
+
+  it('answers SEND with what happened', async () => {
+    const outbox = memoryOutbox();
+    const courier = createCourier({ outbox, storage: storage(), send: () => Promise.resolve({ refused: 'too big' }) });
+    expect(await courier.dispatch(draft('FB-AAAA'), noon)).toBe('refused');
+    expect((await outbox.waiting())[0].refused).toBe('too big');
   });
 });
