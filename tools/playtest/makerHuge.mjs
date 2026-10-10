@@ -101,6 +101,10 @@ try {
   console.log(`letting go (commit, checks, screen): ${timed.pointerUp.map(ms).join(', ')}`);
   report('a brush step keeps up with the pointer (median under 16ms)', median(timed.pointerMove) < 16);
 
+  if (shots) {
+    await page.screenshot(join(shots, `maker-${SIZE}.png`));
+  }
+
   // The kept picture against the picture drawn whole, pixel for pixel.
   const differing = await evaluate(`(() => {
     const scene = window.__escapeFromPalletTownGame__.scene.getScene('mapmaker');
@@ -119,9 +123,6 @@ try {
   })()`);
   report('the picture kept a patch at a time is the picture drawn whole', differing === 0, `${differing} pixels differ`);
 
-  if (shots) {
-    await page.screenshot(join(shots, `maker-${SIZE}.png`));
-  }
   const errors = await evaluate('window.__errors');
   report('nothing threw', errors.length === 0, errors.join('; '));
 
