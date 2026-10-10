@@ -407,7 +407,9 @@ function escapeSummary(
       ? pack === null
         ? 'Nothing you took in was ever exposed.'
         : `Nothing you took in was exposed but your ${pack.name}.`
-      : `${riskedCount === 1 ? 'One entry' : `${riskedCount} entries`} rode out unprotected and came home.`;
+      : `${riskedCount === 1 ? 'One entry' : `${riskedCount} entries`}${
+        pack === null ? '' : ` and your ${pack.name}`
+      } rode out unprotected and came home.`;
   if (haul === null) {
     // A raid that levelled a Pokemon, or walked a piece of gear out of the
     // field, is not an empty raid - and saying "no new haul" about it was the
