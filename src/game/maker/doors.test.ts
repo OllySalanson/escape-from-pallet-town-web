@@ -116,6 +116,31 @@ describe('a Cut tree', () => {
   });
 });
 
+describe('a Rock Smash rock', () => {
+  it("is FireRed's cracked rock, shut until Rock Smash breaks it, for good", () => {
+    const file = withDoor(splitMap({ x: 25, y: 10 }), 'smash-rock', { x: 15, y: 10 });
+    const map = play(file);
+    const [gate] = gatesForMap(map.id);
+    expect(gate).toMatchObject({ fieldMove: 'rock-smash', label: 'CRACKED ROCK' });
+    expect(gate.closed.props).toEqual([{ name: 'smashRock', x: 15, y: 10 }]);
+    expect(getWorldMap(map.id).collision[10][15]).toBe(true);
+    expect(getWorldMap(map.id, [gateKey(gate)]).collision[10][15]).toBe(false);
+  });
+
+  it('stands on one tile, however far the pointer is dragged', () => {
+    const file = withDoor(
+      splitMap({ x: 25, y: 10 }),
+      'smash-rock',
+      { x: 8, y: 8 },
+      { x: 11, y: 12 },
+    );
+    expect(file.doors).toEqual([{ kind: 'smash-rock', x: 8, y: 8, width: 1, height: 1 }]);
+    expect(
+      readMapFile({ ...file, doors: [{ kind: 'smash-rock', x: 8, y: 8, width: 2, height: 1 }] }).ok,
+    ).toBe(false);
+  });
+});
+
 describe('Surf water', () => {
   it('is deep water shut and a ford to wade once Surf has crossed it', () => {
     const file = withDoor(splitMap({ x: 25, y: 10 }), 'surf', { x: 15, y: 9 }, { x: 15, y: 11 });

@@ -63,6 +63,7 @@ describe('the map maker screen', () => {
         'landmark',
         'district',
         'cut tree',
+        'rock smash rock',
         'surf water',
       ]),
     );

@@ -73,7 +73,7 @@ import { PARTY_LIMIT, Pokemon, PokemonParty, CHARMANDER } from '../pokemon';
 import { createGiftPokemon, giftGivenBy, isGiftSpoken, type PokemonGift } from '../world/gifts';
 import { DialogBox } from '../ui/DialogBox';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
-import { rollEncounter } from '../world/wildEncounters';
+import { rollEncounter, type WildEncounter } from '../world/wildEncounters';
 import { encounterTableAt } from '../world/localEncounters';
 import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
@@ -583,6 +583,8 @@ export class WorldScene extends Phaser.Scene {
         waitingForPlayer: boolean;
       }
     | undefined;
+  /** A standing Pokemon met by speaking to it: the fight that follows its cry. */
+  private pendingWildBattle: WildEncounter | undefined;
   private pendingTrainerBattle:
     | {
         readonly trainer: RunTrainerEncounter['trainer'];
@@ -670,6 +672,7 @@ export class WorldScene extends Phaser.Scene {
     // flag that froze the second raid, and belongs on this list.
     this.pendingResultScreen = false;
     this.pendingTrainerBattle = undefined;
+    this.pendingWildBattle = undefined;
     this.endCutscene();
     this.unsolicitedDialog = false;
     this.packReseated = false;
@@ -1079,7 +1082,8 @@ export class WorldScene extends Phaser.Scene {
       !this.trainerPrompt &&
       !this.cutscene &&
       !this.dialogBox.visible &&
-      this.pendingTrainerBattle === undefined
+      this.pendingTrainerBattle === undefined &&
+      this.pendingWildBattle === undefined
     );
   }
 
@@ -1558,6 +1562,9 @@ export class WorldScene extends Phaser.Scene {
     this.createLedgeLabels();
     this.idleFigures = createIdleFigures(this.currentMap.entities, Math.random);
     for (const entity of this.currentMap.entities) {
+      if (this.wasMet(entity)) {
+        continue;
+      }
       if (entity.kind === 'sign') {
         this.createSign(entity);
         continue;
@@ -1731,6 +1738,11 @@ export class WorldScene extends Phaser.Scene {
       this.isLootAvailable(),
       this.collectedLootIds,
     )) {
+      // A hidden spot is drawn as nothing at all, as FireRed hides an item in
+      // a tile: it is found by walking onto it, and only then said.
+      if (loot.hidden) {
+        continue;
+      }
       const x = loot.position.x * TILE_SIZE + TILE_SIZE / 2;
       const y = loot.position.y * TILE_SIZE + TILE_SIZE / 2;
       const marker = this.add
@@ -2085,6 +2097,9 @@ export class WorldScene extends Phaser.Scene {
    * has finished drawing.
    */
   private entityHolds(entity: WorldEntity, tile: GridPosition): boolean {
+    if (this.wasMet(entity)) {
+      return false;
+    }
     const figure = this.idleFigures.find((standing) => standing.id === entity.id);
     const held: readonly GridPosition[] = figure ? idleHeldTiles(figure) : [entity.position];
     return held.some((stood) => stood.x === tile.x && stood.y === tile.y);
@@ -2753,6 +2768,11 @@ export class WorldScene extends Phaser.Scene {
       this.faceFigure(entity.id, OPPOSITE_DIRECTION[this.facing]);
     }
 
+    if (entity?.pokemon && entity.wildLevel !== undefined) {
+      this.meetPokemon(entity, entity.pokemon, entity.wildLevel);
+      return;
+    }
+
     const gift = entity ? giftGivenBy(entity.id) : undefined;
     if (gift) {
       this.dialogBox.showMessages([...this.speakForGift(gift, entity!.dialogLines)]);
@@ -2760,6 +2780,27 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.dialogBox.showMessages([...entity!.dialogLines]);
+  }
+
+  /**
+   * A standing Pokemon that fights: it cries, and when the line is read the
+   * fight begins, as a wild one - beaten, caught or fled from, it is not there
+   * again this raid (`ActiveRunSession.pokemonMet`), because the world is
+   * rebuilt on the return from the fight and would otherwise stand it back up.
+   * It is marked met as the fight is promised, so even a raid lost inside it
+   * does not meet it twice.
+   */
+  private meetPokemon(entity: WorldEntity, species: FigureSpeciesId, level: number): void {
+    if (this.runSession) {
+      (this.runSession.pokemonMet ??= []).push(entity.id);
+    }
+    this.pendingWildBattle = { speciesId: species, level };
+    this.dialogBox.showMessages([...entity.dialogLines]);
+  }
+
+  /** Whether a standing Pokemon has already been fought this raid. */
+  private wasMet(entity: WorldEntity): boolean {
+    return entity.pokemon !== undefined && (this.runSession?.pokemonMet ?? []).includes(entity.id);
   }
 
   /**
@@ -3696,7 +3737,7 @@ export class WorldScene extends Phaser.Scene {
     const found = isCurrency(item.id)
       ? formatMoney(loot!.quantity)
       : `${item.displayName}${loot!.quantity > 1 ? ` x${loot!.quantity}` : ''}`;
-    return `Found ${found}!${this.reseatNote()}`;
+    return `Found ${found}${loot!.hidden ? ' hidden here' : ''}!${this.reseatNote()}`;
   }
 
   /**
@@ -4143,7 +4184,12 @@ export class WorldScene extends Phaser.Scene {
     this.openingBriefingOpen = this.openingBriefingOpen && this.dialogBox.visible;
     const cutsceneRunning = this.cutscene !== undefined && !this.cutscene.waitingForPlayer;
     const clockMs =
-      this.pendingTrainerBattle || this.openingBriefingOpen || cutsceneRunning ? 0 : deltaMs;
+      this.pendingTrainerBattle ||
+      this.pendingWildBattle ||
+      this.openingBriefingOpen ||
+      cutsceneRunning
+        ? 0
+        : deltaMs;
     const snapshot = this.runSession.manager.tick(clockMs);
     this.advanceHunterSearch(clockMs);
     this.placeHunterIfDue(snapshot.elapsedMs);
@@ -4220,6 +4266,14 @@ export class WorldScene extends Phaser.Scene {
       const battle = this.pendingTrainerBattle;
       this.pendingTrainerBattle = undefined;
       this.transitionToBattle({ trainer: battle.trainer, hunterBattle: battle.isHunter });
+      return;
+    }
+
+    if (this.pendingWildBattle) {
+      const wild = this.pendingWildBattle;
+      this.pendingWildBattle = undefined;
+      audioManager.play('encounter');
+      this.transitionToBattle({ wild, teachingBattle: false });
       return;
     }
 

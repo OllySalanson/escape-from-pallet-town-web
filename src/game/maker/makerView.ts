@@ -171,6 +171,11 @@ const PLACE_ROWS = [
     'A small tree in the way. A Pokémon that knows Cut clears it, and it stays cleared.',
   ],
   [
+    'smash-rock',
+    'Rock Smash rock',
+    'A cracked rock in the way. A Pokémon that knows Rock Smash breaks it, and it stays broken.',
+  ],
+  [
     'surf',
     'Surf water',
     'Drag out deep water a Pokémon that knows Surf can cross. Crossed once, it stays open.',
@@ -413,10 +418,16 @@ function selectedPane(file: MapFile, selected: ThingRef | undefined): string {
       body = `${name(spot.name)}<label class="maker-field"><span>Opens after</span><input class="px-window px-field" data-field="opens" type="number" min="0" max="${MAP_FILE_LIMITS.maxExitDelaySeconds}" step="5" value="${seconds}" /><span class="px-note">seconds, 0 is open from the start</span></label>`;
       break;
     }
-    case 'item':
+    case 'item': {
+      const spot = file.itemSpots[selected.index];
       heading = 'Item spot';
-      body = `<p class="px-note px-wrap">Something to find. The game decides what, from what the game's own maps hold.</p>`;
+      const shows: (readonly [string, string])[] = [
+        ['', 'In the open'],
+        ['hidden', 'Hidden: found by walking onto it'],
+      ];
+      body = `${choose('hidden', 'Lies', spot.hidden ? 'hidden' : '', shows)}<p class="px-note px-wrap">Something to find. The game decides what, from what the game's own maps hold.</p>`;
       break;
+    }
     case 'person': {
       const person = (file.people ?? [])[selected.index];
       heading = 'Person';
@@ -427,7 +438,7 @@ function selectedPane(file: MapFile, selected: ThingRef | undefined): string {
       const standing = (file.pokemon ?? [])[selected.index];
       heading = 'Pokémon';
       const species = POKEMON_ICON_ORDER.map((id) => [id, pokemonName(id)] as const);
-      body = `${choose('species', 'Which', standing.species, species)}<p class="px-note px-wrap">It stands there, solid as a person, and says ${escapeHtml(pokemonCry(standing.species))} when spoken to.</p>`;
+      body = `${choose('species', 'Which', standing.species, species)}<label class="maker-field"><span>Fights</span><input class="px-window px-field" data-field="level" type="number" min="0" max="${MAP_FILE_LIMITS.maxPokemonLevel}" value="${standing.level ?? 0}" /><span class="px-note">at this level when spoken to, once a raid; 0 only says its name</span></label><p class="px-note px-wrap">It stands there, solid as a person, and says ${escapeHtml(pokemonCry(standing.species))} when spoken to.</p>`;
       break;
     }
     case 'sign': {
@@ -472,12 +483,16 @@ function selectedPane(file: MapFile, selected: ThingRef | undefined): string {
     }
     case 'door': {
       const door = (file.doors ?? [])[selected.index];
-      heading = door.kind === 'cut-tree' ? 'Cut tree' : 'Surf water';
+      heading = { 'cut-tree': 'Cut tree', 'smash-rock': 'Rock Smash rock', surf: 'Surf water' }[
+        door.kind
+      ];
       body = `<p class="px-note px-wrap">${
-        door.kind === 'cut-tree'
-          ? 'Shut until a Pokémon that knows Cut clears it. A raid must still be able to get out without it.'
-          : `${door.width}x${door.height} tiles of deep water, crossed by a Pokémon that knows Surf. A raid must still be able to get out without it.`
-      } Drag it with Select to move it.</p>`;
+        door.kind === 'surf'
+          ? `${door.width}x${door.height} tiles of deep water, crossed by a Pokémon that knows Surf.`
+          : door.kind === 'cut-tree'
+            ? 'Shut until a Pokémon that knows Cut clears it.'
+            : 'Shut until a Pokémon that knows Rock Smash breaks it.'
+      } A raid must still be able to get out without it. Drag it with Select to move it.</p>`;
       break;
     }
     case 'building': {

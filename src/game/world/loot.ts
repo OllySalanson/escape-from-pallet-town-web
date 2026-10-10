@@ -7,6 +7,11 @@ export interface WorldLoot {
   readonly itemId: ItemId;
   readonly quantity: number;
   /**
+   * Lying where nobody can see it: drawn as nothing until it is stepped on, as
+   * FireRed hides an item in a tile. Only a map maker hides one.
+   */
+  readonly hidden?: boolean;
+  /**
    * How often this piece is on the ground at all, 0 to 1. A piece with no
    * `chance` is part of a map's ordinary pool, of which `generateLoot` lays at
    * least half every raid; a piece with one is rolled on its own instead, and
