@@ -1,5 +1,6 @@
 // Draws the front page's own art out of the game's own parts: the hero banner
-// (docs/readme/hero.svg) and the cast strip (docs/readme/cast.png).
+// (docs/readme/hero.svg), the cast strip (docs/readme/cast.png) and the
+// repository's link preview (docs/readme/social-preview.png).
 //
 //   npx vite-node tools/tileset/renderMap.mts -- viridian-city <scratch>/viridian-city.png 1
 //   node tools/readme/drawArt.mjs <scratch>/viridian-city.png <url of a test-mode build>
@@ -177,6 +178,41 @@ const DRAW = async ({ map, sheets }) => {
     g.drawImage(rivals, 0, home.height + 6);
     out.cast = png(big(c, 2));
   }
+
+  // The link preview GitHub shows when the repository is shared: 1280x640,
+  // which is 320x160 game pixels at four to one, because it is mostly seen
+  // as a thumbnail and the title has to survive being shrunk. The banner's
+  // town, plate, prompt, clock and chase, still.
+  {
+    const W = 320, H = 160;
+    const [c, g] = canvas(W, H);
+    g.fillStyle = '#0a1428'; g.fillRect(0, 0, W, H);
+    g.drawImage(town, MAP_X + 300, MAP_Y + BAND.y + 40, W, H, 0, 0, W, H);
+    const dusk = g.createLinearGradient(0, 0, 0, H);
+    dusk.addColorStop(0, 'rgba(10,20,40,0.72)');
+    dusk.addColorStop(0.55, 'rgba(10,20,40,0.38)');
+    dusk.addColorStop(1, 'rgba(10,20,40,0.55)');
+    g.fillStyle = dusk; g.fillRect(0, 0, W, H);
+    const [plate, prompt, clock, mark] = await Promise.all([out.plate, out.prompt, out.clock, out.mark].map(load));
+    const px = Math.round((W - plate.width) / 2), py = 22;
+    g.fillStyle = '#f8f5d7';
+    for (const [x, y] of [[px - 8, py + 10], [px + plate.width + 3, py + 62], [px + 34, py - 9], [18, 132]]) {
+      g.fillRect(x + 2, y, 1, 5); g.fillRect(x, y + 2, 5, 1);
+    }
+    g.drawImage(plate, px, py);
+    g.drawImage(prompt, Math.round((W - prompt.width) / 2) - 24, py + plate.height + 8);
+    g.drawImage(clock, W - clock.width - 8, 6);
+    // Mid-stride on the right-facing row (`playerFrames.ts`), Blue a step behind.
+    const stride = async (id, x, y, column) => {
+      const sheet = await load(sheets[id]);
+      g.drawImage(sheet, column * 16, 32, 16, 32, x, y, 16, 32);
+    };
+    const feet = H - 34;
+    await stride('blue', 236, feet, 3);
+    g.drawImage(mark, 239, feet + 2);
+    await stride('protagonist-red', 268, feet, 1);
+    out.social = png(big(c, 4));
+  }
   return out;
 };
 
@@ -190,6 +226,7 @@ try {
   const art = await page.evaluate(`(${DRAW.toString()})(${JSON.stringify(inputs)})`, { awaitPromise: true });
   const bytes = (data) => Buffer.from(data.split(',')[1], 'base64');
   writeFileSync(new URL('docs/readme/cast.png', root), bytes(art.cast));
+  writeFileSync(new URL('docs/readme/social-preview.png', root), bytes(art.social));
 
   // The banner, in game pixels, shown at 800 wide.
   const W = 400, H = 224;
@@ -255,7 +292,7 @@ try {
 </svg>
 `;
   writeFileSync(new URL('docs/readme/hero.svg', root), svg);
-  console.log('hero.svg', Buffer.byteLength(svg), 'bytes; cast.png', bytes(art.cast).length, 'bytes');
+  console.log('hero.svg', Buffer.byteLength(svg), 'bytes; cast.png', bytes(art.cast).length, 'bytes; social-preview.png', bytes(art.social).length, 'bytes');
 } finally {
   await browser.close();
 }

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Just want to play?
+    url: https://ollysalanson.github.io/escape-from-pallet-town-web/
+    about: It runs in your browser, right now, for free. No install, no account. Mind the clock.
+  - name: Made a map you're proud of?
+    url: https://github.com/OllySalanson/escape-from-pallet-town-web#draw-your-own-map
+    about: Send it in from the game's own map maker (MAKE A MAP, then Send it in), not as an issue. Approved maps go into the game with your name on them.

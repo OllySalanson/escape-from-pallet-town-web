@@ -246,6 +246,7 @@ screenshots. Neither changes a rule of the game, and a production build ignores 
 
 Where to read more:
 
+- [Pitching in](CONTRIBUTING.md): bugs, ideas, maps and code, and how each one finds its way into the game.
 - [AGENTS.md](AGENTS.md): how the game is put together and why, subsystem by subsystem.
 - [Product direction](docs/product-direction.md): the game's promise and the player research behind it.
 - [Deployment](docs/deployment.md): how GitHub Pages publishing works and how to check a deploy.

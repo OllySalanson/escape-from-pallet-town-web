@@ -1,0 +1,66 @@
+name: Something broke
+description: The game did something it shouldn't have. Tell us what, and we'll go and have a word with it.
+title: 'Bug: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Every bug you report is one Blue doesn't get to laugh at.
+
+        The more we can see of what you saw, the faster it gets fixed, so a screenshot is worth a thousand words here (and a short screen recording is worth about ten thousand).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: The thing that went wrong, in your own words.
+      placeholder: I walked out through the South Gate with a Thunder Stone in my pack and the result screen said I'd lost it.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      placeholder: The Thunder Stone banked, and me feeling very smug about it.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How do we make it happen again?
+      description: Step by step, from the title screen if you can. If it only happened once, say so, that's useful too.
+      placeholder: |
+        1. Drop in at Viridian City
+        2. Grab the Thunder Stone in the north-east
+        3. Leave by the South Gate with ten seconds left
+        4. ...
+    validations:
+      required: false
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where were you?
+      options:
+        - Out on a raid
+        - In a battle
+        - At home in the Harbour (Oak, Joy, Brock or Bill)
+        - The map maker
+        - The title screen or starting a new game
+        - Somewhere else, or not sure
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      description: The game runs in the page, so this matters more than you'd think.
+      placeholder: Chrome on Windows, Firefox on a Mac, Safari on an iPad...
+    validations:
+      required: false
+  - type: textarea
+    id: pictures
+    attributes:
+      label: Screenshots or a recording
+      description: Drag them straight in here. Anything the browser's developer console printed in red is gold dust too.
+    validations:
+      required: false
