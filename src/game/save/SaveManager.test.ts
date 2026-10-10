@@ -13,7 +13,7 @@ import { PrimaryStatus } from '../pokemon/battle/status';
 import { Bag, STARTING_PACK_ID } from '../items';
 import { DEFAULT_RAID_PROGRESS, SAVE_KEY, SaveManager } from './SaveManager';
 import { applyRecovery, MAX_PENDING_RECOVERY_MS } from '../hub/recovery';
-import { Stash } from '../stash';
+import { createStartingStash, Stash } from '../stash';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { WORLD_MAPS } from '../worldMap';
 import { surveyedTiles } from '../world/survey';
@@ -89,6 +89,21 @@ describe('SaveManager', () => {
       });
 
       expect(saves.describe()).toEqual({ kind: 'game', pokemon: 2, contracts: 2, raids: 3 });
+    });
+
+    it('names the partner, for the title screen to run beside the trainer', () => {
+      const saves = new SaveManager(new MemoryStorage());
+      saves.save({
+        party: new PokemonParty(),
+        mapId: 'pallet-town',
+        position: { x: 6, y: 8 },
+        bag: new Bag(),
+        stash: createStartingStash(CHARMANDER),
+        starterSpeciesId: 'charmander',
+        raidProgress: DEFAULT_RAID_PROGRESS,
+      });
+
+      expect(saves.describe()).toMatchObject({ kind: 'game', partner: 'charmander' });
     });
 
     it('does not call a file it cannot read empty', () => {
