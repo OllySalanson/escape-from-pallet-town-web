@@ -125,6 +125,8 @@ import { checkMapFile, type MapCheck } from '../world/mapFileChecks';
  */
 const AUTOSAVE_MS = 400;
 const STATUS_MS = 3_500;
+const DRAFTS_FULL =
+  'Your drafts could not be saved: this browser may be out of room. DOWNLOAD this map to keep it, and delete drafts you do not need.';
 
 /**
  * How often the map window scrolls while a stroke is held past its edge: a
@@ -219,6 +221,8 @@ export class MapMakerScene extends Phaser.Scene {
     }
   };
   private statusTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Whether the last save of the drafts failed, so the maker is told once rather than at every stroke. */
+  private storeFull = false;
   private pendingDelete: string | undefined;
 
   public constructor() {
@@ -402,7 +406,29 @@ export class MapMakerScene extends Phaser.Scene {
       file,
       updatedAt: Date.now(),
     });
-    saveMakerStore(this.store);
+    this.noteSaved(saveMakerStore(this.store));
+  }
+
+  /**
+   * Says so, once, when the drafts stop fitting in this browser. A 256x256
+   * draft is sixty-odd kilobytes and the browser keeps a few megabytes for
+   * the whole game, so a maker with many big drafts can run out - and a save
+   * that fails without a word is a map lost on the next reload.
+   */
+  private noteSaved(saved: boolean): void {
+    if (saved) {
+      this.storeFull = false;
+      return;
+    }
+    if (this.storeFull) {
+      return;
+    }
+    this.storeFull = true;
+    setTimeout(() => {
+      if (this.scene.isActive()) {
+        this.render(DRAFTS_FULL);
+      }
+    }, 0);
   }
 
   /** Makes what is typed in a field the map, as one undo step, without drawing the screen again. */

@@ -576,3 +576,20 @@ describe('drawing past the edge of the map', () => {
   });
 });
 
+describe('drafts that no longer fit in the browser', () => {
+  it('says so once, rather than losing the map without a word', () => {
+    vi.useFakeTimers();
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    const storage = localStorage as unknown as { setItem: (key: string, value: string) => void };
+    storage.setItem = () => {
+      throw new Error('QuotaExceededError');
+    };
+    scene.brushId = 'sand';
+    scene.pointerDown(at(5, 5), page.canvas);
+    scene.pointerUp(at(5, 5), page.canvas);
+    vi.advanceTimersByTime(1_000);
+    expect(scene.overlay.root.innerHTML).toContain('could not be saved');
+  });
+});
+
