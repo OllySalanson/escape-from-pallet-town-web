@@ -1,4 +1,5 @@
 import type { ItemId } from '../items';
+import { onlyMapFileFields } from './mapFileRebuild';
 import {
   FLOODPLAIN_REED_WILDLIFE,
   FLOODPLAIN_TOWN_WILDLIFE,
@@ -1388,7 +1389,8 @@ export function readMapFile(
 
   return problems.length > 0
     ? { ok: false, problems }
-    : { ok: true, file: value as unknown as MapFile };
+    : // Only what was checked leaves: see `mapFileRebuild.ts` (the security review's M3).
+      { ok: true, file: onlyMapFileFields(value as unknown as MapFile) };
 }
 
 /**
