@@ -13,6 +13,7 @@ import type { Direction } from '../movement/gridMovement';
 import type { CastCharacterDesignId } from './characterDesigns';
 import type { MapDistrict } from './districts';
 import type { MapGate } from './gates';
+import type { FieldMoveId } from './fieldMoves';
 import type { MapLedge } from './ledges';
 import { WeatherId } from '../pokemon/battle/weather';
 import type { ExtractionPoint } from './extractionPoints';
@@ -76,6 +77,8 @@ export const MAP_FILE_LIMITS = {
   maxDistricts: 16,
   maxDoors: 16,
   maxPokemon: 30,
+  /** The highest level a standing Pokemon may fight at: the top of the ladder the game's own trainers sit on. */
+  maxPokemonLevel: 50,
   /** The widest or deepest a stretch of water Surf opens may be. */
   maxDoorSide: 12,
   maxTrainers: 12,
@@ -311,6 +314,11 @@ export interface MapFileSpot {
   readonly y: number;
 }
 
+/** Somewhere to find something; hidden, it is not drawn until it is stepped on. */
+export interface MapFileItemSpot extends MapFileSpot {
+  readonly hidden?: boolean;
+}
+
 export interface MapFileBuilding extends MapFileSpot {
   readonly kind: MapFileBuildingKind;
 }
@@ -489,6 +497,11 @@ export interface MapFilePerson extends MapFileSpot {
 /** A Pokemon standing in the world: any species the game has (`pokemonFigures.ts`). */
 export interface MapFilePokemon extends MapFileSpot {
   readonly species: FigureSpeciesId;
+  /**
+   * The level it fights at when spoken to, once a raid, as a wild Pokemon you
+   * can beat or catch. Absent, it only says its name.
+   */
+  readonly level?: number;
 }
 
 export interface MapFileSign extends MapFileSpot {
@@ -514,10 +527,11 @@ export interface MapFileDistrict {
 
 /**
  * The doors a field move opens, as a maker places them: a small tree Cut clears
- * (one tile) and a stretch of deep water Surf crosses (a rectangle). Each is the
+ * (one tile), a cracked rock Rock Smash breaks (one tile) and a stretch of deep
+ * water Surf crosses (a rectangle). Each is the
  * game's own field-move gate (`gates.ts`), opened for good once worked.
  */
-export const MAP_FILE_DOOR_KINDS = ['cut-tree', 'surf'] as const;
+export const MAP_FILE_DOOR_KINDS = ['cut-tree', 'surf', 'smash-rock'] as const;
 export type MapFileDoorKind = (typeof MAP_FILE_DOOR_KINDS)[number];
 
 export interface MapFileDoor {
@@ -554,7 +568,7 @@ export interface MapFile {
   readonly dropIns: readonly MapFileDropIn[];
   readonly exits: readonly MapFileExit[];
   /** Where something can be found. The game decides what. */
-  readonly itemSpots: readonly MapFileSpot[];
+  readonly itemSpots: readonly MapFileItemSpot[];
   readonly wildlife: MapFileHabitat;
   /**
    * Everything after this was added in the first version's second part, and is
@@ -788,7 +802,11 @@ export function readMapFile(
     }
   }
 
-  list('itemSpots', MAP_FILE_LIMITS.maxItemSpots);
+  list('itemSpots', MAP_FILE_LIMITS.maxItemSpots).forEach((spot, index) => {
+    if (spot.hidden !== undefined && typeof spot.hidden !== 'boolean') {
+      problems.push(`Item spot ${index + 1}'s hidden must be yes or no.`);
+    }
+  });
 
   const linesOf = (what: string, raw: unknown): void => {
     if (
@@ -830,6 +848,16 @@ export function readMapFile(
   optional('pokemon', MAP_FILE_LIMITS.maxPokemon).forEach((standing, index) => {
     if (!isFigureSpecies(standing.species)) {
       problems.push(`Pokémon ${index + 1} is not a Pokémon the game has.`);
+    }
+    if (
+      standing.level !== undefined &&
+      (!isWholeNumber(standing.level) ||
+        standing.level < 2 ||
+        standing.level > MAP_FILE_LIMITS.maxPokemonLevel)
+    ) {
+      problems.push(
+        `Pokémon ${index + 1} fights at a level from 2 to ${MAP_FILE_LIMITS.maxPokemonLevel}.`,
+      );
     }
   });
   optional('signs', MAP_FILE_LIMITS.maxSigns).forEach((sign, index) =>
@@ -919,8 +947,8 @@ export function readMapFile(
         if (!fits) {
           problems.push(`${what} is not on the map.`);
         }
-        if (door.kind === 'cut-tree' && (w !== 1 || h !== 1)) {
-          problems.push(`${what} is a tree, and a tree stands on one tile.`);
+        if (door.kind !== 'surf' && (w !== 1 || h !== 1)) {
+          problems.push(`${what} stands on one tile.`);
         }
       });
     }
@@ -1019,7 +1047,7 @@ const ITEM_SPOT_ROTATION: readonly { readonly itemId: ItemId; readonly quantity:
 ];
 
 /** The pool a file map's item spots are, by the rotation above. */
-function lootFor(id: PlayerMapId, spots: readonly MapFileSpot[]): WorldLoot[] {
+function lootFor(id: PlayerMapId, spots: readonly MapFileItemSpot[]): WorldLoot[] {
   const repeating = ITEM_SPOT_ROTATION.filter((entry) => entry.itemId !== 'money');
   return spots.map((spot, index) => {
     const entry =
@@ -1031,6 +1059,7 @@ function lootFor(id: PlayerMapId, spots: readonly MapFileSpot[]): WorldLoot[] {
       position: { x: spot.x, y: spot.y },
       itemId: entry.itemId,
       quantity: entry.quantity,
+      ...(spot.hidden ? { hidden: true } : {}),
     };
   });
 }
@@ -1052,10 +1081,11 @@ export function sketchMapFile(file: MapFile): MapSketch<PlayerMapPropName> {
 
 /** What a door is called over it, and what it looks like shut and open. */
 const DOOR_LOOKS: Readonly<
-  Record<MapFileDoorKind, { readonly label: string; readonly fieldMove: 'cut' | 'surf' }>
+  Record<MapFileDoorKind, { readonly label: string; readonly fieldMove: FieldMoveId }>
 > = {
   'cut-tree': { label: 'SMALL TREE', fieldMove: 'cut' },
   surf: { label: 'DEEP WATER', fieldMove: 'surf' },
+  'smash-rock': { label: 'CRACKED ROCK', fieldMove: 'rock-smash' },
 };
 
 /** The material a ground letter is, reading a stamp as what it stands on. */
@@ -1086,13 +1116,14 @@ export function fileDoorGates(file: MapFile): readonly MapGate[] {
       y: door.y + Math.floor(cell / door.width),
     }));
     const base = { id: `${id}/door-${index + 1}`, mapId: id, label: look.label, tiles };
-    if (door.kind === 'cut-tree') {
+    if (door.kind !== 'surf') {
       const under = materialOf(file.ground[door.y]?.[door.x]);
       const ground: Material = under && !MATERIALS[under].solid ? under : 'grass';
+      const stands = door.kind === 'cut-tree' ? 'cutTree' : 'smashRock';
       return {
         ...base,
         fieldMove: look.fieldMove,
-        closed: { material: ground, props: [{ name: 'cutTree', x: door.x, y: door.y }] },
+        closed: { material: ground, props: [{ name: stands, x: door.x, y: door.y }] },
         open: { material: ground },
       };
     }
@@ -1232,6 +1263,7 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         facing: 'down',
         dialogLines: [pokemonCry(standing.species)],
         pokemon: standing.species,
+        ...(standing.level !== undefined ? { wildLevel: standing.level } : {}),
       })),
       ...(file.signs ?? []).map((sign, index): WorldEntity => ({
         id: `${id}/sign-${index + 1}`,

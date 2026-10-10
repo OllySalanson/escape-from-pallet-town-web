@@ -471,9 +471,9 @@ function doorAt(file: MapFile, point: GridPoint): number | undefined {
 }
 
 /**
- * Puts a door a field move opens on the map: a small tree Cut clears, on the
- * one tile clicked, or a stretch of deep water Surf crosses, dragged out as a
- * box. A door may not stand on a place or under another door or a building,
+ * Puts a door a field move opens on the map: a small tree Cut clears or a
+ * cracked rock Rock Smash breaks, on the one tile clicked, or a stretch of deep
+ * water Surf crosses, dragged out as a box. A door may not stand on a place or under another door or a building,
  * because a tile that is two things at once is neither.
  */
 export function placeDoor(
@@ -486,7 +486,8 @@ export function placeDoor(
   if (doors.length >= MAP_FILE_LIMITS.maxDoors) {
     return { placed: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxDoors} doors.` };
   }
-  const end = kind === 'cut-tree' ? from : to;
+  // Only Surf water is dragged out; a tree and a rock each stand on one tile.
+  const end = kind === 'surf' ? to : from;
   const x = Math.min(from.x, end.x);
   const y = Math.min(from.y, end.y);
   const width = Math.min(MAP_FILE_LIMITS.maxDoorSide, Math.abs(end.x - from.x) + 1);
@@ -690,6 +691,34 @@ export function describeDropIn(file: MapFile, index: number, description: string
       }
       const rest: MapFileDropIn = { x: spot.x, y: spot.y, name: spot.name };
       return text.trim().length > 0 ? { ...rest, description: text } : rest;
+    }),
+  };
+}
+
+/** Whether an item spot is lying in the open or hidden, found only by walking onto it. */
+export function setItemHidden(file: MapFile, index: number, hidden: boolean): MapFile {
+  return {
+    ...file,
+    itemSpots: file.itemSpots.map((spot, at) => {
+      if (at !== index) {
+        return spot;
+      }
+      const { x, y } = spot;
+      return hidden ? { x, y, hidden: true } : { x, y };
+    }),
+  };
+}
+
+/** The level a standing Pokemon fights at when spoken to; nothing, and it only says its name. */
+export function setPokemonLevel(file: MapFile, index: number, level: number | undefined): MapFile {
+  return {
+    ...file,
+    pokemon: (file.pokemon ?? []).map((standing, at) => {
+      if (at !== index) {
+        return standing;
+      }
+      const { x, y, species } = standing;
+      return level === undefined ? { x, y, species } : { x, y, species, level };
     }),
   };
 }

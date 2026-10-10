@@ -1,13 +1,14 @@
 import type { MoveBase } from '../pokemon/MoveBase';
 import type { Pokemon } from '../pokemon';
-import { CUT, SURF } from '../pokemon/moves';
+import { CUT, ROCK_SMASH, SURF } from '../pokemon/moves';
 
 /**
  * A move that is also a route.
  *
- * The tutorial has three of these and this game now has two of them: a
+ * The tutorial has three of these and this game has all three: a
  * `CuttableTree` that goes away when something in the party knows Cut, and
- * `SurfableWater` that carries you when something knows Surf. Both are the same
+ * `SurfableWater` that carries you when something knows Surf, and the rock
+ * Rock Smash breaks, which only a map maker places. All are the same
  * sentence - *a door in the map, opened by what your Pokemon knows rather than
  * by a fight you won* - and that is a boss gate with a different key, so they
  * are authored as `MapGate`s in `gates.ts` and nothing here knows what a tile
@@ -27,7 +28,7 @@ import { CUT, SURF } from '../pokemon/moves';
  * drop-in map - and a door that shut again behind a player who deployed without
  * the right Pokemon would be a map that disagreed with their own survey.
  */
-export const FIELD_MOVE_IDS = ['cut', 'surf'] as const;
+export const FIELD_MOVE_IDS = ['cut', 'surf', 'rock-smash'] as const;
 export type FieldMoveId = (typeof FIELD_MOVE_IDS)[number];
 
 export interface FieldMove {
@@ -64,6 +65,17 @@ export const FIELD_MOVES: Readonly<Record<FieldMoveId, FieldMove>> = {
     obstacle: 'The water is deep here, and moving.',
     refusal: 'Nothing in the party can carry you over it. Something that reads HM03 could.',
     worked: (name) => `${name} carried you across.`,
+  },
+  // The third, for the map maker's cracked rocks: FireRed's own Rock Smash
+  // rock, opened by the HM06 the game already barters.
+  'rock-smash': {
+    id: 'rock-smash',
+    move: ROCK_SMASH,
+    label: 'ROCK SMASH',
+    doorNote: 'NEEDS ROCK SMASH',
+    obstacle: 'A cracked rock is in the way. It looks like it could be broken.',
+    refusal: 'Nothing in the party can break it. Something that reads HM06 could.',
+    worked: (name) => `${name} smashed the rock to pieces.`,
   },
 };
 

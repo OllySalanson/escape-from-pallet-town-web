@@ -75,6 +75,13 @@ export interface ActiveRunSession {
    */
   watchesLifted?: string[];
   /**
+   * The Pokemon a map maker stood in the world that this raid has already
+   * fought, by entity id. The world is rebuilt after the fight, so the one that
+   * was met has to be left out of every rebuild after it, or it would stand up
+   * again on the return from its own battle.
+   */
+  pokemonMet?: string[];
+  /**
    * The ground this raid has walked, as row-major tile indices at the map's own
    * width - what the drop-in screen's picture of the place is drawn from.
    *

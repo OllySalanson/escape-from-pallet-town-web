@@ -10,6 +10,8 @@ import {
   placeBuilding,
   placeDoor,
   placeSpot,
+  setItemHidden,
+  setPokemonLevel,
   rectangle,
   removeThing,
   renameMap,
@@ -1414,8 +1416,8 @@ export class MapMakerScene extends Phaser.Scene {
         const outcome =
           this.place.kind === 'building'
             ? placeBuilding(growth.file, this.place.building, at)
-            : this.place.kind === 'cut-tree'
-              ? placeDoor(growth.file, 'cut-tree', at)
+            : this.place.kind === 'cut-tree' || this.place.kind === 'smash-rock'
+              ? placeDoor(growth.file, this.place.kind, at)
               : placeSpot(growth.file, this.place.kind, at);
         if (outcome.placed) {
           this.panel = 'map';
@@ -1669,6 +1671,23 @@ export class MapMakerScene extends Phaser.Scene {
         return updateThing(this.file, selected, { wildlife: value === '' ? undefined : value });
       case 'rain':
         return updateThing(this.file, selected, { rain: value === 'rain' });
+      case 'hidden':
+        return selected.kind === 'item'
+          ? setItemHidden(this.file, selected.index, value === 'hidden')
+          : this.file;
+      case 'level': {
+        if (selected.kind !== 'pokemon') {
+          return this.file;
+        }
+        const level = Math.round(Number(value));
+        return setPokemonLevel(
+          this.file,
+          selected.index,
+          Number.isFinite(level) && level >= 2
+            ? Math.min(MAP_FILE_LIMITS.maxPokemonLevel, level)
+            : undefined,
+        );
+      }
       case 'species':
         return isFigureSpecies(value) ? updateThing(this.file, selected, { species: value }) : this.file;
       case 'look':

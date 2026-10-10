@@ -27,6 +27,11 @@ export interface WorldEntity {
    */
   pokemon?: FigureSpeciesId;
   /**
+   * The level a standing Pokemon fights at, once a raid, when it is spoken to.
+   * Absent, it only says its name.
+   */
+  wildLevel?: number;
+  /**
    * The small schedule this townsperson keeps: where they drift and which way
    * they look. Signs and anyone without one stand where they were put. Every
    * tile of it is held solid by `mapStructure.testkit.ts`, so a beat can never be

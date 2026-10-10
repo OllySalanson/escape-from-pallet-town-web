@@ -123,10 +123,33 @@ describe('a move that is also a route', () => {
           'rattata',
           'sandshrew',
         ]);
-      } else {
+      } else if (id === 'surf') {
         // Shellder is Pallet's tide line: the shore is the one place a Surf
         // learner turns up that is not fresh water.
         expect(catchable).toEqual(['krabby', 'poliwag', 'psyduck', 'shellder', 'squirtle']);
+      } else {
+        // Rock Smash is the map maker's door, and FireRed lets the widest
+        // spread of anything read HM06: all three starters, the quarry's
+        // Geodude and Machop, and a Rattata from almost any field.
+        expect(catchable).toEqual([
+          'beedrill',
+          'bulbasaur',
+          'charmander',
+          'diglett',
+          'geodude',
+          'growlithe',
+          'krabby',
+          'machop',
+          'mankey',
+          'nidoran-f',
+          'nidoran-m',
+          'paras',
+          'pikachu',
+          'psyduck',
+          'rattata',
+          'sandshrew',
+          'squirtle',
+        ]);
       }
     }
   });
