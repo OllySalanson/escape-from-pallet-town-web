@@ -35,6 +35,7 @@ import {
   tellyLines,
 } from './homeLines';
 import { hunterRival } from '../world/hunters';
+import { houseSeason, windowLight, windowLines, type WindowLight } from './homeClock';
 
 /**
  * The four rooms behind the base's four doors.
@@ -142,7 +143,11 @@ export type HomePropName =
   | 'homeTvTop'
   | 'homeRugTv'
   | 'homeRugTvRed'
-  | 'homeRugTvBlue';
+  | 'homeRugTvBlue'
+  | 'homeWindowEvening'
+  | 'homeWindowNight'
+  | 'homePumpkin'
+  | 'homeFestiveTree';
 
 /** Brock's workshop, walls included. */
 const WORKSHOP_SIZE = { width: 15, height: 12 } as const;
@@ -204,6 +209,10 @@ function HOME_PROPS(): Record<HomePropName, PropDefinition> {
     homeRugTv: rugTv('home.rugTv'),
     homeRugTvRed: rugTv('home.rugTvRed'),
     homeRugTvBlue: rugTv('home.rugTvBlue'),
+    homeWindowEvening: home.solid('home.windowEvening', 'window'),
+    homeWindowNight: home.solid('home.windowNight', 'window'),
+    homePumpkin: home.solid('home.pumpkin', 'pumpkin'),
+    homeFestiveTree: home.solid('home.festiveTree', 'tree'),
   };
 }
 
@@ -911,20 +920,62 @@ export function wallTiles(area: Rect): readonly GridPosition[] {
  * their foot - and between the window and the stairs, THE BADGE CASE, which is
  * the first thing a player coming in through the door looks up at.
  */
-function drawHome(room: BaseRoom, game: RestoredGame): Drawn {
+function drawHome(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
   const sketch = shell(room);
   westShade(sketch, room);
   sketch.plant(0, 1, 'homeKitchen');
   sketch.plant(2, 0, 'homeCupboard');
   sketch.plant(5, 0, 'homeTv');
-  sketch.plant(6, 0, 'homeWindow');
+  sketch.plant(HOME_WINDOW.x, HOME_WINDOW.y, WINDOW_PIECES[windowLight(now)]);
   sketch.plant(12, 2, 'homeStairMatUp');
   sketch.plant(13, 1, 'homeStairsUp');
   sketch.plant(4, 3, 'homeRugTable');
   sketch.plant(0, 6, 'homePlantWest');
-  sketch.plant(14, 6, 'homePlantEast');
+  const season = houseSeason(now);
+  // December's tree stands in the east corner, in place of the plant.
+  sketch.plant(14, 6, season === 'december' ? 'homeFestiveTree' : 'homePlantEast');
   sketch.plant(6, 8, 'homeMat');
+  if (season === 'october') {
+    sketch.plant(PUMPKIN_SPOT.x, PUMPKIN_SPOT.y, 'homePumpkin');
+  }
+  const seasonal: RoomThing[] =
+    season === 'october'
+      ? [
+          {
+            name: 'A PUMPKIN',
+            note: 'It is October',
+            tiles: [PUMPKIN_SPOT],
+            lines: [
+              'A pumpkin with a face carved in it and a candle inside. It is October, and somebody here thinks that is funny.',
+            ],
+          },
+        ]
+      : season === 'december'
+        ? [
+            {
+              name: 'THE TREE',
+              note: 'It is December',
+              tiles: [
+                { x: 14, y: 6 },
+                { x: 14, y: 7 },
+              ],
+              lines: [
+                'A little tree for December, done up with baubles. There is a Poké Ball on top where the star should be.',
+              ],
+            },
+          ]
+        : [];
   const things: RoomThing[] = [
+    ...seasonal,
+    {
+      name: 'THE WINDOW',
+      note: 'Out over the harbour',
+      tiles: [
+        { x: HOME_WINDOW.x, y: 1 },
+        { x: HOME_WINDOW.x + 1, y: 1 },
+      ],
+      lines: windowLines(now),
+    },
     {
       name: 'THE BADGE CASE',
       note: badgeCaseNote(game),
@@ -964,6 +1015,17 @@ function drawHome(room: BaseRoom, game: RestoredGame): Drawn {
     posters: [{ kind: 'badge-case', area: BADGE_CASE_WALL }],
   };
 }
+
+/** The front-room window, which follows the player's clock (`homeClock.ts`). */
+const HOME_WINDOW: GridPosition = { x: 6, y: 0 };
+const WINDOW_PIECES: Readonly<Record<WindowLight, HomePropName>> = {
+  day: 'homeWindow',
+  dusk: 'homeWindowEvening',
+  night: 'homeWindowNight',
+};
+
+/** Where October's pumpkin sits: on the floor beside the door mat, to greet whoever comes in. */
+export const PUMPKIN_SPOT: GridPosition = { x: 5, y: 8 };
 
 /** Which of the upstairs rug's three colours this save's partner is. */
 const RUG_PIECES: Readonly<Record<ReturnType<typeof partnerRug>, HomePropName>> = {
@@ -1066,7 +1128,7 @@ function shell(room: BaseRoom): MapSketch<RoomPropName> {
   return sketch;
 }
 
-const DRAWERS: Readonly<Record<RoomId, (room: BaseRoom, game: RestoredGame) => Drawn>> = {
+const DRAWERS: Readonly<Record<RoomId, (room: BaseRoom, game: RestoredGame, now: Date) => Drawn>> = {
   'oaks-lab': drawLab,
   'pokemon-centre': drawCenter,
   'brocks-workshop': drawWorkshop,
@@ -1075,9 +1137,13 @@ const DRAWERS: Readonly<Record<RoomId, (room: BaseRoom, game: RestoredGame) => D
   'bolthole-upstairs': drawUpstairs,
 };
 
-/** A room as it stands for this save. Rebuilt on every visit; a room is small. */
-export function buildRoom(room: BaseRoom, game: RestoredGame): BuiltRoom {
-  const drawn = DRAWERS[room.id](room, game);
+/**
+ * A room as it stands for this save, at this moment. Rebuilt on every visit; a
+ * room is small. `now` is only read by the player's own house, whose window and
+ * whose decorations follow the player's clock (`homeClock.ts`).
+ */
+export function buildRoom(room: BaseRoom, game: RestoredGame, now: Date = new Date()): BuiltRoom {
+  const drawn = DRAWERS[room.id](room, game, now);
   const layers = buildMapLayers(drawn.sketch, drawn.catalogue);
   return {
     room,

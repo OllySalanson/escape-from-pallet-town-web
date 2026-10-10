@@ -140,8 +140,9 @@ At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, wh
 It's the player's house from FireRed, downstairs and up, and it fills up with what you've done:
 a badge case with a slot for every keeper in Kanto, lit as you beat them; a pennant on your
 bedroom wall for every place you've come home from; a telly whose Kanto Tonight tells you which
-rival is hunting you next; a raid log on your PC; and a rug the colour of your starter. Nobody
-hunts you there.
+rival is hunting you next; a raid log on your PC; and a rug the colour of your starter. It keeps
+your hours, too: the window goes orange at dusk and dark at night, there's a pumpkin by the door
+all October and a tree in the corner all December. Nobody hunts you there.
 
 And you never walk it alone. The starter you picked trots one step behind you, in your own
 footsteps, through every door and into every room, drawn in HeartGold and SoulSilver's own

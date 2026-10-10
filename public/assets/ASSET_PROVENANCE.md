@@ -529,19 +529,26 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   The repository is a reconstruction of the game's own data, so the pixels are
   Nintendo's; nothing in it licenses them.
 - **None of the source files is committed.** What ships is drawn pieces packed
-  onto a new 16x12 grid that matches nothing in the source.
-- **How it was drawn, and the one edit.** `scripts/cut-frlg-home.mjs` is the
+  onto a new 16x13 grid that matches nothing in the source.
+- **How it was drawn, and the edits.** `scripts/cut-frlg-home.mjs` is the
   whole method: every piece is named by the 16x16 metatiles FireRed's own map of
   the player's house lays it out in, and drawn the way the Game Boy Advance
   draws a metatile - four 8x8 tiles on a bottom layer and four on a top, each
   with its own palette and flips, colour 0 clear. It writes
   `src/game/base/generated/homePieces.ts`, the only thing in the game that
-  knows where a piece sits on the sheet. One edit is made: the upstairs rug is
+  knows where a piece sits on the sheet. Two edits are made: the upstairs rug is
   drawn twice more with its green palette entry swapped for the red and the blue
   FireRed's own palettes already hold, so the rug can be the colour of the
   player's starter. The door mat, which FireRed hangs half a tile across the
   foot of the room, is drawn across both rows and cut from its own top edge, as
-  the base's other mats are.
+  the base's other mats are. The front-room window is drawn twice more in the
+  same way, its panes and their edges (the second palette's white and palest
+  blue, on the window's own layer, above its sill) turned to dusk and to night,
+  with five star pixels set on the night one.
+- **Two pieces are not FireRed's**: the October jack-o'-lantern and the
+  December tree are drawn by `scripts/cut-frlg-home.mjs` itself as pixel tables
+  (written for this game, 2026-10-10, no source), in FireRed's outline weight
+  and lit from the top left like the rest of the house.
 
 ### `frlg-kanto.png` - Kanto's own outdoor art, for Viridian City
 
