@@ -1642,7 +1642,7 @@ export class MapMakerScene extends Phaser.Scene {
                 y: tile.y + buildingSize(this.place.building).height - 1,
               })
             : [tile];
-        const before = this.file;
+        const before = this.view;
         const growth = this.growFor(before, footprint);
         const at = { x: tile.x + growth.shift.x, y: tile.y + growth.shift.y };
         const outcome =

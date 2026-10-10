@@ -98,6 +98,7 @@ vi.mock('../maker/mapCanvas', () => ({
   loadMakerSheets: () => new Promise(() => undefined),
 }));
 
+import { makeInside } from '../maker/areas';
 import { blankMap, groundAt, placeSpot, thingExists, type ThingRef } from '../maker/draft';
 import { MAKER_STORAGE_KEY } from '../maker/drafts';
 import type { EditHistory } from '../maker/history';
@@ -591,6 +592,42 @@ describe('drafts that no longer fit in the browser', () => {
     scene.pointerUp(at(5, 5), page.canvas);
     vi.advanceTimersByTime(1_000);
     expect(scene.overlay.root.innerHTML).toContain('could not be saved');
+  });
+});
+
+describe('placing things in one place of a map with several', () => {
+  it('puts what is placed inside a room in that room, and leaves everything else where it was', () => {
+    const made = makeInside(sampleLane, 0);
+    if (!made.made) {
+      throw new Error(made.reason);
+    }
+    storeDraft(made.file);
+    const { scene } = openMaker();
+    const internals = scene as unknown as {
+      showArea(area: string | undefined): void;
+      place: { kind: string };
+    };
+    internals.place = { kind: 'person' };
+    internals.showArea(made.area);
+    const room = made.file.areas![0];
+    const size = { width: page.mapWidth, height: page.mapHeight };
+    page.mapWidth = room.width;
+    page.mapHeight = room.height;
+    try {
+      scene.tool = 'place';
+      internals.place = { kind: 'person' };
+      scene.pointerDown(at(6, 6), page.canvas);
+      scene.pointerUp(at(6, 6), page.canvas);
+    } finally {
+      page.mapWidth = size.width;
+      page.mapHeight = size.height;
+    }
+    expect(scene.file.people?.filter((person) => person.area === made.area)).toEqual([
+      expect.objectContaining({ x: 6, y: 6 }),
+    ]);
+    expect(scene.file.people?.filter((person) => person.area === undefined)).toEqual(
+      sampleLane.people ?? [],
+    );
   });
 });
 
