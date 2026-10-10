@@ -146,7 +146,7 @@ following-Pokémon art. Turn round, press Space, and it'll tell you how it's doi
 Pokémon and nobody else, so lose it in a raid and the Harbour gets very quiet.
 
 <p align="center">
-  <img src="docs/readme/harbour.png" width="800" alt="The Harbour: the Pokémon Center, Oak's Lab and Brock's Workshop above a sandy yard, the Bolthole's window boxes at the end of the row, Bill's cottage on the stone quay, and the sea below.">
+  <img src="docs/readme/harbour.png" width="800" alt="The Harbour: the Pokémon Center, Oak's Lab and Brock's Workshop above a sandy yard, the Bolthole's window boxes at the end of the row, your Charmander at your heel, Bill's cottage on the stone quay, and the sea below.">
 </p>
 
 <p align="center">

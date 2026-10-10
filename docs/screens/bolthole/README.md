@@ -10,7 +10,7 @@ door - what it is for is what stands in it.
 | `harbour-before.png` / `harbour-after.png` | The whole Harbour with every one of Brock's rungs built, before and after (`tools/base/renderBase.mts -- out.png 2 --built=all`). Three columns more to the east hold the house and its garden; the mast moves beside the house; the Pokémon Center is FireRed's own building instead of the CC0 timber house. |
 | `garden.png` | Reading the sign beside the path to the step: *THE BOLTHOLE - Home. Nobody hunts you here.* The door's caption says *Your house*. |
 | `downstairs.png` | In through the door, on the mat. The sink and hob, the glass cupboard, the telly, the window, the table on its green rug, and the stairs up with the orange mat at their foot. The two columns of bare wall beside the window are kept for what comes next. |
-| `upstairs.png` | Up the stairs: arriving on the matching orange mat, facing away from the stairs. The PC on its desk, the drawers, the bookcase of toys, the calendar by the stairs, the bed, and the telly and the console on the rug. |
+| `upstairs.png` | Up the stairs: arriving on the matching orange mat, facing away from the stairs, with your starter tucked in after you. The PC on its desk, the drawers, the bookcase of toys, the calendar by the stairs, the bed, and the telly and the console on the rug. |
 
 All of the in-game ones are screenshots of a test-mode build at 3x, taken by
 `node tools/playtest/bolthole.mjs <url> <dir>`, which walks the whole house -
