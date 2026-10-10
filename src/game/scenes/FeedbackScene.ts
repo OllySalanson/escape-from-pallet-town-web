@@ -13,9 +13,20 @@ import {
   pictureRow,
   saveRow,
   seeAllRow,
+  voiceRow,
   type PanelView,
+  type VoiceView,
 } from '../feedback/feedbackPanel';
-import { EMPTY_SEND_LINE, SENDING_LINE, TOO_LONG_LINE } from '../feedback/feedbackWords';
+import {
+  EMPTY_SEND_LINE,
+  MIC_MISSING_LINE,
+  MIC_REFUSED_LINE,
+  SENDING_LINE,
+  TAPE_FULL_LINE,
+  TAPE_LOW_LINE,
+  TOO_LONG_LINE,
+} from '../feedback/feedbackWords';
+import { VoiceTape, tapeIsFull, tapeIsLow, tapeTime } from '../feedback/voiceTape';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { isOverlayDismissKey } from '../ui/overlayKeyboard';
 import { PIXEL_STATUS_SELECTOR, takeDownPixelStatus } from '../ui/pixelUi';
@@ -58,6 +69,15 @@ export class FeedbackScene extends Phaser.Scene {
   private seeAll = false;
   /** An Escape the overlay already acted on, so its key-up in the box does not act again. */
   private escapeTaken = false;
+  private tape = new VoiceTape();
+  /** Redraws the tape's time and meter while it records; null while it does not. */
+  private ticker: number | null = null;
+  /** Whether the low-tape line has been said for this recording. */
+  private warnedLow = false;
+  private playback: HTMLAudioElement | null = null;
+  private playbackUrls: string[] = [];
+  /** A TALK press still waiting on the microphone, so a second press cannot start two. */
+  private talkPending = false;
   private readonly onResize = (): void => this.fitToWindow();
 
   public constructor() {
@@ -74,6 +94,12 @@ export class FeedbackScene extends Phaser.Scene {
     this.includeSave = data.save !== null;
     this.seeAll = false;
     this.escapeTaken = false;
+    this.tape = new VoiceTape();
+    this.ticker = null;
+    this.warnedLow = false;
+    this.playback = null;
+    this.playbackUrls = [];
+    this.talkPending = false;
     this.overlay = new MenuOverlay(this, 'feedback-panel pixel-ui', (event) => this.onKey(event));
     this.overlay.root.setAttribute('aria-label', 'Send feedback');
     this.fitToWindow();
@@ -97,6 +123,18 @@ export class FeedbackScene extends Phaser.Scene {
       seeAll: this.seeAll,
       details: contextLines(this.request.context),
       actions: this.request.actions,
+      voice: this.voiceView(),
+    };
+  }
+
+  private voiceView(): VoiceView {
+    const reading = this.tape.reading();
+    return {
+      supported: VoiceTape.supported(),
+      recording: reading.recording,
+      totalMs: reading.totalMs,
+      clips: reading.clips,
+      playing: this.playback !== null,
     };
   }
 
@@ -133,6 +171,7 @@ export class FeedbackScene extends Phaser.Scene {
     });
     this.writeCount();
     this.wireRows();
+    this.wireVoice();
     this.wireCommit();
     root.querySelector<HTMLButtonElement>('[data-close]')!.onclick = () => this.cancel();
     this.overlay.focus('#feedback-text');
@@ -161,6 +200,144 @@ export class FeedbackScene extends Phaser.Scene {
       // A pane that has just appeared is measured for its MORE strip here.
       this.overlay.refocus('[data-see-all]');
     };
+  }
+
+  private wireVoice(): void {
+    const root = this.overlay.root;
+    const talk = root.querySelector<HTMLButtonElement>('[data-talk]');
+    if (talk) talk.onclick = () => void this.talk();
+    const play = root.querySelector<HTMLButtonElement>('[data-play]');
+    if (play) play.onclick = () => this.togglePlayback();
+    const remove = root.querySelector<HTMLButtonElement>('[data-delete-voice]');
+    if (remove) remove.onclick = () => void this.deleteVoice();
+  }
+
+  /** Redraws the voice row, keeping the cursor on the control it was on. */
+  private redrawVoice(focus = '[data-talk]'): void {
+    const row = this.overlay.root.querySelector<HTMLElement>('[data-voice]');
+    if (!row) {
+      return;
+    }
+    const hadFocus = row.contains(document.activeElement);
+    row.outerHTML = voiceRow(this.voiceView());
+    this.wireVoice();
+    if (hadFocus) {
+      this.overlay.root.querySelector<HTMLElement>(focus)?.focus();
+    }
+  }
+
+  /** TALK: start the tape, or stop it. Pressing once records until the next press. */
+  private async talk(): Promise<void> {
+    if (this.phase !== 'writing' || this.talkPending) {
+      return;
+    }
+    if (this.tape.reading().recording) {
+      await this.stopTape();
+      return;
+    }
+    this.stopPlayback();
+    this.talkPending = true;
+    const started = await this.tape.start();
+    this.talkPending = false;
+    if (!this.overlay.root.isConnected) {
+      await this.tape.discard();
+      return;
+    }
+    if (started === 'refused') {
+      this.say(MIC_REFUSED_LINE);
+    } else if (started === 'unsupported') {
+      this.say(MIC_MISSING_LINE);
+    } else if (started === 'full') {
+      this.say(TAPE_FULL_LINE);
+    } else {
+      takeDownPixelStatus(this.overlay.root);
+      this.warnedLow = false;
+      this.ticker = window.setInterval(() => this.tick(), 100);
+    }
+    this.redrawVoice();
+  }
+
+  private async stopTape(): Promise<void> {
+    if (this.ticker !== null) {
+      window.clearInterval(this.ticker);
+      this.ticker = null;
+    }
+    await this.tape.stop();
+    if (this.overlay.root.isConnected && this.phase !== 'done') {
+      this.redrawVoice();
+    }
+  }
+
+  /** The time and the meter, written in place ten times a second while the tape runs. */
+  private tick(): void {
+    const reading = this.tape.reading();
+    if (!reading.recording) {
+      // Stopped by the browser rather than by the player: the clip is kept.
+      void this.stopTape();
+      return;
+    }
+    if (tapeIsFull(reading.totalMs)) {
+      void this.stopTape().then(() => this.say(TAPE_FULL_LINE));
+      return;
+    }
+    const root = this.overlay.root;
+    const time = root.querySelector<HTMLElement>('[data-voice-time]');
+    if (time) {
+      time.textContent = tapeTime(reading.totalMs);
+      time.classList.toggle('is-low', tapeIsLow(reading.totalMs));
+    }
+    if (tapeIsLow(reading.totalMs) && !this.warnedLow) {
+      this.warnedLow = true;
+      this.say(TAPE_LOW_LINE);
+    }
+    const bars = root.querySelectorAll<HTMLElement>('[data-meter] i');
+    bars.forEach((bar, index) => {
+      // Whole game pixels, middle bar tallest, so the meter reads as a voice.
+      const shape = 1 - Math.abs(index - (bars.length - 1) / 2) / bars.length;
+      bar.style.setProperty('--level', String(2 + Math.round(reading.level * shape * 8)));
+    });
+  }
+
+  private togglePlayback(): void {
+    if (this.playback) {
+      this.stopPlayback();
+      this.redrawVoice('[data-play]');
+      return;
+    }
+    const clips = [...this.tape.clips];
+    if (clips.length === 0) {
+      return;
+    }
+    this.playbackUrls = clips.map((clip) => URL.createObjectURL(clip));
+    const playFrom = (index: number): void => {
+      if (index >= this.playbackUrls.length || !this.overlay.root.isConnected) {
+        this.stopPlayback();
+        this.redrawVoice('[data-play]');
+        return;
+      }
+      const audio = new Audio(this.playbackUrls[index]);
+      this.playback = audio;
+      audio.addEventListener('ended', () => playFrom(index + 1), { once: true });
+      void audio.play().catch(() => {
+        this.stopPlayback();
+        this.redrawVoice('[data-play]');
+      });
+    };
+    playFrom(0);
+    this.redrawVoice('[data-play]');
+  }
+
+  private stopPlayback(): void {
+    this.playback?.pause();
+    this.playback = null;
+    this.playbackUrls.forEach((url) => URL.revokeObjectURL(url));
+    this.playbackUrls = [];
+  }
+
+  private async deleteVoice(): Promise<void> {
+    this.stopPlayback();
+    await this.tape.discard();
+    this.redrawVoice();
   }
 
   /** Swaps one row in place, so the box keeps its words and caret and the cursor stays put. */
@@ -278,7 +455,14 @@ export class FeedbackScene extends Phaser.Scene {
   }
 
   private cancel(): void {
-    if (!hasSomethingToSay(this.text)) {
+    // A question asked over a running tape would be asked over the player's
+    // own voice: the clip is stopped, and kept, before anything is asked.
+    if (this.tape.reading().recording) {
+      void this.stopTape().then(() => this.cancel());
+      return;
+    }
+    this.stopPlayback();
+    if (!hasSomethingToSay(this.text, this.tape.clips.length)) {
       this.close();
       return;
     }
@@ -298,12 +482,16 @@ export class FeedbackScene extends Phaser.Scene {
     if (this.phase !== 'writing') {
       return;
     }
-    if (!hasSomethingToSay(this.text)) {
+    // SEND while the tape runs stops it and sends what was said, as the owner asked.
+    this.phase = 'sending';
+    await this.stopTape();
+    this.stopPlayback();
+    if (!hasSomethingToSay(this.text, this.tape.clips.length)) {
+      this.phase = 'writing';
       this.say(EMPTY_SEND_LINE);
       this.overlay.focus('#feedback-text');
       return;
     }
-    this.phase = 'sending';
     this.say(SENDING_LINE);
     const tag = feedbackTag();
     const outcome = await this.request.courier.dispatch(
@@ -314,6 +502,8 @@ export class FeedbackScene extends Phaser.Scene {
         context: this.request.context,
         actions: this.request.actions,
         picture: this.includePicture ? this.picture : null,
+        voice: [...this.tape.clips],
+        voiceMs: this.tape.recordedMs,
         save: this.includeSave ? this.request.save : null,
       },
       new Date(),
@@ -357,6 +547,14 @@ export class FeedbackScene extends Phaser.Scene {
 
   private tearDown(): void {
     window.removeEventListener('resize', this.onResize);
+    if (this.ticker !== null) {
+      window.clearInterval(this.ticker);
+      this.ticker = null;
+    }
+    // Closing lets go of the microphone whatever state it was in. A message
+    // that was sent took its own copy of the clips.
+    this.stopPlayback();
+    void this.tape.discard();
     if (this.pictureUrl) {
       URL.revokeObjectURL(this.pictureUrl);
       this.pictureUrl = null;

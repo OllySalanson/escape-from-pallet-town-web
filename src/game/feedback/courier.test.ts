@@ -26,6 +26,8 @@ function draft(tag: string): Omit<FeedbackNote, 'notBefore'> {
     },
     actions: [],
     picture: null,
+    voice: [],
+    voiceMs: 0,
     save: null,
   };
 }

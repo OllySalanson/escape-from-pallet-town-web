@@ -923,6 +923,14 @@ button {
   }
 }
 
+/* The feedback panel's ON AIR dot (`feedback/feedbackPanel.ts`). Kept out of
+   the pixel-ui block, whose every selector is a screen's: a keyframe is not. */
+@keyframes feedback-on-air {
+  50% {
+    opacity: 0.25;
+  }
+}
+
 /* ==========================================================================
    Pixel UI: the DOM screens drawn in the game's own visual language.
 
@@ -3416,6 +3424,47 @@ button {
   resize: none;
   user-select: text;
   white-space: pre-wrap;
+}
+:where(.pixel-ui) .feedback-voice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 4);
+  margin-top: calc(var(--u) * 4);
+  min-height: calc(var(--u) * 16);
+}
+:where(.pixel-ui) .feedback-voice small {
+  flex: 1 1 0;
+  min-width: 0;
+}
+:where(.pixel-ui) .feedback-on-air {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  color: var(--red);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .feedback-dot {
+  width: calc(var(--u) * 5);
+  height: calc(var(--u) * 5);
+  background: var(--red);
+  animation: feedback-on-air 1s steps(1, end) infinite;
+}
+/* Five bars, each a whole number of game pixels tall (`--level`, written by
+   `FeedbackScene.tick`), so the voice moves the meter on the game's own grid. */
+:where(.pixel-ui) .feedback-meter {
+  display: flex;
+  align-items: center;
+  gap: var(--u);
+  height: calc(var(--u) * 10);
+}
+:where(.pixel-ui) .feedback-meter i {
+  width: calc(var(--u) * 2);
+  height: calc(var(--u) * var(--level, 2));
+  background: var(--ink);
+}
+:where(.pixel-ui) .feedback-voice-time.is-low {
+  color: var(--red);
 }
 :where(.pixel-ui) .feedback-attached {
   display: grid;

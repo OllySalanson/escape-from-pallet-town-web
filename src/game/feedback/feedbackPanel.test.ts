@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allLines, commitBar, countLine, outcomeMarkup, panelMarkup, type PanelView } from './feedbackPanel';
+import { allLines, commitBar, countLine, outcomeMarkup, panelMarkup, voiceRow, type PanelView } from './feedbackPanel';
 import { MAX_FEEDBACK_TEXT } from './feedbackNote';
 
 const view: PanelView = {
@@ -10,6 +10,7 @@ const view: PanelView = {
   seeAll: false,
   details: [{ label: 'Map', value: 'Route <1>' }],
   actions: [{ at: 12.5, what: 'Pressed <b>Use</b> Potion' }],
+  voice: { supported: true, recording: false, totalMs: 0, clips: 0, playing: false },
 };
 
 describe('the feedback panel', () => {
@@ -52,5 +53,33 @@ describe('the feedback panel', () => {
       expect(outcomeMarkup(outcome, 'FB-7K2Q')).toContain('<span class="feedback-tag">FB-7K2Q</span>');
     }
     expect(outcomeMarkup('sent', 'FB-7K2Q')).toContain('Message extracted.');
+  });
+});
+
+describe('the voice row', () => {
+  const idle = { supported: true, recording: false, totalMs: 0, clips: 0, playing: false };
+
+  it('is one button that says TALK, then STOP while it records, then TALK MORE', () => {
+    expect(voiceRow(idle)).toContain('>Talk</button>');
+    const recording = voiceRow({ ...idle, recording: true, totalMs: 12_000 });
+    expect(recording).toContain('>Stop</button>');
+    expect(recording).toContain('On air');
+    expect(recording).toContain('data-meter');
+    expect(recording).toContain('>0:12<');
+    const recorded = voiceRow({ ...idle, clips: 1, totalMs: 42_000 });
+    expect(recorded).toContain('>Talk more</button>');
+    expect(recorded).toContain('data-play');
+    expect(recorded).toContain('data-delete-voice');
+  });
+
+  it('turns the time red with thirty seconds of tape left', () => {
+    expect(voiceRow({ ...idle, recording: true, totalMs: 271_000 })).toContain('feedback-voice-time is-low');
+    expect(voiceRow({ ...idle, recording: true, totalMs: 200_000 })).not.toContain('is-low');
+  });
+
+  it('says so, rather than offering a button that cannot work, in a browser that cannot record', () => {
+    const row = voiceRow({ ...idle, supported: false });
+    expect(row).toContain('aria-disabled="true"');
+    expect(row).not.toContain('data-talk');
   });
 });

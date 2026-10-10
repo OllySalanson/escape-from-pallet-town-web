@@ -32,7 +32,8 @@ describe('the daily count', () => {
   });
 });
 
-it('treats a message of nothing but spaces as nothing', () => {
+it('treats a message of nothing but spaces, and no recording, as nothing', () => {
   expect(hasSomethingToSay('  \n ')).toBe(false);
   expect(hasSomethingToSay(' stuck ')).toBe(true);
+  expect(hasSomethingToSay('', 1)).toBe(true);
 });
