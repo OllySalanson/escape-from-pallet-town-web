@@ -2,6 +2,7 @@ import type { PropDefinition, TilesetCatalogue } from './catalogue';
 import { FRLG_TILESET, type FrlgPropName } from './frlgTileset';
 import { OVERWORLD_PROPS, type OverworldPropName } from './overworldTileset';
 import { OVERWORLD } from './sheets';
+import { KANTO_CONIFER, KANTO_SHEET_SOURCE } from './kantoTileset';
 
 /**
  * The ground the maps are drawn on, with a town's worth of things standing on
@@ -104,7 +105,8 @@ const renamed = Object.fromEntries(
 ) as Record<RenamedName, PropDefinition>;
 
 export const FLOOD_TOWN_TILESET: TilesetCatalogue<FloodTownPropName> = {
-  sources: [...FRLG_TILESET.sources, OVERWORLD.source],
+  sources: [...FRLG_TILESET.sources, OVERWORLD.source, KANTO_SHEET_SOURCE.source],
   materials: FRLG_TILESET.materials,
-  props: { ...chosen, ...renamed, ...FRLG_TILESET.props },
+  // The sheet's own pine has no trunk; the Kanto conifer stands in for both.
+  props: { ...chosen, ...renamed, ...FRLG_TILESET.props, pine: KANTO_CONIFER, pineAlt: KANTO_CONIFER },
 };

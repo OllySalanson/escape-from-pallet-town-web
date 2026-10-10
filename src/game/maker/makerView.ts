@@ -20,6 +20,7 @@ import type { QueuedMap } from './review';
 import { STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
 import {
   BUILDING_CHOICES,
+  PLANT_GROUPS,
   FACING_LABELS,
   GROUND_BRUSHES,
   HABITAT_LABELS,
@@ -236,16 +237,25 @@ function toolsPane(state: MakerViewState): string {
   const places = PLACE_ROWS.map(([kind, label, help]) =>
     toolRow(`data-place="${kind}"`, label, help, chosenPlace === kind),
   ).join('');
-  const buildings = BUILDING_CHOICES.map((choice) =>
-    toolRow(
-      `data-place="building" data-building="${choice.kind}"`,
-      choice.label,
-      `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`,
-      chosenPlace === `building:${choice.kind}`,
-    ),
-  ).join('');
+  // Everything a maker can plant, under its heading, each row with a picture of
+  // the thing itself drawn whole (`drawPlantSwatch`), because eighty names are
+  // not a palette.
+  const plants = PLANT_GROUPS.map((group) => {
+    const rows = BUILDING_CHOICES.filter((choice) => choice.group === group)
+      .map((choice) =>
+        toolRow(
+          `data-place="building" data-building="${choice.kind}"`,
+          choice.label,
+          `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`,
+          chosenPlace === `building:${choice.kind}`,
+          `<canvas class="maker-swatch" data-plant="${choice.kind}" width="16" height="16" aria-hidden="true"></canvas>`,
+        ),
+      )
+      .join('');
+    return `<p class="px-subheading">${group}</p>${rows}`;
+  }).join('');
   return pixelWindow(
-    `<div class="maker-toolbar">${tools}</div><div class="px-scroll maker-pane"><div class="px-list"><p class="px-subheading">Ground</p>${brushes}<p class="px-subheading">Places</p>${places}<p class="px-subheading">Buildings</p>${buildings}</div></div>`,
+    `<div class="maker-toolbar">${tools}</div><div class="px-scroll maker-pane"><div class="px-list"><p class="px-subheading">Ground</p>${brushes}<p class="px-subheading">Places</p>${places}${plants}</div></div>`,
     { className: 'maker-tools', heading: 'Paint' },
   );
 }

@@ -16,7 +16,7 @@ import {
   type MapFileSpot,
   type MapFileTrainer,
 } from '../world/mapFile';
-import { KANTO_TILESET } from '../world/tileset/kantoTileset';
+import { PLAYER_MAP_TILESET } from '../world/tileset/playerMapTileset';
 import { joinLedges, LEDGE_LETTERS, type GroundBrush } from './palette';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 
@@ -241,7 +241,7 @@ export function fillRegion(file: MapFile, start: GridPoint): GridPoint[] {
 
 /** A building's footprint in tiles, from the catalogue it is drawn from. */
 export function buildingSize(kind: MapFileBuildingKind): { width: number; height: number } {
-  const prop = KANTO_TILESET.props[MAP_FILE_BUILDINGS[kind]];
+  const prop = PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[kind]];
   return { width: prop.width, height: prop.height };
 }
 

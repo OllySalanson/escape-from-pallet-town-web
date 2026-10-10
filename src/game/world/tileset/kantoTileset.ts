@@ -82,6 +82,29 @@ function cellProp(label: string, tile: number, solid: boolean): PropDefinition {
   return { label, width: 1, height: 1, cells: [{ tile, solid }] };
 }
 
+/**
+ * One route conifer standing on its own: the tip that hangs over the row above
+ * its body, the body and the base, each the lattice's open-sided edge cell
+ * because nothing stands beside it. It replaces the FireRed sheet's `pine`,
+ * which was cut without its trunk - the bottom of the tree was simply not on
+ * the sheet, so every pine on three maps ended in a flat line of branches. Its
+ * footprint and collision are the old pine's (2x3, all wall, the top row drawn
+ * over the figures), so no map walks any differently for the change.
+ */
+export const KANTO_CONIFER: PropDefinition = {
+  label: 'pine',
+  width: 2,
+  height: 3,
+  cells: [
+    { tile: piece('tree.tipWest'), solid: true, canopy: true },
+    { tile: piece('tree.tipEast'), solid: true, canopy: true },
+    { tile: piece('tree.bodyEdgeWest'), solid: true },
+    { tile: piece('tree.bodyEdgeEast'), solid: true },
+    { tile: piece('tree.baseEdgeWest'), solid: true },
+    { tile: piece('tree.baseEdgeEast'), solid: true },
+  ],
+};
+
 const paving: MaterialTiles = {
   roles: {
     fill: piece('paving.fill'),
@@ -262,6 +285,6 @@ export const KANTO_TILESET: TilesetCatalogue<KantoPropName> = {
       },
     },
   },
-  props: { ...FRLG_TILESET.props, ...PROPS, ...DOORS },
+  props: { ...FRLG_TILESET.props, pine: KANTO_CONIFER, pineAlt: KANTO_CONIFER, ...PROPS, ...DOORS },
   shore: FRLG_TILESET.shore,
 };

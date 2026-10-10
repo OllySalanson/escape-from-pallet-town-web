@@ -6,13 +6,18 @@ import {
 } from '../playerFrames';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { characterDesignAssetPath } from '../world/characterDesigns';
-import { MAP_FILE_LOOKS, type MapFileLook } from '../world/mapFile';
+import {
+  MAP_FILE_BUILDINGS,
+  MAP_FILE_LOOKS,
+  type MapFileBuildingKind,
+  type MapFileLook,
+} from '../world/mapFile';
 import { trainerSightTiles } from '../world/trainerSight';
 import { TILE_SIZE } from '../worldMap';
 import type { MapFile } from '../world/mapFile';
 import { sketchMapFile } from '../world/mapFile';
 import { buildMapLayers, type MapLayers } from '../world/tiles';
-import { KANTO_TILESET } from '../world/tileset/kantoTileset';
+import { PLAYER_MAP_TILESET } from '../world/tileset/playerMapTileset';
 import { buildingSize, type GridPoint, type ThingRef } from './draft';
 
 /**
@@ -20,7 +25,7 @@ import { buildingSize, type GridPoint, type ThingRef } from './draft';
  *
  * The picture is the game's own layer builder run on the draft (`buildMapLayers`
  * on the file's sketch, the same call `getWorldMap` makes), blitted from the
- * same Kanto sheets the raid scene draws from - so the edges, corners, whole
+ * same sheets the raid scene draws from - so the edges, corners, whole
  * trees and building roofs the maker sees are the ones a raid on the map shows.
  * A whole 128x128 map builds in about twenty milliseconds, so it is simply
  * rebuilt after every stroke rather than patched.
@@ -44,10 +49,10 @@ function loadImage(path: string): Promise<void> {
   });
 }
 
-/** Loads the sheets the Kanto catalogue draws from, and every figure a person can look like, once. */
+/** Loads the sheets a player map draws from, and every figure a person can look like, once. */
 export function loadMakerSheets(): Promise<void> {
   return Promise.all([
-    ...KANTO_TILESET.sources.map((source) => loadImage(source.imagePath)),
+    ...PLAYER_MAP_TILESET.sources.map((source) => loadImage(source.imagePath)),
     ...MAP_FILE_LOOKS.map((look) => loadImage(characterDesignAssetPath(look))),
   ]).then(() => undefined);
 }
@@ -87,9 +92,9 @@ function drawFigure(
   );
 }
 
-/** Draws one tile of the Kanto sheets by its number. */
+/** Draws one tile of a player map's sheets by its number. */
 function drawTileAt(context: CanvasRenderingContext2D, tile: number, x: number, y: number): void {
-  const source = KANTO_TILESET.sources.find(
+  const source = PLAYER_MAP_TILESET.sources.find(
     (candidate) =>
       tile >= candidate.firstIndex &&
       tile < candidate.firstIndex + candidate.columns * candidate.rows,
@@ -113,7 +118,7 @@ function drawTileAt(context: CanvasRenderingContext2D, tile: number, x: number, 
 }
 
 export function layersFor(file: MapFile): MapLayers {
-  return buildMapLayers(sketchMapFile(file), KANTO_TILESET);
+  return buildMapLayers(sketchMapFile(file), PLAYER_MAP_TILESET);
 }
 
 /** Colours for what is placed on the map, the same three the drop-in screen marks them in. */
@@ -157,7 +162,7 @@ export function drawMap(
   context.imageSmoothingEnabled = false;
   context.fillStyle = '#0b1220';
   context.fillRect(0, 0, width, height);
-  const spans = KANTO_TILESET.sources.map((source) => ({
+  const spans = PLAYER_MAP_TILESET.sources.map((source) => ({
     image: sheets.get(source.imagePath),
     from: source.firstIndex,
     to: source.firstIndex + source.columns * source.rows,
@@ -254,7 +259,7 @@ export function drawMap(
   }
   file.itemSpots.forEach((spot, index) => mark('item', spot, index));
   (file.landmarks ?? []).forEach((spot, index) => mark('landmark', spot, index));
-  const signTile = KANTO_TILESET.props.signTown.cells[0]?.tile;
+  const signTile = PLAYER_MAP_TILESET.props.signTown.cells[0]?.tile;
   for (const sign of file.signs ?? []) {
     if (signTile !== undefined) {
       drawTileAt(context, signTile, sign.x, sign.y);
@@ -424,5 +429,77 @@ export function drawSwatch(canvas: HTMLCanvasElement, letter: string): void {
     0,
     TILE_SIZE,
     TILE_SIZE,
+  );
+}
+
+const plantPatches = new Map<string, { readonly file: MapFile; readonly layers: MapLayers }>();
+
+/**
+ * The picture beside a thing to plant: the thing itself, planted on a patch of
+ * grass (or water, for a jetty) by the same builder as the map, and drawn
+ * whole into the row's square - a broadleaf's crown rises above its block, and
+ * a picture that cut it off would be a picture of a different tree.
+ */
+export function drawPlantSwatch(
+  canvas: HTMLCanvasElement,
+  kind: MapFileBuildingKind,
+  on: 'grass' | 'water' = 'grass',
+): void {
+  const context = canvas.getContext('2d');
+  const prop = PLAYER_MAP_TILESET.props[MAP_FILE_BUILDINGS[kind]];
+  if (!context || !prop) {
+    return;
+  }
+  const { width, height } = prop;
+  let patch = plantPatches.get(kind);
+  if (!patch) {
+    // A tile of ground all round, and a second row above for a crown's brim.
+    const ground = (on === 'water' ? 'W' : '.').repeat(width + 2);
+    const file: MapFile = {
+      format: 1,
+      id: 'plant',
+      name: 'plant',
+      maker: 'plant',
+      width: width + 2,
+      height: height + 3,
+      ground: Array.from({ length: height + 3 }, () => ground),
+      buildings: [{ kind, x: 1, y: 2 }],
+      dropIns: [],
+      exits: [],
+      itemSpots: [],
+      wildlife: 'meadow',
+    };
+    patch = { file, layers: layersFor(file) };
+    plantPatches.set(kind, patch);
+  }
+  const scratch = document.createElement('canvas');
+  const scratchContext = scratch.getContext('2d');
+  if (!scratchContext) {
+    return;
+  }
+  drawMap(scratchContext, patch.file, patch.layers, undefined);
+  const brim = prop.brim?.depth ?? 0;
+  const sourceX = TILE_SIZE;
+  const sourceY = 2 * TILE_SIZE - brim;
+  const sourceWidth = width * TILE_SIZE;
+  const sourceHeight = height * TILE_SIZE + brim;
+  canvas.width = TILE_SIZE;
+  canvas.height = TILE_SIZE;
+  const scale = Math.min(TILE_SIZE / sourceWidth, TILE_SIZE / sourceHeight);
+  const drawnWidth = Math.max(1, Math.round(sourceWidth * scale));
+  const drawnHeight = Math.max(1, Math.round(sourceHeight * scale));
+  // Shrunk, a picture is read better smoothed than with every other pixel dropped.
+  context.imageSmoothingEnabled = scale < 1;
+  context.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+  context.drawImage(
+    scratch,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    Math.floor((TILE_SIZE - drawnWidth) / 2),
+    Math.floor((TILE_SIZE - drawnHeight) / 2),
+    drawnWidth,
+    drawnHeight,
   );
 }

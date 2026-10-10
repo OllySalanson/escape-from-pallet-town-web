@@ -38,7 +38,14 @@ import {
   type MakerStore,
 } from '../maker/drafts';
 import { EditHistory } from '../maker/history';
-import { drawMap, drawPreview, drawSwatch, layersFor, loadMakerSheets } from '../maker/mapCanvas';
+import {
+  drawMap,
+  drawPlantSwatch,
+  drawPreview,
+  drawSwatch,
+  layersFor,
+  loadMakerSheets,
+} from '../maker/mapCanvas';
 
 import { createPlaytestGame, createPlaytestStash } from '../dev/playtestSave';
 import { PLAYTEST_RAID_DURATION_MS, setActiveSaveSlot, setTryItRules } from '../dev/playtestMode';
@@ -79,7 +86,7 @@ import {
   type MakerZoom,
   type PlaceChoice,
 } from '../maker/makerView';
-import { GROUND_BRUSHES, groundBrush, groundUnder } from '../maker/palette';
+import { BUILDING_CHOICES, GROUND_BRUSHES, groundBrush, groundUnder } from '../maker/palette';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { takeDownPixelStatus } from '../ui/pixelUi';
 import {
@@ -567,6 +574,14 @@ export class MapMakerScene extends Phaser.Scene {
       .querySelectorAll<HTMLCanvasElement>('canvas[data-swatch]')
       .forEach((canvas) => {
         drawSwatch(canvas, canvas.dataset.swatch ?? '.');
+      });
+    this.overlay.root
+      .querySelectorAll<HTMLCanvasElement>('canvas[data-plant]')
+      .forEach((canvas) => {
+        const choice = BUILDING_CHOICES.find((option) => option.kind === canvas.dataset.plant);
+        if (choice) {
+          drawPlantSwatch(canvas, choice.kind, choice.on ?? 'grass');
+        }
       });
   }
 
