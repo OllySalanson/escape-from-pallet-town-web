@@ -23,6 +23,8 @@ SUPABASE_SERVICE_ROLE_KEY_FILE=~/.config/pallet-town/service-role-key \
 
 Each new message becomes `<folder>/<date> <tag>/` (`message.md`, `picture.png`, `voice-N.webm`, `save.json`, `row.json`, and `transcript.txt` once heard), and `<folder>/index.html` lists everything, newest first. It prints **one line when something new came in and nothing otherwise**, so it can run on a timer: the line names tags, screens and what kind of message each is, and never a player's words, because the reader may be an agent.
 
-What it does to the project: marks each collected message received, deletes its voice clips as soon as they are on the PC, and deletes messages (and their pictures) received more than ninety days ago. Nothing else.
+What it does to the project: marks each collected message received, deletes its voice clips as soon as they are on the PC, deletes messages (and their pictures) received more than ninety days ago, deletes uploads no message names once they are a day old, and removes anonymous visitors not seen for thirty days who have no message or map in the lab. Nothing else.
+
+What it never does: let a player name anything on this PC. A folder is the time and the tag, the picture is `picture.png`, a clip is `voice-<n>.<the type its bytes say>`, and a file whose first bytes are not a PNG or recorded audio is left out (`left-out.txt` says so) and never reaches the speech model. Everything a player's browser sent is written into `message.md` inside code blocks, so a viewer never renders it or fetches a link from it, and one folder it cannot read is named and skipped rather than stopping the list page.
 
 `node tools/supabase/anonymousProbe.mjs` checks the other side: that a player can send and can read nothing.
