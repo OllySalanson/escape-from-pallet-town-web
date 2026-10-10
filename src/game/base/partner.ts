@@ -150,10 +150,9 @@ export function followStep(
  * nowhere - tucked away until they take a step.
  *
  * Behind is first because that is where it would be had it walked in with
- * them; out of a building, that is the doorway itself, so the partner is seen
- * coming out after the player. `canStand` is the map's own word on the ground
- * and on who is standing there, so a partner never arrives in a wall, on the
- * water or on a keeper.
+ * them. `canStand` is the scene's word on the ground, on who is standing there
+ * and on whether a figure there can be seen, so a partner never arrives in a
+ * wall, on the water, on a keeper or in a doorway the building is drawn over.
  */
 export function arrivalPlace(
   player: GridPosition,
@@ -183,6 +182,46 @@ export function arrivalPlace(
  */
 export function facingTowards(partner: GridPosition, player: GridPosition): Direction | undefined {
   return directionBetween(partner, player);
+}
+
+/**
+ * How long a direction pressed towards the partner, from standing, turns the
+ * player to face it before it walks them through it. A tap is a turn and a
+ * hold is a walk - FireRed's own rule for turning, kept here only for the one
+ * tile that is not a wall but is worth stopping to face.
+ */
+export const TURN_TO_PARTNER_MS = 110;
+
+/**
+ * Whether this frame's step, aimed at `target`, only turns the player to face
+ * the partner standing there - and the turn's countdown for the next frame.
+ *
+ * From standing and not already facing it, a press turns the player, and only
+ * one still held once `TURN_TO_PARTNER_MS` has run walks them on through it.
+ * Mid-walk, or already facing it, the walk is never held up at all: the
+ * partner is a friend to face, not a wall to stop at.
+ */
+export function turnToPartner(options: {
+  /** The countdown left from the last frame, or null when no turn is under way. */
+  readonly holdMs: number | null;
+  readonly target: GridPosition | null;
+  readonly partner: GridPosition | null;
+  readonly stepFacing: Direction;
+  readonly facing: Direction;
+  readonly fromStanding: boolean;
+  readonly deltaMs: number;
+}): { readonly turn: boolean; readonly holdMs: number | null } {
+  const { holdMs, target, partner } = options;
+  if (!target || !partner || !sameTile(target, partner)) {
+    return { turn: false, holdMs: null };
+  }
+  if (holdMs === null) {
+    return !options.fromStanding || options.stepFacing === options.facing
+      ? { turn: false, holdMs: null }
+      : { turn: true, holdMs: TURN_TO_PARTNER_MS };
+  }
+  const left = holdMs - options.deltaMs;
+  return left > 0 ? { turn: true, holdMs: left } : { turn: false, holdMs: null };
 }
 
 // -- life ------------------------------------------------------------------

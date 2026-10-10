@@ -107,6 +107,7 @@ import {
   partnerReaction,
   partnerTextureKey,
   sameTile,
+  turnToPartner,
   type PartnerEmote,
   type PartnerPlace,
   type PartnerPlaceName,
@@ -157,13 +158,6 @@ const DIALOG_MARGIN = 8;
 const HINT_MARGIN = 6;
 const HINT_PADDING_X = 5;
 const HINT_PADDING_Y = 2;
-/**
- * How long a direction pressed towards the partner, from standing, turns the
- * player to face it before it walks them through it. A tap is a turn and a
- * hold is a walk - FireRed's own rule for turning, kept here only for the one
- * tile that is not a wall but is worth stopping to face.
- */
-const TURN_TO_PARTNER_MS = 110;
 /** The partner fades in over this long when it arrives, and stands still for the first part of it. */
 const PARTNER_APPEAR_MS = 220;
 const PARTNER_APPEAR_DELAY_MS = 90;
@@ -1401,9 +1395,23 @@ export class BaseScene extends Phaser.Scene {
     this.drawPartner();
   }
 
-  /** Ground a partner may arrive on: inside the place, not solid, nobody on it. */
+  /**
+   * Ground a partner may arrive on: inside the place, not solid, nobody on it,
+   * and somewhere it can be seen. A doorway is none of the last two - the
+   * building's own art is drawn over whoever stands in it, which is what makes
+   * walking into one read as going inside - so a partner put there arrived
+   * invisible and stayed so until the player moved.
+   */
   private partnerCanStand(tile: GridPosition): boolean {
-    return tile.x >= 0 && tile.y >= 0 && tile.x < this.bounds.width && tile.y < this.bounds.height && !this.isBlocked(tile);
+    return (
+      tile.x >= 0 &&
+      tile.y >= 0 &&
+      tile.x < this.bounds.width &&
+      tile.y < this.bounds.height &&
+      !this.isBlocked(tile) &&
+      (this.place.room !== null || doorAt(tile) === undefined) &&
+      (this.place.layers.canopy.tiles[tile.y]?.[tile.x] ?? -1) < 0
+    );
   }
 
   /** Whether the partner is out and standing on `tile`. */
@@ -1412,36 +1420,25 @@ export class BaseScene extends Phaser.Scene {
     return partner !== null && partner.place.out && partner.tuck === null && sameTile(partner.place.tile, tile);
   }
 
-  /**
-   * Whether this frame's direction, pressed towards the partner, only turns
-   * the player to face it. From standing and not already facing it, a press
-   * turns them and only a press still held after `TURN_TO_PARTNER_MS` walks
-   * them on - through the partner, which steps back past them. Mid-walk, or
-   * already facing it, the walk is never held up at all.
-   */
+  /** Whether this frame's step only turns the player to face the partner (`turnToPartner`). */
   private turnsToFacePartner(
     target: GridPosition | null,
     facing: Direction,
     fromStanding: boolean,
     deltaMs: number,
   ): boolean {
-    if (!target || !this.partnerAt(target)) {
-      this.turnToPartnerMs = null;
-      return false;
-    }
-    if (this.turnToPartnerMs === null) {
-      if (!fromStanding || facing === this.facing) {
-        return false;
-      }
-      this.turnToPartnerMs = TURN_TO_PARTNER_MS;
-      return true;
-    }
-    this.turnToPartnerMs -= deltaMs;
-    if (this.turnToPartnerMs > 0) {
-      return true;
-    }
-    this.turnToPartnerMs = null;
-    return false;
+    const partner = this.partner;
+    const { turn, holdMs } = turnToPartner({
+      holdMs: this.turnToPartnerMs,
+      target,
+      partner: partner && partner.place.out && partner.tuck === null ? partner.place.tile : null,
+      stepFacing: facing,
+      facing: this.facing,
+      fromStanding,
+      deltaMs,
+    });
+    this.turnToPartnerMs = holdMs;
+    return turn;
   }
 
   /** The player has begun a step: the partner takes its own, onto the tile they are leaving. */
@@ -1675,11 +1672,19 @@ export class BaseScene extends Phaser.Scene {
     const lift = partner.hopMs === null ? 0 : hopLift(partner.hopMs);
     const x = at.x * TILE_SIZE + PARTNER_SPRITE_X_OFFSET;
     const y = at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET - lift;
+    const depth = atRow(FIGURE_BAND, at.y) - 0.00005;
     partner.sprite
       .setFrame(partnerFrame(partner.place.facing, pose))
       .setPosition(x, y)
       // A hair behind the player on the same row, so a swap passes behind them.
-      .setDepth(atRow(FIGURE_BAND, at.y) - 0.00005);
+      .setDepth(depth);
+    // The player's head mark rides above every figure so the player can always
+    // be found - but the partner walking right behind them would wear it on its
+    // own face, which reads as the Pokemon being the one marked. While it is
+    // there, and only then, the mark goes behind it.
+    const playerY = (this.player.y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE;
+    const behind = partner.sprite.visible && at.y < playerY && Math.abs(at.x - this.player.x / TILE_SIZE) < 1;
+    this.playerHeadMark.setDepth(behind ? depth - 0.00001 : PLAYER_MARKER_DEPTH);
     let alpha = 1;
     if (partner.appearMs !== null) {
       alpha = Phaser.Math.Clamp((partner.appearMs - PARTNER_APPEAR_DELAY_MS) / PARTNER_APPEAR_MS, 0, 1);

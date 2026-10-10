@@ -29,6 +29,8 @@ import {
   partnerOf,
   partnerReaction,
   sameTile,
+  turnToPartner,
+  TURN_TO_PARTNER_MS,
   type PartnerPlace,
 } from './partner';
 
@@ -154,6 +156,45 @@ describe('the partner walks in the player’s footsteps', () => {
   });
 });
 
+describe('facing the partner', () => {
+  const partner = { x: 5, y: 6 };
+  const towards = { target: partner, partner, stepFacing: 'down' as const, facing: 'up' as const };
+
+  it('a tap towards it from standing turns the player to face it, and walks nowhere', () => {
+    const first = turnToPartner({ ...towards, holdMs: null, fromStanding: true, deltaMs: 16 });
+    expect(first).toEqual({ turn: true, holdMs: TURN_TO_PARTNER_MS });
+    // Let go: the next frame has no step towards it, and the turn is over.
+    expect(turnToPartner({ ...towards, target: null, holdMs: first.holdMs, fromStanding: true, deltaMs: 16 })).toEqual({
+      turn: false,
+      holdMs: null,
+    });
+  });
+
+  it('a hold walks on through it once the turn is over - it never blocks', () => {
+    let state = turnToPartner({ ...towards, holdMs: null, fromStanding: true, deltaMs: 16 });
+    let frames = 0;
+    while (state.turn) {
+      state = turnToPartner({ ...towards, holdMs: state.holdMs, fromStanding: true, deltaMs: 1000 / 60 });
+      frames += 1;
+    }
+    expect(frames).toBeLessThanOrEqual(Math.ceil(TURN_TO_PARTNER_MS / (1000 / 60)));
+  });
+
+  it('never holds up a walk already under way, or a player already facing it', () => {
+    expect(turnToPartner({ ...towards, holdMs: null, fromStanding: false, deltaMs: 16 }).turn).toBe(false);
+    expect(turnToPartner({ ...towards, facing: 'down', holdMs: null, fromStanding: true, deltaMs: 16 }).turn).toBe(
+      false,
+    );
+  });
+
+  it('is nothing at all for a step anywhere else', () => {
+    expect(turnToPartner({ ...towards, target: { x: 4, y: 5 }, holdMs: null, fromStanding: true, deltaMs: 16 })).toEqual({
+      turn: false,
+      holdMs: null,
+    });
+  });
+});
+
 describe('where the partner arrives', () => {
   const open = (blocked: readonly GridPosition[]) => (tile: GridPosition) =>
     !blocked.some((solid) => sameTile(solid, tile));
@@ -180,13 +221,19 @@ describe('where the partner arrives', () => {
   const yard = getBaseMap([]);
   const yardGround = (tile: GridPosition): boolean => yard.collision[tile.y]?.[tile.x] === false;
 
+  /** The yard as the scene asks it: open ground, not a doorway, nothing drawn over it. */
+  const yardStand = (tile: GridPosition): boolean =>
+    yardGround(tile) &&
+    !BASE_DOORS.some((door) => door.tiles.some((doorway) => sameTile(doorway, tile))) &&
+    (yard.layers.canopy.tiles[tile.y]?.[tile.x] ?? -1) < 0;
+
   it.each(BASE_DOORS.map((door) => [door.id, door] as const))(
-    'out of %s, it is in the doorway behind the player - it comes out after them',
+    'out of %s, it is at the player’s side - never in the doorway, where the building hides it',
     (_id, door) => {
-      const place = arrivalPlace(door.returnTo, 'down', yardGround);
+      const place = arrivalPlace(door.returnTo, 'down', yardStand);
       expect(place.out).toBe(true);
-      expect(yardGround(place.tile)).toBe(true);
-      expect(door.tiles.some((tile) => sameTile(tile, place.tile))).toBe(true);
+      expect(isNeighbour(place.tile, door.returnTo)).toBe(true);
+      expect(door.tiles.some((tile) => sameTile(tile, place.tile))).toBe(false);
     },
   );
 
@@ -194,7 +241,7 @@ describe('where the partner arrives', () => {
     ['opening the game', BASE_SPAWN],
     ['home from a raid', BASE_LANDING],
   ] as const)('%s, it is on open ground next to the player', (_why, spawn) => {
-    const place = arrivalPlace(spawn, 'up', yardGround);
+    const place = arrivalPlace(spawn, 'up', yardStand);
     expect(place.out).toBe(true);
     expect(isNeighbour(place.tile, spawn)).toBe(true);
     expect(BASE_DOORS.some((door) => door.tiles.some((tile) => sameTile(tile, place.tile)))).toBe(false);
