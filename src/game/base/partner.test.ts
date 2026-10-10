@@ -276,17 +276,23 @@ describe('where the partner arrives', () => {
   });
 
   it.each(BASE_ROOMS.map((room) => [room.id, room] as const))(
-    'in %s, it is beside the mat, on the floor, and never on the keeper',
+    'in %s, it is beside where the player comes in, on the floor, and never on the keeper',
     (_id, room) => {
       const built = buildRoom(room, game);
+      const keeper = room.keeper?.position;
       const floor = (tile: GridPosition): boolean =>
-        built.collision[tile.y]?.[tile.x] === false && !sameTile(tile, room.keeper.position);
-      const place = arrivalPlace(room.mat, 'up', floor);
+        built.collision[tile.y]?.[tile.x] === false && !(keeper && sameTile(tile, keeper));
+      // In through the door onto the mat, facing up - or, upstairs in the
+      // player's own house, up the stairs onto the stair mat, facing down.
+      const entry = room.mat ?? room.stairs[0].tile;
+      const place = arrivalPlace(entry, room.mat ? 'up' : 'down', floor);
       expect(place.out).toBe(true);
       expect(floor(place.tile)).toBe(true);
-      expect(isNeighbour(place.tile, room.mat)).toBe(true);
+      expect(isNeighbour(place.tile, entry)).toBe(true);
       // The way out is down off the mat, and the partner is never standing in it.
-      expect(sameTile(place.tile, { x: room.mat.x, y: room.mat.y + 1 })).toBe(false);
+      if (room.mat) {
+        expect(sameTile(place.tile, { x: room.mat.x, y: room.mat.y + 1 })).toBe(false);
+      }
     },
   );
 });

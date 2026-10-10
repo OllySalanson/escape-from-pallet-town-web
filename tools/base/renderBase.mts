@@ -36,9 +36,9 @@ import { BASE_PIECES } from '../../src/game/base/generated/basePieces';
 import { BASE_DOORS } from '../../src/game/base/doors';
 import { BASE_FIXTURES, standingFixtures } from '../../src/game/base/fixtures';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from '../../src/game/base/baseMap';
-import { buildRoom, roomNamed } from '../../src/game/base/rooms';
+import { BASE_ROOMS, buildRoom, roomNamed } from '../../src/game/base/rooms';
 import { wallMapPoster } from '../../src/game/base/wallMap';
-import { BASE_STARTS, walksToKeepers } from '../../src/game/base/baseWalks';
+import { BASE_STARTS, walkHome, walksToKeepers } from '../../src/game/base/baseWalks';
 import { baseGame } from '../../src/game/base/baseGames.testkit';
 import { ODDITY_INK, oddityArt } from '../../src/game/base/cabinet';
 import type { TileSource } from '../../src/game/world/tileset/catalogue';
@@ -88,7 +88,7 @@ const game = baseGame({
 const room = roomFlag === undefined ? null : roomNamed(roomFlag);
 if (roomFlag !== undefined && !room) {
   throw new Error(
-    `no room called '${roomFlag}' - one of ${BASE_DOORS.map((door) => door.id).join(', ')}`,
+    `no room called '${roomFlag}' - one of ${BASE_ROOMS.map((each) => each.id).join(', ')}`,
   );
 }
 const drawnRoom = room ? buildRoom(room, game) : null;
@@ -106,7 +106,7 @@ const place: {
         height: room.height,
         layers: drawnRoom.layers,
         collision: drawnRoom.collision,
-        sources: [BASE_SHEET_SOURCE.source],
+        sources: drawnRoom.sources,
       }
     : { ...yard, sources: BASE_TILESET.sources };
 
@@ -192,18 +192,20 @@ if (room && drawnRoom) {
     const { x, y } = drawnRoom.wallMap;
     blit(image, poster, 0, 0, poster.width, poster.height, x * TILE_SIZE, y * TILE_SIZE);
   }
-  const figure = readPng(`public/assets/characters/${room.keeper.design}.png`);
-  // The down-idle frame: 16x32, soles on row 27, the tile's foot on row 31.
-  blit(
-    image,
-    figure,
-    0,
-    0,
-    16,
-    32,
-    room.keeper.position.x * TILE_SIZE,
-    room.keeper.position.y * TILE_SIZE - 11,
-  );
+  if (room.keeper) {
+    const figure = readPng(`public/assets/characters/${room.keeper.design}.png`);
+    // The down-idle frame: 16x32, soles on row 27, the tile's foot on row 31.
+    blit(
+      image,
+      figure,
+      0,
+      0,
+      16,
+      32,
+      room.keeper.position.x * TILE_SIZE,
+      room.keeper.position.y * TILE_SIZE - 11,
+    );
+  }
 }
 drawLayer(place.layers.canopy);
 drawLayer(place.layers.brim);
@@ -232,7 +234,8 @@ if (flags.has('--marks')) {
     label(drawn, text, left + 2, top + 2, 2, colour);
   };
   if (room && drawnRoom) {
-    mark(room.mat.x, room.mat.y, 'MAT', [120, 240, 255]);
+    if (room.mat) mark(room.mat.x, room.mat.y, 'MAT', [120, 240, 255]);
+    for (const stair of room.stairs) mark(stair.tile.x, stair.tile.y, 'STAIR', [120, 240, 255]);
     for (const thing of drawnRoom.things) {
       mark(
         thing.tiles[0].x,
@@ -263,7 +266,7 @@ if (flags.has('--walks')) {
     const walks = walksToKeepers(start.tile, game).map(
       (walk) => `${walk.door.name} ${walk.yard} (+${walk.acrossTheRoom} across the room)`,
     );
-    console.log(`from ${start.name}: ${walks.join(' · ')}`);
+    console.log(`from ${start.name}: ${walks.join(' · ')} · THE BOLTHOLE ${walkHome(start.tile, game)}`);
   }
 }
 

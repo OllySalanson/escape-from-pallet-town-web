@@ -6,6 +6,7 @@ import {
   BASE_MAP_HEIGHT,
   BASE_MAP_WIDTH,
   BASE_SPAWN,
+  HOME_SIGN,
   getBaseMap,
 } from './baseMap';
 import { BASE_DOORS } from './doors';
@@ -59,15 +60,28 @@ describe('the base map', () => {
    * built, which is the longest the walk ever gets. Inside, the keeper is one
    * key from the mat (`rooms.test.ts`), so this is the whole of the walk.
    */
-  it('keeps every door within seven steps of where a raid drops the player', () => {
+  it("keeps every keeper's door within seven steps of where the player is put down", () => {
     const steps = stepsFrom(BASE_SPAWN);
-    const walks = BASE_DOORS.map((door) => [door.id, stepsTo(steps, approachesTo(door.id))] as const);
+    const walks = BASE_DOORS.filter((door) => door.screen !== null).map(
+      (door) => [door.id, stepsTo(steps, approachesTo(door.id))] as const,
+    );
     for (const [id, walk] of walks) {
       expect(`${id}:${walk}`).toBe(`${id}:${walk}`);
       expect(walk).toBeLessThanOrEqual(7);
     }
     // And the lab, which is what a raid is prepared in, is right in front of you.
     expect(stepsTo(steps, approachesTo('oaks-lab'))).toBeLessThanOrEqual(2);
+  });
+
+  /**
+   * The player's own house is not on the way to re-kitting - nothing in it is
+   * a screen a raid needs - so it is not one of the seven-step doors. It is a
+   * short stroll up the yard instead, which is held so that it stays one: two
+   * seconds from the middle of the yard, and a little more from the boat.
+   */
+  it('keeps THE BOLTHOLE a short stroll from both landings', () => {
+    expect(stepsTo(stepsFrom(BASE_SPAWN), approachesTo('bolthole'))).toBeLessThanOrEqual(13);
+    expect(stepsTo(stepsFrom(BASE_LANDING), approachesTo('bolthole'))).toBeLessThanOrEqual(17);
   });
 
   it('lands a raid within four steps of Bill and eight of the lab', () => {
@@ -151,6 +165,17 @@ describe('the base map', () => {
    * written down. It is read by facing it, so it has to be solid with ground in
    * front - the same rule every fixture is held to below.
    */
+  it("stands THE BOLTHOLE's sign in its garden, readable from the path to its door", () => {
+    const map = fullyBuilt();
+    expect(map.collision[HOME_SIGN.y][HOME_SIGN.x]).toBe(true);
+    const door = BASE_DOORS.find((candidate) => candidate.id === 'bolthole')!;
+    // Beside the path up to the step: the tile in front of the step is next to it.
+    const path = { x: door.returnTo.x, y: door.returnTo.y + 1 };
+    expect(map.collision[path.y][path.x]).toBe(false);
+    expect(Math.abs(path.x - HOME_SIGN.x) + Math.abs(path.y - HOME_SIGN.y)).toBe(1);
+    expect(HOME_SIGN.lines[0]).toBe('THE BOLTHOLE');
+  });
+
   it('stands the notice board where somebody coming off the boat can read it', () => {
     const map = fullyBuilt();
     const board = { x: 14, y: 15 };

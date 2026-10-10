@@ -1,6 +1,7 @@
 import { tileReader, type TileSource } from './catalogue';
 import { FRLG_TILESET } from './frlgTileset';
 import { BASE_SHEET_SOURCE } from '../../base/baseSheet';
+import { HOME_SHEET_SOURCE } from '../../base/homeSheet';
 import { KANTO_SHEET_SOURCE } from './kantoTileset';
 
 /**
@@ -46,4 +47,6 @@ export const TILE_SOURCES: readonly TileSource[] = [
   // Kanto's own outdoor pieces - the route conifer, the town fence and paving,
   // Viridian's buildings (`kantoTileset.ts`).
   KANTO_SHEET_SOURCE.source,
+  // The player's own house, drawn from FireRed's interior tileset (`base/homeSheet.ts`).
+  HOME_SHEET_SOURCE.source,
 ];

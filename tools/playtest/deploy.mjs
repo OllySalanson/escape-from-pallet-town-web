@@ -14,7 +14,7 @@ export const GAME = 'window.__escapeFromPalletTownGame__';
 export const sceneIs = (key) => `${GAME}?.scene.getScenes(true).some((s) => s.scene.key === '${key}')`;
 
 /**
- * Walks the base to one of its four doors, goes in, and speaks to the keeper.
+ * Walks the base to one of its keepers' doors, goes in, and speaks to the keeper.
  *
  * The lobby used to be a screen with four cards on it, so every driver here
  * reached a base screen by clicking `button[data-view=...]`. It is a map now
@@ -53,7 +53,7 @@ export async function walkIntoBase(page, door, options = {}) {
         const room = b.room;
         if (room) {
           if (room.id !== ${JSON.stringify(door)}) {
-            const on = b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
+            const on = room.mat && b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
             if (on) return { key: 'ArrowDown' };
           } else {
             const on = b.currentTile.x === room.mat.x && b.currentTile.y === room.mat.y;
@@ -64,7 +64,8 @@ export async function walkIntoBase(page, door, options = {}) {
           if (!d) throw new Error('no base door ' + ${JSON.stringify(door)});
           var goals = d.tiles;
         }
-        if (room) var goals = [room.mat];
+        // A floor with no door mat (upstairs in the player's house) is left by its stairs.
+        if (room) var goals = room.mat ? [room.mat] : room.stairs.map((stair) => stair.tile);
         const c = b.collision, H = c.length, W = c[0].length, s = b.currentTile, id = (x, y) => y * W + x;
         const at = (x, y) => goals.some((g) => g.x === x && g.y === y);
         const prev = new Map([[id(s.x, s.y), null]]); const queue = [[s.x, s.y]]; let found = null;

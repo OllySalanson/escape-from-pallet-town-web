@@ -136,6 +136,10 @@ than a menu. Four buildings, four people you'll recognise, and each one is a thi
 - **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones
   and HMs are bartered for things you found. Everything you trade him ends up on his shelves.
 
+At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, which is yours.
+It's the player's house from FireRed, downstairs and up - the kitchen, the telly, the table on its
+green rug, and your own room at the top of the stairs. Nobody hunts you there.
+
 And you never walk it alone. The starter you picked trots one step behind you, in your own
 footsteps, through every door and into every room, drawn in HeartGold and SoulSilver's own
 following-Pokémon art. Turn round, press Space, and it'll tell you how it's doing. It's that

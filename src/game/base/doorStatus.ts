@@ -30,6 +30,9 @@ import type { BaseDoor } from './doors';
  */
 export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
   switch (door.screen) {
+    case null:
+      // The player's own house, which has nothing waiting in it but home.
+      return 'Your house';
     case 'raid': {
       const open = buildContractBoard(game.raidProgress).rows.length;
       return open === 0
