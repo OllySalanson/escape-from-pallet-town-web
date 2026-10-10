@@ -512,10 +512,12 @@ export function moreLabel(entries: readonly { readonly bottom: number }[], fold:
  * block, because a dossier now grows into the room a list leaves and the fold
  * came to rest across the figure's middle. The map maker's side column is a
  * window of checks over the chosen thing's panel, and the fold went through
- * a check's last line and through the panel's heading (playtest 45).
+ * a check's last line and through the panel's heading (playtest 45). A stat
+ * is a `dt` and a `dd` rather than a `small`, so the fold went through the
+ * middle of a dossier's `Attack 7 Defense 16` line until each was named here.
  */
-const SCROLL_ROWS =
-  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body small, .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div), .maker-side :is(.px-heading, .maker-check .px-wrap, .maker-check .px-note, .maker-field > span, .px-field)';
+export const SCROLL_ROWS =
+  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body :is(small, .summary-stats > div), .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div), .maker-side :is(.px-heading, .maker-check .px-wrap, .maker-check .px-note, .maker-field > span, .px-field)';
 
 /**
  * The lines a run of wrapped copy is set in, top to bottom. A `.px-wrap`

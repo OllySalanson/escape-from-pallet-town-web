@@ -14,7 +14,9 @@ import { setActiveSaveSlot, setTryItRules } from '../dev/playtestMode';
 import { beginTry, endTry } from '../maker/tryIt';
 import type { ExtractionReport } from '../run/extractionReport';
 import type { MapFile } from '../world/mapFile';
-import { hasMoreBelow, moreLabel, scrollCoverHeight, scrollTopCoverHeight } from '../ui/MenuOverlay';
+import { CHARMANDER, Pokemon } from '../pokemon';
+import { hasMoreBelow, moreLabel, SCROLL_ROWS, scrollCoverHeight, scrollTopCoverHeight } from '../ui/MenuOverlay';
+import { pokemonDossier } from '../ui/pokemonDossier';
 import { ExtractionScene } from './ExtractionScene';
 
 /**
@@ -67,6 +69,21 @@ describe('the result screen ledger', () => {
     expect(scrollCoverHeight(pane, [{ top: 0, bottom: 78 }, { top: 81, bottom: 128 }], 3)).toBe(39);
     // A row that would swallow most of the pane is cut rather than hide it.
     expect(scrollCoverHeight(pane, [{ top: 20, bottom: 300 }], 3)).toBe(39);
+  });
+
+  it("measures a dossier's stats as lines, so the fold never cuts one through", () => {
+    const markup = pokemonDossier({
+      pokemon: new Pokemon(CHARMANDER, 20),
+      id: 'charmander-1',
+      first: true,
+      holding: 'Holding nothing',
+      deeds: { label: 'Keeping', chips: () => '' },
+    });
+    // Each stat is a cell of the stats grid - a `dt` and a `dd` in a `div`,
+    // with no `small` for the fold to find - so the pane's foot once came to
+    // rest across `Attack 7 Defense 16 Sp. Atk 8` in the Pokémon Center.
+    expect(markup).toMatch(/<dl class="summary-stats"><div><dt>Attack<\/dt><dd>\d+<\/dd><\/div>/);
+    expect(SCROLL_ROWS).toContain('.px-dossier-body :is(small, .summary-stats > div)');
   });
 
   it('hides a row the top of a scrolled pane cuts through, down to the first whole row', () => {
