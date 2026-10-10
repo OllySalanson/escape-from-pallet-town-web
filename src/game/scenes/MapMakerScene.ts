@@ -569,7 +569,8 @@ export class MapMakerScene extends Phaser.Scene {
       }
     }
     this.shownChosen = chosen;
-    this.showOverview();
+    // A frame later, so letting go of a stroke is not held up by the overview.
+    this.scheduleOverview();
     this.overlay.refocus('[data-tool].is-selected', '[data-tool]');
     if (status) {
       if (this.statusTimer) {
