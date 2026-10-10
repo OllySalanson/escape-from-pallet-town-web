@@ -17,6 +17,7 @@ import type { MapLedge } from './ledges';
 import { WeatherId } from '../pokemon/battle/weather';
 import type { ExtractionPoint } from './extractionPoints';
 import type { WorldEntity } from './npcs';
+import { isFigureSpecies, pokemonCry, type FigureSpeciesId } from './pokemonFigures';
 import type { WorldPoi } from './pois';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from './trainers';
 import type { WorldLoot } from './loot';
@@ -74,6 +75,7 @@ export const MAP_FILE_LIMITS = {
   maxLandmarks: 16,
   maxDistricts: 16,
   maxDoors: 16,
+  maxPokemon: 30,
   /** The widest or deepest a stretch of water Surf opens may be. */
   maxDoorSide: 12,
   maxTrainers: 12,
@@ -234,6 +236,51 @@ export const MAP_FILE_BUILDINGS = {
   'notice-board': 'noticeBoard',
   'gym-sign': 'signGym',
   signboard: 'signboard',
+  // Kanto's own town buildings, cut from FireRed's maps (`townSheet.ts`).
+  museum: 'museum',
+  'department-store': 'deptStore',
+  'silph-co': 'silphCo',
+  'game-corner': 'gameCorner',
+  'pokemon-tower': 'pokemonTower',
+  'pokemon-mansion': 'burntMansion',
+  'research-lab': 'cinnabarLab',
+  dojo: 'dojo',
+  'bike-shop': 'bikeShop',
+  'safari-gate': 'safariGate',
+  'city-gate': 'cityGate',
+  'pewter-gym': 'pewterGym',
+  'cerulean-gym': 'ceruleanGym',
+  'vermilion-gym': 'vermilionGym',
+  'celadon-gym': 'celadonGym',
+  'fuchsia-gym': 'fuchsiaGym',
+  'saffron-gym': 'saffronGym',
+  'cinnabar-gym': 'cinnabarGym',
+  pier: 'pier',
+  'round-fountain': 'roundFountain',
+  flats: 'flats',
+  'small-flats': 'smallFlats',
+  apartments: 'apartments',
+  terrace: 'terrace',
+  diner: 'diner',
+  'brick-shops': 'brickRow',
+  'grey-house': 'greyHouse',
+  'blue-house': 'blueHouse',
+  'orange-house': 'orangeHouse',
+  'flower-house': 'flowerHouse',
+  'fan-club': 'fanClub',
+  'purple-house': 'purpleHouse',
+  'green-house': 'greenHouse',
+  'green-cottage': 'greenCottage',
+  'warden-house': 'wardenHouse',
+  // And what stands in its fields, from the game's object graphics.
+  'wooden-sign': 'woodenSign',
+  'route-sign': 'metalSign',
+  'gym-statue': 'gymStatue',
+  'town-map': 'townMap',
+  'lapras-doll': 'laprasDoll',
+  'strange-stone': 'ancientStone',
+  'ss-anne': 'ssAnne',
+  'ferry': 'seagallop',
 } as const satisfies Record<string, PlayerMapPropName>;
 
 export type MapFileBuildingKind = keyof typeof MAP_FILE_BUILDINGS;
@@ -308,6 +355,34 @@ export const MAP_FILE_LOOKS = [
   'cooltrainer',
   'beauty',
   'sailor',
+  'black-belt',
+  'camper',
+  'picnicker',
+  'fisherman',
+  'swimmer',
+  'swimmer-woman',
+  'tuber-boy',
+  'tuber-girl',
+  'little-boy',
+  'little-girl',
+  'rocker',
+  'channeler',
+  'gentleman',
+  'rich-boy',
+  'crush-girl',
+  'cooltrainer-woman',
+  'poke-maniac',
+  'rocket-grunt',
+  'rocket-grunt-woman',
+  'policeman',
+  'captain',
+  'chef',
+  'clerk',
+  'gym-guide',
+  'worker',
+  'worker-woman',
+  'man',
+  'cameraman',
 ] as const satisfies readonly CastCharacterDesignId[];
 export type MapFileLook = (typeof MAP_FILE_LOOKS)[number];
 
@@ -411,6 +486,11 @@ export interface MapFilePerson extends MapFileSpot {
   readonly lines: readonly string[];
 }
 
+/** A Pokemon standing in the world: any species the game has (`pokemonFigures.ts`). */
+export interface MapFilePokemon extends MapFileSpot {
+  readonly species: FigureSpeciesId;
+}
+
 export interface MapFileSign extends MapFileSpot {
   readonly lines: readonly string[];
 }
@@ -488,6 +568,8 @@ export interface MapFile {
   readonly trainers?: readonly MapFileTrainer[];
   /** Added with the second palette: doors a Pokémon's field move opens. */
   readonly doors?: readonly MapFileDoor[];
+  /** And Pokémon standing in the world, who say their own name when spoken to. */
+  readonly pokemon?: readonly MapFilePokemon[];
 }
 
 /**
@@ -744,6 +826,11 @@ export function readMapFile(
     oneOf(`${what}'s look`, person.look, MAP_FILE_LOOKS);
     oneOf(`${what}'s facing`, person.facing, MAP_FILE_FACINGS);
     linesOf(what, person.lines);
+  });
+  optional('pokemon', MAP_FILE_LIMITS.maxPokemon).forEach((standing, index) => {
+    if (!isFigureSpecies(standing.species)) {
+      problems.push(`Pokémon ${index + 1} is not a Pokémon the game has.`);
+    }
   });
   optional('signs', MAP_FILE_LIMITS.maxSigns).forEach((sign, index) =>
     linesOf(`Sign ${index + 1}`, sign.lines),
@@ -1136,6 +1223,15 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         facing: person.facing,
         dialogLines: person.lines.length > 0 ? [...person.lines] : [`${person.name} nods at you.`],
         design: person.look,
+      })),
+      ...(file.pokemon ?? []).map((standing, index): WorldEntity => ({
+        id: `${id}/pokemon-${index + 1}`,
+        mapId: id,
+        kind: 'npc',
+        position: { x: standing.x, y: standing.y },
+        facing: 'down',
+        dialogLines: [pokemonCry(standing.species)],
+        pokemon: standing.species,
       })),
       ...(file.signs ?? []).map((sign, index): WorldEntity => ({
         id: `${id}/sign-${index + 1}`,

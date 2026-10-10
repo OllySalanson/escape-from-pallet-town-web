@@ -12,6 +12,13 @@ import {
   type MapFileBuildingKind,
   type MapFileLook,
 } from '../world/mapFile';
+import {
+  POKEMON_ICON_PATH,
+  POKEMON_ICON_SIZE,
+  pokemonIconFrames,
+  pokemonSoleDrop,
+  type FigureSpeciesId,
+} from '../world/pokemonFigures';
 import { trainerSightTiles } from '../world/trainerSight';
 import { TILE_SIZE } from '../worldMap';
 import type { MapFile } from '../world/mapFile';
@@ -56,6 +63,7 @@ export function loadMakerSheets(): Promise<void> {
   return Promise.all([
     ...PLAYER_MAP_TILESET.sources.map((source) => loadImage(source.imagePath)),
     ...MAP_FILE_LOOKS.map((look) => loadImage(characterDesignAssetPath(look))),
+    loadImage(POKEMON_ICON_PATH),
   ]).then(() => undefined);
 }
 
@@ -91,6 +99,27 @@ function drawFigure(
     top,
     CHARACTER_FRAME_WIDTH,
     CHARACTER_FRAME_HEIGHT,
+  );
+}
+
+/** A Pokemon standing on a tile, drawn as the game draws it: its first icon frame, feet on the tile's last row. */
+function drawPokemon(context: CanvasRenderingContext2D, species: FigureSpeciesId, spot: GridPoint): void {
+  const image = sheets.get(POKEMON_ICON_PATH);
+  if (!image?.complete || image.naturalWidth === 0) {
+    return;
+  }
+  const [frame] = pokemonIconFrames(species);
+  const columns = image.naturalWidth / POKEMON_ICON_SIZE;
+  context.drawImage(
+    image,
+    (frame % columns) * POKEMON_ICON_SIZE,
+    Math.floor(frame / columns) * POKEMON_ICON_SIZE,
+    POKEMON_ICON_SIZE,
+    POKEMON_ICON_SIZE,
+    spot.x * TILE_SIZE + (TILE_SIZE - POKEMON_ICON_SIZE) / 2,
+    (spot.y + 1) * TILE_SIZE + pokemonSoleDrop(species) - POKEMON_ICON_SIZE,
+    POKEMON_ICON_SIZE,
+    POKEMON_ICON_SIZE,
   );
 }
 
@@ -300,13 +329,23 @@ export function drawMap(
       kind: 'trainer' as const,
       index,
     })),
+    ...(file.pokemon ?? []).map((standing, index) => ({
+      ...standing,
+      kind: 'pokemon' as const,
+      index,
+    })),
   ].sort((a, b) => a.y - b.y);
   for (const figure of figures) {
-    drawFigure(context, figure.look, figure.facing, figure);
+    if (figure.kind === 'pokemon') {
+      drawPokemon(context, figure.species, figure);
+    } else {
+      drawFigure(context, figure.look, figure.facing, figure);
+    }
   }
   for (const [kind, list] of [
     ['sign', file.signs ?? []],
     ['person', file.people ?? []],
+    ['pokemon', file.pokemon ?? []],
     ['trainer', file.trainers ?? []],
   ] as const) {
     list.forEach((spot, index) => {

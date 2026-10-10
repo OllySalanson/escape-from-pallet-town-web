@@ -3,6 +3,7 @@ import { FRLG_TILESET } from './frlgTileset';
 import { BASE_SHEET_SOURCE } from '../../base/baseSheet';
 import { HOME_SHEET_SOURCE } from '../../base/homeSheet';
 import { KANTO_SHEET_SOURCE } from './kantoTileset';
+import { TOWN_SHEET_SOURCE } from './townSheet';
 
 /**
  * The images the game draws maps from, and where each one's tiles sit in the
@@ -49,4 +50,6 @@ export const TILE_SOURCES: readonly TileSource[] = [
   KANTO_SHEET_SOURCE.source,
   // The player's own house, drawn from FireRed's interior tileset (`base/homeSheet.ts`).
   HOME_SHEET_SOURCE.source,
+  // Kanto's town buildings, cut from FireRed's own maps (`townSheet.ts`).
+  TOWN_SHEET_SOURCE.source,
 ];

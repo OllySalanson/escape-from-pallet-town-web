@@ -1,4 +1,6 @@
 import type { MapCheck } from '../world/mapFileChecks';
+import { POKEMON_ICON_ORDER } from '../pokemon/generated/pokemonIcons';
+import { pokemonCry, pokemonName } from '../world/pokemonFigures';
 import {
   MAP_FILE_FACINGS,
   MAP_FILE_HABITATS,
@@ -146,6 +148,11 @@ const PLACE_ROWS = [
     'person',
     'Person',
     'Somebody who stands there and says something. Nobody can walk through them.',
+  ],
+  [
+    'pokemon',
+    'Pokémon',
+    'A Pokémon standing in the world - any of the 151 - that says its name when spoken to.',
   ],
   ['sign', 'Sign', 'A sign that reads what you write on it.'],
   [
@@ -414,6 +421,13 @@ function selectedPane(file: MapFile, selected: ThingRef | undefined): string {
       const person = (file.people ?? [])[selected.index];
       heading = 'Person';
       body = `${name(person.name)}${choose('look', 'Looks like', person.look, looks)}${choose('facing', 'Faces', person.facing, facings)}${lines('Says', person.lines)}<p class="px-note px-wrap">Nobody can walk through a person, so leave the lanes clear.</p>`;
+      break;
+    }
+    case 'pokemon': {
+      const standing = (file.pokemon ?? [])[selected.index];
+      heading = 'Pokémon';
+      const species = POKEMON_ICON_ORDER.map((id) => [id, pokemonName(id)] as const);
+      body = `${choose('species', 'Which', standing.species, species)}<p class="px-note px-wrap">It stands there, solid as a person, and says ${escapeHtml(pokemonCry(standing.species))} when spoken to.</p>`;
       break;
     }
     case 'sign': {

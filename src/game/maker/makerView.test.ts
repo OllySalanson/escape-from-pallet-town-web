@@ -58,6 +58,7 @@ describe('the map maker screen', () => {
       expect.arrayContaining([
         'sign',
         'person',
+        'pokémon',
         'trainer',
         'landmark',
         'district',

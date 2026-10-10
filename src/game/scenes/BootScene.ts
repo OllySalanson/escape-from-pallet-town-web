@@ -15,6 +15,11 @@ import {
 } from '../world/characterDesigns';
 import { PARTNER_FRAME, PARTNER_SPECIES, partnerAssetPath, partnerTextureKey } from '../base/partner';
 import { SHARED_CHARACTER_TEXTURE } from '../world/characterPresentation';
+import {
+  POKEMON_ICON_PATH,
+  POKEMON_ICON_SIZE,
+  POKEMON_ICON_TEXTURE,
+} from '../world/pokemonFigures';
 import { isTestLabRequested } from '../dev/testLabAccess';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
 import { awaitGameFont } from '../ui/gameFont';
@@ -56,6 +61,11 @@ export class BootScene extends Phaser.Scene {
         frameHeight: PARTNER_FRAME,
       });
     }
+    // FireRed's party icons, for the Pokemon a map maker stands in the world.
+    this.load.spritesheet(POKEMON_ICON_TEXTURE, publicAssetUrl(POKEMON_ICON_PATH), {
+      frameWidth: POKEMON_ICON_SIZE,
+      frameHeight: POKEMON_ICON_SIZE,
+    });
     // Every sheet a map might be drawn from. A catalogue is chosen per map and
     // may draw from more than one sheet at a time, so the loader takes the list
     // rather than naming any of them: `frlg-tiles.png` for the ground, and

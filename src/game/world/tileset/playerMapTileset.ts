@@ -3,12 +3,15 @@ import { FLOOD_TOWN_TILESET } from './floodTownTileset';
 import { KANTO_TILESET, type KantoPropName } from './kantoTileset';
 import { OVERWORLD } from './sheets';
 import { BASE_SHEET_SOURCE, solidPiece } from '../../base/baseSheet';
+import { TOWN_PROPS, TOWN_SHEET_SOURCE } from './townSheet';
+import type { TownPieceName } from '../generated/townPieces';
 
 /**
  * What a player's map is drawn with: the Kanto catalogue Viridian City is
  * drawn on, plus every other thing the game already draws that a map maker can
- * plant - the two FireRed buildings cut for the base and the objects the
- * Floodplain stands on its FireRed grass.
+ * plant - the two FireRed buildings cut for the base, Kanto's town buildings
+ * cut from FireRed's own maps (`townSheet.ts`) and the objects the Floodplain
+ * stands on its FireRed grass.
  *
  * The CC0 objects are not FireRed art. They are offered because the captain
  * asked for as much as the maker can hold (2026-10-10, the palette board), and
@@ -78,7 +81,11 @@ const BASE_BUILDINGS = {
   blueCottage: solidPiece('cottage', 'cottage'),
 } as const satisfies Record<string, PropDefinition>;
 
-export type PlayerMapPropName = KantoPropName | Cc0ObjectName | keyof typeof BASE_BUILDINGS;
+export type PlayerMapPropName =
+  | KantoPropName
+  | Cc0ObjectName
+  | keyof typeof BASE_BUILDINGS
+  | TownPieceName;
 
 const cc0 = Object.fromEntries(
   Object.entries(CC0_OBJECTS).map(([name, source]) => [name, FLOOD_TOWN_TILESET.props[source]]),
@@ -86,6 +93,11 @@ const cc0 = Object.fromEntries(
 
 export const PLAYER_MAP_TILESET: TilesetCatalogue<PlayerMapPropName> = {
   ...KANTO_TILESET,
-  sources: [...KANTO_TILESET.sources, OVERWORLD.source, BASE_SHEET_SOURCE.source],
-  props: { ...cc0, ...BASE_BUILDINGS, ...KANTO_TILESET.props },
+  sources: [
+    ...KANTO_TILESET.sources,
+    OVERWORLD.source,
+    BASE_SHEET_SOURCE.source,
+    TOWN_SHEET_SOURCE.source,
+  ],
+  props: { ...cc0, ...BASE_BUILDINGS, ...TOWN_PROPS, ...KANTO_TILESET.props },
 };

@@ -7,6 +7,7 @@ import { applyGates, gateKey } from './gates';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
 import { buildMapLayers } from './tiles';
 import { PLAYER_MAP_TILESET } from './tileset/playerMapTileset';
+import { pokemonName } from './pokemonFigures';
 import { trainerSightTiles } from './trainerSight';
 import { refusedWords } from './wordFilter';
 
@@ -25,13 +26,13 @@ import { refusedWords } from './wordFilter';
  * file: that the maker walked it out in the editor's TRY IT. It joins the list
  * where that fact lives (`maker/makerView.ts`).
  *
- * Townsfolk and signs are walls you cannot walk into, so every walk below is
- * measured with them standing where they were put: a person in the only lane
- * to an exit is a raid with no way out, which is the trap a figure on a door
- * once sprang on the captain. A trainer is walked into - that is the fight -
- * so a trainer never shuts a walk; what one may not do is watch a drop-in or
- * an exit, because a fight forced on the first step or the last is a raid
- * nobody chose.
+ * Townsfolk, signs and standing Pokemon are walls you cannot walk into, so
+ * every walk below is measured with them standing where they were put: a
+ * person in the only lane to an exit is a raid with no way out, which is the
+ * trap a figure on a door once sprang on the captain. A trainer is walked
+ * into - that is the fight - so a trainer never shuts a walk; what one may not
+ * do is watch a drop-in or an exit, because a fight forced on the first step
+ * or the last is a raid nobody chose.
  */
 
 export type MapCheckId =
@@ -110,6 +111,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const signs = file.signs ?? [];
   const landmarks = file.landmarks ?? [];
   const trainers = file.trainers ?? [];
+  const pokemon = file.pokemon ?? [];
   const named = [
     ...file.dropIns.map((spot) => ({ spot, what: `Drop-in ${spot.name}` })),
     ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}` })),
@@ -118,6 +120,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     ...people.map((spot) => ({ spot, what: `${spot.name}` })),
     ...signs.map((spot, index) => ({ spot, what: `Sign ${index + 1}` })),
     ...trainers.map((spot) => ({ spot, what: `Trainer ${spot.name}` })),
+    ...pokemon.map((spot) => ({ spot, what: pokemonName(spot.species) })),
   ];
 
   const standing = named
@@ -136,7 +139,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   // because an open exit takes whoever steps on it: a way out that is only
   // reached across another exit is not a way out, it is that exit.
   const exitTiles = new Set(file.exits.map(at));
-  const figureTiles = [...people, ...signs].map(at);
+  const figureTiles = [...people, ...signs, ...pokemon].map(at);
   const shut = new Set([...exitTiles, ...figureTiles]);
   // A raid has to be leavable by a player who brought no Pokemon that knows Cut
   // or Surf, so the way out is walked with every door shut; what is behind a

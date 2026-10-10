@@ -7,6 +7,7 @@ import {
   type MapFileBuilding,
   type MapFileBuildingKind,
   type MapFileDistrict,
+  type MapFilePokemon,
   type MapFileDoor,
   type MapFileDoorKind,
   type MapFileDropIn,
@@ -37,7 +38,15 @@ export interface GridPoint {
 }
 
 /** What a placed thing is, and which one. */
-export type SpotKind = 'drop-in' | 'exit' | 'item' | 'person' | 'sign' | 'landmark' | 'trainer';
+export type SpotKind =
+  | 'drop-in'
+  | 'exit'
+  | 'item'
+  | 'person'
+  | 'pokemon'
+  | 'sign'
+  | 'landmark'
+  | 'trainer';
 
 export type ThingRef =
   | { readonly kind: SpotKind; readonly index: number }
@@ -51,6 +60,7 @@ const SPOT_LISTS = {
   exit: 'exits',
   item: 'itemSpots',
   person: 'people',
+  pokemon: 'pokemon',
   sign: 'signs',
   landmark: 'landmarks',
   trainer: 'trainers',
@@ -62,6 +72,7 @@ const SPOT_ORDER: readonly SpotKind[] = [
   'exit',
   'trainer',
   'person',
+  'pokemon',
   'sign',
   'landmark',
   'item',
@@ -337,6 +348,7 @@ const SPOT_RULES: Readonly<Record<SpotKind, { readonly max: number; readonly plu
   exit: { max: MAP_FILE_LIMITS.maxExits, plural: 'exits' },
   item: { max: MAP_FILE_LIMITS.maxItemSpots, plural: 'item spots' },
   person: { max: MAP_FILE_LIMITS.maxPeople, plural: 'people' },
+  pokemon: { max: MAP_FILE_LIMITS.maxPokemon, plural: 'Pokémon' },
   sign: { max: MAP_FILE_LIMITS.maxSigns, plural: 'signs' },
   landmark: { max: MAP_FILE_LIMITS.maxLandmarks, plural: 'landmarks' },
   trainer: { max: MAP_FILE_LIMITS.maxTrainers, plural: 'trainers' },
@@ -365,6 +377,8 @@ function newSpot(file: MapFile, kind: SpotKind, spot: MapFileSpot): MapFileSpot 
         facing: 'down',
         lines: [],
       });
+    case 'pokemon':
+      return spotOf<MapFilePokemon>({ ...spot, species: 'pikachu' });
     case 'sign':
       return spotOf<MapFileSign>({ ...spot, lines: [] });
     case 'landmark':
@@ -388,7 +402,7 @@ function newSpot(file: MapFile, kind: SpotKind, spot: MapFileSpot): MapFileSpot 
 
 /**
  * Puts a one-tile thing on a tile: a drop-in, an exit, an item spot, a person,
- * a sign, a landmark or a trainer. A tile holds one of them: the checks would
+ * a Pokemon, a sign, a landmark or a trainer. A tile holds one of them: the checks would
  * refuse two, so the editor never makes them.
  */
 export function placeSpot(file: MapFile, kind: SpotKind, point: GridPoint): PlaceOutcome {
@@ -725,6 +739,7 @@ export function keepOnMap(file: MapFile): MapFile {
   const signs = file.signs?.filter(fits);
   const landmarks = file.landmarks?.filter(fits);
   const trainers = file.trainers?.filter(fits);
+  const pokemon = file.pokemon?.filter(fits);
   const doors = file.doors?.filter(
     (door) => door.x >= 0 && door.y >= 0 && door.x + door.width <= width && door.y + door.height <= height,
   );
@@ -755,6 +770,7 @@ export function keepOnMap(file: MapFile): MapFile {
     ...(signs ? { signs } : {}),
     ...(landmarks ? { landmarks } : {}),
     ...(trainers ? { trainers } : {}),
+    ...(pokemon ? { pokemon } : {}),
     ...(districts ? { districts } : {}),
     ...(doors ? { doors } : {}),
   };
@@ -845,6 +861,7 @@ const SHIFTS: {
   trainers: moved,
   districts: moved,
   doors: moved,
+  pokemon: moved,
 };
 
 /** Everything standing on the map moved by `by`, the ground left as it is. */
