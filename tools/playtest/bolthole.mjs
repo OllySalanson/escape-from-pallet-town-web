@@ -4,10 +4,15 @@
 // things in it answer when faced, the sign in the garden says whose house it
 // is, and down off the mat is the step outside (`src/game/base/rooms.ts`).
 //
-//   node tools/playtest/bolthole.mjs <url> <out dir> [--built=all|none|id,..] [--window=1200x768]
+//   node tools/playtest/bolthole.mjs <url> <out dir> [--built=all|none|id,..] [--beaten=bossId,..]
+//     [--raids=mapId:deployed:extracted,..] [--starter=charmander] [--window=1200x768]
 //
-// Photographs the yard, both floors and the sign's line on the way. It fails
-// loudly - a thrown error, not a picture - when any promise is broken.
+// `--beaten` fills the badge case and `--raids` the pennants, the raid log and
+// the calendar, by writing the save before the house is walked into. Reads the
+// badge case, the telly, the pennants, sleeps in the bed and plays the console
+// until the fourth game is won. Photographs the yard, both floors and the
+// sign's line on the way. It fails loudly - a thrown error, not a picture -
+// when any promise is broken.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
 import { GAME, SAVE_KEY, sceneIs } from './deploy.mjs';
@@ -19,6 +24,16 @@ const builtOption = option('built') ?? 'none';
 const [width, height] = (option('window') ?? '1200x768').split('x').map(Number);
 const RUNGS = ['radio-mast', 'beacon', 'secure-locker-1', 'secure-locker-2', 'recovery-bay-1', 'recovery-bay-2', 'quarantine-ward'];
 const built = builtOption === 'all' ? RUNGS : builtOption === 'none' ? [] : builtOption.split(',');
+const beaten = (option('beaten') ?? '').split(',').filter(Boolean);
+const raidRecord = Object.fromEntries(
+  (option('raids') ?? '')
+    .split(',')
+    .filter(Boolean)
+    .map((entry) => {
+      const [mapId, deployed, extracted] = entry.split(':').map((part, index) => (index === 0 ? part : Number(part)));
+      return [mapId, { deployed, extracted, wiped: deployed - extracted }];
+    }),
+);
 mkdirSync(out, { recursive: true });
 
 const BASE = `${GAME}.scene.getScene('base')`;
@@ -26,7 +41,8 @@ const state = () =>
   `(() => { const b = ${BASE}; const live = b && b.sys.isActive() && b.ready && !b.leaving;
     return { live: !!live, room: live && b.room ? b.room.id : null, tile: live ? b.currentTile : null,
       facing: live ? b.facing : null, hint: live ? b.hintShown : null,
-      dialog: live && b.dialogBox.visible ? b.dialogBox.textObject.text : null }; })()`;
+      dialog: live && b.dialogBox.visible ? b.dialogBox.textObject.text : null,
+      complete: live && b.dialogBox.visible ? b.dialogBox.isCurrentMessageComplete : false }; })()`;
 
 /**
  * The first step of the shortest walk to any of `goals`, over the scene's own
@@ -72,27 +88,52 @@ try {
     await sleep(350);
     return page.evaluate(state());
   };
-  /** Faces `direction` from where the player stands, presses the key, and returns what was said. */
-  const read = async (direction) => {
+  /**
+   * Faces `direction` from where the player stands, presses the key, and
+   * returns every box that was said, each read whole before it is moved on.
+   */
+  const read = async (direction, { shot } = {}) => {
     await press(direction);
     await press('Space');
-    await sleep(900);
-    const said = (await page.evaluate(state())).dialog;
-    for (let guard = 0; guard < 8 && (await page.evaluate(state())).dialog !== null; guard += 1) await press('Space');
+    const said = [];
+    for (let guard = 0; guard < 60; guard += 1) {
+      const now = await page.evaluate(state());
+      if (now.dialog !== null && now.complete) break;
+      await sleep(150);
+    }
+    if (shot) await page.screenshot(shot);
+    for (let guard = 0; guard < 40; guard += 1) {
+      const now = await page.evaluate(state());
+      if (now.dialog === null) break;
+      if (now.complete) {
+        if (said.at(-1) !== now.dialog) said.push(now.dialog);
+        await press('Space');
+      } else {
+        await sleep(150);
+      }
+    }
     return said;
   };
 
   await page.waitFor(sceneIs('title'));
   await press('Space');
   await page.waitFor(sceneIs('starter'));
+  const starter = option('starter');
+  if (starter) {
+    await page.waitFor(`(() => { const b = document.querySelector('button[data-starter=${JSON.stringify(starter)}]'); if (!b) return false; b.click(); return true; })()`);
+    await sleep(300);
+  }
   await page.waitFor(
     `(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith('Confirm ')); if (!b) return false; b.click(); return true; })()`,
   );
   await page.waitFor(sceneIs('base'));
   await page.waitFor(`localStorage.getItem('${SAVE_KEY}') !== null`);
-  if (built.length > 0) {
+  if (built.length > 0 || beaten.length > 0 || Object.keys(raidRecord).length > 0) {
     await page.evaluate(`(() => { const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
-      save.raidProgress.workshopUpgrades = ${JSON.stringify(built)}; localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
+      save.raidProgress.workshopUpgrades = ${JSON.stringify(built)};
+      save.raidProgress.defeatedBosses = ${JSON.stringify(beaten)};
+      save.raidProgress.raidRecord = ${JSON.stringify(raidRecord)};
+      localStorage.setItem('${SAVE_KEY}', JSON.stringify(save)); })()`);
     await page.send('Page.navigate', { url: `${url}?testmode=pixels` });
     await page.waitFor(sceneIs('title'));
     await press('Space');
@@ -105,8 +146,8 @@ try {
   const door = await page.evaluate(`${BASE}.doors.find((d) => d.id === 'bolthole')`);
   if (!door) throw new Error('the base has no door called bolthole');
   await walkTo([{ x: door.returnTo.x, y: door.returnTo.y + 1 }]);
-  const sign = await read('ArrowRight');
-  if (!sign?.startsWith('THE BOLTHOLE')) throw new Error(`the garden sign says "${sign}"`);
+  const sign = (await read('ArrowRight')).join(' / ');
+  if (!sign.startsWith('THE BOLTHOLE')) throw new Error(`the garden sign says "${sign}"`);
   console.log(`sign: ${sign}`);
   await page.screenshot(`${out}/garden.png`);
 
@@ -117,9 +158,21 @@ try {
   await page.screenshot(`${out}/downstairs.png`);
   console.log(`downstairs: in on ${inside.tile.x},${inside.tile.y} (hint: ${inside.hint})`);
 
+  // The badge case, read from the floor under it.
+  const badgeCase = await page.evaluate(`${BASE}.place.room.posters.find((p) => p.kind === 'badge-case').area`);
+  await walkTo([{ x: badgeCase.x + 1, y: badgeCase.y + badgeCase.height }]);
+  const badges = await read('ArrowUp', { shot: `${out}/badge-case.png` });
+  if (!badges[0]?.startsWith('THE BADGE CASE')) throw new Error(`the badge case says "${badges[0]}"`);
+  if (badges.length !== beaten.length + 1 && beaten.length > 0) {
+    throw new Error(`the badge case read ${badges.length - 1} badges for ${beaten.length} keepers beaten`);
+  }
+  console.log(`badge case: ${badges.join(' / ')}`);
+
   const telly = await page.evaluate(`${BASE}.place.room.things.find((t) => t.name === 'THE TELLY').tiles[0]`);
   await walkTo([{ x: telly.x, y: telly.y + 1 }]);
-  console.log(`telly: ${await read('ArrowUp')}`);
+  const forecast = await read('ArrowUp');
+  if (!forecast[0]?.startsWith('KANTO TONIGHT')) throw new Error(`the telly says "${forecast[0]}"`);
+  console.log(`telly: ${forecast.join(' / ')}`);
 
   // Up the stairs: step onto the orange mat.
   const up = await page.evaluate(`${BASE}.room.stairs[0]`);
@@ -132,7 +185,8 @@ try {
   await page.screenshot(`${out}/upstairs.png`);
   console.log(`upstairs: arrived on the stair mat ${upstairs.tile.x},${upstairs.tile.y} facing down`);
 
-  for (const name of ['YOUR BED', 'YOUR PC', 'THE CONSOLE', 'THE CALENDAR']) {
+  const heard = {};
+  for (const name of ['PENNANTS', 'YOUR BED', 'YOUR PC', 'THE CONSOLE', 'THE CONSOLE', 'THE CONSOLE', 'THE CONSOLE', 'THE CALENDAR']) {
     const tiles = await page.evaluate(`${BASE}.place.room.things.find((t) => t.name === ${JSON.stringify(name)}).tiles`);
     const stands = [];
     for (const tile of tiles) {
@@ -147,8 +201,14 @@ try {
     await walkTo(open);
     const here = (await page.evaluate(state())).tile;
     const stand = open.find((each) => each.x === here.x && each.y === here.y);
-    console.log(`${name}: ${await read(stand.key)}`);
+    const lines = await read(stand.key, name === 'YOUR BED' ? { shot: `${out}/bed.png` } : {});
+    heard[name] = [...(heard[name] ?? []), lines.join(' / ')];
+    console.log(`${name}: ${lines.join(' / ')}`);
   }
+  if (!heard['PENNANTS'][0].startsWith('PENNANTS')) throw new Error(`the pennants say "${heard['PENNANTS'][0]}"`);
+  if (!heard['YOUR BED'][0].includes('NURSE JOY')) throw new Error('the bed did not send the player to Joy for healing');
+  if (!heard['THE CONSOLE'][3].includes('finally beat')) throw new Error(`the fourth game says "${heard['THE CONSOLE'][3]}"`);
+  await page.screenshot(`${out}/upstairs-read.png`);
 
   // Off the mat and back on is the way down.
   await walkTo([{ x: down.tile.x, y: down.tile.y + 1 }]);

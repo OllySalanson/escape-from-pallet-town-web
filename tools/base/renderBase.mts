@@ -11,6 +11,7 @@
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=pokemon-centre --hurt=5
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=bills-cottage --traded=40
  *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=oaks-lab --beaten=overlook-warden --survey=save.json
+ *   npx vite-node tools/base/renderBase.mts -- out.png 3 --room=bolthole-upstairs --raids=route-1:3:2 --starter=squirtle
  *
  * `--built=` is a list of rung ids from Brock's ladder, `all` or `none` (the
  * default). `--room=` draws the room behind that door instead of the yard, with
@@ -38,6 +39,8 @@ import { BASE_FIXTURES, standingFixtures } from '../../src/game/base/fixtures';
 import { BASE_LANDING, BASE_SPAWN, getBaseMap } from '../../src/game/base/baseMap';
 import { BASE_ROOMS, buildRoom, roomNamed } from '../../src/game/base/rooms';
 import { wallMapPoster } from '../../src/game/base/wallMap';
+import { badgeCasePoster } from '../../src/game/base/badgeCase';
+import { pennantsPoster } from '../../src/game/base/pennants';
 import { BASE_STARTS, walkHome, walksToKeepers } from '../../src/game/base/baseWalks';
 import { baseGame } from '../../src/game/base/baseGames.testkit';
 import { ODDITY_INK, oddityArt } from '../../src/game/base/cabinet';
@@ -70,12 +73,26 @@ for (const id of built) {
 // What the wall map in Oak's Lab is a picture of: keepers beaten, and a real
 // save's walked ground (`tools/playtest/raid.mjs --progress=` writes one).
 const survey = option('survey');
-const game = baseGame({
+const baseSave = baseGame({
   built,
   hurt,
   traded,
   progress: {
     defeatedBosses: (option('beaten') ?? '').split(',').filter(Boolean),
+    // `--raids=mapId:deployed:extracted,..` - what THE BOLTHOLE's pennants,
+    // PC and calendar read.
+    raidRecord: Object.fromEntries(
+      (option('raids') ?? '')
+        .split(',')
+        .filter(Boolean)
+        .map((entry) => {
+          const [mapId, deployed, extracted] = entry.split(':');
+          return [
+            mapId,
+            { deployed: Number(deployed), extracted: Number(extracted), wiped: Number(deployed) - Number(extracted) },
+          ];
+        }),
+    ),
     ...(survey === undefined
       ? {}
       : {
@@ -84,6 +101,12 @@ const game = baseGame({
         }),
   },
 });
+// `--starter=bulbasaur|charmander|squirtle`: whose colour the upstairs rug is.
+const starterFlag = option('starter');
+const game =
+  starterFlag === undefined
+    ? baseSave
+    : { ...baseSave, starterSpeciesId: starterFlag as typeof baseSave.starterSpeciesId };
 
 const room = roomFlag === undefined ? null : roomNamed(roomFlag);
 if (roomFlag !== undefined && !room) {
@@ -191,6 +214,12 @@ if (room && drawnRoom) {
     const poster = wallMapPoster(game, drawnRoom.wallMap);
     const { x, y } = drawnRoom.wallMap;
     blit(image, poster, 0, 0, poster.width, poster.height, x * TILE_SIZE, y * TILE_SIZE);
+  }
+  // And THE BOLTHOLE's badge case and pennants, the same way.
+  for (const poster of drawnRoom.posters) {
+    const picture =
+      poster.kind === 'badge-case' ? badgeCasePoster(game, poster.area) : pennantsPoster(game, poster.area);
+    blit(image, picture, 0, 0, picture.width, picture.height, poster.area.x * TILE_SIZE, poster.area.y * TILE_SIZE);
   }
   if (room.keeper) {
     const figure = readPng(`public/assets/characters/${room.keeper.design}.png`);

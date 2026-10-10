@@ -83,6 +83,10 @@ import {
 } from '../base/cabinet';
 import { oddityLabel } from '../hub/traderCabinet';
 import { wallMapPoster } from '../base/wallMap';
+import { badgeCasePoster } from '../base/badgeCase';
+import { pennantsPoster } from '../base/pennants';
+import { consoleLine } from '../base/homeLines';
+import type { PaintedPicture } from '../world/minimap';
 import {
   EMOTE_ART,
   EMOTE_BUBBLE_CREAM,
@@ -334,6 +338,8 @@ export class BaseScene extends Phaser.Scene {
   private pushingAgainst: Direction | null = null;
   private lookMs = 0;
   private leaving = false;
+  /** True while the screen is dark for a sleep in the player's own bed. */
+  private resting = false;
   private inspecting: Inspecting | null = null;
   private inspectLabel: WorldLabel | null = null;
   private inspectMark: Phaser.GameObjects.Graphics | null = null;
@@ -391,6 +397,7 @@ export class BaseScene extends Phaser.Scene {
     // Phaser keeps one instance per scene key, so everything a previous visit
     // left behind is cleared here rather than guarded at each read.
     this.leaving = false;
+    this.resting = false;
     this.targetTile = null;
     this.stepCarryMs = null;
     this.pushingAgainst = null;
@@ -496,7 +503,7 @@ export class BaseScene extends Phaser.Scene {
     this.containWorldLabels();
     this.dialogBox.update(deltaMs);
 
-    if (this.leaving) {
+    if (this.leaving || this.resting) {
       return;
     }
 
@@ -829,21 +836,34 @@ export class BaseScene extends Phaser.Scene {
    */
   private drawWallMap(): void {
     const area = this.place.room?.wallMap;
-    if (!area) {
-      return;
+    if (area) {
+      this.hangPicture(WALL_MAP_TEXTURE, wallMapPoster(this.savedGame, area), area);
     }
-    const poster = wallMapPoster(this.savedGame, area);
-    if (this.textures.exists(WALL_MAP_TEXTURE)) {
-      this.textures.remove(WALL_MAP_TEXTURE);
+    // The other pictures of the save a room keeps wall for: THE BOLTHOLE's
+    // badge case and its pennants, painted fresh on every visit for the same
+    // reason the wall map is.
+    for (const poster of this.place.room?.posters ?? []) {
+      const picture =
+        poster.kind === 'badge-case'
+          ? badgeCasePoster(this.savedGame, poster.area)
+          : pennantsPoster(this.savedGame, poster.area);
+      this.hangPicture(`base-poster-${poster.kind}`, picture, poster.area);
     }
-    const texture = this.textures.createCanvas(WALL_MAP_TEXTURE, poster.width, poster.height);
+  }
+
+  /** A picture of the save, painted into a texture of its own and hung on its stretch of wall. */
+  private hangPicture(key: string, picture: PaintedPicture, area: Rect): void {
+    if (this.textures.exists(key)) {
+      this.textures.remove(key);
+    }
+    const texture = this.textures.createCanvas(key, picture.width, picture.height);
     if (!texture) {
       return;
     }
-    texture.context.putImageData(new ImageData(poster.data, poster.width, poster.height), 0, 0);
+    texture.context.putImageData(new ImageData(picture.data, picture.width, picture.height), 0, 0);
     texture.refresh();
     this.add
-      .image(area.x * TILE_SIZE, area.y * TILE_SIZE, WALL_MAP_TEXTURE)
+      .image(area.x * TILE_SIZE, area.y * TILE_SIZE, key)
       .setOrigin(0, 0)
       .setDepth(atRow(MARKER_BAND, area.y + area.height - 1));
   }
@@ -1786,6 +1806,15 @@ export class BaseScene extends Phaser.Scene {
         this.say([cratesLine(cabinet.layout, cabinet.oddities, new Date())], [target]);
         return;
       }
+      if (thing?.does === 'sleep') {
+        this.sleep(thing.lines ?? [], [target]);
+        return;
+      }
+      if (thing?.does === 'play') {
+        consoleGames += 1;
+        this.say([consoleLine(consoleGames - 1)], [target]);
+        return;
+      }
       if (thing) {
         this.say(thing.lines ?? [`${thing.name} - ${thing.note.toLowerCase()}.`], [target]);
       }
@@ -1848,6 +1877,31 @@ export class BaseScene extends Phaser.Scene {
     this.goTo({ savedGame: this.savedGame, room: door.id }, 'interiorEnter');
   }
 
+  /**
+   * A lie-down in the player's own bed: the screen goes dark for a moment, and
+   * the bed's lines - the dream and the waking - are said as it comes back.
+   * Nothing else happens, on purpose: healing is Nurse Joy's, priced in raid
+   * time, and a free bed at home would price her at nothing.
+   */
+  private sleep(lines: readonly string[], about: readonly GridPosition[]): void {
+    this.resting = true;
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    const camera = this.cameras.main;
+    camera.fadeOut(SLEEP_FADE_MS, 0, 0, 0);
+    camera.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.time.delayedCall(SLEEP_DARK_MS, () => {
+        if (this.leaving) {
+          return;
+        }
+        camera.fadeIn(SLEEP_FADE_MS, 0, 0, 0);
+        this.resting = false;
+        this.say(lines, about);
+      });
+    });
+  }
+
   /** Onto a stair mat: the same scene, started again on the floor it leads to. */
   private climb(room: BaseRoom, to: string): void {
     this.goTo({ savedGame: this.savedGame, room: to, stairsFrom: room.id }, 'interiorEnter');
@@ -1900,6 +1954,16 @@ export class BaseScene extends Phaser.Scene {
     );
   }
 }
+
+/** How long the screen takes to go dark for a sleep, and how long it stays dark. */
+const SLEEP_FADE_MS = 450;
+const SLEEP_DARK_MS = 600;
+
+/**
+ * Games played on the console upstairs this visit to the page: the fourth is
+ * the one you win (`consoleLine`). Not saved - it is a secret, not a record.
+ */
+let consoleGames = 0;
 
 /** Which screen each room's keeper opens, as `HubScene` names its views. */
 const SCREEN_VIEWS = {

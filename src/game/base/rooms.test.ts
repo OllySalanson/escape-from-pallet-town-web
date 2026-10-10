@@ -16,6 +16,9 @@ import {
   restingBalls,
   roomNamed,
   stairArrival,
+  BADGE_CASE_WALL,
+  PENNANT_WALL,
+  wallTiles,
   type BaseRoom,
 } from './rooms';
 import type { BaseKeeper } from './doors';
@@ -402,5 +405,55 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
         expect([each.id, thing.name, (thing.lines ?? []).length > 0]).toEqual([each.id, thing.name, true]);
       }
     }
+  });
+
+  /**
+   * The badge case and the pennants are pictures of the save painted on wall
+   * the room keeps bare for them, as the wall map is in Oak's Lab: nothing
+   * planted over that wall, the plain wall drawn under it, and each read from
+   * the floor in front of it.
+   */
+  it.each([
+    ['bolthole', BADGE_CASE_WALL, 'badge-case', 'THE BADGE CASE'],
+    ['bolthole-upstairs', PENNANT_WALL, 'pennants', 'PENNANTS'],
+  ] as const)('keeps a bare stretch of wall in %s for what hangs there', (id, wall, kind, name) => {
+    const inside = room(id);
+    const built = buildRoom(inside, baseGame({ built: EVERY_RUNG }));
+    for (const tile of wallTiles(wall)) {
+      expect([tile, built.collision[tile.y][tile.x]]).toEqual([tile, true]);
+      expect([tile, built.layers.ground.tiles[tile.y][tile.x] >= 0]).toEqual([tile, true]);
+      expect([tile, built.layers.detail.tiles[tile.y][tile.x]]).toEqual([tile, -1]);
+    }
+    expect(built.posters).toEqual([{ kind, area: wall }]);
+    const thing = built.things.find((each) => each.name === name)!;
+    expect(thing.tiles).toEqual(wallTiles(wall));
+    // Every tile of its lower row can be faced from the floor under it.
+    const foot = wall.y + wall.height - 1;
+    const steps = stepsFrom(built.collision, entrancesOf(inside)[0]);
+    for (let x = wall.x; x < wall.x + wall.width; x += 1) {
+      expect([x, built.collision[foot + 1][x]]).toEqual([x, false]);
+      expect([x, Number.isFinite(steps[foot + 1][x])]).toEqual([x, true]);
+    }
+  });
+
+  it('hangs nothing on the walls of any other room', () => {
+    for (const each of BASE_ROOMS.filter((candidate) => !candidate.id.startsWith('bolthole'))) {
+      expect([each.id, buildRoom(each, baseGame()).posters]).toEqual([each.id, []]);
+    }
+  });
+
+  /** The rug is the colour of the partner: one piece drawn three ways. */
+  it("lays the upstairs rug in the partner's colour", () => {
+    const game = baseGame();
+    const rugCell = (starterSpeciesId: 'bulbasaur' | 'charmander' | 'squirtle') =>
+      buildRoom(upstairs, { ...game, starterSpeciesId }).layers.detail.tiles[5][6];
+    const colours = new Set([rugCell('bulbasaur'), rugCell('charmander'), rugCell('squirtle')]);
+    expect(colours.size).toBe(3);
+  });
+
+  it('sleeps in the bed and plays the console, and nothing else in the house does anything', () => {
+    const things = [downstairs, upstairs].flatMap((each) => buildRoom(each, baseGame()).things);
+    expect(things.filter((thing) => thing.does === 'sleep').map((thing) => thing.name)).toEqual(['YOUR BED']);
+    expect(things.filter((thing) => thing.does === 'play').map((thing) => thing.name)).toEqual(['THE CONSOLE']);
   });
 });

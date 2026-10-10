@@ -23,6 +23,18 @@ import {
   type CabinetLayout,
 } from './cabinet';
 import { wallMapNote } from './wallMap';
+import { badgeCaseLines, badgeCaseNote } from './badgeCase';
+import { pennantLines, pennantsNote } from './pennants';
+import {
+  bedLines,
+  calendarDay,
+  calendarLines,
+  nextRival,
+  partnerRug,
+  pcLines,
+  tellyLines,
+} from './homeLines';
+import { hunterRival } from '../world/hunters';
 
 /**
  * The four rooms behind the base's four doors.
@@ -162,8 +174,9 @@ function sideWall(name: 'warehouse.sideWest' | 'warehouse.sideEast'): PropDefini
  * cupboard's, the television stand's - is floor you may stand on, which is how
  * a FireRed room is walked. Three are judged instead of copied, because
  * FireRed draws a top layer over the player there and this game has none: a
- * pot plant is solid all the way up, the bed is solid where the bed is, and
- * the television's top is solid so nobody stands in it.
+ * pot plant is solid all the way up, the bed is solid from its headboard down
+ * (or the player stands in its pillow), and the television's top is solid so
+ * nobody stands in it.
  */
 function HOME_PROPS(): Record<HomePropName, PropDefinition> {
   const home = HOME_SHEET_PIECES;
@@ -186,7 +199,7 @@ function HOME_PROPS(): Record<HomePropName, PropDefinition> {
     homeStairsDown: home.solid('home.stairsDown', 'stairs'),
     homeStairMatDown: home.floor('home.stairMatDown', 'stair mat'),
     homePoster: home.solid('home.poster', 'calendar'),
-    homeBed: home.prop('home.bed', 'bed', ['...', '.#.', '.#.']),
+    homeBed: home.prop('home.bed', 'bed', ['.#.', '.#.', '.#.']),
     homeTvTop: home.solid('home.tvTop', 'television'),
     homeRugTv: rugTv('home.rugTv'),
     homeRugTvRed: rugTv('home.rugTvRed'),
@@ -329,6 +342,21 @@ export interface RoomThing {
    * thing in the player's own house has more to say than what it is.
    */
   readonly lines?: readonly string[];
+  /**
+   * Something it does when faced and spoken to, beyond saying its lines: the
+   * bed is slept in (the screen goes dark first) and the console is played.
+   */
+  readonly does?: 'sleep' | 'play';
+}
+
+/**
+ * A picture of the save painted onto a stretch of wall that the room keeps
+ * bare for it, as the wall map is in Oak's Lab: the badge case in the front
+ * room of the player's house, and the pennants upstairs.
+ */
+export interface RoomPoster {
+  readonly kind: 'badge-case' | 'pennants';
+  readonly area: Rect;
 }
 
 /**
@@ -397,6 +425,8 @@ export interface BuiltRoom {
   readonly cabinet?: BuiltCabinet;
   /** Where the wall map hangs, in the one room it hangs in. */
   readonly wallMap: Rect | null;
+  /** The other pictures of the save painted on this room's walls. */
+  readonly posters: readonly RoomPoster[];
 }
 
 // --- the wall map -----------------------------------------------------------
@@ -719,6 +749,7 @@ interface Drawn {
   readonly sprites: RoomSprite[];
   readonly cabinet?: BuiltCabinet;
   readonly wallMap?: Rect;
+  readonly posters?: readonly RoomPoster[];
 }
 
 /**
@@ -855,13 +886,32 @@ function drawCottage(room: BaseRoom, game: RestoredGame): Drawn {
 // --- THE BOLTHOLE -----------------------------------------------------------
 
 /**
+ * The stretch of the front room's back wall the badge case hangs on: the four
+ * tiles between the window and the stair mat, both wall rows deep, with nothing
+ * planted over them (`rooms.test.ts` holds that). The case is a picture of the
+ * save (`badgeCase.ts`), painted there by the scene as the wall map is.
+ */
+export const BADGE_CASE_WALL: Rect = { x: 8, y: 0, width: 4, height: 2 };
+
+/** And the stretch of the bedroom wall the pennants are strung along. */
+export const PENNANT_WALL: Rect = { x: 5, y: 0, width: 5, height: 2 };
+
+/** Every tile of a stretch of wall: what is faced to read it, and what its caption is seated against. */
+export function wallTiles(area: Rect): readonly GridPosition[] {
+  return Array.from({ length: area.width * area.height }, (_tile, index) => ({
+    x: area.x + (index % area.width),
+    y: area.y + Math.floor(index / area.width),
+  }));
+}
+
+/**
  * Downstairs, which is the player's house in Pallet Town as FireRed draws it:
  * the sink and the hob, the glass-fronted cupboard, the family television, the
  * window, the table on its green rug, and the stairs up with the orange mat at
- * their foot. Two columns of wall are added beside the window and nothing is
- * stood against them: that stretch of wall is kept.
+ * their foot - and between the window and the stairs, THE BADGE CASE, which is
+ * the first thing a player coming in through the door looks up at.
  */
-function drawHome(room: BaseRoom): Drawn {
+function drawHome(room: BaseRoom, game: RestoredGame): Drawn {
   const sketch = shell(room);
   westShade(sketch, room);
   sketch.plant(0, 1, 'homeKitchen');
@@ -876,10 +926,16 @@ function drawHome(room: BaseRoom): Drawn {
   sketch.plant(6, 8, 'homeMat');
   const things: RoomThing[] = [
     {
+      name: 'THE BADGE CASE',
+      note: badgeCaseNote(game),
+      tiles: wallTiles(BADGE_CASE_WALL),
+      lines: badgeCaseLines(game),
+    },
+    {
       name: 'THE TELLY',
-      note: 'Kanto Tonight is on',
+      note: `${hunterRival(nextRival(game)).name} is on`,
       tiles: [{ x: 5, y: 1 }],
-      lines: ['KANTO TONIGHT is on. Nobody on it is talking about you, which is how you like it.'],
+      lines: tellyLines(game),
     },
     {
       name: 'THE KITCHEN',
@@ -900,17 +956,31 @@ function drawHome(room: BaseRoom): Drawn {
       lines: ['The good plates. Nobody has ever eaten off them.'],
     },
   ];
-  return { sketch, catalogue: HOUSE, things, sprites: [] };
+  return {
+    sketch,
+    catalogue: HOUSE,
+    things,
+    sprites: [],
+    posters: [{ kind: 'badge-case', area: BADGE_CASE_WALL }],
+  };
 }
+
+/** Which of the upstairs rug's three colours this save's partner is. */
+const RUG_PIECES: Readonly<Record<ReturnType<typeof partnerRug>, HomePropName>> = {
+  green: 'homeRugTv',
+  red: 'homeRugTvRed',
+  blue: 'homeRugTvBlue',
+};
 
 /**
  * Upstairs is the player's room from the same house: the PC on its desk, the
  * chest of drawers and the bookcase of toys along the wall, the clipboard by
  * the stairs, the bed, and the telly on the rug with the console in front of
- * it - the room every one of these games begins in. Again a stretch of wall is
- * added and kept clear, between the bookcase and the clipboard.
+ * it - the room every one of these games begins in. The rug is the colour of
+ * the player's partner, and along the wall hang the pennants of
+ * every place the player has come home from.
  */
-function drawUpstairs(room: BaseRoom): Drawn {
+function drawUpstairs(room: BaseRoom, game: RestoredGame): Drawn {
   const sketch = shell(room);
   westShade(sketch, room);
   sketch.plant(0, 0, 'homePcDesk');
@@ -921,8 +991,14 @@ function drawUpstairs(room: BaseRoom): Drawn {
   sketch.plant(13, 2, 'homeStairMatDown');
   sketch.plant(0, 4, 'homeBed');
   sketch.plant(7, 3, 'homeTvTop');
-  sketch.plant(5, 4, 'homeRugTv');
+  sketch.plant(5, 4, RUG_PIECES[partnerRug(game)]);
   const things: RoomThing[] = [
+    {
+      name: 'PENNANTS',
+      note: pennantsNote(game),
+      tiles: wallTiles(PENNANT_WALL),
+      lines: pennantLines(game),
+    },
     {
       name: 'YOUR BED',
       note: 'Nobody hunts you here',
@@ -930,13 +1006,14 @@ function drawUpstairs(room: BaseRoom): Drawn {
         { x: 1, y: 5 },
         { x: 1, y: 6 },
       ],
-      lines: ['Your own bed. Nobody hunts you here.'],
+      lines: bedLines(game),
+      does: 'sleep',
     },
     {
       name: 'YOUR PC',
-      note: 'It hums to itself',
+      note: 'The raid log',
       tiles: [{ x: 0, y: 1 }],
-      lines: ['Your PC hums to itself. Bill keeps everything you own; this one just keeps you company.'],
+      lines: pcLines(game),
     },
     {
       name: 'THE CONSOLE',
@@ -945,7 +1022,8 @@ function drawUpstairs(room: BaseRoom): Drawn {
         { x: 7, y: 4 },
         { x: 7, y: 5 },
       ],
-      lines: ['You play a quick game. You lose to a Bug Catcher, again.'],
+      lines: ['You play a quick game.'],
+      does: 'play',
     },
     {
       name: 'THE BOOKCASE',
@@ -958,12 +1036,18 @@ function drawUpstairs(room: BaseRoom): Drawn {
     },
     {
       name: 'THE CALENDAR',
-      note: 'Pinned by the stairs',
+      note: `Day ${calendarDay(game)}`,
       tiles: [{ x: 10, y: 1 }],
-      lines: ['A calendar, pinned by the stairs. Nothing is written on it yet.'],
+      lines: calendarLines(game),
     },
   ];
-  return { sketch, catalogue: HOUSE, things, sprites: [] };
+  return {
+    sketch,
+    catalogue: HOUSE,
+    things,
+    sprites: [],
+    posters: [{ kind: 'pennants', area: PENNANT_WALL }],
+  };
 }
 
 /**
@@ -1004,6 +1088,7 @@ export function buildRoom(room: BaseRoom, game: RestoredGame): BuiltRoom {
     sprites: drawn.sprites,
     ...(drawn.cabinet ? { cabinet: drawn.cabinet } : {}),
     wallMap: drawn.wallMap ?? null,
+    posters: drawn.posters ?? [],
   };
 }
 
