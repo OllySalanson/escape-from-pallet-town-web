@@ -148,6 +148,21 @@ try {
   const errors = await evaluate('window.__errors');
   report('nothing threw', errors.length === 0, errors.join('; '));
 
+  // Carried past the edge: the drop-in dragged off the east side with Select.
+  await key('v', 'KeyV', 86);
+  // Let go past the window's edge, over the column beside it: the drag still ends.
+  await drag(await tile(10, 10), await tile(41, 10), 10);
+  file = await live();
+  report('a drop-in carried past the east edge, and let go over the column beside the window, still lands', file.dropIns[0].x > 30 && (await evaluate(`window.__escapeFromPalletTownGame__.scene.getScene('mapmaker').stroke === undefined`)), `${file.width}x${file.height} ${JSON.stringify(file.dropIns[0])}`);
+  // A district dragged out past the south-east corner.
+  await click('[data-place="district"]');
+  await drag(await tile(30, 20), await tile(41, 31), 10);
+  file = await live();
+  report('a district dragged out past the corner grows the map round it', file.width > 40 && file.height === 34 && file.districts?.[0]?.height === 12, `${file.width}x${file.height} ${JSON.stringify(file.districts)}`);
+  report('...and the kept picture is the picture drawn whole', (await pictureDrift()) === 0);
+  await key('z', 'KeyZ', 90, 2);
+  await key('z', 'KeyZ', 90, 2);
+
   // Held past the window's edge: the window scrolls, the map grows as it goes.
   await key('b', 'KeyB', 66);
   await click('[data-brush="grass"]');

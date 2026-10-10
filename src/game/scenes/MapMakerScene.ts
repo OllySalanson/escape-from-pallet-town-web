@@ -467,6 +467,15 @@ export class MapMakerScene extends Phaser.Scene {
     if (kept && fresh) {
       fresh.replaceWith(kept);
       this.layoutStack(this.file);
+      // Taken out of the page and put back, the map let go of the pointer a
+      // stroke holds, and a drag let go of past the window never ended.
+      if (this.stroke) {
+        try {
+          this.mapCanvas()?.setPointerCapture(this.stroke.pointerId);
+        } catch {
+          // The pointer is gone; the stroke ends when it is next let go over the map.
+        }
+      }
     } else if (fresh) {
       this.painter.forgetCanvas();
     }

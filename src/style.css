@@ -3140,6 +3140,9 @@ button {
   display: grid;
   overflow: auto;
   overscroll-behavior: contain;
+  /* The scene holds the view still itself as the map grows under it
+     (`holdingTheView`); the browser's own anchoring would move it twice. */
+  overflow-anchor: none;
   background: var(--bar);
 }
 /* A map smaller than its viewport sits in the middle of it; a bigger one
