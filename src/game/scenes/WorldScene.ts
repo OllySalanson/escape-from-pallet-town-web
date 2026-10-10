@@ -104,6 +104,7 @@ import {
   completedObjectiveRewards,
   contractCarryIn,
   contractReportLine,
+  contractStopMessage,
   formatStacks,
   isContractBankable,
   missingCarryIn,
@@ -4434,7 +4435,7 @@ export class WorldScene extends Phaser.Scene {
     audioManager.play('contractStop');
     this.refreshRunTimerHud();
     this.saveGame();
-    return marker.collectedMessage;
+    return contractStopMessage(contract, marker, session.manager.snapshot().contractSteps);
   }
 
   private returnLocation(): RaidLocation {

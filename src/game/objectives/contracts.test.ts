@@ -14,6 +14,7 @@ import {
   availableContracts,
   contractCarryIn,
   contractForMap,
+  contractStopMessage,
   FIRST_CONTRACT_ID,
   isContractBankable,
   missingCarryIn,
@@ -330,6 +331,34 @@ describe('saves written before contracts were a list', () => {
         loaded.traderBerthPaid,
       ),
     ).toEqual({ width: 2, height: 2 });
+  });
+});
+
+describe('what making a stop says', () => {
+  /**
+   * The braid's stakes can be read in any order, and its lines were written
+   * for one: reading the east stake first and the west one second said "West
+   * road logged. Two stakes left." with one left and the chip saying so.
+   */
+  it('counts the stakes left from the ones read, in every order', () => {
+    const braid = RAID_CONTRACTS.find((contract) => contract.id === 'survey-the-braid')!;
+    const [a, b, c] = braid.markers;
+    for (const order of [[a, b, c], [a, c, b], [b, a, c], [b, c, a], [c, a, b], [c, b, a]]) {
+      const said = order.map((marker, index) =>
+        contractStopMessage(braid, marker, order.slice(0, index + 1).map((made) => made.id)),
+      );
+      expect(said).toEqual([
+        `${order[0].collectedMessage} Two left.`,
+        `${order[1].collectedMessage} One left.`,
+        `${order[2].collectedMessage} That is all three.`,
+      ]);
+    }
+    expect(contractStopMessage(braid, c, [c.id, a.id])).toBe('East road logged. One left.');
+  });
+
+  it('says a single stop as written', () => {
+    const kit = RAID_CONTRACTS.find((contract) => contract.id === FIRST_CONTRACT_ID)!;
+    expect(contractStopMessage(kit, kit.markers[0], [kit.markers[0].id])).toBe(kit.markers[0].collectedMessage);
   });
 });
 

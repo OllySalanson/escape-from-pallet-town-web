@@ -4,6 +4,7 @@ export {
   BASE_SECURE_POKEMON,
   contractCarryIn,
   contractForMap,
+  contractStopMessage,
   contractStopsDone,
   contractUnlockedInsertionIds,
   FIRST_CONTRACT,

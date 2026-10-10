@@ -545,10 +545,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
         label: `SURVEY STAKE ${index + 1}\n${compass(ground.map, position).toUpperCase()}`,
         cue: `STAKE ${index + 1}`,
         icon: 'field-kit',
-        collectedMessage:
-          index === SURVEY_STAKES - 1
-            ? `Stake ${index + 1} logged.`
-            : `Stake ${index + 1} logged. The board wants all ${SURVEY_STAKES}.`,
+        collectedMessage: `Stake ${index + 1} logged.`,
       })),
       briefing: [
         `${SURVEY_STAKES} stakes, in any order: ${regions(ground.map, stakes)}.`,

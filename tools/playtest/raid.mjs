@@ -286,7 +286,11 @@ try {
         if (now.world?.dialog && !dialogShot && option('shot') && flag('shot-dialogs')) {
           dialogShot = true;
           dialogShots += 1;
-          await wait(stepped ? 300 : 200);
+          // A line types itself out, so the picture waits for the whole of it:
+          // a fixed pause photographed "West road log" of "West road logged.".
+          for (let typing = 0; typing < 50 && !(await page.evaluate(`${GAME}.scene.getScene('world').dialogBox.isCurrentMessageComplete`)); typing += 1) {
+            await wait(stepped ? 100 : 30);
+          }
           await page.screenshot(option('shot').replace(/\.png$/, `-dialog-${dialogShots}.png`));
         }
         if (!now.world || !now.world.target) {
