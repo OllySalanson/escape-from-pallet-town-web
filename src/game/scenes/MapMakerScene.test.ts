@@ -446,6 +446,30 @@ describe('undo and zoom across the session', () => {
   });
 });
 
+describe('a new map', () => {
+  it('is signed with the name the maker last signed a map with', () => {
+    storeDraft({ ...withSigns(), maker: 'Olly' });
+    const { scene } = openMaker();
+
+    scene.overlay.clicks.get('[data-new]')!();
+
+    expect(scene.file.signs ?? []).toHaveLength(0);
+    expect(scene.file.maker).toBe('Olly');
+    const stored = JSON.parse(localStorage.getItem(MAKER_STORAGE_KEY)!) as {
+      drafts: { file: MapFile }[];
+    };
+    expect(stored.drafts.map((draft) => draft.file.maker)).toEqual(['Olly', 'Olly']);
+  });
+
+  it('is unsigned when no map has been signed yet', () => {
+    const { scene } = openMaker();
+
+    scene.overlay.clicks.get('[data-new]')!();
+
+    expect(scene.file.maker).toBe('');
+  });
+});
+
 describe('a stroke dragged past the edge of the map window', () => {
   const grass = groundAt(blankMap(), { x: 10, y: 7 });
   const tallGrass = groundBrush('tall-grass')!.letterFor(grass ?? '.');

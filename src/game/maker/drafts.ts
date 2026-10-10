@@ -159,6 +159,15 @@ export function withoutDraft(store: MakerStore, key: string): MakerStore {
   return current === key || !current ? { ...rest, drafts } : { ...rest, drafts, current };
 }
 
+/**
+ * The name the maker last signed a map with: the newest draft that carries
+ * one. A new map starts signed with it, because a maker is the same person
+ * from one map to the next and an empty name is a check every new map fails.
+ */
+export function lastMakerName(store: MakerStore): string {
+  return store.drafts.find((draft) => draft.file.maker.trim() !== '')?.file.maker ?? '';
+}
+
 /** A key no draft in the store has yet. */
 export function newDraftKey(store: MakerStore, now = Date.now()): string {
   let key = `draft-${now.toString(36)}`;

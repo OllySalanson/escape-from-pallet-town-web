@@ -29,6 +29,7 @@ import {
   loadMakerStore,
   mapFileText,
   walkedVersion,
+  lastMakerName,
   newDraftKey,
   saveMakerStore,
   withDraft,
@@ -278,7 +279,7 @@ export class MapMakerScene extends Phaser.Scene {
 
   private startNewDraft(): void {
     this.draftKey = newDraftKey(this.store);
-    const file = blankMap();
+    const file = setMaker(blankMap(), lastMakerName(this.store));
     this.openHistory(file);
     this.store = withDraft(this.store, { key: this.draftKey, file, updatedAt: Date.now() });
     saveMakerStore(this.store);
