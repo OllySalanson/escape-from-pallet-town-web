@@ -415,11 +415,17 @@ export class MenuOverlay {
       const box = pane.getBoundingClientRect();
       const rows =
         scrolled || more
-          ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].flatMap((row) =>
-              row.classList.contains('px-wrap') ? lineBoxes(row) : [row.getBoundingClientRect()],
+          ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].flatMap((element) =>
+              (element.classList.contains('px-wrap') ? lineBoxes(element) : [element.getBoundingClientRect()]).map(
+                ({ top, bottom }) => ({ top, bottom, element }),
+              ),
             )
           : [];
       this.markTopCut(pane, box, rows, scrolled ? unit : 0);
+      pane.querySelectorAll<HTMLElement>('[data-folded]').forEach((element) => {
+        element.removeAttribute('data-folded');
+        element.style.removeProperty('clip-path');
+      });
       if (!more) {
         pane.removeAttribute('data-more');
         pane.style.removeProperty('--more-cover');
@@ -427,6 +433,15 @@ export class MenuOverlay {
       }
       const cover = scrollCoverHeight(box, rows, unit);
       pane.style.setProperty('--more-cover', `${cover}px`);
+      // The strip is as tall as the row it was raised to cover, which is not
+      // always far enough for the row beside it: a pane in two columns whose
+      // lines do not share a rhythm (Bill's, a price beside a note) was folded
+      // through the middle of the other column's line. That line is clipped off
+      // from its own top, so the fold leaves it whole or leaves it out.
+      for (const { element, top } of foldedRows(box, rows, box.bottom - cover)) {
+        element.setAttribute('data-folded', '');
+        element.style.clipPath = `inset(0 0 ${element.getBoundingClientRect().bottom - top}px 0)`;
+      }
       // The strip says how much is down there, because "there is more" is not
       // the same answer as "there are nine more": the first leaves a player
       // guessing whether the thing they want is one row down or off the end of
@@ -599,6 +614,22 @@ function detailGroupOf(control: HTMLElement | null, root: HTMLElement): HTMLElem
     }
   }
   return root;
+}
+
+/**
+ * The rows a pane's fold still goes through once its MORE strip is drawn, each
+ * with the top of the line it is cut through at, so that line and everything
+ * below it in the row can be left out. Only within the reach the strip itself
+ * has (three quarters of the pane): a row cut higher than that is the one the
+ * strip leaves cut rather than hide the pane, and clipping it would do the same.
+ */
+export function foldedRows<Row extends { readonly top: number; readonly bottom: number }>(
+  pane: { readonly top: number; readonly bottom: number },
+  rows: readonly Row[],
+  fold: number,
+): Row[] {
+  const reach = pane.bottom - ((pane.bottom - pane.top) * 3) / 4;
+  return rows.filter((row) => row.top < fold - 0.5 && row.bottom > fold + 0.5 && row.top >= reach);
 }
 
 export function scrollCoverHeight(
