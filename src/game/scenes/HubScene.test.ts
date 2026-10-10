@@ -2054,6 +2054,9 @@ describe('the wall map in Oak’s Lab', () => {
     // What is on it, each with the ink the picture draws it in.
     expect(close).toContain('OVERLOOK GATE');
     expect(close).toContain('held by WARDEN WREN');
+    // A Cut door has no keeper: it wants a move.
+    expect(close).toContain('needs CUT');
+    expect(close).not.toContain('held by CUT');
     expect(close).toContain('No keeper beaten here yet');
 
     hub.goBack();

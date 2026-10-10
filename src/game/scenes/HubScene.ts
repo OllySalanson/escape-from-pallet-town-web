@@ -25,9 +25,12 @@ import {
   recoveryPriceShare,
   spendableSupply,
   buildDropInBriefing,
+  doorHolder,
+  doorPromise,
   gradeLine,
   largestMapSize,
   placePicture,
+  shutDoorLine,
   type DropInBriefing,
   type DropInContext,
   TRADER_BERTH_PRICE,
@@ -2397,10 +2400,8 @@ export class HubScene extends Phaser.Scene {
       : `<h3 class="px-subheading">Doors</h3>${briefing.doors
           .map((line) =>
             told(
-              `${this.pip(line.open ? 'O' : 'H')}<span class="px-row-main"><strong>${line.label}</strong><small>${line.open ? 'open' : `held by ${line.bossName}`}</small></span>`,
-              line.open
-                ? `${line.label} stands open on every raid.`
-                : `${line.label} is held by ${line.bossName}.`,
+              `${this.pip(line.open ? 'O' : 'H')}<span class="px-row-main"><strong>${line.label}</strong><small>${line.open ? 'open' : doorHolder(line)}</small></span>`,
+              line.open ? `${line.label} stands open on every raid.` : shutDoorLine(line),
               ' has-pip',
             ),
           )
@@ -2504,10 +2505,8 @@ export class HubScene extends Phaser.Scene {
       : `<h3 class="px-subheading">Doors</h3>${briefing.doors
           .map((door) =>
             told(
-              `${this.pip(door.open ? 'O' : 'H')}<span class="px-row-main"><strong>${door.label}</strong><small>${door.open ? 'you opened this' : `held by ${door.bossName}`}</small></span>`,
-              door.open
-                ? `${door.label} stands open on every raid from now on, because you beat the keeper who held it.`
-                : `${door.label} is held by ${door.bossName}. Beat them once and it stays open for good.`,
+              `${this.pip(door.open ? 'O' : 'H')}<span class="px-row-main"><strong>${door.label}</strong><small>${door.open ? 'you opened this' : doorHolder(door)}</small></span>`,
+              doorPromise(door),
               ' has-pip' + (door.open ? ' is-selected' : ''),
             ),
           )

@@ -75,6 +75,31 @@ export interface DoorLine {
   readonly open: boolean;
 }
 
+/**
+ * What a shut door's row says beside its name. A keeper holds a door and a
+ * move opens one: "held by CUT" made a hedge of growth sound like a person.
+ */
+export function doorHolder(door: DoorLine): string {
+  return door.heldBy === 'move' ? `needs ${door.bossName}` : `held by ${door.bossName}`;
+}
+
+/** A shut door, said as a sentence. */
+export function shutDoorLine(door: DoorLine): string {
+  return `${door.label} ${door.heldBy === 'move' ? 'needs' : 'is held by'} ${door.bossName}.`;
+}
+
+/** What the drop-in screen promises about a door, open or shut. */
+export function doorPromise(door: DoorLine): string {
+  if (door.heldBy === 'move') {
+    return door.open
+      ? `${door.label} stands open on every raid from now on, because you opened it with ${door.bossName}.`
+      : `${door.label} needs ${door.bossName}. Open it once with a Pokémon that knows ${door.bossName} and it stays open for good.`;
+  }
+  return door.open
+    ? `${door.label} stands open on every raid from now on, because you beat the keeper who held it.`
+    : `${door.label} is held by ${door.bossName}. Beat them once and it stays open for good.`;
+}
+
 export interface ExitLine {
   readonly label: string;
   /** OPEN, OPENS IN 25s, WORK THE SLUICE WHEEL - the map's own words. */

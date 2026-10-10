@@ -1,9 +1,12 @@
 export {
   buildDropInBriefing,
+  doorHolder,
+  doorPromise,
   gradeLine,
   largestMapSize,
   mapPicture,
   placePicture,
+  shutDoorLine,
 
   type DropInBriefing,
   type DropInContext,

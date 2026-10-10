@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { buildDropInBriefing, gradeLine, PLACE_GRADE_LEVELS, placePicture, type DropInContext } from './dropIn';
+import {
+  buildDropInBriefing,
+  doorHolder,
+  doorPromise,
+  gradeLine,
+  shutDoorLine,
+  PLACE_GRADE_LEVELS,
+  placePicture,
+  type DropInContext,
+} from './dropIn';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { getWorldMap } from '../worldMap';
 import { type RunInsertionId, requireInsertion } from '../run/runGeneration';
@@ -121,6 +130,25 @@ describe('what the drop-in screen says about a place', () => {
 
     expect(briefing.doors.length).toBeGreaterThan(0);
     expect(briefing.doors.every((door) => door.bossName !== 'SOMEBODY')).toBe(true);
+  });
+
+  it('says a field-move door needs its move, never that the move holds it', () => {
+    const shut = buildDropInBriefing('route-1', contextFor('route-1')).doors
+      .find((door) => door.label === 'THORN GATE')!;
+    expect(doorHolder(shut)).toBe('needs CUT');
+    expect(shutDoorLine(shut)).toBe('THORN GATE needs CUT.');
+    expect(doorPromise(shut)).toContain('a Pokémon that knows CUT');
+    expect(doorPromise(shut)).not.toContain('Beat them');
+
+    const opened = buildDropInBriefing('route-1', contextFor('route-1', { openedGates: ['route-1-thorn-gate'] })).doors
+      .find((door) => door.label === 'THORN GATE')!;
+    expect(doorPromise(opened)).toBe('THORN GATE stands open on every raid from now on, because you opened it with CUT.');
+
+    // A keeper's door still says who holds it.
+    const keeper = buildDropInBriefing('route-1', contextFor('route-1')).doors
+      .find((door) => door.label === 'OVERLOOK GATE')!;
+    expect(doorHolder(keeper)).toBe('held by WARDEN WREN');
+    expect(shutDoorLine(keeper)).toBe('OVERLOOK GATE is held by WARDEN WREN.');
   });
 
   it('names every way out and what opens it, in the map\'s own words', () => {
