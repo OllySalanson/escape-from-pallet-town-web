@@ -51,6 +51,8 @@ export const PLACED = [
   'trainers',
   'districts',
   'pokemon',
+  'berryTrees',
+  'boulders',
 ] as const satisfies readonly (keyof MapFile)[];
 
 type Placed = MapFileSpot | MapFileDistrict;

@@ -20,6 +20,8 @@ import { WeatherId } from '../pokemon/battle/weather';
 import type { ExtractionPoint } from './extractionPoints';
 import type { WorldEntity } from './npcs';
 import { isFigureSpecies, pokemonCry, type FigureSpeciesId } from './pokemonFigures';
+import { BERRY_IDS, berryTreeLines, type BerryId } from './berries';
+import { BOULDER_LINES } from './boulders';
 import type { WorldPoi } from './pois';
 import { createRunTrainerEncounters, type RunTrainerEncounter } from './trainers';
 import type { WorldLoot } from './loot';
@@ -99,6 +101,8 @@ export const MAP_FILE_LIMITS = {
   maxDistricts: 16,
   maxDoors: 16,
   maxPokemon: 30,
+  maxBerryTrees: 30,
+  maxBoulders: 40,
   /** The highest level a standing Pokemon may fight at: the top of the ladder the game's own trainers sit on. */
   maxPokemonLevel: 50,
   /** The widest or deepest a stretch of water Surf opens may be. */
@@ -599,9 +603,15 @@ export const MAP_FILE_HABITATS = {
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
 
-/** When an exit can be left by. Locks and keys will be more values of this. */
+/**
+ * When an exit can be left by. Locks and keys are more values of this: `dug` is
+ * an exit behind rubble that a Pickaxe carried in the pack digs out, for that
+ * raid only (`WorldScene.tryDigAt`).
+ */
 export type MapFileOpens =
-  { readonly when: 'always' } | { readonly when: 'after'; readonly seconds: number };
+  | { readonly when: 'always' }
+  | { readonly when: 'after'; readonly seconds: number }
+  | { readonly when: 'dug' };
 
 export interface MapFileSpot {
   readonly x: number;
@@ -800,6 +810,14 @@ export interface MapFilePokemon extends MapFileSpot {
   readonly level?: number;
 }
 
+/** A berry tree (`berries.ts`): picked once a raid for one berry. */
+export interface MapFileBerryTree extends MapFileSpot {
+  readonly berry: BerryId;
+}
+
+/** A Strength boulder: a wall until something that knows Strength pushes it (`boulders.ts`). */
+export type MapFileBoulder = MapFileSpot;
+
 export interface MapFileSign extends MapFileSpot {
   readonly lines: readonly string[];
 }
@@ -919,6 +937,10 @@ export interface MapFile {
   /** Insides, and the ways into them: see `MapFileArea` and `MapFileLink`. */
   readonly areas?: readonly MapFileArea[];
   readonly links?: readonly MapFileLink[];
+  /** Added with the third: berry trees, picked once a raid. */
+  readonly berryTrees?: readonly MapFileBerryTree[];
+  /** And boulders, pushed with Strength. */
+  readonly boulders?: readonly MapFileBoulder[];
 }
 
 /**
@@ -953,6 +975,8 @@ export const MAP_FILE_KEYS = [
   'pokemon',
   'areas',
   'links',
+  'berryTrees',
+  'boulders',
 ] as const satisfies readonly (keyof MapFile)[];
 
 /**
@@ -1178,13 +1202,14 @@ export function readMapFile(
     const valid =
       isRecord(opens) &&
       (opens.when === 'always' ||
+        opens.when === 'dug' ||
         (opens.when === 'after' &&
           isWholeNumber(opens.seconds) &&
           opens.seconds > 0 &&
           opens.seconds <= MAP_FILE_LIMITS.maxExitDelaySeconds));
     if (!valid) {
       problems.push(
-        `Exit '${String(exit.name)}' must open always, or after 1 to ${MAP_FILE_LIMITS.maxExitDelaySeconds} seconds.`,
+        `Exit '${String(exit.name)}' must open always, after 1 to ${MAP_FILE_LIMITS.maxExitDelaySeconds} seconds, or when dug out.`,
       );
     }
   }
@@ -1247,6 +1272,10 @@ export function readMapFile(
       );
     }
   });
+  optional('berryTrees', MAP_FILE_LIMITS.maxBerryTrees).forEach((tree, index) => {
+    oneOf(`Berry tree ${index + 1}'s berry`, tree.berry, BERRY_IDS);
+  });
+  optional('boulders', MAP_FILE_LIMITS.maxBoulders);
   optional('signs', MAP_FILE_LIMITS.maxSigns).forEach((sign, index) =>
     linesOf(`Sign ${index + 1}`, sign.lines),
   );
@@ -1855,6 +1884,24 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         pokemon: standing.species,
         ...(standing.level !== undefined ? { wildLevel: standing.level } : {}),
       })),
+      ...(file.berryTrees ?? []).map((tree, index): WorldEntity => ({
+        id: `${id}/berry-tree-${index + 1}`,
+        mapId: id,
+        kind: 'npc',
+        position: at(tree),
+        facing: 'down',
+        dialogLines: [...berryTreeLines(tree.berry, false)],
+        berry: tree.berry,
+      })),
+      ...(file.boulders ?? []).map((boulder, index): WorldEntity => ({
+        id: `${id}/boulder-${index + 1}`,
+        mapId: id,
+        kind: 'npc',
+        position: at(boulder),
+        facing: 'down',
+        dialogLines: [...BOULDER_LINES],
+        boulder: true,
+      })),
       ...(file.signs ?? []).map((sign, index): WorldEntity => ({
         id: `${id}/sign-${index + 1}`,
         mapId: id,
@@ -1944,7 +1991,11 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         label: exit.name.toUpperCase(),
         unlockAtMs,
         requirement:
-          exit.opens.when === 'after' ? { kind: 'elapsed', unlockAtMs } : { kind: 'always' },
+          exit.opens.when === 'after'
+            ? { kind: 'elapsed', unlockAtMs }
+            : exit.opens.when === 'dug'
+              ? { kind: 'dug' }
+              : { kind: 'always' },
       };
     }),
   };

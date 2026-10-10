@@ -435,7 +435,19 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   'tm40-aerial-ace': 0,
   'hm01-cut': 0,
   'hm03-surf': 0,
+  'hm04-strength': 0,
+  // A tool Bill barters, never a reward: zero for the reason the machines are.
+  pickaxe: 0,
   'hm06-rock-smash': 0,
+  // Berries grow only on the trees a map maker plants, and the board never pays
+  // one: a berry is picked, not awarded. Priced like the medicine it is.
+  'oran-berry': 2,
+  'sitrus-berry': 1,
+  'pecha-berry': 2,
+  'cheri-berry': 2,
+  'rawst-berry': 2,
+  'chesto-berry': 2,
+  'aspear-berry': 2,
   // Zero on purpose, and it must stay zero. Money is found in a raid and lost
   // with the pack; a board that paid it out would be a faucet that repeats for
   // as long as the player keeps banking, which is the one thing the captain's

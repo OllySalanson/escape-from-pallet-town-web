@@ -6,6 +6,7 @@ import {
   type MapFileBuilding,
   type MapFileBuildingKind,
   type MapFileDistrict,
+  type MapFileBerryTree,
   type MapFilePokemon,
   type MapFileDoor,
   type MapFileDoorKind,
@@ -43,6 +44,8 @@ export type SpotKind =
   | 'item'
   | 'person'
   | 'pokemon'
+  | 'berry-tree'
+  | 'boulder'
   | 'sign'
   | 'landmark'
   | 'trainer';
@@ -60,6 +63,8 @@ const SPOT_LISTS = {
   item: 'itemSpots',
   person: 'people',
   pokemon: 'pokemon',
+  'berry-tree': 'berryTrees',
+  boulder: 'boulders',
   sign: 'signs',
   landmark: 'landmarks',
   trainer: 'trainers',
@@ -72,6 +77,8 @@ const SPOT_ORDER: readonly SpotKind[] = [
   'trainer',
   'person',
   'pokemon',
+  'berry-tree',
+  'boulder',
   'sign',
   'landmark',
   'item',
@@ -348,6 +355,8 @@ const SPOT_RULES: Readonly<Record<SpotKind, { readonly max: number; readonly plu
   item: { max: MAP_FILE_LIMITS.maxItemSpots, plural: 'item spots' },
   person: { max: MAP_FILE_LIMITS.maxPeople, plural: 'people' },
   pokemon: { max: MAP_FILE_LIMITS.maxPokemon, plural: 'Pokémon' },
+  'berry-tree': { max: MAP_FILE_LIMITS.maxBerryTrees, plural: 'berry trees' },
+  boulder: { max: MAP_FILE_LIMITS.maxBoulders, plural: 'boulders' },
   sign: { max: MAP_FILE_LIMITS.maxSigns, plural: 'signs' },
   landmark: { max: MAP_FILE_LIMITS.maxLandmarks, plural: 'landmarks' },
   trainer: { max: MAP_FILE_LIMITS.maxTrainers, plural: 'trainers' },
@@ -378,6 +387,10 @@ function newSpot(file: MapFile, kind: SpotKind, spot: MapFileSpot): MapFileSpot 
       });
     case 'pokemon':
       return spotOf<MapFilePokemon>({ ...spot, species: 'pikachu' });
+    case 'berry-tree':
+      return spotOf<MapFileBerryTree>({ ...spot, berry: 'oran' });
+    case 'boulder':
+      return spot;
     case 'sign':
       return spotOf<MapFileSign>({ ...spot, lines: [] });
     case 'landmark':
@@ -768,6 +781,8 @@ export function keepOnMap(file: MapFile): MapFile {
   const landmarks = file.landmarks?.filter(fits);
   const trainers = file.trainers?.filter(fits);
   const pokemon = file.pokemon?.filter(fits);
+  const berryTrees = file.berryTrees?.filter(fits);
+  const boulders = file.boulders?.filter(fits);
   const doors = file.doors?.filter(
     (door) => door.x >= 0 && door.y >= 0 && door.x + door.width <= width && door.y + door.height <= height,
   );
@@ -799,6 +814,8 @@ export function keepOnMap(file: MapFile): MapFile {
     ...(landmarks ? { landmarks } : {}),
     ...(trainers ? { trainers } : {}),
     ...(pokemon ? { pokemon } : {}),
+    ...(berryTrees ? { berryTrees } : {}),
+    ...(boulders ? { boulders } : {}),
     ...(districts ? { districts } : {}),
     ...(doors ? { doors } : {}),
   };
@@ -905,6 +922,8 @@ const SHIFTS: {
       const [one, other] = moved(link.ends, by);
       return { ...link, ends: [one, other] };
     }),
+  berryTrees: moved,
+  boulders: moved,
 };
 
 /** Everything standing on the map moved by `by`, the ground left as it is. */

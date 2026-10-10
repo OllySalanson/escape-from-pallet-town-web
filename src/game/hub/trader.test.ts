@@ -455,9 +455,14 @@ describe('the stones on the counter', () => {
     // third arms nobody. A stone is spent, so the deal has to repeat or the
     // reward stops after five.
     expect(stoneBarters.every((barter) => !barter.once)).toBe(true);
-    // And nothing else on the table repeats, so "the stones are the repeating
-    // deals" is a sentence about the whole table rather than about these rows.
-    expect(TRADER_BARTERS.filter((barter) => !barter.once)).toEqual(stoneBarters);
+    // And nothing else on the table repeats but the Pickaxe, which is a tool
+    // carried in the pack and lost with it: a deal struck once would be a way
+    // home a single wipe took away for good.
+    expect(
+      TRADER_BARTERS.filter((barter) => !barter.once)
+        .map((barter) => barter.id)
+        .sort(),
+    ).toEqual([...stoneBarters.map((barter) => barter.id), 'barter-pickaxe'].sort());
   });
 
   it('prices one at more than a raid carries home, so finding one is cheaper', () => {

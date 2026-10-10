@@ -13,7 +13,12 @@ export type ExtractionRequirement =
       readonly poiId: string;
       /** Named on the marker so a sealed exit says what opens it. */
       readonly poiLabel: string;
-    };
+    }
+  /**
+   * Behind rubble a Pickaxe digs out, for this raid only - a map maker's exit
+   * (`MapFileOpens`). Until it is dug the rubble is a wall (`WorldScene.isBlocked`).
+   */
+  | { readonly kind: 'dug' };
 
 export interface ExtractionPoint {
   readonly mapId: WorldMapId;
@@ -31,6 +36,8 @@ export function isExtractionAvailable(
   point: ExtractionPoint,
   elapsedMs: number,
   activatedPoiIds: ReadonlySet<string>,
+  /** The labels of the exits dug out this raid. */
+  dugExitLabels: ReadonlySet<string> = new Set(),
 ): boolean {
   const requirement =
     point.requirement ??
@@ -44,7 +51,14 @@ export function isExtractionAvailable(
       return elapsedMs >= requirement.unlockAtMs;
     case 'poi-activated':
       return activatedPoiIds.has(requirement.poiId);
+    case 'dug':
+      return dugExitLabels.has(point.label);
   }
+}
+
+/** Whether this exit is one a Pickaxe digs out. */
+export function isDugExit(point: ExtractionPoint): boolean {
+  return point.requirement?.kind === 'dug';
 }
 
 export function extractionRequirementText(point: ExtractionPoint, elapsedMs: number): string {
@@ -58,6 +72,9 @@ export function extractionRequirementText(point: ExtractionPoint, elapsedMs: num
   }
   if (requirement.kind === 'poi-activated') {
     return `ACTIVATE ${requirement.poiLabel}`;
+  }
+  if (requirement.kind === 'dug') {
+    return 'NEEDS A PICKAXE';
   }
   const seconds = Math.max(0, Math.ceil((requirement.unlockAtMs - elapsedMs) / 1_000));
   return seconds === 0 ? 'OPEN' : `OPENS IN ${seconds}s`;
@@ -86,6 +103,10 @@ export function extractionCaption(point: ExtractionPoint, isOpen: boolean, elaps
   // `extractionPoints.test.ts`.
   if (!isOpen && point.requirement?.kind === 'poi-activated') {
     return `${point.label}\nEXTRACT SEALED\nWORK ${point.requirement.poiLabel}`;
+  }
+  // Rubble is a wall until it is dug, so it says what it is before what it is for.
+  if (!isOpen && point.requirement?.kind === 'dug') {
+    return `${point.label}\nUNDER RUBBLE\nNEEDS A PICKAXE`;
   }
   return `${point.label}\nEXTRACT ${isOpen ? 'OPEN' : extractionRequirementText(point, elapsedMs)}`;
 }

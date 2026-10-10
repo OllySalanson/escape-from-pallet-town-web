@@ -59,11 +59,11 @@ describe('materials', () => {
       expect(wanted.has(id), `${id} is asked for by no rung`).toBe(true);
     }
     // Nothing else lives in that pocket but the five evolution stones and the
-    // eight machines, both of which are spent on a Pokemon rather than at
-    // Brock's, and the money, which is spent at Bill's counter and
-    // nowhere else.
+    // nine machines, both of which are spent on a Pokemon rather than at
+    // Brock's, the money, which is spent at Bill's counter and nowhere else,
+    // and the Pickaxe, which is carried and never spent at all.
     expect(ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Misc).map((item) => item.id).sort()).toEqual(
-      [...MATERIAL_IDS, ...MACHINE_ITEM_IDS, ...EVOLUTION_STONE_IDS, 'money'].sort(),
+      [...MATERIAL_IDS, ...MACHINE_ITEM_IDS, ...EVOLUTION_STONE_IDS, 'money', 'pickaxe'].sort(),
     );
   });
 

@@ -127,6 +127,7 @@ import {
   groundUnder,
 } from '../maker/palette';
 import { isFigureSpecies } from '../world/pokemonFigures';
+import { isBerry } from '../world/berries';
 import { MenuOverlay } from '../ui/MenuOverlay';
 import { takeDownPixelStatus } from '../ui/pixelUi';
 import {
@@ -2089,6 +2090,12 @@ export class MapMakerScene extends Phaser.Scene {
       }
       case 'species':
         return isFigureSpecies(value) ? updateThing(this.view, selected, { species: value }) : this.view;
+      case 'berry':
+        return isBerry(value) ? updateThing(this.view, selected, { berry: value }) : this.view;
+      case 'buried':
+        return selected.kind === 'exit'
+          ? setExitOpens(this.view, selected.index, value === 'dug' ? { when: 'dug' } : { when: 'always' })
+          : this.view;
       case 'look':
       case 'facing':
       case 'kind':

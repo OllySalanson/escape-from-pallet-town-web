@@ -42,6 +42,18 @@ import {
   type FigureSpeciesId,
 } from '../world/pokemonFigures';
 import {
+  BERRY_TREE_SWAY_MS,
+  BERRY_TREE_TEXTURE,
+  berryItemId,
+  berryName,
+  berryTreeFrames,
+  berryTreeLines,
+  type BerryId,
+} from '../world/berries';
+import { boulderDestination, canStillReach } from '../world/boulders';
+import { TOWN_PIECES } from '../world/generated/townPieces';
+import { TOWN_SHEET_SOURCE } from '../world/tileset/townSheet';
+import {
   getWarpAt,
   getWorldMap,
   isTallGrassInMap,
@@ -219,6 +231,7 @@ import {
   extractionPointsOn,
   extractionCaption,
   extractionRequirementText,
+  isDugExit,
   isExtractionAvailable,
   type ExtractionPoint,
 } from '../world/extractionPoints';
@@ -554,6 +567,8 @@ export class WorldScene extends Phaser.Scene {
    */
   private unclaimedBossGear: RaidCarriage['unclaimedBossGear'] = [];
   private readonly collectedLootIds = new Set<string>();
+  /** The current map's exits a Pickaxe digs out, read once per map (`buriedExitAt`). */
+  private buriedExits: { readonly mapId: string; readonly points: readonly ExtractionPoint[] } | undefined;
   /**
    * Rare finds this raid has laid eyes on, by loot id. The prize chip keeps
    * asking about these for the rest of the raid - see `prizeChipView`.
@@ -1055,6 +1070,10 @@ export class WorldScene extends Phaser.Scene {
     if (!decision.target && pushing && this.tryLedgeHop(decision.facing)) {
       return;
     }
+    // A boulder is solid too, and walking into one with Strength is the push.
+    if (!decision.target && pushing && this.tryPushBoulder(decision.facing)) {
+      return;
+    }
     // And the other refusal that means something: the hunter is a person, so
     // its tile is collision, and walking into the person chasing you is being
     // caught by them.
@@ -1551,7 +1570,7 @@ export class WorldScene extends Phaser.Scene {
       const x = point.position.x * TILE_SIZE + TILE_SIZE / 2;
       const y = point.position.y * TILE_SIZE + TILE_SIZE / 2;
       const marker = this.add
-        .image(x, y, extractionIconKey(isOpen))
+        .image(x, y, extractionIconKey(point, isOpen))
         .setDepth(atRow(MARKER_BAND, point.position.y));
       // The beacon stands on the landing, which is the one exit the player is
       // guaranteed to be standing on when it is first drawn, so its caption is
@@ -1591,6 +1610,14 @@ export class WorldScene extends Phaser.Scene {
 
       if (entity.pokemon) {
         this.createPokemonFigure(entity.id, entity.position, entity.pokemon);
+        continue;
+      }
+      if (entity.berry) {
+        this.createBerryTree(entity.id, entity.position, entity.berry);
+        continue;
+      }
+      if (entity.boulder) {
+        this.createBoulder(entity.id, this.boulderAt(entity));
         continue;
       }
       this.createFigure(entity.id, entity.position, entity.facing, 'npc', entity.design);
@@ -2178,6 +2205,10 @@ export class WorldScene extends Phaser.Scene {
     if (this.wasMet(entity)) {
       return false;
     }
+    if (entity.boulder) {
+      const stands = this.boulderAt(entity);
+      return stands.x === tile.x && stands.y === tile.y;
+    }
     const figure = this.idleFigures.find((standing) => standing.id === entity.id);
     const held: readonly GridPosition[] = figure ? idleHeldTiles(figure) : [entity.position];
     return held.some((stood) => stood.x === tile.x && stood.y === tile.y);
@@ -2292,6 +2323,231 @@ export class WorldScene extends Phaser.Scene {
       .play(key);
     this.npcSprites.set(id, sprite);
     this.mapObjects.push(sprite);
+  }
+
+  /**
+   * A berry tree a map maker planted: Emerald's own tree, standing on its tile
+   * with its feet on the tile's last row and its crown in the tile above, as a
+   * person's head is. Ripe, it sways between its two berried frames; picked
+   * this raid, it stands bare.
+   */
+  private createBerryTree(id: string, position: GridPosition, berry: BerryId): void {
+    const frames = berryTreeFrames(berry);
+    const key = `berry-tree-${berry}`;
+    if (!this.anims.exists(key)) {
+      this.anims.create({
+        key,
+        frames: frames.ripe.map((frame) => ({ key: BERRY_TREE_TEXTURE, frame })),
+        frameRate: 1000 / BERRY_TREE_SWAY_MS,
+        repeat: -1,
+      });
+    }
+    const sprite = this.add
+      .sprite(
+        position.x * TILE_SIZE + TILE_SIZE / 2,
+        (position.y + 1) * TILE_SIZE,
+        BERRY_TREE_TEXTURE,
+        frames.bare,
+      )
+      .setOrigin(0.5, 1)
+      .setDepth(atRow(FIGURE_BAND, position.y));
+    if (!this.wasPicked(id)) {
+      sprite.play(key);
+    }
+    this.npcSprites.set(id, sprite);
+    this.mapObjects.push(sprite);
+  }
+
+  /**
+   * A Strength boulder: FireRed's own, off the town sheet, drawn as a figure
+   * rather than a tile because it moves.
+   */
+  private createBoulder(id: string, position: GridPosition): void {
+    const texture = this.textures.get(TOWN_SHEET_SOURCE.source.textureKey);
+    if (!texture.has(BOULDER_FRAME)) {
+      const piece = TOWN_PIECES.strengthBoulder;
+      texture.add(BOULDER_FRAME, 0, piece.column * TILE_SIZE, piece.row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+    const sprite = this.add
+      .sprite(
+        position.x * TILE_SIZE + TILE_SIZE / 2,
+        position.y * TILE_SIZE + TILE_SIZE / 2,
+        TOWN_SHEET_SOURCE.source.textureKey,
+        BOULDER_FRAME,
+      )
+      .setDepth(atRow(FIGURE_BAND, position.y));
+    this.npcSprites.set(id, sprite);
+    this.mapObjects.push(sprite);
+  }
+
+  /** Where a boulder stands this raid: where it was pushed to, else where the map put it. */
+  private boulderAt(entity: WorldEntity): GridPosition {
+    return this.runSession?.bouldersMoved?.[entity.id] ?? entity.position;
+  }
+
+  /** Whether a berry tree has been picked this raid. */
+  private wasPicked(id: string): boolean {
+    return (this.runSession?.berriesPicked ?? []).includes(id);
+  }
+
+  /**
+   * A berry tree faced and spoken to: picked into the pack like a find, or
+   * left on the tree with the pack's refusal when there is no room - the tree
+   * keeps it, and is still ripe when the player comes back with a square free.
+   */
+  private pickBerry(entity: WorldEntity, berry: BerryId): readonly string[] {
+    if (!this.runSession || this.wasPicked(entity.id)) {
+      return berryTreeLines(berry, true);
+    }
+    const itemId = berryItemId(berry);
+    if (!this.collectRunItem(itemId, 1)) {
+      audioManager.play('denied');
+      return [...berryTreeLines(berry, false), lootRefusalLine(itemId, 1, this.bag.count(itemId))];
+    }
+    (this.runSession.berriesPicked ??= []).push(entity.id);
+    audioManager.play('lootPickup');
+    const sprite = this.npcSprites.get(entity.id);
+    sprite?.stop();
+    sprite?.setFrame(berryTreeFrames(berry).bare);
+    return [
+      ...berryTreeLines(berry, false),
+      `You picked the ${berryName(berry).toUpperCase()}!${this.reseatNote()}`,
+    ];
+  }
+
+  /**
+   * Walking into a boulder with a Pokemon that knows Strength pushes it a
+   * tile, exactly as FireRed does - and is refused, as a bump, where it would
+   * come to rest on anything a raid is for, and with a line where it would
+   * wall the player off from every way out (`boulders.ts`).
+   */
+  private tryPushBoulder(facing: Direction): boolean {
+    const target = nextTileFromDirection(this.currentTile, facing);
+    const boulder = this.currentMap.entities.find(
+      (entity) => entity.boulder && this.entityHolds(entity, target),
+    );
+    if (!boulder || !this.runSession || !fieldMoveUser(this.party.pokemon, 'strength')) {
+      return false;
+    }
+    const destination = boulderDestination(target, facing);
+    if (!this.boulderMayRest(destination)) {
+      return false;
+    }
+    const goals = this.extractionPointsForCurrentMap()
+      .filter((point) => !isDugExit(point) || this.isExtractionOpen(point))
+      .map((point) => point.position);
+    const blockedWith = (standing: GridPosition) => (tile: GridPosition) =>
+      this.collisionData[tile.y][tile.x] ||
+      (tile.x === standing.x && tile.y === standing.y) ||
+      this.buriedExitAt(tile) !== undefined ||
+      this.currentMap.entities.some(
+        (entity) => entity.id !== boulder.id && this.entityHolds(entity, tile),
+      );
+    const doorways = this.currentMap.warps.filter(
+      (warp) => warp.destinationMapId === this.currentMap.id,
+    );
+    if (
+      canStillReach(this.currentTile, goals, this.bounds, blockedWith(target), doorways) &&
+      !canStillReach(this.currentTile, goals, this.bounds, blockedWith(destination), doorways)
+    ) {
+      audioManager.play('denied');
+      this.facing = facing;
+      this.dialogBox.showMessage(
+        "The boulder won't go that way: it would wall off every way out.",
+      );
+      return true;
+    }
+    this.runSession.bouldersMoved = { ...this.runSession.bouldersMoved, [boulder.id]: destination };
+    this.facing = facing;
+    this.pushingAgainst = null;
+    this.player.setFrame(getIdleFrame(facing));
+    const sprite = this.npcSprites.get(boulder.id);
+    if (sprite) {
+      sprite.setDepth(atRow(FIGURE_BAND, Math.max(target.y, destination.y)));
+      this.tweens.add({
+        targets: sprite,
+        x: destination.x * TILE_SIZE + TILE_SIZE / 2,
+        y: destination.y * TILE_SIZE + TILE_SIZE / 2,
+        duration: STEP_DURATION_MS,
+        onComplete: () => sprite.setDepth(atRow(FIGURE_BAND, destination.y)),
+      });
+    }
+    audioManager.play('bump');
+    return true;
+  }
+
+  /**
+   * Where a boulder may come to rest: open ground nobody is standing on, and
+   * nothing a raid is for - an exit, a drop-in, an item, a landmark, a door, a
+   * warp - because a boulder parked on one of those is that thing gone.
+   */
+  private boulderMayRest(tile: GridPosition): boolean {
+    if (
+      tile.x < 0 ||
+      tile.y < 0 ||
+      tile.x >= this.bounds.width ||
+      tile.y >= this.bounds.height ||
+      this.isBlocked(tile)
+    ) {
+      return false;
+    }
+    const here = (spot: GridPosition): boolean => spot.x === tile.x && spot.y === tile.y;
+    return !(
+      this.extractionPointsForCurrentMap().some((point) => here(point.position)) ||
+      insertionsOn(this.currentMap.id).some((insertion) => here(insertion.position)) ||
+      getVisibleLoot(this.lootForCurrentMap(), true, this.collectedLootIds).some((loot) =>
+        here(loot.position),
+      ) ||
+      this.currentMap.pois.some((poi) => here(poi.position)) ||
+      this.currentMap.gates.some((gate) => gate.tiles.some(here)) ||
+      this.currentMap.warps.some((warp) => here(warp.source))
+    );
+  }
+
+  /** A map maker's exit still under its rubble on this tile: a wall until it is dug. */
+  private buriedExitAt(tile: GridPosition): ExtractionPoint | undefined {
+    // Asked of every tile the hunter's search touches, so the map's buried
+    // exits are read once per map rather than once per tile - and a shipped
+    // map, which has none, answers before anything else is looked at.
+    if (this.buriedExits?.mapId !== this.currentMap.id) {
+      this.buriedExits = {
+        mapId: this.currentMap.id,
+        points: extractionPointsOn(this.currentMap.id).filter(isDugExit),
+      };
+    }
+    return this.buriedExits.points.find(
+      (point) =>
+        point.position.x === tile.x &&
+        point.position.y === tile.y &&
+        !this.isExtractionOpen(point),
+    );
+  }
+
+  /**
+   * Rubble faced and dug: with a Pickaxe in the pack the exit under it is open
+   * for the rest of this raid - not for good, so the Pickaxe is worth its
+   * squares every raid it is carried on. Null where there is no rubble.
+   */
+  private tryDigAt(tile: GridPosition): readonly string[] | null {
+    const point = this.buriedExitAt(tile);
+    if (!point || !this.runSession) {
+      return null;
+    }
+    if (this.bag.count('pickaxe') === 0) {
+      audioManager.play('denied');
+      return [
+        'Rubble, packed hard. There is a way out somewhere behind it.',
+        'A Pickaxe in the pack would dig it out. Bill trades them.',
+      ];
+    }
+    this.runSession.exitsDug = [...(this.runSession.exitsDug ?? []), point.label];
+    audioManager.play('landmarkWorked');
+    this.cameras.main.shake(120, 0.004);
+    this.refreshExtractionMarkers();
+    return [
+      'You swung the Pickaxe into the rubble and dug it out.',
+      `${point.label} is open: a way out, for this raid.`,
+    ];
   }
 
   private faceFigure(id: string, facing: Direction): void {
@@ -2923,6 +3179,11 @@ export class WorldScene extends Phaser.Scene {
       this.dialogBox.showMessages([...opened]);
       return;
     }
+    const dug = this.tryDigAt(targetTile);
+    if (dug !== null) {
+      this.dialogBox.showMessages([...dug]);
+      return;
+    }
 
     const entity = this.currentMap.entities.find((candidate) =>
       this.entityHolds(candidate, targetTile),
@@ -2942,6 +3203,17 @@ export class WorldScene extends Phaser.Scene {
 
     if (entity?.kind === 'npc') {
       this.faceFigure(entity.id, OPPOSITE_DIRECTION[this.facing]);
+    }
+
+    if (entity?.berry) {
+      this.dialogBox.showMessages([...this.pickBerry(entity, entity.berry)]);
+      return;
+    }
+    if (entity?.boulder) {
+      this.dialogBox.showMessages([
+        ...fieldMoveLines('strength', fieldMoveUser(this.party.pokemon, 'strength')),
+      ]);
+      return;
     }
 
     if (entity?.pokemon && entity.wildLevel !== undefined) {
@@ -3398,6 +3670,7 @@ export class WorldScene extends Phaser.Scene {
   private isBlocked(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
+      this.buriedExitAt(tile) !== undefined ||
       this.currentMap.entities.some((entity) => this.entityHolds(entity, tile)) ||
       this.trainersForCurrentMap().some(
         (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
@@ -4209,6 +4482,7 @@ export class WorldScene extends Phaser.Scene {
       point,
       this.runSession?.manager.snapshot().elapsedMs ?? 0,
       this.activatedPoiIds,
+      new Set(this.runSession?.exitsDug ?? []),
     );
   }
 
@@ -4463,7 +4737,7 @@ export class WorldScene extends Phaser.Scene {
   private refreshExtractionMarkers(): void {
     for (const { point, marker, label } of this.extractionMarkers) {
       const isOpen = this.isExtractionOpen(point);
-      marker.setTexture(extractionIconKey(isOpen));
+      marker.setTexture(extractionIconKey(point, isOpen));
       label.setText(
         extractionCaption(point, isOpen, this.runSession?.manager.snapshot().elapsedMs ?? 0),
         isOpen ? LABEL_TONES.exitOpen : LABEL_TONES.exitShut,
@@ -4754,6 +5028,7 @@ export class WorldScene extends Phaser.Scene {
   private isBlockedForHunter(tile: GridPosition): boolean {
     return (
       this.collisionData[tile.y][tile.x] ||
+      this.buriedExitAt(tile) !== undefined ||
       this.currentMap.entities.some((entity) => this.entityHolds(entity, tile)) ||
       this.trainersForCurrentMap().some(
         (trainer) => trainer.position.x === tile.x && trainer.position.y === tile.y,
@@ -4845,9 +5120,17 @@ export class WorldScene extends Phaser.Scene {
  * An exit is one object in two states, so the open and the locked pad are the
  * same silhouette in two colours rather than two different marks.
  */
-function extractionIconKey(isOpen: boolean): string {
+function extractionIconKey(point: ExtractionPoint, isOpen: boolean): string {
+  // A buried exit is drawn as the rubble it is under, which is also a wall:
+  // a locked pad would read as somewhere to stand and wait.
+  if (!isOpen && isDugExit(point)) {
+    return iconTextureKey(WORLD_ICONS.rubble);
+  }
   return iconTextureKey(isOpen ? WORLD_ICONS.extractionOpen : WORLD_ICONS.extractionLocked);
 }
+
+/** The frame name the Strength boulder is cut as on the town sheet's texture. */
+const BOULDER_FRAME = 'strength-boulder';
 
 /**
  * What the result screen says about the contract, including the case the whole

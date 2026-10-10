@@ -105,6 +105,8 @@ function describeEffect(
       return { effect: 'Bill only', usable: false };
     case 'pack':
       return { effect: 'Chosen on the loadout', usable: false };
+    case 'pickaxe':
+      return { effect: 'Dug with in a raid', usable: false };
     case 'held':
       // Unreachable while `isMedicine` is the filter above, and answered anyway:
       // gear is given, never used, so there is no treatment to describe.

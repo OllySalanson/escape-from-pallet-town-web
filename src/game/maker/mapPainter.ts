@@ -230,6 +230,16 @@ export function markBoxes(
   (file.people ?? []).forEach((spot, index) =>
     add('person', index, spot, { x: spot.x, y: spot.y - 1, width: 1, height: 2 }),
   );
+  // A Pokemon's icon is 32 pixels square, centred on its tile with its feet on
+  // the tile's last row, so it reaches half a tile either side and into the
+  // row above; a berry tree is a tile wide and two tall.
+  (file.pokemon ?? []).forEach((spot, index) =>
+    add('pokemon', index, spot, { x: spot.x - 1, y: spot.y - 1, width: 3, height: 2 }),
+  );
+  (file.berryTrees ?? []).forEach((spot, index) =>
+    add('berry-tree', index, spot, { x: spot.x, y: spot.y - 1, width: 1, height: 2 }),
+  );
+  (file.boulders ?? []).forEach((spot, index) => add('boulder', index, spot, tile(spot.x, spot.y)));
   (file.trainers ?? []).forEach((spot, index) =>
     add('trainer', index, spot, {
       x: spot.x - SIGHT_BOX,

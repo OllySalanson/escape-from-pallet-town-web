@@ -177,6 +177,8 @@ describe('the lists of a map file that stand in its places', () => {
       districts: true,
       trainers: true,
       pokemon: true,
+      berryTrees: true,
+      boulders: true,
     };
     expect([...PLACED].sort()).toEqual(
       (Object.keys(stands) as (keyof MapFile)[]).filter((key) => stands[key]).sort(),
