@@ -33,9 +33,9 @@ PNGs at 30 frames a second, 2x, cropped round the player.
   swap places. A tap towards it from standing turns you to face it instead -
   FireRed's own tap-to-turn, kept for the one tile worth stopping to face - and
   holding the key walks you on through it a tenth of a second later.
-- **Life.** It treads in place while you stand about, turns to look up at you,
-  glances around, and now and then hops and chirps. Spoken to, it answers in its
-  own words and a FireRed emotion bubble - happy, humming, nuzzling, curious
+- **Life.** The moment it reaches its spot behind you it stands still, then
+  turns to look up at you, glances around, and now and then hops and chirps.
+  Spoken to, it answers in its own words and a FireRed emotion bubble - happy, humming, nuzzling, curious
   about whichever room it is in - unless it is hurt, poisoned or out cold, when
   it says so and does not bounce about.
 - **Doors.** Through a door it tucks in after you as the screen goes dark; inside

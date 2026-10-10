@@ -226,16 +226,32 @@ export function turnToPartner(options: {
 
 // -- life ------------------------------------------------------------------
 
+/** The pose a partner stands in: the first of each facing's pair, the other is mid-stride. */
+export const STANDING_POSE = 0;
+
 /**
- * How long the partner holds each pose while standing still: HeartGold's
- * following Pokemon are never quite still, they tread in place. Slower when
- * the partner is worn out, and slowest of all when it has fainted.
+ * Which of its two poses the partner is drawn in. Walking, it takes both in
+ * every step, swapped halfway, each step starting on the other one - the
+ * stride the art was drawn for. Standing, it stands: the moment its step is
+ * over it is in `STANDING_POSE` and stays there.
+ *
+ * HeartGold's following Pokemon tread in place while they wait, and this one
+ * used to; the owner, playing it, read that as "Bulbasaur keeps on walking even
+ * when I've stopped". A partner at rest is now at rest, and its life while
+ * the player stands about is in what it does - turning to look at them,
+ * glancing round, hopping - never in its feet.
  */
-export function idlePoseMs(pokemon: Pick<Pokemon, 'isFainted' | 'currentHp' | 'maxHp'>): number {
-  if (pokemon.isFainted) {
-    return 900;
+export function partnerPose(walk: {
+  readonly moving: boolean;
+  /** How far through the step, 0 to 1. */
+  readonly progress: number;
+  /** The pose this step started on, alternating step to step. */
+  readonly walkPose: 0 | 1;
+}): 0 | 1 {
+  if (!walk.moving) {
+    return STANDING_POSE;
   }
-  return pokemon.currentHp * 4 <= pokemon.maxHp ? 620 : 420;
+  return walk.progress < 0.5 ? walk.walkPose : walk.walkPose === 0 ? 1 : 0;
 }
 
 /** The little things a partner does while the player stands about. */

@@ -27,6 +27,8 @@ import {
   partnerAssetPath,
   partnerFrame,
   partnerOf,
+  partnerPose,
+  STANDING_POSE,
   partnerReaction,
   sameTile,
   turnToPartner,
@@ -153,6 +155,32 @@ describe('the partner walks in the player’s footsteps', () => {
     const next = followStep({ tile: { x: 0, y: 0 }, facing: 'up', out: true }, { x: 5, y: 5 }, { x: 5, y: 4 });
     expect(next.move.kind).toBe('appear');
     expect(next.place.tile).toEqual({ x: 5, y: 5 });
+  });
+});
+
+describe('the partner stops when the player stops', () => {
+  it('stands still the moment its step is over, whichever pose the step ended in', () => {
+    for (const walkPose of [0, 1] as const) {
+      expect(partnerPose({ moving: false, progress: 1, walkPose })).toBe(STANDING_POSE);
+      expect(partnerPose({ moving: false, progress: 0.7, walkPose })).toBe(STANDING_POSE);
+    }
+  });
+
+  it('stays still however long the player waits: its feet never move while it stands', () => {
+    // Standing has no clock at all: the pose is a function of the step alone.
+    const poses = new Set(
+      Array.from({ length: 600 }, (_, frame) =>
+        partnerPose({ moving: false, progress: (frame % 60) / 60, walkPose: (frame % 2) as 0 | 1 }),
+      ),
+    );
+    expect([...poses]).toEqual([STANDING_POSE]);
+  });
+
+  it('takes both poses in every step it walks, swapped halfway', () => {
+    expect(partnerPose({ moving: true, progress: 0.2, walkPose: 0 })).toBe(0);
+    expect(partnerPose({ moving: true, progress: 0.8, walkPose: 0 })).toBe(1);
+    expect(partnerPose({ moving: true, progress: 0.2, walkPose: 1 })).toBe(1);
+    expect(partnerPose({ moving: true, progress: 0.8, walkPose: 1 })).toBe(0);
   });
 });
 
