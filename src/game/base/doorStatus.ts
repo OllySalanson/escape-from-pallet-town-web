@@ -11,6 +11,7 @@ import {
 } from '../hub/trader';
 import { formatMoney } from '../items';
 import type { BaseDoor } from './doors';
+import { BADGES, wonBadges } from './badgeCase';
 
 /**
  * What each door says about what is waiting inside it.
@@ -30,9 +31,12 @@ import type { BaseDoor } from './doors';
  */
 export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
   switch (door.screen) {
-    case null:
-      // The player's own house, which has nothing waiting in it but home.
-      return 'Your house';
+    case null: {
+      // The player's own house, which says from the yard how full its badge
+      // case is - the one number in it worth walking over for.
+      const won = wonBadges(game).length;
+      return won === 0 ? 'Your house' : `Your house · ${won} of ${BADGES.length} badges`;
+    }
     case 'raid': {
       const open = buildContractBoard(game.raidProgress).rows.length;
       return open === 0

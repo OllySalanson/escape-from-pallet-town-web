@@ -9,13 +9,41 @@ door - what it is for is what stands in it.
 |---|---|
 | `harbour-before.png` / `harbour-after.png` | The whole Harbour with every one of Brock's rungs built, before and after (`tools/base/renderBase.mts -- out.png 2 --built=all`). Three columns more to the east hold the house and its garden; the mast moves beside the house; the Pokémon Center is FireRed's own building instead of the CC0 timber house. |
 | `garden.png` | Reading the sign beside the path to the step: *THE BOLTHOLE - Home. Nobody hunts you here.* The door's caption says *Your house*. |
-| `downstairs.png` | In through the door, on the mat. The sink and hob, the glass cupboard, the telly, the window, the table on its green rug, and the stairs up with the orange mat at their foot. The two columns of bare wall beside the window are kept for what comes next. |
-| `upstairs.png` | Up the stairs: arriving on the matching orange mat, facing away from the stairs, with your starter tucked in after you. The PC on its desk, the drawers, the bookcase of toys, the calendar by the stairs, the bed, and the telly and the console on the rug. |
+| `downstairs.png` | In through the door, on the mat. The sink and hob, the glass cupboard, the telly, the window, THE BADGE CASE, the table on its green rug, and the stairs up with the orange mat at their foot. |
+| `upstairs.png` | Up the stairs on a Charmander save that has come home from three places: arriving on the matching orange mat, facing away from the stairs, with your starter tucked in after you. Three pennants on the wall, the rug in Charmander's red, the PC, the drawers, the bookcase of toys, the calendar, the bed and the console. |
+| `badge-case.png` | Reading THE BADGE CASE with three keepers beaten: three badges lit, eight slots pressed into the velvet in the shapes still to win. Then a line for every badge in it. |
+| `bed.png` | Lying down in your own bed: the screen goes dark for a moment, then a dream about the place you raid most and the rival who is next - and a reminder that healing is Nurse Joy's. |
+| `badge-case-full.png` / `upstairs-squirtle.png` | The same rooms rendered with every keeper beaten, and with all five pennants on a Squirtle save (`renderBase.mts --room=bolthole --beaten=.. / --room=bolthole-upstairs --raids=.. --starter=squirtle`). |
 
 All of the in-game ones are screenshots of a test-mode build at 3x, taken by
-`node tools/playtest/bolthole.mjs <url> <dir>`, which walks the whole house -
-sign, door, telly, stairs up, bed, PC, console, calendar, stairs down, and out
-onto the step - and fails if any of it breaks.
+`node tools/playtest/bolthole.mjs <url> <dir> --starter=charmander
+--beaten=floodplain-toll-keeper,overlook-warden,pallet-mill-keeper
+--raids=floodplain-relay:6:4,route-1:3:2,pallet-town:2:1`, which walks the whole
+house - sign, door, badge case, telly, stairs up, pennants, bed, PC, the console
+four times, calendar, stairs down, and out onto the step - and fails if any of
+it breaks, including a badge case that reads a different number of badges than
+keepers beaten, a bed that does not send you to Joy, or a fourth game you do
+not win.
+
+## What it reads off the save
+
+Nothing in the house is stored; everything in it is the save you already have.
+
+- **The badge case** - a badge for each of the eleven keepers, in the order the
+  ladder meets them, lit by `raidProgress.defeatedBosses`. An empty slot shows
+  its badge's shape pressed into the velvet. The door's caption in the yard
+  says how many: *Your house · 3 of 11 badges*.
+- **The pennants** - one for each of the five maps, hung once a raid has come
+  home from it (`raidRecord[map].extracted`). A place only ever lost on earns
+  nothing.
+- **The telly** - *KANTO TONIGHT* reports on whichever rival hunts your next
+  raid, in their voice, from the same rotation the hunter is drawn from.
+- **The PC** - the raid log: raids, homecomings, losses, the place you raid
+  most, and what Bill is keeping for you.
+- **The calendar** - a day a raid.
+- **The bed** - a dream, never a heal.
+- **The rug upstairs** - red for Charmander, blue for Squirtle, FireRed's green
+  for Bulbasaur.
 
 ## How it is drawn
 
