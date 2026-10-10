@@ -699,7 +699,16 @@ describe('what the raid left on the ground', () => {
 
   it('names each one once, however many were in view of the same clearing', () => {
     expect(raid(['Fire Stone', 'Fire Stone', 'Ranger pack']).pressure[0]).toBe(
-      'Left on the ground: FIRE STONE, RANGER PACK - you walked out past it',
+      'Left on the ground: FIRE STONE, RANGER PACK - you walked out past them',
+    );
+  });
+
+  it('says "them" of more than one thing walked past, and "it" of one', () => {
+    expect(raid(['Water Stone', 'Raid pack', 'TM09 Bullet Seed']).pressure[0]).toBe(
+      'Left on the ground: WATER STONE, RAID PACK, TM09 BULLET SEED - you walked out past them',
+    );
+    expect(raid(['Fire Stone', 'Fire Stone']).pressure[0]).toBe(
+      'Left on the ground: FIRE STONE - you walked out past them',
     );
   });
 

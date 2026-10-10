@@ -513,7 +513,9 @@ function pressureLines(
   if (leftBehind.length > 0) {
     const named = [...new Set(leftBehind)].map((name) => name.toUpperCase());
     lines.push(
-      `Left on the ground: ${named.join(', ')}${escaped ? ' - you walked out past it' : ''}`,
+      `Left on the ground: ${named.join(', ')}${
+        escaped ? ` - you walked out past ${leftBehind.length === 1 ? 'it' : 'them'}` : ''
+      }`,
     );
   }
   if (snapshot.hunterFlees > 0) {
