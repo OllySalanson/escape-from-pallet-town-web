@@ -437,17 +437,15 @@ function escapeSummary(
 ): string {
   const haul = describeGroup(fieldHaul);
   const carried = gear.filter((piece) => piece.fate === 'found');
-  const riskedCount = countGroup(risked);
   // The pack is never protected, so a raid that wore one never took nothing in
-  // exposed.
-  const riskLine =
-    riskedCount === 0
-      ? pack === null
-        ? 'Nothing you took in was ever exposed.'
-        : `Nothing you took in was exposed but your ${pack.name}.`
-      : `${riskedCount === 1 ? 'One entry' : `${riskedCount} entries`}${
-        pack === null ? '' : ` and your ${pack.name}`
-      } rode out unprotected and came home.`;
+  // exposed. What did ride out is named, never counted: "One entry" was ledger
+  // talk, and read beside CARRIED AT RISK - Potion x3 - it was not even the
+  // count the player could see.
+  const riskLine = isEmptyGroup(risked)
+    ? pack === null
+      ? 'Nothing you took in was ever exposed.'
+      : `Nothing you took in was exposed but your ${pack.name}.`
+    : `${capitalise(describeStakes(risked, [], pack) ?? '')} rode out unprotected and came home.`;
   if (haul === null) {
     // A raid that levelled a Pokemon, or walked a piece of gear out of the
     // field, is not an empty raid - and saying "no new haul" about it was the

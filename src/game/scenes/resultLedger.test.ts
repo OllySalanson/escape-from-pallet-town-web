@@ -159,7 +159,7 @@ describe('the result screen of a map maker try', () => {
       const report = {
         outcome,
         cause,
-        summary: '5 entries and your Raid pack rode out unprotected and came home.',
+        summary: '3 Potions and your Raid pack rode out unprotected and came home.',
       } as unknown as ExtractionReport;
       Object.assign(scene as object, { report });
       return (scene as unknown as { verdictSummary(): string }).verdictSummary();

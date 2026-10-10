@@ -347,7 +347,7 @@ export class ExtractionScene extends Phaser.Scene {
 
   /**
    * The sentence under the headline. A try of a map in the map maker carries a
-   * throwaway team in a save of its own, so "5 entries and your Raid pack rode
+   * throwaway team in a save of its own, so "3 Potions and your Raid pack rode
    * out unprotected" is a raid economy that was never in play; what a maker
    * reads there is what happened on their map.
    */

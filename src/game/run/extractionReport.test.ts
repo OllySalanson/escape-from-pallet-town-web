@@ -840,8 +840,36 @@ describe('what the raid had at stake', () => {
 
     // The gamble already says a wipe would have cost the Potions *and* the
     // pack, so the headline may not count the Potions and forget the pack.
-    expect(report.summary).toContain('One entry and your Raid pack rode out unprotected and came home.');
+    // And it names them: "One entry" was the ledger's word, and the player
+    // could see three Potions under CARRIED AT RISK beside it.
+    expect(report.summary).toContain('3 Potions and your Raid pack rode out unprotected and came home.');
+    expect(report.summary).not.toContain('entry');
     expect(report.gambleVerdict).toBe('A wipe would have cost you 3 Potions and your Raid pack. It did not happen this time.');
+  });
+
+  it('names an unprotected Pokemon and every kind of supply that rode out', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const second = new Pokemon(BULBASAUR, 4);
+    const manager = startedRun({
+      party: [starter, second],
+      items: [
+        { itemId: 'potion', quantity: 2 },
+        { itemId: 'poke-ball', quantity: 1 },
+      ],
+      secure: { pokemon: [starter] },
+    });
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [] },
+      carriedOut: { potion: 2, 'poke-ball': 1 },
+      saved: true,
+    });
+
+    expect(report.summary).toContain('Bulbasaur, 2 Potions and 1 Poké Ball rode out unprotected and came home.');
   });
 
   it('says a protected party was still a gamble on the pack', () => {
