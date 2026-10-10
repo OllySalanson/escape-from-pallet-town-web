@@ -232,6 +232,7 @@ import {
   hunterIntelFor,
 } from '../world/hunter';
 import { FIRST_HUNTER_RIVAL, hunterRival, type HunterRival } from '../world/hunters';
+import { hunterForecastLine } from '../world/hunterForecast';
 
 const CAMERA_ZOOM = 1;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
@@ -3845,11 +3846,12 @@ export class WorldScene extends Phaser.Scene {
   private rangerForecast(): string {
     const elapsedMs = this.runSession?.manager.snapshot().elapsedMs ?? 0;
     const spawnDelayMs = this.runSession?.plan?.hunter.spawnDelayMs ?? HUNTER_SPAWN_MS;
-    if (this.hunterState.spawned && !this.hunterState.defeated) {
-      return 'HUNTER FORECAST: active in this area. Break its line of sight and keep moving.';
-    }
-    const seconds = Math.max(0, Math.ceil((spawnDelayMs - elapsedMs) / 1_000));
-    return `HUNTER FORECAST: trail enters this area in about ${seconds}s. Waiting for a timed exit may cost you.`;
+    return hunterForecastLine({
+      spawned: this.hunterState.spawned,
+      defeated: this.hunterState.defeated,
+      rivalName: this.hunterRival().name,
+      msUntilSpawn: spawnDelayMs - elapsedMs,
+    });
   }
 
   /** The exit the player is standing on, if this raid offers one there. */

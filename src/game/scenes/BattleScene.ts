@@ -326,6 +326,14 @@ export class BattleScene extends Phaser.Scene {
   private moveGuidanceTexts: Phaser.GameObjects.Text[] = [];
   private mode: CommandMode = 'main';
   private selectedCommand = 0;
+  /**
+   * Where the cursor was left, for the length of one battle, as FireRed keeps
+   * it: the main command last chosen, and each Pokemon's last move. Opening a
+   * menu on FIGHT every turn turned "RUN failed, press A to run again" into an
+   * attack, and lost a raid (playtest 45).
+   */
+  private lastMainCommand = 0;
+  private readonly lastMoveOf = new Map<Pokemon, number>();
   private commandContainer!: Phaser.GameObjects.Container;
   /** Every `JustDown` this scene would ask goes through here - see `KeyPresses`. */
   private readonly keyPresses = new KeyPresses(() => this.game.loop.frame);
@@ -550,6 +558,8 @@ export class BattleScene extends Phaser.Scene {
     this.pendingChoices = [];
     this.choosingSlot = 0;
     this.replacementSlot = 0;
+    this.lastMainCommand = 0;
+    this.lastMoveOf.clear();
     this.drawCombatants();
     this.drawStatusBoxes();
     this.commandContainer = this.add.container(0, 0).setDepth(10);
@@ -1664,11 +1674,16 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.mode === 'main') {
+      this.lastMainCommand = this.selectedCommand;
       this.dispatchAction(this.mainActions()[this.selectedCommand]);
       return;
     }
 
     if (this.mode === 'moves') {
+      const chooser = this.chooser();
+      if (chooser) {
+        this.lastMoveOf.set(chooser.pokemon, this.selectedCommand);
+      }
       this.dispatchAction({ type: 'use-move', moveIndex: this.selectedCommand });
       return;
     }
@@ -1726,7 +1741,7 @@ export class BattleScene extends Phaser.Scene {
           return;
         }
         this.mode = 'moves';
-        this.selectedCommand = 0;
+        this.selectedCommand = this.rememberedMove();
         this.showCommands();
         return;
       case 'choose-ball':
@@ -1836,7 +1851,7 @@ export class BattleScene extends Phaser.Scene {
     const returningToItems = this.mode === 'party' && this.pendingItem !== undefined;
     this.pendingItem = undefined;
     this.mode = returningToItems ? 'items' : 'main';
-    this.selectedCommand = 0;
+    this.selectedCommand = returningToItems ? 0 : this.lastMainCommand;
     this.showCommands();
     audioManager.play('cancel');
   }
@@ -2005,7 +2020,7 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       this.mode = 'moves';
-      this.selectedCommand = 0;
+      this.selectedCommand = this.rememberedMove();
       this.showCommands();
       return;
     }
@@ -2025,6 +2040,12 @@ export class BattleScene extends Phaser.Scene {
     this.struggleLines.push(`${chooser.pokemon.base.name.toUpperCase()} has no moves left!`);
     this.recordChoice({ slot: this.choosingSlot, moveIndex: STRUGGLE_MOVE_INDEX });
     return true;
+  }
+
+  /** The move the choosing Pokemon last used this battle, else its first. */
+  private rememberedMove(): number {
+    const chooser = this.chooser();
+    return chooser ? (this.lastMoveOf.get(chooser.pokemon) ?? 0) : 0;
   }
 
   private useMove(choice: number | readonly PlayerMoveChoice[]): void {
@@ -2155,8 +2176,18 @@ export class BattleScene extends Phaser.Scene {
     this.forcedReplacement = forcedReplacement;
     this.pendingItem = undefined;
     this.partyMessage = '';
-    this.selectedCommand = 0;
+    // A forced replacement opens on the first Pokemon that can be sent in, as
+    // FireRed's does: opened on the one that just fainted, the key the player
+    // was already pressing through the faint lines was answered with a refusal
+    // (playtest 45).
+    this.selectedCommand = forcedReplacement ? Math.max(0, this.firstSendableIndex()) : 0;
     this.showCommands();
+  }
+
+  /** The first party Pokemon that is standing and not already on the field, or -1. */
+  private firstSendableIndex(): number {
+    const out = playerCombatants(this.state).map((combatant) => combatant.pokemon);
+    return this.party.pokemon.findIndex((pokemon) => !pokemon.isFainted && !out.includes(pokemon));
   }
 
   /**
@@ -2270,12 +2301,15 @@ export class BattleScene extends Phaser.Scene {
     }
     // Already out means out in *either* slot: a double battle can otherwise be
     // asked to put the same Pokemon on the field twice.
-    if (playerCombatants(this.state).some((combatant) => combatant.pokemon === pokemon)) {
-      this.showPartyMessage(`${pokemon.base.name.toUpperCase()} is already out!`);
+    // Fainted is asked first: the Pokemon that just fell is still in its slot,
+    // and "already out" is the wrong thing to say about it. The line is
+    // FireRed's own (`gText_PkmnHasNoEnergy`).
+    if (pokemon.isFainted) {
+      this.showPartyMessage(`${pokemon.base.name.toUpperCase()} has no energy left to battle!`);
       return;
     }
-    if (pokemon.isFainted) {
-      this.showPartyMessage(`${pokemon.base.name.toUpperCase()} has fainted!`);
+    if (playerCombatants(this.state).some((combatant) => combatant.pokemon === pokemon)) {
+      this.showPartyMessage(`${pokemon.base.name.toUpperCase()} is already out!`);
       return;
     }
 
@@ -2643,7 +2677,7 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       this.mode = 'main';
-      this.selectedCommand = 0;
+      this.selectedCommand = this.lastMainCommand;
       this.showCommands();
       return;
     }

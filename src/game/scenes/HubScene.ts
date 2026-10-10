@@ -168,7 +168,7 @@ import {
   type ShopPricePart,
 } from '../ui/shopDetail';
 import { starterCards } from '../ui/starterPicker';
-import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP } from '../ui/countSelector';
+import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP, neighbourCountIndex } from '../ui/countSelector';
 
 /**
  * What the help bar says while the cursor is on a block of a container.
@@ -1175,10 +1175,35 @@ export class HubScene extends Phaser.Scene {
         this.stepCount(group, target - value + (target === value && (event.key === 'ArrowRight' || event.key === 'PageUp') ? 1 : 0));
         return;
       }
+      if (this.stepToNeighbourCount(group, event.key)) {
+        event.preventDefault();
+        return;
+      }
     }
     if (this.overlay.moveCursor(event.key)) {
       event.preventDefault();
     }
+  }
+
+  /**
+   * Up or Down from a count selector to the next one of the same kind, in the
+   * list's reading order (`neighbourCountIndex`), landing on the same end of
+   * it - or on the other end, when that one is shut (a minus at nothing).
+   * False off either end of the list, so the ordinary cursor takes the key.
+   */
+  private stepToNeighbourCount(group: HTMLElement, key: string): boolean {
+    const kind = group.dataset.count?.split(':')[0];
+    const groups = [...document.querySelectorAll<HTMLElement>('.px-count')].filter(
+      (other) => other.dataset.count?.split(':')[0] === kind && other.offsetParent !== null,
+    );
+    const next = groups[neighbourCountIndex(key, groups.indexOf(group), groups.length) ?? -1];
+    if (!next) {
+      return false;
+    }
+    const dir = (document.activeElement as HTMLElement | null)?.dataset.countDir ?? '1';
+    const buttons = [...next.querySelectorAll<HTMLButtonElement>('button[data-count-dir]')].filter((button) => !button.disabled);
+    (buttons.find((button) => button.dataset.countDir === dir) ?? buttons[0])?.focus();
+    return true;
   }
 
   /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampCount, COUNT_BIG_STEP, countKeyTarget, countSelector } from './countSelector';
+import { clampCount, COUNT_BIG_STEP, countKeyTarget, countSelector, neighbourCountIndex } from './countSelector';
 
 const selector = (value: number, max: number) =>
   countSelector({ kind: 'item', id: 'potion', label: 'Potion', value, max, limit: 'Pack is full.', help: 'Pack it.' });
@@ -20,6 +20,16 @@ describe('count selector', () => {
     expect(countKeyTarget('Home', false, 5, 0, 9)).toBe(0);
     expect(countKeyTarget('End', false, 5, 0, 9)).toBe(9);
     expect(countKeyTarget('ArrowUp', false, 5, 0, 9)).toBeUndefined();
+  });
+
+  it('walks Up and Down through the list in reading order, and leaves it at either end', () => {
+    // Potion and Poke Ball stand side by side on a wide loadout: Down from the
+    // first goes to the second, not out of the list (playtest 45).
+    expect(neighbourCountIndex('ArrowDown', 0, 2)).toBe(1);
+    expect(neighbourCountIndex('ArrowUp', 1, 2)).toBe(0);
+    expect(neighbourCountIndex('ArrowUp', 0, 2)).toBeUndefined();
+    expect(neighbourCountIndex('ArrowDown', 1, 2)).toBeUndefined();
+    expect(neighbourCountIndex('ArrowRight', 0, 2)).toBeUndefined();
   });
 
   it('never targets more than what fits, however far a key reaches', () => {
