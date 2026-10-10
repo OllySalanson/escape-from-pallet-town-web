@@ -259,7 +259,4 @@ Where to read more:
 
 This is a free fan project, made for fun. It is **not affiliated with, endorsed by or sponsored by
 Nintendo, Game Freak, Creatures Inc. or The Pokémon Company**. Pokémon and every name, character and
-design belonging to it are trademarks of their respective owners. Some of the art is ripped from
-Pokémon FireRed and LeafGreen, some is CC0, and some comes from the owner's own earlier Unity
-version of this game; where every single file came from, who made it and under what terms is
-recorded in [ASSET_PROVENANCE.md](public/assets/ASSET_PROVENANCE.md).
+design belonging to it are trademarks of their respective owners.
