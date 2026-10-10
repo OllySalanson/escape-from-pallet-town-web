@@ -37,8 +37,8 @@ import { isReviewReturn } from '../maker/review';
 import { createPlaytestGame, withEverythingCurrent } from '../dev/playtestSave';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { TILE_SIZE, WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
-import { characterDesignTextureKey } from '../world/characterDesigns';
-import { getWalkAnimationKey } from '../playerFrames';
+import { characterDesignTextureKey, getCharacterDesign } from '../world/characterDesigns';
+import { CHARACTER_FEET_PIXEL_Y, CHARACTER_FRAME_HEIGHT, getWalkAnimationKey } from '../playerFrames';
 import { isPartnerSpecies, partnerFrame, partnerTextureKey, PARTNER_FEET_PIXEL_Y, type PartnerSpeciesId } from '../base/partner';
 
 /**
@@ -83,6 +83,8 @@ const OVERLINE_FILL = '#8ed4c2';
 const NAME_DEPTH_PX = 3;
 
 const SPARKLE_COUNT = 12;
+/** Blue's "!" is an 11x11 window and a two-row tail. */
+const RIVAL_MARK_HEIGHT = 13;
 const SPARKLE_INK = 0xfff6c8;
 const PARTNER_STARTERS: readonly PartnerSpeciesId[] = ['bulbasaur', 'charmander', 'squirtle'];
 
@@ -344,15 +346,16 @@ export class TitleScene extends Phaser.Scene {
   // -- the chase ---------------------------------------------------------------
 
   private createChase(height: number): void {
-    const feet = height - 3;
+    // A figure's frame is 16x32 with its soles on row 27; the follower's is
+    // 32x32 with its feet on row 29. Both stand on the same line of the road.
+    const frameBottom = height;
     const trainerKey = characterDesignTextureKey('protagonist-red');
     const rivalKey = characterDesignTextureKey('blue');
-    // A figure's frame is 16x32 with its soles on the bottom row.
-    this.trainer = this.track(this.add.sprite(-100, feet, trainerKey).setOrigin(0.5, 1).setDepth(7));
-    this.rival = this.track(this.add.sprite(-100, feet, rivalKey).setOrigin(0.5, 1).setDepth(7));
+    this.trainer = this.track(this.add.sprite(-100, frameBottom, trainerKey).setOrigin(0.5, 1).setDepth(7));
+    this.rival = this.track(this.add.sprite(-100, frameBottom, rivalKey).setOrigin(0.5, 1).setDepth(7));
     this.partner = this.track(
       this.add
-        .sprite(-100, feet + (32 - 1 - PARTNER_FEET_PIXEL_Y), partnerTextureKey(this.partnerSpecies))
+        .sprite(-100, frameBottom + CHARACTER_FEET_PIXEL_Y - PARTNER_FEET_PIXEL_Y, partnerTextureKey(this.partnerSpecies))
         .setOrigin(0.5, 1)
         .setDepth(7),
     );
@@ -399,9 +402,10 @@ export class TitleScene extends Phaser.Scene {
     this.rival.setX(chase.rivalX);
     this.partner.setX(chase.partnerX);
     this.partner.setFrame(partnerFrame(chase.heading === 1 ? 'right' : 'left', (Math.floor(since / 130) % 2) as 0 | 1));
-    // Over Blue's head, a pixel's hop now and then, as a seen-you mark does.
+    // Over Blue's head, a pixel clear of it, hopping a pixel as a seen-you mark does.
     const hop = Math.floor(since / 250) % 2;
-    this.rivalMark.setPosition(chase.rivalX - 5, this.rival.y - 34 - hop);
+    const head = this.rival.y - CHARACTER_FRAME_HEIGHT + getCharacterDesign('blue').headPixelY;
+    this.rivalMark.setPosition(chase.rivalX - 5, head - RIVAL_MARK_HEIGHT - 1 - hop);
   }
 
   // -- the name ------------------------------------------------------------------
@@ -872,6 +876,7 @@ export class TitleScene extends Phaser.Scene {
     this.hasStarted = true;
     void this.playStartAudio();
     this.setPrompt('READY!');
+    this.cameras.main.fadeOut(180, 0, 0, 0);
     this.time.delayedCall(180, () => {
       if (mode === 'resume-playtest' || mode === 'fresh-playtest') {
         this.startPlaytestRun(mode === 'fresh-playtest');

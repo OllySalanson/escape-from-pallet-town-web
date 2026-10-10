@@ -339,6 +339,7 @@ describe('game start flow', () => {
     Object.assign(title as unknown as Record<string, unknown>, {
       saveManager: saves,
       prompt: [{ setText: vi.fn() }],
+      cameras: { main: { fadeOut: vi.fn() } },
       scene: { start },
       time: { delayedCall: (_delay: number, callback: () => void) => callback() },
       playStartAudio: vi.fn(),
