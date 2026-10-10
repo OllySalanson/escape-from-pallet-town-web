@@ -2,6 +2,8 @@ import type { MapCheck } from '../world/mapFileChecks';
 import { POKEMON_ICON_ORDER } from '../pokemon/generated/pokemonIcons';
 import { pokemonCry, pokemonName } from '../world/pokemonFigures';
 import {
+  areaLimits,
+  doorFront,
   MAP_FILE_DOOR_KINDS,
   MAP_FILE_FACINGS,
   MAP_FILE_HABITATS,
@@ -10,7 +12,7 @@ import {
   MAP_FILE_LOOKS,
   MAP_FILE_TRAINER_TEAMS,
   teamLine,
-  MAP_FILE_AREA_STYLES,
+  MAP_FILE_STYLES_OF,
   type MapFile,
   type MapFileArea,
   type MapFileBuildingKind,
@@ -27,11 +29,13 @@ import {
   focusArea,
   hasDoor,
   insideOf,
+  ladderDownIn,
   stairsUpIn,
   type AreaId,
   type DoorwayInArea,
 } from './areas';
 import type { StoredDraft } from './drafts';
+import { PASSAGE_TARGETS, type PassageLook, type PendingPassage } from './passages';
 import type { QueuedMap } from './review';
 import { STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
 import {
@@ -97,8 +101,34 @@ export type MakerTool = 'brush' | 'rect' | 'fill' | 'pick' | 'select' | 'erase' 
 
 /** What the place tool puts down. */
 export type PlaceChoice =
-  | { readonly kind: SpotKind | 'district' | MapFileDoorKind }
+  | { readonly kind: SpotKind | 'district' | MapFileDoorKind | CavePassage }
   | { readonly kind: 'building'; readonly building: MapFileBuildingKind };
+
+/** The ways through a cave a maker puts down one end at a time (`passages.ts`). */
+export type CavePassage = Exclude<PassageLook, 'mouth'>;
+
+export function isCavePassage(kind: string): kind is CavePassage {
+  return kind === 'ladder-down' || kind === 'ladder-up' || kind === 'cave-exit';
+}
+
+/** The cave's own rows in Places: each is a way through, put down and then pointed where it comes out. */
+const CAVE_PLACE_ROWS: readonly (readonly [CavePassage, string, string])[] = [
+  [
+    'ladder-down',
+    'Ladder down',
+    'A hole with a ladder down it. Click the floor where it goes, then click where it comes out on the floor of another cave.',
+  ],
+  [
+    'ladder-up',
+    'Ladder up',
+    'A ladder up, its foot on the floor. Click where it stands, then click where it comes out on the floor of another cave.',
+  ],
+  [
+    'cave-exit',
+    'Way out',
+    "Daylight cut into the cave's south wall. Click the rock where it goes, then the cave mouth outside it comes out of.",
+  ],
+];
 
 /**
  * How big a tile is drawn, in game pixels. Sixteen is the art's own size; two
@@ -131,6 +161,8 @@ export interface MakerViewState {
   readonly area?: AreaId;
   /** A way through chosen on the map - a room's mat - by its link and end. */
   readonly doorway?: Pick<DoorwayInArea, 'link' | 'end'>;
+  /** An entrance put down and waiting to be told where it comes out. */
+  readonly passage?: PendingPassage;
   readonly tool: MakerTool;
   readonly brushId: string;
   readonly place: PlaceChoice;
@@ -206,52 +238,62 @@ const PLACE_ROWS = [
   ],
 ] as const;
 
-/** Everything SELECT and REMOVE work on, named as the Paint pane names it. */
-const PLACED_THINGS = [...PLACE_ROWS.map(([, label]) => label.toLowerCase()), 'building']
-  .join(', ')
-  .replace(/, ([^,]+)$/, ' or $1');
+/** A field move's doors - a Cut tree, a Rock Smash rock, Surf water - stand outdoors, so an inside has none of them. */
+const placesFor = (inside: MapFileArea | undefined): readonly (typeof PLACE_ROWS)[number][] =>
+  inside
+    ? PLACE_ROWS.filter(([kind]) => !(MAP_FILE_DOOR_KINDS as readonly string[]).includes(kind))
+    : PLACE_ROWS;
+
+/** Everything SELECT and REMOVE work on in this place, named as the Paint pane names it. */
+const placedThings = (inside: MapFileArea | undefined): string =>
+  [...placesFor(inside).map(([, label]) => label.toLowerCase()), inside ? 'piece of furniture' : 'building']
+    .join(', ')
+    .replace(/, ([^,]+)$/, ' or $1');
 
 const TOOLS: readonly {
   readonly id: MakerTool;
   readonly label: string;
   readonly key: string;
-  readonly help: string;
+  readonly help: (inside: MapFileArea | undefined) => string;
 }[] = [
   {
     id: 'brush',
     label: 'Brush',
     key: 'B',
-    help: 'Paints the ground under the pointer. Drag to paint a stroke. Paint past the edge of the map to make it bigger.',
+    // An inside is the size its own fields say: only the outdoors grows.
+    help: (inside) =>
+      `Paints the ground under the pointer. Drag to paint a stroke.${inside ? '' : ' Paint past the edge of the map to make it bigger.'}`,
   },
   {
     id: 'rect',
     label: 'Box',
     key: 'R',
-    help: 'Drag out a box and fill it with the ground you have chosen. A box past the edge makes the map bigger.',
+    help: (inside) =>
+      `Drag out a box and fill it with the ground you have chosen.${inside ? '' : ' A box past the edge makes the map bigger.'}`,
   },
   {
     id: 'fill',
     label: 'Fill',
     key: 'F',
-    help: 'Fills every joined tile of the same ground with the ground you have chosen.',
+    help: () => 'Fills every joined tile of the same ground with the ground you have chosen.',
   },
   {
     id: 'pick',
     label: 'Pick',
     key: 'I',
-    help: 'Takes the ground under the pointer as your brush.',
+    help: () => 'Takes the ground under the pointer as your brush.',
   },
   {
     id: 'select',
     label: 'Select',
     key: 'V',
-    help: `Chooses a ${PLACED_THINGS}. Drag it to move it.`,
+    help: (inside) => `Chooses a ${placedThings(inside)}. Drag it to move it.`,
   },
   {
     id: 'erase',
     label: 'Remove',
     key: 'X',
-    help: `Takes a ${PLACED_THINGS} off the map.`,
+    help: (inside) => `Takes a ${placedThings(inside)} off the map.`,
   },
 ];
 
@@ -275,9 +317,9 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
   // scroll away.
   const tools = TOOLS.map(
     (tool) =>
-      `<button class="px-window px-chip maker-tool${state.tool === tool.id ? ' is-selected' : ''}" data-tool="${tool.id}" aria-pressed="${state.tool === tool.id}" data-help="${escapeAttribute(`${tool.help} Key: ${tool.key}.`)}">${tool.label}</button>`,
+      `<button class="px-window px-chip maker-tool${state.tool === tool.id ? ' is-selected' : ''}" data-tool="${tool.id}" aria-pressed="${state.tool === tool.id}" data-help="${escapeAttribute(`${tool.help(inside)} Key: ${tool.key}.`)}">${tool.label}</button>`,
   ).join('');
-  const brushes = brushesFor(inside !== undefined).map((brush) =>
+  const brushes = brushesFor(inside?.kind).map((brush) =>
     toolRow(
       `data-brush="${brush.id}"`,
       brush.label,
@@ -287,11 +329,7 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
     ),
   ).join('');
   const chosenPlace = state.tool === 'place' ? placeKey(state.place) : '';
-  // A field move's doors - a Cut tree, a Rock Smash rock, Surf water - stand
-  // outdoors, so an inside has none of them.
-  const places = PLACE_ROWS.filter(
-    ([kind]) => !inside || !(MAP_FILE_DOOR_KINDS as readonly string[]).includes(kind),
-  )
+  const places = [...placesFor(inside), ...(inside?.kind === 'cave' ? CAVE_PLACE_ROWS : [])]
     .map(([kind, label, help]) => toolRow(`data-place="${kind}"`, label, help, chosenPlace === kind))
     .join('');
   // Everything a maker can plant, under its heading, each row with a picture of
@@ -343,6 +381,18 @@ export function stackLayout(
 }
 
 /**
+ * While an entrance waits for where it comes out: what to click for that, and
+ * the way to give up on it.
+ */
+function passageBanner(state: MakerViewState): string {
+  const passage = state.passage;
+  if (!passage) {
+    return '';
+  }
+  return `<div class="maker-passage"><p class="px-wrap"><span class="px-name">Where does it come out?</span> Click ${escapeHtml(PASSAGE_TARGETS[passage.to])}${passage.to === 'mouth' ? '' : ', choosing it above first'}.</p><button class="px-window px-button" data-cancel-passage data-help="Puts the entrance away again. Key: Esc.">Cancel</button></div>`;
+}
+
+/**
  * The places of the map, one button each: the outdoors and every inside. Only
  * drawn once there is somewhere to go - a map with no insides is one place,
  * and a strip with one button on it would say nothing.
@@ -356,7 +406,11 @@ function areaStrip(file: MapFile, area: AreaId): string {
     `<button class="px-window px-chip maker-area${id === area ? ' is-selected' : ''}" data-area="${escapeAttribute(id ?? '')}" aria-pressed="${id === area}" data-help="${escapeAttribute(help)}">${escapeHtml(label)}</button>`;
   return `<div class="maker-areas">${chip(undefined, 'Outside', 'The map itself: the ground, the buildings and everything outdoors.')}${areas
     .map((candidate) =>
-      chip(candidate.id, candidate.name, `Inside: ${candidate.name}. ${candidate.width}x${candidate.height} tiles.`),
+      chip(
+        candidate.id,
+        candidate.name,
+        `${candidate.kind === 'cave' ? 'Cave' : 'Inside'}: ${candidate.name}. ${candidate.width}x${candidate.height} tiles.`,
+      ),
     )
     .join('')}</div>`;
 }
@@ -375,11 +429,11 @@ function mapPane(state: MakerViewState, view: MapFile, inside: MapFileArea | und
   // shown while the map does not fit the window (`MapMakerScene.showOverview`).
   const overview = `<div class="px-window maker-overview" data-overview hidden><canvas class="maker-overview-map" data-overview-map></canvas><div class="maker-overview-view" data-overview-view></div></div>`;
   return pixelWindow(
-    `${areaStrip(state.file, state.area)}<div class="maker-zooms">${zoomButtons}${fit}${overviewToggle}</div><div class="maker-view-area"><div class="maker-viewport" data-viewport data-help="Drag with the middle button, or hold Space and drag, to move the map. Ctrl and the wheel zoom."><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>${overview}</div>`,
+    `${passageBanner(state)}${areaStrip(state.file, state.area)}<div class="maker-zooms">${zoomButtons}${fit}${overviewToggle}</div><div class="maker-view-area"><div class="maker-viewport" data-viewport data-help="Drag with the middle button, or hold Space and drag, to move the map. Ctrl and the wheel zoom."><div class="maker-stack" data-stack style="${layout.stack}"><canvas class="maker-canvas" data-map style="${layout.map}"></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>${overview}</div>`,
     {
       className: 'maker-map',
       heading: escapeHtml(inside ? inside.name : file.name || 'Untitled map'),
-      note: `${inside ? 'inside · ' : ''}${file.width}x${file.height}`,
+      note: `${inside ? `${inside.kind === 'cave' ? 'cave' : 'inside'} · ` : ''}${file.width}x${file.height}`,
     },
   );
 }
@@ -563,12 +617,21 @@ function selectedPane(
         [...BUILDING_CHOICES, ...FURNITURE_CHOICES].find((choice) => choice.kind === building.kind)
           ?.label ?? 'Building';
       const room = whole && !area ? insideOf(whole, building) : undefined;
-      const door =
-        whole && !area && hasDoor(building)
+      const goIn = (label: string, help: string): string =>
+        `<div class="maker-actions"><button class="px-window px-button is-primary" data-go-inside="${selected.index}" data-help="${escapeAttribute(help)}">${label}</button></div>`;
+      const door = !whole || area || !hasDoor(building)
+        ? ''
+        : building.kind === 'cave-mouth'
           ? room
-            ? `<p class="px-note px-wrap">Its door leads into ${escapeHtml(room.name)}.</p><div class="maker-actions"><button class="px-window px-button is-primary" data-go-inside="${selected.index}" data-help="Opens the inside of it, to furnish and fill.">Go inside</button></div>`
-            : `<p class="px-note px-wrap">Its door is shut. Give it an inside and walking up to the door takes a player in.</p><div class="maker-actions"><button class="px-window px-button is-primary" data-go-inside="${selected.index}" data-help="Makes the inside of it, furnished as FireRed furnishes one, and opens it.">Make its inside</button></div>`
-          : '';
+            ? `<p class="px-note px-wrap">It leads into ${escapeHtml(room.name)}.</p>${goIn('Go in', 'Opens the cave, to draw and fill.')}`
+            : `<p class="px-note px-wrap">It leads nowhere yet. Cut it into the foot of a rock face, give it a cave, and walking up to it takes a player in.</p>${goIn('Make its cave', 'Makes a cave behind it, ringed in rock the way Mt. Moon is, with its way out cut into the south wall, and opens it.')}${
+                (whole.areas ?? []).some((candidate) => candidate.kind === 'cave')
+                  ? `<div class="maker-actions"><button class="px-window px-button" data-lead-into="${selected.index}" data-help="Makes it a second way into a cave you have: choose the cave, then click its south wall where the daylight goes.">Into a cave you have</button></div>`
+                  : ''
+              }`
+          : room
+            ? `<p class="px-note px-wrap">Its door leads into ${escapeHtml(room.name)}.</p>${goIn('Go inside', 'Opens the inside of it, to furnish and fill.')}`
+            : `<p class="px-note px-wrap">Its door is shut. Give it an inside and walking up to the door takes a player in.</p>${goIn('Make its inside', 'Makes the inside of it, furnished as FireRed furnishes one, and opens it.')}`;
       body = `<p class="px-note px-wrap">Drag it with Select to move it.</p>${door}`;
       break;
     }
@@ -588,15 +651,62 @@ function doorwayPane(file: MapFile, doorway: DoorwayInArea): string {
   const far = file.links?.[doorway.link]?.ends[1 - doorway.end];
   const leadsTo = far?.area === undefined ? 'outside' : (areaById(file, far.area)?.name ?? 'nowhere');
   const look = doorway.at.look;
-  const body =
-    look === 'mat'
-      ? `<p class="px-wrap">The way out. Standing on the mat and pressing ${doorway.at.toward} takes a player ${escapeHtml(leadsTo === 'outside' ? 'back outside' : `to ${leadsTo}`)}, and coming in they arrive on it.</p><p class="px-note px-wrap">Drag it along the wall with Select to move it.</p>`
-      : look === 'stairs-up' || look === 'stairs-down'
-        ? `<p class="px-wrap">The stairs ${look === 'stairs-up' ? 'up' : 'down'} to ${escapeHtml(leadsTo)}. A player walks up to the foot of them and presses up.</p><p class="px-note px-wrap">Drag them along the back wall with Select to move them.</p>`
-        : `<p class="px-wrap">The door into ${escapeHtml(leadsTo)}. A player goes in by walking up to the door.</p>`;
-  return pixelWindow(`<div class="maker-form">${body}</div>`, {
+  const to = escapeHtml(leadsTo === 'outside' ? 'back outside' : `to ${leadsTo}`);
+  const [heading, body] = ((): [string, string] => {
+    switch (look) {
+      case 'mat':
+        return [
+          'Way out',
+          `<p class="px-wrap">The way out. Standing on the mat and pressing ${doorway.at.toward} takes a player ${to}, and coming in they arrive on it.</p><p class="px-note px-wrap">Drag it along the wall with Select to move it.</p>`,
+        ];
+      case 'stairs-up':
+      case 'stairs-down':
+        return [
+          'Stairs',
+          `<p class="px-wrap">The stairs ${look === 'stairs-up' ? 'up' : 'down'} to ${escapeHtml(leadsTo)}. A player walks up to the foot of them and presses up.</p><p class="px-note px-wrap">Drag them along the back wall with Select to move them.</p>`,
+        ];
+      case 'cave-exit':
+        return [
+          'Way out',
+          `<p class="px-wrap">The way out of the cave: daylight in its south wall. Walking down into it takes a player ${to}, and coming in they arrive in front of it.</p><p class="px-note px-wrap">Drag it along the south wall with Select to move it.</p>`,
+        ];
+      case 'ladder-up':
+        return [
+          'Ladder up',
+          `<p class="px-wrap">The ladder up ${to}. A player stands at its foot and presses up.</p><p class="px-note px-wrap">Drag it with Select to move it.</p>`,
+        ];
+      case 'ladder-down':
+        return [
+          'Ladder down',
+          `<p class="px-wrap">The ladder down ${to}. A player walks up to the hole and presses into it.</p><p class="px-note px-wrap">Drag it with Select to move it.</p>`,
+        ];
+      default: {
+        const mouth = file.buildings.some(
+          (building) =>
+            building.kind === 'cave-mouth' &&
+            doorFront(building)?.x === doorway.at.x &&
+            doorFront(building)?.y === doorway.at.y,
+        );
+        return mouth
+          ? [
+              'Cave mouth',
+              `<p class="px-wrap">The mouth of ${escapeHtml(leadsTo)}. A player goes in by walking up into it.</p>`,
+            ]
+          : [
+              'Door',
+              `<p class="px-wrap">The door into ${escapeHtml(leadsTo)}. A player goes in by walking up to the door.</p>`,
+            ];
+      }
+    }
+  })();
+  // Where it leads is a place of its own: one press goes there, with the
+  // other end chosen.
+  const go = far
+    ? `<div class="maker-actions"><button class="px-window px-button" data-go-end data-help="Goes to where it comes out, with that end chosen.">Go to the other end</button></div>`
+    : '';
+  return pixelWindow(`<div class="maker-form">${body}${go}</div>`, {
     className: 'maker-selected',
-    heading: look === 'mat' ? 'Way out' : look === 'door' ? 'Door' : 'Stairs',
+    heading,
   });
 }
 
@@ -614,15 +724,42 @@ function upstairsButton(file: MapFile, area: MapFileArea): string {
     : `<div class="maker-actions"><button class="px-window px-button" data-add-upstairs="${escapeAttribute(area.id)}" data-help="Builds a floor above this one, furnished as a bedroom, with stairs up to it against the back wall.">Add an upstairs</button></div>`;
 }
 
+/** A cave can have a floor below it, with a ladder down to it; once it has, the button goes there. */
+function belowButton(file: MapFile, area: MapFileArea): string {
+  if (area.kind !== 'cave') {
+    return '';
+  }
+  const ladder = ladderDownIn(file, area.id);
+  const below = ladder
+    ? areaById(file, file.links?.[ladder.link]?.ends[1 - ladder.end].area)
+    : undefined;
+  return below
+    ? `<div class="maker-actions"><button class="px-window px-button" data-area="${escapeAttribute(below.id)}" data-help="Goes down the ladder to ${escapeAttribute(below.name)}.">Go down</button></div>`
+    : `<div class="maker-actions"><button class="px-window px-button" data-add-below="${escapeAttribute(area.id)}" data-help="Digs a floor below this one, as Mt. Moon's basement is, with a ladder down to it.">Add a floor below</button></div>`;
+}
+
 /** The inside on screen: its name, its look and its size, and the way back out. */
 function insidePane(file: MapFile, area: MapFileArea): string {
-  const styles = MAP_FILE_AREA_STYLES.map(
-    (style) =>
-      `<option value="${style}"${style === area.style ? ' selected' : ''}>${STYLE_LABELS[style]}</option>`,
-  ).join('');
+  const cave = area.kind === 'cave';
+  const kinds = MAP_FILE_STYLES_OF[area.kind];
+  const styles = kinds
+    .map(
+      (style) =>
+        `<option value="${style}"${style === area.style ? ' selected' : ''}>${STYLE_LABELS[style]}</option>`,
+    )
+    .join('');
+  // A choice of one is not a choice: a cave has one look, and says nothing.
+  const looks =
+    kinds.length > 1
+      ? `<label class="maker-field"><span>Looks like</span><select class="px-window px-field" data-area-style>${styles}</select></label>`
+      : '';
+  const limits = areaLimits(area.kind);
+  const removeHelp = cave
+    ? 'Takes this cave away, and everything in it. The cave mouth outside leads nowhere again. Press twice.'
+    : 'Takes this inside away, and everything in it. The door outside shuts again. Press twice.';
   return pixelWindow(
-    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label><label class="maker-field"><span>Looks like</span><select class="px-window px-field" data-area-style>${styles}</select></label><div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-area-width type="number" min="${MAP_FILE_LIMITS.minInsideWidth}" max="${MAP_FILE_LIMITS.maxInsideWidth}" value="${area.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-area-height type="number" min="${MAP_FILE_LIMITS.minInsideHeight}" max="${MAP_FILE_LIMITS.maxInsideHeight}" value="${area.height}" /></label></div>${upstairsButton(file, area)}<div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="Takes this inside away, and everything in it. The door outside shuts again. Press twice.">Remove</button></div></div>`,
-    { className: 'maker-settings', heading: 'This inside' },
+    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label>${looks}<div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-area-width type="number" min="${limits.minWidth}" max="${limits.maxWidth}" value="${area.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-area-height type="number" min="${limits.minHeight}" max="${limits.maxHeight}" value="${area.height}" /></label></div>${upstairsButton(file, area)}${belowButton(file, area)}<div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="${escapeAttribute(removeHelp)}">Remove</button></div></div>`,
+    { className: 'maker-settings', heading: cave ? 'This cave' : 'This inside' },
   );
 }
 

@@ -15,9 +15,13 @@ import {
   fileDoorGates,
   readMapFile,
   type MapFile,
+  type MapFileArea,
+  type MapFileBuilding,
+  type MapFileDoorwayLook,
   type MapFileLinkEnd,
   type MapFileSpot,
 } from './mapFile';
+import { MATERIAL_CHARS } from './tileset/materials';
 import { gateKey } from './gates';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
 import { pokemonName } from './pokemonFigures';
@@ -69,6 +73,20 @@ export interface MapCheck {
   readonly problems: readonly string[];
 }
 
+/** What each way through is called in a problem with it. */
+const DOORWAY_NAMES: Readonly<Record<MapFileDoorwayLook, string>> = {
+  door: 'door',
+  mat: 'way out',
+  'stairs-up': 'stairs',
+  'stairs-down': 'stairs',
+  'cave-exit': 'way out',
+  'ladder-up': 'ladder up',
+  'ladder-down': 'ladder down',
+};
+
+/** The ways through a cave has, and nothing else does. */
+const CAVE_LOOKS: readonly MapFileDoorwayLook[] = ['cave-exit', 'ladder-up', 'ladder-down'];
+
 const LABELS: Readonly<Record<MapCheckId, string>> = {
   loads: 'The game can load it',
   standing: 'Everything stands on ground you can walk on',
@@ -76,7 +94,7 @@ const LABELS: Readonly<Record<MapCheckId, string>> = {
   doors: 'Every door leads somewhere you can stand',
   'way-out': 'Every drop-in can walk out before the clock runs out',
   reachable: 'Every exit and item spot can be walked to',
-  areas: 'Every inside can be walked into',
+  areas: 'Every inside and cave can be walked into',
   'hunter-room': 'The hunter has room to arrive near every drop-in',
   watch: 'No trainer watches a drop-in or an exit',
   words: 'Every name and line is fit for everyone',
@@ -182,8 +200,23 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const fileLinks = file.links ?? [];
   const areaName = (end: MapFileLinkEnd): string =>
     end.area === undefined ? 'outside' : (origins.get(end.area)?.name ?? end.area);
-  const doorwayName = (end: MapFileLinkEnd, other: MapFileLinkEnd): string =>
-    `The ${end.look === 'mat' ? 'way out' : end.look === 'door' ? 'door' : 'stairs'} at ${tileOf(end)} to ${areaName(other)}`;
+  const areaOf = (end: MapFileLinkEnd): MapFileArea | undefined =>
+    end.area === undefined ? undefined : file.areas?.find((area) => area.id === end.area);
+  /** The building whose door a way through outdoors is stood in front of. */
+  const buildingAt = (end: MapFileLinkEnd): MapFileBuilding | undefined =>
+    end.area === undefined
+      ? file.buildings.find((candidate) => {
+          const front = doorFront(candidate);
+          return front !== undefined && front.x === end.x && front.y === end.y;
+        })
+      : undefined;
+  const doorwayName = (end: MapFileLinkEnd, other: MapFileLinkEnd): string => {
+    const named =
+      end.look === 'door' && buildingAt(end)?.kind === 'cave-mouth'
+        ? 'cave mouth'
+        : DOORWAY_NAMES[end.look];
+    return `The ${named} at ${tileOf(end)} to ${areaName(other)}`;
+  };
   const landings = fileLinks.flatMap((link) => [
     { spot: link.ends[0], what: doorwayName(link.ends[0], link.ends[1]) },
     { spot: link.ends[1], what: doorwayName(link.ends[1], link.ends[0]) },
@@ -208,21 +241,53 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
       if (!walkable(end)) {
         found.push(`${what} is on something solid.`);
       }
+      const area = areaOf(end);
+      const kind = area?.kind;
+      const ground = (x: number, y: number): string | undefined => area?.ground[y]?.[x];
+      const doorway = doorwayOf(end);
       if (end.look === 'door') {
-        const building =
-          end.area === undefined
-            ? file.buildings.find((candidate) => {
-                const front = doorFront(candidate);
-                return front !== undefined && front.x === end.x && front.y === end.y;
-              })
-            : undefined;
+        const building = buildingAt(end);
         if (!building || end.toward !== 'up') {
           found.push(`${what} is not in front of a building's door.`);
+        } else if (building.kind === 'cave-mouth') {
+          // FireRed cuts a cave's mouth into the foot of a rock face.
+          const rock = (x: number, y: number): boolean => file.ground[y]?.[x] === MATERIAL_CHARS.cliff;
+          if (
+            !rock(building.x, building.y) ||
+            !rock(building.x - 1, building.y) ||
+            !rock(building.x + 1, building.y) ||
+            !rock(building.x, building.y - 1)
+          ) {
+            found.push(`${what} has to be cut into the foot of a rock face, with rock either side of it and above it.`);
+          }
+          if (areaOf(other)?.kind !== 'cave') {
+            found.push(`${what} has to lead into a cave.`);
+          }
+        } else if (areaOf(other)?.kind !== 'inside') {
+          found.push(`${what} has to lead into the inside of a building.`);
+        }
+      } else if (CAVE_LOOKS.includes(end.look) && kind !== 'cave') {
+        found.push(`${what} belongs in a cave.`);
+      } else if (!CAVE_LOOKS.includes(end.look) && kind === 'cave') {
+        found.push(`${what} belongs in a building: a cave's way out is cut into its south wall.`);
+      } else if (end.look === 'cave-exit') {
+        // Daylight in a notch of the south wall, with rock either side of it.
+        const wall = (x: number): boolean => ground(x, doorway.y) === MATERIAL_CHARS.wall;
+        if (end.toward !== 'down' || !wall(doorway.x) || !wall(doorway.x - 1) || !wall(doorway.x + 1)) {
+          found.push(`${what} has to be cut into the cave's south wall, with rock either side of it.`);
+        }
+      } else if (end.look === 'ladder-up') {
+        if (end.toward !== 'up' || ground(end.x, end.y - 1) === undefined) {
+          found.push(`${what} needs a tile above it for the ladder.`);
+        }
+      } else if (end.look === 'ladder-down') {
+        const under = ground(doorway.x, doorway.y);
+        if (under === undefined || under === MATERIAL_CHARS.wall) {
+          found.push(`${what} has to have floor for its hole, the way it faces.`);
         }
       } else if (end.look === 'stairs-up' || end.look === 'stairs-down') {
         // A staircase stands against the back wall of a room: the row above
         // its top is wall, and all of it is on the room.
-        const area = end.area === undefined ? undefined : file.areas?.find((a) => a.id === end.area);
         const top = stairsAt(end);
         const fits =
           area !== undefined &&
@@ -238,8 +303,6 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
           found.push(`${what} has to stand against the back wall of the room.`);
         }
       } else {
-        const area = end.area === undefined ? undefined : file.areas?.find((a) => a.id === end.area);
-        const doorway = doorwayOf(end);
         const againstTheEdge =
           area !== undefined &&
           (doorway.x < 0 ||
@@ -254,6 +317,19 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
       return found;
     }),
   );
+  // A cave mouth is a way in or it is a hole in a hill that goes nowhere.
+  for (const building of file.buildings) {
+    const front = doorFront(building);
+    if (
+      building.kind === 'cave-mouth' &&
+      front &&
+      !fileLinks.some((link) =>
+        link.ends.some((end) => end.area === undefined && end.x === front.x && end.y === front.y),
+      )
+    ) {
+      doors.push(`The cave mouth at ${at(building)} leads nowhere: make its cave, or take it away.`);
+    }
+  }
 
   // Every walk is measured with every exit but the one being walked to shut,
   // because an open exit takes whoever steps on it: a way out that is only
@@ -385,7 +461,10 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   // The two checks about insides are only asked of a map that has one: a
   // tick against "every door leads somewhere" on a map with no doors says
   // nothing, and every line on that list is one a maker reads.
-  const hasInsides = (file.areas ?? []).length > 0 || fileLinks.length > 0;
+  const hasInsides =
+    (file.areas ?? []).length > 0 ||
+    fileLinks.length > 0 ||
+    file.buildings.some((building) => building.kind === 'cave-mouth');
   return [
     check('loads', []),
     check('standing', standing),

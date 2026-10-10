@@ -47,8 +47,10 @@ import {
 } from '../maker/drafts';
 import { EditHistory } from '../maker/history';
 import {
+  addFloorBelow,
   addUpstairs,
   areaById,
+  doorEnd,
   doorwayAt,
   doorwaysIn,
   focusArea,
@@ -63,7 +65,8 @@ import {
   type AreaId,
   type DoorwayInArea,
 } from '../maker/areas';
-import { drawPlantSwatch, drawSwatch, loadMakerSheets } from '../maker/mapCanvas';
+import { linkPassage, PASSAGE_PAIRS, passageEndAt, type PendingPassage } from '../maker/passages';
+import { drawPlantSwatch, drawSwatch, loadMakerSheets, type DoorwayMark } from '../maker/mapCanvas';
 import { MapPainter } from '../maker/mapPainter';
 import { overviewOf, type Overview } from '../maker/overview';
 
@@ -110,6 +113,8 @@ import {
   MAKER_ZOOMS,
   type MakerTool,
   type MakerZoom,
+  type CavePassage,
+  isCavePassage,
   type PlaceChoice,
   stackLayout,
 } from '../maker/makerView';
@@ -128,6 +133,7 @@ import {
   plainText,
   readMapFile,
   MAP_FILE_AREA_STYLES,
+  MAP_FILE_STYLES_OF,
   type MapFile,
   type MapFileArea,
   type MapFileAreaStyle,
@@ -220,7 +226,7 @@ export class MapMakerScene extends Phaser.Scene {
   private draftKey = '';
   private history = new EditHistory<MapFile>(blankMap());
   private tool: MakerTool = 'brush';
-  private brushId = brushesFor(false)[0].id;
+  private brushId = brushesFor(undefined)[0].id;
   private place: PlaceChoice = { kind: 'drop-in' };
   private selected: ThingRef | undefined;
   /**
@@ -231,6 +237,8 @@ export class MapMakerScene extends Phaser.Scene {
   private area: AreaId;
   /** A way through chosen on the map - a room's mat - instead of a thing. */
   private doorway: Pick<DoorwayInArea, 'link' | 'end'> | undefined;
+  /** An entrance put down, waiting for the click that says where it comes out. */
+  private passage: PendingPassage | undefined;
   /** The view of the area on screen, kept against the file it was made from. */
   private focused: { readonly file: MapFile; readonly area: AreaId; readonly view: MapFile } | undefined;
   /** An inside the Remove button was pressed for once, waiting on the second press. */
@@ -426,8 +434,8 @@ export class MapMakerScene extends Phaser.Scene {
     this.doorway = undefined;
     this.pendingAreaRemoval = undefined;
     this.panel = 'map';
-    if (!brushesFor(this.inside !== undefined).some((brush) => brush.id === this.brushId)) {
-      this.brushId = brushesFor(this.inside !== undefined)[0].id;
+    if (!brushesFor(this.inside?.kind).some((brush) => brush.id === this.brushId)) {
+      this.brushId = brushesFor(this.inside?.kind)[0].id;
     }
     if (this.place.kind === 'building') {
       this.place = { kind: 'drop-in' };
@@ -694,6 +702,7 @@ export class MapMakerScene extends Phaser.Scene {
       file: this.file,
       ...(this.area !== undefined ? { area: this.area } : {}),
       ...(this.doorway ? { doorway: this.doorway } : {}),
+      ...(this.passage ? { passage: this.passage } : {}),
       tool: this.tool,
       brushId: this.brushId,
       place: this.place,
@@ -774,10 +783,20 @@ export class MapMakerScene extends Phaser.Scene {
     if (!context) {
       return;
     }
-    const doorways = doorwaysIn(this.file, this.area).map((doorway) => ({
-      at: doorway.at,
-      chosen: doorway.link === this.doorway?.link && doorway.end === this.doorway.end,
-    }));
+    const doorways: DoorwayMark[] = doorwaysIn(this.file, this.area).map((doorway) => {
+      const chosen = doorway.link === this.doorway?.link && doorway.end === this.doorway.end;
+      const far = this.file.links?.[doorway.link]?.ends[1 - doorway.end];
+      return {
+        at: doorway.at,
+        chosen,
+        ...(chosen && far && far.area === this.area ? { pair: far } : {}),
+      };
+    });
+    // An entrance put down here and waiting for where it comes out is marked
+    // as chosen, so the maker can see what the next click finishes.
+    if (this.passage && this.passage.from.area === this.area) {
+      doorways.push({ at: this.passage.from, chosen: true });
+    }
     const inside = this.inside;
     this.painter.show(
       context,
@@ -933,8 +952,41 @@ export class MapMakerScene extends Phaser.Scene {
       }
       this.showArea(outcome.area);
     });
+    on('[data-lead-into]', (element) => {
+      const mouth = this.file.buildings[Number(element.dataset.leadInto)];
+      const from = mouth ? doorEnd(mouth) : undefined;
+      if (from) {
+        this.passage = { from, to: PASSAGE_PAIRS.mouth };
+        this.selected = undefined;
+        this.render();
+      }
+    });
+    on('[data-cancel-passage]', () => {
+      this.passage = undefined;
+      this.render();
+    });
+    on('[data-go-end]', () => {
+      const doorway = this.doorway;
+      const far = doorway ? this.file.links?.[doorway.link]?.ends[1 - doorway.end] : undefined;
+      if (!doorway || !far) {
+        return;
+      }
+      this.showArea(far.area);
+      this.doorway = { link: doorway.link, end: (1 - doorway.end) as 0 | 1 };
+      this.render();
+    });
     on('[data-add-upstairs]', (element) => {
       const outcome = addUpstairs(this.file, element.dataset.addUpstairs ?? '');
+      if (!outcome.made) {
+        this.render(outcome.reason);
+        return;
+      }
+      this.history.push(outcome.file);
+      this.scheduleAutosave();
+      this.showArea(outcome.area);
+    });
+    on('[data-add-below]', (element) => {
+      const outcome = addFloorBelow(this.file, element.dataset.addBelow ?? '');
       if (!outcome.made) {
         this.render(outcome.reason);
         return;
@@ -1011,7 +1063,7 @@ export class MapMakerScene extends Phaser.Scene {
         return name.trim().length > 0 ? updateArea(this.file, inside.id, { name }) : this.file;
       });
       field('[data-area-style]', (value) =>
-        (MAP_FILE_AREA_STYLES as readonly string[]).includes(value)
+        (MAP_FILE_STYLES_OF[inside.kind] as readonly string[]).includes(value)
           ? updateArea(this.file, inside.id, { style: value as MapFileAreaStyle })
           : this.file,
       );
@@ -1419,6 +1471,38 @@ export class MapMakerScene extends Phaser.Scene {
     return this.overlay.root.querySelector<HTMLElement>('canvas[data-map]');
   }
 
+  /** Puts down the entrance of a passage, and waits for where it comes out. */
+  private startPassage(look: CavePassage, tile: GridPoint): void {
+    const start = passageEndAt(this.file, this.area, look, tile);
+    if (!start.placed) {
+      this.render(start.reason);
+      return;
+    }
+    this.passage = { from: start.end, to: PASSAGE_PAIRS[look] };
+    this.selected = undefined;
+    this.doorway = undefined;
+    this.render();
+  }
+
+  /** Where a passage put down comes out: the click that makes it a way through. */
+  private finishPassage(passage: PendingPassage, tile: GridPoint): void {
+    const end = passageEndAt(this.file, this.area, passage.to, tile);
+    if (!end.placed) {
+      this.render(end.reason);
+      return;
+    }
+    const outcome = linkPassage(this.file, passage.from, end.end);
+    if (!outcome.linked) {
+      this.render(outcome.reason);
+      return;
+    }
+    this.passage = undefined;
+    this.commit(outcome.file, undefined);
+    // The end just made is chosen, so its panel says where it leads and goes there.
+    this.doorway = { link: outcome.link, end: 1 };
+    this.render();
+  }
+
   /**
    * How much room the place on screen has to grow into on each side: the
    * outdoors, the map's; an inside, none, because a room is the size its own
@@ -1438,8 +1522,8 @@ export class MapMakerScene extends Phaser.Scene {
   }
 
   private brush() {
-    const inside = this.inside !== undefined;
-    return groundBrush(this.brushId, inside) ?? brushesFor(inside)[0];
+    const place = this.inside?.kind;
+    return groundBrush(this.brushId, place) ?? brushesFor(place)[0];
   }
 
   /**
@@ -1552,6 +1636,14 @@ export class MapMakerScene extends Phaser.Scene {
       pointerId: event.pointerId,
       pointer: { clientX: event.clientX, clientY: event.clientY },
     };
+    // An entrance waiting for where it comes out takes the next click on the
+    // map, whatever tool is chosen: that click is the other half of it.
+    if (this.passage) {
+      if (inMap) {
+        this.finishPassage(this.passage, tile);
+      }
+      return;
+    }
     switch (this.tool) {
       case 'brush': {
         const growth = this.growFor(this.view, [tile]);
@@ -1586,7 +1678,7 @@ export class MapMakerScene extends Phaser.Scene {
         return;
       case 'pick': {
         const letter = groundAt(this.view, tile) ?? '.';
-        const brushes = brushesFor(this.inside !== undefined);
+        const brushes = brushesFor(this.inside?.kind);
         const picked =
           brushes.find((brush) => brush.letterFor(groundUnder(letter)) === letter) ??
           brushes.find((brush) => brush.swatch === groundUnder(letter));
@@ -1632,6 +1724,12 @@ export class MapMakerScene extends Phaser.Scene {
         return;
       }
       case 'place': {
+        if (isCavePassage(this.place.kind)) {
+          if (inMap) {
+            this.startPassage(this.place.kind, tile);
+          }
+          return;
+        }
         // A district and a stretch of Surf water are dragged out; everything
         // else lands on the tile clicked.
         if (this.place.kind === 'district' || this.place.kind === 'surf') {
@@ -2568,6 +2666,9 @@ export class MapMakerScene extends Phaser.Scene {
       event.preventDefault();
       if (this.stroke) {
         this.cancelStroke();
+      } else if (this.passage) {
+        this.passage = undefined;
+        this.render('The way through is put away again.');
       } else if (this.selected || this.doorway) {
         this.selected = undefined;
         this.doorway = undefined;

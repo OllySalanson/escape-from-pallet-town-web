@@ -3,6 +3,7 @@ import {
   FLOODPLAIN_REED_WILDLIFE,
   FLOODPLAIN_TOWN_WILDLIFE,
   FOREST_EDGE_WILDLIFE,
+  PALLET_DELVE_WILDLIFE,
   PALLET_FIELD_WILDLIFE,
   PALLET_SHORE_WILDLIFE,
   ROUTE_MEADOW_WILDLIFE,
@@ -27,8 +28,10 @@ import { PLAYER_MAP_TILESET, type PlayerMapPropName } from './tileset/playerMapT
 import { MATERIAL_CHARS, MATERIALS, type Material } from './tileset/materials';
 import type { PropDefinition, TilesetCatalogue } from './tileset/catalogue';
 import {
+  CAVE_STYLES,
   INSIDE_PROPS,
   INSIDE_STYLES,
+  ROOM_STYLES,
   type InsidePropName,
   type InsideStyle,
 } from './tileset/insideTileset';
@@ -118,6 +121,14 @@ export const MAP_FILE_LIMITS = {
   minInsideHeight: 5,
   maxInsideWidth: 40,
   maxInsideHeight: 32,
+  /**
+   * How big a cave may be: Mt. Moon's floors are forty-eight by forty, and a
+   * cave is somewhere to get lost in.
+   */
+  minCaveWidth: 8,
+  minCaveHeight: 6,
+  maxCaveWidth: 64,
+  maxCaveHeight: 64,
   maxFurniture: 80,
 } as const;
 
@@ -199,6 +210,8 @@ export const MAP_FILE_BUILDINGS = {
   'forest-gate': 'forestGate',
   'route-gate': 'routeGate',
   'league-gate': 'leagueGate',
+  // The mouth of a cave, cut into the foot of a rock face: the way into one.
+  'cave-mouth': 'caveMouth',
   sign: 'signTown',
   'sign-tips': 'signTips',
   // Everything below is the second palette (2026-10-10): every other thing
@@ -390,6 +403,11 @@ export const MAP_FILE_FURNITURE = {
   'mart-wall-east': 'martWallEast',
   'mart-corner-west': 'martCornerWest',
   'mart-corner-east': 'martCornerEast',
+  // A cave's: Mt. Moon's.
+  boulder: 'caveBoulder',
+  rocks: 'caveRocks',
+  crater: 'caveCrater',
+  'dripping-water': 'caveDrip',
 } as const satisfies Record<string, InsidePropName>;
 
 export type MapFileFurnitureKind = keyof typeof MAP_FILE_FURNITURE;
@@ -439,6 +457,8 @@ export const MAP_FILE_BUILDING_DOORS: Readonly<
   shed: [1, 3],
   'blue-cottage': [3, 2],
   'timber-house': [2, 4],
+  // A cave mouth is all door.
+  'cave-mouth': [0, 0],
 };
 
 /** The tile in front of a building's door - where its link's end stands - or undefined. */
@@ -447,25 +467,59 @@ export function doorFront(building: MapFileBuilding): MapFileSpot | undefined {
   return door ? { x: building.x + door[0], y: building.y + door[1] + 1 } : undefined;
 }
 
-/** What kind of place an area is. Caves will be the second. */
-export const MAP_FILE_AREA_KINDS = ['inside'] as const;
+/**
+ * What kind of place an area is: the inside of a building, or a cave - the
+ * same thing in rock, whose floor is wild ground on every step.
+ */
+export const MAP_FILE_AREA_KINDS = ['inside', 'cave'] as const;
 export type MapFileAreaKind = (typeof MAP_FILE_AREA_KINDS)[number];
 
-/** How an inside is dressed: which FireRed room its floor and walls are. */
+/** How an area is dressed: which FireRed room, or which cave, its ground is. */
 export const MAP_FILE_AREA_STYLES: readonly InsideStyle[] = INSIDE_STYLES;
 export type MapFileAreaStyle = InsideStyle;
 
-/** The ground letters an inside may use: its floor and its wall. */
-export const MAP_FILE_INSIDE_LETTERS: readonly string[] = [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall];
+/** The styles each kind of area may be dressed in. */
+export const MAP_FILE_STYLES_OF: Readonly<Record<MapFileAreaKind, readonly MapFileAreaStyle[]>> = {
+  inside: ROOM_STYLES,
+  cave: CAVE_STYLES,
+};
+
+/** The ground letters each kind of area may use: a floor and a wall, and a cave's sand. */
+export const MAP_FILE_AREA_LETTERS: Readonly<Record<MapFileAreaKind, readonly string[]>> = {
+  inside: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall],
+  cave: [MATERIAL_CHARS.paving, MATERIAL_CHARS.wall, MATERIAL_CHARS.sand],
+};
+
+/** The sizes each kind of area may be. */
+export function areaLimits(kind: MapFileAreaKind): {
+  readonly minWidth: number;
+  readonly minHeight: number;
+  readonly maxWidth: number;
+  readonly maxHeight: number;
+} {
+  const L = MAP_FILE_LIMITS;
+  return kind === 'cave'
+    ? { minWidth: L.minCaveWidth, minHeight: L.minCaveHeight, maxWidth: L.maxCaveWidth, maxHeight: L.maxCaveHeight }
+    : { minWidth: L.minInsideWidth, minHeight: L.minInsideHeight, maxWidth: L.maxInsideWidth, maxHeight: L.maxInsideHeight };
+}
 
 /**
  * How a way through looks where you go through it: a building's door you
  * walk up to, the mat inside a room you step off, or a staircase in a house -
  * up from the floor below, down from the floor above - which you walk up to
- * from the tile in front of its foot. More looks - a cave's mouth, a ladder -
- * are more values of this.
+ * from the tile in front of its foot. A cave has its own three: the daylight
+ * cut into its south wall that is its way out, a ladder up whose foot you
+ * stand on, and a hole with a ladder down it that you walk up to.
  */
-export const MAP_FILE_DOORWAY_LOOKS = ['door', 'mat', 'stairs-up', 'stairs-down'] as const;
+export const MAP_FILE_DOORWAY_LOOKS = [
+  'door',
+  'mat',
+  'stairs-up',
+  'stairs-down',
+  'cave-exit',
+  'ladder-up',
+  'ladder-down',
+] as const;
 export type MapFileDoorwayLook = (typeof MAP_FILE_DOORWAY_LOOKS)[number];
 
 /**
@@ -481,6 +535,8 @@ export const MAP_FILE_HABITATS = {
   shore: PALLET_SHORE_WILDLIFE,
   town: FLOODPLAIN_TOWN_WILDLIFE,
   woodland: FOREST_EDGE_WILDLIFE,
+  // Under the hill: Zubat, Diglett and Sandshrew, on every step of the floor.
+  cave: PALLET_DELVE_WILDLIFE,
 } as const satisfies Record<string, WildEncounterTable>;
 
 export type MapFileHabitat = keyof typeof MAP_FILE_HABITATS;
@@ -1285,23 +1341,30 @@ function readAreas(
         `${what} needs a name of at most ${MAP_FILE_LIMITS.maxPlaceNameLength} letters.`,
       );
     }
-    if (typeof area.kind !== 'string' || !(MAP_FILE_AREA_KINDS as readonly string[]).includes(area.kind)) {
+    const kind: MapFileAreaKind | undefined = (MAP_FILE_AREA_KINDS as readonly unknown[]).includes(
+      area.kind,
+    )
+      ? (area.kind as MapFileAreaKind)
+      : undefined;
+    if (!kind) {
       problems.push(`${what} must be one of: ${MAP_FILE_AREA_KINDS.join(', ')}.`);
     }
-    if (typeof area.style !== 'string' || !(MAP_FILE_AREA_STYLES as readonly string[]).includes(area.style)) {
-      problems.push(`${what}'s style must be one of: ${MAP_FILE_AREA_STYLES.join(', ')}.`);
+    const styles = kind ? MAP_FILE_STYLES_OF[kind] : MAP_FILE_AREA_STYLES;
+    if (typeof area.style !== 'string' || !(styles as readonly string[]).includes(area.style)) {
+      problems.push(`${what}'s style must be one of: ${styles.join(', ')}.`);
     }
     const { width, height } = area;
+    const limits = areaLimits(kind ?? 'inside');
     const sized =
       isWholeNumber(width) &&
       isWholeNumber(height) &&
-      width >= MAP_FILE_LIMITS.minInsideWidth &&
-      height >= MAP_FILE_LIMITS.minInsideHeight &&
-      width <= MAP_FILE_LIMITS.maxInsideWidth &&
-      height <= MAP_FILE_LIMITS.maxInsideHeight;
+      width >= limits.minWidth &&
+      height >= limits.minHeight &&
+      width <= limits.maxWidth &&
+      height <= limits.maxHeight;
     if (!sized) {
       problems.push(
-        `${what} is ${MAP_FILE_LIMITS.minInsideWidth}x${MAP_FILE_LIMITS.minInsideHeight} to ${MAP_FILE_LIMITS.maxInsideWidth}x${MAP_FILE_LIMITS.maxInsideHeight} tiles.`,
+        `${what} is ${limits.minWidth}x${limits.minHeight} to ${limits.maxWidth}x${limits.maxHeight} tiles.`,
       );
     } else if (typeof id === 'string' && !sizes.has(id)) {
       sizes.set(id, { width, height });
@@ -1317,9 +1380,12 @@ function readAreas(
         if (row.length !== width) {
           problems.push(`${what}'s ground row ${y} is ${row.length} letters; it is ${width} wide.`);
         }
-        const unknown = [...new Set([...row].filter((letter) => !MAP_FILE_INSIDE_LETTERS.includes(letter)))];
+        const letters = MAP_FILE_AREA_LETTERS[kind ?? 'inside'];
+        const unknown = [...new Set([...row].filter((letter) => !letters.includes(letter)))];
         if (unknown.length > 0) {
-          problems.push(`${what}'s ground row ${y} uses letters an inside does not draw: ${unknown.join(' ')}`);
+          problems.push(
+            `${what}'s ground row ${y} uses letters ${kind === 'cave' ? 'a cave' : 'an inside'} does not draw: ${unknown.join(' ')}`,
+          );
         }
       });
     }
@@ -1772,6 +1838,9 @@ export function buildPlayerMap(file: MapFile): PlayerMap {
         mapId: id,
         name: placed.name.toUpperCase(),
         areas: [placed.rect],
+        // A cave's floor is wild ground on every step, and what lives there
+        // is the cave's own.
+        ...(placed.kind === 'cave' ? { encounters: MAP_FILE_HABITATS.cave } : {}),
       })),
       ...(areas.length > 1
         ? [

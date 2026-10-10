@@ -110,10 +110,12 @@ export function areaTileset(area: MapFileArea): TilesetCatalogue<InsidePropName>
 }
 
 /**
- * An inside as a sketch: its floor and walls, its furniture, and a mat under
- * every way out of it. A mat is three tiles wide with the way out under its
+ * An inside as a sketch: its floor and walls, its furniture, and the art of
+ * every way through it. A mat is three tiles wide with the way out under its
  * middle, slid along the wall where the room is too narrow for it to be
- * centred.
+ * centred. In a cave, the way out is daylight cut into the south wall it is
+ * pressed into, a ladder up stands with its foot on the tile it is climbed
+ * from, and a ladder down is a hole in the floor beside it.
  */
 export function sketchArea(
   area: MapFileArea,
@@ -137,9 +139,24 @@ export function sketchArea(
       if (end.area !== area.id) {
         continue;
       }
-      if (end.look === 'mat') {
+      const doorway = doorwayOf(end);
+      const inArea = (x: number, y: number): boolean =>
+        x >= 0 && y >= 0 && x < area.width && y < area.height;
+      if (end.look === 'mat' && mat) {
         const x = Math.max(0, Math.min(area.width - 3, end.x - 1));
         sketch.plant(x, end.y, mat);
+      } else if (end.look === 'cave-exit') {
+        if (inArea(doorway.x - 1, doorway.y) && inArea(doorway.x + 1, doorway.y)) {
+          sketch.plant(doorway.x - 1, doorway.y, 'caveExit');
+        }
+      } else if (end.look === 'ladder-up') {
+        if (inArea(end.x, end.y - 1)) {
+          sketch.plant(end.x, end.y - 1, 'caveLadder');
+        }
+      } else if (end.look === 'ladder-down') {
+        if (inArea(doorway.x, doorway.y)) {
+          sketch.plant(doorway.x, doorway.y, 'caveHole');
+        }
       } else if (end.look === 'stairs-up' || end.look === 'stairs-down') {
         const at = stairsAt(end);
         if (
@@ -387,6 +404,12 @@ function artOf(end: MapFileLinkEnd, landing: GridPosition, doorway: GridPosition
   }
   if (end.look === 'mat') {
     return { x: landing.x - 1, y: landing.y, width: 3, height: 1 };
+  }
+  if (end.look === 'cave-exit') {
+    return { x: doorway.x - 1, y: doorway.y, width: 3, height: 1 };
+  }
+  if (end.look === 'ladder-up') {
+    return { x: landing.x, y: landing.y - 1, width: 1, height: 2 };
   }
   return { ...doorway, width: 1, height: 1 };
 }

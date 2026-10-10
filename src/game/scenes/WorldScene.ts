@@ -3566,10 +3566,12 @@ export class WorldScene extends Phaser.Scene {
     const encounters = this.encountersAtCurrentTile();
     // Tall grass, or the floor of a place that rolls on every step - which is
     // what a cave is, and the only reason its wildlife is ever met
-    // (`interiors.ts`). There is no tall grass underground.
+    // (`interiors.ts`, and a player's cave, `MapFileArea`). There is no tall
+    // grass underground.
     const rolls =
       isTallGrassInMap(this.currentMap, this.currentTile) ||
-      interiorFloorRolls(this.currentMap.id, this.currentTile);
+      interiorFloorRolls(this.currentMap.id, this.currentTile) ||
+      this.currentArea()?.kind === 'cave';
     if (rolls && encounters) {
       const rng = this.runSession?.rng;
       // The authored teaching fight replaces the first roll of a first-contract

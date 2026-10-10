@@ -266,7 +266,7 @@ export function buildMapLayers(
 /**
  * What an overlay material draws on one of its tiles.
  *
- * Most are an edge role read off the four neighbours. Three are drawn by a rule
+ * Most are an edge role read off the neighbours. Three are drawn by a rule
  * of their own, because FireRed draws them that way: a wood of conifers on its
  * lattice (`lattice.ts`), a fence whose uprights sit on the side of the corner
  * they run into, and a rock mound whose rim and face are two tiles deep. Those
@@ -289,12 +289,20 @@ function overlayTile(
   if (tiles.mound) {
     return moundTile(tiles.mound, same, x, y);
   }
-  const role = roleFor({
-    north: isHere(x, y - 1),
-    south: isHere(x, y + 1),
-    east: isHere(x + 1, y),
-    west: isHere(x - 1, y),
+  // The diagonals only decide anything where the art has an inside corner: a
+  // cave's rock turns the corner of a room with a joint of its own.
+  const here = tiles.edgesAtMapEdge === false ? same : isHere;
+  const read = roleFor({
+    north: here(x, y - 1),
+    south: here(x, y + 1),
+    east: here(x + 1, y),
+    west: here(x - 1, y),
+    northEast: here(x + 1, y - 1),
+    northWest: here(x - 1, y - 1),
+    southEast: here(x + 1, y + 1),
+    southWest: here(x - 1, y + 1),
   });
+  const role = read.startsWith('inner-') && tiles.roles[read] === undefined ? 'fill' : read;
   const rails = tiles.railSides;
   // Either end of an upright is the rail itself. FireRed's only post is the
   // corner's pair of them, and standing that on a run's free end drew a second

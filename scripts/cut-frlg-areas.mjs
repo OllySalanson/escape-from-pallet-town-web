@@ -57,6 +57,11 @@ const ROOMS = {
   house: { layout: 'PalletTown_PlayersHouse_1F', primary: 'building', secondary: 'generic_building_1' },
   upstairs: { layout: 'PalletTown_PlayersHouse_2F', primary: 'building', secondary: 'generic_building_1' },
   mart: { layout: 'Mart', primary: 'building', secondary: 'mart' },
+  // Mt. Moon, the first cave a FireRed player walks into: its ground floor,
+  // ringed in rock with the way out cut into its south wall, and the floor
+  // below, whose rooms stand on the dark with only a back wall.
+  moon: { layout: 'MtMoon_1F', primary: 'general', secondary: 'cave' },
+  moonBelow: { layout: 'MtMoon_B1F', primary: 'general', secondary: 'cave' },
 };
 
 /**
@@ -124,6 +129,50 @@ const PIECES = [
   { name: 'mart.cornerWest', room: 'mart', at: [0, 7], size: [1, 1], layers: 'both' },
   { name: 'mart.cornerEast', room: 'mart', at: [10, 7], size: [1, 1], layers: 'both' },
   { name: 'mart.mat', room: 'mart', at: [3, 7], size: [3, 2], layers: 'top', fit: [3, 1] },
+
+  // --- a cave: Mt. Moon -------------------------------------------------------
+  { name: 'cave.floor', room: 'moon', at: [10, 2], size: [1, 1], layers: 'bottom' },
+  // The rock round a cave is a run of lumps: the back wall's top row, whole,
+  // and every face that meets the ground cut from the top layer, so it stands
+  // on the floor or the sand alike - FireRed draws each twice, once on each.
+  { name: 'cave.wallUpper', room: 'moon', at: [1, 0], size: [1, 1], layers: 'bottom' },
+  { name: 'cave.wallLower', room: 'moon', at: [10, 1], size: [1, 1], layers: 'top' },
+  { name: 'cave.faceEast', room: 'moon', at: [1, 2], size: [1, 1], layers: 'top' },
+  { name: 'cave.faceWest', room: 'moon', at: [46, 2], size: [1, 1], layers: 'top' },
+  // The south wall is the rock's top seen from above, with a rim along it.
+  { name: 'cave.rim', room: 'moon', at: [2, 38], size: [1, 1], layers: 'top' },
+  // Where the walls meet in the corners of the room.
+  { name: 'cave.cornerNw', room: 'moon', at: [1, 1], size: [1, 1], layers: 'both' },
+  { name: 'cave.cornerNe', room: 'moon', at: [46, 1], size: [1, 1], layers: 'both' },
+  { name: 'cave.cornerSw', room: 'moon', at: [1, 38], size: [1, 1], layers: 'both' },
+  { name: 'cave.cornerSe', room: 'moon', at: [46, 38], size: [1, 1], layers: 'both' },
+  // The way out: daylight in a notch of the south wall.
+  { name: 'cave.exit', room: 'moon', at: [17, 38], size: [3, 1], layers: 'both' },
+  // The sand, a whole block of FireRed's: a fill, four edges, four corners
+  // and four inside corners, each with the floor it meets drawn in.
+  { name: 'cave.sand', room: 'moon', at: [2, 2], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandN', room: 'moon', at: [33, 17], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandS', room: 'moon', at: [8, 2], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandE', room: 'moon', at: [4, 5], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandW', room: 'moon', at: [44, 7], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandNw', room: 'moon', at: [12, 7], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandNe', room: 'moon', at: [37, 13], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandSw', room: 'moon', at: [37, 3], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandSe', room: 'moon', at: [9, 2], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandInNw', room: 'moon', at: [12, 10], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandInNe', room: 'moon', at: [2, 31], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandInSw', room: 'moon', at: [37, 2], size: [1, 1], layers: 'both' },
+  { name: 'cave.sandInSe', room: 'moon', at: [7, 2], size: [1, 1], layers: 'both' },
+  // What stands in it.
+  { name: 'cave.boulder', room: 'moon', at: [40, 8], size: [1, 1], layers: 'top' },
+  { name: 'cave.rocks', room: 'moon', at: [11, 2], size: [1, 1], layers: 'top' },
+  { name: 'cave.crater', room: 'moon', at: [10, 4], size: [2, 2], layers: 'both' },
+  // Water dripping off the back wall into a pool on the floor.
+  { name: 'cave.drip', room: 'moonBelow', at: [21, 1], size: [2, 2], layers: ['22', 'tt'] },
+  // The ways between floors: a hole with a ladder down it, and a ladder up
+  // leant on a rock, its foot on the floor.
+  { name: 'cave.hole', room: 'moon', at: [5, 6], size: [1, 1], layers: 'both' },
+  { name: 'cave.ladder', room: 'moonBelow', at: [25, 3], size: [1, 2], layers: ['2', 't'] },
 ];
 
 // --- reading pret's files ----------------------------------------------------

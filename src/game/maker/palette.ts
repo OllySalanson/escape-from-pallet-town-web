@@ -1,5 +1,6 @@
 import {
   MAP_FILE_HABITATS,
+  type MapFileAreaKind,
   type MapFileAreaStyle,
   type MapFileBuildingKind,
   type MapFileFacing,
@@ -7,6 +8,7 @@ import {
   type MapFileHabitat,
   type MapFileLook,
 } from '../world/mapFile';
+import { CAVE_STYLES } from '../world/tileset/insideTileset';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
 
 /**
@@ -136,13 +138,33 @@ export const INSIDE_BRUSHES: readonly GroundBrush[] = [
   ),
 ];
 
-/** The brushes for the place being drawn: outdoors, or the inside of a building. */
-export function brushesFor(inside: boolean): readonly GroundBrush[] {
-  return inside ? INSIDE_BRUSHES : GROUND_BRUSHES;
+/**
+ * What a cave is painted with: Mt. Moon's floor, its rock and its sand. Every
+ * step of a cave's floor is wild ground, as FireRed's are.
+ */
+export const CAVE_BRUSHES: readonly GroundBrush[] = [
+  plain(
+    'floor',
+    'Cave floor',
+    MATERIAL_CHARS.paving,
+    'The floor of the cave. Wild Pokémon live here: every step can start a fight.',
+  ),
+  plain(
+    'wall',
+    'Rock',
+    MATERIAL_CHARS.wall,
+    'The rock of the cave. Solid. Two rows along the top make its back wall, and a way out is cut into rock along its foot.',
+  ),
+  plain('sand', 'Sand', MATERIAL_CHARS.sand, 'Sand on the cave floor. Wild Pokémon live on it too.'),
+];
+
+/** The brushes for the place being drawn: outdoors, the inside of a building, or a cave. */
+export function brushesFor(place: MapFileAreaKind | undefined): readonly GroundBrush[] {
+  return place === 'cave' ? CAVE_BRUSHES : place === 'inside' ? INSIDE_BRUSHES : GROUND_BRUSHES;
 }
 
-export function groundBrush(id: string, inside = false): GroundBrush | undefined {
-  return brushesFor(inside).find((brush) => brush.id === id);
+export function groundBrush(id: string, place?: MapFileAreaKind): GroundBrush | undefined {
+  return brushesFor(place).find((brush) => brush.id === id);
 }
 
 /**
@@ -253,6 +275,7 @@ export const BUILDING_CHOICES: readonly BuildingChoice[] = (
     ['rock', 'Rock', 'Nature'],
     ['round-boulder', 'Boulder', 'Nature'],
     ['rock-stair', 'Rock with steps', 'Nature'],
+    ['cave-mouth', 'Cave mouth', 'Nature'],
     ['wet-rock', 'Rock in water', 'Nature', 'water'],
     ['stump', 'Stump', 'Nature'],
     ['big-stump', 'Big stump', 'Nature'],
@@ -392,6 +415,10 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
     ['box', 'Box', 'warehouse'],
     ['boxes', 'Boxes', 'warehouse'],
     ['tall-box', 'Tall box', 'warehouse'],
+    ['boulder', 'Boulder', 'cave'],
+    ['rocks', 'Rocks', 'cave'],
+    ['crater', 'Crater', 'cave'],
+    ['dripping-water', 'Dripping water', 'cave'],
   ] as const satisfies readonly (readonly [
     MapFileFurnitureKind,
     string,
@@ -399,9 +426,15 @@ export const FURNITURE_CHOICES: readonly FurnitureChoice[] = (
   ])[]
 ).map(([kind, label, style]) => (style ? { kind, label, style } : { kind, label }));
 
-/** The furniture a room in this style is furnished from. */
+/**
+ * The furniture a place in this style is furnished from: a room's own pieces
+ * and the house's, which stand in any room; a cave has only its own.
+ */
 export function furnitureFor(style: MapFileAreaStyle): readonly FurnitureChoice[] {
-  return FURNITURE_CHOICES.filter((choice) => choice.style === undefined || choice.style === style);
+  const cave = (CAVE_STYLES as readonly string[]).includes(style);
+  return FURNITURE_CHOICES.filter((choice) =>
+    choice.style === undefined ? !cave : choice.style === style,
+  );
 }
 
 /** What each room style is called in the editor. */
@@ -412,6 +445,7 @@ export const STYLE_LABELS: Readonly<Record<MapFileAreaStyle, string>> = {
   lab: 'Lab',
   center: 'Pokémon Center',
   warehouse: 'Warehouse',
+  cave: 'Cave',
 };
 
 export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
@@ -421,6 +455,7 @@ export const HABITAT_LABELS: Readonly<Record<MapFileHabitat, string>> = {
   shore: 'Seashore',
   town: 'Town',
   woodland: 'Woodland',
+  cave: 'Cave',
 };
 
 /** The Pokémon a habitat's tall grass holds, as names, for the settings panel. */
