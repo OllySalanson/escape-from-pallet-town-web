@@ -3140,22 +3140,31 @@ button {
   display: grid;
   overflow: auto;
   overscroll-behavior: contain;
+  /* The scene holds the view still itself as the map grows under it
+     (`holdingTheView`); the browser's own anchoring would move it twice. */
+  overflow-anchor: none;
   background: var(--bar);
 }
 /* A map smaller than its viewport sits in the middle of it; a bigger one
    starts at its corner and scrolls, because an auto margin is nothing then. */
+/* The room round the map that it may still grow into is ruled a tile at a
+   time, faintly, so it reads as somewhere to draw rather than as the end of
+   the window. The map is placed on it in game pixels (`stackLayout`). */
 :where(.pixel-ui) .maker-stack {
   position: relative;
   margin: auto;
   cursor: crosshair;
   touch-action: none;
+  background:
+    linear-gradient(rgb(248 247 221 / 6%) var(--u), transparent var(--u)) 0 0 / var(--tile)
+      var(--tile),
+    linear-gradient(90deg, rgb(248 247 221 / 6%) var(--u), transparent var(--u)) 0 0 /
+      var(--tile) var(--tile);
 }
 :where(.pixel-ui) .maker-canvas {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
   image-rendering: pixelated;
+  box-shadow: 0 0 0 var(--u) rgb(248 247 221 / 35%);
 }
 /* What the pointer is about to do: a tile, a box or a building's footprint,
    lit over the map. An element rather than a canvas the size of the map,

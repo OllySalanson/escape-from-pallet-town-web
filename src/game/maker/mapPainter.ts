@@ -1,10 +1,11 @@
 import type { MapFile } from '../world/mapFile';
 import type { MapLayers } from '../world/tiles';
 import { TILE_SIZE } from '../worldMap';
-import { buildingSize, type ThingRef } from './draft';
+import { buildingSize, type Sides, type ThingRef } from './draft';
 import {
-  buildingChange,
-  groundChange,
+  extendLayers,
+  grownEdges,
+  mapChange,
   grownWithin,
   patchLayers,
   PATCH_REACH,
@@ -49,12 +50,46 @@ export class MapPainter {
       this.built = { file, layers: layersFor(file) };
       return this.built.layers;
     }
-    const changed = unionRect(groundChange(built.file, file), buildingChange(built.file, file));
+    const changed = mapChange(built.file, file);
     if (changed) {
       patchLayers(built.layers, file, changed);
     }
     built.file = file;
     return built.layers;
+  }
+
+  /**
+   * The map grew: `grown` is `before` with wood laid round it by `sides`
+   * (`extendMap`). The picture already drawn is moved to where its ground now
+   * is, and only the new ground and the old edge it meets are drawn - so a
+   * stroke carried past the edge of a 256x256 map does not stop to draw the
+   * whole map again at every tile it gains.
+   */
+  public grew(
+    context: CanvasRenderingContext2D,
+    before: MapFile,
+    grown: MapFile,
+    sides: Sides,
+    selected: ThingRef | undefined,
+  ): void {
+    this.show(context, before, selected);
+    const layers = extendLayers(this.layers(before), sides);
+    const strips = grownEdges(grown.width, grown.height, sides);
+    const decided = strips.map((strip) => patchLayers(layers, grown, strip));
+    this.built = { file: grown, layers };
+    const { canvas } = context;
+    const old = document.createElement('canvas');
+    old.width = canvas.width;
+    old.height = canvas.height;
+    old.getContext('2d')?.drawImage(canvas, 0, 0);
+    canvas.width = grown.width * TILE_SIZE;
+    canvas.height = grown.height * TILE_SIZE;
+    context.imageSmoothingEnabled = false;
+    context.drawImage(old, sides.left * TILE_SIZE, sides.top * TILE_SIZE);
+    for (const region of decided) {
+      drawMap(context, grown, layers, selected, region);
+    }
+    this.drawn = { file: grown, selected, marks: markBoxes(grown, selected) };
   }
 
   /** Forgets what is on the canvas, so the next `show` draws it whole: a new canvas, or one cleared. */
@@ -88,7 +123,7 @@ export class MapPainter {
     // Ground and buildings, as far as their edges reach; measured against
     // what was drawn, which is what the canvas shows, rather than against the
     // layers, which may have been asked about a later map in between.
-    let dirty = unionRect(groundChange(drawn.file, file), buildingChange(drawn.file, file));
+    let dirty = mapChange(drawn.file, file);
     if (dirty) {
       dirty = grownWithin(dirty, PATCH_REACH, file.width, file.height);
     }
@@ -154,6 +189,7 @@ export function markBoxes(file: MapFile, selected: ThingRef | undefined): Map<st
       height: SIGHT_BOX * 2 + 1,
     }),
   );
+  (file.doors ?? []).forEach((door, index) => add('door', index, door, door));
   if (selected?.kind === 'building') {
     const building = file.buildings[selected.index];
     if (building) {
