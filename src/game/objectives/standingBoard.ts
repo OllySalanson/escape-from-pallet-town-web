@@ -292,7 +292,7 @@ function measureGround(
     return undefined;
   }
   const map = getWorldMap(mapId, opened);
-  const steps = stepDistances(map.collision, frontDoor.position);
+  const steps = stepDistances(map.collision, frontDoor.position, undefined, map.links);
   const taken = takenTiles(map, defeatedBosses);
   const free = (tile: GridPosition): boolean => !taken.has(tileKey(tile));
   const reached = (grid: readonly Int32Array[], tile: GridPosition): boolean => (grid[tile.y]?.[tile.x] ?? -1) >= 0;
@@ -322,10 +322,8 @@ function measureGround(
   const districts = gateBossIds(gates)
     .filter((bossId) => !defeatedBosses.includes(bossId) && canBeChallengedToday(bossId))
     .flatMap((bossId): SealedDistrict[] => {
-      const beyond = stepDistances(
-        getWorldMap(mapId, [...opened, bossId]).collision,
-        frontDoor.position,
-      );
+      const sealedOff = getWorldMap(mapId, [...opened, bossId]);
+      const beyond = stepDistances(sealedOff.collision, frontDoor.position, undefined, sealedOff.links);
       const newlyWalkable = (tile: GridPosition): boolean => reached(beyond, tile) && !reached(steps, tile);
       const gate = gates.find(
         (candidate) => candidate.bossId === bossId && !isGateOpen(candidate, opened),
@@ -555,7 +553,7 @@ const DRAFTERS: Readonly<Record<StandingTemplate, (rng: SeededRng, ground: Groun
     if (!position || ground.exits.length < 2) {
       return undefined;
     }
-    const fromCase = stepDistances(ground.map.collision, position);
+    const fromCase = stepDistances(ground.map.collision, position, undefined, ground.map.links);
     const byWalk = [...ground.exits].sort(
       (a, b) => fromCase[a.position.y][a.position.x] - fromCase[b.position.y][b.position.x],
     );
@@ -711,7 +709,7 @@ function spreadTiles(
         break;
       }
       if (chosen.every(({ from }) => (from[tile.y]?.[tile.x] ?? -1) >= spread)) {
-        chosen.push({ tile, from: stepDistances(ground.map.collision, tile) });
+        chosen.push({ tile, from: stepDistances(ground.map.collision, tile, undefined, ground.map.links) });
       }
     }
     if (chosen.length === count || spread < 1) {

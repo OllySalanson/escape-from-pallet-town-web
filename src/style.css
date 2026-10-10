@@ -3196,6 +3196,20 @@ button {
   gap: calc(var(--u) * 2);
   padding: calc(var(--u) * 2) calc(var(--u) * 3);
 }
+/* The places of a map - the outdoors and each inside - as a row of chips over
+   the zoom buttons, wrapping onto a second row on a map with many insides. */
+:where(.pixel-ui) .maker-map:has(> .maker-areas) {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+:where(.pixel-ui) .maker-areas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 3) calc(var(--u) * 3) 0;
+}
+.pixel-ui .px-chip.maker-area.is-selected {
+  --fill: var(--teal-wash);
+}
 :where(.pixel-ui) .maker-viewport {
   min-height: 0;
   display: grid;

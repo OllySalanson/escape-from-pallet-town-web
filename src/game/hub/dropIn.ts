@@ -1,3 +1,4 @@
+import type { GridPosition } from '../movement/gridMovement';
 import { getItemById } from '../items';
 import type { RaidContract } from '../objectives';
 import { getSpeciesById } from '../pokemon/species';
@@ -462,17 +463,54 @@ export function mapPicture(
     })),
     ...worked.map((poi) => ({ position: poi.position, char: 'K', always: true })),
   ];
+  // A map made of several places is pictured as its outdoors, the way a town
+  // map is: the insides of its buildings are laid out beside it in the grid it
+  // is played on (`mapAreas.ts`), and a room drawn as an island off the coast
+  // would be a place nobody can find. The outdoors is always at the origin.
+  const outdoors = context.map.areas?.[0]?.rect;
+  const map = outdoors ? outdoorsOnly(context.map, outdoors) : context.map;
+  const onMap = (tile: GridPosition): boolean => tile.x < map.width && tile.y < map.height;
+  const surveyed = surveyedTiles(context.surveyed?.[mapId], context.map.width);
   return buildMinimap({
-    map: context.map,
-    surveyed: surveyedTiles(context.surveyed?.[mapId], context.map.width),
+    map,
+    surveyed: outdoors ? reindexed(surveyed, context.map.width, map) : surveyed,
     lit: [
       ...ours.map((entry) => entry.position),
       ...opened.flatMap((gate) => gate.tiles),
       ...worked.map((poi) => poi.position),
-    ],
-    marks,
+    ].filter(onMap),
+    marks: marks.filter((mark) => onMap(mark.position)),
     step: options.step,
   });
+}
+
+function outdoorsOnly(
+  map: WorldMapDefinition,
+  rect: { readonly width: number; readonly height: number },
+): Pick<WorldMapDefinition, 'width' | 'height' | 'terrain' | 'collision'> {
+  return {
+    width: rect.width,
+    height: rect.height,
+    terrain: map.terrain.slice(0, rect.height).map((row) => row.slice(0, rect.width)),
+    collision: map.collision.slice(0, rect.height).map((row) => row.slice(0, rect.width)),
+  };
+}
+
+/** Walked tiles numbered at one width, as tiles of a picture cut to a narrower one. */
+function reindexed(
+  tiles: ReadonlySet<number>,
+  width: number,
+  picture: { readonly width: number; readonly height: number },
+): ReadonlySet<number> {
+  const kept = new Set<number>();
+  for (const tile of tiles) {
+    const x = tile % width;
+    const y = (tile - x) / width;
+    if (x < picture.width && y < picture.height) {
+      kept.add(y * picture.width + x);
+    }
+  }
+  return kept;
 }
 
 /** Re-exported so the screen can name the pieces it is drawing. */

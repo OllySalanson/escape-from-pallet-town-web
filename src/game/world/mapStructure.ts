@@ -1,4 +1,4 @@
-import type { GridPosition } from '../movement/gridMovement';
+import { linkKey, type GridLinks, type GridPosition } from '../movement/gridMovement';
 
 /**
  * The acceptance test for a map, as two numbers.
@@ -193,6 +193,8 @@ export function stepDistances(
   collision: CollisionGrid,
   from: GridPosition,
   extraBlocked: ReadonlySet<string> = new Set(),
+  /** The grid's doorways (`GridBounds.links`): each is one more step from its tile. */
+  links?: GridLinks,
 ): readonly Int32Array[] {
   const height = collision.length;
   const width = collision[0]?.length ?? 0;
@@ -237,6 +239,21 @@ export function stepDistances(
       field[index] = next;
       queue[tail] = index;
       tail += 1;
+    }
+    if (links !== undefined && links.size > 0) {
+      for (let direction = 0; direction < 4; direction += 1) {
+        const index = links.get(linkKey(here, direction));
+        if (index === undefined || field[index] !== -1) {
+          continue;
+        }
+        const tx = index % width;
+        if (!passable(tx, (index - tx) / width)) {
+          continue;
+        }
+        field[index] = next;
+        queue[tail] = index;
+        tail += 1;
+      }
     }
   }
   return distances;

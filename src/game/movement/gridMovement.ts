@@ -15,6 +15,49 @@ export interface GridInputState {
 export interface GridBounds {
   width: number;
   height: number;
+  /**
+   * The ways through from one place on the grid to another that are not a
+   * step to a neighbour: a building's door, a room's door mat. Every search
+   * that walks the grid takes one as one more step (`linkTable`).
+   */
+  links?: GridLinks;
+}
+
+/**
+ * A way through: standing on `from` and pressing `toward` - into a door, off
+ * the edge of a room's mat - puts you on `to`. Links come in pairs, one each
+ * way, so every walk measured over them is the same length both ways.
+ */
+export interface GridLink {
+  readonly from: GridPosition;
+  readonly toward: Direction;
+  readonly to: GridPosition;
+}
+
+/**
+ * A grid's links, keyed by `linkKey` of the tile and the way pressed, to the
+ * index of the tile they put you on. Built once per map.
+ */
+export type GridLinks = ReadonlyMap<number, number>;
+
+/** The directions in the order every search numbers them: north, south, west, east. */
+export const STEP_DIRECTIONS: readonly Direction[] = ['up', 'down', 'left', 'right'];
+
+/** The key a link is looked up by: the tile's index and the direction's number. */
+export function linkKey(index: number, direction: number): number {
+  return index * 4 + direction;
+}
+
+/** A list of links as the table every search reads. */
+export function linkTable(links: readonly GridLink[], width: number): GridLinks {
+  const table = new Map<number, number>();
+  for (const link of links) {
+    table.set(
+      linkKey(link.from.y * width + link.from.x, STEP_DIRECTIONS.indexOf(link.toward)),
+      link.to.y * width + link.to.x,
+    );
+  }
+  return table;
 }
 
 export interface GridStepDecision {

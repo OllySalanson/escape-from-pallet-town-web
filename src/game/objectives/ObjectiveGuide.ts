@@ -9,6 +9,12 @@ import { poisForMap } from '../world/pois';
 export interface ObjectiveGuideContext {
   readonly currentMapId: WorldMapId;
   readonly currentPosition: GridPosition;
+  /**
+   * Where to head for a tile from here, when the map's places are joined by
+   * doors and a straight line would point at the wall of a room
+   * (`areaRoutes.ts`). Absent is straight at it.
+   */
+  readonly towards?: (target: GridPosition) => GridPosition;
   readonly activatedPoiIds: ReadonlySet<string>;
 }
 
@@ -132,7 +138,8 @@ function locationHint(
     return `${worldMapName(context.currentMapId)}. Travel to ${worldMapName(contract.mapId)}`;
   }
 
-  return `${worldMapName(contract.mapId)}. The next stop is ${directionTo(context.currentPosition, nextStop)}`;
+  const heading = context.towards?.(nextStop) ?? nextStop;
+  return `${worldMapName(contract.mapId)}. The next stop is ${directionTo(context.currentPosition, heading)}`;
 }
 
 function directionTo(from: GridPosition, to: GridPosition): string {

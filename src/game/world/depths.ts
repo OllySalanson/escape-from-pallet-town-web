@@ -55,3 +55,12 @@ export const ROOF_BAND = 2.6;
  * so the floor is dark and whoever is standing on it is not.
  */
 export const INTERIOR_DIM_DEPTH = 1.55;
+
+/**
+ * The dark round the place the player is in, on a map made of several places
+ * laid side by side (`mapAreas.ts`): over every layer of the map, so a room is
+ * a room on black the way a FireRed room is, and the house next door in the
+ * same grid is never seen through the gap. Under everything that belongs to the
+ * screen rather than the map - the corner chips and the dialogue box.
+ */
+export const AREA_DARK_DEPTH = 2.9;

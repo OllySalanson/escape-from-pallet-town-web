@@ -126,8 +126,11 @@ import {
   INTERIOR_DIM_DEPTH,
   TERRAIN_DEPTH,
   WATCH_SHADING_DEPTH,
+  AREA_DARK_DEPTH,
   atRow,
 } from '../world/depths';
+import { placedAreaAt, type PlacedArea } from '../world/mapAreas';
+import { wayTowards } from '../world/areaRoutes';
 import { districtAt, weatherAt } from '../world/districts';
 import { brimRuns, type MapLayers } from '../world/tiles';
 import {
@@ -244,6 +247,8 @@ import { FIRST_HUNTER_RIVAL, hunterRival, type HunterRival } from '../world/hunt
 import { hunterForecastLine } from '../world/hunterForecast';
 
 const CAMERA_ZOOM = 1;
+/** The dark a doorway is gone through in, each way: FireRed's own door is about this quick. */
+const DOOR_FADE_MS = 180;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 /** Hair to soles, inclusive: the part of a figure's frame that is drawn on. */
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
@@ -452,6 +457,8 @@ const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
 
 export class WorldScene extends Phaser.Scene {
   private bounds: GridBounds = { width: 0, height: 0 };
+  /** The dark round the place the player is in, on a map made of several (`frameArea`). */
+  private areaDark: Phaser.GameObjects.Rectangle[] = [];
   private readonly stepStart = new Phaser.Math.Vector2();
   private readonly stepEnd = new Phaser.Math.Vector2();
 
@@ -1038,6 +1045,11 @@ export class WorldScene extends Phaser.Scene {
     });
 
     const pushing = input.up || input.down || input.left || input.right;
+    // A doorway is solid too - a door, the dark past a room's mat - and
+    // pressing into one is going through it.
+    if (!decision.target && pushing && this.tryPushThrough(decision.facing)) {
+      return;
+    }
     // Before the bump: a ledge is solid, so walking into one is refused by the
     // step planner, and the hop is what the refusal means on these tiles.
     if (!decision.target && pushing && this.tryLedgeHop(decision.facing)) {
@@ -1122,7 +1134,13 @@ export class WorldScene extends Phaser.Scene {
 
   private createMap(): void {
     this.collisionData = this.currentMap.collision.map((row) => [...row]);
-    this.bounds = { width: this.currentMap.width, height: this.currentMap.height };
+    this.bounds = {
+      width: this.currentMap.width,
+      height: this.currentMap.height,
+      // The ways through between a map's places, which every search the
+      // hunter makes reads as one more step (`GridBounds.links`).
+      ...(this.currentMap.links ? { links: this.currentMap.links } : {}),
+    };
 
     const { tileset, layers } = this.currentMap;
     const map = this.make.tilemap({
@@ -1169,6 +1187,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.createExtractionPoints();
     this.createRouteTransitionLabels();
+    this.createDoorwayLabels();
     this.createGateLabels();
     this.createDropInMarkers();
   }
@@ -1871,7 +1890,7 @@ export class WorldScene extends Phaser.Scene {
       ? null
       : {
         name: ITEMS[nearest.loot.itemId].displayName,
-        direction: directionTo(this.currentTile, nearest.loot.position),
+        direction: this.headingTo(nearest.loot.position),
         distance: nearest.steps,
       };
   }
@@ -2013,6 +2032,11 @@ export class WorldScene extends Phaser.Scene {
     const contract = session.plan?.contract;
 
     for (const warp of this.currentMap.warps) {
+      // A way through to another place of this same map is a door, named by
+      // the place it leads into (`createDoorwayLabels`).
+      if (warp.destinationMapId === this.currentMap.id) {
+        continue;
+      }
       // While a first contract is running, only the areas it needs are named,
       // so a new player is never invited deeper than their objective.
       if (
@@ -2033,6 +2057,52 @@ export class WorldScene extends Phaser.Scene {
             voice: 'name',
             tiles: [warp.source, { x: warp.source.x + 1, y: warp.source.y }],
           },
+        }),
+      );
+    }
+  }
+
+  /**
+   * Names every way through on a map made of several places by where it
+   * leads: the house's name over its door, the street's over the mat inside,
+   * with the way to press. A door is a name like any other, spoken once the
+   * player has walked up to it - from across a street every front door saying
+   * what it is would bury the street.
+   */
+  private createDoorwayLabels(): void {
+    const areas = this.currentMap.areas;
+    if (!this.runSession || !areas) {
+      return;
+    }
+    const ARROWS: Readonly<Record<Direction, string>> = {
+      up: '↑',
+      down: '↓',
+      left: '←',
+      right: '→',
+    };
+    for (const warp of this.currentMap.warps) {
+      if (warp.destinationMapId !== this.currentMap.id || warp.activation !== 'push' || !warp.toward) {
+        continue;
+      }
+      const leadsTo = placedAreaAt(areas, warp.destination);
+      if (!leadsTo) {
+        continue;
+      }
+      const doorway = nextTileFromDirection(warp.source, warp.toward);
+      this.worldLabels.push(
+        new WorldLabel(this, {
+          // The doorway and the tile it is gone through from: the caption
+          // sits by the door rather than on the person standing at it.
+          subject: {
+            x: Math.min(warp.source.x, doorway.x) * TILE_SIZE,
+            y: Math.min(warp.source.y, doorway.y) * TILE_SIZE,
+            width: (Math.abs(warp.source.x - doorway.x) + 1) * TILE_SIZE,
+            height: (Math.abs(warp.source.y - doorway.y) + 1) * TILE_SIZE,
+          },
+          text: `${leadsTo.name.toUpperCase()} ${ARROWS[warp.toward]}`,
+          tone: LABEL_TONES.route,
+          depth: atRow(CAPTION_BAND, warp.source.y),
+          speech: { voice: 'name', tiles: [warp.source] },
         }),
       );
     }
@@ -2398,12 +2468,24 @@ export class WorldScene extends Phaser.Scene {
     this.surveyedFrom = index;
     const surveyed = session.surveyed ?? new Set<number>();
     session.surveyed = surveyed;
+    // Only the place the player is in: on a map of several places laid side by
+    // side, a disc round someone standing in a house would otherwise reach
+    // across the dark into the edge of the outdoors.
+    const area = this.currentArea()?.rect;
+    const width = this.currentMap.width;
     for (const tile of tilesAround(
       this.currentTile,
       SURVEY_RADIUS,
       this.currentMap.width,
       this.currentMap.height,
     )) {
+      if (area) {
+        const x = tile % width;
+        const y = (tile - x) / width;
+        if (x < area.x || y < area.y || x >= area.x + area.width || y >= area.y + area.height) {
+          continue;
+        }
+      }
       surveyed.add(tile);
     }
   }
@@ -2540,7 +2622,15 @@ export class WorldScene extends Phaser.Scene {
 
   private hunterBearing(): string {
     const hunter = this.hunterState.position;
-    return hunter ? directionTo(this.currentTile, hunter) : 'HERE';
+    return hunter ? this.headingTo(hunter) : 'HERE';
+  }
+
+  /**
+   * Which way to go for a tile: straight at it, or on a map of several places
+   * at the door the walk there goes through (`areaRoutes.ts`).
+   */
+  private headingTo(target: GridPosition): string {
+    return directionTo(this.currentTile, wayTowards(this.currentMap, this.currentTile, target));
   }
 
   private destroyRunTimerHud(): void {
@@ -2600,13 +2690,91 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private configureCamera(): void {
-    const worldWidth = this.currentMap.width * TILE_SIZE;
-    const worldHeight = this.currentMap.height * TILE_SIZE;
-
-    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+    const area = this.currentArea();
+    if (area) {
+      this.frameArea(area);
+    } else {
+      const worldWidth = this.currentMap.width * TILE_SIZE;
+      const worldHeight = this.currentMap.height * TILE_SIZE;
+      this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+    }
     this.cameras.main.setZoom(CAMERA_ZOOM);
     this.cameras.main.setRoundPixels(true);
     this.cameras.main.startFollow(this.player, true);
+  }
+
+  /**
+   * The place of the map the player is in, on a map made of several - the
+   * outdoors, or the inside of a building - and null on a map that is one.
+   */
+  private currentArea(): PlacedArea | null {
+    const areas = this.currentMap.areas;
+    if (!areas) {
+      return null;
+    }
+    return placedAreaAt(areas, this.currentTile) ?? areas[0];
+  }
+
+  /**
+   * Frames one place of a map made of several: the camera keeps to it, a room
+   * smaller than the screen stands still in the middle of it the way a FireRed
+   * room does (and the way the base's rooms already do), and everything outside
+   * it is dark - the places are laid side by side in one grid, and the house
+   * next door must never show through the gap.
+   */
+  private frameArea(area: PlacedArea): void {
+    const camera = this.cameras.main;
+    const x = area.rect.x * TILE_SIZE;
+    const y = area.rect.y * TILE_SIZE;
+    const width = area.rect.width * TILE_SIZE;
+    const height = area.rect.height * TILE_SIZE;
+    const viewWidth = this.scale.width / CAMERA_ZOOM;
+    const viewHeight = this.scale.height / CAMERA_ZOOM;
+    const left = width < viewWidth ? x + Math.floor((width - viewWidth) / 2) : x;
+    const top = height < viewHeight ? y + Math.floor((height - viewHeight) / 2) : y;
+    camera.setBackgroundColor(0x000000);
+    camera.setBounds(left, top, Math.max(width, viewWidth), Math.max(height, viewHeight));
+    // Four slabs of dark round the place, each reaching a screen past it, so
+    // nothing of the grid beyond it is drawn whatever the camera does.
+    const reach = Math.max(viewWidth, viewHeight) * 2;
+    const slabs: readonly (readonly [number, number, number, number])[] = [
+      [x - reach, y - reach, width + reach * 2, reach],
+      [x - reach, y + height, width + reach * 2, reach],
+      [x - reach, y, reach, height],
+      [x + width, y, reach, height],
+    ];
+    this.areaDark.forEach((slab) => slab.destroy());
+    this.areaDark = slabs.map(([sx, sy, sw, sh]) =>
+      this.add.rectangle(sx, sy, sw, sh, 0x000000, 1).setOrigin(0, 0).setDepth(AREA_DARK_DEPTH),
+    );
+  }
+
+  /**
+   * Goes through a doorway, if the player is standing at one and pressing into
+   * it: a building's door from the tile in front of it, or the edge of a room
+   * from its mat. It is FireRed's rule for a door mat, and on a player's map it
+   * is how every way through is gone through (`mapAreas.ts`). Somebody standing
+   * on the far side is a wall like anyone else - unless it is the hunter, and
+   * walking into the hunter, through a door or not, is being caught.
+   */
+  private tryPushThrough(facing: Direction): boolean {
+    const warp = getWarpAt(this.currentMap, this.currentTile, 'push', facing);
+    if (!warp) {
+      return false;
+    }
+    const hunter = this.isHunterOnCurrentMap() ? this.hunterState.position : undefined;
+    if (hunter && hunter.x === warp.destination.x && hunter.y === warp.destination.y) {
+      this.facing = facing;
+      this.catchPlayer(hunter);
+      return true;
+    }
+    if (this.isBlocked(warp.destination)) {
+      return false;
+    }
+    this.facing = facing;
+    this.pushingAgainst = null;
+    this.warp(warp);
+    return true;
   }
 
   /**
@@ -2908,6 +3076,8 @@ export class WorldScene extends Phaser.Scene {
       runSession: this.runSession,
       currentMapId: this.currentMap.id,
       currentPosition: this.currentTile,
+      // Headings across a door point at the door (`areaRoutes.ts`).
+      towards: (target: GridPosition) => wayTowards(this.currentMap, this.currentTile, target),
       activatedPoiIds: [...this.activatedPoiIds],
       pausedWorld: true,
     });
@@ -2942,7 +3112,7 @@ export class WorldScene extends Phaser.Scene {
         : closest,
     );
     const remaining = outstanding.length > 1 ? ` (${outstanding.length} LEFT)` : '';
-    return `${next.cue}: ${directionTo(this.currentTile, next.position)}${remaining}`;
+    return `${next.cue}: ${this.headingTo(next.position)}${remaining}`;
   }
 
   private showFirstDeploymentBriefing(): void {
@@ -3421,6 +3591,10 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private warp(warp: MapWarp): void {
+    if (warp.destinationMapId === this.currentMap.id) {
+      this.walkThrough(warp);
+      return;
+    }
     audioManager.play('warp');
     this.isWarping = true;
     this.player.stop();
@@ -3443,6 +3617,54 @@ export class WorldScene extends Phaser.Scene {
       this.configureCamera();
       this.saveGame();
       this.cameras.main.fadeIn(180, 0, 0, 0);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_IN_COMPLETE, () => {
+        this.isWarping = false;
+      });
+    });
+  }
+
+  /**
+   * Goes through a doorway into another place of the same map: the screen goes
+   * dark, the player is stood on the far side facing away from it, and the
+   * screen comes back on the place they are now in. Nothing is rebuilt - every
+   * place of a player's map is already in the one grid (`mapAreas.ts`) - so the
+   * hunter, the loot and everything else carry on exactly where they were, and
+   * a hunter on the player's heels comes through the same door after them.
+   *
+   * The clock runs through the fade, as it runs through every step: a door is
+   * walked through, not a pause.
+   */
+  private walkThrough(warp: MapWarp): void {
+    audioManager.play('warp');
+    this.isWarping = true;
+    this.player.stop();
+    this.showIdlePose();
+    this.cameras.main.fadeOut(DOOR_FADE_MS, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.currentTile = { ...warp.destination };
+      this.facing = warp.facing;
+      this.targetTile = null;
+      this.setPlayerPosition(
+        this.currentTile.x * TILE_SIZE,
+        this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
+      );
+      this.showIdlePose();
+      // The key that would take the player straight back through is spent:
+      // coming out of a doorway with it still held must not walk them back in.
+      const back = nextTileFromDirection({ x: 0, y: 0 }, warp.facing);
+      this.spentPresses.spendHeld(
+        back.y > 0 ? [this.controls.up, this.controls.w]
+        : back.y < 0 ? [this.controls.down, this.controls.s]
+        : back.x > 0 ? [this.controls.left, this.controls.a]
+        : [this.controls.right, this.controls.d],
+      );
+      this.configureCamera();
+      this.cameras.main.centerOn(this.player.x, this.player.y);
+      this.saveGame();
+      this.noteDistrict();
+      this.surveyGround();
+      this.refreshRunTimerHud();
+      this.cameras.main.fadeIn(DOOR_FADE_MS, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_IN_COMPLETE, () => {
         this.isWarping = false;
       });
@@ -3549,6 +3771,25 @@ export class WorldScene extends Phaser.Scene {
    * HUD's chips, the map art, the canopy, the player and each other. Both are
    * asked again every frame because the player, the view and the chips all move.
    */
+  /**
+   * The part of the screen a caption may be seated in: all of it, or on a map
+   * made of several places only the part over the place the player is in -
+   * the rest is the dark round it, and a caption seated there is a caption
+   * drawn under the dark. Whatever stands in another place has no seat at all.
+   */
+  private captionGround(view: Phaser.Geom.Rectangle): Rect {
+    const whole = { x: view.left, y: view.top, width: view.width, height: view.height };
+    const area = this.currentArea()?.rect;
+    if (!area) {
+      return whole;
+    }
+    const left = Math.max(whole.x, area.x * TILE_SIZE);
+    const top = Math.max(whole.y, area.y * TILE_SIZE);
+    const right = Math.min(whole.x + whole.width, (area.x + area.width) * TILE_SIZE);
+    const bottom = Math.min(whole.y + whole.height, (area.y + area.height) * TILE_SIZE);
+    return { x: left, y: top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+  }
+
   private containWorldLabels(): void {
     if (this.worldLabels.length === 0) {
       return;
@@ -3561,12 +3802,7 @@ export class WorldScene extends Phaser.Scene {
     };
     this.worldLabels.forEach((label) => label.describe(audience));
     const view = this.cameras.main.worldView;
-    const bounds: Rect = {
-      x: view.left,
-      y: view.top,
-      width: view.width,
-      height: view.height,
-    };
+    const bounds: Rect = this.captionGround(view);
     // The HUD is pinned to the screen and the captions live in the world, so
     // the chips are translated into world space before they are avoided.
     // The dialogue box is pinned to the screen in the same way, and it is drawn

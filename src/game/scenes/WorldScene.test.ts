@@ -84,8 +84,12 @@ describe('in-run objective HUD layout', () => {
   it('keeps the active contract destination visible and direction-aware', () => {
     expect(sceneSource).toContain('TRAVEL TO ${worldMapName(contract.mapId).toUpperCase()}');
     // The cue is the marker's own short name, so a contract with three stops
-    // names the one you are nearest rather than a hard-coded objective.
-    expect(sceneSource).toContain('${next.cue}: ${directionTo(this.currentTile, next.position)}');
+    // names the one you are nearest rather than a hard-coded objective - and
+    // a stop through a door is pointed at through the door (`areaRoutes.ts`).
+    expect(sceneSource).toContain('${next.cue}: ${this.headingTo(next.position)}');
+    expect(sceneSource).toContain(
+      'directionTo(this.currentTile, wayTowards(this.currentMap, this.currentTile, target))',
+    );
     expect(sceneSource).toContain('contractNavigationCue');
     // A contract that banks through one exit says so on the map too, because
     // the temptation is a gate the player walks past with the job in hand.
