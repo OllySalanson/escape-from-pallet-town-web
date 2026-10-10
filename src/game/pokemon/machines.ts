@@ -1,6 +1,6 @@
 import type { MoveBase } from './MoveBase';
 import { GENERATED_MACHINE_LEARNERS } from './generated/machineLearners';
-import { AERIAL_ACE, BULLET_SEED, CUT, DIG, ICE_BEAM, IRON_TAIL, ROCK_SMASH, SURF } from './moves';
+import { AERIAL_ACE, BULLET_SEED, CUT, DIG, ICE_BEAM, IRON_TAIL, ROCK_SMASH, STRENGTH, SURF } from './moves';
 
 /**
  * What a machine is, and which species answer to it.
@@ -68,6 +68,9 @@ export const MACHINES: Readonly<Record<string, MachineDefinition>> = {
   // that could run out would be a door that could be lost.
   'hm01-cut': machine('HM01', CUT, true),
   'hm03-surf': machine('HM03', SURF, true),
+  // The map maker's boulders (`world/boulders.ts`): not a door, which opens for
+  // good, but a wall that moves for as long as a raid lasts.
+  'hm04-strength': machine('HM04', STRENGTH, true),
   // The widest of the three, which is what an HM is for.
   'hm06-rock-smash': machine('HM06', ROCK_SMASH, true),
 };

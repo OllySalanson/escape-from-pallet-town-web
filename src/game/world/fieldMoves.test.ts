@@ -127,6 +127,26 @@ describe('a move that is also a route', () => {
         // Shellder is Pallet's tide line: the shore is the one place a Surf
         // learner turns up that is not fresh water.
         expect(catchable).toEqual(['krabby', 'poliwag', 'psyduck', 'shellder', 'squirtle']);
+      } else if (id === 'strength') {
+        // Strength pushes the map maker's boulders: every starter, the
+        // quarry's Geodude and Machop, and a Pikachu out of the deep stand.
+        expect(catchable).toEqual([
+          'bulbasaur',
+          'charmander',
+          'clefairy',
+          'geodude',
+          'growlithe',
+          'jigglypuff',
+          'krabby',
+          'machop',
+          'mankey',
+          'nidoran-f',
+          'nidoran-m',
+          'pikachu',
+          'psyduck',
+          'sandshrew',
+          'squirtle',
+        ]);
       } else {
         // Rock Smash is the map maker's door, and FireRed lets the widest
         // spread of anything read HM06: all three starters, the quarry's

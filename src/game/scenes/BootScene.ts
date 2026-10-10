@@ -20,6 +20,12 @@ import {
   POKEMON_ICON_SIZE,
   POKEMON_ICON_TEXTURE,
 } from '../world/pokemonFigures';
+import {
+  BERRY_TREE_FRAME_HEIGHT,
+  BERRY_TREE_FRAME_WIDTH,
+  BERRY_TREE_PATH,
+  BERRY_TREE_TEXTURE,
+} from '../world/berries';
 import { isTestLabRequested } from '../dev/testLabAccess';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
 import { awaitGameFont } from '../ui/gameFont';
@@ -65,6 +71,11 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet(POKEMON_ICON_TEXTURE, publicAssetUrl(POKEMON_ICON_PATH), {
       frameWidth: POKEMON_ICON_SIZE,
       frameHeight: POKEMON_ICON_SIZE,
+    });
+    // Emerald's berry trees, for the ones a map maker plants.
+    this.load.spritesheet(BERRY_TREE_TEXTURE, publicAssetUrl(BERRY_TREE_PATH), {
+      frameWidth: BERRY_TREE_FRAME_WIDTH,
+      frameHeight: BERRY_TREE_FRAME_HEIGHT,
     });
     // Every sheet a map might be drawn from. A catalogue is chosen per map and
     // may draw from more than one sheet at a time, so the loader takes the list

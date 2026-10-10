@@ -685,6 +685,22 @@ export const ROCK_SMASH = new MoveBase({
 });
 
 /**
+ * HM04, and the map maker's boulders: in a fight an honest eighty-power Normal
+ * blow, in the field the strength to push a boulder a tile (`world/boulders.ts`).
+ * FireRed's own numbers.
+ */
+export const STRENGTH = new MoveBase({
+  name: 'Strength',
+  description: 'A full-strength blow. It also lets its user push boulders in the field.',
+  type: PokemonType.Normal,
+  power: 80,
+  accuracy: 100,
+  pp: 15,
+  category: MoveCategory.Physical,
+  flags: [MoveFlag.Contact],
+});
+
+/**
  * Weather, as a move. It changes neither side: it changes the field both sides
  * are standing on, for five turns.
  *

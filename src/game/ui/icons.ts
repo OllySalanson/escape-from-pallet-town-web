@@ -12,6 +12,15 @@ export const ITEM_ICONS = {
   potion: 'potion',
   'super-potion': 'super-potion',
   antidote: 'antidote',
+  // The seven berries, redrawn at 16x16 after FireRed's own item icons and in
+  // their colours (`scripts/draw-berry-icons.mjs`).
+  'oran-berry': 'oran-berry',
+  'sitrus-berry': 'sitrus-berry',
+  'pecha-berry': 'pecha-berry',
+  'cheri-berry': 'cheri-berry',
+  'rawst-berry': 'rawst-berry',
+  'chesto-berry': 'chesto-berry',
+  'aspear-berry': 'aspear-berry',
   'poke-ball': 'poke-ball',
   'great-ball': 'great-ball',
   'radio-valve': 'radio-valve',
@@ -39,6 +48,8 @@ export const ITEM_ICONS = {
   'tm40-aerial-ace': 'tm40-aerial-ace',
   'hm01-cut': 'hm01-cut',
   'hm03-surf': 'hm03-surf',
+  'hm04-strength': 'hm04-strength',
+  pickaxe: 'pickaxe',
   'hm06-rock-smash': 'hm06-rock-smash',
   // Four sizes of one silhouette: which pack you are wearing has to be legible
   // at a glance on the loadout, because it is the decision that screen is for.
@@ -63,6 +74,8 @@ export const WORLD_ICONS = {
   signPost: 'sign-post',
   extractionOpen: 'extraction-open',
   extractionLocked: 'extraction-locked',
+  /** A map maker's exit buried until a Pickaxe digs it out (`MapFileOpens`). */
+  rubble: 'rubble',
 } as const satisfies Record<string, string>;
 
 /** Every icon file that has to exist, in one list so a test can check them. */

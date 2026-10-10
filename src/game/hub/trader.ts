@@ -415,6 +415,40 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     standing: 'regular',
     once: true,
   },
+  // The map maker's boulders: not a door - a boulder is pushed for one raid
+  // and stands back where it was on the next - so it opens nothing for good,
+  // and is the boat's goods only because an HM is never used up.
+  {
+    id: 'barter-hm04',
+    name: 'HM04 Strength',
+    detail:
+      "It pushes the boulders a map maker leaves in the way. Seventy-one of the 151 read it, every starter among them.",
+    icon: 'hm04-strength',
+    gives: { itemId: 'hm04-strength', quantity: 1 },
+    takes: [
+      { itemId: 'parts-crate', quantity: 1 },
+      { itemId: 'mooring-rope', quantity: 1 },
+    ],
+    standing: 'regular',
+    once: true,
+  },
+  // The tool for a map maker's buried exits. Repeating, unlike an HM, because a
+  // Pickaxe is carried in the pack and lost with it: a deal struck once would
+  // be a way home a single wipe took away for good.
+  {
+    id: 'barter-pickaxe',
+    name: 'Pickaxe',
+    detail:
+      'It digs out an exit a map maker buried under rubble - for the raid it is carried on. Lose it and he will find you another.',
+    icon: 'pickaxe',
+    gives: { itemId: 'pickaxe', quantity: 1 },
+    takes: [
+      { itemId: 'parts-crate', quantity: 1 },
+      { itemId: 'cable-coil', quantity: 1 },
+    ],
+    standing: 'regular',
+    once: false,
+  },
   {
     id: 'barter-hm03',
     name: 'HM03 Surf',

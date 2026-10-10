@@ -111,6 +111,14 @@ export type ItemEffect =
    * Ranger pack is.
    */
   | { readonly type: 'pack'; readonly grid: ItemFootprint }
+  /**
+   * A Pickaxe: nothing to use, only to carry. A map maker's exit that `opens`
+   * when `dug` is rubble until somebody faces it with one in the pack
+   * (`WorldScene.tryDigAt`), and dug out it is a way home for that raid only -
+   * so it is packed, costs its squares and is lost with the pack, every raid
+   * it is wanted.
+   */
+  | { readonly type: 'pickaxe' }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
 /**
@@ -184,6 +192,67 @@ export const ITEMS = {
     footprint: { width: 1, height: 1 },
     description: 'Cures poison.',
     effect: { type: 'cure-status', status: PrimaryStatus.Poison },
+  },
+  // The berries, generation III's own medicine: FireRed's numbers (an Oran
+  // restores 10 HP and a Sitrus 30) and FireRed's cures, one status each. They
+  // grow only on the berry trees a map maker plants (`world/berries.ts`), a
+  // berry a tree, once a raid - so they are found, and carried home like any
+  // other medicine.
+  'oran-berry': {
+    id: 'oran-berry',
+    displayName: 'Oran Berry',
+    category: ItemCategory.Medicine,
+    footprint: { width: 1, height: 1 },
+    description: 'Restores 10 HP. Picked off a berry tree.',
+    effect: { type: 'heal', amount: 10 },
+  },
+  'sitrus-berry': {
+    id: 'sitrus-berry',
+    displayName: 'Sitrus Berry',
+    category: ItemCategory.Medicine,
+    footprint: { width: 1, height: 1 },
+    description: 'Restores 30 HP. Picked off a berry tree.',
+    effect: { type: 'heal', amount: 30 },
+  },
+  'pecha-berry': {
+    id: 'pecha-berry',
+    displayName: 'Pecha Berry',
+    category: ItemCategory.Medicine,
+    footprint: { width: 1, height: 1 },
+    description: 'Cures poison. Picked off a berry tree.',
+    effect: { type: 'cure-status', status: PrimaryStatus.Poison },
+  },
+  'cheri-berry': {
+    id: 'cheri-berry',
+    displayName: 'Cheri Berry',
+    category: ItemCategory.Medicine,
+    footprint: { width: 1, height: 1 },
+    description: 'Cures paralysis. Picked off a berry tree.',
+    effect: { type: 'cure-status', status: PrimaryStatus.Paralysis },
+  },
+  'rawst-berry': {
+    id: 'rawst-berry',
+    displayName: 'Rawst Berry',
+    category: ItemCategory.Medicine,
+    footprint: { width: 1, height: 1 },
+    description: 'Heals a burn. Picked off a berry tree.',
+    effect: { type: 'cure-status', status: PrimaryStatus.Burn },
+  },
+  'chesto-berry': {
+    id: 'chesto-berry',
+    displayName: 'Chesto Berry',
+    category: ItemCategory.Medicine,
+    footprint: { width: 1, height: 1 },
+    description: 'Wakes a sleeping Pokémon. Picked off a berry tree.',
+    effect: { type: 'cure-status', status: PrimaryStatus.Sleep },
+  },
+  'aspear-berry': {
+    id: 'aspear-berry',
+    displayName: 'Aspear Berry',
+    category: ItemCategory.Medicine,
+    footprint: { width: 1, height: 1 },
+    description: 'Thaws a frozen Pokémon. Picked off a berry tree.',
+    effect: { type: 'cure-status', status: PrimaryStatus.Freeze },
   },
   'poke-ball': {
     id: 'poke-ball',
@@ -408,6 +477,14 @@ export const ITEMS = {
     description: 'Teaches Surf, and is never used up. A Pokémon that knows it can carry you over deep water.',
     effect: { type: 'machine' },
   },
+  'hm04-strength': {
+    id: 'hm04-strength',
+    displayName: 'HM04 Strength',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 1 },
+    description: 'Teaches Strength, and is never used up. A Pokémon that knows it can push boulders in the field.',
+    effect: { type: 'machine' },
+  },
   'hm06-rock-smash': {
     id: 'hm06-rock-smash',
     displayName: 'HM06 Rock Smash',
@@ -415,6 +492,14 @@ export const ITEMS = {
     footprint: { width: 1, height: 1 },
     description: 'Teaches Rock Smash, and is never used up: a weak blow that often lowers Defense.',
     effect: { type: 'machine' },
+  },
+  pickaxe: {
+    id: 'pickaxe',
+    displayName: 'Pickaxe',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 2 },
+    description: 'Digs out an exit buried under rubble, for the raid it is carried on. Never used up.',
+    effect: { type: 'pickaxe' },
   },
   // The gear. Four pieces, four different kinds of answer, and every
   // description is the whole rule: a player who carries one into one fight can
@@ -698,6 +783,26 @@ export function heldItemName(id: string | null | undefined): string | undefined 
   return getHeldItem(id)?.displayName;
 }
 
+/**
+ * What is said when a status is cured, in FireRed's own words for each: a
+ * berry cures five different things, and "cured of poison" was once said of
+ * every one of them.
+ */
+export function curedLine(name: string, status: PrimaryStatus): string {
+  switch (status) {
+    case PrimaryStatus.Poison:
+      return `${name} was cured of poison!`;
+    case PrimaryStatus.Paralysis:
+      return `${name} was cured of paralysis!`;
+    case PrimaryStatus.Burn:
+      return `${name}'s burn was healed!`;
+    case PrimaryStatus.Sleep:
+      return `${name} woke up!`;
+    case PrimaryStatus.Freeze:
+      return `${name} was thawed out!`;
+  }
+}
+
 export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemUseResult {
   // Medicine never revives: a Potion poured on a fainted Pokemon would have
   // been a revive at the price of a Potion, which is the Pokemon Center's job
@@ -719,13 +824,15 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
         return { used: false, message: `It will not have any effect.` };
       }
       pokemon.primaryStatus = null;
-      return { used: true, message: `${pokemon.base.name} was cured of poison!` };
+      return { used: true, message: curedLine(pokemon.base.name, item.effect.status) };
     case 'capture-modifier':
       return { used: false, message: `${item.displayName} can only be used in battle.` };
     case 'material':
       return { used: false, message: `${item.displayName} is for Brock’s Workshop, not the field.` };
     case 'currency':
       return { used: false, message: `${item.displayName} is only good at Bill's counter.` };
+    case 'pickaxe':
+      return { used: false, message: `${item.displayName} digs out buried exits. Face the rubble and press the interact key.` };
     case 'machine':
       // A machine is never spent here. Teaching can need a move chosen to be
       // forgotten, which is a screen rather than a return value, so `./teaching`

@@ -1,4 +1,4 @@
-import { ItemCategory, useFieldItem, type Bag, type ItemDefinition } from '../../items';
+import { curedLine, ItemCategory, useFieldItem, type Bag, type ItemDefinition } from '../../items';
 import type { Pokemon } from '../Pokemon';
 import { playerSlotOf, unitAt, type BattleState, type SlotRef } from './battleEngine';
 
@@ -148,7 +148,9 @@ export function applyBattleItem(
     message:
       restored > 0
         ? `${name} recovered ${restored} HP!`
-        : `${name} was cured of ${curedOf ?? 'its condition'}!`,
+        : curedOf
+          ? curedLine(name, curedOf)
+          : `${name} was cured of its condition!`,
   };
 }
 
@@ -179,6 +181,8 @@ function refusalMessage(item: ItemDefinition, name: string): string {
       return `${item.displayName} cannot be read in a battle.`;
     case 'pack':
       return `${item.displayName} is chosen at base, before you deploy.`;
+    case 'pickaxe':
+      return `${item.displayName} digs in the field, not in a fight.`;
     case 'held':
       // The ITEM command only lists medicine, so this is the answer to a
       // question nothing asks - written out so the switch stays exhaustive and

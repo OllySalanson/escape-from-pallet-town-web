@@ -25,6 +25,7 @@ import { MATERIAL_CHARS } from './tileset/materials';
 import { gateKey } from './gates';
 import { isBlockedAt, stepDistances, type CollisionGrid } from './mapStructure';
 import { pokemonName } from './pokemonFigures';
+import { berryName } from './berries';
 import { trainerSightTiles } from './trainerSight';
 import { refusedWords } from './wordFilter';
 
@@ -43,13 +44,17 @@ import { refusedWords } from './wordFilter';
  * file: that the maker walked it out in the editor's TRY IT. It joins the list
  * where that fact lives (`maker/makerView.ts`).
  *
- * Townsfolk, signs and standing Pokemon are walls you cannot walk into, so
+ * Townsfolk, signs, standing Pokemon, berry trees and boulders are walls you
+ * cannot walk into, so
  * every walk below is measured with them standing where they were put: a
  * person in the only lane to an exit is a raid with no way out, which is the
  * trap a figure on a door once sprang on the captain. A trainer is walked
  * into - that is the fight - so a trainer never shuts a walk; what one may not
  * do is watch a drop-in or an exit, because a fight forced on the first step
- * or the last is a raid nobody chose.
+ * or the last is a raid nobody chose. A boulder is a wall for the way out -
+ * nobody has to bring Strength to leave - and moves aside for what can be
+ * reached, as a door opens; an exit buried under rubble is never the way out,
+ * because nobody has to bring a Pickaxe either.
  */
 
 export type MapCheckId =
@@ -181,6 +186,8 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const landmarks = file.landmarks ?? [];
   const trainers = file.trainers ?? [];
   const pokemon = file.pokemon ?? [];
+  const berryTrees = file.berryTrees ?? [];
+  const boulders = file.boulders ?? [];
   const named = [
     ...file.dropIns.map((spot) => ({ spot, what: `Drop-in ${spot.name}` })),
     ...file.exits.map((spot) => ({ spot, what: `Exit ${spot.name}` })),
@@ -190,6 +197,8 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
     ...signs.map((spot, index) => ({ spot, what: `Sign ${index + 1}` })),
     ...trainers.map((spot) => ({ spot, what: `Trainer ${spot.name}` })),
     ...pokemon.map((spot) => ({ spot, what: pokemonName(spot.species) })),
+    ...berryTrees.map((spot) => ({ spot, what: `${berryName(spot.berry)} tree` })),
+    ...boulders.map((spot, index) => ({ spot, what: `Boulder ${index + 1}` })),
   ];
 
   const standing = named
@@ -335,15 +344,16 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   // because an open exit takes whoever steps on it: a way out that is only
   // reached across another exit is not a way out, it is that exit.
   const exitTiles = new Set(file.exits.map((exit) => at(onGrid(exit))));
-  const figureTiles = [...people, ...signs, ...pokemon].map((spot) => at(onGrid(spot)));
-  const shut = new Set([...exitTiles, ...figureTiles]);
+  const figureTiles = [...people, ...signs, ...pokemon, ...berryTrees].map((spot) => at(onGrid(spot)));
+  const shut = new Set([...exitTiles, ...figureTiles, ...boulders.map((spot) => at(onGrid(spot)))]);
+  const pushedAside = new Set([...exitTiles, ...figureTiles]);
   // A raid has to be leavable by a player who brought no Pokemon that knows Cut
   // or Surf, so the way out is walked with every door shut; what is behind a
   // door is still somewhere a map is for, so reaching it is walked with them open.
   const fromDropIn = file.dropIns.map((dropIn) => ({
     dropIn,
     steps: stepDistances(collision, onGrid(dropIn), shut, links),
-    opened: stepDistances(openCollision, onGrid(dropIn), shut, links),
+    opened: stepDistances(openCollision, onGrid(dropIn), pushedAside, links),
   }));
   const stepsTo = (steps: readonly Int32Array[], placed: MapFileSpot): number => {
     const spot = onGrid(placed);
@@ -365,6 +375,9 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   const wayOut = fromDropIn.flatMap(({ dropIn, steps }) => {
     const best = Math.min(
       ...file.exits.map((exit) => {
+        if (exit.opens.when === 'dug') {
+          return Infinity;
+        }
         const walk = stepsTo(steps, exit);
         if (walk < 0) {
           return Infinity;
@@ -374,7 +387,9 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
       }),
     );
     if (best === Infinity) {
-      return [`Drop-in ${dropIn.name} cannot walk to any exit.`];
+      return [
+        `Drop-in ${dropIn.name} cannot walk to any exit${file.exits.some((exit) => exit.opens.when === 'dug') ? ' without a Pickaxe' : ''}.`,
+      ];
     }
     return best > RAID_DURATION_MS
       ? [`Drop-in ${dropIn.name} cannot reach an open exit in time.`]

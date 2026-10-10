@@ -1,3 +1,4 @@
+import type { BerryId } from './berries';
 import type { FigureSpeciesId } from './pokemonFigures';
 import type { Direction, GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
@@ -31,6 +32,16 @@ export interface WorldEntity {
    * Absent, it only says its name.
    */
   wildLevel?: number;
+  /**
+   * A berry tree instead of a person (`berries.ts`): picked once a raid for the
+   * berry it carries. Only a map file plants one.
+   */
+  berry?: BerryId;
+  /**
+   * A Strength boulder instead of a person (`boulders.ts`): a wall that moves,
+   * where it stands this raid read off `ActiveRunSession.bouldersMoved`.
+   */
+  boulder?: true;
   /**
    * The small schedule this townsperson keeps: where they drift and which way
    * they look. Signs and anyone without one stand where they were put. Every

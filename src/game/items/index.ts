@@ -80,6 +80,7 @@ export {
   heldItemEffect,
   heldItemName,
   isHeldItemId,
+  curedLine,
   useFieldItem,
   type FieldItemUseResult,
   type HeldItemEffect,

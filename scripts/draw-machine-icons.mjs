@@ -69,6 +69,8 @@ const MACHINES = {
   'tm40-aerial-ace': { hue: ['5a63a8', '8e97d8', 'c7cdf5'], hole: PINHOLE },
   'hm01-cut': { hue: ['8a8674', 'c4bfa5', 'ece8d2'], hole: SLOT },
   'hm03-surf': { hue: ['2d5f9e', '4f9adb', '9cd3f5'], hole: SLOT },
+  // Normal like Cut, so a warmer grey: the two HMs must not be one picture.
+  'hm04-strength': { hue: ['8c6f5a', 'c9a488', 'efd6bf'], hole: SLOT },
   'hm06-rock-smash': { hue: ['8f3a2c', 'cf6a45', 'f0a482'], hole: SLOT },
 };
 

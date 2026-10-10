@@ -1,6 +1,8 @@
 import type { MapCheck } from '../world/mapFileChecks';
 import { POKEMON_ICON_ORDER } from '../pokemon/generated/pokemonIcons';
 import { pokemonCry, pokemonName } from '../world/pokemonFigures';
+import { BERRY_IDS, berryItemId, berryName } from '../world/berries';
+import { ITEMS } from '../items/items';
 import {
   areaLimits,
   doorFront,
@@ -210,6 +212,11 @@ const PLACE_ROWS = [
     'Pokémon',
     'A Pokémon standing in the world - any of the 151 - that says its name when spoken to.',
   ],
+  [
+    'berry-tree',
+    'Berry tree',
+    'A tree hung with one kind of berry. Picked once a raid, and ripe again on the next.',
+  ],
   ['sign', 'Sign', 'A sign that reads what you write on it.'],
   [
     'trainer',
@@ -230,6 +237,11 @@ const PLACE_ROWS = [
     'smash-rock',
     'Rock Smash rock',
     'A cracked rock in the way. A Pokémon that knows Rock Smash breaks it, and it stays broken.',
+  ],
+  [
+    'boulder',
+    'Boulder',
+    'A boulder in the way. A Pokémon that knows Strength pushes it a tile at a time, for that raid.',
   ],
   [
     'surf',
@@ -531,7 +543,15 @@ function selectedPane(
       const spot = file.exits[selected.index];
       heading = 'Exit';
       const seconds = spot.opens.when === 'after' ? spot.opens.seconds : 0;
-      body = `${name(spot.name)}<label class="maker-field"><span>Opens after</span><input class="px-window px-field" data-field="opens" type="number" min="0" max="${MAP_FILE_LIMITS.maxExitDelaySeconds}" step="5" value="${seconds}" /><span class="px-note">seconds, 0 is open from the start</span></label>`;
+      const buried: (readonly [string, string])[] = [
+        ['', 'In the open'],
+        ['dug', 'Under rubble'],
+      ];
+      const lies = choose('buried', 'Lies', spot.opens.when === 'dug' ? 'dug' : '', buried);
+      body =
+        spot.opens.when === 'dug'
+          ? `${name(spot.name)}${lies}<p class="px-note px-wrap">A wall of rubble until somebody faces it with a Pickaxe in the pack, then a way out for that raid. Every drop-in still needs a way out without one.</p>`
+          : `${name(spot.name)}${lies}<label class="maker-field"><span>Opens after</span><input class="px-window px-field" data-field="opens" type="number" min="0" max="${MAP_FILE_LIMITS.maxExitDelaySeconds}" step="5" value="${seconds}" /><span class="px-note">seconds, 0 is open from the start</span></label>`;
       break;
     }
     case 'item': {
@@ -555,6 +575,18 @@ function selectedPane(
       heading = 'Pokémon';
       const species = POKEMON_ICON_ORDER.map((id) => [id, pokemonName(id)] as const);
       body = `${choose('species', 'Which', standing.species, species)}<label class="maker-field"><span>Fights</span><input class="px-window px-field" data-field="level" type="number" min="0" max="${MAP_FILE_LIMITS.maxPokemonLevel}" value="${standing.level ?? 0}" /><span class="px-note">at this level when spoken to, once a raid; 0 only says its name</span></label><p class="px-note px-wrap">It stands there, solid as a person, and says ${escapeHtml(pokemonCry(standing.species))} when spoken to.</p>`;
+      break;
+    }
+    case 'berry-tree': {
+      const tree = (file.berryTrees ?? [])[selected.index];
+      heading = 'Berry tree';
+      const berries = BERRY_IDS.map((berry) => [berry, berryName(berry)] as const);
+      body = `${choose('berry', 'Grows', tree.berry, berries)}<p class="px-note px-wrap">${escapeHtml(ITEMS[berryItemId(tree.berry)].description)} Solid as a person; facing it and pressing the interact key picks one berry, once a raid.</p>`;
+      break;
+    }
+    case 'boulder': {
+      heading = 'Boulder';
+      body = `<p class="px-note px-wrap">A wall until a Pokémon that knows Strength (HM04) pushes it, a tile at a time. It stands back where you put it at the start of every raid, and it will never be pushed onto an exit, an item or a drop-in, or across the only way out.</p>`;
       break;
     }
     case 'sign': {

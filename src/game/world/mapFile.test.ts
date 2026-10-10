@@ -132,7 +132,9 @@ describe('reading a map file', () => {
       problemsOf(
         edited({ exits: [{ ...SAMPLE.exits[0], opens: { when: 'after', seconds: 900 } }] }),
       ),
-    ).toContain("Exit 'North Stile' must open always, or after 1 to 240 seconds.");
+    ).toContain(
+      "Exit 'North Stile' must open always, after 1 to 240 seconds, or when dug out.",
+    );
   });
 
   it('only takes an id that can be part of another id', () => {

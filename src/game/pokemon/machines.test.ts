@@ -170,14 +170,15 @@ describe('machines', () => {
     }
   });
 
-  it('is five TMs used up by the reading and three HMs that never are', () => {
+  it('is five TMs used up by the reading and four HMs that never are', () => {
     const reusable = MACHINE_DEFINITIONS.filter((machine) => machine.reusable);
 
-    // Three, and the two that were added are the two that are also doors:
-    // `world/fieldMoves.ts` opens a gate with Cut and with Surf, and a door
-    // opened by a disc that could run out would be a capability a player could
-    // lose. Reusability is what makes a field move safe to be permanent.
-    expect(reusable.map((machine) => machine.number)).toEqual(['HM01', 'HM03', 'HM06']);
+    // Four, and three of them are doors: `world/fieldMoves.ts` opens a gate
+    // with Cut, Surf and Rock Smash, and a door opened by a disc that could run
+    // out would be a capability a player could lose. Reusability is what makes
+    // a field move safe to be permanent. Strength moves a map maker's
+    // boulders, which is a field move too.
+    expect(reusable.map((machine) => machine.number)).toEqual(['HM01', 'HM03', 'HM04', 'HM06']);
     for (const machine of MACHINE_DEFINITIONS) {
       expect(machine.number).toMatch(machine.reusable ? /^HM\d\d$/ : /^TM\d\d$/);
     }
@@ -188,6 +189,7 @@ describe('machines', () => {
       'Bullet Seed',
       'Cut',
       'Rock Smash',
+      'Strength',
     ]);
     expect(machineMovesFor('butterfree').map((move) => move.name)).toEqual(['Aerial Ace']);
     expect(machineMovesFor('pidgey').map((move) => move.name)).toEqual(['Aerial Ace']);
@@ -200,6 +202,7 @@ describe('machines', () => {
       'Ice Beam',
       'Iron Tail',
       'Rock Smash',
+      'Strength',
       'Surf',
     ]);
     expect(machineMovesFor('rattata').map((move) => move.name)).toContain('Cut');
@@ -209,6 +212,7 @@ describe('machines', () => {
       'Dig',
       'Ice Beam',
       'Rock Smash',
+      'Strength',
       'Surf',
     ]);
   });

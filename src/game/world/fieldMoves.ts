@@ -1,6 +1,6 @@
 import type { MoveBase } from '../pokemon/MoveBase';
 import type { Pokemon } from '../pokemon';
-import { CUT, ROCK_SMASH, SURF } from '../pokemon/moves';
+import { CUT, ROCK_SMASH, STRENGTH, SURF } from '../pokemon/moves';
 
 /**
  * A move that is also a route.
@@ -28,7 +28,7 @@ import { CUT, ROCK_SMASH, SURF } from '../pokemon/moves';
  * drop-in map - and a door that shut again behind a player who deployed without
  * the right Pokemon would be a map that disagreed with their own survey.
  */
-export const FIELD_MOVE_IDS = ['cut', 'surf', 'rock-smash'] as const;
+export const FIELD_MOVE_IDS = ['cut', 'surf', 'rock-smash', 'strength'] as const;
 export type FieldMoveId = (typeof FIELD_MOVE_IDS)[number];
 
 export interface FieldMove {
@@ -76,6 +76,18 @@ export const FIELD_MOVES: Readonly<Record<FieldMoveId, FieldMove>> = {
     obstacle: 'A cracked rock is in the way. It looks like it could be broken.',
     refusal: 'Nothing in the party can break it. Something that reads HM06 could.',
     worked: (name) => `${name} smashed the rock to pieces.`,
+  },
+  // The fourth, and the one that is not a door: a map maker's boulders
+  // (`boulders.ts`), pushed a tile at a time for as long as a raid lasts. No
+  // gate names it; the scene asks it of a boulder the player walks into.
+  strength: {
+    id: 'strength',
+    move: STRENGTH,
+    label: 'STRENGTH',
+    doorNote: 'NEEDS STRENGTH',
+    obstacle: "It's a big boulder.",
+    refusal: 'Nothing in the party can move it. Something that reads HM04 could.',
+    worked: (name) => `${name} is ready to push it. Walk into the boulder to move it.`,
   },
 };
 

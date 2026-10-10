@@ -19,6 +19,14 @@ import {
   type FigureSpeciesId,
 } from '../world/pokemonFigures';
 import { trainerSightTiles } from '../world/trainerSight';
+import {
+  BERRY_TREE_FRAME_HEIGHT,
+  BERRY_TREE_FRAME_WIDTH,
+  BERRY_TREE_PATH,
+  berryTreeFrames,
+  type BerryId,
+} from '../world/berries';
+import { iconUrl, WORLD_ICONS } from '../ui/icons';
 import { TILE_SIZE } from '../worldMap';
 import type { MapFile, MapFileArea, MapFileLink, MapFileLinkEnd } from '../world/mapFile';
 import { fileDoorGates, plantedProp, sketchMapFile } from '../world/mapFile';
@@ -78,7 +86,45 @@ export function loadMakerSheets(): Promise<void> {
     ...MAKER_SOURCES.map((source) => loadImage(source.imagePath)),
     ...MAP_FILE_LOOKS.map((look) => loadImage(characterDesignAssetPath(look))),
     loadImage(POKEMON_ICON_PATH),
+    loadImage(BERRY_TREE_PATH),
+    loadRubble(),
   ]).then(() => undefined);
+}
+
+/** The rubble a buried exit is drawn as, which is an icon rather than a sheet. */
+let rubble: HTMLImageElement | undefined;
+function loadRubble(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    if (rubble) {
+      resolve();
+      return;
+    }
+    rubble = new Image();
+    rubble.onload = () => resolve();
+    rubble.onerror = () => resolve();
+    rubble.src = iconUrl(WORLD_ICONS.rubble);
+  });
+}
+
+/** A berry tree on a tile, drawn as the game draws it: ripe, feet on the tile's last row, crown in the row above. */
+function drawBerryTree(context: CanvasRenderingContext2D, berry: BerryId, spot: GridPoint): void {
+  const image = sheets.get(BERRY_TREE_PATH);
+  if (!image?.complete || image.naturalWidth === 0) {
+    return;
+  }
+  const [frame] = berryTreeFrames(berry).ripe;
+  const columns = image.naturalWidth / BERRY_TREE_FRAME_WIDTH;
+  context.drawImage(
+    image,
+    (frame % columns) * BERRY_TREE_FRAME_WIDTH,
+    Math.floor(frame / columns) * BERRY_TREE_FRAME_HEIGHT,
+    BERRY_TREE_FRAME_WIDTH,
+    BERRY_TREE_FRAME_HEIGHT,
+    spot.x * TILE_SIZE + (TILE_SIZE - BERRY_TREE_FRAME_WIDTH) / 2,
+    (spot.y + 1) * TILE_SIZE - BERRY_TREE_FRAME_HEIGHT,
+    BERRY_TREE_FRAME_WIDTH,
+    BERRY_TREE_FRAME_HEIGHT,
+  );
 }
 
 /** The columns a cut character sheet has: four, a frame per step of its walk. */
@@ -411,10 +457,27 @@ export function drawMap(
       kind: 'pokemon' as const,
       index,
     })),
+    ...(file.berryTrees ?? []).map((tree, index) => ({
+      ...tree,
+      kind: 'berry-tree' as const,
+      index,
+    })),
+    ...(file.boulders ?? []).map((boulder, index) => ({
+      ...boulder,
+      kind: 'boulder' as const,
+      index,
+    })),
   ].sort((a, b) => a.y - b.y);
+  const boulderTile = PLAYER_MAP_TILESET.props.strengthBoulder.cells[0]?.tile;
   for (const figure of figures) {
     if (figure.kind === 'pokemon') {
       drawPokemon(context, figure.species, figure);
+    } else if (figure.kind === 'berry-tree') {
+      drawBerryTree(context, figure.berry, figure);
+    } else if (figure.kind === 'boulder') {
+      if (boulderTile !== undefined) {
+        drawTileAt(context, boulderTile, figure.x, figure.y);
+      }
     } else {
       drawFigure(context, figure.look, figure.facing, figure);
     }
@@ -423,6 +486,8 @@ export function drawMap(
     ['sign', file.signs ?? []],
     ['person', file.people ?? []],
     ['pokemon', file.pokemon ?? []],
+    ['berry-tree', file.berryTrees ?? []],
+    ['boulder', file.boulders ?? []],
     ['trainer', file.trainers ?? []],
   ] as const) {
     list.forEach((spot, index) => {
@@ -439,7 +504,27 @@ export function drawMap(
       }
     });
   }
-  file.exits.forEach((spot, index) => mark('exit', spot, index));
+  // A buried exit is drawn as the rubble it is under, framed in the exit's
+  // colour: the cross would say "a way out" of something that is a wall until
+  // a Pickaxe meets it.
+  file.exits.forEach((spot, index) => {
+    if (spot.opens.when !== 'dug') {
+      mark('exit', spot, index);
+      return;
+    }
+    if (rubble?.complete && rubble.naturalWidth > 0) {
+      context.drawImage(rubble, spot.x * TILE_SIZE, spot.y * TILE_SIZE);
+    }
+    ring(
+      context,
+      spot.x * TILE_SIZE,
+      spot.y * TILE_SIZE,
+      TILE_SIZE,
+      TILE_SIZE,
+      MARK_COLOURS.exit,
+      selected?.kind === 'exit' && selected.index === index,
+    );
+  });
   file.dropIns.forEach((spot, index) => mark('drop-in', spot, index));
   // A door is framed, because a stretch of Surf water is otherwise just water.
   (file.doors ?? []).forEach((door, index) =>

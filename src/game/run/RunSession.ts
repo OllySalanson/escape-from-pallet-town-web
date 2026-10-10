@@ -82,6 +82,20 @@ export interface ActiveRunSession {
    */
   pokemonMet?: string[];
   /**
+   * The berry trees this raid has picked, by entity id: bare until the next
+   * raid, for the reason a met Pokemon stays met - the world is rebuilt after
+   * every fight.
+   */
+  berriesPicked?: string[];
+  /**
+   * Where this raid has pushed each Strength boulder it moved, by entity id.
+   * A boulder stands where the map put it at the start of every raid, so this
+   * is raid state and nothing else.
+   */
+  bouldersMoved?: Record<string, GridPosition>;
+  /** The exits this raid has dug out with a Pickaxe, by label (`ExtractionPoint.label`). */
+  exitsDug?: string[];
+  /**
    * The ground this raid has walked, as row-major tile indices at the map's own
    * width - what the drop-in screen's picture of the place is drawn from.
    *

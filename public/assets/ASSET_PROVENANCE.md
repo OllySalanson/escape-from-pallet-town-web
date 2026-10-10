@@ -203,7 +203,10 @@ game.
   `radio-valve`, `cable-coil`, `parts-crate`, `lamp-oil`, `mooring-rope` and
   `linen-roll`, the four held items `leftovers`, `focus-band`, `life-orb` and
   `quick-claw`, the five evolution stones `thunder-stone`, `fire-stone`,
-  `water-stone`, `leaf-stone` and `moon-stone`, and `money`, the Pokedollars.
+  `water-stone`, `leaf-stone` and `moon-stone`, `money`, the Pokedollars,
+  the seven berries `oran-berry`, `sitrus-berry`, `pecha-berry`, `cheri-berry`,
+  `rawst-berry`, `chesto-berry` and `aspear-berry`, and the `pickaxe` and the
+  `rubble` a buried exit is drawn as.
   The materials are
   drawn in code by `scripts/draw-material-icons.mjs` and the held items by
   `scripts/draw-gear-icons.mjs` (character art and small shapes on the same
@@ -225,14 +228,26 @@ game.
   of it read as a tin or a jar, which is what every other icon in the Other
   pocket already is. It was `scrip.png`, with a plain seal where the sign is,
   until the money became the Pokedollar on 2026-09-23.
-  The eight machines - `tm09-bullet-seed`, `tm13-ice-beam`, `tm23-iron-tail`,
-  `tm28-dig`, `tm40-aerial-ace`, `hm01-cut`, `hm03-surf` and `hm06-rock-smash` -
-  are `scripts/draw-machine-icons.mjs`: **one disc shape drawn eight times**, lit
-  from the top left, in the type colour of the move each teaches (Grass, Ice,
-  Steel, Ground, Flying, Normal, Water and Fighting), because that is how these
-  games have always told one disc from another. An HM's centre is a slot rather
-  than the TM's pinhole, so the three machines that are never used up do not
-  read as the same object as the five that are.
+  The nine machines - `tm09-bullet-seed`, `tm13-ice-beam`, `tm23-iron-tail`,
+  `tm28-dig`, `tm40-aerial-ace`, `hm01-cut`, `hm03-surf`, `hm04-strength` and
+  `hm06-rock-smash` - are `scripts/draw-machine-icons.mjs`: **one disc shape
+  drawn nine times**, lit from the top left, in the type colour of the move each
+  teaches (Grass, Ice, Steel, Ground, Flying, Normal, Water, Normal and
+  Fighting), because that is how these games have always told one disc from
+  another; Strength is Normal like Cut, so it is a warmer grey (`#8c6f5a`,
+  `#c9a488`, `#efd6bf`) and the two never draw as one picture. An HM's centre
+  is a slot rather than the TM's pinhole, so the four machines that are never
+  used up do not read as the same object as the five that are; the eight that
+  shipped before HM04 are byte-identical.
+  The seven berries are `scripts/draw-berry-icons.mjs`: each redrawn by hand at
+  16x16 after FireRed's own 24x24 berry icon, because about twenty pixels of
+  fruit will not go into sixteen without resampling, and coloured with that
+  icon's own palette (`graphics/items/icon_palettes/<berry>_berry.pal` in
+  pret/pokefirered at `037335f`), so what ships is original drawing in
+  FireRed's colours rather than a cut of its pixels. The `pickaxe` (steel on a
+  wooden haft) and the `rubble` (a heap of warm grey stones, a colour of its own
+  so it never reads as FireRed's Rock Smash rock) are
+  `scripts/draw-dig-icons.mjs`, on the set's own palette.
   The four packs - `satchel`, `raid-pack`, `ranger-pack` and `hauler-frame` - are
   `scripts/draw-pack-icons.mjs`: **one silhouette drawn four times**, each a
   little taller and a little more built than the last, in oilcloth
@@ -727,6 +742,32 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   the floor on the bottom one, so a piece cut from the top layer alone is the
   furniture with nothing round it; a door mat, which hangs half a tile off the
   foot of its room, is cropped to its own pixels and centred on one row.
+
+### `berry-trees.png` - the berry trees a map maker plants
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly**, on the same
+ruling as `frlg-towns.png` above (the palette board, 2026-10-10: the owner chose
+berry trees knowing FireRed has none). The one map maker sheet that is not
+FireRed's: Pokemon Emerald's, rights holders Nintendo / Creatures / Game Freak,
+no licence from them.
+
+- **Source.** <https://github.com/pret/pokeemerald>, commit `731ad5b` - the
+  disassembly of Emerald, read 2026-10-10: seven of the berry tree graphics in
+  `graphics/object_events/pics/berry_trees/` (Oran, Sitrus, Pecha, Cheri,
+  Rawst, Chesto and Aspear - the berries this game has as items), the four NPC
+  palettes in `graphics/object_events/palettes/`, and
+  `src/data/object_events/berry_tree_graphics_tables.h`, whose
+  `gBerryTreePaletteSlotTable_<Berry>` names the palette each tree is drawn in.
+- **pret's terms.** As for `frlg-towns.png`: nothing in the repository makes
+  the extracted graphics anyone's but the rights holders', so this sits on the
+  owner's ruling alone, and **nothing from pret is committed**.
+- **How it was cut.** `scripts/cut-emerald-berry-trees.mjs` is the whole method:
+  each tree's six 16x32 frames (grown, flowering, ripe; two of each), coloured
+  from the palette its own table names for the grown stages, one berry a row on
+  a new 96x224 sheet. It writes `src/game/world/generated/berryTrees.ts`, the
+  order the rows are in. They are the same generation and the same overworld
+  palettes FireRed's figures are drawn in, which is why they stand on its grass
+  without a seam.
 
 ### `pokemon/{front,back}/<dexId>.png` - the species sprites
 
