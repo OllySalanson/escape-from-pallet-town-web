@@ -7,6 +7,8 @@ import {
   type MapFileBuilding,
   type MapFileBuildingKind,
   type MapFileDistrict,
+  type MapFileDoor,
+  type MapFileDoorKind,
   type MapFileDropIn,
   type MapFileExit,
   type MapFileLandmark,
@@ -40,6 +42,7 @@ export type SpotKind = 'drop-in' | 'exit' | 'item' | 'person' | 'sign' | 'landma
 export type ThingRef =
   | { readonly kind: SpotKind; readonly index: number }
   | { readonly kind: 'building'; readonly index: number }
+  | { readonly kind: 'door'; readonly index: number }
   | { readonly kind: 'district'; readonly index: number };
 
 /** The list in a file each kind of one-tile thing is kept in. */
@@ -275,6 +278,10 @@ export function thingAt(file: MapFile, point: GridPoint): ThingRef | undefined {
   if (spot) {
     return spot;
   }
+  const door = doorAt(file, point);
+  if (door !== undefined) {
+    return { kind: 'door', index: door };
+  }
   // The building planted last is drawn on top, so it is the one under the pointer.
   for (let index = file.buildings.length - 1; index >= 0; index -= 1) {
     if (covers(file.buildings[index], point)) {
@@ -419,13 +426,73 @@ export function addDistrict(file: MapFile, from: GridPoint, to: GridPoint): Plac
   };
 }
 
+/** The door standing on a tile, the one placed last first. */
+function doorAt(file: MapFile, point: GridPoint): number | undefined {
+  const doors = file.doors ?? [];
+  for (let index = doors.length - 1; index >= 0; index -= 1) {
+    const door = doors[index];
+    if (
+      point.x >= door.x &&
+      point.y >= door.y &&
+      point.x < door.x + door.width &&
+      point.y < door.y + door.height
+    ) {
+      return index;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Puts a door a field move opens on the map: a small tree Cut clears, on the
+ * one tile clicked, or a stretch of deep water Surf crosses, dragged out as a
+ * box. A door may not stand on a place or under another door or a building,
+ * because a tile that is two things at once is neither.
+ */
+export function placeDoor(
+  file: MapFile,
+  kind: MapFileDoorKind,
+  from: GridPoint,
+  to: GridPoint = from,
+): PlaceOutcome {
+  const doors = file.doors ?? [];
+  if (doors.length >= MAP_FILE_LIMITS.maxDoors) {
+    return { placed: false, reason: `A map has at most ${MAP_FILE_LIMITS.maxDoors} doors.` };
+  }
+  const end = kind === 'cut-tree' ? from : to;
+  const x = Math.min(from.x, end.x);
+  const y = Math.min(from.y, end.y);
+  const width = Math.min(MAP_FILE_LIMITS.maxDoorSide, Math.abs(end.x - from.x) + 1);
+  const height = Math.min(MAP_FILE_LIMITS.maxDoorSide, Math.abs(end.y - from.y) + 1);
+  const footprint = rectangle({ x, y }, { x: x + width - 1, y: y + height - 1 });
+  if (!footprint.every((tile) => inside(file, tile))) {
+    return { placed: false, reason: 'It does not fit there: part of it is off the map.' };
+  }
+  if (
+    footprint.some(
+      (tile) =>
+        spotAt(file, tile) !== undefined ||
+        doorAt(file, tile) !== undefined ||
+        file.buildings.some((building) => covers(building, tile)),
+    )
+  ) {
+    return { placed: false, reason: 'Something is already standing there.' };
+  }
+  const door: MapFileDoor = { kind, x, y, width, height };
+  return {
+    placed: true,
+    file: { ...file, doors: [...doors, door] },
+    thing: { kind: 'door', index: doors.length },
+  };
+}
+
 /** Changes some of what is said about one placed thing, leaving the rest. */
 export function updateThing(
   file: MapFile,
   thing: ThingRef,
   changes: Readonly<Record<string, unknown>>,
 ): MapFile {
-  if (thing.kind === 'building') {
+  if (thing.kind === 'building' || thing.kind === 'door') {
     return file;
   }
   if (thing.kind === 'district') {
@@ -436,12 +503,19 @@ export function updateThing(
         if (index !== thing.index) {
           return district;
         }
-        const next = { ...district, ...changes } as MapFileDistrict & { wildlife?: unknown };
-        if (next.wildlife === undefined) {
-          const { name, x, y, width, height } = next;
-          return { name, x, y, width, height };
-        }
-        return next;
+        // A district says only what is true of it: no wildlife key for the
+        // map's own, and no rain key where it is dry.
+        const next = { ...district, ...changes };
+        const { name, x, y, width, height, wildlife, rain } = next;
+        return {
+          name,
+          x,
+          y,
+          width,
+          height,
+          ...(wildlife !== undefined ? { wildlife } : {}),
+          ...(rain ? { rain: true } : {}),
+        };
       }),
     };
   }
@@ -485,6 +559,9 @@ export function removeThing(file: MapFile, thing: ThingRef): MapFile {
   if (thing.kind === 'building') {
     return { ...file, buildings: without(file.buildings) };
   }
+  if (thing.kind === 'door') {
+    return { ...file, doors: without(file.doors ?? []) };
+  }
   if (thing.kind === 'district') {
     return { ...file, districts: without(file.districts ?? []) };
   }
@@ -500,7 +577,9 @@ export function thingExists(file: MapFile, thing: ThingRef): boolean {
   const list =
     thing.kind === 'building'
       ? file.buildings
-      : thing.kind === 'district'
+      : thing.kind === 'door'
+        ? (file.doors ?? [])
+        : thing.kind === 'district'
         ? (file.districts ?? [])
         : spotsOf(file, thing.kind);
   return Number.isInteger(thing.index) && thing.index >= 0 && thing.index < list.length;
@@ -519,6 +598,20 @@ export function moveThing(file: MapFile, thing: ThingRef, to: GridPoint): PlaceO
     const buildings = [...rest.buildings];
     buildings.splice(thing.index, 0, { ...building, x: to.x, y: to.y });
     return { placed: true, file: { ...rest, buildings }, thing };
+  }
+  if (thing.kind === 'door') {
+    const door = (file.doors ?? [])[thing.index];
+    const rest = removeThing(file, thing);
+    const outcome = placeDoor(rest, door.kind, to, {
+      x: to.x + door.width - 1,
+      y: to.y + door.height - 1,
+    });
+    if (!outcome.placed) {
+      return outcome;
+    }
+    const doors = [...(rest.doors ?? [])];
+    doors.splice(thing.index, 0, { ...door, x: to.x, y: to.y });
+    return { placed: true, file: { ...rest, doors }, thing };
   }
   if (thing.kind === 'district') {
     // A district moves whole, staying on the map.
@@ -619,6 +712,9 @@ export function keepOnMap(file: MapFile): MapFile {
   const signs = file.signs?.filter(fits);
   const landmarks = file.landmarks?.filter(fits);
   const trainers = file.trainers?.filter(fits);
+  const doors = file.doors?.filter(
+    (door) => door.x >= 0 && door.y >= 0 && door.x + door.width <= width && door.y + door.height <= height,
+  );
   const districts = file.districts?.flatMap((district): MapFileDistrict[] => {
     const x = Math.max(0, district.x);
     const y = Math.max(0, district.y);
@@ -647,6 +743,7 @@ export function keepOnMap(file: MapFile): MapFile {
     ...(landmarks ? { landmarks } : {}),
     ...(trainers ? { trainers } : {}),
     ...(districts ? { districts } : {}),
+    ...(doors ? { doors } : {}),
   };
 }
 

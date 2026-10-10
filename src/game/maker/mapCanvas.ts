@@ -15,7 +15,8 @@ import {
 import { trainerSightTiles } from '../world/trainerSight';
 import { TILE_SIZE } from '../worldMap';
 import type { MapFile } from '../world/mapFile';
-import { sketchMapFile } from '../world/mapFile';
+import { fileDoorGates, sketchMapFile } from '../world/mapFile';
+import { applyGates } from '../world/gates';
 import { buildMapLayers, type MapLayers } from '../world/tiles';
 import { PLAYER_MAP_TILESET } from '../world/tileset/playerMapTileset';
 import { buildingSize, type GridPoint, type ThingRef } from './draft';
@@ -118,8 +119,9 @@ function drawTileAt(context: CanvasRenderingContext2D, tile: number, x: number, 
   );
 }
 
+/** A map as the editor draws it: its doors shut, as a fresh save first meets them. */
 export function layersFor(file: MapFile): MapLayers {
-  return buildMapLayers(sketchMapFile(file), PLAYER_MAP_TILESET);
+  return buildMapLayers(applyGates(sketchMapFile(file), fileDoorGates(file), []), PLAYER_MAP_TILESET);
 }
 
 /** Colours for what is placed on the map, the same three the drop-in screen marks them in. */
@@ -129,6 +131,7 @@ const MARK_COLOURS = {
   item: '#8fe08a',
   landmark: '#ffd65c',
   building: '#ffd65c',
+  door: '#9ff0ff',
   district: '#f8f7dd',
   figure: '#c9a6ff',
 } as const;
@@ -322,6 +325,18 @@ export function drawMap(
   }
   file.exits.forEach((spot, index) => mark('exit', spot, index));
   file.dropIns.forEach((spot, index) => mark('drop-in', spot, index));
+  // A door is framed, because a stretch of Surf water is otherwise just water.
+  (file.doors ?? []).forEach((door, index) =>
+    ring(
+      context,
+      door.x * TILE_SIZE,
+      door.y * TILE_SIZE,
+      door.width * TILE_SIZE,
+      door.height * TILE_SIZE,
+      MARK_COLOURS.door,
+      selected?.kind === 'door' && selected.index === index,
+    ),
+  );
   if (selected?.kind === 'building') {
     const building = file.buildings[selected.index];
     if (building) {
