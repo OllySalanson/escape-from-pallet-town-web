@@ -1,4 +1,4 @@
-import type { MapFile } from '../world/mapFile';
+import { MAP_FILE_LIMITS, type MapFile } from '../world/mapFile';
 import { supabase, type SubmissionStatus } from './supabaseClient';
 
 export type { SubmissionStatus } from './supabaseClient';
@@ -18,12 +18,12 @@ export type { SubmissionStatus } from './supabaseClient';
  */
 
 /**
- * The biggest map the inbox takes, in tiles each way: `submit_map` holds maps
- * to 128x128 (`supabase/migrations/`), the size the game shipped with, while
- * the maker draws up to `MAP_FILE_LIMITS`. A bigger map plays in TRY IT and
- * saves as a file; sending one in waits on a migration that raises the line.
+ * The biggest map the inbox takes, in tiles each way: everything the maker
+ * draws (`MAP_FILE_LIMITS`), which `submit_map` holds too
+ * (`supabase/migrations/`, kept in step by `submissionLimits.test.ts`). It was
+ * 128 until the inbox caught up with the maker's 256.
  */
-export const SENDABLE_MAP_SIZE = 128;
+export const SENDABLE_MAP_SIZE = Math.min(MAP_FILE_LIMITS.maxWidth, MAP_FILE_LIMITS.maxHeight);
 
 /** Why a map cannot be sent in as it is, if it cannot. */
 export function sendRefusal(file: MapFile): string | undefined {
@@ -55,6 +55,7 @@ const DATABASE_REASONS = [
   'That is not a map file, or it is too big.',
   'The map is not in a format this game reads.',
   'The map needs a name of at most 24 letters.',
+  'Names in a map may not use < > & or ".',
   'The maker needs a name of at most 24 letters.',
   'The map has no ground.',
   "The map's ground is not the size it says.",

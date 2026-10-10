@@ -45,8 +45,8 @@ describe('the biggest map a maker may draw', () => {
     }
   });
 
-  it('cannot be sent in until the inbox takes maps its size, and says so', () => {
-    expect(sendRefusal(file)).toContain(`${SENDABLE_MAP_SIZE}x${SENDABLE_MAP_SIZE}`);
-    expect(sendRefusal(tiledSample(SENDABLE_MAP_SIZE, SENDABLE_MAP_SIZE))).toBeUndefined();
+  it('can be sent in: the inbox takes every map the maker can draw', () => {
+    expect(SENDABLE_MAP_SIZE).toBe(MAP_FILE_LIMITS.maxWidth);
+    expect(sendRefusal(file)).toBeUndefined();
   });
 });

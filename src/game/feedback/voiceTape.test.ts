@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_VOICE_MS, VOICE_BITS_PER_SECOND, VOICE_WARNING_MS, chooseVoiceFormat, tapeIsFull, tapeIsLow, tapeTime } from './voiceTape';
+import { MAX_VOICE_MS, VOICE_BITS_PER_SECOND, VOICE_WARNING_MS, chooseVoiceFormat, meterLevel, tapeIsFull, tapeIsLow, tapeTime } from './voiceTape';
 
 describe('the tape', () => {
   it('runs five minutes in all and turns red with thirty seconds left, as agreed on the plan board', () => {
@@ -25,5 +25,14 @@ describe('the tape', () => {
     expect(chooseVoiceFormat(() => true)).toBe('audio/webm;codecs=opus');
     expect(chooseVoiceFormat((type) => type.startsWith('audio/mp4'))).toBe('audio/mp4;codecs=mp4a.40.2');
     expect(chooseVoiceFormat(() => false)).toBeNull();
+  });
+
+  it('meters a voice on a decibel scale, so soft speech still moves it', () => {
+    expect(meterLevel(0)).toBe(0);
+    expect(meterLevel(0.001)).toBe(0);
+    // A soft voice after noise suppression: about a fortieth of full scale.
+    expect(meterLevel(0.025)).toBeGreaterThan(0.4);
+    expect(meterLevel(0.3)).toBe(1);
+    expect(meterLevel(1)).toBe(1);
   });
 });
