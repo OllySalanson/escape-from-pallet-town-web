@@ -40,6 +40,7 @@ describe('the feedback panel', () => {
     expect(lines).toContain('Pressed &lt;b&gt;Use&lt;/b&gt; Potion');
     expect(lines).toContain('Route &lt;1&gt;');
     expect(lines).toContain('Never sent');
+    expect(lines).toContain('90 days');
     expect(allLines(view)).toContain('hidden');
   });
 
@@ -49,7 +50,7 @@ describe('the feedback panel', () => {
   });
 
   it('ends on the tag, whatever became of the message, because the tag is what a player quotes back', () => {
-    for (const outcome of ['sent', 'queued', 'held'] as const) {
+    for (const outcome of ['sent', 'queued', 'held', 'refused'] as const) {
       expect(outcomeMarkup(outcome, 'FB-7K2Q')).toContain('<span class="feedback-tag">FB-7K2Q</span>');
     }
     expect(outcomeMarkup('sent', 'FB-7K2Q')).toContain('Message extracted.');

@@ -57,7 +57,7 @@ export const BOT_CHECK_LINE = "One quick check that you're not a bot, so spam ca
 export const BOT_CHECK_PASSED = "Checked. You're on the air.";
 
 /** What became of a message, as the player is told it. */
-export type FeedbackOutcome = 'sent' | 'queued' | 'held';
+export type FeedbackOutcome = 'sent' | 'queued' | 'held' | 'refused';
 
 export interface OutcomeWords {
   readonly headline: string;
@@ -87,8 +87,16 @@ export function outcomeWords(outcome: FeedbackOutcome): OutcomeWords {
         headline: "The lab's radio is red hot.",
         line: 'Five a day; even Oak sleeps. Your message is kept and goes out tomorrow.',
       };
+    case 'refused':
+      return {
+        headline: 'Static on the line.',
+        line: "The lab can't take this message as it is. It's kept in your pack, and the next one still goes.",
+      };
   }
 }
+
+/** How long a message is kept, said where the panel lists what is sent. */
+export const KEPT_LINE = "At the lab for 90 days, then gone. Your voice is deleted as soon as it's been heard.";
 
 /** Beside the tag, on every ending. */
 export const TAG_NOTE = 'Your tag. Quote it if you write again.';

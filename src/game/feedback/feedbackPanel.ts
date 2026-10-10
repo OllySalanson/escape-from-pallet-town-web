@@ -8,6 +8,7 @@ import {
   BOT_CHECK_LINE,
   BOT_CHECK_PASSED,
   KEEP_WRITING,
+  KEPT_LINE,
   MIC_MISSING_LINE,
   ON_AIR,
   STOP_TALKING,
@@ -142,7 +143,7 @@ export function allLines(view: Pick<PanelView, 'seeAll' | 'details' | 'actions'>
   const moves = view.actions.length
     ? view.actions.map((action) => line(`${action.at.toFixed(1)}s`, action.what)).join('')
     : line('', 'Nothing yet.');
-  return `<div class="px-list feedback-all px-scroll" data-all ${view.seeAll ? '' : 'hidden'}><p class="px-subheading">Where you are</p>${details}<p class="px-subheading">Last moves</p>${moves}<p class="px-subheading">Never sent</p>${line('', 'Your name, email or location, or anything you typed anywhere else.')}</div>`;
+  return `<div class="px-list feedback-all px-scroll" data-all ${view.seeAll ? '' : 'hidden'}><p class="px-subheading">Where you are</p>${details}<p class="px-subheading">Last moves</p>${moves}<p class="px-subheading">Never sent</p>${line('', 'Your name, email or location, or anything you typed anywhere else.')}<p class="px-subheading">How long it is kept</p>${line('', KEPT_LINE)}</div>`;
 }
 
 /** The bot check's place in the panel: the line, and where Cloudflare draws its widget. */

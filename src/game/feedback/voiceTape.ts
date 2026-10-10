@@ -20,6 +20,9 @@
 /** All the tape there is, across every clip of one message. */
 export const MAX_VOICE_MS = 5 * 60 * 1000;
 
+/** The most clips one message may hold: the lab names them voice-1 to voice-20. */
+export const MAX_VOICE_CLIPS = 20;
+
 /** When the timer turns red and the panel says how much is left. */
 export const VOICE_WARNING_MS = MAX_VOICE_MS - 30 * 1000;
 
@@ -125,7 +128,7 @@ export class VoiceTape {
     if (this.recorder) {
       return 'recording';
     }
-    if (tapeIsFull(this.finishedMs)) {
+    if (tapeIsFull(this.finishedMs) || this.finished.length >= MAX_VOICE_CLIPS) {
       return 'full';
     }
     if (!VoiceTape.supported()) {
