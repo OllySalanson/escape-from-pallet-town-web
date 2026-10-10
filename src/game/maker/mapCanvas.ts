@@ -38,6 +38,7 @@ import { INSIDE_TILESETS } from '../world/tileset/insideTileset';
 import { PLAYER_MAP_TILESET } from '../world/tileset/playerMapTileset';
 import { buildingSize, type GridPoint, type ThingRef } from './draft';
 import type { TileRect } from './layerPatch';
+import { MATERIAL_CHARS } from '../world/tileset/materials';
 
 /**
  * Draws a map file onto a canvas exactly as the game will draw it.
@@ -310,6 +311,9 @@ const MARK_GLYPHS: Readonly<Record<'drop-in' | 'exit' | 'item' | 'landmark', rea
  * tiles of `region`, which leaves the rest of the canvas as it was - how
  * `MapPainter` keeps a 256x256 picture up to date one stroke at a time.
  */
+/** What the canvas shows where nothing is drawn: off the map, and a room's dark. */
+const MAP_DARK = '#0b1220';
+
 export function drawMap(
   context: CanvasRenderingContext2D,
   file: MapFile,
@@ -338,7 +342,7 @@ export function drawMap(
     context.clip();
   }
   context.imageSmoothingEnabled = false;
-  context.fillStyle = '#0b1220';
+  context.fillStyle = MAP_DARK;
   context.fillRect(
     area.x * TILE_SIZE,
     area.y * TILE_SIZE,
@@ -697,6 +701,11 @@ export function drawSwatch(
   canvas.height = TILE_SIZE;
   context.imageSmoothingEnabled = false;
   context.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+  if (style && letter === MATERIAL_CHARS.cliff) {
+    // A room's dark draws nothing: its swatch is the dark the map shows there.
+    context.fillStyle = MAP_DARK;
+    context.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+  }
   context.drawImage(
     scratch,
     TILE_SIZE,

@@ -31,10 +31,15 @@ import type { Material } from './materials';
  * rock (`B`), which is an overlay - FireRed draws every face of it on the top
  * layer, over the floor or the sand alike - and turns the corners of a room
  * with joints of its own.
+ *
+ * And a room need not be a box: `C` is the dark beyond its walls, drawn as
+ * nothing and walked by nobody, which is how FireRed's own rooms are cut - the
+ * gatehouse walked through west to east is dark down both sides but for the
+ * mat let into each, which hangs over it.
  */
 
 /** The rooms a building's inside may be drawn as. */
-export type RoomStyle = 'house' | 'mart' | 'cottage' | 'lab' | 'center' | 'warehouse';
+export type RoomStyle = 'house' | 'mart' | 'cottage' | 'lab' | 'center' | 'warehouse' | 'gatehouse';
 /** The caves a cave may be drawn as. */
 export type CaveStyle = 'cave';
 export type InsideStyle = RoomStyle | CaveStyle;
@@ -141,6 +146,25 @@ export const INSIDE_PROPS = {
   caveHole: areaProp('cave.hole', 'ladder down'),
   caveLadder: areaProp('cave.ladder', 'ladder up', ['#', '.']),
   caveExit: areaProp('cave.exit', 'way out'),
+
+  // --- a gatehouse: FireRed's on Route 2, and the two kinds into Saffron -----
+  gateWindow: areaProp('gate.window', 'window'),
+  gatePlant: areaProp('gate.plant', 'plant'),
+  gateDesk: areaProp('gate.desk', 'table'),
+  // A chair is sat on, as FireRed's are walked onto.
+  gateChair: areaProp('gate.chair', 'chair', ['.']),
+  gateChairEast: areaProp('gate.chairEast', 'chair', ['.']),
+  gateCounter: areaProp('gate.counter', 'counter'),
+  gateLongCounter: areaProp('gate.longCounter', 'counter'),
+  gateRunner: areaFloorProp('gate.runner', 'rug'),
+  gateShortRunner: areaFloorProp('gate.shortRunner', 'rug'),
+  gateWideRug: areaFloorProp('gate.wideRug', 'rug'),
+  // The ways out: the doorway in the back wall, the mat at the foot, and a
+  // mat let into each side wall over the dark beyond it.
+  gateBackDoor: areaProp('gate.backDoor', 'doorway'),
+  gateMat: areaFloorProp('gate.mat', 'door mat'),
+  gateMatWest: areaProp('gate.matWest', 'door mat', ['#.', '#.', '#.']),
+  gateMatEast: areaProp('gate.matEast', 'door mat', ['.#', '.#', '.#']),
 } as const satisfies Record<string, PropDefinition>;
 
 export type InsidePropName = keyof typeof INSIDE_PROPS;
@@ -151,6 +175,12 @@ interface StyleArt {
   readonly wall: MaterialTiles;
   /** What the way out of it is drawn as; a cave's is cut into its south wall instead. */
   readonly mat?: InsidePropName;
+  /**
+   * The mats let into its side walls, a column into the dark beyond each, and
+   * the doorway in its back wall: a gatehouse's other ways out.
+   */
+  readonly sideMats?: { readonly left: InsidePropName; readonly right: InsidePropName };
+  readonly backDoor?: InsidePropName;
   /** A cave's sand; a room has none, and draws it as floor. */
   readonly sand?: MaterialTiles;
 }
@@ -212,6 +242,23 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
     'warehouse.wallLower',
     'warehouseMat',
   ),
+  // FireRed's gatehouses, shaded under the back wall and down the west side
+  // as the house is.
+  gatehouse: {
+    floor: {
+      roles: {
+        fill: areaTile('gate.floor'),
+        'edge-n': areaTile('gate.floorShade'),
+        'edge-w': areaTile('gate.floorShade'),
+        'corner-nw': areaTile('gate.floorShade'),
+      },
+      edgesAtMapEdge: true,
+    },
+    wall: { roles: { fill: areaTile('gate.wallUpper'), 'edge-s': areaTile('gate.wallLower') } },
+    mat: 'gateMat',
+    sideMats: { left: 'gateMatWest', right: 'gateMatEast' },
+    backDoor: 'gateBackDoor',
+  },
   // Mt. Moon. The rock's top row is the lumps of its back wall and every face
   // that meets the ground stands on it from the top layer; the corners of a
   // room are FireRed's own joints, and the south wall is the rock's top seen
@@ -257,7 +304,13 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
   },
 };
 
-/** Every material but the wall is the floor: a room uses two, and the catalogue asks for all sixteen. */
+/** The dark beyond a room's walls: nothing drawn. */
+const DARK: MaterialTiles = { roles: {} };
+
+/**
+ * Every material but the wall and the dark is the floor: a room uses three,
+ * and the catalogue asks for all sixteen.
+ */
 function styleCatalogue(style: InsideStyle): TilesetCatalogue<InsidePropName> {
   const art = STYLE_ART[style];
   const floors = Object.fromEntries(
@@ -276,14 +329,18 @@ function styleCatalogue(style: InsideStyle): TilesetCatalogue<InsidePropName> {
         'water',
         'hedge',
         'tree',
-        'cliff',
         'fence',
       ] as const
     ).map((material) => [material, art.floor]),
-  ) as Record<Exclude<Material, 'wall'>, MaterialTiles>;
+  ) as Record<Exclude<Material, 'wall' | 'cliff'>, MaterialTiles>;
   return {
     sources: [BASE_SHEET_SOURCE.source, AREA_SHEET_SOURCE.source],
-    materials: { ...floors, wall: art.wall, ...(art.sand ? { sand: art.sand } : {}) },
+    materials: {
+      ...floors,
+      wall: art.wall,
+      cliff: DARK,
+      ...(art.sand ? { sand: art.sand } : {}),
+    },
     props: INSIDE_PROPS,
   };
 }
@@ -295,6 +352,7 @@ export const ROOM_STYLES: readonly RoomStyle[] = [
   'lab',
   'center',
   'warehouse',
+  'gatehouse',
 ];
 export const CAVE_STYLES: readonly CaveStyle[] = ['cave'];
 export const INSIDE_STYLES: readonly InsideStyle[] = [...ROOM_STYLES, ...CAVE_STYLES];
@@ -308,4 +366,14 @@ export const INSIDE_TILESETS: Readonly<Record<InsideStyle, TilesetCatalogue<Insi
 /** The mat a style's way out is drawn as; a cave has none. */
 export function insideMat(style: InsideStyle): InsidePropName | undefined {
   return STYLE_ART[style].mat;
+}
+
+/** The mat let into a side wall of a style's room, west or east; a style that has none, undefined. */
+export function insideSideMat(style: InsideStyle, side: 'left' | 'right'): InsidePropName | undefined {
+  return STYLE_ART[style].sideMats?.[side];
+}
+
+/** The doorway a style's room has in its back wall; a style that has none, undefined. */
+export function insideBackDoor(style: InsideStyle): InsidePropName | undefined {
+  return STYLE_ART[style].backDoor;
 }

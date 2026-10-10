@@ -6,6 +6,7 @@ import {
   doorFront,
   MAP_FILE_BUILDING_DOORS,
   plantedProp,
+  type MapFileBuildingDoor,
   type MapFile,
   type MapFileOutdoorBuildingKind,
 } from './mapFile';
@@ -13,8 +14,10 @@ import { checkMapFile } from './mapFileChecks';
 
 const DOORS = Object.entries(MAP_FILE_BUILDING_DOORS) as [
   MapFileOutdoorBuildingKind,
-  { x: number; y: number; width: number },
+  readonly MapFileBuildingDoor[],
 ][];
+
+const STEP = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] } as const;
 
 /** A blank map with one building on open grass in the middle of it, and a way out. */
 function withBuilding(kind: MapFileOutdoorBuildingKind): MapFile {
@@ -30,19 +33,27 @@ function withBuilding(kind: MapFileOutdoorBuildingKind): MapFile {
 }
 
 describe("every building's door", () => {
-  it('is drawn on the building, with open ground in front of every cell of it', () => {
+  it('is drawn on the building, with open ground before every cell of it', () => {
     const faults: string[] = [];
-    for (const [kind, door] of DOORS) {
+    for (const [kind, doors] of DOORS) {
       const prop = plantedProp(kind);
-      for (let dx = 0; dx < door.width; dx += 1) {
-        const x = door.x + dx;
-        const cell = prop.cells[door.y * prop.width + x];
-        if (x >= prop.width || door.y >= prop.height || !cell || cell.tile < 0) {
-          faults.push(`${kind}: its door at ${x},${door.y} is not drawn`);
-        }
-        const front = door.y + 1 < prop.height ? prop.cells[(door.y + 1) * prop.width + x] : undefined;
-        if (front && front.tile >= 0 && front.solid) {
-          faults.push(`${kind}: the tile in front of its door at ${x},${door.y} is part of it`);
+      const cellAt = (x: number, y: number) =>
+        x >= 0 && y >= 0 && x < prop.width && y < prop.height ? prop.cells[y * prop.width + x] : undefined;
+      for (const door of doors) {
+        const along = door.toward === 'up' || door.toward === 'down';
+        for (let step = 0; step < door.width; step += 1) {
+          const x = door.x + (along ? step : 0);
+          const y = door.y + (along ? 0 : step);
+          const cell = cellAt(x, y);
+          if (!cell || cell.tile < 0) {
+            faults.push(`${kind}: its door at ${x},${y} is not drawn`);
+          }
+          // Where it is stood at: off the building, or a cell of it walked on.
+          const [dx, dy] = STEP[door.toward];
+          const stand = cellAt(x - dx, y - dy);
+          if (stand && stand.tile >= 0 && stand.solid) {
+            faults.push(`${kind}: the tile its door at ${x},${y} is stood at is part of it`);
+          }
         }
       }
     }
@@ -52,9 +63,26 @@ describe("every building's door", () => {
   it("opens Kanto's town buildings where FireRed's own maps do", () => {
     // Read off pret's warps by the town cutter: the Gym's door in the middle of
     // its front, the Bike Shop's two cells wide under its awning.
-    expect(MAP_FILE_BUILDING_DOORS['pewter-gym']).toEqual({ x: 3, y: 4, width: 1 });
-    expect(MAP_FILE_BUILDING_DOORS['bike-shop']).toEqual({ x: 3, y: 5, width: 2 });
-    expect(MAP_FILE_BUILDING_DOORS['silph-co']).toEqual({ x: 4, y: 14, width: 1 });
+    expect(MAP_FILE_BUILDING_DOORS['pewter-gym']).toEqual([{ x: 3, y: 4, width: 1, toward: 'up' }]);
+    expect(MAP_FILE_BUILDING_DOORS['bike-shop']).toEqual([{ x: 3, y: 5, width: 2, toward: 'up' }]);
+    expect(MAP_FILE_BUILDING_DOORS['silph-co']).toEqual([{ x: 4, y: 14, width: 1, toward: 'up' }]);
+    // A gatehouse is gone through both ways: Route 2's by the ridge of its
+    // roof from the north and up its steps from the south, both of which
+    // Route 2 warps; Saffron's the same way, its ridge warped by Route 5 and
+    // its steps by Saffron's own map; the east-west one by its two porches,
+    // each warped by the map on its side.
+    expect(MAP_FILE_BUILDING_DOORS['route-gate']).toEqual([
+      { x: 2, y: 5, width: 2, toward: 'up' },
+      { x: 2, y: 1, width: 2, toward: 'down' },
+    ]);
+    expect(MAP_FILE_BUILDING_DOORS['saffron-gate']).toEqual([
+      { x: 2, y: 6, width: 2, toward: 'up' },
+      { x: 2, y: 1, width: 2, toward: 'down' },
+    ]);
+    expect(MAP_FILE_BUILDING_DOORS['saffron-side-gate']).toEqual([
+      { x: 1, y: 3, width: 1, toward: 'right' },
+      { x: 6, y: 3, width: 1, toward: 'left' },
+    ]);
     // The pier's warps are the S.S. Anne's gangway, and Saffron's gate is
     // walked through: neither is a door into a room.
     expect(MAP_FILE_BUILDING_DOORS.pier).toBeUndefined();

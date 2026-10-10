@@ -25,6 +25,16 @@ meant (`mapFile.test.ts` holds the sample and an old-shape file to that).
   `door` look standing on the tile in front of the building's door cell: linking
   it is what opens the door. A cave's mouth is a building too, `cave-mouth`,
   cut into the foot of a rock face, and its door is the mouth.
+- **A building may have more than one door**, each pressed its own way
+  (`MAP_FILE_BUILDING_DOORS`): a gatehouse is walked through from one side to
+  the other, so it has two - up its steps into its door and down off the ridge
+  of its roof for one that is walked through north to south, and into a porch
+  from either side for one walked through west to east - and its room has a way
+  out on each side: a `back-door` let into the back wall, or a `mat` let into
+  a side wall (`toward` `left` or `right`). Which way a door is gone through is
+  read off FireRed's own floor behaviours, and a room may be cut to a shape
+  that is not a box with the dark beyond its walls (`C`), as FireRed cuts the
+  east-west gatehouse, dark down both sides but for the mat let into each.
 
 ## Going through
 
@@ -92,5 +102,9 @@ names where it leads and goes there.
    door leads in, onto the middle of the mat, which is the one tile of it that
    leads out, as in FireRed. Only the links that go both ways are walked by
    the searches; a wide door's other cells are ways in for a player.
-5. Warps: gatehouses and the Underground Path - a door that comes out somewhere
-   else on the map.
+5. Gatehouses: FireRed's own - Route 2's and Saffron's walked through north to
+   south, Saffron's west to east - each a building with a door on either side
+   of it and its room between, cut from pret: the building off the route it
+   stands on, the room off its own layout.
+6. The Underground Path: a hut, a stairwell down, a tunnel, and a hut where it
+   comes out - a way through that comes out somewhere else on the map.

@@ -62,6 +62,20 @@ const ROOMS = {
   // below, whose rooms stand on the dark with only a back wall.
   moon: { layout: 'MtMoon_1F', primary: 'general', secondary: 'cave' },
   moonBelow: { layout: 'MtMoon_B1F', primary: 'general', secondary: 'cave' },
+  // FireRed's gatehouses: Route 2's, walked through north to south, and the
+  // two kinds into Saffron - north to south, and west to east with a mat on
+  // each side wall.
+  gate: { layout: 'Route2_Entrance', primary: 'building', secondary: 'generic_building_2' },
+  saffronGate: {
+    layout: 'SaffronCity_NorthSouthEntrance',
+    primary: 'building',
+    secondary: 'generic_building_2',
+  },
+  saffronSideGate: {
+    layout: 'SaffronCity_EastWestEntrance',
+    primary: 'building',
+    secondary: 'generic_building_2',
+  },
 };
 
 /**
@@ -71,7 +85,8 @@ const ROOMS = {
  * in metatiles. `layers` is which of each metatile's two layers are drawn:
  * `top` alone leaves everything else transparent; `bottom` and `both` are
  * opaque; or a row of letters per row of the piece - `b`ottom, `t`op, `2`
- * both - where one metatile holds two things and only one of them is wanted. `fit` crops what was drawn to its own pixels and centres it in a
+ * both - where one metatile holds two things and only one of them is wanted. `dark` lifts
+ * FireRed's black, the dark beyond a room's walls, out of what is drawn. `fit` crops what was drawn to its own pixels and centres it in a
  * cell that size - a door mat hangs half a tile off the foot of its room, and
  * is put back on the one row a mat here stands on.
  */
@@ -173,6 +188,50 @@ const PIECES = [
   // leant on a rock, its foot on the floor.
   { name: 'cave.hole', room: 'moon', at: [5, 6], size: [1, 1], layers: 'both' },
   { name: 'cave.ladder', room: 'moonBelow', at: [25, 3], size: [1, 2], layers: ['2', 't'] },
+
+  // --- a gatehouse ------------------------------------------------------------
+  // Its shell, shaded under the back wall and down the west side as the
+  // house's is.
+  { name: 'gate.floor', room: 'gate', at: [3, 3], size: [1, 1], layers: 'bottom' },
+  { name: 'gate.floorShade', room: 'gate', at: [3, 2], size: [1, 1], layers: 'bottom' },
+  { name: 'gate.wallUpper', room: 'gate', at: [4, 0], size: [1, 1], layers: 'bottom' },
+  { name: 'gate.wallLower', room: 'gate', at: [4, 1], size: [1, 1], layers: 'bottom' },
+  // What stands in it, all of it on the top layer.
+  { name: 'gate.window', room: 'gate', at: [2, 0], size: [2, 2], layers: 'top' },
+  { name: 'gate.plant', room: 'gate', at: [1, 4], size: [1, 2], layers: 'top' },
+  { name: 'gate.desk', room: 'gate', at: [11, 4], size: [2, 2], layers: 'top' },
+  { name: 'gate.chair', room: 'gate', at: [10, 4], size: [1, 1], layers: 'top' },
+  { name: 'gate.chairEast', room: 'gate', at: [13, 5], size: [1, 1], layers: 'top' },
+  { name: 'gate.counter', room: 'saffronGate', at: [2, 2], size: [1, 8], layers: 'top' },
+  { name: 'gate.longCounter', room: 'saffronSideGate', at: [2, 3], size: [9, 1], layers: 'top' },
+  // The runners down the middle, whose border is drawn into the floor.
+  { name: 'gate.runner', room: 'gate', at: [6, 3], size: [3, 6], layers: 'both' },
+  { name: 'gate.shortRunner', room: 'saffronGate', at: [3, 3], size: [3, 5], layers: 'both' },
+  { name: 'gate.wideRug', room: 'saffronSideGate', at: [3, 4], size: [7, 3], layers: 'both' },
+  // The ways out: the doorway in the back wall, the mat at the foot of the
+  // room - one way out, under its middle - and the mats in the side walls of
+  // the gatehouse walked through west to east, which FireRed draws hanging
+  // over the dark beyond the wall, and which are cut whole across it. The
+  // corner of each over the dark is in that cell's bottom layer, under
+  // FireRed's own black; `dark` lifts the black, so what is left is the mat.
+  { name: 'gate.backDoor', room: 'gate', at: [6, 0], size: [3, 2], layers: 'top' },
+  { name: 'gate.mat', room: 'gate', at: [6, 10], size: [3, 2], layers: 'top', fit: [3, 1] },
+  {
+    name: 'gate.matWest',
+    room: 'saffronSideGate',
+    at: [0, 4],
+    size: [2, 3],
+    layers: ['2t', '2t', '2t'],
+    dark: true,
+  },
+  {
+    name: 'gate.matEast',
+    room: 'saffronSideGate',
+    at: [11, 4],
+    size: [2, 3],
+    layers: ['t2', 't2', 't2'],
+    dark: true,
+  },
 ];
 
 // --- reading pret's files ----------------------------------------------------
@@ -319,6 +378,13 @@ function cutPiece(piece) {
     for (let x = 0; x < w; x += 1) {
       const layers = Array.isArray(piece.layers) ? LAYERS[piece.layers[y][x]] : LAYERS[piece.layers];
       drawMetatile(room, piece.at[0] + x, piece.at[1] + y, drawn, x * TILE, y * TILE, layers);
+    }
+  }
+  if (piece.dark) {
+    // FireRed's black, the dark beyond a room's walls, which a player's room
+    // draws as nothing.
+    for (let i = 0; i < drawn.data.length; i += 4) {
+      if (drawn.data[i] === 0 && drawn.data[i + 1] === 0 && drawn.data[i + 2] === 0) drawn.data[i + 3] = 0;
     }
   }
   return piece.fit ? fitted(drawn, piece.fit) : drawn;

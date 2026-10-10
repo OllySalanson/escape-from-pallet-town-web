@@ -22,11 +22,27 @@ export const TOWN_SHEET_SOURCE = tileReader(
 
 /**
  * Cells a player walks on, by piece: the boards of Vermilion's pier between its
- * two lamps. Everything else drawn is wall, and a cell the cut left empty is
- * nothing at all.
+ * two lamps, the steps up to a north-south gatehouse's door and the floor of
+ * the east-west one's porches. Everything else drawn is wall, and a cell the cut
+ * left empty is nothing at all.
  */
 const WALKED: Partial<Record<TownPieceName, readonly (readonly [number, number])[]>> = {
   pier: [2, 3, 4, 5, 6, 7].flatMap((y) => [2, 3, 4].map((x) => [x, y] as const)),
+  route2Gate: [1, 2, 3, 4].map((x) => [x, 6] as const),
+  saffronGate: [1, 2, 3, 4].map((x) => [x, 7] as const),
+  saffronSideGate: [3, 4].flatMap((y) => [0, 7].map((x) => [x, y] as const)),
+};
+
+/**
+ * Cells a player walks behind, which FireRed draws over them: the ridge of a
+ * north-south gatehouse's roof, stood on to go in from the north, and the roof
+ * of each porch of the east-west one. What decides whether they can be walked is
+ * the ground a map lays under them.
+ */
+const WALKED_UNDER: Partial<Record<TownPieceName, readonly (readonly [number, number])[]>> = {
+  route2Gate: [1, 2, 3, 4].map((x) => [x, 0] as const),
+  saffronGate: [1, 2, 3, 4].map((x) => [x, 0] as const),
+  saffronSideGate: [1, 2].flatMap((y) => [0, 7].map((x) => [x, y] as const)),
 };
 
 /**
@@ -48,16 +64,17 @@ function townProp(name: TownPieceName): PropDefinition {
   const walked = new Set(
     [...(WALKED[name] ?? []), ...frontSteps(name)].map(([x, y]) => `${x},${y}`),
   );
+  const under = new Set((WALKED_UNDER[name] ?? []).map(([x, y]) => `${x},${y}`));
   const cells: PropCell[] = [];
   for (let y = 0; y < piece.height; y += 1) {
     for (let x = 0; x < piece.width; x += 1) {
+      const tile = TOWN_SHEET_SOURCE.at(piece.column + x, piece.row + y);
       cells.push(
-        piece.cells[y][x] === '#'
-          ? {
-              tile: TOWN_SHEET_SOURCE.at(piece.column + x, piece.row + y),
-              solid: !walked.has(`${x},${y}`),
-            }
-          : { tile: -1, solid: false },
+        piece.cells[y][x] !== '#'
+          ? { tile: -1, solid: false }
+          : under.has(`${x},${y}`)
+            ? { tile, solid: false, canopy: true, walkedUnder: true }
+            : { tile, solid: !walked.has(`${x},${y}`) },
       );
     }
   }
