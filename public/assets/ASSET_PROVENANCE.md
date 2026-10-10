@@ -332,6 +332,47 @@ stays visible rather than becoming an assumption.
 | `characters/koga.png` | 1809 (standing) |
 | `characters/sabrina.png` | 1834 (standing) |
 
+The second cast - twenty-eight more classes of person, for the map maker - was
+cut on 2026-10-10 by `scripts/cut-frlg-people.mjs` from **pret/pokefirered**
+(commit `037335f`, the FireRed decompilation the nine named figures above were
+checked against): one file per person in
+`graphics/object_events/pics/people/`, in the game's own frame order, the
+right-hand facing drawn as the left one mirrored exactly as the game draws it,
+on the same 16x32 grid and sole line, colours left as pret's palettes write
+them (which is how this sheet's came). Nothing from pret is committed; same
+ruling, same rights holders.
+
+| File | pret file |
+| --- | --- |
+| `characters/black-belt.png` | `black_belt.png` |
+| `characters/camper.png` | `camper.png` |
+| `characters/picnicker.png` | `picnicker.png` |
+| `characters/fisherman.png` | `fisher.png` |
+| `characters/swimmer.png` | `swimmer_m_land.png` |
+| `characters/swimmer-woman.png` | `swimmer_f_land.png` |
+| `characters/tuber-boy.png` | `tuber_m_land.png` |
+| `characters/tuber-girl.png` | `tuber_f.png` |
+| `characters/little-boy.png` | `little_boy.png` |
+| `characters/little-girl.png` | `little_girl.png` |
+| `characters/rocker.png` | `rocker.png` |
+| `characters/channeler.png` | `channeler.png` |
+| `characters/gentleman.png` | `gentleman.png` |
+| `characters/rich-boy.png` | `rich_boy.png` |
+| `characters/crush-girl.png` | `crush_girl.png` |
+| `characters/cooltrainer-woman.png` | `cooltrainer_f.png` |
+| `characters/poke-maniac.png` | `poke_maniac.png` |
+| `characters/rocket-grunt.png` | `rocket_m.png` |
+| `characters/rocket-grunt-woman.png` | `rocket_f.png` |
+| `characters/policeman.png` | `policeman.png` |
+| `characters/captain.png` | `captain.png` |
+| `characters/chef.png` | `chef.png` |
+| `characters/clerk.png` | `clerk.png` |
+| `characters/gym-guide.png` | `gym_guy.png` |
+| `characters/worker.png` | `worker_m.png` |
+| `characters/worker-woman.png` | `worker_f.png` |
+| `characters/man.png` | `man.png` |
+| `characters/cameraman.png` | `cameraman.png` |
+
 Seventeen of the file names describe what the figure looks like on screen. They
 are this repository's labels, not a claim about what the game calls that sprite.
 
@@ -587,6 +628,47 @@ rights holders Nintendo / Creatures / Game Freak, no licence from them.
   And on the fence and the Gym, which have no green of their own, whatever green
   that match missed is lifted too: thirteen grass specks on Route 22's east rail
   and a tuft by the Gym door, both of which showed on paving.
+
+### `frlg-towns.png` - Kanto's town buildings and field objects, for the map maker
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly** on the same ruling
+as `frlg-tiles.png`, `frlg-kanto.png` and `characters/*.png` above: Pokemon
+FireRed/LeafGreen art, rights holders Nintendo / Creatures / Game Freak, no
+licence from them. It was cut because the owner asked for "as much stuff in the
+map maker as possible" (the palette board, 2026-10-10).
+
+- **Source.** <https://github.com/pret/pokefirered>, commit `037335f` - the
+  disassembly of the game, the same commit this game already reads FireRed's
+  battle and move rules from. Read 2026-10-10: the general tileset and the
+  tilesets of Pewter, Cerulean, Vermilion, Lavender, Celadon, Fuchsia, Saffron
+  and Cinnabar (`data/tilesets/`), those eight towns' block data
+  (`data/layouts/<Town>/map.bin`), and seventeen of the game's field-object
+  graphics (`graphics/object_events/pics/misc/` - the Rock Smash rock, the
+  Strength boulder, the item ball, signs, the Gym statue, the S.S. Anne and so on). The Spriters Resource renders the first Kanto
+  cut came from now answer an automated fetch with a browser challenge.
+- **pret's terms.** pret publishes the disassembly's code under no licence that
+  reaches the extracted graphics, which are the game's own; the repository says
+  nothing that makes them anyone's but the rights holders'. So this file sits on
+  the owner's ruling and nothing else, exactly as the other FireRed sheets do,
+  and **nothing from pret is committed**: no tileset, palette or map file. What
+  ships is a cut - 35 named buildings drawn from the towns' own metatiles and
+  17 objects' first frames, trimmed and packed onto a new 20x90 grid that
+  matches nothing in the source.
+- **How it was cut, and the edits made.** `scripts/cut-frlg-towns.mjs` is the
+  whole method, and names the town and rectangle of every piece. Each town is
+  drawn from its metatiles; every colour is put on the `x << 3` footing the other
+  FireRed sheets use; a town's common walkable ground (eight or more cells of
+  it) is made transparent where it reaches a piece's edge, and on a building's
+  outer ring the pixels matching the ground beside it are lifted, as
+  `frlg-kanto.png`'s were; the 8x8 tiles of the town's own forest (the shared
+  tileset's solid cells on the map's outer two rings, used twenty times or more)
+  are left out of every piece, so a crown hanging over a roof comes off and the
+  roof stays; specks of fewer than 48 pixels touching nothing else are swept up;
+  and the cells named in a piece's `drop` - the Museum's garden ledge and sign,
+  the Game Corner's two bushes, a tuft or a sign beside three Cinnabar
+  buildings - are left out. The script writes `src/game/world/generated/townPieces.ts`, the only
+  thing in the game that knows where a piece sits on the sheet and which of its
+  cells are drawn.
 
 ### `pokemon/{front,back}/<dexId>.png` - the species sprites
 
