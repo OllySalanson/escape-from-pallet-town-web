@@ -108,6 +108,8 @@ interface HarnessOptions {
   /** The raid bag this fight is carrying. Defaults to two Potions and five balls. */
   readonly bag?: Bag;
   readonly party?: PokemonParty;
+  /** The wild Pokemon of a wild fight. Defaults to a level-10 Bulbasaur. */
+  readonly wild?: Pokemon;
 }
 
 const graphicsStub = () => ({
@@ -169,7 +171,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     setVisible: vi.fn(),
   };
   const player = options.party?.pokemon[0] ?? new Pokemon(CHARMANDER, 12);
-  const enemy = new Pokemon(BULBASAUR, 10);
+  const enemy = options.wild ?? new Pokemon(BULBASAUR, 10);
   const trainer = options.hunterBattle
     ? {
         id: 'rival-hunter',
@@ -400,8 +402,9 @@ describe('BattleScene command presentation', () => {
       { text: '  POKéMON', x: 206, y: 185 },
       // What the loadout packed, counted on the command itself.
       { text: '  ITEM x2', x: 18, y: 210 },
-      // The escape command prices itself: Charmander outruns Bulbasaur 12 to 9.
-      { text: '  RUN 57%', x: 112, y: 210 },
+      // The escape command prices itself: Charmander outruns Bulbasaur 12 to 9,
+      // and in FireRed the faster Pokemon always gets away.
+      { text: '  RUN 100%', x: 112, y: 210 },
     ]);
     // Five commands are three columns of the same two rows four commands use:
     // as a third row the last one sat six pixels off the panel's border.
@@ -431,7 +434,7 @@ describe('BattleScene command presentation', () => {
       '  BALL x5',
       '  POKéMON',
       '  ITEM x2',
-      '  RUN 57%',
+      '  RUN 100%',
     ]);
   });
 
@@ -623,20 +626,25 @@ describe('escaping the hunter', () => {
 });
 
 describe('escaping a wild encounter', () => {
+  // A level-20 Pidgey (Speed 16) outruns a level-12 Charmander (Speed 12), so the
+  // escape is FireRed's roll: floor(12 * 128 / 16) = 96 of 256.
+  const fasterWild = () => new Pokemon(PIDGEY, 20);
+
   it('keeps the fight going on a failed roll instead of closing the exit', () => {
-    const { scene, renderedTexts, dialog } = createBattleSceneHarness();
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({ wild: fasterWild() });
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    expect(read(renderedTexts)[4].text).toBe('  RUN 38%');
     read(renderedTexts)[4].handlers.pointerdown();
 
-    expect(dialog.shownMessages[0]).toBe("Couldn't get away from BULBASAUR!");
+    expect(dialog.shownMessages[0]).toBe("Couldn't get away from PIDGEY!");
     expect((scene as unknown as { pendingBattleExit: boolean }).pendingBattleExit).toBe(false);
     expect((scene as unknown as { wildEscapeAttempts: number }).wildEscapeAttempts).toBe(1);
   });
 
   it('improves the odds it shows after every failure, so the exit is never closed off', () => {
-    const { scene, renderedTexts } = createBattleSceneHarness();
+    const { scene, renderedTexts } = createBattleSceneHarness({ wild: fasterWild() });
     vi.spyOn(Math, 'random').mockReturnValue(0.99);
 
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
@@ -645,7 +653,23 @@ describe('escaping a wild encounter', () => {
     (scene as unknown as { mode: string }).mode = 'main';
     (scene as unknown as { showCommands(): void }).showCommands();
 
-    expect(read(renderedTexts).at(-1)?.text).toBe('▶ RUN 77%');
+    // 96 + 30 = 126 of 256.
+    expect(read(renderedTexts).at(-1)?.text).toBe('▶ RUN 49%');
+  });
+
+  it('always gets away when the player is the faster, whatever the roll (playtest 45)', () => {
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      party: new PokemonParty([new Pokemon(CHARMANDER, 5)]),
+      wild: new Pokemon(PIDGEY, 3),
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0.999);
+
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    expect(read(renderedTexts)[4].text).toBe('  RUN 100%');
+    read(renderedTexts)[4].handlers.pointerdown();
+
+    expect(dialog.shownMessages[0]).toBe('Got away safely!');
+    expect((scene as unknown as { pendingBattleExit: boolean }).pendingBattleExit).toBe(true);
   });
 });
 
@@ -1203,7 +1227,8 @@ describe('the forced replacement list', () => {
 
 describe('the battle menu remembers where the cursor was left, as FireRed does', () => {
   it('opens the next turn on RUN after a failed escape, so trying again is one press (playtest 45)', () => {
-    const { scene, renderedTexts, dialog } = createBattleSceneHarness();
+    // A wild Pokemon faster than the player, or there is no failed escape to try again.
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({ wild: new Pokemon(PIDGEY, 20) });
     // A roll no escape chance clears.
     vi.spyOn(Math, 'random').mockReturnValue(0.999);
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();

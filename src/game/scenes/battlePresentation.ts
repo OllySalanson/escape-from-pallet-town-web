@@ -607,8 +607,15 @@ export const formatHunterFleeCommand = (
     : `FLEE -${formatSeconds(penaltyMs)}`;
 };
 
-export const formatWildEscapeCommand = (chance: number): string =>
-  `RUN ${Math.round(chance * 100)}%`;
+/**
+ * 100% is said only of a certain escape and 0% only of an impossible one: a
+ * 255-in-256 roll can still fail, and rounded it would print a promise.
+ */
+export const formatWildEscapeCommand = (chance: number): string => {
+  const percent =
+    chance >= 1 ? 100 : chance <= 0 ? 0 : Math.min(99, Math.max(1, Math.round(chance * 100)));
+  return `RUN ${percent}%`;
+};
 
 /**
  * What the player is told after breaking contact, so the cost is never silent -
