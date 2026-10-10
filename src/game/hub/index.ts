@@ -1,9 +1,12 @@
 export {
   buildDropInBriefing,
+  doorHolder,
+  doorPromise,
   gradeLine,
   largestMapSize,
   mapPicture,
   placePicture,
+  shutDoorLine,
 
   type DropInBriefing,
   type DropInContext,
@@ -39,6 +42,7 @@ export {
   recoveryCostMs,
   recoveryPrices,
   STANDARD_RECOVERY_TERMS,
+  teamCondition,
   wardBedIds,
   type RecoveryOutcome,
   type RecoveryPrices,

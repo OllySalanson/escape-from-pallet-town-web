@@ -16,7 +16,7 @@
  * cursor moving into it must not swap the pane out from under itself.
  */
 import type { Pokemon } from '../pokemon';
-import { conditionLine } from './condition';
+import { healthLine } from './condition';
 import {
   escapeAttribute,
   pixelHpBar,
@@ -46,8 +46,6 @@ export interface DossierView {
   readonly id: string;
   /** The first pane of a list is the one drawn before the cursor has moved. */
   readonly first: boolean;
-  /** One line under the health bar. The stash says what the Pokemon Center would charge. */
-  readonly condition?: string;
   /** What is carried, said in words. Defaults to the Pokemon's own held item. */
   readonly holding: string;
   readonly deeds: DossierDeeds;
@@ -70,7 +68,7 @@ export function pokemonDossier(view: DossierView): string {
     ['Speed', pokemon.stats.speed],
   ];
   const figure = `<div class="px-dossier-figure">${pixelPortrait(pokemon.base.dexId, pokemon.base.name)}<div class="summary-types">${pixelTypeBadge(pokemon.base.primaryType)}${pokemon.base.secondaryType ? pixelTypeBadge(pokemon.base.secondaryType) : ''}</div></div>`;
-  const vitals = `<div class="px-dossier-vitals"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong><small>Lv ${pokemon.level}</small></span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small class="px-wrap">${view.condition ?? conditionLine(pokemon)}</small><small class="px-wrap">${view.holding}</small></div>`;
+  const vitals = `<div class="px-dossier-vitals"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong><small>Lv ${pokemon.level}</small></span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small class="px-wrap">${healthLine(pokemon)}</small><small class="px-wrap">${view.holding}</small></div>`;
   const growth = `<div class="px-dossier-growth"><small class="px-label">Experience</small>${pixelXpBar(experienceBarFill(progress), `Experience ${formatExperience(progress.intoLevel)} of ${formatExperience(progress.levelSpan)}`)}<small class="px-wrap">${experienceLine(progress)}</small><small class="px-label">Stats</small><dl class="summary-stats">${stats
     .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
     .join('')}</dl></div>`;

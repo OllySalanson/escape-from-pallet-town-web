@@ -89,6 +89,7 @@ import { WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK, drawPixelWindow } from '../ui/
 import { GAME_FONT } from '../ui/gameFont';
 import { CAPTION_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { KeyPresses } from '../input/KeyPresses';
+import { anyoneFitToRaid } from '../hub/recovery';
 import {
   BATTLE_PANEL,
   NO_BATTLE_ITEMS_MESSAGE,
@@ -113,6 +114,8 @@ import {
   describeMoveGuidance,
   escapeAbilityMessage,
   eventToMessage,
+  foeWordFor,
+  type FoeWord,
   enemyBannerRole,
   type BannerRole,
   formatHunterFleeCommand,
@@ -145,10 +148,16 @@ import {
   MAKE_ROOM_PAGE,
   makeRoomPromptLayout,
   makeRoomRowLayout,
+  NO_BALLS_MESSAGE,
   NOTHING_TO_DROP_MESSAGE,
   weatherSetMessage,
   wildEscapeFailureMessage,
+  changesShownStatus,
+  shownStatusLabel,
+  statusAfterLine,
+  statusBeforeLines,
   type MatchupTone,
+  type ShownStatus,
 } from './battlePresentation';
 
 type CommandMode =
@@ -427,6 +436,8 @@ export class BattleScene extends Phaser.Scene {
   private wildEscapeAttempts = 0;
   /** The HP each plate's bar is currently showing, which the tweens walk. */
   private displayedHp = new Map<string, number>();
+  /** What each plate's status tag reads, which the turn's lines move on. */
+  private shownStatus = new Map<string, ShownStatus>();
   private pendingCombatMessages: {
     readonly event?: BattleEvent;
     readonly message: string;
@@ -574,6 +585,7 @@ export class BattleScene extends Phaser.Scene {
     this.sprites.clear();
     this.displayed.clear();
     this.displayedHp.clear();
+    this.shownStatus.clear();
     this.fallen.clear();
     this.pendingChoices = [];
     this.choosingSlot = 0;
@@ -656,7 +668,7 @@ export class BattleScene extends Phaser.Scene {
       // same words a move that brought it on would use. Nothing else announces
       // it: after this it speaks only when it takes HP off somebody.
       ...(this.state.weather ? [weatherSetMessage(this.state.weather.id, false)] : []),
-      ...openingAbilityEvents(this.state).map((event) => eventToMessage(event)),
+      ...openingAbilityEvents(this.state).map((event) => eventToMessage(event, this.foeWord())),
     ]);
   }
 
@@ -1889,6 +1901,11 @@ export class BattleScene extends Phaser.Scene {
     );
   }
 
+  /** Wild in a wild fight, Foe against anyone with a trainer - the hunter included. */
+  private foeWord(): FoeWord {
+    return foeWordFor({ trainer: this.trainer !== undefined });
+  }
+
   private wildEscapeLabel(): string {
     return formatWildEscapeCommand(
       wildEscapeChanceFor(this.state.player, this.state.enemy, this.wildEscapeAttempts),
@@ -2114,6 +2131,17 @@ export class BattleScene extends Phaser.Scene {
       this.dialog.showMessage("You can't catch a trainer's POKéMON!");
       return;
     }
+    // No ball is the first answer, before the pack's room: asked the other way
+    // round, a full pack with no ball in it invited the player to put Potions
+    // down for "the ball that follows", lost them for good, and then said
+    // there was no ball to throw.
+    if (!carriedBalls(this.bag)[ballIndex]) {
+      this.mode = 'events';
+      this.commandContainer.setVisible(false);
+      audioManager.play('denied');
+      this.dialog.showMessage(NO_BALLS_MESSAGE);
+      return;
+    }
     // Asked before the ball is spent, and before the roll: a Pokemon that will
     // not fit in the pack must be refused out loud rather than caught and then
     // quietly dropped, and finding out should not cost a ball - whichever ball
@@ -2146,7 +2174,7 @@ export class BattleScene extends Phaser.Scene {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
       audioManager.play('denied');
-      this.dialog.showMessage('No POKé BALLS left!');
+      this.dialog.showMessage(NO_BALLS_MESSAGE);
       return;
     }
 
@@ -2466,7 +2494,7 @@ export class BattleScene extends Phaser.Scene {
       stagedNote({ message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' }),
       // Whatever the arrival did - a status shed on the way out, an Intimidate
       // on the way in - is read after the two lines that name the swap.
-      ...switchIn.events.map((event) => stagedNote(eventToMessage(event))),
+      ...switchIn.events.map((event) => stagedNote(eventToMessage(event, this.foeWord()))),
     );
     this.resumeCombatMessages();
   }
@@ -2477,6 +2505,7 @@ export class BattleScene extends Phaser.Scene {
     this.commandContainer.setVisible(false);
     if (this.pendingCombatMessages.length === 0) {
       this.isPresentingCombatEvents = false;
+      this.refreshStatusLabels();
       this.dialog.showMessages([]);
       return;
     }
@@ -2500,12 +2529,36 @@ export class BattleScene extends Phaser.Scene {
   private refreshStatusLabels(): void {
     for (const side of ['player', 'enemy'] as const) {
       for (const ref of slotsOf(this.state, side)) {
-        const combatant = unitAt(this.state, ref);
-        this.plateFor(ref)?.statusText.setText(
-          combatant
-            ? (statusAbbreviation(combatant.primaryStatus, combatant.confusionTurns) ?? '')
-            : '',
+        this.showStatus(ref, this.statusNow(ref));
+      }
+    }
+  }
+
+  /** What the battle state says a slot's status tag should read. */
+  private statusNow(ref: SlotRef): ShownStatus {
+    const combatant = unitAt(this.state, ref);
+    return { primary: combatant?.primaryStatus ?? null, confused: (combatant?.confusionTurns ?? 0) > 0 };
+  }
+
+  private showStatus(ref: SlotRef, shown: ShownStatus): void {
+    this.shownStatus.set(plateKey(ref.side, ref.slot), shown);
+    this.plateFor(ref)?.statusText.setText(shownStatusLabel(shown));
+  }
+
+  /**
+   * Puts every tag a turn's lines are about to change back to what it read
+   * before them, so each one changes on the line that says so
+   * (`statusAfterLine`) rather than before the first line is read.
+   */
+  private rewindStatusLabels(events: readonly BattleEvent[]): void {
+    for (const side of ['player', 'enemy'] as const) {
+      for (const ref of slotsOf(this.state, side)) {
+        const about = events.filter(
+          (event) => changesShownStatus(event) && event.user === side && (event.slot ?? 0) === ref.slot,
         );
+        if (about.length > 0) {
+          this.showStatus(ref, statusBeforeLines(this.statusNow(ref), about));
+        }
       }
     }
   }
@@ -2671,6 +2724,8 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       this.isPresentingCombatEvents = false;
+      // Every line has been read, so every tag can say where the turn ended.
+      this.refreshStatusLabels();
     }
 
     if (this.forcedReplacement) {
@@ -2946,11 +3001,12 @@ export class BattleScene extends Phaser.Scene {
     this.pendingCombatMessages = [
       ...leadingMessages.map(stagedNote),
       ...events.flatMap((event, index) => [
-        { event, message: eventToMessage(event) },
+        { event, message: eventToMessage(event, this.foeWord()) },
         ...(afterEvents.get(index) ?? []).map(stagedNote),
       ]),
       ...trailingMessages.map(stagedNote),
     ];
+    this.rewindStatusLabels(events);
     if (this.pendingCombatMessages.length === 0) {
       // Nothing to say still has to complete, or the fight waits on a line
       // that was never shown.
@@ -2975,6 +3031,7 @@ export class BattleScene extends Phaser.Scene {
     }
     if (next.event) {
       this.presentCombatEvent(next.event);
+      this.advanceStatusLabel(next.event);
     }
     // Before the line, not after it: the player should be reading "IVYSAUR"
     // while looking at an Ivysaur, never at the Bulbasaur it stopped being.
@@ -2984,6 +3041,15 @@ export class BattleScene extends Phaser.Scene {
     }
     this.moveOffer = next.offerMove ?? null;
     this.dialog.showMessage(next.message);
+  }
+
+  private advanceStatusLabel(event: BattleEvent): void {
+    if (!changesShownStatus(event)) {
+      return;
+    }
+    const ref = slotRef(event.user, event.slot ?? 0);
+    const shown = this.shownStatus.get(plateKey(ref.side, ref.slot)) ?? this.statusNow(ref);
+    this.showStatus(ref, statusAfterLine(shown, event));
   }
 
   private presentCombatEvent(event: BattleEvent): void {
@@ -3090,6 +3156,11 @@ export class BattleScene extends Phaser.Scene {
       this.time.delayedCall(LUNGE_LANDS_MS, () => {
         if (cue?.at === 'impact') {
           audioManager.play(cue.name);
+        }
+        // Only a blow that took HP shakes the screen and blinks its target:
+        // Growl landing like a Tackle read as a hit that did no damage.
+        if (step.hpDelta <= 0) {
+          return;
         }
         this.cameras.main.shake(60, 0.003);
         // A plate built since the blow was thrown is drawn from the state the
@@ -3258,6 +3329,9 @@ export class BattleScene extends Phaser.Scene {
       // sequence names it, and it cannot be recovered afterwards: by then every
       // member of the party is at 0 HP and indistinguishable from every other.
       lastStand: this.state.player.pokemon,
+      // A wipe restocks the kit but revives nobody, so whether the lab will
+      // let this player out again is read off the stash just written.
+      fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),
       saved,
     });
     this.time.delayedCall(RUN_RESULT_DELAY_MS, () => {

@@ -44,7 +44,16 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
         : `${open} contract${open === 1 ? '' : 's'} on the board`;
     }
     case 'stash': {
-      const hurt = pokemonNeedingRecovery(game.stash).length;
+      const team = game.stash.listPokemon();
+      const fainted = team.filter((stored) => stored.pokemon.isFainted).length;
+      const hurt = pokemonNeedingRecovery(game.stash).length - fainted;
+      // A faint is said apart from a scratch (`teamConditionLine`), and a team
+      // with nobody standing is said as what it means - no raid until Joy - which
+      // outranks even the swap offer below: a swapped partner arrives in the
+      // fainted one's condition, so the Center is the answer either way.
+      if (fainted > 0 && fainted === team.length) {
+        return 'Nobody fit to raid';
+      }
       // The swap offer is said here for the reason it was said on the lobby's
       // stash card: a player down to one Pokemon needs to be told it exists,
       // and the screen that holds it is behind a door they have no reason to
@@ -52,6 +61,9 @@ export function doorStatusLine(door: BaseDoor, game: RestoredGame): string {
       // left in it is the only state that has it.
       if (game.stash.canSwapStarter()) {
         return 'Your last partner can be swapped here';
+      }
+      if (fainted > 0) {
+        return hurt > 0 ? `${fainted} fainted · ${hurt} hurt` : `${fainted} Pokémon fainted`;
       }
       return hurt === 0 ? 'Everyone is fit' : `${hurt} Pokémon hurt`;
     }

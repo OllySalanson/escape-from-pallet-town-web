@@ -135,10 +135,12 @@ const effectsOf = (move) => {
 const describe = (move, effects) => {
   const type = TYPES[move.type];
   const sentences = [];
+  // "An Ice", "An Electric": the article is read off the type's own name.
+  const article = /^[AEIOU]/.test(type) ? 'An' : 'A';
   if (move.category === 'Status') {
-    sentences.push(`A ${type} status move.`);
+    sentences.push(`${article} ${type} status move.`);
   } else {
-    sentences.push(`A ${type} ${move.category.toLowerCase()} attack.`);
+    sentences.push(`${article} ${type} ${move.category.toLowerCase()} attack.`);
   }
   // A move that lands on both foes says so wherever it names who it lands on.
   // The player reads this line in the move list before choosing, and "the

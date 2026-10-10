@@ -217,7 +217,7 @@ move moves the cursor, which is the rule those two screens are held to
 (`src/game/ui/pointerPreview.ts`) - `docs/screens/teach-a-move/`.
 
 Nobody chooses the other two endings, so they are reached sideways. The clock
-runs out on a driver sent to an exit that will not open - `--exit=west-culvert`
+runs out on a driver sent to an exit that will not open - `--exit='RADIO EXIT'`
 with no `--work` stands beside it for the whole five minutes (stepped, that is
 ten seconds). The last Pokemon is lost by `--hp=1 --fight`. Either way the
 driver reads the defeat's beats through, waits for the report, and goes back to

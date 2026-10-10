@@ -4,6 +4,8 @@ import { Pokemon, experienceForLevel } from '../pokemon';
 import { RunManager, type ItemStack, type SecureSlot } from './RunManager';
 import { buildExtractionReport } from './extractionReport';
 import { RAID_DURATION_MS } from './raidClock';
+import { Stash } from '../stash/Stash';
+import { anyoneFitToRaid } from '../hub/recovery';
 
 /**
  * Every Pokemon in this file is a starter or a Pidgey, and FireRed puts all
@@ -222,6 +224,55 @@ describe('extraction report after a survived raid', () => {
     expect(report.summary.startsWith('Contract banked')).toBe(false);
   });
 
+  /**
+   * Playtest: the braid survey banked through WEST GATE read "Contract banked,
+   * plus 2 Cable coils and 2 Great Balls" - and the Great Balls were the
+   * contract's own reward, waiting at base, not anything the raid brought out.
+   */
+  it('does not call a contract\'s own reward something banked on top of it', () => {
+    const starter = new Pokemon(CHARMANDER, 5);
+    const caught = new Pokemon(PIDGEY, 4);
+    const paid = new Pokemon(PIDGEY, 6);
+    const contract = {
+      description: 'Read all three survey stakes on Route 1',
+      complete: true,
+      reward: 'Two Great Balls are waiting at base.',
+    };
+    const reportFor = (found: boolean) => {
+      const manager = startedRun({ party: [starter], items: [] });
+      if (found) {
+        manager.registerFoundItem('cable-coil', 2);
+        manager.registerCaughtPokemon(caught);
+      }
+      manager.resolveEscape();
+      const contractPaid = { pokemon: [paid], items: [{ itemId: 'great-ball', quantity: 2 }] };
+      return buildExtractionReport({
+        outcome: 'ESCAPED',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        exitLabel: 'WEST GATE',
+        banked: {
+          pokemon: [...(found ? [caught] : []), paid],
+          items: [...(found ? [{ itemId: 'cable-coil', quantity: 2 }] : []), ...contractPaid.items],
+        },
+        contractPaid,
+        contract,
+        carriedOut: found ? { 'cable-coil': 2 } : {},
+        saved: true,
+      });
+    };
+
+    const withHaul = reportFor(true);
+    // The ledger still lists what the stash received, contract pay included.
+    expect(withHaul.ledger.items.map(({ itemId }) => itemId)).toEqual(['cable-coil', 'great-ball']);
+    expect(withHaul.ledger.pokemon).toHaveLength(2);
+    expect(withHaul.summary).toMatch(/^Contract banked, plus Pidgey and 2 Cable coils\. /);
+
+    const contractOnly = reportFor(false);
+    expect(contractOnly.summary).toMatch(/^Contract banked\. /);
+    expect(contractOnly.summary).not.toContain('Great Ball');
+  });
+
   it('reads differently after a marginal raid than after a good one', () => {
     const starter = new Pokemon(CHARMANDER, 5);
     const manager = startedRun({ party: [starter], items: [{ itemId: 'potion', quantity: 3 }] });
@@ -345,6 +396,61 @@ describe('extraction report after a lost raid', () => {
     // No bag was available to the losing scene, which is not the same claim as
     // "nothing was spent", so the screen is given nothing to print.
     expect(report.spent).toBeUndefined();
+  });
+
+  /**
+   * A lone Bulbasaur, secured by default and beaten in the Floodplain, came
+   * home on 0/17 HP - and the result screen's last word was "a loadout you can
+   * deploy with", over a lab that refused to send anyone out.
+   */
+  it('never promises a deployable loadout when the wipe left nobody fit to raid', () => {
+    const report = (fitToRaid: boolean) => {
+      const partner = new Pokemon(BULBASAUR, 5);
+      const manager = startedRun({ party: [partner], items: [], secure: { pokemon: [partner] } });
+      const result = manager.resolveWipe();
+      return buildExtractionReport({
+        outcome: 'WIPED',
+        cause: 'defeated',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        lost: { pokemon: result.lostPokemon, items: result.lostItems },
+        fitToRaid,
+        saved: true,
+      });
+    };
+
+    expect(report(false).baseNote).toBe(
+      'Your supplies have been topped back up, but nobody is fit to raid: revive a Pokémon at the Pokémon Center first.',
+    );
+    expect(report(true).baseNote).toBe(
+      'Your base has been topped back up to a loadout you can deploy with.',
+    );
+
+    // Read off the stash the wipe wrote: a fainted partner is nobody fit, and
+    // one standing Pokemon anywhere in the vault is somebody.
+    const stash = new Stash();
+    stash.addPokemon(new Pokemon(BULBASAUR, 5));
+    stash.listPokemon()[0].pokemon.currentHp = 0;
+    expect(anyoneFitToRaid(stash)).toBe(false);
+    stash.addPokemon(new Pokemon(PIDGEY, 3));
+    expect(anyoneFitToRaid(stash)).toBe(true);
+    expect(anyoneFitToRaid(undefined)).toBeUndefined();
+  });
+
+  it('says nothing about the base after a survived raid', () => {
+    const manager = startedRun({ party: [new Pokemon(BULBASAUR, 5)], items: [] });
+    manager.resolveEscape();
+
+    expect(
+      buildExtractionReport({
+        outcome: 'ESCAPED',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        banked: { pokemon: [], items: [] },
+        fitToRaid: false,
+        saved: true,
+      }).baseNote,
+    ).toBeNull();
   });
 
   it('reports a failed save rather than promising a stash that was not written', () => {
@@ -642,7 +748,16 @@ describe('what the raid left on the ground', () => {
 
   it('names each one once, however many were in view of the same clearing', () => {
     expect(raid(['Fire Stone', 'Fire Stone', 'Ranger pack']).pressure[0]).toBe(
-      'Left on the ground: FIRE STONE, RANGER PACK - you walked out past it',
+      'Left on the ground: FIRE STONE, RANGER PACK - you walked out past them',
+    );
+  });
+
+  it('says "them" of more than one thing walked past, and "it" of one', () => {
+    expect(raid(['Water Stone', 'Raid pack', 'TM09 Bullet Seed']).pressure[0]).toBe(
+      'Left on the ground: WATER STONE, RAID PACK, TM09 BULLET SEED - you walked out past them',
+    );
+    expect(raid(['Fire Stone', 'Fire Stone']).pressure[0]).toBe(
+      'Left on the ground: FIRE STONE - you walked out past them',
     );
   });
 
@@ -725,8 +840,36 @@ describe('what the raid had at stake', () => {
 
     // The gamble already says a wipe would have cost the Potions *and* the
     // pack, so the headline may not count the Potions and forget the pack.
-    expect(report.summary).toContain('One entry and your Raid pack rode out unprotected and came home.');
+    // And it names them: "One entry" was the ledger's word, and the player
+    // could see three Potions under CARRIED AT RISK beside it.
+    expect(report.summary).toContain('3 Potions and your Raid pack rode out unprotected and came home.');
+    expect(report.summary).not.toContain('entry');
     expect(report.gambleVerdict).toBe('A wipe would have cost you 3 Potions and your Raid pack. It did not happen this time.');
+  });
+
+  it('names an unprotected Pokemon and every kind of supply that rode out', () => {
+    const starter = new Pokemon(BULBASAUR, 5);
+    const second = new Pokemon(BULBASAUR, 4);
+    const manager = startedRun({
+      party: [starter, second],
+      items: [
+        { itemId: 'potion', quantity: 2 },
+        { itemId: 'poke-ball', quantity: 1 },
+      ],
+      secure: { pokemon: [starter] },
+    });
+    manager.resolveEscape();
+
+    const report = buildExtractionReport({
+      outcome: 'ESCAPED',
+      snapshot: manager.snapshot(),
+      durationMs: RAID_DURATION_MS,
+      banked: { pokemon: [], items: [] },
+      carriedOut: { potion: 2, 'poke-ball': 1 },
+      saved: true,
+    });
+
+    expect(report.summary).toContain('Bulbasaur, 2 Potions and 1 Poké Ball rode out unprotected and came home.');
   });
 
   it('says a protected party was still a gamble on the pack', () => {

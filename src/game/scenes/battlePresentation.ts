@@ -5,6 +5,7 @@ import { getTypeEffectiveness } from '../pokemon/battle/typeChart';
 import { STAB_MULTIPLIER } from '../pokemon/battle/damage';
 import { WeatherId, weatherLabel } from '../pokemon/battle/weather';
 import { battleCaps, withArticle } from '../pokemon/battle/battleItems';
+import { statusAbbreviation, type PrimaryStatus } from '../pokemon/battle/status';
 import { isCurrency, itemAmountFor, itemCountTag } from '../items';
 
 export const BATTLE_SCREEN_WIDTH = 320;
@@ -537,6 +538,12 @@ export const MAKE_ROOM_INVITE = 'Choose what to put down - what you drop stays h
 export const NOTHING_TO_DROP_MESSAGE =
   'Nothing in the pack can be put down - it is all POKéMON.';
 
+/**
+ * BALL with none carried. Not "none left": the base packs medicine for you and
+ * no balls, so on a first raid there were never any to run out of.
+ */
+export const NO_BALLS_MESSAGE = 'There are no POKé BALLS in the pack!';
+
 /** One kind in the pack: what it is, how many, and the squares one stands on. */
 export const formatPackRoomRow = (choice: {
   readonly itemId?: string;
@@ -709,16 +716,29 @@ export const combatPresentationSteps = (
     return { event, actor: null, actorSlot: 0, target: null, targetSlot: 0, hpDelta: 0 };
   });
 
-export const combatantLabel = (user: 'player' | 'enemy'): string =>
-  user === 'player' ? 'Your' : 'Foe';
+/**
+ * The word a line of battle text puts in front of the other side's Pokemon:
+ * `Wild` in a wild fight and `Foe` against anyone with a trainer, as FireRed
+ * words it. A wild fight that opened "A wild RATTATA appeared!" under a WILD
+ * banner used to go on to say "Foe RATTATA used TACKLE!".
+ */
+export type FoeWord = 'Foe' | 'Wild';
+
+export const foeWordFor = (battle: { readonly trainer: boolean }): FoeWord =>
+  battle.trainer ? 'Foe' : 'Wild';
+
+export const combatantLabel = (user: 'player' | 'enemy', foe: FoeWord = 'Foe'): string =>
+  user === 'player' ? 'Your' : foe;
 
 /**
  * How a combatant is named in a line of battle text: always by side, always in
  * capitals. One battle used to say "Foe PIDGEY used GUST!" and then "Pidgey
  * fainted!", which reads as two different Pokemon.
  */
-export const combatantName = (who: { readonly user: 'player' | 'enemy'; readonly name: string }): string =>
-  `${combatantLabel(who.user)} ${who.name.toUpperCase()}`;
+export const combatantName = (
+  who: { readonly user: 'player' | 'enemy'; readonly name: string },
+  foe: FoeWord = 'Foe',
+): string => `${combatantLabel(who.user, foe)} ${who.name.toUpperCase()}`;
 
 /**
  * What the player's own plate says about the gear its Pokemon is carrying, or
@@ -773,14 +793,72 @@ export const combatantBanner = (
  * One line of battle log per event. Damaging hits carry the HP they took, so a
  * defeat can be read back from the log without replaying the HP bar.
  */
-export const eventToMessage = (event: BattleEvent): string => {
+/**
+ * What a plate's status tag is showing: the one primary status and whether the
+ * Pokemon is confused, which is all `statusAbbreviation` reads.
+ */
+export interface ShownStatus {
+  readonly primary: PrimaryStatus | null;
+  readonly confused: boolean;
+}
+
+export const shownStatusLabel = (shown: ShownStatus): string =>
+  statusAbbreviation(shown.primary, shown.confused ? 1 : 0) ?? '';
+
+/**
+ * The tag once this line has been read. A turn is resolved whole before its
+ * first line is put up, so a plate set from the state at the end of it showed
+ * CNF under "used SUPERSONIC!" and dropped SLP above "is fast asleep" - the tag
+ * has to move with the line that says so, as FireRed's does.
+ */
+export const statusAfterLine = (shown: ShownStatus, event: BattleEvent): ShownStatus => {
+  if (event.type === 'status-applied') {
+    return event.status === 'confusion' ? { ...shown, confused: true } : { ...shown, primary: event.status };
+  }
+  if (event.type === 'status-cured') {
+    return event.status === 'confusion' ? { ...shown, confused: false } : { ...shown, primary: null };
+  }
+  if (event.type === 'ability' && event.effect === 'shed') {
+    return { ...shown, primary: null };
+  }
+  return shown;
+};
+
+/**
+ * The tag before any of these lines (one slot's, in the order read), worked
+ * back from where the turn ended. Exact, because the engine only ever applies a
+ * primary status to a Pokemon with none and only cures one it has.
+ */
+export const statusBeforeLines = (end: ShownStatus, events: readonly BattleEvent[]): ShownStatus =>
+  events.reduceRight<ShownStatus>((shown, event) => {
+    if (event.type === 'status-applied') {
+      return event.status === 'confusion' ? { ...shown, confused: false } : { ...shown, primary: null };
+    }
+    if (event.type === 'status-cured') {
+      return event.status === 'confusion' ? { ...shown, confused: true } : { ...shown, primary: event.status };
+    }
+    if (event.type === 'ability' && event.effect === 'shed' && event.status && event.status !== 'confusion') {
+      return { ...shown, primary: event.status };
+    }
+    return shown;
+  }, end);
+
+/** Whether a line moves a plate's status tag. */
+export const changesShownStatus = (
+  event: BattleEvent,
+): event is Extract<BattleEvent, { readonly type: 'status-applied' | 'status-cured' | 'ability' }> =>
+  event.type === 'status-applied' ||
+  event.type === 'status-cured' ||
+  (event.type === 'ability' && event.effect === 'shed');
+
+export const eventToMessage = (event: BattleEvent, foe: FoeWord = 'Foe'): string => {
   switch (event.type) {
     case 'used-move': {
       // The HP figure is the whole point: a loss has to be explicable from the
       // log alone, not inferred from a bar that has already finished animating.
       // The same-type bonus is named because it is otherwise the largest
       // invisible term in the damage calculation.
-      const opening = `${combatantName(event)} used ${event.move.toUpperCase()}!`;
+      const opening = `${combatantName(event, foe)} used ${event.move.toUpperCase()}!`;
       if (!event.damage) {
         return opening;
       }
@@ -793,7 +871,7 @@ export const eventToMessage = (event: BattleEvent): string => {
       // explains neither. It is only ever emitted for a hit that took HP, so
       // there is no "and nothing happened to the other one" line to read.
       const stab = event.isStab ? ` · SAME-TYPE ${formatMultiplier(STAB_MULTIPLIER)}` : '';
-      return `${combatantName({ user: event.target, name: event.name })} -${event.damage} HP${stab}`;
+      return `${combatantName({ user: event.target, name: event.name }, foe)} -${event.damage} HP${stab}`;
     }
     case 'missed':
       return 'The attack missed!';
@@ -806,32 +884,32 @@ export const eventToMessage = (event: BattleEvent): string => {
     case 'effectiveness':
       if (event.multiplier === 0) {
         return event.name && event.user
-          ? `It doesn't affect ${combatantName({ user: event.user, name: event.name })}...`
+          ? `It doesn't affect ${combatantName({ user: event.user, name: event.name }, foe)}...`
           : "It doesn't affect the target...";
       }
       return event.multiplier > 1 ? "It's super effective!" : "It's not very effective...";
     case 'fainted':
-      return `${combatantName(event)} fainted!`;
+      return `${combatantName(event, foe)} fainted!`;
     case 'no-pp':
       return `No PP left for ${event.move}!`;
     case 'status-applied':
-      return `${combatantName(event)} ${statusApplied(event.status)}!`;
+      return `${combatantName(event, foe)} ${statusApplied(event.status)}!`;
     case 'status-already':
-      return `${combatantName(event)} already has a status condition!`;
+      return `${combatantName(event, foe)} already has a status condition!`;
     case 'status-prevented':
-      return `${combatantName(event)} ${statusHolds(event.status)}!`;
+      return `${combatantName(event, foe)} ${statusHolds(event.status)}!`;
     case 'status-damage':
-      return `${combatantName(event)} is hurt by ${statusLabel(event.status)}!`;
+      return `${combatantName(event, foe)} is hurt by ${statusLabel(event.status)}!`;
     case 'status-cured':
       return event.status === 'sleep'
-        ? `${combatantName(event)} woke up!`
+        ? `${combatantName(event, foe)} woke up!`
         : event.status === 'freeze'
-          ? `${combatantName(event)} thawed out!`
-          : `${combatantName(event)} snapped out of confusion!`;
+          ? `${combatantName(event, foe)} thawed out!`
+          : `${combatantName(event, foe)} snapped out of confusion!`;
     case 'confusion-self-hit':
-      return `${combatantName(event)} hurt itself in confusion!`;
+      return `${combatantName(event, foe)} hurt itself in confusion!`;
     case 'stat-stage-changed':
-      return `${combatantName(event)}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
+      return `${combatantName(event, foe)}'s ${statLabel(event.stat)} ${event.stages > 0 ? 'rose' : 'fell'}!`;
     case 'ball-thrown':
       return `Threw ${withArticle(battleCaps(event.ball ?? 'Poké Ball'))} at ${event.name.toUpperCase()}!`;
     case 'catch-shake':
@@ -848,32 +926,32 @@ export const eventToMessage = (event: BattleEvent): string => {
     // reads one of these lines once knows the whole rule, which is the bar every
     // piece of gear in the catalogue is held to.
     case 'gear-first-strike':
-      return `${combatantName(event)}'s ${event.item} let it move first!`;
+      return `${combatantName(event, foe)}'s ${event.item} let it move first!`;
     case 'gear-endured':
-      return `${combatantName(event)} hung on with its ${event.item}!`;
+      return `${combatantName(event, foe)} hung on with its ${event.item}!`;
     case 'gear-recoil':
-      return `${combatantName(event)} paid ${event.damage} HP to its ${event.item}.`;
+      return `${combatantName(event, foe)} paid ${event.damage} HP to its ${event.item}.`;
     case 'gear-heal':
-      return `${combatantName(event)} took +${event.amount} HP from its ${event.item}.`;
+      return `${combatantName(event, foe)} took +${event.amount} HP from its ${event.item}.`;
     // What a move does beyond its damage, in the same voice as everything else:
     // the line says who it happened to and what it cost, so a turn can be read
     // back from the log without watching the HP bar.
     case 'flinched':
-      return `${combatantName(event)} flinched and couldn't move!`;
+      return `${combatantName(event, foe)} flinched and couldn't move!`;
     case 'multi-hit':
       return `Hit ${event.hits} times!`;
     case 'drained':
-      return `${combatantName(event)} drained +${event.amount} HP.`;
+      return `${combatantName(event, foe)} drained +${event.amount} HP.`;
     case 'recoil':
-      return `${combatantName(event)} was hurt by the recoil! -${event.damage} HP`;
+      return `${combatantName(event, foe)} was hurt by the recoil! -${event.damage} HP`;
     case 'healed':
-      return `${combatantName(event)} restored +${event.amount} HP.`;
+      return `${combatantName(event, foe)} restored +${event.amount} HP.`;
     case 'heal-failed':
-      return `${combatantName(event)} is already at full HP.`;
+      return `${combatantName(event, foe)} is already at full HP.`;
     case 'charging':
-      return `${combatantName(event)} is gathering itself...`;
+      return `${combatantName(event, foe)} is gathering itself...`;
     case 'recharging':
-      return `${combatantName(event)} must recharge!`;
+      return `${combatantName(event, foe)} must recharge!`;
     // Weather speaks about the field rather than about either side, so these
     // lines name no one - except the chip, which is the weather taking HP off
     // somebody and is worded exactly as a burn or a poison is.
@@ -882,13 +960,13 @@ export const eventToMessage = (event: BattleEvent): string => {
     case 'weather-ended':
       return weatherEndedMessage(event.weather);
     case 'weather-damage':
-      return `${combatantName(event)} is buffeted by the ${weatherLabel(event.weather).toLowerCase()}!`;
+      return `${combatantName(event, foe)} is buffeted by the ${weatherLabel(event.weather).toLowerCase()}!`;
     // An ability is never shown in a menu, so every one of these lines is the
     // only teacher the player gets. Each says whose ability it was and what it
     // just did, in the same voice the gear lines use - and the four that change
     // a number every turn say it once a battle rather than once a turn.
     case 'ability':
-      return abilityLine(event);
+      return abilityLine(event, foe);
   }
 };
 
@@ -905,19 +983,22 @@ export const escapeAbilityMessage = (
   escaped: boolean,
 ): string =>
   escaped
-    ? `${combatantName(who)}'s ${ability} took it clear away!`
-    : `${combatantName(who)}'s ${ability} will not let it go!`;
+    ? `${combatantName(who, 'Wild')}'s ${ability} took it clear away!`
+    : `${combatantName(who, 'Wild')}'s ${ability} will not let it go!`;
 
-const abilityLine = (event: {
-  readonly user: 'player' | 'enemy';
-  readonly name: string;
-  readonly ability: string;
-  readonly effect: string;
-  readonly status?: string;
-  readonly stat?: string;
-  readonly amount?: number;
-}): string => {
-  const who = `${combatantName(event)}'s ${event.ability}`;
+const abilityLine = (
+  event: {
+    readonly user: 'player' | 'enemy';
+    readonly name: string;
+    readonly ability: string;
+    readonly effect: string;
+    readonly status?: string;
+    readonly stat?: string;
+    readonly amount?: number;
+  },
+  foe: FoeWord,
+): string => {
+  const who = `${combatantName(event, foe)}'s ${event.ability}`;
   switch (event.effect) {
     case 'powered-up':
       return `${who} is driving it harder!`;

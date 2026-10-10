@@ -122,6 +122,19 @@ describe('the lobby as a screen of the game', () => {
     expect(hub.flow.insertionId).toBe('floodplain-relay');
   });
 
+  it('counts one kind of supply in the stash as one kind, not "1 kinds"', () => {
+    const { hub } = createHub();
+    const kinds = Object.entries(hub.stash.listItems()).filter(([, count]) => count > 0);
+    for (const [itemId, count] of kinds.slice(1)) {
+      hub.stash.removeItem(itemId, count);
+    }
+
+    hub.setView('stash');
+    const stash = markupOf(hub);
+    expect(stash).toContain('<small>1 kind</small>');
+    expect(stash).not.toContain('1 kinds');
+  });
+
   it('says on the base screen that someone is hurt, and bills it in the stash', () => {
     const { hub } = createWornHub();
 
@@ -134,6 +147,64 @@ describe('the lobby as a screen of the game', () => {
     expect(stash).toContain('recovery-panel');
     expect(stash).toContain('data-recover-all');
     expect(stash).toContain('data-recover="charmander-1"');
+  });
+
+  it('tells a team with nobody standing that it cannot raid, rather than that it is hurt', () => {
+    const { hub } = createWornHub((maxHp) => maxHp);
+    // The starting stash's own partner is fit, so the team can still go.
+    expect(markupOf(hub)).toContain('1 Pokémon fainted. NURSE JOY is across the yard.');
+
+    for (const stored of hub.stash.listPokemon()) {
+      stored.pokemon.takeDamage(stored.pokemon.maxHp);
+    }
+    hub.setView('home');
+    const home = markupOf(hub);
+    expect(home).toContain('All 2 Pokémon have fainted, so nobody can raid. NURSE JOY is across the yard.');
+    expect(home).not.toContain('came home hurt');
+  });
+
+  it("bills a fainted Pokemon at the Pokémon Center as fainted, never as hurt", () => {
+    const { hub } = createWornHub();
+    hub.setView('stash');
+    expect(markupOf(hub)).toContain('Pokémon Center · 1 hurt');
+
+    const [partner] = hub.stash.listPokemon().filter((stored) => stored.id !== 'charmander-1');
+    partner.pokemon.takeDamage(partner.pokemon.maxHp);
+    hub.setView('stash');
+    const mixed = markupOf(hub);
+    expect(mixed).toContain('Pokémon Center · 1 fainted · 1 hurt');
+    expect(mixed).toContain('Revived, full HP, status cleared.');
+
+    hub.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!.pokemon.takeDamage(999);
+    hub.setView('stash');
+    const wiped = markupOf(hub);
+    expect(wiped).toContain('Pokémon Center · 2 fainted');
+    expect(wiped).not.toContain('2 fainted · ');
+  });
+
+  it('never tells the loadout to treat a fainted Pokemon a Potion cannot revive', () => {
+    const { hub } = createWornHub();
+    hub.openDeployment();
+    expect(markupOf(hub)).toContain('1 hurt · treat them first');
+
+    const [partner] = hub.stash.listPokemon().filter((stored) => stored.id !== 'charmander-1');
+    partner.pokemon.takeDamage(partner.pokemon.maxHp);
+    hub.setView('deploy');
+    const mixed = markupOf(hub);
+    expect(mixed).toContain('1 fainted · 1 hurt');
+    expect(mixed).not.toContain('treat them first');
+    expect(mixed).toContain(`${partner.pokemon.base.name} has fainted and cannot fight. Only the Pokémon Center can revive it.`);
+
+    const worn = hub.stash.listPokemon().find((stored) => stored.id === 'charmander-1')!;
+    worn.pokemon.takeDamage(worn.pokemon.maxHp);
+    hub.setView('deploy');
+    const wiped = markupOf(hub);
+    expect(wiped).toContain('2 fainted · see Nurse Joy');
+    expect(wiped).not.toContain('treat them first');
+    expect(wiped).not.toContain(`Add ${partner.pokemon.base.name}`);
+    // Nothing is packed yet, and the bar says why nothing can be.
+    expect(wiped).not.toContain('Add a Pokémon from your stash');
+    expect(wiped).toContain('Every Pokémon here has fainted. Revive one at the Pokémon Center before you deploy.');
   });
 
   it('lists one box at a time, and every box when the loadout is chosen from', () => {
@@ -1162,6 +1233,35 @@ describe('what the base screen leads with', () => {
     // The container filled itself with the one Pokemon in the loadout.
     expect(bar).toContain('Charmander · 2 supplies · 1 protected');
   });
+
+  it('counts one packed supply as one supply on the final check, as the loadout bar does', () => {
+    const { hub } = createHub();
+
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.setItemQuantity('potion', 1);
+    hub.setView('deploy');
+    expect(markupOf(hub)).toContain('Charmander · 1 supply · 1 protected');
+
+    readyToDeploy(hub);
+    hub.setView('deploy');
+    const check = markupOf(hub);
+    expect(hub.flow.step).toBe('confirm');
+    expect(check).toContain('1 Pokémon · 1 supply · ');
+    expect(check).not.toContain('1 supplies');
+  });
+
+  it('counts what a wipe would take a row at a time, as the result screen counts its ledger', () => {
+    const { hub } = createHub();
+
+    hub.flow.togglePokemon('charmander-1');
+    hub.flow.setItemQuantity('potion', 3);
+    readyToDeploy(hub);
+    hub.setView('deploy');
+    const check = markupOf(hub);
+    expect(hub.flow.step).toBe('confirm');
+    // The pack and one row of three Potions: two lines under the heading.
+    expect(check).toContain('<h2>Lost if you wipe</h2><small>2 entries</small>');
+  });
 });
 
 describe('Brock', () => {
@@ -1954,6 +2054,9 @@ describe('the wall map in Oak’s Lab', () => {
     // What is on it, each with the ink the picture draws it in.
     expect(close).toContain('OVERLOOK GATE');
     expect(close).toContain('held by WARDEN WREN');
+    // A Cut door has no keeper: it wants a move.
+    expect(close).toContain('needs CUT');
+    expect(close).not.toContain('held by CUT');
     expect(close).toContain('No keeper beaten here yet');
 
     hub.goBack();

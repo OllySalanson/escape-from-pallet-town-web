@@ -184,6 +184,13 @@ export interface ExtractionReport {
    * was lost in a battle, which is the one ending with a line-up to show.
    */
   readonly fallen?: readonly FallenPokemon[];
+  /**
+   * What the base is like to come home to after a lost raid, or null after a
+   * survived one. A wipe restocks the kit, but it revives nobody: a secured
+   * partner comes home fainted, and promising "a loadout you can deploy with"
+   * over a team that cannot deploy sent the player to a lab that refused them.
+   */
+  readonly baseNote: string | null;
   readonly saved: boolean;
 }
 
@@ -201,6 +208,12 @@ export interface ExtractionReportInput {
   readonly banked?: { readonly pokemon: readonly Pokemon[]; readonly items: readonly Stack[] };
   readonly lost?: { readonly pokemon: readonly Pokemon[]; readonly items: readonly Stack[] };
   readonly contract?: ReportContract;
+  /**
+   * The part of `banked` a contract paid. It is in the ledger because the stash
+   * received it, but the summary's "plus" is what the raid brought out on top of
+   * the contract, and two Great Balls waiting at base are not that.
+   */
+  readonly contractPaid?: { readonly pokemon: readonly Pokemon[]; readonly items: readonly Stack[] };
   /** The bag as it stood at the end, which is how supplies spent is measured. */
   readonly carriedOut?: BagContents;
   /**
@@ -217,6 +230,12 @@ export interface ExtractionReportInput {
    * guessed at it from the plan would name things the player never met.
    */
   readonly leftBehind?: readonly string[];
+  /**
+   * Whether anyone at base can fight once a lost raid's losses are applied,
+   * read off the stash the caller just wrote. Absent is taken as yes, which is
+   * the old claim; only a caller that looked can say otherwise.
+   */
+  readonly fitToRaid?: boolean;
   readonly saved: boolean;
 }
 
@@ -226,6 +245,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   const pack = raidPack(snapshot, escaped);
   const banked = input.banked ?? { pokemon: [], items: [] };
   const lost = input.lost ?? { pokemon: [], items: [] };
+  const contractPaid = input.contractPaid ?? { pokemon: [], items: [] };
   const ledgerSource = escaped ? banked : lost;
   const ledger: ReportGroup = {
     pokemon: ledgerSource.pokemon.map(toReportPokemon),
@@ -296,7 +316,17 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       : 'Raid lost',
     headline: escaped ? escapeHeadline(haulTier) : wipeHeadline(input.cause, secured),
     summary: escaped
-      ? escapeSummary(ledger, risked, contractBanked, progress, gear, pack)
+      ? escapeSummary(
+        {
+          pokemon: banked.pokemon.filter((pokemon) => !contractPaid.pokemon.includes(pokemon)).map(toReportPokemon),
+          items: toReportItems(subtractStacks(banked.items, contractPaid.items)),
+        },
+        risked,
+        contractBanked,
+        progress,
+        gear,
+        pack,
+      )
       : wipeSummary(input.cause, stakes, secured),
     haulTier,
     clockLabel: `${formatRaidClock(snapshot.elapsedMs)} of ${formatRaidClock(input.durationMs)}`,
@@ -342,8 +372,15 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
     packSummary: packSummary(pack),
     pressure: pressureLines(snapshot, escaped, input.leftBehind ?? []),
     ...(input.cause === 'defeated' ? { fallen: fallenParty(snapshot, input.lastStand) } : {}),
+    baseNote: escaped ? null : wipedBaseNote(input.fitToRaid ?? true),
     saved: input.saved,
   };
+}
+
+function wipedBaseNote(fitToRaid: boolean): string {
+  return fitToRaid
+    ? 'Your base has been topped back up to a loadout you can deploy with.'
+    : 'Your supplies have been topped back up, but nobody is fit to raid: revive a Pokémon at the Pokémon Center first.';
 }
 
 /**
@@ -389,27 +426,26 @@ function wipeHeadline(cause: WipeCause | undefined, secured: ReportGroup): strin
   return isEmptyGroup(secured) ? 'You went down with everything on you.' : 'You went down.';
 }
 
+/** `fieldHaul` is the ledger less whatever the contract paid. */
 function escapeSummary(
-  ledger: ReportGroup,
+  fieldHaul: ReportGroup,
   risked: ReportGroup,
   contractComplete: boolean,
   progress: readonly ReportProgress[],
   gear: readonly ReportGear[],
   pack: ReportPack | null,
 ): string {
-  const haul = describeGroup(ledger);
+  const haul = describeGroup(fieldHaul);
   const carried = gear.filter((piece) => piece.fate === 'found');
-  const riskedCount = countGroup(risked);
   // The pack is never protected, so a raid that wore one never took nothing in
-  // exposed.
-  const riskLine =
-    riskedCount === 0
-      ? pack === null
-        ? 'Nothing you took in was ever exposed.'
-        : `Nothing you took in was exposed but your ${pack.name}.`
-      : `${riskedCount === 1 ? 'One entry' : `${riskedCount} entries`}${
-        pack === null ? '' : ` and your ${pack.name}`
-      } rode out unprotected and came home.`;
+  // exposed. What did ride out is named, never counted: "One entry" was ledger
+  // talk, and read beside CARRIED AT RISK - Potion x3 - it was not even the
+  // count the player could see.
+  const riskLine = isEmptyGroup(risked)
+    ? pack === null
+      ? 'Nothing you took in was ever exposed.'
+      : `Nothing you took in was exposed but your ${pack.name}.`
+    : `${capitalise(describeStakes(risked, [], pack) ?? '')} rode out unprotected and came home.`;
   if (haul === null) {
     // A raid that levelled a Pokemon, or walked a piece of gear out of the
     // field, is not an empty raid - and saying "no new haul" about it was the
@@ -418,7 +454,8 @@ function escapeSummary(
       carried.length > 0
         ? `${listNames(carried)} came out of the field with you.`
         : progressSummary(progress);
-    return earned === null ? `No new haul. ${riskLine}` : `${earned} ${riskLine}`;
+    const opening = contractComplete ? 'Contract banked.' : earned === null ? 'No new haul.' : null;
+    return [opening, earned, riskLine].filter((part) => part !== null).join(' ');
   }
   return `${contractComplete ? 'Contract banked, plus ' : 'Banked '}${haul}. ${riskLine}`;
 }
@@ -493,7 +530,9 @@ function pressureLines(
   if (leftBehind.length > 0) {
     const named = [...new Set(leftBehind)].map((name) => name.toUpperCase());
     lines.push(
-      `Left on the ground: ${named.join(', ')}${escaped ? ' - you walked out past it' : ''}`,
+      `Left on the ground: ${named.join(', ')}${
+        escaped ? ` - you walked out past ${leftBehind.length === 1 ? 'it' : 'them'}` : ''
+      }`,
     );
   }
   if (snapshot.hunterFlees > 0) {

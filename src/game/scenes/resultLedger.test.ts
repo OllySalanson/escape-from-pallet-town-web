@@ -14,7 +14,16 @@ import { setActiveSaveSlot, setTryItRules } from '../dev/playtestMode';
 import { beginTry, endTry } from '../maker/tryIt';
 import type { ExtractionReport } from '../run/extractionReport';
 import type { MapFile } from '../world/mapFile';
-import { hasMoreBelow, moreLabel, scrollCoverHeight } from '../ui/MenuOverlay';
+import { CHARMANDER, Pokemon } from '../pokemon';
+import {
+  foldedRows,
+  hasMoreBelow,
+  moreLabel,
+  SCROLL_ROWS,
+  scrollCoverHeight,
+  scrollTopCoverHeight,
+} from '../ui/MenuOverlay';
+import { pokemonDossier } from '../ui/pokemonDossier';
 import { ExtractionScene } from './ExtractionScene';
 
 /**
@@ -67,6 +76,81 @@ describe('the result screen ledger', () => {
     expect(scrollCoverHeight(pane, [{ top: 0, bottom: 78 }, { top: 81, bottom: 128 }], 3)).toBe(39);
     // A row that would swallow most of the pane is cut rather than hide it.
     expect(scrollCoverHeight(pane, [{ top: 20, bottom: 300 }], 3)).toBe(39);
+  });
+
+  it('leaves out the line beside a covered row that the fold would cut, in either column', () => {
+    // Bill's shelf at 2x, measured off the live screen: the Poke Ball's pane
+    // is two columns, and covering the price's second row whole (from 496)
+    // put the strip's edge through "1 square in the pack." (488-512) on the
+    // left, which was drawn with its bottom half missing.
+    const shelf = { top: 408, bottom: 556 };
+    const note = { top: 488, bottom: 512 };
+    const shelfRows = [
+      { top: 412, bottom: 436 },
+      { top: 438, bottom: 462 },
+      { top: 462, bottom: 486 },
+      note,
+      { top: 412, bottom: 436 },
+      { top: 438, bottom: 494 },
+      { top: 496, bottom: 544 },
+    ];
+    const shelfCover = scrollCoverHeight(shelf, shelfRows, 2);
+    expect(shelfCover).toBe(60);
+    expect(foldedRows(shelf, shelfRows, shelf.bottom - shelfCover)).toEqual([note]);
+    // His barter table's lines interlock all the way up, so no fold short of
+    // the labels is clean: the price row the fold falls in ("1x Cable coil" over
+    // "1 in the vault") is the one left out.
+    const table = { top: 468, bottom: 644 };
+    const price = { top: 556, bottom: 612 };
+    const tableRows = [
+      { top: 498, bottom: 522 },
+      { top: 522, bottom: 546 },
+      { top: 546, bottom: 570 },
+      { top: 572, bottom: 596 },
+      { top: 596, bottom: 620 },
+      { top: 498, bottom: 554 },
+      price,
+    ];
+    const tableCover = scrollCoverHeight(table, tableRows, 2);
+    expect(tableCover).toBe(48);
+    expect(foldedRows(table, tableRows, table.bottom - tableCover)).toEqual([price]);
+    // A clean fold leaves everything alone, and a row cut higher than the
+    // strip may reach is the one the strip leaves cut rather than hide the pane.
+    expect(foldedRows(shelf, [{ top: 412, bottom: 436 }, { top: 438, bottom: 462 }], 500)).toEqual([]);
+    expect(foldedRows(shelf, [{ top: 420, bottom: 540 }], 500)).toEqual([]);
+  });
+
+  it("measures a dossier's stats as lines, so the fold never cuts one through", () => {
+    const markup = pokemonDossier({
+      pokemon: new Pokemon(CHARMANDER, 20),
+      id: 'charmander-1',
+      first: true,
+      holding: 'Holding nothing',
+      deeds: { label: 'Keeping', chips: () => '' },
+    });
+    // Each stat is a cell of the stats grid - a `dt` and a `dd` in a `div`,
+    // with no `small` for the fold to find - so the pane's foot once came to
+    // rest across `Attack 7 Defense 16 Sp. Atk 8` in the Pokémon Center.
+    expect(markup).toMatch(/<dl class="summary-stats"><div><dt>Attack<\/dt><dd>\d+<\/dd><\/div>/);
+    expect(SCROLL_ROWS).toContain('.px-dossier-body :is(small, .summary-stats > div)');
+  });
+
+  it('hides a row the top of a scrolled pane cuts through, down to the first whole row', () => {
+    // Brock's ladder, walked down with the arrow keys: the pane scrolled 188px
+    // and left SECURE LOCKER I with 32 of its 56 pixels showing.
+    const pane = { top: 200, bottom: 516 };
+    const rows = [
+      { top: 176, bottom: 232 },
+      { top: 234, bottom: 314 },
+    ];
+    expect(scrollTopCoverHeight(pane, 0, rows, 3)).toBe(33);
+    // A line that falls between two rows leaves nothing to hide.
+    expect(scrollTopCoverHeight(pane, 0, [{ top: 120, bottom: 200 }, ...rows.slice(1)], 3)).toBe(0);
+    // Under a sticky head, the cut is measured at the head's foot.
+    expect(scrollTopCoverHeight(pane, 34, rows, 3)).toBe(0);
+    expect(scrollTopCoverHeight(pane, 40, rows, 3)).toBe(75);
+    // A row that would swallow most of the pane is cut rather than hide it.
+    expect(scrollTopCoverHeight(pane, 0, [{ top: 100, bottom: 480 }], 3)).toBe(0);
   });
 
   it('counts what is under the strip rather than only saying there is something', () => {
@@ -124,7 +208,7 @@ describe('the result screen of a map maker try', () => {
       const report = {
         outcome,
         cause,
-        summary: '5 entries and your Raid pack rode out unprotected and came home.',
+        summary: '3 Potions and your Raid pack rode out unprotected and came home.',
       } as unknown as ExtractionReport;
       Object.assign(scene as object, { report });
       return (scene as unknown as { verdictSummary(): string }).verdictSummary();

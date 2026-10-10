@@ -58,6 +58,10 @@ export interface ContractMarker {
   readonly icon: 'field-kit' | 'supply-cache';
   /** Supplies taken out of the bag here. The stop cannot be made without them. */
   readonly carriedIn?: readonly ContractStack[];
+  /**
+   * Said on making the stop. It names the stop only: stops are made in any
+   * order, so how many are left is counted by `contractStopMessage`.
+   */
   readonly collectedMessage: string;
   /** Shown when the player arrives without what the drop needs. */
   readonly shortMessage?: string;
@@ -183,7 +187,7 @@ const SURVEY_THE_BRAID: RaidContract = {
       label: 'SURVEY STAKE\nWEST ROAD',
       cue: 'WEST STAKE',
       icon: 'field-kit',
-      collectedMessage: 'West road logged. Two stakes left.',
+      collectedMessage: 'West road logged.',
     },
     {
       id: 'braid-stake-field',
@@ -191,7 +195,7 @@ const SURVEY_THE_BRAID: RaidContract = {
       label: 'SURVEY STAKE\nMIDDLE FIELD',
       cue: 'FIELD STAKE',
       icon: 'field-kit',
-      collectedMessage: 'Middle field logged. The braid reads clean from here.',
+      collectedMessage: 'Middle field logged.',
     },
     {
       id: 'braid-stake-east',
@@ -368,6 +372,30 @@ export function remainingMarkers(
 
 export function contractStopsDone(contract: RaidContract, contractSteps: readonly string[]): number {
   return contract.markers.filter((marker) => contractSteps.includes(marker.id)).length;
+}
+
+const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+/**
+ * What the player is told on making a stop: the stop's own line and, on a
+ * contract of several stops, how many are left - counted from the stops
+ * actually made (`contractSteps` includes this one), because they can be made
+ * in any order and a line written for one order ("Two stakes left.") was wrong
+ * in every other.
+ */
+export function contractStopMessage(
+  contract: RaidContract,
+  marker: ContractMarker,
+  contractSteps: readonly string[],
+): string {
+  const total = contract.markers.length;
+  if (total < 2) {
+    return marker.collectedMessage;
+  }
+  const left = remainingMarkers(contract, contractSteps).length;
+  const word = (count: number): string => COUNT_WORDS[count] ?? String(count);
+  const count = left === 0 ? `That is all ${word(total)}.` : `${word(left)} left.`;
+  return `${marker.collectedMessage} ${count.charAt(0).toUpperCase()}${count.slice(1)}`;
 }
 
 /** Whether every stop has been made. Says nothing about which exit banks it. */

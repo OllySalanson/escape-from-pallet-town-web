@@ -75,3 +75,27 @@ describe('gear on the raid party screen', () => {
     expect(bag.count('leftovers')).toBe(1);
   });
 });
+
+describe('the order of the raid party', () => {
+  it('does not offer to pick up a lone Pokemon it would refuse to move', () => {
+    const scene = partyScreen(new Pokemon(PIDGEY, 5), new Bag()) as PartyInternals & {
+      markup(): string;
+      render(): void;
+    };
+    scene.render();
+
+    expect(scene.markup()).not.toContain('ENTER pick up');
+    expect(scene.markup()).not.toContain('Pick Pidgey up to move it');
+    expect(scene.markup()).toContain('Pidgey is the only Pokémon deployed, so it is the one sent out.');
+  });
+
+  it('offers to pick a Pokemon up when there is someone to swap with', () => {
+    const scene = Object.create(PartyScene.prototype) as PartyInternals & { render(): void };
+    scene.init({ party: new PokemonParty([new Pokemon(PIDGEY, 5), new Pokemon(PIDGEY, 6)]), bag: new Bag() });
+    scene.menuOverlay = { root: { innerHTML: '', querySelectorAll: () => [] }, refocus: () => undefined };
+    scene.render();
+
+    expect(scene.menuOverlay.root.innerHTML).toContain('ENTER pick up');
+    expect(scene.menuOverlay.root.innerHTML).toContain('Pick Pidgey up to move it');
+  });
+});

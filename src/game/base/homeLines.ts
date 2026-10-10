@@ -64,9 +64,20 @@ function record(game: RestoredGame): {
 const times = (count: number): string =>
   count === 1 ? 'once' : count === 2 ? 'twice' : `${count} times`;
 
+/**
+ * What Bill's storage system is holding, naming only what there is: a save with
+ * no money is not told Bill is keeping ₽0 for it.
+ */
+function keepingLine(game: RestoredGame): string {
+  const money = moneyHeld(game.stash);
+  const pokemon = game.stash.listPokemon().length;
+  const held = [...(money > 0 ? [formatMoney(money)] : []), ...(pokemon > 0 ? [`${pokemon} Pokémon`] : [])];
+  return held.length === 0 ? 'Bill is keeping nothing for you yet.' : `Bill is keeping ${held.join(' and ')} for you.`;
+}
+
 export function pcLines(game: RestoredGame): readonly string[] {
   const log = record(game);
-  const keeping = `Bill is keeping ${formatMoney(moneyHeld(game.stash))} and ${game.stash.listPokemon().length} Pokémon for you.`;
+  const keeping = keepingLine(game);
   if (log.raids === 0) {
     return ['RAID LOG. No raids yet. Oak is up the row, with the contract board.', keeping];
   }
@@ -91,8 +102,16 @@ export function calendarLines(game: RestoredGame): readonly string[] {
   }
   return [
     `DAY ${calendarDay(game)}. Every raid is a day on this calendar, and ${log.raids} ${log.raids === 1 ? 'is' : 'are'} crossed off.`,
-    `${log.home} of them have a tick for coming home.`,
+    ticks(log.home, log.raids),
   ];
+}
+
+/** How many of the crossed-off days are ticked, said as a sentence rather than as a count. */
+function ticks(home: number, raids: number): string {
+  if (raids === 1) return home === 1 ? 'It has a tick for coming home.' : 'It has no tick for coming home.';
+  if (home === 0) return 'None of them has a tick for coming home.';
+  if (home === raids) return 'Every one of them has a tick for coming home.';
+  return `${home} of them ${home === 1 ? 'has' : 'have'} a tick for coming home.`;
 }
 
 /** Lying down in your own bed: a dream, and waking up. Never a heal. */

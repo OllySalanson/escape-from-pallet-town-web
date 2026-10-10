@@ -81,6 +81,18 @@ function bagMarkup(over: { readonly using?: string } = {}): string {
 }
 
 describe('pointing at something in the raid pack', () => {
+  it('heads a pack of one kind as one kind, not "1 kinds"', () => {
+    const bag = new Bag();
+    bag.add('potion', 3);
+    const markup = render(Object.create(BagScene.prototype) as object, {
+      bag,
+      party: new PokemonParty([new Pokemon(CHARMANDER, 7)]),
+      onItemUsed: vi.fn(),
+    });
+    expect(markup).toContain('<small>1 kind</small>');
+    expect(bagMarkup()).toContain('<small>2 kinds</small>');
+  });
+
   it('is the same question as pointing at its squares', () => {
     const markup = bagMarkup();
     // The pocket row and the block it occupies carry one key, which is what

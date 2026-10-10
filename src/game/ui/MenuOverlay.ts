@@ -410,17 +410,38 @@ export class MenuOverlay {
   private markScrollCues(): void {
     const unit = Number.parseFloat(getComputedStyle(this.root).getPropertyValue('--u')) || 0;
     this.root.querySelectorAll<HTMLElement>('.px-scroll').forEach((pane) => {
-      if (unit <= 0 || !hasMoreBelow(pane, unit)) {
+      const scrolled = unit > 0 && pane.scrollTop > 0.5;
+      const more = unit > 0 && hasMoreBelow(pane, unit);
+      const box = pane.getBoundingClientRect();
+      const rows =
+        scrolled || more
+          ? [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].flatMap((element) =>
+              (element.classList.contains('px-wrap') ? lineBoxes(element) : [element.getBoundingClientRect()]).map(
+                ({ top, bottom }) => ({ top, bottom, element }),
+              ),
+            )
+          : [];
+      this.markTopCut(pane, box, rows, scrolled ? unit : 0);
+      pane.querySelectorAll<HTMLElement>('[data-folded]').forEach((element) => {
+        element.removeAttribute('data-folded');
+        element.style.removeProperty('clip-path');
+      });
+      if (!more) {
         pane.removeAttribute('data-more');
         pane.style.removeProperty('--more-cover');
         return;
       }
-      const box = pane.getBoundingClientRect();
-      const rows = [...pane.querySelectorAll<HTMLElement>(SCROLL_ROWS)].flatMap((row) =>
-        row.classList.contains('px-wrap') ? lineBoxes(row) : [row.getBoundingClientRect()],
-      );
       const cover = scrollCoverHeight(box, rows, unit);
       pane.style.setProperty('--more-cover', `${cover}px`);
+      // The strip is as tall as the row it was raised to cover, which is not
+      // always far enough for the row beside it: a pane in two columns whose
+      // lines do not share a rhythm (Bill's, a price beside a note) was folded
+      // through the middle of the other column's line. That line is clipped off
+      // from its own top, so the fold leaves it whole or leaves it out.
+      for (const { element, top } of foldedRows(box, rows, box.bottom - cover)) {
+        element.setAttribute('data-folded', '');
+        element.style.clipPath = `inset(0 0 ${element.getBoundingClientRect().bottom - top}px 0)`;
+      }
       // The strip says how much is down there, because "there is more" is not
       // the same answer as "there are nine more": the first leaves a player
       // guessing whether the thing they want is one row down or off the end of
@@ -429,6 +450,60 @@ export class MenuOverlay {
       pane.setAttribute('data-more', moreLabel(entries, box.bottom - cover));
     });
   }
+
+  /**
+   * The pane's top edge, given the same care as its foot. The cursor scrolls a
+   * row into view by just enough to show it, so walking down Brock's ladder
+   * left the row above it sliced through its name at the top of the pane - a
+   * row with no top half, which reads as a fault rather than as "more above".
+   * Nothing is drawn there, because the pane's heading already sits above it:
+   * the sliver is simply not shown (`.px-scroll[data-above]`), down to the
+   * first whole row. Measured below a sticky head, which is where rows are cut.
+   */
+  private markTopCut(
+    pane: HTMLElement,
+    box: DOMRect,
+    rows: readonly { readonly top: number; readonly bottom: number }[],
+    unit: number,
+  ): void {
+    const head = Number.parseFloat(pane.style.scrollPaddingTop) || 0;
+    const cover = unit > 0 ? scrollTopCoverHeight(box, head, rows, unit) : 0;
+    if (cover <= 0) {
+      pane.removeAttribute('data-above');
+      return;
+    }
+    pane.setAttribute('data-above', '');
+    pane.style.setProperty('--above-head', `${head}px`);
+    pane.style.setProperty('--above-cover', `${cover}px`);
+    // A mask would take the top of the scrollbar's track with the rows, so
+    // the stylesheet leaves the bar's own width drawn.
+    pane.style.setProperty('--above-bar', `${Math.max(0, pane.offsetWidth - pane.clientWidth)}px`);
+  }
+}
+
+/**
+ * How much of a scrolled pane's top to leave undrawn so that no row is shown
+ * cut through its waist: from the line the rows scroll under (the pane's top,
+ * below any sticky head) down to the foot of the lowest row that line runs
+ * through, in whole game pixels. Zero when the line falls between rows, and
+ * zero for a row so tall that hiding its sliver would hide most of the pane.
+ */
+export function scrollTopCoverHeight(
+  pane: { readonly top: number; readonly bottom: number },
+  head: number,
+  rows: readonly { readonly top: number; readonly bottom: number }[],
+  unit: number,
+): number {
+  const line = pane.top + head;
+  const cut = rows.filter((row) => row.top < line - 0.5 && row.bottom > line + 0.5);
+  if (cut.length === 0) {
+    return 0;
+  }
+  const cover = Math.max(...cut.map((row) => row.bottom)) - line;
+  if (cover > ((pane.bottom - line) * 3) / 4) {
+    return 0;
+  }
+  return Math.ceil(cover / unit - 0.001) * unit;
 }
 
 /**
@@ -452,10 +527,12 @@ export function moreLabel(entries: readonly { readonly bottom: number }[], fold:
  * block, because a dossier now grows into the room a list leaves and the fold
  * came to rest across the figure's middle. The map maker's side column is a
  * window of checks over the chosen thing's panel, and the fold went through
- * a check's last line and through the panel's heading (playtest 45).
+ * a check's last line and through the panel's heading (playtest 45). A stat
+ * is a `dt` and a `dd` rather than a `small`, so the fold went through the
+ * middle of a dossier's `Attack 7 Defense 16` line until each was named here.
  */
-const SCROLL_ROWS =
-  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body small, .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div), .maker-side :is(.px-heading, .maker-check .px-wrap, .maker-check .px-note, .maker-field > span, .px-field)';
+export const SCROLL_ROWS =
+  'button, .px-row, .px-subheading, .px-empty, p, .px-dossier-body :is(small, .summary-stats > div), .px-dossier-figure, .shop-detail-body :is(.px-label, .px-wrap, .shop-price-list > div), .maker-side :is(.px-heading, .maker-check .px-wrap, .maker-check .px-note, .maker-field > span, .px-field)';
 
 /**
  * The lines a run of wrapped copy is set in, top to bottom. A `.px-wrap`
@@ -537,6 +614,22 @@ function detailGroupOf(control: HTMLElement | null, root: HTMLElement): HTMLElem
     }
   }
   return root;
+}
+
+/**
+ * The rows a pane's fold still goes through once its MORE strip is drawn, each
+ * with the top of the line it is cut through at, so that line and everything
+ * below it in the row can be left out. Only within the reach the strip itself
+ * has (three quarters of the pane): a row cut higher than that is the one the
+ * strip leaves cut rather than hide the pane, and clipping it would do the same.
+ */
+export function foldedRows<Row extends { readonly top: number; readonly bottom: number }>(
+  pane: { readonly top: number; readonly bottom: number },
+  rows: readonly Row[],
+  fold: number,
+): Row[] {
+  const reach = pane.bottom - ((pane.bottom - pane.top) * 3) / 4;
+  return rows.filter((row) => row.top < fold - 0.5 && row.bottom > fold + 0.5 && row.top >= reach);
 }
 
 export function scrollCoverHeight(

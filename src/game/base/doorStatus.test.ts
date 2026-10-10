@@ -71,6 +71,23 @@ describe("what each of the base's doors says", () => {
     expect(doorStatusLine(doorNamed('pokemon-centre'), restore(hurt))).toContain('hurt');
   });
 
+  it('says a faint apart from a scratch, and a team with nobody standing before the swap', () => {
+    const mixed = createStartingStash(CHARMANDER);
+    mixed.addPokemon(new Pokemon(PIDGEY, 4), 'pidgey-1');
+    const [partner, pidgey] = mixed.listPokemon().map((stored) => stored.pokemon);
+    partner.takeDamage(partner.maxHp);
+    expect(doorStatusLine(doorNamed('pokemon-centre'), restore(mixed))).toBe('1 Pokémon fainted');
+    pidgey.takeDamage(1);
+    expect(doorStatusLine(doorNamed('pokemon-centre'), restore(mixed))).toBe('1 fainted · 1 hurt');
+
+    // A wipe leaves the secured partner home on 0 HP and nobody else: the
+    // swap would hand its replacement the same faint, so Joy is the news.
+    const wiped = createStartingStash(CHARMANDER);
+    const alone = wiped.listPokemon()[0].pokemon;
+    alone.takeDamage(alone.maxHp);
+    expect(doorStatusLine(doorNamed('pokemon-centre'), restore(wiped))).toBe('Nobody fit to raid');
+  });
+
   /**
    * A player down to one Pokemon has to be told the swap exists, and the screen
    * that holds it is behind a door they have no reason to open. It was said on

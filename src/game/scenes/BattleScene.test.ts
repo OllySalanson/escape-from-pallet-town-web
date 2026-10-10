@@ -33,7 +33,8 @@ import {
 } from '../pokemon/battle/battleEngine';
 import { BULBASAUR, PIDGEY, SQUIRTLE, getSpeciesById } from '../pokemon/species';
 import { Move } from '../pokemon/Move';
-import { GROWL } from '../pokemon/moves';
+import { GROWL, SUPER_SONIC, TACKLE, TAIL_WHIP } from '../pokemon/moves';
+import type { MoveBase } from '../pokemon/MoveBase';
 import { pokemonCargo } from '../pokemon/pokemonCargo';
 import { RunManager } from '../run/RunManager';
 import { createActiveRunSession } from '../run/RunSession';
@@ -328,6 +329,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     sprites,
     displayed,
     displayedHp,
+    shownStatus: new Map(),
     pendingCombatMessages: [],
     pendingChoices: [],
     choosingSlot: 0,
@@ -673,6 +675,34 @@ describe('escaping a wild encounter', () => {
   });
 });
 
+describe('a status tag on a plate', () => {
+  it('changes on the line that says so, never before the turn is read', () => {
+    const player = new Pokemon(BULBASAUR, 12);
+    player.moves.splice(0, player.moves.length, new Move(SUPER_SONIC));
+    const foe = new Pokemon(PIDGEY, 3);
+    // A Pokemon that knows no move stands still, so the foe's turn says nothing.
+    foe.moves.splice(0, foe.moves.length);
+    const { scene, dialog } = createBattleSceneHarness({ party: new PokemonParty([player]), wild: foe });
+    vi.spyOn(Math, 'random').mockReturnValue(0.01);
+    const foeTag = (scene as unknown as { plates: Map<string, { statusText: { setText: ReturnType<typeof vi.fn> } }> })
+      .plates.get('enemy0')!.statusText.setText;
+    const tagNow = (): string => (foeTag.mock.calls.at(-1)?.[0] as string | undefined) ?? '';
+
+    (scene as unknown as { useMove(index: number): void }).useMove(0);
+
+    // The turn is already resolved and the foe already confused, but the line
+    // up is the move being used: the tag waits for the line that confuses it.
+    expect(dialog.visibleText).toBe('Your BULBASAUR used SUPER SONIC!');
+    expect(tagNow()).toBe('');
+
+    for (let guard = 0; guard < 10 && !dialog.visibleText.includes('confused'); guard += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    }
+    expect(dialog.visibleText).toBe('Wild PIDGEY became confused!');
+    expect(tagNow()).toBe('CNF');
+  });
+});
+
 describe('using an item in a battle', () => {
   /** Walks the command tree the way a player does: ITEM, the medicine, the target. */
   const chooseItemFor = (
@@ -746,7 +776,25 @@ describe('using an item in a battle', () => {
     expect(dialog.shownMessages[0]).toBe('CHARMANDER recovered 15 HP!');
     (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
 
-    expect(dialog.shownMessages.slice(1).join(' ')).toContain('Foe BULBASAUR used');
+    expect(dialog.shownMessages.slice(1).join(' ')).toContain('Wild BULBASAUR used');
+  });
+
+  it('names the wild Pokemon Wild on every line, never Foe, under its WILD banner', () => {
+    const hurt = new Pokemon(CHARMANDER, 12);
+    hurt.takeDamage(15);
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      bag: new Bag({ potion: 1 }),
+      party: new PokemonParty([hurt]),
+    });
+    vi.spyOn(Math, 'random').mockReturnValue(0.01);
+
+    chooseItemFor(scene, renderedTexts);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+
+    const enemyLines = dialog.shownMessages.filter((line) => line.includes('BULBASAUR'));
+    expect(enemyLines.length).toBeGreaterThan(0);
+    expect(enemyLines.every((line) => line.startsWith('Wild BULBASAUR'))).toBe(true);
+    expect(dialog.shownMessages.some((line) => line.startsWith('Foe '))).toBe(false);
   });
 
   it('keeps the item and the turn when the medicine would do nothing', () => {
@@ -1442,7 +1490,7 @@ describe('throwing a ball in a wild battle', () => {
 
     press('BALL x0');
 
-    expect(dialog.shownMessages).toEqual(['No POKé BALLS left!']);
+    expect(dialog.shownMessages).toEqual(['There are no POKé BALLS in the pack!']);
   });
 
   it('applies the Great Ball\'s own 1.5 to the catch roll', () => {
@@ -1518,6 +1566,18 @@ describe('a catch the pack has no room for', () => {
     // the same breath as the first.
     expect(panel.some((text) => text.includes('POKé BALL'))).toBe(false);
     expect(panel.some((text) => text.includes('KEEP THE PACK'))).toBe(true);
+  });
+
+  it('says there is no ball before asking for room, so nothing is put down for a throw that cannot happen', () => {
+    const bag = new Bag({ potion: 18 });
+    const { scene, dialog, press } = open(bag);
+
+    press('BALL x0');
+
+    expect(dialog.shownMessages).toEqual(['There are no POKé BALLS in the pack!']);
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    expect((scene as unknown as { mode: string }).mode).not.toBe('make-room');
+    expect(bag.count('potion')).toBe(18);
   });
 
   it('throws the held ball the moment a drop has bought the room', () => {
@@ -1841,5 +1901,62 @@ describe('a trainer sending out Pokemon after a knockout', () => {
 
     const { displayedHp } = scene as unknown as { displayedHp: Map<string, number> };
     expect(displayedHp.get('enemy0')).toBe(party[1].currentHp);
+  });
+});
+
+/**
+ * A Pokemon blinks white when a blow takes HP off it, and only then. Growl and
+ * Tail Whip used to blink their target and shake the screen exactly as a
+ * Tackle does, so a move that lowered a stat looked like a hit that did no
+ * damage.
+ */
+describe('the blink a blow lands with', () => {
+  const fight = (playerMove: MoveBase, wildMove: MoveBase) => {
+    const pidgey = new Pokemon(PIDGEY, 8);
+    pidgey.moves.splice(0, pidgey.moves.length, new Move(playerMove));
+    const wild = new Pokemon(getSpeciesById('rattata')!, 3);
+    wild.moves.splice(0, wild.moves.length, new Move(wildMove));
+    const harness = createBattleSceneHarness({ party: new PokemonParty([pidgey]), wild });
+    const clock = createFakeClock();
+    const blinked: string[] = [];
+    const sprites = new Map(
+      (['player', 'enemy'] as const).map((side) => {
+        const sprite = standingSprite(side);
+        const setTintFill = sprite.setTintFill;
+        sprite.setTintFill = () => (blinked.push(side), setTintFill());
+        return [`${side}0`, sprite];
+      }),
+    );
+    const shake = vi.fn();
+    Object.assign(harness.scene as object, { tweens: clock.tweens, time: clock.time, sprites });
+    (harness.scene as unknown as { cameras: { main: { shake: unknown } } }).cameras.main.shake = shake;
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const { scene, renderedTexts, dialog } = harness;
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+    read(renderedTexts).findLast(({ text }) => text.includes('FIGHT'))!.handlers.pointerdown();
+    read(renderedTexts)
+      .filter(({ text }) => text.includes(playerMove.name.toUpperCase()))
+      .at(-1)!
+      .handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && (scene as unknown as { mode: string }).mode !== 'main'; step += 1) {
+      (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      clock.advance(400);
+    }
+    return { blinked, shake, dialog };
+  };
+
+  it('does not blink or shake for a move that only lowers a stat', () => {
+    const { blinked, shake, dialog } = fight(GROWL, TAIL_WHIP);
+    expect(dialog.shownMessages).toContain("Wild RATTATA's Attack fell!");
+    expect(dialog.shownMessages).toContain("Your PIDGEY's Defense fell!");
+    expect(blinked).toEqual([]);
+    expect(shake).not.toHaveBeenCalled();
+  });
+
+  it('still blinks the Pokemon a damaging move hits, and only that one', () => {
+    const { blinked, shake } = fight(TACKLE, TAIL_WHIP);
+    expect(blinked).toEqual(['enemy']);
+    expect(shake).toHaveBeenCalledTimes(1);
   });
 });

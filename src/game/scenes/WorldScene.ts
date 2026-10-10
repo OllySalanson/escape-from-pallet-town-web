@@ -104,6 +104,7 @@ import {
   completedObjectiveRewards,
   contractCarryIn,
   contractReportLine,
+  contractStopMessage,
   formatStacks,
   isContractBankable,
   missingCarryIn,
@@ -212,6 +213,7 @@ import {
   trainerWatchCaption,
 } from '../world/trainerEngagement';
 import { hasHunterIntel } from '../hub/workshop';
+import { anyoneFitToRaid } from '../hub/recovery';
 import { BEACON_EXIT_LABEL } from '../run/runGeneration';
 import {
   getVisibleLoot,
@@ -4439,7 +4441,7 @@ export class WorldScene extends Phaser.Scene {
     audioManager.play('contractStop');
     this.refreshRunTimerHud();
     this.saveGame();
-    return marker.collectedMessage;
+    return contractStopMessage(contract, marker, session.manager.snapshot().contractSteps);
   }
 
   private returnLocation(): RaidLocation {
@@ -4614,6 +4616,9 @@ export class WorldScene extends Phaser.Scene {
       ? new SaveManager().bankContract(contract, runResult, settlement)
       : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };
     this.pendingHubTransition = true;
+    const contractPaid = contractResult.granted
+      ? { pokemon: rewardPokemon(contract!.reward), items: contract!.reward.items }
+      : { pokemon: [], items: [] };
     this.showRunResult(
       buildExtractionReport({
         outcome: 'ESCAPED',
@@ -4632,14 +4637,15 @@ export class WorldScene extends Phaser.Scene {
           // beside the ones the raid caught.
           pokemon: [
             ...runResult.pokemon,
-            ...(contractResult.granted ? rewardPokemon(contract!.reward) : []),
+            ...contractPaid.pokemon,
           ],
           items: [
             ...settlement.supplies.filter(({ quantity }) => quantity > 0),
             ...objectiveRewards,
-            ...(contractResult.granted ? contract!.reward.items : []),
+            ...contractPaid.items,
           ],
         },
+        contractPaid,
         ...(contract
           ? {
             contract: {
@@ -4792,6 +4798,7 @@ export class WorldScene extends Phaser.Scene {
         leftBehind: this.prizesLeftBehindNow(),
         lost: { pokemon: result.lostPokemon, items: wipe.destroyedItems },
         carriedOut,
+        fitToRaid: anyoneFitToRaid(new SaveManager().load()?.stash),
         saved,
       }),
     );

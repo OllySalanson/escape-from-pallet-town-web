@@ -26,6 +26,7 @@ import {
   combatPresentationSteps,
   describeMoveGuidance,
   eventToMessage,
+  foeWordFor,
   formatMoveCommand,
   BATTLE_PANEL,
   formatPartyRow,
@@ -47,6 +48,9 @@ import {
   describeBallGuidance,
   catchChanceLabel,
   formatWildEscapeCommand,
+  shownStatusLabel,
+  statusAfterLine,
+  statusBeforeLines,
 } from './battlePresentation';
 
 const battleSceneSource = await readFile(new URL('./BattleScene.ts', import.meta.url), 'utf8');
@@ -104,6 +108,19 @@ describe('battle presentation', () => {
       .toBe('SQUIRTLE Lv 5 HP 17/17');
     expect(formatPartyRow({ base: { name: 'Squirtle' }, level: 5, currentHp: 0, maxHp: 17, isFainted: true }))
       .toBe('SQUIRTLE Lv 5 FNT');
+  });
+
+  it('calls a wild Pokemon Wild and a trainer\'s Foe, as the banner over its plate does', () => {
+    const wild = foeWordFor({ trainer: false });
+    const trainer = foeWordFor({ trainer: true });
+    expect(eventToMessage({ type: 'used-move', user: 'enemy', name: 'Rattata', move: 'Tackle' }, wild)).toBe(
+      'Wild RATTATA used TACKLE!',
+    );
+    expect(eventToMessage({ type: 'stat-stage-changed', user: 'enemy', name: 'Rattata', stat: 'attack', stages: -1 }, wild))
+      .toBe("Wild RATTATA's Attack fell!");
+    expect(eventToMessage({ type: 'fainted', user: 'enemy', name: 'Pidgey' }, trainer)).toBe('Foe PIDGEY fainted!');
+    // The player's own side is Your whoever they are fighting.
+    expect(eventToMessage({ type: 'fainted', user: 'player', name: 'Squirtle' }, wild)).toBe('Your SQUIRTLE fainted!');
   });
 
   it('names the key that cancels, and says a refusal on the prompt line beside the list', () => {
@@ -477,5 +494,21 @@ describe('formatWildEscapeCommand', () => {
     expect(formatWildEscapeCommand(96 / 256)).toBe('RUN 38%');
     expect(formatWildEscapeCommand(1 / 256)).toBe('RUN 1%');
     expect(formatWildEscapeCommand(0)).toBe('RUN 0%');
+  });
+});
+
+describe('a status tag moved line by line', () => {
+  it('reads SLP until the line that wakes the Pokemon, then CNF until it snaps out', () => {
+    const woke = { type: 'status-cured', user: 'enemy', name: 'PIDGEY', status: 'sleep' } as const;
+    const snapped = { type: 'status-cured', user: 'enemy', name: 'PIDGEY', status: 'confusion' } as const;
+    const confused = { type: 'status-applied', user: 'enemy', name: 'PIDGEY', status: 'confusion' } as const;
+    // Asleep going in; confused, woken and snapped out of it by the turn's end.
+    const before = statusBeforeLines({ primary: null, confused: false }, [confused, woke, snapped]);
+    expect(shownStatusLabel(before)).toBe('SLP');
+    const afterConfused = statusAfterLine(before, confused);
+    expect(shownStatusLabel(afterConfused)).toBe('SLP');
+    const afterWoke = statusAfterLine(afterConfused, woke);
+    expect(shownStatusLabel(afterWoke)).toBe('CNF');
+    expect(shownStatusLabel(statusAfterLine(afterWoke, snapped))).toBe('');
   });
 });

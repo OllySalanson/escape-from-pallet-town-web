@@ -18,15 +18,19 @@ import {
   payablePokemonCount,
   paymentCandidates,
   pokemonNeedingRecovery,
+  teamCondition,
   quoteRecovery,
   raidClockAfterRecovery,
   recoveryCostMs,
   recoveryPriceShare,
   spendableSupply,
   buildDropInBriefing,
+  doorHolder,
+  doorPromise,
   gradeLine,
   largestMapSize,
   placePicture,
+  shutDoorLine,
   type DropInBriefing,
   type DropInContext,
   TRADER_BERTH_PRICE,
@@ -1329,7 +1333,7 @@ export class HubScene extends Phaser.Scene {
                 ? formatMoney(moneyHeld(this.stash))
                 : this.view === 'wallmap'
                   ? wallMapNote(this.savedGame)
-                  : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} items`,
+                  : `${this.stashPokemon.length} Pokémon · ${this.stashItems.length} ${this.stashItems.length === 1 ? 'item' : 'items'}`,
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
@@ -1515,14 +1519,14 @@ export class HubScene extends Phaser.Scene {
    * deploy at all, and the Center is a walk away rather than a click.
    */
   private homeView(): string {
-    const hurt = this.injuredPokemon.length;
+    const said = teamCondition(this.stash);
     // Oak sends you out, and he is on the card that does it: the same art the
     // overworld draws him from, at the same scale. The other three people are
     // in their own buildings now (`base/doors.ts`), so the only other face here
     // is Nurse Joy's, on the line that says somebody needs her.
     const deploy = `<button class="px-window px-card px-tone-primary has-figure" data-deploy-flow data-cursor-start data-help="Build a loadout, check what it risks, then drop in."><strong>Start a raid</strong><p>Choose who and what you risk, and where you drop in.</p>${pixelFigure('prof-oak', 'Professor Oak')}</button>`;
-    const condition = hurt
-      ? `<p class="px-warning">${hurt === 1 ? '1 Pokémon' : `${hurt} Pokémon`} came home hurt. NURSE JOY is across the yard.</p>`
+    const condition = said
+      ? `<p class="px-warning">${said}. NURSE JOY is across the yard.</p>`
       : '<p>Everyone is fit to deploy.</p>';
     const team = `<button class="px-window px-card has-figure" data-refused="The Pokémon Center is the building west of the lab." data-help="Your team's condition. Nurse Joy treats them, across the yard."><strong>Your team</strong>${condition}${pixelFigure('nurse-joy', 'Nurse Joy')}</button>`;
     return `<main class="px-body hub-home"><section class="hub-actions">${deploy}${team}</section>${this.contractBoard()}</main>`;
@@ -1595,7 +1599,15 @@ export class HubScene extends Phaser.Scene {
     const quotedMs = quoteRecovery(this.stash, pending, injured.map((stored) => stored.id), this.recoveryTerms);
     // The cap can make treating everyone cheaper than the rows add up to, so say so.
     const listedMs = injured.reduce((total, stored) => total + this.recoveryPriceMs(stored), 0);
-    const lead = injured.length === 0 ? 'everyone is fit' : `${injured.length} hurt`;
+    // A faint is said apart from a scratch, as everywhere else at base
+    // (`teamConditionLine`): the bill read "1 hurt" over a partner who had
+    // fainted and could not deploy until this very button was pressed.
+    const fainted = injured.filter((stored) => stored.pokemon.isFainted).length;
+    const hurt = injured.length - fainted;
+    const lead =
+      injured.length === 0
+        ? 'everyone is fit'
+        : [fainted > 0 ? `${fainted} fainted` : '', hurt > 0 ? `${hurt} hurt` : ''].filter(Boolean).join(' · ');
     // The title bar carries the clock the next raid starts with. This line is
     // only for what that number does not show - the time already booked out of
     // it - so a fit, unbooked stash repeats nothing.
@@ -1610,7 +1622,7 @@ export class HubScene extends Phaser.Scene {
     const action =
       injured.length === 0
         ? ''
-        : `<button class="px-window px-button is-primary" data-recover-all data-help="Full HP, status cleared. Paid in raid time, never supplies.">Recover ${injured.length === 1 ? 'them' : `all ${injured.length}`} · ${quotedMs === 0 ? 'free' : `−${formatRecoveryClock(quotedMs)}`}</button>`;
+        : `<button class="px-window px-button is-primary" data-recover-all data-help="${fainted > 0 ? 'Revived, f' : 'F'}ull HP, status cleared. Paid in raid time, never supplies.">Recover ${injured.length === 1 ? 'them' : `all ${injured.length}`} · ${quotedMs === 0 ? 'free' : `−${formatRecoveryClock(quotedMs)}`}</button>`;
     return pixelCommitBar({
       className: 'px-tone-care recovery-panel',
       lead: pixelFigure('nurse-joy', 'Nurse Joy'),
@@ -1979,7 +1991,7 @@ export class HubScene extends Phaser.Scene {
       { className: 'stash-roster', heading: 'Pokémon', note: `${pokemon.length} stored` },
     )}<div class="stash-side">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${supplies || '<p class="px-empty">No supplies in storage.</p>'}</div>`,
-      { heading: 'Supplies', note: `${this.stashItems.length} kinds` },
+      { heading: 'Supplies', note: `${this.stashItems.length} ${this.stashItems.length === 1 ? 'kind' : 'kinds'}` },
     )}</div>${this.recoveryPanel()}</main>`;
   }
 
@@ -2001,7 +2013,6 @@ export class HubScene extends Phaser.Scene {
       pokemon: stored.pokemon,
       id: stored.id,
       first,
-      condition: this.conditionLine(stored),
       holding: held ? `Holding ${held.displayName}` : 'Holding nothing',
       deeds,
     });
@@ -2039,8 +2050,17 @@ export class HubScene extends Phaser.Scene {
       this.flow.securedItems.reduce((total, item) => total + item.quantity, 0);
     const single = this.stashPokemon.length === 1;
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
-    const allFainted = party.length > 0 && !this.flow.isDeployable;
-    const hurtCount = this.injuredPokemon.length;
+    // With nobody packed yet the question is whether anyone in the stash could
+    // be: a wiped lone partner was told to add a Pokemon from the stash.
+    const nobodyStanding = this.stashPokemon.length > 0 && this.stashPokemon.every((stored) => stored.pokemon.isFainted);
+    const allFainted = party.length > 0 ? !this.flow.isDeployable : nobodyStanding;
+    // A faint is not a hurt: medicine cannot revive, so "treat them first"
+    // over a fainted partner pointed at Potion chips that refuse it.
+    const faintedCount = this.injuredPokemon.filter((stored) => stored.pokemon.isFainted).length;
+    const hurtCount = this.injuredPokemon.length - faintedCount;
+    const stashNote = faintedCount === 0
+      ? hurtCount ? `${hurtCount} hurt · treat them first` : ''
+      : hurtCount ? `${faintedCount} fainted · ${hurtCount} hurt` : `${faintedCount} fainted · see Nurse Joy`;
     // The default packs medicine and never a ball, so a first raid could not
     // catch and nothing said so (playtests 7, 10, 13, 18 and 34). The pack is
     // still the player's to choose; the bar says what it cannot do.
@@ -2049,7 +2069,7 @@ export class HubScene extends Phaser.Scene {
     // rather than counting it; the final check screen is where the full at-risk
     // breakdown belongs.
     const summary = party.length === 0
-      ? 'Nothing selected yet. Add a Pokémon from your stash.'
+      ? nobodyStanding ? 'Nothing selected yet.' : 'Nothing selected yet. Add a Pokémon from your stash.'
       : `${party.map((stored) => stored.pokemon.base.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${securedCount} protected`;
     const pokemonRows = this.findablePokemon
       .map((stored, index) => {
@@ -2057,7 +2077,7 @@ export class HubScene extends Phaser.Scene {
         const name = escapeAttribute(stored.pokemon.base.name);
         // The cursor starts on the first Pokemon, not on the sort chip above
         // the list: an Enter on arrival re-sorted the stash (playtest 44 #2).
-        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''} data-help="${added ? `Take ${name} back out of the raid.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
+        return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''} data-help="${added ? `Take ${name} back out of the raid.` : stored.pokemon.isFainted ? `${name} has fainted and cannot fight. Only the Pokémon Center can revive ${single ? 'your only Pokémon' : 'it'}.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
           stored,
           // A tick, as every chosen row on these screens is marked: a ten-letter
           // name and its health bar leave no room for a word beside them.
@@ -2117,7 +2137,7 @@ export class HubScene extends Phaser.Scene {
     // can scan, and the treatment is about the one Pokemon being looked at.
     return `<main class="px-body loadout-layout">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.countedSupply)}>${this.browseBar(false)}${pokemonRows || '<p class="px-empty">No Pokémon answers that.</p>'}<h3 class="px-subheading">Supplies</h3>${supplyRows || '<p class="px-empty">No supplies at base.</p>'}</div>${details}`,
-      { className: 'loadout-stash', heading: 'Stash', note: hurtCount ? `${hurtCount} hurt · treat them first` : '' },
+      { className: 'loadout-stash', heading: 'Stash', note: stashNote },
     )}<div class="loadout-side">${pixelWindow(
       `<div class="pack-body px-scroll">${pixelGrid(this.flow.bagLayout(), (itemId) => itemIcon(itemId, this.itemName(itemId)), {
         label: `Pack, ${cells.used} of ${cells.total} squares full`,
@@ -2132,7 +2152,7 @@ export class HubScene extends Phaser.Scene {
       title: `${party.length}/6 Pokémon packed`,
       lines: [
         `<span class="px-wrap">${summary}</span>`,
-        `<small class="px-wrap${allFainted || noBall ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Recover one at base before you deploy.' : noBall ? (this.flow.ballAtBase ? 'No Poké Balls packed, so nothing can be caught this raid. Add one under Supplies.' : 'No Poké Balls at base, so nothing can be caught this raid.') : `Everything here is lost on a wipe unless it is in the secure slot - and the ${this.flow.packName} goes either way.`}</small>`,
+        `<small class="px-wrap${allFainted || noBall ? ' px-warning' : ''}">${allFainted ? 'Every Pokémon here has fainted. Revive one at the Pokémon Center before you deploy.' : noBall ? (this.flow.ballAtBase ? 'No Poké Balls packed, so nothing can be caught this raid. Add one under Supplies.' : 'No Poké Balls at base, so nothing can be caught this raid.') : `Everything here is lost on a wipe unless it is in the secure slot - and the ${this.flow.packName} goes either way.`}</small>`,
       ],
       actions: `<button class="px-window px-button" data-secure-slot data-help="${escapeAttribute(`The ${gridCells(this.flow.secureGrid)} squares that survive a wipe. It fills itself with your highest-level Pokémon first - a Pokémon costs 4, 6 or 9 squares by its stage - and you can change it.`)}">Secure slot${securedCount ? ` · ${securedCount}` : ''}</button><button class="px-window px-button is-primary" data-advance data-help="Choose where this raid drops in." ${this.flow.isDeployable ? '' : 'disabled'}>Choose drop-in</button>`,
     })}</main>`;
@@ -2379,10 +2399,8 @@ export class HubScene extends Phaser.Scene {
       : `<h3 class="px-subheading">Doors</h3>${briefing.doors
           .map((line) =>
             told(
-              `${this.pip(line.open ? 'O' : 'H')}<span class="px-row-main"><strong>${line.label}</strong><small>${line.open ? 'open' : `held by ${line.bossName}`}</small></span>`,
-              line.open
-                ? `${line.label} stands open on every raid.`
-                : `${line.label} is held by ${line.bossName}.`,
+              `${this.pip(line.open ? 'O' : 'H')}<span class="px-row-main"><strong>${line.label}</strong><small>${line.open ? 'open' : doorHolder(line)}</small></span>`,
+              line.open ? `${line.label} stands open on every raid.` : shutDoorLine(line),
               ' has-pip',
             ),
           )
@@ -2486,10 +2504,8 @@ export class HubScene extends Phaser.Scene {
       : `<h3 class="px-subheading">Doors</h3>${briefing.doors
           .map((door) =>
             told(
-              `${this.pip(door.open ? 'O' : 'H')}<span class="px-row-main"><strong>${door.label}</strong><small>${door.open ? 'you opened this' : `held by ${door.bossName}`}</small></span>`,
-              door.open
-                ? `${door.label} stands open on every raid from now on, because you beat the keeper who held it.`
-                : `${door.label} is held by ${door.bossName}. Beat them once and it stays open for good.`,
+              `${this.pip(door.open ? 'O' : 'H')}<span class="px-row-main"><strong>${door.label}</strong><small>${door.open ? 'you opened this' : doorHolder(door)}</small></span>`,
+              doorPromise(door),
               ' has-pip' + (door.open ? ' is-selected' : ''),
             ),
           )
@@ -2686,10 +2702,11 @@ export class HubScene extends Phaser.Scene {
       }))
       .filter((item) => item.quantity > 0);
     const supplies = this.flow.items.reduce((total, item) => total + item.quantity, 0);
+    // Counted the way the result screen counts its ledger - a row each - so
+    // the note is the number of lines drawn under it: three Potions are one
+    // entry, and "4 ENTRIES" over the pack and a Potion x3 read as a miscount.
     const riskedCount =
-      (this.flow.packItemId === undefined ? 0 : 1) +
-      riskedPokemon.length +
-      riskedItems.reduce((total, item) => total + item.quantity, 0);
+      (this.flow.packItemId === undefined ? 0 : 1) + riskedPokemon.length + riskedItems.length;
     // The price of the party, on screen before the player commits to it - the
     // rule the trainer watch and the flee cost already follow. It sits in the
     // full-width bar beside the button that pays it.
@@ -2732,7 +2749,7 @@ export class HubScene extends Phaser.Scene {
       title: `Deploy to ${insertion.label}`,
       lines: [
         `<span class="px-wrap">${contract ? `Contract: ${contract.name}` : 'No contract on this raid'} · raid clock ${formatRecoveryClock(this.raidClockMs)}${this.pendingRecoveryMs === 0 ? '' : ` (${formatRecoveryClock(RAID_DURATION_MS)} base − ${formatRecoveryClock(this.pendingRecoveryMs)} recovery)`}</span>`,
-        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} supplies · ${this.flow.packName} ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
+        `<small class="px-wrap">${this.flow.party.length} Pokémon · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${this.flow.packName} ${this.flow.bagCells.used}/${this.flow.bagCells.total} squares</small>`,
         `<small class="px-wrap hunter-price${threat.tierOffset > 0 ? ' raised px-warning' : ''}" data-hunter-tier="${threat.tierOffset + 1}"><b>${hunter.heading}</b> · ${hunter.detail}</small>`,
       ],
       actions: `<button class="px-window px-button" data-secure-slot data-help="Change what survives a wipe.">Secure slot</button><button class="px-window px-button is-primary" data-start data-cursor-start data-help="There is no way back from here: the raid starts.">Enter the raid</button>`,

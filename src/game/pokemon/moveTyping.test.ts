@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { EMBER, GROWL, POISON_POWDER, SING, TAIL_WHIP, THUNDER_WAVE, VINE_WHIP, WATER_GUN } from './moves';
 import { PokemonType } from './PokemonType';
 import { MoveCategory } from './MoveBase';
+import { GENERATED_MOVES } from './generated/moveCatalogue';
 
 describe('move typing', () => {
   // Unity's Sing.asset and ThunderWave.asset both store type 8 (Poison), the
@@ -34,5 +35,16 @@ describe('move typing', () => {
     expect(TAIL_WHIP.effects.boosts).toEqual([{ stat: 'defense', stages: -1 }]);
     expect(GROWL.effects.boosts).toEqual([{ stat: 'attack', stages: -1 }]);
     expect(TAIL_WHIP.description).not.toBe('');
+  });
+
+  // The move chooser and the teaching screen print a move's description under
+  // it, and every Ice and Electric move opened on "A Ice special attack."
+  it('opens a description with "An" before a type that starts with a vowel', () => {
+    const misread = Object.values(GENERATED_MOVES)
+      .filter((move) => /^A [AEIOU]/.test(move.description))
+      .map((move) => `${move.name}: ${move.description}`);
+    expect(misread).toEqual([]);
+    expect(GENERATED_MOVES.blizzard.description)
+      .toMatch(/^An Ice special attack\./);
   });
 });

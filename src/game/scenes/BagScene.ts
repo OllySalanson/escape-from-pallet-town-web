@@ -321,7 +321,7 @@ export class BagScene extends Phaser.Scene {
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.supply)}>${
         rows || '<p class="px-empty">The pack is empty. Whatever is on the ground out there is all you have.</p>'
       }</div>${details}`,
-      { className: 'raid-pockets', heading: 'Carried', note: `${this.kinds} kinds` },
+      { className: 'raid-pockets', heading: 'Carried', note: `${this.kinds} ${this.kinds === 1 ? 'kind' : 'kinds'}` },
     );
     return `<main class="px-body raid-bag-layout">${carried}<div class="raid-bag-side">${this.packWindow()}</div></main>`;
   }

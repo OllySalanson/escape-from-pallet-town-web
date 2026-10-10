@@ -347,7 +347,7 @@ export class ExtractionScene extends Phaser.Scene {
 
   /**
    * The sentence under the headline. A try of a map in the map maker carries a
-   * throwaway team in a save of its own, so "5 entries and your Raid pack rode
+   * throwaway team in a save of its own, so "3 Potions and your Raid pack rode
    * out unprotected" is a raid economy that was never in play; what a maker
    * reads there is what happened on their map.
    */
@@ -539,8 +539,8 @@ export class ExtractionScene extends Phaser.Scene {
     if (!this.report.saved) {
       return 'This result could not be written to storage.';
     }
-    if (this.report.outcome === 'WIPED') {
-      return 'Your base has been topped back up to a loadout you can deploy with.';
+    if (this.report.baseNote !== null) {
+      return this.report.baseNote;
     }
     // Promising a stash full of new supplies after an empty raid is the one way
     // this screen could lie about a result the player can see for themselves -
