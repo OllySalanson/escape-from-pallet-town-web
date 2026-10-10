@@ -540,3 +540,16 @@ describe('growing a map by drawing past its edge', () => {
     expect(() => extendMap(blankMap(), { left: 1, top: 0, right: 0, bottom: 0 })).toThrow();
   });
 });
+
+describe('filling a huge field', () => {
+  it('paints sixty-five thousand tiles in a blink, not in half a minute', () => {
+    const field = blankMap(MAP_FILE_LIMITS.maxWidth, MAP_FILE_LIMITS.maxHeight);
+    const open = { ...field, ground: field.ground.map((row) => '.'.repeat(row.length)) };
+    const started = performance.now();
+    const filled = paintWith(open, fillRegion(open, { x: 100, y: 100 }), brush('sand'));
+    // Linear, it is a few tens of milliseconds; copying a list per tile, it was 33 seconds.
+    expect(performance.now() - started).toBeLessThan(3_000);
+    expect(filled.ground.every((row) => row === 'd'.repeat(row.length))).toBe(true);
+  });
+});
+
