@@ -4609,6 +4609,9 @@ export class WorldScene extends Phaser.Scene {
       ? new SaveManager().bankContract(contract, runResult, settlement)
       : { saved: new SaveManager().bankRun(runResult, settlement), granted: false };
     this.pendingHubTransition = true;
+    const contractPaid = contractResult.granted
+      ? { pokemon: rewardPokemon(contract!.reward), items: contract!.reward.items }
+      : { pokemon: [], items: [] };
     this.showRunResult(
       buildExtractionReport({
         outcome: 'ESCAPED',
@@ -4627,14 +4630,15 @@ export class WorldScene extends Phaser.Scene {
           // beside the ones the raid caught.
           pokemon: [
             ...runResult.pokemon,
-            ...(contractResult.granted ? rewardPokemon(contract!.reward) : []),
+            ...contractPaid.pokemon,
           ],
           items: [
             ...settlement.supplies.filter(({ quantity }) => quantity > 0),
             ...objectiveRewards,
-            ...(contractResult.granted ? contract!.reward.items : []),
+            ...contractPaid.items,
           ],
         },
+        contractPaid,
         ...(contract
           ? {
             contract: {

@@ -224,6 +224,55 @@ describe('extraction report after a survived raid', () => {
     expect(report.summary.startsWith('Contract banked')).toBe(false);
   });
 
+  /**
+   * Playtest: the braid survey banked through WEST GATE read "Contract banked,
+   * plus 2 Cable coils and 2 Great Balls" - and the Great Balls were the
+   * contract's own reward, waiting at base, not anything the raid brought out.
+   */
+  it('does not call a contract\'s own reward something banked on top of it', () => {
+    const starter = new Pokemon(CHARMANDER, 5);
+    const caught = new Pokemon(PIDGEY, 4);
+    const paid = new Pokemon(PIDGEY, 6);
+    const contract = {
+      description: 'Read all three survey stakes on Route 1',
+      complete: true,
+      reward: 'Two Great Balls are waiting at base.',
+    };
+    const reportFor = (found: boolean) => {
+      const manager = startedRun({ party: [starter], items: [] });
+      if (found) {
+        manager.registerFoundItem('cable-coil', 2);
+        manager.registerCaughtPokemon(caught);
+      }
+      manager.resolveEscape();
+      const contractPaid = { pokemon: [paid], items: [{ itemId: 'great-ball', quantity: 2 }] };
+      return buildExtractionReport({
+        outcome: 'ESCAPED',
+        snapshot: manager.snapshot(),
+        durationMs: RAID_DURATION_MS,
+        exitLabel: 'WEST GATE',
+        banked: {
+          pokemon: [...(found ? [caught] : []), paid],
+          items: [...(found ? [{ itemId: 'cable-coil', quantity: 2 }] : []), ...contractPaid.items],
+        },
+        contractPaid,
+        contract,
+        carriedOut: found ? { 'cable-coil': 2 } : {},
+        saved: true,
+      });
+    };
+
+    const withHaul = reportFor(true);
+    // The ledger still lists what the stash received, contract pay included.
+    expect(withHaul.ledger.items.map(({ itemId }) => itemId)).toEqual(['cable-coil', 'great-ball']);
+    expect(withHaul.ledger.pokemon).toHaveLength(2);
+    expect(withHaul.summary).toMatch(/^Contract banked, plus Pidgey and 2 Cable coils\. /);
+
+    const contractOnly = reportFor(false);
+    expect(contractOnly.summary).toMatch(/^Contract banked\. /);
+    expect(contractOnly.summary).not.toContain('Great Ball');
+  });
+
   it('reads differently after a marginal raid than after a good one', () => {
     const starter = new Pokemon(CHARMANDER, 5);
     const manager = startedRun({ party: [starter], items: [{ itemId: 'potion', quantity: 3 }] });

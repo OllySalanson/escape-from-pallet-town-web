@@ -208,6 +208,12 @@ export interface ExtractionReportInput {
   readonly banked?: { readonly pokemon: readonly Pokemon[]; readonly items: readonly Stack[] };
   readonly lost?: { readonly pokemon: readonly Pokemon[]; readonly items: readonly Stack[] };
   readonly contract?: ReportContract;
+  /**
+   * The part of `banked` a contract paid. It is in the ledger because the stash
+   * received it, but the summary's "plus" is what the raid brought out on top of
+   * the contract, and two Great Balls waiting at base are not that.
+   */
+  readonly contractPaid?: { readonly pokemon: readonly Pokemon[]; readonly items: readonly Stack[] };
   /** The bag as it stood at the end, which is how supplies spent is measured. */
   readonly carriedOut?: BagContents;
   /**
@@ -239,6 +245,7 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
   const pack = raidPack(snapshot, escaped);
   const banked = input.banked ?? { pokemon: [], items: [] };
   const lost = input.lost ?? { pokemon: [], items: [] };
+  const contractPaid = input.contractPaid ?? { pokemon: [], items: [] };
   const ledgerSource = escaped ? banked : lost;
   const ledger: ReportGroup = {
     pokemon: ledgerSource.pokemon.map(toReportPokemon),
@@ -309,7 +316,17 @@ export function buildExtractionReport(input: ExtractionReportInput): ExtractionR
       : 'Raid lost',
     headline: escaped ? escapeHeadline(haulTier) : wipeHeadline(input.cause, secured),
     summary: escaped
-      ? escapeSummary(ledger, risked, contractBanked, progress, gear, pack)
+      ? escapeSummary(
+        {
+          pokemon: banked.pokemon.filter((pokemon) => !contractPaid.pokemon.includes(pokemon)).map(toReportPokemon),
+          items: toReportItems(subtractStacks(banked.items, contractPaid.items)),
+        },
+        risked,
+        contractBanked,
+        progress,
+        gear,
+        pack,
+      )
       : wipeSummary(input.cause, stakes, secured),
     haulTier,
     clockLabel: `${formatRaidClock(snapshot.elapsedMs)} of ${formatRaidClock(input.durationMs)}`,
@@ -409,15 +426,16 @@ function wipeHeadline(cause: WipeCause | undefined, secured: ReportGroup): strin
   return isEmptyGroup(secured) ? 'You went down with everything on you.' : 'You went down.';
 }
 
+/** `fieldHaul` is the ledger less whatever the contract paid. */
 function escapeSummary(
-  ledger: ReportGroup,
+  fieldHaul: ReportGroup,
   risked: ReportGroup,
   contractComplete: boolean,
   progress: readonly ReportProgress[],
   gear: readonly ReportGear[],
   pack: ReportPack | null,
 ): string {
-  const haul = describeGroup(ledger);
+  const haul = describeGroup(fieldHaul);
   const carried = gear.filter((piece) => piece.fate === 'found');
   const riskedCount = countGroup(risked);
   // The pack is never protected, so a raid that wore one never took nothing in
@@ -438,7 +456,8 @@ function escapeSummary(
       carried.length > 0
         ? `${listNames(carried)} came out of the field with you.`
         : progressSummary(progress);
-    return earned === null ? `No new haul. ${riskLine}` : `${earned} ${riskLine}`;
+    const opening = contractComplete ? 'Contract banked.' : earned === null ? 'No new haul.' : null;
+    return [opening, earned, riskLine].filter((part) => part !== null).join(' ');
   }
   return `${contractComplete ? 'Contract banked, plus ' : 'Banked '}${haul}. ${riskLine}`;
 }
