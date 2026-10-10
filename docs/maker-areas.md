@@ -35,6 +35,12 @@ meant (`mapFile.test.ts` holds the sample and an old-shape file to that).
   read off FireRed's own floor behaviours, and a room may be cut to a shape
   that is not a box with the dark beyond its walls (`C`), as FireRed cuts the
   east-west gatehouse, dark down both sides but for the mat let into each.
+- **A tunnel** is the third kind of area, `tunnel`: the Underground Path's,
+  FireRed's own tunnel north to south at FireRed's own size (8x63), its floor
+  and walls laid cell for cell from the game's (`AREA_WEAVES`). It is gone down
+  into by a `stairwell` in the floor of a hut's entrance, pressed into westward
+  from beside it, and come up out of by `tunnel-stairs` at either end - eastward
+  at the north end, westward at the south - into the entrance of another hut.
 
 ## Going through
 
@@ -106,5 +112,6 @@ names where it leads and goes there.
    south, Saffron's west to east - each a building with a door on either side
    of it and its room between, cut from pret: the building off the route it
    stands on, the room off its own layout.
-6. The Underground Path: a hut, a stairwell down, a tunnel, and a hut where it
-   comes out - a way through that comes out somewhere else on the map.
+6. The Underground Path: a hut, a stairwell down, FireRed's tunnel, and a hut
+   where it comes up - a way through that comes out somewhere else on the map,
+   made in two clicks: a hut, then the hut it comes up in.

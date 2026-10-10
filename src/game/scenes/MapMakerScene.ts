@@ -51,10 +51,12 @@ import {
   addUpstairs,
   areaById,
   doorEnd,
+  doorEnds,
   doorwayAt,
   doorwaysIn,
   focusArea,
   makeInside,
+  makeUndergroundPath,
   moveBuilding,
   moveDoorway,
   removeArea,
@@ -65,7 +67,13 @@ import {
   type AreaId,
   type DoorwayInArea,
 } from '../maker/areas';
-import { linkPassage, PASSAGE_PAIRS, passageEndAt, type PendingPassage } from '../maker/passages';
+import {
+  linkPassage,
+  PASSAGE_PAIRS,
+  passageEndAt,
+  pathHutAt,
+  type PendingPassage,
+} from '../maker/passages';
 import { landingsOf } from '../world/mapAreas';
 import { drawPlantSwatch, drawSwatch, loadMakerSheets, type DoorwayMark } from '../maker/mapCanvas';
 import { MapPainter } from '../maker/mapPainter';
@@ -994,6 +1002,15 @@ export class MapMakerScene extends Phaser.Scene {
         this.render();
       }
     });
+    on('[data-lead-path]', (element) => {
+      const hut = this.file.buildings[Number(element.dataset.leadPath)];
+      const from = hut ? doorEnd(hut) : undefined;
+      if (from) {
+        this.passage = { from, to: 'path-hut' };
+        this.selected = undefined;
+        this.render();
+      }
+    });
     on('[data-cancel-passage]', () => {
       this.passage = undefined;
       this.render();
@@ -1519,6 +1536,10 @@ export class MapMakerScene extends Phaser.Scene {
 
   /** Where a passage put down comes out: the click that makes it a way through. */
   private finishPassage(passage: PendingPassage, tile: GridPoint): void {
+    if (passage.to === 'path-hut') {
+      this.finishPath(passage, tile);
+      return;
+    }
     const end = passageEndAt(this.file, this.area, passage.to, tile);
     if (!end.placed) {
       this.render(end.reason);
@@ -1534,6 +1555,34 @@ export class MapMakerScene extends Phaser.Scene {
     // The end just made is chosen, so its panel says where it leads and goes there.
     this.doorway = { link: outcome.link, end: 1 };
     this.render();
+  }
+
+  /**
+   * The hut the Underground Path comes up in: the click that makes the whole
+   * path - both entrances, the tunnel and the stairs between - and opens the
+   * tunnel.
+   */
+  private finishPath(passage: PendingPassage, tile: GridPoint): void {
+    const from = this.file.buildings.findIndex((building) =>
+      doorEnds(building).some((end) => end.x === passage.from.x && end.y === passage.from.y),
+    );
+    const to = pathHutAt(this.file, this.area, tile);
+    if (from < 0 || to === undefined) {
+      this.render(
+        this.area === undefined
+          ? 'Click an Underground Path hut, where the path comes up.'
+          : 'The path comes up in a hut outside: go OUTSIDE and click one.',
+      );
+      return;
+    }
+    const outcome = makeUndergroundPath(this.file, from, to);
+    if (!outcome.made) {
+      this.render(outcome.reason);
+      return;
+    }
+    this.passage = undefined;
+    this.commit(outcome.file, undefined);
+    this.showArea(outcome.area);
   }
 
   /**

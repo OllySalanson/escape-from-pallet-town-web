@@ -33,6 +33,7 @@ import {
   focusArea,
   hasDoor,
   insideOf,
+  stairwellIn,
   ladderDownIn,
   stairsUpIn,
   type AreaId,
@@ -367,7 +368,7 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
             .join('')}`,
       ).join('');
   return pixelWindow(
-    `<div class="maker-toolbar">${tools}</div><div class="px-scroll maker-pane"><div class="px-list"><p class="px-subheading">${inside ? 'Room' : 'Ground'}</p>${brushes}<p class="px-subheading">Places</p>${places}${plants}</div></div>`,
+    `<div class="maker-toolbar">${tools}</div><div class="px-scroll maker-pane"><div class="px-list"><p class="px-subheading">${inside ? BRUSH_HEADINGS[inside.kind] : 'Ground'}</p>${brushes}<p class="px-subheading">Places</p>${places}${plants}</div></div>`,
     { className: 'maker-tools', heading: 'Paint' },
   );
 }
@@ -403,7 +404,8 @@ function passageBanner(state: MakerViewState): string {
   if (!passage) {
     return '';
   }
-  return `<div class="maker-passage"><p class="px-wrap"><span class="px-name">Where does it come out?</span> Click ${escapeHtml(PASSAGE_TARGETS[passage.to])}${passage.to === 'mouth' ? '' : ', choosing it above first'}.</p><button class="px-window px-button" data-cancel-passage data-help="Puts the entrance away again. Key: Esc.">Cancel</button></div>`;
+  const outside = passage.to === 'mouth' || passage.to === 'path-hut';
+  return `<div class="maker-passage"><p class="px-wrap"><span class="px-name">Where does it come ${passage.to === 'path-hut' ? 'up' : 'out'}?</span> Click ${escapeHtml(PASSAGE_TARGETS[passage.to])}${outside ? '' : ', choosing it above first'}.</p><button class="px-window px-button" data-cancel-passage data-help="Puts the entrance away again. Key: Esc.">Cancel</button></div>`;
 }
 
 /**
@@ -423,7 +425,7 @@ function areaStrip(file: MapFile, area: AreaId): string {
       chip(
         candidate.id,
         candidate.name,
-        `${candidate.kind === 'cave' ? 'Cave' : 'Inside'}: ${candidate.name}. ${candidate.width}x${candidate.height} tiles.`,
+        `${AREA_KIND_NAMES[candidate.kind]}: ${candidate.name}. ${candidate.width}x${candidate.height} tiles.`,
       ),
     )
     .join('')}</div>`;
@@ -447,7 +449,7 @@ function mapPane(state: MakerViewState, view: MapFile, inside: MapFileArea | und
     {
       className: 'maker-map',
       heading: escapeHtml(inside ? inside.name : file.name || 'Untitled map'),
-      note: `${inside ? `${inside.kind === 'cave' ? 'cave' : 'inside'} · ` : ''}${file.width}x${file.height}`,
+      note: `${inside ? `${AREA_KIND_NAMES[inside.kind].toLowerCase()} · ` : ''}${file.width}x${file.height}`,
     },
   );
 }
@@ -655,7 +657,9 @@ function selectedPane(
         `<div class="maker-actions"><button class="px-window px-button is-primary" data-go-inside="${selected.index}" data-help="${escapeAttribute(help)}">${label}</button></div>`;
       const door = !whole || area || !hasDoor(building)
         ? ''
-        : building.kind === 'cave-mouth'
+        : building.kind === 'underground-path'
+          ? pathHutPane(whole, selected.index, room)
+          : building.kind === 'cave-mouth'
           ? room
             ? `<p class="px-note px-wrap">It leads into ${escapeHtml(room.name)}.</p>${goIn('Go in', 'Opens the cave, to draw and fill.')}`
             : `<p class="px-note px-wrap">It leads nowhere yet. Cut it into the foot of a rock face, give it a cave, and walking up to it takes a player in.</p>${goIn('Make its cave', 'Makes a cave behind it, ringed in rock the way Mt. Moon is, with its way out cut into the south wall, and opens it.')}${
@@ -684,6 +688,20 @@ function selectedPane(
   );
 }
 
+/** What a place's ground is headed in the list of brushes. */
+const BRUSH_HEADINGS: Readonly<Record<MapFileArea['kind'], string>> = {
+  inside: 'Room',
+  cave: 'Cave',
+  tunnel: 'Tunnel',
+};
+
+/** What each kind of place is called in the editor. */
+const AREA_KIND_NAMES: Readonly<Record<MapFileArea['kind'], string>> = {
+  inside: 'Inside',
+  cave: 'Cave',
+  tunnel: 'Tunnel',
+};
+
 /** How a building's door is gone in by, from the way it is pressed. */
 const GOING_IN: Readonly<Record<MapFileLinkEnd['toward'], string>> = {
   up: 'walking up to the door',
@@ -691,6 +709,34 @@ const GOING_IN: Readonly<Record<MapFileLinkEnd['toward'], string>> = {
   left: 'walking into its porch from the east',
   right: 'walking into its porch from the west',
 };
+
+/**
+ * An Underground Path hut, chosen: where its path comes up, or the two clicks
+ * that make it - this hut, then the hut it comes up in.
+ */
+function pathHutPane(file: MapFile, index: number, room: MapFileArea | undefined): string {
+  const stairs = room ? stairwellIn(file, room.id) : undefined;
+  const tunnel = stairs ? file.links?.[stairs.link]?.ends[1 - stairs.end].area : undefined;
+  const other = tunnel
+    ? doorwaysIn(file, tunnel)
+        .map((end) => file.links?.[end.link]?.ends[1 - end.end].area)
+        .find((area) => area !== undefined && area !== room?.id)
+    : undefined;
+  const goIn = `<div class="maker-actions"><button class="px-window px-button" data-go-inside="${index}" data-help="Opens the inside of it, to furnish and fill.">Go inside</button></div>`;
+  if (room && stairs) {
+    const comesUp = other ? areaById(file, other)?.name : undefined;
+    return `<p class="px-note px-wrap">Its stairs go down to the Underground Path${comesUp ? `, which comes up in ${escapeHtml(comesUp)}` : ''}.</p>${goIn}`;
+  }
+  const others = file.buildings.some(
+    (candidate, at) => at !== index && candidate.kind === 'underground-path',
+  );
+  const make = `<div class="maker-actions"><button class="px-window px-button is-primary" data-lead-path="${index}" data-help="Makes the Underground Path from this hut: then click the hut it comes up in. Each hut gets its entrance, and the tunnel between them is FireRed's own.">Make the Underground Path</button></div>`;
+  return `<p class="px-note px-wrap">${
+    others
+      ? 'The Underground Path goes down from here. Make it, then click the hut it comes up in.'
+      : 'The Underground Path goes down from here and comes up in another of these huts: put a second one down, then make the path.'
+  }</p>${others ? make : ''}${room ? goIn : ''}`;
+}
 
 /** A way through chosen on the map: where it goes, and how to move it. */
 function doorwayPane(file: MapFile, doorway: DoorwayInArea): string {
@@ -708,6 +754,16 @@ function doorwayPane(file: MapFile, doorway: DoorwayInArea): string {
               ? 'Drag it along the wall with Select to move it.'
               : 'It is let into the side wall. Drag it up and down the wall with Select to move it.'
           }</p>`,
+        ];
+      case 'stairwell':
+        return [
+          'Stairs down',
+          `<p class="px-wrap">The stairs down into the Underground Path. A player stands beside them and presses left to go down, and coming up they arrive beside them.</p>`,
+        ];
+      case 'tunnel-stairs':
+        return [
+          'Stairs up',
+          `<p class="px-wrap">The stairs up ${to}. A player stands beside them and presses ${doorway.at.toward} to go up, and coming down they arrive beside them.</p>`,
         ];
       case 'back-door':
         return [
@@ -809,12 +865,20 @@ function insidePane(file: MapFile, area: MapFileArea): string {
       ? `<label class="maker-field"><span>Looks like</span><select class="px-window px-field" data-area-style>${styles}</select></label>`
       : '';
   const limits = areaLimits(area.kind);
+  const tunnel = area.kind === 'tunnel';
   const removeHelp = cave
     ? 'Takes this cave away, and everything in it. The cave mouth outside leads nowhere again. Press twice.'
-    : 'Takes this inside away, and everything in it. The door outside shuts again. Press twice.';
+    : tunnel
+      ? 'Takes the tunnel away, and everything in it. The stairs down in each hut go nowhere again. Press twice.'
+      : 'Takes this inside away, and everything in it. The door outside shuts again. Press twice.';
+  // A tunnel is the length FireRed made the Underground Path, so it has no
+  // size to choose.
+  const size = tunnel
+    ? `<p class="px-note px-wrap">The Underground Path, as FireRed lays it: ${area.width} wide and ${area.height} long, with its stairs up at either end.</p>`
+    : `<div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-area-width type="number" min="${limits.minWidth}" max="${limits.maxWidth}" value="${area.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-area-height type="number" min="${limits.minHeight}" max="${limits.maxHeight}" value="${area.height}" /></label></div>`;
   return pixelWindow(
-    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label>${looks}<div class="maker-size"><label class="maker-field"><span>Width</span><input class="px-window px-field" data-area-width type="number" min="${limits.minWidth}" max="${limits.maxWidth}" value="${area.width}" /></label><label class="maker-field"><span>Height</span><input class="px-window px-field" data-area-height type="number" min="${limits.minHeight}" max="${limits.maxHeight}" value="${area.height}" /></label></div>${upstairsButton(file, area)}${belowButton(file, area)}<div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="${escapeAttribute(removeHelp)}">Remove</button></div></div>`,
-    { className: 'maker-settings', heading: cave ? 'This cave' : 'This inside' },
+    `<div class="maker-form"><label class="maker-field"><span>Name</span><input class="px-window px-field" data-area-name value="${escapeAttribute(area.name)}" maxlength="${MAP_FILE_LIMITS.maxPlaceNameLength}" spellcheck="false" autocomplete="off" /></label>${looks}${size}${upstairsButton(file, area)}${belowButton(file, area)}<div class="maker-actions"><button class="px-window px-button" data-area="" data-help="Back to the map outdoors.">Back outside</button><button class="px-window px-button" data-remove-area="${escapeAttribute(area.id)}" data-help="${escapeAttribute(removeHelp)}">Remove</button></div></div>`,
+    { className: 'maker-settings', heading: cave ? 'This cave' : tunnel ? 'This tunnel' : 'This inside' },
   );
 }
 

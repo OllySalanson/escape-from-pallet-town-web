@@ -76,6 +76,18 @@ const ROOMS = {
     primary: 'building',
     secondary: 'generic_building_2',
   },
+  // The Underground Path: the room in the hut it goes down from, with its
+  // stairwell, and the tunnel north to south between two huts.
+  pathEntrance: {
+    layout: 'UndergroundPath_Entrance',
+    primary: 'building',
+    secondary: 'generic_building_2',
+  },
+  tunnel: {
+    layout: 'UndergroundPath_NorthSouthTunnel',
+    primary: 'building',
+    secondary: 'underground_path',
+  },
 };
 
 /**
@@ -231,6 +243,44 @@ const PIECES = [
     size: [2, 3],
     layers: ['t2', 't2', 't2'],
     dark: true,
+  },
+
+  // --- the Underground Path ---------------------------------------------------
+  // The entrance: the guards' counters, and the stairwell down, which is stood
+  // beside on the floor east of it and pressed into westward.
+  { name: 'path.counterWest', room: 'pathEntrance', at: [2, 3], size: [2, 4], layers: 'top' },
+  { name: 'path.counterEast', room: 'pathEntrance', at: [9, 3], size: [2, 4], layers: 'top' },
+  { name: 'path.stairwell', room: 'pathEntrance', at: [5, 3], size: [3, 3], layers: 'both' },
+  // Its stairs up, one at each end: up eastward from the north end, its top
+  // in the north wall, and up westward from the south end.
+  { name: 'tunnel.stairsEast', room: 'tunnel', at: [5, 1], size: [2, 4], layers: 'both' },
+  { name: 'tunnel.stairsWest', room: 'tunnel', at: [1, 59], size: [2, 3], layers: 'both' },
+];
+
+/**
+ * Ground laid as FireRed lays it, cell for cell: a name, the room, the
+ * rectangle of it that is the weave, and which of its cells it is made of -
+ * the ones walked on (a floor) or the solid ones (its walls), leaving out the
+ * rectangles named in `skip`, where something stands that is cut as a piece of
+ * its own. Every metatile in it is cut as a piece (`<name>.<metatile>`), and
+ * the weave says which is at each cell - `insideTileset.ts` lays the ground of
+ * an area by it, so a tunnel's floor fades from planks to blue to red and back
+ * as the Underground Path's does, and its walls have every rivet where FireRed
+ * puts one. A cell the weave is not made of takes the commonest piece of its
+ * row, or of the nearest row that has one.
+ */
+const WEAVES = [
+  { name: 'tunnel.floor', room: 'tunnel', at: [0, 0], size: [8, 63], cells: 'walked' },
+  {
+    name: 'tunnel.wall',
+    room: 'tunnel',
+    at: [0, 0],
+    size: [8, 63],
+    cells: 'solid',
+    skip: [
+      [5, 1, 2, 4],
+      [1, 59, 2, 3],
+    ],
   },
 ];
 
@@ -425,7 +475,64 @@ function fitted(image, [w, h]) {
   return out;
 }
 
-const cut = PIECES.map((piece) => ({ name: piece.name, image: cutPiece(piece) }));
+/** A weave's grid of piece names, and the pieces it needs cut. */
+function weaveOf(weave) {
+  const room = rooms.get(weave.room);
+  const [w, h] = weave.size;
+  const block = (x, y) => room.map.readUInt16LE((y * room.width + x) * 2);
+  const pieces = new Map();
+  const skipped = (x, y) =>
+    (weave.skip ?? []).some(([sx, sy, sw, sh]) => x >= sx && y >= sy && x < sx + sw && y < sy + sh);
+  const taken = [];
+  for (let y = 0; y < h; y += 1) {
+    const row = [];
+    for (let x = 0; x < w; x += 1) {
+      const value = block(weave.at[0] + x, weave.at[1] + y);
+      const walked = ((value >> 10) & 3) === 0;
+      const wanted = weave.cells === 'walked' ? walked : !walked && !skipped(x, y);
+      row.push(wanted ? value & 1023 : null);
+    }
+    taken.push(row);
+  }
+  /** The commonest metatile the weave is made of in a row, or undefined. */
+  const commonest = (row) => {
+    const counts = new Map();
+    for (const metatile of row) {
+      if (metatile !== null) counts.set(metatile, (counts.get(metatile) ?? 0) + 1);
+    }
+    return [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0];
+  };
+  const grid = taken.map((row, y) => {
+    let fill = commonest(row);
+    for (let d = 1; fill === undefined && d < h; d += 1) {
+      fill = commonest(taken[y - d] ?? []) ?? commonest(taken[y + d] ?? []);
+    }
+    return row.map((metatile) => metatile ?? fill);
+  });
+  for (const [y, row] of grid.entries()) {
+    for (const [x, metatile] of row.entries()) {
+      if (!pieces.has(metatile)) {
+        const at = [...Array(h).keys()].flatMap((cy) => [...Array(w).keys()].map((cx) => [cx, cy]))
+          .find(([cx, cy]) => (block(weave.at[0] + cx, weave.at[1] + cy) & 1023) === metatile);
+        pieces.set(metatile, {
+          name: `${weave.name}.${metatile}`,
+          room: weave.room,
+          at: [weave.at[0] + at[0], weave.at[1] + at[1]],
+          size: [1, 1],
+          layers: 'both',
+        });
+      }
+      grid[y][x] = `${weave.name}.${metatile}`;
+    }
+  }
+  return { name: weave.name, grid, pieces: [...pieces.values()] };
+}
+
+const weaves = WEAVES.map(weaveOf);
+const cut = [...PIECES, ...weaves.flatMap((weave) => weave.pieces)].map((piece) => ({
+  name: piece.name,
+  image: cutPiece(piece),
+}));
 
 // Shelf packing: tallest first, left to right, a new shelf when a row is full.
 const order = [...cut].sort(
@@ -487,6 +594,16 @@ ${entries}
 } as const;
 
 export type AreaPieceName = keyof typeof AREA_PIECES;
+
+/** Floors laid cell for cell as FireRed lays them: the piece at each row and column. */
+export const AREA_WEAVES = {
+${weaves
+  .map(
+    (weave) =>
+      `  '${weave.name}': [\n${weave.grid.map((row) => `    [${row.map((name) => `'${name}'`).join(', ')}],`).join('\n')}\n  ],`,
+  )
+  .join('\n')}
+} as const satisfies Record<string, readonly (readonly AreaPieceName[])[]>;
 `,
 );
 console.log(`public/assets/frlg-areas.png  ${SHEET_COLUMNS}x${rows} tiles, ${cut.length} pieces`);

@@ -6,6 +6,7 @@ import {
   solidPiece,
 } from '../../base/baseSheet';
 import type { BasePieceName } from '../../base/generated/basePieces';
+import { AREA_WEAVES } from '../generated/areaPieces';
 import { AREA_SHEET_SOURCE, areaFloorProp, areaProp, areaTile } from './areaSheet';
 import type { MaterialTiles, PropDefinition, TilesetCatalogue } from './catalogue';
 import type { Material } from './materials';
@@ -36,13 +37,21 @@ import type { Material } from './materials';
  * nothing and walked by nobody, which is how FireRed's own rooms are cut - the
  * gatehouse walked through west to east is dark down both sides but for the
  * mat let into each, which hangs over it.
+ *
+ * A tunnel is the Underground Path, laid cell for cell as FireRed lays it
+ * (`AREA_WEAVES`): its floor fades from planks to blue to red and back down
+ * its length, and every rivet of its walls is where the game puts one. Floor
+ * and wall join each other, so neither draws an edge of its own and both are
+ * the weave everywhere.
  */
 
 /** The rooms a building's inside may be drawn as. */
 export type RoomStyle = 'house' | 'mart' | 'cottage' | 'lab' | 'center' | 'warehouse' | 'gatehouse';
 /** The caves a cave may be drawn as. */
 export type CaveStyle = 'cave';
-export type InsideStyle = RoomStyle | CaveStyle;
+/** The tunnels a tunnel may be drawn as: the Underground Path's. */
+export type TunnelStyle = 'underground';
+export type InsideStyle = RoomStyle | CaveStyle | TunnelStyle;
 
 export const INSIDE_PROPS = {
   computers: solidPiece('lab.computers', 'computers'),
@@ -165,6 +174,16 @@ export const INSIDE_PROPS = {
   gateMat: areaFloorProp('gate.mat', 'door mat'),
   gateMatWest: areaProp('gate.matWest', 'door mat', ['#.', '#.', '#.']),
   gateMatEast: areaProp('gate.matEast', 'door mat', ['.#', '.#', '.#']),
+
+  // --- the Underground Path --------------------------------------------------
+  pathCounterWest: areaProp('path.counterWest', 'counter'),
+  pathCounterEast: areaProp('path.counterEast', 'counter'),
+  // The stairwell down, stood beside on the floor east of it.
+  pathStairwell: areaProp('path.stairwell', 'stairs down', ['##.', '##.', '##.']),
+  // The tunnel's stairs up: eastward from its north end, the top of them in
+  // the north wall, and westward from its south end.
+  tunnelStairsEast: areaProp('tunnel.stairsEast', 'stairs up'),
+  tunnelStairsWest: areaProp('tunnel.stairsWest', 'stairs up'),
 } as const satisfies Record<string, PropDefinition>;
 
 export type InsidePropName = keyof typeof INSIDE_PROPS;
@@ -181,6 +200,10 @@ interface StyleArt {
    */
   readonly sideMats?: { readonly left: InsidePropName; readonly right: InsidePropName };
   readonly backDoor?: InsidePropName;
+  /** The stairwell down into the Underground Path, in the floor of its entrance. */
+  readonly stairwell?: InsidePropName;
+  /** The stairs up out of a tunnel, pressed into east or west from beside them. */
+  readonly tunnelStairs?: { readonly left: InsidePropName; readonly right: InsidePropName };
   /** A cave's sand; a room has none, and draws it as floor. */
   readonly sand?: MaterialTiles;
 }
@@ -258,6 +281,13 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
     mat: 'gateMat',
     sideMats: { left: 'gateMatWest', right: 'gateMatEast' },
     backDoor: 'gateBackDoor',
+    stairwell: 'pathStairwell',
+  },
+  // The Underground Path, laid as FireRed lays it.
+  underground: {
+    floor: { roles: { fill: areaTile('tunnel.floor.649') }, weave: woven('tunnel.floor'), joins: ['wall'] },
+    wall: { roles: { fill: areaTile('tunnel.wall.645') }, weave: woven('tunnel.wall'), joins: ['paving'] },
+    tunnelStairs: { left: 'tunnelStairsWest', right: 'tunnelStairsEast' },
   },
   // Mt. Moon. The rock's top row is the lumps of its back wall and every face
   // that meets the ground stands on it from the top layer; the corners of a
@@ -303,6 +333,11 @@ const STYLE_ART: Readonly<Record<InsideStyle, StyleArt>> = {
     },
   },
 };
+
+/** A weave cut from FireRed's own ground, as the tiles each of its cells is. */
+function woven(name: keyof typeof AREA_WEAVES): readonly (readonly number[])[] {
+  return AREA_WEAVES[name].map((row) => row.map((piece) => areaTile(piece)));
+}
 
 /** The dark beyond a room's walls: nothing drawn. */
 const DARK: MaterialTiles = { roles: {} };
@@ -355,7 +390,8 @@ export const ROOM_STYLES: readonly RoomStyle[] = [
   'gatehouse',
 ];
 export const CAVE_STYLES: readonly CaveStyle[] = ['cave'];
-export const INSIDE_STYLES: readonly InsideStyle[] = [...ROOM_STYLES, ...CAVE_STYLES];
+export const TUNNEL_STYLES: readonly TunnelStyle[] = ['underground'];
+export const INSIDE_STYLES: readonly InsideStyle[] = [...ROOM_STYLES, ...CAVE_STYLES, ...TUNNEL_STYLES];
 
 export const INSIDE_TILESETS: Readonly<Record<InsideStyle, TilesetCatalogue<InsidePropName>>> =
   Object.fromEntries(INSIDE_STYLES.map((style) => [style, styleCatalogue(style)])) as Record<
@@ -376,4 +412,14 @@ export function insideSideMat(style: InsideStyle, side: 'left' | 'right'): Insid
 /** The doorway a style's room has in its back wall; a style that has none, undefined. */
 export function insideBackDoor(style: InsideStyle): InsidePropName | undefined {
   return STYLE_ART[style].backDoor;
+}
+
+/** The stairwell down into the Underground Path a style's room has; a style that has none, undefined. */
+export function insideStairwell(style: InsideStyle): InsidePropName | undefined {
+  return STYLE_ART[style].stairwell;
+}
+
+/** The stairs up out of a tunnel of a style, pressed into west or east; a style that has none, undefined. */
+export function tunnelStairs(style: InsideStyle, toward: 'left' | 'right'): InsidePropName | undefined {
+  return STYLE_ART[style].tunnelStairs?.[toward];
 }

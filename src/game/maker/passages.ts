@@ -1,5 +1,6 @@
 import {
   MAP_FILE_LIMITS,
+  plantedProp,
   type MapFile,
   type MapFileLink,
   type MapFileLinkEnd,
@@ -21,8 +22,12 @@ import type { GridPoint } from './draft';
  * foot of a ladder up, a cave's daylight comes out of a cave mouth.
  */
 
-/** The ways through a maker puts down one end at a time. */
-export type PassageLook = 'ladder-down' | 'ladder-up' | 'cave-exit' | 'mouth';
+/**
+ * The ways through a maker puts down one end at a time - and the Underground
+ * Path, put down by choosing one of its huts and then the hut it comes up in
+ * (`makeUndergroundPath` makes all of it at once).
+ */
+export type PassageLook = 'ladder-down' | 'ladder-up' | 'cave-exit' | 'mouth' | 'path-hut';
 
 /** The far end each kind of entrance comes out at. */
 export const PASSAGE_PAIRS: Readonly<Record<PassageLook, PassageLook>> = {
@@ -30,6 +35,7 @@ export const PASSAGE_PAIRS: Readonly<Record<PassageLook, PassageLook>> = {
   'ladder-up': 'ladder-down',
   'cave-exit': 'mouth',
   mouth: 'cave-exit',
+  'path-hut': 'path-hut',
 };
 
 /** An entrance put down, waiting to be told where it comes out. */
@@ -49,7 +55,28 @@ export const PASSAGE_TARGETS: Readonly<Record<PassageLook, string>> = {
   'ladder-up': 'the floor of a cave, where its ladder stands',
   'cave-exit': "a cave's south wall, where the daylight goes",
   mouth: 'a cave mouth outside that leads nowhere yet',
+  'path-hut': 'another Underground Path hut outside, where the path comes up',
 };
+
+/** The Underground Path hut outside whose footprint a tile is in, by its place in the list. */
+export function pathHutAt(file: MapFile, area: AreaId, tile: GridPoint): number | undefined {
+  if (area !== undefined) {
+    return undefined;
+  }
+  const index = file.buildings.findIndex((building) => {
+    if (building.kind !== 'underground-path') {
+      return false;
+    }
+    const prop = plantedProp(building.kind);
+    return (
+      tile.x >= building.x &&
+      tile.y >= building.y &&
+      tile.x < building.x + prop.width &&
+      tile.y < building.y + prop.height
+    );
+  });
+  return index >= 0 ? index : undefined;
+}
 
 /**
  * The end of a way through of this kind at the tile clicked, or why it cannot
@@ -64,6 +91,9 @@ export function passageEndAt(
   look: PassageLook,
   tile: GridPoint,
 ): PassageEnd {
+  if (look === 'path-hut') {
+    return { placed: false, reason: 'Click an Underground Path hut outside.' };
+  }
   if (look === 'mouth') {
     if (area !== undefined) {
       return { placed: false, reason: 'A cave mouth is outside: go OUTSIDE and click one.' };
