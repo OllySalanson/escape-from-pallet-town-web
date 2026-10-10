@@ -44,6 +44,27 @@ const tryButtons = (markup: string): string[] =>
   [...markup.matchAll(/<button[^>]*data-try="(walk|raid)"[^>]*>/g)].map((match) => match[0]);
 
 describe('the map maker screen', () => {
+  it('names every kind of thing SELECT and REMOVE work on, as the Places list names it', () => {
+    const markup = makerScreen(state(SAMPLE, false));
+    const places = [
+      ...markup.matchAll(
+        /data-place="[^"]+"[^>]*>(?:<[^>]*>)*?<span class="px-row-main">([^<]+)</g,
+      ),
+    ]
+      .filter((match) => !match[0].includes('data-building'))
+      .map((match) => match[1].toLowerCase());
+    expect(places).toEqual(
+      expect.arrayContaining(['sign', 'person', 'trainer', 'landmark', 'district']),
+    );
+    for (const tool of ['select', 'erase']) {
+      const help =
+        new RegExp(`data-tool="${tool}"[^>]*data-help="([^"]+)"`).exec(markup)?.[1] ?? '';
+      for (const kind of [...places, 'building']) {
+        expect(help, `${tool} help names ${kind}`).toContain(kind);
+      }
+    }
+  });
+
   it('lets a map be tried only once it works, and says so on the button', () => {
     const unfinished = makerScreen(state(blankMap(), false));
     expect(tryButtons(unfinished)).toHaveLength(2);

@@ -124,6 +124,39 @@ export interface MakerViewState {
   readonly status?: string;
 }
 
+/** The Places list: what a maker can stand on the map besides ground and buildings. */
+const PLACE_ROWS = [
+  ['drop-in', 'Drop-in', 'Where a raid on the map starts. The first is the front door.'],
+  ['exit', 'Exit', 'A way out. Stepping on it ends the raid with what you carry.'],
+  ['item', 'Item spot', 'Somewhere to find something. The game decides what.'],
+  [
+    'landmark',
+    'Landmark',
+    'A place to work once a raid by walking onto it: a spring, a hide, a shed. It pays what it is.',
+  ],
+  [
+    'person',
+    'Person',
+    'Somebody who stands there and says something. Nobody can walk through them.',
+  ],
+  ['sign', 'Sign', 'A sign that reads what you write on it.'],
+  [
+    'trainer',
+    'Trainer',
+    "A trainer with one of the game's own teams. Walking into them, or into their sight, is a fight.",
+  ],
+  [
+    'district',
+    'District',
+    'Drag out a named part of the map, with its own wild Pokémon if you like.',
+  ],
+] as const;
+
+/** Everything SELECT and REMOVE work on, named as the Paint pane names it. */
+const PLACED_THINGS = [...PLACE_ROWS.map(([, label]) => label.toLowerCase()), 'building']
+  .join(', ')
+  .replace(/, ([^,]+)$/, ' or $1');
+
 const TOOLS: readonly {
   readonly id: MakerTool;
   readonly label: string;
@@ -158,13 +191,13 @@ const TOOLS: readonly {
     id: 'select',
     label: 'Select',
     key: 'V',
-    help: 'Chooses a drop-in, exit, item spot or building. Drag it to move it.',
+    help: `Chooses a ${PLACED_THINGS}. Drag it to move it.`,
   },
   {
     id: 'erase',
     label: 'Remove',
     key: 'X',
-    help: 'Takes a drop-in, exit, item spot or building off the map.',
+    help: `Takes a ${PLACED_THINGS} off the map.`,
   },
 ];
 
@@ -200,38 +233,9 @@ function toolsPane(state: MakerViewState): string {
     ),
   ).join('');
   const chosenPlace = state.tool === 'place' ? placeKey(state.place) : '';
-  const places = (
-    [
-      ['drop-in', 'Drop-in', 'Where a raid on the map starts. The first is the front door.'],
-      ['exit', 'Exit', 'A way out. Stepping on it ends the raid with what you carry.'],
-      ['item', 'Item spot', 'Somewhere to find something. The game decides what.'],
-      [
-        'landmark',
-        'Landmark',
-        'A place to work once a raid by walking onto it: a spring, a hide, a shed. It pays what it is.',
-      ],
-      [
-        'person',
-        'Person',
-        'Somebody who stands there and says something. Nobody can walk through them.',
-      ],
-      ['sign', 'Sign', 'A sign that reads what you write on it.'],
-      [
-        'trainer',
-        'Trainer',
-        "A trainer with one of the game's own teams. Walking into them, or into their sight, is a fight.",
-      ],
-      [
-        'district',
-        'District',
-        'Drag out a named part of the map, with its own wild Pokémon if you like.',
-      ],
-    ] as const
-  )
-    .map(([kind, label, help]) =>
-      toolRow(`data-place="${kind}"`, label, help, chosenPlace === kind),
-    )
-    .join('');
+  const places = PLACE_ROWS.map(([kind, label, help]) =>
+    toolRow(`data-place="${kind}"`, label, help, chosenPlace === kind),
+  ).join('');
   const buildings = BUILDING_CHOICES.map((choice) =>
     toolRow(
       `data-place="building" data-building="${choice.kind}"`,
