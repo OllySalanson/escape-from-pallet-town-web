@@ -81,8 +81,8 @@ describe('reading a map file', () => {
   });
 
   it('refuses a map too small or too large, and ground that does not match its size', () => {
-    expect(problemsOf(edited({ width: 8 }))).toContain('A map is 20x16 to 128x128 tiles.');
-    expect(problemsOf(edited({ height: 400 }))).toContain('A map is 20x16 to 128x128 tiles.');
+    expect(problemsOf(edited({ width: 8 }))).toContain('A map is 20x16 to 256x256 tiles.');
+    expect(problemsOf(edited({ height: 400 }))).toContain('A map is 20x16 to 256x256 tiles.');
     expect(problemsOf(edited({ ground: SAMPLE.ground.slice(1) }))).toContain(
       "'ground' has 23 rows; the map is 24 tall.",
     );

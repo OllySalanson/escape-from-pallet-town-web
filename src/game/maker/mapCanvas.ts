@@ -19,6 +19,7 @@ import { sketchMapFile } from '../world/mapFile';
 import { buildMapLayers, type MapLayers } from '../world/tiles';
 import { PLAYER_MAP_TILESET } from '../world/tileset/playerMapTileset';
 import { buildingSize, type GridPoint, type ThingRef } from './draft';
+import type { TileRect } from './layerPatch';
 
 /**
  * Draws a map file onto a canvas exactly as the game will draw it.
@@ -145,12 +146,17 @@ const MARK_GLYPHS: Readonly<Record<'drop-in' | 'exit' | 'item' | 'landmark', rea
   landmark: ['...#...', '..###..', '#######', '.#####.', '.##.##.', '#.....#'],
 };
 
-/** Draws the whole map, then everything placed on it. */
+/**
+ * Draws the map, then everything placed on it: the whole of it, or only the
+ * tiles of `region`, which leaves the rest of the canvas as it was - how
+ * `MapPainter` keeps a 256x256 picture up to date one stroke at a time.
+ */
 export function drawMap(
   context: CanvasRenderingContext2D,
   file: MapFile,
   layers: MapLayers,
   selected: ThingRef | undefined,
+  region?: TileRect,
 ): void {
   const { canvas } = context;
   const width = file.width * TILE_SIZE;
@@ -159,9 +165,26 @@ export function drawMap(
     canvas.width = width;
     canvas.height = height;
   }
+  const area = region ?? { x: 0, y: 0, width: file.width, height: file.height };
+  context.save();
+  if (region) {
+    context.beginPath();
+    context.rect(
+      area.x * TILE_SIZE,
+      area.y * TILE_SIZE,
+      area.width * TILE_SIZE,
+      area.height * TILE_SIZE,
+    );
+    context.clip();
+  }
   context.imageSmoothingEnabled = false;
   context.fillStyle = '#0b1220';
-  context.fillRect(0, 0, width, height);
+  context.fillRect(
+    area.x * TILE_SIZE,
+    area.y * TILE_SIZE,
+    area.width * TILE_SIZE,
+    area.height * TILE_SIZE,
+  );
   const spans = PLAYER_MAP_TILESET.sources.map((source) => ({
     image: sheets.get(source.imagePath),
     from: source.firstIndex,
@@ -169,9 +192,9 @@ export function drawMap(
     columns: source.columns,
   }));
   for (const layer of [layers.ground, layers.overlay, layers.detail, layers.canopy, layers.brim]) {
-    for (let y = 0; y < file.height; y += 1) {
+    for (let y = area.y; y < area.y + area.height; y += 1) {
       const row = layer.tiles[y];
-      for (let x = 0; x < file.width; x += 1) {
+      for (let x = area.x; x < area.x + area.width; x += 1) {
         const tile = row[x];
         if (tile < 0) {
           continue;
@@ -314,6 +337,7 @@ export function drawMap(
       );
     }
   }
+  context.restore();
 }
 
 /** A frame round some tiles: two pixels when it is the chosen thing, one otherwise. */
@@ -332,46 +356,6 @@ function ring(
   context.fillRect(x, y + height - weight, width, weight);
   context.fillRect(x, y, weight, height);
   context.fillRect(x + width - weight, y, weight, height);
-}
-
-/** What the pointer is about to do, drawn on the layer over the map: a tile, a rectangle or a building's footprint. */
-export function drawPreview(
-  context: CanvasRenderingContext2D,
-  file: MapFile,
-  area: { readonly from: GridPoint; readonly to: GridPoint } | undefined,
-  valid: boolean,
-): void {
-  const { canvas } = context;
-  const width = file.width * TILE_SIZE;
-  const height = file.height * TILE_SIZE;
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
-  }
-  context.clearRect(0, 0, width, height);
-  if (!area) {
-    return;
-  }
-  const left = Math.min(area.from.x, area.to.x);
-  const top = Math.min(area.from.y, area.to.y);
-  const right = Math.max(area.from.x, area.to.x);
-  const bottom = Math.max(area.from.y, area.to.y);
-  context.fillStyle = valid ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 90, 80, 0.25)';
-  context.fillRect(
-    left * TILE_SIZE,
-    top * TILE_SIZE,
-    (right - left + 1) * TILE_SIZE,
-    (bottom - top + 1) * TILE_SIZE,
-  );
-  ring(
-    context,
-    left * TILE_SIZE,
-    top * TILE_SIZE,
-    (right - left + 1) * TILE_SIZE,
-    (bottom - top + 1) * TILE_SIZE,
-    valid ? '#ffffff' : '#ff5a50',
-    false,
-  );
 }
 
 const swatchPatches = new Map<string, { readonly file: MapFile; readonly layers: MapLayers }>();

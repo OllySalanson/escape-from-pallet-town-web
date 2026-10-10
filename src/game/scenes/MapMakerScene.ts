@@ -38,14 +38,8 @@ import {
   type MakerStore,
 } from '../maker/drafts';
 import { EditHistory } from '../maker/history';
-import {
-  drawMap,
-  drawPlantSwatch,
-  drawPreview,
-  drawSwatch,
-  layersFor,
-  loadMakerSheets,
-} from '../maker/mapCanvas';
+import { drawPlantSwatch, drawSwatch, loadMakerSheets } from '../maker/mapCanvas';
+import { MapPainter } from '../maker/mapPainter';
 
 import { createPlaytestGame, createPlaytestStash } from '../dev/playtestSave';
 import { PLAYTEST_RAID_DURATION_MS, setActiveSaveSlot, setTryItRules } from '../dev/playtestMode';
@@ -62,7 +56,13 @@ import { hunterThreatFor } from '../world/hunterThreat';
 import { playerMapId } from '../world/mapFile';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { botCheckNeeded, passBotCheck } from '../maker/turnstile';
-import { isSignedIn, sendMap, sentMaps, type SubmissionStatus } from '../maker/submissions';
+import {
+  isSignedIn,
+  sendMap,
+  sendRefusal,
+  sentMaps,
+  type SubmissionStatus,
+} from '../maker/submissions';
 import {
   blockMaker,
   decide,
@@ -98,7 +98,6 @@ import {
   type MapFileHabitat,
 } from '../world/mapFile';
 import { checkMapFile, type MapCheck } from '../world/mapFileChecks';
-import type { MapLayers } from '../world/tiles';
 
 /**
  * The map maker: a player draws their own raid map, in the FireRed style, and
@@ -183,7 +182,8 @@ export class MapMakerScene extends Phaser.Scene {
   private edgeScroll: ReturnType<typeof setInterval> | undefined;
   private checks: readonly MapCheck[] = [];
   private checkedFile: MapFile | undefined;
-  private layers: { readonly file: MapFile; readonly layers: MapLayers } | undefined;
+  /** The map's picture, kept between renders and drawn again only where it changed. */
+  private painter = new MapPainter();
   private autosaveTimer: ReturnType<typeof setTimeout> | undefined;
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
   /**
@@ -226,6 +226,7 @@ export class MapMakerScene extends Phaser.Scene {
     this.stroke = undefined;
     this.stopEdgeScroll();
     this.panel = 'map';
+    this.painter = new MapPainter();
     this.overlay = new MenuOverlay(this, 'map-maker pixel-ui', (event) => this.handleKey(event));
     // Rows here are tools, and a pointer crossing them on its way to the map
     // must not choose one: it only lights what it is over.
@@ -276,6 +277,8 @@ export class MapMakerScene extends Phaser.Scene {
     void loadMakerSheets().then(() => {
       if (this.scene.isActive()) {
         this.drawSwatches();
+        // Whatever was drawn before the sheets arrived was drawn without them.
+        this.painter.forgetCanvas();
         this.redraw();
       }
     });
@@ -431,11 +434,22 @@ export class MapMakerScene extends Phaser.Scene {
     const viewport = this.overlay.root.querySelector<HTMLElement>('[data-viewport]');
     const scroll = viewport ? { left: viewport.scrollLeft, top: viewport.scrollTop } : undefined;
     const sideTop = this.overlay.root.querySelector<HTMLElement>('.maker-side')?.scrollTop;
+    // The map's picture outlives the markup round it: a 256x256 canvas is
+    // sixty-four megabytes, and drawn again from nothing after every click it
+    // was most of a second.
+    const kept = this.overlay.root.querySelector<HTMLElement>('[data-stack]');
     this.rendering = true;
     try {
       this.overlay.root.innerHTML = this.screenMarkup(status);
     } finally {
       this.rendering = false;
+    }
+    const fresh = this.overlay.root.querySelector<HTMLElement>('[data-stack]');
+    if (kept && fresh) {
+      kept.setAttribute('style', fresh.getAttribute('style') ?? '');
+      fresh.replaceWith(kept);
+    } else if (fresh) {
+      this.painter.forgetCanvas();
     }
     this.wire();
     this.restoreField(typedIn);
@@ -548,25 +562,14 @@ export class MapMakerScene extends Phaser.Scene {
     }
   }
 
-  private layersOf(file: MapFile): MapLayers {
-    if (this.layers?.file !== file) {
-      this.layers = { file, layers: layersFor(file) };
-    }
-    return this.layers.layers;
-  }
-
   private redraw(file: MapFile = this.file): void {
     const canvas = this.overlay.root.querySelector<HTMLCanvasElement>('canvas[data-map]');
     const context = canvas?.getContext('2d');
     if (!context) {
       return;
     }
-    drawMap(context, file, this.layersOf(file), this.selected);
-    const preview = this.overlay.root.querySelector<HTMLCanvasElement>('canvas[data-preview]');
-    const previewContext = preview?.getContext('2d');
-    if (previewContext) {
-      drawPreview(previewContext, file, undefined, true);
-    }
+    this.painter.show(context, file, this.selected);
+    this.previewArea(undefined);
   }
 
   private drawSwatches(): void {
@@ -736,13 +739,17 @@ export class MapMakerScene extends Phaser.Scene {
         );
       });
 
-    const preview = root.querySelector<HTMLCanvasElement>('canvas[data-preview]');
-    if (preview) {
-      preview.addEventListener('pointerdown', (event) => this.pointerDown(event, preview));
-      preview.addEventListener('pointermove', (event) => this.pointerMove(event, preview));
-      preview.addEventListener('pointerup', (event) => this.pointerUp(event, preview));
-      preview.addEventListener('pointercancel', () => this.cancelStroke());
-      preview.addEventListener('pointerleave', () => {
+    // The map keeps its picture, and so its listeners, from one render to
+    // the next: wired once.
+    const stack = root.querySelector<HTMLElement>('[data-stack]');
+    if (stack && stack.dataset.wired === undefined) {
+      stack.dataset.wired = '';
+      const map = (): HTMLElement => stack.querySelector<HTMLElement>('canvas[data-map]') ?? stack;
+      stack.addEventListener('pointerdown', (event) => this.pointerDown(event, map()));
+      stack.addEventListener('pointermove', (event) => this.pointerMove(event, map()));
+      stack.addEventListener('pointerup', (event) => this.pointerUp(event, map()));
+      stack.addEventListener('pointercancel', () => this.cancelStroke());
+      stack.addEventListener('pointerleave', () => {
         if (!this.stroke) {
           this.previewArea(undefined);
         }
@@ -754,7 +761,7 @@ export class MapMakerScene extends Phaser.Scene {
 
   private tileAt(
     point: { readonly clientX: number; readonly clientY: number },
-    canvas: HTMLCanvasElement,
+    canvas: HTMLElement,
   ): GridPoint {
     const box = canvas.getBoundingClientRect();
     return {
@@ -772,7 +779,7 @@ export class MapMakerScene extends Phaser.Scene {
    */
   private visibleTileAt(
     point: { readonly clientX: number; readonly clientY: number },
-    canvas: HTMLCanvasElement,
+    canvas: HTMLElement,
   ): GridPoint {
     const map = canvas.getBoundingClientRect();
     const seen = this.viewport()?.getBoundingClientRect() ?? map;
@@ -828,7 +835,7 @@ export class MapMakerScene extends Phaser.Scene {
   private followStroke(): void {
     const stroke = this.stroke;
     const viewport = this.viewport();
-    const canvas = this.overlay.root.querySelector<HTMLCanvasElement>('canvas[data-preview]');
+    const canvas = this.overlay.root.querySelector<HTMLElement>('canvas[data-map]');
     if (!stroke || !viewport || !canvas) {
       this.stopEdgeScroll();
       return;
@@ -860,7 +867,7 @@ export class MapMakerScene extends Phaser.Scene {
     return groundBrush(this.brushId) ?? GROUND_BRUSHES[0];
   }
 
-  private pointerDown(event: PointerEvent, canvas: HTMLCanvasElement): void {
+  private pointerDown(event: PointerEvent, canvas: HTMLElement): void {
     if (event.button !== 0) {
       return;
     }
@@ -957,7 +964,7 @@ export class MapMakerScene extends Phaser.Scene {
     }
   }
 
-  private pointerMove(event: PointerEvent, canvas: HTMLCanvasElement): void {
+  private pointerMove(event: PointerEvent, canvas: HTMLElement): void {
     const stroke = this.stroke;
     if (!stroke) {
       this.hover(this.tileAt(event, canvas));
@@ -990,7 +997,7 @@ export class MapMakerScene extends Phaser.Scene {
     }
   }
 
-  private pointerUp(event: PointerEvent, canvas: HTMLCanvasElement): void {
+  private pointerUp(event: PointerEvent, canvas: HTMLElement): void {
     const stroke = this.stroke;
     this.stroke = undefined;
     this.stopEdgeScroll();
@@ -1034,7 +1041,7 @@ export class MapMakerScene extends Phaser.Scene {
     const stroke = this.stroke;
     this.stroke = undefined;
     this.stopEdgeScroll();
-    const canvas = this.overlay.root.querySelector<HTMLCanvasElement>('canvas[data-preview]');
+    const canvas = this.overlay.root.querySelector<HTMLElement>('canvas[data-map]');
     if (stroke && canvas?.hasPointerCapture(stroke.pointerId)) {
       canvas.releasePointerCapture(stroke.pointerId);
     }
@@ -1151,11 +1158,23 @@ export class MapMakerScene extends Phaser.Scene {
   }
 
   private previewArea(area: { from: GridPoint; to: GridPoint } | undefined, valid = true): void {
-    const preview = this.overlay.root.querySelector<HTMLCanvasElement>('canvas[data-preview]');
-    const context = preview?.getContext('2d');
-    if (context) {
-      drawPreview(context, this.file, area, valid);
+    const ghost = this.overlay.root.querySelector<HTMLElement>('[data-ghost]');
+    if (!ghost) {
+      return;
     }
+    if (!area) {
+      ghost.hidden = true;
+      return;
+    }
+    const left = Math.min(area.from.x, area.to.x);
+    const top = Math.min(area.from.y, area.to.y);
+    const at = (tiles: number): string => `calc(var(--u) * ${tiles * this.zoom})`;
+    ghost.style.left = at(left);
+    ghost.style.top = at(top);
+    ghost.style.width = at(Math.max(area.from.x, area.to.x) - left + 1);
+    ghost.style.height = at(Math.max(area.from.y, area.to.y) - top + 1);
+    ghost.classList.toggle('is-refused', !valid);
+    ghost.hidden = false;
   }
 
   // --- Everything else --------------------------------------------------------
@@ -1322,6 +1341,11 @@ export class MapMakerScene extends Phaser.Scene {
   private openSend(): void {
     if (!this.currentChecks().every((check) => check.passed) || !this.walkedOut()) {
       this.render('Pass every check first, walking out of it in TRY IT included.');
+      return;
+    }
+    const refusal = sendRefusal(this.file);
+    if (refusal) {
+      this.render(refusal);
       return;
     }
     this.flushAutosave();

@@ -17,6 +17,21 @@ export type { SubmissionStatus } from './supabaseClient';
  * downloads it.
  */
 
+/**
+ * The biggest map the inbox takes, in tiles each way: `submit_map` holds maps
+ * to 128x128 (`supabase/migrations/`), the size the game shipped with, while
+ * the maker draws up to `MAP_FILE_LIMITS`. A bigger map plays in TRY IT and
+ * saves as a file; sending one in waits on a migration that raises the line.
+ */
+export const SENDABLE_MAP_SIZE = 128;
+
+/** Why a map cannot be sent in as it is, if it cannot. */
+export function sendRefusal(file: MapFile): string | undefined {
+  return file.width > SENDABLE_MAP_SIZE || file.height > SENDABLE_MAP_SIZE
+    ? `Maps bigger than ${SENDABLE_MAP_SIZE}x${SENDABLE_MAP_SIZE} cannot be sent in yet. This one is ${file.width}x${file.height}.`
+    : undefined;
+}
+
 export interface SentMap {
   readonly receiptCode: string;
   readonly mapName: string;

@@ -269,7 +269,7 @@ function mapPane(state: MakerViewState): string {
   const width = file.width * zoom;
   const height = file.height * zoom;
   return pixelWindow(
-    `<div class="maker-zooms">${zoomButtons}</div><div class="maker-viewport" data-viewport><div class="maker-stack" style="width:calc(var(--u) * ${width});height:calc(var(--u) * ${height})"><canvas class="maker-canvas" data-map></canvas><canvas class="maker-canvas" data-preview></canvas></div></div>`,
+    `<div class="maker-zooms">${zoomButtons}</div><div class="maker-viewport" data-viewport><div class="maker-stack" data-stack style="width:calc(var(--u) * ${width});height:calc(var(--u) * ${height})"><canvas class="maker-canvas" data-map></canvas><div class="maker-ghost" data-ghost hidden></div></div></div>`,
     {
       className: 'maker-map',
       heading: escapeHtml(file.name || 'Untitled map'),
