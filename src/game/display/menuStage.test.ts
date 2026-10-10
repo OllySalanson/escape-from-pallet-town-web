@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   applyMenuStage,
   computeMenuStage,
+  FEEDBACK_TAB_STRIP,
+  feedbackTabEdge,
   MAX_MENU_SCALE,
   MENU_LAYER_ID,
   MENU_MAX_WIDTH,
@@ -41,12 +44,13 @@ function fakeLayer(): { style: Record<string, string> & { setProperty(name: stri
 
 describe('the menu screens are laid out against the window', () => {
   it('spends the whole of the captain\'s window rather than capping the measure', () => {
-    // 1920 less the inset, at 2x: the screen holds 952 game pixels across, and
-    // what fills them is columns. At 720 - the cap while a body was one column
-    // - a quarter of that window was backdrop either side of a thin list.
+    // 1920 less the inset and the FEEDBACK tab's strip, at 2x: the screen holds
+    // 936 game pixels across, and what fills them is columns. At 720 - the cap
+    // while a body was one column - a quarter of that window was backdrop
+    // either side of a thin list.
     const menu = computeMenuStage(1920, 950);
-    expect(menu.width).toBe(952);
-    expect(menu.width * menu.scale).toBe(1920 - 8 * 2);
+    expect(menu.width).toBe(936);
+    expect(menu.width * menu.scale).toBe(1920 - FEEDBACK_TAB_STRIP - 8 * 2);
   });
 
   it('is not the canvas box: the same window gives the two different screens', () => {
@@ -157,5 +161,35 @@ describe('the menu screens are laid out against the window', () => {
     expect(first.id).toBe(MENU_LAYER_ID);
     expect(again).toBe(first);
     expect(appended).toEqual([first]);
+  });
+
+  it('never lays a screen out under the FEEDBACK tab, on whichever edge it stands', () => {
+    for (const [width, height] of [[1280, 800], [1920, 1080], [1366, 768], [3840, 2160], [800, 600], [390, 844], [600, 900], [844, 390]]) {
+      const stage = computeMenuStage(width, height);
+      const layer = fakeLayer();
+      applyMenuStage(layer as unknown as HTMLElement, width, height);
+      const left = Number.parseFloat(layer.style.left);
+      const top = Number.parseFloat(layer.style.top);
+      const edge = feedbackTabEdge(width, height);
+      // A phone narrower than the smallest screen is the one place a menu
+      // cannot fit beside anything; it may only reach the strip on the far side.
+      if (edge === 'right' && stage.width * stage.scale <= width - FEEDBACK_TAB_STRIP) {
+        expect(left + stage.width * stage.scale, `${width}x${height}`).toBeLessThanOrEqual(width - FEEDBACK_TAB_STRIP);
+      }
+      if (edge === 'bottom' && stage.height * stage.scale <= height - FEEDBACK_TAB_STRIP) {
+        expect(top + stage.height * stage.scale, `${width}x${height}`).toBeLessThanOrEqual(height - FEEDBACK_TAB_STRIP);
+      }
+    }
+  });
+
+  it('keeps the strip on the edge the stylesheet puts the tab on', () => {
+    const css = readFileSync(new URL('../../style.css', import.meta.url), 'utf8');
+    expect(css).toContain('@media (max-width: 600px) and (orientation: portrait) {\n  .feedback-tab {');
+    expect(feedbackTabEdge(600, 900)).toBe('bottom');
+    expect(feedbackTabEdge(601, 900)).toBe('right');
+    expect(feedbackTabEdge(500, 400)).toBe('right');
+    // The tab is 30 wide with a 2-pixel shadow: the strip holds both.
+    expect(css).toMatch(/\.feedback-tab \{[^}]*width: 30px;[^}]*box-shadow: 2px 0 0/);
+    expect(FEEDBACK_TAB_STRIP).toBe(32);
   });
 });

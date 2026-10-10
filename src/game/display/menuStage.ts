@@ -48,6 +48,33 @@ export const MENU_STEP_HEIGHT = 360;
 /** CSS pixels of window kept clear on every side, for the frame and its margin. */
 export const MENU_INSET = 8;
 
+/**
+ * CSS pixels of window no menu is ever laid out under: the FEEDBACK tab's
+ * strip (`feedback/feedbackDesk.ts`, 30 wide with its 2-pixel shadow). Before
+ * it, every menu screen ran to within eight pixels of the window's edge and
+ * the tab sat over its frame and the ends of its right-hand column.
+ */
+export const FEEDBACK_TAB_STRIP = 32;
+
+/**
+ * Which edge of the window the FEEDBACK tab stands on: the right, or the
+ * bottom of a phone held upright - exactly the stylesheet's
+ * `(max-width: 600px) and (orientation: portrait)`, so the strip kept clear
+ * and the tab can never be on different edges.
+ */
+export function feedbackTabEdge(viewportWidth: number, viewportHeight: number): 'right' | 'bottom' {
+  return viewportWidth <= 600 && viewportHeight >= viewportWidth ? 'bottom' : 'right';
+}
+
+/** The window a menu may use: the whole of it, less the tab's strip on its edge. */
+function menuRoom(viewportWidth: number, viewportHeight: number): { readonly width: number; readonly height: number } {
+  const edge = feedbackTabEdge(viewportWidth, viewportHeight);
+  return {
+    width: Math.floor(viewportWidth) - (edge === 'right' ? FEEDBACK_TAB_STRIP : 0),
+    height: Math.floor(viewportHeight) - (edge === 'bottom' ? FEEDBACK_TAB_STRIP : 0),
+  };
+}
+
 /** Below 2x the face is unreadable, exactly as it is on the canvas. */
 export const MIN_MENU_SCALE = 2;
 /** Above 4x a menu is magnified rather than roomier - see the note above. */
@@ -76,8 +103,9 @@ const toEven = (value: number): number => Math.floor(value / 2) * 2;
  * band; everything the window has left over becomes logical pixels.
  */
 export function computeMenuStage(viewportWidth: number, viewportHeight: number): MenuStage {
-  const usableWidth = Math.max(1, Math.floor(viewportWidth) - MENU_INSET * 2);
-  const usableHeight = Math.max(1, Math.floor(viewportHeight) - MENU_INSET * 2);
+  const room = menuRoom(viewportWidth, viewportHeight);
+  const usableWidth = Math.max(1, room.width - MENU_INSET * 2);
+  const usableHeight = Math.max(1, room.height - MENU_INSET * 2);
   const scale = clamp(
     Math.min(
       Math.floor(usableWidth / MENU_STEP_WIDTH),
@@ -117,8 +145,9 @@ export function applyMenuStage(
     // Floored, never centred by the page: the room left over is odd as often as
     // it is even, and half of an odd number stands every one-pixel border on a
     // half pixel, which the browser resolves by blurring all of it.
-    layer.style.left = `${Math.max(0, Math.floor((viewportWidth - width) / 2))}px`;
-    layer.style.top = `${Math.max(0, Math.floor((viewportHeight - height) / 2))}px`;
+    const room = menuRoom(viewportWidth, viewportHeight);
+    layer.style.left = `${Math.max(0, Math.floor((room.width - width) / 2))}px`;
+    layer.style.top = `${Math.max(0, Math.floor((room.height - height) / 2))}px`;
     // One game pixel, in CSS pixels: `--u` on a pixel-ui screen, and the unit
     // every border, gap and glyph on it is a whole multiple of.
     layer.style.setProperty('--px', `${stage.scale}px`);
