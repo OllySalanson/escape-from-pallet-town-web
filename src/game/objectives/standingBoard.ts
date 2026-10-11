@@ -438,6 +438,8 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   'hm04-strength': 0,
   // A tool Bill barters, never a reward: zero for the reason the machines are.
   pickaxe: 0,
+  'old-rod': 0,
+  'good-rod': 0,
   'hm06-rock-smash': 0,
   // Berries grow only on the trees a map maker plants, and the board never pays
   // one: a berry is picked, not awarded. Priced like the medicine it is.

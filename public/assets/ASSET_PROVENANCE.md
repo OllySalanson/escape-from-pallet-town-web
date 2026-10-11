@@ -205,8 +205,9 @@ game.
   `quick-claw`, the five evolution stones `thunder-stone`, `fire-stone`,
   `water-stone`, `leaf-stone` and `moon-stone`, `money`, the Pokedollars,
   the seven berries `oran-berry`, `sitrus-berry`, `pecha-berry`, `cheri-berry`,
-  `rawst-berry`, `chesto-berry` and `aspear-berry`, and the `pickaxe` and the
-  `rubble` a buried exit is drawn as.
+  `rawst-berry`, `chesto-berry` and `aspear-berry`, the `pickaxe` and the
+  `rubble` a buried exit is drawn as, and the two fishing rods `old-rod` and
+  `good-rod`.
   The materials are
   drawn in code by `scripts/draw-material-icons.mjs` and the held items by
   `scripts/draw-gear-icons.mjs` (character art and small shapes on the same
@@ -247,7 +248,11 @@ game.
   FireRed's colours rather than a cut of its pixels. The `pickaxe` (steel on a
   wooden haft) and the `rubble` (a heap of warm grey stones, a colour of its own
   so it never reads as FireRed's Rock Smash rock) are
-  `scripts/draw-dig-icons.mjs`, on the set's own palette.
+  `scripts/draw-dig-icons.mjs`, on the set's own palette. The `old-rod` and
+  `good-rod` are `scripts/draw-rod-icons.mjs`: one rod drawn twice with its
+  line hanging from the tip, told apart the way FireRed tells its rods apart -
+  plain cane (`#d9b46a`, `#9c7438`) with a steel reel, and blue (`#7fb4e0`,
+  `#3f6f9d`) with a red one (`#c8443c`, `#ff8a70`).
   The four packs - `satchel`, `raid-pack`, `ranger-pack` and `hauler-frame` - are
   `scripts/draw-pack-icons.mjs`: **one silhouette drawn four times**, each a
   little taller and a little more built than the last, in oilcloth

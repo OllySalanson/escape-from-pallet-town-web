@@ -50,6 +50,10 @@ export const ITEM_ICONS = {
   'hm03-surf': 'hm03-surf',
   'hm04-strength': 'hm04-strength',
   pickaxe: 'pickaxe',
+  // FireRed's two lower rods, told apart as FireRed tells them: plain cane, and
+  // blue with a red reel (`scripts/draw-rod-icons.mjs`).
+  'old-rod': 'old-rod',
+  'good-rod': 'good-rod',
   'hm06-rock-smash': 'hm06-rock-smash',
   // Four sizes of one silhouette: which pack you are wearing has to be legible
   // at a glance on the loadout, because it is the decision that screen is for.

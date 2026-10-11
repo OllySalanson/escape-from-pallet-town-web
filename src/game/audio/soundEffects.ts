@@ -270,6 +270,20 @@ export const SOUND_EFFECTS = {
     moment: 'The final check is confirmed and the raid drops in',
     tones: [saw(131, 0.1, 0.06), saw(196, 0.1, 0.06, 0.09), sq(262, 0.1, 0.06, 0.18), sq(392, 0.22, 0.065, 0.27)],
   },
+  rodCast: {
+    channel: 'world',
+    moment: 'A rod is cast into the water - a swish of line, and the float landing',
+    // The line through the air as a falling noise, then one low plop: the
+    // float going in, which is the sound the dots that follow are waiting on.
+    tones: [noise(4200, 0.09, 0.05), sweep(tri(523, 0.08, 0.06, 0.09), 262)],
+  },
+  fishBite: {
+    channel: 'world',
+    moment: 'Something takes the float under - a Pokemon is on the hook',
+    // Two sharp jerks on the line, the second higher: a tug, not a fanfare,
+    // because the fight it starts brings its own sound with it.
+    tones: [sweep(sq(330, 0.05, 0.06), 494), sweep(sq(392, 0.07, 0.06, 0.08), 659)],
+  },
   encounter: {
     channel: 'world',
     moment: 'The tall grass produces a wild Pokemon',

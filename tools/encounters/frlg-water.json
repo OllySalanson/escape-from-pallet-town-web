@@ -1,0 +1,396 @@
+{
+ "ruling": "Generation III FireRed/LeafGreen water: the fishing and surfing slots of the two places whose water this game has, read from FireRed's own wild encounter table. The game fishes from the FireRed rows.",
+ "source": {
+  "pokefirered": {
+   "url": "https://raw.githubusercontent.com/pret/pokefirered/c75f352304d529f6ba92d4f74b9cf8b5c3810788/src/data/wild_encounters.json",
+   "note": "the FireRed disassembly - the table the cartridge is built from"
+  }
+ },
+ "fishingRates": [
+  70,
+  30,
+  60,
+  20,
+  20,
+  40,
+  40,
+  15,
+  4,
+  1
+ ],
+ "rods": {
+  "old_rod": [
+   0,
+   1
+  ],
+  "good_rod": [
+   2,
+   3,
+   4
+  ],
+  "super_rod": [
+   5,
+   6,
+   7,
+   8,
+   9
+  ]
+ },
+ "surfingRates": [
+  60,
+  30,
+  5,
+  4,
+  1
+ ],
+ "waters": [
+  {
+   "id": "sea",
+   "place": "Pallet Town",
+   "FireRed": {
+    "map": "MAP_PALLET_TOWN",
+    "fishing": [
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 10
+     },
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 10
+     },
+     {
+      "speciesId": "horsea",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "krabby",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "horsea",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "shellder",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "gyarados",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "seadra",
+      "minLevel": 25,
+      "maxLevel": 35
+     },
+     {
+      "speciesId": "psyduck",
+      "minLevel": 25,
+      "maxLevel": 35
+     }
+    ],
+    "surfing": {
+     "encounterRate": 1,
+     "slots": [
+      {
+       "speciesId": "tentacool",
+       "minLevel": 5,
+       "maxLevel": 10
+      },
+      {
+       "speciesId": "tentacool",
+       "minLevel": 10,
+       "maxLevel": 20
+      },
+      {
+       "speciesId": "tentacool",
+       "minLevel": 20,
+       "maxLevel": 30
+      },
+      {
+       "speciesId": "tentacool",
+       "minLevel": 30,
+       "maxLevel": 35
+      },
+      {
+       "speciesId": "tentacool",
+       "minLevel": 35,
+       "maxLevel": 40
+      }
+     ]
+    }
+   },
+   "LeafGreen": {
+    "map": "MAP_PALLET_TOWN",
+    "fishing": [
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 10
+     },
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 10
+     },
+     {
+      "speciesId": "krabby",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "horsea",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "krabby",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "staryu",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "gyarados",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "kingler",
+      "minLevel": 25,
+      "maxLevel": 35
+     },
+     {
+      "speciesId": "slowpoke",
+      "minLevel": 25,
+      "maxLevel": 35
+     }
+    ],
+    "surfing": {
+     "encounterRate": 1,
+     "slots": [
+      {
+       "speciesId": "tentacool",
+       "minLevel": 5,
+       "maxLevel": 10
+      },
+      {
+       "speciesId": "tentacool",
+       "minLevel": 10,
+       "maxLevel": 20
+      },
+      {
+       "speciesId": "tentacool",
+       "minLevel": 20,
+       "maxLevel": 30
+      },
+      {
+       "speciesId": "tentacool",
+       "minLevel": 30,
+       "maxLevel": 35
+      },
+      {
+       "speciesId": "tentacool",
+       "minLevel": 35,
+       "maxLevel": 40
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "fresh",
+   "place": "Viridian City",
+   "FireRed": {
+    "map": "MAP_VIRIDIAN_CITY",
+    "fishing": [
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 5
+     },
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 5
+     },
+     {
+      "speciesId": "poliwag",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "goldeen",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "poliwag",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "poliwhirl",
+      "minLevel": 20,
+      "maxLevel": 30
+     },
+     {
+      "speciesId": "gyarados",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "psyduck",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "psyduck",
+      "minLevel": 25,
+      "maxLevel": 35
+     }
+    ],
+    "surfing": {
+     "encounterRate": 1,
+     "slots": [
+      {
+       "speciesId": "psyduck",
+       "minLevel": 20,
+       "maxLevel": 25
+      },
+      {
+       "speciesId": "psyduck",
+       "minLevel": 20,
+       "maxLevel": 25
+      },
+      {
+       "speciesId": "psyduck",
+       "minLevel": 25,
+       "maxLevel": 30
+      },
+      {
+       "speciesId": "psyduck",
+       "minLevel": 30,
+       "maxLevel": 35
+      },
+      {
+       "speciesId": "psyduck",
+       "minLevel": 35,
+       "maxLevel": 40
+      }
+     ]
+    }
+   },
+   "LeafGreen": {
+    "map": "MAP_VIRIDIAN_CITY",
+    "fishing": [
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 5
+     },
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 5
+     },
+     {
+      "speciesId": "poliwag",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "magikarp",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "goldeen",
+      "minLevel": 5,
+      "maxLevel": 15
+     },
+     {
+      "speciesId": "poliwag",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "poliwhirl",
+      "minLevel": 20,
+      "maxLevel": 30
+     },
+     {
+      "speciesId": "gyarados",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "slowpoke",
+      "minLevel": 15,
+      "maxLevel": 25
+     },
+     {
+      "speciesId": "slowpoke",
+      "minLevel": 25,
+      "maxLevel": 35
+     }
+    ],
+    "surfing": {
+     "encounterRate": 1,
+     "slots": [
+      {
+       "speciesId": "slowpoke",
+       "minLevel": 20,
+       "maxLevel": 25
+      },
+      {
+       "speciesId": "slowpoke",
+       "minLevel": 20,
+       "maxLevel": 25
+      },
+      {
+       "speciesId": "slowpoke",
+       "minLevel": 25,
+       "maxLevel": 30
+      },
+      {
+       "speciesId": "slowpoke",
+       "minLevel": 30,
+       "maxLevel": 35
+      },
+      {
+       "speciesId": "slowpoke",
+       "minLevel": 35,
+       "maxLevel": 40
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

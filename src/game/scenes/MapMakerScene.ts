@@ -331,6 +331,8 @@ export class MapMakerScene extends Phaser.Scene {
     }
   };
   private statusTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The "drafts no longer fit" line, drawn once the stroke that hit it has let go. */
+  private fullNoteTimer: ReturnType<typeof setTimeout> | undefined;
   /** Whether the last save of the drafts failed, so the maker is told once rather than at every stroke. */
   private storeFull = false;
   private pendingDelete: string | undefined;
@@ -395,10 +397,14 @@ export class MapMakerScene extends Phaser.Scene {
       document.removeEventListener('visibilitychange', this.flushOnLeave);
       window.removeEventListener('keyup', this.releaseSpace);
       window.removeEventListener('blur', this.releaseSpace);
-      if (this.renderTimer) {
-        clearTimeout(this.renderTimer);
-        this.renderTimer = undefined;
+      // Every timer the screen owns goes with it: one that fired after the
+      // shutdown drew a screen nobody is on, into a page that may be gone.
+      for (const timer of [this.renderTimer, this.statusTimer, this.fullNoteTimer]) {
+        clearTimeout(timer);
       }
+      this.renderTimer = undefined;
+      this.statusTimer = undefined;
+      this.fullNoteTimer = undefined;
       this.stopEdgeScroll();
       this.flushAutosave();
       this.typing = undefined;
@@ -590,7 +596,8 @@ export class MapMakerScene extends Phaser.Scene {
       return;
     }
     this.storeFull = true;
-    setTimeout(() => {
+    this.fullNoteTimer = setTimeout(() => {
+      this.fullNoteTimer = undefined;
       if (this.scene.isActive()) {
         this.render(DRAFTS_FULL);
       }

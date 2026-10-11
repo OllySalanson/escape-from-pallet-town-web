@@ -4,6 +4,7 @@ import { playerMap } from './playerMaps';
 import * as wildlife from '../pokemon/encounters';
 import type { WildEncounterTable } from '../pokemon/encounters';
 import { WEATHER_CONDITIONS, WeatherId } from '../pokemon/battle/weather';
+import type { FishingWater } from './fishing';
 
 /**
  * The named parts of a map big enough to have them.
@@ -51,6 +52,12 @@ export interface MapDistrict {
    * `tools/weather/measure.mts` for the numbers.
    */
   readonly weather?: WeatherId;
+  /**
+   * What a rod cast from here fishes (`fishing.ts`): `sea` for a place that
+   * stands on the tide, read from FireRed's Pallet Town. Unsaid is fresh water,
+   * FireRed's Viridian City pond, which is every river, brook, pond and tarn.
+   */
+  readonly water?: FishingWater;
 }
 
 /**
@@ -210,6 +217,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'floodplain-staithe',
     mapId: 'floodplain-relay',
     name: 'THE STAITHE',
+    water: 'sea',
     // Paving, stone and the quay: the one place south of the river anybody
     // built anything, and the only new ground with no tall grass on it at all.
     // Listed before THE SALTINGS, which the marsh road comes down out of: the
@@ -224,6 +232,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'floodplain-saltings',
     mapId: 'floodplain-relay',
     name: 'THE SALTINGS',
+    water: 'sea',
     encounters: wildlife.FLOODPLAIN_MARSH_WILDLIFE,
     areas: [{ x: 0, y: 64, width: 33, height: 32 }],
   },
@@ -248,12 +257,14 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'floodplain-breach',
     mapId: 'floodplain-relay',
     name: 'THE BREACH',
+    water: 'sea',
     areas: [{ x: 58, y: 98, width: 33, height: 14 }],
   },
   {
     id: 'floodplain-sea-wall',
     mapId: 'floodplain-relay',
     name: 'THE SEA WALL',
+    water: 'sea',
     encounters: wildlife.FLOODPLAIN_MARSH_WILDLIFE,
     areas: [{ x: 43, y: 96, width: 62, height: 16 }],
   },
@@ -261,6 +272,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'floodplain-muds',
     mapId: 'floodplain-relay',
     name: 'THE MUDS',
+    water: 'sea',
     // Sand and salt water: nothing grows on it, so nothing lives in it.
     areas: [{ x: 0, y: 112, width: 105, height: 16 }],
   },
@@ -268,6 +280,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'floodplain-light',
     mapId: 'floodplain-relay',
     name: 'THE LIGHT',
+    water: 'sea',
     encounters: wildlife.FLOODPLAIN_HEATH_WILDLIFE,
     areas: [{ x: 105, y: 96, width: 23, height: 32 }],
   },
@@ -446,6 +459,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'pallet-saltings',
     mapId: 'pallet-town',
     name: 'THE SALTINGS',
+    water: 'sea',
     encounters: wildlife.PALLET_MARSH_WILDLIFE,
     // Salt marsh, two creeks with one ford each, and the pans worked between.
     areas: [{ x: 0, y: 64, width: 28, height: 8 }],
@@ -454,6 +468,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'pallet-hard',
     mapId: 'pallet-town',
     name: 'THE HARD',
+    water: 'sea',
     encounters: wildlife.PALLET_SHORE_WILDLIFE,
     // The stone slip the ferry lies off, and the grass above it.
     areas: [{ x: 28, y: 68, width: 16, height: 8 }],
@@ -462,6 +477,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'pallet-strand',
     mapId: 'pallet-town',
     name: 'THE STRAND',
+    water: 'sea',
     // Groyned sand between the marsh and the sea.
     areas: [{ x: 0, y: 72, width: 28, height: 4 }],
   },
@@ -476,6 +492,7 @@ export const MAP_DISTRICTS: readonly MapDistrict[] = [
     id: 'pallet-beacon',
     mapId: 'pallet-town',
     name: 'THE BEACON',
+    water: 'sea',
     // The headland itself: bare turf, a rock spine, and the light on it.
     areas: [{ x: 44, y: 69, width: 20, height: 7 }],
   },

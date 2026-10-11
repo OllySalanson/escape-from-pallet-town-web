@@ -119,6 +119,14 @@ export type ItemEffect =
    * it is wanted.
    */
   | { readonly type: 'pickaxe' }
+  /**
+   * A fishing rod: nothing to use, only to carry, like the Pickaxe. Face open
+   * water with one in the pack and press the interact key, and FireRed's own
+   * cast is played out (`../world/fishing.ts`). Which rod it is - and so which
+   * of the water's slots it reads - is the item's own id, for the reason a
+   * stone's is. It is packed, costs its squares and is lost with the pack.
+   */
+  | { readonly type: 'rod' }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
 /**
@@ -501,6 +509,25 @@ export const ITEMS = {
     description: 'Digs out an exit buried under rubble, for the raid it is carried on. Never used up.',
     effect: { type: 'pickaxe' },
   },
+  // FireRed's two lower rods. Each reads its own slots of the water it is cast
+  // into (`../world/fishing.ts`): the Old Rod only ever hooks a Magikarp, and
+  // the Good Rod the Poliwag, Goldeen, Horsea and Krabby that live nowhere else.
+  'old-rod': {
+    id: 'old-rod',
+    displayName: 'Old Rod',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 2 },
+    description: 'Fishes open water: face it and press the interact key. Only ever hooks a Magikarp. Never used up.',
+    effect: { type: 'rod' },
+  },
+  'good-rod': {
+    id: 'good-rod',
+    displayName: 'Good Rod',
+    category: ItemCategory.Misc,
+    footprint: { width: 1, height: 2 },
+    description: 'Fishes open water for what lives in it: Poliwag and Goldeen in fresh water, Horsea and Krabby in the sea. Never used up.',
+    effect: { type: 'rod' },
+  },
   // The gear. Four pieces, four different kinds of answer, and every
   // description is the whole rule: a player who carries one into one fight can
   // say what it did without opening a menu again.
@@ -833,6 +860,8 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} is only good at Bill's counter.` };
     case 'pickaxe':
       return { used: false, message: `${item.displayName} digs out buried exits. Face the rubble and press the interact key.` };
+    case 'rod':
+      return { used: false, message: `${item.displayName} is cast into water. Face it and press the interact key.` };
     case 'machine':
       // A machine is never spent here. Teaching can need a move chosen to be
       // forgotten, which is a screen rather than a return value, so `./teaching`

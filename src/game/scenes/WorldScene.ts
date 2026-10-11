@@ -87,6 +87,19 @@ import { createGiftPokemon, giftGivenBy, isGiftSpoken, type PokemonGift } from '
 import { DialogBox } from '../ui/DialogBox';
 import { WORLD_ICONS, iconTextureKey, itemIconName } from '../ui/icons';
 import { rollEncounter, type WildEncounter } from '../world/wildEncounters';
+import {
+  NOT_EVEN_A_NIBBLE,
+  ON_THE_HOOK,
+  bestRod,
+  castDurationMs,
+  dotsShown,
+  fishingTable,
+  fishingWaterAt,
+  isFishingWater,
+  planCast,
+  type CastPlan,
+  type RodItemId,
+} from '../world/fishing';
 import { encounterTableAt } from '../world/localEncounters';
 import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
@@ -269,6 +282,24 @@ const CAMERA_ZOOM = 1;
 /** The dark a doorway is gone through in, each way: FireRed's own door is about this quick. */
 const DOOR_FADE_MS = 180;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
+
+/**
+ * A fishing float, centred on its own origin: red over white in the shared
+ * outline, sitting on two flecks of ripple - or, taken under by a bite, only
+ * its red tip showing in a wider ring of them.
+ */
+function paintFloat(float: Phaser.GameObjects.Graphics, sunk: boolean): Phaser.GameObjects.Graphics {
+  const ripple = 0xa8d0f0;
+  if (sunk) {
+    float.fillStyle(0x241f2e, 1).fillRect(-2, 0, 4, 3);
+    float.fillStyle(0xe04848, 1).fillRect(-1, 1, 2, 2);
+    return float.fillStyle(ripple, 1).fillRect(-6, 3, 3, 1).fillRect(3, 3, 3, 1).fillRect(-4, 5, 8, 1);
+  }
+  float.fillStyle(0x241f2e, 1).fillRect(-3, -4, 6, 7);
+  float.fillStyle(0xe04848, 1).fillRect(-2, -3, 4, 3);
+  float.fillStyle(0xf8f8f0, 1).fillRect(-2, 0, 4, 2);
+  return float.fillStyle(ripple, 1).fillRect(-5, 3, 2, 1).fillRect(3, 3, 2, 1);
+}
 /** Hair to soles, inclusive: the part of a figure's frame that is drawn on. */
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 const HUNTER_FIGURE_ID = 'rival-hunter';
@@ -611,6 +642,23 @@ export class WorldScene extends Phaser.Scene {
         waitingForPlayer: boolean;
       }
     | undefined;
+  /**
+   * A rod cast into the water and not yet answered (`../world/fishing.ts`). It
+   * owns the frame while it runs, as FireRed's cast locks the controls, and the
+   * raid clock runs through it - standing at the water is time spent.
+   */
+  private fishing:
+    | {
+        readonly rod: RodItemId;
+        readonly water: ReturnType<typeof fishingWaterAt>;
+        readonly plan: CastPlan;
+        readonly float: Phaser.GameObjects.Graphics;
+        /** Where the float rests on the water, which it bobs a pixel below. */
+        readonly floatY: number;
+        elapsedMs: number;
+        dots: number;
+      }
+    | undefined;
   /** A standing Pokemon met by speaking to it: the fight that follows its cry. */
   private pendingWildBattle: WildEncounter | undefined;
   private pendingTrainerBattle:
@@ -722,6 +770,8 @@ export class WorldScene extends Phaser.Scene {
     this.pendingResultScreen = false;
     this.pendingTrainerBattle = undefined;
     this.pendingWildBattle = undefined;
+    // Phaser destroyed the float with the last raid's scene; only the state goes.
+    this.fishing = undefined;
     this.endCutscene();
     this.unsolicitedDialog = false;
     this.packReseated = false;
@@ -1026,6 +1076,13 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
 
+    // A cast owns the frame until it is answered: nothing the player presses
+    // moves it on, exactly as FireRed locks the controls while the dots run.
+    if (this.fishing) {
+      this.advanceFishing(deltaMs);
+      return;
+    }
+
     if (this.dialogBox.visible) {
       this.handleDialogInput();
       return;
@@ -1157,6 +1214,7 @@ export class WorldScene extends Phaser.Scene {
       !this.isWarping &&
       !this.trainerPrompt &&
       !this.cutscene &&
+      !this.fishing &&
       !this.dialogBox.visible &&
       this.pendingTrainerBattle === undefined &&
       this.pendingWildBattle === undefined
@@ -2601,6 +2659,104 @@ export class WorldScene extends Phaser.Scene {
     ];
   }
 
+  /**
+   * Open water faced with the interact key: a cast with the best rod in the
+   * pack, or a line saying what would reach what lives there. Anything else in
+   * front of the player is left alone.
+   */
+  private tryFishAt(tile: GridPosition): void {
+    if (!this.runSession || !isFishingWater(this.currentMap, tile)) {
+      return;
+    }
+    const rod = bestRod((itemId) => this.bag.count(itemId));
+    if (!rod) {
+      this.dialogBox.showMessages([
+        'The water is deep, and something is moving in it.',
+        'A fishing rod in the pack would reach it. Bill trades them.',
+      ]);
+      return;
+    }
+    const rng = this.runSession.rng;
+    const plan = planCast(rng === undefined ? undefined : () => rng.next());
+    const float = this.drawFloat(tile);
+    this.fishing = {
+      rod,
+      water: fishingWaterAt(this.currentMap.id, this.currentTile),
+      plan,
+      float,
+      floatY: float.y,
+      elapsedMs: 0,
+      dots: 0,
+    };
+    this.showIdlePose();
+    audioManager.play('rodCast');
+    // The float is what a cast is watched on, so the box goes to the top
+    // rather than over it when the water is low on the screen.
+    this.seatDialog([tile]);
+    this.dialogBox.showProgress('');
+  }
+
+  /**
+   * The float, on the water the line went into: red over white, as these games
+   * draw one, a pixel of bob while it waits and under the surface on a bite.
+   */
+  private drawFloat(tile: GridPosition): Phaser.GameObjects.Graphics {
+    return paintFloat(this.add.graphics(), false)
+      .setPosition(tile.x * TILE_SIZE + TILE_SIZE / 2, tile.y * TILE_SIZE + TILE_SIZE / 2)
+      .setDepth(atRow(MARKER_BAND, tile.y));
+  }
+
+  /**
+   * One frame of a cast: the dots come up a third of a second apart after a
+   * second's cast, and when the last is up the water answers - nothing, or a
+   * Pokemon on the hook, whose fight starts when the line is read.
+   */
+  private advanceFishing(deltaMs: number): void {
+    const cast = this.fishing;
+    if (!cast) {
+      return;
+    }
+    cast.elapsedMs += deltaMs;
+    const dots = dotsShown(cast.plan, cast.elapsedMs);
+    if (dots !== cast.dots) {
+      cast.dots = dots;
+      this.dialogBox.showProgress(Array.from({ length: dots }, () => '·').join(' '));
+    }
+    cast.float.setY(cast.floatY + (Math.floor(cast.elapsedMs / 400) % 2));
+    if (cast.elapsedMs < castDurationMs(cast.plan)) {
+      return;
+    }
+    if (!cast.plan.bites) {
+      this.stopFishing();
+      this.dialogBox.showMessages([NOT_EVEN_A_NIBBLE]);
+      return;
+    }
+    const rng = this.runSession?.rng;
+    const wild = rollEncounter(
+      fishingTable(cast.water, cast.rod),
+      rng === undefined ? undefined : () => rng.next(),
+    );
+    paintFloat(cast.float.clear(), true).setY(cast.floatY);
+    audioManager.play('fishBite');
+    this.cameras.main.shake(90, 0.003);
+    this.fishing = undefined;
+    // The float stays under until the fight takes the screen; the line is read
+    // first, and the fight follows it as a standing Pokemon's does.
+    this.mapObjects.push(cast.float);
+    this.pendingWildBattle = wild ?? undefined;
+    this.dialogBox.showMessages([ON_THE_HOOK]);
+  }
+
+  /** Puts a cast away unanswered: the float out of the water and the box down. */
+  private stopFishing(): void {
+    if (!this.fishing) {
+      return;
+    }
+    this.fishing.float.destroy();
+    this.fishing = undefined;
+    this.dialogBox.setVisible(false);
+  }
+
   private faceFigure(id: string, facing: Direction): void {
     const appearance = this.npcAppearances.get(id);
     if (appearance) {
@@ -3186,6 +3342,9 @@ export class WorldScene extends Phaser.Scene {
    * box drawn over the hunter.
    */
   private interrupt(lines: readonly string[], about: readonly GridPosition[] = []): void {
+    // Whatever landed in front of the player takes the box the cast was using,
+    // and the cast with it: a line that arrives unasked is read, not fished past.
+    this.stopFishing();
     this.unsolicitedDialog = true;
     this.seatDialog(about);
     this.dialogBox.showMessages([...lines]);
@@ -3245,6 +3404,7 @@ export class WorldScene extends Phaser.Scene {
       (candidate) => candidate.position.x === targetTile.x && candidate.position.y === targetTile.y,
     );
     if (!entity && !trainer) {
+      this.tryFishAt(targetTile);
       return;
     }
 
@@ -4744,6 +4904,7 @@ export class WorldScene extends Phaser.Scene {
     // here stops its next advance from completing into the old hub hand-off and
     // skipping the result the raid just earned.
     this.pendingResultScreen = true;
+    this.stopFishing();
     this.dialogBox.setVisible(false);
     this.time.delayedCall(RUN_RESULT_DELAY_MS, () => {
       if (this.scene.manager.keys.extraction) {
