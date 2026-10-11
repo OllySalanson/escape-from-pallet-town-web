@@ -35,7 +35,8 @@ export type TitleChoiceId =
   | 'maker'
   | 'playtest'
   | 'resume-playtest'
-  | 'fresh-playtest';
+  | 'fresh-playtest'
+  | 'touch-anyway';
 
 export interface TitleChoice {
   readonly id: TitleChoiceId;
@@ -115,6 +116,28 @@ export function playtestMenu(): TitleMenu {
   };
 }
 
+/**
+ * What the title says first on a device that looks touch-only
+ * (`input/keyboardSeen.ts`): the game needs a keyboard, for now, said as the
+ * title's own question so it is the same windows on the same dusk. Any key
+ * dismisses it - that is a keyboard - and the one row lets a finger past to the
+ * menu anyway, because the title and the map maker answer to a tap.
+ */
+export function keyboardMenu(): TitleMenu {
+  return {
+    question: 'THIS GAME NEEDS A KEYBOARD, FOR NOW',
+    initial: 'touch-anyway',
+    choices: [
+      { id: 'touch-anyway', label: 'LOOK AROUND ANYWAY', detail: 'NO TOUCH CONTROLS YET', enabled: true },
+    ],
+  };
+}
+
+/** Whether the menu on screen is the keyboard notice. */
+export function isKeyboardNotice(menu: TitleMenu): boolean {
+  return menu.choices.some((choice) => choice.id === 'touch-anyway');
+}
+
 /** Whether choosing New Game has to ask first. */
 export function needsEraseConfirmation(summary: SaveSummary): boolean {
   return summary.kind !== 'none';
@@ -131,6 +154,9 @@ export function titleHint(menu: TitleMenu, choice: TitleChoiceId): string {
   }
   if (choice === 'maker') {
     return 'DRAW YOUR OWN RAID MAP';
+  }
+  if (isKeyboardNotice(menu)) {
+    return 'PLUG IN A KEYBOARD AND PRESS ANY KEY';
   }
   if (menu.question) {
     return menu.choices[0].id === 'keep' ? 'ESC KEEPS IT' : 'ESC GOES BACK';

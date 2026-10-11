@@ -117,6 +117,8 @@ export {
   traderStandingPoints,
   traderStockOffers,
   traderWantedMaterials,
+  barterTaken,
+  reofferedWhenNoneHeld,
   type TraderBarter,
   type TraderBarterOffer,
   type TraderCounter,

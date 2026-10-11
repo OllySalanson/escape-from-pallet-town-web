@@ -17,6 +17,8 @@ import { WORLD_MAPS } from '../worldMap';
 import { WORKSHOP_UPGRADES, workshopMaterialKinds } from './workshop';
 import {
   barterShortfall,
+  barterTaken,
+  reofferedWhenNoneHeld,
   berthSecureColumns,
   checkBarter,
   checkBerth,
@@ -318,8 +320,37 @@ describe('the barter table', () => {
     // The whole reason the table is a real cost: a parts crate is a locker or
     // it is a Focus Band, and a raid only finds one or two.
     const ladder = new Set(workshopMaterialKinds([]));
-    const wanted = traderWantedMaterials(NO_PROGRESS);
+    const wanted = traderWantedMaterials(counter());
     expect(wanted.some((itemId) => ladder.has(itemId as never))).toBe(true);
+  });
+
+  it('deals a once-only HM again whenever the vault holds no copy of it', () => {
+    const struck = progress({ ...PARTNER, traderBarters: ['barter-hm03', 'barter-quick-claw'] });
+    const none = counter({ progress: struck, stash: new Stash({ items: GOODS }) });
+    const surf = TRADER_BARTERS.find((barter) => barter.id === 'barter-hm03')!;
+    expect(reofferedWhenNoneHeld(surf)).toBe(true);
+    expect(barterTaken(none, surf)).toBe(false);
+    expect(checkBarter(none, 'barter-hm03')?.refusal).toBeUndefined();
+    expect(traderBarterLimit(none, surf)).toBe(1);
+    // Still one at a time: it is a replacement, never a second copy.
+    expect(checkBarter(none, 'barter-hm03', 2)?.refusal).toBe('already-taken');
+
+    const holding = counter({
+      progress: struck,
+      stash: new Stash({ items: { ...GOODS, 'hm03-surf': 1 } }),
+    });
+    expect(barterTaken(holding, surf)).toBe(true);
+    expect(checkBarter(holding, 'barter-hm03')?.refusal).toBe('already-taken');
+    expect(traderBarterLimit(holding, surf)).toBe(0);
+
+    // Gear is not an HM: a lost Quick Claw is not dealt again.
+    const claw = TRADER_BARTERS.find((barter) => barter.id === 'barter-quick-claw')!;
+    expect(reofferedWhenNoneHeld(claw)).toBe(false);
+    expect(checkBarter(none, 'barter-quick-claw')?.refusal).toBe('already-taken');
+    // Every HM on the boat follows the rule, and nothing else does.
+    expect(
+      TRADER_BARTERS.filter(reofferedWhenNoneHeld).map((barter) => barter.gives.itemId).sort(),
+    ).toEqual(['hm01-cut', 'hm03-surf', 'hm04-strength', 'hm06-rock-smash']);
   });
 
   it('refuses a barter the standing has not opened', () => {
