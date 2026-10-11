@@ -31,6 +31,7 @@ import {
   largestMapSize,
   placePicture,
   shutDoorLine,
+  stillToFind,
   type DropInBriefing,
   type DropInContext,
   TRADER_BERTH_PRICE,
@@ -2506,9 +2507,14 @@ export class HubScene extends Phaser.Scene {
             )
             .join('')
     }`;
+    // Only what has been found is named, as on the drop-in screen: the rest is
+    // a count, because a list of every door and way out of a map nobody has
+    // walked hands over in words what the dark picture beside it keeps.
+    const foundDoors = briefing?.doors.filter((line) => line.known) ?? [];
+    const foundExits = briefing?.exits.filter((exit) => exit.known) ?? [];
     const doors = !briefing || briefing.doors.length === 0
       ? ''
-      : `<h3 class="px-subheading">Doors</h3>${briefing.doors
+      : `<h3 class="px-subheading">Doors</h3>${foundDoors
           .map((line) =>
             told(
               `${this.pip(line.open ? 'O' : 'H')}<span class="px-row-main"><strong>${line.label}</strong><small>${line.open ? 'open' : doorHolder(line)}</small></span>`,
@@ -2516,18 +2522,18 @@ export class HubScene extends Phaser.Scene {
               ' has-pip',
             ),
           )
-          .join('')}`;
+          .join('')}${this.toFind(briefing.doors.length - foundDoors.length, foundDoors.length, 'door')}`;
     const exits = !briefing
       ? ''
-      : `<h3 class="px-subheading">Ways out</h3>${briefing.exits
+      : `<h3 class="px-subheading">Ways out</h3>${foundExits
           .map((exit) =>
             told(
               `${this.pip(exit.worked ? 'K' : 'X')}<span class="px-row-main"><strong>${exit.label}</strong><small>${exit.worked ? 'open for good' : exit.opens === 'OPEN' ? 'open from the first second' : exit.opens.toLowerCase()}</small></span>`,
-              `${exit.label}: ${exit.opens === 'OPEN' ? 'open from the first second of a raid' : exit.opens.toLowerCase()}. It shows on the map once somebody has walked to it.`,
+              `${exit.label}: ${exit.opens === 'OPEN' ? 'open from the first second of a raid' : exit.opens.toLowerCase()}.`,
               ' has-pip',
             ),
           )
-          .join('')}`;
+          .join('')}${this.toFind(briefing.exits.length - foundExits.length, foundExits.length, 'way out')}`;
     const known = Math.round(entry.known * 100);
     return `<main class="px-body wallmap-inspect">${pixelWindow(
       mapPictureFrame({
@@ -2566,6 +2572,12 @@ export class HubScene extends Phaser.Scene {
     }<div><dt>Wild</dt><dd>${grade.wild.max === 0 ? 'none' : `Lv ${grade.wild.min}-${grade.wild.max}`}</dd></div><div><dt>Fights</dt><dd>${grade.trainers === 0 ? 'none' : `${grade.trainers} · Lv ${grade.trainer}`}</dd></div><div><dt>Doors</dt><dd>${grade.bossesHeld === 0 ? (grade.bossesBeaten === 0 ? 'none' : 'all yours') : `${grade.bossesHeld} held`}</dd></div><div><dt>Raids</dt><dd>${record.deployed === 0 ? 'none yet' : `${record.deployed} · ${record.extracted} out`}</dd></div><div><dt>Known</dt><dd>${record.districts === 0 ? `${walked}%` : `${record.districtsKnown}/${record.districts} · ${walked}%`}</dd></div></dl>`;
   }
 
+  /** The count under a list of ways out or doors of the ones not found yet. */
+  private toFind(hidden: number, found: number, what: 'way out' | 'door'): string {
+    const line = stillToFind(hidden, found, what);
+    return line === '' ? '' : `<p class="${found === 0 ? 'px-empty' : 'px-note'} px-wrap">${line}</p>`;
+  }
+
   /** A swatch in the same ink the map draws that thing in, so the list is the legend. */
   private pip(char: string): string {
     return `<i class="px-pip" style="--pip:${MINIMAP_PALETTE[char]}" aria-hidden="true"></i>`;
@@ -2600,7 +2612,12 @@ export class HubScene extends Phaser.Scene {
     // An exit a banked contract holds open for good is said apart from one that
     // was always open: it is the player's own work, and this screen is where
     // they come to look at what the world kept.
-    const exits = `<h3 class="px-subheading">Ways out</h3>${briefing.exits
+    // Only the ways out and doors the player has found are named; the rest
+    // are counted. Every one of a map nobody has walked, by name, was the
+    // answer the dark picture is there to keep (playtest 6, D2).
+    const foundExits = briefing.exits.filter((exit) => exit.known);
+    const foundDoors = briefing.doors.filter((door) => door.known);
+    const exits = `<h3 class="px-subheading">Ways out</h3>${foundExits
       .map((exit) =>
         told(
           `${this.pip(exit.worked ? 'K' : 'X')}<span class="px-row-main"><strong>${exit.label}</strong><small>${exit.worked ? 'open for good - you finished the landmark' : exit.opens === 'OPEN' ? 'open from the first second' : exit.opens.toLowerCase()}</small></span>`,
@@ -2610,10 +2627,10 @@ export class HubScene extends Phaser.Scene {
           ' has-pip' + (exit.worked ? ' is-selected' : ''),
         ),
       )
-      .join('')}`;
+      .join('')}${this.toFind(briefing.exits.length - foundExits.length, foundExits.length, 'way out')}`;
     const doors = briefing.doors.length === 0
       ? ''
-      : `<h3 class="px-subheading">Doors</h3>${briefing.doors
+      : `<h3 class="px-subheading">Doors</h3>${foundDoors
           .map((door) =>
             told(
               `${this.pip(door.open ? 'O' : 'H')}<span class="px-row-main"><strong>${door.label}</strong><small>${door.open ? 'you opened this' : doorHolder(door)}</small></span>`,
@@ -2621,7 +2638,7 @@ export class HubScene extends Phaser.Scene {
               ' has-pip' + (door.open ? ' is-selected' : ''),
             ),
           )
-          .join('')}`;
+          .join('')}${this.toFind(briefing.doors.length - foundDoors.length, foundDoors.length, 'door')}`;
     // What this map is worth going to, and where on it - directly under the
     // contract, above the ways out and the doors. Those two are safety: how
     // this raid can end, and what is shut. This is the *reason*, and a pane

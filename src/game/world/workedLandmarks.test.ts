@@ -232,6 +232,8 @@ describe('what the rest of the game reads off it', () => {
       expect(`${poi.unlockedExtractionLabel}: ${atBase.opens}, worked ${atBase.worked === true}`).toBe(
         `${poi.unlockedExtractionLabel}: OPEN, worked true`,
       );
+      // Named on a map nobody has walked, because the work is the player's own.
+      expect(atBase.known).toBe(true);
       // And the picture the screen leads with carries it, lit and glyphed, on
       // ground the survey has never reached.
       // A picture condensed for a small window is drawn at more than one tile

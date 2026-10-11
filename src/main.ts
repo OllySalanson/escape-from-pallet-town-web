@@ -8,6 +8,7 @@ import { watchViewport } from './game/display/stageScaler';
 import { installFeedbackDesk } from './game/feedback/feedbackDesk';
 import { installPixelText } from './game/ui/pixelText';
 import { watchForKeyboard } from './game/input/keyboardSeen';
+import { pausesForWindow, watchWindowFocus } from './game/world/windowPause';
 
 const developmentScenes = import.meta.env.DEV && isTestLabRequested()
   ? [(await import('./game/scenes/TestLabScene')).TestLabScene]
@@ -36,6 +37,24 @@ const game = mountGame(() => {
 const stopWatchingViewport = watchViewport(game);
 // The FEEDBACK tab and the F key, on every screen. See `feedback/feedbackDesk.ts`.
 const feedbackDesk = installFeedbackDesk(game);
+// A raid stops while the window is not in use, and waits for a click or a key.
+// Never in test mode, whose drivers step a stopped loop and open second tabs.
+// See `game/world/windowPause.ts`.
+const stopWatchingFocus =
+  testMode === 'off'
+    ? watchWindowFocus(
+        window,
+        () => {
+          const world = game.scene.getScene('world');
+          return pausesForWindow(world) ? world : null;
+        },
+        {
+          ignores: (event) =>
+            game.scene.isActive('feedback') ||
+            (event.target instanceof Element && event.target.closest('.feedback-panel, .feedback-tab') !== null),
+        },
+      )
+    : () => undefined;
 if (import.meta.env.DEV) {
   (window as unknown as { __game: Phaser.Game }).__game = game;
 }
@@ -45,6 +64,7 @@ if (import.meta.hot) {
     stopWatchingViewport();
     stopWatchingForKeyboard();
     feedbackDesk.destroy();
+    stopWatchingFocus();
     unmountGame();
   });
 }

@@ -101,7 +101,7 @@ import {
   type RodItemId,
 } from '../world/fishing';
 import { rollShiny } from '../pokemon/shiny';
-import { encounterTableAt } from '../world/localEncounters';
+import { encounterTableAt, stepRolls } from '../world/localEncounters';
 import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
 import { consumeTeachingEncounter } from '../world/teachingEncounter';
@@ -149,6 +149,8 @@ import { raidFollower, sameFollower, type RaidFollower } from '../world/raidFoll
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
 import { DIALOG_FONT_SIZE } from '../ui/screenType';
+import { PausePlate } from '../ui/PausePlate';
+import { WINDOW_PAUSE_LINES, WINDOW_PAUSE_TITLE, type PausesForWindow } from '../world/windowPause';
 import {
   CAPTION_BAND,
   FIGURE_BAND,
@@ -168,7 +170,6 @@ import { brimRuns, type MapLayers } from '../world/tiles';
 import {
   INTERIOR_COVER_MS,
   interiorAt,
-  interiorFloorRolls,
   isInsideRect,
   type MapInterior,
 } from '../world/interiors';
@@ -509,7 +510,7 @@ const OPPOSITE_DIRECTION: Record<Direction, Direction> = {
   right: 'left',
 };
 
-export class WorldScene extends Phaser.Scene {
+export class WorldScene extends Phaser.Scene implements PausesForWindow {
   private bounds: GridBounds = { width: 0, height: 0 };
   /** The dark round the place the player is in, on a map made of several (`frameArea`). */
   private areaDark: Phaser.GameObjects.Rectangle[] = [];
@@ -583,6 +584,8 @@ export class WorldScene extends Phaser.Scene {
   /** Ground a trainer is watching: shaded to be read, so no caption may sit on it. */
   private watchedGround: Rect[] = [];
   private raidHud: RaidHud | undefined;
+  /** The plate the raid stands under while the window is not in use (`world/windowPause.ts`). */
+  private windowPausePlate: PausePlate | null = null;
   /** The cue the objective chip is currently showing, so a change can be noticed. */
   private objectiveCue = '';
   /** Counts down the window in which a changed objective shows its extra line. */
@@ -773,6 +776,8 @@ export class WorldScene extends Phaser.Scene {
 
   private resetStateFromPreviousRaid(): void {
     this.lookMs = 0;
+    // Phaser destroyed the plate with the scene; only the reference outlives it.
+    this.windowPausePlate = null;
     this.canopyInViewCache = null;
     this.pendingHubTransition = false;
     // Set on the way to the result screen, and read by handleRunResolutionComplete
@@ -3003,6 +3008,45 @@ export class WorldScene extends Phaser.Scene {
     recordAction(`Walked into ${district.name}`);
   }
 
+  /**
+   * Whether losing the window would cost this raid anything: a raid being
+   * walked, with its clock running. Not while the pack, the party or the field
+   * guide has the world paused (the clock is already stopped), and not once
+   * the raid has ended and is on its way to the result screen.
+   */
+  public canPauseForWindow(): boolean {
+    return (
+      this.windowPausePlate === null &&
+      this.sys.isActive() &&
+      this.runSession?.manager.phase === RunPhase.InRun &&
+      !this.pendingHubTransition
+    );
+  }
+
+  /**
+   * Stops the raid where it stands - the clock, the hunter, every tween and
+   * timer the scene owns, because a paused scene is not stepped at all - and
+   * puts the plate over it. The plate is drawn before the pause, and a paused
+   * scene is still drawn.
+   */
+  public pauseForWindow(): void {
+    this.windowPausePlate = new PausePlate(this, WINDOW_PAUSE_TITLE, WINDOW_PAUSE_LINES);
+    recordAction('Paused: the window lost focus');
+    // At once, not through `this.scene.pause()`: that is queued for the next
+    // frame, and a window that has gone to the back may not draw one until it
+    // is in front again - which left the raid unpaused under its plate.
+    this.sys.pause();
+  }
+
+  public resumeFromWindowPause(): void {
+    this.windowPausePlate?.destroy();
+    this.windowPausePlate = null;
+    if (this.sys.isPaused()) {
+      recordAction('Resumed the raid');
+      this.sys.resume();
+    }
+  }
+
   /** Where the raid is, for a feedback message. See `feedback/feedbackContext.ts`. */
   public feedbackContext(): readonly FeedbackDetail[] {
     const manager = this.runSession?.manager;
@@ -4172,15 +4216,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     const encounters = this.encountersAtCurrentTile();
-    // Tall grass, or the floor of a place that rolls on every step - which is
-    // what a cave is, and the only reason its wildlife is ever met
-    // (`interiors.ts`, and a player's cave, `MapFileArea`). There is no tall
-    // grass underground.
-    const rolls =
-      isTallGrassInMap(this.currentMap, this.currentTile) ||
-      interiorFloorRolls(this.currentMap.id, this.currentTile) ||
-      this.currentArea()?.kind === 'cave';
-    if (rolls && encounters) {
+    if (stepRolls(this.currentMap, this.currentTile) && encounters) {
       const rng = this.runSession?.rng;
       // The authored teaching fight replaces the first roll of a first-contract
       // raid, so a new player's opening battle is winnable and explicable.

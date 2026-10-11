@@ -3,19 +3,27 @@ import { getItemById } from '../items';
 import type { RaidContract } from '../objectives';
 import { getSpeciesById } from '../pokemon/species';
 import type { WildEncounterTable } from '../pokemon/encounters';
-import { isDropInPoint, type RunInsertion, type RunInsertionId, requireInsertion } from '../run/runGeneration';
+import {
+  frontDoorFor,
+  isDropInPoint,
+  type RunInsertion,
+  type RunInsertionId,
+  requireInsertion,
+} from '../run/runGeneration';
 import type { MapRaidRecord } from '../save/SaveManager';
 import { districtAt, districtsForMap, type MapDistrict } from '../world/districts';
 import { extractionPointsOn, extractionRequirementText, type ExtractionPoint } from '../world/extractionPoints';
 import { FIELD_MOVES } from '../world/fieldMoves';
 import { gatesForMap, isGateOpen, openedDoors, type MapGate } from '../world/gates';
+import { encounterTableAt, stepRolls } from '../world/localEncounters';
+import { stepDistances } from '../world/mapStructure';
 import { trainersOn } from '../world/mapTrainers';
 import { buildMinimap, type Minimap, type MinimapMark } from '../world/minimap';
 import { isPrize } from '../world/loot';
 import { surveyedTiles, type SurveyRecord } from '../world/survey';
 import { bossEncounters, createRunTrainerEncounters, withoutDefeatedBosses } from '../world/trainers';
 import { exitsOpenForGood, withWorkedExitsOpen, workedLandmarksOn } from '../world/workedLandmarks';
-import { WORLD_MAPS, type WorldMapDefinition, type WorldMapId, worldMapName } from '../worldMap';
+import { getWorldMap, WORLD_MAPS, type WorldMapDefinition, type WorldMapId, worldMapName } from '../worldMap';
 
 /**
  * Everything the drop-in screen says about a place, worked out without Phaser.
@@ -32,12 +40,18 @@ import { WORLD_MAPS, type WorldMapDefinition, type WorldMapId, worldMapName } fr
  * # How hard a place is, and why it is not typed in
  *
  * A place is graded on four rungs of level, `PLACE_GRADE_LEVELS`, by the
- * highest level of opposition it can still field - the top of its wildlife,
- * and the top of any trainer party still standing on it - so beating a boss
- * visibly lowers the grade of the map they held. The rungs are the levels the
- * hunter ladder used to open on (Lv 6, 9, 12 and 15) and were kept when that
- * ladder became a mirror of the party (`world/hunter.ts`): the hunter no
- * longer has absolute levels to share, and a place still does.
+ * highest level of opposition met on the ground a raid reaches from the map's
+ * front door before its first door - the top of the wildlife rolled there and
+ * the top of any trainer standing there, never a keeper (`entryGround`). The
+ * whole map used to be graded, which put the starting map a rung above the
+ * maps it unlocks: the Floodplain's far reaches are behind three keepers, and
+ * the first number a new player read said the tutorial was the second-hardest
+ * place in the game (playtest 6, D3; the captain chose this reading). What the
+ * rest of the map fields is still said, as the facts beside the grade. The
+ * rungs are the levels the hunter ladder used to open on (Lv 6, 9, 12 and 15)
+ * and were kept when that ladder became a mirror of the party
+ * (`world/hunter.ts`): the hunter no longer has absolute levels to share, and a
+ * place still does.
  *
  * What is deliberately *not* done here is play the fights out.
  * `world/encounterMeasure.ts` gives the real number - the share of encounters a
@@ -50,11 +64,17 @@ import { WORLD_MAPS, type WorldMapDefinition, type WorldMapId, worldMapName } fr
  */
 
 export interface PlaceGrade {
-  /** Where this place sits on the four grades, one-based. */
+  /** Where this place sits on the four grades, one-based, read off `entry`. */
   readonly rung: number;
   readonly rungs: number;
   /** The highest level of anything still standing here. */
   readonly opposition: number;
+  /**
+   * The highest level met on the ground reached from the front door before
+   * any door - wildlife rolled there and trainers standing there, no keeper.
+   * This is what the grade is read off (`entryGround`).
+   */
+  readonly entry: number;
   /** The level band of the wildlife, and what is met on average. */
   readonly wild: { readonly min: number; readonly max: number; readonly mean: number };
   /** The toughest party a trainer still on this map fields, or 0 for none. */
@@ -68,6 +88,13 @@ export interface PlaceGrade {
 
 export interface DoorLine {
   readonly label: string;
+  /**
+   * Whether the player has found it: walked to any of its tiles, or opened
+   * it. A door nobody has walked to is counted on the screen and not named -
+   * naming every door of a map you have never been to hands over in words
+   * what the dark picture is there to keep (playtest 6, D2).
+   */
+  readonly known: boolean;
   /** Who or what holds it: a keeper's name, or the move that opens it. */
   readonly bossName: string;
   /** Which of the two that name is, so the row can word it. */
@@ -88,6 +115,22 @@ export function shutDoorLine(door: DoorLine): string {
   return `${door.label} ${door.heldBy === 'move' ? 'needs' : 'is held by'} ${door.bossName}.`;
 }
 
+/**
+ * What a list of ways out or doors says about the ones not found yet: how many,
+ * and nothing else (playtest 6, D2 - the captain's "and 17 more to find").
+ * Empty when there are none left to find.
+ */
+export function stillToFind(hidden: number, found: number, what: 'way out' | 'door'): string {
+  if (hidden === 0) {
+    return '';
+  }
+  if (found > 0) {
+    return `And ${hidden} more to find.`;
+  }
+  const things = what === 'way out' ? (hidden === 1 ? 'way out' : 'ways out') : hidden === 1 ? 'door' : 'doors';
+  return `${hidden} ${things} to find. Each is named here once you have walked to it.`;
+}
+
 /** What the drop-in screen promises about a door, open or shut. */
 export function doorPromise(door: DoorLine): string {
   if (door.heldBy === 'move') {
@@ -102,6 +145,12 @@ export function doorPromise(door: DoorLine): string {
 
 export interface ExitLine {
   readonly label: string;
+  /**
+   * Whether the player has found it: walked to its tile, or held it open for
+   * good with a finished landmark. Counted rather than named until then, for
+   * the reason a door is (`DoorLine.known`).
+   */
+  readonly known: boolean;
   /** OPEN, OPENS IN 25s, WORK THE SLUICE WHEEL - the map's own words. */
   readonly opens: string;
   /** Open because a contract finished the landmark that used to seal it. */
@@ -261,6 +310,7 @@ export function buildDropInBriefing(
         : tables.reduce((sum, { table }) => sum + meanLevelOf(table), 0) / tables.length,
   };
   const opposition = Math.max(wild.max, trainerCeiling);
+  const entry = entryGround(mapId);
   const bosses = bossEncounters(createRunTrainerEncounters()).filter((boss) => boss.mapId === mapId);
   const beaten = bosses.filter((boss) => context.defeatedBosses.includes(boss.bossId));
 
@@ -321,9 +371,10 @@ export function buildDropInBriefing(
     mapName: worldMapName(mapId),
     isDropIn: isDropInPoint(insertion),
     grade: {
-      rung: gradeFor(opposition),
+      rung: gradeFor(entry.opposition),
       rungs: PLACE_GRADE_LEVELS.length,
       opposition,
+      entry: entry.opposition,
       wild,
       trainer: trainerCeiling,
       trainers: standing.length,
@@ -339,6 +390,9 @@ export function buildDropInBriefing(
     },
     doors: gates.map((gate) => ({
       label: gate.label,
+      // A door you opened is lit on the picture whether or not the survey
+      // reached it (`mapPicture`), so it is found for the list too.
+      known: isGateOpen(gate, opened) || gate.tiles.some((tile) => walked.has(tile.y * context.map.width + tile.x)),
       // A field-move door has no keeper: what it wants is a move, and the row
       // says so in the same place a boss's name would have gone.
       bossName:
@@ -353,6 +407,9 @@ export function buildDropInBriefing(
       context.completedContracts,
     ).map((point) => ({
       label: point.label,
+      known:
+        openedByWork.includes(point.label) ||
+        walked.has(point.position.y * context.map.width + point.position.x),
       opens: extractionRequirementText(point, 0),
       // Named apart from an exit that was always open, because this one is the
       // player's own work and this screen is where they come to see it.
@@ -377,6 +434,76 @@ export function buildDropInBriefing(
     })),
     contract: context.contract,
   };
+}
+
+/** What a place is graded on: the highest level met before its first door. */
+export interface EntryGround {
+  readonly opposition: number;
+  /** Tiles a raid reaches from the front door with every door shut. */
+  readonly reached: number;
+}
+
+const entryGrounds = new WeakMap<WorldMapDefinition, EntryGround>();
+
+/**
+ * The ground a raid reaches from a map's front door with every door on it shut
+ * - a keeper's and a field move's alike, because a fresh save can open
+ * neither - and the highest level anything there fields: the wildlife of every
+ * place a step there rolls on, and every trainer standing beside it who is not
+ * a keeper. A keeper is the door, and what is behind the door is the rest of
+ * the map, which the facts beside the grade still state.
+ *
+ * It is a fact of the map rather than of the save, so it is worked out once per
+ * built map: the map with every door shut is built once and remembered
+ * (`getWorldMap`), and a player's map rebuilt in the editor is a new one.
+ */
+export function entryGround(mapId: WorldMapId): EntryGround {
+  const map = getWorldMap(mapId);
+  const known = entryGrounds.get(map);
+  if (known) {
+    return known;
+  }
+  const door = frontDoorFor(mapId);
+  const steps = door ? stepDistances(map.collision, door.position, undefined, map.links) : [];
+  const reachedAt = (x: number, y: number): boolean => (steps[y]?.[x] ?? -1) >= 0;
+  const tables = new Set<WildEncounterTable>();
+  let reached = 0;
+  for (let y = 0; y < map.height; y += 1) {
+    for (let x = 0; x < map.width; x += 1) {
+      if (!reachedAt(x, y)) {
+        continue;
+      }
+      reached += 1;
+      const tile = { x, y };
+      const table = stepRolls(map, tile) ? encounterTableAt(mapId, tile, map.encounters) : undefined;
+      if (table) {
+        tables.add(table);
+      }
+    }
+  }
+  const wild = [...tables].reduce(
+    (best, table) => Math.max(best, ...table.entries.map((entry) => entry.maxLevel)),
+    0,
+  );
+  // A trainer stands on a tile of their own, so they are met from beside it.
+  const met = trainersOn(mapId).filter(
+    (encounter) =>
+      encounter.bossId === undefined &&
+      [
+        [0, 0],
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ].some(([dx, dy]) => reachedAt(encounter.position.x + dx, encounter.position.y + dy)),
+  );
+  const trainer = met.reduce(
+    (best, encounter) => Math.max(best, ...encounter.trainer.party.map((pokemon) => pokemon.level)),
+    0,
+  );
+  const ground = { opposition: Math.max(wild, trainer), reached };
+  entryGrounds.set(map, ground);
+  return ground;
 }
 
 /**
