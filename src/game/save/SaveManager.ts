@@ -10,6 +10,7 @@ import {
   EMPTY_ARRANGEMENT,
   currentItemId,
   formatMoney,
+  isFoundOnly,
   readArrangement,
   type GridArrangement,
 } from '../items';
@@ -69,6 +70,7 @@ import { mergeSurvey, type SurveyRecord } from '../world/survey';
 import { activeSaveSlot, PLAYTEST_SAVE_KEY, TRY_IT_SAVE_KEY, type SaveSlot } from '../dev/playtestMode';
 import { isFirstWordsId, type FirstWordsId } from '../hub/firstWords';
 import { isLearnableKey, type LearnableKeyId } from '../input/keyBindings';
+import { readRaidInFlight, type AbandonedRaid, type RaidInFlight } from '../run/raidInFlight';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 const SAVE_VERSION = 7;
@@ -405,6 +407,12 @@ export interface SaveData {
    * whether or not the stack was used, because what was bought was the trip.
    */
   readonly traderBerthPaid: boolean;
+  /**
+   * The raid deployed and not yet ended, if there is one (`run/raidInFlight.ts`).
+   * Every ending clears it; one still here when the base opens was abandoned.
+   * Absent on older saves and between raids.
+   */
+  readonly raidInFlight?: RaidInFlight;
 }
 
 export interface RestoredGame {
@@ -420,6 +428,7 @@ export interface RestoredGame {
   readonly wardTreatmentsUsed: number;
   readonly traderRationUsed: number;
   readonly traderBerthPaid: boolean;
+  readonly raidInFlight?: RaidInFlight | null;
 }
 
 export interface SaveGameState {
@@ -435,6 +444,7 @@ export interface SaveGameState {
   readonly wardTreatmentsUsed?: number;
   readonly traderRationUsed?: number;
   readonly traderBerthPaid?: boolean;
+  readonly raidInFlight?: RaidInFlight | null;
 }
 
 /**
@@ -464,6 +474,8 @@ const RAID_RESOLVED = {
   wardTreatmentsUsed: 0,
   traderRationUsed: 0,
   traderBerthPaid: false,
+  // The raid is over, whichever way it ended, so nothing is left to abandon.
+  raidInFlight: null,
 } as const;
 
 export interface StorageLike {
@@ -853,6 +865,93 @@ export class SaveManager {
   }
 
   /**
+   * Records the raid just deployed as in flight (`run/raidInFlight.ts`), so
+   * that one which never reaches an ending can be settled on the next load.
+   *
+   * Only the ordinary game is held to it. The explorer run cannot lose and the
+   * map maker's try is a walk round a draft: neither has a pack worth taking,
+   * and both are played on a save of their own.
+   */
+  public recordRaidInFlight(raid: RaidInFlight): boolean {
+    if ((this.slot ?? activeSaveSlot()) !== 'normal') {
+      return false;
+    }
+    const game = this.load();
+    if (!game) {
+      return false;
+    }
+    return this.save({ ...game, raidInFlight: raid });
+  }
+
+  /**
+   * Settles a raid that was deployed and never ended - the tab closed, the
+   * page reloaded, the browser crashed - and reports what it cost, or null
+   * when there was nothing to settle.
+   *
+   * The captain's ruling (`run/raidInFlight.ts`): the pack and everything in
+   * it are lost, and the team comes home. The team comes home as the vault
+   * holds it, which is as it deployed, because nothing a raid does to a
+   * Pokemon is written until the raid ends. The secure container is honoured
+   * exactly as a wipe honours it - it is the one thing in a raid that is
+   * protected from losing it - but only for what was packed into it at base,
+   * because what it would have held of anything *found* is not known. The
+   * kit is restocked as after a wipe, so nobody is stranded without a pack.
+   *
+   * A raid still being played in another tab is not abandoned:
+   * `liveElsewhere` is asked first, and a raid it vouches for is left alone.
+   */
+  public settleAbandonedRaid(
+    liveElsewhere: (raidId: string) => boolean = () => false,
+  ): AbandonedRaid | null {
+    const game = this.load();
+    const raid = game?.raidInFlight;
+    if (!game || !raid || liveElsewhere(raid.id)) {
+      return null;
+    }
+    const brought = Object.entries(raid.items).map(([itemId, quantity]) => ({ itemId, quantity }));
+    const secured = Object.entries(raid.secured)
+      .filter(([itemId]) => !isFoundOnly(itemId))
+      .map(([itemId, quantity]) => ({ itemId, quantity }));
+    const before = { ...game.stash.listItems() };
+    game.stash.applyWipeLoss([], brought, { items: secured }, {
+      pokemon: 0,
+      grid: secureGrid(
+        game.raidProgress.completedContracts,
+        game.raidProgress.workshopUpgrades,
+        game.traderBerthPaid,
+      ),
+    });
+    const lost = brought
+      .map(({ itemId }) => ({
+        itemId,
+        quantity: (before[itemId] ?? 0) - (game.stash.listItems()[itemId] ?? 0),
+      }))
+      .filter(({ quantity }) => quantity > 0);
+    const kept = brought
+      .map(({ itemId, quantity }) => ({
+        itemId,
+        quantity: quantity - (lost.find((each) => each.itemId === itemId)?.quantity ?? 0),
+      }))
+      .filter(({ quantity }) => quantity > 0);
+    if (raid.packItemId !== undefined) {
+      game.stash.removeItem(raid.packItemId, 1);
+    }
+    game.stash.ensurePlayable(
+      game.starterSpeciesId ? getStarterSpecies(game.starterSpeciesId) : undefined,
+    );
+    game.stash.restockMinimumSupplies();
+    if (!this.save({ ...game, ...RAID_RESOLVED })) {
+      return null;
+    }
+    return {
+      mapId: raid.mapId,
+      ...(raid.packItemId === undefined ? {} : { packItemId: raid.packItemId }),
+      lost,
+      kept,
+    };
+  }
+
+  /**
    * Closes a raid's entry in the record: how it ended, and the ground it walked.
    *
    * The survey is written here rather than a tile at a time because a save is
@@ -1239,6 +1338,7 @@ export function serializeGame(state: SaveGameState): SaveData {
     wardTreatmentsUsed: clampWardTreatmentsUsed(state.wardTreatmentsUsed),
     traderRationUsed: clampTraderCount(state.traderRationUsed),
     traderBerthPaid: state.traderBerthPaid === true,
+    ...(state.raidInFlight ? { raidInFlight: state.raidInFlight } : {}),
   };
 }
 
@@ -1311,6 +1411,7 @@ export function deserializeGame(value: unknown): RestoredGame | null {
     wardTreatmentsUsed: clampWardTreatmentsUsed(value.wardTreatmentsUsed),
     traderRationUsed: clampTraderCount(value.traderRationUsed),
     traderBerthPaid: value.traderBerthPaid === true,
+    raidInFlight: readRaidInFlight(value.raidInFlight, bagContents),
   };
 }
 

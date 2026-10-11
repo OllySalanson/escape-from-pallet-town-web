@@ -119,6 +119,7 @@ import {
 import { FOLLOWER_ART } from '../base/generated/followerArt';
 import type { Pokemon } from '../pokemon/Pokemon';
 import type { HubSceneData } from './HubScene';
+import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
 
 /**
  * THE HARBOUR: the base, walked rather than chosen off a list - and the four
@@ -386,6 +387,17 @@ export class BaseScene extends Phaser.Scene {
 
   public create(data: BaseSceneData = {}): void {
     this.ready = false;
+    // Every raid ending comes home to the base, so a raid this page was
+    // playing is over by now and has nothing left to keep alive.
+    raidHeartbeat.stop();
+    // A raid that never reached an ending - the tab closed, a reload, a crash -
+    // is settled here, before anything in the base can spend what it carried:
+    // the pack is lost with everything in it and the team comes home
+    // (`run/raidInFlight.ts`). One still being played in another tab is left
+    // to that tab.
+    const abandoned = this.saveManager.settleAbandonedRaid((raidId) =>
+      raidHeartbeat.liveElsewhere(raidId),
+    );
     const loaded = this.saveManager.load() ?? data.savedGame;
     if (!loaded) {
       // A browser with no storage that has also lost the payload: the title
@@ -483,6 +495,9 @@ export class BaseScene extends Phaser.Scene {
     );
     this.cameras.main.fadeIn(160, 0, 0, 0);
     this.ready = true;
+    if (abandoned) {
+      this.say(abandonedRaidLines(abandoned), []);
+    }
   }
 
   public update(_time: number, deltaMs: number): void {
