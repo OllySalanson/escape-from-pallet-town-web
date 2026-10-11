@@ -386,6 +386,46 @@ describe('Escape', () => {
   });
 });
 
+describe('a mouse tool that says so', () => {
+  it('tells the maker drawing needs a mouse, and names the keys it has', () => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    expect(scene.overlay.root.innerHTML).toContain(
+      'Drawing needs a mouse or trackpad. Keys pick a tool: B R F I V X.',
+    );
+  });
+
+  it('keeps every key it names, and undo and zoom, working', () => {
+    storeDraft(withSigns());
+    const { scene } = openMaker();
+    for (const [name, tool] of [
+      ['b', 'brush'],
+      ['r', 'rect'],
+      ['f', 'fill'],
+      ['i', 'pick'],
+      ['v', 'select'],
+      ['x', 'erase'],
+      ['B', 'brush'],
+    ] as const) {
+      scene.handleKey(key(name));
+      expect(scene.tool, name).toBe(tool);
+    }
+
+    choose(scene, 7, 5);
+    scene.handleKey(key('Delete'));
+    expect(scene.file.signs).toHaveLength(SIGN_TILES.length - 1);
+    scene.handleKey(key('z', { ctrlKey: true }));
+    expect(scene.file.signs).toHaveLength(SIGN_TILES.length);
+    scene.handleKey(key('y', { ctrlKey: true }));
+    expect(scene.file.signs).toHaveLength(SIGN_TILES.length - 1);
+
+    scene.handleKey(key('-'));
+    expect(scene.zoom).toBe(8);
+    scene.handleKey(key('='));
+    expect(scene.zoom).toBe(16);
+  });
+});
+
 describe('undo and zoom across the session', () => {
   it('survive a trip to the title', () => {
     storeDraft(withSigns());

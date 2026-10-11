@@ -42,6 +42,7 @@ import {
 import type { StoredDraft } from './drafts';
 import { PASSAGE_TARGETS, type PassageLook, type PendingPassage } from './passages';
 import type { QueuedMap } from './review';
+import { summariseMapFile, summaryLine, summaryLines } from '../world/mapFileSummary';
 import { STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
 import {
   BUILDING_CHOICES,
@@ -327,6 +328,15 @@ function toolRow(
   return `<button class="px-row maker-choice${lead ? ' has-icon' : ''}${chosen ? ' is-selected' : ''}" ${attributes} aria-pressed="${chosen}" data-help="${escapeAttribute(help)}">${lead}<span class="px-row-main">${label}</span></button>`;
 }
 
+/**
+ * The map maker is drawn with a pointer, and says so where its tools are
+ * chosen: the captain's answer to playtest 27 (2026-10-11) is that it stays a
+ * mouse tool rather than growing a tile cursor, so a keyboard player is told
+ * up front instead of finding the map deaf to the arrows. The keys it does
+ * have still work, and are named.
+ */
+export const MOUSE_NOTE = `<p class="px-note px-wrap maker-mouse">Drawing needs a mouse or trackpad. Keys pick a tool: ${TOOLS.map((tool) => tool.key).join(' ')}.</p>`;
+
 function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): string {
   // The tools are a strip of buttons above the lists rather than rows in them:
   // six of them are picked far more often than any one brush, so they never
@@ -371,7 +381,7 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
             .join('')}`,
       ).join('');
   return pixelWindow(
-    `<div class="maker-toolbar">${tools}</div><div class="px-scroll maker-pane"><div class="px-list"><p class="px-subheading">${inside ? BRUSH_HEADINGS[inside.kind] : 'Ground'}</p>${brushes}<p class="px-subheading">Places</p>${places}${plants}</div></div>`,
+    `<div class="maker-toolbar">${tools}${MOUSE_NOTE}</div><div class="px-scroll maker-pane"><div class="px-list"><p class="px-subheading">${inside ? BRUSH_HEADINGS[inside.kind] : 'Ground'}</p>${brushes}<p class="px-subheading">Places</p>${places}${plants}</div></div>`,
     { className: 'maker-tools', heading: 'Paint' },
   );
 }
@@ -1003,6 +1013,7 @@ function reviewPane(
   review: ReviewState,
   reviewing: QueuedMap | undefined,
   checks: readonly MakerCheck[],
+  file: MapFile,
 ): string {
   const button = (attribute: string, label: string, primary = false, help = ''): string =>
     `<button class="px-window px-button${primary ? ' is-primary' : ''}" ${attribute}${help ? ` data-help="${escapeAttribute(help)}"` : ''}>${label}</button>`;
@@ -1039,11 +1050,22 @@ function reviewPane(
   }
   const passed = checks.filter((check) => check.id !== 'walked' && check.passed).length;
   const total = checks.filter((check) => check.id !== 'walked').length;
+  // What a fair map and a cheat map differ on, for the map as it now stands in
+  // the editor: advice for the reviewer's eye, never a check that refuses one.
+  const summary = reviewing ? summariseMapFile(file) : undefined;
+  const glance = summary
+    ? `<p class="px-subheading">At a glance</p>${summaryLines(summary)
+        .map(
+          (line, index) =>
+            `<p class="${index === 0 && summary.empty ? 'px-warning' : 'px-note'} px-wrap">${escapeHtml(line)}</p>`,
+        )
+        .join('')}`
+    : '';
   const decision = reviewing
     ? pixelWindow(
         `<div class="maker-form"><p class="px-wrap"><strong>${escapeHtml(reviewing.mapName)}</strong> by <strong>${escapeHtml(reviewing.makerName)}</strong>${
           reviewing.revision > 1 ? `, try ${reviewing.revision}` : ''
-        }. ${STATUS_WORDS[reviewing.status]}. Receipt ${reviewing.receiptCode}.</p><p class="px-note px-wrap">${passed} of ${total} checks pass. Play it with WALK IT or RAID IT; fix anything here before approving and the fixed map is what is approved.</p>${
+        }. ${STATUS_WORDS[reviewing.status]}. Receipt ${reviewing.receiptCode}.</p><p class="px-note px-wrap">${passed} of ${total} checks pass. Play it with WALK IT or RAID IT; fix anything here before approving and the fixed map is what is approved.</p>${glance}${
           review.reason ? `<p class="px-warning px-wrap">${escapeHtml(review.reason)}</p>` : ''
         }<label class="maker-field"><span>Note to the maker</span><textarea class="px-window px-field maker-lines" data-review-note rows="3" maxlength="2000" placeholder="Needed to send back or turn down">${escapeHtml(reviewing.note ?? '')}</textarea></label><div class="maker-actions">${button(
           'data-decide="sent_back"',
@@ -1064,7 +1086,7 @@ function reviewPane(
   const rows = review.maps
     .map(
       (map) =>
-        `<button class="px-row${reviewing?.id === map.id ? ' is-selected' : ''}" data-review-open="${escapeAttribute(map.id)}" data-help="Opens it in the editor to play and decide."${map.file ? '' : ' aria-disabled="true"'}><span class="px-row-main"><span class="px-name">${escapeHtml(map.mapName)}</span><small class="px-note">${escapeHtml(map.makerName)} · ${STATUS_WORDS[map.status]}${map.revision > 1 ? ` · try ${map.revision}` : ''}</small></span></button>`,
+        `<button class="px-row${reviewing?.id === map.id ? ' is-selected' : ''}" data-review-open="${escapeAttribute(map.id)}" data-help="Opens it in the editor to play and decide."${map.file ? '' : ' aria-disabled="true"'}><span class="px-row-main"><span class="px-name">${escapeHtml(map.mapName)}</span><small class="px-note">${escapeHtml(map.makerName)} · ${STATUS_WORDS[map.status]}${map.revision > 1 ? ` · try ${map.revision}` : ''}</small>${reviewRowSummary(map)}</span></button>`,
     )
     .join('');
   return `${decision}${pixelWindow(
@@ -1075,6 +1097,12 @@ function reviewPane(
       note: `${review.maps.filter((map) => map.status === 'waiting').length} waiting`,
     },
   )}`;
+}
+
+/** A row's line of the facts review judges a map by, for the map as it was sent. */
+function reviewRowSummary(map: QueuedMap): string {
+  const summary = map.file ? summariseMapFile(map.file) : undefined;
+  return summary ? `<small class="px-note">${escapeHtml(summaryLine(summary))}</small>` : '';
 }
 
 export function makerScreen(state: MakerViewState): string {
@@ -1092,7 +1120,7 @@ export function makerScreen(state: MakerViewState): string {
     drafts: () => draftsPane(state.drafts, state.draftKey, state.unreadableDrafts),
     send: () => sendPane(state.file, state.sending),
     sent: () => sentPane(state.sent),
-    review: () => reviewPane(state.review, state.reviewing, state.checks),
+    review: () => reviewPane(state.review, state.reviewing, state.checks, state.file),
   };
   // The column scrolls as any pane does, so it says MORE when the chosen
   // thing's panel is below the checks rather than leaving its heading peeking

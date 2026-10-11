@@ -3227,6 +3227,12 @@ button {
   gap: calc(var(--u) * 2);
   padding: calc(var(--u) * 3);
 }
+/* The map is drawn with a pointer, and the strip of tools says so under the
+   tools themselves, across both columns (`MOUSE_NOTE`). */
+:where(.pixel-ui) .maker-mouse {
+  grid-column: 1 / -1;
+  margin: 0;
+}
 .pixel-ui .px-chip.maker-tool.is-selected {
   --fill: var(--teal-wash);
 }
