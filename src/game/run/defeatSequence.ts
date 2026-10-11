@@ -32,6 +32,8 @@ export interface DefeatFigure {
   readonly label: string;
   /** Present for Pokemon, and how their sprite is found. */
   readonly dexId?: number;
+  /** Set only for a shiny Pokemon, which is drawn in its shiny colours. */
+  readonly shiny?: true;
   /**
    * Present for Pokemon. The level is what makes a line-up personal: it is the
    * difference between "a Charmander" and the one carried through six raids.
@@ -182,6 +184,7 @@ function buildFigures(report: ExtractionReport): DefeatFigure[] {
     kind: 'pokemon',
     label: member.name,
     dexId: member.dexId,
+    ...(member.shiny ? { shiny: true as const } : {}),
     level: member.level,
     fate: member.secured ? 'held' : 'taken',
     lastStand: member.lastStand,

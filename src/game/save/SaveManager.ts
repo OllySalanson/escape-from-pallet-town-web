@@ -100,6 +100,12 @@ export interface SavedPokemon {
    * can price (`Pokemon.giveHeldItem`).
    */
   readonly heldItemId?: string | null;
+  /**
+   * Written only for a shiny (`Pokemon.shiny`), so every other Pokemon saves
+   * exactly as it did; absent reads as not shiny, which is every Pokemon in a
+   * save written before shinies existed. No version bump.
+   */
+  readonly shiny?: boolean;
 }
 
 export interface SavedStashedPokemon {
@@ -1615,6 +1621,7 @@ function serializePokemon(pokemon: Pokemon): SavedPokemon {
     pendingMoves: pokemon.pendingMoves.map((move) => move.name),
     primaryStatus: pokemon.primaryStatus,
     heldItemId: pokemon.heldItemId,
+    ...(pokemon.shiny ? { shiny: true } : {}),
   };
 }
 
@@ -1638,6 +1645,7 @@ function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon
   pokemon.primaryStatus =
     savedStatus !== null && typeRefusesStatus(savedStatus, pokemonTypes(pokemon)) ? null : savedStatus;
   pokemon.giveHeldItem(typeof value.heldItemId === 'string' ? value.heldItemId : null);
+  pokemon.shiny = value.shiny === true;
 
   if (Array.isArray(value.moves)) {
     // Learnsets and machines across the whole line, through the same lookup

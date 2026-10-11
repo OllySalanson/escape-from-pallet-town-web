@@ -23,6 +23,7 @@ import {
   pixelPortrait,
   pixelTypeBadge,
   pixelXpBar,
+  pixelPokemonName,
 } from './pixelUi';
 import {
   experienceBarFill,
@@ -67,8 +68,8 @@ export function pokemonDossier(view: DossierView): string {
     ['Sp. Def', pokemon.stats.spDefense],
     ['Speed', pokemon.stats.speed],
   ];
-  const figure = `<div class="px-dossier-figure">${pixelPortrait(pokemon.base.dexId, pokemon.base.name)}<div class="summary-types">${pixelTypeBadge(pokemon.base.primaryType)}${pokemon.base.secondaryType ? pixelTypeBadge(pokemon.base.secondaryType) : ''}</div></div>`;
-  const vitals = `<div class="px-dossier-vitals"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong><small>Lv ${pokemon.level}</small></span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small class="px-wrap">${healthLine(pokemon)}</small><small class="px-wrap">${view.holding}</small></div>`;
+  const figure = `<div class="px-dossier-figure">${pixelPortrait(pokemon.base.dexId, pokemon.base.name, pokemon.shiny)}<div class="summary-types">${pixelTypeBadge(pokemon.base.primaryType)}${pokemon.base.secondaryType ? pixelTypeBadge(pokemon.base.secondaryType) : ''}</div></div>`;
+  const vitals = `<div class="px-dossier-vitals"><span class="px-row-line">${pixelPokemonName(pokemon)}<small>Lv ${pokemon.level}</small></span>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}<small class="px-wrap">${healthLine(pokemon)}</small><small class="px-wrap">${view.holding}</small></div>`;
   const growth = `<div class="px-dossier-growth"><small class="px-label">Experience</small>${pixelXpBar(experienceBarFill(progress), `Experience ${formatExperience(progress.intoLevel)} of ${formatExperience(progress.levelSpan)}`)}<small class="px-wrap">${experienceLine(progress)}</small><small class="px-label">Stats</small><dl class="summary-stats">${stats
     .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
     .join('')}</dl></div>`;

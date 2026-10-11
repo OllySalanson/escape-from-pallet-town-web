@@ -5,6 +5,12 @@ export type { WildEncounterEntry, WildEncounterTable } from '../pokemon/encounte
 export interface WildEncounter {
   speciesId: string;
   level: number;
+  /**
+   * Whether this one is shiny (`pokemon/shiny.ts`). Absent until the world
+   * hands the encounter to a fight, which is where it is rolled - once, for
+   * every wild Pokemon met, whatever produced it.
+   */
+  shiny?: boolean;
 }
 
 export type EncounterRng = () => number;

@@ -249,3 +249,23 @@ describe('objective field guide', () => {
     expect(guide.hints[0]).toContain('opens it as an exit');
   });
 });
+
+describe('a shiny in the field guide', () => {
+  it('names a shiny caught this raid in the field notes, and an ordinary catch not at all', () => {
+    const session = createFirstContractSession();
+    const shiny = new Pokemon(BULBASAUR, 4);
+    shiny.shiny = true;
+    session.manager.registerCaughtPokemon(new Pokemon(BULBASAUR, 3));
+    session.manager.registerCaughtPokemon(shiny);
+
+    const hints = buildObjectiveGuide(session, {
+      currentMapId: 'floodplain-relay',
+      currentPosition: { x: 15, y: 3 },
+      activatedPoiIds: new Set(),
+    }).hints;
+
+    expect(hints.filter((hint) => hint.includes('shiny'))).toEqual([
+      'You are carrying a shiny Bulbasaur. It is only yours once you extract.',
+    ]);
+  });
+});

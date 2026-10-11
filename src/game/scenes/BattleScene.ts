@@ -51,6 +51,18 @@ import { MoveTarget, type MoveBase } from '../pokemon/MoveBase';
 import { prizesLeftBehind } from '../world/loot';
 import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
+import { publicAssetUrl } from '../publicAssetUrl';
+import { pokemonTextureKey } from '../pokemon/pokemonSprites';
+import { shinyTexturesFor } from '../pokemon/shiny';
+import {
+  SHINY_SPARKLE_TEXTURE,
+  SPARKLE_FRAME_MS,
+  SPARKLE_FRAMES,
+  SPARKLE_LENGTH_FRAMES,
+  SPARKLE_SOUND_FRAME,
+  sparkleAt,
+  type SparkleFrame,
+} from '../ui/shinySparkle';
 import {
   battleEventCry,
   battleEventSound,
@@ -514,6 +526,27 @@ export class BattleScene extends Phaser.Scene {
     ];
   }
 
+  /**
+   * A shiny's colours are fetched by the fight that meets one, rather than all
+   * 302 at boot for a roll that comes up one encounter in five hundred: Phaser
+   * runs this before `create`, and starts the battle once they have arrived.
+   * Ordinary sprites were loaded at boot, and a shiny texture that never
+   * arrives is drawn in its ordinary colours (`spriteTexture`).
+   */
+  public preload(): void {
+    const data = (this.sys.settings.data ?? {}) as BattleSceneData;
+    const wild = data.wild?.shiny ? getSpeciesById(data.wild.speciesId) : undefined;
+    const fielded = [
+      ...(data.party?.pokemon ?? []),
+      ...(wild ? [{ shiny: true, base: wild }] : []),
+    ];
+    for (const { key, path } of shinyTexturesFor(fielded)) {
+      if (!this.textures.exists(key)) {
+        this.load.image(key, publicAssetUrl(path));
+      }
+    }
+  }
+
   public create(data: BattleSceneData = {}): void {
     void audioManager.startTheme('battle');
     // A wild fight was announced by the grass that produced it, one fade ago;
@@ -590,6 +623,7 @@ export class BattleScene extends Phaser.Scene {
       this.party.pokemon.find((pokemon) => pokemon !== playerPokemon && !pokemon.isFainted) ?? null;
     const wildBase = data.wild ? getSpeciesById(data.wild.speciesId) : BULBASAUR;
     const wildPokemon = new Pokemon(wildBase ?? BULBASAUR, data.wild?.level ?? 10);
+    wildPokemon.shiny = data.wild?.shiny === true;
     this.launchedFromWorld = Boolean((data.wild || data.trainer) && data.party);
     // The whole party rides on the state, so the engine counts the bench as it
     // counts a trainer's: the field emptying is not the battle lost while
@@ -927,6 +961,9 @@ export class BattleScene extends Phaser.Scene {
           duration: 650,
           ease: 'Quad.out',
           delay,
+          // A shiny sparkles once it has landed, as FireRed's does once its
+          // plate is up (`TryShinyAnimation`).
+          onComplete: () => this.sparkleIfShiny(ref, combatant.pokemon),
         });
         delay += 180;
       }
@@ -936,9 +973,8 @@ export class BattleScene extends Phaser.Scene {
   /** One sprite, placed off the field and masked to it, ready to slide in. */
   private createCombatantSprite(ref: SlotRef, combatant: BattleCombatant): Phaser.GameObjects.Image {
     const spot = combatantSpot(ref.side, ref.slot, this.state.unitCount);
-    const facing = ref.side === 'player' ? 'back' : 'front';
     const sprite = this.add
-      .image(combatantEntryX(ref.side), spot.y, `pokemon-${facing}-${combatant.pokemon.base.dexId}`)
+      .image(combatantEntryX(ref.side), spot.y, this.spriteTexture(ref.side, combatant.pokemon))
       .setScale(spot.scale)
       // The pair nearer the front of the field is drawn over the pair behind
       // it, exactly as the plates are ordered: a slot is a place on the ground.
@@ -2709,12 +2745,91 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     const plate = this.plateFor(ref);
+    // Somebody new in the slot, rather than the one already there changing -
+    // an evolution, a level - is a Pokemon landing, which is when a shiny
+    // sparkles.
+    const landed = this.displayed.get(plateKey(ref.side, ref.slot)) !== combatant.pokemon;
     plate?.container.destroy();
     plate?.banner?.destroy();
     this.createStatusBox(ref, combatant);
-    const facing = ref.side === 'player' ? 'back' : 'front';
-    this.standOnSpot(ref)?.setTexture(`pokemon-${facing}-${combatant.pokemon.base.dexId}`);
+    this.standOnSpot(ref)?.setTexture(this.spriteTexture(ref.side, combatant.pokemon));
     this.refreshStatusLabels();
+    if (landed) {
+      this.sparkleIfShiny(ref, combatant.pokemon);
+    }
+  }
+
+  /**
+   * The texture a Pokemon is drawn from on its side of the field: its shiny
+   * colours when it is shiny and they have arrived (`preload`), its own
+   * otherwise - never Phaser's missing-texture square.
+   */
+  private spriteTexture(side: 'player' | 'enemy', pokemon: PokemonInstance): string {
+    const facing = side === 'player' ? 'back' : 'front';
+    const shiny = pokemonTextureKey(facing, pokemon.base.dexId, true);
+    return pokemon.shiny && this.textures.exists(shiny) ? shiny : pokemonTextureKey(facing, pokemon.base.dexId);
+  }
+
+  /**
+   * FireRed's shiny sparkle over a Pokemon that has just landed in a slot - see
+   * `ui/shinySparkle.ts` for the choreography, which is FireRed's frame for
+   * frame. It is drawn at the slot's own scale, so it rings the sprite as it
+   * rings it on a GBA, and it lets go the moment anyone else is drawn in the
+   * slot.
+   */
+  private sparkleIfShiny(ref: SlotRef, pokemon: PokemonInstance): void {
+    if (!pokemon.shiny || !this.textures.exists(SHINY_SPARKLE_TEXTURE)) {
+      return;
+    }
+    const texture = this.textures.get(SHINY_SPARKLE_TEXTURE);
+    for (const [name, frame] of Object.entries(SPARKLE_FRAMES)) {
+      if (!texture.has(name)) {
+        texture.add(name, 0, frame.x, frame.y, frame.width, frame.height);
+      }
+    }
+    const spot = combatantSpot(ref.side, ref.slot, this.state.unitCount);
+    const key = plateKey(ref.side, ref.slot);
+    const motes = new Map<string, Phaser.GameObjects.Image>();
+    let sounded = false;
+    const clear = () => {
+      motes.forEach((mote) => mote.destroy());
+      motes.clear();
+    };
+    this.tweens.addCounter({
+      from: 0,
+      to: SPARKLE_LENGTH_FRAMES,
+      duration: SPARKLE_LENGTH_FRAMES * SPARKLE_FRAME_MS,
+      onUpdate: (tween: Phaser.Tweens.Tween) => {
+        if (this.displayed.get(key) !== pokemon) {
+          clear();
+          return;
+        }
+        const frame = Math.floor(tween.getValue() ?? 0);
+        if (!sounded && frame >= SPARKLE_SOUND_FRAME) {
+          sounded = true;
+          audioManager.play('shinySparkle');
+        }
+        const now = sparkleAt(frame);
+        for (const [id, mote] of motes) {
+          if (!now.some((next) => next.id === id)) {
+            mote.destroy();
+            motes.delete(id);
+          }
+        }
+        for (const next of now) {
+          const mote = motes.get(next.id) ?? this.createSparkleMote(next.frame, spot.scale);
+          motes.set(next.id, mote);
+          mote.setPosition(spot.x + next.dx * spot.scale, spot.y + next.dy * spot.scale);
+        }
+      },
+      onComplete: clear,
+    });
+  }
+
+  private createSparkleMote(frame: SparkleFrame, scale: number): Phaser.GameObjects.Image {
+    // Over the Pokemon it rings and under every plate, as FireRed draws it at
+    // the sprite's own priority.
+    return this.add.image(0, 0, SHINY_SPARKLE_TEXTURE, frame).setScale(scale).setDepth(2.5);
   }
 
   private refreshPlayerCombatant(ref: SlotRef = slotRef('player', 0)): void {

@@ -250,6 +250,30 @@ export const SOUND_EFFECTS = {
     // once per find per raid, because the chip is what keeps asking afterwards.
     tones: [sq(784, 0.06, 0.055), sq(1047, 0.06, 0.055, 0.07), sq(1568, 0.22, 0.06, 0.14)],
   },
+  shinySparkle: {
+    // On the alert channel beside `prizeSighted`, the other rare offer, rather
+    // than on `battle`: it lands a second after the Pokemon does, which is when
+    // the player may already be reading a hit, and must not cut it off.
+    channel: 'alert',
+    ducksMusic: true,
+    moment: 'A shiny Pokemon lands on the field and sparkles',
+    // FireRed's SE_SHINY (pret/pokefirered `sound/songs/midi/se_shiny.mid`): a
+    // fifth struck twice, then a semitone up and dying away. FireRed plays it
+    // at C7 and G7; it is two octaves down here, where a laptop speaker and
+    // this vocabulary's ceiling can both say it.
+    tones: [
+      sq(523, 0.035, 0.06),
+      sq(784, 0.06, 0.06, 0.012),
+      sq(523, 0.035, 0.05, 0.08),
+      sq(784, 0.06, 0.05, 0.092),
+      sq(554, 0.035, 0.04, 0.16),
+      sq(831, 0.06, 0.04, 0.172),
+      sq(554, 0.035, 0.025, 0.24),
+      sq(831, 0.06, 0.025, 0.252),
+      sq(554, 0.035, 0.018, 0.32),
+      sq(831, 0.08, 0.018, 0.332),
+    ],
+  },
   landmarkWorked: {
     channel: 'world',
     moment: 'A landmark is worked or a new drop-in point is reached - the sluice wheel turns, a station answers',

@@ -2218,3 +2218,112 @@ describe('an evolution B can stop, as FireRed lets you', () => {
     expect(dialog.shownMessages.some((line) => line.includes('is evolving'))).toBe(false);
   });
 });
+
+describe('BattleScene shiny Pokemon', () => {
+  const shinyBulbasaur = (): Pokemon => {
+    const pokemon = new Pokemon(BULBASAUR, 10);
+    pokemon.shiny = true;
+    return pokemon;
+  };
+
+  /** The scene's own texture manager, as far as a shiny needs one: every texture has arrived. */
+  const withTextures = (scene: BattleScene) => {
+    const frames = new Set<string>();
+    Object.assign(scene as object, {
+      textures: {
+        exists: () => true,
+        get: () => ({ has: (name: string) => frames.has(name), add: (name: string) => frames.add(name) }),
+      },
+    });
+  };
+
+  /** Lands a Pokemon in the foe's slot the way a send-out does. */
+  const land = (scene: BattleScene, pokemon: Pokemon): void => {
+    const driven = scene as unknown as {
+      state: { enemy: { pokemon: Pokemon } };
+      displayed: Map<string, Pokemon>;
+      refreshCombatant(ref: { side: 'enemy'; slot: number }): void;
+    };
+    driven.state = { ...driven.state, enemy: { ...driven.state.enemy, pokemon } };
+    driven.refreshCombatant({ side: 'enemy', slot: 0 });
+  };
+
+  it('keeps a caught shiny shiny: the Pokemon in the party is the one that was fought', () => {
+    const roll = vi.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      const wild = shinyBulbasaur();
+      const harness = createBattleSceneHarness({ wild, bag: new Bag({ 'poke-ball': 1 }) });
+      (harness.scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+      read(harness.renderedTexts).filter(({ text }) => text.includes('BALL x')).at(-1)!.handlers.pointerdown();
+
+      const party = (harness.scene as unknown as { party: PokemonParty }).party.pokemon;
+      expect(party).toContain(wild);
+      expect(party.find((member) => member === wild)?.shiny).toBe(true);
+    } finally {
+      roll.mockRestore();
+    }
+  });
+
+  it('draws a shiny landing in its shiny colours and sparkles it, as FireRed does', () => {
+    const play = vi.spyOn(audioManager, 'play').mockImplementation(() => true);
+    try {
+      const { scene } = createBattleSceneHarness();
+      withTextures(scene);
+      type Counter = { onUpdate(tween: { getValue(): number }): void; onComplete(): void };
+      const counters: Counter[] = [];
+      Object.assign(scene as object, {
+        tweens: { add: vi.fn(), killTweensOf: vi.fn(), addCounter: vi.fn((config: Counter) => counters.push(config)) },
+      });
+      const sprite = (scene as unknown as { sprites: Map<string, ReturnType<typeof spriteStub>> }).sprites.get('enemy0')!;
+
+      land(scene, shinyBulbasaur());
+
+      expect(sprite.setTexture).toHaveBeenLastCalledWith('pokemon-shiny-front-1');
+      expect(counters).toHaveLength(1);
+      const image = (scene as unknown as { add: { image: ReturnType<typeof vi.fn> } }).add.image;
+      image.mockClear();
+      // Nothing for the first second: both of FireRed's tasks wait 60 frames.
+      counters[0].onUpdate({ getValue: () => 59 });
+      expect(image).not.toHaveBeenCalled();
+      expect(play).not.toHaveBeenCalledWith('shinySparkle');
+      // Then the wish star, from FireRed's gold stars, and SE_SHINY with it.
+      counters[0].onUpdate({ getValue: () => 60 });
+      expect(image).toHaveBeenCalledWith(0, 0, 'shiny-sparkle', 'star');
+      expect(play).toHaveBeenCalledWith('shinySparkle');
+    } finally {
+      play.mockRestore();
+    }
+  });
+
+  it('sparkles only a shiny, and only as it lands - never on an evolution in the slot', () => {
+    const { scene } = createBattleSceneHarness();
+    withTextures(scene);
+    const addCounter = vi.fn();
+    Object.assign(scene as object, { tweens: { add: vi.fn(), killTweensOf: vi.fn(), addCounter } });
+    const sprite = (scene as unknown as { sprites: Map<string, ReturnType<typeof spriteStub>> }).sprites.get('enemy0')!;
+
+    land(scene, new Pokemon(PIDGEY, 5));
+    expect(sprite.setTexture).toHaveBeenLastCalledWith('pokemon-front-16');
+    expect(addCounter).not.toHaveBeenCalled();
+
+    const shiny = shinyBulbasaur();
+    land(scene, shiny);
+    expect(addCounter).toHaveBeenCalledTimes(1);
+    // The same Pokemon redrawn in its slot - what an evolution or a level does -
+    // has not landed again.
+    land(scene, shiny);
+    expect(addCounter).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the ordinary colours when a shiny texture never arrived', () => {
+    const { scene } = createBattleSceneHarness();
+    Object.assign(scene as object, {
+      textures: { exists: (key: string) => !key.includes('shiny'), get: vi.fn() },
+    });
+    const sprite = (scene as unknown as { sprites: Map<string, ReturnType<typeof spriteStub>> }).sprites.get('enemy0')!;
+
+    land(scene, shinyBulbasaur());
+
+    expect(sprite.setTexture).toHaveBeenLastCalledWith('pokemon-front-1');
+  });
+});

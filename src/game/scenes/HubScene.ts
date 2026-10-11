@@ -164,6 +164,7 @@ import {
   pixelTag,
   pixelWindow,
   takeDownPixelStatus,
+  pixelPokemonName,
 } from '../ui/pixelUi';
 import {
   pricePart,
@@ -1760,7 +1761,7 @@ export class HubScene extends Phaser.Scene {
   private pokemonRowBody(stored: StashedPokemon, tag: string, boxName?: string): string {
     const { pokemon } = stored;
     const held = getHeldItem(pokemon.heldItemId);
-    return `<span class="px-row-main"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${this.conditionLine(stored)}${held ? ` \u00b7 holding ${held.displayName}` : ''}${boxName ? ` \u00b7 ${escapeAttribute(boxName)}` : ''}</small></span>${tag}`;
+    return `<span class="px-row-main"><span class="px-row-line">${pixelPokemonName(pokemon)}${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${this.conditionLine(stored)}${held ? ` \u00b7 holding ${held.displayName}` : ''}${boxName ? ` \u00b7 ${escapeAttribute(boxName)}` : ''}</small></span>${tag}`;
   }
 
   /**

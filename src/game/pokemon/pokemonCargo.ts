@@ -1,3 +1,4 @@
+import { pokemonSpritePath } from './pokemonSprites';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { EVOLUTIONS } from './evolution';
 import type { Pokemon } from './Pokemon';
@@ -94,7 +95,7 @@ export function pokemonCargo(
     name: pokemon.base.name,
     // The same front sprite every other screen draws it with, so a block in the
     // pack is recognisably the Pokemon and not a coloured rectangle.
-    art: publicAssetUrl(`assets/pokemon/front/${pokemon.base.dexId}.png`),
+    art: publicAssetUrl(pokemonSpritePath('front', pokemon.base.dexId, pokemon.shiny)),
     ...pokemonFootprint(pokemon.base.id),
   };
 }

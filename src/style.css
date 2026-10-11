@@ -1705,6 +1705,15 @@ button {
   background: none;
   color: var(--ink-soft);
 }
+/* FireRed's summary-screen shiny star, after a shiny's name (`pixelShinyStar`). */
+:where(.pixel-ui) .px-shiny {
+  display: inline-block;
+  flex: none;
+  width: calc(var(--u) * 8);
+  height: calc(var(--u) * 8);
+  background: url('/assets/battle/shiny-star.png') 0 0 / 100% 100% no-repeat;
+  image-rendering: pixelated;
+}
 .pixel-ui .px-portrait img {
   /* Laid out at its own size and scaled by the whole-number zoom, because the
      sprites are not all one size and a width in game pixels would have to know

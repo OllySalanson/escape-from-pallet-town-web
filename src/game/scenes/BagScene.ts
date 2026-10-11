@@ -32,6 +32,7 @@ import {
   pixelScreen,
   pixelTag,
   pixelWindow,
+  pixelPokemonName,
 } from '../ui/pixelUi';
 
 /**
@@ -359,7 +360,7 @@ export class BagScene extends Phaser.Scene {
         const note = this.targetNote(pokemon);
         return `<button class="px-row" data-target="${index}" data-item="${item.id}" data-help="${escapeAttribute(
           `Use ${item.displayName} on ${pokemon.base.name}. ${note}`,
-        )}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}</small></span><span class="px-tag">${note}</span></button>`;
+        )}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(pokemon)}${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}</small></span><span class="px-tag">${note}</span></button>`;
       })
       .join('');
     const list = pixelWindow(
