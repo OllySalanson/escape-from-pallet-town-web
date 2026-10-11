@@ -52,7 +52,6 @@ A few things that will save us both a round trip:
 - **Mind the art.** Every asset needs its line in
   [ASSET_PROVENANCE.md](public/assets/ASSET_PROVENANCE.md), and a ripped source sheet is never
   committed in the form it was downloaded in.
-- **The music stays off.** Sound effects are welcome. Music is not. This one isn't up for debate.
 
 ## The small print
 

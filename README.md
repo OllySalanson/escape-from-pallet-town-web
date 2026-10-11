@@ -15,7 +15,6 @@
   <a href="https://ollysalanson.github.io/escape-from-pallet-town-web/"><img alt="Play it in your browser" src="https://img.shields.io/badge/%E2%96%B6%20PLAY-in%20your%20browser-8ed4c2?style=for-the-badge&labelColor=0f1f33"></a>
   <img alt="Raid clock: 5:00" src="https://img.shields.io/badge/raid%20clock-5%3A00-b0201c?style=for-the-badge&labelColor=0f1f33">
   <img alt="Kanto: all 151" src="https://img.shields.io/badge/Kanto-all%20151-ebeac5?style=for-the-badge&labelColor=0f1f33">
-  <img alt="Music: off, on purpose" src="https://img.shields.io/badge/music-off%2C%20on%20purpose-9bb4c6?style=for-the-badge&labelColor=0f1f33">
 </p>
 
 <p align="center">
@@ -208,7 +207,7 @@ sightseeing.
 - A double battle, if you get far enough to earn it.
 - Rain in the places that are made of water, and it changes how the fight goes.
 - Trainers who watch a stretch of road. Step into it and you're paying a toll.
-- Every sound effect synthesised in the browser. No music: the game's owner finds it annoying, and so the game has none.
+- Every sound effect synthesised in the browser.
 
 ## Controls
 

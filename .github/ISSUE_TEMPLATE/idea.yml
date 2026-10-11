@@ -9,8 +9,6 @@ body:
         Ooh, go on then. Pull up a chair.
 
         No idea is too small: a line a rival should say, a corner of a map that's too quiet, a menu that takes one key press too many. Big ones are welcome too, as long as you're happy for them to be argued with.
-
-        (Before you ask: the music is staying off. The game's owner finds it annoying, and frankly it's their game.)
   - type: textarea
     id: idea
     attributes:
