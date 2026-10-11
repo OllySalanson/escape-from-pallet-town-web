@@ -50,6 +50,7 @@ class MemoryStorage implements StorageLike {
 interface CenterInternals {
   init(): void;
   setView(view: 'stash'): void;
+  render(): void;
   recover(ids: readonly string[]): void;
   treat(pokemonId: string, itemId: string): void;
   giveGear(pokemonId: string, itemId: string): void;
@@ -104,6 +105,9 @@ function openCenter(storage: MemoryStorage): CenterInternals {
   });
   hub.init();
   hub.setView('stash');
+  // Drawn as the scene draws it on arrival, which is also when Nurse Joy's
+  // first words are heard - so nothing the tests below do is the first look.
+  hub.render();
   return hub;
 }
 

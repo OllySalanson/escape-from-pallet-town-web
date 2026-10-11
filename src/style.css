@@ -1033,6 +1033,8 @@ button {
 /* --- The screen: title bar, body, help bar ------------------------------ */
 :where(.pixel-ui) .px-screen {
   height: 100%;
+  /* What a box laid over the body (`.px-speech`) is placed against. */
+  position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   /* One column that may be narrower than what it holds. An `auto` column takes
@@ -1774,6 +1776,39 @@ button {
 }
 :where(.pixel-ui) .confirm-bar.is-arming {
   --fill: var(--red-wash);
+}
+
+/* --- Somebody speaking: first words over the foot of a screen ------------ */
+/* Professor Oak or Nurse Joy, the first time one of their screens opens
+   (`hub/firstWords.ts`). It is the games' own text box: laid over the bottom of
+   the body, just above the help bar, so the screen under it is already the
+   screen it will be once the words are read and nothing moves when it goes. */
+:where(.pixel-ui) .px-speech {
+  position: absolute;
+  left: calc(var(--u) * 4);
+  right: calc(var(--u) * 4);
+  bottom: calc(var(--u) * 30);
+  z-index: 3;
+}
+:where(.pixel-ui) .px-speech > .px-lead {
+  align-items: end;
+}
+:where(.pixel-ui) .px-speech-words {
+  flex: 1;
+  min-width: 0;
+}
+:where(.pixel-ui) .px-speech-words > strong {
+  display: block;
+  margin-bottom: calc(var(--u) * 2);
+  text-transform: uppercase;
+}
+:where(.pixel-ui) .px-speech-line + .px-speech-line {
+  margin-top: var(--u);
+}
+/* The screen behind the words is the one being explained, so it stays in view,
+   quieter, until they are read. */
+:where(.pixel-ui) .px-body[inert] {
+  opacity: 0.55;
 }
 
 /* --- Choosing where to drop in ------------------------------------------ */

@@ -18,6 +18,8 @@ import { Stash } from '../stash/Stash';
 import { gateKey, WORLD_GATES } from '../world/gates';
 import { encodeSurvey, type SurveyRecord } from '../world/survey';
 import { getWorldMap, worldMapIds } from '../worldMap';
+import { FIRST_WORDS_IDS } from '../hub/firstWords';
+import { LEARNABLE_KEYS } from '../input/keyBindings';
 
 /**
  * What an explorer run starts as. See `playtestMode.ts` for what the mode is
@@ -95,6 +97,10 @@ export function playtestRaidProgress(): RaidProgress {
     defeatedBosses: [],
     openedGates: [...new Set(WORLD_GATES.map((gate) => gateKey(gate)))],
     battleLessonGiven: true,
+    // Somebody exploring the maps is not a newcomer to the game: nobody speaks
+    // first words on this save, and the HUDs teach no keys.
+    firstWordsHeard: [...FIRST_WORDS_IDS],
+    keysLearned: [...LEARNABLE_KEYS],
     // Bill deals with whoever has turned money over his counter, so an
     // explorer run arrives as a partner rather than a stranger with an empty
     // shelf - derived from his own top tier, so a retuned ladder moves with it.

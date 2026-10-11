@@ -1,6 +1,14 @@
 import { formatRaidClock } from '../run/raidClock';
 import { PLAYTEST_CLOCK_LABEL } from '../dev/playtestMode';
 import { weatherLabel, type WeatherId } from '../pokemon/battle/weather';
+import {
+  keyHint,
+  RAID_KEY_LETTERS,
+  RAID_KEY_WORDS,
+  raidKeyHintLine,
+  raidKeysToName,
+  READING_KEYS,
+} from '../input/keyBindings';
 
 /**
  * What the in-raid overlays say, as data.
@@ -77,20 +85,20 @@ export function raidClockAlertTier(remainingMs: number): 'normal' | 'urgent' {
  */
 export const OBJECTIVE_DETAIL_MS = 4_500;
 
-export const FIELD_GUIDE_HINT = '[O] GUIDE';
+export const FIELD_GUIDE_HINT = keyHint(RAID_KEY_LETTERS.objectives, 'GUIDE');
 /**
  * The look: every name on the screen while it is held. The map does not caption
  * itself any more (`ui/captionReveal.ts`), so this is the key that answers
  * "what is all of this called" - and the chip is where it is taught, because a
  * key nothing on the screen names is a key nobody presses.
  */
-export const LOOK_HINT = '[L] LOOK';
+export const LOOK_HINT = keyHint(RAID_KEY_LETTERS.look, 'LOOK');
 
 /**
  * The two keys the raid screen is read with, on one line: it is what the
  * detail row is for, and two short hints fit where `[O] FIELD GUIDE` sat.
  */
-export const RAID_KEY_HINTS = `${FIELD_GUIDE_HINT}  ${LOOK_HINT}`;
+export const RAID_KEY_HINTS = raidKeyHintLine(READING_KEYS);
 
 /**
  * The explorer run's third key. It is taught here for the same reason the look
@@ -102,6 +110,11 @@ export const RUN_HINT = '[SHIFT] RUN';
  * The objective chip is one line by default and only opens up when the thing it
  * says has just changed - which is the only moment the extra line is news.
  *
+ * The exception is a key the save has never pressed (`input/keyBindings.ts`):
+ * it stays named on the second line until it has been used once, because a
+ * newcomer who missed the row while the briefing was up had no way to find the
+ * bag again (playtest 43). Once every key is learned the chip is what it was.
+ *
  * The leading marker is not a character: it is drawn as the game's menu cursor,
  * because every arrow glyph a browser might substitute for `►` at eight pixels
  * came out as a dash.
@@ -110,10 +123,15 @@ export function objectiveChipLines(
   cue: string,
   showDetail: boolean,
   playtest = false,
+  learned: ReadonlySet<string> = EVERY_KEY_LEARNED,
 ): readonly string[] {
-  const hints = playtest ? `${RAID_KEY_HINTS}  ${RUN_HINT}` : RAID_KEY_HINTS;
-  return showDetail ? [cue, hints] : [cue];
+  const keys = raidKeyHintLine(raidKeysToName(showDetail, learned));
+  const hints = playtest && showDetail ? `${keys}  ${RUN_HINT}` : keys;
+  return hints ? [cue, hints] : [cue];
 }
+
+/** A save that has pressed every raid key: the chip as it was before keys were taught. */
+const EVERY_KEY_LEARNED: ReadonlySet<string> = new Set(RAID_KEY_WORDS.map(([id]) => id));
 
 /**
  * How long a place's name stays up after the player walks into it. The games

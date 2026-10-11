@@ -42,6 +42,7 @@ import {
 } from '../save/SaveManager';
 import { PIXEL_STATUS_SELECTOR } from '../ui/pixelUi';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
+import { FIRST_WORDS } from '../hub/firstWords';
 import { HubScene, RELEASE_ARMING_MS, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
 
 describe('the lobby as a screen of the game', () => {
@@ -2066,5 +2067,130 @@ describe('the wall map in Oak’s Lab', () => {
     // And out of the screen, back to the tile it was read from.
     hub.goBack();
     expect(start).toHaveBeenCalledWith('base', expect.objectContaining({ room: 'oaks-lab', at: { x: 6, y: 2 } }));
+  });
+});
+
+describe('first words: Oak and Joy speak once per save', () => {
+  function seededStorage(raidProgress: RaidProgress = DEFAULT_RAID_PROGRESS): MemoryStorage {
+    const storage = new MemoryStorage();
+    const stash = createStartingStash();
+    stash.addPokemon(new Pokemon(CHARMANDER, 7), 'charmander-1');
+    new SaveManager(storage).save({
+      party: new PokemonParty(),
+      mapId: 'pallet-town',
+      position: { x: 6, y: 8 },
+      bag: new Bag(),
+      stash,
+      raidProgress,
+    });
+    return storage;
+  }
+
+  function screenOf(hub: HubInternals): string {
+    hub.render();
+    return (hub as unknown as { overlay: { root: { innerHTML: string } } }).overlay.root.innerHTML;
+  }
+
+  function speechOn(markup: string): string | undefined {
+    return /<div class="px-window px-speech"[\s\S]*?(?=<p class="px-help)/.exec(markup)?.[0];
+  }
+
+  const heardIn = (storage: MemoryStorage): readonly string[] =>
+    new SaveManager(storage).load()?.raidProgress.firstWordsHeard ?? [];
+
+  function putDown(hub: HubInternals, by: 'button' | 'escape'): void {
+    if (by === 'button') {
+      (hub as unknown as { doneListening(): void }).doneListening();
+      return;
+    }
+    (hub as unknown as { handleKey(event: KeyboardEvent): void }).handleKey({
+      key: 'Escape',
+      preventDefault: () => undefined,
+    } as KeyboardEvent);
+  }
+
+  it('has Oak explain the raid the first time his lab opens, and records it at once', () => {
+    const storage = seededStorage();
+    const { hub, start } = createHub(DEFAULT_RAID_PROGRESS, storage);
+
+    const speech = speechOn(screenOf(hub));
+    expect(speech).toContain('Professor Oak');
+    for (const line of FIRST_WORDS.lab.lines) {
+      expect(speech).toContain(line);
+    }
+    // Heard the moment it is shown, so walking out unread does not buy it again.
+    expect(heardIn(storage)).toEqual(['lab']);
+
+    // Escape reads on, as a text box does, rather than leaving the lab.
+    putDown(hub, 'escape');
+    expect(start).not.toHaveBeenCalled();
+    expect(speechOn(screenOf(hub))).toBeUndefined();
+  });
+
+  it('never says the same words twice to one save, read or not', () => {
+    const storage = seededStorage();
+    const first = createHub(DEFAULT_RAID_PROGRESS, storage).hub;
+    expect(speechOn(screenOf(first))).toBeDefined();
+    // Not read: the player turned straight round and came back in.
+    const again = createHub(DEFAULT_RAID_PROGRESS, storage).hub;
+    expect(speechOn(screenOf(again))).toBeUndefined();
+    // And a later visit to a different screen still has its own words.
+    again.setView('stash');
+    expect(speechOn(screenOf(again))).toContain('Nurse Joy');
+    expect(heardIn(storage)).toEqual(['lab', 'center']);
+  });
+
+  it('gives each step of preparation its own words, once, and nothing to the secure detour', () => {
+    const storage = seededStorage({ ...DEFAULT_RAID_PROGRESS, firstWordsHeard: ['lab'] });
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
+    expect(speechOn(screenOf(hub))).toBeUndefined();
+
+    hub.openDeployment();
+    expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.loadout.lines[2]);
+    putDown(hub, 'button');
+    expect(speechOn(screenOf(hub))).toBeUndefined();
+    hub.flow.togglePokemon('charmander-1');
+
+    hub.flow.openSecureSlot();
+    expect(speechOn(screenOf(hub))).toBeUndefined();
+    hub.flow.advance();
+    expect(hub.flow.step).toBe('loadout');
+    expect(speechOn(screenOf(hub))).toBeUndefined();
+
+    hub.flow.advance();
+    expect(hub.flow.step).toBe('dropin');
+    expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.dropin.lines[1]);
+
+    readyToDeploy(hub);
+    expect(hub.flow.step).toBe('confirm');
+    expect(speechOn(screenOf(hub))).toContain(FIRST_WORDS.check.lines[0]);
+
+    // Back a step and forward again: every one of them has been heard.
+    hub.goBack();
+    expect(speechOn(screenOf(hub))).toBeUndefined();
+    readyToDeploy(hub);
+    expect(speechOn(screenOf(hub))).toBeUndefined();
+    expect(heardIn(storage)).toEqual(['lab', 'loadout', 'dropin', 'check']);
+  });
+
+  it('keeps the screen under the words, and gives the cursor to them alone', () => {
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, seededStorage());
+    const focus = (hub as unknown as { overlay: { focus: ReturnType<typeof vi.fn> } }).overlay.focus;
+    const markup = screenOf(hub);
+    // The lab is drawn whole underneath, so nothing moves when the box goes.
+    expect(markup).toContain('data-deploy-flow');
+    expect(focus).toHaveBeenLastCalledWith('[data-speech-done]');
+  });
+
+  it('is never kept by a hub copy that writes the game over it', () => {
+    // The hub writes its own whole copy of the game; one that had not learned
+    // the words were heard would erase the record with its next write.
+    const storage = seededStorage();
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
+    screenOf(hub);
+    hub.setView('stash');
+    screenOf(hub);
+    expect((hub as unknown as { writeGame(): boolean }).writeGame()).toBe(true);
+    expect(heardIn(storage)).toEqual(['lab', 'center']);
   });
 });

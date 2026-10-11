@@ -9,7 +9,7 @@ const menuOverlaySource = await readFile(new URL('../ui/MenuOverlay.ts', import.
 
 describe('raid objective overlay controls', () => {
   it('opens through O and publishes the same shortcut in the raid HUD', () => {
-    expect(worldSource).toContain('KeyCodes.O');
+    expect(worldSource).toContain('KeyCodes[RAID_KEY_LETTERS.objectives]');
     expect(worldSource).toContain("this.scene.launch('objectives'");
     // The chip only spends a second line on the shortcut while an objective is
     // new, so the key it names has to be the key the world scene binds.
