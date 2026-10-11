@@ -72,7 +72,7 @@ export function teachFromMachine(item: ItemDefinition, pokemon: Pokemon): TeachO
   if (!machine) {
     return { kind: 'refused', machineIsSpent: false, message: `${item.displayName} is not a machine.` };
   }
-  const name = pokemon.base.name.toUpperCase();
+  const name = pokemon.name.toUpperCase();
   const moveName = machine.move.name.toUpperCase();
 
   if (pokemon.moves.some((known) => known.base === machine.move)) {

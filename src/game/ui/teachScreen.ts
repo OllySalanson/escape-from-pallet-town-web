@@ -116,7 +116,7 @@ function pupilCard(view: TeachView, pokemon: Pokemon, index: number): string {
   const verdict = pupilVerdict(view.machine, pokemon);
   const chosen = view.chosen === index;
   const choosable = canChoosePupil(verdict);
-  const name = pokemon.base.name.toUpperCase();
+  const name = pokemon.name.toUpperCase();
   const move = view.machine.move.name.toUpperCase();
   const moves = [
     ...pokemon.moves.map(
@@ -135,7 +135,7 @@ function pupilCard(view: TeachView, pokemon: Pokemon, index: number): string {
     : `${name}: ${pupilOutcome(view.machine, pokemon)}`;
   const tag = chosen ? pixelTag('Chosen', 'good', true) : VERDICT_TAG[verdict];
   const classes = ['px-row', 'teach-pupil', `is-${verdict}`, ...(chosen ? ['is-selected'] : [])].join(' ');
-  return `<button class="${classes}" data-pupil="${index}"${choosable ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(help)}">${pixelPortrait(pokemon.base.dexId, pokemon.base.name, pokemon.shiny)}<span class="teach-pupil-words"><span class="px-row-line"><strong class="px-name">${name}</strong>${pokemon.shiny ? pixelShinyStar() : ''}${tag}</span><small class="teach-pupil-condition">${conditionLine(pokemon)}</small><ol class="teach-moves" aria-label="${escapeAttribute(`${name}'s moves`)}">${moves}</ol><span class="px-wrap teach-outcome">${pupilOutcome(view.machine, pokemon)}</span></span></button>`;
+  return `<button class="${classes}" data-pupil="${index}"${choosable ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(help)}">${pixelPortrait(pokemon.base.dexId, pokemon.name, pokemon.shiny)}<span class="teach-pupil-words"><span class="px-row-line"><strong class="px-name">${name}</strong>${pokemon.shiny ? pixelShinyStar() : ''}${tag}</span><small class="teach-pupil-condition">${conditionLine(pokemon)}</small><ol class="teach-moves" aria-label="${escapeAttribute(`${name}'s moves`)}">${moves}</ol><span class="px-wrap teach-outcome">${pupilOutcome(view.machine, pokemon)}</span></span></button>`;
 }
 
 /** The foot of the screen: what pressing TEACH will do, or what to do first. */
@@ -157,7 +157,7 @@ function teachBar(view: TeachView): string {
       actions: `<button class="px-window px-button is-primary" data-teach aria-disabled="true" data-help="Choose a Pokémon above first.">Teach ${move}</button>`,
     });
   }
-  const name = pupil.base.name.toUpperCase();
+  const name = pupil.name.toUpperCase();
   const replaces = pupilVerdict(view.machine, pupil) === 'replaces';
   const line = replaces
     ? `${name} knows four moves: next, pick the one ${move} replaces. Nothing is forgotten until you confirm.`

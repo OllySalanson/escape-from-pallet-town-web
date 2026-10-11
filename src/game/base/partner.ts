@@ -324,13 +324,11 @@ export type PartnerPlaceName = 'yard' | 'oaks-lab' | 'pokemon-centre' | 'brocks-
  * player is meant to trust. Otherwise the place and a roll in [0, 1) choose.
  */
 export function partnerReaction(
-  pokemon: Pick<Pokemon, 'isFainted' | 'currentHp' | 'maxHp' | 'primaryStatus'> & {
-    readonly base: { readonly name: string };
-  },
+  pokemon: Pick<Pokemon, 'name' | 'isFainted' | 'currentHp' | 'maxHp' | 'primaryStatus'>,
   place: PartnerPlaceName,
   roll: number,
 ): PartnerReaction {
-  const name = pokemon.base.name.toUpperCase();
+  const name = pokemon.name.toUpperCase();
   if (pokemon.isFainted) {
     return {
       line: `${name} is too worn out to stand up properly... NURSE JOY could help it.`,

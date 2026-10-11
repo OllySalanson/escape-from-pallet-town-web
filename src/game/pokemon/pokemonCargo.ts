@@ -92,7 +92,7 @@ export function pokemonCargo(
 ): CargoFootprint & { readonly cargoId: string; readonly name: string; readonly art: string } {
   return {
     cargoId,
-    name: pokemon.base.name,
+    name: pokemon.name,
     // The same front sprite every other screen draws it with, so a block in the
     // pack is recognisably the Pokemon and not a coloured rectangle.
     art: publicAssetUrl(pokemonSpritePath('front', pokemon.base.dexId, pokemon.shiny)),

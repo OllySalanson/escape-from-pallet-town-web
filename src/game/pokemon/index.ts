@@ -5,6 +5,7 @@ export type {
 } from './AbilityBase';
 export { ABILITIES, ABILITIES_BY_ID, getAbilityById } from './abilities';
 export { Move } from './Move';
+export { NICKNAME_LENGTH, nicknameCharacters, tidyNickname } from './nickname';
 export { MoveBase, MoveCategory } from './MoveBase';
 export {
   experienceAwardForDefeat,

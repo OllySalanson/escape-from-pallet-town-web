@@ -65,7 +65,7 @@ export function clearPackRoomForPokemon(
  */
 export function packFullForPokemonLine(pokemon: Pokemon): string {
   const squares = cargoSquaresLabel(pokemonCargoCells(pokemon.base.id));
-  return `No room in the pack! ${pokemon.base.name.toUpperCase()} needs ${squares}.`;
+  return `No room in the pack! ${pokemon.name.toUpperCase()} needs ${squares}.`;
 }
 
 /**

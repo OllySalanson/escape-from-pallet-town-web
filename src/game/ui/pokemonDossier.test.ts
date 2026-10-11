@@ -53,3 +53,12 @@ describe('a shiny in the pane', () => {
     expect(html).not.toContain('px-shiny');
   });
 });
+
+describe('the pane about a Pokemon with a nickname', () => {
+  it('leads with the nickname and still says what species it is', () => {
+    const pidgey = new Pokemon(getSpeciesById('pidgey')!, 9);
+    pidgey.giveNickname('Sparky');
+    const vitals = vitalsText(dossierOf(pidgey));
+    expect(vitals).toContain('Sparky Lv 9 · Pidgey');
+  });
+});

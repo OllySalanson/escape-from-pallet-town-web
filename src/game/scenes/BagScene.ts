@@ -359,7 +359,7 @@ export class BagScene extends Phaser.Scene {
       .map((pokemon, index) => {
         const note = this.targetNote(pokemon);
         return `<button class="px-row" data-target="${index}" data-item="${item.id}" data-help="${escapeAttribute(
-          `Use ${item.displayName} on ${pokemon.base.name}. ${note}`,
+          `Use ${item.displayName} on ${pokemon.name}. ${note}`,
         )}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(pokemon)}${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}</small></span><span class="px-tag">${note}</span></button>`;
       })
       .join('');
@@ -499,7 +499,7 @@ export class BagScene extends Phaser.Scene {
     }
     if (!canChoosePupil(pupilVerdict(machine, pokemon))) {
       audioManager.play('denied');
-      this.status = `${pokemon.base.name.toUpperCase()}: ${pupilOutcome(machine, pokemon)}`;
+      this.status = `${pokemon.name.toUpperCase()}: ${pupilOutcome(machine, pokemon)}`;
       this.render();
       return;
     }
@@ -588,7 +588,7 @@ export class BagScene extends Phaser.Scene {
         item,
         forgotten !== null,
         forgotten !== null && !outcome.machine.reusable,
-        moveChoiceMessage(target.base.name, outcome.move, forgotten),
+        moveChoiceMessage(target.name, outcome.move, forgotten),
       );
     });
   }

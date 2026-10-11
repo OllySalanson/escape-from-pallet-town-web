@@ -448,7 +448,7 @@ export class HubScene extends Phaser.Scene {
         move,
         choice.kind === 'forget' ? choice.index : null,
       );
-      const said = moveChoiceMessage(waiting.pokemon.base.name, move, result?.forgotten ?? null);
+      const said = moveChoiceMessage(waiting.pokemon.name, move, result?.forgotten ?? null);
       this.setStatus(
         this.writeGame()
           ? said
@@ -658,7 +658,7 @@ export class HubScene extends Phaser.Scene {
     const treated =
       outcome.recoveredIds.length === 1
         ? (this.stash.listPokemon().find((stored) => stored.id === outcome.recoveredIds[0])?.pokemon
-            .base.name ?? 'Your Pokémon')
+            .name ?? 'Your Pokémon')
         : `${outcome.recoveredIds.length} Pokémon`;
     const cost =
       outcome.chargedMs === 0
@@ -713,7 +713,7 @@ export class HubScene extends Phaser.Scene {
       return;
     }
     audioManager.play('select');
-    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.base.name;
+    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.name;
     const gear = this.itemName(itemId);
     this.setStatus(
       this.writeGame()
@@ -727,7 +727,7 @@ export class HubScene extends Phaser.Scene {
     if (this.movedOnElsewhere()) {
       return;
     }
-    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.base.name;
+    const name = this.stashPokemon.find((stored) => stored.id === pokemonId)?.pokemon.name;
     if (!this.stash.takeHeldItem(pokemonId)) {
       this.refuse('There is nothing to take.');
       return;
@@ -765,7 +765,7 @@ export class HubScene extends Phaser.Scene {
         (item) =>
           // The verb, for the same reason the take chip carries one: a chip that
           // is only a name reads as a label rather than something to press.
-          `<button class="px-window px-chip" data-gear-give="${item.id}" data-gear-pokemon="${stored.id}" ${shows} data-help="${escapeAttribute(`${item.displayName}: ${item.description} Lost with ${stored.pokemon.base.name} on a wipe.`)}">Give ${item.displayName} ×${this.stash.itemCount(item.id)}</button>`,
+          `<button class="px-window px-chip" data-gear-give="${item.id}" data-gear-pokemon="${stored.id}" ${shows} data-help="${escapeAttribute(`${item.displayName}: ${item.description} Lost with ${stored.pokemon.name} on a wipe.`)}">Give ${item.displayName} ×${this.stash.itemCount(item.id)}</button>`,
       )
       .join('');
     return `${take}${give}${take || give ? '' : '<span class="px-note">No gear at base to give.</span>'}`;
@@ -964,7 +964,7 @@ export class HubScene extends Phaser.Scene {
       return;
     }
     const paid = this.stashPokemon.filter((stored) => this.workshopPayment.includes(stored.id));
-    const released = paid.map((stored) => stored.pokemon.base.name);
+    const released = paid.map((stored) => stored.pokemon.name);
     const gearKept = this.gearKeptLine(paid);
     const result = this.saveManager.buildWorkshopUpgrade(upgrade.id, this.workshopPayment);
     if (!result.ok) {
@@ -1485,7 +1485,7 @@ export class HubScene extends Phaser.Scene {
     on('[data-recover-all]', () => this.recover(this.injuredPokemon.map((stored) => stored.id)));
     on('[data-supply]', (button) => this.setStatus(button.dataset.help));
     on('[data-fit]', (button) => {
-      const name = this.stashPokemon.find((stored) => stored.id === button.dataset.fit)?.pokemon.base.name;
+      const name = this.stashPokemon.find((stored) => stored.id === button.dataset.fit)?.pokemon.name;
       this.setStatus(`${name ?? 'That Pokémon'} is fit. There is nothing to recover.`);
     });
     on('[data-pokemon]', (button) => this.answer(this.flow.togglePokemon(button.dataset.pokemon!), 'select'));
@@ -1869,16 +1869,16 @@ export class HubScene extends Phaser.Scene {
           return this.chip(
             `data-box-drop="${index}"`,
             here
-              ? `${moving.pokemon.base.name} is already in ${box.name}.`
+              ? `${moving.pokemon.name} is already in ${box.name}.`
               : full
                 ? `${box.name} is full (${BOX_CAPACITY}).`
-                : `Put ${moving.pokemon.base.name} in ${box.name}, which holds ${box.pokemonIds.length} of ${BOX_CAPACITY}.`,
+                : `Put ${moving.pokemon.name} in ${box.name}, which holds ${box.pokemonIds.length} of ${BOX_CAPACITY}.`,
             box.name,
             here || full,
           );
         })
         .join('');
-      return `<div class="box-bar"><div class="box-line"><span class="box-title">Put ${moving.pokemon.base.name} in</span>${this.chip('data-box-cancel', 'Leave it where it is.', 'Cancel')}</div><div class="box-line">${destinations}${this.chip('data-box-drop="new"', `A new empty box, and ${moving.pokemon.base.name} goes in it.`, 'New box')}</div></div>`;
+      return `<div class="box-bar"><div class="box-line"><span class="box-title">Put ${moving.pokemon.name} in</span>${this.chip('data-box-cancel', 'Leave it where it is.', 'Cancel')}</div><div class="box-line">${destinations}${this.chip('data-box-drop="new"', `A new empty box, and ${moving.pokemon.name} goes in it.`, 'New box')}</div></div>`;
     }
     const sort = this.chip(
       'data-box-sort',
@@ -1956,15 +1956,15 @@ export class HubScene extends Phaser.Scene {
     }
     const index = destination === 'new' ? this.stash.addBox() : Number(destination);
     if (!this.stash.movePokemon(id, index)) {
-      this.refuse(`${this.stash.listBoxes()[index]?.name ?? 'That box'} cannot take ${stored.pokemon.base.name}.`);
+      this.refuse(`${this.stash.listBoxes()[index]?.name ?? 'That box'} cannot take ${stored.pokemon.name}.`);
       return;
     }
     this.boxMoving = undefined;
     audioManager.play('confirm');
     const name = this.stash.listBoxes()[index].name;
     this.saveStash(
-      `${stored.pokemon.base.name} is in ${name}.`,
-      `${stored.pokemon.base.name} is in ${name}, but it could not be saved.`,
+      `${stored.pokemon.name} is in ${name}.`,
+      `${stored.pokemon.name} is in ${name}, but it could not be saved.`,
     );
   }
 
@@ -2072,7 +2072,7 @@ export class HubScene extends Phaser.Scene {
         const hurt = needsRecovery(stored.pokemon);
         const wiring = hurt
           ? `data-recover="${stored.id}" data-help="${this.recoveryHelp(stored)}"`
-          : `data-fit="${stored.id}" data-help="${escapeAttribute(stored.pokemon.base.name)} is fit to raid."`;
+          : `data-fit="${stored.id}" data-help="${escapeAttribute(stored.pokemon.name)} is fit to raid."`;
         const tag = hurt
           ? pixelTag(this.recoveryPriceTag(stored), 'risk')
           : pixelTag('Fit', 'good', true);
@@ -2135,7 +2135,7 @@ export class HubScene extends Phaser.Scene {
   private boxChip(stored: StashedPokemon, shows: string): string {
     const boxed = this.stash.listBoxes()[this.stash.boxIndexOf(stored.id)]?.name;
     const moving = this.boxMoving === stored.id;
-    const name = escapeAttribute(stored.pokemon.base.name);
+    const name = escapeAttribute(stored.pokemon.name);
     return this.chip(
       `data-box-move="${stored.id}" ${shows}`,
       moving ? `Put ${name} down again.` : `Move ${name} to another box. It is in ${escapeAttribute(boxed ?? 'no box')}.`,
@@ -2183,11 +2183,11 @@ export class HubScene extends Phaser.Scene {
     // breakdown belongs.
     const summary = party.length === 0
       ? nobodyStanding ? 'Nothing selected yet.' : 'Nothing selected yet. Add a Pokémon from your stash.'
-      : `${party.map((stored) => stored.pokemon.base.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${securedCount} protected`;
+      : `${party.map((stored) => stored.pokemon.name).join(', ')} · ${supplies} ${supplies === 1 ? 'supply' : 'supplies'} · ${securedCount} protected`;
     const pokemonRows = this.findablePokemon
       .map((stored, index) => {
         const added = this.flow.includesPokemon(stored.id);
-        const name = escapeAttribute(stored.pokemon.base.name);
+        const name = escapeAttribute(stored.pokemon.name);
         // The cursor starts on the first Pokemon, not on the sort chip above
         // the list: an Enter on arrival re-sorted the stash (playtest 44 #2).
         return `<button class="px-row${added ? ' is-selected' : ''}" data-pokemon="${stored.id}" data-shows="${stored.id}"${index === 0 ? ' data-cursor-start' : ''} data-help="${added ? `Take ${name} back out of the raid.` : stored.pokemon.isFainted ? `${name} has fainted and cannot fight. Only the Pokémon Center can revive ${single ? 'your only Pokémon' : 'it'}.` : `Add ${name}${single ? ', your only Pokémon,' : ''} to the raid. Lost on a wipe unless secured.`}">${this.pokemonRowBody(
@@ -3377,7 +3377,7 @@ export class HubScene extends Phaser.Scene {
       .map((stored) => candidates.find((candidate) => candidate.stored === stored)!)
       .map(({ stored, refusal }) => {
         const picked = this.workshopPayment.includes(stored.id);
-        const name = escapeAttribute(stored.pokemon.base.name);
+        const name = escapeAttribute(stored.pokemon.name);
         // A Pokemon that is never payment can still be pointed at to be told why.
         const wiring =
           refusal !== undefined
@@ -3409,7 +3409,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   private paymentFooter(upgrade: WorkshopUpgrade, chosen: readonly StashedPokemon[]): string {
-    const named = formatNames(chosen.map((stored) => `${stored.pokemon.base.name} (Level ${stored.pokemon.level})`));
+    const named = formatNames(chosen.map((stored) => `${stored.pokemon.name} (Level ${stored.pokemon.level})`));
     const supplies = formatStacks(upgrade.cost.supplies);
     const check = checkPayment(
       this.workshopVault,
@@ -3450,7 +3450,7 @@ export class HubScene extends Phaser.Scene {
         ...this.gearKeptLine(chosen).map((line) => `<small class="px-wrap" data-gear-kept>${line}</small>`),
       ],
       // Keep stands last, in the seat Build had - see `swapFooter`.
-      actions: `<button class="px-window px-button is-danger" data-pay-confirm data-help="Releases ${escapeAttribute(formatNames(chosen.map((stored) => stored.pokemon.base.name)))} for good.">Release and build</button><button class="px-window px-button" data-pay-cancel data-cursor-start data-help="Nothing changes.">Keep ${chosen.length === 1 ? 'it' : 'them'}</button>`,
+      actions: `<button class="px-window px-button is-danger" data-pay-confirm data-help="Releases ${escapeAttribute(formatNames(chosen.map((stored) => stored.pokemon.name)))} for good.">Release and build</button><button class="px-window px-button" data-pay-cancel data-cursor-start data-help="Nothing changes.">Keep ${chosen.length === 1 ? 'it' : 'them'}</button>`,
     });
   }
 
@@ -3460,7 +3460,7 @@ export class HubScene extends Phaser.Scene {
    */
   private gearKeptLine(chosen: readonly StashedPokemon[]): string[] {
     const held = chosen.flatMap(({ pokemon }) =>
-      pokemon.heldItemId ? [`${pokemon.base.name}'s ${this.itemName(pokemon.heldItemId)}`] : [],
+      pokemon.heldItemId ? [`${pokemon.name}'s ${this.itemName(pokemon.heldItemId)}`] : [],
     );
     return held.length ? [`${formatNames(held)} ${held.length === 1 ? 'goes' : 'go'} back to the vault.`] : [];
   }
@@ -3468,14 +3468,14 @@ export class HubScene extends Phaser.Scene {
   private swapPanel(): string {
     const spare = this.sparePartner;
     if (!spare) return '';
-    return `<section class="swap-panel"><h3 class="px-subheading">Down to one Pokémon</h3><p class="px-note px-wrap">${spare.pokemon.base.name} is all you have left. You can trade it for a level 5 starter, which arrives in the condition ${spare.pokemon.base.name} is in now - the species you settle on is the one you are re-issued after a wipe.</p><button class="px-window px-button" data-view="reselect" data-help="Only offered while one Pokémon is left at base.">Choose a new partner</button></section>`;
+    return `<section class="swap-panel"><h3 class="px-subheading">Down to one Pokémon</h3><p class="px-note px-wrap">${spare.pokemon.name} is all you have left. You can trade it for a level 5 starter, which arrives in the condition ${spare.pokemon.name} is in now - the species you settle on is the one you are re-issued after a wipe.</p><button class="px-window px-button" data-view="reselect" data-help="Only offered while one Pokémon is left at base.">Choose a new partner</button></section>`;
   }
 
   private reselectView(): string {
     const spare = this.sparePartner;
     if (!spare) return '<main class="px-body"><p class="px-window px-empty">You have more than one Pokémon, so there is nothing to swap.</p></main>';
     const chosen = getStarterSpecies(this.reselectStarterId);
-    const held = `${spare.pokemon.base.name} (Level ${spare.pokemon.level})`;
+    const held = `${spare.pokemon.name} (Level ${spare.pokemon.level})`;
     return `<main class="px-body starter-shell reselect-shell"><p class="starter-brief">${held} is your last Pokémon. Swapping releases it for good for a level 5 starter as hurt as it is now, with no supplies: a change of direction, never an upgrade or a heal.</p><div class="starter-grid" ${pixelColumns(100, { maximum: 3, widest: 132 })}>${starterCards(this.reselectStarterId, { heldSpeciesId: spare.pokemon.base.id, selectHelp: 'Swap to this starter.' })}</div>${this.swapFooter(spare, chosen)}</main>`;
   }
 
@@ -3496,11 +3496,11 @@ export class HubScene extends Phaser.Scene {
     }
     return pixelCommitBar({
       className: 'is-arming',
-      title: `Release ${spare.pokemon.base.name} (Level ${spare.pokemon.level})?`,
+      title: `Release ${spare.pokemon.name} (Level ${spare.pokemon.level})?`,
       lines: [`<span class="px-wrap px-warning" data-swap-condition>This cannot be undone. It is gone for good. ${chosen.name} arrives as ${conditionLine(starterInConditionOf(spare.pokemon, chosen))}.</span>`],
       // Keep stands last, in the seat the swap button had, so the second click
       // of a double-click lands on the answer that changes nothing.
-      actions: `<button class="px-window px-button is-danger" data-swap-confirm data-help="Releases ${escapeAttribute(spare.pokemon.base.name)} for good.">Release and take ${chosen.name}</button><button class="px-window px-button" data-swap-cancel data-cursor-start data-help="Nothing changes.">Keep ${spare.pokemon.base.name}</button>`,
+      actions: `<button class="px-window px-button is-danger" data-swap-confirm data-help="Releases ${escapeAttribute(spare.pokemon.name)} for good.">Release and take ${chosen.name}</button><button class="px-window px-button" data-swap-cancel data-cursor-start data-help="Nothing changes.">Keep ${spare.pokemon.name}</button>`,
     });
   }
 

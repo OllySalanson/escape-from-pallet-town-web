@@ -122,7 +122,7 @@ export class PartnerFigure {
     this.host = host;
     this.pokemon = who.pokemon;
     this.species = who.species;
-    this.name = who.pokemon.base.name.toUpperCase();
+    this.name = who.pokemon.name.toUpperCase();
     this.placeValue = place;
     this.greeting = options.greeting ?? null;
     this.appearMs = place.out && options.fadeIn !== false ? 0 : null;

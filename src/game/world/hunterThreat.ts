@@ -31,7 +31,8 @@ export const HUNTER_ARRIVAL_LEAD_PER_TIER_MS = 10_000;
 
 /** The part of a deployed Pokemon the hunter reads. `Pokemon` satisfies it. */
 export interface HunterThreatSubject extends HunterOpponent {
-  readonly base: { readonly name: string };
+  /** What the player calls it: its nickname, else its species. */
+  readonly name: string;
 }
 
 /**
@@ -100,7 +101,7 @@ export function hunterThreatFor(
     arrivesSoonerMs: tierOffset * HUNTER_ARRIVAL_LEAD_PER_TIER_MS,
     ...(strongest === undefined
       ? {}
-      : { matchedTo: { name: strongest.base.name, level: strongest.level } }),
+      : { matchedTo: { name: strongest.name, level: strongest.level } }),
     contractTiers: tierOffset,
   };
 }

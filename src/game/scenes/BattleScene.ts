@@ -46,6 +46,7 @@ import { DialogBox } from '../ui/DialogBox';
 import { doubleBattleBackdrop } from './battleBackdrop';
 import { iconTextureKey, itemIconName } from '../ui/icons';
 import { openMoveChooser } from '../ui/MoveChooserOverlay';
+import { openNamingScreen } from '../ui/NamingScreenOverlay';
 import { moveChoiceMessage } from '../ui/moveChooser';
 import { MoveTarget, type MoveBase } from '../pokemon/MoveBase';
 import { prizesLeftBehind } from '../world/loot';
@@ -128,6 +129,9 @@ import {
   ABOUT_TO_USE_DECLINE,
   ABOUT_TO_USE_OPTIONS,
   ABOUT_TO_USE_QUESTION,
+  NICKNAME_DECLINE,
+  NICKNAME_OPTIONS,
+  nicknameQuestionLines,
   aboutToUseLine,
   aboutToUseOptionLayout,
   aboutToUsePromptLayout,
@@ -192,6 +196,10 @@ type CommandMode =
   | 'party'
   | 'make-room'
   | 'about-to-use'
+  /** "Give a nickname to the captured X?", asked once a catch's lines are read. */
+  | 'nickname'
+  /** The naming screen is open over the battle and owns the keyboard. */
+  | 'naming'
   | 'evolving'
   | 'events'
   | 'finished';
@@ -209,6 +217,7 @@ type BattleAction =
   | { readonly type: 'use-item'; readonly partyIndex: number }
   | { readonly type: 'switch-pokemon'; readonly partyIndex: number }
   | { readonly type: 'answer-about-to-use'; readonly switching: boolean }
+  | { readonly type: 'answer-nickname'; readonly naming: boolean }
   | { readonly type: 'drop-for-room'; readonly choiceIndex: number };
 
 const COMMAND_Y = BATTLE_PANEL.y;
@@ -501,6 +510,8 @@ export class BattleScene extends Phaser.Scene {
   private aboutToUseOffered = new Set<number>();
   /** Set while the party list is answering the prompt rather than a main command. */
   private aboutToUseSwitching = false;
+  /** Whether this fight's catch has been asked about a nickname yet. It is asked once. */
+  private nicknameAsked = false;
   /**
    * The evolution playing now, if any: whose it is, and which run of the
    * sequence it is - a stopped one's timer still fires, and the count is how
@@ -518,7 +529,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.state) {
       return [];
     }
-    const side = (pokemon: Pokemon): string => `${pokemon.base.name} Lv${pokemon.level}`;
+    const side = (pokemon: Pokemon): string => `${pokemon.name} Lv${pokemon.level}`;
     return [
       { label: 'Fight', value: this.trainer ? `against ${this.trainer.name}` : 'wild' },
       { label: 'Yours', value: side(this.state.player.pokemon) },
@@ -613,6 +624,7 @@ export class BattleScene extends Phaser.Scene {
     this.aboutToUse = null;
     this.aboutToUseOffered = new Set();
     this.aboutToUseSwitching = false;
+    this.nicknameAsked = false;
     // An evolution a wipe or an exit overtook belongs to the fight it was in.
     this.evolving = null;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
@@ -645,7 +657,7 @@ export class BattleScene extends Phaser.Scene {
     recordAction(
       data.trainer
         ? `Fight with ${data.trainer.name}`
-        : `Wild ${this.state.enemy.pokemon.base.name} Lv${this.state.enemy.pokemon.level}`,
+        : `Wild ${this.state.enemy.pokemon.name} Lv${this.state.enemy.pokemon.level}`,
     );
     this.noteWhoFacesWhom();
     this.cameras.main.setBackgroundColor('#0b1220');
@@ -736,18 +748,18 @@ export class BattleScene extends Phaser.Scene {
     this.dialog.showMessages([
       ...(this.teachingBattle
         ? teachingBattleMessages(
-            this.state.player.pokemon.base.name,
-            this.state.enemy.pokemon.base.name,
+            this.state.player.pokemon.name,
+            this.state.enemy.pokemon.name,
           )
         : battleOpeningMessages(
             data.trainer?.name,
             slotsOf(this.state, 'player').flatMap((ref) => {
               const combatant = unitAt(this.state, ref);
-              return combatant ? [combatant.pokemon.base.name] : [];
+              return combatant ? [combatant.pokemon.name] : [];
             }),
             slotsOf(this.state, 'enemy').flatMap((ref) => {
               const combatant = unitAt(this.state, ref);
-              return combatant ? [combatant.pokemon.base.name] : [];
+              return combatant ? [combatant.pokemon.name] : [];
             }),
           )),
       // The weather the fight is already in is said once, on the way in, in the
@@ -789,6 +801,10 @@ export class BattleScene extends Phaser.Scene {
 
   public update(_time: number, delta: number): void {
     this.dialog.update(delta);
+    // The naming screen owns the keyboard; the fight waits on its answer.
+    if (this.mode === 'naming') {
+      return;
+    }
     if (this.mode === 'evolving') {
       // Only B is listened to: the evolution moves on by itself.
       if (this.keyPresses.justPressed(this.backKey)) {
@@ -1023,7 +1039,7 @@ export class BattleScene extends Phaser.Scene {
     const nameSize = layout.showsTyping ? CAPTION_FONT_SIZE : '14px';
     container.add(
       this.add
-        .text(x + 9, y + layout.nameY, combatant.pokemon.base.name.toUpperCase(), {
+        .text(x + 9, y + layout.nameY, combatant.pokemon.name.toUpperCase(), {
           fontFamily: BATTLE_FONT,
           fontSize: nameSize,
           color: '#202020',
@@ -1217,6 +1233,13 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.mode === 'about-to-use') {
       this.commandContainer.add(this.createAboutToUseBox());
+      return;
+    }
+
+    if (this.mode === 'nickname') {
+      this.commandContainer.add(
+        this.createQuestionBox(nicknameQuestionLines(this.state.enemy.pokemon.base.name), NICKNAME_OPTIONS),
+      );
       return;
     }
 
@@ -1414,7 +1437,7 @@ export class BattleScene extends Phaser.Scene {
       const text = this.add.text(
         layout.x,
         COMMAND_Y + layout.y,
-        formatTargetRow({ name: combatant.pokemon.base.name, level: combatant.pokemon.level }),
+        formatTargetRow({ name: combatant.pokemon.name, level: combatant.pokemon.level }),
         { fontFamily: BATTLE_FONT, fontSize: DIALOG_FONT_SIZE, color: WINDOW_INK },
       );
       text
@@ -1464,26 +1487,35 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createAboutToUseBox(): Phaser.GameObjects.Container {
+    return this.createQuestionBox(
+      [aboutToUseLine(this.trainer?.name ?? '', this.aboutToUse ?? ''), ABOUT_TO_USE_QUESTION],
+      ABOUT_TO_USE_OPTIONS,
+    );
+  }
+
+  /** Two lines of question over a row of answers, in the battle panel. */
+  private createQuestionBox(
+    lines: readonly string[],
+    options: readonly string[],
+  ): Phaser.GameObjects.Container {
     const container = this.add.container(0, 0);
     container.add(this.createPanelFrame());
-    [aboutToUseLine(this.trainer?.name ?? '', this.aboutToUse ?? ''), ABOUT_TO_USE_QUESTION].forEach(
-      (line, index) => {
-        const layout = aboutToUsePromptLayout(index);
-        container.add(
-          // The trainer's own words, in the ink the dialogue that shares this
-          // panel is written in: the party list's prompt is a hint about a list,
-          // and this is a question. 12px rather than the dialogue's 14, because
-          // the longest of these lines is a trainer's name, five words and a
-          // ten-letter Pokemon, and at 14 it would run off the panel.
-          this.add.text(layout.x, COMMAND_Y + layout.y, line, {
-            fontFamily: BATTLE_FONT,
-            fontSize: CAPTION_FONT_SIZE,
-            color: WINDOW_INK,
-          }),
-        );
-      },
-    );
-    this.commandTexts = ABOUT_TO_USE_OPTIONS.map((label, index) => {
+    lines.forEach((line, index) => {
+      const layout = aboutToUsePromptLayout(index);
+      container.add(
+        // The question in the ink the dialogue that shares this panel is
+        // written in: the party list's prompt is a hint about a list, and this
+        // is a question. 12px rather than the dialogue's 14, because the
+        // longest of these lines is a trainer's name, five words and a
+        // ten-letter Pokemon, and at 14 it would run off the panel.
+        this.add.text(layout.x, COMMAND_Y + layout.y, line, {
+          fontFamily: BATTLE_FONT,
+          fontSize: CAPTION_FONT_SIZE,
+          color: WINDOW_INK,
+        }),
+      );
+    });
+    this.commandTexts = options.map((label, index) => {
       const layout = aboutToUseOptionLayout(index);
       const text = this.add.text(layout.x, COMMAND_Y + layout.y, label, {
         fontFamily: BATTLE_FONT,
@@ -1800,14 +1832,14 @@ export class BattleScene extends Phaser.Scene {
     const aim = this.aimableTargets();
     const against = unitAt(this.state, aim[Math.min(this.choosingSlot, aim.length - 1)] ?? aim[0]);
     const guidance = describeMoveGuidance(move, getCombatantTypes(chooser), {
-      name: against?.pokemon.base.name ?? '',
+      name: against?.pokemon.name ?? '',
       types: against ? getCombatantTypes(against) : [],
     });
     this.moveGuidanceTexts[0]
       ?.setText(
         this.fitCaption(
           [guidance.summary, guidance.compactSummary].map((summary) =>
-            moveGuidanceFor(summary, { name: chooser.pokemon.base.name }, this.state.unitCount),
+            moveGuidanceFor(summary, { name: chooser.pokemon.name }, this.state.unitCount),
           ),
         ),
       )
@@ -1875,6 +1907,11 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    if (this.mode === 'nickname') {
+      this.dispatchAction({ type: 'answer-nickname', naming: this.selectedCommand !== NICKNAME_DECLINE });
+      return;
+    }
+
     if (this.mode === 'party') {
       // The party screen is the target picker as well as the switch menu, so
       // which one it is answering is the item waiting to be handed over.
@@ -1936,6 +1973,9 @@ export class BattleScene extends Phaser.Scene {
       case 'answer-about-to-use':
         this.answerAboutToUse(action.switching);
         return;
+      case 'answer-nickname':
+        this.answerNickname(action.naming);
+        return;
       case 'drop-for-room':
         this.dropForRoom(action.choiceIndex);
     }
@@ -1963,6 +2003,12 @@ export class BattleScene extends Phaser.Scene {
   private goBack(): void {
     if (this.mode === 'evolving') {
       this.stopEvolving();
+      return;
+    }
+    // B on a YES/NO box is NO, as it is in FireRed.
+    if (this.mode === 'nickname') {
+      audioManager.play('cancel');
+      this.answerNickname(false);
       return;
     }
     // Backing out of the list the question opened returns to the question, not
@@ -2101,7 +2147,7 @@ export class BattleScene extends Phaser.Scene {
           {
             user: attempt.ability.holder,
             name: (attempt.ability.holder === 'player' ? this.state.player : this.state.enemy)
-              .pokemon.base.name,
+              .pokemon.name,
           },
           attempt.ability.label,
           attempt.escaped,
@@ -2131,7 +2177,7 @@ export class BattleScene extends Phaser.Scene {
     this.prepareForcedReplacement();
     this.showCombatEvents(enemyResult.events, [
       {
-        message: wildEscapeFailureMessage(this.state.enemy.pokemon.base.name),
+        message: wildEscapeFailureMessage(this.state.enemy.pokemon.name),
         sound: 'denied',
       },
     ]);
@@ -2205,7 +2251,7 @@ export class BattleScene extends Phaser.Scene {
     if (!chooser || lockedMove(this.state, 'player', this.choosingSlot) !== null || !mustStruggle(chooser)) {
       return false;
     }
-    this.struggleLines.push(`${chooser.pokemon.base.name.toUpperCase()} has no moves left!`);
+    this.struggleLines.push(`${chooser.pokemon.name.toUpperCase()} has no moves left!`);
     this.recordChoice({ slot: this.choosingSlot, moveIndex: STRUGGLE_MOVE_INDEX });
     return true;
   }
@@ -2484,11 +2530,11 @@ export class BattleScene extends Phaser.Scene {
     // and "already out" is the wrong thing to say about it. The line is
     // FireRed's own (`gText_PkmnHasNoEnergy`).
     if (pokemon.isFainted) {
-      this.showPartyMessage(`${pokemon.base.name.toUpperCase()} has no energy left to battle!`);
+      this.showPartyMessage(`${pokemon.name.toUpperCase()} has no energy left to battle!`);
       return;
     }
     if (playerCombatants(this.state).some((combatant) => combatant.pokemon === pokemon)) {
-      this.showPartyMessage(`${pokemon.base.name.toUpperCase()} is already out!`);
+      this.showPartyMessage(`${pokemon.name.toUpperCase()} is already out!`);
       return;
     }
 
@@ -2500,7 +2546,7 @@ export class BattleScene extends Phaser.Scene {
     // A forced replacement goes into the slot that emptied; a switch the player
     // chose is the lead's, because the main commands are the lead's.
     const into = slotRef('player', this.forcedReplacement ? this.replacementSlot : 0);
-    const outgoingName = unitAt(this.state, into)?.pokemon.base.name.toUpperCase() ?? '';
+    const outgoingName = unitAt(this.state, into)?.pokemon.name.toUpperCase() ?? '';
     const wasForcedReplacement = this.forcedReplacement;
     this.persistActivePokemonHp();
     const switchIn = replacePlayerPokemon(this.state, pokemon, into.slot);
@@ -2523,7 +2569,7 @@ export class BattleScene extends Phaser.Scene {
       this.commandContainer.setVisible(false);
       this.showCombatEvents(switchIn.events, [
         {
-          message: `Go, ${pokemon.base.name.toUpperCase()}!`,
+          message: `Go, ${pokemon.name.toUpperCase()}!`,
           sound: 'sendOut',
           cries: [{ name: 'cry', species: pokemon.base.dexId }],
         },
@@ -2545,7 +2591,7 @@ export class BattleScene extends Phaser.Scene {
       [
         ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
         {
-          message: `Go, ${pokemon.base.name.toUpperCase()}!`,
+          message: `Go, ${pokemon.name.toUpperCase()}!`,
           sound: 'sendOut',
           cries: [{ name: 'cry', species: pokemon.base.dexId }],
         },
@@ -2616,7 +2662,7 @@ export class BattleScene extends Phaser.Scene {
    * not been sent out yet.
    */
   private completeAboutToUseSwitch(pokemon: PokemonInstance): void {
-    const outgoingName = this.state.player.pokemon.base.name.toUpperCase();
+    const outgoingName = this.state.player.pokemon.name.toUpperCase();
     this.aboutToUseSwitching = false;
     this.aboutToUse = null;
     this.persistActivePokemonHp();
@@ -2631,7 +2677,7 @@ export class BattleScene extends Phaser.Scene {
     this.pendingCombatMessages.unshift(
       stagedNote(`Come back, ${outgoingName}!`),
       stagedNote({
-        message: `Go, ${pokemon.base.name.toUpperCase()}!`,
+        message: `Go, ${pokemon.name.toUpperCase()}!`,
         sound: 'sendOut',
         cries: [{ name: 'cry', species: pokemon.base.dexId }],
       }),
@@ -2640,6 +2686,41 @@ export class BattleScene extends Phaser.Scene {
       ...switchIn.events.map((event) => stagedNote(eventToMessage(event, this.foeWord()))),
     );
     this.resumeCombatMessages();
+  }
+
+  /**
+   * "Give a nickname to the captured X?" - FireRed asks it once the catch has
+   * been read, and so does this, once a fight.
+   */
+  private askForNickname(): void {
+    this.nicknameAsked = true;
+    this.mode = 'nickname';
+    this.selectedCommand = NICKNAME_DECLINE;
+    this.showCommands();
+  }
+
+  /**
+   * YES opens the naming screen and NO leaves the catch its species name; either
+   * way the fight is over once it is answered. The name is given to the very
+   * Pokemon the catch put in the party or the raid's stash, so it is banked
+   * with it and saved with it (`SavedPokemon.nickname`).
+   */
+  private answerNickname(naming: boolean): void {
+    this.commandContainer.setVisible(false);
+    const caught = this.state.enemy.pokemon;
+    const finish = (): void => {
+      this.mode = 'finished';
+      this.returnToWorld();
+    };
+    if (!naming) {
+      finish();
+      return;
+    }
+    this.mode = 'naming';
+    openNamingScreen(this, { pokemon: caught }, (typed) => {
+      caught.giveNickname(typed);
+      finish();
+    });
   }
 
   /** Puts the panel back on the queue the question interrupted. */
@@ -2921,7 +3002,7 @@ export class BattleScene extends Phaser.Scene {
     // The panel is holding a question about the Pokemon that is about to land.
     // Nothing advances until it is answered, exactly as nothing advances while
     // the move chooser is open.
-    if (this.mode === 'about-to-use') {
+    if (this.mode === 'about-to-use' || this.mode === 'nickname' || this.mode === 'naming') {
       return;
     }
 
@@ -2956,6 +3037,10 @@ export class BattleScene extends Phaser.Scene {
     }
 
     if (this.state.outcome === 'caught') {
+      if (!this.nicknameAsked) {
+        this.askForNickname();
+        return;
+      }
       this.mode = 'finished';
       this.returnToWorld();
       return;
@@ -3031,7 +3116,7 @@ export class BattleScene extends Phaser.Scene {
         }
         this.pendingCombatMessages.unshift({
           message: moveChoiceMessage(
-            offer.pokemon.base.name,
+            offer.pokemon.name,
             offer.move,
             result?.forgotten ?? null,
           ),
@@ -3118,7 +3203,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     audioManager.play('cancel');
-    this.pendingCombatMessages.unshift({ message: stoppedEvolvingLine(pokemon.base.name) });
+    this.pendingCombatMessages.unshift({ message: stoppedEvolvingLine(pokemon.name) });
     this.showNextCombatMessage();
   }
 
@@ -3144,10 +3229,10 @@ export class BattleScene extends Phaser.Scene {
       this.applyMidBattleLevelUp(slot, maxHpBefore);
       this.refreshPlayerCombatant(slot);
     }
-    const name = pokemon.base.name.toUpperCase();
+    const name = pokemon.name.toUpperCase();
     this.pendingCombatMessages.unshift(
       {
-        message: evolvedLine(result.evolution.from.name, result.evolution.to.name),
+        message: evolvedLine(pokemon.nickname ?? result.evolution.from.name, result.evolution.to.name),
         sound: 'evolved',
       },
       ...result.learnedMoves.map((move) => ({
@@ -3189,7 +3274,7 @@ export class BattleScene extends Phaser.Scene {
       if (standing && result.levelsGained.length > 0) {
         levelled.push(standing);
       }
-      const grewAs = pokemon.base.name;
+      const grewAs = pokemon.name;
       messages.push({
         message: `${grewAs.toUpperCase()} gained ${result.awarded} XP!`,
         sound: 'xpGain',
@@ -3202,7 +3287,7 @@ export class BattleScene extends Phaser.Scene {
       );
       messages.push(
         ...result.learnedMoves.map((move) => ({
-          message: `${pokemon.base.name.toUpperCase()} learned ${move.name.toUpperCase()}!`,
+          message: `${pokemon.name.toUpperCase()} learned ${move.name.toUpperCase()}!`,
           sound: 'moveLearned' as const,
         })),
       );
@@ -3210,7 +3295,7 @@ export class BattleScene extends Phaser.Scene {
       // the chooser opens when the line has been read (`resolveMoveOffer`).
       messages.push(
         ...result.movesToChoose.map((move) => ({
-          message: `${pokemon.base.name.toUpperCase()} wants to learn ${move.name.toUpperCase()}, but already knows four moves.`,
+          message: `${pokemon.name.toUpperCase()} wants to learn ${move.name.toUpperCase()}, but already knows four moves.`,
           offerMove: { pokemon, move },
         })),
       );

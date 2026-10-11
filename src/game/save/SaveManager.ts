@@ -106,6 +106,8 @@ export interface SavedPokemon {
    * save written before shinies existed. No version bump.
    */
   readonly shiny?: boolean;
+  /** The name the player gave it when it was caught. Absent on older saves and on a Pokemon never named. */
+  readonly nickname?: string | null;
 }
 
 export interface SavedStashedPokemon {
@@ -1622,6 +1624,7 @@ function serializePokemon(pokemon: Pokemon): SavedPokemon {
     primaryStatus: pokemon.primaryStatus,
     heldItemId: pokemon.heldItemId,
     ...(pokemon.shiny ? { shiny: true } : {}),
+    ...(pokemon.nickname === null ? {} : { nickname: pokemon.nickname }),
   };
 }
 
@@ -1646,6 +1649,9 @@ function deserializePokemon(value: unknown, saveVersion = SAVE_VERSION): Pokemon
     savedStatus !== null && typeRefusesStatus(savedStatus, pokemonTypes(pokemon)) ? null : savedStatus;
   pokemon.giveHeldItem(typeof value.heldItemId === 'string' ? value.heldItemId : null);
   pokemon.shiny = value.shiny === true;
+  // Read through the same rule a name is typed through, so a hand-edited save
+  // cannot carry markup or an eleventh character onto a screen.
+  pokemon.giveNickname(typeof value.nickname === 'string' ? value.nickname : null);
 
   if (Array.isArray(value.moves)) {
     // Learnsets and machines across the whole line, through the same lookup

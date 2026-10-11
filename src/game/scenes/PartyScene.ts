@@ -147,7 +147,7 @@ export class PartyScene extends Phaser.Scene {
   private memberRow(pokemon: Pokemon, index: number): string {
     const moving = this.movingIndex === index;
     const held = getHeldItem(pokemon.heldItemId);
-    const name = escapeAttribute(pokemon.base.name);
+    const name = escapeAttribute(pokemon.name);
     const help =
       this.movingIndex === undefined
         ? this.canReorder()
@@ -193,7 +193,7 @@ export class PartyScene extends Phaser.Scene {
       .map(
         (item: ItemDefinition) =>
           `<button class="px-window px-chip" data-gear-give="${item.id}" data-gear-member="${index}" ${shows} data-help="${escapeAttribute(
-            `${item.displayName}: ${item.description} Lost with ${pokemon.base.name} on a wipe.`,
+            `${item.displayName}: ${item.description} Lost with ${pokemon.name} on a wipe.`,
           )}">Give ${item.displayName} ×${this.bag.count(item.id)}</button>`,
       )
       .join('');
@@ -231,7 +231,7 @@ export class PartyScene extends Phaser.Scene {
     // the list does not already show, and it is decided by a move made three
     // rows away from the row that changed.
     const leads = this.party.pokemon[0];
-    this.status = leads && leads !== led ? `${leads.base.name} is sent out first now.` : undefined;
+    this.status = leads && leads !== led ? `${leads.name} is sent out first now.` : undefined;
     this.render([`[data-member="${index}"]`]);
   }
 
@@ -283,7 +283,7 @@ export class PartyScene extends Phaser.Scene {
   /** The pack had no room for a piece coming off a Pokemon, so it stays on. */
   private refuseForRoom(pokemon: Pokemon, itemId: string): void {
     audioManager.play('denied');
-    this.status = `No room in the pack for ${getHeldItem(itemId)?.displayName ?? itemId}. ${pokemon.base.name} keeps holding it - make room in your PACK first.`;
+    this.status = `No room in the pack for ${getHeldItem(itemId)?.displayName ?? itemId}. ${pokemon.name} keeps holding it - make room in your PACK first.`;
     this.render();
   }
 

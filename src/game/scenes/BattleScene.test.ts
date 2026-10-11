@@ -16,6 +16,19 @@ vi.mock('phaser', () => ({
   },
 }));
 
+/**
+ * The naming screen is a DOM overlay, and this suite has no DOM: the stand-in
+ * records who it was opened for and hands the test the answer to give.
+ */
+const naming = vi.hoisted(() => ({
+  opened: [] as { pokemon: unknown; answer: (typed: string | null) => void }[],
+}));
+vi.mock('../ui/NamingScreenOverlay', () => ({
+  openNamingScreen: (_scene: unknown, view: { pokemon: unknown }, answer: (typed: string | null) => void) => {
+    naming.opened.push({ pokemon: view.pokemon, answer });
+  },
+}));
+
 import { Bag } from '../items';
 import {
   CHARMANDER,
@@ -369,6 +382,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     aboutToUse: null,
     aboutToUseOffered: new Set<number>(),
     aboutToUseSwitching: false,
+    nicknameAsked: false,
     // The evolution playing, and how many have been begun - class fields too.
     evolving: null,
     evolutionRuns: 0,
@@ -2050,6 +2064,106 @@ describe("a Pokemon's own cry", () => {
       ['faintCry', PIDGEY.dexId],
       ['cry', CHARMANDER.dexId],
     ]);
+  });
+
+  describe('a nickname for the catch', () => {
+    type Catching = {
+      mode: string;
+      selectedCommand: number;
+      onMessagesComplete(): void;
+      throwBall(index: number): void;
+      confirm(): void;
+      goBack(): void;
+      party: PokemonParty;
+    };
+
+    /** A Pidgey on its last point of HP, caught by the first ball, every line read. */
+    const caughtPidgey = () => {
+      naming.opened.length = 0;
+      const wild = new Pokemon(PIDGEY, 3);
+      wild.takeDamage(wild.maxHp - 1);
+      const fadeOut = vi.fn();
+      const harness = createBattleSceneHarness({ wild });
+      const scene = harness.scene as unknown as Catching & { cameras: unknown };
+      scene.cameras = { main: { flash: vi.fn(), shake: vi.fn(), fadeOut, once: vi.fn() } };
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+      scene.onMessagesComplete();
+      scene.throwBall(0);
+      harness.dialog.isCurrentMessageComplete = true;
+      for (let step = 0; step < 20 && scene.mode !== 'nickname'; step += 1) {
+        scene.onMessagesComplete();
+      }
+      return { ...harness, scene, wild, fadeOut };
+    };
+
+    it("asks FireRed's question once the catch is read, with the cursor on NO", () => {
+      const { scene, renderedTexts, dialog, fadeOut } = caughtPidgey();
+
+      expect(dialog.shownMessages).toContain('Gotcha! PIDGEY was caught!');
+      expect(scene.mode).toBe('nickname');
+      const panel = read(renderedTexts).map(({ text }) => text);
+      expect(panel).toContain('Give a nickname to the');
+      expect(panel).toContain('captured PIDGEY?');
+      expect(panel).toContain('  YES');
+      expect(panel).toContain('▶ NO');
+      // Nothing moves on until it is answered.
+      scene.onMessagesComplete();
+      expect(scene.mode).toBe('nickname');
+      expect(fadeOut).not.toHaveBeenCalled();
+    });
+
+    it('NO leaves the catch its species name and ends the fight', () => {
+      const { scene, wild, fadeOut } = caughtPidgey();
+
+      scene.confirm();
+
+      expect(naming.opened).toEqual([]);
+      expect(wild.nickname).toBeNull();
+      expect(wild.name).toBe('Pidgey');
+      expect(fadeOut).toHaveBeenCalledTimes(1);
+    });
+
+    it('B is NO, as it is on any YES/NO box', () => {
+      const { scene, fadeOut } = caughtPidgey();
+
+      scene.goBack();
+
+      expect(naming.opened).toEqual([]);
+      expect(fadeOut).toHaveBeenCalledTimes(1);
+    });
+
+    it('YES names the very Pokemon that joined the party, and the fight ends once it is named', () => {
+      const { scene, wild, fadeOut } = caughtPidgey();
+
+      scene.selectedCommand = 0;
+      scene.confirm();
+
+      expect(scene.mode).toBe('naming');
+      expect(naming.opened).toHaveLength(1);
+      expect(naming.opened[0].pokemon).toBe(wild);
+      // The fight waits on the screen: no key a Phaser scene still hears moves it.
+      scene.onMessagesComplete();
+      expect(fadeOut).not.toHaveBeenCalled();
+
+      naming.opened[0].answer('  Sparky  ');
+
+      expect(wild.name).toBe('Sparky');
+      expect(scene.party.pokemon).toContain(wild);
+      expect(scene.party.pokemon.find((member) => member === wild)?.name).toBe('Sparky');
+      expect(fadeOut).toHaveBeenCalledTimes(1);
+    });
+
+    it('a name left blank keeps the species name', () => {
+      const { scene, wild, fadeOut } = caughtPidgey();
+
+      scene.selectedCommand = 0;
+      scene.confirm();
+      naming.opened[0].answer('   ');
+
+      expect(wild.nickname).toBeNull();
+      expect(wild.name).toBe('Pidgey');
+      expect(fadeOut).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('cries the Pokemon you caught, once the catch has held', () => {

@@ -493,7 +493,7 @@ export function checkPayment(
     if (candidate.refusal !== undefined) {
       return refuse(
         'pokemon-not-spendable',
-        `${candidate.stored.pokemon.base.name} cannot be spent. ${candidate.refusal}.`,
+        `${candidate.stored.pokemon.name} cannot be spent. ${candidate.refusal}.`,
       );
     }
     pokemon.push(candidate.stored);

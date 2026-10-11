@@ -195,7 +195,7 @@ export function anyoneFitToRaid(stash: Stash | undefined): boolean | undefined {
 export function teamCondition(stash: Stash): string | null {
   return teamConditionLine(
     stash.listPokemon().map((stored) => ({
-      name: stored.pokemon.base.name,
+      name: stored.pokemon.name,
       isFainted: stored.pokemon.isFainted,
       needsTreatment: needsRecovery(stored.pokemon),
     })),
