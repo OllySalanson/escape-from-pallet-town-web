@@ -174,6 +174,8 @@ import {
 } from '../ui/shopDetail';
 import { starterCards } from '../ui/starterPicker';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP, neighbourCountIndex } from '../ui/countSelector';
+import { focusDirectionForKey } from '../ui/spatialFocus';
+import { FIRST_WORDS, firstWordsFor, hasHeard, type FirstWordsId } from '../hub/firstWords';
 
 /**
  * What the help bar says while the cursor is on a block of a container.
@@ -310,6 +312,12 @@ export class HubScene extends Phaser.Scene {
   /** The Pokemon picked up to be put in another box, by stash id. */
   private boxMoving: string | undefined;
   private status = '';
+  /**
+   * The first words being said over this screen, if any (`hub/firstWords.ts`).
+   * They are recorded as heard the moment they appear, so this only keeps them
+   * up until they are read or the screen changes.
+   */
+  private speaking: FirstWordsId | undefined;
   /** The one pending removal of the status line; see `setStatus()`. */
   private statusTimer: Phaser.Time.TimerEvent | undefined;
 
@@ -394,6 +402,7 @@ export class HubScene extends Phaser.Scene {
     this.boxEditing = undefined;
     this.boxMoving = undefined;
     this.status = '';
+    this.speaking = undefined;
     // The clock that owned it died with the last hub, so only the pointer is left.
     this.statusTimer = undefined;
   }
@@ -1153,6 +1162,17 @@ export class HubScene extends Phaser.Scene {
   }
 
   private handleKey(event: KeyboardEvent): void {
+    // Words being said hold the screen, as a text box does: ESC reads on as
+    // ENTER does, and the cursor has nowhere else to go until they are read.
+    if (this.speaking) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.doneListening();
+      } else if (focusDirectionForKey(event.key) || event.key === 'Tab') {
+        event.preventDefault();
+      }
+      return;
+    }
     // A piece in the player's hand owns the arrow keys, R, ENTER and ESC, so it
     // is asked before the cursor is: carrying something and pressing Left has
     // exactly one meaning, and it is not "move to the pane on the left".
@@ -1298,6 +1318,7 @@ export class HubScene extends Phaser.Scene {
 
   private render(): void {
     const root = this.overlay.root;
+    this.listenForFirstWords();
     root.innerHTML = pixelScreen({
       // Said once, on the screen the player arrives at. Every other view is
       // reached from it and carries its own way back, so repeating the town on
@@ -1337,7 +1358,13 @@ export class HubScene extends Phaser.Scene {
       body: this.content(),
       hints: this.hints,
       status: this.status || undefined,
+      over: this.firstWordsBox(),
     });
+    // While somebody is speaking the screen under the words is shown but not
+    // worked: the one control is the one that says they have been read.
+    if (this.speaking) {
+      root.querySelector('.px-body')?.setAttribute('inert', '');
+    }
     const on = (selector: string, handler: (button: HTMLButtonElement, event: MouseEvent) => void): void => {
       root.querySelectorAll<HTMLButtonElement>(selector).forEach((button) => {
         button.onclick = (event) => handler(button, event);
@@ -1359,6 +1386,7 @@ export class HubScene extends Phaser.Scene {
       this.render();
     });
     on('[data-back]', () => this.goBack());
+    on('[data-speech-done]', () => this.doneListening());
     on('[data-view]', (button) => rerender(() => this.setView(button.dataset.view as HubView)));
     on('[data-starter]', (button) =>
       rerender(() => {
@@ -1460,8 +1488,66 @@ export class HubScene extends Phaser.Scene {
     );
     on('[data-advance]', () => this.answer(this.flow.advance(), 'confirm'));
     on('[data-start]', () => this.startRun());
+    if (this.speaking) {
+      this.overlay.focus('[data-speech-done]');
+      return;
+    }
     // The cursor starts on what the screen is for, never on the way out of it.
     this.overlay.refocus('.px-field', '[data-cursor-start]', '.px-body button:not([disabled])', 'button');
+  }
+
+  /**
+   * Whether this screen has first words this save has not heard, and if so
+   * starts saying them - recording them as heard at once, so they are said
+   * once per save and never again, read or not (`hub/firstWords.ts`).
+   */
+  private listenForFirstWords(): void {
+    const here = firstWordsFor(this.view, this.flow.step);
+    if (here === this.speaking) {
+      return;
+    }
+    this.speaking = undefined;
+    const progress = this.savedGame.raidProgress;
+    // Another tab has written since this screen read the save; the next thing
+    // done here catches up with it (`movedOnElsewhere`), and says nothing new.
+    if (!here || hasHeard(progress.firstWordsHeard, here) || this.saveManager.stamp() !== this.saveStamp) {
+      return;
+    }
+    this.saveManager.hearFirstWords(here);
+    // The hub keeps its own copy of the game and writes it whole, so the copy
+    // learns what was just recorded or the next write would forget it.
+    this.savedGame = {
+      ...this.savedGame,
+      raidProgress: { ...progress, firstWordsHeard: [...(progress.firstWordsHeard ?? []), here] },
+    };
+    this.saveStamp = this.saveManager.stamp();
+    this.speaking = here;
+  }
+
+  private doneListening(): void {
+    if (!this.speaking) {
+      return;
+    }
+    // Already recorded as heard, so the re-render does not start them again.
+    this.speaking = undefined;
+    audioManager.play('select');
+    this.render();
+  }
+
+  /** The words being said, as the box laid over the foot of the screen. */
+  private firstWordsBox(): string | undefined {
+    if (!this.speaking) {
+      return undefined;
+    }
+    const words = FIRST_WORDS[this.speaking];
+    // The person, then what they say, then the one way on: a text box with a
+    // face beside it, as the room's own dialogue box would be.
+    return pixelWindow(
+      `<div class="px-lead">${pixelFigure(words.speaker, words.name)}<div class="px-speech-words"><strong>${words.name}</strong>${words.lines
+        .map((line) => `<p class="px-wrap px-speech-line">${line}</p>`)
+        .join('')}</div><button class="px-window px-button is-primary" data-speech-done data-help="Read it? ENTER, and the screen is yours.">Got it</button></div>`,
+      { className: 'px-speech', tag: 'div' },
+    );
   }
 
   /**

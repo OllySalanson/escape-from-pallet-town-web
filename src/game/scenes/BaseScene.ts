@@ -34,6 +34,7 @@ import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
+import { RAID_KEY_LETTERS, yardKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
 import { placeCaptions, placeDialog, type Rect } from '../ui/labelPlacement';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
@@ -495,11 +496,11 @@ export class BaseScene extends Phaser.Scene {
   private updateWalking(deltaMs: number): void {
     const stepCarryMs = this.stepCarryMs;
     this.stepCarryMs = null;
-    this.lookMs = advanceLookMs(
-      this.lookMs,
-      this.keyPresses.justPressed(this.controls.look),
-      deltaMs,
-    );
+    const looked = this.keyPresses.justPressed(this.controls.look);
+    if (looked) {
+      this.learnKey('look');
+    }
+    this.lookMs = advanceLookMs(this.lookMs, looked, deltaMs);
     this.containWorldLabels();
     this.dialogBox.update(deltaMs);
 
@@ -1061,7 +1062,10 @@ export class BaseScene extends Phaser.Scene {
     // turning to face it is the only way anybody would find out.
     const partner = this.partner && this.partnerAt(facing) ? `[SPACE] ${this.partner.name}` : undefined;
     if (!room) {
-      return partner ?? '';
+      // Nothing else to say in the yard: the keys this save has not used yet
+      // (`input/keyBindings.ts`). A newcomer arrives here first, and the first
+      // control hint used to be inside Oak's Lab (playtest 43).
+      return partner ?? yardKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? []));
     }
     const keeper = room.keeper ? `[SPACE] ${room.keeper.name}` : '';
     if (this.onMat(room)) {
@@ -1098,6 +1102,23 @@ export class BaseScene extends Phaser.Scene {
   private oddityToStartAt(facing: GridPosition, unit: number): number | undefined {
     const placed: readonly PlacedOddity[] = this.place.room?.cabinet?.layout.placed ?? [];
     return firstOddityAt(placed, facing, unit, TILE_SIZE);
+  }
+
+  /**
+   * A key used for the first time on this save, so the yard stops naming it.
+   * The scene's copy of the game learns it too: every door and room hands that
+   * copy to the next scene.
+   */
+  private learnKey(key: LearnableKeyId): void {
+    const progress = this.savedGame.raidProgress;
+    if (progress.keysLearned?.includes(key)) {
+      return;
+    }
+    this.saveManager.learnKeys([key]);
+    this.savedGame = {
+      ...this.savedGame,
+      raidProgress: { ...progress, keysLearned: [...(progress.keysLearned ?? []), key] },
+    };
   }
 
   private showHint(text: string): void {
@@ -1265,7 +1286,7 @@ export class BaseScene extends Phaser.Scene {
       a: wasd.A,
       s: wasd.S,
       d: wasd.D,
-      look: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L),
+      look: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.look]),
       run: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT, false),
       interact: [
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
@@ -1874,6 +1895,8 @@ export class BaseScene extends Phaser.Scene {
 
   /** Through a door: the same scene, started again inside the room behind it. */
   private enterRoom(door: BaseDoor): void {
+    // Through a door is the yard's lesson done: the room's own hint takes over.
+    this.learnKey('walk');
     this.goTo({ savedGame: this.savedGame, room: door.id }, 'interiorEnter');
   }
 

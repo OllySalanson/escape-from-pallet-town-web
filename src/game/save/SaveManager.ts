@@ -67,6 +67,8 @@ import { getWorldMap, isWorldMapId, type WorldMapId } from '../worldMap';
 import type { GrowthRate } from '../pokemon/generated/speciesCatalogue';
 import { mergeSurvey, type SurveyRecord } from '../world/survey';
 import { activeSaveSlot, PLAYTEST_SAVE_KEY, TRY_IT_SAVE_KEY, type SaveSlot } from '../dev/playtestMode';
+import { isFirstWordsId, type FirstWordsId } from '../hub/firstWords';
+import { isLearnableKey, type LearnableKeyId } from '../input/keyBindings';
 
 export const SAVE_KEY = 'escape-from-pallet-town.save.v1';
 const SAVE_VERSION = 7;
@@ -180,6 +182,21 @@ export interface RaidProgress {
    * one more hearing at worst.
    */
   readonly battleLessonGiven?: boolean;
+  /**
+   * The first words already said (`../hub/firstWords`): Professor Oak and Nurse
+   * Joy speak a few lines the first time each of their screens opens, once per
+   * save. Recorded at the moment they are shown, as the battle lesson is.
+   * Absent on every save written before them, which reads as nothing heard yet.
+   */
+  readonly firstWordsHeard?: readonly string[];
+  /**
+   * The keys this save has used at least once (`../input/keyBindings`). The yard
+   * and the raid chip name a key until it has been pressed, then stop. Absent
+   * on older saves, which reads as none learned - a key named once more to a
+   * player who knows it costs a line of HUD, and a key never named cost a
+   * newcomer the raid (playtest 43).
+   */
+  readonly keysLearned?: readonly string[];
   /**
    * How many standing contracts have been banked. It is the only thing the save
    * keeps about the standing board: which contracts are on offer, how much
@@ -719,6 +736,43 @@ export class SaveManager {
     }
     this.save({ ...game, raidProgress: { ...game.raidProgress, battleLessonGiven: true } });
     return true;
+  }
+
+  /**
+   * Whether these first words still have to be said to this save, recording
+   * that they now have been (`../hub/firstWords`). Asked as the screen opens, so
+   * leaving it unread does not buy a second hearing. With no save to remember
+   * it in, the words are said.
+   */
+  public hearFirstWords(id: FirstWordsId): boolean {
+    const game = this.load();
+    if (!game) {
+      return true;
+    }
+    const heard = game.raidProgress.firstWordsHeard ?? [];
+    if (heard.includes(id)) {
+      return false;
+    }
+    this.save({ ...game, raidProgress: { ...game.raidProgress, firstWordsHeard: [...heard, id] } });
+    return true;
+  }
+
+  /**
+   * Records keys as used, so the HUDs stop naming them (`../input/keyBindings`).
+   * Returns what is newly learned; a key already known writes nothing.
+   */
+  public learnKeys(keys: readonly LearnableKeyId[]): readonly LearnableKeyId[] {
+    const game = this.load();
+    if (!game) {
+      return [];
+    }
+    const already = game.raidProgress.keysLearned ?? [];
+    const fresh = [...new Set(keys)].filter((key) => !already.includes(key));
+    if (fresh.length === 0) {
+      return [];
+    }
+    const raidProgress: RaidProgress = { ...game.raidProgress, keysLearned: [...already, ...fresh] };
+    return this.save({ ...game, raidProgress }) ? fresh : [];
   }
 
   /** The first contract's banking path, named for the one raid that uses it. */
@@ -1355,6 +1409,12 @@ function deserializeRaidProgress(value: unknown): RaidProgress {
     // Saves written before gifts existed have received none.
     giftsReceived: uniqueStrings(value.giftsReceived),
     ...(value.battleLessonGiven === true ? { battleLessonGiven: true } : {}),
+    ...(Array.isArray(value.firstWordsHeard)
+      ? { firstWordsHeard: uniqueStrings(value.firstWordsHeard).filter(isFirstWordsId) }
+      : {}),
+    ...(Array.isArray(value.keysLearned)
+      ? { keysLearned: uniqueStrings(value.keysLearned).filter(isLearnableKey) }
+      : {}),
     // A save written before the standing board has banked none of it.
     standingContractsBanked:
       typeof value.standingContractsBanked === 'number' &&

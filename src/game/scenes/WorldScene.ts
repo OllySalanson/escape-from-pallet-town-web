@@ -11,6 +11,7 @@ import {
   type GridPosition,
 } from '../movement/gridMovement';
 import { KeyPresses } from '../input/KeyPresses';
+import { RAID_KEY_LETTERS, type LearnableKeyId } from '../input/keyBindings';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
 import { hunterComes, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
@@ -658,6 +659,8 @@ export class WorldScene extends Phaser.Scene {
    * reason - a door is a door.
    */
   private openedGates: readonly string[] = [];
+  /** The keys this save has used, so the chip names only the rest. See `learnKey`. */
+  private keysLearned = new Set<string>();
   /** Insertions the lobby already offers, so the map only announces a new one. */
   private readonly knownInsertionIds = new Set<string>();
   /** The caption over each drop-in point, so reaching one can change what it says. */
@@ -687,6 +690,19 @@ export class WorldScene extends Phaser.Scene {
    * step - so the next raid builds a world that renders and never responds. Anything
    * scoped to a single raid belongs in this list, not in a guard at the point it is read.
    */
+  /**
+   * A key used for the first time on this save: the chip stops naming it
+   * (`input/keyBindings.ts`). Remembered at once for the rest of the raid, and
+   * written so the next raid and the next rebuild know it too.
+   */
+  private learnKey(key: LearnableKeyId): void {
+    if (this.keysLearned.has(key)) {
+      return;
+    }
+    this.keysLearned.add(key);
+    new SaveManager().learnKeys([key]);
+  }
+
   private resetStateFromPreviousRaid(): void {
     this.lookMs = 0;
     this.canopyInViewCache = null;
@@ -854,6 +870,8 @@ export class WorldScene extends Phaser.Scene {
     // in a raid, off the save outside one. Nothing opens one on this path -
     // that happens on the step that works it - so it is only restored here.
     this.openedGates = this.runSession?.plan?.openedGates ?? stored?.openedGates ?? [];
+    // The keys the chip has stopped naming, read once a rebuild like the rest.
+    this.keysLearned = new Set(stored?.keysLearned ?? []);
     this.trainerEncounters = this.runSession
       ? (this.runSession.plan?.trainers ??
         withoutDefeatedBosses(createRunTrainerEncounters(), deployedWith))
@@ -956,9 +974,14 @@ export class WorldScene extends Phaser.Scene {
     // Before the captions are seated, and before any of the early returns
     // below: the look is a way of reading the map, so it answers while a
     // dialogue box is open exactly as it does while walking.
-    this.lookMs = advanceLookMs(this.lookMs, this.keyPresses.justPressed(this.controls.look), deltaMs);
+    const looked = this.keyPresses.justPressed(this.controls.look);
+    if (looked) {
+      this.learnKey('look');
+    }
+    this.lookMs = advanceLookMs(this.lookMs, looked, deltaMs);
     this.containWorldLabels();
     if (this.keyPresses.justPressed(this.controls.objectives)) {
+      this.learnKey('objectives');
       this.openObjectives();
       return;
     }
@@ -999,11 +1022,13 @@ export class WorldScene extends Phaser.Scene {
     }
 
     if (this.keyPresses.justPressed(this.controls.party)) {
+      this.learnKey('party');
       this.openParty();
       return;
     }
 
     if (this.keyPresses.justPressed(this.controls.bag)) {
+      this.learnKey('bag');
       this.openBag();
       return;
     }
@@ -2844,7 +2869,7 @@ export class WorldScene extends Phaser.Scene {
           snapshot.enrageGraceRemainingMs,
           isPlaytestRun(),
         ),
-        objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun()),
+        objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun(), this.keysLearned),
         place: placePlateLine(this.placeName, this.placePlateMs),
         // Read off the tile rather than remembered with the district name: the
         // chip and the fight that is about to start have to be reading the same
@@ -2923,8 +2948,8 @@ export class WorldScene extends Phaser.Scene {
     this.input.keyboard.addCapture([
       Phaser.Input.Keyboard.KeyCodes.SPACE,
       Phaser.Input.Keyboard.KeyCodes.ENTER,
-      Phaser.Input.Keyboard.KeyCodes.P,
-      Phaser.Input.Keyboard.KeyCodes.B,
+      Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.party],
+      Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag],
       Phaser.Input.Keyboard.KeyCodes.K,
     ]);
     this.input.keyboard.on?.('keydown-M', () => audioManager.toggleMute());
@@ -2938,11 +2963,13 @@ export class WorldScene extends Phaser.Scene {
       a: wasdKeys.A,
       s: wasdKeys.S,
       d: wasdKeys.D,
-      party: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P),
-      bag: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B),
+      // The four letters the chip names are bound from the table it names them
+      // from (`input/keyBindings.ts`), so a hint can never teach the wrong key.
+      party: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.party]),
+      bag: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.bag]),
       save: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K),
-      objectives: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O),
-      look: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L),
+      objectives: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.objectives]),
+      look: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[RAID_KEY_LETTERS.look]),
       // Never captured: an overlay above the world must keep its own shift.
       run: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT, false),
       interact: [
