@@ -168,7 +168,10 @@ try {
   // had trouble with, so the lists this is about have to have rows to hide.
   await page.evaluate(`(() => {
     const save = JSON.parse(localStorage.getItem('${SAVE_KEY}'));
-    Object.assign(save.raidProgress, { firstContractExtracted: true, completedContracts: ['recover-lost-field-kit'], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'] });
+    Object.assign(save.raidProgress, { firstContractExtracted: true, completedContracts: ['recover-lost-field-kit'], unlockedInsertions: ['floodplain-relay', 'town-square', 'route-1', 'viridian-forest'],
+      // Heard already, so no first-words box stands over a screen being
+      // photographed - and Escape leaves the screen instead of putting one down.
+      firstWordsHeard: ['lab', 'loadout', 'dropin', 'check', 'center'] });
     const seed = save.stash.pokemon[0];
     const species = ['pidgey', 'rattata', 'caterpie', 'weedle', 'oddish', 'poliwag', 'spearow', 'sandshrew', 'nidoran-m', 'mankey', 'growlithe', 'abra', 'machop', 'geodude', 'magnemite', 'krabby', 'voltorb', 'cubone', 'koffing', 'rhyhorn', 'goldeen', 'staryu', 'magikarp'];
     // Full health on all but a few: a stash where everybody is hurt puts a care

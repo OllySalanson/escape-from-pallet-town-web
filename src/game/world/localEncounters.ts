@@ -1,7 +1,9 @@
 import type { WildEncounterTable } from '../pokemon/encounters';
 import type { GridPosition } from '../movement/gridMovement';
-import type { WorldMapId } from '../worldMap';
+import type { WorldMapDefinition, WorldMapId } from '../worldMap';
 import { MAP_DISTRICTS, districtAt } from './districts';
+import { interiorFloorRolls } from './interiors';
+import { placedAreaAt } from './mapAreas';
 import { playerMap } from './playerMaps';
 
 /**
@@ -38,4 +40,22 @@ export function encounterTableAt(
 ): WildEncounterTable | undefined {
   const district = districtAt(mapId, tile);
   return (district ? tables[district.id] : undefined) ?? fallback;
+}
+
+/**
+ * Whether a step onto `tile` rolls for wildlife at all: tall grass, or the
+ * floor of a place that rolls on every step - which is what a cave is, and the
+ * only reason its wildlife is ever met (`interiors.ts`, and a player's cave,
+ * `MapFileArea`). There is no tall grass underground. The raid asks it of every
+ * step, and the drop-in screen asks it of the ground a place is graded on.
+ */
+export function stepRolls(
+  map: Pick<WorldMapDefinition, 'id' | 'tallGrass' | 'areas'>,
+  tile: GridPosition,
+): boolean {
+  return (
+    map.tallGrass[tile.y]?.[tile.x] === true ||
+    interiorFloorRolls(map.id, tile) ||
+    (map.areas !== undefined && placedAreaAt(map.areas, tile)?.kind === 'cave')
+  );
 }

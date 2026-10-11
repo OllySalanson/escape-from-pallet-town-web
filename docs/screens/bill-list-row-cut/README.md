@@ -15,9 +15,20 @@ is the `tight` room.
   (shelf 92, table 76) rather than a straight seven-to-six share, so each shows
   one whole row above its MORE strip. `menuShots` reports `1/5` and `1/12` and is
   clean. `shopScreens` is clean at the same size.
-- `narrow-1024x640-not-fixed.png`: **not fixed here.** The `narrow` room has the
+- `narrow-1024x640-not-fixed.png`: **not fixed in that change.** The `narrow` room has the
   same fault with his two lists side by side. It shows at 1024x640 (504x312 game
   pixels) and gets worse at 856x616 (420x300), where the shelf list is 9 pixels
   tall and the table's first row is 64. Fixing it means deciding what Bill drops
   in the two-column layout: his standing sentences and figure, the detail bands,
   or the berth's heading. That choice is left for its own change.
+
+## The narrow room, fixed
+
+The captain chose what Bill drops there: his picture and his two sentences, as
+he already did in the tight room. His standing is its heading strip alone, which
+still names the tier and counts the points to the next. Brock keeps his band -
+his ladder is one list and has the room.
+
+- `after-narrow-1024x640.png`: `menuShots` reports `2/5` and `2/14`, clean.
+- `after-narrow-1280x720.png`: a laptop's window is the narrow room too, and
+  there both counters show three or four whole deals: `4/5` and `3/14`.

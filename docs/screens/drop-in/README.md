@@ -44,11 +44,11 @@ this save has earned, so a redrawn map cannot leave a stale image behind.
 | | from |
 |---|---|
 | the description | the insertion's own `description` (`runGeneration.ts`) |
-| Grade _n_/4 | the hunter ladder's own rungs, placed by the highest level anything still standing here can field - `HUNTER_TIERS`, the wildlife tables, the trainers `withoutDefeatedBosses` leaves |
+| Grade _n_/4 | the old hunter ladder's levels (`PLACE_GRADE_LEVELS`), placed by the highest level met on the ground a raid reaches from the map's front door before its first door - the wildlife rolled there and the trainers standing there, never a keeper (`entryGround`). Graded on the whole map, the Floodplain read 3/4 beside Viridian City's 2/4 (playtest 6, D3) |
 | Wild / Fights | the district encounter tables and the authored trainer parties |
 | Doors | `WORLD_GATES` against `raidProgress.defeatedBosses` |
 | Raids / Known | `raidProgress.raidRecord` and `raidProgress.surveyed`, both new, both defaulting to empty so every accepted save keeps loading |
-| ways out | `EXTRACTION_POINTS` and `extractionRequirementText` |
+| ways out, doors | `extractionPointsOn` with `extractionRequirementText`, and the map's gates - **named only once found** (walked to, opened, or held open by a finished landmark), with the rest counted: "And 17 more to find." Every one of a map nobody had walked, by name, was the answer the dark picture keeps (playtest 6, D2) |
 | wildlife | the district's own table - **only for places the survey has reached**, because what lives somewhere you have never been is not something base could tell you |
 
 ## Shots
@@ -66,6 +66,11 @@ Floodplain walked - the survey in it was written by real raids through
 | after two keepers and a third of the map | `dropin-explored-3x.png` | `dropin-explored-small.png` |
 | what the place holds, scrolled to the wildlife | `dropin-holds-3x.png` | `dropin-holds-small.png` |
 | the final check behind it | `confirm-3x.png` | `confirm-small.png` |
+
+`dropin-grade-1024x640.png` and `dropin-found-only-1920x950.png` are the
+screen since the grade and the lists changed (playtest 6, D2 and D3), from
+`tools/playtest/menuShots.mjs`: a save that has banked the first contract, so
+its finished landmark's exit is named and the other twenty are counted.
 
 Re-take them with `tools/playtest/dropinShots.mjs`, which refuses to photograph a
 screen that puts a scrollbar down the side of the browser.

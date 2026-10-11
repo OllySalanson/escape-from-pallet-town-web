@@ -7,6 +7,7 @@ export {
   mapPicture,
   placePicture,
   shutDoorLine,
+  stillToFind,
 
   type DropInBriefing,
   type DropInContext,

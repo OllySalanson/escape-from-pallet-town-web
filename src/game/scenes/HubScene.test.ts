@@ -41,6 +41,10 @@ import {
   type StorageLike,
 } from '../save/SaveManager';
 import { PIXEL_STATUS_SELECTOR } from '../ui/pixelUi';
+import { extractionPointsOn } from '../world/extractionPoints';
+import { gatesForMap } from '../world/gates';
+import { encodeSurvey } from '../world/survey';
+import { getWorldMap, type WorldMapId } from '../worldMap';
 import { PUBLISHED_FIXTURE_MAP_ID } from '../world/publishedMapFixture.testkit';
 import { FIRST_WORDS } from '../hub/firstWords';
 import { HubScene, RELEASE_ARMING_MS, STALE_SAVE_REFUSAL, type HubSceneData } from './HubScene';
@@ -317,6 +321,19 @@ class MemoryStorage implements StorageLike {
   public removeItem(key: string): void {
     this.values.delete(key);
   }
+}
+
+/**
+ * A survey of one map that has walked onto the named ways out and doors and
+ * nowhere else, which is what the drop-in screen and the wall map name them by.
+ */
+function walkedOnto(mapId: WorldMapId, labels: readonly string[]): RaidProgress['surveyed'] {
+  const map = getWorldMap(mapId);
+  const tiles = [
+    ...extractionPointsOn(mapId).filter((point) => labels.includes(point.label)).map((point) => point.position),
+    ...gatesForMap(mapId).filter((gate) => labels.includes(gate.label)).flatMap((gate) => gate.tiles),
+  ];
+  return { [mapId]: encodeSurvey(map.width, new Set(tiles.map((tile) => tile.y * map.width + tile.x))) };
 }
 
 function createHub(
@@ -766,11 +783,32 @@ describe('hub deployment route', () => {
     expect(markup).toContain('data-fit="own" data-fit-width="128" data-fit-height="128"');
     expect(markup).toContain('data-picture="dropin:floodplain-relay" data-picture-width="128" data-picture-height="128"');
     expect(markup).toContain('0% walked');
-    // What a place holds is on the screen: its doors and who has them, its ways
-    // out, and the wildlife of nowhere at all until some of it has been walked.
-    expect(markup).toContain('TOLL BRIDGE');
-    expect(markup).toContain('SOUTH GATE');
+    // A map nobody has walked names none of its ways out, doors or wildlife:
+    // it counts them (playtest 6, D2).
+    expect(markup).not.toContain('TOLL BRIDGE');
+    expect(markup).not.toContain('SOUTH GATE');
+    expect(markup).toMatch(/\d+ ways out to find\./);
+    expect(markup).toMatch(/\d+ doors to find\./);
     expect(markup).toContain('You have walked none of this map');
+  });
+
+  it('names the ways out and doors you have walked to, and counts the rest', () => {
+    const { hub } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      surveyed: walkedOnto('floodplain-relay', ['TOLL BRIDGE', 'SOUTH GATE']),
+    });
+    hub.flow.togglePokemon('charmander-1');
+    hub.setView('deploy');
+    hub.flow.advance();
+
+    const markup = markupOf(hub);
+    expect(markup).toContain('TOLL BRIDGE');
+    expect(markup).toContain('held by TOLLMAN BRIGGS');
+    expect(markup).toContain('SOUTH GATE');
+    const exits = extractionPointsOn('floodplain-relay').length;
+    const doors = gatesForMap('floodplain-relay').length;
+    expect(markup).toContain(`And ${exits - 1} more to find.`);
+    expect(markup).toContain(`And ${doors - 1} more to find.`);
   });
 
   it('shows a door as yours once its keeper is beaten', () => {
@@ -2046,7 +2084,10 @@ describe('the wall map in Oak’s Lab', () => {
   });
 
   it('reads one map close up, and backs out to all of them before leaving the lab', () => {
-    const { hub, start } = createHub();
+    const { hub, start } = createHub({
+      ...DEFAULT_RAID_PROGRESS,
+      surveyed: walkedOnto('route-1', ['OVERLOOK GATE', 'THORN GATE']),
+    });
     walkUpToTheWall(hub);
     hub.wallMapInspect = 'route-1';
     const close = markupOf(hub);
@@ -2059,6 +2100,9 @@ describe('the wall map in Oak’s Lab', () => {
     expect(close).toContain('needs CUT');
     expect(close).not.toContain('held by CUT');
     expect(close).toContain('No keeper beaten here yet');
+    // Only what has been walked to is named; the rest is counted.
+    expect(close).toContain(`And ${gatesForMap('route-1').length - 2} more to find.`);
+    expect(close).toMatch(/\d+ ways out to find\./);
 
     hub.goBack();
     expect(hub.wallMapInspect).toBeUndefined();

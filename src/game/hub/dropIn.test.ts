@@ -3,15 +3,20 @@ import {
   buildDropInBriefing,
   doorHolder,
   doorPromise,
+  entryGround,
   gradeLine,
   shutDoorLine,
+  stillToFind,
   PLACE_GRADE_LEVELS,
   placePicture,
   type DropInContext,
 } from './dropIn';
 import { DEFAULT_RAID_PROGRESS } from '../save/SaveManager';
 import { getWorldMap } from '../worldMap';
-import { type RunInsertionId, requireInsertion } from '../run/runGeneration';
+import { frontDoorFor, type RunInsertionId, requireInsertion } from '../run/runGeneration';
+import { extractionPointsOn } from '../world/extractionPoints';
+import { gatesForMap } from '../world/gates';
+import { BUILT_IN_MAP_IDS } from '../worldMap';
 import { encodeSurvey } from '../world/survey';
 import { districtAt, districtsForMap } from '../world/districts';
 
@@ -63,10 +68,47 @@ describe('what the drop-in screen says about a place', () => {
     expect(briefing.grade.rungs).toBe(PLACE_GRADE_LEVELS.length);
     expect(briefing.grade.rung).toBeGreaterThanOrEqual(1);
     expect(briefing.grade.rung).toBeLessThanOrEqual(PLACE_GRADE_LEVELS.length);
-    // The grade is the highest level anything still standing here can field.
+    // The facts are the highest level anything still standing here can field;
+    // the grade is read off the ground before the first door.
     expect(briefing.grade.opposition).toBe(
       Math.max(briefing.grade.wild.max, briefing.grade.trainer),
     );
+    expect(briefing.grade.entry).toBe(entryGround('floodplain-relay').opposition);
+    expect(briefing.grade.entry).toBeLessThanOrEqual(briefing.grade.opposition);
+  });
+
+  /**
+   * Playtest 6, D3: graded on the whole map, the Floodplain - where every new
+   * player starts - read a rung above Viridian City, a map it unlocks. Its far
+   * reaches are behind three keepers, so the captain had a place graded only
+   * on what a raid reaches from its front door before the first door.
+   */
+  it('grades the starting map no harder than any map it unlocks', () => {
+    const start = buildDropInBriefing('floodplain-relay', contextFor('floodplain-relay')).grade;
+    for (const mapId of BUILT_IN_MAP_IDS) {
+      const door = frontDoorFor(mapId)!;
+      const grade = buildDropInBriefing(door.id, contextFor(door.id)).grade;
+      expect(start.rung, mapId).toBeLessThanOrEqual(grade.rung);
+    }
+  });
+
+  it('grades a place before its first door, never on a keeper or what a keeper holds', () => {
+    for (const mapId of BUILT_IN_MAP_IDS) {
+      const door = frontDoorFor(mapId)!;
+      const grade = buildDropInBriefing(door.id, contextFor(door.id)).grade;
+      const ground = entryGround(mapId);
+      // Something is met before the first door on every map, and it is a
+      // share of what the map holds, not the whole of it.
+      expect(ground.reached, mapId).toBeGreaterThan(0);
+      expect(ground.reached, mapId).toBeLessThan(
+        getWorldMap(mapId).collision.flat().filter((blocked) => !blocked).length,
+      );
+      expect(grade.entry, mapId).toBeGreaterThan(0);
+      expect(grade.entry, mapId).toBeLessThanOrEqual(grade.opposition);
+    }
+    // The Floodplain's keepers field more than anything before their doors.
+    const floodplain = buildDropInBriefing('floodplain-relay', contextFor('floodplain-relay')).grade;
+    expect(floodplain.entry).toBeLessThan(floodplain.trainer);
   });
 
   it('drops a beaten boss out of what the place can field', () => {
@@ -92,7 +134,7 @@ describe('what the drop-in screen says about a place', () => {
    * relationship rather than as numbers: what the ladder says about a map has
    * to keep answering to what is actually standing on it.
    */
-  it('falls when a map is cleared, because what is left is what it can field', () => {
+  it('keeps its grade when a map is cleared, and its facts fall with the keepers', () => {
     const keepers = [
       'floodplain-toll-keeper',
       'floodplain-sluice-keeper',
@@ -107,7 +149,9 @@ describe('what the drop-in screen says about a place', () => {
     );
 
     expect(cleared.grade.trainer).toBeLessThan(held.grade.trainer);
-    expect(cleared.grade.rung).toBeLessThan(held.grade.rung);
+    // The grade is the ground before the first door, which a keeper never was.
+    expect(cleared.grade.rung).toBe(held.grade.rung);
+    expect(cleared.grade.entry).toBe(held.grade.entry);
     // The wildlife is untouched by a fight, so a cleared map is graded by its
     // ground and whoever is still standing on it - the checkpoint, not a boss.
     expect(cleared.grade.wild).toEqual(held.grade.wild);
@@ -149,6 +193,42 @@ describe('what the drop-in screen says about a place', () => {
       .find((door) => door.label === 'OVERLOOK GATE')!;
     expect(doorHolder(keeper)).toBe('held by WARDEN WREN');
     expect(shutDoorLine(keeper)).toBe('OVERLOOK GATE is held by WARDEN WREN.');
+  });
+
+  /**
+   * Playtest 6, D2: a fresh save's map is dark, and the list beside it named
+   * all twenty-one of the Floodplain's ways out and every door with its
+   * keeper. The captain had it name only what has been found, and count the
+   * rest.
+   */
+  it('names only the ways out and doors you have found, and counts the rest', () => {
+    const fresh = buildDropInBriefing('floodplain-relay', contextFor('floodplain-relay'));
+    expect(fresh.exits.length).toBeGreaterThan(1);
+    expect(fresh.exits.every((exit) => !exit.known)).toBe(true);
+    expect(fresh.doors.every((door) => !door.known)).toBe(true);
+
+    // Walk onto one way out and one door, and exactly those two are found.
+    const map = getWorldMap('floodplain-relay');
+    const exit = extractionPointsOn('floodplain-relay')[0];
+    const gate = gatesForMap('floodplain-relay')[0];
+    const tiles = new Set([exit.position.y * map.width + exit.position.x, gate.tiles[0].y * map.width + gate.tiles[0].x]);
+    const walkedTo = buildDropInBriefing(
+      'floodplain-relay',
+      contextFor('floodplain-relay', { surveyed: { 'floodplain-relay': encodeSurvey(map.width, tiles) } }),
+    );
+    expect(walkedTo.exits.filter((line) => line.known).map((line) => line.label)).toEqual([exit.label]);
+    expect(walkedTo.doors.filter((line) => line.known).map((line) => line.label)).toEqual([gate.label]);
+
+    // A door you opened is yours, walked to or not.
+    const opened = buildDropInBriefing('route-1', contextFor('route-1', { openedGates: ['route-1-thorn-gate'] }));
+    expect(opened.doors.filter((line) => line.known).map((line) => line.label)).toEqual(['THORN GATE']);
+  });
+
+  it('says how many are left to find, and only that', () => {
+    expect(stillToFind(0, 3, 'way out')).toBe('');
+    expect(stillToFind(17, 4, 'way out')).toBe('And 17 more to find.');
+    expect(stillToFind(21, 0, 'way out')).toBe('21 ways out to find. Each is named here once you have walked to it.');
+    expect(stillToFind(1, 0, 'door')).toBe('1 door to find. Each is named here once you have walked to it.');
   });
 
   it('names every way out and what opens it, in the map\'s own words', () => {

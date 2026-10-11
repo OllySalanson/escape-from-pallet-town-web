@@ -119,7 +119,7 @@ describe('finishing a step on an extraction tile', () => {
     // to a dead world. Extraction is a destination, so it wins the tick.
     expect(step).toContain('if (this.tryExtract()) {');
     expect(step.indexOf('if (this.tryExtract()) {')).toBeLessThan(
-      step.indexOf('isTallGrassInMap(this.currentMap, this.currentTile)'),
+      step.indexOf('stepRolls(this.currentMap, this.currentTile)'),
     );
     expect(step.indexOf('this.transitionToBattle({')).toBeLessThan(step.length);
     expect(step.slice(step.indexOf('this.transitionToBattle({'))).not.toContain('tryExtract');
@@ -157,7 +157,7 @@ describe('finishing a step in a trainer watch', () => {
       step.indexOf('if (this.tryTrainerChallengeAt(this.currentTile)) {'),
     );
     expect(step.indexOf('if (this.tryTrainerChallengeAt(this.currentTile)) {')).toBeLessThan(
-      step.indexOf('isTallGrassInMap(this.currentMap, this.currentTile)'),
+      step.indexOf('stepRolls(this.currentMap, this.currentTile)'),
     );
   });
 

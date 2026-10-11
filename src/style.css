@@ -2772,6 +2772,24 @@ button {
 :where(.pixel-ui[data-room='tight']) .trader-standing > .px-lead {
   display: none;
 }
+/* Bill drops the same band in the `narrow` room too. There his two counters
+   stand side by side, each with a band pricing its pointed-at row and the
+   shelf with the berth under that as well, and his picture and two sentences
+   over them left the shelf's list nine pixels tall at 856x616 and cut his
+   table's first deal through the middle at 1024x640
+   (`docs/screens/bill-list-row-cut/`). The strip still names his standing
+   and counts the points to the next, which is the part a player acts on.
+   Brock keeps his: his ladder is one list under him, and it has the room. */
+:where(.pixel-ui[data-room='narrow']) .trader-layout > .trader-standing > .px-heading,
+:where(.pixel-ui[data-room='tight']) .trader-layout > .trader-standing > .px-heading {
+  margin-bottom: calc(var(--u) * -3);
+}
+:where(.pixel-ui[data-room='narrow']) .trader-layout > .trader-standing > p,
+:where(.pixel-ui[data-room='tight']) .trader-layout > .trader-standing > p,
+:where(.pixel-ui[data-room='narrow']) .trader-layout > .trader-standing > .px-lead,
+:where(.pixel-ui[data-room='tight']) .trader-layout > .trader-standing > .px-lead {
+  display: none;
+}
 /* The berth keeps its own row and loses the band naming it: the row says BERTH.
    Fourteen pixels, and they are the difference between the shelf above showing
    a whole row and showing the top half of one. */
