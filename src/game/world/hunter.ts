@@ -1,4 +1,5 @@
 import { Pokemon } from '../pokemon';
+import { EVOLUTIONS } from '../pokemon/evolution';
 import { getSpeciesById } from '../pokemon/species';
 import type { PokemonBase } from '../pokemon/PokemonBase';
 import type { TrainerBattle } from '../pokemon/battle/battleEngine';
@@ -13,7 +14,7 @@ import type { ActiveRunSession } from '../run/RunSession';
 import type { RunResult } from '../run/RunManager';
 import type { HunterTuning } from '../run/runGeneration';
 import type { WorldMapId } from '../worldMap';
-import { FIRST_HUNTER_RIVAL, hunterRival } from './hunters';
+import { FIRST_HUNTER_RIVAL, hunterRival, type HunterRivalId } from './hunters';
 
 export const HUNTER_ID = 'rival-hunter';
 export const HUNTER_SPAWN_MS = 60_000;
@@ -51,6 +52,37 @@ export const HUNTER_BREAKAWAY_DISTANCE = 6;
  * twenty and the small maps have three apiece.
  */
 export const HUNTER_SEARCH_MS = 20_000;
+/**
+ * How much raid clock a player may stand still for before the hunter takes a
+ * step anyway.
+ *
+ * The hunter is step-locked: it takes its step when the player takes theirs,
+ * which is what lets a player who keeps walking keep their lead. But a hunter
+ * that moved *only* then made standing still a perfect defence - playtest 33
+ * left one five tiles away for 231 seconds of clock and it never moved, so
+ * any timed exit could be waited out in plain sight of it. The captain,
+ * 2026-10-11: step-locked, but it also takes a step every few seconds the
+ * player stands still.
+ *
+ * Six seconds, and both halves of that are measured. It has to let a player
+ * stop to read: the 178 signs and people on the shipped maps say a median of
+ * 145 characters and three in four say 185 or fewer, which the dialogue box
+ * types at 40 a second - 3.6 and 4.6 seconds, plus the press that closes it.
+ * So a pause to read one is never charged a step, and only the longest cost
+ * one - which, from the five steps the hunter arrives at, is never a catch.
+ * And it must never be a hiding place: from that same arrival distance a
+ * player who stands still is caught in 24 seconds, and waiting out the longest
+ * timed exit (90 seconds, Viridian's) beside it would need a hunter sixteen
+ * steps off. Standing still only ever slows it down.
+ *
+ * Counted on the raid clock rather than in real time, and only while the
+ * player is not mid-step: a step is the hunter's step already, so finishing
+ * one starts the count again. Time the clock does not charge - the briefing, a
+ * cutscene, a battle, the bag - is not standing still, and time it does charge
+ * is, an open dialogue box included, because a box held open is otherwise the
+ * one way left to stand still for free.
+ */
+export const HUNTER_IDLE_STEP_MS = 6_000;
 export const DEFAULT_HUNTER_TUNING: HunterTuning = {
   spawnDelayMs: HUNTER_SPAWN_MS,
   aggressionStepsPerPlayerStep: 1,
@@ -87,43 +119,55 @@ const species = (id: string): PokemonBase => {
  * a lone Lv 5 starter met a Lv 6 Pidgey and won it 1-14% of the time with no
  * Potions, and a lone veteran met four. Both measured below, both gone.
  *
- * Two measured choices, over the real engine on the FireRed base stats
+ * Three measured choices, over the real engine on the FireRed base stats
  * (`npx vite-node tools/hunter/measure.mts`, 150 fights a cell, no items, the
- * player throwing its best move each turn; parties of one starter at Lv 5-13,
- * each starter's second stage at 16, a starter with an escort, a trio at
- * Lv 8-10 and a Lv 18 veteran with five Lv 10 escorts):
+ * player throwing its best move each turn, every rival on its own; early
+ * parties of one starter at Lv 5-13, each starter's second stage at 16, a
+ * starter with an escort, a trio at Lv 8-10 and a Lv 18 veteran with five
+ * Lv 10 escorts, and late ones - a Lv 20-25 team of four before and after it
+ * evolves, six evolved at Lv 20, and a Lv 36 Charizard with two at 30):
  *
- * - **The lead is Normal.** A one-Pokemon hunter is one type against one
- *   starter, and a Flying lead is a starter lottery: Pidgey paired a level
- *   under a Lv 10 starter wins against the Charmander and the Squirtle 96-100%
- *   of the time and against the Bulbasaur never, where Rattata is 95-97%
- *   against all three. Rattata, then Jigglypuff and Meowth, cover nobody and
- *   check nobody, and Pidgey, Pikachu and Spearow only arrive in a party big
+ * - **The lead answers nobody's type.** A one-Pokemon hunter is one type
+ *   against one starter, and a lead that resists one starter's own type or
+ *   hits it hard is a starter lottery: a Pidgey a level under a Lv 10
+ *   Bulbasaur wins every time, and against the Charmander and the Squirtle
+ *   almost never. Each rival leads with their own Pokemon (`hunters.ts` says
+ *   which and why), chosen from the ones that measure fair to all three, and
+ *   the escorts behind it - Rattata, then Jigglypuff and Meowth - cover nobody
+ *   and check nobody; Pidgey, Pikachu and Spearow only arrive in a party big
  *   enough to answer a type.
- * - **Every rung sits below you.** Measured at each offset:
+ * - **The team evolves with its level** (`hunterSpeciesAt`), the captain's
+ *   answer to playtest 33: a team that stayed first stages fielded a Rattata
+ *   at 39 against a Charizard, so every evolved party beat even the enraged
+ *   hunter 99-100% and the enrage stopped being one by mid-game.
+ * - **Every rung sits below you.** Measured at each offset, all five rivals
+ *   together (the table before this change, every rival leading Rattata and
+ *   nothing evolving, in brackets):
  *
- * | rung            | offset | wins (mean / worst) | HP left on a win |
- * | --------------- | ------ | ------------------- | ---------------- |
- * | 1: 0-120s       | -4     | 100% / 99%          | 80%              |
- * | 2: 120-180s     | -3     | 100% / 99%          | 74%              |
- * | 3: 180-240s     | -2     | 99% / 97%           | 67%              |
- * | 4: 240s-end     | -1     | 96% / 87%           | 59%              |
- * | at your level   | 0      | 83% / 45%           | 49%              |
- * | enraged         | +3     | 33% / 4%            | 36%              |
+ * | rung            | offset | early parties: wins (mean / worst), HP left | late parties: wins, HP left        |
+ * | --------------- | ------ | ------------------------------------------- | ---------------------------------- |
+ * | 1: 0-120s       | -4     | 100% / 93%, 83% (100% / 99%, 80%)           | 100% / 100%, 82% (100% / 100%, 83%) |
+ * | 2: 120-180s     | -3     | 100% / 86%, 80% (100% / 99%, 74%)           | 100% / 99%, 79% (100% / 99%, 80%)   |
+ * | 3: 180-240s     | -2     | 98% / 73%, 74% (99% / 97%, 67%)             | 95% / 73%, 69% (99% / 94%, 76%)     |
+ * | 4: 240s-end     | -1     | 96% / 69%, 65% (96% / 87%, 59%)             | 90% / 32%, 62% (95% / 78%, 70%)     |
+ * | at your level   | 0      | 88% / 55%, 58% (83% / 45%, 49%)             | 87% / 19%, 55% (94% / 75%, 67%)     |
+ * | enraged         | +3     | 48% / 6%, 46% (33% / 4%, 36%)               | 72% / 5%, 45% (84% / 37%, 54%)      |
  *
- * Re-measured on 2026-10-06 after the battle rules moved to FireRed's (a
- * trainer's replacement no longer attacks the turn it arrives, FireRed's
- * status, catching and experience rules, its move data). Against the table
- * before them the ladder moved by a point or two in the player's favour and
- * no rung changed character: a hunter facing one Pokemon fields one, so the
- * free hit on a knockout that most of the change removed never reached it.
+ * Early on the ladder kept its character: the means held, the health a win
+ * keeps went up, and the worst cells are the signature leads being one
+ * Pokemon rather than another (a Lv 13 Bulbasaur against Sabrina's Drowzee
+ * on rung 4 is 69%). Late, it got its teeth back, which is what evolving was
+ * for: a team of four evolved at 20-25 beats the enrage 51-96% depending on
+ * who is hunting, where it was 99%, and Lt. Surge's Raichu from 24 is the
+ * sharpest of the five. The enrage is easier for an early party than it was,
+ * because only Blue's Eevee leads with a same-type Tackle as every Rattata did
+ * - and it is the one thing a beaten hunter comes back for (`hunterAtEnrage`).
  *
- * The clock still closes the gap, so staying late still costs - a fifth more
- * of your health by the last minute - but no ordinary rung is a wall. The
- * worst cell of rung 4 is a lone Lv 5 Charmander with an empty pack at 87%,
- * and the three Potions a fresh save deploys with do not move that worst cell
- * but raise the health it keeps. Level 2 is the floor, which is what a Lv 5
- * starter meets on rung 1.
+ * The clock still closes the gap, so staying late still costs, but no
+ * ordinary rung is a wall, and `hunter.test.ts` holds every rival's rung 4 to
+ * a floor against every lone starter. The three Potions a fresh save deploys
+ * with lift rung 4's worst early cell to 75% and its mean to 98%. Level 2 is
+ * the floor, which is what a Lv 5 starter meets on rung 1.
  *
  * **The harder hunter is not built.** It is the `temperament` on a rival in
  * `hunters.ts`: every shipped rival is `ordinary` and fights on this ladder.
@@ -138,9 +182,12 @@ export const HUNTER_TIERS = [
 ] as const;
 
 /**
- * Who the hunter sends, in order: a team of N is the first N. The first three
- * are Normal for the reason above; the rest arrive only against a party of
- * four or more, which already has the types to meet them.
+ * Who follows the rival's own lead, in order: a team of N is the signature
+ * and the first N - 1 of these, skipping the signature's own line (Lt.
+ * Surge's Pikachu is already leading). The first three are
+ * Normal for the reason above; the rest arrive only against a party of four or
+ * more, which already has the types to meet them. All first stages, because
+ * `hunterSpeciesAt` evolves each to the level it is fielded at.
  */
 export const HUNTER_ROSTER: readonly PokemonBase[] = [
   'rattata',
@@ -150,6 +197,57 @@ export const HUNTER_ROSTER: readonly PokemonBase[] = [
   'pikachu',
   'spearow',
 ].map(species);
+
+/**
+ * The level a hunter's Pokemon takes an evolution that FireRed does not give
+ * a level - a stone - at: the lowest level at which any FireRed trainer
+ * fields the evolved form (pret/pokefirered `src/data/trainer_parties.h` at
+ * 037335f: Lt. Surge's own Raichu at 24, Beauty Grace's Wigglytuff at 29). A
+ * trainer's team is the game's own answer to "when does somebody who could
+ * have used the stone have used it", so it is the number taken rather than one
+ * chosen. A stone evolution with no row is never taken: Blue's Eevee is the
+ * one, because no FireRed trainer fields an Eeveelution. `hunter.test.ts`
+ * holds the table to exactly the stone evolutions a hunter line has.
+ */
+export const HUNTER_STONE_EVOLUTION_LEVELS: Readonly<Record<string, number>> = {
+  raichu: 24,
+  wigglytuff: 29,
+};
+
+/**
+ * The species a hunter's Pokemon is at a level: its line, taken as far as
+ * that level reaches - Rattata 19 and Raticate 20, Pidgeotto 18 and Pidgeot
+ * 36, Raichu 24 by the table above. Playtest 33 met a Rattata at 39 against
+ * a Charizard: a team that never evolved fell further behind every evolved
+ * party the higher it was levelled, so that every evolved party measured beat
+ * even the enraged hunter, and the clock stopped being a threat by mid-game.
+ */
+export function hunterSpeciesAt(firstStage: PokemonBase, level: number): PokemonBase {
+  let current = firstStage;
+  for (;;) {
+    const next = EVOLUTIONS.find(
+      (rule) =>
+        rule.from === current.id &&
+        (rule.trigger.kind === 'level'
+          ? level >= rule.trigger.level
+          : level >= (HUNTER_STONE_EVOLUTION_LEVELS[rule.to] ?? Number.POSITIVE_INFINITY)),
+    );
+    if (!next) {
+      return current;
+    }
+    current = species(next.to);
+  }
+}
+
+/** Whether two first stages are the same line, so a rival's signature is not fielded twice. */
+const sameLine = (a: PokemonBase, b: PokemonBase): boolean =>
+  a.id === b.id || EVOLUTIONS.some((rule) => (rule.from === a.id && rule.to === b.id) || (rule.from === b.id && rule.to === a.id));
+
+/** A rival's team before levels: their signature, then the shared escorts. */
+export function hunterLineupFor(rivalId: HunterRivalId): readonly PokemonBase[] {
+  const signature = species(hunterRival(rivalId).signature);
+  return [signature, ...HUNTER_ROSTER.filter((escort) => !sameLine(escort, signature))];
+}
 
 /** The lowest level the hunter fields, which is what a Lv 5 starter meets on rung 1. */
 export const HUNTER_MINIMUM_LEVEL = 2;
@@ -163,8 +261,9 @@ const UNKNOWN_OPPONENT_LEVEL = 5;
 /**
  * What lands when the clock runs out, and the one rung that is not easy on
  * purpose: the enrage is the raid telling you it is over, and a reprieve would
- * be no reason to leave. Three levels *above* each of yours wins 31% of the
- * time on the parties above, with a third of the party's health left.
+ * be no reason to leave. Three levels *above* each of yours is won 48% of the
+ * time by the early parties above and 72% by the late ones, with under half
+ * the party's health left - and it is what a beaten hunter returns for.
  */
 const HUNTER_ENRAGED_TIER = { levelOffset: 3 } as const;
 
@@ -193,6 +292,14 @@ export interface HunterState {
    * place that knows the map well enough to choose where the hunter falls back to.
    */
   readonly pendingBreakaway?: boolean;
+  /**
+   * Set once the raid has enraged, and it is what makes a beaten hunter's one
+   * return the only one: a hunter beaten before the enrage comes back for it
+   * (`hunterAtEnrage`), and one beaten after it stays beaten.
+   */
+  readonly enrageAnswered?: boolean;
+  /** Set on a beaten hunter re-armed for the enrage, so it arrives with its comeback line. */
+  readonly returning?: boolean;
 }
 
 /** A rung of the ladder: how far below each of yours its Pokemon stand. */
@@ -235,24 +342,27 @@ export const hunterTierFor = (
 
 /**
  * The hunter's team on a rung, against whoever it is facing: one Pokemon for
- * each of theirs that can still fight, paired highest level first. Only those
+ * each of theirs that can still fight, paired highest level first, the rival's
+ * signature first, and each evolved as far as its level reaches. Only those
  * that can fight, because a fainted Pokemon cannot be revived in the field and
  * so is nobody the hunter has to answer.
  */
 export function hunterTeamFor(
   tier: HunterTier,
   opponents: readonly HunterOpponent[],
+  rivalId: HunterRivalId = FIRST_HUNTER_RIVAL,
 ): readonly HunterTeamMember[] {
+  const lineup = hunterLineupFor(rivalId);
   const levels = opponents
     .filter((pokemon) => !pokemon.isFainted)
     .map((pokemon) => pokemon.level)
     .sort((a, b) => b - a)
-    .slice(0, HUNTER_ROSTER.length);
+    .slice(0, lineup.length);
   const paired = levels.length > 0 ? levels : [UNKNOWN_OPPONENT_LEVEL];
-  return paired.map((level, index) => ({
-    species: HUNTER_ROSTER[index],
-    level: Math.max(HUNTER_MINIMUM_LEVEL, level + tier.levelOffset),
-  }));
+  return paired.map((opponentLevel, index) => {
+    const level = Math.max(HUNTER_MINIMUM_LEVEL, opponentLevel + tier.levelOffset);
+    return { species: hunterSpeciesAt(lineup[index], level), level };
+  });
 }
 
 /** What Brock's radio mast reads off the hunter, before it is worded. */
@@ -283,7 +393,7 @@ export const hunterIntelFor = (
 ): HunterIntel => {
   const current = hunterTierFor(elapsedMs, isEnraged, tuning);
   const describe = (tier: HunterTier): { level: number; teamSize: number } => {
-    const team = hunterTeamFor(tier, opponents);
+    const team = hunterTeamFor(tier, opponents, tuning.rivalId);
     return { level: Math.max(...team.map((member) => member.level)), teamSize: team.length };
   };
   if (isEnraged) {
@@ -318,7 +428,7 @@ export const createHunterTrainer = (
   return {
     id: HUNTER_ID,
     name: rival.name,
-    party: hunterTeamFor(hunterTierFor(elapsedMs, isEnraged, tuning), opponents).map(
+    party: hunterTeamFor(hunterTierFor(elapsedMs, isEnraged, tuning), opponents, rival.id).map(
       (member) => new Pokemon(member.species, member.level),
     ),
     defeatText: rival.defeat,
@@ -818,6 +928,42 @@ export const hunterQuarry = (
 export const isHunterOffTheScent = (state: HunterState, player: GridPosition): boolean =>
   state.lastSeen !== undefined &&
   (state.lastSeen.x !== player.x || state.lastSeen.y !== player.y);
+
+/**
+ * How many steps a hunter owes a player who has been standing still, and
+ * what is left of the count: `stillMs` is the raid clock already spent
+ * standing, `chargedMs` what this frame adds. See `HUNTER_IDLE_STEP_MS`.
+ */
+export const hunterIdleSteps = (
+  stillMs: number,
+  chargedMs: number,
+): { readonly stillMs: number; readonly steps: number } => {
+  const total = Math.max(0, stillMs) + Math.max(0, chargedMs);
+  const steps = Math.floor(total / HUNTER_IDLE_STEP_MS);
+  return { stillMs: total - steps * HUNTER_IDLE_STEP_MS, steps };
+};
+
+/**
+ * The hunter as the enrage finds it, asked on every frame of an enraged raid.
+ *
+ * A beaten hunter is gone for the raid - except for this. Playtest 33 found
+ * the ladder only punished a player who *avoided* the hunter: rung one is
+ * nearly always won, so beating it at minute one took the hunter and the
+ * enrage off the raid together, and the optimal play was to walk into it the
+ * moment it arrived. The captain, 2026-10-11: a beaten hunter never returns,
+ * except for the enrage. So when the clock runs out a beaten hunter is
+ * re-armed - not spawned, not beaten - to arrive again through the ordinary
+ * arrival, on the enraged rung; and the enrage is answered once, so a hunter
+ * beaten during it (the returned one, or one never beaten before) stays beaten.
+ */
+export const hunterAtEnrage = (state: HunterState): HunterState => {
+  if (state.enrageAnswered) {
+    return state;
+  }
+  return state.defeated
+    ? { spawned: false, defeated: false, enrageAnswered: true, returning: true }
+    : { ...state, enrageAnswered: true };
+};
 
 /** A hunter that lost the trail holds position and cannot start a battle. */
 export const isHunterSearching = (state: HunterState): boolean =>

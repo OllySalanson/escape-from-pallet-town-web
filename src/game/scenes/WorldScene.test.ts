@@ -108,7 +108,7 @@ describe('in-run objective HUD layout', () => {
 
 describe('finishing a step on an extraction tile', () => {
   const step = sceneSource.slice(
-    sceneSource.indexOf('if (this.tryStartHunterBattle()) {'),
+    sceneSource.indexOf('if (this.tryStartHunterBattle()) {', sceneSource.indexOf('private advanceStep(')),
     sceneSource.indexOf('private showIdlePose('),
   );
 
@@ -273,7 +273,10 @@ describe('hunter disengagement wiring', () => {
     }
     expect(sceneSource).toContain('if (!this.isDialogAdvancePressed()) {');
     // Every interruption the hunter causes goes through it, and a sign does not.
-    expect(sceneSource).toContain('this.interrupt([this.hunterRival().arrival], [position]);');
+    // A beaten hunter back for the enrage arrives through the same call.
+    expect(sceneSource).toContain(
+      'this.interrupt([returning ? this.hunterRival().comeback : this.hunterRival().arrival], [position]);',
+    );
     // Being caught, and being seen by a watch, are both authored beats now, and
     // the line each of them ends on is still an interruption - raised once, by
     // the one call the cutscene runner makes.

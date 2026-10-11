@@ -75,9 +75,12 @@ glinting, that is definitely worth the detour. Probably.
 ### 3. Somebody's coming
 
 Every raid, one of five rivals is sent after you, and you'll know about it. They bring one Pokémon
-for each of yours that can still fight, a few levels below it. Walking into them, or letting them
-walk into you, means a fight. Running away always works, but costs you a chunk of the clock, so a
-raid that runs from everything ends up running out of time instead.
+for each of yours that can still fight, a few levels below it, led by their own favourite and
+evolving as they level, so a Charizard gets a Raticate, not a Rattata. Walking into them, or letting
+them walk into you, means a fight. They close in as you walk, and standing still won't hide you
+either. Running away always works, but costs you a chunk of the clock, so a raid that runs from
+everything ends up running out of time instead. Beat them and they're gone for good. Well, until the
+clock runs out.
 
 <p align="center">
   <img src="docs/readme/hunter.png" width="800" alt="Blue arrives in Viridian City: &quot;BLUE is on your trail! Whatever you found, loser, it's mine!&quot;">
@@ -92,7 +95,7 @@ takes up squares like everything else: four for a first-stage Pokémon, six once
 nine for a final form. Catching is a packing decision now. Sorry.
 
 <p align="center">
-  <img src="docs/readme/battle.png" width="800" alt="A battle against Blue: Bulbasaur, level 5, faces a level 2 Rattata. &quot;BLUE wants to battle!&quot;">
+  <img src="docs/readme/battle.png" width="800" alt="A battle against Blue: Bulbasaur, level 5, faces his level 2 Eevee. &quot;BLUE wants to battle!&quot;">
 </p>
 
 ### 5. Get out (or don't)

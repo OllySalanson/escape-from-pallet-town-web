@@ -96,7 +96,7 @@ export function hunterThreatFor(
     rival,
     tierOffset,
     openingTier,
-    openingTeam: hunterTeamFor(openingTier, party),
+    openingTeam: hunterTeamFor(openingTier, party, rival),
     arrivesSoonerMs: tierOffset * HUNTER_ARRIVAL_LEAD_PER_TIER_MS,
     ...(strongest === undefined
       ? {}
