@@ -2117,7 +2117,7 @@ describe('an evolution B can stop, as FireRed lets you', () => {
     return { ...harness, driven: scene, charmander, second, evolutionTimers };
   };
 
-  const scratch = (scene: Driven, renderedTexts: RenderedText[]): void => {
+  const scratch = (renderedTexts: RenderedText[]): void => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     read(renderedTexts).filter(({ text }) => text.includes('FIGHT')).at(-1)?.handlers.pointerdown();
     const move = read(renderedTexts).filter(({ text }) => text.includes('SCRATCH')).at(-1);
@@ -2152,7 +2152,7 @@ describe('an evolution B can stop, as FireRed lets you', () => {
   it('says it is evolving after the level, and B stops it with FireRed\'s own words', () => {
     const { driven, renderedTexts, dialog, charmander, evolutionTimers } = evolvingBattle();
     driven.onMessagesComplete();
-    scratch(driven, renderedTexts);
+    scratch(renderedTexts);
     readUntil(driven, dialog, 'evolving');
 
     expect(charmander.level).toBe(16);
@@ -2179,7 +2179,7 @@ describe('an evolution B can stop, as FireRed lets you', () => {
   it('tries again at its next level, and evolves when it is left alone', () => {
     const { driven, renderedTexts, dialog, charmander, second, evolutionTimers } = evolvingBattle();
     driven.onMessagesComplete();
-    scratch(driven, renderedTexts);
+    scratch(renderedTexts);
     readUntil(driven, dialog, 'evolving');
     driven.goBack();
     readUntil(driven, dialog, 'main');
@@ -2188,7 +2188,7 @@ describe('an evolution B can stop, as FireRed lets you', () => {
     charmander.experience =
       experienceForLevel(17, CHARMANDER.growthRate) -
       experienceAwardForDefeat(second, { trainer: true });
-    scratch(driven, renderedTexts);
+    scratch(renderedTexts);
     readUntil(driven, dialog, 'evolving');
 
     expect(charmander.level).toBe(17);
@@ -2212,7 +2212,7 @@ describe('an evolution B can stop, as FireRed lets you', () => {
     });
     expect(charmander.levelEvolutionDue?.id).toBe('charmeleon');
     driven.onMessagesComplete();
-    scratch(driven, renderedTexts);
+    scratch(renderedTexts);
     readUntil(driven, dialog, 'main');
 
     expect(dialog.shownMessages.some((line) => line.includes('is evolving'))).toBe(false);

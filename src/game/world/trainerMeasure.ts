@@ -95,6 +95,57 @@ export function playTrainerBattle(
   weather: WeatherId | null = null,
   potions = 0,
 ): TrainerBattleResult {
+  return playOut(party, trainer, seed, weather, potions).result;
+}
+
+/**
+ * Fights in a row, as a way past several trainers is walked: the party carries
+ * the health each fight left it with, and the pack its Potions, into the next.
+ * Nobody levels between fights, which leans the other way, and nothing heals
+ * but the pack. The answer is how many of the trainers were beaten, in order,
+ * before the party was.
+ */
+export function playTrainerSeries(
+  party: readonly Pokemon[],
+  trainers: readonly TrainerBattle[],
+  seed: number,
+  potions = 0,
+): { readonly beaten: number; readonly won: boolean } {
+  let left = potions;
+  for (const [index, trainer] of trainers.entries()) {
+    const standing = party.filter((pokemon) => !pokemon.isFainted);
+    if (standing.length === 0) {
+      return { beaten: index, won: false };
+    }
+    const fight = playOut(standing, trainer, seed + index * 104_729, null, left);
+    if (!fight.result.won) {
+      return { beaten: index, won: false };
+    }
+    left -= fight.result.potionsUsed;
+    // Whoever is out leaves with what the fight left them; whoever went out
+    // and is not out any more fainted, because only a faint replaces anybody.
+    const out = new Map(
+      playerCombatants(fight.state).map((combatant) => [combatant.pokemon, combatant.currentHp]),
+    );
+    for (const pokemon of fight.sentOut) {
+      pokemon.currentHp = out.get(pokemon) ?? 0;
+    }
+  }
+  return { beaten: trainers.length, won: true };
+}
+
+/** One whole fight, and the state and who was sent out at its end. */
+function playOut(
+  party: readonly Pokemon[],
+  trainer: TrainerBattle,
+  seed: number,
+  weather: WeatherId | null,
+  potions: number,
+): {
+  readonly result: TrainerBattleResult;
+  readonly state: BattleState;
+  readonly sentOut: ReadonlySet<Pokemon>;
+} {
   const rng = createSeededRng(seed);
   const random = (): number => rng.next();
   const maximum = party.reduce((total, pokemon) => total + pokemon.maxHp, 0);
@@ -129,11 +180,8 @@ export function playTrainerBattle(
       .reduce((total, pokemon) => total + pokemon.maxHp, 0);
     return (standing + bench) / maximum;
   };
-  const lost = (): TrainerBattleResult => ({
-    won: false,
-    healthLeft: 0,
-    potionsUsed: potions - left,
-  });
+  const ended = (result: TrainerBattleResult) => ({ result, state, sentOut });
+  const lost = () => ended({ won: false, healthLeft: 0, potionsUsed: potions - left });
   /** Whoever on the field most wants the Potion, if anybody is worth one. */
   const drinker = (): SlotRef | null => {
     let worst: SlotRef | null = null;
@@ -191,7 +239,7 @@ export function playTrainerBattle(
     }
   }
   return state.outcome === 'victory'
-    ? { won: true, healthLeft: healthLeft(), potionsUsed: potions - left }
+    ? ended({ won: true, healthLeft: healthLeft(), potionsUsed: potions - left })
     : lost();
 }
 

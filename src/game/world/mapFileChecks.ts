@@ -140,6 +140,18 @@ export function mapFileGrid(
 }
 
 /**
+ * Where a thing placed in its own area's tiles stands on the one grid every
+ * area of a file is laid out in.
+ */
+export function spotPlacer(composed: ComposedMap): (spot: MapFileSpot) => GridPosition {
+  const origins = new Map(composed.areas.map((placed) => [placed.id, placed.rect]));
+  return (spot) => {
+    const origin = origins.get(spot.area) ?? composed.areas[0].rect;
+    return { x: origin.x + spot.x, y: origin.y + spot.y };
+  };
+}
+
+/**
  * Every check, in the order a maker fixes them. A file that does not load
  * cannot be asked anything else, so it answers the first check and fails the
  * rest with nothing to say about them.
@@ -179,10 +191,7 @@ export function checkMapFile(value: unknown): readonly MapCheck[] {
   // the one grid every area is laid out in. A problem names the tile as the
   // maker placed it, and the area it is in.
   const origins = new Map(composed.areas.map((placed) => [placed.id, placed]));
-  const onGrid = (spot: MapFileSpot): GridPosition => {
-    const origin = origins.get(spot.area)?.rect ?? composed.areas[0].rect;
-    return { x: origin.x + spot.x, y: origin.y + spot.y };
-  };
+  const onGrid = spotPlacer(composed);
   const tileOf = (spot: MapFileSpot): string => {
     const area = spot.area === undefined ? undefined : origins.get(spot.area);
     return area ? `${at(spot)} in ${area.name}` : at(spot);

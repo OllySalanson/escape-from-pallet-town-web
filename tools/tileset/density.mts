@@ -24,59 +24,31 @@
  * Every gate is opened before measuring, because ground behind a door is ground
  * the map has to be worth walking once the door is open.
  */
-import { getWorldMap, type WorldMapId } from '../../src/game/worldMap';
-import { gateKeys, gatesForMap } from '../../src/game/world/gates';
-import { EXTRACTION_POINTS } from '../../src/game/world/extractionPoints';
-import { RUN_INSERTIONS } from '../../src/game/run/runGeneration';
-import { createRunTrainerEncounters } from '../../src/game/world/trainers';
-import { stepDistances, walkableTiles } from '../../src/game/world/mapStructure';
+import type { BuiltInMapId } from '../../src/game/worldMap';
+import { walkableTiles } from '../../src/game/world/mapStructure';
 import { districtAt } from '../../src/game/world/districts';
-import { RAID_CONTRACTS } from '../../src/game/objectives/contracts';
+import { densityOf } from '../../src/game/world/nearestThing';
+import { shippedNearestSteps } from '../../src/game/world/shippedDensity';
 
 const args = process.argv.slice(2);
 const option = (name: string) => args.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3);
-const mapId = (args.find((value) => !value.startsWith('--')) ?? 'route-1') as WorldMapId;
-const map = getWorldMap(mapId, gateKeys(gatesForMap(mapId)));
-
-const things = [
-  ...EXTRACTION_POINTS.filter((point) => point.mapId === mapId).map((point) => point.position),
-  ...Object.values(RUN_INSERTIONS).filter((entry) => entry.mapId === mapId).map((entry) => entry.position),
-  ...map.pois.map((poi) => poi.position),
-  ...map.entities.map((entity) => entity.position),
-  ...gatesForMap(mapId).flatMap((gate) => gate.tiles),
-  ...createRunTrainerEncounters().filter((trainer) => trainer.mapId === mapId).map((trainer) => trainer.position),
-  ...RAID_CONTRACTS.filter((contract) => contract.mapId === mapId).flatMap((contract) =>
-    contract.markers.map((marker) => marker.position),
-  ),
-];
-
-// One walk out of each thing, kept as the best so far: the same answer as a
-// walk per tile, and one pass per thing rather than one per tile.
-const nearest = Array.from({ length: map.height }, () => Array<number>(map.width).fill(-1));
-for (const thing of things) {
-  const from = stepDistances(map.collision, thing);
-  for (let y = 0; y < map.height; y += 1) {
-    for (let x = 0; x < map.width; x += 1) {
-      const steps = from[y][x];
-      if (steps >= 0 && (nearest[y][x] < 0 || steps < nearest[y][x])) {
-        nearest[y][x] = steps;
-      }
-    }
-  }
-}
+const mapId = (args.find((value) => !value.startsWith('--')) ?? 'route-1') as BuiltInMapId;
+// The things counted and the walk out of them are shared with the review
+// summary of a player's map (`world/nearestThing.ts`), so the two compare.
+const { map, things, nearest } = shippedNearestSteps(mapId);
 
 const mean = (values: number[]) => values.reduce((total, value) => total + value, 0) / values.length;
 const report = (name: string, tiles: { x: number; y: number }[]): number | undefined => {
-  const steps = tiles.map((tile) => nearest[tile.y][tile.x]).filter((value) => value >= 0).sort((a, b) => a - b);
-  if (steps.length === 0) {
+  const density = densityOf(tiles.map((tile) => nearest[tile.y][tile.x]));
+  if (!density) {
     console.log(`${name}: no ground`);
     return undefined;
   }
   console.log(
-    `${name.padEnd(12)} ${String(steps.length).padStart(5)} tiles   mean ${mean(steps).toFixed(1)}` +
-      `   median ${steps[steps.length >> 1]}   90th ${steps[Math.floor(steps.length * 0.9)]}   worst ${steps[steps.length - 1]}`,
+    `${name.padEnd(12)} ${String(density.tiles).padStart(5)} tiles   mean ${density.mean.toFixed(1)}` +
+      `   median ${density.median}   90th ${density.ninetieth}   worst ${density.worst}`,
   );
-  return mean(steps);
+  return density.mean;
 };
 
 const ground = walkableTiles(map.collision);

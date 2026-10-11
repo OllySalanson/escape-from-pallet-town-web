@@ -1801,18 +1801,25 @@ const ITEM_SPOT_ROTATION: readonly { readonly itemId: ItemId; readonly quantity:
   { itemId: 'radio-valve', quantity: 1 },
 ];
 
+/** What the nth item spot of a file holds, by the rotation above. */
+export function itemSpotContents(index: number): {
+  readonly itemId: ItemId;
+  readonly quantity: number;
+} {
+  const repeating = ITEM_SPOT_ROTATION.filter((entry) => entry.itemId !== 'money');
+  return index < ITEM_SPOT_ROTATION.length
+    ? ITEM_SPOT_ROTATION[index]
+    : repeating[(index - ITEM_SPOT_ROTATION.length) % repeating.length];
+}
+
 /** The pool a file map's item spots are, by the rotation above. */
 function lootFor(
   id: PlayerMapId,
   spots: readonly MapFileItemSpot[],
   at: (spot: MapFileSpot) => { x: number; y: number },
 ): WorldLoot[] {
-  const repeating = ITEM_SPOT_ROTATION.filter((entry) => entry.itemId !== 'money');
   return spots.map((spot, index) => {
-    const entry =
-      index < ITEM_SPOT_ROTATION.length
-        ? ITEM_SPOT_ROTATION[index]
-        : repeating[(index - ITEM_SPOT_ROTATION.length) % repeating.length];
+    const entry = itemSpotContents(index);
     return {
       id: `${id}/spot-${index + 1}`,
       position: at(spot),

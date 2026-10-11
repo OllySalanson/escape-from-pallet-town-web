@@ -4,6 +4,8 @@ import type { MapFile } from '../world/mapFile';
 import { checkMapFile } from '../world/mapFileChecks';
 import { makerScreen, walkedCheck, type MakerViewState } from './makerView';
 import { decide, isReviewReturn, queueOrder, reviewReturnUrl, type QueuedMap } from './review';
+import { summariseMapFile, summaryLine, summaryLines } from '../world/mapFileSummary';
+import { escapeHtml } from './makerView';
 
 const SAMPLE = sampleLane as MapFile;
 
@@ -95,5 +97,26 @@ describe('the review list', () => {
       expect(markup).toContain(`data-decide="${decision}"`);
     }
     expect(markup).toContain('Block this maker');
+  });
+
+  it('sums every map up in its row, and the map open in full, as advice beside the decision', () => {
+    const summary = summariseMapFile(SAMPLE)!;
+    const list = screen({ step: 'loaded', maps: [queued({})] });
+    expect(list).toContain(escapeHtml(summaryLine(summary)));
+    expect(list).not.toContain('At a glance');
+
+    const open = screen({ step: 'loaded', maps: [queued({})] }, queued({}));
+    expect(open).toContain('At a glance');
+    for (const line of summaryLines(summary)) {
+      expect(open).toContain(escapeHtml(line));
+    }
+    // Advice never stands between a map that works and its approval.
+    expect(open).toContain('class="px-window px-button is-primary" data-decide="approved"');
+  });
+
+  it('leaves the summary off a row whose map no longer reads', () => {
+    const list = screen({ step: 'loaded', maps: [queued({ file: undefined })] });
+    expect(list).toContain('Sample Lane');
+    expect(list).not.toContain(escapeHtml(summaryLine(summariseMapFile(SAMPLE)!)));
   });
 });

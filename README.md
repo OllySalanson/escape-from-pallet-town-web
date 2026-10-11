@@ -226,7 +226,8 @@ sightseeing.
 | <kbd>L</kbd> (hold) | Look: every caption on screen speaks | |
 | <kbd>Esc</kbd> | Close a screen | Back out of a screen |
 
-Every menu works with the mouse as well.
+Every menu works with the mouse as well. The map maker is the other way round: you draw with a mouse or
+a trackpad, and the keys just pick your tool.
 
 ## Run it on your own machine
 
