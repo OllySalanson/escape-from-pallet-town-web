@@ -363,10 +363,11 @@ export const BUILDING_CHOICES: readonly BuildingChoice[] = (
 
 /**
  * The headings whose pieces are planted along a drag, as ground is painted:
- * a wood, a rockery, a row of crates or a fence line is the same piece many
- * times over, and one click a piece was the slowest way to draw any of them.
+ * a wood, a rockery, a row of crates, a market of stalls or a fence line is
+ * the same piece many times over, and one click a piece was the slowest way to
+ * draw any of them. Buildings, landmarks and signs are each one of a kind.
  */
-const PLANTED_ALONG: readonly PlantGroup[] = ['Nature', 'Things'];
+const PLANTED_ALONG: readonly PlantGroup[] = ['Nature', 'Town', 'Things'];
 
 /**
  * Whether dragging with `kind` plants it along the stroke rather than once.

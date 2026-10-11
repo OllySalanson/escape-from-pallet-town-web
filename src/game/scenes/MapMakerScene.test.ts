@@ -791,7 +791,25 @@ describe('planting nature along a drag', () => {
     expect(scene.history.canUndo).toBe(false);
   });
 
-  it.each(['house', 'cave-mouth'])('plants a %s once, however far it is dragged', (building) => {
+  it.each(['planter', 'crate', 'barrel', 'market-stall', 'gravestone'])(
+    'plants a row of %s too',
+    (building) => {
+      storeDraft(blankMap());
+      const { scene } = openMaker();
+      plantWith(scene, building);
+      const { width } = buildingSize(building as MapFileBuildingKind);
+      drag(
+        scene,
+        Array.from({ length: 3 * width + 1 }, (_, step) => [2 + step, 9] as const),
+      );
+      expect(scene.file.buildings.map((piece) => piece.x)).toEqual([2, 2 + width, 2 + 2 * width, 2 + 3 * width]);
+      expect(noneOverlap(scene.file.buildings)).toBe(true);
+      scene.handleKey(key('z', { ctrlKey: true }));
+      expect(scene.file.buildings).toEqual([]);
+    },
+  );
+
+  it.each(['house', 'cave-mouth', 'museum', 'sign'])('plants a %s once, however far it is dragged', (building) => {
     storeDraft(blankMap());
     const { scene } = openMaker();
     plantWith(scene, building);
