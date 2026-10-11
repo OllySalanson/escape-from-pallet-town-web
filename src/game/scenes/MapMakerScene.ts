@@ -133,6 +133,7 @@ import {
   FURNITURE_CHOICES,
   groundBrush,
   groundUnder,
+  plantsAlong,
 } from '../maker/palette';
 import { isFigureSpecies } from '../world/pokemonFigures';
 import { isBerry } from '../world/berries';
@@ -213,6 +214,13 @@ interface Stroke {
   shift: Offset;
   /** For a drag with Select: the thing being carried. */
   readonly carrying?: ThingRef;
+  /**
+   * For a drag with a piece that plants along it (`plantsAlong`): the piece,
+   * the last one put down, and why the last that would not go would not.
+   */
+  readonly planting?: MapFileBuildingKind;
+  planted?: ThingRef;
+  refusal?: string;
   /** The pointer drawing it, so a stroke cancelled from the keyboard lets it go. */
   readonly pointerId: number;
   /** Where the pointer is now, on screen, which may be past the map window's edge. */
@@ -1814,6 +1822,20 @@ export class MapMakerScene extends Phaser.Scene {
         }
         // A district and a stretch of Surf water are dragged out; everything
         // else lands on the tile clicked.
+        if (this.place.kind === 'building' && plantsAlong(this.place.building)) {
+          const stroke: Stroke = {
+            tool: 'place',
+            planting: this.place.building,
+            start: tile,
+            last: tile,
+            file: this.view,
+            shift: { x: 0, y: 0 },
+            ...held,
+          };
+          this.stroke = stroke;
+          this.plantAt(stroke, tile);
+          return;
+        }
         if (this.place.kind === 'district' || this.place.kind === 'surf') {
           this.stroke = {
             tool: 'place',
@@ -1887,6 +1909,16 @@ export class MapMakerScene extends Phaser.Scene {
       stroke.last = { x: tile.x + by.x, y: tile.y + by.y };
       stroke.shift = { x: stroke.shift.x + by.x, y: stroke.shift.y + by.y };
       this.redraw(stroke.file);
+    } else if (stroke.planting) {
+      // Every tile the pointer crossed is tried, so a quick drag leaves no gap;
+      // a piece that would stand on the last is refused, which spaces the row
+      // by the piece's own size.
+      let by: Offset = { x: 0, y: 0 };
+      for (const point of line(stroke.last, tile).slice(1)) {
+        const grew = this.plantAt(stroke, { x: point.x + by.x, y: point.y + by.y });
+        by = { x: by.x + grew.x, y: by.y + grew.y };
+      }
+      stroke.last = { x: tile.x + by.x, y: tile.y + by.y };
     } else if (stroke.tool === 'rect' || stroke.tool === 'place') {
       stroke.last = tile;
       this.previewArea({ from: stroke.start, to: tile });
@@ -1931,6 +1963,14 @@ export class MapMakerScene extends Phaser.Scene {
         this.selected,
         by,
       );
+    } else if (stroke.planting) {
+      // However many were planted, the stroke is one step of undo.
+      if (stroke.planted) {
+        this.panel = 'map';
+        this.commitGrown(before, stroke.file, stroke.planted, stroke.shift);
+      } else {
+        this.render(stroke.refusal);
+      }
     } else if (stroke.tool === 'place') {
       const growth = this.growFor(before, [stroke.start, stroke.last]);
       const by = growth.shift;
@@ -1977,6 +2017,34 @@ export class MapMakerScene extends Phaser.Scene {
         this.render();
       }
     }
+  }
+
+  /**
+   * Plants the stroke's piece with its corner on `tile` of the stroke's map,
+   * growing the map for it as a brush would, and hands back how far that grew
+   * it west and north. A piece that will not go is left out of the stroke.
+   */
+  private plantAt(stroke: Stroke, tile: GridPoint): Offset {
+    const kind = stroke.planting;
+    if (!kind) {
+      return { x: 0, y: 0 };
+    }
+    const { width, height } = buildingSize(kind);
+    const growth = this.growFor(stroke.file, rectangle(tile, { x: tile.x + width - 1, y: tile.y + height - 1 }));
+    const by = growth.shift;
+    const outcome = placeBuilding(growth.file, kind, { x: tile.x + by.x, y: tile.y + by.y });
+    if (!outcome.placed) {
+      this.undoGrowth(stroke.file, growth);
+      stroke.refusal = outcome.reason;
+      return { x: 0, y: 0 };
+    }
+    stroke.file = outcome.file;
+    stroke.planted = outcome.thing;
+    stroke.start = { x: stroke.start.x + by.x, y: stroke.start.y + by.y };
+    stroke.last = { x: stroke.last.x + by.x, y: stroke.last.y + by.y };
+    stroke.shift = { x: stroke.shift.x + by.x, y: stroke.shift.y + by.y };
+    this.redraw(stroke.file);
+    return by;
   }
 
   /**

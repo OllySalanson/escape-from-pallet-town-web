@@ -99,11 +99,11 @@ vi.mock('../maker/mapCanvas', () => ({
 }));
 
 import { makeInside } from '../maker/areas';
-import { blankMap, groundAt, placeSpot, thingExists, type ThingRef } from '../maker/draft';
+import { blankMap, buildingSize, groundAt, placeSpot, thingExists, type ThingRef } from '../maker/draft';
 import { MAKER_STORAGE_KEY } from '../maker/drafts';
 import type { EditHistory } from '../maker/history';
 import { groundBrush } from '../maker/palette';
-import { readMapFile, type MapFile } from '../world/mapFile';
+import { readMapFile, type MapFile, type MapFileBuildingKind } from '../world/mapFile';
 import sampleLaneJson from '../../maps/sample/sample-lane.json';
 import { forgetMakerSession, MapMakerScene, restingTop } from './MapMakerScene';
 
@@ -661,3 +661,144 @@ describe('where the right-hand column comes to rest', () => {
   });
 });
 
+
+describe('planting nature along a drag', () => {
+  type Planted = { readonly x: number; readonly y: number; readonly kind: string };
+
+  function plantWith(scene: MakerInternals, building: string): void {
+    (scene as unknown as { place: unknown }).place = { kind: 'building', building };
+    scene.tool = 'place';
+  }
+
+  function drag(scene: MakerInternals, tiles: readonly (readonly [number, number])[]): void {
+    const [first, ...rest] = tiles;
+    scene.pointerDown(at(first[0], first[1]), page.canvas);
+    for (const [x, y] of rest) {
+      scene.pointerMove(at(x, y), page.canvas);
+    }
+    const [x, y] = tiles[tiles.length - 1];
+    scene.pointerUp(at(x, y), page.canvas);
+  }
+
+  function overlaps(a: Planted, b: Planted): boolean {
+    const one = buildingSize(a.kind as MapFileBuildingKind);
+    const two = buildingSize(b.kind as MapFileBuildingKind);
+    return a.x < b.x + two.width && b.x < a.x + one.width && a.y < b.y + two.height && b.y < a.y + one.height;
+  }
+
+  function noneOverlap(planted: readonly Planted[]): boolean {
+    return planted.every((one, index) => planted.slice(index + 1).every((other) => !overlaps(one, other)));
+  }
+
+  it('plants a row spaced by the piece itself, and one undo takes the whole stroke back', () => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    plantWith(scene, 'tree');
+    const { width } = buildingSize('tree');
+    // A drag across one tile at a time, as a pointer moving slowly does.
+    drag(
+      scene,
+      Array.from({ length: 4 * width + 1 }, (_, step) => [2 + step, 6] as const),
+    );
+
+    expect(scene.file.buildings.map((tree) => [tree.x, tree.y])).toEqual(
+      Array.from({ length: 5 }, (_, index) => [2 + index * width, 6]),
+    );
+    expect(noneOverlap(scene.file.buildings)).toBe(true);
+    expect(scene.selected).toEqual({ kind: 'building', index: 4 });
+
+    scene.handleKey(key('z', { ctrlKey: true }));
+    expect(scene.file.buildings).toEqual([]);
+    expect(scene.history.canUndo).toBe(false);
+  });
+
+  it('leaves no gap on a quick drag, and nothing overlaps on a diagonal one', () => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    plantWith(scene, 'rock');
+    const { width } = buildingSize('rock');
+    // The pointer jumps the whole way in one move.
+    drag(scene, [
+      [3, 3],
+      [3 + 3 * width, 3],
+    ]);
+    expect(scene.file.buildings).toHaveLength(4);
+
+    plantWith(scene, 'pine');
+    drag(scene, [
+      [3, 8],
+      [20, 20],
+    ]);
+    const pines = scene.file.buildings.filter((piece) => piece.kind === 'pine');
+    expect(pines.length).toBeGreaterThan(2);
+    expect(noneOverlap(scene.file.buildings)).toBe(true);
+  });
+
+  it('plants around what already stands there rather than over it', () => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    plantWith(scene, 'house');
+    drag(scene, [[10, 4]]);
+    plantWith(scene, 'small-tree');
+    drag(
+      scene,
+      Array.from({ length: 20 }, (_, step) => [2 + step, 5] as const),
+    );
+    expect(scene.file.buildings[0]).toEqual(expect.objectContaining({ kind: 'house' }));
+    expect(scene.file.buildings.length).toBeGreaterThan(2);
+    expect(noneOverlap(scene.file.buildings)).toBe(true);
+  });
+
+  it('grows the map for a piece begun past its edge, and undo takes it back', () => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    plantWith(scene, 'tree');
+    drag(scene, [[-1, 10]]);
+    expect(scene.file.width).toBeGreaterThan(40);
+    expect(scene.file.buildings).toHaveLength(1);
+
+    scene.handleKey(key('z', { ctrlKey: true }));
+    expect([scene.file.width, scene.file.buildings]).toEqual([40, []]);
+  });
+
+  it('still plants one piece for one click', () => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    plantWith(scene, 'tall-bush');
+    drag(scene, [[5, 5]]);
+    expect(scene.file.buildings).toEqual([{ x: 5, y: 5, kind: 'tall-bush' }]);
+  });
+
+  it('says why when not one piece would go', () => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    plantWith(scene, 'tree');
+    drag(scene, [[5, 5]]);
+    drag(scene, [[5, 5]]);
+    expect(scene.file.buildings).toHaveLength(1);
+    expect(scene.overlay.root.innerHTML).toContain('Another building is standing there.');
+  });
+
+  it('is dropped whole by Escape', () => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    plantWith(scene, 'stump');
+    scene.pointerDown(at(4, 4), page.canvas);
+    scene.pointerMove(at(12, 4), page.canvas);
+    scene.handleKey(key('Escape'));
+    scene.pointerUp(at(12, 4), page.canvas);
+    expect(scene.file).toEqual(blankMap());
+    expect(scene.history.canUndo).toBe(false);
+  });
+
+  it.each(['house', 'cave-mouth'])('plants a %s once, however far it is dragged', (building) => {
+    storeDraft(blankMap());
+    const { scene } = openMaker();
+    plantWith(scene, building);
+    drag(
+      scene,
+      Array.from({ length: 16 }, (_, step) => [4 + step, 8] as const),
+    );
+    expect(scene.file.buildings).toEqual([{ x: 4, y: 8, kind: building }]);
+  });
+});
