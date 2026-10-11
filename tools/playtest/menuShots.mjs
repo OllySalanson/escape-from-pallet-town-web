@@ -18,6 +18,8 @@
 // `--keys` walks the arrow keys over a screen laid out in columns and fails if
 // any row of it cannot be reached without a mouse - which is the one thing a
 // screenshot cannot show, and the thing a multi-column list can quietly break.
+// It also opens the loadout and fails unless Down from each supply's count
+// selector lands on the next one, because Left and Right belong to the count.
 import { mkdirSync } from 'node:fs';
 import { launchBrowser, sleep } from './browser.mjs';
 import { SAVE_KEY, sceneIs, walkIntoBase } from './deploy.mjs';
@@ -250,32 +252,65 @@ try {
     // A control is named by its wiring, which is what survives a re-render.
     const NAME = `(node) => node ? [...Object.entries(node.dataset)].filter(([k]) => k !== 'help').map(([k, v]) => k + '=' + v).sort().join('|') || node.textContent.trim().slice(0, 20) : ''`;
     const here = `(() => (${NAME})(document.activeElement))()`;
+    /** Every control the arrow keys reach from where the cursor starts. */
+    const reachable = async () => {
+      const start = await page.evaluate(here);
+      const seen = new Set([start]);
+      const queue = [start];
+      while (queue.length > 0 && seen.size < 80) {
+        const from = queue.shift();
+        for (const arrow of ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight']) {
+          // Put the cursor back where this leg starts, so each is walked from the
+          // same place however the last one ended.
+          const landed = await page.evaluate(
+            `(() => { const n = [...document.querySelectorAll('button, input')].find((b) => (${NAME})(b) === ${JSON.stringify(from)}); if (!n) return false; n.focus(); return true; })()`,
+          );
+          if (!landed) continue;
+          await press(arrow);
+          const to = await page.evaluate(here);
+          if (to && !seen.has(to)) {
+            seen.add(to);
+            queue.push(to);
+          }
+        }
+      }
+      return seen;
+    };
     const wanted = JSON.parse(await page.evaluate(
       `JSON.stringify([...document.querySelectorAll('.stash-roster > .px-list > button, .stash-side .px-list > button')].map(${NAME}))`,
     ));
-    const start = await page.evaluate(here);
-    const seen = new Set([start]);
-    const queue = [start];
-    while (queue.length > 0 && seen.size < 80) {
-      const from = queue.shift();
-      for (const arrow of ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight']) {
-        // Put the cursor back where this leg starts, so each is walked from the
-        // same place however the last one ended.
-        const landed = await page.evaluate(
-          `(() => { const n = [...document.querySelectorAll('button, input')].find((b) => (${NAME})(b) === ${JSON.stringify(from)}); if (!n) return false; n.focus(); return true; })()`,
-        );
-        if (!landed) continue;
-        await press(arrow);
-        const to = await page.evaluate(here);
-        if (to && !seen.has(to)) {
-          seen.add(to);
-          queue.push(to);
-        }
-      }
-    }
+    const seen = await reachable();
     const missed = wanted.filter((id) => id && !seen.has(id));
     console.log(`  ${'arrow keys'.padEnd(14)} ${wanted.length} rows, ${seen.size} controls reached${missed.length ? ` | UNREACHABLE ${missed.join(', ')}` : ''}`);
     bad += missed.length ? 1 : 0;
+
+    // The loadout's supplies are count selectors laid out in columns, whose
+    // Left and Right step the count rather than move the cursor - so the Poke
+    // Ball stepper beside the Potion one was only reachable the long way round,
+    // through the pack card, and nobody packed a ball (playtest 45). Down from
+    // each selector has to land on the next one in the list.
+    for (let back = 0; back < 6; back += 1) {
+      if (await page.evaluate(sceneIs('base'))) break;
+      await press('Escape');
+      await sleep(250);
+    }
+    await walkIntoBase(page, 'oaks-lab');
+    await click('Start a raid');
+    await click('Bulbasaur');
+    await sleep(400);
+    const STEPPERS = `[...document.querySelectorAll('.px-count[data-count^="item:"]')]`;
+    const steppers = JSON.parse(await page.evaluate(`JSON.stringify(${STEPPERS}.map((group) => group.dataset.count))`));
+    const broken = [];
+    for (let index = 0; index + 1 < steppers.length; index += 1) {
+      await page.evaluate(
+        `(() => { const group = ${STEPPERS}.find((g) => g.dataset.count === ${JSON.stringify(steppers[index])}); [...group.querySelectorAll('button')].find((b) => !b.disabled)?.focus(); })()`,
+      );
+      await press('ArrowDown');
+      const landed = await page.evaluate(`document.activeElement?.closest('.px-count')?.dataset.count ?? ''`);
+      if (landed !== steppers[index + 1]) broken.push(`${steppers[index]} -> ${landed || 'elsewhere'}`);
+    }
+    console.log(`  ${'loadout keys'.padEnd(14)} ${steppers.length} steppers${broken.length ? ` | DOWN DOES NOT REACH THE NEXT: ${broken.join(', ')}` : ', Down walks every one'}`);
+    bad += broken.length || steppers.length < 2 ? 1 : 0;
   }
   if (resize) {
     // One screen, every window, no reload: a menu is laid out on `resize` and a
