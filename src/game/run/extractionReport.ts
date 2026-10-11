@@ -50,6 +50,8 @@ export interface ReportPokemon {
   readonly level: number;
   readonly currentHp: number;
   readonly maxHp: number;
+  /** Set only for a shiny (`Pokemon.shiny`), which the screen marks and draws in its colours. */
+  readonly shiny?: true;
 }
 
 /**
@@ -856,6 +858,7 @@ function toReportPokemon(pokemon: Pokemon): ReportPokemon {
     level: pokemon.level,
     currentHp: pokemon.currentHp,
     maxHp: pokemon.maxHp,
+    ...(pokemon.shiny ? { shiny: true as const } : {}),
   };
 }
 

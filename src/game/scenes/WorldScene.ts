@@ -100,6 +100,7 @@ import {
   type CastPlan,
   type RodItemId,
 } from '../world/fishing';
+import { rollShiny } from '../pokemon/shiny';
 import { encounterTableAt } from '../world/localEncounters';
 import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
@@ -4185,6 +4186,12 @@ export class WorldScene extends Phaser.Scene {
     const data: BattleSceneData = {
       ...this.raidCarriage(),
       ...encounter,
+      // Every wild Pokemon is met here, whatever produced it - the grass, a
+      // cave floor, a Pokemon a map maker stood in the world - so this is the
+      // one place its shininess is rolled, on the raid's own shiny stream.
+      ...('wild' in encounter
+        ? { wild: { ...encounter.wild, shiny: encounter.wild.shiny ?? rollShiny(this.runSession?.shinyRng) } }
+        : {}),
       weather: this.currentWeather(),
     };
     // The fight's first line can be a cry - a wild Pokemon appearing - so the

@@ -1,6 +1,7 @@
 import { itemRefAt, pieceRefKey, type GridPacking } from '../items';
 import { publicAssetUrl } from '../publicAssetUrl';
 import { CHARACTER_FEET_PIXEL_Y } from '../playerFrames';
+import { pokemonSpritePath } from '../pokemon/pokemonSprites';
 import {
   characterDesignAssetPath,
   getCharacterDesign,
@@ -209,9 +210,29 @@ export function pixelFigure(design: CharacterDesignId, name: string): string {
   return `<span class="px-figure" role="img" aria-label="${escapeAttribute(name)}" style="${style}"></span>`;
 }
 
-/** A species' front sprite at its own size: one source pixel is one game pixel. */
-export function pixelPortrait(dexId: number, name: string): string {
-  return `<span class="px-portrait pokemon-avatar" aria-label="${escapeAttribute(name)}"><img src="${publicAssetUrl(`assets/pokemon/front/${dexId}.png`)}" alt="" /><span aria-hidden="true">${name.slice(0, 1)}</span></span>`;
+/**
+ * A species' front sprite at its own size: one source pixel is one game pixel.
+ * A shiny is drawn in its shiny colours with FireRed's star in the corner, as
+ * the summary screen stands it beside the picture.
+ */
+export function pixelPortrait(dexId: number, name: string, shiny = false): string {
+  const label = shiny ? `Shiny ${name}` : name;
+  return `<span class="px-portrait pokemon-avatar${shiny ? ' is-shiny' : ''}" aria-label="${escapeAttribute(label)}"><img src="${publicAssetUrl(pokemonSpritePath('front', dexId, shiny))}" alt="" /><span aria-hidden="true">${name.slice(0, 1)}</span>${shiny ? pixelShinyStar() : ''}</span>`;
+}
+
+/**
+ * FireRed's shiny star (`graphics/summary_screen/shiny_star.png`), drawn rather
+ * than typed because Orange Kid has no star. It stands after a shiny's name in
+ * every list a Pokemon is named in, so a shiny is told apart before it is
+ * pointed at.
+ */
+export function pixelShinyStar(): string {
+  return '<span class="px-shiny" role="img" aria-label="Shiny" title="Shiny"></span>';
+}
+
+/** A Pokemon's name as a list prints it, with the star after it when it is shiny. */
+export function pixelPokemonName(pokemon: { readonly base: { readonly name: string }; readonly shiny: boolean }): string {
+  return `<strong class="px-name">${pokemon.base.name}</strong>${pokemon.shiny ? pixelShinyStar() : ''}`;
 }
 
 export function pixelTypeBadge(type: string): string {

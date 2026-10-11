@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { SHINY_SPARKLE_TEXTURE } from '../ui/shinySparkle';
 import type { Direction } from '../movement/gridMovement';
 import {
   CHARACTER_FRAME_HEIGHT,
@@ -110,6 +111,9 @@ export class BootScene extends Phaser.Scene {
         publicAssetUrl(`assets/pokemon/back/${species.dexId}.png`),
       );
     }
+    // FireRed's gold stars, for the sparkle a shiny lands with. A shiny's own
+    // colours are fetched by the fight that meets one (`BattleScene.preload`).
+    this.load.image(SHINY_SPARKLE_TEXTURE, publicAssetUrl('assets/battle/shiny-sparkle.png'));
   }
 
   public create(): void {

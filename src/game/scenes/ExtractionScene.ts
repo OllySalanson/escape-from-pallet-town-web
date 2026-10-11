@@ -19,9 +19,10 @@ import type {
 } from '../run/extractionReport';
 import { itemCountTag } from '../items';
 import { publicAssetUrl } from '../publicAssetUrl';
+import { pokemonSpritePath } from '../pokemon/pokemonSprites';
 import { iconUrl, itemIcon, itemIconName, objectiveIcon } from '../ui/icons';
 import { MenuOverlay } from '../ui/MenuOverlay';
-import { pixelCommitBar, pixelHpBar, pixelScreen, pixelTag, pixelWindow } from '../ui/pixelUi';
+import { pixelCommitBar, pixelHpBar, pixelScreen, pixelShinyStar, pixelTag, pixelWindow } from '../ui/pixelUi';
 
 export interface ExtractionSceneData {
   readonly report: ExtractionReport;
@@ -613,7 +614,7 @@ function defeatFigure(figure: DefeatFigure, index: number): string {
   const classes = ['defeat-figure', figure.lastStand ? 'is-last-stand' : ''].join(' ').trim();
   const body =
     figure.kind === 'pokemon'
-      ? `<img src="${publicAssetUrl(`assets/pokemon/front/${figure.dexId}.png`)}" alt="" />`
+      ? `<img src="${publicAssetUrl(pokemonSpritePath('front', figure.dexId ?? 0, figure.shiny === true))}" alt="" />`
       : `<span class="defeat-item-glyph"><img src="${iconUrl(itemIconName(figure.itemId ?? ''))}" alt="" aria-hidden="true" /></span>`;
   const meta =
     figure.kind === 'pokemon'
@@ -645,7 +646,7 @@ function groupRows(group: ReportGroup, tag: RowTag): string {
 }
 
 function pokemonRow(member: ReportPokemon, tag: RowTag): string {
-  return `<div class="px-row${tag === 'lost' ? ' is-lost' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(member.name)}</strong>${pixelHpBar(member.currentHp, member.maxHp)}</span><small>Level ${member.level} · ${member.currentHp}/${member.maxHp} HP</small></span>${ROW_TAGS[tag]}</div>`;
+  return `<div class="px-row${tag === 'lost' ? ' is-lost' : ''}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${escapeHtml(member.name)}</strong>${member.shiny ? pixelShinyStar() : ''}${pixelHpBar(member.currentHp, member.maxHp)}</span><small>Level ${member.level} · ${member.currentHp}/${member.maxHp} HP</small></span>${ROW_TAGS[tag]}</div>`;
 }
 
 function itemRow(item: ReportItem, tag: RowTag): string {

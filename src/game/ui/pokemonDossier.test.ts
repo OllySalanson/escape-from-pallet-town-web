@@ -36,3 +36,20 @@ describe('the pane about one Pokemon', () => {
     expect(vitalsText(dossierOf(bulbasaur))).toContain(`0/${bulbasaur.maxHp} HP · fainted · poison`);
   });
 });
+
+describe('a shiny in the pane', () => {
+  it('is drawn in its shiny colours with FireRed\'s star, and starred beside its name', () => {
+    const pidgey = new Pokemon(getSpeciesById('pidgey')!, 5);
+    pidgey.shiny = true;
+    const html = dossierOf(pidgey);
+    expect(html).toContain('assets/pokemon/shiny/front/16.png');
+    expect(html).toContain('aria-label="Shiny Pidgey"');
+    expect(html.match(/<div class="px-dossier-vitals">.*?<\/div>/)?.[0]).toContain('class="px-shiny"');
+  });
+
+  it('marks nothing on an ordinary Pokemon', () => {
+    const html = dossierOf(new Pokemon(getSpeciesById('pidgey')!, 5));
+    expect(html).toContain('assets/pokemon/front/16.png');
+    expect(html).not.toContain('px-shiny');
+  });
+});

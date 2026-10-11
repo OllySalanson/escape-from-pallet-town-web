@@ -128,7 +128,7 @@ export function moveChooserMarkup(view: MoveChooserView, chosen: number | null =
         actions: `${later}${decline}`,
       });
   const body = `<main class="px-body move-chooser">${pixelWindow(
-    `<div class="move-chooser-new-body">${pixelPortrait(pokemon.base.dexId, pokemon.base.name)}<div class="move-chooser-learning">${who}<div class="px-list">${newMove}</div></div></div>`,
+    `<div class="move-chooser-new-body">${pixelPortrait(pokemon.base.dexId, pokemon.base.name, pokemon.shiny)}<div class="move-chooser-learning">${who}<div class="px-list">${newMove}</div></div></div>`,
     {
       className: 'move-chooser-new px-tone-primary',
       heading: `${escapeHtml(name)} wants to learn ${escapeHtml(learning)}`,

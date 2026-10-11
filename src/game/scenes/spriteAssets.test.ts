@@ -1,9 +1,11 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
+import { pokemonSpritePath } from '../pokemon/pokemonSprites';
 import { SPECIES_BY_ID } from '../pokemon/species';
 
 const SPRITE_ROOT = new URL('../../../public/assets/pokemon/', import.meta.url);
-const SIDES = ['front', 'back'] as const;
+// The shiny rip sits beside the ordinary one and is held to the same rules.
+const SIDES = ['front', 'back', 'shiny/front', 'shiny/back'] as const;
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 /** Reads the IHDR dimensions, which is the only thing a renderer needs to size a texture. */
@@ -60,7 +62,9 @@ describe('Pokemon sprite assets', () => {
     // rounded avatar the in-raid screens used went with those screens.
     const source = await readFile(new URL('../ui/pixelUi.ts', import.meta.url), 'utf8');
 
-    expect(source).toContain('publicAssetUrl(`assets/pokemon/front/${dexId}.png`)');
+    expect(source).toContain("publicAssetUrl(pokemonSpritePath('front', dexId, shiny))");
+    expect(pokemonSpritePath('front', 7)).toBe('assets/pokemon/front/7.png');
+    expect(pokemonSpritePath('front', 7, true)).toBe('assets/pokemon/shiny/front/7.png');
     expect(source).not.toMatch(/dexId === \d/);
     expect(source).not.toContain('svg');
   });

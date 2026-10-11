@@ -1,5 +1,7 @@
 // Fetches the generation III FireRed/LeafGreen sprite of every one of Kanto's
-// original 151, front and back, into `public/assets/pokemon/`.
+// original 151, front and back, into `public/assets/pokemon/` - and the same
+// two in each species' shiny colours into `public/assets/pokemon/shiny/`,
+// which is the one rare roll a wild encounter has (`pokemon/shiny.ts`).
 //
 //   node scripts/fetch-pokemon-sprites.mjs [--force]
 //
@@ -24,6 +26,9 @@ const BASE =
 const SIDES = [
   { side: 'front', url: (dexId) => `${BASE}/${dexId}.png` },
   { side: 'back', url: (dexId) => `${BASE}/back/${dexId}.png` },
+  // FireRed's own shiny palette on the same picture, from the same rip.
+  { side: 'shiny/front', url: (dexId) => `${BASE}/shiny/${dexId}.png` },
+  { side: 'shiny/back', url: (dexId) => `${BASE}/back/shiny/${dexId}.png` },
 ];
 const force = process.argv.includes('--force');
 

@@ -832,6 +832,43 @@ no licence from them.
   states the images are not the maintainers' to relicense. **These are not CC0
   sprites, and this file must not describe them as such.**
 
+### `pokemon/shiny/{front,back}/<dexId>.png` - the species sprites in their shiny colours
+
+- **Source.** The same repository, rip and terms as the species sprites above:
+  <https://github.com/PokeAPI/sprites>, paths
+  `sprites/pokemon/versions/generation-iii/firered-leafgreen/shiny/` and
+  `.../back/shiny/`, dex IDs 1 to 151, 302 files, none larger than 64x64,
+  downloaded 2026-10-11 by `scripts/fetch-pokemon-sprites.mjs` (which fetches
+  both sets and checks each file the same way). They are FireRed/LeafGreen's
+  own pictures in each species' shiny palette, for the one-in-five-hundred
+  wild roll in `src/game/pokemon/shiny.ts`. Everything said above about the
+  licence applies to them identically: **not CC0**, copyright The Pokémon
+  Company. `spriteAssets.test.ts` holds both sets to one front and one back per
+  species.
+
+### `battle/shiny-sparkle.png` and `battle/shiny-star.png` - FireRed's shiny marks
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly**, on the same
+ruling and from the same source as `pokemon-icons.png` above.
+
+- **Source.** pret/pokefirered at commit `037335f`, fetched 2026-10-11 from
+  `https://raw.githubusercontent.com/pret/pokefirered/037335f/graphics/`:
+  `battle_anims/sprites/gold_stars.png` (`ANIM_TAG_GOLD_STARS`, the stars
+  `AnimTask_ShinySparkles` in `src/battle_anim_special.c` puts round a shiny as
+  it lands) and `summary_screen/shiny_star.png` (the star
+  `src/pokemon_summary_screen.c` stands beside a shiny's picture).
+- **What was changed.** Indexed colour turned into RGBA from each sheet's own
+  palette, index 0 left transparent; the sparkle sheet is otherwise whole
+  (16x24, the star and two twinkles where the game's tile numbers find them)
+  and the star is the summary sheet's second 8x8 tile, the one its animation
+  shows. `scripts/cut-frlg-shiny.mjs` is the whole method. Nothing from pret is
+  committed.
+- **Terms.** As for `pokemon-icons.png`: pret publishes no licence for the
+  graphics it extracts, and these ship on the owner's ruling alone.
+- **To remove them**, delete both files: the sparkle is skipped when its
+  texture is missing, and a shiny's star would want a drawn replacement in
+  `style.css`.
+
 ### `followers/<species>.png` - the partner's walking art, from HeartGold/SoulSilver
 
 FireRed/LeafGreen draws no Pokemon walking behind the player, so the one place

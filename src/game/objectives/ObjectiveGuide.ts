@@ -59,10 +59,24 @@ export function buildObjectiveGuide(
     // a heading that repeats the line above it is a rank of nothing.
     contractLabel: contract ? contractLabel(contract, isFirstContract) : 'No contract on this raid',
     objectives,
-    hints: contract
-      ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
-      : laterRunHints(context, currentExit?.label),
+    hints: [
+      ...(contract
+        ? contractHints(contract, session, context, snapshot.contractSteps, safeExit?.label, currentExit?.label)
+        : laterRunHints(context, currentExit?.label)),
+      ...shinyHints(snapshot.caughtPokemon),
+    ],
   };
+}
+
+/**
+ * A shiny caught this raid, named in the field notes for as long as it is
+ * being carried: it is the rarest thing a raid can hold, and like every catch
+ * it is only the player's once they walk out with it.
+ */
+function shinyHints(caught: readonly { readonly shiny: boolean; readonly base: { readonly name: string } }[]): string[] {
+  return caught
+    .filter((pokemon) => pokemon.shiny)
+    .map((pokemon) => `You are carrying a shiny ${pokemon.base.name}. It is only yours once you extract.`);
 }
 
 function contractLabel(contract: RaidContract, isFirstContract: boolean): string {

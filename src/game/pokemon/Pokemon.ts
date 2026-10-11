@@ -151,6 +151,13 @@ export class Pokemon {
    * wipe outside the secure slot.
    */
   public heldItemId: HeldItemId | null = null;
+  /**
+   * Drawn in its species' other colours, for good. Rolled once when a wild
+   * encounter is met (`shiny.ts`) and never again: it survives a catch, a
+   * save, an evolution and every fight after, and nothing else in the game
+   * reads it - a shiny is rarer, never stronger, as in FireRed.
+   */
+  public shiny = false;
 
   public constructor(base: PokemonBase, level: number) {
     if (level < 1 || level > MAX_LEVEL) {

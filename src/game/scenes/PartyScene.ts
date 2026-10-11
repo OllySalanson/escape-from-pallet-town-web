@@ -14,6 +14,7 @@ import {
   pixelScreen,
   pixelTag,
   pixelWindow,
+  pixelPokemonName,
 } from '../ui/pixelUi';
 
 interface PartySceneData {
@@ -156,7 +157,7 @@ export class PartyScene extends Phaser.Scene {
           ? `Put ${name} back down where it was.`
           : `Put the Pokémon you are holding here, and ${name} where it was.`;
     const tag = moving ? pixelTag('Holding', 'risk') : index === 0 ? pixelTag('Leads', 'good', true) : '';
-    return `<button class="px-row${moving ? ' is-selected' : ''}" data-member="${index}" data-shows="member-${index}" data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line"><strong class="px-name">${pokemon.base.name}</strong>${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}${held ? ` · holding ${held.displayName}` : ''}</small></span>${tag}</button>`;
+    return `<button class="px-row${moving ? ' is-selected' : ''}" data-member="${index}" data-shows="member-${index}" data-help="${escapeAttribute(help)}"><span class="px-row-main"><span class="px-row-line">${pixelPokemonName(pokemon)}${pixelHpBar(pokemon.currentHp, pokemon.maxHp)}</span><small>${conditionLine(pokemon)}${held ? ` · holding ${held.displayName}` : ''}</small></span>${tag}</button>`;
   }
 
   private memberDossier(pokemon: Pokemon, index: number): string {

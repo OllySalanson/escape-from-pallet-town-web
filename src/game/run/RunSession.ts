@@ -57,6 +57,11 @@ export interface ActiveRunSession {
   /** The seed and runtime stream keep world events reproducible after generation. */
   readonly seed?: number;
   readonly rng?: SeededRng;
+  /**
+   * The stream a wild encounter's shininess is rolled on (`pokemon/shiny.ts`),
+   * apart from `rng` so the rare roll moves no other roll of the raid.
+   */
+  readonly shinyRng?: SeededRng;
   /** Kept in the live session so battle returns do not replay onboarding. */
   firstDeploymentBriefingShown?: boolean;
   /** Set once the authored teaching encounter has been handed to BattleScene. */
@@ -108,6 +113,9 @@ export interface ActiveRunSession {
   surveyed?: Set<number>;
 }
 
+/** Mixed into a raid's seed for its shiny stream, so the two streams never meet. */
+const SHINY_STREAM = 0x5a17e5;
+
 export function createActiveRunSession(
   manager: RunManager,
   secureSlot: SecureSlot,
@@ -134,6 +142,7 @@ export function createActiveRunSession(
         plan,
         seed: plan.seed,
         rng: createSeededRng(plan.seed ^ 0x9e3779b9),
+        shinyRng: createSeededRng(plan.seed ^ SHINY_STREAM),
       }),
   };
 }
