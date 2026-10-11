@@ -32,6 +32,7 @@ import {
   pixelColumns,
   pixelCommitBar,
   pixelPortrait,
+  pixelShinyStar,
   pixelTag,
   pixelTypeBadge,
   pixelWindow,
@@ -134,7 +135,7 @@ function pupilCard(view: TeachView, pokemon: Pokemon, index: number): string {
     : `${name}: ${pupilOutcome(view.machine, pokemon)}`;
   const tag = chosen ? pixelTag('Chosen', 'good', true) : VERDICT_TAG[verdict];
   const classes = ['px-row', 'teach-pupil', `is-${verdict}`, ...(chosen ? ['is-selected'] : [])].join(' ');
-  return `<button class="${classes}" data-pupil="${index}"${choosable ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(help)}">${pixelPortrait(pokemon.base.dexId, pokemon.base.name, pokemon.shiny)}<span class="teach-pupil-words"><span class="px-row-line"><strong class="px-name">${name}</strong>${tag}</span><small class="teach-pupil-condition">${conditionLine(pokemon)}</small><ol class="teach-moves" aria-label="${escapeAttribute(`${name}'s moves`)}">${moves}</ol><span class="px-wrap teach-outcome">${pupilOutcome(view.machine, pokemon)}</span></span></button>`;
+  return `<button class="${classes}" data-pupil="${index}"${choosable ? '' : ' aria-disabled="true"'} data-help="${escapeAttribute(help)}">${pixelPortrait(pokemon.base.dexId, pokemon.base.name, pokemon.shiny)}<span class="teach-pupil-words"><span class="px-row-line"><strong class="px-name">${name}</strong>${pokemon.shiny ? pixelShinyStar() : ''}${tag}</span><small class="teach-pupil-condition">${conditionLine(pokemon)}</small><ol class="teach-moves" aria-label="${escapeAttribute(`${name}'s moves`)}">${moves}</ol><span class="px-wrap teach-outcome">${pupilOutcome(view.machine, pokemon)}</span></span></button>`;
 }
 
 /** The foot of the screen: what pressing TEACH will do, or what to do first. */

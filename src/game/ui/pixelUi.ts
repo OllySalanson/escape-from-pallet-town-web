@@ -212,12 +212,12 @@ export function pixelFigure(design: CharacterDesignId, name: string): string {
 
 /**
  * A species' front sprite at its own size: one source pixel is one game pixel.
- * A shiny is drawn in its shiny colours with FireRed's star in the corner, as
- * the summary screen stands it beside the picture.
+ * A shiny is drawn in its shiny colours; its star goes beside its name
+ * (`pixelPokemonName`), which every pane with a portrait in it also prints.
  */
 export function pixelPortrait(dexId: number, name: string, shiny = false): string {
   const label = shiny ? `Shiny ${name}` : name;
-  return `<span class="px-portrait pokemon-avatar${shiny ? ' is-shiny' : ''}" aria-label="${escapeAttribute(label)}"><img src="${publicAssetUrl(pokemonSpritePath('front', dexId, shiny))}" alt="" /><span aria-hidden="true">${name.slice(0, 1)}</span>${shiny ? pixelShinyStar() : ''}</span>`;
+  return `<span class="px-portrait pokemon-avatar" aria-label="${escapeAttribute(label)}"><img src="${publicAssetUrl(pokemonSpritePath('front', dexId, shiny))}" alt="" /><span aria-hidden="true">${name.slice(0, 1)}</span></span>`;
 }
 
 /**

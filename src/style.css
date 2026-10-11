@@ -1705,16 +1705,7 @@ button {
   background: none;
   color: var(--ink-soft);
 }
-/* FireRed's summary screen stands its shiny star in the corner of the
-   picture; it is the portrait's corner here. */
-.pixel-ui .px-portrait.is-shiny {
-  position: relative;
-}
-.pixel-ui .px-portrait.is-shiny > .px-shiny {
-  position: absolute;
-  top: calc(var(--u) * 2);
-  right: calc(var(--u) * 2);
-}
+/* FireRed's summary-screen shiny star, after a shiny's name (`pixelShinyStar`). */
 :where(.pixel-ui) .px-shiny {
   display: inline-block;
   flex: none;

@@ -2265,13 +2265,14 @@ describe('BattleScene shiny Pokemon', () => {
   });
 
   it('draws a shiny landing in its shiny colours and sparkles it, as FireRed does', () => {
-    const play = vi.spyOn(audioManager, 'play').mockImplementation(() => undefined);
+    const play = vi.spyOn(audioManager, 'play').mockImplementation(() => true);
     try {
       const { scene } = createBattleSceneHarness();
       withTextures(scene);
-      const counters: { onUpdate(tween: { getValue(): number }): void; onComplete(): void }[] = [];
+      type Counter = { onUpdate(tween: { getValue(): number }): void; onComplete(): void };
+      const counters: Counter[] = [];
       Object.assign(scene as object, {
-        tweens: { add: vi.fn(), killTweensOf: vi.fn(), addCounter: vi.fn((config) => counters.push(config)) },
+        tweens: { add: vi.fn(), killTweensOf: vi.fn(), addCounter: vi.fn((config: Counter) => counters.push(config)) },
       });
       const sprite = (scene as unknown as { sprites: Map<string, ReturnType<typeof spriteStub>> }).sprites.get('enemy0')!;
 

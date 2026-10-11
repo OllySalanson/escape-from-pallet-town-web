@@ -15,6 +15,7 @@ import {
   pixelCommitBar,
   pixelPortrait,
   pixelScreen,
+  pixelShinyStar,
   pixelTag,
   pixelTypeBadge,
   pixelWindow,
@@ -102,7 +103,7 @@ export function moveChooserMarkup(view: MoveChooserView, chosen: number | null =
       );
     })
     .join('');
-  const who = `<span class="px-row-line"><strong class="px-name">${escapeHtml(name)}</strong><small>Lv ${pokemon.level} · ${pokemon.moves.length} of 4 moves known</small></span>`;
+  const who = `<span class="px-row-line"><strong class="px-name">${escapeHtml(name)}</strong>${pokemon.shiny ? pixelShinyStar() : ''}<small>Lv ${pokemon.level} · ${pokemon.moves.length} of 4 moves known</small></span>`;
   const newMove = moveCard(incoming, moveFacts(incoming), 'aria-disabled="true" data-help="The move being learned."', pixelTag('New', 'good'));
   const later = view.canDefer
     ? `<button class="px-window px-button" data-later data-help="Ask again after your next raid. Nothing changes until you choose.">Decide later</button>`
