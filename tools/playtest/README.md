@@ -22,6 +22,10 @@ not a limit: nothing caps how many run at once. To check one, `ps -L -o ni,comm
 that spawns a browser goes through `launchBrowser()`; one that spawns anything
 else heavy calls `lowerOwnPriority()` first.
 
+`attachBrowser(port)` drives a browser something else started and will stop
+(this machine's own watched headless browser, say) instead of launching one;
+`fishing.mjs --port=N` takes it that way.
+
 `launchBrowser()` passes `--remote-debugging-port=0`, so the OS picks the CDP
 port and two workers cannot share one - a fixed port is how a driver once
 attached to another worker's tab. `browser.close()` kills the whole process
@@ -64,6 +68,12 @@ way a player does rather than calling `.click()`: `keyDescription` gives Enter a
 stepped loop and prints how far the player moved on each frame, failing if any
 frame of the walk is off the steady rate: a judder loses no game time, so a
 check on arrival times cannot see one.
+
+`fishing.mjs <url> <dir> [--rod=old-rod] [--insertion=id --district=NAME]`
+walks to the nearest bank, faces the water and presses the interact key, with no
+rod and then with one, casting until something bites, and fails if a cast is not
+charged to the raid clock or a bite does not become the fight it promised
+(`docs/screens/fishing/`).
 
 `raid.mjs --exit=LABEL` (`--exit=ferry-dock`) leaves by a named exit rather than
 the nearest one open from the first second: it stands beside the exit until its

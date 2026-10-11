@@ -172,12 +172,26 @@ function storeDraft(file: MapFile): void {
   );
 }
 
+/**
+ * What each scene opened in a test does on its way out. They are run before the
+ * test's stand-in page is taken away, as Phaser runs them when a scene stops:
+ * left running, a scene's own autosave timer fired into the next test's gap,
+ * found no storage and drew a screen with no document to draw it in.
+ */
+let shutdowns: (() => void)[] = [];
+
 function openMaker(): { scene: MakerInternals; start: ReturnType<typeof vi.fn> } {
   const start = vi.fn();
   const scene = Object.create(MapMakerScene.prototype) as MakerInternals;
   Object.assign(scene as unknown as Record<string, unknown>, {
     scene: { start, isActive: () => true },
-    events: { once: () => undefined },
+    events: {
+      once: (event: string, handler: () => void) => {
+        if (event === 'shutdown') {
+          shutdowns.push(handler);
+        }
+      },
+    },
     cameras: { main: { fadeOut: () => undefined, once: () => undefined } },
     store: { drafts: [] },
     tool: 'brush',
@@ -252,6 +266,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  const leaving = shutdowns;
+  shutdowns = [];
+  leaving.forEach((shutdown) => shutdown());
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });

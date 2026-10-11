@@ -160,6 +160,20 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.onLineShown?.(0);
   }
 
+  /**
+   * Puts up something to be watched rather than read - a fishing cast's dots -
+   * all at once, with no prompt to continue, because nothing the player presses
+   * moves it on. The next `showMessages` replaces it.
+   */
+  public showProgress(text: string): void {
+    this.typewriter = null;
+    this.onLineShown = undefined;
+    this.textObject.setText(text);
+    this.indicatorElapsedMs = 0;
+    this.indicatorObject.setVisible(false);
+    this.setVisible(true);
+  }
+
   public update(deltaMs: number): void {
     if (!this.visible || !this.typewriter || this.typewriter.isDone) {
       return;

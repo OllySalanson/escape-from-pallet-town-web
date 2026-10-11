@@ -151,6 +151,19 @@ export async function launchBrowser({ window = LOGIC_WINDOW, libs = process.env.
   };
 }
 
+/**
+ * A browser somebody else started and will stop - a shared machine's own
+ * headless browser, say, which its memory watchdog can see and a driver's own
+ * launch cannot. Its CDP port is given; `close` leaves the browser running.
+ */
+export function attachBrowser(port, { window = LOGIC_WINDOW } = {}) {
+  return {
+    port,
+    close: async () => undefined,
+    openPage: (url, options) => openPage(port, url, window, options),
+  };
+}
+
 function processGroupCpuSeconds(groupId) {
   let ticks = 0;
   for (const entry of readdirSync('/proc')) {

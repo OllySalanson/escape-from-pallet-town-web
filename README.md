@@ -64,7 +64,8 @@ parts are fighting for the same space.
 ### 2. Drop in, and the clock starts
 
 Five maps, each drawn tile by tile, each far bigger than one raid can cover, so there is always
-somewhere you didn't get to. Tall grass rolls wild encounters. Landmarks hide caches. Contracts
+somewhere you didn't get to. Tall grass rolls wild encounters, and whatever lives in the water
+bites on a rod, if you can spare the clock to stand there. Landmarks hide caches. Contracts
 from the board send you looking for something specific. Somewhere on the map there is a prize,
 glinting, that is definitely worth the detour. Probably.
 
@@ -137,8 +138,9 @@ than a menu. Four buildings, four people you'll recognise, and each one is a thi
 - **Brock's Workshop** builds permanent upgrades, paid for in the materials you haul home and the
   Pokémon you can spare, and every one of them turns up on the map: a radio mast, a beacon, cellar
   doors in the quay wall.
-- **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones
-  and HMs are bartered for things you found. Everything you trade him ends up on his shelves.
+- **Bill's cottage**, down on the quay, is where Pokédollars go, and where gear, evolution stones,
+  HMs and fishing rods are bartered for things you found. Everything you trade him ends up on his
+  shelves.
 
 At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, which is yours.
 It's the player's house from FireRed, downstairs and up, and it fills up with what you've done:

@@ -493,7 +493,9 @@ describe('the stones on the counter', () => {
       TRADER_BARTERS.filter((barter) => !barter.once)
         .map((barter) => barter.id)
         .sort(),
-    ).toEqual([...stoneBarters.map((barter) => barter.id), 'barter-pickaxe'].sort());
+    ).toEqual(
+      [...stoneBarters.map((barter) => barter.id), 'barter-pickaxe', 'barter-old-rod', 'barter-good-rod'].sort(),
+    );
   });
 
   it('prices one at more than a raid carries home, so finding one is cheaper', () => {

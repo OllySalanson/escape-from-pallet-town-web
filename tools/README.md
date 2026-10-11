@@ -13,6 +13,7 @@ re-implements what the game does can disagree with it, and this one cannot.
   played through it. See `playtest/README.md`.
 - `moves/` - how much of the 151's move list the engine can express, from a
   committed PokeAPI snapshot. See `moves/README.md`.
-- `encounters/` - what a raid through each place meets, and what it costs.
+- `encounters/` - what a raid through each place meets, and what it costs; and
+  `frlgWater.mjs`, which reads FireRed's own fishing and surfing slots into the game.
 - `weather/` - what weather does to a wild fight and to each hunter rung,
   measured over the real engine. See `weather/README.md`.

@@ -454,6 +454,35 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     standing: 'regular',
     once: false,
   },
+  // FireRed's two lower rods, which is how anything that lives in the water is
+  // met (`../world/fishing.ts`). Repeating for the Pickaxe's reason: a rod is
+  // carried in the pack and lost with it. The Old Rod is a Fishing Guru's gift
+  // in FireRed and nearly one here; the Good Rod is what the water is for.
+  {
+    id: 'barter-old-rod',
+    name: 'Old Rod',
+    detail:
+      'Cast it into any open water from the bank. It only ever hooks a Magikarp, but a Magikarp is a start. Lose it and he has another.',
+    icon: 'old-rod',
+    gives: { itemId: 'old-rod', quantity: 1 },
+    takes: [{ itemId: 'mooring-rope', quantity: 1 }],
+    standing: 'regular',
+    once: false,
+  },
+  {
+    id: 'barter-good-rod',
+    name: 'Good Rod',
+    detail:
+      'It reaches what lives in the water: Poliwag and Goldeen in the rivers and ponds, Horsea and Krabby off the tide. Lose it and he will find you another.',
+    icon: 'good-rod',
+    gives: { itemId: 'good-rod', quantity: 1 },
+    takes: [
+      { itemId: 'mooring-rope', quantity: 2 },
+      { itemId: 'parts-crate', quantity: 1 },
+    ],
+    standing: 'trusted',
+    once: false,
+  },
   {
     id: 'barter-hm03',
     name: 'HM03 Surf',

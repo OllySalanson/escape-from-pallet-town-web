@@ -61,9 +61,9 @@ describe('materials', () => {
     // Nothing else lives in that pocket but the five evolution stones and the
     // nine machines, both of which are spent on a Pokemon rather than at
     // Brock's, the money, which is spent at Bill's counter and nowhere else,
-    // and the Pickaxe, which is carried and never spent at all.
+    // and the Pickaxe and the two rods, which are carried and never spent at all.
     expect(ITEM_DEFINITIONS.filter((item) => item.category === ItemCategory.Misc).map((item) => item.id).sort()).toEqual(
-      [...MATERIAL_IDS, ...MACHINE_ITEM_IDS, ...EVOLUTION_STONE_IDS, 'money', 'pickaxe'].sort(),
+      [...MATERIAL_IDS, ...MACHINE_ITEM_IDS, ...EVOLUTION_STONE_IDS, 'money', 'pickaxe', 'old-rod', 'good-rod'].sort(),
     );
   });
 
