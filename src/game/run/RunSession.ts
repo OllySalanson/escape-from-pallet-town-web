@@ -45,6 +45,14 @@ export interface ActiveRunSession {
    * accounting can name it, and only the session remembers what was risked.
    */
   readonly packItemId?: string;
+  /**
+   * The save's partner - the starter it picked, by the stash's own mark
+   * (`Stash.partner()`) - when it came on this raid. The raid follower walks
+   * the lead, and the partner when the lead has no walking art
+   * (`world/raidFollower.ts`); the party alone cannot say which Pokemon was
+   * the starter, because a caught lookalike is the same species.
+   */
+  readonly partner?: Pokemon;
   readonly objectives: readonly RunObjective[];
   /** The deterministic world configuration generated when this raid begins. */
   readonly plan?: RunPlan;
@@ -118,6 +126,7 @@ export function createActiveRunSession(
   plan?: RunPlan,
   workshopUpgrades: readonly string[] = [],
   packItemId?: string,
+  partner?: Pokemon,
 ): ActiveRunSession {
   return {
     workshopUpgrades: [...workshopUpgrades],
@@ -127,6 +136,7 @@ export function createActiveRunSession(
     broughtPokemonIds: [...broughtPokemonIds],
     broughtItems: [...broughtItems],
     ...(packItemId === undefined ? {} : { packItemId }),
+    ...(partner === undefined ? {} : { partner }),
     objectives: [...objectives],
     ...(plan === undefined
       ? {}

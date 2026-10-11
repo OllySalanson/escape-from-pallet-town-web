@@ -141,7 +141,10 @@ import { BASE_STAGE_WIDTH } from '../display/stage';
 import { RaidHud } from '../ui/RaidHud';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
 import { ChoicePrompt } from '../ui/ChoicePrompt';
-import { placeCaptions, placeDialog, type Rect } from '../ui/labelPlacement';
+import { placeCaptions, placeDialog, type CaptionPlacement, type Rect } from '../ui/labelPlacement';
+import { arrivalPlace } from '../base/partner';
+import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
+import { raidFollower, sameFollower, type RaidFollower } from '../world/raidFollower';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
 import { GAME_FONT } from '../ui/gameFont';
 import { DIALOG_FONT_SIZE } from '../ui/screenType';
@@ -732,6 +735,13 @@ export class WorldScene extends Phaser.Scene {
    * a fight starts the count again: a battle is not standing still.
    */
   private hunterStillMs = 0;
+  /**
+   * The Pokemon walking at the player's heel, or null when nobody is: the
+   * party's lead, else the partner (`world/raidFollower.ts`), drawn by the
+   * harbour's own `PartnerFigure`. It is never collision and never charged to
+   * the clock - it only ever goes where the player has been.
+   */
+  private partner: PartnerFigure | null = null;
 
   public constructor() {
     super('world');
@@ -803,6 +813,8 @@ export class WorldScene extends Phaser.Scene {
     this.hunterNear = false;
     this.hunterFacing = 'down';
     this.hunterStillMs = 0;
+    // Phaser destroyed its sprite with the scene; this only stops pointing at it.
+    this.partner = null;
     // Where the last raid ended is not where this one starts, and the plate
     // that named it must not flash up over the next insertion.
     this.districtId = null;
@@ -890,6 +902,8 @@ export class WorldScene extends Phaser.Scene {
     this.liftBeatenWatches();
     this.createPlayer();
     this.createDialogBox();
+    // After the dialogue box, which the partner asks whether a line is being read.
+    this.createPartner(!data.returnLocation);
     this.bindControls();
     this.configureCamera();
     this.createRunTimerHud();
@@ -1029,6 +1043,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   public update(_time: number, deltaMs: number): void {
+    this.updateRaid(deltaMs);
+    // Last, so it is drawn where this frame's step has put the player.
+    this.updatePartner(deltaMs);
+  }
+
+  private updateRaid(deltaMs: number): void {
     const stepCarryMs = this.stepCarryMs;
     this.stepCarryMs = null;
     // Before the captions are seated, and before any of the early returns
@@ -2825,6 +2845,95 @@ export class WorldScene extends Phaser.Scene {
     this.playerHeadMark.setPosition(x, y);
   }
 
+  // -- the partner -----------------------------------------------------------
+
+  /** Who walks at the player's heel as the raid now stands (`world/raidFollower.ts`). */
+  private followerNow(): RaidFollower | null {
+    return raidFollower({
+      party: this.party.pokemon,
+      ...(this.runSession?.partner === undefined ? {} : { partner: this.runSession.partner }),
+    });
+  }
+
+  /**
+   * The follower, standing where it would have walked in: behind the player,
+   * else beside them (`arrivalPlace`). Dropping in, it comes out of its ball
+   * after them; back from a fight, it is simply there, as the player is.
+   */
+  private createPartner(fadeIn: boolean): void {
+    const who = this.followerNow();
+    if (!who) {
+      return;
+    }
+    const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile));
+    this.partner = new PartnerFigure(this, this.partnerHost(), who, place, { fadeIn });
+  }
+
+  /** The player, as the partner reads them (`PartnerHost`). */
+  private partnerHost(): PartnerHost {
+    return {
+      playerTile: () => this.currentTile,
+      playerStepping: () => this.targetTile !== null,
+      stepProgress: () => this.stepProgress,
+      player: this.player,
+      playerHeadMark: this.playerHeadMark,
+      reading: () => this.dialogBox.visible,
+      standingAbout: () => this.targetTile === null && !this.isWarping,
+      quiet: () => this.cutscene !== undefined || this.trainerPrompt !== undefined,
+    };
+  }
+
+  /**
+   * Ground the follower may arrive on: on the map, open, nobody on it, and not
+   * a doorway - a building is drawn over whoever stands in one.
+   */
+  private partnerCanStand(tile: GridPosition): boolean {
+    return (
+      tile.x >= 0 &&
+      tile.y >= 0 &&
+      tile.x < this.bounds.width &&
+      tile.y < this.bounds.height &&
+      !this.isBlocked(tile) &&
+      getWarpAt(this.currentMap, tile, 'step') === undefined
+    );
+  }
+
+  /** Through a door or off a warp: the follower stands beside the player on the far side. */
+  private standPartnerBesidePlayer(): void {
+    this.partner?.standAt(arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile)));
+  }
+
+  /**
+   * The follower's frame. Who it is is asked again first, so a party put in
+   * a new order, an evolution or a gift changes it on the spot; and it gets
+   * out of the way of anybody who steps onto its tile - the hunter, a
+   * townsperson keeping their beat - by going after the player into theirs.
+   */
+  private updatePartner(deltaMs: number): void {
+    const who = this.followerNow();
+    const current = this.partner;
+    if (!sameFollower(who, current && { pokemon: current.pokemon, species: current.species })) {
+      const place = current?.place;
+      current?.destroy();
+      this.partner = who
+        ? new PartnerFigure(
+          this,
+          this.partnerHost(),
+          who,
+          place?.out ? place : arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile)),
+        )
+        : null;
+    }
+    const partner = this.partner;
+    if (!partner) {
+      return;
+    }
+    if (partner.place.out && !partner.tucking && this.isBlocked(partner.place.tile)) {
+      partner.tuckIn();
+    }
+    partner.update(deltaMs);
+  }
+
   private createDialogBox(): void {
     this.dialogBox = new DialogBox(this, {
       x: Math.round((this.scale.width - DIALOG_WIDTH) / 2),
@@ -3910,6 +4019,7 @@ export class WorldScene extends Phaser.Scene {
     this.stepProgress = 0;
     this.stepDurationMs = this.isRunning() ? STEP_DURATION_MS / PLAYTEST_RUN_DIVISOR : STEP_DURATION_MS;
     this.hopping = false;
+    this.partner?.follow(this.currentTile, targetTile);
 
     this.stepStart.set(
       this.currentTile.x * TILE_SIZE,
@@ -3946,6 +4056,9 @@ export class WorldScene extends Phaser.Scene {
     }
     this.facing = facing;
     this.pushingAgainst = null;
+    // Nobody stands behind a ledge's landing but the bank, so the partner goes
+    // after the player into the brow and comes out again on their next step.
+    this.partner?.tuckIn();
     this.beginStep(hop.landing);
     this.stepDurationMs = LEDGE_HOP_DURATION_MS;
     this.hopping = true;
@@ -3993,6 +4106,7 @@ export class WorldScene extends Phaser.Scene {
     const steppedFrom = this.currentTile;
     this.currentTile = { ...this.targetTile };
     this.targetTile = null;
+    this.partner?.arrived();
     if (this.runSession) {
       this.runSession.stepsTaken = (this.runSession.stepsTaken ?? 0) + 1;
     }
@@ -4096,6 +4210,7 @@ export class WorldScene extends Phaser.Scene {
     audioManager.play('warp');
     this.isWarping = true;
     this.player.stop();
+    this.partner?.tuckIn();
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.clearMap();
@@ -4112,6 +4227,7 @@ export class WorldScene extends Phaser.Scene {
         this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
       );
       this.showIdlePose();
+      this.standPartnerBesidePlayer();
       this.configureCamera();
       this.saveGame();
       this.cameras.main.fadeIn(180, 0, 0, 0);
@@ -4137,6 +4253,7 @@ export class WorldScene extends Phaser.Scene {
     this.isWarping = true;
     this.player.stop();
     this.showIdlePose();
+    this.partner?.tuckIn();
     this.cameras.main.fadeOut(DOOR_FADE_MS, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.currentTile = { ...warp.destination };
@@ -4147,6 +4264,7 @@ export class WorldScene extends Phaser.Scene {
         this.currentTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET,
       );
       this.showIdlePose();
+      this.standPartnerBesidePlayer();
       // The key that would take the player straight back through is spent:
       // coming out of a doorway with it still held must not walk them back in.
       const back = nextTileFromDirection({ x: 0, y: 0 }, warp.facing);
@@ -4329,9 +4447,37 @@ export class WorldScene extends Phaser.Scene {
         keepClear: this.captionKeepClear(),
         canopy: [...this.canopyInView(bounds), ...this.lidsInView()],
         player: this.captionPlayer(),
+        follower: this.partner?.shown ? [this.partner.rect()] : [],
       },
     );
     this.worldLabels.forEach((label, index) => label.seat(placements[index]));
+    this.veilPartnerUnderCaptions(placements);
+  }
+
+  /**
+   * The follower gives way to writing rather than the other way round: a
+   * caption that had nowhere to sit but behind it is read through it.
+   */
+  private veilPartnerUnderCaptions(placements: readonly CaptionPlacement[]): void {
+    const partner = this.partner;
+    if (!partner) {
+      return;
+    }
+    const figure = partner.rect();
+    partner.setVeiled(
+      placements.some((placement, index) => {
+        if (!placement.visible) {
+          return false;
+        }
+        const { width, height } = this.worldLabels[index].request();
+        return (
+          placement.x < figure.x + figure.width &&
+          placement.x + width > figure.x &&
+          placement.y < figure.y + figure.height &&
+          placement.y + height > figure.y
+        );
+      }),
+    );
   }
 
   /**

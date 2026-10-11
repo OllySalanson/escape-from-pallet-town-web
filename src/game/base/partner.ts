@@ -26,7 +26,9 @@ import { FOLLOWER_ART } from './generated/followerArt';
  *   partner was lost - in a wipe, or by any other road out of the vault -
  *   walks the harbour alone, even after the wipe re-issues a fresh starter of
  *   the same species (`partnerOf`).
- * - **It is only ever here.** The raid maps never read this module.
+ * - **It is the partner here.** On a raid the one at the player's heel is
+ *   the party's lead instead, as HeartGold has it (`world/raidFollower.ts`),
+ *   walked by these same rules and drawn by the same `PartnerFigure`.
  */
 
 /** One partner's walking art, as `scripts/cut-hgss-followers.mjs` cut it. */

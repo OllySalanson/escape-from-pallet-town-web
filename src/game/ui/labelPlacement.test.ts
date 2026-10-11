@@ -570,6 +570,34 @@ describe('where a map caption is allowed to sit', () => {
     });
   });
 
+  describe('around the Pokemon at the player\'s heel', () => {
+    const subject = tile(152, 112);
+    // Where the caption sits with nothing about, and a follower standing in it.
+    const first = rectOf(seat({ subject }));
+    const follower: Rect = { x: first.x + 20, y: first.y - 4, width: 16, height: 15 };
+
+    it('sits clear of it while anywhere is', () => {
+      const placement = seat({ subject }, { follower: [follower] });
+      expect(placement.visible).toBe(true);
+      expect(overlaps(rectOf(placement), follower)).toBe(false);
+    });
+
+    it('never gives up a seat for it: a name with nowhere else is seated behind it, not hidden', () => {
+      // Everything but that first seat is taken.
+      const walls: Rect[] = [
+        { x: 0, y: 0, width: 320, height: first.y },
+        { x: 0, y: first.y + first.height, width: 320, height: 240 - first.y - first.height },
+        { x: 0, y: first.y, width: first.x, height: first.height },
+        { x: first.x + first.width, y: first.y, width: 320 - first.x - first.width, height: first.height },
+      ];
+      const alone = seat({ subject }, { keepClear: walls });
+      const withCompany = seat({ subject }, { keepClear: walls, follower: [follower] });
+      expect(alone.visible).toBe(true);
+      expect(withCompany).toEqual(alone);
+      expect(overlaps(rectOf(withCompany), follower)).toBe(true);
+    });
+  });
+
   it('rounds to whole pixels, because a half-pixel caption is a blurred caption', () => {
     const placement = seat({ subject: { x: 152.5, y: 112, width: 16, height: 16 }, width: 61, height: 15 });
 

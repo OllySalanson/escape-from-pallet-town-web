@@ -1135,6 +1135,7 @@ export class HubScene extends Phaser.Scene {
       plan,
       this.builtUpgradeIds,
       deployment.packItemId,
+      deployment.party.find((stored) => stored.id === this.savedGame.stash.partnerId())?.pokemon,
     );
     this.cameras.main.fadeOut(180, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
