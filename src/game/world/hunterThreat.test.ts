@@ -36,8 +36,14 @@ describe('hunterThreatFor', () => {
   it('meets a lone Lv 5 starter with one Pokemon at the floor', () => {
     const threat = hunterThreatFor([new Pokemon(BULBASAUR, 5)]);
     expect(threat).toMatchObject({ tierOffset: 0, arrivesSoonerMs: 0, contractTiers: 0 });
-    expect(threat.openingTeam.map((member) => [member.species.id, member.level])).toEqual([['rattata', 2]]);
+    // Blue's own Eevee, since each rival leads with their signature.
+    expect(threat.openingTeam.map((member) => [member.species.id, member.level])).toEqual([['eevee', 2]]);
     expect(threat.matchedTo).toEqual({ name: 'Bulbasaur', level: 5 });
+  });
+
+  it("names the team this raid's rival will lead, so the final check and the raid agree", () => {
+    const threat = hunterThreatFor([new Pokemon(BULBASAUR, 5)], 0, 'koga');
+    expect(threat.openingTeam[0].species.id).toBe('koffing');
   });
 
   /**

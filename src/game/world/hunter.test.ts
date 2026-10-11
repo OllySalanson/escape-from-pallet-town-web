@@ -3,12 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { Pokemon } from '../pokemon';
 import { EVOLUTIONS } from '../pokemon/evolution';
 import { CHARMANDER, getSpeciesById, PIDGEY } from '../pokemon/species';
-import { PokemonType } from '../pokemon/PokemonType';
 import { RunManager } from '../run/RunManager';
 import { RUN_INSERTIONS } from '../run/runGeneration';
 import { createActiveRunSession } from '../run/RunSession';
 import { WORLD_MAPS, type WorldMapId, getWorldMap } from '../worldMap';
 import { extractionPointsOn } from './extractionPoints';
+import { FIRST_HUNTER_RIVAL, HUNTER_RIVALS } from './hunters';
+import { partyOf, trainerMeasure } from './trainerMeasure';
 import {
   collisionBlocker,
   HUNTER_BREAKAWAY_DISTANCE,
@@ -23,11 +24,20 @@ import {
   HUNTER_MINIMUM_SPAWN_DISTANCE,
   HUNTER_SPAWN_DISTANCE,
   hunterQuarry,
+  hunterAtEnrage,
+  hunterIdleSteps,
+  hunterLineupFor,
+  hunterSpeciesAt,
   hunterTeamFor,
   hunterTierFor,
+  createHunterTrainer,
+  DEFAULT_HUNTER_TUNING,
+  HUNTER_IDLE_STEP_MS,
   HUNTER_MINIMUM_LEVEL,
   HUNTER_ROSTER,
+  HUNTER_STONE_EVOLUTION_LEVELS,
   HUNTER_TIERS,
+  type HunterState,
   isHunterOffTheScent,
   isHunterContactingPlayer,
   isHunterSearching,
@@ -375,7 +385,7 @@ describe('hunterTeamFor', () => {
     ]);
     expect(team.map((member) => member.level)).toEqual([10, 7, 5]);
     expect(team.map((member) => member.species.id)).toEqual(
-      HUNTER_ROSTER.slice(0, 3).map((species) => species.id),
+      hunterLineupFor(FIRST_HUNTER_RIVAL).slice(0, 3).map((species) => species.id),
     );
   });
 
@@ -387,7 +397,7 @@ describe('hunterTeamFor', () => {
       down.takeDamage(down.maxHp);
       return down;
     })()]);
-    expect(team).toEqual([{ species: HUNTER_ROSTER[0], level: 4 }]);
+    expect(team).toEqual([{ species: hunterLineupFor(FIRST_HUNTER_RIVAL)[0], level: 4 }]);
   });
 
   it('never fields a Pokemon below the floor, however low the party', () => {
@@ -395,22 +405,211 @@ describe('hunterTeamFor', () => {
     expect(hunterTeamFor(rung(0), [new Pokemon(CHARMANDER, 5)])[0].level).toBe(HUNTER_MINIMUM_LEVEL);
   });
 
-  it('leads with a Normal type, so a lone starter meets no type it is weak to', () => {
-    expect(HUNTER_ROSTER[0].primaryType).toBe(PokemonType.Normal);
-    expect(HUNTER_ROSTER[0].secondaryType ?? null).toBeNull();
-    // A full party is six, so the roster has a Pokemon for every one of them.
-    expect(HUNTER_ROSTER.length).toBeGreaterThanOrEqual(6);
+  /**
+   * The captain, 2026-10-11 (playtest 33): each rival leads with a signature
+   * Pokemon instead of the shared Rattata, and the rest of the team follows.
+   */
+  it("leads with each rival's own Pokemon, then the shared escorts, never one line twice", () => {
+    const leads = HUNTER_RIVALS.map((rival) => hunterLineupFor(rival.id)[0].id);
+    expect(leads).toEqual(HUNTER_RIVALS.map((rival) => rival.signature));
+    expect(new Set(leads).size).toBe(HUNTER_RIVALS.length);
+    expect(leads).not.toContain('rattata');
+    for (const rival of HUNTER_RIVALS) {
+      const lineup = hunterLineupFor(rival.id);
+      // A full party is six, so every rival has a Pokemon for every one of them.
+      expect(lineup.length).toBeGreaterThanOrEqual(6);
+      const families = lineup.map((species) => evolutionFamilyKey(species.id));
+      expect(new Set(families).size).toBe(lineup.length);
+      expect(lineup.slice(1).every((escort) => HUNTER_ROSTER.includes(escort))).toBe(true);
+    }
+    // Lt. Surge's own Pikachu leads, so it is not fielded again as an escort.
+    expect(hunterLineupFor('lt-surge').filter((species) => species.id === 'pikachu')).toHaveLength(1);
+  });
+
+  it('builds the fight with the rival of this raid, led by their signature', () => {
+    const party = [new Pokemon(CHARMANDER, 10)];
+    for (const rival of HUNTER_RIVALS) {
+      const trainer = createHunterTrainer(0, false, { ...DEFAULT_HUNTER_TUNING, rivalId: rival.id }, party);
+      expect(trainer.name).toBe(rival.name);
+      expect(trainer.party[0].base.id).toBe(rival.signature);
+    }
   });
 
   /**
-   * The roster is basic forms on purpose, so no hunter Pokemon is a species the
-   * game's own rules could not produce at the level it is fielded at.
+   * The lead meets a lone starter alone, so a lead whose type answers one
+   * starter's own type is a starter lottery - Blue's Pidgey, measured at 0%
+   * for a Lv 10 Bulbasaur a level under, is why he leads Eevee. Held on the
+   * last ordinary rung, the hardest any ordinary rival fights: every lone
+   * starter, at every level a first stage is measured at, wins at least this
+   * often against every rival (`tools/hunter/measure.mts` prints the table).
    */
-  it('fields only species that are legal at the level the team fields them at', () => {
-    for (const species of HUNTER_ROSTER) {
-      const rule = EVOLUTIONS.find((evolution) => evolution.to === species.id);
-      expect(rule).toBeUndefined();
+  it("is no starter's lottery: every lone starter beats every rival's last rung", () => {
+    const FLOOR = 0.6;
+    const lastRung = HUNTER_TIERS[HUNTER_TIERS.length - 1];
+    const faults: string[] = [];
+    for (const rival of HUNTER_RIVALS) {
+      const tuning = { ...DEFAULT_HUNTER_TUNING, rivalId: rival.id };
+      for (const [starter, level] of LONE_STARTERS) {
+        const party = partyOf(`${starter} ${level}`, [starter, level]);
+        const trainer = createHunterTrainer(lastRung.startsAtMs, false, tuning, party.build());
+        const { winRate } = trainerMeasure(party, trainer, 150, 0x51ede, null, 0);
+        if (winRate < FLOOR) {
+          faults.push(`${rival.name} vs ${party.name}: ${Math.round(winRate * 100)}%`);
+        }
+      }
     }
+    expect(faults).toEqual([]);
+  });
+});
+
+/** The lone starters `tools/hunter/measure.mts` measures: each first stage at 5-13, each second at 16. */
+const LONE_STARTERS: readonly (readonly [string, number])[] = [
+  ...['bulbasaur', 'charmander', 'squirtle'].flatMap((starter) =>
+    [5, 8, 10, 13].map((level) => [starter, level] as const),
+  ),
+  ['ivysaur', 16],
+  ['charmeleon', 16],
+  ['wartortle', 16],
+];
+
+/** One key per evolution line, so two species of a line compare equal. */
+const evolutionFamilyKey = (id: string): string => {
+  let first = id;
+  for (;;) {
+    const rule = EVOLUTIONS.find((evolution) => evolution.to === first);
+    if (!rule) {
+      return first;
+    }
+    first = rule.from;
+  }
+};
+
+describe('hunterSpeciesAt', () => {
+  const at = (id: string, level: number) => hunterSpeciesAt(getSpeciesById(id)!, level).id;
+
+  it('evolves a level line at the level FireRed evolves it', () => {
+    expect(at('rattata', 19)).toBe('rattata');
+    expect(at('rattata', 20)).toBe('raticate');
+    expect(at('meowth', 28)).toBe('persian');
+    expect(at('spearow', 20)).toBe('fearow');
+    expect(at('pidgey', 17)).toBe('pidgey');
+    expect(at('pidgey', 18)).toBe('pidgeotto');
+    // All the way along a line, not one step.
+    expect(at('pidgey', 36)).toBe('pidgeot');
+    expect(at('drowzee', 26)).toBe('hypno');
+    expect(at('koffing', 35)).toBe('weezing');
+    expect(at('psyduck', 33)).toBe('golduck');
+  });
+
+  it('takes a stone at the lowest level a FireRed trainer fields the evolved form', () => {
+    expect(at('pikachu', 23)).toBe('pikachu');
+    expect(at('pikachu', 24)).toBe('raichu');
+    expect(at('jigglypuff', 28)).toBe('jigglypuff');
+    expect(at('jigglypuff', 29)).toBe('wigglytuff');
+    // No FireRed trainer fields an Eeveelution, and which stone is a choice.
+    expect(at('eevee', 100)).toBe('eevee');
+  });
+
+  /** A row with no hunter line behind it is a number nobody reads, and a stone line with no row never evolves. */
+  it('holds the stone table to exactly the stone evolutions a hunter line has, bar Eevee', () => {
+    const lines = [...HUNTER_ROSTER, ...HUNTER_RIVALS.map((rival) => getSpeciesById(rival.signature)!)];
+    const stoneSteps = new Set<string>();
+    let frontier = lines.map((species) => species.id);
+    while (frontier.length > 0) {
+      const rules = EVOLUTIONS.filter((rule) => frontier.includes(rule.from));
+      rules
+        .filter((rule) => rule.trigger.kind !== 'level' && rule.from !== 'eevee')
+        .forEach((rule) => stoneSteps.add(rule.to));
+      frontier = rules.map((rule) => rule.to);
+    }
+    expect(Object.keys(HUNTER_STONE_EVOLUTION_LEVELS).sort()).toEqual([...stoneSteps].sort());
+  });
+
+  /**
+   * Playtest 33 met a Rattata at 39 against a Charizard: an evolved party beat
+   * even the enraged hunter, so the team now evolves with the level it fields.
+   */
+  it('fields an evolved team against a late party', () => {
+    const team = hunterTeamFor(HUNTER_TIERS[3], [
+      new Pokemon(getSpeciesById('charizard')!, 36),
+      new Pokemon(getSpeciesById('pidgeotto')!, 30),
+      new Pokemon(getSpeciesById('raticate')!, 30),
+    ], 'lt-surge');
+    expect(team.map((member) => `${member.species.id} ${member.level}`)).toEqual([
+      'raichu 35',
+      'raticate 29',
+      'wigglytuff 29',
+    ]);
+  });
+});
+
+describe('hunterIdleSteps', () => {
+  it('takes nothing for a pause shorter than its interval, so a sign can be read', () => {
+    expect(hunterIdleSteps(0, HUNTER_IDLE_STEP_MS - 1)).toEqual({ stillMs: HUNTER_IDLE_STEP_MS - 1, steps: 0 });
+  });
+
+  it('takes a step every interval a player stands still, frame by frame', () => {
+    let stillMs = 0;
+    let steps = 0;
+    for (let frame = 0; frame < 3 * HUNTER_IDLE_STEP_MS / 16; frame += 1) {
+      const idle = hunterIdleSteps(stillMs, 16);
+      stillMs = idle.stillMs;
+      steps += idle.steps;
+    }
+    expect(steps).toBe(3);
+  });
+
+  it('owes every step a long frame covered, and nothing for a frame the clock did not charge', () => {
+    expect(hunterIdleSteps(1_000, 2 * HUNTER_IDLE_STEP_MS).steps).toBe(2);
+    expect(hunterIdleSteps(1_000, 0)).toEqual({ stillMs: 1_000, steps: 0 });
+  });
+
+  /**
+   * The two things the interval is chosen between (`HUNTER_IDLE_STEP_MS`):
+   * a median sign or person (145 characters, typed at 40 a second) is read
+   * without a step, and standing still from the arrival distance is caught
+   * well inside the longest timed exit's wait.
+   */
+  it('lets a median sign be read for free, and catches a player who waits out a timed exit', () => {
+    expect(HUNTER_IDLE_STEP_MS).toBeGreaterThan((145 / 40) * 1_000 + 1_000);
+    expect((HUNTER_SPAWN_DISTANCE - 1) * HUNTER_IDLE_STEP_MS).toBeLessThan(90_000 / 2);
+  });
+});
+
+describe('hunterAtEnrage', () => {
+  const beaten: HunterState = {
+    spawned: true,
+    defeated: true,
+    mapId: 'floodplain-relay',
+    position: { x: 3, y: 4 },
+  };
+
+  it('brings a hunter beaten before the clock ran out back for the enrage, to arrive afresh', () => {
+    expect(hunterAtEnrage(beaten)).toEqual({
+      spawned: false,
+      defeated: false,
+      enrageAnswered: true,
+      returning: true,
+    });
+  });
+
+  it('brings it back only once: a hunter beaten during the enrage stays beaten', () => {
+    const returned = hunterAtEnrage(beaten);
+    const beatenAgain: HunterState = { ...returned, spawned: true, defeated: true, returning: false };
+    expect(hunterAtEnrage(beatenAgain)).toBe(beatenAgain);
+  });
+
+  it('leaves a hunter still hunting where it is, and one beaten after that stays beaten', () => {
+    const hunting: HunterState = { spawned: true, defeated: false, position: { x: 1, y: 1 } };
+    const answered = hunterAtEnrage(hunting);
+    expect(answered).toEqual({ ...hunting, enrageAnswered: true });
+    const beatenInTheEnrage = { ...answered, defeated: true };
+    expect(hunterAtEnrage(beatenInTheEnrage)).toBe(beatenInTheEnrage);
+  });
+
+  it('is asked every frame and changes nothing once answered', () => {
+    const once = hunterAtEnrage(beaten);
+    expect(hunterAtEnrage(once)).toBe(once);
   });
 });
 

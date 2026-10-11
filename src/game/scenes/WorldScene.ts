@@ -252,6 +252,8 @@ import {
   tickHunterSearch,
   createHunterState,
   createHunterTrainer,
+  hunterAtEnrage,
+  hunterIdleSteps,
   DEFAULT_HUNTER_TUNING,
   HUNTER_ENRAGED_STEPS_PER_PLAYER_STEP,
   HUNTER_SPAWN_MS,
@@ -676,6 +678,12 @@ export class WorldScene extends Phaser.Scene {
    * like every other figure the rebuilt world stands up.
    */
   private hunterFacing: Direction = 'down';
+  /**
+   * Raid clock the player has spent standing still since the hunter last took
+   * a step, which it takes anyway every `HUNTER_IDLE_STEP_MS`. Scene state, so
+   * a fight starts the count again: a battle is not standing still.
+   */
+  private hunterStillMs = 0;
 
   public constructor() {
     super('world');
@@ -744,6 +752,7 @@ export class WorldScene extends Phaser.Scene {
     this.pushingAgainst = null;
     this.hunterNear = false;
     this.hunterFacing = 'down';
+    this.hunterStillMs = 0;
     // Where the last raid ended is not where this one starts, and the plate
     // that named it must not flash up over the next insertion.
     this.districtId = null;
@@ -1058,6 +1067,14 @@ export class WorldScene extends Phaser.Scene {
       carriedMs = this.stepCarryMs;
       this.stepCarryMs = null;
       frameLeftMs = 0;
+    }
+
+    // A hunter that walked up to a player standing still - its idle step, or
+    // a step taken while a box was being read - catches them here, the first
+    // moment there is nothing on screen to read. Before the exit, because it
+    // reached them first.
+    if (this.tryStartHunterBattle()) {
+      return;
     }
 
     if (this.tryExtractWhereStanding()) {
@@ -3819,6 +3836,8 @@ export class WorldScene extends Phaser.Scene {
     if (this.runSession) {
       this.runSession.stepsTaken = (this.runSession.stepsTaken ?? 0) + 1;
     }
+    // A step is the hunter's step: standing still starts counting again from here.
+    this.hunterStillMs = 0;
     this.setPlayerPosition(this.stepEnd.x, this.stepEnd.y);
     this.showIdlePose();
     this.saveGame();
@@ -4534,6 +4553,7 @@ export class WorldScene extends Phaser.Scene {
     return hunterForecastLine({
       spawned: this.hunterState.spawned,
       defeated: this.hunterState.defeated,
+      returnsForEnrage: !this.hunterState.enrageAnswered,
       rivalName: this.hunterRival().name,
       msUntilSpawn: spawnDelayMs - elapsedMs,
     });
@@ -4771,7 +4791,11 @@ export class WorldScene extends Phaser.Scene {
         ? 0
         : deltaMs;
     const snapshot = this.runSession.manager.tick(clockMs);
+    if (snapshot.isEnraged) {
+      this.hunterState = hunterAtEnrage(this.hunterState);
+    }
     this.advanceHunterSearch(clockMs);
+    this.advanceHunterWhileStill(clockMs);
     this.placeHunterIfDue(snapshot.elapsedMs);
     this.refreshExtractionMarkers();
     this.refreshRunTimerHud(deltaMs);
@@ -4904,17 +4928,21 @@ export class WorldScene extends Phaser.Scene {
     if (!position) {
       return;
     }
+    const returning = this.hunterState.returning === true;
     this.hunterState = {
       ...this.hunterState,
       spawned: true,
       defeated: false,
+      returning: false,
       mapId: this.currentMap.id,
       position,
     };
     this.createHunterSprite();
     if (awaitingSpawn) {
       audioManager.play('hunterArrival');
-      this.interrupt([this.hunterRival().arrival], [position]);
+      // A beaten hunter back for the enrage says so: it is the one return
+      // there is (`hunterAtEnrage`).
+      this.interrupt([returning ? this.hunterRival().comeback : this.hunterRival().arrival], [position]);
     }
   }
 
@@ -5056,6 +5084,36 @@ export class WorldScene extends Phaser.Scene {
         this.extractionPointsForCurrentMap().map((point) => point.position),
       ),
     );
+  }
+
+  /**
+   * The step a hunter takes on a player who is standing still, every
+   * `HUNTER_IDLE_STEP_MS` of raid clock (`hunterIdleSteps`). It is the same
+   * step a player's step pays for, so it moves as far, sounds as near and is
+   * as enraged. The catch it can make is asked by `update()` the first moment
+   * nothing is on screen to read: the hunter may walk up while a box is being
+   * read, because the clock is being charged for that box, but a fight never
+   * starts underneath one.
+   */
+  private advanceHunterWhileStill(chargedMs: number): void {
+    if (
+      this.targetTile ||
+      !this.isHunterOnCurrentMap() ||
+      !this.hunterState.position ||
+      isHunterSearching(this.hunterState) ||
+      isHunterContactingPlayer(this.hunterState.position, this.currentTile)
+    ) {
+      this.hunterStillMs = 0;
+      return;
+    }
+    const idle = hunterIdleSteps(this.hunterStillMs, chargedMs);
+    this.hunterStillMs = idle.stillMs;
+    for (let step = 0; step < idle.steps; step += 1) {
+      if (isHunterContactingPlayer(this.hunterState.position, this.currentTile)) {
+        return;
+      }
+      this.advanceHunterPursuit();
+    }
   }
 
   private advanceHunterSearch(deltaMs: number): void {
