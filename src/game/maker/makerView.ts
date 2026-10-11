@@ -45,6 +45,7 @@ import type { QueuedMap } from './review';
 import { STATUS_WORDS, type SentMap, type SubmissionStatus } from './submissions';
 import {
   BUILDING_CHOICES,
+  plantsAlong,
   PLANT_GROUPS,
   brushesFor,
   FACING_LABELS,
@@ -355,7 +356,9 @@ function toolsPane(state: MakerViewState, inside: MapFileArea | undefined): stri
     toolRow(
       `data-place="building" data-building="${choice.kind}"`,
       choice.label,
-      `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`,
+      plantsAlong(choice.kind)
+        ? `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click. Drag to plant a row, each clear of the last.`
+        : `Plants a ${choice.label.toLowerCase()} with its top-left corner on the tile you click.`,
       chosenPlace === `building:${choice.kind}`,
       `<canvas class="maker-swatch" data-plant="${choice.kind}"${inside ? ` data-swatch-style="${inside.style}"` : ''} width="16" height="16" aria-hidden="true"></canvas>`,
     );

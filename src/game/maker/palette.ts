@@ -7,6 +7,8 @@ import {
   type MapFileFurnitureKind,
   type MapFileHabitat,
   type MapFileLook,
+  type MapFileOutdoorBuildingKind,
+  MAP_FILE_BUILDING_DOORS,
 } from '../world/mapFile';
 import { CAVE_STYLES, TUNNEL_STYLES } from '../world/tileset/insideTileset';
 import { MATERIAL_CHARS } from '../world/tileset/materials';
@@ -358,6 +360,28 @@ export const BUILDING_CHOICES: readonly BuildingChoice[] = (
     | readonly [MapFileBuildingKind, string, PlantGroup, 'water']
   )[]
 ).map(([kind, label, group, on]) => ({ kind, label, group, ...(on ? { on } : {}) }));
+
+/**
+ * The headings whose pieces are planted along a drag, as ground is painted:
+ * a wood, a rockery, a row of crates, a market of stalls or a fence line is
+ * the same piece many times over, and one click a piece was the slowest way to
+ * draw any of them. Buildings, landmarks and signs are each one of a kind.
+ */
+const PLANTED_ALONG: readonly PlantGroup[] = ['Nature', 'Town', 'Things'];
+
+/**
+ * Whether dragging with `kind` plants it along the stroke rather than once.
+ * Anything with a door is left to a click: a row of cave mouths, each of which
+ * GO INSIDE would give its own cave, is never what a drag meant.
+ */
+export function plantsAlong(kind: MapFileBuildingKind): boolean {
+  const choice = BUILDING_CHOICES.find((candidate) => candidate.kind === kind);
+  return (
+    choice !== undefined &&
+    PLANTED_ALONG.includes(choice.group) &&
+    !(MAP_FILE_BUILDING_DOORS[kind as MapFileOutdoorBuildingKind]?.length)
+  );
+}
 
 export interface FurnitureChoice {
   readonly kind: MapFileFurnitureKind;
