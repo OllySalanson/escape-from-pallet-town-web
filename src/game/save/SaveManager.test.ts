@@ -1656,6 +1656,38 @@ describe('SaveManager', () => {
     expect(saves.load()!.stash.itemCount('quick-claw')).toBe(1);
   });
 
+  it('deals an HM again after a wipe took it, and not while one is held', () => {
+    const storage = new MemoryStorage();
+    const saves = counterSave(storage);
+    const stocked = saves.load()!;
+    stocked.stash.addItem('linen-roll', 2);
+    stocked.stash.addItem('parts-crate', 2);
+    saves.save(stocked);
+
+    expect(saves.takeTraderBarter('barter-hm01')).toMatchObject({ ok: true });
+    expect(saves.load()!.stash.itemCount('hm01-cut')).toBe(1);
+    // Holding it, he will not deal a second copy.
+    const holding = saves.takeTraderBarter('barter-hm01');
+    expect(holding.ok).toBe(false);
+    expect(holding.message).toContain('only had the one');
+
+    // Carried into a raid and lost with the pack: the wipe still takes it.
+    expect(saves.applyWipeLoss([], [{ itemId: 'hm01-cut', quantity: 1 }])).toBe(true);
+    const wiped = saves.load()!;
+    expect(wiped.stash.itemCount('hm01-cut')).toBe(0);
+    expect(wiped.raidProgress.traderBarters).toContain('barter-hm01');
+
+    // With none held, he brings it up again on the same terms.
+    const crates = wiped.stash.itemCount('parts-crate');
+    const linen = wiped.stash.itemCount('linen-roll');
+    expect(saves.takeTraderBarter('barter-hm01')).toMatchObject({ ok: true });
+    const after = saves.load()!;
+    expect(after.stash.itemCount('hm01-cut')).toBe(1);
+    expect(after.stash.itemCount('parts-crate')).toBe(crates - 1);
+    expect(after.stash.itemCount('linen-roll')).toBe(linen - 1);
+    expect(saves.takeTraderBarter('barter-hm01').ok).toBe(false);
+  });
+
   it("writes every barter in Bill's book, which his cabinet stands on its shelves", () => {
     const storage = new MemoryStorage();
     const saves = counterSave(storage);

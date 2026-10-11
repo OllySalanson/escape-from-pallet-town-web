@@ -7,6 +7,7 @@ import { mountGame, unmountGame } from './game/gameLifecycle';
 import { watchViewport } from './game/display/stageScaler';
 import { installFeedbackDesk } from './game/feedback/feedbackDesk';
 import { installPixelText } from './game/ui/pixelText';
+import { watchForKeyboard } from './game/input/keyboardSeen';
 
 const developmentScenes = import.meta.env.DEV && isTestLabRequested()
   ? [(await import('./game/scenes/TestLabScene')).TestLabScene]
@@ -18,6 +19,9 @@ if (import.meta.env.DEV) {
   const { audioManager } = await import('./game/audio/AudioManager');
   (window as unknown as { __audio: typeof audioManager }).__audio = audioManager;
 }
+
+// From the first moment, so a key pressed while the game boots still counts.
+const stopWatchingForKeyboard = watchForKeyboard(window);
 
 // Before the first scene exists, so no text is ever painted the soft way.
 installPixelText(Phaser.GameObjects.Text);
@@ -39,6 +43,7 @@ if (import.meta.env.DEV) {
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     stopWatchingViewport();
+    stopWatchingForKeyboard();
     feedbackDesk.destroy();
     unmountGame();
   });

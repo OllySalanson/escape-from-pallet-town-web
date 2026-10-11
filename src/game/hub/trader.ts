@@ -8,6 +8,7 @@ import {
   type ItemId,
   type SupplyItemId,
 } from '../items';
+import { MACHINES } from '../pokemon/machines';
 import type { Stash } from '../stash';
 
 /**
@@ -237,7 +238,10 @@ export interface TraderBarter {
   /** Found items handed over. Never money: these are the things money cannot buy. */
   readonly takes: readonly TraderStack[];
   readonly standing: TraderStandingId;
-  /** Offered once per save, because a second one would be a gear faucet. */
+  /**
+   * Offered once per save, because a second one would be a gear faucet - except
+   * an HM, which comes back while the vault holds none (`barterTaken`).
+   */
   readonly once: boolean;
 }
 
@@ -390,7 +394,8 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     ],
     standing: 'regular',
     // Once, and once is enough: an HM survives being read, so a second copy
-    // would buy nothing. That is what lets the *reusable* machines be the deals
+    // would buy nothing - though a wipe can take the first, and then he deals
+    // it again (`barterTaken`). That is what lets the *reusable* machines be the deals
     // on the boat - a TM would be a machine faucet, and the five of those are
     // found in the field or not at all.
     once: true,
@@ -618,11 +623,38 @@ export function traderBarterOffers(counter: TraderCounter): readonly TraderBarte
   return TRADER_BARTERS.map((barter) => ({ barter, ...judgeBarter(counter, barter) }));
 }
 
+/**
+ * Whether a once-only deal is off the table for this save.
+ *
+ * An HM is the exception, and it is the owner's ruling of 2026-10-11: a disc
+ * that is never used up still rides in the pack and is lost with it on a wipe,
+ * and with Bill trading it once that was the move gone for good. So a deal that
+ * gives a reusable machine comes back whenever the vault holds no copy of it -
+ * on the same terms as the first time. The vault is the whole answer to "holds":
+ * a raid's pack is copied from it and written back, nothing else keeps a disc,
+ * and Bill is only ever reached at base. A wipe still takes the disc; this only
+ * changes what he will deal afterwards, and it can never be a second copy.
+ */
+export function barterTaken(
+  counter: Pick<TraderCounter, 'stash' | 'progress'>,
+  barter: TraderBarter,
+): boolean {
+  if (!barter.once || !counter.progress.traderBarters.includes(barter.id)) {
+    return false;
+  }
+  return !(reofferedWhenNoneHeld(barter) && counter.stash.itemCount(barter.gives.itemId) === 0);
+}
+
+/** A once-only deal he makes again once the copy is gone: one that gives an HM. */
+export function reofferedWhenNoneHeld(barter: TraderBarter): boolean {
+  return MACHINES[barter.gives.itemId]?.reusable === true;
+}
+
 function judgeBarter(counter: TraderCounter, barter: TraderBarter, quantity = 1): TraderOffer {
   if (barter.once && quantity > 1) {
     return refuse('already-taken', `He only has the one ${barter.name}.`);
   }
-  if (barter.once && counter.progress.traderBarters.includes(barter.id)) {
+  if (barterTaken(counter, barter)) {
     return refuse('already-taken', `He only had the one ${barter.name}.`);
   }
   if (!meetsStanding(counter.progress, barter.standing)) {
@@ -662,7 +694,7 @@ export function traderBarterLimit(counter: TraderCounter, barter: TraderBarter):
   if (!meetsStanding(counter.progress, barter.standing)) {
     return 0;
   }
-  if (barter.once && counter.progress.traderBarters.includes(barter.id)) {
+  if (barterTaken(counter, barter)) {
     return 0;
   }
   const covered = Math.min(
@@ -720,10 +752,12 @@ export function formatTraderStacks(stacks: readonly TraderStack[]): string {
  * materials - which is the whole reason the barter table is a real cost and not
  * a second shelf.
  */
-export function traderWantedMaterials(progress: TraderProgress): readonly string[] {
+export function traderWantedMaterials(
+  counter: Pick<TraderCounter, 'stash' | 'progress'>,
+): readonly string[] {
   return [
     ...new Set(
-      TRADER_BARTERS.filter((barter) => !(barter.once && progress.traderBarters.includes(barter.id)))
+      TRADER_BARTERS.filter((barter) => !barterTaken(counter, barter))
         .flatMap((barter) => barter.takes.map(({ itemId }) => itemId))
         .filter((itemId) => isFoundOnly(itemId)),
     ),

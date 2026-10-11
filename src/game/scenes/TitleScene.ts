@@ -6,6 +6,8 @@ import { GAME_FONT } from '../ui/gameFont';
 import { drawMenuCursor, drawPixelWindow, WINDOW_BORDER, WINDOW_CREAM, WINDOW_INK } from '../ui/pixelWindow';
 import {
   eraseMenu,
+  isKeyboardNotice,
+  keyboardMenu,
   layoutTitleMenu,
   moveTitleChoice,
   moveTitleChoiceAcross,
@@ -33,6 +35,7 @@ import {
   vignetteBands,
 } from '../ui/titleScenery';
 import { setActiveSaveSlot } from '../dev/playtestMode';
+import { dismissKeyboardNotice, needsKeyboardNotice } from '../input/keyboardSeen';
 import { isReviewReturn } from '../maker/review';
 import { createPlaytestGame, withEverythingCurrent } from '../dev/playtestSave';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
@@ -169,7 +172,9 @@ export class TitleScene extends Phaser.Scene {
     // Asked once per visit, not per frame: the summary reads the whole save.
     this.summary = this.saveManager.describe();
     this.playtestSummary = this.playtestSaveManager.describe();
-    this.menu = titleMenu(this.summary);
+    // A device that looks touch-only is told first that the game needs a
+    // keyboard (`input/keyboardSeen.ts`), on the title's own windows.
+    this.menu = needsKeyboardNotice() ? keyboardMenu() : titleMenu(this.summary);
     this.choice = this.menu.initial;
     this.bornAt = this.time.now;
     this.still = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
@@ -186,18 +191,28 @@ export class TitleScene extends Phaser.Scene {
     const relayout = () => this.rebuild();
     this.scale.on?.(Phaser.Scale.Events.RESIZE, relayout);
     const keyboard = this.input.keyboard;
-    keyboard?.on('keydown-ENTER', () => this.chooseSelected());
-    keyboard?.on('keydown-SPACE', () => this.chooseSelected());
-    keyboard?.on('keydown-UP', () => this.moveCursor(-1));
-    keyboard?.on('keydown-DOWN', () => this.moveCursor(1));
-    keyboard?.on('keydown-W', () => this.moveCursor(-1));
-    keyboard?.on('keydown-S', () => this.moveCursor(1));
-    keyboard?.on('keydown-LEFT', () => this.moveAcross(-1));
-    keyboard?.on('keydown-RIGHT', () => this.moveAcross(1));
-    keyboard?.on('keydown-A', () => this.moveAcross(-1));
-    keyboard?.on('keydown-D', () => this.moveAcross(1));
-    keyboard?.on('keydown-ESC', () => this.backOut());
-    keyboard?.on('keydown-M', () => audioManager.toggleMute());
+    // While the keyboard notice is up a key does nothing but prove there is a
+    // keyboard: Phaser raises a key's own event before the catch-all, so each
+    // of these stands down and the catch-all below takes the notice away.
+    const onKey = (key: string, act: () => void) =>
+      keyboard?.on(`keydown-${key}`, () => {
+        if (!isKeyboardNotice(this.menu)) act();
+      });
+    onKey('ENTER', () => this.chooseSelected());
+    onKey('SPACE', () => this.chooseSelected());
+    onKey('UP', () => this.moveCursor(-1));
+    onKey('DOWN', () => this.moveCursor(1));
+    onKey('W', () => this.moveCursor(-1));
+    onKey('S', () => this.moveCursor(1));
+    onKey('LEFT', () => this.moveAcross(-1));
+    onKey('RIGHT', () => this.moveAcross(1));
+    onKey('A', () => this.moveAcross(-1));
+    onKey('D', () => this.moveAcross(1));
+    onKey('ESC', () => this.backOut());
+    onKey('M', () => audioManager.toggleMute());
+    keyboard?.on('keydown', () => {
+      if (isKeyboardNotice(this.menu) && !this.hasStarted) this.leaveKeyboardNotice();
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off?.(Phaser.Scale.Events.RESIZE, relayout);
       keyboard?.removeAllListeners();
@@ -815,11 +830,22 @@ export class TitleScene extends Phaser.Scene {
     this.redraw();
   }
 
+  /** Past the keyboard notice, to the menu it stood in front of. */
+  private leaveKeyboardNotice(): void {
+    const menu = titleMenu(this.summary);
+    this.showMenu(menu, menu.initial);
+  }
+
   private chooseSelected(): void {
     if (this.hasStarted) {
       return;
     }
-    if (this.choice === 'continue') {
+    if (this.choice === 'touch-anyway') {
+      // Waved past by touch: not asked again until the page is reloaded.
+      dismissKeyboardNotice();
+      audioManager.play('confirm');
+      this.leaveKeyboardNotice();
+    } else if (this.choice === 'continue') {
       this.startGame('continue');
     } else if (this.choice === 'new') {
       if (needsEraseConfirmation(this.summary)) {

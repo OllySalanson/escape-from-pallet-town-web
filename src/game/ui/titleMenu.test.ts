@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { SaveSummary } from '../save/SaveManager';
 import {
   eraseMenu,
+  isKeyboardNotice,
+  keyboardMenu,
   layoutTitleMenu,
   moveTitleChoice,
   moveTitleChoiceAcross,
@@ -123,6 +125,26 @@ describe('the title menu', () => {
     ]);
     // Neither answer can reach the ordinary save, so neither is a warning.
     expect(menu.question).not.toMatch(/ERASE/);
+  });
+});
+
+describe('the keyboard notice', () => {
+  it('says the game needs a keyboard for now, and lets a finger past', () => {
+    const menu = keyboardMenu();
+    expect(menu.question).toMatch(/NEEDS A KEYBOARD, FOR NOW/);
+    expect(menu.choices).toHaveLength(1);
+    expect(menu.initial).toBe('touch-anyway');
+    expect(isKeyboardNotice(menu)).toBe(true);
+    expect(isKeyboardNotice(titleMenu(NONE))).toBe(false);
+    expect(isKeyboardNotice(eraseMenu())).toBe(false);
+    expect(titleHint(menu, 'touch-anyway')).toMatch(/PRESS ANY KEY/);
+  });
+
+  it('fits the smallest stage under the name', () => {
+    const layout = layoutTitleMenu(keyboardMenu(), 320, 240 - CHASE_LANE, 90);
+    const row = layout.rows[0];
+    expect(row.y + row.height).toBeLessThanOrEqual(240 - CHASE_LANE);
+    expect(layout.hint.y).toBeLessThanOrEqual(240 - CHASE_LANE);
   });
 });
 
