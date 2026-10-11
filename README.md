@@ -92,7 +92,9 @@ Battles play by Gen III rules, the FireRed and LeafGreen ones: their stats, thei
 their seventeen types, abilities, weather, status, catching odds and experience. The roster is
 Kanto's original 151. Catch something good in a raid and it rides home in your pack, where it
 takes up squares like everything else: four for a first-stage Pokémon, six once it has evolved,
-nine for a final form. Catching is a packing decision now. Sorry.
+nine for a final form. Catching is a packing decision now. Sorry. Want your partner to stay
+pocket-sized? Press ESC while it evolves, the way you mashed B in 2004, and it will try again
+at its next level.
 
 <p align="center">
   <img src="docs/readme/battle.png" width="800" alt="A battle against Blue: Bulbasaur, level 5, faces his level 2 Eevee. &quot;BLUE wants to battle!&quot;">
