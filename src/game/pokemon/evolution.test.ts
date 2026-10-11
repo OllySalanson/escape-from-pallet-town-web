@@ -10,6 +10,7 @@ import {
   evolvesInto,
 } from './evolution';
 import { RAZOR_LEAF, SUPER_SONIC, THUNDERBOLT, VINE_WHIP } from './moves';
+import { Stash } from '../stash';
 import {
   BULBASAUR,
   CHARMANDER,
@@ -172,6 +173,73 @@ describe('the evolution table', () => {
       'alakazam',
       'kadabra',
     ]);
+  });
+});
+
+describe('a level evolution stopped with B, as FireRed lets you', () => {
+  it('is held back when the caller asks to be the one who decides', () => {
+    const starter = new Pokemon(CHARMANDER, 15);
+
+    const result = starter.gainExperience(experienceTo(starter, 16), { evolve: false });
+
+    expect(result.levelsGained).toEqual([16]);
+    expect(result.evolutions).toEqual([]);
+    expect(starter.base).toBe(CHARMANDER);
+    expect(starter.levelEvolutionDue?.id).toBe('charmeleon');
+  });
+
+  it('stays what it is when nobody evolves it, and is due again at its next level', () => {
+    const starter = new Pokemon(CHARMANDER, 15);
+    starter.gainExperience(experienceTo(starter, 16), { evolve: false });
+
+    starter.gainExperience(experienceTo(starter, 17), { evolve: false });
+
+    expect(starter.base).toBe(CHARMANDER);
+    expect(starter.level).toBe(17);
+    expect(starter.levelEvolutionDue?.id).toBe('charmeleon');
+    const evolved = starter.evolveByLevel();
+    expect(evolved?.evolution).toEqual({ from: CHARMANDER, to: getSpeciesById('charmeleon'), level: 17 });
+    expect(starter.base.id).toBe('charmeleon');
+    expect(starter.levelEvolutionDue).toBeUndefined();
+  });
+
+  it('learns what the new species learns at that level once it does evolve', () => {
+    const caterpie = new Pokemon(getSpeciesById('caterpie')!, 6);
+    const held = caterpie.gainExperience(experienceTo(caterpie, 7), { evolve: false });
+    // Harden is Metapod's at 7 and not Caterpie's, so it waits on the evolution.
+    expect(held.learnedMoves.map((move) => move.name)).not.toContain('Harden');
+
+    const evolved = caterpie.evolveByLevel();
+
+    expect(caterpie.base.id).toBe('metapod');
+    expect(evolved?.learnedMoves.map((move) => move.name)).toEqual(['Harden']);
+    expect(caterpie.moves.map((move) => move.base.name)).toContain('Harden');
+  });
+
+  it('is nothing to do for a Pokemon with no evolution due', () => {
+    expect(new Pokemon(CHARMANDER, 15).evolveByLevel()).toBeNull();
+  });
+
+  it('comes home unevolved: a settlement replays the levels but takes the species the raid ended with', () => {
+    const stash = new Stash();
+    const charmander = new Pokemon(CHARMANDER, 15);
+    stash.addPokemon(charmander, 'charmander-1');
+    const experience = experienceForLevel(17, CHARMANDER.growthRate);
+
+    stash.applyRaidCondition([
+      {
+        id: 'charmander-1',
+        currentHp: 20,
+        primaryStatus: null,
+        experience,
+        speciesId: 'charmander',
+        heldItemId: null,
+      },
+    ]);
+
+    const home = stash.listPokemon()[0].pokemon;
+    expect(home.level).toBe(17);
+    expect(home.base).toBe(CHARMANDER);
   });
 });
 

@@ -103,6 +103,10 @@ import {
   PARTY_COLUMNS,
   formatPartyRow,
   levelLabel,
+  evolvingLine,
+  evolvedLine,
+  stoppedEvolvingLine,
+  STOP_EVOLVING_HINT,
   mainCommandColumns,
   mainCommandLayout,
   partyPrompt,
@@ -176,6 +180,7 @@ type CommandMode =
   | 'party'
   | 'make-room'
   | 'about-to-use'
+  | 'evolving'
   | 'events'
   | 'finished';
 
@@ -195,6 +200,14 @@ type BattleAction =
   | { readonly type: 'drop-for-room'; readonly choiceIndex: number };
 
 const COMMAND_Y = BATTLE_PANEL.y;
+/**
+ * How long an evolution plays before it is done, which is how long B has to
+ * stop it. FireRed's own runs about eight seconds of sparkles; this has none
+ * of them to watch, so it is the pulse and long enough to reach for a key.
+ */
+const EVOLUTION_MS = 3200;
+/** One leg of the evolving sprite's pulse. */
+const EVOLUTION_PULSE_MS = 260;
 /** Ink for a row that cannot be chosen: a fainted Pokemon, an empty stack, a refusal. */
 const PANEL_REFUSAL_INK = '#9b1c1c';
 /** Guidance under a list: quieter than the rows it describes. */
@@ -285,7 +298,9 @@ const isEmptyStackLabel = (label: string): boolean => / x0$/.test(label);
  */
 type StagedNote =
   | BattleNote
-  | { readonly message: string; readonly sound?: SoundEffectName; readonly onShow: () => void };
+  | { readonly message: string; readonly sound?: SoundEffectName; readonly onShow: () => void }
+  /** "What? X is evolving!" - the line the evolution plays under, and B stops. */
+  | { readonly message: string; readonly evolve: PokemonInstance };
 
 const stagedNote = (
   note: StagedNote,
@@ -453,6 +468,8 @@ export class BattleScene extends Phaser.Scene {
     /** Run as the line is put up, for a line that is also a change on screen. */
     readonly onShow?: () => void;
     readonly offerMove?: { readonly pokemon: PokemonInstance; readonly move: MoveBase };
+    /** The Pokemon whose level evolution plays under this line. */
+    readonly evolve?: PokemonInstance;
   }[] = [];
   /** The move the last line announced, waiting on the chooser before the next is read. */
   private moveOffer: { readonly pokemon: PokemonInstance; readonly move: MoveBase } | null = null;
@@ -472,6 +489,13 @@ export class BattleScene extends Phaser.Scene {
   private aboutToUseOffered = new Set<number>();
   /** Set while the party list is answering the prompt rather than a main command. */
   private aboutToUseSwitching = false;
+  /**
+   * The evolution playing now, if any: whose it is, and which run of the
+   * sequence it is - a stopped one's timer still fires, and the count is how
+   * it knows it is stale.
+   */
+  private evolving: { readonly pokemon: PokemonInstance; readonly run: number } | null = null;
+  private evolutionRuns = 0;
 
   public constructor() {
     super('battle');
@@ -556,6 +580,8 @@ export class BattleScene extends Phaser.Scene {
     this.aboutToUse = null;
     this.aboutToUseOffered = new Set();
     this.aboutToUseSwitching = false;
+    // An evolution a wipe or an exit overtook belongs to the fight it was in.
+    this.evolving = null;
     const playerPokemon = this.party.getHealthyPokemon() ?? new Pokemon(CHARMANDER, 10);
     // The second Pokemon this party can field, which is what decides whether a
     // trainer who asks for a double battle gets one. It is offered to the
@@ -729,6 +755,13 @@ export class BattleScene extends Phaser.Scene {
 
   public update(_time: number, delta: number): void {
     this.dialog.update(delta);
+    if (this.mode === 'evolving') {
+      // Only B is listened to: the evolution moves on by itself.
+      if (this.keyPresses.justPressed(this.backKey)) {
+        this.stopEvolving();
+      }
+      return;
+    }
     if (this.mode === 'events' || this.mode === 'finished') {
       if (this.keyPresses.justPressed(this.confirmKey)) {
         this.confirm();
@@ -1747,6 +1780,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private confirm(): void {
+    if (this.mode === 'evolving') {
+      return;
+    }
     audioManager.play('confirm');
     if (this.mode === 'events' || this.mode === 'finished') {
       if (!this.dialog.isCurrentMessageComplete) {
@@ -1889,6 +1925,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private goBack(): void {
+    if (this.mode === 'evolving') {
+      this.stopEvolving();
+      return;
+    }
     // Backing out of the list the question opened returns to the question, not
     // to the main commands: the trainer's Pokemon has still not landed, and
     // there is no turn to take until it has.
@@ -2906,6 +2946,107 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * "What? X is evolving!", and the evolution playing under it for
+   * `EVOLUTION_MS` - the one stretch of a fight no key moves on but B, which
+   * stops it (`stopEvolving`). Left alone, it evolves (`finishEvolution`).
+   */
+  private beginEvolution(pokemon: PokemonInstance, line: string): void {
+    this.evolutionRuns += 1;
+    const run = this.evolutionRuns;
+    this.mode = 'evolving';
+    this.dialog.showMessage(line);
+    this.dialog.holdWithNote(STOP_EVOLVING_HINT);
+    this.evolving = { pokemon, run };
+    const slot = playerSlotOf(this.state, pokemon);
+    const sprite = slot ? this.standOnSpot(slot) : undefined;
+    if (sprite) {
+      // FireRed's sprite turns to light and pulses between the two shapes.
+      sprite.setTintFill(0xffffff);
+      this.tweens.add({
+        targets: sprite,
+        scaleX: sprite.scaleX * 0.8,
+        scaleY: sprite.scaleY * 0.8,
+        duration: EVOLUTION_PULSE_MS,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut',
+      });
+    }
+    this.time.delayedCall(EVOLUTION_MS, () => this.finishEvolution(run));
+  }
+
+  /** Puts the sprite back as it was and hands the panel back to the lines. */
+  private endEvolution(): PokemonInstance | null {
+    const evolving = this.evolving;
+    if (!evolving) {
+      return null;
+    }
+    this.evolving = null;
+    const slot = playerSlotOf(this.state, evolving.pokemon);
+    if (slot) {
+      const sprite = this.standOnSpot(slot);
+      const scale = combatantSpot(slot.side, slot.slot, this.state.unitCount).scale;
+      sprite?.setScale(scale);
+    }
+    this.mode = 'events';
+    return evolving.pokemon;
+  }
+
+  /**
+   * B, while it evolves: it stays what it is, and tries again at its next
+   * level (`Pokemon.levelEvolutionDue`).
+   */
+  private stopEvolving(): void {
+    const pokemon = this.endEvolution();
+    if (!pokemon) {
+      return;
+    }
+    audioManager.play('cancel');
+    this.pendingCombatMessages.unshift({ message: stoppedEvolvingLine(pokemon.base.name) });
+    this.showNextCombatMessage();
+  }
+
+  private finishEvolution(run: number): void {
+    if (this.evolving?.run !== run) {
+      return;
+    }
+    const pokemon = this.endEvolution();
+    if (!pokemon) {
+      return;
+    }
+    const maxHpBefore = pokemon.maxHp;
+    const result = pokemon.evolveByLevel();
+    if (!result) {
+      this.showNextCombatMessage();
+      return;
+    }
+    const slot = playerSlotOf(this.state, pokemon);
+    if (slot) {
+      // The level path's own reconciliation: the raised maximum's HP and the
+      // moves the new species learns reach the combatant, then the plate and
+      // sprite are rebuilt from it.
+      this.applyMidBattleLevelUp(slot, maxHpBefore);
+      this.refreshPlayerCombatant(slot);
+    }
+    const name = pokemon.base.name.toUpperCase();
+    this.pendingCombatMessages.unshift(
+      {
+        message: evolvedLine(result.evolution.from.name, result.evolution.to.name),
+        sound: 'evolved',
+      },
+      ...result.learnedMoves.map((move) => ({
+        message: `${name} learned ${move.name.toUpperCase()}!`,
+        sound: 'moveLearned' as const,
+      })),
+      ...result.movesToChoose.map((move) => ({
+        message: `${name} wants to learn ${move.name.toUpperCase()}, but already knows four moves.`,
+        offerMove: { pokemon, move },
+      })),
+    );
+    this.showNextCombatMessage();
+  }
+
   private awardVictoryExperience(defeatedPokemon: PokemonInstance): StagedNote[] {
     // Whoever faced it and is still standing shares it, as FireRed shares it;
     // a Pokemon that fainted earns nothing for the foe it fell to.
@@ -2926,17 +3067,14 @@ export class BattleScene extends Phaser.Scene {
     const levelled: typeof onField = [];
 
     for (const pokemon of participants) {
-      const result = pokemon.gainExperience(experience);
+      // The evolution is held back to be asked about once the level's lines
+      // are read, because B can stop it.
+      const result = pokemon.gainExperience(experience, { evolve: false });
       const standing = onField.find((entry) => entry.pokemon === pokemon);
       if (standing && result.levelsGained.length > 0) {
         levelled.push(standing);
       }
-      // The species may already have changed under it, so the name every line
-      // below is written with is read once, before any of them are said. A
-      // Bulbasaur that levelled into an Ivysaur grew as a Bulbasaur and learns
-      // its next move as an Ivysaur, and the evolution line in between is what
-      // makes the change of name make sense.
-      const grewAs = result.evolutions[0]?.from.name ?? pokemon.base.name;
+      const grewAs = pokemon.base.name;
       messages.push({
         message: `${grewAs.toUpperCase()} gained ${result.awarded} XP!`,
         sound: 'xpGain',
@@ -2945,22 +3083,6 @@ export class BattleScene extends Phaser.Scene {
         ...result.levelsGained.map((level) => ({
           message: `${grewAs.toUpperCase()} grew to ${levelLabel(level)}!`,
           sound: 'levelUp' as const,
-        })),
-      );
-      messages.push(
-        ...result.evolutions.map((evolution) => ({
-          message: `${evolution.from.name.toUpperCase()} evolved into ${evolution.to.name.toUpperCase()}!`,
-          sound: 'evolved' as const,
-          // The sprite, the name plate and the level plate are all rebuilt from
-          // the combatant, and the combatant reads its species live - so the
-          // one call is the whole change, and it is deliberately tied to this
-          // line rather than to the moment the experience was awarded.
-          onShow: () => {
-            const slot = playerSlotOf(this.state, pokemon);
-            if (slot) {
-              this.refreshPlayerCombatant(slot);
-            }
-          },
         })),
       );
       messages.push(
@@ -2977,6 +3099,12 @@ export class BattleScene extends Phaser.Scene {
           offerMove: { pokemon, move },
         })),
       );
+      // FireRed asks after the level's own lines, and only of a Pokemon that
+      // levelled: one whose evolution was stopped is asked again at its next
+      // level, never on a fight it merely took part in.
+      if (result.levelsGained.length > 0 && pokemon.levelEvolutionDue) {
+        messages.push({ message: evolvingLine(grewAs), evolve: pokemon });
+      }
     }
 
     for (const entry of levelled) {
@@ -3094,6 +3222,10 @@ export class BattleScene extends Phaser.Scene {
     }
     const next = this.pendingCombatMessages.shift();
     if (!next) {
+      return;
+    }
+    if (next.evolve) {
+      this.beginEvolution(next.evolve, next.message);
       return;
     }
     if (next.event) {

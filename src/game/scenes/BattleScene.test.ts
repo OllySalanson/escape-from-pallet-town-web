@@ -131,6 +131,7 @@ const spriteStub = () => ({
   setTexture: vi.fn().mockReturnThis(),
   setPosition: vi.fn().mockReturnThis(),
   setAlpha: vi.fn().mockReturnThis(),
+  setScale: vi.fn().mockReturnThis(),
 });
 
 function createBattleSceneHarness(options: HarnessOptions = {}): {
@@ -169,6 +170,7 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
       }
     }),
     advance: vi.fn(),
+    holdWithNote: vi.fn(),
     isCurrentMessageComplete: false,
     visibleText: '',
     shownMessages: [] as string[],
@@ -367,6 +369,9 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     aboutToUse: null,
     aboutToUseOffered: new Set<number>(),
     aboutToUseSwitching: false,
+    // The evolution playing, and how many have been begun - class fields too.
+    evolving: null,
+    evolutionRuns: 0,
     // Class fields do not run for an Object.create'd scene, and experience is
     // awarded by walking this set.
     foesFacedBy: new Map(),
@@ -2065,5 +2070,151 @@ describe("a Pokemon's own cry", () => {
     expect(criesHeard(play)).toEqual([['cry', PIDGEY.dexId]]);
     const names = play.mock.calls.map(([name]) => name);
     expect(names.indexOf('catchSuccess')).toBeLessThan(names.indexOf('cry'));
+  });
+});
+
+describe('an evolution B can stop, as FireRed lets you', () => {
+  type Driven = {
+    mode: string;
+    onMessagesComplete(): void;
+    confirm(): void;
+    goBack(): void;
+    state: BattleState;
+    time: { delayedCall: (ms: number, callback: () => void) => void };
+  };
+
+  /**
+   * A Charmander one knockout short of 16 against a trainer with two Pidgey on
+   * their last point of HP, so the fight is still going after the first level.
+   * The evolution's own wait is held back for the test to run out (or not);
+   * every other delay - a lunge's blow - lands at once.
+   */
+  const evolvingBattle = () => {
+    const first = new Pokemon(PIDGEY, 3);
+    const second = new Pokemon(PIDGEY, 3);
+    first.takeDamage(first.maxHp - 1);
+    second.takeDamage(second.maxHp - 1);
+    const charmander = new Pokemon(CHARMANDER, 15);
+    charmander.experience =
+      experienceForLevel(16, CHARMANDER.growthRate) -
+      experienceAwardForDefeat(first, { trainer: true });
+    const harness = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [first, second],
+      party: new PokemonParty([charmander]),
+    });
+    const scene = harness.scene as unknown as Driven;
+    const evolutionTimers: (() => void)[] = [];
+    scene.time = {
+      delayedCall: (ms: number, callback: () => void) => {
+        if (ms >= 3000) {
+          evolutionTimers.push(callback);
+          return;
+        }
+        callback();
+      },
+    };
+    return { ...harness, driven: scene, charmander, second, evolutionTimers };
+  };
+
+  const scratch = (scene: Driven, renderedTexts: RenderedText[]): void => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    read(renderedTexts).filter(({ text }) => text.includes('FIGHT')).at(-1)?.handlers.pointerdown();
+    const move = read(renderedTexts).filter(({ text }) => text.includes('SCRATCH')).at(-1);
+    if (!move) {
+      throw new Error('The move menu did not offer Scratch.');
+    }
+    move.handlers.pointerdown();
+  };
+
+  /** Reads lines as pressing through them does, until `until` is the panel's mode. */
+  const readUntil = (
+    scene: Driven,
+    dialog: { isCurrentMessageComplete: boolean },
+    until: string,
+  ): void => {
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 60; step += 1) {
+      if (scene.mode === until) {
+        return;
+      }
+      if (scene.mode === 'about-to-use') {
+        scene.confirm();
+        continue;
+      }
+      scene.onMessagesComplete();
+    }
+    throw new Error(`The battle never reached ${until}.`);
+  };
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('says it is evolving after the level, and B stops it with FireRed\'s own words', () => {
+    const { driven, renderedTexts, dialog, charmander, evolutionTimers } = evolvingBattle();
+    driven.onMessagesComplete();
+    scratch(driven, renderedTexts);
+    readUntil(driven, dialog, 'evolving');
+
+    expect(charmander.level).toBe(16);
+    expect(dialog.visibleText).toBe('What? CHARMANDER is evolving!');
+    const grew = dialog.shownMessages.indexOf('CHARMANDER grew to Lv 16!');
+    expect(grew).toBeGreaterThanOrEqual(0);
+    expect(dialog.shownMessages.indexOf('What? CHARMANDER is evolving!')).toBeGreaterThan(grew);
+    // Nothing but B moves it on: a press of the key that reads lines is ignored.
+    driven.confirm();
+    expect(driven.mode).toBe('evolving');
+
+    driven.goBack();
+
+    expect(dialog.visibleText).toBe('Huh? CHARMANDER stopped evolving!');
+    expect(charmander.base).toBe(CHARMANDER);
+    // The wait running out afterwards is a stale run, not a second chance.
+    evolutionTimers.forEach((fire) => fire());
+    expect(charmander.base).toBe(CHARMANDER);
+    expect(dialog.shownMessages.some((line) => line.startsWith('Congratulations!'))).toBe(false);
+    readUntil(driven, dialog, 'main');
+    expect(driven.state.player.pokemon.base).toBe(CHARMANDER);
+  });
+
+  it('tries again at its next level, and evolves when it is left alone', () => {
+    const { driven, renderedTexts, dialog, charmander, second, evolutionTimers } = evolvingBattle();
+    driven.onMessagesComplete();
+    scratch(driven, renderedTexts);
+    readUntil(driven, dialog, 'evolving');
+    driven.goBack();
+    readUntil(driven, dialog, 'main');
+
+    // One knockout short of 17 now, with the second Pidgey in front of it.
+    charmander.experience =
+      experienceForLevel(17, CHARMANDER.growthRate) -
+      experienceAwardForDefeat(second, { trainer: true });
+    scratch(driven, renderedTexts);
+    readUntil(driven, dialog, 'evolving');
+
+    expect(charmander.level).toBe(17);
+    expect(dialog.visibleText).toBe('What? CHARMANDER is evolving!');
+    evolutionTimers.at(-1)!();
+
+    expect(dialog.visibleText).toBe('Congratulations! Your CHARMANDER evolved into CHARMELEON!');
+    expect(charmander.base.id).toBe('charmeleon');
+    // The fight's own snapshot reads the species live, and its HP took the
+    // raised maximum's gain.
+    expect(driven.state.player.pokemon.base.id).toBe('charmeleon');
+    expect(driven.state.player.currentHp).toBe(charmander.currentHp);
+  });
+
+  it('is never asked of a Pokemon that did not level', () => {
+    const { driven, renderedTexts, dialog, charmander } = evolvingBattle();
+    // Past its evolution level already - stopped there once - but this
+    // knockout brings no level of its own.
+    charmander.gainExperience(experienceForLevel(16, CHARMANDER.growthRate) - charmander.experience, {
+      evolve: false,
+    });
+    expect(charmander.levelEvolutionDue?.id).toBe('charmeleon');
+    driven.onMessagesComplete();
+    scratch(driven, renderedTexts);
+    readUntil(driven, dialog, 'main');
+
+    expect(dialog.shownMessages.some((line) => line.includes('is evolving'))).toBe(false);
   });
 });

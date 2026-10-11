@@ -63,6 +63,10 @@ export class DialogBox extends Phaser.GameObjects.Container {
   private lineIndex = 0;
   private indicatorElapsedMs = 0;
   private hasTriggeredCompletion = false;
+  /** Whether a finished line blinks the prompt that asks for a key. */
+  private prompting = true;
+  /** What the prompt says when it is asking to go on. */
+  private readonly promptText: string;
 
   public constructor(scene: Phaser.Scene, options: DialogBoxOptions = {}) {
     const widthPx = options.width ?? DEFAULT_WIDTH;
@@ -100,11 +104,12 @@ export class DialogBox extends Phaser.GameObjects.Container {
       ...(options.textStyle ?? {}),
     });
 
+    this.promptText = options.indicatorText ?? DEFAULT_INDICATOR_TEXT;
     this.indicatorObject = scene.add
       .text(
         this.widthPx - this.paddingHorizontalPx,
         this.heightPx - this.paddingPx,
-        options.indicatorText ?? DEFAULT_INDICATOR_TEXT,
+        this.promptText,
         {
           fontFamily: GAME_FONT,
           fontSize: '14px',
@@ -136,6 +141,8 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.onLineShown = onLineShown;
     this.lineIndex = 0;
     this.hasTriggeredCompletion = false;
+    this.prompting = true;
+    this.indicatorObject.setText(this.promptText);
     this.indicatorElapsedMs = 0;
     // Render immediately so a newly entered battle never presents an empty
     // dialogue panel while it waits for the first animation frame.
@@ -167,7 +174,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
     }
 
     this.indicatorElapsedMs = 0;
-    this.indicatorObject.setVisible(false);
+    this.indicatorObject.setVisible(!this.prompting);
   }
 
   public skip(): void {
@@ -223,7 +230,21 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.onComplete?.();
   }
 
+  /**
+   * Keeps the line up for the scene to move on from by itself, with `note`
+   * standing steady where the prompt to go on would blink - an evolution,
+   * which no key but B can touch, says so there. The next `showMessages`
+   * prompts again.
+   */
+  public holdWithNote(note: string): void {
+    this.prompting = false;
+    this.indicatorObject.setText(note).setVisible(true);
+  }
+
   private blinkIndicator(deltaMs: number): void {
+    if (!this.prompting) {
+      return;
+    }
     this.indicatorElapsedMs += Math.max(0, deltaMs);
     const blinkPhase = Math.floor(this.indicatorElapsedMs / this.indicatorBlinkMs) % 2 === 0;
     this.indicatorObject.setVisible(blinkPhase);

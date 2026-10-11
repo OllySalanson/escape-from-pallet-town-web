@@ -134,11 +134,12 @@ export interface RaidCondition {
   readonly currentHp: number;
   readonly primaryStatus: PrimaryStatus | null;
   /**
-   * The species it came home as. A level evolution needs no help from this -
-   * replaying the experience below crosses the same level and evolves the
-   * stored Pokemon exactly as the field did - but a stone spends no experience
-   * at all, so without this a Thunder Stone found, carried and used in a raid
-   * would be a Raichu at the extraction pad and a Pikachu in the vault.
+   * The species it came home as, which is the truth about evolution: a stone
+   * spends no experience at all, so without this a Thunder Stone found,
+   * carried and used in a raid would be a Raichu at the extraction pad and a
+   * Pikachu in the vault - and a level evolution the player stopped with B
+   * would be re-derived by replaying the experience, so the replay is told
+   * not to evolve and this decides instead.
    *
    * Optional, because a settlement written before stones existed has no opinion
    * about species, and `Pokemon.evolveInto` refuses anything that is not
@@ -426,12 +427,17 @@ export class Stash {
       if (!stored) {
         continue;
       }
-      stored.pokemon.gainExperience(experienceGain(entry.experience, stored.pokemon.experience));
-      // After the experience, because a level crossed in the field may already
-      // have evolved it - and then this is the no-op it should be. Before the
-      // HP, for the same reason a level is: evolving raises the maximum the
-      // raid's own current HP was measured against.
       const species = entry.speciesId ? getSpeciesById(entry.speciesId) : undefined;
+      // When the raid says what it came home as, that is the species - the
+      // replay does not evolve on its own, because the player may have pressed
+      // B and stopped the evolution the level would bring. A settlement with no
+      // opinion about species still evolves with its levels, as it always has.
+      stored.pokemon.gainExperience(experienceGain(entry.experience, stored.pokemon.experience), {
+        evolve: species === undefined,
+      });
+      // After the experience, before the HP, for the same reason a level is:
+      // evolving raises the maximum the raid's own current HP was measured
+      // against.
       if (species) {
         stored.pokemon.evolveInto(species);
       }

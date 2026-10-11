@@ -210,7 +210,19 @@ export class Pokemon {
     return this.currentHp - previousHp;
   }
 
-  public gainExperience(amount: number): ExperienceResult {
+  /**
+   * Adds experience and walks every level it crosses.
+   *
+   * `evolve: false` leaves a level evolution for the caller to ask about, as
+   * FireRed does: a battle says "What? X is evolving!" and lets B stop it
+   * (`evolveByLevel`, `BattleScene`), and a settlement replaying a raid takes
+   * the species the raid ended with rather than re-deriving one the player
+   * may have refused. Left out, the evolution happens with the level.
+   */
+  public gainExperience(
+    amount: number,
+    options: { readonly evolve?: boolean } = {},
+  ): ExperienceResult {
     const awarded = Math.max(0, Math.floor(amount));
     this.experience += awarded;
     const levelsGained: number[] = [];
@@ -244,7 +256,7 @@ export class Pokemon {
       const beforeEvolving = this.learnMovesAtLevel(this.level);
       learnedMoves.push(...beforeEvolving.learned);
       movesToChoose.push(...beforeEvolving.queued);
-      const evolved = this.evolveOnLevel();
+      const evolved = options.evolve === false ? null : this.evolveOnLevel();
       if (evolved) {
         evolutions.push(evolved);
         const asEvolved = this.learnMovesAtLevel(this.level);
@@ -282,6 +294,34 @@ export class Pokemon {
       ? 0
       : Math.min(this.maxHp, this.currentHp + this.maxHp - previousMaxHp);
     return { from, to: species };
+  }
+
+  /**
+   * The species a level evolution would make this Pokemon now, if one is due.
+   * A rule is crossed at its level *or above*, so a Pokemon whose evolution was
+   * stopped is due again at every level it reaches after - which is FireRed's
+   * "it tries again at its next level-up".
+   */
+  public get levelEvolutionDue(): PokemonBase | undefined {
+    return evolutionOnLevel(this.base.id, this.level);
+  }
+
+  /**
+   * The level evolution `gainExperience({ evolve: false })` held back, done:
+   * the species changes, and then the new species' moves for this level are
+   * learned, as FireRed's evolution scene learns them. Null when none is due.
+   */
+  public evolveByLevel(): {
+    readonly evolution: SpeciesEvolution;
+    readonly learnedMoves: readonly MoveBase[];
+    readonly movesToChoose: readonly MoveBase[];
+  } | null {
+    const evolution = this.evolveOnLevel();
+    if (!evolution) {
+      return null;
+    }
+    const asEvolved = this.learnMovesAtLevel(this.level);
+    return { evolution, learnedMoves: asEvolved.learned, movesToChoose: asEvolved.queued };
   }
 
   private evolveOnLevel(): SpeciesEvolution | null {

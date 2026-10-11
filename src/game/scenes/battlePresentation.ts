@@ -765,6 +765,25 @@ export const heldGearLabel = (heldItemName: string | undefined): string =>
 export const levelLabel = (level: number): string => `Lv ${level}`;
 
 /**
+ * The three lines of a level evolution, in FireRed's own words
+ * (`gText_PkmnIsEvolving`, `gText_CongratsPkmnEvolved`,
+ * `gText_PkmnStoppedEvolving`, pret/pokefirered `src/strings.c`), each on the
+ * one line this panel has where FireRed breaks it in two.
+ */
+export const evolvingLine = (name: string): string => `What? ${name.toUpperCase()} is evolving!`;
+export const evolvedLine = (from: string, to: string): string =>
+  `Congratulations! Your ${from.toUpperCase()} evolved into ${to.toUpperCase()}!`;
+export const stoppedEvolvingLine = (name: string): string =>
+  `Huh? ${name.toUpperCase()} stopped evolving!`;
+/**
+ * The key that stops it, said while it can be pressed. FireRed says nothing -
+ * every player of it knew B - but this game's B is ESC, and an evolution that
+ * can only be stopped by somebody who already knows how is the reason the
+ * cancel exists at all: a fully evolved partner can never be secured.
+ */
+export const STOP_EVOLVING_HINT = 'ESC: STOP EVOLVING';
+
+/**
  * The HUD banner names the side and its typing, so incoming damage is readable.
  * The player's side is YOURS and no longer: the banner starts at the plate's left
  * edge, and YOUR POKeMON with two long types ran past the plate and, for the
