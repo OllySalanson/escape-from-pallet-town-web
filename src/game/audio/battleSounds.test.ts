@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { MoveCategory } from '../pokemon/MoveBase';
 import type { BattleEvent } from '../pokemon/battle/battleEngine';
-import { battleEventSound, battleNote } from './battleSounds';
+import { battleOpeningMessages } from '../pokemon/battle/battleFlow';
+import { battleEventCry, battleEventSound, battleNote, openingLineSounds } from './battleSounds';
 
 const used = (extra: Partial<Extract<BattleEvent, { type: 'used-move' }>>): BattleEvent => ({
   type: 'used-move',
@@ -59,7 +60,7 @@ describe('battleEventSound', () => {
 
   it('only ever defers a sound for a move that does damage', () => {
     const events: BattleEvent[] = [
-      { type: 'fainted', user: 'enemy', name: 'Pidgey' },
+      { type: 'missed', user: 'enemy' },
       { type: 'critical-hit' },
       { type: 'enemy-sent-out', trainer: 'MAYA', name: 'Pidgey' },
       { type: 'no-pp', user: 'player', move: 'Tackle' },
@@ -77,5 +78,80 @@ describe('battleNote', () => {
       message: 'Grew to Lv 6!',
       sound: 'levelUp',
     });
+  });
+});
+
+describe('battleEventCry', () => {
+  it('cries for a Pokemon sent out, fainting or caught, and for nothing else', () => {
+    expect(battleEventCry({ type: 'enemy-sent-out', trainer: 'MAYA', name: 'Pidgey', slot: 1 })).toEqual({
+      name: 'cry',
+      side: 'enemy',
+      slot: 1,
+    });
+    expect(battleEventCry({ type: 'fainted', user: 'player', name: 'Charmander' })).toEqual({
+      name: 'faintCry',
+      side: 'player',
+      slot: 0,
+    });
+    expect(battleEventCry({ type: 'caught', name: 'Pidgey' })).toEqual({ name: 'cry', side: 'enemy', slot: 0 });
+    for (const event of [
+      { type: 'ball-thrown', name: 'Pidgey' },
+      { type: 'broke-free', name: 'Pidgey' },
+      { type: 'critical-hit' },
+      { type: 'missed', user: 'enemy' },
+    ] as const) {
+      expect(battleEventCry(event), event.type).toBeNull();
+    }
+  });
+
+  it('lets the faint cry be the faint, rather than a run of tones on top of it', () => {
+    expect(battleEventSound({ type: 'fainted', user: 'enemy', name: 'Pidgey' })).toBeNull();
+  });
+
+  it('keeps the fanfare on the catch, which the cry then follows', () => {
+    expect(battleEventSound({ type: 'caught', name: 'Pidgey' })?.name).toBe('catchSuccess');
+  });
+});
+
+describe('openingLineSounds', () => {
+  it('cries the wild Pokemon as it appears', () => {
+    expect(openingLineSounds(undefined, [4], [16])).toEqual([{ cries: [{ name: 'cry', species: 16 }] }]);
+  });
+
+  it("pops the ball and cries the player's Pokemon on the opening Go line (playtest 28, S2)", () => {
+    expect(openingLineSounds('RAIDER MAYA', [4], [19])).toEqual([
+      // A single battle never names what the trainer sent out, so its Pokemon
+      // cries on the challenge line, after the sting that opens the fight.
+      { cries: [{ name: 'cry', species: 19 }] },
+      { sound: 'sendOut', cries: [{ name: 'cry', species: 4 }] },
+    ]);
+  });
+
+  it('lines up with the double battle opening, where both sides name both Pokemon', () => {
+    const lines = battleOpeningMessages('WARDEN HOLT', ['Charmander', 'Pidgey'], ['Butterfree', 'Squirtle']);
+    const sounds = openingLineSounds('WARDEN HOLT', [4, 16], [12, 7]);
+    expect(sounds).toHaveLength(lines.length);
+    expect(sounds).toEqual([
+      { cries: [] },
+      {
+        sound: 'sendOut',
+        cries: [
+          { name: 'cry', species: 12 },
+          { name: 'cry', species: 7 },
+        ],
+      },
+      {
+        sound: 'sendOut',
+        cries: [
+          { name: 'cry', species: 4 },
+          { name: 'cry', species: 16 },
+        ],
+      },
+    ]);
+  });
+
+  it('has a sound for every opening line, in a fight of either kind', () => {
+    expect(openingLineSounds(undefined, [4], [16])).toHaveLength(battleOpeningMessages(undefined, ['A'], ['B']).length);
+    expect(openingLineSounds('MAYA', [4], [16])).toHaveLength(battleOpeningMessages('MAYA', ['A'], ['B']).length);
   });
 });

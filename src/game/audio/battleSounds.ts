@@ -1,7 +1,7 @@
 import { MoveCategory, type MoveBase } from '../pokemon/MoveBase';
 import type { Pokemon } from '../pokemon/Pokemon';
 import type { BattleEvent } from '../pokemon/battle/battleEngine';
-import type { SoundEffectName } from './soundEffects';
+import type { CryEffectName, SoundEffectName } from './soundEffects';
 
 /**
  * Which effect a battle event sounds, and when.
@@ -67,8 +67,10 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
         return withLine('noEffect');
       }
       return withLine(event.multiplier > 1 ? 'superEffective' : 'notVeryEffective');
+    // A faint is the Pokemon's own cry, lower (`battleEventCry`); the falling
+    // run `faint` is what that cry falls back on when its sample is missing.
     case 'fainted':
-      return withLine('faint');
+      return null;
     case 'status-applied':
       return withLine('statusApplied');
     case 'status-damage':
@@ -163,6 +165,74 @@ export function battleEventSound(event: BattleEvent): BattleSoundCue | null {
 }
 
 /**
+ * Whose cry a battle event carries, by where that Pokemon stands: FireRed gives
+ * every Pokemon its own cry as it comes out of a ball, as it faints and as it
+ * is caught, and nothing else in a fight cries. The scene turns the slot into a
+ * species, because the event names the Pokemon only by its name on screen.
+ */
+export interface BattleCryCue {
+  readonly name: CryEffectName;
+  readonly side: 'player' | 'enemy';
+  readonly slot: number;
+}
+
+export function battleEventCry(event: BattleEvent): BattleCryCue | null {
+  switch (event.type) {
+    case 'enemy-sent-out':
+      return { name: 'cry', side: 'enemy', slot: event.slot ?? 0 };
+    case 'fainted':
+      return { name: 'faintCry', side: event.user, slot: event.slot ?? 0 };
+    // The fanfare says it held; the cry follows it, because `AudioManager`
+    // starts a cry only once a fanfare is over - FireRed's order, where the
+    // newly caught Pokemon cries as its entry is added.
+    case 'caught':
+      return { name: 'cry', side: 'enemy', slot: 0 };
+    default:
+      return null;
+  }
+}
+
+/** One Pokemon's cry, by National Dex number, as a line carries it. */
+export interface CrySound {
+  readonly name: CryEffectName;
+  readonly species: number;
+}
+
+/** What one line of the battle's opening sounds, beside the line itself. */
+export interface OpeningLineSound {
+  readonly sound?: SoundEffectName;
+  readonly cries: readonly CrySound[];
+}
+
+const cries = (species: readonly number[]): CrySound[] => species.map((id) => ({ name: 'cry', species: id }));
+
+/**
+ * The sounds that go with `battleOpeningMessages`' lines, one entry a line in
+ * the same order. A wild Pokemon cries as it appears. A trainer's single
+ * battle names nobody it sent out, so its Pokemon cries on the challenge line,
+ * after the sting that opens the fight; a double names them, and both cry on
+ * that line with the ball's pop. Every "Go, X!" is the pop and then the cry -
+ * which is the opening send-out the playtest found silent (playtest 28, S2).
+ * The teaching fight's opening is the wild opening with three lines after it,
+ * and anything the scene reads after these lines (the weather, an ability)
+ * sounds nothing here.
+ */
+export function openingLineSounds(
+  trainerName: string | undefined,
+  playerSpecies: readonly number[],
+  enemySpecies: readonly number[],
+): OpeningLineSound[] {
+  if (!trainerName) {
+    return [{ cries: cries(enemySpecies) }];
+  }
+  const goLine: OpeningLineSound = { sound: 'sendOut', cries: cries(playerSpecies) };
+  if (enemySpecies.length > 1) {
+    return [{ cries: [] }, { sound: 'sendOut', cries: cries(enemySpecies) }, goLine];
+  }
+  return [{ cries: cries(enemySpecies) }, goLine];
+}
+
+/**
  * A line of battle narration that is not an engine event - experience, a
  * switch, a failed escape - with the sound that belongs to it, if it has one.
  * The sound rides on the line so it is heard when the line is read, however
@@ -173,6 +243,8 @@ export type BattleNote =
   | {
       readonly message: string;
       readonly sound?: SoundEffectName;
+      /** Cries heard with the line, after its sound - the Pokemon a "Go, X!" lets out. */
+      readonly cries?: readonly CrySound[];
       /** Once this line has been read, the player is asked which move to forget. */
       readonly offerMove?: { readonly pokemon: Pokemon; readonly move: MoveBase };
     };
@@ -180,6 +252,7 @@ export type BattleNote =
 export function battleNote(note: BattleNote): {
   readonly message: string;
   readonly sound?: SoundEffectName;
+  readonly cries?: readonly CrySound[];
   readonly offerMove?: { readonly pokemon: Pokemon; readonly move: MoveBase };
 } {
   return typeof note === 'string' ? { message: note } : note;

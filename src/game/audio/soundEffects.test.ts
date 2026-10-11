@@ -5,13 +5,14 @@ import {
   SOUND_EFFECTS,
   SOUND_EFFECT_NAMES,
   ducksMusic,
+  isCryEffect,
   soundEffectLength,
   type SoundChannel,
-  type SoundEffect,
+  type ToneEffect,
 } from './soundEffects';
 
 /** The longest an effect on each channel may sound, in seconds. */
-const LONGEST: Record<SoundChannel, number> = {
+const LONGEST: Record<Exclude<SoundChannel, 'cry'>, number> = {
   // The cursor is heard hundreds of times a session.
   ui: 0.25,
   world: 0.55,
@@ -22,10 +23,14 @@ const LONGEST: Record<SoundChannel, number> = {
   fanfare: 1,
 };
 
-const effects = SOUND_EFFECT_NAMES.map((name) => [name, SOUND_EFFECTS[name] as SoundEffect] as const);
+/** Every effect made of tones. A cry is a recording, and `cries.test.ts` holds those. */
+const effects = SOUND_EFFECT_NAMES.flatMap((name) => {
+  const effect = SOUND_EFFECTS[name];
+  return isCryEffect(effect) ? [] : [[name, effect] as const];
+});
 
 /** The loudest the effect's voices ever add up to. */
-function peakGain(effect: SoundEffect): number {
+function peakGain(effect: ToneEffect): number {
   return Math.max(
     ...effect.tones.map((tone) => {
       const at = (tone.delay ?? 0) + 0.01;
@@ -78,7 +83,7 @@ describe('the sound-effect vocabulary', () => {
   });
 
   it('gives every moment a sound of its own', () => {
-    const signature = (effect: SoundEffect): string =>
+    const signature = (effect: ToneEffect): string =>
       effect.tones
         .map((tone) => `${tone.wave}:${tone.frequency}>${tone.slideTo ?? ''}@${tone.delay ?? 0}`)
         .join('|');
@@ -94,8 +99,8 @@ describe('the sound-effect vocabulary', () => {
     // Filtered noise carries about a third of the level a tone of the same gain
     // does (measured: the rustle peaks near 0.015 against the cursor's 0.030),
     // so being under every other world effect on paper is comfortably under on air.
-    const loudest = (effect: SoundEffect) => Math.max(...effect.tones.map((tone) => tone.volume));
-    const rustle: SoundEffect = SOUND_EFFECTS.grassRustle;
+    const loudest = (effect: ToneEffect) => Math.max(...effect.tones.map((tone) => tone.volume));
+    const rustle: ToneEffect = SOUND_EFFECTS.grassRustle;
     expect(rustle.tones.every((tone) => tone.wave === 'noise')).toBe(true);
     for (const [name, effect] of effects) {
       if (name !== 'grassRustle' && effect.channel === 'world') {
@@ -115,8 +120,15 @@ describe('the sound-effect vocabulary', () => {
       .filter((path) => !path.endsWith('soundEffects.ts') && !path.endsWith('TestLabScene.ts'))
       .map((path) => readFileSync(path, 'utf8'))
       .join('\n');
+    // A cry's stand-in is played by `AudioManager` whenever the cry cannot be.
+    const standIns: readonly string[] = SOUND_EFFECT_NAMES.flatMap((name) => {
+      const effect = SOUND_EFFECTS[name];
+      return isCryEffect(effect) && effect.standIn ? [effect.standIn] : [];
+    });
     for (const name of SOUND_EFFECT_NAMES) {
-      expect(game.includes(`'${name}'`), `${name} is defined but never played`).toBe(true);
+      expect(game.includes(`'${name}'`) || standIns.includes(name), `${name} is defined but never played`).toBe(
+        true,
+      );
     }
   });
 

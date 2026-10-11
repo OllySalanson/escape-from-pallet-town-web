@@ -861,6 +861,40 @@ non-commercial fan game on 2026-09-19 - and is recorded here in those words.
   The source textures are not committed; the script fetches them from the
   pinned commit.
 
+### `cries/<dexId>.wav` - every Pokemon's own cry, from FireRed/LeafGreen
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly.** Playtest 28 put
+the cries to the owner as a call - synthesised, FireRed's own, or none - and on
+2026-10-11 the owner chose FireRed's own, on the same standing as the FireRed
+art accepted on 2026-09-19: a personal, non-commercial fan game, the repository
+public. Rights holders Nintendo / Creatures / Game Freak; no licence from them.
+
+- **Source.** pret/pokefirered, the community decompilation of FireRed
+  (<https://github.com/pret/pokefirered>), pinned at commit `037335f` - the same
+  commit the battle rules, the house and the town buildings are read from. The
+  files read are `sound/direct_sound_samples/cries/<name>.wav`, one a species,
+  named as PokeAPI's slug with `-` for `_` (`mr_mime`, `nidoran_f`), fetched
+  2026-10-11 from
+  `https://raw.githubusercontent.com/pret/pokefirered/037335f/sound/direct_sound_samples/cries/`.
+  They are the game's own samples - mono, 8-bit, 10512 Hz - so the sound is
+  Nintendo's; nothing in the repository licenses it.
+- **What was changed.** Nothing in the sound. `scripts/fetch-frlg-cries.mjs` is
+  the whole method: it keeps each file's `fmt ` and `data` chunks byte for byte
+  and drops the three chunks the GBA build reads (`smpl`, `agbp`, `agbl` - loop
+  and pitch data nothing here uses), and checks every file as it lands.
+  `cries.test.ts` holds the shipped set to one file per dex number 1-151 and to
+  that format. How the game plays one - as recorded for an ordinary cry, three
+  and a half semitones lower for a faint, FireRed's own `PlayCryInternal`
+  pitches - is `src/game/audio/cries.ts`, not an edit to any file.
+- **Terms.** pret publishes no licence for the assets it extracts; as for
+  `frlg-towns.png`, nothing in the repository makes these the maintainers' to
+  license, and they ship on the owner's ruling alone. Only the 151 files the
+  game plays are committed.
+- **To remove them**, delete the directory: every cry has a tone stand-in
+  (`standIn` in `soundEffects.ts`), so a missing file is heard as the ball's pop
+  or the old falling run and nothing else changes - though `cries.test.ts`
+  would need to go with it.
+
 ### If these are ever to be removed
 
 Both entries are self-contained. `frlg-tiles.png` is loaded by `BootScene` as

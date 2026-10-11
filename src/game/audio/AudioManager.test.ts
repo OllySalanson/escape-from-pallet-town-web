@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AudioManager, DUCK_LEVEL, RETRIGGER_GUARD_S } from './AudioManager';
 import { createStubAudioContext } from './audioTestStub';
-import { SOUND_EFFECTS, SOUND_EFFECT_NAMES, soundEffectLength } from './soundEffects';
+import { SOUND_EFFECTS, SOUND_EFFECT_NAMES, isCryEffect, soundEffectLength } from './soundEffects';
 
 describe('AudioManager', () => {
   it('tracks mute state without creating an AudioContext', () => {
@@ -80,12 +80,17 @@ describe('AudioManager', () => {
 
   it('sounds every effect in the vocabulary by name', async () => {
     for (const name of SOUND_EFFECT_NAMES) {
+      const effect = SOUND_EFFECTS[name];
+      // A cry is a recording rather than tones, and is played in `cries.test.ts`.
+      if (isCryEffect(effect)) {
+        continue;
+      }
       const stub = createStubAudioContext();
       const audio = new AudioManager(() => stub.context);
       await audio.activate();
 
       expect(audio.play(name), name).toBe(true);
-      expect(stub.sources, name).toHaveLength(SOUND_EFFECTS[name].tones.length);
+      expect(stub.sources, name).toHaveLength(effect.tones.length);
       expect(stub.sources.every((source) => source.started), name).toBe(true);
       expect(audio.recentlyPlayed.map((played) => played.name)).toEqual([name]);
     }

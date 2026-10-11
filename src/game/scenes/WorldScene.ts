@@ -91,6 +91,7 @@ import { hasPlayerSetOff } from '../world/hunterArrival';
 import { SpentPresses } from '../world/spentPresses';
 import { consumeTeachingEncounter } from '../world/teachingEncounter';
 import { audioManager } from '../audio/AudioManager';
+import { getSpeciesById } from '../pokemon/species';
 import {
   entersTallGrass,
   HUNTER_NEAR_STEPS,
@@ -3980,6 +3981,12 @@ export class WorldScene extends Phaser.Scene {
       ...encounter,
       weather: this.currentWeather(),
     };
+    // The fight's first line can be a cry - a wild Pokemon appearing - so the
+    // cast's cries are fetched now, while the screen fades, rather than by the
+    // battle once its first line is already up.
+    const cast = [...this.party.pokemon, ...(data.trainer?.party ?? [])].map((pokemon) => pokemon.base.dexId);
+    const wildDexId = data.wild ? getSpeciesById(data.wild.speciesId)?.dexId : undefined;
+    void audioManager.loadCries(wildDexId === undefined ? cast : [...cast, wildDexId]);
     this.isWarping = true;
     this.player.stop();
     this.cameras.main.fadeOut(180, 0, 0, 0);

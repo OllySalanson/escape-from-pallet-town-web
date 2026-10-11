@@ -59,6 +59,8 @@ export class DialogBox extends Phaser.GameObjects.Container {
   private readonly backgroundGraphics: Phaser.GameObjects.Graphics;
 
   private typewriter: TypewriterQueue | null = null;
+  private onLineShown: ((index: number) => void) | undefined;
+  private lineIndex = 0;
   private indicatorElapsedMs = 0;
   private hasTriggeredCompletion = false;
 
@@ -123,8 +125,16 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.showMessages([text]);
   }
 
-  public showMessages(texts: string[]): void {
+  /**
+   * `onLineShown` is told each line's index as it is put up - the first at
+   * once, each later one as the box advances to it - for a line that is also a
+   * sound, so the sound is heard when the line is read rather than when the
+   * queue was handed over.
+   */
+  public showMessages(texts: string[], onLineShown?: (index: number) => void): void {
     this.typewriter = new TypewriterQueue(texts, { charsPerSecond: this.charsPerSecond });
+    this.onLineShown = onLineShown;
+    this.lineIndex = 0;
     this.hasTriggeredCompletion = false;
     this.indicatorElapsedMs = 0;
     // Render immediately so a newly entered battle never presents an empty
@@ -140,6 +150,7 @@ export class DialogBox extends Phaser.GameObjects.Container {
     }
 
     this.setVisible(true);
+    this.onLineShown?.(0);
   }
 
   public update(deltaMs: number): void {
@@ -185,6 +196,8 @@ export class DialogBox extends Phaser.GameObjects.Container {
     this.indicatorObject.setVisible(false);
 
     if (hasNextMessage) {
+      this.lineIndex += 1;
+      this.onLineShown?.(this.lineIndex);
       return true;
     }
 

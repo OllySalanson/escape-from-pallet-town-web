@@ -3,10 +3,13 @@ import { audioManager } from '../audio/AudioManager';
 import {
   SOUND_EFFECTS,
   SOUND_EFFECT_NAMES,
+  isCryEffect,
   soundEffectLength,
   type SoundChannel,
   type SoundEffect,
 } from '../audio/soundEffects';
+import { cryPlaybackRate } from '../audio/cries';
+import { ALL_SPECIES } from '../pokemon/species';
 import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
 import { createTestLabBattleScenario } from '../dev/testLabRoutes';
@@ -38,6 +41,8 @@ export class TestLabScene extends Phaser.Scene {
   private selectedIndex = 0;
   private status = '';
   private view: 'scenarios' | 'sounds' = 'scenarios';
+  /** Whose cry the sound board's cry buttons sound. */
+  private crySpecies = 1;
   private lastSound = '';
 
   public constructor() {
@@ -95,14 +100,28 @@ export class TestLabScene extends Phaser.Scene {
    * thing heard is the thing being auditioned.
    */
   private renderSoundBoard(): void {
-    const channels: readonly SoundChannel[] = ['ui', 'world', 'alert', 'battle', 'fanfare'];
+    const channels: readonly SoundChannel[] = ['ui', 'world', 'alert', 'battle', 'cry', 'fanfare'];
+    const species = ALL_SPECIES.filter((base) => base.dexId >= 1 && base.dexId <= 151)
+      .map(
+        (base) =>
+          `<option value="${base.dexId}"${base.dexId === this.crySpecies ? ' selected' : ''}>#${base.dexId} ${escapeHtml(base.name)}</option>`,
+      )
+      .join('');
     const groups = channels
       .map((channel) => {
         const names = SOUND_EFFECT_NAMES.filter((name) => SOUND_EFFECTS[name].channel === channel);
-        return `<section class="panel sound-board-group"><p class="eyebrow">${channel} channel · ${names.length}</p><div class="sound-board-grid">${names
+        // A cry is the species' own recording, so its channel chooses whose.
+        const picker =
+          channel === 'cry'
+            ? `<label class="sound-board-cry">Whose cry <select data-cry-species>${species}</select></label>`
+            : '';
+        return `<section class="panel sound-board-group"><p class="eyebrow">${channel} channel · ${names.length}</p>${picker}<div class="sound-board-grid">${names
           .map((name) => {
             const effect: SoundEffect = SOUND_EFFECTS[name];
-            return `<button class="${name === this.lastSound ? 'selected' : ''}" data-sound="${name}"><strong>${name}</strong><small>${escapeHtml(effect.moment)}</small><small>${Math.round(soundEffectLength(effect) * 1000)} ms · ${effect.tones.length} voice${effect.tones.length === 1 ? '' : 's'}</small></button>`;
+            const detail = isCryEffect(effect)
+              ? `FireRed's sample at ${cryPlaybackRate(effect.cryPitch).toFixed(2)}x speed`
+              : `${Math.round(soundEffectLength(effect) * 1000)} ms · ${effect.tones.length} voice${effect.tones.length === 1 ? '' : 's'}`;
+            return `<button class="${name === this.lastSound ? 'selected' : ''}" data-sound="${name}"><strong>${name}</strong><small>${escapeHtml(effect.moment)}</small><small>${detail}</small></button>`;
           })
           .join('')}</div></section>`;
       })
@@ -116,6 +135,12 @@ export class TestLabScene extends Phaser.Scene {
       <p class="test-lab-intro">One channel says one thing at a time: start an effect while another on its channel is sounding and the first is cut, exactly as in a raid.</p>
       <main class="sound-board">${groups}</main>
     </div>`;
+    const crySpecies = this.overlay.root.querySelector<HTMLSelectElement>('[data-cry-species]');
+    if (crySpecies) {
+      crySpecies.onchange = () => {
+        this.crySpecies = Number(crySpecies.value);
+      };
+    }
     this.overlay.root.querySelector<HTMLButtonElement>('[data-back]')!.onclick = () => {
       this.view = 'scenarios';
       this.render();
@@ -125,7 +150,13 @@ export class TestLabScene extends Phaser.Scene {
         const name = button.dataset.sound as (typeof SOUND_EFFECT_NAMES)[number];
         // The lab is reached without passing the title screen's key press, so
         // this click is the gesture the browser needs before it will sound anything.
-        void audioManager.activate().then(() => audioManager.play(name));
+        const options = isCryEffect(SOUND_EFFECTS[name]) ? { species: this.crySpecies } : {};
+        void audioManager
+          .activate()
+          // A cry is fetched the first time it is wanted; the board waits for it
+          // rather than auditioning the stand-in a battle would fall back on.
+          .then(() => (options.species ? audioManager.loadCries([options.species]) : undefined))
+          .then(() => audioManager.play(name, options));
         this.lastSound = name;
         this.overlay.root
           .querySelectorAll('[data-sound]')
