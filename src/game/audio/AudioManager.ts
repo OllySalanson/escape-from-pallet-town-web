@@ -1,7 +1,10 @@
+import { CRY_GAIN, cryPlaybackRate, cryUrl, hasCry } from './cries';
 import {
   ducksMusic,
+  isCryEffect,
   SOUND_EFFECTS,
   soundEffectLength,
+  type CryEffect,
   type SoundChannel,
   type SoundEffect,
   type SoundEffectName,
@@ -9,12 +12,29 @@ import {
 } from './soundEffects';
 
 type AudioContextFactory = () => AudioContext | null;
+/** Fetches a cry's file. A parameter so a test can hand over bytes without a network. */
+type CryFetcher = (dexId: number) => Promise<ArrayBuffer>;
 
 export interface PlayedSound {
   readonly name: SoundEffectName;
   /** AudioContext time, in seconds. */
   readonly at: number;
+  /** Whose cry, for a cry. */
+  readonly species?: number;
 }
+
+export interface PlayOptions {
+  /** The National Dex number of the Pokemon whose cry this is. A cry needs one. */
+  readonly species?: number;
+}
+
+/**
+ * The channels a cry waits for rather than talking over. A cry is heard after
+ * the ball's pop that lets the Pokemon out and after the fanfare that says it
+ * was caught - FireRed's own order - and never on top of another cry: two
+ * Pokemon sent out together cry one after the other.
+ */
+const CRY_WAITS_FOR: readonly SoundChannel[] = ['battle', 'fanfare', 'cry'];
 
 /** One sounding effect: everything it scheduled, behind one gain so it can be cut as a unit. */
 interface Voice {
@@ -22,6 +42,8 @@ interface Voice {
   readonly gain: GainNode;
   readonly sources: Set<AudioScheduledSourceNode>;
   readonly logged: PlayedSound;
+  /** When it falls silent, in AudioContext seconds, if nothing cuts it first. */
+  readonly endsAt: number;
   /** When the music may come back, if this voice is holding it down. */
   readonly duckUntil?: number;
 }
@@ -88,17 +110,28 @@ export class AudioManager {
   private nextThemeStart = 0;
   private readonly themeSources = new Set<AudioScheduledSourceNode>();
   private readonly voices = new Set<Voice>();
-  private readonly lastPlayedAt = new Map<SoundEffectName, number>();
+  /** Keyed by effect, and by whose cry for a cry: two Pokemon crying together are two events. */
+  private readonly lastPlayedAt = new Map<string, number>();
   private readonly played: PlayedSound[] = [];
   private noiseBuffer: AudioBuffer | null = null;
   private readonly contextFactory: AudioContextFactory;
+  private readonly cryFetcher: CryFetcher;
+  /** Each cry's file as fetched, waiting for an AudioContext to decode it in. */
+  private readonly cryBytes = new Map<number, ArrayBuffer>();
+  private readonly cryBuffers = new Map<number, AudioBuffer>();
+  /** A cry being fetched or decoded, so asking twice fetches once. */
+  private readonly cryLoads = new Map<number, Promise<void>>();
   private themeTimer: number | null = null;
   private masterGain: GainNode | null = null;
   /** Everything the themes sound goes through this, so a sting can duck it as one. */
   private musicGain: GainNode | null = null;
 
-  public constructor(contextFactory: AudioContextFactory = createBrowserAudioContext) {
+  public constructor(
+    contextFactory: AudioContextFactory = createBrowserAudioContext,
+    cryFetcher: CryFetcher = fetchCry,
+  ) {
     this.contextFactory = contextFactory;
+    this.cryFetcher = cryFetcher;
   }
 
   public get isMuted(): boolean {
@@ -148,6 +181,7 @@ export class AudioManager {
     }
 
     this.createMasterGain();
+    this.decodeFetchedCries();
     try {
       if (this.context.state === 'suspended') {
         await this.context.resume();
@@ -212,29 +246,22 @@ export class AudioManager {
    *
    * Returns whether it sounded.
    */
-  public play(name: SoundEffectName): boolean {
+  public play(name: SoundEffectName, options: PlayOptions = {}): boolean {
     const context = this.context;
     if (this.muted || context === null || this.masterGain === null || context.state !== 'running') {
       return false;
     }
 
+    const effect: SoundEffect = SOUND_EFFECTS[name];
+    if (isCryEffect(effect)) {
+      return this.playCry(name, effect, options.species, context);
+    }
+
     const now = context.currentTime;
-    const last = this.lastPlayedAt.get(name);
-    if (last !== undefined && now - last < RETRIGGER_GUARD_S) {
+    if (!this.passesRetriggerGuard(name, now)) {
       return false;
     }
-    this.lastPlayedAt.set(name, now);
-
-    const effect: SoundEffect = SOUND_EFFECTS[name];
-    for (const voice of [...this.voices]) {
-      if (
-        voice.channel === effect.channel ||
-        (voice.channel === 'ui' && effect.channel !== 'ui') ||
-        effect.channel === 'fanfare'
-      ) {
-        this.cutVoice(voice, now);
-      }
-    }
+    this.cutVoicesFor(effect.channel, now);
 
     // The cursor starts a breath late. The browser's audio clock runs ahead of
     // the frame that is asking, so a blip started "now" has already sounded for
@@ -247,12 +274,14 @@ export class AudioManager {
     gain.connect(this.masterGain);
     const logged: PlayedSound = { name, at: startsAt };
     const ducks = ducksMusic(effect);
+    const endsAt = startsAt + soundEffectLength(effect);
     const voice: Voice = {
       channel: effect.channel,
       gain,
       sources: new Set(),
       logged,
-      ...(ducks ? { duckUntil: startsAt + soundEffectLength(effect) } : {}),
+      endsAt,
+      ...(ducks ? { duckUntil: endsAt } : {}),
     };
     this.voices.add(voice);
     for (const tone of effect.tones) {
@@ -263,11 +292,167 @@ export class AudioManager {
       this.duckMusic(startsAt);
     }
 
+    this.log(logged);
+    return true;
+  }
+
+  /**
+   * Fetches and decodes these Pokemon's cries ahead of the moment they are
+   * wanted. `play()` never waits on the network: a cry asked for before its
+   * sample has arrived sounds its stand-in instead, so a battle asks for its
+   * cast's cries before its first line is read. Safe to call before the first
+   * gesture - the files are fetched then and decoded once there is a context.
+   */
+  public loadCries(dexIds: Iterable<number>): Promise<void> {
+    const loads: Promise<void>[] = [];
+    for (const dexId of new Set(dexIds)) {
+      if (!hasCry(dexId) || this.cryBuffers.has(dexId)) {
+        continue;
+      }
+      let load = this.cryLoads.get(dexId);
+      if (!load) {
+        load = this.cryFetcher(dexId)
+          .then((bytes) => {
+            this.cryBytes.set(dexId, bytes);
+            return this.decodeCry(dexId);
+          })
+          // A cry that will not load is a cry that is not heard: its stand-in
+          // goes on sounding, and the next battle asks again.
+          .catch(() => undefined)
+          .finally(() => this.cryLoads.delete(dexId));
+        this.cryLoads.set(dexId, load);
+      }
+      loads.push(load);
+    }
+    return Promise.all(loads).then(() => undefined);
+  }
+
+  /** Whether this Pokemon's cry can sound now, rather than its stand-in. */
+  public hasCryReady(dexId: number): boolean {
+    return this.cryBuffers.has(dexId);
+  }
+
+  /**
+   * A cry is not cut and does not cut: it waits until the battle, fanfare and
+   * cry channels have finished what they are saying (`CRY_WAITS_FOR`), so the
+   * Pokemon is heard after the ball opens and after the catch's fanfare, and a
+   * second Pokemon sent out on the same line cries after the first. It still
+   * silences the cursor, as every game sound does. A fanfare that starts while
+   * a cry is sounding or waiting cuts it, because a fanfare is the last word.
+   */
+  private playCry(
+    name: SoundEffectName,
+    effect: CryEffect,
+    species: number | undefined,
+    context: AudioContext,
+  ): boolean {
+    if (species === undefined || !hasCry(species)) {
+      return false;
+    }
+    const buffer = this.cryBuffers.get(species);
+    if (!buffer) {
+      void this.loadCries([species]);
+      return effect.standIn !== undefined && this.play(effect.standIn as SoundEffectName);
+    }
+
+    const now = context.currentTime;
+    if (!this.passesRetriggerGuard(`${name}:${species}`, now)) {
+      return false;
+    }
+    this.cutVoicesFor(effect.channel, now);
+
+    const startsAt = Math.max(
+      now,
+      ...[...this.voices]
+        .filter((voice) => CRY_WAITS_FOR.includes(voice.channel))
+        .map((voice) => voice.endsAt),
+    );
+    const rate = cryPlaybackRate(effect.cryPitch);
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(1, now);
+    gain.connect(this.masterGain!);
+    const logged: PlayedSound = { name, at: startsAt, species };
+    const voice: Voice = {
+      channel: effect.channel,
+      gain,
+      sources: new Set(),
+      logged,
+      endsAt: startsAt + buffer.duration / rate,
+    };
+    this.voices.add(voice);
+
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.playbackRate.setValueAtTime(rate, startsAt);
+    const level = context.createGain();
+    level.gain.setValueAtTime(CRY_GAIN, startsAt);
+    source.connect(level).connect(gain);
+    source.onended = () => {
+      voice.sources.delete(source);
+      if (voice.sources.size === 0) {
+        this.voices.delete(voice);
+      }
+    };
+    voice.sources.add(source);
+    source.start(startsAt);
+
+    this.log(logged);
+    return true;
+  }
+
+  /** One event is one sound: the same thing asked for twice in `RETRIGGER_GUARD_S` sounds once. */
+  private passesRetriggerGuard(key: string, now: number): boolean {
+    const last = this.lastPlayedAt.get(key);
+    if (last !== undefined && now - last < RETRIGGER_GUARD_S) {
+      return false;
+    }
+    this.lastPlayedAt.set(key, now);
+    return true;
+  }
+
+  /**
+   * The channel rule. A channel says one thing at a time - except the cry
+   * channel, whose cries queue instead (see `playCry`) - anything that is not
+   * `ui` cuts `ui`, and a fanfare cuts everything.
+   */
+  private cutVoicesFor(channel: SoundChannel, now: number): void {
+    for (const voice of [...this.voices]) {
+      if (
+        (voice.channel === channel && channel !== 'cry') ||
+        (voice.channel === 'ui' && channel !== 'ui') ||
+        channel === 'fanfare'
+      ) {
+        this.cutVoice(voice, now);
+      }
+    }
+  }
+
+  private log(logged: PlayedSound): void {
     this.played.push(logged);
     if (this.played.length > PLAY_LOG_LIMIT) {
       this.played.shift();
     }
-    return true;
+  }
+
+  private decodeFetchedCries(): void {
+    for (const dexId of this.cryBytes.keys()) {
+      void this.decodeCry(dexId);
+    }
+  }
+
+  private async decodeCry(dexId: number): Promise<void> {
+    const context = this.context;
+    const bytes = this.cryBytes.get(dexId);
+    if (context === null || bytes === undefined) {
+      return;
+    }
+    // Taken before decoding, because decoding detaches the bytes it is handed.
+    this.cryBytes.delete(dexId);
+    try {
+      this.cryBuffers.set(dexId, await context.decodeAudioData(bytes));
+    } catch {
+      // An undecodable file is a cry that is not heard; its stand-in is.
+    }
   }
 
   /**
@@ -495,6 +680,14 @@ export class AudioManager {
 
     this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volume, this.context.currentTime);
   }
+}
+
+async function fetchCry(dexId: number): Promise<ArrayBuffer> {
+  const response = await fetch(cryUrl(dexId));
+  if (!response.ok) {
+    throw new Error(`No cry for ${dexId}: ${response.status}`);
+  }
+  return response.arrayBuffer();
 }
 
 function createBrowserAudioContext(): AudioContext | null {

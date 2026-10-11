@@ -207,7 +207,7 @@ sightseeing.
 - A double battle, if you get far enough to earn it.
 - Rain in the places that are made of water, and it changes how the fight goes.
 - Trainers who watch a stretch of road. Step into it and you're paying a toll.
-- Every sound effect synthesised in the browser.
+- Every sound effect synthesised in the browser, except the Pokémon themselves: each one cries its own FireRed cry as it comes out, faints and gets caught.
 
 ## Controls
 

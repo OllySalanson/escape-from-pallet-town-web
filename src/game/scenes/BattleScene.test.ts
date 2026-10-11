@@ -42,6 +42,7 @@ import { HUNTER_SEARCH_MS, createHunterState } from '../world/hunter';
 import { BattleScene } from './BattleScene';
 import { combatantSpot } from './battlePresentation';
 import { iconTextureKey, itemIconName } from '../ui/icons';
+import { audioManager } from '../audio/AudioManager';
 
 /** The width the stub reports for "▶ ", which is how far every row is moved right. */
 const CURSOR_GUTTER = 10;
@@ -143,6 +144,8 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
     isCurrentMessageComplete: boolean;
     visibleText: string;
     shownMessages: string[];
+    /** What the scene asked to hear as each line of a `showMessages` queue is put up. */
+    lineShown?: (index: number) => void;
   };
   commandContainer: {
     add: ReturnType<typeof vi.fn>;
@@ -157,14 +160,19 @@ function createBattleSceneHarness(options: HarnessOptions = {}): {
       dialog.visibleText = message;
       dialog.shownMessages.push(message);
     }),
-    showMessages: vi.fn((messages: string[]) => {
+    showMessages: vi.fn((messages: string[], lineShown?: (index: number) => void) => {
       dialog.visibleText = messages[0] ?? '';
       dialog.shownMessages.push(...messages);
+      dialog.lineShown = lineShown;
+      if (messages.length > 0) {
+        lineShown?.(0);
+      }
     }),
     advance: vi.fn(),
     isCurrentMessageComplete: false,
     visibleText: '',
     shownMessages: [] as string[],
+    lineShown: undefined as ((index: number) => void) | undefined,
   };
   const commandContainer = {
     add: vi.fn(),
@@ -1958,5 +1966,104 @@ describe('the blink a blow lands with', () => {
     const { blinked, shake } = fight(TACKLE, TAIL_WHIP);
     expect(blinked).toEqual(['enemy']);
     expect(shake).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("a Pokemon's own cry", () => {
+  const RATTATA = getSpeciesById('rattata')!;
+  const onMessagesComplete = (scene: BattleScene): void =>
+    (scene as unknown as { onMessagesComplete(): void }).onMessagesComplete();
+  const mode = (scene: BattleScene): string => (scene as unknown as { mode: string }).mode;
+  /** Every cry asked for, in order, as `[effect, dex number]`. */
+  const criesHeard = (play: { mock: { calls: unknown[][] } }): [string, number | undefined][] =>
+    play.mock.calls
+      .filter(([name]) => name === 'cry' || name === 'faintCry')
+      .map(([name, options]) => [name as string, (options as { species?: number } | undefined)?.species]);
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("cries the trainer's Pokemon as it faints and the next one as it is sent out", () => {
+    const play = vi.spyOn(audioManager, 'play');
+    const lead = new Pokemon(PIDGEY, 3);
+    lead.takeDamage(lead.maxHp - 1);
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [lead, new Pokemon(RATTATA, 5)],
+      party: new PokemonParty([new Pokemon(SQUIRTLE, 12)]),
+    });
+
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    onMessagesComplete(scene);
+    read(renderedTexts).find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    read(renderedTexts).filter(({ text }) => text.includes('TACKLE')).at(-1)!.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && mode(scene) !== 'main'; step += 1) {
+      if (mode(scene) === 'about-to-use') {
+        (scene as unknown as { confirm(): void }).confirm();
+        continue;
+      }
+      onMessagesComplete(scene);
+    }
+
+    expect(dialog.shownMessages).toContain('RAIDER MAYA sent out RATTATA!');
+    expect(criesHeard(play)).toEqual([
+      ['faintCry', PIDGEY.dexId],
+      ['cry', RATTATA.dexId],
+    ]);
+    // The newcomer comes out of a ball, so the pop is heard before its cry.
+    const names = play.mock.calls.map(([name]) => name);
+    expect(names.lastIndexOf('sendOut')).toBeLessThan(names.lastIndexOf('cry'));
+  });
+
+  it('cries your Pokemon as it faints, and the one you send in after it', () => {
+    const play = vi.spyOn(audioManager, 'play');
+    const pidgey = new Pokemon(PIDGEY, 5);
+    pidgey.moves.splice(0, pidgey.moves.length, new Move(GROWL));
+    pidgey.currentHp = 1;
+    const { scene, renderedTexts, dialog } = createBattleSceneHarness({
+      authoredTrainer: true,
+      trainerParty: [new Pokemon(RATTATA, 15)],
+      party: new PokemonParty([pidgey, new Pokemon(CHARMANDER, 30)]),
+    });
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    onMessagesComplete(scene);
+    renderedTexts.find(({ text }) => text.includes('FIGHT'))?.handlers.pointerdown();
+    renderedTexts.filter(({ text }) => text.includes('GROWL')).at(-1)!.handlers.pointerdown();
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 40 && mode(scene) !== 'party'; step += 1) {
+      onMessagesComplete(scene);
+    }
+    (scene as unknown as { switchPokemon(index: number): void }).switchPokemon(1);
+    for (let step = 0; step < 40 && mode(scene) !== 'main'; step += 1) {
+      onMessagesComplete(scene);
+    }
+
+    expect(criesHeard(play)).toEqual([
+      ['faintCry', PIDGEY.dexId],
+      ['cry', CHARMANDER.dexId],
+    ]);
+  });
+
+  it('cries the Pokemon you caught, once the catch has held', () => {
+    const play = vi.spyOn(audioManager, 'play');
+    const wild = new Pokemon(PIDGEY, 3);
+    wild.takeDamage(wild.maxHp - 1);
+    const { scene, dialog } = createBattleSceneHarness({ wild });
+
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    onMessagesComplete(scene);
+    (scene as unknown as { throwBall(index: number): void }).throwBall(0);
+    dialog.isCurrentMessageComplete = true;
+    for (let step = 0; step < 20 && !dialog.shownMessages.some((line) => line.startsWith('Gotcha!')); step += 1) {
+      onMessagesComplete(scene);
+    }
+
+    expect(dialog.shownMessages).toContain('Gotcha! PIDGEY was caught!');
+    expect(criesHeard(play)).toEqual([['cry', PIDGEY.dexId]]);
+    const names = play.mock.calls.map(([name]) => name);
+    expect(names.indexOf('catchSuccess')).toBeLessThan(names.indexOf('cry'));
   });
 });

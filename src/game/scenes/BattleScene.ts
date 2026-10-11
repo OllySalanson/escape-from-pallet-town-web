@@ -51,7 +51,14 @@ import { MoveTarget, type MoveBase } from '../pokemon/MoveBase';
 import { prizesLeftBehind } from '../world/loot';
 import type { WildEncounter } from '../world/wildEncounters';
 import { audioManager } from '../audio/AudioManager';
-import { battleEventSound, battleNote, type BattleNote } from '../audio/battleSounds';
+import {
+  battleEventCry,
+  battleEventSound,
+  battleNote,
+  openingLineSounds,
+  type BattleNote,
+  type CrySound,
+} from '../audio/battleSounds';
 import type { SoundEffectName } from '../audio/soundEffects';
 import { getWorldMap } from '../worldMap';
 import { SaveManager } from '../save/SaveManager';
@@ -442,6 +449,7 @@ export class BattleScene extends Phaser.Scene {
     readonly event?: BattleEvent;
     readonly message: string;
     readonly sound?: SoundEffectName;
+    readonly cries?: readonly CrySound[];
     /** Run as the line is put up, for a line that is also a change on screen. */
     readonly onShow?: () => void;
     readonly offerMove?: { readonly pokemon: PokemonInstance; readonly move: MoveBase };
@@ -566,6 +574,14 @@ export class BattleScene extends Phaser.Scene {
         : createBattleState(playerPokemon, wildPokemon, data.weather ?? null)),
       playerParty: this.party.pokemon,
     };
+    // Every Pokemon that can come out in this fight, so each cries on the line
+    // that lets it out rather than its stand-in. The world asked for the wild
+    // one before the fade; asking again costs nothing.
+    void audioManager.loadCries(
+      [...this.party.pokemon, ...(data.trainer?.party ?? [this.state.enemy.pokemon])].map(
+        (pokemon) => pokemon.base.dexId,
+      ),
+    );
     recordAction(
       data.trainer
         ? `Fight with ${data.trainer.name}`
@@ -644,6 +660,16 @@ export class BattleScene extends Phaser.Scene {
     ]);
     this.input.keyboard!.on?.('keydown-M', () => audioManager.toggleMute());
     this.mode = 'events';
+    const fielded = (side: 'player' | 'enemy'): PokemonInstance[] =>
+      slotsOf(this.state, side).flatMap((ref) => {
+        const combatant = unitAt(this.state, ref);
+        return combatant ? [combatant.pokemon] : [];
+      });
+    const openingSounds = openingLineSounds(
+      this.teachingBattle ? undefined : data.trainer?.name,
+      fielded('player').map((pokemon) => pokemon.base.dexId),
+      fielded('enemy').map((pokemon) => pokemon.base.dexId),
+    );
     // An ability that acts the moment its Pokemon lands has already acted -
     // `createBattleState` applied it - so these are the words for what is
     // already true, read after the opening lines that named both sides.
@@ -669,7 +695,36 @@ export class BattleScene extends Phaser.Scene {
       // it: after this it speaks only when it takes HP off somebody.
       ...(this.state.weather ? [weatherSetMessage(this.state.weather.id, false)] : []),
       ...openingAbilityEvents(this.state).map((event) => eventToMessage(event, this.foeWord())),
-    ]);
+    ], (index) => {
+      const line = openingSounds[index];
+      if (line?.sound) {
+        audioManager.play(line.sound);
+      }
+      this.playCries(line?.cries ?? []);
+    });
+  }
+
+  /**
+   * Cries, in order. `AudioManager` queues a cry behind whatever the battle is
+   * still saying, so two Pokemon sent out on one line cry one after the other.
+   */
+  private playCries(cries: readonly CrySound[]): void {
+    for (const cry of cries) {
+      audioManager.play(cry.name, { species: cry.species });
+    }
+  }
+
+  /**
+   * The cry an event carries, from the Pokemon on that spot: read after the
+   * event is presented, when the spot shows the newcomer that was sent out, and
+   * still shows the Pokemon that fainted or was caught.
+   */
+  private playEventCry(event: BattleEvent): void {
+    const cue = battleEventCry(event);
+    const pokemon = cue ? this.displayed.get(plateKey(cue.side, cue.slot)) : undefined;
+    if (cue && pokemon) {
+      audioManager.play(cue.name, { species: pokemon.base.dexId });
+    }
   }
 
   public update(_time: number, delta: number): void {
@@ -2391,7 +2446,11 @@ export class BattleScene extends Phaser.Scene {
       this.mode = 'events';
       this.commandContainer.setVisible(false);
       this.showCombatEvents(switchIn.events, [
-        { message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' },
+        {
+          message: `Go, ${pokemon.base.name.toUpperCase()}!`,
+          sound: 'sendOut',
+          cries: [{ name: 'cry', species: pokemon.base.dexId }],
+        },
       ]);
       return;
     }
@@ -2409,7 +2468,11 @@ export class BattleScene extends Phaser.Scene {
       events,
       [
         ...(wasForcedReplacement ? [] : [`Come back, ${outgoingName}!`]),
-        { message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' },
+        {
+          message: `Go, ${pokemon.base.name.toUpperCase()}!`,
+          sound: 'sendOut',
+          cries: [{ name: 'cry', species: pokemon.base.dexId }],
+        },
       ],
       [],
       rewards,
@@ -2491,7 +2554,11 @@ export class BattleScene extends Phaser.Scene {
     this.refreshStatusLabels();
     this.pendingCombatMessages.unshift(
       stagedNote(`Come back, ${outgoingName}!`),
-      stagedNote({ message: `Go, ${pokemon.base.name.toUpperCase()}!`, sound: 'sendOut' }),
+      stagedNote({
+        message: `Go, ${pokemon.base.name.toUpperCase()}!`,
+        sound: 'sendOut',
+        cries: [{ name: 'cry', species: pokemon.base.dexId }],
+      }),
       // Whatever the arrival did - a status shed on the way out, an Intimidate
       // on the way in - is read after the two lines that name the swap.
       ...switchIn.events.map((event) => stagedNote(eventToMessage(event, this.foeWord()))),
@@ -3039,6 +3106,10 @@ export class BattleScene extends Phaser.Scene {
     if (next.sound) {
       audioManager.play(next.sound);
     }
+    if (next.event) {
+      this.playEventCry(next.event);
+    }
+    this.playCries(next.cries ?? []);
     this.moveOffer = next.offerMove ?? null;
     this.dialog.showMessage(next.message);
   }

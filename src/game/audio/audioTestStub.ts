@@ -8,6 +8,10 @@ export interface StubSource {
   started: boolean;
   /** The time `stop()` was last asked for; a cut voice is stopped early. */
   stopAt: number | null;
+  /** When `start()` was asked for, in context seconds. */
+  startAt: number | null;
+  /** A sample's playback rate, set only for a buffer played as a recording (a cry). */
+  rate: number | null;
 }
 
 /** One gain node's automation, in the order it was asked for. */
@@ -53,7 +57,7 @@ export function createStubAudioContext(): StubContext {
     };
   };
   const source = (kind: StubSource['kind']) => {
-    const record: StubSource = { kind, frequency: 0, started: false, stopAt: null };
+    const record: StubSource = { kind, frequency: 0, started: false, stopAt: null, startAt: null, rate: null };
     sources.push(record);
     return {
       ...node(),
@@ -63,9 +67,13 @@ export function createStubAudioContext(): StubContext {
       frequency: param((value) => {
         record.frequency = value;
       }),
+      playbackRate: param((value) => {
+        record.rate = value;
+      }),
       onended: null,
-      start: () => {
+      start: (when = 0) => {
         record.started = true;
+        record.startAt = when;
       },
       stop: (when: number) => {
         record.stopAt = when;
@@ -86,6 +94,9 @@ export function createStubAudioContext(): StubContext {
     }),
     createOscillator: () => source('oscillator'),
     createBufferSource: () => source('noise'),
+    // A "decoded" file is as many seconds long as it has bytes at 1000 a
+    // second, so a test chooses a cry's length by the size of what it fetches.
+    decodeAudioData: (bytes: ArrayBuffer) => Promise.resolve({ duration: bytes.byteLength / 1000 }),
   };
 
   return {

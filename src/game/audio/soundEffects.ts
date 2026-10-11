@@ -1,9 +1,10 @@
 /**
  * The game's whole sound-effect vocabulary, as data.
  *
- * Every effect is a handful of square, triangle, sawtooth and noise voices -
- * the four things a Game Boy could say - so there are no audio files to ship,
- * licence or wait on. It lives here rather than inside `AudioManager` for the
+ * Every effect but one is a handful of square, triangle, sawtooth and noise
+ * voices - the four things a Game Boy could say - so there are no audio files
+ * to ship, licence or wait on. The one is a Pokemon's cry, which is FireRed's
+ * own recording of that species (`cries.ts`) played the way FireRed plays it. It lives here rather than inside `AudioManager` for the
  * reason battle wording lives in `battlePresentation.ts`: a sound cannot be
  * reviewed from a diff, but its length, its loudness, the channel it takes and
  * whether it can be told apart from its neighbours can all be held by a test
@@ -16,7 +17,7 @@
  * this is modelled on kept a busy moment from stacking into noise, and it is
  * the only mixing rule the game has. See `AudioManager.play()`.
  */
-export type SoundChannel = 'ui' | 'world' | 'battle' | 'alert' | 'fanfare';
+export type SoundChannel = 'ui' | 'world' | 'battle' | 'alert' | 'fanfare' | 'cry';
 
 export type SoundWave = 'square' | 'triangle' | 'sawtooth' | 'noise';
 
@@ -34,8 +35,9 @@ export interface SoundTone {
   readonly slideTo?: number;
 }
 
-export interface SoundEffect {
-  readonly channel: SoundChannel;
+/** An effect made of tones: everything but a cry. */
+export interface ToneEffect {
+  readonly channel: Exclude<SoundChannel, 'cry'>;
   /** The player-facing moment this belongs to, as shown on the sound board. */
   readonly moment: string;
   readonly tones: readonly SoundTone[];
@@ -54,8 +56,40 @@ export interface SoundEffect {
   readonly ducksMusic?: boolean;
 }
 
+/**
+ * A Pokemon's own cry: the one thing the game says with a recording rather
+ * than with tones, because no four voices can say "Pidgey". The sample is the
+ * species' own (`cries.ts`), handed to `AudioManager.play()` with the effect
+ * as `{ species }`; what the effect decides is how FireRed plays it.
+ */
+export interface CryEffect {
+  readonly channel: 'cry';
+  readonly moment: string;
+  /**
+   * FireRed's pitch for this kind of cry, in its own units - a key times 256 -
+   * where 15360 (key 60) is the sample as it was recorded. pret/pokefirered,
+   * `PlayCryInternal`: an ordinary cry is 15360 and a faint is 14440.
+   */
+  readonly cryPitch: number;
+  /**
+   * The tone effect sounded instead when the cry cannot be - its sample has not
+   * arrived yet, or never will - so the moment is never silent for want of a
+   * file. A name in `SOUND_EFFECTS` (held by `cries.test.ts`).
+   */
+  readonly standIn?: string;
+}
+
+export type SoundEffect = ToneEffect | CryEffect;
+
+export function isCryEffect(effect: SoundEffect): effect is CryEffect {
+  return effect.channel === 'cry';
+}
+
 /** Whether the music is ducked for the length of this effect. */
 export function ducksMusic(effect: SoundEffect): boolean {
+  if (isCryEffect(effect)) {
+    return false;
+  }
   return effect.ducksMusic ?? effect.channel === 'fanfare';
 }
 
@@ -380,7 +414,7 @@ export const SOUND_EFFECTS = {
   },
   faint: {
     channel: 'battle',
-    moment: 'A Pokemon faints',
+    moment: 'A Pokemon faints, when its cry cannot sound',
     tones: run([523, 440, 349, 262], 0.13, 0.065, 0.1),
   },
   ballThrow: {
@@ -407,6 +441,20 @@ export const SOUND_EFFECTS = {
     channel: 'battle',
     moment: 'Experience is awarded',
     tones: [sweep(tri(392, 0.2, 0.045), 784)],
+  },
+
+  // --- cry: a Pokemon's own voice ---------------------------------------
+  cry: {
+    channel: 'cry',
+    moment: "A Pokemon's own cry: it appears, is sent out or switched in, or is caught",
+    cryPitch: 15360,
+    standIn: 'sendOut',
+  },
+  faintCry: {
+    channel: 'cry',
+    moment: 'A Pokemon faints: its own cry, lower and drawn out',
+    cryPitch: 14440,
+    standIn: 'faint',
   },
 
   // --- fanfare: the raid keeps score -------------------------------------
@@ -485,7 +533,14 @@ function later(seconds: number): (tone: SoundTone) => SoundTone {
   return (tone) => ({ ...tone, delay: (tone.delay ?? 0) + seconds });
 }
 
-/** How long an effect sounds for, start to silence, in seconds. */
-export function soundEffectLength(effect: SoundEffect): number {
+/** The effects made of tones, which is every effect but a cry. */
+export type ToneEffectName = {
+  [K in SoundEffectName]: (typeof SOUND_EFFECTS)[K] extends { readonly tones: unknown } ? K : never;
+}[SoundEffectName];
+
+export type CryEffectName = Exclude<SoundEffectName, ToneEffectName>;
+
+/** How long a tone effect sounds for, start to silence, in seconds. A cry is as long as its sample. */
+export function soundEffectLength(effect: ToneEffect): number {
   return Math.max(...effect.tones.map((tone) => (tone.delay ?? 0) + tone.duration));
 }
