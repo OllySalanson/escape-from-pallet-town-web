@@ -89,35 +89,14 @@ import { pennantsPoster } from '../base/pennants';
 import { consoleLine } from '../base/homeLines';
 import type { PaintedPicture } from '../world/minimap';
 import {
-  EMOTE_ART,
-  EMOTE_BUBBLE_CREAM,
-  EMOTE_BUBBLE_INK,
-  EMOTE_INKS,
-  EMOTE_MS,
-  HOP_MS,
-  IDLE_BEAT_MIN_MS,
-  IDLE_BEAT_SPREAD_MS,
-  LOOK_AT_PLAYER_AFTER_MS,
-  PARTNER_FEET_PIXEL_Y,
   arrivalPlace,
-  facingTowards,
-  followStep,
-  hopLift,
-  idleBeat,
-  partnerFrame,
   partnerOf,
-  partnerPose,
   partnerReaction,
-  partnerTextureKey,
-  sameTile,
   turnToPartner,
   type PartnerEmote,
-  type PartnerPlace,
   type PartnerPlaceName,
-  type PartnerSpeciesId,
 } from '../base/partner';
-import { FOLLOWER_ART } from '../base/generated/followerArt';
-import type { Pokemon } from '../pokemon/Pokemon';
+import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
 import type { HubSceneData } from './HubScene';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
 
@@ -162,14 +141,6 @@ const DIALOG_MARGIN = 8;
 const HINT_MARGIN = 6;
 const HINT_PADDING_X = 5;
 const HINT_PADDING_Y = 2;
-/** The partner fades in over this long when it arrives, and stands still for the first part of it. */
-const PARTNER_APPEAR_MS = 220;
-const PARTNER_APPEAR_DELAY_MS = 90;
-/** Left of the partner's frame relative to its tile: a 32-pixel frame centred on a 16-pixel tile. */
-const PARTNER_SPRITE_X_OFFSET = -8;
-/** Top of the partner's frame relative to its tile, so its feet land where the player's soles do. */
-const PARTNER_SPRITE_Y_OFFSET = PLAYER_SPRITE_Y_OFFSET + CHARACTER_FEET_PIXEL_Y - PARTNER_FEET_PIXEL_Y;
-
 const figureRect = (tile: GridPosition): Rect => ({
   x: tile.x * TILE_SIZE,
   y: tile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET + CHARACTER_HEAD_PIXEL_Y,
@@ -273,33 +244,6 @@ interface Inspecting {
   readonly by: 'keys' | 'pointer';
 }
 
-/** The partner at the player's heel, and everything its frame needs to remember. */
-interface PartnerWalk {
-  readonly pokemon: Pokemon;
-  readonly species: PartnerSpeciesId;
-  /** Its name as the game writes one, in capitals. */
-  readonly name: string;
-  readonly sprite: Phaser.GameObjects.Sprite;
-  place: PartnerPlace;
-  /** The step it is taking alongside the player's, timed by the player's own. */
-  step: { readonly from: GridPosition; readonly to: GridPosition } | null;
-  /** Following the player through a door as the screen goes dark. */
-  tuck: { readonly from: Phaser.Math.Vector2; readonly to: GridPosition; elapsedMs: number } | null;
-  walkPose: 0 | 1;
-  /** How long the player has been standing still. */
-  stillMs: number;
-  nextBeatMs: number;
-  /** Time left looking away from the player. */
-  glanceMs: number;
-  hopMs: number | null;
-  /** Time since it began to come into view, or null once it is in view. */
-  appearMs: number | null;
-  bubble: Phaser.GameObjects.Graphics | null;
-  bubbleMs: number;
-  /** The bubble it greets the player with once it is in view. */
-  greeting: PartnerEmote | null;
-}
-
 /** What the scene is standing the player in this visit. */
 interface Place {
   readonly width: number;
@@ -355,7 +299,7 @@ export class BaseScene extends Phaser.Scene {
   private readonly stepStart = new Phaser.Math.Vector2();
   private readonly stepEnd = new Phaser.Math.Vector2();
   /** The partner walking at the player's heel, or null when nobody is (`base/partner.ts`). */
-  private partner: PartnerWalk | null = null;
+  private partner: PartnerFigure | null = null;
   /** Counts down while a tap towards the partner is turning the player rather than walking them. */
   private turnToPartnerMs: number | null = null;
 
@@ -505,7 +449,7 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     this.updateWalking(deltaMs);
-    this.updatePartner(deltaMs);
+    this.partner?.update(deltaMs);
   }
 
   private updateWalking(deltaMs: number): void {
@@ -1227,7 +1171,7 @@ export class BaseScene extends Phaser.Scene {
         ],
         keepClear: [
           ...(room?.keeper ? [figureRect(room.keeper.position)] : []),
-          ...(this.partner?.place.out ? [this.partnerRect(this.partner.place.tile)] : []),
+          ...(this.partner?.place.out ? [this.partner.rect()] : []),
         ],
         canopy: this.canopyInView(bounds),
         player: [figureRect(this.currentTile), figureRect(this.targetTile ?? this.currentTile)],
@@ -1394,7 +1338,7 @@ export class BaseScene extends Phaser.Scene {
     );
     this.stepEnd.set(targetTile.x * TILE_SIZE, targetTile.y * TILE_SIZE + PLAYER_SPRITE_Y_OFFSET);
     this.player.play(getWalkAnimationKey(this.facing), true);
-    this.followPlayer(this.currentTile, targetTile);
+    this.partner?.follow(this.currentTile, targetTile);
   }
 
   private advanceStep(deltaMs: number): void {
@@ -1410,9 +1354,7 @@ export class BaseScene extends Phaser.Scene {
     this.currentTile = this.targetTile;
     this.targetTile = null;
     this.stepCarryMs = tick.overflowMs;
-    if (this.partner) {
-      this.partner.step = null;
-    }
+    this.partner?.arrived();
     const room = this.place.room?.room;
     if (room) {
       const stair = stairAt(room, this.currentTile);
@@ -1442,11 +1384,6 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
     const place = arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile));
-    const sprite = this.add
-      .sprite(0, 0, partnerTextureKey(partner.species), partnerFrame(place.facing, 0))
-      .setOrigin(0, 0)
-      .setAlpha(0)
-      .setVisible(place.out);
     const greeting: PartnerEmote | null =
       data.arrival === 'raid' || (data.from === undefined && data.room === undefined && data.at === undefined)
         ? partner.pokemon.isFainted
@@ -1457,25 +1394,21 @@ export class BaseScene extends Phaser.Scene {
               ? 'heart'
               : 'happy'
         : null;
-    this.partner = {
-      pokemon: partner.pokemon,
-      species: partner.species,
-      name: partner.pokemon.base.name.toUpperCase(),
-      sprite,
-      place,
-      step: null,
-      tuck: null,
-      walkPose: 0,
-      stillMs: 0,
-      nextBeatMs: this.nextBeatDelay(),
-      glanceMs: 0,
-      hopMs: null,
-      appearMs: place.out ? 0 : null,
-      bubble: null,
-      bubbleMs: 0,
-      greeting,
+    this.partner = new PartnerFigure(this, this.partnerHost(), partner, place, { greeting });
+  }
+
+  /** The player, as the partner reads them (`PartnerHost`). */
+  private partnerHost(): PartnerHost {
+    return {
+      playerTile: () => this.currentTile,
+      playerStepping: () => this.targetTile !== null,
+      stepProgress: () => this.stepProgress,
+      player: this.player,
+      playerHeadMark: this.playerHeadMark,
+      reading: () => this.dialogBox.visible,
+      standingAbout: () => this.targetTile === null && !this.leaving,
+      quiet: () => this.inspecting !== null,
     };
-    this.drawPartner();
   }
 
   /**
@@ -1499,8 +1432,7 @@ export class BaseScene extends Phaser.Scene {
 
   /** Whether the partner is out and standing on `tile`. */
   private partnerAt(tile: GridPosition): boolean {
-    const partner = this.partner;
-    return partner !== null && partner.place.out && partner.tuck === null && sameTile(partner.place.tile, tile);
+    return this.partner?.standsOn(tile) ?? false;
   }
 
   /** Whether this frame's step only turns the player to face the partner (`turnToPartner`). */
@@ -1510,11 +1442,10 @@ export class BaseScene extends Phaser.Scene {
     fromStanding: boolean,
     deltaMs: number,
   ): boolean {
-    const partner = this.partner;
     const { turn, holdMs } = turnToPartner({
       holdMs: this.turnToPartnerMs,
       target,
-      partner: partner && partner.place.out && partner.tuck === null ? partner.place.tile : null,
+      partner: this.partner?.standingTile() ?? null,
       stepFacing: facing,
       facing: this.facing,
       fromStanding,
@@ -1522,46 +1453,6 @@ export class BaseScene extends Phaser.Scene {
     });
     this.turnToPartnerMs = holdMs;
     return turn;
-  }
-
-  /** The player has begun a step: the partner takes its own, onto the tile they are leaving. */
-  private followPlayer(from: GridPosition, to: GridPosition): void {
-    const partner = this.partner;
-    if (!partner || partner.tuck) {
-      return;
-    }
-    const { move, place } = followStep(partner.place, from, to);
-    partner.place = place;
-    partner.stillMs = 0;
-    partner.glanceMs = 0;
-    partner.nextBeatMs = this.nextBeatDelay();
-    if (move.kind === 'step') {
-      partner.step = { from: move.from, to: move.to };
-      partner.walkPose = partner.walkPose === 0 ? 1 : 0;
-      return;
-    }
-    // Out from where it was tucked away, onto the tile the player has left.
-    partner.step = null;
-    partner.appearMs = 0;
-    partner.sprite.setVisible(true).setAlpha(0);
-    audioManager.play('partnerAppear');
-  }
-
-  /**
-   * Through a door or off a mat: the partner follows the player in, onto the
-   * tile they are standing on, as the screen goes dark.
-   */
-  private tuckPartnerAway(): void {
-    const partner = this.partner;
-    if (!partner || !partner.place.out || sameTile(partner.place.tile, this.currentTile)) {
-      return;
-    }
-    const from = this.partnerPosition();
-    const facing = facingTowards(partner.place.tile, this.currentTile) ?? partner.place.facing;
-    partner.step = null;
-    partner.place = { ...partner.place, facing };
-    partner.tuck = { from, to: { ...this.currentTile }, elapsedMs: 0 };
-    partner.walkPose = partner.walkPose === 0 ? 1 : 0;
   }
 
   /**
@@ -1576,222 +1467,14 @@ export class BaseScene extends Phaser.Scene {
     }
     const place: PartnerPlaceName = (this.place.room?.room.id as PartnerPlaceName | undefined) ?? 'yard';
     const reaction = partnerReaction(partner.pokemon, place, Math.random());
-    partner.place = {
-      ...partner.place,
-      facing: facingTowards(partner.place.tile, this.currentTile) ?? partner.place.facing,
-    };
-    partner.glanceMs = 0;
-    partner.stillMs = LOOK_AT_PLAYER_AFTER_MS;
+    partner.lookAtPlayer();
     if (reaction.hops) {
-      partner.hopMs = 0;
-      audioManager.play('partnerHappy');
+      partner.hop();
     }
-    this.showPartnerBubble(reaction.emote);
+    partner.showBubble(reaction.emote);
     this.player.stop();
     this.player.setFrame(getIdleFrame(this.facing));
     this.say([reaction.line], [partner.place.tile]);
-  }
-
-  private showPartnerBubble(emote: PartnerEmote): void {
-    const partner = this.partner;
-    if (!partner) {
-      return;
-    }
-    partner.bubble?.destroy();
-    const bubble = this.add.graphics();
-    const box = (colour: number, x: number, y: number, width: number, height: number): void => {
-      bubble.fillStyle(colour, 1).fillRect(x, y, width, height);
-    };
-    // The raid's spotted mark, to the pixel: an ink rim, a cream inside, a tail.
-    box(EMOTE_BUBBLE_INK, 0, 0, 11, 13);
-    box(EMOTE_BUBBLE_CREAM, 1, 1, 9, 11);
-    box(EMOTE_BUBBLE_INK, 4, 13, 3, 1);
-    box(EMOTE_BUBBLE_CREAM, 5, 13, 1, 1);
-    box(EMOTE_BUBBLE_INK, 5, 14, 1, 1);
-    EMOTE_ART[emote].forEach((row, y) =>
-      [...row].forEach((ink, x) => {
-        if (ink !== '.') {
-          box(EMOTE_INKS[ink], 1 + x, 1 + y, 1, 1);
-        }
-      }),
-    );
-    partner.bubble = bubble.setDepth(CANOPY_BAND + 0.15);
-    partner.bubbleMs = 0;
-  }
-
-  /**
-   * The partner's own frame: its walk, the little things it
-   * does while the player stands about, its bubble, and where it is drawn.
-   */
-  private updatePartner(deltaMs: number): void {
-    const partner = this.partner;
-    if (!partner) {
-      return;
-    }
-    const reading = this.dialogBox.visible;
-    if (partner.tuck) {
-      partner.tuck.elapsedMs += deltaMs;
-    }
-    if (partner.appearMs !== null) {
-      partner.appearMs += deltaMs;
-      if (partner.appearMs >= PARTNER_APPEAR_MS + PARTNER_APPEAR_DELAY_MS) {
-        partner.appearMs = null;
-        if (partner.greeting) {
-          if (partner.greeting === 'heart' || partner.greeting === 'happy') {
-            partner.hopMs = 0;
-            audioManager.play('partnerHappy');
-          }
-          this.showPartnerBubble(partner.greeting);
-          partner.greeting = null;
-        }
-      }
-    }
-    if (partner.hopMs !== null) {
-      partner.hopMs += deltaMs;
-      if (partner.hopMs >= HOP_MS) {
-        partner.hopMs = null;
-      }
-    }
-    if (partner.bubble && !reading) {
-      partner.bubbleMs += deltaMs;
-      if (partner.bubbleMs >= EMOTE_MS) {
-        partner.bubble.destroy();
-        partner.bubble = null;
-      }
-    }
-
-    const standing = this.targetTile === null && partner.step === null && partner.tuck === null && !this.leaving;
-    if (standing && partner.place.out) {
-      this.partnerStandsAbout(partner, deltaMs, reading);
-    }
-    this.drawPartner();
-  }
-
-  /** Standing still: turning to look at the player, glancing about, hopping. */
-  private partnerStandsAbout(partner: PartnerWalk, deltaMs: number, reading: boolean): void {
-    const lookingAtPlayer = facingTowards(partner.place.tile, this.currentTile);
-    partner.stillMs += deltaMs;
-    if (partner.glanceMs > 0) {
-      partner.glanceMs -= deltaMs;
-      if (partner.glanceMs <= 0 && lookingAtPlayer) {
-        partner.place = { ...partner.place, facing: lookingAtPlayer };
-      }
-      return;
-    }
-    if (partner.stillMs >= LOOK_AT_PLAYER_AFTER_MS && lookingAtPlayer && partner.place.facing !== lookingAtPlayer) {
-      partner.place = { ...partner.place, facing: lookingAtPlayer };
-    }
-    if (reading || this.inspecting) {
-      return;
-    }
-    partner.nextBeatMs -= deltaMs;
-    if (partner.nextBeatMs > 0) {
-      return;
-    }
-    partner.nextBeatMs = this.nextBeatDelay();
-    const beat = idleBeat(Math.random(), partner.pokemon);
-    if (beat === 'glance') {
-      const away = (['up', 'down', 'left', 'right'] as const).filter(
-        (direction) => direction !== partner.place.facing,
-      );
-      partner.place = { ...partner.place, facing: away[Math.floor(Math.random() * away.length)] };
-      partner.glanceMs = 900 + Math.random() * 700;
-    } else if (beat === 'hop' || beat === 'hop-and-chirp') {
-      partner.hopMs = 0;
-      if (beat === 'hop-and-chirp') {
-        audioManager.play('partnerHappy');
-        this.showPartnerBubble('note');
-      }
-    }
-  }
-
-  private nextBeatDelay(): number {
-    return IDLE_BEAT_MIN_MS + Math.random() * IDLE_BEAT_SPREAD_MS;
-  }
-
-  /** Where the partner is, in tiles, which mid-step is part of the way between two. */
-  private partnerPosition(): Phaser.Math.Vector2 {
-    const partner = this.partner;
-    if (!partner) {
-      return new Phaser.Math.Vector2(this.currentTile.x, this.currentTile.y);
-    }
-    if (partner.tuck) {
-      const t = Math.min(1, partner.tuck.elapsedMs / STEP_DURATION_MS);
-      return new Phaser.Math.Vector2(
-        Phaser.Math.Linear(partner.tuck.from.x, partner.tuck.to.x, t),
-        Phaser.Math.Linear(partner.tuck.from.y, partner.tuck.to.y, t),
-      );
-    }
-    if (partner.step && this.targetTile) {
-      return new Phaser.Math.Vector2(
-        Phaser.Math.Linear(partner.step.from.x, partner.step.to.x, this.stepProgress),
-        Phaser.Math.Linear(partner.step.from.y, partner.step.to.y, this.stepProgress),
-      );
-    }
-    return new Phaser.Math.Vector2(partner.place.tile.x, partner.place.tile.y);
-  }
-
-  private drawPartner(): void {
-    const partner = this.partner;
-    if (!partner) {
-      return;
-    }
-    const at = this.partnerPosition();
-    const moving = partner.tuck !== null || (partner.step !== null && this.targetTile !== null);
-    const progress = partner.tuck
-      ? Math.min(1, partner.tuck.elapsedMs / STEP_DURATION_MS)
-      : this.stepProgress;
-    const pose = partnerPose({ moving, progress, walkPose: partner.walkPose });
-    const lift = partner.hopMs === null ? 0 : hopLift(partner.hopMs);
-    const x = at.x * TILE_SIZE + PARTNER_SPRITE_X_OFFSET;
-    const y = at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET - lift;
-    const depth = atRow(FIGURE_BAND, at.y) - 0.00005;
-    partner.sprite
-      .setFrame(partnerFrame(partner.place.facing, pose))
-      .setPosition(x, y)
-      // A hair behind the player on the same row, so a swap passes behind them.
-      .setDepth(depth);
-    // The player's head mark rides above every figure so the player can always
-    // be found - but the partner walking right behind them would wear it on its
-    // own face, which reads as the Pokemon being the one marked. While it is
-    // there, and only then, the mark goes behind it.
-    const playerY = (this.player.y - PLAYER_SPRITE_Y_OFFSET) / TILE_SIZE;
-    const behind = partner.sprite.visible && at.y < playerY && Math.abs(at.x - this.player.x / TILE_SIZE) < 1;
-    this.playerHeadMark.setDepth(behind ? depth - 0.00001 : PLAYER_MARKER_DEPTH);
-    let alpha = 1;
-    if (partner.appearMs !== null) {
-      alpha = Phaser.Math.Clamp((partner.appearMs - PARTNER_APPEAR_DELAY_MS) / PARTNER_APPEAR_MS, 0, 1);
-    }
-    if (partner.tuck) {
-      alpha = 1 - progress;
-    }
-    partner.sprite.setAlpha(alpha);
-    if (partner.bubble) {
-      const art = FOLLOWER_ART[partner.species];
-      let bubbleX = Math.round(at.x * TILE_SIZE + TILE_SIZE / 2 - 5);
-      const bubbleY = Math.round(at.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET + art.topPixelY - 16 - lift);
-      // Over its head is where a bubble goes - unless the player is standing
-      // there, as they are whenever the partner is right behind them on the way
-      // down the screen. Then it is seated at the player's shoulder, so it
-      // never covers the player's face.
-      const face = figureRect({ x: this.player.x / TILE_SIZE, y: playerY });
-      if (bubbleX < face.x + face.width && bubbleX + 11 > face.x && bubbleY < face.y + face.height && bubbleY + 15 > face.y) {
-        bubbleX = Math.round(face.x + face.width);
-      }
-      partner.bubble.setPosition(bubbleX, bubbleY);
-    }
-  }
-
-  /** The partner's figure on a tile, for the captions to keep clear of. */
-  private partnerRect(tile: GridPosition): Rect {
-    const art = this.partner ? FOLLOWER_ART[this.partner.species] : undefined;
-    const top = art?.topPixelY ?? 16;
-    return {
-      x: tile.x * TILE_SIZE,
-      y: tile.y * TILE_SIZE + PARTNER_SPRITE_Y_OFFSET + top,
-      width: TILE_SIZE,
-      height: PARTNER_FEET_PIXEL_Y - top + 1,
-    };
   }
 
   // -- the doors, the rooms and the keepers ----------------------------------
@@ -1957,7 +1640,7 @@ export class BaseScene extends Phaser.Scene {
     this.leaving = true;
     this.player.stop();
     this.showHint('');
-    this.tuckPartnerAway();
+    this.partner?.tuckIn();
     audioManager.play(sound);
     this.cameras.main.fadeOut(120, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>

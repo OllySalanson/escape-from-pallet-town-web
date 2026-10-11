@@ -132,6 +132,15 @@ export interface CaptionSurroundings {
    * enough off to have had somewhere else to sit on the way in.
    */
   readonly player?: readonly Rect[];
+  /**
+   * The Pokemon walking at the player's heel on a raid (`world/raidFollower.ts`).
+   * A caption would rather sit clear of it, as it would of anything drawn over
+   * the writing - but the follower is the one figure that may never cost a
+   * caption its seat, because it is company rather than anything the map is
+   * saying: a seat that only it is in is still taken, and the follower goes
+   * faint over it instead (`PartnerFigure.setVeiled`).
+   */
+  readonly follower?: readonly Rect[];
 }
 
 export interface CaptionPlacement {
@@ -274,6 +283,7 @@ function intrusion(rect: Rect, surroundings: CaptionSurroundings, seated: readon
     against(surroundings.keepClear, 0) +
     against(surroundings.canopy, 0) +
     against(surroundings.player ?? [], 0) +
+    against(surroundings.follower ?? [], 0) +
     against(seated, NEIGHBOUR_GAP)
   );
 }
@@ -425,10 +435,10 @@ export function placeCaptions(
       return hidden(0);
     }
 
-    // Twice at most, and the second time only for a warning: clear of
-    // everything, then clear of everything but the player. The held seat is
-    // asked first both times, so a caption the player walks under moves once
-    // and stays where it went.
+    // Three times at most, and the third time only for a warning: clear of
+    // everything, then of everything but the follower, then of everything but
+    // the follower and the player. The held seat is asked first every time, so
+    // a caption the player walks under moves once and stays where it went.
     const seatClearOf = (ground: CaptionSurroundings): number => {
       const isClear = (index: number): boolean =>
         intrusion(rectOf(candidates[index]), ground, seated) === 0;
@@ -436,11 +446,15 @@ export function placeCaptions(
         ? held
         : candidates.findIndex((_, at) => isClear(at));
     };
-    const clearOfPlayer = seatClearOf(around);
+    const besideFollower = seatClearOf(around);
+    const clearOfPlayer =
+      besideFollower >= 0 || (surroundings.follower ?? []).length === 0
+        ? besideFollower
+        : seatClearOf({ ...around, follower: [] });
     const index =
       clearOfPlayer >= 0 || request.warns !== true
         ? clearOfPlayer
-        : seatClearOf({ ...around, player: [] });
+        : seatClearOf({ ...around, follower: [], player: [] });
     if (index < 0) {
       return hidden(0);
     }
