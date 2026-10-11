@@ -134,7 +134,7 @@ export function fieldMoveLines(
   if (!user) {
     return [authored.obstacle, authored.refusal];
   }
-  return [authored.obstacle, authored.worked(user.base.name.toUpperCase())];
+  return [authored.obstacle, authored.worked(user.name.toUpperCase())];
 }
 
 /**

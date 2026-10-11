@@ -587,7 +587,7 @@ function partyGear(snapshot: RunSnapshot, escaped: boolean): ReportGear[] {
     return [{
       itemId: member.heldItemId,
       label,
-      holder: member.base.name,
+      holder: member.name,
       fate: !kept
         ? ('lost' as const)
         : snapshot.deployedHeldItems[index] === member.heldItemId
@@ -661,7 +661,7 @@ function partyProgress(snapshot: RunSnapshot, escaped: boolean): ReportProgress[
       member.experience > before &&
       (escaped || securedPokemon(snapshot).includes(member)))
     .map(({ member, before }) => ({
-      name: member.base.name,
+      name: member.name,
       dexId: member.base.dexId,
       fromLevel: levelForExperience(before, member.level, member.base.growthRate),
       toLevel: member.level,
@@ -832,7 +832,7 @@ function exposedGear(snapshot: RunSnapshot): ReportGear[] {
       const label = heldItemName(member.heldItemId);
       return member.heldItemId === null || label === undefined
         ? []
-        : [{ itemId: member.heldItemId, label, holder: member.base.name, fate: 'kept' as const }];
+        : [{ itemId: member.heldItemId, label, holder: member.name, fate: 'kept' as const }];
     });
 }
 
@@ -853,7 +853,7 @@ function isEmptyGroup(group: ReportGroup): boolean {
 
 function toReportPokemon(pokemon: Pokemon): ReportPokemon {
   return {
-    name: pokemon.base.name,
+    name: pokemon.name,
     dexId: pokemon.base.dexId,
     level: pokemon.level,
     currentHp: pokemon.currentHp,

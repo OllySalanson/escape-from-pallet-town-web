@@ -104,9 +104,9 @@ describe('battle presentation', () => {
     expect(
       eventToMessage({ type: 'status-applied', user: 'player', name: 'Squirtle', status: 'confusion' }),
     ).toBe('Your SQUIRTLE became confused!');
-    expect(formatPartyRow({ base: { name: 'Squirtle' }, level: 5, currentHp: 17, maxHp: 17, isFainted: false }))
+    expect(formatPartyRow({ name: 'Squirtle', level: 5, currentHp: 17, maxHp: 17, isFainted: false }))
       .toBe('SQUIRTLE Lv 5 HP 17/17');
-    expect(formatPartyRow({ base: { name: 'Squirtle' }, level: 5, currentHp: 0, maxHp: 17, isFainted: true }))
+    expect(formatPartyRow({ name: 'Squirtle', level: 5, currentHp: 0, maxHp: 17, isFainted: true }))
       .toBe('SQUIRTLE Lv 5 FNT');
   });
 

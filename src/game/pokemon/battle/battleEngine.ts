@@ -678,7 +678,7 @@ const announceAbility = (
         type: 'ability',
         user: ref.side,
         ...inSlot(ref),
-        name: combatant.pokemon.base.name,
+        name: combatant.pokemon.name,
         ability,
         effect,
         ...detail,
@@ -747,7 +747,7 @@ const openingEventsFor = (state: BattleState, ref: SlotRef): readonly BattleEven
       type: 'ability',
       user: ref.side,
       ...inSlot(ref),
-      name: combatant.pokemon.base.name,
+      name: combatant.pokemon.name,
       ability,
       effect: 'sent-out',
     },
@@ -764,7 +764,7 @@ const openingEventsFor = (state: BattleState, ref: SlotRef): readonly BattleEven
                 type: 'stat-stage-changed',
                 user: foeRef.side,
                 ...inSlot(foeRef),
-                name: foe.pokemon.base.name,
+                name: foe.pokemon.name,
                 stat: boost.stat,
                 stages: foe.statStages[boost.stat],
               },
@@ -1042,7 +1042,7 @@ export const resolveTurn = (
       type: 'gear-first-strike',
       user: ref.side,
       ...inSlot(ref),
-      name: combatant.pokemon.base.name,
+      name: combatant.pokemon.name,
       item: gearLabel(combatant.pokemon.heldItemId),
     });
     return 1;
@@ -1391,7 +1391,7 @@ const applyWeather = (state: BattleState): TurnResult => {
       type: 'weather-damage',
       user: ref.side,
       ...inSlot(ref),
-      name: combatant.pokemon.base.name,
+      name: combatant.pokemon.name,
       weather: weather.id,
       damage: combatant.currentHp - buffeted.currentHp,
     });
@@ -1399,7 +1399,7 @@ const applyWeather = (state: BattleState): TurnResult => {
       const fallen = resolveFaint(nextState);
       nextState = fallen.state;
       events.push(
-        { type: 'fainted', user: ref.side, ...inSlot(ref), name: combatant.pokemon.base.name },
+        { type: 'fainted', user: ref.side, ...inSlot(ref), name: combatant.pokemon.name },
         ...fallen.events,
       );
     }
@@ -1441,7 +1441,7 @@ export const resolveCatchAttempt = (
   }
 
   const attempt = attemptCatch(state.enemy, random, ballModifier);
-  const name = state.enemy.pokemon.base.name;
+  const name = state.enemy.pokemon.name;
   const events: BattleEvent[] = [
     { type: 'ball-thrown', name, ...(ballName ? { ball: ballName } : {}) },
     ...Array.from({ length: attempt.shakes }, (_, index) => ({ type: 'catch-shake' as const, count: index + 1 })),
@@ -1503,7 +1503,7 @@ const applyMove = (
     const rested = withUnit(state, ref, { ...attacker, pendingMove: null });
     return {
       state: rested,
-      events: [{ type: 'recharging', user, ...inSlot(ref), name: attacker.pokemon.base.name }],
+      events: [{ type: 'recharging', user, ...inSlot(ref), name: attacker.pokemon.name }],
     };
   }
   const releasingCharge = pending?.kind === MoveCharge.Charge;
@@ -1524,7 +1524,7 @@ const applyMove = (
     const shaken = withUnit(state, ref, { ...attacker, flinching: false, pendingMove: null });
     return {
       state: shaken,
-      events: [{ type: 'flinched', user, ...inSlot(ref), name: attacker.pokemon.base.name }],
+      events: [{ type: 'flinched', user, ...inSlot(ref), name: attacker.pokemon.name }],
     };
   }
 
@@ -1536,7 +1536,7 @@ const applyMove = (
 
   let nextState = attempted.state;
   const attackerAfterStatus = unitAt(nextState, ref)!;
-  const attackerName = attackerAfterStatus.pokemon.base.name;
+  const attackerName = attackerAfterStatus.pokemon.name;
 
   // 6. Who this lands on, settled before the PP is spent because Pressure is
   // read off whoever it is aimed at. A move a Pokemon uses on itself costs its
@@ -1641,7 +1641,7 @@ const applyMove = (
     if (!isEngaged(unitAt(nextState, targetRef))) {
       continue;
     }
-    const defenderName = defenderNow().pokemon.base.name;
+    const defenderName = defenderNow().pokemon.name;
 
     // 6a. A move the other side's ability simply will not take. It is asked
     // before the accuracy roll because none of these five is a miss - Levitate
@@ -1977,7 +1977,7 @@ const applyMove = (
         type: 'fainted',
         user: hit.ref.side,
         ...inSlot(hit.ref),
-        name: fallen?.pokemon.base.name ?? '',
+        name: fallen?.pokemon.name ?? '',
       },
       ...resolved.events,
     );
@@ -2240,7 +2240,7 @@ const applyMoveEffects = (
       nextState = applied.state;
       events.push(...applied.events);
     } else if ((untouchable || effects === move.effects) && receiver) {
-      events.push(...effectivenessEvents(0, side, receiver.pokemon.base.name));
+      events.push(...effectivenessEvents(0, side, receiver.pokemon.name));
     }
   }
   if (effects.flinch) {
@@ -2283,7 +2283,7 @@ const resolveStatusBeforeMove = (
   const combatant = unitAt(state, ref)!;
   const user = ref.side;
   const slot = inSlot(ref);
-  const name = combatant.pokemon.base.name;
+  const name = combatant.pokemon.name;
   const primary = combatant.primaryStatus;
 
   if (primary === PrimaryStatus.Paralysis && clampRandom(random()) < 0.25) {
@@ -2399,7 +2399,7 @@ const applyEndOfTurn = (
     }
     const user = ref.side;
     const slot = inSlot(ref);
-    const name = combatant.pokemon.base.name;
+    const name = combatant.pokemon.name;
 
     // Shed Skin, first: FireRed asks the ability before anything is charged,
     // so a skin shed this turn takes the poison with it before it bites.
@@ -2528,7 +2528,7 @@ const applyStatus = (
   }
   const user = ref.side;
   const slot = inSlot(ref);
-  const name = combatant.pokemon.base.name;
+  const name = combatant.pokemon.name;
   const fromElsewhere = !sameSlot(source, ref);
   // A type that cannot carry the status refuses it silently, whoever sends it:
   // a Poison Point cannot poison a Poison type that touches it, and
@@ -2673,7 +2673,7 @@ const sendOutReplacements = (state: BattleState): TurnResult => {
     };
     const arrived = applySendOut(filled, ref);
     nextState = arrived.state;
-    events.push({ type: 'enemy-sent-out', trainer: trainer.name, name: next.base.name, ...inSlot(ref) }, ...arrived.events);
+    events.push({ type: 'enemy-sent-out', trainer: trainer.name, name: next.name, ...inSlot(ref) }, ...arrived.events);
   }
   return { state: nextState, events };
 };
@@ -2721,7 +2721,7 @@ const applyStatBoosts = (
       type: 'stat-stage-changed',
       user: ref.side,
       ...inSlot(ref),
-      name: combatant.pokemon.base.name,
+      name: combatant.pokemon.name,
       stat: boost.stat,
       stages: change,
     });

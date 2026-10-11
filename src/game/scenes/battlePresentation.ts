@@ -90,13 +90,13 @@ export const partyRowLayout = (index: number): { x: number; y: number } => ({
 
 /** One party member as the list names them. A fainted one has no HP worth a column. */
 export const formatPartyRow = (pokemon: {
-  readonly base: { readonly name: string };
+  readonly name: string;
   readonly level: number;
   readonly currentHp: number;
   readonly maxHp: number;
   readonly isFainted: boolean;
 }): string =>
-  `${pokemon.base.name.toUpperCase()} ${levelLabel(pokemon.level)} ${
+  `${pokemon.name.toUpperCase()} ${levelLabel(pokemon.level)} ${
     pokemon.isFainted ? 'FNT' : `HP ${pokemon.currentHp}/${pokemon.maxHp}`
   }`;
 
@@ -140,6 +140,21 @@ export const ABOUT_TO_USE_DECLINE = ABOUT_TO_USE_OPTIONS.indexOf('NO');
 
 export const aboutToUseLine = (trainerName: string, pokemonName: string): string =>
   `${trainerName} is about to use ${pokemonName.toUpperCase()}.`;
+
+/**
+ * The question after a catch: FireRed's `sText_GiveNicknameCaptured`, on the
+ * two lines FireRed breaks it over, asked in the panel the "about to use"
+ * question is asked in and laid out by the same two functions. FireRed's cursor
+ * starts on YES; this panel opens on the key that finished the "Gotcha!" line,
+ * so it starts on NO, as every question this panel asks does - the committing
+ * answer is never the one under the finger already.
+ */
+export const nicknameQuestionLines = (speciesName: string): readonly [string, string] => [
+  'Give a nickname to the',
+  `captured ${speciesName.toUpperCase()}?`,
+];
+export const NICKNAME_OPTIONS = ['YES', 'NO'] as const;
+export const NICKNAME_DECLINE = NICKNAME_OPTIONS.indexOf('NO');
 
 export const aboutToUsePromptLayout = (line: number): { x: number; y: number } => ({
   x: BATTLE_PANEL.x + PANEL_INSET_X,

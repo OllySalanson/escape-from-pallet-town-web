@@ -74,3 +74,17 @@ describe('stash browsing', () => {
     expect(sort).toBe(STASH_SORTS[0]);
   });
 });
+
+describe('finding a Pokemon by the name it was given', () => {
+  it('answers to its nickname and to its species alike', () => {
+    const stash = new Stash();
+    const pidgey = new Pokemon(PIDGEY, 4);
+    pidgey.giveNickname('Sparky');
+    stash.addPokemon(pidgey, 'sparky');
+    const stored = stash.listPokemon()[0];
+
+    expect(matchesSearch(stored, 'spa')).toBe(true);
+    expect(matchesSearch(stored, 'pidg')).toBe(true);
+    expect(matchesSearch(stored, 'rat')).toBe(false);
+  });
+});

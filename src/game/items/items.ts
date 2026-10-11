@@ -843,15 +843,15 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
     case 'heal': {
       const healed = pokemon.heal(item.effect.amount);
       return healed > 0
-        ? { used: true, message: `${pokemon.base.name} recovered ${healed} HP!` }
-        : { used: false, message: `${pokemon.base.name}'s HP is already full.` };
+        ? { used: true, message: `${pokemon.name} recovered ${healed} HP!` }
+        : { used: false, message: `${pokemon.name}'s HP is already full.` };
     }
     case 'cure-status':
       if (pokemon.primaryStatus !== item.effect.status) {
         return { used: false, message: `It will not have any effect.` };
       }
       pokemon.primaryStatus = null;
-      return { used: true, message: curedLine(pokemon.base.name, item.effect.status) };
+      return { used: true, message: curedLine(pokemon.name, item.effect.status) };
     case 'capture-modifier':
       return { used: false, message: `${item.displayName} can only be used in battle.` };
     case 'material':
@@ -872,9 +872,11 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} is read to a Pokémon from the bag.` };
     case 'evolution-stone': {
       const species = evolutionByStone(pokemon.base.id, item.id);
+      // Named as it was called before: a nickname, else the species it was.
+      const was = pokemon.name;
       const evolution = species ? pokemon.evolveInto(species) : null;
       return evolution
-        ? { used: true, message: `${evolution.from.name} evolved into ${evolution.to.name}!` }
+        ? { used: true, message: `${was} evolved into ${evolution.to.name}!` }
         : { used: false, message: `It will not have any effect.` };
     }
     case 'pack':

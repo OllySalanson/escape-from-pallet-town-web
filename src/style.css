@@ -3204,6 +3204,37 @@ button {
   color: var(--ink);
 }
 
+/* --- The naming screen -------------------------------------------------- *
+   FireRed's "PIDGEY's nickname?": the Pokemon beside the one line of ten
+   letters, and the bar under it that gives the name or keeps the species. */
+:where(.pixel-ui) .naming-screen {
+  grid-template-columns: minmax(0, calc(var(--u) * 320));
+  justify-content: center;
+  grid-template-rows: auto auto;
+  align-content: center;
+}
+:where(.pixel-ui) .naming-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--u) * 6);
+  padding: calc(var(--u) * 2) calc(var(--u) * 3);
+}
+:where(.pixel-ui) .naming-entry {
+  min-width: 0;
+  display: grid;
+  gap: calc(var(--u) * 2);
+}
+/* Ten letters, as FireRed's line is ten slots: a field the width of the screen
+   would promise a name the rules then cut short. */
+.pixel-ui .px-field.naming-field {
+  justify-self: start;
+  width: min(100%, calc(var(--u) * 96));
+}
+:where(.pixel-ui) .naming-entry > small {
+  color: var(--ink-soft);
+}
+
 /* --- The map maker ---------------------------------------------------------
    Three columns: what to paint with, the map, and what the map is. The map
    column takes every pixel the other two leave, because it is the screen; the

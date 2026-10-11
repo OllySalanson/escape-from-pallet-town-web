@@ -117,7 +117,7 @@ export function applyBattleItem(
   item: ItemDefinition,
   target: Pokemon,
 ): BattleItemUse {
-  const name = target.base.name.toUpperCase();
+  const name = target.name.toUpperCase();
   // Whichever slot it is standing in, because a double battle has two of them
   // and the second one is as healable as the first.
   const slot = playerSlotOf(state, target);

@@ -72,8 +72,9 @@ export function sortPokemon(
 
 /**
  * Whether a Pokemon answers a search: every word typed has to begin a word of
- * its species name or of the gear it holds, so `pika` finds Pikachu and `char`
- * finds Charmander and Charizard alike. Case is ignored, and an empty search
+ * its nickname, its species name or the gear it holds, so `pika` finds Pikachu
+ * and `char` finds Charmander and Charizard alike, and a Pidgey named Sparky
+ * answers both `spa` and `pidg`. Case is ignored, and an empty search
  * answers everything.
  */
 export function matchesSearch(stored: StashedPokemon, search: string): boolean {
@@ -81,7 +82,7 @@ export function matchesSearch(stored: StashedPokemon, search: string): boolean {
   if (words.length === 0) {
     return true;
   }
-  const haystack = `${stored.pokemon.base.name} ${getHeldItem(stored.pokemon.heldItemId)?.displayName ?? ''}`
+  const haystack = `${stored.pokemon.name} ${stored.pokemon.base.name} ${getHeldItem(stored.pokemon.heldItemId)?.displayName ?? ''}`
     .toLowerCase()
     .split(/[\s-]+/);
   return words.every((word) => haystack.some((candidate) => candidate.startsWith(word)));

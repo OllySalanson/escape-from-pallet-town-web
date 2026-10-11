@@ -6,6 +6,7 @@ import type { GrowthRate } from './generated/speciesCatalogue';
 import { evolutionFamily, evolutionOnLevel, evolvesInto } from './evolution';
 import { machineMovesFor } from './machines';
 import type { PrimaryStatus } from './battle/status';
+import { tidyNickname } from './nickname';
 
 export type CombatStats = PokemonStats;
 
@@ -158,6 +159,13 @@ export class Pokemon {
    * reads it - a shiny is rarer, never stronger, as in FireRed.
    */
   public shiny = false;
+  /**
+   * The name the player gave this Pokemon when it was caught, or null for none
+   * (`nickname.ts` is the rule). It is persisted (`SavedPokemon.nickname`) and
+   * survives evolution, as FireRed's does; `name` is what every screen that is
+   * about this one Pokemon prints, and `base.name` stays the species.
+   */
+  public nickname: string | null = null;
 
   public constructor(base: PokemonBase, level: number) {
     if (level < 1 || level > MAX_LEVEL) {
@@ -170,6 +178,17 @@ export class Pokemon {
     this.stats = computePokemonStats(base.baseStats, level);
     this.currentHp = this.stats.hp;
     this.moves = this.initializeMoves();
+  }
+
+  /** What this Pokemon is called: its nickname, else its species' name. */
+  public get name(): string {
+    return this.nickname ?? this.base.name;
+  }
+
+  /** Names this Pokemon, or takes its nickname away; returns what it is now called. */
+  public giveNickname(value: string | null): string {
+    this.nickname = tidyNickname(value, this.base.name);
+    return this.name;
   }
 
   public get maxHp(): number {

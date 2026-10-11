@@ -763,7 +763,7 @@ export class DeploymentFlow {
         : free === total
           ? `the container is only ${this.secureGrid.width}x${this.secureGrid.height}`
           : `only ${cargoSquaresLabel(free)} of it ${free === 1 ? 'is' : 'are'} free`;
-    return `${stored.pokemon.base.name.toUpperCase()} needs ${squares} - ${room}. Take something out, or grow the container.`;
+    return `${stored.pokemon.name.toUpperCase()} needs ${squares} - ${room}. Take something out, or grow the container.`;
   }
 
   /**

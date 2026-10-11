@@ -231,8 +231,8 @@ export function pixelShinyStar(): string {
 }
 
 /** A Pokemon's name as a list prints it, with the star after it when it is shiny. */
-export function pixelPokemonName(pokemon: { readonly base: { readonly name: string }; readonly shiny: boolean }): string {
-  return `<strong class="px-name">${pokemon.base.name}</strong>${pokemon.shiny ? pixelShinyStar() : ''}`;
+export function pixelPokemonName(pokemon: { readonly name: string; readonly shiny: boolean }): string {
+  return `<strong class="px-name">${pokemon.name}</strong>${pokemon.shiny ? pixelShinyStar() : ''}`;
 }
 
 export function pixelTypeBadge(type: string): string {
