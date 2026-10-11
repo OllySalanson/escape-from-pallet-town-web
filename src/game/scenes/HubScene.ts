@@ -176,6 +176,7 @@ import { starterCards } from '../ui/starterPicker';
 import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP, neighbourCountIndex } from '../ui/countSelector';
 import { focusDirectionForKey } from '../ui/spatialFocus';
 import { FIRST_WORDS, firstWordsFor, hasHeard, type FirstWordsId } from '../hub/firstWords';
+import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
 
 /**
  * What the help bar says while the cursor is on a block of a container.
@@ -1031,6 +1032,18 @@ export class HubScene extends Phaser.Scene {
     if (this.deploying) {
       return;
     }
+    // One raid at a time. A raid still under way in another window is that
+    // window's to finish; one nobody is playing was abandoned, and the base is
+    // where an abandoned raid is settled and said.
+    const underWay = this.saveManager.load()?.raidInFlight;
+    if (underWay) {
+      if (raidHeartbeat.liveElsewhere(underWay.id)) {
+        this.refuse('A raid is already under way in another window. Finish it there first.');
+      } else {
+        this.leaveToBase();
+      }
+      return;
+    }
     // A raid is played on the vault's own Pokemon and supplies, so a loadout
     // built against a picture of the game another tab has since moved on from
     // - a wipe there took the Pokemon and the gear this one is about to send -
@@ -1053,6 +1066,17 @@ export class HubScene extends Phaser.Scene {
     // between the two numbers is what the drop-in screen reads back.
     this.saveManager.recordDeployment(requireInsertion(deployment.insertionId).mapId);
     const items = deployment.items;
+    // And recorded as under way until it ends, so a raid left by closing the
+    // tab costs its pack rather than nothing (`run/raidInFlight.ts`).
+    const inFlight = createRaidInFlight(
+      requireInsertion(deployment.insertionId).mapId,
+      items,
+      deployment.stashSecureSlot.items ?? [],
+      deployment.packItemId,
+    );
+    if (this.saveManager.recordRaidInFlight(inFlight)) {
+      raidHeartbeat.start(inFlight.id);
+    }
     activeRunManager.startRun(
       {
         party: deployment.party.map((stored) => stored.pokemon),
