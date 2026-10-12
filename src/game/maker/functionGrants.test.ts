@@ -25,6 +25,8 @@ const OPEN_TO_EVERYONE: Record<string, string> = {
   'private.harbour_names': 'what the public names wrap',
   'public.name_is_free': 'a name is checked as it is typed at NEW GAME, before anybody is signed in',
   'private.name_is_free': 'what the public check wraps',
+  'public.record_play': 'play is counted signed out, so counting a visitor signs nobody up and asks no bot check',
+  'private.record_play': 'what the public count wraps',
 };
 
 describe('the functions the migrations create', () => {

@@ -11,7 +11,8 @@ import {
 import { KeyPresses } from '../input/KeyPresses';
 import { PressLatch } from '../input/pressLatch';
 import { STEP_DURATION_MS, advanceStepClock } from '../movement/stepClock';
-import { isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
+import { activeSaveSlot, isPlaytestRun, PLAYTEST_RUN_DIVISOR } from '../dev/playtestMode';
+import { countPlay } from '../analytics/playCounter';
 import {
   CHARACTER_FEET_PIXEL_Y,
   CHARACTER_HEAD_PIXEL_Y,
@@ -176,6 +177,8 @@ import { furnitureDepth, furnitureImage, furnitureRect } from '../base/furniture
  */
 
 const CAMERA_ZOOM = 1;
+/** Whether this page has counted a walk into the harbour yet (`analytics/playCounter.ts`). */
+let harbourCounted = false;
 const PLAYER_SPRITE_Y_OFFSET = TILE_SIZE - CHARACTER_FEET_PIXEL_Y;
 const FIGURE_HEIGHT = CHARACTER_FEET_PIXEL_Y - CHARACTER_HEAD_PIXEL_Y + 1;
 const DIALOG_WIDTH = 232;
@@ -439,6 +442,14 @@ export class BaseScene extends Phaser.Scene {
     const abandoned = this.saveManager.settleAbandonedRaid((raidId) =>
       raidHeartbeat.liveElsewhere(raidId),
     );
+    if (abandoned && activeSaveSlot() !== 'try-it') {
+      countPlay({ kind: 'raid-end', detail: 'abandoned' });
+    }
+    // Once a sitting: how many of the times the game is opened reach the harbour.
+    if (!harbourCounted) {
+      harbourCounted = true;
+      countPlay({ kind: 'harbour' });
+    }
     const loaded = this.saveManager.load() ?? data.savedGame;
     if (!loaded) {
       // A browser with no storage that has also lost the payload: the title

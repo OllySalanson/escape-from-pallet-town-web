@@ -12,7 +12,9 @@ import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from './submitConfig';
  * (`console/remoteScores.ts`), the last of which a browser may also call
  * signed out, and the shared harbour's `name_my_house` and `harbour_names`
  * (`harbour/`), the last of which is read signed out too, and its knocking
- * (`harbour/houseService.ts`);
+ * (`harbour/houseService.ts`), and the play counter's `record_play`, which is
+ * only ever called signed out (`analytics/playCounter.ts`, by plain `fetch`,
+ * never through this client);
  * the table rows are here for the reviewer, whom row-level security lets read
  * and decide.
  */
@@ -165,6 +167,13 @@ export type GameDatabase = {
         Args: { owner: string };
         Returns: { readonly name: string; readonly snapshot: unknown }[];
       };
+      /** Counting play (`analytics/playCounter.ts`), sent by plain `fetch` rather than this client. */
+      record_play: {
+        Args: { visitor_id: string; build: string; events: unknown };
+        Returns: number;
+      };
+      /** The owner's play counts (`analytics/playStats.ts`), refused to anyone but an admin. */
+      play_stats: { Args: Record<PropertyKey, never>; Returns: unknown };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

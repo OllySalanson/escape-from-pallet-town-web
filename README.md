@@ -304,3 +304,9 @@ Where to read more:
 This is a free fan project, made for fun. It is **not affiliated with, endorsed by or sponsored by
 Nintendo, Game Freak, Creatures Inc. or The Pokémon Company**. Pokémon and every name, character and
 design belonging to it are trademarks of their respective owners.
+
+**What gets counted.** So we know whether anyone actually plays, the published game counts a few
+moments: opening the game, picking a starter, starting a raid and how it ended, minutes played, maps
+sent in, Pallet Blocks games and walks into the harbour. Your browser gets a random id, and that's
+the only thing about you that leaves it: no cookies, no account, no name, the game keeps no IP address, and all
+it stores is daily totals and which days each id turned up. Turn on Do Not Track or Global Privacy Control and nothing is sent at all.

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { countPlay } from '../analytics/playCounter';
 import {
   blankMap,
   describeDropIn,
@@ -992,6 +993,7 @@ export class MapMakerScene extends Phaser.Scene {
     on('[data-send-confirm]', () => void this.confirmSend());
     on('[data-refresh-sent]', () => this.openPanel('sent'));
     on('[data-review-refresh]', () => this.openPanel('review'));
+    on('[data-open-stats]', () => this.scene.start('stats'));
     on('[data-review-sign-in]', () => {
       void signInToReview().then((result) => {
         if (!result.ok) {
@@ -2624,6 +2626,7 @@ export class MapMakerScene extends Phaser.Scene {
         : {}),
     });
     if (result.ok) {
+      countPlay({ kind: 'map-sent' });
       const store = loadMakerStore();
       this.store = {
         ...store,

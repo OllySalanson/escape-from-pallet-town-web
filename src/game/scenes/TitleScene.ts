@@ -40,7 +40,7 @@ import { nameService, type NameService } from '../names/nameService';
 import type { MenuOverlay } from '../ui/MenuOverlay';
 import { openNameScreen } from '../ui/PlayerNameOverlay';
 import { dismissKeyboardNotice, needsKeyboardNotice } from '../input/keyboardSeen';
-import { isReviewReturn } from '../maker/review';
+import { forgetStatsRequest, isReviewReturn, isStatsRequest, takeSignInDestination } from '../maker/review';
 import { createPlaytestGame, withEverythingCurrent } from '../dev/playtestSave';
 import { CHIP_FONT_SIZE, DIALOG_FONT_SIZE } from '../ui/screenType';
 import { TILE_SIZE, WORLD_MAPS, type WorldMapDefinition } from '../worldMap';
@@ -173,7 +173,18 @@ export class TitleScene extends Phaser.Scene {
     // review list is where they were going, so they go straight there.
     if (isReviewReturn()) {
       this.hasStarted = true;
-      this.scene.start('mapmaker', { review: true });
+      if (takeSignInDestination() === 'stats') {
+        this.scene.start('stats', { signIn: true });
+      } else {
+        this.scene.start('mapmaker', { review: true });
+      }
+      return;
+    }
+    // The owner's play stats, opened by address (`?stats`), once.
+    if (isStatsRequest()) {
+      forgetStatsRequest();
+      this.hasStarted = true;
+      this.scene.start('stats');
       return;
     }
     // Asked once per visit, not per frame: the summary reads the whole save.
