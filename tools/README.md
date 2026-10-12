@@ -7,6 +7,9 @@ re-implements what the game does can disagree with it, and this one cannot.
 
 - `tileset/` - reading a tile sheet, and drawing what the game draws. See
   `docs/tilesets/README.md`.
+- `mapcraft/` - drawing a raid map as a short program, checked hard, measured
+  against what FireRed's mappers do and looked at before every edit. See
+  `mapcraft/README.md`.
 - `abilities/` - what the engine can say about an ability, and what abilities
   moved. See `abilities/README.md`.
 - `playtest/` - a headless browser for one verification session, and a whole raid
