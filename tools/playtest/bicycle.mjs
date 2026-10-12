@@ -112,11 +112,14 @@ try {
     const ways = [['ArrowRight', 1, 0, 'ArrowLeft'], ['ArrowLeft', -1, 0, 'ArrowRight'], ['ArrowDown', 0, 1, 'ArrowUp'], ['ArrowUp', 0, -1, 'ArrowDown']];
     return ways.find(([, dx, dy]) => !w.isBlocked({ x: t.x + dx, y: t.y + dy }) && !w.isBlocked({ x: t.x + 2 * dx, y: t.y + 2 * dy }) && !w.currentMap.tallGrass[t.y + dy]?.[t.x + dx] && !w.currentMap.tallGrass[t.y + 2 * dy]?.[t.x + 2 * dx]) ?? null; })()`);
   if (!way) throw new Error('no open ground two tiles long beside the landing');
+  // A tap - down and up before the frame that reads it - because a test-mode
+  // frame is 100ms and a ridden tile is 75: a key held across a frame rides on
+  // into a second tile, which is the game working, not one step.
   const stepOnce = async (key) => {
     const before = await state();
     await page.keyDown(key);
-    for (let i = 0; i < 20 && (await state()).steps === before.steps; i += 1) await wait(10);
     await page.keyUp(key);
+    for (let i = 0; i < 20 && (await state()).steps === before.steps; i += 1) await wait(10);
     await wait(300);
     await clearDialog();
     const after = await state();
@@ -161,3 +164,5 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log('all checks passed');
+// An attached browser is not ours to close, and its socket would hold the process open.
+process.exit(0);
