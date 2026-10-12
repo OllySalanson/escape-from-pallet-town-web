@@ -3,40 +3,44 @@ name: Publish player maps
 # Every half hour (and by hand), every map the reviewer approved in the game is
 # checked by the game's own rules, added to src/maps/player/ as one file, tested
 # with the whole suite, merged, and deployed - then marked published, which is
-# what its maker sees under Sent in. See tools/maps/publishApproved.mts.
+# what its maker sees under Sent in. See tools/maps/publishApproved.mts and
+# tools/maps/projectRequests.mjs.
 #
-# The half-hourly read is also what keeps the free Supabase project awake: a
-# free project pauses after a week with no requests.
+# Four jobs, because the steps of one job share a machine (red team F2): a key
+# handed to one step is within reach of every dependency an earlier or later
+# step ran - a process left running, a file rewritten, a git hook planted. So:
+#
+# - fetch: holds the service-role key; installs nothing; runs only Node's own
+#   modules. Reads the approved maps.
+# - verify: holds no secret and may only read the repository; the one job that
+#   installs dependencies. Runs the game's checks, lint, the suite and the build.
+# - publish: may write to the repository; installs nothing. Commits only map
+#   files whose names are map ids, merges, and asks for the Pages deploy.
+# - mark: holds the service-role key; installs nothing. Records what was
+#   published and sends back what failed - only for submissions fetch read.
 #
 # A change pushed or merged with this workflow's own token starts no other
-# workflow, so this one runs the suite itself before it merges, and asks for
-# the Pages deploy by hand afterwards.
-#
-# The service-role key reads every player's maps and feedback and bypasses all
-# of the database's rules, so it is given to the two steps that call the
-# project and to nothing else - never to npm, whose dependencies' code runs in
-# install, lint, test and build (the security review's M4). The same goes for
-# the write token: it is not left in .git/config, and only the steps that push
-# or ask GitHub for something hold it. No dependency here has an install
-# script that runs on Linux (`fsevents` is macOS's), so none is run.
+# workflow, so verify runs the suite itself before anything merges, and publish
+# asks for the Pages deploy by hand afterwards.
 
 on:
   schedule:
     - cron: '17,47 * * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+permissions: {}
 
 concurrency:
   group: publish-player-maps
   cancel-in-progress: false
 
 jobs:
-  publish:
+  fetch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      count: ${{ steps.fetch.outputs.count }}
     steps:
       - name: Check out main
         uses: actions/checkout@v4
@@ -44,64 +48,166 @@ jobs:
           ref: main
           persist-credentials: false
 
-      - name: Use Node.js 20
+      - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+
+      - name: Fetch approved maps
+        id: fetch
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node tools/maps/projectRequests.mjs fetch "$RUNNER_TEMP/fetched"
+          echo "count=$(node -e "console.log(require(process.argv[1]).length)" "$RUNNER_TEMP/fetched/approved.json")" >> "$GITHUB_OUTPUT"
+
+      - name: Hand them on
+        if: steps.fetch.outputs.count != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fetched
+          path: ${{ runner.temp }}/fetched
+          retention-days: 1
+
+  verify:
+    needs: fetch
+    if: needs.fetch.outputs.count != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      published: ${{ steps.prepare.outputs.published }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Collect approved maps
-        id: collect
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Take the approved maps
+        uses: actions/download-artifact@v4
+        with:
+          name: fetched
+          path: ${{ runner.temp }}/fetched
+
+      - name: Check and write them
+        id: prepare
         run: |
-          npx --no-install vite-node tools/maps/publishApproved.mts -- collect "$RUNNER_TEMP/published.json"
-          echo "count=$(node -e "console.log(require(process.argv[1]).length)" "$RUNNER_TEMP/published.json")" >> "$GITHUB_OUTPUT"
+          npx --no-install vite-node tools/maps/publishApproved.mts -- prepare "$RUNNER_TEMP/fetched" "$RUNNER_TEMP/verified"
+          echo "published=$(node -e "console.log(require(process.argv[1]).published.length)" "$RUNNER_TEMP/verified/outcome.json")" >> "$GITHUB_OUTPUT"
 
       - name: Lint
-        if: steps.collect.outputs.count != '0'
+        if: steps.prepare.outputs.published != '0'
         run: npm run lint
 
       - name: Typecheck
-        if: steps.collect.outputs.count != '0'
+        if: steps.prepare.outputs.published != '0'
         run: npm run typecheck
 
       - name: Unit tests
-        if: steps.collect.outputs.count != '0'
+        if: steps.prepare.outputs.published != '0'
         run: npm test
 
       - name: Build
-        if: steps.collect.outputs.count != '0'
+        if: steps.prepare.outputs.published != '0'
         run: npm run build
 
+      - name: Hand them on
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified
+          path: ${{ runner.temp }}/verified
+          retention-days: 1
+
+  publish:
+    needs: verify
+    if: needs.verify.outputs.published != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Take the checked maps
+        uses: actions/download-artifact@v4
+        with:
+          name: verified
+          path: ${{ runner.temp }}/verified
+
       - name: Open and merge the pull request
-        if: steps.collect.outputs.count != '0'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Nothing but map files named as map ids goes into the commit, and
+          # nowhere but src/maps/player/.
+          names=""
+          for path in "$RUNNER_TEMP"/verified/maps/*; do
+            name=$(basename "$path")
+            if ! [[ "$name" =~ ^[a-z0-9]+(-[a-z0-9]+)*\.json$ ]] || [ -L "$path" ] || ! [ -f "$path" ]; then
+              echo "::error::Refusing to publish $name: not a map file"
+              exit 1
+            fi
+            cp -- "$path" "src/maps/player/$name"
+            names="${names:+$names, }$name"
+          done
           branch="publish/player-maps-${GITHUB_RUN_ID}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add src/maps/player
-          names=$(node -e "console.log(require(process.argv[1]).map((entry) => entry.file.replace(/^.*\//, '')).join(', '))" "$RUNNER_TEMP/published.json")
-          git commit -m "Publish player maps: ${names}"
+          git add -- src/maps/player
+          git -c core.hooksPath=/dev/null commit -m "Publish player maps: ${names}"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
           gh pr create --base main --head "$branch" --title "Publish player maps: ${names}" \
             --body "Approved in the game's review list, checked by the game's own rules and the whole test suite in this run (${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
           gh pr merge "$branch" --squash --delete-branch
 
-      - name: Mark them published
-        if: steps.collect.outputs.count != '0'
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: npx --no-install vite-node tools/maps/publishApproved.mts -- mark "$RUNNER_TEMP/published.json"
-
       - name: Deploy the game
-        if: steps.collect.outputs.count != '0'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run pages.yml --ref main
+
+  mark:
+    needs: [fetch, verify, publish]
+    # Sends back what failed even when nothing passed; marks published only
+    # once the merge has happened.
+    if: always() && needs.verify.result == 'success' && needs.publish.result != 'failure' && needs.publish.result != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Take what was fetched and what was checked
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}
+
+      - name: Mark them
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MERGED: ${{ needs.publish.result == 'success' }}
+        run: node tools/maps/projectRequests.mjs mark "$RUNNER_TEMP/fetched" "$RUNNER_TEMP/verified" "$MERGED"
