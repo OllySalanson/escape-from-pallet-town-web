@@ -144,6 +144,8 @@ describe('game start flow', () => {
       setAlpha: vi.fn().mockReturnThis(),
       setVisible: vi.fn().mockReturnThis(),
       setFrame: vi.fn().mockReturnThis(),
+      // A Pokemon standing in the world - a legend - bobs on its own animation.
+      play: vi.fn().mockReturnThis(),
     };
     const graphics = {
       fillStyle: vi.fn().mockReturnThis(),
@@ -154,6 +156,7 @@ describe('game start flow', () => {
     const key = (): { isDown: boolean; on: () => void } => ({ isDown: false, on: vi.fn() });
     const world = new WorldScene();
     Object.assign(world as unknown as Record<string, unknown>, {
+      anims: { exists: vi.fn(() => true), create: vi.fn() },
       add: {
         rectangle: vi.fn(() => ({
           setDepth: vi.fn().mockReturnThis(),

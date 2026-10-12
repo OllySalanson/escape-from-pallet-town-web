@@ -113,6 +113,8 @@ function facingMaya() {
     // Townsfolk keeping a beat: class fields do not run for an Object.create'd
     // scene, and collision reads where each of them stands.
     idleFigures: [],
+    // The legends this save has caught, which do not stand - a class field too.
+    caughtLegends: [],
     lootSprites: new Map(),
     poiSprites: new Map(),
     poiLabels: new Map(),

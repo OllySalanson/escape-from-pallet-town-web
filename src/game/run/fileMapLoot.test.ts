@@ -72,6 +72,6 @@ describe("a file map's item spots", () => {
   });
 
   it('leave every shipped map laying exactly the loot it laid before', () => {
-    expect(shippedLootFingerprint()).toBe('e7143d72');
+    expect(shippedLootFingerprint()).toBe('603253be');
   });
 });

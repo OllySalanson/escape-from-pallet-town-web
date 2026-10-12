@@ -177,6 +177,7 @@ import { clampCount, countKeyTarget, countSelector, COUNT_BIG_STEP, neighbourCou
 import { focusDirectionForKey } from '../ui/spatialFocus';
 import { FIRST_WORDS, firstWordsFor, hasHeard, type FirstWords, type FirstWordsId } from '../hub/firstWords';
 import { dueMilestone, milestoneWords, pokedexOwned } from '../hub/pokedex';
+import { caughtLegends } from '../world/legends';
 import { createRaidInFlight, raidHeartbeat } from '../run/raidInFlight';
 import {
   DAY_CARE_MAN,
@@ -1097,6 +1098,8 @@ export class HubScene extends Phaser.Scene {
       // Night by the player's own clock, read as the raid leaves - the same
       // reading the drop-in screen's wildlife was just shown in.
       isNightRaid(new Date()),
+      // The legends the Pokedex owns, which stand nowhere this raid.
+      caughtLegends(pokedexOwned(this.savedGame.raidProgress.pokedexOwned, this.stash)),
     );
     const runSession = createActiveRunSession(
       activeRunManager,
