@@ -79,7 +79,7 @@ describe('world POIs', () => {
     // "Bag is full" is a wall; this is a decision, and the pack is one key
     // away from where the player is standing.
     expect(cacheRefusalLine(fieldStation)).toBe(
-      'No room for 2\u00d7 POKÉ BALL and 1\u00d7 POTION - the cache needs 3 squares.',
+      'No room for 2 POKÉ BALLS and 1 POTION - the cache needs 3 squares.',
     );
   });
 

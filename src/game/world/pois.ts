@@ -1,4 +1,4 @@
-import { ITEMS, cellsFor, itemAmountFor, type ItemId } from '../items';
+import { cellsFor, itemAmountFor, type ItemId } from '../items';
 import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapId } from '../worldMap';
 import { fileMap } from './playerMaps';
@@ -805,14 +805,6 @@ export function poisForMap(mapId: WorldMapId): readonly WorldPoi[] {
 }
 
 /**
- * What a landmark says when its cache will not go into the pack.
- *
- * It names the cache and the squares it needs, exactly as ground loot does:
- * "bag is full" on its own is a wall, and the grid's promise is that a refusal
- * hands the player the decision. Nothing is taken and nothing is worked, so
- * the answer is to put something down and step back on to it.
- */
-/**
  * What a locked crate says to a raid with no Lockpick: FireRed's own words for
  * a lock (`CinnabarIsland_Text_DoorIsLocked`), then what would open it.
  */
@@ -829,9 +821,7 @@ export function lockedCrateLines(poi: WorldPoi): readonly string[] {
  * container's word, and a cache can never fill it (playtest 6, B9).
  */
 export function cachePayoutLine(poi: WorldPoi, opensAnExit: boolean): string {
-  const amounts = poi.reward.map(({ itemId, quantity }) => itemAmountFor(itemId, quantity));
-  const named =
-    amounts.length <= 1 ? amounts.join('') : `${amounts.slice(0, -1).join(', ')} and ${amounts[amounts.length - 1]}`;
+  const named = rewardAmounts(poi);
   const one = poi.reward.length === 1 && poi.reward[0].quantity === 1;
   const bank = `extract to bank ${one ? 'it' : 'them'}.`;
   return opensAnExit
@@ -839,15 +829,33 @@ export function cachePayoutLine(poi: WorldPoi, opensAnExit: boolean): string {
     : `${poi.label}: ${named} went into the PACK. Lost if you wipe - ${bank}`;
 }
 
+/**
+ * What a cache holds, as a sentence says it: "2 Potions and 1 Antidote". The
+ * payout and the refusal both say it this way, as ground loot's refusal does,
+ * so one pack is never counted "2× POTION" in one breath and "2 Potions" in
+ * the next.
+ */
+function rewardAmounts(poi: WorldPoi, write: (amount: string) => string = (amount) => amount): string {
+  const amounts = poi.reward.map(({ itemId, quantity }) => write(itemAmountFor(itemId, quantity)));
+  return amounts.length <= 1
+    ? amounts.join('')
+    : `${amounts.slice(0, -1).join(', ')} and ${amounts[amounts.length - 1]}`;
+}
+
+/**
+ * What a landmark says when its cache will not go into the pack.
+ *
+ * It names the cache and the squares it needs, exactly as ground loot does:
+ * "bag is full" on its own is a wall, and the grid's promise is that a refusal
+ * hands the player the decision. Nothing is taken and nothing is worked, so
+ * the answer is to put something down and step back on to it.
+ */
 export function cacheRefusalLine(poi: WorldPoi): string {
   const squares = poi.reward.reduce(
     (total, { itemId, quantity }) => total + cellsFor(itemId, quantity),
     0,
   );
-  const names = poi.reward
-    .map(({ itemId, quantity }) => `${quantity}\u00d7 ${ITEMS[itemId].displayName.toUpperCase()}`)
-    .join(' and ');
-  return `No room for ${names} - the cache needs ${
+  return `No room for ${rewardAmounts(poi, (amount) => amount.toUpperCase())} - the cache needs ${
     squares === 1 ? '1 square' : `${squares} squares`
   }.`;
 }

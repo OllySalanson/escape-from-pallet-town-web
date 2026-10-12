@@ -242,6 +242,20 @@ describe('what a cache says it did', () => {
       expect(lines[1]).toContain(itemAmountFor(itemId, quantity));
     }
   });
+
+  // A full pack at a cache said "No room for 2× POTION and 1× ANTIDOTE", while
+  // the same pack at a ground find says "No room for 3 POTIONS" and the cache
+  // itself, once taken, says "2 Potions and 1 Antidote". One pack, one way of
+  // counting what will not go in it.
+  it('names what will not fit in the same amounts as everything else', () => {
+    const open = crateNamed('TOWN PUMP');
+    const raid = inARaid('pallet-town', [], new Bag({ potion: 18 }, { width: 6, height: 3 }));
+    const lines = raid.scene.tryActivatePoiAt(open.position) ?? [];
+    expect(lines[0]).toBe(
+      'No room for 2 POTIONS and 1 ANTIDOTE - the cache needs 3 squares. Drop something from the PACK and work it again.',
+    );
+    expect(lines.join(' ')).not.toContain('×');
+  });
 });
 
 describe('the flash a cache opens with', () => {

@@ -126,6 +126,14 @@ One finding a fix, each with a behavioural test.
 - **Fixed:** `Bag.fitsAll` and `Bag.tidyWouldFitAll` take what the taking uses up (`freeing`), and `tryActivatePoi` asks with the Lockpick gone and spends it before the cache goes in - still only once the room is known, so a crate refused for room never costs a pick.
 - **How a player meets it:** with a nearly full pack and a Lockpick, face a locked crate and press the interact key; if the cache fits in the pick's square too, the crate opens.
 
+## 18. A cache counted what would not fit as "2× POTION" (newest feature: locks and keys)
+
+- **Found:** with a full pack, working a cache said "No room for 2× POTION and 1× ANTIDOTE - the cache needs 3 squares." The same pack at a ground find says "No room for 3 POTIONS", and the same cache once taken says "2 Potions and 1 Antidote went into the PACK" - so the one pack was counted two ways a step apart, and "2× POTION" reads as a price tag, not a sentence.
+- **Reproduced:** `locksAndKeys.test.ts`, "names what will not fit in the same amounts as everything else": the real `WorldScene.tryActivatePoiAt` on Pallet Town's TOWN PUMP with an 18-square pack full of Potions. It answered "No room for 2× POTION and 1× ANTIDOTE ...".
+- **Fixed:** `cacheRefusalLine` and `cachePayoutLine` in `world/pois.ts` share one `rewardAmounts`, written by `itemAmountFor` as every other sentence about items is; the refusal upper-cases each amount as ground loot's refusal does: "No room for 2 POTIONS and 1 ANTIDOTE - the cache needs 3 squares. Drop something from the PACK and work it again." `pois.test.ts`'s field station line is now "2 POKÉ BALLS and 1 POTION".
+- **How a player meets it:** walk onto a cache or open a locked crate with a full pack; the refusal names the cache in plain amounts, the same way the pickup and the payout do.
+- **Left alone:** the map caption over a cache ("CACHE: 2× POKÉ BALL + 1× POTION") keeps its short tag form - it is a caption, where width is what seats it.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
