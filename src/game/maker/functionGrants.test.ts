@@ -23,6 +23,8 @@ const OPEN_TO_EVERYONE: Record<string, string> = {
   'private.console_leaderboard': 'what the public board wraps',
   'public.harbour_names': 'the names over the figures in the shared harbour, watched signed out',
   'private.harbour_names': 'what the public names wrap',
+  'public.name_is_free': 'a name is checked as it is typed at NEW GAME, before anybody is signed in',
+  'private.name_is_free': 'what the public check wraps',
 };
 
 describe('the functions the migrations create', () => {

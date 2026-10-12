@@ -33,6 +33,7 @@ import {
   type SpotKind,
   type ThingRef,
 } from '../maker/draft';
+import { generateMapName } from '../maker/mapNames';
 import {
   loadMakerStore,
   mapFileText,
@@ -1141,6 +1142,12 @@ export class MapMakerScene extends Phaser.Scene {
       }
     };
     field('[data-map-name]', (value) => renameMap(this.file, plainText(value)));
+    // Another of the world's names (`maker/mapNames.ts`), one undo step like any rename.
+    root.querySelector<HTMLButtonElement>('[data-map-reroll]')?.addEventListener('click', () => {
+      this.commitTyping();
+      this.pushEdit(renameMap(this.file, generateMapName()));
+      this.render();
+    });
     field('[data-map-maker]', (value) => setMaker(this.file, plainText(value)));
     field('[data-map-wildlife]', (value) => ({ ...this.file, wildlife: value as MapFileHabitat }));
     // The try level is the maker's to choose and no part of the map, so it is

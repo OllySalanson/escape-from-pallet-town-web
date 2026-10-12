@@ -109,8 +109,17 @@ export class HarbourSession {
   }
 }
 
-/** Where the device remembers which name it last wrote, for which player. */
-export const HOUSE_WRITTEN_KEY = 'escape-from-pallet-town.harbour.house';
+/**
+ * Where the device remembers which name it last wrote, for which player. Its
+ * own key since names started again (`names/`), so nothing written before is
+ * believed.
+ */
+export const HOUSE_WRITTEN_KEY = 'escape-from-pallet-town.harbour.house.v2';
+
+/** Remembers that this player's house is written under this name, so walking about never writes it again. */
+export function rememberHouseWritten(playerId: string, name: string): void {
+  keepWritten(`${playerId}:${name}`);
+}
 
 /**
  * The live identity: the game's one anonymous sign-in (`maker/playerSignIn.ts`,
@@ -201,7 +210,8 @@ export function harbour(): HarbourSession | null {
   return session;
 }
 
-function pageHarbourMode(): HarbourMode {
+/** Which service this page talks to: the live project, the tab-to-tab stand-in of a test, or none. */
+export function pageHarbourMode(): HarbourMode {
   return typeof window === 'undefined' ? 'off' : harbourMode(requestedTestMode(), window.location.search);
 }
 

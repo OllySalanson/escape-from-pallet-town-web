@@ -125,7 +125,7 @@ try {
   await page.waitFor(sceneIs('title'));
   // A browser driven before may already have given the house a name, and the
   // asking is one of the things this plays.
-  await page.evaluate(`localStorage.removeItem('escape-from-pallet-town.console.name')`);
+  await page.evaluate(`localStorage.removeItem('escape-from-pallet-town.player.name')`);
   await press('Space');
   await page.waitFor(sceneIs('starter'));
   const starter = option('starter');
@@ -165,7 +165,7 @@ try {
   // walks about in it.
   await walkTo(door.tiles, async () => (await page.evaluate(state())).room === 'bolthole');
   await settle('THE BOLTHOLE asking a name', "s.room === 'bolthole' && s.naming");
-  await page.waitFor(`!!document.querySelector('[data-house-name-field]')`, { what: 'the name screen' });
+  await page.waitFor(`!!document.querySelector('[data-name-field]')`, { what: 'the name screen' });
   await sleep(450);
   await page.screenshot(`${out}/your-name.png`);
   // Escape is never a trap: it is back out of the door, onto the step.
@@ -174,11 +174,11 @@ try {
   if (stepped.tile.x !== door.returnTo.x || stepped.tile.y !== door.returnTo.y) {
     throw new Error(`going back outside put the player on ${JSON.stringify(stepped.tile)}, not the step`);
   }
-  if (await page.evaluate(`!!document.querySelector('[data-house-name-field]')`)) throw new Error('the name screen stayed up outside');
+  if (await page.evaluate(`!!document.querySelector('[data-name-field]')`)) throw new Error('the name screen stayed up outside');
   console.log(`back outside: on the step ${stepped.tile.x},${stepped.tile.y}`);
   await walkTo(door.tiles, async () => (await page.evaluate(state())).room === 'bolthole');
   const asking = await settle('THE BOLTHOLE asking a name again', "s.room === 'bolthole' && s.naming");
-  await page.waitFor(`!!document.querySelector('[data-house-name-field]')`, { what: 'the name screen again' });
+  await page.waitFor(`!!document.querySelector('[data-name-field]')`, { what: 'the name screen again' });
   await sleep(450);
   // Nothing typed: refused, and still asking.
   await press('Enter');
@@ -189,7 +189,7 @@ try {
   if (!held.naming || held.tile.x !== asking.tile.x || held.tile.y !== asking.tile.y) {
     throw new Error(`the player moved while the house asked their name: ${JSON.stringify(held)}`);
   }
-  await page.evaluate(`document.querySelector('[data-house-name-field]').focus()`);
+  await page.evaluate(`document.querySelector('[data-name-field]').focus()`);
   for (const character of houseName) {
     const upper = character.toUpperCase();
     const code = /[a-z]/i.test(character) ? `Key${upper}` : /[0-9]/.test(character) ? `Digit${character}` : 'Period';
@@ -213,7 +213,7 @@ try {
     }
   }
   if (welcome[0] !== `Welcome home, ${houseName}!`) throw new Error(`the house said "${welcome.join(' / ')}"`);
-  const kept = await page.evaluate(`localStorage.getItem('escape-from-pallet-town.console.name')`);
+  const kept = await page.evaluate(`localStorage.getItem('escape-from-pallet-town.player.name')`);
   if (kept !== houseName) throw new Error(`the name kept on the device is "${kept}"`);
   console.log(`name: ${welcome.join(' / ')}`);
   const inside = await settle('inside THE BOLTHOLE', "s.room === 'bolthole' && !s.naming");

@@ -3579,6 +3579,12 @@ button {
 :where(.pixel-ui) .maker-field > span {
   color: var(--ink-soft);
 }
+:where(.pixel-ui) .maker-name-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: calc(var(--u) * 2);
+  align-items: center;
+}
 :where(.pixel-ui) .maker-size {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

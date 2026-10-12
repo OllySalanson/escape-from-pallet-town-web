@@ -137,8 +137,7 @@ than the secure container you start with, so every raid you ride it is a raid yo
 
 Between raids you're at The Harbour, your own little base, and it's a place you walk around rather
 than a menu. It's everybody's harbour, too: everyone playing Pallet Town walks the same one, live,
-with the name on their front door over their head - give yours at the Bolthole and they see you
-back. Press **K** in your house or on its step to knock on somebody else's door; if they're in
+with the name on their front door over their head, and they see yours. Press **K** in your house or on its step to knock on somebody else's door; if they're in
 and say yes, you're let in to have a nose round. Four buildings, four people you'll recognise, and each one is a thing you can do:
 
 - **Professor Oak's Lab** is where raids start: the contract board, your loadout, and a wall map
@@ -152,8 +151,9 @@ and say yes, you're let in to have a nose round. Four buildings, four people you
   shelves.
 
 At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, which is yours.
-The first time you open the door it asks, as FireRed does, **YOUR NAME?**, and nobody moves an
-inch inside until you answer - after that it's your name on the door and on every board.
+When you start a game it asks, as FireRed does, **YOUR NAME?** - and it's one each: nobody else
+in Pallet Town can have yours. After that it's your name on the door, over your head in the
+harbour and on every board.
 It's the player's house from FireRed, downstairs and up, and it fills up with what you've done:
 a badge case with a slot for every keeper in Kanto, lit as you beat them; a pennant on your
 bedroom wall for every place you've come home from; a telly whose Kanto Tonight tells you which
