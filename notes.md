@@ -60,11 +60,17 @@ One finding a fix, each with a behavioural test.
 - **Fixed:** every one now reads Pokémon / Poké Ball / Poké Mart / POKéMON LEAGUE (FireRed's capitals). Only player-facing strings changed; comments and internal prop labels were left alone. In the real game the Route 22 sign now reads "ROUTE 22 - POKéMON LEAGUE" in the dialogue box, drawn whole in the game's face.
 - **How a player meets it:** read the League gate's signs on the Route 22 drop-in, talk to Viridian's townsfolk, or press on in the loadout with nobody chosen: the name is spelled the same way everywhere.
 
+## 9. Lass Ada asked "Going up to Viridian?" inside Viridian City (playtest 6, B9)
+
+- **Found:** LASS ADA stands on THE SOUTH TERRACES, which is part of the Viridian City map (Route 1's head below the town), watching the road. Her challenge was "Going up to Viridian?" and her defeat line "Fine, go on up." - said to a player who had dropped in at Viridian's own Pokémon Center and was walking down the terraces out of town.
+- **Reproduced:** `src/game/world/placeNames.test.ts` reads every trainer's challenge and defeat line, and every townsperson's and sign's lines, against the name of the map they stand on (`worldMapName`, or its first word on its own, so "to Viridian Forest" is still allowed in the city): it failed with "LASS ADA on viridian-city: Going up to Viridian?" and nothing else. `WorldScene.askForTrainerChallenge` shows `introLines` verbatim, so this is the line in the dialogue box.
+- **Fixed:** her lines are now "Up the terraces or down them, this road is mine!" / "Nobody walks it without a battle!", and after the fight "Fine, go on. The Center is right in the middle of town." - true whichever way the player is walking. Her party and watch are unchanged.
+- **How a player meets it:** walk the South Terraces road below Viridian City in either direction into Lass Ada's watch; she no longer asks if you are going to the town you are in.
+
 ## Checked and already fixed (skipped)
 
 Playtest 45: findings 6 (map maker side column: it is a `.px-scroll` now, with MORE cues), 7 (the hunter is in `captionKeepClear`), 8 (an open dialogue box is caption furniture) and 9 (`browser.mjs` sorts Chromium builds by number) are fixed too. Findings 1 (Poké Ball stepper reach), 2 (teaching Pidgey now Lv 2), 3 (forced switch line), 4 (ranger forecast after the hunter is beaten - `hunterForecastLine` takes `defeated`), 5 (battle cursor remembered: `lastMainCommand`, `lastMoveOf`).
 
 ## Still open from playtest 6 (candidates for later iterations)
 
-- B9: Lass Ada says "Going up to Viridian?" inside Viridian City (`world/trainers.ts`).
 - B9: the cache "secured" line is fixed (entry 3). Already fixed: the title's POKéMON accent, the MAKE A MAP hint, the defeat line-up's `×45` money (B8, now `itemCountTag`).
