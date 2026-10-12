@@ -37,6 +37,18 @@ import {
 } from './homeLines';
 import { hunterRival } from '../world/hunters';
 import { houseSeason, windowLight, windowLines, type WindowLight } from './homeClock';
+import {
+  arrangeHouse,
+  blockedBy,
+  homeLayoutOf,
+  isHomeRoom,
+  ownedFurniture,
+  pieceTiles,
+  solidTiles as furnitureSolids,
+  type FloorPlan,
+  type HomeRoomId,
+  type PlacedPiece,
+} from '../home/arrangement';
 
 /**
  * The four rooms behind the base's four doors.
@@ -129,9 +141,6 @@ export type HomePropName =
   | 'homeWindow'
   | 'homeStairsUp'
   | 'homeStairMatUp'
-  | 'homeRugTable'
-  | 'homePlantWest'
-  | 'homePlantEast'
   | 'homeMat'
   | 'homeShade'
   | 'homePcDesk'
@@ -173,16 +182,16 @@ function sideWall(name: 'warehouse.sideWest' | 'warehouse.sideEast'): PropDefini
 }
 
 /**
- * THE BOLTHOLE's furniture, every piece FireRed's own and stood where FireRed
- * stands it in the player's house (`scripts/cut-frlg-home.mjs` names the
- * metatiles). The collision is FireRed's too, read off the same map: the
+ * THE BOLTHOLE as it is built, every piece FireRed's own and stood where
+ * FireRed stands it in the player's house (`scripts/cut-frlg-home.mjs` names
+ * the metatiles). The collision is FireRed's too, read off the same map: the
  * front row of a piece that stands against the wall - the counter's foot, the
  * cupboard's, the television stand's - is floor you may stand on, which is how
- * a FireRed room is walked. Three are judged instead of copied, because
- * FireRed draws a top layer over the player there and this game has none: a
- * pot plant is solid all the way up, the bed is solid from its headboard down
- * (or the player stands in its pillow), and the television's top is solid so
- * nobody stands in it.
+ * a FireRed room is walked. Two are judged instead of copied, because FireRed
+ * draws a top layer over the player there and this game has none: the bed is
+ * solid from its headboard down (or the player stands in its pillow), and the
+ * television's top is solid so nobody stands in it. What the player can move -
+ * the pot plants, the table - is not here but in `home/furniture.ts`.
  */
 function HOME_PROPS(): Record<HomePropName, PropDefinition> {
   const home = HOME_SHEET_PIECES;
@@ -194,9 +203,6 @@ function HOME_PROPS(): Record<HomePropName, PropDefinition> {
     homeWindow: home.solid('home.window', 'window'),
     homeStairsUp: home.prop('home.stairsUp', 'stairs', ['##', '##', '..']),
     homeStairMatUp: home.floor('home.stairMatUp', 'stair mat'),
-    homeRugTable: home.prop('home.rugTable', 'table', ['......', '..##..', '..##..', '......']),
-    homePlantWest: home.solid('home.plantWest', 'plant'),
-    homePlantEast: home.solid('home.plantEast', 'plant'),
     homeMat: home.floor('home.mat', 'door mat'),
     homeShade: home.floor('home.floorShade', 'floor'),
     homePcDesk: home.prop('home.pcDesk', 'PC', ['##', '##', '..']),
@@ -358,6 +364,12 @@ export interface RoomThing {
    * bed is slept in (the screen goes dark first).
    */
   readonly does?: 'sleep';
+  /**
+   * Answers when spoken to but carries no caption: a piece of the player's own
+   * furniture (`home/furniture.ts`). A room full of dolls each naming itself
+   * as it was walked past would be a room of captions.
+   */
+  readonly quiet?: boolean;
 }
 
 /**
@@ -506,6 +518,19 @@ export interface BuiltRoom {
   readonly wallMap: Rect | null;
   /** The other pictures of the save painted on this room's walls. */
   readonly posters: readonly RoomPoster[];
+  /** In the player's own house: the floor furniture goes on, and what stands on it. */
+  readonly home?: BuiltHome;
+}
+
+/**
+ * THE BOLTHOLE's furniture as it stands this visit (`home/arrangement.ts`):
+ * what the room offers, what is standing in it, and what is standing in the
+ * whole house, which is what the layout is written back from.
+ */
+export interface BuiltHome {
+  readonly plan: FloorPlan;
+  readonly placed: readonly PlacedPiece[];
+  readonly house: readonly PlacedPiece[];
 }
 
 // --- the wall map -----------------------------------------------------------
@@ -829,6 +854,12 @@ interface Drawn {
   readonly cabinet?: BuiltCabinet;
   readonly wallMap?: Rect;
   readonly posters?: readonly RoomPoster[];
+  /**
+   * Something the house puts out for the time of year, which stands only if
+   * the player's furniture has left room for it: the house gives way to what
+   * the player arranged, never the other way round.
+   */
+  readonly seasonal?: { readonly prop: HomePropName; readonly at: GridPosition; readonly thing: RoomThing };
 }
 
 /**
@@ -999,19 +1030,16 @@ function drawHome(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
   sketch.plant(HOME_WINDOW.x, HOME_WINDOW.y, WINDOW_PIECES[windowLight(now)]);
   sketch.plant(12, 2, 'homeStairMatUp');
   sketch.plant(13, 1, 'homeStairsUp');
-  sketch.plant(4, 3, 'homeRugTable');
-  sketch.plant(0, 6, 'homePlantWest');
-  const season = houseSeason(now);
-  // December's tree stands in the east corner, in place of the plant.
-  sketch.plant(14, 6, season === 'december' ? 'homeFestiveTree' : 'homePlantEast');
+  // The table on its rug and the two pot plants stood here once and are the
+  // player's to move now (`home/arrangement.ts`, DEFAULT_HOME_LAYOUT).
   sketch.plant(6, 8, 'homeMat');
-  if (season === 'october') {
-    sketch.plant(PUMPKIN_SPOT.x, PUMPKIN_SPOT.y, 'homePumpkin');
-  }
-  const seasonal: RoomThing[] =
+  const season = houseSeason(now);
+  const seasonal: Drawn['seasonal'] =
     season === 'october'
-      ? [
-          {
+      ? {
+          prop: 'homePumpkin',
+          at: PUMPKIN_SPOT,
+          thing: {
             name: 'A PUMPKIN',
             note: 'It is October',
             tiles: [PUMPKIN_SPOT],
@@ -1019,24 +1047,22 @@ function drawHome(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
               'A pumpkin with a face carved in it and a candle inside. It is October, and somebody here thinks that is funny.',
             ],
           },
-        ]
+        }
       : season === 'december'
-        ? [
-            {
+        ? {
+            prop: 'homeFestiveTree',
+            at: FESTIVE_TREE_SPOT,
+            thing: {
               name: 'THE TREE',
               note: 'It is December',
-              tiles: [
-                { x: 14, y: 6 },
-                { x: 14, y: 7 },
-              ],
+              tiles: [FESTIVE_TREE_SPOT, { x: FESTIVE_TREE_SPOT.x, y: FESTIVE_TREE_SPOT.y + 1 }],
               lines: [
                 'A little tree for December, done up with baubles. There is a Poké Ball on top where the star should be.',
               ],
             },
-          ]
-        : [];
+          }
+        : undefined;
   const things: RoomThing[] = [
-    ...seasonal,
     {
       name: 'THE WINDOW',
       note: 'Out over the harbour',
@@ -1083,6 +1109,7 @@ function drawHome(room: BaseRoom, game: RestoredGame, now: Date): Drawn {
     things,
     sprites: [],
     posters: [{ kind: 'badge-case', area: BADGE_CASE_WALL }],
+    ...(seasonal ? { seasonal } : {}),
   };
 }
 
@@ -1096,6 +1123,9 @@ const WINDOW_PIECES: Readonly<Record<WindowLight, HomePropName>> = {
 
 /** Where October's pumpkin sits: on the floor beside the door mat, to greet whoever comes in. */
 export const PUMPKIN_SPOT: GridPosition = { x: 5, y: 8 };
+
+/** Where December's tree stands, two tiles tall: in the east corner, beside the pot plant. */
+export const FESTIVE_TREE_SPOT: GridPosition = { x: 13, y: 6 };
 
 /** Which of the upstairs rug's three colours this save's partner is. */
 const RUG_PIECES: Readonly<Record<ReturnType<typeof partnerRug>, HomePropName>> = {
@@ -1213,6 +1243,9 @@ const DRAWERS: Readonly<Record<RoomId, (room: BaseRoom, game: RestoredGame, now:
  */
 export function buildRoom(room: BaseRoom, game: RestoredGame, now: Date = new Date()): BuiltRoom {
   const drawn = DRAWERS[room.id](room, game, now);
+  if (isHomeRoom(room.id)) {
+    return buildHome(room, room.id, drawn, game, now);
+  }
   const layers = buildMapLayers(drawn.sketch, drawn.catalogue);
   const shown = errandsOnShow(room, game);
   return {
@@ -1226,6 +1259,112 @@ export function buildRoom(room: BaseRoom, game: RestoredGame, now: Date = new Da
     ...(drawn.cabinet ? { cabinet: drawn.cabinet } : {}),
     wallMap: drawn.wallMap ?? null,
     posters: drawn.posters ?? [],
+  };
+}
+
+/**
+ * One room of the player's house: the room as the house draws it, then the
+ * player's furniture standing in it (`home/arrangement.ts`), then whatever the
+ * time of year puts out, if the furniture has left it room.
+ */
+function buildHome(room: BaseRoom, id: HomeRoomId, drawn: Drawn, game: RestoredGame, now: Date): BuiltRoom {
+  const plans = homeFloorPlans(game, now);
+  const house = arrangeHouse(plans, homeLayoutOf(game.raidProgress), ownedFurniture(game));
+  const placed = house.filter((piece) => piece.room === id);
+  const plan = plans[id];
+  const things = [...drawn.things];
+  const { seasonal } = drawn;
+  if (seasonal) {
+    const art = ROOM_PROPS[seasonal.prop];
+    const tiles = Array.from({ length: art.width * art.height }, (_cell, index) => ({
+      x: seasonal.at.x + (index % art.width),
+      y: seasonal.at.y + Math.floor(index / art.width),
+    }));
+    const taken = new Set(placed.flatMap(pieceTiles).map((tile) => `${tile.x},${tile.y}`));
+    if (!tiles.some((tile) => taken.has(`${tile.x},${tile.y}`)) && blockedBy(plan, placed, [], tiles) === null) {
+      drawn.sketch.plant(seasonal.at.x, seasonal.at.y, seasonal.prop);
+      things.unshift(seasonal.thing);
+    }
+  }
+  const layers = buildMapLayers(drawn.sketch, drawn.catalogue);
+  const collision = layers.collision.map((row) => [...row]);
+  for (const tile of placed.flatMap(furnitureSolids)) {
+    collision[tile.y][tile.x] = true;
+  }
+  // What answers is what is faced, which is something solid: the table rather
+  // than its rug, a desk but not a chair you would sit in. The top of a stack
+  // answers first - a doll on a desk is the doll.
+  const order = { small: 0, standing: 1, floor: 2 } as const;
+  const furniture: RoomThing[] = [...placed]
+    .sort((a, b) => order[a.definition.layer] - order[b.definition.layer])
+    .filter((piece) => furnitureSolids(piece).length > 0)
+    .map((piece) => ({
+      name: piece.definition.name,
+      note: '',
+      tiles: furnitureSolids(piece),
+      lines: [piece.definition.line],
+      quiet: true,
+    }));
+  const shown = errandsOnShow(room, game);
+  return {
+    room,
+    sources: drawn.catalogue.sources,
+    layers,
+    collision,
+    things: [...things, ...shown.things, ...furniture],
+    sprites: drawn.sprites,
+    icons: shown.icons,
+    wallMap: drawn.wallMap ?? null,
+    posters: drawn.posters ?? [],
+    home: { plan, placed, house },
+  };
+}
+
+/** Both floors of the house, as furniture finds them: built bare and read off. */
+export function homeFloorPlans(game: RestoredGame, now: Date = new Date()): Readonly<Record<HomeRoomId, FloorPlan>> {
+  const plan = (id: HomeRoomId): FloorPlan => {
+    const room = roomNamed(id);
+    if (!room) {
+      throw new Error(`no room ${id}`);
+    }
+    return floorPlan(room, id, DRAWERS[id](room, game, now));
+  };
+  return { bolthole: plan('bolthole'), 'bolthole-upstairs': plan('bolthole-upstairs') };
+}
+
+/**
+ * What a floor of the house offers furniture, read off it as the house draws
+ * it: what is solid, which floor has nothing of the house drawn on it, the
+ * mats, and the tiles everything that answers can be spoken to from.
+ */
+function floorPlan(room: BaseRoom, id: HomeRoomId, drawn: Drawn): FloorPlan {
+  const layers = buildMapLayers(drawn.sketch, drawn.catalogue);
+  const blocked = layers.collision;
+  const drawnOn = new Set(
+    propTiles(drawn.sketch.props().filter((prop) => prop.name !== 'homeShade')).map((tile) => `${tile.x},${tile.y}`),
+  );
+  const bare = blocked.map((row, y) => row.map((solid, x) => !solid && !drawnOn.has(`${x},${y}`)));
+  const open = (tile: GridPosition): boolean => blocked[tile.y]?.[tile.x] === false;
+  return {
+    room: id,
+    width: room.width,
+    height: room.height,
+    blocked,
+    bare,
+    ways: [...(room.mat ? [room.mat] : []), ...room.stairs.map((stair) => stair.tile)],
+    mustReach: drawn.things.map((thing) => ({
+      name: thing.name,
+      from: thing.tiles.flatMap((tile) =>
+        open(tile)
+          ? [tile]
+          : [
+              { x: tile.x, y: tile.y + 1 },
+              { x: tile.x, y: tile.y - 1 },
+              { x: tile.x - 1, y: tile.y },
+              { x: tile.x + 1, y: tile.y },
+            ].filter(open),
+      ),
+    })),
   };
 }
 

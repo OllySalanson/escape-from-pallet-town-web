@@ -20,6 +20,12 @@ export const ItemCategory = {
    * it if the raid is.
    */
   Pack: 'pack',
+  /**
+   * Something for the house (`../home/furniture`): found on a raid, carried out
+   * in the pack, and put down in THE BOLTHOLE once it is home. A pocket of its
+   * own because it is the one thing in the vault that is for looking at.
+   */
+  Furniture: 'furniture',
   Misc: 'misc',
 } as const;
 
@@ -31,6 +37,7 @@ export const ITEM_CATEGORY_LABELS: Readonly<Record<ItemCategory, string>> = {
   pokeball: 'Poké Balls',
   held: 'Gear',
   pack: 'Packs',
+  furniture: 'Furniture',
   misc: 'Other',
 };
 
@@ -158,6 +165,13 @@ export type ItemEffect =
    * belongs to is the errand's to say, by this item's id.
    */
   | { readonly type: 'errand' }
+  /**
+   * A piece of furniture for THE BOLTHOLE. Nothing to use anywhere but the
+   * house, where it is put down rather than spent: owning one is having it in
+   * the vault, and where it stands is `../home/arrangement`. Found on a raid,
+   * never packed for one, and lost with the pack on a wipe like any loot.
+   */
+  | { readonly type: 'furniture' }
   | { readonly type: 'held'; readonly held: HeldItemEffect };
 
 /**
@@ -708,6 +722,180 @@ export const ITEMS = {
     effect: { type: 'held', held: { type: 'first-strike', chance: 0.25 } },
   },
 
+  /* --- Furniture -----------------------------------------------------------
+     Found on a raid, carried home in the pack and put down in THE BOLTHOLE
+     (`../home/furniture`). Each shares its id with the piece it is, and is
+     sized by how it travels: a mat rolls up to two squares, and nothing is more
+     than two squares on a side. */
+  'pika-cushion': {
+    id: 'pika-cushion',
+    displayName: 'Pika Cushion',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 1 },
+    description: 'A cushion with PIKACHU on it. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'ball-cushion': {
+    id: 'ball-cushion',
+    displayName: 'Ball Cushion',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 1 },
+    description: 'A cushion done up as a POKé BALL. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'fire-cushion': {
+    id: 'fire-cushion',
+    displayName: 'Fire Cushion',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 1 },
+    description: 'A red cushion with a flame on it. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'water-cushion': {
+    id: 'water-cushion',
+    displayName: 'Water Cushion',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 1 },
+    description: 'A blue cushion with a drop on it. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'pokemon-chair': {
+    id: 'pokemon-chair',
+    displayName: 'Pokémon Chair',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 1 },
+    description: 'A chair with a POKé BALL on its back. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'comfort-chair': {
+    id: 'comfort-chair',
+    displayName: 'Comfort Chair',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 1 },
+    description: 'A soft green chair. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'pokemon-desk': {
+    id: 'pokemon-desk',
+    displayName: 'Pokémon Desk',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 1 },
+    description: 'A little desk a doll can stand on. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'heavy-desk': {
+    id: 'heavy-desk',
+    displayName: 'Heavy Desk',
+    category: ItemCategory.Furniture,
+    footprint: { width: 2, height: 2 },
+    description: 'A big steel desk, three tiles across. Dolls stand on it. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'tropical-plant': {
+    id: 'tropical-plant',
+    displayName: 'Tropical Plant',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 2 },
+    description: 'A tall tropical plant in a pot. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'pretty-flowers': {
+    id: 'pretty-flowers',
+    displayName: 'Pretty Flowers',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 2 },
+    description: 'Pink flowers in a pot. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'big-plant': {
+    id: 'big-plant',
+    displayName: 'Big Plant',
+    category: ItemCategory.Furniture,
+    footprint: { width: 2, height: 2 },
+    description: 'A big leafy plant in a big pot. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'surf-mat': {
+    id: 'surf-mat',
+    displayName: 'Surf Mat',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 2 },
+    description: 'A round mat printed with a wave, rolled up. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'thunder-mat': {
+    id: 'thunder-mat',
+    displayName: 'Thunder Mat',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 2 },
+    description: 'A round mat printed with lightning, rolled up. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'fire-blast-mat': {
+    id: 'fire-blast-mat',
+    displayName: 'Fire Blast Mat',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 2 },
+    description: 'A round mat printed with fire, rolled up. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'powder-snow-mat': {
+    id: 'powder-snow-mat',
+    displayName: 'Powder Snow Mat',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 2 },
+    description: 'A round mat printed with snowflakes, rolled up. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'cute-tv': {
+    id: 'cute-tv',
+    displayName: 'Cute TV',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 1 },
+    description: 'A little pink television. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'glitter-mat': {
+    id: 'glitter-mat',
+    displayName: 'Glitter Mat',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 1 },
+    description: 'A mat that glitters whichever way the light comes. Super rare. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'gorgeous-plant': {
+    id: 'gorgeous-plant',
+    displayName: 'Gorgeous Plant',
+    category: ItemCategory.Furniture,
+    footprint: { width: 2, height: 2 },
+    description: 'A gorgeous plant in a carved pot. Super rare. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'gold-shield': {
+    id: 'gold-shield',
+    displayName: 'Gold Shield',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 2 },
+    description: 'A gold shield on a stand. Super rare. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'silver-shield': {
+    id: 'silver-shield',
+    displayName: 'Silver Shield',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 2 },
+    description: 'A silver shield on a stand. Super rare. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+  'glass-ornament': {
+    id: 'glass-ornament',
+    displayName: 'Glass Ornament',
+    category: ItemCategory.Furniture,
+    footprint: { width: 1, height: 2 },
+    description: 'A glass ornament of a POKéMON. The rarest thing a raid can bring home. Furniture: bring it home and put it down in THE BOLTHOLE.',
+    effect: { type: 'furniture' },
+  },
+
   /* --- The packs -----------------------------------------------------------
      Four sizes, six squares apart, and one of them is chosen before every
      raid. A pack is not an upgrade: it is a thing you own, and a raid you do
@@ -776,15 +964,11 @@ export type PackItemId = {
   [K in ItemId]: (typeof ITEMS)[K]['category'] extends typeof ItemCategory.Pack ? K : never;
 }[ItemId];
 
-/**
- * Everything that is neither gear nor a pack: what may be packed, priced,
- * bartered for or handed out by something that repeats.
- *
- * A pack is excluded for exactly the reason gear is. Gear must be carried out
- * of a raid to be owned, and a pack must be *survived* to be kept; either one
- * handed out on a loop by a contract, the standing board or Brock would
- * stop being the thing the loop is about.
- */
+/** The furniture a raid can find (`../home/furniture`). */
+export type FurnitureItemId = {
+  [K in ItemId]: (typeof ITEMS)[K]['category'] extends typeof ItemCategory.Furniture ? K : never;
+}[ItemId];
+
 /**
  * Somebody's errand, by id. Excluded from `SupplyItemId` for the reason a pack
  * is: an errand's thing is one particular object that one person asked for,
@@ -794,7 +978,17 @@ export type ErrandItemId = {
   [K in ItemId]: (typeof ITEMS)[K]['effect']['type'] extends 'errand' ? K : never;
 }[ItemId];
 
-export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId | ErrandItemId>;
+/**
+ * Everything that is neither gear, a pack, an errand nor furniture: what may
+ * be packed, priced, bartered for or handed out by something that repeats.
+ *
+ * A pack is excluded for exactly the reason gear is. Gear must be carried out
+ * of a raid to be owned, and a pack must be *survived* to be kept; either one
+ * handed out on a loop by a contract, the standing board or Brock would
+ * stop being the thing the loop is about. Furniture is the same: a piece in the
+ * house is worth looking at because a raid carried it home.
+ */
+export type SupplyItemId = Exclude<ItemId, HeldItemId | PackItemId | ErrandItemId | FurnitureItemId>;
 
 export const ITEM_DEFINITIONS: readonly ItemDefinition[] = Object.values(ITEMS);
 
@@ -836,9 +1030,11 @@ export function isPack(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'pack';
 }
 
+
 /**
  * Everything that is found in a raid rather than packed for one: the materials,
- * the money, a spare pack, and an errand somebody at base is waiting on.
+ * the money, a spare pack, an errand somebody at base is waiting on, and
+ * furniture for the house.
  *
  * They share one rule, not three. None may be carried *into* a raid - a
  * material and a note do nothing there, and you are already wearing a pack, so
@@ -852,7 +1048,15 @@ export function isPack(itemId: string): boolean {
  *
  * The pack you are *wearing* is not in this list and is not in the bag at all:
  * it is the bag. See `./packs`.
+ *
+ * Furniture is the one found-only kind the secure container never keeps room
+ * for (`HubScene`'s secure screen leaves it off): it is a trophy rather than
+ * something the next raid runs on, and a super-rare piece that could be put
+ * beyond the wipe in advance would be a prize with no risk in carrying it home.
  */
+/** The kinds of thing found in a raid and never packed for one (`isFoundOnly`): defined before the list below, which asks it as the module loads. */
+const FOUND_ONLY_EFFECTS: ReadonlySet<ItemEffect['type']> = new Set(['material', 'currency', 'pack', 'errand', 'furniture']);
+
 export const FOUND_ONLY_IDS: readonly ItemId[] = ITEM_DEFINITIONS.filter((item) =>
   isFoundOnly(item.id),
 ).map((item) => item.id as ItemId);
@@ -936,10 +1140,15 @@ export function isCurrency(itemId: string): boolean {
   return getItemById(itemId)?.effect.type === 'currency';
 }
 
-/** Found in a raid, never packed for one: a material, money, a spare pack, or somebody's errand. */
+/** Found in a raid, never packed for one: a material, money, a spare pack, somebody's errand, or furniture. */
 export function isFoundOnly(itemId: string): boolean {
   const type = getItemById(itemId)?.effect.type;
-  return type === 'material' || type === 'currency' || type === 'pack' || type === 'errand';
+  return type !== undefined && FOUND_ONLY_EFFECTS.has(type);
+}
+
+/** A piece of furniture for the house (`../home/furniture`). */
+export function isFurniture(itemId: string): boolean {
+  return getItemById(itemId)?.effect.type === 'furniture';
 }
 
 /** Every piece of gear, in catalogue order: what a give menu offers. */
@@ -1034,6 +1243,8 @@ export function useFieldItem(item: ItemDefinition, pokemon: Pokemon): FieldItemU
       return { used: false, message: `${item.displayName} opens its own locked gate. Face the gate and press the interact key.` };
     case 'errand':
       return { used: false, message: `${item.displayName} is somebody's errand. Carry it home to them.` };
+    case 'furniture':
+      return { used: false, message: `${item.displayName} is for your house. Bring it home and put it down in THE BOLTHOLE.` };
     case 'machine':
       // A machine is never spent here. Teaching can need a move chosen to be
       // forgotten, which is a screen rather than a return value, so `./teaching`

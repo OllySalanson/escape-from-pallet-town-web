@@ -117,6 +117,8 @@ function describeEffect(
       return { effect: 'Opens a gate in a raid', usable: false };
     case 'errand':
       return { effect: 'Somebody’s errand', usable: false };
+    case 'furniture':
+      return { effect: 'Put down at home', usable: false };
     case 'held':
       // Unreachable while `isMedicine` is the filter above, and answered anyway:
       // gear is given, never used, so there is no treatment to describe.

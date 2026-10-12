@@ -27,6 +27,7 @@ import {
   BERRY_TREE_PATH,
   BERRY_TREE_TEXTURE,
 } from '../world/berries';
+import { FURNITURE_PATH, FURNITURE_TEXTURE } from '../base/furnitureArt';
 import { isTestLabRequested } from '../dev/testLabAccess';
 import { ICON_NAMES, iconTextureKey } from '../ui/icons';
 import { awaitGameFont } from '../ui/gameFont';
@@ -90,6 +91,9 @@ export class BootScene extends Phaser.Scene {
       frameWidth: BERRY_TREE_FRAME_WIDTH,
       frameHeight: BERRY_TREE_FRAME_HEIGHT,
     });
+    // The furniture a player arranges in their house: Emerald's Secret Base
+    // decorations and the house's own plants and table (`home/furniture.ts`).
+    this.load.image(FURNITURE_TEXTURE, publicAssetUrl(FURNITURE_PATH));
     // Every sheet a map might be drawn from. A catalogue is chosen per map and
     // may draw from more than one sheet at a time, so the loader takes the list
     // rather than naming any of them: `frlg-tiles.png` for the ground, and

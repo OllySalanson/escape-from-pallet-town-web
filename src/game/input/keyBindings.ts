@@ -40,8 +40,21 @@ export const YARD_KEY_WORDS: readonly (readonly [YardKeyId, string, string])[] =
   ['look', RAID_KEY_LETTERS.look, 'LOOK'],
 ];
 
+/**
+ * THE BOLTHOLE's keys (`base/decorateMode.ts`): H picks the house up to
+ * decorate it, and while it is being decorated R turns a piece, Q and E walk
+ * the box and X puts a piece away. `BaseScene.bindControls` binds these.
+ */
+export const HOME_KEY_LETTERS = {
+  decorate: 'H',
+  turn: 'R',
+  boxBack: 'Q',
+  boxNext: 'E',
+  putAway: 'X',
+} as const;
+
 /** Every key the save can have learned, in one list (`raidProgress.keysLearned`). */
-export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party'] as const;
+export const LEARNABLE_KEYS = ['walk', 'objectives', 'look', 'bag', 'party', 'decorate'] as const;
 export type LearnableKeyId = (typeof LEARNABLE_KEYS)[number];
 
 export function isLearnableKey(value: unknown): value is LearnableKeyId {
@@ -77,4 +90,25 @@ export function yardKeyHintLine(learned: ReadonlySet<string>): string {
   return YARD_KEY_WORDS.filter(([id]) => !learned.has(id))
     .map(([, key, word]) => keyHint(key, word))
     .join('   ');
+}
+
+/** What the player's own house says while nothing else is to be said: decorating, until it has been done. */
+export function houseKeyHintLine(learned: ReadonlySet<string>): string {
+  return learned.has('decorate') ? '' : keyHint(HOME_KEY_LETTERS.decorate, 'DECORATE');
+}
+
+/**
+ * The keys while decorating, for what the player can do now: put down what is
+ * in their hands, pick up what is under the cursor, or take something out of
+ * the box.
+ */
+export function decorateKeyHintLine(now: 'holding' | 'on-a-piece' | 'on-the-floor'): string {
+  const box = `[${HOME_KEY_LETTERS.boxBack}][${HOME_KEY_LETTERS.boxNext}] BOX`;
+  const keys =
+    now === 'holding'
+      ? ['[SPACE] PUT DOWN', keyHint(HOME_KEY_LETTERS.turn, 'TURN'), box, keyHint(HOME_KEY_LETTERS.putAway, 'PUT AWAY')]
+      : now === 'on-a-piece'
+        ? ['[SPACE] PICK UP', keyHint(HOME_KEY_LETTERS.turn, 'TURN'), keyHint(HOME_KEY_LETTERS.putAway, 'PUT AWAY'), keyHint(HOME_KEY_LETTERS.decorate, 'DONE')]
+        : ['[SPACE] TAKE OUT', box, keyHint(HOME_KEY_LETTERS.decorate, 'DONE')];
+  return keys.join('  ');
 }

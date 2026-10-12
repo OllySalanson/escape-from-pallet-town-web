@@ -34,7 +34,7 @@ import { WorldScene } from '../scenes/WorldScene';
 import { Bag } from '../items';
 import { PokemonParty } from '../pokemon';
 import { createStartingStash } from '../stash';
-import { yardKeyHintLine } from './keyBindings';
+import { decorateKeyHintLine, houseKeyHintLine, yardKeyHintLine } from './keyBindings';
 
 /** Phaser's own table, not the mock's: the codes a real keyboard sends. */
 const { default: KEY_CODES } = await vi.importActual<{ default: Record<string, number> }>(
@@ -107,6 +107,41 @@ describe('the keys a HUD names', () => {
     for (const direction of ['up', 'down', 'left', 'right'] as const) {
       expect((controls[direction] as BoundKey).keyCode).toBe(KEY_CODES[direction.toUpperCase()]);
     }
+  });
+});
+
+/** What each word the house's hints use promises the key does. */
+const HOUSE_WORD_CONTROLS: Readonly<Record<string, string>> = {
+  DECORATE: 'decorate',
+  DONE: 'decorate',
+  TURN: 'turn',
+  PUT: 'putAway',
+};
+
+describe('the keys the house names', () => {
+  it('are the keys the house binds, decorating and everything done while decorating', () => {
+    const controls = controlsOf(new BaseScene());
+    const lines = [
+      houseKeyHintLine(new Set()),
+      decorateKeyHintLine('holding'),
+      decorateKeyHintLine('on-a-piece'),
+      decorateKeyHintLine('on-the-floor'),
+    ];
+    const named = lines.flatMap(namedKeys).filter(([key, word]) => key !== 'SPACE' && word !== 'BOX');
+    expect(named.length).toBeGreaterThan(0);
+    for (const [key, word] of named) {
+      const control = controls[HOUSE_WORD_CONTROLS[word]] as BoundKey;
+      expect(control.keyCode, `${word} is named as [${key}]`).toBe(KEY_CODES[key]);
+    }
+    // The box is walked with the two keys its hint names, side by side.
+    const box = /\[([A-Z])\]\[([A-Z])\] BOX/.exec(decorateKeyHintLine('holding'))!;
+    expect((controls.boxBack as BoundKey).keyCode).toBe(KEY_CODES[box[1]]);
+    expect((controls.boxNext as BoundKey).keyCode).toBe(KEY_CODES[box[2]]);
+  });
+
+  it('stops offering to decorate once the house has been decorated', () => {
+    expect(houseKeyHintLine(new Set())).toBe('[H] DECORATE');
+    expect(houseKeyHintLine(new Set(['decorate']))).toBe('');
   });
 });
 

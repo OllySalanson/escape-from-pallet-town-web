@@ -159,6 +159,14 @@ so you can see who in town is better at it than you. It keeps
 your hours, too: the window goes orange at dusk and dark at night, there's a pumpkin by the door
 all October and a tree in the corner all December. Nobody hunts you there.
 
+And it's yours to arrange. Press **H** in the house and it's a Habbo room: pick things up, carry
+them about, turn them round and put them down, a tile at a time. Shove the table across the room,
+move the pot plants, then fill the place with what you've carried home - cushions, desks, chairs
+and Surf Mats out of Emerald's Secret Bases, lying about on the raid maps (a handful so rare you
+may never see one), and a doll of every kind of Pokémon you've ever brought back alive. Dolls go
+on desks. Nothing goes on the door mat. And a Glitter Mat still in your pack when a raid goes
+wrong is a Glitter Mat you never had.
+
 And you never walk it alone. The starter you picked trots one step behind you, in your own
 footsteps, through every door and into every room, drawn in HeartGold and SoulSilver's own
 following-Pokémon art. Turn round, press Space, and it'll tell you how it's doing. It's that

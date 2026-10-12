@@ -343,6 +343,15 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
         chance: 0.18,
         district: 'pallet-beacon',
       },
+      // Furniture for the house (`home/furniture.ts`): the commoner pieces in
+      // the ordinary pool, re-seated anywhere like any supply, and one
+      // super-rare piece a map rolled on its own like any prize, in the place
+      // it belongs to. It costs squares to carry and is lost with the pack, and
+      // once it is home it stands in THE BOLTHOLE.
+      { id: 'pallet-town-pretty-flowers', position: { x: 12, y: 24 }, itemId: 'pretty-flowers', quantity: 1 },
+      { id: 'pallet-town-comfort-chair', position: { x: 10, y: 9 }, itemId: 'comfort-chair', quantity: 1 },
+      { id: 'pallet-town-surf-mat', position: { x: 14, y: 73 }, itemId: 'surf-mat', quantity: 1 },
+      { id: 'pallet-town-glitter-mat', position: { x: 53, y: 68 }, itemId: 'glitter-mat', quantity: 1, chance: 0.06, district: 'pallet-ness' },
     ],
   },
   'route-1': {
@@ -403,6 +412,15 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
         chance: 0.18,
         district: 'route-1-charcoal-burn',
       },
+      // Furniture for the house (`home/furniture.ts`): the commoner pieces in
+      // the ordinary pool, re-seated anywhere like any supply, and one
+      // super-rare piece a map rolled on its own like any prize, in the place
+      // it belongs to. It costs squares to carry and is lost with the pack, and
+      // once it is home it stands in THE BOLTHOLE.
+      { id: 'route-1-pika-cushion', position: { x: 52, y: 37 }, itemId: 'pika-cushion', quantity: 1 },
+      { id: 'route-1-pokemon-chair', position: { x: 18, y: 28 }, itemId: 'pokemon-chair', quantity: 1 },
+      { id: 'route-1-big-plant', position: { x: 41, y: 17 }, itemId: 'big-plant', quantity: 1 },
+      { id: 'route-1-silver-shield', position: { x: 34, y: 5 }, itemId: 'silver-shield', quantity: 1, chance: 0.06, district: 'route-1-overlook' },
     ],
   },
   'viridian-forest': {
@@ -479,6 +497,15 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       // the quarry is the far south-east of the wood.
       { id: 'forest-kiln-ranger-pack', position: { x: 56, y: 32 }, itemId: 'ranger-pack', quantity: 1, chance: 0.22, district: 'forest-charcoal-burn' },
       { id: 'forest-quarry-hauler-frame', position: { x: 43, y: 58 }, itemId: 'hauler-frame', quantity: 1, chance: 0.12, district: 'forest-quarry' },
+      // Furniture for the house (`home/furniture.ts`): the commoner pieces in
+      // the ordinary pool, re-seated anywhere like any supply, and one
+      // super-rare piece a map rolled on its own like any prize, in the place
+      // it belongs to. It costs squares to carry and is lost with the pack, and
+      // once it is home it stands in THE BOLTHOLE.
+      { id: 'forest-tropical-plant', position: { x: 26, y: 11 }, itemId: 'tropical-plant', quantity: 1 },
+      { id: 'forest-fire-blast-mat', position: { x: 56, y: 35 }, itemId: 'fire-blast-mat', quantity: 1 },
+      { id: 'forest-thunder-mat', position: { x: 12, y: 23 }, itemId: 'thunder-mat', quantity: 1 },
+      { id: 'forest-gorgeous-plant', position: { x: 37, y: 68 }, itemId: 'gorgeous-plant', quantity: 1, chance: 0.06, district: 'forest-beech-flat' },
     ],
   },
   // The first map drawn on the FireRed sheet, which is the only one with
@@ -564,6 +591,16 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       // the place a raid would most want to be riding out of
       // (`world/bicycle.ts`).
       { id: 'floodplain-levels-bicycle', position: { x: 112, y: 64 }, itemId: 'bicycle', quantity: 1, chance: 0.05, district: 'floodplain-levels' },
+      // Furniture for the house (`home/furniture.ts`): the commoner pieces in
+      // the ordinary pool, re-seated anywhere like any supply, and one
+      // super-rare piece a map rolled on its own like any prize, in the place
+      // it belongs to. It costs squares to carry and is lost with the pack, and
+      // once it is home it stands in THE BOLTHOLE.
+      { id: 'floodplain-water-cushion', position: { x: 23, y: 102 }, itemId: 'water-cushion', quantity: 1 },
+      { id: 'floodplain-heavy-desk', position: { x: 14, y: 48 }, itemId: 'heavy-desk', quantity: 1 },
+      { id: 'floodplain-powder-snow-mat', position: { x: 29, y: 37 }, itemId: 'powder-snow-mat', quantity: 1 },
+      { id: 'floodplain-fire-cushion', position: { x: 111, y: 18 }, itemId: 'fire-cushion', quantity: 1 },
+      { id: 'floodplain-glass-ornament', position: { x: 114, y: 108 }, itemId: 'glass-ornament', quantity: 1, chance: 0.06, district: 'floodplain-light' },
     ],
   },
   // The crossroads. The first map drawn on Kanto's own art rather than on the
@@ -615,6 +652,15 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       // Pallet, at the longest odds on the map: a town is where somebody owns
       // one (`world/bicycle.ts`).
       { id: 'viridian-terrace-bicycle', position: { x: 39, y: 66 }, itemId: 'bicycle', quantity: 1, chance: 0.05, district: 'viridian-south-terraces' },
+      // Furniture for the house (`home/furniture.ts`): the commoner pieces in
+      // the ordinary pool, re-seated anywhere like any supply, and one
+      // super-rare piece a map rolled on its own like any prize, in the place
+      // it belongs to. It costs squares to carry and is lost with the pack, and
+      // once it is home it stands in THE BOLTHOLE.
+      { id: 'viridian-ball-cushion', position: { x: 49, y: 42 }, itemId: 'ball-cushion', quantity: 1 },
+      { id: 'viridian-pokemon-desk', position: { x: 29, y: 27 }, itemId: 'pokemon-desk', quantity: 1 },
+      { id: 'viridian-cute-tv', position: { x: 39, y: 36 }, itemId: 'cute-tv', quantity: 1 },
+      { id: 'viridian-gold-shield', position: { x: 50, y: 23 }, itemId: 'gold-shield', quantity: 1, chance: 0.06, district: 'viridian-gym' },
     ],
   },
 };

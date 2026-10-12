@@ -72,10 +72,12 @@ describe("a file map's item spots", () => {
   });
 
   it('leave every shipped map laying exactly the loot it laid before', () => {
-    // Moved once on purpose: the Floodplain's buildings you can walk into
+    // Moved on purpose three times: the Floodplain's buildings you can walk into
     // (`buildingInsides.ts`) added their floors to the ground loot is seated
     // on, and every map draws from one stream of rolls. And once more: the
     // Bicycle is a prize on two maps (`world/bicycle.ts`), two more rows rolled.
-    expect(shippedLootFingerprint()).toBe('79bf159');
+    // And again: furniture for the house (`home/furniture.ts`) joined every
+    // map's pool.
+    expect(shippedLootFingerprint()).toBe('605db258');
   });
 });

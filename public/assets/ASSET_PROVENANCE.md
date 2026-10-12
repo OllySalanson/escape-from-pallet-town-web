@@ -199,7 +199,8 @@ the commit that script names. Each folder carries the game's `LICENSE` and a
 ## Pixel icons, authored for this repository
 
 `icons/*.png` - the item, objective and raid-marker icons - were drawn for this
-repository and are covered by it. They replaced vector glyphs (a `✦` character in
+repository and are covered by it, except the furniture icons, which are
+Emerald's own pieces shrunk (see `home-furniture.png` below). They replaced vector glyphs (a `✦` character in
 the menus, tinted rectangles on the map) that read as placeholders inside a pixel
 game.
 
@@ -861,6 +862,46 @@ no licence from them.
   order the rows are in. They are the same generation and the same overworld
   palettes FireRed's figures are drawn in, which is why they stand on its grass
   without a seam.
+
+### `home-furniture.png` and the furniture icons - what a player arranges in THE BOLTHOLE
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly**, on the task the
+owner set on 2026-10-12 ("Use FireRed's own decoration and Secret Base-style
+art where it exists (dolls, cushions, plants, mats)"). FireRed has no furniture
+a player moves - its houses are drawn into their maps - so all but three pieces
+are Ruby/Sapphire/Emerald's Secret Base decorations: Pokemon Emerald's, rights
+holders Nintendo / Creatures / Game Freak, no licence from them.
+
+- **Source.** <https://github.com/pret/pokeemerald>, commit `731ad5b` - the
+  same pinned commit `berry-trees.png` is cut from, read 2026-10-12: the Secret
+  Base tilesets (`data/tilesets/primary/secret_base/` and
+  `data/tilesets/secondary/secret_base/`, tiles, metatiles and palettes), the
+  decoration tables that name each decoration's metatiles and shape
+  (`src/data/decoration/tiles.h`, `header.h`, with the labels in
+  `include/constants/metatile_labels.h`), and the doll and cushion pictures in
+  `graphics/object_events/pics/dolls/` and `pics/cushions/`, each drawn in the
+  NPC palette `src/data/object_events/object_event_graphics_info.h` names for it.
+  Two of the dolls - Squirtle and Magnemite - are pictures Emerald carries and
+  never sold.
+- **The three FireRed pieces** - the house's two pot plants and its table on its
+  rug - are copied off `frlg-home.png` (above), with the floor they were drawn
+  standing on taken out pixel by pixel, so they can be put down on any floor.
+- **The dolls of the other 138 kinds** are not on this sheet: they are drawn
+  from `pokemon-icons.png` (above), FireRed's own party icons.
+- **pret's terms.** As for `frlg-towns.png`: nothing in the repository makes
+  the extracted graphics anyone's but the rights holders', so this sits on the
+  owner's ruling alone, and **nothing from pret is committed**.
+- **How it was cut.** `scripts/cut-home-furniture.mjs` (with the GBA reader it
+  shares, `scripts/gba.mjs`) is the whole method: each decoration drawn from
+  its own metatiles with the cave floor under it left out by tile index, each
+  doll and cushion from its picture, shelf-packed onto a new 256x176 sheet. It
+  writes `src/game/home/generated/furniturePieces.ts`, which is the only thing
+  that knows where a piece sits on the sheet.
+- **The furniture icons** - `icons/pika-cushion.png` and the twenty others
+  named after a piece a raid can find - are the same pieces at 16x16, written
+  by the same script: a one-tile piece is its own icon, and a bigger one is
+  shrunk by a whole factor, every pixel the colour most of its block is. They
+  are the one exception to "Pixel icons, authored for this repository".
 
 ### `pokemon/{front,back}/<dexId>.png` - the species sprites
 

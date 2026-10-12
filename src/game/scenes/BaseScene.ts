@@ -35,7 +35,13 @@ import { audioManager } from '../audio/AudioManager';
 import { nextBump } from '../audio/worldSounds';
 import { SpentPresses } from '../world/spentPresses';
 import { SaveManager, type RestoredGame } from '../save/SaveManager';
-import { RAID_KEY_LETTERS, yardKeyHintLine, type LearnableKeyId } from '../input/keyBindings';
+import {
+  HOME_KEY_LETTERS,
+  RAID_KEY_LETTERS,
+  houseKeyHintLine,
+  yardKeyHintLine,
+  type LearnableKeyId,
+} from '../input/keyBindings';
 import { WorldLabel, type WorldLabelTone } from '../ui/WorldLabel';
 import { placeCaptions, placeDialog, type Rect } from '../ui/labelPlacement';
 import { advanceLookMs, isLooking } from '../ui/captionReveal';
@@ -112,6 +118,9 @@ import {
 import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
+import { ownedFurniture, type Placement } from '../home/arrangement';
+import { DecorateMode, type DecorateHost } from '../base/decorateMode';
+import { furnitureDepth, furnitureImage, furnitureRect } from '../base/furnitureArt';
 
 /**
  * THE HARBOUR: the base, walked rather than chosen off a list - and the four
@@ -245,6 +254,12 @@ interface BaseControls {
   readonly run: Phaser.Input.Keyboard.Key;
   readonly interact: readonly Phaser.Input.Keyboard.Key[];
   readonly back: Phaser.Input.Keyboard.Key;
+  /** THE BOLTHOLE's keys (`HOME_KEY_LETTERS`): decorating, and what it is done with. */
+  readonly decorate: Phaser.Input.Keyboard.Key;
+  readonly turn: Phaser.Input.Keyboard.Key;
+  readonly boxBack: Phaser.Input.Keyboard.Key;
+  readonly boxNext: Phaser.Input.Keyboard.Key;
+  readonly putAway: Phaser.Input.Keyboard.Key;
 }
 
 /**
@@ -322,6 +337,12 @@ export class BaseScene extends Phaser.Scene {
   } | null = null;
   /** Counts down while a tap towards the partner is turning the player rather than walking them. */
   private turnToPartnerMs: number | null = null;
+  /** The place's tiles, kept so a room can be drawn again where it stands - a piece of furniture moved. */
+  private tilemap: Phaser.Tilemaps.Tilemap | null = null;
+  /** The player's furniture standing in this room (`home/furniture.ts`). */
+  private furnitureImages: Phaser.GameObjects.Image[] = [];
+  /** Decorating THE BOLTHOLE, while it is being decorated (`base/decorateMode.ts`). */
+  private decor: DecorateMode | null = null;
 
   /**
    * The four doors and the four rooms behind them, reachable from outside the
@@ -388,6 +409,9 @@ export class BaseScene extends Phaser.Scene {
     this.partner = null;
     this.penPokemon = null;
     this.turnToPartnerMs = null;
+    this.tilemap = null;
+    this.furnitureImages = [];
+    this.decor = null;
 
     const room = data.room === undefined ? undefined : roomNamed(data.room);
     if (room) {
@@ -447,6 +471,7 @@ export class BaseScene extends Phaser.Scene {
 
     this.drawMap();
     this.drawSprites();
+    this.drawFurniture();
     this.drawOddities();
     this.drawWallMap();
     this.createFigures();
@@ -465,9 +490,12 @@ export class BaseScene extends Phaser.Scene {
     // centres a small room in it, so a resized window re-does both.
     const relayout = (): void => this.layoutForStage();
     this.scale.on(Phaser.Scale.Events.RESIZE, relayout);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
-      this.scale.off(Phaser.Scale.Events.RESIZE, relayout),
-    );
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, relayout);
+      // Decorating listens on the canvas itself, which outlives the scene.
+      this.decor?.release();
+      this.decor = null;
+    });
     this.cameras.main.fadeIn(160, 0, 0, 0);
     this.ready = true;
     if (abandoned) {
@@ -510,6 +538,11 @@ export class BaseScene extends Phaser.Scene {
       return;
     }
 
+    if (this.decor) {
+      this.updateDecorating();
+      return;
+    }
+
     // What is left of this frame for walking, and the game time a step that
     // finished part-way through a frame hands to the step that follows it.
     let frameLeftMs = deltaMs;
@@ -533,6 +566,11 @@ export class BaseScene extends Phaser.Scene {
 
     if (this.isInteractionPressed()) {
       this.tryInteract();
+      return;
+    }
+
+    if (this.keyPresses.justPressed(this.controls.decorate) && this.place.room?.home) {
+      this.startDecorating();
       return;
     }
 
@@ -581,6 +619,7 @@ export class BaseScene extends Phaser.Scene {
   // -- the map ---------------------------------------------------------------
 
   private drawMap(): void {
+    this.tilemap?.destroy();
     const map = this.make.tilemap({
       width: this.place.width,
       height: this.place.height,
@@ -611,6 +650,25 @@ export class BaseScene extends Phaser.Scene {
       ['base-brim', brim, CANOPY_BAND],
     ] as const) {
       this.createTileLayer(map, sheets, name, layer, depth);
+    }
+    this.tilemap = map;
+  }
+
+  /**
+   * The player's furniture, in the player's own house: each piece the way it
+   * is turned, a rug over the floor and everything else sorted in among the
+   * figures (`base/furnitureArt.ts`).
+   */
+  private drawFurniture(): void {
+    this.furnitureImages.forEach((image) => image.destroy());
+    this.furnitureImages = [];
+    const placed = this.place.room?.home?.placed ?? [];
+    for (const piece of placed) {
+      this.furnitureImages.push(
+        furnitureImage(this, piece.definition.facings[piece.facing], piece.x, piece.y).setDepth(
+          furnitureDepth(piece, placed),
+        ),
+      );
     }
   }
 
@@ -1105,7 +1163,7 @@ export class BaseScene extends Phaser.Scene {
         }),
       );
     }
-    for (const thing of built.things) {
+    for (const thing of built.things.filter((each) => !each.quiet)) {
       this.worldLabels.push(
         new WorldLabel(this, {
           subject: tilesRect(thing.tiles),
@@ -1187,9 +1245,11 @@ export class BaseScene extends Phaser.Scene {
     }
     // The cabinet is looked into rather than read off, so it says it can be.
     const unit = faced?.cabinetUnit;
-    return unit !== undefined && this.oddityToStartAt(facing, unit) !== undefined
-      ? '[SPACE] LOOK CLOSER'
-      : '';
+    if (unit !== undefined && this.oddityToStartAt(facing, unit) !== undefined) {
+      return '[SPACE] LOOK CLOSER';
+    }
+    // The player's own house says it can be decorated, until it has been.
+    return this.place.room?.home ? houseKeyHintLine(new Set(this.savedGame.raidProgress.keysLearned ?? [])) : '';
   }
 
   private thingFaced(facing: GridPosition): RoomThing | undefined {
@@ -1278,6 +1338,11 @@ export class BaseScene extends Phaser.Scene {
     if (this.worldLabels.length === 0) {
       return;
     }
+    // Decorating is looking at the room itself: no caption over it.
+    if (this.decor) {
+      this.worldLabels.forEach((label) => label.hide());
+      return;
+    }
     const audience = {
       player: this.currentTile,
       looking: isLooking(this.lookMs, this.controls.look.isDown),
@@ -1314,6 +1379,10 @@ export class BaseScene extends Phaser.Scene {
           ...(room ? [] : [figureRect(DAY_CARE_KEEPER.position)]),
           ...(this.penPokemon ? [figureRect(this.penPokemon.tile)] : []),
           ...(this.partner?.place.out ? [this.partner.rect()] : []),
+          // A piece of furniture is drawn among the figures, over any caption under it.
+          ...(this.place.room?.home?.placed ?? [])
+            .filter((piece) => piece.definition.layer !== 'floor')
+            .map(furnitureRect),
         ],
         canopy: this.canopyInView(bounds),
         player: [figureRect(this.currentTile), figureRect(this.targetTile ?? this.currentTile)],
@@ -1394,6 +1463,11 @@ export class BaseScene extends Phaser.Scene {
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER),
       ],
       back: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC, false),
+      decorate: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.decorate], false),
+      turn: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.turn], false),
+      boxBack: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxBack], false),
+      boxNext: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.boxNext], false),
+      putAway: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[HOME_KEY_LETTERS.putAway], false),
     };
     this.latchDirectionPresses();
     this.keyPresses.watch([
@@ -1401,6 +1475,11 @@ export class BaseScene extends Phaser.Scene {
       ...this.controls.interact,
       this.controls.look,
       this.controls.back,
+      this.controls.decorate,
+      this.controls.turn,
+      this.controls.boxBack,
+      this.controls.boxNext,
+      this.controls.putAway,
     ]);
   }
 
@@ -1631,6 +1710,108 @@ export class BaseScene extends Phaser.Scene {
    * a building rather than *into* it is not left pressing keys at a wall.
    * Everything else answers with what it is.
    */
+  // -- decorating -------------------------------------------------------------
+
+  /**
+   * Picks the house up to decorate it (`base/decorateMode.ts`): the player
+   * stands where they are and a cursor takes over, starting on the tile they
+   * were facing.
+   */
+  private startDecorating(): void {
+    const built = this.place.room;
+    if (!built?.home || this.decor) {
+      return;
+    }
+    this.learnKey('decorate');
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    const faced = nextTileFromDirection(this.currentTile, this.facing);
+    const inRoom = faced.x >= 0 && faced.y >= 0 && faced.x < this.place.width && faced.y < this.place.height;
+    const layout: Placement[] = built.home.house.map(({ id, room, x, y, facing }) => ({ id, room, x, y, facing }));
+    this.decor = new DecorateMode(this.decorateHost(), layout, inRoom ? faced : this.currentTile);
+  }
+
+  private decorateHost(): DecorateHost {
+    const withLayout = (layout: readonly Placement[]): RestoredGame => ({
+      ...this.savedGame,
+      raidProgress: { ...this.savedGame.raidProgress, homeLayout: [...layout] },
+    });
+    return {
+      scene: this,
+      built: () => this.place.room!,
+      standing: () => this.currentTile,
+      owned: () => ownedFurniture(this.savedGame),
+      show: (layout) => this.redrawRoom(withLayout(layout)),
+      keep: (layout) => {
+        // Written as it lands. With nowhere to write it, the house still
+        // stands as arranged for as long as the page is open.
+        this.savedGame = this.saveManager.arrangeHome(layout) ?? withLayout(layout);
+        this.redrawRoom(this.savedGame);
+      },
+      showHint: (text) => this.showHint(text),
+    };
+  }
+
+  /** One frame of decorating: the keys read and handed over, until it is done. */
+  private updateDecorating(): void {
+    const decor = this.decor;
+    if (!decor) {
+      return;
+    }
+    const pressed = (...keys: Phaser.Input.Keyboard.Key[]): boolean =>
+      keys.some((key) => this.keyPresses.justPressed(key));
+    const move = pressed(this.controls.left, this.controls.a)
+      ? { dx: -1, dy: 0 }
+      : pressed(this.controls.right, this.controls.d)
+        ? { dx: 1, dy: 0 }
+        : pressed(this.controls.up, this.controls.w)
+          ? { dx: 0, dy: -1 }
+          : pressed(this.controls.down, this.controls.s)
+            ? { dx: 0, dy: 1 }
+            : undefined;
+    const going = decor.update({
+      move,
+      press: this.isInteractionPressed(),
+      turn: pressed(this.controls.turn),
+      box: pressed(this.controls.boxNext) ? 1 : pressed(this.controls.boxBack) ? -1 : undefined,
+      putAway: pressed(this.controls.putAway),
+      back: pressed(this.controls.back),
+      done: pressed(this.controls.decorate),
+    });
+    if (!going) {
+      decor.destroy();
+      this.decor = null;
+      // A direction still held from moving the cursor is not a step.
+      this.spentPresses.spendHeld(this.directionKeys());
+      this.showHint(this.hintHere());
+    }
+  }
+
+  /**
+   * The room drawn again where it stands, from this game: a piece of furniture
+   * has been picked up or put down. The tiles, the furniture, the collision and
+   * the captions all follow, and a partner left standing inside a piece steps
+   * out of it.
+   */
+  private redrawRoom(game: RestoredGame): void {
+    const current = this.place.room;
+    if (!current) {
+      return;
+    }
+    const built = buildRoom(current.room, game);
+    this.place = { ...this.place, layers: built.layers, collision: built.collision, sources: built.sources, room: built };
+    this.collision = built.collision.map((row) => [...row]);
+    this.drawMap();
+    this.drawFurniture();
+    this.worldLabels.forEach((label) => label.destroy());
+    this.worldLabels = [];
+    this.createRoomCaptions(built);
+    const partnerTile = this.partner?.standingTile();
+    if (this.partner && partnerTile && this.isBlocked(partnerTile)) {
+      this.partner.standAt(arrivalPlace(this.currentTile, this.facing, (tile) => this.partnerCanStand(tile)));
+    }
+  }
+
   private tryInteract(): void {
     const target = nextTileFromDirection(this.currentTile, this.facing);
     // The partner first, even on a room's mat: facing it takes a turn on

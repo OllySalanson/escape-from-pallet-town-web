@@ -79,6 +79,7 @@ import {
   getItemById,
   gridCells,
   isFoundOnly,
+  isFurniture,
   type ItemDefinition,
   type ItemId,
   type PackItemId,
@@ -2261,11 +2262,18 @@ export class HubScene extends Phaser.Scene {
       // One line a supply, as a bag lists them: what it does is said by the
       // help bar when it is pointed at, which is why the row is a control.
       `<button class="px-row has-icon" data-supply="${item.id}" data-help="${escapeAttribute(`${item.displayName}: ${item.description}`)}">${itemIcon(item.id, item.displayName)}<span class="px-row-main"><strong>${item.displayName}</strong></span><span class="px-tag">${itemCountTag(item.id, this.stash.itemCount(item.id))}</span></button>`;
-    const materialRows = this.stashItems.filter((item) => isFoundOnly(item.id)).map(supplyRow).join('');
+    const materialRows = this.stashItems
+      .filter((item) => isFoundOnly(item.id) && !isFurniture(item.id))
+      .map(supplyRow)
+      .join('');
+    const furnitureRows = this.stashItems.filter((item) => isFurniture(item.id)).map(supplyRow).join('');
     const supplies = `${this.stashItems.filter((item) => !isFoundOnly(item.id)).map(supplyRow).join('')}${
       // Found goods are their own list: nothing in it can be packed or used,
       // and Brock and Bill are where all of it goes.
       materialRows ? `<h3 class="px-subheading">Found goods</h3>${materialRows}` : ''
+    }${
+      // And furniture is its own again: it goes nowhere but THE BOLTHOLE.
+      furnitureRows ? `<h3 class="px-subheading">Furniture</h3>${furnitureRows}` : ''
     }`;
     return `<main class="px-body stash-layout">${pixelWindow(
       `<div class="px-list px-scroll" ${pixelColumns(COLUMN_MEASURES.pokemon)}>${this.browseBar(true, this.boxManage())}${rows || `<p class="px-empty">${this.stashSearch.trim() ? 'No Pokémon answers that.' : pokemon.length === 0 ? 'No Pokémon in storage.' : 'This box is empty.'}</p>`}${this.swapPanel()}</div>${details}`,
@@ -2957,7 +2965,11 @@ export class HubScene extends Phaser.Scene {
     const wanted = errandsToLay(this.savedGame.raidProgress, (itemId) => this.stash.itemCount(itemId)).map(
       (errand) => errand.itemId as string,
     );
-    const materialRows = FOUND_ONLY_IDS.filter((itemId) => !isErrandItem(itemId) || wanted.includes(itemId)).map((itemId) =>
+    // Furniture is found-only too, and the one kind no room is kept for: a
+    // trophy comes home in a pack that comes home (`items.ts`, FOUND_ONLY_IDS).
+    const materialRows = FOUND_ONLY_IDS.filter(
+      (itemId) => !isFurniture(itemId) && (!isErrandItem(itemId) || wanted.includes(itemId)),
+    ).map((itemId) =>
       secureRow(
         itemId,
         `${this.itemName(itemId)}: room kept for what you find. It is never packed, so this is squares held open for it.`,
