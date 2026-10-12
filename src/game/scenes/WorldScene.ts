@@ -2537,6 +2537,12 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
       .play(key);
     this.npcSprites.set(id, sprite);
     this.mapObjects.push(sprite);
+    // Fetched as it is stood up, so the cry it gives when spoken to is its own
+    // rather than the stand-in tone a sample still on its way sounds.
+    const dexId = getSpeciesById(species)?.dexId;
+    if (dexId !== undefined) {
+      void audioManager.loadCries([dexId]);
+    }
   }
 
   /**
@@ -3683,6 +3689,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
 
     if (entity?.kind === 'npc') {
       this.faceFigure(entity.id, OPPOSITE_DIRECTION[this.facing]);
+    }
+
+    // A Pokemon spoken to cries as its line goes up, as one stood in FireRed's
+    // world does - fought or not, it is the same Pokemon saying the same thing.
+    const cryOf = entity?.pokemon ? getSpeciesById(entity.pokemon)?.dexId : undefined;
+    if (cryOf !== undefined) {
+      audioManager.play('cry', { species: cryOf });
     }
 
     if (entity?.berry) {
