@@ -65,7 +65,7 @@ export const MACHINES: Readonly<Record<string, MachineDefinition>> = {
   // found: he pays his crate with it (`hub/errands.ts`).
   'tm39-rock-tomb': machine('TM39', ROCK_TOMB),
   'tm40-aerial-ace': machine('TM40', AERIAL_ACE),
-  // The three HMs. An HM is never used up, which is what makes it safe for one
+  // The four HMs. An HM is never used up, which is what makes it safe for one
   // to be a permanent capability rather than a consumable: the two below are
   // doors as well as moves (`world/fieldMoves.ts`), and a door opened by a disc
   // that could run out would be a door that could be lost.
@@ -74,7 +74,7 @@ export const MACHINES: Readonly<Record<string, MachineDefinition>> = {
   // The map maker's boulders (`world/boulders.ts`): not a door, which opens for
   // good, but a wall that moves for as long as a raid lasts.
   'hm04-strength': machine('HM04', STRENGTH, true),
-  // The widest of the three, which is what an HM is for.
+  // The widest of the four, which is what an HM is for.
   'hm06-rock-smash': machine('HM06', ROCK_SMASH, true),
 };
 
