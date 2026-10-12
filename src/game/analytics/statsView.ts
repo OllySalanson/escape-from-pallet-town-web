@@ -185,7 +185,7 @@ function loadedBody(stats: PlayStats): string {
 }
 
 function messageBody(words: string, actions: string, warning?: string): string {
-  return `<main class="px-body stats-layout">${pixelWindow(
+  return `<main class="px-body stats-message-layout">${pixelWindow(
     `<div class="px-list">${words ? `<p class="px-wrap stats-message">${words}</p>` : ''}${
       warning ? `<p class="px-warning px-wrap stats-message">${escapeHtml(warning)}</p>` : ''
     }<div class="stats-actions">${actions}</div></div>`,

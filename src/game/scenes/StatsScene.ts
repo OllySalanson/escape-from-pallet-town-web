@@ -76,7 +76,7 @@ export class StatsScene extends Phaser.Scene {
       return;
     }
     overlay.root.innerHTML = statsScreen(this.state, this.status);
-    overlay.focus('[data-sign-in]', '[data-refresh]', '.stats-line', '[data-sign-out]', '[data-close]');
+    overlay.focus('[data-sign-in]', '.stats-line', '[data-refresh]', '[data-sign-out]', '[data-close]');
   }
 
   private handleKey(event: KeyboardEvent): void {

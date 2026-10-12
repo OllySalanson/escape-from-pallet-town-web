@@ -3799,9 +3799,16 @@ button {
   align-content: stretch;
   height: 100%;
 }
+:where(.pixel-ui) .stats-message-layout {
+  justify-content: center;
+  grid-template-columns: minmax(0, calc(var(--u) * 320));
+}
 :where(.pixel-ui) .stats-sheet {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 220), 1fr));
+  /* Each row as tall as its windows: a window clips, so an auto row in a sheet
+     shorter than its content squeezed them to nothing and they overlapped. */
+  grid-auto-rows: max-content;
   gap: calc(var(--u) * 4);
   align-content: start;
   align-items: start;
