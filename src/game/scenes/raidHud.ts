@@ -45,6 +45,10 @@ export function raidClockView(
   isEnraged: boolean,
   enrageGraceRemainingMs: number,
   playtest = false,
+  // A night raid (`world/nightRaids.ts`) says so on the clock and nowhere
+  // else: the world is drawn at one brightness, and the one word is the whole
+  // of the marker, on the chip a player already reads every few seconds.
+  night = false,
 ): RaidClockView {
   // An explorer run's clock is eight hours long, which is a number nobody
   // wants counted down in the corner of a map they are looking at. The chip
@@ -63,7 +67,7 @@ export function raidClockView(
     };
   }
 
-  const label = `RAID ${formatRaidClock(remainingMs)}`;
+  const label = `${night ? 'NIGHT RAID' : 'RAID'} ${formatRaidClock(remainingMs)}`;
   if (remainingMs <= RAID_CLOCK_URGENT_MS) {
     return { label, tone: 'urgent', pulses: true };
   }

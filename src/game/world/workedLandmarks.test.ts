@@ -225,6 +225,7 @@ describe('what the rest of the game reads off it', () => {
         insertionIds: [insertionId],
         partyLevels: [],
         contract: undefined,
+        night: false,
       };
       const atBase = buildDropInBriefing(insertionId, context).exits.find(
         (exit) => exit.label === poi.unlockedExtractionLabel,

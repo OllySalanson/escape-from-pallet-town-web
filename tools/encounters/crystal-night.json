@@ -1,0 +1,938 @@
+{
+ "ruling": "Generation II Crystal's day and night grass slots, for every patch of grass under the sky. FireRed has no clock; Crystal is the game night came from, and this game's night raids read their swaps from these tables.",
+ "source": {
+  "pokecrystal": {
+   "urls": [
+    "https://raw.githubusercontent.com/pret/pokecrystal/3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6/data/wild/johto_grass.asm",
+    "https://raw.githubusercontent.com/pret/pokecrystal/3bc8daa4173e96a7f4011dad3922eb6fa5dad5c6/data/wild/kanto_grass.asm"
+   ],
+   "note": "the Crystal disassembly - the tables the cartridge is built from"
+  }
+ },
+ "places": [
+  {
+   "place": "ILEX_FOREST",
+   "day": [
+    "caterpie",
+    "weedle",
+    "metapod",
+    "kakuna",
+    "pidgey",
+    "paras",
+    "paras"
+   ],
+   "night": [
+    "oddish",
+    "venonat",
+    "oddish",
+    "psyduck",
+    "hoothoot",
+    "paras",
+    "paras"
+   ]
+  },
+  {
+   "place": "NATIONAL_PARK",
+   "day": [
+    "nidoran-f",
+    "nidoran-m",
+    "sunkern",
+    "pidgey",
+    "caterpie",
+    "weedle",
+    "weedle"
+   ],
+   "night": [
+    "psyduck",
+    "hoothoot",
+    "spinarak",
+    "hoothoot",
+    "venonat",
+    "venonat",
+    "venonat"
+   ]
+  },
+  {
+   "place": "ROUTE_1",
+   "day": [
+    "pidgey",
+    "rattata",
+    "sentret",
+    "pidgey",
+    "furret",
+    "pidgey",
+    "pidgey"
+   ],
+   "night": [
+    "hoothoot",
+    "rattata",
+    "rattata",
+    "hoothoot",
+    "raticate",
+    "hoothoot",
+    "hoothoot"
+   ]
+  },
+  {
+   "place": "ROUTE_10_NORTH",
+   "day": [
+    "spearow",
+    "voltorb",
+    "raticate",
+    "fearow",
+    "marowak",
+    "electabuzz",
+    "electabuzz"
+   ],
+   "night": [
+    "venonat",
+    "voltorb",
+    "raticate",
+    "venomoth",
+    "zubat",
+    "electabuzz",
+    "electabuzz"
+   ]
+  },
+  {
+   "place": "ROUTE_11",
+   "day": [
+    "hoppip",
+    "raticate",
+    "magnemite",
+    "pidgeotto",
+    "rattata",
+    "hoppip",
+    "hoppip"
+   ],
+   "night": [
+    "drowzee",
+    "meowth",
+    "magnemite",
+    "noctowl",
+    "raticate",
+    "hypno",
+    "hypno"
+   ]
+  },
+  {
+   "place": "ROUTE_13",
+   "day": [
+    "nidorino",
+    "nidorina",
+    "pidgeotto",
+    "hoppip",
+    "hoppip",
+    "hoppip",
+    "chansey"
+   ],
+   "night": [
+    "venonat",
+    "quagsire",
+    "noctowl",
+    "venomoth",
+    "quagsire",
+    "quagsire",
+    "chansey"
+   ]
+  },
+  {
+   "place": "ROUTE_14",
+   "day": [
+    "nidorino",
+    "nidorina",
+    "pidgeotto",
+    "hoppip",
+    "skiploom",
+    "skiploom",
+    "chansey"
+   ],
+   "night": [
+    "venonat",
+    "quagsire",
+    "noctowl",
+    "venomoth",
+    "quagsire",
+    "quagsire",
+    "chansey"
+   ]
+  },
+  {
+   "place": "ROUTE_15",
+   "day": [
+    "nidorino",
+    "nidorina",
+    "pidgeotto",
+    "hoppip",
+    "hoppip",
+    "hoppip",
+    "chansey"
+   ],
+   "night": [
+    "venonat",
+    "quagsire",
+    "noctowl",
+    "venomoth",
+    "quagsire",
+    "quagsire",
+    "chansey"
+   ]
+  },
+  {
+   "place": "ROUTE_16",
+   "day": [
+    "grimer",
+    "fearow",
+    "grimer",
+    "fearow",
+    "slugma",
+    "muk",
+    "muk"
+   ],
+   "night": [
+    "grimer",
+    "grimer",
+    "grimer",
+    "murkrow",
+    "murkrow",
+    "muk",
+    "muk"
+   ]
+  },
+  {
+   "place": "ROUTE_17",
+   "day": [
+    "fearow",
+    "slugma",
+    "grimer",
+    "fearow",
+    "slugma",
+    "muk",
+    "muk"
+   ],
+   "night": [
+    "grimer",
+    "grimer",
+    "grimer",
+    "grimer",
+    "grimer",
+    "muk",
+    "muk"
+   ]
+  },
+  {
+   "place": "ROUTE_18",
+   "day": [
+    "grimer",
+    "fearow",
+    "grimer",
+    "fearow",
+    "slugma",
+    "muk",
+    "muk"
+   ],
+   "night": [
+    "grimer",
+    "grimer",
+    "grimer",
+    "grimer",
+    "grimer",
+    "muk",
+    "muk"
+   ]
+  },
+  {
+   "place": "ROUTE_2",
+   "day": [
+    "caterpie",
+    "pidgey",
+    "pidgey",
+    "butterfree",
+    "pidgeotto",
+    "pikachu",
+    "pikachu"
+   ],
+   "night": [
+    "hoothoot",
+    "spinarak",
+    "hoothoot",
+    "noctowl",
+    "ariados",
+    "noctowl",
+    "noctowl"
+   ]
+  },
+  {
+   "place": "ROUTE_21",
+   "day": [
+    "tangela",
+    "rattata",
+    "tangela",
+    "raticate",
+    "mr-mime",
+    "mr-mime",
+    "mr-mime"
+   ],
+   "night": [
+    "tangela",
+    "rattata",
+    "tangela",
+    "raticate",
+    "tangela",
+    "tangela",
+    "tangela"
+   ]
+  },
+  {
+   "place": "ROUTE_22",
+   "day": [
+    "rattata",
+    "spearow",
+    "spearow",
+    "doduo",
+    "ponyta",
+    "fearow",
+    "fearow"
+   ],
+   "night": [
+    "rattata",
+    "poliwag",
+    "rattata",
+    "poliwag",
+    "rattata",
+    "rattata",
+    "rattata"
+   ]
+  },
+  {
+   "place": "ROUTE_24",
+   "day": [
+    "caterpie",
+    "sunkern",
+    "caterpie",
+    "abra",
+    "bellsprout",
+    "butterfree",
+    "butterfree"
+   ],
+   "night": [
+    "venonat",
+    "oddish",
+    "oddish",
+    "abra",
+    "bellsprout",
+    "gloom",
+    "gloom"
+   ]
+  },
+  {
+   "place": "ROUTE_25",
+   "day": [
+    "caterpie",
+    "pidgey",
+    "pidgeotto",
+    "metapod",
+    "bellsprout",
+    "butterfree",
+    "butterfree"
+   ],
+   "night": [
+    "oddish",
+    "hoothoot",
+    "venonat",
+    "noctowl",
+    "bellsprout",
+    "noctowl",
+    "noctowl"
+   ]
+  },
+  {
+   "place": "ROUTE_26",
+   "day": [
+    "doduo",
+    "sandslash",
+    "ponyta",
+    "raticate",
+    "doduo",
+    "arbok",
+    "arbok"
+   ],
+   "night": [
+    "noctowl",
+    "raticate",
+    "noctowl",
+    "raticate",
+    "quagsire",
+    "quagsire",
+    "quagsire"
+   ]
+  },
+  {
+   "place": "ROUTE_27",
+   "day": [
+    "doduo",
+    "arbok",
+    "raticate",
+    "doduo",
+    "ponyta",
+    "dodrio",
+    "dodrio"
+   ],
+   "night": [
+    "quagsire",
+    "noctowl",
+    "raticate",
+    "quagsire",
+    "noctowl",
+    "noctowl",
+    "noctowl"
+   ]
+  },
+  {
+   "place": "ROUTE_28",
+   "day": [
+    "tangela",
+    "ponyta",
+    "rapidash",
+    "arbok",
+    "doduo",
+    "dodrio",
+    "dodrio"
+   ],
+   "night": [
+    "tangela",
+    "poliwhirl",
+    "golbat",
+    "poliwhirl",
+    "golbat",
+    "golbat",
+    "golbat"
+   ]
+  },
+  {
+   "place": "ROUTE_29",
+   "day": [
+    "pidgey",
+    "sentret",
+    "pidgey",
+    "sentret",
+    "rattata",
+    "hoppip",
+    "hoppip"
+   ],
+   "night": [
+    "hoothoot",
+    "rattata",
+    "hoothoot",
+    "rattata",
+    "rattata",
+    "hoothoot",
+    "hoothoot"
+   ]
+  },
+  {
+   "place": "ROUTE_3",
+   "day": [
+    "spearow",
+    "rattata",
+    "ekans",
+    "raticate",
+    "arbok",
+    "sandshrew",
+    "sandshrew"
+   ],
+   "night": [
+    "rattata",
+    "rattata",
+    "raticate",
+    "zubat",
+    "rattata",
+    "clefairy",
+    "clefairy"
+   ]
+  },
+  {
+   "place": "ROUTE_30",
+   "day": [
+    "pidgey",
+    "caterpie",
+    "caterpie",
+    "pidgey",
+    "weedle",
+    "hoppip",
+    "hoppip"
+   ],
+   "night": [
+    "spinarak",
+    "hoothoot",
+    "poliwag",
+    "hoothoot",
+    "zubat",
+    "hoothoot",
+    "hoothoot"
+   ]
+  },
+  {
+   "place": "ROUTE_31",
+   "day": [
+    "pidgey",
+    "caterpie",
+    "bellsprout",
+    "pidgey",
+    "weedle",
+    "hoppip",
+    "hoppip"
+   ],
+   "night": [
+    "spinarak",
+    "poliwag",
+    "bellsprout",
+    "hoothoot",
+    "zubat",
+    "gastly",
+    "gastly"
+   ]
+  },
+  {
+   "place": "ROUTE_32",
+   "day": [
+    "ekans",
+    "rattata",
+    "bellsprout",
+    "hoppip",
+    "pidgey",
+    "hoppip",
+    "hoppip"
+   ],
+   "night": [
+    "wooper",
+    "rattata",
+    "bellsprout",
+    "zubat",
+    "hoothoot",
+    "gastly",
+    "gastly"
+   ]
+  },
+  {
+   "place": "ROUTE_33",
+   "day": [
+    "rattata",
+    "spearow",
+    "geodude",
+    "hoppip",
+    "ekans",
+    "hoppip",
+    "hoppip"
+   ],
+   "night": [
+    "rattata",
+    "zubat",
+    "geodude",
+    "zubat",
+    "rattata",
+    "rattata",
+    "rattata"
+   ]
+  },
+  {
+   "place": "ROUTE_34",
+   "day": [
+    "snubbull",
+    "rattata",
+    "pidgey",
+    "abra",
+    "jigglypuff",
+    "ditto",
+    "ditto"
+   ],
+   "night": [
+    "drowzee",
+    "rattata",
+    "hoothoot",
+    "abra",
+    "jigglypuff",
+    "ditto",
+    "ditto"
+   ]
+  },
+  {
+   "place": "ROUTE_35",
+   "day": [
+    "snubbull",
+    "pidgey",
+    "growlithe",
+    "abra",
+    "jigglypuff",
+    "ditto",
+    "yanma"
+   ],
+   "night": [
+    "drowzee",
+    "hoothoot",
+    "psyduck",
+    "abra",
+    "jigglypuff",
+    "ditto",
+    "yanma"
+   ]
+  },
+  {
+   "place": "ROUTE_36",
+   "day": [
+    "pidgey",
+    "pidgey",
+    "bellsprout",
+    "growlithe",
+    "pidgey",
+    "pidgey",
+    "pidgey"
+   ],
+   "night": [
+    "spinarak",
+    "hoothoot",
+    "bellsprout",
+    "hoothoot",
+    "hoothoot",
+    "gastly",
+    "gastly"
+   ]
+  },
+  {
+   "place": "ROUTE_37",
+   "day": [
+    "pidgey",
+    "growlithe",
+    "pidgey",
+    "growlithe",
+    "pidgeotto",
+    "pidgey",
+    "pidgey"
+   ],
+   "night": [
+    "spinarak",
+    "stantler",
+    "hoothoot",
+    "stantler",
+    "noctowl",
+    "ariados",
+    "ariados"
+   ]
+  },
+  {
+   "place": "ROUTE_38",
+   "day": [
+    "rattata",
+    "raticate",
+    "magnemite",
+    "pidgeotto",
+    "tauros",
+    "miltank",
+    "miltank"
+   ],
+   "night": [
+    "meowth",
+    "raticate",
+    "magnemite",
+    "noctowl",
+    "meowth",
+    "meowth",
+    "meowth"
+   ]
+  },
+  {
+   "place": "ROUTE_39",
+   "day": [
+    "rattata",
+    "raticate",
+    "magnemite",
+    "pidgeotto",
+    "miltank",
+    "tauros",
+    "tauros"
+   ],
+   "night": [
+    "meowth",
+    "raticate",
+    "magnemite",
+    "noctowl",
+    "meowth",
+    "meowth",
+    "meowth"
+   ]
+  },
+  {
+   "place": "ROUTE_4",
+   "day": [
+    "spearow",
+    "rattata",
+    "ekans",
+    "raticate",
+    "arbok",
+    "sandshrew",
+    "sandshrew"
+   ],
+   "night": [
+    "rattata",
+    "rattata",
+    "raticate",
+    "zubat",
+    "rattata",
+    "clefairy",
+    "clefairy"
+   ]
+  },
+  {
+   "place": "ROUTE_42",
+   "day": [
+    "ekans",
+    "spearow",
+    "rattata",
+    "raticate",
+    "arbok",
+    "fearow",
+    "fearow"
+   ],
+   "night": [
+    "rattata",
+    "zubat",
+    "raticate",
+    "golbat",
+    "marill",
+    "golbat",
+    "golbat"
+   ]
+  },
+  {
+   "place": "ROUTE_43",
+   "day": [
+    "sentret",
+    "pidgeotto",
+    "farfetchd",
+    "furret",
+    "raticate",
+    "furret",
+    "furret"
+   ],
+   "night": [
+    "venonat",
+    "noctowl",
+    "raticate",
+    "venonat",
+    "raticate",
+    "venomoth",
+    "venomoth"
+   ]
+  },
+  {
+   "place": "ROUTE_44",
+   "day": [
+    "tangela",
+    "lickitung",
+    "bellsprout",
+    "weepinbell",
+    "lickitung",
+    "lickitung",
+    "lickitung"
+   ],
+   "night": [
+    "tangela",
+    "poliwag",
+    "bellsprout",
+    "weepinbell",
+    "poliwhirl",
+    "poliwhirl",
+    "poliwhirl"
+   ]
+  },
+  {
+   "place": "ROUTE_45",
+   "day": [
+    "geodude",
+    "graveler",
+    "gligar",
+    "donphan",
+    "donphan",
+    "skarmory",
+    "skarmory"
+   ],
+   "night": [
+    "geodude",
+    "graveler",
+    "gligar",
+    "graveler",
+    "graveler",
+    "graveler",
+    "graveler"
+   ]
+  },
+  {
+   "place": "ROUTE_46",
+   "day": [
+    "geodude",
+    "spearow",
+    "geodude",
+    "rattata",
+    "rattata",
+    "rattata",
+    "rattata"
+   ],
+   "night": [
+    "geodude",
+    "rattata",
+    "geodude",
+    "rattata",
+    "rattata",
+    "rattata",
+    "rattata"
+   ]
+  },
+  {
+   "place": "ROUTE_5",
+   "day": [
+    "pidgey",
+    "snubbull",
+    "pidgeotto",
+    "abra",
+    "jigglypuff",
+    "abra",
+    "abra"
+   ],
+   "night": [
+    "hoothoot",
+    "meowth",
+    "noctowl",
+    "abra",
+    "jigglypuff",
+    "abra",
+    "abra"
+   ]
+  },
+  {
+   "place": "ROUTE_6",
+   "day": [
+    "rattata",
+    "snubbull",
+    "magnemite",
+    "raticate",
+    "jigglypuff",
+    "granbull",
+    "granbull"
+   ],
+   "night": [
+    "meowth",
+    "drowzee",
+    "magnemite",
+    "psyduck",
+    "jigglypuff",
+    "raticate",
+    "raticate"
+   ]
+  },
+  {
+   "place": "ROUTE_7",
+   "day": [
+    "rattata",
+    "spearow",
+    "snubbull",
+    "raticate",
+    "jigglypuff",
+    "abra",
+    "abra"
+   ],
+   "night": [
+    "meowth",
+    "murkrow",
+    "houndour",
+    "persian",
+    "jigglypuff",
+    "abra",
+    "abra"
+   ]
+  },
+  {
+   "place": "ROUTE_8",
+   "day": [
+    "snubbull",
+    "pidgeotto",
+    "abra",
+    "growlithe",
+    "jigglypuff",
+    "kadabra",
+    "kadabra"
+   ],
+   "night": [
+    "meowth",
+    "noctowl",
+    "abra",
+    "haunter",
+    "jigglypuff",
+    "kadabra",
+    "kadabra"
+   ]
+  },
+  {
+   "place": "ROUTE_9",
+   "day": [
+    "rattata",
+    "spearow",
+    "raticate",
+    "fearow",
+    "fearow",
+    "marowak",
+    "marowak"
+   ],
+   "night": [
+    "rattata",
+    "venonat",
+    "raticate",
+    "venomoth",
+    "zubat",
+    "raticate",
+    "raticate"
+   ]
+  },
+  {
+   "place": "RUINS_OF_ALPH_OUTSIDE",
+   "day": [
+    "natu",
+    "natu",
+    "natu",
+    "natu",
+    "smeargle",
+    "smeargle",
+    "smeargle"
+   ],
+   "night": [
+    "natu",
+    "natu",
+    "natu",
+    "natu",
+    "wooper",
+    "quagsire",
+    "quagsire"
+   ]
+  },
+  {
+   "place": "SILVER_CAVE_OUTSIDE",
+   "day": [
+    "tangela",
+    "ponyta",
+    "arbok",
+    "rapidash",
+    "doduo",
+    "dodrio",
+    "dodrio"
+   ],
+   "night": [
+    "tangela",
+    "poliwhirl",
+    "golbat",
+    "poliwhirl",
+    "golbat",
+    "golbat",
+    "golbat"
+   ]
+  }
+ ]
+}

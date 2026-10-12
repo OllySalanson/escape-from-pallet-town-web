@@ -3059,7 +3059,13 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
         ? [
             {
               label: 'Raid clock',
-              value: raidClockView(snapshot.remainingMs, manager.isEnraged, snapshot.enrageGraceRemainingMs, isPlaytestRun()).label,
+              value: raidClockView(
+                snapshot.remainingMs,
+                manager.isEnraged,
+                snapshot.enrageGraceRemainingMs,
+                isPlaytestRun(),
+                this.runSession?.plan?.night,
+              ).label,
             },
           ]
         : []),
@@ -3196,6 +3202,7 @@ export class WorldScene extends Phaser.Scene implements PausesForWindow {
           manager.isEnraged,
           snapshot.enrageGraceRemainingMs,
           isPlaytestRun(),
+          this.runSession?.plan?.night,
         ),
         objectiveLines: objectiveChipLines(navigationCue, this.objectiveDetailMs > 0, isPlaytestRun(), this.keysLearned),
         place: placePlateLine(this.placeName, this.placePlateMs),

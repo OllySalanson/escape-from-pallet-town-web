@@ -3,6 +3,7 @@ import type { GridPosition } from '../movement/gridMovement';
 import type { WorldMapDefinition, WorldMapId } from '../worldMap';
 import { MAP_DISTRICTS, districtAt } from './districts';
 import { interiorFloorRolls } from './interiors';
+import { districtTableFor } from './nightRaids';
 import { placedAreaAt } from './mapAreas';
 import { playerMap } from './playerMaps';
 
@@ -18,12 +19,17 @@ import { playerMap } from './playerMaps';
  * one. Never another file map's - a raid varies these in order on one stream,
  * so a shipped raid rolls as it always did however many maps are added.
  */
-export function districtEncounterTables(raidMapId?: WorldMapId): Readonly<Record<string, WildEncounterTable>> {
+export function districtEncounterTables(
+  raidMapId?: WorldMapId,
+  // A night raid's tables (`nightRaids.ts`): the same districts in the same
+  // order, each holding what its grass holds after dark.
+  night = false,
+): Readonly<Record<string, WildEncounterTable>> {
   const own = raidMapId === undefined ? [] : (playerMap(raidMapId)?.districts ?? []);
   return Object.fromEntries(
     [...MAP_DISTRICTS, ...own]
       .filter((district) => district.encounters !== undefined)
-      .map((district) => [district.id, district.encounters as WildEncounterTable]),
+      .map((district) => [district.id, districtTableFor(district, night) as WildEncounterTable]),
   );
 }
 

@@ -36,6 +36,7 @@ function contextFor(
     insertionIds: [insertionId],
     partyLevels: [],
     contract: undefined,
+    night: false,
     ...over,
     // The map has to answer to the gate state, whatever else was overridden.
     ...(over.map ? { map: over.map } : {}),
@@ -253,6 +254,30 @@ describe('what the drop-in screen says about a place', () => {
     expect(clearing.species.length).toBeGreaterThan(0);
     // And nowhere else has given itself away.
     expect(seen.wildlife.filter((place) => place.known)).toHaveLength(1);
+  });
+
+  it('names what is out at night when a raid leaving now would be a night raid', () => {
+    const wood = districtsForMap('pallet-town').find((district) => district.id === 'pallet-high-wood')!;
+    const living = (night: boolean) => {
+      const briefing = buildDropInBriefing(
+        'town-square',
+        contextFor('town-square', { surveyed: walked('town-square', wood.id), night }),
+      );
+      return {
+        briefing,
+        names: briefing.wildlife.find((place) => place.place === wood.name)!.species.map((entry) => entry.name),
+      };
+    };
+    const day = living(false);
+    const night = living(true);
+
+    expect(day.briefing.night).toBe(false);
+    expect(night.briefing.night).toBe(true);
+    expect(day.names).toContain('Caterpie');
+    expect(night.names).not.toContain('Caterpie');
+    expect(night.names).toContain('Oddish');
+    // Only the species: a slot keeps its levels, so the place keeps its grade.
+    expect(night.briefing.grade).toEqual(day.briefing.grade);
   });
 
   it('counts the raids the record holds, and says nothing of a place never visited', () => {

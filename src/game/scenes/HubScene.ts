@@ -142,6 +142,7 @@ import { iconMarkup, itemIcon, objectiveIcon } from '../ui/icons';
 import { hunterThreatFor, hunterThreatLine, type HunterThreat } from '../world/hunterThreat';
 import { rivalForRaid } from '../world/hunters';
 import { openedDoors } from '../world/gates';
+import { isNightRaid } from '../world/nightRaids';
 import type { GridPosition } from '../movement/gridMovement';
 import { getWorldMap, type WorldMapId, worldMapMaker, worldMapName } from '../worldMap';
 import { MINIMAP_PALETTE, type Minimap } from '../world/minimap';
@@ -1133,6 +1134,9 @@ export class HubScene extends Phaser.Scene {
       // And the doors a field move has already opened, which are as much a part
       // of this raid's collision as a beaten boss's are.
       this.savedGame.raidProgress.openedGates ?? [],
+      // Night by the player's own clock, read as the raid leaves - the same
+      // reading the drop-in screen's wildlife was just shown in.
+      isNightRaid(new Date()),
     );
     const runSession = createActiveRunSession(
       activeRunManager,
@@ -2369,6 +2373,7 @@ export class HubScene extends Phaser.Scene {
       insertionIds: this.unlockedInsertions.map(([id]) => id),
       partyLevels: this.flow.party.map((stored) => stored.pokemon.level),
       contract: this.contractFor(insertionId),
+      night: isNightRaid(new Date()),
     };
   }
 
@@ -2525,6 +2530,7 @@ export class HubScene extends Phaser.Scene {
           raidRecord: progress.raidRecord,
           partyLevels: [],
           contract: undefined,
+          night: isNightRaid(new Date()),
         })
       : undefined;
     const told = (body: string, help: string, className = ''): string =>
@@ -2710,14 +2716,16 @@ export class HubScene extends Phaser.Scene {
     const unseen = briefing.wildlife.length - seen.length;
     const wildlife = briefing.wildlife.length === 0
       ? ''
-      : `<h3 class="px-subheading">Wildlife</h3>${seen
+      : `<h3 class="px-subheading">${briefing.night ? 'Wildlife by night' : 'Wildlife'}</h3>${seen
           .map((place) => {
             const living = place.species
               .map((entry) => `${entry.name} ${entry.min}-${entry.max}`)
               .join(' · ');
             return told(
               `<span class="px-row-main"><strong>${place.place}</strong><small class="px-wrap">${living}</small></span>`,
-              `${place.place}: ${living}. Rolled for on every step through that place's tall grass.`,
+              `${place.place}: ${living}. Rolled for on every step through that place's tall grass${
+                briefing.night ? ', and it is night: some of it only comes out after dark' : ''
+              }.`,
               ' px-tall',
             );
           })

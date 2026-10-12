@@ -11,6 +11,7 @@ import { MAP_DISTRICTS, districtAt, districtsForMap } from './districts';
 import { WORLD_INTERIORS } from './interiors';
 import { encounterTableAt } from './localEncounters';
 import { measureTable } from './encounterMeasure';
+import { districtTableFor } from './nightRaids';
 
 const MAPS = Object.values(WORLD_MAPS);
 
@@ -28,13 +29,22 @@ const grassTiles = (mapId: WorldMapId) => {
   return tiles;
 };
 
-const tablesOf = (mapId: WorldMapId): WildEncounterTable[] => [
+const tablesOf = (mapId: WorldMapId, night = false): WildEncounterTable[] => [
   ...new Set(
     districtsForMap(mapId)
       .filter((district) => district.encounters)
-      .map((district) => district.encounters as WildEncounterTable),
+      .map((district) => districtTableFor(district, night) as WildEncounterTable),
   ),
 ];
+
+/**
+ * A raid is a day raid or a night raid by the player's clock (`nightRaids.ts`),
+ * and every rule a place's wildlife is held to holds at both hours.
+ */
+const HOURS = [
+  { night: false, hour: 'by day' },
+  { night: true, hour: 'by night' },
+] as const;
 
 describe('wildlife authored per place', () => {
   it('gives every district that holds tall grass a table of its own', () => {
@@ -67,9 +77,9 @@ describe('wildlife authored per place', () => {
     }
   });
 
-  it('names only species the game has, at sane weights and levels', () => {
+  it.each(HOURS)('names only species the game has, at sane weights and levels, $hour', ({ night }) => {
     for (const district of MAP_DISTRICTS.filter((entry) => entry.encounters)) {
-      const table = district.encounters as WildEncounterTable;
+      const table = districtTableFor(district, night) as WildEncounterTable;
       expect(table.stepEncounterRate).toBeGreaterThan(0);
       expect(table.entries.length).toBeGreaterThan(1);
       for (const entry of table.entries) {
@@ -88,9 +98,9 @@ describe('wildlife authored per place', () => {
    * Metapod and Kakuna know Harden and nothing else in FireRed, which is a free
    * catch rather than a stalemate.
    */
-  it('never rolls a species with no move to make', () => {
+  it.each(HOURS)('never rolls a species with no move to make, $hour', ({ night }) => {
     for (const district of MAP_DISTRICTS.filter((entry) => entry.encounters)) {
-      for (const entry of (district.encounters as WildEncounterTable).entries) {
+      for (const entry of (districtTableFor(district, night) as WildEncounterTable).entries) {
         const species = getSpeciesById(entry.speciesId)!;
         for (const level of [entry.minLevel, entry.maxLevel]) {
           expect(
@@ -111,9 +121,9 @@ describe('wildlife authored per place', () => {
     expect(encounterTableAt('floodplain-relay', { x: 999, y: 999 }, fallback)).toBe(fallback);
   });
 
-  it('is not the same wildlife from one place to the next', () => {
+  it.each(HOURS)('is not the same wildlife from one place to the next, $hour', ({ night }) => {
     for (const map of MAPS) {
-      const mixes = tablesOf(map.id).map((table) =>
+      const mixes = tablesOf(map.id, night).map((table) =>
         [...new Set(table.entries.map((entry) => entry.speciesId))].sort().join('/'),
       );
       expect(new Set(mixes).size, `${map.id} offers one mix everywhere`).toBeGreaterThan(1);
@@ -140,14 +150,14 @@ describe('wildlife authored per place', () => {
    * per-place guarantee would put both in every place; it is held per map, and
    * gets stricter as the rest of the 151 arrive.
    */
-  it('gives each level-7 signature move a target somewhere on every map', () => {
+  it.each(HOURS)('gives each level-7 signature move a target somewhere on every map, $hour', ({ night }) => {
     const signatures: [typeof BULBASAUR, PokemonType][] = [
       [BULBASAUR, PokemonType.Grass],
       [CHARMANDER, PokemonType.Fire],
       [SQUIRTLE, PokemonType.Water],
     ];
     for (const map of MAPS) {
-      const wild = tablesOf(map.id).flatMap((table) =>
+      const wild = tablesOf(map.id, night).flatMap((table) =>
         table.entries.map((entry) => getSpeciesById(entry.speciesId)!),
       );
       for (const [starter, type] of signatures) {
@@ -176,18 +186,24 @@ describe('wildlife authored per place', () => {
     const partnerLevel = (mapId: WorldMapId): number => (mapId === 'viridian-forest' ? 8 : 5);
     const FLOOR: Record<string, number> = { 'viridian-forest': 0.12 };
 
-    it('keeps every place beatable by every starter, and the starting maps easy', () => {
+    // A night table that holds what the day one does is the day's fight, so
+    // it is measured once, by day.
+    it.each(HOURS)('keeps every place beatable by every starter, and the starting maps easy, $hour', ({ night }) => {
       for (const map of MAPS) {
         for (const district of districtsForMap(map.id).filter((entry) => entry.encounters)) {
+          const table = districtTableFor(district, night)!;
+          if (night && table.entries.every((entry, slot) => entry.speciesId === district.encounters!.entries[slot].speciesId)) {
+            continue;
+          }
           for (const starter of ['bulbasaur', 'charmander', 'squirtle']) {
-            const measure = measureTable(district.encounters!, starter, partnerLevel(map.id), 60);
+            const measure = measureTable(table, starter, partnerLevel(map.id), 60);
             expect(
               measure.winRate,
-              `${starter} at ${district.name}: ${(measure.winRate * 100).toFixed(0)}%`,
+              `${starter} at ${district.name} ${night ? 'by night' : 'by day'}: ${(measure.winRate * 100).toFixed(0)}%`,
             ).toBeGreaterThanOrEqual(FLOOR[map.id] ?? 0.5);
           }
           if (map.id !== 'viridian-forest') {
-            const { meanLevel } = measureTable(district.encounters!, 'bulbasaur', 5, 1);
+            const { meanLevel } = measureTable(table, 'bulbasaur', 5, 1);
             expect(meanLevel, district.name).toBeLessThanOrEqual(5);
           }
         }

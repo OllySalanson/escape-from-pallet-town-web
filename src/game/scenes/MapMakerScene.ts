@@ -91,6 +91,7 @@ import { createActiveRunSession } from '../run/RunSession';
 import { generateRunPlan } from '../run/runGeneration';
 import { SaveManager } from '../save/SaveManager';
 import { hunterThreatFor } from '../world/hunterThreat';
+import { isNightRaid } from '../world/nightRaids';
 import { playerMapId } from '../world/mapFile';
 import { registerPlayerMap, unregisterPlayerMap } from '../world/playerMaps';
 import { botCheckNeeded, passBotCheck } from '../maker/turnstile';
@@ -2755,7 +2756,19 @@ export class MapMakerScene extends Phaser.Scene {
       },
     );
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
-    const plan = generateRunPlan(seed, undefined, insertion.id, undefined, hunterThreatFor(party));
+    const plan = generateRunPlan(
+      seed,
+      undefined,
+      insertion.id,
+      undefined,
+      hunterThreatFor(party),
+      [],
+      {},
+      [],
+      [],
+      // A try is a raid on the maker's own clock, night wildlife and all.
+      isNightRaid(new Date()),
+    );
     const runSession = createActiveRunSession(
       activeRunManager,
       {},
