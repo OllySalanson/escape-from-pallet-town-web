@@ -1974,6 +1974,23 @@ describe('HubScene - Bill', () => {
     expect(markupOf(hub)).not.toContain('data-barter-confirm');
   });
 
+  it('says a struck deal is paid in its price column, once, beside the TRADED tag', () => {
+    const { storage } = createTraderHub();
+    const save = JSON.parse(storage.getItem(SAVE_KEY)!) as { raidProgress: { traderBarters?: string[] } };
+    save.raidProgress.traderBarters = ['barter-quick-claw'];
+    storage.setItem(SAVE_KEY, JSON.stringify(save));
+    const { hub } = createHub(DEFAULT_RAID_PROGRESS, storage);
+
+    hub.setView('trader');
+    const boat = markupOf(hub);
+    const row = /<button[^>]*>(?:(?!<\/button>)[\s\S])*<\/button>/g.exec(
+      boat.slice(boat.indexOf('data-shows="barter-quick-claw"') - 400),
+    )![0];
+
+    expect(row).toContain('<span class="px-price is-paid"><small>Paid</small></span>');
+    expect(row.match(/Traded/gi)).toHaveLength(1);
+  });
+
   it('types no arrow and no tick, exactly as every other pixel screen', () => {
     const { hub } = createTraderHub();
     hub.setView('trader');

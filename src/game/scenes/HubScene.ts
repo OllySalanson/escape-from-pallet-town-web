@@ -3220,10 +3220,12 @@ export class HubScene extends Phaser.Scene {
             confirmHelp: `Spends ${escapeAttribute(formatTraderStacks(barter.takes.map((stack) => ({ ...stack, quantity: stack.quantity * count }))))} for good.`,
           });
         }
-        const price = shopPriceColumn(
-          taken
-            ? [{ ask: 'Traded' }]
-            : barter.takes.map(({ itemId, quantity }) =>
+        // A struck deal's price column says it is paid, as a built rung's does:
+        // "Traded" there stood beside the TRADED tag and said one word twice.
+        const price = taken
+          ? shopPaidColumn('Paid')
+          : shopPriceColumn(
+              barter.takes.map(({ itemId, quantity }) =>
                 pricePart(
                   formatTraderStacks([{ itemId, quantity: quantity * count }]),
                   this.stash.itemCount(itemId),
@@ -3232,7 +3234,7 @@ export class HubScene extends Phaser.Scene {
                   itemIcon(itemId, this.itemName(itemId)),
                 ),
               ),
-        );
+            );
         const tag = taken
           ? pixelTag('Traded', 'secure', true)
           : offer.refusal === undefined
