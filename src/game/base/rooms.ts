@@ -343,9 +343,10 @@ export interface RoomThing {
   readonly crated?: boolean;
   /**
    * A screen it opens when faced and spoken to, in place of saying its line:
-   * the wall map is read on a screen, drawn as big as the window allows.
+   * the wall map is read on a screen, drawn as big as the window allows, and
+   * the console upstairs opens its GAMES menu (`scenes/ConsoleScene.ts`).
    */
-  readonly opens?: 'wall-map';
+  readonly opens?: 'wall-map' | 'games';
   /**
    * What it says when faced and spoken to, in place of its name and note: a
    * thing in the player's own house has more to say than what it is.
@@ -353,9 +354,9 @@ export interface RoomThing {
   readonly lines?: readonly string[];
   /**
    * Something it does when faced and spoken to, beyond saying its lines: the
-   * bed is slept in (the screen goes dark first) and the console is played.
+   * bed is slept in (the screen goes dark first).
    */
-  readonly does?: 'sleep' | 'play';
+  readonly does?: 'sleep';
 }
 
 /**
@@ -1084,8 +1085,7 @@ function drawUpstairs(room: BaseRoom, game: RestoredGame): Drawn {
         { x: 7, y: 4 },
         { x: 7, y: 5 },
       ],
-      lines: ['You play a quick game.'],
-      does: 'play',
+      opens: 'games',
     },
     {
       name: 'THE BOOKCASE',

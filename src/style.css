@@ -99,6 +99,15 @@ body {
   box-shadow: none;
 }
 
+/* A house console game (`scenes/ConsoleScene.ts`), full-window over the whole page - the canvas, every menu and
+   the FEEDBACK tab. The game fills it and centres its own screen in it. */
+.console-game {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: #1b2a3a;
+}
+
 /* The game's own canvas, and only it: a direct child of the stage. The DOM
    screens draw on canvases too now - the drop-in screen's bird's-eye map is one
    - and `max-height: 100%` against a parent with no definite height resolved
@@ -3595,4 +3604,46 @@ button {
   background: var(--bar);
   color: var(--bar-text);
   user-select: text;
+}
+
+/* --- The house console (`console/gamesMenu.ts`, `scenes/ConsoleScene.ts`) - */
+/* The games down one side and the board for the one under the cursor beside
+   them, side by side while there is room for two columns and stacked, half the
+   height each, when there is not; who is playing runs along the foot. */
+:where(.pixel-ui) .console-layout {
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-content: stretch;
+  height: 100%;
+}
+:where(.pixel-ui) .console-panes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 200), 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: calc(var(--u) * 4);
+  min-height: 0;
+}
+:where(.pixel-ui) .console-panes > .px-window {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  align-self: start;
+  max-height: 100%;
+}
+/* A board's rows are one line each and clip what is inside them: the last row
+   of a pane otherwise left a pixel of its text's line box hanging below its
+   own box, and the pane drew a scrollbar beside three rows. */
+:where(.pixel-ui) .console-board > .px-row {
+  overflow: hidden;
+}
+/* A place on a board: the name, and the score pushed to the far end. */
+:where(.pixel-ui) .console-place {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 4);
+}
+:where(.pixel-ui) .console-name-form .px-field {
+  flex: 0 1 calc(var(--u) * 80);
+  text-transform: uppercase;
 }

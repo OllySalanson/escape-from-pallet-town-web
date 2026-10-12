@@ -140,6 +140,10 @@ describe('game start flow', () => {
       setOrigin: vi.fn().mockReturnThis(),
       setPosition: vi.fn().mockReturnThis(),
       setTint: vi.fn().mockReturnThis(),
+      // The party's lead walks at the player's heel on a raid (`raidFollower.ts`).
+      setAlpha: vi.fn().mockReturnThis(),
+      setVisible: vi.fn().mockReturnThis(),
+      setFrame: vi.fn().mockReturnThis(),
     };
     const graphics = {
       fillStyle: vi.fn().mockReturnThis(),

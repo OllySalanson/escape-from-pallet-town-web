@@ -6,8 +6,9 @@
 // is - and tries every door that must stay shut: reading the review tables and
 // the feedback inbox, listing or downloading anyone's files, uploading into
 // someone else's folder or a type the bucket does not take, claiming another
-// player's file in a message, blocking a maker, calling the API with no
-// session at all. Each must be refused. With --send it also sends one real
+// player's file in a message, blocking a maker, writing a console score or
+// posting one the game would refuse, calling the API with no session at all.
+// Each must be refused. With --send it also sends one real
 // message with a one-pixel picture through the same two calls the game makes,
 // which must be accepted.
 //
@@ -88,6 +89,30 @@ const empty = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', token
 check(empty.status >= 400, `cannot send a message with nothing in it (${empty.status})`);
 const nobody = await call('/rest/v1/rpc/submit_feedback', { method: 'POST', body: message('FB-AAAC') });
 check(nobody.status >= 400, `cannot send without a session (${nobody.status})`);
+
+// The house console's leaderboards: a player reads a board and posts a score
+// through the two functions, and nothing else. Every post here is one the
+// database must refuse, so the probe stays read-only against the real project.
+const score = (extra = {}) => ({ game: 'pallet-blocks', player_name: 'PROBE', score: 100, lines: 1, level: 1, duration_ms: 60000, ...extra });
+const scores = await call('/rest/v1/console_scores?select=*', { token });
+check(scores.status >= 400 || (Array.isArray(scores.json) && scores.json.length === 0), `reads no console score rows (${scores.status})`);
+const forged = await call('/rest/v1/console_scores', { method: 'POST', token, body: { game: 'pallet-blocks', player_uid: me, player_name: 'PROBE', score: 1, lines: 1, level: 1, duration_ms: 5000 } });
+check(forged.status >= 400, `cannot write a score into the table (${forged.status})`);
+const board = await call('/rest/v1/rpc/console_leaderboard', { method: 'POST', token, body: { game: 'pallet-blocks' } });
+check(board.status === 200 && Array.isArray(board.json), `can read a board (${board.status})`);
+const strangers = await call('/rest/v1/rpc/console_leaderboard', { method: 'POST', body: { game: 'pallet-blocks' } });
+check(strangers.status >= 400, `cannot read a board without a session (${strangers.status})`);
+for (const [what, body] of [
+  ['a game with no board', score({ game: 'not-a-game' })],
+  ['a name with markup in it', score({ player_name: '<B>' })],
+  ['a rude name', score({ player_name: 'SH1T' })],
+  ['an impossible score', score({ score: 99999999, duration_ms: 2000 })],
+]) {
+  const posted = await call('/rest/v1/rpc/submit_console_score', { method: 'POST', token, body });
+  check(posted.status >= 400, `cannot post ${what} (${posted.status})`);
+}
+const anonymousPost = await call('/rest/v1/rpc/submit_console_score', { method: 'POST', body: score() });
+check(anonymousPost.status >= 400, `cannot post a score without a session (${anonymousPost.status})`);
 
 if (send) {
   // A one-pixel PNG, and the two calls the game makes.

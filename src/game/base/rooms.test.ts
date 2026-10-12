@@ -398,12 +398,13 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
     expect(stepsTo(steps, downstairs.stairs.map((stair) => stair.tile))).toBeLessThanOrEqual(12);
   });
 
-  it('gives everything in the house something to say when it is faced', () => {
+  it('gives everything in the house something to say or a screen to open when it is faced', () => {
     for (const each of [downstairs, upstairs]) {
       const built = buildRoom(each, baseGame());
       expect(built.things.length).toBeGreaterThan(0);
       for (const thing of built.things) {
-        expect([each.id, thing.name, (thing.lines ?? []).length > 0]).toEqual([each.id, thing.name, true]);
+        const answers = (thing.lines ?? []).length > 0 || thing.opens !== undefined;
+        expect([each.id, thing.name, answers]).toEqual([each.id, thing.name, true]);
       }
     }
   });
@@ -452,10 +453,10 @@ describe('THE BOLTHOLE, the player\'s own house', () => {
     expect(colours.size).toBe(3);
   });
 
-  it('sleeps in the bed and plays the console, and nothing else in the house does anything', () => {
+  it('sleeps in the bed and opens the GAMES menu at the console, and nothing else in the house does anything', () => {
     const things = [downstairs, upstairs].flatMap((each) => buildRoom(each, baseGame()).things);
     expect(things.filter((thing) => thing.does === 'sleep').map((thing) => thing.name)).toEqual(['YOUR BED']);
-    expect(things.filter((thing) => thing.does === 'play').map((thing) => thing.name)).toEqual(['THE CONSOLE']);
+    expect(things.filter((thing) => thing.opens === 'games').map((thing) => thing.name)).toEqual(['THE CONSOLE']);
   });
 
   /**

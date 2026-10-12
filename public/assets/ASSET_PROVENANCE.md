@@ -181,6 +181,21 @@ mattered because #64 had fixed battle dialogue losing the first character of
 every line; that fix is `DialogBox` padding, and identical advances mean nothing
 about it moved.
 
+## `src/game/console/vendor/` - the house console's games, the owner's own
+
+Not under `public/assets/`, but shipped all the same: each game the console in
+the player's room plays is the owner's own work in a repository of its own,
+built there and vendored here as built by `scripts/fetch-console-games.mjs` at
+the commit that script names. Each folder carries the game's `LICENSE` and a
+`SOURCE.json` with the repository, the commit and the module's sha256, which
+`src/game/console/vendor.test.ts` reads back against the committed file.
+
+- **`pallet-blocks/`** - [Pallet Blocks](https://github.com/OllySalanson/pallet-blocks),
+  by Olly Salanson, MIT. Its module inlines the Orange Kid face (CC0, see the
+  typeface section above) and synthesises every sound; it has no other assets.
+  The vendored build is byte-identical to the module its GitHub Pages publishes
+  at that commit.
+
 ## Pixel icons, authored for this repository
 
 `icons/*.png` - the item, objective and raid-marker icons - were drawn for this

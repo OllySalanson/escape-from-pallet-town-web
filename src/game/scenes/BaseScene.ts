@@ -86,7 +86,6 @@ import { oddityLabel } from '../hub/traderCabinet';
 import { wallMapPoster } from '../base/wallMap';
 import { badgeCasePoster } from '../base/badgeCase';
 import { pennantsPoster } from '../base/pennants';
-import { consoleLine } from '../base/homeLines';
 import type { PaintedPicture } from '../world/minimap';
 import {
   arrivalPlace,
@@ -97,6 +96,7 @@ import {
   type PartnerPlaceName,
 } from '../base/partner';
 import { PartnerFigure, type PartnerHost } from '../base/partnerFigure';
+import type { ConsoleSceneData } from './ConsoleScene';
 import type { HubSceneData } from './HubScene';
 import { abandonedRaidLines, raidHeartbeat } from '../run/raidInFlight';
 
@@ -1529,9 +1529,8 @@ export class BaseScene extends Phaser.Scene {
         this.sleep(thing.lines ?? [], [target]);
         return;
       }
-      if (thing?.does === 'play') {
-        consoleGames += 1;
-        this.say([consoleLine(consoleGames - 1)], [target]);
+      if (thing?.opens === 'games') {
+        this.openGames();
         return;
       }
       if (thing) {
@@ -1656,6 +1655,29 @@ export class BaseScene extends Phaser.Scene {
     this.openHub({ savedGame: this.savedGame, view: 'wallmap', from: room.id, at: { ...this.currentTile } });
   }
 
+  /**
+   * The console's GAMES menu, over the house rather than instead of it: the
+   * house pauses where it stands and carries on from there when the player
+   * comes back, facing the telly.
+   */
+  private openGames(): void {
+    if (this.leaving) {
+      return;
+    }
+    this.player.stop();
+    this.player.setFrame(getIdleFrame(this.facing));
+    this.showHint('');
+    audioManager.play('menuOpen');
+    this.events.once(Phaser.Scenes.Events.RESUME, () => {
+      // The menu and the game kept every key to themselves, so a key the
+      // house saw go down before it paused never came back up here.
+      this.input.keyboard?.resetKeys();
+      this.showHint(this.hintHere());
+    });
+    this.scene.pause();
+    this.scene.launch('console', { pausedBase: true } satisfies ConsoleSceneData);
+  }
+
   /** The keeper's screen, which is what the room is the way to. */
   private openScreen(room: BaseRoom, screen: NonNullable<BaseRoom['screen']>): void {
     this.openHub({ savedGame: this.savedGame, view: SCREEN_VIEWS[screen], from: room.id });
@@ -1679,12 +1701,6 @@ export class BaseScene extends Phaser.Scene {
 /** How long the screen takes to go dark for a sleep, and how long it stays dark. */
 const SLEEP_FADE_MS = 450;
 const SLEEP_DARK_MS = 600;
-
-/**
- * Games played on the console upstairs this visit to the page: the fourth is
- * the one you win (`consoleLine`). Not saved - it is a secret, not a record.
- */
-let consoleGames = 0;
 
 /** Which screen each room's keeper opens, as `HubScene` names its views. */
 const SCREEN_VIEWS = {

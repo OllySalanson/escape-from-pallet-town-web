@@ -146,7 +146,10 @@ At the end of the row, behind the window boxes, is a fifth: **The Bolthole**, wh
 It's the player's house from FireRed, downstairs and up, and it fills up with what you've done:
 a badge case with a slot for every keeper in Kanto, lit as you beat them; a pennant on your
 bedroom wall for every place you've come home from; a telly whose Kanto Tonight tells you which
-rival is hunting you next; a raid log on your PC; and a rug the colour of your starter. It keeps
+rival is hunting you next; a raid log on your PC; a rug the colour of your starter; and, under
+the telly, a games console. It plays **Pallet Blocks**, a falling-blocks game of its own, full
+screen, and every game you finish goes up on a Pallet Town leaderboard under the name you typed,
+so you can see who in town is better at it than you. It keeps
 your hours, too: the window goes orange at dusk and dark at night, there's a pumpkin by the door
 all October and a tree in the corner all December. Nobody hunts you there.
 

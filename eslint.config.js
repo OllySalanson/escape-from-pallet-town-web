@@ -5,7 +5,9 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'node_modules'],
+    // A console game's build is another repository's code, vendored as built
+    // (`scripts/fetch-console-games.mjs`), declarations and all.
+    ignores: ['dist', 'node_modules', 'src/game/console/vendor'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

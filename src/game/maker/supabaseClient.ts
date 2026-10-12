@@ -7,8 +7,10 @@ import { SUBMISSIONS_PUBLISHABLE_KEY, SUBMISSIONS_URL } from './submitConfig';
  *
  * Its types are the database as `supabase/migrations/` declares it. A maker's
  * browser can only call `submit_map` and `my_submissions`, and a player's
- * `submit_feedback` (`feedback/feedbackSender.ts`); the table rows are here for
- * the reviewer, whom row-level security lets read and decide.
+ * `submit_feedback` (`feedback/feedbackSender.ts`) and the house console's
+ * `submit_console_score` and `console_leaderboard` (`console/remoteScores.ts`);
+ * the table rows are here for the reviewer, whom row-level security lets read
+ * and decide.
  */
 
 export type SubmissionStatus = 'waiting' | 'sent_back' | 'approved' | 'rejected' | 'published';
@@ -37,6 +39,16 @@ export type SentRow = {
   readonly revision: number;
   readonly created_at: string;
   readonly updated_at: string;
+};
+
+/** One place on a console game's Pallet Town board (`console/remoteScores.ts`). */
+export type ConsoleBoardRow = {
+  readonly player_name: string;
+  readonly score: number;
+  readonly lines: number;
+  readonly level: number;
+  readonly posted_at: string;
+  readonly mine: boolean;
 };
 
 export type GameDatabase = {
@@ -81,6 +93,21 @@ export type GameDatabase = {
           written_at: string;
         };
         Returns: string;
+      };
+      submit_console_score: {
+        Args: {
+          game: string;
+          player_name: string;
+          score: number;
+          lines: number;
+          level: number;
+          duration_ms: number;
+        };
+        Returns: string;
+      };
+      console_leaderboard: {
+        Args: { game: string };
+        Returns: ConsoleBoardRow[];
       };
     };
     Enums: Record<string, never>;

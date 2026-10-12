@@ -27,7 +27,13 @@ interface Visitor {
  * the calls the collector makes, answered the way PostgREST, the storage API
  * and the auth admin API answer them.
  */
-function standInLab(rows: FeedbackRow[], files: Record<string, StoredFile>, visitors: Visitor[] = [], makers: string[] = []) {
+function standInLab(
+  rows: FeedbackRow[],
+  files: Record<string, StoredFile>,
+  visitors: Visitor[] = [],
+  makers: string[] = [],
+  players: string[] = [],
+) {
   const calls: string[] = [];
   const lab = {
     rows,
@@ -65,6 +71,9 @@ function standInLab(rows: FeedbackRow[], files: Record<string, StoredFile>, visi
       }
       if (url.pathname === '/rest/v1/map_submissions' && method === 'GET') {
         return Response.json(makers.map((maker_uid) => ({ maker_uid })));
+      }
+      if (url.pathname === '/rest/v1/console_scores' && method === 'GET') {
+        return Response.json(players.map((player_uid) => ({ player_uid })));
       }
       if (url.pathname === '/storage/v1/object/list/feedback' && method === 'POST') {
         const prefix = String(body.prefix);
@@ -204,14 +213,16 @@ describe('collecting feedback onto the PC', () => {
         { id: 'idle', is_anonymous: true, created_at: long, last_sign_in_at: long },
         { id: 'sent-a-message', is_anonymous: true, created_at: long, last_sign_in_at: long },
         { id: 'sent-a-map', is_anonymous: true, created_at: long, last_sign_in_at: long },
+        { id: 'on-a-leaderboard', is_anonymous: true, created_at: long, last_sign_in_at: long },
         { id: 'seen-today', is_anonymous: true, created_at: long, last_sign_in_at: '2026-10-10T08:00:00.000Z' },
         { id: 'the-owner', is_anonymous: false, created_at: long, last_sign_in_at: long },
       ],
       ['sent-a-map'],
+      ['on-a-leaderboard'],
     );
     const result = await collectFeedback({ url: 'https://lab.test', key: 'service', out, fetch: lab.fetch, now });
     expect(result.visitorsRemoved).toBe(1);
-    expect(lab.visitors.map((visitor) => visitor.id)).toEqual(['sent-a-message', 'sent-a-map', 'seen-today', 'the-owner']);
+    expect(lab.visitors.map((visitor) => visitor.id)).toEqual(['sent-a-message', 'sent-a-map', 'on-a-leaderboard', 'seen-today', 'the-owner']);
   });
 
   it('listens to a clip once, and tries again next time if it could not', async () => {
