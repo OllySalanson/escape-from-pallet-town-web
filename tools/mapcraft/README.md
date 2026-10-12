@@ -179,11 +179,19 @@ without anything already drawn moving:
 npx vite-node tools/mapcraft/world.mts -- tools/mapcraft/examples/quarryRoad.ts out/quarry-road
 ```
 
-writes the stitched map, the plan as one picture (`.plan.png`, drawn districts
-in green), the whole map, each district with its moves washed in colour, and
-each cave floor, and prints the seams, the hard checks on the whole map and each
-district's own report. `examples/quarryRoad.ts` is the worked example: two
-districts drawn apart and a two-floor cave under the quarry.
+writes the stitched map, the plan as one picture (`.plan.png`), the whole map,
+each district with its moves washed in colour, and each cave floor, and prints
+the seams, the hard checks on the whole map and each district's own report.
+With no district drawn yet it prints and draws the plan alone.
+`examples/quarryRoad.ts` is the worked example: two districts drawn apart and a
+two-floor cave under the quarry.
+
+A plan can also say what the picture shows and the districts' programs have to
+honour: each district's `terrain`, `hidden` crossings (a deer path nobody signs),
+`landmarks` (a landmark, a landing, a secret, roughly where), and `caves` (how
+many floors, and the mouths in which districts). `worlds/` holds the real maps
+being drawn this way: `worlds/greystoneVale/` is the first
+(`docs/screens/greystone-vale/`).
 
 ## Caves
 

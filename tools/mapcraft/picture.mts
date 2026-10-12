@@ -11,6 +11,7 @@ import { TILE_SIZE } from '../tileset/tileSheet.mjs';
 import { blit, box, canvas, label } from '../tileset/draw.mjs';
 import { drawWorldMap, type MapImage } from '../tileset/mapPicture.mts';
 import {
+  MAP_FILE_LIMITS,
   buildPlayerMap,
   playerMapId,
   readMapFile,
@@ -20,7 +21,16 @@ import { registerPlayerMap } from '../../src/game/world/playerMaps';
 import { composeMapFile } from '../../src/game/world/mapAreas';
 import { readTiles, WALL_KINDS, type TileRect } from './tiles';
 import type { DesignMoves } from './measures';
-import { districtRect, openingsOf, planBounds, type Opening, type WorldPlan } from './worldPlan';
+import {
+  districtRect,
+  openingsOf,
+  planBounds,
+  type Opening,
+  type PlannedLandmark,
+  type Side,
+  type Terrain,
+  type WorldPlan,
+} from './worldPlan';
 
 /** The map (or the part of it in `crop`) exactly as the game draws it. */
 export function mapPicture(file: MapFile, crop?: TileRect): MapImage {
@@ -157,63 +167,223 @@ export function movesPicture(
 }
 
 const CELL = 192;
-const KIND_COLOUR: Readonly<Record<string, [number, number, number]>> = {
+type Rgb = [number, number, number];
+const KIND_COLOUR: Readonly<Record<string, Rgb>> = {
   road: [235, 170, 70],
   trail: [150, 220, 120],
   river: [70, 130, 230],
   open: [235, 235, 200],
 };
+const TERRAIN_COLOUR: Readonly<Record<Terrain, Rgb>> = {
+  town: [120, 104, 84],
+  forest: [40, 84, 52],
+  mountain: [104, 92, 88],
+  river: [52, 88, 120],
+  coast: [60, 104, 128],
+  marsh: [72, 92, 64],
+  farmland: [92, 112, 60],
+  moor: [100, 80, 100],
+};
+const MARK_COLOUR: Readonly<Record<PlannedLandmark['kind'], Rgb>> = {
+  landmark: [255, 214, 92],
+  landing: [120, 240, 255],
+  secret: [255, 120, 220],
+};
+
+/** A line `thickness` pixels wide, solid or dashed. */
+function line(
+  image: MapImage,
+  from: readonly [number, number],
+  to: readonly [number, number],
+  colour: Rgb,
+  thickness: number,
+  dashed = false,
+): void {
+  const steps = Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1]), 1);
+  for (let k = 0; k <= steps; k += 1) {
+    if (dashed && Math.floor(k / 6) % 2 === 1) continue;
+    const x = Math.round(from[0] + ((to[0] - from[0]) * k) / steps);
+    const y = Math.round(from[1] + ((to[1] - from[1]) * k) / steps);
+    box(
+      image,
+      x - Math.floor(thickness / 2),
+      y - Math.floor(thickness / 2),
+      thickness,
+      thickness,
+      colour,
+    );
+  }
+}
 
 /**
- * The world plan as one picture: a box a district, green where it is drawn and
- * grey where it is not, its name and its one idea written in it; a bar on each
- * shared edge where a crossing is (orange road, green trail, blue river, pale
- * open country) and a red bar on the outer edge for each way out.
+ * The world plan as one picture: each district a square in the colour of its
+ * terrain, its name and its one idea written in it; the ways through it drawn
+ * from each crossing to the district's heart (orange road, green trail, dashed
+ * a hidden one, blue the river); red bars for the ways out of the map; yellow
+ * landmarks, cyan landings and pink secrets where the plan puts them; black
+ * cave mouths joined by the dashed way underground; a tick on every district
+ * already drawn; and dotted squares where the map still has room to grow.
  */
 export function planPicture(plan: WorldPlan, built: ReadonlySet<string> = new Set()): MapImage {
   const bounds = planBounds(plan);
-  const image = canvas(bounds.columns * CELL + 16, bounds.rows * CELL + 40, [16, 18, 24]);
-  label(image, plan.name, 8, 8, 2, [255, 214, 92]);
+  const growsEast = (bounds.columns + 1) * plan.districtSize <= MAP_FILE_LIMITS.maxWidth;
+  const growsSouth = (bounds.rows + 1) * plan.districtSize <= MAP_FILE_LIMITS.maxHeight;
+  const width = (bounds.columns + (growsEast ? 1 : 0)) * CELL + 16;
+  const height = (bounds.rows + (growsSouth ? 1 : 0)) * CELL + 40 + 52;
+  const image = canvas(width, height, [16, 18, 24]);
+  label(
+    image,
+    `${plan.name}: ${bounds.columns * plan.districtSize}X${bounds.rows * plan.districtSize} TILES, ${plan.districts.length} DISTRICTS`,
+    8,
+    10,
+    2,
+    [255, 214, 92],
+  );
+  const scale = CELL / plan.districtSize;
   const origin = (id: string) => {
     const rect = districtRect(plan, id);
-    return {
-      x: 8 + (rect.x / plan.districtSize) * CELL,
-      y: 32 + (rect.y / plan.districtSize) * CELL,
-    };
+    return { x: 8 + rect.x * scale, y: 32 + rect.y * scale };
   };
+  const at = (id: string, point: readonly [number, number]): [number, number] => {
+    const { x, y } = origin(id);
+    return [Math.round(x + point[0] * scale), Math.round(y + point[1] * scale)];
+  };
+  // Room to grow: a dotted square beyond the east and south edges.
+  const dotted = (x: number, y: number) => {
+    for (let i = 0; i < CELL - 4; i += 6) {
+      box(image, x + 2 + i, y + 2, 2, 2, [90, 94, 104]);
+      box(image, x + 2 + i, y + CELL - 4, 2, 2, [90, 94, 104]);
+      box(image, x + 2, y + 2 + i, 2, 2, [90, 94, 104]);
+      box(image, x + CELL - 4, y + 2 + i, 2, 2, [90, 94, 104]);
+    }
+  };
+  if (growsEast)
+    for (let row = 0; row < bounds.rows; row += 1)
+      dotted(8 + bounds.columns * CELL, 32 + row * CELL);
+  if (growsSouth)
+    for (let column = 0; column < bounds.columns; column += 1)
+      dotted(8 + column * CELL, 32 + bounds.rows * CELL);
+  if (growsEast || growsSouth)
+    label(
+      image,
+      'ROOM TO GROW',
+      8 + (growsEast ? bounds.columns : 0) * CELL + 12,
+      32 + (growsEast ? 0 : bounds.rows) * CELL + 12,
+      1,
+      [120, 124, 134],
+    );
+
   for (const district of plan.districts) {
     const { x, y } = origin(district.id);
-    box(
-      image,
-      x + 2,
-      y + 2,
-      CELL - 4,
-      CELL - 4,
-      built.has(district.id) ? [52, 92, 60] : [58, 60, 66],
-    );
-    label(image, district.name, x + 8, y + 10, 2, [255, 255, 255]);
-    wrap(district.idea, 44).forEach((line, index) =>
-      label(image, line, x + 8, y + 34 + index * 9, 1, [220, 225, 210]),
-    );
+    box(image, x + 2, y + 2, CELL - 4, CELL - 4, TERRAIN_COLOUR[district.terrain ?? 'forest']);
   }
-  const bar = (id: string, opening: Opening, colour: [number, number, number]) => {
-    const { x, y } = origin(id);
-    const along = Math.round((opening.at / plan.districtSize) * CELL);
-    const span = Math.max(6, Math.round((opening.width / plan.districtSize) * CELL));
-    if (opening.side === 'north') box(image, x + along, y, span, 6, colour);
-    if (opening.side === 'south') box(image, x + along, y + CELL - 6, span, 6, colour);
-    if (opening.side === 'west') box(image, x, y + along, 6, span, colour);
-    if (opening.side === 'east') box(image, x + CELL - 6, y + along, 6, span, colour);
+  // The ways through each district, from every opening to its heart.
+  const heart = (id: string): [number, number] => {
+    const landing = (plan.landmarks ?? []).find(
+      (landmark) => landmark.district === id && landmark.kind === 'landing',
+    );
+    return at(id, landing?.at ?? [plan.districtSize / 2, plan.districtSize / 2]);
+  };
+  const edgePoint = (id: string, opening: Opening): [number, number] => {
+    const middle = opening.at + opening.width / 2;
+    const size = plan.districtSize;
+    const point: Record<Side, [number, number]> = {
+      north: [middle, 0],
+      south: [middle, size],
+      west: [0, middle],
+      east: [size, middle],
+    };
+    return at(id, point[opening.side]);
   };
   for (const district of plan.districts) {
-    for (const opening of openingsOf(plan, district.id)) {
-      bar(
-        district.id,
-        opening,
-        'exit' in opening.leadsTo ? [230, 60, 60] : KIND_COLOUR[opening.kind],
+    const openings = openingsOf(plan, district.id);
+    // A river runs straight from one of its openings to the next; with one, it
+    // rises or reaches the sea in the district.
+    const rivers = openings.filter((opening) => opening.kind === 'river');
+    for (let k = 1; k < rivers.length; k += 1)
+      line(
+        image,
+        edgePoint(district.id, rivers[k - 1]),
+        edgePoint(district.id, rivers[k]),
+        KIND_COLOUR.river,
+        8,
       );
+    if (rivers.length === 1)
+      line(
+        image,
+        edgePoint(district.id, rivers[0]),
+        at(district.id, [plan.districtSize / 2, plan.districtSize / 2]),
+        KIND_COLOUR.river,
+        8,
+      );
+    for (const opening of openings) {
+      if (opening.kind === 'river') continue;
+      const thickness = opening.kind === 'open' ? 6 : opening.kind === 'road' ? 4 : 3;
+      line(
+        image,
+        edgePoint(district.id, opening),
+        heart(district.id),
+        KIND_COLOUR[opening.kind],
+        thickness,
+        opening.hidden,
+      );
+      if ('exit' in opening.leadsTo) {
+        const [ex, ey] = edgePoint(district.id, opening);
+        box(image, ex - 5, ey - 5, 10, 10, [230, 60, 60]);
+      }
     }
   }
+  // Caves: their mouths, and the way underground between them.
+  for (const cave of plan.caves ?? []) {
+    const mouths = cave.mouths.map((mouth) => at(mouth.district, mouth.at));
+    for (let k = 1; k < mouths.length; k += 1)
+      line(image, mouths[k - 1], mouths[k], [10, 10, 14], 2, true);
+    mouths.forEach(([mx, my]) => {
+      box(image, mx - 5, my - 5, 11, 11, [10, 10, 14]);
+      box(image, mx - 3, my - 3, 7, 7, [140, 120, 100]);
+    });
+  }
+  for (const landmark of plan.landmarks ?? []) {
+    const [lx, ly] = at(landmark.district, landmark.at);
+    box(image, lx - 3, ly - 3, 7, 7, MARK_COLOUR[landmark.kind]);
+    label(image, landmark.name, lx + 6, ly - 2, 1, MARK_COLOUR[landmark.kind]);
+  }
+  for (const district of plan.districts) {
+    const { x, y } = origin(district.id);
+    box(image, x + 2, y + 2, CELL - 4, 48, [16, 18, 24], 170);
+    label(image, district.name, x + 8, y + 8, 2, [255, 255, 255]);
+    wrap(district.idea, 44)
+      .slice(0, 3)
+      .forEach((text, index) => label(image, text, x + 8, y + 24 + index * 8, 1, [220, 225, 210]));
+    if (built.has(district.id))
+      label(image, 'DRAWN', x + CELL - 34, y + CELL - 12, 1, [160, 255, 160]);
+  }
+  // The legend.
+  const legendY = height - 44;
+  const keys: [string, Rgb][] = [
+    ['ROAD', KIND_COLOUR.road],
+    ['TRAIL', KIND_COLOUR.trail],
+    ['RIVER', KIND_COLOUR.river],
+    ['WAY OUT', [230, 60, 60]],
+    ['LANDMARK', MARK_COLOUR.landmark],
+    ['LANDING', MARK_COLOUR.landing],
+    ['SECRET', MARK_COLOUR.secret],
+    ['CAVE MOUTH', [140, 120, 100]],
+  ];
+  keys.forEach(([name, colour], index) => {
+    const lx = 8 + (index % 4) * 150;
+    const ly = legendY + Math.floor(index / 4) * 18;
+    box(image, lx, ly, 10, 10, colour);
+    label(image, name, lx + 16, ly + 2, 1, [220, 225, 210]);
+  });
+  label(
+    image,
+    'DASHED: A HIDDEN TRAIL, OR THE WAY UNDERGROUND',
+    8,
+    legendY + 36,
+    1,
+    [150, 154, 164],
+  );
   return image;
 }
 

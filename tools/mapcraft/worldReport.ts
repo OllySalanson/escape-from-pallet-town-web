@@ -5,7 +5,7 @@
 import { allPassed, hardChecks, type HardCheck } from './checks';
 import { formatReport, reportOn, type MapcraftReport, type MapcraftResult } from './report';
 import { stitch, type StitchResult } from './stitch';
-import type { WorldPlan } from './worldPlan';
+import { checkPlan, planBounds, unreachableDistricts, type WorldPlan } from './worldPlan';
 
 /** What a world program module's default export returns: the plan, and the districts drawn so far. */
 export interface WorldResult {
@@ -61,5 +61,54 @@ export function formatWorldReport(world: WorldResult, report: WorldReport): stri
   for (const [id, district] of Object.entries(report.districts)) {
     lines.push('', `== ${id} ==`, formatReport(district));
   }
+  return lines.join('\n');
+}
+
+/** A plan before anything is drawn: its districts, ways through, landmarks and caves, and what is wrong with it. */
+export function formatPlan(plan: WorldPlan, from?: string): string {
+  const bounds = planBounds(plan);
+  const lines = [
+    `${plan.name}: ${plan.districts.length} districts, ${bounds.columns * plan.districtSize}x${bounds.rows * plan.districtSize} tiles`,
+    '',
+    'Districts:',
+    ...plan.districts.map(
+      (district) =>
+        `  ${district.name} (${district.terrain ?? 'unset'}, cell ${district.cell.join(',')}): ${district.idea}`,
+    ),
+    '',
+    'Ways through:',
+    ...plan.crossings.map(
+      (crossing) =>
+        `  ${crossing.hidden ? 'hidden ' : ''}${crossing.kind} ${crossing.between.join(' - ')} at ${crossing.at}`,
+    ),
+    ...plan.exits.map(
+      (exit) => `  way out '${exit.name}': ${exit.district}, ${exit.side} edge at ${exit.at}`,
+    ),
+  ];
+  if ((plan.landmarks ?? []).length > 0) {
+    lines.push(
+      '',
+      'Landmarks:',
+      ...(plan.landmarks ?? []).map(
+        (landmark) =>
+          `  ${landmark.kind} '${landmark.name}' in ${landmark.district} near ${landmark.at.join(',')}`,
+      ),
+    );
+  }
+  for (const cave of plan.caves ?? []) {
+    lines.push(
+      '',
+      `${cave.name}: ${cave.floors} floors, mouths in ${cave.mouths.map((mouth) => mouth.district).join(', ')}`,
+    );
+  }
+  const problems = checkPlan(plan);
+  const cutOff = from ? unreachableDistricts(plan, from) : [];
+  lines.push(
+    '',
+    problems.length === 0 ? 'Plan: no problems' : 'Plan: FAILING',
+    ...problems.map((problem) => `  x ${problem}`),
+  );
+  if (cutOff.length > 0)
+    lines.push(`  note: no road or trail reaches ${cutOff.join(', ')} from ${from}`);
   return lines.join('\n');
 }

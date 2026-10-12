@@ -10,20 +10,21 @@
  * every district drawn so far. It writes:
  *
  *   <out-base>.json             the stitched map file (TRY IT plays it)
- *   <out-base>.plan.png         the world plan, drawn districts in green
+ *   <out-base>.plan.png         the world plan as one picture, drawn districts ticked
  *   <out-base>.png              the whole map as the game draws it (shrunk by --shrink, default 2)
  *   <out-base>-<district>.png   each drawn district, and its .moves.png
  *   <out-base>-<cave floor>.png each cave floor and inside
  *
- * It exits non-zero when anything is failing.
+ * With no district drawn yet it prints and draws the plan alone. It exits
+ * non-zero when anything is failing.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { writePng } from '../tileset/tileSheet.mjs';
-import { formatWorldReport, reportOnWorld, type WorldResult } from './worldReport';
+import { formatPlan, formatWorldReport, reportOnWorld, type WorldResult } from './worldReport';
 import { areaPicture, mapPicture, movesPicture, planPicture, shrunk } from './picture.mts';
-import { districtRect } from './worldPlan';
+import { checkPlan, districtRect } from './worldPlan';
 
 const args = process.argv.slice(2);
 const [programPath, outBase] = args.filter((value) => !value.startsWith('--'));
@@ -40,13 +41,19 @@ const module = (await import(pathToFileURL(resolve(programPath)).href)) as {
   default: (seed: number) => WorldResult;
 };
 const world = module.default(flag('seed', 1));
-const report = reportOnWorld(world);
 mkdirSync(dirname(resolve(outBase)), { recursive: true });
+writePng(`${outBase}.plan.png`, planPicture(world.plan, new Set(Object.keys(world.districts))));
+if (Object.keys(world.districts).length === 0) {
+  // Nothing drawn yet: the plan is all there is to check and to see.
+  console.log(formatPlan(world.plan, world.plan.districts[0]?.id));
+  console.log(`\npicture: ${outBase}.plan.png`);
+  process.exit(checkPlan(world.plan).length === 0 ? 0 : 1);
+}
+const report = reportOnWorld(world);
 const { file } = report.stitched;
 writeFileSync(`${outBase}.json`, `${JSON.stringify(file, null, 1)}\n`);
 console.log(formatWorldReport(world, report));
 
-writePng(`${outBase}.plan.png`, planPicture(world.plan, new Set(Object.keys(world.districts))));
 if (report.checks[0]?.passed) {
   const whole = mapPicture(file);
   const factor = flag('shrink', 2);
