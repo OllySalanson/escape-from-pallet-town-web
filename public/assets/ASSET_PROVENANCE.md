@@ -224,7 +224,8 @@ game.
   `rubble` a buried exit is drawn as, the two fishing rods `old-rod` and
   `good-rod`, the `lockpick`, the five keys `weir-key`, `paddock-key`,
   `forester-key`, `garden-key` and `market-key`, and the `locked-gate` and
-  `locked-crate` a keyed exit and a locked cache are drawn as.
+  `locked-crate` a keyed exit and a locked cache are drawn as, and the
+  `bicycle`.
   The materials are
   drawn in code by `scripts/draw-material-icons.mjs` and the held items by
   `scripts/draw-gear-icons.mjs` (character art and small shapes on the same
@@ -279,6 +280,13 @@ game.
   line hanging from the tip, told apart the way FireRed tells its rods apart -
   plain cane (`#d9b46a`, `#9c7438`) with a steel reel, and blue (`#7fb4e0`,
   `#3f6f9d`) with a red one (`#c8443c`, `#ff8a70`).
+  The `bicycle` is `scripts/draw-bicycle-icon.mjs`: drawn by hand at 16x16,
+  side on, because FireRed's own bag icon is 24x24 and will not go into the set
+  without resampling, and coloured from that icon's palette
+  (`graphics/items/icon_palettes/bicycle.pal` in pret/pokefirered at
+  `037335f`): the dusky red frame `#b46262` with its pale highlight `#f6acac`,
+  grey rims `#b4b4b4` and hubs `#626262`. Original drawing in FireRed's
+  colours, not a cut of its pixels.
   The `lockpick`, the five keys, the `locked-gate` and the `locked-crate` are
   `scripts/draw-lock-icons.mjs`, on the set's own palette: a hooked steel pick
   on a bound violet grip; **one brass key drawn five times** (`#f1d27a`,
@@ -759,6 +767,23 @@ ships is the frames, recoloured and packed in national-dex order onto a new
 and the row its feet stand on. They are the owner's ask on the palette board:
 "all of the Pokémon that are in the game should be in the mapmaker", and only
 those.
+
+### `player-bike.png` - the player on FireRed's Bicycle
+
+**RIPPED FROM A COMMERCIAL POKEMON GAME, accepted knowingly**, on the same
+ruling and from the same source as `pokemon-icons.png` above: pret/pokefirered
+at commit `037335f`, read 2026-10-12. One file,
+`graphics/object_events/pics/people/red_bike.png` - nine 32x32 frames of the
+protagonist riding, facing down, up and left, two pedal strokes each - laid on
+the game's four-row walk grid (down, right, up, left; idle, stroke, idle,
+stroke) with the right facing the left one mirrored, as FireRed draws it, and
+every frame lifted four pixels so the wheels stand on row 27, the sole line
+every walking figure stands on. Colours are pret's palette as written.
+`scripts/cut-frlg-bicycle.mjs` is the whole method. Nothing from pret is
+committed. It is the figure the player becomes while riding the Bicycle in a
+raid (`src/game/world/bicycle.ts`), the captain's ask of 2026-10-12. The
+Bicycle's bag icon is not a cut: it is `icons/bicycle.png`, drawn here (see the
+pixel icons above).
 
 ### `frlg-areas.png` - the insides of a player's buildings, and its caves
 

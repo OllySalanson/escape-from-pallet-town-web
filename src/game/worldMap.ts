@@ -559,6 +559,11 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       { id: 'floodplain-quay-raid-pack', position: { x: 5, y: 30 }, itemId: 'raid-pack', quantity: 1, chance: 0.25, district: 'floodplain-old-town' },
       { id: 'floodplain-staithe-ranger-pack', position: { x: 34, y: 102 }, itemId: 'ranger-pack', quantity: 1, chance: 0.22, district: 'floodplain-staithe' },
       { id: 'floodplain-keep-hauler-frame', position: { x: 52, y: 10 }, itemId: 'hauler-frame', quantity: 1, chance: 0.12, district: 'floodplain-beacon-keep' },
+      // A Bicycle, at the longest odds on any map, on THE LEVELS: the one ruled,
+      // dead-straight country in the game, the far east of the biggest map, and
+      // the place a raid would most want to be riding out of
+      // (`world/bicycle.ts`).
+      { id: 'floodplain-levels-bicycle', position: { x: 112, y: 64 }, itemId: 'bicycle', quantity: 1, chance: 0.05, district: 'floodplain-levels' },
     ],
   },
   // The crossroads. The first map drawn on Kanto's own art rather than on the
@@ -606,6 +611,10 @@ const MAP_CONTENT: Readonly<Record<BuiltInMapId, MapContent>> = {
       // The Nidoran in the border fields are what reads it: a Nidorino given
       // one is a Nidoking, and the farmer says the stone turns up there.
       { id: 'viridian-border-moon-stone', position: { x: 9, y: 47 }, itemId: 'moon-stone', quantity: 1, chance: 0.25, district: 'viridian-border-fields' },
+      // A Bicycle left against a terrace wall at the top of the road home to
+      // Pallet, at the longest odds on the map: a town is where somebody owns
+      // one (`world/bicycle.ts`).
+      { id: 'viridian-terrace-bicycle', position: { x: 39, y: 66 }, itemId: 'bicycle', quantity: 1, chance: 0.05, district: 'viridian-south-terraces' },
     ],
   },
 };

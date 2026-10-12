@@ -185,6 +185,8 @@ function refusalMessage(item: ItemDefinition, name: string): string {
       return `${item.displayName} digs in the field, not in a fight.`;
     case 'rod':
       return `${item.displayName} fishes in the field, not in a fight.`;
+    case 'bike':
+      return `${item.displayName} is ridden in the field, not in a fight.`;
     case 'lockpick':
       return `${item.displayName} picks locks in the field, not in a fight.`;
     case 'key':

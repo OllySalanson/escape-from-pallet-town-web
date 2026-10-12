@@ -58,6 +58,7 @@ import {
   characterDesignTextureKey,
 } from './world/characterDesigns';
 import { publicAssetUrl } from './publicAssetUrl';
+import { BIKE_ASSET_PATH, BIKE_FRAME_SIZE, BIKE_TEXTURE } from './world/bicycle';
 
 describe('game start flow', () => {
   it('auto-starts Boot so World prerequisites are ready before Title can start it', async () => {
@@ -126,7 +127,13 @@ describe('game start flow', () => {
       });
       expect(animations).toContain(getWalkAnimationKey('left', textureKey));
     }
-    expect(create).toHaveBeenCalledTimes(4 * (1 + CHARACTER_DESIGN_IDS.length));
+    // The player's own walk, the Bicycle's pedal cycle, and every design's.
+    expect(create).toHaveBeenCalledTimes(4 * (2 + CHARACTER_DESIGN_IDS.length));
+    expect(spritesheet).toHaveBeenCalledWith(BIKE_TEXTURE, publicAssetUrl(BIKE_ASSET_PATH), {
+      frameWidth: BIKE_FRAME_SIZE,
+      frameHeight: BIKE_FRAME_SIZE,
+    });
+    expect(animations).toContain(getWalkAnimationKey('left', BIKE_TEXTURE));
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ key: getWalkAnimationKey('down') }),
     );

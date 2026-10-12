@@ -445,6 +445,9 @@ const MATERIAL_SHARE: Readonly<Record<SupplyItemId, number>> = {
   pickaxe: 0,
   'old-rod': 0,
   'good-rod': 0,
+  // The rarest thing a raid can carry, and never pay: a find, or Bill's
+  // dearest deal (`../world/bicycle.ts`).
+  bicycle: 0,
   // A Lockpick is a tool Bill barters and the maps lay, and a key is found on
   // the map it opens and nowhere else: neither is ever pay.
   lockpick: 0,

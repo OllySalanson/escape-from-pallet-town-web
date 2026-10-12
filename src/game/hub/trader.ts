@@ -9,6 +9,7 @@ import {
   type SupplyItemId,
 } from '../items';
 import { MACHINES } from '../pokemon/machines';
+import { BICYCLE_ITEM_ID } from '../world/bicycle';
 import type { Stash } from '../stash';
 
 /**
@@ -525,6 +526,26 @@ export const TRADER_BARTERS: readonly TraderBarter[] = [
     standing: 'partner',
     once: true,
   },
+  // The Bicycle, and the dearest thing on the table: the most goods for one
+  // deal, at the top of his trust. Once, and dealt again whenever the vault
+  // holds none (`reofferedWhenNoneHeld`): it rides in the pack and a wipe takes
+  // it, and a deal struck once would make the rarest thing in the game a thing
+  // one bad raid ends for good - but it is one at a time, never a spare.
+  {
+    id: 'barter-bicycle',
+    name: 'Bicycle',
+    detail:
+      'In Kanto a shop asks a million for one. Ride it and you go twice as fast as on foot - but it is six squares of the pack, and a wipe takes it with the rest. Lose it and he will find you another, one at a time.',
+    icon: 'bicycle',
+    gives: { itemId: 'bicycle', quantity: 1 },
+    takes: [
+      { itemId: 'parts-crate', quantity: 3 },
+      { itemId: 'cable-coil', quantity: 3 },
+      { itemId: 'radio-valve', quantity: 2 },
+    ],
+    standing: 'partner',
+    once: true,
+  },
 ];
 
 /**
@@ -688,9 +709,13 @@ export function barterTaken(
   return !(reofferedWhenNoneHeld(barter) && counter.stash.itemCount(barter.gives.itemId) === 0);
 }
 
-/** A once-only deal he makes again once the copy is gone: one that gives an HM. */
+/**
+ * A once-only deal he makes again once the copy is gone: one that gives an HM,
+ * or the Bicycle - the two things he deals that are never used up and are lost
+ * with the pack all the same.
+ */
 export function reofferedWhenNoneHeld(barter: TraderBarter): boolean {
-  return MACHINES[barter.gives.itemId]?.reusable === true;
+  return MACHINES[barter.gives.itemId]?.reusable === true || barter.gives.itemId === BICYCLE_ITEM_ID;
 }
 
 function judgeBarter(counter: TraderCounter, barter: TraderBarter, quantity = 1): TraderOffer {

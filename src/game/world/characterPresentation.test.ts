@@ -314,7 +314,8 @@ describe('the world scene draws what this module describes', () => {
     // so a mark can never be left behind on the tile the player walked off.
     expect(scene.match(/this\.player\.setPosition\(/g)).toHaveLength(1);
     expect(setter).toContain('this.playerGroundMark.setPosition(x, y)');
-    expect(setter).toContain('this.playerHeadMark.setPosition(x, y)');
+    // The head mark drops a little onto a rider's head (`world/bicycle.ts`).
+    expect(setter).toContain('this.playerHeadMark.setPosition(x, y');
   });
 
   it('sorts the player into the same depth band as the figures around them', async () => {
